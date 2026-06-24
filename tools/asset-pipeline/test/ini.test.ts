@@ -279,9 +279,32 @@ describe('extractAtomicAnimations', () => {
     ]);
   });
 
-  it('throws on an [atomicanimation] missing its `name` (it would be unreferenceable)', () => {
+  it('treats `interruptable 0` and a missing interruptable line both as not interruptible', () => {
+    const [off] = extractAtomicAnimations(
+      parseIniSections('[atomicanimation]\nname "a"\ninterruptable 0\n'),
+      { file: 'f.ini' },
+    );
+    expect(off?.interruptible).toBe(false);
+  });
+
+  it('skips a malformed event line (non-numeric at/type) but keeps valid ones in file order', () => {
+    const [anim] = extractAtomicAnimations(
+      parseIniSections('[atomicanimation]\nname "a"\nevent 10 5 +200\nevent bad 9\nevent 20 6\n'),
+      { file: 'f.ini' },
+    );
+    expect(anim?.events).toEqual([
+      { at: 10, type: 5, value: 200, extended: false },
+      { at: 20, type: 6, extended: false },
+    ]);
+  });
+
+  it('throws on an [atomicanimation] with no (or empty) `name` — it would be unreferenceable', () => {
     expect(() =>
       extractAtomicAnimations(parseIniSections('[atomicanimation]\nlength 20\n'), { file: 'f.ini' }),
+    ).toThrow(/without a `name`/);
+    // An empty/whitespace name is just as unreferenceable as a missing one.
+    expect(() =>
+      extractAtomicAnimations(parseIniSections('[atomicanimation]\nname ""\n'), { file: 'f.ini' }),
     ).toThrow(/without a `name`/);
   });
 });

@@ -317,7 +317,7 @@ export function extractAtomicAnimations(sections: readonly RuleSection[], src: S
   for (const sec of sections) {
     if (sec.name !== 'atomicanimation') continue;
     const name = getStr(sec, 'name');
-    if (name === undefined) {
+    if (name === undefined || name.trim() === '') {
       throw new Error(`ini: [atomicanimation] without a \`name\` in ${src.file}`);
     }
     const events: { at: number; type: number; value?: number; extended: boolean }[] = [];
