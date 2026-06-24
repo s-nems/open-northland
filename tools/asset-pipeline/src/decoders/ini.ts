@@ -369,3 +369,53 @@ export function extractAtomicAnimations(sections: readonly RuleSection[], src: S
   }
   return animations;
 }
+
+/**
+ * One resolved palette alias: a name a graphics record references (via `gfxpalettebody "<name>"`)
+ * mapped to the `.pcx` whose trailer palette holds the actual 256 colours. The path is normalized to
+ * a forward-slash, lower-cased, relative path so a lookup is host-OS- and case-independent (archive
+ * names use Windows backslashes and mixed case, e.g. `data\Engine2D\Bin\palettes\landscapes\tree01.pcx`).
+ */
+export interface PaletteAlias {
+  /** The `editname` a graphics record references; one record may expose several aliases for one file. */
+  readonly name: string;
+  /** The palette source `.pcx`, as a normalized `data/.../foo.pcx` relative path (forward slashes, lower-case). */
+  readonly gfxFile: string;
+}
+
+/** Normalizes a Cultures asset path (`data\Engine2D\...\X.pcx`) to a lookup key: forward slashes, lower-case. */
+function normalizeAssetPath(path: string): string {
+  return path.replace(/\\/g, '/').toLowerCase();
+}
+
+/**
+ * Extracts the `palettes.ini` (`Data/engine2d/inis/palettes/palettes.ini`) `[GfxPalette256]` records
+ * into name→`.pcx` palette aliases. This is the first leg of the `.bmd` palette-pairing graph
+ * (docs/ROADMAP.md Phase 1): a graphics record names a bob set's palette by `editname`
+ * (`gfxpalettebody "tree01"`), `palettes.ini` resolves that name to a `gfxfile` `.pcx`, and the
+ * `.pcx` trailer palette is the colour table {@link import('./pcx.js').decodePcx} already returns.
+ *
+ * Each record carries exactly one `gfxfile` but may list **several** `editname` aliases (the real
+ * file has 143 records, 251 names) — every alias is emitted as its own entry pointing at the shared
+ * file, so a consumer builds one flat `name -> .pcx` map. A record missing its `gfxfile` (nothing to
+ * resolve to) or with no `editname` (unreferenceable) is skipped rather than throwing: this is an
+ * index over many records and one malformed entry must not abort the offline batch. Paths are
+ * normalized via {@link normalizeAssetPath} for host-OS/case-independent lookup against the unpacked
+ * `--out` tree. The other binding leg (which `.bmd` uses which `editname`) lives mostly in graphics
+ * `.cif` records (only `animals/jobgraphics.ini` is readable) and is wired in a later step.
+ */
+export function extractPaletteIndex(sections: readonly RuleSection[]): PaletteAlias[] {
+  const aliases: PaletteAlias[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'GfxPalette256') continue;
+    const gfxFile = getStr(sec, 'gfxfile');
+    if (gfxFile === undefined || gfxFile.trim() === '') continue;
+    const normalized = normalizeAssetPath(gfxFile);
+    for (const p of findProps(sec, 'editname')) {
+      const name = p.values[0];
+      if (name === undefined || name.trim() === '') continue;
+      aliases.push({ name, gfxFile: normalized });
+    }
+  }
+  return aliases;
+}
