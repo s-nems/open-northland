@@ -315,14 +315,21 @@ async function run(args: Args): Promise<void> {
   //   6. Decode one map -> map IR               -> decoders/cif.ts (done; wiring pending)
   // > 7. Write content/ir.json + validate with parseContentSet()  (this stage)
   //
-  // The unpack extracts loose copies of the embedded .pcx/.bmd/.cif into <out> (gitignored). The
-  // .pcx -> png pass below still scans the original --game tree (loose pictures live there); a future
-  // step can repoint it at the unpacked tree once the embedded pictures need converting too.
+  // The unpack extracts loose copies of the embedded .pcx/.bmd/.cif into <out> (gitignored).
   const extracted = await unpackLibTree(args.game, args.out);
   console.log(`[pipeline] lib unpack: extracted ${extracted.length} member(s) into ${args.out}`);
 
-  const pictures = await convertPcxTree(args.game, args.out);
-  console.log(`[pipeline] pcx -> png: converted ${pictures.length} picture(s) into ${args.out}`);
+  // Convert .pcx -> .png from BOTH trees: the original --game tree (loose pictures shipped as files)
+  // mirrored into <out>, and the unpacked <out> tree itself (the .pcx the unpack stage just extracted
+  // from data0001.lib, converted in place to a .png sibling). The two roots are disjoint sources, so a
+  // picture is converted exactly once per location it exists; <game>==<out> is not a supported invocation.
+  const loosePictures = await convertPcxTree(args.game, args.out);
+  const embeddedPictures = await convertPcxTree(args.out, args.out);
+  const pictures = loosePictures.length + embeddedPictures.length;
+  console.log(
+    `[pipeline] pcx -> png: converted ${pictures} picture(s) into ${args.out} ` +
+      `(${loosePictures.length} loose, ${embeddedPictures.length} embedded)`,
+  );
 
   const ir = await writeIr(args);
   console.log(
