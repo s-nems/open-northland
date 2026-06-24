@@ -63,14 +63,40 @@ useful than "hash changed." Intentional change → update the golden in the same
 ## What an agent CANNOT self-validate (be honest)
 
 - **Pixel fidelity & "feel"** — isometric depth-sort correctness, animation anchors, pathing
-  smoothness. Approaches: (a) **deterministic screenshot diffs** via Playwright against the Vite
-  app, compared to committed baselines (an agent can run these but should treat a diff as "needs
-  human eyes," not auto-pass); (b) explicitly defer to a human and *say so* rather than asserting
-  it works from a green typecheck.
+  smoothness. Approaches: (a) **deterministic Playwright screenshots** an agent eyeballs for
+  *gross* correctness (blank screen, missing terrain, sprites in the wrong iso half) — see
+  *Visual validation via Playwright* below; (b) explicitly defer to a human and *say so* rather
+  than asserting it works from a green typecheck. Either way: never auto-pass a render result.
 - **Asset-decode correctness** — use the **OpenVikings oracle**: OpenVikings boots and renders the
   original assets, so compare the pipeline's decoded PNG/atlas output pixel-for-pixel against it.
   Plus decoder round-trip unit tests against tiny locally-generated fixtures (never commit
   copyrighted fixtures).
+
+### Visual validation via Playwright — the decision (and why not the MCP)
+
+Playwright closes *part* of the pixel gap — deliberately, and as a **committed script, not the
+Playwright MCP**:
+
+- **The lever is agent vision, not Playwright.** A deterministic screenshot is something an agent
+  *can* look at and judge for **gross** correctness; the sim's determinism makes that frame a
+  reproducible input. Playwright is just the cheapest way to produce the frame. Fidelity and
+  "feel" (sub-pixel anchor drift, pathing smoothness) still need human eyes.
+- **Committed `npm run shot` script, not the MCP.** The Playwright MCP's edge — accessibility-tree
+  snapshots + click-by-role — is **blind to a `<canvas>`**, and the game is one canvas with no
+  inner DOM (Canvas-2D, then Pixi/WebGL). So the MCP collapses to "a screenshot, statefully,
+  outside git." A committed script is reproducible, lives in the repo, runs in CI, and can graduate
+  to golden-image diffs. (The MCP is fine for a one-off "boot it and look," never the backbone.)
+- **Prerequisite — a deterministic, headless render entry.** A harness needs *"render scenario X at
+  seed S, advance N ticks, draw one frame, then signal ready"* — not the wall-clock
+  `requestAnimationFrame` loop in `packages/app/src/main.ts`. The sim is already seed-deterministic;
+  the missing piece is a non-RAF "step N, draw once, set a ready flag" mode to wait on. Build the
+  harness in the **same slice that first makes the app watchable** (the Phase-2 render line); there
+  is nothing to screenshot until then.
+- **Golden images are secondary and brittle.** The rendered frame is *not* byte-stable across
+  machines (float interpolation, devicePixelRatio, canvas AA, GPU/fonts) even though the sim is.
+  Start with *eyeball-the-PNG*; add `toHaveScreenshot()` baselines only once the render stabilizes,
+  treat any diff as **needs human** (never auto-pass), and keep them sparse — they're binary churn
+  and capture the *Vinland* synthetic render, never original assets.
 
 ## Reproducibility of fixtures
 
