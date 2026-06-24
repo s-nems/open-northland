@@ -98,5 +98,21 @@ pixel-for-pixel — the highest-value reuse, turning "I think the decoder is rig
 
 ## Legal line
 
-We ship code only. No assets, no decoded content, no original binaries are committed. Users run the
-pipeline against their own copy. GPLv3-compatible intent, mirroring OpenVikings' stance.
+This is the canonical statement of the project's legal posture; `README.md` **Legal** and
+`CLAUDE.md` point here.
+
+- **License: GPL-3.0-or-later** (`LICENSE` at the repo root; declared in `package.json`). Same
+  family as OpenMW; mirrors OpenVikings' stance.
+- **Code only — never assets.** No original assets, decoded content, or game binaries are ever
+  committed. `content/` is gitignored (derived from the user's own copy); tests use the committed
+  **synthetic fixture**, not real game data (see `docs/TESTING.md`).
+- **Bring-your-own game data.** Users run the pipeline against their own legally-owned copy. We
+  distribute no copyrighted content.
+- **Clean-room, not a port.** `OpenVikings_reversing/` is consulted as *format documentation*
+  (facts about binary layouts) — its source/architecture is not copied. Reading file formats to
+  achieve interoperability is the established basis for engine reimplementations (OpenMW, OpenRA,
+  devilutionX).
+- **No trademark use / no affiliation.** *Vinland* is an independent project, not affiliated with,
+  authorized, or endorsed by the rights holders of the *Cultures* series. Don't ship the original's
+  names or logos as project branding. *Cultures – 8th Wonder of the World* and related marks belong
+  to their respective owners (Funatics Software GmbH and/or its licensors).

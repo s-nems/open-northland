@@ -1,26 +1,60 @@
 # Vinland
 
-An open-source, cross-platform engine and rebuild of **Cultures – 8th Wonder of the World**
-(successor lineage: Cultures 2 / *Northland* / *Die Sage der Wikinger*), with cleaned-up,
-re-tunable mechanics.
+**Vinland** is an open-source, cross-platform reimplementation of the settler/colony game
+**Cultures – 8th Wonder of the World** (successor lineage: *Cultures 2 / Northland / Die Sage der
+Wikinger*). It is a fresh engine — a deterministic simulation, an isometric renderer, and an offline
+pipeline that converts your own copy of the original game's data into a modern, readable format —
+not a binary-faithful clone. Where the original is buggy or unbalanced, Vinland is free to fix it.
 
-> **Working title.** "Vinland" = the Norse name for the lands they explored and settled
-> westward/northward — a nod to *Wyprawa na Północ*. Rename freely.
+> **You need to own the original game.** Vinland ships **no game assets**. To play, you point the
+> asset pipeline at your own legally-owned copy of *Cultures – 8th Wonder of the World*. This is the
+> same model used by [OpenMW](https://openmw.org/), [OpenRA](https://www.openra.net/) and
+> [devilutionX](https://github.com/diasurgical/devilutionX). See [Legal](#legal).
 
-## What this is (and isn't)
+> **Working title.** "Vinland" is the Norse name for the lands settled westward — a nod to
+> *Wyprawa na Północ*. The name is provisional and can change.
 
-- **Is:** a fresh, deterministic settler/colony simulation written in TypeScript, plus an
-  isometric renderer, plus an offline pipeline that converts the *original* game's data into a
-  modern, readable intermediate format.
-- **Is not:** a binary-faithful re-implementation. Where the original is buggy or unbalanced,
-  we fix it. The companion `../OpenVikings_reversing` project *is* binary-faithful and we use it
-  as **format documentation**, not as a code dependency.
+## What it is (and isn't)
 
-## Legal
+- **Is:** a fresh, deterministic colony simulation in TypeScript; an isometric PixiJS renderer; and
+  an offline pipeline that decodes the original's `.cif` / `.bmd` / `.pcx` / `.lib` / `.ini` files
+  into a versioned, diffable intermediate format (JSON + texture atlases).
+- **Is not:** a binary-faithful re-implementation. The companion `../OpenVikings_reversing` project
+  *is* binary-faithful; we consult it as **file-format documentation**, never as a code dependency
+  and never by porting its architecture.
 
-This repository contains **no original game assets** and no copyrighted content from Funatics /
-Daedalic. To play, you point the asset pipeline at your own legally-owned copy of the game
-(`../Cultures 8th Wonder`). Same model as OpenRA / OpenTTD / OpenVikings. See [`docs/SOURCES.md`](docs/SOURCES.md).
+## Status
+
+Early — foundation / scaffolding. The deterministic core, type vocabulary, test harness and the
+`.cif` decoder exist; the vertical slice (one tribe, end to end) is the current target. See
+[`docs/ROADMAP.md`](docs/ROADMAP.md) for the phased plan.
+
+## Getting started
+
+**Requirements:** [Node.js](https://nodejs.org/) ≥ 20, and — to actually generate content or play —
+your own legally-owned copy of *Cultures – 8th Wonder of the World* (the readable
+`culturesnation` mod data is preferred where available; see
+[`docs/DATA-FORMAT.md`](docs/DATA-FORMAT.md)).
+
+```bash
+npm install                 # one-time, installs all workspaces
+npm run build               # typecheck/build all packages
+npm test                    # headless sim tests (determinism golden tests)
+npm run check               # Biome lint + format check (what CI runs)
+```
+
+You can build, test and develop the engine **without** the game — the sim runs headless against a
+synthetic fixture. To turn real game data into playable content, point the pipeline at your copy:
+
+```bash
+# Decode YOUR owned game data into the intermediate format under content/ (gitignored):
+npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content
+
+npm run dev                 # launch the app (Vite) in a browser
+```
+
+Desktop builds (macOS / Windows / Linux) come later via Tauri; the app is browser-first so it is
+cross-platform from day one.
 
 ## Repository layout
 
@@ -32,36 +66,48 @@ vinland/
 │   ├── render/   # PixiJS isometric renderer. Reads sim snapshots, draws.
 │   └── app/      # game shell: wires sim+render+input, menus, main loop (Vite).
 ├── tools/
-│   └── asset-pipeline/  # offline CLI: original .bmd/.pcx/.lib/.ini/.cif -> content/ (PNG+JSON)
-├── content/     # GENERATED intermediate assets (gitignored — derived from your game copy)
+│   └── asset-pipeline/  # offline CLI: original .cif/.bmd/.pcx/.lib/.ini -> content/ (PNG+JSON)
+├── content/     # GENERATED intermediate assets (gitignored — derived from YOUR game copy)
 └── docs/        # architecture, ECS, data format, roadmap, sources
 ```
 
-Why the split: the **sim** package has zero rendering dependencies so it runs headless under
-`vitest`. That makes mechanics agent-verifiable without a screen — see [`docs/ECS.md`](docs/ECS.md).
+Why the split: the **sim** package has zero rendering dependencies, so it runs headless under
+`vitest`. That makes mechanics verifiable without a screen, and keeps the simulation deterministic
+and lockstep-friendly. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and
+[`docs/ECS.md`](docs/ECS.md).
 
-## Quickstart
+## Documentation
 
-```bash
-npm install                 # one-time, installs all workspaces
-npm run build               # typecheck/build all packages
-npm test                    # headless sim tests (determinism golden tests)
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — the big picture and package boundaries
+- [`docs/ECS.md`](docs/ECS.md) — the entity-component-system and atomic-action planner
+- [`docs/DATA-FORMAT.md`](docs/DATA-FORMAT.md) — the intermediate content format (IR)
+- [`docs/SOURCES.md`](docs/SOURCES.md) — original file formats and the legal posture
+- [`docs/TESTING.md`](docs/TESTING.md) — the determinism / self-validation test pyramid
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — the phased plan and current target
 
-# Convert your owned game data into the intermediate format:
-npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content
+## Contributing
 
-npm run dev                 # launch the app (Vite) in a browser
-```
+Contributions are welcome. Keep new code in the style of the file around it, keep the `sim` package
+deterministic and pure, and run `npm run check && npm test` before opening a PR. Agents working in
+this repo should read [`CLAUDE.md`](CLAUDE.md) first — it is the contract for conventions, the
+determinism rules, and the legal guardrails.
 
-Desktop builds (Mac/Windows/Linux) come later via Tauri — the app is browser-first so it is
-cross-platform from day one.
+## Legal
 
-## Status
+**License.** Vinland is free software, released under the **GNU General Public License v3.0 (or
+later)**. See [`LICENSE`](LICENSE). Vinland is distributed in the hope that it will be useful, but
+**without any warranty**; see the license for details.
 
-Foundation / scaffolding. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the phased plan and the
-current vertical-slice target.
+**No game content.** This repository contains **no original game assets** and no copyrighted content
+from the *Cultures* series. It ships engine source code only. The generated `content/` directory
+(decoded sprites, rules, maps) is produced locally from **your own legally-owned copy** of the game
+and is never committed.
 
-## For agents
+**Trademarks.** *Cultures – 8th Wonder of the World*, *Cultures*, and related names and logos are
+trademarks or registered trademarks of their respective owners (Funatics Software GmbH and/or its
+licensors). They are used here only descriptively, to state what Vinland is compatible with.
 
-Read [`CLAUDE.md`](CLAUDE.md) before working here. It covers conventions, the determinism rules,
-and where the reference projects live.
+**Disclaimer.** Vinland is an independent, fan-made project. It is **not affiliated with, authorized
+by, endorsed by, or in any way associated with** Funatics Software GmbH or any other rights holder
+of the *Cultures* series. All trademarks and copyrights remain the property of their respective
+owners.

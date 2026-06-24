@@ -17,6 +17,15 @@ the only thing you write to:
 - `Cultures 8th Wonder/` — the **original game + the `culturesnation` mod** (`DataCnmd/`). This is
   copyrighted; it is the *input* to the asset pipeline. Never copy its assets into this repo.
 
+**Legal guardrails (an agent must uphold these too):** this is an independent, clean-room
+reimplementation under **GPL-3.0** (see `LICENSE`). (a) Never commit original assets, decoded
+content, or binaries — `content/` is gitignored and tests use the synthetic fixture, not real game
+data (see `docs/TESTING.md`). (b) `OpenVikings_reversing/` is **format documentation**, not code to
+port — take facts about file layouts, never its source/architecture. (c) Don't brand the project
+with the original's names or logos: it's *Vinland*, an unaffiliated rebuild — no "Cultures"
+branding, no original logos/screenshots in README or promo copy. The canonical statement lives in
+`README.md` **Legal** and `docs/SOURCES.md`; keep them in sync if you touch licensing wording.
+
 ## Golden rules
 
 1. **The `sim` package is deterministic and pure.** No `Math.random`, no `Date.now`, no `Date`,
