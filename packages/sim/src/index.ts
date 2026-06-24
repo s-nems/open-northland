@@ -26,6 +26,7 @@ export {
   type CellId,
   type TerrainMap,
 } from './terrain.js';
+export { findPath } from './pathfinding.js';
 export {
   checkInvariants,
   CORE_INVARIANTS,

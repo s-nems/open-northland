@@ -336,6 +336,18 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
         filtering correct); two same-seed+map runs hash-equal over 200 ticks (`1ef172ae`); a mapless sim
         has `terrain===undefined`; a typeId-99 map throws at construction.
 - [ ] PathfindingSystem: A* on the cell graph with **canonical tie-breaking** (budgeted/tick).
+      - [x] **A\* search core** — `packages/sim/src/pathfinding.ts` (`findPath(graph, start, goal)`):
+        a pure, deterministic A* over `TerrainGraph.walkableNeighbours` (the canonical N,E,S,W edge
+        set), `cellManhattanDistance` as the admissible heuristic and `walkCost` as edge cost; returns
+        the lowest-cost start→goal cell sequence (inclusive) or `null` (unwalkable endpoint / no route).
+        Tie-breaking is fully history-independent — the open set is a **flat dense array** (not a
+        Map/Set, whose iteration order leaks insertion history), scanned ascending for the canonical
+        minimum (lowest f, then lowest h, then implicitly lowest cell id). No floats touch the search
+        (all costs `Fixed`); closed cells are never relaxed (consistent heuristic). **Hands-on:** built
+        `dist/`, a 10×10 grid w/ a water wall (gap at y≥8) → 25-step path (0,0)→(9,0), contiguous +
+        all-walkable, routes through the gap, detour > the 9-cell straight-line Manhattan; a fully-walled
+        goal → `null`. **Still to do:** the *system* glue — a path-request component + per-tick search
+        budget driving `findPath` from `ctx.terrain`, no-op when terrain is absent.
 - [ ] MovementSystem (fixed-point) following paths.
 - [ ] **Atomic planner slice:** AISystem picks an atomic (utility over the job's allowed atomics);
       AtomicSystem executes it to completion and applies its effect. One settler: harvest wood →
