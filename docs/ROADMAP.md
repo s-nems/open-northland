@@ -252,9 +252,24 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             mod's readable change records, which declare `gfxpalettebase{body,head}`, add the **76** new
             ones), **482/483** resolving (same 1 seasonal `weihnachtsmann.pcx` skip), **63 distinct** atlas
             files (up from 62); a sampled equipment-skin head bob → a valid 1023×675 RGBA atlas PNG.
-      - [ ] **Atlas oracle pixel-diff + remaining `.cif`-only graphics legs.** Remaining: the
-            vehicles/goods graphics (`vehicles/jobgraphics.cif`, `goods/goodgraphics.cif`) and
-            per-creature recolour output naming, then compare an emitted atlas frame against the
+      - [x] **Vehicles `.cif` `[jobgraphics]` leg wired into the CLI.** The base game's
+            `Data/engine2d/inis/vehicles/jobgraphics.cif` (carts/ships) ships *only* as encrypted `.cif`
+            and uses the **identical flat `[jobgraphics]` grammar** as the readable animals `.ini`
+            (`gfxbobmanagerbody "<body>.bmd" ["<shadow>.bmd"]` + `gfxpalettebody "<editname>"`) — it
+            differs only in the cross-ref key (`logicvehicle` instead of `logicjob`, simply left
+            `undefined`), so `cli.ts` `resolveGraphicsBindings` decodes it via `decodeCifStringArray` →
+            `cifLinesToSections` and reuses `extractGraphicsBindings` **verbatim** (no new extractor), then
+            the same `convertBmdTree` resolve→decode→atlas path. The sibling
+            `goods/goodgraphics.cif` is **intentionally not read**: its `[goodgraphics]` records carry only
+            `graphicshumanrandompalette "<name>"` (a runtime tint) and **no `gfxbobmanagerbody`** — there
+            is no bob set to atlas, so it yields zero bindings (carried goods are tinted in the human/
+            vehicle sheets at runtime). **Hands-on:** `npm run pipeline` on the real game → bindings rose
+            **483 → 489** (the 6 vehicle records), **65 distinct** atlas files (up from 63: `cr_veh_body_00`
+            + `ls_vehicles`), **488/489** resolving (same 1 seasonal `weihnachtsmann.pcx` skip);
+            `cr_veh_body_00.png` = a valid 1022×2768 RGBA atlas, 306 frames, manifest dims agreeing.
+      - [ ] **Atlas oracle pixel-diff + per-creature recolour output naming.** Remaining: per-creature
+            recolour output naming (the `editname` is the only per-creature differentiator when many
+            bindings collapse onto one shared body `.bmd`), then compare an emitted atlas frame against the
             OpenVikings render pixel-for-pixel (needs an owned game copy + the oracle; an agent can't
             self-judge it).
 - [ ] One map (`map.cif` + its `.ini`/`.inc` parts) decoded to IR.
