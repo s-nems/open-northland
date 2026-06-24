@@ -23,10 +23,13 @@ top unchecked milestone. Do the smallest next step toward it; don't build ahead.
 Goal: turn an owned game copy into the IR. This removes the biggest technical unknowns. **`.cif`
 is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatterntypes`,
 `atomicanimations`) and **all maps** are `.cif`-only.
-- [ ] **`.cif` decrypt + container parse.** Port `XB_Decrypt_Memory` from OpenVikings
-      `NXBasics/XBTools.cs` (the `(in-1)^key` scheme, ~40 lines). *Decryption is solved;* the real
-      unknown is the **decrypted payload/record layout** — spike `housetypes.cif` and `map.cif`
-      first and write down the structure.
+- [x] **`.cif` decrypt + container parse.** Done — `tools/asset-pipeline/src/decoders/cif.ts`
+      (round-trip tested, no committed fixtures). The record layout (the genuine unknown) is
+      **solved**: a `.cif` is a serialized `CStorable` graph (`[u32 id][u32 ver][body]`); type
+      tables + maps root at a **`CStringArray` (id 0x3FD)** holding two Mode1-encrypted `CMemory`
+      blobs (offsets table + string pool). Decrypted pool = **depth-prefixed text lines** (leading
+      byte 1=section, 2=property) — the same vocabulary as the readable `.ini`. Verified end-to-end
+      against `housetypes`, `weapontypes`, `trianglepatterntypes`, and a `map.cif`. See SOURCES.md.
 - [ ] `.lib` archive unpacker (ref `CSimpleFileLibrary.cs`).
 - [ ] Palette + `.pcx` decoder → PNG (ref `CPalette.cs`, `CPicture.cs`). **Validate against the
       OpenVikings oracle** (it renders the originals) pixel-for-pixel.
@@ -106,12 +109,14 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
       re-parse and rebase the sim on file change → instant balance-tweak feedback, no rebuild.
 
 ## Risks & open unknowns (watch these)
-- **`.cif` decrypted payload structure** — decryption solved; the *record layout* of
-  `housetypes`/`map.cif`/`atomicanimations` is the genuine unknown. De-risk first in Phase 1.
+- ~~**`.cif` decrypted payload structure**~~ — **SOLVED** in Phase 1 (`decoders/cif.ts`): root
+  `CStringArray` of Mode1-encrypted depth-prefixed text lines; verified on type tables + a map.
+  Remaining map unknown: the binary tile grid, if stored outside the logic-header CStringArray.
 - **Settler AI fidelity** — the soul, undocumented. Approach = planner over the data-extracted
   atomic vocabulary; calibrate atomic timings/yields (in `atomicanimations.cif`) by observation,
   kept as data so tuning is a diff. See docs/ECS.md "Settler AI".
-- **Atomic timings/effects** live in encrypted `atomicanimations.cif` — vocabulary is free, timing
-  is reverse-engineered/tuned.
+- **Atomic timings/effects** — largely de-risked: the mod ships a readable
+  `DataCnmd/atomicanimations12/atomicanimations.ini` (length/event/startdirection). Vocabulary and
+  base timings are free; only fine tuning may need observation.
 - **Combat & campaign scripting scope** — both larger than one roadmap line implies.
 - **Determinism drift** — every new system must keep golden state + trace tests green.

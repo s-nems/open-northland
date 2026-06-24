@@ -4,8 +4,9 @@ One module per original format. Each ports the **byte-layout / decompression log
 architecture) from the matching OpenVikings C# file. Put a header comment in every decoder naming
 the source file + commit you referenced, for traceability.
 
-| Decoder (to write) | Original format | Port from `../../OpenVikings_reversing/Source/` |
+| Decoder | Original format | Port from `../../OpenVikings_reversing/Source/` |
 |---|---|---|
+| `cif.ts` ✅ | `.cif` container (encrypted CStringArray) | `NXBasics/XBStorable.cs`, `CStringArray.cs`, `CMemory.cs`, `XBTools.cs` |
 | `lib.ts` | `.lib` archive | `NXBasics/CSimpleFileLibrary.cs` |
 | `palette.ts` | palettes, `.hlt` | `NXBasics/CPalette.cs`, `CRemapTable.cs`, `CHighColorCreator.cs` |
 | `pcx.ts` | `.pcx` picture | `NXBasics/CPicture.cs`, `XBPictureTool.cs` |

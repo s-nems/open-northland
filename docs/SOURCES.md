@@ -35,12 +35,45 @@ Counts observed in `Cultures 8th Wonder` (base `Data` + `DataX` + mod `DataCnmd`
     (`houses.ini`, `weapons.ini`, graphics).
   - But **`housetypes`, `weapontypes`, `trianglepatterntypes`, and `atomicanimations` are
     `.cif`-only with no `.ini` twin**, and **every map is `map.cif`**. You cannot ship without them.
-  - The genuine unknown is therefore **not decryption but the decrypted payload/record layout**.
-    OpenVikings only ever decrypts `.cif` for language strings, so it does *not* hand you the parsed
-    record structure for `housetypes`/maps — that is the real Phase-1 spike (de-risk it first).
+  - ~~The genuine unknown is therefore **not decryption but the decrypted payload/record layout**.~~
+    **SOLVED** (see "CIF container format" below) and implemented in
+    `tools/asset-pipeline/src/decoders/cif.ts`.
+
+### CIF container format (solved Phase-1 spike)
+
+A `.cif` is a serialized **`CStorable`** object graph. Every object on disk is
+`[u32 id][u32 version][body]`; the factory (`XBStorable.cs`) maps ids to classes
+(`0x3E9` CMemory, `0x3F3` CBitmap, `0x3F4` CBobManager, `0x3F5` CFont, `0x3F6` CPalette,
+`0x3F7` CRemapTable, `0x3FD` CStringArray).
+
+Type tables (`housetypes`, `weapontypes`, `trianglepatterntypes`, …) and **maps** root at a
+**`CStringArray` (0x3FD)**, whose body is:
+
+```
+u32 forceSequentialIds, u32 stringCount, u32 usedIdCount, u32 slotCount, u32 stringPoolUsedBytes
+CMemory offsets   = [0x3E9][ver][u32 size][size bytes]   -> decrypt(Mode1) -> u32[] offsets
+u8  hasStringPool flag
+CMemory stringPool = [0x3E9][ver][u32 size][size bytes]  -> decrypt(Mode1) -> NUL-terminated strings
+```
+
+`CMemory` on disk is just `[u32 size][size raw bytes]` — **not** auto-decrypted; the consumer calls
+`Decrypt(Mode1)` (XBTools `XB_Decrypt_Memory`, `out = (in-1)^key`). The decrypted string pool is a
+set of **depth-prefixed text lines**: the first byte is a nesting level (`1` = section header like
+`logichousetype`, `2` = property like `debugname "headquarters"`), the rest is the same key/value
+grammar as the readable `.ini`. Strings are latin1 in the oracle; display text with Polish glyphs is
+CP1250 — re-decode at the IR layer where it matters, not in the container decoder.
+
+Verified end-to-end (decoder output): `housetypes.cif` (798 records), `weapontypes.cif` (2995),
+`trianglepatterntypes.cif` (82), and `CnModMaps/tutorial_001/map.cif` (476, incl. `mapsize`,
+`mapguid`, `MissionData`). A map's binary tile grid (if separate from this logic header) is a
+Phase-2 concern.
 - **Atomic actions are the behavior vocabulary** (see docs/ECS.md) and are partly free in readable
   data: `tribetypes.ini` `setatomic` (atomic→animation per tribe), `jobtypes.ini` `allowatomic`,
-  `goodtypes.ini` `atomicFor*`. The atomic *timings/effects* are in encrypted `atomicanimations.cif`.
+  `goodtypes.ini` `atomicFor*`. The atomic *timings/effects* live in `atomicanimations.cif` — **but
+  the mod ships a readable twin** `DataCnmd/atomicanimations12/atomicanimations.ini` (~6900 lines:
+  `length`, `event <frame> <kind> <arg>`, `startdirection`, `interruptable`). This defuses a top
+  roadmap risk: the timings are not blocked on `.cif` reversing. Calibration-by-observation may
+  still be needed for tuning, but the vocabulary *and* base timings are free.
 - **Rules are largely declarative, behavior is not.** The type tables (`Data/logic/` +
   `DataCnmd/types/`) make the *rules* port tractable. The *behavior* — settler AI/atomic planner,
   the economy feedback loops, pathfinding, atomic timings — is the hard part and is **not** in the
