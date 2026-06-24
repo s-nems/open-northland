@@ -13,23 +13,27 @@
  * readable palette bindings (base animals `[jobgraphics]` + the mod's human `[jobbasegraphics]` skin),
  * and readable `.ini` rules -> a validated `content/ir.json`
  * (goods/jobs/landscape from base `Data/logic`, tribes + atomic animations from the mod's `DataCnmd`,
- * preferring the mod per CLAUDE.md). The remaining stages (standalone palettes, the `.cif`-only
- * graphics + type tables, maps, and the oracle pixel-diff) are still TODO; see docs/ROADMAP.md.
+ * preferring the mod per CLAUDE.md), plus the declarative logic-header metadata of every `map.cif`
+ * (dimensions/GUID/type/name ids — not the binary tile grid). The remaining stages (standalone
+ * palettes, the `.cif`-only graphics + type tables, the map tile grid + mission scripting, and the
+ * oracle pixel-diff) are still TODO; see docs/ROADMAP.md.
  */
 
 import { realpathSync } from 'node:fs';
 import { access, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, normalize, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
+import { type ContentSet, IR_VERSION, type MapInfo, parseContentSet } from '@vinland/data';
 import { type BobAtlas, packBobAtlas } from './decoders/atlas.js';
 import { decodeBmd } from './decoders/bmd.js';
+import { decodeCifStringArray } from './decoders/cif.js';
 import {
   type BmdPaletteBinding,
   type JobBaseGraphicsBinding,
   type PaletteAlias,
   type RuleSection,
   type SourceRef,
+  cifLinesToSections,
   decodeIni,
   extractAtomicAnimations,
   extractGoods,
@@ -37,6 +41,7 @@ import {
   extractJobBaseGraphics,
   extractJobs,
   extractLandscape,
+  extractMapInfo,
   extractPaletteIndex,
   extractTribes,
   parseIniSections,
@@ -96,6 +101,19 @@ export function pcxToPng(bytes: Uint8Array): Uint8Array {
  */
 export function bmdToAtlas(bmdBytes: Uint8Array, palette: Uint8Array): BobAtlas {
   return packBobAtlas(decodeBmd(bmdBytes), palette);
+}
+
+/**
+ * Pure composition: one `map.cif`'s bytes + a slug id -> its validated {@link MapInfo} logic header.
+ * Decodes the encrypted `CStringArray` root ({@link decodeCifStringArray}), folds its level-tagged
+ * lines into {@link RuleSection}s ({@link cifLinesToSections}), and runs {@link extractMapInfo}. Like
+ * {@link pcxToPng}/{@link bmdToAtlas} the decoders stay pure; this is the only wiring. Throws an
+ * `ini:`/`cif:`-prefixed error for a non-map or header-less `.cif`; {@link decodeMapTree} catches it
+ * per-file so one bad map can't abort the batch.
+ */
+export function mapCifToInfo(bytes: Uint8Array, id: string, src: SourceRef): MapInfo {
+  const sections = cifLinesToSections(decodeCifStringArray(bytes).lines);
+  return extractMapInfo(sections, id, src);
 }
 
 /** Recursively yields every regular file under `dir` (absolute paths), in directory-entry order. */
@@ -397,6 +415,50 @@ export async function resolveIniSources(gameDir: string, mod: string | undefined
 }
 
 /**
+ * Slugs a map's containing-folder name into its {@link MapInfo} `id`: lower-cased, non-alphanumerics
+ * collapsed to `_`. Maps live one-per-folder (`CnModMaps/<name>/map.cif`), and the `.cif` logic header
+ * carries no human-readable id, so the folder name is the stable cross-reference key. Mirrors the `slug`
+ * the `.ini` extractors use for type ids.
+ */
+export function mapIdFromPath(mapCifRelPath: string): string {
+  const folder = dirname(mapCifRelPath).split(/[\\/]/).pop() ?? mapCifRelPath;
+  return folder
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+/**
+ * Decodes the logic header of every `map.cif` under `gameDir` into a validated {@link MapInfo}, in a
+ * stable order (the maps are sorted by their relative path so the IR is reproducible regardless of
+ * directory-entry order). Each map's `id` comes from its containing folder ({@link mapIdFromPath}).
+ * A `.cif` that fails to read or decode (not a map, missing `mapsize`/`mapguid`, corrupt container) is
+ * logged and skipped — a batch over many maps must not abort on one bad file, matching the other
+ * tree-walk stages. Only the declarative header metadata is extracted; the binary tile grid and the
+ * `MissionData`/`StaticObjects` scripting are out of scope here (see {@link extractMapInfo}).
+ */
+export async function decodeMapTree(gameDir: string): Promise<MapInfo[]> {
+  const found: string[] = [];
+  for await (const file of walkFiles(gameDir)) {
+    if (file.toLowerCase().endsWith(`${sep}map.cif`) || file.toLowerCase().endsWith('/map.cif')) {
+      found.push(relative(gameDir, file));
+    }
+  }
+  found.sort();
+  const maps: MapInfo[] = [];
+  for (const rel of found) {
+    try {
+      const bytes = await readFile(join(gameDir, rel));
+      maps.push(mapCifToInfo(bytes, mapIdFromPath(rel), { file: rel, layer: 'base' }));
+    } catch (err) {
+      console.warn(`[pipeline] skipped map ${rel}: ${(err as Error).message}`);
+    }
+  }
+  return maps;
+}
+
+/**
  * Reads + parses every resolved `.ini` source and runs the typed extractors, then assembles and
  * **validates** a {@link ContentSet} via `parseContentSet` (zod + cross-reference checks). Decoding
  * stays pure (`decodeIni`/`parseIniSections`/`extract*` take bytes/text, not the filesystem); the
@@ -422,6 +484,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     tribes.push(...extractTribes(sections, src));
     atomicAnimations.push(...extractAtomicAnimations(sections, src));
   }
+  const maps = await decodeMapTree(args.game);
   return parseContentSet({
     manifest: {
       version: IR_VERSION,
@@ -433,6 +496,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     landscape,
     tribes,
     atomicAnimations,
+    maps,
   });
 }
 
@@ -497,7 +561,7 @@ async function run(args: Args): Promise<void> {
   // > 3. Decode .pcx pictures -> PNG            -> decoders/pcx.ts + png.ts  (this stage)
   // > 4. Decode .bmd bobs -> atlas + anim JSON  -> decoders/bmd.ts + atlas.ts (this stage; readable bindings)
   // > 5. Parse .ini rules -> typed IR           -> decoders/ini.ts (this stage; mod .ini preferred)
-  //   6. Decode one map -> map IR               -> decoders/cif.ts (done; wiring pending)
+  // > 6. Decode map logic headers -> map IR     -> decoders/cif.ts + ini.ts (this stage; metadata only)
   // > 7. Write content/ir.json + validate with parseContentSet()  (this stage)
   //
   // The unpack extracts loose copies of the embedded .pcx/.bmd/.cif into <out> (gitignored).
@@ -534,7 +598,7 @@ async function run(args: Args): Promise<void> {
   console.log(
     `[pipeline] ini -> ir: ${ir.goods.length} goods, ${ir.jobs.length} jobs, ` +
       `${ir.landscape.length} landscape, ${ir.tribes.length} tribes, ` +
-      `${ir.atomicAnimations.length} atomic animations -> ${join(args.out, 'ir.json')}`,
+      `${ir.atomicAnimations.length} atomic animations, ${ir.maps.length} maps -> ${join(args.out, 'ir.json')}`,
   );
 }
 

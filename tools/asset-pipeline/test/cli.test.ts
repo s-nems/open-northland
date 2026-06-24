@@ -7,8 +7,11 @@ import {
   buildIr,
   convertBmdTree,
   convertPcxTree,
+  decodeMapTree,
   jobBaseGraphicsToBindings,
   libMemberRelPath,
+  mapCifToInfo,
+  mapIdFromPath,
   parseArgs,
   pcxToPng,
   resolveArgs,
@@ -17,6 +20,7 @@ import {
   unpackLibTree,
 } from '../src/cli.js';
 import { BOB_TYPE_8BIT, type Bmd, PACKED_X_SHIFT, encodeBmd } from '../src/decoders/bmd.js';
+import { StorableId, encryptMode1 } from '../src/decoders/cif.js';
 import type { BmdPaletteBinding, PaletteAlias } from '../src/decoders/ini.js';
 import { encodeLib } from '../src/decoders/lib.js';
 import { decodePcx, encodePcx, expandToRgba } from '../src/decoders/pcx.js';
@@ -63,6 +67,62 @@ const sampleBmdBytes = (): Uint8Array => {
   };
   return encodeBmd(bmd);
 };
+
+/**
+ * Serializes level-tagged lines into a real `map.cif` `CStringArray` byte stream (offsets + pool
+ * encrypted exactly as the original), so the map stage can be exercised end-to-end without committing a
+ * copyrighted fixture. Mirrors `buildCif` in cif.test.ts — kept local rather than exported from the
+ * decoder, which only needs to decode.
+ */
+const buildMapCif = (lines: ReadonlyArray<{ level: number; text: string }>): Uint8Array => {
+  const chunks: number[] = [];
+  const offsetValues: number[] = [];
+  for (const { level, text } of lines) {
+    offsetValues.push(chunks.length);
+    if (level > 0) chunks.push(level);
+    for (const ch of text) chunks.push(ch.charCodeAt(0) & 0xff);
+    chunks.push(0);
+  }
+  const pool = Uint8Array.from(chunks);
+  const offsets = new Uint8Array(offsetValues.length * 4);
+  const ov = new DataView(offsets.buffer);
+  offsetValues.forEach((v, i) => ov.setUint32(i * 4, v, true));
+  encryptMode1(offsets);
+  encryptMode1(pool);
+
+  const out: number[] = [];
+  const pushU32 = (v: number): void => {
+    out.push(v & 0xff, (v >>> 8) & 0xff, (v >>> 16) & 0xff, (v >>> 24) & 0xff);
+  };
+  const pushCMemory = (data: Uint8Array): void => {
+    pushU32(StorableId.CMemory);
+    pushU32(0);
+    pushU32(data.length);
+    for (const byte of data) out.push(byte);
+  };
+  pushU32(StorableId.CStringArray);
+  pushU32(0);
+  pushU32(1); // forceSequentialIds
+  pushU32(lines.length); // stringCount
+  pushU32(lines.length); // usedIdCount
+  pushU32(lines.length); // slotCount
+  pushU32(pool.length); // stringPoolUsedBytes
+  pushCMemory(offsets);
+  out.push(1); // hasStringPool
+  pushCMemory(pool);
+  return Uint8Array.from(out);
+};
+
+/** A minimal campaign-map logic header: mapsize/mapguid + maptype/mapname metadata. */
+const sampleMapLines = (): { level: number; text: string }[] => [
+  { level: 1, text: 'logiccontrol' },
+  { level: 2, text: 'mapsize 142 146' },
+  { level: 2, text: 'mapguid 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16' },
+  { level: 1, text: 'logiccontrolend' },
+  { level: 1, text: 'misc_maptype' },
+  { level: 2, text: 'maptype 1' },
+  { level: 2, text: 'mapcampaignid 100 2' },
+];
 
 describe('parseArgs', () => {
   it('reads --game/--mod/--out and defaults out to content', () => {
@@ -534,6 +594,76 @@ describe('jobBaseGraphicsToBindings', () => {
  * `Data/logic/*`, mod `DataCnmd/*`) so the source-resolution + extract + validate path is exercised
  * without any copyrighted bytes — the grammar, not the game's data, is what's under test here.
  */
+describe('mapIdFromPath', () => {
+  it('slugs the containing folder name (lower-case, non-alphanumerics -> _)', () => {
+    expect(mapIdFromPath(join('CnModMaps', 'tutorial_002', 'map.cif'))).toBe('tutorial_002');
+    expect(mapIdFromPath(join('CnModMaps', 'SPECJALNA- FORTECA', 'map.cif'))).toBe('specjalna_forteca');
+  });
+
+  it('handles forward-slash paths regardless of host separator', () => {
+    expect(mapIdFromPath('CnModMaps/Zgielk2/map.cif')).toBe('zgielk2');
+  });
+});
+
+describe('mapCifToInfo', () => {
+  it('decodes a synthetic map.cif logic header into a validated MapInfo', () => {
+    const info = mapCifToInfo(buildMapCif(sampleMapLines()), 'tutorial_002', {
+      file: join('CnModMaps', 'tutorial_002', 'map.cif'),
+    });
+    expect(info).toMatchObject({ id: 'tutorial_002', width: 142, height: 146, mapType: 1 });
+    expect(info.guid).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
+    expect(info.campaign).toEqual({ campaignId: 100, missionId: 2 });
+  });
+
+  it('throws on a .cif whose root is not a CStringArray (not a map)', () => {
+    // A truncated/garbage buffer: the CStringArray id check in decodeCifStringArray rejects it.
+    expect(() => mapCifToInfo(Uint8Array.from([1, 2, 3, 4, 0, 0, 0, 0]), 'x', { file: 'x' })).toThrow();
+  });
+});
+
+describe('decodeMapTree', () => {
+  let root: string;
+  let game: string;
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), 'vinland-maps-'));
+    game = join(root, 'game');
+    await mkdir(join(game, 'CnModMaps', 'tutorial_002'), { recursive: true });
+    await mkdir(join(game, 'CnModMaps', 'forteca'), { recursive: true });
+    await writeFile(join(game, 'CnModMaps', 'tutorial_002', 'map.cif'), buildMapCif(sampleMapLines()));
+    await writeFile(
+      join(game, 'CnModMaps', 'forteca', 'map.cif'),
+      buildMapCif([
+        { level: 1, text: 'logiccontrol' },
+        { level: 2, text: 'mapsize 250 250' },
+        { level: 2, text: 'mapguid 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16' },
+        { level: 1, text: 'misc_maptype' },
+        { level: 2, text: 'maptype 4' },
+      ]),
+    );
+  });
+
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('decodes every map.cif under the tree, sorted by relative path, id from folder', async () => {
+    const maps = await decodeMapTree(game);
+    expect(maps.map((m) => m.id)).toEqual(['forteca', 'tutorial_002']); // sorted by rel path
+    expect(maps.find((m) => m.id === 'tutorial_002')).toMatchObject({ width: 142, height: 146, mapType: 1 });
+    expect(maps.find((m) => m.id === 'forteca')?.campaign).toBeUndefined();
+  });
+
+  it('skips a malformed map.cif with a warning instead of aborting the batch', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await writeFile(join(game, 'CnModMaps', 'forteca', 'map.cif'), Uint8Array.from([0, 1, 2, 3]));
+    const maps = await decodeMapTree(game);
+    expect(maps.map((m) => m.id)).toEqual(['tutorial_002']); // the good one still decodes
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped map.*forteca/));
+    warn.mockRestore();
+  });
+});
+
 describe('buildIr / resolveIniSources', () => {
   let game: string;
 
@@ -563,6 +693,8 @@ describe('buildIr / resolveIniSources', () => {
       join(game, 'DataCnmd', 'atomicanimations12', 'atomicanimations.ini'),
       '[atomicanimation]\nname "viking_carry"\nlength 40\ninterruptable 1\n',
     );
+    await mkdir(join(game, 'CnModMaps', 'tutorial_002'), { recursive: true });
+    await writeFile(join(game, 'CnModMaps', 'tutorial_002', 'map.cif'), buildMapCif(sampleMapLines()));
   });
 
   afterEach(async () => {
@@ -581,6 +713,9 @@ describe('buildIr / resolveIniSources', () => {
     expect(set.landscape.map((l) => l.id)).toEqual(['grass']);
     expect(set.tribes.map((t) => t.id)).toEqual(['viking']);
     expect(set.atomicAnimations.map((a) => a.name)).toEqual(['viking_carry']);
+    // The map.cif logic header is decoded into the IR alongside the .ini type tables.
+    expect(set.maps.map((m) => m.id)).toEqual(['tutorial_002']);
+    expect(set.maps[0]).toMatchObject({ width: 142, height: 146, mapType: 1 });
     // Provenance stamps the mod layer on a DataCnmd source, base on a Data/logic one.
     expect(set.goods[0]?.source?.layer).toBe('base');
     expect(set.tribes[0]?.source?.layer).toBe('mod');

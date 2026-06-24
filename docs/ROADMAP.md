@@ -200,6 +200,22 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             OpenVikings render pixel-for-pixel (needs an owned game copy + the oracle; an agent can't
             self-judge it).
 - [ ] One map (`map.cif` + its `.ini`/`.inc` parts) decoded to IR.
+      - [x] **Map logic-header metadata** — `extractMapInfo` in `decoders/ini.ts` reduces a decoded
+            `map.cif`'s `CStringArray` (`logiccontrol` `mapsize`/`mapguid` + `misc_maptype`/`misc_mapname`)
+            to a validated {@link MapInfo} IR: `width`/`height`, the 16-byte `guid`, `mapType`, optional
+            `campaign {campaignId,missionId}`, and the name/description string-table ids. The map's
+            scripting payload (`MissionData` goals/results, `StaticObjects` pre-placed houses/goods,
+            `playerdata`/`AIData`) is deliberately NOT extracted — that is the Phase-5 campaign/trigger
+            layer, a far larger vocabulary. Throws on a header-less/`mapsize`-less `.cif` (not a map).
+            **Wired into the CLI** — `cli.ts` `mapCifToInfo` (pure decode→sections→extract composition,
+            mirrors `pcxToPng`) + `decodeMapTree` walk the `--game` tree for `map.cif`, decode each in a
+            stable (path-sorted) order with the folder name as `id` (`mapIdFromPath`), warn-and-skip a
+            corrupt/non-map file, and feed the records into `buildIr`→`content/ir.json`. **Hands-on:**
+            `npm run pipeline` on the real game → **13 maps** (tutorials 1-7 = type 1, `campaign [100,N]`;
+            skirmish/multiplayer = type 4, no campaign), each with distinct dims + a 16-byte GUID.
+      - [ ] **Map tile/landscape grid + mission scripting** — the binary terrain grid (the Phase-2
+            cell-graph input, if stored outside the logic-header `CStringArray`) and the `MissionData`/
+            `StaticObjects` campaign layer (Phase 5). Still open; metadata-only above.
 - **Exit:** `npm run pipeline` produces a validated `content/` (types + atlases + one map), decoded
   graphics verified against the oracle.
 
