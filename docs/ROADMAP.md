@@ -311,8 +311,19 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
         `maximumValency` (per-cell capacity → `maxValency`) and the `allowedonland`/`allowedonwater`/
         `allowedoneverything` placement-layer flags onto `LandscapeType`. **Hands-on:** real
         `Data/logic/landscapetypes.ini` → 87 types, maxValency 1..100, 86 on-land / 3 on-water (wall +
-        2 gates) / 1 on-everything (void). The graph builder itself (adjacency + A* cost from these) is
-        still to do.
+        2 gates) / 1 on-everything (void).
+      - [x] **Graph builder** — `packages/sim/src/terrain.ts` (`TerrainGraph` + `buildTerrainGraph`):
+        a pure, deterministic world-resource over a row-major `(width, height)` landscape-typeId grid.
+        Cells are addressed by a monotonic id (`y*width + x`); per-type props (walkable, fixed-point
+        `walkCost`=ONE for the slice, `maxValency`) are resolved once from the IR `LandscapeType` table.
+        4-connected `neighbours`/`walkableNeighbours` are emitted in a fixed **canonical N,E,S,W order**
+        (no map-history dependence) — the precondition for A* tie-breaking + lockstep replay. Builder
+        throws on a typeId absent from content (loud bad-pairing signal) and on grid/dimension mismatch.
+        `cellManhattanDistance` is the fixed-point heuristic seed for the pathfinder. **Hands-on:** built
+        `dist/` on a 5×4 grid w/ a 4-cell water river → 16 walkable / 4 blocked, canonical neighbour
+        order stable across rebuilds, water dropped from walkable edges, absent-typeId guard fires.
+        **Still to do:** a real per-type walk-cost field (uniform ONE for now), wiring the graph as a
+        `world.terrain` resource, and feeding it from a decoded map's tile grid.
 - [ ] PathfindingSystem: A* on the cell graph with **canonical tie-breaking** (budgeted/tick).
 - [ ] MovementSystem (fixed-point) following paths.
 - [ ] **Atomic planner slice:** AISystem picks an atomic (utility over the job's allowed atomics);

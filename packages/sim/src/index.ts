@@ -19,6 +19,13 @@ export { assertNever } from './brand.js';
 export type { Command, CommandKind, AtomicEffect, AtomicEffectKind } from './commands.js';
 export { EventBuffer, type SimEvent, type SimEventKind } from './events.js';
 export {
+  TerrainGraph,
+  buildTerrainGraph,
+  cellManhattanDistance,
+  type CellId,
+  type TerrainMap,
+} from './terrain.js';
+export {
   checkInvariants,
   CORE_INVARIANTS,
   type Invariant,
