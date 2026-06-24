@@ -47,8 +47,14 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             filter-0 scanlines, one zlib-deflated IDAT; `decodePng` is the round-trip inverse, no
             committed fixtures). zlib via `node:zlib` (build tool, not the sim). Foreign PNGs using row
             filters 1..4 are rejected loudly; extend when the oracle diff needs to read them.
-      - [ ] Wire `decodePcx` → `expandToRgba` → `encodePng` into the CLI so `npm run pipeline` emits
-            `.png`. **Then** the oracle pixel-diff.
+      - [x] Wire `decodePcx` → `expandToRgba` → `encodePng` into the CLI — `cli.ts` `pcxToPng`
+            (pure composition) + `convertPcxTree` walk the `--game` tree, convert each loose `.pcx`
+            to a `.png` mirrored under `--out`, and skip+warn per-file on a malformed/palette-less
+            picture so one bad image can't abort the batch. `npm run pipeline` now emits real `.png`.
+            (`start` runs the compiled `dist/cli.js`: raw-TS strip-types can't resolve the `.js`
+            import specifiers.) `.lib`-embedded pictures arrive once the unpack stage feeds this.
+      - [ ] **Oracle pixel-diff** — compare an emitted `.png` against the OpenVikings render
+            pixel-for-pixel. Needs an owned game copy + the oracle; an agent can't self-judge it.
       - [ ] Standalone `CPalette` (id 0x3F6) decode — raw 0x400 `[B,G,R,_]×256` blob from `.cif`/`.lib`
             graphs (the `.pcx` trailer covers picture palettes; this is for bobs/maps).
 - [ ] `.ini` rule parser → typed IR (note base `Data/logic/*.ini` is the primary readable source;
