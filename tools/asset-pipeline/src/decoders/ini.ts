@@ -16,6 +16,7 @@
  */
 import {
   AtomicAnimation,
+  BuildingType,
   type GoodAtomics,
   GoodType,
   JobType,
@@ -417,6 +418,93 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
     );
   }
   return weapons;
+}
+
+/**
+ * Coarse building class from the original `logichousetype` `logicmaintype`. The mapping is taken from
+ * the readable `houses.ini` records themselves (OpenVikings decodes formats, not house semantics):
+ *   1 = storage (headquarters + the stock houses), 2 = home (residences with a `logichomesize`),
+ *   3 = workplace (production, carries `logicproduction`), 4 = training (barracks/school),
+ *   5 = tower (defence), 6 = vehicle (buildable carts/ships, carries `logicvehicletype`),
+ *   7 = wonder. Unknown ids fall back to a stable `maintype_<n>` so a new value never crashes a batch.
+ */
+function houseKind(mainType: number | undefined): string {
+  switch (mainType) {
+    case 1:
+      return 'storage';
+    case 2:
+      return 'home';
+    case 3:
+      return 'workplace';
+    case 4:
+      return 'training';
+    case 5:
+      return 'tower';
+    case 6:
+      return 'vehicle';
+    case 7:
+      return 'wonder';
+    default:
+      return `maintype_${mainType ?? 'unknown'}`;
+  }
+}
+
+/**
+ * Extracts `[logichousetype]` sections (the mod's readable `DataCnmd/types/houses.ini`, preferred over
+ * the base game's encrypted `housetypes.cif` per CLAUDE.md golden rule #4) into validated
+ * {@link BuildingType} IR. Unlike the other type tables a house record keys its id on `logictype` (not
+ * `type`) and its name on `debugname`. Captured per record:
+ *   - `logicworker <jobType> <count>`  -> {@link WorkerSlot}[] (the worker the building employs;
+ *     `jobType` is cross-checked against the job table by `validateCrossReferences`).
+ *   - `logicstock <goodType> <capacity> <initial>` -> {@link StockSlot}[] (per-good storage slots;
+ *     `goodType` cross-checked against the good table).
+ *   - `logicproduction <goodType>` -> `produces` (output good ids only — the input side / amounts /
+ *     timing are a Phase-3 goods-graph concern, see {@link BuildingType.produces}).
+ *   - `logichomesize` -> `homeSize` (population-capacity tier, on `home` buildings).
+ * `kind` is mapped from `logicmaintype` ({@link houseKind}). Throws on a section missing the required
+ * numeric `logictype` (matches {@link extractGoods}'s throw-on-malformed stance). The combat/graphics
+ * extras (`debugcolor`, `logicCanEnableDefenceMode`, `logicSchoolSize`, `logicvehicletype`, the
+ * `logicbuildon*`/`logicignore*` placement flags) are intentionally skipped — they belong with the
+ * later construction/combat/placement systems, not this type-table slice.
+ */
+export function extractBuildings(sections: readonly RuleSection[], src: SourceRef): BuildingType[] {
+  const buildings: BuildingType[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'logichousetype') continue;
+    const typeId = getInt(sec, 'logictype');
+    if (typeId === undefined) {
+      throw new Error(`ini: [logichousetype] without a numeric \`logictype\` in ${src.file}`);
+    }
+    const name = getStr(sec, 'debugname');
+    const workers: { jobType: number; count: number }[] = [];
+    for (const p of findProps(sec, 'logicworker')) {
+      const jobType = Number.parseInt(p.values[0] ?? '', 10);
+      const count = Number.parseInt(p.values[1] ?? '', 10);
+      if (Number.isNaN(jobType) || Number.isNaN(count)) continue;
+      workers.push({ jobType, count });
+    }
+    const stock: { goodType: number; capacity: number; initial: number }[] = [];
+    for (const p of findProps(sec, 'logicstock')) {
+      const goodType = Number.parseInt(p.values[0] ?? '', 10);
+      const capacity = Number.parseInt(p.values[1] ?? '', 10);
+      const initial = Number.parseInt(p.values[2] ?? '', 10);
+      if (Number.isNaN(goodType) || Number.isNaN(capacity)) continue;
+      stock.push({ goodType, capacity, initial: Number.isNaN(initial) ? 0 : initial });
+    }
+    buildings.push(
+      BuildingType.parse({
+        typeId,
+        id: name ? slug(name) : `house_${typeId}`,
+        kind: houseKind(getInt(sec, 'logicmaintype')),
+        homeSize: getInt(sec, 'logichomesize') ?? 0,
+        workers,
+        stock,
+        produces: getIntList(sec, 'logicproduction'),
+        source: { file: src.file, block: 'logichousetype', layer: src.layer ?? 'base' },
+      }),
+    );
+  }
+  return buildings;
 }
 
 /**
