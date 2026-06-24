@@ -7,16 +7,17 @@
  * This is run by a human/agent, not shipped. It writes NO copyrighted bytes into the repo source;
  * its output goes to the gitignored content/ folder. See docs/DATA-FORMAT.md and docs/SOURCES.md.
  *
- * Phase 1 lands the stages one decoder at a time. Implemented now: `.pcx` pictures -> PNG (the
- * loose-file pass — `.lib`-embedded pictures arrive once the unpack stage feeds this) and readable
- * `.ini` rules -> a validated `content/ir.json` (goods/jobs/landscape from base `Data/logic`, tribes +
- * atomic animations from the mod's `DataCnmd`, preferring the mod per CLAUDE.md). The remaining stages
- * (palettes, `.bmd` bobs, `.cif`-only type tables, maps) are still TODO; see docs/ROADMAP.md.
+ * Phase 1 lands the stages one decoder at a time. Implemented now: `.lib` archives unpacked to loose
+ * files under `--out` (the embedded `.pcx`/`.bmd`/`.cif` the later stages read), `.pcx` pictures -> PNG
+ * (the loose-file pass over the `--game` tree), and readable `.ini` rules -> a validated
+ * `content/ir.json` (goods/jobs/landscape from base `Data/logic`, tribes + atomic animations from the
+ * mod's `DataCnmd`, preferring the mod per CLAUDE.md). The remaining stages (palettes, `.bmd` bobs ->
+ * atlas, `.cif`-only type tables, maps) are still TODO; see docs/ROADMAP.md.
  */
 
 import { realpathSync } from 'node:fs';
 import { access, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, isAbsolute, join, normalize, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { type BobAtlas, packBobAtlas } from './decoders/atlas.js';
@@ -31,6 +32,7 @@ import {
   extractTribes,
   parseIniSections,
 } from './decoders/ini.js';
+import { decodeLib } from './decoders/lib.js';
 import { decodePcx, expandToRgba } from './decoders/pcx.js';
 import { encodePng } from './decoders/png.js';
 
@@ -95,6 +97,76 @@ async function* walkFiles(dir: string): AsyncGenerator<string> {
     if (entry.isDirectory()) yield* walkFiles(full);
     else if (entry.isFile()) yield full;
   }
+}
+
+/**
+ * Maps a `.lib` member name (a backslash path like `data\engine2d\bin\bobs\ls_bridge.bmd`) to a
+ * safe path **relative** to the extraction root, or `undefined` if it would escape it. Archive names
+ * use Windows backslashes regardless of host OS, so they are rewritten to the native separator before
+ * normalizing. A normalized path that is absolute or still starts with `..` (i.e. climbs out of the
+ * root) is rejected — defence against a malformed/hostile archive even though the real `data0001.lib`
+ * has no such entries. An empty or all-separator name yields `undefined` (nothing to write).
+ */
+export function libMemberRelPath(name: string): string | undefined {
+  const native = name.replace(/\\/g, sep);
+  const norm = normalize(native);
+  if (norm === '' || norm === '.') return undefined;
+  if (isAbsolute(norm) || norm === '..' || norm.startsWith(`..${sep}`)) return undefined;
+  return norm;
+}
+
+/** One extracted archive member: the source `.lib` and the member, both relative for a stable report. */
+export interface LibExtraction {
+  /** The `.lib` archive's path relative to `gameDir`. */
+  readonly archive: string;
+  /** The member's path relative to `outDir` (native separators). */
+  readonly member: string;
+}
+
+/**
+ * Unpacks every `.lib` archive under `gameDir`, writing each member to `outDir` under its (sanitized)
+ * internal path — the documented stage-1 unpack that feeds the loose-file decoders (`.pcx`/`.bmd`/
+ * `.cif` embedded in `data0001.lib`). Member names use backslash paths; {@link libMemberRelPath}
+ * rewrites them to native separators and drops any that would escape `outDir`.
+ *
+ * A `.lib` that fails to decode is logged and skipped — a batch pipeline must not abort on one corrupt
+ * archive — as is an individual member with an unsafe name (warned, not written). An output-write
+ * failure (and a missing/unreadable `gameDir`) propagates: that's an environmental error, not a
+ * per-file boundary failure. The whole archive is read into memory; `decodeLib` returns zero-copy
+ * payload views, so members are sliced from that single buffer rather than re-read.
+ */
+export async function unpackLibTree(gameDir: string, outDir: string): Promise<LibExtraction[]> {
+  const done: LibExtraction[] = [];
+  for await (const file of walkFiles(gameDir)) {
+    if (!file.toLowerCase().endsWith('.lib')) continue;
+    const archive = relative(gameDir, file);
+    let archiveBytes: Uint8Array;
+    try {
+      archiveBytes = await readFile(file);
+    } catch (err) {
+      console.warn(`[pipeline] skipped archive ${archive}: ${(err as Error).message}`);
+      continue;
+    }
+    let files: ReturnType<typeof decodeLib>['files'];
+    try {
+      files = decodeLib(archiveBytes).files;
+    } catch (err) {
+      console.warn(`[pipeline] skipped archive ${archive}: ${(err as Error).message}`);
+      continue;
+    }
+    for (const member of files) {
+      const rel = libMemberRelPath(member.name);
+      if (rel === undefined) {
+        console.warn(`[pipeline] skipped unsafe member "${member.name}" in ${archive}`);
+        continue;
+      }
+      const outPath = join(outDir, rel);
+      await mkdir(dirname(outPath), { recursive: true });
+      await writeFile(outPath, member.data);
+      done.push({ archive, member: rel });
+    }
+  }
+  return done;
 }
 
 /** One converted picture: paths are relative to `gameDir`/`outDir` so the report is location-agnostic. */
@@ -235,13 +307,20 @@ async function run(args: Args): Promise<void> {
   console.log(`[pipeline] game=${args.game} mod=${args.mod ?? '(none)'} out=${args.out}`);
 
   // Stage order (see docs/SOURCES.md). Prefer the mod's readable .ini sources over base .cif.
-  //   1. Unpack .lib archives                  -> decoders/lib.ts (done; wiring pending)
+  // > 1. Unpack .lib archives                  -> decoders/lib.ts (this stage)
   //   2. Decode palettes + .hlt remap tables   -> ref CPalette.cs, CRemapTable.cs (TODO)
   // > 3. Decode .pcx pictures -> PNG            -> decoders/pcx.ts + png.ts  (this stage)
   //   4. Decode .bmd bobs -> atlas + anim JSON  -> ref CBobManager.cs, CBitmap.cs (hardest, TODO)
   // > 5. Parse .ini rules -> typed IR           -> decoders/ini.ts (this stage; mod .ini preferred)
   //   6. Decode one map -> map IR               -> decoders/cif.ts (done; wiring pending)
   // > 7. Write content/ir.json + validate with parseContentSet()  (this stage)
+  //
+  // The unpack extracts loose copies of the embedded .pcx/.bmd/.cif into <out> (gitignored). The
+  // .pcx -> png pass below still scans the original --game tree (loose pictures live there); a future
+  // step can repoint it at the unpacked tree once the embedded pictures need converting too.
+  const extracted = await unpackLibTree(args.game, args.out);
+  console.log(`[pipeline] lib unpack: extracted ${extracted.length} member(s) into ${args.out}`);
+
   const pictures = await convertPcxTree(args.game, args.out);
   console.log(`[pipeline] pcx -> png: converted ${pictures.length} picture(s) into ${args.out}`);
 

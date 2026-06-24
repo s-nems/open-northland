@@ -36,6 +36,12 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
       payloads live at absolute `position`. `decodeLib` returns zero-copy payload views; the on-disk
       record has no checksum — `findLibFile` recomputes the filename checksum (lowercased-ASCII byte
       sum) as the lookup key, like the original. Verified against real `data0001.lib` header.
+      **Wired into the CLI** — `cli.ts` `unpackLibTree` walks the `--game` tree for `.lib` archives and
+      extracts each member to `--out` under its internal path (`libMemberRelPath` rewrites the
+      backslash names to native separators and drops any that would escape `--out`); a corrupt archive
+      or unsafe member is warned-and-skipped, not fatal. Runs first so the embedded `.pcx`/`.bmd`/`.cif`
+      are available as loose files for the later stages. **Hands-on:** real `data0001.lib` → 2691
+      members (189 `.cif`, 409 `.pcx`, 205 `.bmd`), a sampled `ls_bridge.bmd` byte-equal to its payload.
 - [ ] Palette + `.pcx` decoder → PNG (ref `CPalette.cs`, `CPicture.cs`). **Validate against the
       OpenVikings oracle** (it renders the originals) pixel-for-pixel.
       - [x] **`.pcx` decode + embedded palette** — `tools/asset-pipeline/src/decoders/pcx.ts`
@@ -52,7 +58,9 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             to a `.png` mirrored under `--out`, and skip+warn per-file on a malformed/palette-less
             picture so one bad image can't abort the batch. `npm run pipeline` now emits real `.png`.
             (`start` runs the compiled `dist/cli.js`: raw-TS strip-types can't resolve the `.js`
-            import specifiers.) `.lib`-embedded pictures arrive once the unpack stage feeds this.
+            import specifiers.) The unpack stage now extracts `.lib`-embedded pictures to `--out`;
+            repointing this pass at the unpacked tree (so embedded `.pcx` are also converted) is a
+            small follow-up.
       - [ ] **Oracle pixel-diff** — compare an emitted `.png` against the OpenVikings render
             pixel-for-pixel. Needs an owned game copy + the oracle; an agent can't self-judge it.
       - [x] Standalone `CPalette` (id 0x3F6) decode — `tools/asset-pipeline/src/decoders/palette.ts`
