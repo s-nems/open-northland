@@ -377,7 +377,13 @@ export function extractAtomicAnimations(sections: readonly RuleSection[], src: S
  * names use Windows backslashes and mixed case, e.g. `data\Engine2D\Bin\palettes\landscapes\tree01.pcx`).
  */
 export interface PaletteAlias {
-  /** The `editname` a graphics record references; one record may expose several aliases for one file. */
+  /**
+   * The `editname` a graphics record references, **lower-cased** ({@link normalizePaletteName}): the
+   * original engine looks `editname`s up case-insensitively, and the real data mixes case across the
+   * two legs (e.g. `palettes.ini` declares `Lion01`/`Chicken01` while `jobgraphics.ini` references
+   * `LION01`/`chicken01`). Lower-casing the join key on both sides makes the pairing resolve. One
+   * record may expose several aliases for one file.
+   */
   readonly name: string;
   /** The palette source `.pcx`, as a normalized `data/.../foo.pcx` relative path (forward slashes, lower-case). */
   readonly gfxFile: string;
@@ -386,6 +392,16 @@ export interface PaletteAlias {
 /** Normalizes a Cultures asset path (`data\Engine2D\...\X.pcx`) to a lookup key: forward slashes, lower-case. */
 function normalizeAssetPath(path: string): string {
   return path.replace(/\\/g, '/').toLowerCase();
+}
+
+/**
+ * Normalizes a palette `editname` to its case-insensitive join key (lower-case). The two pairing legs
+ * disagree on case in the real data — `palettes.ini` declares `Lion01`/`Chicken01`, `jobgraphics.ini`
+ * references `LION01`/`chicken01` — and the original engine matches them case-insensitively, so both
+ * {@link extractPaletteIndex} and {@link extractGraphicsBindings} key on the lower-cased name.
+ */
+function normalizePaletteName(name: string): string {
+  return name.toLowerCase();
 }
 
 /**
@@ -416,8 +432,68 @@ export function extractPaletteIndex(sections: readonly RuleSection[]): PaletteAl
     for (const p of findProps(sec, 'editname')) {
       const name = p.values[0];
       if (name === undefined || name.trim() === '') continue;
-      aliases.push({ name, gfxFile: normalized });
+      aliases.push({ name: normalizePaletteName(name), gfxFile: normalized });
     }
   }
   return aliases;
+}
+
+/**
+ * One bob set's palette pairing: a `.bmd` body (and its optional shadow `.bmd`) bound to the palette
+ * `editname` its `[jobgraphics]` record names — the **second leg** of the `.bmd`→palette graph
+ * (docs/ROADMAP.md Phase 1). The first leg ({@link extractPaletteIndex}) resolves `paletteName` to a
+ * `.pcx` trailer palette; together they answer "which 256 colours colour this `.bmd`". The `.bmd`
+ * paths are normalized (forward-slash, lower-case) so a lookup against the unpacked `--out` tree is
+ * host-OS/case-independent, matching {@link PaletteAlias.gfxFile}.
+ */
+export interface BmdPaletteBinding {
+  /** The body bob set, as a normalized `data/.../foo.bmd` relative path (forward slashes, lower-case). */
+  readonly bmd: string;
+  /** The matching shadow bob set, same normalization, or `undefined` when the record has no shadow `.bmd`. */
+  readonly shadowBmd: string | undefined;
+  /**
+   * The palette `editname` the record references, **lower-cased** ({@link normalizePaletteName}) so it
+   * joins case-insensitively onto {@link PaletteAlias.name} (the two legs disagree on case in the real
+   * data).
+   */
+  readonly paletteName: string;
+  /** The `logictribe` id the record applies to, when present (a cross-reference, not required). */
+  readonly tribeId: number | undefined;
+  /** The `logicjob` id the record applies to, when present (a cross-reference, not required). */
+  readonly jobId: number | undefined;
+}
+
+/**
+ * Extracts the readable `[jobgraphics]` records (`Data/engine2d/inis/animals/jobgraphics.ini` — the
+ * one graphics binding file that ships as plain `.ini`, the rest being `.cif`) into `.bmd`→palette
+ * bindings. Each record carries a `gfxbobmanagerbody "<body>.bmd" "<shadow>.bmd"` (the shadow value is
+ * optional) and a `gfxpalettebody "<editname>"`; the `editname` resolves to a `.pcx` trailer palette
+ * via {@link extractPaletteIndex}, completing the pairing the `.bmd` container itself doesn't carry.
+ *
+ * A record missing the body `.bmd` (nothing to colour) or the palette name (unbindable) is skipped
+ * rather than throwing — this is an index over many records and one malformed entry must not abort the
+ * offline batch, matching {@link extractPaletteIndex}. Paths are normalized via
+ * {@link normalizeAssetPath}. The richer mod `[jobbasegraphics]` variant (indexed body/head bobs +
+ * `gfxpalettebasebody`/`gfxpalettebasehead`/`gfxpaletterandom`) is a separate, later extractor; this
+ * one covers only the flat `[jobgraphics]` schema.
+ */
+export function extractGraphicsBindings(sections: readonly RuleSection[]): BmdPaletteBinding[] {
+  const bindings: BmdPaletteBinding[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'jobgraphics') continue;
+    const body = findProp(sec, 'gfxbobmanagerbody');
+    const bmd = body?.values[0];
+    if (bmd === undefined || bmd.trim() === '') continue;
+    const paletteName = getStr(sec, 'gfxpalettebody');
+    if (paletteName === undefined || paletteName.trim() === '') continue;
+    const shadow = body?.values[1];
+    bindings.push({
+      bmd: normalizeAssetPath(bmd),
+      shadowBmd: shadow !== undefined && shadow.trim() !== '' ? normalizeAssetPath(shadow) : undefined,
+      paletteName: normalizePaletteName(paletteName),
+      tribeId: getInt(sec, 'logictribe'),
+      jobId: getInt(sec, 'logicjob'),
+    });
+  }
+  return bindings;
 }

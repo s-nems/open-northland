@@ -6,6 +6,7 @@ import {
   decodeIni,
   extractAtomicAnimations,
   extractGoods,
+  extractGraphicsBindings,
   extractJobs,
   extractLandscape,
   extractPaletteIndex,
@@ -392,6 +393,59 @@ describe('extractPaletteIndex', () => {
     const map = new Map(extractPaletteIndex(parseIniSections(PALETTES_INI)).map((a) => [a.name, a.gfxFile]));
     expect(map.get('bear01')).toBe(map.get('deer01'));
     expect(map.has('nopcx_skipme')).toBe(false);
+  });
+});
+
+// Mirrors the real Data/engine2d/inis/animals/jobgraphics.ini grammar: [jobgraphics] records with a
+// gfxbobmanagerbody (body .bmd + optional shadow .bmd), a gfxpalettebody editname, and logictribe/
+// logicjob cross-reference ids. The last two records exercise the skip paths (no body / no palette).
+const JOBGRAPHICS_INI = `<CULTURES_CIF_BEGIN><03FD><000000F1> Don't modify this line!
+[jobgraphics]
+logictribe 21
+logicjob 48
+gfxbobmanagerbody "Data\\Engine2D\\Bin\\Bobs\\CR_Ani_Body_00.bmd" "Data\\Engine2D\\Bin\\Bobs\\CR_Ani_Body_00_s.bmd"
+gfxpalettebody "BEAR01"
+[jobgraphics]
+gfxbobmanagerbody "Data\\Engine2D\\Bin\\Bobs\\CR_NoShadow.bmd"
+gfxpalettebody "deer01"
+[jobgraphics]
+logictribe 9
+gfxpalettebody "orphan_no_body"
+[jobgraphics]
+gfxbobmanagerbody "Data\\Engine2D\\Bin\\Bobs\\CR_NoPalette.bmd" "Data\\Engine2D\\Bin\\Bobs\\CR_NoPalette_s.bmd"
+`;
+
+describe('extractGraphicsBindings', () => {
+  it('binds each [jobgraphics] body .bmd to its palette editname, normalizing paths + lower-casing the name', () => {
+    const bindings = extractGraphicsBindings(parseIniSections(JOBGRAPHICS_INI));
+    // Records 3 (no body) and 4 (no palette) are dropped; the first two bind. The first record's
+    // `BEAR01` is lower-cased to `bear01` — the join key is case-insensitive (real data mixes case).
+    expect(bindings).toEqual([
+      {
+        bmd: 'data/engine2d/bin/bobs/cr_ani_body_00.bmd',
+        shadowBmd: 'data/engine2d/bin/bobs/cr_ani_body_00_s.bmd',
+        paletteName: 'bear01',
+        tribeId: 21,
+        jobId: 48,
+      },
+      {
+        bmd: 'data/engine2d/bin/bobs/cr_noshadow.bmd',
+        shadowBmd: undefined,
+        paletteName: 'deer01',
+        tribeId: undefined,
+        jobId: undefined,
+      },
+    ]);
+  });
+
+  it('resolves a bound .bmd to a .pcx palette across a case mismatch (BEAR01 -> bear01)', () => {
+    // The binding references `BEAR01`; palettes.ini declares `bear01` — the lower-cased join must still
+    // hit. This mirrors the real chicken01/Chicken01 + LION01/Lion01 case splits between the two legs.
+    const palettes = new Map(
+      extractPaletteIndex(parseIniSections(PALETTES_INI)).map((a) => [a.name, a.gfxFile]),
+    );
+    const [first] = extractGraphicsBindings(parseIniSections(JOBGRAPHICS_INI));
+    expect(palettes.get(first?.paletteName ?? '')).toBe('data/engine2d/bin/palettes/creatures/bear01.pcx');
   });
 });
 
