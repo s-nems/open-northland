@@ -12,6 +12,18 @@ export { fx, ONE, type Fixed } from './fixed.js';
 export { FixedTimestep, TICKS_PER_SECOND, MS_PER_TICK } from './loop.js';
 export * as components from './components/index.js';
 export * as systems from './systems/index.js';
+export { scenario, Scenario, type ScenarioResult, type RunOptions } from './scenario.js';
+export {
+  checkInvariants,
+  CORE_INVARIANTS,
+  type Invariant,
+  stockNonNegative,
+  hungerInRange,
+  buildingSane,
+} from './invariants.js';
+
+/** Run the core invariants against the current world (dev/test convenience). */
+import { checkInvariants as _checkInvariants, type Invariant as _Invariant } from './invariants.js';
 
 export interface SimOptions {
   seed: number;
@@ -52,9 +64,15 @@ export class Simulation {
     for (let i = 0; i < ticks; i++) this.step();
   }
 
+  /** Run the core (or given) invariants against the current world; returns violation strings. */
+  checkInvariants(invariants?: readonly _Invariant[]): string[] {
+    return _checkInvariants(this.world, invariants);
+  }
+
   /**
-   * A stable, order-independent hash of state that matters for determinism golden tests.
-   * Currently hashes tick, RNG state, and all entity positions. Extend as state grows.
+   * A canonical hash of ALL simulation state for determinism golden tests: tick, RNG state, and
+   * every registered component on every alive entity, in canonical (ascending) order. If two runs
+   * from the same seed + inputs diverge in ANY hashed field, this changes — which is the point.
    */
   hashState(): string {
     let h = 2166136261 >>> 0; // FNV-1a
@@ -62,15 +80,44 @@ export class Simulation {
       h ^= n | 0;
       h = Math.imul(h, 16777619) >>> 0;
     };
+    const hashValue = (v: unknown): void => {
+      if (typeof v === 'number') {
+        // hash both halves so large fixed-point doubles are fully covered.
+        mix(v | 0);
+        mix(Math.trunc(v / 0x100000000));
+      } else if (typeof v === 'boolean') {
+        mix(v ? 1 : 0);
+      } else if (v === null || v === undefined) {
+        mix(0x9e3779b9);
+      } else if (Array.isArray(v)) {
+        mix(v.length);
+        for (const item of v) hashValue(item);
+      } else if (v instanceof Map) {
+        for (const [k, val] of [...v.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))) {
+          hashValue(k);
+          hashValue(val);
+        }
+      } else if (typeof v === 'object') {
+        for (const k of Object.keys(v as object).sort()) {
+          for (const ch of k) mix(ch.charCodeAt(0));
+          hashValue((v as Record<string, unknown>)[k]);
+        }
+      }
+    };
+
     mix(this.currentTick);
     mix(this.rng.getState());
-    const ids: Entity[] = [...this.world.query(Position)];
+    const ids = this.world.canonicalEntities();
     mix(ids.length);
     for (const e of ids) {
-      const p = this.world.get(e, Position);
       mix(e);
-      mix(p.x);
-      mix(p.y);
+      for (const c of this.world.components) {
+        const val = c.store.get(e);
+        if (val !== undefined) {
+          for (const ch of c.name) mix(ch.charCodeAt(0));
+          hashValue(val);
+        }
+      }
     }
     return h.toString(16).padStart(8, '0');
   }
