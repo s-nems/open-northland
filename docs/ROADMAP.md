@@ -418,6 +418,29 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             all through the real `Simulation.step()` schedule; two same-seed runs hash-equal (`c2eed8ec`).
             **Still to do:** the AISystem atomic-utility planner (pick *which* goal/atomic for an idle
             settler, sequencing the chain) — the next slice on top of this executor.
+      - [x] **AISystem atomic-utility planner** — `aiSystem` in `packages/sim/src/systems/index.ts` is
+            now two layered passes: `atomicPlanner` (the *what* — pick the next atomic for an idle
+            settler) on top of the existing `navigationPlanner` (the *where* — `MoveGoal`→`PathRequest`),
+            run in that order so a freshly-set goal is routed the same tick. The planner is a small,
+            pure state machine over an idle settler (has `Settler`+`Position`, no `CurrentAtomic`, not
+            travelling): carrying goods → `MoveGoal` to the nearest store that can stock them, or, once
+            on it, start a `pileup` `CurrentAtomic`; empty-handed → `MoveGoal` to the nearest harvestable
+            resource its job permits, or, once on it, start a `harvest` `CurrentAtomic`. A new
+            {@link Resource} component (goodType + remaining + harvestAtomic) is the harvestable node.
+            Data-driven, not bespoke per-job: the harvest atomic is the resource good's `atomics.harvest`,
+            gated by the job's `allowedAtomics`∪`baseAtomics`−`forbiddenAtomics` (`jobAtomics`), and the
+            atomic `duration` is resolved through the tribe's `setatomic` binding → `atomicAnimations`
+            length (`atomicDuration`, default 4 when the chain is absent). Target selection is the nearest
+            by Manhattan distance, scanned in canonical entity-id order with an ascending-cell-id
+            tie-break — no Map-insertion-order dependence. Pure + deterministic: no RNG/wall-clock,
+            no-ops on a mapless sim (golden untouched). The pileup atomic id is a constant (the readable
+            data binds no per-good deposit atomic; the typed `pileup` effect is what the executor
+            applies). **Hands-on:** a woodcutter on a 4×1 strip (cutter@0, wood@1, store@2) through the
+            real `Simulation.step()` schedule → a clean alternating atomic trace harvest(24)→pileup(23)→…
+            (one cycle ≈ every 19 ticks), **6 wood** in the store after 120 ticks, cutter unloaded; two
+            same-seed runs hash-equal (`b2aced06`). **Still to do:** hunger/needs-driven goal choice
+            (NeedsSystem, Phase 3) and JobSystem assignment; resource depletion (the harvest effect
+            decrementing `Resource.remaining`).
 - [ ] One workplace: ProductionSystem consumes input → output, **enforcing per-good stock capacity**.
 - [ ] A minimal **carrier** moving goods between store and workplace (goods never teleport).
 - [ ] Render: isometric terrain + the settler sprite from the atlas, **depth-sorted by feet anchor**
