@@ -399,6 +399,25 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 - [ ] **Atomic planner slice:** AISystem picks an atomic (utility over the job's allowed atomics);
       AtomicSystem executes it to completion and applies its effect. One settler: harvest wood →
       pickup → carry → pileup at store.
+      - [x] **AtomicSystem executor** — `atomicSystem` in `packages/sim/src/systems/index.ts` (no
+            longer a stub) + the {@link AtomicEffect}/`elapsed`/`duration` fields on the `CurrentAtomic`
+            component. Each tick it advances the integer `elapsed` counter (NOT an accumulated
+            fixed-point step: `ONE / duration` truncates, e.g. ONE/3, so summing it would fall short of
+            ONE and the atomic would hang — completion is the exact `elapsed >= duration`, with
+            `progress` a derived 0..ONE display value for render interpolation). On completion it applies
+            the typed {@link AtomicEffect} via an exhaustive `assertNever` switch, emits an
+            `atomicCompleted` event, and removes the component (the planner reads a CurrentAtomic-less
+            entity as ready for its next atomic). The harvest→pickup→carry→pileup chain is implemented:
+            `harvest`/`pickup` add to the settler's `Carrying` (goods never teleport), `pileup` deposits
+            into a store's `Stockpile` capped at the building type's per-good capacity (overflow stays
+            carried — goods conserved), `eat` zeroes hunger; `produce`/`attack` only signal completion
+            (owned by Production/CombatSystem later); `move`/`idle` are pure markers. Pure +
+            deterministic: no RNG/wall-clock, each effect a function of current state, Stockpile writes
+            via the canonical Map. **Hands-on:** a settler harvest (duration 3) → carries 1 wood, then
+            pileup (duration 2) → store Stockpile = 1 wood, settler unloaded, 2 `atomicCompleted` events,
+            all through the real `Simulation.step()` schedule; two same-seed runs hash-equal (`c2eed8ec`).
+            **Still to do:** the AISystem atomic-utility planner (pick *which* goal/atomic for an idle
+            settler, sequencing the chain) — the next slice on top of this executor.
 - [ ] One workplace: ProductionSystem consumes input → output, **enforcing per-good stock capacity**.
 - [ ] A minimal **carrier** moving goods between store and workplace (goods never teleport).
 - [ ] Render: isometric terrain + the settler sprite from the atlas, **depth-sorted by feet anchor**

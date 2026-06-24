@@ -1,5 +1,18 @@
 import type { ContentSet } from '@vinland/data';
-import { MoveGoal, PathFollow, PathRequest, Position, Velocity } from '../components/index.js';
+import { assertNever } from '../brand.js';
+import type { AtomicEffect } from '../commands.js';
+import {
+  Building,
+  Carrying,
+  CurrentAtomic,
+  MoveGoal,
+  PathFollow,
+  PathRequest,
+  Position,
+  Settler,
+  Stockpile,
+  Velocity,
+} from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { EventBuffer } from '../events.js';
 import { type Fixed, fx } from '../fixed.js';
@@ -224,6 +237,130 @@ function inRange(terrain: TerrainGraph, cell: number): boolean {
   return Number.isInteger(cell) && cell >= 0 && cell < terrain.cellCount;
 }
 
+/**
+ * AtomicSystem — the executor half of the settler planner: advance the {@link CurrentAtomic} a
+ * settler is running and, on completion, apply its typed {@link AtomicEffect}.
+ *
+ * Each tick, for every entity with a CurrentAtomic, the integer `elapsed` counter advances; a
+ * `duration` of D ticks completes on the D-th tick (a 0/1-tick animation completes the first tick —
+ * `duration` is clamped to at least 1). Timing is the exact integer compare `elapsed >= duration`,
+ * NOT an accumulated fixed-point step: `ONE / duration` truncates, so summing it `duration` times
+ * would fall short of ONE and the atomic would hang. `progress` (0..ONE) is recomputed each tick as
+ * a derived display value for render interpolation only. When the atomic completes the executor
+ * applies the effect (the state mutation), emits an `atomicCompleted` event for render/audio, and
+ * removes the component — the planner reads an entity with no CurrentAtomic as ready for its next.
+ *
+ * `applyEffect` is an exhaustive switch over the {@link AtomicEffect} union (`assertNever` makes a
+ * new variant a compile error here), so behavior is the typed effect, not an opaque atomicId. The
+ * harvest→pickup→carry→pileup chain that the single-settler slice needs is implemented; `produce`
+ * and `attack` belong to ProductionSystem/CombatSystem and only signal completion here for now.
+ *
+ * Determinism: no RNG, no wall-clock. Entities are visited in the CurrentAtomic store's deterministic
+ * insertion order, and each effect is a pure function of the entity + its target's current state
+ * (Stockpile writes go through the canonical Map, never iterated for a decision). Fixed-point only.
+ */
+export const atomicSystem: System = (world, ctx) => {
+  for (const e of world.query(CurrentAtomic)) {
+    const atomic = world.get(e, CurrentAtomic);
+    const duration = Math.max(1, atomic.duration);
+    atomic.elapsed += 1;
+    // Derived 0..ONE display value (render interpolation); clamped so it never exceeds ONE.
+    atomic.progress = fx.div(fx.fromInt(Math.min(atomic.elapsed, duration)), fx.fromInt(duration));
+    if (atomic.elapsed < duration) continue; // still running
+
+    // Completed this tick: apply the effect, notify render/audio, and free the settler.
+    applyEffect(world, ctx, e, atomic.effect);
+    ctx.events.emit({ kind: 'atomicCompleted', entity: e, atomicId: atomic.atomicId });
+    world.remove(e, CurrentAtomic);
+  }
+};
+
+/**
+ * Apply a completed atomic's effect. Exhaustive over {@link AtomicEffect}: adding a variant is a
+ * compile error until it is handled here (`assertNever`). Each branch is a pure function of current
+ * state — no RNG, no wall-clock.
+ */
+function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: AtomicEffect): void {
+  switch (effect.kind) {
+    case 'harvest':
+      // The settler gathers one unit of the resource's good onto its back (carriers haul; goods
+      // never teleport). A real per-resource yield/depletion is a later resource-node slice.
+      addCarry(world, settler, effect.goodType, 1);
+      return;
+    case 'pickup':
+      addCarry(world, settler, effect.goodType, effect.amount);
+      return;
+    case 'pileup':
+      pileupIntoStore(world, ctx, settler, effect.store);
+      return;
+    case 'eat':
+      // Eating clears hunger; the good is consumed from whatever the settler carries/holds. The
+      // needs/consumption accounting is the Phase-3 NeedsSystem — here we only zero hunger.
+      if (world.has(settler, Settler)) world.get(settler, Settler).hunger = 0 as Fixed;
+      return;
+    case 'move':
+    case 'idle':
+      // Pure markers: the actual walking is the navigation layer (PathFollow/MovementSystem). The
+      // atomic just completing is the signal; no extra state change.
+      return;
+    case 'produce':
+    case 'attack':
+      // Owned by ProductionSystem / CombatSystem (later slices). Completing the atomic + emitting
+      // the event is enough for now; the heavy mutation lands when those systems exist.
+      return;
+    default:
+      assertNever(effect); // a new AtomicEffect variant is a compile error until handled above
+  }
+}
+
+/** Add `amount` of `goodType` to a settler's carried load, merging if it already carries that good. */
+function addCarry(world: World, settler: Entity, goodType: number, amount: number): void {
+  const held = world.tryGet(settler, Carrying);
+  if (held !== undefined && held.goodType === goodType) {
+    held.amount += amount;
+    return;
+  }
+  // No load (or a different good — the single-slot carry is replaced, matching one-good-at-a-time).
+  world.add(settler, Carrying, { goodType, amount });
+}
+
+/**
+ * Deposit a settler's carried load into a store's {@link Stockpile}, capped at the building type's
+ * per-good capacity. Any overflow stays on the settler's back (goods are conserved — never dropped).
+ * No-op if the settler carries nothing or the store has no stockpile.
+ */
+function pileupIntoStore(world: World, ctx: SystemContext, settler: Entity, store: Entity): void {
+  const load = world.tryGet(settler, Carrying);
+  if (load === undefined || load.amount <= 0) return;
+  const stock = world.tryGet(store, Stockpile);
+  if (stock === undefined) return;
+
+  const have = stock.amounts.get(load.goodType) ?? 0;
+  const capacity = stockCapacity(world, ctx, store, load.goodType);
+  const space = Math.max(0, capacity - have);
+  const moved = Math.min(load.amount, space);
+  if (moved <= 0) return; // store full for this good — keep carrying
+
+  stock.amounts.set(load.goodType, have + moved);
+  const remaining = load.amount - moved;
+  if (remaining > 0) load.amount = remaining;
+  else world.remove(settler, Carrying); // fully unloaded
+}
+
+/**
+ * The per-good capacity of a store's stockpile, from its building type's stock slots. A good with no
+ * declared slot has no room (capacity 0); a store with no Building/type is treated as uncapped so a
+ * test fixture without a building still accepts deposits.
+ */
+function stockCapacity(world: World, ctx: SystemContext, store: Entity, goodType: number): number {
+  const building = world.tryGet(store, Building);
+  if (building === undefined) return Number.MAX_SAFE_INTEGER; // bare store fixture: uncapped
+  const type = ctx.content.buildings.find((b) => b.typeId === building.buildingType);
+  if (type === undefined) return 0;
+  const slot = type.stock.find((s) => s.goodType === goodType);
+  return slot?.capacity ?? 0;
+}
+
 /* ----------------------------------------------------------------------------------------------
  * The remaining systems are stubs to be implemented per docs/ROADMAP.md. They are listed here so
  * the execution order and intent are explicit and version-controlled. Each maps onto original
@@ -243,7 +380,7 @@ export const needsSystem: System = todo('NeedsSystem'); // hunger/health + the f
 export const progressionSystem: System = todo('ProgressionSystem'); // experience + tech graph (needfor*/allow*/jobEnables*) gates jobs/goods/houses/vehicles
 // aiSystem is a REAL system now (above) — the navigation planner: MoveGoal -> PathRequest. The
 // atomic-utility planner (pick the next atomic for an idle settler) is a later slice on top of it.
-export const atomicSystem: System = todo('AtomicSystem'); // advance the CurrentAtomic; on completion apply its effect + notify planner
+// atomicSystem is a REAL system now (above) — advances CurrentAtomic, applies its effect on completion.
 export const jobSystem: System = todo('JobSystem'); // match idle settlers to open jobs/workplaces
 // pathfindingSystem is a REAL system now (above) — A* on the cell graph, budgeted/tick.
 export const productionSystem: System = todo('ProductionSystem'); // recipes (goodtypes.productionInputGoods): inputs -> outputs, enforce stock capacity
