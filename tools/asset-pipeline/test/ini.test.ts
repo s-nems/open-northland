@@ -13,6 +13,7 @@ import {
   extractMapInfo,
   extractPaletteIndex,
   extractTribes,
+  extractWeapons,
   parseIniSections,
 } from '../src/decoders/ini.js';
 
@@ -91,6 +92,28 @@ event 30 2 +4000
 
 [atomicanimation]
 name "viking_man_idle"
+`;
+
+// Mirrors DataCnmd/types/weapons.ini: each `[weapontype]` has a quoted `name`, a `type`, the
+// `minimumrange`/`maximumrange` pair, repeated `damagevalue <armorClass> <value>` lines, a `jobtype`,
+// and combat extras the schema doesn't carry (`atomicactiontype`, `soundtype_Hit`) that are ignored.
+// The second weapon omits the range pair to exercise the schema's range defaults of 1.
+const WEAPONTYPES_INI = `// new
+[weapontype]
+type 2
+name "woman fist"
+minimumrange 1
+maximumrange 1
+damagevalue 0 400
+damagevalue 1 80
+jobtype 5
+atomicactiontype 81
+soundtype_Hit 0 95
+[weapontype]
+type 4
+name "wooden spear"
+damagevalue 0 2400
+jobtype 32
 `;
 
 const LANDSCAPE_INI = `<CULTURES_CIF_BEGIN><03FD><000002BF> Don't modify this line!
@@ -252,6 +275,45 @@ describe('extractJobs', () => {
       file: 'f.ini',
     });
     expect(job).toMatchObject({ allowedAtomics: [], baseAtomics: [], forbiddenAtomics: [] });
+  });
+});
+
+describe('extractWeapons', () => {
+  it('maps [weapontype] sections to validated WeaponType IR with armor-class-keyed damage', () => {
+    const weapons = extractWeapons(parseIniSections(WEAPONTYPES_INI), {
+      file: 'DataCnmd/types/weapons.ini',
+      layer: 'mod',
+    });
+    const src = { file: 'DataCnmd/types/weapons.ini', block: 'weapontype', layer: 'mod' };
+    expect(weapons).toEqual([
+      {
+        typeId: 2,
+        id: 'woman_fist',
+        name: 'woman fist',
+        minRange: 1,
+        maxRange: 1,
+        damage: { '0': 400, '1': 80 },
+        jobType: 5,
+        source: src,
+      },
+      // No range pair -> schema range defaults of 1; combat extras (atomicactiontype, sound) ignored.
+      {
+        typeId: 4,
+        id: 'wooden_spear',
+        name: 'wooden spear',
+        minRange: 1,
+        maxRange: 1,
+        damage: { '0': 2400 },
+        jobType: 32,
+        source: src,
+      },
+    ]);
+  });
+
+  it('throws on a [weapontype] missing its numeric `type`', () => {
+    expect(() => extractWeapons(parseIniSections('[weapontype]\nname "x"\n'), { file: 'f.ini' })).toThrow(
+      /without a numeric `type`/,
+    );
   });
 });
 
@@ -611,7 +673,7 @@ describe('extractMapInfo', () => {
 });
 
 describe('IR integration', () => {
-  it('extracted goods + jobs + tribes + landscape + animations assemble into a valid ContentSet', () => {
+  it('extracted goods + jobs + weapons + tribes + landscape + animations assemble into a valid ContentSet', () => {
     const goods = extractGoods(parseIniSections(GOODTYPES_INI), { file: 'goodtypes.ini' });
     const tribes = extractTribes(parseIniSections(TRIBETYPES_INI), { file: 'tribetypes.ini', layer: 'mod' });
     const landscape = extractLandscape(parseIniSections(LANDSCAPE_INI), { file: 'landscapetypes.ini' });
@@ -619,11 +681,17 @@ describe('IR integration', () => {
       file: 'atomicanimations.ini',
       layer: 'mod',
     });
-    // The tribe binds jobTypes 1/5/52, so the job set must define them (cross-ref resolvability).
+    const weapons = extractWeapons(parseIniSections(WEAPONTYPES_INI), {
+      file: 'weapons.ini',
+      layer: 'mod',
+    });
+    // The tribe binds jobTypes 1/5/52 and the weapons wield jobTypes 5/32, so the job set must
+    // define them all (cross-ref resolvability — validateCrossReferences checks weapon.jobType too).
     const jobs = [
       ...extractJobs(parseIniSections(JOBTYPES_INI), { file: 'jobtypes.ini' }),
       { typeId: 1, id: 'job_1' },
       { typeId: 5, id: 'job_5' },
+      { typeId: 32, id: 'job_32' },
       { typeId: 52, id: 'job_52' },
     ];
     expect(() =>
@@ -632,6 +700,7 @@ describe('IR integration', () => {
         goods,
         jobs,
         buildings: [],
+        weapons,
         landscape,
         tribes,
         atomicAnimations,

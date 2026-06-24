@@ -22,6 +22,7 @@ import {
   LandscapeType,
   MapInfo,
   TribeType,
+  WeaponType,
 } from '@vinland/data';
 import type { CifLine } from './cif.js';
 
@@ -369,6 +370,49 @@ export function extractAtomicAnimations(sections: readonly RuleSection[], src: S
     );
   }
   return animations;
+}
+
+/**
+ * Extracts `[weapontype]` sections into validated {@link WeaponType} IR. The mod ships a readable
+ * `DataCnmd/types/weapons.ini` (the base game's `Data/logic/weapontypes.cif` is the encrypted twin),
+ * so this prefers that `.ini` per CLAUDE.md golden rule #4.
+ *
+ * Each `damagevalue <armorClass> <value>` line becomes one entry in the role-keyed `damage` record
+ * (the armor class is the string key, matching the schema's `record<string,number>` shape and the
+ * original `damageValue[targetArmorClass]` indexing). `minimumrange`/`maximumrange` map to
+ * `minRange`/`maxRange`; `jobtype` is the wielding job (cross-checked against the job table by
+ * `validateCrossReferences`). The undocumented combat extras (`soundtype_*`, `munitiontype`,
+ * `createsmoke`, `damagetype`) are not in the {@link WeaponType} schema yet and are intentionally
+ * skipped here — they belong with the Phase-4 CombatSystem, not this type-table slice. Throws on a
+ * section missing the required numeric `type` (matches {@link extractGoods}'s throw-on-malformed stance).
+ */
+export function extractWeapons(sections: readonly RuleSection[], src: SourceRef): WeaponType[] {
+  const weapons: WeaponType[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'weapontype') continue;
+    const typeId = requireTypeId(sec, 'weapontype', src);
+    const name = getStr(sec, 'name');
+    const damage: Record<string, number> = {};
+    for (const p of findProps(sec, 'damagevalue')) {
+      const armorClass = Number.parseInt(p.values[0] ?? '', 10);
+      const value = Number.parseInt(p.values[1] ?? '', 10);
+      if (Number.isNaN(armorClass) || Number.isNaN(value)) continue;
+      damage[String(armorClass)] = value;
+    }
+    weapons.push(
+      WeaponType.parse({
+        typeId,
+        id: name ? slug(name) : `weapon_${typeId}`,
+        name,
+        minRange: getInt(sec, 'minimumrange'),
+        maxRange: getInt(sec, 'maximumrange'),
+        damage,
+        jobType: getInt(sec, 'jobtype'),
+        source: { file: src.file, block: 'weapontype', layer: src.layer ?? 'base' },
+      }),
+    );
+  }
+  return weapons;
 }
 
 /**
