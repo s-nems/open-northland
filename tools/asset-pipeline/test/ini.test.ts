@@ -57,6 +57,18 @@ describe('parseIniSections', () => {
     const [sec] = parseIniSections('[t]\nname "tree falling"\n');
     expect(sec?.props.find((p) => p.key === 'name')?.values).toEqual(['tree falling']);
   });
+
+  it('strips `//` inline and full-line comments (the marker real .ini files use)', () => {
+    // landscapetypes.ini has lines like: `transition 3 80 2 -1 9 // transition 3 80 2 -1 9`
+    const sections = parseIniSections('[t]\n// a full-line comment\ntransition 3 80 2 -1 9 // dup\n');
+    expect(sections).toHaveLength(1);
+    expect(sections[0]?.props).toEqual([{ key: 'transition', values: ['3', '80', '2', '-1', '9'] }]);
+  });
+
+  it('keeps a `//` that lives inside a quoted value', () => {
+    const [sec] = parseIniSections('[t]\nname "a // b"\n');
+    expect(sec?.props.find((p) => p.key === 'name')?.values).toEqual(['a // b']);
+  });
 });
 
 describe('cifLinesToSections (unification with .cif)', () => {
