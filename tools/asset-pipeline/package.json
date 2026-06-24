@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc --build",
-    "start": "node --experimental-strip-types src/cli.ts"
+    "start": "tsc --build && node ./dist/cli.js"
   },
   "dependencies": {
     "@vinland/data": "*"
