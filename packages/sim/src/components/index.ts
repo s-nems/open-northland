@@ -82,6 +82,21 @@ export function stockpileEntries(s: { amounts: Map<number, number> }): Array<[nu
 /** A settler carrying goods (carriers physically haul; goods never teleport to a global bank). */
 export const Carrying = defineComponent<{ goodType: number; amount: number }>('Carrying');
 
+/**
+ * A harvestable resource node placed in the world (a tree, ore vein, berry bush). It yields its
+ * `goodType` when a settler runs the good's harvest atomic on its cell; `remaining` is the units
+ * left (the AtomicSystem's harvest effect will decrement a real node in a later resource-depletion
+ * slice — for now it is the planner's "is there anything here to take" gate). `harvestAtomic` is the
+ * numeric atomic id to run (the good's `atomicForHarvesting`), kept so the planner stays data-driven
+ * — it picks the atomic from content, never hardcodes one. A node sits on the cell under its
+ * {@link Position} (snapped to a cell by `cellAtClamped`).
+ */
+export const Resource = defineComponent<{
+  goodType: number;
+  remaining: number;
+  harvestAtomic: number;
+}>('Resource');
+
 /** A path the entity is following: fixed-point waypoints + current index. */
 export const PathFollow = defineComponent<{ waypoints: Array<{ x: Fixed; y: Fixed }>; index: number }>(
   'PathFollow',

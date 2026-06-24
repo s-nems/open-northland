@@ -9,6 +9,7 @@ import {
   PathFollow,
   PathRequest,
   Position,
+  Resource,
   Settler,
   Stockpile,
   Velocity,
@@ -122,29 +123,284 @@ function stepToward(from: Fixed, target: Fixed): Fixed {
 }
 
 /**
- * AISystem — the navigation planner (first, smallest slice of the settler planner).
+ * AISystem — the settler planner: two layered passes per tick.
  *
- * Closes the intent→request→path→move loop: for an entity that has a {@link MoveGoal} but is not
- * already travelling (no live {@link PathRequest}, no {@link PathFollow}) and is not standing on its
- * goal cell, it emits a {@link PathRequest} from the entity's current cell to the goal cell. The
- * PathfindingSystem turns that into a path and the MovementSystem walks it; when the entity reaches
- * the goal cell the goal is satisfied and removed. A goal whose request just failed (no route) is
- * left in place but not re-issued this tick — the failed flag is the planner's signal; a future
- * slice can decide whether to abandon, wait, or repath.
+ *  1. {@link atomicPlanner} (the *what*): for an idle settler (a job, no atomic running, not
+ *     travelling), choose the next atomic in the harvest→carry→pileup chain — either issue a
+ *     {@link MoveGoal} to walk to the next target (a resource, then a store), or, once standing on
+ *     that target, start the {@link CurrentAtomic} the AtomicSystem will execute.
+ *  2. {@link navigationPlanner} (the *where*): turn a {@link MoveGoal} on a path-less, request-less
+ *     entity into a {@link PathRequest}; PathfindingSystem routes it, MovementSystem walks it, and
+ *     the goal is removed on arrival.
  *
- * This is deliberately the *navigation* planner only — picking a destination cell. The full atomic
- * planner (utility over the job's allowed atomics: harvest→pickup→carry→pileup) is a later roadmap
- * slice; this is the minimal piece that proves AISystem→PathfindingSystem→MovementSystem end to end.
+ * The split mirrors the original: the atomic vocabulary is the soul of the behavior, and navigation
+ * is just how a settler physically reaches an atomic's target. The atomic planner runs first so a
+ * freshly-set goal is picked up by the navigation pass in the same tick (no one-tick stall).
+ *
+ * Determinism: no RNG, no wall-clock; entities are visited in deterministic store order and every
+ * choice is a pure function of the settler's components + the (canonically-scanned) world. No-ops
+ * without a terrain graph (a mapless sim has no cells to navigate over — the golden is untouched).
+ */
+export const aiSystem: System = (world, ctx) => {
+  if (ctx.terrain === undefined) return; // mapless sim: no cells to navigate over
+  atomicPlanner(world, ctx, ctx.terrain);
+  navigationPlanner(world, ctx.terrain);
+};
+
+/**
+ * The atomic-utility planner: pick the next atomic for each idle settler and drive the
+ * harvest→carry→pileup chain.
+ *
+ * A settler is *idle* when it has a {@link Settler} + {@link Position} but no {@link CurrentAtomic}
+ * running and is not currently travelling (no {@link MoveGoal}/{@link PathRequest}/{@link PathFollow}).
+ * For each idle settler, in deterministic store order, the planner decides the next step from the
+ * settler's state — a small state machine over "am I carrying anything?" and "what am I standing on?":
+ *
+ *  - Carrying goods, standing on a store that can stock them → start a `pileup` atomic.
+ *  - Carrying goods, not on a suitable store → set a {@link MoveGoal} to the nearest such store.
+ *  - Empty-handed, standing on a harvestable resource its job is allowed to harvest → start a
+ *    `harvest` atomic (the resource's good's harvest atomic, gated by the job's `allowedAtomics`).
+ *  - Empty-handed, not on a resource → set a {@link MoveGoal} to the nearest harvestable resource.
+ *
+ * The atomic id and its duration come from CONTENT, not code: the harvest atomic is the resource
+ * good's `atomics.harvest`, and `duration` is resolved through the tribe's `setatomic` binding →
+ * `atomicAnimations` length (see {@link atomicDuration}). This is the data-driven planner the
+ * roadmap calls for — behavior is the atomic vocabulary, not bespoke per-job logic.
+ *
+ * "Utility" is minimal here (nearest reachable target by Manhattan distance, harvest-or-deposit by
+ * load state); hunger/needs and job assignment are later slices (NeedsSystem/JobSystem). Targets are
+ * scanned in canonical (ascending entity-id) order with a deterministic distance+id tie-break, so
+ * the choice never depends on store insertion history.
+ */
+function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph): void {
+  for (const e of world.query(Settler, Position)) {
+    // Busy: an atomic is running, or the settler is en route to a target. Leave it to play out.
+    if (world.has(e, CurrentAtomic)) continue;
+    if (world.has(e, MoveGoal) || world.has(e, PathRequest) || world.has(e, PathFollow)) continue;
+
+    const settler = world.get(e, Settler);
+    if (settler.jobType === null) continue; // an unemployed settler has no job atomics to run
+
+    const p = world.get(e, Position);
+    const here = terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
+    const load = world.tryGet(e, Carrying);
+
+    if (load !== undefined && load.amount > 0) {
+      // Loaded: take the goods to a store that can stock them.
+      const store = nearestStoreFor(world, ctx, terrain, here, load.goodType);
+      if (store === null) continue; // nowhere to deposit — idle this tick (a later slice may wait/drop)
+      if (storeCell(world, terrain, store) === here) {
+        startAtomic(
+          world,
+          e,
+          PILEUP_ATOMIC_ID,
+          { kind: 'pileup', store },
+          atomicDuration(ctx, settler, PILEUP_ATOMIC_ID),
+          store,
+        );
+      } else {
+        world.add(e, MoveGoal, { cell: storeCell(world, terrain, store) });
+      }
+      continue;
+    }
+
+    // Empty-handed: go harvest. Pick the nearest resource this job is allowed to harvest.
+    const node = nearestHarvestableFor(world, ctx, terrain, here, settler.jobType);
+    if (node === null) continue; // nothing to harvest — idle this tick
+    const res = world.get(node, Resource);
+    if (resourceCell(world, terrain, node) === here) {
+      startAtomic(
+        world,
+        e,
+        res.harvestAtomic,
+        { kind: 'harvest', resource: node, goodType: res.goodType },
+        atomicDuration(ctx, settler, res.harvestAtomic),
+        node,
+      );
+    } else {
+      world.add(e, MoveGoal, { cell: resourceCell(world, terrain, node) });
+    }
+  }
+}
+
+/** The numeric atomic id used for depositing a carried load into a store. The READABLE data binds
+ *  no per-good "pileup" atomic (harvest/produce are good-keyed; pickup=22/pileup are generic), and
+ *  the id is only a content cross-reference / animation join key — the *effect* (typed `pileup`) is
+ *  what the AtomicSystem applies. A constant keeps the planner data-driven where it matters (the
+ *  harvest atomic IS read from content) without inventing a per-good deposit binding the data lacks. */
+const PILEUP_ATOMIC_ID = 23;
+
+/**
+ * Start a {@link CurrentAtomic} on a settler: the executor (AtomicSystem) will advance it and apply
+ * `effect` on completion. `duration` is the animation length in ticks (clamped to ≥1 by the
+ * executor); `target` is the action's object (the resource/store), recorded for render/inspection.
+ */
+function startAtomic(
+  world: World,
+  settler: Entity,
+  atomicId: number,
+  effect: AtomicEffect,
+  duration: number,
+  target: Entity,
+): void {
+  world.add(settler, CurrentAtomic, {
+    atomicId,
+    elapsed: 0,
+    progress: fx.fromInt(0),
+    duration,
+    effect,
+    targetEntity: target,
+    targetTile: null,
+  });
+}
+
+/**
+ * Resolve an atomic's duration (animation length in ticks) through the data: the settler's tribe
+ * binds `(jobType, atomicId)` to an animation name (`setatomic`, last-wins), and `atomicAnimations`
+ * gives that name's `length`. Falls back to {@link DEFAULT_ATOMIC_DURATION} when the chain doesn't
+ * resolve (the readable mod set is a subset of the base animations, and test fixtures may bind
+ * neither) — a missing timing must not hang or zero-out the atomic.
+ */
+function atomicDuration(
+  ctx: SystemContext,
+  settler: { tribe: number; jobType: number | null },
+  atomicId: number,
+): number {
+  if (settler.jobType === null) return DEFAULT_ATOMIC_DURATION;
+  const tribe = ctx.content.tribes.find((t) => t.typeId === settler.tribe);
+  if (tribe === undefined) return DEFAULT_ATOMIC_DURATION;
+  // Last-wins over the file-order bindings (matches the original's config-override semantics).
+  let animation: string | undefined;
+  for (const b of tribe.atomicBindings) {
+    if (b.jobType === settler.jobType && b.atomicId === atomicId) animation = b.animation;
+  }
+  if (animation === undefined) return DEFAULT_ATOMIC_DURATION;
+  const anim = ctx.content.atomicAnimations.find((a) => a.name === animation);
+  const length = anim?.length ?? 0;
+  return length > 0 ? length : DEFAULT_ATOMIC_DURATION;
+}
+
+/** Duration (ticks) used when the atomic→animation→length chain doesn't resolve. A non-zero default
+ *  so an unresolved atomic still takes visible time rather than completing instantly. */
+const DEFAULT_ATOMIC_DURATION = 4;
+
+/**
+ * The nearest harvestable {@link Resource} the given job is allowed to harvest, by fixed-point
+ * Manhattan distance from `here`, with ascending-cell-id as the deterministic tie-break. A resource
+ * is eligible only if it has units remaining AND the job's `allowedAtomics` permits the resource
+ * good's harvest atomic (the data-driven gate — a woodcutter harvests trees, not ore). Returns the
+ * resource entity, or null if none qualifies. Scanned in canonical entity-id order so the result
+ * never depends on store insertion history.
+ */
+function nearestHarvestableFor(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  here: CellId,
+  jobType: number,
+): Entity | null {
+  const allowed = jobAtomics(ctx, jobType);
+  let best: Entity | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  let bestCell = Number.POSITIVE_INFINITY;
+  for (const e of world.canonicalEntities()) {
+    const res = world.tryGet(e, Resource);
+    if (res === undefined || res.remaining <= 0) continue;
+    if (!world.has(e, Position)) continue;
+    if (!allowed.has(res.harvestAtomic)) continue; // data-driven gate: job must permit this atomic
+    const cell = resourceCell(world, terrain, e);
+    const dist = manhattan(terrain, here, cell);
+    if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
+      best = e;
+      bestDist = dist;
+      bestCell = cell;
+    }
+  }
+  return best;
+}
+
+/**
+ * The nearest store (a {@link Building} with a {@link Stockpile}) that can stock `goodType` — i.e.
+ * its building type declares a stock slot for that good and the slot is not already full — by
+ * Manhattan distance from `here`, ascending-cell-id tie-break, scanned in canonical entity-id order.
+ * Returns the store entity or null if none can take the good.
+ */
+function nearestStoreFor(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  here: CellId,
+  goodType: number,
+): Entity | null {
+  let best: Entity | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  let bestCell = Number.POSITIVE_INFINITY;
+  for (const e of world.canonicalEntities()) {
+    if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
+    const stock = world.get(e, Stockpile);
+    const have = stock.amounts.get(goodType) ?? 0;
+    if (have >= stockCapacity(world, ctx, e, goodType)) continue; // full for this good — skip
+    const cell = storeCell(world, terrain, e);
+    const dist = manhattan(terrain, here, cell);
+    if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
+      best = e;
+      bestDist = dist;
+      bestCell = cell;
+    }
+  }
+  return best;
+}
+
+/**
+ * The set of atomic ids a job may run: its `allowedAtomics` ∪ `baseAtomics`, minus `forbiddenAtomics`
+ * (an explicit denial overrides an allow). An unknown jobType yields an empty set (no permissions),
+ * so a settler with a job absent from content harvests nothing rather than everything. This is the
+ * data-driven permission gate from `jobtypes` — the planner picks atomics the job is allowed, never
+ * a hardcoded per-job list.
+ */
+function jobAtomics(ctx: SystemContext, jobType: number): ReadonlySet<number> {
+  const job = ctx.content.jobs.find((j) => j.typeId === jobType);
+  if (job === undefined) return EMPTY_ATOMICS;
+  const set = new Set<number>(job.allowedAtomics);
+  for (const a of job.baseAtomics) set.add(a);
+  for (const a of job.forbiddenAtomics) set.delete(a);
+  return set;
+}
+
+const EMPTY_ATOMICS: ReadonlySet<number> = new Set<number>();
+
+/** The cell a resource node occupies (its Position snapped to a cell). */
+function resourceCell(world: World, terrain: TerrainGraph, e: Entity): CellId {
+  const p = world.get(e, Position);
+  return terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
+}
+
+/** The cell a store building occupies (its Position snapped to a cell). */
+function storeCell(world: World, terrain: TerrainGraph, e: Entity): CellId {
+  const p = world.get(e, Position);
+  return terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
+}
+
+/** Integer Manhattan distance between two cells (a cheap planner heuristic; A* does the real cost). */
+function manhattan(terrain: TerrainGraph, a: CellId, b: CellId): number {
+  const ca = terrain.coordsOf(a);
+  const cb = terrain.coordsOf(b);
+  return Math.abs(ca.x - cb.x) + Math.abs(ca.y - cb.y);
+}
+
+/**
+ * The navigation planner: turn a {@link MoveGoal} on a path-less, request-less entity into a
+ * {@link PathRequest} from the entity's current cell to the goal cell. The PathfindingSystem turns
+ * that into a path and the MovementSystem walks it; when the entity reaches the goal cell the goal is
+ * satisfied and removed. A goal whose request just failed (no route) is left in place but not
+ * re-issued this tick — the failed flag is the planner's signal; a future slice decides abandon/wait/
+ * repath. This is the *where* layer; {@link atomicPlanner} (the *what*) sets the goals.
  *
  * Determinism: no RNG, no wall-clock; entities are visited in the PathFollow/PathRequest-free subset
  * of the deterministic MoveGoal store order, and the action (issue a request, or remove a satisfied
- * goal) is a pure function of the entity's position and goal. No-ops without a terrain graph (a
- * mapless sim has no cells to navigate over, so the determinism golden is untouched).
+ * goal) is a pure function of the entity's position and goal.
  */
-export const aiSystem: System = (world, ctx) => {
-  const terrain = ctx.terrain;
-  if (terrain === undefined) return; // mapless sim: no cells to navigate over
-
+function navigationPlanner(world: World, terrain: TerrainGraph): void {
   for (const e of world.query(Position, MoveGoal)) {
     // Already travelling — a request is queued or a path is being followed. Leave it to play out.
     if (world.has(e, PathRequest) || world.has(e, PathFollow)) continue;
@@ -167,7 +423,7 @@ export const aiSystem: System = (world, ctx) => {
     // Not there yet and not travelling: issue a fresh route request from where we stand to the goal.
     world.add(e, PathRequest, { start: startCell, goal: goalCell, failed: false });
   }
-};
+}
 
 /**
  * The maximum number of {@link PathRequest}s the pathfinder will resolve in a single tick. A*
@@ -389,9 +645,10 @@ export const timeSystem: System = todo('TimeSystem'); // advance clock / day / s
 export const terrainSystem: System = todo('TerrainSystem'); // resource regrowth, fertility (cell graph)
 export const needsSystem: System = todo('NeedsSystem'); // hunger/health + the food/goods chain
 export const progressionSystem: System = todo('ProgressionSystem'); // experience + tech graph (needfor*/allow*/jobEnables*) gates jobs/goods/houses/vehicles
-// aiSystem is a REAL system now (above) — the navigation planner: MoveGoal -> PathRequest. The
-// atomic-utility planner (pick the next atomic for an idle settler) is a later slice on top of it.
-// atomicSystem is a REAL system now (above) — advances CurrentAtomic, applies its effect on completion.
+// aiSystem is a REAL system now (above) — the settler planner: the atomic-utility planner picks the
+// next atomic (harvest→carry→pileup) for each idle settler, and the navigation planner turns the
+// resulting MoveGoal into a PathRequest. atomicSystem (above) advances CurrentAtomic and applies its
+// effect on completion. Behavior lives in these two + the data atomic vocabulary, not bespoke systems.
 export const jobSystem: System = todo('JobSystem'); // match idle settlers to open jobs/workplaces
 // pathfindingSystem is a REAL system now (above) — A* on the cell graph, budgeted/tick.
 export const productionSystem: System = todo('ProductionSystem'); // recipes (goodtypes.productionInputGoods): inputs -> outputs, enforce stock capacity

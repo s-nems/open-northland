@@ -13,12 +13,14 @@ export function testContent(): ContentSet {
     manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
     goods: [
       { typeId: 0, id: 'none' },
-      { typeId: 1, id: 'wood', weight: 1 },
+      // Wood is harvested with atomic 24 (atomicForHarvesting), the join key the planner reads.
+      { typeId: 1, id: 'wood', weight: 1, atomics: { harvest: 24 } },
       { typeId: 2, id: 'plank', weight: 1 },
     ],
     jobs: [
       { typeId: 0, id: 'idle' },
-      { typeId: 1, id: 'woodcutter' },
+      // The woodcutter is permitted the wood harvest atomic (24) — the planner's data-driven gate.
+      { typeId: 1, id: 'woodcutter', allowedAtomics: [24] },
       { typeId: 2, id: 'carpenter' },
       { typeId: 36, id: 'carrier' },
     ],
@@ -49,6 +51,15 @@ export function testContent(): ContentSet {
       { typeId: 0, id: 'grass', walkable: true, buildable: true },
       { typeId: 1, id: 'water', walkable: false, buildable: false },
     ],
-    tribes: [{ typeId: 1, id: 'viking' }],
+    tribes: [
+      {
+        typeId: 1,
+        id: 'viking',
+        // The woodcutter (job 1) plays "viking_chop" for the harvest atomic (24); the planner
+        // resolves its duration through this binding -> atomicAnimations length below.
+        atomicBindings: [{ jobType: 1, atomicId: 24, animation: 'viking_chop' }],
+      },
+    ],
+    atomicAnimations: [{ id: 'viking_chop', name: 'viking_chop', length: 3 }],
   });
 }
