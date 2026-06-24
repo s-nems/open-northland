@@ -346,8 +346,23 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
         (all costs `Fixed`); closed cells are never relaxed (consistent heuristic). **Hands-on:** built
         `dist/`, a 10×10 grid w/ a water wall (gap at y≥8) → 25-step path (0,0)→(9,0), contiguous +
         all-walkable, routes through the gap, detour > the 9-cell straight-line Manhattan; a fully-walled
-        goal → `null`. **Still to do:** the *system* glue — a path-request component + per-tick search
-        budget driving `findPath` from `ctx.terrain`, no-op when terrain is absent.
+        goal → `null`.
+      - [x] **System glue** — `packages/sim/src/systems/index.ts` (`pathfindingSystem` + the
+        `PathRequest` component). The system drains pending `PathRequest`s (start/goal raw cell ids + a
+        `failed` flag) in **ascending entity-id order** (`canonicalEntities()`, a sort — not Map
+        insertion order), up to `PATHFINDING_BUDGET_PER_TICK` (=8) per tick so A* — the heaviest
+        per-call work — stays bounded under crowds; the cut is deterministic (lowest ids first, never a
+        wall-clock cutoff). On success it writes cell-centre fixed-point waypoints into the existing
+        `PathFollow` and removes the request; on failure (no route / unwalkable / out-of-range id) it
+        flags the request `failed` (so the planner can react and the dead query isn't retried every
+        tick) and drops any stale `PathFollow`. Out-of-range cell ids are guarded to "no route" rather
+        than throwing inside the search (a request is boundary input). No-ops entirely when
+        `ctx.terrain` is absent — a mapless sim has nothing to route over, so the determinism golden is
+        untouched. **Hands-on:** compiled-`dist` smoke on a 5×5 walled map → a `PathRequest` resolves to
+        a 13-waypoint detour `(0,0)→…→(4,0)` through the gap, request cleared; two same-seed sims
+        hash-equal (`bee6f39f`); 12 requests → exactly 8 served tick 1, 0 left after tick 2; a mapless
+        sim leaves the request untouched. **Still to do:** MovementSystem consuming `PathFollow`; the
+        AISystem issuing `PathRequest`s.
 - [ ] MovementSystem (fixed-point) following paths.
 - [ ] **Atomic planner slice:** AISystem picks an atomic (utility over the job's allowed atomics);
       AtomicSystem executes it to completion and applies its effect. One settler: harvest wood →

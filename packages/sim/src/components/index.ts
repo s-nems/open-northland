@@ -66,3 +66,13 @@ export const Carrying = defineComponent<{ goodType: number; amount: number }>('C
 export const PathFollow = defineComponent<{ waypoints: Array<{ x: Fixed; y: Fixed }>; index: number }>(
   'PathFollow',
 );
+
+/**
+ * A pending navigation request: route this entity from cell `start` to cell `goal`. The
+ * PathfindingSystem drains these (budgeted per tick), runs A* on `ctx.terrain`, and on success
+ * replaces the entity's {@link PathFollow} with the result then removes the request; on failure
+ * (no route / unwalkable endpoint / no terrain) it sets `failed` so the planner can react and
+ * stops retrying the same dead query every tick. `start`/`goal` are raw row-major cell ids
+ * (`y*width + x`) — plain numbers here so this component stays serializable like every other.
+ */
+export const PathRequest = defineComponent<{ start: number; goal: number; failed: boolean }>('PathRequest');
