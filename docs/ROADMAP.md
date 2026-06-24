@@ -93,10 +93,21 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             `.cif` CStringArray). Ported from `CBobManager.cs` `CBobManager(CFile)` /
             `Storable_SaveData` / `ReadBobDataFromMemory` + `SBobData`. **Hands-on:** all 247 real
             `.bmd` decode + round-trip structurally byte-equal (e.g. `ls_gui_window.bmd` = 193 bobs).
-      - [ ] **Packed-line RLE → frame pixels.** Decode each bob's scanlines from the packed-line
-            stream (`lineControl[absoluteY]` = `[xMin (10b)][offset (22b)]`), applying the
-            per-bob-type codec (1-bit mask / 8-bit / double-byte) → indexed pixels, then palette/remap
-            → RGBA. Ref `CBobManager.cs` `PrintBob_*Core` + the packed-line walkers (~line 1700+).
+      - [x] **Packed-line RLE → frame pixels.** Done — `decodeBobFrame(bmd, bobIndex)` in
+            `decoders/bmd.ts` walks one bob's scanlines from the packed-line stream
+            (`lineControl[area.y + line]` = `[xMin (10b)][offset (22b)]`, `0xFFFFFFFF` = empty row;
+            within a line, `0` terminates, high-bit-clear byte = raw run of `count = b & 0x7F`
+            pixels, high-bit-set = transparent skip run). Dispatches on bob `type`: 8-bit (1)/TimeMask
+            (3) = one index byte/pixel; 1-bit mask (2) = 0/1 byte drawn as index 0xFF; Double8Bit (4) =
+            two bytes/pixel (index + skipped byte); empty (0) = transparent frame. Yields a `BobFrame`
+            {width, height, indexed `pixels`, opacity `mask`} — index 0 is a real colour, so a parallel
+            mask carries transparency (like `.pcx` indexed output; palette→RGBA stays a separate step).
+            Out-of-frame columns are clipped, a truncated stream stops gracefully (mirrors the original's
+            clipped `Draw_SetPixel`). Ported from `CBobManager.cs` `PrintBob_*Core` + `PrintPackedLine_*`
+            + `Generate_PackLine_*` (the encode inverse pins the byte layout). **Hands-on:** decodes all
+            bobs of real `ls_ground.bmd` (95 bobs: 44×8-bit, 50×double, 1 empty; 77 725 opaque px) and
+            `ls_menu_logos.bmd` (20 double-byte; a 711×572 logo → 252 193 opaque px); an independent
+            raw-run recount confirms no decoded bob ever writes more pixels than its runs hold.
       - [ ] **Atlas PNG + anim JSON.** Pack decoded frames into an atlas via `encodePng`; emit frame
             rects + per-bob metadata as anim JSON. Validate against the OpenVikings oracle.
 - [ ] One map (`map.cif` + its `.ini`/`.inc` parts) decoded to IR.

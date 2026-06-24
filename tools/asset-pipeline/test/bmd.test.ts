@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BOB_MASK_INDEX,
+  BOB_TYPE_1BIT,
+  BOB_TYPE_8BIT,
+  BOB_TYPE_DOUBLE8BIT,
+  BOB_TYPE_EMPTY,
+  BOB_TYPE_TIMEMASK,
   type Bmd,
   type BobRecord,
   PACKED_OFFSET_MASK,
   PACKED_X_SHIFT,
   decodeBmd,
+  decodeBobFrame,
   encodeBmd,
 } from '../src/decoders/bmd.js';
 
@@ -228,5 +235,131 @@ describe('line-control packing constants', () => {
     const ctrl = (12 << PACKED_X_SHIFT) | 345;
     expect(ctrl >>> PACKED_X_SHIFT).toBe(12);
     expect(ctrl & PACKED_OFFSET_MASK).toBe(345);
+  });
+});
+
+/**
+ * `decodeBobFrame` packed-line RLE -> indexed pixels tests. Each case hand-builds a tiny `Bmd` with one
+ * bob, a packed-line byte stream, and per-row line-control words, then asserts the decoded frame's
+ * `pixels`/`mask`. Bytes are the codec from CBobManager `PrintPackedLine_*`: `0` terminates a line, a
+ * byte with the high bit clear is a raw run of `count = b & 0x7F` pixels (data inline), high bit set is
+ * a transparent skip run of `count`. The control word packs `[xMin (10b)][offset into packed data (22b)]`.
+ */
+const PACKED_EMPTY = 0xffffffff;
+
+/** Builds a single-bob `Bmd` for the codec tests. Each `lines[y]` is the offset into `packed` for row y. */
+const frameBmd = (
+  type: number,
+  width: number,
+  height: number,
+  packed: number[],
+  lines: (number | { offset: number; xMin: number } | typeof PACKED_EMPTY)[],
+  areaX = 0,
+): Bmd => ({
+  version: 0,
+  firstBobId: 0,
+  bobCount: 1,
+  generatedNonEmptyLines: 0,
+  generatedEmptyLines: 0,
+  generatedPackedLines: 0,
+  bobs: [{ type, area: { x: areaX, y: 0, width, height }, misc: 0 }],
+  packedLineData: Uint8Array.from(packed),
+  lineControl: Uint32Array.from(
+    lines.map((l) =>
+      l === PACKED_EMPTY
+        ? 0xffffffff
+        : typeof l === 'number'
+          ? l
+          : ((l.xMin << PACKED_X_SHIFT) | l.offset) >>> 0,
+    ),
+  ),
+});
+
+describe('decodeBobFrame', () => {
+  it('decodes an 8-bit raw run into indices with a full opaque mask', () => {
+    // Row 0 at offset 0: raw run of 3 -> [0x05,0x07,0x09], then terminator 0.
+    const bmd = frameBmd(BOB_TYPE_8BIT, 3, 1, [0x03, 0x05, 0x07, 0x09, 0x00], [0]);
+    const frame = decodeBobFrame(bmd, 0);
+    expect(frame.width).toBe(3);
+    expect(frame.height).toBe(1);
+    expect([...frame.pixels]).toEqual([0x05, 0x07, 0x09]);
+    expect([...frame.mask]).toEqual([1, 1, 1]);
+  });
+
+  it('honours xMin and skip runs (transparent gaps stay mask 0)', () => {
+    // Frame width 6. Row 0 starts at xMin=1: raw run of 2 [0x11,0x22], skip 1, raw run of 1 [0x33].
+    // Columns: 1,2 filled; 3 skipped; 4 filled; 0 and 5 never touched.
+    const packed = [0x02, 0x11, 0x22, 0x81, 0x01, 0x33, 0x00];
+    const bmd = frameBmd(BOB_TYPE_8BIT, 6, 1, packed, [{ offset: 0, xMin: 1 }]);
+    const frame = decodeBobFrame(bmd, 0);
+    expect([...frame.pixels]).toEqual([0x00, 0x11, 0x22, 0x00, 0x33, 0x00]);
+    expect([...frame.mask]).toEqual([0, 1, 1, 0, 1, 0]);
+  });
+
+  it('treats a 0xFFFFFFFF control word as a fully transparent row', () => {
+    const packed = [0x02, 0xaa, 0xbb, 0x00];
+    // Row 0 transparent, row 1 draws two pixels at offset 0.
+    const bmd = frameBmd(BOB_TYPE_8BIT, 2, 2, packed, [PACKED_EMPTY, 0]);
+    const frame = decodeBobFrame(bmd, 0);
+    expect([...frame.pixels]).toEqual([0x00, 0x00, 0xaa, 0xbb]);
+    expect([...frame.mask]).toEqual([0, 0, 1, 1]);
+  });
+
+  it('decodes a 1-bit mask: set bits become index 0xFF, clear bits stay transparent', () => {
+    // Mask raw run of 3 stored as 0/1 bytes [1,0,1] -> cols 0 and 2 set, col 1 clear.
+    const packed = [0x03, 0x01, 0x00, 0x01, 0x00];
+    const bmd = frameBmd(BOB_TYPE_1BIT, 3, 1, packed, [0]);
+    const frame = decodeBobFrame(bmd, 0);
+    expect([...frame.pixels]).toEqual([BOB_MASK_INDEX, 0x00, BOB_MASK_INDEX]);
+    expect([...frame.mask]).toEqual([1, 0, 1]);
+  });
+
+  it('decodes a double-byte bob: first byte is the index, the second is skipped', () => {
+    // Raw run of 2 double-pixels: [idx=0x40, skip=0x99][idx=0x50, skip=0x88], then terminator.
+    const packed = [0x02, 0x40, 0x99, 0x50, 0x88, 0x00];
+    const bmd = frameBmd(BOB_TYPE_DOUBLE8BIT, 2, 1, packed, [0]);
+    const frame = decodeBobFrame(bmd, 0);
+    expect([...frame.pixels]).toEqual([0x40, 0x50]);
+    expect([...frame.mask]).toEqual([1, 1]);
+  });
+
+  it('decodes a TimeMask bob like 8-bit (raw indices)', () => {
+    const bmd = frameBmd(BOB_TYPE_TIMEMASK, 2, 1, [0x02, 0x12, 0x34, 0x00], [0]);
+    const frame = decodeBobFrame(bmd, 0);
+    expect([...frame.pixels]).toEqual([0x12, 0x34]);
+    expect([...frame.mask]).toEqual([1, 1]);
+  });
+
+  it('yields an all-transparent frame for an empty (type 0) bob', () => {
+    const bmd = frameBmd(BOB_TYPE_EMPTY, 2, 2, [], [0, 0]);
+    const frame = decodeBobFrame(bmd, 0);
+    expect(frame.width).toBe(2);
+    expect(frame.height).toBe(2);
+    expect([...frame.mask]).toEqual([0, 0, 0, 0]);
+  });
+
+  it('clips columns outside the frame (negative area.x shifts the run left)', () => {
+    // area.x = 2: a run starting at xMin=0 maps to frame columns -2,-1,0 -> only the last lands.
+    const packed = [0x03, 0xa0, 0xb0, 0xc0, 0x00];
+    const bmd = frameBmd(BOB_TYPE_8BIT, 2, 1, packed, [{ offset: 0, xMin: 0 }], 2);
+    const frame = decodeBobFrame(bmd, 0);
+    // Columns -2 (0xA0) and -1 (0xB0) are clipped; column 0 (0xC0) lands at frame col 0; col 1 untouched.
+    expect([...frame.pixels]).toEqual([0xc0, 0x00]);
+    expect([...frame.mask]).toEqual([1, 0]);
+  });
+
+  it('tolerates a truncated raw run without throwing (stops like the clipped original)', () => {
+    // Raw run claims 4 pixels but only 2 bytes of data exist before the buffer ends.
+    const packed = [0x04, 0x01, 0x02];
+    const bmd = frameBmd(BOB_TYPE_8BIT, 4, 1, packed, [0]);
+    const frame = decodeBobFrame(bmd, 0);
+    expect([...frame.pixels]).toEqual([0x01, 0x02, 0x00, 0x00]);
+    expect([...frame.mask]).toEqual([1, 1, 0, 0]);
+  });
+
+  it('throws on an out-of-range bob index', () => {
+    const bmd = frameBmd(BOB_TYPE_8BIT, 1, 1, [0x01, 0x00, 0x00], [0]);
+    expect(() => decodeBobFrame(bmd, 1)).toThrow(/out of range/);
+    expect(() => decodeBobFrame(bmd, -1)).toThrow(/out of range/);
   });
 });

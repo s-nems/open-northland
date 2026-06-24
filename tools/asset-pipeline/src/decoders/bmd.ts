@@ -50,6 +50,20 @@ const BOB_RECORD_BYTES = 24; // i32 type + 4×i32 rect + u32 misc
 export const PACKED_OFFSET_MASK = 0x003fffff; // low 22 bits = byte offset into packed-line data
 export const PACKED_X_SHIFT = 22; // high 10 bits = xMin (first non-transparent column)
 
+/** An empty/absent bob slot — no pixels (CBobManager `PrintBob` returns early on `Type == 0`). */
+export const BOB_TYPE_EMPTY = 0;
+/** 8-bit bob: each raw-run byte is a palette index (CBobManager `TBobType.Bob8Bit`). */
+export const BOB_TYPE_8BIT = 1;
+/** 1-bit mask bob: each raw-run byte is 0/1; set pixels draw as index 0xFF (`TBobType.Bob1Bit`). */
+export const BOB_TYPE_1BIT = 2;
+/** TimeMask bob: same packed layout as 8-bit; print modes reinterpret it (`TBobType.TimeMask`). */
+export const BOB_TYPE_TIMEMASK = 3;
+/** Double-byte bob: each raw-run pixel is two bytes [index][skip] (`TBobType.Double8Bit`). */
+export const BOB_TYPE_DOUBLE8BIT = 4;
+
+/** Index written for a set pixel of a 1-bit mask bob (CBobManager draws masks as palette entry 0xFF). */
+export const BOB_MASK_INDEX = 0xff;
+
 /** An axis-aligned bob rectangle (origin + size), all signed ints (offsets can be negative). */
 export interface BobArea {
   readonly x: number;
@@ -329,4 +343,118 @@ export function encodeBmd(bmd: Bmd): Uint8Array {
   writeCMemory(w, lineMem);
 
   return Uint8Array.from(w.result());
+}
+
+/** Sentinel line-control word meaning "this scanline is fully transparent" (CBobManager `0xFFFFFFFF`). */
+const LINE_CONTROL_EMPTY = 0xffffffff;
+
+/**
+ * One decoded bob frame: indexed pixels plus a parallel opacity mask. Index 0 is a real palette colour
+ * here (transparency is per-pixel via the codec's skip runs, not a reserved index), so a renderer needs
+ * {@link mask} to know which pixels were actually written; unwritten pixels keep `index 0`, `mask 0`.
+ * Convert to RGBA by sampling a palette at each `mask=1` pixel (the bob's palette lives outside the `.bmd`).
+ */
+export interface BobFrame {
+  /** Frame width in pixels (the bob's `area.width`). */
+  readonly width: number;
+  /** Frame height in pixels (the bob's `area.height`). */
+  readonly height: number;
+  /** Row-major (top→bottom) palette indices, length `width * height`. Unwritten pixels are 0. */
+  readonly pixels: Uint8Array;
+  /** Row-major opacity: 1 where the codec wrote a pixel, 0 where it skipped (transparent). */
+  readonly mask: Uint8Array;
+}
+
+/**
+ * Decodes one bob's packed-line RLE into an indexed-pixel frame + opacity mask. Pure: it reads only the
+ * already-parsed {@link Bmd} blocks, so palette/atlas concerns stay out of the codec (mirrors how `.pcx`
+ * yields indexed pixels and `expandToRgba` is a separate step).
+ *
+ * Format (ported from CBobManager `PrintBob_*Core` + the `PrintPackedLine_*` walkers): the bob's `area`
+ * gives the frame size and, via `area.y`, the first `lineControl` index. For each of `height` scanlines,
+ * `lineControl[area.y + line]` is either {@link LINE_CONTROL_EMPTY} (fully transparent row) or
+ * `[xMin (10b)][offset (22b)]`. From `packedLineData[offset]` we walk control bytes until a `0`
+ * terminator: a byte with the high bit clear is a **raw run** of `count = b & 0x7F` pixels whose data
+ * follows inline; high bit set is a **skip run** (transparent) of `count` pixels. Either way the cursor
+ * advances `count` columns. Absolute column `c` maps to frame column `c - area.x`.
+ *
+ * Per-type pixel width within a raw run: 8-bit/TimeMask store one index byte each; Double8Bit stores two
+ * bytes each (index then a skipped byte); 1-bit masks store one 0/1 byte each, drawn as {@link BOB_MASK_INDEX}.
+ * An empty bob (`type 0`) or non-positive size yields a 0×0… frame sized to the area with an all-transparent mask.
+ *
+ * Throws a `bmd:`-prefixed error on an out-of-range `bobIndex` (a programmer error). A structurally
+ * corrupt packed-line stream is tolerated, not thrown: the walker stops at the buffer end and at any
+ * column outside the frame, exactly like the original's clipped `Draw_SetPixel` (a recoverable boundary).
+ */
+export function decodeBobFrame(bmd: Bmd, bobIndex: number): BobFrame {
+  if (bobIndex < 0 || bobIndex >= bmd.bobs.length) {
+    throw new Error(`bmd: bob index ${bobIndex} out of range (have ${bmd.bobs.length} bobs)`);
+  }
+  const bob = bmd.bobs[bobIndex] as BobRecord;
+  const width = Math.max(0, bob.area.width);
+  const height = Math.max(0, bob.area.height);
+  const pixels = new Uint8Array(width * height);
+  const mask = new Uint8Array(width * height);
+
+  // Empty slot / degenerate size: an all-transparent frame, sized to the area.
+  if (bob.type === BOB_TYPE_EMPTY || width === 0 || height === 0) {
+    return { width, height, pixels, mask };
+  }
+
+  // Per raw-run pixel: how many packed bytes it consumes, and the index it yields from those bytes.
+  const isDouble = bob.type === BOB_TYPE_DOUBLE8BIT;
+  const isMask = bob.type === BOB_TYPE_1BIT;
+  const bytesPerPixel = isDouble ? 2 : 1;
+  const packed = bmd.packedLineData;
+
+  for (let line = 0; line < height; line++) {
+    const ctrlIndex = bob.area.y + line;
+    if (ctrlIndex < 0 || ctrlIndex >= bmd.lineControl.length) continue;
+    const ctrl = bmd.lineControl[ctrlIndex] as number;
+    if (ctrl === LINE_CONTROL_EMPTY) continue;
+
+    const xMin = ctrl >>> PACKED_X_SHIFT;
+    let pos = ctrl & PACKED_OFFSET_MASK;
+    if (pos >= packed.length) continue;
+
+    // Absolute column cursor; frame column = absoluteX - area.x.
+    let absX = xMin;
+    const rowBase = line * width;
+
+    let b = packed[pos] as number;
+    while (b !== 0) {
+      pos++;
+      const count = b & 0x7f;
+      const isRaw = (b & 0x80) === 0;
+
+      if (isRaw) {
+        for (let i = 0; i < count; i++) {
+          if (pos + bytesPerPixel > packed.length) {
+            return { width, height, pixels, mask }; // truncated stream: stop, like the clipped original
+          }
+          const value = packed[pos] as number;
+          pos += bytesPerPixel; // double-byte consumes the trailing skip byte too
+          const col = absX + i - bob.area.x;
+          if (col >= 0 && col < width) {
+            if (isMask) {
+              if (value !== 0) {
+                pixels[rowBase + col] = BOB_MASK_INDEX;
+                mask[rowBase + col] = 1;
+              }
+            } else {
+              pixels[rowBase + col] = value;
+              mask[rowBase + col] = 1;
+            }
+          }
+        }
+      }
+      // Skip runs (and the not-drawn pixels of a mask raw run) leave mask=0 — already transparent.
+
+      absX += count;
+      if (pos >= packed.length) break;
+      b = packed[pos] as number;
+    }
+  }
+
+  return { width, height, pixels, mask };
 }
