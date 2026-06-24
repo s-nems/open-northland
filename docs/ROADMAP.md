@@ -84,7 +84,8 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
       landscape/atomic-animations) below build on this. **Wired into the CLI** — `cli.ts`
       `resolveIniSources` (mod `.ini` preferred per golden rule #4) + `buildIr` read the readable
       sources, run the extractors, and `parseContentSet`-validate them into `content/ir.json`. Verified
-      end-to-end on the real game: 65 goods, 55 jobs, 87 landscape, 41 tribes, 896 atomic animations.
+      end-to-end on the real game: 65 goods, 55 jobs, 105 weapons, 87 landscape, 41 tribes, 896 atomic
+      animations.
 - [x] **Atomic vocabulary extraction** (free, from readable data): done in `decoders/ini.ts`
       (`extractJobs`/`extractTribes` + `atomicFor*` in `extractGoods`). Captures `jobtypes`
       `allowatomic`/`baseatomics`, `tribetypes` `setatomic` (atomic→animation per tribe),
@@ -97,6 +98,16 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
       The event `type`/`value` vocabulary is undocumented — captured faithfully, interpreted by the
       Phase-2 AtomicSystem (like `AtomicId`, a raw id with no master table). **Wired into the CLI**
       via `buildIr` (see the `.ini` parser item) — `npm run pipeline` now emits real `content/ir.json`.
+- [x] **Weapon-type extraction:** done — `extractWeapons` in `decoders/ini.ts` reduces the mod's
+      readable `DataCnmd/types/weapons.ini` `[weapontype]` records (the base game's `weapontypes.cif`
+      is the encrypted twin; preferring the `.ini` per golden rule #4) to `WeaponType` IR:
+      `minimumrange`/`maximumrange` → `minRange`/`maxRange`, repeated `damagevalue <armorClass> <value>`
+      → the armor-class-keyed `damage` record, and `jobtype` (the wielding job, cross-checked by
+      `validateCrossReferences`). The combat extras (`soundtype_*`/`munitiontype`/`createsmoke`/
+      `damagetype`) aren't in the `WeaponType` schema yet — they belong with the Phase-4 CombatSystem.
+      **Wired into the CLI** via `resolveIniSources` + `buildIr`. **Hands-on:** `npm run pipeline` on
+      the real game → **105 weapons**, all 105 `jobType` refs resolving against the 55-job table (0
+      dangling); e.g. `wooden_spear` minRange 1/maxRange 2, damage over armor classes 0..7.
 - [ ] `.bmd` bob decoder → atlas PNG + anim JSON (ref `CBobManager.cs`, `CBitmap.cs`). **Hardest.**
       - [x] **`.bmd` container parse** — `tools/asset-pipeline/src/decoders/bmd.ts` (`decodeBmd`:
             storable root `[u32 id=0x3F4][u32 ver]` + a 0x1C-byte header `{firstBobId, bobCount,
