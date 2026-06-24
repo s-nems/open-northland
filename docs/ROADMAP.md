@@ -154,12 +154,25 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             → 50 bindings (all with shadows, 8 distinct palettes), and joining onto `extractPaletteIndex`
             now resolves **50/50** to a `.pcx` (40/50 before the case fix); e.g.
             `cr_ani_body_00.bmd` → `bear01` → `creatures/bear.pcx`.
-      - [ ] **Atlas oracle pixel-diff + binding wiring.** Remaining: the richer mod `[jobbasegraphics]`
-            variant (indexed body/head bobs + `gfxpalettebasebody`/`gfxpalettebasehead`/`gfxpaletterandom`),
-            the `.cif`-only graphics records (most of the binding leg), wiring `convertBmdTree` into the
-            CLI (resolve each binding's palette `.pcx` → `decodePcx` trailer → `bmdToAtlas`), then compare
-            an emitted atlas frame against the OpenVikings render pixel-for-pixel (needs an owned game
-            copy + the oracle; an agent can't self-judge it).
+      - [x] **`[jobbasegraphics]` binding (richer mod leg).** `extractJobBaseGraphics` in
+            `decoders/ini.ts` reduces the mod's `DataCnmd/types/humanstype/jobgraphics.ini`
+            `[jobbasegraphics]` records to `JobBaseGraphicsBinding`s — the second binding skin alongside
+            the flat `[jobgraphics]` one. A human draws from an indexed **body** bob plus numbered
+            **head** bobs: each `gfxbobmanagerbody/head <index> "<bmd>" ["<shadow>"]` line puts the `.bmd`
+            path on `values[1]` (the leading int slot index occupies `values[0]` — the structural reason
+            it can't reuse `extractGraphicsBindings`, whose path is on `values[0]`). Palettes split three
+            ways (`gfxpalettebasebody`/`gfxpalettebasehead`/`gfxpaletterandom`), all optional and
+            lower-cased to join onto `extractPaletteIndex` case-insensitively; head bobs carry no shadow.
+            A record with no usable body bob is skipped (matches the other index extractors). **Hands-on:**
+            real mod `jobgraphics.ini` → 72 bindings (72 body slots, 143 head slots; 68 body / 61 head /
+            61 random palettes — matching a raw `grep`/`awk` count), 14/29 distinct palette names resolve
+            against `palettes.ini` (the rest are `[GfxPalette16]`/`.cif`-only character-tint palettes —
+            `vik_man_base`, `hero_*` — a later leg).
+      - [ ] **Atlas oracle pixel-diff + binding wiring.** Remaining: the `.cif`-only graphics records
+            (most of the binding leg), wiring `convertBmdTree` into the CLI (resolve each binding's
+            palette `.pcx` → `decodePcx` trailer → `bmdToAtlas`), then compare an emitted atlas frame
+            against the OpenVikings render pixel-for-pixel (needs an owned game copy + the oracle; an
+            agent can't self-judge it).
 - [ ] One map (`map.cif` + its `.ini`/`.inc` parts) decoded to IR.
 - **Exit:** `npm run pipeline` produces a validated `content/` (types + atlases + one map), decoded
   graphics verified against the oracle.
