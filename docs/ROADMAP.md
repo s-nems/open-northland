@@ -38,6 +38,14 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
       sum) as the lookup key, like the original. Verified against real `data0001.lib` header.
 - [ ] Palette + `.pcx` decoder → PNG (ref `CPalette.cs`, `CPicture.cs`). **Validate against the
       OpenVikings oracle** (it renders the originals) pixel-for-pixel.
+      - [x] **`.pcx` decode + embedded palette** — `tools/asset-pipeline/src/decoders/pcx.ts`
+            (`decodePcx`: header → per-row RLE → indexed pixels + 256-RGB palette via the 0x0C
+            trailer; `expandToRgba` applies the palette; `encodePcx` is the round-trip inverse, no
+            committed fixtures). Format ported from `CPicture.cs` `UnpackPCX` / `CPalette.cs`.
+      - [ ] **PNG container encode** (RGBA → PNG bytes: zlib + IHDR/IDAT/IEND) and wire `decodePcx`
+            into the CLI so `npm run pipeline` emits `.png`. **Then** the oracle pixel-diff.
+      - [ ] Standalone `CPalette` (id 0x3F6) decode — raw 0x400 `[B,G,R,_]×256` blob from `.cif`/`.lib`
+            graphs (the `.pcx` trailer covers picture palettes; this is for bobs/maps).
 - [ ] `.ini` rule parser → typed IR (note base `Data/logic/*.ini` is the primary readable source;
       handle the `<CULTURES_CIF_BEGIN>` header line; decode text as **CP1250**, not UTF-8).
 - [x] **Atomic vocabulary extraction** (free, from readable data): done in `decoders/ini.ts`
