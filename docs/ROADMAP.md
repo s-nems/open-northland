@@ -168,11 +168,24 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             61 random palettes — matching a raw `grep`/`awk` count), 14/29 distinct palette names resolve
             against `palettes.ini` (the rest are `[GfxPalette16]`/`.cif`-only character-tint palettes —
             `vik_man_base`, `hero_*` — a later leg).
-      - [ ] **Atlas oracle pixel-diff + binding wiring.** Remaining: the `.cif`-only graphics records
-            (most of the binding leg), wiring `convertBmdTree` into the CLI (resolve each binding's
-            palette `.pcx` → `decodePcx` trailer → `bmdToAtlas`), then compare an emitted atlas frame
-            against the OpenVikings render pixel-for-pixel (needs an owned game copy + the oracle; an
-            agent can't self-judge it).
+      - [x] **`convertBmdTree` wired into the CLI (readable leg).** `cli.ts` `resolveGraphicsBindings`
+            reads `animals/jobgraphics.ini` + `palettes.ini` → `extractGraphicsBindings` +
+            `extractPaletteIndex`; `convertBmdTree` resolves each binding's palette `editname` → `.pcx`
+            via the index, decodes the `.pcx` trailer palette, runs `bmdToAtlas` on the body `.bmd`, and
+            writes `<bmd>.png` (atlas sheet) + `<bmd>.atlas.json` (per-bob manifest) as siblings under
+            `--out`. Both the `.bmd` and palette `.pcx` are read from the just-unpacked `--out` tree;
+            `indexOutTree` resolves the extractors' lower-cased refs to the real mixed-case on-disk paths
+            (case-insensitive, like the original). Per-binding boundary failures (unknown palette, missing
+            file, palette-less `.pcx`, malformed `.bmd`) are warned-and-skipped, never fatal. **Hands-on:**
+            `npm run pipeline` on the real game → all **50/50** readable bindings resolve, collapsing onto
+            **2 distinct** body `.bmd`s (`cr_ani_body_00/01` — the animals are one geometry recoloured per
+            creature, so the last binding's palette wins per file); `cr_ani_body_00.png` = a valid
+            1024×6037 RGBA atlas, 3120 frames (1410 opaque). Per-creature recolour naming belongs with the
+            `[jobbasegraphics]`/`.cif` legs (the `editname` is the only per-creature differentiator).
+      - [ ] **Atlas oracle pixel-diff + remaining binding legs.** Remaining: the `.cif`-only graphics
+            records + the mod `[jobbasegraphics]` skin (per-creature recolour output naming), then compare
+            an emitted atlas frame against the OpenVikings render pixel-for-pixel (needs an owned game copy
+            + the oracle; an agent can't self-judge it).
 - [ ] One map (`map.cif` + its `.ini`/`.inc` parts) decoded to IR.
 - **Exit:** `npm run pipeline` produces a validated `content/` (types + atlases + one map), decoded
   graphics verified against the oracle.

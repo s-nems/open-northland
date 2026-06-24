@@ -5,15 +5,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   bmdToAtlas,
   buildIr,
+  convertBmdTree,
   convertPcxTree,
   libMemberRelPath,
   parseArgs,
   pcxToPng,
   resolveArgs,
+  resolveGraphicsBindings,
   resolveIniSources,
   unpackLibTree,
 } from '../src/cli.js';
 import { BOB_TYPE_8BIT, type Bmd, PACKED_X_SHIFT, encodeBmd } from '../src/decoders/bmd.js';
+import type { BmdPaletteBinding, PaletteAlias } from '../src/decoders/ini.js';
 import { encodeLib } from '../src/decoders/lib.js';
 import { decodePcx, encodePcx, expandToRgba } from '../src/decoders/pcx.js';
 import { decodePng, encodePng } from '../src/decoders/png.js';
@@ -42,6 +45,22 @@ const samplePcx = (): { bytes: Uint8Array; width: number; height: number } => {
   const height = 3;
   const pixels = Uint8Array.from([0, 0, 1, 200, 5, 5, 5, 5, 9, 0, 9, 0]);
   return { bytes: encodePcx({ width, height, pixels, palette: rampPalette() }), width, height };
+};
+
+/** One 8-bit bob (id firstBobId=10), a 2×1 raw run of indices [4,8], serialized as a real `.bmd`. */
+const sampleBmdBytes = (): Uint8Array => {
+  const bmd: Bmd = {
+    version: 0,
+    firstBobId: 10,
+    bobCount: 1,
+    generatedNonEmptyLines: 0,
+    generatedEmptyLines: 0,
+    generatedPackedLines: 0,
+    bobs: [{ type: BOB_TYPE_8BIT, area: { x: 0, y: 0, width: 2, height: 1 }, misc: 0 }],
+    packedLineData: Uint8Array.from([0x02, 4, 8, 0x00]),
+    lineControl: Uint32Array.from([(0 << PACKED_X_SHIFT) | 0]),
+  };
+  return encodeBmd(bmd);
 };
 
 describe('parseArgs', () => {
@@ -100,22 +119,6 @@ describe('pcxToPng', () => {
 });
 
 describe('bmdToAtlas', () => {
-  /** One 8-bit bob (id firstBobId=10), a 2×1 raw run of indices [4,8], serialized as a real `.bmd`. */
-  const sampleBmdBytes = (): Uint8Array => {
-    const bmd: Bmd = {
-      version: 0,
-      firstBobId: 10,
-      bobCount: 1,
-      generatedNonEmptyLines: 0,
-      generatedEmptyLines: 0,
-      generatedPackedLines: 0,
-      bobs: [{ type: BOB_TYPE_8BIT, area: { x: 0, y: 0, width: 2, height: 1 }, misc: 0 }],
-      packedLineData: Uint8Array.from([0x02, 4, 8, 0x00]),
-      lineControl: Uint32Array.from([(0 << PACKED_X_SHIFT) | 0]),
-    };
-    return encodeBmd(bmd);
-  };
-
   it('decodes a .bmd, packs an atlas, and yields a PNG-encodable image + manifest', () => {
     const atlas = bmdToAtlas(sampleBmdBytes(), rampPalette());
     expect(atlas.manifest.frames).toHaveLength(1);
@@ -301,6 +304,139 @@ describe('convertPcxTree', () => {
 
   it('throws when the game dir does not exist (a real argument error, not per-file)', async () => {
     await expect(convertPcxTree(join(game, 'nope'), out)).rejects.toThrow();
+  });
+});
+
+describe('convertBmdTree', () => {
+  let out: string;
+
+  beforeEach(async () => {
+    out = await mkdtemp(join(tmpdir(), 'vinland-bmd-'));
+  });
+
+  afterEach(async () => {
+    await rm(out, { recursive: true, force: true });
+  });
+
+  /** Lays down a palette `.pcx` and a body `.bmd` under <out> at MIXED-case paths (like the real lib). */
+  const layDownAssets = async (): Promise<void> => {
+    await mkdir(join(out, 'Data', 'Pal'), { recursive: true });
+    await mkdir(join(out, 'Data', 'Bobs'), { recursive: true });
+    await writeFile(join(out, 'Data', 'Pal', 'Bear01.pcx'), samplePcx().bytes);
+    await writeFile(join(out, 'Data', 'Bobs', 'Body.bmd'), sampleBmdBytes());
+  };
+
+  /** A binding + palette index referencing the laid-down assets by their LOWER-cased (normalized) paths. */
+  const sampleBinding = (): { bindings: BmdPaletteBinding[]; palettes: PaletteAlias[] } => ({
+    bindings: [
+      { bmd: 'data/bobs/body.bmd', shadowBmd: undefined, paletteName: 'bear01', tribeId: 1, jobId: 2 },
+    ],
+    palettes: [{ name: 'bear01', gfxFile: 'data/pal/bear01.pcx' }],
+  });
+
+  it('resolves a binding to its palette .pcx + body .bmd and writes an atlas PNG + manifest', async () => {
+    await layDownAssets();
+    const { bindings, palettes } = sampleBinding();
+
+    const done = await convertBmdTree(bindings, palettes, out);
+
+    expect(done).toHaveLength(1);
+    // The case-insensitive resolution maps the normalized refs onto the real mixed-case on-disk paths.
+    expect(done[0]?.png).toBe(join('Data', 'Bobs', 'Body.png'));
+    expect(done[0]?.manifest).toBe(join('Data', 'Bobs', 'Body.atlas.json'));
+    // The emitted PNG decodes (a valid RGBA sheet) and the manifest JSON round-trips its frame table.
+    const decoded = decodePng(await readFile(join(out, 'Data', 'Bobs', 'Body.png')));
+    expect(decoded.width).toBeGreaterThan(0);
+    const manifest = JSON.parse(await readFile(join(out, 'Data', 'Bobs', 'Body.atlas.json'), 'utf8'));
+    expect(manifest.frames).toHaveLength(1);
+    expect(manifest.frames[0].bobId).toBe(10);
+    expect(manifest.width).toBe(decoded.width);
+    expect(manifest.height).toBe(decoded.height);
+  });
+
+  it('skips a binding whose palette editname is not in the index, with a warning', async () => {
+    await layDownAssets();
+    const { bindings } = sampleBinding();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const done = await convertBmdTree(bindings, [], out); // empty palette index
+
+    expect(done).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/unknown palette "bear01"/));
+    warn.mockRestore();
+  });
+
+  it('skips a binding whose .bmd is missing under out, with a warning', async () => {
+    // Palette .pcx present, body .bmd absent.
+    await mkdir(join(out, 'Data', 'Pal'), { recursive: true });
+    await writeFile(join(out, 'Data', 'Pal', 'Bear01.pcx'), samplePcx().bytes);
+    const { bindings, palettes } = sampleBinding();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const done = await convertBmdTree(bindings, palettes, out);
+
+    expect(done).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/bmd data\/bobs\/body\.bmd not found/));
+    warn.mockRestore();
+  });
+
+  it('skips a binding whose .bmd is malformed, with a warning (one bad bob set does not abort)', async () => {
+    await mkdir(join(out, 'Data', 'Pal'), { recursive: true });
+    await mkdir(join(out, 'Data', 'Bobs'), { recursive: true });
+    await writeFile(join(out, 'Data', 'Pal', 'Bear01.pcx'), samplePcx().bytes);
+    await writeFile(join(out, 'Data', 'Bobs', 'Body.bmd'), new Uint8Array(8)); // not a CBobManager
+    const { bindings, palettes } = sampleBinding();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const done = await convertBmdTree(bindings, palettes, out);
+
+    expect(done).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped data\/bobs\/body\.bmd:/));
+    warn.mockRestore();
+  });
+});
+
+describe('resolveGraphicsBindings', () => {
+  let game: string;
+
+  beforeEach(async () => {
+    game = await mkdtemp(join(tmpdir(), 'vinland-gfx-'));
+  });
+
+  afterEach(async () => {
+    await rm(game, { recursive: true, force: true });
+  });
+
+  it('reads the readable jobgraphics + palettes inis into bindings + palette aliases', async () => {
+    const inis = join('Data', 'engine2d', 'inis');
+    await mkdir(join(game, inis, 'animals'), { recursive: true });
+    await mkdir(join(game, inis, 'palettes'), { recursive: true });
+    await writeFile(
+      join(game, inis, 'animals', 'jobgraphics.ini'),
+      '[jobgraphics]\ngfxbobmanagerbody "Data\\Bobs\\Body.bmd"\ngfxpalettebody "Bear01"\n',
+    );
+    await writeFile(
+      join(game, inis, 'palettes', 'palettes.ini'),
+      '[GfxPalette256]\neditname "Bear01"\ngfxfile "data\\pal\\bear01.pcx"\n',
+    );
+
+    const { bindings, palettes } = await resolveGraphicsBindings(game);
+
+    expect(bindings).toHaveLength(1);
+    expect(bindings[0]?.bmd).toBe('data/bobs/body.bmd');
+    expect(bindings[0]?.paletteName).toBe('bear01');
+    expect(palettes).toEqual([{ name: 'bear01', gfxFile: 'data/pal/bear01.pcx' }]);
+  });
+
+  it('returns empty lists with a warning when a binding source is missing', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const { bindings, palettes } = await resolveGraphicsBindings(game); // nothing laid down
+
+    expect(bindings).toEqual([]);
+    expect(palettes).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/jobgraphics\.ini/));
+    warn.mockRestore();
   });
 });
 
