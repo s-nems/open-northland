@@ -154,6 +154,18 @@ logicproduction 1
 
 const LANDSCAPE_INI = `<CULTURES_CIF_BEGIN><03FD><000002BF> Don't modify this line!
 [landscapetype]
+type 1
+name "void"
+allowedoneverything 1
+maximumValency 100
+debugcolor 117 117 117
+[landscapetype]
+type 3
+name "water"
+allowedonland 1
+allowedonwater 0
+maximumValency 5
+[landscapetype]
 type 4
 name "tree"
 allowedonland 1
@@ -166,6 +178,12 @@ type 5
 name "tree falling"
 allowedonland 1
 maximumValency 5
+[landscapetype]
+type 49
+name "wall"
+allowedonland 1
+allowedonwater 1
+maximumValency 1
 `;
 
 describe('decodeIni (CP1250 byte->text seam)', () => {
@@ -206,9 +224,26 @@ describe('decodeIni (CP1250 byte->text seam)', () => {
   });
 });
 
+// A focused two-record slice for the parser test (the extractor's LANDSCAPE_INI grew more records).
+const PARSE_LANDSCAPE_INI = `<CULTURES_CIF_BEGIN><03FD><000002BF> Don't modify this line!
+[landscapetype]
+type 4
+name "tree"
+allowedonland 1
+maximumValency 5
+transition 7 4 2 1 0
+transition 11 5 2 0 0
+debugcolor 2 115 0
+[landscapetype]
+type 5
+name "tree falling"
+allowedonland 1
+maximumValency 5
+`;
+
 describe('parseIniSections', () => {
   it('parses sections, skips the CIF header/blank lines, keeps multi-value + repeated keys', () => {
-    const sections = parseIniSections(LANDSCAPE_INI);
+    const sections = parseIniSections(PARSE_LANDSCAPE_INI);
     expect(sections.map((s) => s.name)).toEqual(['landscapetype', 'landscapetype']);
 
     const tree = sections[0];
@@ -518,8 +553,44 @@ describe('extractLandscape', () => {
       file: 'Data/logic/landscapetypes.ini',
       layer: 'base',
     });
-    expect(land.map((l) => l.id)).toEqual(['tree', 'tree_falling']);
-    expect(land[1]).toMatchObject({ typeId: 5, id: 'tree_falling', walkable: true, buildable: true });
+    expect(land.map((l) => l.id)).toEqual(['void', 'water', 'tree', 'tree_falling', 'wall']);
+    const treeFalling = land.find((l) => l.id === 'tree_falling');
+    expect(treeFalling).toMatchObject({ typeId: 5, id: 'tree_falling', walkable: true, buildable: true });
+  });
+
+  it('extracts maximumValency and the allowedon* placement flags (1/0 ints -> booleans)', () => {
+    const byId = new Map(
+      extractLandscape(parseIniSections(LANDSCAPE_INI), { file: 'landscapetypes.ini' }).map((l) => [l.id, l]),
+    );
+    // "void" carries the high valency and allowedoneverything; not on land/water.
+    expect(byId.get('void')).toMatchObject({
+      maxValency: 100,
+      allowedOnLand: false,
+      allowedOnWater: false,
+      allowedOnEverything: true,
+    });
+    // "water" sits on the land layer with allowedonwater explicitly 0 -> false.
+    expect(byId.get('water')).toMatchObject({
+      maxValency: 5,
+      allowedOnLand: true,
+      allowedOnWater: false,
+      allowedOnEverything: false,
+    });
+    // A wall/gate sits on BOTH land and water (allowedonwater 1).
+    expect(byId.get('wall')).toMatchObject({ maxValency: 1, allowedOnLand: true, allowedOnWater: true });
+  });
+
+  it('defaults maxValency to 0 and the flags to false when the source omits them', () => {
+    const [only] = extractLandscape(parseIniSections('[landscapetype]\ntype 9\nname "bare"\n'), {
+      file: 'landscapetypes.ini',
+    });
+    expect(only).toMatchObject({
+      typeId: 9,
+      maxValency: 0,
+      allowedOnLand: false,
+      allowedOnWater: false,
+      allowedOnEverything: false,
+    });
   });
 });
 

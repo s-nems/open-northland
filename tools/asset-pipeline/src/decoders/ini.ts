@@ -242,10 +242,13 @@ function extractGoodAtomics(sec: RuleSection): GoodAtomics {
 }
 
 /**
- * Extracts `[landscapetype]` sections into validated {@link LandscapeType} IR. `walkable`/`buildable`
- * are left at their schema defaults for now: their semantics (per-type walk cost + valency) are a
- * Phase-2 cell-graph concern derived from `maximumValency` and the `allowedon*` flags, not a render
- * triangle property. See docs/ROADMAP.md Phase 2.
+ * Extracts `[landscapetype]` sections into validated {@link LandscapeType} IR. Captures the inputs the
+ * Phase-2 cell-adjacency graph needs: `maximumValency` (per-cell capacity → `maxValency`) and the
+ * `allowedonland`/`allowedonwater`/`allowedoneverything` placement-layer flags (`1`/`0` ints). These
+ * are the cell-graph's per-type cost/valency source, NOT a render-triangle property. `walkable`/
+ * `buildable` keep their schema defaults — they're a later derivation from these flags, not in the
+ * source. The `transition`/`debugcolor` lines (map-generation + editor concerns) are skipped. See
+ * docs/ROADMAP.md Phase 2.
  */
 export function extractLandscape(sections: readonly RuleSection[], src: SourceRef): LandscapeType[] {
   const landscape: LandscapeType[] = [];
@@ -257,6 +260,10 @@ export function extractLandscape(sections: readonly RuleSection[], src: SourceRe
       LandscapeType.parse({
         typeId,
         id: name ? slug(name) : `landscape_${typeId}`,
+        maxValency: getInt(sec, 'maximumValency') ?? 0,
+        allowedOnLand: getInt(sec, 'allowedonland') === 1,
+        allowedOnWater: getInt(sec, 'allowedonwater') === 1,
+        allowedOnEverything: getInt(sec, 'allowedoneverything') === 1,
         source: { file: src.file, block: 'landscapetype', layer: src.layer ?? 'base' },
       }),
     );
