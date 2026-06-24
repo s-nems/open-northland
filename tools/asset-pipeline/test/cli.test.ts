@@ -522,6 +522,46 @@ describe('resolveGraphicsBindings', () => {
     expect(bindings.some((b) => b.paletteName === 'vik_man_base')).toBe(false);
   });
 
+  it('merges the base-game humans/jobgraphics.cif [jobbasegraphics] records (the .cif-only leg)', async () => {
+    const inis = join('Data', 'engine2d', 'inis');
+    await mkdir(join(game, inis, 'animals'), { recursive: true });
+    await mkdir(join(game, inis, 'humans'), { recursive: true });
+    await writeFile(
+      join(game, inis, 'animals', 'jobgraphics.ini'),
+      '[jobgraphics]\ngfxbobmanagerbody "Data\\Bobs\\Lion.bmd"\ngfxpalettebody "Lion01"\n',
+    );
+    // The base human graphics ship only as encrypted .cif, decoded via the same CStringArray path.
+    await writeFile(
+      join(game, inis, 'humans', 'jobgraphics.cif'),
+      buildMapCif([
+        { level: 1, text: 'jobbasegraphics' },
+        { level: 2, text: 'logictribe 1' },
+        { level: 2, text: 'logicjob 6' },
+        { level: 2, text: 'gfxbobmanagerbody 0 "Data\\Bobs\\Body00.bmd" "Data\\Bobs\\Body00_s.bmd"' },
+        { level: 2, text: 'gfxbobmanagerhead 0 "Data\\Bobs\\Head00.bmd"' },
+        { level: 2, text: 'gfxpalettebasebody "test_human_00"' },
+        { level: 2, text: 'gfxpalettebasehead "test_human_00"' },
+        // A second section name (jobchangegraphics) must not be picked up by the base extractor.
+        { level: 1, text: 'jobchangegraphics' },
+        { level: 2, text: 'logictribe 1' },
+        { level: 2, text: 'gfxbobmanagerbody 0 "Data\\Bobs\\Body01.bmd"' },
+      ]),
+    );
+
+    const { bindings } = await resolveGraphicsBindings(game, undefined);
+
+    // Base animals binding first, then the flattened base-human body + head slots; the
+    // jobchangegraphics body00 record is NOT emitted (different section name).
+    expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([
+      ['data/bobs/lion.bmd', 'lion01'],
+      ['data/bobs/body00.bmd', 'test_human_00'],
+      ['data/bobs/head00.bmd', 'test_human_00'],
+    ]);
+    expect(bindings[1]?.shadowBmd).toBe('data/bobs/body00_s.bmd');
+    expect(bindings[1]?.tribeId).toBe(1);
+    expect(bindings[1]?.jobId).toBe(6);
+  });
+
   it('returns empty lists with a warning when a binding source is missing', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 

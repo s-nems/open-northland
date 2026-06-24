@@ -223,11 +223,24 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             `cr_hum_body_74` → the seasonal `weihnachtsmann.pcx` palette absent from `--out`, warned-and-
             skipped), **62 distinct** atlas files (2 animal + 60 human body/head); `cr_hum_body_00.png` =
             a valid 1024×7693 RGBA atlas, 5418 frames (5290 opaque), manifest dims agreeing.
-      - [ ] **Atlas oracle pixel-diff + `.cif`-only binding leg.** Remaining: the `.cif`-only graphics
-            records (the bulk of the human/building binding tables — only the two `.ini` skins are readable
-            today) and per-creature recolour output naming, then compare an emitted atlas frame against the
-            OpenVikings render pixel-for-pixel (needs an owned game copy + the oracle; an agent can't
-            self-judge it).
+      - [x] **`.cif`-only base-human binding leg wired into the CLI.** `cli.ts` `resolveGraphicsBindings`
+            now also reads the base game's `Data/engine2d/inis/humans/jobgraphics.cif` — the base-game
+            human body/head bob sets ship *only* as encrypted `.cif` (no readable `.ini` twin) — decoding
+            it via `decodeCifStringArray` → `cifLinesToSections` into the same `RuleSection` model the
+            `.ini` parser yields, then reusing the **same** `extractJobBaseGraphics` →
+            `jobBaseGraphicsToBindings` → `convertBmdTree` path as the readable mod skin (no second copy of
+            the conversion logic). Only the `[jobbasegraphics]` records are picked up; the sibling
+            `[jobchangegraphics]` equipment skins use the same grammar but a different section name and are
+            a later leg. A missing/corrupt `.cif` is warned-and-skipped, never fatal. **Hands-on:** `npm
+            run pipeline` on the real game → bindings rose **257 → 407** (the 53 base-game
+            `[jobbasegraphics]` records expand into 53 body + ~262 head/body slots; 315 carry the base
+            `test_human_00` palette), still **62 distinct** atlas files (the base-human `.bmd`s overlap the
+            mod skin's), **406/407** resolving (the same 1 seasonal `weihnachtsmann.pcx` skip).
+      - [ ] **Atlas oracle pixel-diff + remaining `.cif`-only graphics legs.** Remaining: the
+            `[jobchangegraphics]` equipment skins (base humans `.cif`), the vehicles/goods graphics
+            (`vehicles/jobgraphics.cif`, `goods/goodgraphics.cif`), and per-creature recolour output
+            naming, then compare an emitted atlas frame against the OpenVikings render pixel-for-pixel
+            (needs an owned game copy + the oracle; an agent can't self-judge it).
 - [ ] One map (`map.cif` + its `.ini`/`.inc` parts) decoded to IR.
       - [x] **Map logic-header metadata** — `extractMapInfo` in `decoders/ini.ts` reduces a decoded
             `map.cif`'s `CStringArray` (`logiccontrol` `mapsize`/`mapguid` + `misc_maptype`/`misc_mapname`)
