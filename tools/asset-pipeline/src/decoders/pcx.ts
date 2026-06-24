@@ -112,13 +112,20 @@ export function decodePcx(bytes: Uint8Array): PcxImage {
 }
 
 /**
- * Expands indexed pixels to straight RGBA using the image's palette. Out-of-range indices can't
- * occur (indices are bytes and the palette has 256 entries). Throws if the image had no palette.
+ * Expands indexed pixels to straight RGBA using the image's palette. Indices are bytes and a valid
+ * palette has 256 entries, so an index is never out of range. Throws (with a `pcx:` prefix, like
+ * {@link encodePcx}) if the image has no palette or one that isn't exactly 256 RGB triples — a
+ * decoded image always satisfies this, so a throw means a hand-built `PcxImage`.
  */
 export function expandToRgba(image: PcxImage): RgbaImage {
   const { width, height, pixels, palette } = image;
   if (palette === undefined) {
     throw new Error('pcx: cannot expand to RGBA — image has no palette');
+  }
+  if (palette.length !== PALETTE_RGB_BYTES) {
+    throw new Error(
+      `pcx: cannot expand to RGBA — palette must be ${PALETTE_RGB_BYTES} bytes, got ${palette.length}`,
+    );
   }
   const view = new DataView(palette.buffer, palette.byteOffset, palette.byteLength);
   const rgba = new Uint8Array(width * height * 4);

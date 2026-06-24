@@ -102,6 +102,27 @@ describe('decodePcx', () => {
     expect(decoded.pixels).toEqual(bytesOf(9, 9, 9, 9));
   });
 
+  it('handles a count-0 run packet (0xC0) as a no-op (matches the RLE grammar)', () => {
+    // width 2, height 1: 0xC0 0x09 -> count = (0xC0 & 0x3F) = 0, writes nothing; then literals 1,2.
+    const header = new Uint8Array(128);
+    const hv = new DataView(header.buffer);
+    hv.setUint16(8, 1, true); // xMax -> width 2
+    hv.setUint16(10, 0, true); // yMax -> height 1
+    const decoded = decodePcx(bytesOf(...header, 0xc0, 0x09, 1, 2));
+    expect(decoded.pixels).toEqual(bytesOf(1, 2));
+  });
+
+  it('tolerates truncated pixel data, leaking the prior row (matches the original)', () => {
+    // width 2, height 2 (alignedRowBytes = 2). Row 0 = literals 5,6 (full); row 1 = literal 7 then
+    // the buffer ends, so the reused scanline keeps row 0's second byte -> row 1 decodes to [7, 6].
+    const header = new Uint8Array(128);
+    const hv = new DataView(header.buffer);
+    hv.setUint16(8, 1, true); // xMax -> width 2
+    hv.setUint16(10, 1, true); // yMax -> height 2
+    const decoded = decodePcx(bytesOf(...header, 5, 6, 7));
+    expect(decoded.pixels).toEqual(bytesOf(5, 6, 7, 6));
+  });
+
   it('throws a pcx-prefixed error on a buffer too short for the header', () => {
     expect(() => decodePcx(new Uint8Array(127))).toThrow(/pcx: buffer of 127 bytes is too short/);
   });
@@ -129,6 +150,11 @@ describe('expandToRgba', () => {
   it('throws when the image has no palette', () => {
     const image = { width: 1, height: 1, pixels: bytesOf(0), palette: undefined };
     expect(() => expandToRgba(image)).toThrow(/pcx: cannot expand to RGBA/);
+  });
+
+  it('throws a pcx-prefixed error on a palette that is not 768 bytes', () => {
+    const image = { width: 1, height: 1, pixels: bytesOf(0), palette: bytesOf(1, 2, 3) };
+    expect(() => expandToRgba(image)).toThrow(/palette must be 768 bytes/);
   });
 });
 
