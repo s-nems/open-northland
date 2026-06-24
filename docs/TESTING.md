@@ -98,6 +98,16 @@ Playwright MCP**:
   treat any diff as **needs human** (never auto-pass), and keep them sparse — they're binary churn
   and capture the *Vinland* synthetic render, never original assets.
 
+**Manual poke via the Playwright MCP (ad-hoc, not the backbone).** A `playwright` MCP server is
+available at *local* scope (`claude mcp get playwright`; private to this project, not committed) for
+**interactive** visual checks while iterating — the complement to the committed `npm run shot`
+script, not a replacement. Workflow once something renders: run `npm run dev`, point the MCP browser
+at the Vite URL (`http://localhost:5173`), screenshot, and eyeball for **gross** correctness only.
+The `<canvas>` has no accessibility tree, so the MCP's snapshot/click-by-role tools are blind here —
+**screenshots are the only usable surface**. It is manual and stateful: nothing it does lands in git
+or CI, and there is nothing to see until a renderer exists (HEAD draws a blank canvas). For anything
+you'd want to *re-run or gate on*, write the `npm run shot` script instead.
+
 ## Reproducibility of fixtures
 
 Golden/scenario tests must reproduce on any machine, but `content/` is generated from a copyrighted
