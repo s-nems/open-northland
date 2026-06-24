@@ -1,0 +1,10 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/data" },
+    { "path": "packages/sim" },
+    { "path": "packages/render" },
+    { "path": "packages/app" },
+    { "path": "tools/asset-pipeline" }
+  ]
+}

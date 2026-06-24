@@ -1,0 +1,90 @@
+# Architecture
+
+## Goals, in priority order
+
+1. **Faithful *feel*, fixable *rules*.** Reproduce the soul of Cultures — every settler is an
+   individual with needs, a deep goods economy, two-tribe conflict — while being free to correct
+   bugs and rebalance.
+2. **Deterministic simulation.** Same seed + same inputs ⇒ identical state. Enables headless
+   tests, replays, and lockstep multiplayer.
+3. **Agent-legible.** Small, typed, dependency-light code. Rules live in data. A model should be
+   able to read a system and a content file and understand a mechanic end-to-end.
+4. **Cross-platform from day one.** Browser-first (Mac/Win/Linux). Native desktop later via Tauri.
+
+## Layered design
+
+```
+            ┌─────────────────────────────────────────────┐
+            │  app  (Vite)                                 │
+            │  main loop · input · menus · save/load glue  │
+            └───────────────┬─────────────────┬───────────┘
+                            │ commands         │ snapshots
+                            ▼                  ▼
+   ┌────────────────────────────┐   ┌────────────────────────────┐
+   │  sim   (headless, pure)    │   │  render  (PixiJS)          │
+   │  ECS · systems · RNG       │   │  isometric · sprites · cam │
+   │  fixed-point · tick loop   │   │  reads snapshots only      │
+   └─────────────┬──────────────┘   └─────────────┬──────────────┘
+                 │ loads                            │ loads
+                 ▼                                  ▼
+            ┌─────────────────────────────────────────────┐
+            │  data   (zod schemas + IR loaders)           │
+            │  the shared content model                    │
+            └───────────────┬─────────────────────────────┘
+                            │ produced by
+                            ▼
+            ┌─────────────────────────────────────────────┐
+            │  tools/asset-pipeline  (offline CLI)         │
+            │  original .bmd/.pcx/.lib/.ini/.cif → content │
+            └─────────────────────────────────────────────┘
+```
+
+### The one-way data flow at runtime
+
+`app` advances the `sim` by feeding it **commands** (player orders, e.g. "place house here") on a
+fixed tick. After each tick the sim exposes an immutable **snapshot** (or a stable read view). The
+`render` layer consumes snapshots and **interpolates** between the last two for smooth motion —
+it never mutates sim state and the sim never imports render. This is the strict boundary that
+keeps the sim deterministic and testable, and lets us run the sim faster-than-realtime in tests.
+
+### Fixed timestep
+
+The sim runs at a fixed rate (default **20 ticks/s**). The app uses an accumulator: render as fast
+as the display allows, step the sim a whole number of ticks per frame, interpolate the remainder.
+See `packages/sim/src/loop.ts`. Determinism requires that a tick's outcome depends only on prior
+state + commands + RNG — never on wall-clock or frame rate.
+
+## Why these technology choices
+
+| Choice | Reason | Rejected alternative |
+|---|---|---|
+| **TypeScript** | Types are the single biggest lever for agent-assisted refactoring; strict mode catches whole error classes. | Plain JS (no types), Java (heavier tooling, less LLM-ergonomic) |
+| **Browser-first + Vite** | Cross-platform for free; instant Mac support; HMR dev loop. | Native-only (SDL/.NET) — Mac friction, slower iteration |
+| **PixiJS** (render only) | WebGL batched sprites handle thousands of animated settlers; we keep full control of the game layer. | Phaser (imposes its own game model we don't want) |
+| **Custom tiny ECS** | Full control of iteration order (determinism) and maximum legibility. | bitecs (terse, hard to read), miniplex (less control over ordering) |
+| **zod schemas** | One source of truth → runtime validation *and* inferred TS types for content. | Hand-written types + separate validators (drift) |
+| **Fixed-point sim math** | Guarantees identical results across platforms for lockstep/replay. | Floats in sim (nondeterminism risk across CPUs/builds) |
+| **npm workspaces** | Zero extra global install; works out of the box with Node. | pnpm/yarn (extra setup friction for an agent) |
+
+## Package responsibilities
+
+- **`sim`** — owns world state and the rules engine. Knows nothing about pixels or files. Exposes:
+  create world from a loaded content set + map + seed; `step(commands)`; read snapshot. All game
+  domains (terrain, needs, jobs, production, transport, construction, reproduction, combat, AI,
+  pathfinding) are **systems** here. See `docs/ECS.md`.
+- **`data`** — defines the **intermediate representation (IR)**: zod schemas for every content type
+  and the sprite/animation/map manifests, plus typed loaders. Imported by both `sim` (rules) and
+  `render` (which sprite for which entity). See `docs/DATA-FORMAT.md`.
+- **`render`** — turns a sim snapshot into an isometric scene: terrain tiles, sorted sprite draw,
+  animation playback, camera, picking. Pure consumer.
+- **`app`** — the shell. Owns the main loop, translates input into sim commands, draws menus/HUD,
+  wires save/load. The only package that depends on everything.
+- **`tools/asset-pipeline`** — offline, run by a human/agent against an owned game copy. Decodes
+  original formats into `content/`. Heavy lifting documented in `docs/SOURCES.md`.
+
+## Save / load & multiplayer (forward-looking, not yet built)
+
+Because the sim is deterministic, a save is `{ seed, contentVersion, initialMap, commandLog }`
+(or a state snapshot for fast load). Multiplayer is lockstep: exchange commands, everyone runs the
+same deterministic sim. We don't build these yet, but every sim decision must preserve the
+property that makes them cheap. Don't add nondeterminism "just for now."

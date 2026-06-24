@@ -1,0 +1,19 @@
+{
+  "name": "@vinland/app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --build && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vinland/data": "*",
+    "@vinland/render": "*",
+    "@vinland/sim": "*"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}
