@@ -182,10 +182,23 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             creature, so the last binding's palette wins per file); `cr_ani_body_00.png` = a valid
             1024×6037 RGBA atlas, 3120 frames (1410 opaque). Per-creature recolour naming belongs with the
             `[jobbasegraphics]`/`.cif` legs (the `editname` is the only per-creature differentiator).
-      - [ ] **Atlas oracle pixel-diff + remaining binding legs.** Remaining: the `.cif`-only graphics
-            records + the mod `[jobbasegraphics]` skin (per-creature recolour output naming), then compare
-            an emitted atlas frame against the OpenVikings render pixel-for-pixel (needs an owned game copy
-            + the oracle; an agent can't self-judge it).
+      - [x] **Mod `[jobbasegraphics]` skin wired into the CLI.** `cli.ts` `resolveGraphicsBindings` now
+            takes the `--mod` and, when given, reads `<mod>/types/humanstype/jobgraphics.ini` →
+            `extractJobBaseGraphics`, **flattening** each `JobBaseGraphicsBinding` into the flat
+            `BmdPaletteBinding` shape via the pure `jobBaseGraphicsToBindings` (body slot → `bodyPalette`,
+            head slot → `headPalette`; a palette-less slot is dropped, the `gfxpaletterandom` runtime tint
+            is not emitted). Those merge onto the base animals bindings and reuse the **same**
+            `convertBmdTree` resolve→decode→atlas path — no second copy of the conversion logic — so the
+            human body/head `.bmd`s get atlas PNGs + manifests under `--out`. **Hands-on:** `npm run
+            pipeline` on the real game → **256 of 257** readable bindings resolve (the 1 skip is
+            `cr_hum_body_74` → the seasonal `weihnachtsmann.pcx` palette absent from `--out`, warned-and-
+            skipped), **62 distinct** atlas files (2 animal + 60 human body/head); `cr_hum_body_00.png` =
+            a valid 1024×7693 RGBA atlas, 5418 frames (5290 opaque), manifest dims agreeing.
+      - [ ] **Atlas oracle pixel-diff + `.cif`-only binding leg.** Remaining: the `.cif`-only graphics
+            records (the bulk of the human/building binding tables — only the two `.ini` skins are readable
+            today) and per-creature recolour output naming, then compare an emitted atlas frame against the
+            OpenVikings render pixel-for-pixel (needs an owned game copy + the oracle; an agent can't
+            self-judge it).
 - [ ] One map (`map.cif` + its `.ini`/`.inc` parts) decoded to IR.
 - **Exit:** `npm run pipeline` produces a validated `content/` (types + atlases + one map), decoded
   graphics verified against the oracle.

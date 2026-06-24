@@ -7,6 +7,7 @@ import {
   buildIr,
   convertBmdTree,
   convertPcxTree,
+  jobBaseGraphicsToBindings,
   libMemberRelPath,
   parseArgs,
   pcxToPng,
@@ -420,7 +421,7 @@ describe('resolveGraphicsBindings', () => {
       '[GfxPalette256]\neditname "Bear01"\ngfxfile "data\\pal\\bear01.pcx"\n',
     );
 
-    const { bindings, palettes } = await resolveGraphicsBindings(game);
+    const { bindings, palettes } = await resolveGraphicsBindings(game, undefined);
 
     expect(bindings).toHaveLength(1);
     expect(bindings[0]?.bmd).toBe('data/bobs/body.bmd');
@@ -428,15 +429,103 @@ describe('resolveGraphicsBindings', () => {
     expect(palettes).toEqual([{ name: 'bear01', gfxFile: 'data/pal/bear01.pcx' }]);
   });
 
+  it('merges the mod [jobbasegraphics] human body/head bobs onto the base animals bindings', async () => {
+    const inis = join('Data', 'engine2d', 'inis');
+    await mkdir(join(game, inis, 'animals'), { recursive: true });
+    await mkdir(join(game, 'DataCnmd', 'types', 'humanstype'), { recursive: true });
+    await writeFile(
+      join(game, inis, 'animals', 'jobgraphics.ini'),
+      '[jobgraphics]\ngfxbobmanagerbody "Data\\Bobs\\Lion.bmd"\ngfxpalettebody "Lion01"\n',
+    );
+    await writeFile(
+      join(game, 'DataCnmd', 'types', 'humanstype', 'jobgraphics.ini'),
+      '[jobbasegraphics]\nlogictribe 1\nlogicjob 6\n' +
+        'gfxbobmanagerbody 0 "Data\\Bobs\\Body00.bmd" "Data\\Bobs\\Body00_s.bmd"\n' +
+        'gfxbobmanagerhead 0 "Data\\Bobs\\Head00.bmd"\n' +
+        'gfxbobmanagerhead 1 "Data\\Bobs\\Head01.bmd"\n' +
+        'gfxpalettebasebody "human_body"\ngfxpalettebasehead "human_head"\ngfxpaletterandom "Vik_Man_Base"\n',
+    );
+
+    const { bindings } = await resolveGraphicsBindings(game, 'DataCnmd');
+
+    // Base animals binding first, then the flattened mod body + head slots.
+    expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([
+      ['data/bobs/lion.bmd', 'lion01'],
+      ['data/bobs/body00.bmd', 'human_body'],
+      ['data/bobs/head00.bmd', 'human_head'],
+      ['data/bobs/head01.bmd', 'human_head'],
+    ]);
+    // The body slot keeps its shadow + cross-refs; the random tint is not emitted as a binding.
+    expect(bindings[1]?.shadowBmd).toBe('data/bobs/body00_s.bmd');
+    expect(bindings[1]?.tribeId).toBe(1);
+    expect(bindings[1]?.jobId).toBe(6);
+    expect(bindings.some((b) => b.paletteName === 'vik_man_base')).toBe(false);
+  });
+
   it('returns empty lists with a warning when a binding source is missing', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const { bindings, palettes } = await resolveGraphicsBindings(game); // nothing laid down
+    const { bindings, palettes } = await resolveGraphicsBindings(game, undefined); // nothing laid down
 
     expect(bindings).toEqual([]);
     expect(palettes).toEqual([]);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/jobgraphics\.ini/));
     warn.mockRestore();
+  });
+});
+
+describe('jobBaseGraphicsToBindings', () => {
+  it('flattens body slots (bodyPalette) and head slots (headPalette) into flat bindings', () => {
+    const flat = jobBaseGraphicsToBindings([
+      {
+        tribeId: 2,
+        jobId: 4,
+        body: [{ index: 0, bmd: 'data/bobs/body.bmd', shadowBmd: 'data/bobs/body_s.bmd' }],
+        head: [
+          { index: 0, bmd: 'data/bobs/head0.bmd', shadowBmd: undefined },
+          { index: 1, bmd: 'data/bobs/head1.bmd', shadowBmd: undefined },
+        ],
+        bodyPalette: 'b_pal',
+        headPalette: 'h_pal',
+        randomPalette: 'rnd',
+      },
+    ]);
+
+    expect(flat).toEqual([
+      {
+        bmd: 'data/bobs/body.bmd',
+        shadowBmd: 'data/bobs/body_s.bmd',
+        paletteName: 'b_pal',
+        tribeId: 2,
+        jobId: 4,
+      },
+      { bmd: 'data/bobs/head0.bmd', shadowBmd: undefined, paletteName: 'h_pal', tribeId: 2, jobId: 4 },
+      { bmd: 'data/bobs/head1.bmd', shadowBmd: undefined, paletteName: 'h_pal', tribeId: 2, jobId: 4 },
+    ]);
+  });
+
+  it('drops slots whose palette editname is absent (nothing to resolve against)', () => {
+    const flat = jobBaseGraphicsToBindings([
+      {
+        tribeId: undefined,
+        jobId: undefined,
+        body: [{ index: 0, bmd: 'data/bobs/body.bmd', shadowBmd: undefined }],
+        head: [{ index: 0, bmd: 'data/bobs/head.bmd', shadowBmd: undefined }],
+        bodyPalette: 'b_pal', // body keeps its palette
+        headPalette: undefined, // head has none -> dropped
+        randomPalette: undefined,
+      },
+    ]);
+
+    expect(flat).toEqual([
+      {
+        bmd: 'data/bobs/body.bmd',
+        shadowBmd: undefined,
+        paletteName: 'b_pal',
+        tribeId: undefined,
+        jobId: undefined,
+      },
+    ]);
   });
 });
 
