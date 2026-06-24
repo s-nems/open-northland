@@ -65,8 +65,11 @@ CP1250 — re-decode at the IR layer where it matters, not in the container deco
 
 Verified end-to-end (decoder output): `housetypes.cif` (798 records), `weapontypes.cif` (2995),
 `trianglepatterntypes.cif` (82), and `CnModMaps/tutorial_001/map.cif` (476, incl. `mapsize`,
-`mapguid`, `MissionData`). A map's binary tile grid (if separate from this logic header) is a
-Phase-2 concern.
+`mapguid`, `MissionData`). A map's **declarative logic-header metadata** (`mapsize`/`mapguid` from
+`logiccontrol` + `misc_maptype`/`misc_mapname`) is now extracted to a `MapInfo` IR record by
+`decoders/ini.ts` `extractMapInfo` and wired into the pipeline (`cli.ts` `decodeMapTree` → 13 maps).
+The map's **binary tile grid** (if separate from this header) is a Phase-2 cell-graph concern, and its
+`MissionData`/`StaticObjects` scripting is the Phase-5 campaign layer — neither is extracted yet.
 - **Atomic actions are the behavior vocabulary** (see docs/ECS.md) and are partly free in readable
   data: `tribetypes.ini` `setatomic` (atomic→animation per tribe), `jobtypes.ini` `allowatomic`,
   `goodtypes.ini` `atomicFor*`. The atomic *timings/effects* live in `atomicanimations.cif` — **but
