@@ -189,7 +189,8 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       // Loaded: take the goods to a store that can stock them.
       const store = nearestStoreFor(world, ctx, terrain, here, load.goodType);
       if (store === null) continue; // nowhere to deposit — idle this tick (a later slice may wait/drop)
-      if (storeCell(world, terrain, store) === here) {
+      const cell = entityCell(world, terrain, store);
+      if (cell === here) {
         startAtomic(
           world,
           e,
@@ -199,7 +200,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
           store,
         );
       } else {
-        world.add(e, MoveGoal, { cell: storeCell(world, terrain, store) });
+        world.add(e, MoveGoal, { cell });
       }
       continue;
     }
@@ -208,7 +209,8 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     const node = nearestHarvestableFor(world, ctx, terrain, here, settler.jobType);
     if (node === null) continue; // nothing to harvest — idle this tick
     const res = world.get(node, Resource);
-    if (resourceCell(world, terrain, node) === here) {
+    const cell = entityCell(world, terrain, node);
+    if (cell === here) {
       startAtomic(
         world,
         e,
@@ -218,7 +220,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
         node,
       );
     } else {
-      world.add(e, MoveGoal, { cell: resourceCell(world, terrain, node) });
+      world.add(e, MoveGoal, { cell });
     }
   }
 }
@@ -308,7 +310,7 @@ function nearestHarvestableFor(
     if (res === undefined || res.remaining <= 0) continue;
     if (!world.has(e, Position)) continue;
     if (!allowed.has(res.harvestAtomic)) continue; // data-driven gate: job must permit this atomic
-    const cell = resourceCell(world, terrain, e);
+    const cell = entityCell(world, terrain, e);
     const dist = manhattan(terrain, here, cell);
     if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
       best = e;
@@ -340,7 +342,7 @@ function nearestStoreFor(
     const stock = world.get(e, Stockpile);
     const have = stock.amounts.get(goodType) ?? 0;
     if (have >= stockCapacity(world, ctx, e, goodType)) continue; // full for this good — skip
-    const cell = storeCell(world, terrain, e);
+    const cell = entityCell(world, terrain, e);
     const dist = manhattan(terrain, here, cell);
     if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
       best = e;
@@ -369,14 +371,8 @@ function jobAtomics(ctx: SystemContext, jobType: number): ReadonlySet<number> {
 
 const EMPTY_ATOMICS: ReadonlySet<number> = new Set<number>();
 
-/** The cell a resource node occupies (its Position snapped to a cell). */
-function resourceCell(world: World, terrain: TerrainGraph, e: Entity): CellId {
-  const p = world.get(e, Position);
-  return terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
-}
-
-/** The cell a store building occupies (its Position snapped to a cell). */
-function storeCell(world: World, terrain: TerrainGraph, e: Entity): CellId {
+/** The cell an entity occupies — its {@link Position} (a resource node, a store) snapped to a cell. */
+function entityCell(world: World, terrain: TerrainGraph, e: Entity): CellId {
   const p = world.get(e, Position);
   return terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
 }
