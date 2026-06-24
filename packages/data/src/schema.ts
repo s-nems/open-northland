@@ -22,11 +22,34 @@ export type Provenance = z.infer<typeof Provenance>;
 /** Numeric type ids are the stable cross-reference used throughout the original data. */
 export const TypeId = z.number().int().nonnegative();
 
+/**
+ * Atomic ids are a numeric vocabulary cross-referenced by goods (`atomicFor*`), jobs
+ * (`allowatomic`/`baseatomics`) and tribes (`setatomic`). The readable data ships NO master
+ * atomictypes table — an atomic id's meaning is implicit in how those sources reference it
+ * (e.g. the id under `atomicForHarvesting` is the harvest atomic for that good). The Phase-2
+ * atomic planner consumes these bindings. See docs/ECS.md "Settler AI" and docs/ROADMAP.md Phase 1.
+ */
+export const AtomicId = z.number().int().nonnegative();
+
+/**
+ * Atomic ids that act on a good, keyed by role (from `goodtypes` `atomicFor*`). A good is the
+ * *object* of the atomic: `harvest` cuts/mines/reaps it, `plant`/`cultivate` grow it, `produce`
+ * is the atomic a workplace runs to make it.
+ */
+export const GoodAtomics = z.object({
+  harvest: AtomicId.optional(),
+  cultivate: AtomicId.optional(),
+  plant: AtomicId.optional(),
+  produce: AtomicId.optional(),
+});
+export type GoodAtomics = z.infer<typeof GoodAtomics>;
+
 export const GoodType = z.object({
   typeId: TypeId,
   id: z.string(), // human-readable slug, e.g. "wood"
   name: z.string().optional(),
   weight: z.number().default(0),
+  atomics: GoodAtomics.default({}),
   source: Provenance.optional(),
 });
 export type GoodType = z.infer<typeof GoodType>;
@@ -35,6 +58,10 @@ export const JobType = z.object({
   typeId: TypeId,
   id: z.string(),
   name: z.string().optional(),
+  /** Atomic ids this job is permitted to perform (`jobtypes` `allowatomic`), in file order. */
+  allowedAtomics: z.array(AtomicId).default([]),
+  /** Always-available base atomics for this job (`jobtypes` `baseatomics`), in file order. */
+  baseAtomics: z.array(AtomicId).default([]),
   source: Provenance.optional(),
 });
 export type JobType = z.infer<typeof JobType>;
@@ -110,10 +137,24 @@ export const LandscapeType = z.object({
 });
 export type LandscapeType = z.infer<typeof LandscapeType>;
 
+/**
+ * Per-(job, atomic) animation binding from `tribetypes` `setatomic <jobType> <atomicId> "anim"`.
+ * This is how a tribe expresses its identity: the SAME atomic id plays a tribe-specific animation.
+ * `animation` names an entry in `atomicanimations` (timings/yields extracted in a later step).
+ */
+export const AtomicBinding = z.object({
+  jobType: TypeId,
+  atomicId: AtomicId,
+  animation: z.string(),
+});
+export type AtomicBinding = z.infer<typeof AtomicBinding>;
+
 export const TribeType = z.object({
   typeId: TypeId,
   id: z.string(),
   name: z.string().optional(),
+  /** `setatomic` bindings in file order — a tribe's atomic→animation vocabulary, per job. */
+  atomicBindings: z.array(AtomicBinding).default([]),
   source: Provenance.optional(),
 });
 export type TribeType = z.infer<typeof TribeType>;
