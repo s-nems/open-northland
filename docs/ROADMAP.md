@@ -35,8 +35,12 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
       OpenVikings oracle** (it renders the originals) pixel-for-pixel.
 - [ ] `.ini` rule parser → typed IR (note base `Data/logic/*.ini` is the primary readable source;
       handle the `<CULTURES_CIF_BEGIN>` header line; decode text as **CP1250**, not UTF-8).
-- [ ] **Atomic vocabulary extraction** (free, from readable data): `tribetypes.ini` `setatomic`
-      (atomic→animation per tribe), `jobtypes.ini` `allowatomic`, `goodtypes.ini` `atomicFor*`.
+- [x] **Atomic vocabulary extraction** (free, from readable data): done in `decoders/ini.ts`
+      (`extractJobs`/`extractTribes` + `atomicFor*` in `extractGoods`). Captures `jobtypes`
+      `allowatomic`/`baseatomics`, `tribetypes` `setatomic` (atomic→animation per tribe),
+      `goodtypes` `atomicFor{Harvesting,Cultivating,Planting,Production}`. Verified against real
+      data: 55 jobs, 41 tribes (1914 bindings), 65 goods. **Next:** atomic *timings/yields* from
+      `atomicanimations.ini` (length/event/startdirection) — the binding names already point at them.
 - [ ] `.bmd` bob decoder → atlas PNG + anim JSON (ref `CBobManager.cs`, `CBitmap.cs`). **Hardest.**
 - [ ] One map (`map.cif` + its `.ini`/`.inc` parts) decoded to IR.
 - **Exit:** `npm run pipeline` produces a validated `content/` (types + atlases + one map), decoded

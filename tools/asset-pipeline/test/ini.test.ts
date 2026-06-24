@@ -1,7 +1,14 @@
 import { parseContentSet } from '@vinland/data';
 import { describe, expect, it } from 'vitest';
 import type { CifLine } from '../src/decoders/cif.js';
-import { cifLinesToSections, extractGoods, extractLandscape, parseIniSections } from '../src/decoders/ini.js';
+import {
+  cifLinesToSections,
+  extractGoods,
+  extractJobs,
+  extractLandscape,
+  extractTribes,
+  parseIniSections,
+} from '../src/decoders/ini.js';
 
 /**
  * Rule parser tests. No copyrighted fixtures are committed: the `.ini` snippets below are synthetic
@@ -21,6 +28,34 @@ name "wood"
 type 5
 landscapetype 7
 atomicForHarvesting 24
+
+[goodtype]
+name "wheat"
+type 4
+atomicForHarvesting 29
+atomicForCultivating 35
+atomicForPlanting 34
+`;
+
+// Mirrors Data/logic/jobtypes.ini: repeated `allowatomic` lines + a single `baseatomics`.
+const JOBTYPES_INI = `<CULTURES_CIF_BEGIN><03FD><0000027A> Don't modify this line!
+[jobtype]
+type 3
+name "child_female"
+baseatomics 1
+allowatomic 8
+allowatomic 15
+canBeTrainedFlag 0
+`;
+
+// Mirrors DataCnmd/tribetypes12/tribetypes.ini: `setatomic <job> <atomic> "anim"`, incl. a line
+// with a trailing `//`-comment (the real file has these on a few ship atomics).
+const TRIBETYPES_INI = `[tribetype]
+type 1
+name "viking"
+setatomic 1 8 "viking_baby_female_sleep"
+setatomic 5 22 "viking_woman_pickup"
+setatomic 52 84 "viking_ship_small_idle_short_a" // "viking_ship_small_dock"
 `;
 
 const LANDSCAPE_INI = `<CULTURES_CIF_BEGIN><03FD><000002BF> Don't modify this line!
@@ -90,20 +125,17 @@ describe('extractGoods', () => {
     const goods = extractGoods(parseIniSections(GOODTYPES_INI), {
       file: 'Data/logic/goodtypes.ini',
     });
+    const src = { file: 'Data/logic/goodtypes.ini', block: 'goodtype', layer: 'base' };
     expect(goods).toEqual([
+      { typeId: 1, id: 'water', name: 'water', weight: 0, atomics: {}, source: src },
+      { typeId: 5, id: 'wood', name: 'wood', weight: 0, atomics: { harvest: 24 }, source: src },
       {
-        typeId: 1,
-        id: 'water',
-        name: 'water',
+        typeId: 4,
+        id: 'wheat',
+        name: 'wheat',
         weight: 0,
-        source: { file: 'Data/logic/goodtypes.ini', block: 'goodtype', layer: 'base' },
-      },
-      {
-        typeId: 5,
-        id: 'wood',
-        name: 'wood',
-        weight: 0,
-        source: { file: 'Data/logic/goodtypes.ini', block: 'goodtype', layer: 'base' },
+        atomics: { harvest: 29, cultivate: 35, plant: 34 },
+        source: src,
       },
     ]);
   });
@@ -112,6 +144,46 @@ describe('extractGoods', () => {
     expect(() => extractGoods(parseIniSections('[goodtype]\nname "x"\n'), { file: 'f.ini' })).toThrow(
       /without a numeric `type`/,
     );
+  });
+});
+
+describe('extractJobs', () => {
+  it('collects repeated `allowatomic` and `baseatomics` into ordered arrays', () => {
+    const jobs = extractJobs(parseIniSections(JOBTYPES_INI), { file: 'Data/logic/jobtypes.ini' });
+    expect(jobs).toEqual([
+      {
+        typeId: 3,
+        id: 'child_female',
+        name: 'child_female',
+        allowedAtomics: [8, 15],
+        baseAtomics: [1],
+        source: { file: 'Data/logic/jobtypes.ini', block: 'jobtype', layer: 'base' },
+      },
+    ]);
+  });
+
+  it('defaults atomic lists to empty when a job grants none', () => {
+    const [job] = extractJobs(parseIniSections('[jobtype]\ntype 2\nname "baby_male"\n'), {
+      file: 'f.ini',
+    });
+    expect(job).toMatchObject({ allowedAtomics: [], baseAtomics: [] });
+  });
+});
+
+describe('extractTribes', () => {
+  it('maps `setatomic` triples to (jobType, atomicId, animation) bindings in file order', () => {
+    const tribes = extractTribes(parseIniSections(TRIBETYPES_INI), {
+      file: 'DataCnmd/tribetypes12/tribetypes.ini',
+      layer: 'mod',
+    });
+    expect(tribes).toHaveLength(1);
+    expect(tribes[0]).toMatchObject({ typeId: 1, id: 'viking', name: 'viking' });
+    // The `//`-comment on the third line is stripped by the parser, so the animation token is clean.
+    expect(tribes[0]?.atomicBindings).toEqual([
+      { jobType: 1, atomicId: 8, animation: 'viking_baby_female_sleep' },
+      { jobType: 5, atomicId: 22, animation: 'viking_woman_pickup' },
+      { jobType: 52, atomicId: 84, animation: 'viking_ship_small_idle_short_a' },
+    ]);
   });
 });
 
@@ -127,16 +199,19 @@ describe('extractLandscape', () => {
 });
 
 describe('IR integration', () => {
-  it('extracted goods + landscape assemble into a valid ContentSet', () => {
+  it('extracted goods + jobs + tribes + landscape assemble into a valid ContentSet', () => {
     const goods = extractGoods(parseIniSections(GOODTYPES_INI), { file: 'goodtypes.ini' });
+    const jobs = extractJobs(parseIniSections(JOBTYPES_INI), { file: 'jobtypes.ini' });
+    const tribes = extractTribes(parseIniSections(TRIBETYPES_INI), { file: 'tribetypes.ini', layer: 'mod' });
     const landscape = extractLandscape(parseIniSections(LANDSCAPE_INI), { file: 'landscapetypes.ini' });
     expect(() =>
       parseContentSet({
         manifest: { version: 1, generatedFrom: { game: 'Cultures 8th Wonder' } },
         goods,
-        jobs: [],
+        jobs,
         buildings: [],
         landscape,
+        tribes,
       }),
     ).not.toThrow();
   });

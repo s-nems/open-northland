@@ -14,7 +14,7 @@
  * Not ported from OpenVikings (its `.ini` handling is a trivial text parse). The grammar facts come
  * from inspecting `Data/logic/*.ini`. See docs/SOURCES.md and docs/DATA-FORMAT.md.
  */
-import { GoodType, LandscapeType } from '@vinland/data';
+import { type GoodAtomics, GoodType, JobType, LandscapeType, TribeType } from '@vinland/data';
 import type { CifLine } from './cif.js';
 
 /** One property line: a key and its whitespace-separated values (quoted runs count as one value). */
@@ -119,6 +119,24 @@ function findProp(sec: RuleSection, key: string): RuleProp | undefined {
   return sec.props.find((p) => p.key === key);
 }
 
+/** All properties with this key, in file order — for repeated keys like `allowatomic`. */
+function findProps(sec: RuleSection, key: string): RuleProp[] {
+  return sec.props.filter((p) => p.key === key);
+}
+
+/**
+ * First value of every property with this key, parsed as base-10 ints (NaN entries dropped). Used
+ * for repeated single-value lines (`allowatomic N`, `baseatomics N`), preserving file order.
+ */
+function getIntList(sec: RuleSection, key: string): number[] {
+  const out: number[] = [];
+  for (const p of findProps(sec, key)) {
+    const n = Number.parseInt(p.values[0] ?? '', 10);
+    if (!Number.isNaN(n)) out.push(n);
+  }
+  return out;
+}
+
 /** First value of the first matching property as a string. */
 function getStr(sec: RuleSection, key: string): string | undefined {
   return findProp(sec, key)?.values[0];
@@ -170,11 +188,30 @@ export function extractGoods(sections: readonly RuleSection[], src: SourceRef): 
         typeId,
         id: name ? slug(name) : `good_${typeId}`,
         name,
+        atomics: extractGoodAtomics(sec),
         source: { file: src.file, block: 'goodtype', layer: src.layer ?? 'base' },
       }),
     );
   }
   return goods;
+}
+
+/**
+ * Maps a `[goodtype]`'s `atomicFor*` lines onto the role-keyed {@link GoodAtomics} map. Absent
+ * roles are simply omitted (the schema leaves them undefined). The role names match the four keys
+ * present in `Data/logic/goodtypes.ini`: Harvesting / Cultivating / Planting / Production.
+ */
+function extractGoodAtomics(sec: RuleSection): GoodAtomics {
+  const atomics: { harvest?: number; cultivate?: number; plant?: number; produce?: number } = {};
+  const harvest = getInt(sec, 'atomicForHarvesting');
+  const cultivate = getInt(sec, 'atomicForCultivating');
+  const plant = getInt(sec, 'atomicForPlanting');
+  const produce = getInt(sec, 'atomicForProduction');
+  if (harvest !== undefined) atomics.harvest = harvest;
+  if (cultivate !== undefined) atomics.cultivate = cultivate;
+  if (plant !== undefined) atomics.plant = plant;
+  if (produce !== undefined) atomics.produce = produce;
+  return atomics;
 }
 
 /**
@@ -198,4 +235,62 @@ export function extractLandscape(sections: readonly RuleSection[], src: SourceRe
     );
   }
   return landscape;
+}
+
+/**
+ * Extracts `[jobtype]` sections into validated {@link JobType} IR, capturing the atomic vocabulary a
+ * job may perform: `allowatomic` (granted atomics) and `baseatomics` (always-available base set),
+ * both repeated single-value lines kept in file order. The Phase-2 atomic planner picks among these.
+ */
+export function extractJobs(sections: readonly RuleSection[], src: SourceRef): JobType[] {
+  const jobs: JobType[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'jobtype') continue;
+    const typeId = requireTypeId(sec, 'jobtype', src);
+    const name = getStr(sec, 'name');
+    jobs.push(
+      JobType.parse({
+        typeId,
+        id: name ? slug(name) : `job_${typeId}`,
+        name,
+        allowedAtomics: getIntList(sec, 'allowatomic'),
+        baseAtomics: getIntList(sec, 'baseatomics'),
+        source: { file: src.file, block: 'jobtype', layer: src.layer ?? 'base' },
+      }),
+    );
+  }
+  return jobs;
+}
+
+/**
+ * Extracts `[tribetype]` sections into validated {@link TribeType} IR. The payload is each tribe's
+ * `setatomic <jobType> <atomicId> "animation"` bindings — the per-tribe atomic→animation table that
+ * carries tribal identity (the readable mod `tribetypes.ini` covers playable tribes AND animals).
+ * Malformed `setatomic` lines (missing the job/atomic ints or the animation token) are skipped.
+ */
+export function extractTribes(sections: readonly RuleSection[], src: SourceRef): TribeType[] {
+  const tribes: TribeType[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'tribetype') continue;
+    const typeId = requireTypeId(sec, 'tribetype', src);
+    const name = getStr(sec, 'name');
+    const atomicBindings: { jobType: number; atomicId: number; animation: string }[] = [];
+    for (const p of findProps(sec, 'setatomic')) {
+      const jobType = Number.parseInt(p.values[0] ?? '', 10);
+      const atomicId = Number.parseInt(p.values[1] ?? '', 10);
+      const animation = p.values[2];
+      if (Number.isNaN(jobType) || Number.isNaN(atomicId) || animation === undefined) continue;
+      atomicBindings.push({ jobType, atomicId, animation });
+    }
+    tribes.push(
+      TribeType.parse({
+        typeId,
+        id: name ? slug(name) : `tribe_${typeId}`,
+        name,
+        atomicBindings,
+        source: { file: src.file, block: 'tribetype', layer: src.layer ?? 'base' },
+      }),
+    );
+  }
+  return tribes;
 }
