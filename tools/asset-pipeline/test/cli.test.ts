@@ -2,9 +2,18 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildIr, convertPcxTree, parseArgs, pcxToPng, resolveArgs, resolveIniSources } from '../src/cli.js';
+import {
+  bmdToAtlas,
+  buildIr,
+  convertPcxTree,
+  parseArgs,
+  pcxToPng,
+  resolveArgs,
+  resolveIniSources,
+} from '../src/cli.js';
+import { BOB_TYPE_8BIT, type Bmd, PACKED_X_SHIFT, encodeBmd } from '../src/decoders/bmd.js';
 import { decodePcx, encodePcx, expandToRgba } from '../src/decoders/pcx.js';
-import { decodePng } from '../src/decoders/png.js';
+import { decodePng, encodePng } from '../src/decoders/png.js';
 
 /**
  * CLI wiring tests. No copyrighted fixtures: we synthesize `.pcx` bytes with the faithful `encodePcx`,
@@ -84,6 +93,51 @@ describe('pcxToPng', () => {
   it('propagates a pcx error for a palette-less picture (caught per-file by the tree walk)', () => {
     const noPalette = encodePcx({ width: 2, height: 1, pixels: Uint8Array.from([3, 7]) });
     expect(() => pcxToPng(noPalette)).toThrow(/^pcx:/);
+  });
+});
+
+describe('bmdToAtlas', () => {
+  /** One 8-bit bob (id firstBobId=10), a 2×1 raw run of indices [4,8], serialized as a real `.bmd`. */
+  const sampleBmdBytes = (): Uint8Array => {
+    const bmd: Bmd = {
+      version: 0,
+      firstBobId: 10,
+      bobCount: 1,
+      generatedNonEmptyLines: 0,
+      generatedEmptyLines: 0,
+      generatedPackedLines: 0,
+      bobs: [{ type: BOB_TYPE_8BIT, area: { x: 0, y: 0, width: 2, height: 1 }, misc: 0 }],
+      packedLineData: Uint8Array.from([0x02, 4, 8, 0x00]),
+      lineControl: Uint32Array.from([(0 << PACKED_X_SHIFT) | 0]),
+    };
+    return encodeBmd(bmd);
+  };
+
+  it('decodes a .bmd, packs an atlas, and yields a PNG-encodable image + manifest', () => {
+    const atlas = bmdToAtlas(sampleBmdBytes(), rampPalette());
+    expect(atlas.manifest.frames).toHaveLength(1);
+    const frame = atlas.manifest.frames[0];
+    expect(frame?.bobId).toBe(10);
+    expect(frame?.rect.width).toBe(2);
+    expect(frame?.opaque).toBe(true);
+    // The atlas image round-trips through the PNG encoder (proves it is a valid RGBA sheet).
+    const png = encodePng(atlas.image);
+    const decoded = decodePng(png);
+    expect(decoded.width).toBe(atlas.image.width);
+    expect(decoded.height).toBe(atlas.image.height);
+    // Manifest dimensions must agree with the image it describes.
+    expect(atlas.manifest.width).toBe(atlas.image.width);
+    expect(atlas.manifest.height).toBe(atlas.image.height);
+  });
+
+  it('propagates a bmd error for a non-CBobManager buffer (caught per-file by a tree walk)', () => {
+    const notBmd = new Uint8Array(36);
+    new DataView(notBmd.buffer).setUint32(0, 0x3e9, true); // CMemory id, not 0x3F4
+    expect(() => bmdToAtlas(notBmd, rampPalette())).toThrow(/^bmd:/);
+  });
+
+  it('propagates an atlas error for a wrong-sized palette', () => {
+    expect(() => bmdToAtlas(sampleBmdBytes(), new Uint8Array(100))).toThrow(/^atlas:/);
   });
 });
 

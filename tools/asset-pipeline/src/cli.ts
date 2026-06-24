@@ -19,6 +19,8 @@ import { access, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
+import { type BobAtlas, packBobAtlas } from './decoders/atlas.js';
+import { decodeBmd } from './decoders/bmd.js';
 import {
   type SourceRef,
   decodeIni,
@@ -70,6 +72,19 @@ export function resolveArgs(args: Args, baseDir: string): Args {
  */
 export function pcxToPng(bytes: Uint8Array): Uint8Array {
   return encodePng(expandToRgba(decodePcx(bytes)));
+}
+
+/**
+ * Pure composition: `.bmd` bytes + a 768-byte RGB palette -> a packed bob atlas (the RGBA sheet to
+ * PNG-encode + the JSON manifest of per-bob frame rects/metadata). Mirrors {@link pcxToPng}: the
+ * decoders stay pure, this is the only wiring between them. The atlas PNG is `encodePng(atlas.image)`;
+ * the manifest serializes straight to JSON. Throws a `bmd:`/`atlas:`-prefixed error for a malformed
+ * container or a wrong-sized palette — the batch tree-walk (a later step) catches it per-file. The
+ * **palette source** for a given `.bmd` (which `palettes.ini` entry / `.pcx` trailer pairs with it) is
+ * the open question that gates the full tree-walk, so this seam takes the palette as a parameter today.
+ */
+export function bmdToAtlas(bmdBytes: Uint8Array, palette: Uint8Array): BobAtlas {
+  return packBobAtlas(decodeBmd(bmdBytes), palette);
 }
 
 /** Recursively yields every regular file under `dir` (absolute paths), in directory-entry order. */

@@ -108,8 +108,23 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             bobs of real `ls_ground.bmd` (95 bobs: 44×8-bit, 50×double, 1 empty; 77 725 opaque px) and
             `ls_menu_logos.bmd` (20 double-byte; a 711×572 logo → 252 193 opaque px); an independent
             raw-run recount confirms no decoded bob ever writes more pixels than its runs hold.
-      - [ ] **Atlas PNG + anim JSON.** Pack decoded frames into an atlas via `encodePng`; emit frame
-            rects + per-bob metadata as anim JSON. Validate against the OpenVikings oracle.
+      - [x] **Atlas PNG + anim JSON (packer + CLI seam).** Done — `decoders/atlas.ts`
+            (`packBobAtlas`: colours every `decodeBobFrame` output with a 768-byte RGB palette via
+            `expandBobFrame` — index 0 is a real colour so alpha comes from the frame `mask`, not a
+            colour-key — and deterministic shelf/row-packs the non-empty frames, 1px gutter, into one
+            `RgbaImage` atlas; emits an `AtlasManifest` of per-bob `{bobId, type, rect, offsetX/Y,
+            opaque}`, one entry per bob in id order so empty/0×0 bobs stay id-addressable; `firstBobId
+            + index` is the join key for the later anim/`setatomic` grouping the `.bmd` itself doesn't
+            carry). Wired into the CLI as the pure `bmdToAtlas(bmdBytes, palette)` composition seam
+            (mirrors `pcxToPng`): `encodePng(atlas.image)` + JSON-stringify the manifest. **Hands-on:**
+            real `ls_gui_window.bmd` (193 bobs) → a valid 1021×1690 8-bit RGBA PNG, 188 opaque frames,
+            all rects in-bounds. **Still open:** the batch tree-walk + per-`.bmd` palette pairing
+            (which `palettes.ini`/`.pcx`-trailer palette goes with each bob set) — `bmdToAtlas` takes
+            the palette as a parameter until that's decided.
+      - [ ] **Atlas oracle pixel-diff + palette pairing.** Resolve the per-`.bmd` palette (palettes.ini
+            / sibling `.pcx` trailer / standalone `CPalette`), wire `convertBmdTree` into the CLI, then
+            compare an emitted atlas frame against the OpenVikings render pixel-for-pixel (needs an
+            owned game copy + the oracle; an agent can't self-judge it).
 - [ ] One map (`map.cif` + its `.ini`/`.inc` parts) decoded to IR.
 - **Exit:** `npm run pipeline` produces a validated `content/` (types + atlases + one map), decoded
   graphics verified against the oracle.

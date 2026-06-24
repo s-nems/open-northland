@@ -12,6 +12,7 @@ the source file + commit you referenced, for traceability.
 | `pcx.ts` ✅ | `.pcx` picture | `NXBasics/CPicture.cs`, `XBPictureTool.cs` |
 | `png.ts` ✅ | PNG **output** container (RGBA → PNG) | — (not an original format; ports the PNG spec: zlib + IHDR/IDAT/IEND) |
 | `bmd.ts` | `.bmd` bob/anim | `NXBasics/CBobManager.cs`, `CBitmap.cs` — **hardest, do last** |
+| `atlas.ts` | bob atlas **output** (frames → sheet + manifest) | — (not an original format; shelf-packs `decodeBobFrame` output into one RGBA atlas + a per-bob JSON manifest) |
 | `ini.ts` ✅ | `.ini` **and** decoded-`.cif` rules | plain text parse; emit IR validated by `@vinland/data` (parser + `goodtypes`/`landscapetypes`/`jobtypes`/`tribetypes` extractors + the atomic vocabulary — `atomicFor*`/`allowatomic`/`setatomic` — done; more type extractors incremental) |
 | `map.ts` | map files | landscape grid + placements |
 
