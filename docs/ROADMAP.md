@@ -439,8 +439,15 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             real `Simulation.step()` schedule → a clean alternating atomic trace harvest(24)→pileup(23)→…
             (one cycle ≈ every 19 ticks), **6 wood** in the store after 120 ticks, cutter unloaded; two
             same-seed runs hash-equal (`b2aced06`). **Still to do:** hunger/needs-driven goal choice
-            (NeedsSystem, Phase 3) and JobSystem assignment; resource depletion (the harvest effect
-            decrementing `Resource.remaining`).
+            (NeedsSystem, Phase 3) and JobSystem assignment.
+      - [x] **Resource depletion** — a completed `harvest` atomic now decrements the harvested node's
+            `Resource.remaining` by the same `HARVEST_YIELD` (=1) it grants the settler (`harvestFromNode`
+            in `systems/index.ts`), clamped at 0, so a finite node of N units survives exactly N harvests
+            and the planner's `remaining <= 0` gate then skips it (goods conserved end to end). A node
+            entity that vanished between the swing starting and completing just skips the decrement (the
+            carry still happens). Pure + deterministic. **Hands-on:** a 3-unit tree (cutter@0, tree@1,
+            store@2) through the real `Simulation.step()` schedule → `tree.remaining` 3→0 over 600 ticks,
+            exactly 3 wood in the store, cutter unloaded, planner idles (hash `f09ed12a`).
 - [ ] One workplace: ProductionSystem consumes input → output, **enforcing per-good stock capacity**.
 - [ ] A minimal **carrier** moving goods between store and workplace (goods never teleport).
 - [ ] Render: isometric terrain + the settler sprite from the atlas, **depth-sorted by feet anchor**

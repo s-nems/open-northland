@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { AtomicEffect } from '../src/commands.js';
-import { Building, Carrying, CurrentAtomic, Settler, Stockpile } from '../src/components/index.js';
+import { Building, Carrying, CurrentAtomic, Resource, Settler, Stockpile } from '../src/components/index.js';
 import type { Entity } from '../src/ecs/world.js';
 import { ONE, Simulation, fx } from '../src/index.js';
 import { type SystemContext, atomicSystem } from '../src/systems/index.js';
@@ -24,6 +24,7 @@ beforeEach(() => {
   Stockpile.store.clear();
   Building.store.clear();
   Settler.store.clear();
+  Resource.store.clear();
 });
 
 /** Give an entity a CurrentAtomic with the given effect/duration (progress starts at 0). */
@@ -104,12 +105,33 @@ describe('atomicSystem — progress + completion', () => {
 });
 
 describe('atomicSystem — effects', () => {
-  it('harvest grants one unit of the good onto the settler', () => {
+  it('harvest grants one unit onto the settler AND depletes the node by one', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = sim.world.create();
     const resource = sim.world.create();
+    sim.world.add(resource, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 24 });
     startAtomic(sim, e, { kind: 'harvest', resource, goodType: WOOD }, 1);
     atomicSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, Carrying)).toEqual({ goodType: WOOD, amount: 1 });
+    expect(sim.world.get(resource, Resource).remaining).toBe(4); // node lost exactly what was taken
+  });
+
+  it('harvest never depletes a node below zero (clamped)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = sim.world.create();
+    const resource = sim.world.create();
+    sim.world.add(resource, Resource, { goodType: WOOD, remaining: 0, harvestAtomic: 24 });
+    startAtomic(sim, e, { kind: 'harvest', resource, goodType: WOOD }, 1);
+    atomicSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(resource, Resource).remaining).toBe(0); // stays at floor, no negative
+  });
+
+  it('harvest still grants the unit when the node entity is already gone', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = sim.world.create();
+    const resource = sim.world.create(); // never given a Resource component (e.g. consumed/destroyed)
+    startAtomic(sim, e, { kind: 'harvest', resource, goodType: WOOD }, 1);
+    atomicSystem(sim.world, ctxOf(sim)); // must not throw on the missing node
     expect(sim.world.get(e, Carrying)).toEqual({ goodType: WOOD, amount: 1 });
   });
 
