@@ -84,6 +84,21 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
       Phase-2 AtomicSystem (like `AtomicId`, a raw id with no master table). **Wired into the CLI**
       via `buildIr` (see the `.ini` parser item) — `npm run pipeline` now emits real `content/ir.json`.
 - [ ] `.bmd` bob decoder → atlas PNG + anim JSON (ref `CBobManager.cs`, `CBitmap.cs`). **Hardest.**
+      - [x] **`.bmd` container parse** — `tools/asset-pipeline/src/decoders/bmd.ts` (`decodeBmd`:
+            storable root `[u32 id=0x3F4][u32 ver]` + a 0x1C-byte header `{firstBobId, bobCount,
+            packedLineDataUsedBytes, lineControlCount, 3 generator counters}` + three `CMemory`
+            blocks → typed `BobRecord[]` {type, area{x,y,w,h}, misc}, the raw packed-line byte
+            stream, and the `lineControl` u32 array; `encodeBmd` is the round-trip inverse, no
+            committed fixtures). The `CMemory` bodies are raw here (not Mode1-encrypted like the
+            `.cif` CStringArray). Ported from `CBobManager.cs` `CBobManager(CFile)` /
+            `Storable_SaveData` / `ReadBobDataFromMemory` + `SBobData`. **Hands-on:** all 247 real
+            `.bmd` decode + round-trip structurally byte-equal (e.g. `ls_gui_window.bmd` = 193 bobs).
+      - [ ] **Packed-line RLE → frame pixels.** Decode each bob's scanlines from the packed-line
+            stream (`lineControl[absoluteY]` = `[xMin (10b)][offset (22b)]`), applying the
+            per-bob-type codec (1-bit mask / 8-bit / double-byte) → indexed pixels, then palette/remap
+            → RGBA. Ref `CBobManager.cs` `PrintBob_*Core` + the packed-line walkers (~line 1700+).
+      - [ ] **Atlas PNG + anim JSON.** Pack decoded frames into an atlas via `encodePng`; emit frame
+            rects + per-bob metadata as anim JSON. Validate against the OpenVikings oracle.
 - [ ] One map (`map.cif` + its `.ini`/`.inc` parts) decoded to IR.
 - **Exit:** `npm run pipeline` produces a validated `content/` (types + atlases + one map), decoded
   graphics verified against the oracle.
