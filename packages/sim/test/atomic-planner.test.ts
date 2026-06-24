@@ -7,6 +7,7 @@ import {
   PathFollow,
   PathRequest,
   Position,
+  Production,
   Resource,
   Settler,
   Stockpile,
@@ -20,15 +21,20 @@ import { testContent } from './fixtures/content.js';
  * Unit + integration tests for the AISystem's ATOMIC-UTILITY planner — the *what* layer that picks
  * the next atomic for an idle settler and sequences the harvest→carry→pileup chain, sitting on top
  * of the navigation planner (the *where*). The fixture: good 1 = wood (harvest atomic 24), job 1 =
- * woodcutter (allowed atomic 24), tribe 1 = viking (binds 24 → "viking_chop", length 3), building 2
- * = sawmill (wood capacity 20). The chain is driven through the real `step()` schedule end to end.
+ * woodcutter (allowed atomic 24), tribe 1 = viking (binds 24 → "viking_chop", length 3), building 1
+ * = headquarters (a passive store with a wood slot, no recipe — so the ProductionSystem leaves the
+ * deposited wood alone). The chain is driven through the real `step()` schedule end to end.
  */
 
 const GRASS = 0;
 const WOOD = 1;
 const WOODCUTTER = 1;
 const VIKING = 1;
-const SAWMILL = 2;
+// The deposit target is a passive STORE (the headquarters, buildingType 1, with a wood stock slot and
+// no recipe) — not the sawmill: the sawmill is a workplace whose ProductionSystem would consume the
+// deposited wood, which is a separate slice's behavior. These tests check the harvest→carry→pileup
+// chain, so they want a building that just accumulates wood.
+const HEADQUARTERS = 1;
 const HARVEST_ATOMIC = 24;
 
 // Component stores are module-level singletons (see pathfinding-system.test.ts) — clear the ones this
@@ -44,6 +50,7 @@ beforeEach(() => {
   MoveGoal.store.clear();
   PathFollow.store.clear();
   PathRequest.store.clear();
+  Production.store.clear();
 });
 
 function grassMap(width: number, height: number): TerrainMap {
@@ -72,7 +79,7 @@ function woodAt(sim: Simulation, x: number, y: number, remaining = 5): Entity {
 function storeAt(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Building, { buildingType: SAWMILL, tribe: VIKING, built: ONE, level: 0 });
+  sim.world.add(e, Building, { buildingType: HEADQUARTERS, tribe: VIKING, built: ONE, level: 0 });
   sim.world.add(e, Stockpile, { amounts: new Map() });
   return e;
 }
@@ -247,6 +254,7 @@ describe('atomicPlanner — determinism', () => {
       MoveGoal.store.clear();
       PathFollow.store.clear();
       PathRequest.store.clear();
+      Production.store.clear();
       const sim = new Simulation({ seed: 11, content: testContent(), map: grassMap(4, 1) });
       woodcutterAt(sim, 0, 0);
       woodAt(sim, 1, 0, 5);

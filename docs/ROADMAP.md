@@ -448,7 +448,27 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             carry still happens). Pure + deterministic. **Hands-on:** a 3-unit tree (cutter@0, tree@1,
             store@2) through the real `Simulation.step()` schedule → `tree.remaining` 3→0 over 600 ticks,
             exactly 3 wood in the store, cutter unloaded, planner idles (hash `f09ed12a`).
-- [ ] One workplace: ProductionSystem consumes input → output, **enforcing per-good stock capacity**.
+- [x] One workplace: ProductionSystem consumes input → output, **enforcing per-good stock capacity**.
+      Done — `productionSystem` in `packages/sim/src/systems/index.ts` (no longer a stub) + the
+      {@link Production} component (per-cycle `elapsed`/`duration`). A workplace is a `Building` with a
+      `Stockpile` whose building type carries a `recipe` (inputs→outputs over `recipe.ticks`). Each
+      tick: a running cycle advances the integer `elapsed` counter and, on the exact `elapsed >=
+      duration` tick (NOT an accumulated fixed-point step, which truncates and hangs — same rule as
+      `CurrentAtomic`), deposits the outputs into the building's own stockpile + emits a `goodProduced`
+      event per output; an idle workplace starts a cycle iff its stockpile holds every input in full
+      AND every output has free room to its per-good capacity. Inputs are consumed at cycle start
+      (reserving them), outputs deposited at completion (room reserved at start, so they always fit) —
+      a cycle is the net inputs→outputs transformation, goods conserved. **Capacity enforcement is on
+      the output side**: a cycle never starts unless its outputs fit, so the stockpile never overflows
+      and inputs aren't wasted when blocked. Pure + deterministic: recipe read from CONTENT, no
+      RNG/wall-clock, stockpile writes via the canonical Map. Real input goods/amounts come from
+      `goodtypes.productionInputGoods` (the Phase-3 goods-graph artifact); proven here against the
+      synthetic sawmill recipe (wood→plank). **Hands-on:** a sawmill with 5 wood + a plank cap of 3,
+      run 120 ticks through the real `Simulation.step()` schedule → exactly **3 planks** (capped, never
+      exceeded), **2 wood left** (production halted on full output, inputs untouched), 3 `goodProduced`
+      events, two same-seed runs hash-equal (`57b0f116`). **Still to do:** a worker-presence gate
+      (a workplace should only produce while staffed — JobSystem slice) and the carrier moving outputs
+      out / inputs in (next roadmap line).
 - [ ] A minimal **carrier** moving goods between store and workplace (goods never teleport).
 - [ ] Render: isometric terrain + the settler sprite from the atlas, **depth-sorted by feet anchor**
       (a visual checklist item — can't be golden-hashed; see docs/TESTING.md).
