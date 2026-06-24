@@ -94,12 +94,15 @@ event 30 2 +4000
 name "viking_man_idle"
 `;
 
-// Mirrors DataCnmd/types/weapons.ini: each `[weapontype]` has a quoted `name`, a `type`, the
-// `minimumrange`/`maximumrange` pair, repeated `damagevalue <armorClass> <value>` lines, a `jobtype`,
-// and combat extras the schema doesn't carry (`atomicactiontype`, `soundtype_Hit`) that are ignored.
-// The second weapon omits the range pair to exercise the schema's range defaults of 1.
+// Mirrors DataCnmd/types/weapons.ini: each `[weapontype]` has a `tribetype` + a quoted `name`, a
+// `type`, the `minimumrange`/`maximumrange` pair, repeated `damagevalue <armorClass> <value>` lines,
+// a `jobtype`, and combat extras the schema doesn't carry (`atomicactiontype`, `soundtype_Hit`) that
+// are ignored. Both weapons share `type 2` across different tribes — the real data's `(tribetype,
+// type)` composite key (type alone is not unique). The second omits the range pair to exercise the
+// schema's range defaults of 1.
 const WEAPONTYPES_INI = `// new
 [weapontype]
+tribetype 1
 type 2
 name "woman fist"
 minimumrange 1
@@ -110,7 +113,8 @@ jobtype 5
 atomicactiontype 81
 soundtype_Hit 0 95
 [weapontype]
-type 4
+tribetype 2
+type 2
 name "wooden spear"
 damagevalue 0 2400
 jobtype 32
@@ -290,17 +294,20 @@ describe('extractWeapons', () => {
         typeId: 2,
         id: 'woman_fist',
         name: 'woman fist',
+        tribeType: 1,
         minRange: 1,
         maxRange: 1,
         damage: { '0': 400, '1': 80 },
         jobType: 5,
         source: src,
       },
-      // No range pair -> schema range defaults of 1; combat extras (atomicactiontype, sound) ignored.
+      // Same `type 2` but a different tribe — `(tribeType, typeId)` is the composite key. No range
+      // pair -> schema range defaults of 1; combat extras (atomicactiontype, sound) ignored.
       {
-        typeId: 4,
+        typeId: 2,
         id: 'wooden_spear',
         name: 'wooden spear',
+        tribeType: 2,
         minRange: 1,
         maxRange: 1,
         damage: { '0': 2400 },

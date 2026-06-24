@@ -697,7 +697,7 @@ describe('buildIr / resolveIniSources', () => {
     // Weapon wields jobType 3 (the [jobtype] above) so its cross-reference resolves.
     await writeFile(
       join(game, 'DataCnmd', 'types', 'weapons.ini'),
-      '[weapontype]\ntype 2\nname "fist"\nminimumrange 1\nmaximumrange 1\ndamagevalue 0 400\njobtype 3\n',
+      '[weapontype]\ntribetype 1\ntype 2\nname "fist"\nminimumrange 1\nmaximumrange 1\ndamagevalue 0 400\njobtype 3\n',
     );
     await mkdir(join(game, 'CnModMaps', 'tutorial_002'), { recursive: true });
     await writeFile(join(game, 'CnModMaps', 'tutorial_002', 'map.cif'), buildMapCif(sampleMapLines()));
@@ -717,7 +717,7 @@ describe('buildIr / resolveIniSources', () => {
     expect(set.jobs.map((j) => j.id)).toEqual(['carrier']);
     expect(set.jobs[0]?.allowedAtomics).toEqual([5]);
     expect(set.weapons.map((w) => w.id)).toEqual(['fist']);
-    expect(set.weapons[0]).toMatchObject({ typeId: 2, jobType: 3, damage: { '0': 400 } });
+    expect(set.weapons[0]).toMatchObject({ typeId: 2, tribeType: 1, jobType: 3, damage: { '0': 400 } });
     expect(set.weapons[0]?.source?.layer).toBe('mod');
     expect(set.landscape.map((l) => l.id)).toEqual(['grass']);
     expect(set.tribes.map((t) => t.id)).toEqual(['viking']);
