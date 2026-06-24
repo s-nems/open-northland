@@ -46,5 +46,3 @@ export function validateCrossReferences(set: ContentSet): void {
 export function indexById<T extends { typeId: number }>(items: readonly T[]): ReadonlyMap<number, T> {
   return new Map(items.map((i) => [i.typeId, i]));
 }
-
-export type { GoodType, BuildingType, JobType };
