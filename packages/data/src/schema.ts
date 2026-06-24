@@ -62,6 +62,9 @@ export const JobType = z.object({
   allowedAtomics: z.array(AtomicId).default([]),
   /** Always-available base atomics for this job (`jobtypes` `baseatomics`), in file order. */
   baseAtomics: z.array(AtomicId).default([]),
+  /** Atomic ids explicitly denied to this job (`jobtypes` `forbidatomic`) — an override that the
+   *  planner must treat as a hard exclusion, distinct from merely "not in allowedAtomics". */
+  forbiddenAtomics: z.array(AtomicId).default([]),
   source: Provenance.optional(),
 });
 export type JobType = z.infer<typeof JobType>;
@@ -141,6 +144,11 @@ export type LandscapeType = z.infer<typeof LandscapeType>;
  * Per-(job, atomic) animation binding from `tribetypes` `setatomic <jobType> <atomicId> "anim"`.
  * This is how a tribe expresses its identity: the SAME atomic id plays a tribe-specific animation.
  * `animation` names an entry in `atomicanimations` (timings/yields extracted in a later step).
+ *
+ * Bindings are kept in file order. The real data repeats some `(jobType, atomicId)` pairs within one
+ * tribe (e.g. ship atomics); consumers resolve a lookup as **last-wins** (a later line overrides an
+ * earlier one), matching the original engine's config-override semantics. The extractor keeps every
+ * line rather than pre-deduping, so the raw source stays faithfully represented.
  */
 export const AtomicBinding = z.object({
   jobType: TypeId,

@@ -37,6 +37,21 @@ export function validateCrossReferences(set: ContentSet): void {
     }
   }
 
+  // Each tribe's `setatomic` binding names the job it applies to; that job must exist. (Atomic ids
+  // themselves have no master table to resolve against — see AtomicId — so only jobType is checked.)
+  for (const t of set.tribes) {
+    for (const b of t.atomicBindings) {
+      if (!jobIds.has(b.jobType))
+        errors.push(`tribe "${t.id}" binds atomic ${b.atomicId} to unknown jobType ${b.jobType}`);
+    }
+  }
+
+  // A weapon's wielding job, when set, must resolve too (same dangling-reference class).
+  for (const w of set.weapons) {
+    if (w.jobType !== undefined && !jobIds.has(w.jobType))
+      errors.push(`weapon "${w.id}" references unknown jobType ${w.jobType}`);
+  }
+
   if (errors.length > 0) {
     throw new Error(`Content cross-reference validation failed:\n  - ${errors.join('\n  - ')}`);
   }
