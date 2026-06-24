@@ -1,4 +1,4 @@
-import type { ContentSet, Recipe } from '@vinland/data';
+import type { Recipe } from '@vinland/data';
 import { assertNever } from '../brand.js';
 import type { AtomicEffect } from '../commands.js';
 import {
@@ -13,115 +13,19 @@ import {
   Resource,
   Settler,
   Stockpile,
-  Velocity,
 } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
-import type { EventBuffer } from '../events.js';
-import { type Fixed, fx } from '../fixed.js';
+import { fx } from '../fixed.js';
 import { findPath } from '../pathfinding.js';
-import type { Rng } from '../rng.js';
 import type { CellId, TerrainGraph } from '../terrain.js';
+import type { System, SystemContext } from './context.js';
+import { MOVE_SPEED_PER_TICK, movementSystem } from './movement.js';
 
-/**
- * A System is a pure function over the world for one tick. Systems run in a fixed registered
- * order (see SYSTEM_ORDER below and docs/ECS.md). They may read/write components and use ctx.rng,
- * but must not touch wall-clock, Math.random, the DOM, or I/O.
- */
-export interface SystemContext {
-  readonly content: ContentSet;
-  readonly rng: Rng;
-  /** Monotonic tick counter. */
-  readonly tick: number;
-  /** Emit one-shot events for render/audio (never read back in sim logic). */
-  readonly events: EventBuffer;
-  /**
-   * The terrain cell-adjacency graph — the navigation/placement model (see terrain.ts). Optional
-   * because trivial fixtures (the determinism golden) run with no map; the pathfinding/terrain
-   * systems that need it must check and no-op when it is absent rather than assume it exists.
-   */
-  readonly terrain?: TerrainGraph;
-}
-
-export type System = (world: World, ctx: SystemContext) => void;
-
-/**
- * How far an entity following a {@link PathFollow} advances per tick, in fixed-point tile units.
- * Cell-centre waypoints are one tile apart, so at this speed an entity reaches the next waypoint in
- * four ticks (a deliberate, tunable settler pace). A divisor of ONE keeps each step landing exactly
- * on integer fractions — no accumulated rounding drift — so two runs stay byte-identical.
- */
-export const MOVE_SPEED_PER_TICK: Fixed = fx.div(fx.fromInt(1), fx.fromInt(4));
-
-/**
- * MovementSystem — advances entity positions one tick.
- *
- * Two movement modes, in this precedence:
- *  1. {@link PathFollow}: step toward the current waypoint's cell centre by {@link MOVE_SPEED_PER_TICK},
- *     per-axis clamped so we never overshoot. On reaching the waypoint, advance `index`; when the
- *     last waypoint is reached the path is complete and {@link PathFollow} is removed (the planner
- *     sees an entity with no path as idle/arrived). A path-following entity ignores any Velocity.
- *  2. {@link Velocity} (no PathFollow): the original constant-velocity integration — kept for the
- *     determinism golden and any free-moving entity that isn't path-driven.
- *
- * Fixed-point only; per-axis clamp-toward means no floats, no sqrt/normalisation, no overshoot —
- * the step is a pure function of position + waypoint, so identical inputs yield identical state.
- */
-export const movementSystem: System = (world) => {
-  // Entities the path pass moved this tick. A path can complete (PathFollow removed) within the
-  // pass, so membership can't be re-derived in pass 2 by checking has(PathFollow); record it here.
-  // Used only as a skip filter — never iterated for a decision — so it stays determinism-safe.
-  const pathHandled = new Set<Entity>();
-
-  // Path followers first — deterministic insertion-order iteration of the PathFollow store, and a
-  // path-driven entity's Velocity (if any) is ignored so it never moves twice in a tick.
-  for (const e of world.query(Position, PathFollow)) {
-    pathHandled.add(e);
-    const pf = world.get(e, PathFollow);
-    const target = pf.waypoints[pf.index];
-    if (target === undefined) {
-      // Empty/exhausted path — nothing to follow; drop it so the entity reads as arrived.
-      world.remove(e, PathFollow);
-      continue;
-    }
-
-    const p = world.get(e, Position);
-    p.x = stepToward(p.x, target.x);
-    p.y = stepToward(p.y, target.y);
-
-    if (p.x === target.x && p.y === target.y) {
-      // Arrived at this waypoint; advance to the next, or finish the path.
-      if (pf.index + 1 >= pf.waypoints.length) {
-        world.remove(e, PathFollow); // path complete
-      } else {
-        pf.index += 1;
-      }
-    }
-  }
-
-  // Free constant-velocity movers (entities the path pass did not handle this tick). Checking the
-  // recorded set (not has(PathFollow)) means an entity whose path just completed isn't ALSO velocity-
-  // integrated in the same tick — the "path overrides Velocity" contract holds on the arrival tick too.
-  for (const e of world.query(Position, Velocity)) {
-    if (pathHandled.has(e)) continue; // path-driven this tick: already moved above
-    const p = world.get(e, Position);
-    const v = world.get(e, Velocity);
-    p.x = fx.add(p.x, v.x);
-    p.y = fx.add(p.y, v.y);
-  }
-};
-
-/**
- * Move `from` toward `target` by at most {@link MOVE_SPEED_PER_TICK}, clamping so the result never
- * passes `target`. Returns `target` exactly once within one step of it — the equality the caller
- * uses to detect arrival. Pure fixed-point: no division of the delta, so no rounding drift.
- */
-function stepToward(from: Fixed, target: Fixed): Fixed {
-  const delta = fx.sub(target, from);
-  if (delta === 0) return target;
-  const dist = fx.abs(delta);
-  if (dist <= MOVE_SPEED_PER_TICK) return target; // within one step — snap to the target
-  return delta > 0 ? fx.add(from, MOVE_SPEED_PER_TICK) : fx.sub(from, MOVE_SPEED_PER_TICK);
-}
+// The System/SystemContext types and the MovementSystem live in their own modules now; the barrel
+// re-exports them so `@vinland/sim`'s `systems` namespace (and the tests) keep a single import site.
+// This is the first step of the systems/ split — see docs/TECH-DEBT.md for the full plan.
+export type { System, SystemContext };
+export { MOVE_SPEED_PER_TICK, movementSystem };
 
 /**
  * AISystem — the settler planner: two layered passes per tick.
