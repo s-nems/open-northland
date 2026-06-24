@@ -49,6 +49,17 @@ So behavior is a **planner sequencing atomics**, not bespoke per-job code:
   production by sequencing harvest/pickup/produce/pileup; else satisfy a social/enjoy need).
 - **AtomicSystem** = execute `CurrentAtomic` to completion, apply its effect, notify the planner.
 
+**Worked example — the woodcutter slice (implemented in Phase 2).** An idle woodcutter, empty-handed:
+`aiSystem`'s `atomicPlanner` sees no `CurrentAtomic`, picks the `harvest` atomic the job permits, and
+sets a `MoveGoal` to the nearest harvestable wood node. The navigation planner routes it
+(`PathRequest` → A\* → `PathFollow`); `movementSystem` walks it there. On arrival the planner starts a
+`harvest` `CurrentAtomic` whose duration comes from the tribe's `setatomic` → `AtomicAnimation.length`;
+`atomicSystem` advances it to completion, applies the effect (the settler gains 1 wood, the node's
+`Resource.remaining` drops 1), emits `atomicCompleted`, and removes the component. Now carrying, the
+planner's next pick is a `MoveGoal` to the nearest store, then a `pileup` atomic depositing into its
+`Stockpile`. No bespoke "woodcutter" code runs anywhere — the behavior is **data** (the job's atomics +
+the good's `atomicFor*` + the tribe's bindings) sequenced by those two systems.
+
 If you instead hardcode jobs as separate system logic, you'll build something that *looks* like
 Cultures and *feels* wrong, and every new job becomes hand-written. Keep behavior data-driven.
 
@@ -66,7 +77,8 @@ its own graph — never hardcode tribe count or identities.
 
 1. **No ambient nondeterminism.** No `Math.random`, `Date.now`, `Date`, `performance.now`. Use
    `world.rng` (seeded). No reliance on `Map`/`Set` iteration order for game decisions — iterate a
-   **canonical** order (e.g. `stockpileEntries()` sorts by goodType). See CLAUDE.md anti-patterns.
+   **canonical** order (e.g. `stockpileEntries()` sorts by goodType). See the determinism
+   anti-patterns in `packages/sim/CLAUDE.md`.
 2. **Deterministic iteration.** Queries iterate the smallest store in **insertion order** (no
    per-call sort — that was a perf trap). Order is reproducible across identical runs, which is what
    determinism needs. For canonical snapshots/hashes, sort ids explicitly (`world.canonicalEntities()`).

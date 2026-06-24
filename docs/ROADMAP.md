@@ -302,11 +302,20 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
 
 ## Phase 2 — Vertical slice (prove the sim)  ← **first real target**
 Goal: one tribe, headless-correct, then on screen. Establish the invariants that the rest depends on.
+
+> **TL;DR (live target).** The slice runs end-to-end and deterministic: terrain cell-graph → A\* →
+> movement → the atomic planner (harvest→carry→pileup) → one workplace with capacity are all built
+> and green. **Next smallest step: the minimal carrier** (move goods between store and workplace).
+> Still unbuilt in this phase: **CommandSystem** (the serializable-command seam — leapfrogged so
+> far), **render + the screenshot harness**, and the **golden state-hash + atomic-trace** over ~1000
+> ticks. Lines tagged *(core done…)* pass tests today but await one wiring piece.
 - [ ] **CommandSystem + serializable command schema** — the ONLY way state mutates. Save = command
       log from day one (disk format later; the invariant is now). Define the **snapshot read-view**
       (double-buffer or immutable view) so `render` never reads mid-mutation.
 - [ ] Terrain as a **cell-adjacency graph** with per-type walk cost/valency (from
       `landscapetypes.ini`). *Not* the triangle geometry — that's render-only.
+      *(core done — graph builder + `world.terrain` resource wired; pending: a real per-type
+      walk-cost field and feeding the grid from a decoded `map.cif`.)*
       - The per-type IR inputs are extracted: `extractLandscape` (`decoders/ini.ts`) now captures
         `maximumValency` (per-cell capacity → `maxValency`) and the `allowedonland`/`allowedonwater`/
         `allowedoneverything` placement-layer flags onto `LandscapeType`. **Hands-on:** real
@@ -336,6 +345,7 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
         filtering correct); two same-seed+map runs hash-equal over 200 ticks (`1ef172ae`); a mapless sim
         has `terrain===undefined`; a typeId-99 map throws at construction.
 - [ ] PathfindingSystem: A* on the cell graph with **canonical tie-breaking** (budgeted/tick).
+      *(done — A\* core + system glue both landed; see sub-items.)*
       - [x] **A\* search core** — `packages/sim/src/pathfinding.ts` (`findPath(graph, start, goal)`):
         a pure, deterministic A* over `TerrainGraph.walkableNeighbours` (the canonical N,E,S,W edge
         set), `cellManhattanDistance` as the admissible heuristic and `walkCost` as edge cost; returns
@@ -398,7 +408,8 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
       goal (a store/resource cell) — the next slice.
 - [ ] **Atomic planner slice:** AISystem picks an atomic (utility over the job's allowed atomics);
       AtomicSystem executes it to completion and applies its effect. One settler: harvest wood →
-      pickup → carry → pileup at store.
+      pickup → carry → pileup at store. *(done — executor + utility planner + resource depletion all
+      landed; see sub-items.)*
       - [x] **AtomicSystem executor** — `atomicSystem` in `packages/sim/src/systems/index.ts` (no
             longer a stub) + the {@link AtomicEffect}/`elapsed`/`duration` fields on the `CurrentAtomic`
             component. Each tick it advances the integer `elapsed` counter (NOT an accumulated
@@ -528,15 +539,20 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
       re-parse and rebase the sim on file change → instant balance-tweak feedback, no rebuild.
 
 ## Risks & open unknowns (watch these)
-- ~~**`.cif` decrypted payload structure**~~ — **SOLVED** in Phase 1 (`decoders/cif.ts`): root
-  `CStringArray` of Mode1-encrypted depth-prefixed text lines; verified on type tables + a map.
-  Remaining map unknown: the binary tile grid, if stored outside the logic-header CStringArray.
+
+**Live:**
 - **Settler AI fidelity** — the soul, undocumented. Approach = planner over the data-extracted
   atomic vocabulary; base atomic timings/yields come from `atomicanimations.ini` (see below), with
   only fine-tuning by observation, kept as data so tuning is a diff. See docs/ECS.md "Settler AI".
-- ~~**Atomic timings/effects**~~ — **extracted** (`extractAtomicAnimations`): the mod's readable
-  `DataCnmd/atomicanimations12/atomicanimations.ini` gives `length`/`event`/`startdirection` per
-  named animation. Vocabulary + base timings are now in the IR; the open part is decoding what each
-  `event` `(type, value)` means (yields/needs/cues) — only fine tuning should need observation.
+- **Map binary tile grid** — the per-cell landscape grid (the Phase-2 nav-graph input) if stored
+  outside the logic-header `CStringArray`; not yet located. Map metadata decodes; the grid doesn't.
 - **Combat & campaign scripting scope** — both larger than one roadmap line implies.
 - **Determinism drift** — every new system must keep golden state + trace tests green.
+
+**Resolved (archived):**
+- ~~**`.cif` decrypted payload structure**~~ — **SOLVED** in Phase 1 (`decoders/cif.ts`): root
+  `CStringArray` of Mode1-encrypted depth-prefixed text lines; verified on type tables + a map.
+- ~~**Atomic timings/effects**~~ — **extracted** (`extractAtomicAnimations`): the mod's readable
+  `DataCnmd/atomicanimations12/atomicanimations.ini` gives `length`/`event`/`startdirection` per
+  named animation. The remaining open part is decoding what each `event` `(type, value)` means
+  (yields/needs/cues) — only fine tuning should need observation.

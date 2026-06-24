@@ -60,6 +60,27 @@ fixed scenario (e.g. `[walk, harvest, pickup, walk, pileup, …]`) and diff agai
 golden. When AI/economy tuning changes behavior, the diff is human/agent-readable — far more
 useful than "hash changed." Intentional change → update the golden in the same commit.
 
+## Running & debugging tests
+
+All levels run under `npm test` (vitest). For the inner loop:
+- **One file/suite:** `npm test -- scenario` (a name-substring filter) — e.g. `npm test -- hygiene`
+  for just the determinism scan, `npm test -- determinism` for the unit goldens.
+- **Watch mode:** `npm run test:watch` re-runs on save while you iterate on one system.
+- **Typecheck only:** `npm run typecheck` (it's `tsc --build`, identical to `npm run build`).
+
+**Debug a failing invariant.** Integration/scenario invariants assert *after every tick*, so a
+failure names the **exact tick** it broke (`… at tick N`). Re-run that one scenario, narrow to that
+tick, and inspect — don't re-read the whole run. A determinism failure (two same-seed runs diverge)
+means a nondeterministic global or a `Map`/`Set` iteration leaked into a game decision: the hygiene
+test catches the global class, the hash-divergence test catches the rest.
+
+**Updating a golden** (state-hash or atomic-trace) is a deliberate four-step act, never a reflex:
+1. Run `npm test` and read **which** golden moved.
+2. Confirm the diff is **exactly** the mechanic you intended to change. A pure refactor must move
+   *no* golden — if one moves, a real change crept in: stop and reassess.
+3. Update the inline expected value in the same commit.
+4. **Name the mechanic** in the commit message so the behavioral change stays auditable.
+
 ## What an agent CANNOT self-validate (be honest)
 
 - **Pixel fidelity & "feel"** — isometric depth-sort correctness, animation anchors, pathing
