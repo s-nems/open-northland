@@ -472,6 +472,11 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 - [ ] A minimal **carrier** moving goods between store and workplace (goods never teleport).
 - [ ] Render: isometric terrain + the settler sprite from the atlas, **depth-sorted by feet anchor**
       (a visual checklist item — can't be golden-hashed; see docs/TESTING.md).
+      - Bundle the **screenshot harness** into this slice: a deterministic, headless render entry
+        ("render scenario X at seed S, step N ticks, draw one frame, signal ready") + an `npm run
+        shot` Playwright script writing a PNG an agent can eyeball. It's the prerequisite for any
+        visual self-check, and there's nothing to screenshot before this line — Playwright (the
+        committed script, **not** the MCP) is the chosen tool; rationale in docs/TESTING.md.
 - [ ] Golden state-hash + golden **atomic-action trace** over ~1000 ticks; invariants each tick.
 - **Exit:** click to place one workplace; a settler autonomously supplies it via atomics; carrier
   hauls output; deterministic, invariant-clean, replay-equal.
