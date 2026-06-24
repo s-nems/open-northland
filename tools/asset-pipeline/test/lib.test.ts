@@ -76,9 +76,35 @@ describe('decodeLib', () => {
     expect(lib.files).toEqual([]);
   });
 
+  it('preserves a version other than 1 (the field is read but not interpreted)', () => {
+    const lib = decodeLib(encodeLib({ version: 2, files: [{ name: 'a.dat', data: bytesOf(7) }] }));
+    expect(lib.version).toBe(2);
+    expect(lib.files[0]?.data).toEqual(bytesOf(7));
+  });
+
   it('throws a lib-prefixed error on a truncated header (not a raw RangeError)', () => {
     expect(() => decodeLib(new Uint8Array(0))).toThrow(/lib: read of 4 bytes overruns/);
     expect(() => decodeLib(new Uint8Array(10))).toThrow(/lib: read of 4 bytes overruns/);
+  });
+
+  it('throws when a declared name length overruns the buffer', () => {
+    // version=1, groupCount=0, fileCount=1, nameLen=50, but no name bytes follow
+    const bad = bytesOf(...le32(1), ...le32(0), ...le32(1), ...le32(50));
+    expect(() => decodeLib(bad)).toThrow(/lib: read of 50 bytes overruns/);
+  });
+
+  it('rejects a position past the end even when size is 0', () => {
+    // name "x" (len 1), position=999 (past end), size=0 -> still out of range
+    const bad = bytesOf(
+      ...le32(1), // version
+      ...le32(0), // groupCount
+      ...le32(1), // fileCount
+      ...le32(1), // nameLen
+      0x78, // 'x'
+      ...le32(999), // position (past end)
+      ...le32(0), // size
+    );
+    expect(() => decodeLib(bad)).toThrow(/overruns archive/);
   });
 
   it('rejects a payload range that overruns the archive', () => {

@@ -47,9 +47,14 @@ export interface LibArchive {
   readonly files: readonly LibFile[];
 }
 
+/** Latin1 maps all 256 byte values 1:1; archive names are ASCII so this is exact. */
+const LATIN1 = new TextDecoder('latin1');
+
 /**
  * Filename → lookup checksum (CSimpleFileLibrary `CalculateFilenameChecksum`): the sum of the
- * lowercased ASCII byte values, taken mod 256. Non-ASCII chars are masked to a byte first.
+ * lowercased ASCII byte values, taken mod 256, folding only A-Z. Real archive names are ASCII
+ * backslash paths, for which this is exact; for hypothetical non-ASCII names it can diverge from
+ * the original (which folds the char before truncating to a byte), but those don't occur.
  */
 export function filenameChecksum(name: string): number {
   let sum = 0;
@@ -88,7 +93,7 @@ class LibReader {
     }
     const slice = this.bytes.subarray(this.pos, this.pos + n);
     this.pos += n;
-    return new TextDecoder('latin1').decode(slice);
+    return LATIN1.decode(slice);
   }
 }
 
@@ -96,6 +101,10 @@ class LibReader {
  * Decodes a `.lib` archive directory and returns per-file payload views. Throws on a structurally
  * invalid container (truncated directory, or a payload range outside the buffer) — a batch pipeline
  * over many owned files should wrap each call per-file so one corrupt `.lib` can't abort the run.
+ *
+ * Each payload's `[position, position + size)` is checked to fit the buffer, but positions are
+ * otherwise trusted as the original engine trusts them: they are not cross-validated for overlap or
+ * for pointing back into the directory, so a malformed archive can yield in-bounds-but-wrong views.
  */
 export function decodeLib(bytes: Uint8Array): LibArchive {
   const r = new LibReader(bytes);
