@@ -5,8 +5,9 @@ This file is the contract. Read it fully before editing.
 
 ## Where things are
 
-The agent is typically launched from `~/Projects/vikings/` (the parent), which contains three
-sibling folders — you have read access to all of them:
+This repo (`vinland/`) is normally checked out inside a **workspace parent directory** and, when
+present locally, sits alongside two sibling reference folders — all read-only to you; this repo is
+the only thing you write to:
 
 - `vinland/` — **this project** (the only one you write to).
 - `OpenVikings_reversing/` — C#/.NET binary-faithful reverse engineering of the original engine.
