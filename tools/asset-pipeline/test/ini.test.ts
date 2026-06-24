@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { CifLine } from '../src/decoders/cif.js';
 import {
   cifLinesToSections,
+  extractAtomicAnimations,
   extractGoods,
   extractJobs,
   extractLandscape,
@@ -63,6 +64,28 @@ setatomic 1 8 "viking_baby_female_sleep"
 setatomic 5 22 "viking_woman_pickup"
 setatomic 52 84 "viking_ship_small_idle_short_a" // "viking_ship_small_dock"
 setatomic 5 22 "viking_woman_pickup_alt"
+`;
+
+// Mirrors DataCnmd/atomicanimations12/atomicanimations.ini: `[atomicanimation]` records with a
+// quoted `name`, scalar `length`/`interruptable`/`startdirection`, and timed `event`/`eventx` lines
+// (3-field = no value, 4-field = signed value). The first record exercises every field; the others
+// exercise defaults (no length/interruptable) and the eat-yield shape.
+const ATOMICANIMATIONS_INI = `[atomicanimation]
+name "viking_woman_pickup"
+length 20
+interruptable 1
+startdirection 6
+event 16 11 0
+eventx 18 22 -100
+event 19 13
+
+[atomicanimation]
+name "viking_child_female_eat_slot_food"
+length 50
+event 30 2 +4000
+
+[atomicanimation]
+name "viking_man_idle"
 `;
 
 const LANDSCAPE_INI = `<CULTURES_CIF_BEGIN><03FD><000002BF> Don't modify this line!
@@ -208,6 +231,61 @@ describe('extractTribes', () => {
   });
 });
 
+describe('extractAtomicAnimations', () => {
+  it('captures length/interruptable/startdirection scalars and ordered event/eventx tuples', () => {
+    const anims = extractAtomicAnimations(parseIniSections(ATOMICANIMATIONS_INI), {
+      file: 'DataCnmd/atomicanimations12/atomicanimations.ini',
+      layer: 'mod',
+    });
+    const src = {
+      file: 'DataCnmd/atomicanimations12/atomicanimations.ini',
+      block: 'atomicanimation',
+      layer: 'mod',
+    };
+    expect(anims).toEqual([
+      {
+        id: 'viking_woman_pickup',
+        name: 'viking_woman_pickup',
+        length: 20,
+        interruptible: true,
+        startDirection: 6,
+        events: [
+          // `event 16 11 0` -> value 0 kept (distinct from a missing value).
+          { at: 16, type: 11, value: 0, extended: false },
+          // `eventx` becomes an extended event; signed value preserved.
+          { at: 18, type: 22, value: -100, extended: true },
+          // `event 19 13` has no value field -> `value` omitted entirely.
+          { at: 19, type: 13, extended: false },
+        ],
+        source: src,
+      },
+      {
+        id: 'viking_child_female_eat_slot_food',
+        name: 'viking_child_female_eat_slot_food',
+        length: 50,
+        interruptible: false,
+        events: [{ at: 30, type: 2, value: 4000, extended: false }],
+        source: src,
+      },
+      // No length/interruptable lines -> schema defaults (length 0, not interruptible, no events).
+      {
+        id: 'viking_man_idle',
+        name: 'viking_man_idle',
+        length: 0,
+        interruptible: false,
+        events: [],
+        source: src,
+      },
+    ]);
+  });
+
+  it('throws on an [atomicanimation] missing its `name` (it would be unreferenceable)', () => {
+    expect(() =>
+      extractAtomicAnimations(parseIniSections('[atomicanimation]\nlength 20\n'), { file: 'f.ini' }),
+    ).toThrow(/without a `name`/);
+  });
+});
+
 describe('extractLandscape', () => {
   it('slugifies multi-word names and defaults walkable/buildable', () => {
     const land = extractLandscape(parseIniSections(LANDSCAPE_INI), {
@@ -220,10 +298,14 @@ describe('extractLandscape', () => {
 });
 
 describe('IR integration', () => {
-  it('extracted goods + jobs + tribes + landscape assemble into a valid ContentSet', () => {
+  it('extracted goods + jobs + tribes + landscape + animations assemble into a valid ContentSet', () => {
     const goods = extractGoods(parseIniSections(GOODTYPES_INI), { file: 'goodtypes.ini' });
     const tribes = extractTribes(parseIniSections(TRIBETYPES_INI), { file: 'tribetypes.ini', layer: 'mod' });
     const landscape = extractLandscape(parseIniSections(LANDSCAPE_INI), { file: 'landscapetypes.ini' });
+    const atomicAnimations = extractAtomicAnimations(parseIniSections(ATOMICANIMATIONS_INI), {
+      file: 'atomicanimations.ini',
+      layer: 'mod',
+    });
     // The tribe binds jobTypes 1/5/52, so the job set must define them (cross-ref resolvability).
     const jobs = [
       ...extractJobs(parseIniSections(JOBTYPES_INI), { file: 'jobtypes.ini' }),
@@ -239,6 +321,7 @@ describe('IR integration', () => {
         buildings: [],
         landscape,
         tribes,
+        atomicAnimations,
       }),
     ).not.toThrow();
   });

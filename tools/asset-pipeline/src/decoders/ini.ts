@@ -14,7 +14,14 @@
  * Not ported from OpenVikings (its `.ini` handling is a trivial text parse). The grammar facts come
  * from inspecting `Data/logic/*.ini`. See docs/SOURCES.md and docs/DATA-FORMAT.md.
  */
-import { type GoodAtomics, GoodType, JobType, LandscapeType, TribeType } from '@vinland/data';
+import {
+  AtomicAnimation,
+  type GoodAtomics,
+  GoodType,
+  JobType,
+  LandscapeType,
+  TribeType,
+} from '@vinland/data';
 import type { CifLine } from './cif.js';
 
 /** One property line: a key and its whitespace-separated values (quoted runs count as one value). */
@@ -295,4 +302,53 @@ export function extractTribes(sections: readonly RuleSection[], src: SourceRef):
     );
   }
   return tribes;
+}
+
+/**
+ * Extracts `[atomicanimation]` sections into validated {@link AtomicAnimation} IR — the timing/effect
+ * layer the atomic vocabulary points at. Each section is keyed by `name` (the join target of a tribe's
+ * `setatomic` binding); `length`/`interruptable`/`startdirection` are scalars, and `event`/`eventx`
+ * lines become ordered {@link AtomicEvent}s carrying their raw `(at, type, value?)` numbers — the event
+ * vocabulary is undocumented and captured faithfully, not interpreted. Throws on a section without a
+ * `name` (it would be unreferenceable), matching {@link extractGoods}'s throw-on-malformed stance.
+ */
+export function extractAtomicAnimations(sections: readonly RuleSection[], src: SourceRef): AtomicAnimation[] {
+  const animations: AtomicAnimation[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'atomicanimation') continue;
+    const name = getStr(sec, 'name');
+    if (name === undefined) {
+      throw new Error(`ini: [atomicanimation] without a \`name\` in ${src.file}`);
+    }
+    const events: { at: number; type: number; value?: number; extended: boolean }[] = [];
+    for (const p of sec.props) {
+      if (p.key !== 'event' && p.key !== 'eventx') continue;
+      const at = Number.parseInt(p.values[0] ?? '', 10);
+      const type = Number.parseInt(p.values[1] ?? '', 10);
+      if (Number.isNaN(at) || Number.isNaN(type)) continue;
+      const event: { at: number; type: number; value?: number; extended: boolean } = {
+        at,
+        type,
+        extended: p.key === 'eventx',
+      };
+      const rawValue = p.values[2];
+      if (rawValue !== undefined) {
+        const value = Number.parseInt(rawValue, 10);
+        if (!Number.isNaN(value)) event.value = value;
+      }
+      events.push(event);
+    }
+    animations.push(
+      AtomicAnimation.parse({
+        id: slug(name),
+        name,
+        length: getInt(sec, 'length'),
+        interruptible: getInt(sec, 'interruptable') === 1,
+        startDirection: getInt(sec, 'startdirection'),
+        events,
+        source: { file: src.file, block: 'atomicanimation', layer: src.layer ?? 'base' },
+      }),
+    );
+  }
+  return animations;
 }
