@@ -95,6 +95,20 @@ export class TerrainGraph {
     return { x: cell % this.width, y: Math.floor(cell / this.width) };
   }
 
+  /**
+   * The cell containing integer tile coordinates (`x`, `y`), clamped into the grid. Unlike
+   * {@link cellAt} this never throws — it is the navigation planner's seam from a settler's tile
+   * position (already snapped to an integer cell centre by the MovementSystem) to a cell id, so an
+   * out-of-range coordinate clamps to the nearest border cell rather than crashing a tick. Pass
+   * integer tile coords (round a fixed-point Position with `fx.toInt` first); a fractional value is
+   * truncated toward zero by the cell layout.
+   */
+  cellAtClamped(x: number, y: number): CellId {
+    const cx = x < 0 ? 0 : x >= this.width ? this.width - 1 : x;
+    const cy = y < 0 ? 0 : y >= this.height ? this.height - 1 : y;
+    return (cy * this.width + cx) as CellId;
+  }
+
   /** The landscape typeId tagged on a cell. Throws on an id outside the grid (programmer error). */
   typeAt(cell: CellId): number {
     const id = this.typeIds[cell];

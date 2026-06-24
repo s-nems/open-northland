@@ -68,6 +68,17 @@ export const PathFollow = defineComponent<{ waypoints: Array<{ x: Fixed; y: Fixe
 );
 
 /**
+ * A navigation goal: the destination cell an entity wants to reach (a raw row-major cell id, like
+ * {@link PathRequest}). It is the *intent* layer above pathing — the AISystem (navigation planner)
+ * turns a goal on a path-less, request-less entity into a {@link PathRequest} from the entity's
+ * current cell; PathfindingSystem turns that into a {@link PathFollow}; MovementSystem walks it.
+ * The goal is removed once the entity arrives, so an entity carrying a `MoveGoal` is "still
+ * travelling". Kept separate from PathRequest/PathFollow (the transient mechanism) so the planner
+ * can re-issue a request if a route is lost without forgetting where the entity was headed.
+ */
+export const MoveGoal = defineComponent<{ cell: number }>('MoveGoal');
+
+/**
  * A pending navigation request: route this entity from cell `start` to cell `goal`. The
  * PathfindingSystem drains these (budgeted per tick), runs A* on `ctx.terrain`, and on success
  * replaces the entity's {@link PathFollow} with the result then removes the request; on failure
