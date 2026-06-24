@@ -497,3 +497,107 @@ export function extractGraphicsBindings(sections: readonly RuleSection[]): BmdPa
   }
   return bindings;
 }
+
+/** One indexed bob-manager slot: a slot index + its body `.bmd` and (for body bobs) an optional shadow `.bmd`. */
+export interface IndexedBobManager {
+  /** The leading int slot index (`gfxbobmanagerbody 0 ...`, `gfxbobmanagerhead 3 ...`) — head bobs come in numbered variant slots (0..3). */
+  readonly index: number;
+  /** The bob set, as a normalized `data/.../foo.bmd` relative path (forward slashes, lower-case). */
+  readonly bmd: string;
+  /** The matching shadow bob set (body bobs only), same normalization, or `undefined` when absent (head bobs never carry one). */
+  readonly shadowBmd: string | undefined;
+}
+
+/**
+ * One human's full graphics binding from a mod `[jobbasegraphics]` record — the **richer variant** of
+ * {@link BmdPaletteBinding} (docs/ROADMAP.md Phase 1). Unlike the flat `[jobgraphics]` schema (one body
+ * `.bmd` + one palette), a human draws as a **body** bob plus zero-or-more numbered **head** bobs, each
+ * a `gfxbobmanagerbody/head <index> "<bmd>" ["<shadow>"]` line whose leading int index shifts the `.bmd`
+ * path off `values[0]` (so it cannot reuse {@link extractGraphicsBindings}). Palettes split three ways:
+ * `gfxpalettebasebody`/`gfxpalettebasehead` colour the two bob sets, and `gfxpaletterandom` is the
+ * per-settler random tint range. Each palette name lower-cases ({@link normalizePaletteName}) to join
+ * case-insensitively onto {@link PaletteAlias.name}.
+ */
+export interface JobBaseGraphicsBinding {
+  /** The `logictribe` id the record applies to, when present (a cross-reference, not required). */
+  readonly tribeId: number | undefined;
+  /** The `logicjob` id the record applies to, when present (a cross-reference, not required). */
+  readonly jobId: number | undefined;
+  /** The body bob slots (`gfxbobmanagerbody`), in file order — at least one (a record with none is skipped). */
+  readonly body: readonly IndexedBobManager[];
+  /** The head bob slots (`gfxbobmanagerhead`), in file order — may be empty (some creatures are body-only). */
+  readonly head: readonly IndexedBobManager[];
+  /** The body palette `editname`, lower-cased, or `undefined` when the record omits `gfxpalettebasebody`. */
+  readonly bodyPalette: string | undefined;
+  /** The head palette `editname`, lower-cased, or `undefined` when the record omits `gfxpalettebasehead`. */
+  readonly headPalette: string | undefined;
+  /** The random-tint palette `editname`, lower-cased, or `undefined` when the record omits `gfxpaletterandom`. */
+  readonly randomPalette: string | undefined;
+}
+
+/**
+ * Parses an indexed bob-manager line (`gfxbobmanagerbody 0 "<bmd>" ["<shadow>"]`) into an
+ * {@link IndexedBobManager}, or `undefined` if it has no `.bmd` path. The leading token is the slot
+ * index; the second is the body `.bmd`; the optional third (body lines only) is the shadow `.bmd`.
+ * A non-numeric/absent index falls back to 0 so a slightly malformed slot still binds its `.bmd`.
+ */
+function parseIndexedBobManager(prop: RuleProp): IndexedBobManager | undefined {
+  const index = Number.parseInt(prop.values[0] ?? '', 10);
+  const bmd = prop.values[1];
+  if (bmd === undefined || bmd.trim() === '') return undefined;
+  const shadow = prop.values[2];
+  return {
+    index: Number.isNaN(index) ? 0 : index,
+    bmd: normalizeAssetPath(bmd),
+    shadowBmd: shadow !== undefined && shadow.trim() !== '' ? normalizeAssetPath(shadow) : undefined,
+  };
+}
+
+/** First value of the first matching property as a lower-cased palette `editname`, or `undefined` if absent/empty. */
+function getPaletteName(sec: RuleSection, key: string): string | undefined {
+  const name = getStr(sec, key);
+  return name !== undefined && name.trim() !== '' ? normalizePaletteName(name) : undefined;
+}
+
+/**
+ * Extracts the mod's richer `[jobbasegraphics]` records (`DataCnmd/types/humanstype/jobgraphics.ini`)
+ * into {@link JobBaseGraphicsBinding}s — the second binding skin alongside the flat
+ * {@link extractGraphicsBindings} `[jobgraphics]` one. A human is drawn from an indexed **body** bob
+ * plus numbered **head** bobs (`gfxbobmanagerbody/head <index> "<bmd>" ["<shadow>"]`), with the
+ * `.bmd` path on `values[1]` (the leading int index occupies `values[0]`, the structural difference
+ * from the flat schema). Palettes split three ways (`gfxpalettebasebody`/`gfxpalettebasehead`/
+ * `gfxpaletterandom`); all three are optional in the real data and lower-case to join onto
+ * {@link extractPaletteIndex} case-insensitively.
+ *
+ * A record with no usable body bob is skipped (nothing to colour) rather than throwing — an index over
+ * many records must not abort the offline batch on one malformed entry, matching
+ * {@link extractGraphicsBindings}. Head bobs and every palette are optional and simply omitted when
+ * absent; the consumer resolves whichever palettes are present against the unpacked `--out` tree.
+ */
+export function extractJobBaseGraphics(sections: readonly RuleSection[]): JobBaseGraphicsBinding[] {
+  const bindings: JobBaseGraphicsBinding[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'jobbasegraphics') continue;
+    const body: IndexedBobManager[] = [];
+    for (const p of findProps(sec, 'gfxbobmanagerbody')) {
+      const slot = parseIndexedBobManager(p);
+      if (slot !== undefined) body.push(slot);
+    }
+    if (body.length === 0) continue;
+    const head: IndexedBobManager[] = [];
+    for (const p of findProps(sec, 'gfxbobmanagerhead')) {
+      const slot = parseIndexedBobManager(p);
+      if (slot !== undefined) head.push(slot);
+    }
+    bindings.push({
+      tribeId: getInt(sec, 'logictribe'),
+      jobId: getInt(sec, 'logicjob'),
+      body,
+      head,
+      bodyPalette: getPaletteName(sec, 'gfxpalettebasebody'),
+      headPalette: getPaletteName(sec, 'gfxpalettebasehead'),
+      randomPalette: getPaletteName(sec, 'gfxpaletterandom'),
+    });
+  }
+  return bindings;
+}

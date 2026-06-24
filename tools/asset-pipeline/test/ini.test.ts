@@ -7,6 +7,7 @@ import {
   extractAtomicAnimations,
   extractGoods,
   extractGraphicsBindings,
+  extractJobBaseGraphics,
   extractJobs,
   extractLandscape,
   extractPaletteIndex,
@@ -446,6 +447,82 @@ describe('extractGraphicsBindings', () => {
     );
     const [first] = extractGraphicsBindings(parseIniSections(JOBGRAPHICS_INI));
     expect(palettes.get(first?.paletteName ?? '')).toBe('data/engine2d/bin/palettes/creatures/bear01.pcx');
+  });
+});
+
+// Mirrors the real DataCnmd/types/humanstype/jobgraphics.ini [jobbasegraphics] grammar: an indexed
+// body bob (leading int slot + body .bmd + optional shadow), numbered head bobs (slot + head .bmd, no
+// shadow), and three optional palette names. Record 1 has body+heads+all palettes; record 2 is
+// body-only (no heads, only a random palette, like the real grizzu bears); record 3 has no body bob
+// and is skipped.
+const JOBBASEGRAPHICS_INI = `<CULTURES_CIF_BEGIN><03FD><000000F1> Don't modify this line!
+[jobbasegraphics]
+logictribe 1
+logicjob 6
+gfxbobmanagerbody 0 "Data\\Engine2D\\Bin\\Bobs\\CR_Hum_Body_00.bmd" "Data\\Engine2D\\Bin\\Bobs\\CR_Hum_Body_00_s.bmd"
+gfxbobmanagerhead 0 "Data\\Engine2D\\Bin\\Bobs\\CR_Hum_Head_00.bmd"
+gfxbobmanagerhead 1 "Data\\Engine2D\\Bin\\Bobs\\CR_Hum_Head_01.bmd"
+gfxpalettebasebody "Test_Human_00"
+gfxpalettebasehead "test_human_00"
+gfxpaletterandom "Vik_Man_Base"
+[jobbasegraphics]
+logictribe 3
+logicjob 32
+gfxbobmanagerbody 0 "Data\\Engine2D\\Bin\\Bobs\\CR_Hum_Body_72.bmd" "Data\\Engine2D\\Bin\\Bobs\\CR_Hum_Body_72_s.bmd"
+gfxpaletterandom "grizzu"
+[jobbasegraphics]
+logictribe 9
+gfxpalettebasebody "orphan_no_body"
+`;
+
+describe('extractJobBaseGraphics', () => {
+  it('parses indexed body/head bobs (path on values[1]) + the three split palettes, lower-casing palette names', () => {
+    const bindings = extractJobBaseGraphics(parseIniSections(JOBBASEGRAPHICS_INI));
+    // Record 3 (no body bob) is skipped; records 1 and 2 bind.
+    expect(bindings).toEqual([
+      {
+        tribeId: 1,
+        jobId: 6,
+        body: [
+          {
+            index: 0,
+            bmd: 'data/engine2d/bin/bobs/cr_hum_body_00.bmd',
+            shadowBmd: 'data/engine2d/bin/bobs/cr_hum_body_00_s.bmd',
+          },
+        ],
+        head: [
+          { index: 0, bmd: 'data/engine2d/bin/bobs/cr_hum_head_00.bmd', shadowBmd: undefined },
+          { index: 1, bmd: 'data/engine2d/bin/bobs/cr_hum_head_01.bmd', shadowBmd: undefined },
+        ],
+        // `Test_Human_00` lower-cases to join case-insensitively onto the palette index.
+        bodyPalette: 'test_human_00',
+        headPalette: 'test_human_00',
+        randomPalette: 'vik_man_base',
+      },
+      {
+        tribeId: 3,
+        jobId: 32,
+        body: [
+          {
+            index: 0,
+            bmd: 'data/engine2d/bin/bobs/cr_hum_body_72.bmd',
+            shadowBmd: 'data/engine2d/bin/bobs/cr_hum_body_72_s.bmd',
+          },
+        ],
+        // Body-only: no head bobs, only a random-tint palette (like the real grizzu bears).
+        head: [],
+        bodyPalette: undefined,
+        headPalette: undefined,
+        randomPalette: 'grizzu',
+      },
+    ]);
+  });
+
+  it('resolves a body palette across a case mismatch via the shared palettes index', () => {
+    // The flat [jobgraphics] extractor stays untouched by the [jobbasegraphics] sections — the two
+    // skins coexist in one file in the real mod, each guarding on its own section name.
+    expect(extractGraphicsBindings(parseIniSections(JOBBASEGRAPHICS_INI))).toEqual([]);
+    expect(extractJobBaseGraphics(parseIniSections(JOBGRAPHICS_INI))).toEqual([]);
   });
 });
 
