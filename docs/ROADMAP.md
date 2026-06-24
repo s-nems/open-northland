@@ -307,6 +307,12 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
       (double-buffer or immutable view) so `render` never reads mid-mutation.
 - [ ] Terrain as a **cell-adjacency graph** with per-type walk cost/valency (from
       `landscapetypes.ini`). *Not* the triangle geometry — that's render-only.
+      - The per-type IR inputs are extracted: `extractLandscape` (`decoders/ini.ts`) now captures
+        `maximumValency` (per-cell capacity → `maxValency`) and the `allowedonland`/`allowedonwater`/
+        `allowedoneverything` placement-layer flags onto `LandscapeType`. **Hands-on:** real
+        `Data/logic/landscapetypes.ini` → 87 types, maxValency 1..100, 86 on-land / 3 on-water (wall +
+        2 gates) / 1 on-everything (void). The graph builder itself (adjacency + A* cost from these) is
+        still to do.
 - [ ] PathfindingSystem: A* on the cell graph with **canonical tie-breaking** (budgeted/tick).
 - [ ] MovementSystem (fixed-point) following paths.
 - [ ] **Atomic planner slice:** AISystem picks an atomic (utility over the job's allowed atomics);

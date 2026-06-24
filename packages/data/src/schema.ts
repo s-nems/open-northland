@@ -156,6 +156,22 @@ export const LandscapeType = z.object({
   id: z.string(),
   walkable: z.boolean().default(true),
   buildable: z.boolean().default(true),
+  /**
+   * `maximumValency` — the per-cell capacity of this landscape type, the number that gates how many
+   * units can share / cluster on a cell of this type in the cell-adjacency graph (Phase 2). The
+   * passable terrain types ("void") carry a large value (100); obstacles/decor carry a small one
+   * (e.g. trees=5, bushes=1). Defaults to 0 when the source omits it (no record observed without it).
+   */
+  maxValency: z.number().int().nonnegative().default(0),
+  /**
+   * `allowedonland` — this type sits on the land layer. Nearly every type sets it (terrain, decor,
+   * dropped goods). Defaults false; the placement layer is derived from these flags, not `walkable`.
+   */
+  allowedOnLand: z.boolean().default(false),
+  /** `allowedonwater` — this type sits on the water layer (e.g. walls/gates over water). */
+  allowedOnWater: z.boolean().default(false),
+  /** `allowedoneverything` — this type sits on any layer (only the "void"/empty type). */
+  allowedOnEverything: z.boolean().default(false),
   source: Provenance.optional(),
 });
 export type LandscapeType = z.infer<typeof LandscapeType>;
