@@ -535,9 +535,11 @@ export const atomicSystem: System = (world, ctx) => {
 function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: AtomicEffect): void {
   switch (effect.kind) {
     case 'harvest':
-      // The settler gathers one unit of the resource's good onto its back (carriers haul; goods
-      // never teleport). A real per-resource yield/depletion is a later resource-node slice.
-      addCarry(world, settler, effect.goodType, 1);
+      // The settler gathers HARVEST_YIELD unit(s) of the resource's good onto its back (carriers
+      // haul; goods never teleport) AND the harvested node loses that many units. The yield and the
+      // depletion use the same constant so a node releases exactly what settlers carry away — goods
+      // are conserved and a finite node empties (planner's `remaining <= 0` gate then skips it).
+      harvestFromNode(world, settler, effect.resource, effect.goodType);
       return;
     case 'pickup':
       addCarry(world, settler, effect.goodType, effect.amount);
@@ -563,6 +565,28 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
     default:
       assertNever(effect); // a new AtomicEffect variant is a compile error until handled above
   }
+}
+
+/**
+ * Units a single completed `harvest` atomic yields — granted to the settler AND removed from the
+ * harvested node. One unit per swing keeps the node draining in step with what gets carried away,
+ * so goods are conserved (a node of N units survives exactly N harvests). A real per-good yield
+ * (some nodes drop more per swing) is a later balance slice — kept a constant so tuning is a diff.
+ */
+const HARVEST_YIELD = 1;
+
+/**
+ * Resolve one completed harvest: grant {@link HARVEST_YIELD} of `goodType` onto the settler's back
+ * and deplete the harvested node by the same amount (clamped at 0). The node may already be gone
+ * (destroyed/consumed between the atomic starting and completing) — a missing {@link Resource} just
+ * skips the decrement; the carry still happens (the swing was made). `remaining` reaching 0 is the
+ * planner's "nothing left here" gate, so the node is left in place (a later slice may clean it up).
+ */
+function harvestFromNode(world: World, settler: Entity, node: Entity, goodType: number): void {
+  addCarry(world, settler, goodType, HARVEST_YIELD);
+  const res = world.tryGet(node, Resource);
+  if (res === undefined) return; // node already gone — nothing to deplete
+  res.remaining = Math.max(0, res.remaining - HARVEST_YIELD);
 }
 
 /**
