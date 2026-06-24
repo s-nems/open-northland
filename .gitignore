@@ -20,11 +20,12 @@ content/
 *.dls
 *.exe
 
-# OS / editor
+# OS / editor / local agent tooling
 .DS_Store
 .idea/
 .vscode/*
 !.vscode/extensions.json
+.claude/
 
 # Logs
 *.log
