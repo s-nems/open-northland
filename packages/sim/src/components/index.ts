@@ -97,6 +97,25 @@ export const Resource = defineComponent<{
   harvestAtomic: number;
 }>('Resource');
 
+/**
+ * An in-progress production cycle on a workplace (a {@link Building} whose building type carries a
+ * `recipe`). The ProductionSystem consumes the recipe's input goods from the building's own
+ * {@link Stockpile} when a cycle starts, advances the integer `elapsed` tick counter, and on the
+ * `recipe.ticks`-th tick deposits the output goods (capped at the building type's per-good capacity,
+ * with room reserved at start so they always fit). The component exists only while a cycle is
+ * running — its absence means the workplace is idle/ready to start the next cycle.
+ *
+ * Timing is the exact integer compare `elapsed >= duration` (like {@link CurrentAtomic}) — never an
+ * accumulated fixed-point step, which would truncate and hang. `duration` mirrors the recipe's
+ * `ticks` (snapshotted so a content edit mid-cycle can't change an in-flight cycle's length).
+ */
+export const Production = defineComponent<{
+  /** Whole ticks elapsed in the current cycle; completion is the exact `elapsed >= duration`. */
+  elapsed: number;
+  /** Ticks one cycle takes (the recipe's `ticks`, snapshotted at cycle start; >= 1). */
+  duration: number;
+}>('Production');
+
 /** A path the entity is following: fixed-point waypoints + current index. */
 export const PathFollow = defineComponent<{ waypoints: Array<{ x: Fixed; y: Fixed }>; index: number }>(
   'PathFollow',
