@@ -142,12 +142,24 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             for host-OS/case-independent lookup against the unpacked `--out` tree. The `[GfxPalette16]`
             records (16-colour sub-palettes built via `gfxcolorrange`, no `.pcx`) are correctly skipped.
             **Hands-on:** real `palettes.ini` → 143 aliases over 143 distinct `.pcx`, all normalized.
-      - [ ] **Atlas oracle pixel-diff + `.bmd`→palette binding.** The pairing is: a graphics record
-            (`gfxbobmanagerbody "X.bmd"` + `gfxpalettebody "<editname>"`) → `palettes.ini` editname →
-            `.pcx` trailer palette (index above). The binding leg lives mostly in graphics `.cif`
-            records (only `animals/jobgraphics.ini` is readable) — extract it, wire `convertBmdTree`
-            into the CLI, then compare an emitted atlas frame against the OpenVikings render
-            pixel-for-pixel (needs an owned game copy + the oracle; an agent can't self-judge it).
+      - [x] **`.bmd`→palette binding (readable leg).** `extractGraphicsBindings` in
+            `decoders/ini.ts` reduces the readable `[jobgraphics]` records
+            (`Data/engine2d/inis/animals/jobgraphics.ini` — the one graphics binding file shipped as
+            plain `.ini`) to `BmdPaletteBinding`s: each `gfxbobmanagerbody "<body>.bmd" "<shadow>.bmd"`
+            paired with its `gfxpalettebody "<editname>"` (+ `logictribe`/`logicjob` cross-refs). Paths
+            are normalized like {@link PaletteAlias}; the `editname` join key is **lower-cased on both
+            legs** (`normalizePaletteName`) because the real data mixes case across them — `palettes.ini`
+            declares `Lion01`/`Chicken01` while `jobgraphics.ini` references `LION01`/`chicken01`, and
+            the original engine matches case-insensitively. **Hands-on:** real `animals/jobgraphics.ini`
+            → 50 bindings (all with shadows, 8 distinct palettes), and joining onto `extractPaletteIndex`
+            now resolves **50/50** to a `.pcx` (40/50 before the case fix); e.g.
+            `cr_ani_body_00.bmd` → `bear01` → `creatures/bear.pcx`.
+      - [ ] **Atlas oracle pixel-diff + binding wiring.** Remaining: the richer mod `[jobbasegraphics]`
+            variant (indexed body/head bobs + `gfxpalettebasebody`/`gfxpalettebasehead`/`gfxpaletterandom`),
+            the `.cif`-only graphics records (most of the binding leg), wiring `convertBmdTree` into the
+            CLI (resolve each binding's palette `.pcx` → `decodePcx` trailer → `bmdToAtlas`), then compare
+            an emitted atlas frame against the OpenVikings render pixel-for-pixel (needs an owned game
+            copy + the oracle; an agent can't self-judge it).
 - [ ] One map (`map.cif` + its `.ini`/`.inc` parts) decoded to IR.
 - **Exit:** `npm run pipeline` produces a validated `content/` (types + atlases + one map), decoded
   graphics verified against the oracle.
