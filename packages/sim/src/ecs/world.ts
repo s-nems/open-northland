@@ -12,7 +12,10 @@
  *  - Components carry no behavior; Systems (plain functions) carry all behavior.
  */
 
-export type Entity = number;
+import type { Brand } from '../brand.js';
+
+/** A branded entity id — a raw number can't be passed where an Entity is expected. */
+export type Entity = Brand<number, 'Entity'>;
 
 export interface Component<T> {
   readonly name: string;
@@ -25,13 +28,13 @@ export function defineComponent<T>(name: string): Component<T> {
 }
 
 export class World {
-  private nextId: Entity = 1;
+  private nextId = 1;
   private readonly alive = new Set<Entity>();
   /** Components in first-registration order — stable, used for canonical hashing/snapshots. */
   private readonly registered: Array<Component<unknown>> = [];
 
   create(): Entity {
-    const id = this.nextId++;
+    const id = this.nextId++ as Entity;
     this.alive.add(id);
     return id;
   }
@@ -78,8 +81,8 @@ export class World {
    * the smallest store. O(min store size). No sorting in the hot path.
    */
   *query(...required: Array<Component<unknown>>): IterableIterator<Entity> {
-    if (required.length === 0) return;
-    let smallest = required[0]!;
+    let smallest = required[0];
+    if (smallest === undefined) return;
     for (const c of required) if (c.store.size < smallest.store.size) smallest = c;
 
     for (const id of smallest.store.keys()) {
@@ -102,6 +105,20 @@ export class World {
   /** Ascending-sorted alive entity ids — the canonical order for snapshots and golden hashes. */
   canonicalEntities(): Entity[] {
     return [...this.alive].sort((a, b) => a - b);
+  }
+
+  /**
+   * Canonical [componentName, value] pairs for an entity, in registration order. The single
+   * traversal used by hashing and (later) snapshot/save — so "what the state is" has one
+   * definition, owned by the World, not re-implemented by each consumer.
+   */
+  componentEntries(entity: Entity): Array<[string, unknown]> {
+    const out: Array<[string, unknown]> = [];
+    for (const c of this.registered) {
+      const v = c.store.get(entity);
+      if (v !== undefined) out.push([c.name, v]);
+    }
+    return out;
   }
 
   get entityCount(): number {

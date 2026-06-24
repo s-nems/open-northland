@@ -13,7 +13,11 @@ top unchecked milestone. Do the smallest next step toward it; don't build ahead.
 - [x] Monorepo, packages, docs, conventions, determinism rules.
 - [x] Deterministic ECS, scaled-integer fixed-point (no BigInt/overflow), seeded RNG, canonical
       full-state hash, invariants + headless scenario harness, synthetic test fixture.
-- [ ] `npm install` + `npm run build` + `npm test` green on the stub. *(currently green)*
+- [x] Modern type vocabulary: **branded** `Fixed`/`Entity`, **discriminated-union** commands /
+      atomic-effects / events + `assertNever`, typed per-tick event buffer (render/audio seam).
+- [x] DX guardrails: **Biome** (format+lint), **CI** (check+typecheck+test), and a determinism
+      source-hygiene test that fails if a nondeterministic global enters `sim`.
+- [x] `npm install` + `npm run build` + `npm test` + `npm run check` green.
 
 ## Phase 1 — Asset pipeline + `.cif` (de-risk formats first)
 Goal: turn an owned game copy into the IR. This removes the biggest technical unknowns. **`.cif`
@@ -90,6 +94,16 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 - [ ] Audio (transcoded ogg; no DirectMusic `.sgt`/`.dls` dependency).
 - [ ] Tauri desktop builds for Mac/Win/Linux (renderer stays WebView-compatible).
 - [ ] (Stretch) lockstep multiplayer — the determinism work pays off here.
+
+## Cross-cutting DX (modern wins — the deterministic core makes these cheap)
+- [ ] **Run the sim in a Web Worker.** It's pure/headless/deterministic, so moving `step()` off the
+      main thread keeps render at 60fps under heavy ticks. Design the Phase-2 snapshot as a plain
+      **transferable** structure (no class instances / live `Map`s) so this is free later, not a retrofit.
+- [ ] **Time-travel / replay inspector.** With `rng.getState/setState`, the command log, and
+      `hashState`, a dev overlay can scrub ticks, diff state between two ticks, and dump an entity.
+      "Hash diverged at tick 432" → jump there → inspect. Biggest debuggability multiplier for agents.
+- [ ] **Content hot-reload.** Content is validated JSON injected into the sim; wire Vite HMR to
+      re-parse and rebase the sim on file change → instant balance-tweak feedback, no rebuild.
 
 ## Risks & open unknowns (watch these)
 - **`.cif` decrypted payload structure** — decryption solved; the *record layout* of

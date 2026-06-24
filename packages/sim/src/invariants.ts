@@ -1,5 +1,5 @@
+import { Building, Settler, Stockpile, stockpileEntries } from './components/index.js';
 import type { World } from './ecs/world.js';
-import { Settler, Stockpile, Building, stockpileEntries } from './components/index.js';
 import { ONE } from './fixed.js';
 
 /**

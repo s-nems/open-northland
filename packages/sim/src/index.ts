@@ -1,9 +1,10 @@
 import type { ContentSet } from '@vinland/data';
-import { World, type Entity } from './ecs/world.js';
-import { Rng } from './rng.js';
 import { Position } from './components/index.js';
-import { SYSTEM_ORDER, type SystemContext } from './systems/index.js';
+import { type Entity, World } from './ecs/world.js';
+import { EventBuffer } from './events.js';
 import { fx } from './fixed.js';
+import { Rng } from './rng.js';
+import { SYSTEM_ORDER, type SystemContext } from './systems/index.js';
 
 export { World, defineComponent } from './ecs/world.js';
 export type { Entity, Component } from './ecs/world.js';
@@ -13,6 +14,10 @@ export { FixedTimestep, TICKS_PER_SECOND, MS_PER_TICK } from './loop.js';
 export * as components from './components/index.js';
 export * as systems from './systems/index.js';
 export { scenario, Scenario, type ScenarioResult, type RunOptions } from './scenario.js';
+export type { Brand } from './brand.js';
+export { assertNever } from './brand.js';
+export type { Command, CommandKind, AtomicEffect, AtomicEffectKind } from './commands.js';
+export { EventBuffer, type SimEvent, type SimEventKind } from './events.js';
 export {
   checkInvariants,
   CORE_INVARIANTS,
@@ -23,7 +28,7 @@ export {
 } from './invariants.js';
 
 /** Run the core invariants against the current world (dev/test convenience). */
-import { checkInvariants as _checkInvariants, type Invariant as _Invariant } from './invariants.js';
+import { type Invariant as _Invariant, checkInvariants as _checkInvariants } from './invariants.js';
 
 export interface SimOptions {
   seed: number;
@@ -39,6 +44,8 @@ export class Simulation {
   readonly world = new World();
   readonly rng: Rng;
   readonly content: ContentSet;
+  /** One-shot events produced during the current tick (drained by render/audio). */
+  readonly events = new EventBuffer();
   private currentTick = 0;
 
   constructor(opts: SimOptions) {
@@ -53,7 +60,13 @@ export class Simulation {
   /** Advance exactly one tick by running every system in order. */
   step(): void {
     this.currentTick++;
-    const ctx: SystemContext = { content: this.content, rng: this.rng, tick: this.currentTick };
+    this.events.clear(); // events for tick N are a pure function of this tick's systems
+    const ctx: SystemContext = {
+      content: this.content,
+      rng: this.rng,
+      tick: this.currentTick,
+      events: this.events,
+    };
     for (const system of SYSTEM_ORDER) {
       system(this.world, ctx);
     }
@@ -111,12 +124,9 @@ export class Simulation {
     mix(ids.length);
     for (const e of ids) {
       mix(e);
-      for (const c of this.world.components) {
-        const val = c.store.get(e);
-        if (val !== undefined) {
-          for (const ch of c.name) mix(ch.charCodeAt(0));
-          hashValue(val);
-        }
+      for (const [name, val] of this.world.componentEntries(e)) {
+        for (const ch of name) mix(ch.charCodeAt(0));
+        hashValue(val);
       }
     }
     return h.toString(16).padStart(8, '0');

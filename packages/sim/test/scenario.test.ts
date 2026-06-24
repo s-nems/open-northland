@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Simulation, scenario } from '../src/index.js';
 import { testContent } from './fixtures/content.js';
 
@@ -46,7 +46,9 @@ describe('e2e game-level: scenario harness', () => {
   });
 
   it('scenario.expect reports a readable failure', () => {
-    const result = scenario(testContent()).run(10).expect('impossible: 5 < 0', () => 5 < 0);
+    const result = scenario(testContent())
+      .run(10)
+      .expect('impossible: 5 < 0', () => 5 < 0);
     expect(result.failures).toContain('expectation failed: impossible: 5 < 0');
   });
 
