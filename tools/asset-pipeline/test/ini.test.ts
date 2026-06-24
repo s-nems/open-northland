@@ -8,6 +8,7 @@ import {
   extractGoods,
   extractJobs,
   extractLandscape,
+  extractPaletteIndex,
   extractTribes,
   parseIniSections,
 } from '../src/decoders/ini.js';
@@ -356,6 +357,41 @@ describe('extractLandscape', () => {
     });
     expect(land.map((l) => l.id)).toEqual(['tree', 'tree_falling']);
     expect(land[1]).toMatchObject({ typeId: 5, id: 'tree_falling', walkable: true, buildable: true });
+  });
+});
+
+// Mirrors the real Data/engine2d/inis/palettes/palettes.ini grammar: [GfxPalette256] records with one
+// gfxfile and one-or-more editname aliases, Windows backslash paths, the CIF header/footer marker lines.
+const PALETTES_INI = `<CULTURES_CIF_BEGIN><03FD><00000351> Don't modify this line!
+[GfxPalette256]
+editname "tree01"
+gfxfile "data\\Engine2D\\Bin\\palettes\\landscapes\\tree01.pcx"
+gfxpreshade 1
+[GfxPalette256]
+editname "bear01"
+editname "deer01"
+gfxfile "data\\engine2d\\bin\\palettes\\creatures\\bear01.pcx"
+gfxpreshade 1
+[GfxPalette256]
+editname "nopcx_skipme"
+gfxpreshade 1
+<CULTURES_CIF_END> Don't modify this line!`;
+
+describe('extractPaletteIndex', () => {
+  it('flattens aliases to one normalized .pcx path each and skips records without a gfxfile', () => {
+    const aliases = extractPaletteIndex(parseIniSections(PALETTES_INI));
+    // Two records contribute (1 + 2 aliases); the gfxfile-less record is dropped.
+    expect(aliases).toEqual([
+      { name: 'tree01', gfxFile: 'data/engine2d/bin/palettes/landscapes/tree01.pcx' },
+      { name: 'bear01', gfxFile: 'data/engine2d/bin/palettes/creatures/bear01.pcx' },
+      { name: 'deer01', gfxFile: 'data/engine2d/bin/palettes/creatures/bear01.pcx' },
+    ]);
+  });
+
+  it('builds a name -> .pcx lookup map where aliases share a file', () => {
+    const map = new Map(extractPaletteIndex(parseIniSections(PALETTES_INI)).map((a) => [a.name, a.gfxFile]));
+    expect(map.get('bear01')).toBe(map.get('deer01'));
+    expect(map.has('nopcx_skipme')).toBe(false);
   });
 });
 

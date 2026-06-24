@@ -135,10 +135,19 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             all rects in-bounds. **Still open:** the batch tree-walk + per-`.bmd` palette pairing
             (which `palettes.ini`/`.pcx`-trailer palette goes with each bob set) — `bmdToAtlas` takes
             the palette as a parameter until that's decided.
-      - [ ] **Atlas oracle pixel-diff + palette pairing.** Resolve the per-`.bmd` palette (palettes.ini
-            / sibling `.pcx` trailer / standalone `CPalette`), wire `convertBmdTree` into the CLI, then
-            compare an emitted atlas frame against the OpenVikings render pixel-for-pixel (needs an
-            owned game copy + the oracle; an agent can't self-judge it).
+      - [x] **Palette index** (first leg of the pairing graph) — `extractPaletteIndex` in
+            `decoders/ini.ts` reduces `palettes.ini`'s `[GfxPalette256]` records to name→`.pcx`
+            `PaletteAlias`es (the `.pcx` trailer palette is the real colour table). Each record has one
+            `gfxfile` + one-or-more `editname` aliases; paths are normalized to forward-slash/lower-case
+            for host-OS/case-independent lookup against the unpacked `--out` tree. The `[GfxPalette16]`
+            records (16-colour sub-palettes built via `gfxcolorrange`, no `.pcx`) are correctly skipped.
+            **Hands-on:** real `palettes.ini` → 143 aliases over 143 distinct `.pcx`, all normalized.
+      - [ ] **Atlas oracle pixel-diff + `.bmd`→palette binding.** The pairing is: a graphics record
+            (`gfxbobmanagerbody "X.bmd"` + `gfxpalettebody "<editname>"`) → `palettes.ini` editname →
+            `.pcx` trailer palette (index above). The binding leg lives mostly in graphics `.cif`
+            records (only `animals/jobgraphics.ini` is readable) — extract it, wire `convertBmdTree`
+            into the CLI, then compare an emitted atlas frame against the OpenVikings render
+            pixel-for-pixel (needs an owned game copy + the oracle; an agent can't self-judge it).
 - [ ] One map (`map.cif` + its `.ini`/`.inc` parts) decoded to IR.
 - **Exit:** `npm run pipeline` produces a validated `content/` (types + atlases + one map), decoded
   graphics verified against the oracle.
