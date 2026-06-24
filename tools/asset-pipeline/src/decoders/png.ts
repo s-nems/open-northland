@@ -18,7 +18,7 @@
  */
 
 import { deflateSync, inflateSync } from 'node:zlib';
-import type { RgbaImage } from './pcx.js';
+import type { RgbaImage } from './image.js';
 
 const SIGNATURE = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const IHDR_BYTES = 13;
@@ -84,7 +84,7 @@ export function encodePng(image: RgbaImage): Uint8Array {
   for (let y = 0; y < height; y++) {
     filtered.set(rgba.subarray(y * stride, y * stride + stride), y * (stride + 1) + 1);
   }
-  const idat = new Uint8Array(deflateSync(filtered));
+  const idat = deflateSync(filtered); // a Buffer, i.e. a Uint8Array — chunk() only reads it
 
   const ihdr = new Uint8Array(IHDR_BYTES);
   const hv = new DataView(ihdr.buffer);
@@ -98,13 +98,7 @@ export function encodePng(image: RgbaImage): Uint8Array {
   const idatChunk = chunk('IDAT', idat);
   const iendChunk = chunk('IEND', new Uint8Array(0));
 
-  const out = new Uint8Array(SIGNATURE.length + ihdrChunk.length + idatChunk.length + iendChunk.length);
-  let p = 0;
-  for (const part of [SIGNATURE, ihdrChunk, idatChunk, iendChunk]) {
-    out.set(part, p);
-    p += part.length;
-  }
-  return out;
+  return concat([SIGNATURE, ihdrChunk, idatChunk, iendChunk]);
 }
 
 /**
