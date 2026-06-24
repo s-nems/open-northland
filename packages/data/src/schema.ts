@@ -143,7 +143,8 @@ export type LandscapeType = z.infer<typeof LandscapeType>;
 /**
  * Per-(job, atomic) animation binding from `tribetypes` `setatomic <jobType> <atomicId> "anim"`.
  * This is how a tribe expresses its identity: the SAME atomic id plays a tribe-specific animation.
- * `animation` names an entry in `atomicanimations` (timings/yields extracted in a later step).
+ * `animation` names an entry in `atomicanimations` — see {@link AtomicAnimation} for its
+ * timing/effect data (the binding string is the join key onto `AtomicAnimation.name`).
  *
  * Bindings are kept in file order. The real data repeats some `(jobType, atomicId)` pairs within one
  * tribe (e.g. ship atomics); consumers resolve a lookup as **last-wins** (a later line overrides an
@@ -167,6 +168,47 @@ export const TribeType = z.object({
 });
 export type TribeType = z.infer<typeof TribeType>;
 
+/**
+ * One timed event inside an atomic animation (`event`/`eventx <at> <type> [value]` in
+ * `atomicanimations.ini`). `at` is the offset within the animation's `length`; `type` + `value`
+ * form an undocumented numeric vocabulary (good yields, hunger/morale deltas, sound/effect cues) —
+ * captured faithfully here and interpreted later by the Phase-2 AtomicSystem, mirroring how
+ * {@link AtomicId} stays a raw id with no master table. `value` is optional and may be signed.
+ * `extended` marks the `eventx` variant (a distinct event channel in the source) from plain `event`.
+ */
+export const AtomicEvent = z.object({
+  at: z.number().int().nonnegative(),
+  type: z.number().int().nonnegative(),
+  value: z.number().int().optional(),
+  extended: z.boolean().default(false),
+});
+export type AtomicEvent = z.infer<typeof AtomicEvent>;
+
+/**
+ * Timing + effect data for one named animation from `atomicanimations.ini` (the `culturesnation` mod
+ * ships a readable `.ini`; the base game has it as `.cif`). `name` is the join key — a tribe's
+ * `setatomic <job> <atomic> "anim"` binding ({@link AtomicBinding}) names the animation here, so this
+ * is where an atomic's *duration* (`length`, in animation ticks), facing (`startdirection`) and timed
+ * `events` (yields/effects) live. Cross-referencing tribe bindings against these names is deferred:
+ * the mod's readable set is a subset of the base-game animations, so absent names aren't dangling.
+ */
+export const AtomicAnimation = z.object({
+  /** Filesystem-safe slug of `name`, for parity with the other IR types. */
+  id: z.string(),
+  /** The animation's exact name — the resolvable key referenced by `tribetypes` `setatomic`. */
+  name: z.string(),
+  /** Duration in animation ticks (`length`). */
+  length: z.number().int().nonnegative().default(0),
+  /** Whether the animation may be interrupted mid-play (`interruptable 1` in the source). */
+  interruptible: z.boolean().default(false),
+  /** Initial facing-direction index (`startdirection`), when the animation pins one. */
+  startDirection: z.number().int().nonnegative().optional(),
+  /** Timed events in file order (`event`/`eventx` lines). */
+  events: z.array(AtomicEvent).default([]),
+  source: Provenance.optional(),
+});
+export type AtomicAnimation = z.infer<typeof AtomicAnimation>;
+
 /** Top-level manifest written to content/ir.json. */
 export const IrManifest = z.object({
   version: z.number().int().positive(),
@@ -189,6 +231,7 @@ export const ContentSet = z.object({
   vehicles: z.array(VehicleType).default([]),
   landscape: z.array(LandscapeType).default([]),
   tribes: z.array(TribeType).default([]),
+  atomicAnimations: z.array(AtomicAnimation).default([]),
 });
 export type ContentSet = z.infer<typeof ContentSet>;
 

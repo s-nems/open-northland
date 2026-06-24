@@ -96,7 +96,9 @@ type list (see docs/ECS.md for why these are central):
 
 - **`atomics.json`** — the behavior vocabulary. Extracted from `tribetypes.ini` `setatomic`
   (atomic id → animation, per tribe), with each `JobType` carrying its `allowatomic` id list and
-  each `GoodType` its `atomicFor*`. Atomic *timing/effects* come later from `atomicanimations.cif`.
+  each `GoodType` its `atomicFor*`. Atomic *timing/effects* are the `AtomicAnimation` records from
+  `atomicanimations.ini` (`length`, `startdirection`, timed `event`/`eventx` tuples), joined to the
+  `setatomic` bindings by animation name — see `extractAtomicAnimations`.
 - **`goods-graph.json`** — the production DAG, mechanically derived from
   `goodtypes.productionInputGoods` (e.g. `bread ← flour + water`, `plank ← wood`). Materialized as
   an explicit artifact so agents and systems read one source of truth, not implicit cross-system logic.

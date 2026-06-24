@@ -39,8 +39,14 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
       (`extractJobs`/`extractTribes` + `atomicFor*` in `extractGoods`). Captures `jobtypes`
       `allowatomic`/`baseatomics`, `tribetypes` `setatomic` (atomic→animation per tribe),
       `goodtypes` `atomicFor{Harvesting,Cultivating,Planting,Production}`. Verified against real
-      data: 55 jobs, 41 tribes (1914 bindings), 65 goods. **Next:** atomic *timings/yields* from
-      `atomicanimations.ini` (length/event/startdirection) — the binding names already point at them.
+      data: 55 jobs, 41 tribes (1914 bindings), 65 goods.
+- [x] **Atomic timings/effects extraction:** done — `extractAtomicAnimations` in `decoders/ini.ts`
+      reduces `atomicanimations.ini` `[atomicanimation]` records to `AtomicAnimation` IR:
+      `length` (duration), `interruptable`, `startdirection`, and ordered `event`/`eventx`
+      `(at, type, value?)` tuples. `name` is the join key onto `tribetypes` `setatomic` bindings.
+      The event `type`/`value` vocabulary is undocumented — captured faithfully, interpreted by the
+      Phase-2 AtomicSystem (like `AtomicId`, a raw id with no master table). **Next:** wire the
+      extractors into the CLI once `.lib`/`.pcx` land, so `npm run pipeline` emits real `content/`.
 - [ ] `.bmd` bob decoder → atlas PNG + anim JSON (ref `CBobManager.cs`, `CBitmap.cs`). **Hardest.**
 - [ ] One map (`map.cif` + its `.ini`/`.inc` parts) decoded to IR.
 - **Exit:** `npm run pipeline` produces a validated `content/` (types + atlases + one map), decoded
@@ -119,8 +125,9 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 - **Settler AI fidelity** — the soul, undocumented. Approach = planner over the data-extracted
   atomic vocabulary; base atomic timings/yields come from `atomicanimations.ini` (see below), with
   only fine-tuning by observation, kept as data so tuning is a diff. See docs/ECS.md "Settler AI".
-- **Atomic timings/effects** — largely de-risked: the mod ships a readable
-  `DataCnmd/atomicanimations12/atomicanimations.ini` (length/event/startdirection). Vocabulary and
-  base timings are free; only fine tuning may need observation.
+- ~~**Atomic timings/effects**~~ — **extracted** (`extractAtomicAnimations`): the mod's readable
+  `DataCnmd/atomicanimations12/atomicanimations.ini` gives `length`/`event`/`startdirection` per
+  named animation. Vocabulary + base timings are now in the IR; the open part is decoding what each
+  `event` `(type, value)` means (yields/needs/cues) — only fine tuning should need observation.
 - **Combat & campaign scripting scope** — both larger than one roadmap line implies.
 - **Determinism drift** — every new system must keep golden state + trace tests green.
