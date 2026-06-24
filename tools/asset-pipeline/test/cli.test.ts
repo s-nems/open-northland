@@ -95,6 +95,9 @@ describe('convertPcxTree', () => {
     const decoded = decodePng(png);
     expect(decoded.width).toBe(width);
     expect(decoded.height).toBe(height);
+    // Close the loop: the bytes that survived readFile -> pcxToPng -> writeFile -> readFile must
+    // equal a direct in-memory expansion (catches a truncating/partial write, not just dimensions).
+    expect(Array.from(decoded.rgba)).toEqual(Array.from(expandToRgba(decodePcx(bytes)).rgba));
   });
 
   it('skips a malformed .pcx with a warning instead of aborting the batch', async () => {
