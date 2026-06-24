@@ -380,7 +380,7 @@ export interface BobFrame {
  *
  * Per-type pixel width within a raw run: 8-bit/TimeMask store one index byte each; Double8Bit stores two
  * bytes each (index then a skipped byte); 1-bit masks store one 0/1 byte each, drawn as {@link BOB_MASK_INDEX}.
- * An empty bob (`type 0`) or non-positive size yields a 0×0… frame sized to the area with an all-transparent mask.
+ * An empty bob (`type 0`) or non-positive size yields a frame sized to the (clamped) area with an all-transparent mask.
  *
  * Throws a `bmd:`-prefixed error on an out-of-range `bobIndex` (a programmer error). A structurally
  * corrupt packed-line stream is tolerated, not thrown: the walker stops at the buffer end and at any
