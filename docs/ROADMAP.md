@@ -55,8 +55,12 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             import specifiers.) `.lib`-embedded pictures arrive once the unpack stage feeds this.
       - [ ] **Oracle pixel-diff** — compare an emitted `.png` against the OpenVikings render
             pixel-for-pixel. Needs an owned game copy + the oracle; an agent can't self-judge it.
-      - [ ] Standalone `CPalette` (id 0x3F6) decode — raw 0x400 `[B,G,R,_]×256` blob from `.cif`/`.lib`
-            graphs (the `.pcx` trailer covers picture palettes; this is for bobs/maps).
+      - [x] Standalone `CPalette` (id 0x3F6) decode — `tools/asset-pipeline/src/decoders/palette.ts`
+            (`decodePalette`: 8-byte storable header `[u32 id=0x3F6][u32 version]` + raw 0x400-byte
+            `[B,G,R,_]×256` body → 256 RGB triples reordered to match the `.pcx` trailer so they drop
+            straight into `expandToRgba`; `encodePalette` is the round-trip inverse, no committed
+            fixtures). Body is read raw — no CMemory wrapper or encryption. For bobs/maps; the `.pcx`
+            trailer still covers picture palettes. Ported from `CPalette.cs` + `XBStorable.cs`.
 - [x] `.ini` rule parser → typed IR — `decoders/ini.ts`. `parseIniSections` reduces readable
       `Data/logic/*.ini`/`DataCnmd/types/*` (and, via `cifLinesToSections`, decoded `.cif`) to a
       generic `RuleSection` model; the `<CULTURES_CIF_BEGIN>` header line is skipped and `//`
