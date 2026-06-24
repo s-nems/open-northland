@@ -1,3 +1,4 @@
+import type { AtomicEffect } from '../commands.js';
 import { defineComponent } from '../ecs/world.js';
 import type { Fixed } from '../fixed.js';
 
@@ -28,12 +29,31 @@ export const Settler = defineComponent<{
 
 /**
  * The atomic micro-action a settler is currently executing (the unit of behavior in Cultures, e.g.
- * pickup=22, harvest=24, eat=10, attack=81). The planner sets this; the executing system advances
- * `progress` to ONE then signals completion. `targetEntity`/`targetTile` are the action's object.
+ * pickup=22, harvest=24, eat=10, attack=81). The planner (AISystem) sets this; the AtomicSystem
+ * advances `progress` from 0 to ONE over `duration` ticks, and on completion applies the typed
+ * {@link AtomicEffect} (the state mutation), emits an `atomicCompleted` event, and removes the
+ * component — the planner sees an entity with no CurrentAtomic as ready for its next atomic.
+ *
+ * `atomicId` keeps the numeric content cross-reference (fidelity / the join key onto a tribe's
+ * `setatomic` animation); `effect` is the typed action the executor applies, so the apply switch is
+ * exhaustive and golden traces are human-readable rather than opaque ints. `duration` is the
+ * animation length in ticks (`AtomicAnimation.length`, supplied by the planner) — at least 1, so a
+ * zero-length animation still completes in exactly one tick. `targetEntity`/`targetTile` are the
+ * action's object (the resource to harvest, the store to pile up at).
+ *
+ * Timing is driven by the INTEGER `elapsed` tick counter, not by accumulating a fixed-point step:
+ * `ONE / duration` truncates (e.g. ONE/3), so a fractional step summed `duration` times would never
+ * reach ONE and the atomic would hang. Completion is the exact `elapsed >= duration`; `progress`
+ * (0..ONE) is a derived display value for render interpolation, never the completion test.
  */
 export const CurrentAtomic = defineComponent<{
   atomicId: number;
-  progress: Fixed; // 0..ONE
+  /** Whole ticks executed so far; completion is the exact `elapsed >= duration`. */
+  elapsed: number;
+  /** Derived `elapsed/duration` in 0..ONE — for render interpolation only, not the completion test. */
+  progress: Fixed;
+  duration: number; // animation length in ticks (>= 1)
+  effect: AtomicEffect;
   targetEntity: number | null;
   targetTile: { x: number; y: number } | null;
 }>('CurrentAtomic');
