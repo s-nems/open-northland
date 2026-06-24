@@ -30,7 +30,12 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
       blobs (offsets table + string pool). Decrypted pool = **depth-prefixed text lines** (leading
       byte 1=section, 2=property) — the same vocabulary as the readable `.ini`. Verified end-to-end
       against `housetypes`, `weapontypes`, `trianglepatterntypes`, and a `map.cif`. See SOURCES.md.
-- [ ] `.lib` archive unpacker (ref `CSimpleFileLibrary.cs`).
+- [x] **`.lib` archive unpacker.** Done — `tools/asset-pipeline/src/decoders/lib.ts` (round-trip
+      tested via `encodeLib`, no committed fixtures). Format (LE u32s): `version` (observed 1),
+      `groupCount`, `fileCount`, then group `{name,value}` and file `{name,position,size}` records;
+      payloads live at absolute `position`. `decodeLib` returns zero-copy payload views; the on-disk
+      record has no checksum — `findLibFile` recomputes the filename checksum (lowercased-ASCII byte
+      sum) as the lookup key, like the original. Verified against real `data0001.lib` header.
 - [ ] Palette + `.pcx` decoder → PNG (ref `CPalette.cs`, `CPicture.cs`). **Validate against the
       OpenVikings oracle** (it renders the originals) pixel-for-pixel.
 - [ ] `.ini` rule parser → typed IR (note base `Data/logic/*.ini` is the primary readable source;
