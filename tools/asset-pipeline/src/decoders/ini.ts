@@ -239,8 +239,9 @@ export function extractLandscape(sections: readonly RuleSection[], src: SourceRe
 
 /**
  * Extracts `[jobtype]` sections into validated {@link JobType} IR, capturing the atomic vocabulary a
- * job may perform: `allowatomic` (granted atomics) and `baseatomics` (always-available base set),
- * both repeated single-value lines kept in file order. The Phase-2 atomic planner picks among these.
+ * job may perform: `allowatomic` (granted), `baseatomics` (always-available base set) and
+ * `forbidatomic` (hard-denied) — all repeated single-value lines kept in file order. The Phase-2
+ * atomic planner picks among these.
  */
 export function extractJobs(sections: readonly RuleSection[], src: SourceRef): JobType[] {
   const jobs: JobType[] = [];
@@ -255,6 +256,7 @@ export function extractJobs(sections: readonly RuleSection[], src: SourceRef): J
         name,
         allowedAtomics: getIntList(sec, 'allowatomic'),
         baseAtomics: getIntList(sec, 'baseatomics'),
+        forbiddenAtomics: getIntList(sec, 'forbidatomic'),
         source: { file: src.file, block: 'jobtype', layer: src.layer ?? 'base' },
       }),
     );
