@@ -113,8 +113,8 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
   `CStringArray` of Mode1-encrypted depth-prefixed text lines; verified on type tables + a map.
   Remaining map unknown: the binary tile grid, if stored outside the logic-header CStringArray.
 - **Settler AI fidelity** — the soul, undocumented. Approach = planner over the data-extracted
-  atomic vocabulary; calibrate atomic timings/yields (in `atomicanimations.cif`) by observation,
-  kept as data so tuning is a diff. See docs/ECS.md "Settler AI".
+  atomic vocabulary; base atomic timings/yields come from `atomicanimations.ini` (see below), with
+  only fine-tuning by observation, kept as data so tuning is a diff. See docs/ECS.md "Settler AI".
 - **Atomic timings/effects** — largely de-risked: the mod ships a readable
   `DataCnmd/atomicanimations12/atomicanimations.ini` (length/event/startdirection). Vocabulary and
   base timings are free; only fine tuning may need observation.
