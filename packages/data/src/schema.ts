@@ -94,9 +94,24 @@ export type Recipe = z.infer<typeof Recipe>;
 export const BuildingType = z.object({
   typeId: TypeId,
   id: z.string(), // e.g. "headquarters"
-  kind: z.string(), // "house" | "workplace" | "headquarters" | ...
+  /**
+   * Coarse building class, mapped from the original `logichousetype` `logicmaintype`:
+   * `storage` (HQ + stocks), `home` (residences), `workplace` (production), `training`
+   * (barracks/school), `tower` (defence), `vehicle` (buildable carts/ships), `wonder`.
+   * The specific building (headquarters vs a stock, which workplace) is carried by `id`.
+   */
+  kind: z.string(),
+  /** Population capacity tier from `logichomesize` — present only on `home` buildings (else 0). */
+  homeSize: z.number().int().nonnegative().default(0),
   workers: z.array(WorkerSlot).default([]),
   stock: z.array(StockSlot).default([]),
+  /**
+   * Good type ids this workplace can produce (`logichousetype` `logicproduction`), in file order.
+   * The *output side only*: the original house table names what a workplace makes, not the input
+   * goods or per-cycle amounts/timing — those come from `goodtypes.productionInputGoods` when the
+   * full goods graph is materialized (docs/ROADMAP.md Phase 3), at which point `recipe` is filled.
+   */
+  produces: z.array(TypeId).default([]),
   recipe: Recipe.optional(),
   source: Provenance.optional(),
 });

@@ -54,22 +54,34 @@ Original `DataCnmd/types/houses.ini`:
 ```ini
 [logichousetype]
 debugname "headquarters"
-logictype 1
+logictype 1            # the building's type id (NOT a `type` line, unlike other tables)
+logicmaintype 1        # 1 storage / 2 home / 3 workplace / 4 training / 5 tower / 6 vehicle / 7 wonder
 logicworker 24 3       # jobType 24, count 3
 logicstock 16 150 0    # goodType 16, capacity 150, initial 0
+logicproduction 11     # (workplaces) output good id 11 — input side / amounts come later (Phase 3)
 ```
 
-IR `content/types/buildings.json` entry (schema in `packages/data/src/schema.ts`):
+IR `content/types/buildings.json` entry (schema in `packages/data/src/schema.ts`, extracted by
+`extractBuildings` in `tools/asset-pipeline/src/decoders/ini.ts`):
 
 ```json
 {
+  "typeId": 1,
   "id": "headquarters",
-  "kind": "headquarters",
+  "kind": "storage",
+  "homeSize": 0,
   "workers": [{ "jobType": 24, "count": 3 }],
   "stock":   [{ "goodType": 16, "capacity": 150, "initial": 0 }],
-  "source":  { "file": "DataCnmd/types/houses.ini", "block": "logichousetype#0" }
+  "produces": [],
+  "source":  { "file": "DataCnmd/types/houses.ini", "block": "logichousetype", "layer": "mod" }
 }
 ```
+
+`kind` is mapped from `logicmaintype` (the engine's classification); the specific building —
+headquarters vs a stock, which workplace — is carried by `id` (the `debugname` slug). The full
+production recipe (input goods + per-cycle amounts/timing) is a Phase-3 goods-graph artifact derived
+from `goodtypes.productionInputGoods`; `produces` captures only the output good ids the house table
+names today.
 
 The sim consumes the IR; it never parses `.ini`. The mapping from raw fields to IR fields lives in
 the pipeline decoder for that type, and is documented inline there.

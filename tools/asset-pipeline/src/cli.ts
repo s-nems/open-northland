@@ -36,6 +36,7 @@ import {
   cifLinesToSections,
   decodeIni,
   extractAtomicAnimations,
+  extractBuildings,
   extractGoods,
   extractGraphicsBindings,
   extractJobBaseGraphics,
@@ -383,11 +384,10 @@ export interface IniSource {
 /**
  * Resolves the readable `.ini` sources for the type tables we can extract today, **preferring the
  * mod's readable `.ini` over the base game** (CLAUDE.md golden rule #4): tribes + atomic animations +
- * weapons live only under `DataCnmd/types/`, while goods/jobs/landscape are base `Data/logic/*.ini`. A
- * source whose file is missing on disk is dropped with a warning — a partial install (or no mod) still
- * produces an IR from whatever is present, rather than aborting the whole batch. Buildings have no
- * extractor yet (the mod ships them as `DataCnmd/types/houses.ini`), so the IR's `buildings` stays empty
- * until that decoder lands; see docs/ROADMAP.md Phase 1.
+ * weapons + buildings live only under `DataCnmd/types/` (the base game's twins are encrypted `.cif`),
+ * while goods/jobs/landscape are base `Data/logic/*.ini`. A source whose file is missing on disk is
+ * dropped with a warning — a partial install (or no mod) still produces an IR from whatever is present,
+ * rather than aborting the whole batch.
  */
 export async function resolveIniSources(gameDir: string, mod: string | undefined): Promise<IniSource[]> {
   const base: { rel: string; layer: 'base' | 'mod' }[] = [
@@ -400,6 +400,7 @@ export async function resolveIniSources(gameDir: string, mod: string | undefined
       { rel: join(mod, 'tribetypes12', 'tribetypes.ini'), layer: 'mod' },
       { rel: join(mod, 'atomicanimations12', 'atomicanimations.ini'), layer: 'mod' },
       { rel: join(mod, 'types', 'weapons.ini'), layer: 'mod' },
+      { rel: join(mod, 'types', 'houses.ini'), layer: 'mod' },
     );
   }
   const sources: IniSource[] = [];
@@ -467,13 +468,14 @@ export async function decodeMapTree(gameDir: string): Promise<MapInfo[]> {
  * only I/O here is reading the resolved files. Each extractor pulls only its own `[section]`s from a
  * file, so passing every file's sections to every extractor is correct and order-independent.
  *
- * `buildings`/`animals`/`vehicles` are left empty until their extractors land — the schema defaults
- * cover the optional arrays, and `buildings` (required) is explicitly empty for now.
+ * `animals`/`vehicles` are left empty until their extractors land — the schema defaults cover those
+ * optional arrays.
  */
 export async function buildIr(args: Args): Promise<ContentSet> {
   const sources = await resolveIniSources(args.game, args.mod);
   const goods = [];
   const jobs = [];
+  const buildings = [];
   const landscape = [];
   const tribes = [];
   const atomicAnimations = [];
@@ -483,6 +485,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     const src: SourceRef = { file, layer };
     goods.push(...extractGoods(sections, src));
     jobs.push(...extractJobs(sections, src));
+    buildings.push(...extractBuildings(sections, src));
     landscape.push(...extractLandscape(sections, src));
     tribes.push(...extractTribes(sections, src));
     atomicAnimations.push(...extractAtomicAnimations(sections, src));
@@ -496,7 +499,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     },
     goods,
     jobs,
-    buildings: [],
+    buildings,
     weapons,
     landscape,
     tribes,
@@ -601,7 +604,7 @@ async function run(args: Args): Promise<void> {
 
   const ir = await writeIr(args);
   console.log(
-    `[pipeline] ini -> ir: ${ir.goods.length} goods, ${ir.jobs.length} jobs, ` +
+    `[pipeline] ini -> ir: ${ir.goods.length} goods, ${ir.jobs.length} jobs, ${ir.buildings.length} buildings, ` +
       `${ir.weapons.length} weapons, ${ir.landscape.length} landscape, ${ir.tribes.length} tribes, ` +
       `${ir.atomicAnimations.length} atomic animations, ${ir.maps.length} maps -> ${join(args.out, 'ir.json')}`,
   );

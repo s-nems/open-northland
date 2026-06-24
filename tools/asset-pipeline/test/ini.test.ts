@@ -5,6 +5,7 @@ import {
   cifLinesToSections,
   decodeIni,
   extractAtomicAnimations,
+  extractBuildings,
   extractGoods,
   extractGraphicsBindings,
   extractJobBaseGraphics,
@@ -118,6 +119,36 @@ type 2
 name "wooden spear"
 damagevalue 0 2400
 jobtype 32
+`;
+
+// Mirrors DataCnmd/types/houses.ini: a `[logichousetype]` keys its id on `logictype` (not `type`) and
+// its name on `debugname`. A storage HQ (maintype 1), a home with `logichomesize` (maintype 2), and a
+// workplace with workers + `logicproduction` outputs (maintype 3). Stock/worker/production ids here
+// reference goods 1/5 and job 5, which the IR-integration test defines so the cross-refs resolve.
+const HOUSES_INI = `[logichousetype]
+debugname "headquarters"
+logictype 1
+logicmaintype 1
+logicworker 5 3
+logicstock 1 150 0
+logicstock 5 150 0
+debugcolor 0 0 100
+logicCanEnableDefenceMode 1
+
+[logichousetype]
+debugname "home level 00"
+logictype 2
+logicmaintype 2
+logichomesize 1
+logicstock 1 5 1
+
+[logichousetype]
+debugname "work mill 00"
+logictype 13
+logicmaintype 3
+logicworker 5 1
+logicproduction 5
+logicproduction 1
 `;
 
 const LANDSCAPE_INI = `<CULTURES_CIF_BEGIN><03FD><000002BF> Don't modify this line!
@@ -321,6 +352,65 @@ describe('extractWeapons', () => {
     expect(() => extractWeapons(parseIniSections('[weapontype]\nname "x"\n'), { file: 'f.ini' })).toThrow(
       /without a numeric `type`/,
     );
+  });
+});
+
+describe('extractBuildings', () => {
+  it('maps [logichousetype] records to validated BuildingType IR (logictype id, debugname slug)', () => {
+    const buildings = extractBuildings(parseIniSections(HOUSES_INI), {
+      file: 'DataCnmd/types/houses.ini',
+      layer: 'mod',
+    });
+    const src = { file: 'DataCnmd/types/houses.ini', block: 'logichousetype', layer: 'mod' };
+    expect(buildings).toEqual([
+      {
+        typeId: 1,
+        id: 'headquarters',
+        kind: 'storage', // logicmaintype 1
+        homeSize: 0,
+        workers: [{ jobType: 5, count: 3 }],
+        stock: [
+          { goodType: 1, capacity: 150, initial: 0 },
+          { goodType: 5, capacity: 150, initial: 0 },
+        ],
+        produces: [],
+        source: src,
+      },
+      {
+        typeId: 2,
+        id: 'home_level_00',
+        kind: 'home', // logicmaintype 2
+        homeSize: 1, // logichomesize
+        workers: [],
+        stock: [{ goodType: 1, capacity: 5, initial: 1 }],
+        produces: [],
+        source: src,
+      },
+      {
+        typeId: 13,
+        id: 'work_mill_00',
+        kind: 'workplace', // logicmaintype 3
+        homeSize: 0,
+        workers: [{ jobType: 5, count: 1 }],
+        stock: [],
+        produces: [5, 1], // logicproduction output good ids, in file order
+        source: src,
+      },
+    ]);
+  });
+
+  it('throws on a [logichousetype] missing its numeric `logictype`', () => {
+    expect(() =>
+      extractBuildings(parseIniSections('[logichousetype]\ndebugname "x"\n'), { file: 'f.ini' }),
+    ).toThrow(/without a numeric `logictype`/);
+  });
+
+  it('maps an unknown logicmaintype to a stable maintype_<n> kind', () => {
+    const buildings = extractBuildings(
+      parseIniSections('[logichousetype]\ndebugname "weird"\nlogictype 99\nlogicmaintype 9\n'),
+      { file: 'f.ini' },
+    );
+    expect(buildings[0]?.kind).toBe('maintype_9');
   });
 });
 
@@ -680,8 +770,9 @@ describe('extractMapInfo', () => {
 });
 
 describe('IR integration', () => {
-  it('extracted goods + jobs + weapons + tribes + landscape + animations assemble into a valid ContentSet', () => {
+  it('extracted goods + jobs + buildings + weapons + tribes + landscape + animations assemble into a valid ContentSet', () => {
     const goods = extractGoods(parseIniSections(GOODTYPES_INI), { file: 'goodtypes.ini' });
+    const buildings = extractBuildings(parseIniSections(HOUSES_INI), { file: 'houses.ini', layer: 'mod' });
     const tribes = extractTribes(parseIniSections(TRIBETYPES_INI), { file: 'tribetypes.ini', layer: 'mod' });
     const landscape = extractLandscape(parseIniSections(LANDSCAPE_INI), { file: 'landscapetypes.ini' });
     const atomicAnimations = extractAtomicAnimations(parseIniSections(ATOMICANIMATIONS_INI), {
@@ -706,13 +797,25 @@ describe('IR integration', () => {
         manifest: { version: 1, generatedFrom: { game: 'Cultures 8th Wonder' } },
         goods,
         jobs,
-        buildings: [],
+        buildings,
         weapons,
         landscape,
         tribes,
         atomicAnimations,
       }),
     ).not.toThrow();
+  });
+
+  it('rejects a building that produces an unknown goodType (cross-reference)', () => {
+    const buildings = extractBuildings(parseIniSections(HOUSES_INI), { file: 'houses.ini', layer: 'mod' });
+    expect(() =>
+      parseContentSet({
+        manifest: { version: 1, generatedFrom: { game: 'Cultures 8th Wonder' } },
+        goods: [], // no goods defined -> the workplace's logicproduction ids dangle
+        jobs: [{ typeId: 5, id: 'job_5' }],
+        buildings,
+      }),
+    ).toThrow(/produces unknown goodType/);
   });
 
   it('rejects a tribe whose setatomic binds an unknown jobType (cross-reference)', () => {

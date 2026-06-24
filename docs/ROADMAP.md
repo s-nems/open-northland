@@ -111,6 +111,21 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
       pipeline` on the real game → **105 weapons** (`(tribeType, typeId)` distinguishes 103; the 2
       remaining are genuinely-duplicated animal records the engine resolves last-wins), all 105
       `jobType` refs resolving against the 55-job table (0 dangling).
+- [x] **Building-type extraction:** done — `extractBuildings` in `decoders/ini.ts` reduces the mod's
+      readable `DataCnmd/types/houses.ini` `[logichousetype]` records (the base game's `housetypes.cif`
+      is the encrypted twin; preferring the `.ini` per golden rule #4) to `BuildingType` IR. A house
+      record keys its id on `logictype` (not the usual `type`) and its name on `debugname`; captured:
+      `logicworker <job> <count>` → `workers`, `logicstock <good> <cap> <init>` → `stock`,
+      `logicproduction <good>` → `produces` (output good ids only — input goods/amounts/timing are the
+      Phase-3 goods-graph; `recipe` stays empty till then), `logichomesize` → `homeSize`. `kind` maps
+      `logicmaintype` (1 storage, 2 home, 3 workplace, 4 training, 5 tower, 6 vehicle, 7 wonder). The
+      placement/defence/graphics extras (`debugcolor`/`logicCanEnableDefenceMode`/`logicSchoolSize`/
+      `logicvehicletype`/`logicbuildon*`) are skipped — later construction/combat systems.
+      `validateCrossReferences` now also checks `produces` good ids resolve. **Wired into the CLI** via
+      `resolveIniSources` + `buildIr`. **Hands-on:** `npm run pipeline` on the real game → **55
+      buildings** (storage 4, home 5, workplace 28, tower 3, training 2, vehicle 5, wonder 8), 69
+      `produces` lines, all worker/stock/produces ids resolving against the 55-job / 65-good tables (0
+      dangling).
 - [ ] `.bmd` bob decoder → atlas PNG + anim JSON (ref `CBobManager.cs`, `CBitmap.cs`). **Hardest.**
       - [x] **`.bmd` container parse** — `tools/asset-pipeline/src/decoders/bmd.ts` (`decodeBmd`:
             storable root `[u32 id=0x3F4][u32 ver]` + a 0x1C-byte header `{firstBobId, bobCount,
