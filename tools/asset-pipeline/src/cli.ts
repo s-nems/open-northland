@@ -8,14 +8,27 @@
  * its output goes to the gitignored content/ folder. See docs/DATA-FORMAT.md and docs/SOURCES.md.
  *
  * Phase 1 lands the stages one decoder at a time. Implemented now: `.pcx` pictures -> PNG (the
- * loose-file pass — `.lib`-embedded pictures arrive once the unpack stage feeds this). The remaining
- * stages (palettes, `.bmd` bobs, `.ini`/`.cif` rules, maps) are still TODO; see docs/ROADMAP.md.
+ * loose-file pass — `.lib`-embedded pictures arrive once the unpack stage feeds this) and readable
+ * `.ini` rules -> a validated `content/ir.json` (goods/jobs/landscape from base `Data/logic`, tribes +
+ * atomic animations from the mod's `DataCnmd`, preferring the mod per CLAUDE.md). The remaining stages
+ * (palettes, `.bmd` bobs, `.cif`-only type tables, maps) are still TODO; see docs/ROADMAP.md.
  */
 
 import { realpathSync } from 'node:fs';
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
+import {
+  type SourceRef,
+  decodeIni,
+  extractAtomicAnimations,
+  extractGoods,
+  extractJobs,
+  extractLandscape,
+  extractTribes,
+  parseIniSections,
+} from './decoders/ini.js';
 import { decodePcx, expandToRgba } from './decoders/pcx.js';
 import { encodePng } from './decoders/png.js';
 
@@ -91,6 +104,106 @@ export async function convertPcxTree(gameDir: string, outDir: string): Promise<P
   return done;
 }
 
+/**
+ * One readable `.ini` rule source to parse, with where it came from (`base` = `Data/logic`,
+ * `mod` = `DataCnmd`). The extractor selects which `[section]`s it cares about, so a file with no
+ * matching sections contributes nothing rather than erroring.
+ */
+export interface IniSource {
+  /** Absolute path of the `.ini` file to read. */
+  readonly path: string;
+  /** Path stamped onto each record's `source.file` — relative so the IR is location-agnostic. */
+  readonly file: string;
+  readonly layer: 'base' | 'mod';
+}
+
+/**
+ * Resolves the readable `.ini` sources for the type tables we can extract today, **preferring the
+ * mod's readable `.ini` over the base game** (CLAUDE.md golden rule #4): tribes + atomic animations
+ * live only under `DataCnmd/`, while goods/jobs/landscape are base `Data/logic/*.ini`. A source whose
+ * file is missing on disk is dropped with a warning — a partial install (or no mod) still produces an
+ * IR from whatever is present, rather than aborting the whole batch. Buildings/weapons have no
+ * extractor yet (the mod ships them as `DataCnmd/types/*`), so the IR's `buildings` stays empty until
+ * those decoders land; see docs/ROADMAP.md Phase 1.
+ */
+export async function resolveIniSources(gameDir: string, mod: string | undefined): Promise<IniSource[]> {
+  const base: { rel: string; layer: 'base' | 'mod' }[] = [
+    { rel: join('Data', 'logic', 'goodtypes.ini'), layer: 'base' },
+    { rel: join('Data', 'logic', 'jobtypes.ini'), layer: 'base' },
+    { rel: join('Data', 'logic', 'landscapetypes.ini'), layer: 'base' },
+  ];
+  if (mod !== undefined) {
+    base.push(
+      { rel: join(mod, 'tribetypes12', 'tribetypes.ini'), layer: 'mod' },
+      { rel: join(mod, 'atomicanimations12', 'atomicanimations.ini'), layer: 'mod' },
+    );
+  }
+  const sources: IniSource[] = [];
+  for (const { rel, layer } of base) {
+    const path = join(gameDir, rel);
+    try {
+      await access(path);
+    } catch {
+      console.warn(`[pipeline] ini source not found, skipping: ${rel}`);
+      continue;
+    }
+    sources.push({ path, file: rel, layer });
+  }
+  return sources;
+}
+
+/**
+ * Reads + parses every resolved `.ini` source and runs the typed extractors, then assembles and
+ * **validates** a {@link ContentSet} via `parseContentSet` (zod + cross-reference checks). Decoding
+ * stays pure (`decodeIni`/`parseIniSections`/`extract*` take bytes/text, not the filesystem); the
+ * only I/O here is reading the resolved files. Each extractor pulls only its own `[section]`s from a
+ * file, so passing every file's sections to every extractor is correct and order-independent.
+ *
+ * `buildings`/`weapons`/`animals`/`vehicles` are left empty until their extractors land — the schema
+ * defaults cover the optional arrays, and `buildings` (required) is explicitly empty for now.
+ */
+export async function buildIr(args: Args): Promise<ContentSet> {
+  const sources = await resolveIniSources(args.game, args.mod);
+  const goods = [];
+  const jobs = [];
+  const landscape = [];
+  const tribes = [];
+  const atomicAnimations = [];
+  for (const { path, file, layer } of sources) {
+    const sections = parseIniSections(decodeIni(await readFile(path)));
+    const src: SourceRef = { file, layer };
+    goods.push(...extractGoods(sections, src));
+    jobs.push(...extractJobs(sections, src));
+    landscape.push(...extractLandscape(sections, src));
+    tribes.push(...extractTribes(sections, src));
+    atomicAnimations.push(...extractAtomicAnimations(sections, src));
+  }
+  return parseContentSet({
+    manifest: {
+      version: IR_VERSION,
+      generatedFrom: { game: args.game, mod: args.mod },
+    },
+    goods,
+    jobs,
+    buildings: [],
+    landscape,
+    tribes,
+    atomicAnimations,
+  });
+}
+
+/**
+ * Builds the validated IR and writes it to `<out>/ir.json` (pretty-printed for diff-legibility).
+ * Returns the assembled set so the caller can report record counts. The write target lives under the
+ * gitignored `content/` — no copyrighted bytes enter the repo source.
+ */
+async function writeIr(args: Args): Promise<ContentSet> {
+  const set = await buildIr(args);
+  await mkdir(args.out, { recursive: true });
+  await writeFile(join(args.out, 'ir.json'), `${JSON.stringify(set, null, 2)}\n`);
+  return set;
+}
+
 async function run(args: Args): Promise<void> {
   console.log(`[pipeline] game=${args.game} mod=${args.mod ?? '(none)'} out=${args.out}`);
 
@@ -99,11 +212,18 @@ async function run(args: Args): Promise<void> {
   //   2. Decode palettes + .hlt remap tables   -> ref CPalette.cs, CRemapTable.cs (TODO)
   // > 3. Decode .pcx pictures -> PNG            -> decoders/pcx.ts + png.ts  (this stage)
   //   4. Decode .bmd bobs -> atlas + anim JSON  -> ref CBobManager.cs, CBitmap.cs (hardest, TODO)
-  //   5. Parse .ini rules -> typed IR           -> decoders/ini.ts (extractors done; wiring pending)
+  // > 5. Parse .ini rules -> typed IR           -> decoders/ini.ts (this stage; mod .ini preferred)
   //   6. Decode one map -> map IR               -> decoders/cif.ts (done; wiring pending)
-  //   7. Write content/ir.json + validate with parseContentSet()
+  // > 7. Write content/ir.json + validate with parseContentSet()  (this stage)
   const pictures = await convertPcxTree(args.game, args.out);
   console.log(`[pipeline] pcx -> png: converted ${pictures.length} picture(s) into ${args.out}`);
+
+  const ir = await writeIr(args);
+  console.log(
+    `[pipeline] ini -> ir: ${ir.goods.length} goods, ${ir.jobs.length} jobs, ` +
+      `${ir.landscape.length} landscape, ${ir.tribes.length} tribes, ` +
+      `${ir.atomicAnimations.length} atomic animations -> ${join(args.out, 'ir.json')}`,
+  );
 }
 
 // Auto-run only when invoked as the entry point (node src/cli.ts / the dist bin), not when a test
