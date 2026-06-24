@@ -377,8 +377,25 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
       **Hands-on:** a 5×5 map with a water wall (gap at y=4), a `PathRequest` (0,0)→(4,0) through the
       real `Simulation.step()` schedule → PathfindingSystem resolved a **13-waypoint** detour, then
       MovementSystem walked the entity to cell-centre (4,0) in **49 ticks** (12 segments × 4 ticks + 1
-      start-waypoint tick) and cleared the `PathFollow`. **Still to do:** AISystem issuing
-      `PathRequest`s (the planner that closes the request→path→move loop).
+      start-waypoint tick) and cleared the `PathFollow`. The request→path→move loop is now closed by
+      the AISystem navigation slice below.
+- [x] **AISystem navigation planner (intent→request→path→move).** Done — `aiSystem` in
+      `packages/sim/src/systems/index.ts` (no longer a stub) + the `MoveGoal` component (a destination
+      cell id, the *intent* layer above pathing). For an entity with a `MoveGoal` that is **not already
+      travelling** (no live `PathRequest`, no `PathFollow`) and not standing on its goal, the planner
+      emits a `PathRequest` from the entity's current cell (`terrain.cellAtClamped(fx.toInt(pos))`) to
+      the goal; PathfindingSystem turns that into a `PathFollow`, MovementSystem walks it, and the goal
+      is removed once the entity reaches the goal cell (an off-map/unreachable goal id is dropped rather
+      than re-issued forever). `MoveGoal` is kept separate from the transient request/path so a future
+      slice can repath without forgetting the destination. Pure + deterministic: no RNG/wall-clock, the
+      action is a function of position+goal; no-ops on a mapless sim (golden untouched). This is the
+      *navigation* planner only — the atomic-utility planner (pick the next atomic) sits on top of it.
+      **Hands-on:** a settler given **only** a `MoveGoal` to (4,0) on a 5×5 map with a water wall
+      (gap at y=4), through the real `Simulation.step()` schedule → AISystem issued the request,
+      PathfindingSystem produced a **13-waypoint** detour, MovementSystem walked it, and the goal
+      cleared on arrival at (4,0) after **50 ticks** (`MoveGoal`/`PathFollow`/`PathRequest` all gone);
+      two same-seed runs hash-equal (`42b87f68`). **Still to do:** the atomic planner choosing *which*
+      goal (a store/resource cell) — the next slice.
 - [ ] **Atomic planner slice:** AISystem picks an atomic (utility over the job's allowed atomics);
       AtomicSystem executes it to completion and applies its effect. One settler: harvest wood →
       pickup → carry → pileup at store.

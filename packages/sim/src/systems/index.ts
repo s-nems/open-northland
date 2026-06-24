@@ -1,5 +1,5 @@
 import type { ContentSet } from '@vinland/data';
-import { PathFollow, PathRequest, Position, Velocity } from '../components/index.js';
+import { MoveGoal, PathFollow, PathRequest, Position, Velocity } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { EventBuffer } from '../events.js';
 import { type Fixed, fx } from '../fixed.js';
@@ -109,6 +109,54 @@ function stepToward(from: Fixed, target: Fixed): Fixed {
 }
 
 /**
+ * AISystem — the navigation planner (first, smallest slice of the settler planner).
+ *
+ * Closes the intent→request→path→move loop: for an entity that has a {@link MoveGoal} but is not
+ * already travelling (no live {@link PathRequest}, no {@link PathFollow}) and is not standing on its
+ * goal cell, it emits a {@link PathRequest} from the entity's current cell to the goal cell. The
+ * PathfindingSystem turns that into a path and the MovementSystem walks it; when the entity reaches
+ * the goal cell the goal is satisfied and removed. A goal whose request just failed (no route) is
+ * left in place but not re-issued this tick — the failed flag is the planner's signal; a future
+ * slice can decide whether to abandon, wait, or repath.
+ *
+ * This is deliberately the *navigation* planner only — picking a destination cell. The full atomic
+ * planner (utility over the job's allowed atomics: harvest→pickup→carry→pileup) is a later roadmap
+ * slice; this is the minimal piece that proves AISystem→PathfindingSystem→MovementSystem end to end.
+ *
+ * Determinism: no RNG, no wall-clock; entities are visited in the PathFollow/PathRequest-free subset
+ * of the deterministic MoveGoal store order, and the action (issue a request, or remove a satisfied
+ * goal) is a pure function of the entity's position and goal. No-ops without a terrain graph (a
+ * mapless sim has no cells to navigate over, so the determinism golden is untouched).
+ */
+export const aiSystem: System = (world, ctx) => {
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return; // mapless sim: no cells to navigate over
+
+  for (const e of world.query(Position, MoveGoal)) {
+    // Already travelling — a request is queued or a path is being followed. Leave it to play out.
+    if (world.has(e, PathRequest) || world.has(e, PathFollow)) continue;
+
+    const goalCell = world.get(e, MoveGoal).cell;
+    if (!inRange(terrain, goalCell)) {
+      // An unreachable/off-map goal can never be satisfied; drop it rather than issue dead requests
+      // every tick. (A planner that owns the goal can re-add a valid one.)
+      world.remove(e, MoveGoal);
+      continue;
+    }
+
+    const p = world.get(e, Position);
+    const startCell = terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
+    if (startCell === goalCell) {
+      world.remove(e, MoveGoal); // arrived (or started on the goal): the goal is satisfied
+      continue;
+    }
+
+    // Not there yet and not travelling: issue a fresh route request from where we stand to the goal.
+    world.add(e, PathRequest, { start: startCell, goal: goalCell, failed: false });
+  }
+};
+
+/**
  * The maximum number of {@link PathRequest}s the pathfinder will resolve in a single tick. A*
  * is the heaviest per-call work in the schedule, so spreading many requests over several ticks
  * keeps the tick cost bounded — the budget is the determinism-safe spread (we always serve the
@@ -193,7 +241,8 @@ export const timeSystem: System = todo('TimeSystem'); // advance clock / day / s
 export const terrainSystem: System = todo('TerrainSystem'); // resource regrowth, fertility (cell graph)
 export const needsSystem: System = todo('NeedsSystem'); // hunger/health + the food/goods chain
 export const progressionSystem: System = todo('ProgressionSystem'); // experience + tech graph (needfor*/allow*/jobEnables*) gates jobs/goods/houses/vehicles
-export const aiSystem: System = todo('AISystem'); // planner: pick the next ATOMIC for each idle settler (utility over allowed atomics)
+// aiSystem is a REAL system now (above) — the navigation planner: MoveGoal -> PathRequest. The
+// atomic-utility planner (pick the next atomic for an idle settler) is a later slice on top of it.
 export const atomicSystem: System = todo('AtomicSystem'); // advance the CurrentAtomic; on completion apply its effect + notify planner
 export const jobSystem: System = todo('JobSystem'); // match idle settlers to open jobs/workplaces
 // pathfindingSystem is a REAL system now (above) — A* on the cell graph, budgeted/tick.
