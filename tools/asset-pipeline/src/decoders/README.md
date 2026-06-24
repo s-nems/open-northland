@@ -9,7 +9,8 @@ the source file + commit you referenced, for traceability.
 | `cif.ts` ✅ | `.cif` container (encrypted CStringArray) | `NXBasics/XBStorable.cs`, `CStringArray.cs`, `CMemory.cs`, `XBTools.cs` |
 | `lib.ts` ✅ | `.lib` archive (directory + payload views) | `NXBasics/CSimpleFileLibrary.cs`, `Dexter/DexterEndian.cs` |
 | `palette.ts` | palettes, `.hlt` | `NXBasics/CPalette.cs`, `CRemapTable.cs`, `CHighColorCreator.cs` |
-| `pcx.ts` | `.pcx` picture | `NXBasics/CPicture.cs`, `XBPictureTool.cs` |
+| `pcx.ts` ✅ | `.pcx` picture | `NXBasics/CPicture.cs`, `XBPictureTool.cs` |
+| `png.ts` ✅ | PNG **output** container (RGBA → PNG) | — (not an original format; ports the PNG spec: zlib + IHDR/IDAT/IEND) |
 | `bmd.ts` | `.bmd` bob/anim | `NXBasics/CBobManager.cs`, `CBitmap.cs` — **hardest, do last** |
 | `ini.ts` ✅ | `.ini` **and** decoded-`.cif` rules | plain text parse; emit IR validated by `@vinland/data` (parser + `goodtypes`/`landscapetypes`/`jobtypes`/`tribetypes` extractors + the atomic vocabulary — `atomicFor*`/`allowatomic`/`setatomic` — done; more type extractors incremental) |
 | `map.ts` | map files | landscape grid + placements |
