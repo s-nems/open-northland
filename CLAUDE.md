@@ -53,13 +53,32 @@ npm run dev            # vite app
   (this is not a `~/Projects/yonder` repo). E.g. `feat: Add fixed-point pathfinding grid`.
 - Keep new code in the style of the file around it.
 
-## How to verify your work
+## How to verify your work (the self-validation loop)
 
-- Mechanics change → add/extend a headless test in `packages/sim/test` and run `npm test`.
-- Don't claim something works because it typechecks. Run it. Golden determinism tests must stay green.
-- Rendering/visual change → that needs the app running; say so rather than asserting it works.
+The sim is deterministic and headless **so that you can check your own work** by running `npm test`
+and reading pass/fail — at the unit, integration, and game-level (e2e) layers. Read
+`docs/TESTING.md`; the pyramid is real and the harness exists (`scenario()`, `invariants.ts`,
+the synthetic `testContent()` fixture). The loop:
+
+1. Write/extend the test at the **lowest level** that proves the change (unit → integration →
+   headless scenario). Mechanics change → a test in `packages/sim/test`.
+2. Run `npm test`. If an invariant fired, it reports the **exact tick** — use that.
+3. Don't claim something works because it typechecks. **Run it.** Golden state + atomic-trace tests
+   must stay green; only update a golden if the change was intentional, and say which mechanic.
+4. Rendering/visual change → an agent CANNOT self-judge pixels. Run the screenshot diff if present,
+   otherwise say it needs a human. Validate decoded assets against the **OpenVikings oracle**.
+
+## Determinism anti-patterns (an LLM will reach for these — don't)
+
+- `Math.random` / `Date.now` / `new Date` / `performance.now` in `sim` → use `world.rng`.
+- Iterating a `Map`/`Set` for a **game decision** (insertion order is history-dependent) → iterate a
+  canonical order, e.g. `stockpileEntries()` (sorted by goodType).
+- Floats for state in `sim` → use `fx` fixed-point (`fixed.ts`); no `Math.sqrt/sin/cos` (use `fx.isqrt`).
+- Recycling entity ids → ids are monotonic, never reused.
+- Hardcoding "two tribes" or a tribe's behavior in code → tribes/jobs/atomics are **data**.
+- Writing bespoke per-job logic → behavior is an **atomic planner** over the data vocabulary (ECS.md).
 
 ## Start here
 
-`docs/ARCHITECTURE.md` → `docs/ECS.md` → `docs/DATA-FORMAT.md` → `docs/ROADMAP.md`.
+`docs/ARCHITECTURE.md` → `docs/ECS.md` → `docs/DATA-FORMAT.md` → `docs/TESTING.md` → `docs/ROADMAP.md`.
 The roadmap names the current target slice; do the smallest next step toward it.

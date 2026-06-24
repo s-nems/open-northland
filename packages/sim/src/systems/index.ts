@@ -43,30 +43,38 @@ const todo =
     void name;
   };
 
-export const commandSystem: System = todo('CommandSystem'); // apply queued player commands
+export const commandSystem: System = todo('CommandSystem'); // apply queued serializable player commands
 export const timeSystem: System = todo('TimeSystem'); // advance clock / day / season
-export const terrainSystem: System = todo('TerrainSystem'); // resource regrowth, fertility
-export const needsSystem: System = todo('NeedsSystem'); // hunger/health, the food chain
-export const aiSystem: System = todo('AISystem'); // per-settler goal selection
-export const jobSystem: System = todo('JobSystem'); // match idle settlers to open jobs
-export const pathfindingSystem: System = todo('PathfindingSystem'); // paths on the landscape graph
-export const productionSystem: System = todo('ProductionSystem'); // recipes: inputs -> outputs
-export const transportSystem: System = todo('TransportSystem'); // carriers move goods
-export const constructionSystem: System = todo('ConstructionSystem'); // build progress
-export const combatSystem: System = todo('CombatSystem'); // two-tribe combat from weapontypes
-export const reproductionSystem: System = todo('ReproductionSystem'); // families, population
-export const cleanupSystem: System = todo('CleanupSystem'); // destroy dead, recycle, emit events
+export const terrainSystem: System = todo('TerrainSystem'); // resource regrowth, fertility (cell graph)
+export const needsSystem: System = todo('NeedsSystem'); // hunger/health + the food/goods chain
+export const progressionSystem: System = todo('ProgressionSystem'); // experience + tech graph (needfor*/allow*/jobEnables*) gates jobs/goods/houses/vehicles
+export const aiSystem: System = todo('AISystem'); // planner: pick the next ATOMIC for each idle settler (utility over allowed atomics)
+export const atomicSystem: System = todo('AtomicSystem'); // advance the CurrentAtomic; on completion apply its effect + notify planner
+export const jobSystem: System = todo('JobSystem'); // match idle settlers to open jobs/workplaces
+export const pathfindingSystem: System = todo('PathfindingSystem'); // A* on the cell-adjacency graph, canonical tie-breaking (budgeted/tick)
+export const productionSystem: System = todo('ProductionSystem'); // recipes (goodtypes.productionInputGoods): inputs -> outputs, enforce stock capacity
+export const transportSystem: System = todo('TransportSystem'); // carriers physically haul goods between stores (no global bank)
+export const constructionSystem: System = todo('ConstructionSystem'); // deliver materials, advance build, level houses
+export const combatSystem: System = todo('CombatSystem'); // N-tribe combat from weapontypes/armortypes (large subsystem)
+export const reproductionSystem: System = todo('ReproductionSystem'); // families/children, gated by house level capacity
+export const cleanupSystem: System = todo('CleanupSystem'); // destroy dead entities (ids are NOT recycled), emit events for render/audio
 
-/** The canonical per-tick execution order. Order is part of the design — change deliberately. */
+/**
+ * The canonical per-tick execution order. Order is part of the design — change deliberately.
+ * Note the AI->Atomic split: AISystem chooses an atomic, AtomicSystem executes it to completion.
+ * Most "behavior" lives in these two + the data-driven atomic vocabulary, not in bespoke systems.
+ */
 export const SYSTEM_ORDER: readonly System[] = [
   commandSystem,
   timeSystem,
   terrainSystem,
   needsSystem,
+  progressionSystem,
   aiSystem,
   jobSystem,
   pathfindingSystem,
   movementSystem,
+  atomicSystem,
   productionSystem,
   transportSystem,
   constructionSystem,

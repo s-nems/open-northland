@@ -3,8 +3,10 @@
 ## Goals, in priority order
 
 1. **Faithful *feel*, fixable *rules*.** Reproduce the soul of Cultures — every settler is an
-   individual with needs, a deep goods economy, two-tribe conflict — while being free to correct
-   bugs and rebalance.
+   individual executing **atomic actions** driven by needs, a deep goods economy, a data-driven
+   progression/tech graph, and **N-tribe** conflict (the data defines viking/frank/saracen/
+   byzantine/egypt + animals-as-tribes) — while being free to correct bugs and rebalance. The
+   behavior model is detailed in docs/ECS.md; do not picture this as a conventional RTS.
 2. **Deterministic simulation.** Same seed + same inputs ⇒ identical state. Enables headless
    tests, replays, and lockstep multiplayer.
 3. **Agent-legible.** Small, typed, dependency-light code. Rules live in data. A model should be
@@ -42,10 +44,13 @@
 ### The one-way data flow at runtime
 
 `app` advances the `sim` by feeding it **commands** (player orders, e.g. "place house here") on a
-fixed tick. After each tick the sim exposes an immutable **snapshot** (or a stable read view). The
-`render` layer consumes snapshots and **interpolates** between the last two for smooth motion —
-it never mutates sim state and the sim never imports render. This is the strict boundary that
-keeps the sim deterministic and testable, and lets us run the sim faster-than-realtime in tests.
+fixed tick. **Commands are the only way state mutates** and they are serializable — so a save is a
+command log (replay) plus a snapshot (fast load). After each tick the sim exposes a stable
+**snapshot read-view** (double-buffered or immutable) that `render` consumes and **interpolates**
+between the last two ticks for smooth motion. `render` never mutates sim state and the sim never
+imports render, and the renderer must never read live mid-mutation state — hence the explicit
+snapshot contract, defined in Phase 2 alongside `CommandSystem`. This strict boundary keeps the sim
+deterministic and testable and lets us run it faster-than-realtime in tests (see docs/TESTING.md).
 
 ### Fixed timestep
 
@@ -80,11 +85,16 @@ state + commands + RNG — never on wall-clock or frame rate.
 - **`app`** — the shell. Owns the main loop, translates input into sim commands, draws menus/HUD,
   wires save/load. The only package that depends on everything.
 - **`tools/asset-pipeline`** — offline, run by a human/agent against an owned game copy. Decodes
-  original formats into `content/`. Heavy lifting documented in `docs/SOURCES.md`.
+  original formats (incl. encrypted `.cif`) into `content/`. Decoded graphics are validated against
+  the **OpenVikings oracle** (it boots and renders the originals) pixel-for-pixel. Heavy lifting
+  documented in `docs/SOURCES.md`.
 
 ## Save / load & multiplayer (forward-looking, not yet built)
 
-Because the sim is deterministic, a save is `{ seed, contentVersion, initialMap, commandLog }`
-(or a state snapshot for fast load). Multiplayer is lockstep: exchange commands, everyone runs the
-same deterministic sim. We don't build these yet, but every sim decision must preserve the
-property that makes them cheap. Don't add nondeterminism "just for now."
+Because the sim is deterministic and command-driven, a save is `{ seed, contentVersion, map,
+commandLog }` for replay **plus a state snapshot for fast load** (replaying hours of ticks is
+unviable). Multiplayer is lockstep: exchange commands, everyone runs the same deterministic sim.
+We don't build the disk format yet, but the load-bearing invariants — commands-only mutation, a
+serializable command schema, and the snapshot read-view — are established in **Phase 2**, not
+deferred. Every sim decision must preserve the property that makes save/MP cheap. Don't add
+nondeterminism "just for now."

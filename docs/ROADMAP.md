@@ -3,53 +3,101 @@
 Phased plan. Each phase ends with something runnable or testable. The **current target** is the
 top unchecked milestone. Do the smallest next step toward it; don't build ahead.
 
+> This roadmap was revised after a design review against the actual game data. Key corrections:
+> `.cif` decoding is on the critical path (not deferrable); settler behavior is an **atomic-action
+> planner** (not bespoke per-job code); a **progression/tech graph** is a first-class system;
+> navigation is a **cell graph** (the triangle grid is a *render* concern); there are **N tribes**,
+> not two. See docs/SOURCES.md and docs/ECS.md.
+
 ## Phase 0 — Foundation  ✅ (this scaffold)
 - [x] Monorepo, packages, docs, conventions, determinism rules.
-- [ ] `npm install` + `npm run build` + `npm test` green on the stub.
+- [x] Deterministic ECS, scaled-integer fixed-point (no BigInt/overflow), seeded RNG, canonical
+      full-state hash, invariants + headless scenario harness, synthetic test fixture.
+- [ ] `npm install` + `npm run build` + `npm test` green on the stub. *(currently green)*
 
-## Phase 1 — Asset pipeline (de-risk formats first)
-Goal: turn your owned game copy into the IR. This removes the biggest technical unknown.
-- [ ] `.lib` archive unpacker (ref: `CSimpleFileLibrary.cs`).
-- [ ] Palette + `.pcx` decoder → PNG (ref: `CPalette.cs`, `CPicture.cs`).
-- [ ] `.bmd` bob decoder → atlas PNG + anim JSON (ref: `CBobManager.cs`, `CBitmap.cs`). **Hardest.**
-- [ ] `.ini` rule parser → typed IR for goods/buildings/jobs/weapons (prefer `DataCnmd/*.ini`).
-- [ ] One map decoded to IR.
-- **Exit:** `npm run pipeline` produces a validated `content/` for one campaign map + its types.
+## Phase 1 — Asset pipeline + `.cif` (de-risk formats first)
+Goal: turn an owned game copy into the IR. This removes the biggest technical unknowns. **`.cif`
+is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatterntypes`,
+`atomicanimations`) and **all maps** are `.cif`-only.
+- [ ] **`.cif` decrypt + container parse.** Port `XB_Decrypt_Memory` from OpenVikings
+      `NXBasics/XBTools.cs` (the `(in-1)^key` scheme, ~40 lines). *Decryption is solved;* the real
+      unknown is the **decrypted payload/record layout** — spike `housetypes.cif` and `map.cif`
+      first and write down the structure.
+- [ ] `.lib` archive unpacker (ref `CSimpleFileLibrary.cs`).
+- [ ] Palette + `.pcx` decoder → PNG (ref `CPalette.cs`, `CPicture.cs`). **Validate against the
+      OpenVikings oracle** (it renders the originals) pixel-for-pixel.
+- [ ] `.ini` rule parser → typed IR (note base `Data/logic/*.ini` is the primary readable source;
+      handle the `<CULTURES_CIF_BEGIN>` header line; decode text as **CP1250**, not UTF-8).
+- [ ] **Atomic vocabulary extraction** (free, from readable data): `tribetypes.ini` `setatomic`
+      (atomic→animation per tribe), `jobtypes.ini` `allowatomic`, `goodtypes.ini` `atomicFor*`.
+- [ ] `.bmd` bob decoder → atlas PNG + anim JSON (ref `CBobManager.cs`, `CBitmap.cs`). **Hardest.**
+- [ ] One map (`map.cif` + its `.ini`/`.inc` parts) decoded to IR.
+- **Exit:** `npm run pipeline` produces a validated `content/` (types + atlases + one map), decoded
+  graphics verified against the oracle.
 
 ## Phase 2 — Vertical slice (prove the sim)  ← **first real target**
-Goal: one tribe, headless-correct, then on screen.
-- [ ] Terrain grid world resource from a map IR; walk/build queries.
-- [ ] Render: draw isometric terrain + a static settler sprite from the atlas.
-- [ ] Pathfinding + MovementSystem (fixed-point) across the grid.
-- [ ] One settler: AI picks "gather wood" → path to tree → harvest → carry to store.
-- [ ] One workplace consuming one input → producing one good (ProductionSystem).
-- [ ] Golden determinism test over ~1000 ticks of the above.
-- **Exit:** click to place one workplace; a settler autonomously supplies it; deterministic + tested.
+Goal: one tribe, headless-correct, then on screen. Establish the invariants that the rest depends on.
+- [ ] **CommandSystem + serializable command schema** — the ONLY way state mutates. Save = command
+      log from day one (disk format later; the invariant is now). Define the **snapshot read-view**
+      (double-buffer or immutable view) so `render` never reads mid-mutation.
+- [ ] Terrain as a **cell-adjacency graph** with per-type walk cost/valency (from
+      `landscapetypes.ini`). *Not* the triangle geometry — that's render-only.
+- [ ] PathfindingSystem: A* on the cell graph with **canonical tie-breaking** (budgeted/tick).
+- [ ] MovementSystem (fixed-point) following paths.
+- [ ] **Atomic planner slice:** AISystem picks an atomic (utility over the job's allowed atomics);
+      AtomicSystem executes it to completion and applies its effect. One settler: harvest wood →
+      pickup → carry → pileup at store.
+- [ ] One workplace: ProductionSystem consumes input → output, **enforcing per-good stock capacity**.
+- [ ] A minimal **carrier** moving goods between store and workplace (goods never teleport).
+- [ ] Render: isometric terrain + the settler sprite from the atlas, **depth-sorted by feet anchor**
+      (a visual checklist item — can't be golden-hashed; see docs/TESTING.md).
+- [ ] Golden state-hash + golden **atomic-action trace** over ~1000 ticks; invariants each tick.
+- **Exit:** click to place one workplace; a settler autonomously supplies it via atomics; carrier
+  hauls output; deterministic, invariant-clean, replay-equal.
 
-## Phase 3 — Economy & population
-- [ ] Multiple goods, the food chain (NeedsSystem: settlers eat, houses consume).
-- [ ] JobSystem assignment across many workplaces; carriers (TransportSystem).
-- [ ] ConstructionSystem: place → deliver materials → build.
-- [ ] ReproductionSystem: families, children, growth.
-- [ ] HUD: stocks, population, job overview.
-- **Exit:** a self-sustaining single-tribe settlement you can grow.
+## Phase 3 — Economy, progression & population
+- [ ] Full **goods graph** as an explicit IR artifact (extract from `goodtypes.productionInputGoods`):
+      raw → flour/plank/tool → bread/weapons, two food tiers (`food_simple`/`food_extra`).
+- [ ] NeedsSystem: hunger + non-food needs implied by atomics (eat, plus deferred-but-named
+      `pray`/`enjoy`/social/`make_love`).
+- [ ] **ProgressionSystem** — experience + tech graph: `humanjobexperiencetypes` per-specialization
+      XP, `trainforjob` schooling, `needfor*`/`allow*`/`jobEnables*` gating goods/houses/jobs/vehicles.
+- [ ] JobSystem assignment across many workplaces; multiple carriers + vehicle stock slots.
+- [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`)
+      → population capacity → the births→housing→births loop.
+- [ ] ReproductionSystem: families, children growing up, gated by housing.
+- [ ] HUD: stocks, population, jobs, the goods graph.
+- **Exit:** a self-sustaining, progressing single-tribe settlement you can grow.
 
-## Phase 4 — Conflict & content breadth
-- [ ] Second tribe; CombatSystem from `weapontypes` (range/melee/damage tables).
-- [ ] Animals (`animaltypes`), vehicles/boats (`vehicletypes`) — incl. sea travel for *Northland*.
-- [ ] Import full base + `culturesnation` content; bring over the mod's balance changes.
-- **Exit:** two tribes can fight; most content types represented.
+## Phase 4 — Conflict & content breadth (N tribes)
+- [ ] CombatSystem from `weapontypes`/`armortypes` (a large subsystem: many soldier classes, armor
+      tiers, named heroes, amulets/potions — scope it honestly).
+- [ ] **N data-defined tribes** (viking/frank/saracen/byzantine/egypt), asymmetry expressed through
+      each tribe's atomic bindings + `allow*`/`needfor*` graph — never hardcode "two".
+- [ ] **Animals as non-controllable tribes** (`animaltypes.ini`: aggression, groups, hitpoints) —
+      same entity/AI model, not a separate bolt-on.
+- [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
+      `fisher_sea`/`trader_sea`/`carpenter ship`, `vehicle_ship`.
+- [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).
+- **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.
 
 ## Phase 5 — Campaigns, polish, platform
-- [ ] Campaign/scripting layer; load `OsmyCudSwiata` / `WyprawaNaPolnoc` / `BramyAsgardu`.
-- [ ] Save/load (seed + command log; then snapshot fast-load).
-- [ ] Audio (transcoded ogg; no DirectMusic dependency).
-- [ ] Tauri desktop builds for Mac/Win/Linux.
+- [ ] Campaign/scripting layer (decide early: data-driven triggers preferred over code) — load
+      `OsmyCudSwiata` / `WyprawaNaPolnoc` / `BramyAsgardu`. **Verify whether mod campaigns carry
+      scripted behavior** a data-only pipeline would miss.
+- [ ] Save/load: command-log replay + **snapshot fast-load** (replay-all is unviable for hours-long
+      settlements). Snapshot schema designed alongside components in Phase 2, finalized here.
+- [ ] Audio (transcoded ogg; no DirectMusic `.sgt`/`.dls` dependency).
+- [ ] Tauri desktop builds for Mac/Win/Linux (renderer stays WebView-compatible).
 - [ ] (Stretch) lockstep multiplayer — the determinism work pays off here.
 
-## Explicitly deferred / risks to watch
-- **`.cif` decryption** — avoid by preferring `.ini`; only if a needed type is `.cif`-only.
-- **Settler AI fidelity** — the soul of Cultures and *not* documented anywhere; reconstruct by
-  observation + design. Expect iteration; this is where most effort goes.
-- **Triangle landscape grid** — non-trivial geometry for pathfinding/placement; model + test alone.
-- **Determinism drift** — every new system must keep golden tests green.
+## Risks & open unknowns (watch these)
+- **`.cif` decrypted payload structure** — decryption solved; the *record layout* of
+  `housetypes`/`map.cif`/`atomicanimations` is the genuine unknown. De-risk first in Phase 1.
+- **Settler AI fidelity** — the soul, undocumented. Approach = planner over the data-extracted
+  atomic vocabulary; calibrate atomic timings/yields (in `atomicanimations.cif`) by observation,
+  kept as data so tuning is a diff. See docs/ECS.md "Settler AI".
+- **Atomic timings/effects** live in encrypted `atomicanimations.cif` — vocabulary is free, timing
+  is reverse-engineered/tuned.
+- **Combat & campaign scripting scope** — both larger than one roadmap line implies.
+- **Determinism drift** — every new system must keep golden state + trace tests green.

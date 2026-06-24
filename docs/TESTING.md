@@ -1,0 +1,88 @@
+# Testing & the agent feedback loop
+
+This project is built largely by LLM agents. An agent is only as good as its ability to **check its
+own work**. The architecture is shaped to make that possible: because the simulation is
+**deterministic and headless**, almost everything that matters can be validated by running
+`npm test` and reading pass/fail — no screen, no human in the loop. The one exception (pixels /
+"feel") is called out explicitly so an agent never *claims* it when it can't prove it.
+
+## The core principle
+
+> If a change can break the game, there must be a test an agent can run that fails when it does.
+
+The sim mutates state **only** through serializable commands, advances in fixed deterministic
+ticks, and exposes a canonical `hashState()` over all components. That gives us, for free:
+same-seed reproducibility, replay, faster-than-real-time runs, and the ability to localize the
+exact tick a regression appears. Lean on it.
+
+## The pyramid (all levels run under `npm test` / vitest)
+
+### 1. Unit — pure functions & single systems
+Fast, many, no `Simulation`. Targets: `fixed.ts` math (and its overflow assertions), `rng.ts`
+reproducibility, the ECS (`world.ts`) query/insertion-order contract, and **one system over a
+hand-built world** (e.g. `movementSystem` advances positions by velocity).
+See `packages/sim/test/determinism.test.ts`.
+
+### 2. Integration — many systems over many ticks
+Build a `Simulation` from the synthetic `testContent()` fixture, run hundreds of ticks, and assert:
+- **Determinism:** two sims, same seed + inputs ⇒ identical `hashState()`.
+- **Invariants** (`src/invariants.ts`): no negative stock, hunger in range, building sanity — and
+  domain laws as they land: **goods conservation** (goods are created only by production, destroyed
+  only by consumption), **liveness/no-deadlock** (some settler makes progress each interval),
+  **path validity** (waypoints are walkable cells).
+See `packages/sim/test/scenario.test.ts`.
+
+### 3. E2E at the game level — headless scenarios (the key agent layer)
+The `scenario()` harness (`src/scenario.ts`) scripts the **same commands the UI issues**
+(place building, spawn settler, set production), runs the deterministic sim for N ticks, and
+asserts outcomes plus invariants **after every tick** (so a failure reports the exact breaking
+tick, not just "something's wrong at the end"). This exercises the whole game loop —
+placement → AI → atomic actions → economy → population — as an ordinary test an agent runs itself.
+
+```ts
+scenario(content)
+  .placeBuilding('headquarters', 10, 10)   // (Phase 2, once CommandSystem exists)
+  .spawnSettler('woodcutter')
+  .run(2000, { checkInvariantsEachTick: true })
+  .expect('settlement produced planks', (sim) => totalGood(sim, PLANK) > 0)
+  .assertOk();
+```
+
+### 4. Save/load & replay equivalence
+Two deterministic checks, both headless:
+- **Replay:** run a command log from seed → state A; replay the same log → state B; `A === B`.
+- **Snapshot round-trip:** run K ticks, snapshot, run K more → hash H; reload the snapshot, run K
+  more → hash H′; assert `H === H′`. This guards the save format and any hidden nondeterminism.
+
+### 5. Golden traces — behavioral regression
+Beyond state hashes, record the **canonical sequence of atomic actions** a settler performs in a
+fixed scenario (e.g. `[walk, harvest, pickup, walk, pileup, …]`) and diff against a committed
+golden. When AI/economy tuning changes behavior, the diff is human/agent-readable — far more
+useful than "hash changed." Intentional change → update the golden in the same commit.
+
+## What an agent CANNOT self-validate (be honest)
+
+- **Pixel fidelity & "feel"** — isometric depth-sort correctness, animation anchors, pathing
+  smoothness. Approaches: (a) **deterministic screenshot diffs** via Playwright against the Vite
+  app, compared to committed baselines (an agent can run these but should treat a diff as "needs
+  human eyes," not auto-pass); (b) explicitly defer to a human and *say so* rather than asserting
+  it works from a green typecheck.
+- **Asset-decode correctness** — use the **OpenVikings oracle**: OpenVikings boots and renders the
+  original assets, so compare the pipeline's decoded PNG/atlas output pixel-for-pixel against it.
+  Plus decoder round-trip unit tests against tiny locally-generated fixtures (never commit
+  copyrighted fixtures).
+
+## Reproducibility of fixtures
+
+Golden/scenario tests must reproduce on any machine, but `content/` is generated from a copyrighted
+game copy and is gitignored. Therefore tests use the **committed synthetic fixture**
+(`packages/sim/test/fixtures/content.ts`) — hand-authored, no copyrighted data. Keep it in lockstep
+with the schema. Never make a golden test depend on generated `content/`.
+
+## The agent's checklist (also in CLAUDE.md)
+
+1. Write/extend the test at the **lowest level** that proves the change (unit > integration > e2e).
+2. Run `npm test`. Read failures; if invariants fired, note the **tick** they reported.
+3. Determinism golden changed? Only update it if the change was **intentional** — say which mechanic.
+4. Visual/render change? Run the screenshot diff if available; otherwise state plainly it needs a
+   human. Never claim a visual result from a passing typecheck.

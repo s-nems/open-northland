@@ -10,13 +10,16 @@ content/
 ├── ir.json                 # manifest: { version, generatedFrom, locale, hashes }
 ├── types/
 │   ├── goods.json          # GoodType[]
+│   ├── goods-graph.json    # derived: the production DAG (raw -> processed -> consumed)
 │   ├── buildings.json      # BuildingType[]  (houses/workplaces)
-│   ├── jobs.json           # JobType[]
+│   ├── jobs.json           # JobType[]  (each carries its allowatomic id list)
+│   ├── atomics.json        # AtomicType[]: id, per-tribe animation binding, effect kind (timing TBD)
+│   ├── experience.json     # ExperienceType[]: per-specialization XP factors (progression)
+│   ├── tribes.json         # TribeType[]: incl. the needfor*/allow*/jobEnables* dependency graph
 │   ├── weapons.json        # WeaponType[]
-│   ├── animals.json        # AnimalType[]
-│   ├── vehicles.json       # VehicleType[]
-│   ├── landscape.json      # LandscapeType[] + pattern transitions
-│   └── tribes.json         # TribeType[]
+│   ├── animals.json        # AnimalType[]  (non-controllable tribes)
+│   ├── vehicles.json       # VehicleType[]  (incl. stock slots: handcart 15, oxcart 30, ships)
+│   └── landscape.json      # LandscapeType[]: walk cost / valency / land-water (the NAV graph)
 ├── sprites/
 │   ├── <name>.png          # texture atlas (decoded from .bmd/.pcx)
 │   ├── <name>.atlas.json   # frames: {id, x,y,w,h, anchorX,anchorY}
@@ -35,9 +38,12 @@ content/
    agent can read a building definition and a balance change shows up as a clean diff.
 2. **Provenance preserved.** Every IR record keeps where it came from (source file + original
    field names) so the conversion is auditable and re-runnable. Don't silently rename semantics.
-3. **Mod-aware layering.** Load base game first, then overlay the `culturesnation` mod (`DataCnmd`)
-   — the mod often provides readable `.ini` for things the base game only ships as `.cif`, so
-   prefer mod sources. The pipeline records which layer won for each record.
+3. **Mod-aware layering.** The primary readable rule source is **base `Data/logic/*.ini`** (which
+   begin with a `<CULTURES_CIF_BEGIN>` header line, then plain text). Load base first, then overlay
+   the `culturesnation` mod (`DataCnmd`), which provides a *subset* (`houses.ini`, `weapons.ini`,
+   graphics) plus new campaigns/maps. The pipeline records which layer won for each record.
+   (Note: `housetypes`/`weapontypes`/`trianglepatterntypes`/`atomicanimations` and all maps are
+   `.cif`-only — these go through the `.cif` decoder, see docs/SOURCES.md.)
 4. **Versioned.** `ir.json.version` bumps on schema changes; the sim refuses to load a mismatched
    major version. Golden tests pin a sample content set.
 
@@ -83,8 +89,30 @@ JSON describing frames, per-frame anchor (feet position for correct isometric so
 animation sequences (walk/work/idle/fight per direction). `render` loads these; `sim` never does —
 the sim only knows an entity's logical state, and `render` maps state → animation.
 
+## Atomics, the goods graph & progression
+
+Three derived/extracted IR artifacts encode the parts of Cultures that aren't obvious from a flat
+type list (see docs/ECS.md for why these are central):
+
+- **`atomics.json`** — the behavior vocabulary. Extracted from `tribetypes.ini` `setatomic`
+  (atomic id → animation, per tribe), with each `JobType` carrying its `allowatomic` id list and
+  each `GoodType` its `atomicFor*`. Atomic *timing/effects* come later from `atomicanimations.cif`.
+- **`goods-graph.json`** — the production DAG, mechanically derived from
+  `goodtypes.productionInputGoods` (e.g. `bread ← flour + water`, `plank ← wood`). Materialized as
+  an explicit artifact so agents and systems read one source of truth, not implicit cross-system logic.
+- **`experience.json` + the tribe dependency graph** — `humanjobexperiencetypes` XP factors plus
+  `tribetypes.ini` `needfor*`/`allow*`/`jobEnables*`/`trainforjob`. This is the progression spine
+  (`ProgressionSystem`) and the main expression of tribe asymmetry.
+
 ## Maps
 
-A map IR is the terrain grid (per-cell landscape type + height + flags) plus initial placements
-(buildings, settlers, resources, tribe ownership). Source: original map files +
-`CnModMaps/` (~125 mod maps). Format details land when the pipeline's map decoder is written.
+A map IR is the terrain grid (per-cell landscape type + height + flags → the **nav graph**) plus
+initial placements (buildings, settlers, resources, tribe ownership). Source: `map.cif` (encrypted —
+needs the `.cif` decoder) alongside readable `.ini`/`.inc` parts, for base maps + `CnModMaps/`
+(~125 mod maps). Format details land when the pipeline's map decoder is written.
+
+## Text encoding
+
+Original `.ini`/`.cif` strings are **CP1250** (Central-European Windows), not UTF-8 — the content
+is Polish (`set_language 6`, campaigns `OsmyCudSwiata`/`WyprawaNaPolnoc`). The pipeline must decode
+CP1250 → UTF-8 when emitting `text/<locale>.json`, or names like Łódź/ó/ż will corrupt.

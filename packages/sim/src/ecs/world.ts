@@ -1,11 +1,14 @@
 /**
  * A tiny, explicit ECS. Deliberately not a library: we need full control over iteration order
- * (for determinism) and maximum legibility. ~150 lines is the whole thing.
+ * (for determinism) and maximum legibility. ~180 lines is the whole thing.
  *
  * Rules (see docs/ECS.md):
- *  - Entities are integer ids, handed out in ascending order.
+ *  - Entities are integer ids from a MONOTONIC counter — never recycled. Entities are cheap; id
+ *    reuse would make iteration order history-dependent in confusing ways. Don't recycle.
  *  - Components are plain data registered via defineComponent.
- *  - Queries iterate entities in ascending id order — deterministic, always.
+ *  - Queries iterate in DETERMINISTIC insertion order of the driving store (no per-call sort — that
+ *    was a perf trap at thousands of entities). Order is reproducible across identical runs, which
+ *    is what determinism requires. For a CANONICAL order (snapshots/hashes) sort ids explicitly.
  *  - Components carry no behavior; Systems (plain functions) carry all behavior.
  */
 
@@ -24,9 +27,9 @@ export function defineComponent<T>(name: string): Component<T> {
 export class World {
   private nextId: Entity = 1;
   private readonly alive = new Set<Entity>();
-  private readonly components: Array<Component<unknown>> = [];
+  /** Components in first-registration order — stable, used for canonical hashing/snapshots. */
+  private readonly registered: Array<Component<unknown>> = [];
 
-  /** Create a new entity with no components. */
   create(): Entity {
     const id = this.nextId++;
     this.alive.add(id);
@@ -34,7 +37,7 @@ export class World {
   }
 
   destroy(entity: Entity): void {
-    for (const c of this.components) c.store.delete(entity);
+    for (const c of this.registered) c.store.delete(entity);
     this.alive.delete(entity);
   }
 
@@ -42,10 +45,9 @@ export class World {
     return this.alive.has(entity);
   }
 
-  /** Attach/overwrite a component value on an entity. */
   add<T>(entity: Entity, component: Component<T>, value: T): T {
-    if (!this.components.includes(component as Component<unknown>)) {
-      this.components.push(component as Component<unknown>);
+    if (!this.registered.includes(component as Component<unknown>)) {
+      this.registered.push(component as Component<unknown>);
     }
     component.store.set(entity, value);
     return value;
@@ -59,7 +61,6 @@ export class World {
     return component.store.has(entity);
   }
 
-  /** Get a component value; throws if absent (use `has` first when optional). */
   get<T>(entity: Entity, component: Component<T>): T {
     const v = component.store.get(entity);
     if (v === undefined) {
@@ -73,20 +74,18 @@ export class World {
   }
 
   /**
-   * Iterate entities that have ALL of the given components, in ascending id order.
-   * Iterates the smallest component store and filters — O(min store size).
+   * Iterate entities that have ALL of the given components, in deterministic insertion order of
+   * the smallest store. O(min store size). No sorting in the hot path.
    */
   *query(...required: Array<Component<unknown>>): IterableIterator<Entity> {
     if (required.length === 0) return;
-    // Pick the smallest store to drive iteration.
     let smallest = required[0]!;
     for (const c of required) if (c.store.size < smallest.store.size) smallest = c;
 
-    const ids = [...smallest.store.keys()].sort((a, b) => a - b); // deterministic order
-    for (const id of ids) {
+    for (const id of smallest.store.keys()) {
       let ok = true;
       for (const c of required) {
-        if (!c.store.has(id)) {
+        if (c !== smallest && !c.store.has(id)) {
           ok = false;
           break;
         }
@@ -95,7 +94,16 @@ export class World {
     }
   }
 
-  /** Count of currently alive entities (for tests/debug). */
+  /** All registered components in registration order (for canonical hashing/snapshots). */
+  get components(): readonly Component<unknown>[] {
+    return this.registered;
+  }
+
+  /** Ascending-sorted alive entity ids — the canonical order for snapshots and golden hashes. */
+  canonicalEntities(): Entity[] {
+    return [...this.alive].sort((a, b) => a - b);
+  }
+
   get entityCount(): number {
     return this.alive.size;
   }
