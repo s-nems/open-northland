@@ -24,6 +24,23 @@ import {
 } from '@vinland/data';
 import type { CifLine } from './cif.js';
 
+/**
+ * Decodes raw `.ini` bytes to text as **CP1250** (Windows-1250, Central-European) — NOT UTF-8.
+ * The Cultures rule files were authored on Windows-1250 codepages, so display strings carry Polish
+ * glyphs (`ą ć ę ł ń ó ś ź ż` and capitals) in the 0x80..0xFF range; reading them as UTF-8 mangles
+ * those bytes. Structural keywords (`[section]`, keys, the `<CULTURES_CIF_BEGIN>` header) are ASCII
+ * and survive any of these single-byte encodings unchanged — only the human-facing names differ.
+ *
+ * This is the byte->text seam for the readable `.ini` skin; the `.cif` skin's seam lives in
+ * `cif.ts` (decoded latin1 to match the OpenVikings oracle byte-for-byte). Re-decoding a `.cif`
+ * display string as CP1250 is the IR-layer concern cif.ts's note defers — out of scope here.
+ */
+export function decodeIni(bytes: Uint8Array): string {
+  // `fatal:false` (the default) maps the few unassigned CP1250 byte values to U+FFFD rather than
+  // throwing — a malformed glyph in one name must not abort an offline batch over many files.
+  return new TextDecoder('windows-1250').decode(bytes);
+}
+
 /** One property line: a key and its whitespace-separated values (quoted runs count as one value). */
 export interface RuleProp {
   readonly key: string;

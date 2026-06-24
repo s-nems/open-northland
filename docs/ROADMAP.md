@@ -57,8 +57,14 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             pixel-for-pixel. Needs an owned game copy + the oracle; an agent can't self-judge it.
       - [ ] Standalone `CPalette` (id 0x3F6) decode — raw 0x400 `[B,G,R,_]×256` blob from `.cif`/`.lib`
             graphs (the `.pcx` trailer covers picture palettes; this is for bobs/maps).
-- [ ] `.ini` rule parser → typed IR (note base `Data/logic/*.ini` is the primary readable source;
-      handle the `<CULTURES_CIF_BEGIN>` header line; decode text as **CP1250**, not UTF-8).
+- [x] `.ini` rule parser → typed IR — `decoders/ini.ts`. `parseIniSections` reduces readable
+      `Data/logic/*.ini`/`DataCnmd/types/*` (and, via `cifLinesToSections`, decoded `.cif`) to a
+      generic `RuleSection` model; the `<CULTURES_CIF_BEGIN>` header line is skipped and `//`
+      comments stripped (quote-aware). The byte→text seam is `decodeIni`, which decodes raw bytes as
+      **CP1250** (Windows-1250), not UTF-8 — display names carry Polish glyphs in 0x80..0xFF that a
+      UTF-8 read would mangle; ASCII structure is unaffected. Typed extractors (goods/jobs/tribes/
+      landscape/atomic-animations) below build on this. **Next:** wire the readers (`decodeIni` +
+      extractors) into the CLI once `.lib`/`.pcx` land, so `npm run pipeline` emits real `content/`.
 - [x] **Atomic vocabulary extraction** (free, from readable data): done in `decoders/ini.ts`
       (`extractJobs`/`extractTribes` + `atomicFor*` in `extractGoods`). Captures `jobtypes`
       `allowatomic`/`baseatomics`, `tribetypes` `setatomic` (atomic→animation per tribe),
