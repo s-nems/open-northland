@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * Asset pipeline CLI — offline conversion of an OWNED original game copy into the IR (content/).
  *
@@ -11,6 +12,7 @@
  * stages (palettes, `.bmd` bobs, `.ini`/`.cif` rules, maps) are still TODO; see docs/ROADMAP.md.
  */
 
+import { realpathSync } from 'node:fs';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -63,9 +65,10 @@ export interface PcxConversion {
 
 /**
  * Converts every `.pcx` under `gameDir` to a `.png` under `outDir`, mirroring the relative path.
- * Returns the conversions performed (input/output relative paths). A per-file decode/encode failure
- * is logged and skipped — a batch pipeline must not abort on one malformed or palette-less picture.
- * A missing/unreadable `gameDir` throws (a real argument error, not a per-file boundary failure).
+ * Returns the conversions performed (input/output relative paths). A picture that fails to read or
+ * decode is logged and skipped — a batch pipeline must not abort on one malformed/palette-less image.
+ * An output-write failure (and a missing/unreadable `gameDir`) propagates instead: that's an
+ * environmental error, not a per-file boundary failure, and should fail loudly rather than be lost.
  */
 export async function convertPcxTree(gameDir: string, outDir: string): Promise<PcxConversion[]> {
   const done: PcxConversion[] = [];
@@ -74,14 +77,16 @@ export async function convertPcxTree(gameDir: string, outDir: string): Promise<P
     const input = relative(gameDir, file);
     const output = input.replace(/\.pcx$/i, '.png');
     const outPath = join(outDir, output);
+    let png: Uint8Array;
     try {
-      const png = pcxToPng(await readFile(file));
-      await mkdir(dirname(outPath), { recursive: true });
-      await writeFile(outPath, png);
-      done.push({ input, output });
+      png = pcxToPng(await readFile(file));
     } catch (err) {
       console.warn(`[pipeline] skipped ${input}: ${(err as Error).message}`);
+      continue;
     }
+    await mkdir(dirname(outPath), { recursive: true });
+    await writeFile(outPath, png);
+    done.push({ input, output });
   }
   return done;
 }
@@ -103,7 +108,7 @@ async function run(args: Args): Promise<void> {
 
 // Auto-run only when invoked as the entry point (node src/cli.ts / the dist bin), not when a test
 // imports this module for parseArgs/pcxToPng/convertPcxTree.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   run(parseArgs(process.argv.slice(2))).catch((err: unknown) => {
     console.error('[pipeline] failed:', err);
     process.exitCode = 1;
