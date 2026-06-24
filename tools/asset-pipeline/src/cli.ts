@@ -289,6 +289,13 @@ export async function convertBmdTree(
       console.warn(`[pipeline] skipped ${binding.bmd}: ${(err as Error).message}`);
       continue;
     }
+    if (!/\.bmd$/i.test(bmdOnDisk)) {
+      // A `.bmd`-less name would make the output paths collide with the source — skip rather than
+      // clobber the input bytes. The extractor only emits `gfxbobmanagerbody` `.bmd` paths, so this is
+      // a defensive guard, not an expected case.
+      console.warn(`[pipeline] skipped ${binding.bmd}: source has no .bmd extension`);
+      continue;
+    }
     const pngRel = bmdOnDisk.replace(/\.bmd$/i, '.png');
     const manifestRel = bmdOnDisk.replace(/\.bmd$/i, '.atlas.json');
     await writeFile(join(outDir, pngRel), encodePng(atlas.image));
