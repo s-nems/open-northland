@@ -40,6 +40,7 @@ import {
   extractGoods,
   extractGraphicsBindings,
   extractJobBaseGraphics,
+  extractJobChangeGraphics,
   extractJobs,
   extractLandscape,
   extractMapInfo,
@@ -525,23 +526,26 @@ async function writeIr(args: Args): Promise<ContentSet> {
  *
  *  - the base `Data/engine2d/inis/animals/jobgraphics.ini` `[jobgraphics]` records (the one animals
  *    binding file shipped as plain `.ini`);
- *  - the base `Data/engine2d/inis/humans/jobgraphics.cif` `[jobbasegraphics]` records — the **base-game
- *    human body/head bob sets**, which ship *only* as encrypted `.cif` (no readable `.ini` twin, so this
- *    is the `.cif`-only graphics binding leg), decoded via {@link decodeCifStringArray} →
- *    {@link cifLinesToSections} into the same {@link RuleSection} model the `.ini` parser yields;
- *  - and, when a `--mod` is given, the mod's `<mod>/types/humanstype/jobgraphics.ini` `[jobbasegraphics]`
- *    records (the readable mod human skin, golden rule #4 — overlays the base-game humans above).
+ *  - the base `Data/engine2d/inis/humans/jobgraphics.cif` `[jobbasegraphics]` (base appearance) **and**
+ *    `[jobchangegraphics]` (per-job equipment skin) records — the **base-game human body/head bob
+ *    sets**, which ship *only* as encrypted `.cif` (no readable `.ini` twin, so this is the `.cif`-only
+ *    graphics binding leg), decoded via {@link decodeCifStringArray} → {@link cifLinesToSections} into
+ *    the same {@link RuleSection} model the `.ini` parser yields;
+ *  - and, when a `--mod` is given, the mod's `<mod>/types/humanstype/jobgraphics.ini`
+ *    `[jobbasegraphics]` + `[jobchangegraphics]` records (the readable mod human skin, golden rule #4 —
+ *    overlays the base-game humans above).
  *
- * The two `[jobbasegraphics]` sources are flattened via {@link jobBaseGraphicsToBindings} into the same
- * flat shape as the `[jobgraphics]` animals. The palette index comes from
+ * Both the base-appearance (`[jobbasegraphics]`) and equipment-skin (`[jobchangegraphics]`) layers share
+ * the same grammar, so all four sources flatten via {@link jobBaseGraphicsToBindings} into the same flat
+ * shape as the `[jobgraphics]` animals. The palette index comes from
  * `Data/engine2d/inis/palettes/palettes.ini`. The `.ini` sources are decoded as CP1250 (display names
  * carry Polish glyphs) via {@link decodeIni}, like every other rule source; the `.cif` text is latin1
  * (structural keywords are ASCII). A missing/corrupt file contributes nothing (with a warning) — a
  * partial install (or no mod) still runs the rest of the pipeline rather than aborting.
  *
  * Returns the merged bindings + the `palettes.ini` name→`.pcx` index, ready to hand to
- * {@link convertBmdTree}. The remaining `.cif`-only graphics tables (vehicles/goods graphics, the
- * `[jobchangegraphics]` equipment skins) are a later step.
+ * {@link convertBmdTree}. The remaining `.cif`-only graphics tables (vehicles/goods graphics) are a
+ * later step.
  */
 export async function resolveGraphicsBindings(
   gameDir: string,
@@ -569,10 +573,18 @@ export async function resolveGraphicsBindings(
   const humansCif = await readCif(join('Data', 'engine2d', 'inis', 'humans', 'jobgraphics.cif'));
   const palettesIni = await readIni(join('Data', 'engine2d', 'inis', 'palettes', 'palettes.ini'));
   const bindings: BmdPaletteBinding[] = jobgraphics ? extractGraphicsBindings(jobgraphics) : [];
-  if (humansCif) bindings.push(...jobBaseGraphicsToBindings(extractJobBaseGraphics(humansCif)));
+  if (humansCif) {
+    // The base humans .cif carries both layers: [jobbasegraphics] (base appearance) and
+    // [jobchangegraphics] (per-job equipment skins). Both flatten through the same path.
+    bindings.push(...jobBaseGraphicsToBindings(extractJobBaseGraphics(humansCif)));
+    bindings.push(...jobBaseGraphicsToBindings(extractJobChangeGraphics(humansCif)));
+  }
   if (mod !== undefined) {
     const humanGraphics = await readIni(join(mod, 'types', 'humanstype', 'jobgraphics.ini'));
-    if (humanGraphics) bindings.push(...jobBaseGraphicsToBindings(extractJobBaseGraphics(humanGraphics)));
+    if (humanGraphics) {
+      bindings.push(...jobBaseGraphicsToBindings(extractJobBaseGraphics(humanGraphics)));
+      bindings.push(...jobBaseGraphicsToBindings(extractJobChangeGraphics(humanGraphics)));
+    }
   }
   return {
     bindings,
@@ -609,8 +621,9 @@ async function run(args: Args): Promise<void> {
   );
 
   // Convert .bmd bob sets -> atlas PNG + manifest JSON for every binding: the base animals
-  // [jobgraphics] records, the base humans/jobgraphics.cif [jobbasegraphics] records (the .cif-only
-  // human leg), plus, with a --mod, the mod's [jobbasegraphics] human body/head bobs. Each binding
+  // [jobgraphics] records, the base humans/jobgraphics.cif [jobbasegraphics] base-appearance +
+  // [jobchangegraphics] equipment-skin records (the .cif-only human legs), plus, with a --mod, the
+  // mod's [jobbasegraphics]/[jobchangegraphics] human body/head bobs. Each binding
   // names its palette by editname; palettes.ini resolves it to a .pcx, whose trailer palette colours
   // the bobs. Both the .bmd and the .pcx are read from the just-unpacked <out> tree.
   const { bindings, palettes } = await resolveGraphicsBindings(args.game, args.mod);

@@ -236,11 +236,27 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             `[jobbasegraphics]` records expand into 53 body + ~262 head/body slots; 315 carry the base
             `test_human_00` palette), still **62 distinct** atlas files (the base-human `.bmd`s overlap the
             mod skin's), **406/407** resolving (the same 1 seasonal `weihnachtsmann.pcx` skip).
+      - [x] **`[jobchangegraphics]` equipment-skin leg wired into the CLI.** `extractJobChangeGraphics`
+            in `decoders/ini.ts` reduces the `[jobchangegraphics]` records (the per-job **equipment skin**
+            layer) — the sibling of `[jobbasegraphics]` (base appearance), shipping in the *same* files
+            (base `Data/engine2d/inis/humans/jobgraphics.cif` + the mod's `DataCnmd/types/humanstype/
+            jobgraphics.ini`, preferred per golden rule #4). The two layers share the **identical grammar**
+            (indexed `gfxbobmanagerbody/head` slots + the three palette keys), so both extractors delegate
+            to one shared `extractIndexedGraphics(sections, sectionName)` and yield the same
+            {@link JobBaseGraphicsBinding} shape, flattening through the existing `jobBaseGraphicsToBindings`
+            → `convertBmdTree` path (no second copy of the conversion logic). `cli.ts`
+            `resolveGraphicsBindings` now reads the `[jobchangegraphics]` records from both the `.cif` and
+            the mod `.ini` alongside the base ones. **Hands-on:** `npm run pipeline` on the real game →
+            bindings rose **407 → 483** (the base `.cif`'s 31 change records carry only `gfxpaletterandom`
+            — a runtime tint, not a bob palette — so they correctly flatten to **0** emitted bindings; the
+            mod's readable change records, which declare `gfxpalettebase{body,head}`, add the **76** new
+            ones), **482/483** resolving (same 1 seasonal `weihnachtsmann.pcx` skip), **63 distinct** atlas
+            files (up from 62); a sampled equipment-skin head bob → a valid 1023×675 RGBA atlas PNG.
       - [ ] **Atlas oracle pixel-diff + remaining `.cif`-only graphics legs.** Remaining: the
-            `[jobchangegraphics]` equipment skins (base humans `.cif`), the vehicles/goods graphics
-            (`vehicles/jobgraphics.cif`, `goods/goodgraphics.cif`), and per-creature recolour output
-            naming, then compare an emitted atlas frame against the OpenVikings render pixel-for-pixel
-            (needs an owned game copy + the oracle; an agent can't self-judge it).
+            vehicles/goods graphics (`vehicles/jobgraphics.cif`, `goods/goodgraphics.cif`) and
+            per-creature recolour output naming, then compare an emitted atlas frame against the
+            OpenVikings render pixel-for-pixel (needs an owned game copy + the oracle; an agent can't
+            self-judge it).
 - [ ] One map (`map.cif` + its `.ini`/`.inc` parts) decoded to IR.
       - [x] **Map logic-header metadata** — `extractMapInfo` in `decoders/ini.ts` reduces a decoded
             `map.cif`'s `CStringArray` (`logiccontrol` `mapsize`/`mapguid` + `misc_maptype`/`misc_mapname`)
