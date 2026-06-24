@@ -1,0 +1,19 @@
+{
+  "name": "@vinland/asset-pipeline",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "vinland-pipeline": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "start": "node --experimental-strip-types src/cli.ts"
+  },
+  "dependencies": {
+    "@vinland/data": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  }
+}

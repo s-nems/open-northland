@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Generated intermediate content — DERIVED FROM COPYRIGHTED GAME DATA.
+# Never commit. Each user generates this from their own owned copy via the asset pipeline.
+content/
+!content/.gitkeep
+
+# Never commit original game assets / binaries, even if copied in by accident.
+*.bmd
+*.cif
+*.hlt
+*.pcx
+*.lib
+*.sgt
+*.dls
+*.exe
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Logs
+*.log
+npm-debug.log*

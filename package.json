@@ -1,0 +1,28 @@
+{
+  "name": "vinland",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Open-source cross-platform rebuild of Cultures - 8th Wonder of the World",
+  "license": "GPL-3.0-or-later",
+  "workspaces": [
+    "packages/*",
+    "tools/*"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "tsc --build --clean",
+    "typecheck": "tsc --build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dev": "npm run dev --workspace @vinland/app",
+    "pipeline": "npm run start --workspace @vinland/asset-pipeline --"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
