@@ -102,12 +102,15 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
       readable `DataCnmd/types/weapons.ini` `[weapontype]` records (the base game's `weapontypes.cif`
       is the encrypted twin; preferring the `.ini` per golden rule #4) to `WeaponType` IR:
       `minimumrange`/`maximumrange` → `minRange`/`maxRange`, repeated `damagevalue <armorClass> <value>`
-      → the armor-class-keyed `damage` record, and `jobtype` (the wielding job, cross-checked by
-      `validateCrossReferences`). The combat extras (`soundtype_*`/`munitiontype`/`createsmoke`/
-      `damagetype`) aren't in the `WeaponType` schema yet — they belong with the Phase-4 CombatSystem.
-      **Wired into the CLI** via `resolveIniSources` + `buildIr`. **Hands-on:** `npm run pipeline` on
-      the real game → **105 weapons**, all 105 `jobType` refs resolving against the 55-job table (0
-      dangling); e.g. `wooden_spear` minRange 1/maxRange 2, damage over armor classes 0..7.
+      → the armor-class-keyed `damage` record, `jobtype` (the wielding job, cross-checked by
+      `validateCrossReferences`), and `tribetype` — a weapon's `type` id is **not** globally unique
+      (the original keys it by `(tribetype, type)`, so the same id recurs per tribe), so `tribeType`
+      is captured to keep records distinguishable. The combat extras (`soundtype_*`/`munitiontype`/
+      `createsmoke`/`damagetype`) aren't in the `WeaponType` schema yet — they belong with the Phase-4
+      CombatSystem. **Wired into the CLI** via `resolveIniSources` + `buildIr`. **Hands-on:** `npm run
+      pipeline` on the real game → **105 weapons** (`(tribeType, typeId)` distinguishes 103; the 2
+      remaining are genuinely-duplicated animal records the engine resolves last-wins), all 105
+      `jobType` refs resolving against the 55-job table (0 dangling).
 - [ ] `.bmd` bob decoder → atlas PNG + anim JSON (ref `CBobManager.cs`, `CBitmap.cs`). **Hardest.**
       - [x] **`.bmd` container parse** — `tools/asset-pipeline/src/decoders/bmd.ts` (`decodeBmd`:
             storable root `[u32 id=0x3F4][u32 ver]` + a 0x1C-byte header `{firstBobId, bobCount,

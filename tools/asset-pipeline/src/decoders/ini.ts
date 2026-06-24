@@ -381,7 +381,10 @@ export function extractAtomicAnimations(sections: readonly RuleSection[], src: S
  * (the armor class is the string key, matching the schema's `record<string,number>` shape and the
  * original `damageValue[targetArmorClass]` indexing). `minimumrange`/`maximumrange` map to
  * `minRange`/`maxRange`; `jobtype` is the wielding job (cross-checked against the job table by
- * `validateCrossReferences`). The undocumented combat extras (`soundtype_*`, `munitiontype`,
+ * `validateCrossReferences`). `tribetype` is captured because a weapon's `type` id is **not**
+ * globally unique — the original keys a weapon by `(tribetype, type)`, so the same id recurs once
+ * per tribe (e.g. `type 2` = "fist" for every tribe); see {@link WeaponType}. The combat extras
+ * (`soundtype_*`, `munitiontype`,
  * `createsmoke`, `damagetype`) are not in the {@link WeaponType} schema yet and are intentionally
  * skipped here — they belong with the Phase-4 CombatSystem, not this type-table slice. Throws on a
  * section missing the required numeric `type` (matches {@link extractGoods}'s throw-on-malformed stance).
@@ -404,6 +407,7 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
         typeId,
         id: name ? slug(name) : `weapon_${typeId}`,
         name,
+        tribeType: getInt(sec, 'tribetype'),
         minRange: getInt(sec, 'minimumrange'),
         maxRange: getInt(sec, 'maximumrange'),
         damage,

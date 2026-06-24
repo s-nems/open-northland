@@ -103,9 +103,14 @@ export const BuildingType = z.object({
 export type BuildingType = z.infer<typeof BuildingType>;
 
 export const WeaponType = z.object({
+  /** The weapon's `type` id. NOTE: unlike the other type tables this is NOT globally unique — a
+   *  weapon is keyed by `(tribeType, typeId)` in the original `weapontypes`, so the same `typeId`
+   *  (e.g. 2 = "fist") recurs once per tribe. Resolve a weapon with both ids, not `typeId` alone. */
   typeId: TypeId,
   id: z.string(),
   name: z.string().optional(),
+  /** Owning tribe (`weapontype` `tribetype`). Part of the composite key — see `typeId`. */
+  tribeType: TypeId.optional(),
   minRange: z.number().int().nonnegative().default(1),
   maxRange: z.number().int().nonnegative().default(1),
   /** damageValue[targetArmorClass] -> value, as in the original weapontypes. */
