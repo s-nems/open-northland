@@ -193,7 +193,8 @@ export type AtomicEvent = z.infer<typeof AtomicEvent>;
  * the mod's readable set is a subset of the base-game animations, so absent names aren't dangling.
  */
 export const AtomicAnimation = z.object({
-  /** Filesystem-safe slug of `name`, for parity with the other IR types. */
+  /** Filesystem-safe slug of `name`, for legibility/parity with the other IR types. Display-only —
+   *  it lowercases, so it is NOT the join key; resolve `setatomic` bindings against `name`, not `id`. */
   id: z.string(),
   /** The animation's exact name — the resolvable key referenced by `tribetypes` `setatomic`. */
   name: z.string(),
