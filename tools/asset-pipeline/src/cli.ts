@@ -9,10 +9,11 @@
  *
  * Phase 1 lands the stages one decoder at a time. Implemented now: `.lib` archives unpacked to loose
  * files under `--out` (the embedded `.pcx`/`.bmd`/`.cif` the later stages read), `.pcx` pictures -> PNG
- * (the loose-file pass over the `--game` tree), and readable `.ini` rules -> a validated
- * `content/ir.json` (goods/jobs/landscape from base `Data/logic`, tribes + atomic animations from the
- * mod's `DataCnmd`, preferring the mod per CLAUDE.md). The remaining stages (palettes, `.bmd` bobs ->
- * atlas, `.cif`-only type tables, maps) are still TODO; see docs/ROADMAP.md.
+ * (the loose-file pass over the `--game` tree), `.bmd` bob sets -> atlas PNG + manifest JSON for the
+ * readable `[jobgraphics]` palette bindings, and readable `.ini` rules -> a validated `content/ir.json`
+ * (goods/jobs/landscape from base `Data/logic`, tribes + atomic animations from the mod's `DataCnmd`,
+ * preferring the mod per CLAUDE.md). The remaining stages (standalone palettes, the `.cif`-only
+ * graphics + type tables, maps, and the oracle pixel-diff) are still TODO; see docs/ROADMAP.md.
  */
 
 import { realpathSync } from 'node:fs';
@@ -23,12 +24,17 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { type BobAtlas, packBobAtlas } from './decoders/atlas.js';
 import { decodeBmd } from './decoders/bmd.js';
 import {
+  type BmdPaletteBinding,
+  type PaletteAlias,
+  type RuleSection,
   type SourceRef,
   decodeIni,
   extractAtomicAnimations,
   extractGoods,
+  extractGraphicsBindings,
   extractJobs,
   extractLandscape,
+  extractPaletteIndex,
   extractTribes,
   parseIniSections,
 } from './decoders/ini.js';
@@ -204,6 +210,95 @@ export async function convertPcxTree(gameDir: string, outDir: string): Promise<P
 }
 
 /**
+ * Builds a case-insensitive index of the unpacked tree: `normalizeAssetPath(rel)` -> the real on-disk
+ * relative path (native separators). The binding extractors lower-case + forward-slash their `.bmd`/
+ * `.pcx` references, but the unpacked `.lib` members keep the archive's original (mixed) case, so a
+ * direct `join(out, ref)` would miss on a case-sensitive filesystem. This map bridges the two: look a
+ * normalized reference up to get the real path under `outDir`. Built once per run and shared by every
+ * binding. Mirrors the `normalizeAssetPath` the extractors use (forward slashes, lower-case).
+ */
+async function indexOutTree(outDir: string): Promise<Map<string, string>> {
+  const index = new Map<string, string>();
+  for await (const file of walkFiles(outDir)) {
+    const rel = relative(outDir, file);
+    index.set(rel.replace(/\\/g, '/').toLowerCase(), rel);
+  }
+  return index;
+}
+
+/** One emitted bob atlas: the binding it came from plus the relative atlas PNG / manifest JSON paths. */
+export interface BmdConversion {
+  /** The body `.bmd`'s path under `outDir`, normalized (forward slashes, lower-case) — the binding key. */
+  readonly bmd: string;
+  /** The atlas PNG's path relative to `outDir` (native separators). */
+  readonly png: string;
+  /** The atlas manifest JSON's path relative to `outDir` (native separators). */
+  readonly manifest: string;
+}
+
+/**
+ * Converts the body `.bmd` of every readable `[jobgraphics]` binding into a packed atlas PNG + a
+ * manifest JSON, written as siblings of the `.bmd` under `outDir`. This wires the `.bmd`→palette
+ * pairing graph end-to-end: {@link extractGraphicsBindings} names each `.bmd`'s palette `editname`,
+ * {@link extractPaletteIndex} resolves that name to a palette `.pcx`, and the `.pcx` trailer palette
+ * colours the bob frames via {@link bmdToAtlas}. Both the `.bmd` and the palette `.pcx` are read from
+ * the unpacked `--out` tree (the `.lib` unpack stage extracted them there); {@link indexOutTree}
+ * resolves the extractors' lower-cased references to the real (mixed-case) on-disk paths.
+ *
+ * Per-binding boundary failures are warned-and-skipped, never fatal — an unresolvable palette name, a
+ * `.pcx`/`.bmd` missing from `--out`, a palette-less `.pcx`, or a malformed `.bmd` only drops that one
+ * atlas, matching the other tree-walk stages. Each binding emits `<bmd>.png` (the atlas sheet) and
+ * `<bmd>.atlas.json` (the per-bob frame manifest); the shadow `.bmd` is left for a later step (shadows
+ * use a separate, single-colour palette path). The `.cif`-only graphics records (most of the binding
+ * leg) are a later step — only `animals/jobgraphics.ini` ships as readable `.ini`.
+ */
+export async function convertBmdTree(
+  bindings: readonly BmdPaletteBinding[],
+  palettes: readonly PaletteAlias[],
+  outDir: string,
+): Promise<BmdConversion[]> {
+  const done: BmdConversion[] = [];
+  const paletteByName = new Map<string, string>();
+  for (const alias of palettes) {
+    // First alias wins on a duplicate name; the real palettes.ini has none, but stay deterministic.
+    if (!paletteByName.has(alias.name)) paletteByName.set(alias.name, alias.gfxFile);
+  }
+  const tree = await indexOutTree(outDir);
+  for (const binding of bindings) {
+    const pcxRel = paletteByName.get(binding.paletteName);
+    if (pcxRel === undefined) {
+      console.warn(`[pipeline] skipped ${binding.bmd}: unknown palette "${binding.paletteName}"`);
+      continue;
+    }
+    const pcxOnDisk = tree.get(pcxRel);
+    const bmdOnDisk = tree.get(binding.bmd);
+    if (pcxOnDisk === undefined || bmdOnDisk === undefined) {
+      const missing = pcxOnDisk === undefined ? `palette ${pcxRel}` : `bmd ${binding.bmd}`;
+      console.warn(`[pipeline] skipped ${binding.bmd}: ${missing} not found under out`);
+      continue;
+    }
+    let atlas: BobAtlas;
+    try {
+      const palette = decodePcx(await readFile(join(outDir, pcxOnDisk))).palette;
+      if (palette === undefined) {
+        console.warn(`[pipeline] skipped ${binding.bmd}: palette ${pcxRel} has no trailer`);
+        continue;
+      }
+      atlas = bmdToAtlas(await readFile(join(outDir, bmdOnDisk)), palette);
+    } catch (err) {
+      console.warn(`[pipeline] skipped ${binding.bmd}: ${(err as Error).message}`);
+      continue;
+    }
+    const pngRel = bmdOnDisk.replace(/\.bmd$/i, '.png');
+    const manifestRel = bmdOnDisk.replace(/\.bmd$/i, '.atlas.json');
+    await writeFile(join(outDir, pngRel), encodePng(atlas.image));
+    await writeFile(join(outDir, manifestRel), `${JSON.stringify(atlas.manifest, null, 2)}\n`);
+    done.push({ bmd: binding.bmd, png: pngRel, manifest: manifestRel });
+  }
+  return done;
+}
+
+/**
  * One readable `.ini` rule source to parse, with where it came from (`base` = `Data/logic`,
  * `mod` = `DataCnmd`). The extractor selects which `[section]`s it cares about, so a file with no
  * matching sections contributes nothing rather than erroring.
@@ -303,6 +398,37 @@ async function writeIr(args: Args): Promise<ContentSet> {
   return set;
 }
 
+/**
+ * Reads the two readable graphics-binding `.ini` files and extracts the `.bmd`→palette pairing:
+ * `Data/engine2d/inis/animals/jobgraphics.ini` (the one binding file shipped as plain `.ini`) +
+ * `Data/engine2d/inis/palettes/palettes.ini`. Both are decoded as CP1250 (display names carry Polish
+ * glyphs) via {@link decodeIni}, like every other rule source. A missing file yields an empty list
+ * with a warning — a partial install still runs the rest of the pipeline rather than aborting.
+ *
+ * Returns the `[jobgraphics]` bindings + the `palettes.ini` name→`.pcx` index, ready to hand to
+ * {@link convertBmdTree}. The mod's richer `[jobbasegraphics]` records and the `.cif`-only graphics
+ * tables are later steps; this resolves only what's readable today.
+ */
+export async function resolveGraphicsBindings(
+  gameDir: string,
+): Promise<{ bindings: BmdPaletteBinding[]; palettes: PaletteAlias[] }> {
+  const readIni = async (rel: string): Promise<RuleSection[] | undefined> => {
+    const path = join(gameDir, rel);
+    try {
+      return parseIniSections(decodeIni(await readFile(path)));
+    } catch {
+      console.warn(`[pipeline] graphics binding source not found, skipping: ${rel}`);
+      return undefined;
+    }
+  };
+  const jobgraphics = await readIni(join('Data', 'engine2d', 'inis', 'animals', 'jobgraphics.ini'));
+  const palettesIni = await readIni(join('Data', 'engine2d', 'inis', 'palettes', 'palettes.ini'));
+  return {
+    bindings: jobgraphics ? extractGraphicsBindings(jobgraphics) : [],
+    palettes: palettesIni ? extractPaletteIndex(palettesIni) : [],
+  };
+}
+
 async function run(args: Args): Promise<void> {
   console.log(`[pipeline] game=${args.game} mod=${args.mod ?? '(none)'} out=${args.out}`);
 
@@ -310,7 +436,7 @@ async function run(args: Args): Promise<void> {
   // > 1. Unpack .lib archives                  -> decoders/lib.ts (this stage)
   //   2. Decode palettes + .hlt remap tables   -> ref CPalette.cs, CRemapTable.cs (TODO)
   // > 3. Decode .pcx pictures -> PNG            -> decoders/pcx.ts + png.ts  (this stage)
-  //   4. Decode .bmd bobs -> atlas + anim JSON  -> ref CBobManager.cs, CBitmap.cs (hardest, TODO)
+  // > 4. Decode .bmd bobs -> atlas + anim JSON  -> decoders/bmd.ts + atlas.ts (this stage; readable bindings)
   // > 5. Parse .ini rules -> typed IR           -> decoders/ini.ts (this stage; mod .ini preferred)
   //   6. Decode one map -> map IR               -> decoders/cif.ts (done; wiring pending)
   // > 7. Write content/ir.json + validate with parseContentSet()  (this stage)
@@ -329,6 +455,19 @@ async function run(args: Args): Promise<void> {
   console.log(
     `[pipeline] pcx -> png: converted ${pictures} picture(s) into ${args.out} ` +
       `(${loosePictures.length} loose, ${embeddedPictures.length} embedded)`,
+  );
+
+  // Convert .bmd bob sets -> atlas PNG + manifest JSON for every readable [jobgraphics] binding. Each
+  // binding names its palette by editname; palettes.ini resolves it to a .pcx, whose trailer palette
+  // colours the bobs. Both the .bmd and the .pcx are read from the just-unpacked <out> tree.
+  const { bindings, palettes } = await resolveGraphicsBindings(args.game);
+  const atlases = await convertBmdTree(bindings, palettes, args.out);
+  // Distinct .bmd files written: many readable bindings share a body bob (the animals are one geometry
+  // recoloured per creature), so the binding count overstates the atlas files — report both.
+  const distinct = new Set(atlases.map((a) => a.png)).size;
+  console.log(
+    `[pipeline] bmd -> atlas: ${atlases.length} of ${bindings.length} readable binding(s) -> ` +
+      `${distinct} atlas file(s) into ${args.out} (${palettes.length} palette aliases)`,
   );
 
   const ir = await writeIr(args);
