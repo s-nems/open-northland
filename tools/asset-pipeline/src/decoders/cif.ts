@@ -44,7 +44,7 @@ export interface CifStringArray {
   readonly usedIdCount: number;
   readonly slotCount: number;
   readonly stringPoolUsedBytes: number;
-  /** Strings in canonical id order; empty/hole slots are skipped. */
+  /** Strings in canonical id order; empty/hole slots are skipped (so `lines.length` may be < `stringCount`). */
   readonly lines: readonly CifLine[];
 }
 
@@ -105,6 +105,9 @@ class ByteReader {
   }
 
   u32(): number {
+    if (this.pos + 4 > this.bytes.length) {
+      throw new Error(`cif: read of 4 bytes overruns buffer at offset ${this.pos}`);
+    }
     const v = this.view.getUint32(this.pos, true);
     this.pos += 4;
     return v;
@@ -139,9 +142,14 @@ function readCMemoryRaw(r: ByteReader): Uint8Array {
   return Uint8Array.from(r.take(size));
 }
 
-/** Splits a NUL-separated, level-prefixed string pool into {@link CifLine}s by the offsets table. */
-function readLines(pool: Uint8Array, offsets: Uint8Array, slotCount: number): CifLine[] {
+/**
+ * Splits a NUL-separated, level-prefixed string pool into {@link CifLine}s by the offsets table.
+ * Bounds are the logical `usedBytes` (CStringArray.cs `GetString` clamps to `_stringPoolUsedBytes`,
+ * not the raw buffer length, which may carry trailing 0xEE alloc padding).
+ */
+function readLines(pool: Uint8Array, offsets: Uint8Array, slotCount: number, usedBytes: number): CifLine[] {
   const INVALID = 0xffffffff;
+  const limit = Math.min(pool.length, usedBytes);
   const offView = new DataView(offsets.buffer, offsets.byteOffset, offsets.byteLength);
   const decoder = new TextDecoder('latin1'); // structural keywords are ASCII; see CP1250 note below
   const lines: CifLine[] = [];
@@ -149,9 +157,9 @@ function readLines(pool: Uint8Array, offsets: Uint8Array, slotCount: number): Ci
     const byteIndex = id * 4;
     if (byteIndex + 4 > offsets.length) break;
     const start = offView.getUint32(byteIndex, true);
-    if (start === INVALID || start >= pool.length) continue; // hole
+    if (start === INVALID || start >= limit) continue; // hole
     let end = start;
-    while (end < pool.length && pool[end] !== 0) end++;
+    while (end < limit && pool[end] !== 0) end++; // an unterminated final entry stops at `limit`
     if (end === start) continue; // empty
     const raw = pool.subarray(start, end);
     const first = raw[0] as number;
@@ -166,7 +174,9 @@ function readLines(pool: Uint8Array, offsets: Uint8Array, slotCount: number): Ci
 
 /**
  * Decodes a `.cif` whose root is a `CStringArray` (type tables, maps). Returns the decrypted,
- * level-tagged text lines plus the array header. Throws on a structurally invalid container.
+ * level-tagged text lines plus the array header. Throws on a structurally invalid container — so a
+ * batch pipeline over many owned files must wrap each call per-file (one corrupt `.cif` shouldn't
+ * abort the run).
  *
  * NOTE: text is decoded as latin1 to match the OpenVikings oracle byte-for-byte. Display strings
  * carrying Polish glyphs are actually CP1250 — re-decode those at the IR layer where it matters.
@@ -193,7 +203,7 @@ export function decodeCifStringArray(bytes: Uint8Array): CifStringArray {
   if (hasStringPool) {
     const pool = readCMemoryRaw(r);
     decryptMode1(pool);
-    lines = readLines(pool, offsets, slotCount);
+    lines = readLines(pool, offsets, slotCount, stringPoolUsedBytes);
   }
 
   return { forceSequentialIds, stringCount, usedIdCount, slotCount, stringPoolUsedBytes, lines };
