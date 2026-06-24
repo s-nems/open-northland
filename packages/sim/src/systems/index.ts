@@ -1,6 +1,6 @@
 import type { ContentSet } from '@vinland/data';
 import { PathFollow, PathRequest, Position, Velocity } from '../components/index.js';
-import type { World } from '../ecs/world.js';
+import type { Entity, World } from '../ecs/world.js';
 import type { EventBuffer } from '../events.js';
 import { type Fixed, fx } from '../fixed.js';
 import { findPath } from '../pathfinding.js';
@@ -52,9 +52,15 @@ export const MOVE_SPEED_PER_TICK: Fixed = fx.div(fx.fromInt(1), fx.fromInt(4));
  * the step is a pure function of position + waypoint, so identical inputs yield identical state.
  */
 export const movementSystem: System = (world) => {
+  // Entities the path pass moved this tick. A path can complete (PathFollow removed) within the
+  // pass, so membership can't be re-derived in pass 2 by checking has(PathFollow); record it here.
+  // Used only as a skip filter — never iterated for a decision — so it stays determinism-safe.
+  const pathHandled = new Set<Entity>();
+
   // Path followers first — deterministic insertion-order iteration of the PathFollow store, and a
   // path-driven entity's Velocity (if any) is ignored so it never moves twice in a tick.
   for (const e of world.query(Position, PathFollow)) {
+    pathHandled.add(e);
     const pf = world.get(e, PathFollow);
     const target = pf.waypoints[pf.index];
     if (target === undefined) {
@@ -77,9 +83,11 @@ export const movementSystem: System = (world) => {
     }
   }
 
-  // Free constant-velocity movers (entities not following a path).
+  // Free constant-velocity movers (entities the path pass did not handle this tick). Checking the
+  // recorded set (not has(PathFollow)) means an entity whose path just completed isn't ALSO velocity-
+  // integrated in the same tick — the "path overrides Velocity" contract holds on the arrival tick too.
   for (const e of world.query(Position, Velocity)) {
-    if (world.has(e, PathFollow)) continue; // path-driven: already moved above
+    if (pathHandled.has(e)) continue; // path-driven this tick: already moved above
     const p = world.get(e, Position);
     const v = world.get(e, Velocity);
     p.x = fx.add(p.x, v.x);
