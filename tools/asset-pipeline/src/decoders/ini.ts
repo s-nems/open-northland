@@ -763,26 +763,16 @@ function getPaletteName(sec: RuleSection, key: string): string | undefined {
 }
 
 /**
- * Extracts the mod's richer `[jobbasegraphics]` records (`DataCnmd/types/humanstype/jobgraphics.ini`)
- * into {@link JobBaseGraphicsBinding}s — the second binding skin alongside the flat
- * {@link extractGraphicsBindings} `[jobgraphics]` one. A human is drawn from an indexed **body** bob
- * plus numbered **head** bobs (`gfxbobmanagerbody/head <index> "<bmd>" ["<shadow>"]`), with the
- * `.bmd` path on `values[1]` (the leading int index occupies `values[0]`, the structural difference
- * from the flat schema). Palettes split three ways (`gfxpalettebasebody`/`gfxpalettebasehead`/
- * `gfxpaletterandom`); all three are optional in the real data and lower-case to join onto
- * {@link extractPaletteIndex} case-insensitively.
- *
- * A record with no usable body bob is skipped (nothing to colour) rather than throwing — an index over
- * many records must not abort the offline batch on one malformed entry, matching
- * {@link extractGraphicsBindings}. Head bobs and every palette are optional and simply omitted when
- * absent; the consumer resolves whichever palettes are present against the unpacked `--out` tree.
- */
-/**
  * Reduces every section named `sectionName` to a {@link JobBaseGraphicsBinding}. The
  * `[jobbasegraphics]` (base appearance) and `[jobchangegraphics]` (equipment/job skin) records share
- * the **same grammar** — indexed `gfxbobmanagerbody/head` bob slots + the three optional palette keys —
- * differing only in their section name and intent, so both extractors delegate here. A record with no
- * usable body bob is skipped (see {@link extractJobBaseGraphics}).
+ * the **same grammar** — indexed `gfxbobmanagerbody/head` bob slots (the `.bmd` path on `values[1]`,
+ * the leading int slot index on `values[0]`) + the three optional palette keys (`gfxpalettebasebody`/
+ * `gfxpalettebasehead`/`gfxpaletterandom`, lower-cased to join onto {@link extractPaletteIndex}
+ * case-insensitively) — differing only in their section name and intent, so both public extractors
+ * delegate here. A record with no usable body bob is skipped (nothing to colour) rather than throwing —
+ * an index over many records must not abort the offline batch on one malformed entry, matching
+ * {@link extractGraphicsBindings}. Head bobs and every palette are optional and simply omitted when
+ * absent; the consumer resolves whichever palettes are present against the unpacked `--out` tree.
  */
 function extractIndexedGraphics(
   sections: readonly RuleSection[],
@@ -815,6 +805,13 @@ function extractIndexedGraphics(
   return bindings;
 }
 
+/**
+ * Extracts the `[jobbasegraphics]` records (the **base appearance** layer) from the mod's richer human
+ * skin (`DataCnmd/types/humanstype/jobgraphics.ini`) or the base game's `humans/jobgraphics.cif` — the
+ * second binding skin alongside the flat {@link extractGraphicsBindings} `[jobgraphics]` one. See
+ * {@link extractIndexedGraphics} for the shared grammar; {@link extractJobChangeGraphics} is its
+ * equipment-skin sibling.
+ */
 export function extractJobBaseGraphics(sections: readonly RuleSection[]): JobBaseGraphicsBinding[] {
   return extractIndexedGraphics(sections, 'jobbasegraphics');
 }
