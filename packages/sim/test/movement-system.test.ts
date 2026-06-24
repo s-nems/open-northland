@@ -143,6 +143,22 @@ describe('movementSystem — precedence: PathFollow over Velocity', () => {
     expect(pos(sim, e).x).toBeCloseTo(0.25, 6);
   });
 
+  it('does not velocity-integrate on the same tick the path completes (no double-move)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(2, 1) });
+    const e = sim.world.create();
+    sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
+    sim.world.add(e, Velocity, { x: fx.fromInt(1), y: fx.fromInt(0) });
+    // Single-waypoint path on the entity's own cell: it completes (PathFollow removed) THIS tick.
+    sim.world.add(e, PathFollow, { waypoints: [{ x: fx.fromInt(0), y: fx.fromInt(0) }], index: 0 });
+    sim.step();
+    // The path was handled this tick, so Velocity must NOT also apply — position stays at the cell.
+    expect(pos(sim, e).x).toBeCloseTo(0, 6);
+    expect(sim.world.has(e, PathFollow)).toBe(false);
+    // The very next tick (no path now) it resumes full-velocity movement.
+    sim.step();
+    expect(pos(sim, e).x).toBeCloseTo(1, 6);
+  });
+
   it('a Velocity-only entity still integrates at full velocity', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = sim.world.create();
