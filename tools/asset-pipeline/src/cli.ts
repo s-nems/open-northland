@@ -16,7 +16,7 @@
 
 import { realpathSync } from 'node:fs';
 import { access, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import {
@@ -48,6 +48,18 @@ export function parseArgs(argv: readonly string[]): Args {
     throw new Error('usage: pipeline --game <dir> [--mod <subdir>] [--out <dir>]');
   }
   return { game, mod: get('--mod'), out: get('--out') ?? 'content' };
+}
+
+/**
+ * Resolves the filesystem args (`game`, `out`) against `baseDir`, leaving absolute paths untouched.
+ * The entry point passes `process.env.INIT_CWD` — the directory `npm run` was invoked from. npm runs
+ * a workspace script with cwd set to the *workspace package* dir (`tools/asset-pipeline/`), so a
+ * relative `--game ../Cultures 8th Wonder` would otherwise resolve there instead of where the user
+ * typed it. Resolving against `INIT_CWD` makes the documented repo-root command work. `mod` stays a
+ * bare subdir — it is always joined onto the resolved `game` ({@link resolveIniSources}).
+ */
+export function resolveArgs(args: Args, baseDir: string): Args {
+  return { ...args, game: resolve(baseDir, args.game), out: resolve(baseDir, args.out) };
 }
 
 /**
@@ -229,7 +241,10 @@ async function run(args: Args): Promise<void> {
 // Auto-run only when invoked as the entry point (node src/cli.ts / the dist bin), not when a test
 // imports this module for parseArgs/pcxToPng/convertPcxTree.
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
-  run(parseArgs(process.argv.slice(2))).catch((err: unknown) => {
+  // Resolve relative --game/--out against where `npm run` was invoked (repo root), not the workspace
+  // package dir npm sets as cwd — see resolveArgs. Fall back to cwd for a bare `node dist/cli.js`.
+  const baseDir = process.env.INIT_CWD ?? process.cwd();
+  run(resolveArgs(parseArgs(process.argv.slice(2)), baseDir)).catch((err: unknown) => {
     console.error('[pipeline] failed:', err);
     process.exitCode = 1;
   });
