@@ -46,6 +46,11 @@ content/
    `.cif`-only — these go through the `.cif` decoder, see docs/SOURCES.md.)
 4. **Versioned.** `ir.json.version` bumps on schema changes; the sim refuses to load a mismatched
    major version. Golden tests pin a sample content set.
+   **Policy:** the version is a single integer, bumped whenever a schema in `packages/data` changes
+   shape. There are **no migrations** — a version mismatch is a hard load error, not an upgrade path;
+   the fix is to regenerate the IR from your owned game copy (`npm run pipeline -- --game … --mod …
+   --out content`). Because `content/` is gitignored and always regenerated, the IR is produced by
+   the same commit that consumes it, so a stale IR can never silently mis-feed the sim.
 
 ## Example schema → original mapping
 

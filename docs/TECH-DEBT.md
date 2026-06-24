@@ -7,6 +7,9 @@ here instead of executed. Advance or prune entries as they are addressed.
 The **Reflection log** at the bottom is the git-native anchor `/iterate` reads to judge when the
 last reflection happened.
 
+For small, hard-won *gotchas* (not reworks), see [LESSONS.md](LESSONS.md) instead; for the live
+feature plan, see [ROADMAP.md](ROADMAP.md).
+
 ## Deferred proposals
 
 ### 1. Finish splitting the `systems/` god-module
@@ -69,6 +72,53 @@ last reflection happened.
   detail to keep vs. relocate is the work, and the verification notes are valued — so it wants author
   buy-in on where they land rather than an unattended bulk delete.
 
+### 3. Edit-time determinism guard (Claude Code hook)
+
+- **Problem.** The determinism contract (no `Math.random`/`Date.now`/`new Date`/`performance.now` in
+  `sim`) is only checked when an agent runs `npm test` or CI — a violation introduced mid-edit isn't
+  surfaced until the next test run.
+- **Change.** A `PostToolUse` hook on `Edit|Write` matching `packages/sim/src/**.ts` that re-checks
+  the four forbidden patterns and feeds violations back via exit 2.
+- **Payoff.** Instant, deterministic feedback at the moment a violation is introduced — a
+  verification oracle the model can't forget.
+- **Risk / size.** Small but friction-prone, and **deliberately deferred**: `hygiene.test.ts` already
+  enforces this in `npm test` + CI, and `/iterate` runs `npm test` before every commit, so a bad
+  pattern can't reach a commit today — the hook only buys ~1–3s earlier feedback at the cost of a
+  `vitest` cold-start on *every* sim edit (+ a `jq` dependency). If adopted, implement as a
+  near-instant `grep` guard mirroring `test/hygiene.test.ts:13-18`, not a vitest run (but that
+  duplicates the authoritative test and can drift). `.claude/` is gitignored, so this is local tooling.
+
+### 4. Parallel git-worktree iterations (supervisor)
+
+- **Problem.** `iterate-supervisor` runs strictly sequentially (one commit to `main` per iteration);
+  provably-independent work can't overlap.
+- **Change.** For independent roadmap items, fan out N subagents on separate `git worktree`s, then
+  merge clean ones (`git merge-tree` conflict check), gated behind a "remaining items touch
+  non-overlapping files" heuristic.
+- **Payoff.** Wall-clock speedup for independent batches.
+- **Risk / size.** Medium. Fights the bisectable one-commit-per-iteration model and our mostly
+  *dependent* roadmap (each Phase-2 step builds on the last); merge-conflict resolution is its own
+  logic. Only worth it once a genuinely-independent batch exists.
+
+### 5. Spec-first / dependency-aware step picking (iterate)
+
+- **Problem.** `/iterate` picks the *locally* smallest next step; it models neither roadmap
+  dependencies nor a spec gate for larger items.
+- **Change.** Model the roadmap as a dependency DAG (pick the leaf that unblocks the most), and/or a
+  spec-first gate for non-trivial items.
+- **Payoff.** Globally-greedy step order; fewer mid-build pivots.
+- **Risk / size.** Medium. The roadmap already serves as a lightweight spec and "smallest step" leans
+  ReAct deliberately; heavyweight gating risks over-planning. Revisit if step selection starts to thrash.
+
+### 6. Community / multi-tool docs
+
+- **Problem.** No `CONTRIBUTING.md`, `.github/` PR+issue templates, or `AGENTS.md` (the cross-tool
+  agent-instructions convention) — fine while solo + agent-driven, a gap if the project opens up.
+- **Change.** Add them when the project takes human contributors or multiple agent tools. Legal
+  posture is already covered (`README.md` Legal, `docs/SOURCES.md`, `CLAUDE.md`).
+- **Payoff.** Lowers the contribution barrier; one canonical agent-instructions file across tools.
+- **Risk / size.** Small but premature now (deferred by decision).
+
 ## Reflection log
 
 - **2026-06-24** — Surveyed history/churn, code health, docs, and roadmap. Highest-leverage finding:
@@ -78,3 +128,13 @@ last reflection happened.
   green). Proposed the full `systems/` split (#1) and a `ROADMAP.md` compaction (#2) as the deferred
   big reworks. Next `/iterate` roadmap step is unchanged: Phase 2's "minimal carrier moving goods
   between store and workplace".
+- **2026-06-24** (agent-tooling pass) — Reviewed the `/iterate`+`/reflect`+supervisor skills against
+  external practice and improved project health for agentic use: added the compounding-memory channel
+  [LESSONS.md](LESSONS.md) (the loop already discovers gotchas that died in a gitignored report) and
+  wired `/iterate` to read/write it + `/reflect` to curate it (local skill tooling); split the sim &
+  pipeline contracts into per-package `CLAUDE.md` files (root keeps the crisp golden rules + a
+  pointer); polished the self-validation docs (TESTING run/debug subsection, ROADMAP done-vs-pending
+  clarity + archived solved risks, DATA-FORMAT IR-versioning policy, ECS atomic example); expanded the
+  local permission allowlist + granted read access to the two reference siblings; added
+  `handsOnEvidence`/`lesson` fields to the supervisor closeout. Logged proposals #3–#6 (the
+  determinism hook deferred after weighing per-edit friction vs. the existing `npm test`/CI gate).
