@@ -122,6 +122,15 @@ describe('atomicSystem — effects', () => {
     expect(sim.world.get(e, Carrying)).toEqual({ goodType: WOOD, amount: 5 });
   });
 
+  it('refuses to pick up a different good while already loaded (goods conservation)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = sim.world.create();
+    sim.world.add(e, Carrying, { goodType: WOOD, amount: 2 });
+    startAtomic(sim, e, { kind: 'pickup', goodType: PLANK, amount: 1 }, 1);
+    // Overwriting the load would destroy the carried wood — that's a planner bug, so it throws.
+    expect(() => atomicSystem(sim.world, ctxOf(sim))).toThrow(/already carries good/);
+  });
+
   it('pileup deposits the carried load into the store stockpile and unloads the settler', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const settler = sim.world.create();

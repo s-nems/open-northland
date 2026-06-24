@@ -296,7 +296,7 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
     case 'eat':
       // Eating clears hunger; the good is consumed from whatever the settler carries/holds. The
       // needs/consumption accounting is the Phase-3 NeedsSystem — here we only zero hunger.
-      if (world.has(settler, Settler)) world.get(settler, Settler).hunger = 0 as Fixed;
+      if (world.has(settler, Settler)) world.get(settler, Settler).hunger = fx.fromInt(0);
       return;
     case 'move':
     case 'idle':
@@ -313,14 +313,25 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
   }
 }
 
-/** Add `amount` of `goodType` to a settler's carried load, merging if it already carries that good. */
+/**
+ * Add `amount` of `goodType` to a settler's carried load, merging if it already carries that good.
+ *
+ * A settler carries one good at a time (single-slot {@link Carrying}). Asking it to pick up a
+ * *different* good while still loaded would silently overwrite — and so destroy — the held good,
+ * breaking goods conservation. That can only be a planner bug (the planner must pile up the current
+ * load first), so we throw rather than corrupt state (CLAUDE.md: throw for bugs).
+ */
 function addCarry(world: World, settler: Entity, goodType: number, amount: number): void {
   const held = world.tryGet(settler, Carrying);
-  if (held !== undefined && held.goodType === goodType) {
+  if (held !== undefined) {
+    if (held.goodType !== goodType) {
+      throw new Error(
+        `settler ${settler} already carries good ${held.goodType}; cannot pick up good ${goodType} (pile up first)`,
+      );
+    }
     held.amount += amount;
     return;
   }
-  // No load (or a different good — the single-slot carry is replaced, matching one-good-at-a-time).
   world.add(settler, Carrying, { goodType, amount });
 }
 
