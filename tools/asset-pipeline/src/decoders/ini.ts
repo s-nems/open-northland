@@ -49,15 +49,30 @@ function tokenize(line: string): string[] {
 }
 
 /**
- * Parses readable `.ini` text into sections. Skips blank lines, the `<CULTURES_CIF_BEGIN>` header,
- * and `;` comments. Properties appearing before the first `[section]` are ignored.
+ * Cuts a trailing `// ...` comment (the marker the `.ini` files actually use, e.g. on `transition`
+ * lines in `landscapetypes.ini`). Quote-aware so a `//` inside a quoted value is preserved.
+ */
+function stripInlineComment(line: string): string {
+  let inQuotes = false;
+  for (let i = 0; i < line.length - 1; i++) {
+    const ch = line[i];
+    if (ch === '"') inQuotes = !inQuotes;
+    else if (!inQuotes && ch === '/' && line[i + 1] === '/') return line.slice(0, i);
+  }
+  return line;
+}
+
+/**
+ * Parses readable `.ini` text into sections. Skips blank lines and the `<CULTURES_CIF_BEGIN>`
+ * header, and strips `//` comments (full-line and inline). Properties appearing before the first
+ * `[section]` are ignored.
  */
 export function parseIniSections(text: string): RuleSection[] {
   const sections: { name: string; props: RuleProp[] }[] = [];
   let current: { name: string; props: RuleProp[] } | undefined;
   for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (line === '' || line.startsWith('<') || line.startsWith(';')) continue;
+    const line = stripInlineComment(rawLine).trim();
+    if (line === '' || line.startsWith('<')) continue;
     if (line.startsWith('[') && line.endsWith(']')) {
       current = { name: line.slice(1, -1).trim(), props: [] };
       sections.push(current);
@@ -84,7 +99,11 @@ export function cifLinesToSections(lines: readonly CifLine[]): RuleSection[] {
   for (const { level, text } of lines) {
     const tokens = tokenize(text);
     if (tokens.length === 0) continue;
-    if (level <= 1) {
+    // Verified type tables (`housetypes`, ...) nest exactly: level 1 = section header,
+    // level 2 = property. Only level 1 opens a section; level 0 (unprefixed) and any deeper
+    // level fold into the current section's properties rather than spawning a bogus section —
+    // tighten this once a real deeper-nested `.cif` fixture forces a richer tree.
+    if (level === 1) {
       current = { name: tokens[0] as string, props: [] };
       sections.push(current);
     } else if (current !== undefined) {
@@ -123,6 +142,19 @@ function slug(name: string): string {
 }
 
 /**
+ * Reads the required numeric `type` id, throwing if absent — malformed source data, surfaced to the
+ * human running the offline pipeline rather than silently dropped (matches cif.ts's throw-on-corrupt
+ * stance and the project's "throw for bugs" rule).
+ */
+function requireTypeId(sec: RuleSection, block: string, src: SourceRef): number {
+  const typeId = getInt(sec, 'type');
+  if (typeId === undefined) {
+    throw new Error(`ini: [${block}] without a numeric \`type\` in ${src.file}`);
+  }
+  return typeId;
+}
+
+/**
  * Extracts `[goodtype]` sections into validated {@link GoodType} IR. Throws on a section missing the
  * required numeric `type` id — that is malformed source data, surfaced to the human running the
  * offline pipeline rather than silently dropped.
@@ -131,10 +163,7 @@ export function extractGoods(sections: readonly RuleSection[], src: SourceRef): 
   const goods: GoodType[] = [];
   for (const sec of sections) {
     if (sec.name !== 'goodtype') continue;
-    const typeId = getInt(sec, 'type');
-    if (typeId === undefined) {
-      throw new Error(`ini: [goodtype] without a numeric \`type\` in ${src.file}`);
-    }
+    const typeId = requireTypeId(sec, 'goodtype', src);
     const name = getStr(sec, 'name');
     goods.push(
       GoodType.parse({
@@ -158,10 +187,7 @@ export function extractLandscape(sections: readonly RuleSection[], src: SourceRe
   const landscape: LandscapeType[] = [];
   for (const sec of sections) {
     if (sec.name !== 'landscapetype') continue;
-    const typeId = getInt(sec, 'type');
-    if (typeId === undefined) {
-      throw new Error(`ini: [landscapetype] without a numeric \`type\` in ${src.file}`);
-    }
+    const typeId = requireTypeId(sec, 'landscapetype', src);
     const name = getStr(sec, 'name');
     landscape.push(
       LandscapeType.parse({
