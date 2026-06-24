@@ -51,6 +51,8 @@ branding, no original logos/screenshots in README or promo copy. The canonical s
 npm install            # workspaces
 npm run build          # tsc across packages
 npm test               # vitest: unit + integration + e2e + determinism-hygiene
+npm test -- scenario   # run one file/suite by name substring (fast inner loop)
+npm run test:watch     # vitest watch mode
 npm run check          # biome lint + format check (CI runs this)
 npm run check:fix      # biome autofix + format
 npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content
@@ -84,15 +86,16 @@ the synthetic `testContent()` fixture). The loop:
 4. Rendering/visual change → an agent CANNOT self-judge pixels. Run the screenshot diff if present,
    otherwise say it needs a human. Validate decoded assets against the **OpenVikings oracle**.
 
-## Determinism anti-patterns (an LLM will reach for these — don't)
+## Per-package contracts (load on demand)
 
-- `Math.random` / `Date.now` / `new Date` / `performance.now` in `sim` → use `world.rng`.
-- Iterating a `Map`/`Set` for a **game decision** (insertion order is history-dependent) → iterate a
-  canonical order, e.g. `stockpileEntries()` (sorted by goodType).
-- Floats for state in `sim` → use `fx` fixed-point (`fixed.ts`); no `Math.sqrt/sin/cos` (use `fx.isqrt`).
-- Recycling entity ids → ids are monotonic, never reused.
-- Hardcoding "two tribes" or a tribe's behavior in code → tribes/jobs/atomics are **data**.
-- Writing bespoke per-job logic → behavior is an **atomic planner** over the data vocabulary (ECS.md).
+The strict rules live next to the code they bind, so they load only when you work there (and keep
+this root file lean). Golden rules 1–2 above are the crisp always-on version.
+
+- **`packages/sim/CLAUDE.md`** — the detailed `sim` determinism contract: the forbidden-globals
+  anti-patterns (`Math.random`/`Date.now`/… → `world.rng`), canonical `Map`/`Set` iteration, the
+  fixed-point + branded-type rules, and the golden-update discipline. The hygiene test enforces it.
+- **`tools/asset-pipeline/CLAUDE.md`** — pipeline-only notes: prefer the mod's `.ini`, validate
+  visual decoders against the OpenVikings oracle, never commit decoded/copyrighted bytes.
 
 ## Modern conventions baked in (follow them)
 
