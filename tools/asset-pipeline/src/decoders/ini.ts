@@ -395,14 +395,16 @@ function normalizeAssetPath(path: string): string {
  * (`gfxpalettebody "tree01"`), `palettes.ini` resolves that name to a `gfxfile` `.pcx`, and the
  * `.pcx` trailer palette is the colour table {@link import('./pcx.js').decodePcx} already returns.
  *
- * Each record carries exactly one `gfxfile` but may list **several** `editname` aliases (the real
- * file has 143 records, 251 names) — every alias is emitted as its own entry pointing at the shared
- * file, so a consumer builds one flat `name -> .pcx` map. A record missing its `gfxfile` (nothing to
- * resolve to) or with no `editname` (unreferenceable) is skipped rather than throwing: this is an
- * index over many records and one malformed entry must not abort the offline batch. Paths are
- * normalized via {@link normalizeAssetPath} for host-OS/case-independent lookup against the unpacked
- * `--out` tree. The other binding leg (which `.bmd` uses which `editname`) lives mostly in graphics
- * `.cif` records (only `animals/jobgraphics.ini` is readable) and is wired in a later step.
+ * Each record carries exactly one `gfxfile` but the grammar allows **several** `editname` aliases —
+ * every alias is emitted as its own entry pointing at the shared file, so a consumer builds one flat
+ * `name -> .pcx` map (the real file has 143 `[GfxPalette256]` records; it also holds 108
+ * `[GfxPalette16]` 16-colour sub-palettes built via `gfxcolorrange` with no `.pcx`, which the
+ * section-name guard skips). A record missing its `gfxfile` (nothing to resolve to) or with no
+ * `editname` (unreferenceable) is skipped rather than throwing: this is an index over many records
+ * and one malformed entry must not abort the offline batch. Paths are normalized via
+ * {@link normalizeAssetPath} for host-OS/case-independent lookup against the unpacked `--out` tree.
+ * The other binding leg (which `.bmd` uses which `editname`) lives mostly in graphics `.cif` records
+ * (only `animals/jobgraphics.ini` is readable) and is wired in a later step.
  */
 export function extractPaletteIndex(sections: readonly RuleSection[]): PaletteAlias[] {
   const aliases: PaletteAlias[] = [];
