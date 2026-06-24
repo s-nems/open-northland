@@ -363,7 +363,22 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
         hash-equal (`bee6f39f`); 12 requests → exactly 8 served tick 1, 0 left after tick 2; a mapless
         sim leaves the request untouched. **Still to do:** MovementSystem consuming `PathFollow`; the
         AISystem issuing `PathRequest`s.
-- [ ] MovementSystem (fixed-point) following paths.
+- [x] MovementSystem (fixed-point) following paths. Done — `movementSystem` in
+      `packages/sim/src/systems/index.js` now has two modes in precedence: (1) a {@link PathFollow}
+      entity steps toward its current waypoint's cell centre by `MOVE_SPEED_PER_TICK` (=1/4 tile,
+      a `fx.div` of exact fractions so each step lands on an integer fraction — no rounding drift),
+      per-axis clamp-toward so it never overshoots; on reaching a waypoint it advances `index`, and
+      on reaching the last it removes the `PathFollow` (the planner reads a path-less entity as
+      arrived/idle); (2) the original `Velocity`-only constant-integration, kept for the determinism
+      golden and free movers. A path-driven entity ignores any `Velocity` (it is skipped in pass 2),
+      so it never double-moves. Pure fixed-point — no floats, no sqrt/normalisation; `stepToward` is
+      a pure function of position+target. One target is consumed per tick, so the first tick of a
+      path whose `waypoints[0]` is the start cell just advances the index (movement begins next tick).
+      **Hands-on:** a 5×5 map with a water wall (gap at y=4), a `PathRequest` (0,0)→(4,0) through the
+      real `Simulation.step()` schedule → PathfindingSystem resolved a **13-waypoint** detour, then
+      MovementSystem walked the entity to cell-centre (4,0) in **49 ticks** (12 segments × 4 ticks + 1
+      start-waypoint tick) and cleared the `PathFollow`. **Still to do:** AISystem issuing
+      `PathRequest`s (the planner that closes the request→path→move loop).
 - [ ] **Atomic planner slice:** AISystem picks an atomic (utility over the job's allowed atomics);
       AtomicSystem executes it to completion and applies its effect. One settler: harvest wood →
       pickup → carry → pileup at store.
