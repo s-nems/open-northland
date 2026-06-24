@@ -40,10 +40,16 @@ sibling folders — you have read access to all of them:
 ```bash
 npm install            # workspaces
 npm run build          # tsc across packages
-npm test               # vitest, headless sim
+npm test               # vitest: unit + integration + e2e + determinism-hygiene
+npm run check          # biome lint + format check (CI runs this)
+npm run check:fix      # biome autofix + format
 npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content
 npm run dev            # vite app
 ```
+
+Tooling: **Biome** (format + lint, config in `biome.json`) and **vitest**; CI (`.github/workflows/ci.yml`)
+runs check + typecheck + test on every push/PR. A source-hygiene test (`packages/sim/test/hygiene.test.ts`)
+fails the build if a nondeterministic global leaks into `sim` — the determinism rules are enforced, not just documented.
 
 ## Conventions
 
@@ -77,6 +83,19 @@ the synthetic `testContent()` fixture). The loop:
 - Recycling entity ids → ids are monotonic, never reused.
 - Hardcoding "two tribes" or a tribe's behavior in code → tribes/jobs/atomics are **data**.
 - Writing bespoke per-job logic → behavior is an **atomic planner** over the data vocabulary (ECS.md).
+
+## Modern conventions baked in (follow them)
+
+- **Branded types** (`brand.ts`): `Fixed` and `Entity` are nominal — a raw `number` won't assign.
+  Mint `Fixed` only via `fx.*`. Add brands for new semantic ids rather than passing bare `number`.
+- **Discriminated unions** for commands/atomic-effects/events (`commands.ts`, `events.ts`), with
+  `assertNever` in every `switch` so adding a variant is a compile error until handled. Don't use
+  numeric opcodes for control flow — keep numeric ids only as the *data* cross-reference.
+- **Events, not reach-in**: one-shot things go through `ctx.events` (typed `SimEvent`); `render`
+  consumes them. Never let `render` read live component stores, and never deliver events via
+  callbacks (that would let a subscriber mutate sim state).
+- **Throw for bugs, return for expected failures**: throw on programmer errors (missing component,
+  div-by-zero); return a typed result for recoverable boundary failures (bad content/mod).
 
 ## Start here
 

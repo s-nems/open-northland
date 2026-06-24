@@ -1,8 +1,9 @@
-import type { World } from '../ecs/world.js';
-import type { Rng } from '../rng.js';
 import type { ContentSet } from '@vinland/data';
 import { Position, Velocity } from '../components/index.js';
+import type { World } from '../ecs/world.js';
+import type { EventBuffer } from '../events.js';
 import { fx } from '../fixed.js';
+import type { Rng } from '../rng.js';
 
 /**
  * A System is a pure function over the world for one tick. Systems run in a fixed registered
@@ -14,6 +15,8 @@ export interface SystemContext {
   readonly rng: Rng;
   /** Monotonic tick counter. */
   readonly tick: number;
+  /** Emit one-shot events for render/audio (never read back in sim logic). */
+  readonly events: EventBuffer;
 }
 
 export type System = (world: World, ctx: SystemContext) => void;

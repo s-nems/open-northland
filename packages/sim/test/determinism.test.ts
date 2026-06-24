@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest';
-import { World } from '../src/ecs/world.js';
-import { Rng } from '../src/rng.js';
+import { describe, expect, it } from 'vitest';
 import { Position, Velocity } from '../src/components/index.js';
-import { movementSystem } from '../src/systems/index.js';
+import { World } from '../src/ecs/world.js';
+import { EventBuffer } from '../src/events.js';
 import { fx } from '../src/fixed.js';
+import { Rng } from '../src/rng.js';
+import { movementSystem } from '../src/systems/index.js';
 import type { SystemContext } from '../src/systems/index.js';
 
 /**
@@ -14,7 +15,7 @@ import type { SystemContext } from '../src/systems/index.js';
 
 function ctx(seed: number, tick: number): SystemContext {
   // content is unused by movementSystem; cast a minimal stub for the slice test.
-  return { content: {} as never, rng: new Rng(seed), tick };
+  return { content: {} as never, rng: new Rng(seed), tick, events: new EventBuffer() };
 }
 
 function buildWorld(): World {
@@ -56,8 +57,10 @@ describe('determinism', () => {
   it('positions advance by velocity deterministically', () => {
     const w = buildWorld();
     for (let t = 1; t <= 5; t++) movementSystem(w, ctx(1, t));
-    // entity 1 started at (0,0) with velocity (1,2): after 5 ticks -> (5,10)
-    const p = w.get(1, Position);
+    // first entity started at (0,0) with velocity (1,2): after 5 ticks -> (5,10)
+    const [first] = w.canonicalEntities();
+    if (first === undefined) throw new Error('expected at least one entity');
+    const p = w.get(first, Position);
     expect(fx.toInt(p.x)).toBe(5);
     expect(fx.toInt(p.y)).toBe(10);
   });

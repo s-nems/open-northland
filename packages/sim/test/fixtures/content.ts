@@ -1,4 +1,4 @@
-import { parseContentSet, IR_VERSION, type ContentSet } from '@vinland/data';
+import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 
 /**
  * A tiny, HAND-AUTHORED synthetic content set for tests. It contains NO copyrighted game data —

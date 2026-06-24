@@ -1,6 +1,6 @@
 export * from './schema.js';
 
-import { ContentSet, type GoodType, type BuildingType, type JobType } from './schema.js';
+import { type BuildingType, ContentSet, type GoodType, type JobType } from './schema.js';
 
 /**
  * Parse + validate a content set (typically the contents of content/ assembled into one object).
@@ -26,11 +26,13 @@ export function validateCrossReferences(set: ContentSet): void {
       if (!jobIds.has(w.jobType)) errors.push(`building "${b.id}" references unknown jobType ${w.jobType}`);
     }
     for (const s of b.stock) {
-      if (!goodIds.has(s.goodType)) errors.push(`building "${b.id}" references unknown goodType ${s.goodType}`);
+      if (!goodIds.has(s.goodType))
+        errors.push(`building "${b.id}" references unknown goodType ${s.goodType}`);
     }
     if (b.recipe) {
       for (const io of [...b.recipe.inputs, ...b.recipe.outputs]) {
-        if (!goodIds.has(io.goodType)) errors.push(`building "${b.id}" recipe references unknown goodType ${io.goodType}`);
+        if (!goodIds.has(io.goodType))
+          errors.push(`building "${b.id}" recipe references unknown goodType ${io.goodType}`);
       }
     }
   }
