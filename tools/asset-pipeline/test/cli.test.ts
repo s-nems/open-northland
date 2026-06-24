@@ -265,6 +265,27 @@ describe('convertPcxTree', () => {
     expect(Array.from(decoded.rgba)).toEqual(Array.from(expandToRgba(decodePcx(bytes)).rgba));
   });
 
+  it('converts in place when in/out are the same tree (the unpacked-embedded .pcx pass)', async () => {
+    // The pipeline runs convertPcxTree(out, out) over the just-unpacked tree so embedded .pcx
+    // (extracted from a .lib into <out>) gain a .png sibling. Source==target must write alongside,
+    // not error, and must not re-walk its own output (a .png is never re-matched as a .pcx).
+    const { bytes, width, height } = samplePcx();
+    await mkdir(join(out, 'data', 'bobs'), { recursive: true });
+    await writeFile(join(out, 'data', 'bobs', 'embedded.pcx'), bytes);
+
+    const done = await convertPcxTree(out, out);
+
+    expect(done.map((c) => c.output)).toEqual([join('data', 'bobs', 'embedded.png')]);
+    const decoded = decodePng(await readFile(join(out, 'data', 'bobs', 'embedded.png')));
+    expect(decoded.width).toBe(width);
+    expect(decoded.height).toBe(height);
+    // The .png sibling is never re-matched as a .pcx, so the pass doesn't walk its own output; the
+    // source .pcx survives the conversion, so a re-run simply re-converts it to identical bytes.
+    expect((await convertPcxTree(out, out)).map((c) => c.output)).toEqual([
+      join('data', 'bobs', 'embedded.png'),
+    ]);
+  });
+
   it('skips a malformed .pcx with a warning instead of aborting the batch', async () => {
     const { bytes } = samplePcx();
     await writeFile(join(game, 'good.pcx'), bytes);

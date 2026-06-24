@@ -54,13 +54,19 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             committed fixtures). zlib via `node:zlib` (build tool, not the sim). Foreign PNGs using row
             filters 1..4 are rejected loudly; extend when the oracle diff needs to read them.
       - [x] Wire `decodePcx` → `expandToRgba` → `encodePng` into the CLI — `cli.ts` `pcxToPng`
-            (pure composition) + `convertPcxTree` walk the `--game` tree, convert each loose `.pcx`
-            to a `.png` mirrored under `--out`, and skip+warn per-file on a malformed/palette-less
+            (pure composition) + `convertPcxTree(srcDir, outDir)` walk a tree, convert each `.pcx`
+            to a `.png` (mirrored under `outDir`), and skip+warn per-file on a malformed/palette-less
             picture so one bad image can't abort the batch. `npm run pipeline` now emits real `.png`.
             (`start` runs the compiled `dist/cli.js`: raw-TS strip-types can't resolve the `.js`
-            import specifiers.) The unpack stage now extracts `.lib`-embedded pictures to `--out`;
-            repointing this pass at the unpacked tree (so embedded `.pcx` are also converted) is a
-            small follow-up.
+            import specifiers.) **Both trees are converted:** once over the `--game` tree (loose
+            pictures shipped as files, mirrored into `--out`) and once **in place** over `--out`
+            (the `.pcx` the unpack stage just extracted from `data0001.lib` gain a `.png` sibling) —
+            so embedded pictures are no longer left unconverted. The two roots are disjoint sources;
+            `--game`==`--out` is not a supported invocation. The in-place pass is not idempotent (the
+            source `.pcx` survives, so a re-run re-converts it to identical bytes) — fine for a build
+            tool. **Hands-on:** a scratch `.lib` embedding a `.pcx` + a loose `.pcx` → the documented
+            `npm run pipeline` reports "2 picture(s) (1 loose, 1 embedded)"; the unpacked
+            `data/.../embedded.pcx` gains a valid 2×2 RGBA `embedded.png` sibling, loose → `pics/loose.png`.
       - [ ] **Oracle pixel-diff** — compare an emitted `.png` against the OpenVikings render
             pixel-for-pixel. Needs an owned game copy + the oracle; an agent can't self-judge it.
       - [x] Standalone `CPalette` (id 0x3F6) decode — `tools/asset-pipeline/src/decoders/palette.ts`
