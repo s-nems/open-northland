@@ -7,7 +7,7 @@ the source file + commit you referenced, for traceability.
 | Decoder | Original format | Port from `../../research notes/Source/` |
 |---|---|---|
 | `cif.ts` ✅ | `.cif` container (encrypted CStringArray) | `an original routine/XBStorable.cs`, `CStringArray.cs`, `CMemory.cs`, `XBTools.cs` |
-| `lib.ts` | `.lib` archive | `an original routine/CSimpleFileLibrary.cs` |
+| `lib.ts` ✅ | `.lib` archive (directory + payload views) | `an original routine/CSimpleFileLibrary.cs`, `Dexter/DexterEndian.cs` |
 | `palette.ts` | palettes, `.hlt` | `an original routine/CPalette.cs`, `CRemapTable.cs`, `CHighColorCreator.cs` |
 | `pcx.ts` | `.pcx` picture | `an original routine/CPicture.cs`, `XBPictureTool.cs` |
 | `bmd.ts` | `.bmd` bob/anim | `an original routine/CBobManager.cs`, `CBitmap.cs` — **hardest, do last** |
