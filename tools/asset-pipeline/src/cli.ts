@@ -10,7 +10,8 @@
  * Phase 1 lands the stages one decoder at a time. Implemented now: `.lib` archives unpacked to loose
  * files under `--out` (the embedded `.pcx`/`.bmd`/`.cif` the later stages read), `.pcx` pictures -> PNG
  * (the loose-file pass over the `--game` tree), `.bmd` bob sets -> atlas PNG + manifest JSON for the
- * readable `[jobgraphics]` palette bindings, and readable `.ini` rules -> a validated `content/ir.json`
+ * readable palette bindings (base animals `[jobgraphics]` + the mod's human `[jobbasegraphics]` skin),
+ * and readable `.ini` rules -> a validated `content/ir.json`
  * (goods/jobs/landscape from base `Data/logic`, tribes + atomic animations from the mod's `DataCnmd`,
  * preferring the mod per CLAUDE.md). The remaining stages (standalone palettes, the `.cif`-only
  * graphics + type tables, maps, and the oracle pixel-diff) are still TODO; see docs/ROADMAP.md.
@@ -25,6 +26,7 @@ import { type BobAtlas, packBobAtlas } from './decoders/atlas.js';
 import { decodeBmd } from './decoders/bmd.js';
 import {
   type BmdPaletteBinding,
+  type JobBaseGraphicsBinding,
   type PaletteAlias,
   type RuleSection,
   type SourceRef,
@@ -32,6 +34,7 @@ import {
   extractAtomicAnimations,
   extractGoods,
   extractGraphicsBindings,
+  extractJobBaseGraphics,
   extractJobs,
   extractLandscape,
   extractPaletteIndex,
@@ -237,6 +240,46 @@ export interface BmdConversion {
 }
 
 /**
+ * Flattens the mod's richer `[jobbasegraphics]` records ({@link JobBaseGraphicsBinding}) into the flat
+ * {@link BmdPaletteBinding} shape {@link convertBmdTree} already consumes — so the human body/head bob
+ * sets reuse the exact same resolve→decode→atlas path as the readable `[jobgraphics]` animals leg, with
+ * no second copy of the conversion logic. A human draws from a **body** bob (coloured by
+ * `gfxpalettebasebody`) plus numbered **head** bobs (coloured by `gfxpalettebasehead`), so each indexed
+ * slot becomes one binding paired with the matching palette. A slot whose palette `editname` is absent
+ * is dropped here (there is nothing to resolve it against — not even a name {@link convertBmdTree} could
+ * warn about); the `gfxpaletterandom` tint is a per-settler runtime range, not a bob palette, so it is
+ * not emitted. The `logictribe`/`logicjob` cross-refs ride along on each binding. Head bobs carry no
+ * shadow `.bmd` (the extractor never sets one); body shadows are left for the later shadow-palette step,
+ * exactly as the `[jobgraphics]` leg leaves `shadowBmd` unconverted today.
+ */
+export function jobBaseGraphicsToBindings(records: readonly JobBaseGraphicsBinding[]): BmdPaletteBinding[] {
+  const bindings: BmdPaletteBinding[] = [];
+  for (const rec of records) {
+    for (const slot of rec.body) {
+      if (rec.bodyPalette === undefined) continue;
+      bindings.push({
+        bmd: slot.bmd,
+        shadowBmd: slot.shadowBmd,
+        paletteName: rec.bodyPalette,
+        tribeId: rec.tribeId,
+        jobId: rec.jobId,
+      });
+    }
+    for (const slot of rec.head) {
+      if (rec.headPalette === undefined) continue;
+      bindings.push({
+        bmd: slot.bmd,
+        shadowBmd: slot.shadowBmd,
+        paletteName: rec.headPalette,
+        tribeId: rec.tribeId,
+        jobId: rec.jobId,
+      });
+    }
+  }
+  return bindings;
+}
+
+/**
  * Converts the body `.bmd` of every readable `[jobgraphics]` binding into a packed atlas PNG + a
  * manifest JSON, written as siblings of the `.bmd` under `outDir`. This wires the `.bmd`→palette
  * pairing graph end-to-end: {@link extractGraphicsBindings} names each `.bmd`'s palette `editname`,
@@ -406,18 +449,22 @@ async function writeIr(args: Args): Promise<ContentSet> {
 }
 
 /**
- * Reads the two readable graphics-binding `.ini` files and extracts the `.bmd`→palette pairing:
- * `Data/engine2d/inis/animals/jobgraphics.ini` (the one binding file shipped as plain `.ini`) +
- * `Data/engine2d/inis/palettes/palettes.ini`. Both are decoded as CP1250 (display names carry Polish
- * glyphs) via {@link decodeIni}, like every other rule source. A missing file yields an empty list
- * with a warning — a partial install still runs the rest of the pipeline rather than aborting.
+ * Reads the readable graphics-binding `.ini` files and extracts the `.bmd`→palette pairing from both
+ * binding skins: the base `Data/engine2d/inis/animals/jobgraphics.ini` `[jobgraphics]` records (the one
+ * animals binding file shipped as plain `.ini`) **and**, when a `--mod` is given, the mod's richer
+ * `<mod>/types/humanstype/jobgraphics.ini` `[jobbasegraphics]` records (the human body/head bob sets),
+ * flattened via {@link jobBaseGraphicsToBindings} into the same flat shape. The palette index comes from
+ * `Data/engine2d/inis/palettes/palettes.ini`. All are decoded as CP1250 (display names carry Polish
+ * glyphs) via {@link decodeIni}, like every other rule source. A missing file contributes nothing (with
+ * a warning) — a partial install (or no mod) still runs the rest of the pipeline rather than aborting.
  *
- * Returns the `[jobgraphics]` bindings + the `palettes.ini` name→`.pcx` index, ready to hand to
- * {@link convertBmdTree}. The mod's richer `[jobbasegraphics]` records and the `.cif`-only graphics
- * tables are later steps; this resolves only what's readable today.
+ * Returns the merged bindings + the `palettes.ini` name→`.pcx` index, ready to hand to
+ * {@link convertBmdTree}. The `.cif`-only graphics tables (most of the human binding leg) are a later
+ * step; this resolves only what ships as readable `.ini` today.
  */
 export async function resolveGraphicsBindings(
   gameDir: string,
+  mod: string | undefined,
 ): Promise<{ bindings: BmdPaletteBinding[]; palettes: PaletteAlias[] }> {
   const readIni = async (rel: string): Promise<RuleSection[] | undefined> => {
     const path = join(gameDir, rel);
@@ -430,8 +477,13 @@ export async function resolveGraphicsBindings(
   };
   const jobgraphics = await readIni(join('Data', 'engine2d', 'inis', 'animals', 'jobgraphics.ini'));
   const palettesIni = await readIni(join('Data', 'engine2d', 'inis', 'palettes', 'palettes.ini'));
+  const bindings: BmdPaletteBinding[] = jobgraphics ? extractGraphicsBindings(jobgraphics) : [];
+  if (mod !== undefined) {
+    const humanGraphics = await readIni(join(mod, 'types', 'humanstype', 'jobgraphics.ini'));
+    if (humanGraphics) bindings.push(...jobBaseGraphicsToBindings(extractJobBaseGraphics(humanGraphics)));
+  }
   return {
-    bindings: jobgraphics ? extractGraphicsBindings(jobgraphics) : [],
+    bindings,
     palettes: palettesIni ? extractPaletteIndex(palettesIni) : [],
   };
 }
@@ -464,10 +516,11 @@ async function run(args: Args): Promise<void> {
       `(${loosePictures.length} loose, ${embeddedPictures.length} embedded)`,
   );
 
-  // Convert .bmd bob sets -> atlas PNG + manifest JSON for every readable [jobgraphics] binding. Each
+  // Convert .bmd bob sets -> atlas PNG + manifest JSON for every readable binding: the base animals
+  // [jobgraphics] records plus, with a --mod, the mod's [jobbasegraphics] human body/head bobs. Each
   // binding names its palette by editname; palettes.ini resolves it to a .pcx, whose trailer palette
   // colours the bobs. Both the .bmd and the .pcx are read from the just-unpacked <out> tree.
-  const { bindings, palettes } = await resolveGraphicsBindings(args.game);
+  const { bindings, palettes } = await resolveGraphicsBindings(args.game, args.mod);
   const atlases = await convertBmdTree(bindings, palettes, args.out);
   // Distinct .bmd files written: many readable bindings share a body bob (the animals are one geometry
   // recoloured per creature), so the binding count overstates the atlas files — report both.
