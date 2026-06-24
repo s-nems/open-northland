@@ -267,11 +267,19 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             **483 → 489** (the 6 vehicle records), **65 distinct** atlas files (up from 63: `cr_veh_body_00`
             + `ls_vehicles`), **488/489** resolving (same 1 seasonal `weihnachtsmann.pcx` skip);
             `cr_veh_body_00.png` = a valid 1022×2768 RGBA atlas, 306 frames, manifest dims agreeing.
-      - [ ] **Atlas oracle pixel-diff + per-creature recolour output naming.** Remaining: per-creature
-            recolour output naming (the `editname` is the only per-creature differentiator when many
-            bindings collapse onto one shared body `.bmd`), then compare an emitted atlas frame against the
-            OpenVikings render pixel-for-pixel (needs an owned game copy + the oracle; an agent can't
-            self-judge it).
+      - [x] **Per-creature recolour output naming.** Atlases are now named `<bmd-stem>.<palette>.png`
+            (+ `.atlas.json`) keyed on the palette `editname`, not the `.bmd` alone — `convertBmdTree` in
+            `cli.ts` (`paletteSlug` makes the editname filesystem-safe; `BmdConversion` carries
+            `paletteName`). Many bindings collapse onto one shared body `.bmd` (the animals are a single
+            geometry recoloured per creature; the humans one body re-tinted per tribe/job), so the old
+            `<bmd>.png` naming overwrote them last-palette-wins — the `editname` is the only per-creature
+            differentiator, so it rides in the filename and `(bmd, palette)` now names a distinct atlas.
+            **Hands-on:** `npm run pipeline` on the real game → 488/489 bindings now fan out to **81 atlas
+            files over 65 distinct `.bmd`** (was 65 files, the recolours lost); `cr_ani_body_00.bmd` →
+            7 atlases (bear/cattle/chicken/deer/house/lion/wolves), bear vs lion byte-distinct (same
+            1024×6037 geometry, recoloured) — no longer clobbered.
+      - [ ] **Atlas oracle pixel-diff.** Compare an emitted atlas frame against the OpenVikings render
+            pixel-for-pixel (needs an owned game copy + the oracle; an agent can't self-judge it).
 - [ ] One map (`map.cif` + its `.ini`/`.inc` parts) decoded to IR.
       - [x] **Map logic-header metadata** — `extractMapInfo` in `decoders/ini.ts` reduces a decoded
             `map.cif`'s `CStringArray` (`logiccontrol` `mapsize`/`mapguid` + `misc_maptype`/`misc_mapname`)

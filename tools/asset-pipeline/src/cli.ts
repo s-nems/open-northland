@@ -254,10 +254,22 @@ async function indexOutTree(outDir: string): Promise<Map<string, string>> {
 export interface BmdConversion {
   /** The body `.bmd`'s path under `outDir`, normalized (forward slashes, lower-case) — the binding key. */
   readonly bmd: string;
+  /** The palette `editname` this atlas was recoloured with — the per-creature differentiator. */
+  readonly paletteName: string;
   /** The atlas PNG's path relative to `outDir` (native separators). */
   readonly png: string;
   /** The atlas manifest JSON's path relative to `outDir` (native separators). */
   readonly manifest: string;
+}
+
+/**
+ * Filesystem-safe slug of a palette `editname` for use as an output-filename component. Palette names
+ * are already lower-cased ({@link normalizePaletteName}) and in the real data are bare identifiers like
+ * `bear01`/`vik_man_base`/`test_human_00`, but a stray space or punctuation would otherwise leak into a
+ * path — collapse every non-`[a-z0-9_]` run to a single `_` so the atlas name stays portable and stable.
+ */
+function paletteSlug(name: string): string {
+  return name.replace(/[^a-z0-9_]+/g, '_');
 }
 
 /**
@@ -311,10 +323,13 @@ export function jobBaseGraphicsToBindings(records: readonly JobBaseGraphicsBindi
  *
  * Per-binding boundary failures are warned-and-skipped, never fatal — an unresolvable palette name, a
  * `.pcx`/`.bmd` missing from `--out`, a palette-less `.pcx`, or a malformed `.bmd` only drops that one
- * atlas, matching the other tree-walk stages. Each binding emits `<bmd>.png` (the atlas sheet) and
- * `<bmd>.atlas.json` (the per-bob frame manifest); the shadow `.bmd` is left for a later step (shadows
- * use a separate, single-colour palette path). The `.cif`-only graphics records (most of the binding
- * leg) are a later step — only `animals/jobgraphics.ini` ships as readable `.ini`.
+ * atlas, matching the other tree-walk stages. Each binding emits `<bmd>.<palette>.png` (the atlas sheet)
+ * and `<bmd>.<palette>.atlas.json` (the per-bob frame manifest), keyed by the palette `editname`: many
+ * bindings share one body `.bmd` recoloured per creature (the animals are a single geometry, the humans
+ * one body re-tinted per tribe/job), so naming on the `.bmd` alone would collapse them onto one file
+ * (last-palette-wins). The palette name is the only per-creature differentiator, so it goes in the
+ * filename — `(bmd, palette)` now names a distinct atlas. The shadow `.bmd` is left for a later step
+ * (shadows use a separate, single-colour palette path).
  */
 export async function convertBmdTree(
   bindings: readonly BmdPaletteBinding[],
@@ -360,11 +375,15 @@ export async function convertBmdTree(
       console.warn(`[pipeline] skipped ${binding.bmd}: source has no .bmd extension`);
       continue;
     }
-    const pngRel = bmdOnDisk.replace(/\.bmd$/i, '.png');
-    const manifestRel = bmdOnDisk.replace(/\.bmd$/i, '.atlas.json');
+    // Name on (bmd, palette), not the .bmd alone: many bindings share one body bob recoloured per
+    // creature, so `<bmd>.png` would collapse them last-palette-wins. The palette editname is the only
+    // per-creature differentiator, so it rides in the filename — `<bmd-stem>.<palette>.png`.
+    const suffix = paletteSlug(binding.paletteName);
+    const pngRel = bmdOnDisk.replace(/\.bmd$/i, `.${suffix}.png`);
+    const manifestRel = bmdOnDisk.replace(/\.bmd$/i, `.${suffix}.atlas.json`);
     await writeFile(join(outDir, pngRel), encodePng(atlas.image));
     await writeFile(join(outDir, manifestRel), `${JSON.stringify(atlas.manifest, null, 2)}\n`);
-    done.push({ bmd: binding.bmd, png: pngRel, manifest: manifestRel });
+    done.push({ bmd: binding.bmd, paletteName: binding.paletteName, png: pngRel, manifest: manifestRel });
   }
   return done;
 }
@@ -639,12 +658,15 @@ async function run(args: Args): Promise<void> {
   // the bobs. Both the .bmd and the .pcx are read from the just-unpacked <out> tree.
   const { bindings, palettes } = await resolveGraphicsBindings(args.game, args.mod);
   const atlases = await convertBmdTree(bindings, palettes, args.out);
-  // Distinct .bmd files written: many readable bindings share a body bob (the animals are one geometry
-  // recoloured per creature), so the binding count overstates the atlas files — report both.
+  // Atlases are now named per (bmd, palette), so each per-creature recolour is its own file rather than
+  // collapsing onto one body bob last-palette-wins. Report both the distinct atlas files and the distinct
+  // body .bmd geometries behind them — the gap is the per-creature recolour fan-out.
   const distinct = new Set(atlases.map((a) => a.png)).size;
+  const distinctBmd = new Set(atlases.map((a) => a.bmd)).size;
   console.log(
     `[pipeline] bmd -> atlas: ${atlases.length} of ${bindings.length} readable binding(s) -> ` +
-      `${distinct} atlas file(s) into ${args.out} (${palettes.length} palette aliases)`,
+      `${distinct} atlas file(s) (${distinctBmd} distinct .bmd) into ${args.out} ` +
+      `(${palettes.length} palette aliases)`,
   );
 
   const ir = await writeIr(args);

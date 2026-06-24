@@ -402,17 +402,48 @@ describe('convertBmdTree', () => {
     const done = await convertBmdTree(bindings, palettes, out);
 
     expect(done).toHaveLength(1);
-    // The case-insensitive resolution maps the normalized refs onto the real mixed-case on-disk paths.
-    expect(done[0]?.png).toBe(join('Data', 'Bobs', 'Body.png'));
-    expect(done[0]?.manifest).toBe(join('Data', 'Bobs', 'Body.atlas.json'));
+    // The case-insensitive resolution maps the normalized refs onto the real mixed-case on-disk paths,
+    // and the palette editname rides in the filename as the per-creature differentiator.
+    expect(done[0]?.png).toBe(join('Data', 'Bobs', 'Body.bear01.png'));
+    expect(done[0]?.manifest).toBe(join('Data', 'Bobs', 'Body.bear01.atlas.json'));
+    expect(done[0]?.paletteName).toBe('bear01');
     // The emitted PNG decodes (a valid RGBA sheet) and the manifest JSON round-trips its frame table.
-    const decoded = decodePng(await readFile(join(out, 'Data', 'Bobs', 'Body.png')));
+    const decoded = decodePng(await readFile(join(out, 'Data', 'Bobs', 'Body.bear01.png')));
     expect(decoded.width).toBeGreaterThan(0);
-    const manifest = JSON.parse(await readFile(join(out, 'Data', 'Bobs', 'Body.atlas.json'), 'utf8'));
+    const manifest = JSON.parse(await readFile(join(out, 'Data', 'Bobs', 'Body.bear01.atlas.json'), 'utf8'));
     expect(manifest.frames).toHaveLength(1);
     expect(manifest.frames[0].bobId).toBe(10);
     expect(manifest.width).toBe(decoded.width);
     expect(manifest.height).toBe(decoded.height);
+  });
+
+  it('writes a distinct atlas per palette when bindings share one body .bmd (per-creature recolour)', async () => {
+    // The animals are one geometry recoloured per creature: many bindings collapse onto one body .bmd.
+    // Naming on (bmd, palette) — not the .bmd alone — keeps each recolour its own file instead of
+    // overwriting last-palette-wins.
+    await layDownAssets();
+    await writeFile(join(out, 'Data', 'Pal', 'Wolf01.pcx'), samplePcx().bytes);
+    const bindings: BmdPaletteBinding[] = [
+      { bmd: 'data/bobs/body.bmd', shadowBmd: undefined, paletteName: 'bear01', tribeId: 1, jobId: 2 },
+      { bmd: 'data/bobs/body.bmd', shadowBmd: undefined, paletteName: 'wolf01', tribeId: 1, jobId: 3 },
+    ];
+    const palettes: PaletteAlias[] = [
+      { name: 'bear01', gfxFile: 'data/pal/bear01.pcx' },
+      { name: 'wolf01', gfxFile: 'data/pal/wolf01.pcx' },
+    ];
+
+    const done = await convertBmdTree(bindings, palettes, out);
+
+    expect(done).toHaveLength(2);
+    // Two distinct atlas files from one shared .bmd — the palette name is the differentiator.
+    expect(new Set(done.map((c) => c.png)).size).toBe(2);
+    expect(done.map((c) => c.png).sort()).toEqual([
+      join('Data', 'Bobs', 'Body.bear01.png'),
+      join('Data', 'Bobs', 'Body.wolf01.png'),
+    ]);
+    // Both were actually written and decode as valid sheets (neither clobbered the other).
+    expect(decodePng(await readFile(join(out, 'Data', 'Bobs', 'Body.bear01.png'))).width).toBeGreaterThan(0);
+    expect(decodePng(await readFile(join(out, 'Data', 'Bobs', 'Body.wolf01.png'))).width).toBeGreaterThan(0);
   });
 
   it('skips a binding whose palette editname is not in the index, with a warning', async () => {
