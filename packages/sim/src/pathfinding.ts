@@ -40,15 +40,16 @@ export function findPath(graph: TerrainGraph, start: CellId, goal: CellId): Cell
   // Dense per-cell records indexed by cell id — a flat array, not a Map, so lookups are pure array
   // reads and there is no insertion-order to leak into a game decision.
   const records: Array<CellRecord | undefined> = new Array(graph.cellCount);
-  const startRec: CellRecord = {
+  // At the start cell g is 0, so f === h; compute the heuristic once.
+  const startH = cellManhattanDistance(graph, start, goal);
+  records[start] = {
     cell: start,
     g: fx.fromInt(0),
-    h: cellManhattanDistance(graph, start, goal),
-    f: cellManhattanDistance(graph, start, goal),
+    h: startH,
+    f: startH,
     cameFrom: null,
     open: true,
   };
-  records[start] = startRec;
 
   for (;;) {
     // Pop the canonical minimum from the open set: lowest f, ties to lowest h, then lowest cell id.
