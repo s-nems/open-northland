@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildIr, convertPcxTree, parseArgs, pcxToPng, resolveIniSources } from '../src/cli.js';
+import { buildIr, convertPcxTree, parseArgs, pcxToPng, resolveArgs, resolveIniSources } from '../src/cli.js';
 import { decodePcx, encodePcx, expandToRgba } from '../src/decoders/pcx.js';
 import { decodePng } from '../src/decoders/png.js';
 
@@ -44,6 +44,28 @@ describe('parseArgs', () => {
 
   it('throws when --game is missing', () => {
     expect(() => parseArgs(['--mod', 'm'])).toThrow(/--game/);
+  });
+});
+
+describe('resolveArgs', () => {
+  // The bug this guards: npm runs the workspace `start` script with cwd=tools/asset-pipeline/, so a
+  // relative `--game ../Cultures 8th Wonder` must resolve against INIT_CWD (repo root), not cwd.
+  it('resolves relative game/out against baseDir; mod stays a bare subdir', () => {
+    expect(
+      resolveArgs({ game: '../Cultures 8th Wonder', mod: 'DataCnmd', out: 'content' }, '/home/u/vinland'),
+    ).toEqual({
+      game: '/home/u/Cultures 8th Wonder',
+      mod: 'DataCnmd',
+      out: '/home/u/vinland/content',
+    });
+  });
+
+  it('passes absolute game/out through unchanged', () => {
+    expect(resolveArgs({ game: '/abs/game', mod: undefined, out: '/abs/out' }, '/home/u/vinland')).toEqual({
+      game: '/abs/game',
+      mod: undefined,
+      out: '/abs/out',
+    });
   });
 });
 
