@@ -9,6 +9,7 @@ import {
   extractGoods,
   extractGraphicsBindings,
   extractJobBaseGraphics,
+  extractJobChangeGraphics,
   extractJobs,
   extractLandscape,
   extractMapInfo,
@@ -683,6 +684,62 @@ describe('extractJobBaseGraphics', () => {
     // skins coexist in one file in the real mod, each guarding on its own section name.
     expect(extractGraphicsBindings(parseIniSections(JOBBASEGRAPHICS_INI))).toEqual([]);
     expect(extractJobBaseGraphics(parseIniSections(JOBGRAPHICS_INI))).toEqual([]);
+  });
+});
+
+// Mirrors the real [jobbasegraphics]/[jobchangegraphics] coexistence in one file: a base-appearance
+// record (job 6) and an equipment-skin record (job 27, swapping in a different head bob set over the
+// shared body) using the *same* grammar, differing only in section name.
+const JOBCHANGEGRAPHICS_INI = `<CULTURES_CIF_BEGIN><03FD><000000F1> Don't modify this line!
+[jobbasegraphics]
+logictribe 1
+logicjob 6
+gfxbobmanagerbody 0 "Data\\Engine2D\\Bin\\Bobs\\CR_Hum_Body_00.bmd" "Data\\Engine2D\\Bin\\Bobs\\CR_Hum_Body_00_s.bmd"
+gfxbobmanagerhead 0 "Data\\Engine2D\\Bin\\Bobs\\CR_Hum_Head_00.bmd"
+gfxpaletterandom "Vik_Man_Base"
+[jobchangegraphics]
+logictribe 1
+logicjob 27
+gfxbobmanagerbody 0 "Data\\Engine2D\\Bin\\Bobs\\CR_Hum_Body_00.bmd" "Data\\Engine2D\\Bin\\Bobs\\CR_Hum_Body_00_s.bmd"
+gfxbobmanagerhead 0 "Data\\Engine2D\\Bin\\Bobs\\CR_Hum_Head_80.bmd"
+gfxbobmanagerhead 1 "Data\\Engine2D\\Bin\\Bobs\\CR_Hum_Head_81.bmd"
+gfxpalettebasehead "Test_Human_00"
+gfxpaletterandom "Vik_Man_ChangeJob"
+`;
+
+describe('extractJobChangeGraphics', () => {
+  it('parses [jobchangegraphics] equipment-skin records with the same grammar as the base layer', () => {
+    const bindings = extractJobChangeGraphics(parseIniSections(JOBCHANGEGRAPHICS_INI));
+    // Only the [jobchangegraphics] record is picked up; the [jobbasegraphics] one is ignored here.
+    expect(bindings).toEqual([
+      {
+        tribeId: 1,
+        jobId: 27,
+        body: [
+          {
+            index: 0,
+            bmd: 'data/engine2d/bin/bobs/cr_hum_body_00.bmd',
+            shadowBmd: 'data/engine2d/bin/bobs/cr_hum_body_00_s.bmd',
+          },
+        ],
+        head: [
+          { index: 0, bmd: 'data/engine2d/bin/bobs/cr_hum_head_80.bmd', shadowBmd: undefined },
+          { index: 1, bmd: 'data/engine2d/bin/bobs/cr_hum_head_81.bmd', shadowBmd: undefined },
+        ],
+        bodyPalette: undefined,
+        headPalette: 'test_human_00',
+        randomPalette: 'vik_man_changejob',
+      },
+    ]);
+  });
+
+  it('is independent of the base layer: each extractor sees only its own section name', () => {
+    // The two skins coexist in one file; the base extractor must not bleed into the change records
+    // and vice versa, so a file is never double-counted when both run over it.
+    expect(extractJobBaseGraphics(parseIniSections(JOBCHANGEGRAPHICS_INI))).toEqual([
+      expect.objectContaining({ jobId: 6 }),
+    ]);
+    expect(extractJobChangeGraphics(parseIniSections(JOBBASEGRAPHICS_INI))).toEqual([]);
   });
 });
 

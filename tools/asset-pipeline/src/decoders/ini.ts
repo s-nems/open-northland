@@ -777,10 +777,20 @@ function getPaletteName(sec: RuleSection, key: string): string | undefined {
  * {@link extractGraphicsBindings}. Head bobs and every palette are optional and simply omitted when
  * absent; the consumer resolves whichever palettes are present against the unpacked `--out` tree.
  */
-export function extractJobBaseGraphics(sections: readonly RuleSection[]): JobBaseGraphicsBinding[] {
+/**
+ * Reduces every section named `sectionName` to a {@link JobBaseGraphicsBinding}. The
+ * `[jobbasegraphics]` (base appearance) and `[jobchangegraphics]` (equipment/job skin) records share
+ * the **same grammar** — indexed `gfxbobmanagerbody/head` bob slots + the three optional palette keys —
+ * differing only in their section name and intent, so both extractors delegate here. A record with no
+ * usable body bob is skipped (see {@link extractJobBaseGraphics}).
+ */
+function extractIndexedGraphics(
+  sections: readonly RuleSection[],
+  sectionName: string,
+): JobBaseGraphicsBinding[] {
   const bindings: JobBaseGraphicsBinding[] = [];
   for (const sec of sections) {
-    if (sec.name !== 'jobbasegraphics') continue;
+    if (sec.name !== sectionName) continue;
     const body: IndexedBobManager[] = [];
     for (const p of findProps(sec, 'gfxbobmanagerbody')) {
       const slot = parseIndexedBobManager(p);
@@ -803,4 +813,23 @@ export function extractJobBaseGraphics(sections: readonly RuleSection[]): JobBas
     });
   }
   return bindings;
+}
+
+export function extractJobBaseGraphics(sections: readonly RuleSection[]): JobBaseGraphicsBinding[] {
+  return extractIndexedGraphics(sections, 'jobbasegraphics');
+}
+
+/**
+ * Extracts the `[jobchangegraphics]` records (the **equipment/job skin** layer) — the sibling of
+ * {@link extractJobBaseGraphics}'s `[jobbasegraphics]` base-appearance layer. Both legs ship in the same
+ * files: the base game's `Data/engine2d/inis/humans/jobgraphics.cif` and, preferred per golden rule #4,
+ * the mod's `DataCnmd/types/humanstype/jobgraphics.ini`. A `[jobchangegraphics]` record reskins a human
+ * for a specific `(logictribe, logicjob)` — e.g. swapping in a job's head/equipment bob set over the
+ * shared body geometry — using the **identical grammar** as `[jobbasegraphics]` (indexed
+ * `gfxbobmanagerbody/head` slots + `gfxpalettebasebody`/`gfxpalettebasehead`/`gfxpaletterandom`), so it
+ * yields the same {@link JobBaseGraphicsBinding} shape and flattens via the same
+ * `jobBaseGraphicsToBindings` path. A record with no usable body bob is skipped, matching the base leg.
+ */
+export function extractJobChangeGraphics(sections: readonly RuleSection[]): JobBaseGraphicsBinding[] {
+  return extractIndexedGraphics(sections, 'jobchangegraphics');
 }
