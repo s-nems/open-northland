@@ -42,8 +42,13 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             (`decodePcx`: header → per-row RLE → indexed pixels + 256-RGB palette via the 0x0C
             trailer; `expandToRgba` applies the palette; `encodePcx` is the round-trip inverse, no
             committed fixtures). Format ported from `CPicture.cs` `UnpackPCX` / `CPalette.cs`.
-      - [ ] **PNG container encode** (RGBA → PNG bytes: zlib + IHDR/IDAT/IEND) and wire `decodePcx`
-            into the CLI so `npm run pipeline` emits `.png`. **Then** the oracle pixel-diff.
+      - [x] **PNG container encode** — `tools/asset-pipeline/src/decoders/png.ts` (`encodePng`:
+            `RgbaImage` → PNG bytes via signature + CRC-32'd IHDR/IDAT/IEND chunks, 8-bit colour-type-6,
+            filter-0 scanlines, one zlib-deflated IDAT; `decodePng` is the round-trip inverse, no
+            committed fixtures). zlib via `node:zlib` (build tool, not the sim). Foreign PNGs using row
+            filters 1..4 are rejected loudly; extend when the oracle diff needs to read them.
+      - [ ] Wire `decodePcx` → `expandToRgba` → `encodePng` into the CLI so `npm run pipeline` emits
+            `.png`. **Then** the oracle pixel-diff.
       - [ ] Standalone `CPalette` (id 0x3F6) decode — raw 0x400 `[B,G,R,_]×256` blob from `.cif`/`.lib`
             graphs (the `.pcx` trailer covers picture palettes; this is for bobs/maps).
 - [ ] `.ini` rule parser → typed IR (note base `Data/logic/*.ini` is the primary readable source;
