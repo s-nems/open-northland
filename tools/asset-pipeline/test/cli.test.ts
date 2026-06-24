@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { convertPcxTree, parseArgs, pcxToPng } from '../src/cli.js';
+import { buildIr, convertPcxTree, parseArgs, pcxToPng, resolveIniSources } from '../src/cli.js';
 import { decodePcx, encodePcx, expandToRgba } from '../src/decoders/pcx.js';
 import { decodePng } from '../src/decoders/png.js';
 
@@ -115,5 +115,94 @@ describe('convertPcxTree', () => {
 
   it('throws when the game dir does not exist (a real argument error, not per-file)', async () => {
     await expect(convertPcxTree(join(game, 'nope'), out)).rejects.toThrow();
+  });
+});
+
+/**
+ * IR-build wiring tests. We lay down synthetic `.ini` files at the real expected paths (base
+ * `Data/logic/*`, mod `DataCnmd/*`) so the source-resolution + extract + validate path is exercised
+ * without any copyrighted bytes — the grammar, not the game's data, is what's under test here.
+ */
+describe('buildIr / resolveIniSources', () => {
+  let game: string;
+
+  beforeEach(async () => {
+    const root = await mkdtemp(join(tmpdir(), 'vinland-ir-'));
+    game = join(root, 'game');
+    await mkdir(join(game, 'Data', 'logic'), { recursive: true });
+    await mkdir(join(game, 'DataCnmd', 'tribetypes12'), { recursive: true });
+    await mkdir(join(game, 'DataCnmd', 'atomicanimations12'), { recursive: true });
+    await writeFile(
+      join(game, 'Data', 'logic', 'goodtypes.ini'),
+      '[goodtype]\nname "wood"\ntype 7\natomicForHarvesting 26\n',
+    );
+    await writeFile(
+      join(game, 'Data', 'logic', 'jobtypes.ini'),
+      '[jobtype]\ntype 3\nname "carrier"\nallowatomic 5\nbaseatomics 1\n',
+    );
+    await writeFile(
+      join(game, 'Data', 'logic', 'landscapetypes.ini'),
+      '[landscapetype]\ntype 2\nname "grass"\n',
+    );
+    await writeFile(
+      join(game, 'DataCnmd', 'tribetypes12', 'tribetypes.ini'),
+      '[tribetype]\ntype 1\nname "viking"\nsetatomic 3 5 "viking_carry"\n',
+    );
+    await writeFile(
+      join(game, 'DataCnmd', 'atomicanimations12', 'atomicanimations.ini'),
+      '[atomicanimation]\nname "viking_carry"\nlength 40\ninterruptable 1\n',
+    );
+  });
+
+  afterEach(async () => {
+    await rm(join(game, '..'), { recursive: true, force: true });
+  });
+
+  it('reads the readable .ini sources and assembles a validated ContentSet', async () => {
+    const set = await buildIr({ game, mod: 'DataCnmd', out: 'unused' });
+
+    expect(set.manifest.version).toBe(1);
+    expect(set.manifest.generatedFrom).toEqual({ game, mod: 'DataCnmd' });
+    expect(set.goods.map((g) => g.id)).toEqual(['wood']);
+    expect(set.goods[0]?.atomics.harvest).toBe(26);
+    expect(set.jobs.map((j) => j.id)).toEqual(['carrier']);
+    expect(set.jobs[0]?.allowedAtomics).toEqual([5]);
+    expect(set.landscape.map((l) => l.id)).toEqual(['grass']);
+    expect(set.tribes.map((t) => t.id)).toEqual(['viking']);
+    expect(set.atomicAnimations.map((a) => a.name)).toEqual(['viking_carry']);
+    // Provenance stamps the mod layer on a DataCnmd source, base on a Data/logic one.
+    expect(set.goods[0]?.source?.layer).toBe('base');
+    expect(set.tribes[0]?.source?.layer).toBe('mod');
+  });
+
+  it('cross-validates: a tribe binding to an absent jobType fails parseContentSet', async () => {
+    // Point the tribe's setatomic at jobType 99, which no [jobtype] defines.
+    await writeFile(
+      join(game, 'DataCnmd', 'tribetypes12', 'tribetypes.ini'),
+      '[tribetype]\ntype 1\nname "viking"\nsetatomic 99 5 "viking_carry"\n',
+    );
+    await expect(buildIr({ game, mod: 'DataCnmd', out: 'unused' })).rejects.toThrow(/unknown jobType 99/);
+  });
+
+  it('drops a missing source with a warning instead of aborting (no mod -> no tribe sources)', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    // No --mod, so the mod-only tribe/atomic sources are never requested; base files still load.
+    const noMod = await resolveIniSources(game, undefined);
+    expect(noMod.map((s) => s.file).sort()).toEqual([
+      join('Data', 'logic', 'goodtypes.ini'),
+      join('Data', 'logic', 'jobtypes.ini'),
+      join('Data', 'logic', 'landscapetypes.ini'),
+    ]);
+
+    // Remove a base file: it's resolved-away with a warning, not a throw.
+    await rm(join(game, 'Data', 'logic', 'goodtypes.ini'));
+    const partial = await resolveIniSources(game, 'DataCnmd');
+    expect(partial.some((s) => s.file.endsWith('goodtypes.ini'))).toBe(false);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/not found.*goodtypes\.ini/));
+
+    const set = await buildIr({ game, mod: 'DataCnmd', out: 'unused' });
+    expect(set.goods).toEqual([]); // missing goods source -> empty, rest still present
+    expect(set.jobs.length).toBe(1);
+    warn.mockRestore();
   });
 });

@@ -63,8 +63,10 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
       comments stripped (quote-aware). The byte→text seam is `decodeIni`, which decodes raw bytes as
       **CP1250** (Windows-1250), not UTF-8 — display names carry Polish glyphs in 0x80..0xFF that a
       UTF-8 read would mangle; ASCII structure is unaffected. Typed extractors (goods/jobs/tribes/
-      landscape/atomic-animations) below build on this. **Next:** wire the readers (`decodeIni` +
-      extractors) into the CLI once `.lib`/`.pcx` land, so `npm run pipeline` emits real `content/`.
+      landscape/atomic-animations) below build on this. **Wired into the CLI** — `cli.ts`
+      `resolveIniSources` (mod `.ini` preferred per golden rule #4) + `buildIr` read the readable
+      sources, run the extractors, and `parseContentSet`-validate them into `content/ir.json`. Verified
+      end-to-end on the real game: 65 goods, 55 jobs, 87 landscape, 41 tribes, 896 atomic animations.
 - [x] **Atomic vocabulary extraction** (free, from readable data): done in `decoders/ini.ts`
       (`extractJobs`/`extractTribes` + `atomicFor*` in `extractGoods`). Captures `jobtypes`
       `allowatomic`/`baseatomics`, `tribetypes` `setatomic` (atomic→animation per tribe),
@@ -75,8 +77,8 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
       `length` (duration), `interruptable`, `startdirection`, and ordered `event`/`eventx`
       `(at, type, value?)` tuples. `name` is the join key onto `tribetypes` `setatomic` bindings.
       The event `type`/`value` vocabulary is undocumented — captured faithfully, interpreted by the
-      Phase-2 AtomicSystem (like `AtomicId`, a raw id with no master table). **Next:** wire the
-      extractors into the CLI once `.lib`/`.pcx` land, so `npm run pipeline` emits real `content/`.
+      Phase-2 AtomicSystem (like `AtomicId`, a raw id with no master table). **Wired into the CLI**
+      via `buildIr` (see the `.ini` parser item) — `npm run pipeline` now emits real `content/ir.json`.
 - [ ] `.bmd` bob decoder → atlas PNG + anim JSON (ref `CBobManager.cs`, `CBitmap.cs`). **Hardest.**
 - [ ] One map (`map.cif` + its `.ini`/`.inc` parts) decoded to IR.
 - **Exit:** `npm run pipeline` produces a validated `content/` (types + atlases + one map), decoded
