@@ -19,9 +19,11 @@ not a binary-faithful clone. Where the original is buggy or unbalanced, Vinland 
 - **Is:** a fresh, deterministic colony simulation in TypeScript; an isometric PixiJS renderer; and
   an offline pipeline that decodes the original's `.cif` / `.bmd` / `.pcx` / `.lib` / `.ini` files
   into a versioned, diffable intermediate format (JSON + texture atlases).
-- **Is not:** a binary-faithful re-implementation. The companion `../OpenVikings_reversing` project
-  *is* binary-faithful; we consult it as **file-format documentation**, never as a code dependency
-  and never by porting its architecture.
+- **Is not:** a binary-faithful re-implementation. The companion
+  [`OpenVikings_reversing`](https://github.com/Ravo92/OpenVikings_reversing) project *is*
+  binary-faithful; we consult it as **file-format documentation**, never as a code dependency and
+  never by porting its architecture. It is **optional** — you do not need it to build, test, or play
+  Vinland; it's only a reference for contributors working on the asset pipeline.
 
 ## Status
 
@@ -52,6 +54,11 @@ npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content
 
 npm run dev                 # launch the app (Vite) in a browser
 ```
+
+`--game` is the path to your game-install folder; the example assumes you placed it **next to this
+repo** (`../Cultures 8th Wonder`), but any absolute or relative path works. `--mod DataCnmd` selects
+the readable `culturesnation` mod data that ships with the game — it's preferred because its rules
+are plain `.ini` rather than encrypted `.cif` (see [`docs/DATA-FORMAT.md`](docs/DATA-FORMAT.md)).
 
 Desktop builds (macOS / Windows / Linux) come later via Tauri; the app is browser-first so it is
 cross-platform from day one.
