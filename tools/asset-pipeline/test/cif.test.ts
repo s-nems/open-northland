@@ -19,7 +19,7 @@ function buildPool(lines: ReadonlyArray<{ level: number; text: string }>): {
   const offsetValues: number[] = [];
   for (const { level, text } of lines) {
     offsetValues.push(chunks.length);
-    chunks.push(level);
+    if (level > 0) chunks.push(level); // level 0 = no control byte; text starts directly (>= 0x20)
     for (const ch of text) chunks.push(ch.charCodeAt(0) & 0xff);
     chunks.push(NUL);
   }
@@ -97,8 +97,85 @@ describe('decodeCifStringArray', () => {
     expect(cif.lines).toEqual(lines);
   });
 
+  it('decodes a level-0 line (text not prefixed by a control byte)', () => {
+    const lines = [{ level: 0, text: 'no level byte here' }];
+    const cif = decodeCifStringArray(buildCif(lines));
+    expect(cif.lines).toEqual(lines);
+  });
+
+  it('skips hole slots (INVALID offsets) and preserves canonical id order', () => {
+    // Build a pool with two real strings; inject a hole between them via the offsets table.
+    const real = [
+      { level: 1, text: 'first' },
+      { level: 2, text: 'third' },
+    ];
+    const { pool } = buildPool(real);
+    const firstOff = 0;
+    const secondOff = pool.indexOf(0) + 1; // byte after the first NUL
+    const offsets = new Uint8Array(3 * 4);
+    const ov = new DataView(offsets.buffer);
+    ov.setUint32(0, firstOff, true);
+    ov.setUint32(4, 0xffffffff, true); // hole
+    ov.setUint32(8, secondOff, true);
+
+    const encOffsets = Uint8Array.from(offsets);
+    const encPool = Uint8Array.from(pool);
+    encryptMode1(encOffsets);
+    encryptMode1(encPool);
+
+    const out: number[] = [];
+    const pushU32 = (v: number): void =>
+      void out.push(v & 0xff, (v >>> 8) & 0xff, (v >>> 16) & 0xff, (v >>> 24) & 0xff);
+    const pushCMemory = (data: Uint8Array): void => {
+      pushU32(StorableId.CMemory);
+      pushU32(0);
+      pushU32(data.length);
+      for (const byte of data) out.push(byte);
+    };
+    pushU32(StorableId.CStringArray);
+    pushU32(0);
+    pushU32(1); // forceSequentialIds
+    pushU32(2); // stringCount
+    pushU32(2); // usedIdCount
+    pushU32(3); // slotCount (incl. the hole)
+    pushU32(pool.length);
+    pushCMemory(encOffsets);
+    out.push(1);
+    pushCMemory(encPool);
+
+    const cif = decodeCifStringArray(Uint8Array.from(out));
+    expect(cif.slotCount).toBe(3);
+    expect(cif.lines).toEqual(real); // hole skipped, order preserved
+  });
+
+  it('returns no lines when hasStringPool is 0', () => {
+    const out: number[] = [];
+    const pushU32 = (v: number): void =>
+      void out.push(v & 0xff, (v >>> 8) & 0xff, (v >>> 16) & 0xff, (v >>> 24) & 0xff);
+    pushU32(StorableId.CStringArray);
+    pushU32(0);
+    pushU32(0); // forceSequentialIds
+    pushU32(0); // stringCount
+    pushU32(0); // usedIdCount
+    pushU32(0); // slotCount
+    pushU32(0); // stringPoolUsedBytes
+    // empty offsets CMemory
+    pushU32(StorableId.CMemory);
+    pushU32(0);
+    pushU32(0);
+    out.push(0); // hasStringPool = 0
+
+    const cif = decodeCifStringArray(Uint8Array.from(out));
+    expect(cif.lines).toEqual([]);
+  });
+
   it('rejects a non-CStringArray root', () => {
     const bad = new Uint8Array(8); // id 0, version 0
     expect(() => decodeCifStringArray(bad)).toThrow(/not a CStringArray/);
+  });
+
+  it('throws a cif-prefixed error on a truncated header (not a raw RangeError)', () => {
+    expect(() => decodeCifStringArray(new Uint8Array(0))).toThrow(/cif: read of 4 bytes overruns/);
+    expect(() => decodeCifStringArray(new Uint8Array(6))).toThrow(/cif: read of 4 bytes overruns/);
   });
 });
