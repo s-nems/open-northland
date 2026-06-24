@@ -5,6 +5,7 @@ import { EventBuffer } from './events.js';
 import { fx } from './fixed.js';
 import { Rng } from './rng.js';
 import { SYSTEM_ORDER, type SystemContext } from './systems/index.js';
+import { type TerrainGraph, type TerrainMap, buildTerrainGraph } from './terrain.js';
 
 export { World, defineComponent } from './ecs/world.js';
 export type { Entity, Component } from './ecs/world.js';
@@ -40,7 +41,13 @@ import { type Invariant as _Invariant, checkInvariants as _checkInvariants } fro
 export interface SimOptions {
   seed: number;
   content: ContentSet;
-  // map: MapData;  // added in Phase 2 when the map decoder exists
+  /**
+   * The terrain map (dimensions + row-major landscape-typeId grid). Optional: trivial fixtures and
+   * the determinism golden run mapless. When given, the sim builds the cell-adjacency graph once and
+   * exposes it as the `terrain` resource on every system's context. The full `map.cif` tile-grid
+   * decoder will feed this in Phase 2 — for now a scenario/test supplies a small synthetic grid.
+   */
+  map?: TerrainMap;
 }
 
 /**
@@ -51,6 +58,12 @@ export class Simulation {
   readonly world = new World();
   readonly rng: Rng;
   readonly content: ContentSet;
+  /**
+   * The terrain cell-adjacency graph (navigation/placement), or undefined for a mapless sim. Built
+   * once at construction from `opts.map` so per-tick lookups are pure array reads. A world resource,
+   * not entities — it isn't hashed (immutable input, like content), so it never affects determinism.
+   */
+  readonly terrain?: TerrainGraph;
   /** One-shot events produced during the current tick (drained by render/audio). */
   readonly events = new EventBuffer();
   private currentTick = 0;
@@ -58,6 +71,7 @@ export class Simulation {
   constructor(opts: SimOptions) {
     this.rng = new Rng(opts.seed);
     this.content = opts.content;
+    if (opts.map !== undefined) this.terrain = buildTerrainGraph(opts.content, opts.map);
   }
 
   get tick(): number {
@@ -73,6 +87,9 @@ export class Simulation {
       rng: this.rng,
       tick: this.currentTick,
       events: this.events,
+      // Only attach `terrain` when present: under exactOptionalPropertyTypes an optional property
+      // must be omitted rather than set to undefined.
+      ...(this.terrain !== undefined ? { terrain: this.terrain } : {}),
     };
     for (const system of SYSTEM_ORDER) {
       system(this.world, ctx);

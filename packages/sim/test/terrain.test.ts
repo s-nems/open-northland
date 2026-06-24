@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   type CellId,
   ONE,
+  Simulation,
   TerrainGraph,
   type TerrainMap,
   buildTerrainGraph,
   cellManhattanDistance,
   fx,
 } from '../src/index.js';
+import { SYSTEM_ORDER, type System, type SystemContext } from '../src/systems/index.js';
 import { testContent } from './fixtures/content.js';
 
 /**
@@ -135,5 +137,50 @@ describe('cellManhattanDistance', () => {
     const b = g.cellAt(2, 2);
     expect(cellManhattanDistance(g, a, b)).toBe(fx.fromInt(4));
     expect(cellManhattanDistance(g, a, a)).toBe(fx.fromInt(0));
+  });
+});
+
+describe('terrain wired as a world resource on the Simulation', () => {
+  it('builds the graph from the map and exposes it on the sim', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: crossMap() });
+    expect(sim.terrain).toBeInstanceOf(TerrainGraph);
+    expect(sim.terrain?.cellCount).toBe(9);
+    expect(sim.terrain?.isWalkable(sim.terrain.cellAt(1, 1))).toBe(false); // centre water
+  });
+
+  it('a mapless sim has no terrain resource', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    expect(sim.terrain).toBeUndefined();
+  });
+
+  it('surfaces the terrain on the context the real step() schedule receives', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: crossMap() });
+    let seen: SystemContext['terrain'];
+    const probe: System = (_world, ctx) => {
+      seen = ctx.terrain;
+    };
+    // Splice a probe into the real SYSTEM_ORDER so step() — not a hand-built context — plumbs it.
+    const order = SYSTEM_ORDER as System[];
+    order.push(probe);
+    try {
+      sim.step();
+    } finally {
+      order.pop();
+    }
+    expect(seen).toBe(sim.terrain);
+    expect(seen).toBeInstanceOf(TerrainGraph);
+  });
+
+  it('a bad map propagates the builder guard at construction', () => {
+    const bad: TerrainMap = { width: 1, height: 1, typeIds: [99] };
+    expect(() => new Simulation({ seed: 1, content: testContent(), map: bad })).toThrow(/typeId 99 absent/);
+  });
+
+  it('two sims with the same seed + map stay determinism-equal (terrain is not hashed state)', () => {
+    const a = new Simulation({ seed: 5, content: testContent(), map: crossMap() });
+    const b = new Simulation({ seed: 5, content: testContent(), map: crossMap() });
+    a.run(100);
+    b.run(100);
+    expect(a.hashState()).toBe(b.hashState());
   });
 });

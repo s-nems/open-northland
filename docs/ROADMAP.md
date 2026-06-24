@@ -322,8 +322,19 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
         `cellManhattanDistance` is the fixed-point heuristic seed for the pathfinder. **Hands-on:** built
         `dist/` on a 5×4 grid w/ a 4-cell water river → 16 walkable / 4 blocked, canonical neighbour
         order stable across rebuilds, water dropped from walkable edges, absent-typeId guard fires.
-        **Still to do:** a real per-type walk-cost field (uniform ONE for now), wiring the graph as a
-        `world.terrain` resource, and feeding it from a decoded map's tile grid.
+        **Still to do:** a real per-type walk-cost field (uniform ONE for now), and feeding the graph
+        from a decoded map's tile grid.
+      - [x] **Wired as the `world.terrain` resource.** `SimOptions` now takes an optional `map:
+        TerrainMap`; the `Simulation` builds the graph once at construction (`buildTerrainGraph`) and
+        owns it as `readonly terrain?: TerrainGraph`, surfacing it on every system's `SystemContext.terrain`
+        each `step()`. Optional because trivial fixtures (the determinism golden) run mapless — the
+        pathfinding/terrain systems that need it check-and-no-op when absent. The resource is **not
+        hashed** (immutable input, like `content`), so it never affects determinism; the builder's
+        absent-typeId guard now fires at sim construction. Under `exactOptionalPropertyTypes` the ctx
+        key is omitted (not set to `undefined`) when mapless. **Hands-on:** built `dist/`, a seed-9 sim
+        over a 3×3 water-centre map → `terrain` present (9 cells, centre non-walkable, walkable-neighbour
+        filtering correct); two same-seed+map runs hash-equal over 200 ticks (`1ef172ae`); a mapless sim
+        has `terrain===undefined`; a typeId-99 map throws at construction.
 - [ ] PathfindingSystem: A* on the cell graph with **canonical tie-breaking** (budgeted/tick).
 - [ ] MovementSystem (fixed-point) following paths.
 - [ ] **Atomic planner slice:** AISystem picks an atomic (utility over the job's allowed atomics);
