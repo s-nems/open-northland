@@ -341,3 +341,8 @@ the next iteration inherits it.
   canonical `stockpileEntries` to keep the idiom (the values are identical either way). The tell that
   it's a true read view: no system reads it back to branch on it — verify the change leaves the golden
   hash untouched (a read view adds no state). (sim/read-model)
+- [4874a0f] When folding a nullable field (`Settler.jobType`) onto a sentinel key, use `?? sentinel`
+  (nullish), never `|| sentinel`: a `JobType` id of `0` (`none`) is a VALID id, and `||` would silently
+  fold every id-0 settler into the idle bucket. Pick the sentinel OUTSIDE the field's value space — a
+  negative (`IDLE_JOB = -1`) for an id space that starts at 0 — so the "unassigned" bucket can never
+  collide with a real id. (sim/read-model)
