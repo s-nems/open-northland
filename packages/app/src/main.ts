@@ -1,9 +1,13 @@
 import {
   SYNTHETIC_BINDINGS,
   type SpriteSheet,
+  buildHud,
   buildScene,
   createPixiApp,
   createSyntheticAtlasSource,
+  layoutHud,
+  placeHud,
+  renderHud,
   renderScene,
   syntheticAtlasFrames,
 } from '@vinland/render';
@@ -54,6 +58,9 @@ async function main(): Promise<void> {
   // The slice sim, kept live and stepped one tick per fixed interval below. When a map loaded, the sim
   // navigates that real grid (placement on its walkable cells); else the synthetic strip.
   const sim = runSlice(7, 0, loaded ?? undefined);
+  // The slice is single-tribe (viking, tribe 1); draw its HUD panel each frame.
+  const HUD_TRIBE = 1;
+  const screen = { width: CANVAS_W, height: CANVAS_H };
 
   const timestep = new FixedTimestep();
   let lastMs = performance.now();
@@ -62,7 +69,10 @@ async function main(): Promise<void> {
     const elapsed = nowMs - lastMs;
     lastMs = nowMs;
     timestep.advance(elapsed, () => sim.step());
-    renderScene(app, buildScene(sim.snapshot(), terrain), camera, sheet);
+    const snap = sim.snapshot();
+    renderScene(app, buildScene(snap, terrain), camera, sheet);
+    // HUD overlay on top of the scene (renderScene cleared the stage; this adds to it).
+    renderHud(app, placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', screen));
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

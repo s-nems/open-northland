@@ -1,6 +1,6 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
-import { type HudModel, IDLE_JOB, buildHud, layoutHud } from '../src/index.js';
+import { type HudModel, IDLE_JOB, buildHud, layoutHud, placeHud } from '../src/index.js';
 
 /**
  * Unit tests for the pure HUD-model layer — the part of the HUD an agent can self-verify (the pixels
@@ -162,5 +162,54 @@ describe('layoutHud', () => {
   it('is byte-identical for the same model (deterministic — never reshuffles between equal frames)', () => {
     const m = model({ tick: 3, jobs: [{ jobType: 1, count: 2 }], stocks: [{ goodType: 9, amount: 5 }] });
     expect(layoutHud(m)).toEqual(layoutHud(m));
+  });
+});
+
+/**
+ * Unit tests for the pure HUD *placement* layer — the last self-verifiable decision before the GPU:
+ * where on the canvas each panel row lands (the screen-space analogue of `terrainMapToScene`). The
+ * Pixi draw (`renderHud`) is the un-self-verifiable glyph half a human judges and is not tested here.
+ */
+const HUD_MARGIN = 8; // mirrors the placement margin in hud.ts (kept local so a drift is caught)
+
+describe('placeHud', () => {
+  // A small layout with three rows, sized like layoutHud's box (pad + rows·lineH + pad).
+  const layout = layoutHud(model({ tick: 1, tribe: 1, population: 2 }));
+
+  it('top-left: anchors the panel at the margin and offsets every row by the panel origin', () => {
+    const placed = placeHud(layout, 'top-left', { width: 960, height: 540 });
+    expect(placed.panelX).toBe(HUD_MARGIN);
+    expect(placed.panelY).toBe(HUD_MARGIN);
+    expect(placed.width).toBe(layout.width);
+    expect(placed.height).toBe(layout.height);
+    // Each placed row = panel origin + the layout's panel-relative offset, text carried verbatim.
+    expect(placed.rows).toEqual(
+      layout.rows.map((r) => ({ x: HUD_MARGIN + r.x, y: HUD_MARGIN + r.y, text: r.text })),
+    );
+  });
+
+  it('top-right / bottom corners anchor the panel against the matching screen edge', () => {
+    const screen = { width: 960, height: 540 };
+    const tr = placeHud(layout, 'top-right', screen);
+    expect(tr.panelX).toBe(960 - layout.width - HUD_MARGIN);
+    expect(tr.panelY).toBe(HUD_MARGIN);
+    const bl = placeHud(layout, 'bottom-left', screen);
+    expect(bl.panelX).toBe(HUD_MARGIN);
+    expect(bl.panelY).toBe(540 - layout.height - HUD_MARGIN);
+    const br = placeHud(layout, 'bottom-right', screen);
+    expect(br.panelX).toBe(960 - layout.width - HUD_MARGIN);
+    expect(br.panelY).toBe(540 - layout.height - HUD_MARGIN);
+  });
+
+  it('clamps the panel on-screen when the canvas is smaller than the panel (keeps top-left visible)', () => {
+    // Canvas narrower + shorter than the panel: the clamp keeps the origin at 0, not negative.
+    const placed = placeHud(layout, 'bottom-right', { width: 10, height: 10 });
+    expect(placed.panelX).toBe(0);
+    expect(placed.panelY).toBe(0);
+  });
+
+  it('is byte-identical for the same inputs (deterministic placement)', () => {
+    const screen = { width: 800, height: 600 };
+    expect(placeHud(layout, 'top-right', screen)).toEqual(placeHud(layout, 'top-right', screen));
   });
 });

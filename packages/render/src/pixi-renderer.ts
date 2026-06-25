@@ -1,4 +1,14 @@
-import { Application, Container, Graphics, Rectangle, Sprite, Texture, type TextureSource } from 'pixi.js';
+import {
+  Application,
+  Container,
+  Graphics,
+  Rectangle,
+  Sprite,
+  Text,
+  Texture,
+  type TextureSource,
+} from 'pixi.js';
+import type { HudPlacement } from './hud.js';
 import { TILE_HALF_H, TILE_HALF_W } from './index.js';
 import type { DrawItem, DrawKind } from './scene.js';
 import { type AtlasFrame, type SpriteAtlas, type SpriteBindings, resolveSpriteFrame } from './sprites.js';
@@ -185,4 +195,68 @@ function spriteGraphic(item: DrawItem, sx: number, sy: number): Graphics {
     .fill({ color: colour })
     .stroke({ color: 0x000000, width: 1, alpha: 0.5 });
   return g;
+}
+
+/**
+ * Visual style for the HUD panel — the part a human tunes (colour/font/opacity), kept here so the
+ * pure {@link HudPlacement} carries only geometry. `panelColor`/`panelAlpha` paint the backing rect;
+ * `textColor`/`fontSize`/`fontFamily` style every text row.
+ */
+export interface HudStyle {
+  readonly panelColor: number;
+  readonly panelAlpha: number;
+  readonly textColor: number;
+  readonly fontSize: number;
+  readonly fontFamily: string;
+}
+
+/** A readable default HUD style (a dark translucent panel, light monospace text). */
+export const DEFAULT_HUD_STYLE: HudStyle = {
+  panelColor: 0x000000,
+  panelAlpha: 0.55,
+  textColor: 0xf0e8d8,
+  fontSize: 12,
+  fontFamily: 'monospace',
+};
+
+/**
+ * Draw a placed HUD panel onto the Pixi stage — the GPU half of the HUD line, the un-self-verifiable
+ * twin of {@link renderScene} for the on-screen panel. It is a *pure consumer of a {@link HudPlacement}*
+ * (`placeHud`'s output): a backing rectangle at the panel box plus one Pixi {@link Text} per already
+ * screen-positioned row, in row order — the GPU re-derives no layout, exactly as `renderScene` re-derives
+ * no projection. The *which string lands where* decision stays unit-tested upstream (`layoutHud`/
+ * `placeHud`); the only thing untested here is whether the glyphs *look* right — a human eyeballs that
+ * (the screenshot harness, docs/TESTING.md).
+ *
+ * It adds its display objects to the existing stage (a HUD overlay sits on TOP of the world scene), so
+ * call it AFTER {@link renderScene} for one frame — `renderScene` clears the stage, then this overlays.
+ * Floats are fine; this is `render`, never read back into the deterministic sim.
+ */
+export function renderHud(
+  app: Application,
+  placement: HudPlacement,
+  style: HudStyle = DEFAULT_HUD_STYLE,
+): void {
+  const layer = new Container();
+
+  // Backing panel rect (the box the layout sized) — drawn first so the text overlays it.
+  const panel = new Graphics();
+  panel
+    .rect(placement.panelX, placement.panelY, placement.width, placement.height)
+    .fill({ color: style.panelColor, alpha: style.panelAlpha });
+  layer.addChild(panel);
+
+  // One text object per row, at its absolute screen position. The placement already ordered the rows
+  // top-to-bottom and indented the tallies, so the GPU just paints each string where it was placed.
+  for (const row of placement.rows) {
+    const text = new Text({
+      text: row.text,
+      style: { fill: style.textColor, fontSize: style.fontSize, fontFamily: style.fontFamily },
+    });
+    text.position.set(row.x, row.y);
+    layer.addChild(text);
+  }
+
+  app.stage.addChild(layer);
+  app.render();
 }
