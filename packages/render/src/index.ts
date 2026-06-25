@@ -19,6 +19,13 @@ export {
   type SpriteKind,
 } from './sprites.js';
 export { createPixiApp, renderScene, type Camera, type SpriteSheet } from './pixi-renderer.js';
+export {
+  createSyntheticAtlasSource,
+  syntheticAtlasFrames,
+  SYNTHETIC_BINDINGS,
+  SYNTHETIC_ATLAS_WIDTH,
+  SYNTHETIC_ATLAS_HEIGHT,
+} from './synthetic-atlas.js';
 
 /**
  * The renderer is a PURE CONSUMER of sim state (see docs/ARCHITECTURE.md). It reads a snapshot

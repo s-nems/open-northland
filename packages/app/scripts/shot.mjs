@@ -8,9 +8,10 @@
 // always feeds the renderer the same draw list. This is a committed script (not the Playwright MCP)
 // so it lives in the repo, runs in CI, and can later graduate to golden-image diffs.
 //
-// Usage:  node packages/app/scripts/shot.mjs [--seed N] [--ticks N] [--map id] [--out path.png]
+// Usage:  node packages/app/scripts/shot.mjs [--seed N] [--ticks N] [--map id] [--atlas] [--out path.png]
 //         npm run shot -- --seed 7 --ticks 20 --out shot.png
 //         npm run shot -- --map oasis_o_plenty   # draw an actual decoded content/maps/<id>.json grid
+//         npm run shot -- --atlas                # bind the free synthetic atlas (textured sprites)
 
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -26,9 +27,15 @@ function arg(name, fallback) {
   return i >= 0 && i + 1 < process.argv.length ? process.argv[i + 1] : fallback;
 }
 
+/** A boolean CLI flag — present (`--atlas`) vs absent. */
+function flag(name) {
+  return process.argv.includes(`--${name}`);
+}
+
 const seed = arg('seed', '7');
 const ticks = arg('ticks', '20');
 const mapId = arg('map', '');
+const atlas = flag('atlas');
 const outPath = resolve(process.cwd(), arg('out', 'shot.png'));
 
 async function main() {
@@ -44,7 +51,8 @@ async function main() {
   const address = server.httpServer?.address();
   const resolvedPort = typeof address === 'object' && address ? address.port : port;
   const mapParam = mapId ? `&map=${encodeURIComponent(mapId)}` : '';
-  const url = `http://localhost:${resolvedPort}/?shot&seed=${seed}&ticks=${ticks}${mapParam}`;
+  const atlasParam = atlas ? '&atlas' : '';
+  const url = `http://localhost:${resolvedPort}/?shot&seed=${seed}&ticks=${ticks}${mapParam}${atlasParam}`;
 
   const browser = await chromium.launch();
   let failed = false;
