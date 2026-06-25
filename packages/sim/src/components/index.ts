@@ -23,6 +23,14 @@ export const Settler = defineComponent<{
   jobType: number | null;
   /** 0..ONE hunger; rises over time, NeedsSystem drives eating. */
   hunger: Fixed;
+  /**
+   * 0..ONE fatigue/tiredness; rises over time like {@link hunger}, the second need the NeedsSystem
+   * tracks. The original satisfies it with the `sleep` atomic (id 8, bound for every job/tribe in
+   * `tribetypes` `setatomic <job> 8 "..._sleep"`); the rise/reset loop mirrors hunger's. The rest
+   * *drive* (a settler heading off to sleep when fatigue crosses a threshold) is a later slice — this
+   * field + its rise is the fatigue-rise half (the same split hunger went through).
+   */
+  fatigue: Fixed;
   /** specialization id -> experience points (humanjobexperiencetypes). */
   experience: Map<number, number>;
 }>('Settler');

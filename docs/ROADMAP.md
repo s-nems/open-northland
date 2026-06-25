@@ -929,6 +929,24 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             The 1000-tick integration golden is untouched (hunger reaches ¾·ONE only at tick ~3072). **Still
             open:** the non-food needs (`pray`/`enjoy`/social/`make_love`), and tuning the trigger/food-id
             once the atomic `event` vocabulary + an eatable-flag extraction land.
+      - [x] **Fatigue rise** (the first non-food need — the rest/sleep bar) — `needsSystem` now also
+            raises every {@link Settler}'s `fatigue` by `FATIGUE_RISE_PER_TICK` (=ONE/8192, half hunger's
+            rate so a settler eats about twice per sleep) each tick, clamped at ONE (a new `fatigueInRange`
+            core invariant). The pairing reset is the **`sleep` atomic** (id **8**, bound for every
+            job/tribe in the original `tribetypes` `setatomic <job> 8 "..._sleep"`); this is the rise half,
+            the same split hunger went through. The other named non-food needs (`pray` id 12 / `enjoy` id
+            17 / `make_love` id 78 — each satisfied at a target site, not in place) follow. APPROXIMATED
+            (see FIDELITY.md): like hunger, the original ticks rest via per-animation events
+            (`viking_civilist_sleep` carries `event <at> 1 +4000`, type 1 = the rest channel) needing the
+            atomic `event (type,value)` decode; a flat per-tick rate is the bounded "tiredness grows,
+            sleeping resets it" core. **Hands-on:** 200 ticks through the real `Simulation.step()`
+            schedule (settler spawned via the command queue) → fatigue rises at exactly half hunger's
+            rate (1600 vs 3200), stays below it, **0** invariant violations every tick, two seed-7 runs
+            hash-equal (`98993f42`). The golden state hash moved (`db68cc53`→`ff907e9a`) — settlers now
+            carry a second need field — but the **atomic trace + 8-plank output are unchanged** (no sleep
+            DRIVE yet: fatigue only rises, never reaching a threshold over the 1000-tick slice).
+            **Still open:** the sleep DRIVE (planner choosing `sleep` when fatigue crosses a threshold,
+            mirroring the eat drive), then the target-bound needs (`pray`/`enjoy`/`make_love`).
 - [ ] **ProgressionSystem** — experience + tech graph: `humanjobexperiencetypes` per-specialization
       XP, `trainforjob` schooling, `needfor*`/`allow*`/`jobEnables*` gating goods/houses/jobs/vehicles.
 - [ ] JobSystem assignment across many workplaces; multiple carriers + vehicle stock slots.

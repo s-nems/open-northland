@@ -64,6 +64,7 @@ function woodcutterAt(sim: Simulation, x: number, y: number): Entity {
     tribe: VIKING,
     jobType: WOODCUTTER,
     hunger: fx.fromInt(0),
+    fatigue: fx.fromInt(0),
     experience: new Map(),
   });
   return e;
@@ -190,7 +191,13 @@ describe('atomicPlanner — choosing the next atomic', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-    sim.world.add(e, Settler, { tribe: VIKING, jobType: null, hunger: fx.fromInt(0), experience: new Map() });
+    sim.world.add(e, Settler, {
+      tribe: VIKING,
+      jobType: null,
+      hunger: fx.fromInt(0),
+      fatigue: fx.fromInt(0),
+      experience: new Map(),
+    });
     woodAt(sim, 3, 0);
     aiSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(e, MoveGoal)).toBe(false);

@@ -60,6 +60,7 @@ function sawmill(
       tribe: 1,
       jobType: CARPENTER,
       hunger: fx.fromInt(0),
+      fatigue: fx.fromInt(0),
       experience: new Map(),
     });
     sim.world.add(worker, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
@@ -187,7 +188,13 @@ describe('productionSystem — worker-presence gate', () => {
     const { mill } = sawmill(sim, [[WOOD, 5]], false);
     // A woodcutter (job 1) — NOT the carpenter (2) the sawmill employs — stands on the mill's tile.
     const wrong = sim.world.create();
-    sim.world.add(wrong, Settler, { tribe: 1, jobType: 1, hunger: fx.fromInt(0), experience: new Map() });
+    sim.world.add(wrong, Settler, {
+      tribe: 1,
+      jobType: 1,
+      hunger: fx.fromInt(0),
+      fatigue: fx.fromInt(0),
+      experience: new Map(),
+    });
     sim.world.add(wrong, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     for (let t = 0; t < CYCLE_TICKS + 2; t++) productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(mill, Production)).toBe(false); // wrong job: still unstaffed

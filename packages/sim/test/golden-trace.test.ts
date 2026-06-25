@@ -190,10 +190,11 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   it('matches the golden final state hash', () => {
     const run = runSlice(SEED, TICKS);
     // Intentional-change discipline: if this moves, a mechanic changed — name it in the commit.
-    // Moved by the NeedsSystem hunger rise: settlers' `hunger` now grows ONE/4096 per tick (it was
-    // pinned at 0), so each settler's state — and thus the canonical hash — shifts. Behavior is
-    // unchanged: the atomic trace + 8-plank output below are identical (no eating drive yet).
-    expect(run.hash).toBe('db68cc53');
+    // Moved by the NeedsSystem fatigue rise: settlers now carry a second need field, `fatigue`,
+    // growing ONE/8192 per tick (it was added at 0), so each settler's state — and thus the canonical
+    // hash — shifts (db68cc53 → ff907e9a). Behavior is unchanged: the atomic trace + 8-plank output
+    // below are identical (no sleep drive yet — fatigue only rises, never reaches its threshold here).
+    expect(run.hash).toBe('ff907e9a');
   });
 
   it('matches the golden atomic-action trace', () => {
