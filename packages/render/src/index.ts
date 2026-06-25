@@ -4,6 +4,7 @@ import { ONE as SIM_ONE, type Simulation } from '@vinland/sim';
 export const ONE: number = SIM_ONE;
 
 export { buildScene, type DrawItem, type DrawKind, type SceneTerrain } from './scene.js';
+export { createPixiApp, renderScene, type Camera } from './pixi-renderer.js';
 
 /**
  * The renderer is a PURE CONSUMER of sim state (see docs/ARCHITECTURE.md). It reads a snapshot

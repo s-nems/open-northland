@@ -308,9 +308,13 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 > (haul workplace outputs to a store) → **CommandSystem (the mutation seam) + the snapshot read-view**
 > → the **golden state-hash + atomic-action trace over 1000 ticks** are all built and green. The
 > **pure depth-sort scene layer** (snapshot → iso draw list, sprites sorted by feet anchor) is now
-> built and unit-tested too. **Next smallest step: the GPU draw + screenshot harness** — the one
-> remaining Phase-2 piece, a human-judged visual step an agent flags for a human. Lines tagged
-> *(core done…)* pass tests today but await one wiring piece.
+> built and unit-tested too, and the **GPU draw + `npm run shot` screenshot harness** (a Pixi
+> renderer consuming the draw list + a deterministic headless `?shot` entry + a committed Playwright
+> script) now produces a reproducible PNG — eyeballed gross-correct (iso terrain behind feet-sorted
+> sprites), pixel fidelity still deferred to a human. **Next smallest step: a real per-type walk-cost
+> field + feeding the terrain graph from a decoded `map.cif` tile grid** (the open Phase-2 terrain
+> leg), or atlas sprites in place of placeholder geometry. Lines tagged *(core done…)* pass tests
+> today but await one wiring piece.
 - [x] **CommandSystem + serializable command schema** — the ONLY way state mutates. Done —
       `systems/command.ts` (`commandSystem`, first in `SYSTEM_ORDER`) drains a per-sim
       {@link CommandQueue} (`commands.ts`) each tick and applies each serializable {@link Command}
@@ -517,6 +521,9 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
       delivers back into the producer; two seed-13 runs hash-equal.
 - [ ] Render: isometric terrain + the settler sprite from the atlas, **depth-sorted by feet anchor**
       (a visual checklist item — can't be golden-hashed; see docs/TESTING.md).
+      *(GPU draw + the `npm run shot` harness now land with **placeholder geometry**; the one open
+      part is the **atlas sprite** in place of the placeholder box — gated on a free/synthetic atlas,
+      since real bobs are copyrighted/gitignored.)*
       - [x] **Pure scene/depth-sort layer** — `packages/render/src/scene.ts` (`buildScene`): turns a
             `WorldSnapshot` + the terrain grid dimensions into a flat, **depth-sorted** isometric
             draw list (`DrawItem[]`), the testable core of the render line that an agent CAN
@@ -533,12 +540,23 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             **12 draw items** (6 tiles depth −1000000..−999995, then 2 settlers / 2 resources / 2
             buildings sorted by feet, x=0.5→5), terrain strictly behind sprites, deterministic across
             two snapshots (`scene.integration.test.ts` exercises this exact path).
-      - [ ] **GPU draw + screenshot harness** (the human-judged remainder): a Pixi renderer that
-            consumes the `buildScene` draw list (iso tile + atlas sprite per item) + a deterministic,
-            headless render entry ("render scenario X at seed S, step N ticks, draw one frame, signal
-            ready") + an `npm run shot` Playwright script writing a PNG an agent can eyeball. Pixels
-            can't be golden-hashed — Playwright (the committed script, **not** the MCP) is the chosen
-            tool; rationale in docs/TESTING.md. An agent builds it then flags it for a human.
+      - [x] **GPU draw + screenshot harness** (the human-judged remainder). Done — three pieces:
+            (1) a Pixi renderer (`packages/render/src/pixi-renderer.ts`: `createPixiApp` + `renderScene`)
+            consuming the `buildScene` draw list in array order (already depth-sorted, so painter's order
+            == correct occlusion); it draws **placeholder geometry** per item — an iso ground diamond per
+            tile (tinted by landscape typeId) + a feet-anchored body box per sprite (coloured by kind) —
+            because real bob atlases are decoded from a copyrighted copy and gitignored (atlas sprites
+            are a later leg once a free/synthetic atlas exists). (2) a deterministic, headless render
+            entry (`packages/app/src/shot.ts` + `vertical-slice.ts`): `?shot[&seed&ticks]` builds the
+            vertical-slice sim from a tiny synthetic content set, steps N ticks, draws ONE frame, and
+            sets `window.__vinlandShotReady` — NOT the RAF loop. (3) `npm run shot`
+            (`packages/app/scripts/shot.mjs`): boots the app's Vite dev server, drives Chromium via
+            Playwright, waits on the ready flag, and writes a PNG (`--seed/--ticks/--out`). Pixels can't
+            be golden-hashed — the committed script (not the MCP) is the chosen tool; rationale in
+            docs/TESTING.md. **Hands-on:** `npm run shot --out shot.png` → a valid 1000×600 PNG, 0 page
+            errors; eyeballed gross-correct — 6 iso grass diamonds (terrain strictly behind), 6
+            feet-sorted sprites (2 off-white settlers, 2 green resources, 2 gold buildings) occluding
+            back-to-front in the right iso half. Pixel fidelity / feel still deferred to a human.
 - [x] Golden state-hash + golden **atomic-action trace** over ~1000 ticks; invariants each tick.
       Done — `packages/sim/test/golden-trace.test.ts`. The *integration* golden (the per-mechanic
       goldens pin one slice each; this pins the whole economy): a self-supplying woodcutter + a carrier
