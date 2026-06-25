@@ -1,6 +1,7 @@
 import { Building, Position, Settler } from '../components/index.js';
 import type { World } from '../ecs/world.js';
 import { type Fixed, ONE, fx } from '../fixed.js';
+import { NEWBORN_AGE_CLASS } from './ageclass.js';
 import type { System, SystemContext } from './context.js';
 import { housingCapacity, tribePopulation } from './shared.js';
 
@@ -17,20 +18,32 @@ import { housingCapacity, tribePopulation } from './shared.js';
  * (tribe)`. That cadence is itself the gate: it is deterministic (no RNG, no birth-rate constant) and
  * self-limiting — once population reaches capacity the gate is false and growth stops, so the
  * "population vs housing capacity" invariant ({@link populationWithinHousing}) can never be breached by
- * a birth. A newborn is **idle** (`jobType: null`) like the original (a settler isn't born into a
- * trade), so the JobSystem employs it next tick.
+ * a birth. A newborn is born a **baby** ({@link NEWBORN_AGE_CLASS}) like the original (the first
+ * `jobtypes` records are age classes, not trades — a settler isn't born into a job), so it grows up
+ * before the JobSystem can employ it (the growth cadence is a separate, deferred mechanic).
  *
  * The newborn is placed at the tribe's **home anchor** ({@link homeAnchorFor}): the lowest-id built
  * `home` building's tile — a settler is born at a residence. A tribe eligible for a birth always has a
  * built home (that is what gives it capacity), so the anchor is always found; if it has no *position*
  * (a mapless fixture), the birth is skipped that tick rather than spawning a position-less settler.
  *
- * FIDELITY (approximated — see docs/FIDELITY.md): the housing *capacity* is the data-pinned `homeSize`,
- * but the **birth cadence** (one per tick per tribe) and the **anchor tile** are unpinned — the
- * original's birth rate / family model / where a child appears live below the readable `.ini` (there is
- * no birth-rate key in `houses.ini`/`tribetypes.ini`; `make_love` restores the leisure channel, it
- * carries no birth yield). The faithful baseline is "grow to the housing ceiling and stop", which this
- * matches; the rate + the family/child-growth model (ROADMAP's next item) are calibration-by-observation.
+ * A newborn is born a **baby**, not an instantly-employable adult: in the original the first `jobtypes`
+ * records are age/sex classes a settler passes through (`baby`→`child`→adult trade), not jobs — so the
+ * newborn's `jobType` is the youngest age class ({@link NEWBORN_AGE_CLASS}, pinned to `logicdefines.inc`
+ * `JOB_TYPE_HUMAN_BABY_FEMALE`). The JobSystem leaves a baby unemployed (its `jobType` is non-null, so
+ * it is skipped by the idle-only assignment, and no workplace lists a baby in its `workers` slots, so it
+ * is never adopted either). The growth transition baby→child→adult is a **separate, deferred** mechanic
+ * (its cadence has no readable oracle — see {@link NEWBORN_AGE_CLASS} / docs/FIDELITY.md); this slice
+ * lands only the data-pinned age-class *structure*.
+ *
+ * FIDELITY: the housing *capacity* is the data-pinned `homeSize` and the newborn's **age class** is
+ * the data-pinned baby job id ({@link NEWBORN_AGE_CLASS}) — both faithful by extraction. The **birth
+ * cadence** (one per tick per tribe), the **anchor tile**, and the **sex** are approximated — the
+ * original's birth rate / family model / where a child appears / which sex live below the readable
+ * `.ini` (no birth-rate key in `houses.ini`/`tribetypes.ini`; `make_love` restores the leisure channel,
+ * it carries no birth yield). The faithful baseline is "grow to the housing ceiling and stop, as
+ * babies", which this matches; the rate + the **growth cadence** (baby→child→adult, ROADMAP's next
+ * item) are calibration-by-observation (see docs/FIDELITY.md).
  *
  * Determinism: tribes are processed in ascending order (a sorted distinct-tribe list derived from the
  * built homes), and the anchor is the lowest-id home via {@link World.canonicalEntities} — both the
@@ -47,14 +60,15 @@ export const reproductionSystem: System = (world, ctx) => {
   }
 };
 
-/** Create one newborn settler of `tribe` at the `anchor` tile — idle (the JobSystem employs it next
- * tick), every need at 0 and no experience, exactly the `spawnSettler` shape. Emits `settlerBorn`. */
+/** Create one newborn settler of `tribe` at the `anchor` tile — born a **baby**
+ * ({@link NEWBORN_AGE_CLASS}, the youngest age class, NOT an adult trade), every need at 0 and no
+ * experience, otherwise the `spawnSettler` shape. Emits `settlerBorn`. */
 function bornAt(world: World, ctx: SystemContext, tribe: number, anchor: { x: Fixed; y: Fixed }): void {
   const e = world.create();
   world.add(e, Position, { x: anchor.x, y: anchor.y });
   world.add(e, Settler, {
     tribe,
-    jobType: null,
+    jobType: NEWBORN_AGE_CLASS,
     hunger: fx.fromInt(0),
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
