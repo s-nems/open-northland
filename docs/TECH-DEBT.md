@@ -23,17 +23,24 @@ feature plan, see [ROADMAP.md](ROADMAP.md).
 - **Done so far.** The shared `System`/`SystemContext` types moved to `systems/context.ts`, and
   `movementSystem` (the one system with **zero** shared helpers) moved to `systems/movement.ts`.
   Then the `todo()` factory + the ten not-yet-implemented placeholder systems moved to
-  `systems/stubs.ts` (the lowest-risk slice — no shared helpers, only the `System` type). `index.ts`
-  re-exports all three, so the public `systems` namespace and the test imports are unchanged. This
-  establishes the no-import-cycle layout (`context.ts` is the leaf every per-system file imports
-  `System` from, never the barrel) and the per-system-file pattern. **Remaining:** the four real
-  systems still in `index.ts` (`aiSystem`, `pathfindingSystem`, `atomicSystem`, `productionSystem`)
-  + their helpers and the shared-helper untangling below.
+  `systems/stubs.ts` (the lowest-risk slice — no shared helpers, only the `System` type). Next the
+  **shared-helper leaf landed** — `systems/shared.ts` now holds the three genuinely cross-system
+  helpers (`stockCapacity`, `recipeOf`, `inRange`) — and `productionSystem` moved to
+  `systems/production.ts` (with its production-only `canStartCycle`/`consumeInputs`/`depositOutputs`),
+  importing the shared helpers from the leaf. `index.ts` re-exports all of them, so the public
+  `systems` namespace and the test imports are unchanged (all tests import through the barrel). This
+  establishes the no-import-cycle layout (`context.ts` + `shared.ts` are the leaves every per-system
+  file imports from, never the barrel or each other) and the per-system-file pattern. **Remaining:**
+  the three real systems still in `index.ts` (`aiSystem`, `pathfindingSystem`, `atomicSystem`) + their
+  helpers (`aiSystem` and `atomicSystem` already consume `shared.ts`, so they're the next two
+  extractions; `pathfindingSystem` consumes `inRange` from the leaf and the A* core from
+  `../pathfinding.ts`).
 - **Change (the deferred remainder).** Split each remaining real system into its own file under
   `systems/`, with a small shared-helper module to break the cross-system dependencies:
   - `systems/shared.ts` — the genuinely cross-system helpers: `stockCapacity` (used by the ai store
-    scan, the atomic `pileup`, and production's `canStartCycle`/`depositOutputs`) and `inRange`
-    (used by the ai navigation planner and the pathfinding system).
+    scan, the atomic `pileup`, and production's `canStartCycle`/`depositOutputs`), `recipeOf` (used by
+    the ai haul scan and production), and `inRange` (used by the ai navigation planner and the
+    pathfinding system). **(Done — landed alongside the production extraction.)**
   - `systems/ai.ts` — `aiSystem` + `atomicPlanner` + `navigationPlanner` + the ai-only helpers
     (`nearestHarvestableFor`, `nearestStoreFor`, `jobAtomics`, `entityCell`, `manhattan`,
     `atomicDuration`, `startAtomic`, and the `PILEUP_ATOMIC_ID`/`DEFAULT_ATOMIC_DURATION`/
@@ -43,8 +50,9 @@ feature plan, see [ROADMAP.md](ROADMAP.md).
     `systems/` directory, but consider naming it to avoid the eyeball collision.)
   - `systems/atomic.ts` — `atomicSystem` + `applyEffect` + `harvestFromNode`/`addCarry`/
     `pileupIntoStore` + `HARVEST_YIELD`.
-  - `systems/production.ts` — `productionSystem` + `recipeOf`/`canStartCycle`/`consumeInputs`/
-    `depositOutputs`.
+  - `systems/production.ts` — `productionSystem` + `canStartCycle`/`consumeInputs`/`depositOutputs`
+    (`recipeOf` graduated to `shared.ts` — the ai also uses it). **(Done — landed; golden `7f89b94d`
+    unchanged.)**
   - `systems/stubs.ts` — the `todo()` factory and the not-yet-implemented placeholder systems.
     **(Done — landed; see "Done so far" above.)** As a stub becomes real it graduates to its own
     file; the end-state is `index.ts` = barrel + `SYSTEM_ORDER` only.

@@ -1,4 +1,3 @@
-import type { Recipe } from '@vinland/data';
 import { assertNever } from '../brand.js';
 import type { AtomicEffect } from '../commands.js';
 import {
@@ -9,7 +8,6 @@ import {
   PathFollow,
   PathRequest,
   Position,
-  Production,
   Resource,
   Settler,
   Stockpile,
@@ -22,6 +20,8 @@ import type { CellId, TerrainGraph } from '../terrain.js';
 import { commandSystem } from './command.js';
 import type { System, SystemContext } from './context.js';
 import { MOVE_SPEED_PER_TICK, movementSystem } from './movement.js';
+import { productionSystem } from './production.js';
+import { inRange, recipeOf, stockCapacity } from './shared.js';
 import {
   cleanupSystem,
   combatSystem,
@@ -35,13 +35,14 @@ import {
   transportSystem,
 } from './stubs.js';
 
-// The System/SystemContext types, the CommandSystem, the MovementSystem, and the not-yet-implemented
-// stub systems live in their own modules now; the barrel re-exports them so `@vinland/sim`'s
-// `systems` namespace (and the tests) keep a single import site. This is the ongoing systems/ split
-// — see docs/TECH-DEBT.md.
+// The System/SystemContext types, the CommandSystem, the MovementSystem, the ProductionSystem, and
+// the not-yet-implemented stub systems live in their own modules now; the barrel re-exports them so
+// `@vinland/sim`'s `systems` namespace (and the tests) keep a single import site. The genuinely
+// cross-system helpers live in ./shared.ts. This is the ongoing systems/ split — see docs/TECH-DEBT.md.
 export type { System, SystemContext };
 export { commandSystem };
 export { MOVE_SPEED_PER_TICK, movementSystem };
+export { productionSystem };
 export {
   cleanupSystem,
   combatSystem,
@@ -500,10 +501,6 @@ function resolvePath(terrain: TerrainGraph, start: number, goal: number): CellId
   return findPath(terrain, start as CellId, goal as CellId);
 }
 
-function inRange(terrain: TerrainGraph, cell: number): boolean {
-  return Number.isInteger(cell) && cell >= 0 && cell < terrain.cellCount;
-}
-
 /**
  * AtomicSystem — the executor half of the settler planner: advance the {@link CurrentAtomic} a
  * settler is running and, on completion, apply its typed {@link AtomicEffect}.
@@ -677,139 +674,13 @@ function pileupIntoStore(world: World, ctx: SystemContext, settler: Entity, stor
   else world.remove(settler, Carrying); // fully unloaded
 }
 
-/**
- * The per-good capacity of a store's stockpile, from its building type's stock slots. A good with no
- * declared slot has no room (capacity 0); a store with no Building/type is treated as uncapped so a
- * test fixture without a building still accepts deposits.
- */
-function stockCapacity(world: World, ctx: SystemContext, store: Entity, goodType: number): number {
-  const building = world.tryGet(store, Building);
-  if (building === undefined) return Number.MAX_SAFE_INTEGER; // bare store fixture: uncapped
-  const type = ctx.content.buildings.find((b) => b.typeId === building.buildingType);
-  if (type === undefined) return 0;
-  const slot = type.stock.find((s) => s.goodType === goodType);
-  return slot?.capacity ?? 0;
-}
-
-/**
- * ProductionSystem — one workplace turns input goods into output goods over time.
- *
- * A workplace is a {@link Building} with a {@link Stockpile} whose building type carries a `recipe`
- * (inputs → outputs over `recipe.ticks`). Each tick, for every such building:
- *
- *  - **Running a cycle** (`{@link Production}` present): advance the integer `elapsed` counter; on the
- *    `duration`-th tick, deposit the recipe outputs into the building's own stockpile (the room was
- *    reserved when the cycle started, so they fit), emit a `productionCompleted` event, and remove
- *    the {@link Production} component (the workplace is idle again).
- *  - **Idle** (no `Production`): start a cycle iff (a) the stockpile holds every input in full, and
- *    (b) every output has free room up to the building type's per-good capacity. Starting consumes
- *    the inputs immediately (reserving them) and snapshots `recipe.ticks` as the cycle `duration`.
- *
- * Inputs are consumed at cycle start and outputs deposited at completion, so a cycle is the net
- * transformation inputs→outputs — goods are conserved (nothing teleports; consumption and production
- * are explicit stockpile writes). Per-good capacity is enforced on the output side: a cycle never
- * begins unless its outputs will fit, so the stockpile never overflows.
- *
- * Determinism: no RNG, no wall-clock; buildings are visited in the Production/Building stores'
- * deterministic insertion order, the recipe is read from CONTENT, and every stockpile write goes
- * through the canonical Map (never iterated for a decision). Timing is the exact integer compare
- * `elapsed >= duration` — not an accumulated fixed-point step (which truncates and would hang).
- */
-export const productionSystem: System = (world, ctx) => {
-  // Advance running cycles first, then start new ones — so a cycle started this tick doesn't also
-  // get advanced in the same tick (it begins counting next tick, like CurrentAtomic).
-  for (const e of world.query(Production, Stockpile)) {
-    const prod = world.get(e, Production);
-    const duration = Math.max(1, prod.duration);
-    prod.elapsed += 1;
-    if (prod.elapsed < duration) continue; // still producing
-
-    // Completed: deposit the outputs (room was reserved at start), notify, and go idle.
-    const recipe = recipeOf(world, ctx, e);
-    if (recipe !== undefined) depositOutputs(world, ctx, e, recipe);
-    world.remove(e, Production);
-  }
-
-  // Start cycles on idle workplaces whose inputs are present and outputs have room.
-  for (const e of world.query(Building, Stockpile)) {
-    if (world.has(e, Production)) continue; // already producing
-    const recipe = recipeOf(world, ctx, e);
-    if (recipe === undefined) continue; // not a producing workplace
-    if (!canStartCycle(world, ctx, e, recipe)) continue; // missing inputs or no output room
-
-    consumeInputs(world, e, recipe);
-    world.add(e, Production, { elapsed: 0, duration: recipe.ticks });
-  }
-};
-
-/** The recipe a building's type declares, or undefined if it has no Building/type or no recipe. */
-function recipeOf(world: World, ctx: SystemContext, building: Entity): Recipe | undefined {
-  const b = world.tryGet(building, Building);
-  if (b === undefined) return undefined;
-  const type = ctx.content.buildings.find((t) => t.typeId === b.buildingType);
-  return type?.recipe;
-}
-
-/**
- * Whether a workplace may begin a production cycle now: its own stockpile holds every input good in
- * full, AND every output good has free room up to its per-good stock capacity. The output check is
- * the capacity enforcement — a cycle that couldn't deposit its outputs is never started, so the
- * stockpile never overflows (and outputs aren't produced and then dropped).
- */
-function canStartCycle(world: World, ctx: SystemContext, building: Entity, recipe: Recipe): boolean {
-  const stock = world.get(building, Stockpile).amounts;
-  for (const input of recipe.inputs) {
-    if ((stock.get(input.goodType) ?? 0) < input.amount) return false; // input not available
-  }
-  for (const output of recipe.outputs) {
-    const have = stock.get(output.goodType) ?? 0;
-    const capacity = stockCapacity(world, ctx, building, output.goodType);
-    if (capacity - have < output.amount) return false; // no room for this output — enforce capacity
-  }
-  return true;
-}
-
-/**
- * Remove the recipe's input goods from the workplace's stockpile (consumed at cycle start). The
- * caller has already verified via {@link canStartCycle} that every input is present in full, so a
- * count can't go negative. A consumed good that hits zero is left as a 0 entry (the canonical Map
- * tolerates it); the stockpile is never iterated for a decision, so a stale 0 is harmless.
- */
-function consumeInputs(world: World, building: Entity, recipe: Recipe): void {
-  const stock = world.get(building, Stockpile).amounts;
-  for (const input of recipe.inputs) {
-    const have = stock.get(input.goodType) ?? 0;
-    stock.set(input.goodType, have - input.amount);
-  }
-}
-
-/**
- * Deposit the recipe's output goods into the workplace's stockpile on cycle completion and emit a
- * `goodProduced` event per output (render/audio cue). The room was reserved by {@link canStartCycle}
- * at cycle start (no input consumption or competing producer can have removed capacity since —
- * production is the only writer of a workplace's own outputs), so the outputs always fit; the
- * per-good capacity is not re-checked here.
- */
-function depositOutputs(world: World, ctx: SystemContext, building: Entity, recipe: Recipe): void {
-  const stock = world.get(building, Stockpile).amounts;
-  for (const output of recipe.outputs) {
-    const have = stock.get(output.goodType) ?? 0;
-    stock.set(output.goodType, have + output.amount);
-    ctx.events.emit({
-      kind: 'goodProduced',
-      building,
-      goodType: output.goodType,
-      amount: output.amount,
-    });
-  }
-}
-
 // The systems composing SYSTEM_ORDER live across this directory: the REAL ones in their own files —
 // commandSystem (./command.ts, drains the CommandQueue and applies each serializable command first),
-// movementSystem (./movement.ts) — and the REAL ones still defined above (aiSystem: the settler
-// planner picking atomics + turning a MoveGoal into a PathRequest; pathfindingSystem: budgeted A* on
-// the cell graph; atomicSystem: advance CurrentAtomic and apply its effect; productionSystem: a
-// workplace consuming recipe inputs → outputs under per-good stock capacity). The not-yet-implemented
+// movementSystem (./movement.ts), productionSystem (./production.ts, a workplace consuming recipe
+// inputs → outputs under per-good stock capacity) — and the REAL ones still defined above (aiSystem:
+// the settler planner picking atomics + turning a MoveGoal into a PathRequest; pathfindingSystem:
+// budgeted A* on the cell graph; atomicSystem: advance CurrentAtomic and apply its effect). The
+// cross-system helpers (stockCapacity/recipeOf/inRange) live in ./shared.ts; the not-yet-implemented
 // placeholders live in ./stubs.ts (re-exported above). See docs/TECH-DEBT.md for the ongoing split.
 
 /**
