@@ -84,6 +84,12 @@ the next iteration inherits it.
   into a consumer that *validates* against another table, run the consumer over the real output, not
   just the unit fixture; the earlier "values 0..85 within the 87-type table" note ([4b01c26]) was the
   0-based tell read as if 1-based. (pipeline/format)
+- [7a95187] A `Uint16Array` view over a freshly-decoded byte buffer reads **host-endian**, not the
+  file's byte order — and a pack→unpack round-trip test can't catch it (pack + unpack share the host's
+  endianness, so the bug is invisible on the only realistic LE target). Compose multi-byte elements
+  **explicitly LE** (`lo | hi<<8`), matching the file's existing `DataView(..., true)` reads, and pin
+  it with a test that decodes a *hand-built LE stream* (not a round-trip) so an endianness regression
+  fails even on a little-endian host. (pipeline/format)
 - [690a547] vitest resolves a cross-package import (`@vinland/data`) through that package's BUILT
   `dist/` entry, not its `src/`, so a brand-new export is `… is not a function` in another package's
   test until you `npm run build` — green-looking source, runtime-missing symbol. After adding an export
