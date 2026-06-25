@@ -1,4 +1,4 @@
-import type { ContentSet, ProductionInput, WeaponType } from '@vinland/data';
+import type { ContentSet, ProductionInput, TribeType, WeaponType } from '@vinland/data';
 import { Building, Settler, Stockpile, stockpileEntries } from '../components/index.js';
 import type { World } from '../ecs/world.js';
 
@@ -306,4 +306,46 @@ export function combatDamage(content: ContentSet): CombatProfile[] {
  */
 export function weaponKey(weapon: Pick<WeaponType, 'tribeType' | 'typeId'>): string {
   return `${weapon.tribeType ?? ''}:${weapon.typeId}`;
+}
+
+/**
+ * The **playable (controllable) tribes** as a derived **read view** over `content` — the N civilizations
+ * a player can command, distinguished from the animal/monster tribes *by the data alone*, never by a
+ * hardcoded name or count ("two"). `content.tribes` is a flat list of every `[tribetype]` the pipeline
+ * extracted — the 5 civilizations (viking/frank/saracen/byzantine/egypt) **and** the 36 animal/monster
+ * tribes (`bears`, `wolves`, `weresnake`, …). The distinguishing signature is the **tech graph**: only a
+ * civilization carries `jobEnables` edges (and, equivalently, `{need,train}for*` `jobRequirements`) — an
+ * animal tribe is purely an atomic-binding vocabulary with `jobEnables.length === 0`. So a playable
+ * tribe is exactly one with a non-empty `jobEnables` graph; this is the data-defined "N tribes" the
+ * combat targeting and the upcoming non-controllable-animals item both build on, with nothing hardcoded.
+ *
+ * Returned as a {@link TribeType} **array** sorted ascending by `typeId` (not a Map keyed by id) so the
+ * enumeration order is stable regardless of `content.tribes` declaration order — the canonical order a
+ * "for each playable tribe" loop (births, AI, scoring) wants. {@link isPlayableTribe} is the matching
+ * membership predicate for a single `tribeType` without materializing the list.
+ *
+ * FIDELITY n/a: a pure derived **read view** over the already-extracted tribe IR, like {@link goodsGraph}
+ * — it adds no mechanic (nothing produced/consumed/moved) and invents no classification: the
+ * playable-vs-animal split is read straight off whether the source `[tribetype]` block declared a
+ * `jobEnables*` tech graph, the faithful param the pipeline pinned (ROADMAP Phase 4 "N data-defined
+ * tribes": asymmetry through each tribe's bindings + `allow*`/`needfor*` graph, never hardcode "two").
+ *
+ * Determinism: a pure function of `content` (no world, no RNG, no wall-clock) over the plain
+ * `content.tribes` array, explicitly **sorted** by `typeId`, so the same content yields a byte-identical
+ * array (and iteration order) every call.
+ */
+export function playableTribes(content: ContentSet): TribeType[] {
+  return content.tribes.filter((t) => t.jobEnables.length > 0).sort((a, b) => a.typeId - b.typeId);
+}
+
+/**
+ * Whether `tribeType` is a **playable (controllable) civilization** — the single-tribe membership half
+ * of {@link playableTribes}, for a caller (combat enemy-vs-animal targeting, a per-tribe AI gate) that
+ * has a `tribe` id and only needs the yes/no, without materializing the sorted list. A tribe is playable
+ * iff its `[tribetype]` carries a non-empty `jobEnables` tech graph (see {@link playableTribes}); an
+ * unknown `tribeType` (no matching record) is **not** playable. Pure over `content`, no RNG/wall-clock.
+ */
+export function isPlayableTribe(content: ContentSet, tribeType: number): boolean {
+  const tribe = content.tribes.find((t) => t.typeId === tribeType);
+  return tribe !== undefined && tribe.jobEnables.length > 0;
 }
