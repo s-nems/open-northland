@@ -896,6 +896,21 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             intermediate tier), `wheat`/`stone`/`wood` raw+input.
 - [ ] NeedsSystem: hunger + non-food needs implied by atomics (eat, plus deferred-but-named
       `pray`/`enjoy`/social/`make_love`).
+      - [x] **Hunger rise** — `needsSystem` (`packages/sim/src/systems/needs.ts`, graduated from the
+            stub into its own module) raises every {@link Settler}'s `hunger` by `HUNGER_RISE_PER_TICK`
+            (=ONE/4096) each tick, clamped at ONE so the `hungerInRange` invariant holds; the `eat`
+            atomic already resets it to 0 (AtomicSystem), so this + that effect form the rise/reset loop.
+            APPROXIMATED (see FIDELITY.md): the original drives hunger through per-animation
+            `event 30 2 <delta>` tuples (activity drains `-100`, `eat_slot_food` restores `+4000`) — an
+            event-driven model needing the atomic `event (type,value)` vocabulary decoded (deferred); a
+            flat per-tick rate is the bounded "hunger grows, eating resets it" core. **Hands-on:** 5000
+            ticks through the real `Simulation.step()` schedule → hunger rises and **clamps exactly at
+            ONE** (4096 ticks to fill, then pinned), **0** invariant violations, two seed-7 runs
+            hash-equal (`1d2b05fd`). The golden state hash moved (`64b872d3`→`db68cc53`) — settlers now
+            carry non-zero hunger — but the **atomic trace + 8-plank output are unchanged** (no behavior
+            change: the eat-DRIVE isn't here yet). **Still open:** the AI planner choosing an `eat`
+            atomic when hunger crosses a threshold (eat-drive), then the non-food needs
+            (`pray`/`enjoy`/social/`make_love`).
 - [ ] **ProgressionSystem** — experience + tech graph: `humanjobexperiencetypes` per-specialization
       XP, `trainforjob` schooling, `needfor*`/`allow*`/`jobEnables*` gating goods/houses/jobs/vehicles.
 - [ ] JobSystem assignment across many workplaces; multiple carriers + vehicle stock slots.

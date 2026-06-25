@@ -17,7 +17,6 @@ const todo =
 
 export const timeSystem: System = todo('TimeSystem'); // advance clock / day / season
 export const terrainSystem: System = todo('TerrainSystem'); // resource regrowth, fertility (cell graph)
-export const needsSystem: System = todo('NeedsSystem'); // hunger/health + the food/goods chain
 export const progressionSystem: System = todo('ProgressionSystem'); // experience + tech graph (needfor*/allow*/jobEnables*) gates jobs/goods/houses/vehicles
 export const jobSystem: System = todo('JobSystem'); // match idle settlers to open jobs/workplaces
 export const transportSystem: System = todo('TransportSystem'); // carriers physically haul goods between stores (no global bank)

@@ -190,9 +190,10 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   it('matches the golden final state hash', () => {
     const run = runSlice(SEED, TICKS);
     // Intentional-change discipline: if this moves, a mechanic changed — name it in the commit.
-    // Moved by the production worker-presence gate (a carpenter now staffs the sawmill — a new
-    // entity in the world, so the canonical hash shifts though the atomic trace is unchanged).
-    expect(run.hash).toBe('64b872d3');
+    // Moved by the NeedsSystem hunger rise: settlers' `hunger` now grows ONE/4096 per tick (it was
+    // pinned at 0), so each settler's state — and thus the canonical hash — shifts. Behavior is
+    // unchanged: the atomic trace + 8-plank output below are identical (no eating drive yet).
+    expect(run.hash).toBe('db68cc53');
   });
 
   it('matches the golden atomic-action trace', () => {
