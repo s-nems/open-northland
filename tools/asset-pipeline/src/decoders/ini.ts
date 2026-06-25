@@ -21,6 +21,8 @@ import {
   type GoodClassification,
   GoodType,
   HumanJobExperienceType,
+  type JobEnables,
+  type JobEnablesKind,
   JobType,
   LandscapeType,
   MapInfo,
@@ -389,10 +391,41 @@ export function extractJobExperience(
 }
 
 /**
+ * The four `jobEnables<Kind>` source keys → the unified {@link JobEnables} `kind` discriminator.
+ * Listed in a fixed order so iteration is deterministic; within each key the lines keep file order.
+ */
+const JOB_ENABLES_KEYS: readonly [string, JobEnablesKind][] = [
+  ['jobEnablesGood', 'good'],
+  ['jobEnablesHouse', 'house'],
+  ['jobEnablesJob', 'job'],
+  ['jobEnablesVehicle', 'vehicle'],
+];
+
+/**
+ * Collects one `[tribetype]` section's `jobEnables<Kind> <jobType> <targetId>` lines into unified
+ * {@link JobEnables} tech-graph edges. The four kind-keys are read in {@link JOB_ENABLES_KEYS} order,
+ * each preserving its own file order (mirrors how the original groups them per key). A line missing
+ * either int is skipped, matching the `setatomic` malformed-line stance.
+ */
+function extractJobEnables(sec: RuleSection): JobEnables[] {
+  const edges: JobEnables[] = [];
+  for (const [key, kind] of JOB_ENABLES_KEYS) {
+    for (const p of findProps(sec, key)) {
+      const jobType = Number.parseInt(p.values[0] ?? '', 10);
+      const targetId = Number.parseInt(p.values[1] ?? '', 10);
+      if (Number.isNaN(jobType) || Number.isNaN(targetId)) continue;
+      edges.push({ jobType, kind, targetId });
+    }
+  }
+  return edges;
+}
+
+/**
  * Extracts `[tribetype]` sections into validated {@link TribeType} IR. The payload is each tribe's
  * `setatomic <jobType> <atomicId> "animation"` bindings — the per-tribe atomic→animation table that
- * carries tribal identity (the readable mod `tribetypes.ini` covers playable tribes AND animals).
- * Malformed `setatomic` lines (missing the job/atomic ints or the animation token) are skipped.
+ * carries tribal identity — plus its `jobEnables*` tech-graph edges ({@link extractJobEnables}). The
+ * readable mod `tribetypes.ini` covers playable tribes AND animals. Malformed `setatomic` lines
+ * (missing the job/atomic ints or the animation token) are skipped.
  */
 export function extractTribes(sections: readonly RuleSection[], src: SourceRef): TribeType[] {
   const tribes: TribeType[] = [];
@@ -414,6 +447,7 @@ export function extractTribes(sections: readonly RuleSection[], src: SourceRef):
         id: name ? slug(name) : `tribe_${typeId}`,
         name,
         atomicBindings,
+        jobEnables: extractJobEnables(sec),
         source: { file: src.file, block: 'tribetype', layer: src.layer ?? 'base' },
       }),
     );

@@ -91,6 +91,12 @@ setatomic 1 8 "viking_baby_female_sleep"
 setatomic 5 22 "viking_woman_pickup"
 setatomic 52 84 "viking_ship_small_idle_short_a" // "viking_ship_small_dock"
 setatomic 5 22 "viking_woman_pickup_alt"
+jobEnablesGood 5 5
+jobEnablesHouse 5 2
+jobEnablesGood 1 4
+jobEnablesJob 5 1
+jobEnablesVehicle 5 7
+jobEnablesGood notanint 5
 `;
 
 // Mirrors DataCnmd/atomicanimations12/atomicanimations.ini: `[atomicanimation]` records with a
@@ -793,6 +799,23 @@ describe('extractTribes', () => {
       { jobType: 5, atomicId: 22, animation: 'viking_woman_pickup_alt' },
     ]);
   });
+
+  it('collects `jobEnables*` edges grouped by kind in file order, skipping a malformed line', () => {
+    const tribes = extractTribes(parseIniSections(TRIBETYPES_INI), {
+      file: 'DataCnmd/tribetypes12/tribetypes.ini',
+      layer: 'mod',
+    });
+    // Edges are grouped by kind (good, house, job, vehicle order), each kind keeping its file order;
+    // the interleaved `jobEnablesGood 1 4` stays after `5 5` within the good group. The malformed
+    // `jobEnablesGood notanint 5` (non-int jobType) is dropped, like a malformed setatomic line.
+    expect(tribes[0]?.jobEnables).toEqual([
+      { jobType: 5, kind: 'good', targetId: 5 },
+      { jobType: 1, kind: 'good', targetId: 4 },
+      { jobType: 5, kind: 'house', targetId: 2 },
+      { jobType: 5, kind: 'job', targetId: 1 },
+      { jobType: 5, kind: 'vehicle', targetId: 7 },
+    ]);
+  });
 });
 
 describe('extractAtomicAnimations', () => {
@@ -1301,6 +1324,33 @@ describe('IR integration', () => {
         tribes,
       }),
     ).toThrow(/unknown jobType/);
+  });
+
+  it('rejects a tribe whose jobEnables edge targets an unknown good (cross-reference)', () => {
+    // job 5 exists, but the good it enables (99) is not defined -> the tech-graph edge dangles.
+    expect(() =>
+      parseContentSet({
+        manifest: { version: 1, generatedFrom: { game: 'Cultures 8th Wonder' } },
+        goods: [],
+        jobs: [{ typeId: 5, id: 'job_5' }],
+        buildings: [],
+        tribes: [{ typeId: 1, id: 'viking', jobEnables: [{ jobType: 5, kind: 'good', targetId: 99 }] }],
+      }),
+    ).toThrow(/enables unknown goodType 99/);
+  });
+
+  it('does not reject a jobEnables vehicle edge (no IR vehicle table to resolve against yet)', () => {
+    // The vehicle kind is intentionally not cross-checked (logicvehicletype namespace, unextracted),
+    // so a vehicle edge with any targetId must pass even with no buildings defined.
+    expect(() =>
+      parseContentSet({
+        manifest: { version: 1, generatedFrom: { game: 'Cultures 8th Wonder' } },
+        goods: [],
+        jobs: [{ typeId: 5, id: 'job_5' }],
+        buildings: [],
+        tribes: [{ typeId: 1, id: 'viking', jobEnables: [{ jobType: 5, kind: 'vehicle', targetId: 3 }] }],
+      }),
+    ).not.toThrow();
   });
 
   it('rejects an experience track whose job (or good) is unknown (cross-reference)', () => {
