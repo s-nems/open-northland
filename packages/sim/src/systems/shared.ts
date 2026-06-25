@@ -157,6 +157,50 @@ export function tribePopulation(world: World, tribe: number): number {
 }
 
 /**
+ * The **per-job-type head-count** of a `tribe`'s settlers — the HUD's *jobs* read view (the third
+ * derived view after {@link tribeStocks} and {@link tribePopulation}). Counts each living
+ * {@link Settler} keyed by its current `jobType`, so a consumer can show "3 farmers, 2 carpenters,
+ * 5 babies, 4 idle". An **idle, job-seeking adult** (`jobType === null` — not yet assigned a trade,
+ * not a born age class) is counted under the {@link IDLE_JOB} key so it is visible without colliding
+ * with any real job id; every other entry's key is a real `JobType.typeId`.
+ *
+ * The **age-classes-vs-trades** split the HUD wants is a property of the *keys*, not of this view:
+ * keys 1–4 are the non-working baby/child stages (`isNonWorkingAge` in `systems/ageclass.ts`), key 5
+ * (`woman`) and up are adult roles, and `null`/{@link IDLE_JOB} is an unassigned adult — so a panel
+ * partitions the returned map by classifying each key, exactly as the source models life-stage as a
+ * `jobType`. This view does not pre-split, to stay a single faithful "settlers by job" tally that
+ * any grouping can read.
+ *
+ * FIDELITY n/a: a pure derived **read view** of existing sim state, like {@link tribeStocks} — it
+ * adds no mechanic (nothing is produced/consumed/moved), so there is no original behavior to pin; the
+ * `jobType`s it tallies are set by the already-faithful birth/growth/job-assignment systems.
+ *
+ * Determinism: a `Map`-valued **read view**, not a game decision — the per-job *counts* are
+ * order-independent (addition commutes, so the Settler-store traversal order can't change a tally), so
+ * the values are identical run-to-run. The returned Map's *iteration* order is insertion order
+ * (store-traversal-dependent); a consumer needing a stable display order sorts the keys itself (the
+ * same rule {@link tribeStocks} follows). No RNG/wall-clock.
+ */
+export function tribePopulationByJob(world: World, tribe: number): Map<number, number> {
+  const counts = new Map<number, number>();
+  for (const e of world.query(Settler)) {
+    const settler = world.get(e, Settler);
+    if (settler.tribe !== tribe) continue;
+    const key = settler.jobType ?? IDLE_JOB;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/**
+ * The {@link tribePopulationByJob} map key for an **idle, job-seeking adult** (`Settler.jobType ===
+ * null`). It is `-1`, outside the valid `JobType.typeId` space (real ids are positive — the first
+ * record, `baby_female`, is id 1; see `systems/ageclass.ts`), so it can never collide with a real
+ * job's count. A negative sentinel rather than `0`, because `0` is a legitimate `JobType` id (`none`).
+ */
+export const IDLE_JOB = -1;
+
+/**
  * The **total stock of each good** a `tribe` holds across all its stores — the goods half of the HUD's
  * read model (`tribePopulation` is the population half). A "store" here is any {@link Building} (which
  * carries the owning `tribe`) bearing a {@link Stockpile}; every placed building gets one (seeded from
