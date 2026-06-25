@@ -1,6 +1,6 @@
 import { assertNever } from '../brand.js';
 import type { AtomicEffect } from '../commands.js';
-import { Carrying, CurrentAtomic, Resource, Settler, Stockpile } from '../components/index.js';
+import { Carrying, CurrentAtomic, Health, Resource, Settler, Stockpile } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import { fx } from '../fixed.js';
 import type { System, SystemContext } from './context.js';
@@ -22,8 +22,9 @@ import { stockCapacity } from './shared.js';
  *
  * `applyEffect` is an exhaustive switch over the {@link AtomicEffect} union (`assertNever` makes a
  * new variant a compile error here), so behavior is the typed effect, not an opaque atomicId. The
- * harvest→pickup→carry→pileup chain that the single-settler slice needs is implemented; `produce`
- * and `attack` belong to ProductionSystem/CombatSystem and only signal completion here for now.
+ * harvest→pickup→carry→pileup chain that the single-settler slice needs is implemented; `attack`
+ * resolves a hit (drains the target's {@link Health}, the first combat behavior); `produce` belongs
+ * to ProductionSystem and only signals completion here for now.
  *
  * Determinism: no RNG, no wall-clock. Entities are visited in the CurrentAtomic store's deterministic
  * insertion order, and each effect is a pure function of the entity + its target's current state
@@ -108,10 +109,17 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       // Pure markers: the actual walking is the navigation layer (PathFollow/MovementSystem). The
       // atomic just completing is the signal; no extra state change.
       return;
-    case 'produce':
     case 'attack':
-      // Owned by ProductionSystem / CombatSystem (later slices). Completing the atomic + emitting
-      // the event is enough for now; the heavy mutation lands when those systems exist.
+      // The hit-resolution step — the first real combat behavior. The effect carries the already
+      // RESOLVED net damage (the planner looked it up from `combatDamage`: the attacker's weapon ×
+      // the target's armor class), so the executor just drains the target's hitpoints, exactly as
+      // `pickup`/`eat` apply a pre-resolved amount. Targeting/who-attacks-whom and the death/cleanup
+      // loop are later slices; this is the hit landing.
+      resolveHit(world, effect.target, effect.damage);
+      return;
+    case 'produce':
+      // Owned by ProductionSystem (a later slice). Completing the atomic + emitting the event is
+      // enough for now; the heavy mutation lands when that system exists.
       return;
     default:
       assertNever(effect); // a new AtomicEffect variant is a compile error until handled above
@@ -138,6 +146,23 @@ function harvestFromNode(world: World, settler: Entity, node: Entity, goodType: 
   const res = world.tryGet(node, Resource);
   if (res === undefined) return; // node already gone — nothing to deplete
   res.remaining = Math.max(0, res.remaining - HARVEST_YIELD);
+}
+
+/**
+ * Resolve one completed `attack`: drain `damage` net hitpoints from the target's {@link Health},
+ * clamped at 0 (a hit never *heals* — armor can fully absorb a blow but the pool never goes negative,
+ * the same clamp `combatDamage` applies to net damage). `damage` is the pre-resolved net value the
+ * planner looked up from `combatDamage` (the attacker's weapon × the target's armor class), so the
+ * executor needs no content/weapon lookup. A `target` with no `Health` is a no-op — it was already
+ * destroyed between the swing starting and landing, or is a non-combatant (the swing struck air);
+ * never throw, mirroring how `harvest`/`pickup` tolerate a vanished resource/store. Reaching 0
+ * hitpoints is "dead"; the death/cleanup loop (removing the entity, emitting `settlerDied`) is a
+ * later slice — for now a 0-HP target simply stops being viable.
+ */
+function resolveHit(world: World, target: Entity, damage: number): void {
+  const health = world.tryGet(target, Health);
+  if (health === undefined) return; // target gone / non-combatant — the swing struck nothing
+  health.hitpoints = Math.max(0, health.hitpoints - Math.max(0, damage));
 }
 
 /**
