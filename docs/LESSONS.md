@@ -451,3 +451,9 @@ the next iteration inherits it.
   the key is legitimately absent in shipped data. Check the real file's key field + look for records
   missing it before assuming the `requireTypeId(...,'type')` template; the cross-ref then validates the
   chosen key (here `tribeType` → the tribe table). (pipeline/extractor)
+- [4566b16] A "single source of truth" relation must gate BOTH sides itself, not lean on its one caller.
+  `mayAttack(attacker,target)` first encoded only the target rules and let the combat loop skip a passive
+  animal attacker — so `mayAttack(passiveAnimal, civ)` wrongly returned true; correct in-system (the loop
+  guards), but a latent trap the moment a second caller uses the relation directly. Fix: fold the attacker
+  gate into the relation; the loop's matching skip becomes a fast-path, not the authority. A relation
+  documented as authoritative must be self-contained. (sim/combat)
