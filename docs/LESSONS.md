@@ -216,3 +216,9 @@ the next iteration inherits it.
   placement gate (`buildingEnabled`) returns true on the first enabling-job settler found and never
   cares which one — so a sorted scan would be dead cost. Ask "does the output change if matches are
   reordered?" before reaching for the canonical sort. (sim/determinism)
+- [f6619a4] The mod's own `tribetypes - info.txt` doc can be wrong: it says `trainfor*`'s school
+  expType is "always 77", but the real data also uses 57 (30/270 train lines), and it implies the
+  `needfor*` expType is a `humanjobexperiencetypes` id (1..70) when need-ids actually reach 72/73/75.
+  Extract the OBSERVED value, not the documented constant, and `grep` the real key set's value range
+  before deciding what to cross-validate — an id that overshoots the resolvable table is the tell
+  that a field is a wider/synthetic id space and must NOT be range-checked (false-positives). (pipeline/fidelity)
