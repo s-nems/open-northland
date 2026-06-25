@@ -122,7 +122,14 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       golden hash + trace unchanged). **Next:** the carrier→vehicle pairing / a per-carrier vehicle entity
       (the JobSystem's last unmodeled behavior), or the HUD slice — births→growth→employment now closes
       the population lifecycle loop.
-- [ ] HUD: stocks, population, jobs, the goods graph.
+- [ ] HUD: stocks, population, jobs, the goods graph. **Read model started** — the HUD's data half is
+      a set of pure, deterministic derived views over world state (no mechanic, no pixels): `tribeStocks`
+      (`systems/shared.ts`) sums each good a tribe holds across all its stores (`Building`+`Stockpile`),
+      the **stocks** panel's source, joining `tribePopulation`/`housingCapacity` (the **population** half,
+      already landed). The visual/Pixi half + the **jobs** breakdown and the **goods-graph** view remain.
+      **Next:** the per-job population breakdown read model (count a tribe's settlers by `jobType`,
+      age-classes vs trades), the third HUD read view, then wire the views into a render-side panel
+      (visual — human-gated pixels).
 - **Exit:** a self-sustaining, progressing single-tribe settlement you can grow.
 
 ## Phase 4 — Conflict & content breadth (N tribes)

@@ -1,5 +1,5 @@
 import type { Recipe } from '@vinland/data';
-import { Building, Position, Settler } from '../components/index.js';
+import { Building, Position, Settler, Stockpile, stockpileEntries } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import { ONE, fx } from '../fixed.js';
 import type { TerrainGraph } from '../terrain.js';
@@ -154,6 +154,40 @@ export function tribePopulation(world: World, tribe: number): number {
     if (world.get(e, Settler).tribe === tribe) count++;
   }
   return count;
+}
+
+/**
+ * The **total stock of each good** a `tribe` holds across all its stores — the goods half of the HUD's
+ * read model (`tribePopulation` is the population half). A "store" here is any {@link Building} (which
+ * carries the owning `tribe`) bearing a {@link Stockpile}; every placed building gets one (seeded from
+ * its type's `stock` slots), so this spans warehouses, workplaces, and residences alike — the whole
+ * settlement's larder, exactly what a stocks panel shows.
+ *
+ * Returned as a `Map<goodType, total>` built by walking each store's canonical {@link stockpileEntries}
+ * (ascending goodType) and summing per good. A good with no stock anywhere is simply absent from the
+ * map (the HUD shows 0 / omits it); a zero entry that a store happens to carry is kept (it is real
+ * capacity holding nothing) — callers that want only non-empty goods filter on the value.
+ *
+ * FIDELITY n/a: a pure derived **read view** of existing sim state, like {@link tribePopulation} — it
+ * adds no mechanic (nothing is produced/consumed/moved), so there is no original behavior to pin; the
+ * stocks it reads are produced by the already-faithful production/carry loops.
+ *
+ * Determinism: a `Map`-valued **read view**, not a game decision — the per-good *sums* are
+ * order-independent (addition commutes, so the store-traversal order can't change a total), and each
+ * store is summed via `stockpileEntries` (canonical), so the values are identical run-to-run. The
+ * returned Map's *iteration* order is insertion order (store-traversal-dependent); a consumer that
+ * needs a stable display order must sort by goodType itself (the same rule {@link Stockpile} follows).
+ * No RNG/wall-clock.
+ */
+export function tribeStocks(world: World, tribe: number): Map<number, number> {
+  const totals = new Map<number, number>();
+  for (const e of world.query(Building, Stockpile)) {
+    if (world.get(e, Building).tribe !== tribe) continue;
+    for (const [goodType, amount] of stockpileEntries(world.get(e, Stockpile))) {
+      totals.set(goodType, (totals.get(goodType) ?? 0) + amount);
+    }
+  }
+  return totals;
 }
 
 /**
