@@ -62,6 +62,7 @@ export function validateCrossReferences(set: ContentSet): void {
   }
 
   const buildingIds = new Set(set.buildings.map((b) => b.typeId));
+  const vehicleIds = new Set(set.vehicles.map((v) => v.typeId));
 
   // Each tribe's `setatomic` binding names the job it applies to; that job must exist. (Atomic ids
   // themselves have no master table to resolve against — see AtomicId — so only jobType is checked.)
@@ -71,10 +72,10 @@ export function validateCrossReferences(set: ContentSet): void {
         errors.push(`tribe "${t.id}" binds atomic ${b.atomicId} to unknown jobType ${b.jobType}`);
     }
     // Each `jobEnables*` tech-graph edge: the enabling `jobType` must resolve, and so must its
-    // `targetId` within the kind's table — a good, a building (`house`), or a job. The `vehicle`
-    // kind is NOT checked: its id is the `logicvehicletype` namespace (1..N), which the building
-    // extractor deliberately skips (see extractBuildings), so there is no IR table to resolve it
-    // against yet — adding it would false-positive. Resolve vehicles once that table is extracted.
+    // `targetId` within the kind's table — a good, a building (`house`), a job, or a vehicle. The
+    // `vehicle` kind keys into the `vehicletypes` `type` (`logicvehicletype`) namespace — distinct
+    // from buildings — which the `vehicles` table now extracts (`VehicleType.typeId`), so it is
+    // resolvable: the real `jobEnablesVehicle` ids (1..5) are a subset of the vehicle typeIds (1..6).
     for (const e of t.jobEnables) {
       if (!jobIds.has(e.jobType))
         errors.push(`tribe "${t.id}" jobEnables-edge has unknown jobType ${e.jobType}`);
@@ -84,6 +85,8 @@ export function validateCrossReferences(set: ContentSet): void {
         errors.push(`tribe "${t.id}" job ${e.jobType} enables unknown buildingType ${e.targetId}`);
       if (e.kind === 'job' && !jobIds.has(e.targetId))
         errors.push(`tribe "${t.id}" job ${e.jobType} enables unknown jobType ${e.targetId}`);
+      if (e.kind === 'vehicle' && !vehicleIds.has(e.targetId))
+        errors.push(`tribe "${t.id}" job ${e.jobType} enables unknown vehicleType ${e.targetId}`);
     }
     // Each `{need,train}for{job,good}` requirement: its `targetId` resolves within the `target`
     // table (a job or a good). The `experienceTypes` are NOT checked: they span an id space wider

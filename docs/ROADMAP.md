@@ -70,9 +70,13 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       to a dead workplace; the JobSystem re-employs it next tick). **Vehicle data extracted** — the
       `vehicletypes` table (incl. `stockSlots` carry capacity: handcart 15 / oxcart 30 / ships 50,200)
       now lands in the IR (`VehicleType`, `Data/logic/vehicletypes.ini`), the param the carrier slice
-      consumes. **Next:** wire that into the sim — give a carrier a `stockSlots` carry capacity so it
-      hauls a batch (today it moves one unit/swing with no vehicle), then multiple carriers, consuming
-      the `vehicle` `jobEnables` edge kind (and resolving its now-extractable cross-ref, see data/index.ts).
+      consumes, and the **`jobEnablesVehicle` cross-ref is now resolved** in `validateCrossReferences`
+      (the `vehicle` kind keys into `VehicleType.typeId`, the distinct `logicvehicletype` namespace — the
+      real data's 50 vehicle edges, ids `{1..5}`, all land within the 6-entry table). **Next:** wire
+      `stockSlots` into the sim — give a carrier a `stockSlots` carry capacity so it hauls a batch (today
+      it moves one unit/swing via the hardcoded `CARRY_LOAD=1` with no vehicle), then multiple carriers,
+      and have the sim *consume* the `vehicle` `jobEnables` edge kind (the cross-ref now resolves; the
+      progression read side still only consumes the `house`/`good` kinds — see `tribeUnlockEnabled`).
 - [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`)
       → population capacity → the births→housing→births loop.
 - [ ] ReproductionSystem: families, children growing up, gated by housing.

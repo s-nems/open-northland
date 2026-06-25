@@ -96,7 +96,7 @@ jobEnablesGood 5 5
 jobEnablesHouse 5 2
 jobEnablesGood 1 4
 jobEnablesJob 5 1
-jobEnablesVehicle 5 7
+jobEnablesVehicle 5 3
 jobEnablesGood notanint 5
 needforjob 1 10 6 7
 needforgood 5 15 9
@@ -893,7 +893,7 @@ describe('extractTribes', () => {
       { jobType: 5, kind: 'house', targetId: 2 },
       { jobType: 1, kind: 'good', targetId: 4 },
       { jobType: 5, kind: 'job', targetId: 1 },
-      { jobType: 5, kind: 'vehicle', targetId: 7 },
+      { jobType: 5, kind: 'vehicle', targetId: 3 },
     ]);
   });
 
@@ -1357,6 +1357,9 @@ describe('IR integration', () => {
       file: 'weapons.ini',
       layer: 'mod',
     });
+    // The tribe's `jobEnablesVehicle 5 3` edge keys into the vehicle table, so it must define
+    // vehicle 3 (ship small) for the cross-ref to resolve.
+    const vehicles = extractVehicles(parseIniSections(VEHICLETYPES_INI), { file: 'vehicletypes.ini' });
     // The tribe binds jobTypes 1/5/52 and the weapons wield jobTypes 5/32, so the job set must
     // define them all (cross-ref resolvability — validateCrossReferences checks weapon.jobType too).
     const jobs = [
@@ -1373,6 +1376,7 @@ describe('IR integration', () => {
         jobs,
         buildings,
         weapons,
+        vehicles,
         landscape,
         tribes,
         atomicAnimations,
@@ -1436,15 +1440,30 @@ describe('IR integration', () => {
     ).toThrow(/enables unknown goodType 99/);
   });
 
-  it('does not reject a jobEnables vehicle edge (no IR vehicle table to resolve against yet)', () => {
-    // The vehicle kind is intentionally not cross-checked (logicvehicletype namespace, unextracted),
-    // so a vehicle edge with any targetId must pass even with no buildings defined.
+  it('rejects a tribe whose jobEnables edge targets an unknown vehicle (cross-reference)', () => {
+    // The vehicle kind keys into the `vehicletypes` `type` (`logicvehicletype`) namespace, now
+    // extracted as `VehicleType.typeId` — so a dangling vehicle edge (targetId 3, no vehicle 3) is
+    // caught like any other dangling tech-graph edge. (Buildings are a DIFFERENT namespace, so an
+    // empty buildings list doesn't mask it.)
     expect(() =>
       parseContentSet({
         manifest: { version: 1, generatedFrom: { game: 'Cultures 8th Wonder' } },
         goods: [],
         jobs: [{ typeId: 5, id: 'job_5' }],
         buildings: [],
+        vehicles: [{ typeId: 1, id: 'handcart' }],
+        tribes: [{ typeId: 1, id: 'viking', jobEnables: [{ jobType: 5, kind: 'vehicle', targetId: 3 }] }],
+      }),
+    ).toThrow(/enables unknown vehicleType 3/);
+    // With vehicle 3 defined, the same edge resolves — mirrors the real data (jobEnablesVehicle ids
+    // 1..5 are a subset of the vehicle typeIds 1..6).
+    expect(() =>
+      parseContentSet({
+        manifest: { version: 1, generatedFrom: { game: 'Cultures 8th Wonder' } },
+        goods: [],
+        jobs: [{ typeId: 5, id: 'job_5' }],
+        buildings: [],
+        vehicles: [{ typeId: 3, id: 'oxcart' }],
         tribes: [{ typeId: 1, id: 'viking', jobEnables: [{ jobType: 5, kind: 'vehicle', targetId: 3 }] }],
       }),
     ).not.toThrow();
