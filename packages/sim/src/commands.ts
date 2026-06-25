@@ -103,7 +103,14 @@ export type AtomicEffect =
     }
   | { readonly kind: 'pileup'; readonly store: Entity }
   | { readonly kind: 'produce'; readonly recipeOutput: number }
-  | { readonly kind: 'eat'; readonly goodType: number }
+  | {
+      readonly kind: 'eat';
+      readonly goodType: number;
+      /** The store the food is consumed FROM (a stockpile the eater stands on), or null when the
+       *  eater consumes a unit it already carries. One unit of `goodType` is removed on completion —
+       *  eating destroys the food (it is conserved up to that consumption: nothing is conjured). */
+      readonly from: Entity | null;
+    }
   | { readonly kind: 'attack'; readonly target: Entity }
   | { readonly kind: 'idle' };
 

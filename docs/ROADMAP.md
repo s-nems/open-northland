@@ -908,9 +908,27 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             ONE** (4096 ticks to fill, then pinned), **0** invariant violations, two seed-7 runs
             hash-equal (`1d2b05fd`). The golden state hash moved (`64b872d3`→`db68cc53`) — settlers now
             carry non-zero hunger — but the **atomic trace + 8-plank output are unchanged** (no behavior
-            change: the eat-DRIVE isn't here yet). **Still open:** the AI planner choosing an `eat`
-            atomic when hunger crosses a threshold (eat-drive), then the non-food needs
-            (`pray`/`enjoy`/social/`make_love`).
+            change: the eat-DRIVE isn't here yet).
+      - [x] **Eat drive** — the AI atomic planner (`systems/ai.ts` `atomicPlanner`) now chooses an
+            `eat` atomic (id **10**, the original's `setatomic <job> 10 "..._eat_slot_food"` slot) when
+            a settler's `hunger >= HUNGER_EAT_THRESHOLD` (=¾·ONE), **above** harvest/haul/staffing so a
+            starving operator leaves its workplace to feed. It eats its own carried food first (no walk;
+            `eat` effect with `from:null`), else heads to / eats at the nearest store holding a food good
+            (`nearestFoodStore`, canonical scan). Food is recognised by the `food` id prefix
+            (`isFood`, `systems/shared.ts` — `food_simple`/`food_extra`, the original's slot-food goods;
+            no `iseatable` flag in `goodtypes.ini`). The `eat` AtomicEffect gained a `from` source and
+            now **consumes one unit of food** (`consumeFood`, from the store or carried load) as it
+            zeroes hunger — closing the rise→eat→reset loop with goods conserved (food destroyed on the
+            bite, never conjured; an emptied source still resets hunger). APPROXIMATED (see FIDELITY.md):
+            the atomic id is pinned, but the ¾·ONE trigger + the slug-based food-id are inferred (the
+            original eats off per-animation `event 30 2 <delta>` cadence + a slot→good binding below the
+            readable rule files), deferred to the same atomic-`event`-vocabulary decode the hunger-rise
+            row waits on. **Hands-on:** a settler crossing the threshold beside a larder (real
+            `Simulation.step()` schedule) walks one tile, eats at tick 11 (hunger 49312→0), consumes
+            exactly 1 of the larder's 5 food units, 0 invariant violations; two same-seed runs hash-equal.
+            The 1000-tick integration golden is untouched (hunger reaches ¾·ONE only at tick ~3072). **Still
+            open:** the non-food needs (`pray`/`enjoy`/social/`make_love`), and tuning the trigger/food-id
+            once the atomic `event` vocabulary + an eatable-flag extraction land.
 - [ ] **ProgressionSystem** — experience + tech graph: `humanjobexperiencetypes` per-specialization
       XP, `trainforjob` schooling, `needfor*`/`allow*`/`jobEnables*` gating goods/houses/jobs/vehicles.
 - [ ] JobSystem assignment across many workplaces; multiple carriers + vehicle stock slots.

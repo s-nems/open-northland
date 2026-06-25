@@ -13,10 +13,10 @@ import {
   stockpileEntries,
 } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
-import { fx } from '../fixed.js';
+import { type Fixed, fx } from '../fixed.js';
 import type { CellId, TerrainGraph } from '../terrain.js';
 import type { System, SystemContext } from './context.js';
-import { buildingWorkerJobs, inRange, recipeOf, stockCapacity } from './shared.js';
+import { buildingWorkerJobs, inRange, isFood, recipeOf, stockCapacity } from './shared.js';
 
 /**
  * AISystem — the settler planner: two layered passes per tick.
@@ -80,6 +80,44 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     const p = world.get(e, Position);
     const here = terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
     const load = world.tryGet(e, Carrying);
+
+    // The EAT DRIVE (highest priority): a settler whose hunger has crossed the threshold stops what
+    // it is doing to eat, closing the rise→eat→reset loop. It eats its own carried food first (no
+    // walk needed), else heads to the nearest store holding food. Above harvest/haul/staffing so a
+    // starving operator leaves its workplace to feed rather than work itself to death.
+    if (settler.hunger >= HUNGER_EAT_THRESHOLD) {
+      if (load !== undefined && load.amount > 0 && isFood(ctx, load.goodType)) {
+        // Carrying food: eat a unit on the spot (consumed from the carried load).
+        startAtomic(
+          world,
+          e,
+          EAT_ATOMIC_ID,
+          { kind: 'eat', goodType: load.goodType, from: null },
+          atomicDuration(ctx, settler, EAT_ATOMIC_ID),
+          e,
+        );
+        continue;
+      }
+      const food = nearestFoodStore(world, ctx, terrain, here);
+      if (food !== null) {
+        const cell = entityCell(world, terrain, food.store);
+        if (cell === here) {
+          startAtomic(
+            world,
+            e,
+            EAT_ATOMIC_ID,
+            { kind: 'eat', goodType: food.goodType, from: food.store },
+            atomicDuration(ctx, settler, EAT_ATOMIC_ID),
+            food.store,
+          );
+        } else {
+          world.add(e, MoveGoal, { cell });
+        }
+        continue;
+      }
+      // Hungry but no food anywhere reachable: fall through to normal work (the loop above keeps
+      // hunger clamped at ONE; a later slice handles starvation when food is truly absent).
+    }
 
     // The production operator: a settler empty-handed and standing on a workplace whose `workers`
     // names its job is "at work" — the ProductionSystem's worker-presence gate runs on its being
@@ -149,6 +187,24 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     }
   }
 }
+
+/**
+ * The numeric atomic id a settler runs to eat (the original's `setatomic <job> 10 "..._eat_slot_food"`
+ * — id 10 is the eat slot across every tribe's bindings; see docs/FIDELITY.md). Like the other ids
+ * it is the content cross-reference / animation join key; the typed `eat` effect is the behavior
+ * (consume one unit of food + reset hunger, AtomicSystem).
+ */
+const EAT_ATOMIC_ID = 10;
+
+/**
+ * Hunger level (fixed-point, in [0, ONE]) at or above which a settler stops working to eat. Set to
+ * ¾ of a full bar: a settler works most of the way up the hunger bar, then seeks food before it
+ * pins at ONE. APPROXIMATED (see docs/FIDELITY.md): the original drives eating off the per-animation
+ * hunger events (`event 30 2 <delta>` against a ~10000-scale bar) with no single readable "go eat at
+ * X" threshold; this constant is the slice's deterministic eat trigger until that vocabulary is
+ * decoded and calibration-by-observation pins the real cadence.
+ */
+const HUNGER_EAT_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
 
 /** The numeric atomic id for a carrier picking goods up out of a store (the original's generic
  *  pickup=22; like {@link PILEUP_ATOMIC_ID} the readable data binds no per-good pickup, and the id is
@@ -289,6 +345,42 @@ function nearestStoreFor(
       best = e;
       bestDist = dist;
       bestCell = cell;
+    }
+  }
+  return best;
+}
+
+/**
+ * The nearest store (a {@link Stockpile} on a positioned entity) that holds at least one unit of an
+ * edible good ({@link isFood}), by Manhattan distance from `here`, ascending-cell-id tie-break,
+ * scanned in canonical entity-id order. Returns the store and the specific food good to eat, or null
+ * if no reachable store holds food. The good within a store is chosen in canonical (ascending
+ * goodType) order via {@link stockpileEntries} — never raw Map insertion order — so the choice never
+ * depends on store insertion history. A producing workplace counts too (a settler eats the food it
+ * makes); the eater consumes one unit on the `eat` atomic's completion (AtomicSystem).
+ */
+function nearestFoodStore(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  here: CellId,
+): { store: Entity; goodType: number } | null {
+  let best: { store: Entity; goodType: number } | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  let bestCell = Number.POSITIVE_INFINITY;
+  for (const e of world.canonicalEntities()) {
+    if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
+    const stock = world.get(e, Stockpile);
+    const cell = entityCell(world, terrain, e);
+    const dist = manhattan(terrain, here, cell);
+    for (const [goodType, amount] of stockpileEntries(stock)) {
+      if (amount <= 0 || !isFood(ctx, goodType)) continue;
+      if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
+        best = { store: e, goodType };
+        bestDist = dist;
+        bestCell = cell;
+      }
+      break; // this store's lowest-id food good is its candidate; move to the next store
     }
   }
   return best;

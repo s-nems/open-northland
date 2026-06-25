@@ -65,8 +65,11 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       pileupIntoStore(world, ctx, settler, effect.store);
       return;
     case 'eat':
-      // Eating clears hunger; the good is consumed from whatever the settler carries/holds. The
-      // needs/consumption accounting is the Phase-3 NeedsSystem — here we only zero hunger.
+      // Eating consumes one unit of food (from a store the eater stands on, or its own carried load)
+      // and clears hunger. Goods are conserved up to that consumption — the food is destroyed, never
+      // conjured: if the source has nothing left (it emptied between the planner choosing it and the
+      // swing completing) no unit is removed, but hunger still resets (the bite was taken).
+      consumeFood(world, settler, effect.from, effect.goodType);
       if (world.has(settler, Settler)) world.get(settler, Settler).hunger = fx.fromInt(0);
       return;
     case 'move':
@@ -132,6 +135,29 @@ function pickupFromStore(
   if (moved <= 0) return; // source emptied since the planner chose it — nothing to carry
   stock.amounts.set(goodType, have - moved);
   addCarry(world, settler, goodType, moved);
+}
+
+/**
+ * Consume one unit of `goodType` food for an `eat` atomic: from the store `from` (a stockpile the
+ * eater stands on) when given, else from the settler's own carried load. Goods are conserved — a unit
+ * is removed only if one is actually present (the source may have emptied since the planner chose it,
+ * or the carried load was deposited mid-swing); a missing source/empty slot is a no-op (no negative
+ * stock, nothing conjured). The carried good fully consumed has its {@link Carrying} removed.
+ */
+function consumeFood(world: World, settler: Entity, from: Entity | null, goodType: number): void {
+  if (from !== null) {
+    const stock = world.tryGet(from, Stockpile);
+    if (stock === undefined) return; // source gone — nothing to consume
+    const have = stock.amounts.get(goodType) ?? 0;
+    if (have <= 0) return; // emptied since the planner chose it — eat anyway, but take nothing
+    stock.amounts.set(goodType, have - 1);
+    return;
+  }
+  // No store: consume from the settler's own carried load.
+  const load = world.tryGet(settler, Carrying);
+  if (load === undefined || load.goodType !== goodType || load.amount <= 0) return;
+  if (load.amount > 1) load.amount -= 1;
+  else world.remove(settler, Carrying); // last unit eaten — no longer carrying anything
 }
 
 /**
