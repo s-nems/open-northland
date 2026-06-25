@@ -160,3 +160,10 @@ the next iteration inherits it.
   worker pinned without the full JobSystem by a narrow "a settler standing on a workplace it staffs is
   left put" planner rule (gated on the building having a RECIPE, so a store/HQ listing the same job
   doesn't freeze a harvester). (sim/goldens)
+- [18243f3] A source's category flags can be INDEPENDENT booleans, not a mutually-exclusive enum: a
+  `[goodtype]` sets `isProducedOnMapFlag`/`isProducedInHouseFlag`/`isInputGoodFlag` separately and the
+  real data sets several at once (`leather` carries all three — gathered AND house-produced AND an
+  input). Modelling such "raw vs produced vs input" layering as one enum would have to invent a
+  precedence the source doesn't have; extract each flag as its own boolean and let a good occupy
+  several layers. Confirm by grepping a record you expect to be "obviously one category" — the
+  exception is the tell. (pipeline/format)
