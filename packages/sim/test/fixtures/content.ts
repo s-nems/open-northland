@@ -72,6 +72,27 @@ export function testContent(): ContentSet {
       { typeId: 0, id: 'grass', walkable: true, buildable: true },
       { typeId: 1, id: 'water', walkable: false, buildable: false },
     ],
+    // A weapon for the viking woodcutter (tribe 1, job 1) — the CombatSystem resolves an attacker's
+    // weapon by (tribeType, jobType). maxRange 2 (the attacker can strike an enemy up to 2 cells away),
+    // damage 50 vs an unarmored target (class "0") and 60 vs leather (class 1, mitigated by its
+    // blockingValue). Only a Health-bearing settler ever fights, so this is inert in the golden slice.
+    weapons: [
+      {
+        typeId: 7,
+        id: 'test_axe',
+        tribeType: 1,
+        jobType: 1,
+        minRange: 1,
+        maxRange: 2,
+        damage: { '0': 50, '1': 60 },
+      },
+    ],
+    armor: [
+      // Leather (class 1) mitigates 10 — so a 60-raw hit lands 50 net on a leather-clad target. Unused
+      // by the combat drive yet (settlers wear no armor — every hit resolves vs class 0), but it makes
+      // the `combatDamage` join exercise a real armor record alongside the unarmored class.
+      { typeId: 1, id: 'leather', goodType: 1, blockingValue: 10 },
+    ],
     tribes: [
       {
         typeId: 1,
@@ -88,6 +109,9 @@ export function testContent(): ContentSet {
           // The pray atomic (12, the original's pray-slot id) binds to "viking_pray" — the planner
           // resolves its duration through this binding -> atomicAnimations length below.
           { jobType: 1, atomicId: 12, animation: 'viking_pray' },
+          // The attack atomic (81, the original's `setatomic <job> 81 "..._attack"` slot) binds to
+          // "viking_attack" — the CombatSystem resolves the swing's duration through this binding.
+          { jobType: 1, atomicId: 81, animation: 'viking_attack' },
         ],
         // Tech-graph edges. (1) the carpenter (job 2) unlocks the smithy (house 4): the placement gate
         // (buildingEnabled) reads this — the smithy can only be placed once a carpenter settler exists.
@@ -117,6 +141,7 @@ export function testContent(): ContentSet {
       { id: 'viking_eat', name: 'viking_eat', length: 5 },
       { id: 'viking_sleep', name: 'viking_sleep', length: 6 },
       { id: 'viking_pray', name: 'viking_pray', length: 7 },
+      { id: 'viking_attack', name: 'viking_attack', length: 4 },
     ],
     // Experience tracks (humanjobexperiencetypes): the woodcutter (job 1) has a wood-specific track
     // (good 1, the narrow `(job, good)` specialization) and a general track (no good) — so the
