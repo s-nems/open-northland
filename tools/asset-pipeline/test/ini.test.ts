@@ -44,6 +44,18 @@ type 4
 atomicForHarvesting 29
 atomicForCultivating 35
 atomicForPlanting 34
+
+[goodtype]
+name "coin"
+type 8
+productionInputGoods 5 4
+atomicForProduction 51
+
+[goodtype]
+name "potion"
+type 9
+productionInputGoods 1 1 4 4 5
+atomicForProduction 73
 `;
 
 // Mirrors Data/logic/jobtypes.ini: repeated `allowatomic`, a single `baseatomics`, and a
@@ -294,14 +306,51 @@ describe('extractGoods', () => {
     });
     const src = { file: 'Data/logic/goodtypes.ini', block: 'goodtype', layer: 'base' };
     expect(goods).toEqual([
-      { typeId: 1, id: 'water', name: 'water', weight: 0, atomics: {}, source: src },
-      { typeId: 5, id: 'wood', name: 'wood', weight: 0, atomics: { harvest: 24 }, source: src },
+      { typeId: 1, id: 'water', name: 'water', weight: 0, atomics: {}, productionInputs: [], source: src },
+      {
+        typeId: 5,
+        id: 'wood',
+        name: 'wood',
+        weight: 0,
+        atomics: { harvest: 24 },
+        productionInputs: [],
+        source: src,
+      },
       {
         typeId: 4,
         id: 'wheat',
         name: 'wheat',
         weight: 0,
         atomics: { harvest: 29, cultivate: 35, plant: 34 },
+        productionInputs: [],
+        source: src,
+      },
+      {
+        typeId: 8,
+        id: 'coin',
+        name: 'coin',
+        weight: 0,
+        atomics: { produce: 51 },
+        // `productionInputGoods 5 4` — one each of wood + wheat (distinct ids, amount 1).
+        productionInputs: [
+          { goodType: 5, amount: 1 },
+          { goodType: 4, amount: 1 },
+        ],
+        source: src,
+      },
+      {
+        typeId: 9,
+        id: 'potion',
+        name: 'potion',
+        weight: 0,
+        atomics: { produce: 73 },
+        // `productionInputGoods 1 1 4 4 5` — a repeated id is the quantity (2× good1, 2× good4, 1× good5),
+        // collapsed to a multiset in first-seen order.
+        productionInputs: [
+          { goodType: 1, amount: 2 },
+          { goodType: 4, amount: 2 },
+          { goodType: 5, amount: 1 },
+        ],
         source: src,
       },
     ]);
@@ -944,6 +993,24 @@ describe('IR integration', () => {
         buildings,
       }),
     ).toThrow(/produces unknown goodType/);
+  });
+
+  it('rejects a good whose productionInputGoods names an unknown goodType (cross-reference)', () => {
+    // coin consumes wood (5) + gold (7), but only wood is defined -> gold dangles.
+    const goods = extractGoods(
+      parseIniSections(
+        '[goodtype]\nname "wood"\ntype 5\n[goodtype]\nname "coin"\ntype 8\nproductionInputGoods 5 7\n',
+      ),
+      { file: 'goodtypes.ini' },
+    );
+    expect(() =>
+      parseContentSet({
+        manifest: { version: 1, generatedFrom: { game: 'Cultures 8th Wonder' } },
+        goods,
+        jobs: [],
+        buildings: [],
+      }),
+    ).toThrow(/good "coin" consumes unknown input goodType 7/);
   });
 
   it('rejects a tribe whose setatomic binds an unknown jobType (cross-reference)', () => {

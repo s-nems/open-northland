@@ -164,6 +164,20 @@ function getIntList(sec: RuleSection, key: string): number[] {
   return out;
 }
 
+/**
+ * ALL values of the first matching property parsed as base-10 ints (NaN entries dropped), in file
+ * order. For a single multi-value line like `productionInputGoods 1 1 14 14` (vs {@link getIntList},
+ * which reads `values[0]` of each repeated single-value line).
+ */
+function getIntValues(sec: RuleSection, key: string): number[] {
+  const out: number[] = [];
+  for (const raw of findProp(sec, key)?.values ?? []) {
+    const n = Number.parseInt(raw, 10);
+    if (!Number.isNaN(n)) out.push(n);
+  }
+  return out;
+}
+
 /** First value of the first matching property as a string. */
 function getStr(sec: RuleSection, key: string): string | undefined {
   return findProp(sec, key)?.values[0];
@@ -216,11 +230,27 @@ export function extractGoods(sections: readonly RuleSection[], src: SourceRef): 
         id: name ? slug(name) : `good_${typeId}`,
         name,
         atomics: extractGoodAtomics(sec),
+        productionInputs: extractProductionInputs(sec),
         source: { file: src.file, block: 'goodtype', layer: src.layer ?? 'base' },
       }),
     );
   }
   return goods;
+}
+
+/**
+ * Collapse a `[goodtype]`'s `productionInputGoods` multiset into `{ goodType, amount }` pairs. The
+ * line is a flat list of input good ids where a **repeat encodes the quantity** (`… 1 1 14 14 …` =
+ * 2× good 1 + 2× good 14), so equal ids are tallied; first-seen order is preserved (deterministic IR).
+ * Absent → `[]` (a raw/harvested good with no production recipe). The amounts are faithful counts from
+ * the source, not derived.
+ */
+function extractProductionInputs(sec: RuleSection): { goodType: number; amount: number }[] {
+  const counts = new Map<number, number>();
+  for (const id of getIntValues(sec, 'productionInputGoods')) {
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  return [...counts].map(([goodType, amount]) => ({ goodType, amount }));
 }
 
 /**
