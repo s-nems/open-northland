@@ -22,13 +22,38 @@ import type { CellId, TerrainGraph } from '../terrain.js';
 import { commandSystem } from './command.js';
 import type { System, SystemContext } from './context.js';
 import { MOVE_SPEED_PER_TICK, movementSystem } from './movement.js';
+import {
+  cleanupSystem,
+  combatSystem,
+  constructionSystem,
+  jobSystem,
+  needsSystem,
+  progressionSystem,
+  reproductionSystem,
+  terrainSystem,
+  timeSystem,
+  transportSystem,
+} from './stubs.js';
 
-// The System/SystemContext types, the CommandSystem, and the MovementSystem live in their own
-// modules now; the barrel re-exports them so `@vinland/sim`'s `systems` namespace (and the tests)
-// keep a single import site. This is the ongoing systems/ split — see docs/TECH-DEBT.md.
+// The System/SystemContext types, the CommandSystem, the MovementSystem, and the not-yet-implemented
+// stub systems live in their own modules now; the barrel re-exports them so `@vinland/sim`'s
+// `systems` namespace (and the tests) keep a single import site. This is the ongoing systems/ split
+// — see docs/TECH-DEBT.md.
 export type { System, SystemContext };
 export { commandSystem };
 export { MOVE_SPEED_PER_TICK, movementSystem };
+export {
+  cleanupSystem,
+  combatSystem,
+  constructionSystem,
+  jobSystem,
+  needsSystem,
+  progressionSystem,
+  reproductionSystem,
+  terrainSystem,
+  timeSystem,
+  transportSystem,
+};
 
 /**
  * AISystem — the settler planner: two layered passes per tick.
@@ -779,40 +804,13 @@ function depositOutputs(world: World, ctx: SystemContext, building: Entity, reci
   }
 }
 
-/**
- * The remaining systems are stubs to be implemented per docs/ROADMAP.md. They are listed here so
- * the execution order and intent are explicit and version-controlled. Each maps onto original
- * content types (goodtypes/jobtypes/housetypes/weapontypes/animaltypes/vehicletypes/tribetypes).
- */
-const todo =
-  (name: string): System =>
-  () => {
-    /* not yet implemented — see docs/ROADMAP.md */
-    void name;
-  };
-
-// commandSystem is a REAL system now (in ./command.ts, re-exported above) — it drains the per-sim
-// CommandQueue and applies each serializable command (placeBuilding/spawnSettler/setProduction/
-// demolish), appending it to the command log. It runs first so the world the other systems see this
-// tick already reflects this tick's commands.
-export const timeSystem: System = todo('TimeSystem'); // advance clock / day / season
-export const terrainSystem: System = todo('TerrainSystem'); // resource regrowth, fertility (cell graph)
-export const needsSystem: System = todo('NeedsSystem'); // hunger/health + the food/goods chain
-export const progressionSystem: System = todo('ProgressionSystem'); // experience + tech graph (needfor*/allow*/jobEnables*) gates jobs/goods/houses/vehicles
-// aiSystem is a REAL system now (above) — the settler planner: the atomic-utility planner picks the
-// next atomic (harvest→carry→pileup) for each idle settler, and the navigation planner turns the
-// resulting MoveGoal into a PathRequest. atomicSystem (above) advances CurrentAtomic and applies its
-// effect on completion. Behavior lives in these two + the data atomic vocabulary, not bespoke systems.
-export const jobSystem: System = todo('JobSystem'); // match idle settlers to open jobs/workplaces
-// pathfindingSystem is a REAL system now (above) — A* on the cell graph, budgeted/tick.
-// productionSystem is a REAL system now (above) — a workplace consumes its recipe inputs and produces
-// outputs over recipe.ticks, enforcing per-good stock capacity on the output side. Input goods/amounts
-// for real content come from goodtypes.productionInputGoods (the Phase-3 goods-graph artifact).
-export const transportSystem: System = todo('TransportSystem'); // carriers physically haul goods between stores (no global bank)
-export const constructionSystem: System = todo('ConstructionSystem'); // deliver materials, advance build, level houses
-export const combatSystem: System = todo('CombatSystem'); // N-tribe combat from weapontypes/armortypes (large subsystem)
-export const reproductionSystem: System = todo('ReproductionSystem'); // families/children, gated by house level capacity
-export const cleanupSystem: System = todo('CleanupSystem'); // destroy dead entities (ids are NOT recycled), emit events for render/audio
+// The systems composing SYSTEM_ORDER live across this directory: the REAL ones in their own files —
+// commandSystem (./command.ts, drains the CommandQueue and applies each serializable command first),
+// movementSystem (./movement.ts) — and the REAL ones still defined above (aiSystem: the settler
+// planner picking atomics + turning a MoveGoal into a PathRequest; pathfindingSystem: budgeted A* on
+// the cell graph; atomicSystem: advance CurrentAtomic and apply its effect; productionSystem: a
+// workplace consuming recipe inputs → outputs under per-good stock capacity). The not-yet-implemented
+// placeholders live in ./stubs.ts (re-exported above). See docs/TECH-DEBT.md for the ongoing split.
 
 /**
  * The canonical per-tick execution order. Order is part of the design — change deliberately.
