@@ -227,3 +227,12 @@ the next iteration inherits it.
   entities between runs — my "cross-tribe unlock" false alarm was run B's settler bleeding into run C.
   Clear the stores (or use one sim per process) between smoke runs; a direct helper call confirmed the
   gate itself was correct. (sim/verification)
+- [c587b2b] When a *threshold-reader* consumes state a *writer* accrued, the fidelity win is that they
+  key on the **same** id space with no translation layer: the `needfor*` `experienceTypes` reference the
+  exact `humanjobexperiencetypes` track typeIds `grantWorkExperience` writes onto `Settler.experience`,
+  so `experienceRequirementMet` joins the accrual half for free. But the reader must NOT cross-validate
+  those ids — 23/26 real `need` expTypes resolve to a track, the other 3 (72/73/75) live in the wider
+  id space the extractor already leaves unchecked ([f6619a4]) — so the read-side helper consumes the raw
+  id and `.get()` simply returns 0 for an unmatched track (vacuously unmet), never throwing. Verify the
+  join hands-on against the REAL IR (the keyspace overlap + the boundary gate), not just the fixture.
+  (sim/progression)
