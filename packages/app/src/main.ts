@@ -1,7 +1,7 @@
 import { buildScene, createPixiApp, renderScene } from '@vinland/render';
 import { FixedTimestep } from '@vinland/sim';
 import { renderShot } from './shot.js';
-import { runSlice, sliceTerrain } from './vertical-slice.js';
+import { loadTerrainMap, runSlice, sliceTerrain } from './vertical-slice.js';
 
 /**
  * App shell entry point. Wires input -> sim commands, runs the fixed-timestep loop, and asks the
@@ -20,14 +20,19 @@ async function main(): Promise<void> {
   const canvas = document.getElementById('game');
   if (!(canvas instanceof HTMLCanvasElement)) throw new Error('missing #game canvas');
 
-  if (new URLSearchParams(window.location.search).has('shot')) {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('shot')) {
     await renderShot(canvas);
     return;
   }
 
   // Live mode: a deterministic slice driven by the fixed-timestep loop, drawn every frame.
+  // `?map=<id>` draws an actual decoded `content/maps/<id>.json` grid as the terrain; absent or
+  // unloadable, it falls back to the synthetic grass strip (the maps are gitignored).
   const app = await createPixiApp(canvas, CANVAS_W, CANVAS_H);
-  const terrain = sliceTerrain();
+  const mapId = params.get('map');
+  const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
+  const terrain = sliceTerrain(loaded ?? undefined);
   const camera = { offsetX: CANVAS_W / 2, offsetY: CANVAS_H / 3 };
   // The slice sim, kept live and stepped one tick per fixed interval below.
   const sim = runSlice(7, 0);

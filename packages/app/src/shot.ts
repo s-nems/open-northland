@@ -1,5 +1,5 @@
 import { buildScene, createPixiApp, renderScene } from '@vinland/render';
-import { runSlice, sliceTerrain } from './vertical-slice.js';
+import { loadTerrainMap, runSlice, sliceTerrain } from './vertical-slice.js';
 
 /**
  * The deterministic, headless render entry the screenshot harness waits on (docs/TESTING.md
@@ -39,8 +39,14 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
   const seed = intParam(params, 'seed', 7);
   const ticks = intParam(params, 'ticks', 20);
 
+  // `?map=<id>` draws an actual decoded `content/maps/<id>.json` grid as the terrain (loaded over the
+  // dev/shot vite server); absent or unloadable, it falls back to the synthetic grass strip — so the
+  // default `npm run shot` stays reproducible without the gitignored real maps.
+  const mapId = params.get('map');
+  const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
+
   const sim = runSlice(seed, ticks);
-  const scene = buildScene(sim.snapshot(), sliceTerrain());
+  const scene = buildScene(sim.snapshot(), sliceTerrain(loaded ?? undefined));
 
   const app = await createPixiApp(canvas, CANVAS_W, CANVAS_H);
   // Pan the iso strip into the centre of the canvas (its tiles span screen-x roughly [-row, +cols]).
