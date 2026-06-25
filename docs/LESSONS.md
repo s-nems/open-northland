@@ -103,7 +103,7 @@ the next iteration inherits it.
   regex on the fetch side + a resolved-path `startsWith(root + sep)` check in the middleware), and keep
   the consumer's load path **fallback-on-failure** so a checkout WITHOUT the gitignored content still
   runs. This is dev/shot-server only — a production `vite build` won't serve it. (app/render)
-- [PENDING] Component stores are module-level singletons SHARED by every `Simulation`/`World` instance
+- [ac6a287] Component stores are module-level singletons SHARED by every `Simulation`/`World` instance
   (`defineComponent` makes one `Map`; `new World()` resets the id counter but NOT the stores). So a
   test that builds two sims in one process without clearing leaks the first run's entities into the
   second, and because `world.query` iterates **store insertion order**, the second sim's planner then

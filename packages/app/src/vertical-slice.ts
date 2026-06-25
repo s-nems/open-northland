@@ -183,32 +183,47 @@ export async function loadTerrainMap(
   }
 }
 
+/** The six placement slots the slice needs: HQ, sawmill, woodcutter, carrier, and two wood nodes. */
+const PLACEMENT_CELL_COUNT = 6;
+
 /**
  * The first `count` walkable cells of `map`, in canonical row-major id order, as integer `(x, y)`
- * tile coords. "Walkable" is resolved from the demo content's landscape table (the same `walkable`
- * flag `buildTerrainGraph` reads), so the slice's entities land only on cells the sim can stand on —
- * placing a building on water would make the woodcutter's path unreachable. Deterministic: a fixed
- * scan order, no RNG. Throws if the map has fewer than `count` walkable cells (a degenerate map the
- * caller should not pass — every real grid the demo loads has thousands).
+ * tile coords — or `null` if the map has fewer than `count` walkable cells. "Walkable" is resolved
+ * from the demo content's landscape table (the same `walkable` flag `buildTerrainGraph` reads), so
+ * the slice's entities land only on cells the sim can stand on — placing a building on water would
+ * make the woodcutter's path unreachable. Deterministic: a fixed scan order, no RNG.
+ *
+ * Returns `null` (a recoverable boundary failure, not a throw) for a map with too few walkable cells:
+ * some real grids are ~all water under the demo's two-type base table (e.g. a coastal scenario whose
+ * land is all typeId 1), and `runSlice` falls back to the synthetic strip rather than crashing the
+ * shot/dev entry — the same graceful-degradation contract as {@link loadTerrainMap}.
  */
 function walkableCells(
   map: TerrainMap,
   walkable: ReadonlySet<number>,
   count: number,
-): Array<{ x: number; y: number }> {
+): Array<{ x: number; y: number }> | null {
   const out: Array<{ x: number; y: number }> = [];
   for (let i = 0; i < map.typeIds.length && out.length < count; i++) {
     const typeId = map.typeIds[i];
     if (typeId !== undefined && walkable.has(typeId))
       out.push({ x: i % map.width, y: Math.floor(i / map.width) });
   }
-  if (out.length < count) throw new Error(`map has only ${out.length} walkable cells, need ${count}`);
-  return out;
+  return out.length < count ? null : out;
 }
 
-/** The set of landscape typeIds the content marks walkable — the placement filter for {@link walkableCells}. */
-function walkableTypeIds(content: ContentSet): ReadonlySet<number> {
-  return new Set(content.landscape.filter((t) => t.walkable).map((t) => t.typeId));
+/**
+ * The set of landscape typeIds the demo marks walkable for a given map — the placement filter for
+ * {@link walkableCells}. Derived from {@link demoLandscape} (the same table `demoContent` feeds the
+ * sim), so the "walkable" answer here is exactly what `buildTerrainGraph` will resolve, without
+ * paying for a full `parseContentSet`.
+ */
+function walkableTypeIds(map?: TerrainMap): ReadonlySet<number> {
+  return new Set(
+    demoLandscape(map)
+      .filter((t) => t.walkable)
+      .map((t) => t.typeId),
+  );
 }
 
 /**
@@ -221,20 +236,25 @@ function walkableTypeIds(content: ContentSet): ReadonlySet<number> {
  * woodcutter, carrier, two wood nodes) are placed on the first walkable cells of the real grid instead
  * of the hardcoded strip — so the sim actually navigates the decoded map, not a stand-in. The grid's
  * landscape typeIds are folded into the demo content (see {@link demoContent}) so its cell-graph
- * builds; placement uses {@link walkableCells} so nothing lands on a blocking cell.
+ * builds; placement uses {@link walkableCells} so nothing lands on a blocking cell. A loaded map with
+ * too few walkable cells (an all-water grid under the demo's base table) **falls back to the strip**
+ * — the slice always runs (matching the file's graceful-degradation contract), never throwing.
  */
 export function runSlice(seed: number, ticks: number, map?: TerrainMap): Simulation {
-  const content = demoContent(map);
-  const terrain = map ?? grassMap();
+  // Resolve placement first: a usable map yields its first six walkable cells; no map (or a map with
+  // too few walkable cells) falls back to the synthetic strip — content + terrain + cells all revert
+  // together so the fallback sim is exactly the no-map slice.
+  const mapCells = map ? walkableCells(map, walkableTypeIds(map), PLACEMENT_CELL_COUNT) : null;
+  const usable = map !== undefined && mapCells !== null;
+  const content = demoContent(usable ? map : undefined);
+  const terrain = usable ? map : grassMap();
+  const cells = mapCells ?? STRIP_CELLS;
   const sim = new Simulation({ seed, content, map: terrain });
 
-  // Six placement cells: [HQ, sawmill, woodcutter, carrier, wood node, wood node]. On the strip these
-  // are the original fixed coords; on a real map they are the first walkable cells (canonical order).
-  // `walkableCells` throws unless it found all six, and the literal has six — so `cellAt` is total.
-  const cells = map ? walkableCells(map, walkableTypeIds(content), 6) : STRIP_CELLS;
   const cellAt = (i: number): { x: number; y: number } => {
     const c = cells[i];
-    if (c === undefined) throw new Error(`expected 6 placement cells, got ${cells.length}`);
+    if (c === undefined)
+      throw new Error(`expected ${PLACEMENT_CELL_COUNT} placement cells, got ${cells.length}`);
     return c;
   };
   const hq = cellAt(0);
