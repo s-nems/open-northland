@@ -1,7 +1,7 @@
 import type { Recipe } from '@vinland/data';
 import { Building, Position, Settler } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
-import { fx } from '../fixed.js';
+import { ONE, fx } from '../fixed.js';
 import type { TerrainGraph } from '../terrain.js';
 import type { SystemContext } from './context.js';
 
@@ -107,6 +107,53 @@ export function isFood(ctx: SystemContext, goodType: number): boolean {
   const good = ctx.content.goods.find((g) => g.typeId === goodType);
   if (good === undefined) return false;
   return good.id.startsWith('food_');
+}
+
+/**
+ * The **housing capacity** a `tribe` currently has: the sum of the `homeSize` of its placed, fully
+ * **built** `home` buildings. This is the sim's first consumer of the extracted `homeSize` param
+ * (the original `logichousetype` `logichomesize` — the population a residence shelters: home level
+ * 00 → 1, ... level 04 → 5). It is the ceiling the population grows into — the housing half of the
+ * roadmap's `house leveling → population capacity → births→housing→births` loop, the number the
+ * ReproductionSystem will gate births on (a tribe can only grow while it has room).
+ *
+ * Only a **built** residence counts (`built >= ONE`): a home still under construction shelters no
+ * one yet (the slice places buildings already built, but the ConstructionSystem will start them at
+ * `built = 0`, so the gate is forward-compatible). A `home`-kind building type with no `homeSize`
+ * (none in the real data, but the schema defaults it to 0) contributes nothing.
+ *
+ * FIDELITY: the per-home capacity is the extracted `homeSize` param — faithful by construction; what
+ * the capacity *gates* (births) is a later mechanic. Determinism: a pure sum over buildings (addition
+ * commutes, so the `query` store order can't change the total — no canonical sort needed); no
+ * RNG/wall-clock. A building whose type is absent from content contributes nothing.
+ */
+export function housingCapacity(world: World, ctx: SystemContext, tribe: number): number {
+  let capacity = 0;
+  for (const e of world.query(Building)) {
+    const b = world.get(e, Building);
+    if (b.tribe !== tribe || b.built < ONE) continue; // wrong tribe, or not yet built — shelters no one
+    const type = ctx.content.buildings.find((t) => t.typeId === b.buildingType);
+    if (type === undefined || type.kind !== 'home') continue; // not a residence
+    capacity += type.homeSize;
+  }
+  return capacity;
+}
+
+/**
+ * The current **population** of a `tribe`: the number of its living {@link Settler}s. The other half
+ * of the housing read model ({@link housingCapacity} is the ceiling): the ReproductionSystem gates a
+ * birth on `population < housingCapacity`, and a future "population vs housing capacity" invariant
+ * compares the two. Counts every settler regardless of job (idle settlers are still mouths to house).
+ *
+ * Determinism: a pure count over `query(Settler)` (addition commutes — a count is order-independent,
+ * so the store-order traversal is fine, like {@link workerPresentAt}'s any-match); no RNG/wall-clock.
+ */
+export function tribePopulation(world: World, tribe: number): number {
+  let count = 0;
+  for (const e of world.query(Settler)) {
+    if (world.get(e, Settler).tribe === tribe) count++;
+  }
+  return count;
 }
 
 /**
