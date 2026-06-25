@@ -1,5 +1,5 @@
 import type { Recipe } from '@vinland/data';
-import { Building, Stockpile } from '../components/index.js';
+import { Building } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { TerrainGraph } from '../terrain.js';
 import type { SystemContext } from './context.js';
