@@ -20,11 +20,15 @@ feature plan, see [ROADMAP.md](ROADMAP.md).
   `productionSystem`), all their private helpers, the dozen not-yet-implemented stub systems, the
   `todo()` factory, and `SYSTEM_ORDER`. Every new slice lands here, so the file is a magnet for
   merge collisions and the review surface for any one mechanic is the whole module.
-- **Done so far (the small first step, this pass).** The shared `System`/`SystemContext` types moved
-  to `systems/context.ts`, and `movementSystem` (the one system with **zero** shared helpers) moved
-  to `systems/movement.ts`. `index.ts` re-exports both, so the public `systems` namespace and the
-  test imports are unchanged. This establishes the no-import-cycle layout (`context.ts` is the leaf
-  every per-system file imports `System` from, never the barrel) and the per-system-file pattern.
+- **Done so far.** The shared `System`/`SystemContext` types moved to `systems/context.ts`, and
+  `movementSystem` (the one system with **zero** shared helpers) moved to `systems/movement.ts`.
+  Then the `todo()` factory + the ten not-yet-implemented placeholder systems moved to
+  `systems/stubs.ts` (the lowest-risk slice — no shared helpers, only the `System` type). `index.ts`
+  re-exports all three, so the public `systems` namespace and the test imports are unchanged. This
+  establishes the no-import-cycle layout (`context.ts` is the leaf every per-system file imports
+  `System` from, never the barrel) and the per-system-file pattern. **Remaining:** the four real
+  systems still in `index.ts` (`aiSystem`, `pathfindingSystem`, `atomicSystem`, `productionSystem`)
+  + their helpers and the shared-helper untangling below.
 - **Change (the deferred remainder).** Split each remaining real system into its own file under
   `systems/`, with a small shared-helper module to break the cross-system dependencies:
   - `systems/shared.ts` — the genuinely cross-system helpers: `stockCapacity` (used by the ai store
@@ -42,8 +46,8 @@ feature plan, see [ROADMAP.md](ROADMAP.md).
   - `systems/production.ts` — `productionSystem` + `recipeOf`/`canStartCycle`/`consumeInputs`/
     `depositOutputs`.
   - `systems/stubs.ts` — the `todo()` factory and the not-yet-implemented placeholder systems.
-    (As a stub becomes real it graduates to its own file; the end-state is `index.ts` = barrel +
-    `SYSTEM_ORDER` only.)
+    **(Done — landed; see "Done so far" above.)** As a stub becomes real it graduates to its own
+    file; the end-state is `index.ts` = barrel + `SYSTEM_ORDER` only.
   - `systems/index.ts` — shrinks to a barrel that re-exports everything and defines `SYSTEM_ORDER`.
 - **Payoff.** Each slice lands in (and is reviewed as) its own file; far fewer merge collisions on
   the hot module; the review surface for one mechanic is one file; `SYSTEM_ORDER` and the public
