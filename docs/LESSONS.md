@@ -144,3 +144,11 @@ the next iteration inherits it.
   often has no readable twin for a base table (`goodtypes` ships only as base `Data/logic/*.ini`), so
   golden-rule-#4 "prefer the mod `.ini`" can fall through to the base `.ini` — that's still readable, not
   the encrypted `.cif`. (pipeline/format)
+- [309e600] A data param that *varies along a dimension absent at the extraction layer* (production
+  cycle `ticks` is per-tribe — viking coiner=200, frank coiner=60 — but the building-type table has no
+  tribe) can still be pinned to a REAL source instead of a magic constant: pick a deterministic
+  reference along that dimension (lowest-`typeId` tribe), resolve the actual value (worker `jobType` +
+  good's `atomicForProduction` → that tribe's `setatomic` → `atomicanimations.length`), and record the
+  collapsed dimension as a Deviation in FIDELITY.md. Strictly more faithful than a placeholder — and the
+  per-dimension table stays a clean deferred refinement. Watch the produce-atomic join's fallbacks: a
+  raw-good producer has no `atomicForProduction`, so guard each link and fall back per-building. (pipeline/fidelity)
