@@ -197,3 +197,10 @@ the next iteration inherits it.
   it resets the existing field, no new component. Before adding a need field for a satisfier atomic,
   read the animation's `event <at> <channel> <delta>` tuples and check which channel it restores; the
   bar count is set by the distinct channels, not by the atomic count. (sim/fidelity)
+- [97d6755] A roadmap item's logic doesn't always belong in the system named after it. The
+  ProgressionSystem's XP-accrual is **event-shaped** (it fires at the instant a work atomic completes),
+  but sim events are render-only (must not be read back in sim logic), so a poll-driven `System` can't
+  see the completion. The grant lives in the AtomicSystem's effect-apply (where the completion is
+  known), exactly like the hunger/fatigue resets; the `progressionSystem` stub stays for the *gating*
+  half. Before graduating a stub system, ask whether its logic is poll-shaped or event-shaped — the
+  latter belongs at the event source. (sim/architecture)
