@@ -1144,10 +1144,22 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             real track typeId; range 3..75); `experienceRequirementMet` on a real `needforjob 19 10 45`
             gates at the boundary (9 XP → false, 10 → true), is monotone non-decreasing (first met exactly
             at `amount`, never re-locks), a `train` line is vacuously met.
-            **Next:** consume `settlerMeetsNeed` from a planner/JobSystem so a settler only takes a gated
-            job/good once its XP clears the threshold (the *who-may-do-it* gate, atop the tribe-presence
-            `jobEnables` gate); interpret `baseRepeatCounter` into the multi-tier competence curve; and
-            consume the `job`/`vehicle` jobEnables edge kinds as their JobSystem/vehicle slices land.
+      - [x] **`needforgood` harvest-side gate consumed in the AI planner** — `nearestHarvestableFor`
+            (`systems/ai.ts`) now calls `settlerMeetsNeed(ctx, tribe, 'good', good, experience)` alongside
+            the existing job-`allowedAtomics` gate: a settler may only harvest a resource whose good its
+            **own accrued XP** clears (`needforgood <good> <amount> <expType…>`) — the *who-may-do-it*
+            gate, the per-settler sibling of the production-side tribe-presence `jobEnablesGood` gate. A
+            below-threshold settler isn't even given a harvest MoveGoal/atomic; an unthresholded good is
+            harvestable from 0 XP, and the settler *trains* the good's track by harvesting it
+            (`grantWorkExperience`), so the gate is self-consistent. The shared fixture thresholds only
+            PLANK (never harvested), so the gate is inert there and the golden trace is untouched.
+            **Hands-on:** compiled `dist` `Simulation.step()` over a wood good gated `needforgood 1 20 [1]`
+            — a woodcutter with **19** wood XP → **0 harvests, tree untouched**; with **20** XP →
+            harvesting begins (tree 5→4 within 100 ticks); two same-seed runs hash-equal.
+            **Next:** interpret `baseRepeatCounter` into the multi-tier competence curve (output
+            quality/speed by XP tier); consume `needforjob`/`settlerMeetsNeed(target='job')` from the
+            JobSystem so a settler only takes a gated *job* once its XP clears the threshold; and consume
+            the `job`/`vehicle` jobEnables edge kinds as their JobSystem/vehicle slices land.
 - [ ] JobSystem assignment across many workplaces; multiple carriers + vehicle stock slots.
 - [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`)
       → population capacity → the births→housing→births loop.

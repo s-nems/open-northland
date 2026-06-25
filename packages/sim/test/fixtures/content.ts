@@ -99,10 +99,13 @@ export function testContent(): ContentSet {
           { jobType: 2, kind: 'house', targetId: 4 },
           { jobType: 1, kind: 'good', targetId: 2 },
         ],
-        // The XP threshold (the `needfor*` half): producing PLANK (good 2) also requires the settler to
-        // have accrued 30 XP in the woodcutter-wood track (typeId 1) — so the threshold half is the
-        // accrued-XP gate on top of the `jobEnables` who-unlocks-it gate. A `train` requirement (a
-        // schooling cost, not an accrued-XP threshold) is included to confirm the reader skips it.
+        // The XP threshold (the `needfor*` half): a `needforgood` on PLANK (good 2, 30 XP in the
+        // woodcutter-wood track typeId 1) — the accrued-XP gate on top of the `jobEnables` who-unlocks-it
+        // gate, exercised by `settlerMeetsNeed`/`experienceRequirementMet` (progression-system.test.ts).
+        // PLANK is never *harvested* (only produced at the sawmill), so the AI harvest-side `needforgood`
+        // gate (nearestHarvestableFor) is inert here — the golden slice is untouched; harvest-need-gate.test.ts
+        // injects a thresholded HARVESTABLE good to exercise that gate. A `train` requirement (a schooling
+        // cost, not an accrued-XP threshold) is included to confirm the reader skips it.
         jobRequirements: [
           { requirement: 'need', target: 'good', targetId: 2, amount: 30, experienceTypes: [1] },
           { requirement: 'train', target: 'good', targetId: 2, amount: 999, experienceTypes: [77] },
