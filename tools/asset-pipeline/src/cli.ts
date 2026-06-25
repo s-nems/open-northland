@@ -36,6 +36,7 @@ import {
   type SourceRef,
   cifLinesToSections,
   decodeIni,
+  extractAnimals,
   extractArmor,
   extractAtomicAnimations,
   extractBuildings,
@@ -440,7 +441,7 @@ export interface IniSource {
  * Resolves the readable `.ini` sources for the type tables we can extract today, **preferring the
  * mod's readable `.ini` over the base game** (CLAUDE.md golden rule #4): tribes + atomic animations +
  * weapons + buildings live only under `DataCnmd/types/` (the base game's twins are encrypted `.cif`),
- * while goods/jobs/landscape/vehicles/armor are base `Data/logic/*.ini`. A source whose file is missing on disk is
+ * while goods/jobs/landscape/vehicles/armor/animals are base `Data/logic/*.ini`. A source whose file is missing on disk is
  * dropped with a warning — a partial install (or no mod) still produces an IR from whatever is present,
  * rather than aborting the whole batch.
  */
@@ -452,6 +453,7 @@ export async function resolveIniSources(gameDir: string, mod: string | undefined
     { rel: join('Data', 'logic', 'landscapetypes.ini'), layer: 'base' },
     { rel: join('Data', 'logic', 'vehicletypes.ini'), layer: 'base' },
     { rel: join('Data', 'logic', 'armortypes.ini'), layer: 'base' },
+    { rel: join('Data', 'logic', 'animaltypes.ini'), layer: 'base' },
   ];
   if (mod !== undefined) {
     base.push(
@@ -585,8 +587,6 @@ export async function convertMapDatTree(gameDir: string, outDir: string): Promis
  * stays pure (`decodeIni`/`parseIniSections`/`extract*` take bytes/text, not the filesystem); the
  * only I/O here is reading the resolved files. Each extractor pulls only its own `[section]`s from a
  * file, so passing every file's sections to every extractor is correct and order-independent.
- *
- * `animals` is left empty until its extractor lands — the schema default covers that optional array.
  */
 export async function buildIr(args: Args): Promise<ContentSet> {
   const sources = await resolveIniSources(args.game, args.mod);
@@ -599,6 +599,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   const atomicAnimations = [];
   const weapons = [];
   const armor = [];
+  const animals = [];
   const vehicles = [];
   for (const { path, file, layer } of sources) {
     const sections = parseIniSections(decodeIni(await readFile(path)));
@@ -612,6 +613,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     atomicAnimations.push(...extractAtomicAnimations(sections, src));
     weapons.push(...extractWeapons(sections, src));
     armor.push(...extractArmor(sections, src));
+    animals.push(...extractAnimals(sections, src));
     vehicles.push(...extractVehicles(sections, src));
   }
   const maps = await decodeMapTree(args.game);
@@ -631,6 +633,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     buildings: buildingsWithRecipes,
     weapons,
     armor,
+    animals,
     vehicles,
     landscape,
     tribes,
@@ -785,7 +788,7 @@ async function run(args: Args): Promise<void> {
   console.log(
     `[pipeline] ini -> ir: ${ir.goods.length} goods, ${ir.jobs.length} jobs, ${ir.jobExperience.length} job-xp tracks, ` +
       `${ir.buildings.length} buildings, ` +
-      `${ir.weapons.length} weapons, ${ir.armor.length} armor, ${ir.vehicles.length} vehicles, ${ir.landscape.length} landscape, ` +
+      `${ir.weapons.length} weapons, ${ir.armor.length} armor, ${ir.animals.length} animals, ${ir.vehicles.length} vehicles, ${ir.landscape.length} landscape, ` +
       `${ir.tribes.length} tribes, ${ir.atomicAnimations.length} atomic animations, ${ir.maps.length} maps ` +
       `-> ${join(args.out, 'ir.json')}`,
   );

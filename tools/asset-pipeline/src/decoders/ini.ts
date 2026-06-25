@@ -15,6 +15,7 @@
  * from inspecting `Data/logic/*.ini`. See docs/SOURCES.md and docs/DATA-FORMAT.md.
  */
 import {
+  AnimalType,
   ArmorType,
   AtomicAnimation,
   BuildingType,
@@ -658,6 +659,55 @@ export function extractVehicles(sections: readonly RuleSection[], src: SourceRef
     );
   }
   return vehicles;
+}
+
+/**
+ * Extracts `[animaltype]` sections (base `Data/logic/animaltypes.ini` — plain `.ini` despite the
+ * `<CULTURES_CIF_BEGIN>` header line, like `armortypes`/`vehicletypes`; the mod ships no readable twin)
+ * into validated {@link AnimalType} IR — the per-tribe behaviour of the non-controllable creature
+ * tribes the civ-vs-animal combat slice consumes. Unlike every other type table, an animal record keys
+ * on **`tribetype`** (the cross-ref into the tribe table), NOT `type`: the source has no `type` id and
+ * an animal's identity is its owning tribe. A record **missing `tribetype`** is **dropped** (a couple of
+ * leftover/disabled stubs in the real file carry none) — it cannot resolve to a tribe, so keeping it
+ * would dangle. This is the one extractor that drops-on-missing-key rather than throwing
+ * ({@link extractWeapons}'s stance): here the key is genuinely absent in real data (a disabled record),
+ * not malformed. The 0/1 flags become booleans (`getInt(...) === 1`, as {@link extractLandscape} does);
+ * the magnitude fields stay ints. The graphics/sound/spawn extras are skipped — behaviour slice only.
+ */
+export function extractAnimals(sections: readonly RuleSection[], src: SourceRef): AnimalType[] {
+  const animals: AnimalType[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'animaltype') continue;
+    const tribeType = getInt(sec, 'tribetype');
+    if (tribeType === undefined) continue; // a disabled/leftover stub with no tribe key — can't resolve, drop it
+    const name = getStr(sec, 'name');
+    animals.push(
+      AnimalType.parse({
+        id: name ? slug(name) : `animal_${tribeType}`,
+        name,
+        tribeType,
+        aggressive: getInt(sec, 'aggressive') === 1,
+        getAngry: getInt(sec, 'getangry') === 1,
+        angryGameTime: getInt(sec, 'angryGameTime'),
+        hitpointsAdult: getInt(sec, 'hitpoints_adult'),
+        hitpointsBaby: getInt(sec, 'hitpoints_baby'),
+        maximumGroupSize: getInt(sec, 'maximumgroupsize'),
+        maximumCadaverSize: getInt(sec, 'maximumcadaversize'),
+        maximumLeaderDistance: getInt(sec, 'maximumleaderdistance'),
+        searchForLeader: getInt(sec, 'searchforleader') === 1,
+        maximumDistanceToStayPoint: getInt(sec, 'maximumdistancetostaypoint'),
+        maximumDistanceToBirthPoint: getInt(sec, 'maximumdistancetobirthpoint'),
+        moveSpeed: getInt(sec, 'movespeed'),
+        runSpeed: getInt(sec, 'runspeed'),
+        catchable: getInt(sec, 'catchable') === 1,
+        warrantable: getInt(sec, 'warrantable') === 1,
+        cannotBeAttacked: getInt(sec, 'cannotbeattacked') === 1,
+        ignoreHouses: getInt(sec, 'ignorehouses') === 1,
+        source: { file: src.file, block: 'animaltype', layer: src.layer ?? 'base' },
+      }),
+    );
+  }
+  return animals;
 }
 
 /**
