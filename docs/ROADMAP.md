@@ -59,9 +59,12 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       against the running original (see docs/FIDELITY.md). Consume the `job`/`vehicle` `jobEnables` edge
       kinds as the JobSystem matures / the vehicle slice lands.
 - [ ] **JobSystem** — assignment **landed** (idle settlers take open, tech-enabled, understaffed
-      workplace jobs, gated by `needforjob` XP — `systems/jobs.ts`). **Next:** physically move an
-      assigned settler to its workplace; per-building worker→workplace binding (vs the tribe-wide
-      head-count stand-in); multiple carriers + vehicle stock slots.
+      workplace jobs, gated by `needforjob` XP — `systems/jobs.ts`) and a freshly-assigned operator now
+      **walks to its workplace** (the AI walk-to-workplace drive — `nearestUnstaffedWorkplaceFor` in
+      `systems/ai.ts` — so a pure-operator job like the carpenter reaches its station instead of idling).
+      **Next:** a per-building worker→workplace binding record (vs the tribe-wide head-count stand-in, so
+      two same-type workplaces staff independently and a worker stays latched to *its* mill); multiple
+      carriers + vehicle stock slots.
 - [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`)
       → population capacity → the births→housing→births loop.
 - [ ] ReproductionSystem: families, children growing up, gated by housing.

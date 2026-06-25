@@ -16,7 +16,7 @@ import type { Entity, World } from '../ecs/world.js';
 import { type Fixed, fx } from '../fixed.js';
 import type { CellId, TerrainGraph } from '../terrain.js';
 import type { System, SystemContext } from './context.js';
-import { settlerMeetsNeed } from './progression.js';
+import { buildingEnabled, settlerMeetsNeed } from './progression.js';
 import { buildingWorkerJobs, inRange, isFood, isTemple, recipeOf, stockCapacity } from './shared.js';
 
 /**
@@ -189,6 +189,21 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       } else {
         world.add(e, MoveGoal, { cell });
       }
+      continue;
+    }
+
+    // The WALK-TO-WORKPLACE drive: an employed, empty-handed settler that ISN'T yet on a workplace it
+    // staffs (the pin above didn't fire) walks to the nearest producing workplace its job operates. The
+    // JobSystem assigns a job *type*, not a building, so a freshly-assigned operator standing elsewhere
+    // (e.g. a carpenter spawned at the HQ, whose job can harvest nothing) must physically reach its
+    // station before the ProductionSystem's worker-presence gate can run — without this it would fall
+    // through to harvest/haul and never staff the workplace. Targets only an UNSTAFFED workplace (no
+    // operator of its job already present), so two same-type workplaces each draw one walker rather than
+    // both luring the same settler, and an already-manned station isn't a target. A settler whose job a
+    // resource permits still reaches harvest below when no such workplace exists (this returns null).
+    const station = nearestUnstaffedWorkplaceFor(world, ctx, terrain, here, settler.jobType, settler.tribe);
+    if (station !== null) {
+      world.add(e, MoveGoal, { cell: entityCell(world, terrain, station) });
       continue;
     }
 
@@ -591,6 +606,73 @@ function staffsWorkplaceHere(world: World, ctx: SystemContext, settler: Entity, 
     if (!buildingWorkerJobs(world, ctx, b).has(jobType)) continue; // not a job this workplace employs
     const bp = world.get(b, Position);
     if (fx.toInt(bp.x) === sx && fx.toInt(bp.y) === sy) return true;
+  }
+  return false;
+}
+
+/**
+ * The nearest producing workplace a `tribe` settler of `jobType` should WALK TO in order to staff it —
+ * the target of the walk-to-workplace drive, the movement half {@link staffsWorkplaceHere} (the
+ * already-here pin) was missing. A candidate workplace must:
+ *
+ *  - be a same-tribe {@link Building} with a `recipe` (a producing workplace, not a passive store/HQ —
+ *    a store never needs an operator walking to it, mirroring the recipe guard in `staffsWorkplaceHere`),
+ *  - declare a `workers` slot naming `jobType` ({@link buildingWorkerJobs}),
+ *  - be **tech-enabled** for the tribe ({@link buildingEnabled} — don't walk to a workplace not yet
+ *    unlocked), AND
+ *  - be **currently unstaffed** by an operator of that job (no settler of `jobType` standing on its
+ *    tile): an already-manned station needs no second walker, and two same-type workplaces each pull
+ *    exactly one settler instead of both drawing the same one.
+ *
+ * Chosen by fixed-point Manhattan distance from `here`, ascending-cell-id tie-break, scanned in
+ * canonical entity-id order — so the target never depends on store insertion history. Returns the
+ * workplace entity or null when none qualifies (the settler then falls through to harvest/haul).
+ * Determinism: distance + canonical scan for the *pick*; the unstaffed test is a boolean any-match.
+ */
+function nearestUnstaffedWorkplaceFor(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  here: CellId,
+  jobType: number,
+  tribe: number,
+): Entity | null {
+  let best: Entity | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  let bestCell = Number.POSITIVE_INFINITY;
+  for (const b of world.canonicalEntities()) {
+    const building = world.tryGet(b, Building);
+    if (building === undefined || building.tribe !== tribe) continue;
+    if (!world.has(b, Position)) continue;
+    if (recipeOf(world, ctx, b) === undefined) continue; // only a producing workplace needs an operator
+    if (!buildingWorkerJobs(world, ctx, b).has(jobType)) continue; // not a job this workplace employs
+    if (!buildingEnabled(world, ctx, tribe, building.buildingType)) continue; // not tech-enabled yet
+    if (workplaceStaffedBy(world, b, jobType)) continue; // already manned by an operator of this job
+    const cell = entityCell(world, terrain, b);
+    const dist = manhattan(terrain, here, cell);
+    if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
+      best = b;
+      bestDist = dist;
+      bestCell = cell;
+    }
+  }
+  return best;
+}
+
+/**
+ * Whether some settler of `jobType` is standing on `building`'s integer tile — i.e. the workplace
+ * already has an operator of that job at its station. A boolean any-match over the deterministic
+ * `Settler`/`Position` store (no chosen entity), so it has no ordering concern. Used by
+ * {@link nearestUnstaffedWorkplaceFor} to skip an already-manned workplace.
+ */
+function workplaceStaffedBy(world: World, building: Entity, jobType: number): boolean {
+  const bp = world.get(building, Position);
+  const bx = fx.toInt(bp.x);
+  const by = fx.toInt(bp.y);
+  for (const e of world.query(Settler, Position)) {
+    if (world.get(e, Settler).jobType !== jobType) continue;
+    const p = world.get(e, Position);
+    if (fx.toInt(p.x) === bx && fx.toInt(p.y) === by) return true;
   }
   return false;
 }
