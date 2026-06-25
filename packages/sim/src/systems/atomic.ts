@@ -4,6 +4,7 @@ import { Carrying, CurrentAtomic, Resource, Settler, Stockpile } from '../compon
 import type { Entity, World } from '../ecs/world.js';
 import { fx } from '../fixed.js';
 import type { System, SystemContext } from './context.js';
+import { grantWorkExperience } from './progression.js';
 import { stockCapacity } from './shared.js';
 
 /**
@@ -57,6 +58,10 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       // depletion use the same constant so a node releases exactly what settlers carry away — goods
       // are conserved and a finite node empties (planner's `remaining <= 0` gate then skips it).
       harvestFromNode(world, settler, effect.resource, effect.goodType);
+      // Completing a work atomic that yields a good trains the settler's `(job, good)` specialization
+      // — the original grants XP within a narrow `(job, good)` track, not just per job (see
+      // ProgressionSystem). No-op when the job/good pairing has no track.
+      grantWorkExperience(world, ctx, settler, effect.goodType);
       return;
     case 'pickup':
       pickupFromStore(world, settler, effect.from, effect.goodType, effect.amount);

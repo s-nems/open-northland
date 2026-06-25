@@ -190,11 +190,12 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   it('matches the golden final state hash', () => {
     const run = runSlice(SEED, TICKS);
     // Intentional-change discipline: if this moves, a mechanic changed — name it in the commit.
-    // Moved by the NeedsSystem enjoyment rise: settlers now carry a fourth need field, `enjoyment` (the
-    // recreation/leisure need), growing ONE/32768 per tick (it was added at 0), so each settler's state —
-    // and thus the canonical hash — shifts (d780b4ad → d1ac5fbe). Behavior is unchanged: the atomic trace
-    // + 8-plank output below are identical (no enjoy drive — enjoyment only rises, never reaches a threshold).
-    expect(run.hash).toBe('d1ac5fbe');
+    // Moved by the ProgressionSystem XP-accrual: the woodcutter now trains its `(job, good)` track on
+    // every completed wood harvest (8 harvests × experienceFactor 10 = 80 XP in track typeId 1), so its
+    // `Settler.experience` Map gains an entry and the canonical hash shifts (d1ac5fbe → f0edd147). The
+    // carrier accrues nothing (pickup is not a yield-bearing work atomic). Behavior is unchanged: the
+    // atomic trace + 8-plank output below are identical (XP is new state, not a new action).
+    expect(run.hash).toBe('f0edd147');
   });
 
   it('matches the golden atomic-action trace', () => {
