@@ -59,6 +59,14 @@ export function testContent(): ContentSet {
         id: 'temple',
         kind: 'workplace',
       },
+      {
+        // A tech-gated workplace: the viking tribe's `jobEnablesHouse` edge below locks it behind the
+        // carpenter job (2), so it can only be placed once a carpenter settler exists in the tribe.
+        // Nothing in the vertical slice / golden places this, so the placement gate leaves them alone.
+        typeId: 4,
+        id: 'smithy',
+        kind: 'workplace',
+      },
     ],
     landscape: [
       { typeId: 0, id: 'grass', walkable: true, buildable: true },
@@ -81,6 +89,10 @@ export function testContent(): ContentSet {
           // resolves its duration through this binding -> atomicAnimations length below.
           { jobType: 1, atomicId: 12, animation: 'viking_pray' },
         ],
+        // One tech-graph edge: the carpenter (job 2) unlocks the smithy (house 4) for this tribe. The
+        // placement gate (buildingEnabled) reads this — the smithy can only be placed once a carpenter
+        // settler exists. The HQ/sawmill (houses 1/2) carry no edge, so they stay ungated.
+        jobEnables: [{ jobType: 2, kind: 'house', targetId: 4 }],
       },
     ],
     atomicAnimations: [

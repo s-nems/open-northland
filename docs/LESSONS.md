@@ -209,3 +209,10 @@ the next iteration inherits it.
   source's interleaving. The `tribetypes` `jobEnables{Good,House,Job,Vehicle}` lines interleave the
   four kinds within a job's block; a single `sec.props` pass keyed on a kind-lookup keeps verbatim
   file order. Check the real source's ordering before choosing grouped vs single-pass extraction. (pipeline/fidelity)
+- [PENDING] A boolean "does ANY entity match?" query is order-independent, so it may iterate
+  `world.query(...)` (insertion order) directly — it's a membership test like `Map.has`, which the
+  determinism contract permits. Only a query whose RESULT depends on *which* match wins (a pick / a
+  sum-with-order / a first-found mutation) needs `canonicalEntities()` + a sort. The `jobEnables`
+  placement gate (`buildingEnabled`) returns true on the first enabling-job settler found and never
+  cares which one — so a sorted scan would be dead cost. Ask "does the output change if matches are
+  reordered?" before reaching for the canonical sort. (sim/determinism)
