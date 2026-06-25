@@ -310,3 +310,11 @@ the next iteration inherits it.
   minimal content set inline (instead of spreading `testContent()`) fails zod validation with `Required`
   on exactly those three, not on the field you were exercising. Either spread the fixture or include the
   three required arrays (even as one-element stubs). (sim/test)
+- [5676e8c] An `Invariant` whose check needs CONTENT (here a building type's `homeSize`) doesn't fit the
+  `(world) => string[]` signature — but don't widen that signature across every call site / `checkInvariants`.
+  Make a **content-bound factory** `populationWithinHousing(content): Invariant` that closes over content
+  and returns the plain `Invariant`; a scenario opts in via `invariants: [factory(content)]`, and it stays
+  OUT of `CORE_INVARIANTS` (those must run content-free against any world). Same trick a new self-balancing
+  system uses to stay inert in the goldens: the births fire only on `home`-kind content the golden/slice
+  fixture never builds, so the golden hash + trace are untouched ([6264132]) — verify by grepping the
+  fixture for the triggering shape before claiming the hash is stable. (sim/invariants)
