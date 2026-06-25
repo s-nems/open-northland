@@ -26,8 +26,8 @@
  * This module decodes the **container** (the chunk table) plus the one *raw* payload, `lsiz`
  * (`[u32 width][u32 height]`, the grid dims that cross-check the `map.cif` `mapsize`). The per-cell
  * grid layers (`lmhe`,`lmlt`,`lmlv`,…) are `pck`/`X8el`-packed bitmaps whose inner header is not yet
- * decoded — `unpackLayer` is the next leg; this reader exposes their raw payload views so that work
- * can build on a parsed container.
+ * decoded — a future packed-layer unpack is the next leg; this reader exposes their raw payload
+ * views (via `findChunk`) so that work can build on a parsed container.
  *
  * Pure functions only (no I/O): `(bytes) => decoded`. The CLI wires file reads around them.
  */
