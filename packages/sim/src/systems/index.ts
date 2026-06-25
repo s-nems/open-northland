@@ -20,6 +20,7 @@ import {
   trackFor,
 } from './progression.js';
 import { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem } from './routing.js';
+import { housingCapacity, tribePopulation } from './shared.js';
 import {
   cleanupSystem,
   combatSystem,
@@ -54,6 +55,7 @@ export { productionSystem };
 export { atomicSystem };
 export { jobSystem };
 export { carrierCarryCapacity, experienceRequirementMet, grantWorkExperience, settlerMeetsNeed, trackFor };
+export { housingCapacity, tribePopulation };
 export {
   cleanupSystem,
   combatSystem,

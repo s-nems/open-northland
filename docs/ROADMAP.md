@@ -85,7 +85,16 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       read side now covers **all four** edge kinds. **Next:** model multiple carriers / a per-carrier
       vehicle entity (so a carrier visibly fetches a cart) — the last unmodeled JobSystem behavior.
 - [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`)
-      → population capacity → the births→housing→births loop.
+      → population capacity → the births→housing→births loop. **Housing read model landed** — the
+      `homeSize` param (`logichousetype` `logichomesize`: home level 00→1 … 04→5) is extracted into the
+      `BuildingType` IR, and `housingCapacity`/`tribePopulation` (`systems/shared.ts`) are its first sim
+      consumer: the ceiling-vs-count the births loop gates on (no births wired yet — that's the
+      ReproductionSystem). **Material-delivery half is source-blocked:** `houses.ini` carries NO
+      build-cost/material key (only `logicstock`/`logicworker`/`logicproduction`/`logichomesize`), so
+      "deliver materials → build" has no readable oracle (the cost lives below the `.ini`) and is
+      deferred; for now a placed building is immediately built (`built = ONE`). **Next:** the
+      ReproductionSystem birth — create a settler when `tribePopulation < housingCapacity`, the first
+      writer of the housing read model.
 - [ ] ReproductionSystem: families, children growing up, gated by housing.
 - [ ] HUD: stocks, population, jobs, the goods graph.
 - **Exit:** a self-sustaining, progressing single-tribe settlement you can grow.
