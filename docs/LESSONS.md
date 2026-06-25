@@ -346,3 +346,9 @@ the next iteration inherits it.
   fold every id-0 settler into the idle bucket. Pick the sentinel OUTSIDE the field's value space — a
   negative (`IDLE_JOB = -1`) for an id space that starts at 0 — so the "unassigned" bucket can never
   collide with a real id. (sim/read-model)
+- [c00bf18] A `systems/*` export is NOT on `@vinland/sim`'s top level — `index.ts` re-exports it via
+  `export * as systems from './systems/...'`, so the import is `import { systems } from '@vinland/sim';
+  systems.goodsGraph`, not a named top-level import. The unit test passed (it imports straight from
+  `../src/systems/index.js`), but the 3b hands-on `node -e` against `@vinland/sim` threw `does not
+  provide an export named goodsGraph` — the exact "green test, broken at the real entry point" gap the
+  hands-on step exists to catch. Mirror the real consumer's import surface in the smoke check. (sim/barrel)
