@@ -660,10 +660,13 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
       exactly **3 planks** (capped, never exceeded), **2 wood left** (production halted on full output,
       inputs untouched), 3 `goodProduced` events, two same-seed runs hash-equal (`57b0f116`); and the
       real-game `npm run pipeline` → **26 of 28 workplaces** carry a recipe (22 with non-empty inputs),
-      0 dangling refs. **Still to do:** the per-cycle `recipe.ticks` is still the schema default 20
-      (the faithful duration is behind the produce atomic's per-tribe `setatomic`→`atomicanimations`
-      `length` — recorded approximated in FIDELITY); a worker-presence gate (produce only while
-      staffed — JobSystem slice).
+      0 dangling refs. **The per-cycle `recipe.ticks` is now data-pinned** (`resolveRecipeTicks`):
+      worker `jobType` + the produced good's `goodtypes.atomicForProduction` → the reference tribe's
+      `setatomic`→`atomicanimations` `length` (22/26 workplaces resolve to a real length — mill
+      flour=200, brewery mead=50, pottery brick=80, …; the 4 raw-good producers with no produce-atomic
+      keep the default 20). Reference-tribe + primary-output approximations recorded in FIDELITY (the
+      source length varies per tribe/output). **Still to do:** a worker-presence gate (produce only
+      while staffed — JobSystem slice); a per-tribe recipe-timing table (the fully-faithful model).
 - [x] A minimal **carrier** moving goods between store and workplace (goods never teleport). Done —
       the AISystem's `atomicPlanner` now has a carrier fallback: an idle settler with nothing to
       harvest hauls a workplace's finished outputs out to a store that can stock them. `pickup` now
@@ -853,10 +856,12 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             each producing workplace it joins each `logicproduction` output good → that good's
             `productionInputs` to materialize `recipe.inputs` (merged + summed per input goodType across
             several outputs, ascending-id order) and `recipe.outputs` (each produced good at amount 1 —
-            the `logicproduction <good>` semantics carry no per-output quantity). `recipe.ticks` is the
-            schema default 20 — APPROXIMATED (the faithful per-cycle duration is behind the produce
-            atomic's per-tribe `setatomic`→`atomicanimations` `length`, no tribe context at the
-            building-type layer; recorded in FIDELITY.md). A non-producing building (`produces` empty)
+            the `logicproduction <good>` semantics carry no per-output quantity). `recipe.ticks` is now
+            data-pinned by `resolveRecipeTicks`: worker `jobType` + the primary produced good's
+            `goodtypes.atomicForProduction` → the reference tribe's (lowest-`typeId`)
+            `setatomic`→`atomicanimations` `length`, falling back to the schema default 20 only when no
+            produced good's produce-atomic resolves (raw-good producers). Reference-tribe + primary-output
+            APPROXIMATED in FIDELITY.md (the source length varies per tribe/output). A non-producing building (`produces` empty)
             gets no recipe. `validateCrossReferences` already checks recipe good ids resolve. **Hands-on:**
             `npm run pipeline` on the real game → **26/28 workplaces** carry a recipe (22 with non-empty
             inputs), 0 dangling refs, recognisably the original economy (`mill: wheat→flour`,
