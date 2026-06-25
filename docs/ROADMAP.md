@@ -1094,8 +1094,27 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             JobSystem slices. **Hands-on:** compiled `dist` `Simulation.step()` — a `placeBuilding` smithy
             (gated `jobEnablesHouse 2 4`) with no carpenter → **0 entities, command logged**; spawn the
             carpenter then retry → smithy (type 4) placed; a carpenter in a *different* tribe does not
-            unlock it. **Next:** the `trainforjob`/`needfor*` schooling half (the XP→level→unlock curve),
-            and consume the `good`/`job`/`vehicle` edge kinds as their producer systems land.
+            unlock it.
+      - [x] **`{need,train}for{job,good}` XP/schooling requirements extracted** — `extractJobRequirements`
+            (`decoders/ini.ts`, called from `extractTribes`) reduces each `[tribetype]`'s
+            `{need,train}for{job,good} <targetId> <amount> <expType> [expType2]` lines to unified
+            `TribeType.jobRequirements` records (`{requirement, target, targetId, amount,
+            experienceTypes[]}`) — the **threshold** half of progression under the `jobEnables*` gate.
+            Two orthogonal dimensions: `requirement` = `need` (XP already accrued) vs `train` (schooling
+            cost), `target` = `job` vs `good`. Records kept in exact source order, repeats verbatim,
+            malformed lines skipped (the `jobEnables`/`setatomic` stance). `validateCrossReferences`
+            resolves each `targetId` against the job/good table; the `experienceTypes` are NOT checked
+            (they span an id space wider than the 70-entry `humanjobexperiencetypes` table — `need` ids
+            reach 75, `train` uses synthetic "school" markers 57/77 — so resolving would false-positive,
+            like the unchecked `vehicle` jobEnables kind). **Data-only — no sim consumes them yet.**
+            DEVIATION-FROM-DOC recorded in FIDELITY: `info.txt` says `trainfor*`'s school expType is
+            "always 77", but the real data also uses 57. **Hands-on:** `npm run pipeline` on the real
+            game → **575 requirements across the 5 playable tribes** (145 needforjob / 115 trainforjob /
+            160 needforgood / 155 trainforgood; animals none), 20 lines with two expTypes, 0 dangling
+            target refs. **Next:** the XP→level→unlock *curve* (interpret `amount`/`experienceFactor`/
+            `baseRepeatCounter` into a competence tier that consumes these `need`/`train` thresholds to
+            gate jobs/goods), and consume the `good`/`job`/`vehicle` jobEnables edge kinds as their
+            producer / JobSystem slices land.
 - [ ] JobSystem assignment across many workplaces; multiple carriers + vehicle stock slots.
 - [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`)
       → population capacity → the births→housing→births loop.

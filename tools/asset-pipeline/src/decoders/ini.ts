@@ -23,6 +23,9 @@ import {
   HumanJobExperienceType,
   type JobEnables,
   type JobEnablesKind,
+  type JobRequirement,
+  type JobRequirementKind,
+  type JobRequirementTarget,
   JobType,
   LandscapeType,
   MapInfo,
@@ -419,12 +422,50 @@ function extractJobEnables(sec: RuleSection): JobEnables[] {
   return edges;
 }
 
+/** The four `{need,train}for{job,good}` source keys → their (requirement, target) decomposition. */
+const JOB_REQUIREMENT_KEY: Readonly<
+  Record<string, { requirement: JobRequirementKind; target: JobRequirementTarget }>
+> = {
+  needforjob: { requirement: 'need', target: 'job' },
+  needforgood: { requirement: 'need', target: 'good' },
+  trainforjob: { requirement: 'train', target: 'job' },
+  trainforgood: { requirement: 'train', target: 'good' },
+};
+
+/**
+ * Collects one `[tribetype]` section's `{need,train}for{job,good} <targetId> <amount> <expType>
+ * [expType2]` lines into unified {@link JobRequirement} records in **exact source order** (the data
+ * interleaves `need`/`train` blocks, kept verbatim like {@link JobEnables}). The `need`/`train`
+ * prefix and `job`/`good` suffix of the key give the two dimensions; the remaining ints are the
+ * target id, the amount, and one-or-two experience-type ids. A line missing the target id or the
+ * amount is skipped, matching the `setatomic`/`jobEnables` malformed-line stance; a line with no
+ * expType still yields a record (`experienceTypes: []`) rather than being dropped.
+ */
+function extractJobRequirements(sec: RuleSection): JobRequirement[] {
+  const reqs: JobRequirement[] = [];
+  for (const p of sec.props) {
+    const decomposed = JOB_REQUIREMENT_KEY[p.key];
+    if (decomposed === undefined) continue;
+    const targetId = Number.parseInt(p.values[0] ?? '', 10);
+    const amount = Number.parseInt(p.values[1] ?? '', 10);
+    if (Number.isNaN(targetId) || Number.isNaN(amount)) continue;
+    const experienceTypes: number[] = [];
+    for (const raw of p.values.slice(2)) {
+      const expType = Number.parseInt(raw, 10);
+      if (!Number.isNaN(expType)) experienceTypes.push(expType);
+    }
+    reqs.push({ ...decomposed, targetId, amount, experienceTypes });
+  }
+  return reqs;
+}
+
 /**
  * Extracts `[tribetype]` sections into validated {@link TribeType} IR. The payload is each tribe's
  * `setatomic <jobType> <atomicId> "animation"` bindings — the per-tribe atomic→animation table that
- * carries tribal identity — plus its `jobEnables*` tech-graph edges ({@link extractJobEnables}). The
- * readable mod `tribetypes.ini` covers playable tribes AND animals. Malformed `setatomic` lines
- * (missing the job/atomic ints or the animation token) are skipped.
+ * carries tribal identity — plus its `jobEnables*` tech-graph edges ({@link extractJobEnables}) and
+ * its `{need,train}for*` experience requirements ({@link extractJobRequirements}). The readable mod
+ * `tribetypes.ini` covers playable tribes AND animals. Malformed `setatomic` lines (missing the
+ * job/atomic ints or the animation token) are skipped.
  */
 export function extractTribes(sections: readonly RuleSection[], src: SourceRef): TribeType[] {
   const tribes: TribeType[] = [];
@@ -447,6 +488,7 @@ export function extractTribes(sections: readonly RuleSection[], src: SourceRef):
         name,
         atomicBindings,
         jobEnables: extractJobEnables(sec),
+        jobRequirements: extractJobRequirements(sec),
         source: { file: src.file, block: 'tribetype', layer: src.layer ?? 'base' },
       }),
     );
