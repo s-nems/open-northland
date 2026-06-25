@@ -800,18 +800,18 @@ describe('extractTribes', () => {
     ]);
   });
 
-  it('collects `jobEnables*` edges grouped by kind in file order, skipping a malformed line', () => {
+  it('collects interleaved `jobEnables*` edges in exact source order, skipping a malformed line', () => {
     const tribes = extractTribes(parseIniSections(TRIBETYPES_INI), {
       file: 'DataCnmd/tribetypes12/tribetypes.ini',
       layer: 'mod',
     });
-    // Edges are grouped by kind (good, house, job, vehicle order), each kind keeping its file order;
-    // the interleaved `jobEnablesGood 1 4` stays after `5 5` within the good group. The malformed
+    // The real data interleaves the four kinds within a block, so edges keep verbatim file order
+    // (good, house, good, job, vehicle here) — NOT regrouped by kind. The malformed
     // `jobEnablesGood notanint 5` (non-int jobType) is dropped, like a malformed setatomic line.
     expect(tribes[0]?.jobEnables).toEqual([
       { jobType: 5, kind: 'good', targetId: 5 },
-      { jobType: 1, kind: 'good', targetId: 4 },
       { jobType: 5, kind: 'house', targetId: 2 },
+      { jobType: 1, kind: 'good', targetId: 4 },
       { jobType: 5, kind: 'job', targetId: 1 },
       { jobType: 5, kind: 'vehicle', targetId: 7 },
     ]);

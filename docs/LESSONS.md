@@ -204,3 +204,8 @@ the next iteration inherits it.
   known), exactly like the hunger/fatigue resets; the `progressionSystem` stub stays for the *gating*
   half. Before graduating a stub system, ask whether its logic is poll-shaped or event-shaped — the
   latter belongs at the event source. (sim/architecture)
+- [2b407e0] When unifying several repeated `.ini` keys into one list IR, don't iterate key-by-key
+  (`findProps(a)` then `findProps(b)`…) — that regroups the records by key and silently loses the
+  source's interleaving. The `tribetypes` `jobEnables{Good,House,Job,Vehicle}` lines interleave the
+  four kinds within a job's block; a single `sec.props` pass keyed on a kind-lookup keeps verbatim
+  file order. Check the real source's ordering before choosing grouped vs single-pass extraction. (pipeline/fidelity)
