@@ -33,10 +33,14 @@ feature plan, see [ROADMAP.md](ROADMAP.md).
   file imports from, never the barrel or each other) and the per-system-file pattern. `atomicSystem`
   then moved to `systems/atomic.ts` (with its `applyEffect`/`harvestFromNode`/`pickupFromStore`/
   `pileupIntoStore`/`addCarry` helpers + `HARVEST_YIELD`), importing only `stockCapacity` from the
-  leaf; the golden `7f89b94d` stayed byte-identical. **Remaining:** the two real systems still in
-  `index.ts` (`aiSystem`, `pathfindingSystem`) + their helpers (`aiSystem` consumes `shared.ts`'s
-  `stockCapacity`/`recipeOf`, so it's the next extraction; `pathfindingSystem` consumes `inRange` from
-  the leaf and the A* core from `../pathfinding.ts`).
+  leaf; the golden `7f89b94d` stayed byte-identical. `aiSystem` then moved to `systems/ai.ts` (with
+  `atomicPlanner`/`navigationPlanner` + the ai-only helpers `nearestHarvestableFor`/`nearestStoreFor`/
+  `nearestWorkplaceOutput`/`jobAtomics`/`entityCell`/`manhattan`/`atomicDuration`/`startAtomic` + the
+  `PICKUP_ATOMIC_ID`/`PILEUP_ATOMIC_ID`/`CARRY_LOAD`/`DEFAULT_ATOMIC_DURATION`/`EMPTY_ATOMICS`
+  constants), importing `inRange`/`recipeOf`/`stockCapacity` from the leaf; the golden `7f89b94d`
+  stayed byte-identical. **Remaining:** only `pathfindingSystem` is still defined in `index.ts` (it
+  consumes `inRange` from the leaf and the A* core from `../pathfinding.ts`); once it moves, `index.ts`
+  is the barrel + `SYSTEM_ORDER` only.
 - **Change (the deferred remainder).** Split each remaining real system into its own file under
   `systems/`, with a small shared-helper module to break the cross-system dependencies:
   - `systems/shared.ts` — the genuinely cross-system helpers: `stockCapacity` (used by the ai store
@@ -44,9 +48,10 @@ feature plan, see [ROADMAP.md](ROADMAP.md).
     the ai haul scan and production), and `inRange` (used by the ai navigation planner and the
     pathfinding system). **(Done — landed alongside the production extraction.)**
   - `systems/ai.ts` — `aiSystem` + `atomicPlanner` + `navigationPlanner` + the ai-only helpers
-    (`nearestHarvestableFor`, `nearestStoreFor`, `jobAtomics`, `entityCell`, `manhattan`,
-    `atomicDuration`, `startAtomic`, and the `PILEUP_ATOMIC_ID`/`DEFAULT_ATOMIC_DURATION`/
-    `EMPTY_ATOMICS` constants).
+    (`nearestHarvestableFor`, `nearestStoreFor`, `nearestWorkplaceOutput`, `jobAtomics`, `entityCell`,
+    `manhattan`, `atomicDuration`, `startAtomic`, and the `PICKUP_ATOMIC_ID`/`PILEUP_ATOMIC_ID`/
+    `CARRY_LOAD`/`DEFAULT_ATOMIC_DURATION`/`EMPTY_ATOMICS` constants). **(Done — landed; golden
+    `7f89b94d` unchanged.)**
   - `systems/pathfinding.ts` — `pathfindingSystem` + `resolvePath` + `PATHFINDING_BUDGET_PER_TICK`.
     (Note: a `packages/sim/src/pathfinding.ts` already holds the A\* core — the new file is in the
     `systems/` directory, but consider naming it to avoid the eyeball collision.)
