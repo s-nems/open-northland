@@ -39,34 +39,44 @@ function ctxOf(sim: Simulation): SystemContext {
   };
 }
 
+const WOODCUTTER = 1; // the job whose presence tech-unlocks PLANK production (jobEnablesGood 1 2)
+
+/** Spawn a settler of `jobType` in tribe 1 at the given tile. */
+function spawnSettler(sim: Simulation, jobType: number, x: number, y: number): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Settler, {
+    tribe: 1,
+    jobType,
+    hunger: fx.fromInt(0),
+    fatigue: fx.fromInt(0),
+    piety: fx.fromInt(0),
+    enjoyment: fx.fromInt(0),
+    experience: new Map(),
+  });
+  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  return e;
+}
+
 /**
- * Build a sawmill workplace at tile (0,0) with the given starting stock amounts, and (unless
- * `staffed: false`) place its carpenter worker on that same tile so the worker-presence gate is
- * satisfied — most cases test the cycle mechanics with the gate already open.
+ * Build a sawmill workplace at tile (0,0) with the given starting stock amounts. Unless overridden it
+ * places its carpenter worker on that same tile (the worker-presence gate) AND a woodcutter elsewhere
+ * in the tribe (the PLANK `jobEnablesGood` tech-gate), so most cases test the cycle mechanics with both
+ * gates already open. `staffed: false` omits the worker; `enablerPresent: false` omits the woodcutter.
  */
 function sawmill(
   sim: Simulation,
   amounts: Iterable<[number, number]>,
   staffed = true,
+  enablerPresent = true,
 ): { mill: Entity; worker: Entity | null } {
+  // The woodcutter that unlocks PLANK production sits off the mill's tile (its presence in the tribe
+  // is what the gate reads — a pure membership query, not a worker-on-tile check).
+  if (enablerPresent) spawnSettler(sim, WOODCUTTER, 9, 9);
   const mill = sim.world.create();
   sim.world.add(mill, Building, { buildingType: SAWMILL, tribe: 1, built: ONE, level: 0 });
   sim.world.add(mill, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
   sim.world.add(mill, Stockpile, { amounts: new Map(amounts) });
-  let worker: Entity | null = null;
-  if (staffed) {
-    worker = sim.world.create();
-    sim.world.add(worker, Settler, {
-      tribe: 1,
-      jobType: CARPENTER,
-      hunger: fx.fromInt(0),
-      fatigue: fx.fromInt(0),
-      piety: fx.fromInt(0),
-      enjoyment: fx.fromInt(0),
-      experience: new Map(),
-    });
-    sim.world.add(worker, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-  }
+  const worker = staffed ? spawnSettler(sim, CARPENTER, 0, 0) : null;
   return { mill, worker };
 }
 
@@ -161,6 +171,32 @@ describe('productionSystem — gating', () => {
     for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(20); // produced exactly to the cap
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(4); // one input consumed
+  });
+
+  it('does not start a cycle when the output good is gated-out (jobEnablesGood, no enabling settler)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    // Inputs present, output room free, carpenter operator on the tile — but NO woodcutter exists in
+    // the tribe, and PLANK is gated by `jobEnablesGood 1 2`. So the tech-graph gate blocks production.
+    const { mill } = sawmill(sim, [[WOOD, 5]], true, false);
+    for (let t = 0; t < CYCLE_TICKS + 2; t++) productionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(mill, Production)).toBe(false); // gated out — never started
+    expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(5); // input untouched (no waste)
+    expect(sim.world.get(mill, Stockpile).amounts.get(PLANK) ?? 0).toBe(0); // nothing produced
+  });
+
+  it('starts producing once the enabling-job settler appears (gate opens mid-run)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { mill } = sawmill(sim, [[WOOD, 5]], true, false); // staffed, but PLANK gated-out
+    productionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(mill, Production)).toBe(false); // blocked while the woodcutter is absent
+
+    // A woodcutter joins the tribe — the jobEnablesGood gate for PLANK now opens.
+    spawnSettler(sim, WOODCUTTER, 9, 9);
+    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(1); // produced once unlocked
+    // The first cycle completes on the CYCLE_TICKS+1-th tick and a second starts the same tick, so two
+    // wood are consumed by the end of the loop (5 → 3) while only the first cycle's plank is out yet.
+    expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(3);
   });
 
   it('ignores a building whose type carries no recipe (not a workplace)', () => {
