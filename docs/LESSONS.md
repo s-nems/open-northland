@@ -333,3 +333,11 @@ the next iteration inherits it.
   one), not on the ambiguous id. When adding a sim rule keyed on a numeric content id that also has a
   reserved/structural meaning, prefer a component/flag the lifecycle maintains over the raw id — and run
   the goldens immediately, an emptied trace is the collision's tell. (sim/ai)
+- [cef9629] A `Map`-valued **read view** (a HUD aggregate like `tribeStocks`) may safely iterate a
+  `Map`/`Set` non-canonically — the determinism anti-pattern bans non-canonical iteration only for a
+  *game decision*, and an aggregate whose VALUES are order-independent (a sum — addition commutes) is
+  not one. The returned Map's iteration order is still insertion-order (store-traversal-dependent), so
+  document that a display consumer must sort by key itself, and build each per-store sum via the
+  canonical `stockpileEntries` to keep the idiom (the values are identical either way). The tell that
+  it's a true read view: no system reads it back to branch on it — verify the change leaves the golden
+  hash untouched (a read view adds no state). (sim/read-model)
