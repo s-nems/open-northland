@@ -245,3 +245,13 @@ the next iteration inherits it.
   X" gate, check the sim actually grants track-T XP *to the agent X gates* — a gate whose input no agent
   can produce yet is a deadlock, not a faithful constraint; defer it to where the accrual loop closes.
   (sim/progression)
+- [6264132] A new entity-assigning system stays deterministic AND self-balancing for free if it (a)
+  iterates `canonicalEntities()` and takes the first match (a *pick*, so it must be canonical, unlike a
+  boolean membership scan) and (b) re-derives the capacity count LIVE per candidate from world state
+  rather than snapshotting it once: `jobSystem` assigns idle settlers in ascending-id order, and its
+  `jobUnderstaffed` re-counts tribe-wide head-count each iteration, so assigning settler A bumps the
+  count B sees — a 3-slot workplace fills with exactly 3, no shared mutable counter. A `query(Settler)`
+  count is itself order-independent (addition commutes), so it needn't be canonical — only the *picking*
+  loop does. The new system was provably inert in the golden (every golden/app settler spawns with an
+  explicit non-null job, so no idle settler is ever assigned) — confirm a planner/assignment addition
+  only fires on a state the goldens never construct before claiming the hash is untouched. (sim/determinism)
