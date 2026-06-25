@@ -151,11 +151,20 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       sizing the panel `height` to exactly fit the row count. Pure + total (a function of the model alone — no
       Pixi, no glyph metrics; width is a fixed column, height counts rows), so the same model lays out
       byte-identically — *which line lands where* is now unit-tested without a screen, leaving only the glyph
-      rasterization to a human. The only thing left is the **Pixi text/rect drawing** of that laid-out panel
-      (human-gated typography). **Next:** rasterize the `HudLayout` into a Pixi/DOM panel (visual — an agent
-      cannot self-judge the typography/font; flag for a human), mirroring how `renderScene` draws `buildScene`'s
-      list. The goods-graph view (over `content`, not the snapshot) stays a sim-side read view the panel can
-      call directly.
+      rasterization to a human. **Render-side HUD PLACEMENT + Pixi DRAW landed too** — the last
+      self-verifiable decision (where on the canvas the panel lands) is `placeHud(layout, corner, screen)`
+      (`packages/render/src/hud.ts`): it anchors the `HudLayout` to a screen `HudCorner`, **clamps** it
+      on-screen, and re-anchors every row's panel-relative `(x, y)` to absolute canvas pixels (the
+      screen-space analogue of `terrainMapToScene`) — pure + total, unit-tested. `renderHud(app, placement,
+      style?)` (`packages/render/src/pixi-renderer.ts`) is the GPU half (twin of `renderScene`): a pure
+      consumer of the `HudPlacement` that paints a backing rect + one Pixi `Text` per screen-positioned row,
+      now overlaid on the scene each frame in BOTH `main.ts` (live) and `shot.ts` (the screenshot harness,
+      single-tribe viking). Only the **glyph rasterization/typography** (font/colour) is left un-self-verifiable
+      — a human eyeballs it via the shot. The goods-graph view (over `content`, not the snapshot) stays a
+      sim-side read view the panel can call directly. **Next:** the HUD slice is complete; the remaining
+      Phase-3 behavior is the carrier→vehicle PAIRING / a per-carrier vehicle entity (the JobSystem's last
+      unmodeled behavior) — but it is oracle-blocked (no readable source; OpenVikings' sim is a stub), so it
+      needs a conscious-deviation decision in docs/FIDELITY.md rather than a faithful extract.
 - **Exit:** a self-sustaining, progressing single-tribe settlement you can grow.
 
 ## Phase 4 — Conflict & content breadth (N tribes)

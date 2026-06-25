@@ -1,9 +1,13 @@
 import {
   SYNTHETIC_BINDINGS,
   type SpriteSheet,
+  buildHud,
   buildScene,
   createPixiApp,
   createSyntheticAtlasSource,
+  layoutHud,
+  placeHud,
+  renderHud,
   renderScene,
   syntheticAtlasFrames,
 } from '@vinland/render';
@@ -55,7 +59,8 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
 
   const sim = runSlice(seed, ticks, loaded ?? undefined);
-  const scene = buildScene(sim.snapshot(), sliceTerrain(loaded ?? undefined));
+  const snap = sim.snapshot();
+  const scene = buildScene(snap, sliceTerrain(loaded ?? undefined));
 
   const app = await createPixiApp(canvas, CANVAS_W, CANVAS_H);
   // `?atlas` (or `?atlas=synthetic`) binds the FREE synthetic atlas so the textured-sprite draw path
@@ -64,6 +69,9 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
   const sheet = wantsSyntheticAtlas(params) ? syntheticSpriteSheet() : undefined;
   // Pan the iso strip into the centre of the canvas (its tiles span screen-x roughly [-row, +cols]).
   renderScene(app, scene, { offsetX: CANVAS_W / 2, offsetY: CANVAS_H / 3 }, sheet);
+  // Overlay the single-tribe (viking, tribe 1) HUD panel on top of the scene, so the human eyeballing
+  // the shot also sees the on-screen panel's typography (the un-self-verifiable half of the HUD).
+  renderHud(app, placeHud(layoutHud(buildHud(snap, 1)), 'top-left', { width: CANVAS_W, height: CANVAS_H }));
 
   window.__vinlandShotReady = true;
 }

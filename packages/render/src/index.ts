@@ -20,14 +20,26 @@ export {
   type SpriteBindings,
   type SpriteKind,
 } from './sprites.js';
-export { createPixiApp, renderScene, type Camera, type SpriteSheet } from './pixi-renderer.js';
+export {
+  createPixiApp,
+  renderScene,
+  renderHud,
+  DEFAULT_HUD_STYLE,
+  type Camera,
+  type SpriteSheet,
+  type HudStyle,
+} from './pixi-renderer.js';
 export {
   buildHud,
   layoutHud,
+  placeHud,
   IDLE_JOB,
   type HudModel,
   type HudLayout,
   type HudTextRow,
+  type HudPlacement,
+  type HudCorner,
+  type HudScreen,
   type JobCount,
   type StockCount,
 } from './hud.js';
