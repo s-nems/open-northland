@@ -286,7 +286,8 @@ export type AtomicBinding = z.infer<typeof AtomicBinding>;
  *
  * This is the *gate* half of the progression graph — the original keys availability of goods/houses/
  * jobs/vehicles on a job being present, which is in turn gated by training/experience (`trainforjob`/
- * `needfor*`, a later slice). Edges are kept in file order; a tribe may repeat a `(jobType, kind,
+ * `needfor*`, a later slice). Edges are kept in **exact source file order** (the data interleaves the
+ * four kinds within a job's block, not grouped by kind); a tribe may repeat a `(jobType, kind,
  * targetId)` triple, kept verbatim like {@link AtomicBinding} (the raw source stays faithful).
  */
 export const JobEnablesKind = z.enum(['good', 'house', 'job', 'vehicle']);

@@ -390,32 +390,31 @@ export function extractJobExperience(
   return tracks;
 }
 
-/**
- * The four `jobEnables<Kind>` source keys → the unified {@link JobEnables} `kind` discriminator.
- * Listed in a fixed order so iteration is deterministic; within each key the lines keep file order.
- */
-const JOB_ENABLES_KEYS: readonly [string, JobEnablesKind][] = [
-  ['jobEnablesGood', 'good'],
-  ['jobEnablesHouse', 'house'],
-  ['jobEnablesJob', 'job'],
-  ['jobEnablesVehicle', 'vehicle'],
-];
+/** The four `jobEnables<Kind>` source keys → the unified {@link JobEnables} `kind` discriminator. */
+const JOB_ENABLES_KIND: Readonly<Record<string, JobEnablesKind>> = {
+  jobEnablesGood: 'good',
+  jobEnablesHouse: 'house',
+  jobEnablesJob: 'job',
+  jobEnablesVehicle: 'vehicle',
+};
 
 /**
  * Collects one `[tribetype]` section's `jobEnables<Kind> <jobType> <targetId>` lines into unified
- * {@link JobEnables} tech-graph edges. The four kind-keys are read in {@link JOB_ENABLES_KEYS} order,
- * each preserving its own file order (mirrors how the original groups them per key). A line missing
- * either int is skipped, matching the `setatomic` malformed-line stance.
+ * {@link JobEnables} tech-graph edges in **exact source order**. The real data interleaves the four
+ * kinds within a job's block (e.g. job 8's goods, then its jobs, then its houses), so a single
+ * file-order pass — recognizing any of the four keys — keeps that order verbatim rather than
+ * regrouping by kind. A line missing either int is skipped, matching the `setatomic` malformed-line
+ * stance. (A non-`jobEnables*` prop yields no key match and is ignored.)
  */
 function extractJobEnables(sec: RuleSection): JobEnables[] {
   const edges: JobEnables[] = [];
-  for (const [key, kind] of JOB_ENABLES_KEYS) {
-    for (const p of findProps(sec, key)) {
-      const jobType = Number.parseInt(p.values[0] ?? '', 10);
-      const targetId = Number.parseInt(p.values[1] ?? '', 10);
-      if (Number.isNaN(jobType) || Number.isNaN(targetId)) continue;
-      edges.push({ jobType, kind, targetId });
-    }
+  for (const p of sec.props) {
+    const kind = JOB_ENABLES_KIND[p.key];
+    if (kind === undefined) continue;
+    const jobType = Number.parseInt(p.values[0] ?? '', 10);
+    const targetId = Number.parseInt(p.values[1] ?? '', 10);
+    if (Number.isNaN(jobType) || Number.isNaN(targetId)) continue;
+    edges.push({ jobType, kind, targetId });
   }
   return edges;
 }

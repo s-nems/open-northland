@@ -1074,8 +1074,8 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             `jobEnablesJob`/`jobEnablesVehicle <jobType> <targetId>` lines to unified
             `TribeType.jobEnables` edges (`{jobType, kind, targetId}` discriminated by `kind`) — the
             **gate** half of progression: a settler of `jobType` present in the tribe unlocks producing/
-            building/training/using the target. Edges grouped by kind, each keeping file order; repeats
-            kept verbatim (like `setatomic`). `validateCrossReferences` resolves good/house(building)/job
+            building/training/using the target. Edges kept in exact source file order (the data
+            interleaves the four kinds within a job's block); repeats kept verbatim (like `setatomic`). `validateCrossReferences` resolves good/house(building)/job
             targets; the `vehicle` kind is skipped (its id is the `logicvehicletype` namespace, not yet
             in the IR — would false-positive). **Data-only this iteration — no sim consumes the edges
             yet.** **Hands-on:** `npm run pipeline` on the real game → **1325 edges across the 5 playable
