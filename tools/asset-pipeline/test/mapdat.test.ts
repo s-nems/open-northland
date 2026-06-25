@@ -335,13 +335,20 @@ describe('lmltToTerrainMap', () => {
     cells: Uint8Array.from(corners),
   });
 
-  it('collapses 4 corners per cell into one row-major typeId grid', () => {
-    // 2×1 grid: cell 0 uniform type 3, cell 1 dominant type 5 (with a stray 2).
+  it('collapses 4 corners per cell into one row-major typeId grid (+1 to the 1-based IR typeId)', () => {
+    // 2×1 grid: cell 0 uniform raw 3, cell 1 dominant raw 5 (with a stray 2). Each +1 onto the IR typeId.
     const map = lmltToTerrainMap(layer([3, 3, 3, 3, 5, 5, 5, 2]), { width: 2, height: 1 });
     expect(map.width).toBe(2);
     expect(map.height).toBe(1);
-    expect(map.typeIds).toEqual([3, 5]);
+    expect(map.typeIds).toEqual([4, 6]); // raw 3->4, raw 5->6
     expect(map.typeIds.length).toBe(2 * 1);
+  });
+
+  it('shifts a raw 0-based corner onto the 1-based IR typeId (the off-by-one the sim rejects raw)', () => {
+    // The real-data trap: the layer is 0-based but LandscapeType.typeId is 1-based (type 1 = void), so
+    // a raw 0 corner must map to IR typeId 1 — buildTerrainGraph throws on a raw 0 absent from the table.
+    const map = lmltToTerrainMap(layer([0, 0, 0, 0]), { width: 1, height: 1 });
+    expect(map.typeIds).toEqual([1]);
   });
 
   it('produces a typeIds grid sized exactly width × height', () => {
@@ -349,7 +356,7 @@ describe('lmltToTerrainMap', () => {
     const corners = new Array(cells * LMLT_CORNERS_PER_CELL).fill(0);
     const map = lmltToTerrainMap(layer(corners), { width: 3, height: 2 });
     expect(map.typeIds.length).toBe(cells);
-    expect(map.typeIds).toEqual(new Array(cells).fill(0));
+    expect(map.typeIds).toEqual(new Array(cells).fill(1)); // raw 0 -> IR typeId 1
   });
 
   it('is deterministic — same layer + dims yield byte-identical typeIds', () => {
@@ -357,7 +364,7 @@ describe('lmltToTerrainMap', () => {
     const a = lmltToTerrainMap(layer(corners), { width: 3, height: 1 });
     const b = lmltToTerrainMap(layer(corners), { width: 3, height: 1 });
     expect(a.typeIds).toEqual(b.typeIds);
-    expect(a.typeIds).toEqual([1, 7, 4]); // 1<2 tie, uniform 7, 4<9 tie
+    expect(a.typeIds).toEqual([2, 8, 5]); // raw [1,7,4] (1<2 tie, uniform 7, 4<9 tie) +1
   });
 
   it('throws when the layer length is not width × height × 4', () => {

@@ -6,11 +6,13 @@ import {
   bmdToAtlas,
   buildIr,
   convertBmdTree,
+  convertMapDatTree,
   convertPcxTree,
   decodeMapTree,
   jobBaseGraphicsToBindings,
   libMemberRelPath,
   mapCifToInfo,
+  mapDatToTerrain,
   mapIdFromPath,
   parseArgs,
   pcxToPng,
@@ -23,6 +25,7 @@ import { BOB_TYPE_8BIT, type Bmd, PACKED_X_SHIFT, encodeBmd } from '../src/decod
 import { StorableId, encryptMode1 } from '../src/decoders/cif.js';
 import type { BmdPaletteBinding, PaletteAlias } from '../src/decoders/ini.js';
 import { encodeLib } from '../src/decoders/lib.js';
+import { encodeMapDat, encodeMapSize, packMapLayer } from '../src/decoders/mapdat.js';
 import { decodePcx, encodePcx, expandToRgba } from '../src/decoders/pcx.js';
 import { decodePng, encodePng } from '../src/decoders/png.js';
 
@@ -765,6 +768,88 @@ describe('decodeMapTree', () => {
     const maps = await decodeMapTree(game);
     expect(maps.map((m) => m.id)).toEqual(['tutorial_002']); // the good one still decodes
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped map.*forteca/));
+    warn.mockRestore();
+  });
+});
+
+/**
+ * Builds a synthetic `map.dat`: an `lsiz` dims chunk + an `lmlt` landscape-type layer (4 per-corner
+ * typeIds per cell, RLE-packed via the faithful `packMapLayer`). `corners` is row-major, 4 values per
+ * cell. No copyrighted bytes — the encoder round-trips the decoder under test.
+ */
+function buildMapDat(width: number, height: number, corners: number[]): Uint8Array {
+  return encodeMapDat([
+    { tag: 'lsiz', version: 1, payload: encodeMapSize({ width, height }) },
+    { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from(corners)) },
+  ]);
+}
+
+describe('mapDatToTerrain', () => {
+  it('decodes a synthetic map.dat into the per-cell TerrainMap (dominant corner per cell, +1 IR typeId)', () => {
+    // 2×1 grid. Cell 0: corners all raw 2 (uniform). Cell 1: corners [5,5,2,2] -> tie, lowest raw 2 wins.
+    // Each raw corner index is shifted +1 onto the 1-based IR typeId.
+    const terrain = mapDatToTerrain(buildMapDat(2, 1, [2, 2, 2, 2, 5, 5, 2, 2]));
+    expect(terrain).toEqual({ width: 2, height: 1, typeIds: [3, 3] }); // raw 2 -> IR typeId 3
+  });
+
+  it('reduces a non-uniform cell to its dominant corner typeId', () => {
+    // 1×1 grid, corners [5,5,5,2] -> raw 5 dominates (3 vs 1) -> IR typeId 6.
+    const terrain = mapDatToTerrain(buildMapDat(1, 1, [5, 5, 5, 2]));
+    expect(terrain).toEqual({ width: 1, height: 1, typeIds: [6] });
+  });
+
+  it('throws on a map.dat with no lmlt landscape-type chunk', () => {
+    const noLmlt = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+    ]);
+    expect(() => mapDatToTerrain(noLmlt)).toThrow(/no lmlt/);
+  });
+
+  it('throws on a non-container buffer', () => {
+    expect(() => mapDatToTerrain(Uint8Array.from([1, 2, 3, 4]))).toThrow(/mapdat/);
+  });
+});
+
+describe('convertMapDatTree', () => {
+  let root: string;
+  let game: string;
+  let out: string;
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), 'vinland-mapdat-'));
+    game = join(root, 'game');
+    out = join(root, 'out');
+    await mkdir(join(game, 'CnModMaps', 'tutorial_002'), { recursive: true });
+    await mkdir(join(game, 'CnModMaps', 'forteca'), { recursive: true });
+    await writeFile(
+      join(game, 'CnModMaps', 'tutorial_002', 'map.dat'),
+      buildMapDat(2, 1, [2, 2, 2, 2, 5, 5, 5, 5]),
+    );
+    await writeFile(join(game, 'CnModMaps', 'forteca', 'map.dat'), buildMapDat(1, 1, [2, 2, 2, 2]));
+  });
+
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('writes maps/<id>.json for every map.dat, sorted by rel path, id from folder', async () => {
+    const done = await convertMapDatTree(game, out);
+    expect(done.map((d) => d.id)).toEqual(['forteca', 'tutorial_002']); // sorted by rel path
+    expect(done.find((d) => d.id === 'tutorial_002')).toMatchObject({ width: 2, height: 1 });
+
+    // The emitted JSON is the TerrainMap the sim's buildTerrainGraph consumes (raw 2,5 -> IR 3,6).
+    const grid = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.json'), 'utf8'));
+    expect(grid).toEqual({ width: 2, height: 1, typeIds: [3, 6] });
+    // The id joins onto the same-folder map.cif's MapInfo id.
+    expect(done.map((d) => d.id)).toContain(mapIdFromPath(join('CnModMaps', 'tutorial_002', 'map.dat')));
+  });
+
+  it('skips a malformed map.dat with a warning instead of aborting the batch', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await writeFile(join(game, 'CnModMaps', 'forteca', 'map.dat'), Uint8Array.from([0, 1, 2, 3]));
+    const done = await convertMapDatTree(game, out);
+    expect(done.map((d) => d.id)).toEqual(['tutorial_002']); // the good one still converts
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped map\.dat.*forteca/));
     warn.mockRestore();
   });
 });

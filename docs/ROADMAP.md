@@ -344,9 +344,22 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
                   `{0,1,4,9,10,12,15,18,21,36}` (all in the 87-type table), 64.2% uniform cells passed
                   through + 22382 transitions reduced; that grid feeds the real `buildTerrainGraph` →
                   a 62500-cell graph (centre cell 4 neighbours). Same for `WICHRY_ZIMY` (32400 cells).
-                  **Still to do:** wire it into the CLI — decode `lmlt` per map + emit a `TerrainMap`
-                  artifact into `content/` (today `buildTerrainGraph` is fed a synthetic grid in
-                  scenarios). The `eatd`/`eald` record-lists + `X6el` ownership layers stay Phase-5.
+            - [x] **`map.dat` terrain grid wired into the CLI → `content/maps/<id>.json`** —
+                  `cli.ts` `mapDatToTerrain` (pure decode→`lsiz`→unpack `lmlt`→`lmltToTerrainMap`
+                  composition, mirrors `mapCifToInfo`) + `convertMapDatTree` walk the `--game` tree for
+                  every `map.dat` in a stable (path-sorted) order, convert each to the sim's `TerrainMap`
+                  shape, and write `maps/<id>.json` (`id` from the containing folder via `mapIdFromPath`,
+                  so it joins onto the same-folder `map.cif`'s `MapInfo` `id`); a corrupt/non-container/
+                  `lmlt`-less/`X6el`-only/dims-mismatch file is warned-and-skipped, never fatal. **Fixed
+                  the 0-based↔1-based indexing seam** discovered on the real run: the binary `lmlt`
+                  layer is 0-based but `LandscapeType.typeId` mirrors the 1-based `.ini` `type`, so
+                  `lmltToTerrainMap` now shifts the reduced index `+1` (`LMLT_TYPEID_BASE`) — without it
+                  the sim's `buildTerrainGraph` rejected raw `0` ("void") as absent. **Hands-on:** the
+                  documented `npm run pipeline` on the real game → **130 map grids (5 490 088 cells) →
+                  125 `maps/*.json`**; **all 125 load through the real `buildTerrainGraph` with 0
+                  absent-typeId failures**; `oasis_o_plenty.json` → a 62500-cell graph, centre cell
+                  walkable with 4 neighbours, distinct typeIds `{1,2,5,10,11,13,16,19,22,37}` (the
+                  +1-shifted set). The `eatd`/`eald` record-lists + `X6el` ownership layers stay Phase-5.
 - **Exit:** `npm run pipeline` produces a validated `content/` (types + atlases + one map), decoded
   graphics verified against the oracle.
 
@@ -364,10 +377,12 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 > sprites), pixel fidelity still deferred to a human. **The terrain-graph decode chain is now fully
 > closed:** `map.dat` `hoix` container → `pck`/`X8el` layer unpack → `lmltToTerrainMap` (the `lmlt`
 > 4-corner landscape-type lane reduced to one per-cell typeId) → the sim's `buildTerrainGraph`, proven
-> hands-on on real maps (`oasis_o_plenty` 250×250 → a 62500-cell graph). **Next smallest step: wire
-> that chain into the CLI** — emit a per-map `TerrainMap` artifact into `content/` so the sim loads a
-> real map's grid instead of a synthetic scenario one — or atlas sprites in place of placeholder
-> geometry. (A
+> hands-on on real maps (`oasis_o_plenty` 250×250 → a 62500-cell graph). **That chain is now wired into
+> the CLI** — `npm run pipeline` emits a per-map `TerrainMap` to `content/maps/<id>.json` (130 grids on
+> the real game; all 125 distinct files load through the real `buildTerrainGraph`, 0 failures, after
+> fixing the 0-based→1-based `lmlt`→IR-typeId seam). **Next smallest step: load `content/maps/<id>.json`
+> in the sim/app** — feed a real map's grid into a `scenario()`/the app's `Simulation` in place of the
+> synthetic grass grid — or atlas sprites in place of placeholder geometry. (A
 > "per-type walk-cost field" is *not* a pending step: `landscapetypes.ini` has no movement weight —
 > only `maximumValency` + placement flags — so uniform unit cost is faithful.) Lines tagged *(core
 > done…)* pass tests today but await one wiring piece.
@@ -394,11 +409,13 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 - [ ] Terrain as a **cell-adjacency graph** with per-type valency + uniform walk cost (from
       `landscapetypes.ini`). *Not* the triangle geometry — that's render-only.
       *(core done — graph builder + `world.terrain` resource wired, and the **decode chain that
-      feeds it from a real map is now closed**: `map.dat` `hoix` container → `pck`/`X8el` layer unpack
-      → `lmltToTerrainMap` (the `lmlt` 4-corner landscape-type lane → one per-cell typeId) → the sim's
-      `buildTerrainGraph`, proven hands-on (`oasis_o_plenty` 250×250 → 62500-cell graph). The only
-      remaining leg is **wiring that chain into the CLI** so the sim loads a real map's grid (today
-      scenarios feed a synthetic one). NOTE corrected on inspection: a "per-type walk-cost
+      feeds it from a real map is now closed AND wired into the CLI**: `map.dat` `hoix` container →
+      `pck`/`X8el` layer unpack → `lmltToTerrainMap` (the `lmlt` 4-corner landscape-type lane → one
+      per-cell typeId, `+1`-shifted onto the 1-based IR `typeId`) → `content/maps/<id>.json` → the
+      sim's `buildTerrainGraph`. `npm run pipeline` emits 130 grids on the real game; all 125 distinct
+      files load through the real builder (0 failures). The remaining leg is **loading a
+      `content/maps/<id>.json` in a `scenario()`/the app** in place of the synthetic grass grid. NOTE
+      corrected on inspection: a "per-type walk-cost
       field" is NOT a pending extraction — `landscapetypes.ini` carries no movement weight, only
       `maximumValency` (capacity) + the `allowedon{land,water,everything}` placement flags; uniform
       unit cost is the faithful model. A variable cost would need a source that actually has one.)*
@@ -417,9 +434,11 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
         `cellManhattanDistance` is the fixed-point heuristic seed for the pathfinder. **Hands-on:** built
         `dist/` on a 5×4 grid w/ a 4-cell water river → 16 walkable / 4 blocked, canonical neighbour
         order stable across rebuilds, water dropped from walkable edges, absent-typeId guard fires.
-        **Still to do:** wire the now-closed `map.dat` → `lmltToTerrainMap` → `buildTerrainGraph` decode
-        chain into the CLI (the unpack + per-cell typeId derivation are done in `decoders/mapdat.ts`,
-        proven hands-on on real maps; see SOURCES.md). (Walk cost stays uniform
+        **The `map.dat` → `lmltToTerrainMap` → `buildTerrainGraph` decode chain is now wired into the
+        CLI** (`cli.ts` `convertMapDatTree` → `content/maps/<id>.json`; the `+1` 0-based→1-based typeId
+        seam fixed on the real run so every emitted grid loads). **Still to do:** load a
+        `content/maps/<id>.json` into a `scenario()`/the app in place of the synthetic grass grid.
+        (Walk cost stays uniform
         ONE — a non-goal to vary, confirmed on inspecting `landscapetypes.ini`: it has no
         movement-weight property, only `maximumValency` + placement-layer flags; uniform unit cost
         is faithful to the engine.)
