@@ -3,6 +3,7 @@ import {
   Building,
   Carrying,
   CurrentAtomic,
+  JobAssignment,
   MoveGoal,
   PathFollow,
   PathRequest,
@@ -51,6 +52,7 @@ beforeEach(() => {
   PathFollow.store.clear();
   PathRequest.store.clear();
   Production.store.clear();
+  JobAssignment.store.clear();
 });
 
 function grassMap(width: number, height: number): TerrainMap {
@@ -209,11 +211,14 @@ describe('atomicPlanner — choosing the next atomic', () => {
   });
 });
 
-describe('atomicPlanner — walk-to-workplace drive (an assigned operator reaches its station)', () => {
+describe('atomicPlanner — walk-to-workplace drive (a BOUND operator reaches ITS station)', () => {
   const CARPENTER = 2; // the sawmill's worker job; harvests nothing (empty allowedAtomics)
   const SAWMILL = 2; // a producing workplace (recipe plank<-wood) employing the carpenter
 
-  function carpenterAt(sim: Simulation, x: number, y: number): Entity {
+  // The walk drive now reads the JobAssignment binding the JobSystem sets — the operator heads for
+  // *its* mill, not the nearest one. These planner unit tests set the binding directly (the JobSystem
+  // integration is exercised in job-system.test.ts) so they test the AI drive in isolation.
+  function carpenterAt(sim: Simulation, x: number, y: number, boundTo?: Entity): Entity {
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
     sim.world.add(e, Settler, {
@@ -225,6 +230,7 @@ describe('atomicPlanner — walk-to-workplace drive (an assigned operator reache
       enjoyment: fx.fromInt(0),
       experience: new Map(),
     });
+    if (boundTo !== undefined) sim.world.add(e, JobAssignment, { workplace: boundTo });
     return e;
   }
 
@@ -236,10 +242,10 @@ describe('atomicPlanner — walk-to-workplace drive (an assigned operator reache
     return e;
   }
 
-  it('sets a MoveGoal to its workplace when an assigned operator is standing elsewhere', () => {
+  it('sets a MoveGoal to its bound workplace when the operator is standing elsewhere', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    const carp = carpenterAt(sim, 0, 0);
-    sawmillAt(sim, 3, 0); // its station, three cells away
+    const mill = sawmillAt(sim, 3, 0); // its station, three cells away
+    const carp = carpenterAt(sim, 0, 0, mill); // bound to that mill
 
     aiSystem(sim.world, ctxOf(sim));
 
@@ -248,10 +254,10 @@ describe('atomicPlanner — walk-to-workplace drive (an assigned operator reache
     expect(sim.world.has(carp, CurrentAtomic)).toBe(false); // it walks, it doesn't start an atomic yet
   });
 
-  it('leaves an operator already standing on its workplace put (no MoveGoal — the pin holds)', () => {
+  it('leaves an operator already standing on its bound workplace put (no MoveGoal — the pin holds)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    const carp = carpenterAt(sim, 3, 0);
-    sawmillAt(sim, 3, 0); // same cell — already on station
+    const mill = sawmillAt(sim, 3, 0);
+    const carp = carpenterAt(sim, 3, 0, mill); // same cell as its bound mill — already on station
 
     aiSystem(sim.world, ctxOf(sim));
 
@@ -259,28 +265,29 @@ describe('atomicPlanner — walk-to-workplace drive (an assigned operator reache
     expect(sim.world.has(carp, CurrentAtomic)).toBe(false);
   });
 
-  it('does not lure a second operator to an already-manned one-worker workplace', () => {
+  it('does not move an UNBOUND operator (no station assigned yet — it idles)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     sawmillAt(sim, 3, 0);
-    carpenterAt(sim, 3, 0); // first carpenter already on the station (lower id)
-    const second = carpenterAt(sim, 0, 0); // second carpenter elsewhere
+    const carp = carpenterAt(sim, 0, 0); // employed but unbound (no JobAssignment)
 
     aiSystem(sim.world, ctxOf(sim));
 
-    // The station is staffed, so the second carpenter is NOT drawn to it; with nothing else to do
-    // (carpenters harvest nothing) it idles rather than crowding the manned workplace.
-    expect(sim.world.has(second, MoveGoal)).toBe(false);
+    // With no binding the drive has no station to walk to, and a carpenter harvests nothing — so it
+    // idles rather than being lured to a mill the JobSystem never assigned it.
+    expect(sim.world.has(carp, MoveGoal)).toBe(false);
   });
 
-  it('reaches the nearest of two same-type workplaces (Manhattan, cell-id tie-break)', () => {
+  it('heads for ITS bound mill even when a nearer same-type mill exists', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(7, 1) });
-    const carp = carpenterAt(sim, 0, 0);
-    sawmillAt(sim, 5, 0); // distance 5
-    sawmillAt(sim, 2, 0); // distance 2 — should win
+    sawmillAt(sim, 2, 0); // nearer (distance 2) — but NOT this carpenter's binding
+    const mine = sawmillAt(sim, 5, 0); // farther (distance 5) — this is the bound station
+    const carp = carpenterAt(sim, 0, 0, mine);
 
     aiSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.get(carp, MoveGoal).cell).toBe(sim.terrain?.cellAt(2, 0));
+    // Latched to its own mill: it walks to cell 5, not the nearer mill at 2 — two same-type workplaces
+    // staff independently because each operator follows its binding, not proximity.
+    expect(sim.world.get(carp, MoveGoal).cell).toBe(sim.terrain?.cellAt(5, 0));
   });
 
   it('a woodcutter still prefers harvesting over walking to a workplace that does not employ it', () => {
@@ -354,6 +361,7 @@ describe('atomicPlanner — determinism', () => {
       PathFollow.store.clear();
       PathRequest.store.clear();
       Production.store.clear();
+      JobAssignment.store.clear();
       const sim = new Simulation({ seed: 11, content: testContent(), map: grassMap(4, 1) });
       woodcutterAt(sim, 0, 0);
       woodAt(sim, 1, 0, 5);

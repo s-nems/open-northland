@@ -1,32 +1,35 @@
-import { Building, Settler } from '../components/index.js';
+import { Building, JobAssignment, Position, Settler } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
+import { fx } from '../fixed.js';
 import type { System, SystemContext } from './context.js';
 import { buildingEnabled, settlerMeetsNeed } from './progression.js';
-import { buildingWorkerJobs } from './shared.js';
+import { buildingWorkerJobs, recipeOf } from './shared.js';
 
 /**
- * JobSystem (assignment half — the smallest slice) — give an **idle** settler the job of an
- * understaffed workplace it qualifies for.
+ * JobSystem (assignment half) — give an **idle** settler the job of an understaffed workplace it
+ * qualifies for, and **bind it to that specific building** ({@link JobAssignment}).
  *
  * In Cultures a settler isn't born into a fixed trade: an unemployed colonist takes up an open job at
- * a workplace that needs a worker (the original's "assign settlers to buildings"). This is the first
- * slice of that — it only *assigns the job* (sets `Settler.jobType`); the assigned settler then walks
- * to / staffs the workplace through the existing AI planner (`staffsWorkplaceHere`) and the
- * production worker-presence gate. Movement-to-the-workplace, multi-worker balancing, vehicles and
- * carrier slots are later JobSystem slices (docs/ROADMAP.md).
+ * a workplace that needs a worker (the original's "assign settlers to buildings"). This slice assigns
+ * the job *and records which workplace it is for* — the {@link JobAssignment} binding is the single
+ * source of truth the AI planner reads (the walk-to-workplace drive heads for the bound building; the
+ * staffs-here pin latches only on it). The settler then walks to / staffs that workplace through the
+ * AI planner and the production worker-presence gate.
  *
- * An idle settler (`jobType === null`) is matched to the FIRST workplace, in canonical (ascending
- * entity-id) order, that is **open** for it. A workplace is open for the settler when ALL hold:
- *  - it is a same-tribe building whose type declares a `workers` slot (`logicworker <job> <count>` —
- *    {@link buildingWorkerJobs}); a building with no worker slot offers no job,
- *  - that worker job is currently **understaffed**: fewer settlers of that job are alive in the tribe
- *    than the slot's `count` (so we don't over-assign a one-worker sawmill),
- *  - the building is **tech-enabled** for the tribe ({@link buildingEnabled} — a smithy gated on a
- *    carpenter being present offers no smith job until the carpenter exists), AND
- *  - the settler's accrued XP clears the job's `needforjob` threshold
- *    ({@link settlerMeetsNeed} with `target='job'`) — the per-settler "you must have trained enough to
- *    take this job" gate (the deferred ProgressionSystem `needforjob` consumer; the harvest side
- *    already consumes the `needforgood` sibling).
+ * Two passes per settler, in canonical (ascending entity-id) order:
+ *  1. **Adopt** — an already-employed settler with no binding that is standing on a workplace it
+ *     staffs is bound to the building under its feet. This makes the binding authoritative for a
+ *     settler that was spawned pre-employed onto its station (it never went through assignment), with
+ *     no behavior change — it was already pinned there by the AI.
+ *  2. **Assign** — an idle settler (`jobType === null`) is matched to the FIRST workplace, in
+ *     canonical order, that is **open** for it, and bound to it. A workplace is open when ALL hold:
+ *      - it is a same-tribe building whose type declares a `workers` slot (`logicworker <job> <count>`
+ *        — {@link buildingWorkerJobs}); a building with no worker slot offers no job,
+ *      - that worker job is currently **understaffed at that building**: fewer settlers are *bound to
+ *        this building* for that job than the slot's `count` (per-building, so two same-type mills
+ *        staff independently — see {@link jobUnderstaffed}),
+ *      - the building is **tech-enabled** for the tribe ({@link buildingEnabled}), AND
+ *      - the settler's accrued XP clears the job's `needforjob` threshold ({@link settlerMeetsNeed}).
  *
  * Determinism: settlers and workplaces are both scanned in canonical (ascending entity-id) order via
  * {@link World.canonicalEntities}, and the first open match wins — so the assignment never depends on
@@ -36,60 +39,100 @@ import { buildingWorkerJobs } from './shared.js';
 export const jobSystem: System = (world, ctx) => {
   for (const e of world.canonicalEntities()) {
     const settler = world.tryGet(e, Settler);
-    if (settler === undefined || settler.jobType !== null) continue; // only the idle get assigned
-    const job = openJobFor(world, ctx, settler.tribe, settler.experience);
-    if (job !== null) settler.jobType = job;
+    if (settler === undefined || world.has(e, JobAssignment)) continue; // already bound: nothing to do
+
+    if (settler.jobType !== null) {
+      // Pass 1 — adopt a pre-employed, unbound settler standing on a workplace it staffs.
+      const here = workplaceStaffedHereBy(world, ctx, e, settler.jobType);
+      if (here !== null) world.add(e, JobAssignment, { workplace: here });
+      continue; // an employed settler is never re-assigned
+    }
+
+    // Pass 2 — assign + bind an idle settler to a concrete open workplace.
+    const open = openJobAt(world, ctx, settler.tribe, settler.experience);
+    if (open !== null) {
+      settler.jobType = open.jobType;
+      world.add(e, JobAssignment, { workplace: open.building });
+    }
   }
 };
 
 /**
- * The job of the first workplace (canonical order) that is open for a `tribe` settler with the given
- * accrued `experience` — see {@link jobSystem} for the four openness conditions — or `null` if no
- * workplace currently offers it a job.
+ * The first workplace (canonical order) that is open for a `tribe` settler with the given accrued
+ * `experience`, together with the job it offers — see {@link jobSystem} for the four openness
+ * conditions — or `null` if no workplace currently offers it a job.
  */
-function openJobFor(
+function openJobAt(
   world: World,
   ctx: SystemContext,
   tribe: number,
   experience: ReadonlyMap<number, number>,
-): number | null {
+): { building: Entity; jobType: number } | null {
   for (const b of world.canonicalEntities()) {
     const building = world.tryGet(b, Building);
     if (building === undefined || building.tribe !== tribe) continue;
     if (!buildingEnabled(world, ctx, tribe, building.buildingType)) continue; // not tech-enabled yet
     for (const jobType of canonicalJobs(buildingWorkerJobs(world, ctx, b))) {
-      if (!jobUnderstaffed(world, ctx, b, tribe, jobType)) continue;
+      if (!jobUnderstaffed(world, ctx, b, jobType)) continue;
       if (!settlerMeetsNeed(ctx, tribe, 'job', jobType, experience)) continue; // XP gate (needforjob)
-      return jobType; // first open, qualified job wins
+      return { building: b, jobType }; // first open, qualified job wins
     }
   }
   return null;
 }
 
 /**
- * Whether `jobType` has an unfilled `workers` slot at workplace `building`: the building type's slot
- * `count` for that job exceeds the number of settlers of that job currently alive in the same tribe.
- * Tribe-wide (not per-building) head-count is the slice's understaffing measure — there is no
- * worker→building assignment record yet, so "is this job short tribe-wide" stands in for "is this
- * specific workplace short" until a later slice binds a worker to its workplace.
+ * Whether `jobType` has an unfilled `workers` slot **at this specific** `building`: the building
+ * type's slot `count` for that job exceeds the number of settlers *bound to this building* for that
+ * job ({@link JobAssignment}). Per-building (not tribe-wide) head-count, so two same-type workplaces
+ * each fill their own slots independently — a worker bound to mill A doesn't make mill B look staffed.
+ *
+ * Determinism: a count of bound settlers (addition commutes), so iterating `query` insertion order is
+ * fine — it's not a *pick*, just a sum (CLAUDE.md: only a chosen-entity scan needs canonical order).
  */
-function jobUnderstaffed(
-  world: World,
-  ctx: SystemContext,
-  building: Entity,
-  tribe: number,
-  jobType: number,
-): boolean {
+function jobUnderstaffed(world: World, ctx: SystemContext, building: Entity, jobType: number): boolean {
   const b = world.get(building, Building);
   const type = ctx.content.buildings.find((t) => t.typeId === b.buildingType);
   const slot = type?.workers.find((w) => w.jobType === jobType);
   if (slot === undefined) return false; // not a worker job here
   let held = 0;
-  for (const e of world.query(Settler)) {
-    const s = world.get(e, Settler);
-    if (s.tribe === tribe && s.jobType === jobType) held++;
+  for (const e of world.query(Settler, JobAssignment)) {
+    if (world.get(e, JobAssignment).workplace !== building) continue;
+    if (world.get(e, Settler).jobType === jobType) held++;
   }
   return held < slot.count;
+}
+
+/**
+ * The workplace a settler is standing on that it staffs — used to *adopt* a pre-employed, unbound
+ * settler (bind it to the building under its feet). A candidate is a same-tile {@link Building} with a
+ * `recipe` (a producing workplace, not a passive store/HQ) whose `workers` slots name `jobType`. The
+ * first such building in canonical order is the binding. Returns the building entity or null.
+ *
+ * Mirrors the AI staffs-here pin's predicate (recipe + worker-job + same tile), so the building the
+ * JobSystem adopts is exactly the one the AI already holds the settler on. Determinism: canonical scan
+ * for the *pick* (the building chosen as the binding), so the adoption never depends on store order.
+ */
+function workplaceStaffedHereBy(
+  world: World,
+  ctx: SystemContext,
+  settler: Entity,
+  jobType: number,
+): Entity | null {
+  const sp = world.tryGet(settler, Position);
+  if (sp === undefined) return null;
+  const sx = fx.toInt(sp.x);
+  const sy = fx.toInt(sp.y);
+  for (const b of world.canonicalEntities()) {
+    const building = world.tryGet(b, Building);
+    if (building === undefined) continue;
+    if (recipeOf(world, ctx, b) === undefined) continue; // only a producing workplace pins its worker
+    if (!buildingWorkerJobs(world, ctx, b).has(jobType)) continue; // not a job this workplace employs
+    const bp = world.tryGet(b, Position);
+    if (bp === undefined) continue;
+    if (fx.toInt(bp.x) === sx && fx.toInt(bp.y) === sy) return b;
+  }
+  return null;
 }
 
 /** The job ids of a `workers`-slot set in ascending order, so a multi-slot workplace assigns

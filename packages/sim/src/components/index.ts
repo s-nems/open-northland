@@ -1,5 +1,5 @@
 import type { AtomicEffect } from '../commands.js';
-import { defineComponent } from '../ecs/world.js';
+import { type Entity, defineComponent } from '../ecs/world.js';
 import type { Fixed } from '../fixed.js';
 
 /**
@@ -113,6 +113,24 @@ export function stockpileEntries(s: { amounts: Map<number, number> }): Array<[nu
 
 /** A settler carrying goods (carriers physically haul; goods never teleport to a global bank). */
 export const Carrying = defineComponent<{ goodType: number; amount: number }>('Carrying');
+
+/**
+ * A worker→workplace binding: the specific {@link Building} a settler is employed at. The JobSystem
+ * assigns it when it gives an idle settler a job (it picks a concrete understaffed building, not just
+ * a job *type*), and the AI planner uses it as the single source of truth for "which mill is mine":
+ * the walk-to-workplace drive heads for *this* building and the staffs-here pin latches the settler
+ * only on it. Without it, two same-type workplaces shared one tribe-wide head-count stand-in (so they
+ * couldn't staff independently) and the pin keyed on merely *standing on any* workplace of the job
+ * (so a worker that briefly stepped off could be re-lured to a different mill).
+ *
+ * The binding is a separate optional component (not a `Settler` field) so an idle/unemployed settler
+ * simply has none — it appears the instant the JobSystem employs the settler and is the assignment's
+ * record. `workplace` is an {@link Entity} id (a monotonic integer), so it hashes deterministically
+ * like every other component. A settler already standing on a workplace it staffs but lacking a
+ * binding (e.g. one spawned pre-employed onto its station) is *adopted* by the JobSystem — bound to
+ * the building under its feet — so the binding stays the authority without a behavior change.
+ */
+export const JobAssignment = defineComponent<{ workplace: Entity }>('JobAssignment');
 
 /**
  * A harvestable resource node placed in the world (a tree, ore vein, berry bush). It yields its

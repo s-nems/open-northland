@@ -3,6 +3,7 @@ import {
   Building,
   Carrying,
   CurrentAtomic,
+  JobAssignment,
   MoveGoal,
   PathFollow,
   PathRequest,
@@ -168,7 +169,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // names its job is "at work" — the ProductionSystem's worker-presence gate runs on its being
     // there. Leave it put (don't send it off to harvest/haul, which would unstaff the workplace).
     // Carrying goods overrides (it must still deposit its load); a store (no recipe) doesn't pin.
-    if ((load === undefined || load.amount <= 0) && staffsWorkplaceHere(world, ctx, e, settler.jobType)) {
+    if ((load === undefined || load.amount <= 0) && staffsBoundWorkplaceHere(world, ctx, e)) {
       continue;
     }
 
@@ -192,16 +193,16 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       continue;
     }
 
-    // The WALK-TO-WORKPLACE drive: an employed, empty-handed settler that ISN'T yet on a workplace it
-    // staffs (the pin above didn't fire) walks to the nearest producing workplace its job operates. The
-    // JobSystem assigns a job *type*, not a building, so a freshly-assigned operator standing elsewhere
-    // (e.g. a carpenter spawned at the HQ, whose job can harvest nothing) must physically reach its
-    // station before the ProductionSystem's worker-presence gate can run — without this it would fall
-    // through to harvest/haul and never staff the workplace. Targets only an UNSTAFFED workplace (no
-    // operator of its job already present), so two same-type workplaces each draw one walker rather than
-    // both luring the same settler, and an already-manned station isn't a target. A settler whose job a
-    // resource permits still reaches harvest below when no such workplace exists (this returns null).
-    const station = nearestUnstaffedWorkplaceFor(world, ctx, terrain, here, settler.jobType, settler.tribe);
+    // The WALK-TO-WORKPLACE drive: an employed, empty-handed settler that ISN'T yet on its bound
+    // workplace (the staffs-here pin above didn't fire) walks to the specific building the JobSystem
+    // bound it to ({@link JobAssignment}). A freshly-assigned operator standing elsewhere (e.g. a
+    // carpenter spawned at the HQ, whose job can harvest nothing) must physically reach its station
+    // before the ProductionSystem's worker-presence gate can run — without this it would fall through
+    // to harvest/haul and never staff the workplace. Heading for ITS bound building (not "nearest
+    // unstaffed") keeps the worker latched to its own mill across a brief step-off the tile, and lets
+    // two same-type workplaces staff independently. A settler whose job a resource permits still
+    // reaches harvest below when it has no binding (an unassigned harvester returns from here at null).
+    const station = boundWorkplaceTarget(world, ctx, e, settler.jobType, settler.tribe);
     if (station !== null) {
       world.add(e, MoveGoal, { cell: entityCell(world, terrain, station) });
       continue;
@@ -588,96 +589,64 @@ function jobAtomics(ctx: SystemContext, jobType: number): ReadonlySet<number> {
 const EMPTY_ATOMICS: ReadonlySet<number> = new Set<number>();
 
 /**
- * Whether the settler is standing on a **workplace it staffs**: a {@link Building} with a `recipe`
- * (a production building, not a passive store/HQ) sharing the settler's integer tile whose building
- * type's `workers` slots name the settler's `jobType`. Such a settler is the workplace's operator —
- * the atomic planner leaves it put so the ProductionSystem's worker-presence gate stays satisfied.
+ * Whether the settler is standing on its **bound workplace** ({@link JobAssignment}) and that building
+ * is a producing workplace it staffs — a {@link Building} with a `recipe` (not a passive store/HQ),
+ * sharing the settler's integer tile, whose `workers` slots name the settler's `jobType`. Such a
+ * settler is the workplace's operator — the atomic planner leaves it put so the ProductionSystem's
+ * worker-presence gate stays satisfied. An unbound settler is never pinned (it has no station yet).
  *
- * A store/HQ (no recipe) never pins a settler here (so e.g. a woodcutter the HQ lists as a worker
- * isn't frozen on the HQ — it must still go harvest); only a producing workplace does. Determinism:
- * a boolean any-match over the deterministic `Building`/`Position` store, no chosen-entity ordering.
+ * Keying on the binding (not on standing-on-*any*-workplace) is what keeps a worker latched to ITS
+ * mill: a woodcutter the HQ lists as a worker isn't frozen on the HQ (its binding is the sawmill, or
+ * it has none and must go harvest), and a brief step onto a *different* same-type mill doesn't re-home
+ * it. Determinism: a single binding lookup + a positional compare, no chosen-entity ordering.
  */
-function staffsWorkplaceHere(world: World, ctx: SystemContext, settler: Entity, jobType: number): boolean {
-  const sp = world.get(settler, Position);
-  const sx = fx.toInt(sp.x);
-  const sy = fx.toInt(sp.y);
-  for (const b of world.query(Building, Position, Stockpile)) {
-    if (recipeOf(world, ctx, b) === undefined) continue; // only a producing workplace pins its worker
-    if (!buildingWorkerJobs(world, ctx, b).has(jobType)) continue; // not a job this workplace employs
-    const bp = world.get(b, Position);
-    if (fx.toInt(bp.x) === sx && fx.toInt(bp.y) === sy) return true;
-  }
-  return false;
+function staffsBoundWorkplaceHere(world: World, ctx: SystemContext, settler: Entity): boolean {
+  const binding = world.tryGet(settler, JobAssignment);
+  if (binding === undefined) return false; // unemployed/unbound: nothing pins it here
+  const s = world.get(settler, Settler);
+  if (s.jobType === null) return false; // job was cleared but binding lingers — not an operator
+  const b = binding.workplace;
+  if (recipeOf(world, ctx, b) === undefined) return false; // bound building isn't a producing workplace
+  if (!buildingWorkerJobs(world, ctx, b).has(s.jobType)) return false; // doesn't employ this job
+  const bp = world.tryGet(b, Position);
+  const sp = world.tryGet(settler, Position);
+  if (bp === undefined || sp === undefined) return false;
+  return fx.toInt(bp.x) === fx.toInt(sp.x) && fx.toInt(bp.y) === fx.toInt(sp.y);
 }
 
 /**
- * The nearest producing workplace a `tribe` settler of `jobType` should WALK TO in order to staff it —
- * the target of the walk-to-workplace drive, the movement half {@link staffsWorkplaceHere} (the
- * already-here pin) was missing. A candidate workplace must:
+ * The building a bound `tribe` settler of `jobType` should WALK TO in order to staff it — its
+ * {@link JobAssignment} workplace, the target of the walk-to-workplace drive (the movement half
+ * {@link staffsBoundWorkplaceHere}, the already-here pin, was missing). The settler heads for *its own*
+ * mill, not the nearest unstaffed one, so it stays latched across a brief step-off and two same-type
+ * workplaces staff independently. Returns the bound building, or null when the settler isn't bound to
+ * a usable station (so it falls through to harvest/haul) — which holds when:
  *
- *  - be a same-tribe {@link Building} (with a {@link Position} and a {@link Stockpile}) that has a
- *    `recipe` (a producing workplace, not a passive store/HQ — a store never needs an operator walking
- *    to it). The `Stockpile` requirement mirrors {@link staffsWorkplaceHere}'s query **exactly**, so the
- *    set of buildings this drive walks TO is the same set that pin holds the settler ON — without it a
- *    recipe-but-Stockpile-less fixture could be a walk target the pin then fails to latch, thrashing,
- *  - declare a `workers` slot naming `jobType` ({@link buildingWorkerJobs}),
- *  - be **tech-enabled** for the tribe ({@link buildingEnabled} — don't walk to a workplace not yet
- *    unlocked), AND
- *  - be **currently unstaffed** by an operator of that job (no settler of `jobType` standing on its
- *    tile): an already-manned station needs no second walker, and two same-type workplaces each pull
- *    exactly one settler instead of both drawing the same one.
+ *  - it has no {@link JobAssignment} (an unassigned harvester — go harvest), OR
+ *  - the bound building is gone / not a producing workplace it staffs / not tech-enabled / not the
+ *    same tribe — a stale or unusable binding, treated as "no station" so the settler isn't stranded.
  *
- * Chosen by fixed-point Manhattan distance from `here`, ascending-cell-id tie-break, scanned in
- * canonical entity-id order — so the target never depends on store insertion history. Returns the
- * workplace entity or null when none qualifies (the settler then falls through to harvest/haul).
- * Determinism: distance + canonical scan for the *pick*; the unstaffed test is a boolean any-match.
+ * Determinism: a single binding lookup + pure predicate checks, no chosen-entity ordering. (`terrain`
+ * and `here` are unused now the target is the bound building rather than a nearest-of search, but kept
+ * for signature symmetry with the other drive targets; the navigation pass routes to it.)
  */
-function nearestUnstaffedWorkplaceFor(
+function boundWorkplaceTarget(
   world: World,
   ctx: SystemContext,
-  terrain: TerrainGraph,
-  here: CellId,
+  settler: Entity,
   jobType: number,
   tribe: number,
 ): Entity | null {
-  let best: Entity | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  let bestCell = Number.POSITIVE_INFINITY;
-  for (const b of world.canonicalEntities()) {
-    const building = world.tryGet(b, Building);
-    if (building === undefined || building.tribe !== tribe) continue;
-    if (!world.has(b, Position) || !world.has(b, Stockpile)) continue; // same shape staffsWorkplaceHere pins
-    if (recipeOf(world, ctx, b) === undefined) continue; // only a producing workplace needs an operator
-    if (!buildingWorkerJobs(world, ctx, b).has(jobType)) continue; // not a job this workplace employs
-    if (!buildingEnabled(world, ctx, tribe, building.buildingType)) continue; // not tech-enabled yet
-    if (workplaceStaffedBy(world, b, jobType)) continue; // already manned by an operator of this job
-    const cell = entityCell(world, terrain, b);
-    const dist = manhattan(terrain, here, cell);
-    if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
-      best = b;
-      bestDist = dist;
-      bestCell = cell;
-    }
-  }
-  return best;
-}
-
-/**
- * Whether some settler of `jobType` is standing on `building`'s integer tile — i.e. the workplace
- * already has an operator of that job at its station. A boolean any-match over the deterministic
- * `Settler`/`Position` store (no chosen entity), so it has no ordering concern. Used by
- * {@link nearestUnstaffedWorkplaceFor} to skip an already-manned workplace.
- */
-function workplaceStaffedBy(world: World, building: Entity, jobType: number): boolean {
-  const bp = world.get(building, Position);
-  const bx = fx.toInt(bp.x);
-  const by = fx.toInt(bp.y);
-  for (const e of world.query(Settler, Position)) {
-    if (world.get(e, Settler).jobType !== jobType) continue;
-    const p = world.get(e, Position);
-    if (fx.toInt(p.x) === bx && fx.toInt(p.y) === by) return true;
-  }
-  return false;
+  const binding = world.tryGet(settler, JobAssignment);
+  if (binding === undefined) return null; // unassigned: no station to walk to
+  const b = binding.workplace;
+  const building = world.tryGet(b, Building);
+  if (building === undefined || building.tribe !== tribe) return null; // gone / wrong tribe
+  if (recipeOf(world, ctx, b) === undefined) return null; // not a producing workplace
+  if (!buildingWorkerJobs(world, ctx, b).has(jobType)) return null; // doesn't employ this job
+  if (!buildingEnabled(world, ctx, tribe, building.buildingType)) return null; // not tech-enabled yet
+  if (!world.has(b, Position)) return null; // a position-less workplace can't be walked to
+  return b;
 }
 
 /** The cell an entity occupies — its {@link Position} (a resource node, a store) snapped to a cell. */
