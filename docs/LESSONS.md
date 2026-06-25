@@ -75,3 +75,12 @@ the next iteration inherits it.
   and classify it `approximated` in FIDELITY — the corner→cell rule has no behavioral oracle (OpenVikings
   decodes the container but doesn't simulate nav). Keep the reduction in the build tool, returning the
   plain `{width,height,typeIds}` shape, so it never imports `sim`. (pipeline/format)
+- [5344d5d] A binary index lane and the IR table it keys into can use different bases: the `map.dat`
+  `lmlt` layer is **0-based** (raw 0 = first type, "void") but `LandscapeType.typeId` mirrors the
+  1-based `.ini` `type` field, so a grid built straight from the raw indices made the sim's
+  `buildTerrainGraph` reject raw `0` as "absent from content". The decoder unit tests were green —
+  the off-by-one only surfaced on the *real* `npm run pipeline` + loading an emitted grid through the
+  real builder (the synthetic test grids happened to avoid typeId 0). When wiring a decoder's output
+  into a consumer that *validates* against another table, run the consumer over the real output, not
+  just the unit fixture; the earlier "values 0..85 within the 87-type table" note ([4b01c26]) was the
+  0-based tell read as if 1-based. (pipeline/format)
