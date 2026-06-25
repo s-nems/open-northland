@@ -217,6 +217,30 @@ export const WeaponType = z.object({
 });
 export type WeaponType = z.infer<typeof WeaponType>;
 
+export const ArmorType = z.object({
+  /**
+   * The armor's `type` id — the **armor class** a {@link WeaponType.damage} record keys against
+   * (`damagevalue <armorClass> <value>`). Globally unique here (unlike {@link WeaponType.typeId}):
+   * the readable `armortypes.ini` ships a flat 1..N table, not a per-tribe one. Armor class **0**
+   * ("unarmored") has NO record — a weapon's `damage["0"]` is its damage against a bare target.
+   */
+  typeId: TypeId,
+  id: z.string(),
+  name: z.string().optional(),
+  /** `maintype` — coarse class (1 = light/cloth+leather, 2 = heavy/chain+plate in the base data). */
+  mainType: TypeId.optional(),
+  /** `goodtype` — the good that IS this armor (worn/carried); resolves into the good table. */
+  goodType: TypeId.optional(),
+  /** `materialtype` — the material tier the armor is made of (cloth/leather/chain/plate = 1..4). */
+  materialType: TypeId.optional(),
+  /** `weight` — encumbrance the armor adds (0 = leather, up to 3 = chain/plate). */
+  weight: z.number().int().nonnegative().default(0),
+  /** `blockingvalue` — how much incoming damage the armor mitigates (the combat read side's join key). */
+  blockingValue: z.number().int().nonnegative().default(0),
+  source: Provenance.optional(),
+});
+export type ArmorType = z.infer<typeof ArmorType>;
+
 export const AnimalType = z.object({
   typeId: TypeId,
   id: z.string(),
@@ -492,6 +516,7 @@ export const ContentSet = z.object({
   jobExperience: z.array(HumanJobExperienceType).default([]),
   buildings: z.array(BuildingType),
   weapons: z.array(WeaponType).default([]),
+  armor: z.array(ArmorType).default([]),
   animals: z.array(AnimalType).default([]),
   vehicles: z.array(VehicleType).default([]),
   landscape: z.array(LandscapeType).default([]),

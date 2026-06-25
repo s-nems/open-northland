@@ -4,6 +4,7 @@ import type { CifLine } from '../src/decoders/cif.js';
 import {
   cifLinesToSections,
   decodeIni,
+  extractArmor,
   extractAtomicAnimations,
   extractBuildings,
   extractGoods,
@@ -179,6 +180,34 @@ logicpassenger 25
 [vehicletype]
 type 5
 name "catapult"
+`;
+
+// Mirrors Data/logic/armortypes.ini (plain `.ini`; the `<CULTURES_CIF_BEGIN>` header line is not a
+// `[section]` so the parser ignores it like vehicletypes/goodtypes): each `[armortype]` carries a
+// numeric `type` (the armor CLASS a weapon's `damagevalue <class> <v>` keys against), a quoted `name`,
+// `maintype`, `goodtype` (the good that IS the armor), `materialtype`, `weight`, `blockingvalue`. The
+// woolen (light, weight 1) and plate (heavy, weight 3) records bracket the real table; the third omits
+// the optional numeric lines to exercise the schema defaults (weight/blockingValue -> 0).
+const ARMORTYPES_INI = `<CULTURES_CIF_BEGIN><03FD><00000020> Don't modify this line!
+[armortype]
+name "woolen armor"
+type 1
+mainType 1
+goodtype 33
+materialType 1
+weight 1
+blockingValue 5
+[armortype]
+name "plate armor"
+type 4
+mainType 2
+goodtype 36
+materialType 4
+weight 3
+blockingValue 5
+[armortype]
+name "bare"
+type 9
 `;
 
 // Mirrors DataCnmd/types/houses.ini: a `[logichousetype]` keys its id on `logictype` (not `type`) and
@@ -630,6 +659,59 @@ describe('extractVehicles', () => {
 
   it('throws on a [vehicletype] missing its numeric `type`', () => {
     expect(() => extractVehicles(parseIniSections('[vehicletype]\nname "x"\n'), { file: 'f.ini' })).toThrow(
+      /without a numeric `type`/,
+    );
+  });
+});
+
+describe('extractArmor', () => {
+  it('maps [armortype] sections to validated ArmorType IR with the armor class + blocking value', () => {
+    const armor = extractArmor(parseIniSections(ARMORTYPES_INI), {
+      file: 'Data/logic/armortypes.ini',
+      layer: 'base',
+    });
+    const src = { file: 'Data/logic/armortypes.ini', block: 'armortype', layer: 'base' };
+    expect(armor).toEqual([
+      {
+        typeId: 1,
+        id: 'woolen_armor',
+        name: 'woolen armor',
+        mainType: 1,
+        goodType: 33,
+        materialType: 1,
+        weight: 1,
+        blockingValue: 5,
+        source: src,
+      },
+      {
+        typeId: 4,
+        id: 'plate_armor',
+        name: 'plate armor',
+        mainType: 2,
+        goodType: 36,
+        materialType: 4,
+        weight: 3,
+        blockingValue: 5,
+        source: src,
+      },
+      // No mainType/goodtype/materialType/weight/blockingValue lines -> schema defaults (weight 0,
+      // blockingValue 0); the optional ids parse to explicit `undefined` (zod `.optional()`).
+      {
+        typeId: 9,
+        id: 'bare',
+        name: 'bare',
+        mainType: undefined,
+        goodType: undefined,
+        materialType: undefined,
+        weight: 0,
+        blockingValue: 0,
+        source: src,
+      },
+    ]);
+  });
+
+  it('throws on an [armortype] missing its numeric `type`', () => {
+    expect(() => extractArmor(parseIniSections('[armortype]\nname "x"\n'), { file: 'f.ini' })).toThrow(
       /without a numeric `type`/,
     );
   });
