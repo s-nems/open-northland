@@ -8,8 +8,9 @@
 // always feeds the renderer the same draw list. This is a committed script (not the Playwright MCP)
 // so it lives in the repo, runs in CI, and can later graduate to golden-image diffs.
 //
-// Usage:  node packages/app/scripts/shot.mjs [--seed N] [--ticks N] [--out path.png]
+// Usage:  node packages/app/scripts/shot.mjs [--seed N] [--ticks N] [--map id] [--out path.png]
 //         npm run shot -- --seed 7 --ticks 20 --out shot.png
+//         npm run shot -- --map oasis_o_plenty   # draw an actual decoded content/maps/<id>.json grid
 
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -27,6 +28,7 @@ function arg(name, fallback) {
 
 const seed = arg('seed', '7');
 const ticks = arg('ticks', '20');
+const mapId = arg('map', '');
 const outPath = resolve(process.cwd(), arg('out', 'shot.png'));
 
 async function main() {
@@ -41,7 +43,8 @@ async function main() {
   const { port } = server.config.server;
   const address = server.httpServer?.address();
   const resolvedPort = typeof address === 'object' && address ? address.port : port;
-  const url = `http://localhost:${resolvedPort}/?shot&seed=${seed}&ticks=${ticks}`;
+  const mapParam = mapId ? `&map=${encodeURIComponent(mapId)}` : '';
+  const url = `http://localhost:${resolvedPort}/?shot&seed=${seed}&ticks=${ticks}${mapParam}`;
 
   const browser = await chromium.launch();
   let failed = false;
@@ -76,7 +79,9 @@ async function main() {
       for (const e of errors) console.error(`  - ${e}`);
       failed = true;
     }
-    console.log(`shot: wrote ${outPath} (seed=${seed}, ticks=${ticks}) from ${url}`);
+    console.log(
+      `shot: wrote ${outPath} (seed=${seed}, ticks=${ticks}${mapId ? `, map=${mapId}` : ''}) from ${url}`,
+    );
     console.log('shot: NOT auto-passed — a human/agent must eyeball the PNG for gross correctness.');
   } finally {
     await browser.close();

@@ -1,4 +1,4 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
+import { type ContentSet, IR_VERSION, parseContentSet, parseTerrainMap } from '@vinland/data';
 import { type SceneTerrain, terrainMapToScene } from '@vinland/render';
 import { Simulation, type TerrainMap, components, fx } from '@vinland/sim';
 
@@ -92,9 +92,55 @@ function grassMap(): TerrainMap {
  * The terrain grid the scene layer projects, derived from the SAME {@link TerrainMap} the sim
  * navigates via the render package's `terrainMapToScene` seam — so the demo exercises the exact
  * map→scene path a loaded `content/maps/<id>.json` takes, not a hand-duplicated grid.
+ *
+ * When a `map` is passed (loaded from disk via {@link loadTerrainMap}), its varied landscape typeIds
+ * carry through; otherwise the synthetic grass strip is projected — the reproducible default for
+ * `npm run shot` + the unit tests, which must not depend on the gitignored `content/`.
  */
-export function sliceTerrain(): SceneTerrain {
-  return terrainMapToScene(grassMap());
+export function sliceTerrain(map?: TerrainMap): SceneTerrain {
+  return terrainMapToScene(map ?? grassMap());
+}
+
+/**
+ * A map id is a bare filename stem (no slashes/dots), so `?map=oasis_o_plenty` can only ever fetch a
+ * single `content/maps/<id>.json` — never a traversal out of the maps dir. Returns null for an id that
+ * isn't a safe stem, so the caller falls back to the synthetic strip rather than fetching junk.
+ */
+function safeMapId(id: string): string | null {
+  return /^[a-z0-9_-]+$/i.test(id) ? id : null;
+}
+
+/**
+ * Load a decoded map grid (`content/maps/<id>.json`, served at `/maps/<id>.json` by the dev/shot vite
+ * middleware) into the structural {@link TerrainMap} the renderer + sim consume. This is the app's
+ * **I/O boundary** (a browser `fetch`, not allowed in the pure sim): it pulls the JSON and hands it to
+ * `@vinland/data`'s `parseTerrainMap`, which zod-validates the shape + the `typeIds.length ===
+ * width*height` invariant before it ever reaches `terrainMapToScene`/`buildTerrainGraph`. Returns null
+ * (and logs) on a bad id, a 404 (no such map / `content/` absent), or a malformed file, so the entry
+ * degrades gracefully to the synthetic strip — the real maps are gitignored, so a checkout without
+ * them still renders. `fetchImpl` is injectable so the validate-then-project core is unit-testable
+ * without a network.
+ */
+export async function loadTerrainMap(
+  id: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<TerrainMap | null> {
+  const safe = safeMapId(id);
+  if (safe === null) {
+    console.warn(`loadTerrainMap: ignoring unsafe map id "${id}"`);
+    return null;
+  }
+  try {
+    const res = await fetchImpl(`/maps/${safe}.json`);
+    if (!res.ok) {
+      console.warn(`loadTerrainMap: /maps/${safe}.json -> HTTP ${res.status} (falling back to the strip)`);
+      return null;
+    }
+    return parseTerrainMap(await res.json());
+  } catch (err) {
+    console.warn(`loadTerrainMap: failed to load "${safe}" (${String(err)}); falling back to the strip`);
+    return null;
+  }
 }
 
 /**

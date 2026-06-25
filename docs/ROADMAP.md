@@ -406,10 +406,14 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 > `terrainMapToScene` (`packages/render/src/scene.ts`) projects a loaded `TerrainMap` (the
 > `parseTerrainMap` shape) straight onto the renderer's `SceneTerrain`, varied landscape typeIds and
 > all, and the vertical-slice demo's terrain is derived through it (no hand-duplicated grid).
-> **Next smallest step: have the shot/dev entry LOAD an actual `content/maps/<id>.json`** through that
-> seam (in place of the synthetic 6×1 grass strip) so `npm run dev`/`npm run shot` draws a real decoded
-> map — then atlas sprites in place of the placeholder geometry. (A "per-type walk-cost field" is
-> *not* a pending step: `landscapetypes.ini` has no
+> **And the shot/dev entry now LOADS an actual `content/maps/<id>.json`:** `?map=<id>` (the gitignored
+> repo-root grids bridged to `/maps/<id>.json` by a vite dev-server middleware; `loadTerrainMap`
+> fetches + `parseTerrainMap`-validates) draws a real decoded grid behind the slice sprites, falling
+> back to the synthetic strip when absent — proven hands-on by `npm run shot -- --map mroczny_swiat_sub2`
+> (a real 50×50 grid → a 2500-tile PNG, 0 page errors).
+> **Next smallest step:** let the **sim** navigate a loaded map too (spawn/place settlers + buildings
+> on real walkable cells, not the synthetic strip), then atlas sprites in place of the placeholder
+> geometry. (A "per-type walk-cost field" is *not* a pending step: `landscapetypes.ini` has no
 > movement weight — only `maximumValency` + placement flags — so uniform unit cost is faithful.) Lines
 > tagged *(core done…)* pass tests today but await one wiring piece.
 - [x] **CommandSystem + serializable command schema** — the ONLY way state mutates. Done —
@@ -645,13 +649,15 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
       delivers back into the producer; two seed-13 runs hash-equal.
 - [ ] Render: isometric terrain + the settler sprite from the atlas, **depth-sorted by feet anchor**
       (a visual checklist item — can't be golden-hashed; see docs/TESTING.md).
-      *(GPU draw + the `npm run shot` harness now land with **placeholder geometry**, and the
-      **map→scene seam** (`terrainMapToScene`) now projects a loaded `TerrainMap` (the `parseTerrainMap`
+      *(GPU draw + the `npm run shot` harness now land with **placeholder geometry**, the
+      **map→scene seam** (`terrainMapToScene`) projects a loaded `TerrainMap` (the `parseTerrainMap`
       shape) straight onto the renderer's `SceneTerrain` — the demo's terrain is derived through it,
-      not a hand-built grid. Two open parts remain: (1) the **shot/dev entry loading an actual
-      `content/maps/<id>.json`** through that seam (instead of the synthetic 6×1 grass strip), and (2)
-      the **atlas sprite** in place of the placeholder box — gated on a free/synthetic atlas, since real
-      bobs are copyrighted/gitignored.)*
+      not a hand-built grid — **and the shot/dev entry now LOADS an actual `content/maps/<id>.json`**
+      via `?map=<id>` (a vite dev-server middleware bridges the gitignored repo-root grids to
+      `/maps/<id>.json`; `loadTerrainMap` fetches + `parseTerrainMap`-validates them), drawing a real
+      decoded grid behind the slice sprites — falling back to the synthetic strip when absent. One open
+      part remains: the **atlas sprite** in place of the placeholder box — gated on a free/synthetic
+      atlas, since real bobs are copyrighted/gitignored.)*
       - [x] **`terrainMapToScene` map→scene seam** — `packages/render/src/scene.ts`: a pure, total
             projection from a loaded `TerrainMap` (`{ width, height, typeIds }` — the shape
             `@vinland/data` `parseTerrainMap` validates a `content/maps/<id>.json` into) onto the
@@ -663,7 +669,25 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             the map→scene path. **Hands-on:** `npm run shot` → a valid 1000×600 PNG, eyeballed
             gross-correct (6 iso grass tiles behind 6 feet-sorted sprites), unchanged by the refactor;
             a unit test feeds a varied-typeId `{2,3}` grid through `terrainMapToScene` → `buildScene`
-            and asserts each tile keeps its typeId. **Still open:** the shot/dev entry *loading a file*.
+            and asserts each tile keeps its typeId.
+      - [x] **Shot/dev entry LOADS an actual `content/maps/<id>.json`** — `?map=<id>` on the headless
+            shot entry (`packages/app/src/shot.ts`) and live `main.ts` now draws a **real decoded map**
+            as the terrain instead of the synthetic 6×1 grass strip. The I/O seam is `loadTerrainMap`
+            (`packages/app/src/vertical-slice.ts`): a browser `fetch('/maps/<id>.json')` →
+            `@vinland/data` `parseTerrainMap` (zod-validates the shape + the `typeIds.length ===
+            width*height` invariant) → the structural `TerrainMap` fed through the existing
+            `terrainMapToScene` seam. The gitignored repo-root grids are bridged to `/maps/<id>.json`
+            by a vite dev-server middleware (`vite.config.ts`, path-traversal-rejecting), so both
+            `npm run dev` and the shot harness (`scripts/shot.mjs --map <id>`) can reach them. A bad id
+            / 404 / malformed file degrades gracefully to the synthetic strip (logged), so a checkout
+            **without** the gitignored maps still renders and the default `npm run shot` stays
+            reproducible. The slice **sim** still navigates its own synthetic strip (placing buildings
+            on a real map's arbitrary cells — possibly water — is a later step); this draws the real
+            grid as the terrain backdrop. **Hands-on:** `npm run shot -- --map mroczny_swiat_sub2` (a
+            real 50×50 = 2500-cell grid) → a valid 55 KB PNG (vs the 10 KB 6-tile strip), 0 page
+            errors, eyeballed gross-correct (a full iso terrain grid behind the feet-sorted slice
+            sprites); `cn_4` (100×100, 16 distinct typeIds) likewise. **Still open:** the **sim**
+            navigating a real map (spawn/placement on real cells), and the atlas sprite.
       - [x] **Pure scene/depth-sort layer** — `packages/render/src/scene.ts` (`buildScene`): turns a
             `WorldSnapshot` + the terrain grid dimensions into a flat, **depth-sorted** isometric
             draw list (`DrawItem[]`), the testable core of the render line that an agent CAN
