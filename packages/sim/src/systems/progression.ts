@@ -84,7 +84,7 @@ export function grantWorkExperience(
  * In Cultures, a tribe can't build everything from the start: a house is *enabled* once a settler of
  * the right job is present in the tribe (`tribetypes` `jobEnablesHouse <jobType> <houseType>`). E.g.
  * a smithy might be gated on a smith existing, a barracks on a soldier. This is the read side of the
- * `jobEnables` edges {@link extractJobEnables} produces: a building is enabled when either
+ * `jobEnables` edges the pipeline's `extractJobEnables` produces: a building is enabled when either
  *  - **no** `jobEnablesHouse` edge in the tribe's tech-graph gates that `buildingType` (it is an
  *    ungated start building, like the headquarters), OR
  *  - a settler of **any** of the jobs whose edge gates it is currently alive in that tribe.
@@ -92,7 +92,7 @@ export function grantWorkExperience(
  * Determinism: this is a pure **membership** query (does *some* enabling-job settler exist?), so the
  * `query` insertion-order traversal is fine — the boolean is order-independent (like `Map.has`, which
  * the determinism contract permits). No RNG, no wall-clock; content arrays are fixed at load. The
- * tribe id is matched on the {@link TribeType} `typeId`, the same id `Settler.tribe`/`Building.tribe`
+ * tribe id is matched on the `TribeType` `typeId`, the same id `Settler.tribe`/`Building.tribe`
  * carry. A tribe absent from content (bad input) gates nothing — every building stays enabled, so a
  * map with no tribe-type data still places its start buildings rather than silently rejecting them.
  */
