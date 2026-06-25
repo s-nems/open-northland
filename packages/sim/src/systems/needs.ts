@@ -38,6 +38,6 @@ export const needsSystem: System = (world) => {
   for (const e of world.query(Settler)) {
     const settler = world.get(e, Settler);
     const risen = fx.add(settler.hunger, HUNGER_RISE_PER_TICK);
-    settler.hunger = (risen > ONE ? ONE : risen) as Fixed;
+    settler.hunger = risen > ONE ? ONE : risen;
   }
 };
