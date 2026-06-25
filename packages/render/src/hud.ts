@@ -70,9 +70,9 @@ interface BuildingValue {
 }
 
 /**
- * Read the tribe a snapshot entity belongs to via a marker component, or `null` if it carries
- * neither a `Settler` nor a `Building` (the two tribe-owning markers the HUD aggregates). Total: a
- * missing/malformed `tribe` field reads as "not this entity's concern".
+ * Read an entity's `Settler` component (tribe + jobType), or `null` if it isn't a settler. Total: a
+ * missing/malformed `tribe` field reads as "not a countable settler". (`buildingOf` is its twin for
+ * the store side; `Settler` and `Building` are the two tribe-owning markers the HUD aggregates.)
  */
 function settlerOf(components: Readonly<Record<string, unknown>>): SettlerValue | null {
   const s = components.Settler as SettlerValue | undefined;
