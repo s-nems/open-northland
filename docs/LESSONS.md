@@ -120,3 +120,10 @@ the next iteration inherits it.
   data half NOW, gate the pixel half on the human/asset, and keep the GPU input OPTIONAL (a `SpriteSheet?`
   defaulting to the placeholder path) so the reproducible `npm run shot` default is byte-unchanged.
   Generalises: when a step is "blocked on a human/asset", carve off the pure decision and land that. (render)
+- [400e8a9] To EXERCISE (not just unit-test) a render branch that's blocked on a copyrighted asset, a
+  FREE SYNTHETIC stand-in unblocks it: a tiny hand-authored atlas (flat-colour marker frames drawn into
+  a `CanvasSource`) binds through the exact same `SpriteSheet` shape a real bob atlas will, so the
+  textured branch runs + is human-eyeballable today and the real art drops in later with no renderer
+  change. Gate it behind an OPT-IN flag (`?atlas`, `--atlas`) so the byte-reproducible default
+  (`npm run shot`) is untouched — and forward the flag through the harness script too (`shot.mjs`), or
+  the "real entry point" can't reach the new path even though the app code supports it. (render/app)
