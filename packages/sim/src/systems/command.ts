@@ -1,8 +1,8 @@
 import { indexById } from '@vinland/data';
 import { assertNever } from '../brand.js';
 import type { Command } from '../commands.js';
-import { Building, Position, Settler, Stockpile } from '../components/index.js';
-import type { World } from '../ecs/world.js';
+import { Building, JobAssignment, Position, Settler, Stockpile } from '../components/index.js';
+import type { Entity, World } from '../ecs/world.js';
 import { ONE, fx } from '../fixed.js';
 import type { System, SystemContext } from './context.js';
 import { buildingEnabled } from './progression.js';
@@ -29,7 +29,9 @@ import { buildingEnabled } from './progression.js';
  *    `settlerBorn`.
  *  - `setProduction` — point a workplace's production at a good (currently a no-op marker until the
  *    recipe-selection slice; recorded in the log so replay stays faithful).
- *  - `demolish` — destroy a building entity (ids are never recycled).
+ *  - `demolish` — destroy a building entity (ids are never recycled), **first unbinding every
+ *    settler employed there** (see {@link unbindWorkersOf}) so a worker isn't left latched to a dead
+ *    workplace — it returns to idle and the JobSystem re-employs it elsewhere next tick.
  *
  * A command that references an unknown type id or a dead entity is a recoverable boundary failure
  * (bad UI input / a stale command), not a programmer bug: it is skipped (the log still records it,
@@ -55,10 +57,38 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       // by the caller so a replay reaches the same state once this is implemented.
       return;
     case 'demolish':
-      if (world.isAlive(command.building)) world.destroy(command.building);
+      if (world.isAlive(command.building)) {
+        unbindWorkersOf(world, command.building);
+        world.destroy(command.building);
+      }
       return;
     default:
       assertNever(command);
+  }
+}
+
+/**
+ * Release every settler bound to `building` ({@link JobAssignment}) before it is destroyed: drop the
+ * binding and reset the settler to idle (`jobType = null`). Without this, a demolished workplace would
+ * strand its operators — the binding would dangle on a dead entity (the AI/JobSystem consumers only
+ * *defend* against a stale binding, none *clears* it), so the worker would neither produce (its
+ * workplace is gone) nor be re-employable (it still looks employed-and-bound to the JobSystem). Faithful
+ * to the original: pulling down a building turns its workers back into job-seekers.
+ *
+ * Determinism: a `query(Settler, JobAssignment)` scan that only *mutates the matched settlers* (drops
+ * the binding, resets the job) — order-independent, no chosen-entity pick, so iterating store order is
+ * permitted (CLAUDE.md: only a scan whose result depends on *which* entity wins needs the canonical
+ * order). The matches are collected before mutating because `world.remove` deletes from the
+ * `JobAssignment` store, which `world.query` may be iterating — snapshot first, then mutate.
+ */
+function unbindWorkersOf(world: World, building: Entity): void {
+  const bound: Entity[] = [];
+  for (const e of world.query(Settler, JobAssignment)) {
+    if (world.get(e, JobAssignment).workplace === building) bound.push(e);
+  }
+  for (const e of bound) {
+    world.remove(e, JobAssignment);
+    world.get(e, Settler).jobType = null; // back to idle — the JobSystem re-assigns it next tick
   }
 }
 

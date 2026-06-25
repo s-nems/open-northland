@@ -4,6 +4,7 @@ import {
   Building,
   Carrying,
   CurrentAtomic,
+  JobAssignment,
   MoveGoal,
   PathFollow,
   PathRequest,
@@ -29,6 +30,7 @@ import { testContent } from './fixtures/content.js';
  */
 
 const HEADQUARTERS = 1;
+const SAWMILL = 2; // a workplace (one carpenter slot, a plank recipe) — its operator gets bound
 const SMITHY = 4; // tech-gated: viking `jobEnablesHouse 2 4` locks it behind a carpenter (job 2)
 const WOODCUTTER = 1;
 const CARPENTER = 2; // the job that unlocks the SMITHY for the viking tribe
@@ -48,6 +50,7 @@ function clearStores(): void {
   PathFollow.store.clear();
   PathRequest.store.clear();
   Production.store.clear();
+  JobAssignment.store.clear();
 }
 
 beforeEach(clearStores);
@@ -122,6 +125,25 @@ describe('CommandSystem', () => {
     sim.step();
     expect(sim.world.isAlive(e)).toBe(false);
     expect(sim.world.entityCount).toBe(0);
+  });
+
+  it('demolish unbinds the workplace operators: each returns to idle and re-employable', () => {
+    const sim = fresh();
+    // A sawmill (type 2, one carpenter slot) and a carpenter standing on its tile. The JobSystem (in
+    // the step schedule) ADOPTS the pre-employed-but-unbound operator, binding it to the mill it staffs.
+    sim.enqueue({ kind: 'placeBuilding', buildingType: SAWMILL, x: 5, y: 5, tribe: VIKING });
+    sim.enqueue({ kind: 'spawnSettler', jobType: CARPENTER, x: 5, y: 5, tribe: VIKING });
+    sim.step();
+    const mill = nthEntity(sim, 0);
+    const worker = nthEntity(sim, 1);
+    expect(sim.world.get(worker, JobAssignment).workplace).toBe(mill); // bound to THIS mill
+
+    // Demolish the mill: its operator must be released, not left latched to a dead entity.
+    sim.enqueue({ kind: 'demolish', building: mill });
+    sim.step();
+    expect(sim.world.isAlive(mill)).toBe(false);
+    expect(sim.world.has(worker, JobAssignment)).toBe(false); // binding cleared
+    expect(sim.world.get(worker, Settler).jobType).toBeNull(); // back to idle for re-assignment
   });
 
   it('records applied commands in the log stamped with the tick they were applied on', () => {

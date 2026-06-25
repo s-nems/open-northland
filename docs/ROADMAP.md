@@ -64,10 +64,12 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       workplaces staff independently and a worker stays latched to *its* mill across a step-off the
       tile), and a freshly-assigned operator **walks to its bound workplace** (the AI
       walk-to-bound-workplace drive — `boundWorkplaceTarget` in `systems/ai.ts` — so a pure-operator job
-      like the carpenter reaches its station instead of idling). **Next:** multiple carriers + vehicle
-      stock slots (a carrier currently hauls one good at a time with no vehicle); then unbind a settler
-      when its workplace is destroyed (the binding has no demolition path yet — a stale-binding consumer
-      defends against it but nothing clears it).
+      like the carpenter reaches its station instead of idling), and the **binding's demolition path is
+      closed** (the `demolish` command unbinds + idles every settler bound to a building before
+      destroying it — `unbindWorkersOf` in `systems/command.ts` — so a worker is never stranded latched
+      to a dead workplace; the JobSystem re-employs it next tick). **Next:** multiple carriers + vehicle
+      stock slots (a carrier currently hauls one good at a time with no vehicle), consuming the
+      `vehicle` `jobEnables` edge kind.
 - [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`)
       → population capacity → the births→housing→births loop.
 - [ ] ReproductionSystem: families, children growing up, gated by housing.
