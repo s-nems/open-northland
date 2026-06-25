@@ -255,3 +255,12 @@ the next iteration inherits it.
   loop does. The new system was provably inert in the golden (every golden/app settler spawns with an
   explicit non-null job, so no idle settler is ever assigned) — confirm a planner/assignment addition
   only fires on a state the goldens never construct before claiming the hash is untouched. (sim/determinism)
+- [94e1b9c] A "walk TO target X" planner drive and the "stay put once ON X" pin must select the SAME
+  set of entities, or a settler oscillates: `nearestUnstaffedWorkplaceFor` (the walk drive) first
+  guarded only `Building`+`Position`+`recipe`, but `staffsWorkplaceHere` (the pin) queries
+  `Building`+`Position`+`Stockpile` — so a producing-but-Stockpile-less workplace would be a walk
+  target the pin then refuses to latch, looping walk→not-pinned→harvest→off-tile→walk forever. The
+  bug was masked in practice (every `placeBuilding` adds a Stockpile unconditionally), so tests stayed
+  green — the thrash only bites a hand-built fixture. When you add a drive that moves an entity to a
+  predicate-matched target, make the target predicate IDENTICAL to the predicate that holds it there
+  (copy the component query), don't approximate it. (sim/ai)
