@@ -29,9 +29,12 @@ import { testContent } from './fixtures/content.js';
  */
 
 const HEADQUARTERS = 1;
+const SMITHY = 4; // tech-gated: viking `jobEnablesHouse 2 4` locks it behind a carpenter (job 2)
 const WOODCUTTER = 1;
+const CARPENTER = 2; // the job that unlocks the SMITHY for the viking tribe
 const WOOD = 1;
 const VIKING = 1;
+const FRANK = 2; // a tribe absent from the fixture's tribe table — its tech-graph gates nothing
 
 function clearStores(): void {
   Position.store.clear();
@@ -145,6 +148,52 @@ describe('CommandSystem', () => {
     // First enqueued (the building) got the lower id.
     expect(sim.world.has(nthEntity(sim, 0), Building)).toBe(true);
     expect(sim.world.has(nthEntity(sim, 1), Settler)).toBe(true);
+  });
+
+  it('gates a tech-locked building: skipped (still logged) until the enabling job exists', () => {
+    const sim = fresh();
+    // No carpenter yet — the SMITHY is locked behind `jobEnablesHouse 2 4`, so placement is skipped.
+    sim.enqueue({ kind: 'placeBuilding', buildingType: SMITHY, x: 0, y: 0, tribe: VIKING });
+    sim.step();
+    expect(sim.world.entityCount).toBe(0); // gated out — nothing built
+    expect(sim.commands.log).toHaveLength(1); // but still recorded for faithful replay
+
+    // Spawn the enabling carpenter, then retry: now the smithy unlocks and is placed.
+    sim.enqueue({ kind: 'spawnSettler', jobType: CARPENTER, x: 1, y: 0, tribe: VIKING });
+    sim.step();
+    sim.enqueue({ kind: 'placeBuilding', buildingType: SMITHY, x: 0, y: 0, tribe: VIKING });
+    sim.step();
+
+    const buildings = [...sim.world.query(Building)];
+    expect(buildings).toHaveLength(1);
+    expect(sim.world.get(buildings[0] as Entity, Building).buildingType).toBe(SMITHY);
+  });
+
+  it('does not gate the building for a different tribe whose carpenter is enabling', () => {
+    const sim = fresh();
+    // A carpenter exists, but in a DIFFERENT tribe — the smithy stays gated for the viking tribe.
+    sim.enqueue({ kind: 'spawnSettler', jobType: CARPENTER, x: 1, y: 0, tribe: FRANK });
+    sim.step();
+    sim.enqueue({ kind: 'placeBuilding', buildingType: SMITHY, x: 0, y: 0, tribe: VIKING });
+    sim.step();
+    expect([...sim.world.query(Building)]).toHaveLength(0); // wrong tribe's carpenter doesn't unlock it
+  });
+
+  it('leaves ungated buildings (the headquarters) placeable with no enabling settler', () => {
+    const sim = fresh();
+    // The HQ carries no `jobEnablesHouse` edge, so it places without any settler present.
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 0, y: 0, tribe: VIKING });
+    sim.step();
+    expect([...sim.world.query(Building)]).toHaveLength(1);
+  });
+
+  it('gates nothing for a tribe absent from the tribe table (no tech-graph data)', () => {
+    const sim = fresh();
+    // The FRANK tribe has no TribeType in the fixture, so its tech-graph gates nothing — even the
+    // otherwise-locked smithy places (a map with no tribe data still gets its start buildings).
+    sim.enqueue({ kind: 'placeBuilding', buildingType: SMITHY, x: 0, y: 0, tribe: FRANK });
+    sim.step();
+    expect([...sim.world.query(Building)]).toHaveLength(1);
   });
 
   it('is deterministic: same seed + same commands on the same ticks => byte-identical state', () => {

@@ -1080,9 +1080,22 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             in the IR — would false-positive). **Data-only this iteration — no sim consumes the edges
             yet.** **Hands-on:** `npm run pipeline` on the real game → **1325 edges across the 5 playable
             tribes** (285 good / 880 house / 110 job / 50 vehicle; animals none), 0 dangling refs, vehicle
-            ids `{1..5}`. **Next:** wire a JobSystem/ConstructionSystem gate that *reads* these edges
-            (a building/good is only buildable once a settler of the enabling job exists), then the
-            `trainforjob`/`needfor*` schooling half on top (the XP→level→unlock curve).
+            ids `{1..5}`.
+      - [x] **`jobEnablesHouse` placement gate wired into the sim** — `buildingEnabled` (`systems/
+            progression.ts`) is the *read* side of the tech-graph: CommandSystem's `placeBuilding` now
+            consults it before creating a building. A house with **no** `jobEnablesHouse` edge gating it
+            (the headquarters) places freely; one that *is* gated places only while a `Settler` of an
+            enabling job is alive in the **same** tribe — otherwise the placement is a recoverable
+            boundary failure (skipped but still command-logged, so replay stays faithful). A tribe absent
+            from the content tribe table gates nothing (a mapless/tribe-less fixture still places start
+            buildings — the determinism golden is untouched). The query is a pure **membership** check
+            (does *some* enabling-job settler exist?), so it stays deterministic without a sorted scan.
+            Only the **house** kind is consumed yet; good/job/vehicle unlocks await their producer /
+            JobSystem slices. **Hands-on:** compiled `dist` `Simulation.step()` — a `placeBuilding` smithy
+            (gated `jobEnablesHouse 2 4`) with no carpenter → **0 entities, command logged**; spawn the
+            carpenter then retry → smithy (type 4) placed; a carpenter in a *different* tribe does not
+            unlock it. **Next:** the `trainforjob`/`needfor*` schooling half (the XP→level→unlock curve),
+            and consume the `good`/`job`/`vehicle` edge kinds as their producer systems land.
 - [ ] JobSystem assignment across many workplaces; multiple carriers + vehicle stock slots.
 - [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`)
       → population capacity → the births→housing→births loop.

@@ -5,6 +5,7 @@ import { Building, Position, Settler, Stockpile } from '../components/index.js';
 import type { World } from '../ecs/world.js';
 import { ONE, fx } from '../fixed.js';
 import type { System, SystemContext } from './context.js';
+import { buildingEnabled } from './progression.js';
 
 /**
  * CommandSystem — the ONLY way sim state mutates from the outside. It runs first each tick, drains
@@ -21,8 +22,9 @@ import type { System, SystemContext } from './context.js';
  * The four variants:
  *  - `placeBuilding` — create a {@link Building} of the given type at (x,y) for a tribe, with a
  *    {@link Stockpile} seeded from the building type's `stock` slots (`initial` amounts). Emits
- *    `buildingPlaced`. (Construction/material delivery is a Phase-3 ConstructionSystem; for the slice
- *    a placed building is immediately `built`.)
+ *    `buildingPlaced`. Gated by the tribe's `jobEnablesHouse` tech-graph (see {@link buildingEnabled}):
+ *    a house locked behind a not-yet-present job is skipped. (Construction/material delivery is a
+ *    Phase-3 ConstructionSystem; for the slice a placed, enabled building is immediately `built`.)
  *  - `spawnSettler` — create a {@link Settler} of the given job at (x,y) for a tribe. Emits
  *    `settlerBorn`.
  *  - `setProduction` — point a workplace's production at a good (currently a no-op marker until the
@@ -67,6 +69,11 @@ function placeBuilding(
 ): void {
   const type = indexById(ctx.content.buildings).get(command.buildingType);
   if (type === undefined) return; // unknown building type — skip (recoverable bad input)
+
+  // Tech-graph gate: a house may be locked until a settler of an enabling job exists in the tribe
+  // (`jobEnablesHouse`). A gated-out placement is a recoverable boundary failure (a stale/illegal UI
+  // command), so it is skipped here but still recorded by commandSystem — replay stays faithful.
+  if (!buildingEnabled(world, ctx, command.tribe, command.buildingType)) return;
 
   const e = world.create();
   world.add(e, Position, { x: fx.fromInt(command.x), y: fx.fromInt(command.y) });
