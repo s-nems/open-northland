@@ -43,14 +43,16 @@ export const Settler = defineComponent<{
   piety: Fixed;
   /**
    * 0..ONE enjoyment — the recreation/leisure need. Rises over time like {@link hunger}/{@link fatigue}/
-   * {@link piety}; the original satisfies it with the `enjoy` atomic (id 17, bound for the civilist and
-   * woman jobs in `tribetypes` `setatomic 6 17 "..._civilist_enjoy"`), whose animation restores it via
-   * `event <at> 3 <delta>` tuples (channel 3 = the enjoy/leisure need, as channel 1 = rest, 2 = hunger).
-   * This field + its rise is the enjoyment-rise half (the same rise-then-drive split hunger, fatigue and
-   * piety went through). Unlike piety (satisfied at a *temple*), `enjoy` has **no readable building
+   * {@link piety}; the original satisfies it with TWO atomics that both restore **channel 3** (the
+   * leisure bar): `enjoy` (id 17, `setatomic 6 17 "..._civilist_enjoy"`, `event <at> 3 +100`) and
+   * `make_love` (id 78, bound for the civilist + woman jobs in `setatomic {5,6} 78 "..._make_love"`,
+   * `event <at> 3 +800` — a bigger leisure boost). `make_love` is NOT a separate need: it resets this
+   * same `enjoyment` field. (channel 1 = rest, 2 = hunger, 3 = leisure.) This field + its rise is the
+   * enjoyment-rise half (the same rise-then-drive split hunger, fatigue and piety went through). Unlike
+   * piety (satisfied at a *temple*), neither `enjoy` nor `make_love` has a **readable building
    * satisfier** to walk to — the only no-recipe/no-worker/no-stock houses in `houses.ini` are the temple
-   * and a decorative wall, neither a leisure site — so its DRIVE (where it is satisfied) is deferred
-   * pending a content building→need binding; only the rise + reset are pinned (see docs/FIDELITY.md).
+   * and a decorative wall, neither a leisure site — so the DRIVE (where it is satisfied) is deferred
+   * pending a content building→need binding; only the rise + the two resets are pinned (docs/FIDELITY.md).
    */
   enjoyment: Fixed;
   /** specialization id -> experience points (humanjobexperiencetypes). */

@@ -229,6 +229,24 @@ describe('atomicSystem — effects', () => {
     expect(sim.world.get(settler, Settler).enjoyment).toBe(0); // leisure reset
     expect(sim.world.has(settler, Carrying)).toBe(false); // nothing consumed/produced
   });
+
+  it('make_love clears the settler enjoyment (same leisure channel as enjoy, no goods consumed)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const settler = sim.world.create();
+    sim.world.add(settler, Settler, {
+      tribe: 1,
+      jobType: null,
+      hunger: fx.fromInt(0),
+      fatigue: fx.fromInt(0),
+      piety: fx.fromInt(0),
+      enjoyment: ONE, // fully due for recreation
+      experience: new Map(),
+    });
+    startAtomic(sim, settler, { kind: 'make_love' }, 1, 78); // atomic 78 = the original's make_love slot
+    atomicSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(settler, Settler).enjoyment).toBe(0); // leisure reset (channel 3, like enjoy)
+    expect(sim.world.has(settler, Carrying)).toBe(false); // nothing consumed/produced
+  });
 });
 
 describe('atomicSystem — end-to-end: harvest -> carry -> pileup', () => {
