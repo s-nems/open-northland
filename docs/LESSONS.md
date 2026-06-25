@@ -387,3 +387,11 @@ the next iteration inherits it.
   undefined where the file says `mainType`; the field just vanishes (no error), only caught by a
   hands-on pipeline run + asserting the value. `grep -oE '^[a-zA-Z]+' <file> | sort -u` the real keys
   first; match each verbatim (the established convention — see `atomicForHarvesting`). (asset-pipeline)
+- [9b41021] A "shared helper leaf" module (the one the cyclic systems import to break import cycles)
+  silently becomes a dumping ground: terminal read views (HUD/render projections no per-tick system
+  feeds back into a decision) keep getting added there because the barrel re-exports them either way,
+  and it doubled in size unnoticed. The leaf's actual membership rule is "imported by ≥1 module in
+  SYSTEM_ORDER to break a cycle" — anything only consumed by render/tests is a projection and belongs
+  in its own module (`systems/readviews.ts`). Splitting it is a pure import-path move (barrel surface
+  unchanged, goldens unchanged); the tell is `grep "from './shared'"` showing the system files never
+  import the read views. (sim/structure)
