@@ -68,3 +68,10 @@ the next iteration inherits it.
   grid instead of the promised throw. Bounds-check both the source read (`i+b<=len`) and the dest write
   (`o+count<=unpacked`) explicitly per control byte if the decoder's contract says "throws on corrupt".
   (pipeline/format)
+- [4b01c26] A decoded layer can carry MORE structure than the consumer wants: `map.dat` `lmlt` is the
+  landscape-type grid but 4 B/cell (one typeId per triangle CORNER), while the nav cell-graph wants ONE
+  typeId per cell. Confirm the lane by probing real maps (values 0..85 within the 87-type IR table,
+  ~64% uniform cells), then pick a deterministic reduction (dominant corner, lowest-typeId tie-break)
+  and classify it `approximated` in FIDELITY — the corner→cell rule has no behavioral oracle (OpenVikings
+  decodes the container but doesn't simulate nav). Keep the reduction in the build tool, returning the
+  plain `{width,height,typeIds}` shape, so it never imports `sim`. (pipeline/format)
