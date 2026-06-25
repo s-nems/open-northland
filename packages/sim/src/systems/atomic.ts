@@ -162,6 +162,10 @@ function harvestFromNode(world: World, settler: Entity, node: Entity, goodType: 
 function resolveHit(world: World, target: Entity, damage: number): void {
   const health = world.tryGet(target, Health);
   if (health === undefined) return; // target gone / non-combatant — the swing struck nothing
+  // `combatDamage` already clamps net damage at 0, so a well-formed effect carries `damage >= 0`; the
+  // inner `Math.max(0, damage)` is the defensive guard against a malformed (negative) effect *healing*
+  // the target — silently corrupting hitpoints is the worse failure, so floor it rather than trust the
+  // caller. The outer `Math.max(0, …)` floors the pool itself (a hit never drives it below 0).
   health.hitpoints = Math.max(0, health.hitpoints - Math.max(0, damage));
 }
 
