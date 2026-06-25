@@ -402,9 +402,13 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 > complete:** the `X6el` `empa`/`empb` 2-byte entity-ownership layers are decoded too
 > (`unpackX6elLayer` — same inner header as X8el, the RLE family over little-endian u16 elements;
 > verified across all 130 real maps, 260 layers, 0 mismatches, all round-trip byte-exact). What the
-> ownership ids *mean* is a Phase-5 layer. **Next smallest step: render a real map** — feed a
-> loaded `content/maps/<id>.json` (+ atlas sprites in place of placeholder geometry) into the app's
-> scene so `npm run dev`/`npm run shot` draws an actual decoded map. (A "per-type walk-cost field" is
+> ownership ids *mean* is a Phase-5 layer. **The map→scene seam is now in place:**
+> `terrainMapToScene` (`packages/render/src/scene.ts`) projects a loaded `TerrainMap` (the
+> `parseTerrainMap` shape) straight onto the renderer's `SceneTerrain`, varied landscape typeIds and
+> all, and the vertical-slice demo's terrain is derived through it (no hand-duplicated grid).
+> **Next smallest step: have the shot/dev entry LOAD an actual `content/maps/<id>.json`** through that
+> seam (in place of the synthetic 6×1 grass strip) so `npm run dev`/`npm run shot` draws a real decoded
+> map — then atlas sprites in place of the placeholder geometry. (A "per-type walk-cost field" is
 > *not* a pending step: `landscapetypes.ini` has no
 > movement weight — only `maximumValency` + placement flags — so uniform unit cost is faithful.) Lines
 > tagged *(core done…)* pass tests today but await one wiring piece.
@@ -641,9 +645,25 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
       delivers back into the producer; two seed-13 runs hash-equal.
 - [ ] Render: isometric terrain + the settler sprite from the atlas, **depth-sorted by feet anchor**
       (a visual checklist item — can't be golden-hashed; see docs/TESTING.md).
-      *(GPU draw + the `npm run shot` harness now land with **placeholder geometry**; the one open
-      part is the **atlas sprite** in place of the placeholder box — gated on a free/synthetic atlas,
-      since real bobs are copyrighted/gitignored.)*
+      *(GPU draw + the `npm run shot` harness now land with **placeholder geometry**, and the
+      **map→scene seam** (`terrainMapToScene`) now projects a loaded `TerrainMap` (the `parseTerrainMap`
+      shape) straight onto the renderer's `SceneTerrain` — the demo's terrain is derived through it,
+      not a hand-built grid. Two open parts remain: (1) the **shot/dev entry loading an actual
+      `content/maps/<id>.json`** through that seam (instead of the synthetic 6×1 grass strip), and (2)
+      the **atlas sprite** in place of the placeholder box — gated on a free/synthetic atlas, since real
+      bobs are copyrighted/gitignored.)*
+      - [x] **`terrainMapToScene` map→scene seam** — `packages/render/src/scene.ts`: a pure, total
+            projection from a loaded `TerrainMap` (`{ width, height, typeIds }` — the shape
+            `@vinland/data` `parseTerrainMap` validates a `content/maps/<id>.json` into) onto the
+            renderer's `SceneTerrain`. This is the typed boundary from a **real decoded map** to the
+            draw line: the map's varied landscape typeIds carry straight through (the GPU layer tints
+            each tile by typeId), so a real multi-terrain grid renders its actual ground, not a uniform
+            fill. The vertical-slice demo's `sliceTerrain()` now derives from the SAME `TerrainMap` the
+            sim navigates via this seam (no hand-duplicated grid), so `npm run shot` already exercises
+            the map→scene path. **Hands-on:** `npm run shot` → a valid 1000×600 PNG, eyeballed
+            gross-correct (6 iso grass tiles behind 6 feet-sorted sprites), unchanged by the refactor;
+            a unit test feeds a varied-typeId `{2,3}` grid through `terrainMapToScene` → `buildScene`
+            and asserts each tile keeps its typeId. **Still open:** the shot/dev entry *loading a file*.
       - [x] **Pure scene/depth-sort layer** — `packages/render/src/scene.ts` (`buildScene`): turns a
             `WorldSnapshot` + the terrain grid dimensions into a flat, **depth-sorted** isometric
             draw list (`DrawItem[]`), the testable core of the render line that an agent CAN

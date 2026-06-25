@@ -3,7 +3,13 @@ import { ONE as SIM_ONE, type Simulation } from '@vinland/sim';
 /** Fixed-point scale (one whole tile), re-exported so the scene layer reads snapshot positions. */
 export const ONE: number = SIM_ONE;
 
-export { buildScene, type DrawItem, type DrawKind, type SceneTerrain } from './scene.js';
+export {
+  buildScene,
+  terrainMapToScene,
+  type DrawItem,
+  type DrawKind,
+  type SceneTerrain,
+} from './scene.js';
 export { createPixiApp, renderScene, type Camera } from './pixi-renderer.js';
 
 /**
