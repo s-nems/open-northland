@@ -1,6 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { AtomicEffect } from '../src/commands.js';
-import { Building, Carrying, CurrentAtomic, Resource, Settler, Stockpile } from '../src/components/index.js';
+import {
+  Building,
+  Carrying,
+  CurrentAtomic,
+  Health,
+  Resource,
+  Settler,
+  Stockpile,
+} from '../src/components/index.js';
 import type { Entity } from '../src/ecs/world.js';
 import { ONE, Simulation, fx } from '../src/index.js';
 import { type SystemContext, atomicSystem } from '../src/systems/index.js';
@@ -25,6 +33,7 @@ beforeEach(() => {
   Building.store.clear();
   Settler.store.clear();
   Resource.store.clear();
+  Health.store.clear();
 });
 
 /** Give an entity a CurrentAtomic with the given effect/duration (progress starts at 0). */
@@ -246,6 +255,47 @@ describe('atomicSystem — effects', () => {
     atomicSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(settler, Settler).enjoyment).toBe(0); // leisure reset (channel 3, like enjoy)
     expect(sim.world.has(settler, Carrying)).toBe(false); // nothing consumed/produced
+  });
+
+  it('attack drains the resolved net damage from the target hitpoints', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const attacker = sim.world.create();
+    const target = sim.world.create();
+    sim.world.add(target, Health, { hitpoints: 1000, max: 1000 });
+    // 35 = a resolved net-damage value (e.g. combatDamage sword vs class-3 armor: raw 40 - block 5).
+    startAtomic(sim, attacker, { kind: 'attack', target, damage: 35 }, 1, 81);
+    atomicSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(target, Health).hitpoints).toBe(965); // 1000 - 35
+    expect(sim.world.get(target, Health).max).toBe(1000); // pool ceiling untouched
+  });
+
+  it('attack never drives hitpoints below zero (clamped — a hit never heals)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const attacker = sim.world.create();
+    const target = sim.world.create();
+    sim.world.add(target, Health, { hitpoints: 20, max: 1000 });
+    startAtomic(sim, attacker, { kind: 'attack', target, damage: 100 }, 1, 81); // overkill
+    atomicSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(target, Health).hitpoints).toBe(0); // floored at 0, not negative
+  });
+
+  it('attack is a no-op when the target has no Health (struck air / already gone)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const attacker = sim.world.create();
+    const target = sim.world.create(); // never given a Health component
+    startAtomic(sim, attacker, { kind: 'attack', target, damage: 50 }, 1, 81);
+    expect(() => atomicSystem(sim.world, ctxOf(sim))).not.toThrow(); // missing target must not throw
+    expect(sim.world.has(target, Health)).toBe(false);
+  });
+
+  it('attack with zero net damage (armor fully absorbed) leaves the target untouched', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const attacker = sim.world.create();
+    const target = sim.world.create();
+    sim.world.add(target, Health, { hitpoints: 500, max: 500 });
+    startAtomic(sim, attacker, { kind: 'attack', target, damage: 0 }, 1, 81); // combatDamage clamped net to 0
+    atomicSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(target, Health).hitpoints).toBe(500); // no harm
   });
 });
 

@@ -150,6 +150,24 @@ export const JobAssignment = defineComponent<{ workplace: Entity }>('JobAssignme
 export const Age = defineComponent<{ ticks: number }>('Age');
 
 /**
+ * A combatant's **hitpoints** — the life pool the hit-resolution loop drains. A settler/animal with
+ * a `Health` can be attacked: a completed `attack` atomic subtracts its resolved net damage from
+ * `hitpoints` (clamped at 0 — a hit never heals; see the AtomicSystem's `attack` effect), and a
+ * pool that reaches 0 is "dead" (the death/cleanup loop is a later slice — for now a 0-HP entity
+ * just stops being a viable target).
+ *
+ * `hitpoints`/`max` are **whole integers**, not fixed-point 0..ONE bars: hitpoints are a large
+ * integer scale in the original (`animaltypes.ini` `hitpoints_adult` runs 200..20000, e.g. wolf
+ * 1000, bear 7000, mammoth 20000) and net damage is the integer `combatDamage` join (the per-class
+ * `weapontypes` damage minus the armor `blockingValue`), so the whole pool stays integer arithmetic —
+ * no truncation, exact `hitpoints <= 0` death test. It is a **separate optional component** (like
+ * {@link JobAssignment}/{@link Age}): only a combatant carries one, so a non-combat settler/the
+ * golden slice has none and the hash is untouched. Determinism: drained by a fixed integer
+ * subtraction, no RNG/wall-clock.
+ */
+export const Health = defineComponent<{ hitpoints: number; max: number }>('Health');
+
+/**
  * A harvestable resource node placed in the world (a tree, ore vein, berry bush). It yields its
  * `goodType` when a settler runs the good's harvest atomic on its cell; `remaining` is the units
  * left — each completed harvest decrements it (AtomicSystem's harvest effect), so a finite node

@@ -132,7 +132,13 @@ export type AtomicEffect =
    *  too. The need→satisfier *drive* is deferred for the same reason as `enjoy` — no readable building
    *  satisfier in `houses.ini` (see docs/FIDELITY.md) — so for now this is the reset half only. */
   | { readonly kind: 'make_love' }
-  | { readonly kind: 'attack'; readonly target: Entity }
+  /** The settler lands a hit on `target`: subtracts `damage` from the target's `Health.hitpoints`
+   *  (clamped at 0 — armor never heals) on completion. `damage` is the **resolved net damage**, looked
+   *  up by the planner from the `combatDamage` read view (the attacker's weapon × the target's armor
+   *  class) and carried here already-resolved — exactly as `pickup`/`eat` carry a resolved `amount`,
+   *  so the executor stays a pure subtraction with no content/weapon lookup of its own. A `target`
+   *  with no `Health` (already destroyed, or a non-combatant) is a no-op (the swing missed/struck air). */
+  | { readonly kind: 'attack'; readonly target: Entity; readonly damage: number }
   | { readonly kind: 'idle' };
 
 export type AtomicEffectKind = AtomicEffect['kind'];

@@ -197,10 +197,21 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       treated as **unarmored** (`blockingValue 0`, `hasArmorRecord false`), never a crash. Returned as an
       **array, not a Map** — no weapon key is unique (the real animal weapons reuse even `(tribeType,
       typeId)`: tribe 5's `chicken`+`claw`, tribe 8's doubled `bearfist`), so a keyed map would silently
-      drop records; the array keeps all 105. No mechanic added (no hit resolution / hitpoints yet) — this is
-      the static damage lookup the later combat atomics read. **Next:** the **soldier-class atomics** — the
-      hit-resolution mechanic that consumes this lookup (who attacks whom, hitpoints, the combat loop), the
-      first real combat *behavior* (no oracle — it'll be approximated; see docs/FIDELITY.md).
+      drop records; the array keeps all 105. **The hit-resolution mechanic now LANDED** — the first real
+      combat *behavior*: a completed `attack` `AtomicEffect` (`atomic.ts` → `resolveHit`) drains the
+      **resolved net `combatDamage`** (carried already-resolved on the effect, like `pickup`/`eat`'s
+      `amount`) from the target's new optional **`Health{hitpoints, max}`** component, **clamped at 0** (a
+      hit never heals). So the read-side damage table now has its first consumer. **Faithful (net-damage
+      param):** the per-hit amount is the verbatim `weapontypes`×`armortypes` join. **Approximated (no
+      oracle):** the **hitpoint pool** (only `animaltypes.ini` carries readable `hitpoints` — 200..20000;
+      humans' are below the `.ini`) is a per-content stamp on the large-integer scale, and the **hit loop**
+      (who attacks whom, target selection, swing cadence, death/cleanup at 0 HP) is deferred — for now a
+      0-HP target just stops being viable and a missing-`Health` target is a no-op (see docs/FIDELITY.md).
+      `Health` is a separate optional component (like `JobAssignment`/`Age`), so the golden slice has none
+      and the hash is untouched. **Next:** the **targeting + death loop** — who selects an `attack` target
+      (a planner combat drive over enemy-tribe/animal entities in reach) and the death/cleanup at 0 HP
+      (destroy the entity, emit `settlerDied`); still no oracle (approximated; see docs/FIDELITY.md). After
+      that, the **N data-defined tribes** scaffolding (never hardcode "two").
 - [ ] **N data-defined tribes** (viking/frank/saracen/byzantine/egypt), asymmetry expressed through
       each tribe's atomic bindings + `allow*`/`needfor*` graph — never hardcode "two".
 - [ ] **Animals as non-controllable tribes** (`animaltypes.ini`: aggression, groups, hitpoints) —
