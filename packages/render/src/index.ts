@@ -1,4 +1,9 @@
-import type { Simulation } from '@vinland/sim';
+import { ONE as SIM_ONE, type Simulation } from '@vinland/sim';
+
+/** Fixed-point scale (one whole tile), re-exported so the scene layer reads snapshot positions. */
+export const ONE: number = SIM_ONE;
+
+export { buildScene, type DrawItem, type DrawKind, type SceneTerrain } from './scene.js';
 
 /**
  * The renderer is a PURE CONSUMER of sim state (see docs/ARCHITECTURE.md). It reads a snapshot
