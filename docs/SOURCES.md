@@ -112,11 +112,13 @@ group** (`emmm` → `embr`,`empa/empb`,`emt1..4`,`emla`,… → `xend`) then `te
   `.cif` string pool. These are the pre-placed-objects / per-player layers (Phase-5 territory),
   separate from the per-cell terrain grid.
 
-**Status:** structure fully mapped + oracle-confirmed; **not yet decoded**. The remaining work is a
-`decoders/mapdat.ts` chunk reader + a `pck`/`X8el` packed-layer unpack (cross-check against the
-`.bmd` packed-line codec first), then identifying which `lm**` tag is the landscape-type id grid →
-feeds `buildTerrainGraph`. (No decoded bytes are committed — `map.dat` is copyrighted input, like
-every other game file.)
+**Status:** the **container is decoded** — `tools/asset-pipeline/src/decoders/mapdat.ts`
+(`decodeMapDat` walks the flat `hoix`-chunk table to EOF; `decodeMapSize` reads the raw `lsiz` dims;
+round-trip tested via `encodeMapDat`, no committed fixtures; hands-on verified on two real maps:
+FORTECA 39 chunks/250×250, oasis_o_plenty 40 chunks/250×250). **Remaining:** the `pck`/`X8el`
+packed-layer unpack (cross-check the `.bmd` packed-line codec first), then identifying which `lm**`
+tag is the landscape-type id grid → feeds `buildTerrainGraph`. (No decoded bytes are committed —
+`map.dat` is copyrighted input, like every other game file.)
 - **Atomic actions are the behavior vocabulary** (see docs/ECS.md) and are partly free in readable
   data: `tribetypes.ini` `setatomic` (atomic→animation per tribe), `jobtypes.ini` `allowatomic`,
   `goodtypes.ini` `atomicFor*`. The atomic *timings/effects* live in `atomicanimations.cif` — **but
