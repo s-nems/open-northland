@@ -297,7 +297,8 @@ export type AtomicBinding = z.infer<typeof AtomicBinding>;
  * source keys (`jobEnablesGood`/`jobEnablesHouse`/`jobEnablesJob`/`jobEnablesVehicle`) differ only in
  * what kind of id the target is, so they unify into one record discriminated by `kind`; the target
  * id is keyed within that kind's type table (a `good`→{@link GoodType}, `house`→{@link BuildingType},
- * `job`→{@link JobType}, `vehicle`→a vehicle {@link BuildingType}).
+ * `job`→{@link JobType}, `vehicle`→{@link VehicleType} via its `type`/`logicvehicletype` namespace,
+ * which is distinct from the building namespace).
  *
  * This is the *gate* half of the progression graph — the original keys availability of goods/houses/
  * jobs/vehicles on a job being present, which is in turn gated by training/experience (`trainforjob`/
@@ -331,9 +332,9 @@ export type JobEnables = z.infer<typeof JobEnables>;
  * `experienceTypes` mostly name `humanjobexperiencetypes` `typeId`s, but they span an id space
  * **wider than that 70-entry table** — `need` lines reach 72/73/75 and `train` lines pay in
  * synthetic "school" markers (observed 57/77) — none of which are in the experience table. So they
- * are captured but deliberately **not** cross-validated (validating them would false-positive,
- * mirroring why the `vehicle` {@link JobEnables} kind is left unchecked). A line carries one or two
- * expTypes (the optional second is rare); kept in source order.
+ * are captured but deliberately **not** cross-validated (validating them would false-positive —
+ * unlike the `vehicle` {@link JobEnables} kind, which DOES resolve now the `vehicletypes` table is
+ * extracted). A line carries one or two expTypes (the optional second is rare); kept in source order.
  */
 export const JobRequirementKind = z.enum(['need', 'train']);
 export type JobRequirementKind = z.infer<typeof JobRequirementKind>;
