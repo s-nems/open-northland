@@ -457,3 +457,8 @@ the next iteration inherits it.
   guards), but a latent trap the moment a second caller uses the relation directly. Fix: fold the attacker
   gate into the relation; the loop's matching skip becomes a fast-path, not the authority. A relation
   documented as authoritative must be self-contained. (sim/combat)
+- [8579a56] The committed local `content/ir.json` can be STALE relative to the extractors: it had
+  `animals: 0` (predating the animaltypes extractor), so a hands-on check that read it would have
+  "passed" against zero real records — a false green. For a read view over extracted data, exercise
+  it against a FRESHLY re-run pipeline (`npm run pipeline … --out <scratch>`), not the checked-in IR,
+  or the 3b smoke check verifies nothing. (pipeline/hands-on)
