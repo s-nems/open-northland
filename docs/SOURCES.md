@@ -97,15 +97,20 @@ group** (`emmm` → `embr`,`empa/empb`,`emt1..4`,`emla`,… → `xend`) then `te
 - **`lsiz`** payload = `[u32 width][u32 height]` — cross-checks the `map.cif` `mapsize` **exactly**
   (tutorial_001 128×218, tutorial_002 142×146). The one *raw* chunk (8-byte payload).
 - The per-cell grid layers (`lmhe`,`lmlt`,`lmlv`,`lmms`,`lmpa/lmpb`,`embr`,`empa/empb`,`emt1..4`,
-  `emla`,…) are **packed-bitmap** payloads, each opening with a small sub-header
-  `[u8 ver][u32 innerSize]` (the inner packed-stream length) then the ASCII marker **`pck`** +
-  **`X8el`/`X6el`** (the trailing `X8`/`X6` is the per-pixel bit depth) then a small per-layer
-  header not yet fully decoded (a constant `0x0072` field + a per-layer count). So the on-disk size
-  varies per map and is *not* a raw `width×height` byte array; the codec is the engine's packed-image
-  format (very likely the **same packed-line family the `.bmd` decoder already implements**,
-  `CBobManager.cs` — confirm when porting the unpack). `lmhe` (height) unpacks to ≈ one byte per cell;
-  the landscape-**type** grid (the Phase-2 cell-graph input) is one of these layers — `lmlt`/`lmlv`
-  are the prime candidates (size ≈ `cells × 1–2`).
+  `emla`,…) are **RLE-packed byte planes** — **now decoded** (`decoders/mapdat.ts` `unpackMapLayer`).
+  The 21-byte inner header (reverse-engineered across 5 real maps; the original engine's packer is
+  not in the oracle) is: `[u8 ver][u32 innerSize]` then the on-disk marker **`"kcp"`** ("pck"
+  reversed, like a chunk tag) + the codec id **`X8el`/`X6el`** (the `8`/`6` is the bit depth) + a
+  constant **`0x72`** sub-format byte + `[u32 unpackedLength][u32 innerSize-again]`, then the packed
+  stream to the payload end. The codec **is** the `.bmd` packed-line family (`CBobManager.cs`) with
+  the raw/run roles swapped: a control byte with the high bit **set** = a run of `(b&0x7F)` copies of
+  the next byte, **clear** = a literal run of `b` bytes; decode stops at exactly `unpackedLength`
+  (consuming the stream to the payload end on every real X8el layer). `X8el` = one byte per output
+  cell: `lmhe` (height) ≈ 1 B/cell; `lmlt`/`lmlv`/`lmms`/`lmco` are 4 B/cell (per-corner triangle
+  type ids). The `X6el` layers (`empa`/`empb` entity ownership, 2 B/cell) use a separate bit-packing
+  and are not yet unpacked. The landscape-**type** grid (the Phase-2 cell-graph input) is `lmlt`
+  (4 B/cell, values within the 87-type table) — but it is four per-corner triangle types, not one
+  cell id, so deriving a single per-cell walkable type for `buildTerrainGraph` is the next leg.
 - Not every chunk is a grid: `laco`/`lasw`/`lafm` (landscape) and `eapd`/`eatd`/`eald` (entity) are
   **structured record lists** — depth-prefixed text/object tables (e.g. `eatd` holds `meadow 1`/…
   type names, `eald` holds `player01 sign 0…` placements), the same depth-prefixed grammar as the
@@ -115,10 +120,14 @@ group** (`emmm` → `embr`,`empa/empb`,`emt1..4`,`emla`,… → `xend`) then `te
 **Status:** the **container is decoded** — `tools/asset-pipeline/src/decoders/mapdat.ts`
 (`decodeMapDat` walks the flat `hoix`-chunk table to EOF; `decodeMapSize` reads the raw `lsiz` dims;
 round-trip tested via `encodeMapDat`, no committed fixtures; hands-on verified on two real maps:
-FORTECA 39 chunks/250×250, oasis_o_plenty 40 chunks/250×250). **Remaining:** the `pck`/`X8el`
-packed-layer unpack (cross-check the `.bmd` packed-line codec first), then identifying which `lm**`
-tag is the landscape-type id grid → feeds `buildTerrainGraph`. (No decoded bytes are committed —
-`map.dat` is copyrighted input, like every other game file.)
+FORTECA 39 chunks/250×250, oasis_o_plenty 40 chunks/250×250). The **`pck`/`X8el` packed-layer
+codec is also decoded** (`unpackMapLayer`/`packMapLayer`, round-trip tested; hands-on: 69 X8el
+layers across 3 real maps unpacked, 0 mismatches, real grids `pack→unpack` byte-exact).
+**Remaining:** identifying which `lm**` tag/lane is the landscape-type id grid (`lmlt` is 4 B/cell —
+four per-corner triangle types, not one cell id) and mapping it onto the IR type table → feeds
+`buildTerrainGraph`; and the `X6el` (`empa`/`empb`) 2-byte entity-ownership layers (a separate
+bit-packing). (No decoded bytes are committed — `map.dat` is copyrighted input, like every other
+game file.)
 - **Atomic actions are the behavior vocabulary** (see docs/ECS.md) and are partly free in readable
   data: `tribetypes.ini` `setatomic` (atomic→animation per tribe), `jobtypes.ini` `allowatomic`,
   `goodtypes.ini` `atomicFor*`. The atomic *timings/effects* live in `atomicanimations.cif` — **but

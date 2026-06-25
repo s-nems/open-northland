@@ -24,10 +24,11 @@
  * walking to EOF and record the terminators too.
  *
  * This module decodes the **container** (the chunk table) plus the one *raw* payload, `lsiz`
- * (`[u32 width][u32 height]`, the grid dims that cross-check the `map.cif` `mapsize`). The per-cell
- * grid layers (`lmhe`,`lmlt`,`lmlv`,…) are `pck`/`X8el`-packed bitmaps whose inner header is not yet
- * decoded — a future packed-layer unpack is the next leg; this reader exposes their raw payload
- * views (via `findChunk`) so that work can build on a parsed container.
+ * (`[u32 width][u32 height]`, the grid dims that cross-check the `map.cif` `mapsize`), and the
+ * **`pck`/`X8el` packed per-cell grid layers** (`lmhe`,`lmlt`,`lmpa`,…) via {@link unpackMapLayer}.
+ * The grid layers are RLE-packed byte planes opening with a small inner header (see below); the
+ * `X6el` (6-bit, 2-byte/cell) entity-ownership layers `empa`/`empb` use a different packing and are
+ * not decoded here yet (a future leg). `findChunk` still exposes every chunk's raw payload view.
  *
  * Pure functions only (no I/O): `(bytes) => decoded`. The CLI wires file reads around them.
  */
@@ -213,5 +214,173 @@ export function encodeMapSize(size: MapDatSize): Uint8Array {
   const view = new DataView(out.buffer);
   view.setUint32(0, size.width >>> 0, true);
   view.setUint32(4, size.height >>> 0, true);
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Packed per-cell grid layers (the `pck` / `X8el` RLE format)
+// ---------------------------------------------------------------------------
+
+/**
+ * The grid layer payloads (`lmhe`,`lmlt`,`lmpa`,…) are not raw byte arrays — they are RLE-packed and
+ * open with a 21-byte inner header (all u32s little-endian, offsets from the chunk payload start):
+ *
+ *   +0x00 u8   version        (observed 1)
+ *   +0x01 u32  innerSize      = payloadLength - 5 (every byte after this field)
+ *   +0x05 "pck"               on-disk bytes "kcp" (the {@link MAP_LAYER_MARKER}, reversed like a tag)
+ *   +0x08 "X8el" | "X6el"     the codec id; the trailing 8/6 is the per-pixel bit depth
+ *   +0x0C u8   subFormat      observed constant 0x72 ({@link MAP_LAYER_SUBFORMAT})
+ *   +0x0D u32  unpackedLength = the decoded byte count (= cells × bytesPerCell)
+ *   +0x11 u32  innerSize      (the +0x01 value repeated)
+ *   +0x15 …    the RLE stream, running to the end of the payload
+ *
+ * The RLE stream (the same packed-line family as the `.bmd` codec, `CBobManager.cs`, with the
+ * raw/run roles swapped): each control byte `b` is either a **run** (high bit set) of `count =
+ * b & 0x7F` copies of the single byte that follows, or a **literal** (high bit clear) run of `count
+ * = b` bytes copied verbatim. Decoding stops at exactly `unpackedLength` output bytes, which (on
+ * every real `X8el` layer probed) consumes the stream exactly to the payload end.
+ *
+ * `X8el` = one byte per output cell (e.g. `lmhe` height ≈ 1 B/cell; `lmlt` landscape-type is
+ * 4 B/cell — four per-corner type ids); `X6el` (`empa`/`empb` entity ownership, 2 B/cell) is a
+ * different bit-packing not handled here yet.
+ */
+export const MAP_LAYER_HEADER_SIZE = 0x15;
+/** "pck" as it appears on disk ("kcp", reversed like the chunk tags), at inner offset +0x05. */
+export const MAP_LAYER_MARKER = 'kcp';
+/** The 8-bit-per-cell codec id at inner offset +0x08. */
+export const MAP_LAYER_CODEC_X8 = 'X8el';
+/** The 6-bit codec id (entity-ownership layers); recognized but not unpacked here. */
+export const MAP_LAYER_CODEC_X6 = 'X6el';
+/** The constant sub-format byte at inner offset +0x0C (observed 0x72 on every real layer). */
+export const MAP_LAYER_SUBFORMAT = 0x72;
+
+/** A decoded packed grid layer: its codec id and the unpacked row-major byte grid. */
+export interface MapLayer {
+  /** The codec id from the inner header (e.g. `"X8el"`). */
+  readonly codec: string;
+  /** The decoded bytes (`unpackedLength` long, row-major over the grid). */
+  readonly cells: Uint8Array;
+}
+
+/** Reads "pck"/"kcp" or a codec id from the layer header as ASCII (Latin1 is exact for these). */
+function ascii(payload: Uint8Array, offset: number, length: number): string {
+  return LATIN1.decode(payload.subarray(offset, offset + length));
+}
+
+/**
+ * Returns true if a chunk's payload is a `pck`-packed grid layer (carries the `"kcp"` marker). The
+ * raw `lsiz` chunk and the structured record-list chunks (`eatd`,`eald`,…) are not packed and return
+ * false. Use to filter the chunk table before {@link unpackMapLayer}.
+ */
+export function isPackedLayer(chunk: MapDatChunk): boolean {
+  return chunk.length >= MAP_LAYER_HEADER_SIZE && ascii(chunk.payload, 0x05, 3) === MAP_LAYER_MARKER;
+}
+
+/**
+ * Unpacks a `pck`/`X8el` grid layer chunk into its row-major byte grid.
+ *
+ * Throws on a non-packed chunk (no `"kcp"` marker), an unsupported codec (currently only `X8el`;
+ * `X6el` is a separate format), or a stream that underruns before producing `unpackedLength` bytes
+ * (a corrupt/truncated layer). A batch pipeline over owned files should wrap this per-chunk so one
+ * bad layer can't abort the run (mirrors `decodeMapDat`'s per-file contract).
+ */
+export function unpackMapLayer(chunk: MapDatChunk): MapLayer {
+  const p = chunk.payload;
+  if (!isPackedLayer(chunk)) {
+    throw new Error(
+      `mapdat: chunk "${chunk.tag}" is not a pck-packed layer (no "${MAP_LAYER_MARKER}" marker)`,
+    );
+  }
+  const codec = ascii(p, 0x08, 4);
+  if (codec !== MAP_LAYER_CODEC_X8) {
+    throw new Error(
+      `mapdat: chunk "${chunk.tag}" codec "${codec}" is not supported (only ${MAP_LAYER_CODEC_X8})`,
+    );
+  }
+  const view = new DataView(p.buffer, p.byteOffset, p.byteLength);
+  const unpackedLength = view.getUint32(0x0d, true);
+
+  const out = new Uint8Array(unpackedLength);
+  let o = 0;
+  let i = MAP_LAYER_HEADER_SIZE; // the RLE stream starts right after the inner header
+  while (o < unpackedLength) {
+    if (i >= p.length) {
+      throw new Error(
+        `mapdat: layer "${chunk.tag}" stream underran (${o}/${unpackedLength} bytes) before its end`,
+      );
+    }
+    const b = p[i++] as number;
+    if ((b & 0x80) !== 0) {
+      // Run: (b & 0x7F) copies of the next byte.
+      const count = b & 0x7f;
+      const value = p[i++] as number;
+      out.fill(value, o, o + count);
+      o += count;
+    } else {
+      // Literal: copy b bytes verbatim.
+      out.set(p.subarray(i, i + b), o);
+      o += b;
+      i += b;
+    }
+  }
+  return { codec, cells: out };
+}
+
+/**
+ * Inverse of {@link unpackMapLayer}: RLE-packs a row-major byte grid into a `pck`/`X8el` chunk
+ * payload (the 21-byte inner header + the packed stream). Kept faithful so the unpacker can be
+ * round-trip tested without committing copyrighted fixtures (same rationale as the `.cif`/`.lib`/
+ * `.bmd` encoders). Runs of ≥2 identical bytes become a run control (capped at 0x7F per run);
+ * everything else is emitted as literal runs (also capped at 0x7F). The exact packing the original
+ * generator chose is not byte-reproduced (a packer has freedom in run/literal boundaries) — what is
+ * pinned is that {@link unpackMapLayer} recovers the input grid exactly.
+ */
+export function packMapLayer(cells: Uint8Array, version = 1): Uint8Array {
+  const stream: number[] = [];
+  let i = 0;
+  while (i < cells.length) {
+    const value = cells[i] as number;
+    // Measure the run of identical bytes at i.
+    let run = 1;
+    while (run < 0x7f && i + run < cells.length && cells[i + run] === value) run++;
+    if (run >= 2) {
+      stream.push(0x80 | run, value);
+      i += run;
+    } else {
+      // Gather a literal run until the next byte that starts a worthwhile run (≥2) or the cap.
+      const litStart = i;
+      let lit = 0;
+      while (lit < 0x7f && i < cells.length && !(i + 1 < cells.length && cells[i + 1] === cells[i])) {
+        i++;
+        lit++;
+      }
+      // Guard: always make progress (a lone byte before a run becomes a 1-literal).
+      if (lit === 0) {
+        i++;
+        lit = 1;
+      }
+      stream.push(lit);
+      for (let k = 0; k < lit; k++) stream.push(cells[litStart + k] as number);
+    }
+  }
+
+  const innerSize = 16 + stream.length; // bytes after the +0x01 innerSize field
+  const out = new Uint8Array(5 + innerSize);
+  const view = new DataView(out.buffer);
+  out[0x00] = version & 0xff;
+  view.setUint32(0x01, innerSize, true);
+  out.set(LATIN1ish(MAP_LAYER_MARKER), 0x05); // "kcp"
+  out.set(LATIN1ish(MAP_LAYER_CODEC_X8), 0x08); // "X8el"
+  out[0x0c] = MAP_LAYER_SUBFORMAT;
+  view.setUint32(0x0d, cells.length, true);
+  view.setUint32(0x11, innerSize, true);
+  out.set(stream, MAP_LAYER_HEADER_SIZE);
+  return out;
+}
+
+/** Encodes an ASCII string to bytes (the marker/codec ids are ASCII; 1:1 with Latin1). */
+function LATIN1ish(s: string): Uint8Array {
+  const out = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i) & 0xff;
   return out;
 }
