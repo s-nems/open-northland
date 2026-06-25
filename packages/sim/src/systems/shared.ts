@@ -92,8 +92,10 @@ export function workerPresentAt(world: World, ctx: SystemContext, building: Enti
  * Whether a good is **edible** — the food a hungry settler consumes to reset its hunger (the `eat`
  * atomic's target good). In the original, the eat slot (`setatomic <job> 10 "..._eat_slot_food"`)
  * consumes the `food_simple`/`food_extra` goods (`goodtypes.ini` types 16/17); there is no explicit
- * "iseatable" flag in `goodtypes.ini`, so food is identified by the good's `id` carrying the `food`
- * prefix (the source's own naming — `food_simple`/`food_extra`/`potion_food_*`).
+ * "iseatable" flag in `goodtypes.ini`, so the slot-food goods are identified by the good's `id`
+ * carrying the `food` prefix (the source's own naming — `food_simple`/`food_extra`). (`potion_food_*`
+ * are a separate potion-consumable mechanic, not the eat slot, so the `food_`-prefix match excludes
+ * them by construction.)
  *
  * FIDELITY (approximated — see docs/FIDELITY.md): the eat atomic id (10) is pinned to the original's
  * `setatomic` bindings, but *which goods feed* is inferred from the slug rather than a source flag
@@ -104,7 +106,7 @@ export function workerPresentAt(world: World, ctx: SystemContext, building: Enti
 export function isFood(ctx: SystemContext, goodType: number): boolean {
   const good = ctx.content.goods.find((g) => g.typeId === goodType);
   if (good === undefined) return false;
-  return good.id === 'food' || good.id.startsWith('food_');
+  return good.id.startsWith('food_');
 }
 
 /**
