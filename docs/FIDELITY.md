@@ -227,8 +227,9 @@ Format: `- <mechanic>: <how it differs> — <why> (<commit>)`.
   (`carrierCarryCapacity`: the largest `stockSlots` over the vehicles `jobEnablesVehicle` has unlocked,
   floor 1 on foot) — the *capacity number* and the *unlock* are both pinned to data, but the original's
   cart logistics are NOT: it assigns a specific vehicle per haul, a carrier visibly fetches/parks a cart
-  at a vehicle store, and a vehicle's `logicgood` allow-list (which goods that cart may carry — handcart
-  carries goods {1..55}, a ship a different set) constrains the haul. **This is oracle-blocked**:
+  at a vehicle store, and a vehicle's `logicgood` allow-list (which goods that cart may carry — each
+  vehicle lists a per-type subset of good ids; a ship's set differs from a handcart's) constrains the
+  haul. **This is oracle-blocked**:
   `vehicletypes.ini` carries only the static type table (`type`/`name`/`logicsize`/`stockslots`/the
   `logicgood`+`logicpassenger` allow-lists/`debug*` cosmetics) — there is **no** carrier-job→vehicle
   binding, no dispatch rule, no "fetch a cart" key; that behavior lives in the engine logic below the
