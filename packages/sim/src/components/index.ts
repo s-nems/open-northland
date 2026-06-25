@@ -31,6 +31,16 @@ export const Settler = defineComponent<{
    * field + its rise is the fatigue-rise half (the same split hunger went through).
    */
   fatigue: Fixed;
+  /**
+   * 0..ONE piety — the first **target-bound** non-food need (a settler must walk to a SITE to satisfy
+   * it, unlike eat at a store or sleep in place). Rises over time like {@link hunger}/{@link fatigue};
+   * the original satisfies it with the `pray` atomic (id 12, bound for the civilist job in
+   * `tribetypes` `setatomic 6 12 "..._pray"`) run **at a temple** — the need→satisfier→building-target
+   * lookup is the genuinely-new piece the *drive* introduces (a later slice). This field + its rise is
+   * the piety-rise half (the same rise-then-drive split hunger and fatigue went through). The other
+   * target-bound needs (`enjoy` id 17 / `make_love` id 78) follow the same shape.
+   */
+  piety: Fixed;
   /** specialization id -> experience points (humanjobexperiencetypes). */
   experience: Map<number, number>;
 }>('Settler');

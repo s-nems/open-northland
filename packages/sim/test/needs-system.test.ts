@@ -5,6 +5,7 @@ import { type Fixed, ONE, Simulation, fx } from '../src/index.js';
 import {
   FATIGUE_RISE_PER_TICK,
   HUNGER_RISE_PER_TICK,
+  PIETY_RISE_PER_TICK,
   type SystemContext,
   needsSystem,
 } from '../src/systems/index.js';
@@ -45,6 +46,7 @@ function settlerWithHunger(sim: Simulation, hunger: Fixed): Entity {
     jobType: WOODCUTTER,
     hunger,
     fatigue: fx.fromInt(0),
+    piety: fx.fromInt(0),
     experience: new Map<number, number>(),
   });
   return e;
@@ -137,6 +139,48 @@ describe('needsSystem — fatigue rises over time', () => {
     expect(settler.hunger).toBe(fx.mul(HUNGER_RISE_PER_TICK, fx.fromInt(100)));
     expect(settler.fatigue).toBe(fx.mul(FATIGUE_RISE_PER_TICK, fx.fromInt(100)));
     expect(settler.fatigue).toBeLessThan(settler.hunger); // slower rate ⇒ lower after equal ticks
+    expect(sim.checkInvariants()).toEqual([]);
+  });
+});
+
+describe('needsSystem — piety rises over time (the first target-bound need)', () => {
+  it('raises a settler piety by exactly PIETY_RISE_PER_TICK each tick', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = settlerWithHunger(sim, fx.fromInt(0)); // starts with piety 0 too
+
+    needsSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, Settler).piety).toBe(PIETY_RISE_PER_TICK);
+
+    needsSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, Settler).piety).toBe(fx.add(PIETY_RISE_PER_TICK, PIETY_RISE_PER_TICK));
+  });
+
+  it('rises slower than fatigue (a settler prays far less often than it sleeps)', () => {
+    // The cadence choice: piety at ONE/16384 vs fatigue at ONE/8192 — piety fills in twice the ticks.
+    expect(PIETY_RISE_PER_TICK).toBeLessThan(FATIGUE_RISE_PER_TICK);
+  });
+
+  it('clamps piety at ONE (never above — the pietyInRange invariant ceiling)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = settlerWithHunger(sim, fx.fromInt(0));
+    // Start one half-step below the ceiling: the next rise would overshoot ONE and must clamp.
+    sim.world.get(e, Settler).piety = fx.sub(ONE, fx.div(PIETY_RISE_PER_TICK, fx.fromInt(2)));
+
+    needsSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, Settler).piety).toBe(ONE);
+
+    needsSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, Settler).piety).toBe(ONE);
+  });
+
+  it('rises all three needs independently in the same tick, invariant-clean', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = settlerWithHunger(sim, fx.fromInt(0));
+
+    for (let i = 0; i < 100; i++) sim.step();
+    const settler = sim.world.get(e, Settler);
+    expect(settler.piety).toBe(fx.mul(PIETY_RISE_PER_TICK, fx.fromInt(100)));
+    expect(settler.piety).toBeLessThan(settler.fatigue); // slowest rate ⇒ lowest after equal ticks
     expect(sim.checkInvariants()).toEqual([]);
   });
 });

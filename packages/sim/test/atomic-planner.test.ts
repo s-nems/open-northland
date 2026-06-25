@@ -65,6 +65,7 @@ function woodcutterAt(sim: Simulation, x: number, y: number): Entity {
     jobType: WOODCUTTER,
     hunger: fx.fromInt(0),
     fatigue: fx.fromInt(0),
+    piety: fx.fromInt(0),
     experience: new Map(),
   });
   return e;
@@ -196,6 +197,7 @@ describe('atomicPlanner — choosing the next atomic', () => {
       jobType: null,
       hunger: fx.fromInt(0),
       fatigue: fx.fromInt(0),
+      piety: fx.fromInt(0),
       experience: new Map(),
     });
     woodAt(sim, 3, 0);

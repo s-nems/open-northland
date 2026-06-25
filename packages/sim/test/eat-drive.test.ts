@@ -71,6 +71,7 @@ function settlerAt(sim: Simulation, x: number, y: number, hunger: Fixed): Entity
     jobType: WOODCUTTER,
     hunger,
     fatigue: fx.fromInt(0),
+    piety: fx.fromInt(0),
     experience: new Map(),
   });
   return e;
