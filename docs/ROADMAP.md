@@ -106,14 +106,22 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `jobtypes` (`baby_female`/`baby_male`/`child_female`/`child_male`/`woman`) are **age/sex classes**,
       not working trades. `systems/ageclass.ts` is the sim-side recognition (`isBaby`/`isChild`/
       `isNonWorkingAge`, ids 1–4 non-working), so the JobSystem leaves a baby unemployed (non-null jobType
-      → skipped; no `workers` slot lists a baby → never adopted). Inert in the golden/slice (their content
-      has no `home`-kind building, so 0 births — the golden hash + trace are unchanged). The birth *rate*,
-      *sex*, and the **growth cadence** are below the readable `.ini` (no birth-rate/sex/grow-up key;
-      `make_love` restores the leisure channel, not a birth yield), so they are **approximated** (see
-      docs/FIDELITY.md). **Next:** the **growth transition** (baby→child→adult-eligible, freeing a grown
-      child for the JobSystem) — gated by housing, on an unpinned `GROWUP_TICKS` cadence constant (the
-      established hunger-rise-style approximated-constant pattern), recorded in FIDELITY until an
-      age/growth oracle calibrates the timing.
+      → skipped; no `workers` slot lists a baby → never adopted). The birth *rate*, *sex*, and the
+      **growth cadence** are below the readable `.ini` (no birth-rate/sex/grow-up key; `make_love` restores
+      the leisure channel, not a birth yield), so they are **approximated** (see docs/FIDELITY.md).
+      **The growth transition now LANDED** — `systems/ageclass.ts`'s `growthSystem` ages each born settler
+      (the new **`Age{ticks}`** optional component the ReproductionSystem adds at birth, mirroring
+      `JobAssignment`) and promotes its age-class `jobType` baby→child→adult-eligible over `GROWUP_TICKS`
+      per stage, **sex preserved** (baby_female→child_female, baby_male→child_male), removing the `Age`
+      component once it reaches adult-eligibility (`jobType` null) so the JobSystem then employs it. The AI
+      planner skips a still-growing settler (keyed on the **`Age` component**, not the age-class id — a
+      synthetic fixture's adult job id can collide with a real age-class id, but only a born-young settler
+      carries `Age`), so a baby/child no longer runs the adult eat/sleep/pray drives — faithful to "a baby
+      is cared for, it doesn't self-feed". `GROWUP_TICKS`=8192 is the unpinned approximated cadence (the
+      hunger-rise-style constant pattern); inert in the golden/slice (no `home`-kind content → 0 births →
+      golden hash + trace unchanged). **Next:** the carrier→vehicle pairing / a per-carrier vehicle entity
+      (the JobSystem's last unmodeled behavior), or the HUD slice — births→growth→employment now closes
+      the population lifecycle loop.
 - [ ] HUD: stocks, population, jobs, the goods graph.
 - **Exit:** a self-sustaining, progressing single-tribe settlement you can grow.
 

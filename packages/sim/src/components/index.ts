@@ -133,6 +133,23 @@ export const Carrying = defineComponent<{ goodType: number; amount: number }>('C
 export const JobAssignment = defineComponent<{ workplace: Entity }>('JobAssignment');
 
 /**
+ * A settler's **age** while it is still a non-working life stage (baby/child) — the integer count of
+ * ticks lived. Like {@link JobAssignment}, it is a **separate optional component**, not a `Settler`
+ * field: only a settler born young (the ReproductionSystem) carries it, and the GrowthSystem
+ * ({@link growthSystem}) increments it each tick and **promotes** the settler's age-class `jobType`
+ * (baby → child → adult-eligible) as it crosses each stage boundary. The component is **removed** the
+ * moment the settler reaches adult-eligibility (`jobType` cleared to `null`) — a grown settler is just
+ * an idle adult the JobSystem can employ, with no age bookkeeping. So an adult never carries an `Age`:
+ * the goldens/slice and every settler spawned by `spawnSettler` (born already adult) have none, leaving
+ * the hash untouched, exactly the [JobAssignment] separate-optional-component pattern.
+ *
+ * `ticks` is a monotonic integer (no fixed-point — age is a whole-tick count, not a 0..ONE bar), so it
+ * hashes deterministically like every other component. Determinism: the GrowthSystem advances it with
+ * a fixed per-tick increment and a fixed stage cadence, no RNG/wall-clock.
+ */
+export const Age = defineComponent<{ ticks: number }>('Age');
+
+/**
  * A harvestable resource node placed in the world (a tree, ore vein, berry bush). It yields its
  * `goodType` when a settler runs the good's harvest atomic on its cell; `remaining` is the units
  * left — each completed harvest decrements it (AtomicSystem's harvest effect), so a finite node

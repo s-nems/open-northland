@@ -14,20 +14,24 @@
  * (a baby's `jobType` is non-null, so it is already skipped by the idle-only assignment, and no
  * workplace lists a baby/child in its `workers` slots, so one is never adopted either).
  *
- * SCOPE (this slice = structure only): the **AI planner** does NOT yet consult {@link isNonWorkingAge}
- * — it skips only `jobType === null`, so once a baby's hunger/fatigue rises it would run the adult
- * needs-drives (eat/sleep) like any settler. That is inert for now (a newborn starts every need at 0
- * and the rise takes thousands of ticks; the golden/slice has no births at all), and the original's
- * "a baby is fed/cared for, it doesn't self-feed" behavior belongs with the deferred growth/family
- * mechanic — not bolted on here. Recorded in docs/FIDELITY.md so the growth slice closes it.
+ * GROWTH (the {@link growthSystem} below): a settler born young ({@link Age}-bearing) **grows up** —
+ * the planner now consults {@link isNonWorkingAge} so a baby/child does NOT run the adult needs-drives
+ * (eat/sleep/pray), matching the original's "a baby is cared for, it doesn't self-feed", and the
+ * GrowthSystem ages it baby → child → adult-eligible (its `Age` component is removed once it can work).
  *
- * FIDELITY (faithful — params): the age-class ids are pinned to the original `logicdefines.inc`
- * constants + the `jobtypes.ini` records (no interpretation). The **growth cadence** (when a baby
- * becomes a child, a child an adult) is a *separate*, still-deferred mechanic — its timing lives below
- * the readable rule files (no readable "grows up after N ticks" key) and is calibration-by-observation;
- * see docs/FIDELITY.md. This module only fixes the *structure* (which ids are which stage), not the
- * timing. Sex selection at birth is likewise deferred (see {@link NEWBORN_AGE_CLASS}).
+ * FIDELITY (faithful — params; approximated — cadence): the age-class ids are pinned to the original
+ * `logicdefines.inc` constants + the `jobtypes.ini` records (no interpretation). The **growth cadence**
+ * ({@link GROWUP_TICKS} — how long each stage lasts) is *approximated*: its timing lives below the
+ * readable rule files (no readable "grows up after N ticks" key) and is calibration-by-observation; see
+ * docs/FIDELITY.md. This module fixes the *structure* (which ids are which stage) faithfully and the
+ * *timing* as the recorded approximated constant. Sex selection at birth is likewise deferred (see
+ * {@link NEWBORN_AGE_CLASS}); a settler grows up keeping the sex it was born with (baby_female →
+ * child_female → adult; baby_male → child_male → adult).
  */
+
+import { Age, Settler } from '../components/index.js';
+import type { Entity } from '../ecs/world.js';
+import type { System } from './context.js';
 
 /** The human age-class job ids (`logicdefines.inc` `JOB_TYPE_HUMAN_*`), the non-working life stages a
  * settler passes through before an adult trade. Numbered constants, not control-flow opcodes — they
@@ -62,4 +66,79 @@ export function isChild(jobType: number | null): boolean {
  */
 export function isNonWorkingAge(jobType: number | null): boolean {
   return isBaby(jobType) || isChild(jobType);
+}
+
+/**
+ * How many ticks a settler spends in each non-working life stage before advancing to the next: a baby
+ * grows into a child after `GROWUP_TICKS`, a child into an adult after another `GROWUP_TICKS` (so it is
+ * employable at `2 * GROWUP_TICKS`).
+ *
+ * FIDELITY (approximated — see docs/FIDELITY.md): the original's growth cadence lives below the readable
+ * rule files — there is no "grows up after N ticks" key in `jobtypes.ini`/`tribetypes.ini`/`houses.ini`
+ * — so this is an unpinned constant in the established hunger-rise mould ({@link HUNGER_RISE_PER_TICK}):
+ * the basic "a settler is born young and matures into a worker over time" core, deterministic and
+ * bounded, with the real per-stage duration as the calibration-by-observation target. 8192 ticks per
+ * stage (≈ the slowest needs cadence, two full hunger fills) keeps a newborn a non-worker for a good
+ * while — long enough to read as a childhood, short enough to exercise the maturation path headless.
+ */
+export const GROWUP_TICKS = 8192;
+
+/** Whether an age-class id is a **male** stage (`baby_male`/`child_male`) — the bit preserved across the
+ * growth transition (a `baby_male` grows into a `child_male`, never a `child_female`). */
+function isMaleStage(jobType: number | null): boolean {
+  return jobType === BABY_MALE || jobType === CHILD_MALE;
+}
+
+/**
+ * GrowthSystem — age each {@link Age}-bearing settler one tick and **promote** it through the
+ * non-working life stages as it matures: baby → child after {@link GROWUP_TICKS}, child →
+ * adult-eligible after another. Closes the ROADMAP's growth transition (baby→child→adult-eligible,
+ * freeing a grown child for the JobSystem) and the loop the ReproductionSystem opened — a colony's
+ * newborns mature into workers rather than staying babies forever.
+ *
+ * Only a settler born young carries an {@link Age} (the ReproductionSystem adds it at `ticks: 0`); an
+ * adult never does, so this system is a no-op for every settler spawned already-adult (the goldens, the
+ * slice, `spawnSettler`). Each tick a borne settler's `ticks` increments; the moment it reaches a stage
+ * boundary (`ticks >= GROWUP_TICKS * stagesPassed`) its `jobType` is promoted to the next age class
+ * ({@link ageClassAt}, sex-preserving). When it grows into an adult (`jobType` cleared to `null`), its
+ * `Age` component is **removed** — a grown settler is just an idle adult; the JobSystem employs it next.
+ *
+ * The age-class *structure* (which ids are which stage, the sex split) is faithful (pinned to
+ * `logicdefines.inc`/`jobtypes.ini`); the *cadence* {@link GROWUP_TICKS} is the recorded approximated
+ * constant (no readable grow-up-rate oracle — docs/FIDELITY.md).
+ *
+ * Determinism: a fixed integer increment and fixed stage boundaries, no RNG/wall-clock. The per-entity
+ * update reads/writes only that settler's own `Age`/`Settler`, so the Settler-store iteration order
+ * can't leak into the result; promotion is a pure function of the new `ticks` count. Removing the `Age`
+ * component on graduation is collect-then-mutate-safe — `query(Age, Settler)` yields entity ids, and we
+ * remove from the `Age` store after reading, never mid-iterating a structure the query is walking
+ * (mirrors the demolish-unbind teardown discipline in LESSONS [71f13ab]).
+ */
+export const growthSystem: System = (world) => {
+  const graduated: Entity[] = [];
+  for (const e of world.query(Age, Settler)) {
+    const age = world.get(e, Age);
+    const settler = world.get(e, Settler);
+    age.ticks += 1;
+    // The age class a settler of `ticks` age should now be (sex preserved). Promote only on a real
+    // change so an in-stage tick is a no-op; null = grown to an employable adult.
+    const target = ageClassAt(age.ticks, isMaleStage(settler.jobType));
+    if (target !== settler.jobType) {
+      settler.jobType = target;
+      if (target === null) graduated.push(e); // grown to an adult — its Age is now meaningless
+    }
+  }
+  for (const e of graduated) world.remove(e, Age);
+};
+
+/**
+ * The age-class `jobType` a settler that has lived `ticks` should currently be, for the given sex
+ * (`male`): a **baby** for the first {@link GROWUP_TICKS}, a **child** for the next, an **adult**
+ * (`null` — employable) thereafter. A pure function of the count + sex (not of how many times it ran),
+ * so re-evaluating it every tick is idempotent within a stage and the promotion never double-fires.
+ */
+function ageClassAt(ticks: number, male: boolean): number | null {
+  if (ticks < GROWUP_TICKS) return male ? BABY_MALE : BABY_FEMALE;
+  if (ticks < GROWUP_TICKS * 2) return male ? CHILD_MALE : CHILD_FEMALE;
+  return null; // adult-eligible
 }
