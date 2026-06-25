@@ -86,6 +86,18 @@ export function testContent(): ContentSet {
         maxRange: 2,
         damage: { '0': 50, '1': 60 },
       },
+      // A weapon for the animal tribe (tribe 9, job 1) so an animal combatant CAN resolve a weapon —
+      // this is what makes the combat-system test of the animal-exclusion meaningful: the animal is
+      // skipped because it is an animal tribe, NOT merely because it is unarmed. damage 50 vs class 0.
+      {
+        typeId: 8,
+        id: 'test_claw',
+        tribeType: 9,
+        jobType: 1,
+        minRange: 1,
+        maxRange: 2,
+        damage: { '0': 50 },
+      },
     ],
     armor: [
       // Leather (class 1) mitigates 10 — so a 60-raw hit lands 50 net on a leather-clad target. Unused
@@ -135,6 +147,16 @@ export function testContent(): ContentSet {
           { requirement: 'train', target: 'good', targetId: 2, amount: 999, experienceTypes: [77] },
         ],
       },
+      {
+        // An ANIMAL tribe (typeId 9): a recorded `[tribetype]` with **no** `jobEnables` tech graph —
+        // the data signature `isAnimalTribe` recognises (only a civilization carries `jobEnables`). It
+        // binds the attack atomic (81) so an animal *could* swing, which lets the combat test prove the
+        // animal is left out of the **player-vs-player** drive by its tribe class, not by being unarmed.
+        // Declared AFTER the viking so `tribes[0]` stays the viking (other fixtures index `tribes[0]`).
+        typeId: 9,
+        id: 'test_wolves',
+        atomicBindings: [{ jobType: 1, atomicId: 81, animation: 'wolf_attack' }],
+      },
     ],
     atomicAnimations: [
       { id: 'viking_chop', name: 'viking_chop', length: 3 },
@@ -142,6 +164,7 @@ export function testContent(): ContentSet {
       { id: 'viking_sleep', name: 'viking_sleep', length: 6 },
       { id: 'viking_pray', name: 'viking_pray', length: 7 },
       { id: 'viking_attack', name: 'viking_attack', length: 4 },
+      { id: 'wolf_attack', name: 'wolf_attack', length: 4 },
     ],
     // Experience tracks (humanjobexperiencetypes): the woodcutter (job 1) has a wood-specific track
     // (good 1, the narrow `(job, good)` specialization) and a general track (no good) — so the

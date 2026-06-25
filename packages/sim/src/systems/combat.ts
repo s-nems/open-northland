@@ -11,6 +11,7 @@ import type { Entity, World } from '../ecs/world.js';
 import { fx } from '../fixed.js';
 import type { CellId, TerrainGraph } from '../terrain.js';
 import type { System, SystemContext } from './context.js';
+import { isAnimalTribe } from './readviews.js';
 
 /**
  * CombatSystem (the **targeting** half of the combat loop) — choose who each idle combatant swings
@@ -21,11 +22,15 @@ import type { System, SystemContext } from './context.js';
  *
  * A **combatant** is a {@link Settler} that carries a {@link Health} pool (a fighter — a non-combat
  * settler/the golden slice carries none, so it never fights and the hash stays untouched, the
- * separate-optional-component pattern of `JobAssignment`/`Age`). For each idle, living combatant (no
- * `CurrentAtomic` running, not travelling, `hitpoints > 0`), in deterministic store order, the system:
+ * separate-optional-component pattern of `JobAssignment`/`Age`). An **animal-tribe** combatant
+ * ({@link isAnimalTribe} — a recorded `[tribetype]` with no tech graph) is left out of this drive: a
+ * player-vs-player swing is only between civilizations; civ-vs-animal aggression is the separate,
+ * data-driven (`animaltypes.ini`) model the next roadmap item adds. For each idle, living, non-animal
+ * combatant (no `CurrentAtomic` running, not travelling, `hitpoints > 0`), in deterministic store order,
+ * the system:
  *
- *  - finds the nearest **enemy** ({@link Health}-bearing settler of a *different* tribe) within the
- *    attacker's weapon **range** (Manhattan cells), canonical entity-id tie-break;
+ *  - finds the nearest **enemy** ({@link Health}-bearing settler of a *different, non-animal* tribe)
+ *    within the attacker's weapon **range** (Manhattan cells), canonical entity-id tie-break;
  *  - resolves the **net damage** that hit deals — the attacker's weapon ({@link attackerWeapon},
  *    keyed by the attacker's tribe+job) versus the target's armor class (class 0 = unarmored today;
  *    settlers don't wear armor yet), the verbatim `weapontypes`×`armortypes` join {@link combatDamage}
@@ -38,11 +43,13 @@ import type { System, SystemContext } from './context.js';
  * docs/FIDELITY.md); its `duration` is resolved through that binding like every other atomic.
  *
  * FIDELITY: the **net-damage amount** is the faithful `weapontypes`×`armortypes` param join (the same
- * pin as the `attack` effect / `combatDamage` read view). **Approximated (no oracle):** *who* a
- * settler picks (nearest enemy in range), the *swing cadence* (re-target each idle tick), and that a
- * settler with no resolvable weapon does no damage are *our* deterministic combat design — the
- * original's target-acquisition AI is the undocumented "soul" (docs/FIDELITY.md). A settler also wears
- * no armor yet, so every target resolves as unarmored (class 0); armor-on-a-settler is a later slice.
+ * pin as the `attack` effect / `combatDamage` read view); the **playable-vs-animal split** of who may
+ * fight here is the faithful tech-graph signature ({@link isAnimalTribe} — only a civilization carries
+ * `jobEnables`). **Approximated (no oracle):** *who* a settler picks (nearest enemy in range), the
+ * *swing cadence* (re-target each idle tick), and that a settler with no resolvable weapon does no
+ * damage are *our* deterministic combat design — the original's target-acquisition AI is the
+ * undocumented "soul" (docs/FIDELITY.md). A settler also wears no armor yet, so every target resolves
+ * as unarmored (class 0); armor-on-a-settler is a later slice.
  *
  * Determinism: no RNG, no wall-clock; combatants and targets are scanned in canonical
  * ({@link World.canonicalEntities}) order with a Manhattan-distance + ascending-id tie-break, and the
@@ -61,11 +68,17 @@ export const combatSystem: System = (world, ctx) => {
     if (world.get(e, Health).hitpoints <= 0) continue;
 
     const attacker = world.get(e, Settler);
+    // An animal-tribe combatant does NOT run this player-vs-player targeting drive: a known animal
+    // tribe (a recorded `[tribetype]` with no tech graph — `isAnimalTribe`) fights via the separate,
+    // data-driven (`animaltypes.ini`) aggression model, not the same-different-tribe rule. A combatant
+    // of an unknown tribe (no record at all) is NOT an animal, so it still runs this drive.
+    if (isAnimalTribe(ctx.content, attacker.tribe)) continue;
+
     const weapon = attackerWeapon(ctx, attacker.tribe, attacker.jobType);
     if (weapon === null) continue; // no resolvable weapon — this settler can't attack (approximated)
 
     const here = entityCell(world, terrain, e);
-    const pick = nearestEnemyTarget(world, terrain, here, e, attacker.tribe, weapon.range);
+    const pick = nearestEnemyTarget(world, terrain, ctx, here, e, attacker.tribe, weapon.range);
     if (pick === null) continue; // no enemy in range this tick
 
     startAttack(world, ctx, attacker, e, pick.target, weapon.netDamageUnarmored);
@@ -80,11 +93,16 @@ export const combatSystem: System = (world, ctx) => {
  * resolved cell, unused by the caller but kept for symmetry), or null if no enemy is in range.
  *
  * The attacker itself is excluded (`t === self`), and a same-tribe settler is friendly (never a
- * target) — "enemy" is simply "a different tribe" today; alliances/neutrality are a later slice.
+ * target). "Enemy" is a *different* tribe that is **not a known animal** ({@link isAnimalTribe}): a
+ * recorded animal/monster tribe is engaged by the separate `animaltypes.ini` aggression model, not
+ * this player-vs-player drive (the caller already skips an animal-tribe *attacker* for the same
+ * reason). A different-tribe target with no record at all is NOT an animal, so it stays a valid enemy.
+ * Alliances/neutrality between civilizations are a later slice.
  */
 function nearestEnemyTarget(
   world: World,
   terrain: TerrainGraph,
+  ctx: SystemContext,
   here: CellId,
   self: Entity,
   selfTribe: number,
@@ -96,7 +114,9 @@ function nearestEnemyTarget(
   for (const t of world.canonicalEntities()) {
     if (t === self) continue; // never swing at oneself
     if (!world.has(t, Settler) || !world.has(t, Health) || !world.has(t, Position)) continue;
-    if (world.get(t, Settler).tribe === selfTribe) continue; // same tribe — friendly
+    const targetTribe = world.get(t, Settler).tribe;
+    if (targetTribe === selfTribe) continue; // same tribe — friendly
+    if (isAnimalTribe(ctx.content, targetTribe)) continue; // animals fight via their own aggression model
     if (world.get(t, Health).hitpoints <= 0) continue; // already felled — not a target
     const cell = entityCell(world, terrain, t);
     const dist = manhattan(terrain, here, cell);

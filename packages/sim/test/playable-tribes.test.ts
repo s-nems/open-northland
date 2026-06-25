@@ -1,6 +1,6 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { describe, expect, it } from 'vitest';
-import { isPlayableTribe, playableTribes } from '../src/systems/index.js';
+import { isAnimalTribe, isPlayableTribe, playableTribes } from '../src/systems/index.js';
 
 /**
  * The playable-tribes read view — `playableTribes`/`isPlayableTribe` distinguish the controllable
@@ -88,6 +88,31 @@ describe('isPlayableTribe', () => {
     const playable = new Set(playableTribes(content).map((t) => t.typeId));
     for (const tribe of content.tribes) {
       expect(isPlayableTribe(content, tribe.typeId)).toBe(playable.has(tribe.typeId));
+    }
+  });
+});
+
+describe('isAnimalTribe', () => {
+  it('is true for a recorded animal tribe (no tech graph) and false for a civilization', () => {
+    const content = tribeContent();
+    expect(isAnimalTribe(content, 9)).toBe(true); // wolves — recorded, no jobEnables
+    expect(isAnimalTribe(content, 8)).toBe(true); // bears — recorded, no jobEnables
+    expect(isAnimalTribe(content, 1)).toBe(false); // viking — a civilization
+    expect(isAnimalTribe(content, 2)).toBe(false); // frank — a civilization
+  });
+
+  it('is false for an UNKNOWN tribe id — an absent record is not silently reclassified as an animal', () => {
+    // The boundary `isAnimalTribe` exists to draw: `!isPlayableTribe(99)` is true, but tribe 99 is NOT
+    // an animal (we have no record for it), so the combat drive must not treat it as wildlife.
+    expect(isPlayableTribe(tribeContent(), 99)).toBe(false);
+    expect(isAnimalTribe(tribeContent(), 99)).toBe(false);
+  });
+
+  it('partitions every RECORDED tribe with isPlayableTribe (exactly one of the two holds)', () => {
+    const content = tribeContent();
+    for (const tribe of content.tribes) {
+      // For a recorded tribe, animal and playable are exact complements (XOR).
+      expect(isAnimalTribe(content, tribe.typeId)).toBe(!isPlayableTribe(content, tribe.typeId));
     }
   });
 });
