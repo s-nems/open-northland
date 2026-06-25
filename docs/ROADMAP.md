@@ -298,9 +298,10 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             terrain grid (the Phase-2 cell-graph input) is **not** in `map.cif` (only the logic-header
             `CStringArray`) — it lives in the sibling **`map.dat`**, a flat `hoix`-chunk container
             (0x20-byte headers; oracle `CIoHelper.cs`). Structure now fully mapped (`lsiz`=dims matching
-            `mapsize`, `lm**` layers = per-cell grids as **X8-packed** streams reusing the `.bmd` codec;
-            see docs/SOURCES.md "`map.dat` chunk container"). Next: a `decoders/mapdat.ts` chunk reader +
-            X8-unpack on the `lm**` payloads, identify the landscape-type tag → feed `buildTerrainGraph`.
+            `mapsize`, `lm**` layers = per-cell grids as `pck`/`X8el`-packed streams; see
+            docs/SOURCES.md "`map.dat` chunk container"). Next: a `decoders/mapdat.ts` chunk reader + a
+            `pck`/`X8el` unpack (cross-check the `.bmd` packed-line codec) on the `lm**` payloads,
+            identify the landscape-type tag → feed `buildTerrainGraph`.
             The `MissionData`/`StaticObjects` campaign layer (Phase 5) is still separate.
 - **Exit:** `npm run pipeline` produces a validated `content/` (types + atlases + one map), decoded
   graphics verified against the oracle.
@@ -318,7 +319,7 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 > script) now produces a reproducible PNG — eyeballed gross-correct (iso terrain behind feet-sorted
 > sprites), pixel fidelity still deferred to a human. **Next smallest step: feed the terrain graph
 > from a decoded map tile grid** — the grid is now **located** in the sibling `map.dat` (a `hoix`-chunk
-> container, `lm**` layers X8-packed like `.bmd`; `map.cif` holds only the logic header), so the next
+> container, `lm**` layers `pck`/`X8el`-packed (cross-check the `.bmd` codec); `map.cif` holds only the logic header), so the next
 > leg is a `decoders/mapdat.ts` chunk reader + X8-unpack → identify the landscape-type tag →
 > `buildTerrainGraph` (see Risks/SOURCES.md) — or atlas sprites in place of placeholder geometry. (A
 > "per-type walk-cost field" is *not* a pending step: `landscapetypes.ini` has no movement weight —
@@ -348,7 +349,7 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
       `landscapetypes.ini`). *Not* the triangle geometry — that's render-only.
       *(core done — graph builder + `world.terrain` resource wired. The only open leg is feeding the
       grid from a decoded map tile grid — now **located** in the sibling `map.dat` (a `hoix`-chunk
-      container; `map.cif` holds only the logic header), the `lm**` layers X8-packed like `.bmd`;
+      container; `map.cif` holds only the logic header), the `lm**` layers `pck`/`X8el`-packed (cross-check the `.bmd` codec);
       decode pending, see SOURCES.md "`map.dat` chunk container". NOTE corrected on inspection: a "per-type walk-cost
       field" is NOT a pending extraction — `landscapetypes.ini` carries no movement weight, only
       `maximumValency` (capacity) + the `allowedon{land,water,everything}` placement flags; uniform
@@ -645,10 +646,11 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 - **Map binary tile grid** — **located** (was "not yet located"): the per-cell landscape grid (the
   Phase-2 nav-graph input) lives in the sibling **`map.dat`**, NOT in `map.cif` (which is only the
   logic-header `CStringArray`). `map.dat` is a flat `hoix`-chunk container (0x20-byte headers; oracle
-  `CIoHelper.cs`); `lsiz` gives the dims, the `lm**` layers carry the per-cell grids as **X8-packed**
-  streams (same codec as `.bmd`). Structure mapped + oracle-confirmed; the remaining work is decoding
-  the packed `lm**` layers (a `decoders/mapdat.ts` reusing the `.bmd` X8-unpack) and identifying the
-  landscape-type tag → `buildTerrainGraph`. See docs/SOURCES.md "`map.dat` chunk container". This grid
+  `CIoHelper.cs`); `lsiz` gives the dims, the `lm**` layers carry the per-cell grids as
+  `pck`/`X8el`-packed streams (likely the `.bmd` packed-line codec family — confirm when porting).
+  Structure mapped + oracle-confirmed; the remaining work is decoding the packed `lm**` layers (a
+  `decoders/mapdat.ts` chunk reader + `pck`/`X8el` unpack) and identifying the landscape-type tag →
+  `buildTerrainGraph`. See docs/SOURCES.md "`map.dat` chunk container". This grid
   (not `landscapetypes.ini`) is also the only plausible home for any per-cell walk weight — the type
   table has none (confirmed: only `maximumValency` + placement flags), so uniform walk cost stays
   faithful unless a real attribute turns up in a `map.dat` layer.

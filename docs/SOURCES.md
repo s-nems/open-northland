@@ -83,7 +83,7 @@ both probed maps):
 
 ```
 +0x00 u32 Marker   = 0x78696F68 "hoix"
-+0x04 u32 Id       = a 4-char little-endian subtag (e.g. "lsiz","lmhe") — Id>>byte == reversed ASCII
++0x04 u32 Id       = a 4-char subtag; the 4 bytes read low→high spell it reversed (disk "zisl" = tag "lsiz")
 +0x08 u32 Version
 +0x0C u32 Length   = payload size in bytes (0 for bracket/group chunks)
 +0x10 u32 Depth    = nesting level (groups bracket sub-chunks; MaxChunkDepth=5)
@@ -95,18 +95,28 @@ Chunk order on a real tutorial map (40 chunks): a **landscape group** (`logi`,`l
 `lsiz`,`lmhe`,`lmpa/lmpb`,`lmlt`,`lmlv`,`lmms`,… terminated by `xend`) then an **entity/object-map
 group** (`emmm` → `embr`,`empa/empb`,`emt1..4`,`emla`,… → `xend`) then `tend`. Decoded facts:
 - **`lsiz`** payload = `[u32 width][u32 height]` — cross-checks the `map.cif` `mapsize` **exactly**
-  (tutorial_001 128×218, tutorial_002 142×146).
-- **`lmhe`** (height/elevation) ≈ `cells × 1.00` bytes → **one byte per cell, lightly packed**.
-- The other `lm**`/`em**` layer payloads are **X8-packed** compressed streams (each begins with the
-  `"pck"`/`"X8el"` signature — the **same packed-line codec the `.bmd` decoder already implements**,
-  `CBobManager.cs`), so their size varies per map. The landscape-**type** grid (the Phase-2
-  cell-graph input) is one of these packed `lm**` layers (`lmlt`/`lmlv` are the prime candidates),
-  not a raw byte array.
+  (tutorial_001 128×218, tutorial_002 142×146). The one *raw* chunk (8-byte payload).
+- The per-cell grid layers (`lmhe`,`lmlt`,`lmlv`,`lmms`,`lmpa/lmpb`,`embr`,`empa/empb`,`emt1..4`,
+  `emla`,…) are **packed-bitmap** payloads, each opening with a small sub-header
+  `[u8 ver][u32 innerSize]` (the inner packed-stream length) then the ASCII marker **`pck`** +
+  **`X8el`/`X6el`** (the trailing `X8`/`X6` is the per-pixel bit depth) then a small per-layer
+  header not yet fully decoded (a constant `0x0072` field + a per-layer count). So the on-disk size
+  varies per map and is *not* a raw `width×height` byte array; the codec is the engine's packed-image
+  format (very likely the **same packed-line family the `.bmd` decoder already implements**,
+  `CBobManager.cs` — confirm when porting the unpack). `lmhe` (height) unpacks to ≈ one byte per cell;
+  the landscape-**type** grid (the Phase-2 cell-graph input) is one of these layers — `lmlt`/`lmlv`
+  are the prime candidates (size ≈ `cells × 1–2`).
+- Not every chunk is a grid: `laco`/`lasw`/`lafm` (landscape) and `eapd`/`eatd`/`eald` (entity) are
+  **structured record lists** — depth-prefixed text/object tables (e.g. `eatd` holds `meadow 1`/…
+  type names, `eald` holds `player01 sign 0…` placements), the same depth-prefixed grammar as the
+  `.cif` string pool. These are the pre-placed-objects / per-player layers (Phase-5 territory),
+  separate from the per-cell terrain grid.
 
 **Status:** structure fully mapped + oracle-confirmed; **not yet decoded**. The remaining work is a
-`decoders/mapdat.ts` chunk reader + reusing the `.bmd` X8-unpack on the per-layer payloads, then
-identifying which `lm**` tag is the landscape-type id grid → feeds `buildTerrainGraph`. (No decoded
-bytes are committed — `map.dat` is copyrighted input, like every other game file.)
+`decoders/mapdat.ts` chunk reader + a `pck`/`X8el` packed-layer unpack (cross-check against the
+`.bmd` packed-line codec first), then identifying which `lm**` tag is the landscape-type id grid →
+feeds `buildTerrainGraph`. (No decoded bytes are committed — `map.dat` is copyrighted input, like
+every other game file.)
 - **Atomic actions are the behavior vocabulary** (see docs/ECS.md) and are partly free in readable
   data: `tribetypes.ini` `setatomic` (atomic→animation per tribe), `jobtypes.ini` `allowatomic`,
   `goodtypes.ini` `atomicFor*`. The atomic *timings/effects* live in `atomicanimations.cif` — **but
