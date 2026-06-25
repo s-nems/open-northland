@@ -313,11 +313,29 @@ export function unpackMapLayer(chunk: MapDatChunk): MapLayer {
     if ((b & 0x80) !== 0) {
       // Run: (b & 0x7F) copies of the next byte.
       const count = b & 0x7f;
+      if (i >= p.length) {
+        throw new Error(`mapdat: layer "${chunk.tag}" run control at end of stream has no value byte`);
+      }
       const value = p[i++] as number;
+      if (o + count > unpackedLength) {
+        throw new Error(
+          `mapdat: layer "${chunk.tag}" run overflows the ${unpackedLength}-byte grid (corrupt stream)`,
+        );
+      }
       out.fill(value, o, o + count);
       o += count;
     } else {
       // Literal: copy b bytes verbatim.
+      if (i + b > p.length) {
+        throw new Error(
+          `mapdat: layer "${chunk.tag}" literal run reads past the stream end (corrupt/truncated)`,
+        );
+      }
+      if (o + b > unpackedLength) {
+        throw new Error(
+          `mapdat: layer "${chunk.tag}" literal overflows the ${unpackedLength}-byte grid (corrupt stream)`,
+        );
+      }
       out.set(p.subarray(i, i + b), o);
       o += b;
       i += b;
