@@ -413,3 +413,16 @@ the next iteration inherits it.
   `world.destroy`s while scanning a store must collect-then-destroy (gather matches into a list first,
   mutate after) — and sort that list canonically when its side effects are observed (the emitted
   `settlerDied` events render reads), even though events aren't in `hashState`. (sim/combat)
+- [8addb28] A per-entity planner pass (combatSystem giving each idle combatant a target) can iterate
+  the non-canonical `world.query(...)` (smallest-store insertion order) and STAY deterministic — but
+  only because each decision is **order-invariant**: an attacker's target eligibility (`Health > 0`,
+  different tribe, in range) never depends on whether another attacker already acted this pass, and the
+  *target pick itself* uses canonical `canonicalEntities()` + an id tie-break. The rule isn't "always
+  sort the driver"; it's "the OUTCOME must not depend on visit order" — adding a `CurrentAtomic` to A
+  doesn't change whether A is a valid target for B, so the set of (attacker→target) decisions is the
+  same regardless of order (same stance as aiSystem's `query(Settler, Position)`). The determinism test
+  (two same-seed runs hash-equal) is what proves it, not the iteration choice. (sim/determinism)
+- [8addb28] `sim.events` are cleared each tick, so a test that runs many `step()`s and then reads
+  `sim.snapshot().events` only sees the LAST tick's events — a one-shot event (a kill's `settlerDied`)
+  fired mid-loop is gone. Accumulate across the loop (`deaths += ...events.filter(...)` per step) to
+  assert it, or the check silently degrades to a no-op (the `>= 0` trap). (sim/testing)
