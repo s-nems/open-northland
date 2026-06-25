@@ -44,7 +44,6 @@ async function main(): Promise<void> {
   }
   requestAnimationFrame(frame);
 
-  // eslint-disable-next-line no-console
   console.log('Vinland shell up: vertical slice rendering. See docs/ROADMAP.md.');
 }
 
