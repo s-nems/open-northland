@@ -403,3 +403,13 @@ the next iteration inherits it.
   hash is untouched; HP is **whole-integer** (animaltypes.ini scale 200..20000), not a 0..ONE fixed bar,
   so `hitpoints <= 0` death is exact. Clamp damage twice — floor the result at 0 AND floor the incoming
   `damage` at 0 — so a malformed (negative) effect can't silently *heal* the target. (sim/combat)
+- [e2f3a83] The dangling-reference hazard a `world.destroy` creates depends on which DIRECTION the
+  cross-reference points: destroying a *settler* (the new combat death path, the SECOND destroy site
+  after `demolish`) is clean because the settler HOLDS its refs (`JobAssignment` points
+  settler→building) — they vanish with it; the [71f13ab] hazard was the REVERSE (a *building*
+  destroyed under a worker that still points AT it), handled at the `demolish` seam. So when you add a
+  destroy site, audit only the refs that point *to* the destroyed entity, not the ones it holds; here
+  no component points building→settler, so the new path needs no teardown. And a system that
+  `world.destroy`s while scanning a store must collect-then-destroy (gather matches into a list first,
+  mutate after) — and sort that list canonically when its side effects are observed (the emitted
+  `settlerDied` events render reads), even though events aren't in `hashState`. (sim/combat)
