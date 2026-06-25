@@ -395,3 +395,11 @@ the next iteration inherits it.
   in its own module (`systems/readviews.ts`). Splitting it is a pure import-path move (barrel surface
   unchanged, goldens unchanged); the tell is `grep "from './shared'"` showing the system files never
   import the read views. (sim/structure)
+- [4b91238] An `AtomicEffect` keeps the executor a pure state-mutation by carrying the **already-resolved**
+  value, not a lookup key: the `attack` effect carries the net `combatDamage` (weapon×armor) the same way
+  `pickup`/`eat` carry a resolved `amount`, so `atomicSystem` does the hit with no content/weapon lookup
+  of its own (the join happens once, at planning time). A new combatant pool is a **separate optional
+  component** (`Health`, like `JobAssignment`/`Age`) so non-combatants/the golden slice carry none and the
+  hash is untouched; HP is **whole-integer** (animaltypes.ini scale 200..20000), not a 0..ONE fixed bar,
+  so `hitpoints <= 0` death is exact. Clamp damage twice — floor the result at 0 AND floor the incoming
+  `damage` at 0 — so a malformed (negative) effect can't silently *heal* the target. (sim/combat)
