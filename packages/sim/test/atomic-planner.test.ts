@@ -209,6 +209,94 @@ describe('atomicPlanner — choosing the next atomic', () => {
   });
 });
 
+describe('atomicPlanner — walk-to-workplace drive (an assigned operator reaches its station)', () => {
+  const CARPENTER = 2; // the sawmill's worker job; harvests nothing (empty allowedAtomics)
+  const SAWMILL = 2; // a producing workplace (recipe plank<-wood) employing the carpenter
+
+  function carpenterAt(sim: Simulation, x: number, y: number): Entity {
+    const e = sim.world.create();
+    sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+    sim.world.add(e, Settler, {
+      tribe: VIKING,
+      jobType: CARPENTER,
+      hunger: fx.fromInt(0),
+      fatigue: fx.fromInt(0),
+      piety: fx.fromInt(0),
+      enjoyment: fx.fromInt(0),
+      experience: new Map(),
+    });
+    return e;
+  }
+
+  function sawmillAt(sim: Simulation, x: number, y: number): Entity {
+    const e = sim.world.create();
+    sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+    sim.world.add(e, Building, { buildingType: SAWMILL, tribe: VIKING, built: ONE, level: 0 });
+    sim.world.add(e, Stockpile, { amounts: new Map() });
+    return e;
+  }
+
+  it('sets a MoveGoal to its workplace when an assigned operator is standing elsewhere', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const carp = carpenterAt(sim, 0, 0);
+    sawmillAt(sim, 3, 0); // its station, three cells away
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(carp, MoveGoal)).toBe(true);
+    expect(sim.world.get(carp, MoveGoal).cell).toBe(sim.terrain?.cellAt(3, 0));
+    expect(sim.world.has(carp, CurrentAtomic)).toBe(false); // it walks, it doesn't start an atomic yet
+  });
+
+  it('leaves an operator already standing on its workplace put (no MoveGoal — the pin holds)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const carp = carpenterAt(sim, 3, 0);
+    sawmillAt(sim, 3, 0); // same cell — already on station
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(carp, MoveGoal)).toBe(false);
+    expect(sim.world.has(carp, CurrentAtomic)).toBe(false);
+  });
+
+  it('does not lure a second operator to an already-manned one-worker workplace', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    sawmillAt(sim, 3, 0);
+    carpenterAt(sim, 3, 0); // first carpenter already on the station (lower id)
+    const second = carpenterAt(sim, 0, 0); // second carpenter elsewhere
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    // The station is staffed, so the second carpenter is NOT drawn to it; with nothing else to do
+    // (carpenters harvest nothing) it idles rather than crowding the manned workplace.
+    expect(sim.world.has(second, MoveGoal)).toBe(false);
+  });
+
+  it('reaches the nearest of two same-type workplaces (Manhattan, cell-id tie-break)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(7, 1) });
+    const carp = carpenterAt(sim, 0, 0);
+    sawmillAt(sim, 5, 0); // distance 5
+    sawmillAt(sim, 2, 0); // distance 2 — should win
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(carp, MoveGoal).cell).toBe(sim.terrain?.cellAt(2, 0));
+  });
+
+  it('a woodcutter still prefers harvesting over walking to a workplace that does not employ it', () => {
+    // The sawmill employs the carpenter, not the woodcutter, and the HQ (woodcutter slots) has no
+    // recipe — so neither is a walk-to-workplace target for a woodcutter; it harvests as before.
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const cutter = woodcutterAt(sim, 0, 0);
+    sawmillAt(sim, 5, 0);
+    woodAt(sim, 2, 0);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(cutter, MoveGoal).cell).toBe(sim.terrain?.cellAt(2, 0)); // the tree, not the mill
+  });
+});
+
 describe('atomicPlanner — end-to-end harvest -> carry -> pileup through the real schedule', () => {
   it('a woodcutter walks to wood, harvests, walks to the store, and piles it up', () => {
     // Layout on a 1-row grass strip: cutter at 0, wood at 1, store at 2 (short hops keep it fast).
