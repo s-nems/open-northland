@@ -45,6 +45,11 @@ the next iteration inherits it.
   `noUnusedLocals` won't flag one *member* of a still-partly-used import group (`{ Building, Stockpile }`
   where only `Building` is used). Eyeball the new file's imports against its body after a module split —
   green build + green check don't prove every import is live. (sim/tooling)
+- [76dfbf1] A long-open "binary format not located" risk can be a *wrong-file* assumption: the map
+  tile grid was never in `map.cif` (only the logic-header `CStringArray`, 0 trailing bytes) — it's the
+  sibling `map.dat`. Probe the whole asset *directory*, not just the named file; and check the
+  OpenVikings oracle's IO/container helpers (`CIoHelper.cs` `SIoHelperChunk`) even though it "doesn't
+  simulate" — it still pins the on-disk container layout. (pipeline/format)
 - [fa70452] A `sim` mechanic with data-pinned *parameters* (atomic durations, job gates, stock caps)
   is NOT thereby `faithful` — its *behavior* (planner/loop shape) has no oracle (OpenVikings' tick is
   a stub). Classify those rows `approximated` with "calibration-by-observation pending"; reserve
