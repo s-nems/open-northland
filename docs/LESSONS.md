@@ -264,3 +264,13 @@ the next iteration inherits it.
   green — the thrash only bites a hand-built fixture. When you add a drive that moves an entity to a
   predicate-matched target, make the target predicate IDENTICAL to the predicate that holds it there
   (copy the component query), don't approximate it. (sim/ai)
+- [3733380] Replacing a derived stand-in (tribe-wide head-count, on-tile presence) with an explicit
+  record component (`JobAssignment{workplace}`) makes the new component the single source of truth — but
+  the goldens spawn entities (the carpenter) *pre-employed onto their station* that never go through the
+  assigning system, so they'd have NO binding and the binding-keyed pin would refuse to hold them →
+  behavior change. Fix: have the assigning system *adopt* a pre-employed-but-unbound entity standing on
+  a valid target (bind it to the building under its feet), so the record stays authoritative with the
+  golden TRACE unchanged — only the hash moves (one new component on one entity), exactly the [20282ef]
+  "new state, not a new action" split. And: a brand-new optional component must be added to EVERY test's
+  store-clear list ([ac6a287]) — the leak shows up as a sibling test's *logic* failing (a stale binding
+  inflates the per-building count), not as an obvious cross-contamination. (sim/architecture)
