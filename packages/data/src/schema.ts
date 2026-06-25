@@ -278,6 +278,35 @@ export const MapInfo = z.object({
 });
 export type MapInfo = z.infer<typeof MapInfo>;
 
+/**
+ * A decoded terrain grid file (`content/maps/<id>.json`) — the per-map nav-graph input the pipeline
+ * emits from `map.dat` (the `lmlt` 4-corner landscape lane reduced to one typeId per cell, `+1`-shifted
+ * onto the 1-based IR {@link LandscapeType} typeId). This is the on-disk twin of the sim's `TerrainMap`
+ * (the sim defines that structural type without zod; this schema is the validating loader boundary so
+ * the build tool / app can `parseTerrainMap` a file before it ever reaches the pure sim). The
+ * `typeIds.length === width * height` invariant is enforced here so a truncated/oversized grid fails
+ * at load, not as a confusing out-of-bounds read inside `buildTerrainGraph`.
+ */
+export const TerrainMapFile = z
+  .object({
+    /** Map width in cells. */
+    width: z.number().int().positive(),
+    /** Map height in cells. */
+    height: z.number().int().positive(),
+    /** Row-major landscape typeId per cell (length must equal width*height). */
+    typeIds: z.array(TypeId),
+  })
+  .refine(
+    (m) => m.typeIds.length === m.width * m.height,
+    (m) => ({
+      message: `terrain map typeIds length ${m.typeIds.length} != width*height (${m.width}*${m.height} = ${
+        m.width * m.height
+      })`,
+      path: ['typeIds'],
+    }),
+  );
+export type TerrainMapFile = z.infer<typeof TerrainMapFile>;
+
 /** Top-level manifest written to content/ir.json. */
 export const IrManifest = z.object({
   version: z.number().int().positive(),

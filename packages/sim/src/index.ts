@@ -16,7 +16,13 @@ export { fx, ONE, type Fixed } from './fixed.js';
 export { FixedTimestep, TICKS_PER_SECOND, MS_PER_TICK } from './loop.js';
 export * as components from './components/index.js';
 export * as systems from './systems/index.js';
-export { scenario, Scenario, type ScenarioResult, type RunOptions } from './scenario.js';
+export {
+  scenario,
+  Scenario,
+  type ScenarioOptions,
+  type ScenarioResult,
+  type RunOptions,
+} from './scenario.js';
 export type { Brand } from './brand.js';
 export { assertNever } from './brand.js';
 export {

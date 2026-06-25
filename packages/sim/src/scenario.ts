@@ -2,6 +2,7 @@ import type { ContentSet } from '@vinland/data';
 import type { Command } from './commands.js';
 import { Simulation } from './index.js';
 import { CORE_INVARIANTS, type Invariant, checkInvariants } from './invariants.js';
+import type { TerrainMap } from './terrain.js';
 
 /**
  * Headless scenario harness — the "e2e at the game level" layer that an AGENT can run and judge by
@@ -31,11 +32,28 @@ export interface RunOptions {
   invariants?: readonly Invariant[];
 }
 
+/**
+ * Options for a scenario run. `seed` fixes the RNG (default 1); `map` supplies a real terrain grid —
+ * e.g. a `parseTerrainMap`'d `content/maps/<id>.json` — so the sim navigates an actual decoded map in
+ * place of a synthetic grid. Omitting `map` runs mapless (the determinism golden does this).
+ */
+export interface ScenarioOptions {
+  seed?: number;
+  map?: TerrainMap;
+}
+
 export class Scenario {
   private readonly sim: Simulation;
 
-  constructor(content: ContentSet, seed = 1) {
-    this.sim = new Simulation({ seed, content });
+  /**
+   * @param content the validated content set.
+   * @param opts a numeric seed (back-compat) OR a {@link ScenarioOptions} object carrying `seed`/`map`.
+   */
+  constructor(content: ContentSet, opts: number | ScenarioOptions = {}) {
+    const { seed = 1, map } = typeof opts === 'number' ? { seed: opts, map: undefined } : opts;
+    // Only attach `map` when present: under exactOptionalPropertyTypes an optional property must be
+    // omitted rather than set to undefined (the Simulation builds the terrain graph iff `map` is set).
+    this.sim = new Simulation({ seed, content, ...(map !== undefined ? { map } : {}) });
   }
 
   /**
@@ -90,6 +108,6 @@ export class Scenario {
   }
 }
 
-export function scenario(content: ContentSet, seed = 1): Scenario {
-  return new Scenario(content, seed);
+export function scenario(content: ContentSet, opts: number | ScenarioOptions = {}): Scenario {
+  return new Scenario(content, opts);
 }
