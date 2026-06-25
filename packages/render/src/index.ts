@@ -23,8 +23,11 @@ export {
 export { createPixiApp, renderScene, type Camera, type SpriteSheet } from './pixi-renderer.js';
 export {
   buildHud,
+  layoutHud,
   IDLE_JOB,
   type HudModel,
+  type HudLayout,
+  type HudTextRow,
   type JobCount,
   type StockCount,
 } from './hud.js';

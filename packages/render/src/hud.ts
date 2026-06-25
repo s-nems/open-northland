@@ -156,3 +156,82 @@ export function buildHud(snapshot: WorldSnapshot, tribe: number): HudModel {
 
   return { tick: snapshot.tick, tribe, population, jobs, stocks };
 }
+
+/**
+ * One positioned text row of the laid-out HUD panel — a string anchored at a panel-relative `(x, y)`.
+ * The pixel layer (the un-self-verifiable half) draws `text` at this position; the *layout* (which
+ * string lands where) is computed here so it is unit-testable without a screen, exactly as
+ * {@link DrawItem} positions are for the world scene.
+ */
+export interface HudTextRow {
+  /** Panel-relative x of the row's left edge, in pixels. */
+  readonly x: number;
+  /** Panel-relative y of the row's text baseline-top, in pixels. */
+  readonly y: number;
+  /** The display string for this row (a heading or a tally line). */
+  readonly text: string;
+}
+
+/**
+ * A laid-out HUD panel: its pixel box (`width`×`height` — sized to the content) plus the flat,
+ * top-to-bottom ordered list of {@link HudTextRow}s the GPU/DOM layer paints. Everything is derived
+ * deterministically from a {@link HudModel}, so the same model lays out byte-identically — the panel
+ * never reshuffles between equal frames (the same property {@link buildScene}'s draw list has).
+ */
+export interface HudLayout {
+  /** Panel width in pixels (a fixed column — the rows are short tally lines). */
+  readonly width: number;
+  /** Panel height in pixels: the padding + every row's line height (grows with the row count). */
+  readonly height: number;
+  /** The text rows, in paint order (top to bottom): headings then their tallies. */
+  readonly rows: readonly HudTextRow[];
+}
+
+/** Layout constants for {@link layoutHud} — a single fixed column of stacked text rows. */
+const HUD_PAD = 8; // px inset from the panel edge to the first row / the left margin
+const HUD_LINE_H = 16; // px vertical advance between successive rows
+const HUD_WIDTH = 200; // px panel width (a narrow side column)
+const HUD_INDENT = 12; // px extra left-indent for a tally row under its heading
+
+/**
+ * Lay out a {@link HudModel} into a {@link HudLayout} — the pure, self-verifiable bridge between the
+ * HUD *data* ({@link buildHud}) and its *pixels*, exactly analogous to how {@link buildScene} turns a
+ * snapshot into positioned {@link DrawItem}s before the GPU draws them.
+ *
+ * It stacks the model into labelled sections — a header (`Tribe N · tick T`, `Population: P`), then a
+ * **Jobs** section (one indented `job <id>: <count>` per tally, the idle sentinel rendered as
+ * `idle`), then a **Stocks** section (one indented `good <id>: <amount>` per tally) — assigning each a
+ * panel-relative `(x, y)`: rows advance by {@link HUD_LINE_H} top to bottom, tallies indented under
+ * their heading. The panel `height` is sized to exactly fit the rows (padding + count·lineHeight), so
+ * an empty tribe yields a short box and a busy one a tall one.
+ *
+ * Pure + total: a function of the model alone (no Pixi, no measured glyph metrics — the width is a
+ * fixed column and the height counts rows), so the same model lays out byte-identically every call.
+ * The human only judges the resulting typography; *which line lands where* is pinned here and tested.
+ */
+export function layoutHud(model: HudModel): HudLayout {
+  const rows: HudTextRow[] = [];
+  let y = HUD_PAD;
+  const push = (text: string, indent = false): void => {
+    rows.push({ x: HUD_PAD + (indent ? HUD_INDENT : 0), y, text });
+    y += HUD_LINE_H;
+  };
+
+  push(`Tribe ${model.tribe} · tick ${model.tick}`); // "·" middot separator
+  push(`Population: ${model.population}`);
+
+  push('Jobs');
+  for (const { jobType, count } of model.jobs) {
+    const label = jobType === IDLE_JOB ? 'idle' : `job ${jobType}`;
+    push(`${label}: ${count}`, true);
+  }
+
+  push('Stocks');
+  for (const { goodType, amount } of model.stocks) {
+    push(`good ${goodType}: ${amount}`, true);
+  }
+
+  // After the loop `y == HUD_PAD + rows.length·HUD_LINE_H` (top pad + every row already counted);
+  // add one bottom pad symmetric with the top inset so the box hugs the content.
+  return { width: HUD_WIDTH, height: y + HUD_PAD, rows };
+}

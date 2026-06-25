@@ -1,6 +1,6 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
-import { IDLE_JOB, buildHud } from '../src/index.js';
+import { type HudModel, IDLE_JOB, buildHud, layoutHud } from '../src/index.js';
 
 /**
  * Unit tests for the pure HUD-model layer — the part of the HUD an agent can self-verify (the pixels
@@ -104,5 +104,63 @@ describe('buildHud', () => {
   it('returns an empty-but-shaped model for a tribe with nothing', () => {
     const hud = buildHud(snapshotOf([settler(1, 1, 5)]), 0);
     expect(hud).toEqual({ tick: 1, tribe: 0, population: 0, jobs: [], stocks: [] });
+  });
+});
+
+/**
+ * Unit tests for the pure HUD *layout* layer — the bridge from the HUD data ({@link buildHud}) to its
+ * pixels, exactly as {@link buildScene}'s positioned draw list is for the world scene. They pin the
+ * load-bearing layout a human would otherwise eyeball: which line is emitted, in what order, and at
+ * what panel-relative `(x, y)`. The typography (font/colour) is the human-judged half and not tested.
+ */
+const HUD_PAD = 8; // mirrors the layout constants in hud.ts (kept local so a drift is caught)
+const HUD_LINE_H = 16;
+const HUD_INDENT = 12;
+
+/** A minimal HudModel for layout tests (the data half is covered by the buildHud suite above). */
+function model(over: Partial<HudModel> = {}): HudModel {
+  return { tick: 0, tribe: 0, population: 0, jobs: [], stocks: [], ...over };
+}
+
+describe('layoutHud', () => {
+  it('emits the header + section headings for an empty model, stacked by line height', () => {
+    const layout = layoutHud(model({ tick: 7, tribe: 2, population: 0 }));
+    expect(layout.rows).toEqual([
+      { x: HUD_PAD, y: HUD_PAD, text: 'Tribe 2 · tick 7' },
+      { x: HUD_PAD, y: HUD_PAD + HUD_LINE_H, text: 'Population: 0' },
+      { x: HUD_PAD, y: HUD_PAD + 2 * HUD_LINE_H, text: 'Jobs' },
+      { x: HUD_PAD, y: HUD_PAD + 3 * HUD_LINE_H, text: 'Stocks' },
+    ]);
+  });
+
+  it('indents each job/stock tally under its heading and labels the idle sentinel "idle"', () => {
+    const layout = layoutHud(
+      model({
+        population: 3,
+        jobs: [
+          { jobType: IDLE_JOB, count: 1 },
+          { jobType: 5, count: 2 },
+        ],
+        stocks: [{ goodType: 2, amount: 14 }],
+      }),
+    );
+    // The tally rows carry the indent; headings stay at the left margin.
+    const tallyRows = layout.rows.filter((r) => r.x === HUD_PAD + HUD_INDENT);
+    expect(tallyRows.map((r) => r.text)).toEqual(['idle: 1', 'job 5: 2', 'good 2: 14']);
+    // Every row advances by exactly one line height, top to bottom, no gaps.
+    layout.rows.forEach((r, i) => expect(r.y).toBe(HUD_PAD + i * HUD_LINE_H));
+  });
+
+  it('sizes the panel height to the row count (padding + lines + bottom padding)', () => {
+    const empty = layoutHud(model()); // 4 rows: header, population, Jobs, Stocks
+    expect(empty.height).toBe(HUD_PAD + 4 * HUD_LINE_H + HUD_PAD);
+    const busy = layoutHud(model({ jobs: [{ jobType: 1, count: 1 }] })); // +1 row
+    expect(busy.height).toBe(empty.height + HUD_LINE_H);
+    expect(busy.width).toBe(empty.width); // width is a fixed column, height grows with content
+  });
+
+  it('is byte-identical for the same model (deterministic — never reshuffles between equal frames)', () => {
+    const m = model({ tick: 3, jobs: [{ jobType: 1, count: 2 }], stocks: [{ goodType: 9, amount: 5 }] });
+    expect(layoutHud(m)).toEqual(layoutHud(m));
   });
 });
