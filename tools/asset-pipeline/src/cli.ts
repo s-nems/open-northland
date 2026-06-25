@@ -535,6 +535,14 @@ export interface MapDatConversion {
  * grid, a dims/length mismatch, corrupt RLE) is logged and skipped — a batch over many maps must not
  * abort on one bad file, matching the other tree-walk stages. An output-write failure (and a missing
  * `gameDir`) propagates: that's an environmental error, not a per-file boundary failure.
+ *
+ * KNOWN: ids collapse on the folder name, so two maps in same-named folders under different roots
+ * (e.g. `Data/maps/oasis_o_plenty` vs `CnModMaps/oasis_o_plenty`) write the same `<id>.json`
+ * last-write-wins (on the real game, 130 `map.dat` → 125 files). This is *deliberately* the same
+ * `mapIdFromPath` collapse {@link decodeMapTree} applies to `map.cif`, so the terrain artifact and its
+ * `MapInfo` agree on the id and stay joinable — a path-scoped unique id would have to change both legs
+ * together. (A localization sub-folder like `WICHRY_ZIMY/text/map.dat` likewise slugs to `text`; that
+ * too matches the existing `map.cif` behavior.)
  */
 export async function convertMapDatTree(gameDir: string, outDir: string): Promise<MapDatConversion[]> {
   const found: string[] = [];
