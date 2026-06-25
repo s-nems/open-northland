@@ -123,6 +123,32 @@ describe('JobSystem — idle settlers take open workplace jobs', () => {
     expect(sim.world.get(idle, Settler).jobType).toBeNull(); // gated out: no carpenter alive yet
   });
 
+  it('does not assign a job gated by jobEnablesJob until its enabling job is present', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    // Gate the carpenter job itself behind a woodcutter being present: `jobEnablesJob 1 2` (a
+    // woodcutter unlocks the carpenter trade). The sawmill is house-ungated, so only this `job` edge
+    // can hold the assignment back.
+    sim.content.tribes[0].jobEnables.push({ jobType: WOODCUTTER, kind: 'job', targetId: CARPENTER });
+    placeBuilding(sim, SAWMILL, 5, 5);
+    const idle = settler(sim, null);
+
+    jobSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(idle, Settler).jobType).toBeNull(); // gated out: no woodcutter alive yet
+  });
+
+  it('assigns a jobEnablesJob-gated job once a settler of its enabling job exists', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    sim.content.tribes[0].jobEnables.push({ jobType: WOODCUTTER, kind: 'job', targetId: CARPENTER });
+    placeBuilding(sim, SAWMILL, 5, 5);
+    settler(sim, WOODCUTTER); // an enabling-job settler is now alive in the tribe
+    const idle = settler(sim, null);
+
+    jobSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(idle, Settler).jobType).toBe(CARPENTER); // unlocked: woodcutter present
+  });
+
   it('gates assignment on the settler clearing the job needforjob XP threshold', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     // Producing a carpenter requires 30 XP in the wood track (typeId 1) before taking the job.
