@@ -294,9 +294,14 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
             corrupt/non-map file, and feed the records into `buildIr`→`content/ir.json`. **Hands-on:**
             `npm run pipeline` on the real game → **13 maps** (tutorials 1-7 = type 1, `campaign [100,N]`;
             skirmish/multiplayer = type 4, no campaign), each with distinct dims + a 16-byte GUID.
-      - [ ] **Map tile/landscape grid + mission scripting** — the binary terrain grid (the Phase-2
-            cell-graph input, if stored outside the logic-header `CStringArray`) and the `MissionData`/
-            `StaticObjects` campaign layer (Phase 5). Still open; metadata-only above.
+      - [ ] **Map tile/landscape grid + mission scripting** — **located, decode pending.** The binary
+            terrain grid (the Phase-2 cell-graph input) is **not** in `map.cif` (only the logic-header
+            `CStringArray`) — it lives in the sibling **`map.dat`**, a flat `hoix`-chunk container
+            (0x20-byte headers; oracle `CIoHelper.cs`). Structure now fully mapped (`lsiz`=dims matching
+            `mapsize`, `lm**` layers = per-cell grids as **X8-packed** streams reusing the `.bmd` codec;
+            see docs/SOURCES.md "`map.dat` chunk container"). Next: a `decoders/mapdat.ts` chunk reader +
+            X8-unpack on the `lm**` payloads, identify the landscape-type tag → feed `buildTerrainGraph`.
+            The `MissionData`/`StaticObjects` campaign layer (Phase 5) is still separate.
 - **Exit:** `npm run pipeline` produces a validated `content/` (types + atlases + one map), decoded
   graphics verified against the oracle.
 
@@ -312,11 +317,13 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 > renderer consuming the draw list + a deterministic headless `?shot` entry + a committed Playwright
 > script) now produces a reproducible PNG — eyeballed gross-correct (iso terrain behind feet-sorted
 > sprites), pixel fidelity still deferred to a human. **Next smallest step: feed the terrain graph
-> from a decoded `map.cif` tile grid** (the one open Phase-2 terrain leg — gated on locating the map
-> binary tile grid, see Risks), or atlas sprites in place of placeholder geometry. (A "per-type
-> walk-cost field" is *not* a pending step: `landscapetypes.ini` has no movement weight — only
-> `maximumValency` + placement flags — so uniform unit cost is faithful.) Lines tagged *(core done…)*
-> pass tests today but await one wiring piece.
+> from a decoded map tile grid** — the grid is now **located** in the sibling `map.dat` (a `hoix`-chunk
+> container, `lm**` layers X8-packed like `.bmd`; `map.cif` holds only the logic header), so the next
+> leg is a `decoders/mapdat.ts` chunk reader + X8-unpack → identify the landscape-type tag →
+> `buildTerrainGraph` (see Risks/SOURCES.md) — or atlas sprites in place of placeholder geometry. (A
+> "per-type walk-cost field" is *not* a pending step: `landscapetypes.ini` has no movement weight —
+> only `maximumValency` + placement flags — so uniform unit cost is faithful.) Lines tagged *(core
+> done…)* pass tests today but await one wiring piece.
 - [x] **CommandSystem + serializable command schema** — the ONLY way state mutates. Done —
       `systems/command.ts` (`commandSystem`, first in `SYSTEM_ORDER`) drains a per-sim
       {@link CommandQueue} (`commands.ts`) each tick and applies each serializable {@link Command}
@@ -340,7 +347,9 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 - [ ] Terrain as a **cell-adjacency graph** with per-type valency + uniform walk cost (from
       `landscapetypes.ini`). *Not* the triangle geometry — that's render-only.
       *(core done — graph builder + `world.terrain` resource wired. The only open leg is feeding the
-      grid from a decoded `map.cif` tile grid. NOTE corrected on inspection: a "per-type walk-cost
+      grid from a decoded map tile grid — now **located** in the sibling `map.dat` (a `hoix`-chunk
+      container; `map.cif` holds only the logic header), the `lm**` layers X8-packed like `.bmd`;
+      decode pending, see SOURCES.md "`map.dat` chunk container". NOTE corrected on inspection: a "per-type walk-cost
       field" is NOT a pending extraction — `landscapetypes.ini` carries no movement weight, only
       `maximumValency` (capacity) + the `allowedon{land,water,everything}` placement flags; uniform
       unit cost is the faithful model. A variable cost would need a source that actually has one.)*
@@ -359,7 +368,9 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
         `cellManhattanDistance` is the fixed-point heuristic seed for the pathfinder. **Hands-on:** built
         `dist/` on a 5×4 grid w/ a 4-cell water river → 16 walkable / 4 blocked, canonical neighbour
         order stable across rebuilds, water dropped from walkable edges, absent-typeId guard fires.
-        **Still to do:** feed the graph from a decoded map's tile grid. (Walk cost stays uniform
+        **Still to do:** feed the graph from a decoded map's tile grid (the grid is now located in
+        `map.dat` — a `hoix`-chunk container, `lm**` layers X8-packed; decode pending, see SOURCES.md).
+        (Walk cost stays uniform
         ONE — a non-goal to vary, confirmed on inspecting `landscapetypes.ini`: it has no
         movement-weight property, only `maximumValency` + placement-layer flags; uniform unit cost
         is faithful to the engine.)
@@ -631,11 +642,16 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 - **Settler AI fidelity** — the soul, undocumented. Approach = planner over the data-extracted
   atomic vocabulary; base atomic timings/yields come from `atomicanimations.ini` (see below), with
   only fine-tuning by observation, kept as data so tuning is a diff. See docs/ECS.md "Settler AI".
-- **Map binary tile grid** — the per-cell landscape grid (the Phase-2 nav-graph input) if stored
-  outside the logic-header `CStringArray`; not yet located. Map metadata decodes; the grid doesn't.
-  This grid (not `landscapetypes.ini`) is also the only plausible home for any per-cell walk weight —
-  the type table has none (confirmed: only `maximumValency` + placement flags), so uniform walk cost
-  stays faithful unless a real attribute turns up here.
+- **Map binary tile grid** — **located** (was "not yet located"): the per-cell landscape grid (the
+  Phase-2 nav-graph input) lives in the sibling **`map.dat`**, NOT in `map.cif` (which is only the
+  logic-header `CStringArray`). `map.dat` is a flat `hoix`-chunk container (0x20-byte headers; oracle
+  `CIoHelper.cs`); `lsiz` gives the dims, the `lm**` layers carry the per-cell grids as **X8-packed**
+  streams (same codec as `.bmd`). Structure mapped + oracle-confirmed; the remaining work is decoding
+  the packed `lm**` layers (a `decoders/mapdat.ts` reusing the `.bmd` X8-unpack) and identifying the
+  landscape-type tag → `buildTerrainGraph`. See docs/SOURCES.md "`map.dat` chunk container". This grid
+  (not `landscapetypes.ini`) is also the only plausible home for any per-cell walk weight — the type
+  table has none (confirmed: only `maximumValency` + placement flags), so uniform walk cost stays
+  faithful unless a real attribute turns up in a `map.dat` layer.
 - **Combat & campaign scripting scope** — both larger than one roadmap line implies.
 - **Determinism drift** — every new system must keep golden state + trace tests green.
 

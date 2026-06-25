@@ -68,8 +68,45 @@ Verified end-to-end (decoder output): `housetypes.cif` (798 records), `weapontyp
 `mapguid`, `MissionData`). A map's **declarative logic-header metadata** (`mapsize`/`mapguid` from
 `logiccontrol` + `misc_maptype`/`misc_mapname`) is now extracted to a `MapInfo` IR record by
 `decoders/ini.ts` `extractMapInfo` and wired into the pipeline (`cli.ts` `decodeMapTree` → 13 maps).
-The map's **binary tile grid** (if separate from this header) is a Phase-2 cell-graph concern, and its
-`MissionData`/`StaticObjects` scripting is the Phase-5 campaign layer — neither is extracted yet.
+The map's **binary tile grid is NOT in `map.cif`** — that file is *only* the logic-header
+`CStringArray` (0 trailing bytes, confirmed on two real maps). The grid lives in the sibling
+**`map.dat`** (see below); `MissionData`/`StaticObjects` scripting is the Phase-5 campaign layer.
+
+### `map.dat` chunk container (located Phase-2 spike — tile grid found, decode pending)
+
+The per-cell landscape grid + entity map sits beside `map.cif` as **`map.dat`** (e.g.
+`CnModMaps/tutorial_001/{map.cif 19 KB, map.dat 576 KB}`). It is a flat sequence of **`hoix`
+chunks** — the engine's `CIoHelper` container format (oracle: `NC2Logic/CIoHelper.cs`
+`SIoHelperChunk` / `IO_File_Chunk_*`; **format only**, not its architecture). Each chunk is a
+**0x20-byte header** then `Length` payload bytes, read sequentially to EOF (0 trailing bytes on
+both probed maps):
+
+```
++0x00 u32 Marker   = 0x78696F68 "hoix"
++0x04 u32 Id       = a 4-char little-endian subtag (e.g. "lsiz","lmhe") — Id>>byte == reversed ASCII
++0x08 u32 Version
++0x0C u32 Length   = payload size in bytes (0 for bracket/group chunks)
++0x10 u32 Depth    = nesting level (groups bracket sub-chunks; MaxChunkDepth=5)
++0x14 u32 Checksum
++0x18 u32 / +0x1C u32 reserved
+```
+
+Chunk order on a real tutorial map (40 chunks): a **landscape group** (`logi`,`lgmm` brackets →
+`lsiz`,`lmhe`,`lmpa/lmpb`,`lmlt`,`lmlv`,`lmms`,… terminated by `xend`) then an **entity/object-map
+group** (`emmm` → `embr`,`empa/empb`,`emt1..4`,`emla`,… → `xend`) then `tend`. Decoded facts:
+- **`lsiz`** payload = `[u32 width][u32 height]` — cross-checks the `map.cif` `mapsize` **exactly**
+  (tutorial_001 128×218, tutorial_002 142×146).
+- **`lmhe`** (height/elevation) ≈ `cells × 1.00` bytes → **one byte per cell, lightly packed**.
+- The other `lm**`/`em**` layer payloads are **X8-packed** compressed streams (each begins with the
+  `"pck"`/`"X8el"` signature — the **same packed-line codec the `.bmd` decoder already implements**,
+  `CBobManager.cs`), so their size varies per map. The landscape-**type** grid (the Phase-2
+  cell-graph input) is one of these packed `lm**` layers (`lmlt`/`lmlv` are the prime candidates),
+  not a raw byte array.
+
+**Status:** structure fully mapped + oracle-confirmed; **not yet decoded**. The remaining work is a
+`decoders/mapdat.ts` chunk reader + reusing the `.bmd` X8-unpack on the per-layer payloads, then
+identifying which `lm**` tag is the landscape-type id grid → feeds `buildTerrainGraph`. (No decoded
+bytes are committed — `map.dat` is copyrighted input, like every other game file.)
 - **Atomic actions are the behavior vocabulary** (see docs/ECS.md) and are partly free in readable
   data: `tribetypes.ini` `setatomic` (atomic→animation per tribe), `jobtypes.ini` `allowatomic`,
   `goodtypes.ini` `atomicFor*`. The atomic *timings/effects* live in `atomicanimations.cif` — **but
