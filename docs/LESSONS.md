@@ -95,3 +95,11 @@ the next iteration inherits it.
   test until you `npm run build` — green-looking source, runtime-missing symbol. After adding an export
   consumed by a *different* package's test, rebuild before `npm test` (or the failure looks like a typo,
   not a stale build). (tooling)
+- [11cde56] The browser app can't read the gitignored repo-root `content/` directly (it's outside the
+  vite root, and `fetch` needs an HTTP path). Bridge it with a **vite dev-server middleware**
+  (`configureServer` → `server.middlewares.use('/maps', …)`) that serves the out-of-root files — but
+  note vite **strips the mount prefix**, so `req.url` inside the handler is the path *after* `/maps`
+  (e.g. `/oasis.json`, not `/maps/oasis.json`). Guard traversal at two layers (a `^[a-z0-9_-]+$` id
+  regex on the fetch side + a resolved-path `startsWith(root + sep)` check in the middleware), and keep
+  the consumer's load path **fallback-on-failure** so a checkout WITHOUT the gitignored content still
+  runs. This is dev/shot-server only — a production `vite build` won't serve it. (app/render)
