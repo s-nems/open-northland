@@ -264,6 +264,17 @@ the next iteration inherits it.
   green — the thrash only bites a hand-built fixture. When you add a drive that moves an entity to a
   predicate-matched target, make the target predicate IDENTICAL to the predicate that holds it there
   (copy the component query), don't approximate it. (sim/ai)
+- [71f13ab] An explicit record component (`JobAssignment{workplace}`) needs a *lifecycle teardown*, not
+  just creation: a settler bound to a building keeps a dangling binding to a DEAD entity when the
+  building is destroyed — consumers only *defend* against the stale binding (treat-as-no-station), none
+  *clear* it, so the worker is neither productive (workplace gone) nor re-employable (still looks
+  bound). Put the teardown at the single destruction seam: `demolish` is the *only* `world.destroy`
+  call site in the whole sim (no combat/decay path yet), so unbinding there covers every case today —
+  and the cleanup belongs in the command handler, not in the generic `world.destroy` (which mustn't
+  know about `JobAssignment`). When you add a component that *references another entity*, ask "what
+  removes it when the referent dies?" the same iteration you add it. And: collect-then-mutate when a
+  `query(A, B)` loop calls `world.remove(e, B)` — removing from the store the query may be iterating is
+  a footgun; snapshot the matches first, then mutate. (sim/architecture)
 - [3733380] Replacing a derived stand-in (tribe-wide head-count, on-tile presence) with an explicit
   record component (`JobAssignment{workplace}`) makes the new component the single source of truth — but
   the goldens spawn entities (the carpenter) *pre-employed onto their station* that never go through the
