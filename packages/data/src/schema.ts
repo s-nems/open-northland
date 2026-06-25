@@ -235,9 +235,10 @@ export const VehicleType = z.object({
   name: z.string().optional(),
   /**
    * `stockslots` — how many goods units the vehicle can haul at once: the carrier's carry capacity
-   * (handcart 15, oxcart 30, ship small 50, ship big 200; the catapult carries 0). This is the param
-   * the later multi-good carrier/hauling slice consumes — a carrier with a vehicle moves a batch up to
-   * `stockSlots`, not a single unit. Defaults 0 (no record observed without it).
+   * (handcart 15, oxcart 30, ship small 50, ship big 200; the catapult carries 0). The sim's
+   * `carrierCarryCapacity` (sim's `systems/progression.ts`) consumes this — a carrier hauls a batch up
+   * to the largest `stockSlots` among its tribe's unlocked vehicles, not a single unit. Defaults 0 (no
+   * record observed without it).
    */
   stockSlots: z.number().int().nonnegative().default(0),
   /** `passengerslots` — how many settlers can ride (ships carry 9/19; carts and the catapult carry 0). */

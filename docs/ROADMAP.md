@@ -72,11 +72,14 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       now lands in the IR (`VehicleType`, `Data/logic/vehicletypes.ini`), the param the carrier slice
       consumes, and the **`jobEnablesVehicle` cross-ref is now resolved** in `validateCrossReferences`
       (the `vehicle` kind keys into `VehicleType.typeId`, the distinct `logicvehicletype` namespace — the
-      real data's 50 vehicle edges, ids `{1..5}`, all land within the 6-entry table). **Next:** wire
-      `stockSlots` into the sim — give a carrier a `stockSlots` carry capacity so it hauls a batch (today
-      it moves one unit/swing via the hardcoded `CARRY_LOAD=1` with no vehicle), then multiple carriers,
-      and have the sim *consume* the `vehicle` `jobEnables` edge kind (the cross-ref now resolves; the
-      progression read side still only consumes the `house`/`good` kinds — see `tribeUnlockEnabled`).
+      real data's 50 vehicle edges, ids `{1..5}`, all land within the 6-entry table). **`stockSlots` is now
+      wired into the sim** — a carrier hauls a batch sized by `carrierCarryCapacity` (`systems/progression.ts`):
+      the largest `stockSlots` among the vehicle types its tribe has UNLOCKED via `jobEnablesVehicle`,
+      falling back to 1 (a single unit on foot) before any vehicle is available — the **sim's first
+      consumer of the `vehicle` `jobEnables` edge kind** (the read side now handles `house`/`good`/`vehicle`;
+      only `job` awaits its slice). The carrier→vehicle PAIRING (a per-carrier vehicle entity, cart logistics)
+      is still approximated (see docs/FIDELITY.md). **Next:** model multiple carriers / a per-carrier vehicle
+      entity (so a carrier visibly fetches a cart), and consume the remaining `job` `jobEnables` edge kind.
 - [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`)
       → population capacity → the births→housing→births loop.
 - [ ] ReproductionSystem: families, children growing up, gated by housing.

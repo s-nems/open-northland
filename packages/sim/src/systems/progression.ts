@@ -125,16 +125,17 @@ export function goodEnabled(world: World, ctx: SystemContext, tribe: number, goo
 /**
  * Shared read side of the `jobEnables` tech-graph for a single `(kind, targetId)`: is the target
  * unlocked for `tribe`? The target is enabled when either no edge of `kind` gates it (ungated), or a
- * settler of any gating job is currently alive in the tribe. {@link buildingEnabled} (kind `house`)
- * and {@link goodEnabled} (kind `good`) are the two consumers; the `job`/`vehicle` kinds await their
- * JobSystem/vehicle slices. Determinism: a pure membership query (does *some* enabling-job settler
- * exist?), order-independent like `Map.has`; a tribe absent from content gates nothing.
+ * settler of any gating job is currently alive in the tribe. {@link buildingEnabled} (kind `house`),
+ * {@link goodEnabled} (kind `good`), and {@link carrierCarryCapacity} (kind `vehicle`) are the
+ * consumers; the `job` kind awaits its JobSystem slice. Determinism: a pure membership query (does
+ * *some* enabling-job settler exist?), order-independent like `Map.has`; a tribe absent from content
+ * gates nothing.
  */
 function tribeUnlockEnabled(
   world: World,
   ctx: SystemContext,
   tribe: number,
-  kind: 'house' | 'good',
+  kind: 'house' | 'good' | 'vehicle',
   targetId: number,
 ): boolean {
   const tribeType = ctx.content.tribes.find((t) => t.typeId === tribe);
@@ -153,6 +154,41 @@ function tribeUnlockEnabled(
     if (s.tribe === tribe && s.jobType !== null && enablingJobs.has(s.jobType)) return true;
   }
   return false;
+}
+
+/**
+ * The carry batch a `tribe`'s carrier hauls in one swing: the largest `stockSlots` (vehicle carry
+ * capacity, `vehicletypes`) among the vehicle types the tribe has currently UNLOCKED, or `1` (a
+ * single unit carried on foot) when the tribe has unlocked no vehicle.
+ *
+ * This is the sim's first consumer of the `vehicle` kind of the `jobEnables` tech-graph — the
+ * sibling of {@link buildingEnabled}/{@link goodEnabled} on the `vehicle` axis. A vehicle is
+ * unlocked exactly like a house/good: when **no** `jobEnablesVehicle` edge gates its `typeId`
+ * (an ungated start vehicle) OR a settler of any gating job is alive in the tribe. The capacity is
+ * then the best `stockSlots` over the unlocked set — a carrier hauls with the biggest cart its
+ * tribe can field (handcart 15 → oxcart 30, etc.), and falls back to the on-foot single unit before
+ * any cart is available. The `vehicle` `targetId` keys into `VehicleType.typeId` (the distinct
+ * `logicvehicletype` namespace), the same id the `jobEnablesVehicle` edge resolved against.
+ *
+ * FIDELITY: the *capacity numbers* are the extracted `stockSlots` param and the *unlock* is the
+ * extracted `jobEnablesVehicle` edge — both pinned to data. What is APPROXIMATED (see
+ * docs/FIDELITY.md) is the carrier→vehicle PAIRING: the original assigns a specific vehicle per
+ * haul, and a carrier visibly fetches/parks a cart; here a carrier abstractly hauls at its tribe's
+ * best unlocked capacity (no per-carrier vehicle entity yet). The slice's point is to consume the
+ * `stockSlots`/`vehicle`-edge data, not to model cart logistics — that is a later vehicle-entity slice.
+ *
+ * Determinism: a pure read over content (vehicles + the tribe's fixed-order `jobEnables`) and a
+ * membership query over live settlers (order-independent, like {@link tribeUnlockEnabled}); the max
+ * is associative/commutative so the scan order can't change the result. No RNG, no wall-clock.
+ */
+export function carrierCarryCapacity(world: World, ctx: SystemContext, tribe: number): number {
+  let best = 1; // on-foot single-unit carry — the floor when the tribe has unlocked no vehicle
+  for (const vehicle of ctx.content.vehicles) {
+    if (vehicle.stockSlots <= best) continue; // can't beat the running best — skip the unlock check
+    if (!tribeUnlockEnabled(world, ctx, tribe, 'vehicle', vehicle.typeId)) continue; // not unlocked yet
+    best = vehicle.stockSlots;
+  }
+  return best;
 }
 
 /**

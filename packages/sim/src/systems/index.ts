@@ -12,7 +12,13 @@ import {
   needsSystem,
 } from './needs.js';
 import { productionSystem } from './production.js';
-import { experienceRequirementMet, grantWorkExperience, settlerMeetsNeed, trackFor } from './progression.js';
+import {
+  carrierCarryCapacity,
+  experienceRequirementMet,
+  grantWorkExperience,
+  settlerMeetsNeed,
+  trackFor,
+} from './progression.js';
 import { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem } from './routing.js';
 import {
   cleanupSystem,
@@ -47,7 +53,7 @@ export { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem };
 export { productionSystem };
 export { atomicSystem };
 export { jobSystem };
-export { experienceRequirementMet, grantWorkExperience, settlerMeetsNeed, trackFor };
+export { carrierCarryCapacity, experienceRequirementMet, grantWorkExperience, settlerMeetsNeed, trackFor };
 export {
   cleanupSystem,
   combatSystem,
