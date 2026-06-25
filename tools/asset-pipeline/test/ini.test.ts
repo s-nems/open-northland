@@ -1,4 +1,4 @@
-import { parseContentSet } from '@vinland/data';
+import { AtomicAnimation, TribeType, parseContentSet } from '@vinland/data';
 import { describe, expect, it } from 'vitest';
 import type { CifLine } from '../src/decoders/cif.js';
 import {
@@ -507,16 +507,36 @@ describe('fillBuildingRecipes', () => {
   // should get an empty-input recipe (it makes a good with no recipe of its own).
   const GOODS = extractGoods(parseIniSections(GOODTYPES_INI), { file: 'goodtypes.ini' });
   const src = { file: 'houses.ini', block: 'logichousetype', layer: 'mod' as const };
-  const building = (typeId: number, id: string, produces: number[]) => ({
+  const building = (
+    typeId: number,
+    id: string,
+    produces: number[],
+    workers: { jobType: number; count: number }[] = [],
+  ) => ({
     typeId,
     id,
     kind: 'workplace',
     homeSize: 0,
-    workers: [],
+    workers,
     stock: [],
     produces,
     source: src,
   });
+  // A minimal reference tribe binding the produce atomics of coin (8 -> atomic 51) and potion
+  // (9 -> atomic 73) for worker job 5, plus the animations those bindings name with their lengths.
+  const tribe = (typeId: number, bindings: [number, number, string][]) =>
+    TribeType.parse({
+      typeId,
+      id: `tribe_${typeId}`,
+      atomicBindings: bindings.map(([jobType, atomicId, animation]) => ({
+        jobType,
+        atomicId,
+        animation,
+      })),
+      source: src,
+    });
+  const anim = (name: string, length: number) =>
+    AtomicAnimation.parse({ id: name, name, length, source: src });
 
   it('joins a workplace output good -> that good`s productionInputs into recipe.inputs', () => {
     const [mint] = fillBuildingRecipes([building(13, 'mint', [8])], GOODS);
@@ -569,6 +589,82 @@ describe('fillBuildingRecipes', () => {
     const input = building(13, 'mint', [8]);
     fillBuildingRecipes([input], GOODS);
     expect(input).not.toHaveProperty('recipe');
+  });
+
+  // Recipe `ticks` resolution: worker jobType + produced good's atomicForProduction -> the reference
+  // tribe's setatomic animation -> that animation's length. coin (8) -> atomic 51; potion (9) -> 73.
+  it('resolves recipe.ticks from the produce-atomic animation length via the reference tribe', () => {
+    const tribes = [tribe(1, [[5, 51, 'coin_produce']])];
+    const anims = [anim('coin_produce', 80)];
+    const [mint] = fillBuildingRecipes(
+      [building(13, 'mint', [8], [{ jobType: 5, count: 1 }])],
+      GOODS,
+      tribes,
+      anims,
+    );
+    expect(mint?.recipe?.ticks).toBe(80);
+  });
+
+  it('picks the lowest-typeId tribe as the reference (deterministic, source-order-independent)', () => {
+    // Two tribes bind the same (job 5, atomic 51) to different-length animations; tribe 1 wins.
+    const tribes = [tribe(3, [[5, 51, 'coin_slow']]), tribe(1, [[5, 51, 'coin_fast']])];
+    const anims = [anim('coin_slow', 200), anim('coin_fast', 60)];
+    const [mint] = fillBuildingRecipes(
+      [building(13, 'mint', [8], [{ jobType: 5, count: 1 }])],
+      GOODS,
+      tribes,
+      anims,
+    );
+    expect(mint?.recipe?.ticks).toBe(60);
+  });
+
+  it('falls back to a later output good when the primary output`s produce-atomic does not resolve', () => {
+    // produces [8, 9]: coin (atomic 51) is unbound; potion (atomic 73) resolves to length 120.
+    const tribes = [tribe(1, [[5, 73, 'potion_produce']])];
+    const anims = [anim('potion_produce', 120)];
+    const [lab] = fillBuildingRecipes(
+      [building(15, 'multi', [8, 9], [{ jobType: 5, count: 1 }])],
+      GOODS,
+      tribes,
+      anims,
+    );
+    expect(lab?.recipe?.ticks).toBe(120);
+  });
+
+  it('falls back to the default ticks when no produced good`s produce-atomic resolves a length', () => {
+    // Worker present, but no tribe binds (job 5, atomic 51), so the chain breaks -> default 20.
+    const [mint] = fillBuildingRecipes(
+      [building(13, 'mint', [8], [{ jobType: 5, count: 1 }])],
+      GOODS,
+      [tribe(1, [[5, 99, 'unrelated']])],
+      [anim('unrelated', 10)],
+    );
+    expect(mint?.recipe?.ticks).toBe(20);
+  });
+
+  it('falls back to the default ticks when the building has no worker (no jobType to key the binding)', () => {
+    const [mint] = fillBuildingRecipes(
+      [building(13, 'mint', [8])], // workers: [] -> no jobType
+      GOODS,
+      [tribe(1, [[5, 51, 'coin_produce']])],
+      [anim('coin_produce', 80)],
+    );
+    expect(mint?.recipe?.ticks).toBe(20);
+  });
+
+  it('falls back to the default ticks when tribes/animations are absent (back-compat)', () => {
+    const [mint] = fillBuildingRecipes([building(13, 'mint', [8], [{ jobType: 5, count: 1 }])], GOODS);
+    expect(mint?.recipe?.ticks).toBe(20);
+  });
+
+  it('skips an animation of length 0 (not a real cycle) and falls back', () => {
+    const [mint] = fillBuildingRecipes(
+      [building(13, 'mint', [8], [{ jobType: 5, count: 1 }])],
+      GOODS,
+      [tribe(1, [[5, 51, 'coin_zero']])],
+      [anim('coin_zero', 0)],
+    );
+    expect(mint?.recipe?.ticks).toBe(20);
   });
 });
 
