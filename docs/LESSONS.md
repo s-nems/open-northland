@@ -135,3 +135,12 @@ the next iteration inherits it.
   change. Gate it behind an OPT-IN flag (`?atlas`, `--atlas`) so the byte-reproducible default
   (`npm run shot`) is untouched — and forward the flag through the harness script too (`shot.mjs`), or
   the "real entry point" can't reach the new path even though the app code supports it. (render/app)
+- [a9dd864] An `.ini` line is one of two shapes — a *repeated single-value* key (`allowatomic N`,
+  many lines) or a *single multi-value* line (`productionInputGoods 5 6 6`, one line, all tokens on it).
+  The existing `getIntList` helper only reads `values[0]` of each matching property, so it silently
+  drops every token but the first of a multi-value line (it was built for the repeated-key shape). For a
+  multi-value line use a helper that reads ALL of `findProp(...).values`; eyeball the real source's
+  grammar for the key before reusing a list helper, the names don't tell you which shape it is. The mod
+  often has no readable twin for a base table (`goodtypes` ships only as base `Data/logic/*.ini`), so
+  golden-rule-#4 "prefer the mod `.ini`" can fall through to the base `.ini` — that's still readable, not
+  the encrypted `.cif`. (pipeline/format)
