@@ -17,10 +17,12 @@
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "dev": "npm run dev --workspace @vinland/app",
+    "shot": "npm run shot --workspace @vinland/app --",
     "pipeline": "npm run start --workspace @vinland/asset-pipeline --"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "playwright": "^1.61.1",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
   },

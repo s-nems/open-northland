@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --build && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "shot": "node scripts/shot.mjs"
   },
   "dependencies": {
     "@vinland/data": "*",

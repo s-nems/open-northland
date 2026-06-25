@@ -107,12 +107,15 @@ Playwright MCP**:
   inner DOM (Canvas-2D, then Pixi/WebGL). So the MCP collapses to "a screenshot, statefully,
   outside git." A committed script is reproducible, lives in the repo, runs in CI, and can graduate
   to golden-image diffs. (The MCP is fine for a one-off "boot it and look," never the backbone.)
-- **Prerequisite — a deterministic, headless render entry.** A harness needs *"render scenario X at
-  seed S, advance N ticks, draw one frame, then signal ready"* — not the wall-clock
-  `requestAnimationFrame` loop in `packages/app/src/main.ts`. The sim is already seed-deterministic;
-  the missing piece is a non-RAF "step N, draw once, set a ready flag" mode to wait on. Build the
-  harness in the **same slice that first makes the app watchable** (the Phase-2 render line); there
-  is nothing to screenshot until then.
+- **Prerequisite — a deterministic, headless render entry (now built).** The harness needs *"render
+  scenario X at seed S, advance N ticks, draw one frame, then signal ready"* — not the wall-clock
+  `requestAnimationFrame` loop. That entry now exists: `packages/app/src/shot.ts` (`?shot[&seed&ticks]`)
+  builds the vertical slice (`vertical-slice.ts`), steps a fixed N ticks, draws ONE frame via the Pixi
+  renderer (`packages/render/src/pixi-renderer.ts`), and sets `window.__vinlandShotReady`. `npm run
+  shot` (`packages/app/scripts/shot.mjs`) boots the app's Vite dev server, drives Chromium via the
+  committed Playwright script, waits on that flag, and writes a PNG (`--seed/--ticks/--out`). The
+  renderer draws placeholder geometry (iso tile diamonds + feet-anchored body boxes) — atlas sprites
+  are a later leg, since real bobs are copyrighted/gitignored.
 - **Golden images are secondary and brittle.** The rendered frame is *not* byte-stable across
   machines (float interpolation, devicePixelRatio, canvas AA, GPU/fonts) even though the sim is.
   Start with *eyeball-the-PNG*; add `toHaveScreenshot()` baselines only once the render stabilizes,
