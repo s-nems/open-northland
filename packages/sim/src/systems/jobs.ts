@@ -43,7 +43,7 @@ export const jobSystem: System = (world, ctx) => {
 
     if (settler.jobType !== null) {
       // Pass 1 — adopt a pre-employed, unbound settler standing on a workplace it staffs.
-      const here = workplaceStaffedHereBy(world, ctx, e, settler.jobType);
+      const here = workplaceStaffedHereBy(world, ctx, e, settler.tribe, settler.jobType);
       if (here !== null) world.add(e, JobAssignment, { workplace: here });
       continue; // an employed settler is never re-assigned
     }
@@ -104,19 +104,24 @@ function jobUnderstaffed(world: World, ctx: SystemContext, building: Entity, job
 }
 
 /**
- * The workplace a settler is standing on that it staffs — used to *adopt* a pre-employed, unbound
- * settler (bind it to the building under its feet). A candidate is a same-tile {@link Building} with a
- * `recipe` (a producing workplace, not a passive store/HQ) whose `workers` slots name `jobType`. The
- * first such building in canonical order is the binding. Returns the building entity or null.
+ * The workplace a `tribe` settler is standing on that it staffs — used to *adopt* a pre-employed,
+ * unbound settler (bind it to the building under its feet). A candidate is a **same-tribe** same-tile
+ * {@link Building} with a `recipe` (a producing workplace, not a passive store/HQ) whose `workers`
+ * slots name `jobType`. The first such building in canonical order is the binding. Returns the
+ * building entity or null.
  *
- * Mirrors the AI staffs-here pin's predicate (recipe + worker-job + same tile), so the building the
- * JobSystem adopts is exactly the one the AI already holds the settler on. Determinism: canonical scan
- * for the *pick* (the building chosen as the binding), so the adoption never depends on store order.
+ * The `tribe` filter keeps the binding consistent with {@link boundWorkplaceTarget} (the walk drive,
+ * which rejects a cross-tribe binding) — so we never adopt a settler onto an other-tribe workshop it
+ * happens to stand on. Mirrors the AI staffs-here pin's predicate (recipe + worker-job + same tile),
+ * so the building the JobSystem adopts is exactly the one the AI already holds the settler on.
+ * Determinism: canonical scan for the *pick* (the building chosen as the binding), so the adoption
+ * never depends on store order.
  */
 function workplaceStaffedHereBy(
   world: World,
   ctx: SystemContext,
   settler: Entity,
+  tribe: number,
   jobType: number,
 ): Entity | null {
   const sp = world.tryGet(settler, Position);
@@ -125,7 +130,7 @@ function workplaceStaffedHereBy(
   const sy = fx.toInt(sp.y);
   for (const b of world.canonicalEntities()) {
     const building = world.tryGet(b, Building);
-    if (building === undefined) continue;
+    if (building === undefined || building.tribe !== tribe) continue;
     if (recipeOf(world, ctx, b) === undefined) continue; // only a producing workplace pins its worker
     if (!buildingWorkerJobs(world, ctx, b).has(jobType)) continue; // not a job this workplace employs
     const bp = world.tryGet(b, Position);
