@@ -217,10 +217,21 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       destroying it leaves no dangling binding — the reverse hazard (a *building* destroyed under a bound
       worker) stays handled at the `demolish` seam. Collect-then-destroy (canonical ascending-id) keeps the
       scan mutation-safe and the death-event order reproducible. Inert on the goldens/slice (no `Health`-bearing
-      entity → no death → hash untouched). **Next (the remaining targeting half):** who *selects* an `attack`
-      target — a planner combat drive over enemy-tribe/animal entities in reach (the genuinely-new "who attacks
-      whom + swing cadence" piece); still no oracle (approximated; see docs/FIDELITY.md). After that, the
-      **N data-defined tribes** scaffolding (never hardcode "two").
+      entity → no death → hash untouched). **The targeting half now LANDED** — `combatSystem`
+      (`systems/combat.ts`, graduated from the stub) gives each idle, living **combatant** (a `Settler` carrying
+      a `Health` pool) a target: the nearest **enemy** (`Health`-bearing settler of a *different* tribe) within
+      its weapon range, issuing the `attack` `CurrentAtomic` with the `combatDamage`-resolved net damage (the
+      attacker's weapon, keyed by `(tribeType, jobType)`, vs an **unarmored** target — settlers wear no armor
+      yet). The **attack atomic id is 81** (the original's `setatomic <job> 81 "..._attack"`, verified in
+      `DataCnmd/tribetypes12/tribetypes.ini`), its duration resolved through the tribe's binding like every
+      atomic. This **closes the targeting→attack→hit→death loop**: combatSystem picks + swings, the AtomicSystem
+      `attack` effect lands the hit (drains `Health`), and `cleanupSystem` reaps the felled one — all in-order
+      within a tick. Faithful (net-damage param + atomic id); **approximated** (target acquisition = nearest
+      enemy in range, swing cadence, in-place strike with no walk-into-melee, every target unarmored — no
+      oracle; see docs/FIDELITY.md). Inert on the goldens/slice (no settler carries `Health` → no combatant →
+      hash untouched). **Next:** the **N data-defined tribes** scaffolding (never hardcode "two") — the next
+      roadmap item — which combat then exercises; the deferred combat refinements (armor-on-a-settler, the
+      walk-into-melee advance, animal combatants) ride on that + an oracle.
 - [ ] **N data-defined tribes** (viking/frank/saracen/byzantine/egypt), asymmetry expressed through
       each tribe's atomic bindings + `allow*`/`needfor*` graph — never hardcode "two".
 - [ ] **Animals as non-controllable tribes** (`animaltypes.ini`: aggression, groups, hitpoints) —

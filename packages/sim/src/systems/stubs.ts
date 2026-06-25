@@ -25,7 +25,11 @@ export const progressionSystem: System = todo('ProgressionSystem');
 // gated by needforjob XP + tech-enablement). Movement/balancing/vehicles remain later slices.
 export const transportSystem: System = todo('TransportSystem'); // carriers physically haul goods between stores (no global bank)
 export const constructionSystem: System = todo('ConstructionSystem'); // deliver materials, advance build, level houses
-export const combatSystem: System = todo('CombatSystem'); // N-tribe combat from weapontypes/armortypes (large subsystem)
+// CombatSystem has graduated to ./combat.ts (the TARGETING half — an idle Health-bearing combatant
+// swings at the nearest enemy-tribe combatant in weapon range, issuing the `attack` atomic with the
+// `combatDamage`-resolved net damage). It closes the targeting->attack->hit->death loop with the
+// AtomicSystem `attack` effect (the hit) + the CleanupSystem (the death). Armor-on-a-settler, the
+// walk-into-melee drive, and animal/N-tribe content are later slices.
 // ReproductionSystem has graduated to ./reproduction.ts (birth half — one settler per tribe per tick
 // while population < housing capacity; newborns are born babies, the data-pinned age-class structure
 // in ./ageclass.ts). The growth transition (baby->child->adult) remains a later slice.
