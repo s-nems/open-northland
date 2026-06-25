@@ -39,12 +39,14 @@ import { testContent } from './fixtures/content.js';
  *
  * Scenario (a self-supplying woodcutter + a carrier — the slice's exit goal):
  *   - a 6×1 grass strip;
- *   - a HEADQUARTERS store and a SAWMILL workplace, both placed via the COMMAND log (exercising
- *     CommandSystem) so the run also pins the placement seam;
+ *   - a HEADQUARTERS store (x=5) and a SAWMILL workplace (x=4), both placed via the COMMAND log
+ *     (exercising CommandSystem) so the run also pins the placement seam;
  *   - a WOODCUTTER and a CARRIER spawned via commands;
- *   - two finite wood nodes (placed directly — there is no map/resource command yet).
- * The woodcutter harvests both trees and piles the wood at the HQ; the carrier hauls the sawmill's
- * finished planks. One deterministic, invariant-clean run that settles into a steady state.
+ *   - two finite wood nodes of 4 units each (placed directly — there is no map/resource command yet).
+ * The whole goods chain runs end to end and conserves goods: the woodcutter harvests all 8 wood and
+ * piles it at the SAWMILL (its nearest store with a wood slot) → the sawmill produces 8 planks → the
+ * carrier hauls every plank out to the HQ. The run settles into a steady state (last atomic ~tick
+ * 218) and stays invariant-clean for the whole 1000-tick tail.
  */
 
 const GRASS = 0;
@@ -186,7 +188,7 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   it('matches the golden atomic-action trace', () => {
     const run = runSlice(SEED, TICKS);
     expect(run.trace).toEqual(GOLDEN_TRACE);
-    expect(run.produced).toBe(8); // the sawmill turns 8 raw wood into 8 planks over the run
+    expect(run.produced).toBe(8); // the sawmill turns all 8 harvested wood into 8 planks over the run
   });
 
   it('is byte-identical across two same-seed runs (determinism)', () => {
