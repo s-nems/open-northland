@@ -12,6 +12,7 @@ import {
 } from './ageclass.js';
 import { aiSystem } from './ai.js';
 import { atomicSystem } from './atomic.js';
+import { cleanupSystem } from './cleanup.js';
 import { commandSystem } from './command.js';
 import type { System, SystemContext } from './context.js';
 import { jobSystem } from './jobs.js';
@@ -46,7 +47,6 @@ import { reproductionSystem } from './reproduction.js';
 import { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem } from './routing.js';
 import { housingCapacity, tribePopulation } from './shared.js';
 import {
-  cleanupSystem,
   combatSystem,
   constructionSystem,
   progressionSystem,
@@ -103,15 +103,8 @@ export {
   isChild,
   isNonWorkingAge,
 };
-export {
-  cleanupSystem,
-  combatSystem,
-  constructionSystem,
-  progressionSystem,
-  terrainSystem,
-  timeSystem,
-  transportSystem,
-};
+export { cleanupSystem };
+export { combatSystem, constructionSystem, progressionSystem, terrainSystem, timeSystem, transportSystem };
 
 /**
  * The canonical per-tick execution order. Order is part of the design — change deliberately.

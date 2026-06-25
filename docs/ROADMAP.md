@@ -208,10 +208,19 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       (who attacks whom, target selection, swing cadence, death/cleanup at 0 HP) is deferred — for now a
       0-HP target just stops being viable and a missing-`Health` target is a no-op (see docs/FIDELITY.md).
       `Health` is a separate optional component (like `JobAssignment`/`Age`), so the golden slice has none
-      and the hash is untouched. **Next:** the **targeting + death loop** — who selects an `attack` target
-      (a planner combat drive over enemy-tribe/animal entities in reach) and the death/cleanup at 0 HP
-      (destroy the entity, emit `settlerDied`); still no oracle (approximated; see docs/FIDELITY.md). After
-      that, the **N data-defined tribes** scaffolding (never hardcode "two").
+      and the hash is untouched. **The death/cleanup half now LANDED** — `cleanupSystem` (`systems/cleanup.ts`,
+      graduated from the stub, runs **last** in `SYSTEM_ORDER`) destroys every entity whose `Health.hitpoints`
+      has reached 0 and emits a `settlerDied{entity, cause:'damage'}` event for render/audio. It runs after
+      AtomicSystem so a lethal `attack` landed earlier in the tick is reaped the **same** tick (nothing
+      downstream sees a 0-HP zombie; the entity is gone by the snapshot render reads). The reaped entity holds
+      its own cross-references (a worker's `JobAssignment` points settler→building, never the reverse), so
+      destroying it leaves no dangling binding — the reverse hazard (a *building* destroyed under a bound
+      worker) stays handled at the `demolish` seam. Collect-then-destroy (canonical ascending-id) keeps the
+      scan mutation-safe and the death-event order reproducible. Inert on the goldens/slice (no `Health`-bearing
+      entity → no death → hash untouched). **Next (the remaining targeting half):** who *selects* an `attack`
+      target — a planner combat drive over enemy-tribe/animal entities in reach (the genuinely-new "who attacks
+      whom + swing cadence" piece); still no oracle (approximated; see docs/FIDELITY.md). After that, the
+      **N data-defined tribes** scaffolding (never hardcode "two").
 - [ ] **N data-defined tribes** (viking/frank/saracen/byzantine/egypt), asymmetry expressed through
       each tribe's atomic bindings + `allow*`/`needfor*` graph — never hardcode "two".
 - [ ] **Animals as non-controllable tribes** (`animaltypes.ini`: aggression, groups, hitpoints) —
