@@ -37,11 +37,15 @@ isInputGoodFlag 1
 name "wood"
 type 5
 landscapetype 7
+isInputGoodFlag 1
+isProducedOnMapFlag 1
 atomicForHarvesting 24
 
 [goodtype]
 name "wheat"
 type 4
+isInputGoodFlag 1
+isProducedOnMapFlag 1
 atomicForHarvesting 29
 atomicForCultivating 35
 atomicForPlanting 34
@@ -49,6 +53,7 @@ atomicForPlanting 34
 [goodtype]
 name "coin"
 type 8
+isProducedInHouseFlag 1
 productionInputGoods 5 4
 atomicForProduction 51
 
@@ -306,8 +311,19 @@ describe('extractGoods', () => {
       file: 'Data/logic/goodtypes.ini',
     });
     const src = { file: 'Data/logic/goodtypes.ini', block: 'goodtype', layer: 'base' };
+    const noClass = { producedOnMap: false, producedInHouse: false, inputGood: false };
     expect(goods).toEqual([
-      { typeId: 1, id: 'water', name: 'water', weight: 0, atomics: {}, productionInputs: [], source: src },
+      {
+        typeId: 1,
+        id: 'water',
+        name: 'water',
+        weight: 0,
+        atomics: {},
+        productionInputs: [],
+        // `isInputGoodFlag 1` only — a raw input good neither produced on-map nor in-house here.
+        classification: { producedOnMap: false, producedInHouse: false, inputGood: true },
+        source: src,
+      },
       {
         typeId: 5,
         id: 'wood',
@@ -315,6 +331,8 @@ describe('extractGoods', () => {
         weight: 0,
         atomics: { harvest: 24 },
         productionInputs: [],
+        // a raw good gathered from the map that is also a recipe input.
+        classification: { producedOnMap: true, producedInHouse: false, inputGood: true },
         source: src,
       },
       {
@@ -324,6 +342,7 @@ describe('extractGoods', () => {
         weight: 0,
         atomics: { harvest: 29, cultivate: 35, plant: 34 },
         productionInputs: [],
+        classification: { producedOnMap: true, producedInHouse: false, inputGood: true },
         source: src,
       },
       {
@@ -337,6 +356,8 @@ describe('extractGoods', () => {
           { goodType: 5, amount: 1 },
           { goodType: 4, amount: 1 },
         ],
+        // a produced (in-house) good — the output layer of the goods graph.
+        classification: { producedOnMap: false, producedInHouse: true, inputGood: false },
         source: src,
       },
       {
@@ -352,6 +373,8 @@ describe('extractGoods', () => {
           { goodType: 4, amount: 2 },
           { goodType: 5, amount: 1 },
         ],
+        // no classification flags in the fixture — all default false.
+        classification: noClass,
         source: src,
       },
     ]);

@@ -56,6 +56,24 @@ export const ProductionInput = z.object({
 });
 export type ProductionInput = z.infer<typeof ProductionInput>;
 
+/**
+ * The game's own classification of a good, from the boolean flags on each `[goodtype]` record. These
+ * are the source-pinned node layers of the goods graph (the {@link ProductionInput} edges connect
+ * them): a *raw* good is gathered from the map (`isProducedOnMapFlag`), a *produced* good is made in
+ * a workplace (`isProducedInHouseFlag`, e.g. flour, bread, the two food tiers), and an *input* good
+ * can be consumed by some recipe (`isInputGoodFlag`). A good may be several at once (a produced good
+ * that is itself an input to another recipe); all default false when the flag is absent.
+ */
+export const GoodClassification = z.object({
+  /** `isProducedOnMapFlag` — a raw good harvested/gathered from the map (wheat, stone, fruit, water). */
+  producedOnMap: z.boolean().default(false),
+  /** `isProducedInHouseFlag` — a good produced in a workplace (flour, bread, food_simple/food_extra). */
+  producedInHouse: z.boolean().default(false),
+  /** `isInputGoodFlag` — this good can be consumed as an input by some production recipe. */
+  inputGood: z.boolean().default(false),
+});
+export type GoodClassification = z.infer<typeof GoodClassification>;
+
 export const GoodType = z.object({
   typeId: TypeId,
   id: z.string(), // human-readable slug, e.g. "wood"
@@ -69,6 +87,13 @@ export const GoodType = z.object({
    * names the output; this good's `productionInputs` names what that cycle consumes). See ROADMAP Phase 3.
    */
   productionInputs: z.array(ProductionInput).default([]),
+  /**
+   * The good's node layer in the goods graph, from the `[goodtype]` boolean flags — distinguishes a
+   * raw (map-gathered) good from a produced (in-house) one, and marks which goods are recipe inputs.
+   * The {@link productionInputs} edges plus these layers are the explicit goods-graph IR. See
+   * {@link GoodClassification} and ROADMAP Phase 3.
+   */
+  classification: GoodClassification.default({}),
   source: Provenance.optional(),
 });
 export type GoodType = z.infer<typeof GoodType>;
