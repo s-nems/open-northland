@@ -82,8 +82,14 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `jobEnables` edge kind is now also consumed** — `jobEnabled` (`systems/progression.ts`, called from
       `openJobAt`) gates an idle settler's assignment on the `jobEnablesJob` tech edge (a job a settler
       must already be present to unlock, e.g. a smith unlocking a weaponsmith), so the `tribeUnlockEnabled`
-      read side now covers **all four** edge kinds. **Next:** model multiple carriers / a per-carrier
-      vehicle entity (so a carrier visibly fetches a cart) — the last unmodeled JobSystem behavior.
+      read side now covers **all four** edge kinds. The carrier→vehicle PAIRING (a per-carrier vehicle
+      entity, cart logistics, the per-vehicle `logicgood` carry-filter) is now a **recorded conscious
+      deviation** (docs/FIDELITY.md — *Carrier→vehicle pairing*): it is oracle-blocked (`vehicletypes.ini`
+      carries no carrier→vehicle binding or dispatch key; OpenVikings' sim is a stub), so modelling a
+      cart-as-entity now would be invented, not faithful — the data (`stockSlots` + the `vehicle` unlock
+      edge) is consumed, the divergence is knowable, and the faithful path is named, deferred to a
+      vehicle-entity slice once an oracle exists. With that decision recorded, the JobSystem has no
+      remaining *unrecorded* unmodelled behavior.
 - [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`)
       → population capacity → the births→housing→births loop. **Housing read model landed** — the
       `homeSize` param (`logichousetype` `logichomesize`: home level 00→1 … 04→5) is extracted into the
@@ -161,10 +167,16 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       now overlaid on the scene each frame in BOTH `main.ts` (live) and `shot.ts` (the screenshot harness,
       single-tribe viking). Only the **glyph rasterization/typography** (font/colour) is left un-self-verifiable
       — a human eyeballs it via the shot. The goods-graph view (over `content`, not the snapshot) stays a
-      sim-side read view the panel can call directly. **Next:** the HUD slice is complete; the remaining
-      Phase-3 behavior is the carrier→vehicle PAIRING / a per-carrier vehicle entity (the JobSystem's last
-      unmodeled behavior) — but it is oracle-blocked (no readable source; OpenVikings' sim is a stub), so it
-      needs a conscious-deviation decision in docs/FIDELITY.md rather than a faithful extract.
+      sim-side read view the panel can call directly. **Next:** the HUD slice is complete, and the
+      carrier→vehicle PAIRING is now a **recorded conscious deviation** (docs/FIDELITY.md — oracle-blocked,
+      so the decision was to defer the cart-as-entity rather than invent it). With both closed, every
+      Phase-3 mechanic is either landed or explicitly recorded as deferred. The only remaining Phase-3
+      work is the two long-open **human-gated render items** (the Phase-1 oracle pixel-diffs; the Phase-2
+      real decoded-bob-atlas bind) — an agent cannot self-judge pixels, so they await an owned game copy +
+      a human eyeballing the OpenVikings oracle, and Phase 3's economy/progression/population substance is
+      otherwise done; the next feature iteration should advance toward **Phase 4 (Conflict & content
+      breadth)** — the smallest start being the **N data-defined tribes** scaffolding or the
+      `weapontypes`/`armortypes` CombatSystem read side.
 - **Exit:** a self-sustaining, progressing single-tribe settlement you can grow.
 
 ## Phase 4 — Conflict & content breadth (N tribes)
