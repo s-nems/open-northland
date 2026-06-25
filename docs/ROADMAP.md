@@ -233,7 +233,19 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       roadmap item — which combat then exercises; the deferred combat refinements (armor-on-a-settler, the
       walk-into-melee advance, animal combatants) ride on that + an oracle.
 - [ ] **N data-defined tribes** (viking/frank/saracen/byzantine/egypt), asymmetry expressed through
-      each tribe's atomic bindings + `allow*`/`needfor*` graph — never hardcode "two".
+      each tribe's atomic bindings + `allow*`/`needfor*` graph — never hardcode "two". **Scaffolding
+      landed** — the pipeline already extracts ALL 41 `[tribetype]`s (the 5 civilizations + 36
+      animal/monster tribes), and the sim already resolves every per-tribe rule (`jobEnables`/`needfor*`
+      gates, weapon/atomic bindings) off `settler.tribe` → `content.tribes.find(...)`, so the mechanics
+      are tribe-agnostic by construction. The new **`playableTribes`/`isPlayableTribe` read view**
+      (`systems/readviews.ts`) is the data-defined enumeration of the **controllable** civilizations —
+      distinguished from animals **by the tech graph alone** (only a civilization carries `jobEnables`
+      edges; an animal tribe has none), never by a hardcoded name or the count "two". This is the
+      foundation the combat cross-tribe targeting and the next item (non-controllable animals) both build
+      on. **Next:** wire `isPlayableTribe` into `combatSystem`'s enemy predicate (so an animal isn't
+      treated as a player-vs-player combatant), and/or seed a real **multi-civilization** scenario/slice
+      that exercises two playable tribes' asymmetric bindings end-to-end (the asymmetry is in the data; a
+      scenario proves the sim runs it).
 - [ ] **Animals as non-controllable tribes** (`animaltypes.ini`: aggression, groups, hitpoints) —
       same entity/AI model, not a separate bolt-on.
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
