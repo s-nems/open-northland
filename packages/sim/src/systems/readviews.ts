@@ -349,3 +349,30 @@ export function isPlayableTribe(content: ContentSet, tribeType: number): boolean
   const tribe = content.tribes.find((t) => t.typeId === tribeType);
   return tribe !== undefined && tribe.jobEnables.length > 0;
 }
+
+/**
+ * Whether `tribeType` is a **known animal/monster tribe** — a `[tribetype]` the pipeline DID extract
+ * (so it has a record) but that carries **no tech graph** (`jobEnables.length === 0`). This is the
+ * complement of {@link isPlayableTribe} *restricted to recorded tribes*: of the 41 extracted tribes
+ * the 5 civilizations are playable and the other 36 are animals, distinguished by the same data
+ * signature ({@link playableTribes} — only a civilization carries `jobEnables` edges), never by a
+ * hardcoded name or count.
+ *
+ * The distinction from `!isPlayableTribe` matters at the boundary: an **unknown** `tribeType` (no
+ * matching record at all — e.g. a synthetic test fixture's enemy, or a not-yet-loaded tribe) is
+ * `!isPlayableTribe` but is **not** an animal — we know nothing about it, so it must not be silently
+ * reclassified as wildlife. So this returns `true` only for a tribe we have a record for AND that
+ * record proves animal (empty tech graph); an absent record is `false` here just as it is in
+ * {@link isPlayableTribe}. The combat targeting drive (`systems/combat.ts`) uses this to keep an
+ * animal tribe out of the **player-vs-player** enemy predicate — civ-vs-animal aggression is a
+ * separate, data-driven (`animaltypes.ini`) model, not the same-different-tribe rule.
+ *
+ * FIDELITY n/a: a pure derived **read view** over the already-extracted tribe IR, like
+ * {@link isPlayableTribe} — it adds no mechanic and invents no classification; the animal-vs-civ split
+ * is read straight off whether the source `[tribetype]` declared a `jobEnables*` tech graph. Pure over
+ * `content`, no RNG/wall-clock.
+ */
+export function isAnimalTribe(content: ContentSet, tribeType: number): boolean {
+  const tribe = content.tribes.find((t) => t.typeId === tribeType);
+  return tribe !== undefined && tribe.jobEnables.length === 0;
+}

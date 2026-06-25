@@ -242,10 +242,17 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       distinguished from animals **by the tech graph alone** (only a civilization carries `jobEnables`
       edges; an animal tribe has none), never by a hardcoded name or the count "two". This is the
       foundation the combat cross-tribe targeting and the next item (non-controllable animals) both build
-      on. **Next:** wire `isPlayableTribe` into `combatSystem`'s enemy predicate (so an animal isn't
-      treated as a player-vs-player combatant), and/or seed a real **multi-civilization** scenario/slice
-      that exercises two playable tribes' asymmetric bindings end-to-end (the asymmetry is in the data; a
-      scenario proves the sim runs it).
+      on. **The animal-vs-civ split is now wired into combat targeting** — `combatSystem`'s
+      player-vs-player drive excludes a **known animal tribe** (`isAnimalTribe` in `systems/readviews.ts`
+      — a recorded `[tribetype]` with no tech graph, the complement of `isPlayableTribe` *restricted to
+      recorded tribes*) both as attacker and as target, so a civilization no longer mis-fires the
+      same-different-tribe rule on wildlife; civ-vs-animal aggression is left to the next item's
+      `animaltypes.ini` model. The boundary is faithful to the unknown case: a different-tribe combatant
+      with **no record at all** (a synthetic enemy) is NOT an animal and stays a valid PvP enemy.
+      **Next:** the **animals as non-controllable tribes** item below (the `animaltypes.ini`
+      aggression/hitpoints/groups model that drives civ-vs-animal combat), and/or seed a real
+      **multi-civilization** scenario/slice exercising two playable tribes' asymmetric bindings
+      end-to-end (the asymmetry is in the data; a scenario proves the sim runs it).
 - [ ] **Animals as non-controllable tribes** (`animaltypes.ini`: aggression, groups, hitpoints) —
       same entity/AI model, not a separate bolt-on.
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,

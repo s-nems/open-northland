@@ -23,7 +23,8 @@ import { testContent } from './fixtures/content.js';
  */
 
 const VIKING = 1; // tribe 1 in the fixture (has test_axe for job 1)
-const FRANK = 2; // a different tribe — its settlers are enemies of the viking
+const FRANK = 2; // a different tribe with NO record in the fixture — still a valid enemy (not an animal)
+const WOLVES = 9; // a recorded ANIMAL tribe in the fixture (no jobEnables; test_claw for job 1)
 const WOODCUTTER = 1; // job 1 — the test_axe binds to this (tribe 1, job 1)
 const ATTACK_ATOMIC = 81;
 
@@ -173,6 +174,39 @@ describe('combatSystem — target selection + issuing the attack atomic', () => 
     combatSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(corpse, CurrentAtomic)).toBe(false);
+  });
+
+  it('does NOT target a recorded ANIMAL tribe — civ-vs-animal is a separate aggression model', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
+    fighterAt(sim, 1, 0, WOLVES, WOODCUTTER); // a wolf adjacent — a DIFFERENT tribe, but an animal
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // The wolf is a known animal tribe, so the player-vs-player drive leaves it alone (no swing).
+    expect(sim.world.has(viking, CurrentAtomic)).toBe(false);
+  });
+
+  it('an ANIMAL-tribe combatant does not run the player-vs-player drive (even armed, vs a civ)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    // The wolf IS armed (test_claw, tribe 9/job 1) — so it is skipped for being an animal, not unarmed.
+    const wolf = fighterAt(sim, 0, 0, WOLVES, WOODCUTTER);
+    fighterAt(sim, 1, 0, VIKING, WOODCUTTER); // a viking adjacent
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(wolf, CurrentAtomic)).toBe(false);
+  });
+
+  it('still targets a different-tribe combatant that has NO record (not reclassified as an animal)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
+    const frank = fighterAt(sim, 1, 0, FRANK, WOODCUTTER); // tribe 2 — no record in the fixture
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // FRANK has no `[tribetype]` record, so it is NOT an animal — it stays a valid player-vs-player enemy.
+    expect(sim.world.get(viking, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: frank });
   });
 });
 
