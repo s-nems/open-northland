@@ -119,6 +119,23 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       // hunger clamped at ONE; a later slice handles starvation when food is truly absent).
     }
 
+    // The SLEEP DRIVE (below eat — a starving settler eats before it can rest): a settler whose
+    // fatigue has crossed the threshold sleeps IN PLACE to clear it (no walk, no target site).
+    // Above harvest/haul/staffing so a worn-out operator stops working to rest. Sleeping where it
+    // stands is the slice stand-in for the original's home-bound sleep — the housing/home system
+    // that would give a sleep target doesn't exist yet (see docs/FIDELITY.md).
+    if (settler.fatigue >= FATIGUE_SLEEP_THRESHOLD) {
+      startAtomic(
+        world,
+        e,
+        SLEEP_ATOMIC_ID,
+        { kind: 'sleep' },
+        atomicDuration(ctx, settler, SLEEP_ATOMIC_ID),
+        e,
+      );
+      continue;
+    }
+
     // The production operator: a settler empty-handed and standing on a workplace whose `workers`
     // names its job is "at work" — the ProductionSystem's worker-presence gate runs on its being
     // there. Leave it put (don't send it off to harvest/haul, which would unstaff the workplace).
@@ -205,6 +222,24 @@ const EAT_ATOMIC_ID = 10;
  * decoded and calibration-by-observation pins the real cadence.
  */
 const HUNGER_EAT_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
+
+/**
+ * The numeric atomic id a settler runs to sleep (the original's `setatomic <job> 8 "..._sleep"` — id
+ * 8 is the sleep slot across every tribe's bindings, bound for every job, even babies; see
+ * docs/FIDELITY.md). Like the other ids it is the content cross-reference / animation join key; the
+ * typed `sleep` effect is the behavior (zero fatigue, AtomicSystem).
+ */
+const SLEEP_ATOMIC_ID = 8;
+
+/**
+ * Fatigue level (fixed-point, in [0, ONE]) at or above which a settler stops working to sleep. Set to
+ * ¾ of a full bar, mirroring {@link HUNGER_EAT_THRESHOLD}: a settler works most of the way up the
+ * fatigue bar, then rests before it pins at ONE. APPROXIMATED (see docs/FIDELITY.md): like the eat
+ * trigger, the original drives sleeping off the per-animation rest events (`event <at> 1 <delta>`)
+ * with no single readable "sleep at X" threshold; this constant is the slice's deterministic sleep
+ * trigger until that vocabulary is decoded and calibration-by-observation pins the real cadence.
+ */
+const FATIGUE_SLEEP_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
 
 /** The numeric atomic id for a carrier picking goods up out of a store (the original's generic
  *  pickup=22; like {@link PILEUP_ATOMIC_ID} the readable data binds no per-good pickup, and the id is

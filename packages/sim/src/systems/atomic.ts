@@ -72,6 +72,11 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       consumeFood(world, settler, effect.from, effect.goodType);
       if (world.has(settler, Settler)) world.get(settler, Settler).hunger = fx.fromInt(0);
       return;
+    case 'sleep':
+      // Resting clears fatigue (no goods consumed — sleeping is free, unlike eating). Pairs with the
+      // NeedsSystem's per-tick fatigue rise to close the rise→sleep→reset loop.
+      if (world.has(settler, Settler)) world.get(settler, Settler).fatigue = fx.fromInt(0);
+      return;
     case 'move':
     case 'idle':
       // Pure markers: the actual walking is the navigation layer (PathFollow/MovementSystem). The

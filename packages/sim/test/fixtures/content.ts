@@ -63,16 +63,19 @@ export function testContent(): ContentSet {
         // The woodcutter (job 1) plays "viking_chop" for the harvest atomic (24); the planner
         // resolves its duration through this binding -> atomicAnimations length below. The eat atomic
         // (10, the original's eat-slot id) binds to "viking_eat" for every job (the woodcutter's row
-        // is enough for the slice — a settler eats with the eat atomic regardless of trade).
+        // is enough for the slice — a settler eats with the eat atomic regardless of trade). The
+        // sleep atomic (8, the original's sleep-slot id) binds to "viking_sleep" the same way.
         atomicBindings: [
           { jobType: 1, atomicId: 24, animation: 'viking_chop' },
           { jobType: 1, atomicId: 10, animation: 'viking_eat' },
+          { jobType: 1, atomicId: 8, animation: 'viking_sleep' },
         ],
       },
     ],
     atomicAnimations: [
       { id: 'viking_chop', name: 'viking_chop', length: 3 },
       { id: 'viking_eat', name: 'viking_eat', length: 5 },
+      { id: 'viking_sleep', name: 'viking_sleep', length: 6 },
     ],
   });
 }

@@ -111,6 +111,9 @@ export type AtomicEffect =
        *  eating destroys the food (it is conserved up to that consumption: nothing is conjured). */
       readonly from: Entity | null;
     }
+  /** The settler sleeps to restore rest: zeroes its `fatigue` on completion (no goods consumed —
+   *  unlike `eat`, resting is free). The pairing reset for the NeedsSystem's fatigue rise. */
+  | { readonly kind: 'sleep' }
   | { readonly kind: 'attack'; readonly target: Entity }
   | { readonly kind: 'idle' };
 

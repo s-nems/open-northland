@@ -945,8 +945,23 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             hash-equal (`98993f42`). The golden state hash moved (`db68cc53`→`ff907e9a`) — settlers now
             carry a second need field — but the **atomic trace + 8-plank output are unchanged** (no sleep
             DRIVE yet: fatigue only rises, never reaching a threshold over the 1000-tick slice).
-            **Still open:** the sleep DRIVE (planner choosing `sleep` when fatigue crosses a threshold,
-            mirroring the eat drive), then the target-bound needs (`pray`/`enjoy`/`make_love`).
+      - [x] **Sleep drive** — the AI atomic planner (`systems/ai.ts` `atomicPlanner`) now chooses a
+            `sleep` atomic (id **8**, the original's `setatomic <job> 8 "..._sleep"` slot) when a
+            settler's `fatigue >= FATIGUE_SLEEP_THRESHOLD` (=¾·ONE), mirroring the eat drive. Placed
+            **below** the eat drive (a starving settler eats before it can rest) but **above**
+            harvest/haul/staffing so a worn-out operator stops working. The settler sleeps **in place**
+            (no walk, no target site) — the new `sleep` {@link AtomicEffect} zeroes `fatigue` on
+            completion (AtomicSystem, no goods consumed — resting is free, unlike `eat`), closing the
+            rise→sleep→reset loop. APPROXIMATED (see FIDELITY.md): the atomic id (8) is pinned, but the
+            ¾·ONE trigger is inferred (like the eat trigger) and the **in-place** rest is the slice
+            stand-in — the original sleeps at *home*, but the housing/home system that would give a
+            sleep target is a later slice. **Hands-on:** a settler crossing the threshold through the
+            real `Simulation.step()` schedule starts the sleep atomic tick 1, fatigue resets to 0 by
+            tick 6 (the 6-tick `viking_sleep` animation), peak never breached ONE, 0 invariant
+            violations; two seed-5 runs hash-equal (`8e2e10b0`). The 1000-tick integration golden is
+            untouched (fatigue reaches ¾·ONE only at tick ~6144). **Still open:** the target-bound
+            non-food needs (`pray` id 12 / `enjoy` id 17 / `make_love` id 78 — each satisfied at a
+            site, needing a need→satisfier→building-target lookup).
 - [ ] **ProgressionSystem** — experience + tech graph: `humanjobexperiencetypes` per-specialization
       XP, `trainforjob` schooling, `needfor*`/`allow*`/`jobEnables*` gating goods/houses/jobs/vehicles.
 - [ ] JobSystem assignment across many workplaces; multiple carriers + vehicle stock slots.
