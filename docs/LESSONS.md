@@ -55,3 +55,16 @@ the next iteration inherits it.
   a stub). Classify those rows `approximated` with "calibration-by-observation pending"; reserve
   `faithful` for when both axes are pinned. Over-claiming faithful is the blind spot FIDELITY.md
   exists to catch. (docs/fidelity)
+- [cfc2431] A binary format's "size" field can mean *different* things at adjacent offsets: the
+  map.dat packed-layer header carries `innerSize` (the whole inner blob, +0x01 and again +0x11) AND
+  a separate `unpackedLength` (+0x0D, the decoded byte count) — using the inner size as the stream
+  length over-runs by exactly the header overhead. Drive the RLE loop by `unpackedLength` and let the
+  stream end at the payload boundary; cross-check the decoded length is an exact multiple of `cells`.
+  When porting a format the oracle doesn't cover, probe ≥3 real files of different sizes before trusting
+  a field's meaning. (pipeline/format)
+- [cfc2431] A "decode trusts the bytes" RLE/copy loop silently mis-decodes corrupt input: `Uint8Array.fill`
+  clamps an over-long end (no throw), `subarray(i,i+b)` clamps a past-end read, and `out.set` then
+  writes fewer bytes than the control advanced `o`/`i` by — so a truncated layer yields a zero-padded
+  grid instead of the promised throw. Bounds-check both the source read (`i+b<=len`) and the dest write
+  (`o+count<=unpacked`) explicitly per control byte if the decoder's contract says "throws on corrupt".
+  (pipeline/format)

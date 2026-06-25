@@ -269,4 +269,35 @@ describe('unpackMapLayer / pck-X8el round-trip', () => {
     const map = decodeMapDat(encodeMapDat([{ tag: 'lmhe', version: 1, payload }]));
     expect(() => unpackMapLayer(map.chunks[0] as never)).toThrow(/underran/);
   });
+
+  /** Builds an X8el layer payload with a hand-crafted unpacked length + RLE stream. */
+  const craftLayer = (unpackedLength: number, stream: number[]) => {
+    const payload = new Uint8Array(MAP_LAYER_HEADER_SIZE + stream.length);
+    payload.set([0x6b, 0x63, 0x70], 0x05); // "kcp"
+    payload.set([0x58, 0x38, 0x65, 0x6c], 0x08); // "X8el"
+    payload[0x0c] = MAP_LAYER_SUBFORMAT;
+    new DataView(payload.buffer).setUint32(0x0d, unpackedLength, true);
+    payload.set(stream, MAP_LAYER_HEADER_SIZE);
+    return decodeMapDat(encodeMapDat([{ tag: 'lmhe', version: 1, payload }])).chunks[0] as never;
+  };
+
+  it('throws on a run that overflows the declared grid (corrupt stream)', () => {
+    // Grid claims 3 bytes; a run control wants 5 copies → overflow.
+    expect(() => unpackMapLayer(craftLayer(3, [0x80 | 5, 0xaa]))).toThrow(/run overflows/);
+  });
+
+  it('throws on a literal that overflows the declared grid (corrupt stream)', () => {
+    // Grid claims 2 bytes; a 4-byte literal control → overflow.
+    expect(() => unpackMapLayer(craftLayer(2, [4, 1, 2, 3, 4]))).toThrow(/literal overflows/);
+  });
+
+  it('throws on a literal that reads past the truncated stream end', () => {
+    // Grid claims 10 bytes; a 9-byte literal control but only 2 literal bytes present.
+    expect(() => unpackMapLayer(craftLayer(10, [9, 1, 2]))).toThrow(/reads past the stream end/);
+  });
+
+  it('throws on a run control sitting at the very end with no value byte', () => {
+    // Grid claims 5 bytes; a run control is the final stream byte (no value follows).
+    expect(() => unpackMapLayer(craftLayer(5, [0x80 | 5]))).toThrow(/no value byte/);
+  });
 });
