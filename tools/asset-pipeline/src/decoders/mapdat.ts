@@ -408,13 +408,27 @@ function LATIN1ish(s: string): Uint8Array {
 // ---------------------------------------------------------------------------
 
 /**
- * The `lmlt` (landscape-type) layer is 4 bytes per cell — one landscape typeId per **triangle
- * corner** of the cell's render tessellation (probed across real maps: values 0..85, all within the
- * 87-type IR `LandscapeType` table; ~64% of cells carry four identical corners = uniform terrain,
- * the rest are shoreline/edge transitions where the corners differ). The render tessellation needs
- * all four; the navigation cell-graph wants ONE landscape typeId per cell.
+ * The `lmlt` (landscape-type) layer is 4 bytes per cell — one **0-based** landscape type index per
+ * **triangle corner** of the cell's render tessellation (probed across real maps: raw values 0..85,
+ * ~64% of cells carry four identical corners = uniform terrain, the rest are shoreline/edge
+ * transitions where the corners differ). The render tessellation needs all four; the navigation
+ * cell-graph wants ONE landscape type per cell.
+ *
+ * NOTE the **+1 indexing seam**: the binary layer is 0-based (the engine arrays the type table from
+ * 0, so raw `0` = the first type, "void"), but the IR `LandscapeType.typeId` mirrors the readable
+ * `.ini` `type` field, which is **1-based** (`type 1 = void`). {@link lmltToTerrainMap} adds
+ * {@link LMLT_TYPEID_BASE} so a raw `0..86` corner maps onto the IR's `1..87` typeId — otherwise the
+ * sim's `buildTerrainGraph` rejects the grid (raw `0` has no matching `LandscapeType`).
  */
 export const LMLT_CORNERS_PER_CELL = 4;
+
+/**
+ * The offset added to a raw 0-based `lmlt` corner index to reach the IR's 1-based `LandscapeType.typeId`
+ * (the readable `landscapetypes.ini` `type` field is 1-based; the binary layer is 0-based). Confirmed
+ * on every real map: the only grid value absent from the 1..87 IR table is raw `0`, and `+1` closes it
+ * exactly (raw `0` = "void" = IR typeId 1; raw `86` = IR typeId 87, the table's max).
+ */
+export const LMLT_TYPEID_BASE = 1;
 
 /**
  * Reduces a cell's four corner typeIds to a single representative typeId: the **dominant** (most
@@ -451,11 +465,14 @@ export interface MapDatTerrainMap {
 }
 
 /**
- * Collapses an unpacked `lmlt` layer (4 corner typeIds per cell) plus the `lsiz` dimensions into a
- * single per-cell landscape-typeId grid — the plain `{ width, height, typeIds }` shape the sim's
+ * Collapses an unpacked `lmlt` layer (4 corner type indices per cell) plus the `lsiz` dimensions into
+ * a single per-cell landscape-typeId grid — the plain `{ width, height, typeIds }` shape the sim's
  * `buildTerrainGraph` (`packages/sim/src/terrain.ts`) consumes as a `TerrainMap`. Each cell's type is
- * the {@link reduceCornersToCell} dominant corner. Returns a plain value (not a sim type) so the
- * build tool never imports from `sim`; the sim validates the typeIds against its IR table.
+ * the {@link reduceCornersToCell} dominant corner, then **shifted by {@link LMLT_TYPEID_BASE}** from
+ * the layer's 0-based index onto the IR's 1-based `LandscapeType.typeId` (the readable
+ * `landscapetypes.ini` `type` is 1-based; the binary layer is 0-based — see {@link LMLT_TYPEID_BASE}).
+ * Returns a plain value (not a sim type) so the build tool never imports from `sim`; the sim validates
+ * the typeIds against its IR table.
  *
  * APPROXIMATED: the per-corner→per-cell reduction has no behavioral oracle (OpenVikings decodes the
  * container but does not simulate navigation). Dominant-corner is a faithful-shaped, deterministic
@@ -476,12 +493,11 @@ export function lmltToTerrainMap(layer: MapLayer, size: MapDatSize): MapDatTerra
   const typeIds = new Array<number>(cells);
   for (let cell = 0; cell < cells; cell++) {
     const o = cell * LMLT_CORNERS_PER_CELL;
-    typeIds[cell] = reduceCornersToCell(
-      g[o] as number,
-      g[o + 1] as number,
-      g[o + 2] as number,
-      g[o + 3] as number,
-    );
+    // The dominant-corner reduction is index-invariant (it compares corner values), so it runs on the
+    // raw 0-based indices; the chosen index is then shifted onto the IR's 1-based typeId.
+    typeIds[cell] =
+      reduceCornersToCell(g[o] as number, g[o + 1] as number, g[o + 2] as number, g[o + 3] as number) +
+      LMLT_TYPEID_BASE;
   }
   return { width: size.width, height: size.height, typeIds };
 }
