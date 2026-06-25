@@ -50,12 +50,18 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       make_love): the rise + drive halves, wired into the AI atomic planner. → [archive](ROADMAP-ARCHIVE.md).
 - [ ] **ProgressionSystem** — experience + tech graph. **Landed** (→ archive): `humanjobexperiencetypes`
       XP extract + accrual; `jobEnables{House,Good}` placement/production gates wired; the
-      `{need,train}for{job,good}` extract + the `needfor*` read side + the `needforgood` harvest gate.
+      `{need,train}for{job,good}` extract + the `needfor*` read side + the `needforgood` harvest gate +
+      the `needforjob` job-assignment gate (consumed by the JobSystem slice below).
       **Next:** interpret `baseRepeatCounter` into the multi-tier competence curve (output quality/speed
-      by XP tier); consume `needforjob` / `settlerMeetsNeed(target='job')` from the JobSystem so a
-      settler only takes a gated job once its XP clears; consume the `job`/`vehicle` `jobEnables` edge
-      kinds as their JobSystem/vehicle slices land.
-- [ ] JobSystem assignment across many workplaces; multiple carriers + vehicle stock slots.
+      by XP tier) — **blocked on an oracle**: the XP→tier→output curve is in neither the `.ini` (no
+      `level`/`tier` field; `baseRepeatCounter` is on only 3/70 records) nor research notes (its sim is a
+      stub), so interpreting it now would be invented, not faithful; deferred until calibration-by-observation
+      against the running original (see docs/FIDELITY.md). Consume the `job`/`vehicle` `jobEnables` edge
+      kinds as the JobSystem matures / the vehicle slice lands.
+- [ ] **JobSystem** — assignment **landed** (idle settlers take open, tech-enabled, understaffed
+      workplace jobs, gated by `needforjob` XP — `systems/jobs.ts`). **Next:** physically move an
+      assigned settler to its workplace; per-building worker→workplace binding (vs the tribe-wide
+      head-count stand-in); multiple carriers + vehicle stock slots.
 - [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`)
       → population capacity → the births→housing→births loop.
 - [ ] ReproductionSystem: families, children growing up, gated by housing.

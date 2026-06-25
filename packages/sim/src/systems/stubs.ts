@@ -21,7 +21,8 @@ export const terrainSystem: System = todo('TerrainSystem'); // resource regrowth
 // work atomic — XP is event-shaped, so it can't be a poll-driven system). This stub is the
 // remaining *gating/tech-graph* half: needfor*/allow*/jobEnables* gates on jobs/goods/houses/vehicles.
 export const progressionSystem: System = todo('ProgressionSystem');
-export const jobSystem: System = todo('JobSystem'); // match idle settlers to open jobs/workplaces
+// JobSystem has graduated to ./jobs.ts (assignment half — idle settlers take open workplace jobs,
+// gated by needforjob XP + tech-enablement). Movement/balancing/vehicles remain later slices.
 export const transportSystem: System = todo('TransportSystem'); // carriers physically haul goods between stores (no global bank)
 export const constructionSystem: System = todo('ConstructionSystem'); // deliver materials, advance build, level houses
 export const combatSystem: System = todo('CombatSystem'); // N-tribe combat from weapontypes/armortypes (large subsystem)
