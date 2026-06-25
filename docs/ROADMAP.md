@@ -664,9 +664,12 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
       not a hand-built grid — **and the shot/dev entry now LOADS an actual `content/maps/<id>.json`**
       via `?map=<id>` (a vite dev-server middleware bridges the gitignored repo-root grids to
       `/maps/<id>.json`; `loadTerrainMap` fetches + `parseTerrainMap`-validates them), drawing a real
-      decoded grid behind the slice sprites — falling back to the synthetic strip when absent. One open
-      part remains: the **atlas sprite** in place of the placeholder box — gated on a free/synthetic
-      atlas, since real bobs are copyrighted/gitignored.)*
+      decoded grid behind the slice sprites — falling back to the synthetic strip when absent. The
+      **atlas-sprite swap is now half-landed**: the pure *which-frame* lookup (`resolveSpriteFrame`,
+      `DrawItem`→atlas frame rect) is built + unit-tested, and `renderScene` draws a bound sprite as a
+      textured atlas sub-rect when handed an optional `SpriteSheet` — falling back to placeholder
+      geometry otherwise. The remaining open part is the **atlas image itself** (a free/synthetic
+      texture to bind, since real bobs are copyrighted/gitignored) + a **human eyeballing the pixels**.)*
       - [x] **`terrainMapToScene` map→scene seam** — `packages/render/src/scene.ts`: a pure, total
             projection from a loaded `TerrainMap` (`{ width, height, typeIds }` — the shape
             `@vinland/data` `parseTerrainMap` validates a `content/maps/<id>.json` into) onto the
@@ -706,6 +709,24 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             terrain graph, the 6 entities spread across real cells ((38,19),(13,20),(22,7),…),
             deterministic over 100 ticks (`be0e8d14`). **Still open (render line):** the atlas sprite in
             place of the placeholder box geometry (gated on a free/synthetic atlas).
+      - [x] **Atlas-frame resolution seam (the self-verifiable half of the atlas swap)** —
+            `packages/render/src/sprites.ts`: the pure data path from a bob atlas to a per-sprite frame,
+            split off from the GPU texture binding so the *which-frame* decision is unit-testable
+            without a screen (the *pixels* stay deferred to a human). `SpriteAtlas` (atlas dims + frames
+            indexed by bob id, the renderer's reduced view of the build pipeline's `AtlasManifest` —
+            re-declared structurally so `render` never imports the build tool), `SpriteBindings` (a
+            per-kind `settler`/`building`/`resource` → bob-id table), `indexAtlasFrames` (manifest
+            frame-list → the id-keyed `SpriteAtlas`), and `resolveSpriteFrame(item, bindings, atlas)`
+            → the atlas frame a drawable `DrawItem` should draw, or `null` (→ placeholder) for a tile /
+            unbound kind / missing-or-0×0 frame. `renderScene` now takes an **optional** `SpriteSheet`
+            (`{ source, atlas, bindings }`): a bound sprite draws as a feet-anchored textured sub-rect
+            (`new Texture({ source, frame: Rectangle })`, the frame's `offsetX/Y` placing it at the feet
+            anchor); everything else — and the whole scene when no sheet is given — stays placeholder
+            geometry, so the default `npm run shot` is byte-unchanged. **Hands-on:** `npm run shot` → the
+            same valid 1000×600 PNG, eyeballed gross-correct (6 grass tiles behind 6 feet-sorted boxes),
+            unchanged by the wiring; 7 new `sprites.test.ts` units pin the resolution (bound→frame, tile/
+            unbound/missing/empty→null, purity). **Still open:** a free/synthetic atlas IMAGE to bind as
+            the `SpriteSheet.source`, plus a human eyeballing the textured-sprite pixels (an agent can't).
       - [x] **Pure scene/depth-sort layer** — `packages/render/src/scene.ts` (`buildScene`): turns a
             `WorldSnapshot` + the terrain grid dimensions into a flat, **depth-sorted** isometric
             draw list (`DrawItem[]`), the testable core of the render line that an agent CAN

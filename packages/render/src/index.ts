@@ -10,7 +10,15 @@ export {
   type DrawKind,
   type SceneTerrain,
 } from './scene.js';
-export { createPixiApp, renderScene, type Camera } from './pixi-renderer.js';
+export {
+  indexAtlasFrames,
+  resolveSpriteFrame,
+  type AtlasFrame,
+  type SpriteAtlas,
+  type SpriteBindings,
+  type SpriteKind,
+} from './sprites.js';
+export { createPixiApp, renderScene, type Camera, type SpriteSheet } from './pixi-renderer.js';
 
 /**
  * The renderer is a PURE CONSUMER of sim state (see docs/ARCHITECTURE.md). It reads a snapshot

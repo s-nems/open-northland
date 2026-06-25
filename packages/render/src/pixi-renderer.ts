@@ -1,6 +1,7 @@
-import { Application, Container, Graphics } from 'pixi.js';
+import { Application, Container, Graphics, Rectangle, Sprite, Texture, type TextureSource } from 'pixi.js';
 import { TILE_HALF_H, TILE_HALF_W } from './index.js';
 import type { DrawItem, DrawKind } from './scene.js';
+import { type SpriteAtlas, type SpriteBindings, resolveSpriteFrame } from './sprites.js';
 
 /**
  * The GPU half of the render line — the part an agent CANNOT self-verify (pixels need a human eye).
@@ -11,13 +12,18 @@ import type { DrawItem, DrawKind } from './scene.js';
  * unit-tested upstream. The only thing untested here is whether the resulting pixels *look* right;
  * that is exactly what the screenshot harness puts in front of a human (see docs/TESTING.md).
  *
- * **No atlas sprites yet — on purpose.** Real bob atlases are decoded from a copyrighted game copy
- * and are gitignored (see CLAUDE.md "Legal guardrails"), so this slice draws each item as flat
+ * **Atlas sprites are wired but optional.** When `renderScene` is handed a {@link SpriteSheet} (the
+ * atlas texture source + its {@link SpriteAtlas} frame geometry + the per-kind {@link SpriteBindings}),
+ * a drawable item whose kind resolves to an atlas frame ({@link resolveSpriteFrame}, the pure
+ * self-verifiable lookup) is drawn as a textured sub-rect of the atlas; everything else still falls
+ * back to flat placeholder geometry. Without a sheet — the default, since real bob atlases are decoded
+ * from a copyrighted game copy and gitignored (see CLAUDE.md "Legal guardrails") — every item draws as
  * placeholder geometry: an isometric diamond per terrain tile (tinted by landscape typeId), and a
- * feet-anchored marker per sprite (a footprint diamond + a body box, coloured by kind). That is
- * enough to eyeball the load-bearing visual property — *iso projection + depth-sort* (terrain behind
- * sprites, sprites occluding back-to-front by feet) — which is what the harness exists to check.
- * Swapping the placeholder for an atlas sprite is a later step once a free/synthetic atlas exists.
+ * feet-anchored marker per sprite (a footprint diamond + a body box, coloured by kind). That is enough
+ * to eyeball the load-bearing visual property — *iso projection + depth-sort* (terrain behind sprites,
+ * sprites occluding back-to-front by feet) — which is what the harness exists to check. Binding the
+ * frame rect to a texture and sampling its pixels is the un-self-verifiable half (a human judges the
+ * pixels); the *which frame* decision is the self-verifiable half, unit-tested in `sprites.ts`.
  *
  * Floats everywhere are fine: this is `render`, never read back into the deterministic sim.
  */
@@ -42,6 +48,19 @@ export interface Camera {
   /** Pixel offset added to every item's screen position (pan). */
   readonly offsetX: number;
   readonly offsetY: number;
+}
+
+/**
+ * A loaded bob atlas ready for the GPU: the atlas image as a Pixi {@link TextureSource} plus the pure
+ * {@link SpriteAtlas} frame geometry and per-kind {@link SpriteBindings} the frame lookup needs. Optional
+ * input to {@link renderScene}: when present, bound sprite kinds draw their atlas frame; when absent (or
+ * a kind/frame doesn't resolve) the placeholder geometry draws instead. The atlas *image* comes from a
+ * free / synthetic atlas (real bobs are gitignored); the frame *geometry* + *bindings* are plain data.
+ */
+export interface SpriteSheet {
+  readonly source: TextureSource;
+  readonly atlas: SpriteAtlas;
+  readonly bindings: SpriteBindings;
 }
 
 /**
@@ -72,18 +91,64 @@ export async function createPixiApp(
 /**
  * Draw one frame from a depth-sorted {@link DrawItem} list. Clears the stage and re-emits every item
  * in array order (the list is already back-to-front, so painter's order == the correct occlusion),
- * then renders once. Pure with respect to the sim: it only reads the draw list + camera.
+ * then renders once. Pure with respect to the sim: it only reads the draw list + camera (+ an optional
+ * atlas {@link SpriteSheet}).
+ *
+ * When a `sheet` is given, a drawable item whose kind binds to an atlas frame draws as a textured
+ * sub-rect of the atlas (feet-anchored); tiles and unbound/empty frames still draw as placeholder
+ * geometry. Without a `sheet` every item is placeholder geometry (the reproducible default).
  */
-export function renderScene(app: Application, scene: readonly DrawItem[], camera: Camera): void {
+export function renderScene(
+  app: Application,
+  scene: readonly DrawItem[],
+  camera: Camera,
+  sheet?: SpriteSheet,
+): void {
   app.stage.removeChildren();
   const layer = new Container();
   for (const item of scene) {
     const sx = item.x + camera.offsetX;
     const sy = item.y + camera.offsetY;
-    layer.addChild(item.kind === 'tile' ? tileGraphic(item, sx, sy) : spriteGraphic(item, sx, sy));
+    layer.addChild(drawItem(item, sx, sy, sheet));
   }
   app.stage.addChild(layer);
   app.render();
+}
+
+/**
+ * Pick the display object for one draw item: a textured atlas sprite when a sheet is given and the
+ * item's kind resolves to a non-empty frame, otherwise the placeholder geometry (tile diamond or
+ * sprite marker). The frame *selection* is the pure {@link resolveSpriteFrame} lookup; binding the
+ * rect to the texture is the GPU half.
+ */
+function drawItem(item: DrawItem, sx: number, sy: number, sheet?: SpriteSheet): Container {
+  if (item.kind === 'tile') return tileGraphic(item, sx, sy);
+  if (sheet !== undefined) {
+    const frame = resolveSpriteFrame(item, sheet.bindings, sheet.atlas);
+    if (frame !== null) return atlasSprite(frame, sheet.source, sx, sy);
+  }
+  return spriteGraphic(item, sx, sy);
+}
+
+/**
+ * A feet-anchored atlas sprite: a sub-texture of the atlas `source` cut to the frame's pixel rect,
+ * placed so the frame's authored draw offset lands at the feet anchor `(sx, sy)`. `offsetX/Y` is the
+ * bob's source-area origin (the original's `SBobData.Area`), so adding it to the anchor reproduces
+ * where the engine drew the frame relative to the entity's feet.
+ */
+function atlasSprite(
+  frame: { x: number; y: number; width: number; height: number; offsetX: number; offsetY: number },
+  source: TextureSource,
+  sx: number,
+  sy: number,
+): Sprite {
+  const texture = new Texture({
+    source,
+    frame: new Rectangle(frame.x, frame.y, frame.width, frame.height),
+  });
+  const sprite = new Sprite(texture);
+  sprite.position.set(sx + frame.offsetX, sy + frame.offsetY);
+  return sprite;
 }
 
 const DEFAULT_TILE_COLOUR = 0x4a7c3a;
