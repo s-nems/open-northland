@@ -17,7 +17,7 @@ import type { Entity, World } from '../ecs/world.js';
 import { type Fixed, fx } from '../fixed.js';
 import type { CellId, TerrainGraph } from '../terrain.js';
 import type { System, SystemContext } from './context.js';
-import { buildingEnabled, settlerMeetsNeed } from './progression.js';
+import { buildingEnabled, carrierCarryCapacity, settlerMeetsNeed } from './progression.js';
 import { buildingWorkerJobs, inRange, isFood, isTemple, recipeOf, stockCapacity } from './shared.js';
 
 /**
@@ -241,11 +241,14 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     if (haul === null) continue; // nothing to harvest AND nothing to haul — idle this tick
     const cell = entityCell(world, terrain, haul.workplace);
     if (cell === here) {
+      // Lift a batch sized by the tribe's best unlocked vehicle (`stockSlots`), or one unit on foot
+      // when no vehicle is available — `pickupFromStore` caps the move to what the source actually holds.
+      const load = carrierCarryCapacity(world, ctx, settler.tribe);
       startAtomic(
         world,
         e,
         PICKUP_ATOMIC_ID,
-        { kind: 'pickup', goodType: haul.goodType, amount: CARRY_LOAD, from: haul.workplace },
+        { kind: 'pickup', goodType: haul.goodType, amount: load, from: haul.workplace },
         atomicDuration(ctx, settler, PICKUP_ATOMIC_ID),
         haul.workplace,
       );
@@ -312,10 +315,6 @@ const PIETY_PRAY_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾�
  *  pickup=22; like {@link PILEUP_ATOMIC_ID} the readable data binds no per-good pickup, and the id is
  *  only a content cross-reference / animation join key — the typed `pickup` effect is the behavior). */
 const PICKUP_ATOMIC_ID = 22;
-
-/** Units a carrier lifts per pickup swing — one good unit at a time, like `HARVEST_YIELD`. The
- *  pickup is capped at the source's available amount, so this is just the max a single haul moves. */
-const CARRY_LOAD = 1;
 
 /** The numeric atomic id used for depositing a carried load into a store. The READABLE data binds
  *  no per-good "pileup" atomic (harvest/produce are good-keyed; pickup=22/pileup are generic), and
