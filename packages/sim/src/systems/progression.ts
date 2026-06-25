@@ -1,4 +1,4 @@
-import type { HumanJobExperienceType } from '@vinland/data';
+import type { HumanJobExperienceType, JobRequirement } from '@vinland/data';
 import { Settler } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { SystemContext } from './context.js';
@@ -153,4 +153,65 @@ function tribeUnlockEnabled(
     if (s.tribe === tribe && s.jobType !== null && enablingJobs.has(s.jobType)) return true;
   }
   return false;
+}
+
+/**
+ * The *threshold* half of progression — does a settler's accrued XP satisfy a single `needfor*`
+ * requirement? This is the read side of the `{need,train}for{job,good}` table (`TribeType.jobRequirements`,
+ * extracted by `extractJobRequirements`), consuming the same per-specialization XP `grantWorkExperience`
+ * accrues onto `Settler.experience` (keyed by the `humanjobexperiencetypes` track typeId).
+ *
+ * A `needfor*` requirement says: to unlock the target, the settler must have already accrued `amount`
+ * experience measured in the requirement's `experienceTypes` track(s). The settler's XP is keyed by the
+ * **same** track typeIds, so the check sums the settler's accrued XP across the named tracks and compares
+ * it to `amount`. A requirement with no `experienceTypes` (none observed in the real data, but the schema
+ * permits an empty list) is vacuously met — there is no track to measure against.
+ *
+ * APPROXIMATED (see docs/FIDELITY.md): the original measures the threshold per the same below-the-`.ini`
+ * XP logic the per-animation `event` deltas live in — whether a two-`expType` line means "sum both" or
+ * "either alone" has no readable oracle. Summing the named tracks is the deterministic reading (a
+ * single threshold over the relevant specializations); refine when the original's XP curve is observed.
+ *
+ * Only `requirement === 'need'` requirements are interpreted here — `train` requirements are a schooling
+ * COST paid at a training house (the JobSystem/school slice), not an already-accrued XP threshold.
+ * Determinism: a pure read over content + the settler's XP Map (summed in the requirement's fixed
+ * `experienceTypes` order); no RNG, no wall-clock.
+ */
+export function experienceRequirementMet(
+  experience: ReadonlyMap<number, number>,
+  requirement: JobRequirement,
+): boolean {
+  if (requirement.requirement !== 'need') return true; // not an accrued-XP threshold (train = schooling)
+  if (requirement.experienceTypes.length === 0) return true; // no track to measure against
+  let accrued = 0;
+  for (const expType of requirement.experienceTypes) accrued += experience.get(expType) ?? 0;
+  return accrued >= requirement.amount;
+}
+
+/**
+ * Does a settler meet **all** the `needfor*` XP thresholds gating a `(target, targetId)` for its tribe?
+ *
+ * The sibling of {@link tribeUnlockEnabled} on the *threshold* axis: where `jobEnables*` gates a target
+ * on a job being PRESENT in the tribe, `needfor*` gates it on THIS settler having accrued enough XP. A
+ * target with no `need` requirement is unthresholded (any settler clears it); one with several must clear
+ * every one (e.g. a master baker needs both bread- and flour-track XP). `train` requirements are skipped
+ * here — they are a schooling cost, not an accrued-XP threshold (see {@link experienceRequirementMet}).
+ *
+ * A tribe absent from content thresholds nothing (consistent with the `jobEnables` gate). Determinism:
+ * a pure read over the tribe's `jobRequirements` (fixed source order) + the settler's XP Map.
+ */
+export function settlerMeetsNeed(
+  ctx: SystemContext,
+  tribe: number,
+  target: JobRequirement['target'],
+  targetId: number,
+  experience: ReadonlyMap<number, number>,
+): boolean {
+  const tribeType = ctx.content.tribes.find((t) => t.typeId === tribe);
+  if (tribeType === undefined) return true; // no requirement table for this tribe — nothing thresholds it
+  for (const req of tribeType.jobRequirements) {
+    if (req.requirement !== 'need' || req.target !== target || req.targetId !== targetId) continue;
+    if (!experienceRequirementMet(experience, req)) return false;
+  }
+  return true; // no unmet `need` requirement gates this target
 }
