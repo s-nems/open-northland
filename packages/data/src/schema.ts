@@ -313,11 +313,12 @@ export type JobEnables = z.infer<typeof JobEnables>;
  *   in a synthetic "school" experience type, not a real work track).
  * - `target`: `job` (`*forjob` — the unlocked job id) vs `good` (`*forgood` — the unlocked good id).
  *
- * `experienceTypes` are `humanjobexperiencetypes` `typeId`s **for `need`** (1..70, resolvable);
- * **for `train` they are synthetic school markers** (observed 57/77) that are NOT in the experience
- * table — so they are captured but deliberately not cross-validated (validating them would
- * false-positive, mirroring why the `vehicle` {@link JobEnables} kind is left unchecked). A line
- * carries one or two expTypes (the optional second is rare); kept in source order.
+ * `experienceTypes` mostly name `humanjobexperiencetypes` `typeId`s, but they span an id space
+ * **wider than that 70-entry table** — `need` lines reach 72/73/75 and `train` lines pay in
+ * synthetic "school" markers (observed 57/77) — none of which are in the experience table. So they
+ * are captured but deliberately **not** cross-validated (validating them would false-positive,
+ * mirroring why the `vehicle` {@link JobEnables} kind is left unchecked). A line carries one or two
+ * expTypes (the optional second is rare); kept in source order.
  */
 export const JobRequirementKind = z.enum(['need', 'train']);
 export type JobRequirementKind = z.infer<typeof JobRequirementKind>;
