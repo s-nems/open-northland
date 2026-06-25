@@ -120,6 +120,14 @@ the next iteration inherits it.
   data half NOW, gate the pixel half on the human/asset, and keep the GPU input OPTIONAL (a `SpriteSheet?`
   defaulting to the placeholder path) so the reproducible `npm run shot` default is byte-unchanged.
   Generalises: when a step is "blocked on a human/asset", carve off the pure decision and land that. (render)
+- [51eb0d4] When a render binding can be EITHER a scalar or a per-state table (`number |
+  SettlerStateBinding`), drive the atlas tests through the public `resolveSpriteFrame(item, …)` seam, not
+  by indexing `bindings[kind]` as a bob id directly — the moment `settler` became a table, every test
+  that did `atlas.frames.get(SYNTHETIC_BINDINGS[k])` broke, and resolving via the public lookup also
+  caught a real frame-overlap (new settler frames collided with the building rect) + a sheet-bounds
+  overrun the bounds assertion then flagged (had to grow `SYNTHETIC_ATLAS_HEIGHT`). A no-overlap test
+  that enumerates *resolved* frames (all states) is the one that catches a layout collision; one keyed
+  off raw ids silently skips the new frames. (render/test)
 - [400e8a9] To EXERCISE (not just unit-test) a render branch that's blocked on a copyrighted asset, a
   FREE SYNTHETIC stand-in unblocks it: a tiny hand-authored atlas (flat-colour marker frames drawn into
   a `CanvasSource`) binds through the exact same `SpriteSheet` shape a real bob atlas will, so the
