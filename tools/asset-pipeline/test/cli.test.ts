@@ -877,6 +877,10 @@ describe('buildIr / resolveIniSources', () => {
       '[landscapetype]\ntype 2\nname "grass"\n',
     );
     await writeFile(
+      join(game, 'Data', 'logic', 'vehicletypes.ini'),
+      '[vehicletype]\ntype 1\nname "handcart"\nlogicsize 0\nstockslots 15\npassengerslots 0\n',
+    );
+    await writeFile(
       join(game, 'DataCnmd', 'tribetypes12', 'tribetypes.ini'),
       '[tribetype]\ntype 1\nname "viking"\nsetatomic 3 5 "viking_carry"\n',
     );
@@ -910,6 +914,9 @@ describe('buildIr / resolveIniSources', () => {
     expect(set.weapons[0]).toMatchObject({ typeId: 2, tribeType: 1, jobType: 3, damage: { '0': 400 } });
     expect(set.weapons[0]?.source?.layer).toBe('mod');
     expect(set.landscape.map((l) => l.id)).toEqual(['grass']);
+    expect(set.vehicles.map((v) => v.id)).toEqual(['handcart']);
+    expect(set.vehicles[0]).toMatchObject({ typeId: 1, stockSlots: 15, passengerSlots: 0, logicSize: 0 });
+    expect(set.vehicles[0]?.source?.layer).toBe('base');
     expect(set.tribes.map((t) => t.id)).toEqual(['viking']);
     expect(set.atomicAnimations.map((a) => a.name)).toEqual(['viking_carry']);
     // The map.cif logic header is decoded into the IR alongside the .ini type tables.
@@ -937,6 +944,7 @@ describe('buildIr / resolveIniSources', () => {
       join('Data', 'logic', 'goodtypes.ini'),
       join('Data', 'logic', 'jobtypes.ini'),
       join('Data', 'logic', 'landscapetypes.ini'),
+      join('Data', 'logic', 'vehicletypes.ini'),
     ]);
 
     // Remove a base file: it's resolved-away with a warning, not a throw.
