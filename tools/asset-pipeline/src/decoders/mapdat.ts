@@ -402,3 +402,86 @@ function LATIN1ish(s: string): Uint8Array {
   for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i) & 0xff;
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// `lmlt` landscape-type layer -> single per-cell typeId grid (the cell-graph input)
+// ---------------------------------------------------------------------------
+
+/**
+ * The `lmlt` (landscape-type) layer is 4 bytes per cell — one landscape typeId per **triangle
+ * corner** of the cell's render tessellation (probed across real maps: values 0..85, all within the
+ * 87-type IR `LandscapeType` table; ~64% of cells carry four identical corners = uniform terrain,
+ * the rest are shoreline/edge transitions where the corners differ). The render tessellation needs
+ * all four; the navigation cell-graph wants ONE landscape typeId per cell.
+ */
+export const LMLT_CORNERS_PER_CELL = 4;
+
+/**
+ * Reduces a cell's four corner typeIds to a single representative typeId: the **dominant** (most
+ * frequent) corner, ties broken by the **lowest typeId** (canonical + deterministic — never depends
+ * on corner order). On a uniform cell (all four equal, the common case) it returns that value; on a
+ * transition cell it returns whichever landscape type covers most of the cell, so a mostly-land cell
+ * grazing water reads as land and vice-versa.
+ *
+ * Pure helper for {@link lmltToTerrainMap}; exported for direct unit testing of the corner rule.
+ */
+export function reduceCornersToCell(c0: number, c1: number, c2: number, c3: number): number {
+  const corners = [c0, c1, c2, c3];
+  let best = c0;
+  let bestCount = 0;
+  for (const candidate of corners) {
+    let count = 0;
+    for (const other of corners) if (other === candidate) count++;
+    // Strictly-greater keeps the first (lowest-index) winner; the lowest-typeId tie-break is applied
+    // explicitly so the result never depends on which corner happened to come first.
+    if (count > bestCount || (count === bestCount && candidate < best)) {
+      best = candidate;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
+/** A raw per-cell landscape map: dimensions + a row-major typeId grid (the cell-graph input). */
+export interface MapDatTerrainMap {
+  readonly width: number;
+  readonly height: number;
+  /** Row-major landscape typeId per cell; length === width × height. */
+  readonly typeIds: number[];
+}
+
+/**
+ * Collapses an unpacked `lmlt` layer (4 corner typeIds per cell) plus the `lsiz` dimensions into a
+ * single per-cell landscape-typeId grid — the plain `{ width, height, typeIds }` shape the sim's
+ * `buildTerrainGraph` (`packages/sim/src/terrain.ts`) consumes as a `TerrainMap`. Each cell's type is
+ * the {@link reduceCornersToCell} dominant corner. Returns a plain value (not a sim type) so the
+ * build tool never imports from `sim`; the sim validates the typeIds against its IR table.
+ *
+ * APPROXIMATED: the per-corner→per-cell reduction has no behavioral oracle (OpenVikings decodes the
+ * container but does not simulate navigation). Dominant-corner is a faithful-shaped, deterministic
+ * choice for a bulk-terrain nav grid; refine if the oracle later pins a different rule. Walkability
+ * itself is resolved downstream from the IR `LandscapeType` flags, not here.
+ *
+ * Throws if the layer length isn't exactly `width × height × 4` (a wrong layer / dims mismatch).
+ */
+export function lmltToTerrainMap(layer: MapLayer, size: MapDatSize): MapDatTerrainMap {
+  const cells = size.width * size.height;
+  const expected = cells * LMLT_CORNERS_PER_CELL;
+  if (layer.cells.length !== expected) {
+    throw new Error(
+      `mapdat: lmlt layer has ${layer.cells.length} bytes, expected ${expected} (${size.width}×${size.height} × ${LMLT_CORNERS_PER_CELL} corners)`,
+    );
+  }
+  const g = layer.cells;
+  const typeIds = new Array<number>(cells);
+  for (let cell = 0; cell < cells; cell++) {
+    const o = cell * LMLT_CORNERS_PER_CELL;
+    typeIds[cell] = reduceCornersToCell(
+      g[o] as number,
+      g[o + 1] as number,
+      g[o + 2] as number,
+      g[o + 3] as number,
+    );
+  }
+  return { width: size.width, height: size.height, typeIds };
+}

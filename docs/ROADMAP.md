@@ -326,11 +326,27 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
                   throw "not supported" — a separate bit-packing, a later leg. **Hands-on:** 69 X8el
                   layers across 3 real maps unpacked, 0 mismatches (every length an exact multiple of
                   `cells`), all 23 oasis_o_plenty grids `pack→unpack` byte-exact; `lmhe`∈[0,242],
-                  `lmlt`∈[0,85] (within the 87-type table). **Still to do:** identify which `lm**`
-                  tag/lane is the landscape-type id grid the cell-graph wants (`lmlt` is 4 B/cell —
-                  four per-corner triangle types, not one cell id) and map it onto the IR type table →
-                  feed `buildTerrainGraph`. The `eatd`/`eald` structured record-lists (pre-placed
-                  objects, depth-prefixed text) are the Phase-5 territory layer, separate.
+                  `lmlt`∈[0,85] (within the 87-type table). The `eatd`/`eald` structured record-lists
+                  (pre-placed objects, depth-prefixed text) are the Phase-5 territory layer, separate.
+            - [x] **`lmlt` 4-corner layer → per-cell landscape-typeId grid** — `decoders/mapdat.ts`
+                  `lmltToTerrainMap(layer, size)` collapses the unpacked `lmlt` (4 B/cell = four
+                  per-corner triangle typeIds, confirmed `lmlt` is the landscape-type lane) + the
+                  `lsiz` dims into the plain `{ width, height, typeIds }` shape the sim's
+                  `buildTerrainGraph` (`packages/sim/src/terrain.ts`) consumes as a `TerrainMap` — a
+                  plain value so the build tool never imports `sim`. Each cell's typeId is the
+                  `reduceCornersToCell` **dominant corner** (lowest-typeId tie-break — canonical,
+                  corner-order-independent). APPROXIMATED: the corner→cell reduction has no behavioral
+                  oracle (OpenVikings decodes the container but doesn't simulate nav); dominant-corner
+                  is a deterministic bulk-terrain choice — see docs/FIDELITY.md. Walkability/valency
+                  are resolved downstream from the IR `LandscapeType` flags, not here. Throws on a
+                  layer length ≠ `width × height × 4`. **Hands-on:** real `oasis_o_plenty/map.dat`
+                  `lmlt` (250000 B) → a 62500-typeId grid (== cells), distinct cell types
+                  `{0,1,4,9,10,12,15,18,21,36}` (all in the 87-type table), 64.2% uniform cells passed
+                  through + 22382 transitions reduced; that grid feeds the real `buildTerrainGraph` →
+                  a 62500-cell graph (centre cell 4 neighbours). Same for `WICHRY_ZIMY` (32400 cells).
+                  **Still to do:** wire it into the CLI — decode `lmlt` per map + emit a `TerrainMap`
+                  artifact into `content/` (today `buildTerrainGraph` is fed a synthetic grid in
+                  scenarios). The `eatd`/`eald` record-lists + `X6el` ownership layers stay Phase-5.
 - **Exit:** `npm run pipeline` produces a validated `content/` (types + atlases + one map), decoded
   graphics verified against the oracle.
 
@@ -345,12 +361,13 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 > built and unit-tested too, and the **GPU draw + `npm run shot` screenshot harness** (a Pixi
 > renderer consuming the draw list + a deterministic headless `?shot` entry + a committed Playwright
 > script) now produces a reproducible PNG — eyeballed gross-correct (iso terrain behind feet-sorted
-> sprites), pixel fidelity still deferred to a human. **Next smallest step: feed the terrain graph
-> from a decoded map tile grid** — the grid lives in the sibling `map.dat` (a `hoix`-chunk container;
-> `map.cif` holds only the logic header), whose **container is now decoded** (`decoders/mapdat.ts`:
-> chunk table + `lsiz` dims, hands-on on real maps); the next leg is the `pck`/`X8el` packed-layer
-> unpack (cross-check the `.bmd` codec) → identify the landscape-type tag → `buildTerrainGraph` (see
-> Risks/SOURCES.md) — or atlas sprites in place of placeholder geometry. (A
+> sprites), pixel fidelity still deferred to a human. **The terrain-graph decode chain is now fully
+> closed:** `map.dat` `hoix` container → `pck`/`X8el` layer unpack → `lmltToTerrainMap` (the `lmlt`
+> 4-corner landscape-type lane reduced to one per-cell typeId) → the sim's `buildTerrainGraph`, proven
+> hands-on on real maps (`oasis_o_plenty` 250×250 → a 62500-cell graph). **Next smallest step: wire
+> that chain into the CLI** — emit a per-map `TerrainMap` artifact into `content/` so the sim loads a
+> real map's grid instead of a synthetic scenario one — or atlas sprites in place of placeholder
+> geometry. (A
 > "per-type walk-cost field" is *not* a pending step: `landscapetypes.ini` has no movement weight —
 > only `maximumValency` + placement flags — so uniform unit cost is faithful.) Lines tagged *(core
 > done…)* pass tests today but await one wiring piece.
@@ -376,11 +393,12 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
       the log (Phase 5 save/load).
 - [ ] Terrain as a **cell-adjacency graph** with per-type valency + uniform walk cost (from
       `landscapetypes.ini`). *Not* the triangle geometry — that's render-only.
-      *(core done — graph builder + `world.terrain` resource wired. The only open leg is feeding the
-      grid from a decoded map tile grid in the sibling `map.dat` (a `hoix`-chunk container;
-      `map.cif` holds only the logic header), whose **container is now decoded** (`decoders/mapdat.ts`);
-      the `lm**` packed layers (`pck`/`X8el`, cross-check the `.bmd` codec) are the pending unpack,
-      see SOURCES.md "`map.dat` chunk container". NOTE corrected on inspection: a "per-type walk-cost
+      *(core done — graph builder + `world.terrain` resource wired, and the **decode chain that
+      feeds it from a real map is now closed**: `map.dat` `hoix` container → `pck`/`X8el` layer unpack
+      → `lmltToTerrainMap` (the `lmlt` 4-corner landscape-type lane → one per-cell typeId) → the sim's
+      `buildTerrainGraph`, proven hands-on (`oasis_o_plenty` 250×250 → 62500-cell graph). The only
+      remaining leg is **wiring that chain into the CLI** so the sim loads a real map's grid (today
+      scenarios feed a synthetic one). NOTE corrected on inspection: a "per-type walk-cost
       field" is NOT a pending extraction — `landscapetypes.ini` carries no movement weight, only
       `maximumValency` (capacity) + the `allowedon{land,water,everything}` placement flags; uniform
       unit cost is the faithful model. A variable cost would need a source that actually has one.)*
@@ -399,10 +417,9 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
         `cellManhattanDistance` is the fixed-point heuristic seed for the pathfinder. **Hands-on:** built
         `dist/` on a 5×4 grid w/ a 4-cell water river → 16 walkable / 4 blocked, canonical neighbour
         order stable across rebuilds, water dropped from walkable edges, absent-typeId guard fires.
-        **Still to do:** feed the graph from a decoded map's tile grid in `map.dat` (the `hoix`-chunk
-        container is now decoded via `decoders/mapdat.ts`; the `lm**` X8-packed layers are the pending
-        unpack, see SOURCES.md).
-        (Walk cost stays uniform
+        **Still to do:** wire the now-closed `map.dat` → `lmltToTerrainMap` → `buildTerrainGraph` decode
+        chain into the CLI (the unpack + per-cell typeId derivation are done in `decoders/mapdat.ts`,
+        proven hands-on on real maps; see SOURCES.md). (Walk cost stays uniform
         ONE — a non-goal to vary, confirmed on inspecting `landscapetypes.ini`: it has no
         movement-weight property, only `maximumValency` + placement-layer flags; uniform unit cost
         is faithful to the engine.)
@@ -674,17 +691,19 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 - **Settler AI fidelity** — the soul, undocumented. Approach = planner over the data-extracted
   atomic vocabulary; base atomic timings/yields come from `atomicanimations.ini` (see below), with
   only fine-tuning by observation, kept as data so tuning is a diff. See docs/ECS.md "Settler AI".
-- **Map binary tile grid** — **container decoded** (was "located"): the per-cell landscape grid (the
-  Phase-2 nav-graph input) lives in the sibling **`map.dat`**, NOT in `map.cif` (which is only the
-  logic-header `CStringArray`). `map.dat` is a flat `hoix`-chunk container (0x20-byte headers; oracle
-  `CIoHelper.cs`) — now decoded by `decoders/mapdat.ts` (`decodeMapDat` chunk table + `decodeMapSize`
-  `lsiz` dims, hands-on on real maps). The `lm**` layers carry the per-cell grids as `pck`/`X8el`-packed
-  streams (likely the `.bmd` packed-line codec family — confirm when porting); the remaining work is
-  the packed-layer unpack and identifying the landscape-type tag → `buildTerrainGraph`. See
-  docs/SOURCES.md "`map.dat` chunk container". This grid
-  (not `landscapetypes.ini`) is also the only plausible home for any per-cell walk weight — the type
-  table has none (confirmed: only `maximumValency` + placement flags), so uniform walk cost stays
-  faithful unless a real attribute turns up in a `map.dat` layer.
+- **Map binary tile grid** — **decode chain closed** (was "container decoded"): the per-cell landscape
+  grid (the Phase-2 nav-graph input) lives in the sibling **`map.dat`**, NOT in `map.cif` (which is
+  only the logic-header `CStringArray`). `map.dat` is a flat `hoix`-chunk container (0x20-byte headers;
+  oracle `CIoHelper.cs`) — decoded by `decoders/mapdat.ts` (`decodeMapDat` chunk table + `lsiz` dims).
+  The `lm**` layers are `pck`/`X8el`-packed (the `.bmd` packed-line codec family, confirmed) and
+  unpack via `unpackMapLayer`; the landscape-type lane is **`lmlt`** (4 B/cell = four per-corner
+  triangle typeIds), reduced to one per-cell typeId by `lmltToTerrainMap` → fed to the sim's
+  `buildTerrainGraph` (hands-on: `oasis_o_plenty` 250×250 → 62500-cell graph). The remaining leg is
+  CLI wiring (emit a per-map `TerrainMap` into `content/`). The corner→cell reduction is
+  *approximated* (no behavioral oracle — see docs/FIDELITY.md). See docs/SOURCES.md "`map.dat` chunk
+  container". This grid (not `landscapetypes.ini`) is also the only plausible home for any per-cell
+  walk weight — the type table has none (confirmed: only `maximumValency` + placement flags), so
+  uniform walk cost stays faithful unless a real attribute turns up in a `map.dat` layer.
 - **Combat & campaign scripting scope** — both larger than one roadmap line implies.
 - **Determinism drift** — every new system must keep golden state + trace tests green.
 
