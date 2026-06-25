@@ -27,5 +27,6 @@ export const transportSystem: System = todo('TransportSystem'); // carriers phys
 export const constructionSystem: System = todo('ConstructionSystem'); // deliver materials, advance build, level houses
 export const combatSystem: System = todo('CombatSystem'); // N-tribe combat from weapontypes/armortypes (large subsystem)
 // ReproductionSystem has graduated to ./reproduction.ts (birth half — one settler per tribe per tick
-// while population < housing capacity). Families/children growing up remain a later slice.
+// while population < housing capacity; newborns are born babies, the data-pinned age-class structure
+// in ./ageclass.ts). The growth transition (baby->child->adult) remains a later slice.
 export const cleanupSystem: System = todo('CleanupSystem'); // destroy dead entities (ids are NOT recycled), emit events for render/audio

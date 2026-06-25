@@ -1,3 +1,13 @@
+import {
+  BABY_FEMALE,
+  BABY_MALE,
+  CHILD_FEMALE,
+  CHILD_MALE,
+  NEWBORN_AGE_CLASS,
+  isBaby,
+  isChild,
+  isNonWorkingAge,
+} from './ageclass.js';
 import { aiSystem } from './ai.js';
 import { atomicSystem } from './atomic.js';
 import { commandSystem } from './command.js';
@@ -57,6 +67,16 @@ export { jobSystem };
 export { carrierCarryCapacity, experienceRequirementMet, grantWorkExperience, settlerMeetsNeed, trackFor };
 export { housingCapacity, tribePopulation };
 export { reproductionSystem };
+export {
+  BABY_FEMALE,
+  BABY_MALE,
+  CHILD_FEMALE,
+  CHILD_MALE,
+  NEWBORN_AGE_CLASS,
+  isBaby,
+  isChild,
+  isNonWorkingAge,
+};
 export {
   cleanupSystem,
   combatSystem,

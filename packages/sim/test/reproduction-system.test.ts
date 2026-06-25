@@ -4,8 +4,10 @@ import { Building, Position, Settler } from '../src/components/index.js';
 import type { Entity } from '../src/ecs/world.js';
 import { ONE, Simulation, fx, populationWithinHousing } from '../src/index.js';
 import {
+  NEWBORN_AGE_CLASS,
   type SystemContext,
   housingCapacity,
+  isNonWorkingAge,
   reproductionSystem,
   tribePopulation,
 } from '../src/systems/index.js';
@@ -133,13 +135,15 @@ describe('ReproductionSystem — births fill spare housing', () => {
     }
   });
 
-  it('births an IDLE settler (jobType null) — not born into a trade', () => {
+  it('births a BABY (the youngest age class) — not born into an adult trade', () => {
     const sim = new Simulation({ seed: 1, content: reproContent() });
     placeBuilding(sim, 2, VIKING);
     reproductionSystem(sim.world, ctxOf(sim));
     const [born] = [...sim.world.query(Settler)];
     expect(born).toBeDefined();
-    expect(sim.world.get(born as Entity, Settler).jobType).toBeNull();
+    const jobType = sim.world.get(born as Entity, Settler).jobType;
+    expect(jobType).toBe(NEWBORN_AGE_CLASS); // baby_female (id 1), not null and not an adult job
+    expect(isNonWorkingAge(jobType)).toBe(true); // the JobSystem leaves a baby unemployed
   });
 
   it('keeps population within housing (the invariant never fires across many ticks)', () => {
@@ -161,5 +165,29 @@ describe('ReproductionSystem — births fill spare housing', () => {
     const violations = populationWithinHousing(sim.content)(sim.world);
     expect(violations).toHaveLength(1);
     expect(violations[0]).toContain('population 5 exceeds housing capacity 3');
+  });
+});
+
+describe('age classes — the data-pinned baby/child life stages (logicdefines.inc JOB_TYPE_HUMAN_*)', () => {
+  it('classifies the baby/child age-class job ids as non-working', () => {
+    expect(isNonWorkingAge(1)).toBe(true); // baby_female
+    expect(isNonWorkingAge(2)).toBe(true); // baby_male
+    expect(isNonWorkingAge(3)).toBe(true); // child_female
+    expect(isNonWorkingAge(4)).toBe(true); // child_male
+  });
+
+  it('treats woman (5) and adult trades (6+) as working — only ids 1–4 are non-working', () => {
+    expect(isNonWorkingAge(5)).toBe(false); // woman is an adult role the original employs
+    expect(isNonWorkingAge(6)).toBe(false); // civilist (the first adult trade)
+    expect(isNonWorkingAge(8)).toBe(false); // collector
+  });
+
+  it('treats an idle/job-seeking adult (null) as not an age class', () => {
+    expect(isNonWorkingAge(null)).toBe(false);
+  });
+
+  it('the newborn age class is a baby (the youngest, non-working stage)', () => {
+    expect(NEWBORN_AGE_CLASS).toBe(1); // baby_female
+    expect(isNonWorkingAge(NEWBORN_AGE_CLASS)).toBe(true);
   });
 });

@@ -96,16 +96,24 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       *leveling* (`home level 00..04` raising capacity) — blocked on the same below-`.ini` upgrade-cost
       source as material delivery, so deferred together.
 - [ ] **ReproductionSystem** — birth **landed** (`systems/reproduction.ts`): one settler per tribe per
-      tick while `tribePopulation < housingCapacity` — the first WRITER of the housing read model, born
-      **idle** (the JobSystem employs it) at the tribe's lowest-id built `home` tile. The cadence IS the
-      gate (deterministic, no RNG, self-limiting at capacity), so the new **`populationWithinHousing`
-      invariant** (a content-bound factory in `invariants.ts` — it needs the `homeSize` param the
-      `Invariant` signature doesn't carry) can never be breached by a birth. Inert in the golden/slice
-      (their content has no `home`-kind building, so 0 births — the golden hash + trace are unchanged).
-      The birth *rate* + the **family/child-growing-up** model are below the readable `.ini` (no
-      birth-rate key; `make_love` restores the leisure channel, not a birth yield), so they are
-      **approximated** (see docs/FIDELITY.md). **Next:** families / children growing up (an age dimension
-      on `Settler`), gated by housing — calibration-by-observation, deferred until an age/growth oracle.
+      tick while `tribePopulation < housingCapacity` — the first WRITER of the housing read model, born a
+      **baby** at the tribe's lowest-id built `home` tile. The cadence IS the gate (deterministic, no RNG,
+      self-limiting at capacity), so the **`populationWithinHousing` invariant** (a content-bound factory
+      in `invariants.ts` — it needs the `homeSize` param the `Invariant` signature doesn't carry) can
+      never be breached by a birth. **Age-class structure now landed** — a newborn's `jobType` is the
+      data-pinned youngest age class (`NEWBORN_AGE_CLASS` = `baby_female` id 1, pinned to `logicdefines.inc`
+      `JOB_TYPE_HUMAN_BABY_FEMALE` + the `jobtypes.ini` records), because in the original the first five
+      `jobtypes` (`baby_female`/`baby_male`/`child_female`/`child_male`/`woman`) are **age/sex classes**,
+      not working trades. `systems/ageclass.ts` is the sim-side recognition (`isBaby`/`isChild`/
+      `isNonWorkingAge`, ids 1–4 non-working), so the JobSystem leaves a baby unemployed (non-null jobType
+      → skipped; no `workers` slot lists a baby → never adopted). Inert in the golden/slice (their content
+      has no `home`-kind building, so 0 births — the golden hash + trace are unchanged). The birth *rate*,
+      *sex*, and the **growth cadence** are below the readable `.ini` (no birth-rate/sex/grow-up key;
+      `make_love` restores the leisure channel, not a birth yield), so they are **approximated** (see
+      docs/FIDELITY.md). **Next:** the **growth transition** (baby→child→adult-eligible, freeing a grown
+      child for the JobSystem) — gated by housing, on an unpinned `GROWUP_TICKS` cadence constant (the
+      established hunger-rise-style approximated-constant pattern), recorded in FIDELITY until an
+      age/growth oracle calibrates the timing.
 - [ ] HUD: stocks, population, jobs, the goods graph.
 - **Exit:** a self-sustaining, progressing single-tribe settlement you can grow.
 
