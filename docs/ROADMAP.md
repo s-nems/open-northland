@@ -665,8 +665,20 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
       `setatomic`→`atomicanimations` `length` (22/26 workplaces resolve to a real length — mill
       flour=200, brewery mead=50, pottery brick=80, …; the 4 raw-good producers with no produce-atomic
       keep the default 20). Reference-tribe + primary-output approximations recorded in FIDELITY (the
-      source length varies per tribe/output). **Still to do:** a worker-presence gate (produce only
-      while staffed — JobSystem slice); a per-tribe recipe-timing table (the fully-faithful model).
+      source length varies per tribe/output). **The worker-presence gate now lands:** a workplace only
+      runs a cycle (start AND advance) while its worker is present — a {@link Settler} whose `jobType`
+      matches the building type's `workers` slot stands on the workplace's tile (`workerPresentAt` in
+      `systems/shared.ts`; an in-flight cycle pauses with `elapsed` held if the worker leaves, resumes
+      on return). A building type that declares no `workers` slot is unstaffed-by-design and produces
+      freely (passive stores / worker-less fixtures unaffected). The AI planner pins a settler standing
+      on a workplace it staffs (`staffsWorkplaceHere`) so the operator isn't re-planned off to harvest/
+      haul — the minimal "keep the worker put" piece without the full JobSystem (assignment across many
+      workplaces stays a Phase-3 slice). **Hands-on:** through the compiled `dist` `productionSystem`,
+      an unstaffed sawmill with 5 wood → **0 planks** (gate blocks it, wood untouched at 5); a staffed
+      sawmill (carpenter on its tile) → wood drained 5→0, **4 planks** produced. The golden trace's
+      sawmill is now staffed by a carpenter spawned on it; the 33-entry atomic trace + 8-plank output
+      are unchanged, only the state hash moved (a new operator entity). **Still to do:** JobSystem
+      assignment across many workplaces + a per-tribe recipe-timing table (the fully-faithful model).
 - [x] A minimal **carrier** moving goods between store and workplace (goods never teleport). Done —
       the AISystem's `atomicPlanner` now has a carrier fallback: an idle settler with nothing to
       harvest hauls a workplace's finished outputs out to a store that can stock them. `pickup` now
