@@ -1046,6 +1046,19 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             have their atomic resets in place; the NeedsSystem rise/reset half is complete.
 - [ ] **ProgressionSystem** — experience + tech graph: `humanjobexperiencetypes` per-specialization
       XP, `trainforjob` schooling, `needfor*`/`allow*`/`jobEnables*` gating goods/houses/jobs/vehicles.
+      - [x] **`humanjobexperiencetypes` IR extracted** — `extractJobExperience` (`decoders/ini.ts`)
+            reduces `Data/logic/humanjobexperiencetypes.ini`'s `[humanjobexperiencetype]` records to the
+            validated `HumanJobExperienceType` schema (`@vinland/data`): a per-specialization XP track
+            keyed on `typeId`, naming its owning `jobType` (`job`, always) and, when good-specific, the
+            `goodType` (`good`) it trains on, plus `experienceFactor` + optional `baseRepeatCounter` —
+            all 1:1 with the source keys, no interpretation (the XP curve is the accrual system's job).
+            Wired into the CLI (`buildIr` + a new base `resolveIniSources` entry + the `ContentSet`
+            `jobExperience` field); `validateCrossReferences` checks every `job`/`good` ref resolves.
+            **Hands-on:** `npm run pipeline` on the real game → **70 tracks** (44 good-specific, 26
+            general, 3 with a baseRepeatCounter, 26 distinct jobs, experienceFactor 1..250), 0 dangling
+            refs. **Next:** the XP-accrual side — an `Experience` component + a system that grants XP on
+            a completed work atomic against the matching `(job, good)` track, then `trainforjob`/`allow*`
+            gating on top.
 - [ ] JobSystem assignment across many workplaces; multiple carriers + vehicle stock slots.
 - [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`)
       → population capacity → the births→housing→births loop.

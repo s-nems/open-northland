@@ -76,6 +76,14 @@ export function validateCrossReferences(set: ContentSet): void {
       errors.push(`weapon "${w.id}" references unknown jobType ${w.jobType}`);
   }
 
+  // Each experience track names its owning job (always) and, when good-specific, the good it trains on.
+  for (const x of set.jobExperience) {
+    if (!jobIds.has(x.jobType))
+      errors.push(`jobExperience "${x.id}" references unknown jobType ${x.jobType}`);
+    if (x.goodType !== undefined && !goodIds.has(x.goodType))
+      errors.push(`jobExperience "${x.id}" references unknown goodType ${x.goodType}`);
+  }
+
   if (errors.length > 0) {
     throw new Error(`Content cross-reference validation failed:\n  - ${errors.join('\n  - ')}`);
   }

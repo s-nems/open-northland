@@ -42,6 +42,7 @@ import {
   extractGraphicsBindings,
   extractJobBaseGraphics,
   extractJobChangeGraphics,
+  extractJobExperience,
   extractJobs,
   extractLandscape,
   extractMapInfo,
@@ -445,6 +446,7 @@ export async function resolveIniSources(gameDir: string, mod: string | undefined
   const base: { rel: string; layer: 'base' | 'mod' }[] = [
     { rel: join('Data', 'logic', 'goodtypes.ini'), layer: 'base' },
     { rel: join('Data', 'logic', 'jobtypes.ini'), layer: 'base' },
+    { rel: join('Data', 'logic', 'humanjobexperiencetypes.ini'), layer: 'base' },
     { rel: join('Data', 'logic', 'landscapetypes.ini'), layer: 'base' },
   ];
   if (mod !== undefined) {
@@ -587,6 +589,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   const sources = await resolveIniSources(args.game, args.mod);
   const goods = [];
   const jobs = [];
+  const jobExperience = [];
   const buildings = [];
   const landscape = [];
   const tribes = [];
@@ -597,6 +600,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     const src: SourceRef = { file, layer };
     goods.push(...extractGoods(sections, src));
     jobs.push(...extractJobs(sections, src));
+    jobExperience.push(...extractJobExperience(sections, src));
     buildings.push(...extractBuildings(sections, src));
     landscape.push(...extractLandscape(sections, src));
     tribes.push(...extractTribes(sections, src));
@@ -616,6 +620,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     },
     goods,
     jobs,
+    jobExperience,
     buildings: buildingsWithRecipes,
     weapons,
     landscape,
@@ -769,7 +774,8 @@ async function run(args: Args): Promise<void> {
 
   const ir = await writeIr(args);
   console.log(
-    `[pipeline] ini -> ir: ${ir.goods.length} goods, ${ir.jobs.length} jobs, ${ir.buildings.length} buildings, ` +
+    `[pipeline] ini -> ir: ${ir.goods.length} goods, ${ir.jobs.length} jobs, ${ir.jobExperience.length} job-xp tracks, ` +
+      `${ir.buildings.length} buildings, ` +
       `${ir.weapons.length} weapons, ${ir.landscape.length} landscape, ${ir.tribes.length} tribes, ` +
       `${ir.atomicAnimations.length} atomic animations, ${ir.maps.length} maps -> ${join(args.out, 'ir.json')}`,
   );
