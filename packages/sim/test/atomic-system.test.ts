@@ -139,7 +139,7 @@ describe('atomicSystem — effects', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = sim.world.create();
     sim.world.add(e, Carrying, { goodType: WOOD, amount: 2 });
-    startAtomic(sim, e, { kind: 'pickup', goodType: WOOD, amount: 3 }, 1);
+    startAtomic(sim, e, { kind: 'pickup', goodType: WOOD, amount: 3, from: null }, 1);
     atomicSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, Carrying)).toEqual({ goodType: WOOD, amount: 5 });
   });
@@ -148,7 +148,7 @@ describe('atomicSystem — effects', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = sim.world.create();
     sim.world.add(e, Carrying, { goodType: WOOD, amount: 2 });
-    startAtomic(sim, e, { kind: 'pickup', goodType: PLANK, amount: 1 }, 1);
+    startAtomic(sim, e, { kind: 'pickup', goodType: PLANK, amount: 1, from: null }, 1);
     // Overwriting the load would destroy the carried wood — that's a planner bug, so it throws.
     expect(() => atomicSystem(sim.world, ctxOf(sim))).toThrow(/already carries good/);
   });
@@ -246,7 +246,7 @@ describe('atomicSystem — determinism', () => {
       const store = sim.world.create();
       sim.world.add(store, Building, { buildingType: SAWMILL, tribe: 1, built: ONE, level: 0 });
       sim.world.add(store, Stockpile, { amounts: new Map() });
-      startAtomic(sim, settler, { kind: 'pickup', goodType: PLANK, amount: 4 }, 3, 22);
+      startAtomic(sim, settler, { kind: 'pickup', goodType: PLANK, amount: 4, from: null }, 3, 22);
       for (let i = 0; i < 3; i++) sim.step();
       startAtomic(sim, settler, { kind: 'pileup', store }, 2, 23);
       for (let i = 0; i < 2; i++) sim.step();

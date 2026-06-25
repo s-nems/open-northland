@@ -304,11 +304,13 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
 Goal: one tribe, headless-correct, then on screen. Establish the invariants that the rest depends on.
 
 > **TL;DR (live target).** The slice runs end-to-end and deterministic: terrain cell-graph → A\* →
-> movement → the atomic planner (harvest→carry→pileup) → one workplace with capacity are all built
-> and green. **Next smallest step: the minimal carrier** (move goods between store and workplace).
-> Still unbuilt in this phase: **CommandSystem** (the serializable-command seam — leapfrogged so
-> far), **render + the screenshot harness**, and the **golden state-hash + atomic-trace** over ~1000
-> ticks. Lines tagged *(core done…)* pass tests today but await one wiring piece.
+> movement → the atomic planner (harvest→carry→pileup) → one workplace with capacity → the carrier
+> (haul workplace outputs to a store) are all built and green. **Next smallest step: CommandSystem +
+> the serializable command schema** (the seam that mutates state) — or, if render is preferred first,
+> the **screenshot harness + isometric render** (a human-judged visual step). Still unbuilt in this
+> phase: **render + the screenshot harness**, the **golden state-hash + atomic-trace** over ~1000
+> ticks, and **CommandSystem** (the serializable-command seam — leapfrogged so far). Lines tagged
+> *(core done…)* pass tests today but await one wiring piece.
 - [ ] **CommandSystem + serializable command schema** — the ONLY way state mutates. Save = command
       log from day one (disk format later; the invariant is now). Define the **snapshot read-view**
       (double-buffer or immutable view) so `render` never reads mid-mutation.
@@ -480,7 +482,22 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
       events, two same-seed runs hash-equal (`57b0f116`). **Still to do:** a worker-presence gate
       (a workplace should only produce while staffed — JobSystem slice) and the carrier moving outputs
       out / inputs in (next roadmap line).
-- [ ] A minimal **carrier** moving goods between store and workplace (goods never teleport).
+- [x] A minimal **carrier** moving goods between store and workplace (goods never teleport). Done —
+      the AISystem's `atomicPlanner` now has a carrier fallback: an idle settler with nothing to
+      harvest hauls a workplace's finished outputs out to a store that can stock them. `pickup` now
+      carries a `from` source store (the `AtomicEffect` gained a `from: Entity | null`); a pickup
+      `from` a store removes exactly what it grants the carrier, so goods are conserved (the old
+      sourceless pickup is `from: null`). `nearestWorkplaceOutput` finds the nearest workplace
+      (a `Building` with a recipe) holding one of its recipe **outputs** that a *different* store can
+      take (canonical entity-id scan, ascending-goodType good choice via `stockpileEntries`);
+      `nearestStoreFor` now refuses to deliver a good back into its own producer (no carry-it-back
+      livelock). The existing carry→pileup chain hauls and deposits it. Reuses the same
+      MoveGoal→PathRequest→PathFollow navigation as the woodcutter; the `transportSystem` stub stays a
+      stub (carrier behavior is the atomic vocabulary, not a bespoke system). Pure + deterministic;
+      no-ops on a mapless sim (golden untouched). **Hands-on:** a carrier on a 4×1 strip (carrier@0,
+      sawmill@1 with 3 planks, HQ@2) through the real `Simulation.step()` schedule → the sawmill
+      drains 3→0, exactly **3 planks** reach the HQ (none created/lost), the carrier unloads; never
+      delivers back into the producer; two seed-13 runs hash-equal.
 - [ ] Render: isometric terrain + the settler sprite from the atlas, **depth-sorted by feet anchor**
       (a visual checklist item — can't be golden-hashed; see docs/TESTING.md).
       - Bundle the **screenshot harness** into this slice: a deterministic, headless render entry

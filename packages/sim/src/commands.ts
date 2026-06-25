@@ -36,7 +36,15 @@ export type CommandKind = Command['kind'];
 export type AtomicEffect =
   | { readonly kind: 'move'; readonly to: { x: number; y: number } }
   | { readonly kind: 'harvest'; readonly resource: Entity; readonly goodType: number }
-  | { readonly kind: 'pickup'; readonly goodType: number; readonly amount: number }
+  | {
+      readonly kind: 'pickup';
+      readonly goodType: number;
+      readonly amount: number;
+      /** The store the goods come OUT of (a workplace's stockpile a carrier hauls from), or null
+       *  for a sourceless pickup (the goods appear on the settler's back without a source). Goods
+       *  are conserved: a pickup `from` a store removes exactly what it adds to the carrier. */
+      readonly from: Entity | null;
+    }
   | { readonly kind: 'pileup'; readonly store: Entity }
   | { readonly kind: 'produce'; readonly recipeOutput: number }
   | { readonly kind: 'eat'; readonly goodType: number }
