@@ -227,15 +227,15 @@ export const ArmorType = z.object({
   typeId: TypeId,
   id: z.string(),
   name: z.string().optional(),
-  /** `maintype` — coarse class (1 = light/cloth+leather, 2 = heavy/chain+plate in the base data). */
+  /** `mainType` — coarse class (1 = light/cloth+leather, 2 = heavy/chain+plate in the base data). */
   mainType: TypeId.optional(),
   /** `goodtype` — the good that IS this armor (worn/carried); resolves into the good table. */
   goodType: TypeId.optional(),
-  /** `materialtype` — the material tier the armor is made of (cloth/leather/chain/plate = 1..4). */
+  /** `materialType` — the material tier the armor is made of (cloth/leather/chain/plate = 1..4). */
   materialType: TypeId.optional(),
   /** `weight` — encumbrance the armor adds (0 = leather, up to 3 = chain/plate). */
   weight: z.number().int().nonnegative().default(0),
-  /** `blockingvalue` — how much incoming damage the armor mitigates (the combat read side's join key). */
+  /** `blockingValue` — how much incoming damage the armor mitigates (the combat read side's join key). */
   blockingValue: z.number().int().nonnegative().default(0),
   source: Provenance.optional(),
 });

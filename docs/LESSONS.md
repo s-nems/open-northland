@@ -370,3 +370,11 @@ the next iteration inherits it.
   sibling's GPU-resource lifecycle too: `renderScene` never `.destroy()`s its per-frame `Graphics`/
   `Texture`, so a new overlay shouldn't either — destroying-on-remove is a separate render-perf pass over
   BOTH, not a HUD-only divergence. (render/pixi)
+
+- [0cbe894] `.ini` key matching in the extractors is CASE-SENSITIVE (`p.key === key`) and the parser
+  preserves the source casing verbatim — so an extractor must spell each key with the file's exact
+  casing, which is often MIXED within one file (`armortypes.ini`: `type`/`goodtype` lowercase but
+  `mainType`/`materialType`/`blockingValue` camelCase). `getInt(sec, 'maintype')` silently returns
+  undefined where the file says `mainType`; the field just vanishes (no error), only caught by a
+  hands-on pipeline run + asserting the value. `grep -oE '^[a-zA-Z]+' <file> | sort -u` the real keys
+  first; match each verbatim (the established convention — see `atomicForHarvesting`). (asset-pipeline)
