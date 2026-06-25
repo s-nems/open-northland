@@ -3,6 +3,7 @@ import {
   CHUNK_HEADER_SIZE,
   HOIX_MARKER,
   LMLT_CORNERS_PER_CELL,
+  MAP_LAYER_CODEC_X6,
   MAP_LAYER_CODEC_X8,
   MAP_LAYER_HEADER_SIZE,
   MAP_LAYER_SUBFORMAT,
@@ -17,9 +18,11 @@ import {
   isPackedLayer,
   lmltToTerrainMap,
   packMapLayer,
+  packX6elLayer,
   reduceCornersToCell,
   tagToId,
   unpackMapLayer,
+  unpackX6elLayer,
 } from '../src/decoders/mapdat.js';
 
 /**
@@ -252,13 +255,13 @@ describe('unpackMapLayer / pck-X8el round-trip', () => {
     expect(() => unpackMapLayer(map.chunks[0] as never)).toThrow(/not a pck-packed layer/);
   });
 
-  it('throws on an unsupported codec (e.g. X6el)', () => {
-    // Hand-build a "kcp"/"X6el" header so the codec gate fires (X6 is a separate, unhandled format).
+  it('rejects an X6el layer (those go through unpackX6elLayer, not the byte path)', () => {
+    // Hand-build a "kcp"/"X6el" header so the X8el-only codec gate fires.
     const payload = new Uint8Array(MAP_LAYER_HEADER_SIZE);
     payload.set([0x6b, 0x63, 0x70], 0x05); // "kcp"
     payload.set([0x58, 0x36, 0x65, 0x6c], 0x08); // "X6el"
     const map = decodeMapDat(encodeMapDat([{ tag: 'empa', version: 1, payload }]));
-    expect(() => unpackMapLayer(map.chunks[0] as never)).toThrow(/not supported/);
+    expect(() => unpackMapLayer(map.chunks[0] as never)).toThrow(/is not supported/);
   });
 
   it('throws on a stream that underruns its declared unpacked length', () => {
@@ -303,6 +306,120 @@ describe('unpackMapLayer / pck-X8el round-trip', () => {
   it('throws on a run control sitting at the very end with no value byte', () => {
     // Grid claims 5 bytes; a run control is the final stream byte (no value follows).
     expect(() => unpackMapLayer(craftLayer(5, [0x80 | 5]))).toThrow(/no value byte/);
+  });
+});
+
+/**
+ * The `X6el` 2-byte-per-cell ownership codec (`empa`/`empb`). Same fixture-free strategy as the X8el
+ * tests: round-trip a synthetic u16 grid through `packX6elLayer` → `unpackX6elLayer` and assert
+ * byte-exact recovery, plus the inner header layout reverse-engineered from real maps (the container
+ * header is identical to X8el; only the codec id "X6el" and the per-element width differ).
+ */
+describe('unpackX6elLayer / pck-X6el round-trip', () => {
+  /** Wraps a packed X6el payload in a one-chunk map so we can decode it like the real reader does. */
+  const layerChunk = (cells: Uint16Array) => {
+    const map = decodeMapDat(encodeMapDat([{ tag: 'empa', version: 1, payload: packX6elLayer(cells) }]));
+    return map.chunks[0] as ReturnType<typeof decodeMapDat>['chunks'][number];
+  };
+
+  it('round-trips a grid mixing long u16 runs and noisy literals', () => {
+    // 200 zeros (one run), a noisy literal stretch of distinct u16s, then a long run of 0x0341 —
+    // exercises both control forms and the 0x7F per-run element cap (split across controls).
+    const cells = new Uint16Array(200 + 50 + 150);
+    let p = 200;
+    for (let k = 0; k < 50; k++) cells[p++] = (k * 277 + 13) & 0xffff; // adjacent-distinct-ish noise
+    cells.fill(0x0341, p, p + 150);
+    const layer = unpackX6elLayer(layerChunk(cells));
+    expect(layer.codec).toBe(MAP_LAYER_CODEC_X6);
+    expect(layer.cells).toEqual(cells);
+  });
+
+  it('round-trips an empty grid', () => {
+    expect(unpackX6elLayer(layerChunk(new Uint16Array(0))).cells.length).toBe(0);
+  });
+
+  it('round-trips a single-element grid (the lone-literal progress guard)', () => {
+    expect(unpackX6elLayer(layerChunk(Uint16Array.of(0xbeef))).cells).toEqual(Uint16Array.of(0xbeef));
+  });
+
+  it('preserves little-endian byte order of the u16 elements', () => {
+    // 0x1234 must pack/unpack with low byte 0x34 first; a round-trip pins the byte order.
+    const cells = Uint16Array.of(0x1234, 0x00ff, 0xff00, 0x0000, 0xffff);
+    expect(unpackX6elLayer(layerChunk(cells)).cells).toEqual(cells);
+  });
+
+  it('writes the X6el inner header (marker, codec, sub-format, unpacked byte length)', () => {
+    const cells = Uint16Array.of(1, 1, 1, 2, 3);
+    const packed = packX6elLayer(cells);
+    expect(packed[0]).toBe(1); // version
+    expect(String.fromCharCode(packed[5] as number, packed[6] as number, packed[7] as number)).toBe('kcp');
+    expect(
+      String.fromCharCode(
+        packed[8] as number,
+        packed[9] as number,
+        packed[10] as number,
+        packed[11] as number,
+      ),
+    ).toBe('X6el');
+    expect(packed[12]).toBe(MAP_LAYER_SUBFORMAT);
+    const view = new DataView(packed.buffer);
+    expect(view.getUint32(0x0d, true)).toBe(cells.length * 2); // unpacked length is BYTES (= cells × 2)
+    expect(view.getUint32(0x01, true)).toBe(packed.length - 5);
+    expect(view.getUint32(0x11, true)).toBe(packed.length - 5);
+  });
+
+  it('rejects a non-X6el codec (an X8el layer goes through unpackMapLayer)', () => {
+    const map = decodeMapDat(
+      encodeMapDat([{ tag: 'lmhe', version: 1, payload: packMapLayer(Uint8Array.of(1, 2)) }]),
+    );
+    expect(() => unpackX6elLayer(map.chunks[0] as never)).toThrow(/is not an X6el/);
+  });
+
+  it('rejects a non-packed chunk', () => {
+    const map = decodeMapDat(
+      encodeMapDat([{ tag: 'lsiz', payload: encodeMapSize({ width: 2, height: 2 }) }]),
+    );
+    expect(() => unpackX6elLayer(map.chunks[0] as never)).toThrow(/not a pck-packed layer/);
+  });
+
+  /** Builds an X6el layer payload with a hand-crafted unpacked length + RLE stream. */
+  const craftX6el = (unpackedLength: number, stream: number[]) => {
+    const payload = new Uint8Array(MAP_LAYER_HEADER_SIZE + stream.length);
+    payload.set([0x6b, 0x63, 0x70], 0x05); // "kcp"
+    payload.set([0x58, 0x36, 0x65, 0x6c], 0x08); // "X6el"
+    payload[0x0c] = MAP_LAYER_SUBFORMAT;
+    new DataView(payload.buffer).setUint32(0x0d, unpackedLength, true);
+    payload.set(stream, MAP_LAYER_HEADER_SIZE);
+    return decodeMapDat(encodeMapDat([{ tag: 'empa', version: 1, payload }])).chunks[0] as never;
+  };
+
+  it('throws on an odd unpacked length (not a whole number of u16 cells)', () => {
+    expect(() => unpackX6elLayer(craftX6el(3, [1, 0xaa, 0xbb]))).toThrow(/whole number of u16/);
+  });
+
+  it('throws on a run that overflows the declared grid', () => {
+    // Grid claims 4 bytes (2 cells); a run wants 5 copies → overflow.
+    expect(() => unpackX6elLayer(craftX6el(4, [0x80 | 5, 0xaa, 0xbb]))).toThrow(/run overflows/);
+  });
+
+  it('throws on a literal that overflows the declared grid', () => {
+    // Grid claims 2 bytes (1 cell); a 2-element literal → overflow.
+    expect(() => unpackX6elLayer(craftX6el(2, [2, 1, 2, 3, 4]))).toThrow(/literal overflows/);
+  });
+
+  it('throws on a literal that reads past the truncated stream end', () => {
+    // Grid claims 10 bytes; a 4-element literal control but only 2 literal bytes present.
+    expect(() => unpackX6elLayer(craftX6el(10, [4, 1, 2]))).toThrow(/reads past the stream end/);
+  });
+
+  it('throws on a run control at the very end with no value element', () => {
+    // Grid claims 4 bytes; a run control is the final stream byte (no u16 value follows).
+    expect(() => unpackX6elLayer(craftX6el(4, [0x80 | 2]))).toThrow(/no value element/);
+  });
+
+  it('throws on a stream that underruns its declared length', () => {
+    // Declare 8 bytes but give a 1-element literal that ends the stream early.
+    expect(() => unpackX6elLayer(craftX6el(8, [1, 0xaa, 0xbb]))).toThrow(/underran/);
   });
 });
 

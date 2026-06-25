@@ -24,11 +24,12 @@
  * walking to EOF and record the terminators too.
  *
  * This module decodes the **container** (the chunk table) plus the one *raw* payload, `lsiz`
- * (`[u32 width][u32 height]`, the grid dims that cross-check the `map.cif` `mapsize`), and the
- * **`pck`/`X8el` packed per-cell grid layers** (`lmhe`,`lmlt`,`lmpa`,…) via {@link unpackMapLayer}.
- * The grid layers are RLE-packed byte planes opening with a small inner header (see below); the
- * `X6el` (6-bit, 2-byte/cell) entity-ownership layers `empa`/`empb` use a different packing and are
- * not decoded here yet (a future leg). `findChunk` still exposes every chunk's raw payload view.
+ * (`[u32 width][u32 height]`, the grid dims that cross-check the `map.cif` `mapsize`), the
+ * **`pck`/`X8el` packed per-cell byte grid layers** (`lmhe`,`lmlt`,`lmpa`,…) via {@link unpackMapLayer},
+ * and the **`X6el` 2-byte-per-cell entity-ownership layers** (`empa`/`empb`) via {@link unpackX6elLayer}.
+ * The grid layers are RLE-packed planes opening with a small inner header (see below); `X8el` packs
+ * single bytes, `X6el` the same RLE family over little-endian u16 elements. `findChunk` still exposes
+ * every chunk's raw payload view.
  *
  * Pure functions only (no I/O): `(bytes) => decoded`. The CLI wires file reads around them.
  */
@@ -241,8 +242,8 @@ export function encodeMapSize(size: MapDatSize): Uint8Array {
  * every real `X8el` layer probed) consumes the stream exactly to the payload end.
  *
  * `X8el` = one byte per output cell (e.g. `lmhe` height ≈ 1 B/cell; `lmlt` landscape-type is
- * 4 B/cell — four per-corner type ids); `X6el` (`empa`/`empb` entity ownership, 2 B/cell) is a
- * different bit-packing not handled here yet.
+ * 4 B/cell — four per-corner type ids); `X6el` (`empa`/`empb` entity ownership, 2 B/cell) packs the
+ * same RLE family over little-endian u16 elements — decoded by {@link unpackX6elLayer}.
  */
 export const MAP_LAYER_HEADER_SIZE = 0x15;
 /** "pck" as it appears on disk ("kcp", reversed like the chunk tags), at inner offset +0x05. */
@@ -279,10 +280,11 @@ export function isPackedLayer(chunk: MapDatChunk): boolean {
 /**
  * Unpacks a `pck`/`X8el` grid layer chunk into its row-major byte grid.
  *
- * Throws on a non-packed chunk (no `"kcp"` marker), an unsupported codec (currently only `X8el`;
- * `X6el` is a separate format), or a stream that underruns before producing `unpackedLength` bytes
- * (a corrupt/truncated layer). A batch pipeline over owned files should wrap this per-chunk so one
- * bad layer can't abort the run (mirrors `decodeMapDat`'s per-file contract).
+ * Throws on a non-packed chunk (no `"kcp"` marker), a codec that isn't `X8el` (the `X6el`
+ * u16 ownership layers go through {@link unpackX6elLayer}), or a stream that underruns before
+ * producing `unpackedLength` bytes (a corrupt/truncated layer). A batch pipeline over owned files
+ * should wrap this per-chunk so one bad layer can't abort the run (mirrors `decodeMapDat`'s per-file
+ * contract).
  */
 export function unpackMapLayer(chunk: MapDatChunk): MapLayer {
   const p = chunk.payload;
@@ -400,6 +402,172 @@ export function packMapLayer(cells: Uint8Array, version = 1): Uint8Array {
 function LATIN1ish(s: string): Uint8Array {
   const out = new Uint8Array(s.length);
   for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i) & 0xff;
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// `X6el` packed grid layers (the 2-byte-per-cell entity-ownership planes)
+// ---------------------------------------------------------------------------
+
+/**
+ * The number of bytes one `X6el` cell occupies in the unpacked grid (a little-endian u16). The
+ * `empa`/`empb` ownership planes carry one such element per map cell (the unpacked length is exactly
+ * `width × height × 2` on every real map).
+ */
+export const X6EL_BYTES_PER_CELL = 2;
+
+/** A decoded `X6el` ownership layer: the per-cell little-endian u16 ids, row-major. */
+export interface MapLayerU16 {
+  /** The codec id from the inner header (always `"X6el"`). */
+  readonly codec: string;
+  /** One u16 per map cell (length === width × height). 0 = unowned; otherwise an object/owner id. */
+  readonly cells: Uint16Array;
+}
+
+/**
+ * Unpacks an `X6el` grid layer (`empa`/`empb`, the entity/territory-ownership planes) into its
+ * row-major per-cell **u16** grid.
+ *
+ * The container header is byte-identical to {@link unpackMapLayer}'s `X8el` header (21-byte inner
+ * header: version, "kcp" marker, codec id, sub-format 0x72, the u32 unpacked **byte** length), but
+ * the RLE stream operates on **2-byte elements**, not single bytes (reverse-engineered from real
+ * maps — the oracle decodes the container but not the layer codecs):
+ *
+ *  - a control byte with the high bit **set** is a run of `count = b & 0x7F` copies of the **next two
+ *    bytes** (one little-endian u16 value), so it advances the output by `count × 2` bytes;
+ *  - a control byte with the high bit **clear** is a literal run of `count = b` u16 elements, copied
+ *    verbatim (`count × 2` bytes).
+ *
+ * Decoding stops at exactly the declared unpacked byte length (which consumes the stream to the
+ * payload end on every real layer). The unpacked byte length is even by construction (= cells × 2).
+ *
+ * Throws on a non-packed chunk, a codec that isn't `X6el`, an odd declared length (not whole u16s),
+ * or a stream that underruns/overflows its declared length (a corrupt/truncated layer). A batch
+ * pipeline should wrap this per-chunk so one bad layer can't abort the run (mirrors the X8el path).
+ */
+export function unpackX6elLayer(chunk: MapDatChunk): MapLayerU16 {
+  const p = chunk.payload;
+  if (!isPackedLayer(chunk)) {
+    throw new Error(
+      `mapdat: chunk "${chunk.tag}" is not a pck-packed layer (no "${MAP_LAYER_MARKER}" marker)`,
+    );
+  }
+  const codec = ascii(p, 0x08, 4);
+  if (codec !== MAP_LAYER_CODEC_X6) {
+    throw new Error(`mapdat: chunk "${chunk.tag}" codec "${codec}" is not an ${MAP_LAYER_CODEC_X6} layer`);
+  }
+  const view = new DataView(p.buffer, p.byteOffset, p.byteLength);
+  const unpackedLength = view.getUint32(0x0d, true);
+  if (unpackedLength % X6EL_BYTES_PER_CELL !== 0) {
+    throw new Error(
+      `mapdat: layer "${chunk.tag}" unpacked length ${unpackedLength} is not a whole number of u16 cells`,
+    );
+  }
+
+  const out = new Uint8Array(unpackedLength);
+  let o = 0;
+  let i = MAP_LAYER_HEADER_SIZE; // the RLE stream starts right after the inner header
+  while (o < unpackedLength) {
+    if (i >= p.length) {
+      throw new Error(
+        `mapdat: layer "${chunk.tag}" stream underran (${o}/${unpackedLength} bytes) before its end`,
+      );
+    }
+    const b = p[i++] as number;
+    if ((b & 0x80) !== 0) {
+      // Run: (b & 0x7F) copies of the next u16 element (two bytes).
+      const count = b & 0x7f;
+      if (i + X6EL_BYTES_PER_CELL > p.length) {
+        throw new Error(`mapdat: layer "${chunk.tag}" run control at end of stream has no value element`);
+      }
+      const lo = p[i++] as number;
+      const hi = p[i++] as number;
+      if (o + count * X6EL_BYTES_PER_CELL > unpackedLength) {
+        throw new Error(
+          `mapdat: layer "${chunk.tag}" run overflows the ${unpackedLength}-byte grid (corrupt stream)`,
+        );
+      }
+      for (let k = 0; k < count; k++) {
+        out[o++] = lo;
+        out[o++] = hi;
+      }
+    } else {
+      // Literal: copy b u16 elements (2b bytes) verbatim.
+      const bytes = b * X6EL_BYTES_PER_CELL;
+      if (i + bytes > p.length) {
+        throw new Error(
+          `mapdat: layer "${chunk.tag}" literal run reads past the stream end (corrupt/truncated)`,
+        );
+      }
+      if (o + bytes > unpackedLength) {
+        throw new Error(
+          `mapdat: layer "${chunk.tag}" literal overflows the ${unpackedLength}-byte grid (corrupt stream)`,
+        );
+      }
+      out.set(p.subarray(i, i + bytes), o);
+      o += bytes;
+      i += bytes;
+    }
+  }
+  // Re-read the byte grid as little-endian u16s. A fresh copy keeps the result independent of the
+  // source buffer's alignment (out is freshly allocated, so its byteOffset is 0 — safe for Uint16Array).
+  const cells = new Uint16Array(out.buffer, 0, unpackedLength / X6EL_BYTES_PER_CELL);
+  return { codec, cells };
+}
+
+/**
+ * Inverse of {@link unpackX6elLayer}: RLE-packs a row-major u16 ownership grid into an `X6el` chunk
+ * payload (the 21-byte inner header + the packed stream). Kept faithful so the unpacker can be
+ * round-trip tested without committing copyrighted fixtures (same rationale as the X8el packer).
+ * Runs of ≥2 identical u16 elements become a run control (capped at 0x7F elements per run); the rest
+ * are emitted as literal runs (also capped at 0x7F). The exact packing the original generator chose
+ * is not byte-reproduced (a packer has freedom in run/literal boundaries) — what is pinned is that
+ * {@link unpackX6elLayer} recovers the input grid exactly.
+ */
+export function packX6elLayer(cells: Uint16Array, version = 1): Uint8Array {
+  const stream: number[] = [];
+  let i = 0;
+  while (i < cells.length) {
+    const value = cells[i] as number;
+    // Measure the run of identical elements at i.
+    let run = 1;
+    while (run < 0x7f && i + run < cells.length && cells[i + run] === value) run++;
+    if (run >= 2) {
+      stream.push(0x80 | run, value & 0xff, (value >>> 8) & 0xff);
+      i += run;
+    } else {
+      // Gather a literal run until the next element that starts a worthwhile run (≥2) or the cap.
+      const litStart = i;
+      let lit = 0;
+      while (lit < 0x7f && i < cells.length && !(i + 1 < cells.length && cells[i + 1] === cells[i])) {
+        i++;
+        lit++;
+      }
+      // Guard: always make progress (a lone element before a run becomes a 1-literal).
+      if (lit === 0) {
+        i++;
+        lit = 1;
+      }
+      stream.push(lit);
+      for (let k = 0; k < lit; k++) {
+        const v = cells[litStart + k] as number;
+        stream.push(v & 0xff, (v >>> 8) & 0xff);
+      }
+    }
+  }
+
+  const unpackedLength = cells.length * X6EL_BYTES_PER_CELL;
+  const innerSize = 16 + stream.length; // bytes after the +0x01 innerSize field
+  const out = new Uint8Array(5 + innerSize);
+  const view = new DataView(out.buffer);
+  out[0x00] = version & 0xff;
+  view.setUint32(0x01, innerSize, true);
+  out.set(LATIN1ish(MAP_LAYER_MARKER), 0x05); // "kcp"
+  out.set(LATIN1ish(MAP_LAYER_CODEC_X6), 0x08); // "X6el"
+  out[0x0c] = MAP_LAYER_SUBFORMAT;
+  view.setUint32(0x0d, unpackedLength, true);
+  view.setUint32(0x11, innerSize, true);
+  out.set(stream, MAP_LAYER_HEADER_SIZE);
   return out;
 }
 

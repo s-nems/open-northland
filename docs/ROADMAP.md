@@ -320,14 +320,27 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
                   control byte with the high bit **set** is a run of `(b&0x7F)` copies of the next
                   byte, **clear** is a literal run of `b` bytes — decode stops at exactly
                   `unpackedLength` (which consumes the stream to the payload end on every real X8el
-                  layer). `packMapLayer` is the round-trip inverse (fixture-free tests). **X8el only**
-                  (one byte per output cell; `lmhe` height ≈ 1 B/cell, `lmlt` landscape-type 4 B/cell —
-                  per-corner type ids); the `X6el` 2-byte entity-ownership layers (`empa`/`empb`)
-                  throw "not supported" — a separate bit-packing, a later leg. **Hands-on:** 69 X8el
+                  layer). `packMapLayer` is the round-trip inverse (fixture-free tests). **X8el** = one
+                  byte per output cell (`lmhe` height ≈ 1 B/cell, `lmlt` landscape-type 4 B/cell —
+                  per-corner type ids). **Hands-on:** 69 X8el
                   layers across 3 real maps unpacked, 0 mismatches (every length an exact multiple of
                   `cells`), all 23 oasis_o_plenty grids `pack→unpack` byte-exact; `lmhe`∈[0,242],
                   `lmlt`∈[0,85] (within the 87-type table). The `eatd`/`eald` structured record-lists
                   (pre-placed objects, depth-prefixed text) are the Phase-5 territory layer, separate.
+            - [x] **`X6el` 2-byte ownership-layer unpack** — `decoders/mapdat.ts` `unpackX6elLayer`
+                  decodes the `empa`/`empb` entity/territory-ownership planes (the remaining packed
+                  layer family). The container inner header is **byte-identical** to X8el (same 21-byte
+                  layout, same u32 unpacked-**byte** length), but the RLE stream operates on **2-byte
+                  (little-endian u16) elements** instead of single bytes: a run control (high bit set) =
+                  `count = b&0x7F` copies of the next u16; a literal control (clear) = `count = b` u16s
+                  copied verbatim. Returns a `Uint16Array` of one id per cell (id 0 = unowned). The
+                  X8el byte path (`unpackMapLayer`) keeps its `Uint8Array` contract; the two codecs are
+                  separate functions selected by the codec id. `packX6elLayer` is the round-trip inverse
+                  (fixture-free tests). **Hands-on:** the real exported decoder over **all 130 maps →
+                  260 X6el layers, 0 mismatches**, each exactly `width×height` u16s, **all 260
+                  `pack→unpack` byte-exact**; e.g. `Arabskie Wyspy` empa 250×250 = 62500 cells, 335
+                  distinct owner ids, 1987 unowned, max id 866. **What the ids *mean*** (the
+                  territory/object-ownership graph) is the Phase-5 layer — this leg pins only the codec.
             - [x] **`lmlt` 4-corner layer → per-cell landscape-typeId grid** — `decoders/mapdat.ts`
                   `lmltToTerrainMap(layer, size)` collapses the unpacked `lmlt` (4 B/cell = four
                   per-corner triangle typeIds, confirmed `lmlt` is the landscape-type lane) + the
@@ -385,10 +398,14 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 > into the structural `TerrainMap`, and `scenario(content, { map })` / `new Simulation({ map })` build
 > the cell-graph from it in place of the synthetic grass grid — proven hands-on by feeding the real
 > emitted `oasis_o_plenty.json` (250×250 = 62500 cells) through the loader into a real terrain graph
-> and stepping the sim deterministically over it. **Next smallest step: render a real map** — feed a
+> and stepping the sim deterministically over it. **The `map.dat` packed-layer decode chain is now
+> complete:** the `X6el` `empa`/`empb` 2-byte entity-ownership layers are decoded too
+> (`unpackX6elLayer` — same inner header as X8el, the RLE family over little-endian u16 elements;
+> verified across all 130 real maps, 260 layers, 0 mismatches, all round-trip byte-exact). What the
+> ownership ids *mean* is a Phase-5 layer. **Next smallest step: render a real map** — feed a
 > loaded `content/maps/<id>.json` (+ atlas sprites in place of placeholder geometry) into the app's
-> scene so `npm run dev`/`npm run shot` draws an actual decoded map; or the X6el empa/empb 2-byte
-> ownership codec. (A "per-type walk-cost field" is *not* a pending step: `landscapetypes.ini` has no
+> scene so `npm run dev`/`npm run shot` draws an actual decoded map. (A "per-type walk-cost field" is
+> *not* a pending step: `landscapetypes.ini` has no
 > movement weight — only `maximumValency` + placement flags — so uniform unit cost is faithful.) Lines
 > tagged *(core done…)* pass tests today but await one wiring piece.
 - [x] **CommandSystem + serializable command schema** — the ONLY way state mutates. Done —
