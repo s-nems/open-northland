@@ -434,9 +434,9 @@ export interface MapLayerU16 {
  * maps — the oracle decodes the container but not the layer codecs):
  *
  *  - a control byte with the high bit **set** is a run of `count = b & 0x7F` copies of the **next two
- *    bytes** (one little-endian u16 value), so it advances the output by `count × 2` bytes;
- *  - a control byte with the high bit **clear** is a literal run of `count = b` u16 elements, copied
- *    verbatim (`count × 2` bytes).
+ *    bytes** (one little-endian u16 value);
+ *  - a control byte with the high bit **clear** is a literal run of `count = b` u16 elements (the
+ *    next `count × 2` bytes), each read little-endian.
  *
  * Decoding stops at exactly the declared unpacked byte length (which consumes the stream to the
  * payload end on every real layer). The unpacked byte length is even by construction (= cells × 2).
@@ -464,54 +464,54 @@ export function unpackX6elLayer(chunk: MapDatChunk): MapLayerU16 {
     );
   }
 
-  const out = new Uint8Array(unpackedLength);
-  let o = 0;
+  // Accumulate directly into a u16 grid, composing each element **explicitly little-endian** (`lo |
+  // hi<<8`). NOT a `Uint16Array` view over a decoded byte buffer — that would read host-endian and
+  // mis-decode on a big-endian host; the rest of this file already reads multi-byte fields LE-explicit.
+  const cells = new Uint16Array(unpackedLength / X6EL_BYTES_PER_CELL);
+  let o = 0; // index into `cells` (u16 elements written so far)
+  const elementCount = cells.length;
   let i = MAP_LAYER_HEADER_SIZE; // the RLE stream starts right after the inner header
-  while (o < unpackedLength) {
+  while (o < elementCount) {
     if (i >= p.length) {
       throw new Error(
-        `mapdat: layer "${chunk.tag}" stream underran (${o}/${unpackedLength} bytes) before its end`,
+        `mapdat: layer "${chunk.tag}" stream underran (${o * X6EL_BYTES_PER_CELL}/${unpackedLength} bytes) before its end`,
       );
     }
     const b = p[i++] as number;
     if ((b & 0x80) !== 0) {
-      // Run: (b & 0x7F) copies of the next u16 element (two bytes).
+      // Run: (b & 0x7F) copies of the next u16 element (two bytes, little-endian).
       const count = b & 0x7f;
       if (i + X6EL_BYTES_PER_CELL > p.length) {
         throw new Error(`mapdat: layer "${chunk.tag}" run control at end of stream has no value element`);
       }
-      const lo = p[i++] as number;
-      const hi = p[i++] as number;
-      if (o + count * X6EL_BYTES_PER_CELL > unpackedLength) {
+      const value = (p[i] as number) | ((p[i + 1] as number) << 8);
+      i += X6EL_BYTES_PER_CELL;
+      if (o + count > elementCount) {
         throw new Error(
           `mapdat: layer "${chunk.tag}" run overflows the ${unpackedLength}-byte grid (corrupt stream)`,
         );
       }
-      for (let k = 0; k < count; k++) {
-        out[o++] = lo;
-        out[o++] = hi;
-      }
+      cells.fill(value, o, o + count);
+      o += count;
     } else {
-      // Literal: copy b u16 elements (2b bytes) verbatim.
-      const bytes = b * X6EL_BYTES_PER_CELL;
-      if (i + bytes > p.length) {
+      // Literal: b u16 elements copied verbatim (each little-endian).
+      const count = b;
+      if (i + count * X6EL_BYTES_PER_CELL > p.length) {
         throw new Error(
           `mapdat: layer "${chunk.tag}" literal run reads past the stream end (corrupt/truncated)`,
         );
       }
-      if (o + bytes > unpackedLength) {
+      if (o + count > elementCount) {
         throw new Error(
           `mapdat: layer "${chunk.tag}" literal overflows the ${unpackedLength}-byte grid (corrupt stream)`,
         );
       }
-      out.set(p.subarray(i, i + bytes), o);
-      o += bytes;
-      i += bytes;
+      for (let k = 0; k < count; k++) {
+        cells[o++] = (p[i] as number) | ((p[i + 1] as number) << 8);
+        i += X6EL_BYTES_PER_CELL;
+      }
     }
   }
-  // Re-read the byte grid as little-endian u16s. A fresh copy keeps the result independent of the
-  // source buffer's alignment (out is freshly allocated, so its byteOffset is 0 — safe for Uint16Array).
-  const cells = new Uint16Array(out.buffer, 0, unpackedLength / X6EL_BYTES_PER_CELL);
   return { codec, cells };
 }
 

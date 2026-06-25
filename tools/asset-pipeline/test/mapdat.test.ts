@@ -348,6 +348,19 @@ describe('unpackX6elLayer / pck-X6el round-trip', () => {
     expect(unpackX6elLayer(layerChunk(cells)).cells).toEqual(cells);
   });
 
+  it('decodes a hand-built little-endian stream (pins LE independent of host endianness)', () => {
+    // A run of two 0x1234 elements then a literal 0x00ff: the stream bytes are LE (34 12 / ff 00).
+    // Decoding this raw stream — not a round-trip — proves the reader is LE-explicit, not host-endian.
+    const payload = new Uint8Array(MAP_LAYER_HEADER_SIZE + 6);
+    payload.set([0x6b, 0x63, 0x70], 0x05); // "kcp"
+    payload.set([0x58, 0x36, 0x65, 0x6c], 0x08); // "X6el"
+    payload[0x0c] = MAP_LAYER_SUBFORMAT;
+    new DataView(payload.buffer).setUint32(0x0d, 6, true); // 3 u16 cells = 6 bytes
+    payload.set([0x80 | 2, 0x34, 0x12, 1, 0xff, 0x00], MAP_LAYER_HEADER_SIZE); // run(2)×0x1234, literal(1)×0x00ff
+    const chunk = decodeMapDat(encodeMapDat([{ tag: 'empa', version: 1, payload }])).chunks[0] as never;
+    expect(Array.from(unpackX6elLayer(chunk).cells)).toEqual([0x1234, 0x1234, 0x00ff]);
+  });
+
   it('writes the X6el inner header (marker, codec, sub-format, unpacked byte length)', () => {
     const cells = Uint16Array.of(1, 1, 1, 2, 3);
     const packed = packX6elLayer(cells);
