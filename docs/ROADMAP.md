@@ -275,10 +275,19 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       swing cadence, in-place strike, civ-engages-only-aggressive-animals split). **Provoked anger
       deferred** — `getAngry`/`angryGameTime` (a passive animal struck → temporarily hostile) needs a
       per-entity anger-timer state not yet modelled; only the unprovoked `aggressive` driver is wired
-      (see docs/FIDELITY.md). Inert on the goldens/slice (no settler carries `Health`). **Next:** the
-      herd/group/spawn params (`maximumGroupSize`/`searchForLeader`/birth points) — the spawn/herding
-      slice that actually places animals on the map (where `animalHitpoints` stamps their `Health`), and
-      the provoked-anger (`getAngry`) timer once a per-entity hostility-state model exists.
+      (see docs/FIDELITY.md). Inert on the goldens/slice (no settler carries `Health`). **The herd/spawn
+      read side now LANDED** — `herdParams(content, tribeType)` (`systems/readviews.ts`) surfaces the
+      already-extracted `animaltypes.ini` group/leader/territory params as one struct (`maxGroupSize`
+      from `maximumgroupsize`, `searchForLeader`, `birthPointRange` from `maximumdistancetobirthpoint`,
+      `stayPointRange` from `maximumdistancetostaypoint`) — null when the tribe has no animal record (a
+      civilization / unknown), the same one-call read shape `animalHitpoints` gives the HP stamp. It is
+      a pure derived view (FIDELITY n/a — invents no behaviour; the params are verbatim, 0-passthrough
+      drift across all 35 real animals), the data foundation the spawner will consume: every real animal
+      carries a herd (`maximumGroupSize` 3..6) and 23 of 35 follow a leader. **Next:** the spawn/herding
+      *mechanic* that actually places a group of animals on the map (seeding `maxGroupSize` entities
+      around a birth point, the leader entity when `searchForLeader`, stamping each `Health` from
+      `animalHitpoints`) — a behaviour with no oracle, so scoped + recorded in docs/FIDELITY.md when it
+      lands — and the provoked-anger (`getAngry`) timer once a per-entity hostility-state model exists.
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
       `fisher_sea`/`trader_sea`/`carpenter ship`, `vehicle_ship`.
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).

@@ -37,12 +37,14 @@ import {
   type CombatDamageRow,
   type CombatProfile,
   type GoodsGraphNode,
+  type HerdParams,
   IDLE_JOB,
   animalCannotBeAttacked,
   animalHitpoints,
   animalRecord,
   combatDamage,
   goodsGraph,
+  herdParams,
   isAggressiveAnimal,
   isAnimalTribe,
   isPlayableTribe,
@@ -87,13 +89,14 @@ export { productionSystem };
 export { atomicSystem };
 export { jobSystem };
 export { carrierCarryCapacity, experienceRequirementMet, grantWorkExperience, settlerMeetsNeed, trackFor };
-export type { CombatDamageRow, CombatProfile, GoodsGraphNode };
+export type { CombatDamageRow, CombatProfile, GoodsGraphNode, HerdParams };
 export {
   animalCannotBeAttacked,
   animalHitpoints,
   animalRecord,
   combatDamage,
   goodsGraph,
+  herdParams,
   housingCapacity,
   IDLE_JOB,
   isAggressiveAnimal,

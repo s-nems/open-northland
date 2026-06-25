@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   animalCannotBeAttacked,
   animalHitpoints,
+  herdParams,
   isAggressiveAnimal,
   isAnimalTribe,
   isPlayableTribe,
@@ -50,7 +51,20 @@ function tribeContent(): ContentSet {
     // wolves (9) deliberately have NO record (a known animal tribe with no animaltypes behaviour). A
     // cannotBeAttacked entry for tribe 8 is NOT added so the bear stays attackable; a separate
     // exemption case is exercised in the mayAttack block with an inline content set.
-    animals: [{ id: 'bear', tribeType: 8, aggressive: true, getAngry: true, hitpointsAdult: 15000 }],
+    animals: [
+      {
+        id: 'bear',
+        tribeType: 8,
+        aggressive: true,
+        getAngry: true,
+        hitpointsAdult: 15000,
+        // herd/spawn params the herdParams read view surfaces
+        maximumGroupSize: 4,
+        searchForLeader: true,
+        maximumDistanceToBirthPoint: 12,
+        maximumDistanceToStayPoint: 7,
+      },
+    ],
   });
 }
 
@@ -164,6 +178,44 @@ describe('isAggressiveAnimal / animalCannotBeAttacked / animalHitpoints (animalt
     expect(animalCannotBeAttacked(content, 5)).toBe(true); // bee — decorative, exempt
     expect(animalCannotBeAttacked(content, 6)).toBe(false); // wasp — attackable
     expect(animalCannotBeAttacked(content, 1)).toBe(false); // unknown — not exempt
+  });
+});
+
+describe('herdParams (the animal herd/spawn read view)', () => {
+  it('surfaces the herd/spawn params off the animaltypes record as one struct', () => {
+    const params = herdParams(tribeContent(), 8); // bears
+    expect(params).toEqual({
+      maxGroupSize: 4, // maximumGroupSize
+      searchForLeader: true, // searchForLeader
+      birthPointRange: 12, // maximumDistanceToBirthPoint
+      stayPointRange: 7, // maximumDistanceToStayPoint
+    });
+  });
+
+  it('returns null for a tribe with no animal record (an animal tribe lacking the record, or a civ)', () => {
+    const content = tribeContent();
+    expect(herdParams(content, 9)).toBeNull(); // wolves — animal tribe but NO animaltypes record
+    expect(herdParams(content, 1)).toBeNull(); // viking — a civilization
+    expect(herdParams(content, 99)).toBeNull(); // unknown tribe — no record
+  });
+
+  it('defaults a source-omitted herd field to 0/false rather than guessing (a solitary animal)', () => {
+    // A minimal animal record (only the required id+tribeType): the schema fills the herd params with
+    // their source-omitted defaults, and the read view passes them through verbatim — no inference.
+    const content = parseContentSet({
+      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      goods: [{ typeId: 0, id: 'none' }],
+      jobs: [{ typeId: 0, id: 'idle' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      tribes: [{ typeId: 7, id: 'eagle', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'e' }] }],
+      animals: [{ id: 'eagle', tribeType: 7 }],
+    });
+    expect(herdParams(content, 7)).toEqual({
+      maxGroupSize: 0,
+      searchForLeader: false,
+      birthPointRange: 0,
+      stayPointRange: 0,
+    });
   });
 });
 

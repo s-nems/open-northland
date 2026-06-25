@@ -442,6 +442,49 @@ export function animalHitpoints(content: ContentSet, tribeType: number): number 
 }
 
 /**
+ * The **herd/spawn parameters** a future animal-spawn/herding slice needs to place a group of animals
+ * of `tribeType` on the map — read straight off the `animaltypes.ini` record, or null when the tribe
+ * has no animal record (a civilization, or an unknown tribe). The fields are the faithful extracted
+ * params, surfaced as one struct so the spawner reads a single view (the same one-call shape
+ * {@link combatDamage}/{@link goodsGraph} give their consumers):
+ *
+ *  - `maxGroupSize` (`maximumgroupsize`) — how many of this animal form a herd/pack (the count a spawn
+ *    point seeds; 0 = the source omitted it, a solitary animal).
+ *  - `searchForLeader` (`searchforleader`) — whether a member follows a herd leader (wolves/deer) vs
+ *    roams solo, which decides whether the spawned group needs a designated leader entity.
+ *  - `birthPointRange` (`maximumdistancetobirthpoint`) — how far the herd ranges from its birth/spawn
+ *    point (the radius around the spawn tile the group scatters into).
+ *  - `stayPointRange` (`maximumdistancetostaypoint`) — the territory radius around the animal's stay
+ *    point (how far it wanders before turning back).
+ *
+ * FIDELITY n/a: a pure derived **read view** over the already-extracted `animaltypes` IR — it adds no
+ * mechanic and invents no data; the *spawning/herding behaviour* these params will drive (where/when a
+ * group appears, how it follows a leader) is a later slice with no oracle, tracked separately in
+ * docs/FIDELITY.md. Pure over `content`, no RNG/wall-clock.
+ */
+export interface HerdParams {
+  /** `maximumgroupsize` — herd/pack size (0 = solitary / source-omitted). */
+  readonly maxGroupSize: number;
+  /** `searchforleader` — a member follows a herd leader vs roams solo. */
+  readonly searchForLeader: boolean;
+  /** `maximumdistancetobirthpoint` — how far the herd ranges from its spawn point. */
+  readonly birthPointRange: number;
+  /** `maximumdistancetostaypoint` — territory radius around the animal's stay point. */
+  readonly stayPointRange: number;
+}
+
+export function herdParams(content: ContentSet, tribeType: number): HerdParams | null {
+  const animal = animalRecord(content, tribeType);
+  if (animal === null) return null;
+  return {
+    maxGroupSize: animal.maximumGroupSize,
+    searchForLeader: animal.searchForLeader,
+    birthPointRange: animal.maximumDistanceToBirthPoint,
+    stayPointRange: animal.maximumDistanceToStayPoint,
+  };
+}
+
+/**
  * The **combat hostility relation** — may a combatant of `attackerTribe` swing at a combatant of
  * `targetTribe`? The single source of truth the CombatSystem's targeting drive (`systems/combat.ts`)
  * consults for *both* the attacker-eligibility check and the per-candidate target check, so the two
