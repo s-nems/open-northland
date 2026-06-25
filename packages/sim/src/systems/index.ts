@@ -2,6 +2,7 @@ import { aiSystem } from './ai.js';
 import { atomicSystem } from './atomic.js';
 import { commandSystem } from './command.js';
 import type { System, SystemContext } from './context.js';
+import { jobSystem } from './jobs.js';
 import { MOVE_SPEED_PER_TICK, movementSystem } from './movement.js';
 import {
   ENJOYMENT_RISE_PER_TICK,
@@ -17,7 +18,6 @@ import {
   cleanupSystem,
   combatSystem,
   constructionSystem,
-  jobSystem,
   progressionSystem,
   reproductionSystem,
   terrainSystem,
@@ -46,12 +46,12 @@ export {
 export { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem };
 export { productionSystem };
 export { atomicSystem };
+export { jobSystem };
 export { experienceRequirementMet, grantWorkExperience, settlerMeetsNeed, trackFor };
 export {
   cleanupSystem,
   combatSystem,
   constructionSystem,
-  jobSystem,
   progressionSystem,
   reproductionSystem,
   terrainSystem,
@@ -70,8 +70,8 @@ export const SYSTEM_ORDER: readonly System[] = [
   terrainSystem,
   needsSystem,
   progressionSystem,
-  aiSystem,
   jobSystem,
+  aiSystem,
   pathfindingSystem,
   movementSystem,
   atomicSystem,
