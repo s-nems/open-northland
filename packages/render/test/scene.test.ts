@@ -1,6 +1,6 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
-import { ONE, type SceneTerrain, buildScene, tileToScreen } from '../src/index.js';
+import { ONE, type SceneTerrain, buildScene, terrainMapToScene, tileToScreen } from '../src/index.js';
 
 /**
  * Unit tests for the pure scene layer — the part of rendering an agent can self-verify (the pixels
@@ -101,6 +101,20 @@ describe('buildScene', () => {
     );
     const kinds = scene.filter((d) => d.kind !== 'tile').map((d) => d.kind);
     expect(kinds.sort()).toEqual(['building', 'resource']); // the marker-less entity is skipped
+  });
+
+  it('consumes a loaded terrain map (the parseTerrainMap shape) via terrainMapToScene', () => {
+    // A "real" decoded map carries varied landscape typeIds (not just grass/water) — the multi-type
+    // grid an emitted content/maps/<id>.json holds. terrainMapToScene must carry them through so the
+    // GPU layer tints each tile by typeId, and buildScene must draw one tile per cell over the result.
+    const loadedMap = { width: 2, height: 3, typeIds: [5, 1, 2, 5, 16, 1] };
+    const terrain = terrainMapToScene(loadedMap);
+    expect(terrain).toEqual({ width: 2, height: 3, typeIds: [5, 1, 2, 5, 16, 1] });
+
+    const scene = buildScene(snapshotOf([]), terrain);
+    const tiles = scene.filter((d) => d.kind === 'tile');
+    expect(tiles).toHaveLength(6); // 2*3 cells
+    expect(tiles.map((t) => t.typeId)).toEqual([5, 1, 2, 5, 16, 1]); // the map's typeIds, in order
   });
 
   it('is pure: the same snapshot yields a byte-identical draw list', () => {

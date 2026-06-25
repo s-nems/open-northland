@@ -1,5 +1,5 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
-import type { SceneTerrain } from '@vinland/render';
+import { type SceneTerrain, terrainMapToScene } from '@vinland/render';
 import { Simulation, type TerrainMap, components, fx } from '@vinland/sim';
 
 /**
@@ -88,9 +88,13 @@ function grassMap(): TerrainMap {
   return { width: WIDTH, height: HEIGHT, typeIds: new Array(WIDTH * HEIGHT).fill(GRASS) };
 }
 
-/** The terrain grid the scene layer projects (dimensions + row-major landscape typeIds). */
+/**
+ * The terrain grid the scene layer projects, derived from the SAME {@link TerrainMap} the sim
+ * navigates via the render package's `terrainMapToScene` seam — so the demo exercises the exact
+ * map→scene path a loaded `content/maps/<id>.json` takes, not a hand-duplicated grid.
+ */
 export function sliceTerrain(): SceneTerrain {
-  return { width: WIDTH, height: HEIGHT, typeIds: grassMap().typeIds };
+  return terrainMapToScene(grassMap());
 }
 
 /**
