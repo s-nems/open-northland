@@ -9,11 +9,13 @@ export {
   type DrawItem,
   type DrawKind,
   type SceneTerrain,
+  type SpriteState,
 } from './scene.js';
 export {
   indexAtlasFrames,
   resolveSpriteFrame,
   type AtlasFrame,
+  type SettlerStateBinding,
   type SpriteAtlas,
   type SpriteBindings,
   type SpriteKind,
