@@ -2,7 +2,7 @@ import { Building, JobAssignment, Position, Settler } from '../components/index.
 import type { Entity, World } from '../ecs/world.js';
 import { fx } from '../fixed.js';
 import type { System, SystemContext } from './context.js';
-import { buildingEnabled, settlerMeetsNeed } from './progression.js';
+import { buildingEnabled, jobEnabled, settlerMeetsNeed } from './progression.js';
 import { buildingWorkerJobs, recipeOf } from './shared.js';
 
 /**
@@ -28,7 +28,9 @@ import { buildingWorkerJobs, recipeOf } from './shared.js';
  *      - that worker job is currently **understaffed at that building**: fewer settlers are *bound to
  *        this building* for that job than the slot's `count` (per-building, so two same-type mills
  *        staff independently — see {@link jobUnderstaffed}),
- *      - the building is **tech-enabled** for the tribe ({@link buildingEnabled}), AND
+ *      - the building is **tech-enabled** for the tribe ({@link buildingEnabled}),
+ *      - the worker **job itself is tech-enabled** for the tribe ({@link jobEnabled} — the
+ *        `jobEnablesJob` gate: a job a settler must already be present to unlock), AND
  *      - the settler's accrued XP clears the job's `needforjob` threshold ({@link settlerMeetsNeed}).
  *
  * Determinism: settlers and workplaces are both scanned in canonical (ascending entity-id) order via
@@ -74,6 +76,7 @@ function openJobAt(
     if (!buildingEnabled(world, ctx, tribe, building.buildingType)) continue; // not tech-enabled yet
     for (const jobType of canonicalJobs(buildingWorkerJobs(world, ctx, b))) {
       if (!jobUnderstaffed(world, ctx, b, jobType)) continue;
+      if (!jobEnabled(world, ctx, tribe, jobType)) continue; // tech gate (jobEnablesJob): job unlocked?
       if (!settlerMeetsNeed(ctx, tribe, 'job', jobType, experience)) continue; // XP gate (needforjob)
       return { building: b, jobType }; // first open, qualified job wins
     }

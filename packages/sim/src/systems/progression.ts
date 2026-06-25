@@ -123,19 +123,37 @@ export function goodEnabled(world: World, ctx: SystemContext, tribe: number, goo
 }
 
 /**
+ * The *gating* half of progression for a **job** — is `jobType` itself unlocked for `tribe` right now?
+ * The fourth and last sibling of {@link buildingEnabled}/{@link goodEnabled} on the `jobEnables`
+ * tech-graph (the `job` kind): the original's `tribetypes` `jobEnablesJob <jobType> <targetJob>` edge
+ * means a settler of `jobType` being present unlocks the *target job* for the tribe — a specialization
+ * a tribe can't staff until the prerequisite trade exists (e.g. a smith unlocking a weaponsmith). A job
+ * with **no** `jobEnablesJob` edge gating it is an ungated start trade (anyone can take it); one that
+ * *is* gated may be taken only while a settler of an enabling job is alive in the same tribe.
+ *
+ * Consumed by the JobSystem's assignment gate ({@link openJobAt}): an idle settler is offered a
+ * workplace's worker job only while that job is unlocked, so the read side now covers all four
+ * `jobEnables` kinds. Same determinism properties as {@link buildingEnabled} — a pure membership
+ * query, no RNG/wall-clock.
+ */
+export function jobEnabled(world: World, ctx: SystemContext, tribe: number, jobType: number): boolean {
+  return tribeUnlockEnabled(world, ctx, tribe, 'job', jobType);
+}
+
+/**
  * Shared read side of the `jobEnables` tech-graph for a single `(kind, targetId)`: is the target
  * unlocked for `tribe`? The target is enabled when either no edge of `kind` gates it (ungated), or a
  * settler of any gating job is currently alive in the tribe. {@link buildingEnabled} (kind `house`),
- * {@link goodEnabled} (kind `good`), and {@link carrierCarryCapacity} (kind `vehicle`) are the
- * consumers; the `job` kind awaits its JobSystem slice. Determinism: a pure membership query (does
- * *some* enabling-job settler exist?), order-independent like `Map.has`; a tribe absent from content
- * gates nothing.
+ * {@link goodEnabled} (kind `good`), {@link jobEnabled} (kind `job`), and {@link carrierCarryCapacity}
+ * (kind `vehicle`) are the consumers — all four kinds are now read. Determinism: a pure membership
+ * query (does *some* enabling-job settler exist?), order-independent like `Map.has`; a tribe absent
+ * from content gates nothing.
  */
 function tribeUnlockEnabled(
   world: World,
   ctx: SystemContext,
   tribe: number,
-  kind: 'house' | 'good' | 'vehicle',
+  kind: 'house' | 'good' | 'job' | 'vehicle',
   targetId: number,
 ): boolean {
   const tribeType = ctx.content.tribes.find((t) => t.typeId === tribe);

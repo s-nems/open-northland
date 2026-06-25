@@ -56,8 +56,9 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       by XP tier) — **blocked on an oracle**: the XP→tier→output curve is in neither the `.ini` (no
       `level`/`tier` field; `baseRepeatCounter` is on only 3/70 records) nor OpenVikings (its sim is a
       stub), so interpreting it now would be invented, not faithful; deferred until calibration-by-observation
-      against the running original (see docs/FIDELITY.md). Consume the `job`/`vehicle` `jobEnables` edge
-      kinds as the JobSystem matures / the vehicle slice lands.
+      against the running original (see docs/FIDELITY.md). **All four `jobEnables` edge kinds are now
+      consumed** (`house` placement / `good` production / `vehicle` carry-capacity / `job` assignment),
+      so the tech-graph read side is complete; only the XP→tier competence curve remains oracle-blocked.
 - [ ] **JobSystem** — assignment **landed** (idle settlers take open, tech-enabled, understaffed
       workplace jobs, gated by `needforjob` XP — `systems/jobs.ts`), each is **bound to its workplace**
       (the `JobAssignment{workplace}` record — understaffing is now per-building, so two same-type
@@ -76,10 +77,13 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       wired into the sim** — a carrier hauls a batch sized by `carrierCarryCapacity` (`systems/progression.ts`):
       the largest `stockSlots` among the vehicle types its tribe has UNLOCKED via `jobEnablesVehicle`,
       falling back to 1 (a single unit on foot) before any vehicle is available — the **sim's first
-      consumer of the `vehicle` `jobEnables` edge kind** (the read side now handles `house`/`good`/`vehicle`;
-      only `job` awaits its slice). The carrier→vehicle PAIRING (a per-carrier vehicle entity, cart logistics)
-      is still approximated (see docs/FIDELITY.md). **Next:** model multiple carriers / a per-carrier vehicle
-      entity (so a carrier visibly fetches a cart), and consume the remaining `job` `jobEnables` edge kind.
+      consumer of the `vehicle` `jobEnables` edge kind**. The carrier→vehicle PAIRING (a per-carrier
+      vehicle entity, cart logistics) is still approximated (see docs/FIDELITY.md). **The `job`
+      `jobEnables` edge kind is now also consumed** — `jobEnabled` (`systems/progression.ts`, called from
+      `openJobAt`) gates an idle settler's assignment on the `jobEnablesJob` tech edge (a job a settler
+      must already be present to unlock, e.g. a smith unlocking a weaponsmith), so the `tribeUnlockEnabled`
+      read side now covers **all four** edge kinds. **Next:** model multiple carriers / a per-carrier
+      vehicle entity (so a carrier visibly fetches a cart) — the last unmodeled JobSystem behavior.
 - [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`)
       → population capacity → the births→housing→births loop.
 - [ ] ReproductionSystem: families, children growing up, gated by housing.
