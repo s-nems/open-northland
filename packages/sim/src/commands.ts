@@ -114,6 +114,11 @@ export type AtomicEffect =
   /** The settler sleeps to restore rest: zeroes its `fatigue` on completion (no goods consumed —
    *  unlike `eat`, resting is free). The pairing reset for the NeedsSystem's fatigue rise. */
   | { readonly kind: 'sleep' }
+  /** The settler prays to restore devotion: zeroes its `piety` on completion (no goods consumed —
+   *  like `sleep`, praying is free). The pairing reset for the NeedsSystem's piety rise. Unlike
+   *  `sleep` (in place) this is the first **target-bound** need — the settler must stand on a temple
+   *  to run it (the planner walks it there first). */
+  | { readonly kind: 'pray' }
   | { readonly kind: 'attack'; readonly target: Entity }
   | { readonly kind: 'idle' };
 
