@@ -22,6 +22,13 @@ export {
 } from './sprites.js';
 export { createPixiApp, renderScene, type Camera, type SpriteSheet } from './pixi-renderer.js';
 export {
+  buildHud,
+  IDLE_JOB,
+  type HudModel,
+  type JobCount,
+  type StockCount,
+} from './hud.js';
+export {
   createSyntheticAtlasSource,
   syntheticAtlasFrames,
   SYNTHETIC_BINDINGS,

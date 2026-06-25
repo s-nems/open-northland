@@ -136,9 +136,16 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       **output side** joined in — the building **type ids** that make it (`BuildingType.produces`, falling
       back to a materialized `recipe.outputs`), `producedBy` sorted for a stable view. The only read view
       over `content` rather than world state, so it is pure of world/RNG (deterministic by construction).
-      The visual/Pixi half is all that remains of the HUD. **Next:** wire the four read views (stocks /
-      population / jobs / goods-graph) into a render-side HUD panel (visual — human-gated pixels); the
-      data half of the HUD is complete.
+      **Render-side HUD MODEL landed** — `buildHud(snapshot, tribe)` (`packages/render/src/hud.ts`) is the
+      pure, self-verifiable data half of the on-screen HUD, exactly analogous to `buildScene` for the world
+      view: it re-derives population / per-job head-counts / per-good stock totals from the **frozen
+      `WorldSnapshot`** (not the live stores — `render` is a pure consumer), emitting a flat, sorted
+      `HudModel`. The aggregates match the sim read views by construction (a count/sum is order-independent)
+      but never re-enter the sim; output is total-ordered (ascending id), so the panel is reproducible
+      frame-to-frame. The only thing left is the **Pixi text/rect drawing** of that model (human-gated
+      pixels). **Next:** draw the `HudModel` into a Pixi/DOM panel (visual — an agent cannot self-judge the
+      typography/layout; flag for a human). The goods-graph view (over `content`, not the snapshot) stays a
+      sim-side read view the panel can call directly.
 - **Exit:** a self-sustaining, progressing single-tribe settlement you can grow.
 
 ## Phase 4 — Conflict & content breadth (N tribes)
