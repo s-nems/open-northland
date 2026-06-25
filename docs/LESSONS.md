@@ -324,3 +324,12 @@ the next iteration inherits it.
   When hands-on-verifying determinism outside vitest, clear every component store between runs (the
   golden tests' pattern) before concluding a real non-determinism bug — `git stash` + re-run on `main`
   to check the divergence is in your change, not the harness, ruled it out here. (sim/determinism)
+- [dc3ef54] A planner gate that keys on a `jobType`-ID predicate (`isNonWorkingAge`) silently snares an
+  unrelated worker when a SYNTHETIC fixture's job id collides with a real data id: the golden slice's
+  woodcutter is `jobType 1`, the same number as the real `baby_female` age class, so a new "skip
+  non-working ages" check in the AI planner froze the whole golden trace to empty. The fixtures pick
+  arbitrary small ids; the age-class ids 1–4 are a *real-data* meaning that doesn't hold in a fixture.
+  Fix: gate on a COMPONENT whose presence carries the semantic (`Age` — only a born-young settler has
+  one), not on the ambiguous id. When adding a sim rule keyed on a numeric content id that also has a
+  reserved/structural meaning, prefer a component/flag the lifecycle maintains over the raw id — and run
+  the goldens immediately, an emptied trace is the collision's tell. (sim/ai)
