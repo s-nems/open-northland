@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   CHUNK_HEADER_SIZE,
   HOIX_MARKER,
+  LMLT_CORNERS_PER_CELL,
   MAP_LAYER_CODEC_X8,
   MAP_LAYER_HEADER_SIZE,
   MAP_LAYER_SUBFORMAT,
+  type MapLayer,
   TEND_ID,
   XEND_ID,
   decodeMapDat,
@@ -13,7 +15,9 @@ import {
   encodeMapSize,
   findChunk,
   isPackedLayer,
+  lmltToTerrainMap,
   packMapLayer,
+  reduceCornersToCell,
   tagToId,
   unpackMapLayer,
 } from '../src/decoders/mapdat.js';
@@ -299,5 +303,67 @@ describe('unpackMapLayer / pck-X8el round-trip', () => {
   it('throws on a run control sitting at the very end with no value byte', () => {
     // Grid claims 5 bytes; a run control is the final stream byte (no value follows).
     expect(() => unpackMapLayer(craftLayer(5, [0x80 | 5]))).toThrow(/no value byte/);
+  });
+});
+
+describe('reduceCornersToCell', () => {
+  it('returns the value of a uniform cell (all four corners equal)', () => {
+    expect(reduceCornersToCell(7, 7, 7, 7)).toBe(7);
+    expect(reduceCornersToCell(0, 0, 0, 0)).toBe(0);
+  });
+
+  it('returns the dominant (most-frequent) corner', () => {
+    expect(reduceCornersToCell(5, 5, 5, 2)).toBe(5); // 3 vs 1
+    expect(reduceCornersToCell(2, 5, 5, 5)).toBe(5); // dominant regardless of position
+    expect(reduceCornersToCell(9, 3, 3, 9)).toBe(3); // 2 vs 2 -> lower id wins (tie-break)
+  });
+
+  it('breaks ties by the lowest typeId, independent of corner order', () => {
+    // Four distinct corners — each count 1, so the tie-break selects the minimum every time.
+    expect(reduceCornersToCell(8, 1, 4, 2)).toBe(1);
+    expect(reduceCornersToCell(2, 4, 1, 8)).toBe(1);
+    // Two pairs tied at count 2 -> the smaller id of the two pair values.
+    expect(reduceCornersToCell(6, 6, 1, 1)).toBe(1);
+    expect(reduceCornersToCell(1, 6, 1, 6)).toBe(1);
+  });
+});
+
+describe('lmltToTerrainMap', () => {
+  /** Builds a MapLayer from a flat corner-byte array (4 per cell). */
+  const layer = (corners: number[]): MapLayer => ({
+    codec: MAP_LAYER_CODEC_X8,
+    cells: Uint8Array.from(corners),
+  });
+
+  it('collapses 4 corners per cell into one row-major typeId grid', () => {
+    // 2×1 grid: cell 0 uniform type 3, cell 1 dominant type 5 (with a stray 2).
+    const map = lmltToTerrainMap(layer([3, 3, 3, 3, 5, 5, 5, 2]), { width: 2, height: 1 });
+    expect(map.width).toBe(2);
+    expect(map.height).toBe(1);
+    expect(map.typeIds).toEqual([3, 5]);
+    expect(map.typeIds.length).toBe(2 * 1);
+  });
+
+  it('produces a typeIds grid sized exactly width × height', () => {
+    const cells = 3 * 2;
+    const corners = new Array(cells * LMLT_CORNERS_PER_CELL).fill(0);
+    const map = lmltToTerrainMap(layer(corners), { width: 3, height: 2 });
+    expect(map.typeIds.length).toBe(cells);
+    expect(map.typeIds).toEqual(new Array(cells).fill(0));
+  });
+
+  it('is deterministic — same layer + dims yield byte-identical typeIds', () => {
+    const corners = [1, 2, 2, 1, 7, 7, 7, 7, 9, 4, 4, 9];
+    const a = lmltToTerrainMap(layer(corners), { width: 3, height: 1 });
+    const b = lmltToTerrainMap(layer(corners), { width: 3, height: 1 });
+    expect(a.typeIds).toEqual(b.typeIds);
+    expect(a.typeIds).toEqual([1, 7, 4]); // 1<2 tie, uniform 7, 4<9 tie
+  });
+
+  it('throws when the layer length is not width × height × 4', () => {
+    // 6 corner bytes can't be a 2×1 grid (needs 8).
+    expect(() => lmltToTerrainMap(layer([1, 1, 1, 1, 2, 2]), { width: 2, height: 1 })).toThrow(
+      /lmlt layer has 6 bytes, expected 8/,
+    );
   });
 });

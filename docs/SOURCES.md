@@ -109,8 +109,9 @@ group** (`emmm` → `embr`,`empa/empb`,`emt1..4`,`emla`,… → `xend`) then `te
   cell: `lmhe` (height) ≈ 1 B/cell; `lmlt`/`lmlv`/`lmms`/`lmco` are 4 B/cell (per-corner triangle
   type ids). The `X6el` layers (`empa`/`empb` entity ownership, 2 B/cell) use a separate bit-packing
   and are not yet unpacked. The landscape-**type** grid (the Phase-2 cell-graph input) is `lmlt`
-  (4 B/cell, values within the 87-type table) — but it is four per-corner triangle types, not one
-  cell id, so deriving a single per-cell walkable type for `buildTerrainGraph` is the next leg.
+  (4 B/cell, values within the 87-type table) — four per-corner triangle types; `lmltToTerrainMap`
+  reduces them to one per-cell typeId (dominant corner, lowest-typeId tie-break) and yields the plain
+  `{ width, height, typeIds }` shape the sim's `buildTerrainGraph` consumes.
 - Not every chunk is a grid: `laco`/`lasw`/`lafm` (landscape) and `eapd`/`eatd`/`eald` (entity) are
   **structured record lists** — depth-prefixed text/object tables (e.g. `eatd` holds `meadow 1`/…
   type names, `eald` holds `player01 sign 0…` placements), the same depth-prefixed grammar as the
@@ -122,11 +123,12 @@ group** (`emmm` → `embr`,`empa/empb`,`emt1..4`,`emla`,… → `xend`) then `te
 round-trip tested via `encodeMapDat`, no committed fixtures; hands-on verified on two real maps:
 FORTECA 39 chunks/250×250, oasis_o_plenty 40 chunks/250×250). The **`pck`/`X8el` packed-layer
 codec is also decoded** (`unpackMapLayer`/`packMapLayer`, round-trip tested; hands-on: 69 X8el
-layers across 3 real maps unpacked, 0 mismatches, real grids `pack→unpack` byte-exact).
-**Remaining:** identifying which `lm**` tag/lane is the landscape-type id grid (`lmlt` is 4 B/cell —
-four per-corner triangle types, not one cell id) and mapping it onto the IR type table → feeds
-`buildTerrainGraph`; and the `X6el` (`empa`/`empb`) 2-byte entity-ownership layers (a separate
-bit-packing). (No decoded bytes are committed — `map.dat` is copyrighted input, like every other
+layers across 3 real maps unpacked, 0 mismatches, real grids `pack→unpack` byte-exact). The
+**`lmlt` landscape-type lane → per-cell grid is derived** (`lmltToTerrainMap`: 4-corner → dominant
+single typeId), feeding the sim's `buildTerrainGraph` end-to-end (hands-on: `oasis_o_plenty`
+250×250 → 62500-cell graph; `WICHRY_ZIMY` 32400). **Remaining:** wiring that chain into the CLI (a
+per-map `TerrainMap` artifact into `content/`); and the `X6el` (`empa`/`empb`) 2-byte
+entity-ownership layers (a separate bit-packing). (No decoded bytes are committed — `map.dat` is copyrighted input, like every other
 game file.)
 - **Atomic actions are the behavior vocabulary** (see docs/ECS.md) and are partly free in readable
   data: `tribetypes.ini` `setatomic` (atomic→animation per tribe), `jobtypes.ini` `allowatomic`,
