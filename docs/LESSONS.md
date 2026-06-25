@@ -361,3 +361,12 @@ the next iteration inherits it.
   the intermediate aggregation `Map`s are built in entity order, so **explicitly sort the output** by
   id — don't lean on the snapshot's per-entity Map ordering for the cross-entity tallies. A render
   read view mirrors a sim read view's VALUES but lives in `render` and sources the snapshot. (render/hud)
+- [d931e4e] An OVERLAY draw (`renderHud`) that `addChild`s a fresh `Container` each frame doesn't leak
+  across frames ONLY because the scene draw it follows opens with `app.stage.removeChildren()` — that
+  clear wipes the *whole* stage incl. last frame's overlay, so the overlay self-cleans iff it's always
+  drawn AFTER `renderScene` (document the ordering). Keep the overlay a separate, independently-callable
+  fn that ends in its own `app.render()` (the twin-of-`renderScene` symmetry) and accept the second
+  `render()` per frame as the cost of composability — don't fold it into `renderScene`. Match the
+  sibling's GPU-resource lifecycle too: `renderScene` never `.destroy()`s its per-frame `Graphics`/
+  `Texture`, so a new overlay shouldn't either — destroying-on-remove is a separate render-perf pass over
+  BOTH, not a HUD-only divergence. (render/pixi)
