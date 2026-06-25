@@ -1,4 +1,4 @@
-import type { HumanJobExperienceType, JobRequirement } from '@vinland/data';
+import type { HumanJobExperienceType, JobRequirement, JobRequirementTarget } from '@vinland/data';
 import { Settler } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { SystemContext } from './context.js';
@@ -203,7 +203,7 @@ export function experienceRequirementMet(
 export function settlerMeetsNeed(
   ctx: SystemContext,
   tribe: number,
-  target: JobRequirement['target'],
+  target: JobRequirementTarget,
   targetId: number,
   experience: ReadonlyMap<number, number>,
 ): boolean {
