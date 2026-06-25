@@ -34,8 +34,9 @@ async function main(): Promise<void> {
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
   const terrain = sliceTerrain(loaded ?? undefined);
   const camera = { offsetX: CANVAS_W / 2, offsetY: CANVAS_H / 3 };
-  // The slice sim, kept live and stepped one tick per fixed interval below.
-  const sim = runSlice(7, 0);
+  // The slice sim, kept live and stepped one tick per fixed interval below. When a map loaded, the sim
+  // navigates that real grid (placement on its walkable cells); else the synthetic strip.
+  const sim = runSlice(7, 0, loaded ?? undefined);
 
   const timestep = new FixedTimestep();
   let lastMs = performance.now();

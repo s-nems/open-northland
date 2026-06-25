@@ -411,11 +411,20 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 > fetches + `parseTerrainMap`-validates) draws a real decoded grid behind the slice sprites, falling
 > back to the synthetic strip when absent — proven hands-on by `npm run shot -- --map mroczny_swiat_sub2`
 > (a real 50×50 grid → a 2500-tile PNG, 0 page errors).
-> **Next smallest step:** let the **sim** navigate a loaded map too (spawn/place settlers + buildings
-> on real walkable cells, not the synthetic strip), then atlas sprites in place of the placeholder
-> geometry. (A "per-type walk-cost field" is *not* a pending step: `landscapetypes.ini` has no
-> movement weight — only `maximumValency` + placement flags — so uniform unit cost is faithful.) Lines
-> tagged *(core done…)* pass tests today but await one wiring piece.
+> **And the SIM now navigates a loaded map too:** `runSlice(seed, ticks, map?)` (`vertical-slice.ts`),
+> when handed a loaded `TerrainMap`, places the slice's six entities (HQ, sawmill, woodcutter, carrier,
+> two wood nodes) on the **first walkable cells of the real grid** (canonical row-major order) instead
+> of the hardcoded 6×1 strip, and folds the grid's landscape typeIds into the synthetic demo content
+> (each declared walkable) so `buildTerrainGraph` builds the cell-graph over it without a content gap.
+> Both `shot.ts`/`main.ts` pass the loaded map to the sim AND the renderer, so `?map=<id>` now runs the
+> slice ON the decoded grid. Proven hands-on by loading the real `content/maps/cn_1.json` (50×50 = 2500
+> cells, typeIds {1,2,16,24,45,48}) → a 2500-cell terrain graph, the 6 entities spread across real cells
+> ((38,19),(13,20),(22,7),…), deterministic over 100 ticks (`be0e8d14`).
+> **Next smallest step:** atlas sprites in place of the placeholder box geometry (gated on a
+> free/synthetic atlas — real bobs are copyrighted/gitignored), the remaining open leg of the render
+> line. (A "per-type walk-cost field" is *not* a pending step: `landscapetypes.ini` has no movement
+> weight — only `maximumValency` + placement flags — so uniform unit cost is faithful.) Lines tagged
+> *(core done…)* pass tests today but await one wiring piece.
 - [x] **CommandSystem + serializable command schema** — the ONLY way state mutates. Done —
       `systems/command.ts` (`commandSystem`, first in `SYSTEM_ORDER`) drains a per-sim
       {@link CommandQueue} (`commands.ts`) each tick and applies each serializable {@link Command}
@@ -681,13 +690,22 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             `npm run dev` and the shot harness (`scripts/shot.mjs --map <id>`) can reach them. A bad id
             / 404 / malformed file degrades gracefully to the synthetic strip (logged), so a checkout
             **without** the gitignored maps still renders and the default `npm run shot` stays
-            reproducible. The slice **sim** still navigates its own synthetic strip (placing buildings
-            on a real map's arbitrary cells — possibly water — is a later step); this draws the real
-            grid as the terrain backdrop. **Hands-on:** `npm run shot -- --map mroczny_swiat_sub2` (a
-            real 50×50 = 2500-cell grid) → a valid 55 KB PNG (vs the 10 KB 6-tile strip), 0 page
-            errors, eyeballed gross-correct (a full iso terrain grid behind the feet-sorted slice
-            sprites); `cn_4` (100×100, 16 distinct typeIds) likewise. **Still open:** the **sim**
-            navigating a real map (spawn/placement on real cells), and the atlas sprite.
+            reproducible. This draws the real grid as the terrain backdrop. **Hands-on:** `npm run shot
+            -- --map mroczny_swiat_sub2` (a real 50×50 = 2500-cell grid) → a valid 55 KB PNG (vs the
+            10 KB 6-tile strip), 0 page errors, eyeballed gross-correct (a full iso terrain grid behind
+            the feet-sorted slice sprites); `cn_4` (100×100, 16 distinct typeIds) likewise.
+      - [x] **The SIM navigates the loaded map** — `runSlice(seed, ticks, map?)` (`vertical-slice.ts`)
+            now, when handed a loaded `TerrainMap`, places the slice's six entities (HQ, sawmill,
+            woodcutter, carrier, two wood nodes) on the **first walkable cells of the real grid** (in
+            canonical row-major id order via `walkableCells`) instead of the hardcoded 6×1 strip, and
+            folds the grid's landscape typeIds into the synthetic demo content (`demoLandscape`, each
+            declared walkable) so `buildTerrainGraph` builds the cell-graph over a real decoded grid
+            without a content-gap throw. `shot.ts`/`main.ts` pass the loaded map to the sim AND the
+            renderer, so `?map=<id>` runs the slice ON the decoded grid. **Hands-on:** loading the real
+            `content/maps/cn_1.json` (50×50 = 2500 cells, typeIds {1,2,16,24,45,48}) → a 2500-cell
+            terrain graph, the 6 entities spread across real cells ((38,19),(13,20),(22,7),…),
+            deterministic over 100 ticks (`be0e8d14`). **Still open (render line):** the atlas sprite in
+            place of the placeholder box geometry (gated on a free/synthetic atlas).
       - [x] **Pure scene/depth-sort layer** — `packages/render/src/scene.ts` (`buildScene`): turns a
             `WorldSnapshot` + the terrain grid dimensions into a flat, **depth-sorted** isometric
             draw list (`DrawItem[]`), the testable core of the render line that an agent CAN
