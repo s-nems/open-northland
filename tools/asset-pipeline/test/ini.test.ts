@@ -16,6 +16,7 @@ import {
   extractPaletteIndex,
   extractTribes,
   extractWeapons,
+  fillBuildingRecipes,
   parseIniSections,
 } from '../src/decoders/ini.js';
 
@@ -496,6 +497,78 @@ describe('extractBuildings', () => {
       { file: 'f.ini' },
     );
     expect(buildings[0]?.kind).toBe('maintype_9');
+  });
+});
+
+describe('fillBuildingRecipes', () => {
+  // The goods table carries the input side: coin (8) <- productionInputGoods 5 4; potion (9) <-
+  // productionInputGoods 1 1 4 4 5 (= 2×good1 + 2×good4 + 1×good5). wood (5)/water (1) are raw (no
+  // inputs). So a workplace producing coin should get inputs {wood,wheat}, one producing a raw good
+  // should get an empty-input recipe (it makes a good with no recipe of its own).
+  const GOODS = extractGoods(parseIniSections(GOODTYPES_INI), { file: 'goodtypes.ini' });
+  const src = { file: 'houses.ini', block: 'logichousetype', layer: 'mod' as const };
+  const building = (typeId: number, id: string, produces: number[]) => ({
+    typeId,
+    id,
+    kind: 'workplace',
+    homeSize: 0,
+    workers: [],
+    stock: [],
+    produces,
+    source: src,
+  });
+
+  it('joins a workplace output good -> that good`s productionInputs into recipe.inputs', () => {
+    const [mint] = fillBuildingRecipes([building(13, 'mint', [8])], GOODS);
+    expect(mint?.recipe).toEqual({
+      // coin consumes wood (5) + wheat (4), one each — emitted in ascending input-goodType order.
+      inputs: [
+        { goodType: 4, amount: 1 },
+        { goodType: 5, amount: 1 },
+      ],
+      outputs: [{ goodType: 8, amount: 1 }],
+      ticks: 20,
+    });
+  });
+
+  it('preserves the repeated-id quantity through the join (potion: 2×1, 2×4, 1×5)', () => {
+    const [lab] = fillBuildingRecipes([building(14, 'lab', [9])], GOODS);
+    expect(lab?.recipe?.inputs).toEqual([
+      { goodType: 1, amount: 2 },
+      { goodType: 4, amount: 2 },
+      { goodType: 5, amount: 1 },
+    ]);
+    expect(lab?.recipe?.outputs).toEqual([{ goodType: 9, amount: 1 }]);
+  });
+
+  it('merges (sums per input goodType) the inputs of several produced goods', () => {
+    const [multi] = fillBuildingRecipes([building(15, 'multi', [8, 9])], GOODS);
+    // coin needs 5,4; potion needs 1,4,5 -> wood(5)=1+1, wheat(4)=1+2, water(1)=2; two outputs.
+    expect(multi?.recipe?.inputs).toEqual([
+      { goodType: 1, amount: 2 },
+      { goodType: 4, amount: 3 },
+      { goodType: 5, amount: 2 },
+    ]);
+    expect(multi?.recipe?.outputs).toEqual([
+      { goodType: 8, amount: 1 },
+      { goodType: 9, amount: 1 },
+    ]);
+  });
+
+  it('gives a producer of a raw good an empty-input recipe (still a producer)', () => {
+    const [cutter] = fillBuildingRecipes([building(16, 'cutter', [5])], GOODS);
+    expect(cutter?.recipe).toEqual({ inputs: [], outputs: [{ goodType: 5, amount: 1 }], ticks: 20 });
+  });
+
+  it('leaves a non-producing building (empty produces) with no recipe', () => {
+    const [store] = fillBuildingRecipes([building(1, 'hq', [])], GOODS);
+    expect(store?.recipe).toBeUndefined();
+  });
+
+  it('does not mutate the input building records', () => {
+    const input = building(13, 'mint', [8]);
+    fillBuildingRecipes([input], GOODS);
+    expect(input).not.toHaveProperty('recipe');
   });
 });
 

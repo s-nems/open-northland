@@ -497,8 +497,8 @@ function houseKind(mainType: number | undefined): string {
  *     `jobType` is cross-checked against the job table by `validateCrossReferences`).
  *   - `logicstock <goodType> <capacity> <initial>` -> {@link StockSlot}[] (per-good storage slots;
  *     `goodType` cross-checked against the good table).
- *   - `logicproduction <goodType>` -> `produces` (output good ids only — the input side / amounts /
- *     timing are a Phase-3 goods-graph concern, see {@link BuildingType.produces}).
+ *   - `logicproduction <goodType>` -> `produces` (output good ids only — the input side is the
+ *     output-side join {@link fillBuildingRecipes} does after this, see {@link BuildingType.produces}).
  *   - `logichomesize` -> `homeSize` (population-capacity tier, on `home` buildings).
  * `kind` is mapped from `logicmaintype` ({@link houseKind}). Throws on a section missing the required
  * numeric `logictype` (matches {@link extractGoods}'s throw-on-malformed stance). The combat/graphics
@@ -544,6 +544,59 @@ export function extractBuildings(sections: readonly RuleSection[], src: SourceRe
     );
   }
   return buildings;
+}
+
+/** Default ticks for one production cycle when no faithful per-cycle duration can be resolved. */
+const DEFAULT_RECIPE_TICKS = 20;
+
+/**
+ * Fills each producing building's `recipe` by the **output-side join**: a workplace's `produces`
+ * names the *output* good(s) it makes, and a `[goodtype]`'s `productionInputGoods` (extracted onto
+ * {@link GoodType.productionInputs}) names what producing THAT good consumes — so joining a
+ * building's outputs through the goods table materializes the inputs the original house table never
+ * carried directly. Cross-table, so it runs after both `extractGoods` and `extractBuildings`, before
+ * `parseContentSet`.
+ *
+ * Returns NEW building records (the input array is left untouched). For each building with a
+ * non-empty `produces`:
+ *   - `recipe.outputs` = each produced good at amount 1 (one unit per cycle — the original house
+ *     table carries no per-good output quantity, only which good; uniform 1 is the faithful default,
+ *     matching the `logicproduction <good>` semantics).
+ *   - `recipe.inputs` = the merged `productionInputs` of every produced good, summed per input
+ *     goodType (a workplace making several goods consumes the union of their inputs per cycle).
+ *     Inputs are emitted in ascending input-goodType order — deterministic, source-order-independent.
+ *   - `recipe.ticks` = {@link DEFAULT_RECIPE_TICKS}. APPROXIMATED: the faithful per-cycle duration
+ *     lives behind the produce atomic's animation `length`, reachable only through a tribe's
+ *     `setatomic <job> <atomicId> "anim"` binding (per-tribe, last-wins) — there is no tribe context
+ *     at the building-type layer, so the timing is left at the schema default and recorded in
+ *     docs/FIDELITY.md, not pinned here.
+ *
+ * A building that already carries a `recipe` (e.g. a future explicit override) is left as-is. A
+ * building with empty `produces` gets no recipe (it is not a producer) and is returned unchanged.
+ */
+export function fillBuildingRecipes(
+  buildings: readonly BuildingType[],
+  goods: readonly GoodType[],
+): BuildingType[] {
+  const inputsByGood = new Map<number, readonly { goodType: number; amount: number }[]>();
+  for (const g of goods) inputsByGood.set(g.typeId, g.productionInputs);
+
+  return buildings.map((b) => {
+    if (b.recipe !== undefined || b.produces.length === 0) return b;
+
+    const mergedInputs = new Map<number, number>();
+    for (const outputGood of b.produces) {
+      for (const inp of inputsByGood.get(outputGood) ?? []) {
+        mergedInputs.set(inp.goodType, (mergedInputs.get(inp.goodType) ?? 0) + inp.amount);
+      }
+    }
+    const inputs = [...mergedInputs]
+      .sort(([a], [c]) => a - c)
+      .map(([goodType, amount]) => ({ goodType, amount }));
+    const outputs = b.produces.map((goodType) => ({ goodType, amount: 1 }));
+
+    return BuildingType.parse({ ...b, recipe: { inputs, outputs, ticks: DEFAULT_RECIPE_TICKS } });
+  });
 }
 
 /**

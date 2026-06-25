@@ -116,8 +116,9 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
       is the encrypted twin; preferring the `.ini` per golden rule #4) to `BuildingType` IR. A house
       record keys its id on `logictype` (not the usual `type`) and its name on `debugname`; captured:
       `logicworker <job> <count>` → `workers`, `logicstock <good> <cap> <init>` → `stock`,
-      `logicproduction <good>` → `produces` (output good ids only — input goods/amounts/timing are the
-      Phase-3 goods-graph; `recipe` stays empty till then), `logichomesize` → `homeSize`. `kind` maps
+      `logicproduction <good>` → `produces` (output good ids only — input goods come from the
+      Phase-3 goods-graph join, `fillBuildingRecipes`, which now fills `recipe`), `logichomesize` →
+      `homeSize`. `kind` maps
       `logicmaintype` (1 storage, 2 home, 3 workplace, 4 training, 5 tower, 6 vehicle, 7 wonder). The
       placement/defence/graphics extras (`debugcolor`/`logicCanEnableDefenceMode`/`logicSchoolSize`/
       `logicvehicletype`/`logicbuildon*`) are skipped — later construction/combat systems.
@@ -650,14 +651,19 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
       a cycle is the net inputs→outputs transformation, goods conserved. **Capacity enforcement is on
       the output side**: a cycle never starts unless its outputs fit, so the stockpile never overflows
       and inputs aren't wasted when blocked. Pure + deterministic: recipe read from CONTENT, no
-      RNG/wall-clock, stockpile writes via the canonical Map. Real input goods/amounts come from
-      `goodtypes.productionInputGoods` (the Phase-3 goods-graph artifact); proven here against the
-      synthetic sawmill recipe (wood→plank). **Hands-on:** a sawmill with 5 wood + a plank cap of 3,
-      run 120 ticks through the real `Simulation.step()` schedule → exactly **3 planks** (capped, never
-      exceeded), **2 wood left** (production halted on full output, inputs untouched), 3 `goodProduced`
-      events, two same-seed runs hash-equal (`57b0f116`). **Still to do:** a worker-presence gate
-      (a workplace should only produce while staffed — JobSystem slice) and the carrier moving outputs
-      out / inputs in (next roadmap line).
+      RNG/wall-clock, stockpile writes via the canonical Map. **Real building recipes are now extracted**
+      (the output-side join — `fillBuildingRecipes`, see the goods-graph note below): a workplace's
+      `logicproduction` output good joins through that good's `goodtypes.productionInputGoods` to fill
+      `recipe.inputs`/`outputs`, so the sim runs the original economy (mill `wheat→flour`, bakery
+      `water+flour→bread`, …) rather than the old synthetic sawmill stand-in. **Hands-on:** a sawmill
+      with 5 wood + a plank cap of 3, run 120 ticks through the real `Simulation.step()` schedule →
+      exactly **3 planks** (capped, never exceeded), **2 wood left** (production halted on full output,
+      inputs untouched), 3 `goodProduced` events, two same-seed runs hash-equal (`57b0f116`); and the
+      real-game `npm run pipeline` → **26 of 28 workplaces** carry a recipe (22 with non-empty inputs),
+      0 dangling refs. **Still to do:** the per-cycle `recipe.ticks` is still the schema default 20
+      (the faithful duration is behind the produce atomic's per-tribe `setatomic`→`atomicanimations`
+      `length` — recorded approximated in FIDELITY); a worker-presence gate (produce only while
+      staffed — JobSystem slice).
 - [x] A minimal **carrier** moving goods between store and workplace (goods never teleport). Done —
       the AISystem's `atomicPlanner` now has a carrier fallback: an idle settler with nothing to
       harvest hauls a workplace's finished outputs out to a store that can stock them. `pickup` now
@@ -841,9 +847,22 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             good (the good being made); a raw/harvested good gets `[]`. `validateCrossReferences` now also
             checks every input good id resolves. **Hands-on:** `npm run pipeline` on the real game →
             **42/65 goods carry inputs** (`coin <- wood+gold`, `flour <- wheat`, `tile <- 2x mud + 1x wood`),
-            **0 dangling** input refs. **Still open:** join a workplace's `produces` output good → that
-            good's `productionInputs` (+ cycle timing) to fill the building `recipe` (the *output side*),
-            then the raw→tier→food-tier graph layering.
+            **0 dangling** input refs.
+      - [x] **Output side joined into building recipes** — `fillBuildingRecipes` (`decoders/ini.ts`),
+            run in `buildIr` after both the goods and buildings tables are assembled (cross-table). For
+            each producing workplace it joins each `logicproduction` output good → that good's
+            `productionInputs` to materialize `recipe.inputs` (merged + summed per input goodType across
+            several outputs, ascending-id order) and `recipe.outputs` (each produced good at amount 1 —
+            the `logicproduction <good>` semantics carry no per-output quantity). `recipe.ticks` is the
+            schema default 20 — APPROXIMATED (the faithful per-cycle duration is behind the produce
+            atomic's per-tribe `setatomic`→`atomicanimations` `length`, no tribe context at the
+            building-type layer; recorded in FIDELITY.md). A non-producing building (`produces` empty)
+            gets no recipe. `validateCrossReferences` already checks recipe good ids resolve. **Hands-on:**
+            `npm run pipeline` on the real game → **26/28 workplaces** carry a recipe (22 with non-empty
+            inputs), 0 dangling refs, recognisably the original economy (`mill: wheat→flour`,
+            `bakery: water+flour→bread`, `brewery: water+honey→mead`); the sim no longer needs the
+            synthetic sawmill stand-in. **Still open:** the per-cycle timing (above) and the
+            raw→tier→food-tier graph layering.
 - [ ] NeedsSystem: hunger + non-food needs implied by atomics (eat, plus deferred-but-named
       `pray`/`enjoy`/social/`make_love`).
 - [ ] **ProgressionSystem** — experience + tech graph: `humanjobexperiencetypes` per-specialization
