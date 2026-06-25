@@ -1,3 +1,4 @@
+import type { ContentSet } from '@vinland/data';
 import { Building, Settler, Stockpile, stockpileEntries } from './components/index.js';
 import type { World } from './ecs/world.js';
 import { ONE } from './fixed.js';
@@ -75,6 +76,46 @@ export const buildingSane: Invariant = (world) => {
   }
   return out;
 };
+
+/**
+ * No tribe's living population exceeds the housing capacity its built `home` buildings provide — the
+ * liveness guard on the births→housing loop (the ReproductionSystem must never spawn a settler past
+ * the ceiling). A **content-bound** invariant: it needs the building types' `homeSize` param (the
+ * `Invariant` signature carries only the world), so it is a factory that closes over `content` and
+ * returns a plain `Invariant` — a scenario opts in via `invariants: [populationWithinHousing(content)]`.
+ * It is NOT in {@link CORE_INVARIANTS} (those run content-free against any world).
+ *
+ * Capacity and population are recomputed here from the world directly (not via `systems/shared.ts`, to
+ * keep `invariants` free of a `SystemContext`): capacity = the sum of `homeSize` over a tribe's built
+ * `home` buildings, population = its living settler count. Both are commutative reductions, so the
+ * `query` store order can't change them.
+ */
+export function populationWithinHousing(content: ContentSet): Invariant {
+  const homeSizeOf = new Map<number, number>();
+  for (const t of content.buildings) {
+    if (t.kind === 'home') homeSizeOf.set(t.typeId, t.homeSize);
+  }
+  return (world) => {
+    const capacity = new Map<number, number>();
+    for (const e of world.query(Building)) {
+      const b = world.get(e, Building);
+      if (b.built < ONE) continue; // not yet built — shelters no one
+      const size = homeSizeOf.get(b.buildingType);
+      if (size !== undefined) capacity.set(b.tribe, (capacity.get(b.tribe) ?? 0) + size);
+    }
+    const population = new Map<number, number>();
+    for (const e of world.query(Settler)) {
+      const tribe = world.get(e, Settler).tribe;
+      population.set(tribe, (population.get(tribe) ?? 0) + 1);
+    }
+    const out: string[] = [];
+    for (const [tribe, pop] of population) {
+      const cap = capacity.get(tribe) ?? 0;
+      if (pop > cap) out.push(`tribe ${tribe}: population ${pop} exceeds housing capacity ${cap}`);
+    }
+    return out;
+  };
+}
 
 export const CORE_INVARIANTS: readonly Invariant[] = [
   stockNonNegative,
