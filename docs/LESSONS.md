@@ -31,7 +31,7 @@ the next iteration inherits it.
 - [9a497c9] `npm run build` (tsc) only compiles `src/**` — test files aren't in the project graph and
   vitest doesn't typecheck, so adding a required `SystemContext` field leaves stale test `ctx` literals
   type-broken yet green; grep `SystemContext = {` across `test/` when the context shape changes. (sim/tooling)
-- [PENDING] Importing a `test/` file (e.g. a fixture) from production `src/` drags it into that
+- [79e02a7] Importing a `test/` file (e.g. a fixture) from production `src/` drags it into that
   package's `tsc --build` graph, which emits `.js`/`.d.ts` *in-place next to the .ts* — stray
   untracked artifacts `biome check` then lints and fails on. Keep dev/demo fixtures self-contained in
   `src/` (a tiny synthetic copy), don't reach across into another package's `test/`. (tooling/render)

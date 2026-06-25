@@ -54,8 +54,18 @@ async function main() {
     });
 
     await page.goto(url, { waitUntil: 'load' });
-    // Wait for the headless render entry to draw its single frame and raise the ready flag.
-    await page.waitForFunction(() => window.__vinlandShotReady === true, { timeout: 30_000 });
+    // Wait for the headless render entry to draw its single frame and raise the ready flag. If it
+    // never does (a render crash before the flag), surface the collected page errors — otherwise the
+    // bare timeout masks the real cause.
+    try {
+      await page.waitForFunction(() => window.__vinlandShotReady === true, { timeout: 30_000 });
+    } catch (e) {
+      if (errors.length > 0) {
+        console.error('shot: page errored before the ready flag was set:');
+        for (const err of errors) console.error(`  - ${err}`);
+      }
+      throw e;
+    }
 
     await mkdir(dirname(outPath), { recursive: true });
     const canvas = page.locator('#game');
