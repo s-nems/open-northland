@@ -28,3 +28,6 @@ the next iteration inherits it.
   `Simulation.step()` schedule, not compiled `dist/`. (tooling)
 - [bfe2491] A weapon `type` id isn't globally unique (105 weapons collapse to 19 typeIds — per-tribe
   re-use), so `indexById` silently drops records; key by `(tribeType, typeId)`. (data/extract)
+- [9a497c9] `npm run build` (tsc) only compiles `src/**` — test files aren't in the project graph and
+  vitest doesn't typecheck, so adding a required `SystemContext` field leaves stale test `ctx` literals
+  type-broken yet green; grep `SystemContext = {` across `test/` when the context shape changes. (sim/tooling)
