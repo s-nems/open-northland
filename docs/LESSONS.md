@@ -352,3 +352,12 @@ the next iteration inherits it.
   `../src/systems/index.js`), but the 3b hands-on `node -e` against `@vinland/sim` threw `does not
   provide an export named goodsGraph` — the exact "green test, broken at the real entry point" gap the
   hands-on step exists to catch. Mirror the real consumer's import surface in the smoke check. (sim/barrel)
+- [faa7885] The render-side HUD must RE-DERIVE its aggregates from the `WorldSnapshot`, NOT call the
+  sim's `tribeStocks`/`tribePopulationByJob` read views — those take a live `World`, and `render`
+  reading the live stores breaks the pure-consumer rule (the whole point of the snapshot seam). The
+  re-derivation is trivial because a count/sum is order-independent (so it matches the sim view by
+  construction), but two shape gotchas bite: (a) the snapshot's `clonePlain` turns a component `Map`
+  (`Stockpile.amounts`) into a **sorted `[k,v]` array**, so read it as an array, never `.get()`; (b)
+  the intermediate aggregation `Map`s are built in entity order, so **explicitly sort the output** by
+  id — don't lean on the snapshot's per-entity Map ordering for the cross-entity tallies. A render
+  read view mirrors a sim read view's VALUES but lives in `render` and sources the snapshot. (render/hud)
