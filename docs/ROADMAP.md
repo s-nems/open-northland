@@ -311,12 +311,26 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
                   lmpa lmpb` … `emla xend tend`), `lsiz` = 250×250 = 62500 cells, walk reaches exact
                   EOF (0 trailing), `lmhe` 64778 B ≈ 1 B/cell + pck wrapper; `oasis_o_plenty/map.dat`
                   → 40 chunks, 250×250.
-            - [ ] **`pck`/`X8el` packed-layer unpack** — the `lm**`/`em**` grid payloads open with a
-                  `[u8 ver][u32 innerSize]` sub-header then the ASCII marker `pck` + `X8el`/`X6el`
-                  (per-pixel bit depth) + a per-layer header not yet fully decoded. Decode it (cross-
-                  check the `.bmd` packed-line codec), identify which `lm**` tag is the landscape-type
-                  id grid → feed `buildTerrainGraph`. The `eatd`/`eald` structured record-lists
-                  (pre-placed objects, depth-prefixed text) are the Phase-5 territory layer, separate.
+            - [x] **`pck`/`X8el` packed-layer unpack** — `decoders/mapdat.ts` `unpackMapLayer`
+                  decodes the RLE-packed `lm**`/`em**` grid payloads. The 21-byte inner header is
+                  reverse-engineered (probed across 5 real maps): `[u8 ver][u32 innerSize]` + the
+                  on-disk marker `"kcp"` ("pck" reversed) + the codec id `X8el`/`X6el` (8/6-bit) +
+                  a constant `0x72` sub-format byte + `[u32 unpackedLength][u32 innerSize]`, then the
+                  stream. The codec is the `.bmd` packed-line family with raw/run roles swapped: a
+                  control byte with the high bit **set** is a run of `(b&0x7F)` copies of the next
+                  byte, **clear** is a literal run of `b` bytes — decode stops at exactly
+                  `unpackedLength` (which consumes the stream to the payload end on every real X8el
+                  layer). `packMapLayer` is the round-trip inverse (fixture-free tests). **X8el only**
+                  (one byte per output cell; `lmhe` height ≈ 1 B/cell, `lmlt` landscape-type 4 B/cell —
+                  per-corner type ids); the `X6el` 2-byte entity-ownership layers (`empa`/`empb`)
+                  throw "not supported" — a separate bit-packing, a later leg. **Hands-on:** 69 X8el
+                  layers across 3 real maps unpacked, 0 mismatches (every length an exact multiple of
+                  `cells`), all 23 oasis_o_plenty grids `pack→unpack` byte-exact; `lmhe`∈[0,242],
+                  `lmlt`∈[0,85] (within the 87-type table). **Still to do:** identify which `lm**`
+                  tag/lane is the landscape-type id grid the cell-graph wants (`lmlt` is 4 B/cell —
+                  four per-corner triangle types, not one cell id) and map it onto the IR type table →
+                  feed `buildTerrainGraph`. The `eatd`/`eald` structured record-lists (pre-placed
+                  objects, depth-prefixed text) are the Phase-5 territory layer, separate.
 - **Exit:** `npm run pipeline` produces a validated `content/` (types + atlases + one map), decoded
   graphics verified against the oracle.
 

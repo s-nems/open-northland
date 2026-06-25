@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   CHUNK_HEADER_SIZE,
   HOIX_MARKER,
+  MAP_LAYER_CODEC_X8,
+  MAP_LAYER_HEADER_SIZE,
+  MAP_LAYER_SUBFORMAT,
   TEND_ID,
   XEND_ID,
   decodeMapDat,
@@ -9,7 +12,10 @@ import {
   encodeMapDat,
   encodeMapSize,
   findChunk,
+  isPackedLayer,
+  packMapLayer,
   tagToId,
+  unpackMapLayer,
 } from '../src/decoders/mapdat.js';
 
 /**
@@ -159,5 +165,108 @@ describe('findChunk', () => {
     );
     expect(findChunk(map, 'lmlt')?.payload).toEqual(Uint8Array.of(1));
     expect(findChunk(map, 'nope')).toBeUndefined();
+  });
+});
+
+/**
+ * Packed grid-layer codec (`pck`/`X8el`). No copyrighted fixtures: we round-trip a synthetic grid
+ * through `packMapLayer` → `unpackMapLayer` and assert byte-exact recovery, then check the inner
+ * header the packer wrote matches the layout reverse-engineered from real maps (marker "kcp",
+ * codec "X8el", sub-format 0x72, the unpacked-length u32).
+ */
+describe('unpackMapLayer / pck-X8el round-trip', () => {
+  /** Wraps a packed layer payload in a one-chunk map so we can decode it like the real reader does. */
+  const layerChunk = (cells: Uint8Array) => {
+    const map = decodeMapDat(encodeMapDat([{ tag: 'lmhe', version: 1, payload: packMapLayer(cells) }]));
+    return map.chunks[0] as ReturnType<typeof decodeMapDat>['chunks'][number];
+  };
+
+  it('round-trips a grid mixing long runs and noisy literals', () => {
+    // 250 zeros (one run), a noisy literal stretch, then a long run of 200 — exercises both control
+    // forms and the 0x7F per-run cap (runs/literals longer than 127 split across controls).
+    const cells = new Uint8Array(250 + 64 + 200);
+    let p = 250;
+    for (let k = 0; k < 64; k++) cells[p++] = (k * 37 + 11) & 0xff; // pseudo-noise (adjacent-distinct-ish)
+    cells.fill(7, p, p + 200);
+    const layer = unpackMapLayer(layerChunk(cells));
+    expect(layer.codec).toBe(MAP_LAYER_CODEC_X8);
+    expect(layer.cells).toEqual(cells);
+  });
+
+  it('round-trips an empty grid', () => {
+    const layer = unpackMapLayer(layerChunk(new Uint8Array(0)));
+    expect(layer.cells.length).toBe(0);
+  });
+
+  it('round-trips a single-byte grid (the lone-literal progress guard)', () => {
+    const layer = unpackMapLayer(layerChunk(Uint8Array.of(0x42)));
+    expect(layer.cells).toEqual(Uint8Array.of(0x42));
+  });
+
+  it('round-trips every byte value across a run of each (full alphabet)', () => {
+    const cells = new Uint8Array(256 * 3);
+    for (let v = 0; v < 256; v++) cells.fill(v, v * 3, v * 3 + 3); // 256 runs of 3
+    expect(unpackMapLayer(layerChunk(cells)).cells).toEqual(cells);
+  });
+
+  it('writes the reverse-engineered inner header (marker, codec, sub-format, unpacked length)', () => {
+    const cells = Uint8Array.of(1, 1, 1, 2, 3);
+    const packed = packMapLayer(cells);
+    expect(packed[0]).toBe(1); // version
+    expect(String.fromCharCode(packed[5] as number, packed[6] as number, packed[7] as number)).toBe('kcp');
+    expect(
+      String.fromCharCode(
+        packed[8] as number,
+        packed[9] as number,
+        packed[10] as number,
+        packed[11] as number,
+      ),
+    ).toBe('X8el');
+    expect(packed[12]).toBe(MAP_LAYER_SUBFORMAT);
+    const view = new DataView(packed.buffer);
+    expect(view.getUint32(0x0d, true)).toBe(cells.length); // unpacked length
+    // innerSize (at +0x01 and repeated at +0x11) accounts for every byte after the +0x01 field.
+    expect(view.getUint32(0x01, true)).toBe(packed.length - 5);
+    expect(view.getUint32(0x11, true)).toBe(packed.length - 5);
+  });
+
+  it('isPackedLayer distinguishes a packed layer from a raw chunk', () => {
+    const map = decodeMapDat(
+      encodeMapDat([
+        { tag: 'lmhe', version: 1, payload: packMapLayer(Uint8Array.of(5, 5, 5)) },
+        { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 4, height: 4 }) },
+      ]),
+    );
+    expect(isPackedLayer(map.chunks[0] as never)).toBe(true);
+    expect(isPackedLayer(map.chunks[1] as never)).toBe(false);
+  });
+
+  it('throws on a non-packed chunk', () => {
+    const map = decodeMapDat(
+      encodeMapDat([{ tag: 'lsiz', payload: encodeMapSize({ width: 2, height: 2 }) }]),
+    );
+    expect(() => unpackMapLayer(map.chunks[0] as never)).toThrow(/not a pck-packed layer/);
+  });
+
+  it('throws on an unsupported codec (e.g. X6el)', () => {
+    // Hand-build a "kcp"/"X6el" header so the codec gate fires (X6 is a separate, unhandled format).
+    const payload = new Uint8Array(MAP_LAYER_HEADER_SIZE);
+    payload.set([0x6b, 0x63, 0x70], 0x05); // "kcp"
+    payload.set([0x58, 0x36, 0x65, 0x6c], 0x08); // "X6el"
+    const map = decodeMapDat(encodeMapDat([{ tag: 'empa', version: 1, payload }]));
+    expect(() => unpackMapLayer(map.chunks[0] as never)).toThrow(/not supported/);
+  });
+
+  it('throws on a stream that underruns its declared unpacked length', () => {
+    // Declare 100 unpacked bytes but give a stream that produces fewer, then ends.
+    const payload = new Uint8Array(MAP_LAYER_HEADER_SIZE + 2);
+    payload.set([0x6b, 0x63, 0x70], 0x05);
+    payload.set([0x58, 0x38, 0x65, 0x6c], 0x08); // "X8el"
+    payload[0x0c] = MAP_LAYER_SUBFORMAT;
+    new DataView(payload.buffer).setUint32(0x0d, 100, true); // claim 100 unpacked bytes
+    payload[MAP_LAYER_HEADER_SIZE] = 1; // a 1-byte literal control
+    payload[MAP_LAYER_HEADER_SIZE + 1] = 0xaa; // its single literal byte → only 1 produced, then EOF
+    const map = decodeMapDat(encodeMapDat([{ tag: 'lmhe', version: 1, payload }]));
+    expect(() => unpackMapLayer(map.chunks[0] as never)).toThrow(/underran/);
   });
 });

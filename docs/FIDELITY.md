@@ -40,6 +40,7 @@ named source). Update the relevant row when a mechanic lands or is calibrated.
 |---|---|---|
 | `.cif` decrypt + container | faithful | round-trip tested; layout solved vs `XBStorable.cs`/`XBTools.cs` (SOURCES.md) |
 | `.lib` / `.pcx` / `.bmd` / `.ini` decoders | faithful (structure) | round-trip tests + real-data record counts; **pixel-oracle diff still pending** |
+| `map.dat` `hoix` container + `pck`/`X8el` packed layers | faithful (structure) | container ported from oracle `CIoHelper.cs`; the X8el inner header reverse-engineered + cross-validated across 5 real maps (69 layers, 0 mismatches, real grids `pack→unpack` byte-exact); the codec is the `.bmd` packed-line family. **X6el layers + landscape-type-grid semantics still pending** |
 | Data extraction (goods/jobs/tribes/weapons/buildings/atomics) | faithful (params) | extracted from readable `.ini`; counts verified; cross-refs resolve |
 | Decoded-asset **pixel** fidelity | not-verified | OpenVikings pixel-diff not yet run (an agent can't self-judge; needs human + owned copy) |
 
