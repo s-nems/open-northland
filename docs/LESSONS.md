@@ -222,3 +222,8 @@ the next iteration inherits it.
   Extract the OBSERVED value, not the documented constant, and `grep` the real key set's value range
   before deciding what to cross-validate — an id that overshoots the resolvable table is the tell
   that a field is a wider/synthetic id space and must NOT be range-checked (false-positives). (pipeline/fidelity)
+- [75b4e9c] Component stores are module-level singletons shared across every `Simulation` instance, so a
+  multi-run hands-on smoke SCRIPT (not via the test harness, which clears them in `beforeEach`) leaks
+  entities between runs — my "cross-tribe unlock" false alarm was run B's settler bleeding into run C.
+  Clear the stores (or use one sim per process) between smoke runs; a direct helper call confirmed the
+  gate itself was correct. (sim/verification)

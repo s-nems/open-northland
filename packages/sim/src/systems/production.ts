@@ -42,6 +42,10 @@ export const productionSystem: System = (world, ctx) => {
   // Advance running cycles first, then start new ones — so a cycle started this tick doesn't also
   // get advanced in the same tick (it begins counting next tick, like CurrentAtomic).
   for (const e of world.query(Production, Stockpile)) {
+    // Note: an in-flight cycle is NOT re-gated on the tech-graph (`jobEnablesGood`) — the unlock is a
+    // start-only "can this tribe make this at all" gate (see canStartCycle), so a cycle that began is
+    // committed even if the enabling settler later dies. The worker-presence gate, by contrast, DOES
+    // pause mid-cycle (it models the operator physically being away, not a tech unlock).
     if (!workerPresentAt(world, ctx, e)) continue; // worker left — the cycle pauses (elapsed held)
     const prod = world.get(e, Production);
     const duration = Math.max(1, prod.duration);
@@ -60,7 +64,7 @@ export const productionSystem: System = (world, ctx) => {
     const recipe = recipeOf(world, ctx, e);
     if (recipe === undefined) continue; // not a producing workplace
     if (!workerPresentAt(world, ctx, e)) continue; // unstaffed — no worker to run the cycle
-    if (!canStartCycle(world, ctx, e, recipe)) continue; // missing inputs or no output room
+    if (!canStartCycle(world, ctx, e, recipe)) continue; // tech-gated, missing inputs, or no output room
 
     consumeInputs(world, e, recipe);
     world.add(e, Production, { elapsed: 0, duration: recipe.ticks });
