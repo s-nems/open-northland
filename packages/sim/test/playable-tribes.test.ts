@@ -1,6 +1,14 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { describe, expect, it } from 'vitest';
-import { isAnimalTribe, isPlayableTribe, playableTribes } from '../src/systems/index.js';
+import {
+  animalCannotBeAttacked,
+  animalHitpoints,
+  isAggressiveAnimal,
+  isAnimalTribe,
+  isPlayableTribe,
+  mayAttack,
+  playableTribes,
+} from '../src/systems/index.js';
 
 /**
  * The playable-tribes read view — `playableTribes`/`isPlayableTribe` distinguish the controllable
@@ -38,6 +46,11 @@ function tribeContent(): ContentSet {
       // bears (typeId 8) — another animal, even though it has many bindings it has no tech graph.
       { typeId: 8, id: 'bears', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'bear_walk' }] },
     ],
+    // animaltypes records (keyed on tribeType): the bears (8) are aggressive with a HP pool; the
+    // wolves (9) deliberately have NO record (a known animal tribe with no animaltypes behaviour). A
+    // cannotBeAttacked entry for tribe 8 is NOT added so the bear stays attackable; a separate
+    // exemption case is exercised in the mayAttack block with an inline content set.
+    animals: [{ id: 'bear', tribeType: 8, aggressive: true, getAngry: true, hitpointsAdult: 15000 }],
   });
 }
 
@@ -114,5 +127,91 @@ describe('isAnimalTribe', () => {
       // For a recorded tribe, animal and playable are exact complements (XOR).
       expect(isAnimalTribe(content, tribe.typeId)).toBe(!isPlayableTribe(content, tribe.typeId));
     }
+  });
+});
+
+describe('isAggressiveAnimal / animalCannotBeAttacked / animalHitpoints (animaltypes read views)', () => {
+  it('isAggressiveAnimal reads the `aggressive` flag off the animaltypes record', () => {
+    const content = tribeContent();
+    expect(isAggressiveAnimal(content, 8)).toBe(true); // bears — aggressive record
+    expect(isAggressiveAnimal(content, 9)).toBe(false); // wolves — animal tribe but NO animaltypes record
+    expect(isAggressiveAnimal(content, 1)).toBe(false); // viking — a civilization, not an animal
+    expect(isAggressiveAnimal(content, 99)).toBe(false); // unknown tribe — no record
+  });
+
+  it('animalHitpoints returns the adult HP pool, or null for a tribe with no animal record', () => {
+    const content = tribeContent();
+    expect(animalHitpoints(content, 8)).toBe(15000); // bears — hitpointsAdult
+    expect(animalHitpoints(content, 9)).toBeNull(); // wolves — no animaltypes record
+    expect(animalHitpoints(content, 1)).toBeNull(); // viking — a civilization
+  });
+
+  it('animalCannotBeAttacked exempts a decorative-fauna animal (cannotbeattacked)', () => {
+    const content = parseContentSet({
+      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      goods: [{ typeId: 0, id: 'none' }],
+      jobs: [{ typeId: 0, id: 'idle' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      tribes: [
+        { typeId: 5, id: 'bees', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'b' }] },
+        { typeId: 6, id: 'wasps', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'w' }] },
+      ],
+      animals: [
+        { id: 'bee', tribeType: 5, aggressive: true, cannotBeAttacked: true, hitpointsAdult: 200 },
+        { id: 'wasp', tribeType: 6, aggressive: true, hitpointsAdult: 200 },
+      ],
+    });
+    expect(animalCannotBeAttacked(content, 5)).toBe(true); // bee — decorative, exempt
+    expect(animalCannotBeAttacked(content, 6)).toBe(false); // wasp — attackable
+    expect(animalCannotBeAttacked(content, 1)).toBe(false); // unknown — not exempt
+  });
+});
+
+describe('mayAttack (the combat hostility relation)', () => {
+  it('is false within a tribe (friendly fire is off)', () => {
+    const content = tribeContent();
+    expect(mayAttack(content, 1, 1)).toBe(false); // viking vs viking
+    expect(mayAttack(content, 8, 8)).toBe(false); // bear vs bear (same tribe)
+  });
+
+  it('is true between two different civilizations (player-vs-player)', () => {
+    const content = tribeContent();
+    expect(mayAttack(content, 1, 2)).toBe(true); // viking -> frank
+    expect(mayAttack(content, 2, 1)).toBe(true); // frank -> viking
+  });
+
+  it('treats an UNKNOWN target tribe (no record) as a civilization, a valid enemy', () => {
+    // The three-truth-states rule: a no-record different tribe is not an animal, so it stays a PvP enemy.
+    expect(mayAttack(tribeContent(), 1, 99)).toBe(true);
+  });
+
+  it('lets a civilization engage an AGGRESSIVE animal but leaves a PASSIVE animal alone', () => {
+    const content = tribeContent();
+    expect(mayAttack(content, 1, 8)).toBe(true); // viking -> aggressive bear
+    expect(mayAttack(content, 1, 9)).toBe(false); // viking -> passive wolves (no record) — hunting is separate
+  });
+
+  it('lets an aggressive animal attack a civilization (the unprovoked drive)', () => {
+    expect(mayAttack(tribeContent(), 8, 1)).toBe(true); // bear -> viking
+  });
+
+  it('is false between two animals (no inter-species wildlife aggression)', () => {
+    expect(mayAttack(tribeContent(), 8, 9)).toBe(false); // bear -> wolves
+  });
+
+  it('exempts a cannotBeAttacked animal from a civilization, while it can still attack', () => {
+    const content = parseContentSet({
+      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      goods: [{ typeId: 0, id: 'none' }],
+      jobs: [{ typeId: 0, id: 'idle' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      tribes: [
+        { typeId: 1, id: 'viking', jobEnables: [{ jobType: 0, kind: 'good', targetId: 0 }] },
+        { typeId: 5, id: 'bees', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'b' }] },
+      ],
+      animals: [{ id: 'bee', tribeType: 5, aggressive: true, cannotBeAttacked: true, hitpointsAdult: 200 }],
+    });
+    expect(mayAttack(content, 1, 5)).toBe(false); // viking cannot attack the bee (decorative-fauna exempt)
+    expect(mayAttack(content, 5, 1)).toBe(true); // but the aggressive bee can attack the viking
   });
 });

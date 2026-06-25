@@ -260,11 +260,25 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       (the HP param the `Health`-stamp already reads), the herd/territory params (`maximumGroupSize`/
       `searchForLeader`/`maximumDistanceTo*`/…) and locomotion+flags (`moveSpeed`/`runSpeed`/`catchable`/
       `cannotBeAttacked`/…). **Keyed on `tribetype`** (not `type` — an animal's identity IS its tribe),
-      cross-ref-validated; a record with no `tribetype` (a disabled stub) is dropped. **Next:** the
-      sim-side civ-vs-animal **aggression behavior** — wire `aggressive`/`getAngry` into the combat
-      targeting drive (an aggressive animal attacks a nearby civ; `cannotBeAttacked` exempts decorative
-      fauna) and stamp an animal combatant's `Health` from `hitpointsAdult`. The herd/group/spawn params
-      are a later spawn/herding slice.
+      cross-ref-validated; a record with no `tribetype` (a disabled stub) is dropped. **The sim-side
+      civ-vs-animal aggression behavior now LANDED** — `combatSystem`'s targeting now consults a single
+      hostility relation `mayAttack(content, attacker, target)` (`systems/readviews.ts`) for both
+      attacker-eligibility and per-candidate targeting: an **aggressive** animal (`isAggressiveAnimal` —
+      `animaltypes.ini` `aggressive`) attacks a nearby civilization unprovoked, the civilization fights
+      it back (the fight is mutual), a **passive** animal (no record / not aggressive) neither attacks
+      nor is attacked (hunting prey is the separate `catchable`/hunter mechanic), a `cannotBeAttacked`
+      animal (`animalCannotBeAttacked` — decorative fauna/bees) is exempt as a civ's *target* (yet, if
+      aggressive, can still attack), and two animals don't fight each other. The animal `Health`-stamp
+      source is now read by `animalHitpoints(content, tribeType)` (the `hitpoints_adult` pool — a bear's
+      15000 — the value a spawned animal's `Health` gets). Faithful (the `aggressive`/`cannotbeattacked`
+      flags + net-damage param + atomic id 81); **approximated** (nearest-in-range target acquisition,
+      swing cadence, in-place strike, civ-engages-only-aggressive-animals split). **Provoked anger
+      deferred** — `getAngry`/`angryGameTime` (a passive animal struck → temporarily hostile) needs a
+      per-entity anger-timer state not yet modelled; only the unprovoked `aggressive` driver is wired
+      (see docs/FIDELITY.md). Inert on the goldens/slice (no settler carries `Health`). **Next:** the
+      herd/group/spawn params (`maximumGroupSize`/`searchForLeader`/birth points) — the spawn/herding
+      slice that actually places animals on the map (where `animalHitpoints` stamps their `Health`), and
+      the provoked-anger (`getAngry`) timer once a per-entity hostility-state model exists.
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
       `fisher_sea`/`trader_sea`/`carpenter ship`, `vehicle_ship`.
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).
