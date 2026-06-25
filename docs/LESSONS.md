@@ -437,3 +437,10 @@ the next iteration inherits it.
   carries a *distinguishing field* — the classification is usually a read view, not a mechanic. And a
   read view that `.filter(...).sort(...)` is determinism-safe because `filter` allocates a fresh array,
   so the in-place `.sort()` never mutates the shared `content`. (sim/read-model)
+- [fe7ac0e] A negative predicate over partial data has THREE truth states, not two: `isAnimalTribe`
+  is NOT `!isPlayableTribe`. A tribe can be a known civilization (recorded, has tech graph), a known
+  animal (recorded, empty tech graph), OR unknown (no record at all). `!isPlayableTribe` lumps the
+  unknown case in with animals — wrong, because a no-record different-tribe combatant (a synthetic
+  enemy) must stay a valid PvP enemy, not get silently reclassified as wildlife. When you split a set
+  by a data signature, define each side as a POSITIVE membership test (`record exists && signature`),
+  so the absent-record case falls through both rather than defaulting into one. (sim/data-classification)
