@@ -30,11 +30,13 @@ feature plan, see [ROADMAP.md](ROADMAP.md).
   importing the shared helpers from the leaf. `index.ts` re-exports all of them, so the public
   `systems` namespace and the test imports are unchanged (all tests import through the barrel). This
   establishes the no-import-cycle layout (`context.ts` + `shared.ts` are the leaves every per-system
-  file imports from, never the barrel or each other) and the per-system-file pattern. **Remaining:**
-  the three real systems still in `index.ts` (`aiSystem`, `pathfindingSystem`, `atomicSystem`) + their
-  helpers (`aiSystem` and `atomicSystem` already consume `shared.ts`, so they're the next two
-  extractions; `pathfindingSystem` consumes `inRange` from the leaf and the A* core from
-  `../pathfinding.ts`).
+  file imports from, never the barrel or each other) and the per-system-file pattern. `atomicSystem`
+  then moved to `systems/atomic.ts` (with its `applyEffect`/`harvestFromNode`/`pickupFromStore`/
+  `pileupIntoStore`/`addCarry` helpers + `HARVEST_YIELD`), importing only `stockCapacity` from the
+  leaf; the golden `7f89b94d` stayed byte-identical. **Remaining:** the two real systems still in
+  `index.ts` (`aiSystem`, `pathfindingSystem`) + their helpers (`aiSystem` consumes `shared.ts`'s
+  `stockCapacity`/`recipeOf`, so it's the next extraction; `pathfindingSystem` consumes `inRange` from
+  the leaf and the A* core from `../pathfinding.ts`).
 - **Change (the deferred remainder).** Split each remaining real system into its own file under
   `systems/`, with a small shared-helper module to break the cross-system dependencies:
   - `systems/shared.ts` — the genuinely cross-system helpers: `stockCapacity` (used by the ai store
@@ -48,8 +50,8 @@ feature plan, see [ROADMAP.md](ROADMAP.md).
   - `systems/pathfinding.ts` — `pathfindingSystem` + `resolvePath` + `PATHFINDING_BUDGET_PER_TICK`.
     (Note: a `packages/sim/src/pathfinding.ts` already holds the A\* core — the new file is in the
     `systems/` directory, but consider naming it to avoid the eyeball collision.)
-  - `systems/atomic.ts` — `atomicSystem` + `applyEffect` + `harvestFromNode`/`addCarry`/
-    `pileupIntoStore` + `HARVEST_YIELD`.
+  - `systems/atomic.ts` — `atomicSystem` + `applyEffect` + `harvestFromNode`/`pickupFromStore`/
+    `addCarry`/`pileupIntoStore` + `HARVEST_YIELD`. **(Done — landed; golden `7f89b94d` unchanged.)**
   - `systems/production.ts` — `productionSystem` + `canStartCycle`/`consumeInputs`/`depositOutputs`
     (`recipeOf` graduated to `shared.ts` — the ai also uses it). **(Done — landed; golden `7f89b94d`
     unchanged.)**
