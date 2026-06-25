@@ -245,10 +245,12 @@ function extractGoodAtomics(sec: RuleSection): GoodAtomics {
  * Extracts `[landscapetype]` sections into validated {@link LandscapeType} IR. Captures the inputs the
  * Phase-2 cell-adjacency graph needs: `maximumValency` (per-cell capacity → `maxValency`) and the
  * `allowedonland`/`allowedonwater`/`allowedoneverything` placement-layer flags (`1`/`0` ints). These
- * are the cell-graph's per-type cost/valency source, NOT a render-triangle property. `walkable`/
- * `buildable` keep their schema defaults — they're a later derivation from these flags, not in the
- * source. The `transition`/`debugcolor` lines (map-generation + editor concerns) are skipped. See
- * docs/ROADMAP.md Phase 2.
+ * are the cell-graph's per-type valency + placement source, NOT a render-triangle property. There is
+ * NO per-type movement-cost/weight field in this table — the engine gates movement by walkability +
+ * valency, so the graph uses a uniform unit walk cost (see packages/sim/src/terrain.ts). `walkable`/
+ * `buildable` keep their schema defaults — they're a later derivation (not cleanly from these flags,
+ * which mark placement layer, not traversal). The `transition`/`debugcolor` lines (map-generation +
+ * editor concerns) are skipped. See docs/ROADMAP.md Phase 2.
  */
 export function extractLandscape(sections: readonly RuleSection[], src: SourceRef): LandscapeType[] {
   const landscape: LandscapeType[] = [];

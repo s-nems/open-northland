@@ -311,10 +311,12 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 > built and unit-tested too, and the **GPU draw + `npm run shot` screenshot harness** (a Pixi
 > renderer consuming the draw list + a deterministic headless `?shot` entry + a committed Playwright
 > script) now produces a reproducible PNG — eyeballed gross-correct (iso terrain behind feet-sorted
-> sprites), pixel fidelity still deferred to a human. **Next smallest step: a real per-type walk-cost
-> field + feeding the terrain graph from a decoded `map.cif` tile grid** (the open Phase-2 terrain
-> leg), or atlas sprites in place of placeholder geometry. Lines tagged *(core done…)* pass tests
-> today but await one wiring piece.
+> sprites), pixel fidelity still deferred to a human. **Next smallest step: feed the terrain graph
+> from a decoded `map.cif` tile grid** (the one open Phase-2 terrain leg — gated on locating the map
+> binary tile grid, see Risks), or atlas sprites in place of placeholder geometry. (A "per-type
+> walk-cost field" is *not* a pending step: `landscapetypes.ini` has no movement weight — only
+> `maximumValency` + placement flags — so uniform unit cost is faithful.) Lines tagged *(core done…)*
+> pass tests today but await one wiring piece.
 - [x] **CommandSystem + serializable command schema** — the ONLY way state mutates. Done —
       `systems/command.ts` (`commandSystem`, first in `SYSTEM_ORDER`) drains a per-sim
       {@link CommandQueue} (`commands.ts`) each tick and applies each serializable {@link Command}
@@ -335,10 +337,13 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
       `{amounts:[[1,10]]}`; two seed-7 runs hash-equal (`1a6611ea`). **Still to do:** `setProduction`
       becomes a real recipe/output selection once the goods-graph lands (Phase 3); a disk format for
       the log (Phase 5 save/load).
-- [ ] Terrain as a **cell-adjacency graph** with per-type walk cost/valency (from
+- [ ] Terrain as a **cell-adjacency graph** with per-type valency + uniform walk cost (from
       `landscapetypes.ini`). *Not* the triangle geometry — that's render-only.
-      *(core done — graph builder + `world.terrain` resource wired; pending: a real per-type
-      walk-cost field and feeding the grid from a decoded `map.cif`.)*
+      *(core done — graph builder + `world.terrain` resource wired. The only open leg is feeding the
+      grid from a decoded `map.cif` tile grid. NOTE corrected on inspection: a "per-type walk-cost
+      field" is NOT a pending extraction — `landscapetypes.ini` carries no movement weight, only
+      `maximumValency` (capacity) + the `allowedon{land,water,everything}` placement flags; uniform
+      unit cost is the faithful model. A variable cost would need a source that actually has one.)*
       - The per-type IR inputs are extracted: `extractLandscape` (`decoders/ini.ts`) now captures
         `maximumValency` (per-cell capacity → `maxValency`) and the `allowedonland`/`allowedonwater`/
         `allowedoneverything` placement-layer flags onto `LandscapeType`. **Hands-on:** real
@@ -355,7 +360,9 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
         `dist/` on a 5×4 grid w/ a 4-cell water river → 16 walkable / 4 blocked, canonical neighbour
         order stable across rebuilds, water dropped from walkable edges, absent-typeId guard fires.
         **Still to do:** a real per-type walk-cost field (uniform ONE for now), and feeding the graph
-        from a decoded map's tile grid.
+        from a decoded map's tile grid. (The "real per-type walk-cost field" is a non-goal —
+        confirmed on inspecting `landscapetypes.ini`: it has no movement-weight property, only
+        `maximumValency` + placement-layer flags; uniform unit cost is faithful to the engine.)
       - [x] **Wired as the `world.terrain` resource.** `SimOptions` now takes an optional `map:
         TerrainMap`; the `Simulation` builds the graph once at construction (`buildTerrainGraph`) and
         owns it as `readonly terrain?: TerrainGraph`, surfacing it on every system's `SystemContext.terrain`
@@ -626,6 +633,9 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
   only fine-tuning by observation, kept as data so tuning is a diff. See docs/ECS.md "Settler AI".
 - **Map binary tile grid** — the per-cell landscape grid (the Phase-2 nav-graph input) if stored
   outside the logic-header `CStringArray`; not yet located. Map metadata decodes; the grid doesn't.
+  This grid (not `landscapetypes.ini`) is also the only plausible home for any per-cell walk weight —
+  the type table has none (confirmed: only `maximumValency` + placement flags), so uniform walk cost
+  stays faithful unless a real attribute turns up here.
 - **Combat & campaign scripting scope** — both larger than one roadmap line implies.
 - **Determinism drift** — every new system must keep golden state + trace tests green.
 

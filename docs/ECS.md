@@ -121,9 +121,13 @@ Defined in `systems/index.ts` as `SYSTEM_ORDER`. Note the AI→Atomic split:
 
 A common misconception: that Cultures' "triangle grid" is the *navigation* model. It isn't.
 
-- **Navigation = a cell-adjacency graph.** Each cell has a landscape type with walk cost, valency,
-  and land/water flags (`landscapetypes.ini` — readable now). Pathfinding and placement operate
-  here. Build this for the Phase-2 slice; it does **not** depend on triangle geometry.
+- **Navigation = a cell-adjacency graph.** Each cell has a landscape type carrying a per-cell
+  valency (capacity) and placement-layer flags (`landscapetypes.ini` — readable now). Walk cost is
+  **uniform** per walkable step: that `.ini` carries no per-type movement weight (only
+  `maximumValency` + the `allowedon{land,water,everything}` placement flags — neither is a traversal
+  cost), and the original engine gates movement by walkability + valency, not a per-cell weight. So a
+  variable walk-cost field is not a "pending extraction" from this table — it would need a source
+  that has one. Pathfinding and placement operate here; this does **not** depend on triangle geometry.
 - **Triangle pattern = a render-time concern.** `trianglepatterntypes.cif` governs how terrain
   types *blend visually* between cells. It lives in `render`, decoded later. Do **not** gate the
   sim slice on it.
