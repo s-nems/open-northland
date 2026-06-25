@@ -20,6 +20,7 @@ import {
   type GoodAtomics,
   type GoodClassification,
   GoodType,
+  HumanJobExperienceType,
   JobType,
   LandscapeType,
   MapInfo,
@@ -345,6 +346,46 @@ export function extractJobs(sections: readonly RuleSection[], src: SourceRef): J
     );
   }
   return jobs;
+}
+
+/**
+ * Extracts `[humanjobexperiencetype]` sections (`Data/logic/humanjobexperiencetypes.ini`) into
+ * validated {@link HumanJobExperienceType} IR — the per-specialization experience tracks the Phase-3
+ * ProgressionSystem accrues XP into. A track names its owning `job` (always) and, when good-specific,
+ * the `good` it trains on; `experiencefactor` scales accrual and `baserepeatcounter` (on a few records)
+ * is the original's repeat-count tuning. The numeric semantics are captured raw — interpreting the XP
+ * curve is the ProgressionSystem's concern, not this extraction slice. The `job`/`good` ids are
+ * cross-checked against the job/good tables by `validateCrossReferences`. Throws on a record missing
+ * the required numeric `type` id (matches {@link extractGoods}'s throw-on-malformed stance). The base
+ * `.ini` is the source — there is no mod twin and no readable-vs-encrypted choice to make here.
+ */
+export function extractJobExperience(
+  sections: readonly RuleSection[],
+  src: SourceRef,
+): HumanJobExperienceType[] {
+  const tracks: HumanJobExperienceType[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'humanjobexperiencetype') continue;
+    const typeId = requireTypeId(sec, 'humanjobexperiencetype', src);
+    const name = getStr(sec, 'name');
+    const jobType = getInt(sec, 'job');
+    if (jobType === undefined) {
+      throw new Error(`ini: [humanjobexperiencetype] without a numeric \`job\` in ${src.file}`);
+    }
+    tracks.push(
+      HumanJobExperienceType.parse({
+        typeId,
+        id: name ? slug(name) : `jobxp_${typeId}`,
+        name,
+        jobType,
+        goodType: getInt(sec, 'good'),
+        experienceFactor: getInt(sec, 'experiencefactor') ?? 0,
+        baseRepeatCounter: getInt(sec, 'baserepeatcounter'),
+        source: { file: src.file, block: 'humanjobexperiencetype', layer: src.layer ?? 'base' },
+      }),
+    );
+  }
+  return tracks;
 }
 
 /**

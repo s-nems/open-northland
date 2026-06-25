@@ -10,6 +10,7 @@ import {
   extractGraphicsBindings,
   extractJobBaseGraphics,
   extractJobChangeGraphics,
+  extractJobExperience,
   extractJobs,
   extractLandscape,
   extractMapInfo,
@@ -419,6 +420,90 @@ describe('extractJobs', () => {
       file: 'f.ini',
     });
     expect(job).toMatchObject({ allowedAtomics: [], baseAtomics: [], forbiddenAtomics: [] });
+  });
+});
+
+// Mirrors the real grammar of Data/logic/humanjobexperiencetypes.ini: a "general" track (job, no
+// good), a good-specific track (job + good), and one carrying baserepeatcounter.
+const JOBXP_INI = `<CULTURES_CIF_BEGIN><03FD><0000018D> Don't modify this line!
+[humanjobexperiencetype]
+type 2
+name "collector general"
+job 8
+experiencefactor 100
+[humanjobexperiencetype]
+type 3
+name "collector wood"
+job 8
+good 5
+experiencefactor 250
+[humanjobexperiencetype]
+type 46
+name "farmer wheat"
+job 18
+good 4
+experiencefactor 100
+baserepeatcounter 2
+`;
+
+describe('extractJobExperience', () => {
+  it('maps [humanjobexperiencetype] records to validated HumanJobExperienceType IR', () => {
+    const tracks = extractJobExperience(parseIniSections(JOBXP_INI), {
+      file: 'Data/logic/humanjobexperiencetypes.ini',
+    });
+    const src = {
+      file: 'Data/logic/humanjobexperiencetypes.ini',
+      block: 'humanjobexperiencetype',
+      layer: 'base',
+    };
+    expect(tracks).toEqual([
+      // A "general" track carries no `good` -> goodType omitted, baseRepeatCounter omitted.
+      {
+        typeId: 2,
+        id: 'collector_general',
+        name: 'collector general',
+        jobType: 8,
+        experienceFactor: 100,
+        source: src,
+      },
+      // A good-specific track carries `good`.
+      {
+        typeId: 3,
+        id: 'collector_wood',
+        name: 'collector wood',
+        jobType: 8,
+        goodType: 5,
+        experienceFactor: 250,
+        source: src,
+      },
+      // `baserepeatcounter` is captured when present.
+      {
+        typeId: 46,
+        id: 'farmer_wheat',
+        name: 'farmer wheat',
+        jobType: 18,
+        goodType: 4,
+        experienceFactor: 100,
+        baseRepeatCounter: 2,
+        source: src,
+      },
+    ]);
+  });
+
+  it('throws on a record missing the required numeric `type`', () => {
+    expect(() =>
+      extractJobExperience(parseIniSections('[humanjobexperiencetype]\nname "x"\njob 8\n'), {
+        file: 'f.ini',
+      }),
+    ).toThrow(/without a numeric `type`/);
+  });
+
+  it('throws on a record missing the required numeric `job`', () => {
+    expect(() =>
+      extractJobExperience(parseIniSections('[humanjobexperiencetype]\ntype 1\nname "x"\n'), {
+        file: 'f.ini',
+      }),
+    ).toThrow(/without a numeric `job`/);
   });
 });
 
@@ -1216,5 +1301,37 @@ describe('IR integration', () => {
         tribes,
       }),
     ).toThrow(/unknown jobType/);
+  });
+
+  it('rejects an experience track whose job (or good) is unknown (cross-reference)', () => {
+    const jobExperience = extractJobExperience(parseIniSections(JOBXP_INI), {
+      file: 'humanjobexperiencetypes.ini',
+    });
+    // "collector wood" (job 8, good 5): defining job 8 + job 18 but no goods -> the good 5 dangles.
+    expect(() =>
+      parseContentSet({
+        manifest: { version: 1, generatedFrom: { game: 'Cultures 8th Wonder' } },
+        goods: [],
+        jobs: [
+          { typeId: 8, id: 'job_8' },
+          { typeId: 18, id: 'job_18' },
+        ],
+        buildings: [],
+        jobExperience,
+      }),
+    ).toThrow(/jobExperience "collector_wood" references unknown goodType 5/);
+    // With the goods defined but the job missing, the jobType dangles instead.
+    expect(() =>
+      parseContentSet({
+        manifest: { version: 1, generatedFrom: { game: 'Cultures 8th Wonder' } },
+        goods: [
+          { typeId: 4, id: 'good_4' },
+          { typeId: 5, id: 'good_5' },
+        ],
+        jobs: [], // no jobs -> every track's jobType dangles
+        buildings: [],
+        jobExperience,
+      }),
+    ).toThrow(/jobExperience "collector_general" references unknown jobType 8/);
   });
 });
