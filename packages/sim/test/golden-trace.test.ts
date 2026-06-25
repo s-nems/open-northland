@@ -3,6 +3,7 @@ import {
   Building,
   Carrying,
   CurrentAtomic,
+  JobAssignment,
   MoveGoal,
   PathFollow,
   PathRequest,
@@ -77,6 +78,7 @@ function clearStores(): void {
     PathFollow,
     PathRequest,
     Production,
+    JobAssignment,
   ]) {
     c.store.clear();
   }
@@ -190,12 +192,13 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   it('matches the golden final state hash', () => {
     const run = runSlice(SEED, TICKS);
     // Intentional-change discipline: if this moves, a mechanic changed — name it in the commit.
-    // Moved by the ProgressionSystem XP-accrual: the woodcutter now trains its `(job, good)` track on
-    // every completed wood harvest (8 harvests × experienceFactor 10 = 80 XP in track typeId 1), so its
-    // `Settler.experience` Map gains an entry and the canonical hash shifts (d1ac5fbe → f0edd147). The
-    // carrier accrues nothing (pickup is not a yield-bearing work atomic). Behavior is unchanged: the
-    // atomic trace + 8-plank output below are identical (XP is new state, not a new action).
-    expect(run.hash).toBe('f0edd147');
+    // Moved by the JobSystem worker→workplace binding: the carpenter, spawned pre-employed standing on
+    // the sawmill, is now *adopted* by the JobSystem (a `JobAssignment{workplace}` component bound to the
+    // mill under its feet) on tick 1, so that entity gains one component and the canonical hash shifts
+    // (f0edd147 → 469da255). Behavior is unchanged: the atomic trace + 8-plank output below are
+    // identical — the binding is new STATE recording where the carpenter already worked, not a new
+    // action. (The prior move, f0edd147, was the ProgressionSystem XP-accrual on the woodcutter's track.)
+    expect(run.hash).toBe('469da255');
   });
 
   it('matches the golden atomic-action trace', () => {

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { Building, Position, Settler } from '../src/components/index.js';
+import { Building, JobAssignment, Position, Settler } from '../src/components/index.js';
 import type { Entity } from '../src/ecs/world.js';
 import { Simulation, fx } from '../src/index.js';
 import { type SystemContext, jobSystem } from '../src/systems/index.js';
@@ -24,7 +24,7 @@ const SAWMILL = 2; // building type
 const SMITHY = 4; // building type gated by `jobEnablesHouse 2 4` (needs a carpenter present)
 
 beforeEach(() => {
-  for (const c of [Position, Settler, Building]) c.store.clear();
+  for (const c of [Position, Settler, Building, JobAssignment]) c.store.clear();
 });
 
 function ctxOf(sim: Simulation): SystemContext {

@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { Building, Position, Production, Settler, Stockpile } from '../src/components/index.js';
+import {
+  Building,
+  JobAssignment,
+  Position,
+  Production,
+  Settler,
+  Stockpile,
+} from '../src/components/index.js';
 import type { Entity } from '../src/ecs/world.js';
 import { ONE, Simulation, fx } from '../src/index.js';
 import { type SystemContext, productionSystem } from '../src/systems/index.js';
@@ -27,6 +34,7 @@ beforeEach(() => {
   Building.store.clear();
   Settler.store.clear();
   Position.store.clear();
+  JobAssignment.store.clear();
 });
 
 function ctxOf(sim: Simulation): SystemContext {
@@ -272,6 +280,7 @@ describe('productionSystem — determinism', () => {
       Building.store.clear();
       Settler.store.clear();
       Position.store.clear();
+      JobAssignment.store.clear();
       const sim = new Simulation({ seed: 7, content: testContent() });
       sawmill(sim, [
         [WOOD, 4],
