@@ -615,8 +615,11 @@ function staffsWorkplaceHere(world: World, ctx: SystemContext, settler: Entity, 
  * the target of the walk-to-workplace drive, the movement half {@link staffsWorkplaceHere} (the
  * already-here pin) was missing. A candidate workplace must:
  *
- *  - be a same-tribe {@link Building} with a `recipe` (a producing workplace, not a passive store/HQ —
- *    a store never needs an operator walking to it, mirroring the recipe guard in `staffsWorkplaceHere`),
+ *  - be a same-tribe {@link Building} (with a {@link Position} and a {@link Stockpile}) that has a
+ *    `recipe` (a producing workplace, not a passive store/HQ — a store never needs an operator walking
+ *    to it). The `Stockpile` requirement mirrors {@link staffsWorkplaceHere}'s query **exactly**, so the
+ *    set of buildings this drive walks TO is the same set that pin holds the settler ON — without it a
+ *    recipe-but-Stockpile-less fixture could be a walk target the pin then fails to latch, thrashing,
  *  - declare a `workers` slot naming `jobType` ({@link buildingWorkerJobs}),
  *  - be **tech-enabled** for the tribe ({@link buildingEnabled} — don't walk to a workplace not yet
  *    unlocked), AND
@@ -643,7 +646,7 @@ function nearestUnstaffedWorkplaceFor(
   for (const b of world.canonicalEntities()) {
     const building = world.tryGet(b, Building);
     if (building === undefined || building.tribe !== tribe) continue;
-    if (!world.has(b, Position)) continue;
+    if (!world.has(b, Position) || !world.has(b, Stockpile)) continue; // same shape staffsWorkplaceHere pins
     if (recipeOf(world, ctx, b) === undefined) continue; // only a producing workplace needs an operator
     if (!buildingWorkerJobs(world, ctx, b).has(jobType)) continue; // not a job this workplace employs
     if (!buildingEnabled(world, ctx, tribe, building.buildingType)) continue; // not tech-enabled yet
