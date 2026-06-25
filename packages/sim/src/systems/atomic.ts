@@ -90,6 +90,14 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       // (see docs/FIDELITY.md) — so no planner branch chooses it yet; the reset is wired and ready.
       if (world.has(settler, Settler)) world.get(settler, Settler).enjoyment = fx.fromInt(0);
       return;
+    case 'make_love':
+      // Making love also clears enjoyment (no goods consumed — like enjoy). The make_love atomic
+      // (id 78) is not a separate need: its animation restores the SAME channel 3 as `enjoy`
+      // (`event <at> 3 +800` tuples), the leisure bar — so it resets `enjoyment` too. The drive is
+      // deferred for the same reason as `enjoy` (no readable building satisfier — see docs/FIDELITY.md);
+      // no planner branch chooses it yet, the reset is wired and ready.
+      if (world.has(settler, Settler)) world.get(settler, Settler).enjoyment = fx.fromInt(0);
+      return;
     case 'move':
     case 'idle':
       // Pure markers: the actual walking is the navigation layer (PathFollow/MovementSystem). The

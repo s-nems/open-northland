@@ -125,6 +125,13 @@ export type AtomicEffect =
    *  no readable building satisfier to walk to (see docs/FIDELITY.md) — so for now this effect is the
    *  reset half, exercised directly (no planner branch chooses it yet). */
   | { readonly kind: 'enjoy' }
+  /** The settler makes love to restore leisure: zeroes its `enjoyment` on completion (no goods
+   *  consumed — like `enjoy`/`sleep`/`pray`). The `make_love` atomic (id 78) is NOT a separate need —
+   *  its animation (`viking_civilist_make_love`) restores the **same channel 3** as `enjoy` via
+   *  `event <at> 3 +800` tuples (a bigger leisure boost than enjoy's +100), so it resets `enjoyment`
+   *  too. The need→satisfier *drive* is deferred for the same reason as `enjoy` — no readable building
+   *  satisfier in `houses.ini` (see docs/FIDELITY.md) — so for now this is the reset half only. */
+  | { readonly kind: 'make_love' }
   | { readonly kind: 'attack'; readonly target: Entity }
   | { readonly kind: 'idle' };
 

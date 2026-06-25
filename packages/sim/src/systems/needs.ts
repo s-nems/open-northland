@@ -75,10 +75,12 @@ export const ENJOYMENT_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(32768));
  * of its bar until it acts — the `hungerInRange`/`fatigueInRange`/`pietyInRange`/`enjoymentInRange`
  * invariants require the need ∈ `[0, ONE]`). The complementary side is wired for hunger (the `eat`
  * atomic resets `hunger`), fatigue (the `sleep` atomic, with a sleep *drive*), and piety (the `pray`
- * atomic, with a pray *drive*). Enjoyment is the recreation/leisure need; its reset (the `enjoy` atomic
- * id 17) is wired (AtomicSystem) but its *drive* is deferred — unlike pray (at a temple), `enjoy` has no
- * readable building satisfier in `houses.ini` to walk to (see docs/FIDELITY.md). `make_love` (id 78)
- * follows. This system is the needs-rise half.
+ * atomic, with a pray *drive*). Enjoyment is the recreation/leisure need; it has TWO resets that both
+ * restore the same channel-3 bar — the `enjoy` atomic (id 17) and `make_love` (id 78, a bigger
+ * `event <at> 3 +800` boost; not a separate need) — both wired (AtomicSystem), but their *drive* is
+ * deferred: unlike pray (at a temple), neither has a readable building satisfier in `houses.ini` to
+ * walk to (see docs/FIDELITY.md). This system is the needs-rise half; with make_love wired, every named
+ * non-food need (sleep/pray/enjoy/make_love) has its atomic reset.
  *
  * Determinism: no RNG, no wall-clock — each need advances by a fixed Fixed step that divides ONE
  * exactly (no accumulated rounding drift), so identical inputs yield byte-identical state. Settlers

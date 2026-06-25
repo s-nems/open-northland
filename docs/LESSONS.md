@@ -190,3 +190,10 @@ the next iteration inherits it.
   leisure site. Verify the satisfier is actually distinguishable in `houses.ini` BEFORE planning a
   drive — don't assume the previous need's approach ports. When it can't be pinned, ship the rise+reset
   half (both pinned to data) and defer the drive in FIDELITY rather than inventing a satisfier. (sim/fidelity)
+
+- [8302ea7] A named atomic isn't necessarily a new NEED — it may be a second SATISFIER of an existing
+  one. `make_love` (id 78) reads like a distinct social need, but its animation restores the **same
+  channel 3** as `enjoy` (`event <at> 3 +800` vs enjoy's `+100`), i.e. the leisure/`enjoyment` bar — so
+  it resets the existing field, no new component. Before adding a need field for a satisfier atomic,
+  read the animation's `event <at> <channel> <delta>` tuples and check which channel it restores; the
+  bar count is set by the distinct channels, not by the atomic count. (sim/fidelity)

@@ -894,8 +894,14 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             IR. **Hands-on:** `npm run pipeline` on the real game → 65 goods → 16 raw / 48 in-house / 17
             input; `food_simple`/`food_extra` correctly in-house terminal, `flour` in-house+input (the
             intermediate tier), `wheat`/`stone`/`wood` raw+input.
-- [ ] NeedsSystem: hunger + non-food needs implied by atomics (eat, plus deferred-but-named
-      `pray`/`enjoy`/social/`make_love`).
+- [x] NeedsSystem: hunger + non-food needs implied by atomics (eat, plus `pray`/`enjoy`/`make_love`).
+      DONE — every named need has its rise (`needsSystem`) + its atomic reset wired; eat/sleep/pray
+      carry full drives (the planner chooses them at a threshold), while enjoy + make_love (which share
+      the **same leisure/`enjoyment` channel 3**, not separate needs) ship rise + reset only, their
+      *drive* deferred for one recorded reason: no readable building satisfier in `houses.ini` (see
+      docs/FIDELITY.md). "social" is a render/grouping concern, not a settler bar. Refinement open: the
+      per-activity `event (type,value)` rates + the satisfier→need binding that would pin the enjoy/
+      make_love drives, both waiting on the deferred atomic-`event`-vocabulary extraction.
       - [x] **Hunger rise** — `needsSystem` (`packages/sim/src/systems/needs.ts`, graduated from the
             stub into its own module) raises every {@link Settler}'s `hunger` by `HUNGER_RISE_PER_TICK`
             (=ONE/4096) each tick, clamped at ONE so the `hungerInRange` invariant holds; the `eat`
@@ -1022,6 +1028,22 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             the atomic trace + 8-plank output are unchanged (no enjoy DRIVE: enjoyment only rises, never
             reaching a threshold over the 1000-tick slice). **Still open:** the `enjoy` drive once a
             satisfier building→need binding is extractable; then `make_love` id 78.
+      - [x] **Make-love reset** (the last named non-food need — `make_love` id **78**) — a new
+            `make_love` {@link AtomicEffect} (`commands.ts`/`atomic.ts`) zeroes a settler's `enjoyment`
+            on completion. KEY FIDELITY FINDING: `make_love` is **not a separate need** — the
+            `..._make_love` animation restores the **same channel 3** as `enjoy` (`event <at> 3 +800`
+            tuples, a bigger leisure boost than enjoy's `+100`), the leisure/`enjoyment` bar — so it
+            resets the **same field**, no new component. The atomic id 78 is pinned to
+            `#define MAP_MOVEABLES_ATOMIC_ACTION_TYPE_MAKE_LOVE 78` (`logicdefines.inc`) + the mod's
+            `setatomic 5 78 "..._woman_make_love"` / `setatomic 6 78 "..._civilist_make_love"` bindings
+            (woman job 5 + civilist job 6 across tribes). Its **drive is deferred** for the identical
+            reason as `enjoy` — no readable building satisfier in `houses.ini` — so only the reset is
+            wired (no planner branch chooses it yet). **Hands-on:** a settler with enjoyment=ONE running
+            `make_love` (id 78, duration 3) through the real `Simulation.step()` schedule resets
+            enjoyment at tick 3, CurrentAtomic removed on completion, two seed-5 runs hash-equal
+            (`e52c6f77`). The golden trace + state hash are untouched (no make_love drive — the slice
+            never spawns it). With this, all five named non-food needs (eat/sleep/pray/enjoy/make_love)
+            have their atomic resets in place; the NeedsSystem rise/reset half is complete.
 - [ ] **ProgressionSystem** — experience + tech graph: `humanjobexperiencetypes` per-specialization
       XP, `trainforjob` schooling, `needfor*`/`allow*`/`jobEnables*` gating goods/houses/jobs/vehicles.
 - [ ] JobSystem assignment across many workplaces; multiple carriers + vehicle stock slots.
