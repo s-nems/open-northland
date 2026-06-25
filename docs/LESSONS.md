@@ -113,3 +113,10 @@ the next iteration inherits it.
   (v.store instanceof Map) v.store.clear()` — filter, the namespace also re-exports helpers), exactly
   as `golden-trace.test.ts` does in `beforeEach`. Surfaced only on a multi-ROW map (the 1-D 6×1 strip
   never exercised a query-order-dependent target choice). (sim/test)
+- [12db5fa] An un-self-judgeable render step (pixels need a human) still has a self-verifiable HALF: the
+  *data decision*. The atlas-sprite swap splits into "which atlas frame does this DrawItem draw"
+  (`resolveSpriteFrame` — a pure lookup, fully unit-testable: bound→frame, tile/unbound/missing/0×0→null)
+  and "bind that rect to a GPU texture + sample its pixels" (the human-judged half). Build + test the
+  data half NOW, gate the pixel half on the human/asset, and keep the GPU input OPTIONAL (a `SpriteSheet?`
+  defaulting to the placeholder path) so the reproducible `npm run shot` default is byte-unchanged.
+  Generalises: when a step is "blocked on a human/asset", carve off the pure decision and land that. (render)

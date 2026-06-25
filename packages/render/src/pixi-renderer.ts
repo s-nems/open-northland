@@ -1,7 +1,7 @@
 import { Application, Container, Graphics, Rectangle, Sprite, Texture, type TextureSource } from 'pixi.js';
 import { TILE_HALF_H, TILE_HALF_W } from './index.js';
 import type { DrawItem, DrawKind } from './scene.js';
-import { type SpriteAtlas, type SpriteBindings, resolveSpriteFrame } from './sprites.js';
+import { type AtlasFrame, type SpriteAtlas, type SpriteBindings, resolveSpriteFrame } from './sprites.js';
 
 /**
  * The GPU half of the render line — the part an agent CANNOT self-verify (pixels need a human eye).
@@ -136,12 +136,7 @@ function drawItem(item: DrawItem, sx: number, sy: number, sheet?: SpriteSheet): 
  * bob's source-area origin (the original's `SBobData.Area`), so adding it to the anchor reproduces
  * where the engine drew the frame relative to the entity's feet.
  */
-function atlasSprite(
-  frame: { x: number; y: number; width: number; height: number; offsetX: number; offsetY: number },
-  source: TextureSource,
-  sx: number,
-  sy: number,
-): Sprite {
+function atlasSprite(frame: AtlasFrame, source: TextureSource, sx: number, sy: number): Sprite {
   const texture = new Texture({
     source,
     frame: new Rectangle(frame.x, frame.y, frame.width, frame.height),
