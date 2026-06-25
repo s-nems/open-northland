@@ -130,9 +130,15 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       tallies a tribe's settlers by `jobType` into a `Map<jobType, count>`, idle (`null`) adults keyed by
       the negative `IDLE_JOB` sentinel so they can't collide with a real job id, with the age-class
       (ids 1–4) vs trade split left to the consumer to partition by key (the `jobType`-as-life-stage model).
-      The visual/Pixi half + the **goods-graph** view remain. **Next:** wire the three read views
-      (stocks / population / jobs) into a render-side HUD panel (visual — human-gated pixels), or the
-      **goods-graph** view (the recipe-DAG over `content`, a pure read like the others).
+      The **goods-graph** view now landed too — `goodsGraph` (`systems/shared.ts`) surfaces the recipe-DAG
+      IR as one `GoodsGraphNode` per good: its node `layer` (raw / produced / unclassified, from
+      `GoodClassification`), `inputGood` flag, the input-side edges (`GoodType.productionInputs`), and the
+      **output side** joined in — the building **type ids** that make it (`BuildingType.produces`, falling
+      back to a materialized `recipe.outputs`), `producedBy` sorted for a stable view. The only read view
+      over `content` rather than world state, so it is pure of world/RNG (deterministic by construction).
+      The visual/Pixi half is all that remains of the HUD. **Next:** wire the four read views (stocks /
+      population / jobs / goods-graph) into a render-side HUD panel (visual — human-gated pixels); the
+      data half of the HUD is complete.
 - **Exit:** a self-sustaining, progressing single-tribe settlement you can grow.
 
 ## Phase 4 — Conflict & content breadth (N tribes)
