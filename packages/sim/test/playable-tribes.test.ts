@@ -199,6 +199,14 @@ describe('mayAttack (the combat hostility relation)', () => {
     expect(mayAttack(tribeContent(), 8, 9)).toBe(false); // bear -> wolves
   });
 
+  it('a PASSIVE animal (no record / not aggressive) attacks NOTHING (the gate is self-contained)', () => {
+    const content = tribeContent();
+    // wolves (tribe 9) are a known animal tribe with no animaltypes record -> not aggressive.
+    expect(mayAttack(content, 9, 1)).toBe(false); // passive wolf -> viking: no fight
+    expect(mayAttack(content, 9, 2)).toBe(false); // passive wolf -> frank: no fight
+    expect(mayAttack(content, 9, 8)).toBe(false); // passive wolf -> bear: animals don't fight anyway
+  });
+
   it('exempts a cannotBeAttacked animal from a civilization, while it can still attack', () => {
     const content = parseContentSet({
       manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },

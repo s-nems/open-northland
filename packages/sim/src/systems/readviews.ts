@@ -458,10 +458,12 @@ export function animalHitpoints(content: ContentSet, tribeType: number): number 
  *    {@link animalCannotBeAttacked}.** A civ engages a *hostile* (aggressive) animal but not passive
  *    prey (a cow/deer — hunting is the separate `catchable`/hunter mechanic, not combat); and a
  *    decorative `cannotbeattacked` animal (bees) is exempt from a civ's attacks entirely.
- *  - **Aggressive animal → civilization → yes** — the unprovoked civ-vs-animal aggression driver (a
- *    bear/wolf attacks a nearby settler). The animal-attacker eligibility is already gated on
- *    `aggressive` at the loop, so reaching here it is hostile; `cannotbeattacked` gates only being a
- *    *target*, not attacking, so it does not block this direction.
+ *  - **Animal attacker must be aggressive.** A passive animal (a cow/deer, or a known animal tribe with
+ *    no `animaltypes` record) attacks **nothing** — so an **aggressive** animal → civilization is the
+ *    unprovoked aggression driver (a bear/wolf attacks a nearby settler), while a passive animal →
+ *    anything is `false`. This makes `mayAttack` self-contained (it gates the attacker side itself, not
+ *    only the combat loop); `cannotbeattacked` gates only being a *target*, not attacking, so an
+ *    aggressive but `cannotbeattacked` animal (a bee) can still attack a civ.
  *
  * FIDELITY: the hostility gate reads the faithful extracted params — the civ-vs-animal split off
  * `isAnimalTribe`'s tech-graph signature, and `aggressive`/`cannotbeattacked` off `animaltypes.ini`.
@@ -474,13 +476,17 @@ export function mayAttack(content: ContentSet, attackerTribe: number, targetTrib
   if (attackerTribe === targetTribe) return false; // same tribe — friendly
   const attackerIsAnimal = isAnimalTribe(content, attackerTribe);
   const targetIsAnimal = isAnimalTribe(content, targetTribe);
+  // An animal attacker must be AGGRESSIVE to attack anything — a passive animal (a cow/deer, or a
+  // known animal tribe with no animaltypes record) picks no fight. This is the authoritative gate, so
+  // `mayAttack` is fully self-contained (a caller need not pre-filter the attacker); the combat loop's
+  // matching skip is only a fast-path that avoids the target scan.
+  if (attackerIsAnimal && !isAggressiveAnimal(content, attackerTribe)) return false;
   if (attackerIsAnimal && targetIsAnimal) return false; // animals don't war on each other (no oracle)
   if (targetIsAnimal) {
     // attacker is a civilization (or unknown — not an animal) hitting an animal: only a hostile,
     // non-exempt animal is a valid target. Passive prey and decorative fauna are left alone.
     return isAggressiveAnimal(content, targetTribe) && !animalCannotBeAttacked(content, targetTribe);
   }
-  // target is a civilization (or unknown). The attacker is a civilization or an aggressive animal
-  // (a passive animal never reaches here — the loop skips it before calling this), so it is an enemy.
+  // target is a civilization (or unknown); the attacker is a civilization or an aggressive animal — enemy.
   return true;
 }
