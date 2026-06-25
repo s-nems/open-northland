@@ -40,3 +40,8 @@ the next iteration inherits it.
   package's `tsc --build` graph, which emits `.js`/`.d.ts` *in-place next to the .ts* — stray
   untracked artifacts `biome check` then lints and fails on. Keep dev/demo fixtures self-contained in
   `src/` (a tiny synthetic copy), don't reach across into another package's `test/`. (tooling/render)
+- [fa70452] A `sim` mechanic with data-pinned *parameters* (atomic durations, job gates, stock caps)
+  is NOT thereby `faithful` — its *behavior* (planner/loop shape) has no oracle (OpenVikings' tick is
+  a stub). Classify those rows `approximated` with "calibration-by-observation pending"; reserve
+  `faithful` for when both axes are pinned. Over-claiming faithful is the blind spot FIDELITY.md
+  exists to catch. (docs/fidelity)
