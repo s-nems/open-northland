@@ -1,4 +1,5 @@
 import type { ContentSet } from '@vinland/data';
+import type { Command } from './commands.js';
 import { Simulation } from './index.js';
 import { CORE_INVARIANTS, type Invariant, checkInvariants } from './invariants.js';
 
@@ -32,10 +33,18 @@ export interface RunOptions {
 
 export class Scenario {
   private readonly sim: Simulation;
-  // TODO(Phase 2): queue commands here (placeBuilding/spawnSettler/...) once CommandSystem exists.
 
   constructor(content: ContentSet, seed = 1) {
     this.sim = new Simulation({ seed, content });
+  }
+
+  /**
+   * Script a serializable command exactly as the UI would issue it — the only way to mutate state.
+   * Commands enqueued before `run` are applied on the first tick's CommandSystem pass. Chainable.
+   */
+  command(command: Command): this {
+    this.sim.enqueue(command);
+    return this;
   }
 
   run(ticks: number, opts: RunOptions = {}): ScenarioResult {

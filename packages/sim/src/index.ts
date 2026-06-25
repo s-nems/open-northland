@@ -1,9 +1,11 @@
 import type { ContentSet } from '@vinland/data';
+import { type Command, CommandQueue } from './commands.js';
 import { Position } from './components/index.js';
 import { type Entity, World } from './ecs/world.js';
 import { EventBuffer } from './events.js';
 import { fx } from './fixed.js';
 import { Rng } from './rng.js';
+import { type WorldSnapshot, takeSnapshot } from './snapshot.js';
 import { SYSTEM_ORDER, type SystemContext } from './systems/index.js';
 import { type TerrainGraph, type TerrainMap, buildTerrainGraph } from './terrain.js';
 
@@ -17,8 +19,16 @@ export * as systems from './systems/index.js';
 export { scenario, Scenario, type ScenarioResult, type RunOptions } from './scenario.js';
 export type { Brand } from './brand.js';
 export { assertNever } from './brand.js';
-export type { Command, CommandKind, AtomicEffect, AtomicEffectKind } from './commands.js';
+export {
+  type Command,
+  type CommandKind,
+  type AtomicEffect,
+  type AtomicEffectKind,
+  type LoggedCommand,
+  CommandQueue,
+} from './commands.js';
 export { EventBuffer, type SimEvent, type SimEventKind } from './events.js';
+export { takeSnapshot, type WorldSnapshot, type EntitySnapshot } from './snapshot.js';
 export {
   TerrainGraph,
   buildTerrainGraph,
@@ -67,6 +77,11 @@ export class Simulation {
   readonly terrain?: TerrainGraph;
   /** One-shot events produced during the current tick (drained by render/audio). */
   readonly events = new EventBuffer();
+  /**
+   * The serializable command queue — the ONLY way state mutates. Enqueue via {@link enqueue}; the
+   * CommandSystem drains and applies it each tick (and logs it). A save is the command log.
+   */
+  readonly commands = new CommandQueue();
   private currentTick = 0;
 
   constructor(opts: SimOptions) {
@@ -79,6 +94,15 @@ export class Simulation {
     return this.currentTick;
   }
 
+  /**
+   * Queue a serializable command — the only way to mutate sim state from outside. It is applied (and
+   * appended to the command log) by CommandSystem on the next `step()`. The UI, the AI, and a save
+   * loader all go through here; nothing else pokes the world directly.
+   */
+  enqueue(command: Command): void {
+    this.commands.enqueue(command);
+  }
+
   /** Advance exactly one tick by running every system in order. */
   step(): void {
     this.currentTick++;
@@ -88,6 +112,7 @@ export class Simulation {
       rng: this.rng,
       tick: this.currentTick,
       events: this.events,
+      commands: this.commands,
       // Only attach `terrain` when present: under exactOptionalPropertyTypes an optional property
       // must be omitted rather than set to undefined.
       ...(this.terrain !== undefined ? { terrain: this.terrain } : {}),
@@ -95,6 +120,16 @@ export class Simulation {
     for (const system of SYSTEM_ORDER) {
       system(this.world, ctx);
     }
+  }
+
+  /**
+   * An immutable read-view of the world at the current tick boundary — what `render`/audio consume
+   * instead of the live component stores, so they never observe a half-applied tick. Plain data (no
+   * class instances / live Maps), so it is also transferable to a render Web Worker for free. Pure:
+   * a snapshot is a function of state and is never read back into sim logic.
+   */
+  snapshot(): WorldSnapshot {
+    return takeSnapshot(this.world, this.currentTick, this.events.current());
   }
 
   /** Run N ticks. */

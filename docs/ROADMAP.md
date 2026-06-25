@@ -305,15 +305,31 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 
 > **TL;DR (live target).** The slice runs end-to-end and deterministic: terrain cell-graph → A\* →
 > movement → the atomic planner (harvest→carry→pileup) → one workplace with capacity → the carrier
-> (haul workplace outputs to a store) are all built and green. **Next smallest step: CommandSystem +
-> the serializable command schema** (the seam that mutates state) — or, if render is preferred first,
-> the **screenshot harness + isometric render** (a human-judged visual step). Still unbuilt in this
-> phase: **render + the screenshot harness**, the **golden state-hash + atomic-trace** over ~1000
-> ticks, and **CommandSystem** (the serializable-command seam — leapfrogged so far). Lines tagged
+> (haul workplace outputs to a store) → **CommandSystem (the mutation seam) + the snapshot read-view**
+> are all built and green. **Next smallest step: the screenshot harness + isometric render** (a
+> human-judged visual step) — or the **golden state-hash + atomic-trace over ~1000 ticks**. Still
+> unbuilt in this phase: **render + the screenshot harness** and the **golden trace**. Lines tagged
 > *(core done…)* pass tests today but await one wiring piece.
-- [ ] **CommandSystem + serializable command schema** — the ONLY way state mutates. Save = command
-      log from day one (disk format later; the invariant is now). Define the **snapshot read-view**
-      (double-buffer or immutable view) so `render` never reads mid-mutation.
+- [x] **CommandSystem + serializable command schema** — the ONLY way state mutates. Done —
+      `systems/command.ts` (`commandSystem`, first in `SYSTEM_ORDER`) drains a per-sim
+      {@link CommandQueue} (`commands.ts`) each tick and applies each serializable {@link Command}
+      (`placeBuilding`/`spawnSettler`/`setProduction`/`demolish`) via an exhaustive `assertNever`
+      switch, appending it to the **append-only command log** (`Simulation.commands.log`, each entry
+      `{tick, command}`) — the save / replay / lockstep record, built from tick 1 (disk format later;
+      the invariant is now). The UI/AI/loader enqueue via `Simulation.enqueue`; nothing else pokes the
+      world. `placeBuilding` seeds the building's {@link Stockpile} from the building type's `stock`
+      slots; an unknown type id / dead-entity reference is a recoverable boundary failure (skipped,
+      still logged for faithful replay), not a throw. The **snapshot read-view** (`snapshot.ts`,
+      `Simulation.snapshot()`) is the immutable, plain (no class instances / live Maps — transferable
+      to a render Worker for free) value `render`/audio consume instead of live stores, so render never
+      reads mid-mutation; Maps become canonical sorted `[k,v]` arrays, entities in ascending-id order,
+      plus the tick's events. Pure + deterministic: the queue is a FIFO array (apply order == enqueue
+      order), no RNG/wall-clock, golden untouched. **Hands-on:** through the real `Simulation.step()`
+      schedule, 2 enqueued commands (place HQ + spawn woodcutter) → applied tick 1, 2 entities, HQ
+      stockpile seeded `[[1,10]]`, log `[{1,placeBuilding},{1,spawnSettler}]`, snapshot plain
+      `{amounts:[[1,10]]}`; two seed-7 runs hash-equal (`1a6611ea`). **Still to do:** `setProduction`
+      becomes a real recipe/output selection once the goods-graph lands (Phase 3); a disk format for
+      the log (Phase 5 save/load).
 - [ ] Terrain as a **cell-adjacency graph** with per-type walk cost/valency (from
       `landscapetypes.ini`). *Not* the triangle geometry — that's render-only.
       *(core done — graph builder + `world.terrain` resource wired; pending: a real per-type
