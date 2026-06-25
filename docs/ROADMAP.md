@@ -142,10 +142,20 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `WorldSnapshot`** (not the live stores — `render` is a pure consumer), emitting a flat, sorted
       `HudModel`. The aggregates match the sim read views by construction (a count/sum is order-independent)
       but never re-enter the sim; output is total-ordered (ascending id), so the panel is reproducible
-      frame-to-frame. The only thing left is the **Pixi text/rect drawing** of that model (human-gated
-      pixels). **Next:** draw the `HudModel` into a Pixi/DOM panel (visual — an agent cannot self-judge the
-      typography/layout; flag for a human). The goods-graph view (over `content`, not the snapshot) stays a
-      sim-side read view the panel can call directly.
+      frame-to-frame. **Render-side HUD LAYOUT landed too** — `layoutHud(model)` (`packages/render/src/hud.ts`)
+      is the pure, self-verifiable bridge from the `HudModel` to its pixels, exactly analogous to how
+      `buildScene` turns a snapshot into positioned `DrawItem`s before the GPU draws them: it stacks the model
+      into labelled sections (header `Tribe N · tick T` / `Population` / an indented **Jobs** tally list with
+      the idle sentinel rendered as `idle` / an indented **Stocks** tally list), assigning each row a
+      panel-relative `(x, y)` (rows advance by a fixed line height; tallies indented under their heading) and
+      sizing the panel `height` to exactly fit the row count. Pure + total (a function of the model alone — no
+      Pixi, no glyph metrics; width is a fixed column, height counts rows), so the same model lays out
+      byte-identically — *which line lands where* is now unit-tested without a screen, leaving only the glyph
+      rasterization to a human. The only thing left is the **Pixi text/rect drawing** of that laid-out panel
+      (human-gated typography). **Next:** rasterize the `HudLayout` into a Pixi/DOM panel (visual — an agent
+      cannot self-judge the typography/font; flag for a human), mirroring how `renderScene` draws `buildScene`'s
+      list. The goods-graph view (over `content`, not the snapshot) stays a sim-side read view the panel can
+      call directly.
 - **Exit:** a self-sustaining, progressing single-tribe settlement you can grow.
 
 ## Phase 4 — Conflict & content breadth (N tribes)
