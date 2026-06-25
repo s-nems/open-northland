@@ -183,3 +183,10 @@ the next iteration inherits it.
   readable data" pattern `isFood` uses (the `food_` id prefix). Don't invent a content flag the data
   lacks; recognise the building by what it conspicuously *omits*. And the new walk-to-target reuses the
   existing MoveGoal→PathRequest→PathFollow chain for free — the drive only sets the goal. (sim/fidelity)
+- [3826bab] The temple structural-signature trick does NOT generalize to every target-bound need — it
+  worked for `pray` only because the temple is (nearly) the unique no-recipe/no-worker/no-stock house.
+  `enjoy` (id 17) has no readable building satisfier: the only houses with that signature are `work
+  temple` (lt 37) and `work murek` (a decorative wall, lt 55), so structural inference can't name a
+  leisure site. Verify the satisfier is actually distinguishable in `houses.ini` BEFORE planning a
+  drive — don't assume the previous need's approach ports. When it can't be pinned, ship the rise+reset
+  half (both pinned to data) and defer the drive in FIDELITY rather than inventing a satisfier. (sim/fidelity)
