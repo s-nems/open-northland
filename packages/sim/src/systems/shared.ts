@@ -1,4 +1,4 @@
-import type { Recipe } from '@vinland/data';
+import type { ContentSet, ProductionInput, Recipe } from '@vinland/data';
 import { Building, Position, Settler, Stockpile, stockpileEntries } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import { ONE, fx } from '../fixed.js';
@@ -232,6 +232,92 @@ export function tribeStocks(world: World, tribe: number): Map<number, number> {
     }
   }
   return totals;
+}
+
+/**
+ * A single node of the {@link goodsGraph} — one good's place in the recipe-DAG: its node *layer*
+ * (raw vs produced, from the good's classification flags), the inputs **one production cycle**
+ * consumes to make it (the input side, from `GoodType.productionInputs`), and which building **types**
+ * make it (the output side, joined from each building type's `produces`/`recipe.outputs`).
+ */
+export interface GoodsGraphNode {
+  /**
+   * The good's tier in the graph: `'raw'` = harvested from the map (`classification.producedOnMap`,
+   * e.g. wood/stone/wheat — no recipe), `'produced'` = made in a workplace
+   * (`classification.producedInHouse`, e.g. plank/flour/bread). `'unclassified'` covers a good the
+   * source marks as neither (the `none`/sentinel good, or a good whose flags default off) — it is
+   * still a node so an edge can point at it. A good flagged *both* (none are in the real data) is
+   * reported as `'produced'` (the in-house tier wins, since it has a recipe).
+   */
+  layer: 'raw' | 'produced' | 'unclassified';
+  /** Whether this good can be **consumed** as a recipe input somewhere (`classification.inputGood`). */
+  inputGood: boolean;
+  /** The goods (+ per-cycle amounts) one cycle consumes to make this good — empty for a raw good. */
+  inputs: readonly ProductionInput[];
+  /**
+   * The building **type ids** that produce this good, ascending — the output side of the join. A good
+   * with no producer (a raw good, or one nothing makes) has an empty list. Type ids, not entities:
+   * this is a static read over `content`, independent of what is placed in any world.
+   */
+  producedBy: readonly number[];
+}
+
+/**
+ * The **goods graph** as a derived **read view** over `content` — the HUD's *goods-graph* panel
+ * (the fourth derived view after {@link tribeStocks}, {@link tribePopulation}, and
+ * {@link tribePopulationByJob}, and the only one over content rather than world state). It surfaces
+ * the recipe-DAG the pipeline already extracted as IR — `GoodType.productionInputs` (the input-side
+ * edges) + `GoodType.classification` (the raw/produced/input node layers) — joined with the
+ * **output side**: which building types make each good (`BuildingType.produces`, falling back to a
+ * `recipe`'s `outputs` when `produces` is empty). The result is one {@link GoodsGraphNode} per good,
+ * so a panel can draw "wood (raw) → sawmill → plank (produced) → …" without re-walking content.
+ *
+ * Returned as a `Map<goodType, GoodsGraphNode>` keyed by `GoodType.typeId`, one entry per good in
+ * `content.goods`. The `producedBy` list is sorted ascending so the view is stable regardless of
+ * building declaration order; the input edges keep their `productionInputs` order (already the
+ * source's). Every good gets a node even if nothing produces or consumes it, so an edge always has
+ * both endpoints present.
+ *
+ * FIDELITY n/a: a pure derived **read view** of the already-extracted goods-graph IR, like
+ * {@link tribeStocks} — it adds no mechanic (nothing is produced/consumed/moved) and invents no
+ * data; the layers/edges it surfaces are the faithful `classification`/`productionInputs` params the
+ * pipeline pinned (see ROADMAP Phase 3 "Goods graph").
+ *
+ * Determinism: a pure function of `content` (no world, no RNG, no wall-clock) — but `content.goods`
+ * is a plain array and the `producedBy` list is explicitly **sorted**, so the same content yields a
+ * byte-identical map every call. The returned Map's iteration order is `content.goods` order (a
+ * stable array), so even iteration is reproducible here (unlike the world-state read views, whose Map
+ * order is store-traversal-dependent).
+ */
+export function goodsGraph(content: ContentSet): Map<number, GoodsGraphNode> {
+  // Output side: for each good, the building type ids that make it. Prefer `produces` (the
+  // output-good list the original house table names directly); fall back to a recipe's `outputs`
+  // for a building that carries a materialized recipe but no `produces` (e.g. a test fixture).
+  const producers = new Map<number, number[]>();
+  for (const building of content.buildings) {
+    const outputs =
+      building.produces.length > 0
+        ? building.produces
+        : (building.recipe?.outputs.map((o) => o.goodType) ?? []);
+    for (const goodType of outputs) {
+      const list = producers.get(goodType);
+      if (list === undefined) producers.set(goodType, [building.typeId]);
+      else if (!list.includes(building.typeId)) list.push(building.typeId);
+    }
+  }
+
+  const graph = new Map<number, GoodsGraphNode>();
+  for (const good of content.goods) {
+    const c = good.classification;
+    const layer = c.producedInHouse ? 'produced' : c.producedOnMap ? 'raw' : 'unclassified';
+    graph.set(good.typeId, {
+      layer,
+      inputGood: c.inputGood,
+      inputs: good.productionInputs,
+      producedBy: (producers.get(good.typeId) ?? []).sort((a, b) => a - b),
+    });
+  }
+  return graph;
 }
 
 /**
