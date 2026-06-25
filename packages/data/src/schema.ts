@@ -229,6 +229,8 @@ export const VehicleType = z.object({
   /** `vehicletype` `type` — the `logicvehicletype` namespace (1..N) the `jobEnablesVehicle` tech-graph
    *  edges and a `vehicle` building's `logicvehicletype` cross-reference into. */
   typeId: TypeId,
+  /** Slug of `name`. Not unique — the real data ships two `oxcart` records (types 6 and 2) that slug
+   *  alike; resolve a vehicle by `typeId` (the cross-ref key), not `id`, as with {@link WeaponType}. */
   id: z.string(),
   name: z.string().optional(),
   /**

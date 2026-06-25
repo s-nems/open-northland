@@ -285,3 +285,11 @@ the next iteration inherits it.
   "new state, not a new action" split. And: a brand-new optional component must be added to EVERY test's
   store-clear list ([ac6a287]) — the leak shows up as a sibling test's *logic* failing (a stale binding
   inflates the per-building count), not as an obvious cross-contamination. (sim/architecture)
+- [f94a65b] Adding a new base `.ini` source to `resolveIniSources` breaks an *unrelated-looking* test:
+  one case asserts the resolved source list with an exact `toEqual([...])` (the missing-source-warning
+  test), so the new entry fails a sorted-list comparison far from the extractor you wrote. When you
+  register a source, grep the pipeline test for `resolveIniSources(` + `toEqual`/`.sort()` and add the
+  entry in sorted position. Also: a type table's `id` (a `name` slug) is NOT a unique key — `vehicletypes`
+  genuinely ships two `oxcart` records, like `weapontypes`' duplicate `fist`; the cross-ref key is the
+  numeric `typeId`, so don't `indexById` a freshly-extracted table without checking the source for dup
+  names first. (pipeline/test)
