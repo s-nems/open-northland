@@ -444,3 +444,10 @@ the next iteration inherits it.
   enemy) must stay a valid PvP enemy, not get silently reclassified as wildlife. When you split a set
   by a data signature, define each side as a POSITIVE membership test (`record exists && signature`),
   so the absent-record case falls through both rather than defaulting into one. (sim/data-classification)
+- [838b1fa] Not every IR type table keys on `type` — `animaltypes.ini` keys on `tribetype` (an
+  animal's identity IS its owning tribe; the source carries no `type`), and a couple of real records
+  carry NO `tribetype` at all (disabled stubs). So this extractor DROPS-on-missing-key rather than
+  `requireTypeId`-THROWS: the throw stance is right when the key's absence is malformed, but wrong when
+  the key is legitimately absent in shipped data. Check the real file's key field + look for records
+  missing it before assuming the `requireTypeId(...,'type')` template; the cross-ref then validates the
+  chosen key (here `tribeType` → the tribe table). (pipeline/extractor)
