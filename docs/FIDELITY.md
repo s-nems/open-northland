@@ -44,13 +44,32 @@ named source). Update the relevant row when a mechanic lands or is calibrated.
 | Decoded-asset **pixel** fidelity | not-verified | research notes pixel-diff not yet run (an agent can't self-judge; needs human + owned copy) |
 
 ### Simulation mechanics (Phase 2+)
+Two axes are pinned independently per mechanic: its **structure/parameters** (often data-pinned) and
+its **behavior** (the planner/loop shape, which has no oracle — see the table above). A row is only
+`faithful` when *both* are pinned to a named source; a faithful parameter under an unpinned behavior
+is still `approximated` overall, with the basis spelled out.
+
 | Mechanic | Status | Source / how pinned |
 |---|---|---|
-| _none landed yet_ | not-started | atomic planner, economy, AI, pathing, combat — fill in as each lands, each declaring its fidelity basis |
+| Terrain cell-graph + walkability/valency | faithful (params) | `landscapetypes.ini` `walkable` + `maximumValency`; 4-connected cell graph is the engine's nav model, not the triangle render mesh (docs/ECS.md). |
+| Uniform per-step walk cost | faithful | `landscapetypes.ini` carries **no** per-type movement weight (only valency + placement flags — verified, see LESSONS [4ef956f]); movement is gated by walkability/valency, so uniform cost is the faithful model, not a placeholder. |
+| A\* pathfinding (canonical tie-break, per-tick budget) | approximated | Behavior has no oracle (research notes' logic tick is a stub). A\* + canonical tie-break is *our* deterministic choice; the engine's actual pather/path-cache is unknown. `PATHFINDING_BUDGET_PER_TICK`=8 is unpinned (calibration-by-observation pending). |
+| Movement step speed | approximated | `MOVE_SPEED_PER_TICK`=¼ tile/tick is an unpinned constant — `atomicanimations` carries `startdirection`/`length` but no traverse speed found yet; calibration-by-observation pending. |
+| Atomic durations (harvest/pileup/pickup) | faithful (params) | duration = the tribe's `setatomic (jobType,atomicId)→animation` binding → `atomicanimations.ini` `length` (`atomicDuration`). `DEFAULT_ATOMIC_DURATION`=4 only when the chain is absent (unpinned fallback). |
+| Job→atomic gating (which job may harvest what) | faithful (params) | `jobtypes` `allowatomic`/`baseatomics` (∪/−) gate the resource good's `goodtypes` `atomicFor*` harvest atomic (`jobAtomics`/`nearestHarvestableFor`) — the data-driven "woodcutter cuts trees, not ore" rule. |
+| Atomic-utility planner (harvest→carry→pileup, target choice) | approximated | Behavior, no oracle. The harvest *atomic id* is data-driven, but the planner shape (nearest-Manhattan target, load-state state machine, utility=distance) is *our* design; the original's settler AI is the undocumented "soul" (Risks). |
+| Carrier (haul workplace outputs to a store) | approximated | Behavior, no oracle. `CARRY_LOAD`/`HARVEST_YIELD`=1 unit/swing and "never deliver back into the producer" are unpinned design choices; the engine's carrier dispatch is unknown. |
+| Production (recipe inputs→outputs, output-capacity gate) | approximated | The *system* (consume-at-start / deposit-at-completion / capacity gate) is data-shaped, but the **recipe inputs/amounts/timing are not extracted yet** — proven against a synthetic sawmill (wood→plank). Real recipes come from `goodtypes.productionInputGoods` (Phase 3); faithful only once that lands. |
+| Stock capacity enforcement | faithful (params) | per-good caps from the building type's `logicstock <good> <cap> <init>` slots (`extractBuildings` → `stockCapacity`). |
+| Resource depletion (finite nodes) | approximated | `HARVEST_YIELD`=1 unit/harvest (node survives exactly N harvests) — goods-conserving and structurally sound, but the per-node yield/regrowth isn't pinned to a source yet. |
 
-> **Reflection TODO:** as Phase-2 mechanics land, every row here gets a fidelity basis or an explicit
-> "approximated — calibration-by-observation pending". An empty/non-`faithful` mechanics table sitting
-> under a wall of green tests is the exact blind spot this file exists to surface.
+> **How to read this table.** Most Phase-2 rows are `approximated` because the *behavior* axis has no
+> automatic oracle — the planner/loop shapes are deterministic design choices, not yet calibrated
+> against the running original. That is expected and honest, not a gap to paper over: the
+> data-derived *parameters* (durations, gates, capacities) are faithful, and the behavior rows carry
+> an explicit "calibration-by-observation pending" until a human watches the original and tunes them.
+> The blind spot this file exists to surface is a row silently sitting `faithful` without a named
+> source — not an honestly-`approximated` one.
 
 ## Deviations (conscious divergences from the original)
 
