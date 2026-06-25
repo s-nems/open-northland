@@ -39,13 +39,14 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
   const seed = intParam(params, 'seed', 7);
   const ticks = intParam(params, 'ticks', 20);
 
-  // `?map=<id>` draws an actual decoded `content/maps/<id>.json` grid as the terrain (loaded over the
-  // dev/shot vite server); absent or unloadable, it falls back to the synthetic grass strip — so the
-  // default `npm run shot` stays reproducible without the gitignored real maps.
+  // `?map=<id>` runs + draws an actual decoded `content/maps/<id>.json` grid: the sim navigates the
+  // real grid (settlers/buildings placed on its first walkable cells) and the renderer draws it as the
+  // terrain (loaded over the dev/shot vite server). Absent or unloadable, both fall back to the
+  // synthetic grass strip — so the default `npm run shot` stays reproducible without the gitignored maps.
   const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
 
-  const sim = runSlice(seed, ticks);
+  const sim = runSlice(seed, ticks, loaded ?? undefined);
   const scene = buildScene(sim.snapshot(), sliceTerrain(loaded ?? undefined));
 
   const app = await createPixiApp(canvas, CANVAS_W, CANVAS_H);

@@ -31,8 +31,51 @@ const { Position, Resource } = components;
 const WIDTH = 6;
 const HEIGHT = 1;
 
-/** A small synthetic content set sufficient to render the vertical slice (no copyrighted data). */
-function demoContent(): ContentSet {
+/** The fixed placement cells on the synthetic 6×1 strip: [HQ, sawmill, woodcutter, carrier, tree, tree]. */
+const STRIP_CELLS: ReadonlyArray<{ x: number; y: number }> = [
+  { x: 5, y: 0 },
+  { x: 4, y: 0 },
+  { x: 0, y: 0 },
+  { x: 1, y: 0 },
+  { x: 2, y: 0 },
+  { x: 3, y: 0 },
+];
+
+/** The two landscape types the synthetic strip uses (grass walkable, water blocking). */
+const BASE_LANDSCAPE = [
+  { typeId: GRASS, id: 'grass', walkable: true, buildable: true },
+  { typeId: 1, id: 'water', walkable: false, buildable: false },
+];
+
+/**
+ * The landscape table for the demo's content set. Without a map it is the two-type synthetic strip.
+ *
+ * A loaded `content/maps/<id>.json` references many landscape typeIds the synthetic strip never uses
+ * (a real grid carries e.g. `{1,2,5,10,11,…,37}`), and `buildTerrainGraph` throws on any typeId
+ * absent from content — so when a map is given we synthesize a walkable `LandscapeType` for every id
+ * the grid actually contains that the base table doesn't already cover. This is purely so the demo
+ * sim can navigate a real grid; it carries NO real walkability/valency semantics (that is the IR's
+ * job — the demo content is explicitly synthetic). Ids are emitted in ascending order so the content
+ * set is deterministic.
+ */
+function demoLandscape(
+  map?: TerrainMap,
+): Array<{ typeId: number; id: string; walkable: boolean; buildable: boolean }> {
+  if (map === undefined) return BASE_LANDSCAPE;
+  const covered = new Set(BASE_LANDSCAPE.map((t) => t.typeId));
+  const extra = [...new Set(map.typeIds)].filter((id) => !covered.has(id)).sort((a, b) => a - b);
+  return [
+    ...BASE_LANDSCAPE,
+    ...extra.map((id) => ({ typeId: id, id: `terrain_${id}`, walkable: true, buildable: true })),
+  ];
+}
+
+/**
+ * A small synthetic content set sufficient to render + navigate the vertical slice (no copyrighted
+ * data). When a `map` is passed, its landscape typeIds are folded into the table (see
+ * {@link demoLandscape}) so the sim's cell-graph can be built over a real decoded grid.
+ */
+function demoContent(map?: TerrainMap): ContentSet {
   return parseContentSet({
     manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-demo-slice' }, locale: 'eng' },
     goods: [
@@ -69,10 +112,7 @@ function demoContent(): ContentSet {
         recipe: { inputs: [{ goodType: WOOD, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 },
       },
     ],
-    landscape: [
-      { typeId: GRASS, id: 'grass', walkable: true, buildable: true },
-      { typeId: 1, id: 'water', walkable: false, buildable: false },
-    ],
+    landscape: demoLandscape(map),
     tribes: [
       {
         typeId: VIKING,
@@ -144,19 +184,71 @@ export async function loadTerrainMap(
 }
 
 /**
+ * The first `count` walkable cells of `map`, in canonical row-major id order, as integer `(x, y)`
+ * tile coords. "Walkable" is resolved from the demo content's landscape table (the same `walkable`
+ * flag `buildTerrainGraph` reads), so the slice's entities land only on cells the sim can stand on —
+ * placing a building on water would make the woodcutter's path unreachable. Deterministic: a fixed
+ * scan order, no RNG. Throws if the map has fewer than `count` walkable cells (a degenerate map the
+ * caller should not pass — every real grid the demo loads has thousands).
+ */
+function walkableCells(
+  map: TerrainMap,
+  walkable: ReadonlySet<number>,
+  count: number,
+): Array<{ x: number; y: number }> {
+  const out: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < map.typeIds.length && out.length < count; i++) {
+    const typeId = map.typeIds[i];
+    if (typeId !== undefined && walkable.has(typeId))
+      out.push({ x: i % map.width, y: Math.floor(i / map.width) });
+  }
+  if (out.length < count) throw new Error(`map has only ${out.length} walkable cells, need ${count}`);
+  return out;
+}
+
+/** The set of landscape typeIds the content marks walkable — the placement filter for {@link walkableCells}. */
+function walkableTypeIds(content: ContentSet): ReadonlySet<number> {
+  return new Set(content.landscape.filter((t) => t.walkable).map((t) => t.typeId));
+}
+
+/**
  * Build the vertical-slice simulation (seed-fixed) and run it `ticks` ticks deterministically. The
  * returned sim is at a tick boundary, ready for `snapshot()` → `buildScene` → the renderer. No RAF,
  * no wall-clock: this is the "render scenario X at seed S, step N ticks" entry the harness needs.
+ *
+ * Without a `map` the slice runs on the synthetic 6×1 grass strip (the reproducible default the shot
+ * PNG depends on). With a loaded `content/maps/<id>.json` grid, the SAME six entities (HQ, sawmill,
+ * woodcutter, carrier, two wood nodes) are placed on the first walkable cells of the real grid instead
+ * of the hardcoded strip — so the sim actually navigates the decoded map, not a stand-in. The grid's
+ * landscape typeIds are folded into the demo content (see {@link demoContent}) so its cell-graph
+ * builds; placement uses {@link walkableCells} so nothing lands on a blocking cell.
  */
-export function runSlice(seed: number, ticks: number): Simulation {
-  const sim = new Simulation({ seed, content: demoContent(), map: grassMap() });
-  sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 5, y: 0, tribe: VIKING });
-  sim.enqueue({ kind: 'placeBuilding', buildingType: SAWMILL, x: 4, y: 0, tribe: VIKING });
-  sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
-  sim.enqueue({ kind: 'spawnSettler', jobType: CARRIER, x: 1, y: 0, tribe: VIKING });
-  for (const x of [2, 3]) {
+export function runSlice(seed: number, ticks: number, map?: TerrainMap): Simulation {
+  const content = demoContent(map);
+  const terrain = map ?? grassMap();
+  const sim = new Simulation({ seed, content, map: terrain });
+
+  // Six placement cells: [HQ, sawmill, woodcutter, carrier, wood node, wood node]. On the strip these
+  // are the original fixed coords; on a real map they are the first walkable cells (canonical order).
+  // `walkableCells` throws unless it found all six, and the literal has six — so `cellAt` is total.
+  const cells = map ? walkableCells(map, walkableTypeIds(content), 6) : STRIP_CELLS;
+  const cellAt = (i: number): { x: number; y: number } => {
+    const c = cells[i];
+    if (c === undefined) throw new Error(`expected 6 placement cells, got ${cells.length}`);
+    return c;
+  };
+  const hq = cellAt(0);
+  const mill = cellAt(1);
+  const cutter = cellAt(2);
+  const carrier = cellAt(3);
+
+  sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: hq.x, y: hq.y, tribe: VIKING });
+  sim.enqueue({ kind: 'placeBuilding', buildingType: SAWMILL, x: mill.x, y: mill.y, tribe: VIKING });
+  sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: cutter.x, y: cutter.y, tribe: VIKING });
+  sim.enqueue({ kind: 'spawnSettler', jobType: CARRIER, x: carrier.x, y: carrier.y, tribe: VIKING });
+  for (const cell of [cellAt(4), cellAt(5)]) {
     const tree = sim.world.create();
-    sim.world.add(tree, Position, { x: fx.fromInt(x), y: fx.fromInt(0) });
+    sim.world.add(tree, Position, { x: fx.fromInt(cell.x), y: fx.fromInt(cell.y) });
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: 4, harvestAtomic: HARVEST_ATOMIC });
   }
   sim.run(ticks);

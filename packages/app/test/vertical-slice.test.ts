@@ -1,7 +1,24 @@
 import { buildScene, terrainMapToScene } from '@vinland/render';
-import type { WorldSnapshot } from '@vinland/sim';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { loadTerrainMap, sliceTerrain } from '../src/vertical-slice.js';
+import type { Component, TerrainMap, WorldSnapshot } from '@vinland/sim';
+import { components } from '@vinland/sim';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { loadTerrainMap, runSlice, sliceTerrain } from '../src/vertical-slice.js';
+
+/**
+ * Component stores are module-level singletons shared by every `Simulation` instance, so a sim built
+ * in one test sees entities a sim from a prior test left behind — and `world.query` iterates store
+ * insertion order, so that leakage makes a fresh sim's planner non-deterministic (it processes stale
+ * entities). Clear every component's store before each test that builds a sim, exactly as the sim's
+ * own golden-trace suite does — scoping each run to its own test regardless of file/test order.
+ */
+function clearStores(): void {
+  // The `components` namespace also re-exports helpers (e.g. `stockpileEntries`), so clear only the
+  // exports that are actual components (have a `.store` Map), not every value.
+  for (const v of Object.values(components)) {
+    const store = (v as Partial<Component<unknown>>).store;
+    if (store instanceof Map) store.clear();
+  }
+}
 
 /**
  * Unit tests for the app's map-loading seam — the testable core of "the shot/dev entry draws an
@@ -83,5 +100,50 @@ describe('sliceTerrain', () => {
     // An injected (loaded) map drives the terrain instead.
     const loaded = sliceTerrain({ width: 2, height: 1, typeIds: [4, 9] });
     expect(loaded).toEqual({ width: 2, height: 1, typeIds: [4, 9] });
+  });
+});
+
+describe('runSlice on a loaded map', () => {
+  beforeEach(clearStores);
+
+  // A small grid with typeIds the synthetic strip never declares (5, 16, 22, …) — folding them into
+  // the demo content is exactly what lets the sim's cell-graph build over a real decoded map.
+  function gridMap(): TerrainMap {
+    return { width: 4, height: 3, typeIds: [5, 16, 22, 5, 5, 16, 22, 5, 5, 16, 22, 5] };
+  }
+
+  it('builds + steps the sim over the real grid without a content gap', () => {
+    // The plain strip uses only typeIds {0,1}; this grid uses {5,16,22}. If demoContent did not fold
+    // those in, buildTerrainGraph would throw "landscape typeId N absent from content" at construction.
+    const sim = runSlice(7, 30, gridMap());
+    expect(sim.terrain?.width).toBe(4);
+    expect(sim.terrain?.height).toBe(3);
+    expect(sim.terrain?.cellCount).toBe(12);
+  });
+
+  it('places the slice entities on the first walkable cells of the grid, not the strip', () => {
+    const { Position, Building, Settler, Resource } = components;
+    // ticks=1 so the placeBuilding/spawnSettler commands (applied on tick 1) have run — the two wood
+    // nodes are created directly, but the four command entities only exist after the first step.
+    const sim = runSlice(7, 1, gridMap());
+
+    // Six entities placed: HQ + sawmill (Building), woodcutter + carrier (Settler), two wood nodes
+    // (Resource). On a 4×3 grid whose every cell is walkable, the first six cells are (0,0)..(1,1) —
+    // so at least one entity must sit on a row below the synthetic strip's single y=0 row.
+    const positioned = [...sim.world.query(Position)].map((e) => sim.world.get(e, Position));
+    expect(positioned).toHaveLength(6);
+    const onRealRows = positioned.some((p) => Math.trunc(p.y / 65536) > 0);
+    expect(onRealRows).toBe(true);
+    // Each kind is present.
+    expect([...sim.world.query(Building)]).toHaveLength(2);
+    expect([...sim.world.query(Settler)]).toHaveLength(2);
+    expect([...sim.world.query(Resource)]).toHaveLength(2);
+  });
+
+  it('is deterministic over the loaded map (same seed+map ⇒ same hash)', () => {
+    const a = runSlice(7, 60, gridMap()).hashState();
+    clearStores(); // the two runs share the global stores; isolate the second like the golden suite
+    const b = runSlice(7, 60, gridMap()).hashState();
+    expect(a).toBe(b);
   });
 });

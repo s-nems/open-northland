@@ -103,3 +103,13 @@ the next iteration inherits it.
   regex on the fetch side + a resolved-path `startsWith(root + sep)` check in the middleware), and keep
   the consumer's load path **fallback-on-failure** so a checkout WITHOUT the gitignored content still
   runs. This is dev/shot-server only — a production `vite build` won't serve it. (app/render)
+- [PENDING] Component stores are module-level singletons SHARED by every `Simulation`/`World` instance
+  (`defineComponent` makes one `Map`; `new World()` resets the id counter but NOT the stores). So a
+  test that builds two sims in one process without clearing leaks the first run's entities into the
+  second, and because `world.query` iterates **store insertion order**, the second sim's planner then
+  acts on stale entities → non-deterministic. `hashState()` does NOT catch it: it hashes
+  `canonicalEntities()` (sorted), so two runs can hash-equal mid-tick yet diverge once a query-order
+  decision fires. Clear every component's store between runs (`for (v of Object.values(components)) if
+  (v.store instanceof Map) v.store.clear()` — filter, the namespace also re-exports helpers), exactly
+  as `golden-trace.test.ts` does in `beforeEach`. Surfaced only on a multi-ROW map (the 1-D 6×1 strip
+  never exercised a query-order-dependent target choice). (sim/test)
