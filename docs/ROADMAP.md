@@ -306,10 +306,10 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 > **TL;DR (live target).** The slice runs end-to-end and deterministic: terrain cell-graph → A\* →
 > movement → the atomic planner (harvest→carry→pileup) → one workplace with capacity → the carrier
 > (haul workplace outputs to a store) → **CommandSystem (the mutation seam) + the snapshot read-view**
-> are all built and green. **Next smallest step: the screenshot harness + isometric render** (a
-> human-judged visual step) — or the **golden state-hash + atomic-trace over ~1000 ticks**. Still
-> unbuilt in this phase: **render + the screenshot harness** and the **golden trace**. Lines tagged
-> *(core done…)* pass tests today but await one wiring piece.
+> → the **golden state-hash + atomic-action trace over 1000 ticks** are all built and green. **Next
+> smallest step: the screenshot harness + isometric render** (the one remaining Phase-2 line — a
+> human-judged visual step, so an agent flags it for a human). Lines tagged *(core done…)* pass tests
+> today but await one wiring piece.
 - [x] **CommandSystem + serializable command schema** — the ONLY way state mutates. Done —
       `systems/command.ts` (`commandSystem`, first in `SYSTEM_ORDER`) drains a per-sim
       {@link CommandQueue} (`commands.ts`) each tick and applies each serializable {@link Command}
@@ -521,7 +521,18 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
         shot` Playwright script writing a PNG an agent can eyeball. It's the prerequisite for any
         visual self-check, and there's nothing to screenshot before this line — Playwright (the
         committed script, **not** the MCP) is the chosen tool; rationale in docs/TESTING.md.
-- [ ] Golden state-hash + golden **atomic-action trace** over ~1000 ticks; invariants each tick.
+- [x] Golden state-hash + golden **atomic-action trace** over ~1000 ticks; invariants each tick.
+      Done — `packages/sim/test/golden-trace.test.ts`. The *integration* golden (the per-mechanic
+      goldens pin one slice each; this pins the whole economy): a self-supplying woodcutter + a carrier
+      placed via the **command log** (HQ + sawmill + both settlers), two finite wood nodes, run **1000
+      ticks** through the real `Simulation.step()` schedule. Pins three complementary fingerprints —
+      the final canonical `hashState()` (`7f89b94d`), the ordered **atomic-action trace** (33
+      `atomicCompleted` events as `"tick:entity:atomicId"` — 24 harvest / 23 pileup / 22 pickup, the
+      behavioral record that says *which* behavior diverged and *when*, not just *that* state did), and
+      the production count (8 planks). `CORE_INVARIANTS` run **after every tick** (not just at the end),
+      so a transient break is caught at the exact tick. **Hands-on:** the real 1000-tick run →
+      hash `7f89b94d`, 33-entry trace, 8 planks, **0** invariant violations, byte-identical across two
+      same-seed runs; 289 tests / check / build green.
 - **Exit:** click to place one workplace; a settler autonomously supplies it via atomics; carrier
   hauls output; deterministic, invariant-clean, replay-equal.
 
