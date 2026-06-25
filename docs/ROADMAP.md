@@ -359,10 +359,10 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
         `cellManhattanDistance` is the fixed-point heuristic seed for the pathfinder. **Hands-on:** built
         `dist/` on a 5×4 grid w/ a 4-cell water river → 16 walkable / 4 blocked, canonical neighbour
         order stable across rebuilds, water dropped from walkable edges, absent-typeId guard fires.
-        **Still to do:** a real per-type walk-cost field (uniform ONE for now), and feeding the graph
-        from a decoded map's tile grid. (The "real per-type walk-cost field" is a non-goal —
-        confirmed on inspecting `landscapetypes.ini`: it has no movement-weight property, only
-        `maximumValency` + placement-layer flags; uniform unit cost is faithful to the engine.)
+        **Still to do:** feed the graph from a decoded map's tile grid. (Walk cost stays uniform
+        ONE — a non-goal to vary, confirmed on inspecting `landscapetypes.ini`: it has no
+        movement-weight property, only `maximumValency` + placement-layer flags; uniform unit cost
+        is faithful to the engine.)
       - [x] **Wired as the `world.terrain` resource.** `SimOptions` now takes an optional `map:
         TerrainMap`; the `Simulation` builds the graph once at construction (`buildTerrainGraph`) and
         owns it as `readonly terrain?: TerrainGraph`, surfacing it on every system's `SystemContext.terrain`
