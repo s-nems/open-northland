@@ -177,7 +177,13 @@ describe('pathfindingSystem — mapless no-op', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = sim.world.create();
     sim.world.add(e, PathRequest, { start: 0, goal: 1, failed: false });
-    const ctx: SystemContext = { content: testContent(), rng: sim.rng, tick: 0, events: sim.events };
+    const ctx: SystemContext = {
+      content: testContent(),
+      rng: sim.rng,
+      tick: 0,
+      events: sim.events,
+      commands: sim.commands,
+    };
     expect(() => pathfindingSystem(sim.world, ctx)).not.toThrow();
     expect(sim.world.get(e, PathRequest).failed).toBe(false);
   });
