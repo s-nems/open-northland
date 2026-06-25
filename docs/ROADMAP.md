@@ -853,8 +853,12 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
   hauls output; deterministic, invariant-clean, replay-equal.
 
 ## Phase 3 — Economy, progression & population
-- [ ] Full **goods graph** as an explicit IR artifact (extract from `goodtypes.productionInputGoods`):
+- [x] Full **goods graph** as an explicit IR artifact (extract from `goodtypes.productionInputGoods`):
       raw → flour/plank/tool → bread/weapons, two food tiers (`food_simple`/`food_extra`).
+      Done — the *edges* (`productionInputs`) and *node layers* (`classification`: raw/in-house/input,
+      from the `[goodtype]` flags) are both extracted, and the output side is joined into building
+      `recipe`s (see sub-items). The graph is the validated `content/ir.json` goods table, not a separate
+      file — one source of truth the sim + future HUD read.
       - [x] **Input side extracted** — `extractGoods` (`decoders/ini.ts`) now captures each good's
             `productionInputGoods` onto `GoodType.productionInputs` (`@vinland/data` schema): the flat
             multiset is collapsed to `{ goodType, amount }` pairs where a **repeated good id encodes the
@@ -878,8 +882,18 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             `npm run pipeline` on the real game → **26/28 workplaces** carry a recipe (22 with non-empty
             inputs), 0 dangling refs, recognisably the original economy (`mill: wheat→flour`,
             `bakery: water+flour→bread`, `brewery: water+honey→mead`); the sim no longer needs the
-            synthetic sawmill stand-in. **Still open:** the per-cycle timing (above) and the
-            raw→tier→food-tier graph layering.
+            synthetic sawmill stand-in. **Still open:** the per-cycle timing (above).
+      - [x] **Node layers (raw → produced → food tiers)** — `extractGoods` (`decoders/ini.ts`) now
+            captures each `[goodtype]`'s boolean classification flags onto `GoodType.classification`
+            ({@link GoodClassification} in `@vinland/data` schema): `isProducedOnMapFlag` →
+            `producedOnMap` (a raw good gathered from the map — wheat/stone/wood/iron), `isProducedInHouseFlag`
+            → `producedInHouse` (a workplace output — flour/bread/`food_simple`/`food_extra`),
+            `isInputGoodFlag` → `inputGood` (consumable as a recipe input). Three **independent**
+            booleans, not a mutually-exclusive enum — the source sets several at once (`leather` carries
+            all three). These node layers plus the `productionInputs` edges are the explicit goods-graph
+            IR. **Hands-on:** `npm run pipeline` on the real game → 65 goods → 16 raw / 48 in-house / 17
+            input; `food_simple`/`food_extra` correctly in-house terminal, `flour` in-house+input (the
+            intermediate tier), `wheat`/`stone`/`wood` raw+input.
 - [ ] NeedsSystem: hunger + non-food needs implied by atomics (eat, plus deferred-but-named
       `pray`/`enjoy`/social/`make_love`).
 - [ ] **ProgressionSystem** — experience + tech graph: `humanjobexperiencetypes` per-specialization

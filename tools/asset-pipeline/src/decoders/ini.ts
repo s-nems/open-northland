@@ -231,6 +231,7 @@ export function extractGoods(sections: readonly RuleSection[], src: SourceRef): 
         name,
         atomics: extractGoodAtomics(sec),
         productionInputs: extractProductionInputs(sec),
+        classification: extractGoodClassification(sec),
         source: { file: src.file, block: 'goodtype', layer: src.layer ?? 'base' },
       }),
     );
@@ -251,6 +252,25 @@ function extractProductionInputs(sec: RuleSection): { goodType: number; amount: 
     counts.set(id, (counts.get(id) ?? 0) + 1);
   }
   return [...counts].map(([goodType, amount]) => ({ goodType, amount }));
+}
+
+/**
+ * Reads a `[goodtype]`'s boolean classification flags (`1`/`0` ints) onto the node-layer
+ * {@link GoodClassification}: `isProducedOnMapFlag` (raw/map-gathered), `isProducedInHouseFlag`
+ * (workplace-produced), `isInputGoodFlag` (consumable as a recipe input). An absent flag is `false`.
+ * These layers + the `productionInputGoods` edges are the explicit goods-graph IR (raw → produced →
+ * food tiers) the Phase-3 economy reads.
+ */
+function extractGoodClassification(sec: RuleSection): {
+  producedOnMap: boolean;
+  producedInHouse: boolean;
+  inputGood: boolean;
+} {
+  return {
+    producedOnMap: getInt(sec, 'isProducedOnMapFlag') === 1,
+    producedInHouse: getInt(sec, 'isProducedInHouseFlag') === 1,
+    inputGood: getInt(sec, 'isInputGoodFlag') === 1,
+  };
 }
 
 /**
