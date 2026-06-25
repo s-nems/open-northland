@@ -127,10 +127,16 @@ export const BuildingType = z.object({
   /**
    * Good type ids this workplace can produce (`logichousetype` `logicproduction`), in file order.
    * The *output side only*: the original house table names what a workplace makes, not the input
-   * goods or per-cycle amounts/timing — those come from `goodtypes.productionInputGoods` when the
-   * full goods graph is materialized (docs/ROADMAP.md Phase 3), at which point `recipe` is filled.
+   * goods. The pipeline's `fillBuildingRecipes` joins each output good through that good's
+   * `goodtypes.productionInputGoods` (→ {@link GoodType.productionInputs}) to materialize `recipe`.
    */
   produces: z.array(TypeId).default([]),
+  /**
+   * The production recipe, filled by the pipeline's output-side join (`fillBuildingRecipes`) for a
+   * workplace with a non-empty `produces`; absent on a non-producing building. `inputs` come from the
+   * produced good's `productionInputs`, `outputs` = each `produces` good at amount 1; `ticks` is the
+   * schema default until the per-tribe atomic-timing pass pins it (docs/FIDELITY.md).
+   */
   recipe: Recipe.optional(),
   source: Provenance.optional(),
 });

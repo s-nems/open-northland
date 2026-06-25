@@ -48,6 +48,7 @@ import {
   extractPaletteIndex,
   extractTribes,
   extractWeapons,
+  fillBuildingRecipes,
   parseIniSections,
 } from './decoders/ini.js';
 import { decodeLib } from './decoders/lib.js';
@@ -603,6 +604,9 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     weapons.push(...extractWeapons(sections, src));
   }
   const maps = await decodeMapTree(args.game);
+  // Output-side recipe join: a workplace's `produces` output good -> that good's `productionInputs`
+  // materializes each producing building's `recipe` (cross-table, so after both tables are built).
+  const buildingsWithRecipes = fillBuildingRecipes(buildings, goods);
   return parseContentSet({
     manifest: {
       version: IR_VERSION,
@@ -610,7 +614,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     },
     goods,
     jobs,
-    buildings,
+    buildings: buildingsWithRecipes,
     weapons,
     landscape,
     tribes,
