@@ -981,6 +981,26 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             trace + 8-plank output are unchanged** (no pray DRIVE yet: piety only rises, never reaching a
             threshold over the 1000-tick slice). **Still open:** the pray drive (the need→satisfier→
             temple-target lookup), then `enjoy` id 17 / `make_love` id 78 the same way.
+      - [x] **Pray drive** (the first **target-bound** need — walk to a temple) — the AI atomic planner
+            (`systems/ai.ts` `atomicPlanner`) now chooses a `pray` atomic (id **12**, the original's
+            `MAP_MOVEABLES_ATOMIC_ACTION_TYPE_PRAY` / `setatomic 6 12 "..._pray"`) when a settler's
+            `piety >= PIETY_PRAY_THRESHOLD` (=¾·ONE), mirroring the eat/sleep drives but doing the
+            genuinely-new **need→satisfier→building-target lookup**: it finds the nearest **temple** and
+            sets a `MoveGoal` to walk there (unlike eat at a store / sleep in place — the first need that
+            requires reaching a specific *building*), and on arrival starts the atomic. The new `pray`
+            `AtomicEffect` (`commands.ts`/`atomic.ts`) zeroes `piety` on completion (no goods consumed —
+            like sleep), closing the rise→pray→reset loop. Placed **below** eat + sleep (survival outranks
+            devotion); a devout settler with no temple anywhere falls through to normal work (piety stays
+            pinned at ONE). A temple is recognised by its structural signature (`isTemple`, `shared.ts`):
+            a `kind === 'workplace'` building with **no recipe, no workers, no stock** — the original's
+            `HOUSE_TYPE_WORK_TEMPLE` (logictype 37, logicmaintype 3) carries none. APPROXIMATED (see
+            FIDELITY.md): the temple→pray-need link isn't a readable flag, so it is inferred from that
+            signature (like food→eat-slot); the ¾·ONE trigger is unpinned like eat/sleep. **Hands-on:**
+            a devout settler a few cells from a temple walks over and prays through the real schedule,
+            piety resets to 0, peak never breached ONE, 0 invariant violations, two seed-5 runs
+            hash-equal; the golden trace + state hash are untouched (the slice never spawns a temple, so
+            no settler ever crosses the pray threshold). **Still open:** `enjoy` id 17 / `make_love` id 78
+            the same target-bound way.
 - [ ] **ProgressionSystem** — experience + tech graph: `humanjobexperiencetypes` per-specialization
       XP, `trainforjob` schooling, `needfor*`/`allow*`/`jobEnables*` gating goods/houses/jobs/vehicles.
 - [ ] JobSystem assignment across many workplaces; multiple carriers + vehicle stock slots.

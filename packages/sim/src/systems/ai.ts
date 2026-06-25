@@ -16,7 +16,7 @@ import type { Entity, World } from '../ecs/world.js';
 import { type Fixed, fx } from '../fixed.js';
 import type { CellId, TerrainGraph } from '../terrain.js';
 import type { System, SystemContext } from './context.js';
-import { buildingWorkerJobs, inRange, isFood, recipeOf, stockCapacity } from './shared.js';
+import { buildingWorkerJobs, inRange, isFood, isTemple, recipeOf, stockCapacity } from './shared.js';
 
 /**
  * AISystem — the settler planner: two layered passes per tick.
@@ -136,6 +136,33 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       continue;
     }
 
+    // The PRAY DRIVE (below eat + sleep — survival needs outrank devotion): the first **target-bound**
+    // need. Unlike eat (at a store) / sleep (in place), praying requires WALKING TO A TEMPLE, so the
+    // planner does a need→satisfier→building-target lookup: find the nearest temple, set a MoveGoal to
+    // it, and once standing on it start the `pray` atomic (which zeroes piety on completion). A piety
+    // ≥ threshold settler with no temple anywhere falls through to normal work (piety stays clamped at
+    // ONE — a settlement with no temple has no way to pray, like the original).
+    if (settler.piety >= PIETY_PRAY_THRESHOLD) {
+      const temple = nearestTemple(world, ctx, terrain, here);
+      if (temple !== null) {
+        const cell = entityCell(world, terrain, temple);
+        if (cell === here) {
+          startAtomic(
+            world,
+            e,
+            PRAY_ATOMIC_ID,
+            { kind: 'pray' },
+            atomicDuration(ctx, settler, PRAY_ATOMIC_ID),
+            temple,
+          );
+        } else {
+          world.add(e, MoveGoal, { cell });
+        }
+        continue;
+      }
+      // Devout but no temple reachable: fall through to normal work (piety stays pinned at ONE).
+    }
+
     // The production operator: a settler empty-handed and standing on a workplace whose `workers`
     // names its job is "at work" — the ProductionSystem's worker-presence gate runs on its being
     // there. Leave it put (don't send it off to harvest/haul, which would unstaff the workplace).
@@ -240,6 +267,23 @@ const SLEEP_ATOMIC_ID = 8;
  * trigger until that vocabulary is decoded and calibration-by-observation pins the real cadence.
  */
 const FATIGUE_SLEEP_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
+
+/**
+ * The numeric atomic id a settler runs to pray (the original's `MAP_MOVEABLES_ATOMIC_ACTION_TYPE_PRAY
+ * = 12`, bound `setatomic 6 12 "..._pray"` for the civilist job across tribes; see docs/FIDELITY.md).
+ * Like the other ids it is the content cross-reference / animation join key; the typed `pray` effect
+ * is the behavior (zero piety, AtomicSystem).
+ */
+const PRAY_ATOMIC_ID = 12;
+
+/**
+ * Piety level (fixed-point, in [0, ONE]) at or above which a settler stops working to pray, mirroring
+ * {@link HUNGER_EAT_THRESHOLD}/{@link FATIGUE_SLEEP_THRESHOLD} at ¾ of a full bar. APPROXIMATED (see
+ * docs/FIDELITY.md): like the eat/sleep triggers, the original drives praying off the per-animation
+ * devotion events with no single readable "pray at X" threshold; this constant is the slice's
+ * deterministic pray trigger until that vocabulary is decoded and calibration-by-observation lands.
+ */
+const PIETY_PRAY_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
 
 /** The numeric atomic id for a carrier picking goods up out of a store (the original's generic
  *  pickup=22; like {@link PILEUP_ATOMIC_ID} the readable data binds no per-good pickup, and the id is
@@ -416,6 +460,31 @@ function nearestFoodStore(
         bestCell = cell;
       }
       break; // this store's lowest-id food good is its candidate; move to the next store
+    }
+  }
+  return best;
+}
+
+/**
+ * The nearest {@link isTemple temple} a devout settler should walk to in order to pray, by Manhattan
+ * distance from `here`, ascending-cell-id tie-break, scanned in canonical entity-id order. Returns the
+ * temple entity or null if no temple exists. This is the piety need's satisfier→building-target lookup
+ * — the genuinely-new piece a target-bound need introduces (eat resolves to a store, sleep to no site;
+ * pray resolves to a specific building the settler must reach).
+ */
+function nearestTemple(world: World, ctx: SystemContext, terrain: TerrainGraph, here: CellId): Entity | null {
+  let best: Entity | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  let bestCell = Number.POSITIVE_INFINITY;
+  for (const e of world.canonicalEntities()) {
+    if (!world.has(e, Building) || !world.has(e, Position)) continue;
+    if (!isTemple(world, ctx, e)) continue;
+    const cell = entityCell(world, terrain, e);
+    const dist = manhattan(terrain, here, cell);
+    if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
+      best = e;
+      bestDist = dist;
+      bestCell = cell;
     }
   }
   return best;

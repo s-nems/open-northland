@@ -110,6 +110,30 @@ export function isFood(ctx: SystemContext, goodType: number): boolean {
 }
 
 /**
+ * Whether a building is a **temple** — the satisfier site for the piety need (where a settler runs
+ * the `pray` atomic). The original's "work temple" (`logichousetype` `logictype 37`, the
+ * `HOUSE_TYPE_WORK_TEMPLE` constant) is a `logicmaintype 3` workplace that, unlike a real production
+ * workplace, declares **no `logicworker`, no `logicstock`, no `logicproduction`** — so it surfaces in
+ * the IR as `kind === 'workplace'` with an empty `workers`, empty `stock`, and **no `recipe`**. That
+ * "workplace with nothing to make and no one to staff it" shape is how a temple is told apart from a
+ * sawmill/mill (which always carry a recipe + workers).
+ *
+ * FIDELITY (approximated — see docs/FIDELITY.md): the temple→pray need→satisfier link lives below the
+ * readable rule files (the original binds the religious building to the pray slot at the engine level,
+ * not in `houses.ini`), so the satisfier is *inferred* from this structural signature — exactly like
+ * the food→eat-slot binding ({@link isFood}) is inferred from the `food_` id prefix. Refine to a
+ * content flag if the building→need binding is later decoded. Cross-system: the AI pray-drive planner
+ * uses it to find the nearest temple to walk to.
+ */
+export function isTemple(world: World, ctx: SystemContext, building: Entity): boolean {
+  const b = world.tryGet(building, Building);
+  if (b === undefined) return false;
+  const type = ctx.content.buildings.find((t) => t.typeId === b.buildingType);
+  if (type === undefined) return false;
+  return type.kind === 'workplace' && type.recipe === undefined && type.workers.length === 0;
+}
+
+/**
  * Whether a raw cell id is a valid index into the terrain graph (`0..cellCount-1`, integer). A
  * request/goal id outside the grid is boundary input — callers treat it as "no route" rather than
  * letting it throw inside the search.

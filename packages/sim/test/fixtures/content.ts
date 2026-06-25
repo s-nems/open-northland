@@ -51,6 +51,14 @@ export function testContent(): ContentSet {
         ],
         recipe: { inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 },
       },
+      {
+        // The "work temple" (original logictype 37, logicmaintype 3): a `workplace` kind with NO
+        // workers, NO stock, NO recipe — the structural signature isTemple() recognises as the pray
+        // satisfier site. A devout settler walks here and runs the pray atomic to reset its piety.
+        typeId: 3,
+        id: 'temple',
+        kind: 'workplace',
+      },
     ],
     landscape: [
       { typeId: 0, id: 'grass', walkable: true, buildable: true },
@@ -69,6 +77,9 @@ export function testContent(): ContentSet {
           { jobType: 1, atomicId: 24, animation: 'viking_chop' },
           { jobType: 1, atomicId: 10, animation: 'viking_eat' },
           { jobType: 1, atomicId: 8, animation: 'viking_sleep' },
+          // The pray atomic (12, the original's pray-slot id) binds to "viking_pray" — the planner
+          // resolves its duration through this binding -> atomicAnimations length below.
+          { jobType: 1, atomicId: 12, animation: 'viking_pray' },
         ],
       },
     ],
@@ -76,6 +87,7 @@ export function testContent(): ContentSet {
       { id: 'viking_chop', name: 'viking_chop', length: 3 },
       { id: 'viking_eat', name: 'viking_eat', length: 5 },
       { id: 'viking_sleep', name: 'viking_sleep', length: 6 },
+      { id: 'viking_pray', name: 'viking_pray', length: 7 },
     ],
   });
 }

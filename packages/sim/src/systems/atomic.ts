@@ -77,6 +77,12 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       // NeedsSystem's per-tick fatigue rise to close the rise→sleep→reset loop.
       if (world.has(settler, Settler)) world.get(settler, Settler).fatigue = fx.fromInt(0);
       return;
+    case 'pray':
+      // Praying clears piety (no goods consumed — like sleeping, devotion is free). Pairs with the
+      // NeedsSystem's per-tick piety rise to close the rise→pray→reset loop. The walk to a temple is
+      // the planner's job (a target-bound need); by the time this fires the settler is standing on one.
+      if (world.has(settler, Settler)) world.get(settler, Settler).piety = fx.fromInt(0);
+      return;
     case 'move':
     case 'idle':
       // Pure markers: the actual walking is the navigation layer (PathFollow/MovementSystem). The
