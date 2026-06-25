@@ -1125,10 +1125,29 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             `Simulation.step()` — a sawmill (output PLANK gated `jobEnablesGood 1 2`) staffed by a
             carpenter but with **no woodcutter** → **0 planks, wood untouched at 5**; spawn a woodcutter
             in the tribe → 1 plank; a woodcutter in a *different* tribe leaves it gated; two seed-7 runs
-            hash-equal (`bb6ef2e9`). **Next:** the XP→level→unlock *curve* (interpret `amount`/
-            `experienceFactor`/`baseRepeatCounter` into a competence tier that consumes these
-            `need`/`train` thresholds to gate jobs/goods), and consume the `job`/`vehicle` jobEnables
-            edge kinds as their JobSystem/vehicle slices land.
+            hash-equal (`bb6ef2e9`).
+      - [x] **`needfor*` XP-threshold read side** — `experienceRequirementMet` + `settlerMeetsNeed`
+            (`systems/progression.ts`) interpret the `needfor{job,good}` thresholds (`TribeType.jobRequirements`,
+            `requirement === 'need'`) against the **accruing** `Settler.experience` — the *threshold* half
+            of the XP→unlock curve, the first piece to consume the XP `grantWorkExperience` produces.
+            `experienceRequirementMet(experience, req)` sums the settler's accrued XP across the line's
+            `experienceTypes` (keyed by the **same** `humanjobexperiencetypes` track typeIds the accrual
+            writes) and compares to `amount`; `settlerMeetsNeed(ctx, tribe, target, targetId, experience)`
+            checks **all** the `need` requirements gating one `(target, targetId)` are met. `train`
+            requirements are skipped (a schooling COST at a training house, not an accrued-XP threshold);
+            a target with no `need` requirement / a tribe absent from content thresholds nothing. Pure read
+            over content + the XP Map (no RNG/wall-clock; sum in the fixed `experienceTypes` order).
+            **Read-side helper only — no planner/system consumes it yet** (like `jobEnables` was data-only
+            before its gate). APPROXIMATED (FIDELITY): a two-`expType` line is read as "sum the named
+            tracks"; the `baseRepeatCounter`→competence-tier curve stays deferred. **Hands-on:** the real
+            game IR → **305 `need` requirements across 41 tribes** (26 distinct expTypes, 23 resolving to a
+            real track typeId; range 3..75); `experienceRequirementMet` on a real `needforjob 19 10 45`
+            gates at the boundary (9 XP → false, 10 → true), is monotone non-decreasing (first met exactly
+            at `amount`, never re-locks), a `train` line is vacuously met.
+            **Next:** consume `settlerMeetsNeed` from a planner/JobSystem so a settler only takes a gated
+            job/good once its XP clears the threshold (the *who-may-do-it* gate, atop the tribe-presence
+            `jobEnables` gate); interpret `baseRepeatCounter` into the multi-tier competence curve; and
+            consume the `job`/`vehicle` jobEnables edge kinds as their JobSystem/vehicle slices land.
 - [ ] JobSystem assignment across many workplaces; multiple carriers + vehicle stock slots.
 - [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`)
       → population capacity → the births→housing→births loop.
