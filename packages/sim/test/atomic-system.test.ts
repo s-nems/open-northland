@@ -203,6 +203,7 @@ describe('atomicSystem — effects', () => {
       jobType: null,
       hunger: ONE,
       fatigue: fx.fromInt(0),
+      piety: fx.fromInt(0),
       experience: new Map(),
     });
     startAtomic(sim, settler, { kind: 'eat', goodType: WOOD }, 1);

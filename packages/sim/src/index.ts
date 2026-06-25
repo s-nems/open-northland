@@ -50,6 +50,7 @@ export {
   stockNonNegative,
   hungerInRange,
   fatigueInRange,
+  pietyInRange,
   buildingSane,
 } from './invariants.js';
 

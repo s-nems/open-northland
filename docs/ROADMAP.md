@@ -962,6 +962,25 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             untouched (fatigue reaches ¾·ONE only at tick ~6144). **Still open:** the target-bound
             non-food needs (`pray` id 12 / `enjoy` id 17 / `make_love` id 78 — each satisfied at a
             site, needing a need→satisfier→building-target lookup).
+      - [x] **Piety rise** (the first target-bound non-food need — the rise half) — `needsSystem` now
+            also raises every {@link Settler}'s `piety` by `PIETY_RISE_PER_TICK` (=ONE/16384, half
+            fatigue's rate so a settler prays about once per two sleeps) each tick, clamped at ONE (a new
+            `pietyInRange` core invariant). Piety is the first need satisfied at a **target site** rather
+            than at a store (eat) or in place (sleep): the original pairs it with the `pray` atomic (id
+            **12**, bound for the civilist job in every tribe's `tribetypes` `setatomic 6 12 "..._pray"`)
+            run **at a temple**. This is only the rise half — the *reset* (the `pray` atomic) and the
+            *drive* (walk to a temple when piety crosses a threshold, the genuinely-new need→satisfier→
+            building-target lookup) follow, the same rise-then-drive split hunger and fatigue went
+            through. APPROXIMATED (see FIDELITY.md): like hunger/fatigue, the original ticks devotion via
+            per-animation events on a numbered channel needing the atomic `event (type,value)` decode; a
+            flat per-tick rate is the bounded "devotion lapses, praying restores it" core. **Hands-on:**
+            20000 ticks through the real `Simulation.step()` schedule → piety rises and **clamps exactly
+            at ONE** at tick 16384, then pinned; piety ≤ fatigue ≤ hunger every tick (slowest rate rises
+            least), **0** invariant violations, two seed-7 runs hash-equal (`0a20b59b`). The golden state
+            hash moved (`ff907e9a`→`d780b4ad`) — settlers now carry a third need field — but the **atomic
+            trace + 8-plank output are unchanged** (no pray DRIVE yet: piety only rises, never reaching a
+            threshold over the 1000-tick slice). **Still open:** the pray drive (the need→satisfier→
+            temple-target lookup), then `enjoy` id 17 / `make_love` id 78 the same way.
 - [ ] **ProgressionSystem** — experience + tech graph: `humanjobexperiencetypes` per-specialization
       XP, `trainforjob` schooling, `needfor*`/`allow*`/`jobEnables*` gating goods/houses/jobs/vehicles.
 - [ ] JobSystem assignment across many workplaces; multiple carriers + vehicle stock slots.

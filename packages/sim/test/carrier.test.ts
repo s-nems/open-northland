@@ -61,6 +61,7 @@ function carrierAt(sim: Simulation, x: number, y: number): Entity {
     jobType: CARRIER,
     hunger: fx.fromInt(0),
     fatigue: fx.fromInt(0),
+    piety: fx.fromInt(0),
     experience: new Map(),
   });
   return e;

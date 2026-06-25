@@ -33,16 +33,34 @@ export const HUNGER_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(4096));
 export const FATIGUE_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(8192));
 
 /**
+ * How much a settler's piety need rises each tick, in fixed-point [0,ONE] units.
+ *
+ * FIDELITY (approximated — see docs/FIDELITY.md): the first **target-bound** non-food need (satisfied
+ * by praying *at a temple*, not in place / at a store). Like {@link HUNGER_RISE_PER_TICK} and
+ * {@link FATIGUE_RISE_PER_TICK}, the original drives it through per-animation `atomicanimations.ini`
+ * events on a numbered channel (type 1 = rest, type 2 = hunger; the religious channel is another id),
+ * which needs the atomic `event (type,value)` vocabulary decoded (the same deferred Phase-1
+ * extraction). For now piety rises at a CONSTANT per-tick rate: the basic "devotion lapses over time,
+ * praying restores it" core. Set SLOWER than fatigue (ONE/16384 ≈ one prayer per two sleeps) — a
+ * spiritual need is satisfied far less often than eating or resting, the original's rough cadence; the
+ * constant is the recorded faithful-target stand-in. The *reset* (the `pray` atomic id 12) and the
+ * *drive* (walk to a temple when piety crosses a threshold) are a later slice — this is the rise half.
+ */
+export const PIETY_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(16384));
+
+/**
  * NeedsSystem — settlers get hungry and tired over time.
  *
- * Each tick every {@link Settler}'s `hunger` rises by {@link HUNGER_RISE_PER_TICK} and `fatigue` by
- * {@link FATIGUE_RISE_PER_TICK}, each clamped at `ONE` (a fully-spent settler stays pinned at the top
- * of its bar until it acts — the `hungerInRange`/`fatigueInRange` invariants require the need ∈
- * `[0, ONE]`). The complementary side is wired for hunger (the `eat` atomic resets `hunger` to 0,
- * AtomicSystem); the `sleep` reset that pairs with fatigue, and the *drive* to sleep (the AI planner
- * choosing a `sleep` atomic when fatigue crosses a threshold), are a later slice — the same rise-then-
- * drive split hunger went through. The other named non-food needs (`pray`/`enjoy`/social/`make_love`,
- * each satisfied at a target site) follow. This system is the needs-rise half.
+ * Each tick every {@link Settler}'s `hunger` rises by {@link HUNGER_RISE_PER_TICK}, `fatigue` by
+ * {@link FATIGUE_RISE_PER_TICK}, and `piety` by {@link PIETY_RISE_PER_TICK}, each clamped at `ONE` (a
+ * fully-spent settler stays pinned at the top of its bar until it acts — the `hungerInRange`/
+ * `fatigueInRange`/`pietyInRange` invariants require the need ∈ `[0, ONE]`). The complementary side is
+ * wired for hunger (the `eat` atomic resets `hunger` to 0, AtomicSystem) and fatigue (the `sleep`
+ * atomic resets `fatigue`, with the sleep *drive* in the AI planner). Piety is the first **target-
+ * bound** need (satisfied by `pray` *at a temple*, not in place / at a store); its reset (the `pray`
+ * atomic id 12) and *drive* (a settler walking to a temple when piety crosses a threshold) are a later
+ * slice — the same rise-then-drive split hunger and fatigue went through. The other target-bound needs
+ * (`enjoy` id 17 / `make_love` id 78) follow. This system is the needs-rise half.
  *
  * Determinism: no RNG, no wall-clock — each need advances by a fixed Fixed step that divides ONE
  * exactly (no accumulated rounding drift), so identical inputs yield byte-identical state. Settlers
@@ -56,5 +74,7 @@ export const needsSystem: System = (world) => {
     settler.hunger = risenHunger > ONE ? ONE : risenHunger;
     const risenFatigue = fx.add(settler.fatigue, FATIGUE_RISE_PER_TICK);
     settler.fatigue = risenFatigue > ONE ? ONE : risenFatigue;
+    const risenPiety = fx.add(settler.piety, PIETY_RISE_PER_TICK);
+    settler.piety = risenPiety > ONE ? ONE : risenPiety;
   }
 };

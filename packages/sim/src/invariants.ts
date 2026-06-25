@@ -45,6 +45,16 @@ export const fatigueInRange: Invariant = (world) => {
   return out;
 };
 
+/** Settler piety stays within [0, ONE] (the NeedsSystem clamps the rise; this catches a leak). */
+export const pietyInRange: Invariant = (world) => {
+  const out: string[] = [];
+  for (const e of world.query(Settler)) {
+    const p = world.get(e, Settler).piety;
+    if (p < 0 || p > ONE) out.push(`entity ${e}: piety out of range (${p})`);
+  }
+  return out;
+};
+
 /** Building construction progress and level stay sane. */
 export const buildingSane: Invariant = (world) => {
   const out: string[] = [];
@@ -60,6 +70,7 @@ export const CORE_INVARIANTS: readonly Invariant[] = [
   stockNonNegative,
   hungerInRange,
   fatigueInRange,
+  pietyInRange,
   buildingSane,
 ];
 

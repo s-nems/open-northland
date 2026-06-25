@@ -61,6 +61,7 @@ function sawmill(
       jobType: CARPENTER,
       hunger: fx.fromInt(0),
       fatigue: fx.fromInt(0),
+      piety: fx.fromInt(0),
       experience: new Map(),
     });
     sim.world.add(worker, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
@@ -193,6 +194,7 @@ describe('productionSystem — worker-presence gate', () => {
       jobType: 1,
       hunger: fx.fromInt(0),
       fatigue: fx.fromInt(0),
+      piety: fx.fromInt(0),
       experience: new Map(),
     });
     sim.world.add(wrong, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
