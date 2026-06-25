@@ -107,6 +107,12 @@ export function validateCrossReferences(set: ContentSet): void {
       errors.push(`weapon "${w.id}" references unknown jobType ${w.jobType}`);
   }
 
+  // An armor's `goodType` (the good that IS the armor), when set, must resolve into the good table.
+  for (const a of set.armor) {
+    if (a.goodType !== undefined && !goodIds.has(a.goodType))
+      errors.push(`armor "${a.id}" references unknown goodType ${a.goodType}`);
+  }
+
   // Each experience track names its owning job (always) and, when good-specific, the good it trains on.
   for (const x of set.jobExperience) {
     if (!jobIds.has(x.jobType))

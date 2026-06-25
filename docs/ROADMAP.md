@@ -43,7 +43,7 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
   hauls outputs to a store; the 1000-tick golden hash + trace stay stable. **(Headless slice + golden
   proven; the real-atlas bind + final human pixel check remain.)**
 
-## Phase 3 — Economy, progression & population  ← **current target**
+## Phase 3 — Economy, progression & population  (substance complete; only human-gated render checks remain)
 - [x] **Goods graph** — explicit IR artifact: input side + output-side recipe join +
       raw→produced→food node layers. → [archive](ROADMAP-ARCHIVE.md).
 - [x] **NeedsSystem** — hunger + the non-food needs (eat, fatigue→sleep, piety→pray, enjoyment,
@@ -179,9 +179,19 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `weapontypes`/`armortypes` CombatSystem read side.
 - **Exit:** a self-sustaining, progressing single-tribe settlement you can grow.
 
-## Phase 4 — Conflict & content breadth (N tribes)
+## Phase 4 — Conflict & content breadth (N tribes)  ← **current target**
 - [ ] CombatSystem from `weapontypes`/`armortypes` (a large subsystem: many soldier classes, armor
-      tiers, named heroes, amulets/potions — scope it honestly).
+      tiers, named heroes, amulets/potions — scope it honestly). **Armor data now extracted** — the
+      `armortypes` table (`ArmorType`, base `Data/logic/armortypes.ini`: 4 classes woolen/leather/chain/plate,
+      each with a `blockingValue` damage-mitigation + a `goodType`) lands in the IR alongside the
+      already-extracted `weapontypes` (`WeaponType`, with per-armor-class `damage`). This **closes the
+      data join the combat read side needs**: a weapon's `damagevalue <armorClass>` keys were unresolvable
+      until the armor-class table existed; now class 1..4 resolve to an armor record (class 0 = unarmored,
+      no record). **Next:** the **CombatSystem read side** — a pure derived view resolving a weapon's
+      damage vs. a target's armor `blockingValue` (analogous to the HUD read views), then the soldier-class
+      atomics. KNOWN GAP to handle there: real weapon `damagevalue` also references classes 6/7 with no
+      `[armortype]` record (higher tiers outside the 4-record table) — treat an absent class as unarmored
+      or surface it, don't crash.
 - [ ] **N data-defined tribes** (viking/frank/saracen/byzantine/egypt), asymmetry expressed through
       each tribe's atomic bindings + `allow*`/`needfor*` graph — never hardcode "two".
 - [ ] **Animals as non-controllable tribes** (`animaltypes.ini`: aggression, groups, hitpoints) —

@@ -880,6 +880,11 @@ describe('buildIr / resolveIniSources', () => {
       join(game, 'Data', 'logic', 'vehicletypes.ini'),
       '[vehicletype]\ntype 1\nname "handcart"\nlogicsize 0\nstockslots 15\npassengerslots 0\n',
     );
+    // Armor's goodtype 7 is the [goodtype] above so its cross-reference resolves.
+    await writeFile(
+      join(game, 'Data', 'logic', 'armortypes.ini'),
+      '[armortype]\nname "leather armor"\ntype 2\nmainType 1\ngoodtype 7\nmaterialType 2\nweight 0\nblockingValue 5\n',
+    );
     await writeFile(
       join(game, 'DataCnmd', 'tribetypes12', 'tribetypes.ini'),
       '[tribetype]\ntype 1\nname "viking"\nsetatomic 3 5 "viking_carry"\n',
@@ -917,6 +922,9 @@ describe('buildIr / resolveIniSources', () => {
     expect(set.vehicles.map((v) => v.id)).toEqual(['handcart']);
     expect(set.vehicles[0]).toMatchObject({ typeId: 1, stockSlots: 15, passengerSlots: 0, logicSize: 0 });
     expect(set.vehicles[0]?.source?.layer).toBe('base');
+    expect(set.armor.map((a) => a.id)).toEqual(['leather_armor']);
+    expect(set.armor[0]).toMatchObject({ typeId: 2, goodType: 7, materialType: 2, blockingValue: 5 });
+    expect(set.armor[0]?.source?.layer).toBe('base');
     expect(set.tribes.map((t) => t.id)).toEqual(['viking']);
     expect(set.atomicAnimations.map((a) => a.name)).toEqual(['viking_carry']);
     // The map.cif logic header is decoded into the IR alongside the .ini type tables.
@@ -941,14 +949,18 @@ describe('buildIr / resolveIniSources', () => {
     // No --mod, so the mod-only tribe/atomic sources are never requested; base files still load.
     const noMod = await resolveIniSources(game, undefined);
     expect(noMod.map((s) => s.file).sort()).toEqual([
+      join('Data', 'logic', 'armortypes.ini'),
       join('Data', 'logic', 'goodtypes.ini'),
       join('Data', 'logic', 'jobtypes.ini'),
       join('Data', 'logic', 'landscapetypes.ini'),
       join('Data', 'logic', 'vehicletypes.ini'),
     ]);
 
-    // Remove a base file: it's resolved-away with a warning, not a throw.
+    // Remove a base file: it's resolved-away with a warning, not a throw. (Drop the armor source
+    // too: it references good 7, which the cross-ref would flag as dangling once goods is empty —
+    // unrelated to this missing-source resilience check.)
     await rm(join(game, 'Data', 'logic', 'goodtypes.ini'));
+    await rm(join(game, 'Data', 'logic', 'armortypes.ini'));
     const partial = await resolveIniSources(game, 'DataCnmd');
     expect(partial.some((s) => s.file.endsWith('goodtypes.ini'))).toBe(false);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/not found.*goodtypes\.ini/));

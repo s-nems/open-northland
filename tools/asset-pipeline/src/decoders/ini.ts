@@ -15,6 +15,7 @@
  * from inspecting `Data/logic/*.ini`. See docs/SOURCES.md and docs/DATA-FORMAT.md.
  */
 import {
+  ArmorType,
   AtomicAnimation,
   BuildingType,
   type GoodAtomics,
@@ -591,6 +592,40 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
     );
   }
   return weapons;
+}
+
+/**
+ * Extracts `[armortype]` sections (base `Data/logic/armortypes.ini` — plain `.ini` despite the
+ * `<CULTURES_CIF_BEGIN>` header line, which the parser ignores like `goodtypes`/`vehicletypes`; the
+ * mod ships no readable twin) into validated {@link ArmorType} IR. An armor's `type` is the **armor
+ * class** a {@link WeaponType.damage} record keys against (`damagevalue <armorClass> <value>`), so
+ * this table makes those keys resolvable — the prerequisite the later CombatSystem read side joins on
+ * (a weapon's damage vs. a target's armor `blockingValue`). Captured per record: `mainType`,
+ * `goodType` (the good that IS the armor — cross-checked against the good table), `materialType`,
+ * `weight`, `blockingValue`. Throws on a section missing the required numeric `type` (matches
+ * {@link extractWeapons}'s throw-on-malformed stance).
+ */
+export function extractArmor(sections: readonly RuleSection[], src: SourceRef): ArmorType[] {
+  const armor: ArmorType[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'armortype') continue;
+    const typeId = requireTypeId(sec, 'armortype', src);
+    const name = getStr(sec, 'name');
+    armor.push(
+      ArmorType.parse({
+        typeId,
+        id: name ? slug(name) : `armor_${typeId}`,
+        name,
+        mainType: getInt(sec, 'mainType'),
+        goodType: getInt(sec, 'goodtype'),
+        materialType: getInt(sec, 'materialType'),
+        weight: getInt(sec, 'weight'),
+        blockingValue: getInt(sec, 'blockingValue'),
+        source: { file: src.file, block: 'armortype', layer: src.layer ?? 'base' },
+      }),
+    );
+  }
+  return armor;
 }
 
 /**

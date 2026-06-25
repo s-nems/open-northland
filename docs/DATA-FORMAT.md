@@ -16,7 +16,8 @@ content/
 │   ├── atomics.json        # AtomicType[]: id, per-tribe animation binding, effect kind (timing TBD)
 │   ├── experience.json     # ExperienceType[]: per-specialization XP factors (progression)
 │   ├── tribes.json         # TribeType[]: incl. the needfor*/allow*/jobEnables* dependency graph
-│   ├── weapons.json        # WeaponType[]
+│   ├── weapons.json        # WeaponType[]  (per-armor-class damage)
+│   ├── armor.json          # ArmorType[]   (armor class + blockingValue — the combat damage-vs-armor join)
 │   ├── animals.json        # AnimalType[]  (non-controllable tribes)
 │   ├── vehicles.json       # VehicleType[]  (incl. stock slots: handcart 15, oxcart 30, ships)
 │   └── landscape.json      # LandscapeType[]: walk cost / valency / land-water (the NAV graph)
