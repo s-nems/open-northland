@@ -92,6 +92,11 @@ test catches the global class, the hash-divergence test catches the rest.
   original assets, so compare the pipeline's decoded PNG/atlas output pixel-for-pixel against it.
   Plus decoder round-trip unit tests against tiny locally-generated fixtures (never commit
   copyrighted fixtures).
+- **Behavioral fidelity to the original** — the pyramid proves the sim is self-consistent and
+  deterministic *against the synthetic fixture*; it does **not** prove a mechanic behaves like
+  *Cultures*. There is no automatic mechanics oracle (OpenVikings' logic tick is a stub). Faithfulness
+  is pinned to the extracted data params / the mod's `.ini` semantics / calibration-by-observation and
+  tracked in **`docs/FIDELITY.md`**, not by a passing test. Green + deterministic ≠ faithful.
 
 ### Visual validation via Playwright — the decision (and why not the MCP)
 

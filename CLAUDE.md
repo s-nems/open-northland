@@ -44,6 +44,13 @@ branding, no original logos/screenshots in README or promo copy. The canonical s
 5. **Dependencies are minimal and readable.** Custom tiny ECS over heavy ECS libs (determinism +
    legibility). Pixi only inside `render`. Zod for schemas. Vitest for tests. Don't add a
    dependency without a reason recorded in the PR/commit.
+6. **Faithful first; deviations are deferred and recorded, never default.** The goal is a faithful
+   rebuild that can *then* be modded — a mechanic must match the original's behavior, pinned to the
+   extracted data params, the mod's `.ini` semantics, or observation of the running original. `npm
+   test` proves the sim is self-consistent and deterministic; **`docs/FIDELITY.md` is where we track
+   whether it is *faithful*** — a different axis no test covers (OpenVikings' sim is a stub, so
+   mechanics have no automatic oracle). Log any conscious divergence in `docs/FIDELITY.md`; never
+   bake it in silently.
 
 ## Commands
 
@@ -112,5 +119,6 @@ this root file lean). Golden rules 1–2 above are the crisp always-on version.
 
 ## Start here
 
-`docs/ARCHITECTURE.md` → `docs/ECS.md` → `docs/DATA-FORMAT.md` → `docs/TESTING.md` → `docs/ROADMAP.md`.
-The roadmap names the current target slice; do the smallest next step toward it.
+`docs/ARCHITECTURE.md` → `docs/ECS.md` → `docs/DATA-FORMAT.md` → `docs/TESTING.md` → `docs/FIDELITY.md` → `docs/ROADMAP.md`.
+The roadmap names the current target slice; do the smallest next step toward it. `docs/FIDELITY.md`
+names whether that slice is *faithful* — the goal tests can't see.
