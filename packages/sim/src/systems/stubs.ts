@@ -17,7 +17,10 @@ const todo =
 
 export const timeSystem: System = todo('TimeSystem'); // advance clock / day / season
 export const terrainSystem: System = todo('TerrainSystem'); // resource regrowth, fertility (cell graph)
-export const progressionSystem: System = todo('ProgressionSystem'); // experience + tech graph (needfor*/allow*/jobEnables*) gates jobs/goods/houses/vehicles
+// XP-accrual is done (progression.ts: grantWorkExperience, called by AtomicSystem on a completed
+// work atomic — XP is event-shaped, so it can't be a poll-driven system). This stub is the
+// remaining *gating/tech-graph* half: needfor*/allow*/jobEnables* gates on jobs/goods/houses/vehicles.
+export const progressionSystem: System = todo('ProgressionSystem');
 export const jobSystem: System = todo('JobSystem'); // match idle settlers to open jobs/workplaces
 export const transportSystem: System = todo('TransportSystem'); // carriers physically haul goods between stores (no global bank)
 export const constructionSystem: System = todo('ConstructionSystem'); // deliver materials, advance build, level houses

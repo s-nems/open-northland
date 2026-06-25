@@ -1056,9 +1056,20 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             `jobExperience` field); `validateCrossReferences` checks every `job`/`good` ref resolves.
             **Hands-on:** `npm run pipeline` on the real game → **70 tracks** (44 good-specific, 26
             general, 3 with a baseRepeatCounter, 26 distinct jobs, experienceFactor 1..250), 0 dangling
-            refs. **Next:** the XP-accrual side — an `Experience` component + a system that grants XP on
-            a completed work atomic against the matching `(job, good)` track, then `trainforjob`/`allow*`
-            gating on top.
+            refs.
+      - [x] **XP-accrual wired** — `grantWorkExperience` (`systems/progression.ts`), called from the
+            AtomicSystem when a settler completes a **work** atomic that yields a good (today: `harvest`).
+            It resolves the matching `(settler.jobType, goodType)` track — preferring the good-specific
+            track over the job's "general" one (`trackFor`) — and adds its `experienceFactor` to the
+            settler's per-specialization XP (`Settler.experience`, keyed by the track's `typeId`). XP is
+            event-shaped (it accrues at the instant a work atomic completes) and sim events are
+            render-only, so the grant lives in the executor's effect-apply, not a poll-driven system —
+            the `progressionSystem` stub stays reserved for the **gating/tech-graph** half. **Hands-on:**
+            the real `Simulation.step()` vertical slice (seed 7, 1000 ticks) → the woodcutter accrues
+            exactly **80 XP** in its wood track (8 harvests × experienceFactor 10), the carrier + mill
+            operator accrue nothing; golden atomic trace + 8-plank output unchanged, state hash moved
+            deliberately (`d1ac5fbe → f0edd147`). **Next:** `trainforjob` schooling + the
+            `needfor*`/`allow*`/`jobEnables*` gating (the XP→level→unlock half) on top.
 - [ ] JobSystem assignment across many workplaces; multiple carriers + vehicle stock slots.
 - [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`)
       → population capacity → the births→housing→births loop.

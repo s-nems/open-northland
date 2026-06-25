@@ -89,5 +89,19 @@ export function testContent(): ContentSet {
       { id: 'viking_sleep', name: 'viking_sleep', length: 6 },
       { id: 'viking_pray', name: 'viking_pray', length: 7 },
     ],
+    // Experience tracks (humanjobexperiencetypes): the woodcutter (job 1) has a wood-specific track
+    // (good 1, the narrow `(job, good)` specialization) and a general track (no good) — so the
+    // ProgressionSystem prefers the wood track when chopping wood and the general one otherwise.
+    jobExperience: [
+      {
+        typeId: 1,
+        id: 'woodcutter_wood',
+        name: 'woodcutter wood',
+        jobType: 1,
+        goodType: 1,
+        experienceFactor: 10,
+      },
+      { typeId: 2, id: 'woodcutter_general', name: 'woodcutter general', jobType: 1, experienceFactor: 1 },
+    ],
   });
 }
