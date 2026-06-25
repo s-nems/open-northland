@@ -69,6 +69,7 @@ is still `approximated` overall, with the basis spelled out.
 | Production **worker-presence gate** (produce only while staffed) | faithful (params) / approximated (behavior) | **Params faithful:** the worker requirement is the building type's `workers` slot (`logicworker <job> <count>` → `extractBuildings`); a workplace produces only while a `Settler` whose `jobType` matches a slot stands on its tile (`workerPresentAt`), matching the original's "a workshop runs only while its worker is inside" — a sawmill with no operator makes no planks. A type with no `workers` slot is unstaffed-by-design and produces freely. **Behavior approximated:** "present == shares the integer tile", "pause-and-hold `elapsed` when the worker leaves / resume on return", and the planner's "pin a settler standing on a workplace it staffs" (`staffsWorkplaceHere`) are *our* minimal model — no JobSystem assignment/keep-worker-at-workplace dispatch yet (that, and what the original does when a worker is mid-walk, has no oracle). The original may run production off an *assigned* (not physically-present) worker; refine when the JobSystem slice + calibration-by-observation land. |
 | Stock capacity enforcement | faithful (params) | per-good caps from the building type's `logicstock <good> <cap> <init>` slots (`extractBuildings` → `stockCapacity`). |
 | Resource depletion (finite nodes) | approximated | `HARVEST_YIELD`=1 unit/harvest (node survives exactly N harvests) — goods-conserving and structurally sound, but the per-node yield/regrowth isn't pinned to a source yet. |
+| Hunger rise (NeedsSystem) | approximated | The original drives hunger through `atomicanimations.ini` `event <at> 2 <delta>` tuples — an activity animation drains a fixed amount (e.g. `event 30 2 -100`) while an `eat_slot_food` animation restores it (`event 30 2 +4000`, candy `+6000`), on a large integer scale where one meal ≈ +4000 (verified across all tribes' `eat_slot_food`/`eat_slot_candy` records). That **event-driven, per-animation** model needs the atomic `event (type,value)` vocabulary decoded (a deferred Phase-1 extraction — ROADMAP risks). For now `needsSystem` raises hunger at a CONSTANT `HUNGER_RISE_PER_TICK`=ONE/4096 (an empty bar fills in 4096 ticks), clamped at ONE so the `hungerInRange` invariant holds; the `eat` atomic resets it to 0 (AtomicSystem). Hands-on: 5000 ticks through the real schedule → hunger rises and clamps exactly at ONE, 0 invariant violations, deterministic. The **rise/reset loop shape is the original's core** ("hunger grows over time, eating restores it"); the per-activity `event 30 2 <delta>` rates + the eat-restores-by-`+4000` magnitude are the faithful target (deferred — see Deviations). The eat-DRIVE (planner choosing `eat` at a threshold) + non-food needs (`pray`/`enjoy`/social/`make_love`) are later slices. |
 
 > **How to read this table.** Most Phase-2 rows are `approximated` because the *behavior* axis has no
 > automatic oracle — the planner/loop shapes are deterministic design choices, not yet calibrated
@@ -90,6 +91,14 @@ fidelity-relevant decision is the **state→sprite join**: which animation a set
 ## Deviations (conscious divergences from the original)
 
 Format: `- <mechanic>: <how it differs> — <why> (<commit>)`.
+
+- Hunger rise: `needsSystem` raises hunger at a flat `HUNGER_RISE_PER_TICK`=ONE/4096, but the original
+  drains hunger via per-activity-animation events (`event 30 2 -100`) and restores it per `eat_slot_food`
+  event (`+4000`) on a large integer scale — an event-driven model that varies by which animation runs.
+  The faithful model is hunger ticked by each completed atomic's `event (type=2, value)` against a
+  ~10000-scale bar, deferred until the atomic `event (type,value)` vocabulary is decoded (a named
+  Phase-1 extraction risk). The constant rate is the basic, bounded "hunger grows, eating resets it"
+  core — strictly the right shape, with the per-activity rates as the recorded faithful target.
 
 - Production per-cycle ticks: the building-type `recipe.ticks` is pinned to ONE **reference tribe**
   (lowest-`typeId`), but the source's production-animation `length` varies per tribe (e.g. viking

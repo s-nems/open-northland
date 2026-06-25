@@ -3,6 +3,7 @@ import { atomicSystem } from './atomic.js';
 import { commandSystem } from './command.js';
 import type { System, SystemContext } from './context.js';
 import { MOVE_SPEED_PER_TICK, movementSystem } from './movement.js';
+import { HUNGER_RISE_PER_TICK, needsSystem } from './needs.js';
 import { productionSystem } from './production.js';
 import { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem } from './routing.js';
 import {
@@ -10,7 +11,6 @@ import {
   combatSystem,
   constructionSystem,
   jobSystem,
-  needsSystem,
   progressionSystem,
   reproductionSystem,
   terrainSystem,
@@ -20,14 +20,16 @@ import {
 
 // Every real system now lives in its own module under systems/ — commandSystem (./command.ts),
 // movementSystem (./movement.ts), pathfindingSystem (./routing.ts), productionSystem
-// (./production.ts), atomicSystem (./atomic.ts), aiSystem (./ai.ts, the settler planner) — and the
-// not-yet-implemented stubs (./stubs.ts). The genuinely cross-system helpers live in ./shared.ts.
+// (./production.ts), atomicSystem (./atomic.ts), aiSystem (./ai.ts, the settler planner),
+// needsSystem (./needs.ts, hunger rise) — and the not-yet-implemented stubs (./stubs.ts). The
+// genuinely cross-system helpers live in ./shared.ts.
 // This barrel re-exports them so `@vinland/sim`'s `systems` namespace (and the tests) keep a single
 // import site, and it owns SYSTEM_ORDER. This is the finished systems/ split — see docs/TECH-DEBT.md.
 export type { System, SystemContext };
 export { aiSystem };
 export { commandSystem };
 export { MOVE_SPEED_PER_TICK, movementSystem };
+export { HUNGER_RISE_PER_TICK, needsSystem };
 export { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem };
 export { productionSystem };
 export { atomicSystem };
@@ -36,7 +38,6 @@ export {
   combatSystem,
   constructionSystem,
   jobSystem,
-  needsSystem,
   progressionSystem,
   reproductionSystem,
   terrainSystem,
