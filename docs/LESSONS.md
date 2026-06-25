@@ -305,3 +305,8 @@ the next iteration inherits it.
   genuinely ships two `oxcart` records, like `weapontypes`' duplicate `fist`; the cross-ref key is the
   numeric `typeId`, so don't `indexById` a freshly-extracted table without checking the source for dup
   names first. (pipeline/test)
+- [08b33ed] `parseContentSet` does NOT default `goods`/`jobs`/`buildings` — they're required (only the
+  *other* tables like `vehicles`/`tribes`/`landscape` default to `[]`). A new sim test that builds a
+  minimal content set inline (instead of spreading `testContent()`) fails zod validation with `Required`
+  on exactly those three, not on the field you were exercising. Either spread the fixture or include the
+  three required arrays (even as one-element stubs). (sim/test)
