@@ -19,13 +19,15 @@ import type { Entity, World } from '../ecs/world.js';
 import { fx } from '../fixed.js';
 import { findPath } from '../pathfinding.js';
 import type { CellId, TerrainGraph } from '../terrain.js';
+import { commandSystem } from './command.js';
 import type { System, SystemContext } from './context.js';
 import { MOVE_SPEED_PER_TICK, movementSystem } from './movement.js';
 
-// The System/SystemContext types and the MovementSystem live in their own modules now; the barrel
-// re-exports them so `@vinland/sim`'s `systems` namespace (and the tests) keep a single import site.
-// This is the first step of the systems/ split — see docs/TECH-DEBT.md for the full plan.
+// The System/SystemContext types, the CommandSystem, and the MovementSystem live in their own
+// modules now; the barrel re-exports them so `@vinland/sim`'s `systems` namespace (and the tests)
+// keep a single import site. This is the ongoing systems/ split — see docs/TECH-DEBT.md.
 export type { System, SystemContext };
+export { commandSystem };
 export { MOVE_SPEED_PER_TICK, movementSystem };
 
 /**
@@ -789,7 +791,10 @@ const todo =
     void name;
   };
 
-export const commandSystem: System = todo('CommandSystem'); // apply queued serializable player commands
+// commandSystem is a REAL system now (in ./command.ts, re-exported above) — it drains the per-sim
+// CommandQueue and applies each serializable command (placeBuilding/spawnSettler/setProduction/
+// demolish), appending it to the command log. It runs first so the world the other systems see this
+// tick already reflects this tick's commands.
 export const timeSystem: System = todo('TimeSystem'); // advance clock / day / season
 export const terrainSystem: System = todo('TerrainSystem'); // resource regrowth, fertility (cell graph)
 export const needsSystem: System = todo('NeedsSystem'); // hunger/health + the food/goods chain

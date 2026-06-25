@@ -1,4 +1,5 @@
 import type { ContentSet } from '@vinland/data';
+import type { CommandQueue } from '../commands.js';
 import type { World } from '../ecs/world.js';
 import type { EventBuffer } from '../events.js';
 import type { Rng } from '../rng.js';
@@ -16,6 +17,12 @@ export interface SystemContext {
   readonly tick: number;
   /** Emit one-shot events for render/audio (never read back in sim logic). */
   readonly events: EventBuffer;
+  /**
+   * The serializable command queue — the single mutation seam. CommandSystem drains and applies it;
+   * other systems never touch it. Exposed on the context so CommandSystem (a plain System function)
+   * can reach the per-sim queue the same way it reaches the world.
+   */
+  readonly commands: CommandQueue;
   /**
    * The terrain cell-adjacency graph — the navigation/placement model (see terrain.ts). Optional
    * because trivial fixtures (the determinism golden) run with no map; the pathfinding/terrain
