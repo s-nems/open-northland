@@ -44,12 +44,31 @@ export const GoodAtomics = z.object({
 });
 export type GoodAtomics = z.infer<typeof GoodAtomics>;
 
+/**
+ * One input good consumed to produce this good, with its per-cycle quantity. From a `[goodtype]`'s
+ * `productionInputGoods` line, where a repeated good id encodes the amount (`… 1 1 14 14 …` = 2×good1
+ * + 2×good14), so the flat multiset is collapsed to `{ goodType, amount }` pairs in first-seen order.
+ * This is the *input side* of the goods graph, keyed by the **output** good (the good being made).
+ */
+export const ProductionInput = z.object({
+  goodType: TypeId,
+  amount: z.number().int().positive(),
+});
+export type ProductionInput = z.infer<typeof ProductionInput>;
+
 export const GoodType = z.object({
   typeId: TypeId,
   id: z.string(), // human-readable slug, e.g. "wood"
   name: z.string().optional(),
   weight: z.number().default(0),
   atomics: GoodAtomics.default({}),
+  /**
+   * Input goods (+ per-cycle amounts) consumed to produce THIS good — the input side of the goods
+   * graph, from `goodtypes` `productionInputGoods`. Empty for a raw/harvested good (no recipe). This
+   * is the source the building `recipe` inputs are filled from (the workplace's `produces` output good
+   * names the output; this good's `productionInputs` names what that cycle consumes). See ROADMAP Phase 3.
+   */
+  productionInputs: z.array(ProductionInput).default([]),
   source: Provenance.optional(),
 });
 export type GoodType = z.infer<typeof GoodType>;

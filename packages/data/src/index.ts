@@ -34,6 +34,14 @@ export function validateCrossReferences(set: ContentSet): void {
   const jobIds = new Set(set.jobs.map((j) => j.typeId));
   const errors: string[] = [];
 
+  // A good's production inputs (`productionInputGoods`) name other goods consumed to make it.
+  for (const g of set.goods) {
+    for (const inp of g.productionInputs) {
+      if (!goodIds.has(inp.goodType))
+        errors.push(`good "${g.id}" consumes unknown input goodType ${inp.goodType}`);
+    }
+  }
+
   for (const b of set.buildings) {
     for (const w of b.workers) {
       if (!jobIds.has(w.jobType)) errors.push(`building "${b.id}" references unknown jobType ${w.jobType}`);

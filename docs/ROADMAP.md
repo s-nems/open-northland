@@ -834,6 +834,16 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 ## Phase 3 — Economy, progression & population
 - [ ] Full **goods graph** as an explicit IR artifact (extract from `goodtypes.productionInputGoods`):
       raw → flour/plank/tool → bread/weapons, two food tiers (`food_simple`/`food_extra`).
+      - [x] **Input side extracted** — `extractGoods` (`decoders/ini.ts`) now captures each good's
+            `productionInputGoods` onto `GoodType.productionInputs` (`@vinland/data` schema): the flat
+            multiset is collapsed to `{ goodType, amount }` pairs where a **repeated good id encodes the
+            quantity** (`… 1 1 14 14 …` = 2×1 + 2×14), first-seen order preserved. Keyed by the **output**
+            good (the good being made); a raw/harvested good gets `[]`. `validateCrossReferences` now also
+            checks every input good id resolves. **Hands-on:** `npm run pipeline` on the real game →
+            **42/65 goods carry inputs** (`coin <- wood+gold`, `flour <- wheat`, `tile <- 2x mud + 1x wood`),
+            **0 dangling** input refs. **Still open:** join a workplace's `produces` output good → that
+            good's `productionInputs` (+ cycle timing) to fill the building `recipe` (the *output side*),
+            then the raw→tier→food-tier graph layering.
 - [ ] NeedsSystem: hunger + non-food needs implied by atomics (eat, plus deferred-but-named
       `pray`/`enjoy`/social/`make_love`).
 - [ ] **ProgressionSystem** — experience + tech graph: `humanjobexperiencetypes` per-specialization
