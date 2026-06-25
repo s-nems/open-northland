@@ -420,10 +420,20 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 > slice ON the decoded grid. Proven hands-on by loading the real `content/maps/cn_1.json` (50×50 = 2500
 > cells, typeIds {1,2,16,24,45,48}) → a 2500-cell terrain graph, the 6 entities spread across real cells
 > ((38,19),(13,20),(22,7),…), deterministic over 100 ticks (`be0e8d14`).
-> **Next smallest step:** atlas sprites in place of the placeholder box geometry (gated on a
-> free/synthetic atlas — real bobs are copyrighted/gitignored), the remaining open leg of the render
-> line. (A "per-type walk-cost field" is *not* a pending step: `landscapetypes.ini` has no movement
-> weight — only `maximumValency` + placement flags — so uniform unit cost is faithful.) Lines tagged
+> **And the textured-sprite branch is now exercised end to end with a FREE synthetic atlas:**
+> `synthetic-atlas.ts` (`packages/render`) stands in a tiny hand-authored atlas — one flat-colour
+> marker frame per drawable kind (settler/building/resource), the *frame geometry* pure + unit-tested
+> (`syntheticAtlasFrames`/`SYNTHETIC_BINDINGS`), the canvas→`CanvasSource` texture the human-judged
+> pixel half — so the renderer's textured branch can be bound *without* copyrighted bobs. The shot/dev
+> entry binds it behind `?atlas` (`npm run shot -- --atlas`); the default stays placeholder geometry
+> (byte-reproducible). Eyeballed gross-correct: textured atlas sprites at their feet anchors, depth-
+> sorted, iso terrain behind — distinct pixels from the placeholder default. Real bob atlases bind
+> through the same `SpriteSheet` shape with no renderer change.
+> **Next smallest step:** a richer per-job/per-state sprite binding (a settler's job → its walk/chop
+> bob frames via `tribetypes` `setatomic`) so `resolveSpriteFrame` picks the *right* frame per state,
+> then bind a REAL decoded bob atlas (gated on an owned game copy + a human eyeballing the pixels). (A
+> "per-type walk-cost field" is *not* a pending step: `landscapetypes.ini` has no movement weight —
+> only `maximumValency` + placement flags — so uniform unit cost is faithful.) Lines tagged
 > *(core done…)* pass tests today but await one wiring piece.
 - [x] **CommandSystem + serializable command schema** — the ONLY way state mutates. Done —
       `systems/command.ts` (`commandSystem`, first in `SYSTEM_ORDER`) drains a per-sim
@@ -665,11 +675,14 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
       via `?map=<id>` (a vite dev-server middleware bridges the gitignored repo-root grids to
       `/maps/<id>.json`; `loadTerrainMap` fetches + `parseTerrainMap`-validates them), drawing a real
       decoded grid behind the slice sprites — falling back to the synthetic strip when absent. The
-      **atlas-sprite swap is now half-landed**: the pure *which-frame* lookup (`resolveSpriteFrame`,
-      `DrawItem`→atlas frame rect) is built + unit-tested, and `renderScene` draws a bound sprite as a
-      textured atlas sub-rect when handed an optional `SpriteSheet` — falling back to placeholder
-      geometry otherwise. The remaining open part is the **atlas image itself** (a free/synthetic
-      texture to bind, since real bobs are copyrighted/gitignored) + a **human eyeballing the pixels**.)*
+      **atlas-sprite swap is now wired end to end with a FREE synthetic atlas**: the pure *which-frame*
+      lookup (`resolveSpriteFrame`, `DrawItem`→atlas frame rect) is built + unit-tested, `renderScene`
+      draws a bound sprite as a textured atlas sub-rect when handed an optional `SpriteSheet`, and the
+      `synthetic-atlas.ts` module now supplies a free hand-authored atlas (geometry + bindings + a
+      `CanvasSource` texture) the shot/dev entry binds behind `?atlas` — so the textured branch is
+      exercised + eyeballable without copyrighted bobs. The remaining open part is a **richer per-job/
+      per-state binding** + a **REAL decoded bob atlas** (gated on an owned game copy + a human
+      eyeballing those pixels).)*
       - [x] **`terrainMapToScene` map→scene seam** — `packages/render/src/scene.ts`: a pure, total
             projection from a loaded `TerrainMap` (`{ width, height, typeIds }` — the shape
             `@vinland/data` `parseTerrainMap` validates a `content/maps/<id>.json` into) onto the
@@ -725,8 +738,24 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             geometry, so the default `npm run shot` is byte-unchanged. **Hands-on:** `npm run shot` → the
             same valid 1000×600 PNG, eyeballed gross-correct (6 grass tiles behind 6 feet-sorted boxes),
             unchanged by the wiring; 7 new `sprites.test.ts` units pin the resolution (bound→frame, tile/
-            unbound/missing/empty→null, purity). **Still open:** a free/synthetic atlas IMAGE to bind as
-            the `SpriteSheet.source`, plus a human eyeballing the textured-sprite pixels (an agent can't).
+            unbound/missing/empty→null, purity).
+      - [x] **Free synthetic atlas IMAGE + `?atlas` binding (the textured branch, exercised)** —
+            `packages/render/src/synthetic-atlas.ts`: a tiny hand-authored 64×64 atlas — one flat-colour
+            marker frame per drawable kind (settler/building/resource), feet-anchored
+            (`offsetX=-w/2`, `offsetY=-h`) so the textured branch reproduces the placeholder's feet
+            placement — that lets the renderer's `SpriteSheet` path be bound **without** copyrighted
+            bobs (real bob atlases are decoded from an owned game copy + gitignored). The split mirrors
+            `sprites.ts`: `syntheticAtlasFrames`/`SYNTHETIC_BINDINGS` are pure data (unit-tested — every
+            kind resolves to an in-bounds, non-overlapping, non-empty frame), while
+            `createSyntheticAtlasSource` draws those rects into a canvas → a Pixi `CanvasSource` (the
+            pixel half, human-judged). The shot/dev entry binds it behind **`?atlas`** (`shot.ts`/
+            `main.ts`; `npm run shot -- --atlas`); without the flag, sprites stay placeholder geometry,
+            so the default `npm run shot` PNG is byte-reproducible. **Hands-on:** `npm run shot --atlas`
+            (real entry, 0 page errors) → a PNG **distinct** from the placeholder default (different
+            size + hash), eyeballed gross-correct — textured atlas sprites at their feet anchors,
+            depth-sorted, iso terrain behind; the default `npm run shot` unchanged. **Still open:** a
+            richer per-job/per-state binding (settler job → walk/chop bob frames via `setatomic`) +
+            binding a REAL decoded bob atlas through the same `SpriteSheet` shape (human eyeballs pixels).
       - [x] **Pure scene/depth-sort layer** — `packages/render/src/scene.ts` (`buildScene`): turns a
             `WorldSnapshot` + the terrain grid dimensions into a flat, **depth-sorted** isometric
             draw list (`DrawItem[]`), the testable core of the render line that an agent CAN

@@ -1,4 +1,12 @@
-import { buildScene, createPixiApp, renderScene } from '@vinland/render';
+import {
+  SYNTHETIC_BINDINGS,
+  type SpriteSheet,
+  buildScene,
+  createPixiApp,
+  createSyntheticAtlasSource,
+  renderScene,
+  syntheticAtlasFrames,
+} from '@vinland/render';
 import { loadTerrainMap, runSlice, sliceTerrain } from './vertical-slice.js';
 
 /**
@@ -50,8 +58,28 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
   const scene = buildScene(sim.snapshot(), sliceTerrain(loaded ?? undefined));
 
   const app = await createPixiApp(canvas, CANVAS_W, CANVAS_H);
+  // `?atlas` (or `?atlas=synthetic`) binds the FREE synthetic atlas so the textured-sprite draw path
+  // is exercised (a human eyeballs the textured branch). Absent, sprites draw as placeholder geometry
+  // — the byte-reproducible default the committed shot PNG depends on (real bobs are gitignored).
+  const sheet = wantsSyntheticAtlas(params) ? syntheticSpriteSheet() : undefined;
   // Pan the iso strip into the centre of the canvas (its tiles span screen-x roughly [-row, +cols]).
-  renderScene(app, scene, { offsetX: CANVAS_W / 2, offsetY: CANVAS_H / 3 });
+  renderScene(app, scene, { offsetX: CANVAS_W / 2, offsetY: CANVAS_H / 3 }, sheet);
 
   window.__vinlandShotReady = true;
+}
+
+/** True when the URL opts into the synthetic atlas (`?atlas`, `?atlas=synthetic`, `?atlas=1`). */
+function wantsSyntheticAtlas(params: URLSearchParams): boolean {
+  if (!params.has('atlas')) return false;
+  const v = params.get('atlas');
+  return v === '' || v === 'synthetic' || v === '1' || v === 'true';
+}
+
+/** Build the {@link SpriteSheet} for the free synthetic atlas (geometry + bindings + GPU texture). */
+function syntheticSpriteSheet(): SpriteSheet {
+  return {
+    source: createSyntheticAtlasSource(),
+    atlas: syntheticAtlasFrames(),
+    bindings: SYNTHETIC_BINDINGS,
+  };
 }

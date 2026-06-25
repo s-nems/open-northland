@@ -1,4 +1,12 @@
-import { buildScene, createPixiApp, renderScene } from '@vinland/render';
+import {
+  SYNTHETIC_BINDINGS,
+  type SpriteSheet,
+  buildScene,
+  createPixiApp,
+  createSyntheticAtlasSource,
+  renderScene,
+  syntheticAtlasFrames,
+} from '@vinland/render';
 import { FixedTimestep } from '@vinland/sim';
 import { renderShot } from './shot.js';
 import { loadTerrainMap, runSlice, sliceTerrain } from './vertical-slice.js';
@@ -33,6 +41,15 @@ async function main(): Promise<void> {
   const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
   const terrain = sliceTerrain(loaded ?? undefined);
+  // `?atlas` binds the free synthetic atlas so sprites draw as textured atlas frames; absent, they
+  // draw as placeholder geometry (real bobs are gitignored — see shot.ts).
+  const sheet: SpriteSheet | undefined = params.has('atlas')
+    ? {
+        source: createSyntheticAtlasSource(),
+        atlas: syntheticAtlasFrames(),
+        bindings: SYNTHETIC_BINDINGS,
+      }
+    : undefined;
   const camera = { offsetX: CANVAS_W / 2, offsetY: CANVAS_H / 3 };
   // The slice sim, kept live and stepped one tick per fixed interval below. When a map loaded, the sim
   // navigates that real grid (placement on its walkable cells); else the synthetic strip.
@@ -45,7 +62,7 @@ async function main(): Promise<void> {
     const elapsed = nowMs - lastMs;
     lastMs = nowMs;
     timestep.advance(elapsed, () => sim.step());
-    renderScene(app, buildScene(sim.snapshot(), terrain), camera);
+    renderScene(app, buildScene(sim.snapshot(), terrain), camera, sheet);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
