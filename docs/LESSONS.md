@@ -152,3 +152,11 @@ the next iteration inherits it.
   collapsed dimension as a Deviation in FIDELITY.md. Strictly more faithful than a placeholder — and the
   per-dimension table stays a clean deferred refinement. Watch the produce-atomic join's fallbacks: a
   raw-good producer has no `atomicForProduction`, so guard each link and fall back per-building. (pipeline/fidelity)
+- [20282ef] A worker-presence production gate moves the integration golden's state HASH but not its
+  atomic TRACE: staffing the sawmill adds a new operator entity (the canonical full-state hash hashes
+  every component on every entity, so a new entity shifts it), yet the behavioral atomic-trace +
+  produced count are unchanged. That split is the right read of an intentional golden move — re-baseline
+  the hash, but if the trace also moves, a real *behavior* changed and you must look harder. Keep the
+  worker pinned without the full JobSystem by a narrow "a settler standing on a workplace it staffs is
+  left put" planner rule (gated on the building having a RECIPE, so a store/HQ listing the same job
+  doesn't freeze a harvester). (sim/goldens)
