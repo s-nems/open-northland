@@ -167,3 +167,11 @@ the next iteration inherits it.
   precedence the source doesn't have; extract each flag as its own boolean and let a good occupy
   several layers. Confirm by grepping a record you expect to be "obviously one category" — the
   exception is the tell. (pipeline/format)
+- [2cf9301] A behavior with no sim-oracle can still pin its *atomic id* from the original `tribetypes`
+  `setatomic <job> <atomicId> "<animation>"` table even when nothing else about the behavior is
+  pinned: grepping the real `tribetypes.ini` for the activity name (`eat_slot_food` → `setatomic 5 10`)
+  reveals the canonical atomic id (eat=10, candy=11) for free, splitting a planner mechanic into a
+  faithful id + animation-`length` join and an approximated trigger/target. Before inventing a magic
+  atomic-id constant, grep `tribetypes` for the action name — the slot id is sitting right there. And
+  put the eat-drive ABOVE the workplace-staffing pin in the planner, or a starving operator never
+  leaves to feed. (sim/fidelity)
