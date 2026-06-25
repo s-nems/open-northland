@@ -18,6 +18,7 @@ import {
   AtomicAnimation,
   BuildingType,
   type GoodAtomics,
+  type GoodClassification,
   GoodType,
   JobType,
   LandscapeType,
@@ -261,11 +262,7 @@ function extractProductionInputs(sec: RuleSection): { goodType: number; amount: 
  * These layers + the `productionInputGoods` edges are the explicit goods-graph IR (raw → produced →
  * food tiers) the Phase-3 economy reads.
  */
-function extractGoodClassification(sec: RuleSection): {
-  producedOnMap: boolean;
-  producedInHouse: boolean;
-  inputGood: boolean;
-} {
+function extractGoodClassification(sec: RuleSection): GoodClassification {
   return {
     producedOnMap: getInt(sec, 'isProducedOnMapFlag') === 1,
     producedInHouse: getInt(sec, 'isProducedInHouseFlag') === 1,
