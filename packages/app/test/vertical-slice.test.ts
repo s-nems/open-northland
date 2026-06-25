@@ -146,4 +146,17 @@ describe('runSlice on a loaded map', () => {
     const b = runSlice(7, 60, gridMap()).hashState();
     expect(a).toBe(b);
   });
+
+  it('falls back to the synthetic strip when a loaded map has too few walkable cells', () => {
+    // typeId 1 is the demo's non-walkable water; an all-water grid has 0 walkable cells, so placement
+    // can't fit the slice — runSlice must degrade to the 6×1 strip (HQ@5 etc.) rather than throw.
+    const allWater: TerrainMap = { width: 3, height: 3, typeIds: new Array(9).fill(1) };
+    expect(() => runSlice(7, 1, allWater)).not.toThrow();
+    clearStores();
+    const fallback = runSlice(7, 1, allWater).hashState();
+    clearStores();
+    const strip = runSlice(7, 1).hashState();
+    // Falling back means the sim is byte-identical to the no-map slice (same content, terrain, cells).
+    expect(fallback).toBe(strip);
+  });
 });
