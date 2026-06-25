@@ -318,3 +318,9 @@ the next iteration inherits it.
   system uses to stay inert in the goldens: the births fire only on `home`-kind content the golden/slice
   fixture never builds, so the golden hash + trace are untouched ([6264132]) — verify by grepping the
   fixture for the triggering shape before claiming the hash is stable. (sim/invariants)
+- [37ba48a] A standalone smoke script that runs two `Simulation`s in one process sees them DIVERGE
+  even on identical state — because `defineComponent` stores are module-level singletons that leak
+  entities/ids across runs. The unit tests don't hit this (their `beforeEach` calls `c.store.clear()`).
+  When hands-on-verifying determinism outside vitest, clear every component store between runs (the
+  golden tests' pattern) before concluding a real non-determinism bug — `git stash` + re-run on `main`
+  to check the divergence is in your change, not the harness, ruled it out here. (sim/determinism)
