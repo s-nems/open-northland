@@ -204,11 +204,30 @@ describe('atomicSystem — effects', () => {
       hunger: ONE,
       fatigue: fx.fromInt(0),
       piety: fx.fromInt(0),
+      enjoyment: fx.fromInt(0),
       experience: new Map(),
     });
     startAtomic(sim, settler, { kind: 'eat', goodType: WOOD }, 1);
     atomicSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(settler, Settler).hunger).toBe(0);
+  });
+
+  it('enjoy clears the settler enjoyment (no goods consumed)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const settler = sim.world.create();
+    sim.world.add(settler, Settler, {
+      tribe: 1,
+      jobType: null,
+      hunger: fx.fromInt(0),
+      fatigue: fx.fromInt(0),
+      piety: fx.fromInt(0),
+      enjoyment: ONE, // fully due for recreation
+      experience: new Map(),
+    });
+    startAtomic(sim, settler, { kind: 'enjoy' }, 1, 17); // atomic 17 = the original's enjoy slot
+    atomicSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(settler, Settler).enjoyment).toBe(0); // leisure reset
+    expect(sim.world.has(settler, Carrying)).toBe(false); // nothing consumed/produced
   });
 });
 

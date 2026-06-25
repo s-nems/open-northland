@@ -68,6 +68,7 @@ function settlerAt(sim: Simulation, x: number, y: number, fatigue: Fixed, hunger
     hunger,
     fatigue,
     piety: fx.fromInt(0),
+    enjoyment: fx.fromInt(0),
     experience: new Map(),
   });
   return e;

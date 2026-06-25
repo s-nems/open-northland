@@ -83,6 +83,13 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       // the planner's job (a target-bound need); by the time this fires the settler is standing on one.
       if (world.has(settler, Settler)) world.get(settler, Settler).piety = fx.fromInt(0);
       return;
+    case 'enjoy':
+      // Recreation clears enjoyment (no goods consumed — like sleeping/praying, leisure is free).
+      // Pairs with the NeedsSystem's per-tick enjoyment rise to close the rise→enjoy→reset loop. The
+      // satisfier *drive* (where this is run) is deferred — `enjoy` has no readable building satisfier
+      // (see docs/FIDELITY.md) — so no planner branch chooses it yet; the reset is wired and ready.
+      if (world.has(settler, Settler)) world.get(settler, Settler).enjoyment = fx.fromInt(0);
+      return;
     case 'move':
     case 'idle':
       // Pure markers: the actual walking is the navigation layer (PathFollow/MovementSystem). The
