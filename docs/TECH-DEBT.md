@@ -12,14 +12,17 @@ feature plan, see [ROADMAP.md](ROADMAP.md).
 
 ## Deferred proposals
 
-### 1. Finish splitting the `systems/` god-module
+### 1. Finish splitting the `systems/` god-module — **DONE**
 
-- **Problem.** `packages/sim/src/systems/index.ts` is the project's churn hotspot — it was edited in
+- **Status.** Complete as of `routing.ts` extraction (golden `7f89b94d` byte-identical throughout).
+  `index.ts` is now the barrel + `SYSTEM_ORDER` only (~70 lines); every real system lives in its own
+  file under `systems/`. Kept here as the executed record; prune on the next reflection.
+- **Problem.** `packages/sim/src/systems/index.ts` was the project's churn hotspot — it was edited in
   almost every recent feature commit and grew to ~820 lines holding five real systems
   (`aiSystem` + its `atomicPlanner`/`navigationPlanner`, `pathfindingSystem`, `atomicSystem`,
   `productionSystem`), all their private helpers, the dozen not-yet-implemented stub systems, the
-  `todo()` factory, and `SYSTEM_ORDER`. Every new slice lands here, so the file is a magnet for
-  merge collisions and the review surface for any one mechanic is the whole module.
+  `todo()` factory, and `SYSTEM_ORDER`. Every new slice landed here, so the file was a magnet for
+  merge collisions and the review surface for any one mechanic was the whole module.
 - **Done so far.** The shared `System`/`SystemContext` types moved to `systems/context.ts`, and
   `movementSystem` (the one system with **zero** shared helpers) moved to `systems/movement.ts`.
   Then the `todo()` factory + the ten not-yet-implemented placeholder systems moved to
@@ -38,9 +41,10 @@ feature plan, see [ROADMAP.md](ROADMAP.md).
   `nearestWorkplaceOutput`/`jobAtomics`/`entityCell`/`manhattan`/`atomicDuration`/`startAtomic` + the
   `PICKUP_ATOMIC_ID`/`PILEUP_ATOMIC_ID`/`CARRY_LOAD`/`DEFAULT_ATOMIC_DURATION`/`EMPTY_ATOMICS`
   constants), importing `inRange`/`recipeOf`/`stockCapacity` from the leaf; the golden `7f89b94d`
-  stayed byte-identical. **Remaining:** only `pathfindingSystem` is still defined in `index.ts` (it
-  consumes `inRange` from the leaf and the A* core from `../pathfinding.ts`); once it moves, `index.ts`
-  is the barrel + `SYSTEM_ORDER` only.
+  stayed byte-identical. Finally `pathfindingSystem` moved to `systems/routing.ts` (named to avoid the
+  eyeball collision with the A* core in `../pathfinding.ts` that it consumes) — with `resolvePath` +
+  `PATHFINDING_BUDGET_PER_TICK`, importing `inRange` from the leaf; the golden `7f89b94d` stayed
+  byte-identical. **`index.ts` is now the barrel + `SYSTEM_ORDER` only — the split is complete.**
 - **Change (the deferred remainder).** Split each remaining real system into its own file under
   `systems/`, with a small shared-helper module to break the cross-system dependencies:
   - `systems/shared.ts` — the genuinely cross-system helpers: `stockCapacity` (used by the ai store
@@ -52,9 +56,9 @@ feature plan, see [ROADMAP.md](ROADMAP.md).
     `manhattan`, `atomicDuration`, `startAtomic`, and the `PICKUP_ATOMIC_ID`/`PILEUP_ATOMIC_ID`/
     `CARRY_LOAD`/`DEFAULT_ATOMIC_DURATION`/`EMPTY_ATOMICS` constants). **(Done — landed; golden
     `7f89b94d` unchanged.)**
-  - `systems/pathfinding.ts` — `pathfindingSystem` + `resolvePath` + `PATHFINDING_BUDGET_PER_TICK`.
-    (Note: a `packages/sim/src/pathfinding.ts` already holds the A\* core — the new file is in the
-    `systems/` directory, but consider naming it to avoid the eyeball collision.)
+  - `systems/routing.ts` — `pathfindingSystem` + `resolvePath` + `PATHFINDING_BUDGET_PER_TICK`
+    (named `routing.ts`, not `pathfinding.ts`, to avoid the eyeball collision with the A\* core in
+    `../pathfinding.ts` that it consumes). **(Done — landed; golden `7f89b94d` unchanged.)**
   - `systems/atomic.ts` — `atomicSystem` + `applyEffect` + `harvestFromNode`/`pickupFromStore`/
     `addCarry`/`pileupIntoStore` + `HARVEST_YIELD`. **(Done — landed; golden `7f89b94d` unchanged.)**
   - `systems/production.ts` — `productionSystem` + `canStartCycle`/`consumeInputs`/`depositOutputs`
