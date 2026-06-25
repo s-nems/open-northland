@@ -14,7 +14,7 @@ the source file + commit you referenced, for traceability.
 | `bmd.ts` | `.bmd` bob/anim | `NXBasics/CBobManager.cs`, `CBitmap.cs` — **hardest, do last** |
 | `atlas.ts` | bob atlas **output** (frames → sheet + manifest) | — (not an original format; shelf-packs `decodeBobFrame` output into one RGBA atlas + a per-bob JSON manifest) |
 | `ini.ts` ✅ | `.ini` **and** decoded-`.cif` rules | plain text parse; emit IR validated by `@vinland/data` (parser + `goodtypes`/`landscapetypes`/`jobtypes`/`tribetypes` extractors + the atomic vocabulary — `atomicFor*`/`allowatomic`/`setatomic` — done; more type extractors incremental) |
-| `map.ts` | map files | landscape grid + placements |
+| `mapdat.ts` ⏳ | `map.dat` `hoix`-chunk container | `NC2Logic/CIoHelper.cs` (`SIoHelperChunk` / `IO_File_Chunk_*`) — container + `lsiz` dims done; `pck`/`X8el` layer unpack pending |
 
 Guidance:
 
