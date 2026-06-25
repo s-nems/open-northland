@@ -14,6 +14,13 @@
  * (a baby's `jobType` is non-null, so it is already skipped by the idle-only assignment, and no
  * workplace lists a baby/child in its `workers` slots, so one is never adopted either).
  *
+ * SCOPE (this slice = structure only): the **AI planner** does NOT yet consult {@link isNonWorkingAge}
+ * — it skips only `jobType === null`, so once a baby's hunger/fatigue rises it would run the adult
+ * needs-drives (eat/sleep) like any settler. That is inert for now (a newborn starts every need at 0
+ * and the rise takes thousands of ticks; the golden/slice has no births at all), and the original's
+ * "a baby is fed/cared for, it doesn't self-feed" behavior belongs with the deferred growth/family
+ * mechanic — not bolted on here. Recorded in docs/FIDELITY.md so the growth slice closes it.
+ *
  * FIDELITY (faithful — params): the age-class ids are pinned to the original `logicdefines.inc`
  * constants + the `jobtypes.ini` records (no interpretation). The **growth cadence** (when a baby
  * becomes a child, a child an adult) is a *separate*, still-deferred mechanic — its timing lives below

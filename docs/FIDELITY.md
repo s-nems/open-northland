@@ -210,4 +210,10 @@ Format: `- <mechanic>: <how it differs> — <why> (<commit>)`.
   invariant can't be breached). The rate, the per-home anchor, the sex, and the **growth cadence**
   (baby→child→adult, the `make_love`-driven pairing) are the recorded faithful target, deferred until an
   age/growth oracle or calibration-by-observation against the running original. Strictly the right "grow
-  into your housing, born young" shape, with no birth-rate constant invented.
+  into your housing, born young" shape, with no birth-rate constant invented. **Known boundary (this
+  slice = age-class structure only):** the AI planner skips only `jobType === null`, not
+  `isNonWorkingAge`, so once a baby's needs rise it would run the adult eat/sleep drives (a newborn
+  starts every need at 0 and the rise takes thousands of ticks, and the golden/slice births none, so it
+  is inert today). The original cares for a baby rather than self-feeding it — that, plus the
+  baby→child→adult growth, is the deferred growth/family mechanic, which will teach the planner the
+  non-working stages; not bolted on here.
