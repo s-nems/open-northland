@@ -1,13 +1,6 @@
 import { parseTerrainMap } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  CurrentAtomic,
-  MoveGoal,
-  PathFollow,
-  PathRequest,
-  Position,
-  Settler,
-} from '../src/components/index.js';
+import { MoveGoal, PathFollow, PathRequest, Position } from '../src/components/index.js';
 import { Simulation, fx, scenario } from '../src/index.js';
 import { testContent } from './fixtures/content.js';
 
@@ -31,8 +24,6 @@ beforeEach(() => {
   MoveGoal.store.clear();
   PathFollow.store.clear();
   PathRequest.store.clear();
-  Settler.store.clear();
-  CurrentAtomic.store.clear();
 });
 
 /**

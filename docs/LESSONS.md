@@ -84,3 +84,8 @@ the next iteration inherits it.
   into a consumer that *validates* against another table, run the consumer over the real output, not
   just the unit fixture; the earlier "values 0..85 within the 87-type table" note ([4b01c26]) was the
   0-based tell read as if 1-based. (pipeline/format)
+- [690a547] vitest resolves a cross-package import (`@vinland/data`) through that package's BUILT
+  `dist/` entry, not its `src/`, so a brand-new export is `… is not a function` in another package's
+  test until you `npm run build` — green-looking source, runtime-missing symbol. After adding an export
+  consumed by a *different* package's test, rebuild before `npm test` (or the failure looks like a typo,
+  not a stale build). (tooling)
