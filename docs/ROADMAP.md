@@ -1001,6 +1001,27 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             hash-equal; the golden trace + state hash are untouched (the slice never spawns a temple, so
             no settler ever crosses the pray threshold). **Still open:** `enjoy` id 17 / `make_love` id 78
             the same target-bound way.
+      - [x] **Enjoyment rise** (the recreation/leisure need — the rise half) — `needsSystem` now also
+            raises every {@link Settler}'s `enjoyment` by `ENJOYMENT_RISE_PER_TICK` (=ONE/32768, half
+            piety's rate so it's the least-pressing of the four bars) each tick, clamped at ONE (a new
+            `enjoymentInRange` core invariant). The pairing **reset** is the `enjoy` atomic id **17**,
+            pinned to the original `tribetypes` `setatomic 6 17 "..._civilist_enjoy"` bindings (the
+            civilist + woman jobs across tribes); its animation restores the need via `event <at> 3
+            <delta>` tuples (channel 3 = the leisure need, as channel 1 = rest, 2 = hunger). The new
+            `enjoy` {@link AtomicEffect} (`commands.ts`/`atomic.ts`) zeroes `enjoyment` on completion (no
+            goods consumed — like sleep/pray). APPROXIMATED (see FIDELITY.md): like the other needs the
+            per-tick rate is a constant stand-in for the event-driven model. **Unlike pray (a temple),
+            `enjoy` has NO readable building satisfier** — the only no-recipe/no-worker/no-stock houses in
+            `houses.ini` are the temple (lt 37) and a decorative wall (`work murek`, lt 55), neither a
+            leisure site — so the `isTemple`-style structural-signature trick does NOT extend, and the
+            **drive (where it is satisfied) is deferred** pending a content building→need binding; only
+            the rise + reset are pinned. **Hands-on:** through the real `Simulation.step()` schedule →
+            enjoyment rises at exactly ONE/32768 (200 after 100 ticks), stays ≤ piety every tick, clamps
+            exactly at ONE at tick 32768, 0 invariant violations, two seed-5 runs hash-equal (`1f0add20`).
+            The golden state hash moved (`d780b4ad`→`d1ac5fbe`) — settlers carry a fourth need field — but
+            the atomic trace + 8-plank output are unchanged (no enjoy DRIVE: enjoyment only rises, never
+            reaching a threshold over the 1000-tick slice). **Still open:** the `enjoy` drive once a
+            satisfier building→need binding is extractable; then `make_love` id 78.
 - [ ] **ProgressionSystem** — experience + tech graph: `humanjobexperiencetypes` per-specialization
       XP, `trainforjob` schooling, `needfor*`/`allow*`/`jobEnables*` gating goods/houses/jobs/vehicles.
 - [ ] JobSystem assignment across many workplaces; multiple carriers + vehicle stock slots.

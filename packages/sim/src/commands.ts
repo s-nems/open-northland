@@ -119,6 +119,12 @@ export type AtomicEffect =
    *  `sleep` (in place) this is the first **target-bound** need — the settler must stand on a temple
    *  to run it (the planner walks it there first). */
   | { readonly kind: 'pray' }
+  /** The settler enjoys itself to restore leisure: zeroes its `enjoyment` on completion (no goods
+   *  consumed — like `sleep`/`pray`, recreation is free). The pairing reset for the NeedsSystem's
+   *  enjoyment rise (the `enjoy` atomic, id 17). The need→satisfier *drive* is deferred — `enjoy` has
+   *  no readable building satisfier to walk to (see docs/FIDELITY.md) — so for now this effect is the
+   *  reset half, exercised directly (no planner branch chooses it yet). */
+  | { readonly kind: 'enjoy' }
   | { readonly kind: 'attack'; readonly target: Entity }
   | { readonly kind: 'idle' };
 

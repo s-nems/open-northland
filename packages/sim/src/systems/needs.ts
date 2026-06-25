@@ -49,18 +49,36 @@ export const FATIGUE_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(8192));
 export const PIETY_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(16384));
 
 /**
+ * How much a settler's enjoyment (recreation/leisure) need rises each tick, in fixed-point [0,ONE] units.
+ *
+ * FIDELITY (approximated — see docs/FIDELITY.md): the leisure need, satisfied by the `enjoy` atomic
+ * (id 17). Like {@link HUNGER_RISE_PER_TICK}/{@link FATIGUE_RISE_PER_TICK}/{@link PIETY_RISE_PER_TICK},
+ * the original drives it through per-animation `atomicanimations.ini` events on a numbered channel —
+ * `viking_civilist_enjoy` carries `event <at> 3 <delta>` tuples (channel 3 = the enjoy/leisure need, as
+ * channel 1 = rest, 2 = hunger; verified across tribes), which needs the atomic `event (type,value)`
+ * vocabulary decoded (the same deferred Phase-1 extraction). For now enjoyment rises at a CONSTANT
+ * per-tick rate: the basic "leisure lapses over time, having fun restores it" core. Set SLOWER than
+ * piety (ONE/32768 ≈ one outing per two prayers) — recreation is the least-pressing of the bars; the
+ * constant is the recorded faithful-target stand-in. The *reset* (the `enjoy` atomic id 17) is wired
+ * (AtomicSystem); the *drive* (where it is satisfied) is deferred — unlike pray (at a temple), `enjoy`
+ * has no readable building satisfier in `houses.ini` to walk to (see docs/FIDELITY.md). This is the
+ * rise half.
+ */
+export const ENJOYMENT_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(32768));
+
+/**
  * NeedsSystem — settlers get hungry and tired over time.
  *
  * Each tick every {@link Settler}'s `hunger` rises by {@link HUNGER_RISE_PER_TICK}, `fatigue` by
- * {@link FATIGUE_RISE_PER_TICK}, and `piety` by {@link PIETY_RISE_PER_TICK}, each clamped at `ONE` (a
- * fully-spent settler stays pinned at the top of its bar until it acts — the `hungerInRange`/
- * `fatigueInRange`/`pietyInRange` invariants require the need ∈ `[0, ONE]`). The complementary side is
- * wired for hunger (the `eat` atomic resets `hunger` to 0, AtomicSystem) and fatigue (the `sleep`
- * atomic resets `fatigue`, with the sleep *drive* in the AI planner). Piety is the first **target-
- * bound** need (satisfied by `pray` *at a temple*, not in place / at a store); its reset (the `pray`
- * atomic id 12) and *drive* (a settler walking to a temple when piety crosses a threshold) are a later
- * slice — the same rise-then-drive split hunger and fatigue went through. The other target-bound needs
- * (`enjoy` id 17 / `make_love` id 78) follow. This system is the needs-rise half.
+ * {@link FATIGUE_RISE_PER_TICK}, `piety` by {@link PIETY_RISE_PER_TICK}, and `enjoyment` by
+ * {@link ENJOYMENT_RISE_PER_TICK}, each clamped at `ONE` (a fully-spent settler stays pinned at the top
+ * of its bar until it acts — the `hungerInRange`/`fatigueInRange`/`pietyInRange`/`enjoymentInRange`
+ * invariants require the need ∈ `[0, ONE]`). The complementary side is wired for hunger (the `eat`
+ * atomic resets `hunger`), fatigue (the `sleep` atomic, with a sleep *drive*), and piety (the `pray`
+ * atomic, with a pray *drive*). Enjoyment is the recreation/leisure need; its reset (the `enjoy` atomic
+ * id 17) is wired (AtomicSystem) but its *drive* is deferred — unlike pray (at a temple), `enjoy` has no
+ * readable building satisfier in `houses.ini` to walk to (see docs/FIDELITY.md). `make_love` (id 78)
+ * follows. This system is the needs-rise half.
  *
  * Determinism: no RNG, no wall-clock — each need advances by a fixed Fixed step that divides ONE
  * exactly (no accumulated rounding drift), so identical inputs yield byte-identical state. Settlers
@@ -76,5 +94,7 @@ export const needsSystem: System = (world) => {
     settler.fatigue = risenFatigue > ONE ? ONE : risenFatigue;
     const risenPiety = fx.add(settler.piety, PIETY_RISE_PER_TICK);
     settler.piety = risenPiety > ONE ? ONE : risenPiety;
+    const risenEnjoyment = fx.add(settler.enjoyment, ENJOYMENT_RISE_PER_TICK);
+    settler.enjoyment = risenEnjoyment > ONE ? ONE : risenEnjoyment;
   }
 };

@@ -3,6 +3,7 @@ import { Position, Settler } from '../src/components/index.js';
 import type { Entity } from '../src/ecs/world.js';
 import { type Fixed, ONE, Simulation, fx } from '../src/index.js';
 import {
+  ENJOYMENT_RISE_PER_TICK,
   FATIGUE_RISE_PER_TICK,
   HUNGER_RISE_PER_TICK,
   PIETY_RISE_PER_TICK,
@@ -47,6 +48,7 @@ function settlerWithHunger(sim: Simulation, hunger: Fixed): Entity {
     hunger,
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
+    enjoyment: fx.fromInt(0),
     experience: new Map<number, number>(),
   });
   return e;
@@ -173,14 +175,58 @@ describe('needsSystem — piety rises over time (the first target-bound need)', 
     expect(sim.world.get(e, Settler).piety).toBe(ONE);
   });
 
-  it('rises all three needs independently in the same tick, invariant-clean', () => {
+  it('rises three needs independently in the same tick, invariant-clean', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0));
 
     for (let i = 0; i < 100; i++) sim.step();
     const settler = sim.world.get(e, Settler);
     expect(settler.piety).toBe(fx.mul(PIETY_RISE_PER_TICK, fx.fromInt(100)));
-    expect(settler.piety).toBeLessThan(settler.fatigue); // slowest rate ⇒ lowest after equal ticks
+    expect(settler.piety).toBeLessThan(settler.fatigue); // slower than fatigue ⇒ lower after equal ticks
+    expect(sim.checkInvariants()).toEqual([]);
+  });
+});
+
+describe('needsSystem — enjoyment rises over time (the recreation/leisure need)', () => {
+  it('raises a settler enjoyment by exactly ENJOYMENT_RISE_PER_TICK each tick', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = settlerWithHunger(sim, fx.fromInt(0)); // starts with enjoyment 0 too
+
+    needsSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, Settler).enjoyment).toBe(ENJOYMENT_RISE_PER_TICK);
+
+    needsSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, Settler).enjoyment).toBe(
+      fx.add(ENJOYMENT_RISE_PER_TICK, ENJOYMENT_RISE_PER_TICK),
+    );
+  });
+
+  it('rises slower than piety (recreation is the least-pressing of the bars)', () => {
+    // The cadence choice: enjoyment at ONE/32768 vs piety at ONE/16384 — enjoyment fills in twice the ticks.
+    expect(ENJOYMENT_RISE_PER_TICK).toBeLessThan(PIETY_RISE_PER_TICK);
+  });
+
+  it('clamps enjoyment at ONE (never above — the enjoymentInRange invariant ceiling)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = settlerWithHunger(sim, fx.fromInt(0));
+    // Start one half-step below the ceiling: the next rise would overshoot ONE and must clamp.
+    sim.world.get(e, Settler).enjoyment = fx.sub(ONE, fx.div(ENJOYMENT_RISE_PER_TICK, fx.fromInt(2)));
+
+    needsSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, Settler).enjoyment).toBe(ONE);
+
+    needsSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, Settler).enjoyment).toBe(ONE);
+  });
+
+  it('rises all four needs independently in the same tick, invariant-clean', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = settlerWithHunger(sim, fx.fromInt(0));
+
+    for (let i = 0; i < 100; i++) sim.step();
+    const settler = sim.world.get(e, Settler);
+    expect(settler.enjoyment).toBe(fx.mul(ENJOYMENT_RISE_PER_TICK, fx.fromInt(100)));
+    expect(settler.enjoyment).toBeLessThan(settler.piety); // slowest rate ⇒ lowest after equal ticks
     expect(sim.checkInvariants()).toEqual([]);
   });
 });

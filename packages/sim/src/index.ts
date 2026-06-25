@@ -51,6 +51,7 @@ export {
   hungerInRange,
   fatigueInRange,
   pietyInRange,
+  enjoymentInRange,
   buildingSane,
 } from './invariants.js';
 

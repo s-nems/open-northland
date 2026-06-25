@@ -78,6 +78,7 @@ function settlerAt(
     hunger,
     fatigue,
     piety,
+    enjoyment: fx.fromInt(0),
     experience: new Map(),
   });
   return e;
