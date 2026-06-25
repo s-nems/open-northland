@@ -16,6 +16,7 @@ import type { Entity, World } from '../ecs/world.js';
 import { type Fixed, fx } from '../fixed.js';
 import type { CellId, TerrainGraph } from '../terrain.js';
 import type { System, SystemContext } from './context.js';
+import { settlerMeetsNeed } from './progression.js';
 import { buildingWorkerJobs, inRange, isFood, isTemple, recipeOf, stockCapacity } from './shared.js';
 
 /**
@@ -191,8 +192,14 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       continue;
     }
 
-    // Empty-handed: go harvest. Pick the nearest resource this job is allowed to harvest.
-    const node = nearestHarvestableFor(world, ctx, terrain, here, settler.jobType);
+    // Empty-handed: go harvest. Pick the nearest resource this settler is allowed to harvest — gated
+    // both by its job's atomic permissions AND by its accrued XP clearing the good's `needforgood`
+    // threshold (the who-may-do-it gate). `jobType` is non-null here (guarded above).
+    const node = nearestHarvestableFor(world, ctx, terrain, here, {
+      jobType: settler.jobType,
+      tribe: settler.tribe,
+      experience: settler.experience,
+    });
     if (node !== null) {
       const res = world.get(node, Resource);
       const cell = entityCell(world, terrain, node);
@@ -356,21 +363,31 @@ function atomicDuration(
 const DEFAULT_ATOMIC_DURATION = 4;
 
 /**
- * The nearest harvestable {@link Resource} the given job is allowed to harvest, by fixed-point
+ * The nearest harvestable {@link Resource} the given settler is allowed to harvest, by fixed-point
  * Manhattan distance from `here`, with ascending-cell-id as the deterministic tie-break. A resource
- * is eligible only if it has units remaining AND the job's `allowedAtomics` permits the resource
- * good's harvest atomic (the data-driven gate — a woodcutter harvests trees, not ore). Returns the
- * resource entity, or null if none qualifies. Scanned in canonical entity-id order so the result
- * never depends on store insertion history.
+ * is eligible only if it has units remaining AND its harvest passes **both** data-driven gates:
+ *
+ *  - the job's `allowedAtomics` permits the resource good's harvest atomic (a woodcutter harvests
+ *    trees, not ore — {@link jobAtomics});
+ *  - the settler's accrued XP clears the harvested good's `needforgood` thresholds for its tribe
+ *    ({@link settlerMeetsNeed}) — the *who-may-do-it* progression gate, the per-settler sibling of the
+ *    production-side tribe-presence `jobEnablesGood` gate. A settler trains a good's track by
+ *    harvesting it (`grantWorkExperience`), so a low-XP settler is held out of the goods whose
+ *    threshold it hasn't yet reached; an unthresholded good (no `needforgood`) is harvestable by any
+ *    settler, so this gate is inert where no requirement exists.
+ *
+ * Returns the resource entity, or null if none qualifies. Scanned in canonical entity-id order so the
+ * result never depends on store insertion history. Determinism: both gates are pure reads over content
+ * + the settler's components (no RNG/wall-clock).
  */
 function nearestHarvestableFor(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   here: CellId,
-  jobType: number,
+  settler: { jobType: number; tribe: number; experience: ReadonlyMap<number, number> },
 ): Entity | null {
-  const allowed = jobAtomics(ctx, jobType);
+  const allowed = jobAtomics(ctx, settler.jobType);
   let best: Entity | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
@@ -379,6 +396,8 @@ function nearestHarvestableFor(
     if (res === undefined || res.remaining <= 0) continue;
     if (!world.has(e, Position)) continue;
     if (!allowed.has(res.harvestAtomic)) continue; // data-driven gate: job must permit this atomic
+    // XP gate: this settler must have cleared the harvested good's `needforgood` thresholds.
+    if (!settlerMeetsNeed(ctx, settler.tribe, 'good', res.goodType, settler.experience)) continue;
     const cell = entityCell(world, terrain, e);
     const dist = manhattan(terrain, here, cell);
     if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
