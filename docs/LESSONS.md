@@ -40,6 +40,11 @@ the next iteration inherits it.
   package's `tsc --build` graph, which emits `.js`/`.d.ts` *in-place next to the .ts* — stray
   untracked artifacts `biome check` then lints and fails on. Keep dev/demo fixtures self-contained in
   `src/` (a tiny synthetic copy), don't reach across into another package's `test/`. (tooling/render)
+- [94bae6d] A speculative/dead named-import added when extracting helpers into a new module slips
+  past BOTH gates: biome's `recommended` set doesn't error on `noUnusedImports`, and `tsc`'s
+  `noUnusedLocals` won't flag one *member* of a still-partly-used import group (`{ Building, Stockpile }`
+  where only `Building` is used). Eyeball the new file's imports against its body after a module split —
+  green build + green check don't prove every import is live. (sim/tooling)
 - [fa70452] A `sim` mechanic with data-pinned *parameters* (atomic durations, job gates, stock caps)
   is NOT thereby `faithful` — its *behavior* (planner/loop shape) has no oracle (OpenVikings' tick is
   a stub). Classify those rows `approximated` with "calibration-by-observation pending"; reserve
