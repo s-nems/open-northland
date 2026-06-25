@@ -34,13 +34,17 @@ import {
 import { reproductionSystem } from './reproduction.js';
 import { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem } from './routing.js';
 import {
+  type CombatDamageRow,
+  type CombatProfile,
   type GoodsGraphNode,
   IDLE_JOB,
+  combatDamage,
   goodsGraph,
   housingCapacity,
   tribePopulation,
   tribePopulationByJob,
   tribeStocks,
+  weaponKey,
 } from './shared.js';
 import {
   cleanupSystem,
@@ -75,8 +79,17 @@ export { productionSystem };
 export { atomicSystem };
 export { jobSystem };
 export { carrierCarryCapacity, experienceRequirementMet, grantWorkExperience, settlerMeetsNeed, trackFor };
-export type { GoodsGraphNode };
-export { goodsGraph, housingCapacity, IDLE_JOB, tribePopulation, tribePopulationByJob, tribeStocks };
+export type { CombatDamageRow, CombatProfile, GoodsGraphNode };
+export {
+  combatDamage,
+  goodsGraph,
+  housingCapacity,
+  IDLE_JOB,
+  tribePopulation,
+  tribePopulationByJob,
+  tribeStocks,
+  weaponKey,
+};
 export { reproductionSystem };
 export {
   BABY_FEMALE,
