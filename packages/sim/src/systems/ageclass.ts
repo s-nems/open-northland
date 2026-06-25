@@ -15,9 +15,12 @@
  * workplace lists a baby/child in its `workers` slots, so one is never adopted either).
  *
  * GROWTH (the {@link growthSystem} below): a settler born young ({@link Age}-bearing) **grows up** —
- * the planner now consults {@link isNonWorkingAge} so a baby/child does NOT run the adult needs-drives
+ * the AI planner skips an `Age`-bearing settler so a baby/child does NOT run the adult needs-drives
  * (eat/sleep/pray), matching the original's "a baby is cared for, it doesn't self-feed", and the
  * GrowthSystem ages it baby → child → adult-eligible (its `Age` component is removed once it can work).
+ * (The planner keys on the `Age` component rather than {@link isNonWorkingAge} to dodge a jobType-id
+ * collision — a synthetic fixture's adult job id can equal a real age-class id, but only a born-young
+ * settler carries `Age`; `isNonWorkingAge` stays the structural id→stage predicate the JobSystem uses.)
  *
  * FIDELITY (faithful — params; approximated — cadence): the age-class ids are pinned to the original
  * `logicdefines.inc` constants + the `jobtypes.ini` records (no interpretation). The **growth cadence**
