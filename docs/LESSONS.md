@@ -175,3 +175,11 @@ the next iteration inherits it.
   atomic-id constant, grep `tribetypes` for the action name — the slot id is sitting right there. And
   put the eat-drive ABOVE the workplace-staffing pin in the planner, or a starving operator never
   leaves to feed. (sim/fidelity)
+- [e13314d] A **target-bound** need (the settler must reach a SITE to satisfy it, unlike eat-at-a-store
+  / sleep-in-place) needs a need→satisfier→**building** lookup — and the satisfier building is often
+  identified by a *structural signature*, not a readable flag: the original "work temple" (logictype 37,
+  logicmaintype 3) carries no `logicworker`/`logicstock`/`logicproduction`, so it surfaces as a
+  `workplace` kind with no recipe/workers/stock — exactly the "infer the binding that lives below the
+  readable data" pattern `isFood` uses (the `food_` id prefix). Don't invent a content flag the data
+  lacks; recognise the building by what it conspicuously *omits*. And the new walk-to-target reuses the
+  existing MoveGoal→PathRequest→PathFollow chain for free — the drive only sets the goal. (sim/fidelity)
