@@ -426,3 +426,14 @@ the next iteration inherits it.
   `sim.snapshot().events` only sees the LAST tick's events — a one-shot event (a kill's `settlerDied`)
   fired mid-loop is gone. Accumulate across the loop (`deaths += ...events.filter(...)` per step) to
   assert it, or the check silently degrades to a no-op (the `>= 0` trap). (sim/testing)
+- [a4595ae] The "N data-defined tribes, never hardcode two" rule is satisfiable WITHOUT new code in the
+  mechanics: the pipeline already extracts all 41 `[tribetype]`s and every sim rule resolves per-tribe
+  off `settler.tribe → content.tribes.find(...)`, so the sim is tribe-agnostic by construction. The only
+  thing missing was *classifying* which tribes are controllable — and the source distinguishes a
+  civilization from an animal **by the data alone**: only a civilization carries `jobEnables` tech-graph
+  edges (`jobEnables.length === 0` ⇔ animal, 0 mismatches against `jobRequirements` over the real IR).
+  So the scaffolding is a pure read view filtering on that signature, not a hardcoded name/count. When a
+  roadmap item says "data-defined X, never hardcode the count", first check whether the data already
+  carries a *distinguishing field* — the classification is usually a read view, not a mechanic. And a
+  read view that `.filter(...).sort(...)` is determinism-safe because `filter` allocates a fresh array,
+  so the in-place `.sort()` never mutates the shared `content`. (sim/read-model)
