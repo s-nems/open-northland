@@ -61,12 +61,29 @@ export function validateCrossReferences(set: ContentSet): void {
     }
   }
 
+  const buildingIds = new Set(set.buildings.map((b) => b.typeId));
+
   // Each tribe's `setatomic` binding names the job it applies to; that job must exist. (Atomic ids
   // themselves have no master table to resolve against — see AtomicId — so only jobType is checked.)
   for (const t of set.tribes) {
     for (const b of t.atomicBindings) {
       if (!jobIds.has(b.jobType))
         errors.push(`tribe "${t.id}" binds atomic ${b.atomicId} to unknown jobType ${b.jobType}`);
+    }
+    // Each `jobEnables*` tech-graph edge: the enabling `jobType` must resolve, and so must its
+    // `targetId` within the kind's table — a good, a building (`house`), or a job. The `vehicle`
+    // kind is NOT checked: its id is the `logicvehicletype` namespace (1..N), which the building
+    // extractor deliberately skips (see extractBuildings), so there is no IR table to resolve it
+    // against yet — adding it would false-positive. Resolve vehicles once that table is extracted.
+    for (const e of t.jobEnables) {
+      if (!jobIds.has(e.jobType))
+        errors.push(`tribe "${t.id}" jobEnables-edge has unknown jobType ${e.jobType}`);
+      if (e.kind === 'good' && !goodIds.has(e.targetId))
+        errors.push(`tribe "${t.id}" job ${e.jobType} enables unknown goodType ${e.targetId}`);
+      if (e.kind === 'house' && !buildingIds.has(e.targetId))
+        errors.push(`tribe "${t.id}" job ${e.jobType} enables unknown buildingType ${e.targetId}`);
+      if (e.kind === 'job' && !jobIds.has(e.targetId))
+        errors.push(`tribe "${t.id}" job ${e.jobType} enables unknown jobType ${e.targetId}`);
     }
   }
 

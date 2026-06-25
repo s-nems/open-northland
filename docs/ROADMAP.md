@@ -1068,8 +1068,21 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             the real `Simulation.step()` vertical slice (seed 7, 1000 ticks) → the woodcutter accrues
             exactly **80 XP** in its wood track (8 harvests × experienceFactor 10), the carrier + mill
             operator accrue nothing; golden atomic trace + 8-plank output unchanged, state hash moved
-            deliberately (`d1ac5fbe → f0edd147`). **Next:** `trainforjob` schooling + the
-            `needfor*`/`allow*`/`jobEnables*` gating (the XP→level→unlock half) on top.
+            deliberately (`d1ac5fbe → f0edd147`).
+      - [x] **`jobEnables*` tech-graph edges extracted** — `extractJobEnables` (`decoders/ini.ts`,
+            called from `extractTribes`) reduces each `[tribetype]`'s `jobEnablesGood`/`jobEnablesHouse`/
+            `jobEnablesJob`/`jobEnablesVehicle <jobType> <targetId>` lines to unified
+            `TribeType.jobEnables` edges (`{jobType, kind, targetId}` discriminated by `kind`) — the
+            **gate** half of progression: a settler of `jobType` present in the tribe unlocks producing/
+            building/training/using the target. Edges grouped by kind, each keeping file order; repeats
+            kept verbatim (like `setatomic`). `validateCrossReferences` resolves good/house(building)/job
+            targets; the `vehicle` kind is skipped (its id is the `logicvehicletype` namespace, not yet
+            in the IR — would false-positive). **Data-only this iteration — no sim consumes the edges
+            yet.** **Hands-on:** `npm run pipeline` on the real game → **1325 edges across the 5 playable
+            tribes** (285 good / 880 house / 110 job / 50 vehicle; animals none), 0 dangling refs, vehicle
+            ids `{1..5}`. **Next:** wire a JobSystem/ConstructionSystem gate that *reads* these edges
+            (a building/good is only buildable once a settler of the enabling job exists), then the
+            `trainforjob`/`needfor*` schooling half on top (the XP→level→unlock curve).
 - [ ] JobSystem assignment across many workplaces; multiple carriers + vehicle stock slots.
 - [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`)
       → population capacity → the births→housing→births loop.

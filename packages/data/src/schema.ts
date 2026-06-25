@@ -276,12 +276,40 @@ export const AtomicBinding = z.object({
 });
 export type AtomicBinding = z.infer<typeof AtomicBinding>;
 
+/**
+ * One tech-graph edge from `tribetypes` `jobEnables<Kind> <jobType> <targetId>` — having a settler
+ * of `jobType` in the tribe *unlocks* a target the tribe can then produce/build/train/use. The four
+ * source keys (`jobEnablesGood`/`jobEnablesHouse`/`jobEnablesJob`/`jobEnablesVehicle`) differ only in
+ * what kind of id the target is, so they unify into one record discriminated by `kind`; the target
+ * id is keyed within that kind's type table (a `good`→{@link GoodType}, `house`→{@link BuildingType},
+ * `job`→{@link JobType}, `vehicle`→a vehicle {@link BuildingType}).
+ *
+ * This is the *gate* half of the progression graph — the original keys availability of goods/houses/
+ * jobs/vehicles on a job being present, which is in turn gated by training/experience (`trainforjob`/
+ * `needfor*`, a later slice). Edges are kept in file order; a tribe may repeat a `(jobType, kind,
+ * targetId)` triple, kept verbatim like {@link AtomicBinding} (the raw source stays faithful).
+ */
+export const JobEnablesKind = z.enum(['good', 'house', 'job', 'vehicle']);
+export type JobEnablesKind = z.infer<typeof JobEnablesKind>;
+
+export const JobEnables = z.object({
+  /** The job whose presence unlocks the target (`jobEnables*`'s first int). */
+  jobType: TypeId,
+  /** Which type table `targetId` indexes (from the `jobEnables<Kind>` key). */
+  kind: JobEnablesKind,
+  /** The unlocked target id, keyed within `kind`'s type table (the second int). */
+  targetId: TypeId,
+});
+export type JobEnables = z.infer<typeof JobEnables>;
+
 export const TribeType = z.object({
   typeId: TypeId,
   id: z.string(),
   name: z.string().optional(),
   /** `setatomic` bindings in file order — a tribe's atomic→animation vocabulary, per job. */
   atomicBindings: z.array(AtomicBinding).default([]),
+  /** `jobEnables*` tech-graph edges in file order — what each job unlocks for the tribe. */
+  jobEnables: z.array(JobEnables).default([]),
   source: Provenance.optional(),
 });
 export type TribeType = z.infer<typeof TribeType>;
