@@ -19,9 +19,10 @@ import type { SystemContext } from './context.js';
  * sim logic — see events.ts). So the grant lives where the completion is known — AtomicSystem's
  * effect-apply — exactly like the hunger/fatigue resets do.
  *
- * The *gating/tech-graph* half ({@link buildingEnabled}) is query-shaped instead: it answers "is this
- * building unlocked for the tribe right now?" by inspecting current world state, so it lives here as a
- * pure helper the CommandSystem calls when applying `placeBuilding` (not the executor). The remaining
+ * The *gating/tech-graph* half ({@link buildingEnabled} for houses, {@link goodEnabled} for goods) is
+ * query-shaped instead: it answers "is this building / good unlocked for the tribe right now?" by
+ * inspecting current world state, so each lives here as a pure helper its consumer calls — the
+ * CommandSystem when applying `placeBuilding`, ProductionSystem when starting a cycle. The remaining
  * `needfor*`/`allow*`/`trainforjob` schooling gates (the XP→level→unlock curve) are a later slice.
  *
  * Determinism: no RNG, no wall-clock, fixed-point not needed (XP is a whole-number counter on the
@@ -102,15 +103,49 @@ export function buildingEnabled(
   tribe: number,
   buildingType: number,
 ): boolean {
+  return tribeUnlockEnabled(world, ctx, tribe, 'house', buildingType);
+}
+
+/**
+ * The *gating* half of progression for a **good** — is producing `goodType` unlocked for `tribe` right
+ * now? The sibling of {@link buildingEnabled} on the `good` kind of the same `jobEnables` tech-graph:
+ * the original's `tribetypes` `jobEnablesGood <jobType> <goodType>` edge means a settler of that job
+ * being present unlocks producing the good. A good with **no** `jobEnablesGood` edge gating it is an
+ * ungated start good (made freely); one that *is* gated may be produced only while an enabling-job
+ * settler is alive in the same tribe.
+ *
+ * Consumed by ProductionSystem's cycle-start gate: a workplace can't begin a cycle whose output good
+ * is gated-out (a tannery makes no leather until the tribe has the tanner that enables it). Same
+ * determinism properties as {@link buildingEnabled} — a pure membership query, no RNG/wall-clock.
+ */
+export function goodEnabled(world: World, ctx: SystemContext, tribe: number, goodType: number): boolean {
+  return tribeUnlockEnabled(world, ctx, tribe, 'good', goodType);
+}
+
+/**
+ * Shared read side of the `jobEnables` tech-graph for a single `(kind, targetId)`: is the target
+ * unlocked for `tribe`? The target is enabled when either no edge of `kind` gates it (ungated), or a
+ * settler of any gating job is currently alive in the tribe. {@link buildingEnabled} (kind `house`)
+ * and {@link goodEnabled} (kind `good`) are the two consumers; the `job`/`vehicle` kinds await their
+ * JobSystem/vehicle slices. Determinism: a pure membership query (does *some* enabling-job settler
+ * exist?), order-independent like `Map.has`; a tribe absent from content gates nothing.
+ */
+function tribeUnlockEnabled(
+  world: World,
+  ctx: SystemContext,
+  tribe: number,
+  kind: 'house' | 'good',
+  targetId: number,
+): boolean {
   const tribeType = ctx.content.tribes.find((t) => t.typeId === tribe);
   if (tribeType === undefined) return true; // no tech-graph for this tribe — nothing gates it
 
-  // The jobs that unlock this building (a building may be gated by several different jobs).
+  // The jobs that unlock this target (a target may be gated by several different jobs).
   const enablingJobs = new Set<number>();
   for (const edge of tribeType.jobEnables) {
-    if (edge.kind === 'house' && edge.targetId === buildingType) enablingJobs.add(edge.jobType);
+    if (edge.kind === kind && edge.targetId === targetId) enablingJobs.add(edge.jobType);
   }
-  if (enablingJobs.size === 0) return true; // ungated building (e.g. the headquarters)
+  if (enablingJobs.size === 0) return true; // ungated target (e.g. the headquarters / a start good)
 
   // Enabled iff a settler of an enabling job is currently alive in this tribe.
   for (const e of world.query(Settler)) {

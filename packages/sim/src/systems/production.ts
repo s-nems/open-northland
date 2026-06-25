@@ -2,6 +2,7 @@ import type { Recipe } from '@vinland/data';
 import { Building, Production, Stockpile } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { System, SystemContext } from './context.js';
+import { goodEnabled } from './progression.js';
 import { recipeOf, stockCapacity, workerPresentAt } from './shared.js';
 
 /**
@@ -67,12 +68,19 @@ export const productionSystem: System = (world, ctx) => {
 };
 
 /**
- * Whether a workplace may begin a production cycle now: its own stockpile holds every input good in
- * full, AND every output good has free room up to its per-good stock capacity. The output check is
- * the capacity enforcement — a cycle that couldn't deposit its outputs is never started, so the
- * stockpile never overflows (and outputs aren't produced and then dropped).
+ * Whether a workplace may begin a production cycle now: every output good is **tech-unlocked** for its
+ * tribe (the `jobEnablesGood` gate), its own stockpile holds every input good in full, AND every
+ * output good has free room up to its per-good stock capacity. The output room check is the capacity
+ * enforcement — a cycle that couldn't deposit its outputs is never started, so the stockpile never
+ * overflows (and outputs aren't produced and then dropped). The tech gate mirrors the `placeBuilding`
+ * house gate: a good gated by `jobEnablesGood` isn't produced until an enabling-job settler is in the
+ * tribe (a tannery makes no leather without the tanner).
  */
 function canStartCycle(world: World, ctx: SystemContext, building: Entity, recipe: Recipe): boolean {
+  const tribe = world.get(building, Building).tribe;
+  for (const output of recipe.outputs) {
+    if (!goodEnabled(world, ctx, tribe, output.goodType)) return false; // good not yet tech-unlocked
+  }
   const stock = world.get(building, Stockpile).amounts;
   for (const input of recipe.inputs) {
     if ((stock.get(input.goodType) ?? 0) < input.amount) return false; // input not available

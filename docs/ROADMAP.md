@@ -1111,10 +1111,24 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             "always 77", but the real data also uses 57. **Hands-on:** `npm run pipeline` on the real
             game → **575 requirements across the 5 playable tribes** (145 needforjob / 115 trainforjob /
             160 needforgood / 155 trainforgood; animals none), 20 lines with two expTypes, 0 dangling
-            target refs. **Next:** the XP→level→unlock *curve* (interpret `amount`/`experienceFactor`/
-            `baseRepeatCounter` into a competence tier that consumes these `need`/`train` thresholds to
-            gate jobs/goods), and consume the `good`/`job`/`vehicle` jobEnables edge kinds as their
-            producer / JobSystem slices land.
+            target refs.
+      - [x] **`jobEnablesGood` production gate wired into the sim** — `goodEnabled` (`systems/
+            progression.ts`) is the *read* side of the tech-graph's **good** kind, the sibling of
+            `buildingEnabled`: ProductionSystem's `canStartCycle` now consults it before a workplace
+            begins a cycle. A good with **no** `jobEnablesGood` edge gating it is produced freely; one
+            that *is* gated produces only while a `Settler` of an enabling job is alive in the **same**
+            tribe — otherwise the cycle simply never starts (inputs untouched, no waste), exactly like
+            the worker-presence / output-capacity gates. The two readers share one
+            `tribeUnlockEnabled(kind, targetId)` membership helper (no duplicated tribe-scan). A
+            mapless/tribe-less fixture gates nothing (the determinism golden + 8-plank slice are
+            untouched — the slice always has a woodcutter in the tribe). **Hands-on:** compiled `dist`
+            `Simulation.step()` — a sawmill (output PLANK gated `jobEnablesGood 1 2`) staffed by a
+            carpenter but with **no woodcutter** → **0 planks, wood untouched at 5**; spawn a woodcutter
+            in the tribe → 1 plank; a woodcutter in a *different* tribe leaves it gated; two seed-7 runs
+            hash-equal (`bb6ef2e9`). **Next:** the XP→level→unlock *curve* (interpret `amount`/
+            `experienceFactor`/`baseRepeatCounter` into a competence tier that consumes these
+            `need`/`train` thresholds to gate jobs/goods), and consume the `job`/`vehicle` jobEnables
+            edge kinds as their JobSystem/vehicle slices land.
 - [ ] JobSystem assignment across many workplaces; multiple carriers + vehicle stock slots.
 - [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`)
       → population capacity → the births→housing→births loop.

@@ -89,10 +89,16 @@ export function testContent(): ContentSet {
           // resolves its duration through this binding -> atomicAnimations length below.
           { jobType: 1, atomicId: 12, animation: 'viking_pray' },
         ],
-        // One tech-graph edge: the carpenter (job 2) unlocks the smithy (house 4) for this tribe. The
-        // placement gate (buildingEnabled) reads this — the smithy can only be placed once a carpenter
-        // settler exists. The HQ/sawmill (houses 1/2) carry no edge, so they stay ungated.
-        jobEnables: [{ jobType: 2, kind: 'house', targetId: 4 }],
+        // Tech-graph edges. (1) the carpenter (job 2) unlocks the smithy (house 4): the placement gate
+        // (buildingEnabled) reads this — the smithy can only be placed once a carpenter settler exists.
+        // (2) the WOODCUTTER (job 1) unlocks producing PLANK (good 2): the production gate (goodEnabled)
+        // reads this — a sawmill can't make planks until a woodcutter is alive in the tribe, even when
+        // its own carpenter operator is present. The HQ/sawmill (houses 1/2) carry no house edge so
+        // they stay ungated for placement; the slice always has a woodcutter so the golden is unaffected.
+        jobEnables: [
+          { jobType: 2, kind: 'house', targetId: 4 },
+          { jobType: 1, kind: 'good', targetId: 2 },
+        ],
       },
     ],
     atomicAnimations: [
