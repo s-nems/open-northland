@@ -236,3 +236,12 @@ the next iteration inherits it.
   id and `.get()` simply returns 0 for an unmatched track (vacuously unmet), never throwing. Verify the
   join hands-on against the REAL IR (the keyspace overlap + the boundary gate), not just the fixture.
   (sim/progression)
+- [8a0e4d6] An XP-`need` gate must be wired where the gated agent can ALSO satisfy it, or it deadlocks:
+  reading `needforgood` as "the workplace OPERATOR's XP" looked obvious, but the operator (a carpenter)
+  accrues no XP under the current sim (production grants none — `grantWorkExperience` fires only on
+  harvest), so any non-zero threshold would lock that output forever. The faithful, non-deadlocking seam
+  is the HARVEST planner (`nearestHarvestableFor`), where the gated settler IS the one who trains the
+  good's track by doing the work the threshold guards. Before consuming a "you need XP in track T to do
+  X" gate, check the sim actually grants track-T XP *to the agent X gates* — a gate whose input no agent
+  can produce yet is a deadlock, not a faithful constraint; defer it to where the accrual loop closes.
+  (sim/progression)
