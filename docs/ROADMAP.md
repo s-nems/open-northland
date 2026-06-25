@@ -67,9 +67,12 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       like the carpenter reaches its station instead of idling), and the **binding's demolition path is
       closed** (the `demolish` command unbinds + idles every settler bound to a building before
       destroying it — `unbindWorkersOf` in `systems/command.ts` — so a worker is never stranded latched
-      to a dead workplace; the JobSystem re-employs it next tick). **Next:** multiple carriers + vehicle
-      stock slots (a carrier currently hauls one good at a time with no vehicle), consuming the
-      `vehicle` `jobEnables` edge kind.
+      to a dead workplace; the JobSystem re-employs it next tick). **Vehicle data extracted** — the
+      `vehicletypes` table (incl. `stockSlots` carry capacity: handcart 15 / oxcart 30 / ships 50,200)
+      now lands in the IR (`VehicleType`, `Data/logic/vehicletypes.ini`), the param the carrier slice
+      consumes. **Next:** wire that into the sim — give a carrier a `stockSlots` carry capacity so it
+      hauls a batch (today it moves one unit/swing with no vehicle), then multiple carriers, consuming
+      the `vehicle` `jobEnables` edge kind (and resolving its now-extractable cross-ref, see data/index.ts).
 - [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`)
       → population capacity → the births→housing→births loop.
 - [ ] ReproductionSystem: families, children growing up, gated by housing.

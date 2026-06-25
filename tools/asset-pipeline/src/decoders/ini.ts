@@ -30,6 +30,7 @@ import {
   LandscapeType,
   MapInfo,
   TribeType,
+  VehicleType,
   WeaponType,
 } from '@vinland/data';
 import type { CifLine } from './cif.js';
@@ -590,6 +591,38 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
     );
   }
   return weapons;
+}
+
+/**
+ * Extracts `[vehicletype]` sections (base `Data/logic/vehicletypes.ini` — the mod ships no readable
+ * twin, and the file is plain `.ini` like `goodtypes`/`landscapetypes`) into validated
+ * {@link VehicleType} IR. The carry capacity is `stockslots` (the param the later multi-good carrier
+ * slice consumes); `passengerslots` and `logicsize` round out the type record. The per-vehicle
+ * `logicgood`/`logicpassenger` allow-lists, vector/slot graphics (`stockvector`/`vehicleslots`), the
+ * draft-animal (`logicdragginganimaltribe`) and `debug*` extras are intentionally skipped — they
+ * belong with the later vehicle/transport + graphics slices, not this type-table extract. Throws on a
+ * section missing the required numeric `type` (matches {@link extractWeapons}'s throw-on-malformed
+ * stance).
+ */
+export function extractVehicles(sections: readonly RuleSection[], src: SourceRef): VehicleType[] {
+  const vehicles: VehicleType[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'vehicletype') continue;
+    const typeId = requireTypeId(sec, 'vehicletype', src);
+    const name = getStr(sec, 'name');
+    vehicles.push(
+      VehicleType.parse({
+        typeId,
+        id: name ? slug(name) : `vehicle_${typeId}`,
+        name,
+        stockSlots: getInt(sec, 'stockslots'),
+        passengerSlots: getInt(sec, 'passengerslots'),
+        logicSize: getInt(sec, 'logicsize'),
+        source: { file: src.file, block: 'vehicletype', layer: src.layer ?? 'base' },
+      }),
+    );
+  }
+  return vehicles;
 }
 
 /**

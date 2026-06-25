@@ -16,6 +16,7 @@ import {
   extractMapInfo,
   extractPaletteIndex,
   extractTribes,
+  extractVehicles,
   extractWeapons,
   fillBuildingRecipes,
   parseIniSections,
@@ -150,6 +151,34 @@ type 2
 name "wooden spear"
 damagevalue 0 2400
 jobtype 32
+`;
+
+// Mirrors Data/logic/vehicletypes.ini (plain `.ini`, the `<CULTURES_CIF_BEGIN>` header line is not a
+// `[section]` so the parser ignores it like goodtypes/landscapetypes): each `[vehicletype]` carries a
+// numeric `type`, a quoted `name`, `logicsize`, `stockslots` (the carry capacity), `passengerslots`,
+// and per-vehicle `logicgood`/`logicpassenger`/`debug*` extras the schema doesn't carry (ignored). The
+// handcart (15 slots, no passengers, land size 0) and the small ship (50 slots, 19 passengers, sea
+// size 2) bracket the real range. The third omits the slot/size lines to exercise the schema defaults.
+const VEHICLETYPES_INI = `<CULTURES_CIF_BEGIN><03FD><000001A0> Don't modify this line!
+[vehicletype]
+type 1
+name "handcart"
+logicsize 0
+stockslots 15
+logicgood 16
+logicgood 17
+passengerslots 0
+debugcolor 0 100 100
+[vehicletype]
+type 3
+name "ship small"
+logicsize 2
+stockslots 50
+passengerslots 19
+logicpassenger 25
+[vehicletype]
+type 5
+name "catapult"
 `;
 
 // Mirrors DataCnmd/types/houses.ini: a `[logichousetype]` keys its id on `logictype` (not `type`) and
@@ -555,6 +584,52 @@ describe('extractWeapons', () => {
 
   it('throws on a [weapontype] missing its numeric `type`', () => {
     expect(() => extractWeapons(parseIniSections('[weapontype]\nname "x"\n'), { file: 'f.ini' })).toThrow(
+      /without a numeric `type`/,
+    );
+  });
+});
+
+describe('extractVehicles', () => {
+  it('maps [vehicletype] sections to validated VehicleType IR with stock/passenger slots', () => {
+    const vehicles = extractVehicles(parseIniSections(VEHICLETYPES_INI), {
+      file: 'Data/logic/vehicletypes.ini',
+      layer: 'base',
+    });
+    const src = { file: 'Data/logic/vehicletypes.ini', block: 'vehicletype', layer: 'base' };
+    expect(vehicles).toEqual([
+      {
+        typeId: 1,
+        id: 'handcart',
+        name: 'handcart',
+        stockSlots: 15,
+        passengerSlots: 0,
+        logicSize: 0,
+        source: src,
+      },
+      {
+        typeId: 3,
+        id: 'ship_small',
+        name: 'ship small',
+        stockSlots: 50,
+        passengerSlots: 19,
+        logicSize: 2,
+        source: src,
+      },
+      // No slot/size lines -> schema defaults of 0 for all three.
+      {
+        typeId: 5,
+        id: 'catapult',
+        name: 'catapult',
+        stockSlots: 0,
+        passengerSlots: 0,
+        logicSize: 0,
+        source: src,
+      },
+    ]);
+  });
+
+  it('throws on a [vehicletype] missing its numeric `type`', () => {
+    expect(() => extractVehicles(parseIniSections('[vehicletype]\nname "x"\n'), { file: 'f.ini' })).toThrow(
       /without a numeric `type`/,
     );
   });
