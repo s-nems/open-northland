@@ -33,7 +33,7 @@ import {
 } from './progression.js';
 import { reproductionSystem } from './reproduction.js';
 import { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem } from './routing.js';
-import { housingCapacity, tribePopulation, tribeStocks } from './shared.js';
+import { IDLE_JOB, housingCapacity, tribePopulation, tribePopulationByJob, tribeStocks } from './shared.js';
 import {
   cleanupSystem,
   combatSystem,
@@ -67,7 +67,7 @@ export { productionSystem };
 export { atomicSystem };
 export { jobSystem };
 export { carrierCarryCapacity, experienceRequirementMet, grantWorkExperience, settlerMeetsNeed, trackFor };
-export { housingCapacity, tribePopulation, tribeStocks };
+export { housingCapacity, IDLE_JOB, tribePopulation, tribePopulationByJob, tribeStocks };
 export { reproductionSystem };
 export {
   BABY_FEMALE,

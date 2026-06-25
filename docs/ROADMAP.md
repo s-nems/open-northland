@@ -126,10 +126,13 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       a set of pure, deterministic derived views over world state (no mechanic, no pixels): `tribeStocks`
       (`systems/shared.ts`) sums each good a tribe holds across all its stores (`Building`+`Stockpile`),
       the **stocks** panel's source, joining `tribePopulation`/`housingCapacity` (the **population** half,
-      already landed). The visual/Pixi half + the **jobs** breakdown and the **goods-graph** view remain.
-      **Next:** the per-job population breakdown read model (count a tribe's settlers by `jobType`,
-      age-classes vs trades), the third HUD read view, then wire the views into a render-side panel
-      (visual — human-gated pixels).
+      already landed). The **jobs** breakdown now landed too — `tribePopulationByJob` (`systems/shared.ts`)
+      tallies a tribe's settlers by `jobType` into a `Map<jobType, count>`, idle (`null`) adults keyed by
+      the negative `IDLE_JOB` sentinel so they can't collide with a real job id, with the age-class
+      (ids 1–4) vs trade split left to the consumer to partition by key (the `jobType`-as-life-stage model).
+      The visual/Pixi half + the **goods-graph** view remain. **Next:** wire the three read views
+      (stocks / population / jobs) into a render-side HUD panel (visual — human-gated pixels), or the
+      **goods-graph** view (the recipe-DAG over `content`, a pure read like the others).
 - **Exit:** a self-sustaining, progressing single-tribe settlement you can grow.
 
 ## Phase 4 — Conflict & content breadth (N tribes)
