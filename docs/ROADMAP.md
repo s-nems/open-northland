@@ -429,12 +429,20 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
 > (byte-reproducible). Eyeballed gross-correct: textured atlas sprites at their feet anchors, depth-
 > sorted, iso terrain behind — distinct pixels from the placeholder default. Real bob atlases bind
 > through the same `SpriteSheet` shape with no renderer change.
-> **Next smallest step:** a richer per-job/per-state sprite binding (a settler's job → its walk/chop
-> bob frames via `tribetypes` `setatomic`) so `resolveSpriteFrame` picks the *right* frame per state,
-> then bind a REAL decoded bob atlas (gated on an owned game copy + a human eyeballing the pixels). (A
-> "per-type walk-cost field" is *not* a pending step: `landscapetypes.ini` has no movement weight —
-> only `maximumValency` + placement flags — so uniform unit cost is faithful.) Lines tagged
-> *(core done…)* pass tests today but await one wiring piece.
+> **The per-state sprite binding now lands:** `buildScene` derives each settler's coarse
+> {@link SpriteState} (`idle`/`moving`/`acting`, from `CurrentAtomic`/`PathFollow`) + carries the acting
+> `atomicId` (the `setatomic` join key) onto its `DrawItem`, and `SpriteBindings.settler` may now be a
+> `SettlerStateBinding` (`idle`/`moving`/`acting` bob ids + a `byAtomic` per-atomic override) so
+> `resolveSpriteFrame` picks the *right* frame per state, falling back idle←moving/acting and a plain
+> number staying valid (back-compat). The free synthetic atlas binds three distinct settler markers
+> (idle off-white / moving blue / acting warm), so `?atlas` exercises the per-state path end to end —
+> eyeballed gross-correct (a walking settler draws its blue marker, not the idle one).
+> **Next smallest step:** bind a REAL decoded bob atlas through the same `SpriteSheet` shape and
+> populate the `setatomic`→bob `byAtomic` table from the extracted tribe bindings (gated on an owned
+> game copy + a human eyeballing the pixels via the OpenVikings oracle). (A "per-type walk-cost field"
+> is *not* a pending step: `landscapetypes.ini` has no movement weight — only `maximumValency` +
+> placement flags — so uniform unit cost is faithful.) Lines tagged *(core done…)* pass tests today but
+> await one wiring piece.
 - [x] **CommandSystem + serializable command schema** — the ONLY way state mutates. Done —
       `systems/command.ts` (`commandSystem`, first in `SYSTEM_ORDER`) drains a per-sim
       {@link CommandQueue} (`commands.ts`) each tick and applies each serializable {@link Command}
@@ -753,9 +761,28 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             so the default `npm run shot` PNG is byte-reproducible. **Hands-on:** `npm run shot --atlas`
             (real entry, 0 page errors) → a PNG **distinct** from the placeholder default (different
             size + hash), eyeballed gross-correct — textured atlas sprites at their feet anchors,
-            depth-sorted, iso terrain behind; the default `npm run shot` unchanged. **Still open:** a
-            richer per-job/per-state binding (settler job → walk/chop bob frames via `setatomic`) +
+            depth-sorted, iso terrain behind; the default `npm run shot` unchanged. **Still open:**
             binding a REAL decoded bob atlas through the same `SpriteSheet` shape (human eyeballs pixels).
+      - [x] **Richer per-state settler binding (the `setatomic` join, self-verifiable half)** —
+            `buildScene` now derives each settler's coarse {@link SpriteState} from its snapshot
+            components — `CurrentAtomic` ⇒ `acting` (and the atomic's numeric id rides onto the
+            `DrawItem` as the `setatomic` join key), else a live `PathFollow` ⇒ `moving`, else `idle`;
+            buildings/resources stay `idle` (no per-state animation in this slice). `SpriteBindings.settler`
+            may now be a `SettlerStateBinding` (`packages/render/src/sprites.ts`): `idle` (required) +
+            optional `moving`/`acting` bob ids + a `byAtomic` per-atomic-id override (so chop vs carry can
+            draw different frames). `resolveSpriteFrame` picks by state with a total fallback chain
+            (`acting`→`byAtomic[id]`→`acting`→`idle`; `moving`→`idle`), and a **plain number stays valid**
+            (back-compat — the same frame for every state), so old bindings need no change. The free
+            synthetic atlas now binds three distinct settler markers (idle off-white / moving blue /
+            acting warm) through that shape, so `?atlas` exercises the per-state path end to end. APPROXIMATED
+            (see FIDELITY.md): the join *key* (atomic id) is faithful to `setatomic`, but the coarse
+            render state model + which-frame-per-state are our coarsening, and no real bob/animation table
+            is bound yet (the `byAtomic` table is empty until one is extracted). **Hands-on:** `npm run shot
+            -- --atlas` (real entry, 0 page errors) → a 1000×600 PNG showing a settler drawing its blue
+            `moving` marker distinct from the idle off-white one (the per-state binding live), default
+            `npm run shot` still byte-identical across two runs; 18 new render unit tests pin the state
+            derivation + the binding fallback chain (385 tests green). **Still open:** a REAL decoded bob
+            atlas + populating `byAtomic` from the extracted tribe `setatomic` bindings (human eyeballs pixels).
       - [x] **Pure scene/depth-sort layer** — `packages/render/src/scene.ts` (`buildScene`): turns a
             `WorldSnapshot` + the terrain grid dimensions into a flat, **depth-sorted** isometric
             draw list (`DrawItem[]`), the testable core of the render line that an agent CAN

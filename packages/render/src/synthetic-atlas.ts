@@ -1,5 +1,5 @@
 import { CanvasSource, type TextureSource } from 'pixi.js';
-import type { AtlasFrame, SpriteAtlas, SpriteBindings } from './sprites.js';
+import type { AtlasFrame, SettlerStateBinding, SpriteAtlas, SpriteBindings } from './sprites.js';
 
 /**
  * A FREE, SYNTHETIC sprite atlas — the texture to bind so the atlas-sprite draw path (the textured
@@ -21,18 +21,27 @@ import type { AtlasFrame, SpriteAtlas, SpriteBindings } from './sprites.js';
  * render-only — an atlas is a pixel grid, never read back into the deterministic sim.
  */
 
-/** The synthetic atlas sheet dimensions (a small power-of-two-ish grid; pure layout, no art). */
+/**
+ * The synthetic atlas sheet dimensions (a small power-of-two-ish grid; pure layout, no art). The
+ * sheet is two rows tall so the settler's three per-state frames + the building/resource frames all
+ * fit without overlap (the tallest top-row frame, the 40px building, reaches y=41; the bottom row
+ * starts at y=42).
+ */
 export const SYNTHETIC_ATLAS_WIDTH = 64;
-export const SYNTHETIC_ATLAS_HEIGHT = 64;
+export const SYNTHETIC_ATLAS_HEIGHT = 96;
 
 /**
  * The bob ids the synthetic bindings reference. Arbitrary small integers — a synthetic atlas has no
  * `.bmd` `firstBobId`, so these just have to agree between {@link syntheticAtlasFrames} and
- * {@link SYNTHETIC_BINDINGS}.
+ * {@link SYNTHETIC_BINDINGS}. The settler gets THREE bobs (one per {@link SpriteState}) so the richer
+ * per-state binding path is exercised end to end by the `?atlas` shot — an idle settler, a walking
+ * one, and one mid-action draw visibly different markers.
  */
-const SETTLER_BOB = 1;
+const SETTLER_IDLE_BOB = 1;
 const BUILDING_BOB = 2;
 const RESOURCE_BOB = 3;
+const SETTLER_MOVING_BOB = 4;
+const SETTLER_ACTING_BOB = 5;
 
 /**
  * One synthetic frame: its atlas rect, its feet-anchor draw offset, and the flat fill colour the GPU
@@ -53,9 +62,9 @@ interface SyntheticFrame {
  * uses. Pure data — no canvas, no GPU.
  */
 const SYNTHETIC_FRAMES: readonly SyntheticFrame[] = [
-  // settler: a tall thin figure, 12x24.
+  // settler (idle): a tall thin figure, 12x24, in a calm off-white.
   {
-    bobId: SETTLER_BOB,
+    bobId: SETTLER_IDLE_BOB,
     frame: { x: 1, y: 1, width: 12, height: 24, offsetX: -6, offsetY: -24 },
     colour: '#e8e0d0',
   },
@@ -71,11 +80,35 @@ const SYNTHETIC_FRAMES: readonly SyntheticFrame[] = [
     frame: { x: 45, y: 1, width: 16, height: 28, offsetX: -8, offsetY: -28 },
     colour: '#2f7d32',
   },
+  // settler (moving): same figure, tinted blue so a walking settler reads differently than an idle one.
+  // On the bottom row (y>=42) so it clears the building/resource frames above (which reach y=41).
+  {
+    bobId: SETTLER_MOVING_BOB,
+    frame: { x: 1, y: 42, width: 12, height: 24, offsetX: -6, offsetY: -24 },
+    colour: '#7da7d9',
+  },
+  // settler (acting): same figure, tinted warm so a mid-action settler reads differently again.
+  {
+    bobId: SETTLER_ACTING_BOB,
+    frame: { x: 15, y: 42, width: 12, height: 24, offsetX: -6, offsetY: -24 },
+    colour: '#d98a52',
+  },
 ];
+
+/**
+ * The settler's per-state binding into the synthetic atlas — a {@link SettlerStateBinding}, so the
+ * `?atlas` shot exercises the richer state path (idle/moving/acting draw distinct markers). No
+ * `byAtomic` here: the synthetic atlas has one generic action frame, not a per-atomic art set.
+ */
+const SYNTHETIC_SETTLER_BINDING: SettlerStateBinding = {
+  idle: SETTLER_IDLE_BOB,
+  moving: SETTLER_MOVING_BOB,
+  acting: SETTLER_ACTING_BOB,
+};
 
 /** Per-kind binding into the synthetic atlas (the table {@link SpriteBindings} requires). */
 export const SYNTHETIC_BINDINGS: SpriteBindings = {
-  settler: SETTLER_BOB,
+  settler: SYNTHETIC_SETTLER_BINDING,
   building: BUILDING_BOB,
   resource: RESOURCE_BOB,
 };

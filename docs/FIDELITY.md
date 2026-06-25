@@ -73,6 +73,15 @@ is still `approximated` overall, with the basis spelled out.
 > The blind spot this file exists to surface is a row silently sitting `faithful` without a named
 > source — not an honestly-`approximated` one.
 
+### Render / presentation (Phase 2)
+The render layer is a pure consumer of sim state (it never feeds back), so most of it is a *visual*
+checklist (depth-sort/projection — see docs/TESTING.md), not a mechanics oracle. The one
+fidelity-relevant decision is the **state→sprite join**: which animation a settler shows.
+
+| Concern | Status | Source / how pinned |
+|---|---|---|
+| Settler state→sprite-frame join (`resolveSpriteFrame`) | approximated | The **join key is faithful**: an `acting` settler carries its numeric `atomicId`, the exact key the original's `tribetypes` `setatomic` maps to an animation. But the *render-side state model* (`idle`/`moving`/`acting`, derived from `CurrentAtomic`/`PathFollow`) and the **which-frame-per-state** choice are *our* coarsening — the original has a richer per-direction/per-atomic animation table not yet bound. No decoded bob/animation set is wired (the bound atlas is the FREE synthetic stand-in); the `byAtomic` override exists but is empty until a real `setatomic`→bob table is extracted. Pixel fidelity stays the OpenVikings oracle's job (Assets row), deferred to a human. |
+
 ## Deviations (conscious divergences from the original)
 
 _None yet._ Format: `- <mechanic>: <how it differs> — <why> (<commit>)`.

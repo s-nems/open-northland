@@ -117,6 +117,46 @@ describe('buildScene', () => {
     expect(tiles.map((t) => t.typeId)).toEqual([5, 1, 2, 5, 16, 1]); // the map's typeIds, in order
   });
 
+  it('derives a settler state from its components: acting > moving > idle', () => {
+    const scene = buildScene(
+      snapshotOf([
+        // idle: a Settler with neither a CurrentAtomic nor a PathFollow.
+        entity(1, 0, 0, { Settler: { tribe: 0 } }),
+        // moving: a live PathFollow, no CurrentAtomic.
+        entity(2, 1, 0, { Settler: { tribe: 0 }, PathFollow: { waypoints: [], index: 0 } }),
+        // acting: a CurrentAtomic wins even with a (stale) PathFollow present.
+        entity(3, 2, 0, {
+          Settler: { tribe: 0 },
+          CurrentAtomic: { atomicId: 24 },
+          PathFollow: { waypoints: [], index: 0 },
+        }),
+      ]),
+      FLAT_3x2,
+    );
+    const byRef = (r: number) => scene.find((d) => d.kind === 'settler' && d.ref === r);
+    expect(byRef(1)?.state).toBe('idle');
+    expect(byRef(1)?.atomicId).toBeUndefined();
+    expect(byRef(2)?.state).toBe('moving');
+    expect(byRef(2)?.atomicId).toBeUndefined();
+    expect(byRef(3)?.state).toBe('acting');
+    expect(byRef(3)?.atomicId).toBe(24); // the setatomic join key rides along
+  });
+
+  it('marks buildings/resources idle with no atomicId (they do not animate per-state here)', () => {
+    const scene = buildScene(
+      snapshotOf([
+        entity(1, 0, 0, { Building: { buildingType: 5 }, CurrentAtomic: { atomicId: 7 } }),
+        entity(2, 1, 1, { Resource: { goodType: 1 }, PathFollow: { waypoints: [], index: 0 } }),
+      ]),
+      FLAT_3x2,
+    );
+    const building = scene.find((d) => d.kind === 'building');
+    const resource = scene.find((d) => d.kind === 'resource');
+    expect(building?.state).toBe('idle');
+    expect(building?.atomicId).toBeUndefined();
+    expect(resource?.state).toBe('idle');
+  });
+
   it('is pure: the same snapshot yields a byte-identical draw list', () => {
     const snap = snapshotOf([
       entity(1, 1, 0, { Settler: { tribe: 0 } }),

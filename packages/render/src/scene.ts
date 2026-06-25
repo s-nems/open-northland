@@ -29,6 +29,18 @@ const TILE_DEPTH_BASE = -1_000_000;
 export type DrawKind = 'tile' | 'building' | 'settler' | 'resource';
 
 /**
+ * A sprite's coarse logical state, the join key onto a per-state animation binding (the original's
+ * `tribetypes` `setatomic` maps an atomic → its animation; a settler walking shows the walk bob, one
+ * mid-swing the chop bob). Derived purely from the snapshot's components — `CurrentAtomic` ⇒ `acting`
+ * (and the atomic's numeric id rides along as {@link DrawItem.atomicId} so a binding can pick the
+ * *specific* action's frame), else a live `PathFollow` ⇒ `moving`, else `idle`. Buildings/resources
+ * are always `idle` (they don't animate per-state in this slice). This is the render-side reading of
+ * sim state the roadmap calls "animation playback driven by each entity's logical state"; it never
+ * re-enters the sim.
+ */
+export type SpriteState = 'idle' | 'moving' | 'acting';
+
+/**
  * One item to draw, already projected to isometric screen space (before the camera transform). The
  * GPU layer draws these in array order; `depth` is the sort key it was ordered by (kept for debug /
  * stable-sort proofs). Floats are deliberate (render-only).
@@ -44,6 +56,10 @@ export interface DrawItem {
   readonly depth: number;
   /** For a terrain tile: its landscape typeId, so the GPU layer can pick the tile sprite. */
   readonly typeId?: number;
+  /** For a sprite: its coarse logical state, so a per-state binding can pick the right frame. */
+  readonly state?: SpriteState;
+  /** For an `acting` sprite: the numeric atomic id it's executing (the `setatomic` join key). */
+  readonly atomicId?: number;
 }
 
 /** The terrain grid the snapshot is positioned over (dimensions + row-major landscape typeIds). */
@@ -98,6 +114,29 @@ function classify(components: Readonly<Record<string, unknown>>): DrawKind | nul
 }
 
 /**
+ * The atomic id a snapshot entity is mid-execution on, or `null`. Reads only the `atomicId` field of
+ * the (plain-cloned) `CurrentAtomic` component — the same numeric id the sim stores as the `setatomic`
+ * animation join key. Total: a missing/malformed component reads as "not acting".
+ */
+function readActingAtomic(components: Readonly<Record<string, unknown>>): number | null {
+  const a = components.CurrentAtomic as { atomicId?: unknown } | undefined;
+  if (a === undefined || typeof a.atomicId !== 'number') return null;
+  return a.atomicId;
+}
+
+/**
+ * Derive a sprite's coarse {@link SpriteState} from its snapshot components, in priority order:
+ * mid-atomic (`CurrentAtomic`) ⇒ `acting`, else following a path (`PathFollow`) ⇒ `moving`, else
+ * `idle`. Acting wins over moving because a settler that started an atomic has stopped to act even if
+ * a stale path lingers. Pure read of plain snapshot data — never re-enters the sim.
+ */
+function readSpriteState(components: Readonly<Record<string, unknown>>): SpriteState {
+  if (readActingAtomic(components) !== null) return 'acting';
+  if ('PathFollow' in components) return 'moving';
+  return 'idle';
+}
+
+/**
  * Build the depth-sorted isometric draw list for a frame.
  *
  * Ordering — the core correctness property a human eyeball would otherwise have to catch:
@@ -142,6 +181,11 @@ export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): Draw
     const tileX = pos.x / ONE;
     const tileY = pos.y / ONE;
     const screen = tileToScreen(tileX, tileY);
+    // Only settlers animate per-state in this slice; a building/resource is always idle. When acting,
+    // carry the atomic id so a per-state binding can pick the specific action's frame (the `setatomic`
+    // join key); otherwise it's omitted under exactOptionalPropertyTypes.
+    const state: SpriteState = kind === 'settler' ? readSpriteState(entity.components) : 'idle';
+    const actingAtomic = kind === 'settler' ? readActingAtomic(entity.components) : null;
     sprites.push({
       kind,
       ref: entity.id,
@@ -150,6 +194,8 @@ export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): Draw
       // Feet-anchor depth: lower (greater y), then further-right (greater x), then id. A total order,
       // so the sort is deterministic regardless of snapshot iteration nuances.
       depth: tileY * ROW_STRIDE + tileX,
+      state,
+      ...(actingAtomic !== null ? { atomicId: actingAtomic } : {}),
     });
   }
 

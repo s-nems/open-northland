@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { DrawItem } from '../src/index.js';
-import { type SpriteAtlas, type SpriteBindings, indexAtlasFrames, resolveSpriteFrame } from '../src/index.js';
+import type { DrawItem, SpriteState } from '../src/index.js';
+import {
+  type SettlerStateBinding,
+  type SpriteAtlas,
+  type SpriteBindings,
+  indexAtlasFrames,
+  resolveSpriteFrame,
+} from '../src/index.js';
 
 /**
  * Unit tests for the PURE half of the atlas-sprite swap — which atlas frame a draw item resolves to.
@@ -65,5 +71,82 @@ describe('resolveSpriteFrame', () => {
     const first = resolveSpriteFrame(item('building'), BINDINGS, a);
     const second = resolveSpriteFrame(item('building'), BINDINGS, a);
     expect(JSON.stringify(first)).toBe(JSON.stringify(second));
+  });
+});
+
+describe('resolveSpriteFrame — per-state settler binding', () => {
+  /** A settler draw item in a given state (+ optional atomic id). */
+  function settler(state?: SpriteState, atomicId?: number): DrawItem {
+    return {
+      kind: 'settler',
+      ref: 1,
+      x: 0,
+      y: 0,
+      depth: 0,
+      ...(state !== undefined ? { state } : {}),
+      ...(atomicId !== undefined ? { atomicId } : {}),
+    };
+  }
+
+  /** An atlas with a distinct frame per state bob: idle=10, moving=11, acting=12, chop=13. */
+  function stateAtlas(): SpriteAtlas {
+    return indexAtlasFrames(64, 64, [
+      { bobId: 10, rect: { x: 0, y: 0, width: 12, height: 24 }, offsetX: -6, offsetY: -24 },
+      { bobId: 11, rect: { x: 16, y: 0, width: 12, height: 24 }, offsetX: -6, offsetY: -24 },
+      { bobId: 12, rect: { x: 32, y: 0, width: 12, height: 24 }, offsetX: -6, offsetY: -24 },
+      { bobId: 13, rect: { x: 48, y: 0, width: 12, height: 24 }, offsetX: -6, offsetY: -24 },
+    ]);
+  }
+
+  const FULL: SettlerStateBinding = {
+    idle: 10,
+    moving: 11,
+    acting: 12,
+    byAtomic: { 24: 13 }, // atomic 24 (chop) overrides the generic acting frame
+  };
+  const bindings = (settlerBinding: SpriteBindings['settler']): SpriteBindings => ({
+    settler: settlerBinding,
+    building: 20,
+    resource: 30,
+  });
+
+  it('picks the state-specific frame: idle/moving/acting each resolve to their own bob', () => {
+    const atlas = stateAtlas();
+    const b = bindings(FULL);
+    expect(resolveSpriteFrame(settler('idle'), b, atlas)?.x).toBe(0); // bob 10
+    expect(resolveSpriteFrame(settler('moving'), b, atlas)?.x).toBe(16); // bob 11
+    expect(resolveSpriteFrame(settler('acting'), b, atlas)?.x).toBe(32); // bob 12
+  });
+
+  it('picks the per-atomic override for an acting settler with a bound atomic id', () => {
+    const frame = resolveSpriteFrame(settler('acting', 24), bindings(FULL), stateAtlas());
+    expect(frame?.x).toBe(48); // bob 13 — the chop override, not the generic acting bob 12
+  });
+
+  it('falls back acting->idle and moving->idle when those states are unbound', () => {
+    const sparse: SettlerStateBinding = { idle: 10 }; // no moving/acting/byAtomic
+    const b = bindings(sparse);
+    const atlas = stateAtlas();
+    expect(resolveSpriteFrame(settler('moving'), b, atlas)?.x).toBe(0); // -> idle bob 10
+    expect(resolveSpriteFrame(settler('acting'), b, atlas)?.x).toBe(0); // -> idle bob 10
+    expect(resolveSpriteFrame(settler('acting', 24), b, atlas)?.x).toBe(0); // unlisted atomic -> idle
+  });
+
+  it('falls back an unlisted atomic to the generic acting frame', () => {
+    const frame = resolveSpriteFrame(settler('acting', 99), bindings(FULL), stateAtlas());
+    expect(frame?.x).toBe(32); // bob 12 — generic acting, since atomic 99 isn't in byAtomic
+  });
+
+  it('treats a stateless settler item as idle (back-compat with the flat scene)', () => {
+    const frame = resolveSpriteFrame(settler(), bindings(FULL), stateAtlas());
+    expect(frame?.x).toBe(0); // bob 10 — no state field -> idle
+  });
+
+  it('a plain-number settler binding draws the same frame for every state (back-compat)', () => {
+    const b = bindings(10); // a bare bob id, the old binding shape
+    const atlas = stateAtlas();
+    expect(resolveSpriteFrame(settler('idle'), b, atlas)?.x).toBe(0);
+    expect(resolveSpriteFrame(settler('moving'), b, atlas)?.x).toBe(0);
+    expect(resolveSpriteFrame(settler('acting', 24), b, atlas)?.x).toBe(0);
   });
 });
