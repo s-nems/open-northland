@@ -31,8 +31,6 @@ import {
   settlerMeetsNeed,
   trackFor,
 } from './progression.js';
-import { reproductionSystem } from './reproduction.js';
-import { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem } from './routing.js';
 import {
   type CombatDamageRow,
   type CombatProfile,
@@ -40,12 +38,13 @@ import {
   IDLE_JOB,
   combatDamage,
   goodsGraph,
-  housingCapacity,
-  tribePopulation,
   tribePopulationByJob,
   tribeStocks,
   weaponKey,
-} from './shared.js';
+} from './readviews.js';
+import { reproductionSystem } from './reproduction.js';
+import { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem } from './routing.js';
+import { housingCapacity, tribePopulation } from './shared.js';
 import {
   cleanupSystem,
   combatSystem,
@@ -60,7 +59,8 @@ import {
 // movementSystem (./movement.ts), pathfindingSystem (./routing.ts), productionSystem
 // (./production.ts), atomicSystem (./atomic.ts), aiSystem (./ai.ts, the settler planner),
 // needsSystem (./needs.ts, hunger + fatigue + piety + enjoyment rise) — and the not-yet-implemented stubs (./stubs.ts). The
-// genuinely cross-system helpers live in ./shared.ts.
+// genuinely cross-system helpers live in ./shared.ts; the terminal HUD/combat read views (projections
+// no system feeds back into a decision) live in ./readviews.ts.
 // This barrel re-exports them so `@vinland/sim`'s `systems` namespace (and the tests) keep a single
 // import site, and it owns SYSTEM_ORDER. This is the finished systems/ split — see docs/TECH-DEBT.md.
 export type { System, SystemContext };

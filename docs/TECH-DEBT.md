@@ -65,6 +65,18 @@ For small, hard-won *gotchas* (not reworks) see [LESSONS.md](LESSONS.md); the li
 
 ## Reflection log
 
+- **2026-06-25** (structure pass) — Ratchet caught **`systems/shared.ts` 146→491 lines** since the last
+  reflection (`3991298`): it had become two jobs — the genuine cross-system helper *leaf* (imported by
+  the per-tick systems to break import cycles) plus six accreted **terminal read views** (`tribeStocks`,
+  `tribePopulationByJob`+`IDLE_JOB`, `goodsGraph`+`GoodsGraphNode`, `combatDamage`+`CombatProfile`+
+  `CombatDamageRow`+`weaponKey`) the HUD/render/tests consume but **no system feeds back into a decision**.
+  Extracted the read views verbatim into new **`systems/readviews.ts`** (309 lines); `shared.ts` back to
+  **193** (under budget). Pure import-path move: the `systems/index.ts` barrel re-exports the same surface,
+  so **no consumer import path changed** (verified the built `@vinland/sim` `systems` namespace still
+  exposes all six). Behavior-preserving — **golden state-hash + atomic-trace unchanged**; 568 tests +
+  check + build green. No proposals added/closed. Next `/iterate` roadmap step (Phase 4): the
+  **soldier-class atomics** — the hit-resolution mechanic consuming the `combatDamage` lookup (approximated,
+  no oracle; record in docs/FIDELITY.md), then the **N data-defined tribes** scaffolding.
 - **2026-06-25** (pipeline-reconsider pass) — Reworked `/reflect` to fix **structure, not polish jsdoc**.
   The execution gate is now **behavior-preserving & test-provable, not diff-size**, so a large
   *mechanical* refactor (file split, folder regroup) is executed — never deferred — with the golden
