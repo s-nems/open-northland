@@ -1,6 +1,6 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { Building, Position, Settler } from '../src/components/index.js';
+import { Age, Building, Position, Settler } from '../src/components/index.js';
 import type { Entity } from '../src/ecs/world.js';
 import { ONE, Simulation, fx, populationWithinHousing } from '../src/index.js';
 import {
@@ -38,7 +38,7 @@ function reproContent(): ContentSet {
 }
 
 beforeEach(() => {
-  for (const c of [Position, Settler, Building]) c.store.clear();
+  for (const c of [Position, Settler, Building, Age]) c.store.clear();
 });
 
 function ctxOf(sim: Simulation): SystemContext {

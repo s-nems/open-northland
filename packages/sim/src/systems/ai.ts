@@ -1,5 +1,6 @@
 import type { AtomicEffect } from '../commands.js';
 import {
+  Age,
   Building,
   Carrying,
   CurrentAtomic,
@@ -78,6 +79,14 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
 
     const settler = world.get(e, Settler);
     if (settler.jobType === null) continue; // an unemployed settler has no job atomics to run
+    // A baby/child is a non-working life stage: it runs no atomics and, faithful to the original (a baby
+    // is cared for, it doesn't self-feed), does NOT run the adult needs-drives (eat/sleep/pray) — it just
+    // grows up (GrowthSystem). Key on the Age COMPONENT, not on `isNonWorkingAge(jobType)`: Age is present
+    // ⟺ the settler is in a baby/child stage (the GrowthSystem invariant), and keying on it avoids a
+    // jobType-id collision — a synthetic fixture's adult job id can coincide with a real age-class id (the
+    // golden slice's woodcutter is jobType 1, the same number as `baby_female`), but only a settler BORN
+    // young carries an Age, so an adult worker is never mistaken for a child.
+    if (world.has(e, Age)) continue;
 
     const p = world.get(e, Position);
     const here = terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  Age,
   Building,
   Carrying,
   CurrentAtomic,
@@ -79,6 +80,7 @@ function clearStores(): void {
     PathRequest,
     Production,
     JobAssignment,
+    Age,
   ]) {
     c.store.clear();
   }

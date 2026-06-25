@@ -1,4 +1,4 @@
-import { Building, Position, Settler } from '../components/index.js';
+import { Age, Building, Position, Settler } from '../components/index.js';
 import type { World } from '../ecs/world.js';
 import { type Fixed, ONE, fx } from '../fixed.js';
 import { NEWBORN_AGE_CLASS } from './ageclass.js';
@@ -75,6 +75,10 @@ function bornAt(world: World, ctx: SystemContext, tribe: number, anchor: { x: Fi
     enjoyment: fx.fromInt(0),
     experience: new Map<number, number>(),
   });
+  // Born young: the {@link Age} component starts the settler at tick 0 of its life so the GrowthSystem
+  // matures it baby→child→adult-eligible over GROWUP_TICKS. Only a borne settler carries an Age; an
+  // adult (every `spawnSettler`) has none, so the system is inert for them (and the goldens).
+  world.add(e, Age, { ticks: 0 });
   ctx.events.emit({ kind: 'settlerBorn', entity: e });
 }
 
