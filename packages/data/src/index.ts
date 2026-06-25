@@ -85,6 +85,17 @@ export function validateCrossReferences(set: ContentSet): void {
       if (e.kind === 'job' && !jobIds.has(e.targetId))
         errors.push(`tribe "${t.id}" job ${e.jobType} enables unknown jobType ${e.targetId}`);
     }
+    // Each `{need,train}for{job,good}` requirement: its `targetId` resolves within the `target`
+    // table (a job or a good). The `experienceTypes` are NOT checked: they span an id space wider
+    // than the extracted `humanjobexperiencetypes` table (observed need-ids 72/73/75 and the
+    // synthetic "school" markers 57/77 for `train`), so resolving them would false-positive — same
+    // stance as the `vehicle` jobEnables kind above.
+    for (const r of t.jobRequirements) {
+      if (r.target === 'job' && !jobIds.has(r.targetId))
+        errors.push(`tribe "${t.id}" ${r.requirement}forjob requires unknown jobType ${r.targetId}`);
+      if (r.target === 'good' && !goodIds.has(r.targetId))
+        errors.push(`tribe "${t.id}" ${r.requirement}forgood requires unknown goodType ${r.targetId}`);
+    }
   }
 
   // A weapon's wielding job, when set, must resolve too (same dangling-reference class).

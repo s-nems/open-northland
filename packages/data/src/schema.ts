@@ -303,6 +303,41 @@ export const JobEnables = z.object({
 });
 export type JobEnables = z.infer<typeof JobEnables>;
 
+/**
+ * One experience requirement from `tribetypes` `{need,train}for{job,good} <targetId> <amount>
+ * <expType> [expType2]` — the *experience-threshold* half of progression, sitting under the
+ * {@link JobEnables} *who-unlocks-it* gate. Two orthogonal dimensions:
+ *
+ * - `requirement`: `need` (`needfor*` — the XP the settler must already have accrued to unlock the
+ *   target) vs `train` (`trainfor*` — the schooling time/XP to acquire it at a training house, paid
+ *   in a synthetic "school" experience type, not a real work track).
+ * - `target`: `job` (`*forjob` — the unlocked job id) vs `good` (`*forgood` — the unlocked good id).
+ *
+ * `experienceTypes` are `humanjobexperiencetypes` `typeId`s **for `need`** (1..70, resolvable);
+ * **for `train` they are synthetic school markers** (observed 57/77) that are NOT in the experience
+ * table — so they are captured but deliberately not cross-validated (validating them would
+ * false-positive, mirroring why the `vehicle` {@link JobEnables} kind is left unchecked). A line
+ * carries one or two expTypes (the optional second is rare); kept in source order.
+ */
+export const JobRequirementKind = z.enum(['need', 'train']);
+export type JobRequirementKind = z.infer<typeof JobRequirementKind>;
+export const JobRequirementTarget = z.enum(['job', 'good']);
+export type JobRequirementTarget = z.infer<typeof JobRequirementTarget>;
+
+export const JobRequirement = z.object({
+  /** `need` (XP already accrued) vs `train` (schooling), from the `need`/`train` key prefix. */
+  requirement: JobRequirementKind,
+  /** `job` vs `good`, from the `forjob`/`forgood` key suffix — which table `targetId` indexes. */
+  target: JobRequirementTarget,
+  /** The unlocked target id, keyed within `target`'s type table (the first int). */
+  targetId: TypeId,
+  /** The experience amount required (the second int). */
+  amount: z.number().int().nonnegative(),
+  /** The experience-type id(s) the amount is measured in (one or two; the third/fourth ints). */
+  experienceTypes: z.array(TypeId).default([]),
+});
+export type JobRequirement = z.infer<typeof JobRequirement>;
+
 export const TribeType = z.object({
   typeId: TypeId,
   id: z.string(),
@@ -311,6 +346,8 @@ export const TribeType = z.object({
   atomicBindings: z.array(AtomicBinding).default([]),
   /** `jobEnables*` tech-graph edges in file order — what each job unlocks for the tribe. */
   jobEnables: z.array(JobEnables).default([]),
+  /** `{need,train}for{job,good}` XP/schooling requirements in file order — the gate's threshold half. */
+  jobRequirements: z.array(JobRequirement).default([]),
   source: Provenance.optional(),
 });
 export type TribeType = z.infer<typeof TribeType>;

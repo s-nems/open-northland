@@ -97,6 +97,11 @@ jobEnablesGood 1 4
 jobEnablesJob 5 1
 jobEnablesVehicle 5 7
 jobEnablesGood notanint 5
+needforjob 1 10 6 7
+needforgood 5 15 9
+trainforjob 1 10 77
+trainforgood 4 5 57
+needforjob notanint 10 3
 `;
 
 // Mirrors DataCnmd/atomicanimations12/atomicanimations.ini: `[atomicanimation]` records with a
@@ -814,6 +819,23 @@ describe('extractTribes', () => {
       { jobType: 1, kind: 'good', targetId: 4 },
       { jobType: 5, kind: 'job', targetId: 1 },
       { jobType: 5, kind: 'vehicle', targetId: 7 },
+    ]);
+  });
+
+  it('collects `{need,train}for{job,good}` requirements with their expType list, in source order', () => {
+    const tribes = extractTribes(parseIniSections(TRIBETYPES_INI), {
+      file: 'DataCnmd/tribetypes12/tribetypes.ini',
+      layer: 'mod',
+    });
+    // The `need`/`train` prefix + `job`/`good` suffix decompose into the two dimensions; the optional
+    // second expType (`needforjob 1 10 6 7`) is captured, a single one (`needforgood 5 15 9`) too,
+    // and the synthetic "school" expType (77/57) on `train*` rides through unvalidated. The malformed
+    // `needforjob notanint 10 3` (non-int targetId) is dropped, like a malformed jobEnables line.
+    expect(tribes[0]?.jobRequirements).toEqual([
+      { requirement: 'need', target: 'job', targetId: 1, amount: 10, experienceTypes: [6, 7] },
+      { requirement: 'need', target: 'good', targetId: 5, amount: 15, experienceTypes: [9] },
+      { requirement: 'train', target: 'job', targetId: 1, amount: 10, experienceTypes: [77] },
+      { requirement: 'train', target: 'good', targetId: 4, amount: 5, experienceTypes: [57] },
     ]);
   });
 });
