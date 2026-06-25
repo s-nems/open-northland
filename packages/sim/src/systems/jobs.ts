@@ -37,19 +37,19 @@ export const jobSystem: System = (world, ctx) => {
   for (const e of world.canonicalEntities()) {
     const settler = world.tryGet(e, Settler);
     if (settler === undefined || settler.jobType !== null) continue; // only the idle get assigned
-    const job = openJobFor(world, ctx, e, settler.tribe, settler.experience);
+    const job = openJobFor(world, ctx, settler.tribe, settler.experience);
     if (job !== null) settler.jobType = job;
   }
 };
 
 /**
- * The job of the first workplace (canonical order) that is open for `settler` — see {@link jobSystem}
- * for the four openness conditions — or `null` if no workplace currently offers it a job.
+ * The job of the first workplace (canonical order) that is open for a `tribe` settler with the given
+ * accrued `experience` — see {@link jobSystem} for the four openness conditions — or `null` if no
+ * workplace currently offers it a job.
  */
 function openJobFor(
   world: World,
   ctx: SystemContext,
-  settler: Entity,
   tribe: number,
   experience: ReadonlyMap<number, number>,
 ): number | null {
