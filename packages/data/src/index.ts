@@ -113,6 +113,15 @@ export function validateCrossReferences(set: ContentSet): void {
       errors.push(`armor "${a.id}" references unknown goodType ${a.goodType}`);
   }
 
+  // An animal record keys on `tribeType` (not `type`) — its identity is its owning tribe — so that id
+  // must resolve into the tribe table (the same dangling-reference class). The extractor already drops
+  // records with no `tribetype` at all, so every animal here carries one to check.
+  const tribeIds = new Set(set.tribes.map((t) => t.typeId));
+  for (const a of set.animals) {
+    if (!tribeIds.has(a.tribeType))
+      errors.push(`animal "${a.id}" references unknown tribeType ${a.tribeType}`);
+  }
+
   // Each experience track names its owning job (always) and, when good-specific, the good it trains on.
   for (const x of set.jobExperience) {
     if (!jobIds.has(x.jobType))

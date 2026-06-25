@@ -254,7 +254,17 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       **multi-civilization** scenario/slice exercising two playable tribes' asymmetric bindings
       end-to-end (the asymmetry is in the data; a scenario proves the sim runs it).
 - [ ] **Animals as non-controllable tribes** (`animaltypes.ini`: aggression, groups, hitpoints) —
-      same entity/AI model, not a separate bolt-on.
+      same entity/AI model, not a separate bolt-on. **Data extracted** — the `animaltypes.ini` table
+      (`AnimalType`, base `Data/logic/animaltypes.ini`) lands in the IR: 35 creature/monster tribes with
+      `aggressive`/`getAngry`/`angryGameTime` (the aggression inputs), `hitpointsAdult`/`hitpointsBaby`
+      (the HP param the `Health`-stamp already reads), the herd/territory params (`maximumGroupSize`/
+      `searchForLeader`/`maximumDistanceTo*`/…) and locomotion+flags (`moveSpeed`/`runSpeed`/`catchable`/
+      `cannotBeAttacked`/…). **Keyed on `tribetype`** (not `type` — an animal's identity IS its tribe),
+      cross-ref-validated; a record with no `tribetype` (a disabled stub) is dropped. **Next:** the
+      sim-side civ-vs-animal **aggression behavior** — wire `aggressive`/`getAngry` into the combat
+      targeting drive (an aggressive animal attacks a nearby civ; `cannotBeAttacked` exempts decorative
+      fauna) and stamp an animal combatant's `Health` from `hitpointsAdult`. The herd/group/spawn params
+      are a later spawn/herding slice.
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
       `fisher_sea`/`trader_sea`/`carpenter ship`, `vehicle_ship`.
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).

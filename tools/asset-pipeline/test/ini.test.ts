@@ -4,6 +4,7 @@ import type { CifLine } from '../src/decoders/cif.js';
 import {
   cifLinesToSections,
   decodeIni,
+  extractAnimals,
   extractArmor,
   extractAtomicAnimations,
   extractBuildings,
@@ -208,6 +209,43 @@ blockingValue 5
 [armortype]
 name "bare"
 type 9
+`;
+
+// Mirrors Data/logic/animaltypes.ini: an `[animaltype]` keys on `tribetype` (NOT `type`). A full bear
+// record (aggressive predator, big HP pool, herd params), a minimal boar (only the required tribetype +
+// a couple of fields → schema defaults fill the rest), and a leftover stub with NO tribetype that the
+// extractor must DROP (it cannot resolve to a tribe). The records carry no `name` line in the real
+// file, so the slug falls back to `animal_<tribeType>`.
+const ANIMALTYPES_INI = `<CULTURES_CIF_BEGIN><03FD><00000040> Don't modify this line!
+[animaltype]
+tribetype 8
+getangry 1
+aggressive 0
+angryGameTime 240
+warrantable 0
+maximumleaderdistance 20
+searchforleader 0
+maximumdistancetostaypoint 20
+maximumdistancetobirthpoint 40
+maximumgroupsize 3
+maximumcadaversize 4
+hitpoints_adult 15000
+hitpoints_baby 15000
+catchable 0
+[animaltype]
+tribetype 9
+aggressive 1
+searchforleader 1
+maximumgroupsize 6
+hitpoints_adult 2000
+movespeed 8
+runspeed 12
+ignorehouses 1
+cannotbeattacked 0
+[animaltype]
+getangry 1
+hitpoints_adult 5000
+catchable 0
 `;
 
 // Mirrors DataCnmd/types/houses.ini: a `[logichousetype]` keys its id on `logictype` (not `type`) and
@@ -714,6 +752,72 @@ describe('extractArmor', () => {
     expect(() => extractArmor(parseIniSections('[armortype]\nname "x"\n'), { file: 'f.ini' })).toThrow(
       /without a numeric `type`/,
     );
+  });
+});
+
+describe('extractAnimals', () => {
+  it('maps [animaltype] sections (keyed on tribetype) to validated AnimalType IR', () => {
+    const animals = extractAnimals(parseIniSections(ANIMALTYPES_INI), {
+      file: 'Data/logic/animaltypes.ini',
+      layer: 'base',
+    });
+    const src = { file: 'Data/logic/animaltypes.ini', block: 'animaltype', layer: 'base' };
+    expect(animals).toEqual([
+      {
+        id: 'animal_8',
+        name: undefined,
+        tribeType: 8,
+        aggressive: false,
+        getAngry: true,
+        angryGameTime: 240,
+        hitpointsAdult: 15000,
+        hitpointsBaby: 15000,
+        maximumGroupSize: 3,
+        maximumCadaverSize: 4,
+        maximumLeaderDistance: 20,
+        searchForLeader: false,
+        maximumDistanceToStayPoint: 20,
+        maximumDistanceToBirthPoint: 40,
+        moveSpeed: 0,
+        runSpeed: 0,
+        catchable: false,
+        warrantable: false,
+        cannotBeAttacked: false,
+        ignoreHouses: false,
+        source: src,
+      },
+      // The minimal boar: every omitted numeric/flag field falls back to its schema default.
+      {
+        id: 'animal_9',
+        name: undefined,
+        tribeType: 9,
+        aggressive: true,
+        getAngry: false,
+        angryGameTime: 0,
+        hitpointsAdult: 2000,
+        hitpointsBaby: 0,
+        maximumGroupSize: 6,
+        maximumCadaverSize: 0,
+        maximumLeaderDistance: 0,
+        searchForLeader: true,
+        maximumDistanceToStayPoint: 0,
+        maximumDistanceToBirthPoint: 0,
+        moveSpeed: 8,
+        runSpeed: 12,
+        catchable: false,
+        warrantable: false,
+        cannotBeAttacked: false,
+        ignoreHouses: true,
+        source: src,
+      },
+    ]);
+  });
+
+  it('drops an [animaltype] with no tribetype (a disabled stub that cannot resolve to a tribe)', () => {
+    // The third record in ANIMALTYPES_INI carries no `tribetype` — it is silently dropped, NOT thrown
+    // on (the key is genuinely absent in real data, unlike a malformed `type`-keyed table).
+    const animals = extractAnimals(parseIniSections(ANIMALTYPES_INI), { file: 'animaltypes.ini' });
+    expect(animals.map((a) => a.tribeType)).toEqual([8, 9]);
   });
 });
 
