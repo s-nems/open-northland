@@ -66,7 +66,13 @@ function grassMap(width: number, height: number): TerrainMap {
 function settlerAt(sim: Simulation, x: number, y: number, hunger: Fixed): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, { tribe: VIKING, jobType: WOODCUTTER, hunger, experience: new Map() });
+  sim.world.add(e, Settler, {
+    tribe: VIKING,
+    jobType: WOODCUTTER,
+    hunger,
+    fatigue: fx.fromInt(0),
+    experience: new Map(),
+  });
   return e;
 }
 

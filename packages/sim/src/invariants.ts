@@ -35,6 +35,16 @@ export const hungerInRange: Invariant = (world) => {
   return out;
 };
 
+/** Settler fatigue stays within [0, ONE] (the NeedsSystem clamps the rise; this catches a leak). */
+export const fatigueInRange: Invariant = (world) => {
+  const out: string[] = [];
+  for (const e of world.query(Settler)) {
+    const f = world.get(e, Settler).fatigue;
+    if (f < 0 || f > ONE) out.push(`entity ${e}: fatigue out of range (${f})`);
+  }
+  return out;
+};
+
 /** Building construction progress and level stay sane. */
 export const buildingSane: Invariant = (world) => {
   const out: string[] = [];
@@ -46,7 +56,12 @@ export const buildingSane: Invariant = (world) => {
   return out;
 };
 
-export const CORE_INVARIANTS: readonly Invariant[] = [stockNonNegative, hungerInRange, buildingSane];
+export const CORE_INVARIANTS: readonly Invariant[] = [
+  stockNonNegative,
+  hungerInRange,
+  fatigueInRange,
+  buildingSane,
+];
 
 /** Run a set of invariants; returns all violations across them. */
 export function checkInvariants(world: World, invariants: readonly Invariant[] = CORE_INVARIANTS): string[] {

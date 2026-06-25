@@ -97,6 +97,7 @@ function spawnSettler(
     tribe: command.tribe,
     jobType: command.jobType,
     hunger: fx.fromInt(0),
+    fatigue: fx.fromInt(0),
     experience: new Map<number, number>(),
   });
   ctx.events.emit({ kind: 'settlerBorn', entity: e });

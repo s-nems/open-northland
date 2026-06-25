@@ -49,6 +49,7 @@ export {
   type Invariant,
   stockNonNegative,
   hungerInRange,
+  fatigueInRange,
   buildingSane,
 } from './invariants.js';
 
