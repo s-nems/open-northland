@@ -2,7 +2,7 @@ import type { Recipe } from '@vinland/data';
 import { Building, Production, Stockpile } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { System, SystemContext } from './context.js';
-import { recipeOf, stockCapacity } from './shared.js';
+import { recipeOf, stockCapacity, workerPresentAt } from './shared.js';
 
 /**
  * ProductionSystem — one workplace turns input goods into output goods over time.
@@ -10,13 +10,22 @@ import { recipeOf, stockCapacity } from './shared.js';
  * A workplace is a {@link Building} with a {@link Stockpile} whose building type carries a `recipe`
  * (inputs → outputs over `recipe.ticks`). Each tick, for every such building:
  *
- *  - **Running a cycle** (`{@link Production}` present): advance the integer `elapsed` counter; on the
- *    `duration`-th tick, deposit the recipe outputs into the building's own stockpile (the room was
- *    reserved when the cycle started, so they fit), emit a `productionCompleted` event, and remove
- *    the {@link Production} component (the workplace is idle again).
- *  - **Idle** (no `Production`): start a cycle iff (a) the stockpile holds every input in full, and
- *    (b) every output has free room up to the building type's per-good capacity. Starting consumes
- *    the inputs immediately (reserving them) and snapshots `recipe.ticks` as the cycle `duration`.
+ *  - **Running a cycle** (`{@link Production}` present): if the workplace is staffed
+ *    ({@link workerPresentAt}), advance the integer `elapsed` counter; on the `duration`-th tick,
+ *    deposit the recipe outputs into the building's own stockpile (the room was reserved when the
+ *    cycle started, so they fit), emit a `goodProduced` event, and remove the {@link Production}
+ *    component (the workplace is idle again). If the worker has left, the cycle **pauses** — `elapsed`
+ *    is held, not lost — until the worker returns.
+ *  - **Idle** (no `Production`): start a cycle iff (a) it is staffed, (b) the stockpile holds every
+ *    input in full, and (c) every output has free room up to the building type's per-good capacity.
+ *    Starting consumes the inputs immediately (reserving them) and snapshots `recipe.ticks` as the
+ *    cycle `duration`.
+ *
+ * **Worker-presence gate:** a workplace only produces while its worker is present — a settler whose
+ * `jobType` matches one of the building type's `workers` slots is standing on its tile
+ * ({@link workerPresentAt}). This is the original's "a workshop runs only while staffed" rule (a
+ * sawmill with no operator makes no planks). A building type that declares no worker slots is
+ * unstaffed-by-design and produces freely (passive stores / worker-less fixtures are unaffected).
  *
  * Inputs are consumed at cycle start and outputs deposited at completion, so a cycle is the net
  * transformation inputs→outputs — goods are conserved (nothing teleports; consumption and production
@@ -32,6 +41,7 @@ export const productionSystem: System = (world, ctx) => {
   // Advance running cycles first, then start new ones — so a cycle started this tick doesn't also
   // get advanced in the same tick (it begins counting next tick, like CurrentAtomic).
   for (const e of world.query(Production, Stockpile)) {
+    if (!workerPresentAt(world, ctx, e)) continue; // worker left — the cycle pauses (elapsed held)
     const prod = world.get(e, Production);
     const duration = Math.max(1, prod.duration);
     prod.elapsed += 1;
@@ -48,6 +58,7 @@ export const productionSystem: System = (world, ctx) => {
     if (world.has(e, Production)) continue; // already producing
     const recipe = recipeOf(world, ctx, e);
     if (recipe === undefined) continue; // not a producing workplace
+    if (!workerPresentAt(world, ctx, e)) continue; // unstaffed — no worker to run the cycle
     if (!canStartCycle(world, ctx, e, recipe)) continue; // missing inputs or no output room
 
     consumeInputs(world, e, recipe);

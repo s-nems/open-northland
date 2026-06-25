@@ -1,5 +1,6 @@
 import type { AtomicEffect } from '../commands.js';
 import {
+  Building,
   Carrying,
   CurrentAtomic,
   MoveGoal,
@@ -15,7 +16,7 @@ import type { Entity, World } from '../ecs/world.js';
 import { fx } from '../fixed.js';
 import type { CellId, TerrainGraph } from '../terrain.js';
 import type { System, SystemContext } from './context.js';
-import { inRange, recipeOf, stockCapacity } from './shared.js';
+import { buildingWorkerJobs, inRange, recipeOf, stockCapacity } from './shared.js';
 
 /**
  * AISystem — the settler planner: two layered passes per tick.
@@ -79,6 +80,14 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     const p = world.get(e, Position);
     const here = terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
     const load = world.tryGet(e, Carrying);
+
+    // The production operator: a settler empty-handed and standing on a workplace whose `workers`
+    // names its job is "at work" — the ProductionSystem's worker-presence gate runs on its being
+    // there. Leave it put (don't send it off to harvest/haul, which would unstaff the workplace).
+    // Carrying goods overrides (it must still deposit its load); a store (no recipe) doesn't pin.
+    if ((load === undefined || load.amount <= 0) && staffsWorkplaceHere(world, ctx, e, settler.jobType)) {
+      continue;
+    }
 
     if (load !== undefined && load.amount > 0) {
       // Loaded: take the goods to a store that can stock them.
@@ -347,6 +356,29 @@ function jobAtomics(ctx: SystemContext, jobType: number): ReadonlySet<number> {
 }
 
 const EMPTY_ATOMICS: ReadonlySet<number> = new Set<number>();
+
+/**
+ * Whether the settler is standing on a **workplace it staffs**: a {@link Building} with a `recipe`
+ * (a production building, not a passive store/HQ) sharing the settler's integer tile whose building
+ * type's `workers` slots name the settler's `jobType`. Such a settler is the workplace's operator —
+ * the atomic planner leaves it put so the ProductionSystem's worker-presence gate stays satisfied.
+ *
+ * A store/HQ (no recipe) never pins a settler here (so e.g. a woodcutter the HQ lists as a worker
+ * isn't frozen on the HQ — it must still go harvest); only a producing workplace does. Determinism:
+ * a boolean any-match over the deterministic `Building`/`Position` store, no chosen-entity ordering.
+ */
+function staffsWorkplaceHere(world: World, ctx: SystemContext, settler: Entity, jobType: number): boolean {
+  const sp = world.get(settler, Position);
+  const sx = fx.toInt(sp.x);
+  const sy = fx.toInt(sp.y);
+  for (const b of world.query(Building, Position, Stockpile)) {
+    if (recipeOf(world, ctx, b) === undefined) continue; // only a producing workplace pins its worker
+    if (!buildingWorkerJobs(world, ctx, b).has(jobType)) continue; // not a job this workplace employs
+    const bp = world.get(b, Position);
+    if (fx.toInt(bp.x) === sx && fx.toInt(bp.y) === sy) return true;
+  }
+  return false;
+}
 
 /** The cell an entity occupies — its {@link Position} (a resource node, a store) snapped to a cell. */
 function entityCell(world: World, terrain: TerrainGraph, e: Entity): CellId {

@@ -41,17 +41,21 @@ import { testContent } from './fixtures/content.js';
  *   - a 6×1 grass strip;
  *   - a HEADQUARTERS store (x=5) and a SAWMILL workplace (x=4), both placed via the COMMAND log
  *     (exercising CommandSystem) so the run also pins the placement seam;
- *   - a WOODCUTTER and a CARRIER spawned via commands;
+ *   - a WOODCUTTER and a CARRIER spawned via commands, plus a CARPENTER spawned **on** the sawmill
+ *     (x=4) as its operator — the SAWMILL's `workers` slot names the carpenter job, and the
+ *     production worker-presence gate only runs the mill while that operator is present (the planner
+ *     pins a settler standing on a workplace it staffs, so the carpenter stays put);
  *   - two finite wood nodes of 4 units each (placed directly — there is no map/resource command yet).
  * The whole goods chain runs end to end and conserves goods: the woodcutter harvests all 8 wood and
- * piles it at the SAWMILL (its nearest store with a wood slot) → the sawmill produces 8 planks → the
- * carrier hauls every plank out to the HQ. The run settles into a steady state (last atomic ~tick
- * 218) and stays invariant-clean for the whole 1000-tick tail.
+ * piles it at the SAWMILL (its nearest store with a wood slot) → the staffed sawmill produces 8 planks
+ * → the carrier hauls every plank out to the HQ. The run settles into a steady state and stays
+ * invariant-clean for the whole 1000-tick tail.
  */
 
 const GRASS = 0;
 const WOOD = 1;
 const WOODCUTTER = 1;
+const CARPENTER = 2; // the sawmill's `workers` jobType — its operator
 const CARRIER = 36;
 const HEADQUARTERS = 1;
 const SAWMILL = 2;
@@ -106,6 +110,10 @@ function runSlice(seed: number, ticks: number): GoldenRun {
   sim.enqueue({ kind: 'placeBuilding', buildingType: SAWMILL, x: 4, y: 0, tribe: VIKING });
   sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
   sim.enqueue({ kind: 'spawnSettler', jobType: CARRIER, x: 1, y: 0, tribe: VIKING });
+  // The sawmill's operator (carpenter) is spawned standing ON the sawmill (x=4): the worker-presence
+  // gate runs the mill only while it is staffed, and the planner pins a settler on a workplace it
+  // staffs so the carpenter stays put.
+  sim.enqueue({ kind: 'spawnSettler', jobType: CARPENTER, x: 4, y: 0, tribe: VIKING });
 
   // Finite wood nodes (no resource command exists yet — placed directly, like the lower goldens).
   for (const x of [2, 3]) {
@@ -182,7 +190,9 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   it('matches the golden final state hash', () => {
     const run = runSlice(SEED, TICKS);
     // Intentional-change discipline: if this moves, a mechanic changed — name it in the commit.
-    expect(run.hash).toBe('7f89b94d');
+    // Moved by the production worker-presence gate (a carpenter now staffs the sawmill — a new
+    // entity in the world, so the canonical hash shifts though the atomic trace is unchanged).
+    expect(run.hash).toBe('64b872d3');
   });
 
   it('matches the golden atomic-action trace', () => {
