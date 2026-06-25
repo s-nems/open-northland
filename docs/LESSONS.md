@@ -285,6 +285,18 @@ the next iteration inherits it.
   "new state, not a new action" split. And: a brand-new optional component must be added to EVERY test's
   store-clear list ([ac6a287]) — the leak shows up as a sibling test's *logic* failing (a stale binding
   inflates the per-building count), not as an obvious cross-contamination. (sim/architecture)
+- [beb6629] Enabling a previously-skipped cross-ref check exposes the synthetic fixtures that exploited
+  its absence: the `jobEnablesVehicle 5 7` fixture used an out-of-range marker id (7, no vehicle 7) that
+  was harmless while the `vehicle` kind went unchecked, but the IR-integration test (which assembles a
+  ContentSet from the *real-shaped* fixtures and asserts it validates) failed the instant the check
+  landed — the unit-level order test was green, the assembled-set test was the tripwire. When you turn
+  on a validation that was off, grep every fixture for that kind's edges and re-point them to in-range
+  ids (the real ones — `jobEnablesVehicle` is `{1..5}`), AND run the real `npm run pipeline` to prove
+  the live data resolves (the synthetic fixture proves the *check*; only the real run proves *fidelity*
+  — 50 edges across 41 tribes, 0 dangling). The schema namespaces matter: the `vehicle` targetId keys
+  into `vehicletypes.type` (the `logicvehicletype` space `{1..6}`), NOT the building space — so an empty
+  buildings list can't mask a dangling vehicle edge; an old comment claiming `vehicle`→`BuildingType`
+  was simply wrong. (data/extract)
 - [f94a65b] Adding a new base `.ini` source to `resolveIniSources` breaks an *unrelated-looking* test:
   one case asserts the resolved source list with an exact `toEqual([...])` (the missing-source-warning
   test), so the new entry fails a sorted-list comparison far from the extractor you wrote. When you
