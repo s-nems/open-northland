@@ -187,11 +187,20 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       already-extracted `weapontypes` (`WeaponType`, with per-armor-class `damage`). This **closes the
       data join the combat read side needs**: a weapon's `damagevalue <armorClass>` keys were unresolvable
       until the armor-class table existed; now class 1..4 resolve to an armor record (class 0 = unarmored,
-      no record). **Next:** the **CombatSystem read side** — a pure derived view resolving a weapon's
-      damage vs. a target's armor `blockingValue` (analogous to the HUD read views), then the soldier-class
-      atomics. KNOWN GAP to handle there: real weapon `damagevalue` also references classes 6/7 with no
-      `[armortype]` record (higher tiers outside the 4-record table) — treat an absent class as unarmored
-      or surface it, don't crash.
+      no record). **CombatSystem read side now landed** — `combatDamage(content)` (`systems/shared.ts`),
+      a pure content-only derived view (the analogue of `goodsGraph`), joins each `WeaponType.damage`
+      against each `ArmorType.blockingValue` into one `CombatProfile` per weapon: its identity (the
+      composite `(tribeType, typeId)` `key` + `id`) and a `CombatDamageRow` per armor class it can target,
+      carrying `netDamage = max(0, rawDamage - blockingValue)` (clamped — armor never heals). The class set
+      is the union of class 0 (unarmored, no record) + the armor records (1..4) + any class the weapon's own
+      `damage` lists; the **KNOWN GAP is handled** — out-of-table classes 6/7 (no `[armortype]` record) are
+      treated as **unarmored** (`blockingValue 0`, `hasArmorRecord false`), never a crash. Returned as an
+      **array, not a Map** — no weapon key is unique (the real animal weapons reuse even `(tribeType,
+      typeId)`: tribe 5's `chicken`+`claw`, tribe 8's doubled `bearfist`), so a keyed map would silently
+      drop records; the array keeps all 105. No mechanic added (no hit resolution / hitpoints yet) — this is
+      the static damage lookup the later combat atomics read. **Next:** the **soldier-class atomics** — the
+      hit-resolution mechanic that consumes this lookup (who attacks whom, hitpoints, the combat loop), the
+      first real combat *behavior* (no oracle — it'll be approximated; see docs/FIDELITY.md).
 - [ ] **N data-defined tribes** (viking/frank/saracen/byzantine/egypt), asymmetry expressed through
       each tribe's atomic bindings + `allow*`/`needfor*` graph — never hardcode "two".
 - [ ] **Animals as non-controllable tribes** (`animaltypes.ini`: aggression, groups, hitpoints) —
