@@ -184,13 +184,16 @@ describe('combatSystem — end-to-end through the real schedule', () => {
     const frank = fighterAt(sim, 1, 0, FRANK, 2, 120);
 
     // 50 net damage per swing, 4-tick swing -> 120 HP falls after 3 landed hits (~12+ ticks). Run enough.
-    for (let i = 0; i < 60 && sim.world.isAlive(frank); i++) sim.step();
+    // Events are cleared each tick, so accumulate any settlerDied across the fight (the kill fires in ONE tick).
+    let deaths = 0;
+    for (let i = 0; i < 60 && sim.world.isAlive(frank); i++) {
+      sim.step();
+      deaths += sim.snapshot().events.filter((ev) => ev.kind === 'settlerDied').length;
+    }
 
     expect(sim.world.isAlive(frank)).toBe(false); // ground down and reaped
     expect(sim.world.isAlive(viking)).toBe(true); // unharmed (the frank never attacked)
-    // The death was announced for render/audio.
-    const died = sim.snapshot().events.filter((ev) => ev.kind === 'settlerDied');
-    expect(died.length).toBeGreaterThanOrEqual(0); // (events are per-tick; the kill emitted one in its tick)
+    expect(deaths).toBe(1); // exactly one death announced for render/audio (the felled frank)
   });
 
   it('two same-seed runs of a skirmish reach the same state hash (determinism)', () => {
