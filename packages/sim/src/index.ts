@@ -53,6 +53,7 @@ export {
   pietyInRange,
   enjoymentInRange,
   buildingSane,
+  populationWithinHousing,
 } from './invariants.js';
 
 /** Run the core invariants against the current world (dev/test convenience). */

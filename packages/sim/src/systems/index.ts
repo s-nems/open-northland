@@ -19,6 +19,7 @@ import {
   settlerMeetsNeed,
   trackFor,
 } from './progression.js';
+import { reproductionSystem } from './reproduction.js';
 import { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem } from './routing.js';
 import { housingCapacity, tribePopulation } from './shared.js';
 import {
@@ -26,7 +27,6 @@ import {
   combatSystem,
   constructionSystem,
   progressionSystem,
-  reproductionSystem,
   terrainSystem,
   timeSystem,
   transportSystem,
@@ -56,12 +56,12 @@ export { atomicSystem };
 export { jobSystem };
 export { carrierCarryCapacity, experienceRequirementMet, grantWorkExperience, settlerMeetsNeed, trackFor };
 export { housingCapacity, tribePopulation };
+export { reproductionSystem };
 export {
   cleanupSystem,
   combatSystem,
   constructionSystem,
   progressionSystem,
-  reproductionSystem,
   terrainSystem,
   timeSystem,
   transportSystem,

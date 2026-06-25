@@ -88,14 +88,24 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       → population capacity → the births→housing→births loop. **Housing read model landed** — the
       `homeSize` param (`logichousetype` `logichomesize`: home level 00→1 … 04→5) is extracted into the
       `BuildingType` IR, and `housingCapacity`/`tribePopulation` (`systems/shared.ts`) are its first sim
-      consumer: the ceiling-vs-count the births loop gates on (no births wired yet — that's the
-      ReproductionSystem). **Material-delivery half is source-blocked:** `houses.ini` carries NO
+      consumer: the ceiling-vs-count the births loop gates on (births are now wired — the
+      ReproductionSystem below). **Material-delivery half is source-blocked:** `houses.ini` carries NO
       build-cost/material key (only `logicstock`/`logicworker`/`logicproduction`/`logichomesize`), so
       "deliver materials → build" has no readable oracle (the cost lives below the `.ini`) and is
-      deferred; for now a placed building is immediately built (`built = ONE`). **Next:** the
-      ReproductionSystem birth — create a settler when `tribePopulation < housingCapacity`, the first
-      writer of the housing read model.
-- [ ] ReproductionSystem: families, children growing up, gated by housing.
+      deferred; for now a placed building is immediately built (`built = ONE`). **Next:** house
+      *leveling* (`home level 00..04` raising capacity) — blocked on the same below-`.ini` upgrade-cost
+      source as material delivery, so deferred together.
+- [ ] **ReproductionSystem** — birth **landed** (`systems/reproduction.ts`): one settler per tribe per
+      tick while `tribePopulation < housingCapacity` — the first WRITER of the housing read model, born
+      **idle** (the JobSystem employs it) at the tribe's lowest-id built `home` tile. The cadence IS the
+      gate (deterministic, no RNG, self-limiting at capacity), so the new **`populationWithinHousing`
+      invariant** (a content-bound factory in `invariants.ts` — it needs the `homeSize` param the
+      `Invariant` signature doesn't carry) can never be breached by a birth. Inert in the golden/slice
+      (their content has no `home`-kind building, so 0 births — the golden hash + trace are unchanged).
+      The birth *rate* + the **family/child-growing-up** model are below the readable `.ini` (no
+      birth-rate key; `make_love` restores the leisure channel, not a birth yield), so they are
+      **approximated** (see docs/FIDELITY.md). **Next:** families / children growing up (an age dimension
+      on `Settler`), gated by housing — calibration-by-observation, deferred until an age/growth oracle.
 - [ ] HUD: stocks, population, jobs, the goods graph.
 - **Exit:** a self-sustaining, progressing single-tribe settlement you can grow.
 

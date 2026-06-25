@@ -26,5 +26,6 @@ export const progressionSystem: System = todo('ProgressionSystem');
 export const transportSystem: System = todo('TransportSystem'); // carriers physically haul goods between stores (no global bank)
 export const constructionSystem: System = todo('ConstructionSystem'); // deliver materials, advance build, level houses
 export const combatSystem: System = todo('CombatSystem'); // N-tribe combat from weapontypes/armortypes (large subsystem)
-export const reproductionSystem: System = todo('ReproductionSystem'); // families/children, gated by house level capacity
+// ReproductionSystem has graduated to ./reproduction.ts (birth half — one settler per tribe per tick
+// while population < housing capacity). Families/children growing up remain a later slice.
 export const cleanupSystem: System = todo('CleanupSystem'); // destroy dead entities (ids are NOT recycled), emit events for render/audio
