@@ -561,10 +561,11 @@ const DEFAULT_RECIPE_TICKS = 20;
  * non-empty `produces`:
  *   - `recipe.outputs` = each produced good at amount 1 (one unit per cycle — the original house
  *     table carries no per-good output quantity, only which good; uniform 1 is the faithful default,
- *     matching the `logicproduction <good>` semantics).
+ *     matching the `logicproduction <good>` semantics). A repeated `logicproduction` id is summed
+ *     into one output (symmetry with the input side + the production system's per-good stockpile model).
  *   - `recipe.inputs` = the merged `productionInputs` of every produced good, summed per input
  *     goodType (a workplace making several goods consumes the union of their inputs per cycle).
- *     Inputs are emitted in ascending input-goodType order — deterministic, source-order-independent.
+ *     Both sides are emitted in ascending goodType order — deterministic, source-order-independent.
  *   - `recipe.ticks` = {@link DEFAULT_RECIPE_TICKS}. APPROXIMATED: the faithful per-cycle duration
  *     lives behind the produce atomic's animation `length`, reachable only through a tribe's
  *     `setatomic <job> <atomicId> "anim"` binding (per-tribe, last-wins) — there is no tribe context
@@ -585,17 +586,22 @@ export function fillBuildingRecipes(
     if (b.recipe !== undefined || b.produces.length === 0) return b;
 
     const mergedInputs = new Map<number, number>();
+    const mergedOutputs = new Map<number, number>();
     for (const outputGood of b.produces) {
+      mergedOutputs.set(outputGood, (mergedOutputs.get(outputGood) ?? 0) + 1);
       for (const inp of inputsByGood.get(outputGood) ?? []) {
         mergedInputs.set(inp.goodType, (mergedInputs.get(inp.goodType) ?? 0) + inp.amount);
       }
     }
-    const inputs = [...mergedInputs]
-      .sort(([a], [c]) => a - c)
-      .map(([goodType, amount]) => ({ goodType, amount }));
-    const outputs = b.produces.map((goodType) => ({ goodType, amount: 1 }));
+    const sortedPairs = (m: Map<number, number>): { goodType: number; amount: number }[] =>
+      [...m].sort(([a], [c]) => a - c).map(([goodType, amount]) => ({ goodType, amount }));
 
-    return BuildingType.parse({ ...b, recipe: { inputs, outputs, ticks: DEFAULT_RECIPE_TICKS } });
+    const recipe = {
+      inputs: sortedPairs(mergedInputs),
+      outputs: sortedPairs(mergedOutputs),
+      ticks: DEFAULT_RECIPE_TICKS,
+    };
+    return BuildingType.parse({ ...b, recipe });
   });
 }
 
