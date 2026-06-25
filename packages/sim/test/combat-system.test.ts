@@ -24,7 +24,9 @@ import { testContent } from './fixtures/content.js';
 
 const VIKING = 1; // tribe 1 in the fixture (has test_axe for job 1)
 const FRANK = 2; // a different tribe with NO record in the fixture — still a valid enemy (not an animal)
-const WOLVES = 9; // a recorded ANIMAL tribe in the fixture (no jobEnables; test_claw for job 1)
+const WOLVES = 9; // a recorded ANIMAL tribe in the fixture (no jobEnables; test_claw for job 1) — PASSIVE (no animaltypes record)
+const BEAR = 10; // an AGGRESSIVE animal tribe (animaltypes record: aggressive, hitpointsAdult 15000; test_bearfist for job 1)
+const BEES = 11; // a cannotBeAttacked animal tribe (decorative fauna — a civ is exempt from attacking it)
 const WOODCUTTER = 1; // job 1 — the test_axe binds to this (tribe 1, job 1)
 const ATTACK_ATOMIC = 81;
 
@@ -207,6 +209,64 @@ describe('combatSystem — target selection + issuing the attack atomic', () => 
 
     // FRANK has no `[tribetype]` record, so it is NOT an animal — it stays a valid player-vs-player enemy.
     expect(sim.world.get(viking, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: frank });
+  });
+});
+
+describe('combatSystem — civ-vs-animal aggression (animaltypes.ini)', () => {
+  it('an AGGRESSIVE animal attacks a nearby civilization (the unprovoked aggression drive)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const bear = fighterAt(sim, 0, 0, BEAR, WOODCUTTER); // aggressive animal — drives an attack
+    const viking = fighterAt(sim, 1, 0, VIKING, WOODCUTTER); // a settler within range
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    const atomic = sim.world.get(bear, CurrentAtomic);
+    expect(atomic.atomicId).toBe(ATTACK_ATOMIC);
+    expect(atomic.duration).toBe(4); // bear setatomic 81 -> bear_attack length 4
+    expect(atomic.effect).toEqual({ kind: 'attack', target: viking, damage: 40 }); // test_bearfist damage["0"]
+  });
+
+  it('a civilization fights an aggressive animal BACK (the fight is mutual)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
+    const bear = fighterAt(sim, 1, 0, BEAR, WOODCUTTER); // an aggressive animal — a valid target for the civ
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // The viking engages the hostile bear (vs the PASSIVE wolves, which it would leave alone).
+    expect(sim.world.get(viking, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: bear });
+  });
+
+  it('a PASSIVE animal (no animaltypes record) neither attacks nor is attacked', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
+    const wolf = fighterAt(sim, 1, 0, WOLVES, WOODCUTTER); // armed, but NOT aggressive (no record)
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(viking, CurrentAtomic)).toBe(false); // the civ leaves a passive animal alone
+    expect(sim.world.has(wolf, CurrentAtomic)).toBe(false); // a passive animal picks no fight
+  });
+
+  it('a cannotBeAttacked animal (decorative fauna) is exempt from a civilization attacking it', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
+    fighterAt(sim, 1, 0, BEES, WOODCUTTER); // a bee — aggressive in the record, but cannotBeAttacked
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // The bee carries `cannotBeAttacked`, so the civ cannot target it (no swing), even though it is adjacent.
+    expect(sim.world.has(viking, CurrentAtomic)).toBe(false);
+  });
+
+  it('two animals do NOT fight each other (no inter-species wildlife aggression)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const bear = fighterAt(sim, 0, 0, BEAR, WOODCUTTER); // aggressive
+    fighterAt(sim, 1, 0, WOLVES, WOODCUTTER); // another animal, adjacent
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(bear, CurrentAtomic)).toBe(false); // an animal does not war on another animal
   });
 });
 

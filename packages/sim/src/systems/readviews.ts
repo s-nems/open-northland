@@ -1,4 +1,4 @@
-import type { ContentSet, ProductionInput, TribeType, WeaponType } from '@vinland/data';
+import type { AnimalType, ContentSet, ProductionInput, TribeType, WeaponType } from '@vinland/data';
 import { Building, Settler, Stockpile, stockpileEntries } from '../components/index.js';
 import type { World } from '../ecs/world.js';
 
@@ -375,4 +375,112 @@ export function isPlayableTribe(content: ContentSet, tribeType: number): boolean
 export function isAnimalTribe(content: ContentSet, tribeType: number): boolean {
   const tribe = content.tribes.find((t) => t.typeId === tribeType);
   return tribe !== undefined && tribe.jobEnables.length === 0;
+}
+
+/**
+ * The {@link AnimalType} behaviour record for `tribeType`, or null — a pure read over `content.animals`,
+ * keyed by `tribeType` (an animal's identity IS its owning tribe — see docs/FIDELITY.md "Animal type
+ * table"). Returns the **first** match in source-array order: the real `animaltypes.ini` reuses a
+ * `tribetype` for a couple of records (tribe 23 appears twice), so the table is an array, not a Map —
+ * keying by `tribeType` would silently drop a record (the same array-not-Map decision the weapon/combat
+ * read views make). null when the tribe has no animal record (a civilization, or an unknown tribe).
+ *
+ * FIDELITY n/a: a pure derived **read view** over the already-extracted `animaltypes` IR — it adds no
+ * mechanic and invents no data; the behaviour flags it surfaces are the faithful params the pipeline
+ * pinned. Pure over `content`, no RNG/wall-clock.
+ */
+export function animalRecord(content: ContentSet, tribeType: number): AnimalType | null {
+  return content.animals.find((a) => a.tribeType === tribeType) ?? null;
+}
+
+/**
+ * Whether `tribeType` is an **aggressive** animal — a `[tribetype]` whose `animaltypes.ini` record sets
+ * `aggressive` (it attacks civilizations **unprovoked**, the civ-vs-animal aggression driver). The sim's
+ * combat targeting (`systems/combat.ts`) reads this so an aggressive animal (a bear, a wolf pack) runs
+ * an attack drive against a nearby civilization, while a passive animal (a cow, a decorative bird) does
+ * not. A tribe with no animal record (a civilization, an unknown tribe) is not aggressive.
+ *
+ * NOTE this is the **unprovoked** driver only (`aggressive`). The `getAngry`/`angryGameTime` half — an
+ * otherwise-passive animal **provoked** into temporary hostility (it was attacked, then stays hostile
+ * for `angryGameTime` ticks) — needs a per-entity provocation/anger-timer state the combat slice does
+ * not yet model; it is a deferred follow-up (docs/FIDELITY.md "Civ-vs-animal aggression").
+ *
+ * FIDELITY n/a here (a read view); the *behaviour* it drives is tracked in docs/FIDELITY.md. Pure over
+ * `content`, no RNG/wall-clock.
+ */
+export function isAggressiveAnimal(content: ContentSet, tribeType: number): boolean {
+  return animalRecord(content, tribeType)?.aggressive ?? false;
+}
+
+/**
+ * Whether `tribeType` is an animal that **cannot be attacked** by a civilization — a `[tribetype]` whose
+ * `animaltypes.ini` record sets `cannotbeattacked` (decorative/non-combat fauna: bees, butterflies). The
+ * combat targeting drive uses this to **exempt** such an animal from a civilization's attacks (it is
+ * never a valid target), even if it is somehow flagged aggressive. A tribe with no animal record is not
+ * exempt (it is not a decorative animal). Pure over `content`, no RNG/wall-clock; FIDELITY n/a (read view).
+ */
+export function animalCannotBeAttacked(content: ContentSet, tribeType: number): boolean {
+  return animalRecord(content, tribeType)?.cannotBeAttacked ?? false;
+}
+
+/**
+ * The **adult hitpoint pool** an animal of `tribeType` is born with — its `animaltypes.ini`
+ * `hitpoints_adult` (200..50000 in the real data; e.g. a bear's 15000), or null when the tribe has no
+ * animal record (a civilization — humans' HP is below the `.ini`, so it is content-stamped elsewhere).
+ * This is the {@link Health}-component stamp source for an animal combatant: a spawned animal gets a
+ * `Health{hitpoints: max, max}` from this, exactly as the combat hit-resolution mechanic already reads
+ * `Health` (docs/FIDELITY.md "Combat hit resolution"). The animal-spawn/herding slice that actually
+ * places animals on the map will call this; the value is the faithful extracted param.
+ *
+ * FIDELITY: the **hitpoint magnitude** is the verbatim extracted `hitpoints_adult` (a faithful param);
+ * the *spawning* of animals (where/when/how many) is a later slice with no oracle. Pure over `content`,
+ * no RNG/wall-clock.
+ */
+export function animalHitpoints(content: ContentSet, tribeType: number): number | null {
+  const animal = animalRecord(content, tribeType);
+  return animal === null ? null : animal.hitpointsAdult;
+}
+
+/**
+ * The **combat hostility relation** — may a combatant of `attackerTribe` swing at a combatant of
+ * `targetTribe`? The single source of truth the CombatSystem's targeting drive (`systems/combat.ts`)
+ * consults for *both* the attacker-eligibility check and the per-candidate target check, so the two
+ * directions of a fight stay consistent. The rules, in order:
+ *
+ *  - **Same tribe → no** (friendly fire is off; a tribe never wars on itself).
+ *  - **Both animals → no.** Animals don't fight each other in this slice (no oracle for inter-species
+ *    wildlife aggression); an animal's only combat is with civilizations.
+ *  - **Civilization vs civilization (different tribes) → yes** — the player-vs-player drive. A
+ *    different-tribe combatant with **no** record at all (an unknown tribe — a synthetic test enemy) is
+ *    NOT an animal, so this branch treats it as a civilization and a valid enemy (the three-truth-states
+ *    rule — see docs/LESSONS.md `[fe2470f]`: `!isPlayableTribe` ≠ `isAnimalTribe`).
+ *  - **Civilization → animal → yes only if the animal is {@link isAggressiveAnimal} AND not
+ *    {@link animalCannotBeAttacked}.** A civ engages a *hostile* (aggressive) animal but not passive
+ *    prey (a cow/deer — hunting is the separate `catchable`/hunter mechanic, not combat); and a
+ *    decorative `cannotbeattacked` animal (bees) is exempt from a civ's attacks entirely.
+ *  - **Aggressive animal → civilization → yes** — the unprovoked civ-vs-animal aggression driver (a
+ *    bear/wolf attacks a nearby settler). The animal-attacker eligibility is already gated on
+ *    `aggressive` at the loop, so reaching here it is hostile; `cannotbeattacked` gates only being a
+ *    *target*, not attacking, so it does not block this direction.
+ *
+ * FIDELITY: the hostility gate reads the faithful extracted params — the civ-vs-animal split off
+ * `isAnimalTribe`'s tech-graph signature, and `aggressive`/`cannotbeattacked` off `animaltypes.ini`.
+ * The cross-civilization "all different tribes are enemies" rule (no alliances/neutrality yet) and the
+ * "civ engages only aggressive animals, animals don't fight each other" simplifications are our
+ * deterministic design pending an oracle (docs/FIDELITY.md "Civ-vs-animal aggression"). Pure over
+ * `content`, no RNG/wall-clock.
+ */
+export function mayAttack(content: ContentSet, attackerTribe: number, targetTribe: number): boolean {
+  if (attackerTribe === targetTribe) return false; // same tribe — friendly
+  const attackerIsAnimal = isAnimalTribe(content, attackerTribe);
+  const targetIsAnimal = isAnimalTribe(content, targetTribe);
+  if (attackerIsAnimal && targetIsAnimal) return false; // animals don't war on each other (no oracle)
+  if (targetIsAnimal) {
+    // attacker is a civilization (or unknown — not an animal) hitting an animal: only a hostile,
+    // non-exempt animal is a valid target. Passive prey and decorative fauna are left alone.
+    return isAggressiveAnimal(content, targetTribe) && !animalCannotBeAttacked(content, targetTribe);
+  }
+  // target is a civilization (or unknown). The attacker is a civilization or an aggressive animal
+  // (a passive animal never reaches here — the loop skips it before calling this), so it is an enemy.
+  return true;
 }

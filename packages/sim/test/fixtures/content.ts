@@ -98,6 +98,18 @@ export function testContent(): ContentSet {
         maxRange: 2,
         damage: { '0': 50 },
       },
+      // A weapon for the AGGRESSIVE animal tribe (bear, tribe 10, job 1) — so an aggressive animal can
+      // resolve a weapon and actually swing at a nearby civilization (the civ-vs-animal aggression
+      // drive). damage 40 vs an unarmored (class 0) target.
+      {
+        typeId: 9,
+        id: 'test_bearfist',
+        tribeType: 10,
+        jobType: 1,
+        minRange: 1,
+        maxRange: 2,
+        damage: { '0': 40 },
+      },
     ],
     armor: [
       // Leather (class 1) mitigates 10 — so a 60-raw hit lands 50 net on a leather-clad target. Unused
@@ -157,6 +169,31 @@ export function testContent(): ContentSet {
         id: 'test_wolves',
         atomicBindings: [{ jobType: 1, atomicId: 81, animation: 'wolf_attack' }],
       },
+      {
+        // An AGGRESSIVE animal tribe (bear, typeId 10): like the wolves it carries no `jobEnables` tech
+        // graph (so `isAnimalTribe` is true), but its `animaltypes` record below sets `aggressive`, so it
+        // DOES run the civ-vs-animal attack drive — a bear charges a nearby settler, and the settler
+        // fights back (the mutual `mayAttack` relation). Binds the attack atomic (81) so it can swing.
+        typeId: 10,
+        id: 'test_bear',
+        atomicBindings: [{ jobType: 1, atomicId: 81, animation: 'bear_attack' }],
+      },
+      {
+        // A decorative-fauna animal tribe (bee, typeId 11): a known animal tribe (no `jobEnables`) whose
+        // `animaltypes` record sets `cannotBeAttacked`, so a civilization is EXEMPT from attacking it
+        // (the bee is never a valid target) — even though the record also flags it aggressive.
+        typeId: 11,
+        id: 'test_bees',
+      },
+    ],
+    // animaltypes.ini records, keyed on `tribeType` (an animal's identity IS its tribe). The bear
+    // (tribe 10) is `aggressive` (attacks civilizations unprovoked) with an adult HP pool the
+    // `Health`-stamp reads; the wolves (tribe 9) deliberately have NO record (the "known animal tribe
+    // with no animaltypes record" path — not aggressive, never targeted). A `cannotBeAttacked` bee
+    // (tribe 11) is recorded to exercise the decorative-fauna target exemption.
+    animals: [
+      { id: 'bear', tribeType: 10, aggressive: true, getAngry: true, hitpointsAdult: 15000 },
+      { id: 'bee', tribeType: 11, aggressive: true, cannotBeAttacked: true, hitpointsAdult: 200 },
     ],
     atomicAnimations: [
       { id: 'viking_chop', name: 'viking_chop', length: 3 },
@@ -165,6 +202,7 @@ export function testContent(): ContentSet {
       { id: 'viking_pray', name: 'viking_pray', length: 7 },
       { id: 'viking_attack', name: 'viking_attack', length: 4 },
       { id: 'wolf_attack', name: 'wolf_attack', length: 4 },
+      { id: 'bear_attack', name: 'bear_attack', length: 4 },
     ],
     // Experience tracks (humanjobexperiencetypes): the woodcutter (job 1) has a wood-specific track
     // (good 1, the narrow `(job, good)` specialization) and a general track (no good) — so the
