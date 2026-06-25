@@ -13,6 +13,7 @@ import {
   Resource,
   Settler,
   Stockpile,
+  stockpileEntries,
 } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import { fx } from '../fixed.js';
@@ -112,23 +113,53 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
 
     // Empty-handed: go harvest. Pick the nearest resource this job is allowed to harvest.
     const node = nearestHarvestableFor(world, ctx, terrain, here, settler.jobType);
-    if (node === null) continue; // nothing to harvest — idle this tick
-    const res = world.get(node, Resource);
-    const cell = entityCell(world, terrain, node);
+    if (node !== null) {
+      const res = world.get(node, Resource);
+      const cell = entityCell(world, terrain, node);
+      if (cell === here) {
+        startAtomic(
+          world,
+          e,
+          res.harvestAtomic,
+          { kind: 'harvest', resource: node, goodType: res.goodType },
+          atomicDuration(ctx, settler, res.harvestAtomic),
+          node,
+        );
+      } else {
+        world.add(e, MoveGoal, { cell });
+      }
+      continue;
+    }
+
+    // Nothing to harvest: act as a carrier — haul finished outputs out of a workplace to a store
+    // that can stock them (so a producing workplace doesn't clog on its own output and goods reach
+    // the settlement's stores). Nearest workplace with a haulable output it can deliver somewhere.
+    const haul = nearestWorkplaceOutput(world, ctx, terrain, here);
+    if (haul === null) continue; // nothing to harvest AND nothing to haul — idle this tick
+    const cell = entityCell(world, terrain, haul.workplace);
     if (cell === here) {
       startAtomic(
         world,
         e,
-        res.harvestAtomic,
-        { kind: 'harvest', resource: node, goodType: res.goodType },
-        atomicDuration(ctx, settler, res.harvestAtomic),
-        node,
+        PICKUP_ATOMIC_ID,
+        { kind: 'pickup', goodType: haul.goodType, amount: CARRY_LOAD, from: haul.workplace },
+        atomicDuration(ctx, settler, PICKUP_ATOMIC_ID),
+        haul.workplace,
       );
     } else {
       world.add(e, MoveGoal, { cell });
     }
   }
 }
+
+/** The numeric atomic id for a carrier picking goods up out of a store (the original's generic
+ *  pickup=22; like {@link PILEUP_ATOMIC_ID} the readable data binds no per-good pickup, and the id is
+ *  only a content cross-reference / animation join key — the typed `pickup` effect is the behavior). */
+const PICKUP_ATOMIC_ID = 22;
+
+/** Units a carrier lifts per pickup swing — one good unit at a time, like {@link HARVEST_YIELD}. The
+ *  pickup is capped at the source's available amount, so this is just the max a single haul moves. */
+const CARRY_LOAD = 1;
 
 /** The numeric atomic id used for depositing a carried load into a store. The READABLE data binds
  *  no per-good "pileup" atomic (harvest/produce are good-keyed; pickup=22/pileup are generic), and
@@ -231,6 +262,11 @@ function nearestHarvestableFor(
  * its building type declares a stock slot for that good and the slot is not already full — by
  * Manhattan distance from `here`, ascending-cell-id tie-break, scanned in canonical entity-id order.
  * Returns the store entity or null if none can take the good.
+ *
+ * A workplace that PRODUCES `goodType` (a recipe output) is never a delivery target for it — goods
+ * are hauled *out* of a producer to a store, never back into it (otherwise a carrier would deposit
+ * its load straight back where it picked it up and livelock). A workplace consuming the good as an
+ * input, or a passive store, is a valid sink.
  */
 function nearestStoreFor(
   world: World,
@@ -244,6 +280,8 @@ function nearestStoreFor(
   let bestCell = Number.POSITIVE_INFINITY;
   for (const e of world.canonicalEntities()) {
     if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
+    const recipe = recipeOf(world, ctx, e);
+    if (recipe?.outputs.some((o) => o.goodType === goodType)) continue; // never deliver to its producer
     const stock = world.get(e, Stockpile);
     const have = stock.amounts.get(goodType) ?? 0;
     if (have >= stockCapacity(world, ctx, e, goodType)) continue; // full for this good — skip
@@ -253,6 +291,51 @@ function nearestStoreFor(
       best = e;
       bestDist = dist;
       bestCell = cell;
+    }
+  }
+  return best;
+}
+
+/**
+ * The nearest workplace with a finished output good a carrier should haul away to a store. A
+ * candidate is a {@link Building} with a {@link Stockpile} whose building type carries a `recipe`
+ * (it is a workplace, so a stocked good is finished output, not a passive store's reserve), holding
+ * at least one unit of one of its recipe's output goods that a *different* store can stock. Returns
+ * the workplace and the specific good to haul, or null if nothing needs hauling.
+ *
+ * Determinism: workplaces are scanned in canonical entity-id order with a Manhattan-distance +
+ * ascending-cell-id tie-break; within a workplace the good is chosen by canonical (ascending
+ * goodType) order via {@link stockpileEntries} — never raw Map insertion order. The "some other
+ * store can take it" check ({@link nearestStoreFor}) keeps the carrier from picking up a good it
+ * could never deliver (which would just shuttle it back and forth).
+ */
+function nearestWorkplaceOutput(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  here: CellId,
+): { workplace: Entity; goodType: number } | null {
+  let best: { workplace: Entity; goodType: number } | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  let bestCell = Number.POSITIVE_INFINITY;
+  for (const e of world.canonicalEntities()) {
+    if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
+    const recipe = recipeOf(world, ctx, e);
+    if (recipe === undefined) continue; // not a workplace — passive stores aren't hauled FROM
+    const stock = world.get(e, Stockpile);
+    const cell = entityCell(world, terrain, e);
+    const dist = manhattan(terrain, here, cell);
+    // Canonical (ascending goodType) so the chosen good never depends on Map insertion history.
+    for (const [goodType, amount] of stockpileEntries(stock)) {
+      if (amount <= 0) continue;
+      if (!recipe.outputs.some((o) => o.goodType === goodType)) continue; // only haul outputs
+      if (nearestStoreFor(world, ctx, terrain, cell, goodType) === null) continue; // nowhere to deliver
+      if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
+        best = { workplace: e, goodType };
+        bestDist = dist;
+        bestCell = cell;
+      }
+      break; // this workplace's lowest haulable goodType is its candidate; move to the next workplace
     }
   }
   return best;
@@ -447,7 +530,7 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       harvestFromNode(world, settler, effect.resource, effect.goodType);
       return;
     case 'pickup':
-      addCarry(world, settler, effect.goodType, effect.amount);
+      pickupFromStore(world, settler, effect.from, effect.goodType, effect.amount);
       return;
     case 'pileup':
       pileupIntoStore(world, ctx, settler, effect.store);
@@ -492,6 +575,34 @@ function harvestFromNode(world: World, settler: Entity, node: Entity, goodType: 
   const res = world.tryGet(node, Resource);
   if (res === undefined) return; // node already gone — nothing to deplete
   res.remaining = Math.max(0, res.remaining - HARVEST_YIELD);
+}
+
+/**
+ * Resolve one completed `pickup`: move up to `amount` of `goodType` from a source store's
+ * {@link Stockpile} onto the settler's back. Goods are conserved — the carrier gains exactly what
+ * the source loses, so a pickup never creates or destroys goods (carriers haul; nothing teleports).
+ * When `from` is null (a sourceless pickup) the goods simply appear carried; otherwise the available
+ * amount caps the transfer (the source may have shrunk between the planner choosing it and the swing
+ * completing — a competing system or another carrier). A source with nothing left to give is a no-op.
+ */
+function pickupFromStore(
+  world: World,
+  settler: Entity,
+  from: Entity | null,
+  goodType: number,
+  amount: number,
+): void {
+  if (from === null) {
+    addCarry(world, settler, goodType, amount);
+    return;
+  }
+  const stock = world.tryGet(from, Stockpile);
+  if (stock === undefined) return; // source gone — nothing to take (don't conjure goods)
+  const have = stock.amounts.get(goodType) ?? 0;
+  const moved = Math.min(amount, have);
+  if (moved <= 0) return; // source emptied since the planner chose it — nothing to carry
+  stock.amounts.set(goodType, have - moved);
+  addCarry(world, settler, goodType, moved);
 }
 
 /**
