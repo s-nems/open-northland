@@ -371,6 +371,15 @@ the next iteration inherits it.
   `Texture`, so a new overlay shouldn't either — destroying-on-remove is a separate render-perf pass over
   BOTH, not a HUD-only divergence. (render/pixi)
 
+- [0708fb4] A read view that returns a `Map` keyed by a "canonical identity" silently DROPS records
+  when that identity isn't actually unique — the combat view keyed weapons by the documented
+  `(tribeType, typeId)` cross-ref key ([bfe2491]), but the real ANIMAL weapons reuse even that pair
+  (tribe 5 = `chicken`+`claw` at typeId 1; tribe 8 = doubled `bearfist`), so the Map collapsed 105
+  weapons to 103 last-wins. The unit fixtures (distinct keys) stayed green; only the hands-on real-IR
+  `table.size` count (105 vs 103) exposed it. When a read view must lose no records, return an ARRAY
+  (one per source entry, source order) and carry the non-unique key as a FIELD, not the Map key — and
+  always assert the hands-on output COUNT equals the source count, a keyed-collection size is the tell.
+  (sim/read-model)
 - [0cbe894] `.ini` key matching in the extractors is CASE-SENSITIVE (`p.key === key`) and the parser
   preserves the source casing verbatim — so an extractor must spell each key with the file's exact
   casing, which is often MIXED within one file (`armortypes.ini`: `type`/`goodtype` lowercase but
