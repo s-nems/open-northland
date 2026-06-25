@@ -15,6 +15,16 @@ import { ONE, tileToScreen } from './index.js';
  * divides by ONE to a float tile coordinate. Nothing here feeds back into the sim.
  */
 
+/**
+ * Depth-packing constants. A sprite's sort key is `tileY * ROW_STRIDE + tileX`, so the integer-tile
+ * `y` dominates and `x` orders within a row — valid only while `tileX < ROW_STRIDE`, which holds for
+ * any sane map (sim positions stay well under ~2^25 tiles; real maps are a few hundred). Tiles sit in
+ * a band shifted strictly below every sprite (`TILE_DEPTH_BASE`), so ground never paints over a
+ * sprite even at the largest map.
+ */
+const ROW_STRIDE = 4096;
+const TILE_DEPTH_BASE = -1_000_000;
+
 /** Kinds of thing the scene draws, in their natural layer grouping. */
 export type DrawKind = 'tile' | 'building' | 'settler' | 'resource';
 
@@ -97,7 +107,7 @@ export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): Draw
       y: screen.y,
       // Tiles sort among themselves back-to-front (col+row), shifted into a band strictly below
       // every sprite depth (sprite depths are >= 0 world rows; tiles are negative).
-      depth: -1_000_000 + (col + row),
+      depth: TILE_DEPTH_BASE + (col + row),
       typeId,
     });
   }
@@ -119,7 +129,7 @@ export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): Draw
       y: screen.y,
       // Feet-anchor depth: lower (greater y), then further-right (greater x), then id. A total order,
       // so the sort is deterministic regardless of snapshot iteration nuances.
-      depth: tileY * 4096 + tileX,
+      depth: tileY * ROW_STRIDE + tileX,
     });
   }
 
