@@ -188,6 +188,27 @@ export const Health = defineComponent<{ hitpoints: number; max: number }>('Healt
 export const HerdMember = defineComponent<{ leader: Entity }>('HerdMember');
 
 /**
+ * A **provoked-anger timer** on an otherwise-passive animal — the `animaltypes.ini` `getAngry`/
+ * `angryGameTime` half of aggression. An animal whose record sets `getangry` but **not** `aggressive`
+ * does not pick fights on its own, but if a civilization **strikes** it (a hunter's hit landing on its
+ * {@link Health}, resolved by the AtomicSystem's `attack` effect) it turns temporarily hostile: an
+ * `Anger{until}` is stamped/refreshed on it with `until = tick + angryGameTime` (the record's anger
+ * duration in ticks). While the current tick is **before** `until`, the CombatSystem treats it like an
+ * aggressive animal — it fights the civ back, and the civ may target it — so a provoked deer/boar
+ * defends itself for `angryGameTime` ticks, then reverts to passive when the timer lapses (the
+ * CombatSystem removes the expired component so an idle angry animal can't keep a stale timer).
+ *
+ * It is a **separate optional component** (like {@link JobAssignment}/{@link Age}/{@link Health}/
+ * {@link HerdMember}): only a provoked animal carries one — an always-aggressive animal (a bear) never
+ * needs it (it is hostile unconditionally), a civilization never does, and the golden slice has none,
+ * so the hash is untouched. `until` is a monotonic integer tick value (no fixed-point — it is a whole
+ * tick count compared against {@link SystemContext.tick}), so it hashes deterministically like every
+ * other component. Determinism: set from the integer `tick + angryGameTime` at the provocation point,
+ * removed by the exact `tick >= until` compare — no RNG, no wall-clock.
+ */
+export const Anger = defineComponent<{ until: number }>('Anger');
+
+/**
  * A harvestable resource node placed in the world (a tree, ore vein, berry bush). It yields its
  * `goodType` when a settler runs the good's harvest atomic on its cell; `remaining` is the units
  * left — each completed harvest decrements it (AtomicSystem's harvest effect), so a finite node

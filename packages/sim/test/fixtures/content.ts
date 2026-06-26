@@ -110,6 +110,18 @@ export function testContent(): ContentSet {
         maxRange: 2,
         damage: { '0': 40 },
       },
+      // A weapon for the PASSIVE-but-PROVOKABLE animal tribe (boar, tribe 12) — so once a boar is
+      // PROVOKED (struck → `getAngry` → an `Anger` timer) it can actually fight back. Keyed by tribe
+      // alone (a spawned animal carries no jobType), like test_bearfist. damage 30 vs an unarmored target.
+      {
+        typeId: 10,
+        id: 'test_tusk',
+        tribeType: 12,
+        jobType: 1,
+        minRange: 1,
+        maxRange: 2,
+        damage: { '0': 30 },
+      },
     ],
     armor: [
       // Leather (class 1) mitigates 10 — so a 60-raw hit lands 50 net on a leather-clad target. Unused
@@ -185,6 +197,15 @@ export function testContent(): ContentSet {
         typeId: 11,
         id: 'test_bees',
       },
+      {
+        // A PASSIVE-but-PROVOKABLE animal tribe (boar, typeId 12): a known animal tribe (no `jobEnables`)
+        // whose `animaltypes` record sets `getAngry` (and NOT `aggressive`) — it picks no fight on its
+        // own, but if STRUCK it turns hostile for `angryGameTime` ticks (the provoked-anger half). Binds
+        // the attack atomic (81) so a provoked boar can swing back.
+        typeId: 12,
+        id: 'test_boar',
+        atomicBindings: [{ jobType: 1, atomicId: 81, animation: 'boar_attack' }],
+      },
     ],
     // animaltypes.ini records, keyed on `tribeType` (an animal's identity IS its tribe). The bear
     // (tribe 10) is `aggressive` (attacks civilizations unprovoked) with an adult HP pool the
@@ -209,6 +230,15 @@ export function testContent(): ContentSet {
       // The bee is a SOLITARY animal (no maximumGroupSize, searchForLeader false) — the spawn places
       // exactly one and adds no HerdMember.
       { id: 'bee', tribeType: 11, aggressive: true, cannotBeAttacked: true, hitpointsAdult: 200 },
+      // The boar is PASSIVE but PROVOKABLE: `getAngry` (NOT `aggressive`) with an `angryGameTime` of 10
+      // — struck once, it stays hostile for 10 ticks then reverts. The provoked-anger fixture.
+      {
+        id: 'boar',
+        tribeType: 12,
+        getAngry: true,
+        angryGameTime: 10,
+        hitpointsAdult: 1000,
+      },
     ],
     atomicAnimations: [
       { id: 'viking_chop', name: 'viking_chop', length: 3 },
@@ -218,6 +248,7 @@ export function testContent(): ContentSet {
       { id: 'viking_attack', name: 'viking_attack', length: 4 },
       { id: 'wolf_attack', name: 'wolf_attack', length: 4 },
       { id: 'bear_attack', name: 'bear_attack', length: 4 },
+      { id: 'boar_attack', name: 'boar_attack', length: 4 },
     ],
     // Experience tracks (humanjobexperiencetypes): the woodcutter (job 1) has a wood-specific track
     // (good 1, the narrow `(job, good)` specialization) and a general track (no good) — so the

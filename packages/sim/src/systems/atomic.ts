@@ -1,10 +1,11 @@
 import { assertNever } from '../brand.js';
 import type { AtomicEffect } from '../commands.js';
-import { Carrying, CurrentAtomic, Health, Resource, Settler, Stockpile } from '../components/index.js';
+import { Anger, Carrying, CurrentAtomic, Health, Resource, Settler, Stockpile } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import { fx } from '../fixed.js';
 import type { System, SystemContext } from './context.js';
 import { grantWorkExperience } from './progression.js';
+import { angryGameTimeOf, isProvokableAnimal } from './readviews/index.js';
 import { stockCapacity } from './shared.js';
 
 /**
@@ -114,8 +115,9 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       // RESOLVED net damage (the planner looked it up from `combatDamage`: the attacker's weapon ×
       // the target's armor class), so the executor just drains the target's hitpoints, exactly as
       // `pickup`/`eat` apply a pre-resolved amount. Targeting/who-attacks-whom and the death/cleanup
-      // loop are later slices; this is the hit landing.
-      resolveHit(world, effect.target, effect.damage);
+      // loop are later slices; this is the hit landing. The blow ALSO provokes an otherwise-passive
+      // `getAngry` animal into temporary hostility (the `animaltypes.ini` provoked-anger half).
+      resolveHit(world, ctx, effect.target, effect.damage);
       return;
     case 'produce':
       // Owned by ProductionSystem (a later slice). Completing the atomic + emitting the event is
@@ -158,8 +160,16 @@ function harvestFromNode(world: World, settler: Entity, node: Entity, goodType: 
  * never throw, mirroring how `harvest`/`pickup` tolerate a vanished resource/store. Reaching 0
  * hitpoints is "dead"; the death/cleanup loop (removing the entity, emitting `settlerDied`) is a
  * later slice — for now a 0-HP target simply stops being viable.
+ *
+ * The hit ALSO **provokes** an otherwise-passive `getAngry` animal: if the struck target is a
+ * {@link isProvokableAnimal} animal (an `animaltypes.ini` record with `getangry`, e.g. a boar/deer),
+ * an {@link Anger} timer is stamped/refreshed on it (`until = tick + angryGameTime`) — the
+ * `combatSystem` then treats it like an aggressive animal until the timer lapses, so a struck animal
+ * defends itself. An always-`aggressive` animal needs no provocation (it is already hostile), so we
+ * only stamp anger on a provokable one; this is the provoked-anger half of `animaltypes.ini`
+ * aggression (docs/FIDELITY.md "Civ-vs-animal aggression").
  */
-function resolveHit(world: World, target: Entity, damage: number): void {
+function resolveHit(world: World, ctx: SystemContext, target: Entity, damage: number): void {
   const health = world.tryGet(target, Health);
   if (health === undefined) return; // target gone / non-combatant — the swing struck nothing
   // `combatDamage` already clamps net damage at 0, so a well-formed effect carries `damage >= 0`; the
@@ -167,6 +177,29 @@ function resolveHit(world: World, target: Entity, damage: number): void {
   // the target — silently corrupting hitpoints is the worse failure, so floor it rather than trust the
   // caller. The outer `Math.max(0, …)` floors the pool itself (a hit never drives it below 0).
   health.hitpoints = Math.max(0, health.hitpoints - Math.max(0, damage));
+  provokeAnger(world, ctx, target);
+}
+
+/**
+ * Provoke a struck **passive but `getAngry`** animal into temporary hostility — the provoked half of
+ * `animaltypes.ini` aggression. If `target` is a {@link Settler} of a {@link isProvokableAnimal}
+ * tribe, stamp/refresh an {@link Anger}`{until: tick + angryGameTime}` on it (`combatSystem` reads
+ * the timer to make it fight back until it lapses). A re-strike before the timer expires **refreshes**
+ * `until` (the latest provocation extends hostility, the original's "kept angry while harassed"
+ * reading). No-ops for a non-`Settler` target, a non-animal/non-provokable tribe (a civilization, an
+ * already-`aggressive` bear, an unknown tribe), or an `angryGameTime` of 0 (no readable duration → no
+ * lasting anger). Pure of RNG/wall-clock — `until` is the integer `ctx.tick + angryGameTimeOf(...)`.
+ */
+function provokeAnger(world: World, ctx: SystemContext, target: Entity): void {
+  const settler = world.tryGet(target, Settler);
+  if (settler === undefined) return; // not a settler/animal — nothing to anger
+  if (!isProvokableAnimal(ctx.content, settler.tribe)) return; // not a getAngry animal — no provocation
+  const duration = angryGameTimeOf(ctx.content, settler.tribe);
+  if (duration <= 0) return; // no readable anger duration — nothing to time
+  const until = ctx.tick + duration;
+  const anger = world.tryGet(target, Anger);
+  if (anger === undefined) world.add(target, Anger, { until });
+  else anger.until = until; // re-strike refreshes the timer (latest provocation wins)
 }
 
 /**

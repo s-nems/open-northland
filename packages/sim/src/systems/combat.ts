@@ -1,4 +1,5 @@
 import {
+  Anger,
   CurrentAtomic,
   Health,
   MoveGoal,
@@ -55,8 +56,10 @@ import { isAggressiveAnimal, isAnimalTribe, mayAttack } from './readviews/index.
  * combatant picks (nearest enemy in range), the *swing cadence* (re-target each idle tick), and that an
  * unarmed combatant does no damage are *our* deterministic design — the original's target-acquisition
  * AI is the undocumented "soul" (docs/FIDELITY.md). The **provoked**-anger half (`getAngry`/
- * `angryGameTime` — a passive animal turned hostile after being struck) is **deferred** (it needs a
- * per-entity anger timer the combat slice doesn't yet model; see docs/FIDELITY.md).
+ * `angryGameTime` — a passive animal turned hostile after being struck) is **now wired**: the
+ * AtomicSystem stamps an {@link Anger} timer on a struck `getAngry` animal, and this system reads it
+ * ({@link hostileAnimalNow} on the attacker side, {@link mayTarget} on the target side) so a provoked
+ * animal fights back and is a valid target until the timer lapses, then reverts to passive.
  *
  * Determinism: no RNG, no wall-clock; combatants and targets are scanned in canonical
  * ({@link World.canonicalEntities}) order with a Manhattan-distance + ascending-id tie-break, and the
@@ -75,11 +78,13 @@ export const combatSystem: System = (world, ctx) => {
     if (world.get(e, Health).hitpoints <= 0) continue;
 
     const attacker = world.get(e, Settler);
-    // A NON-aggressive animal runs no attack drive at all (a passive cow/deer doesn't pick fights — and
-    // animals don't war on each other here). A civilization OR an aggressive animal does drive: the
-    // per-target `mayAttack` relation below then decides each candidate. (An unknown-tribe combatant —
-    // no animal record — is not an animal, so it falls through to the civ branch and drives.)
-    if (isAnimalTribe(ctx.content, attacker.tribe) && !isAggressiveAnimal(ctx.content, attacker.tribe)) {
+    // A NON-hostile animal runs no attack drive at all (a passive cow/deer doesn't pick fights — and
+    // animals don't war on each other here). "Hostile" is an aggressive animal (unprovoked) OR a
+    // **provoked** one whose `Anger` timer is still live ({@link hostileAnimalNow}, which also reaps a
+    // lapsed timer). A civilization OR a hostile animal drives; the per-target `mayAttack`/anger relation
+    // below then decides each candidate. (An unknown-tribe combatant — no animal record — is not an
+    // animal, so it falls through to the civ branch and drives.)
+    if (isAnimalTribe(ctx.content, attacker.tribe) && !hostileAnimalNow(world, ctx, e, attacker.tribe)) {
       continue;
     }
 
@@ -95,6 +100,27 @@ export const combatSystem: System = (world, ctx) => {
 };
 
 /**
+ * Whether the animal entity `e` (of `tribe`) is **hostile right now** — an always-`aggressive` animal,
+ * OR a passive `getAngry` animal that has been **provoked** and whose {@link Anger} timer is still live
+ * (`ctx.tick < anger.until`). This is the per-entity layer the content-only {@link mayAttack} can't
+ * carry: aggression-by-record is a content fact, but provoked anger is per-entity state.
+ *
+ * Side effect: a **lapsed** timer (`ctx.tick >= until`) is **removed** here — the animal has cooled
+ * off, so it reverts to passive and the stale component is reaped (keeping the hash from accumulating
+ * dead timers). Removing on read is safe: the combatant scan visits each entity once per tick, and an
+ * expired timer carries no remaining meaning. Pure of RNG/wall-clock — the live/lapsed test is the
+ * exact integer `tick < until`.
+ */
+function hostileAnimalNow(world: World, ctx: SystemContext, e: Entity, tribe: number): boolean {
+  if (isAggressiveAnimal(ctx.content, tribe)) return true; // unconditionally hostile
+  const anger = world.tryGet(e, Anger);
+  if (anger === undefined) return false; // never provoked
+  if (ctx.tick < anger.until) return true; // still angry
+  world.remove(e, Anger); // cooled off — revert to passive, reap the stale timer
+  return false;
+}
+
+/**
  * The nearest **enemy** combatant the attacker may swing at: a {@link Health}-bearing {@link Settler}
  * on a positioned cell within `range` Manhattan cells of `here`, with a living (`hitpoints > 0`) pool,
  * for which {@link mayAttack}`(self → target)` holds — a hostile civilization, or (when self is a civ /
@@ -103,9 +129,11 @@ export const combatSystem: System = (world, ctx) => {
  * Returns the target entity, or null if no enemy is in range.
  *
  * The attacker itself is excluded (`t === self`); whether a candidate is friendly, an exempt
- * decorative animal, passive prey, or a valid enemy is the single {@link mayAttack} relation (the same
- * relation the attacker-eligibility loop above consults), so the two directions of a civ⇄animal fight
- * stay consistent.
+ * decorative animal, passive prey, or a valid enemy is the {@link mayAttack} relation (the same
+ * relation the attacker-eligibility loop above consults) **plus** the per-entity provoked-anger layer
+ * ({@link mayTarget}): a `getAngry` animal that has been struck (a live {@link Anger} timer) is a valid
+ * target for a civilization even though its record alone is passive — so a provoked animal fighting a
+ * civ can be struck back. The two directions of a civ⇄animal fight stay consistent.
  */
 function nearestEnemyTarget(
   world: World,
@@ -123,7 +151,7 @@ function nearestEnemyTarget(
     if (t === self) continue; // never swing at oneself
     if (!world.has(t, Settler) || !world.has(t, Health) || !world.has(t, Position)) continue;
     const targetTribe = world.get(t, Settler).tribe;
-    if (!mayAttack(ctx.content, selfTribe, targetTribe)) continue; // not a valid target for this attacker
+    if (!mayTarget(world, ctx, self, selfTribe, t, targetTribe)) continue; // not a valid target for this attacker
     if (world.get(t, Health).hitpoints <= 0) continue; // already felled — not a target
     const cell = entityCell(world, terrain, t);
     const dist = manhattan(terrain, here, cell);
@@ -135,6 +163,50 @@ function nearestEnemyTarget(
     }
   }
   return best === null ? null : { target: best };
+}
+
+/**
+ * Whether the attacker entity `self` (of `attackerTribe`) may swing at the target entity `t` (of
+ * `targetTribe`) — the content-only {@link mayAttack} relation **OR** the per-entity provoked-anger
+ * layer. `mayAttack` covers the static hostility (same-tribe friendly, civ⇄civ enemies,
+ * civ→aggressive-animal, animals don't fight each other). On top of it, a **provoked** `getAngry`
+ * animal (a live {@link Anger} timer) makes a civ⇄animal fight valid in **both** directions, the case
+ * `mayAttack` (content-only) can't see:
+ *
+ *  - a **civ attacker → angry-animal target**: the *target's* anger makes it hittable, so a civ can
+ *    strike back the animal harassing it (a passive boar it would otherwise leave alone);
+ *  - an **angry-animal attacker → civ target**: the *attacker's* own anger makes it eligible to swing
+ *    at the civ (`mayAttack` alone would skip a non-aggressive animal attacker).
+ *
+ * Either way the override is gated to a **civilization-vs-animal** pair with the **animal side**
+ * carrying a live timer — it never lets two animals fight, nor changes the civ⇄civ rules. (The
+ * attacker-eligibility loop already vetted `self` as hostile via {@link hostileAnimalNow}; this is the
+ * per-candidate target check, consistent with it.)
+ *
+ * Determinism: a pure read of `content` + the relevant entity's `Anger` against `ctx.tick` (the exact
+ * integer `tick < until`), no RNG/wall-clock. A lapsed timer is NOT reaped here (a const-time candidate
+ * check); the once-per-tick reaping is {@link hostileAnimalNow} on the attacker pass — an expired timer
+ * simply reads as not-angry, so it never falsely marks a target.
+ */
+function mayTarget(
+  world: World,
+  ctx: SystemContext,
+  self: Entity,
+  attackerTribe: number,
+  t: Entity,
+  targetTribe: number,
+): boolean {
+  if (mayAttack(ctx.content, attackerTribe, targetTribe)) return true; // static hostility
+  const attackerIsAnimal = isAnimalTribe(ctx.content, attackerTribe);
+  const targetIsAnimal = isAnimalTribe(ctx.content, targetTribe);
+  // The anger override only bridges a civilization-vs-animal pair — never animal-vs-animal, never
+  // civ-vs-civ (those are fully decided by mayAttack above).
+  if (attackerIsAnimal === targetIsAnimal) return false;
+  // The ANIMAL side of the pair must carry a live anger timer (a provoked getAngry animal). Whichever
+  // of attacker/target is the animal is the one whose anger is read.
+  const animalEntity = attackerIsAnimal ? self : t;
+  const anger = world.tryGet(animalEntity, Anger);
+  return anger !== undefined && ctx.tick < anger.until;
 }
 
 /**

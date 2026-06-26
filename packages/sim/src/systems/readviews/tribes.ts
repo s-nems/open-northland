@@ -99,14 +99,44 @@ export function animalRecord(content: ContentSet, tribeType: number): AnimalType
  *
  * NOTE this is the **unprovoked** driver only (`aggressive`). The `getAngry`/`angryGameTime` half — an
  * otherwise-passive animal **provoked** into temporary hostility (it was attacked, then stays hostile
- * for `angryGameTime` ticks) — needs a per-entity provocation/anger-timer state the combat slice does
- * not yet model; it is a deferred follow-up (docs/FIDELITY.md "Civ-vs-animal aggression").
+ * for `angryGameTime` ticks) — is the companion {@link isProvokableAnimal}/{@link angryGameTimeOf}
+ * read side, consumed via the per-entity {@link Anger} timer the AtomicSystem stamps and the
+ * CombatSystem reads (docs/FIDELITY.md "Civ-vs-animal aggression").
  *
  * FIDELITY n/a here (a read view); the *behaviour* it drives is tracked in docs/FIDELITY.md. Pure over
  * `content`, no RNG/wall-clock.
  */
 export function isAggressiveAnimal(content: ContentSet, tribeType: number): boolean {
   return animalRecord(content, tribeType)?.aggressive ?? false;
+}
+
+/**
+ * Whether `tribeType` is a **provokable** animal — a `[tribetype]` whose `animaltypes.ini` record sets
+ * `getAngry` (it is otherwise passive but, when **struck**, turns temporarily hostile for
+ * `angryGameTime` ticks — the provoked-anger half of aggression). The AtomicSystem's `attack` effect
+ * reads this at the provocation point: a civ's hit landing on a provokable animal stamps an
+ * {@link Anger} timer on it (`combatSystem` then treats it like an aggressive animal until the timer
+ * lapses). An always-`aggressive` animal (a bear) needs no provocation — it is hostile unconditionally
+ * — and a tribe with no animal record (a civilization, an unknown tribe) is not provokable. The
+ * **anger duration** ({@link angryGameTimeOf}) is the matching `angryGameTime` magnitude. Pure over
+ * `content`, no RNG/wall-clock; FIDELITY n/a here (a read view) — the *behaviour* it drives is tracked
+ * in docs/FIDELITY.md ("Civ-vs-animal aggression").
+ */
+export function isProvokableAnimal(content: ContentSet, tribeType: number): boolean {
+  return animalRecord(content, tribeType)?.getAngry ?? false;
+}
+
+/**
+ * How long (in game ticks) an animal of `tribeType` stays hostile once **provoked** — its
+ * `animaltypes.ini` `angryGameTime`, or `0` when the tribe has no animal record (a civilization, an
+ * unknown tribe — it cannot be provoked, so it has no anger duration). The AtomicSystem stamps an
+ * {@link Anger}`{until: tick + angryGameTimeOf(...)}` when a {@link isProvokableAnimal} animal is
+ * struck; the timer lapses (and the component is removed) once the current tick reaches `until`. Pure
+ * over `content`, no RNG/wall-clock; FIDELITY n/a (read view — the param is the verbatim extracted
+ * `angryGameTime`).
+ */
+export function angryGameTimeOf(content: ContentSet, tribeType: number): number {
+  return animalRecord(content, tribeType)?.angryGameTime ?? 0;
 }
 
 /**
