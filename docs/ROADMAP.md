@@ -302,11 +302,17 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       player-assignable trade), while a settler with a job still resolves by `(tribeType, jobType)` and a
       jobless *civilian* stays unarmed. So a spawned aggressive animal now actually does damage (the gap
       the spawn opened — faithful, the weapon param is the verbatim `weapontypes` join; docs/FIDELITY.md
-      "Combat targeting drive"). **Next:** the **map populator** that *issues* `spawnAnimalHerd` to seed a
-      map's wildlife (the AnimalSystem / scenario seam — placing herds at terrain birth points), the
-      **follow-the-leader** movement drive that reads `HerdMember` (a follower staying within
-      `maximumLeaderDistance`), and the provoked-anger (`getAngry`) timer once a per-entity hostility-state
-      model exists.
+      "Combat targeting drive"). **The follow-the-leader movement drive now LANDED** — `herdingSystem`
+      (`systems/herding.ts`, runs just before `aiSystem` so the goal is routed same-tick) is the first
+      reader of the `HerdMember` relation: a strayed idle follower (farther than `maximumLeaderDistance`
+      from its leader — surfaced via `herdParams().leaderDistance`) gets a `MoveGoal` to the leader's cell
+      and walks back via the existing path chain, coming to rest inside the radius; the leader itself
+      (`leader === self`) and a solitary animal (no `HerdMember`) run no drive, and a reaped leader leaves
+      the follower in place. Faithful (the cohesion-radius param); approximated (walk-straight-back-to-
+      leader-cell behavior — no flocking/formation oracle; see docs/FIDELITY.md). Inert on the goldens/
+      slice (no `HerdMember` there). **Next:** the **map populator** that *issues* `spawnAnimalHerd` to seed
+      a map's wildlife (the AnimalSystem / scenario seam — placing herds at terrain birth points), and the
+      provoked-anger (`getAngry`/`angryGameTime`) timer once a per-entity hostility-state model exists.
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
       `fisher_sea`/`trader_sea`/`carpenter ship`, `vehicle_ship`.
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).

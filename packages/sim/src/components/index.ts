@@ -174,9 +174,9 @@ export const Health = defineComponent<{ hitpoints: number; max: number }>('Healt
  * `leader` at **itself**) and each follower points `leader` at it. A **solitary** animal (a record
  * with `searchforleader` false) carries **no** `HerdMember` at all: it has no leader to follow.
  *
- * This is the data foundation the later **follow-the-leader** movement drive consumes (a follower
- * stays within `maximumLeaderDistance` of its leader); this slice only *records* the relation, it adds
- * no movement behaviour yet (no oracle for the herd-cohesion AI — see docs/FIDELITY.md). Like
+ * This is the data foundation the **follow-the-leader** movement drive consumes (`herdingSystem`: a
+ * strayed follower walks back within `maximumLeaderDistance` of its leader — the spawn slice records
+ * the relation, the herding slice reads it). Like
  * {@link JobAssignment}/{@link Age}/{@link Health} it is a **separate optional component**: only a
  * herding animal carries one, so a civilization settler / the golden slice has none and the hash is
  * untouched. `leader` is an {@link Entity} id (a monotonic integer), so it hashes deterministically

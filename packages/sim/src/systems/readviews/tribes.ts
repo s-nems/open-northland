@@ -149,6 +149,8 @@ export function animalHitpoints(content: ContentSet, tribeType: number): number 
  *    point seeds; 0 = the source omitted it, a solitary animal).
  *  - `searchForLeader` (`searchforleader`) — whether a member follows a herd leader (wolves/deer) vs
  *    roams solo, which decides whether the spawned group needs a designated leader entity.
+ *  - `leaderDistance` (`maximumleaderdistance`) — how far a follower may roam from its herd leader
+ *    before the follow-the-leader drive sends it back (the cohesion radius the herding movement reads).
  *  - `birthPointRange` (`maximumdistancetobirthpoint`) — how far the herd ranges from its birth/spawn
  *    point (the radius around the spawn tile the group scatters into).
  *  - `stayPointRange` (`maximumdistancetostaypoint`) — the territory radius around the animal's stay
@@ -164,6 +166,8 @@ export interface HerdParams {
   readonly maxGroupSize: number;
   /** `searchforleader` — a member follows a herd leader vs roams solo. */
   readonly searchForLeader: boolean;
+  /** `maximumleaderdistance` — how far a follower may roam from its leader before it heads back. */
+  readonly leaderDistance: number;
   /** `maximumdistancetobirthpoint` — how far the herd ranges from its spawn point. */
   readonly birthPointRange: number;
   /** `maximumdistancetostaypoint` — territory radius around the animal's stay point. */
@@ -176,6 +180,7 @@ export function herdParams(content: ContentSet, tribeType: number): HerdParams |
   return {
     maxGroupSize: animal.maximumGroupSize,
     searchForLeader: animal.searchForLeader,
+    leaderDistance: animal.maximumLeaderDistance,
     birthPointRange: animal.maximumDistanceToBirthPoint,
     stayPointRange: animal.maximumDistanceToStayPoint,
   };
