@@ -79,6 +79,7 @@ IR `content/types/buildings.json` entry (schema in `packages/data/src/schema.ts`
   "workers": [{ "jobType": 24, "count": 3 }],
   "stock":   [{ "goodType": 16, "capacity": 150, "initial": 0 }],
   "produces": [],
+  "construction": [],
   "source":  { "file": "DataCnmd/types/houses.ini", "block": "logichousetype", "layer": "mod" }
 }
 ```
@@ -87,7 +88,11 @@ IR `content/types/buildings.json` entry (schema in `packages/data/src/schema.ts`
 headquarters vs a stock, which workplace — is carried by `id` (the `debugname` slug). The full
 production recipe (input goods + per-cycle amounts/timing) is a Phase-3 goods-graph artifact derived
 from `goodtypes.productionInputGoods`; `produces` captures only the output good ids the house table
-names today.
+names today. `construction` is the build-material cost (`{goodType, amount}[]`) overlaid from the
+**graphics** table (`DataCnmd/budynki12/houses/houses.ini` `[GfxHouse]` `LogicConstructionGoods`,
+`extractConstructionCosts`) — the logic table above carries no cost key; empty for the always-present
+headquarters/wonder. A home's level chain (typeIds 2..6) reads its tier's upgrade cost (reference
+tribe; the per-tribe spread is a recorded FIDELITY deviation).
 
 The sim consumes the IR; it never parses `.ini`. The mapping from raw fields to IR fields lives in
 the pipeline decoder for that type, and is documented inline there.

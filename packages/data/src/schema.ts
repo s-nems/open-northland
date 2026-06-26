@@ -195,6 +195,18 @@ export const BuildingType = z.object({
    * schema default until the per-tribe atomic-timing pass pins it (docs/FIDELITY.md).
    */
   recipe: Recipe.optional(),
+  /**
+   * Build-material cost — the goods that must be delivered to *construct* this building, joined onto
+   * the logic record from the graphics table's `[GfxHouse]` `LogicConstructionGoods` line (the readable
+   * `DataCnmd/budynki12/houses/houses.ini`, keyed by the same `LogicType` id). The source line is a
+   * flat good-id list where a **repeat encodes quantity** (`3 3 26` = 2× stone + pillar), collapsed to
+   * `{goodType, amount}` pairs exactly like a recipe's inputs. Empty for the always-present
+   * headquarters/wonder buildings (no construction cost) and for any type the graphics table omits.
+   * For a home's level chain (`home level 00..04`) each level is a distinct `typeId` carrying its OWN
+   * upgrade cost, so a leveled `home` building resolves the cost of *its* tier here (not cumulative).
+   * The input data the future ConstructionSystem (place → deliver materials → build) consumes.
+   */
+  construction: z.array(z.object({ goodType: TypeId, amount: z.number().int().positive() })).default([]),
   source: Provenance.optional(),
 });
 export type BuildingType = z.infer<typeof BuildingType>;

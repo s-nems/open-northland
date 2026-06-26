@@ -53,6 +53,10 @@ export function validateCrossReferences(set: ContentSet): void {
     for (const g of b.produces) {
       if (!goodIds.has(g)) errors.push(`building "${b.id}" produces unknown goodType ${g}`);
     }
+    for (const c of b.construction) {
+      if (!goodIds.has(c.goodType))
+        errors.push(`building "${b.id}" construction needs unknown goodType ${c.goodType}`);
+    }
     if (b.recipe) {
       for (const io of [...b.recipe.inputs, ...b.recipe.outputs]) {
         if (!goodIds.has(io.goodType))

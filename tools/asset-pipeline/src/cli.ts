@@ -40,6 +40,7 @@ import {
   extractArmor,
   extractAtomicAnimations,
   extractBuildings,
+  extractConstructionCosts,
   extractGoods,
   extractGraphicsBindings,
   extractJobBaseGraphics,
@@ -461,6 +462,10 @@ export async function resolveIniSources(gameDir: string, mod: string | undefined
       { rel: join(mod, 'atomicanimations12', 'atomicanimations.ini'), layer: 'mod' },
       { rel: join(mod, 'types', 'weapons.ini'), layer: 'mod' },
       { rel: join(mod, 'types', 'houses.ini'), layer: 'mod' },
+      // The graphics-table twin: its `[GfxHouse]` records carry the `LogicConstructionGoods` build
+      // costs (and the home level chain), which the logic table above does not — overlaid onto the
+      // buildings by `typeId` in `buildIr` (see `extractConstructionCosts`).
+      { rel: join(mod, 'budynki12', 'houses', 'houses.ini'), layer: 'mod' },
     );
   }
   const sources: IniSource[] = [];
@@ -601,6 +606,9 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   const armor = [];
   const animals = [];
   const vehicles = [];
+  // typeId -> build-material cost, overlaid from the graphics table's `[GfxHouse]` records onto the
+  // logic-table buildings below (the logic table carries no construction cost — see `resolveIniSources`).
+  const constructionCosts = new Map<number, { goodType: number; amount: number }[]>();
   for (const { path, file, layer } of sources) {
     const sections = parseIniSections(decodeIni(await readFile(path)));
     const src: SourceRef = { file, layer };
@@ -615,13 +623,22 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     armor.push(...extractArmor(sections, src));
     animals.push(...extractAnimals(sections, src));
     vehicles.push(...extractVehicles(sections, src));
+    for (const [typeId, cost] of extractConstructionCosts(sections)) {
+      constructionCosts.set(typeId, cost);
+    }
   }
   const maps = await decodeMapTree(args.game);
+  // Overlay each building's build-material cost from the graphics table (joined by `typeId`); a
+  // building the graphics table omits keeps the schema-default empty cost.
+  const buildingsWithCosts = buildings.map((b) => {
+    const cost = constructionCosts.get(b.typeId);
+    return cost ? { ...b, construction: cost } : b;
+  });
   // Output-side recipe join: a workplace's `produces` output good -> that good's `productionInputs`
   // materializes each producing building's `recipe` (cross-table, so after the tables are built).
   // The recipe `ticks` is resolved through the produce-atomic animation length of the reference
   // tribe, so the tribes + atomicAnimations tables feed in too (fall back to a default otherwise).
-  const buildingsWithRecipes = fillBuildingRecipes(buildings, goods, tribes, atomicAnimations);
+  const buildingsWithRecipes = fillBuildingRecipes(buildingsWithCosts, goods, tribes, atomicAnimations);
   return parseContentSet({
     manifest: {
       version: IR_VERSION,

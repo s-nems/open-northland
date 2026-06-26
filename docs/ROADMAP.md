@@ -65,8 +65,16 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
 - [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`) →
       capacity → the births→housing loop. **Landed** (→ archive): the `homeSize` housing read model
       (`housingCapacity`/`tribePopulation`, `systems/shared.ts`); a placed building is immediately built.
-      **Open (source-blocked):** material delivery + house leveling — `houses.ini` carries no
-      build/upgrade-cost key (the cost lives below the `.ini`), so both are deferred together.
+      **Build-cost DATA now LANDED** (→ `BuildingType.construction` + `extractConstructionCosts`): the
+      per-level build-material cost (and the home level chain typeIds 2..6, each its own tier cost) is
+      extracted from the **graphics** table `DataCnmd/budynki12/houses/houses.ini` (`[GfxHouse]`
+      `LogicConstructionGoods`) — correcting the earlier "the cost lives below the `.ini`" claim, which
+      conflated the logic table (`types/houses.ini`, no cost key) with its graphics twin. Overlaid onto
+      buildings by `typeId`, run-length-encoded to `{goodType, amount}`, cross-checked against goods;
+      53/55 buildings carry a cost (HQ + one omitted type free). Per-tribe cost spread collapsed to the
+      reference tribe (docs/FIDELITY.md). **Open (behavior, no oracle):** the construction-system
+      *behavior* — deliver-materials-then-build + the level-up trigger — is now unblocked on data but
+      remains our future design (the engine's build loop has no oracle).
 - [ ] **ReproductionSystem** — **landed** (→ archive): one birth per tribe per tick while
       `tribePopulation < housingCapacity` (deterministic cadence, the `populationWithinHousing` invariant);
       a newborn is the data-pinned youngest age class (`baby_female`), `systems/ageclass.ts` recognizes the
@@ -192,9 +200,15 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       mirroring the existing humans overlay; `convertBmdTree` keys atlases on `(bmd, palette)` so the
       base pairs (a subset) emit the same atlas files while the mod gains the extra tribes' cross-refs.
       Proven over the **real IR** (vehicle-bmd bindings 6→28, now spanning all four base tribes; 5
-      distinct atlas keys unchanged). **Open:** the mod's `budynki12/houses/houses.ini` (graphics/coords,
-      not the `[logichousetype]` logic) + `animation/.../animations.ini` are graphics/animation overlays
-      for the render leg, not balance data — deferred with the render-atlas work.
+      distinct atlas keys unchanged). **Second overlay landed** (→ `extractConstructionCosts`,
+      `BuildingType.construction`): the mod's `budynki12/houses/houses.ini` is NOT purely graphics —
+      its `[GfxHouse]` records carry the per-level `LogicConstructionGoods` **build-material cost** (and
+      the home level chain), now extracted and overlaid onto the logic-table buildings by `typeId`
+      (53/55 buildings get a cost). This corrects the earlier scoping that deferred the whole file as
+      render-only. **Open:** the file's actual graphics/coords (`GfxBobId`/`GfxFirePoint`/walk-block
+      areas) + `animation/.../animations.ini` are render/animation overlays for the render-atlas leg,
+      not balance data — deferred with the render-atlas work (the only balance datum the file held was
+      the construction cost, now imported).
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.
 
 ## Phase 5 — Campaigns, polish, platform
