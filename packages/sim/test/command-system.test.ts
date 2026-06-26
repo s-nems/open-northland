@@ -4,6 +4,7 @@ import {
   Building,
   Carrying,
   CurrentAtomic,
+  Health,
   JobAssignment,
   MoveGoal,
   PathFollow,
@@ -51,6 +52,7 @@ function clearStores(): void {
   PathRequest.store.clear();
   Production.store.clear();
   JobAssignment.store.clear();
+  Health.store.clear();
 }
 
 beforeEach(clearStores);
@@ -102,6 +104,37 @@ describe('CommandSystem', () => {
     expect(s.jobType).toBe(WOODCUTTER);
     expect(s.tribe).toBe(VIKING);
     expect(sim.events.current().some((ev) => ev.kind === 'settlerBorn')).toBe(true);
+  });
+
+  it('spawnSettler with no hitpoints mints a non-combatant (no Health pool — golden path)', () => {
+    const sim = fresh();
+    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 1, y: 2, tribe: VIKING });
+    sim.step();
+    // The default (omitted hitpoints) path leaves the settler Health-less, so it never fights and the
+    // golden hash stays untouched — the separate-optional-component pattern.
+    expect(sim.world.has(nthEntity(sim, 0), Health)).toBe(false);
+  });
+
+  it('spawnSettler with hitpoints stamps a Health pool: the civ becomes a combatant from command data', () => {
+    const sim = fresh();
+    // A civilization soldier enters the world as a combatant THROUGH THE COMMAND SEAM (not a test reaching
+    // into the world): a positive hitpoints pool stamps a full Health{hitpoints: max, max}, the settler
+    // analogue of the animal `hitpoints_adult` stamp. The magnitude is caller-supplied (approximated —
+    // humans' HP is below the readable `.ini`).
+    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 1, y: 2, tribe: VIKING, hitpoints: 1000 });
+    sim.step();
+    const health = sim.world.get(nthEntity(sim, 0), Health);
+    expect(health.hitpoints).toBe(1000);
+    expect(health.max).toBe(1000); // a fresh combatant spawns at full health
+  });
+
+  it('spawnSettler with non-positive hitpoints stamps no Health (only a real pool makes a combatant)', () => {
+    const sim = fresh();
+    // 0 (or negative) is not a combatant — stamping a 0-HP pool would spawn an already-dead fighter the
+    // cleanup reaper deletes the same tick. Treat it as the non-combatant default and stamp nothing.
+    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING, hitpoints: 0 });
+    sim.step();
+    expect(sim.world.has(nthEntity(sim, 0), Health)).toBe(false);
   });
 
   it('skips a command with an unknown type id (recoverable bad input — no throw, still logged)', () => {
