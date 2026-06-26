@@ -43,6 +43,7 @@ export {
   type TerrainMap,
 } from './terrain.js';
 export { findPath } from './pathfinding.js';
+export { seedAnimalHerds, type SeedAnimalsOptions } from './populate.js';
 export {
   checkInvariants,
   CORE_INVARIANTS,

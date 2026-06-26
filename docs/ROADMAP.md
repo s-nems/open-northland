@@ -310,9 +310,21 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       (`leader === self`) and a solitary animal (no `HerdMember`) run no drive, and a reaped leader leaves
       the follower in place. Faithful (the cohesion-radius param); approximated (walk-straight-back-to-
       leader-cell behavior — no flocking/formation oracle; see docs/FIDELITY.md). Inert on the goldens/
-      slice (no `HerdMember` there). **Next:** the **map populator** that *issues* `spawnAnimalHerd` to seed
-      a map's wildlife (the AnimalSystem / scenario seam — placing herds at terrain birth points), and the
-      provoked-anger (`getAngry`/`angryGameTime`) timer once a per-entity hostility-state model exists.
+      slice (no `HerdMember` there). **The map populator now LANDED** — `seedAnimalHerds(content, terrain, options?)`
+      (`packages/sim/src/populate.ts`) is the AnimalSystem/scenario seam that *issues* `spawnAnimalHerd` to seed a
+      real loaded map's wildlife: a **pure command-producer** (not a per-tick system — seeding is a one-shot at map
+      load) that returns the ordered `spawnAnimalHerd` commands placing every **recorded** animal tribe's herds
+      (canonical ascending order; a civilization is never seeded) at **walkable** birth points (stride through the
+      terrain's walkable cells in canonical row-major order, round-robin successive birth points across the animal
+      tribes, capped by `cellStride`/`maxHerds`). The caller enqueues the returned commands through the one mutation
+      seam, so seeding is replay-faithful for free. Faithful (the set of animal tribes + each herd's
+      size/HP/range/leader params); **approximated** (*where* + *how many* birth points — the original's per-map
+      animal spawn points are below the readable `.ini`; recorded in docs/FIDELITY.md "Animal map populator").
+      Verified on the REAL pipeline IR (35 animals) + a real 250×250 decoded map: 125 herds across 34 distinct
+      animal tribes, all birth points walkable + in-bounds, deterministic. **Next:** the provoked-anger
+      (`getAngry`/`angryGameTime`) timer once a per-entity hostility-state model exists (a passive animal struck →
+      temporarily hostile), and/or a scenario/slice that *runs* a populated map end-to-end (civ + seeded wildlife
+      fighting via the combat drive).
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
       `fisher_sea`/`trader_sea`/`carpenter ship`, `vehicle_ship`.
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).
