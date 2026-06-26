@@ -644,3 +644,9 @@ the next iteration inherits it.
   behaviour half is blocked — and don't invent the drive to avoid an "unused field". Validate the benign
   edge cases against the REAL IR (here: 0/35 animals set `runspeed` without `movespeed`, so the run pace
   is never silently dropped) so the gate you anchor on is provably right, not just plausible. (sim)
+- [d049b1d] `docs/ROADMAP.md` re-bloats within a *day* of a sweep: each `/iterate` appends its full "now
+  LANDED" hands-on trail to the live roadmap item, ~8 lines/iteration, so the executor-read doc blows past
+  the ~300-line budget again in ~20 iterations (d049b1d swept it 410→159; it hit 320 the same day). When a
+  ratchet-violation recurs this fast the headline fix is still the mechanical sweep (verbatim narrative →
+  ROADMAP-ARCHIVE.md, one-line summary + archive pointer live), but log the *source* habit in TECH-DEBT —
+  the per-iteration changelog-into-ROADMAP pattern is the structural cause, not the symptom. (docs/reflect)
