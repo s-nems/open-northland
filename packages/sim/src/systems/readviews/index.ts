@@ -29,6 +29,7 @@ export {
 
 export {
   type HerdParams,
+  HUNTER_JOB,
   angryGameTimeOf,
   animalCannotBeAttacked,
   animalHitpoints,
@@ -36,8 +37,10 @@ export {
   herdParams,
   isAggressiveAnimal,
   isAnimalTribe,
+  isCatchableAnimal,
   isProvokableAnimal,
   isPlayableTribe,
   mayAttack,
+  mayHunt,
   playableTribes,
 } from './tribes.js';

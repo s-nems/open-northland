@@ -1,13 +1,16 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  HUNTER_JOB,
   animalCannotBeAttacked,
   animalHitpoints,
   herdParams,
   isAggressiveAnimal,
   isAnimalTribe,
+  isCatchableAnimal,
   isPlayableTribe,
   mayAttack,
+  mayHunt,
   playableTribes,
 } from '../src/systems/index.js';
 
@@ -46,6 +49,8 @@ function tribeContent(): ContentSet {
       { typeId: 1, id: 'viking', jobEnables: [{ jobType: 5, kind: 'house', targetId: 4 }] },
       // bears (typeId 8) — another animal, even though it has many bindings it has no tech graph.
       { typeId: 8, id: 'bears', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'bear_walk' }] },
+      // cows (typeId 10) — a CATCHABLE prey animal (the `mayHunt`/`isCatchableAnimal` fixture).
+      { typeId: 10, id: 'cows', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'cow_walk' }] },
     ],
     // animaltypes records (keyed on tribeType): the bears (8) are aggressive with a HP pool; the
     // wolves (9) deliberately have NO record (a known animal tribe with no animaltypes behaviour). A
@@ -65,6 +70,8 @@ function tribeContent(): ContentSet {
         maximumDistanceToBirthPoint: 12,
         maximumDistanceToStayPoint: 7,
       },
+      // The cow (tribe 10) is CATCHABLE prey: passive (not aggressive/getAngry), tamable/huntable.
+      { id: 'cow', tribeType: 10, catchable: true, hitpointsAdult: 1000 },
     ],
   });
 }
@@ -276,5 +283,46 @@ describe('mayAttack (the combat hostility relation)', () => {
     });
     expect(mayAttack(content, 1, 5)).toBe(false); // viking cannot attack the bee (decorative-fauna exempt)
     expect(mayAttack(content, 5, 1)).toBe(true); // but the aggressive bee can attack the viking
+  });
+});
+
+describe('isCatchableAnimal (the catchable prey read view)', () => {
+  it('is true for a catchable animal, false for non-catchable / civ / unknown', () => {
+    const content = tribeContent();
+    expect(isCatchableAnimal(content, 10)).toBe(true); // cow — catchable
+    expect(isCatchableAnimal(content, 8)).toBe(false); // bear — aggressive, not catchable
+    expect(isCatchableAnimal(content, 9)).toBe(false); // wolves — no animaltypes record
+    expect(isCatchableAnimal(content, 1)).toBe(false); // viking — a civilization
+    expect(isCatchableAnimal(content, 99)).toBe(false); // unknown tribe
+  });
+});
+
+describe('mayHunt (the hunter predation relation)', () => {
+  it('lets a HUNTER strike catchable prey, but a non-hunter / non-catchable target does not', () => {
+    const content = tribeContent();
+    expect(mayHunt(content, HUNTER_JOB, 10)).toBe(true); // hunter -> catchable cow
+    expect(mayHunt(content, 1, 10)).toBe(false); // a non-hunter trade does not hunt
+    expect(mayHunt(content, null, 10)).toBe(false); // a jobless settler does not hunt
+    expect(mayHunt(content, HUNTER_JOB, 8)).toBe(false); // hunter -> aggressive bear (not catchable)
+    expect(mayHunt(content, HUNTER_JOB, 9)).toBe(false); // hunter -> wild wolf (no catchable flag)
+    expect(mayHunt(content, HUNTER_JOB, 1)).toBe(false); // a civilization is not huntable prey
+  });
+
+  it('still exempts a cannotBeAttacked animal even if (somehow) catchable', () => {
+    const content = parseContentSet({
+      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      goods: [{ typeId: 0, id: 'none' }],
+      jobs: [{ typeId: 0, id: 'idle' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      tribes: [
+        { typeId: 1, id: 'viking', jobEnables: [{ jobType: 0, kind: 'good', targetId: 0 }] },
+        { typeId: 5, id: 'tame_bees', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'b' }] },
+      ],
+      animals: [
+        { id: 'tame_bee', tribeType: 5, catchable: true, cannotBeAttacked: true, hitpointsAdult: 200 },
+      ],
+    });
+    // The cannotBeAttacked exemption holds for hunting too — a hunter can no more strike it than a soldier.
+    expect(mayHunt(content, HUNTER_JOB, 5)).toBe(false);
   });
 });

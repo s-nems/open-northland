@@ -338,11 +338,26 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       stamping is a later slice); the test verifies the *integration* of landed pieces, adds no mechanic, and is
       inert on the goldens. With the **provoked-anger timer now landed** (above), **every** `animaltypes.ini`
       aggression input — `aggressive`, `cannotbeattacked`, `getAngry`/`angryGameTime`, `hitpoints_adult` — is
-      consumed, so this item is **substance-complete**. **Next:** what *first provokes* a passive `getAngry`
-      animal — the **hunter strike** on `catchable` prey (the `catchable`/`warrantable` flags + the hunt atomic),
-      the one remaining unconsumed `animaltypes.ini` driver, which would land the actual provocation source the
-      `Anger` timer waits on (today only an aggressive animal or a test strikes a passive one); OR seed a real
-      **multi-civilization** scenario exercising two playable tribes' asymmetric bindings end-to-end.
+      consumed, so this item is **substance-complete**. **The hunter strike on `catchable` prey now LANDED** —
+      the last unconsumed `animaltypes.ini` driver (`catchable`) is wired, and it is the real **provocation
+      SOURCE** the `Anger` timer waits on. `combatSystem`'s targeting (`mayTarget`) now composes a third relation
+      alongside hostility (`mayAttack`) and provoked-anger: the **predation** relation
+      `mayHunt(content, attackerJob, targetTribe)` (`systems/readviews/tribes.ts`) — a civilization **hunter**
+      (`HUNTER_JOB` 15, pinned to `jobtypes.ini` `type 15` + `logicdefines.inc` `JOB_TYPE_HUMAN_HUNTER`) may
+      strike a `catchable` prey animal (`isCatchableAnimal` — the cow/livestock a non-hunter combatant leaves
+      alone), gated by the attacker's *job* not tribe hostility. The strike reuses the **same `attack` atomic id
+      81** every fighting job binds (the original's `setatomic 15 81 "..._hunter_attack"`) and the verbatim
+      `weapontypes` net-damage, so the hunter's hit drains `Health` and — for a `getAngry catchable` prey — flows
+      through the existing `provokeAnger` path → the `Anger` timer (the provocation the timer waited on). A
+      `cannotbeattacked` animal stays exempt from a hunter too. Faithful (the `catchable` param + hunter job id +
+      net-damage + atomic id 81); **approximated** (nearest-prey-in-range acquisition, an in-place strike with no
+      walk-to-prey advance and no `harvest_cadaver` follow-up, prey only fighting back once provoked — see
+      docs/FIDELITY.md "Hunter strike on catchable prey"). Verified on the REAL pipeline IR (2 catchable animals
+      tribes 10/19; each of the 5 civilizations carries a real `hunter_bow` job-15 weapon) + a real `step()`
+      schedule (a viking hunter drains a real cow's `Health`; a non-hunter leaves it alone). Inert on the
+      goldens/slice. **Next:** seed a real **multi-civilization** scenario exercising two playable tribes'
+      asymmetric bindings end-to-end (the asymmetry is in the data; a scenario proves the sim runs it) — or the
+      hunter's `harvest_cadaver` (atomic 33) follow-up that yields meat from a felled animal.
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
       `fisher_sea`/`trader_sea`/`carpenter ship`, `vehicle_ship`.
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).
