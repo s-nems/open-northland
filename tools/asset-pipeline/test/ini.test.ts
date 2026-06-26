@@ -131,19 +131,24 @@ name "viking_man_idle"
 `;
 
 // Mirrors DataCnmd/types/weapons.ini: each `[weapontype]` has a `tribetype` + a quoted `name`, a
-// `type`, the `minimumrange`/`maximumrange` pair, repeated `damagevalue <armorClass> <value>` lines,
-// a `jobtype`, and combat extras the schema doesn't carry (`atomicactiontype`, `soundtype_Hit`) that
-// are ignored. Both weapons share `type 2` across different tribes — the real data's `(tribetype,
-// type)` composite key (type alone is not unique). The second omits the range pair to exercise the
-// schema's range defaults of 1. The fist's `goodtype 0` is the natural-weapon sentinel (-> undefined);
-// the spear's `goodtype 5` is a real good (-> captured; 5 also exists in the IR-integration goods
-// fixture below so the cross-ref resolves there).
+// `type`, the `mainType` (coarse weapon class) + `weight` (encumbrance) pair, the
+// `minimumrange`/`maximumrange` pair, repeated `damagevalue <armorClass> <value>` lines, a `jobtype`,
+// and combat extras the schema doesn't carry (`atomicactiontype`, `soundtype_Hit`) that are ignored.
+// `mainType` is the file's exact camelCase key (a lowercased `maintype` would silently vanish). Both
+// weapons share `type 2` across different tribes — the real data's `(tribetype, type)` composite key
+// (type alone is not unique). The fist is `mainType 1, weight 0`; the spear `mainType 5, weight 1`
+// brackets the real range and exercises non-zero capture. The second omits the range pair to exercise
+// the schema's range defaults of 1. The fist's `goodtype 0` is the natural-weapon sentinel
+// (-> undefined); the spear's `goodtype 5` is a real good (-> captured; 5 also exists in the
+// IR-integration goods fixture below so the cross-ref resolves there).
 const WEAPONTYPES_INI = `// new
 [weapontype]
 tribetype 1
 type 2
+mainType 1
 name "woman fist"
 goodtype 0
+weight 0
 minimumrange 1
 maximumrange 1
 damagevalue 0 400
@@ -154,8 +159,10 @@ soundtype_Hit 0 95
 [weapontype]
 tribetype 2
 type 2
+mainType 5
 name "wooden spear"
 goodtype 5
+weight 1
 damagevalue 0 2400
 jobtype 32
 `;
@@ -633,6 +640,8 @@ describe('extractWeapons', () => {
         id: 'woman_fist',
         name: 'woman fist',
         tribeType: 1,
+        mainType: 1, // coarse weapon class
+        weight: 0, // schema default; the fist adds no encumbrance
         minRange: 1,
         maxRange: 1,
         damage: { '0': 400, '1': 80 },
@@ -647,6 +656,8 @@ describe('extractWeapons', () => {
         id: 'wooden_spear',
         name: 'wooden spear',
         tribeType: 2,
+        mainType: 5, // a different weapon class — captured per record
+        weight: 1, // non-zero encumbrance captured
         minRange: 1,
         maxRange: 1,
         damage: { '0': 2400 },

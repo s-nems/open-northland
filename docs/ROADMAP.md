@@ -143,7 +143,9 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       (`extractConstructionCosts`, 53/55), and the mod's `types/weapons.ini` `goodtype` — the good that IS
       each weapon — is now extracted onto `WeaponType.goodType` (cross-ref-resolved; 70/105 to a real good,
       35 natural-weapon `goodtype 0` sentinels dropped to undefined), the weapon-side twin of the armor
-      `goodType` join. **Open:** the file's graphics/coords + `animations.ini` are
+      `goodType` join, **plus the weapon's `mainType` (coarse weapon class) + `weight` (encumbrance)** onto
+      `WeaponType.mainType`/`weight` (all 105 weapons; the `mainType`/`weight` twins of the armor record —
+      the soldier-class→weapon-class binding prerequisite, captured ahead of its drive). **Open:** the file's graphics/coords + `animations.ini` are
       render/animation overlays — deferred with the render-atlas work (their only balance datum, the
       construction cost, is already imported).
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.

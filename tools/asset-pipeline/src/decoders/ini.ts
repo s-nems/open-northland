@@ -563,11 +563,14 @@ export function extractAtomicAnimations(sections: readonly RuleSection[], src: S
  * armor class 0 / a weapon's `damage["0"]` mean "unarmored"; good ids start at 1, so a literal 0 would
  * dangle). `tribetype` is captured because a weapon's `type` id is **not**
  * globally unique — the original keys a weapon by `(tribetype, type)`, so the same id recurs once
- * per tribe (e.g. `type 2` = "fist" for every tribe); see {@link WeaponType}. The remaining combat
- * extras (`soundtype_*`, `munitiontype`, `weight`, `mainType`,
- * `createsmoke`, `damagetype`) are not in the {@link WeaponType} schema yet and are intentionally
- * skipped here — they belong with the Phase-4 CombatSystem, not this type-table slice. Throws on a
- * section missing the required numeric `type` (matches {@link extractGoods}'s throw-on-malformed stance).
+ * per tribe (e.g. `type 2` = "fist" for every tribe); see {@link WeaponType}. `mainType` (the coarse
+ * weapon class) and `weight` (encumbrance) are captured as the weapon-side twins of an armor's
+ * `mainType`/`weight` — note `mainType` is the file's exact camelCase key (a lowercased `maintype`
+ * would silently vanish; see docs/LESSONS.md). The remaining combat extras (`soundtype_*`,
+ * `munitiontype`, `createsmoke`, `damagetype`) are not in the {@link WeaponType} schema yet and are
+ * intentionally skipped here — they belong with the Phase-4 CombatSystem, not this type-table slice.
+ * Throws on a section missing the required numeric `type` (matches {@link extractGoods}'s
+ * throw-on-malformed stance).
  */
 export function extractWeapons(sections: readonly RuleSection[], src: SourceRef): WeaponType[] {
   const weapons: WeaponType[] = [];
@@ -592,6 +595,8 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
         id: name ? slug(name) : `weapon_${typeId}`,
         name,
         tribeType: getInt(sec, 'tribetype'),
+        mainType: getInt(sec, 'mainType'),
+        weight: getInt(sec, 'weight'),
         minRange: getInt(sec, 'minimumrange'),
         maxRange: getInt(sec, 'maximumrange'),
         damage,
