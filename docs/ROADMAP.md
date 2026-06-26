@@ -171,8 +171,17 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       (`armorMaterialOf`/`armorByMaterial`, `systems/readviews/combat.ts`): the same grouping over the armor's
       `materialType` (`{1,2,3,4}` — cloth/leather/chain/plate, all distinct in the real data, vs `mainType`'s
       collapsing `{1,1,2,2}`), so the four records split into four singleton material buckets vs two coarse
-      light/heavy buckets — the last extracted armor field (`materialType`) to get a read-side consumer, the
-      granular tier the soldier-class→armor-tier binding joins on. **The soldier-class→weapon ROSTER JOIN itself now lands**
+      light/heavy buckets — the granular tier the soldier-class→armor-tier binding joins on. **The `weight`
+      (encumbrance) field on both tables now gets its read-side consumer too** (`weaponWeightOf`/`armorWeightOf`,
+      `systems/readviews/combat.ts`): a plain field accessor on each combat record (unlike the class-enum
+      groupings, `weight` is a quantity the schema defaults to `0`, never `undefined` — so it reads a `number`,
+      not an optional class), completing the per-record consumer coverage across BOTH combat tables — every
+      extracted weapon field (`mainType`/`weight`/`munitionType`/`damageType`/`jobType`/`goodType`/`damage`) and
+      every extracted armor field (`mainType`/`materialType`/`weight`/`blockingValue`/`goodType`/`typeId`) now
+      has a sim read view. `weight` is the per-record load a deferred carry/movement-penalty drive will read
+      (the drive itself oracle-blocked); note armor `weight` does NOT track the material tier monotonically
+      (leather tier 2 weighs 0 < cloth tier 1 weighs 1), so it is its own field, not derivable from the tier.
+      **The soldier-class→weapon ROSTER JOIN itself now lands**
       (`weaponsByJob`/`weaponsForJob`, `systems/readviews/combat.ts`): each `[weapontype]`'s `jobtype` (the
       job that wields it — already extracted + cross-ref-validated) groups all 105 weapons into a lossless
       `Map<jobType, WeaponType[]>` (20 wielding jobs over the real IR, e.g. `soldier_unarmed→{fist,claw}`,

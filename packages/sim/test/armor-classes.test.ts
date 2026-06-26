@@ -1,6 +1,12 @@
 import { type ArmorType, type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { describe, expect, it } from 'vitest';
-import { armorByClass, armorByMaterial, armorClassOf, armorMaterialOf } from '../src/systems/index.js';
+import {
+  armorByClass,
+  armorByMaterial,
+  armorClassOf,
+  armorMaterialOf,
+  armorWeightOf,
+} from '../src/systems/index.js';
 
 /** Resolve an armor record by its `id` (throws if absent — a test-fixture programmer error). */
 function armor(content: ContentSet, id: string): ArmorType {
@@ -117,6 +123,47 @@ describe('armorMaterialOf', () => {
       armor: [{ typeId: 1, id: 'no_tier' }],
     });
     expect(armorMaterialOf(armor(content, 'no_tier'))).toBeUndefined();
+  });
+});
+
+describe('armorWeightOf', () => {
+  it('returns the encumbrance weight (its weight field) for each record', () => {
+    // the real armortypes.ini weights: cloth 1, leather 0, chain 3, plate 3
+    const content = parseContentSet({
+      ...SCAFFOLD,
+      armor: [
+        { typeId: 1, id: 'cloth', materialType: 1, weight: 1 },
+        { typeId: 2, id: 'leather', materialType: 2, weight: 0 },
+        { typeId: 3, id: 'chain', materialType: 3, weight: 3 },
+        { typeId: 4, id: 'plate', materialType: 4, weight: 3 },
+      ],
+    });
+    expect(armorWeightOf(armor(content, 'cloth'))).toBe(1);
+    expect(armorWeightOf(armor(content, 'leather'))).toBe(0);
+    expect(armorWeightOf(armor(content, 'chain'))).toBe(3);
+    expect(armorWeightOf(armor(content, 'plate'))).toBe(3);
+  });
+
+  it('does not track the material tier monotonically (weight is its own field)', () => {
+    // leather (tier 2) weighs 0 while cloth (tier 1) weighs 1 — a finer-tier record is the lighter one
+    const content = parseContentSet({
+      ...SCAFFOLD,
+      armor: [
+        { typeId: 1, id: 'cloth', materialType: 1, weight: 1 },
+        { typeId: 2, id: 'leather', materialType: 2, weight: 0 },
+      ],
+    });
+    const cloth = armor(content, 'cloth');
+    const leather = armor(content, 'leather');
+    expect(armorMaterialOf(leather)).toBeGreaterThan(armorMaterialOf(cloth) ?? 0);
+    expect(armorWeightOf(leather)).toBeLessThan(armorWeightOf(cloth)); // weight not derivable from tier
+  });
+
+  it('defaults to 0 for a record with no weight (the schema default, never undefined)', () => {
+    // the shared armorContent() fixture declares no weight on any record
+    const a = armor(armorContent(), 'cloth');
+    expect(armorWeightOf(a)).toBe(0);
+    expect(armorWeightOf(a)).not.toBeUndefined(); // a quantity, not a class enum — always a number
   });
 });
 
