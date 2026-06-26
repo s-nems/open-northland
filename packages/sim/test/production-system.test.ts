@@ -151,6 +151,28 @@ describe('productionSystem — gating', () => {
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK) ?? 0).toBe(0); // nothing produced
   });
 
+  it('does not produce while the workplace is still under construction (built < ONE)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    // A staffed sawmill with its input present — but the building is still a construction site
+    // (built < ONE). Its delivered build materials happen to include the recipe input (WOOD), yet an
+    // unbuilt workplace must produce nothing: the build-completion gate, not an output-good accident.
+    const { mill } = sawmill(sim, [
+      [WOOD, 5],
+      [PLANK, 0],
+    ]);
+    sim.world.get(mill, Building).built = fx.fromInt(0); // demote to under-construction
+    for (let t = 0; t < CYCLE_TICKS + 2; t++) productionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(mill, Production)).toBe(false); // never started — site doesn't produce
+    expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(5); // input untouched (not raided)
+    expect(sim.world.get(mill, Stockpile).amounts.get(PLANK) ?? 0).toBe(0); // nothing produced
+
+    // Once built, the very next tick the same workplace starts consuming/producing as usual.
+    sim.world.get(mill, Building).built = ONE;
+    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(1); // produced once built
+    expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(3); // two cycles' worth consumed
+  });
+
   it('enforces per-good output capacity: no cycle starts when the output is full', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     // Plank already at its cap (20) — no room for the +1 output, so production must not start

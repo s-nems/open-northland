@@ -21,9 +21,9 @@ import { vehicleMayCarry } from './readviews/vehicles.js';
  *   *exactly* its outstanding materials and nothing else — `nearestStoreFor` only delivers a good to a
  *   store with room, so the existing carrier path hauls the `construction` goods to the site (the
  *   `pileup` deposit capped at the outstanding need), and the ConstructionSystem then consumes them and
- *   flips `built`. (An unbuilt building also can't be a recipe-output sink — its outputs aren't in
- *   `construction`, so production's `depositOutputs` would get capacity 0; the carrier-delivery of
- *   build materials is the only meaningful consumer of this branch.)
+ *   flips `built`. (An unbuilt building never produces — `productionSystem` gates its start loop on
+ *   `built >= ONE` — so this branch's only consumer is the carrier-delivery of build materials; its
+ *   stockpile can't be raided to feed a recipe.)
  * - A built **building** store: from its building type's stock slots — a good with no declared slot
  *   has no room (capacity 0).
  * - A **boat hull** ({@link Vehicle}, the "boats as mobile stores" entity — a `Stockpile` on a hull,
