@@ -6,6 +6,7 @@ import {
   shipVehicles,
   vehicleCargoGoods,
   vehicleMayCarry,
+  vehicleSizeOf,
 } from '../src/systems/index.js';
 
 /** Resolve a vehicle by its `id` from a content set (throws if absent — a test-fixture programmer error). */
@@ -160,5 +161,41 @@ describe('vehicleCargoGoods / vehicleMayCarry', () => {
     const cata = vehicle(vehicleContent(), 'catapult');
     expect(vehicleCargoGoods(cata).size).toBe(0);
     expect(vehicleMayCarry(cata, 16)).toBe(false); // nothing rides in a catapult
+  });
+});
+
+describe('vehicleSizeOf', () => {
+  it('reads the footprint class straight off logicSize: cart 0, catapult 1, ship 2', () => {
+    const content = vehicleContent();
+    // The three-way partition, the coarser axis than the boat/cart isShipVehicle split.
+    expect(vehicleSizeOf(vehicle(content, 'handcart'))).toBe(0);
+    expect(vehicleSizeOf(vehicle(content, 'oxcart'))).toBe(0);
+    expect(vehicleSizeOf(vehicle(content, 'catapult'))).toBe(1); // siege engine — distinct from a cart
+    expect(vehicleSizeOf(vehicle(content, 'ship_small'))).toBe(2);
+    expect(vehicleSizeOf(vehicle(content, 'ship_big'))).toBe(2);
+  });
+
+  it('is a plain number (defaults to 0, never undefined) — a vehicle with no logicSize reads 0', () => {
+    // A minimal vehicle that omits logicSize: the schema default (0, the cart footprint) applies, so the
+    // accessor returns a number, not undefined — the weight-field shape, not the class-enum shape.
+    const content = parseContentSet({
+      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      goods: [{ typeId: 0, id: 'none' }],
+      jobs: [{ typeId: 0, id: 'idle' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      vehicles: [{ typeId: 1, id: 'handcart', stockSlots: 15 }],
+    });
+    const v = vehicle(content, 'handcart');
+    expect(vehicleSizeOf(v)).toBe(0);
+    expect(typeof vehicleSizeOf(v)).toBe('number');
+  });
+
+  it('distinguishes the catapult from a cart, which isShipVehicle does not', () => {
+    // isShipVehicle lumps catapult + carts as "not a ship" (all passengerSlots 0); logicSize separates them.
+    const content = vehicleContent();
+    const cata = vehicle(content, 'catapult');
+    const cart = vehicle(content, 'handcart');
+    expect(isShipVehicle(cata)).toBe(isShipVehicle(cart)); // both false — the boat axis can't tell them apart
+    expect(vehicleSizeOf(cata)).not.toBe(vehicleSizeOf(cart)); // the size axis does (1 vs 0)
   });
 });

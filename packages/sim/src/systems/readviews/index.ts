@@ -71,6 +71,7 @@ export {
   shipVehicles,
   vehicleCargoGoods,
   vehicleMayCarry,
+  vehicleSizeOf,
 } from './vehicles.js';
 
 export { isSeaJob, seaJobs } from './jobs.js';

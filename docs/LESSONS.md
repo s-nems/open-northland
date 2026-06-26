@@ -738,3 +738,12 @@ the next iteration inherits it.
   the `.ini`. Before surfacing a "data-pinned" read view over a field, grep the EXTRACTOR for it, not just
   the schema/fixture; a default-backed field would give a bogus fidelity basis. Confirm on the real
   `content/ir.json`, where defaults and source values diverge (the fixture hides it). (fidelity/data)
+- [b160541] A new read-view export must be added in TWO barrels, not one — `systems/readviews/index.ts`
+  re-exports the concern modules, but `systems/index.ts` *re-imports from that barrel and re-exports
+  again* (a named list it owns for `@vinland/sim`'s `systems` namespace + SYSTEM_ORDER). Adding the
+  symbol only to the readviews barrel leaves it invisible at the `@vinland/sim` import site, and the test
+  (which imports from `../src/systems/index.js`, the second barrel) fails with `X is not a function` —
+  NOT a build error (tsc happily compiles a barrel that doesn't re-export everything its child does), the
+  [c00bf18] "green-ish source, runtime-missing symbol" gap. After adding a readview, grep BOTH `index.ts`
+  files for a sibling symbol and mirror it in each (the second barrel lists it twice — its import block AND
+  its export block). (sim/barrel)
