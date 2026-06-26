@@ -156,6 +156,16 @@ function spawnSettler(
     enjoyment: fx.fromInt(0),
     experience: new Map<number, number>(),
   });
+  // A combatant settler carries a `Health` pool stamped from the command (the settler analogue of the
+  // animal `hitpoints_adult` stamp — a civilization becomes a fighter FROM THE COMMAND DATA, through the
+  // mutation seam, rather than a test reaching into the world). Only a positive pool is stamped; absent /
+  // non-positive `hitpoints` (the default — the non-combatant / golden / vertical-slice path) leaves the
+  // settler `Health`-less and the hash untouched, the separate-optional-component pattern. The MAGNITUDE
+  // is caller-supplied and *approximated* — a human's hitpoints are below the readable `.ini`
+  // (docs/FIDELITY.md "Combat hit resolution").
+  if (command.hitpoints !== undefined && command.hitpoints > 0) {
+    world.add(e, Health, { hitpoints: command.hitpoints, max: command.hitpoints });
+  }
   ctx.events.emit({ kind: 'settlerBorn', entity: e });
 }
 

@@ -17,11 +17,22 @@ export type Command =
       readonly tribe: number;
     }
   | {
+      /**
+       * Spawn one {@link Settler} of `jobType` for `tribe` at (x,y). When `hitpoints` is given (a
+       * positive pool) the settler is a **combatant** — it is stamped a {@link Health} pool of that size
+       * and so can fight and be felled (the settler analogue of `spawnAnimalHerd`'s `hitpoints_adult`
+       * stamp); omit it (the default) and the settler is a non-combatant with no `Health`, the golden /
+       * vertical-slice path whose hash this leaves untouched. The pool **magnitude is caller-supplied**:
+       * a human's hitpoints are below the readable `.ini` (only `animaltypes.ini` carries them), so this
+       * value is *approximated*, not pinned to a param (docs/FIDELITY.md "Combat hit resolution").
+       */
       readonly kind: 'spawnSettler';
       readonly jobType: number;
       readonly x: number;
       readonly y: number;
       readonly tribe: number;
+      /** A combatant's max hitpoint pool (stamps a {@link Health} pool). Omit for a non-combatant. */
+      readonly hitpoints?: number;
     }
   | {
       /**

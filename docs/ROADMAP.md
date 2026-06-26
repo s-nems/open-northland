@@ -105,8 +105,14 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `weapontypes` damage/reach + `setatomic 81` swing duration off `settler.tribe` (viking mace 50/reach2/dur4
       vs saxon sword 30/reach3/dur6), the fight is mutual, a frail side is felled+reaped, and the skirmish is
       deterministic. The asymmetry is purely in the data; a real N-tribe set is the same shape with more rows.
-      **Open (oracle-blocked, deferred):** tribe-vs-tribe diplomacy/alliances and settler-side `Health`/armor
-      stamping (a civ becomes a combatant only once it carries `Health` — a soldiers/armor slice).
+      **Settler-side `Health` stamping now LANDED:** a civilization becomes a **combatant FROM THE COMMAND
+      DATA** — `spawnSettler{hitpoints}` stamps a `Health` pool through the one mutation seam (the settler
+      analogue of `spawnAnimalHerd`'s `hitpoints_adult`), so a fighter no longer needs a test reaching into
+      the world; omitting `hitpoints` leaves a non-combatant (golden untouched). The HP **magnitude is
+      approximated** — humans' hitpoints are below the readable `.ini` (the engine manages them via
+      `atomicanimations` CHANGE_HITPOINTS events; docs/FIDELITY.md "Settler-side Health stamping").
+      **Open (oracle-blocked, deferred):** tribe-vs-tribe diplomacy/alliances and **settler ARMOR** (a
+      settler still wears armor class 0 — a `[armortype]` tier on a combatant is the soldiers/armor slice).
 - [x] **Animals as non-controllable tribes** (`animaltypes.ini`: aggression, groups, hitpoints) —
       **substance-complete** (→ [archive](ROADMAP-ARCHIVE.md) for the full landed-narrative). The
       `animaltypes.ini` table (35 creature tribes, keyed on `tribetype`) is extracted, and **every**
