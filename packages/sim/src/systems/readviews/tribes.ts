@@ -283,9 +283,9 @@ export function herdParams(content: ContentSet, tribeType: number): HerdParams |
  * surfaced as one struct so the mover reads a single view (the {@link herdParams} one-call shape):
  *
  *  - `walkSpeed` (`movespeed`) — the wandering/grazing pace (0 = the source omitted it, i.e. the
- *    engine default applies; 9 of 36 animals set it explicitly, e.g. the boar's 8).
+ *    engine default applies; 9 of the 35 extracted animals set it explicitly, e.g. the boar's 8).
  *  - `runSpeed` (`runspeed`) — the fleeing/charging pace a startled or hostile animal moves at
- *    (0 = the source omitted it; 5 of 36 animals carry it, always a *slower* number than their
+ *    (0 = the source omitted it; 5 of the 35 carry it, always a *slower* number than their
  *    `movespeed` — it is the engine's separate run-animation cadence, not "faster than walk").
  *
  * FIDELITY n/a: a pure derived **read view** over the already-extracted `animaltypes` IR — it adds
