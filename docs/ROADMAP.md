@@ -167,7 +167,12 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `mainType` grouping over `content.armor` (`Map<mainType, ArmorType[]>`, 4 records → 2 classes — light
       `{woolen,leather}`, heavy `{chain,plate}` — read straight from `armortypes.ini`'s `mainType {1,1,2,2}`),
       so both combat tables expose their coarse class identically — the data-defined seed the deferred
-      soldier-class→armor-tier binding joins on. **The soldier-class→weapon ROSTER JOIN itself now lands**
+      soldier-class→armor-tier binding joins on. **The finer material-tier axis now lands too**
+      (`armorMaterialOf`/`armorByMaterial`, `systems/readviews/combat.ts`): the same grouping over the armor's
+      `materialType` (`{1,2,3,4}` — cloth/leather/chain/plate, all distinct in the real data, vs `mainType`'s
+      collapsing `{1,1,2,2}`), so the four records split into four singleton material buckets vs two coarse
+      light/heavy buckets — the last extracted armor field (`materialType`) to get a read-side consumer, the
+      granular tier the soldier-class→armor-tier binding joins on. **The soldier-class→weapon ROSTER JOIN itself now lands**
       (`weaponsByJob`/`weaponsForJob`, `systems/readviews/combat.ts`): each `[weapontype]`'s `jobtype` (the
       job that wields it — already extracted + cross-ref-validated) groups all 105 weapons into a lossless
       `Map<jobType, WeaponType[]>` (20 wielding jobs over the real IR, e.g. `soldier_unarmed→{fist,claw}`,
