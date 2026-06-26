@@ -181,6 +181,20 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       below the readable data, deferred with movement), and the sea-job BEHAVIOR (a sea worker reaching
       its fishing/trading station by boat — rides on boat movement).
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).
+      **Scoped (corrected):** the mod does NOT ship overriding copies of the base `Data/logic` type
+      tables (no `goodtypes`/`jobtypes`/`landscapetypes`/`vehicletypes`/`armortypes`/`animaltypes`.ini
+      under `DataCnmd` — verified on disk), so there is no logic-table overlay merge to do; the
+      pipeline already reads each rule table from its single readable source. The mod's *readable*
+      contribution is its richer **graphics + tribe + house + weapon + atomic** `.ini`s, most of which
+      the pipeline already prefers (golden rule #4). **First overlay landed** (→ `resolveGraphicsBindings`):
+      the mod's `types/vehiclestype/jobgraphics.ini` `[jobgraphics]` cart/ship recolours now overlay the
+      base `vehicles/jobgraphics.cif` (22 records across tribes 1..4 vs the base's 6 across tribes 1 & 4),
+      mirroring the existing humans overlay; `convertBmdTree` keys atlases on `(bmd, palette)` so the
+      base pairs (a subset) emit the same atlas files while the mod gains the extra tribes' cross-refs.
+      Proven over the **real IR** (vehicle-bmd bindings 6→28, now spanning all four base tribes; 5
+      distinct atlas keys unchanged). **Open:** the mod's `budynki12/houses/houses.ini` (graphics/coords,
+      not the `[logichousetype]` logic) + `animation/.../animations.ini` are graphics/animation overlays
+      for the render leg, not balance data — deferred with the render-atlas work.
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.
 
 ## Phase 5 — Campaigns, polish, platform
