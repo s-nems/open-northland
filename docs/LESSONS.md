@@ -747,3 +747,13 @@ the next iteration inherits it.
   [c00bf18] "green-ish source, runtime-missing symbol" gap. After adding a readview, grep BOTH `index.ts`
   files for a sibling symbol and mirror it in each (the second barrel lists it twice — its import block AND
   its export block). (sim/barrel)
+- [101108e] The "find the extracted-but-unread field" smallest-step heuristic generalizes past type
+  tables (goods/jobs/weapons) to the **animation** IR, AND past the grouping/predicate idiom to a
+  name-keyed RESOLVER: `AtomicAnimation.interruptible`/`startDirection` were extracted (245/896 + 89/896
+  in the real IR, NOT defaults — confirmed on `content/ir.json`, not the fixture which leaves them
+  default) yet unread, while `length` already drove `atomicDuration`. The faithful read view was the
+  `content.atomicAnimations.find(a => a.name === n)` that `ai.ts`/`combat.ts` already spell out inline,
+  named once (`atomicAnimationByName`) plus thin accessors for the two unread scalars. When two systems
+  inline the same name-keyed `.find`, the unread-field read view IS that resolver — don't reach only for
+  groupings. Left the two call sites un-refactored (golden-trace paths; behavior-neutral cleanup is
+  separate scope). (sim/read-model)
