@@ -650,3 +650,13 @@ the next iteration inherits it.
   ratchet-violation recurs this fast the headline fix is still the mechanical sweep (verbatim narrative →
   ROADMAP-ARCHIVE.md, one-line summary + archive pointer live), but log the *source* habit in TECH-DEBT —
   the per-iteration changelog-into-ROADMAP pattern is the structural cause, not the symptom. (docs/reflect)
+- [6badd48] A `nonnegative`-`TypeId` schema field does NOT protect a cross-ref from a `0` SENTINEL —
+  many `.ini` foreign keys use `0` to mean "none" (weapon `goodtype 0` = a natural fist/claw with no
+  craftable good, the armor-class-0 / `damage["0"]` = "unarmored" pattern one axis over), but `TypeId`
+  is `z.number().int().nonnegative()` so `parse(0)` SUCCEEDS — the bad id then sails into the IR and the
+  `validateCrossReferences` loop false-flags every sentinel record as "unknown goodType 0" (good ids
+  start at 1, so 0 never resolves). Drop the sentinel to `undefined` AT EXTRACT (`raw === 0 ? undefined
+  : raw`), so the `field !== undefined` cross-ref skip treats "none" as absent — don't lean on the
+  schema to reject it (a `nonnegative` brand won't) and don't widen the cross-ref to special-case 0.
+  Confirm the split on real data (105 weapons → 70 resolving / 35 dropped, 0 dangling) so the sentinel
+  count is provably the natural-weapon set, not a silently-mangled good ref. (pipeline/data)
