@@ -194,12 +194,17 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       prey now yields the carcass's meat** (the `harvest_cadaver` payoff: `cadaverYieldOf` `maximumcadaversize`
       meat → the slayer's back, good 21). End-to-end proven by `populated-map-combat.test.ts`
       (seed→combat→hit→death, deterministic). The herd/spawn (`herdParams`) AND locomotion
-      (`locomotionOf` — `movespeed`/`runspeed` as `{walkSpeed,runSpeed}`, the walk-vs-run-pace read side a
-      later animal-movement mechanic consumes) params are surfaced as pure one-call read views off the
-      already-extracted IR (9/35 real animals set `movespeed`, 5/35 a `runspeed`; null for a civ/unknown).
-      Faithful to the named params; target-acquisition / swing-cadence / in-place-strike /
-      separate-walk-to-corpse-`harvest_cadaver`-atomic approximations, and the *movement mechanic* these
-      speeds will drive, recorded in docs/FIDELITY.md.
+      (`locomotionOf` — `movespeed`/`runspeed` as `{walkSpeed,runSpeed}`) params are surfaced as pure
+      one-call read views off the already-extracted IR (9/35 real animals set `movespeed`, 5/35 a
+      `runspeed`; null for a civ/unknown). **Walk-pace mechanic now LANDED** (→ the `MoveSpeed{perTick}`
+      component + `movementSystem`): a spawned creature whose record sets `movespeed` walks at its own
+      data-pinned pace (`ONE/movespeed` tile/tick — a boar's `movespeed 8` grazes at 0.125 vs the settler
+      default 0.25), the first consumer of `locomotionOf`; one whose record omits it keeps the universal
+      pace (golden untouched). Faithful to the `movespeed` magnitude; the **direction of the scale**
+      (larger = slower, the only reading consistent with `runspeed < movespeed`) is the one approximation,
+      and the `runspeed` (flee/charge) gait isn't wired yet — both recorded in docs/FIDELITY.md.
+      Target-acquisition / swing-cadence / in-place-strike / separate-walk-to-corpse-`harvest_cadaver`-atomic
+      approximations also in docs/FIDELITY.md.
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
       `fisher_sea`/`trader_sea`/`carpenter ship`, `vehicle_ship`. **First step landed** (→ the
       `shipVehicles`/`isShipVehicle`/`largestShipCapacity` read view, `systems/readviews/vehicles.ts`):

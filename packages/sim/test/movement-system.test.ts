@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { PathFollow, PathRequest, Position, Velocity } from '../src/components/index.js';
+import { MoveSpeed, PathFollow, PathRequest, Position, Velocity } from '../src/components/index.js';
 import type { Entity } from '../src/ecs/world.js';
-import { Simulation, type TerrainMap, fx } from '../src/index.js';
+import { ONE, Simulation, type TerrainMap, fx } from '../src/index.js';
 import { MOVE_SPEED_PER_TICK, movementSystem } from '../src/systems/index.js';
 import { testContent } from './fixtures/content.js';
 
@@ -21,6 +21,7 @@ beforeEach(() => {
   PathRequest.store.clear();
   Position.store.clear();
   Velocity.store.clear();
+  MoveSpeed.store.clear();
 });
 
 function grassMap(width: number, height: number): TerrainMap {
@@ -120,6 +121,38 @@ describe('movementSystem — path following', () => {
     sim.step(); // 4 move-steps of 0.25 on each axis -> exactly (1,1)
     expect(pos(sim, e).x).toBeCloseTo(1, 6);
     expect(pos(sim, e).y).toBeCloseTo(1, 6);
+    expect(sim.world.has(e, PathFollow)).toBe(false);
+  });
+});
+
+describe('movementSystem — per-entity pace (MoveSpeed)', () => {
+  it('a MoveSpeed follower advances at its own perTick, not the universal default', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const e = followerAt(sim, 0, 0, [
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+    ]);
+    // Half the settler pace: ONE/8 = 0.125 tile/tick (vs the default ONE/4 = 0.25).
+    sim.world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(8)) });
+    sim.step(); // consume wp0 (already on it), index -> 1; no move toward wp1 yet
+    sim.step(); // first move toward wp1 at the entity's OWN pace
+    expect(pos(sim, e).x).toBeCloseTo(0.125, 6); // an eighth of a tile, not a quarter
+  });
+
+  it('reaches a one-tile waypoint in eight steps at ONE/8 (slower than the default four)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const e = followerAt(sim, 0, 0, [
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+    ]);
+    sim.world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(8)) });
+    sim.step(); // consume wp0; index -> 1
+    for (let i = 0; i < 7; i++) {
+      sim.step();
+      expect(sim.world.has(e, PathFollow)).toBe(true); // still short of the tile after 7 of 8 steps
+    }
+    sim.step(); // 8th step lands exactly on wp1 (8 * 0.125 = 1.0), last waypoint -> path dropped
+    expect(pos(sim, e).x).toBeCloseTo(1, 6);
     expect(sim.world.has(e, PathFollow)).toBe(false);
   });
 });

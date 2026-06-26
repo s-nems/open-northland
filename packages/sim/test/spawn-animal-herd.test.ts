@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { Age, Health, HerdMember, Position, Settler } from '../src/components/index.js';
+import { Age, Health, HerdMember, MoveSpeed, Position, Settler } from '../src/components/index.js';
 import type { Entity } from '../src/ecs/world.js';
-import { Simulation, fx } from '../src/index.js';
+import { ONE, Simulation, fx } from '../src/index.js';
 import { testContent } from './fixtures/content.js';
 
 /**
@@ -27,6 +27,7 @@ function clearStores(): void {
   Health.store.clear();
   HerdMember.store.clear();
   Age.store.clear();
+  MoveSpeed.store.clear();
 }
 
 beforeEach(clearStores);
@@ -96,6 +97,19 @@ describe('spawnAnimalHerd command', () => {
     expect(sim.world.get(leader as Entity, HerdMember).leader).toBe(leader);
   });
 
+  it('stamps each creature a MoveSpeed from movespeed (the bear walks ONE/8 tile/tick)', () => {
+    const sim = fresh();
+    sim.enqueue({ kind: 'spawnAnimalHerd', tribe: BEAR, x: 5, y: 5 });
+    sim.step();
+
+    const herd = creatures(sim);
+    expect(herd).toHaveLength(3);
+    for (const e of herd) {
+      // movespeed 8 -> walks ONE/8 tile/tick (a larger movespeed is a slower step).
+      expect(sim.world.get(e, MoveSpeed).perTick).toBe(fx.div(ONE, fx.fromInt(8)));
+    }
+  });
+
   it('a solitary animal (searchForLeader false) spawns one creature with NO HerdMember', () => {
     const sim = fresh();
     sim.enqueue({ kind: 'spawnAnimalHerd', tribe: BEE, x: 2, y: 3 });
@@ -107,6 +121,7 @@ describe('spawnAnimalHerd command', () => {
     expect(sim.world.get(bee, Settler).tribe).toBe(BEE);
     expect(sim.world.get(bee, Health)).toEqual({ hitpoints: 200, max: 200 });
     expect(sim.world.has(bee, HerdMember)).toBe(false); // solitary — no leader to follow
+    expect(sim.world.has(bee, MoveSpeed)).toBe(false); // no movespeed in its record -> walks the default
     const p = sim.world.get(bee, Position);
     expect([fx.toInt(p.x), fx.toInt(p.y)]).toEqual([2, 3]); // sits on the birth point
   });
