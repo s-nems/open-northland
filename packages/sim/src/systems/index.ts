@@ -15,6 +15,7 @@ import { atomicSystem } from './atomic.js';
 import { cleanupSystem } from './cleanup.js';
 import { combatSystem } from './combat.js';
 import { commandSystem } from './command.js';
+import { constructionSystem } from './construction.js';
 import type { System, SystemContext } from './context.js';
 import { herdingSystem } from './herding.js';
 import { jobSystem } from './jobs.js';
@@ -69,13 +70,7 @@ import {
 import { reproductionSystem } from './reproduction.js';
 import { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem } from './routing.js';
 import { housingCapacity, tribePopulation } from './shared.js';
-import {
-  constructionSystem,
-  progressionSystem,
-  terrainSystem,
-  timeSystem,
-  transportSystem,
-} from './stubs.js';
+import { progressionSystem, terrainSystem, timeSystem, transportSystem } from './stubs.js';
 
 // Every real system now lives in its own module under systems/ — commandSystem (./command.ts),
 // movementSystem (./movement.ts), pathfindingSystem (./routing.ts), productionSystem
@@ -154,7 +149,8 @@ export {
 export { cleanupSystem };
 export { combatSystem };
 export { herdingSystem };
-export { constructionSystem, progressionSystem, terrainSystem, timeSystem, transportSystem };
+export { constructionSystem };
+export { progressionSystem, terrainSystem, timeSystem, transportSystem };
 
 /**
  * The canonical per-tick execution order. Order is part of the design — change deliberately.

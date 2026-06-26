@@ -24,7 +24,10 @@ export const progressionSystem: System = todo('ProgressionSystem');
 // JobSystem has graduated to ./jobs.ts (assignment half — idle settlers take open workplace jobs,
 // gated by needforjob XP + tech-enablement). Movement/balancing/vehicles remain later slices.
 export const transportSystem: System = todo('TransportSystem'); // carriers physically haul goods between stores (no global bank)
-export const constructionSystem: System = todo('ConstructionSystem'); // deliver materials, advance build, level houses
+// ConstructionSystem has graduated to ./construction.ts (the build-completion half — an under-construction
+// building whose stockpile holds its full `construction` material cost consumes the materials and flips to
+// built, emitting `buildingFinished`). The material-DELIVERY dispatch (carriers hauling to the site) rides
+// the transport path; the home level-up trigger is a later slice.
 // CombatSystem has graduated to ./combat.ts (the TARGETING half — an idle Health-bearing combatant
 // swings at the nearest enemy-tribe combatant in weapon range, issuing the `attack` atomic with the
 // `combatDamage`-resolved net damage). It closes the targeting->attack->hit->death loop with the
