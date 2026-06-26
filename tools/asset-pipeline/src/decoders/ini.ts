@@ -822,16 +822,29 @@ export function extractBuildings(sections: readonly RuleSection[], src: SourceRe
  * A level with a `LogicType` but no matching `LogicConstructionGoods` (the headquarters/wonder records)
  * is omitted — that building has no construction cost. Returns an empty map if the file carries no
  * `[GfxHouse]` records (e.g. the logic-only sources every other extractor reads).
+ *
+ * Two collisions are resolved DETERMINISTICALLY (the cost is genuinely multi-valued in the source):
+ *   1. cross-tribe — the same `typeId` (homes 2..6, potteries, …) recurs per civilization with a
+ *      different cost; the **lowest `LogicTribeType`** record wins (the "reference tribe" convention).
+ *   2. within a record — a `typeId` can map to MORE THAN ONE `sizeIdx` (e.g. pottery `LogicType {1:21,
+ *      2:21}`, and a multi-stage wonder repeats one typeId across rising sizes); the **lowest `sizeIdx`**
+ *      cost wins (the base/first build stage). Both collapses are recorded as approximations in
+ *      docs/FIDELITY.md — a fully-faithful model would key the cost by `(tribe, typeId, sizeIdx)`.
  */
 export function extractConstructionCosts(
   sections: readonly RuleSection[],
 ): Map<number, { goodType: number; amount: number }[]> {
-  // typeId -> { tribeType, cost } so a lower-tribeType record deterministically wins (see JSDoc).
-  const winner = new Map<number, { tribeType: number; cost: { goodType: number; amount: number }[] }>();
+  // typeId -> the winning record, ranked by (tribeType asc, sizeIdx asc) so the lowest-tribe / lowest-
+  // size cost deterministically wins regardless of file/parse order (see JSDoc collisions 1 & 2).
+  const winner = new Map<
+    number,
+    { tribeType: number; sizeIdx: number; cost: { goodType: number; amount: number }[] }
+  >();
   for (const sec of sections) {
     if (sec.name !== 'GfxHouse') continue;
     const tribeType = getInt(sec, 'LogicTribeType') ?? Number.POSITIVE_INFINITY;
-    // sizeIdx -> typeId
+    // sizeIdx -> typeId. A typeId may appear at several sizeIdx; each (sizeIdx -> typeId) is kept so
+    // the construction-goods loop below can pair each cost line to its level's typeId.
     const typeByLevel = new Map<number, number>();
     for (const p of findProps(sec, 'LogicType')) {
       const sizeIdx = Number.parseInt(p.values[0] ?? '', 10);
@@ -845,7 +858,13 @@ export function extractConstructionCosts(
       const typeId = typeByLevel.get(sizeIdx);
       if (typeId === undefined) continue;
       const existing = winner.get(typeId);
-      if (existing !== undefined && existing.tribeType <= tribeType) continue;
+      // Lower tribeType wins; for the same tribe, lower sizeIdx wins (the base build stage).
+      if (
+        existing !== undefined &&
+        (existing.tribeType < tribeType || (existing.tribeType === tribeType && existing.sizeIdx <= sizeIdx))
+      ) {
+        continue;
+      }
       const counts = new Map<number, number>();
       for (const raw of p.values.slice(1)) {
         const id = Number.parseInt(raw, 10);
@@ -854,6 +873,7 @@ export function extractConstructionCosts(
       }
       winner.set(typeId, {
         tribeType,
+        sizeIdx,
         cost: [...counts].map(([goodType, amount]) => ({ goodType, amount })),
       });
     }
