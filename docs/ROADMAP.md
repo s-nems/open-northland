@@ -321,10 +321,20 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       size/HP/range/leader params); **approximated** (*where* + *how many* birth points — the original's per-map
       animal spawn points are below the readable `.ini`; recorded in docs/FIDELITY.md "Animal map populator").
       Verified on the REAL pipeline IR (35 animals) + a real 250×250 decoded map: 125 herds across 34 distinct
-      animal tribes, all birth points walkable + in-bounds, deterministic. **Next:** the provoked-anger
-      (`getAngry`/`angryGameTime`) timer once a per-entity hostility-state model exists (a passive animal struck →
-      temporarily hostile), and/or a scenario/slice that *runs* a populated map end-to-end (civ + seeded wildlife
-      fighting via the combat drive).
+      animal tribes, all birth points walkable + in-bounds, deterministic. **The populated-map combat scenario
+      now LANDED** — `populated-map-combat.test.ts` is the end-to-end slice this item named: it wires the
+      already-landed pieces together as ONE run through the real `step()` schedule — `seedAnimalHerds` produces
+      the `spawnAnimalHerd` commands, the caller enqueues them through the mutation seam, the `commandSystem`
+      places a real seeded **bear herd** (3 creatures, leader, HP 15000), and a **civilization combatant** beside
+      it triggers the mutual civ⇄animal fight: the aggressive bear charges the viking (the unprovoked-aggression
+      drive), the viking fights it back, the `attack` atomic drains `Health`, and a lone frail viking is ground
+      down by the pack and **reaped** by the `cleanupSystem` (one `settlerDied`) — the seed→combat→hit→death loop,
+      end-to-end + deterministic (two same-seed runs reach the same `hashState`). The civ combatant is placed
+      directly (with `Health`), since `spawnSettler` mints no `Health` pool yet (settler-side Health/soldier
+      stamping is a later slice); the test verifies the *integration* of landed pieces, adds no mechanic, and is
+      inert on the goldens. **Next:** the provoked-anger (`getAngry`/`angryGameTime`) timer once a per-entity
+      hostility-state model exists (a passive animal struck → temporarily hostile for `angryGameTime` ticks) — the
+      last unmodelled `animaltypes.ini` aggression input.
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
       `fisher_sea`/`trader_sea`/`carpenter ship`, `vehicle_ship`.
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).
