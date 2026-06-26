@@ -660,3 +660,9 @@ the next iteration inherits it.
   schema to reject it (a `nonnegative` brand won't) and don't widen the cross-ref to special-case 0.
   Confirm the split on real data (105 weapons → 70 resolving / 35 dropped, 0 dangling) so the sentinel
   count is provably the natural-weapon set, not a silently-mangled good ref. (pipeline/data)
+- [dfa7d02] Two `.ini` keys in the SAME file can use different casing conventions — `weapons.ini` has
+  camelCase `mainType` but all-lowercase `munitiontype` right next to it. Don't assume a file is
+  uniformly cased: check the real source line for EACH key (`grep -n munitiontype weapons.ini`), since
+  `getInt(sec, 'munitionType')` would silently return undefined for every record (the [386] vanish-trap)
+  and tests on a same-cased fixture would stay green. The hands-on real-IR count is the catch: a non-zero
+  carrier count (30/105) proves the key resolved; 0 would mean a casing miss. (pipeline/data)
