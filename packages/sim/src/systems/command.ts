@@ -286,6 +286,9 @@ function spawnAnimalHerd(
   // one that omits `runspeed` carries a null run pace (only its walk gait is known). The run pace is
   // recorded on the entity but not yet consumed — the flee/charge drive that switches to it is deferred
   // (docs/FIDELITY.md "Animal locomotion pace"); the MovementSystem reads only the walk pace today.
+  // A record with a `runspeed` but NO `movespeed` would drop its run pace (no MoveSpeed is stamped at
+  // all), but no real animal does that (0/35 — verified) and the run gait is meaningless without a base
+  // walk pace to deviate from, so the walk-gait gate below is the right anchor.
   const locomotion = locomotionOf(ctx.content, command.tribe);
   const walkSpeed = locomotion?.walkSpeed ?? 0;
   const runSpeed = locomotion?.runSpeed ?? 0;
