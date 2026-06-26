@@ -6,13 +6,14 @@
 // makes "this is a projection, not a mechanic" legible at the module boundary. Each adds **no**
 // behavior (nothing produced/consumed/moved), so they carry "FIDELITY n/a". See docs/TECH-DEBT.md.
 //
-// Split by concern into five sibling modules (the views grew past one ~300-line file):
+// Split by concern into six sibling modules (the views grew past one ~300-line file each):
 //  - ./hud.ts      — the HUD/goods-graph projections over world state + content.
 //  - ./combat.ts   — the static weapon-vs-armor damage lookup table.
+//  - ./classes.ts  — the data-defined weapon/armor class taxonomy (predicates + accessors + groupings).
 //  - ./tribes.ts   — the data-defined civ-vs-animal split + `animaltypes.ini` behaviour + `mayAttack`.
 //  - ./vehicles.ts — the data-defined ship/boat classification (the Sea/Northland slice's seed).
 //  - ./jobs.ts     — the data-defined sea-job (`fisher_sea`/`trader_sea`) classification.
-// This barrel re-exports all five so the `systems/` barrel (and tests) keep a single import site.
+// This barrel re-exports all six so the `systems/` barrel (and tests) keep a single import site.
 
 export {
   type GoodsGraphNode,
@@ -22,26 +23,24 @@ export {
   tribeStocks,
 } from './hud.js';
 
+export { type CombatDamageRow, type CombatProfile, combatDamage, weaponKey } from './combat.js';
+
 export {
-  type CombatDamageRow,
-  type CombatProfile,
   armorByClass,
   armorByMaterial,
   armorClassOf,
   armorMaterialOf,
   armorWeightOf,
-  combatDamage,
   isRangedWeapon,
   isSiegeWeapon,
   rangedWeapons,
   siegeWeapons,
   weaponClassOf,
-  weaponKey,
   weaponWeightOf,
   weaponsByClass,
   weaponsByJob,
   weaponsForJob,
-} from './combat.js';
+} from './classes.js';
 
 export {
   type HerdParams,
