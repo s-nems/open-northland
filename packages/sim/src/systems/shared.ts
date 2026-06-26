@@ -13,8 +13,18 @@ import { vehicleMayCarry } from './readviews/vehicles.js';
 /**
  * The per-good capacity of a store's stockpile.
  *
- * - A **building** store: from its building type's stock slots — a good with no declared slot has no
- *   room (capacity 0).
+ * - An **under-construction building** (a {@link Building} still at `built < ONE` — a construction
+ *   site): its only "capacity" is the material-DELIVERY demand for its building type's `construction`
+ *   cost. A good that the cost still needs (cost amount − what the site already holds, floored at 0)
+ *   gets that **remaining** amount; any other good (or a construction good already delivered in full)
+ *   gets 0. This is what routes the existing carrier path to a building site: `nearestStoreFor` only
+ *   delivers a good to a store with room for it, so a site advertises room for *exactly* its
+ *   outstanding materials and nothing else — a carrier hauls the `construction` goods to the site, the
+ *   `pileup` deposit is capped at the need, and the ConstructionSystem then consumes them and flips
+ *   `built`. (Production's deposit branch never targets a `built < ONE` building, so this can't be hit
+ *   by recipe output; the carrier-delivery is the sole consumer.)
+ * - A built **building** store: from its building type's stock slots — a good with no declared slot
+ *   has no room (capacity 0).
  * - A **boat hull** ({@link Vehicle}, the "boats as mobile stores" entity — a `Stockpile` on a hull,
  *   not a building): gated by the ship's `cargoGoods` **load allow-list** — a good the hold may carry
  *   ({@link vehicleMayCarry}) gets the whole `stockSlots` hold capacity, a good it may **not** carry
@@ -34,6 +44,14 @@ export function stockCapacity(world: World, ctx: SystemContext, store: Entity, g
   if (building !== undefined) {
     const type = ctx.content.buildings.find((b) => b.typeId === building.buildingType);
     if (type === undefined) return 0;
+    if (building.built < ONE) {
+      // Construction site: the per-good ceiling is the building's full `construction` cost for that
+      // material (a non-material good gets 0 — refused). Like every store, this is the TOTAL capacity;
+      // callers (`nearestStoreFor`'s `have >= capacity` full-check, `pileup`'s `capacity - have` space)
+      // subtract what's on hand, so a site advertises room until it holds the whole cost line.
+      const line = type.construction.find((c) => c.goodType === goodType);
+      return line?.amount ?? 0;
+    }
     const slot = type.stock.find((s) => s.goodType === goodType);
     return slot?.capacity ?? 0;
   }

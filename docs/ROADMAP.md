@@ -82,9 +82,17 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       (8 cases: partial-cost waits, full-cost builds+consumes, surplus left, free type, never-revisit-a-built,
       determinism, the command path) + hands-on over the real `step()` schedule. The `housingCapacity`
       gate already counted only `built >= ONE` homes, so a finished home now joins housing with no extra
-      wiring. **Open (still our design, no oracle):** the material-DELIVERY dispatch (a carrier hauling the
-      `construction` goods to the site — rides the transport path) and the **home level-up** trigger (a
-      built home consuming the next tier's cost to upgrade `level` → larger `homeSize`).
+      wiring. **Material-DELIVERY dispatch now LANDED** (→ `stockCapacity`'s under-construction branch,
+      `systems/shared.ts`): a `built < ONE` building advertises room for *exactly* its outstanding
+      `construction` materials (capacity = the cost-line amount, 0 for any non-material or already-full
+      good), so the EXISTING carrier path (`nearestStoreFor` → `MoveGoal` → `pileup`) hauls the build
+      goods to the site with **no construction-specific transport code** — a carrier carrying a needed
+      good walks to the site, deposits it (capped at the need), and once the full cost lands the
+      `constructionSystem` finishes it the same tick. A built building reverts to its normal stock-slot
+      capacity, so it stops attracting materials. Proven by `construction-system.test.ts` (3 new cases:
+      single-good sink, end-to-end full-cost build via three loaded carriers, determinism) over the real
+      `step()` schedule. **Open (still our design, no oracle):** the **home level-up** trigger (a built
+      home consuming the next tier's cost to upgrade `level` → larger `homeSize`).
 - [ ] **ReproductionSystem** — **landed** (→ archive): one birth per tribe per tick while
       `tribePopulation < housingCapacity` (deterministic cadence, the `populationWithinHousing` invariant);
       a newborn is the data-pinned youngest age class (`baby_female`), `systems/ageclass.ts` recognizes the
