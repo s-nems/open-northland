@@ -570,7 +570,10 @@ export function extractAtomicAnimations(sections: readonly RuleSection[], src: S
  * `mainType`) is the ammunition class a *ranged* weapon fires (1 = bow ammo, 2 = catapult projectile;
  * only bows/catapults carry it — melee weapons omit it → `undefined`), captured as a plain id (it is
  * a class enum, not a cross-ref — `munitiontype` exists in no other table and 1/2 are not good ids).
- * The remaining combat extras (`soundtype_*`, `createsmoke`, `damagetype`) are not in the
+ * `damagetype` (all-lowercase like `munitiontype`) is the damage **class** a weapon deals — a
+ * siege/area marker carried only by the catapults (value `2`); absent on every other weapon, so it's
+ * `undefined` there and, like `munitiontype`, captured as a plain id (a class enum in no other table,
+ * `2` is not a good id). The remaining combat extras (`soundtype_*`, `createsmoke`) are not in the
  * {@link WeaponType} schema yet and are intentionally skipped here — they belong with the Phase-4
  * CombatSystem, not this type-table slice.
  * Throws on a section missing the required numeric `type` (matches {@link extractGoods}'s
@@ -604,6 +607,9 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
         // `munitiontype` is all-lowercase in the source (unlike `mainType`) — the ammo class a ranged
         // weapon fires (bow/catapult); absent on melee weapons, so it doubles as the "is ranged" marker.
         munitionType: getInt(sec, 'munitiontype'),
+        // `damagetype` is all-lowercase too — the damage class (siege marker, catapult-only, value 2);
+        // absent on every other weapon → undefined. A class enum, not a cross-ref (no other table).
+        damageType: getInt(sec, 'damagetype'),
         minRange: getInt(sec, 'minimumrange'),
         maxRange: getInt(sec, 'maximumrange'),
         damage,

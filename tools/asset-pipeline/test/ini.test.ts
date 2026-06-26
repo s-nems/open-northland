@@ -137,10 +137,11 @@ name "viking_man_idle"
 // `mainType` is the file's exact camelCase key (a lowercased `maintype` would silently vanish). Both
 // weapons share `type 2` across different tribes — the real data's `(tribetype, type)` composite key
 // (type alone is not unique). The fist is `mainType 1, weight 0` and a melee weapon (no
-// `munitiontype` -> the schema omits it, the ranged marker absent); the bow `mainType 6, weight 1`
-// exercises non-zero capture and carries `munitiontype 1` (the all-lowercase ammo-class key — bow ammo
-// / arrow; the `munitiontype` value 1 is NOT good id 1 "water", it's a class enum). The bow also omits
-// the range pair to exercise the schema's range defaults of 1. The fist's `goodtype 0` is the
+// `munitiontype`/`damagetype` -> the schema omits both, the ranged + damage-class markers absent); the
+// bow `mainType 6, weight 1` exercises non-zero capture and carries `munitiontype 1` (the all-lowercase
+// ammo-class key — bow ammo / arrow; value 1 is NOT good id 1 "water", a class enum) plus `damagetype 2`
+// (another all-lowercase class key — the siege/damage-class marker; value 2 is NOT good id 2 "mud").
+// The bow also omits the range pair to exercise the schema's range defaults of 1. The fist's `goodtype 0` is the
 // natural-weapon sentinel (-> undefined); the bow's `goodtype 5` is a real good (-> captured; 5 also
 // exists in the IR-integration goods fixture below so the cross-ref resolves there).
 const WEAPONTYPES_INI = `// new
@@ -166,6 +167,7 @@ name "short bow"
 goodtype 5
 weight 1
 munitiontype 1
+damagetype 2
 damagevalue 0 2400
 jobtype 32
 `;
@@ -663,6 +665,7 @@ describe('extractWeapons', () => {
         mainType: 6, // a different weapon class — captured per record
         weight: 1, // non-zero encumbrance captured
         munitionType: 1, // a ranged weapon's ammo class (bow ammo) — captured, NOT good id 1
+        damageType: 2, // the damage class (siege marker, all-lowercase key) — captured, NOT good id 2
         minRange: 1,
         maxRange: 1,
         damage: { '0': 2400 },

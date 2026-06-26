@@ -148,7 +148,9 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       the soldier-class→weapon-class binding prerequisite, captured ahead of its drive), **and the weapon's
       `munitiontype` (the ranged-ammo class: 1=bow ammo / 2=catapult projectile)** onto
       `WeaponType.munitionType` (30/105 — the 5 bow types + catapult; absent on melee, so it doubles as the
-      "is ranged" marker for the deferred ranged-attack drive). **Open:** the file's graphics/coords + `animations.ini` are
+      "is ranged" marker for the deferred ranged-attack drive), **and the weapon's `damagetype` (the
+      siege/damage class)** onto `WeaponType.damageType` (5/105 — catapult-only, value 2; the all-lowercase
+      twin of `munitiontype`, marking the AoE damage class for the deferred combat-resolution drive). **Open:** the file's graphics/coords + `animations.ini` are
       render/animation overlays — deferred with the render-atlas work (their only balance datum, the
       construction cost, is already imported).
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.
