@@ -30,10 +30,12 @@ export {
 export {
   type HerdParams,
   HUNTER_JOB,
+  MEAT_GOOD,
   angryGameTimeOf,
   animalCannotBeAttacked,
   animalHitpoints,
   animalRecord,
+  cadaverYieldOf,
   herdParams,
   isAggressiveAnimal,
   isAnimalTribe,

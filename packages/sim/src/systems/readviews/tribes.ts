@@ -275,6 +275,34 @@ export function herdParams(content: ContentSet, tribeType: number): HerdParams |
 }
 
 /**
+ * The good a felled animal's corpse yields when a hunter harvests it — `meat`, `goodtypes.ini`
+ * `name "meat"` → `type 21` (verified in `Data/logic/goodtypes.ini`; the food good the meat economy
+ * also produces — distinct from the `cadaver_meat` *landscapetype* decal id 80, which is the corpse
+ * object on the ground, not a stock good). A hunter's `harvest_cadaver` (`setatomic 15 33
+ * "..._hunter_harvest_cadaver"`) drops this onto the slayer's back; kept as a pin next to {@link HUNTER_JOB}
+ * and {@link cadaverYieldOf}, the `NEWBORN_AGE_CLASS` pin style.
+ */
+export const MEAT_GOOD = 21;
+
+/**
+ * How many units of {@link MEAT_GOOD} a felled animal of `tribeType` yields when its cadaver is harvested
+ * — its `animaltypes.ini` `maximumcadaversize` (the corpse-size cap: cows/most fauna 4, a couple of
+ * small ones 2), or `0` when the tribe has no animal record (a civilization, an unknown tribe — only an
+ * animal leaves a harvestable carcass). This is the magnitude side of the hunter's `harvest_cadaver`
+ * follow-up: a hunter who fells {@link isCatchableAnimal} prey gains this many `meat` (the AtomicSystem's
+ * `attack` effect awards it on the killing blow). A non-catchable or zero-`maximumcadaversize` animal
+ * yields nothing.
+ *
+ * FIDELITY: the **magnitude** is the verbatim extracted `maximumcadaversize` param and the **good** is the
+ * pinned `meat` id; that the kill yields meat *in place on the killing blow* (no separate walk-to-corpse
+ * `harvest_cadaver` atomic yet) and that one cadaver-size unit maps to one meat unit are the approximated
+ * halves (docs/FIDELITY.md "Hunter cadaver-harvest yield"). Pure over `content`, no RNG/wall-clock.
+ */
+export function cadaverYieldOf(content: ContentSet, tribeType: number): number {
+  return animalRecord(content, tribeType)?.maximumCadaverSize ?? 0;
+}
+
+/**
  * The **combat hostility relation** — may a combatant of `attackerTribe` swing at a combatant of
  * `targetTribe`? The single source of truth the CombatSystem's targeting drive (`systems/combat.ts`)
  * consults for *both* the attacker-eligibility check and the per-candidate target check, so the two

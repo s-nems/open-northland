@@ -115,9 +115,11 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       (the `Health` stamp), `catchable` (the hunter-strike predation relation `mayHunt`, the real
       provocation source). Animals spawn as herds (`spawnAnimalHerd` + the `seedAnimalHerds` map
       populator + the `HerdMember` follow-the-leader drive), do damage (jobless animal → weapon-by-tribe),
-      and a weapon's `[minRange,maxRange]` reach band is honored. End-to-end proven by
-      `populated-map-combat.test.ts` (seed→combat→hit→death, deterministic). Faithful to the named params;
-      target-acquisition / swing-cadence / in-place-strike / `harvest_cadaver`-follow-up approximations
+      and a weapon's `[minRange,maxRange]` reach band is honored. A hunter's **killing blow on catchable
+      prey now yields the carcass's meat** (the `harvest_cadaver` payoff: `cadaverYieldOf` `maximumcadaversize`
+      meat → the slayer's back, good 21). End-to-end proven by `populated-map-combat.test.ts`
+      (seed→combat→hit→death, deterministic). Faithful to the named params; target-acquisition /
+      swing-cadence / in-place-strike / separate-walk-to-corpse-`harvest_cadaver`-atomic approximations
       recorded in docs/FIDELITY.md.
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
       `fisher_sea`/`trader_sea`/`carpenter ship`, `vehicle_ship`.

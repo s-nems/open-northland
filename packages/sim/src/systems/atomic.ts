@@ -5,7 +5,15 @@ import type { Entity, World } from '../ecs/world.js';
 import { fx } from '../fixed.js';
 import type { System, SystemContext } from './context.js';
 import { grantWorkExperience } from './progression.js';
-import { angryGameTimeOf, isAggressiveAnimal, isProvokableAnimal } from './readviews/index.js';
+import {
+  HUNTER_JOB,
+  MEAT_GOOD,
+  angryGameTimeOf,
+  cadaverYieldOf,
+  isAggressiveAnimal,
+  isCatchableAnimal,
+  isProvokableAnimal,
+} from './readviews/index.js';
 import { stockCapacity } from './shared.js';
 
 /**
@@ -116,8 +124,10 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       // the target's armor class), so the executor just drains the target's hitpoints, exactly as
       // `pickup`/`eat` apply a pre-resolved amount. Targeting/who-attacks-whom and the death/cleanup
       // loop are later slices; this is the hit landing. The blow ALSO provokes an otherwise-passive
-      // `getAngry` animal into temporary hostility (the `animaltypes.ini` provoked-anger half).
-      resolveHit(world, ctx, effect.target, effect.damage);
+      // `getAngry` animal into temporary hostility (the `animaltypes.ini` provoked-anger half), and a
+      // hunter's KILLING blow on catchable prey yields the cadaver's meat onto the hunter's back
+      // (`settler` is the attacker — the entity that ran this `attack` atomic).
+      resolveHit(world, ctx, settler, effect.target, effect.damage);
       return;
     case 'produce':
       // Owned by ProductionSystem (a later slice). Completing the atomic + emitting the event is
@@ -151,15 +161,15 @@ function harvestFromNode(world: World, settler: Entity, node: Entity, goodType: 
 }
 
 /**
- * Resolve one completed `attack`: drain `damage` net hitpoints from the target's {@link Health},
+ * Resolve one completed `attack`: drain `damage` net hitpoints from the `target`'s {@link Health},
  * clamped at 0 (a hit never *heals* — armor can fully absorb a blow but the pool never goes negative,
  * the same clamp `combatDamage` applies to net damage). `damage` is the pre-resolved net value the
  * planner looked up from `combatDamage` (the attacker's weapon × the target's armor class), so the
  * executor needs no content/weapon lookup. A `target` with no `Health` is a no-op — it was already
  * destroyed between the swing starting and landing, or is a non-combatant (the swing struck air);
  * never throw, mirroring how `harvest`/`pickup` tolerate a vanished resource/store. Reaching 0
- * hitpoints is "dead"; the death/cleanup loop (removing the entity, emitting `settlerDied`) is a
- * later slice — for now a 0-HP target simply stops being viable.
+ * hitpoints is "dead"; the `cleanupSystem` then reaps the corpse (removing the entity, emitting
+ * `settlerDied`) at the end of the tick.
  *
  * The hit ALSO **provokes** an otherwise-passive `getAngry` animal: if the struck target is a
  * {@link isProvokableAnimal} animal (an `animaltypes.ini` record with `getangry`, e.g. a boar/deer),
@@ -168,8 +178,17 @@ function harvestFromNode(world: World, settler: Entity, node: Entity, goodType: 
  * defends itself. An always-`aggressive` animal needs no provocation (it is already hostile), so we
  * only stamp anger on a provokable one; this is the provoked-anger half of `animaltypes.ini`
  * aggression (docs/FIDELITY.md "Civ-vs-animal aggression").
+ *
+ * Finally, when the blow is **lethal** AND it is a hunter's strike on catchable prey, the kill yields
+ * the cadaver's meat ({@link harvestCadaver}) — the `harvest_cadaver` follow-up payoff.
  */
-function resolveHit(world: World, ctx: SystemContext, target: Entity, damage: number): void {
+function resolveHit(
+  world: World,
+  ctx: SystemContext,
+  attacker: Entity,
+  target: Entity,
+  damage: number,
+): void {
   const health = world.tryGet(target, Health);
   if (health === undefined) return; // target gone / non-combatant — the swing struck nothing
   // `combatDamage` already clamps net damage at 0, so a well-formed effect carries `damage >= 0`; the
@@ -178,6 +197,42 @@ function resolveHit(world: World, ctx: SystemContext, target: Entity, damage: nu
   // caller. The outer `Math.max(0, …)` floors the pool itself (a hit never drives it below 0).
   health.hitpoints = Math.max(0, health.hitpoints - Math.max(0, damage));
   provokeAnger(world, ctx, target);
+  if (health.hitpoints <= 0) harvestCadaver(world, ctx, attacker, target); // a lethal blow may yield meat
+}
+
+/**
+ * The hunter's `harvest_cadaver` payoff — when a **hunter**'s lethal blow fells **catchable prey**, the
+ * slayer gains the kill's meat onto its back. Models the original's `viking_hunter_attack` →
+ * `viking_hunter_harvest_cadaver` (`setatomic 15 33 …`) chain *in place on the killing blow*: a hunter
+ * ({@link HUNTER_JOB}) who drains a {@link isCatchableAnimal} prey animal to 0 gains
+ * {@link cadaverYieldOf} units (the prey's `maximumcadaversize`) of {@link MEAT_GOOD} via the same
+ * {@link addCarry} carriers use — goods are conserved (the meat is created by the kill, exactly as the
+ * original's harvest atomic yields it; the corpse leaves the field when `cleanupSystem` reaps it).
+ *
+ * No-ops unless every condition holds: the `attacker` is a hunter, the `target` is catchable prey, and
+ * the yield is positive (a `maximumcadaversize` of 0 / a non-animal yields nothing). One guard worth
+ * naming: {@link addCarry} THROWS if the hunter already carries a *different* good (a planner bug for a
+ * harvester, but a fighting hunter never should) — so if the hunter is somehow already loaded with
+ * another good, the meat is dropped (skipped) rather than crashing the tick; a hunter carrying meat
+ * already merges the new units.
+ *
+ * FIDELITY: the meat **good** and **per-kill amount** are pinned params (the `meat` id + the prey's
+ * `maximumcadaversize`); that the yield lands *on the killing blow* rather than via a separate
+ * walk-to-corpse `harvest_cadaver` atomic, and the 1-cadaver-unit→1-meat-unit mapping, are approximated
+ * (docs/FIDELITY.md "Hunter cadaver-harvest yield"). Pure over `content` + entity state, no RNG/wall-clock.
+ */
+function harvestCadaver(world: World, ctx: SystemContext, attacker: Entity, target: Entity): void {
+  const hunter = world.tryGet(attacker, Settler);
+  if (hunter === undefined || hunter.jobType !== HUNTER_JOB) return; // only a hunter harvests a cadaver
+  const prey = world.tryGet(target, Settler);
+  if (prey === undefined || !isCatchableAnimal(ctx.content, prey.tribe)) return; // only catchable prey
+  const yield_ = cadaverYieldOf(ctx.content, prey.tribe);
+  if (yield_ <= 0) return; // no readable cadaver size — nothing to harvest
+  // If the hunter is somehow already carrying a DIFFERENT good, `addCarry` would throw (its harvester-bug
+  // guard). A fighting hunter shouldn't be, but skip rather than crash the tick on that edge.
+  const held = world.tryGet(attacker, Carrying);
+  if (held !== undefined && held.goodType !== MEAT_GOOD) return;
+  addCarry(world, attacker, MEAT_GOOD, yield_);
 }
 
 /**

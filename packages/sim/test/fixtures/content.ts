@@ -292,8 +292,10 @@ export function testContent(): ContentSet {
         hitpointsAdult: 1000,
       },
       // The cow is CATCHABLE prey: `catchable` and fully passive (NOT aggressive, NOT getAngry). A hunter
-      // (job 15) may strike it; an ordinary civilization leaves it alone, and it never fights back.
-      { id: 'cow', tribeType: 13, catchable: true, hitpointsAdult: 1000 },
+      // (job 15) may strike it; an ordinary civilization leaves it alone, and it never fights back. Its
+      // `maximumCadaverSize` (4, the real catchable-animal value) is the meat yield a hunter's killing
+      // blow harvests off the carcass (the `harvest_cadaver` follow-up).
+      { id: 'cow', tribeType: 13, catchable: true, hitpointsAdult: 1000, maximumCadaverSize: 4 },
       // The deer is CATCHABLE AND PROVOKABLE: `catchable` + `getAngry` (NOT aggressive), `angryGameTime`
       // 10 — a hunter's strike provokes it (the provocation SOURCE), then it fights back for 10 ticks.
       {
