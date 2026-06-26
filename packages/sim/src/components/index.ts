@@ -114,7 +114,7 @@ export function stockpileEntries(s: { amounts: Map<number, number> }): Array<[nu
 /**
  * A **placed vehicle hull** — the "boats as mobile stores" entity the ROADMAP Phase-4 Sea/Northland
  * item names: a ship put on the map as a movable stockpile rather than a static building. `vehicleType`
- * cross-references the {@link VehicleType} `typeId` (its `stockSlots` hold capacity, `cargoGoods`
+ * cross-references the `VehicleType.typeId` (its `stockSlots` hold capacity, `cargoGoods`
  * load-filter, `passengerSlots`), and `tribe` is its owner — the same `(type, tribe)` shape a
  * {@link Building} carries, so a hull hashes and is queried exactly like a building. A hull is the
  * boat analogue of `Building`: it owns a {@link Stockpile} (the mobile store) the same way a

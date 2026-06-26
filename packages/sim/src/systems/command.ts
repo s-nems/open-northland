@@ -160,8 +160,8 @@ function placeBuilding(
  * load slice), not pre-stocked with starting goods.
  *
  * FIDELITY: pinned to the extracted vehicle IR on both axes the entity reads — the ship/cart split is the
- * `passengerslots` param ({@link shipVehicles}) and the unlock is the `jobEnablesVehicle` edge ({@link
- * tribeShipsUnlocked}). The hull is a *static* placed store here: movement, passenger embark/disembark, the
+ * `passengerslots` param (`shipVehicles`/`isShipVehicle`) and the unlock is the `jobEnablesVehicle` edge
+ * ({@link tribeShipsUnlocked}). The hull is a *static* placed store here: movement, passenger embark/disembark, the
  * cargo-load filter, and water-valency terrain (which cells it floats on) are deferred follow-ups
  * (docs/FIDELITY.md "Sea/Northland — boat hull entity"). Determinism: a pure read of the unlocked-ship set
  * (a filtered/sorted content scan + an order-independent live-settler membership query) then a single
