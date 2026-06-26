@@ -93,15 +93,20 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       drain + `cleanupSystem` reaping a 0-HP entity, `settlerDied` emitted). Faithful (net-damage param +
       atomic id 81); **deferred refinements** (armor-on-a-settler, walk-into-melee advance, swing cadence —
       ride on later items + an oracle; docs/FIDELITY.md). Inert on the golden (no settler carries `Health`).
-- [ ] **N data-defined tribes** (viking/frank/saracen/byzantine/egypt), asymmetry expressed through each
-      tribe's atomic bindings + `allow*`/`needfor*` graph — never hardcode "two". **Scaffolding landed**
-      (→ [archive](ROADMAP-ARCHIVE.md)): all 41 `[tribetype]`s extracted, every per-tribe rule resolved off
-      `settler.tribe` (tribe-agnostic by construction), and the `playableTribes`/`isPlayableTribe` /
-      `isAnimalTribe` read views distinguish controllable civilizations from animals **by the tech graph
-      alone** (only a civilization carries `jobEnables` edges) — wired into combat targeting so a civ
-      doesn't mis-fire the PvP rule on wildlife. **Next:** seed a real **multi-civilization** scenario
-      exercising two playable tribes' asymmetric bindings end-to-end (the asymmetry is in the data; a
-      scenario proves the sim runs it).
+- [x] **N data-defined tribes** (viking/frank/saracen/byzantine/egypt), asymmetry expressed through each
+      tribe's atomic bindings + `allow*`/`needfor*` graph — never hardcode "two". **Substance-complete**
+      (→ [archive](ROADMAP-ARCHIVE.md) for the scaffolding narrative): all 41 `[tribetype]`s extracted, every
+      per-tribe rule resolved off `settler.tribe` (tribe-agnostic by construction), and the
+      `playableTribes`/`isPlayableTribe`/`isAnimalTribe` read views distinguish controllable civilizations
+      from animals **by the tech graph alone** (only a civilization carries `jobEnables` edges) — wired into
+      combat targeting so a civ doesn't mis-fire the PvP rule on wildlife. The **multi-civilization scenario
+      now runs end-to-end** (`two-civ-combat.test.ts`): two playable tribes wielding **asymmetric** weapon +
+      attack-animation bindings fight each other through the real `step()` schedule — each resolves ITS OWN
+      `weapontypes` damage/reach + `setatomic 81` swing duration off `settler.tribe` (viking mace 50/reach2/dur4
+      vs saxon sword 30/reach3/dur6), the fight is mutual, a frail side is felled+reaped, and the skirmish is
+      deterministic. The asymmetry is purely in the data; a real N-tribe set is the same shape with more rows.
+      **Open (oracle-blocked, deferred):** tribe-vs-tribe diplomacy/alliances and settler-side `Health`/armor
+      stamping (a civ becomes a combatant only once it carries `Health` — a soldiers/armor slice).
 - [x] **Animals as non-controllable tribes** (`animaltypes.ini`: aggression, groups, hitpoints) —
       **substance-complete** (→ [archive](ROADMAP-ARCHIVE.md) for the full landed-narrative). The
       `animaltypes.ini` table (35 creature tribes, keyed on `tribetype`) is extracted, and **every**
