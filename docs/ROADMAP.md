@@ -150,10 +150,17 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       goodtype ids a hold may carry — WHAT a boat-as-mobile-store holds, distinct from `stockSlots`' how
       *much*), and the read side gives the per-hold load gate. In the **real IR** both ships + all 3 carts
       enumerate 49 cargo goods, the catapult none.
+      **Boat-hull ENTITY now LANDED** (→ `placeBoat` command + the `Vehicle{vehicleType,tribe}` component,
+      `systems/command.ts`): a placed hull carrying an (empty) `Stockpile` — the "boats as mobile stores"
+      entity, the boat analogue of `placeBuilding`, entering the world through the one mutation seam. Gated
+      by `tribeShipsUnlocked` (only a `vehicle_ship` row the tribe has UNLOCKED is fielded; a cart/catapult/
+      unknown/locked type is skipped, still logged), so a hull always references a ship the tribe may field.
+      Proven by `place-boat.test.ts` through the real `step()` schedule (place ungated ship / gate-then-unlock
+      a shipwright ship / refuse cart+unknown+wrong-tribe / deterministic). The hull is a STATIC store for now.
       **Open:** water-valency terrain (which cells a ship floats on — map-decode-blocked, the water
-      surface lives in the triangle/terrain grid, not a `landscapetypes.ini` flag), boats as mobile-store
-      ENTITIES (a placed hull carrying a stockpile, applying the `cargoGoods` filter on load),
-      embark/disembark atomics, and the sea jobs.
+      surface lives in the triangle/terrain grid, not a `landscapetypes.ini` flag), the cargo-load
+      `cargoGoods` filter (hauling goods INTO a hull), boat movement + embark/disembark atomics, and the
+      sea jobs.
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.
 
