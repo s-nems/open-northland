@@ -159,7 +159,12 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `weaponClassOf`/`weaponsByClass` group all 105 weapons by their coarse class into a lossless
       `Map<mainType, WeaponType[]>` (7 classes `{1:25,2:15,3:20,4:10,5:5,6:25,7:5}`) — a grouping, not a
       filter (every weapon carries a `mainType`); the seed the deferred soldier-class→weapon-class roster
-      binding joins on. The weapon-marker classification family is now complete. **Open:** the file's graphics/coords + `animations.ini` are
+      binding joins on. The weapon-marker classification family is now complete, and **the armor-side twin
+      mirrors it** (`armorClassOf`/`armorByClass`, `systems/readviews/combat.ts`): the same multi-valued
+      `mainType` grouping over `content.armor` (`Map<mainType, ArmorType[]>`, 4 records → 2 classes — light
+      `{woolen,leather}`, heavy `{chain,plate}` — read straight from `armortypes.ini`'s `mainType {1,1,2,2}`),
+      so both combat tables expose their coarse class identically — the data-defined seed the deferred
+      soldier-class→armor-tier binding joins on. **Open:** the file's graphics/coords + `animations.ini` are
       render/animation overlays — deferred with the render-atlas work (their only balance datum, the
       construction cost, is already imported).
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.
