@@ -710,3 +710,10 @@ the next iteration inherits it.
   *equip behavior* — the *roster JOIN* was one `Map<jobType, WeaponType[]>` read view away. Before
   deferring a binding as oracle-blocked, check whether its cross-ref field is already in the IR; the
   data-join read view is the faithful, testable half you CAN land now. (sim/read-model)
+- [af3cd84] To find the smallest faithful next data step, scan an already-extracted record for the one
+  field that has NO read-side consumer while its siblings all do: `ArmorType.materialType` was extracted
+  + schema'd + validated but unread, where `mainType`/`blockingValue`/`goodType`/`typeId` each already
+  had an accessor — so a `materialType` grouping (`armorByMaterial`, the finer tier axis vs `mainType`'s
+  coarse light/heavy) was a pure read view away, FIDELITY n/a, golden untouched. "Which extracted field
+  lacks a consumer" is a concrete, self-verifiable smallest-step heuristic when the BEHAVIOR is
+  oracle-blocked. (sim/read-model)
