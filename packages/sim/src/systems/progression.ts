@@ -1,7 +1,13 @@
-import type { HumanJobExperienceType, JobRequirement, JobRequirementTarget } from '@vinland/data';
+import type {
+  HumanJobExperienceType,
+  JobRequirement,
+  JobRequirementTarget,
+  VehicleType,
+} from '@vinland/data';
 import { Settler } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { SystemContext } from './context.js';
+import { isShipVehicle } from './readviews/vehicles.js';
 
 /**
  * ProgressionSystem (XP-accrual half) — a settler gets better at the *specialization* it works.
@@ -207,6 +213,37 @@ export function carrierCarryCapacity(world: World, ctx: SystemContext, tribe: nu
     best = vehicle.stockSlots;
   }
   return best;
+}
+
+/**
+ * The **ship vehicle types a `tribe` has currently UNLOCKED** — the ships ({@link isShipVehicle}: the
+ * `vehicle_ship` rows, `passengerSlots > 0`) whose `jobEnablesVehicle` tech-graph gate is satisfied for
+ * the tribe right now, sorted ascending by `typeId`. This is the **ship-unlock tech gate** the ROADMAP
+ * Phase-4 "Sea/Northland identity" item names as open: the content-only {@link shipVehicles} read view
+ * answers *which vehicles are ships*; this answers the live-world question *which of those can THIS tribe
+ * field yet* — the gate a boat-building/embark slice asks before it lets a tribe spawn a hull.
+ *
+ * It composes the two existing data-pinned halves with no new mechanic: the `passengerSlots`-based ship
+ * classification ({@link isShipVehicle}) and the **same** `vehicle`-kind tech-graph gate
+ * {@link carrierCarryCapacity} uses ({@link tribeUnlockEnabled}) — a ship is unlocked when **no**
+ * `jobEnablesVehicle` edge gates its `typeId` (an ungated start ship) OR a settler of any gating job
+ * (e.g. a shipwright) is alive in the tribe. A tribe absent from content gates nothing, so every ship is
+ * unlocked (consistent with the carrier capacity / house / good gates).
+ *
+ * FIDELITY: pinned to data on both axes — the ship/cart split is the extracted `passengerslots` param
+ * (see {@link isShipVehicle}) and the unlock is the extracted `jobEnablesVehicle` edge (the *Carrier*
+ * row, docs/FIDELITY.md). It adds **no mechanic** (nothing embarks, no hull is spawned) — a derived
+ * read over the already-extracted vehicle IR + the same membership query the capacity gate runs; the
+ * boats-as-mobile-store ENTITIES and embark/disembark atomics stay deferred to the boat-entity slice.
+ *
+ * Determinism: a pure read over `content.vehicles` (filtered + explicitly **sorted** by `typeId`, so the
+ * result order can't depend on declaration order) and the same order-independent live-settler membership
+ * query {@link tribeUnlockEnabled} runs (a tribe-scoped `.has`). No RNG, no wall-clock.
+ */
+export function tribeShipsUnlocked(world: World, ctx: SystemContext, tribe: number): VehicleType[] {
+  return ctx.content.vehicles
+    .filter((v) => isShipVehicle(v) && tribeUnlockEnabled(world, ctx, tribe, 'vehicle', v.typeId))
+    .sort((a, b) => a.typeId - b.typeId);
 }
 
 /**

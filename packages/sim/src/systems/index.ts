@@ -33,6 +33,7 @@ import {
   grantWorkExperience,
   settlerMeetsNeed,
   trackFor,
+  tribeShipsUnlocked,
 } from './progression.js';
 import {
   type CombatDamageRow,
@@ -95,7 +96,14 @@ export { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem };
 export { productionSystem };
 export { atomicSystem };
 export { jobSystem };
-export { carrierCarryCapacity, experienceRequirementMet, grantWorkExperience, settlerMeetsNeed, trackFor };
+export {
+  carrierCarryCapacity,
+  experienceRequirementMet,
+  grantWorkExperience,
+  settlerMeetsNeed,
+  trackFor,
+  tribeShipsUnlocked,
+};
 export type { CombatDamageRow, CombatProfile, GoodsGraphNode, HerdParams };
 export {
   animalCannotBeAttacked,

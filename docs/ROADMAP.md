@@ -140,9 +140,14 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       that carries passengers, `passengerSlots > 0` — the two ships are also the only `logicSize 2` rows),
       sorted by typeId, with the largest ship `stockSlots` exposed as the "boat as mobile store" hold
       (50/200). Proven over the **real IR** (2 ships out of 6 vehicles, `largestShipCapacity 200`).
+      **Ship-unlock tech gate now LANDED** (→ `tribeShipsUnlocked`, `systems/progression.ts`): the ships
+      a tribe has currently UNLOCKED — `isShipVehicle` ∩ the SAME `jobEnablesVehicle` `vehicle`-kind gate
+      `carrierCarryCapacity` uses (`tribeUnlockEnabled`) — so a boat-building/embark slice can ask which
+      hulls a tribe may field. In the **real IR** both ships are GATED (job 9 enables ships 3 & 4), so a
+      tribe with no settlers fields zero ships; spawning a job-9 settler flips the unlocked set to `[3,4]`.
       **Open:** water-valency terrain (which cells a ship floats on — map-decode-blocked, the water
       surface lives in the triangle/terrain grid, not a `landscapetypes.ini` flag), boats as mobile-store
-      ENTITIES, embark/disembark atomics, the sea jobs, and the ship-unlock tech gate.
+      ENTITIES, embark/disembark atomics, and the sea jobs.
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.
 
