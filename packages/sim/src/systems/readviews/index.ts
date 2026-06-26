@@ -6,11 +6,12 @@
 // makes "this is a projection, not a mechanic" legible at the module boundary. Each adds **no**
 // behavior (nothing produced/consumed/moved), so they carry "FIDELITY n/a". See docs/TECH-DEBT.md.
 //
-// Split by concern into three sibling modules (the views grew past one ~300-line file):
-//  - ./hud.ts    — the HUD/goods-graph projections over world state + content.
-//  - ./combat.ts — the static weapon-vs-armor damage lookup table.
-//  - ./tribes.ts — the data-defined civ-vs-animal split + `animaltypes.ini` behaviour + `mayAttack`.
-// This barrel re-exports all three so the `systems/` barrel (and tests) keep a single import site.
+// Split by concern into four sibling modules (the views grew past one ~300-line file):
+//  - ./hud.ts      — the HUD/goods-graph projections over world state + content.
+//  - ./combat.ts   — the static weapon-vs-armor damage lookup table.
+//  - ./tribes.ts   — the data-defined civ-vs-animal split + `animaltypes.ini` behaviour + `mayAttack`.
+//  - ./vehicles.ts — the data-defined ship/boat classification (the Sea/Northland slice's seed).
+// This barrel re-exports all four so the `systems/` barrel (and tests) keep a single import site.
 
 export {
   type GoodsGraphNode,
@@ -46,3 +47,5 @@ export {
   mayHunt,
   playableTribes,
 } from './tribes.js';
+
+export { isShipVehicle, largestShipCapacity, shipVehicles } from './vehicles.js';

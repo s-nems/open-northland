@@ -134,7 +134,15 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       swing-cadence / in-place-strike / separate-walk-to-corpse-`harvest_cadaver`-atomic approximations
       recorded in docs/FIDELITY.md.
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
-      `fisher_sea`/`trader_sea`/`carpenter ship`, `vehicle_ship`.
+      `fisher_sea`/`trader_sea`/`carpenter ship`, `vehicle_ship`. **First step landed** (→ the
+      `shipVehicles`/`isShipVehicle`/`largestShipCapacity` read view, `systems/readviews/vehicles.ts`):
+      the `vehicle_ship` rows are classified out of `content.vehicles` **by the data alone** (a vehicle
+      that carries passengers, `passengerSlots > 0` — the two ships are also the only `logicSize 2` rows),
+      sorted by typeId, with the largest ship `stockSlots` exposed as the "boat as mobile store" hold
+      (50/200). Proven over the **real IR** (2 ships out of 6 vehicles, `largestShipCapacity 200`).
+      **Open:** water-valency terrain (which cells a ship floats on — map-decode-blocked, the water
+      surface lives in the triangle/terrain grid, not a `landscapetypes.ini` flag), boats as mobile-store
+      ENTITIES, embark/disembark atomics, the sea jobs, and the ship-unlock tech gate.
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.
 
