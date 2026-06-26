@@ -62,7 +62,7 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       largest unlocked vehicle (`carrierCarryCapacity`). **Open (recorded deviation):** the carrier→vehicle
       PAIRING (a per-carrier vehicle entity / cart logistics / per-vehicle carry-filter) is oracle-blocked
       and deferred to a vehicle-entity slice (docs/FIDELITY.md — *Carrier→vehicle pairing*).
-- [x] ConstructionSystem: place → deliver materials → build; **house leveling** → capacity → the
+- [ ] ConstructionSystem: place → deliver materials → build; **house leveling** → capacity → the
       births→housing loop. **Substance-complete** (→ [archive](ROADMAP-ARCHIVE.md)): the `homeSize` housing
       read model; per-level build-cost extracted from `houses.ini` `[GfxHouse]` `LogicConstructionGoods`
       (`BuildingType.construction`, 53/55 buildings); a `placeBuilding{underConstruction}` site builds when
@@ -72,7 +72,7 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       tier's cost, raising `housingCapacity`, with its own delivery branch; the whole births→housing→upgrade
       loop proven composing over the real `step()` (`births-housing-upgrade-loop.test.ts`). Inert on the
       golden (no `home`-kind building). Faithful (build cost is the extracted graphics-table param).
-- [x] **ReproductionSystem** — **landed** (→ [archive](ROADMAP-ARCHIVE.md)): one birth per tribe per tick
+- [ ] **ReproductionSystem** — **landed** (→ [archive](ROADMAP-ARCHIVE.md)): one birth per tribe per tick
       while `tribePopulation < housingCapacity` (the `populationWithinHousing` invariant); a newborn is the
       data-pinned youngest age class (`baby_female`), and `growthSystem` ages it baby→child→adult over
       `GROWUP_TICKS`, then employs it. **Approximated:** birth rate/sex + growth cadence are below the
