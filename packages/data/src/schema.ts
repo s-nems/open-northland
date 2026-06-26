@@ -220,6 +220,15 @@ export const WeaponType = z.object({
   name: z.string().optional(),
   /** Owning tribe (`weapontype` `tribetype`). Part of the composite key — see `typeId`. */
   tribeType: TypeId.optional(),
+  /**
+   * `mainType` — the coarse **weapon class** (1..7 in the base data: fist/club/sword/axe/spear/bow/…),
+   * the weapon-side twin of {@link ArmorType.mainType}. NOT a cross-ref into another table (it's a
+   * class enum, not a foreign key) — a soldier-class→weapon-class binding prerequisite the deferred
+   * combat-roster slice joins on, captured ahead of that drive. */
+  mainType: TypeId.optional(),
+  /** `weight` — the encumbrance the weapon adds (0..2 in the base data), the weapon-side twin of
+   *  {@link ArmorType.weight}. */
+  weight: z.number().int().nonnegative().default(0),
   minRange: z.number().int().nonnegative().default(1),
   maxRange: z.number().int().nonnegative().default(1),
   /** damageValue[targetArmorClass] -> value, as in the original weapontypes. */
