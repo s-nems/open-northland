@@ -292,14 +292,21 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       birth point, and — when `searchForLeader` — a designated **leader** (the herd's lowest-id member)
       every member records via the new optional `HerdMember{leader}` component (a solitary animal carries
       none). A non-animal tribe (a civilization) is bad input and skipped (still command-logged). Faithful
-      (group size / HP / birth-range / leader-presence params); **approximated** (the scatter pattern, the
-      jobType-null no-weapon stance, and the one-shot placement with no respawn/territory upkeep — recorded
-      in docs/FIDELITY.md "Animal herd spawn/placement"). Inert on the goldens/slice (no herd is spawned
-      there). **Next:** the **map populator** that *issues* `spawnAnimalHerd` to seed a map's wildlife (the
-      AnimalSystem / scenario seam — placing herds at terrain birth points), the **follow-the-leader**
-      movement drive that reads `HerdMember` (a follower staying within `maximumLeaderDistance`), the
-      animal→weapon `(tribeType, typeId)` binding so a spawned animal does damage, and the provoked-anger
-      (`getAngry`) timer once a per-entity hostility-state model exists.
+      (group size / HP / birth-range / leader-presence params); **approximated** (the scatter pattern and
+      the one-shot placement with no respawn/territory upkeep — recorded in docs/FIDELITY.md "Animal herd
+      spawn/placement"). Inert on the goldens/slice (no herd is spawned there). **The animal→weapon binding
+      now LANDED** — a spawned animal carries `jobType: null`, but `combatSystem`'s `attackerWeapon`
+      (`systems/combat.ts`) now resolves a **jobless animal's** weapon by **`tribeType` alone** (an
+      animal's combat identity IS its tribe — each animal tribe carries one attack weapon, `claw`/
+      `bearfist`/`wolvefist`; the weapon's `jobType` in the data is the monster combat-class, not a
+      player-assignable trade), while a settler with a job still resolves by `(tribeType, jobType)` and a
+      jobless *civilian* stays unarmed. So a spawned aggressive animal now actually does damage (the gap
+      the spawn opened — faithful, the weapon param is the verbatim `weapontypes` join; docs/FIDELITY.md
+      "Combat targeting drive"). **Next:** the **map populator** that *issues* `spawnAnimalHerd` to seed a
+      map's wildlife (the AnimalSystem / scenario seam — placing herds at terrain birth points), the
+      **follow-the-leader** movement drive that reads `HerdMember` (a follower staying within
+      `maximumLeaderDistance`), and the provoked-anger (`getAngry`) timer once a per-entity hostility-state
+      model exists.
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
       `fisher_sea`/`trader_sea`/`carpenter ship`, `vehicle_ship`.
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).

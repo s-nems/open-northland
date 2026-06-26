@@ -37,9 +37,10 @@ import { isAggressiveAnimal, isAnimalTribe, mayAttack } from './readviews/index.
  * For each idle, living combatant (no `CurrentAtomic` running, not travelling, `hitpoints > 0`), in
  * deterministic store order, the system finds the nearest valid target within the attacker's weapon
  * **range** (Manhattan cells, canonical entity-id tie-break), resolves the **net damage** that hit
- * deals — the attacker's weapon ({@link attackerWeapon}, keyed by the attacker's tribe+job) versus an
- * unarmored target (class 0 — settlers/animals wear no armor), the verbatim `weapontypes`×`armortypes`
- * join {@link combatDamage} computes — and starts an `attack` atomic carrying that resolved damage.
+ * deals — the attacker's weapon ({@link attackerWeapon}, keyed by the attacker's tribe+job for a
+ * settler, or by tribe alone for a jobless spawned animal) versus an unarmored target (class 0 —
+ * settlers/animals wear no armor), the verbatim `weapontypes`×`armortypes` join {@link combatDamage}
+ * computes — and starts an `attack` atomic carrying that resolved damage.
  *
  * The attacker stays put and swings (combat is in-place at range — no walk-into-melee drive yet; an
  * out-of-range enemy is simply not a target this tick, the original's "advance on the enemy" is a
@@ -137,26 +138,44 @@ function nearestEnemyTarget(
 }
 
 /**
- * The weapon an attacker of `tribe`/`jobType` fights with, resolved from content the same way the
- * original binds a weapon to a job: a {@link WeaponType} whose `tribeType` matches the attacker's
- * tribe and whose `jobType` matches the attacker's job. Returns its `range` (Manhattan reach, the
- * weapon's `maxRange`, at least 1 so even a `maxRange 0` weapon strikes its own cell) and its
- * **net damage against an unarmored target** (`damage["0"]`, clamped at ≥0 — settlers wear no armor
- * yet, so every hit lands on armor class 0). Null when the settler has no job or no weapon matches
- * (an unarmed settler — it does no damage, the approximated stance).
+ * The weapon an attacker of `tribe`/`jobType` fights with, resolved from content. Returns its `range`
+ * (Manhattan reach, the weapon's `maxRange`, at least 1 so even a `maxRange 0` weapon strikes its own
+ * cell) and its **net damage against an unarmored target** (`damage["0"]`, clamped at ≥0 — settlers
+ * wear no armor yet, so every hit lands on armor class 0). Null when no weapon resolves (an unarmed
+ * combatant — it does no damage, the approximated stance).
+ *
+ * Two resolution paths, mirroring how the original keys a weapon:
+ *
+ *  - **A settler with a `jobType`** (a civilization soldier/hunter, or a bound combatant) → the
+ *    {@link WeaponType} whose `tribeType` matches the attacker's tribe **and** whose `jobType` matches
+ *    the attacker's job, exactly as the original binds a weapon to a *job*.
+ *  - **A jobless animal** (`jobType === null` on a {@link isAnimalTribe} tribe — what `spawnAnimalHerd`
+ *    places: an animal isn't born into a trade) → the tribe's weapon keyed by **`tribeType` alone**.
+ *    An animal's combat identity IS its tribe (each animal tribe carries essentially one attack weapon
+ *    — `claw`/`bearfist`/`wolvefist`, all at `typeId 1`); the weapon's `jobType` in the real data is the
+ *    creature's monster combat-class, not a player-assignable trade, so a spawned animal can't match on
+ *    job. Without this a spawned aggressive animal resolves no weapon and does no damage despite
+ *    {@link mayAttack} engaging it.
  *
  * Determinism: a pure scan of `content.weapons` returning the FIRST match in source-array order (a
- * `(tribeType, jobType)` pair may bind more than one weapon row; source order is the stable choice,
- * the same determinism stance the extractor keeps — no Map keyed on a non-unique identity).
+ * `(tribeType, jobType)` pair — and an animal tribe's weapon set — may have more than one row; source
+ * order is the stable choice, the same determinism stance the extractor keeps and {@link combatDamage}
+ * documents — no Map keyed on a non-unique identity).
  */
 function attackerWeapon(
   ctx: SystemContext,
   tribe: number,
   jobType: number | null,
 ): { range: number; netDamageUnarmored: number } | null {
-  if (jobType === null) return null; // a settler with no job carries no weapon
-  const weapon = ctx.content.weapons.find((w) => w.tribeType === tribe && w.jobType === jobType);
-  if (weapon === undefined) return null; // unarmed — no resolvable weapon for this tribe+job
+  const weapon =
+    jobType === null
+      ? // A jobless combatant resolves a weapon only if it is an animal tribe (whose weapon keys by
+        // tribe, not job); a jobless civilian carries nothing. First match in source-array order.
+        isAnimalTribe(ctx.content, tribe)
+        ? ctx.content.weapons.find((w) => w.tribeType === tribe)
+        : undefined
+      : ctx.content.weapons.find((w) => w.tribeType === tribe && w.jobType === jobType);
+  if (weapon === undefined) return null; // unarmed — no resolvable weapon for this combatant
   const range = Math.max(1, weapon.maxRange); // a weapon always reaches at least its own cell
   const rawUnarmored = weapon.damage['0'] ?? 0; // armor class 0 = unarmored (settlers wear no armor yet)
   return { range, netDamageUnarmored: Math.max(0, rawUnarmored) };

@@ -268,6 +268,34 @@ describe('combatSystem — civ-vs-animal aggression (animaltypes.ini)', () => {
 
     expect(sim.world.has(bear, CurrentAtomic)).toBe(false); // an animal does not war on another animal
   });
+
+  it('a JOBLESS spawned animal resolves its weapon by tribe and still does damage', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    // What `spawnAnimalHerd` actually places: an animal with jobType NULL (not born into a trade).
+    // Its weapon (test_bearfist, tribe 10) keys on a jobType in the data, so a jobless animal must
+    // resolve it by tribe alone — else a spawned aggressive animal would do no damage at all.
+    const bear = fighterAt(sim, 0, 0, BEAR, null);
+    const viking = fighterAt(sim, 1, 0, VIKING, WOODCUTTER);
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    const atomic = sim.world.get(bear, CurrentAtomic);
+    expect(atomic.atomicId).toBe(ATTACK_ATOMIC);
+    // damage["0"] of test_bearfist (40) resolved by TRIBE, despite the bear carrying no jobType.
+    expect(atomic.effect).toEqual({ kind: 'attack', target: viking, damage: 40 });
+  });
+
+  it('a JOBLESS civilization settler is still unarmed (the tribe-keyed path is animals only)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    // A jobless VIKING (a civilization) must NOT pick up its tribe's weapon by tribe alone — only an
+    // animal tribe resolves a weapon without a job. A jobless civilian is genuinely unarmed.
+    const jobless = fighterAt(sim, 0, 0, VIKING, null);
+    fighterAt(sim, 1, 0, FRANK, WOODCUTTER); // an enemy in range — but the attacker has no weapon
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(jobless, CurrentAtomic)).toBe(false);
+  });
 });
 
 describe('combatSystem — end-to-end through the real schedule', () => {
