@@ -227,6 +227,30 @@ export function animalHitpoints(content: ContentSet, tribeType: number): number 
 }
 
 /**
+ * The **juvenile hitpoint pool** an animal of `tribeType` is born with — its `animaltypes.ini`
+ * `hitpoints_baby` (the baby/young life-stage HP, e.g. a wolf's 500 vs its adult 1000; 18 of the 35
+ * extracted animals set it explicitly), or null when the tribe has no animal record (a civilization,
+ * an unknown tribe). The life-stage twin of {@link animalHitpoints}: where that view stamps the
+ * `Health` of a spawned **adult** animal, this is the pool a spawned **baby** animal carries until it
+ * grows up, the data the deferred animal-growth slice (a young animal aging baby→adult, the
+ * `maximumgroupsize` herd's offspring) reads to set a juvenile's `Health` and re-stamp it at adulthood.
+ *
+ * It is NOT derived from {@link animalHitpoints}: the source carries the two pools independently and
+ * they diverge (a wolf's baby 500 is half its adult 1000; some animals set baby == adult, others set
+ * only the adult and leave baby at the extractor default 0) — so it reads the field straight, never
+ * inferred (cf. docs/LESSONS.md `[cc9c3d2]` — a distinct extracted quantity, not a fallback).
+ *
+ * FIDELITY: the **baby hitpoint magnitude** is the verbatim extracted `hitpoints_baby` (a faithful
+ * param); the *life-stage growth* it will drive (when a baby spawns, ages, and re-stamps to the adult
+ * pool) is a later slice with no oracle — the animal twin of the civ baby→adult `growthSystem`
+ * (docs/FIDELITY.md). Pure over `content`, no RNG/wall-clock.
+ */
+export function animalBabyHitpoints(content: ContentSet, tribeType: number): number | null {
+  const animal = animalRecord(content, tribeType);
+  return animal === null ? null : animal.hitpointsBaby;
+}
+
+/**
  * The **herd/spawn parameters** a future animal-spawn/herding slice needs to place a group of animals
  * of `tribeType` on the map — read straight off the `animaltypes.ini` record, or null when the tribe
  * has no animal record (a civilization, or an unknown tribe). The fields are the faithful extracted
