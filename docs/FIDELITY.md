@@ -281,8 +281,13 @@ Format: `- <mechanic>: <how it differs> — <why> (<commit>)`.
   `extractConstructionCosts` collapses this to the **lowest-`LogicTribeType`** record (the deterministic
   "reference tribe" convention `fillBuildingRecipes` already uses for `recipe.ticks`), so a leveled `home`
   reads its OWN tier's upgrade cost — coherent, but it loses the per-tribe spread (a saracen residence costs
-  the viking chain's tier cost in the IR, not its own cumulative figure). This is **not** oracle-blocked (the
-  per-tribe data is fully readable); it is a deliberate shape choice to keep `construction` a single flat
-  field until a system consumes per-tribe costs. The fully-faithful model is a per-`(tribe, typeId)`
-  construction table — the same shape deferred for the per-tribe `recipe` table (the *Production per-cycle
-  ticks* row, axis (a)) — landed together when a tribe-aware ConstructionSystem needs it.
+  the viking chain's tier cost in the IR, not its own cumulative figure). **A second collapse rides along:**
+  within ONE `[GfxHouse]` record a `typeId` can map to more than one `sizeIdx` (e.g. "viking pottery"
+  `LogicType {1:21, 2:21}`, and a multi-stage wonder repeats one typeId across rising sizes 0,1,2 with
+  cumulative costs `5 5 5 → 6 6 5 5 5 → 7 7 6 6 5 5 5`); the **lowest `sizeIdx`** (the base/first build stage)
+  wins, so a wonder reads its first-stage cost, not the cumulative final. Both are **not** oracle-blocked (the
+  per-tribe / per-stage data is fully readable); they are deliberate shape choices to keep `construction` a
+  single flat field until a system consumes the richer key. The fully-faithful model is a per-`(tribe, typeId,
+  sizeIdx)` construction table — the same kind of per-tribe deferral the `recipe` table carries (the
+  *Production per-cycle ticks* row, axis (a)) — landed together when a tribe/stage-aware ConstructionSystem
+  needs it.

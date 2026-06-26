@@ -957,6 +957,24 @@ describe('extractConstructionCosts', () => {
     expect(costs.get(3)).toEqual([{ goodType: 24, amount: 2 }]);
   });
 
+  it('collapses a typeId that maps to several sizeIdx within one record to the lowest sizeIdx (base stage)', () => {
+    // Mirrors the real "viking pottery" (LogicType {1:21, 2:21}) and the multi-stage wonders: one
+    // typeId at two sizeIdx, each with its OWN construction line. The lower sizeIdx (the first build
+    // stage) must win deterministically regardless of which LogicConstructionGoods line is parsed first.
+    const costs = extractConstructionCosts(
+      parseIniSections(`[GfxHouse]
+EditName "pottery"
+LogicTribeType 1
+LogicType 1 21
+LogicType 2 21
+LogicConstructionGoods 2 9 9 9
+LogicConstructionGoods 1 3
+`),
+    );
+    // sizeIdx 1 (`3`) wins over sizeIdx 2 (`9 9 9`), even though the size-2 line is parsed first.
+    expect(costs.get(21)).toEqual([{ goodType: 3, amount: 1 }]);
+  });
+
   it('returns an empty map for sources with no [GfxHouse] records (the logic-only tables)', () => {
     expect(extractConstructionCosts(parseIniSections(HOUSES_INI)).size).toBe(0);
   });
