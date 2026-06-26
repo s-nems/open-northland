@@ -39,11 +39,14 @@ import { herdParams } from './readviews/index.js';
  * offsets, formation, wander-while-near — is the undocumented "soul"); a `maximumleaderdistance` of 0
  * means "stay on the leader's cell", the literal reading of the param. Recorded in docs/FIDELITY.md.
  *
- * Determinism: no RNG, no wall-clock. Followers are visited in canonical ({@link World.query} store)
- * order, the leader's cell and the distance are integer reads, and the only mutation is adding a
- * `MoveGoal` (idempotent for a follower already in range — none is added). No-ops without a terrain
- * graph (a mapless sim has no cells to measure leader distance over — the golden is untouched). Inert
- * on the goldens/slice: no entity there carries a `HerdMember`, so the follower scan finds nobody.
+ * Determinism: no RNG, no wall-clock. Followers are visited in deterministic store order (the
+ * `aiSystem` pattern), and each follower's decision is a pure function of **its own** components + its
+ * leader's cell — no follower's outcome depends on another's, so the store-iteration order can't change
+ * the result (the only mutation is adding a `MoveGoal` to the follower itself, never to the iterated
+ * `HerdMember` store). The leader's cell and the distance are integer reads; the `MoveGoal` add is a
+ * no-op for a follower already in range (none is added). No-ops without a terrain graph (a mapless sim
+ * has no cells to measure leader distance over — the golden is untouched). Inert on the goldens/slice:
+ * no entity there carries a `HerdMember`, so the follower scan finds nobody.
  */
 export const herdingSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no cells to measure leader distance over

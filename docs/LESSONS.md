@@ -475,3 +475,9 @@ the next iteration inherits it.
   disagree on a key field's shape, a fixture that pre-fills the field hides the gap; test the consumer
   with the *exact* shape the producer emits (here: a jobless animal), and exercise the full `step()`
   schedule end-to-end, not the system in isolation. (sim/combat)
+- [1f8f2c9] Adding one field (`leaderDistance`) to a derived-view struct (`HerdParams`) broke three
+  `toEqual` assertions that snapshot the whole object — `toEqual` is exhaustive, so a grown read view
+  ripples into every test that pins its full shape. That is the *intended* tripwire (a view's shape is
+  part of its contract), but budget for it: when you widen a struct, grep its `toEqual(` call sites and
+  give the new field a *meaningful* fixture value (not the schema default) so the assertion still proves
+  something. (sim/readviews)
