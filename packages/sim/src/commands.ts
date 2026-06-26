@@ -25,6 +25,10 @@ export type Command =
        * vertical-slice path whose hash this leaves untouched. The pool **magnitude is caller-supplied**:
        * a human's hitpoints are below the readable `.ini` (only `animaltypes.ini` carries them), so this
        * value is *approximated*, not pinned to a param (docs/FIDELITY.md "Combat hit resolution").
+       *
+       * When `armorClass` is a positive `[armortype]` tier (1..4) the combatant also wears that armor
+       * (an `Armor` component): an incoming hit is mitigated by the tier's `blockingValue` rather than
+       * landing on the unarmored class 0. Omit it (the default) and the settler is unarmored.
        */
       readonly kind: 'spawnSettler';
       readonly jobType: number;
@@ -33,6 +37,9 @@ export type Command =
       readonly tribe: number;
       /** A combatant's max hitpoint pool (stamps a {@link Health} pool). Omit for a non-combatant. */
       readonly hitpoints?: number;
+      /** A combatant's worn armor class (a `[armortype]` tier 1..4; stamps an `Armor` component). Omit
+       *  (or a non-positive value) for an unarmored combatant — every hit then lands on class 0. */
+      readonly armorClass?: number;
     }
   | {
       /**

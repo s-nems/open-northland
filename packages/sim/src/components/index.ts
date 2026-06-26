@@ -168,6 +168,28 @@ export const Age = defineComponent<{ ticks: number }>('Age');
 export const Health = defineComponent<{ hitpoints: number; max: number }>('Health');
 
 /**
+ * A combatant's worn **armor class** — the `[armortype]` tier (`ArmorType.typeId`, 1..4 in the base
+ * data) the hit-resolution loop joins against to mitigate incoming damage. A target carrying an
+ * `Armor{armorClass}` takes the attacker's weapon `damage[armorClass]` **minus** that armor's
+ * `blockingValue` (the verbatim `weapontypes`×`armortypes` join {@link combatDamage} tabulates),
+ * instead of the unarmored class-0 damage every target took before. A higher class is heavier mail:
+ * class 3/4 chain/plate blocks more than class 1 woolen.
+ *
+ * It is a **separate optional component** (like {@link JobAssignment}/{@link Age}/{@link Health}):
+ * only an armored combatant carries one, so a bare target — every animal, every golden/slice settler,
+ * and a combatant spawned without an armor class — has none and resolves as **armor class 0**
+ * (unarmored), leaving the hash untouched. So adding this component changes no existing scenario; only
+ * a settler explicitly stamped with armor (`spawnSettler{armorClass}`) is mitigated.
+ *
+ * `armorClass` is a whole integer (a class id, not a fixed-point bar), so it hashes deterministically
+ * like every other component. A class with **no `[armortype]` record** (the out-of-table 6/7, or a bad
+ * value) resolves as unarmored (`blockingValue 0`) the same way {@link combatDamage} treats it — armor
+ * the data doesn't define mitigates nothing rather than crashing. Determinism: read by a pure content
+ * join in the CombatSystem, no RNG/wall-clock.
+ */
+export const Armor = defineComponent<{ armorClass: number }>('Armor');
+
+/**
  * A herd membership: the {@link Entity} that leads the pack this animal belongs to. The animal-spawn
  * mechanic (the `spawnAnimalHerd` command) adds it to every member of a herd whose `animaltypes.ini`
  * record sets `searchforleader` — a leader is designated (the herd's lowest-id member, which points

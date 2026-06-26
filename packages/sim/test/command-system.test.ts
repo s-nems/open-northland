@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Command } from '../src/commands.js';
 import {
+  Armor,
   Building,
   Carrying,
   CurrentAtomic,
@@ -53,6 +54,7 @@ function clearStores(): void {
   Production.store.clear();
   JobAssignment.store.clear();
   Health.store.clear();
+  Armor.store.clear();
 }
 
 beforeEach(clearStores);
@@ -135,6 +137,42 @@ describe('CommandSystem', () => {
     sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING, hitpoints: 0 });
     sim.step();
     expect(sim.world.has(nthEntity(sim, 0), Health)).toBe(false);
+  });
+
+  it('spawnSettler with a positive armorClass stamps an Armor tier (the combatant wears armor)', () => {
+    const sim = fresh();
+    // A combatant entering the world wearing armor: a positive class stamps an `Armor` component, so a
+    // hit on this settler is mitigated by the tier's blockingValue instead of landing on class 0.
+    sim.enqueue({
+      kind: 'spawnSettler',
+      jobType: WOODCUTTER,
+      x: 1,
+      y: 2,
+      tribe: VIKING,
+      hitpoints: 1000,
+      armorClass: 3, // chain (blockingValue 5 in the fixture's armor table)
+    });
+    sim.step();
+    expect(sim.world.get(nthEntity(sim, 0), Armor)).toEqual({ armorClass: 3 });
+  });
+
+  it('spawnSettler with no/non-positive armorClass leaves the settler unarmored (no Armor — class 0)', () => {
+    const sim = fresh();
+    // The default (omitted) and the non-positive (0) paths both stamp NO Armor — the separate-optional-
+    // component pattern (like Health): a bare settler resolves as class 0, leaving the golden untouched.
+    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING, hitpoints: 1000 });
+    sim.enqueue({
+      kind: 'spawnSettler',
+      jobType: WOODCUTTER,
+      x: 1,
+      y: 0,
+      tribe: VIKING,
+      hitpoints: 1000,
+      armorClass: 0,
+    });
+    sim.step();
+    expect(sim.world.has(nthEntity(sim, 0), Armor)).toBe(false); // omitted -> no armor
+    expect(sim.world.has(nthEntity(sim, 1), Armor)).toBe(false); // class 0 -> no armor
   });
 
   it('skips a command with an unknown type id (recoverable bad input — no throw, still logged)', () => {

@@ -1,5 +1,7 @@
+import type { WeaponType } from '@vinland/data';
 import {
   Anger,
+  Armor,
   CurrentAtomic,
   Health,
   MoveGoal,
@@ -44,9 +46,10 @@ import { isAggressiveAnimal, isAnimalTribe, mayAttack, mayHunt } from './readvie
  * deterministic store order, the system finds the nearest valid target within the attacker's weapon
  * **range** (Manhattan cells, canonical entity-id tie-break), resolves the **net damage** that hit
  * deals — the attacker's weapon ({@link attackerWeapon}, keyed by the attacker's tribe+job for a
- * settler, or by tribe alone for a jobless spawned animal) versus an unarmored target (class 0 —
- * settlers/animals wear no armor), the verbatim `weapontypes`×`armortypes` join {@link combatDamage}
- * computes — and starts an `attack` atomic carrying that resolved damage.
+ * settler, or by tribe alone for a jobless spawned animal) versus **the target's armor class** (its
+ * {@link Armor} tier, or class 0 when it wears none — the verbatim `weapontypes`×`armortypes` join
+ * {@link netDamageVs}/{@link combatDamage} computes) — and starts an `attack` atomic carrying that
+ * resolved damage.
  *
  * The attacker stays put and swings (combat is in-place at range — no walk-into-melee drive yet; an
  * out-of-range enemy is simply not a target this tick, the original's "advance on the enemy" is a
@@ -55,12 +58,15 @@ import { isAggressiveAnimal, isAnimalTribe, mayAttack, mayHunt } from './readvie
  * docs/FIDELITY.md); its `duration` is resolved through that binding like every other atomic.
  *
  * FIDELITY: the **net-damage amount** is the faithful `weapontypes`×`armortypes` param join (the same
- * pin as the `attack` effect / `combatDamage` read view); the **civ-vs-animal hostility gate** reads
- * the faithful `aggressive`/`cannotbeattacked` params, and the **playable-vs-animal split** is the
- * faithful tech-graph signature ({@link isAnimalTribe}). **Approximated (no oracle):** *who* a
- * combatant picks (nearest enemy in range), the *swing cadence* (re-target each idle tick), and that an
- * unarmed combatant does no damage are *our* deterministic design — the original's target-acquisition
- * AI is the undocumented "soul" (docs/FIDELITY.md). The **provoked**-anger half (`getAngry`/
+ * pin as the `attack` effect / `combatDamage` read view) — now resolved against the **target's worn
+ * armor class** ({@link Armor}, the `damage[targetClass] - blockingValue` join), not a fixed unarmored
+ * value; the **civ-vs-animal hostility gate** reads the faithful `aggressive`/`cannotbeattacked`
+ * params, and the **playable-vs-animal split** is the faithful tech-graph signature
+ * ({@link isAnimalTribe}). **Approximated (no oracle):** *who* a combatant picks (nearest enemy in
+ * range), the *swing cadence* (re-target each idle tick), and that an unarmed combatant does no damage
+ * are *our* deterministic design — the original's target-acquisition AI is the undocumented "soul"
+ * (docs/FIDELITY.md). *Which* settler wears *which* armor class is caller-supplied (`spawnSettler`),
+ * not yet pinned to a soldier-class→armor binding. The **provoked**-anger half (`getAngry`/
  * `angryGameTime` — a passive animal turned hostile after being struck) is **now wired**: the
  * AtomicSystem stamps an {@link Anger} timer on a struck `getAngry` animal, and this system reads it
  * ({@link hostileAnimalNow} on the attacker side, {@link mayTarget} on the target side) so a provoked
@@ -110,9 +116,39 @@ export const combatSystem: System = (world, ctx) => {
     );
     if (pick === null) continue; // no enemy/prey in range this tick
 
-    startAttack(world, ctx, attacker, e, pick.target, weapon.netDamageUnarmored);
+    // Resolve the net damage against THE TARGET's armor class (class 0 if it wears no `Armor`): the
+    // attacker's weapon `damage[targetClass]` minus that class's `blockingValue` — the per-class
+    // `weapontypes`×`armortypes` join, not a fixed unarmored value.
+    const damage = netDamageVs(ctx, weapon.weapon, targetArmorClass(world, pick.target));
+    startAttack(world, ctx, attacker, e, pick.target, damage);
   }
 };
+
+/** The armor class a target wears — its {@link Armor} component's `armorClass`, or **0** (unarmored)
+ *  when it carries none (every animal, every bare settler). A negative/out-of-table class still reads
+ *  here; {@link netDamageVs} resolves it as unarmored (no `[armortype]` record → no mitigation). */
+function targetArmorClass(world: World, target: Entity): number {
+  return world.tryGet(target, Armor)?.armorClass ?? 0;
+}
+
+/**
+ * The **net** damage `weapon` lands on a target wearing `armorClass` — `max(0, weapon.damage[armorClass]
+ * - blockingValue)`, the verbatim `weapontypes`×`armortypes` join {@link combatDamage} tabulates, but
+ * computed for the single class actually hit (no need to walk every class). Class **0** (unarmored) and
+ * any class with **no `[armortype]` record** (the out-of-table 6/7, or a bad stamped value) mitigate
+ * nothing (`blockingValue 0`) — the same "armor the data doesn't define blocks nothing rather than
+ * crashing" stance {@link combatDamage} takes. Clamped at 0 (a hit never heals).
+ *
+ * Determinism: a pure read of `weapon.damage` + a `content.armor` scan for the class's record, no RNG /
+ * wall-clock. The `armor.find` is the array-not-Map stance the read side keeps; `content.armor` is a
+ * small flat table (4 rows), so a per-hit scan is cheap and avoids threading a prebuilt map.
+ */
+function netDamageVs(ctx: SystemContext, weapon: WeaponType, armorClass: number): number {
+  const rawDamage = weapon.damage[String(armorClass)] ?? 0; // weapon's listed damage vs this class
+  const armor = ctx.content.armor.find((a) => a.typeId === armorClass); // its `[armortype]` record, if any
+  const blockingValue = armor?.blockingValue ?? 0; // class 0 / out-of-table → no mitigation
+  return Math.max(0, rawDamage - blockingValue);
+}
 
 /**
  * Whether the animal entity `e` (of `tribe`) is **hostile right now** — an always-`aggressive` animal,
@@ -240,9 +276,10 @@ function mayTarget(
 
 /**
  * The weapon an attacker of `tribe`/`jobType` fights with, resolved from content. Returns its reach as
- * a `[minRange, maxRange]` band (Manhattan cells) and its **net damage against an unarmored target**
- * (`damage["0"]`, clamped at ≥0 — settlers wear no armor yet, so every hit lands on armor class 0).
- * Null when no weapon resolves (an unarmed combatant — it does no damage, the approximated stance).
+ * a `[minRange, maxRange]` band (Manhattan cells) and the resolved {@link WeaponType} itself, so the
+ * caller can compute the net damage **against the picked target's armor class** ({@link netDamageVs}) —
+ * the per-class `weapontypes`×`armortypes` join, not a fixed unarmored value. Null when no weapon
+ * resolves (an unarmed combatant — it does no damage, the approximated stance).
  *
  * **The reach is a band, not just a ceiling.** `maxRange` is the far reach (floored at 1, so even a
  * `maxRange 0` weapon still reaches an adjacent cell). `minRange` is the *near* reach a **ranged**
@@ -275,7 +312,7 @@ function attackerWeapon(
   ctx: SystemContext,
   tribe: number,
   jobType: number | null,
-): { minRange: number; maxRange: number; netDamageUnarmored: number } | null {
+): { minRange: number; maxRange: number; weapon: WeaponType } | null {
   // A JOBLESS combatant carries a weapon only if it is an animal tribe (whose weapon keys by tribe, not
   // job — `spawnAnimalHerd` places jobless animals); a jobless civilian is unarmed. Resolved once, since
   // it is invariant across the weapon scan below.
@@ -290,8 +327,7 @@ function attackerWeapon(
   // A ranged weapon (the hunter's bow) can't fire below its `minRange`; floor at 1 and never let the
   // near reach exceed the far reach, so a malformed band can't read as "can never hit".
   const minRange = Math.min(Math.max(1, weapon.minRange), maxRange);
-  const rawUnarmored = weapon.damage['0'] ?? 0; // armor class 0 = unarmored (settlers wear no armor yet)
-  return { minRange, maxRange, netDamageUnarmored: Math.max(0, rawUnarmored) };
+  return { minRange, maxRange, weapon };
 }
 
 /** Start an `attack` {@link CurrentAtomic} on `attacker` against `target`, carrying the pre-resolved
