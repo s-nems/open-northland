@@ -475,6 +475,20 @@ the next iteration inherits it.
   disagree on a key field's shape, a fixture that pre-fills the field hides the gap; test the consumer
   with the *exact* shape the producer emits (here: a jobless animal), and exercise the full `step()`
   schedule end-to-end, not the system in isolation. (sim/combat)
+- [bec7cfc] A numeric tuning option threaded into a modulo/comparison loop (`chosen % stride`, `len >=
+  maxHerds`) silently MIS-behaves on a non-finite value: `Math.max(1, Math.floor(NaN))` is `NaN`, and
+  every comparison with `NaN` is false — so `% NaN === 0` never picks (empty result) and `>= NaN` never
+  caps (uncapped result), both failing QUIETLY rather than throwing. The TS `number` type doesn't forbid
+  `NaN`, so a public API that loops on an option should `Number.isFinite(opt) ? clamp : default` (fall
+  back to the documented default), not just `?? default` (which only catches `undefined`). Guard the
+  option where it enters the loop, not at the call site. (sim/api)
+- [bec7cfc] A "map populator that seeds wildlife" is faithfully a PURE command-PRODUCER, not a system:
+  `seedAnimalHerds(content, terrain)` returns the `spawnAnimalHerd` commands a caller enqueues through
+  the one mutation seam — so it touches no entity store (trivially deterministic/replay-faithful, inert
+  on goldens because nothing calls it there) and stays out of `SYSTEM_ORDER` (seeding is a one-shot at
+  map load, not per-tick). When a roadmap step is "issue command X to populate the world", prefer a pure
+  function returning `Command[]` over a new tick system; the command seam already gives you logging,
+  replay, and determinism for free. (sim/architecture)
 - [1f8f2c9] Adding one field (`leaderDistance`) to a derived-view struct (`HerdParams`) broke three
   `toEqual` assertions that snapshot the whole object — `toEqual` is exhaustive, so a grown read view
   ripples into every test that pins its full shape. That is the *intended* tripwire (a view's shape is
