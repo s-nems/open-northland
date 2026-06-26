@@ -526,3 +526,11 @@ the next iteration inherits it.
   precondition). When hands-on-verifying a combat/targeting change end-to-end, build the sim WITH a
   walkable map (and a real-content map needs a real walkable landscape typeId — typeId 0 is absent from
   the real IR, use one that exists) and give every intended combatant a `Health` pool. (sim/combat)
+- [c8e6639] An ad-hoc hands-on determinism check (run the scenario twice, compare `hashState()`)
+  FALSE-FAILED — reported `hash-equal: false` for a change that was perfectly deterministic — because
+  the two runs shared the **module-singleton component stores** (`Position.store` etc. are global
+  across `Simulation` instances) and the second run inherited the first's leftover entities. The
+  vitest suites avoid this with a `beforeEach` `clearStores()`; a throwaway harness that loops two
+  runs in one function does NOT get that, so it must `Foo.store.clear()` for every touched component
+  between runs (or the hash diverges from stale state, not from real nondeterminism). Don't trust a
+  bare two-run hash compare until the stores are cleared between them. (sim/test/determinism)
