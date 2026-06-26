@@ -616,3 +616,13 @@ the next iteration inherits it.
   code, and transiently holding more than the nominal slot cap trips nothing (no "stock ≤ slotCap"
   invariant exists). Before raising a capacity to drive delivery, confirm no invariant treats it as a
   hard bound; here none does, so the seam composes for free. (sim/transport)
+- [ba01ac0] `tribePopulation` counts EVERY settler of a tribe as a housed mouth — workers/carriers
+  included, not just colonists — so a composed e2e test that seeds delivery-carriers as that tribe's
+  settlers must give the home capacity ABOVE the seeded worker count, or `populationWithinHousing`
+  fires the instant the seeded settlers exceed housing (my first cut seeded 2 carriers against a
+  capacity-1 home → "population 2 exceeds capacity 1" on tick 1, before a single birth). And
+  `GROWUP_TICKS` is 8192 (≫ a 200-tick test window), so babies never mature mid-run — each birth
+  permanently occupies a slot, so the standing baby count equals exactly the spare capacity, not a
+  churning generation. When wiring a multi-system loop test, size the fixture so the seeded support
+  agents fit UNDER the ceiling the loop grows, and read the real growth/age constants before assuming
+  settlers turn over within the run. (sim/test)

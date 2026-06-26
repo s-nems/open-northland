@@ -17,10 +17,10 @@ import {
  * self-sustaining, progressing single-tribe settlement you can grow"). Every slice (births fill spare
  * housing; a built home accumulating its next-tier cost levels up; carriers deliver that cost) is
  * proven in isolation elsewhere, each calling ONE system directly. This proves they COMPOSE under the
- * real `Simulation.step()` schedule over many ticks: a level-0 home fills with babies to capacity 1;
- * carriers haul the next tier's cost in; the home upgrades to level 1 (capacity 2); and the
- * ReproductionSystem then fills the NEW slot — the loop closing on itself, end-to-end, with the
- * population-within-housing invariant never breached.
+ * real `Simulation.step()` schedule over many ticks: a level-0 home (capacity 3) births into its spare
+ * slot; carriers haul the next tier's cost in; the home upgrades to level 1 (capacity 5); and the
+ * ReproductionSystem then fills the NEW slots — the loop closing on itself, end-to-end, with the
+ * population-within-housing invariant never breached at any tick.
  *
  * Built with `parseContentSet` (not the shared fixture) so the home chain + per-tier `construction`
  * cost are explicit; the golden slice (no `home`-kind building) is untouched.
