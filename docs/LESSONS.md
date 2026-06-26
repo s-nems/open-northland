@@ -508,3 +508,11 @@ the next iteration inherits it.
   through `step()` did (the deer fixture struck fine at distance 1; the real cow only after seeing the
   `minRange`). When a mechanic reads a numeric range/threshold param, check the REAL data's spread, not the
   fixture's convenient value — and note any param the sim doesn't yet honor. (sim/combat)
+- [469e2c8] Adding a `minRange` floor (`dist < minRange` rejects a candidate) silently changes the
+  *same-cell* (Manhattan distance 0) case the old `maxRange`-only check let through: with `minRange`
+  floored at 1, a co-located target is now "too close" and unhittable. It's the faithful reading of
+  `minimumrange 1` ("at least one cell away"), but it's a real behavior shift reachable whenever entities
+  stack (the herd scatter can — there's no position-uniqueness invariant, [9ce6413]). When you add a
+  near-bound to a reach/threshold that was previously open at 0, name the dist-0 consequence in the doc
+  and confirm no test/golden places two combatants on one tile — the change is invisible until they do.
+  (sim/combat)

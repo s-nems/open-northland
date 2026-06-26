@@ -244,12 +244,14 @@ function mayTarget(
  * (`damage["0"]`, clamped at ≥0 — settlers wear no armor yet, so every hit lands on armor class 0).
  * Null when no weapon resolves (an unarmed combatant — it does no damage, the approximated stance).
  *
- * **The reach is a band, not just a ceiling.** `maxRange` is the far reach (at least 1, so even a
- * `maxRange 0` weapon strikes its own cell). `minRange` is the *near* reach a **ranged** weapon can't
- * fire below — the original's `hunter_bow` is `minimumrange 3, maximumrange 17` (verified in the mod's
- * `DataCnmd/types/weapons.ini`), so a bow can't hit an adjacent target; a melee weapon is `minRange 1`
- * (the common case — it strikes from cell 0/1). The band is clamped sane (`1 ≤ minRange ≤ maxRange`) so
- * a malformed weapon never reads as never-able-to-hit.
+ * **The reach is a band, not just a ceiling.** `maxRange` is the far reach (floored at 1, so even a
+ * `maxRange 0` weapon still reaches an adjacent cell). `minRange` is the *near* reach a **ranged**
+ * weapon can't fire below — the original's `hunter_bow` is `minimumrange 3, maximumrange 17` (verified
+ * in the mod's `DataCnmd/types/weapons.ini`), so a bow can't hit an adjacent target; a melee weapon is
+ * `minRange 1` (the common case — it hits from one cell away). Both ends are floored at 1, so a target
+ * sharing the attacker's own cell (Manhattan distance 0) is below every weapon's near reach and is not
+ * hit — only a real concern when the herd scatter stacks entities (entities share tiles freely). The
+ * band is clamped sane (`1 ≤ minRange ≤ maxRange`) so a malformed weapon never reads as never-able-to-hit.
  *
  * Two resolution paths, mirroring how the original keys a weapon:
  *
