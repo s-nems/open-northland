@@ -545,3 +545,11 @@ the next iteration inherits it.
   the highest enumerated id — I eyeballed `54` from the max good id (55) when the actual `logicgood` line
   count is `49`. When a doc states "N ids", derive N from the hands-on output (`cargoGoods.length`) or an
   `awk` line count, never from the value range. (pipeline/fidelity)
+- [8fb6543] A new entity that carries `Stockpile`+`Position` (the boat `Vehicle` hull) is ALREADY a
+  deposit sink the instant it exists — `nearestStoreFor`/`pileup` scan `Stockpile`+`Position`, not
+  `Building`, and `stockCapacity` returned `MAX_SAFE_INTEGER` for it (the "no Building ⇒ bare fixture,
+  uncapped" branch). So `placeBoat` had silently made a hull an UNCAPPED catch-all store accepting any
+  good; the cargo-load step is really *restricting* an over-permissive default (gate by `cargoGoods` +
+  `stockSlots`), not adding a brand-new path. When you add an entity with a component that a generic
+  scan keys on, check what the existing helpers already do with it BEFORE writing the "new" behavior —
+  the default may already be wrong, not absent. (sim/ai)
