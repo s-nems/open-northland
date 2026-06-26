@@ -65,6 +65,21 @@ For small, hard-won *gotchas* (not reworks) see [LESSONS.md](LESSONS.md); the li
 
 ## Reflection log
 
+- **2026-06-26** (doc-bloat pass) — Ratchet caught **`docs/ROADMAP.md` 333→410 lines** (past the ~300
+  executor-read budget) since the morning's structure reflection (`1e20840`, which split `readviews.ts`
+  but didn't touch the roadmap): the growth was completed-work *narrative* — Phase 3's five landed items
+  (Progression/Job/Construction/Reproduction/HUD) and Phase 4's CombatSystem (substance landed),
+  N-tribes (scaffolding landed) and the **substance-complete** Animals item (a single 110-line bullet)
+  had each re-accreted a full inline verification trail. Swept all eight verbatim into
+  **`docs/ROADMAP-ARCHIVE.md`** (reflection-only — the executor never reads it; the 16 commits since the
+  last sweep are byte-preserved by phrase-verified extraction) and condensed each live item to a
+  one-line summary + archive pointer, marking the Animals item **[x]** (its own prose declared it
+  substance-complete). `ROADMAP.md` **410→159 lines**; the Phase-4 current target now reads at a glance.
+  Docs-only — **golden state-hash + atomic-trace unchanged**; 672 tests + check + build green. No
+  proposals added/closed. (Noted but not actioned: `LESSONS.md` is 518 lines — reflection-only, a future
+  curation candidate, secondary to the executor-read ROADMAP fixed here.) Next `/iterate` roadmap step:
+  seed a real **multi-civilization** scenario exercising two playable tribes' asymmetric bindings
+  end-to-end (the Phase-4 N-tribes "Next:") — or the hunter's `harvest_cadaver` (atomic 33) meat follow-up.
 - **2026-06-26** (structure pass) — Ratchet caught **`systems/readviews.ts` 309→535 lines** since the last
   reflection (`9b41021`, which had just extracted it out of `shared.ts`): the read-view file had
   re-accreted three unrelated concerns — the HUD/goods projections (`tribeStocks`, `tribePopulationByJob`,
