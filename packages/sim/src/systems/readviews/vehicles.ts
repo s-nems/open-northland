@@ -94,3 +94,36 @@ export function vehicleCargoGoods(vehicle: VehicleType): Set<number> {
 export function vehicleMayCarry(vehicle: VehicleType, goodType: number): boolean {
   return vehicle.cargoGoods.includes(goodType);
 }
+
+/**
+ * A {@link VehicleType}'s **footprint/size class** — its extracted `logicSize` (`0` = a land cart,
+ * `1` = the catapult/siege engine, `2` = a ship in the base data), the last extracted vehicle-table
+ * field to get a read-side accessor and so the one that completes the vehicle-record consumer
+ * coverage: every sibling field already has a reader — `stockSlots` via {@link largestShipCapacity}
+ * (and the sim's `carrierCarryCapacity`), `passengerSlots` via {@link isShipVehicle}, `cargoGoods` via
+ * {@link vehicleCargoGoods}/{@link vehicleMayCarry} — only `logicSize` was acknowledged-but-unread
+ * (the {@link isShipVehicle} note flags that we key the boat test on `passengerSlots`, NOT `logicSize`).
+ *
+ * Note this is a *different, coarser* axis than {@link isShipVehicle}'s boat/cart split: the three
+ * `logicSize` values partition all six base vehicles into cart `0` (handcart + the two oxcarts),
+ * catapult `1`, and ship `2` — so it distinguishes the catapult from the carts (which `isShipVehicle`
+ * lumps together as "not a ship"), and `logicSize === 2` is in fact a *third* independent signal that a
+ * vehicle is a ship (converging with `passengerSlots > 0` and `logiccommander 24`, per the
+ * {@link isShipVehicle} note). It is the per-vehicle footprint a deferred placement/rendering slice
+ * would read to size a vehicle's tile occupancy; captured ahead of that drive as a plain accessor.
+ *
+ * Like {@link largestShipCapacity}'s `stockSlots` — and unlike the weapon/armor class-enum fields
+ * (a weapon's `mainType`, which is `undefined` when absent) — `logicSize` is a quantity the schema
+ * **defaults to `0`** (`z.number().int().nonnegative().default(0)`), so this returns a plain `number`,
+ * never `undefined`. A vehicle with the smallest footprint reads `0` (a cart), the same value the source
+ * carries, so there is no "no record" sentinel: `0` *is* the cart footprint — the weight-field
+ * (`weaponWeightOf`/`armorWeightOf` in ./classes.ts) shape, not the class-enum-grouping shape.
+ *
+ * FIDELITY n/a: a pure field accessor over the already-extracted `logicSize` param (see
+ * {@link VehicleType.logicSize}) — it adds no mechanic and invents no data (the `{0,1,2}` magnitudes are
+ * the faithful `vehicletypes.ini` values the pipeline pinned). Determinism: a pure field read — no world,
+ * no RNG, no wall-clock.
+ */
+export function vehicleSizeOf(vehicle: VehicleType): number {
+  return vehicle.logicSize;
+}

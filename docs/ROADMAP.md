@@ -130,8 +130,12 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       each hold's `logicgood` cargo allow-list (`VehicleType.cargoGoods`/`vehicleMayCarry`), a placed boat-hull
       ENTITY carrying a `Stockpile` (`placeBoat` + `Vehicle{vehicleType,tribe}`, gated by the unlocked set),
       the cargo-LOAD gate filtering a haul into a hull by the ship's allow-list (inherited through
-      `stockCapacity` with no new system), and the `fisher_sea`/`trader_sea` jobs classified by the `_sea`
-      id-suffix (`seaJobs`). The landscape **placement-LAYER** flags now have a consumer too
+      `stockCapacity` with no new system), the `fisher_sea`/`trader_sea` jobs classified by the `_sea`
+      id-suffix (`seaJobs`), and a vehicle's `logicSize` footprint class (`vehicleSizeOf`,
+      `systems/readviews/vehicles.ts` — `{0:cart, 1:catapult, 2:ship}` over the real 6, a third independent
+      ship signal converging with `passengerSlots`/`logiccommander`; the deferred placement/tile-occupancy
+      drive's seed), which **completes the vehicle-record consumer coverage** (every extracted vehicle field
+      — `stockSlots`/`passengerSlots`/`cargoGoods`/`logicSize` — now has a sim read view). The landscape **placement-LAYER** flags now have a consumer too
       (`systems/readviews/landscape.ts`): `waterLayerLandscape`/`isWaterLayerType` (the `allowedonwater`
       rows — exactly the 3 wall/gate structures that span water in the real IR) and
       `universalLayerLandscape`/`isUniversalLayerType` (the `allowedoneverything` rows — exactly the `void`
