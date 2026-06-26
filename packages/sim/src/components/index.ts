@@ -168,6 +168,26 @@ export const Age = defineComponent<{ ticks: number }>('Age');
 export const Health = defineComponent<{ hitpoints: number; max: number }>('Health');
 
 /**
+ * A herd membership: the {@link Entity} that leads the pack this animal belongs to. The animal-spawn
+ * mechanic (the `spawnAnimalHerd` command) adds it to every member of a herd whose `animaltypes.ini`
+ * record sets `searchforleader` — a leader is designated (the herd's lowest-id member, which points
+ * `leader` at **itself**) and each follower points `leader` at it. A **solitary** animal (a record
+ * with `searchforleader` false) carries **no** `HerdMember` at all: it has no leader to follow.
+ *
+ * This is the data foundation the later **follow-the-leader** movement drive consumes (a follower
+ * stays within `maximumLeaderDistance` of its leader); this slice only *records* the relation, it adds
+ * no movement behaviour yet (no oracle for the herd-cohesion AI — see docs/FIDELITY.md). Like
+ * {@link JobAssignment}/{@link Age}/{@link Health} it is a **separate optional component**: only a
+ * herding animal carries one, so a civilization settler / the golden slice has none and the hash is
+ * untouched. `leader` is an {@link Entity} id (a monotonic integer), so it hashes deterministically
+ * like every other component. A leader carrying a self-referential `HerdMember` is intentional — it
+ * marks "this is a herd leader" without a second flag component, and a follower can read its leader's
+ * membership uniformly. Determinism: set once at spawn from a canonical (lowest-id) leader pick, no
+ * RNG/wall-clock.
+ */
+export const HerdMember = defineComponent<{ leader: Entity }>('HerdMember');
+
+/**
  * A harvestable resource node placed in the world (a tree, ore vein, berry bush). It yields its
  * `goodType` when a settler runs the good's harvest atomic on its cell; `remaining` is the units
  * left — each completed harvest decrements it (AtomicSystem's harvest effect), so a finite node
