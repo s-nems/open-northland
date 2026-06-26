@@ -559,3 +559,12 @@ the next iteration inherits it.
   passes silently and only a reviewer catches it — the exact de39b3d finding, recurring). When you
   copy a doc block from a sibling module as a template, downgrade any `{@link X}` whose `X` you didn't
   also import to plain `` `X` `` backticks. (docs)
+- [796fcb2] A roadmap "bring over the mod's data edits" item can imply an overlay-MERGE that doesn't
+  exist: the previous step's hint was to diff which `DataCnmd` `.ini` rows override the base
+  `Data/logic` type tables — but the mod ships ZERO copies of `goodtypes`/`jobtypes`/`landscapetypes`/
+  `vehicletypes`/`armortypes`/`animaltypes`.ini (`find DataCnmd -iname '<t>.ini'` is empty), so there
+  is no logic-table merge to do; each rule table already has a single readable source. The mod's actual
+  readable contribution is graphics/tribe/house/weapon/atomic `.ini`s, most already preferred. The real
+  unbuilt overlay was a GRAPHICS one (mod `types/vehiclestype/jobgraphics.ini` twin of the base
+  `vehicles/jobgraphics.cif`, broader per-tribe). Before scoping a "mod overlays base table X" merge,
+  `find` the mod tree for X's filename first — a [4ef956f]-family non-existent-source trap. (pipeline/roadmap)
