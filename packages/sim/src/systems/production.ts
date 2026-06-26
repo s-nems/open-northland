@@ -1,6 +1,7 @@
 import type { Recipe } from '@vinland/data';
 import { Building, Production, Stockpile } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
+import { ONE } from '../fixed.js';
 import type { System, SystemContext } from './context.js';
 import { goodEnabled } from './progression.js';
 import { recipeOf, stockCapacity, workerPresentAt } from './shared.js';
@@ -17,10 +18,11 @@ import { recipeOf, stockCapacity, workerPresentAt } from './shared.js';
  *    cycle started, so they fit), emit a `goodProduced` event, and remove the {@link Production}
  *    component (the workplace is idle again). If the worker has left, the cycle **pauses** — `elapsed`
  *    is held, not lost — until the worker returns.
- *  - **Idle** (no `Production`): start a cycle iff (a) it is staffed, (b) the stockpile holds every
- *    input in full, and (c) every output has free room up to the building type's per-good capacity.
- *    Starting consumes the inputs immediately (reserving them) and snapshots `recipe.ticks` as the
- *    cycle `duration`.
+ *  - **Idle** (no `Production`): start a cycle iff (a) the workplace is **built** (`built >= ONE` — an
+ *    under-construction site never produces, even if its delivered build materials happen to satisfy a
+ *    recipe input), (b) it is staffed, (c) the stockpile holds every input in full, and (d) every
+ *    output has free room up to the building type's per-good capacity. Starting consumes the inputs
+ *    immediately (reserving them) and snapshots `recipe.ticks` as the cycle `duration`.
  *
  * **Worker-presence gate:** a workplace only produces while its worker is present — a settler whose
  * `jobType` matches one of the building type's `workers` slots is standing on its tile
@@ -61,6 +63,7 @@ export const productionSystem: System = (world, ctx) => {
   // Start cycles on idle workplaces whose inputs are present and outputs have room.
   for (const e of world.query(Building, Stockpile)) {
     if (world.has(e, Production)) continue; // already producing
+    if (world.get(e, Building).built < ONE) continue; // under construction — a site doesn't produce
     const recipe = recipeOf(world, ctx, e);
     if (recipe === undefined) continue; // not a producing workplace
     if (!workerPresentAt(world, ctx, e)) continue; // unstaffed — no worker to run the cycle

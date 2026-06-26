@@ -91,8 +91,14 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `constructionSystem` finishes it the same tick. A built building reverts to its normal stock-slot
       capacity, so it stops attracting materials. Proven by `construction-system.test.ts` (3 new cases:
       single-good sink, end-to-end full-cost build via three loaded carriers, determinism) over the real
-      `step()` schedule. **Open (still our design, no oracle):** the **home level-up** trigger (a built
-      home consuming the next tier's cost to upgrade `level` → larger `homeSize`).
+      `step()` schedule. **Under-construction PRODUCTION gate now LANDED** (→ `productionSystem`'s start
+      loop, `systems/production.ts`): a workplace still `built < ONE` is skipped, so **an under-construction
+      workshop produces nothing** — the original's "a building doesn't function until built" behavior, now
+      *guaranteed* rather than an incidental side effect of the site's construction-only `stockCapacity`
+      (a recipe whose input overlapped a delivered build material could previously have been raided by
+      production, which runs before construction in `SYSTEM_ORDER`). Inert on the golden (every golden
+      building is placed `built = ONE`). **Open (still our design, no oracle):** the **home level-up**
+      trigger (a built home consuming the next tier's cost to upgrade `level` → larger `homeSize`).
 - [ ] **ReproductionSystem** — **landed** (→ archive): one birth per tribe per tick while
       `tribePopulation < housingCapacity` (deterministic cadence, the `populationWithinHousing` invariant);
       a newborn is the data-pinned youngest age class (`baby_female`), `systems/ageclass.ts` recognizes the
