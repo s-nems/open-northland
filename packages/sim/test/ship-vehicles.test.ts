@@ -1,6 +1,12 @@
 import { type ContentSet, IR_VERSION, type VehicleType, parseContentSet } from '@vinland/data';
 import { describe, expect, it } from 'vitest';
-import { isShipVehicle, largestShipCapacity, shipVehicles } from '../src/systems/index.js';
+import {
+  isShipVehicle,
+  largestShipCapacity,
+  shipVehicles,
+  vehicleCargoGoods,
+  vehicleMayCarry,
+} from '../src/systems/index.js';
 
 /** Resolve a vehicle by its `id` from a content set (throws if absent — a test-fixture programmer error). */
 function vehicle(content: ContentSet, id: string): VehicleType {
@@ -30,15 +36,30 @@ function vehicleContent(): ContentSet {
     buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
     vehicles: [
       // ship big (typeId 4) declared first — a ship: passengerSlots > 0. Proves the sort, not order.
-      { typeId: 4, id: 'ship_big', stockSlots: 200, passengerSlots: 9, logicSize: 2 },
+      // cargoGoods mirrors the real ships' full haulable-goods enumeration (sampled to a few ids here).
+      {
+        typeId: 4,
+        id: 'ship_big',
+        stockSlots: 200,
+        passengerSlots: 9,
+        logicSize: 2,
+        cargoGoods: [16, 17, 1],
+      },
       // handcart (typeId 1) — a land cart: no passengers.
-      { typeId: 1, id: 'handcart', stockSlots: 15, passengerSlots: 0, logicSize: 0 },
+      { typeId: 1, id: 'handcart', stockSlots: 15, passengerSlots: 0, logicSize: 0, cargoGoods: [16, 17] },
       // ship small (typeId 3) declared after the big ship — proves the sort puts it first.
-      { typeId: 3, id: 'ship_small', stockSlots: 50, passengerSlots: 19, logicSize: 2 },
-      // catapult (typeId 5) — a siege engine, NOT a ship: it carries no passengers (logicSize 1).
+      {
+        typeId: 3,
+        id: 'ship_small',
+        stockSlots: 50,
+        passengerSlots: 19,
+        logicSize: 2,
+        cargoGoods: [16, 17, 1],
+      },
+      // catapult (typeId 5) — a siege engine, NOT a ship: it carries no passengers (logicSize 1) or cargo.
       { typeId: 5, id: 'catapult', stockSlots: 0, passengerSlots: 0, logicSize: 1 },
       // oxcart (typeId 2) — a land cart: no passengers.
-      { typeId: 2, id: 'oxcart', stockSlots: 30, passengerSlots: 0, logicSize: 0 },
+      { typeId: 2, id: 'oxcart', stockSlots: 30, passengerSlots: 0, logicSize: 0, cargoGoods: [16, 17] },
     ],
   });
 }
@@ -109,5 +130,35 @@ describe('largestShipCapacity', () => {
       vehicles: [{ typeId: 1, id: 'handcart', stockSlots: 15 }],
     });
     expect(largestShipCapacity(cartsOnly)).toBe(0);
+  });
+});
+
+describe('vehicleCargoGoods / vehicleMayCarry', () => {
+  it('exposes a ship hold cargo allow-list as a membership set', () => {
+    const ship = vehicle(vehicleContent(), 'ship_big');
+    const carryable = vehicleCargoGoods(ship);
+    expect(carryable.has(16)).toBe(true);
+    expect(carryable.has(1)).toBe(true);
+    expect(carryable.has(99)).toBe(false); // a good not on the allow-list cannot ride
+    expect(carryable.size).toBe(3);
+  });
+
+  it('vehicleMayCarry is the single-good predicate over the allow-list', () => {
+    const ship = vehicle(vehicleContent(), 'ship_small');
+    expect(vehicleMayCarry(ship, 17)).toBe(true);
+    expect(vehicleMayCarry(ship, 1)).toBe(true);
+    expect(vehicleMayCarry(ship, 42)).toBe(false); // not enumerated -> not loadable
+  });
+
+  it('applies to a land cart too (the filter is generic, not ship-only)', () => {
+    const cart = vehicle(vehicleContent(), 'handcart');
+    expect(vehicleMayCarry(cart, 16)).toBe(true);
+    expect(vehicleMayCarry(cart, 1)).toBe(false); // cart's sampled list omits good 1
+  });
+
+  it('is empty for a vehicle that carries no cargo (the catapult lists no logicgood)', () => {
+    const cata = vehicle(vehicleContent(), 'catapult');
+    expect(vehicleCargoGoods(cata).size).toBe(0);
+    expect(vehicleMayCarry(cata, 16)).toBe(false); // nothing rides in a catapult
   });
 });

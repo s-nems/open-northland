@@ -634,11 +634,13 @@ export function extractArmor(sections: readonly RuleSection[], src: SourceRef): 
  * twin, and the file is plain `.ini` like `goodtypes`/`landscapetypes`) into validated
  * {@link VehicleType} IR. The carry capacity is `stockslots` (the param the later multi-good carrier
  * slice consumes); `passengerslots` and `logicsize` round out the type record. The per-vehicle
- * `logicgood`/`logicpassenger` allow-lists, vector/slot graphics (`stockvector`/`vehicleslots`), the
- * draft-animal (`logicdragginganimaltribe`) and `debug*` extras are intentionally skipped — they
- * belong with the later vehicle/transport + graphics slices, not this type-table extract. Throws on a
- * section missing the required numeric `type` (matches {@link extractWeapons}'s throw-on-malformed
- * stance).
+ * `logicgood` cargo allow-list is carried (the goodtypes a hold may hold — the `cargoGoods` filter
+ * the Sea/Northland boat-as-mobile-store consumes), read with {@link getIntList} since each
+ * `logicgood N` is a repeated single-value line. The `logicpassenger` board-list, vector/slot
+ * graphics (`stockvector`/`vehicleslots`), the draft-animal (`logicdragginganimaltribe`) and `debug*`
+ * extras are still skipped — they belong with the later embark/transport + graphics slices, not this
+ * type-table extract. Throws on a section missing the required numeric `type` (matches
+ * {@link extractWeapons}'s throw-on-malformed stance).
  */
 export function extractVehicles(sections: readonly RuleSection[], src: SourceRef): VehicleType[] {
   const vehicles: VehicleType[] = [];
@@ -654,6 +656,7 @@ export function extractVehicles(sections: readonly RuleSection[], src: SourceRef
         stockSlots: getInt(sec, 'stockslots'),
         passengerSlots: getInt(sec, 'passengerslots'),
         logicSize: getInt(sec, 'logicsize'),
+        cargoGoods: getIntList(sec, 'logicgood'),
         source: { file: src.file, block: 'vehicletype', layer: src.layer ?? 'base' },
       }),
     );

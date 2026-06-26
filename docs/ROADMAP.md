@@ -145,9 +145,15 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `carrierCarryCapacity` uses (`tribeUnlockEnabled`) — so a boat-building/embark slice can ask which
       hulls a tribe may field. In the **real IR** both ships are GATED (job 9 enables ships 3 & 4), so a
       tribe with no settlers fields zero ships; spawning a job-9 settler flips the unlocked set to `[3,4]`.
+      **Cargo allow-list now LANDED** (→ `VehicleType.cargoGoods` + `vehicleCargoGoods`/`vehicleMayCarry`,
+      `systems/readviews/vehicles.ts`): `extractVehicles` pulls each vehicle's `logicgood` allow-list (the
+      goodtype ids a hold may carry — WHAT a boat-as-mobile-store holds, distinct from `stockSlots`' how
+      *much*), and the read side gives the per-hold load gate. In the **real IR** both ships + all 3 carts
+      enumerate 49 cargo goods, the catapult none.
       **Open:** water-valency terrain (which cells a ship floats on — map-decode-blocked, the water
       surface lives in the triangle/terrain grid, not a `landscapetypes.ini` flag), boats as mobile-store
-      ENTITIES, embark/disembark atomics, and the sea jobs.
+      ENTITIES (a placed hull carrying a stockpile, applying the `cargoGoods` filter on load),
+      embark/disembark atomics, and the sea jobs.
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.
 

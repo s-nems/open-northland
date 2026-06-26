@@ -158,9 +158,10 @@ jobtype 32
 // Mirrors Data/logic/vehicletypes.ini (plain `.ini`, the `<CULTURES_CIF_BEGIN>` header line is not a
 // `[section]` so the parser ignores it like goodtypes/landscapetypes): each `[vehicletype]` carries a
 // numeric `type`, a quoted `name`, `logicsize`, `stockslots` (the carry capacity), `passengerslots`,
-// and per-vehicle `logicgood`/`logicpassenger`/`debug*` extras the schema doesn't carry (ignored). The
-// handcart (15 slots, no passengers, land size 0) and the small ship (50 slots, 19 passengers, sea
-// size 2) bracket the real range. The third omits the slot/size lines to exercise the schema defaults.
+// and the repeated `logicgood N` cargo allow-list (now carried as `cargoGoods`); the `logicpassenger`/
+// `debug*` extras the schema doesn't carry are ignored. The handcart (15 slots, no passengers, land
+// size 0, two `logicgood`) and the small ship (50 slots, 19 passengers, sea size 2, no `logicgood`)
+// bracket the real range. The third omits the slot/size lines to exercise the schema defaults.
 const VEHICLETYPES_INI = `<CULTURES_CIF_BEGIN><03FD><000001A0> Don't modify this line!
 [vehicletype]
 type 1
@@ -671,6 +672,8 @@ describe('extractVehicles', () => {
         stockSlots: 15,
         passengerSlots: 0,
         logicSize: 0,
+        // Two repeated `logicgood N` lines -> the cargo allow-list, in file order.
+        cargoGoods: [16, 17],
         source: src,
       },
       {
@@ -680,9 +683,11 @@ describe('extractVehicles', () => {
         stockSlots: 50,
         passengerSlots: 19,
         logicSize: 2,
+        // This fixture's small-ship section lists no `logicgood` -> empty allow-list (schema default).
+        cargoGoods: [],
         source: src,
       },
-      // No slot/size lines -> schema defaults of 0 for all three.
+      // No slot/size/logicgood lines -> schema defaults (0 / empty) for all.
       {
         typeId: 5,
         id: 'catapult',
@@ -690,6 +695,7 @@ describe('extractVehicles', () => {
         stockSlots: 0,
         passengerSlots: 0,
         logicSize: 0,
+        cargoGoods: [],
         source: src,
       },
     ]);
