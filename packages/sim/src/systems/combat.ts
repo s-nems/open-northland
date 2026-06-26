@@ -11,7 +11,7 @@ import type { Entity, World } from '../ecs/world.js';
 import { fx } from '../fixed.js';
 import type { CellId, TerrainGraph } from '../terrain.js';
 import type { System, SystemContext } from './context.js';
-import { isAggressiveAnimal, isAnimalTribe, mayAttack } from './readviews.js';
+import { isAggressiveAnimal, isAnimalTribe, mayAttack } from './readviews/index.js';
 
 /**
  * CombatSystem (the **targeting** half of the combat loop) — choose who each idle combatant swings

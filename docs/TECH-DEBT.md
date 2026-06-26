@@ -65,6 +65,20 @@ For small, hard-won *gotchas* (not reworks) see [LESSONS.md](LESSONS.md); the li
 
 ## Reflection log
 
+- **2026-06-26** (structure pass) — Ratchet caught **`systems/readviews.ts` 309→535 lines** since the last
+  reflection (`9b41021`, which had just extracted it out of `shared.ts`): the read-view file had
+  re-accreted three unrelated concerns — the HUD/goods projections (`tribeStocks`, `tribePopulationByJob`,
+  `goodsGraph`), the static weapon-vs-armor `combatDamage` lookup, and a growing cluster of tribe/animal
+  views (`playableTribes`, `isAnimalTribe`, `animalRecord`/`isAggressiveAnimal`/`herdParams`/…, `mayAttack`)
+  added across the combat/animal slices. Split it into a **`systems/readviews/` directory** — `hud.ts`
+  (171 lines), `combat.ts` (139), `tribes.ts` (232), and an `index.ts` barrel re-exporting all three, each
+  now under the ~300-line budget. Pure
+  module move: the two importers (`systems/index.ts` barrel, `systems/combat.ts`) repoint from
+  `./readviews.js` to `./readviews/index.js`; no external consumer import path changed (all 15 read-view
+  symbols verified still resolving through the built `@vinland/sim` `systems` namespace). Behavior-preserving
+  — **golden state-hash + atomic-trace unchanged**; 623 tests + check + build green. No proposals
+  added/closed. Next `/iterate` roadmap step is unchanged: the **animal-spawn/herding slice** (Phase 4) that
+  places animal groups on the map via the `herdParams`/`animalHitpoints` views.
 - **2026-06-25** (structure pass) — Ratchet caught **`systems/shared.ts` 146→491 lines** since the last
   reflection (`3991298`): it had become two jobs — the genuine cross-system helper *leaf* (imported by
   the per-tick systems to break import cycles) plus six accreted **terminal read views** (`tribeStocks`,
