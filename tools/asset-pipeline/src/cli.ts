@@ -670,7 +670,12 @@ async function writeIr(args: Args): Promise<ContentSet> {
  *    the same {@link RuleSection} model the `.ini` parser yields;
  *  - and, when a `--mod` is given, the mod's `<mod>/types/humanstype/jobgraphics.ini`
  *    `[jobbasegraphics]` + `[jobchangegraphics]` records (the readable mod human skin, golden rule #4 —
- *    overlays the base-game humans above).
+ *    overlays the base-game humans above), plus the mod's `<mod>/types/vehiclestype/jobgraphics.ini`
+ *    `[jobgraphics]` records — the readable twin of the base vehicles `.cif` (golden rule #4 again),
+ *    carrying the culturesnation mod's broader per-tribe cart/ship recolours (tribes 1..4, not just the
+ *    base's 1 & 4). Same flat grammar, so it reuses {@link extractGraphicsBindings}; the base bindings'
+ *    `(bmd, palette)` pairs are a subset of the mod's, so {@link convertBmdTree} (which keys atlases on
+ *    `(bmd, palette)`) emits the same atlas files either way while gaining the extra tribes' cross-refs.
  *
  * Both the base-appearance (`[jobbasegraphics]`) and equipment-skin (`[jobchangegraphics]`) layers share
  * the same grammar, so all four sources flatten via {@link jobBaseGraphicsToBindings} into the same flat
@@ -728,6 +733,15 @@ export async function resolveGraphicsBindings(
       bindings.push(...jobBaseGraphicsToBindings(extractJobBaseGraphics(humanGraphics)));
       bindings.push(...jobBaseGraphicsToBindings(extractJobChangeGraphics(humanGraphics)));
     }
+    // The mod ships a readable [jobgraphics] twin of the base vehicles .cif (golden rule #4):
+    // `types/vehiclestype/jobgraphics.ini` overlays the base cart/ship recolours, and the
+    // culturesnation mod carries the BROADER per-tribe set (22 records across tribes 1..4 vs the
+    // base .cif's 6 across tribes 1 & 4 only). The flat [jobgraphics] grammar is identical, so the
+    // same extractor applies; `convertBmdTree` keys atlases on (bmd, palette), so the base bindings'
+    // (bmd, palette) pairs — a strict subset of the mod's — emit the same atlas files either way,
+    // while the mod's extra tribe-2/3 rows carry the per-tribe logicvehicle cross-refs.
+    const vehicleGraphics = await readIni(join(mod, 'types', 'vehiclestype', 'jobgraphics.ini'));
+    if (vehicleGraphics) bindings.push(...extractGraphicsBindings(vehicleGraphics));
   }
   return {
     bindings,

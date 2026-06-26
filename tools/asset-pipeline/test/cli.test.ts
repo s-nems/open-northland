@@ -630,6 +630,50 @@ describe('resolveGraphicsBindings', () => {
     expect(bindings[1]?.jobId).toBeUndefined();
   });
 
+  it('overlays the mod vehiclestype/jobgraphics.ini [jobgraphics] cart/ship records (golden rule #4)', async () => {
+    const inis = join('Data', 'engine2d', 'inis');
+    await mkdir(join(game, inis, 'animals'), { recursive: true });
+    await mkdir(join(game, inis, 'vehicles'), { recursive: true });
+    await mkdir(join(game, 'DataCnmd', 'types', 'vehiclestype'), { recursive: true });
+    await writeFile(
+      join(game, inis, 'animals', 'jobgraphics.ini'),
+      '[jobgraphics]\ngfxbobmanagerbody "Data\\Bobs\\Lion.bmd"\ngfxpalettebody "Lion01"\n',
+    );
+    // The base vehicles .cif carries the narrow base-tribe set.
+    await writeFile(
+      join(game, inis, 'vehicles', 'jobgraphics.cif'),
+      buildMapCif([
+        { level: 1, text: 'jobgraphics' },
+        { level: 2, text: 'logictribe 1' },
+        { level: 2, text: 'logicvehicle 2' },
+        { level: 2, text: 'gfxbobmanagerbody "Data\\Bobs\\Cart.bmd" "Data\\Bobs\\Cart_s.bmd"' },
+        { level: 2, text: 'gfxpalettebody "OxCart"' },
+      ]),
+    );
+    // The mod ships the readable twin with an extra tribe's vehicle recolour (broader per-tribe set).
+    await writeFile(
+      join(game, 'DataCnmd', 'types', 'vehiclestype', 'jobgraphics.ini'),
+      '[jobgraphics]\nlogictribe 1\nlogicvehicle 2\n' +
+        'gfxbobmanagerbody "Data\\Bobs\\Cart.bmd" "Data\\Bobs\\Cart_s.bmd"\ngfxpalettebody "OxCart"\n\n' +
+        '[jobgraphics]\nlogictribe 3\nlogicvehicle 4\n' +
+        'gfxbobmanagerbody "Data\\Bobs\\Ship.bmd" "Data\\Bobs\\Ship_s.bmd"\ngfxpalettebody "Human_Ship01"\n',
+    );
+
+    const { bindings } = await resolveGraphicsBindings(game, 'DataCnmd');
+
+    // Base animals binding, then the base vehicle .cif record, then the mod's [jobgraphics] overlay.
+    expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([
+      ['data/bobs/lion.bmd', 'lion01'],
+      ['data/bobs/cart.bmd', 'oxcart'],
+      ['data/bobs/cart.bmd', 'oxcart'],
+      ['data/bobs/ship.bmd', 'human_ship01'],
+    ]);
+    // The mod's extra tribe-3 ship carries its own per-tribe cross-ref (the base .cif lacks it).
+    expect(bindings[3]?.tribeId).toBe(3);
+    expect(bindings[3]?.shadowBmd).toBe('data/bobs/ship_s.bmd');
+    expect(bindings[3]?.jobId).toBeUndefined();
+  });
+
   it('returns empty lists with a warning when a binding source is missing', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
