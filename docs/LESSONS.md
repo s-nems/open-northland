@@ -666,3 +666,10 @@ the next iteration inherits it.
   `getInt(sec, 'munitionType')` would silently return undefined for every record (the [386] vanish-trap)
   and tests on a same-cased fixture would stay green. The hands-on real-IR count is the catch: a non-zero
   carrier count (30/105) proves the key resolved; 0 would mean a casing miss. (pipeline/data)
+- [7dbb3c9] A NEW zod schema field (`WeaponType.damageType`) that the extractor sets is silently
+  STRIPPED until you rebuild — the pipeline test imports `@vinland/data` from its compiled `dist/`, and
+  a stale `dist/schema.js` zod object `.parse()`-drops any key it doesn't know. Symptom: the extractor
+  visibly sets the field but the test's `toEqual` shows it MISSING (a false-red that looks like a casing
+  miss or a getInt bug). Fix: `npm run build` after a schema change before re-running the pipeline tests;
+  `grep -c <field> packages/data/dist/schema.js` tells you whether dist is current (0 = stale). The twin
+  of the stale-committed-IR false-GREEN [49b6a22]: stale dist false-REDs an extractor's new field. (pipeline/data)
