@@ -282,11 +282,12 @@ export const Production = defineComponent<{
 }>('Production');
 
 /**
- * A per-entity **walking pace** override: how far this entity advances toward its current
- * {@link PathFollow} waypoint each tick, in fixed-point tile units. The MovementSystem reads it for a
- * path-follower that carries one; an entity **without** it walks at the universal settler pace
- * ({@link MOVE_SPEED_PER_TICK}), so the golden/vertical-slice (no entity stamps a `MoveSpeed`) is
- * untouched — the separate-optional-component pattern of {@link HerdMember}/{@link Age}/{@link Health}.
+ * A per-entity **locomotion pace** override: how far this entity advances toward its current
+ * {@link PathFollow} waypoint each tick, in fixed-point tile units. The MovementSystem reads `perTick`
+ * (the **walking** gait) for a path-follower that carries one; an entity **without** it walks at the
+ * universal settler pace ({@link MOVE_SPEED_PER_TICK}), so the golden/vertical-slice (no entity stamps a
+ * `MoveSpeed`) is untouched — the separate-optional-component pattern of
+ * {@link HerdMember}/{@link Age}/{@link Health}.
  *
  * The animal-spawn mechanic stamps it on each herd creature from the `animaltypes.ini` `movespeed`
  * param: a creature with an explicit `movespeed` of `N` walks `ONE / N` tile/tick (a larger `movespeed`
@@ -294,11 +295,21 @@ export const Production = defineComponent<{
  * so a cow grazes at its own data-pinned speed instead of the settler default. A creature whose record
  * omits `movespeed` carries no `MoveSpeed` (the engine default applies = the universal pace).
  *
- * `perTick` is a positive {@link Fixed} (minted only via `fx.*`, so it hashes deterministically). It is
- * read identically to {@link MOVE_SPEED_PER_TICK} by the same drift-free arrival-snap, so a per-entity
- * pace introduces no rounding divergence — two runs stay byte-identical.
+ * `runPerTick` is the animal's **running** gait (the `runspeed` param) — the *faster* pace a fleeing or
+ * charging creature moves at (a smaller `runspeed` than `movespeed` = `ONE/runspeed` > `ONE/walk`, the
+ * faster step under the same step-period reading). It is **recorded on the entity but not yet consumed**:
+ * the flee/charge DRIVE that switches to it (when an animal runs vs walks) is undocumented "soul"
+ * behaviour with no oracle, deferred (docs/FIDELITY.md "Animal locomotion pace"); landing the param on the
+ * entity now — the same "data-on-the-entity before its consumer" discipline as `Armor`/`cargoGoods` —
+ * means that drive becomes a pure read switch, not a re-extraction. `null` when the record omits
+ * `runspeed` (only the walk pace is known). The MovementSystem reads only `perTick`, so this field is
+ * inert today.
+ *
+ * Both paces are positive {@link Fixed}s (minted only via `fx.*`, so they hash deterministically). The
+ * walk pace is read identically to {@link MOVE_SPEED_PER_TICK} by the same drift-free arrival-snap, so a
+ * per-entity pace introduces no rounding divergence — two runs stay byte-identical.
  */
-export const MoveSpeed = defineComponent<{ perTick: Fixed }>('MoveSpeed');
+export const MoveSpeed = defineComponent<{ perTick: Fixed; runPerTick: Fixed | null }>('MoveSpeed');
 
 /** A path the entity is following: fixed-point waypoints + current index. */
 export const PathFollow = defineComponent<{ waypoints: Array<{ x: Fixed; y: Fixed }>; index: number }>(

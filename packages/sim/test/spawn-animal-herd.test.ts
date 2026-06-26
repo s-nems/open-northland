@@ -17,8 +17,9 @@ import { testContent } from './fixtures/content.js';
  * range) is inert — a spawned herd is placed, not immediately fighting.
  */
 
-const BEAR = 10; // aggressive herd animal: group 3, searchForLeader, range 2, hitpointsAdult 15000
+const BEAR = 10; // aggressive herd animal: group 3, searchForLeader, range 2, hitpointsAdult 15000; moveSpeed 8 + runSpeed 4
 const BEE = 11; // solitary decorative animal: no group size, searchForLeader false, hitpointsAdult 200
+const BOAR = 12; // passive-provokable: moveSpeed 8 but NO runSpeed (the walk-known/run-omitted case)
 const VIKING = 1; // a civilization — no animaltypes record (bad input for spawnAnimalHerd)
 
 function clearStores(): void {
@@ -97,7 +98,7 @@ describe('spawnAnimalHerd command', () => {
     expect(sim.world.get(leader as Entity, HerdMember).leader).toBe(leader);
   });
 
-  it('stamps each creature a MoveSpeed from movespeed (the bear walks ONE/8 tile/tick)', () => {
+  it('stamps each creature a MoveSpeed from movespeed/runspeed (the bear walks ONE/8, runs ONE/4)', () => {
     const sim = fresh();
     sim.enqueue({ kind: 'spawnAnimalHerd', tribe: BEAR, x: 5, y: 5 });
     sim.step();
@@ -105,8 +106,25 @@ describe('spawnAnimalHerd command', () => {
     const herd = creatures(sim);
     expect(herd).toHaveLength(3);
     for (const e of herd) {
+      const speed = sim.world.get(e, MoveSpeed);
       // movespeed 8 -> walks ONE/8 tile/tick (a larger movespeed is a slower step).
-      expect(sim.world.get(e, MoveSpeed).perTick).toBe(fx.div(ONE, fx.fromInt(8)));
+      expect(speed.perTick).toBe(fx.div(ONE, fx.fromInt(8)));
+      // runspeed 4 -> the (faster) run gait ONE/4, recorded for the deferred flee/charge drive.
+      expect(speed.runPerTick).toBe(fx.div(ONE, fx.fromInt(4)));
+    }
+  });
+
+  it('stamps runPerTick null for an animal with a movespeed but no runspeed (the boar)', () => {
+    const sim = fresh();
+    sim.enqueue({ kind: 'spawnAnimalHerd', tribe: BOAR, x: 4, y: 4 });
+    sim.step();
+
+    const herd = creatures(sim);
+    expect(herd.length).toBeGreaterThan(0);
+    for (const e of herd) {
+      const speed = sim.world.get(e, MoveSpeed);
+      expect(speed.perTick).toBe(fx.div(ONE, fx.fromInt(8))); // walk pace known
+      expect(speed.runPerTick).toBeNull(); // no runspeed -> run gait omitted
     }
   });
 
