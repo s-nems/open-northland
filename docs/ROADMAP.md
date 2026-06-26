@@ -110,8 +110,20 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       consume, capacity rises, one-tier-per-tick, top-tier-never, non-home-never, determinism) + a hands-on
       over the **real IR** (a `home_level_00` paying `home_level_01`'s real cost upgrades typeId 2→3,
       capacity 1→2, through the real `step()`). Inert on the golden (no `home`-kind building in the fixture).
-      The deferred refinement: a built home that can still upgrade does NOT yet advertise its next tier's cost
-      as carrier-delivery demand (accumulating upgrade materials is a future dispatch slice; docs/FIDELITY.md).
+      **Upgrade-material DELIVERY dispatch now LANDED** (→ `stockCapacity`'s built-home branch,
+      `systems/shared.ts`): a **built** `home` that can still level up (`homeNextTier` — a `home` with a next
+      tier, now hoisted into `shared.ts` so both the system and the capacity read it) advertises its NEXT
+      tier's `construction` cost as carrier-delivery demand — the per-good ceiling is the **larger** of the
+      home's normal stock-slot capacity and the next tier's cost-line amount — so the SAME carrier path that
+      supplies a build site (`nearestStoreFor` → `MoveGoal` → `pileup`) now accumulates the upgrade materials
+      at the home with **no upgrade-specific transport code**; once the full next-tier cost lands the
+      level-up trigger fires, closing the births→housing→upgrade→more-housing loop end-to-end. A top-tier
+      home (no next tier) reverts to its plain stock-slot capacity, so a maxed home stops attracting
+      materials. Proven by `construction-system.test.ts` (3 new cases: carriers haul the next-tier cost to a
+      built home which then upgrades; a top-tier home attracts no upgrade materials; determinism) + a
+      hands-on over the **real IR** (a `home_level_00` whose next-tier cost — good4×1 + good3×2 + good26×1 —
+      is hauled by four carriers through the real `step()` upgrades typeId 2→3, capacity 1→2; a `home_level_04`
+      attracts nothing). Inert on the golden (no `home`-kind building in the fixture).
 - [ ] **ReproductionSystem** — **landed** (→ archive): one birth per tribe per tick while
       `tribePopulation < housingCapacity` (deterministic cadence, the `populationWithinHousing` invariant);
       a newborn is the data-pinned youngest age class (`baby_female`), `systems/ageclass.ts` recognizes the

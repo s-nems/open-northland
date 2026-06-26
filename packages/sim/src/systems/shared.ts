@@ -1,4 +1,4 @@
-import type { Recipe } from '@vinland/data';
+import type { BuildingType, Recipe } from '@vinland/data';
 import { Building, Position, Settler, Vehicle } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import { ONE, fx } from '../fixed.js';
@@ -25,7 +25,14 @@ import { vehicleMayCarry } from './readviews/vehicles.js';
  *   `built >= ONE` — so this branch's only consumer is the carrier-delivery of build materials; its
  *   stockpile can't be raided to feed a recipe.)
  * - A built **building** store: from its building type's stock slots — a good with no declared slot
- *   has no room (capacity 0).
+ *   has no room (capacity 0). **Plus** an upgradable **built `home`** ({@link homeNextTier} — a `home`
+ *   with a next tier in the level chain) also advertises room for its NEXT tier's `construction`
+ *   materials: the per-good ceiling is the **larger** of the normal stock-slot capacity and the next
+ *   tier's cost-line `amount`, so the same carrier path that delivers a build-site's materials now also
+ *   accumulates the upgrade materials at a still-upgradable home (closing the births→housing→upgrade→
+ *   more-housing loop with no upgrade-specific transport code). The `constructionSystem` then consumes
+ *   them and levels the home up. The top-tier home (no next tier) reverts to its plain stock-slot
+ *   capacity, so a maxed home stops attracting materials — exactly like a finished build site.
  * - A **boat hull** ({@link Vehicle}, the "boats as mobile stores" entity — a `Stockpile` on a hull,
  *   not a building): gated by the ship's `cargoGoods` **load allow-list** — a good the hold may carry
  *   ({@link vehicleMayCarry}) gets the whole `stockSlots` hold capacity, a good it may **not** carry
@@ -53,8 +60,17 @@ export function stockCapacity(world: World, ctx: SystemContext, store: Entity, g
       const line = type.construction.find((c) => c.goodType === goodType);
       return line?.amount ?? 0;
     }
+    // Built building: its normal per-good stock-slot ceiling…
     const slot = type.stock.find((s) => s.goodType === goodType);
-    return slot?.capacity ?? 0;
+    const slotCapacity = slot?.capacity ?? 0;
+    // …plus, for a built `home` that can still level up, room for the NEXT tier's outstanding
+    // construction materials, so the existing carrier path accumulates the upgrade materials at the
+    // home. Take the larger of the two ceilings (a good can be both a stocked good and an upgrade
+    // material); a maxed-out (top-tier) home has no next tier and keeps only its stock-slot capacity.
+    const next = homeNextTier(type, ctx);
+    if (next === undefined) return slotCapacity;
+    const upgradeLine = next.construction.find((c) => c.goodType === goodType);
+    return Math.max(slotCapacity, upgradeLine?.amount ?? 0);
   }
   const hull = world.tryGet(store, Vehicle);
   if (hull !== undefined) {
@@ -176,6 +192,27 @@ export function housingCapacity(world: World, ctx: SystemContext, tribe: number)
     capacity += type.homeSize;
   }
   return capacity;
+}
+
+/**
+ * The next tier in a `home`'s level chain, or undefined if `type` is not a `home` or is the top tier.
+ *
+ * The home level chain is the consecutive typeIds `home_level_00..04` (typeIds 2..6 in the real data),
+ * each a distinct `home`-kind {@link BuildingType} carrying its OWN per-level `construction` cost and a
+ * larger `homeSize`. So the next tier is the building type at `typeId + 1`, provided that type exists
+ * AND is itself a `home` (the chain is contiguous; the type just past the chain's top, `home_level_04`,
+ * is not a home, so a top-tier home has no next tier). Reading the chain off the consecutive typeId
+ * keeps the upgrade purely data-driven — there is no separate "next level" pointer in the source; the
+ * `home level NN` typeIds are sequential by construction.
+ *
+ * Cross-system: the ConstructionSystem uses it as the home level-up trigger (next tier's materials
+ * present → upgrade), and {@link stockCapacity} uses it so a still-upgradable home advertises the next
+ * tier's cost as carrier-delivery demand.
+ */
+export function homeNextTier(type: BuildingType, ctx: SystemContext): BuildingType | undefined {
+  if (type.kind !== 'home') return undefined;
+  const next = ctx.content.buildings.find((t) => t.typeId === type.typeId + 1);
+  return next?.kind === 'home' ? next : undefined;
 }
 
 /**

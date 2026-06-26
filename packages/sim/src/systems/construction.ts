@@ -1,8 +1,8 @@
-import type { BuildingType } from '@vinland/data';
 import { Building, Stockpile } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import { ONE } from '../fixed.js';
-import type { System, SystemContext } from './context.js';
+import type { System } from './context.js';
+import { homeNextTier } from './shared.js';
 
 /**
  * ConstructionSystem — an under-construction building becomes built once its material cost arrives,
@@ -29,9 +29,11 @@ import type { System, SystemContext } from './context.js';
  *
  * WHO delivers the materials (a carrier hauling the `construction` goods to the site) is the existing
  * transport/carrier path: a `built < ONE` site advertises room for its outstanding materials via
- * `stockCapacity` so the carrier scan routes them there. A built home that can still upgrade does NOT
- * yet advertise its next tier's cost as delivery demand — accumulating the upgrade materials is a
- * future dispatch refinement; this lands the upgrade *trigger* (materials present → consume → level up).
+ * `stockCapacity` so the carrier scan routes them there. A built home that can still upgrade ALSO
+ * advertises its next tier's `construction` cost as delivery demand (the same `stockCapacity` path,
+ * via {@link homeNextTier}), so the carrier path accumulates the upgrade materials at the home with no
+ * upgrade-specific transport code — and the upgrade *trigger* below (materials present → consume →
+ * level up) fires once they land, closing the births→housing→upgrade→more-housing loop.
  *
  * FIDELITY: the material cost is the extracted `construction` param (graphics-table
  * `LogicConstructionGoods`, docs/FIDELITY.md "Build-material cost") and the level chain is the extracted
@@ -70,23 +72,6 @@ export const constructionSystem: System = (world, ctx) => {
     ctx.events.emit({ kind: 'buildingUpgraded', entity: e, level: building.level });
   }
 };
-
-/**
- * The next tier in a `home`'s level chain, or undefined if `type` is not a `home` or is the top tier.
- *
- * The home level chain is the consecutive typeIds `home_level_00..04` (typeIds 2..6 in the real data),
- * each a distinct `home`-kind {@link BuildingType} carrying its OWN per-level `construction` cost and a
- * larger `homeSize`. So the next tier is the building type at `typeId + 1`, provided that type exists
- * AND is itself a `home` (the chain is contiguous; the type just past the chain's top, `home_level_04`,
- * is not a home, so a top-tier home has no next tier). Reading the chain off the consecutive typeId
- * keeps the upgrade purely data-driven — there is no separate "next level" pointer in the source; the
- * `home level NN` typeIds are sequential by construction.
- */
-function homeNextTier(type: BuildingType, ctx: SystemContext): BuildingType | undefined {
-  if (type.kind !== 'home') return undefined;
-  const next = ctx.content.buildings.find((t) => t.typeId === type.typeId + 1);
-  return next?.kind === 'home' ? next : undefined;
-}
 
 /** Whether the construction site's own stockpile holds every `construction` material in full. An
  *  empty cost (a free type) is trivially satisfied. */
