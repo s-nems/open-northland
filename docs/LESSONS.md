@@ -763,3 +763,11 @@ the next iteration inherits it.
   When closing per-table consumer coverage, enumerate the EXTRACTED fields (grep the extractor), not the
   views the module *claims* to cover; the land+universal views partition the 87 rows exactly, a cheap
   invariant the hands-on run can assert. (sim/read-model)
+- [24bec38] A field documented only in PROSE across several system files is a latent read-view gap, and
+  the prose can disagree with the data: `AtomicAnimation.events` channel-restore magnitudes were asserted
+  in needs.ts/ai.ts/atomic.ts comments ("eat +4000", "make_love a bigger +800 boost") but never read from
+  the IR — yet `make_love`'s NET channel-3 delta is +4000 (8 ticks × ~+800), not the per-event +800 the
+  comment cites. The summed read view (`atomicEventChannelDelta`) is the data-pinned truth; the comment
+  was citing one event's value, not the animation's total. When you find a magnitude hardcoded in a doc
+  comment, add the read view that derives it from data (a sum over the events of that `type`) rather than
+  trusting the prose — and surface BOTH the per-event value and the summed total, they differ. (sim/read-model)
