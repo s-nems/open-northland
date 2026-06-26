@@ -717,3 +717,10 @@ the next iteration inherits it.
   coarse light/heavy) was a pure read view away, FIDELITY n/a, golden untouched. "Which extracted field
   lacks a consumer" is a concrete, self-verifiable smallest-step heuristic when the BEHAVIOR is
   oracle-blocked. (sim/read-model)
+- [cc9c3d2] The shape of a read accessor follows its schema OPTIONALITY, not a uniform "drop-undefined"
+  reflex: a `.default(0)` QUANTITY field (`WeaponType.weight`/`ArmorType.weight`) is always a `number`
+  post-parse, so its accessor returns `number` and needs no `?? 0` and no `undefined` bucket — `0` *is*
+  the weightless value, not a "no record" sentinel. That is structurally different from the `.optional()`
+  CLASS-ENUM fields (`mainType`/`materialType`) whose accessors are `number | undefined` and whose
+  groupings drop the undefined bucket. Don't copy the optional-field grouping idiom onto a defaulted
+  quantity — read it straight. (sim/read-model)
