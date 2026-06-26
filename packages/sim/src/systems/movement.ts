@@ -1,4 +1,4 @@
-import { PathFollow, Position, Velocity } from '../components/index.js';
+import { MoveSpeed, PathFollow, Position, Velocity } from '../components/index.js';
 import type { Entity } from '../ecs/world.js';
 import { type Fixed, fx } from '../fixed.js';
 import type { System } from './context.js';
@@ -15,7 +15,8 @@ export const MOVE_SPEED_PER_TICK: Fixed = fx.div(fx.fromInt(1), fx.fromInt(4));
  * MovementSystem — advances entity positions one tick.
  *
  * Two movement modes, in this precedence:
- *  1. {@link PathFollow}: step toward the current waypoint's cell centre by {@link MOVE_SPEED_PER_TICK},
+ *  1. {@link PathFollow}: step toward the current waypoint's cell centre by the entity's own pace
+ *     ({@link MoveSpeed}'s `perTick` if it carries one, else the universal {@link MOVE_SPEED_PER_TICK}),
  *     per-axis clamped so we never overshoot. On reaching the waypoint, advance `index`; when the
  *     last waypoint is reached the path is complete and {@link PathFollow} is removed (the planner
  *     sees an entity with no path as idle/arrived). A path-following entity ignores any Velocity.
@@ -43,9 +44,11 @@ export const movementSystem: System = (world) => {
       continue;
     }
 
+    // The entity's own pace when it carries a MoveSpeed (a data-paced animal), else the settler default.
+    const speed = world.has(e, MoveSpeed) ? world.get(e, MoveSpeed).perTick : MOVE_SPEED_PER_TICK;
     const p = world.get(e, Position);
-    p.x = stepToward(p.x, target.x);
-    p.y = stepToward(p.y, target.y);
+    p.x = stepToward(p.x, target.x, speed);
+    p.y = stepToward(p.y, target.y, speed);
 
     if (p.x === target.x && p.y === target.y) {
       // Arrived at this waypoint; advance to the next, or finish the path.
@@ -70,14 +73,14 @@ export const movementSystem: System = (world) => {
 };
 
 /**
- * Move `from` toward `target` by at most {@link MOVE_SPEED_PER_TICK}, clamping so the result never
- * passes `target`. Returns `target` exactly once within one step of it — the equality the caller
+ * Move `from` toward `target` by at most `speed` (the entity's per-tick pace), clamping so the result
+ * never passes `target`. Returns `target` exactly once within one step of it — the equality the caller
  * uses to detect arrival. Pure fixed-point: no division of the delta, so no rounding drift.
  */
-function stepToward(from: Fixed, target: Fixed): Fixed {
+function stepToward(from: Fixed, target: Fixed, speed: Fixed): Fixed {
   const delta = fx.sub(target, from);
   if (delta === 0) return target;
   const dist = fx.abs(delta);
-  if (dist <= MOVE_SPEED_PER_TICK) return target; // within one step — snap to the target
-  return delta > 0 ? fx.add(from, MOVE_SPEED_PER_TICK) : fx.sub(from, MOVE_SPEED_PER_TICK);
+  if (dist <= speed) return target; // within one step — snap to the target
+  return delta > 0 ? fx.add(from, speed) : fx.sub(from, speed);
 }
