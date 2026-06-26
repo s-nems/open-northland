@@ -501,3 +501,10 @@ the next iteration inherits it.
   redundant stamp would never be reaped. Fix at the STAMP site (don't stamp when the entity is already
   unconditionally in the state the timer grants), not only the reaper. Inert components must still be
   hash-clean — a never-reaped optional component would drift the state hash. (sim/combat)
+- [3f9b610] The synthetic fixture's tidy weapon ranges (`maxRange 2`, adjacent fighters) hide that REAL
+  weapons carry a `minRange` (the real `hunter_bow` is `minRange 3, maxRange 17`) — and `attackerWeapon`
+  enforces only `maxRange`, so a fixture-adjacent strike "passes" while a real bow can't hit a tile-1 prey
+  in the original. A green unit test on the fixture didn't reveal this; only running the actual pipeline IR
+  through `step()` did (the deer fixture struck fine at distance 1; the real cow only after seeing the
+  `minRange`). When a mechanic reads a numeric range/threshold param, check the REAL data's spread, not the
+  fixture's convenient value — and note any param the sim doesn't yet honor. (sim/combat)
