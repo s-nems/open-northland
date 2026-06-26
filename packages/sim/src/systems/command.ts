@@ -236,6 +236,12 @@ function spawnAnimalHerd(
  * ring (`(±r, ±r)` / axis steps), the radius growing each time the 8 directions are exhausted and
  * **clamped at `range`** so no creature strays past `maximumdistancetobirthpoint`. A fixed function of
  * `(i, range)`, so the same herd command always scatters identically — reproducible, hashable.
+ *
+ * Distinct tiles hold up to **9** members (the centre + 8 first-ring directions) given `range >= 1`;
+ * beyond that — or with `range` 0 — the radius clamp re-uses ring directions, so two creatures can land
+ * on the same tile. That is harmless (the sim places no position-uniqueness invariant — entities share
+ * tiles freely) and never reached by real data (`animaltypes` `maximumgroupsize` is 3..6, well under 9);
+ * the scatter is an explicitly *approximated* placement (docs/FIDELITY.md), not a packing guarantee.
  */
 function herdMemberOffset(i: number, range: number): { dx: number; dy: number } {
   if (i === 0 || range <= 0) return { dx: 0, dy: 0 }; // the first (leader) sits on the birth point

@@ -462,3 +462,9 @@ the next iteration inherits it.
   "passed" against zero real records — a false green. For a read view over extracted data, exercise
   it against a FRESHLY re-run pipeline (`npm run pipeline … --out <scratch>`), not the checked-in IR,
   or the 3b smoke check verifies nothing. (pipeline/hands-on)
+- [9ce6413] A deterministic entity-scatter that CLAMPS each member's offset to a max radius silently
+  re-uses tiles once the rings past that radius repeat (clamp(ring, range) collapses ring 3+ onto the
+  range-2 ring) — two entities stack. It's only safe here because the sim has **no position-uniqueness
+  invariant** (entities share tiles freely) and real `animaltypes` `maximumgroupsize` (3..6) stays under
+  the 9-tile first-ring bound; assert the no-stacking property only for the sizes you actually spawn,
+  and document the collision bound rather than implying a packing guarantee. (sim/spawn)
