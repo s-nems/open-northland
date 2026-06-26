@@ -282,12 +282,24 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `stayPointRange` from `maximumdistancetostaypoint`) — null when the tribe has no animal record (a
       civilization / unknown), the same one-call read shape `animalHitpoints` gives the HP stamp. It is
       a pure derived view (FIDELITY n/a — invents no behaviour; the params are verbatim, 0-passthrough
-      drift across all 35 real animals), the data foundation the spawner will consume: every real animal
-      carries a herd (`maximumGroupSize` 3..6) and 23 of 35 follow a leader. **Next:** the spawn/herding
-      *mechanic* that actually places a group of animals on the map (seeding `maxGroupSize` entities
-      around a birth point, the leader entity when `searchForLeader`, stamping each `Health` from
-      `animalHitpoints`) — a behaviour with no oracle, so scoped + recorded in docs/FIDELITY.md when it
-      lands — and the provoked-anger (`getAngry`) timer once a per-entity hostility-state model exists.
+      drift across all 35 real animals), the data foundation the spawner consumes: every real animal
+      carries a herd (`maximumGroupSize` 3..6) and 23 of 35 follow a leader. **The spawn/placement
+      mechanic now LANDED** — the `spawnAnimalHerd{tribe,x,y}` command (`systems/command.ts`, the animal
+      analogue of `spawnSettler` on the mutation seam) actually places a group of creatures on the map:
+      `max(1, maximumGroupSize)` `Settler`s of the animal tribe (jobType null — an animal isn't born into
+      a trade), each carrying a `Health` pool stamped from `animalHitpoints` (`hitpoints_adult`),
+      deterministically scattered (an expanding 8-direction ring, no RNG) within `birthPointRange` of the
+      birth point, and — when `searchForLeader` — a designated **leader** (the herd's lowest-id member)
+      every member records via the new optional `HerdMember{leader}` component (a solitary animal carries
+      none). A non-animal tribe (a civilization) is bad input and skipped (still command-logged). Faithful
+      (group size / HP / birth-range / leader-presence params); **approximated** (the scatter pattern, the
+      jobType-null no-weapon stance, and the one-shot placement with no respawn/territory upkeep — recorded
+      in docs/FIDELITY.md "Animal herd spawn/placement"). Inert on the goldens/slice (no herd is spawned
+      there). **Next:** the **map populator** that *issues* `spawnAnimalHerd` to seed a map's wildlife (the
+      AnimalSystem / scenario seam — placing herds at terrain birth points), the **follow-the-leader**
+      movement drive that reads `HerdMember` (a follower staying within `maximumLeaderDistance`), the
+      animal→weapon `(tribeType, typeId)` binding so a spawned animal does damage, and the provoked-anger
+      (`getAngry`) timer once a per-entity hostility-state model exists.
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
       `fisher_sea`/`trader_sea`/`carpenter ship`, `vehicle_ship`.
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).

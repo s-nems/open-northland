@@ -192,7 +192,20 @@ export function testContent(): ContentSet {
     // with no animaltypes record" path — not aggressive, never targeted). A `cannotBeAttacked` bee
     // (tribe 11) is recorded to exercise the decorative-fauna target exemption.
     animals: [
-      { id: 'bear', tribeType: 10, aggressive: true, getAngry: true, hitpointsAdult: 15000 },
+      // The bear also carries herd params so the spawnAnimalHerd command has a real group to place: a
+      // pack of 3 that follows a leader (searchForLeader), ranging up to 2 tiles from its birth point.
+      {
+        id: 'bear',
+        tribeType: 10,
+        aggressive: true,
+        getAngry: true,
+        hitpointsAdult: 15000,
+        maximumGroupSize: 3,
+        searchForLeader: true,
+        maximumDistanceToBirthPoint: 2,
+      },
+      // The bee is a SOLITARY animal (no maximumGroupSize, searchForLeader false) — the spawn places
+      // exactly one and adds no HerdMember.
       { id: 'bee', tribeType: 11, aggressive: true, cannotBeAttacked: true, hitpointsAdult: 200 },
     ],
     atomicAnimations: [

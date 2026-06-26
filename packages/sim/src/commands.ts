@@ -23,6 +23,21 @@ export type Command =
       readonly y: number;
       readonly tribe: number;
     }
+  | {
+      /**
+       * Spawn a **herd of an animal tribe** around a birth point — `maximumgroupsize` creatures of
+       * `tribe` scattered within `maximumdistancetobirthpoint` of (x,y), each a {@link Settler} of that
+       * animal tribe carrying a {@link Health} pool from `hitpoints_adult`, with a designated leader
+       * when the animal's `searchforleader` is set. The seam wildlife enters the world through (the
+       * animal analogue of `spawnSettler`/`placeBuilding`); the AnimalSystem/map-populator that *issues*
+       * these is a later slice — this command lands the placement mechanic. A `tribe` with no
+       * `animaltypes` record (a civilization, an unknown tribe) is bad input and skipped.
+       */
+      readonly kind: 'spawnAnimalHerd';
+      readonly tribe: number;
+      readonly x: number;
+      readonly y: number;
+    }
   | { readonly kind: 'setProduction'; readonly building: Entity; readonly goodType: number }
   | { readonly kind: 'demolish'; readonly building: Entity };
 

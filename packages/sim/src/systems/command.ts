@@ -1,11 +1,20 @@
 import { indexById } from '@vinland/data';
 import { assertNever } from '../brand.js';
 import type { Command } from '../commands.js';
-import { Building, JobAssignment, Position, Settler, Stockpile } from '../components/index.js';
+import {
+  Building,
+  Health,
+  HerdMember,
+  JobAssignment,
+  Position,
+  Settler,
+  Stockpile,
+} from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import { ONE, fx } from '../fixed.js';
 import type { System, SystemContext } from './context.js';
 import { buildingEnabled } from './progression.js';
+import { animalHitpoints, herdParams } from './readviews/index.js';
 
 /**
  * CommandSystem — the ONLY way sim state mutates from the outside. It runs first each tick, drains
@@ -27,6 +36,11 @@ import { buildingEnabled } from './progression.js';
  *    Phase-3 ConstructionSystem; for the slice a placed, enabled building is immediately `built`.)
  *  - `spawnSettler` — create a {@link Settler} of the given job at (x,y) for a tribe. Emits
  *    `settlerBorn`.
+ *  - `spawnAnimalHerd` — place a **herd of an animal tribe** around (x,y): `maximumgroupsize`
+ *    creatures scattered within the animal's `maximumdistancetobirthpoint`, each a {@link Settler} of
+ *    that animal tribe carrying a {@link Health} pool from `hitpoints_adult`, with a leader designated
+ *    when `searchforleader` (see {@link spawnAnimalHerd}). Emits one `settlerBorn` per spawned creature.
+ *    Skipped for a non-animal tribe (no `animaltypes` record).
  *  - `setProduction` — point a workplace's production at a good (currently a no-op marker until the
  *    recipe-selection slice; recorded in the log so replay stays faithful).
  *  - `demolish` — destroy a building entity (ids are never recycled), **first unbinding every
@@ -51,6 +65,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'spawnSettler':
       spawnSettler(world, ctx, command);
+      return;
+    case 'spawnAnimalHerd':
+      spawnAnimalHerd(world, ctx, command);
       return;
     case 'setProduction':
       // No state change yet: recipe/output selection is a later slice. The command is still logged
@@ -140,4 +157,102 @@ function spawnSettler(
     experience: new Map<number, number>(),
   });
   ctx.events.emit({ kind: 'settlerBorn', entity: e });
+}
+
+/**
+ * Spawn a **herd of an animal tribe** around a birth point — the animal-placement mechanic the ROADMAP
+ * Phase-4 "animals as non-controllable tribes" item names: it actually puts a group of creatures on the
+ * map, consuming the {@link herdParams}/{@link animalHitpoints} read views the previous slices landed.
+ *
+ * The herd is `max(1, maximumgroupsize)` creatures (`maximumgroupsize` 0 — a source-omitted/solitary
+ * animal — still yields one), each a {@link Settler} of the animal `tribe` (animals reuse the **same
+ * entity/AI model** as a settler — the ROADMAP requirement, not a bolt-on) at `jobType: null` (an animal
+ * isn't born into a trade) carrying a {@link Health} pool stamped from its `hitpoints_adult`
+ * ({@link animalHitpoints}). The creatures are scattered around (x,y) within `maximumdistancetobirthpoint`
+ * by a **deterministic** offset ({@link herdMemberOffset} — an expanding 8-direction ring, no RNG), so a
+ * herd spreads out instead of stacking on one tile, reproducibly. When the animal's `searchforleader` is
+ * set the herd gets a **leader** — its lowest-id member (the first created), which every member (including
+ * the leader, self-referentially) records via a {@link HerdMember} — the relation the later follow-the-
+ * leader movement drive will read; a solitary (`searchforleader` false) animal carries no `HerdMember`.
+ *
+ * A `tribe` with no `animaltypes` record (a civilization, or an unknown tribe) is bad input — there are
+ * no herd params to read — so the command is skipped (still logged by commandSystem, so replay stays
+ * faithful), the same recoverable-boundary-failure stance as an unknown building/job id.
+ *
+ * FIDELITY: the **group size**, **HP pool**, **birth-point range**, and **leader presence** are the
+ * verbatim extracted `animaltypes.ini` params (faithful). **Approximated (no oracle):** the *scatter
+ * pattern* (where within the range each creature lands), that animals spawn at `jobType: null` (so they
+ * carry no weapon yet — the animal→weapon `(tribeType, typeId)` binding is a deferred refinement), and
+ * that the spawn is a one-shot placement with no respawn/territory upkeep — the original's herd-AI is the
+ * undocumented "soul" (recorded in docs/FIDELITY.md). No births→growth here: an animal is spawned adult
+ * (carries no {@link Age}); the per-tribe spawn cadence / map populator is a later slice.
+ *
+ * Determinism: the leader is the herd's lowest-id member (creation is monotonic, so the first `create()`
+ * is the lowest id — a canonical pick), the scatter offsets are a fixed function of the member index, and
+ * `animalHitpoints`/`herdParams` are pure content reads — no RNG, no wall-clock.
+ */
+function spawnAnimalHerd(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'spawnAnimalHerd' }>,
+): void {
+  const herd = herdParams(ctx.content, command.tribe);
+  if (herd === null) return; // not an animal tribe (a civilization / unknown) — bad input, skip
+  const hitpoints = animalHitpoints(ctx.content, command.tribe) ?? 0; // an animal record always has both
+
+  const count = Math.max(1, herd.maxGroupSize); // a 0/solitary group still yields one creature
+  const range = Math.max(0, herd.birthPointRange);
+  const members: Entity[] = [];
+  for (let i = 0; i < count; i++) {
+    const off = herdMemberOffset(i, range);
+    const e = world.create();
+    world.add(e, Position, { x: fx.fromInt(command.x + off.dx), y: fx.fromInt(command.y + off.dy) });
+    world.add(e, Settler, {
+      tribe: command.tribe,
+      jobType: null, // an animal isn't born into a trade (no weapon binding yet — see fidelity note)
+      hunger: fx.fromInt(0),
+      fatigue: fx.fromInt(0),
+      piety: fx.fromInt(0),
+      enjoyment: fx.fromInt(0),
+      experience: new Map<number, number>(),
+    });
+    world.add(e, Health, { hitpoints, max: hitpoints });
+    members.push(e);
+    ctx.events.emit({ kind: 'settlerBorn', entity: e });
+  }
+
+  // A herd whose animal seeks a leader gets one: the lowest-id member (members[0] — `create()` ids are
+  // monotonic, so the first is the lowest), which every member records via HerdMember (the leader points
+  // at itself). A solitary (searchforleader false) animal carries no HerdMember.
+  if (herd.searchForLeader) {
+    const leader = members[0];
+    if (leader !== undefined) for (const e of members) world.add(e, HerdMember, { leader });
+  }
+}
+
+/**
+ * The deterministic (no-RNG) tile offset for the `i`-th member of a herd, kept within `range` of the
+ * birth point. Member 0 lands ON the birth point; the rest spiral out along an expanding 8-direction
+ * ring (`(±r, ±r)` / axis steps), the radius growing each time the 8 directions are exhausted and
+ * **clamped at `range`** so no creature strays past `maximumdistancetobirthpoint`. A fixed function of
+ * `(i, range)`, so the same herd command always scatters identically — reproducible, hashable.
+ */
+function herdMemberOffset(i: number, range: number): { dx: number; dy: number } {
+  if (i === 0 || range <= 0) return { dx: 0, dy: 0 }; // the first (leader) sits on the birth point
+  // 8 compass directions, in a fixed canonical order. Ring `r` (1-based) places up to 8 members at
+  // radius `min(r, range)`; member index within the ring picks the direction.
+  const DIRS: ReadonlyArray<readonly [number, number]> = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+    [1, 1],
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+  ];
+  const ring = Math.floor((i - 1) / DIRS.length) + 1; // 1, 2, 3, … as the rings fill
+  const dir = DIRS[(i - 1) % DIRS.length] as readonly [number, number];
+  const radius = Math.min(ring, range); // never past the birth-point range
+  return { dx: dir[0] * radius, dy: dir[1] * radius };
 }
