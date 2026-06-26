@@ -64,3 +64,33 @@ export function largestShipCapacity(content: ContentSet): number {
   }
   return best;
 }
+
+/**
+ * The set of **good types a vehicle's hold may carry** — the `cargoGoods` (`logicgood`) allow-list as
+ * a membership `Set`, the "WHAT a boat-as-mobile-store can hold" cargo filter the Sea/Northland slice
+ * gates loading on (distinct from {@link largestShipCapacity}, the "how *much*" capacity). A vehicle
+ * with no `logicgood` (the catapult) yields an empty set — it carries no cargo. Applies to any vehicle,
+ * not just ships (a cart's hold is filtered the same way); name kept generic.
+ *
+ * FIDELITY: pinned to the extracted `logicgood` param. In the real `vehicletypes.ini` the carts and both
+ * ships enumerate the full haulable-goods list (54 ids) while the catapult lists none — so a membership
+ * test against this set is the engine's "can this good ride in this hold" gate. Determinism: a pure `Set`
+ * built from the already-extracted `cargoGoods` array; callers test membership (`.has`), which is
+ * order-independent, so no canonical-iteration concern. No world, no RNG, no wall-clock.
+ */
+export function vehicleCargoGoods(vehicle: VehicleType): Set<number> {
+  return new Set(vehicle.cargoGoods);
+}
+
+/**
+ * Whether a vehicle's hold **may carry** a given `goodType` — membership in its `cargoGoods`
+ * (`logicgood`) allow-list. The single-good predicate matching {@link vehicleCargoGoods}; the load gate
+ * a boat-as-mobile-store (or a cart) checks before accepting a unit of cargo. False for any good on a
+ * vehicle that lists no `logicgood` (the catapult carries nothing).
+ *
+ * FIDELITY: pinned to the extracted `logicgood` param (see {@link vehicleCargoGoods}). Determinism: a
+ * pure array membership test over the already-extracted `cargoGoods`; no world, no RNG, no wall-clock.
+ */
+export function vehicleMayCarry(vehicle: VehicleType, goodType: number): boolean {
+  return vehicle.cargoGoods.includes(goodType);
+}

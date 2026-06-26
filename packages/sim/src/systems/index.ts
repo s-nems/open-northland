@@ -60,6 +60,8 @@ import {
   shipVehicles,
   tribePopulationByJob,
   tribeStocks,
+  vehicleCargoGoods,
+  vehicleMayCarry,
   weaponKey,
 } from './readviews/index.js';
 import { reproductionSystem } from './reproduction.js';
@@ -128,6 +130,8 @@ export {
   tribePopulation,
   tribePopulationByJob,
   tribeStocks,
+  vehicleCargoGoods,
+  vehicleMayCarry,
   weaponKey,
 };
 export { reproductionSystem };

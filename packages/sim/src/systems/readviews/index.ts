@@ -48,4 +48,10 @@ export {
   playableTribes,
 } from './tribes.js';
 
-export { isShipVehicle, largestShipCapacity, shipVehicles } from './vehicles.js';
+export {
+  isShipVehicle,
+  largestShipCapacity,
+  shipVehicles,
+  vehicleCargoGoods,
+  vehicleMayCarry,
+} from './vehicles.js';
