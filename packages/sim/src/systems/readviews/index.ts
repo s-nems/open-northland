@@ -49,6 +49,7 @@ export {
   HUNTER_JOB,
   MEAT_GOOD,
   angryGameTimeOf,
+  animalBabyHitpoints,
   animalCannotBeAttacked,
   animalHitpoints,
   animalRecord,

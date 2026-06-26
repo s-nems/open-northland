@@ -2,6 +2,7 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { describe, expect, it } from 'vitest';
 import {
   HUNTER_JOB,
+  animalBabyHitpoints,
   animalCannotBeAttacked,
   animalHitpoints,
   herdParams,
@@ -64,6 +65,9 @@ function tribeContent(): ContentSet {
         aggressive: true,
         getAngry: true,
         hitpointsAdult: 15000,
+        // hitpoints_baby — the juvenile pool animalBabyHitpoints surfaces; deliberately < adult and
+        // not derivable from it, proving it is a distinct extracted field, not adult-with-a-discount.
+        hitpointsBaby: 8000,
         // herd/spawn params the herdParams read view surfaces
         maximumGroupSize: 4,
         searchForLeader: true,
@@ -170,6 +174,14 @@ describe('isAggressiveAnimal / animalCannotBeAttacked / animalHitpoints (animalt
     expect(animalHitpoints(content, 8)).toBe(15000); // bears — hitpointsAdult
     expect(animalHitpoints(content, 9)).toBeNull(); // wolves — no animaltypes record
     expect(animalHitpoints(content, 1)).toBeNull(); // viking — a civilization
+  });
+
+  it('animalBabyHitpoints returns the juvenile HP pool, distinct from the adult, or null with no record', () => {
+    const content = tribeContent();
+    expect(animalBabyHitpoints(content, 8)).toBe(8000); // bears — hitpointsBaby, NOT the 15000 adult pool
+    expect(animalBabyHitpoints(content, 10)).toBe(0); // cows — record with no hitpointsBaby → extractor default 0
+    expect(animalBabyHitpoints(content, 9)).toBeNull(); // wolves — no animaltypes record
+    expect(animalBabyHitpoints(content, 1)).toBeNull(); // viking — a civilization
   });
 
   it('animalCannotBeAttacked exempts a decorative-fauna animal (cannotbeattacked)', () => {

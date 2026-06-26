@@ -44,6 +44,7 @@ import {
   type HerdParams,
   IDLE_JOB,
   type Locomotion,
+  animalBabyHitpoints,
   animalCannotBeAttacked,
   animalHitpoints,
   animalRecord,
@@ -126,6 +127,7 @@ export {
 };
 export type { CombatDamageRow, CombatProfile, GoodsGraphNode, HerdParams, Locomotion };
 export {
+  animalBabyHitpoints,
   animalCannotBeAttacked,
   animalHitpoints,
   animalRecord,

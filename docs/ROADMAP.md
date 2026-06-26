@@ -116,7 +116,12 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       spawn as herds (`spawnAnimalHerd`/`seedAnimalHerds`/`HerdMember`), fight (jobless animal → weapon-by-tribe,
       `[minRange,maxRange]` reach honored), and a hunter's killing blow yields the carcass's meat
       (`harvest_cadaver`/`cadaverYieldOf`). Proven by `populated-map-combat.test.ts` (seed→combat→hit→death,
-      deterministic). Herd/locomotion params surfaced as read views (`herdParams`/`locomotionOf`), and a
+      deterministic). Herd/locomotion params surfaced as read views (`herdParams`/`locomotionOf`); the
+      **`hitpoints_baby`** life-stage twin of `animalHitpoints` also gets a read view now
+      (`animalBabyHitpoints` — the juvenile `Health` pool a spawned baby carries until it ages to the
+      adult, read straight off the source's independently-carried baby pool, e.g. wolf baby 500 vs adult
+      1000; the deferred animal-growth slice's seed), leaving only `warrantable`/`ignorehouses` without a
+      consumer (both pending their own deferred drives). A
       creature walks at its own data-pinned `movespeed` pace (`MoveSpeed{perTick}` + `movementSystem`), with
       its faster `runspeed` gait also stamped (`runPerTick`, inert until a flee/charge drive reads it).
       Faithful to the `movespeed`/`runspeed` magnitudes; the scale **direction** (larger = slower) and the
