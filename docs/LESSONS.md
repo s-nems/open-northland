@@ -731,3 +731,10 @@ the next iteration inherits it.
   skip it when the prior reflection was on a different axis. The fix is the established readviews
   precedent: split by concern into a sibling module (here `classes.ts` for the weapon/armor class
   taxonomy), barrel re-exports unchanged, goldens byte-identical. (reflect/structure)
+- [4b01d2a] A schema field being present + validated does NOT mean it is EXTRACTED — it can be a zod
+  `.default(...)` the pipeline never populates from source. `LandscapeType.walkable`/`buildable` parse
+  fine and the test fixture sets them, but the real extractor (`tools/asset-pipeline/src/decoders/ini.ts`)
+  leaves them at their defaults — only `allowedon{land,water,everything}`/`maximumValency` are read from
+  the `.ini`. Before surfacing a "data-pinned" read view over a field, grep the EXTRACTOR for it, not just
+  the schema/fixture; a default-backed field would give a bogus fidelity basis. Confirm on the real
+  `content/ir.json`, where defaults and source values diverge (the fixture hides it). (fidelity/data)
