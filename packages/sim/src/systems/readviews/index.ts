@@ -29,12 +29,14 @@ export {
 
 export {
   type HerdParams,
+  angryGameTimeOf,
   animalCannotBeAttacked,
   animalHitpoints,
   animalRecord,
   herdParams,
   isAggressiveAnimal,
   isAnimalTribe,
+  isProvokableAnimal,
   isPlayableTribe,
   mayAttack,
   playableTribes,

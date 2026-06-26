@@ -272,10 +272,14 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       source is now read by `animalHitpoints(content, tribeType)` (the `hitpoints_adult` pool — a bear's
       15000 — the value a spawned animal's `Health` gets). Faithful (the `aggressive`/`cannotbeattacked`
       flags + net-damage param + atomic id 81); **approximated** (nearest-in-range target acquisition,
-      swing cadence, in-place strike, civ-engages-only-aggressive-animals split). **Provoked anger
-      deferred** — `getAngry`/`angryGameTime` (a passive animal struck → temporarily hostile) needs a
-      per-entity anger-timer state not yet modelled; only the unprovoked `aggressive` driver is wired
-      (see docs/FIDELITY.md). Inert on the goldens/slice (no settler carries `Health`). **The herd/spawn
+      swing cadence, in-place strike, civ-engages-only-aggressive-animals split). **Provoked anger now
+      LANDED** — `getAngry`/`angryGameTime` (a passive animal struck → temporarily hostile) is wired via
+      a per-entity **`Anger{until}`** timer: the AtomicSystem's `attack` effect stamps it on a struck
+      `isProvokableAnimal` (`provokeAnger`, reading `angryGameTimeOf`), and `combatSystem` reads it
+      (`hostileAnimalNow` attacker side, `mayTarget` target side) so a provoked animal fights back and is
+      a valid target until the timer lapses (reaped on the attacker scan), a re-strike refreshing it — so
+      **every** `animaltypes.ini` aggression input is now consumed (see docs/FIDELITY.md). Inert on the
+      goldens/slice (no settler carries `Health`). **The herd/spawn
       read side now LANDED** — `herdParams(content, tribeType)` (`systems/readviews.ts`) surfaces the
       already-extracted `animaltypes.ini` group/leader/territory params as one struct (`maxGroupSize`
       from `maximumgroupsize`, `searchForLeader`, `birthPointRange` from `maximumdistancetobirthpoint`,
@@ -332,9 +336,13 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       end-to-end + deterministic (two same-seed runs reach the same `hashState`). The civ combatant is placed
       directly (with `Health`), since `spawnSettler` mints no `Health` pool yet (settler-side Health/soldier
       stamping is a later slice); the test verifies the *integration* of landed pieces, adds no mechanic, and is
-      inert on the goldens. **Next:** the provoked-anger (`getAngry`/`angryGameTime`) timer once a per-entity
-      hostility-state model exists (a passive animal struck → temporarily hostile for `angryGameTime` ticks) — the
-      last unmodelled `animaltypes.ini` aggression input.
+      inert on the goldens. With the **provoked-anger timer now landed** (above), **every** `animaltypes.ini`
+      aggression input — `aggressive`, `cannotbeattacked`, `getAngry`/`angryGameTime`, `hitpoints_adult` — is
+      consumed, so this item is **substance-complete**. **Next:** what *first provokes* a passive `getAngry`
+      animal — the **hunter strike** on `catchable` prey (the `catchable`/`warrantable` flags + the hunt atomic),
+      the one remaining unconsumed `animaltypes.ini` driver, which would land the actual provocation source the
+      `Anger` timer waits on (today only an aggressive animal or a test strikes a passive one); OR seed a real
+      **multi-civilization** scenario exercising two playable tribes' asymmetric bindings end-to-end.
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
       `fisher_sea`/`trader_sea`/`carpenter ship`, `vehicle_ship`.
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).
