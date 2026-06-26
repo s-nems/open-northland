@@ -145,7 +145,10 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       35 natural-weapon `goodtype 0` sentinels dropped to undefined), the weapon-side twin of the armor
       `goodType` join, **plus the weapon's `mainType` (coarse weapon class) + `weight` (encumbrance)** onto
       `WeaponType.mainType`/`weight` (all 105 weapons; the `mainType`/`weight` twins of the armor record —
-      the soldier-class→weapon-class binding prerequisite, captured ahead of its drive). **Open:** the file's graphics/coords + `animations.ini` are
+      the soldier-class→weapon-class binding prerequisite, captured ahead of its drive), **and the weapon's
+      `munitiontype` (the ranged-ammo class: 1=bow ammo / 2=catapult projectile)** onto
+      `WeaponType.munitionType` (30/105 — the 5 bow types + catapult; absent on melee, so it doubles as the
+      "is ranged" marker for the deferred ranged-attack drive). **Open:** the file's graphics/coords + `animations.ini` are
       render/animation overlays — deferred with the render-atlas work (their only balance datum, the
       construction cost, is already imported).
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.

@@ -136,11 +136,13 @@ name "viking_man_idle"
 // and combat extras the schema doesn't carry (`atomicactiontype`, `soundtype_Hit`) that are ignored.
 // `mainType` is the file's exact camelCase key (a lowercased `maintype` would silently vanish). Both
 // weapons share `type 2` across different tribes — the real data's `(tribetype, type)` composite key
-// (type alone is not unique). The fist is `mainType 1, weight 0`; the spear `mainType 5, weight 1`
-// brackets the real range and exercises non-zero capture. The second omits the range pair to exercise
-// the schema's range defaults of 1. The fist's `goodtype 0` is the natural-weapon sentinel
-// (-> undefined); the spear's `goodtype 5` is a real good (-> captured; 5 also exists in the
-// IR-integration goods fixture below so the cross-ref resolves there).
+// (type alone is not unique). The fist is `mainType 1, weight 0` and a melee weapon (no
+// `munitiontype` -> the schema omits it, the ranged marker absent); the bow `mainType 6, weight 1`
+// exercises non-zero capture and carries `munitiontype 1` (the all-lowercase ammo-class key — bow ammo
+// / arrow; the `munitiontype` value 1 is NOT good id 1 "water", it's a class enum). The bow also omits
+// the range pair to exercise the schema's range defaults of 1. The fist's `goodtype 0` is the
+// natural-weapon sentinel (-> undefined); the bow's `goodtype 5` is a real good (-> captured; 5 also
+// exists in the IR-integration goods fixture below so the cross-ref resolves there).
 const WEAPONTYPES_INI = `// new
 [weapontype]
 tribetype 1
@@ -159,10 +161,11 @@ soundtype_Hit 0 95
 [weapontype]
 tribetype 2
 type 2
-mainType 5
-name "wooden spear"
+mainType 6
+name "short bow"
 goodtype 5
 weight 1
+munitiontype 1
 damagevalue 0 2400
 jobtype 32
 `;
@@ -647,17 +650,19 @@ describe('extractWeapons', () => {
         damage: { '0': 400, '1': 80 },
         jobType: 5,
         // `goodtype 0` is the natural-weapon sentinel -> no `goodType` field (undefined dropped by toEqual).
+        // A melee fist fires nothing -> no `munitionType` field either (undefined dropped by toEqual).
         source: src,
       },
       // Same `type 2` but a different tribe — `(tribeType, typeId)` is the composite key. No range
       // pair -> schema range defaults of 1; combat extras (atomicactiontype, sound) ignored.
       {
         typeId: 2,
-        id: 'wooden_spear',
-        name: 'wooden spear',
+        id: 'short_bow',
+        name: 'short bow',
         tribeType: 2,
-        mainType: 5, // a different weapon class — captured per record
+        mainType: 6, // a different weapon class — captured per record
         weight: 1, // non-zero encumbrance captured
+        munitionType: 1, // a ranged weapon's ammo class (bow ammo) — captured, NOT good id 1
         minRange: 1,
         maxRange: 1,
         damage: { '0': 2400 },

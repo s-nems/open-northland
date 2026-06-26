@@ -229,6 +229,14 @@ export const WeaponType = z.object({
   /** `weight` — the encumbrance the weapon adds (0..2 in the base data), the weapon-side twin of
    *  {@link ArmorType.weight}. */
   weight: z.number().int().nonnegative().default(0),
+  /**
+   * `munitiontype` — the **ammunition class** a *ranged* weapon fires (only bows and catapults carry
+   * it in the base data): 1 = bow ammo / arrow, 2 = catapult projectile. Like {@link mainType} it is a
+   * class enum, **not** a cross-ref into another table (`munitiontype` appears in no other `.ini`, and
+   * the values 1/2 are NOT good ids — good 1 is "water", good 2 is "mud"), so it's captured as a plain
+   * id with no cross-ref check. **Absent on melee weapons** (a fist/sword fires nothing → `undefined`),
+   * making it the data-pinned "is this weapon ranged" marker the deferred ranged-attack drive reads. */
+  munitionType: TypeId.optional(),
   minRange: z.number().int().nonnegative().default(1),
   maxRange: z.number().int().nonnegative().default(1),
   /** damageValue[targetArmorClass] -> value, as in the original weapontypes. */
