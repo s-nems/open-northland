@@ -25,6 +25,8 @@ export {
 export {
   type CombatDamageRow,
   type CombatProfile,
+  armorByClass,
+  armorClassOf,
   combatDamage,
   isRangedWeapon,
   isSiegeWeapon,

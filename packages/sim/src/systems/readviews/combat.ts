@@ -1,4 +1,4 @@
-import type { ContentSet, WeaponType } from '@vinland/data';
+import type { ArmorType, ContentSet, WeaponType } from '@vinland/data';
 
 // Pure, terminal **read views** for combat — the static weapon-vs-armor damage *lookup* table the
 // CombatSystem reads. No mechanic is added here (nothing is hit, no hitpoints change); see ./index.ts
@@ -268,6 +268,66 @@ export function weaponsByClass(content: ContentSet): Map<number, WeaponType[]> {
     const bucket = byClass.get(cls);
     if (bucket === undefined) byClass.set(cls, [weapon]);
     else bucket.push(weapon);
+  }
+  return byClass;
+}
+
+/**
+ * An {@link ArmorType}'s **coarse armor class** — its extracted `mainType` (`1` = light/cloth+leather,
+ * `2` = heavy/chain+plate in the base data), or `undefined` if the record carries none. The armor-side
+ * twin of {@link weaponClassOf}, completing the class-marker symmetry across the two combat tables.
+ *
+ * Note this is a *different* axis from the `armorClass` the {@link combatDamage} join keys on: that join
+ * key is the armor's `typeId` (the per-record `damagevalue <armorClass>` index, `1..N`), whereas
+ * `mainType` is the **coarse material-tier class** several records share (the real `armortypes.ini` ships
+ * four records with `mainType` `{1,1,2,2}` — two light, two heavy). `mainType` is a multi-valued class
+ * enum carried by every armor record, so its read view is a *grouping* ({@link armorByClass}), not a
+ * filter — exactly as `mainType` partitions the weapon table.
+ *
+ * FIDELITY n/a: a pure field accessor over the already-extracted `mainType` param (see
+ * {@link ArmorType.mainType}) — it adds no mechanic and invents no data. Determinism: a pure field read —
+ * no world, no RNG, no wall-clock.
+ */
+export function armorClassOf(armor: ArmorType): number | undefined {
+  return armor.mainType;
+}
+
+/**
+ * The armor records **grouped by their coarse class** ({@link armorClassOf}: the extracted `mainType`) as
+ * a derived **read view** over `content` — `Map<mainType, ArmorType[]>`, one bucket per class an armor
+ * record carries, classifying `content.armor` *by the data alone*. The armor-side twin of
+ * {@link weaponsByClass}: `mainType` is a class enum every armor record carries (`1` light / `2` heavy in
+ * the base data), so the natural view partitions the table rather than selecting a subset.
+ *
+ * Each bucket is an {@link ArmorType} **array in `content.armor` source order**. Unlike a weapon's
+ * `(tribeType, typeId)` — which recurs/reuses, forcing array values (see {@link combatDamage}) — an
+ * armor's `typeId` IS globally unique (the readable `armortypes.ini` is a flat 1..N table, not per-tribe;
+ * see {@link ArmorType.typeId}), so a record could in principle be keyed; we still return arrays so the
+ * shape matches {@link weaponsByClass} exactly and several records sharing a `mainType` coexist (the real
+ * data has two per class). Records with **no `mainType`** are omitted (no `undefined` bucket) — in the
+ * real data every record carries one, so this only drops a malformed/partial fixture row.
+ *
+ * The returned Map's iteration order is **insertion order** = first-appearance of each class in
+ * `content.armor` (NOT ascending by class id) — the same [cef9629] idiom {@link weaponsByClass} uses: a
+ * `Map`-valued read view may be built by a single non-canonical pass because its values are
+ * order-independent *per bucket* (each bucket preserves source order, and which bucket a record lands in
+ * never depends on visit order), and no system reads it back to branch on a game decision. A display
+ * consumer that wants the classes in id order must **sort the keys itself**.
+ *
+ * FIDELITY n/a: a pure derived read view over the already-extracted armor IR (like {@link weaponsByClass}
+ * over weapons) — adds no mechanic, invents no classification (the class split is read straight off the
+ * `mainType` marker the pipeline pinned). Determinism: a single pass over the plain `content.armor` array
+ * building a fresh Map (the shared content is never mutated); no world, no RNG, no wall-clock — so the
+ * same content yields a byte-identical grouping every call.
+ */
+export function armorByClass(content: ContentSet): Map<number, ArmorType[]> {
+  const byClass = new Map<number, ArmorType[]>();
+  for (const armor of content.armor) {
+    const cls = armorClassOf(armor);
+    if (cls === undefined) continue; // a malformed/partial record with no class — drop it (real data has none)
+    const bucket = byClass.get(cls);
+    if (bucket === undefined) byClass.set(cls, [armor]);
+    else bucket.push(armor);
   }
   return byClass;
 }
