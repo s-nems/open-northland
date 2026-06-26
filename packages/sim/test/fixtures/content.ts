@@ -193,7 +193,8 @@ export function testContent(): ContentSet {
     // (tribe 11) is recorded to exercise the decorative-fauna target exemption.
     animals: [
       // The bear also carries herd params so the spawnAnimalHerd command has a real group to place: a
-      // pack of 3 that follows a leader (searchForLeader), ranging up to 2 tiles from its birth point.
+      // pack of 3 that follows a leader (searchForLeader), ranging up to 2 tiles from its birth point,
+      // and roaming up to 3 tiles from its leader (maximumLeaderDistance — the herdingSystem cohesion radius).
       {
         id: 'bear',
         tribeType: 10,
@@ -202,6 +203,7 @@ export function testContent(): ContentSet {
         hitpointsAdult: 15000,
         maximumGroupSize: 3,
         searchForLeader: true,
+        maximumLeaderDistance: 3,
         maximumDistanceToBirthPoint: 2,
       },
       // The bee is a SOLITARY animal (no maximumGroupSize, searchForLeader false) — the spawn places

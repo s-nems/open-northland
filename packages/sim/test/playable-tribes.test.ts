@@ -61,6 +61,7 @@ function tribeContent(): ContentSet {
         // herd/spawn params the herdParams read view surfaces
         maximumGroupSize: 4,
         searchForLeader: true,
+        maximumLeaderDistance: 5,
         maximumDistanceToBirthPoint: 12,
         maximumDistanceToStayPoint: 7,
       },
@@ -187,6 +188,7 @@ describe('herdParams (the animal herd/spawn read view)', () => {
     expect(params).toEqual({
       maxGroupSize: 4, // maximumGroupSize
       searchForLeader: true, // searchForLeader
+      leaderDistance: 5, // maximumLeaderDistance
       birthPointRange: 12, // maximumDistanceToBirthPoint
       stayPointRange: 7, // maximumDistanceToStayPoint
     });
@@ -213,6 +215,7 @@ describe('herdParams (the animal herd/spawn read view)', () => {
     expect(herdParams(content, 7)).toEqual({
       maxGroupSize: 0,
       searchForLeader: false,
+      leaderDistance: 0,
       birthPointRange: 0,
       stayPointRange: 0,
     });

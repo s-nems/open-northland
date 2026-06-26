@@ -172,8 +172,9 @@ function spawnSettler(
  * by a **deterministic** offset ({@link herdMemberOffset} — an expanding 8-direction ring, no RNG), so a
  * herd spreads out instead of stacking on one tile, reproducibly. When the animal's `searchforleader` is
  * set the herd gets a **leader** — its lowest-id member (the first created), which every member (including
- * the leader, self-referentially) records via a {@link HerdMember} — the relation the later follow-the-
- * leader movement drive will read; a solitary (`searchforleader` false) animal carries no `HerdMember`.
+ * the leader, self-referentially) records via a {@link HerdMember} — the relation the follow-the-leader
+ * movement drive (`herdingSystem`) reads to keep a strayed follower within `maximumleaderdistance`; a
+ * solitary (`searchforleader` false) animal carries no `HerdMember`.
  *
  * A `tribe` with no `animaltypes` record (a civilization, or an unknown tribe) is bad input — there are
  * no herd params to read — so the command is skipped (still logged by commandSystem, so replay stays

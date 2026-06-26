@@ -16,6 +16,7 @@ import { cleanupSystem } from './cleanup.js';
 import { combatSystem } from './combat.js';
 import { commandSystem } from './command.js';
 import type { System, SystemContext } from './context.js';
+import { herdingSystem } from './herding.js';
 import { jobSystem } from './jobs.js';
 import { MOVE_SPEED_PER_TICK, movementSystem } from './movement.js';
 import {
@@ -124,6 +125,7 @@ export {
 };
 export { cleanupSystem };
 export { combatSystem };
+export { herdingSystem };
 export { constructionSystem, progressionSystem, terrainSystem, timeSystem, transportSystem };
 
 /**
@@ -138,6 +140,7 @@ export const SYSTEM_ORDER: readonly System[] = [
   needsSystem,
   progressionSystem,
   jobSystem,
+  herdingSystem,
   aiSystem,
   pathfindingSystem,
   movementSystem,
