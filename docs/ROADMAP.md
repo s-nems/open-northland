@@ -202,7 +202,12 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       default 0.25), the first consumer of `locomotionOf`; one whose record omits it keeps the universal
       pace (golden untouched). Faithful to the `movespeed` magnitude; the **direction of the scale**
       (larger = slower, the only reading consistent with `runspeed < movespeed`) is the one approximation,
-      and the `runspeed` (flee/charge) gait isn't wired yet — both recorded in docs/FIDELITY.md.
+      recorded in docs/FIDELITY.md. **Run gait now STAMPED on the entity** (→ `MoveSpeed{runPerTick}`): a
+      creature with a `runspeed` also carries `runPerTick = ONE/runspeed` (the *faster* gait; null when
+      omitted) — the data landed on the entity ("data before its consumer", as `Armor`/`cargoGoods`) so
+      the deferred flee/charge drive is a pure read-switch, not a re-extraction. The mover still reads only
+      the walk pace, so the field is **inert today**; the flee/charge DRIVE (*when* an animal runs vs walks)
+      is undocumented "soul" behaviour with no oracle, deferred (docs/FIDELITY.md "Animal locomotion pace").
       Target-acquisition / swing-cadence / in-place-strike / separate-walk-to-corpse-`harvest_cadaver`-atomic
       approximations also in docs/FIDELITY.md.
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,

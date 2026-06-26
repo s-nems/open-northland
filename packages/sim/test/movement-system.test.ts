@@ -133,7 +133,7 @@ describe('movementSystem — per-entity pace (MoveSpeed)', () => {
       { x: 1, y: 0 },
     ]);
     // Half the settler pace: ONE/8 = 0.125 tile/tick (vs the default ONE/4 = 0.25).
-    sim.world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(8)) });
+    sim.world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(8)), runPerTick: null });
     sim.step(); // consume wp0 (already on it), index -> 1; no move toward wp1 yet
     sim.step(); // first move toward wp1 at the entity's OWN pace
     expect(pos(sim, e).x).toBeCloseTo(0.125, 6); // an eighth of a tile, not a quarter
@@ -145,7 +145,7 @@ describe('movementSystem — per-entity pace (MoveSpeed)', () => {
       { x: 0, y: 0 },
       { x: 1, y: 0 },
     ]);
-    sim.world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(8)) });
+    sim.world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(8)), runPerTick: null });
     sim.step(); // consume wp0; index -> 1
     for (let i = 0; i < 7; i++) {
       sim.step();

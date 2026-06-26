@@ -251,10 +251,14 @@ function spawnSettler(
  * faithful), the same recoverable-boundary-failure stance as an unknown building/job id.
  *
  * FIDELITY: the **group size**, **HP pool**, **birth-point range**, **leader presence**, and the
- * **walking-pace magnitude** (`movespeed`) are the verbatim extracted `animaltypes.ini` params
- * (faithful). A creature with an explicit `movespeed` gets a {@link MoveSpeed}{`perTick = ONE/movespeed`}
- * (a larger `movespeed` walks a *slower* step), so it grazes at its own data-pinned pace; one whose
- * record omits `movespeed` carries no `MoveSpeed` and walks at the universal settler default.
+ * **walking/running-pace magnitudes** (`movespeed`/`runspeed`) are the verbatim extracted
+ * `animaltypes.ini` params (faithful). A creature with an explicit `movespeed` gets a
+ * {@link MoveSpeed}{`perTick = ONE/movespeed`} (a larger `movespeed` walks a *slower* step), so it grazes
+ * at its own data-pinned pace; one whose record omits `movespeed` carries no `MoveSpeed` and walks at the
+ * universal settler default. Its `runspeed` is stamped as the same view's `runPerTick` (`ONE/runspeed`,
+ * the *faster* gait — a `runspeed` is always a smaller number than its `movespeed`), **recorded on the
+ * entity but not yet consumed** — the flee/charge drive that switches to the run gait is deferred,
+ * undocumented "soul" behaviour with no oracle (docs/FIDELITY.md "Animal locomotion pace").
  * **Approximated (no oracle):** the *scatter pattern* (where within the range each creature lands), that
  * animals spawn at `jobType: null` (so they carry no weapon yet — the animal→weapon `(tribeType, typeId)`
  * binding is a deferred refinement), that the spawn is a one-shot placement with no respawn/territory
@@ -276,11 +280,17 @@ function spawnAnimalHerd(
   if (herd === null) return; // not an animal tribe (a civilization / unknown) — bad input, skip
   const hitpoints = animalHitpoints(ctx.content, command.tribe) ?? 0; // an animal record always has both
 
-  // The animal's data-pinned walking pace: a `movespeed` of N walks ONE/N tile/tick (a larger
-  // `movespeed` = a slower step — see docs/FIDELITY.md "Animal locomotion pace"). A record that omits
-  // `movespeed` (walkSpeed 0) stamps NO MoveSpeed, so it walks at the universal settler default.
-  const walkSpeed = locomotionOf(ctx.content, command.tribe)?.walkSpeed ?? 0;
+  // The animal's data-pinned locomotion paces: a `movespeed`/`runspeed` of N moves ONE/N tile/tick (a
+  // larger speed value = a slower step — see docs/FIDELITY.md "Animal locomotion pace"). A record that
+  // omits `movespeed` (walkSpeed 0) stamps NO MoveSpeed, so it walks at the universal settler default;
+  // one that omits `runspeed` carries a null run pace (only its walk gait is known). The run pace is
+  // recorded on the entity but not yet consumed — the flee/charge drive that switches to it is deferred
+  // (docs/FIDELITY.md "Animal locomotion pace"); the MovementSystem reads only the walk pace today.
+  const locomotion = locomotionOf(ctx.content, command.tribe);
+  const walkSpeed = locomotion?.walkSpeed ?? 0;
+  const runSpeed = locomotion?.runSpeed ?? 0;
   const movePace = walkSpeed > 0 ? fx.div(ONE, fx.fromInt(walkSpeed)) : null;
+  const runPace = runSpeed > 0 ? fx.div(ONE, fx.fromInt(runSpeed)) : null;
 
   const count = Math.max(1, herd.maxGroupSize); // a 0/solitary group still yields one creature
   const range = Math.max(0, herd.birthPointRange);
@@ -299,7 +309,9 @@ function spawnAnimalHerd(
       experience: new Map<number, number>(),
     });
     world.add(e, Health, { hitpoints, max: hitpoints });
-    if (movePace !== null) world.add(e, MoveSpeed, { perTick: movePace }); // walk at its own data-pace
+    // Stamp the data-pinned paces when the creature has an explicit walk gait: `perTick` walks it, and
+    // `runPerTick` records its run gait for the deferred flee/charge drive (null if `runspeed` omitted).
+    if (movePace !== null) world.add(e, MoveSpeed, { perTick: movePace, runPerTick: runPace });
     members.push(e);
     ctx.events.emit({ kind: 'settlerBorn', entity: e });
   }
