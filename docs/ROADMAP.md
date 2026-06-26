@@ -93,8 +93,11 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       the `combatDamage` `weapontypes`×`armortypes` net-damage join + the full targeting→`attack`(atomic
       81)→hit→death loop (`combatSystem`/`resolveHit`/`Health` drain/`cleanupSystem`), and a combatant's
       worn `Armor{armorClass}` resolving the per-class join (`spawnSettler{armorClass}`). Faithful
-      (net-damage param + atomic id 81). **Open (oracle-blocked, deferred):** walk-into-melee advance,
-      swing cadence, soldier-class→armor binding (docs/FIDELITY.md). Inert on the golden.
+      (net-damage param + atomic id 81). The data-side **soldier-class→weapon roster join** now lands
+      (`weaponsByJob`/`weaponsForJob` off each weapon's `jobtype` — see the "Import full base" item); only
+      the *equip behavior* (a settler of that job actually holding the weapon) stays oracle-blocked. **Open
+      (oracle-blocked, deferred):** walk-into-melee advance, swing cadence, the equip drive +
+      soldier-class→armor binding (docs/FIDELITY.md). Inert on the golden.
 - [x] **N data-defined tribes** (viking/frank/saracen/byzantine/egypt), asymmetry expressed through each
       tribe's atomic bindings + `allow*`/`needfor*` graph — never hardcode "two". **Substance-complete**
       (→ [archive](ROADMAP-ARCHIVE.md)): all 41 `[tribetype]`s extracted, every per-tribe rule resolved off
@@ -164,7 +167,13 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `mainType` grouping over `content.armor` (`Map<mainType, ArmorType[]>`, 4 records → 2 classes — light
       `{woolen,leather}`, heavy `{chain,plate}` — read straight from `armortypes.ini`'s `mainType {1,1,2,2}`),
       so both combat tables expose their coarse class identically — the data-defined seed the deferred
-      soldier-class→armor-tier binding joins on. **Open:** the file's graphics/coords + `animations.ini` are
+      soldier-class→armor-tier binding joins on. **The soldier-class→weapon ROSTER JOIN itself now lands**
+      (`weaponsByJob`/`weaponsForJob`, `systems/readviews/combat.ts`): each `[weapontype]`'s `jobtype` (the
+      job that wields it — already extracted + cross-ref-validated) groups all 105 weapons into a lossless
+      `Map<jobType, WeaponType[]>` (20 wielding jobs over the real IR, e.g. `soldier_unarmed→{fist,claw}`,
+      `hunter→hunter_bow`), with `weaponsForJob(content, job)` the per-job slice — the data-defined answer to
+      "which weapons does soldier-class N wield", the seed the deferred equip drive joins on (the equip
+      *behavior* stays oracle-blocked). **Open:** the file's graphics/coords + `animations.ini` are
       render/animation overlays — deferred with the render-atlas work (their only balance datum, the
       construction cost, is already imported).
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.

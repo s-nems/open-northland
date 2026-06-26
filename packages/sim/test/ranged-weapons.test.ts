@@ -7,6 +7,8 @@ import {
   siegeWeapons,
   weaponClassOf,
   weaponsByClass,
+  weaponsByJob,
+  weaponsForJob,
 } from '../src/systems/index.js';
 
 /** Resolve a weapon by its `id` from a content set (throws if absent — a test-fixture programmer error). */
@@ -211,5 +213,89 @@ describe('weaponsByClass', () => {
   it('is byte-stable call-to-call (a pure function of content)', () => {
     const content = weaponContent();
     expect(weaponsByClass(content)).toEqual(weaponsByClass(content));
+  });
+});
+
+/**
+ * A fixture for the soldier-class→weapon roster views, mirroring the real `weapons.ini` shape: every
+ * `[weapontype]` names the `jobtype` that wields it (the swordsman job 6, the fist-fighter job 31), and a
+ * job wields several weapons across the tribes (job 6 wields a sword AND a mace here, the many-to-one
+ * join). The `jobType` is a CROSS-REFERENCE into the jobs table, so each referenced job is declared in
+ * `jobs` (else `parseContentSet` rejects the content). One row leaves `jobType` unset to prove it is
+ * dropped (no `undefined` bucket), the same drop-undefined stance `weaponsByClass` takes for `mainType`.
+ * Rows are declared OUT of source order within a job to prove the buckets keep `content.weapons` order.
+ */
+function jobWeaponContent(): ContentSet {
+  return parseContentSet({
+    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    goods: [{ typeId: 0, id: 'none' }],
+    jobs: [
+      { typeId: 0, id: 'idle' },
+      { typeId: 6, id: 'swordsman' },
+      { typeId: 31, id: 'fighter' },
+    ],
+    buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+    weapons: [
+      // swordsman (job 6) wields a sword; a fist (job 31) declared between its two weapons
+      { typeId: 5, id: 'sword_short', tribeType: 1, mainType: 3, jobType: 6 },
+      { typeId: 1, id: 'fist', tribeType: 1, mainType: 1, jobType: 31 },
+      // a second swordsman weapon (a mace) — same job 6, declared AFTER the fist (the many-to-one join)
+      { typeId: 8, id: 'mace', tribeType: 2, mainType: 4, jobType: 6 },
+      // a row with NO jobType — dropped from the grouping (no undefined bucket)
+      { typeId: 9, id: 'no_job', tribeType: 1, mainType: 1 },
+    ],
+  });
+}
+
+describe('weaponsByJob', () => {
+  it('groups the weapons by the job (soldier-class) that wields them, each bucket in source order', () => {
+    const byJob = weaponsByJob(jobWeaponContent());
+    // two distinct wielding jobs among the rows with a jobType: swordsman=6, fighter=31.
+    expect([...byJob.keys()].sort((a, b) => a - b)).toEqual([6, 31]);
+    // job 6 wields both the sword and the mace, sword_short before mace (content.weapons order)
+    expect(byJob.get(6)?.map((w) => w.id)).toEqual(['sword_short', 'mace']);
+    expect(byJob.get(31)?.map((w) => w.id)).toEqual(['fist']);
+  });
+
+  it('omits a weapon with no jobType (no undefined bucket)', () => {
+    const byJob = weaponsByJob(jobWeaponContent());
+    // the no_job row is dropped, so its weapon never appears in any bucket
+    for (const bucket of byJob.values()) expect(bucket.some((w) => w.id === 'no_job')).toBe(false);
+    expect([...byJob.keys()].sort((a, b) => a - b)).toEqual([6, 31]);
+  });
+
+  it('is empty for content with no weapons (parseContentSet defaults weapons to [])', () => {
+    const content = parseContentSet({
+      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      goods: [{ typeId: 0, id: 'none' }],
+      jobs: [{ typeId: 0, id: 'idle' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+    });
+    expect(weaponsByJob(content).size).toBe(0);
+  });
+
+  it('is byte-stable call-to-call (a pure function of content)', () => {
+    const content = jobWeaponContent();
+    expect(weaponsByJob(content)).toEqual(weaponsByJob(content));
+  });
+});
+
+describe('weaponsForJob', () => {
+  it('returns just the weapons a single job wields, in source order', () => {
+    const content = jobWeaponContent();
+    // job 6 (swordsman) wields the sword and the mace, in content order
+    expect(weaponsForJob(content, 6).map((w) => w.id)).toEqual(['sword_short', 'mace']);
+    expect(weaponsForJob(content, 31).map((w) => w.id)).toEqual(['fist']);
+  });
+
+  it('is empty for a job no weapon names', () => {
+    // job 0 (idle) is a declared job but no weapon binds to it
+    expect(weaponsForJob(jobWeaponContent(), 0)).toEqual([]);
+  });
+
+  it('agrees with the weaponsByJob grouping for every wielding job', () => {
+    const content = jobWeaponContent();
+    const byJob = weaponsByJob(content);
+    for (const [job, bucket] of byJob) expect(weaponsForJob(content, job)).toEqual(bucket);
   });
 });

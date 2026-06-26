@@ -35,6 +35,8 @@ export {
   weaponClassOf,
   weaponKey,
   weaponsByClass,
+  weaponsByJob,
+  weaponsForJob,
 } from './combat.js';
 
 export {
