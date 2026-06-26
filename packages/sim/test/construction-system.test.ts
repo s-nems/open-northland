@@ -391,7 +391,7 @@ describe('constructionSystem — home level-up', () => {
     const sim = new Simulation({ seed: 1, content: levelChainContent() });
     // Hold both L1's cost (2 stone) AND L2's cost (1 wood). One tick should advance exactly one tier:
     // after L0→L1 the stone is spent, and L2's cost (wood) is what L1 would need — present, so a SECOND
-    // tick advances L1→L2. This guards against a within-tick double-upgrade (the matches are snapshotted).
+    // tick advances L1→L2. This guards against a within-tick double-upgrade (query yields each id once).
     const e = placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 2, [WOOD]: 1 });
     constructionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, Building).buildingType).toBe(HOME_L1); // exactly one tier this tick
