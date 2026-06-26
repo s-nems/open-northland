@@ -24,8 +24,8 @@ import { isPlayableTribe, mayAttack } from '../src/systems/index.js';
  * The **asymmetry is entirely in the data** — never a hardcoded "two": the two tribes differ only in
  * their per-tribe rows (each its own `jobEnables` edge, its own `weapontypes` damage/reach, its own
  * `setatomic 81 -> attack animation` whose `length` is its swing duration). The sim resolves every
- * per-tribe rule off `settler.tribe`, so a viking fights with the viking axe and a saxon with the
- * saxon mace purely because the content says so. A real N-tribe set is the same shape with more rows.
+ * per-tribe rule off `settler.tribe`, so a viking fights with the viking mace and a saxon with the
+ * saxon sword purely because the content says so. A real N-tribe set is the same shape with more rows.
  *
  * Like populated-map-combat.test.ts, a civ becomes a *combatant* only once it carries a `Health` pool
  * (settler-side Health stamping — soldiers/armor — is a separate future slice), so combatants are
