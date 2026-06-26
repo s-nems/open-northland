@@ -72,9 +72,19 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       conflated the logic table (`types/houses.ini`, no cost key) with its graphics twin. Overlaid onto
       buildings by `typeId`, run-length-encoded to `{goodType, amount}`, cross-checked against goods;
       53/55 buildings carry a cost (HQ + one omitted type free). Per-tribe cost spread collapsed to the
-      reference tribe (docs/FIDELITY.md). **Open (behavior, no oracle):** the construction-system
-      *behavior* — deliver-materials-then-build + the level-up trigger — is now unblocked on data but
-      remains our future design (the engine's build loop has no oracle).
+      reference tribe (docs/FIDELITY.md). **Build-completion behavior now LANDED** (→ `constructionSystem`,
+      `systems/construction.ts` — graduated from the stub): a building placed `underConstruction` (a new
+      `placeBuilding{underConstruction}` flag, the opt-in richer entity like `spawnSettler{hitpoints}`)
+      enters at `built = 0` with an empty hold; once its own stockpile holds the full `construction`
+      material cost the system **consumes** those materials and flips `built` to `ONE`, emitting
+      `buildingFinished` (the construction analogue of production's consume-inputs→deposit-outputs cycle;
+      a free type — HQ, empty cost — finishes on the first tick). Proven by `construction-system.test.ts`
+      (8 cases: partial-cost waits, full-cost builds+consumes, surplus left, free type, never-revisit-a-built,
+      determinism, the command path) + hands-on over the real `step()` schedule. The `housingCapacity`
+      gate already counted only `built >= ONE` homes, so a finished home now joins housing with no extra
+      wiring. **Open (still our design, no oracle):** the material-DELIVERY dispatch (a carrier hauling the
+      `construction` goods to the site — rides the transport path) and the **home level-up** trigger (a
+      built home consuming the next tier's cost to upgrade `level` → larger `homeSize`).
 - [ ] **ReproductionSystem** — **landed** (→ archive): one birth per tribe per tick while
       `tribePopulation < housingCapacity` (deterministic cadence, the `populationWithinHousing` invariant);
       a newborn is the data-pinned youngest age class (`baby_female`), `systems/ageclass.ts` recognizes the

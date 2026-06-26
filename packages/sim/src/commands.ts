@@ -10,11 +10,23 @@ import type { Entity } from './ecs/world.js';
  */
 export type Command =
   | {
+      /**
+       * Place a {@link Building} of `buildingType` at (x,y) for `tribe`. By default the building is
+       * **fully built** (`built = ONE`) — the vertical-slice path. When `underConstruction` is set the
+       * building instead enters at `built = 0`: the ConstructionSystem advances it to built once its
+       * `construction` material cost is delivered into its own stockpile (the deliver-materials-then-build
+       * loop). This is the opt-in richer entity, the same shape as `spawnSettler{hitpoints}` — omit it and
+       * nothing changes (the golden / placed-already-built path). A type with an empty `construction` cost
+       * (the headquarters, a free type) finishes on the first construction tick.
+       */
       readonly kind: 'placeBuilding';
       readonly buildingType: number;
       readonly x: number;
       readonly y: number;
       readonly tribe: number;
+      /** Start the building at `built = 0` (under construction) rather than already built. Omit (the
+       *  default) for an immediately-built placement. */
+      readonly underConstruction?: boolean;
     }
   | {
       /**

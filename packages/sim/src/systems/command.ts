@@ -133,14 +133,18 @@ function placeBuilding(
 
   const e = world.create();
   world.add(e, Position, { x: fx.fromInt(command.x), y: fx.fromInt(command.y) });
-  // A freshly placed building is fully built for the slice — ConstructionSystem (Phase 3) will
-  // instead start it at built=0 and advance as materials are delivered.
-  world.add(e, Building, { buildingType: command.buildingType, tribe: command.tribe, built: ONE, level: 0 });
-  // Seed the stockpile from the building type's stock slots (their `initial` amounts), so a
-  // headquarters arrives with its starting goods — exactly as the tests construct one by hand.
+  // `underConstruction` starts the building at built=0 — the ConstructionSystem advances it to ONE once
+  // its `construction` material cost is delivered into its stockpile. Omitted (the default) places it
+  // already built (the slice / golden path). An under-construction site begins with an EMPTY hold (it
+  // accumulates delivered materials); a finished placement is seeded from the type's stock `initial`s so
+  // a headquarters arrives with its starting goods — exactly as the tests construct one by hand.
+  const built = command.underConstruction ? fx.fromInt(0) : ONE;
+  world.add(e, Building, { buildingType: command.buildingType, tribe: command.tribe, built, level: 0 });
   const amounts = new Map<number, number>();
-  for (const slot of type.stock) {
-    if (slot.initial > 0) amounts.set(slot.goodType, slot.initial);
+  if (!command.underConstruction) {
+    for (const slot of type.stock) {
+      if (slot.initial > 0) amounts.set(slot.goodType, slot.initial);
+    }
   }
   world.add(e, Stockpile, { amounts });
   ctx.events.emit({ kind: 'buildingPlaced', entity: e, at: { x: command.x, y: command.y } });
