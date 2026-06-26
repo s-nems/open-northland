@@ -275,6 +275,41 @@ export function herdParams(content: ContentSet, tribeType: number): HerdParams |
 }
 
 /**
+ * The **locomotion speeds** an animal of `tribeType` moves at — read straight off the
+ * `animaltypes.ini` record, or null when the tribe has no animal record (a civilization, or an
+ * unknown tribe). The locomotion analogue of {@link herdParams}: where that view carries the
+ * herd/territory radii, this carries how fast the animal walks vs runs, the data a later
+ * animal-movement slice needs to drive its pace. The fields are the faithful extracted params,
+ * surfaced as one struct so the mover reads a single view (the {@link herdParams} one-call shape):
+ *
+ *  - `walkSpeed` (`movespeed`) — the wandering/grazing pace (0 = the source omitted it, i.e. the
+ *    engine default applies; 9 of 36 animals set it explicitly, e.g. the boar's 8).
+ *  - `runSpeed` (`runspeed`) — the fleeing/charging pace a startled or hostile animal moves at
+ *    (0 = the source omitted it; 5 of 36 animals carry it, always a *slower* number than their
+ *    `movespeed` — it is the engine's separate run-animation cadence, not "faster than walk").
+ *
+ * FIDELITY n/a: a pure derived **read view** over the already-extracted `animaltypes` IR — it adds
+ * no mechanic and invents no data; the *movement behaviour* these speeds will drive (when an animal
+ * walks vs runs, how a speed maps to per-tick cell advance) is a later slice with no oracle, tracked
+ * separately in docs/FIDELITY.md. Pure over `content`, no RNG/wall-clock.
+ */
+export interface Locomotion {
+  /** `movespeed` — the walking/grazing pace (0 = source-omitted, engine default). */
+  readonly walkSpeed: number;
+  /** `runspeed` — the fleeing/charging pace (0 = source-omitted). */
+  readonly runSpeed: number;
+}
+
+export function locomotionOf(content: ContentSet, tribeType: number): Locomotion | null {
+  const animal = animalRecord(content, tribeType);
+  if (animal === null) return null;
+  return {
+    walkSpeed: animal.moveSpeed,
+    runSpeed: animal.runSpeed,
+  };
+}
+
+/**
  * The good a felled animal's corpse yields when a hunter harvests it — `meat`, `goodtypes.ini`
  * `name "meat"` → `type 21` (verified in `Data/logic/goodtypes.ini`; the food good the meat economy
  * also produces — distinct from the `cadaver_meat` *landscapetype* decal id 80, which is the corpse

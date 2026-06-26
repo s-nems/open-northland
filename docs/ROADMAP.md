@@ -193,9 +193,13 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       and a weapon's `[minRange,maxRange]` reach band is honored. A hunter's **killing blow on catchable
       prey now yields the carcass's meat** (the `harvest_cadaver` payoff: `cadaverYieldOf` `maximumcadaversize`
       meat → the slayer's back, good 21). End-to-end proven by `populated-map-combat.test.ts`
-      (seed→combat→hit→death, deterministic). Faithful to the named params; target-acquisition /
-      swing-cadence / in-place-strike / separate-walk-to-corpse-`harvest_cadaver`-atomic approximations
-      recorded in docs/FIDELITY.md.
+      (seed→combat→hit→death, deterministic). The herd/spawn (`herdParams`) AND locomotion
+      (`locomotionOf` — `movespeed`/`runspeed` as `{walkSpeed,runSpeed}`, the walk-vs-run-pace read side a
+      later animal-movement mechanic consumes) params are surfaced as pure one-call read views off the
+      already-extracted IR (9/35 real animals set `movespeed`, 5/35 a `runspeed`; null for a civ/unknown).
+      Faithful to the named params; target-acquisition / swing-cadence / in-place-strike /
+      separate-walk-to-corpse-`harvest_cadaver`-atomic approximations, and the *movement mechanic* these
+      speeds will drive, recorded in docs/FIDELITY.md.
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
       `fisher_sea`/`trader_sea`/`carpenter ship`, `vehicle_ship`. **First step landed** (→ the
       `shipVehicles`/`isShipVehicle`/`largestShipCapacity` read view, `systems/readviews/vehicles.ts`):

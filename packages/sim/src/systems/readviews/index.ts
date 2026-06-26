@@ -31,6 +31,7 @@ export {
 
 export {
   type HerdParams,
+  type Locomotion,
   HUNTER_JOB,
   MEAT_GOOD,
   angryGameTimeOf,
@@ -44,6 +45,7 @@ export {
   isCatchableAnimal,
   isProvokableAnimal,
   isPlayableTribe,
+  locomotionOf,
   mayAttack,
   mayHunt,
   playableTribes,
