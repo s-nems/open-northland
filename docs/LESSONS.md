@@ -582,3 +582,12 @@ the next iteration inherits it.
   cleared at tick start by `step()`. When unit-testing a system by calling it DIRECTLY (not via
   `step()`), the buffer is never cleared, so read its emitted events with `current()`; reaching for
   `drain()` (a different bus's API) won't compile. (sim/testing)
+- [f4593c4] A `step()`-based test that PASSES in isolation but FAILS in its file is the [ac6a287]
+  store-leak: a partial `beforeEach` clear (only the components the test names) leaks an earlier
+  test's entity through a store it DIDN'T clear (a stale `CurrentAtomic`/`Production`/`Health` on a
+  reused id), and because entity ids are fresh-per-`Simulation` but the stores are global singletons,
+  the leaked component lands on this test's entity and silently diverts a planner decision (here a
+  carrier never moved). `hashState()` won't flag it (a `-t` single-test run hashes fine). Fix: clear
+  the WHOLE component namespace, not a hand-picked subset — `for (const c of Object.values(components))
+  if (c?.store instanceof Map) c.store.clear()` — so a future component added by an unrelated system in
+  the schedule can't leak in. The tell is "green alone, red in-suite". (sim/test)

@@ -14,15 +14,16 @@ import { vehicleMayCarry } from './readviews/vehicles.js';
  * The per-good capacity of a store's stockpile.
  *
  * - An **under-construction building** (a {@link Building} still at `built < ONE` — a construction
- *   site): its only "capacity" is the material-DELIVERY demand for its building type's `construction`
- *   cost. A good that the cost still needs (cost amount − what the site already holds, floored at 0)
- *   gets that **remaining** amount; any other good (or a construction good already delivered in full)
- *   gets 0. This is what routes the existing carrier path to a building site: `nearestStoreFor` only
- *   delivers a good to a store with room for it, so a site advertises room for *exactly* its
- *   outstanding materials and nothing else — a carrier hauls the `construction` goods to the site, the
- *   `pileup` deposit is capped at the need, and the ConstructionSystem then consumes them and flips
- *   `built`. (Production's deposit branch never targets a `built < ONE` building, so this can't be hit
- *   by recipe output; the carrier-delivery is the sole consumer.)
+ *   site): its per-good ceiling is the material-DELIVERY demand from its building type's `construction`
+ *   cost. A good named by the cost gets that cost line's full `amount` (the TOTAL ceiling, like every
+ *   other store — callers subtract what's on hand: `nearestStoreFor`'s `have >= capacity` full-check,
+ *   `pileup`'s `capacity - have` space); any other good gets 0 (refused). So a site advertises room for
+ *   *exactly* its outstanding materials and nothing else — `nearestStoreFor` only delivers a good to a
+ *   store with room, so the existing carrier path hauls the `construction` goods to the site (the
+ *   `pileup` deposit capped at the outstanding need), and the ConstructionSystem then consumes them and
+ *   flips `built`. (An unbuilt building also can't be a recipe-output sink — its outputs aren't in
+ *   `construction`, so production's `depositOutputs` would get capacity 0; the carrier-delivery of
+ *   build materials is the only meaningful consumer of this branch.)
  * - A built **building** store: from its building type's stock slots — a good with no declared slot
  *   has no room (capacity 0).
  * - A **boat hull** ({@link Vehicle}, the "boats as mobile stores" entity — a `Stockpile` on a hull,
