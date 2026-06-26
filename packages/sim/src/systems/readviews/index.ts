@@ -14,7 +14,8 @@
 //  - ./vehicles.ts — the data-defined ship/boat classification (the Sea/Northland slice's seed).
 //  - ./jobs.ts     — the data-defined sea-job (`fisher_sea`/`trader_sea`) classification.
 //  - ./landscape.ts — the data-defined placement-layer (`allowedon{water,everything}`) classification.
-// This barrel re-exports all six so the `systems/` barrel (and tests) keep a single import site.
+//  - ./animations.ts — the atomic-animation name resolver + interruptible/start-direction accessors.
+// This barrel re-exports all of them so the `systems/` barrel (and tests) keep a single import site.
 
 export {
   type GoodsGraphNode,
@@ -83,3 +84,5 @@ export {
   universalLayerLandscape,
   waterLayerLandscape,
 } from './landscape.js';
+
+export { atomicAnimationByName, atomicStartDirection, isInterruptibleAtomic } from './animations.js';
