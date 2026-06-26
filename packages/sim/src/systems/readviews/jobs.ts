@@ -44,9 +44,9 @@ export function isSeaJob(job: JobType): boolean {
  *
  * Returned as a {@link JobType} **array** sorted ascending by `typeId` (not a Map keyed by id) so the
  * enumeration order is stable regardless of `content.jobs` declaration order — the canonical order a
- * "for each sea job" loop wants, the same shape {@link shipVehicles} returns for vehicles.
+ * "for each sea job" loop wants, the same shape `shipVehicles` returns for vehicles.
  *
- * FIDELITY n/a: a pure derived **read view** over the already-extracted job IR (like {@link shipVehicles}
+ * FIDELITY n/a: a pure derived **read view** over the already-extracted job IR (like `shipVehicles`
  * over vehicles) — it adds no mechanic and invents no classification: the sea-vs-land split is read
  * straight off the `id` suffix the original data carries (see {@link isSeaJob}). Determinism: a pure
  * function of `content` (no world, no RNG, no wall-clock) over the plain `content.jobs` array, explicitly

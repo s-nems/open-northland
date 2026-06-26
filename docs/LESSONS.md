@@ -553,3 +553,9 @@ the next iteration inherits it.
   `stockSlots`), not adding a brand-new path. When you add an entity with a component that a generic
   scan keys on, check what the existing helpers already do with it BEFORE writing the "new" behavior —
   the default may already be wrong, not absent. (sim/ai)
+- [9433030] A `{@link Foo}` in a new file's JSDoc only resolves if `Foo` is defined or imported IN that
+  file — a cross-module link to a sibling read-view symbol (`{@link shipVehicles}` from `jobs.ts`) is
+  DANGLING even though `check`/`build` stay green (biome/tsc don't validate tsdoc link targets, so it
+  passes silently and only a reviewer catches it — the exact de39b3d finding, recurring). When you
+  copy a doc block from a sibling module as a template, downgrade any `{@link X}` whose `X` you didn't
+  also import to plain `` `X` `` backticks. (docs)
