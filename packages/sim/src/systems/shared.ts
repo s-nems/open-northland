@@ -19,8 +19,8 @@ import { vehicleMayCarry } from './readviews/vehicles.js';
  *   not a building): gated by the ship's `cargoGoods` **load allow-list** — a good the hold may carry
  *   ({@link vehicleMayCarry}) gets the whole `stockSlots` hold capacity, a good it may **not** carry
  *   gets 0 (refused, so a carrier never deposits a forbidden good into a boat). This is the *load
- *   half* of "boats as mobile stores": the hull was placed empty ({@link placeBoat}); here a haul
- *   INTO it is filtered by what the vehicle type may hold and bounded by how much. The `stockSlots`
+ *   half* of "boats as mobile stores": the hull was placed empty (the `placeBoat` command); here a
+ *   haul INTO it is filtered by what the vehicle type may hold and bounded by how much. The `stockSlots`
  *   total is applied as a per-good upper bound (a faithful upper bound — the whole-hold-shared-across-
  *   goods cap is a deferred refinement; see docs/FIDELITY.md).
  * - A store with **neither** Building nor Vehicle (a bare test fixture) is treated as uncapped so a
