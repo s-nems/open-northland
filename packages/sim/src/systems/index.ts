@@ -71,7 +71,9 @@ import {
   tribeStocks,
   vehicleCargoGoods,
   vehicleMayCarry,
+  weaponClassOf,
   weaponKey,
+  weaponsByClass,
 } from './readviews/index.js';
 import { reproductionSystem } from './reproduction.js';
 import { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem } from './routing.js';
@@ -142,7 +144,9 @@ export {
   tribeStocks,
   vehicleCargoGoods,
   vehicleMayCarry,
+  weaponClassOf,
   weaponKey,
+  weaponsByClass,
 };
 export { reproductionSystem };
 export {

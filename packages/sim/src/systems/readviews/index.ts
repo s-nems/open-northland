@@ -30,7 +30,9 @@ export {
   isSiegeWeapon,
   rangedWeapons,
   siegeWeapons,
+  weaponClassOf,
   weaponKey,
+  weaponsByClass,
 } from './combat.js';
 
 export {
