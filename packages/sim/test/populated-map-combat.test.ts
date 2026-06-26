@@ -99,22 +99,27 @@ describe('populated-map combat scenario (civ vs seeded wildlife, end-to-end)', (
     const content = testContent();
     const map = grass(9, 1);
     const sim = new Simulation({ seed: 1, content, map });
-    // Seed the bear herd at x=0 (leader at x=0, members at x=1 and... clamped within range 2).
+    // Seed the bear herd at x=0: leader on the birth point (x=0), the two pack members scattered to
+    // x=+1 and the off-map raw x=-1 (clamped to the grid edge, x=0, on combat's cellAtClamped read).
     for (const c of seedAnimalHerds(content, map, { tribes: [BEAR], maxHerds: 1 })) sim.enqueue(c);
     // A viking combatant 2 cells from the bear leader's birth point — within both weapons' range 2.
     const viking = vikingFighterAt(sim, 2, 0, 1_000_000);
 
     sim.step(); // commandSystem places the herd this tick; combatSystem then picks targets
 
-    // The viking is engaging a bear (it fights an aggressive animal BACK), and at least one bear is
+    // The viking is engaging a BEAR (it fights an aggressive animal BACK), and at least one bear is
     // engaging the viking (the unprovoked aggression drive) — the fight is mutual.
-    expect(sim.world.has(viking, CurrentAtomic)).toBe(true);
-    const vikingTarget = sim.world.get(viking, CurrentAtomic).effect;
-    expect(vikingTarget).toMatchObject({ kind: 'attack' });
-
-    const bearsSwinging = [...sim.world.query(Settler, CurrentAtomic)].filter(
-      (e) => sim.world.get(e, Settler).tribe === BEAR,
+    const bears = new Set(
+      [...sim.world.query(Settler)].filter((e) => sim.world.get(e, Settler).tribe === BEAR),
     );
+    expect(sim.world.has(viking, CurrentAtomic)).toBe(true);
+    const vikingEffect = sim.world.get(viking, CurrentAtomic).effect;
+    expect(vikingEffect.kind).toBe('attack');
+    // The viking's target is one of the seeded bears (50 damage with test_axe vs the bear's class 0).
+    expect(vikingEffect).toMatchObject({ kind: 'attack', damage: 50 });
+    if (vikingEffect.kind === 'attack') expect(bears.has(vikingEffect.target)).toBe(true);
+
+    const bearsSwinging = [...bears].filter((e) => sim.world.has(e, CurrentAtomic));
     expect(bearsSwinging.length).toBeGreaterThan(0); // a bear charged the viking
     for (const bear of bearsSwinging) {
       const eff = sim.world.get(bear, CurrentAtomic).effect;
