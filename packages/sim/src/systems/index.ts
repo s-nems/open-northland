@@ -93,7 +93,7 @@ import { progressionSystem, terrainSystem, timeSystem, transportSystem } from '.
 // (./production.ts), atomicSystem (./atomic.ts), aiSystem (./ai.ts, the settler planner),
 // needsSystem (./needs.ts, hunger + fatigue + piety + enjoyment rise) — and the not-yet-implemented stubs (./stubs.ts). The
 // genuinely cross-system helpers live in ./shared.ts; the terminal HUD/combat read views (projections
-// no system feeds back into a decision) live in ./readviews/ (split by concern: hud/combat/tribes/vehicles).
+// no system feeds back into a decision) live in ./readviews/ (split by concern: hud/combat/classes/tribes/vehicles/jobs).
 // This barrel re-exports them so `@vinland/sim`'s `systems` namespace (and the tests) keep a single
 // import site, and it owns SYSTEM_ORDER. This is the finished systems/ split — see docs/TECH-DEBT.md.
 export type { System, SystemContext };

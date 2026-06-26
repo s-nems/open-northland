@@ -65,6 +65,23 @@ For small, hard-won *gotchas* (not reworks) see [LESSONS.md](LESSONS.md); the li
 
 ## Reflection log
 
+- **2026-06-26** (source-ratchet pass, third of the day) — Caught a **source-file ratchet** the day's two
+  earlier doc-bloat passes didn't touch: `packages/sim/src/systems/readviews/combat.ts` had grown
+  **139→504 lines** (3.6× past the ~300 budget) since the prior reflection — the recent run of weapon/armor
+  read-view feats had piled a whole second concern onto it. Split it by concern (the established
+  five-sibling readviews precedent): `combat.ts` keeps **only** the static weapon-vs-armor *damage lookup
+  table* (`combatDamage`/`weaponKey` + its row/profile types, back to **139 lines**), and a new sibling
+  **`readviews/classes.ts`** (376 lines) takes the 14 data-defined **class-taxonomy** views (the
+  `isRanged`/`isSiege` predicates, the `weaponClassOf`/`weaponWeightOf`/`armorClassOf`/`armorMaterialOf`/
+  `armorWeightOf` accessors, and the `weaponsByClass`/`armorByClass`/`armorByMaterial`/`weaponsByJob`/
+  `weaponsForJob`/`rangedWeapons`/`siegeWeapons` groupings). Barrel re-exports unchanged (split into a
+  `combat.js` + `classes.js` block), so every importer/test is untouched. Pure move — **golden state-hash
+  + atomic-trace unchanged; 805 tests + check + build green**. No proposals added/closed. (`classes.ts` at
+  376 and `tribes.ts` at 388 are jsdoc-dense read-view modules whose *code* is small — over the soft budget
+  but not a two-job split candidate; weapon+armor classification is kept together as cross-referenced
+  "twin" pairs. Watch if either keeps growing.) Next `/iterate` step: resume Phase-4 read-view consumer
+  coverage on a non-combat table (probe GoodType/JobType/BuildingType/VehicleType for extracted-but-unread
+  fields), or flag the self-verifiable data seam as exhausted and the frontier as behavior-oracle-blocked.
 - **2026-06-26** (doc-bloat pass, second of the day) — The **same ROADMAP doc-bloat ratchet recurred
   within the day**: the morning's sweep (`d049b1d`, below) had compacted `docs/ROADMAP.md` to **159
   lines**, and 21 feature iterations since each appended a multi-paragraph "now LANDED" verification
