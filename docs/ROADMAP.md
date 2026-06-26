@@ -144,12 +144,15 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       ship signal converging with `passengerSlots`/`logiccommander`; the deferred placement/tile-occupancy
       drive's seed), which **completes the vehicle-record consumer coverage** (every extracted vehicle field
       — `stockSlots`/`passengerSlots`/`cargoGoods`/`logicSize` — now has a sim read view). The landscape **placement-LAYER** flags now have a consumer too
-      (`systems/readviews/landscape.ts`): `waterLayerLandscape`/`isWaterLayerType` (the `allowedonwater`
+      (`systems/readviews/landscape.ts`), the **full `allowedon{land,water,everything}` triple**:
+      `landLayerLandscape`/`isLandLayerType` (the `allowedonland` rows — the 86 land types, everything but
+      the layer-agnostic `void`), `waterLayerLandscape`/`isWaterLayerType` (the `allowedonwater`
       rows — exactly the 3 wall/gate structures that span water in the real IR) and
       `universalLayerLandscape`/`isUniversalLayerType` (the `allowedoneverything` rows — exactly the `void`
-      empty-terrain type), read straight off the genuinely-extracted `allowedon{water,everything}` ints
-      (`walkable`/`buildable` are schema defaults, not these flags). This is the placement-side seed —
-      distinct from water-VALENCY terrain below. All proven over the real IR. **Open:** water-valency terrain
+      empty-terrain type), read straight off the genuinely-extracted ints (`walkable`/`buildable` are schema
+      defaults, not these flags); land(86)+universal(1) partition the 87 rows exactly, **closing the
+      placement-layer consumer coverage**. This is the placement-side seed — distinct from water-VALENCY
+      terrain below. All proven over the real IR. **Open:** water-valency terrain
       (which CELLS are water — map-decode-blocked; the water surface lives in the triangle/terrain grid, not a
       `landscapetypes.ini` flag — the placement-layer flag above is the type-table half, not the cell half),
       boat movement + embark/disembark atomics (no such atomic in the readable `.ini` — deferred with
