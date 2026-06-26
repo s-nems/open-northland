@@ -5,7 +5,7 @@ import type { Entity, World } from '../ecs/world.js';
 import { fx } from '../fixed.js';
 import type { System, SystemContext } from './context.js';
 import { grantWorkExperience } from './progression.js';
-import { angryGameTimeOf, isProvokableAnimal } from './readviews/index.js';
+import { angryGameTimeOf, isAggressiveAnimal, isProvokableAnimal } from './readviews/index.js';
 import { stockCapacity } from './shared.js';
 
 /**
@@ -194,6 +194,10 @@ function provokeAnger(world: World, ctx: SystemContext, target: Entity): void {
   const settler = world.tryGet(target, Settler);
   if (settler === undefined) return; // not a settler/animal — nothing to anger
   if (!isProvokableAnimal(ctx.content, settler.tribe)) return; // not a getAngry animal — no provocation
+  // An ALREADY-aggressive animal needs no anger timer — it is hostile unconditionally, and stamping a
+  // redundant `Anger` on it would leak a stale component `hostileAnimalNow` never reaps (it short-circuits
+  // on `isAggressiveAnimal` before reading `Anger`). Only a passive getAngry animal is provoked.
+  if (isAggressiveAnimal(ctx.content, settler.tribe)) return;
   const duration = angryGameTimeOf(ctx.content, settler.tribe);
   if (duration <= 0) return; // no readable anger duration — nothing to time
   const until = ctx.tick + duration;
