@@ -209,15 +209,23 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `Map<jobType, WeaponType[]>` (20 wielding jobs over the real IR, e.g. `soldier_unarmed→{fist,claw}`,
       `hunter→hunter_bow`), with `weaponsForJob(content, job)` the per-job slice — the data-defined answer to
       "which weapons does soldier-class N wield", the seed the deferred equip drive joins on (the equip
-      *behavior* stays oracle-blocked). The `atomicanimations.ini` table's two **behavioral** scalars now
-      get a read-side consumer too (`systems/readviews/animations.ts`): `atomicAnimationByName` (the
+      *behavior* stays oracle-blocked). The `atomicanimations.ini` table's **behavioral** fields now
+      ALL get a read-side consumer (`systems/readviews/animations.ts`): `atomicAnimationByName` (the
       canonical name→record resolver the `atomicDuration`/combat-cadence lookups spelled out inline),
-      plus `isInterruptibleAtomic` (the `interruptable` flag — 245/896 true; the seed the deferred
-      atomic-preemption drive reads) and `atomicStartDirection` (the `startdirection` facing — 89/896
-      pinned; the deferred orientation drive's seed), read straight off the genuinely-extracted scalars
-      (vs `length`, already consumed by `atomicDuration`). **Open:** the file's graphics/coords +
-      `animations.ini`'s render-side timing/`event` vocabulary are render/animation overlays — deferred
-      with the render-atlas work (their only balance datum, the construction cost, is already imported).
+      `isInterruptibleAtomic` (the `interruptable` flag — 245/896 true; the seed the deferred
+      atomic-preemption drive reads), `atomicStartDirection` (the `startdirection` facing — 89/896
+      pinned; the deferred orientation drive's seed), **and now `atomicEventChannelDelta`** — the net
+      signed delta an animation contributes to one `event <at> <type> <value>` need-bar channel
+      (`ATOMIC_EVENT_CHANNEL` names the four: `REST`/`HUNGER`/`LEISURE`/`PIETY` = types 1/2/3/4), summing
+      the per-tick `value`s straight off the extracted `events` array. This turns the channel-restore
+      magnitudes the needs/eat/sleep/pray/enjoy systems assert only in *prose* into a data-pinned lookup,
+      and **closes the atomic-animation read-view coverage — every extracted `AtomicAnimation` field
+      (`length`/`interruptible`/`startDirection`/`events`) now has a sim read view**. **Open:** the file's
+      graphics/coords + `animations.ini`'s render-side timing/cue `event` channels (the non-need `type`
+      ids 8..36 — sounds/effect cues) are render/animation overlays deferred with the render-atlas work;
+      and the event-driven NEEDS DRIVE that would replace the approximated per-tick rise/reset constants
+      with these real deltas stays oracle-blocked (no trigger-cadence oracle). The only balance datum,
+      the construction cost, is already imported.
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.
 
 ## Phase 5 — Campaigns, polish, platform
