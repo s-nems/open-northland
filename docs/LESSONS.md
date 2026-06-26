@@ -578,3 +578,7 @@ the next iteration inherits it.
   "logic" and a "graphics" `.ini`, and a `Logic*` key can live in the graphics one. Same-typeId rows
   recur per `LogicTribeType` AND per `sizeIdx` with different costs, so a flat-by-typeId overlay must
   pick a deterministic winner (lowest tribe, lowest size) and record the collapse in FIDELITY. (pipeline/fidelity)
+- [e4d77a8] The sim's `EventBuffer` exposes `current()`/`clear()`, NOT a `drain()` — and it's only
+  cleared at tick start by `step()`. When unit-testing a system by calling it DIRECTLY (not via
+  `step()`), the buffer is never cleared, so read its emitted events with `current()`; reaching for
+  `drain()` (a different bus's API) won't compile. (sim/testing)
