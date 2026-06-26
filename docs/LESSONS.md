@@ -609,3 +609,10 @@ the next iteration inherits it.
   system's capacity arithmetic, make it an explicit gate (`built < ONE → continue`); the coincidence
   breaks the instant the two goods sets intersect. Grep the other iterators of the same component pair
   for the same gap (housing/reproduction already gated; `tribeStocks` deliberately doesn't). (sim/production)
+- [15cdcb6] `stockCapacity` is a SOFT carrier-scan advertising ceiling, not a hard cap any invariant
+  enforces (`stockNonNegative` only bounds [0, 2^31)). So to make a store pull in EXTRA goods (a built
+  home accumulating its next-tier upgrade cost), just RAISE its advertised capacity — `Math.max(slotCap,
+  upgradeAmount)` — and the existing `nearestStoreFor`→`pileup` path delivers them; no new transport
+  code, and transiently holding more than the nominal slot cap trips nothing (no "stock ≤ slotCap"
+  invariant exists). Before raising a capacity to drive delivery, confirm no invariant treats it as a
+  hard bound; here none does, so the seam composes for free. (sim/transport)
