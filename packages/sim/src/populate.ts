@@ -75,8 +75,15 @@ export function seedAnimalHerds(
   const tribes = resolveAnimalTribes(content, options.tribes);
   if (tribes.length === 0) return []; // no animals in this content — nothing to seed
 
-  const stride = Math.max(1, Math.floor(options.cellStride ?? 1));
-  const maxHerds = Math.max(0, Math.floor(options.maxHerds ?? Number.POSITIVE_INFINITY));
+  // Clamp to sane bounds. A non-finite (NaN) option would otherwise poison the `% stride`/`>= maxHerds`
+  // comparisons (every comparison with NaN is false), silently yielding an empty or uncapped result — so
+  // a malformed value falls back to the default rather than failing quietly.
+  const stride = Number.isFinite(options.cellStride)
+    ? Math.max(1, Math.floor(options.cellStride as number))
+    : 1;
+  const maxHerds = Number.isFinite(options.maxHerds)
+    ? Math.max(0, Math.floor(options.maxHerds as number))
+    : Number.POSITIVE_INFINITY;
   if (maxHerds === 0) return [];
 
   const commands: Command[] = [];

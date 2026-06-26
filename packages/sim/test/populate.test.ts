@@ -90,6 +90,18 @@ describe('seedAnimalHerds (map populator)', () => {
     expect([...tribes]).toEqual([BEAR]); // only the recorded animal survives
   });
 
+  it('falls back to defaults on a non-finite option (no silent empty result)', () => {
+    const content = testContent();
+    // A NaN cellStride/maxHerds must not poison the `% stride`/`>= maxHerds` comparisons into an empty
+    // result — it falls back to stride 1 / uncapped, the same as the no-option call.
+    const bad = seedAnimalHerds(content, grass(4, 1), {
+      cellStride: Number.NaN,
+      maxHerds: Number.NaN,
+    });
+    expect(bad).toEqual(seedAnimalHerds(content, grass(4, 1)));
+    expect(bad.length).toBeGreaterThan(0);
+  });
+
   it('seeds nothing on a map with no walkable cells', () => {
     const content = testContent();
     const allWater = { width: 3, height: 1, typeIds: [WATER, WATER, WATER] };
