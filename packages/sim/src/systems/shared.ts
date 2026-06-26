@@ -1,29 +1,49 @@
 import type { Recipe } from '@vinland/data';
-import { Building, Position, Settler } from '../components/index.js';
+import { Building, Position, Settler, Vehicle } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import { ONE, fx } from '../fixed.js';
 import type { TerrainGraph } from '../terrain.js';
 import type { SystemContext } from './context.js';
+import { vehicleMayCarry } from './readviews/vehicles.js';
 
 // The genuinely cross-system helpers, kept in a leaf module so every per-system file imports them
 // from here (never from the barrel or from each other) — this breaks the import cycles the
 // systems/ split would otherwise create. See docs/TECH-DEBT.md.
 
 /**
- * The per-good capacity of a store's stockpile, from its building type's stock slots. A good with no
- * declared slot has no room (capacity 0); a store with no Building/type is treated as uncapped so a
- * test fixture without a building still accepts deposits.
+ * The per-good capacity of a store's stockpile.
+ *
+ * - A **building** store: from its building type's stock slots — a good with no declared slot has no
+ *   room (capacity 0).
+ * - A **boat hull** ({@link Vehicle}, the "boats as mobile stores" entity — a `Stockpile` on a hull,
+ *   not a building): gated by the ship's `cargoGoods` **load allow-list** — a good the hold may carry
+ *   ({@link vehicleMayCarry}) gets the whole `stockSlots` hold capacity, a good it may **not** carry
+ *   gets 0 (refused, so a carrier never deposits a forbidden good into a boat). This is the *load
+ *   half* of "boats as mobile stores": the hull was placed empty ({@link placeBoat}); here a haul
+ *   INTO it is filtered by what the vehicle type may hold and bounded by how much. The `stockSlots`
+ *   total is applied as a per-good upper bound (a faithful upper bound — the whole-hold-shared-across-
+ *   goods cap is a deferred refinement; see docs/FIDELITY.md).
+ * - A store with **neither** Building nor Vehicle (a bare test fixture) is treated as uncapped so a
+ *   fixture without a type still accepts deposits.
  *
  * Cross-system: used by the AI store scan ({@link nearestStoreFor}), the atomic `pileup` deposit,
  * and production's `canStartCycle`/`depositOutputs`.
  */
 export function stockCapacity(world: World, ctx: SystemContext, store: Entity, goodType: number): number {
   const building = world.tryGet(store, Building);
-  if (building === undefined) return Number.MAX_SAFE_INTEGER; // bare store fixture: uncapped
-  const type = ctx.content.buildings.find((b) => b.typeId === building.buildingType);
-  if (type === undefined) return 0;
-  const slot = type.stock.find((s) => s.goodType === goodType);
-  return slot?.capacity ?? 0;
+  if (building !== undefined) {
+    const type = ctx.content.buildings.find((b) => b.typeId === building.buildingType);
+    if (type === undefined) return 0;
+    const slot = type.stock.find((s) => s.goodType === goodType);
+    return slot?.capacity ?? 0;
+  }
+  const hull = world.tryGet(store, Vehicle);
+  if (hull !== undefined) {
+    const type = ctx.content.vehicles.find((v) => v.typeId === hull.vehicleType);
+    if (type === undefined) return 0;
+    return vehicleMayCarry(type, goodType) ? type.stockSlots : 0;
+  }
+  return Number.MAX_SAFE_INTEGER; // bare store fixture: uncapped
 }
 
 /**

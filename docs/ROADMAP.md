@@ -157,10 +157,19 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       unknown/locked type is skipped, still logged), so a hull always references a ship the tribe may field.
       Proven by `place-boat.test.ts` through the real `step()` schedule (place ungated ship / gate-then-unlock
       a shipwright ship / refuse cart+unknown+wrong-tribe / deterministic). The hull is a STATIC store for now.
+      **Cargo-LOAD gate now LANDED** (→ `stockCapacity`'s Vehicle branch, `systems/shared.ts`): hauling a
+      good INTO a hull's `Stockpile` is filtered by the ship's `VehicleType` — a `cargoGoods` (`logicgood`)
+      good gets the whole `stockSlots` hold capacity, a forbidden good gets 0 (refused), so a carrier never
+      deposits an unhaulable good into a boat. The existing `nearestStoreFor`+`pileup` deposit path routes
+      through `stockCapacity` unchanged, so the load gate is inherited with NO new system — the load half of
+      the empty hull. Proven by `boat-cargo-load.test.ts` (deposit a carryable plank / refuse a forbidden
+      good / never over-fill the hold / deterministic) + hands-on over the real IR (`ship_big#4` resolves
+      capacity 200 for a carryable good, 0 for a forbidden one). The carrier carry-BATCH filter (sizing a
+      haul by the cart's allow-list) stays deferred with the cart entity (docs/FIDELITY.md — *Carrier→vehicle
+      pairing* (a)).
       **Open:** water-valency terrain (which cells a ship floats on — map-decode-blocked, the water
-      surface lives in the triangle/terrain grid, not a `landscapetypes.ini` flag), the cargo-load
-      `cargoGoods` filter (hauling goods INTO a hull), boat movement + embark/disembark atomics, and the
-      sea jobs.
+      surface lives in the triangle/terrain grid, not a `landscapetypes.ini` flag), boat movement +
+      embark/disembark atomics, and the sea jobs.
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.
 
