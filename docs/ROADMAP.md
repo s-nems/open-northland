@@ -124,6 +124,12 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       hands-on over the **real IR** (a `home_level_00` whose next-tier cost — good4×1 + good3×2 + good26×1 —
       is hauled by four carriers through the real `step()` upgrades typeId 2→3, capacity 1→2; a `home_level_04`
       attracts nothing). Inert on the golden (no `home`-kind building in the fixture).
+      **Full loop now PROVEN COMPOSING end-to-end** (→ `births-housing-upgrade-loop.test.ts`): each slice was
+      proven in isolation calling ONE system directly; a game-level test now drives the real `step()` schedule
+      over 200 ticks and shows them composing — a level-0 home (cap 3) births into its spare slot, two carriers
+      haul the next-tier cost in, it **upgrades** to level-1 (cap 5), and births fill the new slots (3 total =
+      the L1 ceiling), invariant never breached, deterministic. Surfaced that every settler (carriers included)
+      is a housed mouth (`tribePopulation` counts all), so a settlement seeds workers UNDER capacity.
 - [ ] **ReproductionSystem** — **landed** (→ archive): one birth per tribe per tick while
       `tribePopulation < housingCapacity` (deterministic cadence, the `populationWithinHousing` invariant);
       a newborn is the data-pinned youngest age class (`baby_female`), `systems/ageclass.ts` recognizes the
