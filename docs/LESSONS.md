@@ -591,3 +591,14 @@ the next iteration inherits it.
   the WHOLE component namespace, not a hand-picked subset — `for (const c of Object.values(components))
   if (c?.store instanceof Map) c.store.clear()` — so a future component added by an unrelated system in
   the schedule can't leak in. The tell is "green alone, red in-suite". (sim/test)
+- [0a6d0fc] A guard that holds only as an *incidental* side effect of one subsystem's data model is a
+  latent bug the moment a second input dimension overlaps: `productionSystem` "didn't" run on an
+  under-construction site only because a construction site's `stockCapacity` advertised its build
+  materials, so a recipe OUTPUT not in the cost got room 0 → cycle never started. But the INPUT side
+  of `canStartCycle` reads the raw stockpile, never `stockCapacity`, so a recipe whose input overlapped
+  a delivered build material WOULD have been raided — and production runs before construction in
+  `SYSTEM_ORDER`. A doc even *claimed* "production already gates on built" when it didn't. When a
+  desired invariant ("unbuilt ⇒ no production") is true only by emergent coincidence of another
+  system's capacity arithmetic, make it an explicit gate (`built < ONE → continue`); the coincidence
+  breaks the instant the two goods sets intersect. Grep the other iterators of the same component pair
+  for the same gap (housing/reproduction already gated; `tribeStocks` deliberately doesn't). (sim/production)
