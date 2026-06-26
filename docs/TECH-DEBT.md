@@ -65,6 +65,24 @@ For small, hard-won *gotchas* (not reworks) see [LESSONS.md](LESSONS.md); the li
 
 ## Reflection log
 
+- **2026-06-26** (doc-bloat pass, second of the day) — The **same ROADMAP doc-bloat ratchet recurred
+  within the day**: the morning's sweep (`d049b1d`, below) had compacted `docs/ROADMAP.md` to **159
+  lines**, and 21 feature iterations since each appended a multi-paragraph "now LANDED" verification
+  trail to its item, re-inflating it to **320 lines** (past the ~300 executor-read budget). Same fix:
+  swept the re-accreted verbatim narratives of the Phase-3 ConstructionSystem (the giant ~68-line bullet)
+  + ReproductionSystem and the Phase-4 CombatSystem / N-tribes / Animals / Sea-Northland / Import-content
+  items into **`docs/ROADMAP-ARCHIVE.md`** (a dated `Phase 3/4 sweep — 2026-06-26 (second pass)` block,
+  text byte-preserved), and condensed each live item to a one-line-to-short-paragraph summary that keeps
+  its **open/deferred** work + FIDELITY pointers visible. `ROADMAP.md` **320→185 lines**; the Phase-4
+  current target reads at a glance again. Docs-only — **golden state-hash + atomic-trace unchanged**; 763
+  tests + check + build green. No proposals added/closed. **The recurrence is the signal:** each
+  `/iterate` writes its full hands-on trail INTO the live roadmap item, so ROADMAP re-bloats ~8 lines/
+  iteration regardless of sweeps — a structural habit a future reflection or an `/iterate` convention
+  tweak (write the trail to the archive, leave a one-liner live) should address at the source. Next
+  `/iterate` roadmap step: the Phase-4 **Sea/Northland** boat-movement leg is oracle-blocked (no
+  embark/disembark atomic in the readable `.ini`) and water-valency is map-decode-blocked; the live
+  self-verifiable candidate is a further **data-overlay slice** of the Import-content item, else flag the
+  two human-gated render items (Phase-1 oracle pixel-diffs / Phase-2 real-atlas bind) for human eyes.
 - **2026-06-26** (doc-bloat pass) — Ratchet caught **`docs/ROADMAP.md` 333→410 lines** (past the ~300
   executor-read budget) since the morning's structure reflection (`1e20840`, which split `readviews.ts`
   but didn't touch the roadmap): the growth was completed-work *narrative* — Phase 3's five landed items
