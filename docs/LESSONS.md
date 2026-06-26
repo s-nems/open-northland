@@ -626,3 +626,11 @@ the next iteration inherits it.
   churning generation. When wiring a multi-system loop test, size the fixture so the seeded support
   agents fit UNDER the ceiling the loop grows, and read the real growth/age constants before assuming
   settlers turn over within the run. (sim/test)
+- [c7f2657] An extracted magnitude param can be directionally AMBIGUOUS with no oracle — `animaltypes`
+  `movespeed` could mean "faster" or "slower" (a butterfly's 48 vs a dog's 10 fits neither intuition),
+  and OpenVikings' sim is a stub so it carries no semantics. The disambiguator was the data's OWN
+  internal consistency: every animal that sets both has `runspeed < movespeed`, and a "run" gait must be
+  the *faster* one, so a smaller number = fewer ticks/tile = quicker → `movespeed` is a step-PERIOD
+  (bigger = slower), wired as `perTick = ONE/movespeed`. When a param's scale direction isn't pinned,
+  look for a sibling param whose meaning IS known to fix the direction, then record the inference as the
+  explicit approximation (docs/FIDELITY.md) rather than guessing silently. (sim)
