@@ -212,3 +212,62 @@ export function rangedWeapons(content: ContentSet): WeaponType[] {
 export function siegeWeapons(content: ContentSet): WeaponType[] {
   return content.weapons.filter(isSiegeWeapon);
 }
+
+/**
+ * A {@link WeaponType}'s **coarse weapon class** — its extracted `mainType` (`1..7` in the base data:
+ * fist/club/sword/axe/spear/bow/catapult), or `undefined` if the row carries none. The weapon-side twin
+ * of `ArmorType.mainType`, and the last of the three weapon class markers (alongside `munitionType`'s
+ * ranged marker and `damageType`'s siege marker) to get a read-side accessor.
+ *
+ * Unlike {@link isRangedWeapon}/{@link isSiegeWeapon} — *presence* markers that are absent on most
+ * weapons, so each yields a binary classification — `mainType` is a **multi-valued** class enum carried
+ * by *every* weapon (all 105 real rows have one, spread across all 7 classes), so its read view is a
+ * *grouping* ({@link weaponsByClass}), not a filter. This accessor is the field reader the grouping (and
+ * the deferred soldier-class→weapon-class roster binding) keys on — captured ahead of that drive.
+ *
+ * FIDELITY n/a: a pure field accessor over the already-extracted `mainType` param (see
+ * {@link WeaponType.mainType}) — it adds no mechanic and invents no data. Determinism: a pure field
+ * read — no world, no RNG, no wall-clock.
+ */
+export function weaponClassOf(weapon: WeaponType): number | undefined {
+  return weapon.mainType;
+}
+
+/**
+ * The weapons **grouped by their coarse class** ({@link weaponClassOf}: the extracted `mainType`) as a
+ * derived **read view** over `content` — `Map<mainType, WeaponType[]>`, one bucket per class a weapon
+ * carries, classifying `content.weapons` *by the data alone*. The multi-valued counterpart of the
+ * binary {@link rangedWeapons}/{@link siegeWeapons} filters: `mainType` is a class enum every weapon
+ * carries (1..7), so the natural view partitions the table rather than selecting a subset.
+ *
+ * Each bucket is a {@link WeaponType} **array in `content.weapons` source order** — lossless like
+ * {@link rangedWeapons} (a weapon's `(tribeType, typeId)` isn't unique, so the *values* must be arrays,
+ * never a keyed collection; see {@link combatDamage}). Weapons with **no `mainType`** are omitted (no
+ * `undefined` bucket) — in the real data every row carries one, so this only drops a malformed/partial
+ * fixture row. The Map's KEY space (the distinct classes) is the only thing keyed; the values lose no
+ * record.
+ *
+ * The returned Map's iteration order is **insertion order** = first-appearance of each class in
+ * `content.weapons` (NOT ascending by class id) — the [cef9629] idiom: a `Map`-valued read view may be
+ * built by a single non-canonical pass because its values are order-independent *per bucket* (each
+ * bucket preserves source order by construction, and which bucket a weapon lands in never depends on
+ * visit order), and no system reads it back to branch on a game decision. A display consumer that wants
+ * the classes in id order must **sort the keys itself**.
+ *
+ * FIDELITY n/a: a pure derived read view over the already-extracted weapon IR (like `shipVehicles` over
+ * vehicles) — adds no mechanic, invents no classification (the class split is read straight off the
+ * `mainType` marker the pipeline pinned). Determinism: a single pass over the plain `content.weapons`
+ * array building a fresh Map (the shared content is never mutated); no world, no RNG, no wall-clock —
+ * so the same content yields a byte-identical grouping every call.
+ */
+export function weaponsByClass(content: ContentSet): Map<number, WeaponType[]> {
+  const byClass = new Map<number, WeaponType[]>();
+  for (const weapon of content.weapons) {
+    const cls = weaponClassOf(weapon);
+    if (cls === undefined) continue; // a malformed/partial row with no class — drop it (real data has none)
+    const bucket = byClass.get(cls);
+    if (bucket === undefined) byClass.set(cls, [weapon]);
+    else bucket.push(weapon);
+  }
+  return byClass;
+}

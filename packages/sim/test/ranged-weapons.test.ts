@@ -1,6 +1,13 @@
 import { type ContentSet, IR_VERSION, type WeaponType, parseContentSet } from '@vinland/data';
 import { describe, expect, it } from 'vitest';
-import { isRangedWeapon, isSiegeWeapon, rangedWeapons, siegeWeapons } from '../src/systems/index.js';
+import {
+  isRangedWeapon,
+  isSiegeWeapon,
+  rangedWeapons,
+  siegeWeapons,
+  weaponClassOf,
+  weaponsByClass,
+} from '../src/systems/index.js';
 
 /** Resolve a weapon by its `id` from a content set (throws if absent — a test-fixture programmer error). */
 function weapon(content: ContentSet, id: string): WeaponType {
@@ -121,5 +128,88 @@ describe('siegeWeapons', () => {
       weapons: [{ typeId: 6, id: 'bow_short', tribeType: 1, mainType: 6, munitionType: 1 }],
     });
     expect(siegeWeapons(content)).toEqual([]);
+  });
+});
+
+describe('weaponClassOf', () => {
+  it('returns the weapon coarse class (its mainType) for each weapon', () => {
+    const content = weaponContent();
+    expect(weaponClassOf(weapon(content, 'fist'))).toBe(1);
+    expect(weaponClassOf(weapon(content, 'wooden_spear'))).toBe(2);
+    expect(weaponClassOf(weapon(content, 'sword_short'))).toBe(3);
+    expect(weaponClassOf(weapon(content, 'bow_short'))).toBe(6);
+    expect(weaponClassOf(weapon(content, 'catapult'))).toBe(7);
+  });
+
+  it('is undefined for a malformed weapon carrying no mainType', () => {
+    const content = parseContentSet({
+      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      goods: [{ typeId: 0, id: 'none' }],
+      jobs: [{ typeId: 0, id: 'idle' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      weapons: [{ typeId: 1, id: 'no_class', tribeType: 1 }],
+    });
+    expect(weaponClassOf(weapon(content, 'no_class'))).toBeUndefined();
+  });
+});
+
+describe('weaponsByClass', () => {
+  it('partitions the weapons by their coarse class, each bucket in source order', () => {
+    const byClass = weaponsByClass(weaponContent());
+    // 5 distinct classes among the 5 fixture weapons: fist=1, spear=2, sword=3, bow=6, catapult=7.
+    expect([...byClass.keys()].sort((a, b) => a - b)).toEqual([1, 2, 3, 6, 7]);
+    expect(byClass.get(1)?.map((w) => w.id)).toEqual(['fist']);
+    expect(byClass.get(6)?.map((w) => w.id)).toEqual(['bow_short']);
+    expect(byClass.get(7)?.map((w) => w.id)).toEqual(['catapult']);
+  });
+
+  it('groups multiple weapons sharing a class into one bucket, preserving source order', () => {
+    const content = parseContentSet({
+      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      goods: [{ typeId: 0, id: 'none' }],
+      jobs: [{ typeId: 0, id: 'idle' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      // two class-3 swords (declared sword_a before sword_b) plus a class-1 fist between them
+      weapons: [
+        { typeId: 5, id: 'sword_a', tribeType: 1, mainType: 3 },
+        { typeId: 1, id: 'fist', tribeType: 1, mainType: 1 },
+        { typeId: 6, id: 'sword_b', tribeType: 1, mainType: 3 },
+      ],
+    });
+    const byClass = weaponsByClass(content);
+    // both swords land in bucket 3, sword_a before sword_b (content.weapons order, not declaration of the bucket)
+    expect(byClass.get(3)?.map((w) => w.id)).toEqual(['sword_a', 'sword_b']);
+    expect(byClass.get(1)?.map((w) => w.id)).toEqual(['fist']);
+  });
+
+  it('omits a weapon with no mainType (no undefined bucket)', () => {
+    const content = parseContentSet({
+      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      goods: [{ typeId: 0, id: 'none' }],
+      jobs: [{ typeId: 0, id: 'idle' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      weapons: [
+        { typeId: 5, id: 'sword', tribeType: 1, mainType: 3 },
+        { typeId: 1, id: 'no_class', tribeType: 1 }, // no mainType — dropped, not bucketed under undefined
+      ],
+    });
+    const byClass = weaponsByClass(content);
+    expect([...byClass.keys()]).toEqual([3]);
+    expect(byClass.get(3)?.map((w) => w.id)).toEqual(['sword']);
+  });
+
+  it('is empty for content with no weapons (parseContentSet defaults weapons to [])', () => {
+    const content = parseContentSet({
+      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      goods: [{ typeId: 0, id: 'none' }],
+      jobs: [{ typeId: 0, id: 'idle' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+    });
+    expect(weaponsByClass(content).size).toBe(0);
+  });
+
+  it('is byte-stable call-to-call (a pure function of content)', () => {
+    const content = weaponContent();
+    expect(weaponsByClass(content)).toEqual(weaponsByClass(content));
   });
 });

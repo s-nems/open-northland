@@ -155,7 +155,11 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `isSiegeWeapon`/`siegeWeapons` read views (`systems/readviews/combat.ts`) classify the weapon table by
       those markers *by the data alone* (30 ranged = 25 bows + 5 catapults, 5 siege = the catapults; siege ⊆
       ranged) — the weapon twin of `isShipVehicle`/`shipVehicles`, the data-defined seed the deferred
-      ranged/siege drives switch on. **Open:** the file's graphics/coords + `animations.ini` are
+      ranged/siege drives switch on. **The third (multi-valued) marker `mainType` is now also consumed:**
+      `weaponClassOf`/`weaponsByClass` group all 105 weapons by their coarse class into a lossless
+      `Map<mainType, WeaponType[]>` (7 classes `{1:25,2:15,3:20,4:10,5:5,6:25,7:5}`) — a grouping, not a
+      filter (every weapon carries a `mainType`); the seed the deferred soldier-class→weapon-class roster
+      binding joins on. The weapon-marker classification family is now complete. **Open:** the file's graphics/coords + `animations.ini` are
       render/animation overlays — deferred with the render-atlas work (their only balance datum, the
       construction cost, is already imported).
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.
