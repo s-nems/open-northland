@@ -1,8 +1,10 @@
 import { type ContentSet, IR_VERSION, type LandscapeType, parseContentSet } from '@vinland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  isLandLayerType,
   isUniversalLayerType,
   isWaterLayerType,
+  landLayerLandscape,
   universalLayerLandscape,
   waterLayerLandscape,
 } from '../src/systems/index.js';
@@ -96,5 +98,29 @@ describe('universalLayerLandscape', () => {
   it('is byte-stable call-to-call (a pure function of content)', () => {
     const content = landscapeContent();
     expect(universalLayerLandscape(content)).toEqual(universalLayerLandscape(content));
+  });
+});
+
+describe('isLandLayerType', () => {
+  it('is true for terrain/decor/structures on land and false for the layer-agnostic void', () => {
+    const content = landscapeContent();
+    expect(isLandLayerType(land(content, 'grass'))).toBe(true);
+    expect(isLandLayerType(land(content, 'tree'))).toBe(true);
+    expect(isLandLayerType(land(content, 'wall'))).toBe(true); // a water structure is also on land
+    expect(isLandLayerType(land(content, 'wall_gate_open'))).toBe(true);
+    expect(isLandLayerType(land(content, 'void'))).toBe(false); // everything ≠ land (the lone exception)
+  });
+});
+
+describe('landLayerLandscape', () => {
+  it('returns every land-layer type and excludes the void, sorted by typeId', () => {
+    // Mirrors the real IR shape: every row but `void` carries allowedonland (86/87 there).
+    const typeIds = landLayerLandscape(landscapeContent()).map((t) => t.typeId);
+    expect(typeIds).toEqual([30, 40, 82, 84]); // grass, tree, wall, wall_gate_open — void(1) excluded
+  });
+
+  it('is byte-stable call-to-call (a pure function of content)', () => {
+    const content = landscapeContent();
+    expect(landLayerLandscape(content)).toEqual(landLayerLandscape(content));
   });
 });

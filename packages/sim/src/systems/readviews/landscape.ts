@@ -2,7 +2,8 @@ import type { ContentSet, LandscapeType } from '@vinland/data';
 
 // Pure, terminal **read views** for landscape placement layers — the data-defined "which layer may a
 // type sit on" classification read straight off `landscapetypes.ini`'s `allowedon{land,water,everything}`
-// flags. These three flags are genuinely extracted by the pipeline (unlike `walkable`/`buildable`, which
+// flags (the full placement-layer triple: `isLandLayerType`/`isWaterLayerType`/`isUniversalLayerType`).
+// These three flags are genuinely extracted by the pipeline (unlike `walkable`/`buildable`, which
 // keep their schema defaults — see tools/asset-pipeline/src/decoders/ini.ts) yet had no sim consumer; the
 // terrain graph reads only `walkable`/`maxValency`. The water-layer view is the placement-side seed the
 // Sea/Northland slice reads — distinct from water-VALENCY terrain (which cells are water), which lives in
@@ -75,4 +76,40 @@ export function isUniversalLayerType(type: LandscapeType): boolean {
  */
 export function universalLayerLandscape(content: ContentSet): LandscapeType[] {
   return content.landscape.filter(isUniversalLayerType).sort((a, b) => a.typeId - b.typeId);
+}
+
+/**
+ * Whether a {@link LandscapeType} may be placed on the **land layer** — its `allowedonland` flag
+ * ({@link LandscapeType.allowedOnLand}). In the real `landscapetypes.ini` **nearly every** type carries it
+ * (terrain, decor, dropped goods, and the wall/gate structures): 86 of the 87 rows, the lone exception
+ * being the layer-agnostic `void` (which sits on `allowedoneverything` instead). It is the land half of the
+ * placement-layer triple completed by {@link isWaterLayerType} (water) and {@link isUniversalLayerType}
+ * (everything) — the data's own `allowedon{land,water,everything}` markers, read straight off the extracted
+ * int. NOTE this is the *placement layer*, distinct from `walkable` (which keeps a schema default the
+ * pipeline never sets — see the module header); a type can be land-layer yet non-walkable (a tree, a wall).
+ *
+ * FIDELITY: pinned to the extracted `allowedonland` int (`1`/`0`). Adds no mechanic — a derived
+ * classification over the already-extracted landscape IR.
+ */
+export function isLandLayerType(type: LandscapeType): boolean {
+  return type.allowedOnLand;
+}
+
+/**
+ * The **land-layer landscape types** as a derived **read view** over `content` — the rows a structure/decor
+ * may be placed on land, distinguished *by the data alone* ({@link isLandLayerType}: the `allowedonland`
+ * flag). In the real IR this isolates the 86 land types (everything but the layer-agnostic `void`); it is
+ * the land twin of {@link waterLayerLandscape}/{@link universalLayerLandscape}, completing the
+ * placement-layer triple, with nothing hardcoded.
+ *
+ * Returned as a {@link LandscapeType} **array** sorted ascending by `typeId`, the same canonical shape the
+ * sibling views return. {@link isLandLayerType} is the matching single-type predicate.
+ *
+ * FIDELITY n/a: a pure derived **read view** over the already-extracted landscape IR — it adds no mechanic
+ * and invents no classification: the land-layer split is read straight off the `allowedonland` flag the
+ * pipeline pinned. Determinism: a pure function of `content` over the plain `content.landscape` array,
+ * explicitly **sorted** by `typeId`, so the same content yields a byte-identical array every call.
+ */
+export function landLayerLandscape(content: ContentSet): LandscapeType[] {
+  return content.landscape.filter(isLandLayerType).sort((a, b) => a.typeId - b.typeId);
 }
