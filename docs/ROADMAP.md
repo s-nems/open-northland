@@ -150,7 +150,12 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `WeaponType.munitionType` (30/105 — the 5 bow types + catapult; absent on melee, so it doubles as the
       "is ranged" marker for the deferred ranged-attack drive), **and the weapon's `damagetype` (the
       siege/damage class)** onto `WeaponType.damageType` (5/105 — catapult-only, value 2; the all-lowercase
-      twin of `munitiontype`, marking the AoE damage class for the deferred combat-resolution drive). **Open:** the file's graphics/coords + `animations.ini` are
+      twin of `munitiontype`, marking the AoE damage class for the deferred combat-resolution drive). **The
+      `munitionType`/`damageType` markers now have a CONSUMER:** the `isRangedWeapon`/`rangedWeapons` +
+      `isSiegeWeapon`/`siegeWeapons` read views (`systems/readviews/combat.ts`) classify the weapon table by
+      those markers *by the data alone* (30 ranged = 25 bows + 5 catapults, 5 siege = the catapults; siege ⊆
+      ranged) — the weapon twin of `isShipVehicle`/`shipVehicles`, the data-defined seed the deferred
+      ranged/siege drives switch on. **Open:** the file's graphics/coords + `animations.ini` are
       render/animation overlays — deferred with the render-atlas work (their only balance datum, the
       construction cost, is already imported).
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.

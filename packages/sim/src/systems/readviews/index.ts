@@ -26,6 +26,10 @@ export {
   type CombatDamageRow,
   type CombatProfile,
   combatDamage,
+  isRangedWeapon,
+  isSiegeWeapon,
+  rangedWeapons,
+  siegeWeapons,
   weaponKey,
 } from './combat.js';
 

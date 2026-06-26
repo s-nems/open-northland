@@ -137,3 +137,78 @@ export function combatDamage(content: ContentSet): CombatProfile[] {
 export function weaponKey(weapon: Pick<WeaponType, 'tribeType' | 'typeId'>): string {
   return `${weapon.tribeType ?? ''}:${weapon.typeId}`;
 }
+
+/**
+ * Whether a {@link WeaponType} is **ranged** — a weapon that fires ammunition (a bow or a catapult), as
+ * opposed to a melee weapon (fist/spear/sword). The discriminator is the extracted `munitionType` being
+ * **present**: in the real `weapons.ini` only the rows that fire ammo carry a `munitiontype` at all
+ * (`1` = bow ammo / arrow, `2` = catapult projectile), so its mere presence is the data-pinned "this
+ * weapon shoots" marker — every melee weapon leaves it `undefined`. This is the weapon-side twin of
+ * `isShipVehicle` (a vehicle classified by an extracted marker), and the data-defined seed the
+ * deferred ranged-attack drive will switch on (a bow's `[minRange,maxRange]` band already gates its
+ * reach in `attackerWeapon`; the *fire-from-afar behavior* is the still-unbuilt, oracle-blocked half).
+ *
+ * FIDELITY n/a: a pure derived classification off the already-extracted `munitionType` param (see
+ * {@link WeaponType.munitionType}) — it adds no mechanic and invents no data. The reading "munitionType
+ * present ⇔ ranged" is the marker's documented semantics, pinned to the real data (30/105 weapons carry
+ * it: the 5 bow types per tribe + the catapult). Determinism: a pure field test, no world/RNG/wall-clock.
+ */
+export function isRangedWeapon(weapon: WeaponType): boolean {
+  return weapon.munitionType !== undefined;
+}
+
+/**
+ * Whether a {@link WeaponType} is a **siege / area-damage** weapon (the catapult) — distinguished *by the
+ * data alone* by carrying a `damageType` (the siege/AoE damage class, value `2` in the base data). In the
+ * real `weapons.ini` only the catapult carries a `damagetype`, so its mere presence is the data-pinned
+ * "this weapon deals siege/area damage" marker — every fist/spear/sword/bow leaves it `undefined`. Note a
+ * siege weapon is also ranged ({@link isRangedWeapon}: the catapult's `munitiontype 2`), but the converse
+ * does not hold (a bow is ranged yet not siege) — the two markers are independent classifications, so this
+ * is the narrower set. The seed the deferred siege/AoE combat-resolution drive will switch on.
+ *
+ * FIDELITY n/a: a pure derived classification off the already-extracted `damageType` param (see
+ * {@link WeaponType.damageType}). The reading "damageType present ⇔ siege" is the marker's documented
+ * semantics, pinned to the real data (5/105 weapons carry it: the catapult, one per tribe). Determinism:
+ * a pure field test — no world, no RNG, no wall-clock.
+ */
+export function isSiegeWeapon(weapon: WeaponType): boolean {
+  return weapon.damageType !== undefined;
+}
+
+/**
+ * The **ranged weapon types** as a derived **read view** over `content` — the bow/catapult rows that fire
+ * ammunition, distinguished from melee weapons *by the data alone* ({@link isRangedWeapon}: the weapons
+ * that carry a `munitiontype`). The weapon-side twin of `shipVehicles`; the data-defined seed the
+ * deferred ranged-attack drive builds on, with nothing hardcoded.
+ *
+ * Returned as a {@link WeaponType} **array in `content.weapons` source order** — NOT keyed by `typeId` or
+ * `(tribeType, typeId)`: a weapon's `typeId` recurs per tribe and even the composite pair is reused by a
+ * few animal weapons (see {@link combatDamage}/{@link weaponKey}), so a keyed collection would silently
+ * drop records. Source order is the same stable, lossless stance {@link combatDamage} keeps; the bow rows
+ * already sit in a deterministic order in the IR. {@link isRangedWeapon} is the matching predicate.
+ *
+ * FIDELITY n/a: a pure derived read view over the already-extracted weapon IR (like `shipVehicles`
+ * over vehicles) — adds no mechanic, invents no classification (the ranged/melee split is read straight
+ * off the `munitionType` marker the pipeline pinned). Determinism: a pure `filter` over the plain
+ * `content.weapons` array (a fresh array, so the shared content is never mutated); no world/RNG/wall-clock.
+ */
+export function rangedWeapons(content: ContentSet): WeaponType[] {
+  return content.weapons.filter(isRangedWeapon);
+}
+
+/**
+ * The **siege weapon types** as a derived **read view** over `content` — the catapult rows that deal
+ * area/siege damage, distinguished *by the data alone* ({@link isSiegeWeapon}: the weapons that carry a
+ * `damagetype`). A strict subset of {@link rangedWeapons} (a catapult is also ranged), the data-defined
+ * seed the deferred siege/AoE combat-resolution drive builds on.
+ *
+ * Returned as a {@link WeaponType} **array in `content.weapons` source order**, lossless like
+ * {@link rangedWeapons} (no keyed collection — see there). {@link isSiegeWeapon} is the matching predicate.
+ *
+ * FIDELITY n/a: a pure derived read view over the already-extracted weapon IR — adds no mechanic, invents
+ * no classification (read straight off the `damageType` marker the pipeline pinned). Determinism: a pure
+ * `filter` over the plain `content.weapons` array (a fresh array); no world, no RNG, no wall-clock.
+ */
+export function siegeWeapons(content: ContentSet): WeaponType[] {
+  return content.weapons.filter(isSiegeWeapon);
+}
