@@ -673,3 +673,13 @@ the next iteration inherits it.
   miss or a getInt bug). Fix: `npm run build` after a schema change before re-running the pipeline tests;
   `grep -c <field> packages/data/dist/schema.js` tells you whether dist is current (0 = stale). The twin
   of the stale-committed-IR false-GREEN [49b6a22]: stale dist false-REDs an extractor's new field. (pipeline/data)
+- [59dc5c8] A "presence ⇔ classification" read view over an OPTIONAL marker field (`munitionType !==
+  undefined ⇒ ranged`) is only correct because the real source has NO value-0 row of that key — `getInt`
+  returns `0` (present, not undefined) for a literal `munitiontype 0`, which `!== undefined` would call
+  "ranged". Here it's safe AND faithful: `weapons.ini` only ever writes `1`/`2` (grep'd: 25×`munitiontype
+  1`, 5×`2`, 5×`damagetype 2`, zero `…type 0`), and even a hypothetical `…type 0` would mean "ammo class
+  0", still ranged by the source's grammar — so the presence test matches the marker's documented
+  semantics, not a coincidence. Before reading an optional field's *presence* as a boolean class, grep the
+  real source for a `<key> 0` line: if one exists, distinguish absent (undefined) from zero explicitly;
+  if none, presence is the faithful test. The first consumer of an "extracted ahead of its drive" marker
+  ([27aa306]) is naturally a pure read view (the `shipVehicles` twin), not the drive itself. (sim/read-model)
