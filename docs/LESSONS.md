@@ -757,3 +757,9 @@ the next iteration inherits it.
   inline the same name-keyed `.find`, the unread-field read view IS that resolver — don't reach only for
   groupings. Left the two call sites un-refactored (golden-trace paths; behavior-neutral cleanup is
   separate scope). (sim/read-model)
+- [a82afa7] A read-view module that names a "triple"/"complete set" in its header can still be missing a
+  member: `landscape.ts` declared the `allowedon{water,everything}` placement-layer classification "the
+  triple" yet had only 2 of 3 views — the land half (`allowedonland`, 86/87 of the real rows) was unread.
+  When closing per-table consumer coverage, enumerate the EXTRACTED fields (grep the extractor), not the
+  views the module *claims* to cover; the land+universal views partition the 87 rows exactly, a cheap
+  invariant the hands-on run can assert. (sim/read-model)
