@@ -724,3 +724,10 @@ the next iteration inherits it.
   CLASS-ENUM fields (`mainType`/`materialType`) whose accessors are `number | undefined` and whose
   groupings drop the undefined bucket. Don't copy the optional-field grouping idiom onto a defaulted
   quantity — read it straight. (sim/read-model)
+- [3862cd5] A same-day reflection that cleared ONE structural axis (doc-bloat in ROADMAP.md) does NOT
+  clear a DIFFERENT axis: between two doc-bloat passes the same day, `readviews/combat.ts` quietly grew
+  139→504 lines (a whole second concern piled on by the feature run between them). `/iterate`'s step-0.5
+  structure scan must re-measure source-file sizes every pass — "we reflected today" is not a reason to
+  skip it when the prior reflection was on a different axis. The fix is the established readviews
+  precedent: split by concern into a sibling module (here `classes.ts` for the weapon/armor class
+  taxonomy), barrel re-exports unchanged, goldens byte-identical. (reflect/structure)
