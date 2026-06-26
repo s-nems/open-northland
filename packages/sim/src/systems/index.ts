@@ -43,6 +43,7 @@ import {
   HUNTER_JOB,
   type HerdParams,
   IDLE_JOB,
+  type Locomotion,
   animalCannotBeAttacked,
   animalHitpoints,
   animalRecord,
@@ -56,6 +57,7 @@ import {
   isSeaJob,
   isShipVehicle,
   largestShipCapacity,
+  locomotionOf,
   mayAttack,
   mayHunt,
   playableTribes,
@@ -103,7 +105,7 @@ export {
   trackFor,
   tribeShipsUnlocked,
 };
-export type { CombatDamageRow, CombatProfile, GoodsGraphNode, HerdParams };
+export type { CombatDamageRow, CombatProfile, GoodsGraphNode, HerdParams, Locomotion };
 export {
   animalCannotBeAttacked,
   animalHitpoints,
@@ -121,6 +123,7 @@ export {
   isSeaJob,
   isShipVehicle,
   largestShipCapacity,
+  locomotionOf,
   mayAttack,
   mayHunt,
   playableTribes,

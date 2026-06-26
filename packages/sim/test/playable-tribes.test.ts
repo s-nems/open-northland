@@ -9,6 +9,7 @@ import {
   isAnimalTribe,
   isCatchableAnimal,
   isPlayableTribe,
+  locomotionOf,
   mayAttack,
   mayHunt,
   playableTribes,
@@ -69,6 +70,9 @@ function tribeContent(): ContentSet {
         maximumLeaderDistance: 5,
         maximumDistanceToBirthPoint: 12,
         maximumDistanceToStayPoint: 7,
+        // locomotion params the locomotionOf read view surfaces
+        moveSpeed: 8,
+        runSpeed: 5,
       },
       // The cow (tribe 10) is CATCHABLE prey: passive (not aggressive/getAngry), tamable/huntable.
       { id: 'cow', tribeType: 10, catchable: true, hitpointsAdult: 1000 },
@@ -225,6 +229,32 @@ describe('herdParams (the animal herd/spawn read view)', () => {
       leaderDistance: 0,
       birthPointRange: 0,
       stayPointRange: 0,
+    });
+  });
+});
+
+describe('locomotionOf (the animal walk/run-speed read view)', () => {
+  it('surfaces the movespeed/runspeed off the animaltypes record as one struct', () => {
+    const params = locomotionOf(tribeContent(), 8); // bears: movespeed 8, runspeed 5
+    expect(params).toEqual({
+      walkSpeed: 8, // moveSpeed
+      runSpeed: 5, // runSpeed
+    });
+  });
+
+  it('returns null for a tribe with no animal record (an animal tribe lacking the record, or a civ)', () => {
+    const content = tribeContent();
+    expect(locomotionOf(content, 9)).toBeNull(); // wolves — animal tribe but NO animaltypes record
+    expect(locomotionOf(content, 1)).toBeNull(); // viking — a civilization
+    expect(locomotionOf(content, 99)).toBeNull(); // unknown tribe — no record
+  });
+
+  it('defaults a source-omitted speed to 0 rather than guessing (the engine default applies)', () => {
+    // The cow record (tribe 10) sets neither movespeed nor runspeed; the read view passes the
+    // schema's source-omitted 0 through verbatim — no inference of a default pace.
+    expect(locomotionOf(tribeContent(), 10)).toEqual({
+      walkSpeed: 0,
+      runSpeed: 0,
     });
   });
 });
