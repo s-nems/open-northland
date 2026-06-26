@@ -1,13 +1,38 @@
 import type { AtomicAnimation, ContentSet } from '@vinland/data';
 
 // Pure, terminal **read views** for atomic animations — the canonical name→record resolver over
-// `content.atomicAnimations` plus thin accessors for the two animation scalars no sim system reads
-// yet (`interruptible`, `startDirection`). The `length` scalar already drives `atomicDuration`
-// (ai.ts) and the combat swing cadence (combat.ts) via an inline `atomicAnimations.find(...)`; this
-// gives that name-lookup a single named home and surfaces the remaining extracted-but-unread fields,
-// the read-side consumer the deferred interrupt/facing drives join on. No mechanic is added here
-// (nothing is interrupted, nothing faces a direction); see ./index.ts for why read views live apart
-// from systems/shared.ts.
+// `content.atomicAnimations` plus thin accessors for the animation scalars no sim system reads
+// directly (`interruptible`, `startDirection`) and the per-channel net delta over the `events` array.
+// The `length` scalar already drives `atomicDuration` (ai.ts) and the combat swing cadence (combat.ts)
+// via an inline `atomicAnimations.find(...)`; this gives that name-lookup a single named home and
+// surfaces the remaining extracted-but-unread fields, the read-side consumer the deferred
+// interrupt/facing/needs drives join on. No mechanic is added here (nothing is interrupted, nothing
+// faces a direction, no bar is restored); see ./index.ts for why read views live apart from
+// systems/shared.ts.
+
+/**
+ * The `atomicanimations.ini` `event <at> <type> <value>` **channel** ids — the numbered need bar a
+ * timed event restores (or drains). These four are the channels the needs/eat/sleep/pray/enjoy drives
+ * already reference *in prose* (needs.ts, ai.ts, atomic.ts doc comments) but never read from the data:
+ * verified across the real IR (e.g. `..._eat_slot_food` carries `event 30 2 +4000`, `..._sleep` carries
+ * `event <at> 1 +100`, `..._enjoy`/`..._make_love` carry `event <at> 3 +800`, `..._pray` carries
+ * `event <at> 4 +800`). Naming them here turns those scattered prose claims into a single data-pinned
+ * lookup ({@link atomicEventChannelDelta}). The wider `type` vocabulary (sounds/cues/yields at ids
+ * 8..36) stays an undocumented render/effect channel space — deferred, not enumerated here.
+ *
+ * FIDELITY: pinned to the mod's readable `atomicanimations.ini` `event <at> <type> <value>` semantics
+ * (golden rule #4) — these are the original's own channel ids, not invented.
+ */
+export const ATOMIC_EVENT_CHANNEL = {
+  /** Rest/fatigue bar — `..._sleep` animations restore it. */
+  REST: 1,
+  /** Hunger bar — `..._eat_slot_food` restores it. */
+  HUNGER: 2,
+  /** Leisure/enjoyment bar — `..._enjoy` and `..._make_love` restore it. */
+  LEISURE: 3,
+  /** Piety bar — `..._pray` restores it. */
+  PIETY: 4,
+} as const;
 
 /**
  * Resolve an {@link AtomicAnimation} by its exact `name` — the join key a tribe's `setatomic <job>
@@ -63,4 +88,39 @@ export function isInterruptibleAtomic(content: ContentSet, name: string): boolea
  */
 export function atomicStartDirection(content: ContentSet, name: string): number | undefined {
   return atomicAnimationByName(content, name)?.startDirection;
+}
+
+/**
+ * The **net signed delta** the named atomic animation contributes to one event `channel` — the sum of
+ * `event.value` over every `event`/`eventx` whose `type` equals `channel` (`atomicanimations.ini`
+ * `event <at> <type> <value>`; see {@link ATOMIC_EVENT_CHANNEL}). A restoring animation returns a
+ * positive total (e.g. `..._eat_slot_food` over {@link ATOMIC_EVENT_CHANNEL.HUNGER} = `+4000`; a
+ * multi-tick `..._sleep` over `REST` sums its repeated `+100` ticks), a draining one a negative total.
+ *
+ * This is the data-pinned read side of the channel-restoration semantics the needs/eat/sleep/pray/enjoy
+ * drives currently assert only in prose (needs.ts/ai.ts/atomic.ts hardcode "eat restores +4000",
+ * "make_love is a bigger +800 boost", etc.): it reads those magnitudes straight off the extracted
+ * `events` array instead of repeating them as comments — the seed the deferred event-driven needs model
+ * (the one that replaces the approximated per-tick rise/reset constants with the real per-animation
+ * deltas) joins on. Returns `0` for an unknown name and for an animation with no event on that channel
+ * (an absent contribution is a zero delta, matching how {@link atomicDuration} falls back rather than
+ * throwing on an unresolved name).
+ *
+ * `value` is `optional` in the IR (a bare `event <at> <type>` with no magnitude — a cue, not a delta);
+ * such an event contributes `0`, so it neither throws nor skews the sum.
+ *
+ * FIDELITY: pinned to the extracted `events` array (`event <at> <type> <value>` in the mod's readable
+ * `atomicanimations.ini`, golden rule #4) — read straight off the captured tuples, summing the
+ * original's own per-tick deltas. Adds no mechanic (no bar is restored yet) — a derived aggregate over
+ * the already-extracted animation IR. Determinism: a pure left-to-right fold over `events` declaration
+ * order; `+` over integers commutes/associates, so the total is byte-stable per content.
+ */
+export function atomicEventChannelDelta(content: ContentSet, name: string, channel: number): number {
+  const anim = atomicAnimationByName(content, name);
+  if (anim === undefined) return 0;
+  let total = 0;
+  for (const event of anim.events) {
+    if (event.type === channel) total += event.value ?? 0;
+  }
+  return total;
 }

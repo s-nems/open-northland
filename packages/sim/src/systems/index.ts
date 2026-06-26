@@ -37,6 +37,7 @@ import {
   tribeShipsUnlocked,
 } from './progression.js';
 import {
+  ATOMIC_EVENT_CHANNEL,
   type CombatDamageRow,
   type CombatProfile,
   type GoodsGraphNode,
@@ -54,6 +55,7 @@ import {
   armorMaterialOf,
   armorWeightOf,
   atomicAnimationByName,
+  atomicEventChannelDelta,
   atomicStartDirection,
   combatDamage,
   goodsGraph,
@@ -143,7 +145,9 @@ export {
   armorClassOf,
   armorMaterialOf,
   armorWeightOf,
+  ATOMIC_EVENT_CHANNEL,
   atomicAnimationByName,
+  atomicEventChannelDelta,
   atomicStartDirection,
   combatDamage,
   goodsGraph,

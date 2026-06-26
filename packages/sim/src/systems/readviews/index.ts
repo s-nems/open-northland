@@ -89,4 +89,10 @@ export {
   waterLayerLandscape,
 } from './landscape.js';
 
-export { atomicAnimationByName, atomicStartDirection, isInterruptibleAtomic } from './animations.js';
+export {
+  ATOMIC_EVENT_CHANNEL,
+  atomicAnimationByName,
+  atomicEventChannelDelta,
+  atomicStartDirection,
+  isInterruptibleAtomic,
+} from './animations.js';
