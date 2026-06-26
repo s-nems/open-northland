@@ -105,7 +105,8 @@ export const combatSystem: System = (world, ctx) => {
       e,
       attacker.tribe,
       attacker.jobType,
-      weapon.range,
+      weapon.minRange,
+      weapon.maxRange,
     );
     if (pick === null) continue; // no enemy/prey in range this tick
 
@@ -136,12 +137,14 @@ function hostileAnimalNow(world: World, ctx: SystemContext, e: Entity, tribe: nu
 
 /**
  * The nearest **enemy or prey** the attacker may swing at: a {@link Health}-bearing {@link Settler}
- * on a positioned cell within `range` Manhattan cells of `here`, with a living (`hitpoints > 0`) pool,
+ * on a positioned cell within the attacker's weapon **reach band** `[minRange, maxRange]` Manhattan
+ * cells of `here` — a target **closer than `minRange`** is too near to hit (a bow can't fire on an
+ * adjacent target) and one **past `maxRange`** is out of reach — with a living (`hitpoints > 0`) pool,
  * for which {@link mayTarget}`(self → target)` holds — a hostile civilization, the cross-species enemy
  * (when self is a civ / an aggressive animal), OR (when self is a {@link HUNTER_JOB} hunter) a
  * {@link isCatchableAnimal} prey animal. Scanned in canonical entity-id order with a Manhattan-distance
  * + ascending-id tie-break, so the choice never depends on store insertion history. Returns the target
- * entity, or null if no enemy/prey is in range.
+ * entity, or null if no enemy/prey is in the band.
  *
  * The attacker itself is excluded (`t === self`); whether a candidate is friendly, an exempt
  * decorative animal, non-catchable wild fauna, huntable prey, or a valid enemy is the {@link mayTarget}
@@ -159,7 +162,8 @@ function nearestEnemyTarget(
   self: Entity,
   selfTribe: number,
   selfJob: number | null,
-  range: number,
+  minRange: number,
+  maxRange: number,
 ): { target: Entity } | null {
   let best: Entity | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
@@ -172,7 +176,9 @@ function nearestEnemyTarget(
     if (world.get(t, Health).hitpoints <= 0) continue; // already felled — not a target
     const cell = entityCell(world, terrain, t);
     const dist = manhattan(terrain, here, cell);
-    if (dist > range) continue; // out of weapon reach this tick (no advance-on-enemy drive yet)
+    // Out of the weapon's reach BAND this tick: too far past `maxRange`, or too close inside `minRange`
+    // (a ranged weapon can't fire on a target right next to it). No advance/retreat-to-range drive yet.
+    if (dist > maxRange || dist < minRange) continue;
     if (dist < bestDist || (dist === bestDist && t < bestId)) {
       best = t;
       bestDist = dist;
@@ -233,11 +239,17 @@ function mayTarget(
 }
 
 /**
- * The weapon an attacker of `tribe`/`jobType` fights with, resolved from content. Returns its `range`
- * (Manhattan reach, the weapon's `maxRange`, at least 1 so even a `maxRange 0` weapon strikes its own
- * cell) and its **net damage against an unarmored target** (`damage["0"]`, clamped at ≥0 — settlers
- * wear no armor yet, so every hit lands on armor class 0). Null when no weapon resolves (an unarmed
- * combatant — it does no damage, the approximated stance).
+ * The weapon an attacker of `tribe`/`jobType` fights with, resolved from content. Returns its reach as
+ * a `[minRange, maxRange]` band (Manhattan cells) and its **net damage against an unarmored target**
+ * (`damage["0"]`, clamped at ≥0 — settlers wear no armor yet, so every hit lands on armor class 0).
+ * Null when no weapon resolves (an unarmed combatant — it does no damage, the approximated stance).
+ *
+ * **The reach is a band, not just a ceiling.** `maxRange` is the far reach (at least 1, so even a
+ * `maxRange 0` weapon strikes its own cell). `minRange` is the *near* reach a **ranged** weapon can't
+ * fire below — the original's `hunter_bow` is `minimumrange 3, maximumrange 17` (verified in the mod's
+ * `DataCnmd/types/weapons.ini`), so a bow can't hit an adjacent target; a melee weapon is `minRange 1`
+ * (the common case — it strikes from cell 0/1). The band is clamped sane (`1 ≤ minRange ≤ maxRange`) so
+ * a malformed weapon never reads as never-able-to-hit.
  *
  * Two resolution paths, mirroring how the original keys a weapon:
  *
@@ -261,7 +273,7 @@ function attackerWeapon(
   ctx: SystemContext,
   tribe: number,
   jobType: number | null,
-): { range: number; netDamageUnarmored: number } | null {
+): { minRange: number; maxRange: number; netDamageUnarmored: number } | null {
   // A JOBLESS combatant carries a weapon only if it is an animal tribe (whose weapon keys by tribe, not
   // job — `spawnAnimalHerd` places jobless animals); a jobless civilian is unarmed. Resolved once, since
   // it is invariant across the weapon scan below.
@@ -272,9 +284,12 @@ function attackerWeapon(
     (w) => w.tribeType === tribe && (jobType === null || w.jobType === jobType),
   );
   if (weapon === undefined) return null; // unarmed — no resolvable weapon for this combatant
-  const range = Math.max(1, weapon.maxRange); // a weapon always reaches at least its own cell
+  const maxRange = Math.max(1, weapon.maxRange); // a weapon always reaches at least its own cell
+  // A ranged weapon (the hunter's bow) can't fire below its `minRange`; floor at 1 and never let the
+  // near reach exceed the far reach, so a malformed band can't read as "can never hit".
+  const minRange = Math.min(Math.max(1, weapon.minRange), maxRange);
   const rawUnarmored = weapon.damage['0'] ?? 0; // armor class 0 = unarmored (settlers wear no armor yet)
-  return { range, netDamageUnarmored: Math.max(0, rawUnarmored) };
+  return { minRange, maxRange, netDamageUnarmored: Math.max(0, rawUnarmored) };
 }
 
 /** Start an `attack` {@link CurrentAtomic} on `attacker` against `target`, carrying the pre-resolved

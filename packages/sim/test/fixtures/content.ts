@@ -127,25 +127,29 @@ export function testContent(): ContentSet {
       // The HUNTER's weapon (viking tribe 1, job 15 — `JOB_TYPE_HUMAN_HUNTER`) — so a hunter combatant
       // resolves a weapon and can strike `catchable` prey (the hunter-strike mechanic). damage 70 vs an
       // unarmored (class 0) target; the original binds `setatomic 15 81 "..._hunter_attack"` (atomic 81).
+      // A RANGED weapon (a bow): `minRange 3, maxRange 17` mirrors the real `hunter_bow`
+      // (`minimumrange 3`/`maximumrange 17` in `DataCnmd/types/weapons.ini`) — it CANNOT fire on a target
+      // closer than 3 cells, the case the CombatSystem's minRange band enforces.
       {
         typeId: 11,
         id: 'test_spear',
         tribeType: 1,
         jobType: 15,
-        minRange: 1,
-        maxRange: 2,
+        minRange: 3,
+        maxRange: 17,
         damage: { '0': 70 },
       },
       // A weapon for the CATCHABLE-and-PROVOKABLE deer (tribe 14, keyed by tribe alone) — so once a
       // hunter's strike PROVOKES it (`getAngry` → an `Anger` timer) it can fight back. damage 20 vs an
-      // unarmored target.
+      // unarmored target. `maxRange 3` so a deer provoked by a hunter firing from the bow's near reach
+      // (minRange 3) can reach back at that distance without an advance-on-enemy drive (not yet modelled).
       {
         typeId: 12,
         id: 'test_antler',
         tribeType: 14,
         jobType: 1,
         minRange: 1,
-        maxRange: 2,
+        maxRange: 3,
         damage: { '0': 20 },
       },
     ],

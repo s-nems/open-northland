@@ -355,9 +355,16 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       docs/FIDELITY.md "Hunter strike on catchable prey"). Verified on the REAL pipeline IR (2 catchable animals
       tribes 10/19; each of the 5 civilizations carries a real `hunter_bow` job-15 weapon) + a real `step()`
       schedule (a viking hunter drains a real cow's `Health`; a non-hunter leaves it alone). Inert on the
-      goldens/slice. **Next:** seed a real **multi-civilization** scenario exercising two playable tribes'
-      asymmetric bindings end-to-end (the asymmetry is in the data; a scenario proves the sim runs it) — or the
-      hunter's `harvest_cadaver` (atomic 33) follow-up that yields meat from a felled animal.
+      goldens/slice. **The weapon reach BAND is now honored** — `combatSystem` filters a target to
+      `[minRange, maxRange]` Manhattan cells (both verbatim `weapontypes` params), not just the far `maxRange`:
+      a target **closer than `minRange`** is too near to hit, so a real hunter's `hunter_bow` (`minRange 3`,
+      `maxRange 17`) **can't fire on adjacent prey** — it must be 3+ cells away. This closes the gap LESSONS
+      [3f9b610] flagged (25 of 105 real weapons carry `minRange > 1`: bows 3, crossbows/long_bow 4, catapult 8,
+      so all ranged weapons were illegally striking point-blank before). Verified on the REAL IR through `step()`
+      (a real viking hunter does NOT fire on a real catchable prey 1 cell away but DOES at 3). **Next:** seed a
+      real **multi-civilization** scenario exercising two playable tribes' asymmetric bindings end-to-end (the
+      asymmetry is in the data; a scenario proves the sim runs it) — or the hunter's `harvest_cadaver`
+      (atomic 33) follow-up that yields meat from a felled animal.
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
       `fisher_sea`/`trader_sea`/`carpenter ship`, `vehicle_ship`.
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).
