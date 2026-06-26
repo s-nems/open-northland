@@ -305,10 +305,10 @@ describe('combatSystem — civ-vs-animal aggression (animaltypes.ini)', () => {
 });
 
 describe('combatSystem — hunter strike on catchable prey (animaltypes.ini catchable)', () => {
-  it('a HUNTER strikes nearby catchable prey (a cow), with the hunter weapon damage', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER); // a viking hunter (job 15)
-    const cow = fighterAt(sim, 1, 0, COW, null); // catchable prey, adjacent
+  it('a HUNTER strikes catchable prey (a cow) in its bow band, with the hunter weapon damage', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER); // a viking hunter (job 15) — bow minRange 3
+    const cow = fighterAt(sim, 3, 0, COW, null); // catchable prey, 3 cells away (inside the bow band 3..17)
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -318,8 +318,29 @@ describe('combatSystem — hunter strike on catchable prey (animaltypes.ini catc
     expect(atomic.effect).toEqual({ kind: 'attack', target: cow, damage: 70 }); // test_spear damage["0"]
   });
 
+  it('a hunter CANNOT fire its bow on prey closer than minRange (an adjacent cow is too near)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER); // bow minRange 3
+    fighterAt(sim, 1, 0, COW, null); // catchable prey, but only 1 cell away — INSIDE the bow's near reach
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // The cow is a valid prey AND within maxRange, but closer than minRange 3 — a bow can't fire on it.
+    expect(sim.world.has(hunter, CurrentAtomic)).toBe(false);
+  });
+
+  it('minRange is exclusive at the boundary: prey at minRange-1 (2 cells) is still too near', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER); // bow band 3..17
+    fighterAt(sim, 2, 0, COW, null); // 2 cells away — one inside the near reach (minRange 3)
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(hunter, CurrentAtomic)).toBe(false); // dist 2 < minRange 3 — no shot
+  });
+
   it('a NON-hunter civilian (woodcutter) leaves catchable prey alone (hunting is the hunter trade)', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const woodcutter = fighterAt(sim, 0, 0, VIKING, WOODCUTTER); // armed, but not a hunter
     fighterAt(sim, 1, 0, COW, null); // catchable prey, adjacent
 
@@ -330,9 +351,9 @@ describe('combatSystem — hunter strike on catchable prey (animaltypes.ini catc
   });
 
   it('a hunter does NOT hunt a non-catchable wild animal (a passive wolf — no catchable flag)', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER);
-    fighterAt(sim, 1, 0, WOLVES, null); // a wild animal with no `catchable` flag — not huntable prey
+    fighterAt(sim, 3, 0, WOLVES, null); // a wild animal with no `catchable` flag — not huntable prey
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -341,9 +362,9 @@ describe('combatSystem — hunter strike on catchable prey (animaltypes.ini catc
   });
 
   it('catchable prey (a cow) does NOT hunt the hunter back (predation is one direction)', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     fighterAt(sim, 0, 0, VIKING, HUNTER);
-    const cow = fighterAt(sim, 1, 0, COW, null); // passive prey — never picks a fight
+    const cow = fighterAt(sim, 3, 0, COW, null); // passive prey — never picks a fight
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -351,9 +372,9 @@ describe('combatSystem — hunter strike on catchable prey (animaltypes.ini catc
   });
 
   it('a hunter still cannot strike a cannotBeAttacked animal (the exemption holds for hunting too)', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER);
-    fighterAt(sim, 1, 0, BEES, null); // cannotBeAttacked (and not catchable anyway)
+    fighterAt(sim, 3, 0, BEES, null); // cannotBeAttacked (and not catchable anyway)
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -478,9 +499,11 @@ describe('combatSystem — provoked anger (getAngry/angryGameTime)', () => {
     // The end-to-end point of the hunter slice: a hunter, not a test or an aggressive animal, is what
     // FIRST provokes a passive getAngry animal. Run the REAL step() schedule so combatSystem picks the
     // target, atomicSystem lands the hit + stamps Anger, and the deer fights back.
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER, 1000);
-    const deer = fighterAt(sim, 1, 0, DEER, null, 1000); // catchable + getAngry, passive until struck
+    // 3 cells away — inside the bow band (minRange 3) AND inside the deer's antler reach (maxRange 3),
+    // so the hunter can fire and the provoked deer can strike back at this distance.
+    const deer = fighterAt(sim, 3, 0, DEER, null, 1000); // catchable + getAngry, passive until struck
 
     // combatSystem runs after atomicSystem, so the hunter's swing (started tick 1) completes on tick 5
     // — the provoking hit (drains HP, stamps Anger). Run 5 ticks for it to land.
