@@ -541,3 +541,7 @@ the next iteration inherits it.
   **state hash differing** between the two runs (the `Armor` component live in the hash). When verifying
   a new code path, pick fixture values whose output DIFFERS — or lean on `hashState()`, not a scalar that
   can collide. (sim/combat)
+- [d7eb755] A fidelity comment's "count" of a repeated `.ini` key (`logicgood`) is the *line count*, not
+  the highest enumerated id — I eyeballed `54` from the max good id (55) when the actual `logicgood` line
+  count is `49`. When a doc states "N ids", derive N from the hands-on output (`cargoGoods.length`) or an
+  `awk` line count, never from the value range. (pipeline/fidelity)
