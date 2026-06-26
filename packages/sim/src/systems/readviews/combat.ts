@@ -331,3 +331,67 @@ export function armorByClass(content: ContentSet): Map<number, ArmorType[]> {
   }
   return byClass;
 }
+
+/**
+ * The weapons **grouped by the job (soldier-class) that wields them** ({@link WeaponType.jobType}) as a
+ * derived **read view** over `content` — `Map<jobType, WeaponType[]>`, one bucket per wielding job,
+ * classifying `content.weapons` *by the data alone*. This is the data-defined **soldier-class→weapon
+ * roster join** the roadmap names as the deferred combat-roster slice's prerequisite: each
+ * `[weapontype]` carries a `jobtype` naming the job that fights with it (`jobtype 31` = the unarmed
+ * fist-fighter, `jobtype 6` = a swordsman, etc.), so this view answers "which weapons does soldier-class
+ * N wield" without inventing or hardcoding a single binding. The *equip behavior* (a settler of that
+ * job actually holding the weapon) is the still-unbuilt, oracle-blocked drive — this is only its lookup.
+ *
+ * Unlike {@link weaponsByClass}'s key — `mainType`, a coarse class enum carried by the weapon itself —
+ * `jobType` is a **cross-reference** into the jobs table (validated by `parseContentSet`, so every key
+ * here resolves to a real `[jobtype]`). It is a many-to-one join exactly like `mainType` (one job wields
+ * several weapons across the tribes — `jobtype 31` covers 7 records), so the natural view groups the
+ * table rather than selecting a subset, and the **values stay arrays** (the grouping-key cardinality
+ * dictates that, per docs/LESSONS.md `[c0dcbcb]`, not the weapon's own non-unique `(tribeType,typeId)`).
+ *
+ * Each bucket is a {@link WeaponType} **array in `content.weapons` source order** — lossless like
+ * {@link weaponsByClass} (a weapon's `(tribeType, typeId)` isn't globally unique, so the values must be
+ * arrays, never a keyed collection; see {@link combatDamage}). Weapons with **no `jobType`** are omitted
+ * (no `undefined` bucket) — in the real data every weapon carries one (no `jobtype 0` sentinel), so this
+ * only drops a malformed/partial fixture row, the same drop-undefined stance as {@link weaponsByClass}.
+ *
+ * The returned Map's iteration order is **insertion order** = first-appearance of each job in
+ * `content.weapons` (NOT ascending by job id) — the same `[cef9629]` idiom {@link weaponsByClass} uses: a
+ * `Map`-valued read view may be built by a single non-canonical pass because its values are
+ * order-independent *per bucket* (each bucket preserves source order, and which bucket a weapon lands in
+ * never depends on visit order), and no system reads it back to branch on a game decision. A display
+ * consumer that wants the jobs in id order must **sort the keys itself**.
+ *
+ * FIDELITY n/a: a pure derived read view over the already-extracted weapon IR (like {@link weaponsByClass}
+ * over weapons) — adds no mechanic, invents no classification (the wielding job is read straight off the
+ * `jobtype` cross-ref the pipeline pinned and cross-ref-validated). Determinism: a single pass over the
+ * plain `content.weapons` array building a fresh Map (the shared content is never mutated); no world, no
+ * RNG, no wall-clock — so the same content yields a byte-identical grouping every call.
+ */
+export function weaponsByJob(content: ContentSet): Map<number, WeaponType[]> {
+  const byJob = new Map<number, WeaponType[]>();
+  for (const weapon of content.weapons) {
+    const job = weapon.jobType;
+    if (job === undefined) continue; // a malformed/partial row with no wielding job — drop it (real data has none)
+    const bucket = byJob.get(job);
+    if (bucket === undefined) byJob.set(job, [weapon]);
+    else bucket.push(weapon);
+  }
+  return byJob;
+}
+
+/**
+ * The weapons a single job (soldier-class) wields — the per-job slice of {@link weaponsByJob}: every
+ * {@link WeaponType} whose `jobType` equals `job`, in `content.weapons` source order. Answers "what does
+ * soldier-class `job` fight with" directly without materializing the whole grouping; the data-defined
+ * roster lookup the deferred equip drive joins on (it adds no equip behavior — that drive is
+ * oracle-blocked). Returns a fresh array (empty if no weapon names `job`), so the shared content is never
+ * mutated.
+ *
+ * FIDELITY n/a: a pure derived `filter` over the already-extracted, cross-ref-validated `jobType` param —
+ * adds no mechanic, invents no data. Determinism: a pure filter over the plain `content.weapons` array;
+ * no world, no RNG, no wall-clock.
+ */
+export function weaponsForJob(content: ContentSet, job: number): WeaponType[] {
+  return content.weapons.filter((w) => w.jobType === job);
+}
