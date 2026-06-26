@@ -568,3 +568,13 @@ the next iteration inherits it.
   unbuilt overlay was a GRAPHICS one (mod `types/vehiclestype/jobgraphics.ini` twin of the base
   `vehicles/jobgraphics.cif`, broader per-tribe). Before scoping a "mod overlays base table X" merge,
   `find` the mod tree for X's filename first — a [4ef956f]-family non-existent-source trap. (pipeline/roadmap)
+
+- [3215de3] A "graphics" file can carry BALANCE data — don't trust a source-blocked claim by filename.
+  The roadmap deferred house build/upgrade costs as "below the `.ini`", reading only `types/houses.ini`
+  (the `[logichousetype]` logic table, which indeed has no cost key). But its graphics twin
+  `budynki12/houses/houses.ini` (`[GfxHouse]`) carries `LogicConstructionGoods` — the per-level
+  build-material cost — among the render keys. Before recording a datum as oracle-blocked, grep the
+  OTHER readable file for the same `Logic*` prefix; the engine splits one entity's logic across a
+  "logic" and a "graphics" `.ini`, and a `Logic*` key can live in the graphics one. Same-typeId rows
+  recur per `LogicTribeType` AND per `sizeIdx` with different costs, so a flat-by-typeId overlay must
+  pick a deterministic winner (lowest tribe, lowest size) and record the collapse in FIDELITY. (pipeline/fidelity)
