@@ -138,9 +138,12 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       table from its single readable source. The mod's readable contribution is its richer graphics/tribe/
       house/weapon/atomic `.ini`s, most already preferred (golden rule #4). **Overlays landed** (→
       [archive](ROADMAP-ARCHIVE.md)): the mod's `jobgraphics.ini` cart/ship recolours overlay the base
-      `.cif` (`resolveGraphicsBindings`, vehicle bindings 6→28 across all four tribes), and `houses.ini`'s
+      `.cif` (`resolveGraphicsBindings`, vehicle bindings 6→28 across all four tribes), `houses.ini`'s
       `[GfxHouse]` `LogicConstructionGoods` **build cost** is extracted onto buildings by `typeId`
-      (`extractConstructionCosts`, 53/55). **Open:** the file's graphics/coords + `animations.ini` are
+      (`extractConstructionCosts`, 53/55), and the mod's `types/weapons.ini` `goodtype` — the good that IS
+      each weapon — is now extracted onto `WeaponType.goodType` (cross-ref-resolved; 70/105 to a real good,
+      35 natural-weapon `goodtype 0` sentinels dropped to undefined), the weapon-side twin of the armor
+      `goodType` join. **Open:** the file's graphics/coords + `animations.ini` are
       render/animation overlays — deferred with the render-atlas work (their only balance datum, the
       construction cost, is already imported).
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.
