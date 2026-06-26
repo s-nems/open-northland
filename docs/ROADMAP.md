@@ -203,9 +203,15 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `Map<jobType, WeaponType[]>` (20 wielding jobs over the real IR, e.g. `soldier_unarmed→{fist,claw}`,
       `hunter→hunter_bow`), with `weaponsForJob(content, job)` the per-job slice — the data-defined answer to
       "which weapons does soldier-class N wield", the seed the deferred equip drive joins on (the equip
-      *behavior* stays oracle-blocked). **Open:** the file's graphics/coords + `animations.ini` are
-      render/animation overlays — deferred with the render-atlas work (their only balance datum, the
-      construction cost, is already imported).
+      *behavior* stays oracle-blocked). The `atomicanimations.ini` table's two **behavioral** scalars now
+      get a read-side consumer too (`systems/readviews/animations.ts`): `atomicAnimationByName` (the
+      canonical name→record resolver the `atomicDuration`/combat-cadence lookups spelled out inline),
+      plus `isInterruptibleAtomic` (the `interruptable` flag — 245/896 true; the seed the deferred
+      atomic-preemption drive reads) and `atomicStartDirection` (the `startdirection` facing — 89/896
+      pinned; the deferred orientation drive's seed), read straight off the genuinely-extracted scalars
+      (vs `length`, already consumed by `atomicDuration`). **Open:** the file's graphics/coords +
+      `animations.ini`'s render-side timing/`event` vocabulary are render/animation overlays — deferred
+      with the render-atlas work (their only balance datum, the construction cost, is already imported).
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.
 
 ## Phase 5 — Campaigns, polish, platform
