@@ -234,6 +234,31 @@ export function weaponClassOf(weapon: WeaponType): number | undefined {
 }
 
 /**
+ * A {@link WeaponType}'s **encumbrance weight** — its extracted `weight` (`0..2` in the base data: a
+ * fist/dagger weighs `0`, most weapons `1`, the heaviest `2`), the weapon-side twin of
+ * {@link armorWeightOf}. The last extracted weapon-table field to get a read-side accessor, completing
+ * the weapon-record consumer coverage (its siblings — `mainType` via {@link weaponClassOf},
+ * `munitionType`/`damageType` via {@link isRangedWeapon}/{@link isSiegeWeapon}, `jobType` via
+ * {@link weaponsByJob}, `goodType` via the good join, `damage` via {@link combatDamage} — already
+ * read). It is the per-weapon load a deferred carry/movement-penalty drive would read to slow a
+ * laden soldier; captured ahead of that drive.
+ *
+ * Unlike the class-enum fields ({@link weaponClassOf}'s `mainType`, which is `undefined` when absent),
+ * `weight` is a quantity the schema **defaults to `0`** (`z.number().int().nonnegative().default(0)`),
+ * so this returns a plain `number` — never `undefined`. A weapon that adds no encumbrance reads `0`, the
+ * same value the source carries (44/105 real weapons weigh `0`), so there is no "no record" sentinel to
+ * distinguish: `0` *is* weightless.
+ *
+ * FIDELITY n/a: a pure field accessor over the already-extracted `weight` param (see
+ * {@link WeaponType.weight}) — it adds no mechanic and invents no data (the `{0,1,2}` magnitudes are the
+ * faithful `weapons.ini` values the pipeline pinned). Determinism: a pure field read — no world, no RNG,
+ * no wall-clock.
+ */
+export function weaponWeightOf(weapon: WeaponType): number {
+  return weapon.weight;
+}
+
+/**
  * The weapons **grouped by their coarse class** ({@link weaponClassOf}: the extracted `mainType`) as a
  * derived **read view** over `content` — `Map<mainType, WeaponType[]>`, one bucket per class a weapon
  * carries, classifying `content.weapons` *by the data alone*. The multi-valued counterpart of the
@@ -347,6 +372,30 @@ export function armorByClass(content: ContentSet): Map<number, ArmorType[]> {
  */
 export function armorMaterialOf(armor: ArmorType): number | undefined {
   return armor.materialType;
+}
+
+/**
+ * An {@link ArmorType}'s **encumbrance weight** — its extracted `weight` (in the base data leather
+ * weighs `0`, cloth `1`, chain/plate `3`), the armor-side twin of {@link weaponWeightOf}, completing the
+ * weight-field consumer coverage across both combat tables. The per-armor load a deferred
+ * movement-penalty drive would read to slow a heavily-armored soldier; captured ahead of that drive.
+ *
+ * Like {@link weaponWeightOf} — and unlike the class-enum fields {@link armorClassOf}/
+ * {@link armorMaterialOf}, which are `undefined` when absent — `weight` is a quantity the schema
+ * **defaults to `0`** (`z.number().int().nonnegative().default(0)`), so this returns a plain `number`,
+ * never `undefined`. Armor that adds no encumbrance reads `0` (the real leather record), the same value
+ * the source carries, so there is no "no record" sentinel: `0` *is* weightless. Note this is a different
+ * axis from the material *tier* ({@link armorMaterialOf}): the real data's distinct tiers do not map
+ * monotonically to weight (leather tier `2` weighs `0` while cloth tier `1` weighs `1`), so weight is its
+ * own field, not derivable from the tier.
+ *
+ * FIDELITY n/a: a pure field accessor over the already-extracted `weight` param (see
+ * {@link ArmorType.weight}) — it adds no mechanic and invents no data (the `{0,1,3,3}` magnitudes are the
+ * faithful `armortypes.ini` values the pipeline pinned). Determinism: a pure field read — no world, no
+ * RNG, no wall-clock.
+ */
+export function armorWeightOf(armor: ArmorType): number {
+  return armor.weight;
 }
 
 /**

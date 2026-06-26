@@ -6,6 +6,7 @@ import {
   rangedWeapons,
   siegeWeapons,
   weaponClassOf,
+  weaponWeightOf,
   weaponsByClass,
   weaponsByJob,
   weaponsForJob,
@@ -152,6 +153,33 @@ describe('weaponClassOf', () => {
       weapons: [{ typeId: 1, id: 'no_class', tribeType: 1 }],
     });
     expect(weaponClassOf(weapon(content, 'no_class'))).toBeUndefined();
+  });
+});
+
+describe('weaponWeightOf', () => {
+  it('returns the encumbrance weight (its weight field) for each weapon', () => {
+    // explicit weights spanning the real {0,1,2} range; a dagger weighs 0, a sword 1, a maul 2
+    const content = parseContentSet({
+      manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+      goods: [{ typeId: 0, id: 'none' }],
+      jobs: [{ typeId: 0, id: 'idle' }],
+      buildings: [{ typeId: 1, id: 'headquarters', kind: 'headquarters' }],
+      weapons: [
+        { typeId: 1, id: 'dagger', tribeType: 1, mainType: 3, weight: 0 },
+        { typeId: 2, id: 'sword', tribeType: 1, mainType: 3, weight: 1 },
+        { typeId: 3, id: 'maul', tribeType: 1, mainType: 4, weight: 2 },
+      ],
+    });
+    expect(weaponWeightOf(weapon(content, 'dagger'))).toBe(0);
+    expect(weaponWeightOf(weapon(content, 'sword'))).toBe(1);
+    expect(weaponWeightOf(weapon(content, 'maul'))).toBe(2);
+  });
+
+  it('defaults to 0 for a weapon with no weight (the schema default, never undefined)', () => {
+    // the shared weaponContent() fixture declares no weight on any row
+    const w = weapon(weaponContent(), 'fist');
+    expect(weaponWeightOf(w)).toBe(0);
+    expect(weaponWeightOf(w)).not.toBeUndefined(); // a quantity, not a class enum — always a number
   });
 });
 
