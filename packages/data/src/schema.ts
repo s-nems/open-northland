@@ -225,6 +225,15 @@ export const WeaponType = z.object({
   /** damageValue[targetArmorClass] -> value, as in the original weapontypes. */
   damage: z.record(z.string(), z.number()).default({}),
   jobType: TypeId.optional(),
+  /**
+   * `goodtype` — the good that IS this weapon (the craftable item a settler wields), the weapon-side
+   * twin of {@link ArmorType.goodType}; resolves into the good table. **Source `goodtype 0` is the
+   * natural-weapon sentinel** (a fist/claw — no craftable good backs it) and is captured as
+   * `undefined`, exactly as armor class 0 / weapon `damage["0"]` mean "unarmored" — good ids start at
+   * 1, so a literal 0 would dangle. This is the join that ties a forged weapon-good back to its combat
+   * stats (a smithy's `sword_short` good IS the short-sword weapon).
+   */
+  goodType: TypeId.optional(),
   source: Provenance.optional(),
 });
 export type WeaponType = z.infer<typeof WeaponType>;

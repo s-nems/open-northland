@@ -557,10 +557,14 @@ export function extractAtomicAnimations(sections: readonly RuleSection[], src: S
  * (the armor class is the string key, matching the schema's `record<string,number>` shape and the
  * original `damageValue[targetArmorClass]` indexing). `minimumrange`/`maximumrange` map to
  * `minRange`/`maxRange`; `jobtype` is the wielding job (cross-checked against the job table by
- * `validateCrossReferences`). `tribetype` is captured because a weapon's `type` id is **not**
+ * `validateCrossReferences`). `goodtype` is the good that IS the weapon (the weapon-side twin of an
+ * armor's `goodtype`), cross-checked against the good table — captured as `undefined` when the source
+ * value is **0** (the natural-weapon sentinel: a fist/claw is backed by no craftable good, just as
+ * armor class 0 / a weapon's `damage["0"]` mean "unarmored"; good ids start at 1, so a literal 0 would
+ * dangle). `tribetype` is captured because a weapon's `type` id is **not**
  * globally unique — the original keys a weapon by `(tribetype, type)`, so the same id recurs once
- * per tribe (e.g. `type 2` = "fist" for every tribe); see {@link WeaponType}. The combat extras
- * (`soundtype_*`, `munitiontype`,
+ * per tribe (e.g. `type 2` = "fist" for every tribe); see {@link WeaponType}. The remaining combat
+ * extras (`soundtype_*`, `munitiontype`, `weight`, `mainType`,
  * `createsmoke`, `damagetype`) are not in the {@link WeaponType} schema yet and are intentionally
  * skipped here — they belong with the Phase-4 CombatSystem, not this type-table slice. Throws on a
  * section missing the required numeric `type` (matches {@link extractGoods}'s throw-on-malformed stance).
@@ -578,6 +582,10 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
       if (Number.isNaN(armorClass) || Number.isNaN(value)) continue;
       damage[String(armorClass)] = value;
     }
+    // `goodtype 0` is the natural-weapon sentinel (fist/claw — no craftable good); good ids start at
+    // 1, so drop a 0 to `undefined` rather than let it dangle in the cross-ref (the armor class-0 /
+    // damage["0"] = "unarmored" pattern, one axis over).
+    const goodTypeRaw = getInt(sec, 'goodtype');
     weapons.push(
       WeaponType.parse({
         typeId,
@@ -588,6 +596,7 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
         maxRange: getInt(sec, 'maximumrange'),
         damage,
         jobType: getInt(sec, 'jobtype'),
+        goodType: goodTypeRaw === 0 ? undefined : goodTypeRaw,
         source: { file: src.file, block: 'weapontype', layer: src.layer ?? 'base' },
       }),
     );

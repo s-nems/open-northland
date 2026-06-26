@@ -105,10 +105,14 @@ export function validateCrossReferences(set: ContentSet): void {
     }
   }
 
-  // A weapon's wielding job, when set, must resolve too (same dangling-reference class).
+  // A weapon's wielding job, when set, must resolve too (same dangling-reference class). Its
+  // `goodType` (the good that IS the weapon, the armor-`goodType` twin) likewise resolves into the
+  // good table — the extractor already drops the `goodtype 0` natural-weapon sentinel to undefined.
   for (const w of set.weapons) {
     if (w.jobType !== undefined && !jobIds.has(w.jobType))
       errors.push(`weapon "${w.id}" references unknown jobType ${w.jobType}`);
+    if (w.goodType !== undefined && !goodIds.has(w.goodType))
+      errors.push(`weapon "${w.id}" references unknown goodType ${w.goodType}`);
   }
 
   // An armor's `goodType` (the good that IS the armor), when set, must resolve into the good table.

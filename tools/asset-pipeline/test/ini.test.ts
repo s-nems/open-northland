@@ -135,12 +135,15 @@ name "viking_man_idle"
 // a `jobtype`, and combat extras the schema doesn't carry (`atomicactiontype`, `soundtype_Hit`) that
 // are ignored. Both weapons share `type 2` across different tribes — the real data's `(tribetype,
 // type)` composite key (type alone is not unique). The second omits the range pair to exercise the
-// schema's range defaults of 1.
+// schema's range defaults of 1. The fist's `goodtype 0` is the natural-weapon sentinel (-> undefined);
+// the spear's `goodtype 5` is a real good (-> captured; 5 also exists in the IR-integration goods
+// fixture below so the cross-ref resolves there).
 const WEAPONTYPES_INI = `// new
 [weapontype]
 tribetype 1
 type 2
 name "woman fist"
+goodtype 0
 minimumrange 1
 maximumrange 1
 damagevalue 0 400
@@ -152,6 +155,7 @@ soundtype_Hit 0 95
 tribetype 2
 type 2
 name "wooden spear"
+goodtype 5
 damagevalue 0 2400
 jobtype 32
 `;
@@ -633,6 +637,7 @@ describe('extractWeapons', () => {
         maxRange: 1,
         damage: { '0': 400, '1': 80 },
         jobType: 5,
+        // `goodtype 0` is the natural-weapon sentinel -> no `goodType` field (undefined dropped by toEqual).
         source: src,
       },
       // Same `type 2` but a different tribe — `(tribeType, typeId)` is the composite key. No range
@@ -646,6 +651,7 @@ describe('extractWeapons', () => {
         maxRange: 1,
         damage: { '0': 2400 },
         jobType: 32,
+        goodType: 5, // a real good — the good that IS this weapon
         source: src,
       },
     ]);
