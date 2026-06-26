@@ -5,7 +5,7 @@ import { Building, Carrying, Position, Settler, Stockpile } from '../src/compone
 import type { Entity } from '../src/ecs/world.js';
 import type { SimEvent } from '../src/events.js';
 import { ONE, Simulation, type TerrainMap, fx } from '../src/index.js';
-import { type SystemContext, constructionSystem } from '../src/systems/index.js';
+import { type SystemContext, constructionSystem, housingCapacity } from '../src/systems/index.js';
 
 /**
  * Unit + integration tests for the ConstructionSystem — an under-construction building (`built < ONE`)
@@ -25,6 +25,11 @@ const HOUSE = 2; // a residence needing 2× stone + 1× wood to build
 const HEADQUARTERS = 1; // free — empty construction cost
 const GRASS = 0;
 const CARRIER = 36; // a job with no harvest atomics — it can only haul a load it already carries
+
+// The home level chain — consecutive typeIds, each a larger `home` with its own per-tier upgrade cost.
+const HOME_L0 = 2; // home level 00, homeSize 1, upgrades by paying L1's cost
+const HOME_L1 = 3; // home level 01, homeSize 2, upgrades by paying L2's cost
+const HOME_L2 = 4; // home level 02, homeSize 3 — top tier in this fixture (no typeId 5 home)
 
 function constructionContent(): ContentSet {
   return parseContentSet({
@@ -54,6 +59,68 @@ function constructionContent(): ContentSet {
       },
     ],
   });
+}
+
+/**
+ * A home level chain: three consecutive `home` typeIds of rising `homeSize`, each carrying the cost to
+ * BUILD that tier. The level-up trigger pays the NEXT tier's cost: a level-0 home that accumulates
+ * HOME_L1's cost upgrades to HOME_L1, etc. HOME_L2 is the top (no typeId-5 home), so it never upgrades.
+ */
+function levelChainContent(): ContentSet {
+  return parseContentSet({
+    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    goods: [
+      { typeId: 0, id: 'none' },
+      { typeId: STONE, id: 'stone' },
+      { typeId: WOOD, id: 'wood' },
+    ],
+    jobs: [{ typeId: 0, id: 'idle' }],
+    landscape: [{ typeId: GRASS, id: 'grass', walkable: true, buildable: true }],
+    buildings: [
+      {
+        typeId: HOME_L0,
+        id: 'home_level_00',
+        kind: 'home',
+        homeSize: 1,
+        construction: [{ goodType: STONE, amount: 1 }],
+      },
+      {
+        typeId: HOME_L1,
+        id: 'home_level_01',
+        kind: 'home',
+        homeSize: 2,
+        construction: [{ goodType: STONE, amount: 2 }],
+      },
+      // Top tier: bigger, and its own (irrelevant for upgrades — nothing upgrades INTO it past L2) cost.
+      {
+        typeId: HOME_L2,
+        id: 'home_level_02',
+        kind: 'home',
+        homeSize: 3,
+        construction: [{ goodType: WOOD, amount: 1 }],
+      },
+    ],
+  });
+}
+
+/** Place a fully-BUILT home of the given tier holding the given stock (the upgrade-materials sink). */
+function placeBuiltHome(
+  sim: Simulation,
+  buildingType: number,
+  level: number,
+  stock: Record<number, number> = {},
+): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
+  sim.world.add(e, Building, { buildingType, tribe: VIKING, built: ONE, level });
+  sim.world.add(e, Stockpile, {
+    amounts: new Map<number, number>(Object.entries(stock).map(([g, n]) => [Number(g), n])),
+  });
+  return e;
+}
+
+function upgradedEvents(sim: Simulation): readonly SimEvent[] {
+  return sim.events.current().filter((ev) => ev.kind === 'buildingUpgraded');
 }
 
 // Clear EVERY component store — the module-level singleton stores are shared across Simulation
@@ -276,6 +343,90 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
       loadedCarrierAt(sim, 1, 0, STONE, 1);
       loadedCarrierAt(sim, 5, 0, WOOD, 1);
       for (let i = 0; i < 80; i++) sim.step();
+      return sim.hashState();
+    };
+    expect(run()).toBe(run());
+  });
+});
+
+/**
+ * Home level-up: a BUILT `home` that accumulates the NEXT tier's `construction` cost in its own
+ * stockpile consumes those materials and upgrades — its `buildingType` becomes the next tier's typeId
+ * and `level` increments, so its larger `homeSize` immediately raises `housingCapacity`. The level
+ * chain is the consecutive `home` typeIds; the top tier (no next typeId) never upgrades.
+ */
+describe('constructionSystem — home level-up', () => {
+  it('does NOT upgrade a built home missing the next tier cost', () => {
+    const sim = new Simulation({ seed: 1, content: levelChainContent() });
+    const e = placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 1 }); // L1 needs 2 stone; only 1 present
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, Building).buildingType).toBe(HOME_L0); // unchanged
+    expect(sim.world.get(e, Building).level).toBe(0);
+    expect(sim.world.get(e, Stockpile).amounts.get(STONE)).toBe(1); // materials untouched
+    expect(upgradedEvents(sim)).toHaveLength(0);
+  });
+
+  it('upgrades a built home once the next tier cost is present, consuming the materials', () => {
+    const sim = new Simulation({ seed: 1, content: levelChainContent() });
+    const e = placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 2 }); // L1 needs 2 stone
+    constructionSystem(sim.world, ctxOf(sim));
+    const b = sim.world.get(e, Building);
+    expect(b.buildingType).toBe(HOME_L1); // adopted the larger tier
+    expect(b.level).toBe(1);
+    expect(b.built).toBe(ONE); // still built (it was already built; only the tier changed)
+    expect(sim.world.get(e, Stockpile).amounts.get(STONE)).toBe(0); // spent into the upgrade
+    expect(upgradedEvents(sim)).toEqual([{ kind: 'buildingUpgraded', entity: e, level: 1 }]);
+  });
+
+  it('raises the tribe housing capacity by the new tier homeSize', () => {
+    const sim = new Simulation({ seed: 1, content: levelChainContent() });
+    const e = placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 2 });
+    expect(housingCapacity(sim.world, ctxOf(sim), VIKING)).toBe(1); // L0 shelters 1
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, Building).buildingType).toBe(HOME_L1);
+    expect(housingCapacity(sim.world, ctxOf(sim), VIKING)).toBe(2); // L1 shelters 2
+  });
+
+  it('upgrades at most ONE tier per tick — the new tier cost is not present after the jump', () => {
+    const sim = new Simulation({ seed: 1, content: levelChainContent() });
+    // Hold both L1's cost (2 stone) AND L2's cost (1 wood). One tick should advance exactly one tier:
+    // after L0→L1 the stone is spent, and L2's cost (wood) is what L1 would need — present, so a SECOND
+    // tick advances L1→L2. This guards against a within-tick double-upgrade (the matches are snapshotted).
+    const e = placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 2, [WOOD]: 1 });
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, Building).buildingType).toBe(HOME_L1); // exactly one tier this tick
+    expect(sim.world.get(e, Building).level).toBe(1);
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, Building).buildingType).toBe(HOME_L2); // second tick advances again
+    expect(sim.world.get(e, Building).level).toBe(2);
+  });
+
+  it('never upgrades the top-tier home (no next typeId in the chain)', () => {
+    const sim = new Simulation({ seed: 1, content: levelChainContent() });
+    // HOME_L2 is the top; even holding a pile of every good, there is no tier to upgrade into.
+    const e = placeBuiltHome(sim, HOME_L2, 2, { [STONE]: 9, [WOOD]: 9 });
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, Building).buildingType).toBe(HOME_L2); // unchanged
+    expect(sim.world.get(e, Building).level).toBe(2);
+    expect(sim.world.get(e, Stockpile).amounts.get(STONE)).toBe(9); // nothing consumed
+    expect(upgradedEvents(sim)).toHaveLength(0);
+  });
+
+  it('does NOT upgrade a non-home built building even if it holds matching goods', () => {
+    // A built workplace whose typeId+1 happens to be a home must NOT be treated as a home upgrade.
+    const sim = new Simulation({ seed: 1, content: constructionContent() });
+    const e = placeBuiltHome(sim, HEADQUARTERS, 0, { [STONE]: 9, [WOOD]: 9 }); // typeId 1, kind headquarters
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, Building).buildingType).toBe(HEADQUARTERS); // unchanged — not a home
+    expect(upgradedEvents(sim)).toHaveLength(0);
+  });
+
+  it('is deterministic — two same-seed upgrade runs reach the same state hash', () => {
+    const run = (): string => {
+      clearStores();
+      const sim = new Simulation({ seed: 5, content: levelChainContent() });
+      placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 2 });
+      constructionSystem(sim.world, ctxOf(sim));
       return sim.hashState();
     };
     expect(run()).toBe(run());

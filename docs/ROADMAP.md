@@ -97,8 +97,21 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       *guaranteed* rather than an incidental side effect of the site's construction-only `stockCapacity`
       (a recipe whose input overlapped a delivered build material could previously have been raided by
       production, which runs before construction in `SYSTEM_ORDER`). Inert on the golden (every golden
-      building is placed `built = ONE`). **Open (still our design, no oracle):** the **home level-up**
-      trigger (a built home consuming the next tier's cost to upgrade `level` → larger `homeSize`).
+      building is placed `built = ONE`). **Home LEVEL-UP trigger now LANDED** (→ `constructionSystem`'s
+      built-home branch, `systems/construction.ts`): a **built** `home` whose own stockpile accumulates the
+      **next tier's** `construction` cost consumes those materials and **upgrades** — its `buildingType`
+      becomes the next tier's typeId and `level` increments, so its larger `homeSize` immediately raises
+      `housingCapacity` (the births→housing loop gains room). The level chain is read off the **consecutive
+      `home` typeIds** (`home_level_00..04` = typeIds 2..6; the next tier is `typeId + 1` when that is also a
+      `home`), so the upgrade is purely data-driven — no separate "next level" pointer. The top tier
+      (`home_level_04`, no next typeId) never upgrades; a non-home built building is finished forever. At most
+      ONE tier per tick (`world.query` snapshots the matches; the new typeId's next-tier cost isn't present
+      after the jump). Proven by `construction-system.test.ts` (7 new cases: missing-cost waits, upgrade+
+      consume, capacity rises, one-tier-per-tick, top-tier-never, non-home-never, determinism) + a hands-on
+      over the **real IR** (a `home_level_00` paying `home_level_01`'s real cost upgrades typeId 2→3,
+      capacity 1→2, through the real `step()`). Inert on the golden (no `home`-kind building in the fixture).
+      The deferred refinement: a built home that can still upgrade does NOT yet advertise its next tier's cost
+      as carrier-delivery demand (accumulating upgrade materials is a future dispatch slice; docs/FIDELITY.md).
 - [ ] **ReproductionSystem** — **landed** (→ archive): one birth per tribe per tick while
       `tribePopulation < housingCapacity` (deterministic cadence, the `populationWithinHousing` invariant);
       a newborn is the data-pinned youngest age class (`baby_female`), `systems/ageclass.ts` recognizes the
