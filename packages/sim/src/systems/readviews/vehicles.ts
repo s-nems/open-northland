@@ -73,7 +73,7 @@ export function largestShipCapacity(content: ContentSet): number {
  * not just ships (a cart's hold is filtered the same way); name kept generic.
  *
  * FIDELITY: pinned to the extracted `logicgood` param. In the real `vehicletypes.ini` the carts and both
- * ships enumerate the full haulable-goods list (54 ids) while the catapult lists none — so a membership
+ * ships enumerate the full haulable-goods list (49 ids) while the catapult lists none — so a membership
  * test against this set is the engine's "can this good ride in this hold" gate. Determinism: a pure `Set`
  * built from the already-extracted `cargoGoods` array; callers test membership (`.has`), which is
  * order-independent, so no canonical-iteration concern. No world, no RNG, no wall-clock.
