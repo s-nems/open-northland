@@ -566,9 +566,13 @@ export function extractAtomicAnimations(sections: readonly RuleSection[], src: S
  * per tribe (e.g. `type 2` = "fist" for every tribe); see {@link WeaponType}. `mainType` (the coarse
  * weapon class) and `weight` (encumbrance) are captured as the weapon-side twins of an armor's
  * `mainType`/`weight` — note `mainType` is the file's exact camelCase key (a lowercased `maintype`
- * would silently vanish; see docs/LESSONS.md). The remaining combat extras (`soundtype_*`,
- * `munitiontype`, `createsmoke`, `damagetype`) are not in the {@link WeaponType} schema yet and are
- * intentionally skipped here — they belong with the Phase-4 CombatSystem, not this type-table slice.
+ * would silently vanish; see docs/LESSONS.md). `munitiontype` (all-lowercase in the source, unlike
+ * `mainType`) is the ammunition class a *ranged* weapon fires (1 = bow ammo, 2 = catapult projectile;
+ * only bows/catapults carry it — melee weapons omit it → `undefined`), captured as a plain id (it is
+ * a class enum, not a cross-ref — `munitiontype` exists in no other table and 1/2 are not good ids).
+ * The remaining combat extras (`soundtype_*`, `createsmoke`, `damagetype`) are not in the
+ * {@link WeaponType} schema yet and are intentionally skipped here — they belong with the Phase-4
+ * CombatSystem, not this type-table slice.
  * Throws on a section missing the required numeric `type` (matches {@link extractGoods}'s
  * throw-on-malformed stance).
  */
@@ -597,6 +601,9 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
         tribeType: getInt(sec, 'tribetype'),
         mainType: getInt(sec, 'mainType'),
         weight: getInt(sec, 'weight'),
+        // `munitiontype` is all-lowercase in the source (unlike `mainType`) — the ammo class a ranged
+        // weapon fires (bow/catapult); absent on melee weapons, so it doubles as the "is ranged" marker.
+        munitionType: getInt(sec, 'munitiontype'),
         minRange: getInt(sec, 'minimumrange'),
         maxRange: getInt(sec, 'maximumrange'),
         damage,
