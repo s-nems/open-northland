@@ -237,6 +237,14 @@ export const WeaponType = z.object({
    * id with no cross-ref check. **Absent on melee weapons** (a fist/sword fires nothing → `undefined`),
    * making it the data-pinned "is this weapon ranged" marker the deferred ranged-attack drive reads. */
   munitionType: TypeId.optional(),
+  /**
+   * `damagetype` — the **damage class** a weapon deals (a siege/area marker in the base data: only the
+   * catapults carry it, value `2`). Like {@link mainType} and {@link munitionType} it is a class enum,
+   * **not** a cross-ref into another table (`damagetype` appears in no other `.ini`, and `2` is not a
+   * good id — good 2 is "mud"), so it's captured as a plain id with no cross-ref check. **Absent on
+   * every non-catapult weapon** (→ `undefined`), so it marks the siege/AoE damage class the deferred
+   * combat-resolution drive reads, the twin of {@link munitionType}'s "is ranged" marker. */
+  damageType: TypeId.optional(),
   minRange: z.number().int().nonnegative().default(1),
   maxRange: z.number().int().nonnegative().default(1),
   /** damageValue[targetArmorClass] -> value, as in the original weapontypes. */
