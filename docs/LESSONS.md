@@ -695,3 +695,12 @@ the next iteration inherits it.
   a display consumer must sort the keys itself (insertion = first-class-appearance, not ascending id).
   Before reaching for `.filter`, ask whether the marker partitions (every row has one) or selects (most
   rows lack it). (sim/read-model)
+- [c0dcbcb] When mirroring a grouping read view onto a sibling table, the values stay arrays even if the
+  sibling's *record* key IS globally unique — because a grouping keys on the CLASS field (`mainType`),
+  not the record id, and the class is many-to-one (4 armor records → 2 classes). The [c05fa8b] lesson
+  (cardinality dictates filter-vs-grouping) is about whether to group; this is the next question once you
+  ARE grouping: array-vs-scalar values are dictated by the GROUPING key's cardinality, not the record
+  id's. So `armorByClass` keeps `weaponsByClass`'s array values for a different reason than
+  `weaponsByClass` did (there: the `(tribeType,typeId)` record key isn't unique; here: the record
+  `typeId` IS unique but several records share a `mainType`) — same lossless shape, distinct rationale.
+  Keep the twin's shape identical to its sibling regardless, so a consumer treats both tables uniformly. (sim/read-model)
