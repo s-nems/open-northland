@@ -704,3 +704,9 @@ the next iteration inherits it.
   `weaponsByClass` did (there: the `(tribeType,typeId)` record key isn't unique; here: the record
   `typeId` IS unique but several records share a `mainType`) — same lossless shape, distinct rationale.
   Keep the twin's shape identical to its sibling regardless, so a consumer treats both tables uniformly. (sim/read-model)
+- [f9a83f0] An "oracle-blocked" mechanic can have a self-verifiable DATA half already sitting extracted +
+  cross-ref-validated but with no consumer: `weapon.jobType` (the wielding soldier-class) was extracted,
+  schema'd, and validated sessions ago, so the "soldier-class→weapon binding" was blocked only on its
+  *equip behavior* — the *roster JOIN* was one `Map<jobType, WeaponType[]>` read view away. Before
+  deferring a binding as oracle-blocked, check whether its cross-ref field is already in the IR; the
+  data-join read view is the faithful, testable half you CAN land now. (sim/read-model)
