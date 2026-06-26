@@ -8,6 +8,7 @@ import {
   extractArmor,
   extractAtomicAnimations,
   extractBuildings,
+  extractConstructionCosts,
   extractGoods,
   extractGraphicsBindings,
   extractJobBaseGraphics,
@@ -846,6 +847,7 @@ describe('extractBuildings', () => {
           { goodType: 5, capacity: 150, initial: 0 },
         ],
         produces: [],
+        construction: [], // build cost is overlaid from the graphics table, not the logic table
         source: src,
       },
       {
@@ -856,6 +858,7 @@ describe('extractBuildings', () => {
         workers: [],
         stock: [{ goodType: 1, capacity: 5, initial: 1 }],
         produces: [],
+        construction: [],
         source: src,
       },
       {
@@ -866,6 +869,7 @@ describe('extractBuildings', () => {
         workers: [{ jobType: 5, count: 1 }],
         stock: [],
         produces: [5, 1], // logicproduction output good ids, in file order
+        construction: [],
         source: src,
       },
     ]);
@@ -883,6 +887,78 @@ describe('extractBuildings', () => {
       { file: 'f.ini' },
     );
     expect(buildings[0]?.kind).toBe('maintype_9');
+  });
+});
+
+// Mirrors DataCnmd/budynki12/houses/houses.ini: a `[GfxHouse]` render record whose `LogicType` and
+// `LogicConstructionGoods` lines both lead with a *size index* that pairs them, keyed to a tribe by
+// `LogicTribeType`. The cost is a flat good-id list where a repeat encodes quantity. A home spans
+// several `LogicType` levels (one typeId each), each with its OWN cost; a free building (HQ) has a
+// `LogicType` but no construction goods.
+const GFXHOUSES_INI = `[GfxHouse]
+EditName "wall"
+LogicTribeType 1
+LogicType 0 22
+LogicConstructionGoods 0 3 3 26
+GfxBobId 0 100
+[GfxHouse]
+EditName "viking home"
+LogicTribeType 1
+LogicType 0 2
+LogicType 1 3
+LogicConstructionGoods 0 5 5 2
+LogicConstructionGoods 1 24 24
+[GfxHouse]
+EditName "headquarters"
+LogicTribeType 1
+LogicType 0 1
+GfxBobId 0 200
+`;
+
+// The same logic typeIds (2, 3) recur for a HIGHER tribe with a DIFFERENT (cumulative) cost — the
+// real data's per-(tribe, typeId) divergence. The lowest-tribeType record must win deterministically.
+const GFXHOUSES_OTHER_TRIBE_INI = `[GfxHouse]
+EditName "saracen residence"
+LogicTribeType 4
+LogicType 0 2
+LogicType 1 3
+LogicConstructionGoods 0 5 5 2 24 24
+LogicConstructionGoods 1 5 5 2 24 24 26 26
+`;
+
+describe('extractConstructionCosts', () => {
+  it('joins per-level LogicConstructionGoods onto typeId, run-length-encoding the good list', () => {
+    const costs = extractConstructionCosts(parseIniSections(GFXHOUSES_INI));
+    // wall: `3 3 26` -> 2x good 3 + 1x good 26
+    expect(costs.get(22)).toEqual([
+      { goodType: 3, amount: 2 },
+      { goodType: 26, amount: 1 },
+    ]);
+    // home level 0 (typeId 2) and level 1 (typeId 3) each carry their OWN cost (not cumulative)
+    expect(costs.get(2)).toEqual([
+      { goodType: 5, amount: 2 },
+      { goodType: 2, amount: 1 },
+    ]);
+    expect(costs.get(3)).toEqual([{ goodType: 24, amount: 2 }]);
+    // headquarters has a LogicType but no LogicConstructionGoods -> no entry (free to start)
+    expect(costs.has(1)).toBe(false);
+  });
+
+  it('collapses a per-(tribe, typeId) cost to the lowest-tribeType record (deterministic reference tribe)', () => {
+    // viking (tribe 1) before saracen (tribe 4): the order in the parsed list must not matter.
+    const costs = extractConstructionCosts(
+      parseIniSections(`${GFXHOUSES_OTHER_TRIBE_INI}\n${GFXHOUSES_INI}`),
+    );
+    // tribe 1's cost wins for the shared typeIds even though tribe 4 was parsed first.
+    expect(costs.get(2)).toEqual([
+      { goodType: 5, amount: 2 },
+      { goodType: 2, amount: 1 },
+    ]);
+    expect(costs.get(3)).toEqual([{ goodType: 24, amount: 2 }]);
+  });
+
+  it('returns an empty map for sources with no [GfxHouse] records (the logic-only tables)', () => {
+    expect(extractConstructionCosts(parseIniSections(HOUSES_INI)).size).toBe(0);
   });
 });
 

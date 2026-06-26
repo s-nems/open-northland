@@ -800,6 +800,67 @@ export function extractBuildings(sections: readonly RuleSection[], src: SourceRe
   return buildings;
 }
 
+/**
+ * Extracts each building's **build-material cost** from the graphics table's `[GfxHouse]` records (the
+ * readable `DataCnmd/budynki12/houses/houses.ini`), keyed by the building `typeId` for an overlay onto
+ * the `[logichousetype]`-extracted {@link BuildingType}s ({@link extractBuildings} reads the *logic*
+ * table; the construction cost lives only in the *graphics* twin — a separate file the pipeline did not
+ * read until now). A `[GfxHouse]` record is a render record carrying a few `Logic*` keys, three of which
+ * matter here:
+ *   - `LogicTribeType <id>` — the owning tribe. The cost is genuinely keyed by **(tribe, typeId)**: the
+ *     same logic `typeId` (homes 2..6 are shared across civilizations) carries a DIFFERENT cost per
+ *     tribe — viking/frank/byzantine model a home as an *upgrade chain* (level 4 = `27 27`, ornaments
+ *     only), while egypt/saracen model the same typeId as a *standalone full build* (the cumulative
+ *     list). To keep a single flat {@link BuildingType.construction} field we collapse to the
+ *     **lowest-tribeType** record (the deterministic "reference tribe" convention `fillBuildingRecipes`
+ *     already uses); the per-tribe divergence is recorded in docs/FIDELITY.md.
+ *   - `LogicType <sizeIdx> <typeId>` — the building `typeId` at that size level (a home spans several:
+ *     `home level 00..04` are five distinct typeIds, one per `sizeIdx`), joined to the cost by `sizeIdx`.
+ *   - `LogicConstructionGoods <sizeIdx> <good> <good> …` — the goods to build that level, a flat id
+ *     list where a **repeat encodes quantity** (`3 3 26` = 2× stone + pillar), exactly like
+ *     `goodtypes.productionInputGoods` ({@link extractProductionInputs}).
+ * A level with a `LogicType` but no matching `LogicConstructionGoods` (the headquarters/wonder records)
+ * is omitted — that building has no construction cost. Returns an empty map if the file carries no
+ * `[GfxHouse]` records (e.g. the logic-only sources every other extractor reads).
+ */
+export function extractConstructionCosts(
+  sections: readonly RuleSection[],
+): Map<number, { goodType: number; amount: number }[]> {
+  // typeId -> { tribeType, cost } so a lower-tribeType record deterministically wins (see JSDoc).
+  const winner = new Map<number, { tribeType: number; cost: { goodType: number; amount: number }[] }>();
+  for (const sec of sections) {
+    if (sec.name !== 'GfxHouse') continue;
+    const tribeType = getInt(sec, 'LogicTribeType') ?? Number.POSITIVE_INFINITY;
+    // sizeIdx -> typeId
+    const typeByLevel = new Map<number, number>();
+    for (const p of findProps(sec, 'LogicType')) {
+      const sizeIdx = Number.parseInt(p.values[0] ?? '', 10);
+      const typeId = Number.parseInt(p.values[1] ?? '', 10);
+      if (Number.isNaN(sizeIdx) || Number.isNaN(typeId)) continue;
+      typeByLevel.set(sizeIdx, typeId);
+    }
+    for (const p of findProps(sec, 'LogicConstructionGoods')) {
+      const sizeIdx = Number.parseInt(p.values[0] ?? '', 10);
+      if (Number.isNaN(sizeIdx)) continue;
+      const typeId = typeByLevel.get(sizeIdx);
+      if (typeId === undefined) continue;
+      const existing = winner.get(typeId);
+      if (existing !== undefined && existing.tribeType <= tribeType) continue;
+      const counts = new Map<number, number>();
+      for (const raw of p.values.slice(1)) {
+        const id = Number.parseInt(raw, 10);
+        if (Number.isNaN(id)) continue;
+        counts.set(id, (counts.get(id) ?? 0) + 1);
+      }
+      winner.set(typeId, {
+        tribeType,
+        cost: [...counts].map(([goodType, amount]) => ({ goodType, amount })),
+      });
+    }
+  }
+  return new Map([...winner].map(([typeId, { cost }]) => [typeId, cost]));
+}
+
 /** Ticks for one production cycle when no produce-atomic animation length resolves (unpinned). */
 const DEFAULT_RECIPE_TICKS = 20;
 

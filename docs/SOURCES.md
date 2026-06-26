@@ -32,7 +32,11 @@ Counts observed in `Cultures 8th Wonder` (base `Data` + `DataX` + mod `DataCnmd`
   - The primary **readable** rule sources are in **base** `Data/logic/*.ini` (goods, jobs,
     landscape, animals, vehicles, experience) — note they begin with a `<CULTURES_CIF_BEGIN>`
     header line but are otherwise plain text. The mod (`DataCnmd`) overlays only a *subset*
-    (`houses.ini`, `weapons.ini`, graphics).
+    (`houses.ini`, `weapons.ini`, graphics). NOTE the two distinct house files: `types/houses.ini`
+    is the **logic** table (`[logichousetype]`: workers/stock/production/homesize), while
+    `budynki12/houses/houses.ini` is the **graphics** table (`[GfxHouse]`: bob/coords) that ALSO
+    carries the per-level `LogicConstructionGoods` **build-material cost** — the only readable source
+    of construction cost, overlaid by `extractConstructionCosts` (the logic table has no cost key).
   - But **`housetypes`, `weapontypes`, `trianglepatterntypes`, and `atomicanimations` are
     `.cif`-only with no `.ini` twin**, and **every map is `map.cif`**. You cannot ship without them.
   - ~~The genuine unknown is therefore **not decryption but the decrypted payload/record layout**.~~
