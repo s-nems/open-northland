@@ -167,9 +167,19 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       capacity 200 for a carryable good, 0 for a forbidden one). The carrier carry-BATCH filter (sizing a
       haul by the cart's allow-list) stays deferred with the cart entity (docs/FIDELITY.md — *Carrier→vehicle
       pairing* (a)).
+      **Sea-job read view now LANDED** (→ `seaJobs`/`isSeaJob`, `systems/readviews/jobs.ts`): the
+      `fisher_sea`/`trader_sea` water trades classified out of `content.jobs` **by the data alone** (the
+      `_sea` id suffix the `jobtypes` data carries — the sea variants are distinct jobtypes whose only
+      extracted distinguisher from their land counterparts is the name, their atomics coming per-tribe via
+      `setatomic`), sorted by typeId. The job-side analogue of `shipVehicles`. In the **real IR** the
+      suffix isolates EXACTLY `fisher_sea#23` and `trader_sea#26` out of 55 jobs (no false positives), and
+      a [3826bab] *distinguishable-before-planning* check confirmed no other extracted param splits sea
+      from land (so the data's name is the discriminator, not an invented flag).
       **Open:** water-valency terrain (which cells a ship floats on — map-decode-blocked, the water
       surface lives in the triangle/terrain grid, not a `landscapetypes.ini` flag), boat movement +
-      embark/disembark atomics, and the sea jobs.
+      embark/disembark atomics (no embark/disembark atomic exists in the mod `.ini` — that vocabulary is
+      below the readable data, deferred with movement), and the sea-job BEHAVIOR (a sea worker reaching
+      its fishing/trading station by boat — rides on boat movement).
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.
 
