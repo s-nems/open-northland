@@ -2,6 +2,7 @@ import { indexById } from '@vinland/data';
 import { assertNever } from '../brand.js';
 import type { Command } from '../commands.js';
 import {
+  Armor,
   Building,
   Health,
   HerdMember,
@@ -165,6 +166,13 @@ function spawnSettler(
   // (docs/FIDELITY.md "Combat hit resolution").
   if (command.hitpoints !== undefined && command.hitpoints > 0) {
     world.add(e, Health, { hitpoints: command.hitpoints, max: command.hitpoints });
+  }
+  // A combatant wearing armor carries an `Armor` class (the settler analogue of the `Health` stamp): an
+  // incoming hit is mitigated by that tier's `blockingValue` rather than landing on the unarmored class 0.
+  // Only a positive class is stamped; absent / non-positive `armorClass` (the default) leaves the settler
+  // unarmored, the separate-optional-component pattern that keeps the golden hash untouched.
+  if (command.armorClass !== undefined && command.armorClass > 0) {
+    world.add(e, Armor, { armorClass: command.armorClass });
   }
   ctx.events.emit({ kind: 'settlerBorn', entity: e });
 }

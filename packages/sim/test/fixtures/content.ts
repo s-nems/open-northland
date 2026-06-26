@@ -154,9 +154,10 @@ export function testContent(): ContentSet {
       },
     ],
     armor: [
-      // Leather (class 1) mitigates 10 — so a 60-raw hit lands 50 net on a leather-clad target. Unused
-      // by the combat drive yet (settlers wear no armor — every hit resolves vs class 0), but it makes
-      // the `combatDamage` join exercise a real armor record alongside the unarmored class.
+      // Leather (class 1) mitigates 10 — so a 60-raw hit (test_axe `damage["1"]`) lands 50 net on a
+      // leather-clad target. Now consumed by the combat drive: a combatant stamped `Armor{armorClass:1}`
+      // resolves a hit through this record (the `damage[class] - blockingValue` join), and it makes the
+      // `combatDamage` read view exercise a real armor record alongside the unarmored class.
       { typeId: 1, id: 'leather', goodType: 1, blockingValue: 10 },
     ],
     tribes: [

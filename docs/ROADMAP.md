@@ -91,8 +91,11 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       net-damage join, all 105 weapons, out-of-table classes treated unarmored); the full
       targeting→`attack`(atomic 81)→hit→death loop (`combatSystem` + the `resolveHit`/`Health{hitpoints}`
       drain + `cleanupSystem` reaping a 0-HP entity, `settlerDied` emitted). Faithful (net-damage param +
-      atomic id 81); **deferred refinements** (armor-on-a-settler, walk-into-melee advance, swing cadence —
-      ride on later items + an oracle; docs/FIDELITY.md). Inert on the golden (no settler carries `Health`).
+      atomic id 81). **Armor-on-a-settler now LANDED:** a combatant may wear an `Armor{armorClass}` tier
+      (stamped via `spawnSettler{armorClass}`), and a hit resolves the per-class `damage[targetClass] −
+      blockingValue` join, not always class 0 (docs/FIDELITY.md "Settler-side Armor stamping"). **Deferred
+      refinements** (walk-into-melee advance, swing cadence, soldier-class→armor binding — ride on later
+      items + an oracle; docs/FIDELITY.md). Inert on the golden (no settler carries `Health`/`Armor`).
 - [x] **N data-defined tribes** (viking/frank/saracen/byzantine/egypt), asymmetry expressed through each
       tribe's atomic bindings + `allow*`/`needfor*` graph — never hardcode "two". **Substance-complete**
       (→ [archive](ROADMAP-ARCHIVE.md) for the scaffolding narrative): all 41 `[tribetype]`s extracted, every
@@ -111,8 +114,11 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       the world; omitting `hitpoints` leaves a non-combatant (golden untouched). The HP **magnitude is
       approximated** — humans' hitpoints are below the readable `.ini` (the engine manages them via
       `atomicanimations` CHANGE_HITPOINTS events; docs/FIDELITY.md "Settler-side Health stamping").
-      **Open (oracle-blocked, deferred):** tribe-vs-tribe diplomacy/alliances and **settler ARMOR** (a
-      settler still wears armor class 0 — a `[armortype]` tier on a combatant is the soldiers/armor slice).
+      **Settler ARMOR now LANDED:** a combatant carries an optional `Armor{armorClass}` (stamped via
+      `spawnSettler{armorClass}`), and a hit resolves the per-class `weapontypes`×`armortypes` net-damage
+      join against the target's worn class rather than always class 0 (docs/FIDELITY.md "Settler-side Armor
+      stamping"). **Open (oracle-blocked, deferred):** tribe-vs-tribe diplomacy/alliances, and the
+      soldier-class→armor-tier content binding (which job/unit wears which class — caller-supplied for now).
 - [x] **Animals as non-controllable tribes** (`animaltypes.ini`: aggression, groups, hitpoints) —
       **substance-complete** (→ [archive](ROADMAP-ARCHIVE.md) for the full landed-narrative). The
       `animaltypes.ini` table (35 creature tribes, keyed on `tribetype`) is extracted, and **every**

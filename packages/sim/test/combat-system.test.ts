@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   Anger,
+  Armor,
   CurrentAtomic,
   Health,
   MoveGoal,
@@ -44,6 +45,7 @@ beforeEach(() => {
   PathFollow.store.clear();
   PathRequest.store.clear();
   Anger.store.clear();
+  Armor.store.clear();
 });
 
 function grassMap(width: number, height: number): TerrainMap {
@@ -527,6 +529,76 @@ describe('combatSystem — provoked anger (getAngry/angryGameTime)', () => {
 
     expect(sim.world.get(bear, Health).hitpoints).toBe(950); // the hit landed
     expect(sim.world.has(bear, Anger)).toBe(false); // no redundant anger timer on an aggressive animal
+  });
+});
+
+describe('combatSystem — armor mitigation (the target armor class join)', () => {
+  // The fixture's test_axe lists `damage { "0": 50, "1": 60 }`; leather (armor class 1) blocks 10.
+  // So a viking woodcutter hits an UNARMORED target for 50 (class 0) and a leather-clad one for
+  // 60 - 10 = 50 net (the per-class `weapontypes`×`armortypes` join), and a class with no damage
+  // entry / no armor record resolves to 0.
+
+  it('an unarmored target (no Armor) takes the class-0 damage (unchanged behavior)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
+    const enemy = fighterAt(sim, 1, 0, FRANK, WOODCUTTER); // no Armor -> class 0
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(attacker, CurrentAtomic).effect).toEqual({
+      kind: 'attack',
+      target: enemy,
+      damage: 50, // test_axe damage["0"]
+    });
+  });
+
+  it('an armored target takes the per-class damage minus its blockingValue', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
+    const enemy = fighterAt(sim, 1, 0, FRANK, WOODCUTTER);
+    sim.world.add(enemy, Armor, { armorClass: 1 }); // leather: damage["1"] 60 - blockingValue 10
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(attacker, CurrentAtomic).effect).toEqual({
+      kind: 'attack',
+      target: enemy,
+      damage: 50, // 60 (vs class 1) - 10 (leather blockingValue)
+    });
+  });
+
+  it('a target wearing an out-of-table armor class takes the weapon’s damage for that class (no record → no mitigation)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
+    const enemy = fighterAt(sim, 1, 0, FRANK, WOODCUTTER);
+    sim.world.add(enemy, Armor, { armorClass: 2 }); // no armor record AND no test_axe damage["2"]
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // test_axe lists no `damage["2"]`, so the raw is 0; class 2 has no armor record, so no mitigation
+    // is subtracted — a 0-net hit (the swing connects but the weapon does this class no harm).
+    expect(sim.world.get(attacker, CurrentAtomic).effect).toEqual({
+      kind: 'attack',
+      target: enemy,
+      damage: 0,
+    });
+  });
+
+  it('mitigation that exceeds the raw damage clamps net to 0 (armor never heals)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    // The bear's test_bearfist lists only `damage["0"]` 40. A leather-clad (class 1) target has raw 0
+    // (no damage["1"] on bearfist) and would mitigate 10 — clamped to 0, never negative.
+    const bear = fighterAt(sim, 0, 0, BEAR, WOODCUTTER);
+    const viking = fighterAt(sim, 1, 0, VIKING, WOODCUTTER);
+    sim.world.add(viking, Armor, { armorClass: 1 });
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(bear, CurrentAtomic).effect).toEqual({
+      kind: 'attack',
+      target: viking,
+      damage: 0, // max(0, 0 - 10)
+    });
   });
 });
 
