@@ -12,7 +12,7 @@ import type { Entity, World } from '../ecs/world.js';
 import { fx } from '../fixed.js';
 import type { CellId, TerrainGraph } from '../terrain.js';
 import type { System, SystemContext } from './context.js';
-import { isAggressiveAnimal, isAnimalTribe, mayAttack } from './readviews/index.js';
+import { isAggressiveAnimal, isAnimalTribe, mayAttack, mayHunt } from './readviews/index.js';
 
 /**
  * CombatSystem (the **targeting** half of the combat loop) — choose who each idle combatant swings
@@ -32,8 +32,13 @@ import { isAggressiveAnimal, isAnimalTribe, mayAttack } from './readviews/index.
  *    `animaltypes.ini` `aggressive`, attacks unprovoked) and a civilization are mutual enemies, so a
  *    bear/wolf engages a nearby settler **and** that settler fights back. A `cannotbeattacked` animal
  *    (decorative fauna — bees) is exempt as a *target* (a civ can't hit it) but, if aggressive, can
- *    still attack. A **passive** animal (a cow, a deer) is no combat target — hunting prey is the
- *    separate `catchable`/hunter mechanic, not hostility — and animals don't fight each other here.
+ *    still attack. A **passive** animal (a cow, a deer) is no combat target — hostility leaves it alone.
+ *  - **Hunter → catchable prey** — a civilization **hunter** ({@link mayHunt} — job
+ *    {@link HUNTER_JOB}) may strike a {@link isCatchableAnimal} prey animal (a cow/deer the hostility
+ *    relation leaves alone), the original's `viking_hunter_attack`. This is predation, gated by the
+ *    attacker's *job* not tribe hostility; the strike reuses the same `attack` atomic + weapon/hit path,
+ *    and (for a `getAngry` prey) is the **provocation source** the `Anger` timer waits on. Animals don't
+ *    fight each other here.
  *
  * For each idle, living combatant (no `CurrentAtomic` running, not travelling, `hitpoints > 0`), in
  * deterministic store order, the system finds the nearest valid target within the attacker's weapon
@@ -92,8 +97,17 @@ export const combatSystem: System = (world, ctx) => {
     if (weapon === null) continue; // no resolvable weapon — this combatant can't attack (approximated)
 
     const here = entityCell(world, terrain, e);
-    const pick = nearestEnemyTarget(world, terrain, ctx, here, e, attacker.tribe, weapon.range);
-    if (pick === null) continue; // no enemy in range this tick
+    const pick = nearestEnemyTarget(
+      world,
+      terrain,
+      ctx,
+      here,
+      e,
+      attacker.tribe,
+      attacker.jobType,
+      weapon.range,
+    );
+    if (pick === null) continue; // no enemy/prey in range this tick
 
     startAttack(world, ctx, attacker, e, pick.target, weapon.netDamageUnarmored);
   }
@@ -121,19 +135,21 @@ function hostileAnimalNow(world: World, ctx: SystemContext, e: Entity, tribe: nu
 }
 
 /**
- * The nearest **enemy** combatant the attacker may swing at: a {@link Health}-bearing {@link Settler}
+ * The nearest **enemy or prey** the attacker may swing at: a {@link Health}-bearing {@link Settler}
  * on a positioned cell within `range` Manhattan cells of `here`, with a living (`hitpoints > 0`) pool,
- * for which {@link mayAttack}`(self → target)` holds — a hostile civilization, or (when self is a civ /
- * an aggressive animal) the cross-species enemy. Scanned in canonical entity-id order with a
- * Manhattan-distance + ascending-id tie-break, so the choice never depends on store insertion history.
- * Returns the target entity, or null if no enemy is in range.
+ * for which {@link mayTarget}`(self → target)` holds — a hostile civilization, the cross-species enemy
+ * (when self is a civ / an aggressive animal), OR (when self is a {@link HUNTER_JOB} hunter) a
+ * {@link isCatchableAnimal} prey animal. Scanned in canonical entity-id order with a Manhattan-distance
+ * + ascending-id tie-break, so the choice never depends on store insertion history. Returns the target
+ * entity, or null if no enemy/prey is in range.
  *
  * The attacker itself is excluded (`t === self`); whether a candidate is friendly, an exempt
- * decorative animal, passive prey, or a valid enemy is the {@link mayAttack} relation (the same
- * relation the attacker-eligibility loop above consults) **plus** the per-entity provoked-anger layer
- * ({@link mayTarget}): a `getAngry` animal that has been struck (a live {@link Anger} timer) is a valid
- * target for a civilization even though its record alone is passive — so a provoked animal fighting a
- * civ can be struck back. The two directions of a civ⇄animal fight stay consistent.
+ * decorative animal, non-catchable wild fauna, huntable prey, or a valid enemy is the {@link mayTarget}
+ * relation, which composes {@link mayAttack} (static hostility — the same relation the attacker-eligibility
+ * loop above consults) with the per-entity provoked-anger layer (a struck `getAngry` animal carrying a
+ * live {@link Anger} timer is a valid target even though its record alone is passive) **and** the
+ * {@link mayHunt} predation relation (a hunter may strike catchable prey). The directions of a civ⇄animal
+ * fight stay consistent.
  */
 function nearestEnemyTarget(
   world: World,
@@ -142,6 +158,7 @@ function nearestEnemyTarget(
   here: CellId,
   self: Entity,
   selfTribe: number,
+  selfJob: number | null,
   range: number,
 ): { target: Entity } | null {
   let best: Entity | null = null;
@@ -151,7 +168,7 @@ function nearestEnemyTarget(
     if (t === self) continue; // never swing at oneself
     if (!world.has(t, Settler) || !world.has(t, Health) || !world.has(t, Position)) continue;
     const targetTribe = world.get(t, Settler).tribe;
-    if (!mayTarget(world, ctx, self, selfTribe, t, targetTribe)) continue; // not a valid target for this attacker
+    if (!mayTarget(world, ctx, self, selfTribe, selfJob, t, targetTribe)) continue; // not a valid target for this attacker
     if (world.get(t, Health).hitpoints <= 0) continue; // already felled — not a target
     const cell = entityCell(world, terrain, t);
     const dist = manhattan(terrain, here, cell);
@@ -166,22 +183,26 @@ function nearestEnemyTarget(
 }
 
 /**
- * Whether the attacker entity `self` (of `attackerTribe`) may swing at the target entity `t` (of
- * `targetTribe`) — the content-only {@link mayAttack} relation **OR** the per-entity provoked-anger
- * layer. `mayAttack` covers the static hostility (same-tribe friendly, civ⇄civ enemies,
- * civ→aggressive-animal, animals don't fight each other). On top of it, a **provoked** `getAngry`
- * animal (a live {@link Anger} timer) makes a civ⇄animal fight valid in **both** directions, the case
- * `mayAttack` (content-only) can't see:
+ * Whether the attacker entity `self` (of `attackerTribe`, job `attackerJob`) may swing at the target
+ * entity `t` (of `targetTribe`) — three composed relations, ORed:
  *
- *  - a **civ attacker → angry-animal target**: the *target's* anger makes it hittable, so a civ can
- *    strike back the animal harassing it (a passive boar it would otherwise leave alone);
- *  - an **angry-animal attacker → civ target**: the *attacker's* own anger makes it eligible to swing
- *    at the civ (`mayAttack` alone would skip a non-aggressive animal attacker).
- *
- * Either way the override is gated to a **civilization-vs-animal** pair with the **animal side**
- * carrying a live timer — it never lets two animals fight, nor changes the civ⇄civ rules. (The
- * attacker-eligibility loop already vetted `self` as hostile via {@link hostileAnimalNow}; this is the
- * per-candidate target check, consistent with it.)
+ *  1. the content-only {@link mayAttack} **hostility** relation (same-tribe friendly, civ⇄civ enemies,
+ *     civ→aggressive-animal, animals don't fight each other);
+ *  2. the **predation** relation {@link mayHunt} — a {@link HUNTER_JOB} hunter may strike a
+ *     {@link isCatchableAnimal} prey animal (a cow/deer a non-hunter combatant leaves alone). Gated by
+ *     the attacker's *job*, not tribe hostility, this is what lets a hunter target passive prey
+ *     `mayAttack` excludes; the strike then provokes a `getAngry` prey through the combat `Anger` path;
+ *  3. the per-entity **provoked-anger** layer — a **provoked** `getAngry` animal (a live {@link Anger}
+ *     timer) makes a civ⇄animal fight valid in **both** directions, the case `mayAttack` (content-only)
+ *     can't see:
+ *      - a **civ attacker → angry-animal target**: the *target's* anger makes it hittable, so a civ can
+ *        strike back the animal harassing it (a passive boar it would otherwise leave alone);
+ *      - an **angry-animal attacker → civ target**: the *attacker's* own anger makes it eligible to swing
+ *        at the civ (`mayAttack` alone would skip a non-aggressive animal attacker).
+ *     This override is gated to a **civilization-vs-animal** pair with the **animal side** carrying a
+ *     live timer — it never lets two animals fight, nor changes the civ⇄civ rules. (The
+ *     attacker-eligibility loop already vetted `self` as hostile via {@link hostileAnimalNow}; this is the
+ *     per-candidate target check, consistent with it.)
  *
  * Determinism: a pure read of `content` + the relevant entity's `Anger` against `ctx.tick` (the exact
  * integer `tick < until`), no RNG/wall-clock. A lapsed timer is NOT reaped here (a const-time candidate
@@ -193,10 +214,12 @@ function mayTarget(
   ctx: SystemContext,
   self: Entity,
   attackerTribe: number,
+  attackerJob: number | null,
   t: Entity,
   targetTribe: number,
 ): boolean {
   if (mayAttack(ctx.content, attackerTribe, targetTribe)) return true; // static hostility
+  if (mayHunt(ctx.content, attackerJob, targetTribe)) return true; // a hunter striking catchable prey
   const attackerIsAnimal = isAnimalTribe(ctx.content, attackerTribe);
   const targetIsAnimal = isAnimalTribe(ctx.content, targetTribe);
   // The anger override only bridges a civilization-vs-animal pair — never animal-vs-animal, never

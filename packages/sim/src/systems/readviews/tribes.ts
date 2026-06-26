@@ -151,6 +151,64 @@ export function animalCannotBeAttacked(content: ContentSet, tribeType: number): 
 }
 
 /**
+ * Whether `tribeType` is a **catchable** animal — a `[tribetype]` whose `animaltypes.ini` record sets
+ * `catchable` (tamable/huntable livestock: cows/sheep, vs wild-only fauna). This is the prey side of the
+ * **hunter** mechanic — distinct from combat hostility: a passive animal is left alone by an ordinary
+ * civilization combatant ({@link mayAttack}), but a **hunter** ({@link mayHunt}) may strike `catchable`
+ * prey to harvest it (the original's `viking_hunter_attack` → `..._harvest_cadaver` chain). The last
+ * `animaltypes.ini` driver the sim consumes (alongside `aggressive`/`getangry`/`cannotbeattacked`). A
+ * tribe with no animal record (a civilization, an unknown tribe) is not catchable.
+ *
+ * FIDELITY n/a here (a read view); the *behaviour* it drives (the hunter strike) is tracked in
+ * docs/FIDELITY.md ("Hunter strike on catchable prey"). Pure over `content`, no RNG/wall-clock.
+ */
+export function isCatchableAnimal(content: ContentSet, tribeType: number): boolean {
+  return animalRecord(content, tribeType)?.catchable ?? false;
+}
+
+/**
+ * The data-pinned **hunter** trade — `jobtypes.ini` `type 15` / `logicdefines.inc`
+ * `JOB_TYPE_HUMAN_HUNTER 15`, the civilization job that hunts game. A combatant of this job may strike
+ * {@link isCatchableAnimal} prey ({@link mayHunt}); every tribe's hunter binds the same attack atomic
+ * (`setatomic 15 81 "..._hunter_attack"`, verified in `DataCnmd/tribetypes12/tribetypes.ini`), so a
+ * hunter's strike reuses the combat `attack` atomic + weapon/hit path. Kept here (the tribe/animal
+ * read-view module) next to the `mayHunt` relation it gates, the pin style of `NEWBORN_AGE_CLASS`.
+ */
+export const HUNTER_JOB = 15;
+
+/**
+ * The **predation relation** — may a civilization combatant whose job is `attackerJobType` **hunt** the
+ * animal of `targetTribe`? This is the prey side of the hunter mechanic, **separate from** the hostility
+ * relation {@link mayAttack}: hunting is predation gated by the attacker's *job* (only a {@link HUNTER_JOB}
+ * hunter hunts), not by tribe-vs-tribe hostility. The rules:
+ *
+ *  - **The attacker must be a hunter** (`attackerJobType === HUNTER_JOB`). An ordinary settler/soldier
+ *    leaves passive prey alone — only a hunter strikes a cow/deer to harvest it. (A jobless settler /
+ *    a non-hunter trade never hunts.)
+ *  - **The target must be a {@link isCatchableAnimal} animal** — tamable/huntable livestock per
+ *    `animaltypes.ini` `catchable`. Wild-only fauna (a non-catchable deer), a civilization, and an
+ *    unknown tribe are not huntable prey here.
+ *  - **A `cannotbeattacked` animal is still exempt** (decorative bees) — a hunter can't strike it any
+ *    more than a soldier can, the same target exemption {@link mayAttack} applies.
+ *
+ * Hunting is one direction only (prey doesn't "hunt" the hunter); a `catchable` `getAngry` prey animal
+ * struck by a hunter is **provoked** into fighting back through the *combat* `Anger` path (the
+ * AtomicSystem's `attack` effect), not through this relation — so the hunter strike is the
+ * provocation **source** the anger timer waits on. Pure over `content`, no RNG/wall-clock.
+ *
+ * FIDELITY: the prey set is the verbatim `catchable` param and the hunter trade is the pinned
+ * `JOB_TYPE_HUMAN_HUNTER 15`; *which* prey a hunter picks (nearest in range) and the absence of a
+ * walk-to-prey/harvest-cadaver follow-up are approximated (docs/FIDELITY.md "Hunter strike on catchable
+ * prey").
+ */
+export function mayHunt(content: ContentSet, attackerJobType: number | null, targetTribe: number): boolean {
+  if (attackerJobType !== HUNTER_JOB) return false; // only a hunter hunts
+  if (!isCatchableAnimal(content, targetTribe)) return false; // only catchable prey is huntable
+  if (animalCannotBeAttacked(content, targetTribe)) return false; // decorative fauna stay exempt
+  return true;
+}
+
+/**
  * The **adult hitpoint pool** an animal of `tribeType` is born with — its `animaltypes.ini`
  * `hitpoints_adult` (200..50000 in the real data; e.g. a bear's 15000), or null when the tribe has no
  * animal record (a civilization — humans' HP is below the `.ini`, so it is content-stamped elsewhere).

@@ -25,6 +25,8 @@ export function testContent(): ContentSet {
       // The woodcutter is permitted the wood harvest atomic (24) — the planner's data-driven gate.
       { typeId: 1, id: 'woodcutter', allowedAtomics: [24] },
       { typeId: 2, id: 'carpenter' },
+      // The hunter (job 15 — `JOB_TYPE_HUMAN_HUNTER`) — the trade that strikes `catchable` prey.
+      { typeId: 15, id: 'hunter' },
       { typeId: 36, id: 'carrier' },
     ],
     buildings: [
@@ -122,6 +124,30 @@ export function testContent(): ContentSet {
         maxRange: 2,
         damage: { '0': 30 },
       },
+      // The HUNTER's weapon (viking tribe 1, job 15 — `JOB_TYPE_HUMAN_HUNTER`) — so a hunter combatant
+      // resolves a weapon and can strike `catchable` prey (the hunter-strike mechanic). damage 70 vs an
+      // unarmored (class 0) target; the original binds `setatomic 15 81 "..._hunter_attack"` (atomic 81).
+      {
+        typeId: 11,
+        id: 'test_spear',
+        tribeType: 1,
+        jobType: 15,
+        minRange: 1,
+        maxRange: 2,
+        damage: { '0': 70 },
+      },
+      // A weapon for the CATCHABLE-and-PROVOKABLE deer (tribe 14, keyed by tribe alone) — so once a
+      // hunter's strike PROVOKES it (`getAngry` → an `Anger` timer) it can fight back. damage 20 vs an
+      // unarmored target.
+      {
+        typeId: 12,
+        id: 'test_antler',
+        tribeType: 14,
+        jobType: 1,
+        minRange: 1,
+        maxRange: 2,
+        damage: { '0': 20 },
+      },
     ],
     armor: [
       // Leather (class 1) mitigates 10 — so a 60-raw hit lands 50 net on a leather-clad target. Unused
@@ -148,6 +174,10 @@ export function testContent(): ContentSet {
           // The attack atomic (81, the original's `setatomic <job> 81 "..._attack"` slot) binds to
           // "viking_attack" — the CombatSystem resolves the swing's duration through this binding.
           { jobType: 1, atomicId: 81, animation: 'viking_attack' },
+          // The HUNTER (job 15) binds the SAME attack atomic (81) to "viking_hunter_attack" — the
+          // original's `setatomic 15 81 "viking_hunter_attack"`. A hunter's strike on prey reuses the
+          // combat attack path; the CombatSystem resolves its swing duration through this binding.
+          { jobType: 15, atomicId: 81, animation: 'viking_hunter_attack' },
         ],
         // Tech-graph edges. (1) the carpenter (job 2) unlocks the smithy (house 4): the placement gate
         // (buildingEnabled) reads this — the smithy can only be placed once a carpenter settler exists.
@@ -206,6 +236,24 @@ export function testContent(): ContentSet {
         id: 'test_boar',
         atomicBindings: [{ jobType: 1, atomicId: 81, animation: 'boar_attack' }],
       },
+      {
+        // A CATCHABLE prey animal tribe (cow, typeId 13): a known animal tribe (no `jobEnables`) whose
+        // `animaltypes` record sets `catchable` (and is passive — not aggressive, not getAngry). An
+        // ordinary civilization leaves it alone, but a HUNTER (job 15) may strike it (the hunter-strike
+        // mechanic). It binds no attack atomic — prey doesn't fight back unless provoked, and a plain cow
+        // isn't even `getAngry`.
+        typeId: 13,
+        id: 'test_cow',
+      },
+      {
+        // A CATCHABLE-and-PROVOKABLE prey animal tribe (deer, typeId 14): `catchable` AND `getAngry` (NOT
+        // aggressive). A hunter's strike on it is the PROVOCATION SOURCE — the hit stamps an `Anger` timer
+        // so the deer fights back, exactly the source the anger timer waits on. Binds the attack atomic so
+        // a provoked deer can swing back.
+        typeId: 14,
+        id: 'test_deer',
+        atomicBindings: [{ jobType: 1, atomicId: 81, animation: 'deer_attack' }],
+      },
     ],
     // animaltypes.ini records, keyed on `tribeType` (an animal's identity IS its tribe). The bear
     // (tribe 10) is `aggressive` (attacks civilizations unprovoked) with an adult HP pool the
@@ -239,6 +287,19 @@ export function testContent(): ContentSet {
         angryGameTime: 10,
         hitpointsAdult: 1000,
       },
+      // The cow is CATCHABLE prey: `catchable` and fully passive (NOT aggressive, NOT getAngry). A hunter
+      // (job 15) may strike it; an ordinary civilization leaves it alone, and it never fights back.
+      { id: 'cow', tribeType: 13, catchable: true, hitpointsAdult: 1000 },
+      // The deer is CATCHABLE AND PROVOKABLE: `catchable` + `getAngry` (NOT aggressive), `angryGameTime`
+      // 10 — a hunter's strike provokes it (the provocation SOURCE), then it fights back for 10 ticks.
+      {
+        id: 'deer',
+        tribeType: 14,
+        catchable: true,
+        getAngry: true,
+        angryGameTime: 10,
+        hitpointsAdult: 1000,
+      },
     ],
     atomicAnimations: [
       { id: 'viking_chop', name: 'viking_chop', length: 3 },
@@ -246,9 +307,11 @@ export function testContent(): ContentSet {
       { id: 'viking_sleep', name: 'viking_sleep', length: 6 },
       { id: 'viking_pray', name: 'viking_pray', length: 7 },
       { id: 'viking_attack', name: 'viking_attack', length: 4 },
+      { id: 'viking_hunter_attack', name: 'viking_hunter_attack', length: 4 },
       { id: 'wolf_attack', name: 'wolf_attack', length: 4 },
       { id: 'bear_attack', name: 'bear_attack', length: 4 },
       { id: 'boar_attack', name: 'boar_attack', length: 4 },
+      { id: 'deer_attack', name: 'deer_attack', length: 4 },
     ],
     // Experience tracks (humanjobexperiencetypes): the woodcutter (job 1) has a wood-specific track
     // (good 1, the narrow `(job, good)` specialization) and a general track (no good) — so the

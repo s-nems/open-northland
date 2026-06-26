@@ -29,7 +29,10 @@ const WOLVES = 9; // a recorded ANIMAL tribe in the fixture (no jobEnables; test
 const BEAR = 10; // an AGGRESSIVE animal tribe (animaltypes record: aggressive, hitpointsAdult 15000; test_bearfist for job 1)
 const BEES = 11; // a cannotBeAttacked animal tribe (decorative fauna — a civ is exempt from attacking it)
 const BOAR = 12; // a PASSIVE-but-PROVOKABLE animal tribe (getAngry, NOT aggressive; angryGameTime 10; test_tusk)
+const COW = 13; // a CATCHABLE prey animal tribe (catchable, fully passive — not aggressive, not getAngry)
+const DEER = 14; // a CATCHABLE-and-PROVOKABLE prey animal tribe (catchable + getAngry; angryGameTime 10; test_antler)
 const WOODCUTTER = 1; // job 1 — the test_axe binds to this (tribe 1, job 1)
+const HUNTER = 15; // job 15 (JOB_TYPE_HUMAN_HUNTER) — the test_spear binds to this (tribe 1, job 15)
 const ATTACK_ATOMIC = 81;
 
 beforeEach(() => {
@@ -301,6 +304,63 @@ describe('combatSystem — civ-vs-animal aggression (animaltypes.ini)', () => {
   });
 });
 
+describe('combatSystem — hunter strike on catchable prey (animaltypes.ini catchable)', () => {
+  it('a HUNTER strikes nearby catchable prey (a cow), with the hunter weapon damage', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER); // a viking hunter (job 15)
+    const cow = fighterAt(sim, 1, 0, COW, null); // catchable prey, adjacent
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    const atomic = sim.world.get(hunter, CurrentAtomic);
+    expect(atomic.atomicId).toBe(ATTACK_ATOMIC);
+    expect(atomic.duration).toBe(4); // hunter setatomic 81 -> viking_hunter_attack length 4
+    expect(atomic.effect).toEqual({ kind: 'attack', target: cow, damage: 70 }); // test_spear damage["0"]
+  });
+
+  it('a NON-hunter civilian (woodcutter) leaves catchable prey alone (hunting is the hunter trade)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const woodcutter = fighterAt(sim, 0, 0, VIKING, WOODCUTTER); // armed, but not a hunter
+    fighterAt(sim, 1, 0, COW, null); // catchable prey, adjacent
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // The woodcutter has a weapon but is not a hunter, so prey is not its target (no swing).
+    expect(sim.world.has(woodcutter, CurrentAtomic)).toBe(false);
+  });
+
+  it('a hunter does NOT hunt a non-catchable wild animal (a passive wolf — no catchable flag)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER);
+    fighterAt(sim, 1, 0, WOLVES, null); // a wild animal with no `catchable` flag — not huntable prey
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // The wolf is not catchable (and not aggressive), so even a hunter leaves it alone.
+    expect(sim.world.has(hunter, CurrentAtomic)).toBe(false);
+  });
+
+  it('catchable prey (a cow) does NOT hunt the hunter back (predation is one direction)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    fighterAt(sim, 0, 0, VIKING, HUNTER);
+    const cow = fighterAt(sim, 1, 0, COW, null); // passive prey — never picks a fight
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(cow, CurrentAtomic)).toBe(false); // prey doesn't fight the hunter
+  });
+
+  it('a hunter still cannot strike a cannotBeAttacked animal (the exemption holds for hunting too)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER);
+    fighterAt(sim, 1, 0, BEES, null); // cannotBeAttacked (and not catchable anyway)
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(hunter, CurrentAtomic)).toBe(false);
+  });
+});
+
 describe('combatSystem — provoked anger (getAngry/angryGameTime)', () => {
   /**
    * Land one completed `attack` of `damage` on `target` via the real AtomicSystem (the provocation
@@ -412,6 +472,25 @@ describe('combatSystem — provoked anger (getAngry/angryGameTime)', () => {
     strike(sim, bear, viking, 40);
 
     expect(sim.world.has(viking, Anger)).toBe(false); // a civilization carries no anger timer
+  });
+
+  it('a HUNTER strike on catchable getAngry prey (a deer) provokes it — the provocation SOURCE', () => {
+    // The end-to-end point of the hunter slice: a hunter, not a test or an aggressive animal, is what
+    // FIRST provokes a passive getAngry animal. Run the REAL step() schedule so combatSystem picks the
+    // target, atomicSystem lands the hit + stamps Anger, and the deer fights back.
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER, 1000);
+    const deer = fighterAt(sim, 1, 0, DEER, null, 1000); // catchable + getAngry, passive until struck
+
+    // combatSystem runs after atomicSystem, so the hunter's swing (started tick 1) completes on tick 5
+    // — the provoking hit (drains HP, stamps Anger). Run 5 ticks for it to land.
+    for (let i = 0; i < 5; i++) sim.step();
+    expect(sim.world.get(deer, Health).hitpoints).toBeLessThan(1000); // the hunter's strike landed
+    expect(sim.world.has(deer, Anger)).toBe(true); // the strike PROVOKED the deer (the provocation source)
+
+    // Now provoked, the deer fights the hunter back: run more ticks for its retaliating swing to land.
+    for (let i = 0; i < 6; i++) sim.step();
+    expect(sim.world.get(hunter, Health).hitpoints).toBeLessThan(1000); // the provoked deer struck back
   });
 
   it('an ALREADY-aggressive animal (bear) gets no Anger when struck (it is hostile unconditionally)', () => {
