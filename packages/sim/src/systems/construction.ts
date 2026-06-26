@@ -40,8 +40,9 @@ import type { System, SystemContext } from './context.js';
  * docs/FIDELITY.md "ConstructionSystem". Determinism: no RNG, no wall-clock; buildings are visited in
  * the Building store's deterministic insertion order, every decision reads CONTENT, and every stockpile
  * write goes through the canonical Map (never iterated for a decision). A newly-upgraded home is not
- * re-upgraded the same tick — `world.query` snapshots the matches and the new typeId's next-tier cost
- * isn't present (its materials were just spent).
+ * re-upgraded the same tick: `world.query` yields each entity id exactly once, and the upgrade mutates
+ * the value in place (same store key — no entity is added/removed), so the loop never revisits it; even
+ * if it did, the *new* tier's next-tier cost isn't present (its materials were just spent).
  */
 export const constructionSystem: System = (world, ctx) => {
   for (const e of world.query(Building, Stockpile)) {

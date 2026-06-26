@@ -591,6 +591,13 @@ the next iteration inherits it.
   the WHOLE component namespace, not a hand-picked subset — `for (const c of Object.values(components))
   if (c?.store instanceof Map) c.store.clear()` — so a future component added by an unrelated system in
   the schedule can't leak in. The tell is "green alone, red in-suite". (sim/test)
+- [3950dc3] An in-place mutation inside a `world.query` loop (a home upgrade flipping `Building.buildingType`)
+  is safe to NOT re-process the same tick — but for the right reason: `world.query` is a **lazy generator**
+  iterating `smallest.store.keys()` live, NOT a snapshot, so the "at most once" guarantee comes from each
+  entity id being *yielded once* and the upgrade keeping the same store key (mutate the value, add/remove no
+  entity), not from any snapshotting. Don't write "the matches are snapshotted" in a determinism rationale —
+  it's wrong and a future maintainer who *adds* an entity mid-loop (which CAN perturb a live `Map`-keys
+  iteration) would trust a false premise. State the real invariant: same key, yielded once. (sim/determinism)
 - [0a6d0fc] A guard that holds only as an *incidental* side effect of one subsystem's data model is a
   latent bug the moment a second input dimension overlaps: `productionSystem` "didn't" run on an
   under-construction site only because a construction site's `stockCapacity` advertised its build
