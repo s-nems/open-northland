@@ -495,3 +495,9 @@ the next iteration inherits it.
   part of its contract), but budget for it: when you widen a struct, grep its `toEqual(` call sites and
   give the new field a *meaningful* fixture value (not the schema default) so the assertion still proves
   something. (sim/readviews)
+- [3f064cd] A "stamp a timer component, reap it on read" pattern (`Anger`, reaped by `hostileAnimalNow`)
+  leaks stale state if the reaper SHORT-CIRCUITS before reading it: an aggressive+`getAngry` animal
+  returns hostile on the `isAggressiveAnimal` check and never reaches the `Anger`-expiry branch, so a
+  redundant stamp would never be reaped. Fix at the STAMP site (don't stamp when the entity is already
+  unconditionally in the state the timer grants), not only the reaper. Inert components must still be
+  hash-clean — a never-reaped optional component would drift the state hash. (sim/combat)

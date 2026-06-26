@@ -413,6 +413,19 @@ describe('combatSystem — provoked anger (getAngry/angryGameTime)', () => {
 
     expect(sim.world.has(viking, Anger)).toBe(false); // a civilization carries no anger timer
   });
+
+  it('an ALREADY-aggressive animal (bear) gets no Anger when struck (it is hostile unconditionally)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
+    // The bear is aggressive AND getAngry in the fixture; an aggressive animal needs no anger timer, so
+    // none is stamped (avoiding a stale component hostileAnimalNow would never reap).
+    const bear = fighterAt(sim, 1, 0, BEAR, null, 1000);
+
+    strike(sim, viking, bear, 50);
+
+    expect(sim.world.get(bear, Health).hitpoints).toBe(950); // the hit landed
+    expect(sim.world.has(bear, Anger)).toBe(false); // no redundant anger timer on an aggressive animal
+  });
 });
 
 describe('combatSystem — end-to-end through the real schedule', () => {
