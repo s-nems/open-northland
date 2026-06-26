@@ -167,14 +167,15 @@ function attackerWeapon(
   tribe: number,
   jobType: number | null,
 ): { range: number; netDamageUnarmored: number } | null {
-  const weapon =
-    jobType === null
-      ? // A jobless combatant resolves a weapon only if it is an animal tribe (whose weapon keys by
-        // tribe, not job); a jobless civilian carries nothing. First match in source-array order.
-        isAnimalTribe(ctx.content, tribe)
-        ? ctx.content.weapons.find((w) => w.tribeType === tribe)
-        : undefined
-      : ctx.content.weapons.find((w) => w.tribeType === tribe && w.jobType === jobType);
+  // A JOBLESS combatant carries a weapon only if it is an animal tribe (whose weapon keys by tribe, not
+  // job — `spawnAnimalHerd` places jobless animals); a jobless civilian is unarmed. Resolved once, since
+  // it is invariant across the weapon scan below.
+  if (jobType === null && !isAnimalTribe(ctx.content, tribe)) return null;
+  // A settler with a job binds its weapon by (tribe, job); a jobless animal by tribe alone (its combat
+  // identity IS its tribe). First match in source-array order (the array-not-Map stance).
+  const weapon = ctx.content.weapons.find(
+    (w) => w.tribeType === tribe && (jobType === null || w.jobType === jobType),
+  );
   if (weapon === undefined) return null; // unarmed — no resolvable weapon for this combatant
   const range = Math.max(1, weapon.maxRange); // a weapon always reaches at least its own cell
   const rawUnarmored = weapon.damage['0'] ?? 0; // armor class 0 = unarmored (settlers wear no armor yet)

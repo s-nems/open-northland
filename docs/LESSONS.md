@@ -468,3 +468,10 @@ the next iteration inherits it.
   invariant** (entities share tiles freely) and real `animaltypes` `maximumgroupsize` (3..6) stays under
   the 9-tile first-ring bound; assert the no-stacking property only for the sizes you actually spawn,
   and document the collision bound rather than implying a packing guarantee. (sim/spawn)
+- [8617f44] A combat fixture gave its ANIMAL combatants a `jobType` so they'd resolve a weapon — but
+  the real spawner (`spawnAnimalHerd`) places animals jobless (`jobType: null`), and the weapon lookup
+  keyed on `(tribe, job)`, so every *actually-spawned* aggressive animal silently did **zero** damage
+  while every unit test passed. When a producer (a spawn command) and a consumer (a weapon resolver)
+  disagree on a key field's shape, a fixture that pre-fills the field hides the gap; test the consumer
+  with the *exact* shape the producer emits (here: a jobless animal), and exercise the full `step()`
+  schedule end-to-end, not the system in isolation. (sim/combat)
