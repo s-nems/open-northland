@@ -10,11 +10,12 @@ import {
   Position,
   Settler,
   Stockpile,
+  Vehicle,
 } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import { ONE, fx } from '../fixed.js';
 import type { System, SystemContext } from './context.js';
-import { buildingEnabled } from './progression.js';
+import { buildingEnabled, tribeShipsUnlocked } from './progression.js';
 import { animalHitpoints, herdParams } from './readviews/index.js';
 
 /**
@@ -29,7 +30,7 @@ import { animalHitpoints, herdParams } from './readviews/index.js';
  * the same seed reproduce byte-identical state. Determinism: the queue is a plain FIFO array, so
  * apply order is exactly enqueue order — no Map/Set iteration, no wall-clock, no RNG.
  *
- * The four variants:
+ * The command variants:
  *  - `placeBuilding` — create a {@link Building} of the given type at (x,y) for a tribe, with a
  *    {@link Stockpile} seeded from the building type's `stock` slots (`initial` amounts). Emits
  *    `buildingPlaced`. Gated by the tribe's `jobEnablesHouse` tech-graph (see {@link buildingEnabled}):
@@ -42,6 +43,10 @@ import { animalHitpoints, herdParams } from './readviews/index.js';
  *    that animal tribe carrying a {@link Health} pool from `hitpoints_adult`, with a leader designated
  *    when `searchforleader` (see {@link spawnAnimalHerd}). Emits one `settlerBorn` per spawned creature.
  *    Skipped for a non-animal tribe (no `animaltypes` record).
+ *  - `placeBoat` — place a **boat hull** (a {@link Vehicle}) of a ship type at (x,y) for a tribe, carrying
+ *    an empty {@link Stockpile} (the "boats as mobile stores" entity). Emits `boatPlaced`. Gated by the
+ *    tribe's ship-unlock tech graph ({@link tribeShipsUnlocked}): a cart/catapult/unknown/not-yet-unlocked
+ *    type is skipped (still logged), the same stance as a tech-gated `placeBuilding` (see {@link placeBoat}).
  *  - `setProduction` — point a workplace's production at a good (currently a no-op marker until the
  *    recipe-selection slice; recorded in the log so replay stays faithful).
  *  - `demolish` — destroy a building entity (ids are never recycled), **first unbinding every
@@ -69,6 +74,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'spawnAnimalHerd':
       spawnAnimalHerd(world, ctx, command);
+      return;
+    case 'placeBoat':
+      placeBoat(world, ctx, command);
       return;
     case 'setProduction':
       // No state change yet: recipe/output selection is a later slice. The command is still logged
@@ -136,6 +144,44 @@ function placeBuilding(
   }
   world.add(e, Stockpile, { amounts });
   ctx.events.emit({ kind: 'buildingPlaced', entity: e, at: { x: command.x, y: command.y } });
+}
+
+/**
+ * Place a **boat hull** — the boat analogue of {@link placeBuilding}: it creates a {@link Vehicle} hull
+ * at (x,y) carrying an empty {@link Stockpile} (the "boats as mobile stores" entity the Sea/Northland
+ * roadmap item names — a ship is a movable stockpile, its capacity being the ship type's `stockSlots`).
+ *
+ * The placement is gated by the tribe's **ship-unlock tech graph** ({@link tribeShipsUnlocked}): only a
+ * `vehicleType` that is a ship the tribe has currently UNLOCKED (a `vehicle_ship` row — `passengerSlots > 0`
+ * — whose `jobEnablesVehicle` edge is satisfied) is placed. A cart, a catapult, an unknown id, or a
+ * not-yet-unlocked ship is a recoverable bad command — skipped (still recorded by commandSystem so replay
+ * stays faithful), exactly the tech-gated-`placeBuilding` stance. Unlike a building the hull is seeded with
+ * an **empty** hold: a boat is loaded by hauling cargo to it (applying the `cargoGoods` filter — a deferred
+ * load slice), not pre-stocked with starting goods.
+ *
+ * FIDELITY: pinned to the extracted vehicle IR on both axes the entity reads — the ship/cart split is the
+ * `passengerslots` param ({@link shipVehicles}) and the unlock is the `jobEnablesVehicle` edge ({@link
+ * tribeShipsUnlocked}). The hull is a *static* placed store here: movement, passenger embark/disembark, the
+ * cargo-load filter, and water-valency terrain (which cells it floats on) are deferred follow-ups
+ * (docs/FIDELITY.md "Sea/Northland — boat hull entity"). Determinism: a pure read of the unlocked-ship set
+ * (a filtered/sorted content scan + an order-independent live-settler membership query) then a single
+ * `create()`; no RNG, no wall-clock.
+ */
+function placeBoat(world: World, ctx: SystemContext, command: Extract<Command, { kind: 'placeBoat' }>): void {
+  // Only an UNLOCKED ship of this tribe may be fielded. tribeShipsUnlocked already excludes carts /
+  // catapults (not ships), unknown ids, and ships behind an unmet tech edge — so a `vehicleType` absent
+  // from it is bad input (a stale/illegal command), skipped here but still logged for faithful replay.
+  const unlocked = tribeShipsUnlocked(world, ctx, command.tribe);
+  if (!unlocked.some((v) => v.typeId === command.vehicleType)) return;
+
+  const e = world.create();
+  world.add(e, Position, { x: fx.fromInt(command.x), y: fx.fromInt(command.y) });
+  world.add(e, Vehicle, { vehicleType: command.vehicleType, tribe: command.tribe });
+  // A hull arrives EMPTY — a boat-as-mobile-store is filled by hauling cargo to it (the `cargoGoods`
+  // load filter, a deferred slice), not pre-seeded with starting goods like a headquarters. Its hold
+  // CAPACITY is the ship type's `stockSlots` (read off the VehicleType, like `largestShipCapacity`).
+  world.add(e, Stockpile, { amounts: new Map<number, number>() });
+  ctx.events.emit({ kind: 'boatPlaced', entity: e, at: { x: command.x, y: command.y } });
 }
 
 function spawnSettler(

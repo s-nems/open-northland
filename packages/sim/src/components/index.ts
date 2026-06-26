@@ -111,6 +111,23 @@ export function stockpileEntries(s: { amounts: Map<number, number> }): Array<[nu
   return [...s.amounts.entries()].sort((a, b) => a[0] - b[0]);
 }
 
+/**
+ * A **placed vehicle hull** — the "boats as mobile stores" entity the ROADMAP Phase-4 Sea/Northland
+ * item names: a ship put on the map as a movable stockpile rather than a static building. `vehicleType`
+ * cross-references the {@link VehicleType} `typeId` (its `stockSlots` hold capacity, `cargoGoods`
+ * load-filter, `passengerSlots`), and `tribe` is its owner — the same `(type, tribe)` shape a
+ * {@link Building} carries, so a hull hashes and is queried exactly like a building. A hull is the
+ * boat analogue of `Building`: it owns a {@link Stockpile} (the mobile store) the same way a
+ * headquarters does, but it can later move and ferry passengers (embark/disembark atomics — a deferred
+ * slice). Only an **unlocked** ship type is ever stamped (the CommandSystem `placeBoat` handler gates
+ * on `tribeShipsUnlocked`), so a `Vehicle` always references a ship the owning tribe may field.
+ *
+ * Determinism: plain integer `vehicleType`/`tribe` (no fixed-point — they are cross-reference ids, not
+ * positions), so it hashes like every other component. The golden/vertical-slice carries no hull, so
+ * adding this component leaves the golden hash untouched (the separate-component pattern).
+ */
+export const Vehicle = defineComponent<{ vehicleType: number; tribe: number }>('Vehicle');
+
 /** A settler carrying goods (carriers physically haul; goods never teleport to a global bank). */
 export const Carrying = defineComponent<{ goodType: number; amount: number }>('Carrying');
 

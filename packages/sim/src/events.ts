@@ -12,6 +12,7 @@ import type { Entity } from './ecs/world.js';
  */
 export type SimEvent =
   | { readonly kind: 'buildingPlaced'; readonly entity: Entity; readonly at: { x: number; y: number } }
+  | { readonly kind: 'boatPlaced'; readonly entity: Entity; readonly at: { x: number; y: number } }
   | { readonly kind: 'buildingFinished'; readonly entity: Entity }
   | { readonly kind: 'settlerBorn'; readonly entity: Entity }
   | { readonly kind: 'settlerDied'; readonly entity: Entity; readonly cause: string }

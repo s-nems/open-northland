@@ -15,6 +15,7 @@ import {
   Resource,
   Settler,
   Stockpile,
+  Vehicle,
 } from '../src/components/index.js';
 import type { Entity } from '../src/ecs/world.js';
 import { Simulation } from '../src/index.js';
@@ -55,6 +56,7 @@ function clearStores(): void {
   JobAssignment.store.clear();
   Health.store.clear();
   Armor.store.clear();
+  Vehicle.store.clear();
 }
 
 beforeEach(clearStores);

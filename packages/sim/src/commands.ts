@@ -56,6 +56,25 @@ export type Command =
       readonly x: number;
       readonly y: number;
     }
+  | {
+      /**
+       * Place a **boat hull** of `vehicleType` at (x,y) for `tribe` — a ship put on the map as a
+       * **mobile store** (the boat analogue of `placeBuilding`): it creates a {@link Vehicle} hull
+       * carrying an (empty) {@link Stockpile} whose capacity is the ship type's `stockSlots`, the
+       * "boats as mobile stores" entity the Sea/Northland roadmap item names. Gated by the tribe's
+       * ship-unlock tech graph (`tribeShipsUnlocked`): a hull is placed only if `vehicleType` is a
+       * ship the tribe has currently UNLOCKED (a `vehicle_ship` row whose `jobEnablesVehicle` edge is
+       * satisfied), so a cart, a catapult, or a not-yet-unlocked ship is a recoverable bad command —
+       * skipped (still logged for faithful replay), the same stance as a tech-gated `placeBuilding`.
+       * Loading cargo onto the hold (applying the `cargoGoods` filter) and embark/disembark are
+       * deferred follow-ups — this command lands the hull-as-mobile-store entity they build on.
+       */
+      readonly kind: 'placeBoat';
+      readonly vehicleType: number;
+      readonly x: number;
+      readonly y: number;
+      readonly tribe: number;
+    }
   | { readonly kind: 'setProduction'; readonly building: Entity; readonly goodType: number }
   | { readonly kind: 'demolish'; readonly building: Entity };
 
