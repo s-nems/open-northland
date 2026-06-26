@@ -131,10 +131,17 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       ENTITY carrying a `Stockpile` (`placeBoat` + `Vehicle{vehicleType,tribe}`, gated by the unlocked set),
       the cargo-LOAD gate filtering a haul into a hull by the ship's allow-list (inherited through
       `stockCapacity` with no new system), and the `fisher_sea`/`trader_sea` jobs classified by the `_sea`
-      id-suffix (`seaJobs`). All proven over the real IR. **Open:** water-valency terrain (map-decode-blocked
-      — the water surface lives in the triangle/terrain grid, not a `landscapetypes.ini` flag), boat movement +
-      embark/disembark atomics (no such atomic in the readable `.ini` — deferred with movement), and the sea-job
-      BEHAVIOR (a sea worker reaching its station by boat — rides on boat movement).
+      id-suffix (`seaJobs`). The landscape **placement-LAYER** flags now have a consumer too
+      (`systems/readviews/landscape.ts`): `waterLayerLandscape`/`isWaterLayerType` (the `allowedonwater`
+      rows — exactly the 3 wall/gate structures that span water in the real IR) and
+      `universalLayerLandscape`/`isUniversalLayerType` (the `allowedoneverything` rows — exactly the `void`
+      empty-terrain type), read straight off the genuinely-extracted `allowedon{water,everything}` ints
+      (`walkable`/`buildable` are schema defaults, not these flags). This is the placement-side seed —
+      distinct from water-VALENCY terrain below. All proven over the real IR. **Open:** water-valency terrain
+      (which CELLS are water — map-decode-blocked; the water surface lives in the triangle/terrain grid, not a
+      `landscapetypes.ini` flag — the placement-layer flag above is the type-table half, not the cell half),
+      boat movement + embark/disembark atomics (no such atomic in the readable `.ini` — deferred with
+      movement), and the sea-job BEHAVIOR (a sea worker reaching its station by boat — rides on boat movement).
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).
       **Scoped (corrected):** the mod ships NO overriding copies of the base `Data/logic` type tables
       (verified on disk), so there is no logic-table overlay merge — the pipeline already reads each rule
