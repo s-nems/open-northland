@@ -683,3 +683,15 @@ the next iteration inherits it.
   real source for a `<key> 0` line: if one exists, distinguish absent (undefined) from zero explicitly;
   if none, presence is the faithful test. The first consumer of an "extracted ahead of its drive" marker
   ([27aa306]) is naturally a pure read view (the `shipVehicles` twin), not the drive itself. (sim/read-model)
+- [c05fa8b] A marker field's CARDINALITY dictates the read view's SHAPE, not just its predicate: the two
+  *optional/presence* weapon markers (`munitionType`/`damageType`, absent on most rows) each yield a binary
+  `filter` (`rangedWeapons`/`siegeWeapons`), but `mainType` is a *multi-valued enum carried by EVERY row*
+  (all 105 weapons, classes 1..7), so its faithful view is a GROUPING — a `Map<class, WeaponType[]>`
+  (`weaponsByClass`) — not a filter that would arbitrarily privilege one class. Keep the grouping lossless
+  the same way the filters are (array VALUES in source order, never a keyed-by-`(tribeType,typeId)`
+  collection — that pair recurs/reuses, the [0708fb4] drop trap), and only the KEY space (distinct classes)
+  is keyed. A `Map`-valued read view may be built by one non-canonical pass ([cef9629]) because each
+  bucket's order is fixed by source order and no system branches on its iteration order — but DOCUMENT that
+  a display consumer must sort the keys itself (insertion = first-class-appearance, not ascending id).
+  Before reaching for `.filter`, ask whether the marker partitions (every row has one) or selects (most
+  rows lack it). (sim/read-model)
