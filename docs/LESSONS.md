@@ -516,3 +516,13 @@ the next iteration inherits it.
   near-bound to a reach/threshold that was previously open at 0, name the dist-0 consequence in the doc
   and confirm no test/golden places two combatants on one tile — the change is invisible until they do.
   (sim/combat)
+- [4d44dec] The `combatSystem` targeting drive silently does NOTHING unless TWO preconditions hold that
+  the `atomicSystem` unit tests bypass: (a) `ctx.terrain` is defined — a **mapless** `Simulation` (no
+  `opts.map`) returns immediately, so no target is ever picked; (b) the **attacker** carries a `Health`
+  pool — the combatant scan is `world.query(Settler, Health, Position)`, so a `Health`-less hunter is
+  never even scanned. The attack-effect unit tests `startAtomic` the `attack` directly and so prove the
+  hit/yield without ever exercising targeting — a full-`step()` hands-on harness that omits a map or the
+  attacker's `Health` sees the prey sit untouched forever (looks like a broken feature; it's a missing
+  precondition). When hands-on-verifying a combat/targeting change end-to-end, build the sim WITH a
+  walkable map (and a real-content map needs a real walkable landscape typeId — typeId 0 is absent from
+  the real IR, use one that exists) and give every intended combatant a `Health` pool. (sim/combat)
