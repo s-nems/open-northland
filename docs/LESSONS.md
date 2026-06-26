@@ -634,3 +634,13 @@ the next iteration inherits it.
   (bigger = slower), wired as `perTick = ONE/movespeed`. When a param's scale direction isn't pinned,
   look for a sibling param whose meaning IS known to fix the direction, then record the inference as the
   explicit approximation (docs/FIDELITY.md) rather than guessing silently. (sim)
+- [27aa306] When a roadmap step is "wire mechanic X" but the DRIVE that fires X is oracle-blocked
+  (undocumented "soul" behaviour — e.g. *when* an animal flees/charges to use its `runspeed` gait),
+  split it: the DATA half — stamping the extracted param onto the entity (`MoveSpeed.runPerTick`) — is a
+  clean, faithful, self-verifiable step on its own, even with no consumer yet, exactly as `Armor`/
+  `cargoGoods` landed before their consumers. The deferred drive then becomes a pure read-switch, not a
+  re-extraction. Make it inert (the mover still reads only the walk pace → golden untouched) and record
+  the drive as deferred (docs/FIDELITY.md). Don't reject the whole step as "speculative" just because the
+  behaviour half is blocked — and don't invent the drive to avoid an "unused field". Validate the benign
+  edge cases against the REAL IR (here: 0/35 animals set `runspeed` without `movespeed`, so the run pace
+  is never silently dropped) so the gate you anchor on is provably right, not just plausible. (sim)
