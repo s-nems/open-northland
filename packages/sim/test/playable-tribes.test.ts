@@ -6,10 +6,12 @@ import {
   animalCannotBeAttacked,
   animalHitpoints,
   herdParams,
+  ignoresHousesAnimal,
   isAggressiveAnimal,
   isAnimalTribe,
   isCatchableAnimal,
   isPlayableTribe,
+  isWarrantableAnimal,
   locomotionOf,
   mayAttack,
   mayHunt,
@@ -77,9 +79,13 @@ function tribeContent(): ContentSet {
         // locomotion params the locomotionOf read view surfaces
         moveSpeed: 8,
         runSpeed: 5,
+        // ignorehouses — a bear barges through buildings (ignoresHousesAnimal); NOT warrantable (wild).
+        ignoreHouses: true,
       },
-      // The cow (tribe 10) is CATCHABLE prey: passive (not aggressive/getAngry), tamable/huntable.
-      { id: 'cow', tribeType: 10, catchable: true, hitpointsAdult: 1000 },
+      // The cow (tribe 10) is CATCHABLE prey: passive (not aggressive/getAngry), tamable/huntable, and
+      // WARRANTABLE (owned penned livestock — isWarrantableAnimal); it does NOT ignore houses (paths
+      // around them like any settler).
+      { id: 'cow', tribeType: 10, catchable: true, warrantable: true, hitpointsAdult: 1000 },
     ],
   });
 }
@@ -202,6 +208,37 @@ describe('isAggressiveAnimal / animalCannotBeAttacked / animalHitpoints (animalt
     expect(animalCannotBeAttacked(content, 5)).toBe(true); // bee — decorative, exempt
     expect(animalCannotBeAttacked(content, 6)).toBe(false); // wasp — attackable
     expect(animalCannotBeAttacked(content, 1)).toBe(false); // unknown — not exempt
+  });
+});
+
+// The last two unconsumed animaltypes fields — `warrantable` (livestock-ownership) and `ignorehouses`
+// (pathing-through-buildings) — now each have a read view, closing the animal-record consumer coverage
+// (every extracted animaltypes.ini field is now surfaced to the sim). Both are the same boolean-flag
+// pattern as isCatchableAnimal/animalCannotBeAttacked, read straight off the record (false when absent).
+describe('isWarrantableAnimal / ignoresHousesAnimal (the last animaltypes flag read views)', () => {
+  it('isWarrantableAnimal reads the `warrantable` flag (owned livestock) off the record', () => {
+    const content = tribeContent();
+    expect(isWarrantableAnimal(content, 10)).toBe(true); // cow — warrantable (penned livestock)
+    expect(isWarrantableAnimal(content, 8)).toBe(false); // bear — a record, but wild (not warrantable)
+    expect(isWarrantableAnimal(content, 9)).toBe(false); // wolves — animal tribe but NO animaltypes record
+    expect(isWarrantableAnimal(content, 1)).toBe(false); // viking — a civilization
+    expect(isWarrantableAnimal(content, 99)).toBe(false); // unknown tribe — no record
+  });
+
+  it('ignoresHousesAnimal reads the `ignorehouses` pathing flag off the record', () => {
+    const content = tribeContent();
+    expect(ignoresHousesAnimal(content, 8)).toBe(true); // bear — barges through buildings
+    expect(ignoresHousesAnimal(content, 10)).toBe(false); // cow — a record, but paths around houses
+    expect(ignoresHousesAnimal(content, 9)).toBe(false); // wolves — animal tribe but NO animaltypes record
+    expect(ignoresHousesAnimal(content, 1)).toBe(false); // viking — a civilization
+    expect(ignoresHousesAnimal(content, 99)).toBe(false); // unknown tribe — no record
+  });
+
+  it('the two flags are independent (a warrantable animal need not ignore houses, and vice versa)', () => {
+    const content = tribeContent();
+    // cow: warrantable but NOT ignoreHouses; bear: ignoreHouses but NOT warrantable — orthogonal flags.
+    expect(isWarrantableAnimal(content, 10) && !ignoresHousesAnimal(content, 10)).toBe(true);
+    expect(ignoresHousesAnimal(content, 8) && !isWarrantableAnimal(content, 8)).toBe(true);
   });
 });
 

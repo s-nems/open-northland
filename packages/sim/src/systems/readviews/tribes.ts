@@ -167,6 +167,41 @@ export function isCatchableAnimal(content: ContentSet, tribeType: number): boole
 }
 
 /**
+ * Whether `tribeType` is a **warrantable** animal — a `[tribetype]` whose `animaltypes.ini` record sets
+ * `warrantable` (it can be claimed/owned: a tribe's livestock that belongs to a farmer/herder, vs free
+ * wildlife that belongs to nobody). Distinct from {@link isCatchableAnimal} (the *huntable* prey
+ * relation): `catchable` says a hunter may strike it for meat, `warrantable` says it can become a
+ * tribe's *property* (a domesticated/penned animal a herder owns and breeds) — the data the deferred
+ * livestock-ownership drive (a herder claiming an animal, a pen of owned cattle) reads. A tribe with no
+ * animal record (a civilization, an unknown tribe) is not warrantable.
+ *
+ * FIDELITY n/a here (a read view over the verbatim extracted `warrantable` flag); the *ownership
+ * behaviour* it will drive (claiming/penning/breeding owned livestock) is a later slice with no oracle,
+ * tracked separately in docs/FIDELITY.md. Pure over `content`, no RNG/wall-clock.
+ */
+export function isWarrantableAnimal(content: ContentSet, tribeType: number): boolean {
+  return animalRecord(content, tribeType)?.warrantable ?? false;
+}
+
+/**
+ * Whether `tribeType` is an animal that **ignores houses** when pathing — a `[tribetype]` whose
+ * `animaltypes.ini` record sets `ignorehouses` (it walks through/over buildings rather than routing
+ * around them: a bird that flies over a wall, a ghost-like creature). The pathing twin of the behaviour
+ * flags: where {@link isAggressiveAnimal}/{@link animalCannotBeAttacked} gate *combat*, this gates an
+ * animal's *navigation* — the data the deferred animal-pathing drive reads to decide whether a building
+ * tile blocks the creature's route. A tribe with no animal record (a civilization, an unknown tribe)
+ * does not ignore houses (it paths around them like any settler).
+ *
+ * FIDELITY n/a here (a read view over the verbatim extracted `ignorehouses` flag); the *pathing
+ * behaviour* it will drive (an animal route that treats building tiles as walkable) is a later slice
+ * with no oracle, tracked separately in docs/FIDELITY.md. With this, **every** extracted
+ * `animaltypes.ini` field now has a sim read view. Pure over `content`, no RNG/wall-clock.
+ */
+export function ignoresHousesAnimal(content: ContentSet, tribeType: number): boolean {
+  return animalRecord(content, tribeType)?.ignoreHouses ?? false;
+}
+
+/**
  * The data-pinned **hunter** trade — `jobtypes.ini` `type 15` / `logicdefines.inc`
  * `JOB_TYPE_HUMAN_HUNTER 15`, the civilization job that hunts game. A combatant of this job may strike
  * {@link isCatchableAnimal} prey ({@link mayHunt}); every tribe's hunter binds the same attack atomic

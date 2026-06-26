@@ -120,8 +120,11 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       **`hitpoints_baby`** life-stage twin of `animalHitpoints` also gets a read view now
       (`animalBabyHitpoints` — the juvenile `Health` pool a spawned baby carries until it ages to the
       adult, read straight off the source's independently-carried baby pool, e.g. wolf baby 500 vs adult
-      1000; the deferred animal-growth slice's seed), leaving only `warrantable`/`ignorehouses` without a
-      consumer (both pending their own deferred drives). A
+      1000; the deferred animal-growth slice's seed). The **last two unconsumed flags** `warrantable`
+      (livestock-ownership) and `ignorehouses` (pathing-through-buildings) now each have a read view too
+      (`isWarrantableAnimal`/`ignoresHousesAnimal`, 20/35 + 1/35 over the real IR), which **closes the
+      animal-record consumer coverage — every extracted `animaltypes.ini` field now has a sim read view**
+      (the behaviours these seed stay deferred). A
       creature walks at its own data-pinned `movespeed` pace (`MoveSpeed{perTick}` + `movementSystem`), with
       its faster `runspeed` gait also stamped (`runPerTick`, inert until a flee/charge drive reads it).
       Faithful to the `movespeed`/`runspeed` magnitudes; the scale **direction** (larger = slower) and the
