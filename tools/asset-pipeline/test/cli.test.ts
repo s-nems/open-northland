@@ -2,25 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  bmdToAtlas,
-  buildIr,
-  convertBmdTree,
-  convertMapDatTree,
-  convertPcxTree,
-  decodeMapTree,
-  jobBaseGraphicsToBindings,
-  libMemberRelPath,
-  mapCifToInfo,
-  mapDatToTerrain,
-  mapIdFromPath,
-  parseArgs,
-  pcxToPng,
-  resolveArgs,
-  resolveGraphicsBindings,
-  resolveIniSources,
-  unpackLibTree,
-} from '../src/cli.js';
+import { parseArgs, resolveArgs } from '../src/args.js';
 import { BOB_TYPE_8BIT, type Bmd, PACKED_X_SHIFT, encodeBmd } from '../src/decoders/bmd.js';
 import { StorableId, encryptMode1 } from '../src/decoders/cif.js';
 import type { BmdPaletteBinding, PaletteAlias } from '../src/decoders/ini.js';
@@ -28,6 +10,22 @@ import { encodeLib } from '../src/decoders/lib.js';
 import { encodeMapDat, encodeMapSize, packMapLayer } from '../src/decoders/mapdat.js';
 import { decodePcx, encodePcx, expandToRgba } from '../src/decoders/pcx.js';
 import { decodePng, encodePng } from '../src/decoders/png.js';
+import {
+  bmdToAtlas,
+  convertBmdTree,
+  jobBaseGraphicsToBindings,
+  resolveGraphicsBindings,
+} from '../src/stages/bmd.js';
+import { buildIr, resolveIniSources } from '../src/stages/ir.js';
+import { libMemberRelPath, unpackLibTree } from '../src/stages/lib.js';
+import {
+  convertMapDatTree,
+  decodeMapTree,
+  mapCifToInfo,
+  mapDatToTerrain,
+  mapIdFromPath,
+} from '../src/stages/maps.js';
+import { convertPcxTree, pcxToPng } from '../src/stages/pcx.js';
 
 /**
  * CLI wiring tests. No copyrighted fixtures: we synthesize `.pcx` bytes with the faithful `encodePcx`,
