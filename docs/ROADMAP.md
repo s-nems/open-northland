@@ -189,9 +189,17 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       survivors the components added/removed/changed with before/after), canonical-JSON equality mirroring
       `hashState()` so "diverged" agrees with the hash, output ascending-id / sorted-name without a
       re-sort (hands-on: a real `step()`-run diffed tick 2→8 surfaced the spawned woodcutter as the lone
-      `added` entity with its `Position`+`Settler` components, byte-identically re-diffable). **Open:** the
-      dev OVERLAY that wires scrub/diff/dump into UI (a `render` concern, human-eyed) — it calls `replay()`
-      to jump to the tick `HashTrace` points at, then `diffSnapshots()` to show what changed there.
+      `added` entity with its `Position`+`Settler` components, byte-identically re-diffable). The
+      **"dump an entity"** half is also landed (`packages/sim/src/entity-dump.ts`): a pure
+      `dumpEntity(snapshot,id)` binary-searches the canonical entity list for ONE entity's full component
+      view at a tick (null when absent), and `traceEntity(snapshots,id)` follows that entity across a tick
+      window — per step its alive flag, components, the spawn/despawn life-edge, and (on a survivor
+      transition) its per-component `changes`, reusing the same canonical-JSON comparison as
+      `diffSnapshots` so an entity's per-tick delta equals its slice of the full two-tick diff (hands-on: a
+      real 8-tick run dumped the spawned woodcutter's `Position`+`Settler` block and traced it absent→
+      SPAWNED@3→`Settler:changed` per tick, byte-identically re-traceable). **Open:** the dev OVERLAY that
+      wires scrub/diff/dump into UI (a `render` concern, human-eyed) — it calls `replay()` to jump to the
+      tick `HashTrace` points at, then `diffSnapshots()`/`traceEntity()` to show what changed there.
 - [ ] **Content hot-reload.** Content is validated JSON injected into the sim; wire Vite HMR to
       re-parse and rebase the sim on file change → instant balance-tweak feedback, no rebuild.
 

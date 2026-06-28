@@ -42,6 +42,12 @@ export {
   type ComponentChange,
 } from './snapshot-diff.js';
 export {
+  dumpEntity,
+  traceEntity,
+  type EntityDump,
+  type EntityTraceStep,
+} from './entity-dump.js';
+export {
   TerrainGraph,
   buildTerrainGraph,
   cellManhattanDistance,
