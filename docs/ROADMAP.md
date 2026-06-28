@@ -205,9 +205,19 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `diffSnapshots()` the two states, returning `{tick,hashA,hashB,diff}` (or `null` when the traces'
       overlap agrees). Self-verifiable headlessly (hands-on: two runs differing by one tick-7
       `spawnSettler` localized to tick 7 with the carpenter as the lone `added` entity, byte-equal to a
-      hand-replayed `diffSnapshots`; identical runs → `null`). **Open:** the dev OVERLAY that wires
-      scrub/diff/dump into UI (a `render` concern, human-eyed) — it calls `localizeDivergence()` for the
-      "diverged at N → inspect" path and `replay()`+`traceEntity()` for free scrubbing.
+      hand-replayed `diffSnapshots`; identical runs → `null`). The **single-run "free scrubbing"**
+      composition is also landed (`packages/sim/src/scrub-window.ts`): a `scrubWindow(run,fromTick,toTick)`
+      reconstructs a CONTIGUOUS window of plain `WorldSnapshot`s from one command log in a single forward
+      pass (replay once, enqueue each logged command on its recorded tick, snapshot the in-window ticks —
+      byte-identical to N separate `replay()`s but O(toTick), not O(window×toTick)), ready to feed
+      `traceEntity()` (the whole window) and `diffSnapshots()` (adjacent pairs); it clamps `fromTick` to 1
+      (tick 0 is the un-snapshotted initial state), yields `[]` on an empty window, throws on a negative
+      target, and steps the deterministic tail past the last command. Self-verifiable headlessly (hands-on:
+      a 30-tick run scrubbed `[4..8]`, the carpenter traced absent→SPAWNED@6, the 5→6 step diffed to the
+      lone added settler, and both an in-window tick and a tail tick byte-equalled an independent `replay()`).
+      **Open:** the dev OVERLAY that wires scrub/diff/dump into UI (a `render` concern, human-eyed) — it
+      calls `localizeDivergence()` for the "diverged at N → inspect" path and `scrubWindow()`+`traceEntity()`
+      for free scrubbing.
 - [ ] **Content hot-reload.** Content is validated JSON injected into the sim; wire Vite HMR to
       re-parse and rebase the sim on file change → instant balance-tweak feedback, no rebuild.
 

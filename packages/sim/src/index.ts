@@ -67,6 +67,7 @@ export {
   type DivergenceReport,
   type RunReplay,
 } from './localize-divergence.js';
+export { scrubWindow } from './scrub-window.js';
 export { seedAnimalHerds, type SeedAnimalsOptions } from './populate.js';
 export {
   checkInvariants,
