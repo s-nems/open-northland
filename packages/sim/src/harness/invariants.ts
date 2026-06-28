@@ -1,7 +1,7 @@
 import type { ContentSet } from '@vinland/data';
-import { Building, Settler, Stockpile, stockpileEntries } from './components/index.js';
-import { ONE } from './core/fixed.js';
-import type { World } from './ecs/world.js';
+import { Building, Settler, Stockpile, stockpileEntries } from '../components/index.js';
+import { ONE } from '../core/fixed.js';
+import type { World } from '../ecs/world.js';
 
 /**
  * Invariants: properties that must hold after EVERY tick. They are the cheapest, most powerful
