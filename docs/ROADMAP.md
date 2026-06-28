@@ -176,8 +176,16 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       run replayed bit-for-bit at 4 scrub points, and state created OUTSIDE the command seam correctly
       does NOT reconstruct — replay rebuilds command-driven state only). Single-world constraint: the
       replayed sim supersedes the original (component stores are shared singletons — docs/LESSONS.md
-      [56e8d3e]). **Open:** the dev OVERLAY that scrubs/diffs/dumps (a `render` concern, human-eyed) +
-      a per-tick hash/snapshot ring buffer to feed it.
+      [56e8d3e]). The **per-tick hash/snapshot ring buffer** that feeds it is also landed
+      (`packages/sim/src/hashtrace.ts`): a pure, bounded `HashTrace` records `{tick, hash, snapshot?}`
+      during a live run (a large cheap hash window + a smaller recent-snapshot window, oldest dropped
+      when full) and `divergedFrom(other)` localizes the FIRST tick two runs' hashes split — "hash
+      diverged at tick N" computed WITHOUT re-replaying (hands-on: a 200-tick live run recorded, a
+      2000-tick run capped at 500 held exactly the most-recent 500, a different-seed run localized to
+      tick 1). It is a passive recorder the caller drives (it deliberately does NOT hook `step()`), so
+      the inspector is opt-in and can't perturb the golden hashes. **Open:** the dev OVERLAY that
+      scrubs/diffs/dumps (a `render` concern, human-eyed) — `replay()` jumps to the tick `HashTrace`
+      points at.
 - [ ] **Content hot-reload.** Content is validated JSON injected into the sim; wire Vite HMR to
       re-parse and rebase the sim on file change → instant balance-tweak feedback, no rebuild.
 

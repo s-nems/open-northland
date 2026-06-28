@@ -44,6 +44,12 @@ export {
 } from './terrain.js';
 export { findPath } from './pathfinding.js';
 export { replay, type ReplayOptions } from './replay.js';
+export {
+  HashTrace,
+  type HashTraceEntry,
+  type HashTraceOptions,
+  type Divergence,
+} from './hashtrace.js';
 export { seedAnimalHerds, type SeedAnimalsOptions } from './populate.js';
 export {
   checkInvariants,
