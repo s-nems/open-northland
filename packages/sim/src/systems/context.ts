@@ -3,7 +3,7 @@ import type { CommandQueue } from '../core/commands.js';
 import type { EventBuffer } from '../core/events.js';
 import type { Rng } from '../core/rng.js';
 import type { World } from '../ecs/world.js';
-import type { TerrainGraph } from '../terrain.js';
+import type { TerrainGraph } from '../nav/terrain.js';
 
 /**
  * A System is a pure function over the world for one tick. Systems run in a fixed registered

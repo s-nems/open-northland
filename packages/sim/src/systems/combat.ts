@@ -13,7 +13,7 @@ import {
 } from '../components/index.js';
 import { fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
-import type { CellId, TerrainGraph } from '../terrain.js';
+import type { CellId, TerrainGraph } from '../nav/terrain.js';
 import type { System, SystemContext } from './context.js';
 import { isAggressiveAnimal, isAnimalTribe, mayAttack, mayHunt } from './readviews/index.js';
 

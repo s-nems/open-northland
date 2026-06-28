@@ -11,8 +11,8 @@
  * tie-breaking and lockstep replay. All costs are `Fixed`; no floats touch state.
  */
 import type { ContentSet, LandscapeType } from '@vinland/data';
-import type { Brand } from './core/brand.js';
-import { type Fixed, ONE, fx } from './core/fixed.js';
+import type { Brand } from '../core/brand.js';
+import { type Fixed, ONE, fx } from '../core/fixed.js';
 
 /** A cell address: the row-major index `y * width + x`. Branded so a raw number can't stand in. */
 export type CellId = Brand<number, 'CellId'>;

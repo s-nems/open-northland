@@ -5,9 +5,9 @@ import { EventBuffer } from './core/events.js';
 import { fx } from './core/fixed.js';
 import { Rng } from './core/rng.js';
 import { type Entity, World } from './ecs/world.js';
+import { type TerrainGraph, type TerrainMap, buildTerrainGraph } from './nav/terrain.js';
 import { type WorldSnapshot, takeSnapshot } from './snapshot.js';
 import { SYSTEM_ORDER, type SystemContext } from './systems/index.js';
-import { type TerrainGraph, type TerrainMap, buildTerrainGraph } from './terrain.js';
 
 export { World, defineComponent } from './ecs/world.js';
 export type { Entity, Component } from './ecs/world.js';
@@ -53,8 +53,8 @@ export {
   cellManhattanDistance,
   type CellId,
   type TerrainMap,
-} from './terrain.js';
-export { findPath } from './pathfinding.js';
+} from './nav/terrain.js';
+export { findPath } from './nav/pathfinding.js';
 export { replay, type ReplayOptions } from './replay.js';
 export {
   HashTrace,
