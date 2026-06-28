@@ -12,6 +12,8 @@ import {
   syntheticAtlasFrames,
 } from '@vinland/render';
 import { FixedTimestep } from '@vinland/sim';
+import { cameraFor, floatParam } from './camera.js';
+import { loadHumanSpriteSheet } from './real-sprites.js';
 import { renderShot } from './shot.js';
 import { loadTerrainMap, runSlice, sliceTerrain } from './vertical-slice.js';
 
@@ -45,16 +47,28 @@ async function main(): Promise<void> {
   const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
   const terrain = sliceTerrain(loaded ?? undefined);
-  // `?atlas` binds the free synthetic atlas so sprites draw as textured atlas frames; absent, they
-  // draw as placeholder geometry (real bobs are gitignored — see shot.ts).
-  const sheet: SpriteSheet | undefined = params.has('atlas')
-    ? {
-        source: createSyntheticAtlasSource(),
-        atlas: syntheticAtlasFrames(),
-        bindings: SYNTHETIC_BINDINGS,
-      }
-    : undefined;
-  const camera = { offsetX: CANVAS_W / 2, offsetY: CANVAS_H / 3 };
+  // `?atlas` binds a sprite atlas so sprites draw as textured atlas frames; absent, they draw as
+  // placeholder geometry. `?atlas=real` binds the REAL decoded human-body atlas (settlers only; gitignored
+  // content over the /bobs server — see real-sprites.ts); any other `?atlas` value binds the free synthetic
+  // atlas (the reproducible default texture, no copyrighted data).
+  let sheet: SpriteSheet | undefined;
+  if (params.get('atlas') === 'real') {
+    sheet = await loadHumanSpriteSheet();
+  } else if (params.has('atlas')) {
+    sheet = {
+      source: createSyntheticAtlasSource(),
+      atlas: syntheticAtlasFrames(),
+      bindings: SYNTHETIC_BINDINGS,
+    };
+  }
+  // `?zoom=N` magnifies + re-centres on the sprites (the same knob the shot uses) so a decoded bob is
+  // big enough to inspect in the live view; absent, scale 1.
+  const zoom = floatParam(params, 'zoom', 1);
+  // `?speed=` scales wall-clock fed to the fixed-timestep loop, so the sim (and the tick-driven sprite
+  // animation, which advances one frame per tick) run slower/faster than the 20Hz default — a human
+  // knob to watch a walk/chop cycle at a pace they can judge against the original. Default 0.5 (calm
+  // enough to evaluate); `?speed=1` is the full sim rate, higher values fast-forward.
+  const speed = floatParam(params, 'speed', 0.5);
   // The slice sim, kept live and stepped one tick per fixed interval below. When a map loaded, the sim
   // navigates that real grid (placement on its walkable cells); else the synthetic strip.
   const sim = runSlice(7, 0, loaded ?? undefined);
@@ -68,9 +82,10 @@ async function main(): Promise<void> {
   function frame(nowMs: number): void {
     const elapsed = nowMs - lastMs;
     lastMs = nowMs;
-    timestep.advance(elapsed, () => sim.step());
+    timestep.advance(elapsed * speed, () => sim.step());
     const snap = sim.snapshot();
-    renderScene(app, buildScene(snap, terrain), camera, sheet);
+    const scene = buildScene(snap, terrain);
+    renderScene(app, scene, cameraFor(scene, zoom, CANVAS_W, CANVAS_H), sheet, snap.tick);
     // HUD overlay on top of the scene (renderScene cleared the stage; this adds to it).
     renderHud(app, placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', screen));
     requestAnimationFrame(frame);

@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { DrawItem, SpriteState } from '../src/index.js';
 import {
+  type AtlasManifest,
+  DEFAULT_FACING,
+  type DirectionalAnim,
   type SettlerStateBinding,
   type SpriteAtlas,
   type SpriteBindings,
+  atlasFromManifest,
   indexAtlasFrames,
+  resolveSpriteBobId,
   resolveSpriteFrame,
 } from '../src/index.js';
 
@@ -148,5 +153,128 @@ describe('resolveSpriteFrame — per-state settler binding', () => {
     expect(resolveSpriteFrame(settler('idle'), b, atlas)?.x).toBe(0);
     expect(resolveSpriteFrame(settler('moving'), b, atlas)?.x).toBe(0);
     expect(resolveSpriteFrame(settler('acting', 24), b, atlas)?.x).toBe(0);
+  });
+});
+
+describe('resolveSpriteBobId — directional animated binding', () => {
+  /** A settler draw item with an explicit facing + the resolver's other inputs. */
+  function settler(state: SpriteState, facing?: number, atomicId?: number, elapsed?: number): DrawItem {
+    return {
+      kind: 'settler',
+      ref: 1,
+      x: 0,
+      y: 0,
+      depth: 0,
+      state,
+      ...(facing !== undefined ? { facing } : {}),
+      ...(atomicId !== undefined ? { atomicId } : {}),
+      ...(elapsed !== undefined ? { elapsed } : {}),
+    };
+  }
+  const WALK: DirectionalAnim = { start: 1988, dirs: 8, stride: 12 };
+  const CHOP: DirectionalAnim = { start: 5106, dirs: 8, stride: 15 };
+  const STAND: DirectionalAnim = { start: 1988, dirs: 8, stride: 12, frames: 1 };
+  // No generic `acting`: CHOP is bound only to the harvest atomic (24), mirroring the real human
+  // binding — an unmapped action (a deposit) must fall back to the idle pose, not the woodcut swing.
+  const ANIM: SettlerStateBinding = { idle: STAND, moving: WALK, byAtomic: { 24: CHOP } };
+  const bindings: SpriteBindings = { settler: ANIM, building: 20, resource: 30 };
+
+  it('moving: start + facing*stride + tick%stride (the walk cycle for the heading)', () => {
+    expect(resolveSpriteBobId(settler('moving', 3), bindings, 5)).toBe(1988 + 3 * 12 + 5);
+    expect(resolveSpriteBobId(settler('moving', 0), bindings, 0)).toBe(1988);
+  });
+
+  it('wraps the cycle by tick % stride (frame 12 loops back to 0)', () => {
+    expect(resolveSpriteBobId(settler('moving', 0), bindings, 12)).toBe(1988); // 12 % 12 == 0
+    expect(resolveSpriteBobId(settler('moving', 0), bindings, 13)).toBe(1989);
+  });
+
+  it('acting chop (atomic 24) advances on its elapsed clock at a fixed cadence, ignoring tick', () => {
+    // frame = start + facing*stride + ((elapsed-1) % cycle): driven by the atomic's OWN elapsed-tick
+    // clock (frame 0 on its first tick), NOT the free tick clock — tick=999 must not change it.
+    const swing = (elapsed: number): number | null =>
+      resolveSpriteBobId(settler('acting', 4, 24, elapsed), bindings, 999);
+    expect(swing(1)).toBe(5106 + 4 * 15 + 0); // first acting tick -> frame 0 (the swing's start)
+    expect(swing(8)).toBe(5106 + 4 * 15 + 7); // seven ticks in -> frame 7, mid-swing
+    expect(swing(15)).toBe(5106 + 4 * 15 + 14); // fifteenth tick -> frame 14, the swing's last frame
+  });
+
+  it('the chop cadence is the SAME regardless of how long the action runs (constant speed)', () => {
+    // The phase is a pure function of elapsed alone — no duration input — so a swing always advances one
+    // frame per tick. (The pre-fix bug stretched the swing across each atomic's duration, so a short
+    // action replayed the whole swing faster; that is structurally impossible now.)
+    const frameAt = (elapsed: number): number | null =>
+      resolveSpriteBobId(settler('acting', 0, 24, elapsed), bindings, 0);
+    expect(frameAt(1)).toBe(5106 + 0); // frame 0
+    expect(frameAt(2)).toBe(5106 + 1); // +1 tick == +1 frame, always
+    expect(frameAt(16)).toBe(5106 + 0); // elapsed 16 -> (16-1) % 15 == 0: a longer action loops the cycle
+  });
+
+  it('phaseStart rotates the loop start so a chop plays windup (9..14) then strike (0..8)', () => {
+    // The woodcut loop is 0..8 = strike-down, 9..14 = windup-rise. phaseStart 9 begins on the windup:
+    // frame = (9 + (elapsed-1)) % 15, so elapsed 1 -> 9 (windup start), elapsed 15 -> 8 (impact, the end).
+    const SWING: DirectionalAnim = { start: 5106, dirs: 8, stride: 15, phaseStart: 9 };
+    const b: SpriteBindings = { settler: { idle: STAND, byAtomic: { 24: SWING } }, building: 0, resource: 0 };
+    const at = (elapsed: number): number | null =>
+      resolveSpriteBobId(settler('acting', 4, 24, elapsed), b, 0);
+    expect(at(1)).toBe(5106 + 4 * 15 + 9); // first tick -> frame 9 (windup begins, axe rising)
+    expect(at(6)).toBe(5106 + 4 * 15 + 14); // -> frame 14 (top of the windup)
+    expect(at(7)).toBe(5106 + 4 * 15 + 0); // wraps -> frame 0 (strike begins, axe coming down)
+    expect(at(15)).toBe(5106 + 4 * 15 + 8); // -> frame 8 (impact, the strike lands — the final frame)
+  });
+
+  it('an acting atomic with no bound animation holds the idle pose (no borrowed swing)', () => {
+    // Atomic 23 (a deposit) isn't in byAtomic and there is no generic `acting`, so it falls back to the
+    // single-pose idle/STAND — never the woodcut swing replayed at the wrong speed.
+    expect(resolveSpriteBobId(settler('acting', 2, 23, 3), bindings, 0)).toBe(1988 + 2 * 12);
+  });
+
+  it('idle holds a single planted pose per direction (frames: 1 ignores tick)', () => {
+    expect(resolveSpriteBobId(settler('idle', 2), bindings, 99)).toBe(1988 + 2 * 12); // no phase advance
+  });
+
+  it('falls back to DEFAULT_FACING when the item carries no facing', () => {
+    expect(resolveSpriteBobId(settler('moving'), bindings, 0)).toBe(1988 + DEFAULT_FACING * 12);
+  });
+
+  it('wraps an out-of-range / negative facing into 0..dirs', () => {
+    expect(resolveSpriteBobId(settler('moving', 8), bindings, 0)).toBe(1988); // 8 % 8 == 0
+    expect(resolveSpriteBobId(settler('moving', -1), bindings, 0)).toBe(1988 + 7 * 12); // -> dir 7
+  });
+
+  it('a plain-number frame ref still ignores facing + tick (back-compat)', () => {
+    const flat: SpriteBindings = { settler: { idle: 1931 }, building: 20, resource: 30 };
+    expect(resolveSpriteBobId(settler('idle', 5), flat, 42)).toBe(1931);
+  });
+});
+
+describe('atlasFromManifest', () => {
+  /** A decoded `.atlas.json` shape, including the `type`/`opaque` fields the renderer ignores. */
+  const manifest: AtlasManifest = {
+    width: 1024,
+    height: 7693,
+    frames: [
+      { bobId: 0, rect: { x: 1, y: 1, width: 20, height: 33 }, offsetX: -11, offsetY: -27 },
+      { bobId: 1931, rect: { x: 517, y: 3063, width: 25, height: 35 }, offsetX: -12, offsetY: -27 },
+    ],
+  };
+
+  it('adapts the on-disk manifest into a frame-indexed SpriteAtlas', () => {
+    const atlas = atlasFromManifest(manifest);
+    expect(atlas.width).toBe(1024);
+    expect(atlas.height).toBe(7693);
+    // Frames are keyed by bobId, carrying the rect + draw offset; a non-contiguous id resolves.
+    const idle = atlas.frames.get(1931);
+    expect(idle).toEqual({ x: 517, y: 3063, width: 25, height: 35, offsetX: -12, offsetY: -27 });
+    expect(atlas.frames.get(0)?.width).toBe(20);
+    expect(atlas.frames.has(999)).toBe(false);
+  });
+
+  it('equals the indexAtlasFrames it wraps (same width/height/frames)', () => {
+    const direct = indexAtlasFrames(manifest.width, manifest.height, manifest.frames);
+    const wrapped = atlasFromManifest(manifest);
+    expect(wrapped.width).toBe(direct.width);
+    expect(wrapped.height).toBe(direct.height);
+    expect([...wrapped.frames]).toEqual([...direct.frames]);
   });
 });

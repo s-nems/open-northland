@@ -12,6 +12,8 @@
 //         npm run shot -- --seed 7 --ticks 20 --out shot.png
 //         npm run shot -- --map oasis_o_plenty   # draw an actual decoded content/maps/<id>.json grid
 //         npm run shot -- --atlas                # bind the free synthetic atlas (textured sprites)
+//         npm run shot -- --atlas real           # bind the REAL decoded human-body atlas (needs content/)
+//         npm run shot -- --atlas real --zoom 5  # magnify + centre on the sprites (judge decoded pixels)
 
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -35,7 +37,12 @@ function flag(name) {
 const seed = arg('seed', '7');
 const ticks = arg('ticks', '20');
 const mapId = arg('map', '');
-const atlas = flag('atlas');
+// `--atlas` alone = the synthetic atlas; `--atlas real` = the real decoded human atlas. Guard against
+// `--atlas` immediately followed by another flag (e.g. `--atlas --out x`) reading the flag as a value.
+const atlasRaw = flag('atlas') ? arg('atlas', 'synthetic') : '';
+const atlasMode = atlasRaw.startsWith('--') ? 'synthetic' : atlasRaw;
+const zoom = arg('zoom', '');
+const noHud = flag('no-hud');
 const outPath = resolve(process.cwd(), arg('out', 'shot.png'));
 
 async function main() {
@@ -51,8 +58,10 @@ async function main() {
   const address = server.httpServer?.address();
   const resolvedPort = typeof address === 'object' && address ? address.port : port;
   const mapParam = mapId ? `&map=${encodeURIComponent(mapId)}` : '';
-  const atlasParam = atlas ? '&atlas' : '';
-  const url = `http://localhost:${resolvedPort}/?shot&seed=${seed}&ticks=${ticks}${mapParam}${atlasParam}`;
+  const atlasParam = atlasMode ? `&atlas=${encodeURIComponent(atlasMode)}` : '';
+  const zoomParam = zoom ? `&zoom=${encodeURIComponent(zoom)}` : '';
+  const hudParam = noHud ? '&hud=0' : '';
+  const url = `http://localhost:${resolvedPort}/?shot&seed=${seed}&ticks=${ticks}${mapParam}${atlasParam}${zoomParam}${hudParam}`;
 
   const browser = await chromium.launch();
   let failed = false;

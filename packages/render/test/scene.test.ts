@@ -117,6 +117,33 @@ describe('buildScene', () => {
     expect(tiles.map((t) => t.typeId)).toEqual([5, 1, 2, 5, 16, 1]); // the map's typeIds, in order
   });
 
+  it('derives a settler facing from its heading toward the next PathFollow waypoint', () => {
+    // Settler at (1,1); the waypoint it walks toward sets the screen-space heading -> direction index.
+    // Screen projection is iso (col-row, col+row) with a 2:1 aspect, so e.g. walking +col reads SE.
+    const pf = (wx: number, wy: number): Record<string, unknown> => ({
+      Settler: { tribe: 0 },
+      PathFollow: { waypoints: [{ x: wx * ONE, y: wy * ONE }], index: 0 },
+    });
+    const facingOf = (wx: number, wy: number): number | undefined =>
+      buildScene(snapshotOf([entity(1, 1, 1, pf(wx, wy))]), FLAT_3x2).find((d) => d.kind === 'settler')
+        ?.facing;
+    expect(facingOf(2, 1)).toBe(4); // east (+col)  -> screen down-right -> SE (4)
+    expect(facingOf(0, 1)).toBe(0); // west (-col)  -> screen up-left   -> NW (0)
+    expect(facingOf(2, 2)).toBe(3); // +col,+row    -> screen straight down -> S (3)
+    expect(facingOf(0, 0)).toBe(7); // -col,-row    -> screen straight up   -> N (7)
+  });
+
+  it('omits facing when a settler has no heading (no path, or already on the waypoint)', () => {
+    const idle = entity(1, 1, 1, { Settler: { tribe: 0 } }); // no PathFollow
+    const arrived = entity(2, 1, 1, {
+      Settler: { tribe: 0 },
+      PathFollow: { waypoints: [{ x: 1 * ONE, y: 1 * ONE }], index: 0 }, // waypoint == position
+    });
+    const scene = buildScene(snapshotOf([idle, arrived]), FLAT_3x2);
+    expect(scene.find((d) => d.ref === 1)?.facing).toBeUndefined();
+    expect(scene.find((d) => d.ref === 2)?.facing).toBeUndefined();
+  });
+
   it('derives a settler state from its components: acting > moving > idle', () => {
     const scene = buildScene(
       snapshotOf([
@@ -127,7 +154,7 @@ describe('buildScene', () => {
         // acting: a CurrentAtomic wins even with a (stale) PathFollow present.
         entity(3, 2, 0, {
           Settler: { tribe: 0 },
-          CurrentAtomic: { atomicId: 24 },
+          CurrentAtomic: { atomicId: 24, elapsed: 6 },
           PathFollow: { waypoints: [], index: 0 },
         }),
       ]),
@@ -136,10 +163,12 @@ describe('buildScene', () => {
     const byRef = (r: number) => scene.find((d) => d.kind === 'settler' && d.ref === r);
     expect(byRef(1)?.state).toBe('idle');
     expect(byRef(1)?.atomicId).toBeUndefined();
+    expect(byRef(1)?.elapsed).toBeUndefined();
     expect(byRef(2)?.state).toBe('moving');
     expect(byRef(2)?.atomicId).toBeUndefined();
     expect(byRef(3)?.state).toBe('acting');
     expect(byRef(3)?.atomicId).toBe(24); // the setatomic join key rides along
+    expect(byRef(3)?.elapsed).toBe(6); // the atomic's tick clock rides along (the animation cadence)
   });
 
   it('marks buildings/resources idle with no atomicId (they do not animate per-state here)', () => {

@@ -1,5 +1,6 @@
 import {
   Application,
+  Assets,
   Container,
   Graphics,
   Rectangle,
@@ -11,7 +12,7 @@ import {
 import type { HudPlacement } from './hud.js';
 import { TILE_HALF_H, TILE_HALF_W } from './index.js';
 import type { DrawItem, DrawKind } from './scene.js';
-import { type AtlasFrame, type SpriteAtlas, type SpriteBindings, resolveSpriteFrame } from './sprites.js';
+import { type AtlasFrame, type SpriteAtlas, type SpriteBindings, resolveSpriteBobId } from './sprites.js';
 
 /**
  * The GPU half of the render line — the part an agent CANNOT self-verify (pixels need a human eye).
@@ -58,6 +59,24 @@ export interface Camera {
   /** Pixel offset added to every item's screen position (pan). */
   readonly offsetX: number;
   readonly offsetY: number;
+  /**
+   * Uniform zoom factor (1 = no scale). Magnifies the whole scene about the layer origin, so a small
+   * pixel-art bob is large enough for a human to judge decode fidelity. Applied as the draw layer's
+   * scale, with {@link offsetX}/{@link offsetY} as the layer position — so `screen = world*scale +
+   * offset`. Defaults to 1.
+   */
+  readonly scale?: number;
+}
+
+/**
+ * One drawable atlas layer: a GPU {@link TextureSource} paired with its {@link SpriteAtlas} frame
+ * geometry. Overlay layers ({@link SpriteSheet.overlays}) share the body's resolved bob id, so a
+ * settler's head bob (same id, a separate `cr_hum_head` atlas) draws on top of the body bob — the
+ * original composes a human from layered body + head bob sets, not one sprite.
+ */
+export interface SpriteLayer {
+  readonly source: TextureSource;
+  readonly atlas: SpriteAtlas;
 }
 
 /**
@@ -66,11 +85,16 @@ export interface Camera {
  * input to {@link renderScene}: when present, bound sprite kinds draw their atlas frame; when absent (or
  * a kind/frame doesn't resolve) the placeholder geometry draws instead. The atlas *image* comes from a
  * free / synthetic atlas (real bobs are gitignored); the frame *geometry* + *bindings* are plain data.
+ *
+ * `overlays` are extra layers drawn on top of the body in order, each indexed by the **same** resolved
+ * bob id (the head bob shares the body's frame numbering) — this is how a layered body + head settler
+ * is composed. A layer that lacks the id (or has a 0×0 frame there) is simply skipped for that bob.
  */
 export interface SpriteSheet {
   readonly source: TextureSource;
   readonly atlas: SpriteAtlas;
   readonly bindings: SpriteBindings;
+  readonly overlays?: readonly SpriteLayer[];
 }
 
 /**
@@ -113,31 +137,63 @@ export function renderScene(
   scene: readonly DrawItem[],
   camera: Camera,
   sheet?: SpriteSheet,
+  tick = 0,
 ): void {
   app.stage.removeChildren();
   const layer = new Container();
+  // Children are placed at their raw projected world position; the camera (pan + zoom) is the layer's
+  // own transform, so `screen = world*scale + offset`. (At scale 1 this is identical to adding the
+  // offset per item — the previous behaviour — so existing un-zoomed shots are unchanged.)
   for (const item of scene) {
-    const sx = item.x + camera.offsetX;
-    const sy = item.y + camera.offsetY;
-    layer.addChild(drawItem(item, sx, sy, sheet));
+    layer.addChild(drawItem(item, item.x, item.y, tick, sheet));
   }
+  layer.scale.set(camera.scale ?? 1);
+  layer.position.set(camera.offsetX, camera.offsetY);
   app.stage.addChild(layer);
   app.render();
 }
 
 /**
- * Pick the display object for one draw item: a textured atlas sprite when a sheet is given and the
- * item's kind resolves to a non-empty frame, otherwise the placeholder geometry (tile diamond or
- * sprite marker). The frame *selection* is the pure {@link resolveSpriteFrame} lookup; binding the
- * rect to the texture is the GPU half.
+ * Pick the display object for one draw item: a textured atlas sprite (body + any overlay layers) when a
+ * sheet is given and the item's kind resolves to a non-empty frame, otherwise the placeholder geometry
+ * (tile diamond or sprite marker). The bob-id *selection* is the pure {@link resolveSpriteBobId} lookup
+ * (directional + animated by `tick`); binding the rect to the texture is the GPU half.
  */
-function drawItem(item: DrawItem, sx: number, sy: number, sheet?: SpriteSheet): Container {
+function drawItem(item: DrawItem, sx: number, sy: number, tick: number, sheet?: SpriteSheet): Container {
   if (item.kind === 'tile') return tileGraphic(item, sx, sy);
   if (sheet !== undefined) {
-    const frame = resolveSpriteFrame(item, sheet.bindings, sheet.atlas);
-    if (frame !== null) return atlasSprite(frame, sheet.source, sx, sy);
+    const layered = atlasLayers(item, sx, sy, tick, sheet);
+    if (layered !== null) return layered;
   }
   return spriteGraphic(item, sx, sy);
+}
+
+/**
+ * Compose the layered atlas sprite for a draw item: resolve its bob id once ({@link resolveSpriteBobId},
+ * the animated/directional frame decision) then blit that id's frame from the body atlas and every
+ * overlay layer (head) on top, in order, into one feet-anchored {@link Container}. Returns `null` when
+ * the item is unbound or no layer has a non-empty frame for the id, so the caller falls back to
+ * placeholder geometry — preserving the "unbound → placeholder" contract per layer.
+ */
+function atlasLayers(
+  item: DrawItem,
+  sx: number,
+  sy: number,
+  tick: number,
+  sheet: SpriteSheet,
+): Container | null {
+  const bobId = resolveSpriteBobId(item, sheet.bindings, tick);
+  if (bobId === null) return null;
+  const container = new Container();
+  const addLayer = (layer: SpriteLayer): void => {
+    const frame = layer.atlas.frames.get(bobId);
+    if (frame !== undefined && frame.width > 0 && frame.height > 0) {
+      container.addChild(atlasSprite(frame, layer.source, sx, sy));
+    }
+  };
+  addLayer({ source: sheet.source, atlas: sheet.atlas });
+  for (const overlay of sheet.overlays ?? []) addLayer(overlay);
+  return container.children.length > 0 ? container : null;
 }
 
 /**
@@ -154,6 +210,22 @@ function atlasSprite(frame: AtlasFrame, source: TextureSource, sx: number, sy: n
   const sprite = new Sprite(texture);
   sprite.position.set(sx + frame.offsetX, sy + frame.offsetY);
   return sprite;
+}
+
+/**
+ * Load a decoded atlas PNG (a `<name>.png` the `.bmd`→atlas build emits) as a Pixi {@link TextureSource}
+ * ready to bind as a {@link SpriteSheet.source}. The GPU/pixel twin of the pure
+ * {@link import('./sprites.js').atlasFromManifest} — together they turn a decoded `<name>.{png,atlas.json}`
+ * pair into a {@link SpriteSheet}. `nearest` scaling keeps the pixel-art bobs crisp and cuts the
+ * cross-machine sampling variance (matching {@link createPixiApp}'s antialias-off), so an eyeball-the-PNG
+ * check stays meaningful. Real bob atlases are decoded from a copyrighted game copy and gitignored (see
+ * CLAUDE.md "Legal guardrails"); this only takes a URL, so the *bytes* never live in the repo — the app
+ * serves them from the gitignored `content/` over the dev/shot server, exactly as `?map=` serves grids.
+ */
+export async function loadAtlasSource(url: string): Promise<TextureSource> {
+  const texture = (await Assets.load(url)) as Texture;
+  texture.source.scaleMode = 'nearest';
+  return texture.source;
 }
 
 const DEFAULT_TILE_COLOUR = 0x4a7c3a;

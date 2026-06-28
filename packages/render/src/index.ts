@@ -12,21 +12,30 @@ export {
   type SpriteState,
 } from './scene.js';
 export {
+  atlasFromManifest,
   indexAtlasFrames,
   resolveSpriteFrame,
+  resolveSpriteBobId,
+  DEFAULT_FACING,
   type AtlasFrame,
+  type AtlasManifest,
+  type AtlasManifestFrame,
+  type DirectionalAnim,
   type SettlerStateBinding,
   type SpriteAtlas,
   type SpriteBindings,
+  type SpriteFrameRef,
   type SpriteKind,
 } from './sprites.js';
 export {
   createPixiApp,
+  loadAtlasSource,
   renderScene,
   renderHud,
   DEFAULT_HUD_STYLE,
   type Camera,
   type SpriteSheet,
+  type SpriteLayer,
   type HudStyle,
 } from './pixi-renderer.js';
 export {
