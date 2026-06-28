@@ -1,9 +1,9 @@
 import * as components from './components/index.js';
 import type { Component } from './ecs/world.js';
-import type { HashTrace } from './hashtrace.js';
+import type { HashTrace } from './inspect/hashtrace.js';
+import { type SnapshotDiff, diffSnapshots } from './inspect/snapshot-diff.js';
+import type { WorldSnapshot } from './inspect/snapshot.js';
 import { type ReplayOptions, replay } from './replay.js';
-import { type SnapshotDiff, diffSnapshots } from './snapshot-diff.js';
-import type { WorldSnapshot } from './snapshot.js';
 
 /**
  * `localizeDivergence` — the headless composition that wires the four replay-inspector primitives
