@@ -13,6 +13,7 @@ import {
 } from '@vinland/render';
 import { cameraFor, floatParam } from './camera.js';
 import { loadHumanSpriteSheet } from './real-sprites.js';
+import { loadRealTerrain } from './real-terrain.js';
 import { loadTerrainMap, runSlice, sliceTerrain } from './vertical-slice.js';
 
 /**
@@ -79,9 +80,13 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
   // `?zoom=N` magnifies + re-centres on the sprites so a human can judge a decoded bob's pixels (a
   // ~30px settler is otherwise lost on the canvas); absent, the historical centre-ish pan at scale 1.
   const camera = cameraFor(scene, floatParam(params, 'zoom', 1), CANVAS_W, CANVAS_H);
+  // `?terrain` draws the ground from REAL decoded `text_*.pcx` textures (the approximated typeId→pattern
+  // map) for the human pixel-check; gitignored content over the /ir.json + /textures server (see
+  // real-terrain.ts). Absent, terrain stays the reproducible flat-tint default the committed PNG depends on.
+  const terrain = params.has('terrain') ? await loadRealTerrain() : undefined;
   // Pass the sim's tick so the tick-driven sprite animation draws the frame for this exact step (the
   // shot is a single deterministic frame at `ticks`, so the cycle phase is `tick % cycle`).
-  renderScene(app, scene, camera, sheet, snap.tick);
+  renderScene(app, scene, camera, sheet, snap.tick, terrain);
   // Overlay the single-tribe (viking, tribe 1) HUD panel on top of the scene, so the human eyeballing
   // the shot also sees the on-screen panel's typography (the un-self-verifiable half of the HUD).
   // `?hud=0` suppresses it for a clean sprite-inspection frame (the panel otherwise occludes a sprite

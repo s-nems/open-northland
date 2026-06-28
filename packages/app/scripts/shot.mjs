@@ -14,6 +14,7 @@
 //         npm run shot -- --atlas                # bind the free synthetic atlas (textured sprites)
 //         npm run shot -- --atlas real           # bind the REAL decoded human-body atlas (needs content/)
 //         npm run shot -- --atlas real --zoom 5  # magnify + centre on the sprites (judge decoded pixels)
+//         npm run shot -- --map <id> --terrain   # draw the ground from REAL decoded text_*.pcx (needs content/)
 
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -42,6 +43,7 @@ const mapId = arg('map', '');
 const atlasRaw = flag('atlas') ? arg('atlas', 'synthetic') : '';
 const atlasMode = atlasRaw.startsWith('--') ? 'synthetic' : atlasRaw;
 const zoom = arg('zoom', '');
+const terrain = flag('terrain');
 const noHud = flag('no-hud');
 const outPath = resolve(process.cwd(), arg('out', 'shot.png'));
 
@@ -60,8 +62,9 @@ async function main() {
   const mapParam = mapId ? `&map=${encodeURIComponent(mapId)}` : '';
   const atlasParam = atlasMode ? `&atlas=${encodeURIComponent(atlasMode)}` : '';
   const zoomParam = zoom ? `&zoom=${encodeURIComponent(zoom)}` : '';
+  const terrainParam = terrain ? '&terrain' : '';
   const hudParam = noHud ? '&hud=0' : '';
-  const url = `http://localhost:${resolvedPort}/?shot&seed=${seed}&ticks=${ticks}${mapParam}${atlasParam}${zoomParam}${hudParam}`;
+  const url = `http://localhost:${resolvedPort}/?shot&seed=${seed}&ticks=${ticks}${mapParam}${atlasParam}${zoomParam}${terrainParam}${hudParam}`;
 
   const browser = await chromium.launch();
   let failed = false;
