@@ -71,6 +71,23 @@ describe('resolveSpriteFrame', () => {
     expect(resolveSpriteFrame(item('resource'), BINDINGS, atlas())).toBeNull();
   });
 
+  it('resolves a resource to its own (tree) atlas frame — the ls_trees per-kind bind', () => {
+    // Mirrors the real resource bind: resource -> a non-empty bob in its OWN atlas (the per-kind tree
+    // layer the GPU blits from). Geometry like ls_trees frame 60: a 101×111 tree anchored at its base.
+    const treeAtlas = indexAtlasFrames(1024, 4914, [
+      { bobId: 60, rect: { x: 1, y: 1, width: 101, height: 111 }, offsetX: -54, offsetY: -100 },
+    ]);
+    const bindings: SpriteBindings = { settler: 10, building: 20, resource: 60 };
+    expect(resolveSpriteFrame(item('resource'), bindings, treeAtlas)).toEqual({
+      x: 1,
+      y: 1,
+      width: 101,
+      height: 111,
+      offsetX: -54,
+      offsetY: -100,
+    });
+  });
+
   it('is pure: the same item + tables always resolve to the same frame', () => {
     const a = atlas();
     const first = resolveSpriteFrame(item('building'), BINDINGS, a);
