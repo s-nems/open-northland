@@ -168,8 +168,9 @@ Two graphics families sit beside the map grid; **both decode with existing decod
   (27 transition tiles), 64-px indexed tiles with inline palette, **already decoded to `text_*.png`** by the pcx
   stage. The texture→cell binding is `Data/engine2d/inis/patterns/pattern.cif`, a `.cif`-only `[GfxPattern]` list
   (927 records): `EditName`, `EditGroups "meadow all" "meadow green"`, `LogicType` (= a
-  `Data/logic/trianglepatterntypes.cif` `type`, 82 records: water/land/mountain/sand + `iswater`/`humancanwalkon`/
-  `debugcolor`), `GfxTexture "…text_NNN.pcx"`, `GfxCoordsA`/`GfxCoordsB` = the two triangles' UVs (3 pixel-coord
+  `Data/logic/trianglepatterntypes.cif` `type`, **10 records**, type ids 1..10: water/land/blocked/mountain/sand/
+  beach/desertstone/moor/snow/plaster, each with `iswater`/`humancanwalkon`/`debugcolor` — "82" is the file's
+  decoded *string* count (10 headers + 72 property lines), not the record count), `GfxTexture "…text_NNN.pcx"`, `GfxCoordsA`/`GfxCoordsB` = the two triangles' UVs (3 pixel-coord
   points each, into the texture). `landscapetypes.ini` also carries a `debugcolor R G B` per type (a free
   per-type colour — a cheap legible fallback if textures are deferred).
 - **The 1:1 pattern algorithm is ORACLE-BLOCKED.** No `map.dat` landscape lane holds a direct pattern id:

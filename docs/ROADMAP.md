@@ -53,11 +53,15 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       lanes). Decision (recorded): ship real textures with approximated per-type placement, a deviation
       (docs/FIDELITY.md), not a 1:1 match. **Data model fully mapped this session — see docs/SOURCES.md
       "Terrain ground graphics + landscape objects".** Step-by-step (each a separate session):
-  1. **Pipeline — patterns + triangle types.** `extractPatterns(pattern.cif)` → IR `{id, editName,
-     editGroups, logicType, texture, coordsA[6], coordsB[6]}` (cif keys are CamelCase, like
-     `extractLandscapeGraphics`). `extractTrianglePatternTypes(trianglepatterntypes.cif)` → IR
-     `{type, debugname, iswater, …}` (the `logicType` cross-ref). Add zod schemas in `packages/data`;
-     unit-test both. The 56 `text_*.pcx` tiles already decode to PNG (pcx stage) — no new decoder.
+  1. ✅ **Pipeline — patterns + triangle types.** `extractPatterns`/`extractTrianglePatternTypes`
+     (`decoders/ini.ts`) → zod `GfxPattern`/`TrianglePatternType` IR (`packages/data`), unit-tested. `id`
+     is the **0-based position** in the `GfxPattern` list (no explicit id field — the extractor keeps every
+     record so ids stay contiguous). Hands-on against the real game `.cif`: **927 patterns** (ids 0..926, 56
+     textures, logicType ∈ {0..10}, 0 wrong-arity coords) + **10 triangle types** (NOT 82 — "82" was the
+     decoded *string* count; SOURCES.md corrected), and **every `logicType ≠ 0` resolves** to a triangle
+     `type` (the `logicType` cross-ref is sound). Faithful extraction (docs/FIDELITY.md "ground-graphics
+     tables"); the 56 `text_*.pcx` already decode (pcx stage) — no new decoder. **Not yet wired into the
+     ContentSet / `npm run pipeline` emit — that is step 2's "emit the table to IR".**
   2. **Pipeline — typeId→pattern map (approximated).** landscape typeId → a representative `GfxPattern` by
      family: water-name types → a `water` pattern (LogicType = water trianglepatterntype), rock/stone →
      `mountain`, everything else (incl. tree/bush/wood — their GROUND is land; the tree is the separate

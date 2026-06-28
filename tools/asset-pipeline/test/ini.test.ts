@@ -19,6 +19,8 @@ import {
   extractLandscapeGraphics,
   extractMapInfo,
   extractPaletteIndex,
+  extractPatterns,
+  extractTrianglePatternTypes,
   extractTribes,
   extractVehicles,
   extractWeapons,
@@ -1349,6 +1351,189 @@ describe('extractLandscape', () => {
       allowedOnWater: false,
       allowedOnEverything: false,
     });
+  });
+});
+
+describe('extractTrianglePatternTypes', () => {
+  // Mirrors Data/logic/trianglepatterntypes.cif as cifLinesToSections yields it: level-1
+  // `trianglepatterntype` headers, level-2 lowercase props. The `water` record omits every "walk/build"
+  // flag (absent -> false); `land` sets several to 1; a third record omits debugcolor (-> undefined).
+  const lines: CifLine[] = [
+    { level: 1, text: 'trianglepatterntype' },
+    { level: 2, text: 'type 1' },
+    { level: 2, text: 'iswater 1' },
+    { level: 2, text: 'moveresistance 1' },
+    { level: 2, text: 'debugname "water"' },
+    { level: 2, text: 'debugcolor 0 98 115' },
+    { level: 1, text: 'trianglepatterntype' },
+    { level: 2, text: 'type 2' },
+    { level: 2, text: 'humancanwalkon 1' },
+    { level: 2, text: 'housecanbebuildon 1' },
+    { level: 2, text: 'biocangrowon 1' },
+    { level: 2, text: 'biocanplanton 1' },
+    { level: 2, text: 'island 1' },
+    { level: 2, text: 'moveresistance 2' },
+    { level: 2, text: 'debugname "land"' },
+    { level: 2, text: 'debugcolor 23 145 25' },
+  ];
+
+  it('maps [trianglepatterntype] to validated IR: flags as booleans, debugcolor as an RGB tuple', () => {
+    const src = { file: 'Data/logic/trianglepatterntypes.cif', block: 'trianglepatterntype', layer: 'base' };
+    expect(
+      extractTrianglePatternTypes(cifLinesToSections(lines), {
+        file: 'Data/logic/trianglepatterntypes.cif',
+        layer: 'base',
+      }),
+    ).toEqual([
+      {
+        type: 1,
+        debugName: 'water',
+        isWater: true,
+        humanCanWalkOn: false,
+        houseCanBeBuildOn: false,
+        bioCanGrowOn: false,
+        bioCanPlantOn: false,
+        island: false,
+        moveResistance: 1,
+        debugColor: [0, 98, 115],
+        source: src,
+      },
+      {
+        type: 2,
+        debugName: 'land',
+        isWater: false,
+        humanCanWalkOn: true,
+        houseCanBeBuildOn: true,
+        bioCanGrowOn: true,
+        bioCanPlantOn: true,
+        island: true,
+        moveResistance: 2,
+        debugColor: [23, 145, 25],
+        source: src,
+      },
+    ]);
+  });
+
+  it('defaults the flags to false, moveResistance to 0, and debugColor to undefined when omitted', () => {
+    const [only] = extractTrianglePatternTypes(
+      cifLinesToSections([
+        { level: 1, text: 'trianglepatterntype' },
+        { level: 2, text: 'type 6' },
+        { level: 2, text: 'debugname "blocked"' },
+      ]),
+      { file: 'f.cif' },
+    );
+    expect(only).toEqual({
+      type: 6,
+      debugName: 'blocked',
+      isWater: false,
+      humanCanWalkOn: false,
+      houseCanBeBuildOn: false,
+      bioCanGrowOn: false,
+      bioCanPlantOn: false,
+      island: false,
+      moveResistance: 0,
+      debugColor: undefined,
+      source: { file: 'f.cif', block: 'trianglepatterntype', layer: 'base' },
+    });
+  });
+
+  it('throws on a [trianglepatterntype] missing its numeric `type`', () => {
+    expect(() =>
+      extractTrianglePatternTypes(
+        cifLinesToSections([
+          { level: 1, text: 'trianglepatterntype' },
+          { level: 2, text: 'debugname "x"' },
+        ]),
+        { file: 'f.cif' },
+      ),
+    ).toThrow(/without a numeric `type`/);
+  });
+});
+
+describe('extractPatterns', () => {
+  // Mirrors Data/engine2d/inis/patterns/pattern.cif as cifLinesToSections yields it: level-1 CamelCase
+  // `GfxPattern` headers, level-2 CamelCase props. Record 0 = the misc "border" tile (LogicType 0, single
+  // EditGroup); record 1 = a meadow tile carrying TWO EditGroups; record 2 has a malformed (5-int)
+  // GfxCoordsA -> that tuple degrades to undefined but the record still occupies its positional slot.
+  const lines: CifLine[] = [
+    { level: 1, text: 'GfxPattern' },
+    { level: 2, text: 'EditName "border"' },
+    { level: 2, text: 'EditGroups "misc"' },
+    { level: 2, text: 'LogicType 0' },
+    { level: 2, text: 'GfxTexture "data\\engine2d\\bin\\textures\\text_000.pcx"' },
+    { level: 2, text: 'GfxCoordsA 0 0 63 63 0 63' },
+    { level: 2, text: 'GfxCoordsB 0 0 63 0 63 63' },
+    { level: 1, text: 'GfxPattern' },
+    { level: 2, text: 'EditName "block meadow 01"' },
+    { level: 2, text: 'EditGroups "meadow all" "meadow green"' },
+    { level: 2, text: 'LogicType 2' },
+    { level: 2, text: 'GfxTexture "data\\engine2d\\bin\\textures\\text_003.pcx"' },
+    { level: 2, text: 'GfxCoordsA 64 0 127 63 64 63' },
+    { level: 2, text: 'GfxCoordsB 64 0 127 0 127 63' },
+    { level: 1, text: 'GfxPattern' },
+    { level: 2, text: 'EditName "degenerate"' },
+    { level: 2, text: 'LogicType 4' },
+    { level: 2, text: 'GfxTexture "data\\engine2d\\bin\\textures\\text_009.pcx"' },
+    { level: 2, text: 'GfxCoordsA 1 2 3 4 5' }, // 5 ints -> wrong arity -> undefined
+    { level: 2, text: 'GfxCoordsB 0 0 1 1 2 2' },
+  ];
+
+  it('maps [GfxPattern] to validated IR: positional id, multi-value EditGroups, normalized texture, 6-int UV tuples', () => {
+    const patterns = extractPatterns(cifLinesToSections(lines), {
+      file: 'Data/engine2d/inis/patterns/pattern.cif',
+      layer: 'base',
+    });
+    const src = { file: 'Data/engine2d/inis/patterns/pattern.cif', block: 'GfxPattern', layer: 'base' };
+    expect(patterns).toEqual([
+      {
+        id: 0,
+        editName: 'border',
+        editGroups: ['misc'],
+        logicType: 0,
+        texture: 'data/engine2d/bin/textures/text_000.pcx',
+        coordsA: [0, 0, 63, 63, 0, 63],
+        coordsB: [0, 0, 63, 0, 63, 63],
+        source: src,
+      },
+      {
+        id: 1,
+        editName: 'block meadow 01',
+        editGroups: ['meadow all', 'meadow green'],
+        logicType: 2,
+        texture: 'data/engine2d/bin/textures/text_003.pcx',
+        coordsA: [64, 0, 127, 63, 64, 63],
+        coordsB: [64, 0, 127, 0, 127, 63],
+        source: src,
+      },
+      {
+        id: 2,
+        editName: 'degenerate',
+        editGroups: [],
+        logicType: 4,
+        texture: 'data/engine2d/bin/textures/text_009.pcx',
+        coordsA: undefined, // 5-int line dropped to undefined; the record keeps its positional id 2
+        coordsB: [0, 0, 1, 1, 2, 2],
+        source: src,
+      },
+    ]);
+  });
+
+  it('keeps ids contiguous by position (a non-GfxPattern section does not consume an id)', () => {
+    const mixed: CifLine[] = [
+      { level: 1, text: 'SomethingElse' },
+      { level: 2, text: 'EditName "ignored"' },
+      { level: 1, text: 'GfxPattern' },
+      { level: 2, text: 'EditName "first"' },
+      { level: 1, text: 'GfxPattern' },
+      { level: 2, text: 'EditName "second"' },
+    ];
+    expect(
+      extractPatterns(cifLinesToSections(mixed), { file: 'f.cif' }).map((p) => [p.id, p.editName]),
+    ).toEqual([
+      [0, 'first'],
+      [1, 'second'],
+    ]);
   });
 });
 
