@@ -168,6 +168,16 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
 - [ ] **Time-travel / replay inspector.** With `rng.getState/setState`, the command log, and
       `hashState`, a dev overlay can scrub ticks, diff state between two ticks, and dump an entity.
       "Hash diverged at tick 432" → jump there → inspect. Biggest debuggability multiplier for agents.
+      **Headless core landed** (`packages/sim/src/replay.ts`): a pure `replay({content,seed,map?,log,untilTick?})`
+      reconstructs the exact state at any tick by re-applying the command log into a fresh sim — the
+      "jump to tick N" primitive (scrub backward past later commands = the live state AT tick N;
+      run past the last command = the deterministic tail). Its oracle is `hashState()` byte-equality
+      with the original run at every tick (`test/replay.test.ts`; hands-on: a 1000-tick command-driven
+      run replayed bit-for-bit at 4 scrub points, and state created OUTSIDE the command seam correctly
+      does NOT reconstruct — replay rebuilds command-driven state only). Single-world constraint: the
+      replayed sim supersedes the original (component stores are shared singletons — docs/LESSONS.md
+      [56e8d3e]). **Open:** the dev OVERLAY that scrubs/diffs/dumps (a `render` concern, human-eyed) +
+      a per-tick hash/snapshot ring buffer to feed it.
 - [ ] **Content hot-reload.** Content is validated JSON injected into the sim; wire Vite HMR to
       re-parse and rebase the sim on file change → instant balance-tweak feedback, no rebuild.
 
