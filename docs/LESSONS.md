@@ -847,3 +847,9 @@ the next iteration inherits it.
   the input log byte-for-byte (modulo commands past `untilTick`). That is what lets the hot-reload
   workflow CHAIN — a second `rebaseContent` can take the first rebase's log and carry the whole player
   history forward; the rebase isn't a dead-end snapshot. (sim)
+- [7c3577d] A `.cif` table's "N records" count in SOURCES.md is the decoder's **string-pool line count**,
+  NOT the section/record count: `trianglepatterntypes.cif` "(82)" is 10 section headers + 72 property
+  lines = 82 strings, but only **10** `[trianglepatterntype]` records (housetypes 798 / weapontypes 2995
+  on the same SOURCES.md line are likewise string counts, not 798 houses / 2995 weapons). Before sizing
+  an extractor or a test to a doc count, decode the file and count level-1 sections — don't trust the
+  string total as a record total. (pipeline)
