@@ -19,6 +19,7 @@ import {
   ArmorType,
   AtomicAnimation,
   BuildingType,
+  GfxPattern,
   type GoodAtomics,
   type GoodClassification,
   GoodType,
@@ -31,6 +32,7 @@ import {
   JobType,
   LandscapeType,
   MapInfo,
+  TrianglePatternType,
   TribeType,
   VehicleType,
   WeaponType,
@@ -188,6 +190,17 @@ function getIntValues(sec: RuleSection, key: string): number[] {
   return out;
 }
 
+/**
+ * ALL values of the first matching property parsed as ints, returned only if there are **exactly**
+ * `length` of them (else `undefined`) — for fixed-arity tuples like a 6-int UV set (`GfxCoordsA`) or a
+ * 3-int `debugcolor`. A wrong-arity line yields `undefined` rather than a partial tuple, so a degenerate
+ * record degrades gracefully instead of producing a malformed shape.
+ */
+function getIntTuple(sec: RuleSection, key: string, length: number): number[] | undefined {
+  const vals = getIntValues(sec, key);
+  return vals.length === length ? vals : undefined;
+}
+
 /** First value of the first matching property as a string. */
 function getStr(sec: RuleSection, key: string): string | undefined {
   return findProp(sec, key)?.values[0];
@@ -327,6 +340,83 @@ export function extractLandscape(sections: readonly RuleSection[], src: SourceRe
     );
   }
   return landscape;
+}
+
+/**
+ * Extracts `[trianglepatterntype]` sections from `Data/logic/trianglepatterntypes.cif` (`.cif`-only,
+ * decoded via {@link decodeCifStringArray} → {@link cifLinesToSections}) into validated
+ * {@link TrianglePatternType} IR — the **logic classification** of the terrain triangles
+ * (water/land/mountain/sand/...), the cross-reference target of a {@link GfxPattern}'s `logicType`. The
+ * real file is 10 records (type ids 1..10), despite the 82-string count its `.cif` header reports (10
+ * section headers + 72 property lines). Throws on a section missing the required numeric `type` (matches
+ * {@link extractGoods}'s throw-on-malformed stance — a triangle type with no id is corrupt source). The
+ * `0`/`1` flags become booleans (`getInt(...) === 1`, as {@link extractLandscape}/{@link extractAnimals}
+ * do); an absent flag is `false` (the source omits a `0`). `debugcolor` is the flat per-type RGB
+ * fallback colour, kept for the cheap legible terrain render when textures are deferred.
+ */
+export function extractTrianglePatternTypes(
+  sections: readonly RuleSection[],
+  src: SourceRef,
+): TrianglePatternType[] {
+  const types: TrianglePatternType[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'trianglepatterntype') continue;
+    const type = requireTypeId(sec, 'trianglepatterntype', src);
+    types.push(
+      TrianglePatternType.parse({
+        type,
+        debugName: getStr(sec, 'debugname'),
+        isWater: getInt(sec, 'iswater') === 1,
+        humanCanWalkOn: getInt(sec, 'humancanwalkon') === 1,
+        houseCanBeBuildOn: getInt(sec, 'housecanbebuildon') === 1,
+        bioCanGrowOn: getInt(sec, 'biocangrowon') === 1,
+        bioCanPlantOn: getInt(sec, 'biocanplanton') === 1,
+        island: getInt(sec, 'island') === 1,
+        moveResistance: getInt(sec, 'moveresistance') ?? 0,
+        debugColor: getIntTuple(sec, 'debugcolor', 3),
+        source: { file: src.file, block: 'trianglepatterntype', layer: src.layer ?? 'base' },
+      }),
+    );
+  }
+  return types;
+}
+
+/**
+ * Extracts `[GfxPattern]` sections from `Data/engine2d/inis/patterns/pattern.cif` (`.cif`-only, with
+ * CamelCase keys + a CamelCase section header like {@link extractLandscapeGraphics}) into validated
+ * {@link GfxPattern} IR — the **texture→cell binding** for the triangle-mesh terrain (927 records). Each
+ * pattern names a `text_NNN.pcx` ground texture, the two triangles' 6-int UV tuples (`GfxCoordsA`/
+ * `GfxCoordsB`) and a `LogicType` ({@link TrianglePatternType.type} cross-ref; `0` = the misc/border
+ * tiles that classify to no logic type).
+ *
+ * Unlike the throw/skip extractors, this **keeps every record and never drops or reorders one**: the
+ * record has no explicit id, so {@link GfxPattern.id} is its 0-based position and a map references a
+ * pattern by that index — skipping a malformed record would renumber the rest. The visual fields are
+ * therefore read defensively (a wrong-arity coord set → `undefined` via {@link getIntTuple}) rather than
+ * aborting the offline batch, so even a degenerate record still occupies its positional slot. The `id`
+ * counter advances only on a matched section, so it stays the pattern index even if other section kinds
+ * were interleaved. `EditGroups` keeps its raw quoted group strings verbatim (editor metadata, unslugged).
+ */
+export function extractPatterns(sections: readonly RuleSection[], src: SourceRef): GfxPattern[] {
+  const patterns: GfxPattern[] = [];
+  let id = 0;
+  for (const sec of sections) {
+    if (sec.name !== 'GfxPattern') continue;
+    const texture = getStr(sec, 'GfxTexture');
+    patterns.push(
+      GfxPattern.parse({
+        id: id++,
+        editName: getStr(sec, 'EditName'),
+        editGroups: [...(findProp(sec, 'EditGroups')?.values ?? [])],
+        logicType: getInt(sec, 'LogicType') ?? 0,
+        texture: texture !== undefined ? normalizeAssetPath(texture) : undefined,
+        coordsA: getIntTuple(sec, 'GfxCoordsA', 6),
+        coordsB: getIntTuple(sec, 'GfxCoordsB', 6),
+        source: { file: src.file, block: 'GfxPattern', layer: src.layer ?? 'base' },
+      }),
+    );
+  }
+  return patterns;
 }
 
 /**
