@@ -55,7 +55,7 @@ export {
   type TerrainMap,
 } from './nav/terrain.js';
 export { findPath } from './nav/pathfinding.js';
-export { replay, type ReplayOptions } from './replay.js';
+export { replay, type ReplayOptions } from './replay/replay.js';
 export {
   HashTrace,
   type HashTraceEntry,
@@ -66,13 +66,13 @@ export {
   localizeDivergence,
   type DivergenceReport,
   type RunReplay,
-} from './localize-divergence.js';
-export { scrubWindow } from './scrub-window.js';
+} from './replay/localize-divergence.js';
+export { scrubWindow } from './replay/scrub-window.js';
 export {
   rebaseContent,
   type RebaseInputs,
   type RebaseResult,
-} from './rebase-content.js';
+} from './replay/rebase-content.js';
 export { seedAnimalHerds, type SeedAnimalsOptions } from './populate.js';
 export {
   checkInvariants,
