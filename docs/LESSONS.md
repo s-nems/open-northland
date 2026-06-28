@@ -771,3 +771,12 @@ the next iteration inherits it.
   was citing one event's value, not the animation's total. When you find a magnitude hardcoded in a doc
   comment, add the read view that derives it from data (a sum over the events of that `type`) rather than
   trusting the prose — and surface BOTH the per-event value and the summed total, they differ. (sim/read-model)
+- [d49f9ea] An AGGREGATE read view can hide a still-unread PER-ELEMENT field — closing a table's coverage
+  at the record level is not the same as the element level. `atomicEventChannelDelta` summed an animation's
+  `events` by `type` and the docs declared "every extracted `AtomicAnimation` field now has a read view",
+  but the sum COLLAPSED `AtomicEvent.extended` (the `eventx`/`event` source-key split): two events of the
+  same `type` but different streams fold into one total, so the per-event flag stayed invisible. When a view
+  reduces an array, the array's element fields are NOT automatically covered — enumerate the nested
+  record's fields too (here `eventx` marks the 14 `*_produce_*` smith animations' worker-self-drain stream).
+  Verified end-to-end by wiring the real `decodeIni`→`extractAtomicAnimations`→`parseContentSet`→read-view
+  path against the mod `.ini`, not just the fixture (43/~2900 lines `eventx`, all `*_produce_*`). (sim/read-model)
