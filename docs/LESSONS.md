@@ -798,3 +798,10 @@ the next iteration inherits it.
   honest invariant for a tick-target is only `>= 0`; "did every command apply?" is a property of a FULL
   replay (default untilTick = last logged tick), not of an explicit scrub. Don't let a guard encode "the
   only valid target is the end" when the feature is "jump to ANY tick". (sim/replay)
+- [e44bc5b] A bounded ring-buffer recorder that "ages out" a heavy secondary payload (here `HashTrace`'s
+  snapshot window inside its larger hash window) should strip only the ONE entry that just crossed the
+  window boundary — not rescan the whole ring every `record()`. The first cut walked `length -
+  snapshotCapacity` entries per tick (O(n²) over a run, and pointlessly when the payload is off entirely);
+  because the loop ran on every prior record, everything older is already stripped, so the boundary entry
+  is the only candidate. Tests passed either way (correct, just slow) — the cost only shows on a long live
+  run, exactly the case the ring exists for. When you bound a buffer, bound its per-step WORK too. (sim/perf)
