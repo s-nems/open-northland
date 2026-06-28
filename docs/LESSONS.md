@@ -827,3 +827,13 @@ the next iteration inherits it.
   buildings, settlers, and other entities all appear as `added` and a window-start baseline lumps them.
   The failure is loud (the trace's alive-flags shift), but the fix is to make the test's selector as
   specific as the entity it names. (sim/test)
+- [8fbd673] A property a DOCSTRING claims but no test PINS is a latent regression — the snapshot's
+  "transferable for free" (no class instances / live `Map`s) was asserted only in prose, so a future
+  component holding a live `Map`/class on the snapshot would silently break the Web-Worker move with
+  the docstring still saying "free". The exact oracle for the `postMessage` boundary is
+  `structuredClone()` (the real structured-clone algorithm — it throws `DataCloneError` on a function /
+  class instance / live `Map`), NOT a `JSON.stringify` round-trip, which would *silently* serialize a
+  live `Map` to `{}` instead of throwing. Pin a claimed transferability/serializability invariant
+  against the actual boundary's algorithm on a REAL `step()`-driven value (with the non-trivial shapes
+  present — a building's `Stockpile` Map), not a hand-built fixture that may omit the very shape that
+  would break it. (sim/test)
