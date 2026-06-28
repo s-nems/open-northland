@@ -13,6 +13,7 @@ import {
   extractGraphicsBindings,
   extractJobBaseGraphics,
   extractJobChangeGraphics,
+  extractLandscapeGraphics,
   extractPaletteIndex,
   parseIniSections,
 } from '../decoders/ini.js';
@@ -250,6 +251,7 @@ export async function resolveGraphicsBindings(
   const jobgraphics = await readIni(join('Data', 'engine2d', 'inis', 'animals', 'jobgraphics.ini'));
   const vehiclesCif = await readCif(join('Data', 'engine2d', 'inis', 'vehicles', 'jobgraphics.cif'));
   const humansCif = await readCif(join('Data', 'engine2d', 'inis', 'humans', 'jobgraphics.cif'));
+  const landscapesCif = await readCif(join('Data', 'engine2d', 'inis', 'landscapes', 'landscapes.cif'));
   const palettesIni = await readIni(join('Data', 'engine2d', 'inis', 'palettes', 'palettes.ini'));
   const bindings: BmdPaletteBinding[] = jobgraphics ? extractGraphicsBindings(jobgraphics) : [];
   // Vehicles use the identical flat [jobgraphics] grammar as the animals .ini (carts/ships), so the
@@ -260,6 +262,21 @@ export async function resolveGraphicsBindings(
     // [jobchangegraphics] (per-job equipment skins). Both flatten through the same path.
     bindings.push(...jobBaseGraphicsToBindings(extractJobBaseGraphics(humansCif)));
     bindings.push(...jobBaseGraphicsToBindings(extractJobChangeGraphics(humansCif)));
+  }
+  if (landscapesCif) {
+    // The base-only [GfxLandscape] table (.cif, no .ini twin): the map's pre-placed landscape-object
+    // bobs (trees `ls_trees.bmd`, bushes, signs, wonders, harbours, …) bound to their palette editname —
+    // the leg that makes `ls_trees.bmd` (the woodcutter's tree) an atlas. The ~99 tree species share a
+    // dozen palettes, and decor records repeat one bob across variants, so dedup on (bmd, palette)
+    // BEFORE pushing: a duplicate would only make `convertBmdTree` re-emit identical bytes. Scoped to the
+    // landscape additions so the human/animal/vehicle bindings array stays byte-identical to before.
+    const seen = new Set<string>();
+    for (const b of extractLandscapeGraphics(landscapesCif)) {
+      const key = `${b.bmd} ${b.paletteName}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      bindings.push(b);
+    }
   }
   if (mod !== undefined) {
     const humanGraphics = await readIni(join(mod, 'types', 'humanstype', 'jobgraphics.ini'));
