@@ -1,9 +1,9 @@
-import { PathFollow, PathRequest } from '../components/index.js';
-import { fx } from '../core/fixed.js';
-import { findPath } from '../nav/pathfinding.js';
-import type { CellId, TerrainGraph } from '../nav/terrain.js';
-import type { System } from './context.js';
-import { inRange } from './shared.js';
+import { PathFollow, PathRequest } from '../../components/index.js';
+import { fx } from '../../core/fixed.js';
+import { findPath } from '../../nav/pathfinding.js';
+import type { CellId, TerrainGraph } from '../../nav/terrain.js';
+import type { System } from '../context.js';
+import { inRange } from '../shared.js';
 
 // pathfindingSystem lives in routing.ts (not pathfinding.ts) to avoid an eyeball collision with the
 // A* core in ../pathfinding.ts, which this system consumes. The cross-system `inRange` guard comes

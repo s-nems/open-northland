@@ -32,9 +32,9 @@
  * child_female → adult; baby_male → child_male → adult).
  */
 
-import { Age, Settler } from '../components/index.js';
-import type { Entity } from '../ecs/world.js';
-import type { System } from './context.js';
+import { Age, Settler } from '../../components/index.js';
+import type { Entity } from '../../ecs/world.js';
+import type { System } from '../context.js';
 
 /** The human age-class job ids (`logicdefines.inc` `JOB_TYPE_HUMAN_*`), the non-working life stages a
  * settler passes through before an adult trade. Numbered constants, not control-flow opcodes — they
