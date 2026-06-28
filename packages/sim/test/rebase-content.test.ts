@@ -159,6 +159,53 @@ describe('rebaseContent', () => {
     expect(back.sim.hashState()).toBe(originalFinal);
   });
 
+  it('a rebased sim re-logs the command history, so a SECOND reload chains off the first', () => {
+    // The documented hot-reload workflow is REPEATED: a designer edits, then edits AGAIN. For the
+    // second `rebaseContent` to carry the run forward, the first rebase's sim must expose the SAME
+    // command log it was rebased from — replay re-applies each command through CommandSystem, which
+    // re-records it (commands.ts `record`), so `rebased.commands.log` reproduces the input log. If it
+    // didn't, the next reload would replay an empty/partial log and silently drop the player's history
+    // — a diff-empty correctness trap the workflow lives or dies on. This pins that chain.
+    const schedule = new Map<number, Command[]>([
+      [1, [{ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 5, y: 0, tribe: VIKING }]],
+      [2, [{ kind: 'spawnSettler', jobType: WOODCUTTER, x: 1, y: 0, tribe: VIKING }]],
+      [5, [{ kind: 'spawnSettler', jobType: CARPENTER, x: 4, y: 0, tribe: VIKING }]],
+    ]);
+    const { log, hashes } = recordRun(7, 60, schedule, grassMap(6, 1));
+    const finalHash = hashes[hashes.length - 1];
+
+    // First reload (a balance edit), rebased from the live run's log.
+    clearStores();
+    const first = rebaseContent(
+      rawContent((c) => {
+        const sawmill = c.buildings.find((b) => b.id === 'sawmill');
+        if (sawmill?.recipe) sawmill.recipe.ticks = 11;
+      }),
+      { seed: 7, map: grassMap(6, 1), log, untilTick: 60 },
+    );
+    expect(first.kind).toBe('ok');
+    if (first.kind !== 'ok') return;
+    // The rebased sim must carry the WHOLE history forward — its log equals the input log byte-for-byte
+    // (CommandSystem re-records each replayed command on the same apply tick). Captured as a plain
+    // array before the next rebuild clobbers the shared stores.
+    const rebasedLog = [...first.sim.commands.log];
+    expect(rebasedLog).toEqual(log);
+
+    // Second reload: edit AGAIN, rebasing off the FIRST rebased sim's log (the chain). Back to the
+    // ORIGINAL rules ⇒ the original state, proving the history survived the first rebase intact.
+    clearStores();
+    const second = rebaseContent(rawContent(), {
+      seed: 7,
+      map: grassMap(6, 1),
+      log: rebasedLog,
+      untilTick: 60,
+    });
+    expect(second.kind).toBe('ok');
+    if (second.kind !== 'ok') return;
+    expect(second.sim.tick).toBe(60);
+    expect(second.sim.hashState()).toBe(finalHash);
+  });
+
   it('returns a typed error on MALFORMED content (schema failure) — no sim is built', () => {
     const result = rebaseContent(
       rawContent((c) => {
