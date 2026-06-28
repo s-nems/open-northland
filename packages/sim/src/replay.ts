@@ -73,7 +73,10 @@ export function replay(opts: ReplayOptions): Simulation {
     // A command recorded at tick T was drained+applied on the SAME `step()` it was enqueued before,
     // i.e. it must be pending when `step()` increments the tick to T. Enqueue every command for the
     // tick we are about to run, then step. Commands past `untilTick` are left un-replayed (scrub).
-    while (cursor < log.length && (log[cursor] as LoggedCommand).tick === nextTick) {
+    // `<= nextTick` (not `===`) so a command is never silently dropped if a log is ever non-monotonic
+    // — on a real (monotonic) log every command's tick equals some `nextTick` exactly, so this is the
+    // same byte-identical reconstruction, just robust to a malformed/hand-built log.
+    while (cursor < log.length && (log[cursor] as LoggedCommand).tick <= nextTick) {
       sim.enqueue((log[cursor] as LoggedCommand).command);
       cursor++;
     }
