@@ -842,3 +842,8 @@ the next iteration inherits it.
   because no wood was ever delivered, so the recipe never ran. Pick a param reachable by the commands
   that actually fire (e.g. a placed building's `stock[].initial`, read at placeBuilding time) and
   PROBE the state to confirm the effect, don't assume a deep production chain engages. (sim/test)
+- [d80eb0a] A replayed/rebased sim RE-LOGS the commands it consumes (CommandSystem `record`s each
+  applied command), so `replay(...).commands.log` and `rebaseContent(...).sim.commands.log` reproduce
+  the input log byte-for-byte (modulo commands past `untilTick`). That is what lets the hot-reload
+  workflow CHAIN — a second `rebaseContent` can take the first rebase's log and carry the whole player
+  history forward; the rebase isn't a dead-end snapshot. (sim)
