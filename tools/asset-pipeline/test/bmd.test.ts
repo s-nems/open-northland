@@ -338,14 +338,15 @@ describe('decodeBobFrame', () => {
     expect([...frame.mask]).toEqual([0, 0, 0, 0]);
   });
 
-  it('clips columns outside the frame (negative area.x shifts the run left)', () => {
-    // area.x = 2: a run starting at xMin=0 maps to frame columns -2,-1,0 -> only the last lands.
+  it('clips a run at the right frame edge (columns are local; area.x is the draw offset, not applied)', () => {
+    // Frame width 2, raw run of 3 from local xMin=0 -> columns 0,1 land; column 2 is past the frame edge
+    // and is clipped. area.x=2 is the DRAW offset and is NOT subtracted from the local column grid (doing
+    // so was the bug that discarded the right side of every bob).
     const packed = [0x03, 0xa0, 0xb0, 0xc0, 0x00];
     const bmd = frameBmd(BOB_TYPE_8BIT, 2, 1, packed, [{ offset: 0, xMin: 0 }], 2);
     const frame = decodeBobFrame(bmd, 0);
-    // Columns -2 (0xA0) and -1 (0xB0) are clipped; column 0 (0xC0) lands at frame col 0; col 1 untouched.
-    expect([...frame.pixels]).toEqual([0xc0, 0x00]);
-    expect([...frame.mask]).toEqual([1, 0]);
+    expect([...frame.pixels]).toEqual([0xa0, 0xb0]);
+    expect([...frame.mask]).toEqual([1, 1]);
   });
 
   it('tolerates a truncated raw run without throwing (stops like the clipped original)', () => {
