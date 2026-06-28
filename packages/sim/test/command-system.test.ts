@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { Command } from '../src/commands.js';
 import {
   Armor,
   Building,
@@ -19,7 +18,7 @@ import {
   Weapon,
 } from '../src/components/index.js';
 import type { Entity } from '../src/ecs/world.js';
-import { Simulation } from '../src/index.js';
+import { type Command, Simulation } from '../src/index.js';
 import { testContent } from './fixtures/content.js';
 
 /**

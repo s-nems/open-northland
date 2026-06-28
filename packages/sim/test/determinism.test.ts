@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Position, Velocity } from '../src/components/index.js';
 import { World } from '../src/ecs/world.js';
-import { EventBuffer } from '../src/events.js';
-import { fx } from '../src/fixed.js';
-import { Rng } from '../src/rng.js';
+import { EventBuffer, Rng, fx } from '../src/index.js';
 import { movementSystem } from '../src/systems/index.js';
 import type { SystemContext } from '../src/systems/index.js';
 

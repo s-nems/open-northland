@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { AtomicEffect } from '../src/commands.js';
 import {
   Building,
   Carrying,
@@ -10,7 +9,7 @@ import {
   Stockpile,
 } from '../src/components/index.js';
 import type { Entity } from '../src/ecs/world.js';
-import { ONE, Simulation, fx } from '../src/index.js';
+import { type AtomicEffect, ONE, Simulation, fx } from '../src/index.js';
 import { type SystemContext, atomicSystem } from '../src/systems/index.js';
 import { testContent } from './fixtures/content.js';
 

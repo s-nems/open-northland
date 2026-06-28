@@ -3,8 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import * as components from '../src/components/index.js';
 import { Building, Carrying, Position, Settler, Stockpile } from '../src/components/index.js';
 import type { Entity } from '../src/ecs/world.js';
-import type { SimEvent } from '../src/events.js';
-import { ONE, Simulation, type TerrainMap, fx } from '../src/index.js';
+import { ONE, type SimEvent, Simulation, type TerrainMap, fx } from '../src/index.js';
 import { type SystemContext, constructionSystem, housingCapacity } from '../src/systems/index.js';
 
 /**

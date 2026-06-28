@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { Command } from '../src/commands.js';
 import * as components from '../src/components/index.js';
 import type { Component } from '../src/ecs/world.js';
-import { Simulation, type TerrainMap, diffSnapshots } from '../src/index.js';
-import type { WorldSnapshot } from '../src/snapshot.js';
+import {
+  type Command,
+  Simulation,
+  type TerrainMap,
+  type WorldSnapshot,
+  diffSnapshots,
+} from '../src/index.js';
 import { testContent } from './fixtures/content.js';
 
 /**

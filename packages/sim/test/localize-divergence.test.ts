@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { Command, LoggedCommand } from '../src/commands.js';
 import * as components from '../src/components/index.js';
 import type { Component } from '../src/ecs/world.js';
 import {
+  type Command,
   HashTrace,
+  type LoggedCommand,
   type RunReplay,
   Simulation,
   type TerrainMap,
