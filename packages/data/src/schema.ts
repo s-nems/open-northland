@@ -410,6 +410,10 @@ export const LandscapeType = z.object({
 });
 export type LandscapeType = z.infer<typeof LandscapeType>;
 
+/** An RGB colour as a `[r, g, b]` int tuple (0..255 in practice; not range-checked — faithful passthrough). */
+export const RgbColor = z.tuple([z.number().int(), z.number().int(), z.number().int()]);
+export type RgbColor = z.infer<typeof RgbColor>;
+
 /**
  * One `[trianglepatterntype]` from `Data/logic/trianglepatterntypes.cif` — the **logic classification**
  * of the terrain triangles (water / land / mountain / sand / beach / desertStone / moor / snow / plaster
@@ -442,7 +446,7 @@ export const TrianglePatternType = z.object({
    * `debugcolor` R G B — the flat per-type colour. The cheap legible terrain fallback: rendering a cell
    * by its type's debug colour when the real `text_*` texture is deferred. `undefined` when absent.
    */
-  debugColor: z.tuple([z.number().int(), z.number().int(), z.number().int()]).optional(),
+  debugColor: RgbColor.optional(),
   source: Provenance.optional(),
 });
 export type TrianglePatternType = z.infer<typeof TrianglePatternType>;
@@ -489,6 +493,38 @@ export const GfxPattern = z.object({
   source: Provenance.optional(),
 });
 export type GfxPattern = z.infer<typeof GfxPattern>;
+
+/**
+ * The **approximated** per-landscape-typeId ground binding — the typeId→pattern map the terrain renderer
+ * consumes (ROADMAP Phase 2, step 2). Every map cell carries a {@link LandscapeType.typeId} (1-based, the
+ * `lmlt` per-cell value), but those types are mostly OBJECTS (void/tree/rock/iron/wheat…), not ground
+ * classes. This table approximates each typeId's GROUND by a coarse **family** — its `id` slug naming
+ * water → `water`, `rock`/`stone` → `mountain`, everything else (incl. tree/bush/wood, whose ground is
+ * land) → `land` — and binds the family to ONE representative {@link GfxPattern} (its `text_NNN` texture +
+ * the two triangles' UVs). **This is a deviation, not a 1:1 match** (docs/FIDELITY.md): the original
+ * computes the per-cell pattern from corner types + variant lanes, an oracle-blocked algorithm. The
+ * `debugColor` is the flat-tint fallback when the texture is unavailable.
+ */
+export const TerrainPattern = z.object({
+  /** The {@link LandscapeType.typeId} (1-based) this ground binding applies to — the per-cell value in `content/maps`. */
+  typeId: TypeId,
+  /** The coarse ground family the typeId's name classified into (the approximation axis). */
+  family: z.enum(['water', 'mountain', 'land']),
+  /** The chosen representative {@link GfxPattern.id} (provenance for the pick — a positional pattern id). */
+  patternId: z.number().int().nonnegative(),
+  /** The representative's {@link TrianglePatternType.type} (water=1 / land=2 / mountain=3). */
+  logicType: TypeId,
+  /** The ground texture path (`data/.../text_NNN.pcx`) the renderer samples (decoded to a `text_NNN.png`). */
+  texture: z.string(),
+  /** The first triangle's 3 corner UVs into {@link texture}. */
+  coordsA: GfxCoords,
+  /** The second triangle's 3 corner UVs into {@link texture}. */
+  coordsB: GfxCoords,
+  /** The logic-type `debugColor` (RGB) — the flat-tint fallback when the texture can't be loaded. */
+  debugColor: RgbColor.optional(),
+  source: Provenance.optional(),
+});
+export type TerrainPattern = z.infer<typeof TerrainPattern>;
 
 /**
  * Per-(job, atomic) animation binding from `tribetypes` `setatomic <jobType> <atomicId> "anim"`.
@@ -712,6 +748,7 @@ export const ContentSet = z.object({
   animals: z.array(AnimalType).default([]),
   vehicles: z.array(VehicleType).default([]),
   landscape: z.array(LandscapeType).default([]),
+  terrainPatterns: z.array(TerrainPattern).default([]),
   tribes: z.array(TribeType).default([]),
   atomicAnimations: z.array(AtomicAnimation).default([]),
   maps: z.array(MapInfo).default([]),

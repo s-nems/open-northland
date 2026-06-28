@@ -2,8 +2,12 @@ import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import type { Args } from '../args.js';
+import { decodeCifStringArray } from '../decoders/cif.js';
 import {
+  type RuleSection,
   type SourceRef,
+  buildTerrainPatterns,
+  cifLinesToSections,
   decodeIni,
   extractAnimals,
   extractArmor,
@@ -14,6 +18,8 @@ import {
   extractJobExperience,
   extractJobs,
   extractLandscape,
+  extractPatterns,
+  extractTrianglePatternTypes,
   extractTribes,
   extractVehicles,
   extractWeapons,
@@ -21,6 +27,22 @@ import {
   parseIniSections,
 } from '../decoders/ini.js';
 import { decodeMapTree } from './maps.js';
+
+/**
+ * Decodes a `.cif`-only table (no readable `.ini` twin — `pattern.cif`, `trianglepatterntypes.cif`)
+ * into the shared {@link RuleSection} model, or `null` if the file is absent. Mirrors the
+ * graceful-skip stance of {@link resolveIniSources}: a partial install still produces an IR from
+ * whatever is present rather than aborting the batch.
+ */
+async function loadCifSections(path: string): Promise<RuleSection[] | null> {
+  try {
+    await access(path);
+  } catch {
+    return null;
+  }
+  const { lines } = decodeCifStringArray(new Uint8Array(await readFile(path)));
+  return cifLinesToSections(lines);
+}
 
 /**
  * One readable `.ini` rule source to parse, with where it came from (`base` = `Data/logic`,
@@ -121,6 +143,23 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     }
   }
   const maps = await decodeMapTree(args.game);
+  // Terrain ground graphics (`.cif`-only tables) → the approximated typeId→pattern map the renderer
+  // consumes. Both files ship in the base game; a partial install that lacks them simply yields no
+  // `terrainPatterns` (the renderer keeps its flat-colour fallback).
+  const patternFile = join('Data', 'engine2d', 'inis', 'patterns', 'pattern.cif');
+  const patternSections = await loadCifSections(join(args.game, patternFile));
+  const triangleFile = join('Data', 'logic', 'trianglepatterntypes.cif');
+  const triangleSections = await loadCifSections(join(args.game, triangleFile));
+  const gfxPatterns = patternSections
+    ? extractPatterns(patternSections, { file: patternFile, layer: 'base' })
+    : [];
+  const triangleTypes = triangleSections
+    ? extractTrianglePatternTypes(triangleSections, { file: triangleFile, layer: 'base' })
+    : [];
+  const terrainPatterns = buildTerrainPatterns(landscape, gfxPatterns, triangleTypes, {
+    file: patternFile,
+    layer: 'base',
+  });
   // Overlay each building's build-material cost from the graphics table (joined by `typeId`); a
   // building the graphics table omits keeps the schema-default empty cost.
   const buildingsWithCosts = buildings.map((b) => {
@@ -146,6 +185,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     animals,
     vehicles,
     landscape,
+    terrainPatterns,
     tribes,
     atomicAnimations,
     maps,
