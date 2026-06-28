@@ -2,7 +2,8 @@ import type { AtomicAnimation, ContentSet } from '@vinland/data';
 
 // Pure, terminal **read views** for atomic animations — the canonical name→record resolver over
 // `content.atomicAnimations` plus thin accessors for the animation scalars no sim system reads
-// directly (`interruptible`, `startDirection`) and the per-channel net delta over the `events` array.
+// directly (`interruptible`, `startDirection`), the per-channel net delta over the `events` array,
+// and the `eventx`/`event` stream split (`extended` — the last unread per-event field).
 // The `length` scalar already drives `atomicDuration` (ai.ts) and the combat swing cadence (combat.ts)
 // via an inline `atomicAnimations.find(...)`; this gives that name-lookup a single named home and
 // surfaces the remaining extracted-but-unread fields, the read-side consumer the deferred
@@ -123,4 +124,29 @@ export function atomicEventChannelDelta(content: ContentSet, name: string, chann
     if (event.type === channel) total += event.value ?? 0;
   }
   return total;
+}
+
+/**
+ * Whether the named atomic animation carries any **extended** (`eventx`) event — the rare second event
+ * stream the source spells with the `eventx` key instead of plain `event` ({@link AtomicEvent.extended}).
+ * In the real data the `eventx` lines bracket and accompany a *production* run: the worker's own
+ * need-bar drains while they labour (`eventx 50 1 -100` rest / `eventx 50 2 -100` hunger) and the
+ * production start/end markers (`eventx 0 22 0` / `eventx 99 23 0`), distinct from the plain `event`
+ * lines that carry the good yields/cues. Only 43 of the ~2900 event lines across the readable
+ * `atomicanimations.ini` are `eventx`, and they cluster on the `*_produce_*` animations — so this
+ * predicate doubles as the data-pinned "is this a producing animation that self-drains the worker"
+ * marker, the seed the deferred production/needs drive reads to know an animation has a second
+ * (extended) channel to apply, not just its plain yield stream.
+ *
+ * Returns `false` for an unknown name and for an animation whose events are all plain `event`s,
+ * matching how the sibling accessors fall back rather than throwing on an unresolved name.
+ *
+ * FIDELITY: pinned to the extracted `extended` flag (`eventx` vs `event` key in the mod's readable
+ * `atomicanimations.ini`, golden rule #4) — read straight off the captured per-event marker, not
+ * inferred. Adds no mechanic (no second-stream effect is applied yet) — a derived predicate over the
+ * already-extracted animation IR, the last unread `AtomicEvent` field. Determinism: a pure
+ * `some`-scan over `events` declaration order, byte-stable per content.
+ */
+export function atomicHasExtendedEvents(content: ContentSet, name: string): boolean {
+  return atomicAnimationByName(content, name)?.events.some((e) => e.extended) ?? false;
 }
