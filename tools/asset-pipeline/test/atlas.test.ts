@@ -29,9 +29,12 @@ const rampPalette = (): Uint8Array => {
 
 /**
  * Builds a `Bmd` whose bobs are described as `{ type, width, height, packed, lines, areaX, areaY }`.
- * Each bob's `lines[y]` is the line-control entry for absolute row (areaY + y): a number = packed
- * offset (xMin 0), an object = explicit `{ offset, xMin }`, or `'empty'` = a fully transparent row.
- * Bobs share one packed-line stream by carrying their own offsets — like the real container.
+ * Each bob's `lines[y]` is the line-control entry for its LOCAL row `y`: a number = packed offset
+ * (xMin 0), an object = explicit `{ offset, xMin }` (xMin is the local first column), or `'empty'` = a
+ * fully transparent row. Bobs share one packed-line stream by carrying their own offsets — like the real
+ * container. The line-control array stacks each bob's scanlines contiguously, so each bob gets a `misc`
+ * base = the sum of prior bobs' heights (its first-line index), exactly as the real format lays it out;
+ * `areaX`/`areaY` are independent DRAW offsets (they do NOT shift pixels into the frame here).
  */
 interface BobSpec {
   type: number;
@@ -51,18 +54,24 @@ const makeBmd = (specs: BobSpec[], firstBobId = 10): Bmd => {
     bases.push(packed.length);
     packed.push(...(s.packed ?? []));
   }
-  // Line-control is indexed by absolute Y; size it to cover the tallest bob's rows.
-  let maxRow = 0;
-  for (const s of specs) maxRow = Math.max(maxRow, (s.areaY ?? 0) + s.height);
-  const lineControl = new Uint32Array(maxRow);
+  // Line-control stacks every bob's scanlines contiguously: bob i's first-line index (`misc`) is the
+  // sum of prior bobs' heights, and the array length is the total height (matches the real container,
+  // where lineControlCount == Σ height).
+  const miscs: number[] = [];
+  let lineBase = 0;
+  for (const s of specs) {
+    miscs.push(lineBase);
+    lineBase += Math.max(0, s.height);
+  }
+  const lineControl = new Uint32Array(lineBase);
   lineControl.fill(0xffffffff);
   specs.forEach((s, i) => {
     const base = bases[i] ?? 0;
-    const areaY = s.areaY ?? 0;
+    const misc = miscs[i] ?? 0;
     s.lines.forEach((l, y) => {
       if (l === 'empty') return; // stays 0xFFFFFFFF
       const ctrl = typeof l === 'number' ? base + l : ((l.xMin << PACKED_X_SHIFT) | (base + l.offset)) >>> 0;
-      lineControl[areaY + y] = ctrl;
+      lineControl[misc + y] = ctrl;
     });
   });
 
@@ -73,10 +82,10 @@ const makeBmd = (specs: BobSpec[], firstBobId = 10): Bmd => {
     generatedNonEmptyLines: 0,
     generatedEmptyLines: 0,
     generatedPackedLines: 0,
-    bobs: specs.map((s) => ({
+    bobs: specs.map((s, i) => ({
       type: s.type,
       area: { x: s.areaX ?? 0, y: s.areaY ?? 0, width: s.width, height: s.height },
-      misc: 0,
+      misc: miscs[i] ?? 0,
     })),
     packedLineData: Uint8Array.from(packed),
     lineControl,
@@ -121,16 +130,16 @@ describe('expandBobFrame', () => {
 
 describe('packBobAtlas', () => {
   it('packs a single bob at the gutter origin and records its rect + offset', () => {
-    // One 8-bit bob, draw anchor (3,4) size 2×1, raw run of 2 -> indices [7,8]. The run starts at
-    // absolute column xMin=3 (= area.x), so the two pixels land at frame columns 0,1. The bob lives
-    // at absolute row areaY=4, so its line-control entry sits at index 4 (makeBmd handles the sizing).
+    // One 8-bit bob, draw offset (3,4) size 2×1, raw run of 2 -> indices [7,8]. The run starts at LOCAL
+    // column xMin=0, so the two pixels land at frame columns 0,1 (area.x/area.y are the draw offset, NOT
+    // applied to the local pixel grid — they surface only as the frame's offsetX/offsetY).
     const bmd = makeBmd([
       {
         type: BOB_TYPE_8BIT,
         width: 2,
         height: 1,
         packed: [0x02, 7, 8, 0x00],
-        lines: [{ offset: 0, xMin: 3 }],
+        lines: [{ offset: 0, xMin: 0 }],
         areaX: 3,
         areaY: 4,
       },

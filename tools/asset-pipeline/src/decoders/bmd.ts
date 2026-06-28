@@ -76,9 +76,18 @@ export interface BobArea {
 export interface BobRecord {
   /** Bob kind (0 = empty/absent slot; nonzero = 1-bit / 8-bit / double-byte variants). Carried raw. */
   readonly type: number;
-  /** The bob's bounding rectangle in the sprite's coordinate space. */
+  /**
+   * The bob's draw rectangle: `width`×`height` is the frame size; `x`/`y` are the DRAW OFFSET (where to
+   * blit the frame relative to the entity's anchor/feet — often negative). These are render-time offsets
+   * ONLY; they are NOT indices into the packed-line / line-control data (that base is {@link misc}).
+   */
   readonly area: BobArea;
-  /** Trailing per-record word (record+0x14). Carried faithfully; its meaning is not interpreted here. */
+  /**
+   * The bob's FIRST-LINE index into the global line-control array (record+0x14): its `height` scanlines
+   * are `lineControl[misc .. misc+height)`. The line-control array is the per-bob scanlines stacked
+   * contiguously (its length equals the sum of every bob's height), so this is each bob's base offset
+   * into that stack — the load-bearing field {@link decodeBobFrame} walks, not `area.y`.
+   */
   readonly misc: number;
 }
 
@@ -371,12 +380,14 @@ export interface BobFrame {
  * yields indexed pixels and `expandToRgba` is a separate step).
  *
  * Format (ported from CBobManager `PrintBob_*Core` + the `PrintPackedLine_*` walkers): the bob's `area`
- * gives the frame size and, via `area.y`, the first `lineControl` index. For each of `height` scanlines,
- * `lineControl[area.y + line]` is either {@link LINE_CONTROL_EMPTY} (fully transparent row) or
+ * gives the frame size; its scanlines are `lineControl[bob.misc + line]` (`misc` is the bob's first-line
+ * index into the contiguously-stacked line-control array — NOT `area.y`, which is the draw offset). For
+ * each of `height` scanlines that word is either {@link LINE_CONTROL_EMPTY} (fully transparent row) or
  * `[xMin (10b)][offset (22b)]`. From `packedLineData[offset]` we walk control bytes until a `0`
  * terminator: a byte with the high bit clear is a **raw run** of `count = b & 0x7F` pixels whose data
  * follows inline; high bit set is a **skip run** (transparent) of `count` pixels. Either way the cursor
- * advances `count` columns. Absolute column `c` maps to frame column `c - area.x`.
+ * advances `count` columns. Columns are in the bob's LOCAL frame space (starting at `xMin`); `area.x` is
+ * the draw offset and is NOT applied here.
  *
  * Per-type pixel width within a raw run: 8-bit/TimeMask store one index byte each; Double8Bit stores two
  * bytes each (index then a skipped byte); 1-bit masks store one 0/1 byte each, drawn as {@link BOB_MASK_INDEX}.
@@ -408,7 +419,11 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number): BobFrame {
   const packed = bmd.packedLineData;
 
   for (let line = 0; line < height; line++) {
-    const ctrlIndex = bob.area.y + line;
+    // The bob's scanlines occupy a CONTIGUOUS block of the global line-control array starting at
+    // `bob.misc` — its first-line index, NOT `area.y` (area.x/area.y are the DRAW offset, often
+    // negative, applied only when blitting; see the `misc`/`area` field docs). Using `area.y` here was
+    // the bug that decoded only the bottom few rows of each bob (a tiny fragment).
+    const ctrlIndex = bob.misc + line;
     if (ctrlIndex < 0 || ctrlIndex >= bmd.lineControl.length) continue;
     const ctrl = bmd.lineControl[ctrlIndex] as number;
     if (ctrl === LINE_CONTROL_EMPTY) continue;
@@ -417,7 +432,9 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number): BobFrame {
     let pos = ctrl & PACKED_OFFSET_MASK;
     if (pos >= packed.length) continue;
 
-    // Absolute column cursor; frame column = absoluteX - area.x.
+    // Column cursor in the bob's LOCAL frame space (0..width). `xMin` is the first non-transparent
+    // local column; runs advance from there. area.x is the draw offset, NOT subtracted here (doing so
+    // shifted content right and clipped hundreds of pixels off the right edge).
     let absX = xMin;
     const rowBase = line * width;
 
@@ -434,7 +451,7 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number): BobFrame {
           }
           const value = packed[pos] as number;
           pos += bytesPerPixel; // double-byte consumes the trailing skip byte too
-          const col = absX + i - bob.area.x;
+          const col = absX + i;
           if (col >= 0 && col < width) {
             if (isMask) {
               if (value !== 0) {
