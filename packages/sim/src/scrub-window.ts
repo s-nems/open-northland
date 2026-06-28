@@ -1,7 +1,7 @@
 import type { LoggedCommand } from './core/commands.js';
 import { Simulation } from './index.js';
+import type { WorldSnapshot } from './inspect/snapshot.js';
 import type { RunReplay } from './localize-divergence.js';
-import type { WorldSnapshot } from './snapshot.js';
 
 /**
  * `scrubWindow` — the **single-run "free scrubbing"** composition of the time-travel / replay

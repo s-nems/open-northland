@@ -5,8 +5,8 @@ import { EventBuffer } from './core/events.js';
 import { fx } from './core/fixed.js';
 import { Rng } from './core/rng.js';
 import { type Entity, World } from './ecs/world.js';
+import { type WorldSnapshot, takeSnapshot } from './inspect/snapshot.js';
 import { type TerrainGraph, type TerrainMap, buildTerrainGraph } from './nav/terrain.js';
-import { type WorldSnapshot, takeSnapshot } from './snapshot.js';
 import { SYSTEM_ORDER, type SystemContext } from './systems/index.js';
 
 export { World, defineComponent } from './ecs/world.js';
@@ -34,19 +34,19 @@ export {
   CommandQueue,
 } from './core/commands.js';
 export { EventBuffer, type SimEvent, type SimEventKind } from './core/events.js';
-export { takeSnapshot, type WorldSnapshot, type EntitySnapshot } from './snapshot.js';
+export { takeSnapshot, type WorldSnapshot, type EntitySnapshot } from './inspect/snapshot.js';
 export {
   diffSnapshots,
   type SnapshotDiff,
   type ChangedEntity,
   type ComponentChange,
-} from './snapshot-diff.js';
+} from './inspect/snapshot-diff.js';
 export {
   dumpEntity,
   traceEntity,
   type EntityDump,
   type EntityTraceStep,
-} from './entity-dump.js';
+} from './inspect/entity-dump.js';
 export {
   TerrainGraph,
   buildTerrainGraph,
@@ -61,7 +61,7 @@ export {
   type HashTraceEntry,
   type HashTraceOptions,
   type Divergence,
-} from './hashtrace.js';
+} from './inspect/hashtrace.js';
 export {
   localizeDivergence,
   type DivergenceReport,
