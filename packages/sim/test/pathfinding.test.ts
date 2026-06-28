@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { type CellId, type TerrainMap, buildTerrainGraph, findPath } from '../src/index.js';
-import type { TerrainGraph } from '../src/terrain.js';
+import {
+  type CellId,
+  type TerrainGraph,
+  type TerrainMap,
+  buildTerrainGraph,
+  findPath,
+} from '../src/index.js';
 import { testContent } from './fixtures/content.js';
 
 /**
