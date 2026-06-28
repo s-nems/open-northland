@@ -65,6 +65,22 @@ For small, hard-won *gotchas* (not reworks) see [LESSONS.md](LESSONS.md); the li
 
 ## Reflection log
 
+- **2026-06-28** (ROADMAP doc-bloat pass) — The **read-view-surfacing vein** (~`df9847b`..`24bec38`)
+  had appended a clause per landed read-view feat onto the live Phase-4 bullets until the worst —
+  **"Import full base"** — was a single **79-line** run-on (the whole bullet), with Sea/Northland (27),
+  Animals (22), CombatSystem (14), N-tribes (10) close behind. `ROADMAP.md` was 285 lines and the live
+  *current target* was drowning in landed-narrative detail — the doc's whole purpose (a legible target)
+  defeated. **Swept** the accreted "landed" read-view narrative out of all five bullets into
+  `ROADMAP-ARCHIVE.md` (a new consolidated *"read-view coverage of the extracted combat / animation /
+  vehicle / animal tables"* section preserving the full per-table inventory verbatim), leaving lean live
+  bullets that point at the archive. **`ROADMAP.md` 285→191 lines** (−33%, well under the 300 budget),
+  worst bullet 79→20. Docs-only — **golden state-hash + atomic-trace unchanged; 846 tests + check +
+  build green** (the read-view names the trimmed bullets still cite were spot-checked to exist in
+  `packages/sim/src`). No proposals added/closed. The self-verifiable data-extraction seam is confirmed
+  **exhausted** (every extracted field on those four tables has a read view); the frontier is
+  behavior-oracle-blocked. Next `/iterate` step: the only non-pixel, non-oracle-blocked Phase-4 work
+  left is data/doc, so the next *feature* step likely needs the human to unblock an oracle (a running
+  original / a captured trace) — otherwise the feature road waits and reflection/DX is the productive use.
 - **2026-06-26** (source-ratchet pass, third of the day) — Caught a **source-file ratchet** the day's two
   earlier doc-bloat passes didn't touch: `packages/sim/src/systems/readviews/combat.ts` had grown
   **139→504 lines** (3.6× past the ~300 budget) since the prior reflection — the recent run of weapon/armor

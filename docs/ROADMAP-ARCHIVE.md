@@ -1730,3 +1730,64 @@ the live item can read as a one-line summary again.
       areas) + `animation/.../animations.ini` are render/animation overlays for the render-atlas leg,
       not balance data — deferred with the render-atlas work (the only balance datum the file held was
       the construction cost, now imported).
+
+### Phase 4 — read-view coverage of the extracted combat / animation / vehicle / animal tables
+The data-extraction vein that ran from ~[df9847b] through [24bec38]: as each new field landed on the
+weapon/armor, atomic-animation, vehicle, and animal IR records, a pure one-call **sim read view**
+landed beside it so a deferred behaviour could switch on the data without re-extracting. The vein is
+**now exhausted** — every extracted field on these four tables has a sim read view; the behaviours
+they seed stay oracle-blocked (no mechanics oracle — docs/FIDELITY.md). The read views, by table:
+
+- **Weapon / armor** (`systems/readviews/combat.ts`, mod `types/weapons.ini` + `armortypes.ini`):
+  `combatDamage` (the `weapontypes`×`armortypes` net-damage join); `WeaponType.goodType` (70/105 — the
+  good that IS each weapon, the armor `goodType` twin) + `WeaponType.mainType`/`weight` (coarse class +
+  encumbrance, all 105) + `WeaponType.munitionType` (30/105 ranged-ammo class — doubles as the "is
+  ranged" marker) + `WeaponType.damageType` (5/105 catapult AoE class). Consumers:
+  `isRangedWeapon`/`rangedWeapons` + `isSiegeWeapon`/`siegeWeapons` (classify by those markers — 30
+  ranged = 25 bows + 5 catapults, siege ⊆ ranged); `weaponClassOf`/`weaponsByClass` (lossless
+  `Map<mainType, WeaponType[]>`, 7 classes); the armor twins `armorClassOf`/`armorByClass`
+  (`mainType`, 2 light/heavy classes) + `armorMaterialOf`/`armorByMaterial` (finer `materialType`,
+  4 cloth/leather/chain/plate buckets); `weaponWeightOf`/`armorWeightOf` (plain `weight` accessors —
+  armor `weight` is NOT tier-monotonic, leather tier-2 weighs 0 < cloth tier-1 weighs 1, so it is its
+  own field); `weaponsByJob`/`weaponsForJob` (the **soldier-class→weapon roster join** off each
+  weapon's `jobtype` — lossless `Map<jobType, WeaponType[]>`, 20 wielding jobs, e.g.
+  `soldier_unarmed→{fist,claw}`). Every weapon field (`mainType`/`weight`/`munitionType`/`damageType`/
+  `jobType`/`goodType`/`damage`) and every armor field (`mainType`/`materialType`/`weight`/
+  `blockingValue`/`goodType`/`typeId`) now has a read view.
+- **Atomic animations** (`systems/readviews/animations.ts`, `atomicanimations.ini`):
+  `atomicAnimationByName` (the canonical name→record resolver the `atomicDuration`/combat-cadence
+  lookups spelled out inline); `isInterruptibleAtomic` (the `interruptable` flag, 245/896 — the
+  atomic-preemption drive's seed); `atomicStartDirection` (the `startdirection` facing, 89/896);
+  `atomicEventChannelDelta` (the net signed delta an animation contributes to one
+  `event <at> <type> <value>` need-bar channel — `ATOMIC_EVENT_CHANNEL` names the four
+  REST/HUNGER/LEISURE/PIETY = types 1/2/3/4 — turning the channel-restore magnitudes the
+  needs/eat/sleep/pray/enjoy systems assert only in *prose* into a data-pinned lookup);
+  `atomicHasExtendedEvents` (does the animation carry any `eventx`? — 43/~2900 lines, all 14 carrier
+  `*_produce_*` smith animations, so it doubles as the "producing animation that self-drains the
+  worker" marker). Every `AtomicAnimation` field (`length`/`interruptible`/`startDirection`/`events`)
+  and every `AtomicEvent` field (`at`/`type`/`value`/`extended`) now has a read view. **Open:** the
+  file's graphics/coords + the render-side timing/cue `event` channels (non-need `type` ids 8..36 —
+  sounds/effect cues) are render/animation overlays deferred with the render-atlas work; the
+  event-driven NEEDS DRIVE that would replace the approximated per-tick rise/reset constants with
+  these real deltas stays oracle-blocked (no trigger-cadence oracle).
+- **Vehicles** (`systems/readviews/vehicles.ts`, `vehicletypes.ini`):
+  `shipVehicles`/`isShipVehicle`/`largestShipCapacity` (the `vehicle_ship` rows by the data alone,
+  2/6); `tribeShipsUnlocked` (ships unlocked via the `jobEnablesVehicle` gate); `VehicleType.cargoGoods`/
+  `vehicleMayCarry` (each hold's `logicgood` allow-list); `vehicleSizeOf` (`logicSize` footprint class
+  `{0:cart,1:catapult,2:ship}` — a third independent ship signal converging with
+  `passengerSlots`/`logiccommander`). Every vehicle field
+  (`stockSlots`/`passengerSlots`/`cargoGoods`/`logicSize`) now has a read view.
+- **Landscape placement layer** (`systems/readviews/landscape.ts`, `landscapetypes.ini`): the full
+  `allowedon{land,water,everything}` triple — `landLayerLandscape`/`isLandLayerType` (86 land types),
+  `waterLayerLandscape`/`isWaterLayerType` (the 3 wall/gate structures spanning water),
+  `universalLayerLandscape`/`isUniversalLayerType` (the single layer-agnostic `void`), read straight off
+  the genuinely-extracted ints (`walkable`/`buildable` are schema defaults, not these flags);
+  land(86)+universal(1) partition the 87 rows exactly. This is the placement-side seed — distinct from
+  water-VALENCY terrain (which cells are water — map-decode-blocked, the water surface lives in the
+  triangle/terrain grid, not a `landscapetypes.ini` flag).
+- **Animals** (`systems/readviews/`, `animaltypes.ini`): `herdParams`/`locomotionOf`
+  (`movespeed`/`runspeed`); `animalHitpoints` + `animalBabyHitpoints` (the `hitpoints_adult`/
+  `hitpoints_baby` life-stage pools, e.g. wolf baby 500 vs adult 1000); `isWarrantableAnimal`
+  (livestock-ownership, 20/35) + `ignoresHousesAnimal` (pathing-through-buildings, 1/35) — which
+  **closes the animal-record consumer coverage: every extracted `animaltypes.ini` field now has a sim
+  read view** (the behaviours they seed stay deferred).
