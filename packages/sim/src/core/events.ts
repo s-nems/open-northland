@@ -1,4 +1,4 @@
-import type { Entity } from './ecs/world.js';
+import type { Entity } from '../ecs/world.js';
 
 /**
  * One-shot things that happened during a tick (a building appeared, a settler died, an atomic

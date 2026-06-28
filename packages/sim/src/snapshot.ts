@@ -1,5 +1,5 @@
+import type { SimEvent } from './core/events.js';
 import type { World } from './ecs/world.js';
-import type { SimEvent } from './events.js';
 
 /**
  * A read-only snapshot of the world at a tick boundary — the seam `render`/audio read instead of

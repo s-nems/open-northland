@@ -1,4 +1,4 @@
-import type { LoggedCommand } from './commands.js';
+import type { LoggedCommand } from './core/commands.js';
 import { Simulation } from './index.js';
 import type { RunReplay } from './localize-divergence.js';
 import type { WorldSnapshot } from './snapshot.js';

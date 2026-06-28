@@ -13,7 +13,7 @@
  * order. No floats touch the search: all costs are {@link Fixed}. `start`/`goal` must be walkable —
  * an unwalkable endpoint yields `null` (no route), not a throw, since it is a recoverable query.
  */
-import { type Fixed, fx } from './fixed.js';
+import { type Fixed, fx } from './core/fixed.js';
 import { type CellId, type TerrainGraph, cellManhattanDistance } from './terrain.js';
 
 /** A* per-cell bookkeeping. `g` = best known cost from start; `f` = g + heuristic; `h` = heuristic. */

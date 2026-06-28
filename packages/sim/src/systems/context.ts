@@ -1,8 +1,8 @@
 import type { ContentSet } from '@vinland/data';
-import type { CommandQueue } from '../commands.js';
+import type { CommandQueue } from '../core/commands.js';
+import type { EventBuffer } from '../core/events.js';
+import type { Rng } from '../core/rng.js';
 import type { World } from '../ecs/world.js';
-import type { EventBuffer } from '../events.js';
-import type { Rng } from '../rng.js';
 import type { TerrainGraph } from '../terrain.js';
 
 /**
