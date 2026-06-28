@@ -837,3 +837,8 @@ the next iteration inherits it.
   against the actual boundary's algorithm on a REAL `step()`-driven value (with the non-trivial shapes
   present — a building's `Stockpile` Map), not a hand-built fixture that may omit the very shape that
   would break it. (sim/test)
+- [c0d1263] A "changed content changes the run" assertion silently no-ops if the tweaked param's
+  mechanic never engages in the scenario — halving a sawmill recipe's `ticks` left the hash identical
+  because no wood was ever delivered, so the recipe never ran. Pick a param reachable by the commands
+  that actually fire (e.g. a placed building's `stock[].initial`, read at placeBuilding time) and
+  PROBE the state to confirm the effect, don't assume a deep production chain engages. (sim/test)
