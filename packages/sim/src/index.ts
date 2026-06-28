@@ -22,7 +22,7 @@ export {
   type ScenarioOptions,
   type ScenarioResult,
   type RunOptions,
-} from './scenario.js';
+} from './harness/scenario.js';
 export type { Brand } from './core/brand.js';
 export { assertNever } from './core/brand.js';
 export {
@@ -73,7 +73,7 @@ export {
   type RebaseInputs,
   type RebaseResult,
 } from './replay/rebase-content.js';
-export { seedAnimalHerds, type SeedAnimalsOptions } from './populate.js';
+export { seedAnimalHerds, type SeedAnimalsOptions } from './harness/populate.js';
 export {
   checkInvariants,
   CORE_INVARIANTS,
@@ -85,10 +85,10 @@ export {
   enjoymentInRange,
   buildingSane,
   populationWithinHousing,
-} from './invariants.js';
+} from './harness/invariants.js';
 
 /** Run the core invariants against the current world (dev/test convenience). */
-import { type Invariant as _Invariant, checkInvariants as _checkInvariants } from './invariants.js';
+import { type Invariant as _Invariant, checkInvariants as _checkInvariants } from './harness/invariants.js';
 
 export interface SimOptions {
   seed: number;
