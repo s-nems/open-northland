@@ -19,6 +19,13 @@ const mapsRoot = resolve(here, '../../content/maps');
 // traversal is rejected and only `.png` / `.atlas.json` are served, so `/bobs/` can only reach a decoded
 // atlas, never an arbitrary file.
 const bobsRoot = resolve(here, '../../content/Data/engine2d/bin/bobs');
+// Decoded ground textures (`text_NNN.png`, 256×256 RGBA) the `.pcx`→PNG pipeline stage emits — the
+// `?terrain` real-ground render samples them (see real-terrain.ts). Same stance as `/bobs`: gitignored,
+// outside the vite root, bridged in at `/textures/<name>.png` with traversal rejected + `.png` only.
+const texturesRoot = resolve(here, '../../content/Data/engine2d/bin/textures');
+// The validated IR (`content/ir.json`) carries the approximated `terrainPatterns` typeId→ground table
+// the `?terrain` binding reads; bridged in at `/ir.json` (the one file, not the tree).
+const irFile = resolve(here, '../../content/ir.json');
 
 function serveContentMaps(): Plugin {
   return {
@@ -58,8 +65,42 @@ function serveContentBobs(): Plugin {
   };
 }
 
+function serveContentTextures(): Plugin {
+  return {
+    name: 'vinland-serve-content-textures',
+    configureServer(server) {
+      server.middlewares.use('/textures', (req, res, next) => {
+        const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';
+        const file = normalize(resolve(texturesRoot, rel));
+        if (!file.startsWith(texturesRoot + sep) || !file.endsWith('.png') || !existsSync(file)) {
+          next();
+          return;
+        }
+        res.setHeader('Content-Type', 'image/png');
+        createReadStream(file).pipe(res);
+      });
+    },
+  };
+}
+
+function serveContentIr(): Plugin {
+  return {
+    name: 'vinland-serve-content-ir',
+    configureServer(server) {
+      server.middlewares.use('/ir.json', (_req, res, next) => {
+        if (!existsSync(irFile)) {
+          next();
+          return;
+        }
+        res.setHeader('Content-Type', 'application/json');
+        createReadStream(irFile).pipe(res);
+      });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [serveContentMaps(), serveContentBobs()],
+  plugins: [serveContentMaps(), serveContentBobs(), serveContentTextures(), serveContentIr()],
   server: { port: 5173, open: false },
   build: { target: 'es2022', outDir: 'dist' },
 });

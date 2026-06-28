@@ -14,6 +14,7 @@ import {
 import { FixedTimestep } from '@vinland/sim';
 import { cameraFor, floatParam } from './camera.js';
 import { loadHumanSpriteSheet } from './real-sprites.js';
+import { loadRealTerrain } from './real-terrain.js';
 import { renderShot } from './shot.js';
 import { loadTerrainMap, runSlice, sliceTerrain } from './vertical-slice.js';
 
@@ -46,7 +47,7 @@ async function main(): Promise<void> {
   const app = await createPixiApp(canvas, CANVAS_W, CANVAS_H);
   const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
-  const terrain = sliceTerrain(loaded ?? undefined);
+  const terrainGrid = sliceTerrain(loaded ?? undefined);
   // `?atlas` binds a sprite atlas so sprites draw as textured atlas frames; absent, they draw as
   // placeholder geometry. `?atlas=real` binds the REAL decoded human-body atlas (settlers only; gitignored
   // content over the /bobs server — see real-sprites.ts); any other `?atlas` value binds the free synthetic
@@ -61,6 +62,10 @@ async function main(): Promise<void> {
       bindings: SYNTHETIC_BINDINGS,
     };
   }
+  // `?terrain` draws the ground from REAL decoded `text_*.pcx` textures (the approximated typeId→pattern
+  // map) instead of the flat 4-colour tint; gitignored content over the /ir.json + /textures server
+  // (see real-terrain.ts). Absent, terrain stays the reproducible flat-tint default.
+  const terrain = params.has('terrain') ? await loadRealTerrain() : undefined;
   // `?zoom=N` magnifies + re-centres on the sprites (the same knob the shot uses) so a decoded bob is
   // big enough to inspect in the live view; absent, scale 1.
   const zoom = floatParam(params, 'zoom', 1);
@@ -84,8 +89,8 @@ async function main(): Promise<void> {
     lastMs = nowMs;
     timestep.advance(elapsed * speed, () => sim.step());
     const snap = sim.snapshot();
-    const scene = buildScene(snap, terrain);
-    renderScene(app, scene, cameraFor(scene, zoom, CANVAS_W, CANVAS_H), sheet, snap.tick);
+    const scene = buildScene(snap, terrainGrid);
+    renderScene(app, scene, cameraFor(scene, zoom, CANVAS_W, CANVAS_H), sheet, snap.tick, terrain);
     // HUD overlay on top of the scene (renderScene cleared the stage; this adds to it).
     renderHud(app, placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', screen));
     requestAnimationFrame(frame);

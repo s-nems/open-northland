@@ -3,6 +3,8 @@ import {
   Assets,
   Container,
   Graphics,
+  Mesh,
+  MeshGeometry,
   Rectangle,
   Sprite,
   Text,
@@ -19,6 +21,7 @@ import {
   type SpriteKind,
   resolveSpriteBobId,
 } from './sprites.js';
+import { type CellTexture, DIAMOND_INDICES, diamondCorners, rectUVs } from './terrain.js';
 
 /**
  * The GPU half of the render line — the part an agent CANNOT self-verify (pixels need a human eye).
@@ -114,6 +117,22 @@ export interface SpriteSheet {
 }
 
 /**
+ * The loaded textured-terrain inputs (the GPU twin of the pure `terrain.ts` geometry): the decoded
+ * ground-texture pages keyed by {@link CellTexture.pageKey}, plus the approximated typeId→{@link
+ * CellTexture} lookup the app built from the `TerrainPattern` IR. Optional input to {@link renderScene}:
+ * when present, terrain cells draw as textured diamonds sampling their page; a cell whose typeId has no
+ * {@link CellTexture}, or whose page failed to load, falls back to a flat diamond (the
+ * {@link CellTexture.fallbackColour} debug colour, else the default). When absent, every tile draws the
+ * legacy flat {@link TILE_COLOURS} diamond — the reproducible default the committed shot depends on.
+ */
+export interface TerrainTextureSet {
+  /** Decoded `text_NNN` ground pages as GPU sources, keyed by {@link CellTexture.pageKey}. */
+  readonly pages: ReadonlyMap<string, TextureSource>;
+  /** The approximated per-landscape-typeId ground binding, or `undefined` when a typeId has no representative. */
+  cellFor(typeId: number): CellTexture | undefined;
+}
+
+/**
  * Initialise a Pixi {@link Application} bound to an existing canvas. Separated from drawing so the
  * (async) GPU init runs once; `renderScene` is then a cheap synchronous redraw. WebGL preference +
  * antialias-off are deliberate: they cut the cross-machine pixel variance that would otherwise make
@@ -154,19 +173,88 @@ export function renderScene(
   camera: Camera,
   sheet?: SpriteSheet,
   tick = 0,
+  terrain?: TerrainTextureSet,
 ): void {
   app.stage.removeChildren();
   const layer = new Container();
   // Children are placed at their raw projected world position; the camera (pan + zoom) is the layer's
   // own transform, so `screen = world*scale + offset`. (At scale 1 this is identical to adding the
   // offset per item — the previous behaviour — so existing un-zoomed shots are unchanged.)
-  for (const item of scene) {
-    layer.addChild(drawItem(item, item.x, item.y, tick, sheet));
+  if (terrain !== undefined) {
+    // The ground is one flat plane behind every sprite (`buildScene` already sinks tile depths below
+    // all sprites), so draw the whole textured terrain FIRST as a few batched meshes — far cheaper than
+    // one Graphics diamond per cell — then the non-tile items on top in their depth order.
+    layer.addChild(buildTerrainLayer(scene, terrain));
+    for (const item of scene) {
+      if (item.kind === 'tile') continue;
+      layer.addChild(drawItem(item, item.x, item.y, tick, sheet));
+    }
+  } else {
+    for (const item of scene) {
+      layer.addChild(drawItem(item, item.x, item.y, tick, sheet));
+    }
   }
   layer.scale.set(camera.scale ?? 1);
   layer.position.set(camera.offsetX, camera.offsetY);
   app.stage.addChild(layer);
   app.render();
+}
+
+/**
+ * Build the textured-terrain layer: one batched {@link Mesh} per texture page (all cells using that page
+ * concatenated into a single positions/uvs/indices buffer) plus one {@link Graphics} holding every
+ * fallback diamond (cells with no {@link CellTexture} or an unloaded page). Batching keeps the draw-call
+ * count at ~one-per-page regardless of map size — the lever that makes per-cell ground viable on the
+ * large real grids (the flat-diamond path allocates one Graphics *per cell*, which this supersedes). The
+ * vertex/UV math is the pure, unit-tested `terrain.ts` half; this only binds it to the GPU.
+ */
+function buildTerrainLayer(scene: readonly DrawItem[], terrain: TerrainTextureSet): Container {
+  const container = new Container();
+  const byPage = new Map<
+    string,
+    { positions: number[]; uvs: number[]; indices: number[]; source: TextureSource }
+  >();
+  const fallback = new Graphics();
+  let fallbackUsed = false;
+  for (const item of scene) {
+    if (item.kind !== 'tile') continue;
+    const cell = terrain.cellFor(item.typeId ?? -1);
+    const source = cell !== undefined ? terrain.pages.get(cell.pageKey) : undefined;
+    if (cell === undefined || source === undefined) {
+      fallbackDiamond(fallback, item.x, item.y, cell?.fallbackColour ?? DEFAULT_TILE_COLOUR);
+      fallbackUsed = true;
+      continue;
+    }
+    let batch = byPage.get(cell.pageKey);
+    if (batch === undefined) {
+      batch = { positions: [], uvs: [], indices: [], source };
+      byPage.set(cell.pageKey, batch);
+    }
+    const base = batch.positions.length / 2;
+    batch.positions.push(...diamondCorners(item.x, item.y));
+    batch.uvs.push(...rectUVs(cell.rect, source.width, source.height));
+    for (const idx of DIAMOND_INDICES) batch.indices.push(base + idx);
+  }
+  if (fallbackUsed) container.addChild(fallback);
+  for (const batch of byPage.values()) {
+    const geometry = new MeshGeometry({
+      positions: new Float32Array(batch.positions),
+      uvs: new Float32Array(batch.uvs),
+      indices: new Uint32Array(batch.indices),
+    });
+    container.addChild(new Mesh({ geometry, texture: new Texture({ source: batch.source }) }));
+  }
+  return container;
+}
+
+/** Trace one flat-colour ground diamond into a shared {@link Graphics} (the textured-terrain fallback for an unbound cell). */
+function fallbackDiamond(g: Graphics, sx: number, sy: number, colour: number): void {
+  g.moveTo(sx, sy - TILE_HALF_H)
+    .lineTo(sx + TILE_HALF_W, sy)
+    .lineTo(sx, sy + TILE_HALF_H)
+    .lineTo(sx - TILE_HALF_W, sy)
+    .closePath()
+    .fill({ color: colour });
 }
 
 /**

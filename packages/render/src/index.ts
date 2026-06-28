@@ -36,8 +36,17 @@ export {
   type Camera,
   type SpriteSheet,
   type SpriteLayer,
+  type TerrainTextureSet,
   type HudStyle,
 } from './pixi-renderer.js';
+export {
+  DIAMOND_INDICES,
+  diamondCorners,
+  rectUVs,
+  patternSrcRect,
+  type SrcRect,
+  type CellTexture,
+} from './terrain.js';
 export {
   buildHud,
   layoutHud,
