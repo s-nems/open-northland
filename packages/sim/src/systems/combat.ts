@@ -9,6 +9,7 @@ import {
   PathRequest,
   Position,
   Settler,
+  Weapon,
 } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import { fx } from '../fixed.js';
@@ -99,7 +100,10 @@ export const combatSystem: System = (world, ctx) => {
       continue;
     }
 
-    const weapon = attackerWeapon(ctx, attacker.tribe, attacker.jobType);
+    // An explicitly-equipped combatant wields its worn `Weapon` (resolved vs its own tribe); a bare one
+    // falls back to its class's default `(tribe, jobType)` weapon.
+    const wornWeaponTypeId = world.tryGet(e, Weapon)?.weaponTypeId;
+    const weapon = attackerWeapon(ctx, attacker.tribe, attacker.jobType, wornWeaponTypeId);
     if (weapon === null) continue; // no resolvable weapon — this combatant can't attack (approximated)
 
     const here = entityCell(world, terrain, e);
@@ -290,8 +294,14 @@ function mayTarget(
  * hit — only a real concern when the herd scatter stacks entities (entities share tiles freely). The
  * band is clamped sane (`1 ≤ minRange ≤ maxRange`) so a malformed weapon never reads as never-able-to-hit.
  *
- * Two resolution paths, mirroring how the original keys a weapon:
+ * Three resolution paths, mirroring how the original keys a weapon (the worn override takes precedence):
  *
+ *  - **An explicitly-equipped combatant** (`wornWeaponTypeId` set — a settler carrying a {@link Weapon}) →
+ *    the {@link WeaponType} matching its **own tribe + that `typeId`**, overriding the `(tribe, jobType)`
+ *    default below. This is what lets one settler of a soldier-class hold a *specific* weapon from the
+ *    several its class may wield (`weaponsForJob`); a worn id that resolves to no record leaves it unarmed
+ *    for the tick (rather than silently falling back to the default), the "the data doesn't define it →
+ *    it does nothing" stance {@link Armor} takes for an out-of-table class.
  *  - **A settler with a `jobType`** (a civilization soldier/hunter, or a bound combatant) → the
  *    {@link WeaponType} whose `tribeType` matches the attacker's tribe **and** whose `jobType` matches
  *    the attacker's job, exactly as the original binds a weapon to a *job*.
@@ -306,13 +316,22 @@ function mayTarget(
  * Determinism: a pure scan of `content.weapons` returning the FIRST match in source-array order (a
  * `(tribeType, jobType)` pair — and an animal tribe's weapon set — may have more than one row; source
  * order is the stable choice, the same determinism stance the extractor keeps and {@link combatDamage}
- * documents — no Map keyed on a non-unique identity).
+ * documents — no Map keyed on a non-unique identity). The worn-weapon path keys on `(tribe, typeId)`,
+ * which can still recur across animal weapons, so it too takes the first source-order match.
  */
 function attackerWeapon(
   ctx: SystemContext,
   tribe: number,
   jobType: number | null,
+  wornWeaponTypeId?: number,
 ): { minRange: number; maxRange: number; weapon: WeaponType } | null {
+  // An equipped combatant wields its WORN weapon (its own tribe + that typeId), overriding the default
+  // class weapon. A worn id with no matching record leaves it unarmed for the tick (the data-doesn't-define
+  // -it → does-nothing stance) rather than falling through to the default.
+  if (wornWeaponTypeId !== undefined) {
+    const worn = ctx.content.weapons.find((w) => w.tribeType === tribe && w.typeId === wornWeaponTypeId);
+    return worn === undefined ? null : withReach(worn);
+  }
   // A JOBLESS combatant carries a weapon only if it is an animal tribe (whose weapon keys by tribe, not
   // job — `spawnAnimalHerd` places jobless animals); a jobless civilian is unarmed. Resolved once, since
   // it is invariant across the weapon scan below.
@@ -323,9 +342,15 @@ function attackerWeapon(
     (w) => w.tribeType === tribe && (jobType === null || w.jobType === jobType),
   );
   if (weapon === undefined) return null; // unarmed — no resolvable weapon for this combatant
-  const maxRange = Math.max(1, weapon.maxRange); // a weapon always reaches at least its own cell
-  // A ranged weapon (the hunter's bow) can't fire below its `minRange`; floor at 1 and never let the
-  // near reach exceed the far reach, so a malformed band can't read as "can never hit".
+  return withReach(weapon);
+}
+
+/** Resolve a {@link WeaponType}'s reach band, clamped sane (`1 ≤ minRange ≤ maxRange`): `maxRange` floored
+ *  at 1 (a weapon always reaches at least its own cell), `minRange` floored at 1 and never exceeding the
+ *  far reach, so a malformed band can't read as "can never hit". A ranged weapon (the hunter's bow) keeps
+ *  its `minRange > 1` near floor — it can't fire on an adjacent target. */
+function withReach(weapon: WeaponType): { minRange: number; maxRange: number; weapon: WeaponType } {
+  const maxRange = Math.max(1, weapon.maxRange);
   const minRange = Math.min(Math.max(1, weapon.minRange), maxRange);
   return { minRange, maxRange, weapon };
 }

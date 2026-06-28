@@ -99,11 +99,15 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       the `combatDamage` `weapontypes`×`armortypes` net-damage join + the full targeting→`attack`(atomic
       81)→hit→death loop (`combatSystem`/`resolveHit`/`Health` drain/`cleanupSystem`), and a combatant's
       worn `Armor{armorClass}` resolving the per-class join (`spawnSettler{armorClass}`). Faithful
-      (net-damage param + atomic id 81). The data-side **soldier-class→weapon roster join** now lands
-      (`weaponsByJob`/`weaponsForJob` off each weapon's `jobtype` — see the "Import full base" item); only
-      the *equip behavior* (a settler of that job actually holding the weapon) stays oracle-blocked. **Open
-      (oracle-blocked, deferred):** walk-into-melee advance, swing cadence, the equip drive +
-      soldier-class→armor binding (docs/FIDELITY.md). Inert on the golden.
+      (net-damage param + atomic id 81). The data-side **soldier-class→weapon roster join** lands
+      (`weaponsByJob`/`weaponsForJob` off each weapon's `jobtype` — see the "Import full base" item), and a
+      combatant can now **wield a *specific* worn weapon** (`spawnSettler{weaponTypeId}` → a separate-optional
+      `Weapon{weaponTypeId}` the CombatSystem attacks through, overriding the `(tribe,job)` default — the
+      armor-stamp twin; docs/FIDELITY.md "Settler-side Weapon stamping"); only the equip *behavior* (a settler
+      actually acquiring/carrying the weapon-good, and *which* of its class's roster it picks) stays
+      oracle-blocked. **Open (oracle-blocked, deferred):** walk-into-melee advance, swing cadence, the
+      weapon-good acquire/carry drive + the soldier-class→weapon/armor loadout binding (docs/FIDELITY.md).
+      Inert on the golden.
 - [x] **N data-defined tribes** (viking/frank/saracen/byzantine/egypt), asymmetry expressed through each
       tribe's atomic bindings + `allow*`/`needfor*` graph — never hardcode "two". **Substance-complete**
       (→ [archive](ROADMAP-ARCHIVE.md)): all 41 `[tribetype]`s extracted, every per-tribe rule resolved off
