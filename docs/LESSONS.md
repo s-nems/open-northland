@@ -818,3 +818,12 @@ the next iteration inherits it.
   is the useful signal "entities match; the split is in RNG/tick", and the composer must return the
   divergence anyway (not treat empty-diff as no-divergence). The two debugging oracles have different
   scopes; state which one you're keying on. (sim/replay)
+- [6dfcddb] Identifying "the entity spawned at tick T" in a scrub-window test by "new since the window
+  START" is wrong when the window contains MORE THAN ONE structural event: the `scrubWindow` trace test
+  meant to follow the tick-6 carpenter but keyed on `!presentAtTick4`, which ALSO matched the sawmill
+  PLACED at tick 5 — and `Array.find` returned that first new id, so the trace asserted "alive at 5"
+  and failed. Key a spawned-entity identity on the EXACT life-edge (absent at T-1, present at T) AND the
+  discriminating component (`'Settler' in components`), not on a coarse "new since the window opened" —
+  buildings, settlers, and other entities all appear as `added` and a window-start baseline lumps them.
+  The failure is loud (the trace's alive-flags shift), but the fix is to make the test's selector as
+  specific as the entity it names. (sim/test)
