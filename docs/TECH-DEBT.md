@@ -99,7 +99,8 @@ For small, hard-won *gotchas* (not reworks) see [LESSONS.md](LESSONS.md); the li
   `/iterate` roadmap step: the Phase-4 **Sea/Northland** boat-movement leg is oracle-blocked (no
   embark/disembark atomic in the readable `.ini`) and water-valency is map-decode-blocked; the live
   self-verifiable candidate is a further **data-overlay slice** of the Import-content item, else flag the
-  two human-gated render items (Phase-1 oracle pixel-diffs / Phase-2 real-atlas bind) for human eyes.
+  three human-gated render items (Phase-1 oracle pixel-diffs / Phase-2 real-atlas bind / Phase-2 real
+  terrain-tile render) for human eyes.
 - **2026-06-26** (doc-bloat pass) — Ratchet caught **`docs/ROADMAP.md` 333→410 lines** (past the ~300
   executor-read budget) since the morning's structure reflection (`1e20840`, which split `readviews.ts`
   but didn't touch the roadmap): the growth was completed-work *narrative* — Phase 3's five landed items
