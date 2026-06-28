@@ -224,9 +224,16 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       signed delta an animation contributes to one `event <at> <type> <value>` need-bar channel
       (`ATOMIC_EVENT_CHANNEL` names the four: `REST`/`HUNGER`/`LEISURE`/`PIETY` = types 1/2/3/4), summing
       the per-tick `value`s straight off the extracted `events` array. This turns the channel-restore
-      magnitudes the needs/eat/sleep/pray/enjoy systems assert only in *prose* into a data-pinned lookup,
-      and **closes the atomic-animation read-view coverage — every extracted `AtomicAnimation` field
-      (`length`/`interruptible`/`startDirection`/`events`) now has a sim read view**. **Open:** the file's
+      magnitudes the needs/eat/sleep/pray/enjoy systems assert only in *prose* into a data-pinned lookup.
+      That summed delta collapses both event streams, so the **last per-event field** `AtomicEvent.extended`
+      (the `eventx` vs `event` source key) now gets its own read side too (`atomicHasExtendedEvents` — does
+      the animation carry any `eventx`?): in the real data the `eventx` stream brackets a *production* run
+      and carries the worker's own need-drains while labouring (only 43/~2900 event lines, **all 14 carriers
+      `*_produce_*` smith animations**), so it doubles as the data-pinned "producing animation that
+      self-drains the worker" marker, the deferred production/needs drive's seed. This **closes the
+      atomic-animation read-view coverage to the per-event level — every extracted `AtomicAnimation` field
+      (`length`/`interruptible`/`startDirection`/`events`) AND every `AtomicEvent` field
+      (`at`/`type`/`value`/`extended`) now has a sim read view**. **Open:** the file's
       graphics/coords + `animations.ini`'s render-side timing/cue `event` channels (the non-need `type`
       ids 8..36 — sounds/effect cues) are render/animation overlays deferred with the render-atlas work;
       and the event-driven NEEDS DRIVE that would replace the approximated per-tick rise/reset constants

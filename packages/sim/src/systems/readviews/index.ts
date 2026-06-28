@@ -93,6 +93,7 @@ export {
   ATOMIC_EVENT_CHANNEL,
   atomicAnimationByName,
   atomicEventChannelDelta,
+  atomicHasExtendedEvents,
   atomicStartDirection,
   isInterruptibleAtomic,
 } from './animations.js';

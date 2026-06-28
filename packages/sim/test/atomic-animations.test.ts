@@ -4,6 +4,7 @@ import {
   ATOMIC_EVENT_CHANNEL,
   atomicAnimationByName,
   atomicEventChannelDelta,
+  atomicHasExtendedEvents,
   atomicStartDirection,
   isInterruptibleAtomic,
 } from '../src/systems/index.js';
@@ -12,15 +13,18 @@ import {
  * The atomic-animation read views — `atomicAnimationByName` (the canonical name→record resolver the
  * `atomicDuration`/combat-cadence lookups spell out inline), `isInterruptibleAtomic`,
  * `atomicStartDirection` (the two `atomicanimations.ini` scalars no sim system reads yet), and
- * `atomicEventChannelDelta` (the net per-channel delta over the `events` array — the last extracted
- * `AtomicAnimation` field without a read view). These are genuinely extracted (245/896 animations carry
- * `interruptible=true`, 89/896 a `startDirection`, 695/896 ≥1 `event` in the real IR), so the fixture
- * sets non-default values on a couple of entries to exercise a real read, not just the schema defaults.
+ * `atomicEventChannelDelta` (the net per-channel delta over the `events` array), and
+ * `atomicHasExtendedEvents` (whether the animation carries any `eventx` line — the last unread
+ * per-event `AtomicEvent.extended` field). These are genuinely extracted (245/896 animations carry
+ * `interruptible=true`, 89/896 a `startDirection`, 695/896 ≥1 `event`, and 43 of the ~2900 event lines
+ * are `eventx` clustering on `*_produce_*` in the real IR), so the fixture sets non-default values on a
+ * couple of entries to exercise a real read, not just the schema defaults.
  *
  * The fixture mirrors the real shape: an uninterruptible directional swing (`chop`, facing pinned), an
- * interruptible idle (no facing), a plain entry that pins neither (the schema defaults), and an
- * `eat`/`sleep` carrying real-shaped channel `event`s (hunger restore on channel 2, multi-tick rest
- * restore on channel 1, plus a value-less cue event that must contribute 0).
+ * interruptible idle (no facing), a plain entry that pins neither (the schema defaults), an `eat`/`sleep`
+ * carrying real-shaped channel `event`s (hunger restore on channel 2, multi-tick rest restore on channel
+ * 1, plus a value-less cue event that must contribute 0), and a `produce` mixing plain `event` yields
+ * with `eventx` worker-drain/bracket lines (the real `*_produce_*` two-stream shape).
  */
 function animationContent(): ContentSet {
   return parseContentSet({
@@ -54,6 +58,21 @@ function animationContent(): ContentSet {
           { at: 20, type: ATOMIC_EVENT_CHANNEL.REST, value: 100 },
           { at: 40, type: ATOMIC_EVENT_CHANNEL.REST, value: 100 },
           { at: 60, type: ATOMIC_EVENT_CHANNEL.REST, value: 100 },
+        ],
+      },
+      // A produce: the real `*_produce_*` two-stream shape — plain `event` good yields alongside
+      // `eventx` lines (the worker's own need-drains while labouring + the production start/end
+      // brackets). Exercises `atomicHasExtendedEvents` and confirms the channel-delta sum spans both
+      // streams (it sums by `type`, not by `extended`).
+      {
+        id: 'viking_produce',
+        name: 'viking_produce',
+        length: 100,
+        events: [
+          { at: 0, type: 22, value: 0, extended: true }, // production-start bracket (eventx)
+          { at: 50, type: ATOMIC_EVENT_CHANNEL.HUNGER, value: -100, extended: true }, // worker self-drain (eventx)
+          { at: 95, type: ATOMIC_EVENT_CHANNEL.HUNGER, value: 50 }, // a plain `event` on the same channel
+          { at: 99, type: 23, value: 0, extended: true }, // production-end bracket (eventx)
         ],
       },
     ],
@@ -147,5 +166,29 @@ describe('atomicEventChannelDelta', () => {
     expect(atomicEventChannelDelta(content, 'viking_sleep', ATOMIC_EVENT_CHANNEL.REST)).toBe(
       atomicEventChannelDelta(content, 'viking_sleep', ATOMIC_EVENT_CHANNEL.REST),
     );
+  });
+
+  it('sums across BOTH event streams on a channel (eventx self-drain + plain event)', () => {
+    const content = animationContent();
+    // viking_produce: hunger gets an eventx -100 and a plain event +50 → net -50 (the sum spans streams).
+    expect(atomicEventChannelDelta(content, 'viking_produce', ATOMIC_EVENT_CHANNEL.HUNGER)).toBe(-50);
+  });
+});
+
+describe('atomicHasExtendedEvents', () => {
+  it('is true for an animation carrying any eventx line (the *_produce_* two-stream shape)', () => {
+    expect(atomicHasExtendedEvents(animationContent(), 'viking_produce')).toBe(true);
+  });
+
+  it('is false for an animation whose events are all plain `event`s', () => {
+    const content = animationContent();
+    expect(atomicHasExtendedEvents(content, 'viking_eat')).toBe(false);
+    expect(atomicHasExtendedEvents(content, 'viking_sleep')).toBe(false);
+  });
+
+  it('is false for an animation with no events and for an unknown name', () => {
+    const content = animationContent();
+    expect(atomicHasExtendedEvents(content, 'viking_walk')).toBe(false); // no events at all
+    expect(atomicHasExtendedEvents(content, 'nonexistent_anim')).toBe(false); // unknown → safe default
   });
 });
