@@ -71,8 +71,12 @@ function valuesEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-/** Compute the per-component delta for an entity present in both snapshots (empty when nothing changed). */
-function diffComponents(
+/**
+ * Compute the per-component delta for an entity present in both snapshots (empty when nothing changed).
+ * Exported so `entity-dump.ts`'s `traceEntity` reuses the EXACT comparison — a single-entity per-tick
+ * delta is then guaranteed to equal that entity's slice of the full two-tick diff (they can't drift).
+ */
+export function diffComponents(
   before: Readonly<Record<string, unknown>>,
   after: Readonly<Record<string, unknown>>,
 ): ComponentChange[] {

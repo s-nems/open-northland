@@ -1,4 +1,4 @@
-import type { ComponentChange } from './snapshot-diff.js';
+import { type ComponentChange, diffComponents } from './snapshot-diff.js';
 import type { EntitySnapshot, WorldSnapshot } from './snapshot.js';
 
 /**
@@ -82,29 +82,6 @@ export function dumpEntity(snapshot: WorldSnapshot, id: number): EntityDump | nu
   const entity = findEntity(snapshot, id);
   if (entity === null) return null;
   return { tick: snapshot.tick, id, components: entity.components };
-}
-
-/** Canonical equality over two already-sorted plain values (mirrors `snapshot-diff`/`hashState`). */
-function valuesEqual(a: unknown, b: unknown): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
-/** Per-component delta for one entity between two alive states (sorted-name order; empty when equal). */
-function diffComponents(
-  before: Readonly<Record<string, unknown>>,
-  after: Readonly<Record<string, unknown>>,
-): ComponentChange[] {
-  const names = new Set<string>([...Object.keys(before), ...Object.keys(after)]);
-  const changes: ComponentChange[] = [];
-  for (const name of [...names].sort()) {
-    const inA = Object.hasOwn(before, name);
-    const inB = Object.hasOwn(after, name);
-    if (inA && !inB) changes.push({ name, kind: 'removed', before: before[name] });
-    else if (!inA && inB) changes.push({ name, kind: 'added', after: after[name] });
-    else if (!valuesEqual(before[name], after[name]))
-      changes.push({ name, kind: 'changed', before: before[name], after: after[name] });
-  }
-  return changes;
 }
 
 /**
