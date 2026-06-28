@@ -12,6 +12,7 @@ import {
   Settler,
   Stockpile,
   Vehicle,
+  Weapon,
 } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import { ONE, fx } from '../fixed.js';
@@ -225,6 +226,13 @@ function spawnSettler(
   // unarmored, the separate-optional-component pattern that keeps the golden hash untouched.
   if (command.armorClass !== undefined && command.armorClass > 0) {
     world.add(e, Armor, { armorClass: command.armorClass });
+  }
+  // A combatant equipped with a specific weapon carries a `Weapon{weaponTypeId}` (the same separate-optional
+  // stamp): the CombatSystem then resolves its attack through THAT weapon (vs the settler's own tribe)
+  // instead of the default `(tribe, jobType)` first-match. Only a positive id is stamped; absent / non-positive
+  // `weaponTypeId` (the default) leaves the settler with its class's default weapon and the hash untouched.
+  if (command.weaponTypeId !== undefined && command.weaponTypeId > 0) {
+    world.add(e, Weapon, { weaponTypeId: command.weaponTypeId });
   }
   ctx.events.emit({ kind: 'settlerBorn', entity: e });
 }

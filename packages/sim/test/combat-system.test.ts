@@ -9,6 +9,7 @@ import {
   PathRequest,
   Position,
   Settler,
+  Weapon,
 } from '../src/components/index.js';
 import type { Entity } from '../src/ecs/world.js';
 import { Simulation, type TerrainMap, fx } from '../src/index.js';
@@ -46,6 +47,7 @@ beforeEach(() => {
   PathRequest.store.clear();
   Anger.store.clear();
   Armor.store.clear();
+  Weapon.store.clear();
 });
 
 function grassMap(width: number, height: number): TerrainMap {
@@ -599,6 +601,66 @@ describe('combatSystem — armor mitigation (the target armor class join)', () =
       target: viking,
       damage: 0, // max(0, 0 - 10)
     });
+  });
+});
+
+describe('combatSystem — worn-weapon override (the equip seed)', () => {
+  // A viking woodcutter's DEFAULT weapon is test_axe (tribe 1, job 1; damage["0"] 50, maxRange 2). A worn
+  // `Weapon{weaponTypeId}` overrides that with a specific weapon resolved vs the viking tribe: test_spear
+  // (typeId 11, tribe 1; damage["0"] 70, minRange 3, maxRange 17 — a ranged reach).
+
+  it('a combatant with NO Weapon fights with its class default (unchanged behavior)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER); // no Weapon -> test_axe by (tribe,job)
+    const enemy = fighterAt(sim, 1, 0, FRANK, WOODCUTTER);
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(attacker, CurrentAtomic).effect).toEqual({
+      kind: 'attack',
+      target: enemy,
+      damage: 50, // test_axe damage["0"]
+    });
+  });
+
+  it('a worn Weapon overrides the default class weapon (damage + reach come from the worn one)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
+    sim.world.add(attacker, Weapon, { weaponTypeId: 11 }); // test_spear (tribe 1): damage 70, minRange 3
+    const enemy = fighterAt(sim, 4, 0, FRANK, WOODCUTTER); // 4 cells: in the spear's 3..17 band, beyond axe's 2
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // The default axe (maxRange 2) could not reach 4 cells; the worn spear (maxRange 17) does, for 70.
+    expect(sim.world.get(attacker, CurrentAtomic).effect).toEqual({
+      kind: 'attack',
+      target: enemy,
+      damage: 70, // test_spear damage["0"]
+    });
+  });
+
+  it('a worn weapon respects its near reach — a spear-wielder can’t strike an adjacent target', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
+    sim.world.add(attacker, Weapon, { weaponTypeId: 11 }); // test_spear: minRange 3
+    fighterAt(sim, 1, 0, FRANK, WOODCUTTER); // adjacent — below the spear's near reach (3)
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // The worn spear's minRange band is honored even though the default axe could have hit at range 1.
+    expect(sim.world.has(attacker, CurrentAtomic)).toBe(false);
+  });
+
+  it('a worn weapon id with no matching record leaves the combatant unarmed (no silent fallback)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
+    sim.world.add(attacker, Weapon, { weaponTypeId: 999 }); // no (tribe 1, typeId 999) record
+    fighterAt(sim, 1, 0, FRANK, WOODCUTTER); // adjacent — the default axe WOULD have hit
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // The bad worn id does NOT fall back to the class default; the combatant simply can't attack.
+    expect(sim.world.has(attacker, CurrentAtomic)).toBe(false);
   });
 });
 

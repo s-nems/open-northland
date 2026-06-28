@@ -16,6 +16,7 @@ import {
   Settler,
   Stockpile,
   Vehicle,
+  Weapon,
 } from '../src/components/index.js';
 import type { Entity } from '../src/ecs/world.js';
 import { Simulation } from '../src/index.js';
@@ -57,6 +58,7 @@ function clearStores(): void {
   Health.store.clear();
   Armor.store.clear();
   Vehicle.store.clear();
+  Weapon.store.clear();
 }
 
 beforeEach(clearStores);
@@ -175,6 +177,42 @@ describe('CommandSystem', () => {
     sim.step();
     expect(sim.world.has(nthEntity(sim, 0), Armor)).toBe(false); // omitted -> no armor
     expect(sim.world.has(nthEntity(sim, 1), Armor)).toBe(false); // class 0 -> no armor
+  });
+
+  it('spawnSettler with a positive weaponTypeId stamps a Weapon (the combatant wields a specific weapon)', () => {
+    const sim = fresh();
+    // A combatant entering the world holding a specific weapon: a positive id stamps a `Weapon` component,
+    // so its attack resolves through that weapon (vs its tribe) instead of the class default.
+    sim.enqueue({
+      kind: 'spawnSettler',
+      jobType: WOODCUTTER,
+      x: 1,
+      y: 2,
+      tribe: VIKING,
+      hitpoints: 1000,
+      weaponTypeId: 11, // test_spear (tribe 1) in the fixture
+    });
+    sim.step();
+    expect(sim.world.get(nthEntity(sim, 0), Weapon)).toEqual({ weaponTypeId: 11 });
+  });
+
+  it('spawnSettler with no/non-positive weaponTypeId leaves the settler with its class default weapon (no Weapon)', () => {
+    const sim = fresh();
+    // The default (omitted) and the non-positive (0) paths both stamp NO Weapon — the separate-optional-
+    // component pattern (like Armor): a bare settler falls back to its `(tribe, jobType)` weapon, golden untouched.
+    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING, hitpoints: 1000 });
+    sim.enqueue({
+      kind: 'spawnSettler',
+      jobType: WOODCUTTER,
+      x: 1,
+      y: 0,
+      tribe: VIKING,
+      hitpoints: 1000,
+      weaponTypeId: 0,
+    });
+    sim.step();
+    expect(sim.world.has(nthEntity(sim, 0), Weapon)).toBe(false); // omitted -> no Weapon
+    expect(sim.world.has(nthEntity(sim, 1), Weapon)).toBe(false); // id 0 -> no Weapon
   });
 
   it('skips a command with an unknown type id (recoverable bad input — no throw, still logged)', () => {

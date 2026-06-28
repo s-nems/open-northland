@@ -207,6 +207,36 @@ export const Health = defineComponent<{ hitpoints: number; max: number }>('Healt
 export const Armor = defineComponent<{ armorClass: number }>('Armor');
 
 /**
+ * A combatant's wielded **weapon** — the `[weapontype]` it carries, identified by `weaponTypeId` (the
+ * `WeaponType.typeId`, resolved against the settler's OWN tribe since a `typeId` like 2="fist" recurs
+ * once per tribe — see {@link WeaponType}). When a combatant wears one, the CombatSystem resolves its
+ * attack through THIS specific weapon (its damage table + reach) instead of the default
+ * `(tribe, jobType)` first-match scan ({@link attackerWeapon}). This is what lets a settler hold a
+ * *specific* one of the several weapons its soldier-class may wield (`weaponsForJob` returns a roster,
+ * e.g. `soldier_unarmed → {fist, claw}`; the scan just takes the first — the worn component picks one).
+ *
+ * It is a **separate optional component** (like {@link Armor}/{@link Health}): only an explicitly-equipped
+ * combatant carries one, so a bare settler — every animal, every golden/slice settler, and a combatant
+ * spawned without a weapon id — has none and falls back to the `(tribe, jobType)` weapon scan exactly as
+ * before, leaving the hash untouched. So adding this component changes no existing scenario; only a settler
+ * stamped with a worn weapon (`spawnSettler{weaponTypeId}`) overrides its default loadout.
+ *
+ * `weaponTypeId` is a whole integer (a `typeId`, not a fixed-point value), so it hashes deterministically
+ * like every other component. A `(tribe, weaponTypeId)` that resolves to **no `[weapontype]` record** (a
+ * bad/unknown id) leaves the combatant **unarmed for the tick** ({@link attackerWeapon} returns null) —
+ * a worn weapon the data doesn't define grants no attack rather than crashing, the same "the data doesn't
+ * define it → it does nothing" stance {@link Armor} takes for an out-of-table class.
+ *
+ * FIDELITY: the weapon's stats (damage/reach) are the verbatim extracted `weapontypes` params; *which*
+ * settler holds *which* weapon is caller-supplied (`spawnSettler{weaponTypeId}`), NOT yet pinned to a
+ * soldier-class→weapon loadout (the equip drive — the *acquire/carry-the-weapon-good behavior* — stays
+ * oracle-blocked, the same "structure faithful, loadout approximated" stance as {@link Armor};
+ * docs/FIDELITY.md "Settler-side Weapon stamping"). Determinism: read by a pure content scan in the
+ * CombatSystem, no RNG/wall-clock.
+ */
+export const Weapon = defineComponent<{ weaponTypeId: number }>('Weapon');
+
+/**
  * A herd membership: the {@link Entity} that leads the pack this animal belongs to. The animal-spawn
  * mechanic (the `spawnAnimalHerd` command) adds it to every member of a herd whose `animaltypes.ini`
  * record sets `searchforleader` — a leader is designated (the herd's lowest-id member, which points

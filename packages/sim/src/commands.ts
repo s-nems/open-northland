@@ -41,6 +41,11 @@ export type Command =
        * When `armorClass` is a positive `[armortype]` tier (1..4) the combatant also wears that armor
        * (an `Armor` component): an incoming hit is mitigated by the tier's `blockingValue` rather than
        * landing on the unarmored class 0. Omit it (the default) and the settler is unarmored.
+       *
+       * When `weaponTypeId` is a positive `[weapontype]` id the combatant wields THAT specific weapon
+       * (a `Weapon` component) — resolved against its own tribe — instead of the default
+       * `(tribe, jobType)` weapon scan. Omit it (the default) and the settler fights with its class's
+       * default weapon (the first `(tribe, jobType)` match), exactly as before.
        */
       readonly kind: 'spawnSettler';
       readonly jobType: number;
@@ -52,6 +57,10 @@ export type Command =
       /** A combatant's worn armor class (a `[armortype]` tier 1..4; stamps an `Armor` component). Omit
        *  (or a non-positive value) for an unarmored combatant — every hit then lands on class 0. */
       readonly armorClass?: number;
+      /** A combatant's wielded weapon `typeId` (a `[weapontype]`; stamps a `Weapon` component, resolved
+       *  vs the settler's own tribe). Omit (or a non-positive value) to fight with the class's default
+       *  `(tribe, jobType)` weapon. */
+      readonly weaponTypeId?: number;
     }
   | {
       /**
