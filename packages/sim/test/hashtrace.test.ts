@@ -114,6 +114,23 @@ describe('HashTrace', () => {
     expect(trace.at(3)?.hash).toBe('h3'); // ...but its hash is still here
   });
 
+  it('keeps the snapshot window capped while the hash ring is ALSO dropping (shift + age interact)', () => {
+    // hashCapacity 4, snapshotCapacity 2, 8 ticks: the hash ring shifts AND snapshots age every tick
+    // past warm-up — the O(1) aging must keep exactly the most-recent 2 snapshots throughout.
+    const trace = new HashTrace({ hashCapacity: 4, snapshotCapacity: 2 });
+    const fakeSnap = (tick: number) => ({ tick, entities: [], events: [] });
+    for (let t = 1; t <= 8; t++) {
+      trace.record(t, `h${t}`, fakeSnap(t));
+      const withSnap = trace.list().filter((e) => e.snapshot !== undefined);
+      expect(withSnap.length).toBeLessThanOrEqual(2); // never exceeds the snapshot cap
+    }
+    expect(trace.list().map((e) => e.tick)).toEqual([5, 6, 7, 8]); // hash ring: last 4
+    expect(trace.at(8)?.snapshot?.tick).toBe(8);
+    expect(trace.at(7)?.snapshot?.tick).toBe(7);
+    expect(trace.at(6)?.snapshot).toBeUndefined(); // aged out, hash still present
+    expect(trace.at(6)?.hash).toBe('h6');
+  });
+
   it('drops the snapshot when snapshotCapacity is 0 even if one is passed (hashes only)', () => {
     const trace = new HashTrace({ hashCapacity: 4 }); // snapshotCapacity defaults to 0
     trace.record(1, 'h1', { tick: 1, entities: [], events: [] });

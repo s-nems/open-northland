@@ -116,13 +116,15 @@ export class HashTrace {
     this.entries.push(entry);
     // Drop oldest hash entries beyond the hash window.
     while (this.entries.length > this.hashCapacity) this.entries.shift();
-    // Age the snapshot out of any entry now outside the (smaller) snapshot window — keep only the
-    // most-recent `snapshotCapacity` entries' snapshots, so the heavy payload never exceeds its cap.
-    const dropSnapshotBefore = this.entries.length - this.snapshotCapacity;
-    for (let i = 0; i < dropSnapshotBefore; i++) {
-      const e = this.entries[i];
+    // Age the snapshot out of the one entry that just fell outside the (smaller) snapshot window, so
+    // the heavy payload stays capped at the most-recent `snapshotCapacity` entries. This is O(1): we
+    // ran on every prior `record`, so everything older is already snapshot-free — only the single
+    // entry now at the window's boundary can still hold one. Nothing to do when snapshots are off.
+    if (this.snapshotCapacity > 0) {
+      const boundary = this.entries.length - this.snapshotCapacity - 1;
+      const e = boundary >= 0 ? this.entries[boundary] : undefined;
       if (e !== undefined && e.snapshot !== undefined) {
-        this.entries[i] = { tick: e.tick, hash: e.hash };
+        this.entries[boundary] = { tick: e.tick, hash: e.hash };
       }
     }
   }
