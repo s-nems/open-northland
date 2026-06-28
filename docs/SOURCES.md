@@ -152,6 +152,35 @@ game file.)
   loads archives, renders intro — but the **game simulation is not implemented** (its logic tick
   dispatcher just increments a counter). So it helps us with *formats*, not with *mechanics*.
 
+### Terrain ground graphics + landscape objects (data model mapped — render pending)
+
+Two graphics families sit beside the map grid; **both decode with existing decoders** (`.bmd`/`.pcx`/`.cif`).
+
+- **Landscape OBJECTS** (trees, bushes, signs, wonders, harbours) — `Data/engine2d/inis/landscapes/landscapes.cif`,
+  a `.cif`-only `[GfxLandscape]` list: the `[jobgraphics]` analog for static map decor. Each record carries
+  `EditName "yew 01"`, `GfxBobLibs "<body>.bmd" "<shadow>.bmd"` (e.g. `ls_trees.bmd`/`ls_trees_s.bmd`),
+  `GfxPalette "<editname>"` (resolved via `palettes.ini`, e.g. `tree_yew01` → `palettes\landscapes\tree_yew01.pcx`),
+  `GfxFrames <stage> <bobIds…>` and `GfxTransition`. **WIRED:** `extractLandscapeGraphics` (`decoders/ini.ts`)
+  → the existing `convertBmdTree` atlas path → render `resource` bind (99 records use `ls_trees.bmd`; bob 60 of
+  `ls_trees.tree_yew01` is the bound wood-node tree). The **same path covers `ls_houses_*.bmd`** for the
+  still-placeholder buildings — only the render `building` binding remains.
+- **Ground TEXTURES** (the triangle-mesh terrain) — `Data/engine2d/bin/textures/text_*.pcx` (58) + `tran_*.pcx`
+  (27 transition tiles), 64-px indexed tiles with inline palette, **already decoded to `text_*.png`** by the pcx
+  stage. The texture→cell binding is `Data/engine2d/inis/patterns/pattern.cif`, a `.cif`-only `[GfxPattern]` list
+  (927 records): `EditName`, `EditGroups "meadow all" "meadow green"`, `LogicType` (= a
+  `Data/logic/trianglepatterntypes.cif` `type`, 82 records: water/land/mountain/sand + `iswater`/`humancanwalkon`/
+  `debugcolor`), `GfxTexture "…text_NNN.pcx"`, `GfxCoordsA`/`GfxCoordsB` = the two triangles' UVs (3 pixel-coord
+  points each, into the texture). `landscapetypes.ini` also carries a `debugcolor R G B` per type (a free
+  per-type colour — a cheap legible fallback if textures are deferred).
+- **The 1:1 pattern algorithm is ORACLE-BLOCKED.** No `map.dat` landscape lane holds a direct pattern id:
+  `lmlt` 4 B/cell (per-corner landscape type 0..78 → the 87-type table), `lmpa`/`lmpb` 1 B/cell (0..10, a
+  variant index), `lmco` 4 B/cell (0..8, connection/corner), `lmms` 4 B/cell (0..7), `lmtw` (0..63), `lmlv`
+  (0..5). The per-cell pattern is **computed by the engine** from the corner types + these variant lanes — and
+  **OpenVikings does not render terrain** (`Source/Engine/EngineDisplay2D.cs` is a stub; its logic tick just
+  counts), so there is **no algorithm oracle**. → the rebuild ships **real textures with approximated per-type
+  placement** (docs/ROADMAP.md Phase 2; a recorded deviation), not 1:1; the only 1:1 oracle is the running
+  original game (a human-driven trial loop). Reversing the algorithm empirically is a deferred research task.
+
 ## How to use OpenVikings as reference
 
 When writing a pipeline decoder, open the matching C# file above and translate the **format

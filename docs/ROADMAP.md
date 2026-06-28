@@ -39,11 +39,38 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `setatomic`→bob `byAtomic` table from the extracted tribe bindings. Gated on an owned game copy +
       a human eyeballing pixels via the OpenVikings oracle. (The self-verifiable halves — atlas-frame
       resolution, per-state binding, a free synthetic atlas behind `?atlas` — are done; see archive.)
-- [ ] **Render terrain from real landscape tile graphics** — bind the decoded landscape/`.bmd` terrain
-      tiles (and the triangle-grid transitions between landscape types) so the ground draws 1:1, not
-      flat-tinted cells. The `SceneTerrain` already carries per-cell `typeId` (`packages/render/src/scene.ts`,
-      "the GPU layer can pick the tile sprite"); this is the texture-binding half. Human-gated like the
-      bob-atlas bind — an agent can't self-judge pixels (OpenVikings oracle + owned game copy + a human eye).
+  - [x] **Resource/tree bob bound** — `landscapes.cif` `[GfxLandscape]` → `ls_trees.bmd` via
+        `extractLandscapeGraphics`, emitted through the existing `convertBmdTree`, drawn under `?atlas=real`
+        as a per-kind `SpriteSheet.kindLayers` layer (the woodcutter's wood node is now a real tree, not a
+        green box). Commits `e663e71` + `42b0b1a`; deviation (species/frame pick) in docs/FIDELITY.md.
+  - [ ] **Building bob** — same `[GfxLandscape]`/`ls_houses_*.bmd` path for HQ/workshops (still placeholder
+        boxes). The pipeline already emits these atlases (`extractLandscapeGraphics` covers every `ls_*`
+        decor); only the render `building` binding + a representative house frame remain.
+- [ ] **Render terrain from real landscape ground textures** — replace the flat 4-colour cell tint
+      (`TILE_COLOURS`) with real decoded `text_*.pcx` ground. **Placement is APPROXIMATED: the 1:1 pattern
+      algorithm is oracle-blocked** (OpenVikings does not render terrain → no algorithm oracle; no `map.dat`
+      lane holds a direct pattern id — the per-cell pattern is engine-computed from corner types + variant
+      lanes). Decision (recorded): ship real textures with approximated per-type placement, a deviation
+      (docs/FIDELITY.md), not a 1:1 match. **Data model fully mapped this session — see docs/SOURCES.md
+      "Terrain ground graphics + landscape objects".** Step-by-step (each a separate session):
+  1. **Pipeline — patterns + triangle types.** `extractPatterns(pattern.cif)` → IR `{id, editName,
+     editGroups, logicType, texture, coordsA[6], coordsB[6]}` (cif keys are CamelCase, like
+     `extractLandscapeGraphics`). `extractTrianglePatternTypes(trianglepatterntypes.cif)` → IR
+     `{type, debugname, iswater, …}` (the `logicType` cross-ref). Add zod schemas in `packages/data`;
+     unit-test both. The 56 `text_*.pcx` tiles already decode to PNG (pcx stage) — no new decoder.
+  2. **Pipeline — typeId→pattern map (approximated).** landscape typeId → a representative `GfxPattern` by
+     family: water-name types → a `water` pattern (LogicType = water trianglepatterntype), rock/stone →
+     `mountain`, everything else (incl. tree/bush/wood — their GROUND is land; the tree is the separate
+     `ls_trees` bob) → `meadow`/`land`. Emit the table to IR. Record the approximation in docs/FIDELITY.md.
+  3. **Pipeline — per-cell variety (optional).** Use `lmpa`/`lmpb` (0..10) as a variant index into the
+     type's pattern family; emit those lanes into `content/maps/<id>.json` beside `typeIds` (extend
+     `mapDatToTerrain` + `TerrainMapFile`). Skip for the MVP (uniform-per-type first).
+  4. **Render — textured ground.** Replace `tileGraphic`'s flat diamond with a textured cell: a Pixi `Mesh`
+     per cell (batch by texture / bake the whole map to one texture — 250×250 = 62500 cells, watch perf)
+     whose 2 triangles use the pattern's `GfxCoords` UVs into the `text_NNN` texture. Keep the flat-tint
+     fallback. Self-verifiable: the pure UV/vertex geometry; pixels human-gated.
+  5. **App + shot.** Load textures + pattern table behind `?atlas=real` (or a `?terrain` flag); render a
+     real map (`?map=<id>`) shot for the human pixel check. The only 1:1 oracle is the running original game.
 - **Exit:** click to place one workplace; a settler autonomously supplies it via atomics; a carrier
   hauls outputs to a store; the 1000-tick golden hash + trace stay stable. **(Headless slice + golden
   proven; the real-atlas bind + final human pixel check remain.)**
