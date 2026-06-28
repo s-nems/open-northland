@@ -39,6 +39,11 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `setatomic`→bob `byAtomic` table from the extracted tribe bindings. Gated on an owned game copy +
       a human eyeballing pixels via the OpenVikings oracle. (The self-verifiable halves — atlas-frame
       resolution, per-state binding, a free synthetic atlas behind `?atlas` — are done; see archive.)
+- [ ] **Render terrain from real landscape tile graphics** — bind the decoded landscape/`.bmd` terrain
+      tiles (and the triangle-grid transitions between landscape types) so the ground draws 1:1, not
+      flat-tinted cells. The `SceneTerrain` already carries per-cell `typeId` (`packages/render/src/scene.ts`,
+      "the GPU layer can pick the tile sprite"); this is the texture-binding half. Human-gated like the
+      bob-atlas bind — an agent can't self-judge pixels (OpenVikings oracle + owned game copy + a human eye).
 - **Exit:** click to place one workplace; a settler autonomously supplies it via atomics; a carrier
   hauls outputs to a store; the 1000-tick golden hash + trace stay stable. **(Headless slice + golden
   proven; the real-atlas bind + final human pixel check remain.)**
@@ -82,8 +87,9 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       render-side HUD chain over the frozen snapshot (`buildHud`→`layoutHud`→`placeHud`→`renderHud`,
       `packages/render/src/hud.ts` + `pixi-renderer.ts`), overlaid each frame in `main.ts` + `shot.ts`.
       Pure + total + unit-tested; only the glyph rasterization/typography is left for a human via the shot.
-- **Open Phase-3 work** is the two long-standing **human-gated render items** (the Phase-1 oracle
-  pixel-diffs; the Phase-2 real decoded-bob-atlas bind) — an agent cannot self-judge pixels. The
+- **Open Phase-3 work** is the three **human-gated render items** (the Phase-1 oracle
+  pixel-diffs; the Phase-2 real decoded-bob-atlas bind; the Phase-2 real terrain-tile render) — an
+  agent cannot self-judge pixels. The
   economy/progression/population substance is otherwise done; feature work has advanced into Phase 4.
 - **Exit:** a self-sustaining, progressing single-tribe settlement you can grow.
 
