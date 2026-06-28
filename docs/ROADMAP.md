@@ -229,6 +229,23 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       for free scrubbing.
 - [ ] **Content hot-reload.** Content is validated JSON injected into the sim; wire Vite HMR to
       re-parse and rebase the sim on file change → instant balance-tweak feedback, no rebuild.
+      **Headless core landed** (`packages/sim/src/rebase-content.ts`): a pure `rebaseContent(rawContent,
+      {seed,map?,log,untilTick?})` validates a freshly-read RAW content blob through the data package's
+      `parseContentSet` (zod schema + cross-reference pass) and, if valid, REBASES the run onto it by
+      replaying the command log into a fresh `Simulation` built with the NEW `ContentSet` — so the
+      rebuilt run carries the same player history forward under the new rules. Bad content is an
+      EXPECTED boundary failure (a half-saved file), so it returns a typed `{kind:'error',message}`
+      WITHOUT touching the shared stores — the live sim is undisturbed (CLAUDE.md "throw for bugs,
+      return for expected failures"). It rebuilds rather than swapping `content` in place because a
+      mid-run state is the product of every past tick's content, so only a full replay yields a state a
+      clean run could also reach (determinism). Two oracles, both self-verifiable headlessly (hands-on:
+      a real 60-tick `step()` run rebased onto IDENTICAL content reproduced its hash bit-for-bit;
+      rebased onto an HQ-starting-wood edit `10→42` reached a DIFFERENT hash at the same tick and
+      carried the new datum; rebased BACK to the original restored the original hash exactly — the
+      reload is reversible; a malformed `typeId` returned `error` and built nothing). **Open:** the
+      Vite-HMR glue that watches the content file and calls this on change (a `render`/`app` concern,
+      not headless-verifiable) — and a FUTURE-ticks-only reload policy (apply new content without a
+      replay), an app-layer choice on top of this primitive.
 
 ## Risks & open unknowns (watch these)
 

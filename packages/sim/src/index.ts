@@ -68,6 +68,11 @@ export {
   type RunReplay,
 } from './localize-divergence.js';
 export { scrubWindow } from './scrub-window.js';
+export {
+  rebaseContent,
+  type RebaseInputs,
+  type RebaseResult,
+} from './rebase-content.js';
 export { seedAnimalHerds, type SeedAnimalsOptions } from './populate.js';
 export {
   checkInvariants,
