@@ -23,13 +23,28 @@ import {
  * (`CR_Hum_Head_00`), the head drawn on top at the same bob id — exactly as the original's
  * `jobgraphics` (`gfxbobmanagerbody` + `gfxbobmanagerhead`) compose a human. Each coarse state binds a
  * directional, time-animated `[bobseq]` range so the settler plays its walk / chop cycle for the way it
- * faces (the frame advances one per sim tick). `building`/`resource` are left unbound (this atlas has
- * no building art; the viking house `.bmd` isn't decoded yet) so they keep their placeholder geometry.
+ * faces (the frame advances one per sim tick). `resource` binds the decoded `ls_trees.bmd` tree atlas
+ * (the `landscapes.cif` `[GfxLandscape]` leg) as a per-kind layer, so the wood node the woodcutter chops
+ * now draws as a real tree; `building` stays unbound (the viking house `.bmd` isn't decoded yet) and
+ * keeps its placeholder geometry.
  */
 
 /** The decoded human body + head atlases (`test_human_00` palette) served at `/bobs/<name>.*`. */
 const HUMAN_BODY_ATLAS = 'cr_hum_body_00.test_human_00';
 const HUMAN_HEAD_ATLAS = 'cr_hum_head_00.test_human_00';
+
+/**
+ * The decoded tree atlas bound to the `resource` kind — `ls_trees.bmd` recoloured with the `tree_yew01`
+ * palette, the `[GfxLandscape] "yew 01"` record's binding from `landscapes.cif` (the
+ * `extractLandscapeGraphics` leg). It lives in its OWN frame-id space (493 bobs, distinct from the human
+ * body bobs), so it binds as a per-kind {@link SpriteSheet.kindLayers} layer, not the shared body atlas.
+ * {@link TREE_BOB} is that record's first displayed full-grown frame (`GfxFrames 3 60 …` → bob 60, a
+ * 101×111 tree anchored at its base). Species/frame are a deliberate first pick — a human eyeballs the
+ * pixels and we swap the constant to taste (docs/FIDELITY.md "Tree bob"). The wood `Resource` nodes the
+ * woodcutter chops now draw as this tree instead of the flat green placeholder box.
+ */
+const TREE_ATLAS = 'ls_trees.tree_yew01';
+const TREE_BOB = 60;
 
 /**
  * The settler's directional animation ranges, read off `animations.ini`'s `[bobseq]` for
@@ -69,7 +84,10 @@ const HUMAN_BINDINGS: SpriteBindings = {
   // dedicated carry/place animation is a later slice (no such bob is decoded yet).
   settler: { idle: STAND, moving: WALK, byAtomic: { [HARVEST_ATOMIC]: CHOP } },
   building: -1,
-  resource: -1,
+  // The wood node draws bob 60 of the ls_trees atlas, blitted from its own per-kind layer (see
+  // loadHumanSpriteSheet's kindLayers) — its id space is the tree bobs, not the human body's, so this
+  // number is meaningless without that layer (the two are bound together below).
+  resource: TREE_BOB,
 };
 
 /**
@@ -95,6 +113,18 @@ async function loadLayer(stem: string): Promise<SpriteLayer> {
  * compose a complete settler (body + head) the renderer animates directionally per tick.
  */
 export async function loadHumanSpriteSheet(): Promise<SpriteSheet> {
-  const [body, head] = await Promise.all([loadLayer(HUMAN_BODY_ATLAS), loadLayer(HUMAN_HEAD_ATLAS)]);
-  return { source: body.source, atlas: body.atlas, bindings: HUMAN_BINDINGS, overlays: [head] };
+  const [body, head, tree] = await Promise.all([
+    loadLayer(HUMAN_BODY_ATLAS),
+    loadLayer(HUMAN_HEAD_ATLAS),
+    loadLayer(TREE_ATLAS),
+  ]);
+  return {
+    source: body.source,
+    atlas: body.atlas,
+    bindings: HUMAN_BINDINGS,
+    overlays: [head],
+    // The tree draws from its own atlas (distinct id space), so it binds as a per-kind layer rather than
+    // sharing the body atlas the settler uses. `resource` -> TREE_BOB resolves a frame in THIS layer.
+    kindLayers: { resource: tree },
+  };
 }

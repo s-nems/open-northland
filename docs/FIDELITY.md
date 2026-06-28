@@ -135,10 +135,20 @@ fidelity-relevant decision is the **state→sprite join**: which animation a set
 | Concern | Status | Source / how pinned |
 |---|---|---|
 | Settler state→sprite-frame join (`resolveSpriteFrame`) | approximated | The **join key is faithful**: an `acting` settler carries its numeric `atomicId`, the exact key the original's `tribetypes` `setatomic` maps to an animation. But the *render-side state model* (`idle`/`moving`/`acting`, derived from `CurrentAtomic`/`PathFollow`) and the **which-frame-per-state** choice are *our* coarsening — the original has a richer per-direction/per-atomic animation table not yet bound. No decoded bob/animation set is wired (the bound atlas is the FREE synthetic stand-in); the `byAtomic` override exists but is empty until a real `setatomic`→bob table is extracted. Pixel fidelity stays the OpenVikings oracle's job (Assets row), deferred to a human. |
+| Resource (tree) sprite bind (`ls_trees.bmd`) | approximated | The **bind path is faithful**: under `?atlas=real` a wood `Resource` node draws a frame of the decoded `ls_trees.bmd` recoloured by its palette — the `landscapes.cif` `[GfxLandscape]` record's binding, extracted by `extractLandscapeGraphics` (`GfxBobLibs` body+shadow + `GfxPalette` editname + `GfxFrames`), emitted through the same `convertBmdTree` atlas path as the creature bobs. What is *approximated* is the **per-object species + frame pick** (see Deviations): one representative full-grown frame of one species (yew, bob 60) is bound to every wood node, where the original assigns a species + growth/sway frame per pre-placed map object. Pixel fidelity (does the decoded tree match the original) stays the OpenVikings oracle's job, deferred to a human. |
 
 ## Deviations (conscious divergences from the original)
 
 Format: `- <mechanic>: <how it differs> — <why> (<commit>)`.
+
+- Tree sprite (per-object species + frame): every wood `Resource` node draws ONE representative tree —
+  bob 60 of `ls_trees.bmd` recoloured `tree_yew01`, the `[GfxLandscape] "yew 01"` full-grown frame —
+  but the original assigns a *per-object* species + growth/sway frame from the map's pre-placed-object
+  layer (`map.dat` `eatd`/`eald`, not yet decoded — docs/SOURCES.md). So a faithful-once-decoded map
+  would show varied species/sizes; we show a uniform yew. The bind path itself is faithful (the decoded
+  `landscapes.cif` `[GfxLandscape]` graphics record via `extractLandscapeGraphics`); only the per-object
+  selection is collapsed to a constant, and the species/frame constants (`TREE_ATLAS`/`TREE_BOB` in
+  `app/src/real-sprites.ts`) are a first pick a human swaps after eyeballing. (landscape tree-bob bind)
 
 - Hunger rise: `needsSystem` raises hunger at a flat `HUNGER_RISE_PER_TICK`=ONE/4096, but the original
   drains hunger via per-activity-animation events (`event 30 2 -100`) and restores it per `eat_slot_food`

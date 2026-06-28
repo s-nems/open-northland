@@ -12,7 +12,13 @@ import {
 import type { HudPlacement } from './hud.js';
 import { TILE_HALF_H, TILE_HALF_W } from './index.js';
 import type { DrawItem, DrawKind } from './scene.js';
-import { type AtlasFrame, type SpriteAtlas, type SpriteBindings, resolveSpriteBobId } from './sprites.js';
+import {
+  type AtlasFrame,
+  type SpriteAtlas,
+  type SpriteBindings,
+  type SpriteKind,
+  resolveSpriteBobId,
+} from './sprites.js';
 
 /**
  * The GPU half of the render line — the part an agent CANNOT self-verify (pixels need a human eye).
@@ -95,6 +101,16 @@ export interface SpriteSheet {
   readonly atlas: SpriteAtlas;
   readonly bindings: SpriteBindings;
   readonly overlays?: readonly SpriteLayer[];
+  /**
+   * Per-kind **dedicated** atlas layers. The base `source`/`atlas` (+ `overlays`) is the human body+head
+   * set, whose bob-id space is the human bobs; a settler draws from it. A `resource` (a tree from
+   * `ls_trees.bmd`) or a `building` (its own house `.bmd`) has a **different** decoded atlas with its own
+   * frame-id space, so it cannot share that id space. When a kind has an entry here, its resolved bob id
+   * ({@link SpriteBindings}) is blitted from THIS layer's own `source`+`atlas` instead of the shared
+   * body atlas — one feet-anchored sprite, no head overlay. A kind with no entry falls back to the shared
+   * body+overlays path (the settler), and an unresolved/empty frame falls back to placeholder geometry.
+   */
+  readonly kindLayers?: Partial<Record<SpriteKind, SpriteLayer>>;
 }
 
 /**
@@ -184,6 +200,18 @@ function atlasLayers(
 ): Container | null {
   const bobId = resolveSpriteBobId(item, sheet.bindings, tick);
   if (bobId === null) return null;
+  // A kind with its own dedicated atlas (a tree/resource from ls_trees.bmd, a building from its house
+  // .bmd) blits the resolved id from THAT layer's own frame-id space + source — never the shared body
+  // atlas (whose ids are the human bobs). Single layer, feet-anchored, no head overlay.
+  const kindLayer: SpriteLayer | undefined =
+    item.kind === 'tile' ? undefined : sheet.kindLayers?.[item.kind as SpriteKind];
+  if (kindLayer !== undefined) {
+    const frame = kindLayer.atlas.frames.get(bobId);
+    if (frame === undefined || frame.width === 0 || frame.height === 0) return null;
+    const single = new Container();
+    single.addChild(atlasSprite(frame, kindLayer.source, sx, sy));
+    return single;
+  }
   const container = new Container();
   const addLayer = (layer: SpriteLayer): void => {
     const frame = layer.atlas.frames.get(bobId);
