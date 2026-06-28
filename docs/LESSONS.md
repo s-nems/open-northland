@@ -810,3 +810,11 @@ the next iteration inherits it.
   silently drift the day one is "fixed". Export the one `diffComponents`/`valuesEqual` from the module that
   owns the equality contract and import it, so the agreement is structural, not a thing tests must re-prove.
   Same canonical-JSON equality also keeps both agreeing with `hashState`. (sim/read-model)
+- [68e82cf] `hashState()` and `diffSnapshots()` do NOT cover the same state, so a hash divergence can be
+  diff-EMPTY: `hashState` mixes `rng.getState()` + the tick, but a `WorldSnapshot` (and thus the diff)
+  carries only entities/components — so two runs whose RNG streams have split but whose entities are
+  byte-identical hash-differ yet diff-empty. When you compose "hashes diverged at tick N" with "show what
+  changed", don't claim the diff is non-empty by construction — an empty diff alongside a real divergence
+  is the useful signal "entities match; the split is in RNG/tick", and the composer must return the
+  divergence anyway (not treat empty-diff as no-divergence). The two debugging oracles have different
+  scopes; state which one you're keying on. (sim/replay)

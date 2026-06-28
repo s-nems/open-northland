@@ -50,7 +50,12 @@ export interface DivergenceReport {
    * The per-entity / per-component delta from run A's state to run B's state AT the divergence tick —
    * exactly what {@link diffSnapshots} would report for `(snapshotA, snapshotB)`. `fromTick` and
    * `toTick` both equal {@link tick} (the two snapshots are the same tick of two different runs).
-   * Non-empty by construction: the hashes differ, so the canonical state differs.
+   *
+   * Usually non-empty — the hashes differ, so the canonical state differs — but it CAN be empty: a
+   * snapshot omits the RNG state and the tick (both equal here), whereas `hashState()` mixes them, so
+   * two runs whose entities/components are byte-identical but whose RNG streams have split hash-differ
+   * yet diff-empty. An empty `diff` with a non-empty divergence is itself the useful signal: "the
+   * entities match; the split is in RNG/tick state, not in any component" — narrowing the bug.
    */
   readonly diff: SnapshotDiff;
 }
@@ -73,6 +78,9 @@ function clearStores(): void {
  * `traceB` are the per-tick {@link HashTrace}s recorded during those runs. The divergence tick comes
  * from `traceA.divergedFrom(traceB)`, so it is found WITHOUT re-replaying — only once the tick is
  * known are the two runs replayed (serially, see the module doc) to that tick to produce the diff.
+ * Only the traces' HASH window is consulted (not their snapshot window): the diff is always rebuilt
+ * fresh from the command logs, so the traces need carry no snapshots (`snapshotCapacity: 0` is fine)
+ * and a divergence tick that has aged out of the snapshot window is still fully reconstructable.
  *
  * Side effect: rebuilds sims in the shared component stores (see the module doc). The caller must hold
  * no live sim across this call; on return the stores hold run B's reconstructed state at the
