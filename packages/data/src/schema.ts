@@ -479,7 +479,7 @@ export const GfxPattern = z.object({
   /** `EditGroups` — the editor grouping tags (e.g. `"meadow all"`, `"meadow green"`), kept verbatim; a record may list several. */
   editGroups: z.array(z.string()).default([]),
   /** `LogicType` — the {@link TrianglePatternType.type} this tile classifies as; `0` for the misc/border tiles with no logic type. */
-  logicType: z.number().int().nonnegative().default(0),
+  logicType: TypeId.default(0),
   /** `GfxTexture` — the normalized `data/.../text_NNN.pcx` ground-texture path (the pcx stage decodes it to a `text_NNN.png`). */
   texture: z.string().optional(),
   /** `GfxCoordsA` — the first triangle's 3 corner UVs into {@link texture}. */
