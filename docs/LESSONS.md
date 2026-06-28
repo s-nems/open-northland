@@ -789,3 +789,12 @@ the next iteration inherits it.
   bugs in the change but were harness state-bleed (the real signal, `damage:70` via the worn override, was
   correct all along). When a hands-on check creates >1 sim, clear stores per run or the singleton stores
   silently cross-contaminate. (sim/testing)
+- [d35b6d1] A replay/scrub primitive's "guard against dropping commands" can BAN its own core use case —
+  my first `replay()` threw when `untilTick` was before the last logged command, reasoning "trailing
+  commands would be dropped → divergence". But scrubbing BACKWARD past later commands is the whole point
+  of a time-travel inspector: the state AT tick 50 (before the tick-400 command) is faithful, not a
+  divergence. The unit tests passed (they only scrubbed within range); the 3b hands-on harness — a
+  1000-tick run with a mid-run command + a `demolish` — threw on the very first scrub to tick 50. The
+  honest invariant for a tick-target is only `>= 0`; "did every command apply?" is a property of a FULL
+  replay (default untilTick = last logged tick), not of an explicit scrub. Don't let a guard encode "the
+  only valid target is the end" when the feature is "jump to ANY tick". (sim/replay)
