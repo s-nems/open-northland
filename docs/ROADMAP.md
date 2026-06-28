@@ -165,6 +165,15 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
 - [ ] **Run the sim in a Web Worker.** It's pure/headless/deterministic, so moving `step()` off the
       main thread keeps render at 60fps under heavy ticks. Design the Phase-2 snapshot as a plain
       **transferable** structure (no class instances / live `Map`s) so this is free later, not a retrofit.
+      **Transferability now PINNED** (`test/snapshot-transferable.test.ts`): the load-bearing
+      precondition — that a real `step()`-driven `WorldSnapshot` survives the `postMessage` boundary —
+      is proven against the actual structured-clone algorithm, not just asserted in the docstring. A
+      live run's snapshot `structuredClone()`s without throwing (a function / class instance / live
+      `Map` would raise `DataCloneError`), round-trips deep-equal AND byte-identical via `JSON.stringify`
+      (lossless transfer), deep-copies without aliasing the sim's live state (a worker owns its copy),
+      and a building's `Stockpile` `Map` is confirmed lowered by `takeSnapshot` to a clone-safe sorted
+      `[k,v]` array. **Open:** the app-side Worker wiring itself (host ↔ worker `postMessage` protocol,
+      render reading the transferred snapshot) — an `app`/`render` concern, not headless-verifiable.
 - [ ] **Time-travel / replay inspector.** With `rng.getState/setState`, the command log, and
       `hashState`, a dev overlay can scrub ticks, diff state between two ticks, and dump an entity.
       "Hash diverged at tick 432" → jump there → inspect. Biggest debuggability multiplier for agents.
