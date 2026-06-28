@@ -120,7 +120,13 @@ function demoContent(map?: TerrainMap): ContentSet {
         atomicBindings: [{ jobType: WOODCUTTER, atomicId: HARVEST_ATOMIC, animation: 'viking_chop' }],
       },
     ],
-    atomicAnimations: [{ id: 'viking_chop', name: 'viking_chop', length: 3 }],
+    // The renderer animates the chop at a fixed cadence (one frame/tick) off the atomic's `elapsed`, and
+    // the atomic is removed on the tick it completes (render only ever sees elapsed 1..length-1). The
+    // CHOP binding plays the full 15-frame woodcut loop starting at the windup (phaseStart 9 → frames
+    // 9..14 raise the axe, then 0..8 swing down to the impact). length 16 → render sees elapsed 1..15 →
+    // all 15 frames, ending on frame 8 (the strike landing in the tree), then the chop completes and
+    // wood is taken. The complete swing — windup then strike — at constant speed. ~0.8s at 20 ticks/s.
+    atomicAnimations: [{ id: 'viking_chop', name: 'viking_chop', length: 16 }],
   });
 }
 

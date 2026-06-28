@@ -11,6 +11,8 @@ import {
   renderScene,
   syntheticAtlasFrames,
 } from '@vinland/render';
+import { cameraFor, floatParam } from './camera.js';
+import { loadHumanSpriteSheet } from './real-sprites.js';
 import { loadTerrainMap, runSlice, sliceTerrain } from './vertical-slice.js';
 
 /**
@@ -63,15 +65,30 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
   const scene = buildScene(snap, sliceTerrain(loaded ?? undefined));
 
   const app = await createPixiApp(canvas, CANVAS_W, CANVAS_H);
-  // `?atlas` (or `?atlas=synthetic`) binds the FREE synthetic atlas so the textured-sprite draw path
-  // is exercised (a human eyeballs the textured branch). Absent, sprites draw as placeholder geometry
-  // — the byte-reproducible default the committed shot PNG depends on (real bobs are gitignored).
-  const sheet = wantsSyntheticAtlas(params) ? syntheticSpriteSheet() : undefined;
-  // Pan the iso strip into the centre of the canvas (its tiles span screen-x roughly [-row, +cols]).
-  renderScene(app, scene, { offsetX: CANVAS_W / 2, offsetY: CANVAS_H / 3 }, sheet);
+  // `?atlas=real` binds the REAL decoded human-body atlas (settlers draw actual decoded pixels — the
+  // human-gated decoder/render check; gitignored content over the /bobs server, see real-sprites.ts).
+  // `?atlas` (or `?atlas=synthetic`) binds the FREE synthetic atlas so the textured-sprite draw path is
+  // exercised without copyrighted data. Absent, sprites draw as placeholder geometry — the
+  // byte-reproducible default the committed shot PNG depends on.
+  const sheet =
+    params.get('atlas') === 'real'
+      ? await loadHumanSpriteSheet()
+      : wantsSyntheticAtlas(params)
+        ? syntheticSpriteSheet()
+        : undefined;
+  // `?zoom=N` magnifies + re-centres on the sprites so a human can judge a decoded bob's pixels (a
+  // ~30px settler is otherwise lost on the canvas); absent, the historical centre-ish pan at scale 1.
+  const camera = cameraFor(scene, floatParam(params, 'zoom', 1), CANVAS_W, CANVAS_H);
+  // Pass the sim's tick so the tick-driven sprite animation draws the frame for this exact step (the
+  // shot is a single deterministic frame at `ticks`, so the cycle phase is `tick % cycle`).
+  renderScene(app, scene, camera, sheet, snap.tick);
   // Overlay the single-tribe (viking, tribe 1) HUD panel on top of the scene, so the human eyeballing
   // the shot also sees the on-screen panel's typography (the un-self-verifiable half of the HUD).
-  renderHud(app, placeHud(layoutHud(buildHud(snap, 1)), 'top-left', { width: CANVAS_W, height: CANVAS_H }));
+  // `?hud=0` suppresses it for a clean sprite-inspection frame (the panel otherwise occludes a sprite
+  // the zoom centres near the top-left corner).
+  if (params.get('hud') !== '0') {
+    renderHud(app, placeHud(layoutHud(buildHud(snap, 1)), 'top-left', { width: CANVAS_W, height: CANVAS_H }));
+  }
 
   window.__vinlandShotReady = true;
 }

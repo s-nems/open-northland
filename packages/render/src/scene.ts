@@ -1,5 +1,5 @@
 import type { WorldSnapshot } from '@vinland/sim';
-import { ONE, tileToScreen } from './index.js';
+import { ONE, TILE_HALF_H, TILE_HALF_W, tileToScreen } from './index.js';
 
 /**
  * The PURE scene-building layer — the part of rendering an agent CAN self-verify.
@@ -60,6 +60,21 @@ export interface DrawItem {
   readonly state?: SpriteState;
   /** For an `acting` sprite: the numeric atomic id it's executing (the `setatomic` join key). */
   readonly atomicId?: number;
+  /**
+   * For an `acting` sprite: whole ticks executed in its current atomic so far — the sim's
+   * `CurrentAtomic.elapsed`. The animation clock for an action: a directional binding advances its
+   * swing one frame every `ticksPerFrame` of these ticks, a FIXED cadence — so every action animates at
+   * the same speed (a 15-tick chop and a 4-tick deposit step frames identically), and a swing plays its
+   * full cycle because the action's duration is tuned to a whole number of cycles. Omitted when idle.
+   */
+  readonly elapsed?: number;
+  /**
+   * For a settler: its facing direction index (0..7) — the screen-space heading a directional
+   * animation binding indexes by. The Cultures human bob layout is `0 NW, 1 W, 2 SW, 3 S` (toward the
+   * camera), `4 SE, 5 E, 6 NE, 7 N` (away). Derived from the live {@link readFacing} heading; omitted
+   * when the settler isn't moving (the binding then falls back to {@link DEFAULT_FACING}).
+   */
+  readonly facing?: number;
 }
 
 /** The terrain grid the snapshot is positioned over (dimensions + row-major landscape typeIds). */
@@ -125,6 +140,61 @@ function readActingAtomic(components: Readonly<Record<string, unknown>>): number
 }
 
 /**
+ * The whole ticks the settler has executed in its current atomic — the sim's `CurrentAtomic.elapsed`
+ * (a plain integer, no fixed-point rescale). The action's animation clock: a directional swing advances
+ * at a fixed cadence over these ticks, so its speed never depends on the action's duration. Returns
+ * `null` when not mid-atomic. Pure read of plain snapshot data (no sim re-entry).
+ */
+function readAtomicElapsed(components: Readonly<Record<string, unknown>>): number | null {
+  const a = components.CurrentAtomic as { elapsed?: unknown } | undefined;
+  if (a === undefined || typeof a.elapsed !== 'number') return null;
+  return a.elapsed;
+}
+
+/**
+ * Map the angle of a settler's screen-space movement vector onto the bob layout's facing-direction
+ * index, so the sprite faces the way it walks. The `CR_Hum_Body` direction layout (read off the decoded
+ * frames) runs: 0 NW, 1 W, 2 SW, 3 S (toward the camera), 4 SE, 5 E, 6 NE, 7 N (away). `atan2(sy, sx)`
+ * runs from screen-East with y pointing *down*, so each +45° of θ steps the index back by one from
+ * `225°/45° = 5` at θ=0 (East) — hence `(225° − θ) / 45°` rounded and wrapped. So walking +col (screen
+ * down-right) reads SE (4), −col (up-left) reads NW (0): the sprite faces its heading.
+ */
+function screenVecToDir(sx: number, sy: number): number {
+  const deg = (Math.atan2(sy, sx) * 180) / Math.PI;
+  return ((Math.round((225 - deg) / 45) % 8) + 8) % 8;
+}
+
+/**
+ * One {@link PathFollow} waypoint, as plain snapshot data (Fixed = scaled int). Redeclared here so
+ * `render` doesn't import the sim component shape for a 2-field read.
+ */
+interface WaypointValue {
+  x: number;
+  y: number;
+}
+
+/**
+ * Derive a settler's facing direction index (0..7) from its live heading: the vector from its current
+ * position to the {@link PathFollow} waypoint it is walking toward, projected into screen space (the
+ * iso 2:1 aspect via {@link tileToScreen}'s half-extents) and snapped to the nearest of 8 directions.
+ * Returns `undefined` when there is no movement to read a heading from (no path, or already on the
+ * waypoint) — the binding then falls back to a default facing. The Fixed scale is common to both
+ * points, so it cancels in the direction; only the *ratio* matters. Pure read of plain snapshot data.
+ */
+function readFacing(components: Readonly<Record<string, unknown>>): number | undefined {
+  const pf = components.PathFollow as { waypoints?: unknown; index?: unknown } | undefined;
+  const pos = readPosition(components);
+  if (pf === undefined || pos === null || !Array.isArray(pf.waypoints)) return undefined;
+  const idx = typeof pf.index === 'number' ? pf.index : 0;
+  const wp = pf.waypoints[idx] as WaypointValue | undefined;
+  if (wp === undefined || typeof wp.x !== 'number' || typeof wp.y !== 'number') return undefined;
+  const dCol = wp.x - pos.x;
+  const dRow = wp.y - pos.y;
+  if (dCol === 0 && dRow === 0) return undefined; // already there — no heading
+  return screenVecToDir((dCol - dRow) * TILE_HALF_W, (dCol + dRow) * TILE_HALF_H);
+}
+
+/**
  * Derive a sprite's coarse {@link SpriteState} from its snapshot components, in priority order:
  * mid-atomic (`CurrentAtomic`) ⇒ `acting`, else following a path (`PathFollow`) ⇒ `moving`, else
  * `idle`. Acting wins over moving because a settler that started an atomic has stopped to act even if
@@ -186,6 +256,8 @@ export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): Draw
     // join key); otherwise it's omitted under exactOptionalPropertyTypes.
     const state: SpriteState = kind === 'settler' ? readSpriteState(entity.components) : 'idle';
     const actingAtomic = kind === 'settler' ? readActingAtomic(entity.components) : null;
+    const elapsed = kind === 'settler' ? readAtomicElapsed(entity.components) : null;
+    const facing = kind === 'settler' ? readFacing(entity.components) : undefined;
     sprites.push({
       kind,
       ref: entity.id,
@@ -196,6 +268,8 @@ export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): Draw
       depth: tileY * ROW_STRIDE + tileX,
       state,
       ...(actingAtomic !== null ? { atomicId: actingAtomic } : {}),
+      ...(elapsed !== null ? { elapsed } : {}),
+      ...(facing !== undefined ? { facing } : {}),
     });
   }
 
