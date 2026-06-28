@@ -183,9 +183,15 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       diverged at tick N" computed WITHOUT re-replaying (hands-on: a 200-tick live run recorded, a
       2000-tick run capped at 500 held exactly the most-recent 500, a different-seed run localized to
       tick 1). It is a passive recorder the caller drives (it deliberately does NOT hook `step()`), so
-      the inspector is opt-in and can't perturb the golden hashes. **Open:** the dev OVERLAY that
-      scrubs/diffs/dumps (a `render` concern, human-eyed) — `replay()` jumps to the tick `HashTrace`
-      points at.
+      the inspector is opt-in and can't perturb the golden hashes. The **"diff state between two ticks"**
+      half is also landed (`packages/sim/src/snapshot-diff.ts`): a pure `diffSnapshots(a,b)` merge-joins
+      two plain `WorldSnapshot`s into a per-entity / per-component delta (entities added/removed, and for
+      survivors the components added/removed/changed with before/after), canonical-JSON equality mirroring
+      `hashState()` so "diverged" agrees with the hash, output ascending-id / sorted-name without a
+      re-sort (hands-on: a real `step()`-run diffed tick 2→8 surfaced the spawned woodcutter as the lone
+      `added` entity with its `Position`+`Settler` components, byte-identically re-diffable). **Open:** the
+      dev OVERLAY that wires scrub/diff/dump into UI (a `render` concern, human-eyed) — it calls `replay()`
+      to jump to the tick `HashTrace` points at, then `diffSnapshots()` to show what changed there.
 - [ ] **Content hot-reload.** Content is validated JSON injected into the sim; wire Vite HMR to
       re-parse and rebase the sim on file change → instant balance-tweak feedback, no rebuild.
 

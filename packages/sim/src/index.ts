@@ -36,6 +36,12 @@ export {
 export { EventBuffer, type SimEvent, type SimEventKind } from './events.js';
 export { takeSnapshot, type WorldSnapshot, type EntitySnapshot } from './snapshot.js';
 export {
+  diffSnapshots,
+  type SnapshotDiff,
+  type ChangedEntity,
+  type ComponentChange,
+} from './snapshot-diff.js';
+export {
   TerrainGraph,
   buildTerrainGraph,
   cellManhattanDistance,
