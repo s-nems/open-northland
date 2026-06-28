@@ -1,6 +1,6 @@
-import type { AtomicEffect } from '../commands.js';
+import type { AtomicEffect } from '../core/commands.js';
+import type { Fixed } from '../core/fixed.js';
 import { type Entity, defineComponent } from '../ecs/world.js';
-import type { Fixed } from '../fixed.js';
 
 /**
  * Components are PLAIN DATA only. Positions/velocities are fixed-point (see fixed.ts) — never floats.

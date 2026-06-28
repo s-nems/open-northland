@@ -1,4 +1,3 @@
-import type { AtomicEffect } from '../commands.js';
 import {
   Age,
   Building,
@@ -14,8 +13,9 @@ import {
   Stockpile,
   stockpileEntries,
 } from '../components/index.js';
+import type { AtomicEffect } from '../core/commands.js';
+import { type Fixed, fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
-import { type Fixed, fx } from '../fixed.js';
 import type { CellId, TerrainGraph } from '../terrain.js';
 import type { System, SystemContext } from './context.js';
 import { buildingEnabled, carrierCarryCapacity, settlerMeetsNeed } from './progression.js';

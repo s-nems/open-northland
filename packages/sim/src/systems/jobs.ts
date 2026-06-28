@@ -1,6 +1,6 @@
 import { Building, JobAssignment, Position, Settler } from '../components/index.js';
+import { fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
-import { fx } from '../fixed.js';
 import type { System, SystemContext } from './context.js';
 import { buildingEnabled, jobEnabled, settlerMeetsNeed } from './progression.js';
 import { buildingWorkerJobs, recipeOf } from './shared.js';

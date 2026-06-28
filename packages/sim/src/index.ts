@@ -1,19 +1,19 @@
 import type { ContentSet } from '@vinland/data';
-import { type Command, CommandQueue } from './commands.js';
 import { Position } from './components/index.js';
+import { type Command, CommandQueue } from './core/commands.js';
+import { EventBuffer } from './core/events.js';
+import { fx } from './core/fixed.js';
+import { Rng } from './core/rng.js';
 import { type Entity, World } from './ecs/world.js';
-import { EventBuffer } from './events.js';
-import { fx } from './fixed.js';
-import { Rng } from './rng.js';
 import { type WorldSnapshot, takeSnapshot } from './snapshot.js';
 import { SYSTEM_ORDER, type SystemContext } from './systems/index.js';
 import { type TerrainGraph, type TerrainMap, buildTerrainGraph } from './terrain.js';
 
 export { World, defineComponent } from './ecs/world.js';
 export type { Entity, Component } from './ecs/world.js';
-export { Rng } from './rng.js';
-export { fx, ONE, type Fixed } from './fixed.js';
-export { FixedTimestep, TICKS_PER_SECOND, MS_PER_TICK } from './loop.js';
+export { Rng } from './core/rng.js';
+export { fx, ONE, type Fixed } from './core/fixed.js';
+export { FixedTimestep, TICKS_PER_SECOND, MS_PER_TICK } from './core/loop.js';
 export * as components from './components/index.js';
 export * as systems from './systems/index.js';
 export {
@@ -23,8 +23,8 @@ export {
   type ScenarioResult,
   type RunOptions,
 } from './scenario.js';
-export type { Brand } from './brand.js';
-export { assertNever } from './brand.js';
+export type { Brand } from './core/brand.js';
+export { assertNever } from './core/brand.js';
 export {
   type Command,
   type CommandKind,
@@ -32,8 +32,8 @@ export {
   type AtomicEffectKind,
   type LoggedCommand,
   CommandQueue,
-} from './commands.js';
-export { EventBuffer, type SimEvent, type SimEventKind } from './events.js';
+} from './core/commands.js';
+export { EventBuffer, type SimEvent, type SimEventKind } from './core/events.js';
 export { takeSnapshot, type WorldSnapshot, type EntitySnapshot } from './snapshot.js';
 export {
   diffSnapshots,

@@ -12,7 +12,7 @@
  *  - Components carry no behavior; Systems (plain functions) carry all behavior.
  */
 
-import type { Brand } from '../brand.js';
+import type { Brand } from '../core/brand.js';
 
 /** A branded entity id — a raw number can't be passed where an Entity is expected. */
 export type Entity = Brand<number, 'Entity'>;

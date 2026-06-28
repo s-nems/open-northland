@@ -1,8 +1,8 @@
-import { assertNever } from '../brand.js';
-import type { AtomicEffect } from '../commands.js';
 import { Anger, Carrying, CurrentAtomic, Health, Resource, Settler, Stockpile } from '../components/index.js';
+import { assertNever } from '../core/brand.js';
+import type { AtomicEffect } from '../core/commands.js';
+import { fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
-import { fx } from '../fixed.js';
 import type { System, SystemContext } from './context.js';
 import { grantWorkExperience } from './progression.js';
 import {

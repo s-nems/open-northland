@@ -1,4 +1,4 @@
-import type { Entity } from './ecs/world.js';
+import type { Entity } from '../ecs/world.js';
 
 /**
  * Player commands are the ONLY way sim state mutates (CommandSystem applies them). They must be

@@ -1,6 +1,6 @@
 import { Age, Building, Position, Settler } from '../components/index.js';
+import { type Fixed, ONE, fx } from '../core/fixed.js';
 import type { World } from '../ecs/world.js';
-import { type Fixed, ONE, fx } from '../fixed.js';
 import { NEWBORN_AGE_CLASS } from './ageclass.js';
 import type { System, SystemContext } from './context.js';
 import { housingCapacity, tribePopulation } from './shared.js';

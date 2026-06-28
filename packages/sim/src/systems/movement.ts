@@ -1,6 +1,6 @@
 import { MoveSpeed, PathFollow, Position, Velocity } from '../components/index.js';
+import { type Fixed, fx } from '../core/fixed.js';
 import type { Entity } from '../ecs/world.js';
-import { type Fixed, fx } from '../fixed.js';
 import type { System } from './context.js';
 
 /**
