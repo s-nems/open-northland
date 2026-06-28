@@ -780,3 +780,12 @@ the next iteration inherits it.
   record's fields too (here `eventx` marks the 14 `*_produce_*` smith animations' worker-self-drain stream).
   Verified end-to-end by wiring the real `decodeIni`→`extractAtomicAnimations`→`parseContentSet`→read-view
   path against the mod `.ini`, not just the fixture (43/~2900 lines `eventx`, all `*_produce_*`). (sim/read-model)
+
+- [56e8d3e] A hands-on (3b) harness that spins up a SECOND `Simulation` to check determinism/contrast must
+  clear the component stores between instances — the stores are module-level singletons SHARED across every
+  `Simulation` (every sim test `beforeEach`-clears them). My first worn-weapon harness re-ran a case in a
+  fresh `Simulation` WITHOUT clearing, so entities accreted across runs: the "determinism" re-run hashed
+  differently and the no-weapon contrast case inherited a stale attacker — two RED results that looked like
+  bugs in the change but were harness state-bleed (the real signal, `damage:70` via the worn override, was
+  correct all along). When a hands-on check creates >1 sim, clear stores per run or the singleton stores
+  silently cross-contaminate. (sim/testing)
