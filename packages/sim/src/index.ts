@@ -62,6 +62,11 @@ export {
   type HashTraceOptions,
   type Divergence,
 } from './hashtrace.js';
+export {
+  localizeDivergence,
+  type DivergenceReport,
+  type RunReplay,
+} from './localize-divergence.js';
 export { seedAnimalHerds, type SeedAnimalsOptions } from './populate.js';
 export {
   checkInvariants,

@@ -197,9 +197,17 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       transition) its per-component `changes`, reusing the same canonical-JSON comparison as
       `diffSnapshots` so an entity's per-tick delta equals its slice of the full two-tick diff (hands-on: a
       real 8-tick run dumped the spawned woodcutter's `Position`+`Settler` block and traced it absent→
-      SPAWNED@3→`Settler:changed` per tick, byte-identically re-traceable). **Open:** the dev OVERLAY that
-      wires scrub/diff/dump into UI (a `render` concern, human-eyed) — it calls `replay()` to jump to the
-      tick `HashTrace` points at, then `diffSnapshots()`/`traceEntity()` to show what changed there.
+      SPAWNED@3→`Settler:changed` per tick, byte-identically re-traceable). The **end-to-end composition**
+      is also landed (`packages/sim/src/localize-divergence.ts`): a `localizeDivergence(runA,traceA,runB,
+      traceB)` wires the four primitives into the inspector's documented workflow — `HashTrace.divergedFrom`
+      finds the first split tick WITHOUT re-replaying, then `replay()`s BOTH runs to that tick (serially,
+      respecting the single-world shared-store constraint — A snapshot, clear, B snapshot) and
+      `diffSnapshots()` the two states, returning `{tick,hashA,hashB,diff}` (or `null` when the traces'
+      overlap agrees). Self-verifiable headlessly (hands-on: two runs differing by one tick-7
+      `spawnSettler` localized to tick 7 with the carpenter as the lone `added` entity, byte-equal to a
+      hand-replayed `diffSnapshots`; identical runs → `null`). **Open:** the dev OVERLAY that wires
+      scrub/diff/dump into UI (a `render` concern, human-eyed) — it calls `localizeDivergence()` for the
+      "diverged at N → inspect" path and `replay()`+`traceEntity()` for free scrubbing.
 - [ ] **Content hot-reload.** Content is validated JSON injected into the sim; wire Vite HMR to
       re-parse and rebase the sim on file change → instant balance-tweak feedback, no rebuild.
 
