@@ -1,3 +1,11 @@
+import { aiSystem } from './conflict/ai.js';
+import { atomicSystem } from './conflict/atomic.js';
+import { combatSystem } from './conflict/combat.js';
+import { commandSystem } from './conflict/command.js';
+import type { System, SystemContext } from './context.js';
+import { constructionSystem } from './economy/construction.js';
+import { jobSystem } from './economy/jobs.js';
+import { productionSystem } from './economy/production.js';
 import {
   BABY_FEMALE,
   BABY_MALE,
@@ -9,25 +17,19 @@ import {
   isBaby,
   isChild,
   isNonWorkingAge,
-} from './ageclass.js';
-import { aiSystem } from './ai.js';
-import { atomicSystem } from './atomic.js';
-import { cleanupSystem } from './cleanup.js';
-import { combatSystem } from './combat.js';
-import { commandSystem } from './command.js';
-import { constructionSystem } from './construction.js';
-import type { System, SystemContext } from './context.js';
-import { herdingSystem } from './herding.js';
-import { jobSystem } from './jobs.js';
-import { MOVE_SPEED_PER_TICK, movementSystem } from './movement.js';
+} from './lifecycle/ageclass.js';
+import { cleanupSystem } from './lifecycle/cleanup.js';
 import {
   ENJOYMENT_RISE_PER_TICK,
   FATIGUE_RISE_PER_TICK,
   HUNGER_RISE_PER_TICK,
   PIETY_RISE_PER_TICK,
   needsSystem,
-} from './needs.js';
-import { productionSystem } from './production.js';
+} from './lifecycle/needs.js';
+import { reproductionSystem } from './lifecycle/reproduction.js';
+import { herdingSystem } from './movement/herding.js';
+import { MOVE_SPEED_PER_TICK, movementSystem } from './movement/movement.js';
+import { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem } from './movement/routing.js';
 import {
   carrierCarryCapacity,
   experienceRequirementMet,
@@ -99,8 +101,6 @@ import {
   weaponsByJob,
   weaponsForJob,
 } from './readviews/index.js';
-import { reproductionSystem } from './reproduction.js';
-import { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem } from './routing.js';
 import { housingCapacity, tribePopulation } from './shared.js';
 import { progressionSystem, terrainSystem, timeSystem, transportSystem } from './stubs.js';
 

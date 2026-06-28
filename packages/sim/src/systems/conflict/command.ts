@@ -11,14 +11,14 @@ import {
   Stockpile,
   Vehicle,
   Weapon,
-} from '../components/index.js';
-import { assertNever } from '../core/brand.js';
-import type { Command } from '../core/commands.js';
-import { ONE, fx } from '../core/fixed.js';
-import type { Entity, World } from '../ecs/world.js';
-import type { System, SystemContext } from './context.js';
-import { buildingEnabled, tribeShipsUnlocked } from './progression.js';
-import { animalHitpoints, herdParams, locomotionOf } from './readviews/index.js';
+} from '../../components/index.js';
+import { assertNever } from '../../core/brand.js';
+import type { Command } from '../../core/commands.js';
+import { ONE, fx } from '../../core/fixed.js';
+import type { Entity, World } from '../../ecs/world.js';
+import type { System, SystemContext } from '../context.js';
+import { buildingEnabled, tribeShipsUnlocked } from '../progression.js';
+import { animalHitpoints, herdParams, locomotionOf } from '../readviews/index.js';
 
 /**
  * CommandSystem — the ONLY way sim state mutates from the outside. It runs first each tick, drains

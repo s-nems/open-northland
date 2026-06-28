@@ -10,12 +10,12 @@ import {
   Position,
   Settler,
   Weapon,
-} from '../components/index.js';
-import { fx } from '../core/fixed.js';
-import type { Entity, World } from '../ecs/world.js';
-import type { CellId, TerrainGraph } from '../nav/terrain.js';
-import type { System, SystemContext } from './context.js';
-import { isAggressiveAnimal, isAnimalTribe, mayAttack, mayHunt } from './readviews/index.js';
+} from '../../components/index.js';
+import { fx } from '../../core/fixed.js';
+import type { Entity, World } from '../../ecs/world.js';
+import type { CellId, TerrainGraph } from '../../nav/terrain.js';
+import type { System, SystemContext } from '../context.js';
+import { isAggressiveAnimal, isAnimalTribe, mayAttack, mayHunt } from '../readviews/index.js';
 
 /**
  * CombatSystem (the **targeting** half of the combat loop) — choose who each idle combatant swings

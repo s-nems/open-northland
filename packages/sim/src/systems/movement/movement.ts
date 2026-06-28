@@ -1,7 +1,7 @@
-import { MoveSpeed, PathFollow, Position, Velocity } from '../components/index.js';
-import { type Fixed, fx } from '../core/fixed.js';
-import type { Entity } from '../ecs/world.js';
-import type { System } from './context.js';
+import { MoveSpeed, PathFollow, Position, Velocity } from '../../components/index.js';
+import { type Fixed, fx } from '../../core/fixed.js';
+import type { Entity } from '../../ecs/world.js';
+import type { System } from '../context.js';
 
 /**
  * How far an entity following a {@link PathFollow} advances per tick, in fixed-point tile units.

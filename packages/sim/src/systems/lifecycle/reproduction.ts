@@ -1,9 +1,9 @@
-import { Age, Building, Position, Settler } from '../components/index.js';
-import { type Fixed, ONE, fx } from '../core/fixed.js';
-import type { World } from '../ecs/world.js';
+import { Age, Building, Position, Settler } from '../../components/index.js';
+import { type Fixed, ONE, fx } from '../../core/fixed.js';
+import type { World } from '../../ecs/world.js';
+import type { System, SystemContext } from '../context.js';
+import { housingCapacity, tribePopulation } from '../shared.js';
 import { NEWBORN_AGE_CLASS } from './ageclass.js';
-import type { System, SystemContext } from './context.js';
-import { housingCapacity, tribePopulation } from './shared.js';
 
 /**
  * ReproductionSystem (birth half) — grow a tribe's population while it has spare housing. This is the
