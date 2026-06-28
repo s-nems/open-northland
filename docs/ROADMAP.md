@@ -97,152 +97,58 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
 - [ ] CombatSystem from `weapontypes`/`armortypes` (a large subsystem: soldier classes, armor tiers,
       heroes, amulets/potions — scope it honestly). **Substance landed** (→ [archive](ROADMAP-ARCHIVE.md)):
       the `combatDamage` `weapontypes`×`armortypes` net-damage join + the full targeting→`attack`(atomic
-      81)→hit→death loop (`combatSystem`/`resolveHit`/`Health` drain/`cleanupSystem`), and a combatant's
-      worn `Armor{armorClass}` resolving the per-class join (`spawnSettler{armorClass}`). Faithful
-      (net-damage param + atomic id 81). The data-side **soldier-class→weapon roster join** lands
-      (`weaponsByJob`/`weaponsForJob` off each weapon's `jobtype` — see the "Import full base" item), and a
-      combatant can now **wield a *specific* worn weapon** (`spawnSettler{weaponTypeId}` → a separate-optional
-      `Weapon{weaponTypeId}` the CombatSystem attacks through, overriding the `(tribe,job)` default — the
-      armor-stamp twin; docs/FIDELITY.md "Settler-side Weapon stamping"); only the equip *behavior* (a settler
-      actually acquiring/carrying the weapon-good, and *which* of its class's roster it picks) stays
-      oracle-blocked. **Open (oracle-blocked, deferred):** walk-into-melee advance, swing cadence, the
-      weapon-good acquire/carry drive + the soldier-class→weapon/armor loadout binding (docs/FIDELITY.md).
-      Inert on the golden.
+      81)→hit→death loop (`combatSystem`/`resolveHit`/`Health` drain/`cleanupSystem`); a combatant resolves
+      its per-class join through a worn `Armor{armorClass}` and can **wield a *specific* worn
+      `Weapon{weaponTypeId}`** overriding the `(tribe,job)` default (both stamped via `spawnSettler{…}`;
+      docs/FIDELITY.md). The data-side **soldier-class→weapon roster join** (`weaponsByJob`/`weaponsForJob`)
+      is landed (see "Import full base"). Faithful (net-damage param + atomic id 81). Inert on the golden.
+      **Open (oracle-blocked, deferred):** walk-into-melee advance, swing cadence, the weapon-good
+      acquire/carry equip drive (which roster weapon a class picks) + the soldier-class→weapon/armor loadout
+      binding (docs/FIDELITY.md).
 - [x] **N data-defined tribes** (viking/frank/saracen/byzantine/egypt), asymmetry expressed through each
       tribe's atomic bindings + `allow*`/`needfor*` graph — never hardcode "two". **Substance-complete**
       (→ [archive](ROADMAP-ARCHIVE.md)): all 41 `[tribetype]`s extracted, every per-tribe rule resolved off
-      `settler.tribe` (tribe-agnostic by construction), and the `playableTribes`/`isAnimalTribe` read views
-      split civilizations from animals **by the tech graph alone**. A multi-civilization scenario
-      (`two-civ-combat.test.ts`) runs two playable tribes' **asymmetric** weapon/attack bindings through the
-      real `step()` (mace vs sword, each off `settler.tribe`), deterministic. A combatant is stamped FROM THE
-      COMMAND DATA — `spawnSettler{hitpoints,armorClass}` (the settler analogue of `spawnAnimalHerd`). HP
-      magnitude is **approximated** (below the readable `.ini`; docs/FIDELITY.md). **Open (oracle-blocked,
-      deferred):** tribe-vs-tribe diplomacy/alliances, and the soldier-class→armor-tier content binding.
+      `settler.tribe`, and `playableTribes`/`isAnimalTribe` split civilizations from animals **by the tech
+      graph alone**. `two-civ-combat.test.ts` runs two playable tribes' **asymmetric** weapon/attack
+      bindings through the real `step()` (mace vs sword), deterministic. A combatant is stamped from the
+      command data (`spawnSettler{hitpoints,armorClass}`); HP magnitude **approximated** (docs/FIDELITY.md).
+      **Open (oracle-blocked, deferred):** tribe-vs-tribe diplomacy/alliances, soldier-class→armor-tier
+      content binding.
 - [x] **Animals as non-controllable tribes** (`animaltypes.ini`: aggression, groups, hitpoints) —
-      **substance-complete** (→ [archive](ROADMAP-ARCHIVE.md)). The `animaltypes.ini` table (35 creature
-      tribes, keyed on `tribetype`) is extracted and **every** aggression input is consumed: `aggressive`/
-      `cannotbeattacked` (the `mayAttack` civ⇄animal relation), `getAngry`/`angryGameTime` (the `Anger{until}`
-      timer), `hitpoints_adult` (the `Health` stamp), `catchable` (the `mayHunt` predation relation). Animals
-      spawn as herds (`spawnAnimalHerd`/`seedAnimalHerds`/`HerdMember`), fight (jobless animal → weapon-by-tribe,
-      `[minRange,maxRange]` reach honored), and a hunter's killing blow yields the carcass's meat
-      (`harvest_cadaver`/`cadaverYieldOf`). Proven by `populated-map-combat.test.ts` (seed→combat→hit→death,
-      deterministic). Herd/locomotion params surfaced as read views (`herdParams`/`locomotionOf`); the
-      **`hitpoints_baby`** life-stage twin of `animalHitpoints` also gets a read view now
-      (`animalBabyHitpoints` — the juvenile `Health` pool a spawned baby carries until it ages to the
-      adult, read straight off the source's independently-carried baby pool, e.g. wolf baby 500 vs adult
-      1000; the deferred animal-growth slice's seed). The **last two unconsumed flags** `warrantable`
-      (livestock-ownership) and `ignorehouses` (pathing-through-buildings) now each have a read view too
-      (`isWarrantableAnimal`/`ignoresHousesAnimal`, 20/35 + 1/35 over the real IR), which **closes the
-      animal-record consumer coverage — every extracted `animaltypes.ini` field now has a sim read view**
-      (the behaviours these seed stay deferred). A
-      creature walks at its own data-pinned `movespeed` pace (`MoveSpeed{perTick}` + `movementSystem`), with
-      its faster `runspeed` gait also stamped (`runPerTick`, inert until a flee/charge drive reads it).
-      Faithful to the `movespeed`/`runspeed` magnitudes; the scale **direction** (larger = slower) and the
-      flee/charge DRIVE, target-acquisition, swing-cadence, in-place-strike are **approximated/deferred**
-      (no oracle; docs/FIDELITY.md "Animal locomotion pace").
+      **substance-complete** (→ [archive](ROADMAP-ARCHIVE.md)). All 35 creature tribes extracted and
+      **every** field consumed: the aggression inputs drive the `mayAttack` relation / `Anger{until}` timer
+      / `Health` stamp / `mayHunt` predation; animals spawn as herds (`spawnAnimalHerd`/`HerdMember`),
+      fight (jobless animal → weapon-by-tribe, reach honored), a hunter's killing blow yields the carcass's
+      meat (`harvest_cadaver`), and a creature walks at its data-pinned `movespeed` pace (`MoveSpeed` +
+      `movementSystem`, `runspeed` gait stamped inert). Every `animaltypes.ini` field has a sim read view
+      (`herdParams`/`locomotionOf`/`animalHitpoints`/`animalBabyHitpoints`/`isWarrantableAnimal`/
+      `ignoresHousesAnimal`). Proven by `populated-map-combat.test.ts` (deterministic). Faithful to the
+      hitpoint/`movespeed` magnitudes; the scale **direction** + the flee/charge/target/swing-cadence
+      DRIVES are **approximated/deferred** (no oracle; docs/FIDELITY.md "Animal locomotion pace").
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
       `fisher_sea`/`trader_sea`/`carpenter ship`, `vehicle_ship`. **First steps landed** (→
-      [archive](ROADMAP-ARCHIVE.md), `systems/readviews/vehicles.ts` + `jobs.ts` + `command.ts` +
-      `shared.ts`): the `vehicle_ship` rows classified by the data alone (`shipVehicles`/`largestShipCapacity`,
-      2/6 vehicles), the ships a tribe has UNLOCKED via the `jobEnablesVehicle` gate (`tribeShipsUnlocked`),
-      each hold's `logicgood` cargo allow-list (`VehicleType.cargoGoods`/`vehicleMayCarry`), a placed boat-hull
-      ENTITY carrying a `Stockpile` (`placeBoat` + `Vehicle{vehicleType,tribe}`, gated by the unlocked set),
-      the cargo-LOAD gate filtering a haul into a hull by the ship's allow-list (inherited through
-      `stockCapacity` with no new system), the `fisher_sea`/`trader_sea` jobs classified by the `_sea`
-      id-suffix (`seaJobs`), and a vehicle's `logicSize` footprint class (`vehicleSizeOf`,
-      `systems/readviews/vehicles.ts` — `{0:cart, 1:catapult, 2:ship}` over the real 6, a third independent
-      ship signal converging with `passengerSlots`/`logiccommander`; the deferred placement/tile-occupancy
-      drive's seed), which **completes the vehicle-record consumer coverage** (every extracted vehicle field
-      — `stockSlots`/`passengerSlots`/`cargoGoods`/`logicSize` — now has a sim read view). The landscape **placement-LAYER** flags now have a consumer too
-      (`systems/readviews/landscape.ts`), the **full `allowedon{land,water,everything}` triple**:
-      `landLayerLandscape`/`isLandLayerType` (the `allowedonland` rows — the 86 land types, everything but
-      the layer-agnostic `void`), `waterLayerLandscape`/`isWaterLayerType` (the `allowedonwater`
-      rows — exactly the 3 wall/gate structures that span water in the real IR) and
-      `universalLayerLandscape`/`isUniversalLayerType` (the `allowedoneverything` rows — exactly the `void`
-      empty-terrain type), read straight off the genuinely-extracted ints (`walkable`/`buildable` are schema
-      defaults, not these flags); land(86)+universal(1) partition the 87 rows exactly, **closing the
-      placement-layer consumer coverage**. This is the placement-side seed — distinct from water-VALENCY
-      terrain below. All proven over the real IR. **Open:** water-valency terrain
-      (which CELLS are water — map-decode-blocked; the water surface lives in the triangle/terrain grid, not a
-      `landscapetypes.ini` flag — the placement-layer flag above is the type-table half, not the cell half),
-      boat movement + embark/disembark atomics (no such atomic in the readable `.ini` — deferred with
-      movement), and the sea-job BEHAVIOR (a sea worker reaching its station by boat — rides on boat movement).
+      [archive](ROADMAP-ARCHIVE.md)): the `vehicle_ship` rows + each hold's cargo allow-list + the
+      `logicSize` footprint class classified by the data alone (`shipVehicles`/`vehicleMayCarry`/
+      `vehicleSizeOf` — completing vehicle-record read-view coverage), the ships a tribe has UNLOCKED
+      (`tribeShipsUnlocked`), a placed boat-hull ENTITY carrying a `Stockpile` (`placeBoat`) with its
+      cargo-LOAD gate inherited through `stockCapacity`, the `fisher_sea`/`trader_sea` jobs by the `_sea`
+      suffix (`seaJobs`), and the landscape `allowedon{land,water,everything}` placement-layer triple
+      (`systems/readviews/landscape.ts`). **Open:** water-VALENCY terrain (which CELLS are water —
+      map-decode-blocked; the water surface lives in the triangle/terrain grid, not a `landscapetypes.ini`
+      flag), boat movement + embark/disembark atomics (no such atomic in the readable `.ini`), and the
+      sea-job BEHAVIOR (a sea worker reaching its station by boat — rides on boat movement).
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).
-      **Scoped (corrected):** the mod ships NO overriding copies of the base `Data/logic` type tables
-      (verified on disk), so there is no logic-table overlay merge — the pipeline already reads each rule
-      table from its single readable source. The mod's readable contribution is its richer graphics/tribe/
-      house/weapon/atomic `.ini`s, most already preferred (golden rule #4). **Overlays landed** (→
-      [archive](ROADMAP-ARCHIVE.md)): the mod's `jobgraphics.ini` cart/ship recolours overlay the base
-      `.cif` (`resolveGraphicsBindings`, vehicle bindings 6→28 across all four tribes), `houses.ini`'s
-      `[GfxHouse]` `LogicConstructionGoods` **build cost** is extracted onto buildings by `typeId`
-      (`extractConstructionCosts`, 53/55), and the mod's `types/weapons.ini` `goodtype` — the good that IS
-      each weapon — is now extracted onto `WeaponType.goodType` (cross-ref-resolved; 70/105 to a real good,
-      35 natural-weapon `goodtype 0` sentinels dropped to undefined), the weapon-side twin of the armor
-      `goodType` join, **plus the weapon's `mainType` (coarse weapon class) + `weight` (encumbrance)** onto
-      `WeaponType.mainType`/`weight` (all 105 weapons; the `mainType`/`weight` twins of the armor record —
-      the soldier-class→weapon-class binding prerequisite, captured ahead of its drive), **and the weapon's
-      `munitiontype` (the ranged-ammo class: 1=bow ammo / 2=catapult projectile)** onto
-      `WeaponType.munitionType` (30/105 — the 5 bow types + catapult; absent on melee, so it doubles as the
-      "is ranged" marker for the deferred ranged-attack drive), **and the weapon's `damagetype` (the
-      siege/damage class)** onto `WeaponType.damageType` (5/105 — catapult-only, value 2; the all-lowercase
-      twin of `munitiontype`, marking the AoE damage class for the deferred combat-resolution drive). **The
-      `munitionType`/`damageType` markers now have a CONSUMER:** the `isRangedWeapon`/`rangedWeapons` +
-      `isSiegeWeapon`/`siegeWeapons` read views (`systems/readviews/combat.ts`) classify the weapon table by
-      those markers *by the data alone* (30 ranged = 25 bows + 5 catapults, 5 siege = the catapults; siege ⊆
-      ranged) — the weapon twin of `isShipVehicle`/`shipVehicles`, the data-defined seed the deferred
-      ranged/siege drives switch on. **The third (multi-valued) marker `mainType` is now also consumed:**
-      `weaponClassOf`/`weaponsByClass` group all 105 weapons by their coarse class into a lossless
-      `Map<mainType, WeaponType[]>` (7 classes `{1:25,2:15,3:20,4:10,5:5,6:25,7:5}`) — a grouping, not a
-      filter (every weapon carries a `mainType`); the seed the deferred soldier-class→weapon-class roster
-      binding joins on. The weapon-marker classification family is now complete, and **the armor-side twin
-      mirrors it** (`armorClassOf`/`armorByClass`, `systems/readviews/combat.ts`): the same multi-valued
-      `mainType` grouping over `content.armor` (`Map<mainType, ArmorType[]>`, 4 records → 2 classes — light
-      `{woolen,leather}`, heavy `{chain,plate}` — read straight from `armortypes.ini`'s `mainType {1,1,2,2}`),
-      so both combat tables expose their coarse class identically — the data-defined seed the deferred
-      soldier-class→armor-tier binding joins on. **The finer material-tier axis now lands too**
-      (`armorMaterialOf`/`armorByMaterial`, `systems/readviews/combat.ts`): the same grouping over the armor's
-      `materialType` (`{1,2,3,4}` — cloth/leather/chain/plate, all distinct in the real data, vs `mainType`'s
-      collapsing `{1,1,2,2}`), so the four records split into four singleton material buckets vs two coarse
-      light/heavy buckets — the granular tier the soldier-class→armor-tier binding joins on. **The `weight`
-      (encumbrance) field on both tables now gets its read-side consumer too** (`weaponWeightOf`/`armorWeightOf`,
-      `systems/readviews/combat.ts`): a plain field accessor on each combat record (unlike the class-enum
-      groupings, `weight` is a quantity the schema defaults to `0`, never `undefined` — so it reads a `number`,
-      not an optional class), completing the per-record consumer coverage across BOTH combat tables — every
-      extracted weapon field (`mainType`/`weight`/`munitionType`/`damageType`/`jobType`/`goodType`/`damage`) and
-      every extracted armor field (`mainType`/`materialType`/`weight`/`blockingValue`/`goodType`/`typeId`) now
-      has a sim read view. `weight` is the per-record load a deferred carry/movement-penalty drive will read
-      (the drive itself oracle-blocked); note armor `weight` does NOT track the material tier monotonically
-      (leather tier 2 weighs 0 < cloth tier 1 weighs 1), so it is its own field, not derivable from the tier.
-      **The soldier-class→weapon ROSTER JOIN itself now lands**
-      (`weaponsByJob`/`weaponsForJob`, `systems/readviews/combat.ts`): each `[weapontype]`'s `jobtype` (the
-      job that wields it — already extracted + cross-ref-validated) groups all 105 weapons into a lossless
-      `Map<jobType, WeaponType[]>` (20 wielding jobs over the real IR, e.g. `soldier_unarmed→{fist,claw}`,
-      `hunter→hunter_bow`), with `weaponsForJob(content, job)` the per-job slice — the data-defined answer to
-      "which weapons does soldier-class N wield", the seed the deferred equip drive joins on (the equip
-      *behavior* stays oracle-blocked). The `atomicanimations.ini` table's **behavioral** fields now
-      ALL get a read-side consumer (`systems/readviews/animations.ts`): `atomicAnimationByName` (the
-      canonical name→record resolver the `atomicDuration`/combat-cadence lookups spelled out inline),
-      `isInterruptibleAtomic` (the `interruptable` flag — 245/896 true; the seed the deferred
-      atomic-preemption drive reads), `atomicStartDirection` (the `startdirection` facing — 89/896
-      pinned; the deferred orientation drive's seed), **and now `atomicEventChannelDelta`** — the net
-      signed delta an animation contributes to one `event <at> <type> <value>` need-bar channel
-      (`ATOMIC_EVENT_CHANNEL` names the four: `REST`/`HUNGER`/`LEISURE`/`PIETY` = types 1/2/3/4), summing
-      the per-tick `value`s straight off the extracted `events` array. This turns the channel-restore
-      magnitudes the needs/eat/sleep/pray/enjoy systems assert only in *prose* into a data-pinned lookup.
-      That summed delta collapses both event streams, so the **last per-event field** `AtomicEvent.extended`
-      (the `eventx` vs `event` source key) now gets its own read side too (`atomicHasExtendedEvents` — does
-      the animation carry any `eventx`?): in the real data the `eventx` stream brackets a *production* run
-      and carries the worker's own need-drains while labouring (only 43/~2900 event lines, **all 14 carriers
-      `*_produce_*` smith animations**), so it doubles as the data-pinned "producing animation that
-      self-drains the worker" marker, the deferred production/needs drive's seed. This **closes the
-      atomic-animation read-view coverage to the per-event level — every extracted `AtomicAnimation` field
-      (`length`/`interruptible`/`startDirection`/`events`) AND every `AtomicEvent` field
-      (`at`/`type`/`value`/`extended`) now has a sim read view**. **Open:** the file's
-      graphics/coords + `animations.ini`'s render-side timing/cue `event` channels (the non-need `type`
-      ids 8..36 — sounds/effect cues) are render/animation overlays deferred with the render-atlas work;
-      and the event-driven NEEDS DRIVE that would replace the approximated per-tick rise/reset constants
-      with these real deltas stays oracle-blocked (no trigger-cadence oracle). The only balance datum,
-      the construction cost, is already imported.
+      **Substance-complete** (→ [archive](ROADMAP-ARCHIVE.md)): the mod ships NO overriding base
+      `Data/logic` type tables (verified on disk), so there is no logic-table overlay merge; the pipeline
+      reads each rule table from its single readable source. The mod's readable overlays are all landed —
+      the `jobgraphics.ini` cart/ship recolours (`resolveGraphicsBindings`), the `houses.ini` per-level
+      build cost (`extractConstructionCosts`, the only balance datum, 53/55), and the `types/weapons.ini`
+      weapon fields (`goodType`/`mainType`/`weight`/`munitionType`/`damageType`/`jobType`). Every
+      extracted field on the weapon/armor, atomic-animation, vehicle, landscape-placement, and animal
+      tables now has a **sim read view** (the data-extraction vein, exhausted; the full per-table
+      inventory is in the archive). **Open:** the behaviours those read views seed are all oracle-blocked
+      (no mechanics oracle — docs/FIDELITY.md); the file's graphics/coords + render-side timing/cue
+      channels are render-atlas overlays.
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.
 
 ## Phase 5 — Campaigns, polish, platform
