@@ -805,3 +805,8 @@ the next iteration inherits it.
   because the loop ran on every prior record, everything older is already stripped, so the boundary entry
   is the only candidate. Tests passed either way (correct, just slow) — the cost only shows on a long live
   run, exactly the case the ring exists for. When you bound a buffer, bound its per-step WORK too. (sim/perf)
+- [e21ebe4] When two read-views must AGREE by contract (here `traceEntity`'s per-tick delta == an entity's
+  slice of `diffSnapshots`'s two-tick diff), don't copy the comparison helper into the second module — they
+  silently drift the day one is "fixed". Export the one `diffComponents`/`valuesEqual` from the module that
+  owns the equality contract and import it, so the agreement is structural, not a thing tests must re-prove.
+  Same canonical-JSON equality also keeps both agreeing with `hashState`. (sim/read-model)
