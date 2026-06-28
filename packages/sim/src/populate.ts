@@ -1,7 +1,7 @@
 import type { ContentSet } from '@vinland/data';
 import type { Command } from './core/commands.js';
+import { type CellId, TerrainGraph, type TerrainMap, buildTerrainGraph } from './nav/terrain.js';
 import { animalRecord } from './systems/readviews/index.js';
-import { type CellId, TerrainGraph, type TerrainMap, buildTerrainGraph } from './terrain.js';
 
 /**
  * The **map populator** — seeds a terrain map's wildlife by producing the `spawnAnimalHerd` commands

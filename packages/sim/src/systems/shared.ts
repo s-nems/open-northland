@@ -2,7 +2,7 @@ import type { BuildingType, Recipe } from '@vinland/data';
 import { Building, Position, Settler, Vehicle } from '../components/index.js';
 import { ONE, fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
-import type { TerrainGraph } from '../terrain.js';
+import type { TerrainGraph } from '../nav/terrain.js';
 import type { SystemContext } from './context.js';
 import { vehicleMayCarry } from './readviews/vehicles.js';
 

@@ -2,7 +2,7 @@ import type { ContentSet } from '@vinland/data';
 import type { Command } from './core/commands.js';
 import { Simulation } from './index.js';
 import { CORE_INVARIANTS, type Invariant, checkInvariants } from './invariants.js';
-import type { TerrainMap } from './terrain.js';
+import type { TerrainMap } from './nav/terrain.js';
 
 /**
  * Headless scenario harness — the "e2e at the game level" layer that an AGENT can run and judge by
