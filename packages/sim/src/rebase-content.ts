@@ -62,6 +62,10 @@ export interface RebaseInputs {
  * bugs, return for expected failures". A discriminated union (`assertNever`-friendly) so a caller's
  * switch is exhaustive: `ok` carries the rebased `Simulation`; `error` carries the validation message
  * (zod path or cross-reference error) and the original sim is left untouched.
+ *
+ * `ok.content` is the SAME `ContentSet` reference the rebased `sim` was built with (`sim.content ===
+ * content`) — surfaced here only so a caller can record "the now-current content" without reaching
+ * into the sim, not a second copy.
  */
 export type RebaseResult =
   | { readonly kind: 'ok'; readonly sim: Simulation; readonly content: ContentSet }
