@@ -16,6 +16,7 @@ import {
   extractJobExperience,
   extractJobs,
   extractLandscape,
+  extractLandscapeGraphics,
   extractMapInfo,
   extractPaletteIndex,
   extractTribes,
@@ -1436,6 +1437,60 @@ describe('extractGraphicsBindings', () => {
     );
     const [first] = extractGraphicsBindings(parseIniSections(JOBGRAPHICS_INI));
     expect(palettes.get(first?.paletteName ?? '')).toBe('data/engine2d/bin/palettes/creatures/bear01.pcx');
+  });
+});
+
+describe('extractLandscapeGraphics', () => {
+  // Mirrors the real Data/engine2d/inis/landscapes/landscapes.cif [GfxLandscape] grammar as
+  // cifLinesToSections yields it: a level-1 CamelCase section header, level-2 CamelCase props. Two tree
+  // species share the ls_trees body bob but bind different palettes (Tree_Yew01 vs tree01 — case mixed
+  // like the real data); a third decor record is texture-only (no GfxBobLibs) and must be skipped.
+  const lines: CifLine[] = [
+    { level: 1, text: 'GfxLandscape' },
+    { level: 2, text: 'EditName "yew 01"' },
+    {
+      level: 2,
+      text: 'GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_trees.bmd" "data\\engine2d\\bin\\bobs\\ls_trees_s.bmd"',
+    },
+    { level: 2, text: 'GfxPalette "Tree_Yew01"' },
+    { level: 2, text: 'GfxFrames 3 60 60 60 61' },
+    { level: 1, text: 'GfxLandscape' },
+    { level: 2, text: 'EditName "fir 01"' },
+    { level: 2, text: 'GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_trees.bmd"' },
+    { level: 2, text: 'GfxPalette "tree01"' },
+    { level: 1, text: 'GfxLandscape' }, // texture-only marker: no GfxBobLibs -> dropped
+    { level: 2, text: 'EditName "border"' },
+    { level: 2, text: 'GfxPalette "tree01"' },
+  ];
+
+  it('binds each [GfxLandscape] body bob to its palette, normalizing path + lower-casing the name, carrying EditName', () => {
+    expect(extractLandscapeGraphics(cifLinesToSections(lines))).toEqual([
+      {
+        bmd: 'data/engine2d/bin/bobs/ls_trees.bmd',
+        shadowBmd: 'data/engine2d/bin/bobs/ls_trees_s.bmd',
+        paletteName: 'tree_yew01',
+        tribeId: undefined,
+        jobId: undefined,
+        editName: 'yew 01',
+      },
+      {
+        bmd: 'data/engine2d/bin/bobs/ls_trees.bmd',
+        shadowBmd: undefined,
+        paletteName: 'tree01',
+        tribeId: undefined,
+        jobId: undefined,
+        editName: 'fir 01',
+      },
+    ]);
+  });
+
+  it('skips a record with no body bob (texture-only decor) and one with no palette', () => {
+    const noPalette: CifLine[] = [
+      { level: 1, text: 'GfxLandscape' },
+      { level: 2, text: 'EditName "unbindable"' },
+      { level: 2, text: 'GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_trees.bmd"' },
+    ];
+    expect(extractLandscapeGraphics(cifLinesToSections(noPalette))).toEqual([]);
   });
 });
 
