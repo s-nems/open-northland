@@ -166,8 +166,8 @@ check, commit. **Render-only** rungs need no pipeline change (the atlas is alrea
         single `kindLayers.building` path for a plain ref or an unloaded family, so a sheet without
         `families` is byte-identical (the app still emits plain-number bindings; the synthetic-atlas shot is
         unchanged). Unit-tested (7 `resolveBuildingDraw` cases). No app/scene change yet.
-     2. [ ] **App — canonical (family,bob) reducer + load viking atlases + draw the real HQ.** The
-        data-driven reducer + the FIRST viking family **code-landed (pending human pixel sign-off).**
+     2. [x] **App — canonical (family,bob) reducer + load viking atlases + draw the real HQ.** The
+        data-driven reducer + the FIRST viking family **LANDED (human pixel sign-off ✓).**
         `real-sprites.ts` `buildingBobRefsByType` picks the canonical `(bmd,palette,bob)` per (viking,
         typeId) across ALL viking families — palette-preference → `editName` disambiguation (HQ →
         `ls_houses_viking4.bmd` bob 34 "viking headquarters", not bob 44 "…house") → max-level → lowest-bob
@@ -176,8 +176,10 @@ check, commit. **Render-only** rungs need no pipeline change (the atlas is alrea
         back to the default house, never a wrong bob borrowed from the default layer). `loadHumanSpriteSheet`
         loads the `ls_houses_viking4.house01` family into `SpriteSheet.families`, lighting up the **HQ** +
         animal farm / druid hut / barracks / tower (bobs 34/30/5/10/25/15/20, verified over the real
-        `ir.json`); the `building-types` scene gains the HQ. Unit-tested; the default house01 types are
-        unchanged. Remaining:
+        `ir.json`); the `building-types` scene gains the HQ — laid out in two screen rows (large back row,
+        small front row) so the big iso sprites don't overlap. Unit-tested; the default house01 types are
+        unchanged. Human confirmed the six distinct buildings (incl. the HQ as an imposing structure) on
+        screen. Remaining:
         - [ ] **Load the rest of the viking families** (`ls_houses_viking2/3`, `housemiller01`,
           `housedruid01`) so every viking building (stock, brewery, mill, pottery, joinery, smithy, armory,
           …) draws its own bob — the reducer already resolves them; just add the `loadLayer` calls +

@@ -178,8 +178,9 @@ Format: `- <mechanic>: <how it differs> — <why> (<commit>)`.
   (6/10/11/12/15) byte-identically, adds the home/bakery growth-stage typeIds 2/3/4/5/14, and resolves the
   viking4 family (HQ→34, 17→30, 35/36→5/10, 39→25, 40/41→15/20). The bind path is faithful (decoded
   `[GfxHouse]` viking graphics via the universal `.bmd`→atlas path); the per-type bobs are now data-pinned
-  to `houses.ini`, the scale + atlas-coverage are the by-eye/scope constants a human tunes. Watch via
-  `?scene=building-types&atlas=real`. (building per-type house-bob bind) 
+  to `houses.ini`, the scale + atlas-coverage are the by-eye/scope constants a human tunes.
+  **Human-confirmed** via `?scene=building-types&atlas=real` (two-row layout): six distinct viking
+  buildings render, including the real HQ as an imposing structure. (building per-type house-bob bind) 
 
 - Chopping settler position: a mid-chop woodcutter's drawn sprite is nudged left (`CHOP_NUDGE_X` in
   `render/src/scene.ts`) so its right-swing axe lands in the tree it shares a cell with — a render-only
