@@ -48,9 +48,15 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
         `SpriteSheet.kindLayers` layer like the tree (the same universal `.bmd`→atlas path; the bob layout
         is identical across all `.bmd`), down-scaled via `SpriteSheet.kindScales` (`BUILDING_SCALE` 0.7) so
         the native-oversized house reads in proportion with the native settler + tree. Render `building`
-        binding + scale in `app/src/real-sprites.ts`; deviation (one frame for every type; render scale;
-        warehouse `house02` palette not yet decoded) in docs/FIDELITY.md. Remaining: per-`[GfxHouse]`-type
-        frame selection + a pipeline `extractBuildingGraphics` leg so every building draws ITS house.
+        binding + scale in `app/src/real-sprites.ts`; deviation (one frame for every type; render scale)
+        in docs/FIDELITY.md.
+    - [x] **Pipeline `extractBuildingGraphics` leg** — the mod's `[GfxHouse]` table
+          (`budynki12/houses/houses.ini`) now emits every settlement house's `ls_houses_*.bmd` body → atlas
+          (one binding per `GfxPalette` value, so a body's multiple skins all build), through the existing
+          `convertBmdTree` like the landscape leg. So `npm run pipeline` reproducibly produces ALL house
+          atlases — including the warehouse's `ls_houses_viking.house02` (the previously-missing asset),
+          not just the one `house01` an agent had hand-built. Remaining: render-side per-`[GfxHouse]`-type
+          frame selection so each building draws ITS house bob (one home/warehouse/workshop per typeId).
 - [x] **Render terrain from real landscape ground textures** — **LANDED (approximated, behind `?terrain`).**
       The flat 4-colour `TILE_COLOURS` tint is replaced by real decoded `text_*.pcx` ground: the meadow grass
       + rock mountain textures now draw per cell (human pixel-check done — a real `?map=` shot shows grass +
