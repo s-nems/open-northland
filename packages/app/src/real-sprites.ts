@@ -434,18 +434,20 @@ function bodySequencesByName(ir: RenderIr | null): Map<string, BobSeqRow> {
  * the renderer animates directionally per tick.
  */
 export async function loadHumanSpriteSheet(): Promise<SpriteSheet> {
-  const [body, head, tree, house, viking4, ir] = await Promise.all([
+  const [body, head, tree, house, familyEntries, ir] = await Promise.all([
     loadLayer(HUMAN_BODY_ATLAS),
     loadLayer(HUMAN_HEAD_ATLAS),
     loadLayer(TREE_ATLAS),
     loadLayer(HOUSE_ATLAS),
-    loadLayer(VIKING4_HOUSE01),
+    Promise.all(BUILDING_FAMILIES.map(async (f) => [f.layer, await loadLayer(f.layer)] as const)),
     loadIr(),
   ]);
-  // The named building families loaded beside the default house01 layer (this rung: viking4/house01 —
-  // the HQ + animal farm / druid hut / barracks / tower). The reducer emits a layer-qualified ref ONLY
-  // for a family present here, so the keys must match BUILDING_FAMILIES' `layer`s.
-  const families = { [VIKING4_HOUSE01]: viking4 };
+  // BUILDING_FAMILIES is the SINGLE SOURCE OF TRUTH for the named building families: each entry's atlas is
+  // loaded here AND only its `layer` key is eligible for a layer-qualified ref from buildingBobRefsByType,
+  // so the loaded set and the reducer's emitted set cannot drift (a ref to an unloaded family would fall
+  // through to the default layer and draw a WRONG bob). This rung: viking4/house01 — the HQ + animal farm /
+  // druid hut / barracks / tower.
+  const families = Object.fromEntries(familyEntries);
   const houseBobs = buildingBobRefsByType(
     ir?.buildingBobs ?? [],
     VIKING_TRIBE,
