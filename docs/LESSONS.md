@@ -867,3 +867,11 @@ the next iteration inherits it.
   instead of the constant's value. Overlay the data ONTO the constant (`{ ...CONST, ...data }`) so
   degradation is per-key, not all-or-nothing — and it folds the empty/absent cases away for free
   (`{...undefined}`/`{...{}}` spread to nothing). (render/data-binding)
+- [37c7984] A layer-qualified building binding (`{layer, bob}`) for a named atlas family that is NOT
+  loaded does **not** degrade to placeholder — `atlasLayers` falls a missing-family ref THROUGH to the
+  default `kindLayers.building` layer and blits `bob` there, drawing the WRONG sprite (the families have
+  disjoint frame-id spaces). So the reducer must emit a `{layer}` ref ONLY for a family the loader
+  actually loaded. Make the family list the SINGLE source of truth (`BUILDING_FAMILIES` both drives
+  `loadLayer` and gates which rows `buildingBobRefsByType` may layer-qualify) so the loaded set and the
+  emitted set can't drift; a row in an unloaded family is dropped (→ the constant/default backs it).
+  (render/data-binding)

@@ -153,6 +153,23 @@ describe('buildingBobRefsByType', () => {
       paletteName: 'house01',
       bobId: 131,
     },
+    // hive + bakery — the other transcribed-constant default-family types, to pin byte-identity across all 5.
+    {
+      tribeId: 1,
+      typeId: 11,
+      level: 0,
+      bmd: 'data/x/ls_houses_viking.bmd',
+      paletteName: 'house01',
+      bobId: 91,
+    },
+    {
+      tribeId: 1,
+      typeId: 15,
+      level: 1,
+      bmd: 'data/x/ls_houses_viking.bmd',
+      paletteName: 'house01',
+      bobId: 105,
+    },
     // HQ (typeId 1) — viking4/house01, two editName variants; "viking headquarters" (bob 34) is canonical.
     {
       tribeId: 1,
@@ -208,6 +225,8 @@ describe('buildingBobRefsByType', () => {
       2: 1,
       6: 41,
       10: 131,
+      11: 91,
+      15: 105,
     });
   });
 
