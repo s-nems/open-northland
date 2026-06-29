@@ -130,11 +130,15 @@ check, commit. **Render-only** rungs need no pipeline change (the atlas is alrea
    - [x] **Extract the `(typeId→bob)` join into the IR** — `extractBuildingBobs` (`decoders/ini.ts`) reads
      each `[GfxHouse]`'s paired `LogicType <lvl> <typeId>` ⊗ `GfxBobId <lvl> <bobId>` level-tables (the same
      level pairing `extractConstructionCosts` uses) → the validated `BuildingBob` IR (`ContentSet.buildingBobs`,
-     one row per `(tribeId, typeId, level, bmd, palette, bobId)`), emitted by `npm run pipeline`. Hands-on over
-     the real `houses.ini`: **270 rows / 6 tribes / 16 palette skins**, reproducing the 5 transcribed
-     `house01` mappings *exactly* (home `6`→41, well `10`→131, hive `11`→91, farm `12`→60, bakery `15`→105)
-     **and** recovering the home growth chain (t2→bob1 … t6→bob41) the constant dropped. Faithful, data-pinned
-     (docs/FIDELITY.md). Unit-tested; the sim ignores it (render-binding data, golden hash untouched).
+     one row per `(tribeId, typeId, level, bmd, palette, bobId)`), emitted by `npm run pipeline`. The five
+     lumped `[GfxHouse]` brackets (the saracen/egypt blocks pack 4–24 houses under one header) are split
+     per-`EditName`, and the join is **multi-valued** by level/variant (wonders, wall orientations, HQ-vs-house) —
+     the consumer disambiguates by `level`/`editName`. Hands-on over the real `houses.ini`: **336 rows / 234
+     distinct (tribe, typeId) / 6 tribes / 17 palette skins**, reproducing the 5 transcribed `house01` mappings
+     *exactly* (home `6`→41, well `10`→131, hive `11`→91, farm `12`→60, bakery `15`→105) **and** recovering the
+     home growth chain (t2→bob1 … t6→bob41) the constant dropped. Faithful, data-pinned (docs/FIDELITY.md).
+     Unit-tested; the sim ignores it (render-binding data, golden hash untouched). (`extractConstructionCosts`/
+     `extractBuildingGraphics` share the same pre-existing lumping bug — a flagged follow-up.)
    - [ ] **Remaining — render consumes the join + multi-`.bmd`/palette per type** — the render still reads
      the hand-copied `VIKING_HOUSE01_BOBS` constant; drive its `BuildingTypeBinding.byType` from the new
      `buildingBobs` table instead (filtered to the loaded `(bmd, palette)` atlas — mirror how

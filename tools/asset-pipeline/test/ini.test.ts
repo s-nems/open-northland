@@ -1127,6 +1127,85 @@ GfxBobId 0 9
   it('returns an empty array for sources with no [GfxHouse] records (the logic-only tables)', () => {
     expect(extractBuildingBobs(parseIniSections(HOUSES_INI), src)).toEqual([]);
   });
+
+  // The real saracen/egypt blocks pack MANY houses under ONE `[GfxHouse]` bracket, each delimited only
+  // by a fresh `EditName` (no new bracket) — so `parseIniSections` lumps them into one section. Two
+  // houses with DIFFERENT bmd/palette/typeId/bob under one header; each must be recovered intact (a
+  // naive one-house-per-section read staples house A's bmd+palette to house B's last-wins type/bob).
+  const GFXHOUSE_LUMPED_INI = `[GfxHouse]
+EditName "saracen residence 06"
+LogicTribeType 4
+LogicType 0 6
+GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_houses_saracen.bmd"
+GfxPalette "caves"
+GfxBobId 0 90
+EditName "saracen well"
+LogicTribeType 4
+LogicType 0 10
+GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_houses_beduines.bmd"
+GfxPalette "rock03"
+GfxBobId 0 12
+`;
+
+  it('splits a lumped [GfxHouse] block (many houses, one bracket) into per-house records', () => {
+    const bobs = extractBuildingBobs(parseIniSections(GFXHOUSE_LUMPED_INI), src);
+    // Both houses survive, each with its OWN bmd + palette + bob (not house A's bmd stapled to B's bob).
+    expect(bobs).toEqual([
+      {
+        tribeId: 4,
+        typeId: 6,
+        level: 0,
+        bmd: 'data/engine2d/bin/bobs/ls_houses_saracen.bmd',
+        paletteName: 'caves',
+        bobId: 90,
+        editName: 'saracen residence 06',
+        source: src,
+      },
+      {
+        tribeId: 4,
+        typeId: 10,
+        level: 0,
+        bmd: 'data/engine2d/bin/bobs/ls_houses_beduines.bmd',
+        paletteName: 'rock03',
+        bobId: 12,
+        editName: 'saracen well',
+        source: src,
+      },
+    ]);
+  });
+
+  it('de-duplicates byte-identical rows (a literally-duplicated source record) but keeps variants', () => {
+    // Three records under one bracket: an exact duplicate (same type/bmd/palette/bob/editName → ONE row)
+    // and a same-typeId VARIANT (different editName + bob → KEPT, the join is multi-valued).
+    const bobs = extractBuildingBobs(
+      parseIniSections(`[GfxHouse]
+EditName "frank ship small"
+LogicTribeType 2
+LogicType 0 44
+GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_houses_vehicles.bmd"
+GfxPalette "caves"
+GfxBobId 0 4
+EditName "frank ship small"
+LogicTribeType 2
+LogicType 0 44
+GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_houses_vehicles.bmd"
+GfxPalette "caves"
+GfxBobId 0 4
+EditName "frank ship small front"
+LogicTribeType 2
+LogicType 0 44
+GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_houses_vehicles.bmd"
+GfxPalette "caves"
+GfxBobId 0 5
+`),
+      src,
+    );
+    // One row for the duplicated record + one for the bob-5 variant = 2 (not 3).
+    expect(bobs.map((b) => ({ bob: b.bobId, edit: b.editName }))).toEqual([
+      { bob: 4, edit: 'frank ship small' },
+      { bob: 5, edit: 'frank ship small front' },
+    ]);
+  });
 });
 
 describe('fillBuildingRecipes', () => {
