@@ -120,8 +120,8 @@ The repeatable recipe per rung: load the extra atlas(es) in `loadHumanSpriteShee
 `typeId` through `resolveSpriteBobId`/`buildHumanBindings` as a per-type bob lookup, add the scene + headless
 check, commit. **Render-only** rungs need no pipeline change (the atlas is already on disk);
 **pipeline-blocked** rungs need an extractor or palette stage first.
-1. [x] **Buildings per-type frame selection** (render-only) — **LANDED (single-atlas family; pending human
-   pixel sign-off).** A building draw item now carries its `Building.buildingType`, and a
+1. [x] **Buildings per-type frame selection** (render-only) — **LANDED (single-atlas family; human pixel
+   sign-off ✓).** A building draw item now carries its `Building.buildingType`, and a
    `BuildingTypeBinding` (`byType: typeId→bob, default`) draws each viking type its OWN house bob — the
    `[GfxHouse]` `LogicType`→`GfxBobId` join (`real-sprites.ts` `VIKING_HOUSE01_BOBS`: home 41 / well 131 /
    hive 91 / farm 60 / bakery 105, transcribed from `houses.ini`), no longer the one bob 11 reused for all
