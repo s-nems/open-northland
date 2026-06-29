@@ -63,6 +63,15 @@ describe('buildHumanBindings', () => {
     });
   });
 
+  it('binds each viking building type to its own house bob (the [GfxHouse] LogicType -> GfxBobId join)', () => {
+    // Pins the data-transcribed table so a typo (or a stale bob id) is caught here, not only by eye.
+    // Values are the houses.ini [GfxHouse] (LogicTribeType 1, GfxPalette "house01") records.
+    expect(buildHumanBindings(new Map()).building).toEqual({
+      byType: { 6: 41, 10: 131, 11: 91, 12: 60, 15: 105 },
+      default: 11,
+    });
+  });
+
   it('falls back to the known-good ranges when the manifest is empty (fallback == data)', () => {
     // The committed FALLBACK_* ranges must equal what the real animations.ini yields, so a checkout
     // without content/ draws the same cycles as one with it. Asserting the empty-map result pins that.

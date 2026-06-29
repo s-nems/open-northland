@@ -147,15 +147,32 @@ export interface SettlerStateBinding {
 }
 
 /**
+ * A building's per-type bob binding — the original's `[GfxHouse]` `LogicType` → `GfxBobId` join, so
+ * each building type draws ITS own house bob (a home, a well, a bakery, …) instead of one shared frame.
+ * {@link byType} maps a building's `buildingType` ({@link DrawItem.typeId}) to its bob id; a type absent
+ * from it falls back to {@link default} (the representative house). All ids index the SAME building atlas
+ * layer ({@link import('./pixi-renderer.js').SpriteSheet.kindLayers}'s `building` entry) — the families
+ * that share one `.bmd`+palette; per-`.bmd`/per-palette variety is a later binding (one atlas per family).
+ */
+export interface BuildingTypeBinding {
+  /** Bob id per building typeId — the `[GfxHouse]` `LogicType` → `GfxBobId` table. */
+  readonly byType: Readonly<Record<number, number>>;
+  /** Bob id for a typeId absent from {@link byType} — the fallback house. */
+  readonly default: number;
+}
+
+/**
  * Which atlas bob id draws a given drawable kind. The minimal binding is one representative still
  * frame per kind (`settler` / `building` / `resource`). The settler entry may instead be a
  * {@link SettlerStateBinding} — a per-{@link SpriteState} (and per-atomic-id) table — for the richer
- * animation binding (a settler's walk/chop frames, keyed off `tribetypes` `setatomic`). A plain number
- * stays valid (back-compat: it's the idle/all-states frame), so old bindings need no change.
+ * animation binding (a settler's walk/chop frames, keyed off `tribetypes` `setatomic`); the building
+ * entry may be a {@link BuildingTypeBinding} — a per-{@link DrawItem.typeId} table — so each building
+ * type draws its own house bob (the `[GfxHouse]` `LogicType` → `GfxBobId` join). A plain number stays
+ * valid for either (back-compat: it's the all-types/all-states frame), so old bindings need no change.
  */
 export type SpriteBindings = Readonly<{
   settler: number | SettlerStateBinding;
-  building: number;
+  building: number | BuildingTypeBinding;
   resource: number;
 }>;
 
@@ -234,17 +251,33 @@ function settlerBobId(binding: number | SettlerStateBinding, item: DrawItem, tic
 }
 
 /**
+ * Resolve the bob id for a building draw item from its (number | per-type table) binding. A plain
+ * number is the same frame for every building. A {@link BuildingTypeBinding} picks
+ * `byType[item.typeId]` (the building's `Building.buildingType`, the `[GfxHouse]` `LogicType`), falling
+ * back to `default` when the item carries no type or the type is unmapped — so a sparse table is always
+ * total (an unknown building still draws the representative house, never nothing). Pure.
+ */
+function buildingBobId(binding: number | BuildingTypeBinding, item: DrawItem): number {
+  if (typeof binding === 'number') return binding;
+  const mapped = item.typeId !== undefined ? binding.byType[item.typeId] : undefined;
+  return mapped ?? binding.default;
+}
+
+/**
  * Resolve the atlas bob id a drawable {@link DrawItem} should draw — the frame *selection* alone (no
  * atlas lookup), so the GPU layer can draw the **same** id from several layered atlases (body + head)
- * without re-deciding per layer. Returns `null` for a terrain tile or an unbound kind. For a settler
- * the id is chosen by state + facing + `tick` via {@link settlerBobId} (animated/directional when the
- * binding is a {@link DirectionalAnim}); other kinds use their plain bound id. Pure.
+ * without re-deciding per layer. Returns `null` for a terrain tile or an unbound kind. A settler's id
+ * is chosen by state + facing + `tick` via {@link settlerBobId} (animated/directional when the binding
+ * is a {@link DirectionalAnim}); a building's by its `typeId` via {@link buildingBobId} (its own house
+ * bob when the binding is a {@link BuildingTypeBinding}); a resource uses its plain bound id. Pure.
  */
 export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tick = 0): number | null {
   if (item.kind === 'tile') return null; // tiles bind by typeId, not these per-kind bindings
   const binding = bindings[item.kind];
   if (binding === undefined) return null; // kind unbound -> placeholder
-  return item.kind === 'settler' ? settlerBobId(binding, item, tick) : (binding as number);
+  if (item.kind === 'settler') return settlerBobId(binding as number | SettlerStateBinding, item, tick);
+  if (item.kind === 'building') return buildingBobId(binding as number | BuildingTypeBinding, item);
+  return binding as number; // resource — its plain bound id
 }
 
 /**

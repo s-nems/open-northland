@@ -28,8 +28,8 @@ import {
  * directional, time-animated `[bobseq]` range so the settler plays its walk / chop cycle for the way it
  * faces (the frame advances one per sim tick). `resource` binds the decoded `ls_trees.bmd` tree atlas
  * (the `landscapes.cif` `[GfxLandscape]` leg) as a per-kind layer, so the wood node the woodcutter chops
- * now draws as a real tree; `building` stays unbound (the viking house `.bmd` isn't decoded yet) and
- * keeps its placeholder geometry.
+ * now draws as a real tree; `building` binds the decoded `ls_houses_viking.bmd` house atlas and draws
+ * each building type its OWN house bob (the `[GfxHouse]` `LogicType` → `GfxBobId` join, {@link VIKING_HOUSE01_BOBS}).
  */
 
 /** The decoded human body + head atlases (`test_human_00` palette) served at `/bobs/<name>.*`. */
@@ -67,6 +67,27 @@ const HOUSE_ATLAS = 'ls_houses_viking.house01';
 const HOUSE_BOB = 11;
 /** Render scale for the building kind — see {@link HOUSE_BOB} (native house bobs are oversized vs the settler). */
 const BUILDING_SCALE = 0.7;
+
+/**
+ * Per-building-type bob ids for the viking buildings that share the {@link HOUSE_ATLAS}
+ * (`ls_houses_viking.bmd` recoloured `house01`) — so each type draws ITS own house, not the one shared
+ * {@link HOUSE_BOB}. Keyed by the building `typeId` (`Building.buildingType`, the `[GfxHouse]`
+ * `LogicType`) → its `GfxBobId`, transcribed from the mod's `budynki12/houses/houses.ini` `[GfxHouse]`
+ * records (`LogicTribeType 1`, `GfxPalette "house01"`). The bob sizes differ a lot natively — the well
+ * (63×88) and hive (64×89) are small, the home (299×340) and bakery (315×234) large — so the single
+ * uniform {@link BUILDING_SCALE} preserves their *real relative* proportions (a faithful pick over a
+ * per-type scale). Types in other `.bmd`s/palettes (`ls_houses_viking2..4`, `houseMiller01`, …) aren't
+ * in this atlas, so they keep the {@link HOUSE_BOB} default until the per-`.bmd` binding lands (the next
+ * rung). A future leg should *extract* this `(typeId → bob)` join into the IR rather than transcribe it
+ * (docs/FIDELITY.md "Building bob"). The atlas-relative bob ids are verified present + non-empty.
+ */
+const VIKING_HOUSE01_BOBS: Readonly<Record<number, number>> = {
+  6: 41, // viking home
+  10: 131, // viking well
+  11: 91, // viking hive
+  12: 60, // viking farm
+  15: 105, // viking bakery
+};
 
 /**
  * The settler's directional animations come from `animations.ini`'s `[bobseq]` for `CR_Hum_Body_00.bmd`
@@ -168,7 +189,9 @@ export function buildHumanBindings(seqByName: ReadonlyMap<string, BobSeqRow>): S
       byAtomic: { [HARVEST_ATOMIC]: chop },
       carrying: { idle: standWood, moving: walkWood },
     },
-    building: HOUSE_BOB,
+    // Each viking building type draws its own house bob (the `[GfxHouse]` `LogicType` → `GfxBobId`
+    // join); a type absent from the table falls back to the representative HOUSE_BOB.
+    building: { byType: VIKING_HOUSE01_BOBS, default: HOUSE_BOB },
     resource: TREE_BOB,
   };
 }

@@ -173,6 +173,39 @@ describe('resolveSpriteFrame — per-state settler binding', () => {
   });
 });
 
+describe('resolveSpriteBobId — per-type building binding', () => {
+  /** A building draw item, optionally carrying its `buildingType` (the `Building.buildingType` typeId). */
+  function building(typeId?: number): DrawItem {
+    return { kind: 'building', ref: 1, x: 0, y: 0, depth: 0, ...(typeId !== undefined ? { typeId } : {}) };
+  }
+  // home=41, well=131, farm=60 (a subset of VIKING_HOUSE01_BOBS); an unmapped type falls back to 11.
+  const bindings: SpriteBindings = {
+    settler: 10,
+    building: { byType: { 6: 41, 10: 131, 12: 60 }, default: 11 },
+    resource: 30,
+  };
+
+  it('draws each building type its own bob (the LogicType -> GfxBobId join)', () => {
+    expect(resolveSpriteBobId(building(6), bindings)).toBe(41); // viking home
+    expect(resolveSpriteBobId(building(10), bindings)).toBe(131); // viking well
+    expect(resolveSpriteBobId(building(12), bindings)).toBe(60); // viking farm
+  });
+
+  it('falls back to the default house for an unmapped type id', () => {
+    expect(resolveSpriteBobId(building(999), bindings)).toBe(11);
+  });
+
+  it('falls back to the default house when the item carries no type id', () => {
+    expect(resolveSpriteBobId(building(), bindings)).toBe(11);
+  });
+
+  it('a plain-number building binding draws the same frame for every type (back-compat)', () => {
+    const flat: SpriteBindings = { settler: 10, building: 20, resource: 30 };
+    expect(resolveSpriteBobId(building(6), flat)).toBe(20);
+    expect(resolveSpriteBobId(building(), flat)).toBe(20);
+  });
+});
+
 describe('resolveSpriteBobId — directional animated binding', () => {
   /** A settler draw item with an explicit facing + the resolver's other inputs. */
   function settler(state: SpriteState, facing?: number, atomicId?: number, elapsed?: number): DrawItem {
