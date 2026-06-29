@@ -29,7 +29,9 @@ import {
  * faces (the frame advances one per sim tick). `resource` binds the decoded `ls_trees.bmd` tree atlas
  * (the `landscapes.cif` `[GfxLandscape]` leg) as a per-kind layer, so the wood node the woodcutter chops
  * now draws as a real tree; `building` binds the decoded `ls_houses_viking.bmd` house atlas and draws
- * each building type its OWN house bob (the `[GfxHouse]` `LogicType` → `GfxBobId` join, {@link VIKING_HOUSE01_BOBS}).
+ * each building type its OWN house bob — the `[GfxHouse]` `LogicType` → `GfxBobId` join, derived from the
+ * extracted `buildingBobs` IR ({@link buildingBobsByType}), with the transcribed {@link VIKING_HOUSE01_BOBS}
+ * as the graceful fallback when `content/` is absent.
  */
 
 /** The decoded human body + head atlases (`test_human_00` palette) served at `/bobs/<name>.*`. */
@@ -63,23 +65,31 @@ const TREE_BOB = 60;
  * stock" needs the not-yet-decoded house02 palette) — swap them to a bigger stage / different factor
  * (docs/FIDELITY.md "Building bob"). The HQ store now draws as this house instead of the placeholder box.
  */
-const HOUSE_ATLAS = 'ls_houses_viking.house01';
+/**
+ * The loaded building atlas, kept as its `(bmd, palette)` parts so {@link buildingBobsByType} can pick
+ * the matching `buildingBobs` rows from the IR (the row's `bmd` is the full normalized path, so we
+ * match by suffix). {@link HOUSE_ATLAS} is the served atlas stem (`<bmd-stem>.<palette>`).
+ */
+const HOUSE_BMD = 'ls_houses_viking.bmd';
+const HOUSE_PALETTE = 'house01';
+const HOUSE_ATLAS = `ls_houses_viking.${HOUSE_PALETTE}`;
 const HOUSE_BOB = 11;
 /** Render scale for the building kind — see {@link HOUSE_BOB} (native house bobs are oversized vs the settler). */
 const BUILDING_SCALE = 0.7;
 
 /**
- * Per-building-type bob ids for the viking buildings that share the {@link HOUSE_ATLAS}
- * (`ls_houses_viking.bmd` recoloured `house01`) — so each type draws ITS own house, not the one shared
- * {@link HOUSE_BOB}. Keyed by the building `typeId` (`Building.buildingType`, the `[GfxHouse]`
- * `LogicType`) → its `GfxBobId`, transcribed from the mod's `budynki12/houses/houses.ini` `[GfxHouse]`
- * records (`LogicTribeType 1`, `GfxPalette "house01"`). The bob sizes differ a lot natively — the well
- * (63×88) and hive (64×89) are small, the home (299×340) and bakery (315×234) large — so the single
- * uniform {@link BUILDING_SCALE} preserves their *real relative* proportions (a faithful pick over a
- * per-type scale). Types in other `.bmd`s/palettes (`ls_houses_viking2..4`, `houseMiller01`, …) aren't
- * in this atlas, so they keep the {@link HOUSE_BOB} default until the per-`.bmd` binding lands (the next
- * rung). A future leg should *extract* this `(typeId → bob)` join into the IR rather than transcribe it
- * (docs/FIDELITY.md "Building bob"). The atlas-relative bob ids are verified present + non-empty.
+ * FALLBACK per-building-type bob ids for the viking buildings that share the {@link HOUSE_ATLAS}
+ * (`ls_houses_viking.bmd` recoloured `house01`). The live path now derives this map from the extracted
+ * `buildingBobs` IR ({@link buildingBobsByType}); this transcribed constant is the graceful fallback
+ * used when `content/ir.json` is absent or predates the `buildingBobs` lane (a checkout without
+ * `content/`) — exactly the `FALLBACK_*`-range stance the settler animations use. Keyed by the building
+ * `typeId` (`Building.buildingType`, the `[GfxHouse]` `LogicType`) → its `GfxBobId`, transcribed from
+ * the mod's `budynki12/houses/houses.ini` `[GfxHouse]` records (`LogicTribeType 1`, `GfxPalette
+ * "house01"`). The extracted table reproduces these five exactly and additionally recovers the home
+ * (t2..t6 = typeIds 2..6) + bakery (14/15) growth-stage typeIds this constant drops. The bob sizes
+ * differ a lot natively — the well (63×88) and hive (64×89) are small, the home (299×340) and bakery
+ * (315×234) large — so the single uniform {@link BUILDING_SCALE} preserves their *real relative*
+ * proportions (a faithful pick over a per-type scale).
  */
 const VIKING_HOUSE01_BOBS: Readonly<Record<number, number>> = {
   6: 41, // viking home
@@ -156,14 +166,57 @@ export function directionalAnimFromSeq(
   };
 }
 
+/** One `[GfxHouse]` `LogicType`→`GfxBobId` row as it ships in `content/ir.json`'s `buildingBobs`. */
+interface BuildingBobRow {
+  readonly typeId: number;
+  readonly level: number;
+  readonly bmd: string;
+  readonly paletteName: string;
+  readonly bobId: number;
+}
+
+/**
+ * Reduce the decoded `buildingBobs` join (the `extractBuildingBobs` leg) to the render's per-type bob
+ * map for ONE loaded atlas family: keep only rows whose `(bmd, paletteName)` match the atlas that was
+ * loaded (`bmd` is the full normalized path, so match by suffix), then pick the HIGHEST-`level` row per
+ * `typeId`. The growth chain is expressed as DISTINCT typeIds (viking home t2..t6 = typeIds 2..6 → bobs
+ * 1/11/21/31/41), so within one typeId the level is effectively constant in this family; the max-level
+ * pick is a deterministic tiebreaker for the duplicate (lumped) rows and any future multi-level typeId.
+ * Returns `{}` when no row matches → the caller falls back to {@link VIKING_HOUSE01_BOBS}. Pure +
+ * exported so the join→table reduction is unit-tested without a browser. For the `house01` family it
+ * reproduces the transcribed constant for typeIds 6/10/11/12/15 and ADDS the home/bakery growth-stage
+ * typeIds the constant dropped.
+ */
+export function buildingBobsByType(
+  rows: readonly BuildingBobRow[],
+  bmdSuffix: string,
+  paletteName: string,
+): Record<number, number> {
+  const best = new Map<number, BuildingBobRow>();
+  for (const r of rows) {
+    if (r.paletteName !== paletteName || !r.bmd.endsWith(bmdSuffix)) continue;
+    const prev = best.get(r.typeId);
+    if (prev === undefined || r.level > prev.level) best.set(r.typeId, r);
+  }
+  const out: Record<number, number> = {};
+  for (const [typeId, r] of best) out[typeId] = r.bobId;
+  return out;
+}
+
 /**
  * The demo binding into the human atlases — the render twin of `vertical-slice.ts`'s `demoContent`. The
  * settler's walk/chop ranges are derived from `seqByName` (the extracted `bobSequences` for
  * `cr_hum_body_00.bmd`), so there are no hard-coded frame ids left here; an absent manifest falls back to
- * the known-good `FALLBACK_*` ranges. `building`/`resource` resolve in their own per-kind layers (see
- * {@link loadHumanSpriteSheet}'s `kindLayers`), so their ids index the house/tree bobs, not the body's.
+ * the known-good `FALLBACK_*` ranges. The building's per-type bobs come from `houseBobsByType` (the
+ * extracted `buildingBobs` join, see {@link buildingBobsByType}); an empty/omitted map (an absent IR)
+ * falls back to the transcribed {@link VIKING_HOUSE01_BOBS}. `building`/`resource` resolve in their own
+ * per-kind layers (see {@link loadHumanSpriteSheet}'s `kindLayers`), so their ids index the house/tree
+ * bobs, not the body's.
  */
-export function buildHumanBindings(seqByName: ReadonlyMap<string, BobSeqRow>): SpriteBindings {
+export function buildHumanBindings(
+  seqByName: ReadonlyMap<string, BobSeqRow>,
+  houseBobsByType?: Readonly<Record<number, number>>,
+): SpriteBindings {
   const walk = directionalAnimFromSeq(seqByName, WALK_SEQ, {}, FALLBACK_WALK);
   const stand = directionalAnimFromSeq(seqByName, WALK_SEQ, { frames: 1 }, { ...FALLBACK_WALK, frames: 1 });
   const chop = directionalAnimFromSeq(seqByName, CHOP_SEQ, { phaseStart: 9 }, FALLBACK_CHOP);
@@ -190,8 +243,13 @@ export function buildHumanBindings(seqByName: ReadonlyMap<string, BobSeqRow>): S
       carrying: { idle: standWood, moving: walkWood },
     },
     // Each viking building type draws its own house bob (the `[GfxHouse]` `LogicType` → `GfxBobId`
-    // join); a type absent from the table falls back to the representative HOUSE_BOB.
-    building: { byType: VIKING_HOUSE01_BOBS, default: HOUSE_BOB },
+    // join), now data-driven from the extracted `buildingBobs` IR; an empty/absent table falls back to
+    // the transcribed VIKING_HOUSE01_BOBS, and a type absent from the table to the representative HOUSE_BOB.
+    building: {
+      byType:
+        houseBobsByType && Object.keys(houseBobsByType).length > 0 ? houseBobsByType : VIKING_HOUSE01_BOBS,
+      default: HOUSE_BOB,
+    },
     resource: TREE_BOB,
   };
 }
@@ -216,24 +274,37 @@ async function loadLayer(stem: string): Promise<SpriteLayer> {
 /** The `[bobseq]` imagelib whose sequences drive the settler — the body bob set the head atlas shares ids with. */
 const BODY_IMAGELIB = 'cr_hum_body_00.bmd';
 
+/** The render-binding lanes the `?atlas=real` path reads from the served `content/ir.json`. */
+interface RenderIr {
+  readonly bobSequences?: readonly { imagelib: string; sequences?: BobSeqRow[] }[];
+  readonly buildingBobs?: readonly BuildingBobRow[];
+}
+
 /**
- * Fetch the settler's `[bobseq]` ranges from the served `content/ir.json` (`bobSequences`, the
- * `extractBobSequences` leg), indexed by sequence name for the {@link BODY_IMAGELIB} bob set. Returns an
- * EMPTY map (→ {@link buildHumanBindings} falls back to the known-good `FALLBACK_*` ranges) when the IR
- * is absent or carries no sequences — unlike a missing atlas (a hard precondition {@link loadLayer}
- * throws on), a missing manifest degrades gracefully so `?atlas=real` still draws with the right cycles.
+ * Fetch + parse the served `content/ir.json` ONCE (both the settler `[bobseq]` ranges and the building
+ * `buildingBobs` join read from it). Returns `null` when it is absent or unparsable — unlike a missing
+ * atlas (a hard precondition {@link loadLayer} throws on), a missing IR degrades gracefully: the settler
+ * ranges fall back to the known-good `FALLBACK_*` and the house bobs to {@link VIKING_HOUSE01_BOBS}, so
+ * `?atlas=real` still draws correctly on a checkout without `content/`.
  */
-async function loadBodySequences(): Promise<Map<string, BobSeqRow>> {
-  const byName = new Map<string, BobSeqRow>();
-  let ir: { bobSequences?: { imagelib: string; sequences?: BobSeqRow[] }[] };
+async function loadIr(): Promise<RenderIr | null> {
   try {
     const res = await fetch('/ir.json');
-    if (!res.ok) return byName;
-    ir = (await res.json()) as typeof ir;
+    if (!res.ok) return null;
+    return (await res.json()) as RenderIr;
   } catch {
-    return byName;
+    return null;
   }
-  const set = (ir.bobSequences ?? []).find((s) => s.imagelib === BODY_IMAGELIB);
+}
+
+/**
+ * Index the {@link BODY_IMAGELIB} bob set's `[bobseq]` sequences by name (the `extractBobSequences` leg).
+ * Empty when the IR is absent or carries no sequences → {@link buildHumanBindings} falls back to the
+ * known-good `FALLBACK_*` ranges.
+ */
+function bodySequencesByName(ir: RenderIr | null): Map<string, BobSeqRow> {
+  const byName = new Map<string, BobSeqRow>();
+  const set = (ir?.bobSequences ?? []).find((s) => s.imagelib === BODY_IMAGELIB);
   for (const seq of set?.sequences ?? []) byName.set(seq.name, seq);
   return byName;
 }
@@ -245,17 +316,18 @@ async function loadBodySequences(): Promise<Map<string, BobSeqRow>> {
  * the renderer animates directionally per tick.
  */
 export async function loadHumanSpriteSheet(): Promise<SpriteSheet> {
-  const [body, head, tree, house, seqByName] = await Promise.all([
+  const [body, head, tree, house, ir] = await Promise.all([
     loadLayer(HUMAN_BODY_ATLAS),
     loadLayer(HUMAN_HEAD_ATLAS),
     loadLayer(TREE_ATLAS),
     loadLayer(HOUSE_ATLAS),
-    loadBodySequences(),
+    loadIr(),
   ]);
+  const houseBobs = buildingBobsByType(ir?.buildingBobs ?? [], HOUSE_BMD, HOUSE_PALETTE);
   return {
     source: body.source,
     atlas: body.atlas,
-    bindings: buildHumanBindings(seqByName),
+    bindings: buildHumanBindings(bodySequencesByName(ir), houseBobs),
     overlays: [head],
     // The tree and the building each draw from their OWN atlas (distinct id spaces), so they bind as
     // per-kind layers rather than sharing the body atlas the settler uses. `resource` -> TREE_BOB and

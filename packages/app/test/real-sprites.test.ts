@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildHumanBindings, directionalAnimFromSeq } from '../src/real-sprites.js';
+import { buildHumanBindings, buildingBobsByType, directionalAnimFromSeq } from '../src/real-sprites.js';
 
 /**
  * The seq→frame-range math behind `?atlas=real` — the self-verifiable half of consuming the decoded
@@ -63,10 +63,21 @@ describe('buildHumanBindings', () => {
     });
   });
 
-  it('binds each viking building type to its own house bob (the [GfxHouse] LogicType -> GfxBobId join)', () => {
-    // Pins the data-transcribed table so a typo (or a stale bob id) is caught here, not only by eye.
-    // Values are the houses.ini [GfxHouse] (LogicTribeType 1, GfxPalette "house01") records.
+  it('falls back to the transcribed house table when no buildingBobs map is supplied', () => {
+    // An absent IR (a checkout without content/) → buildHumanBindings is called with no second arg →
+    // the binding uses the committed VIKING_HOUSE01_BOBS constant (houses.ini [GfxHouse], LogicTribeType
+    // 1, GfxPalette "house01"). Pins the fallback so a stale/typo'd constant is caught here, not by eye.
     expect(buildHumanBindings(new Map()).building).toEqual({
+      byType: { 6: 41, 10: 131, 11: 91, 12: 60, 15: 105 },
+      default: 11,
+    });
+  });
+
+  it('consumes a supplied buildingBobs map (the data-driven live path), but ignores an empty one', () => {
+    const fromData = { 2: 1, 6: 41, 12: 60 };
+    expect(buildHumanBindings(new Map(), fromData).building).toEqual({ byType: fromData, default: 11 });
+    // An empty map (the loaded atlas had no matching rows) degrades to the transcribed constant.
+    expect(buildHumanBindings(new Map(), {}).building).toEqual({
       byType: { 6: 41, 10: 131, 11: 91, 12: 60, 15: 105 },
       default: 11,
     });
@@ -84,5 +95,45 @@ describe('buildHumanBindings', () => {
         moving: { start: 4580, dirs: 8, stride: 12 },
       },
     });
+  });
+});
+
+describe('buildingBobsByType', () => {
+  // A slice of the real content/ir.json buildingBobs lane (extractBuildingBobs over houses.ini): the
+  // viking home growth chain is distinct typeIds 2..6 (one bob each), the well/hive carry a duplicate
+  // (lumped) row, and a frank row from another atlas must be filtered out.
+  const rows = [
+    { typeId: 2, level: 0, bmd: 'data/.../ls_houses_viking.bmd', paletteName: 'house01', bobId: 1 },
+    { typeId: 6, level: 4, bmd: 'data/.../ls_houses_viking.bmd', paletteName: 'house01', bobId: 41 },
+    { typeId: 10, level: 0, bmd: 'data/.../ls_houses_viking.bmd', paletteName: 'house01', bobId: 131 },
+    { typeId: 10, level: 0, bmd: 'data/.../ls_houses_viking.bmd', paletteName: 'house01', bobId: 131 },
+    { typeId: 12, level: 0, bmd: 'data/.../ls_houses_viking.bmd', paletteName: 'house01', bobId: 60 },
+    // other palette in the same .bmd — must be excluded
+    { typeId: 6, level: 4, bmd: 'data/.../ls_houses_viking.bmd', paletteName: 'house02', bobId: 999 },
+    // other .bmd (a frank house) — must be excluded
+    { typeId: 6, level: 4, bmd: 'data/.../ls_houses_frank.bmd', paletteName: 'house01', bobId: 888 },
+  ];
+
+  it('reduces the join to typeId -> bob for the matching (bmd, palette) family', () => {
+    expect(buildingBobsByType(rows, 'ls_houses_viking.bmd', 'house01')).toEqual({
+      2: 1,
+      6: 41,
+      10: 131,
+      12: 60,
+    });
+  });
+
+  it('picks the highest level per typeId (deterministic tiebreak for multi-level / lumped dupes)', () => {
+    const multi = [
+      { typeId: 6, level: 2, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 21 },
+      { typeId: 6, level: 4, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 41 },
+      { typeId: 6, level: 0, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 1 },
+    ];
+    expect(buildingBobsByType(multi, 'ls_houses_viking.bmd', 'house01')).toEqual({ 6: 41 });
+  });
+
+  it('returns {} when no row matches the loaded atlas (caller then uses the constant fallback)', () => {
+    expect(buildingBobsByType(rows, 'ls_houses_egypt.bmd', 'house01')).toEqual({});
+    expect(buildingBobsByType([], 'ls_houses_viking.bmd', 'house01')).toEqual({});
   });
 });
