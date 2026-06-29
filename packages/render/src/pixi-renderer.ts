@@ -315,25 +315,33 @@ function atlasLayers(
   tick: number,
   sheet: SpriteSheet,
 ): Container | null {
-  // A multi-.bmd building can name WHICH family atlas-layer it draws from (`{ layer, bob }`); when the
-  // named family is loaded, blit the bob from its OWN source/atlas + per-family scale instead of the
-  // single shared building layer. A plain/unqualified building ref (or an unloaded family) falls through
-  // to the kindLayers path below, so a sheet without `families` is byte-identical to before.
+  // For a building, resolve its bob id + optional family layer ONCE. A multi-.bmd building can name
+  // WHICH family atlas-layer it draws from (`{ layer, bob }`): when the named family is loaded, blit the
+  // bob from its OWN source/atlas + per-family scale. A plain/unqualified ref (or an unloaded family)
+  // falls through to the shared kindLayers.building layer below — so a sheet without `families` is
+  // byte-identical to before. Non-building kinds resolve their id the usual way.
+  let bobId: number | null;
   if (item.kind === 'building') {
     const draw = resolveBuildingDraw(sheet.bindings.building, item);
     if (draw.layer !== undefined) {
       const family = sheet.families?.[draw.layer];
+      // A LOADED family with no/empty frame returns null (placeholder), NOT a fall-through: its frame-id
+      // space differs from the default layer's, so borrowing that layer would draw the WRONG sprite. An
+      // UNLOADED named family (absent here) falls through to the default building layer below.
       if (family !== undefined) {
-        const frame = family.atlas.frames.get(draw.bob);
-        if (frame === undefined || frame.width === 0 || frame.height === 0) return null;
-        const scale = sheet.familyScales?.[draw.layer] ?? sheet.kindScales?.building ?? 1;
-        const single = new Container();
-        single.addChild(atlasSprite(frame, family.source, sx, sy, scale));
-        return single;
+        return blitSingleLayer(
+          family,
+          draw.bob,
+          sx,
+          sy,
+          sheet.familyScales?.[draw.layer] ?? sheet.kindScales?.building ?? 1,
+        );
       }
     }
+    bobId = draw.bob;
+  } else {
+    bobId = resolveSpriteBobId(item, sheet.bindings, tick);
   }
-  const bobId = resolveSpriteBobId(item, sheet.bindings, tick);
   if (bobId === null) return null;
   // A kind with its own dedicated atlas (a tree/resource from ls_trees.bmd, a building from its house
   // .bmd) blits the resolved id from THAT layer's own frame-id space + source — never the shared body
@@ -341,12 +349,7 @@ function atlasLayers(
   const kindLayer: SpriteLayer | undefined =
     item.kind === 'tile' ? undefined : sheet.kindLayers?.[item.kind as SpriteKind];
   if (kindLayer !== undefined) {
-    const frame = kindLayer.atlas.frames.get(bobId);
-    if (frame === undefined || frame.width === 0 || frame.height === 0) return null;
-    const single = new Container();
-    const scale = sheet.kindScales?.[item.kind as SpriteKind] ?? 1;
-    single.addChild(atlasSprite(frame, kindLayer.source, sx, sy, scale));
-    return single;
+    return blitSingleLayer(kindLayer, bobId, sx, sy, sheet.kindScales?.[item.kind as SpriteKind] ?? 1);
   }
   const container = new Container();
   const addLayer = (layer: SpriteLayer): void => {
@@ -358,6 +361,27 @@ function atlasLayers(
   addLayer({ source: sheet.source, atlas: sheet.atlas });
   for (const overlay of sheet.overlays ?? []) addLayer(overlay);
   return container.children.length > 0 ? container : null;
+}
+
+/**
+ * Blit one feet-anchored sprite from a single dedicated atlas layer: look the bob id up in the layer's
+ * own frame geometry and, if present and non-empty, wrap it in a {@link Container} at `scale`. Returns
+ * `null` for a missing or 0×0 frame so the caller falls back to placeholder geometry — the per-layer
+ * "unbound → placeholder" contract. Shared by the per-kind ({@link SpriteSheet.kindLayers}) and the
+ * per-building-family ({@link SpriteSheet.families}) single-layer paths so the two can't drift.
+ */
+function blitSingleLayer(
+  layer: SpriteLayer,
+  bob: number,
+  sx: number,
+  sy: number,
+  scale: number,
+): Container | null {
+  const frame = layer.atlas.frames.get(bob);
+  if (frame === undefined || frame.width === 0 || frame.height === 0) return null;
+  const single = new Container();
+  single.addChild(atlasSprite(frame, layer.source, sx, sy, scale));
+  return single;
 }
 
 /**
