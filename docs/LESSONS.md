@@ -853,3 +853,12 @@ the next iteration inherits it.
   on the same SOURCES.md line are likewise string counts, not 798 houses / 2995 weapons). Before sizing
   an extractor or a test to a doc count, decode the file and count level-1 sections — don't trust the
   string total as a record total. (pipeline)
+- [99c7a13] One `[GfxHouse]` bracket can pack MANY records: the mod groups 4–24 houses under a single
+  `[GfxHouse]` header, each sub-house delimited only by a fresh `EditName` (no new `[...]`), so
+  `parseIniSections` (opens a section only on a bracket) lumps them into ONE `RuleSection`. An extractor
+  that assumes one-record-per-section reads the FIRST sub-house's `GfxBobLibs`/`GfxPalette` but last-wins
+  `LogicType`/`GfxBobId` across the whole block → drops/mis-joins the lumped families (here 63 of 234
+  saracen/egypt types). Synthetic one-record-per-bracket fixtures stay green, and a hands-on check on ONE
+  tribe (its own brackets) looks fine — the gap only shows if you verify breadth against the real file's
+  per-section record count. Fix: split a section into sub-records on `EditName` before extracting.
+  (`extractConstructionCosts`/`extractBuildingGraphics` have the same latent bug.) (pipeline)

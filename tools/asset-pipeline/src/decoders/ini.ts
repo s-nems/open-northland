@@ -1527,6 +1527,35 @@ export function extractBuildingGraphics(sections: readonly RuleSection[]): Build
 }
 
 /**
+ * Splits one `[GfxHouse]` section into its constituent house records. The mod packs SEVERAL houses
+ * under a SINGLE `[GfxHouse]` bracket — five blocks lump 4..24 houses (the saracen + egypt families) —
+ * each sub-house delimited only by a fresh `EditName` line, NOT a new bracket. `parseIniSections` opens
+ * a section only on a `[...]` header, so it lumps the block into one {@link RuleSection}; without this
+ * split the first sub-house's `GfxBobLibs`/`GfxPalette` would be stapled to last-wins `LogicType`/
+ * `GfxBobId` across the whole block (dropping/mis-joining 63 of the 234 building types). Walking the
+ * props in file order and starting a new record at each `EditName` recovers each house with its OWN
+ * `GfxBobLibs`/`GfxPalette`/`LogicTribeType`/`LogicType`/`GfxBobId` block. Props before the first
+ * `EditName` (none in the real file) are ignored; a single-house section yields one record.
+ *
+ * NOTE: {@link extractConstructionCosts} and {@link extractBuildingGraphics} read the same sections
+ * with the SAME pre-existing lumping bug (so saracen/egypt costs + atlases are likewise incomplete) —
+ * a flagged follow-up (docs/FIDELITY.md); this helper exists to be reused when that lands.
+ */
+function splitGfxHouseRecords(sec: RuleSection): RuleSection[] {
+  const records: RuleSection[] = [];
+  let props: RuleProp[] | undefined;
+  for (const p of sec.props) {
+    if (p.key === 'EditName') {
+      props = [p];
+      records.push({ name: sec.name, props });
+    } else if (props !== undefined) {
+      props.push(p);
+    }
+  }
+  return records;
+}
+
+/**
  * Extracts the `[GfxHouse]` **building-type → house-bob** join from the mod's readable
  * `DataCnmd/budynki12/houses/houses.ini` — the data-pinned twin of the renderer's hand-transcribed
  * per-type table (`real-sprites.ts` `VIKING_HOUSE01_BOBS`). {@link extractBuildingGraphics} reads the
@@ -1534,65 +1563,85 @@ export function extractBuildingGraphics(sections: readonly RuleSection[]): Build
  * `(typeId → bobId)` mapping those atlases are indexed by, so the render can draw each building its own
  * house bob from data instead of a transcribed constant (CLAUDE.md "content is data, not code").
  *
- * A `[GfxHouse]` record pairs two per-level tables by their leading **level index** — exactly the
- * `sizeIdx` pairing {@link extractConstructionCosts} uses for `LogicConstructionGoods`:
+ * Each house record (recovered by {@link splitGfxHouseRecords} — a `[GfxHouse]` bracket can hold many)
+ * pairs two per-level tables by their leading **level index** — exactly the `sizeIdx` pairing
+ * {@link extractConstructionCosts} uses for `LogicConstructionGoods`:
  *   - `LogicType <level> <typeId>` — the building `typeId` at that growth level (a home spans levels
  *     0..4 → five distinct typeIds), and
  *   - `GfxBobId <level> <bobId>` — the atlas bob id for that level.
  * For each level present in BOTH tables we emit one {@link BuildingBob} per palette skin
- * (`GfxPalette "house01" "house02"` → two rows, the same bob in each recolour), so a render that
- * loaded the `(bmd, palette)` atlas finds its `typeId → bobId` row directly. The body `.bmd` is
+ * (`GfxPalette "house01" "house02"` → two rows, the same bob in each recolour). The body `.bmd` is
  * `GfxBobLibs[0]`; `LogicTribeType` keys the row (the same logic `typeId` recurs per civilization).
  *
- * A record missing a body `.bmd`, any palette, or a `LogicTribeType` is skipped (never thrown — this
- * indexes hundreds of records and one malformed entry must not abort the offline batch); a level with a
- * `LogicType` but no matching `GfxBobId` (a free/placeholder stage) is omitted. Returns an empty array
- * for sources with no `[GfxHouse]` records (the logic-only tables every other extractor reads).
+ * The join is intentionally **multi-valued** on `(tribeId, typeId, paletteName)`: a logic `typeId`
+ * legitimately maps to several bobs — across **build levels** (a multi-stage wonder, a home's tiers)
+ * AND across **graphics variants** sharing one typeId (wall orientations "Mur h"/"Mur V", the HQ vs
+ * its "headquarters house", "semiramis" vs "semiramis front"). So this is the faithful `(tribeId,
+ * typeId, level, bmd, paletteName) → bobId` table, NOT a unique per-type lookup — a consumer
+ * disambiguates by `level` (build progress) and/or `editName` (the variant). Only **byte-identical**
+ * rows are de-duplicated (a record the mod literally duplicated, e.g. "frank ship small") — distinct
+ * levels/variants are all kept.
+ *
+ * A record missing a body `.bmd`, any palette, or a `LogicTribeType` is skipped (so one malformed
+ * entry never aborts the offline batch over hundreds of records); a level with a `LogicType` but no
+ * matching `GfxBobId` (a free/placeholder stage) is omitted. The `BuildingBob.parse` schema validates
+ * the ids (`nonnegative`) — the real file carries no negative id, so this does not throw in practice.
+ * Returns an empty array for sources with no `[GfxHouse]` records (the logic-only tables).
  */
 export function extractBuildingBobs(sections: readonly RuleSection[], src: SourceRef): BuildingBob[] {
   const bobs: BuildingBob[] = [];
+  // Drop only byte-identical rows (a literally-duplicated source record); genuine level/variant rows
+  // (differing level, bobId, or editName) are all kept — the join is multi-valued by design.
+  const seen = new Set<string>();
   for (const sec of sections) {
     if (sec.name !== 'GfxHouse') continue;
-    const tribeId = getInt(sec, 'LogicTribeType');
-    if (tribeId === undefined) continue;
-    const bmd = findProp(sec, 'GfxBobLibs')?.values[0];
-    if (bmd === undefined || bmd.trim() === '') continue;
-    const palettes = (findProp(sec, 'GfxPalette')?.values ?? []).filter((v) => v.trim() !== '');
-    if (palettes.length === 0) continue;
-    const editName = getStr(sec, 'EditName');
-    // Pair the two per-level tables by their leading level index (the same join `extractConstructionCosts`
-    // does for cost lines). A typeId may recur at several levels; each level keeps its own bob.
-    const typeByLevel = new Map<number, number>();
-    for (const p of findProps(sec, 'LogicType')) {
-      const level = Number.parseInt(p.values[0] ?? '', 10);
-      const typeId = Number.parseInt(p.values[1] ?? '', 10);
-      if (Number.isNaN(level) || Number.isNaN(typeId)) continue;
-      typeByLevel.set(level, typeId);
-    }
-    const bobByLevel = new Map<number, number>();
-    for (const p of findProps(sec, 'GfxBobId')) {
-      const level = Number.parseInt(p.values[0] ?? '', 10);
-      const bobId = Number.parseInt(p.values[1] ?? '', 10);
-      if (Number.isNaN(level) || Number.isNaN(bobId)) continue;
-      bobByLevel.set(level, bobId);
-    }
-    const normalizedBmd = normalizeAssetPath(bmd);
-    for (const [level, typeId] of typeByLevel) {
-      const bobId = bobByLevel.get(level);
-      if (bobId === undefined) continue;
-      for (const paletteName of palettes) {
-        bobs.push(
-          BuildingBob.parse({
-            tribeId,
-            typeId,
-            level,
-            bmd: normalizedBmd,
-            paletteName: normalizePaletteName(paletteName),
-            bobId,
-            editName,
-            source: { file: src.file, block: 'GfxHouse', layer: src.layer ?? 'base' },
-          }),
-        );
+    for (const rec of splitGfxHouseRecords(sec)) {
+      const tribeId = getInt(rec, 'LogicTribeType');
+      if (tribeId === undefined) continue;
+      const bmd = findProp(rec, 'GfxBobLibs')?.values[0];
+      if (bmd === undefined || bmd.trim() === '') continue;
+      const palettes = (findProp(rec, 'GfxPalette')?.values ?? []).filter((v) => v.trim() !== '');
+      if (palettes.length === 0) continue;
+      const editName = getStr(rec, 'EditName');
+      // Pair the two per-level tables by their leading level index (the same join
+      // `extractConstructionCosts` does for cost lines). A typeId may recur at several levels; each
+      // level keeps its own bob.
+      const typeByLevel = new Map<number, number>();
+      for (const p of findProps(rec, 'LogicType')) {
+        const level = Number.parseInt(p.values[0] ?? '', 10);
+        const typeId = Number.parseInt(p.values[1] ?? '', 10);
+        if (Number.isNaN(level) || Number.isNaN(typeId)) continue;
+        typeByLevel.set(level, typeId);
+      }
+      const bobByLevel = new Map<number, number>();
+      for (const p of findProps(rec, 'GfxBobId')) {
+        const level = Number.parseInt(p.values[0] ?? '', 10);
+        const bobId = Number.parseInt(p.values[1] ?? '', 10);
+        if (Number.isNaN(level) || Number.isNaN(bobId)) continue;
+        bobByLevel.set(level, bobId);
+      }
+      const normalizedBmd = normalizeAssetPath(bmd);
+      for (const [level, typeId] of typeByLevel) {
+        const bobId = bobByLevel.get(level);
+        if (bobId === undefined) continue;
+        for (const paletteName of palettes) {
+          const pal = normalizePaletteName(paletteName);
+          const key = `${tribeId}|${typeId}|${level}|${normalizedBmd}|${pal}|${bobId}|${editName ?? ''}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          bobs.push(
+            BuildingBob.parse({
+              tribeId,
+              typeId,
+              level,
+              bmd: normalizedBmd,
+              paletteName: pal,
+              bobId,
+              editName,
+              source: { file: src.file, block: 'GfxHouse', layer: src.layer ?? 'base' },
+            }),
+          );
+        }
       }
     }
   }
