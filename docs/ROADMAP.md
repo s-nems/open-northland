@@ -149,11 +149,26 @@ check, commit. **Render-only** rungs need no pipeline change (the atlas is alrea
      6/10/11/12/15 **exactly** (so `?scene=building-types&atlas=real` renders identically) and additionally
      recovers the home (t2..t6 = typeIds 2..6 → 1/11/21/31/41) + bakery (14→101) growth-stage bobs the constant
      dropped. Unit-tested (`buildingBobsByType` reduction + the empty-map fallback); commit pins it.
-   - [ ] **Remaining — multi-`.bmd`/palette per type** — generalise the binding to pick a per-type **atlas
-     layer** (one `kindLayer` per `(bmd, palette)` family) so types in other bodies/skins (`ls_houses_viking2..4`,
-     `houseMiller01`/`housedruid01`, the HQ's `viking4` bob 34) draw their own house instead of the default.
-     The other tribes (frank/egypt/saracen/byzantine) reuse the same machinery — the `buildingBobs` table
-     already covers all 6.
+   - **Remaining — multi-`.bmd`/palette per type (DESIGNED + decomposed; data scoped, see SOURCES.md
+     "Building graphics families").** Investigation settled the shape: the render's `building` kind binds ONE
+     atlas layer (`ls_houses_viking.house01`), but viking buildings span **6+ `.bmd`s** (`ls_houses_viking`,
+     `viking2/3/4`, `frank_well_hive`, `frank_mill`, `f_*`) × **multiple palettes each** (every `(bmd,palette)`
+     is its own decoded PNG), and **`(tribe,typeId)` is NOT unique** (viking typeId 10 = well in `house01`,
+     other bobs in `house02`/`dungeon01`), so the join needs an `editName`-keyed disambiguation, not just
+     highest-level. The real viking **HQ (typeId 1) is `ls_houses_viking4.bmd` bob 34** ("viking headquarters"),
+     a different atlas than the one loaded. Ordered sub-steps (each its own `/iterate`):
+     1. [ ] **Render — layer-aware building binding** (render-only, no visual change). Generalise the atlas
+        resolution so a building type can name WHICH atlas layer it draws from: `SpriteSheet` carries a
+        family→`SpriteLayer` map (+ per-family scale) and `BuildingTypeBinding.byType` maps `typeId → {layer,
+        bob}`; the GPU picks the layer per item. Back-compat: a plain bob id / the single `kindLayers.building`
+        path keeps working. Unit-test the new resolver in `render`. No app/scene change yet.
+     2. [ ] **App — canonical (family,bob) reducer + load viking atlases + draw the real HQ.** Extend the
+        `real-sprites.ts` reducer to pick the canonical `(bmd,palette,bob)` per (viking, typeId) across all
+        viking families (disambiguate by `editName`; HQ→viking4 bob 34); load those atlases in
+        `loadHumanSpriteSheet`; route the layer-aware binding. First visible win: the HQ draws its real
+        headquarters. Extend the `building-types` scene; **human pixel sign-off**.
+     3. [ ] **App — the other tribes** (frank/egypt/saracen/byzantine) — same machinery, the `buildingBobs`
+        table already covers all 6; a per-tribe (or montage) scene; **human pixel sign-off**.
 2. [ ] **Landscape/resource per-type variety** (render-only) — bushes, signs, wonders, harbours + non-yew
    tree species, each via its own `[GfxLandscape]` bob (today every resource is the single yew). Same recipe
    as rung 1 over the already-emitted `extractLandscapeGraphics` atlases (87 landscape types in IR).
