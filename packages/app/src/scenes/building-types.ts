@@ -24,22 +24,30 @@ const { Building } = components;
 /**
  * The viking building types this scene showcases — the `typeId`s are the real `[GfxHouse]` `LogicType`
  * values the render keys its per-type bob lookup on (`buildingBobRefsByType`), so the synthetic content's
- * ids match what `?atlas=real` draws. Ordered front-to-back (small houses nearest the camera) over the
- * placement cells below — all on the screen-horizontal anti-diagonal `x + y = 12` — so the large
- * home/bakery/HQ behind aren't occluded by the small wells in front. The HQ (typeId 1) draws from the
- * viking4 family atlas; the rest from the default `ls_houses_viking.house01` layer.
+ * ids match what `?atlas=real` draws. The HQ (typeId 1) draws from the viking4 family atlas; the rest
+ * from the default `ls_houses_viking.house01` layer.
+ *
+ * Laid out in **two screen rows** because the native house bobs are large (the HQ alone is ~430px wide at
+ * native size): the iso projection is `screenX = (x−y)·32`, `screenY = (x+y)·16`, and the camera scale
+ * magnifies sprites AND spacing together, so the only way to stop the big sprites overlapping is more
+ * WORLD spacing. The three LARGE buildings (home / bakery / HQ) sit in a widely-spaced BACK row
+ * (`x + y = 10`, ~256px apart on screen); the three SMALL buildings sit in a FRONT row (`x + y = 18`,
+ * nearer the camera and well below the big ones) each in front of a big one — and the SHORTEST small
+ * (the well) is paired under the tallest big (the HQ) so a front sprite never hides a big one's body.
  */
 const BUILDINGS: ReadonlyArray<{ typeId: number; id: string; kind: string; x: number; y: number }> = [
-  { typeId: 10, id: 'viking-well', kind: 'storage', x: 1, y: 11 }, // small (63×88)
-  { typeId: 11, id: 'viking-hive', kind: 'workplace', x: 3, y: 9 }, // small (64×89)
-  { typeId: 12, id: 'viking-farm', kind: 'workplace', x: 5, y: 7 }, // medium (129×150)
-  { typeId: 6, id: 'viking-home', kind: 'home', x: 7, y: 5 }, // large (299×340)
-  { typeId: 15, id: 'viking-bakery', kind: 'workplace', x: 9, y: 3 }, // large (315×234)
-  { typeId: 1, id: 'viking-hq', kind: 'storage', x: 11, y: 1 }, // HQ — viking4 bob 34 (433×380)
+  // BACK row — the large buildings, widely spaced so home / bakery / HQ read as distinct structures.
+  { typeId: 6, id: 'viking-home', kind: 'home', x: 1, y: 9 }, // large (299×340), screenX 224
+  { typeId: 15, id: 'viking-bakery', kind: 'workplace', x: 5, y: 5 }, // large (315×234), screenX 480
+  { typeId: 1, id: 'viking-hq', kind: 'storage', x: 9, y: 1 }, // HQ — viking4 bob 34 (433×380), screenX 736
+  // FRONT row — the small buildings, nearer the camera, one in front of each big (shortest under the HQ).
+  { typeId: 11, id: 'viking-hive', kind: 'workplace', x: 5, y: 13 }, // small (64×89), under home, screenX 224
+  { typeId: 12, id: 'viking-farm', kind: 'workplace', x: 9, y: 9 }, // medium (129×150), under bakery, screenX 480
+  { typeId: 10, id: 'viking-well', kind: 'storage', x: 13, y: 5 }, // small (63×88), under HQ, screenX 736
 ];
 
-const WIDTH = 13;
-const HEIGHT = 13;
+const WIDTH = 15;
+const HEIGHT = 15;
 
 /**
  * A tiny synthetic content set: the five viking building types as passive structures (no workers, no
