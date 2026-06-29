@@ -136,7 +136,7 @@ fidelity-relevant decision is the **state→sprite join**: which animation a set
 
 | Concern | Status | Source / how pinned |
 |---|---|---|
-| Settler state→sprite-frame join (`resolveSpriteFrame`) | approximated | The **join key is faithful**: an `acting` settler carries its numeric `atomicId`, the exact key the original's `tribetypes` `setatomic` maps to an animation. But the *render-side state model* (`idle`/`moving`/`acting`, derived from `CurrentAtomic`/`PathFollow`) and the **which-frame-per-state** choice are *our* coarsening — the original has a richer per-direction/per-atomic animation table not yet bound. No decoded bob/animation set is wired (the bound atlas is the FREE synthetic stand-in); the `byAtomic` override exists but is empty until a real `setatomic`→bob table is extracted. Pixel fidelity stays the OpenVikings oracle's job (Assets row), deferred to a human. |
+| Settler state→sprite-frame join (`resolveSpriteFrame`) | approximated | The **join key is faithful**: an `acting` settler carries its numeric `atomicId`, the exact key the original's `tribetypes` `setatomic` maps to an animation. But the *render-side state model* (`idle`/`moving`/`acting` + an orthogonal `carrying` flag, derived from `CurrentAtomic`/`PathFollow`/`Carrying`) and the **which-frame-per-state** choice are *our* coarsening — the original has a richer per-direction/per-atomic animation table not yet bound. Under `?atlas=real` three real `CR_Hum_Body_00` `[bobseq]` ranges are now wired by hand: walk (1988), chop (5106, on the harvest atomic), and the **loaded carry gait** `human_man_generic_walk_wood` (4580) bound to the `carrying` override — so a woodcutter hauling its harvest plays the log-on-shoulder cycle, not the empty walk. This is still a hand-picked subset, not the full extracted `setatomic`→bob table (a later slice); the committed default remains the FREE synthetic atlas. Pixel fidelity stays the OpenVikings oracle's job (Assets row), deferred to a human. |
 | Resource (tree) sprite bind (`ls_trees.bmd`) | approximated | The **bind path is faithful**: under `?atlas=real` a wood `Resource` node draws a frame of the decoded `ls_trees.bmd` recoloured by its palette — the `landscapes.cif` `[GfxLandscape]` record's binding, extracted by `extractLandscapeGraphics` (`GfxBobLibs` body+shadow + `GfxPalette` editname + `GfxFrames`), emitted through the same `convertBmdTree` atlas path as the creature bobs. What is *approximated* is the **per-object species + frame pick** (see Deviations): one representative full-grown frame of one species (yew, bob 60) is bound to every wood node, where the original assigns a species + growth/sway frame per pre-placed map object. Pixel fidelity (does the decoded tree match the original) stays the OpenVikings oracle's job, deferred to a human. |
 
 ## Deviations (conscious divergences from the original)
@@ -308,3 +308,28 @@ Format: `- <mechanic>: <how it differs> — <why> (<commit>)`.
   sizeIdx)` construction table — the same kind of per-tribe deferral the `recipe` table carries (the
   *Production per-cycle ticks* row, axis (a)) — landed together when a tribe/stage-aware ConstructionSystem
   needs it.
+
+- Settler facing (bob direction layout): the `CR_Hum_Body` bobs do **NOT** lay their 8 directions out as a
+  uniform screen-angle rotation, so no `atan2`-bucketing formula can pick them. The true per-block facing
+  (a human read off each labelled direction block) is `0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N`.
+  `readFacing` (`packages/render/src/scene.ts`) therefore maps the settler's grid step **directly** to the
+  block facing that step's iso-screen heading via the `STEP_TO_FACING` table (`E→SE→5, S→SW→0, W→NW→2,
+  N→NE→3`, plus the four diagonal steps), with no angle/rounding. **Earlier this used a screen-angle
+  formula assuming a regular rotation** — it happened to get the SE heading right but rendered other
+  headings facing the wrong way (e.g. a settler walking screen-up-left faced down-left). The direct table
+  is a faithful match to the asset, not an approximation; `DEFAULT_FACING` is block 5 (SE, toward camera).
+  (settler facing — direct grid-step→block table)
+
+- Movement / facing granularity (4-connected grid → 4 of 8 sprite directions): pathfinding is a
+  4-connected A* (N/E/S/W only — `packages/sim/src/nav/terrain.ts` `NEIGHBOUR_OFFSETS`), so every path
+  leg is axis-aligned on the grid and the render's `readFacing` (`packages/render/src/scene.ts`) can only
+  ever produce the FOUR iso-screen-diagonal facings whose grid leg is a single axis step: SW (block 0) /
+  NW (block 2) / NE (block 3) / SE (block 5). The decoded `CR_Hum_Body` bobs carry all **eight** directions,
+  but the other four (screen-cardinal W/E/S/N = blocks 1/4/6/7) need a **diagonal grid step**, which the current pathfinder +
+  per-axis MovementSystem never emit. The `nav/terrain.ts` comment pins this as faithful to the original's
+  cell graph ("no diagonal steps"), but the original's humans visibly walk 8 directions, so whether the
+  real engine moves on an 8-connected (or finer) graph is **not yet pinned** — an oracle/observation
+  question. The `angled-path` acceptance scene exercises everything the 4-connected model supports (all
+  four reachable facings, in both the empty walk and the loaded carry gait); full 8-direction movement is a
+  deferred slice (8-connected A* + diagonal MovementSystem steps + diagonal cost), recorded here so the
+  4-facing cap reads as a known limit, not an animation bug. (angled-path scene + carry-wood gait)

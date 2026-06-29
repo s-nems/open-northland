@@ -132,6 +132,18 @@ export interface SettlerStateBinding {
    * {@link idle}.
    */
   readonly byAtomic?: Readonly<Record<number, SpriteFrameRef>>;
+  /**
+   * Loaded-gait override, in effect only while the draw item is hauling a good ({@link DrawItem.carrying}).
+   * A carrier swaps its empty-handed walk/stand for these (the original's `..._walk_wood` bobseq vs the
+   * plain `..._walk`): `moving` while walking a load home, `idle` while standing or depositing it. Each
+   * slot falls back to its un-loaded counterpart when absent, so a binding that omits `carrying` is
+   * unchanged — and a *bound* atomic animation (e.g. the chop in {@link byAtomic}) still wins, since a
+   * settler only carries *after* it has finished harvesting empty-handed.
+   */
+  readonly carrying?: {
+    readonly idle?: SpriteFrameRef;
+    readonly moving?: SpriteFrameRef;
+  };
 }
 
 /**
@@ -149,12 +161,12 @@ export type SpriteBindings = Readonly<{
 
 /**
  * The facing used when a draw item carries none (`item.facing` is undefined — an idle/acting settler
- * with no live movement to derive a heading from). `4` is **SE** on screen (toward the camera-right) in
- * the `CR_Hum_Body` direction layout, the axis the vertical slice's woodcutter walks + chops along, so
- * a still settler faces plausibly rather than snapping to a back view. Per-entity "hold the last
- * heading" is a later refinement.
+ * with no live movement to derive a heading from). `5` is **SE** on screen (toward the camera-right) in
+ * the `CR_Hum_Body` direction layout (the blocks face `0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N`; see
+ * docs/FIDELITY.md "Settler facing"), a toward-camera pose so a still settler faces plausibly rather than
+ * snapping to a back/profile view. Per-entity "hold the last heading" is a later refinement.
  */
-export const DEFAULT_FACING = 4;
+export const DEFAULT_FACING = 5;
 
 /** Non-negative modulo (JS `%` keeps the sign), so a negative facing/tick still indexes in range. */
 function wrap(n: number, m: number): number {
@@ -188,13 +200,18 @@ function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
  * (number | table) binding. A plain number is the same frame for every state. A
  * {@link SettlerStateBinding} picks by state with a fixed fallback chain so a sparse table is always
  * total: `acting` tries `byAtomic[id]` → `acting` → `idle`; `moving` tries `moving` → `idle`; `idle` is
- * `idle`. The chosen {@link SpriteFrameRef} is then resolved through {@link frameOf} (directional +
- * animated when it's a {@link DirectionalAnim}). Pure.
+ * `idle`. When the item is {@link DrawItem.carrying} a good, the {@link SettlerStateBinding.carrying}
+ * loaded-gait override is consulted first for the `moving`/`idle` slots (so a hauling settler walks the
+ * loaded cycle); a *bound* atomic still wins, as a settler only carries after harvesting empty-handed.
+ * The chosen {@link SpriteFrameRef} is then resolved through {@link frameOf} (directional + animated
+ * when it's a {@link DirectionalAnim}). Pure.
  */
 function settlerBobId(binding: number | SettlerStateBinding, item: DrawItem, tick: number): number {
   if (typeof binding === 'number') return binding;
   const facing = item.facing ?? DEFAULT_FACING;
   const state: SpriteState = item.state ?? 'idle';
+  // Loaded-gait overrides, in effect only while the settler is hauling a good.
+  const carry = item.carrying ? binding.carrying : undefined;
   if (state === 'acting') {
     // An action animation runs on the atomic's OWN clock: `elapsed` ticks since the action started
     // (0-based, so frame 0 shows on its first tick). Frames advance at the binding's fixed cadence, so
@@ -207,12 +224,13 @@ function settlerBobId(binding: number | SettlerStateBinding, item: DrawItem, tic
       const specific = byAtomic[item.atomicId];
       if (specific !== undefined) return frameOf(specific, facing, clock);
     }
-    // No animation bound for this atomic → the idle/stand pose (a deposit/pickup has no decoded
-    // animation yet; standing is faithful-enough and never borrows the woodcut swing at a wrong speed).
-    return frameOf(binding.acting ?? binding.idle, facing, clock);
+    // No animation bound for this atomic → a still pose: the loaded stand while hauling (the deposit),
+    // else the generic acting/idle. A deposit/pickup has no decoded swing; standing is faithful-enough
+    // and never borrows the woodcut swing at a wrong speed.
+    return frameOf(carry?.idle ?? binding.acting ?? binding.idle, facing, clock);
   }
-  if (state === 'moving') return frameOf(binding.moving ?? binding.idle, facing, tick);
-  return frameOf(binding.idle, facing, tick);
+  if (state === 'moving') return frameOf(carry?.moving ?? binding.moving ?? binding.idle, facing, tick);
+  return frameOf(carry?.idle ?? binding.idle, facing, tick);
 }
 
 /**

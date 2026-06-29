@@ -127,10 +127,12 @@ describe('buildScene', () => {
     const facingOf = (wx: number, wy: number): number | undefined =>
       buildScene(snapshotOf([entity(1, 1, 1, pf(wx, wy))]), FLAT_3x2).find((d) => d.kind === 'settler')
         ?.facing;
-    expect(facingOf(2, 1)).toBe(4); // east (+col)  -> screen down-right -> SE (4)
-    expect(facingOf(0, 1)).toBe(0); // west (-col)  -> screen up-left   -> NW (0)
-    expect(facingOf(2, 2)).toBe(3); // +col,+row    -> screen straight down -> S (3)
-    expect(facingOf(0, 0)).toBe(7); // -col,-row    -> screen straight up   -> N (7)
+    // Bob blocks face 0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N (docs/FIDELITY.md "Settler facing");
+    // a grid step maps to the block facing its iso-screen heading via STEP_TO_FACING.
+    expect(facingOf(2, 1)).toBe(5); // grid-E (+col)   -> screen down-right (SE) -> block 5
+    expect(facingOf(0, 1)).toBe(2); // grid-W (-col)   -> screen up-left   (NW) -> block 2
+    expect(facingOf(2, 2)).toBe(6); // grid-SE (+col,+row) -> screen straight down (S) -> block 6
+    expect(facingOf(0, 0)).toBe(7); // grid-NW (-col,-row) -> screen straight up   (N) -> block 7
   });
 
   it('omits facing when a settler has no heading (no path, or already on the waypoint)', () => {
@@ -169,6 +171,27 @@ describe('buildScene', () => {
     expect(byRef(3)?.state).toBe('acting');
     expect(byRef(3)?.atomicId).toBe(24); // the setatomic join key rides along
     expect(byRef(3)?.elapsed).toBe(6); // the atomic's tick clock rides along (the animation cadence)
+  });
+
+  it('flags a settler hauling a good with carrying:true (the loaded-gait join key)', () => {
+    const scene = buildScene(
+      snapshotOf([
+        // empty-handed walker: no Carrying component → flag omitted.
+        entity(1, 0, 0, { Settler: { tribe: 0 }, PathFollow: { waypoints: [], index: 0 } }),
+        // hauling a log home: a Carrying component present → carrying:true rides along orthogonal to state.
+        entity(2, 1, 0, {
+          Settler: { tribe: 0 },
+          PathFollow: { waypoints: [], index: 0 },
+          Carrying: { goodType: 1, amount: 1 },
+        }),
+      ]),
+      FLAT_3x2,
+    );
+    const byRef = (r: number) => scene.find((d) => d.kind === 'settler' && d.ref === r);
+    expect(byRef(1)?.state).toBe('moving');
+    expect(byRef(1)?.carrying).toBeUndefined();
+    expect(byRef(2)?.state).toBe('moving'); // still moving — carrying is orthogonal to the coarse state
+    expect(byRef(2)?.carrying).toBe(true);
   });
 
   it('marks buildings/resources idle with no atomicId (they do not animate per-state here)', () => {
