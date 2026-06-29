@@ -265,6 +265,96 @@ describe('resolveSpriteBobId — directional animated binding', () => {
   });
 });
 
+describe('resolveSpriteBobId — carrying (loaded-gait) override', () => {
+  /** A settler draw item, with the optional `carrying` haul flag the loaded gait keys off. */
+  function settler(
+    state: SpriteState,
+    opts: { facing?: number; atomicId?: number; elapsed?: number; carrying?: boolean } = {},
+  ): DrawItem {
+    return {
+      kind: 'settler',
+      ref: 1,
+      x: 0,
+      y: 0,
+      depth: 0,
+      state,
+      ...(opts.facing !== undefined ? { facing: opts.facing } : {}),
+      ...(opts.atomicId !== undefined ? { atomicId: opts.atomicId } : {}),
+      ...(opts.elapsed !== undefined ? { elapsed: opts.elapsed } : {}),
+      ...(opts.carrying ? { carrying: true } : {}),
+    };
+  }
+  const WALK: DirectionalAnim = { start: 1988, dirs: 8, stride: 12 };
+  const STAND: DirectionalAnim = { start: 1988, dirs: 8, stride: 12, frames: 1 };
+  const CHOP: DirectionalAnim = { start: 5106, dirs: 8, stride: 15, phaseStart: 9 };
+  // Mirrors the real human binding: empty walk/stand, the chop on the harvest atomic, and the loaded
+  // gait (`..._walk_wood`, bob 4580) on the `carrying` override.
+  const WALK_WOOD: DirectionalAnim = { start: 4580, dirs: 8, stride: 12 };
+  const STAND_WOOD: DirectionalAnim = { start: 4580, dirs: 8, stride: 12, frames: 1 };
+  const ANIM: SettlerStateBinding = {
+    idle: STAND,
+    moving: WALK,
+    byAtomic: { 24: CHOP },
+    carrying: { idle: STAND_WOOD, moving: WALK_WOOD },
+  };
+  const bindings: SpriteBindings = { settler: ANIM, building: 20, resource: 30 };
+
+  it('a carrying settler walks the loaded cycle (WALK_WOOD), not the empty walk', () => {
+    expect(resolveSpriteBobId(settler('moving', { facing: 3, carrying: true }), bindings, 5)).toBe(
+      4580 + 3 * 12 + 5,
+    );
+    // Without the haul flag the SAME item walks the empty cycle (no carry override applied).
+    expect(resolveSpriteBobId(settler('moving', { facing: 3 }), bindings, 5)).toBe(1988 + 3 * 12 + 5);
+  });
+
+  it('a carrying settler stands the loaded pose when idle (STAND_WOOD, frames:1 ignores tick)', () => {
+    expect(resolveSpriteBobId(settler('idle', { facing: 2, carrying: true }), bindings, 99)).toBe(
+      4580 + 2 * 12,
+    );
+  });
+
+  it('a carrying settler depositing (unbound atomic) holds the loaded stand, not the empty idle', () => {
+    // Atomic 23 (deposit/pileup) has no bound swing; while hauling it falls back to the carry stand
+    // (STAND_WOOD) so the settler keeps its load on screen until the wood is actually placed.
+    expect(
+      resolveSpriteBobId(
+        settler('acting', { facing: 2, atomicId: 23, elapsed: 3, carrying: true }),
+        bindings,
+        0,
+      ),
+    ).toBe(4580 + 2 * 12);
+  });
+
+  it('a bound atomic still wins over the carry override (a settler harvests empty-handed)', () => {
+    // The chop is bound on atomic 24; even if a (spurious) carry flag were present the harvest swing
+    // must still play — carry only swaps the gait, never a bound action animation.
+    expect(
+      resolveSpriteBobId(
+        settler('acting', { facing: 4, atomicId: 24, elapsed: 1, carrying: true }),
+        bindings,
+        0,
+      ),
+    ).toBe(
+      5106 + 4 * 15 + 9, // phaseStart 9: windup begins
+    );
+  });
+
+  it('a carry override falls back to the un-loaded slot when a loaded slot is absent', () => {
+    // Only `carrying.moving` bound: a hauling idle settler falls through to the plain idle STAND.
+    const partial: SpriteBindings = {
+      settler: { idle: STAND, moving: WALK, carrying: { moving: WALK_WOOD } },
+      building: 0,
+      resource: 0,
+    };
+    expect(resolveSpriteBobId(settler('moving', { facing: 1, carrying: true }), partial, 2)).toBe(
+      4580 + 1 * 12 + 2,
+    );
+    expect(resolveSpriteBobId(settler('idle', { facing: 1, carrying: true }), partial, 2)).toBe(
+      1988 + 1 * 12,
+    );
+  });
+});
+
 describe('atlasFromManifest', () => {
   /** A decoded `.atlas.json` shape, including the `type`/`opaque` fields the renderer ignores. */
   const manifest: AtlasManifest = {

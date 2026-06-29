@@ -67,6 +67,13 @@ const WALK: DirectionalAnim = { start: 1988, dirs: 8, stride: 12 };
 // `elapsed`, same speed as every other animation.
 const CHOP: DirectionalAnim = { start: 5106, dirs: 8, stride: 15, phaseStart: 9 };
 const STAND: DirectionalAnim = { start: 1988, dirs: 8, stride: 12, frames: 1 };
+// The LOADED gait — `human_man_generic_walk_wood` (bob 4580, 8×12), the settler walking while hauling a
+// log. Same directional layout as WALK; the frames simply carry the wood the empty-handed walk doesn't
+// (decoded and verified present for all 8×12 frames in both the body and head atlases). Bound to the
+// settler's `carrying` override so a woodcutter walking its harvest back to the store plays this instead
+// of the empty walk; WALK_WOOD's first frame (STAND_WOOD) holds a still loaded pose while it deposits.
+const WALK_WOOD: DirectionalAnim = { start: 4580, dirs: 8, stride: 12 };
+const STAND_WOOD: DirectionalAnim = { start: 4580, dirs: 8, stride: 12, frames: 1 };
 
 /** The chop atomic id (the demo slice's `harvest`), mapped to the woodcutting swing. */
 const HARVEST_ATOMIC = 24;
@@ -81,11 +88,19 @@ const HARVEST_ATOMIC = 24;
  */
 const HUMAN_BINDINGS: SpriteBindings = {
   // CHOP is bound ONLY to the harvest atomic. There is intentionally no generic `acting` swing: an
-  // unmapped action (a carrier/woodcutter depositing or picking up — atomics 22/23) falls back to the
-  // standing `idle` pose, NOT a borrowed woodcut swing. Borrowing it made a 4-tick deposit replay the
-  // 15-frame axe swing at ~4× speed (a fast, truncated chop) — the very glitch this binding removes. A
-  // dedicated carry/place animation is a later slice (no such bob is decoded yet).
-  settler: { idle: STAND, moving: WALK, byAtomic: { [HARVEST_ATOMIC]: CHOP } },
+  // unmapped action (a carrier/woodcutter depositing or picking up — atomics 22/23) falls back to a
+  // STANDING pose, NOT a borrowed woodcut swing. Borrowing it made a 4-tick deposit replay the 15-frame
+  // axe swing at ~4× speed (a fast, truncated chop) — the very glitch this binding removes.
+  //
+  // `carrying` is the loaded-gait override: once the woodcutter picks up its wood it walks WALK_WOOD
+  // (bob 4580, the log-on-shoulder cycle) instead of the empty WALK, and stands STAND_WOOD while it
+  // deposits. The chop still wins while harvesting because a settler only carries *after* the harvest.
+  settler: {
+    idle: STAND,
+    moving: WALK,
+    byAtomic: { [HARVEST_ATOMIC]: CHOP },
+    carrying: { idle: STAND_WOOD, moving: WALK_WOOD },
+  },
   building: -1,
   // The wood node draws bob 60 of the ls_trees atlas, blitted from its own per-kind layer (see
   // loadHumanSpriteSheet's kindLayers) — its id space is the tree bobs, not the human body's, so this

@@ -1,5 +1,5 @@
 import type { WorldSnapshot } from '@vinland/sim';
-import { ONE, TILE_HALF_H, TILE_HALF_W, tileToScreen } from './index.js';
+import { ONE, tileToScreen } from './index.js';
 
 /**
  * The PURE scene-building layer — the part of rendering an agent CAN self-verify.
@@ -70,11 +70,19 @@ export interface DrawItem {
   readonly elapsed?: number;
   /**
    * For a settler: its facing direction index (0..7) — the screen-space heading a directional
-   * animation binding indexes by. The Cultures human bob layout is `0 NW, 1 W, 2 SW, 3 S` (toward the
-   * camera), `4 SE, 5 E, 6 NE, 7 N` (away). Derived from the live {@link readFacing} heading; omitted
-   * when the settler isn't moving (the binding then falls back to {@link DEFAULT_FACING}).
+   * animation binding indexes by. The `CR_Hum_Body` bob layout is NOT a uniform rotation; its 8 blocks
+   * face (read off the decoded frames, `docs/FIDELITY.md` "Settler facing"): `0 SW, 1 W, 2 NW, 3 NE,
+   * 4 E, 5 SE, 6 S, 7 N`. Derived from the live {@link readFacing} heading; omitted when the settler
+   * isn't moving (the binding then falls back to {@link DEFAULT_FACING}).
    */
   readonly facing?: number;
+  /**
+   * For a settler: whether it is currently hauling a good (the sim `Carrying` component is present).
+   * ORTHOGONAL to {@link state} — a settler can be carrying while `moving` (walking a load home) or
+   * `acting` (depositing it). A binding reads it to swap the empty-handed gait for the loaded one (the
+   * original's `..._walk_wood` bobseq instead of `..._walk`). Omitted when the settler carries nothing.
+   */
+  readonly carrying?: boolean;
 }
 
 /** The terrain grid the snapshot is positioned over (dimensions + row-major landscape typeIds). */
@@ -152,17 +160,26 @@ function readAtomicElapsed(components: Readonly<Record<string, unknown>>): numbe
 }
 
 /**
- * Map the angle of a settler's screen-space movement vector onto the bob layout's facing-direction
- * index, so the sprite faces the way it walks. The `CR_Hum_Body` direction layout (read off the decoded
- * frames) runs: 0 NW, 1 W, 2 SW, 3 S (toward the camera), 4 SE, 5 E, 6 NE, 7 N (away). `atan2(sy, sx)`
- * runs from screen-East with y pointing *down*, so each +45° of θ steps the index back by one from
- * `225°/45° = 5` at θ=0 (East) — hence `(225° − θ) / 45°` rounded and wrapped. So walking +col (screen
- * down-right) reads SE (4), −col (up-left) reads NW (0): the sprite faces its heading.
+ * The bob's facing-direction index for a unit step toward the next waypoint, keyed by the SIGN of the
+ * grid delta `(sign dCol, sign dRow)`. The `CR_Hum_Body` sheet's 8 direction blocks are NOT a uniform
+ * screen-angle rotation — each was read off the decoded frames one by one (`docs/FIDELITY.md` "Settler
+ * facing"; blocks face `0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N`) — so a screen-angle formula can't
+ * pick them; we map each grid step straight to the block whose sprite faces that step's ISO-screen
+ * heading. A grid step projects to screen as `(dCol−dRow, dCol+dRow)`:
+ *   E (1,0)→screen SE→block 5,  S (0,1)→SW→0,  W (−1,0)→NW→2,  N (0,−1)→NE→3,
+ *   SE(1,1)→screen S →block 6,  SW(−1,1)→W →1,  NW(−1,−1)→N→7,  NE(1,−1)→E→4.
+ * The four AXIS steps (the only ones a 4-connected path emits) are the screen-diagonal facings 5/0/2/3.
  */
-function screenVecToDir(sx: number, sy: number): number {
-  const deg = (Math.atan2(sy, sx) * 180) / Math.PI;
-  return ((Math.round((225 - deg) / 45) % 8) + 8) % 8;
-}
+const STEP_TO_FACING: Readonly<Record<string, number>> = {
+  '1,0': 5, // E  -> screen SE
+  '0,1': 0, // S  -> screen SW
+  '-1,0': 2, // W  -> screen NW
+  '0,-1': 3, // N  -> screen NE
+  '1,1': 6, // SE -> screen S
+  '-1,1': 1, // SW -> screen W
+  '-1,-1': 7, // NW -> screen N
+  '1,-1': 4, // NE -> screen E
+};
 
 /**
  * One {@link PathFollow} waypoint, as plain snapshot data (Fixed = scaled int). Redeclared here so
@@ -174,12 +191,12 @@ interface WaypointValue {
 }
 
 /**
- * Derive a settler's facing direction index (0..7) from its live heading: the vector from its current
- * position to the {@link PathFollow} waypoint it is walking toward, projected into screen space (the
- * iso 2:1 aspect via {@link tileToScreen}'s half-extents) and snapped to the nearest of 8 directions.
- * Returns `undefined` when there is no movement to read a heading from (no path, or already on the
- * waypoint) — the binding then falls back to a default facing. The Fixed scale is common to both
- * points, so it cancels in the direction; only the *ratio* matters. Pure read of plain snapshot data.
+ * Derive a settler's facing direction index (0..7) from its live heading: the grid step from its current
+ * position toward the {@link PathFollow} waypoint it is walking to, looked up in {@link STEP_TO_FACING}
+ * (the block whose sprite faces that step's ISO-screen heading). Only the SIGN of each delta matters —
+ * the heading is always a grid direction (cell-to-cell), so a sign pair keys the table exactly, with no
+ * angle/rounding. Returns `undefined` when there is no movement to read a heading from (no path, or
+ * already on the waypoint) — the binding then falls back to a default facing. Pure read of plain data.
  */
 function readFacing(components: Readonly<Record<string, unknown>>): number | undefined {
   const pf = components.PathFollow as { waypoints?: unknown; index?: unknown } | undefined;
@@ -191,7 +208,7 @@ function readFacing(components: Readonly<Record<string, unknown>>): number | und
   const dCol = wp.x - pos.x;
   const dRow = wp.y - pos.y;
   if (dCol === 0 && dRow === 0) return undefined; // already there — no heading
-  return screenVecToDir((dCol - dRow) * TILE_HALF_W, (dCol + dRow) * TILE_HALF_H);
+  return STEP_TO_FACING[`${Math.sign(dCol)},${Math.sign(dRow)}`];
 }
 
 /**
@@ -204,6 +221,16 @@ function readSpriteState(components: Readonly<Record<string, unknown>>): SpriteS
   if (readActingAtomic(components) !== null) return 'acting';
   if ('PathFollow' in components) return 'moving';
   return 'idle';
+}
+
+/**
+ * Whether a snapshot settler is hauling a good — the mere presence of its (plain-cloned) `Carrying`
+ * component (the sim adds it on harvest, removes it on deposit). Read as a flag orthogonal to
+ * {@link readSpriteState} so a binding can pick the loaded gait while the settler still reads as
+ * `moving`/`acting`. Pure read of plain snapshot data — never re-enters the sim.
+ */
+function readCarrying(components: Readonly<Record<string, unknown>>): boolean {
+  return 'Carrying' in components;
 }
 
 /**
@@ -258,6 +285,7 @@ export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): Draw
     const actingAtomic = kind === 'settler' ? readActingAtomic(entity.components) : null;
     const elapsed = kind === 'settler' ? readAtomicElapsed(entity.components) : null;
     const facing = kind === 'settler' ? readFacing(entity.components) : undefined;
+    const carrying = kind === 'settler' ? readCarrying(entity.components) : false;
     sprites.push({
       kind,
       ref: entity.id,
@@ -270,6 +298,7 @@ export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): Draw
       ...(actingAtomic !== null ? { atomicId: actingAtomic } : {}),
       ...(elapsed !== null ? { elapsed } : {}),
       ...(facing !== undefined ? { facing } : {}),
+      ...(carrying ? { carrying: true } : {}),
     });
   }
 
