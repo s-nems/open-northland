@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildHumanBindings, buildingBobsByType, directionalAnimFromSeq } from '../src/real-sprites.js';
+import { buildHumanBindings, buildingBobRefsByType, directionalAnimFromSeq } from '../src/real-sprites.js';
 
 /**
  * The seq→frame-range math behind `?atlas=real` — the self-verifiable half of consuming the decoded
@@ -88,6 +88,17 @@ describe('buildHumanBindings', () => {
     });
   });
 
+  it('passes a layer-qualified ref (a named-family building) straight through the overlay', () => {
+    // The HQ binds a { layer, bob } ref into the loaded viking4 family; it must survive the spread next
+    // to the constant's bare ids so the renderer draws it from the family atlas (not the default layer).
+    expect(
+      buildHumanBindings(new Map(), { 1: { layer: 'ls_houses_viking4.house01', bob: 34 } }).building,
+    ).toEqual({
+      byType: { 1: { layer: 'ls_houses_viking4.house01', bob: 34 }, 6: 41, 10: 131, 11: 91, 12: 60, 15: 105 },
+      default: 11,
+    });
+  });
+
   it('falls back to the known-good ranges when the manifest is empty (fallback == data)', () => {
     // The committed FALLBACK_* ranges must equal what the real animations.ini yields, so a checkout
     // without content/ draws the same cycles as one with it. Asserting the empty-map result pins that.
@@ -103,58 +114,199 @@ describe('buildHumanBindings', () => {
   });
 });
 
-describe('buildingBobsByType', () => {
-  // A slice of the real content/ir.json buildingBobs lane (extractBuildingBobs over houses.ini): the
-  // viking home growth chain is distinct typeIds 2..6 (one bob each), the well/hive carry a duplicate
-  // (lumped) row, and a frank row from another atlas must be filtered out.
-  const rows = [
-    { typeId: 2, level: 0, bmd: 'data/.../ls_houses_viking.bmd', paletteName: 'house01', bobId: 1 },
-    { typeId: 6, level: 4, bmd: 'data/.../ls_houses_viking.bmd', paletteName: 'house01', bobId: 41 },
-    { typeId: 10, level: 0, bmd: 'data/.../ls_houses_viking.bmd', paletteName: 'house01', bobId: 131 },
-    { typeId: 10, level: 0, bmd: 'data/.../ls_houses_viking.bmd', paletteName: 'house01', bobId: 131 },
-    { typeId: 12, level: 0, bmd: 'data/.../ls_houses_viking.bmd', paletteName: 'house01', bobId: 60 },
-    // other palette in the same .bmd — must be excluded
-    { typeId: 6, level: 4, bmd: 'data/.../ls_houses_viking.bmd', paletteName: 'house02', bobId: 999 },
-    // other .bmd (a frank house) — must be excluded
-    { typeId: 6, level: 4, bmd: 'data/.../ls_houses_frank.bmd', paletteName: 'house01', bobId: 888 },
+describe('buildingBobRefsByType', () => {
+  // The default building atlas family (the shared kindLayers.building layer) + the named families this
+  // rung loads (only viking4/house01). A canonical row in the default family → a bare bob id; in a loaded
+  // named family → a { layer, bob } ref; in any other (.bmd, palette) → dropped (the constant backs it).
+  const DEFAULT_FAMILY = { bmdBasename: 'ls_houses_viking.bmd', paletteName: 'house01' };
+  const FAMILIES = [
+    { bmdBasename: 'ls_houses_viking4.bmd', paletteName: 'house01', layer: 'ls_houses_viking4.house01' },
   ];
 
-  it('reduces the join to typeId -> bob for the matching (bmd, palette) family', () => {
-    expect(buildingBobsByType(rows, 'ls_houses_viking.bmd', 'house01')).toEqual({
+  // A slice of the real content/ir.json buildingBobs lane (extractBuildingBobs over houses.ini): the
+  // viking home growth chain is distinct typeIds 2..6 (one bob each), the well carries a duplicate
+  // (lumped) row, the HQ (typeId 1) lives in the viking4 family with two editName variants, a viking2
+  // row is in an UNLOADED family, and a frank row is another tribe.
+  const rows = [
+    { tribeId: 1, typeId: 2, level: 0, bmd: 'data/x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 1 },
+    {
+      tribeId: 1,
+      typeId: 6,
+      level: 4,
+      bmd: 'data/x/ls_houses_viking.bmd',
+      paletteName: 'house01',
+      bobId: 41,
+    },
+    {
+      tribeId: 1,
+      typeId: 10,
+      level: 0,
+      bmd: 'data/x/ls_houses_viking.bmd',
+      paletteName: 'house01',
+      bobId: 131,
+    },
+    {
+      tribeId: 1,
+      typeId: 10,
+      level: 0,
+      bmd: 'data/x/ls_houses_viking.bmd',
+      paletteName: 'house01',
+      bobId: 131,
+    },
+    // HQ (typeId 1) — viking4/house01, two editName variants; "viking headquarters" (bob 34) is canonical.
+    {
+      tribeId: 1,
+      typeId: 1,
+      level: 0,
+      bmd: 'data/x/ls_houses_viking4.bmd',
+      paletteName: 'house01',
+      bobId: 34,
+      editName: 'viking headquarters',
+    },
+    {
+      tribeId: 1,
+      typeId: 1,
+      level: 0,
+      bmd: 'data/x/ls_houses_viking4.bmd',
+      paletteName: 'house01',
+      bobId: 44,
+      editName: 'viking headquarters house',
+    },
+    // also in viking4/house02 — excluded by palette preference
+    {
+      tribeId: 1,
+      typeId: 1,
+      level: 0,
+      bmd: 'data/x/ls_houses_viking4.bmd',
+      paletteName: 'house02',
+      bobId: 34,
+      editName: 'viking headquarters',
+    },
+    // viking2 family is NOT loaded this rung — dropped (the constant/default backs typeId 20)
+    {
+      tribeId: 1,
+      typeId: 20,
+      level: 0,
+      bmd: 'data/x/ls_houses_viking2.bmd',
+      paletteName: 'house01',
+      bobId: 10,
+    },
+    // a frank house (other tribe) — filtered out
+    {
+      tribeId: 2,
+      typeId: 6,
+      level: 4,
+      bmd: 'data/x/ls_houses_frank.bmd',
+      paletteName: 'house01',
+      bobId: 888,
+    },
+  ];
+
+  it('emits bare ids for the default family and a layer-qualified ref for a loaded named family (HQ)', () => {
+    expect(buildingBobRefsByType(rows, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({
+      1: { layer: 'ls_houses_viking4.house01', bob: 34 },
       2: 1,
       6: 41,
       10: 131,
-      12: 60,
     });
   });
 
-  it('picks the highest level per typeId (deterministic tiebreak for multi-level / lumped dupes)', () => {
-    const multi = [
-      { typeId: 6, level: 2, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 21 },
-      { typeId: 6, level: 4, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 41 },
-      { typeId: 6, level: 0, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 1 },
+  it('drops a type whose family is loaded by neither the default nor a named family (constant backs it)', () => {
+    // typeId 20 is the viking2 family (not loaded) → absent from the output, NOT a wrong bob drawn from
+    // the default layer. With viking2 added to FAMILIES it would resolve to its layer ref instead.
+    const out = buildingBobRefsByType(rows, 1, DEFAULT_FAMILY, FAMILIES);
+    expect(out[20]).toBeUndefined();
+    const withViking2 = [
+      ...FAMILIES,
+      { bmdBasename: 'ls_houses_viking2.bmd', paletteName: 'house01', layer: 'ls_houses_viking2.house01' },
     ];
-    expect(buildingBobsByType(multi, 'ls_houses_viking.bmd', 'house01')).toEqual({ 6: 41 });
+    expect(buildingBobRefsByType(rows, 1, DEFAULT_FAMILY, withViking2)[20]).toEqual({
+      layer: 'ls_houses_viking2.house01',
+      bob: 10,
+    });
   });
 
-  it('returns {} when no row matches the loaded atlas (caller then uses the constant fallback)', () => {
-    expect(buildingBobsByType(rows, 'ls_houses_egypt.bmd', 'house01')).toEqual({});
-    expect(buildingBobsByType([], 'ls_houses_viking.bmd', 'house01')).toEqual({});
+  it('filters by tribe (a frank row never lands in the viking table)', () => {
+    expect(buildingBobRefsByType(rows, 1, DEFAULT_FAMILY, FAMILIES)[6]).toBe(41); // viking, not the frank 888
   });
 
-  it('on an equal-level tie keeps the lowest bobId regardless of row order (insertion-independent)', () => {
-    const hi = { typeId: 7, level: 1, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 70 };
-    const lo = { typeId: 7, level: 1, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 50 };
-    expect(buildingBobsByType([hi, lo], 'ls_houses_viking.bmd', 'house01')).toEqual({ 7: 50 });
-    expect(buildingBobsByType([lo, hi], 'ls_houses_viking.bmd', 'house01')).toEqual({ 7: 50 });
+  it('disambiguates a multi-bob typeId by canonical editName even over a lower bobId', () => {
+    // Synthetic: the canonical "viking headquarters" carries the HIGHER bob — editName must win, proving
+    // the pick is the named building and not just the lowest-bob tiebreak.
+    const flipped = [
+      {
+        tribeId: 1,
+        typeId: 1,
+        level: 0,
+        bmd: 'x/ls_houses_viking4.bmd',
+        paletteName: 'house01',
+        bobId: 7,
+        editName: 'viking headquarters house',
+      },
+      {
+        tribeId: 1,
+        typeId: 1,
+        level: 0,
+        bmd: 'x/ls_houses_viking4.bmd',
+        paletteName: 'house01',
+        bobId: 9,
+        editName: 'viking headquarters',
+      },
+    ];
+    expect(buildingBobRefsByType(flipped, 1, DEFAULT_FAMILY, FAMILIES)[1]).toEqual({
+      layer: 'ls_houses_viking4.house01',
+      bob: 9,
+    });
+  });
+
+  it('prefers the default palette when a typeId spans recolour skins', () => {
+    const skins = [
+      { tribeId: 1, typeId: 12, level: 0, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house02', bobId: 999 },
+      { tribeId: 1, typeId: 12, level: 0, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 60 },
+    ];
+    expect(buildingBobRefsByType(skins, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({ 12: 60 });
+  });
+
+  it('picks the highest level then the lowest bobId, insertion-order-independent', () => {
+    const multi = [
+      { tribeId: 1, typeId: 6, level: 2, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 21 },
+      { tribeId: 1, typeId: 6, level: 4, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 41 },
+      { tribeId: 1, typeId: 6, level: 0, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 1 },
+    ];
+    expect(buildingBobRefsByType(multi, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({ 6: 41 });
+    const tie = [
+      { tribeId: 1, typeId: 7, level: 1, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 70 },
+      { tribeId: 1, typeId: 7, level: 1, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 50 },
+    ];
+    expect(buildingBobRefsByType(tie, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({ 7: 50 });
+    expect(buildingBobRefsByType([...tie].reverse(), 1, DEFAULT_FAMILY, FAMILIES)).toEqual({ 7: 50 });
   });
 
   it('anchors the bmd match to a path separator (no basename-concat false positive)', () => {
     const tricky = [
-      { typeId: 1, level: 0, bmd: 'data/x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 5 },
-      // ends with the basename string but NOT after a `/` — must be excluded.
-      { typeId: 2, level: 0, bmd: 'data/x/evil_ls_houses_viking.bmd', paletteName: 'house01', bobId: 9 },
+      {
+        tribeId: 1,
+        typeId: 1,
+        level: 0,
+        bmd: 'data/x/ls_houses_viking.bmd',
+        paletteName: 'house01',
+        bobId: 5,
+      },
+      // ends with the default basename string but NOT after a `/` — must NOT match the default family.
+      {
+        tribeId: 1,
+        typeId: 2,
+        level: 0,
+        bmd: 'data/x/evil_ls_houses_viking.bmd',
+        paletteName: 'house01',
+        bobId: 9,
+      },
     ];
-    expect(buildingBobsByType(tricky, 'ls_houses_viking.bmd', 'house01')).toEqual({ 1: 5 });
+    expect(buildingBobRefsByType(tricky, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({ 1: 5 });
+  });
+
+  it('returns {} when nothing matches the tribe (caller then uses the constant fallback)', () => {
+    expect(buildingBobRefsByType(rows, 99, DEFAULT_FAMILY, FAMILIES)).toEqual({});
+    expect(buildingBobRefsByType([], 1, DEFAULT_FAMILY, FAMILIES)).toEqual({});
   });
 });
