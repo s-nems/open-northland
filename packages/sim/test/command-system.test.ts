@@ -7,6 +7,7 @@ import {
   Health,
   JobAssignment,
   MoveGoal,
+  MoveSpeed,
   PathFollow,
   PathRequest,
   Position,
@@ -18,7 +19,7 @@ import {
   Weapon,
 } from '../src/components/index.js';
 import type { Entity } from '../src/ecs/world.js';
-import { type Command, Simulation } from '../src/index.js';
+import { type Command, Simulation, fx } from '../src/index.js';
 import { testContent } from './fixtures/content.js';
 
 /**
@@ -58,6 +59,7 @@ function clearStores(): void {
   Armor.store.clear();
   Vehicle.store.clear();
   Weapon.store.clear();
+  MoveSpeed.store.clear();
 }
 
 beforeEach(clearStores);
@@ -212,6 +214,30 @@ describe('CommandSystem', () => {
     sim.step();
     expect(sim.world.has(nthEntity(sim, 0), Weapon)).toBe(false); // omitted -> no Weapon
     expect(sim.world.has(nthEntity(sim, 1), Weapon)).toBe(false); // id 0 -> no Weapon
+  });
+
+  it('spawnSettler with a positive moveSpeed stamps a MoveSpeed pace (ticks-per-tile, larger = slower)', () => {
+    const sim = fresh();
+    // A settler given an explicit walk pace carries a `MoveSpeed{perTick = ONE/moveSpeed}` — the same
+    // ONE/ticks-per-tile form as MOVE_SPEED_PER_TICK (= ONE/4), so moveSpeed 8 is exactly half pace. Used
+    // to slow a scene's settler visually without retuning the global default.
+    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 1, y: 2, tribe: VIKING, moveSpeed: 8 });
+    sim.step();
+    expect(sim.world.get(nthEntity(sim, 0), MoveSpeed)).toEqual({
+      perTick: fx.div(fx.fromInt(1), fx.fromInt(8)),
+      runPerTick: null,
+    });
+  });
+
+  it('spawnSettler with no/non-positive moveSpeed walks the universal default (no MoveSpeed — golden path)', () => {
+    const sim = fresh();
+    // The default (omitted) and the non-positive (0) paths both stamp NO MoveSpeed — the separate-optional-
+    // component pattern (like Health/Armor/Weapon): a bare settler walks at MOVE_SPEED_PER_TICK, hash untouched.
+    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
+    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 1, y: 0, tribe: VIKING, moveSpeed: 0 });
+    sim.step();
+    expect(sim.world.has(nthEntity(sim, 0), MoveSpeed)).toBe(false); // omitted -> no MoveSpeed
+    expect(sim.world.has(nthEntity(sim, 1), MoveSpeed)).toBe(false); // 0 -> no MoveSpeed
   });
 
   it('skips a command with an unknown type id (recoverable bad input — no throw, still logged)', () => {

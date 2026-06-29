@@ -194,6 +194,27 @@ describe('buildScene', () => {
     expect(byRef(2)?.carrying).toBe(true);
   });
 
+  it('nudges a chopping settler left so the axe lands in the tree, without moving its depth', () => {
+    // A settler mid-chop (atomic 24) shares the tree's cell; its drawn x is shifted left of the cell
+    // centre (so the right-swing axe connects with the trunk), but the depth sort key — derived from the
+    // true tile, not the nudged x — is identical to an un-nudged sprite on that cell. Render-only.
+    const cellCentreX = tileToScreen(2, 0).x;
+    const scene = buildScene(
+      snapshotOf([
+        entity(1, 2, 0, { Settler: { tribe: 0 }, CurrentAtomic: { atomicId: 24, elapsed: 3 } }),
+        // A settler on the SAME cell but NOT chopping (a different atomic) keeps the cell-centre x.
+        entity(2, 2, 0, { Settler: { tribe: 0 }, CurrentAtomic: { atomicId: 23, elapsed: 3 } }),
+      ]),
+      FLAT_3x2,
+    );
+    const chopper = scene.find((d) => d.kind === 'settler' && d.ref === 1);
+    const depositor = scene.find((d) => d.kind === 'settler' && d.ref === 2);
+    expect(chopper?.x).toBe(cellCentreX - 24); // shifted left by CHOP_NUDGE_X
+    expect(depositor?.x).toBe(cellCentreX); // a non-chop action is not nudged
+    // Same cell ⇒ same depth despite the x nudge (depth uses the tile, not the drawn x).
+    expect(chopper?.depth).toBe(depositor?.depth);
+  });
+
   it('marks buildings/resources idle with no atomicId (they do not animate per-state here)', () => {
     const scene = buildScene(
       snapshotOf([

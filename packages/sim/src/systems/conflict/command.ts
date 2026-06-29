@@ -234,6 +234,18 @@ function spawnSettler(
   if (command.weaponTypeId !== undefined && command.weaponTypeId > 0) {
     world.add(e, Weapon, { weaponTypeId: command.weaponTypeId });
   }
+  // A settler given an explicit walk pace carries a `MoveSpeed` (the same separate-optional stamp as the
+  // animal `movespeed`): `perTick = ONE/moveSpeed` (ticks-per-tile, larger = slower), read identically to
+  // the universal default by the drift-free arrival-snap so two runs stay byte-identical. Only a positive
+  // value is stamped; absent / non-positive (the default — the golden / vertical-slice path) leaves the
+  // settler `MoveSpeed`-less, walking at MOVE_SPEED_PER_TICK, the hash untouched. `runPerTick` is null — a
+  // settler has no decoded run gait, and the MovementSystem reads only `perTick`.
+  if (command.moveSpeed !== undefined && command.moveSpeed > 0) {
+    world.add(e, MoveSpeed, {
+      perTick: fx.div(ONE, fx.fromInt(command.moveSpeed)),
+      runPerTick: null,
+    });
+  }
   ctx.events.emit({ kind: 'settlerBorn', entity: e });
 }
 

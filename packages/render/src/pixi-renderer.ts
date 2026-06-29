@@ -114,6 +114,16 @@ export interface SpriteSheet {
    * body+overlays path (the settler), and an unresolved/empty frame falls back to placeholder geometry.
    */
   readonly kindLayers?: Partial<Record<SpriteKind, SpriteLayer>>;
+  /**
+   * Per-kind **render scale** (default 1 = native bob pixels). A decoded bob is blitted 1:1, but the
+   * source art for different kinds was authored at different scales relative to the settler — the
+   * `ls_houses_*` building bobs draw ~6–10× the settler's height at native size, far larger than the
+   * original showed them on-screen relative to a person. A kind listed here is drawn at that factor about
+   * its FEET anchor (the anchor stays put, the sprite shrinks/grows around it), bringing the building back
+   * into proportion with the native-scale settler + tree. A kind with no entry draws native (scale 1), so
+   * the settler and the tree — whose proportion already reads right — are untouched.
+   */
+  readonly kindScales?: Partial<Record<SpriteKind, number>>;
 }
 
 /**
@@ -297,7 +307,8 @@ function atlasLayers(
     const frame = kindLayer.atlas.frames.get(bobId);
     if (frame === undefined || frame.width === 0 || frame.height === 0) return null;
     const single = new Container();
-    single.addChild(atlasSprite(frame, kindLayer.source, sx, sy));
+    const scale = sheet.kindScales?.[item.kind as SpriteKind] ?? 1;
+    single.addChild(atlasSprite(frame, kindLayer.source, sx, sy, scale));
     return single;
   }
   const container = new Container();
@@ -317,14 +328,19 @@ function atlasLayers(
  * placed so the frame's authored draw offset lands at the feet anchor `(sx, sy)`. `offsetX/Y` is the
  * bob's source-area origin (the original's `SBobData.Area`), so adding it to the anchor reproduces
  * where the engine drew the frame relative to the entity's feet.
+ *
+ * `scale` (default 1 = native) shrinks/grows the frame **about its feet anchor**: the draw offset is
+ * scaled by the same factor, so the point that sat at `(sx, sy)` stays there while the sprite resizes
+ * around it. Used to bring an over-large kind (the building bobs) into proportion without moving its base.
  */
-function atlasSprite(frame: AtlasFrame, source: TextureSource, sx: number, sy: number): Sprite {
+function atlasSprite(frame: AtlasFrame, source: TextureSource, sx: number, sy: number, scale = 1): Sprite {
   const texture = new Texture({
     source,
     frame: new Rectangle(frame.x, frame.y, frame.width, frame.height),
   });
   const sprite = new Sprite(texture);
-  sprite.position.set(sx + frame.offsetX, sy + frame.offsetY);
+  sprite.position.set(sx + frame.offsetX * scale, sy + frame.offsetY * scale);
+  if (scale !== 1) sprite.scale.set(scale);
   return sprite;
 }
 

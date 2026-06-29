@@ -138,6 +138,9 @@ fidelity-relevant decision is the **state→sprite join**: which animation a set
 |---|---|---|
 | Settler state→sprite-frame join (`resolveSpriteFrame`) | approximated | The **join key is faithful**: an `acting` settler carries its numeric `atomicId`, the exact key the original's `tribetypes` `setatomic` maps to an animation. But the *render-side state model* (`idle`/`moving`/`acting` + an orthogonal `carrying` flag, derived from `CurrentAtomic`/`PathFollow`/`Carrying`) and the **which-frame-per-state** choice are *our* coarsening — the original has a richer per-direction/per-atomic animation table not yet bound. Under `?atlas=real` three real `CR_Hum_Body_00` `[bobseq]` ranges are now wired by hand: walk (1988), chop (5106, on the harvest atomic), and the **loaded carry gait** `human_man_generic_walk_wood` (4580) bound to the `carrying` override — so a woodcutter hauling its harvest plays the log-on-shoulder cycle, not the empty walk. This is still a hand-picked subset, not the full extracted `setatomic`→bob table (a later slice); the committed default remains the FREE synthetic atlas. Pixel fidelity stays the OpenVikings oracle's job (Assets row), deferred to a human. |
 | Resource (tree) sprite bind (`ls_trees.bmd`) | approximated | The **bind path is faithful**: under `?atlas=real` a wood `Resource` node draws a frame of the decoded `ls_trees.bmd` recoloured by its palette — the `landscapes.cif` `[GfxLandscape]` record's binding, extracted by `extractLandscapeGraphics` (`GfxBobLibs` body+shadow + `GfxPalette` editname + `GfxFrames`), emitted through the same `convertBmdTree` atlas path as the creature bobs. What is *approximated* is the **per-object species + frame pick** (see Deviations): one representative full-grown frame of one species (yew, bob 60) is bound to every wood node, where the original assigns a species + growth/sway frame per pre-placed map object. Pixel fidelity (does the decoded tree match the original) stays the OpenVikings oracle's job, deferred to a human. |
+| Building (HQ) sprite bind (`ls_houses_viking.bmd`) | approximated | The **bind path is faithful**: under `?atlas=real` a `Building` draws a frame of the decoded `ls_houses_viking.bmd` recoloured `house01` — a `[GfxHouse]` viking record's binding (mod `budynki12/houses/houses.ini`), decoded through the same universal `.bmd`→atlas path as the trees/creatures (the bob layout is identical — OpenVikings `CBobManager` is one decoder for all `.bmd`). What is *approximated* is the **per-building-type frame pick** + a **render down-scale**: ONE representative frame (bob 11, the "viking home" first finished growth stage — a stone-and-thatch cottage) is bound to EVERY building, drawn at `BUILDING_SCALE` 0.7 about its feet (native house bobs render ~6–10× the settler — oversized vs the original's house-to-person proportion — so the building is shrunk while the settler + tree stay native; ~3× the pawn at 0.7, the by-eye pick from a 1:1 pawn-vs-tree-vs-building montage). The original keys each `[GfxHouse]` type → its own `GfxBobId` per build size; the warehouse "viking stock" needs the not-yet-decoded `house02` palette, so the HQ borrows a viking home for now. Pixel fidelity stays the OpenVikings oracle's job, deferred to a human. |
+| Chopping settler position nudge (`CHOP_NUDGE_X`) | approximated (visual) | The harvest planner stands the woodcutter ON the tree's cell (`ai.ts`, `cell === here`), so at the cell centre its sprite overlaps the trunk and the right-swing axe falls beside it. `buildScene` (`render/src/scene.ts`) shifts a mid-chop settler's *drawn* sprite left by `CHOP_NUDGE_X` (−24 px) so the strike lands in the trunk — a render-only anchor offset (the sim position and the depth sort are unchanged, determinism untouched). The magnitude is a by-eye constant a human tunes; a *faithful* fix would stand the settler on an ADJACENT cell facing the tree (an 8-direction harvest-adjacency the 4-connected planner doesn't do yet — a larger slice). |
+| Chop swing count per harvest (scene `viking_chop` length) | approximated | A harvest atomic's duration IS its bound animation `length` (`ai.ts atomicDuration`), and the 15-frame woodcut bobseq plays tick-locked off `elapsed`. The atomic is removed the tick `elapsed` reaches `length`, so the renderer sees `elapsed 1..length-1` → a clean N-swing run ending on the impact frame needs `length = 15·N + 1`; the gather scenes set `length: 46` = 15·3 + 1 = THREE full swings, so one harvest is three axe strikes (the original chops a tree several times, not once). The count (3) is by-eye — the real per-tree chop count has no oracle (OpenVikings' sim is a stub) — and SCENE-ONLY (the golden fixture's `viking_chop` is unchanged). |
 
 ## Deviations (conscious divergences from the original)
 
@@ -151,6 +154,34 @@ Format: `- <mechanic>: <how it differs> — <why> (<commit>)`.
   `landscapes.cif` `[GfxLandscape]` graphics record via `extractLandscapeGraphics`); only the per-object
   selection is collapsed to a constant, and the species/frame constants (`TREE_ATLAS`/`TREE_BOB` in
   `app/src/real-sprites.ts`) are a first pick a human swaps after eyeballing. (landscape tree-bob bind)
+
+- Building sprite (per-type frame + render scale): every `Building` draws ONE representative house —
+  bob 11 of `ls_houses_viking.bmd` recoloured `house01`, the "viking home" first finished growth stage (a
+  stone-and-thatch cottage) — and at a render down-scale (`BUILDING_SCALE` 0.7). Two approximations: (1)
+  the original keys each `[GfxHouse]` type to its own `GfxBobId` per build size — we show one viking home
+  for every building; (2) native house bobs render ~6–10× the settler (oversized vs the original's
+  house-to-person proportion), so the building sprite is shrunk about its feet to ~3× the pawn (the settler
+  + tree stay native — their proportion already reads right). The bind path is faithful (decoded
+  `[GfxHouse]` viking graphics via the universal `.bmd`→atlas path); the bob, the scale, and the
+  single-house collapse are by-eye constants (`HOUSE_ATLAS`/`HOUSE_BOB`/`BUILDING_SCALE` in
+  `app/src/real-sprites.ts`, render scale plumbed via `SpriteSheet.kindScales`) a human tunes. The true
+  storehouse ("viking stock") needs the `house02` palette, not yet decoded into `content/`. (building
+  house-bob bind + scale)
+
+- Chopping settler position: a mid-chop woodcutter's drawn sprite is nudged left (`CHOP_NUDGE_X` in
+  `render/src/scene.ts`) so its right-swing axe lands in the tree it shares a cell with — a render-only
+  visual offset (sim position + depth sort unchanged). The faithful behaviour is to stand the settler on
+  an ADJACENT cell facing the tree, which needs harvest-adjacency in the (currently 4-connected) planner;
+  the nudge is the by-eye stand-in until then. (chop-position render nudge)
+
+- Settler walk pace (acceptance scenes): the gather scenes spawn the woodcutter with an explicit
+  `moveSpeed: 8` (ticks/tile — a per-entity `MoveSpeed`, half the universal `MOVE_SPEED_PER_TICK` =
+  4 ticks/tile), so it walks a calmer, non-sliding pace for the human sign-off. This is SCENE-ONLY: the
+  global default is unchanged, so the sim goldens are untouched (the separate-optional-component pattern).
+  Retuning the *global* settler pace to the visually-validated value is a deliberate follow-up — deferred
+  here only to avoid the broad golden-hash/trace churn a global change forces mid-slice. The pace
+  magnitude has no oracle (OpenVikings' sim is a stub), so the chosen value is a by-eye approximation, not
+  a pinned param. (scene settler walk pace)
 
 - Hunger rise: `needsSystem` raises hunger at a flat `HUNGER_RISE_PER_TICK`=ONE/4096, but the original
   drains hunger via per-activity-animation events (`event 30 2 -100`) and restores it per `eat_slot_food`

@@ -61,6 +61,16 @@ export type Command =
        *  vs the settler's own tribe). Omit (or a non-positive value) to fight with the class's default
        *  `(tribe, jobType)` weapon. */
       readonly weaponTypeId?: number;
+      /**
+       * The settler's walk pace as **ticks to cross one tile** (the animal `movespeed` semantics: a
+       * `MoveSpeed{perTick = ONE/moveSpeed}` is stamped, so a *larger* value walks a *slower* step).
+       * Omit (or a non-positive value) — the default — and the settler carries NO `MoveSpeed` and walks
+       * at the universal {@link import('../systems/movement/movement.js').MOVE_SPEED_PER_TICK} (the golden
+       * / vertical-slice path whose hash this leaves untouched), the same separate-optional-component
+       * stance as `hitpoints`/`armorClass`/`weaponTypeId` above. Used to give a *visually* slower pace in
+       * acceptance scenes without retuning the global default (see docs/FIDELITY.md "Settler walk pace").
+       */
+      readonly moveSpeed?: number;
     }
   | {
       /**
