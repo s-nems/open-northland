@@ -29,9 +29,9 @@ import {
  * faces (the frame advances one per sim tick). `resource` binds the decoded `ls_trees.bmd` tree atlas
  * (the `landscapes.cif` `[GfxLandscape]` leg) as a per-kind layer, so the wood node the woodcutter chops
  * now draws as a real tree; `building` binds the decoded `ls_houses_viking.bmd` house atlas and draws
- * each building type its OWN house bob — the `[GfxHouse]` `LogicType` → `GfxBobId` join, derived from the
- * extracted `buildingBobs` IR ({@link buildingBobsByType}), with the transcribed {@link VIKING_HOUSE01_BOBS}
- * as the graceful fallback when `content/` is absent.
+ * each building type its OWN house bob — the `[GfxHouse]` `LogicType` → `GfxBobId` join from the extracted
+ * `buildingBobs` IR ({@link buildingBobsByType}) overlaid onto the transcribed {@link VIKING_HOUSE01_BOBS}
+ * (data wins per type; the constant backs its five known types when `content/` is absent).
  */
 
 /** The decoded human body + head atlases (`test_human_00` palette) served at `/bobs/<name>.*`. */
@@ -52,6 +52,14 @@ const TREE_ATLAS = 'ls_trees.tree_yew01';
 const TREE_BOB = 60;
 
 /**
+ * The loaded building atlas, kept as its `(bmd, palette)` parts so {@link buildingBobsByType} can pick
+ * the matching `buildingBobs` rows from the IR (the row's `bmd` is the full normalized path, so we match
+ * by the trailing basename). {@link HOUSE_ATLAS} is the served atlas stem (`<bmd-stem>.<palette>`).
+ */
+const HOUSE_BMD = 'ls_houses_viking.bmd';
+const HOUSE_PALETTE = 'house01';
+
+/**
  * The decoded building atlas bound to the `building` kind — `ls_houses_viking.bmd` recoloured with the
  * `house01` palette (the `[GfxHouse]` viking records' binding from the mod's
  * `budynki12/houses/houses.ini`). Like the tree it lives in its OWN frame-id space (135 bobs, distinct
@@ -65,13 +73,6 @@ const TREE_BOB = 60;
  * stock" needs the not-yet-decoded house02 palette) — swap them to a bigger stage / different factor
  * (docs/FIDELITY.md "Building bob"). The HQ store now draws as this house instead of the placeholder box.
  */
-/**
- * The loaded building atlas, kept as its `(bmd, palette)` parts so {@link buildingBobsByType} can pick
- * the matching `buildingBobs` rows from the IR (the row's `bmd` is the full normalized path, so we
- * match by suffix). {@link HOUSE_ATLAS} is the served atlas stem (`<bmd-stem>.<palette>`).
- */
-const HOUSE_BMD = 'ls_houses_viking.bmd';
-const HOUSE_PALETTE = 'house01';
 const HOUSE_ATLAS = `ls_houses_viking.${HOUSE_PALETTE}`;
 const HOUSE_BOB = 11;
 /** Render scale for the building kind — see {@link HOUSE_BOB} (native house bobs are oversized vs the settler). */
@@ -182,21 +183,28 @@ interface BuildingBobRow {
  * `typeId`. The growth chain is expressed as DISTINCT typeIds (viking home t2..t6 = typeIds 2..6 → bobs
  * 1/11/21/31/41), so within one typeId the level is effectively constant in this family; the max-level
  * pick is a deterministic tiebreaker for the duplicate (lumped) rows and any future multi-level typeId.
- * Returns `{}` when no row matches → the caller falls back to {@link VIKING_HOUSE01_BOBS}. Pure +
- * exported so the join→table reduction is unit-tested without a browser. For the `house01` family it
- * reproduces the transcribed constant for typeIds 6/10/11/12/15 and ADDS the home/bakery growth-stage
- * typeIds the constant dropped.
+ * On an equal-level tie (a multi-`.bmd`/variant case the next rung handles — wall orientations, HQ vs
+ * "headquarters house") it keeps the lowest `bobId` so the pick is insertion-order-independent;
+ * `editName`-driven disambiguation is deferred to that rung. `bmd` is matched on the trailing basename
+ * (after a `/`) so a sibling like `ls_houses_viking2.bmd` can't be a false positive. Returns `{}` when
+ * no row matches → the caller falls back to {@link VIKING_HOUSE01_BOBS}. Pure + exported so the
+ * join→table reduction is unit-tested without a browser. For the `house01` family it reproduces the
+ * transcribed constant for typeIds 6/10/11/12/15 and ADDS the home/bakery growth-stage typeIds the
+ * constant dropped.
  */
 export function buildingBobsByType(
   rows: readonly BuildingBobRow[],
-  bmdSuffix: string,
+  bmdBasename: string,
   paletteName: string,
 ): Record<number, number> {
   const best = new Map<number, BuildingBobRow>();
   for (const r of rows) {
-    if (r.paletteName !== paletteName || !r.bmd.endsWith(bmdSuffix)) continue;
+    if (r.paletteName !== paletteName) continue;
+    if (r.bmd !== bmdBasename && !r.bmd.endsWith(`/${bmdBasename}`)) continue;
     const prev = best.get(r.typeId);
-    if (prev === undefined || r.level > prev.level) best.set(r.typeId, r);
+    if (prev === undefined || r.level > prev.level || (r.level === prev.level && r.bobId < prev.bobId)) {
+      best.set(r.typeId, r);
+    }
   }
   const out: Record<number, number> = {};
   for (const [typeId, r] of best) out[typeId] = r.bobId;
@@ -207,11 +215,13 @@ export function buildingBobsByType(
  * The demo binding into the human atlases — the render twin of `vertical-slice.ts`'s `demoContent`. The
  * settler's walk/chop ranges are derived from `seqByName` (the extracted `bobSequences` for
  * `cr_hum_body_00.bmd`), so there are no hard-coded frame ids left here; an absent manifest falls back to
- * the known-good `FALLBACK_*` ranges. The building's per-type bobs come from `houseBobsByType` (the
- * extracted `buildingBobs` join, see {@link buildingBobsByType}); an empty/omitted map (an absent IR)
- * falls back to the transcribed {@link VIKING_HOUSE01_BOBS}. `building`/`resource` resolve in their own
- * per-kind layers (see {@link loadHumanSpriteSheet}'s `kindLayers`), so their ids index the house/tree
- * bobs, not the body's.
+ * the known-good `FALLBACK_*` ranges. The building's per-type bobs **overlay** the extracted
+ * `houseBobsByType` (the `buildingBobs` join, see {@link buildingBobsByType}) onto the transcribed
+ * {@link VIKING_HOUSE01_BOBS} **per type**: real data wins where present, the constant covers any of its
+ * five known types the data is missing (so a partial/absent IR degrades gracefully type-by-type instead
+ * of dropping a whole family to the generic box). `building`/`resource` resolve in their own per-kind
+ * layers (see {@link loadHumanSpriteSheet}'s `kindLayers`), so their ids index the house/tree bobs, not
+ * the body's.
  */
 export function buildHumanBindings(
   seqByName: ReadonlyMap<string, BobSeqRow>,
@@ -242,14 +252,12 @@ export function buildHumanBindings(
       byAtomic: { [HARVEST_ATOMIC]: chop },
       carrying: { idle: standWood, moving: walkWood },
     },
-    // Each viking building type draws its own house bob (the `[GfxHouse]` `LogicType` → `GfxBobId`
-    // join), now data-driven from the extracted `buildingBobs` IR; an empty/absent table falls back to
-    // the transcribed VIKING_HOUSE01_BOBS, and a type absent from the table to the representative HOUSE_BOB.
-    building: {
-      byType:
-        houseBobsByType && Object.keys(houseBobsByType).length > 0 ? houseBobsByType : VIKING_HOUSE01_BOBS,
-      default: HOUSE_BOB,
-    },
+    // Each viking building type draws its own house bob (the `[GfxHouse]` `LogicType` → `GfxBobId` join),
+    // data-driven from the extracted `buildingBobs` IR overlaid onto the transcribed VIKING_HOUSE01_BOBS:
+    // real data wins per type, the constant backs its five known types when the IR is partial/absent
+    // ({...undefined} / {...{}} spread to nothing → just the constant). A type in NEITHER falls back to
+    // the representative HOUSE_BOB via BuildingTypeBinding.default.
+    building: { byType: { ...VIKING_HOUSE01_BOBS, ...houseBobsByType }, default: HOUSE_BOB },
     resource: TREE_BOB,
   };
 }

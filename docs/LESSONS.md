@@ -862,3 +862,8 @@ the next iteration inherits it.
   tribe (its own brackets) looks fine — the gap only shows if you verify breadth against the real file's
   per-section record count. Fix: split a section into sub-records on `EditName` before extracting.
   (`extractConstructionCosts`/`extractBuildingGraphics` have the same latent bug.) (pipeline)
+- [617e446] A data-driven map that WHOLESALE-replaces a known-good fallback constant degrades *worse*
+  than having no data: on a partial/corrupt source the keys it omits drop to the generic `default`
+  instead of the constant's value. Overlay the data ONTO the constant (`{ ...CONST, ...data }`) so
+  degradation is per-key, not all-or-nothing — and it folds the empty/absent cases away for free
+  (`{...undefined}`/`{...{}}` spread to nothing). (render/data-binding)

@@ -73,10 +73,15 @@ describe('buildHumanBindings', () => {
     });
   });
 
-  it('consumes a supplied buildingBobs map (the data-driven live path), but ignores an empty one', () => {
-    const fromData = { 2: 1, 6: 41, 12: 60 };
-    expect(buildHumanBindings(new Map(), fromData).building).toEqual({ byType: fromData, default: 11 });
-    // An empty map (the loaded atlas had no matching rows) degrades to the transcribed constant.
+  it('overlays a supplied buildingBobs map onto the constant — data wins per type, constant backs the rest', () => {
+    // Live path: real data overrides per type (home 6 → a different bob) and adds growth-stage types
+    // (2); the constant types the data does NOT cover (10/11/15) stay backed by VIKING_HOUSE01_BOBS, so
+    // a partial IR degrades type-by-type instead of dropping the whole family to the generic box.
+    expect(buildHumanBindings(new Map(), { 6: 999, 2: 1 }).building).toEqual({
+      byType: { 6: 999, 10: 131, 11: 91, 12: 60, 15: 105, 2: 1 },
+      default: 11,
+    });
+    // An empty map (the loaded atlas had no matching rows) degrades to exactly the transcribed constant.
     expect(buildHumanBindings(new Map(), {}).building).toEqual({
       byType: { 6: 41, 10: 131, 11: 91, 12: 60, 15: 105 },
       default: 11,
@@ -135,5 +140,21 @@ describe('buildingBobsByType', () => {
   it('returns {} when no row matches the loaded atlas (caller then uses the constant fallback)', () => {
     expect(buildingBobsByType(rows, 'ls_houses_egypt.bmd', 'house01')).toEqual({});
     expect(buildingBobsByType([], 'ls_houses_viking.bmd', 'house01')).toEqual({});
+  });
+
+  it('on an equal-level tie keeps the lowest bobId regardless of row order (insertion-independent)', () => {
+    const hi = { typeId: 7, level: 1, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 70 };
+    const lo = { typeId: 7, level: 1, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 50 };
+    expect(buildingBobsByType([hi, lo], 'ls_houses_viking.bmd', 'house01')).toEqual({ 7: 50 });
+    expect(buildingBobsByType([lo, hi], 'ls_houses_viking.bmd', 'house01')).toEqual({ 7: 50 });
+  });
+
+  it('anchors the bmd match to a path separator (no basename-concat false positive)', () => {
+    const tricky = [
+      { typeId: 1, level: 0, bmd: 'data/x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 5 },
+      // ends with the basename string but NOT after a `/` — must be excluded.
+      { typeId: 2, level: 0, bmd: 'data/x/evil_ls_houses_viking.bmd', paletteName: 'house01', bobId: 9 },
+    ];
+    expect(buildingBobsByType(tricky, 'ls_houses_viking.bmd', 'house01')).toEqual({ 1: 5 });
   });
 });
