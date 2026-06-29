@@ -19,6 +19,7 @@ import {
   type SpriteAtlas,
   type SpriteBindings,
   type SpriteKind,
+  resolveBuildingDraw,
   resolveSpriteBobId,
 } from './sprites.js';
 import { type CellTexture, DIAMOND_INDICES, diamondCorners, rectUVs } from './terrain.js';
@@ -124,6 +125,24 @@ export interface SpriteSheet {
    * the settler and the tree — whose proportion already reads right — are untouched.
    */
   readonly kindScales?: Partial<Record<SpriteKind, number>>;
+  /**
+   * Named **building family** atlas layers — the multi-`.bmd` building case. A viking settlement draws
+   * its buildings from many `.bmd`s × palettes (`ls_houses_viking`, `ls_houses_viking4`, …), each a
+   * separate decoded atlas with its OWN frame-id space, so the single {@link kindLayers}.`building` layer
+   * can't address them all. A {@link import('./sprites.js').BuildingTypeBinding} entry may be
+   * layer-qualified (`{ layer, bob }`); when it names a `layer` present here, the GPU blits its `bob` from
+   * THIS family's own `source`+`atlas` (one feet-anchored sprite) instead of {@link kindLayers}.`building`.
+   * A plain-number / unqualified building binding (and every non-`building` kind) ignores this map and
+   * uses the {@link kindLayers} path, so a sheet without `families` draws byte-identically to before.
+   */
+  readonly families?: Readonly<Record<string, SpriteLayer>>;
+  /**
+   * Per-**family** render scale (default {@link kindScales}'s `building`, else 1) — the {@link families}
+   * twin of {@link kindScales}, since each building `.bmd` was authored at its own size relative to the
+   * settler. A family drawn from {@link families} shrinks/grows about its FEET anchor by this factor; a
+   * family with no entry inherits the `building` kind scale, preserving the existing proportion.
+   */
+  readonly familyScales?: Readonly<Record<string, number>>;
 }
 
 /**
@@ -296,6 +315,24 @@ function atlasLayers(
   tick: number,
   sheet: SpriteSheet,
 ): Container | null {
+  // A multi-.bmd building can name WHICH family atlas-layer it draws from (`{ layer, bob }`); when the
+  // named family is loaded, blit the bob from its OWN source/atlas + per-family scale instead of the
+  // single shared building layer. A plain/unqualified building ref (or an unloaded family) falls through
+  // to the kindLayers path below, so a sheet without `families` is byte-identical to before.
+  if (item.kind === 'building') {
+    const draw = resolveBuildingDraw(sheet.bindings.building, item);
+    if (draw.layer !== undefined) {
+      const family = sheet.families?.[draw.layer];
+      if (family !== undefined) {
+        const frame = family.atlas.frames.get(draw.bob);
+        if (frame === undefined || frame.width === 0 || frame.height === 0) return null;
+        const scale = sheet.familyScales?.[draw.layer] ?? sheet.kindScales?.building ?? 1;
+        const single = new Container();
+        single.addChild(atlasSprite(frame, family.source, sx, sy, scale));
+        return single;
+      }
+    }
+  }
   const bobId = resolveSpriteBobId(item, sheet.bindings, tick);
   if (bobId === null) return null;
   // A kind with its own dedicated atlas (a tree/resource from ls_trees.bmd, a building from its house

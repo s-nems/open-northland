@@ -147,18 +147,40 @@ export interface SettlerStateBinding {
 }
 
 /**
+ * A building type's bob reference: either a plain bob id drawn from the **default** building atlas layer
+ * (the single shared `ls_houses_viking.house01` layer, {@link import('./pixi-renderer.js').SpriteSheet.kindLayers}'s
+ * `building` entry), OR a **layer-qualified** `{ layer, bob }` naming WHICH family atlas the bob comes
+ * from — the multi-`.bmd` case where a building type lives in its own `.bmd`/palette (e.g. the viking HQ
+ * in `ls_houses_viking4.bmd`). A `layer` keys into {@link import('./pixi-renderer.js').SpriteSheet.families};
+ * the GPU blits the `bob` from that family's own source + frame-id space (and its per-family scale). A bare
+ * number keeps the pre-multi-`.bmd` bindings valid unchanged.
+ */
+export type BuildingBobRef = number | { readonly layer: string; readonly bob: number };
+
+/**
+ * A resolved building draw ({@link resolveBuildingDraw}'s output): which `bob` id, and optionally which
+ * named atlas-layer family it draws from. `layer === undefined` means the default building layer
+ * ({@link import('./pixi-renderer.js').SpriteSheet.kindLayers}'s `building`); a `layer` names a
+ * {@link import('./pixi-renderer.js').SpriteSheet.families} entry whose own atlas/source the `bob` indexes.
+ */
+export interface BuildingDraw {
+  readonly bob: number;
+  readonly layer?: string;
+}
+
+/**
  * A building's per-type bob binding — the original's `[GfxHouse]` `LogicType` → `GfxBobId` join, so
  * each building type draws ITS own house bob (a home, a well, a bakery, …) instead of one shared frame.
- * {@link byType} maps a building's `buildingType` ({@link DrawItem.typeId}) to its bob id; a type absent
- * from it falls back to {@link default} (the representative house). All ids index the SAME building atlas
- * layer ({@link import('./pixi-renderer.js').SpriteSheet.kindLayers}'s `building` entry) — the families
- * that share one `.bmd`+palette; per-`.bmd`/per-palette variety is a later binding (one atlas per family).
+ * {@link byType} maps a building's `buildingType` ({@link DrawItem.typeId}) to its {@link BuildingBobRef};
+ * a type absent from it falls back to {@link default} (the representative house). A plain-number ref draws
+ * from the shared building atlas layer; a layer-qualified `{ layer, bob }` ref draws from a per-family
+ * atlas ({@link import('./pixi-renderer.js').SpriteSheet.families}) — the multi-`.bmd`/per-palette case.
  */
 export interface BuildingTypeBinding {
-  /** Bob id per building typeId — the `[GfxHouse]` `LogicType` → `GfxBobId` table. */
-  readonly byType: Readonly<Record<number, number>>;
-  /** Bob id for a typeId absent from {@link byType} — the fallback house. */
-  readonly default: number;
+  /** Bob ref per building typeId — the `[GfxHouse]` `LogicType` → `GfxBobId` table (optionally layer-qualified). */
+  readonly byType: Readonly<Record<number, BuildingBobRef>>;
+  /** Bob ref for a typeId absent from {@link byType} — the fallback house (optionally layer-qualified). */
+  readonly default: BuildingBobRef;
 }
 
 /**
@@ -251,16 +273,19 @@ function settlerBobId(binding: number | SettlerStateBinding, item: DrawItem, tic
 }
 
 /**
- * Resolve the bob id for a building draw item from its (number | per-type table) binding. A plain
- * number is the same frame for every building. A {@link BuildingTypeBinding} picks
- * `byType[item.typeId]` (the building's `Building.buildingType`, the `[GfxHouse]` `LogicType`), falling
- * back to `default` when the item carries no type or the type is unmapped — so a sparse table is always
- * total (an unknown building still draws the representative house, never nothing). Pure.
+ * Resolve which bob id — and from which named atlas-layer family — a building draw item draws, from its
+ * (number | per-type table) binding. A plain-number binding is the same bob for every building, drawn
+ * from the default building layer (no family). A {@link BuildingTypeBinding} picks `byType[item.typeId]`
+ * (the building's `Building.buildingType`, the `[GfxHouse]` `LogicType`), falling back to `default` when
+ * the item carries no type or the type is unmapped — so a sparse table is always total (an unknown
+ * building still draws the representative house, never nothing) — then unwraps the {@link BuildingBobRef}:
+ * a plain id resolves with no `layer` (the default layer), a `{ layer, bob }` carries its family name.
+ * Pure: the layer *decision*; binding the resolved frame to a GPU texture is the renderer's half.
  */
-function buildingBobId(binding: number | BuildingTypeBinding, item: DrawItem): number {
-  if (typeof binding === 'number') return binding;
-  const mapped = item.typeId !== undefined ? binding.byType[item.typeId] : undefined;
-  return mapped ?? binding.default;
+export function resolveBuildingDraw(binding: number | BuildingTypeBinding, item: DrawItem): BuildingDraw {
+  if (typeof binding === 'number') return { bob: binding };
+  const ref = (item.typeId !== undefined ? binding.byType[item.typeId] : undefined) ?? binding.default;
+  return typeof ref === 'number' ? { bob: ref } : { bob: ref.bob, layer: ref.layer };
 }
 
 /**
@@ -268,15 +293,15 @@ function buildingBobId(binding: number | BuildingTypeBinding, item: DrawItem): n
  * atlas lookup), so the GPU layer can draw the **same** id from several layered atlases (body + head)
  * without re-deciding per layer. Returns `null` for a terrain tile or an unbound kind. A settler's id
  * is chosen by state + facing + `tick` via {@link settlerBobId} (animated/directional when the binding
- * is a {@link DirectionalAnim}); a building's by its `typeId` via {@link buildingBobId} (its own house
- * bob when the binding is a {@link BuildingTypeBinding}); a resource uses its plain bound id. Pure.
+ * is a {@link DirectionalAnim}); a building's by its `typeId` via {@link resolveBuildingDraw} (its own
+ * house bob when the binding is a {@link BuildingTypeBinding}); a resource uses its plain bound id. Pure.
  */
 export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tick = 0): number | null {
   if (item.kind === 'tile') return null; // tiles bind by typeId, not these per-kind bindings
   const binding = bindings[item.kind];
   if (binding === undefined) return null; // kind unbound -> placeholder
   if (item.kind === 'settler') return settlerBobId(binding as number | SettlerStateBinding, item, tick);
-  if (item.kind === 'building') return buildingBobId(binding as number | BuildingTypeBinding, item);
+  if (item.kind === 'building') return resolveBuildingDraw(binding as number | BuildingTypeBinding, item).bob;
   return binding as number; // resource — its plain bound id
 }
 

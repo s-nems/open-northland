@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { DrawItem, SpriteState } from '../src/index.js';
 import {
   type AtlasManifest,
+  type BuildingTypeBinding,
   DEFAULT_FACING,
   type DirectionalAnim,
   type SettlerStateBinding,
@@ -9,6 +10,7 @@ import {
   type SpriteBindings,
   atlasFromManifest,
   indexAtlasFrames,
+  resolveBuildingDraw,
   resolveSpriteBobId,
   resolveSpriteFrame,
 } from '../src/index.js';
@@ -203,6 +205,50 @@ describe('resolveSpriteBobId — per-type building binding', () => {
     const flat: SpriteBindings = { settler: 10, building: 20, resource: 30 };
     expect(resolveSpriteBobId(building(6), flat)).toBe(20);
     expect(resolveSpriteBobId(building(), flat)).toBe(20);
+  });
+});
+
+describe('resolveBuildingDraw — layer-qualified (multi-.bmd) building binding', () => {
+  /** A building draw item, optionally carrying its `buildingType` (the `Building.buildingType` typeId). */
+  function building(typeId?: number): DrawItem {
+    return { kind: 'building', ref: 1, x: 0, y: 0, depth: 0, ...(typeId !== undefined ? { typeId } : {}) };
+  }
+  // typeId 10 = a plain bob (default layer); typeId 1 = the viking HQ in its own family (viking4 bob 34).
+  const binding: BuildingTypeBinding = {
+    byType: { 10: 131, 1: { layer: 'viking4', bob: 34 } },
+    default: 11,
+  };
+
+  it('an unqualified bob ref resolves to no layer (the default building layer)', () => {
+    expect(resolveBuildingDraw(binding, building(10))).toEqual({ bob: 131 });
+  });
+
+  it('a layer-qualified ref carries both its bob and its family layer', () => {
+    expect(resolveBuildingDraw(binding, building(1))).toEqual({ bob: 34, layer: 'viking4' });
+  });
+
+  it('falls back to the (plain) default for an unmapped type id and a missing type id', () => {
+    expect(resolveBuildingDraw(binding, building(999))).toEqual({ bob: 11 });
+    expect(resolveBuildingDraw(binding, building())).toEqual({ bob: 11 });
+  });
+
+  it('honours a layer-qualified default for an unmapped type', () => {
+    const qualifiedDefault: BuildingTypeBinding = {
+      byType: { 10: 131 },
+      default: { layer: 'viking4', bob: 44 },
+    };
+    expect(resolveBuildingDraw(qualifiedDefault, building(999))).toEqual({ bob: 44, layer: 'viking4' });
+  });
+
+  it('a plain-number binding resolves to that bob with no layer (back-compat)', () => {
+    expect(resolveBuildingDraw(20, building(6))).toEqual({ bob: 20 });
+    expect(resolveBuildingDraw(20, building())).toEqual({ bob: 20 });
+  });
+
+  it('agrees with resolveSpriteBobId on the bob id (the bob is the resolver split-out)', () => {
+    expect(resolveBuildingDraw(binding, building(1)).bob).toBe(
+      resolveSpriteBobId(building(1), { settler: 10, building: binding, resource: 30 }),
+    );
   });
 });
 
