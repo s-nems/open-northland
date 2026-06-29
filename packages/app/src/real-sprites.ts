@@ -1,11 +1,14 @@
 import {
   type AtlasManifest,
   type DirectionalAnim,
+  SYNTHETIC_BINDINGS,
   type SpriteBindings,
   type SpriteLayer,
   type SpriteSheet,
   atlasFromManifest,
+  createSyntheticAtlasSource,
   loadAtlasSource,
+  syntheticAtlasFrames,
 } from '@vinland/render';
 
 /**
@@ -127,4 +130,22 @@ export async function loadHumanSpriteSheet(): Promise<SpriteSheet> {
     // sharing the body atlas the settler uses. `resource` -> TREE_BOB resolves a frame in THIS layer.
     kindLayers: { resource: tree },
   };
+}
+
+/**
+ * Resolve the sprite sheet for the `?atlas` flag — the single answer shared by the live (`main.ts`) and
+ * scene (`scene-mode.ts`) entries so both honour the flag identically: `?atlas=real` → the decoded human
+ * atlas; any other `?atlas` value → the reproducible synthetic atlas (flat-coloured markers, no
+ * copyrighted data); absent → `undefined`, so sprites draw as placeholder geometry.
+ */
+export async function resolveSpriteSheet(params: URLSearchParams): Promise<SpriteSheet | undefined> {
+  if (params.get('atlas') === 'real') return loadHumanSpriteSheet();
+  if (params.has('atlas')) {
+    return {
+      source: createSyntheticAtlasSource(),
+      atlas: syntheticAtlasFrames(),
+      bindings: SYNTHETIC_BINDINGS,
+    };
+  }
+  return undefined;
 }
