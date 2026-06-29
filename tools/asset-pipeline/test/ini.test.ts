@@ -8,6 +8,7 @@ import {
   extractAnimals,
   extractArmor,
   extractAtomicAnimations,
+  extractBuildingGraphics,
   extractBuildings,
   extractConstructionCosts,
   extractGoods,
@@ -1802,6 +1803,67 @@ describe('extractLandscapeGraphics', () => {
       { level: 2, text: 'GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_trees.bmd"' },
     ];
     expect(extractLandscapeGraphics(cifLinesToSections(noPalette))).toEqual([]);
+  });
+});
+
+describe('extractBuildingGraphics', () => {
+  // Mirrors the real DataCnmd/budynki12/houses/houses.ini [GfxHouse] grammar (CamelCase keys, as the .ini
+  // parser yields it): a "viking home" that recolours one body bob into TWO skins on a single
+  // GfxPalette line (house01 + house02), and a "viking stock" (the warehouse) on house02 alone — the
+  // record whose missing atlas left the warehouse a placeholder box. A third record is a logic-only
+  // marker (no GfxBobLibs) and must be skipped.
+  const sections = parseIniSections(
+    [
+      '[GfxHouse]',
+      'EditName "viking home"',
+      'GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_houses_viking.bmd" "data\\engine2d\\bin\\bobs\\ls_houses_viking_s.bmd"',
+      'GfxPalette "house01" "house02"',
+      'GfxBobId 0 11',
+      '[GfxHouse]',
+      'EditName "viking stock"',
+      'GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_houses_viking.bmd" "data\\engine2d\\bin\\bobs\\ls_houses_viking_s.bmd"',
+      'GfxPalette "house02"',
+      'GfxBobId 0 53',
+      '[GfxHouse]', // logic-only marker: no GfxBobLibs -> dropped
+      'EditName "abstract group"',
+      'GfxPalette "house01"',
+    ].join('\n'),
+  );
+
+  it('emits one (bmd, palette) binding per GfxPalette value, normalizing path + lower-casing the name, carrying EditName', () => {
+    expect(extractBuildingGraphics(sections)).toEqual([
+      {
+        bmd: 'data/engine2d/bin/bobs/ls_houses_viking.bmd',
+        shadowBmd: 'data/engine2d/bin/bobs/ls_houses_viking_s.bmd',
+        paletteName: 'house01',
+        tribeId: undefined,
+        jobId: undefined,
+        editName: 'viking home',
+      },
+      {
+        bmd: 'data/engine2d/bin/bobs/ls_houses_viking.bmd',
+        shadowBmd: 'data/engine2d/bin/bobs/ls_houses_viking_s.bmd',
+        paletteName: 'house02',
+        tribeId: undefined,
+        jobId: undefined,
+        editName: 'viking home',
+      },
+      {
+        bmd: 'data/engine2d/bin/bobs/ls_houses_viking.bmd',
+        shadowBmd: 'data/engine2d/bin/bobs/ls_houses_viking_s.bmd',
+        paletteName: 'house02',
+        tribeId: undefined,
+        jobId: undefined,
+        editName: 'viking stock',
+      },
+    ]);
+  });
+
+  it('skips a record with no body bob (logic-only marker)', () => {
+    const noBob = parseIniSections(
+      ['[GfxHouse]', 'EditName "unbindable"', 'GfxPalette "house01"'].join('\n'),
+    );
+    expect(extractBuildingGraphics(noBob)).toEqual([]);
   });
 });
 

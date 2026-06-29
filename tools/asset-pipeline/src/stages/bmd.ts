@@ -10,6 +10,7 @@ import {
   type RuleSection,
   cifLinesToSections,
   decodeIni,
+  extractBuildingGraphics,
   extractGraphicsBindings,
   extractJobBaseGraphics,
   extractJobChangeGraphics,
@@ -211,6 +212,12 @@ export async function convertBmdTree(
  *    base's 1 & 4). Same flat grammar, so it reuses {@link extractGraphicsBindings}; the base bindings'
  *    `(bmd, palette)` pairs are a subset of the mod's, so {@link convertBmdTree} (which keys atlases on
  *    `(bmd, palette)`) emits the same atlas files either way while gaining the extra tribes' cross-refs.
+ *  - and the mod's `<mod>/budynki12/houses/houses.ini` `[GfxHouse]` records (the readable graphics twin
+ *    of the logic `houses.ini`) — the **building** binding ({@link extractBuildingGraphics}): every
+ *    settlement house's `ls_houses_*.bmd` body bound to its palette(s), the leg that makes the house bobs
+ *    atlases (the warehouse's `ls_houses_viking` + `house02` among them, the missing-asset gap). A house
+ *    record can list several palettes on one `GfxPalette` line (one body, many skins), so it is deduped on
+ *    `(bmd, palette)` here as the landscape leg is.
  *
  * Both the base-appearance (`[jobbasegraphics]`) and equipment-skin (`[jobchangegraphics]`) layers share
  * the same grammar, so all four sources flatten via {@link jobBaseGraphicsToBindings} into the same flat
@@ -293,6 +300,23 @@ export async function resolveGraphicsBindings(
     // while the mod's extra tribe-2/3 rows carry the per-tribe logicvehicle cross-refs.
     const vehicleGraphics = await readIni(join(mod, 'types', 'vehiclestype', 'jobgraphics.ini'));
     if (vehicleGraphics) bindings.push(...extractGraphicsBindings(vehicleGraphics));
+    // The mod's readable [GfxHouse] graphics table (`budynki12/houses/houses.ini`): every settlement
+    // house bound to its `ls_houses_*.bmd` body + palette — the leg that turns the house bobs into
+    // atlases (the warehouse's `ls_houses_viking.house02` among them). Like the landscape leg, dedup on
+    // (bmd, palette) BEFORE pushing: a house record commonly repeats one bob+palette across tribes/levels
+    // (the ~25 viking-home records all bind `ls_houses_viking` + `house01`/`house02`), and a duplicate
+    // would only make convertBmdTree re-emit identical bytes. Scoped to the building additions so the
+    // human/animal/vehicle/landscape bindings array stays byte-identical to before.
+    const buildingGraphics = await readIni(join(mod, 'budynki12', 'houses', 'houses.ini'));
+    if (buildingGraphics) {
+      const seen = new Set<string>();
+      for (const b of extractBuildingGraphics(buildingGraphics)) {
+        const key = `${b.bmd} ${b.paletteName}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        bindings.push(b);
+      }
+    }
   }
   return {
     bindings,
