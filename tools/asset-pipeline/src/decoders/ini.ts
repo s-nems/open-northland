@@ -19,6 +19,7 @@ import {
   ArmorType,
   AtomicAnimation,
   BobSequenceSet,
+  BuildingBob,
   BuildingType,
   GfxPattern,
   type GoodAtomics,
@@ -1523,6 +1524,79 @@ export function extractBuildingGraphics(sections: readonly RuleSection[]): Build
     }
   }
   return bindings;
+}
+
+/**
+ * Extracts the `[GfxHouse]` **building-type → house-bob** join from the mod's readable
+ * `DataCnmd/budynki12/houses/houses.ini` — the data-pinned twin of the renderer's hand-transcribed
+ * per-type table (`real-sprites.ts` `VIKING_HOUSE01_BOBS`). {@link extractBuildingGraphics} reads the
+ * SAME records but keeps only `(bmd, palette)` to emit each recolour atlas; this leg keeps the
+ * `(typeId → bobId)` mapping those atlases are indexed by, so the render can draw each building its own
+ * house bob from data instead of a transcribed constant (CLAUDE.md "content is data, not code").
+ *
+ * A `[GfxHouse]` record pairs two per-level tables by their leading **level index** — exactly the
+ * `sizeIdx` pairing {@link extractConstructionCosts} uses for `LogicConstructionGoods`:
+ *   - `LogicType <level> <typeId>` — the building `typeId` at that growth level (a home spans levels
+ *     0..4 → five distinct typeIds), and
+ *   - `GfxBobId <level> <bobId>` — the atlas bob id for that level.
+ * For each level present in BOTH tables we emit one {@link BuildingBob} per palette skin
+ * (`GfxPalette "house01" "house02"` → two rows, the same bob in each recolour), so a render that
+ * loaded the `(bmd, palette)` atlas finds its `typeId → bobId` row directly. The body `.bmd` is
+ * `GfxBobLibs[0]`; `LogicTribeType` keys the row (the same logic `typeId` recurs per civilization).
+ *
+ * A record missing a body `.bmd`, any palette, or a `LogicTribeType` is skipped (never thrown — this
+ * indexes hundreds of records and one malformed entry must not abort the offline batch); a level with a
+ * `LogicType` but no matching `GfxBobId` (a free/placeholder stage) is omitted. Returns an empty array
+ * for sources with no `[GfxHouse]` records (the logic-only tables every other extractor reads).
+ */
+export function extractBuildingBobs(sections: readonly RuleSection[], src: SourceRef): BuildingBob[] {
+  const bobs: BuildingBob[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'GfxHouse') continue;
+    const tribeId = getInt(sec, 'LogicTribeType');
+    if (tribeId === undefined) continue;
+    const bmd = findProp(sec, 'GfxBobLibs')?.values[0];
+    if (bmd === undefined || bmd.trim() === '') continue;
+    const palettes = (findProp(sec, 'GfxPalette')?.values ?? []).filter((v) => v.trim() !== '');
+    if (palettes.length === 0) continue;
+    const editName = getStr(sec, 'EditName');
+    // Pair the two per-level tables by their leading level index (the same join `extractConstructionCosts`
+    // does for cost lines). A typeId may recur at several levels; each level keeps its own bob.
+    const typeByLevel = new Map<number, number>();
+    for (const p of findProps(sec, 'LogicType')) {
+      const level = Number.parseInt(p.values[0] ?? '', 10);
+      const typeId = Number.parseInt(p.values[1] ?? '', 10);
+      if (Number.isNaN(level) || Number.isNaN(typeId)) continue;
+      typeByLevel.set(level, typeId);
+    }
+    const bobByLevel = new Map<number, number>();
+    for (const p of findProps(sec, 'GfxBobId')) {
+      const level = Number.parseInt(p.values[0] ?? '', 10);
+      const bobId = Number.parseInt(p.values[1] ?? '', 10);
+      if (Number.isNaN(level) || Number.isNaN(bobId)) continue;
+      bobByLevel.set(level, bobId);
+    }
+    const normalizedBmd = normalizeAssetPath(bmd);
+    for (const [level, typeId] of typeByLevel) {
+      const bobId = bobByLevel.get(level);
+      if (bobId === undefined) continue;
+      for (const paletteName of palettes) {
+        bobs.push(
+          BuildingBob.parse({
+            tribeId,
+            typeId,
+            level,
+            bmd: normalizedBmd,
+            paletteName: normalizePaletteName(paletteName),
+            bobId,
+            editName,
+            source: { file: src.file, block: 'GfxHouse', layer: src.layer ?? 'base' },
+          }),
+        );
+      }
+    }
+  }
+  return bobs;
 }
 
 /**

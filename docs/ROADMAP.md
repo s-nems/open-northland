@@ -127,14 +127,22 @@ check, commit. **Render-only** rungs need no pipeline change (the atlas is alrea
    hive 91 / farm 60 / bakery 105, transcribed from `houses.ini`), no longer the one bob 11 reused for all
    55 types. New `building-types` acceptance scene shows the five side by side; unit-tested + the table
    pinned. **Supersedes** the "Remaining" note on the Phase-2 *Building bob bound* item.
-   - [ ] **Remaining — multi-`.bmd`/palette per type** — the table covers only the types sharing
-     `ls_houses_viking.house01` (one atlas layer + one uniform scale). Types in other bodies/skins
-     (`ls_houses_viking2..4`, `houseMiller01`/`housedruid01`, the HQ's `viking4` bob 34) still fall back to
-     the default house. Generalise the binding to pick a per-type **atlas layer** (one `kindLayer` per
-     `(bmd, palette)` family), and *extract* the `(typeId, tribeId)→(bmd, palette, bob)` join into the IR
-     (the `extractBuildingGraphics` leg keeps only `(bmd, palette, editName)` today — no `LogicType`/`GfxBobId`)
-     so the lookup is data-pinned rather than transcribed. The other tribes (frank/egypt/saracen/byzantine)
-     reuse the same machinery.
+   - [x] **Extract the `(typeId→bob)` join into the IR** — `extractBuildingBobs` (`decoders/ini.ts`) reads
+     each `[GfxHouse]`'s paired `LogicType <lvl> <typeId>` ⊗ `GfxBobId <lvl> <bobId>` level-tables (the same
+     level pairing `extractConstructionCosts` uses) → the validated `BuildingBob` IR (`ContentSet.buildingBobs`,
+     one row per `(tribeId, typeId, level, bmd, palette, bobId)`), emitted by `npm run pipeline`. Hands-on over
+     the real `houses.ini`: **270 rows / 6 tribes / 16 palette skins**, reproducing the 5 transcribed
+     `house01` mappings *exactly* (home `6`→41, well `10`→131, hive `11`→91, farm `12`→60, bakery `15`→105)
+     **and** recovering the home growth chain (t2→bob1 … t6→bob41) the constant dropped. Faithful, data-pinned
+     (docs/FIDELITY.md). Unit-tested; the sim ignores it (render-binding data, golden hash untouched).
+   - [ ] **Remaining — render consumes the join + multi-`.bmd`/palette per type** — the render still reads
+     the hand-copied `VIKING_HOUSE01_BOBS` constant; drive its `BuildingTypeBinding.byType` from the new
+     `buildingBobs` table instead (filtered to the loaded `(bmd, palette)` atlas — mirror how
+     `loadBodySequences` feeds the walk/chop ranges), so the lookup is data-pinned end-to-end. Then generalise
+     the binding to pick a per-type **atlas layer** (one `kindLayer` per `(bmd, palette)` family) so types in
+     other bodies/skins (`ls_houses_viking2..4`, `houseMiller01`/`housedruid01`, the HQ's `viking4` bob 34) draw
+     their own house instead of the default. The other tribes (frank/egypt/saracen/byzantine) reuse the same
+     machinery — the `buildingBobs` table already covers all 6.
 2. [ ] **Landscape/resource per-type variety** (render-only) — bushes, signs, wonders, harbours + non-yew
    tree species, each via its own `[GfxLandscape]` bob (today every resource is the single yew). Same recipe
    as rung 1 over the already-emitted `extractLandscapeGraphics` atlases (87 landscape types in IR).
