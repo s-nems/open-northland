@@ -69,67 +69,109 @@ const HOUSE_BOB = 11;
 const BUILDING_SCALE = 0.7;
 
 /**
- * The settler's directional animation ranges, read off `animations.ini`'s `[bobseq]` for
- * `CR_Hum_Body_00.bmd` (the head atlas shares the same bob ids). Each is 8 directions laid back-to-back
- * (`dirs: 8`), `stride` frames per direction:
- *   - walk  `human_man_generic_walk` — start 1988, 8×12.
- *   - chop  `human_man_woodcutter_work_woodcutting` — start 5106, 8×15 (the full axe swing).
- * Idle holds a single planted pose per direction (the walk cycle's first frame), so a stopped settler
- * still turns to face its heading without a distracting idle loop.
+ * The settler's directional animations come from `animations.ini`'s `[bobseq]` for `CR_Hum_Body_00.bmd`
+ * (the head atlas shares the same bob ids). Each is {@link DIRS} directions laid back-to-back, `stride`
+ * frames per direction. The frame RANGES (start + length) are no longer hard-coded here — they are read
+ * from the IR's `bobSequences` (the `extractBobSequences` pipeline leg) by sequence name and turned into
+ * a {@link DirectionalAnim} via {@link directionalAnimFromSeq} (`stride = length / DIRS`). What stays in
+ * code is the render-taste tuning that the data does not carry: which sequence drives which state, the
+ * `phaseStart` windup offset, and the single-frame idle hold.
  */
-const WALK: DirectionalAnim = { start: 1988, dirs: 8, stride: 12 };
+const DIRS = 8;
+const WALK_SEQ = 'human_man_generic_walk';
+const CHOP_SEQ = 'human_man_woodcutter_work_woodcutting';
+// The LOADED gait — the settler walking while hauling a log. Same directional layout as the empty walk;
+// the frames simply carry the wood. Bound to the settler's `carrying` override so a woodcutter walking
+// its harvest back to the store plays this instead of the empty walk; its first frame holds a still
+// loaded pose while it deposits.
+const WALK_WOOD_SEQ = 'human_man_generic_walk_wood';
+
+// The known-good ranges (verified against an owned copy: walk 1988/96, chop 5106/120, walk_wood 4580/96)
+// kept as the FALLBACK when the manifest is absent (a checkout without content/, or an IR predating
+// bobSequences) so `?atlas=real` still degrades to the right cycles instead of drawing a wrong range.
+const FALLBACK_WALK: DirectionalAnim = { start: 1988, dirs: DIRS, stride: 12 };
 // The 15-frame woodcut bobseq is a continuous loop. Verified by rendering every frame to a filmstrip:
 // frames 0..8 are the axe coming DOWN to the tree (the strike, impact ~frame 8) and 9..14 are the axe
 // RISING (the windup). So we play the FULL cycle but START at the windup (`phaseStart: 9`): it plays
 // 9..14 (raise the axe) then 0..8 (swing down, impact) — a complete chop that *begins* with the windup
 // and *ends* on the strike landing in the tree. Tick-locked cadence (one frame/tick) on the atomic's
 // `elapsed`, same speed as every other animation.
-const CHOP: DirectionalAnim = { start: 5106, dirs: 8, stride: 15, phaseStart: 9 };
-const STAND: DirectionalAnim = { start: 1988, dirs: 8, stride: 12, frames: 1 };
-// The LOADED gait — `human_man_generic_walk_wood` (bob 4580, 8×12), the settler walking while hauling a
-// log. Same directional layout as WALK; the frames simply carry the wood the empty-handed walk doesn't
-// (decoded and verified present for all 8×12 frames in both the body and head atlases). Bound to the
-// settler's `carrying` override so a woodcutter walking its harvest back to the store plays this instead
-// of the empty walk; WALK_WOOD's first frame (STAND_WOOD) holds a still loaded pose while it deposits.
-const WALK_WOOD: DirectionalAnim = { start: 4580, dirs: 8, stride: 12 };
-const STAND_WOOD: DirectionalAnim = { start: 4580, dirs: 8, stride: 12, frames: 1 };
+const FALLBACK_CHOP: DirectionalAnim = { start: 5106, dirs: DIRS, stride: 15, phaseStart: 9 };
+const FALLBACK_WALK_WOOD: DirectionalAnim = { start: 4580, dirs: DIRS, stride: 12 };
 
 /** The chop atomic id (the demo slice's `harvest`), mapped to the woodcutting swing. */
 const HARVEST_ATOMIC = 24;
 
+/** One decoded `[bobseq]` sequence as it ships in `content/ir.json`'s `bobSequences`. */
+interface BobSeqRow {
+  readonly name: string;
+  readonly start: number;
+  readonly length: number;
+}
+
 /**
- * The demo binding into the human atlases — the render twin of `vertical-slice.ts`'s `demoContent` (it
- * hardcodes content ids for the slice the same way). The frame numbers are `animations.ini` `[bobseq]`
- * starts, a numeric cross-reference into the data layout, not committed art. `building`/`resource` map
- * to -1 (absent from these atlases) so the resolver returns null and they fall back to placeholder
- * geometry. Replaced wholesale by the extracted animation manifest once the `animations.ini` →
- * sequence-manifest pipeline step lands (then no hardcoded frame ids here).
+ * Build a {@link DirectionalAnim} from a decoded `[bobseq]` sequence: `start` is the run's first bob id,
+ * `stride = length / DIRS` (the per-direction frame count). Returns {@link fallback} verbatim when the
+ * named sequence is missing from the manifest (a partial/old IR), so the render keeps the known-good
+ * range rather than computing a bogus one. The render-taste overrides (`frames` for a single-frame idle
+ * hold, `phaseStart` for the chop windup) are applied on top of the extracted range. Pure + exported so
+ * the seq→frame math is unit-tested without a browser.
  */
-const HUMAN_BINDINGS: SpriteBindings = {
-  // CHOP is bound ONLY to the harvest atomic. There is intentionally no generic `acting` swing: an
-  // unmapped action (a carrier/woodcutter depositing or picking up — atomics 22/23) falls back to a
-  // STANDING pose, NOT a borrowed woodcut swing. Borrowing it made a 4-tick deposit replay the 15-frame
-  // axe swing at ~4× speed (a fast, truncated chop) — the very glitch this binding removes.
-  //
-  // `carrying` is the loaded-gait override: once the woodcutter picks up its wood it walks WALK_WOOD
-  // (bob 4580, the log-on-shoulder cycle) instead of the empty WALK, and stands STAND_WOOD while it
-  // deposits. The chop still wins while harvesting because a settler only carries *after* the harvest.
-  settler: {
-    idle: STAND,
-    moving: WALK,
-    byAtomic: { [HARVEST_ATOMIC]: CHOP },
-    carrying: { idle: STAND_WOOD, moving: WALK_WOOD },
-  },
-  // The building (HQ) draws bob 11 of the ls_houses_viking atlas, blitted from its own per-kind layer
-  // (see loadHumanSpriteSheet's kindLayers) — its id space is the house bobs, not the human body's, so
-  // this number is meaningless without that layer (the two are bound together below). Was -1 (unbound →
-  // placeholder box) until the decoded house atlas landed.
-  building: HOUSE_BOB,
-  // The wood node draws bob 60 of the ls_trees atlas, blitted from its own per-kind layer (see
-  // loadHumanSpriteSheet's kindLayers) — its id space is the tree bobs, not the human body's, so this
-  // number is meaningless without that layer (the two are bound together below).
-  resource: TREE_BOB,
-};
+export function directionalAnimFromSeq(
+  seqByName: ReadonlyMap<string, BobSeqRow>,
+  name: string,
+  extra: { readonly frames?: number; readonly phaseStart?: number },
+  fallback: DirectionalAnim,
+): DirectionalAnim {
+  const seq = seqByName.get(name);
+  if (seq === undefined || seq.length <= 0) return fallback;
+  return {
+    start: seq.start,
+    dirs: DIRS,
+    stride: Math.floor(seq.length / DIRS),
+    // exactOptionalPropertyTypes: only set an optional key when it has a value.
+    ...(extra.frames !== undefined ? { frames: extra.frames } : {}),
+    ...(extra.phaseStart !== undefined ? { phaseStart: extra.phaseStart } : {}),
+  };
+}
+
+/**
+ * The demo binding into the human atlases — the render twin of `vertical-slice.ts`'s `demoContent`. The
+ * settler's walk/chop ranges are derived from `seqByName` (the extracted `bobSequences` for
+ * `cr_hum_body_00.bmd`), so there are no hard-coded frame ids left here; an absent manifest falls back to
+ * the known-good `FALLBACK_*` ranges. `building`/`resource` resolve in their own per-kind layers (see
+ * {@link loadHumanSpriteSheet}'s `kindLayers`), so their ids index the house/tree bobs, not the body's.
+ */
+export function buildHumanBindings(seqByName: ReadonlyMap<string, BobSeqRow>): SpriteBindings {
+  const walk = directionalAnimFromSeq(seqByName, WALK_SEQ, {}, FALLBACK_WALK);
+  const stand = directionalAnimFromSeq(seqByName, WALK_SEQ, { frames: 1 }, { ...FALLBACK_WALK, frames: 1 });
+  const chop = directionalAnimFromSeq(seqByName, CHOP_SEQ, { phaseStart: 9 }, FALLBACK_CHOP);
+  const walkWood = directionalAnimFromSeq(seqByName, WALK_WOOD_SEQ, {}, FALLBACK_WALK_WOOD);
+  const standWood = directionalAnimFromSeq(
+    seqByName,
+    WALK_WOOD_SEQ,
+    { frames: 1 },
+    { ...FALLBACK_WALK_WOOD, frames: 1 },
+  );
+  return {
+    // CHOP is bound ONLY to the harvest atomic. There is intentionally no generic `acting` swing: an
+    // unmapped action (a carrier/woodcutter depositing or picking up — atomics 22/23) falls back to a
+    // STANDING pose, NOT a borrowed woodcut swing. Borrowing it made a 4-tick deposit replay the 15-frame
+    // axe swing at ~4× speed (a fast, truncated chop) — the very glitch this binding removes.
+    //
+    // `carrying` is the loaded-gait override: once the woodcutter picks up its wood it walks the loaded
+    // gait instead of the empty walk, and stands a loaded pose while it deposits. The chop still wins
+    // while harvesting because a settler only carries *after* the harvest.
+    settler: {
+      idle: stand,
+      moving: walk,
+      byAtomic: { [HARVEST_ATOMIC]: chop },
+      carrying: { idle: standWood, moving: walkWood },
+    },
+    building: HOUSE_BOB,
+    resource: TREE_BOB,
+  };
+}
 
 /**
  * Load one decoded atlas layer (`<stem>.{atlas.json,png}`) from the gitignored `content/` (served at
@@ -148,22 +190,49 @@ async function loadLayer(stem: string): Promise<SpriteLayer> {
   return { atlas: atlasFromManifest(manifest), source: await loadAtlasSource(`/bobs/${stem}.png`) };
 }
 
+/** The `[bobseq]` imagelib whose sequences drive the settler — the body bob set the head atlas shares ids with. */
+const BODY_IMAGELIB = 'cr_hum_body_00.bmd';
+
 /**
- * Load the real human {@link SpriteSheet}: the body layer as the base sheet, the head layer as an
- * overlay drawn on top at the same bob id, paired with the demo {@link HUMAN_BINDINGS}. Together they
- * compose a complete settler (body + head) the renderer animates directionally per tick.
+ * Fetch the settler's `[bobseq]` ranges from the served `content/ir.json` (`bobSequences`, the
+ * `extractBobSequences` leg), indexed by sequence name for the {@link BODY_IMAGELIB} bob set. Returns an
+ * EMPTY map (→ {@link buildHumanBindings} falls back to the known-good `FALLBACK_*` ranges) when the IR
+ * is absent or carries no sequences — unlike a missing atlas (a hard precondition {@link loadLayer}
+ * throws on), a missing manifest degrades gracefully so `?atlas=real` still draws with the right cycles.
+ */
+async function loadBodySequences(): Promise<Map<string, BobSeqRow>> {
+  const byName = new Map<string, BobSeqRow>();
+  let ir: { bobSequences?: { imagelib: string; sequences?: BobSeqRow[] }[] };
+  try {
+    const res = await fetch('/ir.json');
+    if (!res.ok) return byName;
+    ir = (await res.json()) as typeof ir;
+  } catch {
+    return byName;
+  }
+  const set = (ir.bobSequences ?? []).find((s) => s.imagelib === BODY_IMAGELIB);
+  for (const seq of set?.sequences ?? []) byName.set(seq.name, seq);
+  return byName;
+}
+
+/**
+ * Load the real human {@link SpriteSheet}: the body layer as the base sheet, the head layer as an overlay
+ * drawn on top at the same bob id, paired with bindings whose walk/chop ranges are read from the decoded
+ * `bobSequences` (see {@link buildHumanBindings}). Together they compose a complete settler (body + head)
+ * the renderer animates directionally per tick.
  */
 export async function loadHumanSpriteSheet(): Promise<SpriteSheet> {
-  const [body, head, tree, house] = await Promise.all([
+  const [body, head, tree, house, seqByName] = await Promise.all([
     loadLayer(HUMAN_BODY_ATLAS),
     loadLayer(HUMAN_HEAD_ATLAS),
     loadLayer(TREE_ATLAS),
     loadLayer(HOUSE_ATLAS),
+    loadBodySequences(),
   ]);
   return {
     source: body.source,
     atlas: body.atlas,
-    bindings: HUMAN_BINDINGS,
+    bindings: buildHumanBindings(seqByName),
     overlays: [head],
     // The tree and the building each draw from their OWN atlas (distinct id spaces), so they bind as
     // per-kind layers rather than sharing the body atlas the settler uses. `resource` -> TREE_BOB and

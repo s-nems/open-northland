@@ -43,6 +43,15 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
         `extractLandscapeGraphics`, emitted through the existing `convertBmdTree`, drawn under `?atlas=real`
         as a per-kind `SpriteSheet.kindLayers` layer (the woodcutter's wood node is now a real tree, not a
         green box). Commits `e663e71` + `42b0b1a`; deviation (species/frame pick) in docs/FIDELITY.md.
+  - [x] **Animation ranges from data, not magic numbers** — `extractBobSequences` reads
+        `animations.ini`'s `[bobseq]` tables into the IR's `bobSequences` (15 sets / 359 sequences), and
+        `?atlas=real` now derives the settler's walk/chop/carry `DirectionalAnim`s from them by sequence
+        name (`stride = length / 8`) instead of hard-coded frame constants — `app/src/real-sprites.ts`
+        `buildHumanBindings`/`directionalAnimFromSeq`. The extracted ranges match the old constants
+        byte-for-byte (walk 1988/96, chop 5106/120, walk_wood 4580/96), kept as a graceful fallback for a
+        checkout without `content/`. Render-taste tuning (which seq drives which state, the chop
+        `phaseStart` windup, the single-frame idle hold) stays in code. Unit-tested; pixels still need the
+        scene sign-off below.
   - [x] **Building bob bound** — the HQ now draws the decoded `ls_houses_viking.bmd` (palette `house01`,
         bob 11 — the viking home, a stone-and-thatch cottage) under `?atlas=real`, as a per-kind
         `SpriteSheet.kindLayers` layer like the tree (the same universal `.bmd`→atlas path; the bob layout
