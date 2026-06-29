@@ -141,9 +141,10 @@ check, commit. **Render-only** rungs need no pipeline change (the atlas is alrea
      `extractBuildingGraphics` share the same pre-existing lumping bug — a flagged follow-up.)
    - [x] **Render consumes the join (data-pinned end-to-end)** — `BuildingTypeBinding.byType` is now derived
      from the extracted `buildingBobs` table (`real-sprites.ts` `buildingBobsByType`: filtered to the loaded
-     `(bmd, palette)` = `ls_houses_viking.bmd`/`house01`, highest-`level` row per typeId), fed through
-     `buildHumanBindings` exactly like `bodySequencesByName` feeds the walk/chop ranges; the transcribed
-     `VIKING_HOUSE01_BOBS` constant is kept only as the graceful fallback when `content/` is absent. Hands-on
+     `(bmd, palette)` = `ls_houses_viking.bmd`/`house01`, highest-`level` row per typeId), **overlaid** onto
+     the transcribed `VIKING_HOUSE01_BOBS` and fed through `buildHumanBindings` like `bodySequencesByName`
+     feeds the walk/chop ranges — real data wins per type, the constant backs its five known types when the
+     IR is partial/absent (graceful type-by-type degradation). Hands-on
      over the real regenerated `ir.json`: the data path reproduces the signed-off constant for typeIds
      6/10/11/12/15 **exactly** (so `?scene=building-types&atlas=real` renders identically) and additionally
      recovers the home (t2..t6 = typeIds 2..6 → 1/11/21/31/41) + bakery (14→101) growth-stage bobs the constant
