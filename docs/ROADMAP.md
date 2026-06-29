@@ -64,8 +64,9 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
           (one binding per `GfxPalette` value, so a body's multiple skins all build), through the existing
           `convertBmdTree` like the landscape leg. So `npm run pipeline` reproducibly produces ALL house
           atlases — including the warehouse's `ls_houses_viking.house02` (the previously-missing asset),
-          not just the one `house01` an agent had hand-built. Remaining: render-side per-`[GfxHouse]`-type
-          frame selection so each building draws ITS house bob (one home/warehouse/workshop per typeId).
+          not just the one `house01` an agent had hand-built. Render-side per-`[GfxHouse]`-type frame
+          selection (each building draws ITS house bob) **landed as rung 1 of the Render breadth ladder**
+          below (single `ls_houses_viking.house01` family; the multi-`.bmd` generalisation is its remainder).
 - [x] **Render terrain from real landscape ground textures** — **LANDED (approximated, behind `?terrain`).**
       The flat 4-colour `TILE_COLOURS` tint is replaced by real decoded `text_*.pcx` ground: the meadow grass
       + rock mountain textures now draw per cell (human pixel-check done — a real `?map=` shot shows grass +
@@ -109,6 +110,49 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
 - **Exit:** click to place one workplace; a settler autonomously supplies it via atomics; a carrier
   hauls outputs to a store; the 1000-tick golden hash + trace stay stable. **(Headless slice + golden
   proven; the real-atlas bind + final human pixel check remain.)**
+
+### Render breadth ladder — more decoded assets on-screen (one category per `/iterate`)
+The pipeline already emits atlases for most assets (~80% of the bob `.bmd`s), but the render
+(`app/src/real-sprites.ts`) currently draws only settlers + one tree species + one HQ house. This ladder
+wires the rest on-screen, **cheapest first**; each rung is one iteration that adds a
+`packages/app/src/scenes/` acceptance scene for the human pixel sign-off (an agent can't self-judge pixels).
+The repeatable recipe per rung: load the extra atlas(es) in `loadHumanSpriteSheet`, route the entity's
+`typeId` through `resolveSpriteBobId`/`buildHumanBindings` as a per-type bob lookup, add the scene + headless
+check, commit. **Render-only** rungs need no pipeline change (the atlas is already on disk);
+**pipeline-blocked** rungs need an extractor or palette stage first.
+1. [x] **Buildings per-type frame selection** (render-only) — **LANDED (single-atlas family; pending human
+   pixel sign-off).** A building draw item now carries its `Building.buildingType`, and a
+   `BuildingTypeBinding` (`byType: typeId→bob, default`) draws each viking type its OWN house bob — the
+   `[GfxHouse]` `LogicType`→`GfxBobId` join (`real-sprites.ts` `VIKING_HOUSE01_BOBS`: home 41 / well 131 /
+   hive 91 / farm 60 / bakery 105, transcribed from `houses.ini`), no longer the one bob 11 reused for all
+   55 types. New `building-types` acceptance scene shows the five side by side; unit-tested + the table
+   pinned. **Supersedes** the "Remaining" note on the Phase-2 *Building bob bound* item.
+   - [ ] **Remaining — multi-`.bmd`/palette per type** — the table covers only the types sharing
+     `ls_houses_viking.house01` (one atlas layer + one uniform scale). Types in other bodies/skins
+     (`ls_houses_viking2..4`, `houseMiller01`/`housedruid01`, the HQ's `viking4` bob 34) still fall back to
+     the default house. Generalise the binding to pick a per-type **atlas layer** (one `kindLayer` per
+     `(bmd, palette)` family), and *extract* the `(typeId, tribeId)→(bmd, palette, bob)` join into the IR
+     (the `extractBuildingGraphics` leg keeps only `(bmd, palette, editName)` today — no `LogicType`/`GfxBobId`)
+     so the lookup is data-pinned rather than transcribed. The other tribes (frank/egypt/saracen/byzantine)
+     reuse the same machinery.
+2. [ ] **Landscape/resource per-type variety** (render-only) — bushes, signs, wonders, harbours + non-yew
+   tree species, each via its own `[GfxLandscape]` bob (today every resource is the single yew). Same recipe
+   as rung 1 over the already-emitted `extractLandscapeGraphics` atlases (87 landscape types in IR).
+3. [ ] **Faithful per-direction animation** (pipeline + render) — the extractor today reads ONLY the 15
+   `[bobseq]` frame ranges and the render fakes playback with a linear `start + dir*stride + phase` heuristic.
+   The real per-direction frame tables — `[gfxanimatomic]` (**1280**) + `[gfxwalkatomic]` (**511**) in
+   `animations.ini`, keyed by `(tribe, job, atomic-action)` with explicit 8-direction `gfxanimframelistdir`
+   lists (ping-pong swings, irregular direction reuse) — are **not extracted at all**. Add the extractor +
+   drive playback from the real lists. Record the current stride heuristic as a divergence in docs/FIDELITY.md.
+4. [ ] **Vehicle graphics** (pipeline + render) — no vehicle-graphics extractor yet; mirror
+   `extractBuildingGraphics` for the cart/ship `.bmd`s, emit atlases, add a `'vehicle'` `DrawKind` + binding.
+   (6 vehicles exist sim-side, Phase 4 — graphics deferred.)
+5. [ ] **Animal graphics** (pipeline + render) — same shape as rung 4 for `cr_ani_body_*.bmd`; the
+   `[bobseq]` ranges already cover animal walk/wait/fight, so playback reuses rung 3's machinery. (35 creature
+   tribes exist sim-side, Phase 4 — graphics deferred.)
+6. [ ] **Shadows** (blocked on pipeline Stage 2) — every binding already carries `shadowBmd`, but shadow
+   atlases need the single-colour shadow-palette path (the Phase-1 "palettes + `.hlt` remap" decode, still
+   TODO). Do after Stage 2 lands.
 
 ## Phase 3 — Economy, progression & population  (substance complete; only human-gated render checks remain)
 - [x] **Goods graph** — explicit IR artifact: input side + output-side recipe join +

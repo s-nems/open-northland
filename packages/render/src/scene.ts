@@ -70,7 +70,12 @@ export interface DrawItem {
   readonly y: number;
   /** The world-space sort key the item was ordered by (see {@link buildScene}). */
   readonly depth: number;
-  /** For a terrain tile: its landscape typeId, so the GPU layer can pick the tile sprite. */
+  /**
+   * The drawable's type id, so a per-type binding picks the right frame: for a terrain **tile** its
+   * landscape typeId (the GPU layer tints/textures by it); for a **building** its `Building.buildingType`
+   * (the `[GfxHouse]` `LogicType` — a per-type {@link import('./sprites.js').BuildingTypeBinding} draws
+   * each building's own house bob). Omitted for kinds that don't key off a type (settler/resource).
+   */
   readonly typeId?: number;
   /** For a sprite: its coarse logical state, so a per-state binding can pick the right frame. */
   readonly state?: SpriteState;
@@ -161,6 +166,18 @@ function readActingAtomic(components: Readonly<Record<string, unknown>>): number
   const a = components.CurrentAtomic as { atomicId?: unknown } | undefined;
   if (a === undefined || typeof a.atomicId !== 'number') return null;
   return a.atomicId;
+}
+
+/**
+ * A building entity's type id — the `Building.buildingType` (the `[GfxHouse]` `LogicType` the placement
+ * command stamped). Stamped onto the building draw item as {@link DrawItem.typeId} so a per-type
+ * {@link import('./sprites.js').BuildingTypeBinding} can draw each building its own house bob. Returns
+ * `undefined` for a missing/malformed component (the binding then falls back to its default house). Pure
+ * read of plain snapshot data — never re-enters the sim.
+ */
+function readBuildingType(components: Readonly<Record<string, unknown>>): number | undefined {
+  const b = components.Building as { buildingType?: unknown } | undefined;
+  return b !== undefined && typeof b.buildingType === 'number' ? b.buildingType : undefined;
 }
 
 /**
@@ -302,6 +319,9 @@ export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): Draw
     const elapsed = kind === 'settler' ? readAtomicElapsed(entity.components) : null;
     const facing = kind === 'settler' ? readFacing(entity.components) : undefined;
     const carrying = kind === 'settler' ? readCarrying(entity.components) : false;
+    // A building carries its type id so a per-type binding draws its own house bob (the `[GfxHouse]`
+    // `LogicType` → `GfxBobId` join); other kinds key off no type, so it's omitted for them.
+    const buildingType = kind === 'building' ? readBuildingType(entity.components) : undefined;
     // A chopping settler shares its tree's cell; nudge its drawn sprite left so the right-swing axe
     // lands in the trunk at the cell centre (render-only — the depth sort below still uses the true tile).
     const chopNudgeX = state === 'acting' && actingAtomic === CHOP_ATOMIC_ID ? CHOP_NUDGE_X : 0;
@@ -318,6 +338,7 @@ export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): Draw
       ...(elapsed !== null ? { elapsed } : {}),
       ...(facing !== undefined ? { facing } : {}),
       ...(carrying ? { carrying: true } : {}),
+      ...(buildingType !== undefined ? { typeId: buildingType } : {}),
     });
   }
 

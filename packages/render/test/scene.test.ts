@@ -103,6 +103,19 @@ describe('buildScene', () => {
     expect(kinds.sort()).toEqual(['building', 'resource']); // the marker-less entity is skipped
   });
 
+  it('stamps a building draw item with its buildingType (so a per-type binding picks its bob)', () => {
+    const scene = buildScene(
+      snapshotOf([
+        entity(1, 0, 0, { Building: { buildingType: 6 } }),
+        entity(2, 1, 1, { Resource: { goodType: 1 } }),
+      ]),
+      FLAT_3x2,
+    );
+    expect(scene.find((d) => d.kind === 'building')?.typeId).toBe(6);
+    // A resource keys off no type, so it carries no typeId (only tiles + buildings do).
+    expect(scene.find((d) => d.kind === 'resource')?.typeId).toBeUndefined();
+  });
+
   it('consumes a loaded terrain map (the parseTerrainMap shape) via terrainMapToScene', () => {
     // A "real" decoded map carries varied landscape typeIds (not just grass/water) — the multi-type
     // grid an emitted content/maps/<id>.json holds. terrainMapToScene must carry them through so the

@@ -20,6 +20,7 @@ export {
   type AtlasFrame,
   type AtlasManifest,
   type AtlasManifestFrame,
+  type BuildingTypeBinding,
   type DirectionalAnim,
   type SettlerStateBinding,
   type SpriteAtlas,
