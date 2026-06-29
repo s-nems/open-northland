@@ -157,11 +157,15 @@ check, commit. **Render-only** rungs need no pipeline change (the atlas is alrea
      other bobs in `house02`/`dungeon01`), so the join needs an `editName`-keyed disambiguation, not just
      highest-level. The real viking **HQ (typeId 1) is `ls_houses_viking4.bmd` bob 34** ("viking headquarters"),
      a different atlas than the one loaded. Ordered sub-steps (each its own `/iterate`):
-     1. [ ] **Render — layer-aware building binding** (render-only, no visual change). Generalise the atlas
-        resolution so a building type can name WHICH atlas layer it draws from: `SpriteSheet` carries a
-        family→`SpriteLayer` map (+ per-family scale) and `BuildingTypeBinding.byType` maps `typeId → {layer,
-        bob}`; the GPU picks the layer per item. Back-compat: a plain bob id / the single `kindLayers.building`
-        path keeps working. Unit-test the new resolver in `render`. No app/scene change yet.
+     1. [x] **Render — layer-aware building binding** (render-only, no visual change) — **LANDED.**
+        `BuildingTypeBinding.byType`/`default` are now `BuildingBobRef` (`number | {layer, bob}`); a pure
+        `resolveBuildingDraw(binding,item) → {bob, layer?}` (`sprites.ts`) unwraps them (a plain id → no
+        layer = the default building layer; a `{layer, bob}` carries its family name). `SpriteSheet` gained
+        `families` (name→`SpriteLayer`) + `familyScales`, and `atlasLayers` (`pixi-renderer.ts`) blits a
+        layer-qualified building from its named family's own source/atlas/scale — falling through to the
+        single `kindLayers.building` path for a plain ref or an unloaded family, so a sheet without
+        `families` is byte-identical (the app still emits plain-number bindings; the synthetic-atlas shot is
+        unchanged). Unit-tested (7 `resolveBuildingDraw` cases). No app/scene change yet.
      2. [ ] **App — canonical (family,bob) reducer + load viking atlases + draw the real HQ.** Extend the
         `real-sprites.ts` reducer to pick the canonical `(bmd,palette,bob)` per (viking, typeId) across all
         viking families (disambiguate by `editName`; HQ→viking4 bob 34); load those atlases in
