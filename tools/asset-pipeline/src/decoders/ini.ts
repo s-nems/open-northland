@@ -18,6 +18,7 @@ import {
   AnimalType,
   ArmorType,
   AtomicAnimation,
+  BobSequenceSet,
   BuildingType,
   GfxPattern,
   type GoodAtomics,
@@ -1522,6 +1523,50 @@ export function extractBuildingGraphics(sections: readonly RuleSection[]): Build
     }
   }
   return bindings;
+}
+
+/**
+ * Extracts the `[bobseq]` records from `animations.ini` (the mod's
+ * `animation/mapmoveableanimations/animations.ini`) into one {@link BobSequenceSet} per bob set — the
+ * named animation ranges (`seq "<name>" <start> <length>`) the renderer previously hard-coded as magic
+ * frame constants (`WALK` start 1988, `CHOP` 5106, …). Each record names its `imagelib` `.bmd` (the bob
+ * set the ids index into) plus an optional `shadowlib`, and lists every sequence as a `seq` line whose
+ * three values are the quoted name, the first bob id, and the total frame count across all directions.
+ *
+ * The render builds a directional cycle from each: `start` + `length` (with `dirs` = 8 for these
+ * sprites, so the per-direction stride is `length / dirs`). The same sequence name recurs across several
+ * bob sets that share a layout (`human_man_generic_walk` is 1988/96 in `CR_Hum_Body_00`, `_05`, `_10`,
+ * …); each set is emitted independently so a consumer resolves by `(imagelib, name)`. `imagelib`/
+ * `shadowlib` are normalized (lower-cased; they are bare `.bmd` filenames) to join case-insensitively
+ * onto the decoded atlas stems. A record with no `imagelib` (nothing to index) or a `seq` line missing
+ * its start/length (non-numeric) is skipped, never thrown — one malformed line must not abort the batch.
+ */
+export function extractBobSequences(sections: readonly RuleSection[], src: SourceRef): BobSequenceSet[] {
+  const sets: BobSequenceSet[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'bobseq') continue;
+    const imagelib = getStr(sec, 'imagelib');
+    if (imagelib === undefined || imagelib.trim() === '') continue;
+    const shadowlib = getStr(sec, 'shadowlib');
+    const sequences: { name: string; start: number; length: number }[] = [];
+    for (const p of findProps(sec, 'seq')) {
+      const name = p.values[0];
+      const start = Number.parseInt(p.values[1] ?? '', 10);
+      const length = Number.parseInt(p.values[2] ?? '', 10);
+      if (name === undefined || name.trim() === '' || Number.isNaN(start) || Number.isNaN(length)) continue;
+      sequences.push({ name, start, length });
+    }
+    sets.push(
+      BobSequenceSet.parse({
+        imagelib: normalizeAssetPath(imagelib),
+        shadowlib:
+          shadowlib !== undefined && shadowlib.trim() !== '' ? normalizeAssetPath(shadowlib) : undefined,
+        sequences,
+        source: { file: src.file, block: 'bobseq', layer: src.layer ?? 'base' },
+      }),
+    );
+  }
+  return sets;
 }
 
 /** One indexed bob-manager slot: a slot index + its body `.bmd` and (for body bobs) an optional shadow `.bmd`. */

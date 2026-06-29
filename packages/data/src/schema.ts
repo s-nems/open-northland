@@ -725,6 +725,41 @@ export const TerrainMapFile = z
   );
 export type TerrainMapFile = z.infer<typeof TerrainMapFile>;
 
+/**
+ * One named animation run from `animations.ini`'s `[bobseq]` (`seq "<name>" <start> <length>`) — a
+ * directional bob cycle laid out as `dirs` facings back-to-back inside one bob set. The render builds
+ * its `DirectionalAnim` from this: `start` is the run's first bob id, `length` the total frame count
+ * across all directions (so the per-direction stride is `length / dirs`, `dirs` = 8 for these sprites).
+ * This is the data the renderer previously hard-coded as frame-range constants (`WALK` start 1988, …);
+ * extracting it removes the guesswork — the frame ids come from the source, not a magic number.
+ */
+export const BobSequence = z.object({
+  /** The exact sequence name (`seq "<name>"`) — the resolvable key, e.g. `human_man_generic_walk`. */
+  name: z.string(),
+  /** The run's first bob id (frame 0 of direction 0). */
+  start: z.number().int().nonnegative(),
+  /** Total frame count across every direction (`= dirs * per-direction stride`). */
+  length: z.number().int().nonnegative(),
+});
+export type BobSequence = z.infer<typeof BobSequence>;
+
+/**
+ * The `[bobseq]` table for one bob set (`imagelib`) from `animations.ini` — its `imagelib` `.bmd` plus
+ * every named {@link BobSequence} that indexes into it. The renderer joins a sequence to a decoded atlas
+ * by the `imagelib` stem (`cr_hum_body_00.bmd` → the `cr_hum_body_00.<palette>` atlas), the same id space
+ * the bob ids address. Render-binding data (like {@link TerrainPattern}); the pure sim ignores it.
+ */
+export const BobSequenceSet = z.object({
+  /** The bob set this table indexes, normalized (lower-case, forward slashes), e.g. `cr_hum_body_00.bmd`. */
+  imagelib: z.string(),
+  /** The matching shadow bob set (`shadowlib`), normalized, when the record names one. */
+  shadowlib: z.string().optional(),
+  /** Named sequences in file order. */
+  sequences: z.array(BobSequence).default([]),
+  source: Provenance.optional(),
+});
+export type BobSequenceSet = z.infer<typeof BobSequenceSet>;
+
 /** Top-level manifest written to content/ir.json. */
 export const IrManifest = z.object({
   version: z.number().int().positive(),
@@ -749,6 +784,7 @@ export const ContentSet = z.object({
   vehicles: z.array(VehicleType).default([]),
   landscape: z.array(LandscapeType).default([]),
   terrainPatterns: z.array(TerrainPattern).default([]),
+  bobSequences: z.array(BobSequenceSet).default([]),
   tribes: z.array(TribeType).default([]),
   atomicAnimations: z.array(AtomicAnimation).default([]),
   maps: z.array(MapInfo).default([]),

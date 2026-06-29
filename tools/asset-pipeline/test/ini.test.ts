@@ -8,6 +8,7 @@ import {
   extractAnimals,
   extractArmor,
   extractAtomicAnimations,
+  extractBobSequences,
   extractBuildingGraphics,
   extractBuildings,
   extractConstructionCosts,
@@ -1864,6 +1865,49 @@ describe('extractBuildingGraphics', () => {
       ['[GfxHouse]', 'EditName "unbindable"', 'GfxPalette "house01"'].join('\n'),
     );
     expect(extractBuildingGraphics(noBob)).toEqual([]);
+  });
+});
+
+describe('extractBobSequences', () => {
+  // Mirrors the real animations.ini [bobseq] grammar: an imagelib + shadowlib then `seq "<name>" <start>
+  // <length>` lines (the exact walk/chop ranges the renderer hard-codes today — walk 1988/96, chop
+  // 5106/120). A second record reuses one sequence name in a different bob set (a shared layout), and a
+  // record with no imagelib (nothing to index) must be dropped. A malformed seq line (missing length) is
+  // skipped without dropping the rest of the record.
+  const src = { file: 'animations.ini', layer: 'mod' as const };
+  const sections = parseIniSections(
+    [
+      '[bobseq]',
+      'imagelib "CR_Hum_Body_00.bmd"',
+      'shadowlib "CR_Hum_Body_00_S.bmd"',
+      'seq "human_man_generic_walk" 1988 96',
+      'seq "human_man_woodcutter_work_woodcutting" 5106 120',
+      'seq "broken" 42', // missing length -> skipped, rest of record kept
+      '[bobseq]',
+      'imagelib "CR_Hum_Body_05.bmd"',
+      'seq "human_man_generic_walk" 1988 96',
+      '[bobseq]', // no imagelib -> dropped
+      'seq "orphan" 1 8',
+    ].join('\n'),
+  );
+
+  it('extracts one set per [bobseq], normalizing the .bmd names and parsing each seq start/length', () => {
+    expect(extractBobSequences(sections, src)).toEqual([
+      {
+        imagelib: 'cr_hum_body_00.bmd',
+        shadowlib: 'cr_hum_body_00_s.bmd',
+        sequences: [
+          { name: 'human_man_generic_walk', start: 1988, length: 96 },
+          { name: 'human_man_woodcutter_work_woodcutting', start: 5106, length: 120 },
+        ],
+        source: { file: 'animations.ini', block: 'bobseq', layer: 'mod' },
+      },
+      {
+        imagelib: 'cr_hum_body_05.bmd',
+        sequences: [{ name: 'human_man_generic_walk', start: 1988, length: 96 }],
+        source: { file: 'animations.ini', block: 'bobseq', layer: 'mod' },
+      },
+    ]);
   });
 });
 

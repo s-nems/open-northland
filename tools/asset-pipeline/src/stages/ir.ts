@@ -12,6 +12,7 @@ import {
   extractAnimals,
   extractArmor,
   extractAtomicAnimations,
+  extractBobSequences,
   extractBuildings,
   extractConstructionCosts,
   extractGoods,
@@ -81,6 +82,10 @@ export async function resolveIniSources(gameDir: string, mod: string | undefined
       { rel: join(mod, 'atomicanimations12', 'atomicanimations.ini'), layer: 'mod' },
       { rel: join(mod, 'types', 'weapons.ini'), layer: 'mod' },
       { rel: join(mod, 'types', 'houses.ini'), layer: 'mod' },
+      // The renderer's animation table: `[bobseq]` named frame ranges (`seq "<name>" <start> <length>`)
+      // → IR `bobSequences`, so the render reads its walk/chop cycles from data instead of hard-coded
+      // constants (see `extractBobSequences`). Mod-only readable; the base twin is encrypted `.cif`.
+      { rel: join(mod, 'animation', 'mapmoveableanimations', 'animations.ini'), layer: 'mod' },
       // The graphics-table twin: its `[GfxHouse]` records carry the `LogicConstructionGoods` build
       // costs (and the home level chain), which the logic table above does not — overlaid onto the
       // buildings by `typeId` in `buildIr` (see `extractConstructionCosts`).
@@ -121,6 +126,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   const armor = [];
   const animals = [];
   const vehicles = [];
+  const bobSequences = [];
   // typeId -> build-material cost, overlaid from the graphics table's `[GfxHouse]` records onto the
   // logic-table buildings below (the logic table carries no construction cost — see `resolveIniSources`).
   const constructionCosts = new Map<number, { goodType: number; amount: number }[]>();
@@ -138,6 +144,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     armor.push(...extractArmor(sections, src));
     animals.push(...extractAnimals(sections, src));
     vehicles.push(...extractVehicles(sections, src));
+    bobSequences.push(...extractBobSequences(sections, src));
     for (const [typeId, cost] of extractConstructionCosts(sections)) {
       constructionCosts.set(typeId, cost);
     }
@@ -186,6 +193,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     vehicles,
     landscape,
     terrainPatterns,
+    bobSequences,
     tribes,
     atomicAnimations,
     maps,
