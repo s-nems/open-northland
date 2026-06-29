@@ -163,7 +163,9 @@ Two graphics families sit beside the map grid; **both decode with existing decod
   `GfxFrames <stage> <bobIds…>` and `GfxTransition`. **WIRED:** `extractLandscapeGraphics` (`decoders/ini.ts`)
   → the existing `convertBmdTree` atlas path → render `resource` bind (99 records use `ls_trees.bmd`; bob 60 of
   `ls_trees.tree_yew01` is the bound wood-node tree). The **same path covers `ls_houses_*.bmd`** for the
-  still-placeholder buildings — only the render `building` binding remains.
+  buildings (the `[GfxHouse]` table → `extractBuildingGraphics` atlases + `extractBuildingBobs` `(typeId→bob)`
+  join, both emitted); the render now draws the `ls_houses_viking.house01` family per type — see "Building
+  graphics families" below for the multi-`.bmd` scope the render still has to grow into.
 - **Ground TEXTURES** (the triangle-mesh terrain) — `Data/engine2d/bin/textures/text_*.pcx` (58) + `tran_*.pcx`
   (27 transition tiles), 64-px indexed tiles with inline palette, **already decoded to `text_*.png`** by the pcx
   stage. The texture→cell binding is `Data/engine2d/inis/patterns/pattern.cif`, a `.cif`-only `[GfxPattern]` list
@@ -181,6 +183,30 @@ Two graphics families sit beside the map grid; **both decode with existing decod
   counts), so there is **no algorithm oracle**. → the rebuild ships **real textures with approximated per-type
   placement** (docs/ROADMAP.md Phase 2; a recorded deviation), not 1:1; the only 1:1 oracle is the running
   original game (a human-driven trial loop). Reversing the algorithm empirically is a deferred research task.
+
+### Building graphics families (render multi-`.bmd` scope)
+
+Scoped from the emitted `buildingBobs` IR (336 rows) for the render's multi-`.bmd` rung (ROADMAP Phase 2,
+Render-breadth-ladder rung 1 remainder). The bind path is one universal `.bmd`→atlas decoder (the same as
+trees), but the **selection** is the hard part:
+
+- **A building type spans many `.bmd`s × palettes.** Viking buildings alone draw from `ls_houses_viking.bmd`,
+  `ls_houses_viking2/3/4.bmd`, `frank_well_hive.bmd`, `frank_mill.bmd`, `f_bakery/f_potter/f_druid/f_herb/
+  f_krawiec.bmd`, plus `ls_wonders*.bmd`/`ls_houses_vehicles.bmd` for wonders/vehicles. **Every `(bmd, palette)`
+  is a separate decoded PNG atlas** (a palette = a recolour skin: `house01`/`house02`/`caves`/`dungeon01`/…),
+  so the render must load and address MANY building layers, not the single `ls_houses_viking.house01` it does
+  today. The current `SpriteSheet.kindLayers` holds one layer per kind — the rung's render sub-step generalises
+  it to a family→layer map the per-type binding indexes.
+- **`(tribe, typeId)` is NOT a unique key.** The same logic `typeId` recurs across families: viking `typeId 10`
+  is the well in `house01` (bob 131) but a different bob in `house02`/`dungeon01`; `typeId 12` appears in four
+  families. So the canonical bob can't be picked by `(tribe, typeId)` + highest-level alone — disambiguate by
+  **`editName`** (`"viking home"`, `"viking headquarters"`, …), the field the IR carries for exactly this.
+- **Anchors confirmed from the data.** Viking **HQ = `ls_houses_viking4.bmd` bob 34** (`editName "viking
+  headquarters"`; bob 44 is the alt "headquarters house"); the miller is `housemiller01`, the druid
+  `housedruid01`. Per-tribe HQs: frank `ls_houses_frank.bmd` caves bob 4; byzantine `ls_houses_byzantine.bmd`
+  bob 16 ("byzantine cathedral"); saracen `ls_houses_saracen.bmd` bob 40; egypt `ls_houses_egypt.bmd` caves
+  bob 0. The `buildingBobs` table already covers all 6 tribes — the work is render plumbing + the editName
+  disambiguation, not more extraction.
 
 ## How to use OpenVikings as reference
 
