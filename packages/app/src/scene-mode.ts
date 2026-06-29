@@ -65,13 +65,14 @@ export async function renderSceneMode(
     },
     onRestart: () => {
       sim = createSceneSim(scene);
+      timestep = new FixedTimestep(); // fresh accumulator so the replay starts on a clean tick boundary
     },
     onSpeed: (v) => {
       control.speed = v;
     },
   });
 
-  const timestep = new FixedTimestep();
+  let timestep = new FixedTimestep();
   let lastMs = performance.now();
 
   function frame(nowMs: number): void {
