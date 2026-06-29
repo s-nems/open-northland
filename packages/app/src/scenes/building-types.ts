@@ -31,9 +31,10 @@ const { Building } = components;
  * native size): the iso projection is `screenX = (x−y)·32`, `screenY = (x+y)·16`, and the camera scale
  * magnifies sprites AND spacing together, so the only way to stop the big sprites overlapping is more
  * WORLD spacing. The three LARGE buildings (home / bakery / HQ) sit in a widely-spaced BACK row
- * (`x + y = 10`, ~256px apart on screen); the three SMALL buildings sit in a FRONT row (`x + y = 18`,
- * nearer the camera and well below the big ones) each in front of a big one — and the SHORTEST small
- * (the well) is paired under the tallest big (the HQ) so a front sprite never hides a big one's body.
+ * (`x + y = 10`, ~256px apart on screen); the three SMALLER buildings (well / hive, plus the medium farm)
+ * sit in a FRONT row (`x + y = 18`, nearer the camera and well below the big ones) each in front of a big
+ * one — and the SHORTEST (the well) is paired under the tallest big (the HQ) so a front sprite never hides
+ * a big one's body.
  */
 const BUILDINGS: ReadonlyArray<{ typeId: number; id: string; kind: string; x: number; y: number }> = [
   // BACK row — the large buildings, widely spaced so home / bakery / HQ read as distinct structures.
@@ -50,7 +51,7 @@ const WIDTH = 15;
 const HEIGHT = 15;
 
 /**
- * A tiny synthetic content set: the five viking building types as passive structures (no workers, no
+ * A tiny synthetic content set: the six viking building types as passive structures (no workers, no
  * stock) plus the viking tribe with no `jobEnables*` edges, so every type is an ungated start building
  * and places immediately. Carries NO copyrighted data; `parseContentSet` (zod) fails loudly on drift.
  */
@@ -69,7 +70,7 @@ function buildingTypesContent(): ContentSet {
   });
 }
 
-/** An all-grass grid wide enough to space the five houses along a screen-horizontal line. */
+/** An all-grass grid wide enough to space the six houses across the two screen rows without overlap. */
 function buildingTypesTerrain(): TerrainMap {
   return { width: WIDTH, height: HEIGHT, typeIds: new Array(WIDTH * HEIGHT).fill(GRASS) };
 }
