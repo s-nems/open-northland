@@ -27,6 +27,9 @@ content/
 !.vscode/extensions.json
 .claude/
 
+# Browser-automation artifacts (acceptance-scene verification, screenshots, console dumps)
+.playwright-mcp/
+
 # Logs
 *.log
 npm-debug.log*

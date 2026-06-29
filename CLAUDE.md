@@ -92,6 +92,12 @@ the synthetic `testContent()` fixture). The loop:
    must stay green; only update a golden if the change was intentional, and say which mechanic.
 4. Rendering/visual change → an agent CANNOT self-judge pixels. Run the screenshot diff if present,
    otherwise say it needs a human. Validate decoded assets against the **OpenVikings oracle**.
+5. **Player-visible mechanic** (a job, behavior, building — anything a person watches happen) → add or
+   extend an **acceptance scene** under `packages/app/src/scenes/` (registered in `scenes/index.ts`).
+   Its headless half (`packages/app/test/scenes.test.ts`) proves the *mechanic* deterministically — that
+   is point 1, and it must be green. Its browser half is the *human's* sign-off: end your turn by
+   surfacing `npm run dev` → `http://localhost:5173/?scene=<id>` **and** the scene's checklist, and ask
+   plainly whether it looks right. Same scene, two consumers — see `docs/SCENES.md`.
 
 ## Per-package contracts (load on demand)
 
@@ -103,6 +109,8 @@ this root file lean). Golden rules 1–2 above are the crisp always-on version.
   fixed-point + branded-type rules, and the golden-update discipline. The hygiene test enforces it.
 - **`tools/asset-pipeline/CLAUDE.md`** — pipeline-only notes: prefer the mod's `.ini`, validate
   visual decoders against the OpenVikings oracle, never commit decoded/copyrighted bytes.
+- **`packages/app/CLAUDE.md`** — the app shell: URL-flag entries (`?scene=`/`?atlas=`/`?terrain`/…) and
+  the **acceptance-scene** system (how to add one so a human can watch a mechanic and sign off).
 
 ## Modern conventions baked in (follow them)
 
