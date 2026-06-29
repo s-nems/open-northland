@@ -25,6 +25,22 @@ import { ONE, tileToScreen } from './index.js';
 const ROW_STRIDE = 4096;
 const TILE_DEPTH_BASE = -1_000_000;
 
+/**
+ * The atomic id of the woodcut swing (the demo slice's `harvest`, the `tribetypes` `setatomic` join key;
+ * the same id `real-sprites.ts` binds the chop animation to). A settler harvesting a tree stands ON the
+ * resource cell (the planner positions it there, `ai.ts`), so at the cell centre its sprite overlaps the
+ * tree and the axe — which swings out to the figure's RIGHT — comes down through empty air beside the
+ * trunk. {@link CHOP_NUDGE_X} offsets a chopping settler's sprite so the strike lands IN the tree.
+ */
+const CHOP_ATOMIC_ID = 24;
+/**
+ * Screen-x shift (pixels, negative = left) applied to a settler's sprite while it is mid-chop, so it
+ * stands slightly LEFT of the tree it shares a cell with and its right-hand axe swing connects with the
+ * trunk at the cell centre. A render-only visual nudge: the sim position (and the depth sort) is
+ * unchanged — only the drawn anchor moves — so determinism and occlusion are untouched. Tunable by eye.
+ */
+const CHOP_NUDGE_X = -24;
+
 /** Kinds of thing the scene draws, in their natural layer grouping. */
 export type DrawKind = 'tile' | 'building' | 'settler' | 'resource';
 
@@ -286,10 +302,13 @@ export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): Draw
     const elapsed = kind === 'settler' ? readAtomicElapsed(entity.components) : null;
     const facing = kind === 'settler' ? readFacing(entity.components) : undefined;
     const carrying = kind === 'settler' ? readCarrying(entity.components) : false;
+    // A chopping settler shares its tree's cell; nudge its drawn sprite left so the right-swing axe
+    // lands in the trunk at the cell centre (render-only — the depth sort below still uses the true tile).
+    const chopNudgeX = state === 'acting' && actingAtomic === CHOP_ATOMIC_ID ? CHOP_NUDGE_X : 0;
     sprites.push({
       kind,
       ref: entity.id,
-      x: screen.x,
+      x: screen.x + chopNudgeX,
       y: screen.y,
       // Feet-anchor depth: lower (greater y), then further-right (greater x), then id. A total order,
       // so the sort is deterministic regardless of snapshot iteration nuances.

@@ -43,9 +43,14 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
         `extractLandscapeGraphics`, emitted through the existing `convertBmdTree`, drawn under `?atlas=real`
         as a per-kind `SpriteSheet.kindLayers` layer (the woodcutter's wood node is now a real tree, not a
         green box). Commits `e663e71` + `42b0b1a`; deviation (species/frame pick) in docs/FIDELITY.md.
-  - [ ] **Building bob** — same `[GfxLandscape]`/`ls_houses_*.bmd` path for HQ/workshops (still placeholder
-        boxes). The pipeline already emits these atlases (`extractLandscapeGraphics` covers every `ls_*`
-        decor); only the render `building` binding + a representative house frame remain.
+  - [x] **Building bob bound** — the HQ now draws the decoded `ls_houses_viking.bmd` (palette `house01`,
+        bob 11 — the viking home, a stone-and-thatch cottage) under `?atlas=real`, as a per-kind
+        `SpriteSheet.kindLayers` layer like the tree (the same universal `.bmd`→atlas path; the bob layout
+        is identical across all `.bmd`), down-scaled via `SpriteSheet.kindScales` (`BUILDING_SCALE` 0.7) so
+        the native-oversized house reads in proportion with the native settler + tree. Render `building`
+        binding + scale in `app/src/real-sprites.ts`; deviation (one frame for every type; render scale;
+        warehouse `house02` palette not yet decoded) in docs/FIDELITY.md. Remaining: per-`[GfxHouse]`-type
+        frame selection + a pipeline `extractBuildingGraphics` leg so every building draws ITS house.
 - [x] **Render terrain from real landscape ground textures** — **LANDED (approximated, behind `?terrain`).**
       The flat 4-colour `TILE_COLOURS` tint is replaced by real decoded `text_*.pcx` ground: the meadow grass
       + rock mountain textures now draw per cell (human pixel-check done — a real `?map=` shot shows grass +

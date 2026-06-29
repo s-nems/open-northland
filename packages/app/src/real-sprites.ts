@@ -50,6 +50,25 @@ const TREE_ATLAS = 'ls_trees.tree_yew01';
 const TREE_BOB = 60;
 
 /**
+ * The decoded building atlas bound to the `building` kind — `ls_houses_viking.bmd` recoloured with the
+ * `house01` palette (the `[GfxHouse]` viking records' binding from the mod's
+ * `budynki12/houses/houses.ini`). Like the tree it lives in its OWN frame-id space (135 bobs, distinct
+ * from the human body bobs), so it binds as a per-kind {@link SpriteSheet.kindLayers} layer, not the
+ * shared body atlas. {@link HOUSE_BOB} 11 is the "viking home" record's first finished growth stage — a
+ * stone-and-thatch cottage (213×198 anchored at its base). At native size every house bob draws ~6–10×
+ * the settler's height — far larger than the original showed a house next to a person — so the building
+ * is drawn at {@link BUILDING_SCALE} about its feet anchor (the settler + tree stay native, their
+ * proportion already reads right). At 0.7 the cottage lands ~3× the settler, the by-eye pick from a 1:1
+ * pawn-vs-tree-vs-building montage. Both the bob and the scale are taste constants (the warehouse "viking
+ * stock" needs the not-yet-decoded house02 palette) — swap them to a bigger stage / different factor
+ * (docs/FIDELITY.md "Building bob"). The HQ store now draws as this house instead of the placeholder box.
+ */
+const HOUSE_ATLAS = 'ls_houses_viking.house01';
+const HOUSE_BOB = 11;
+/** Render scale for the building kind — see {@link HOUSE_BOB} (native house bobs are oversized vs the settler). */
+const BUILDING_SCALE = 0.7;
+
+/**
  * The settler's directional animation ranges, read off `animations.ini`'s `[bobseq]` for
  * `CR_Hum_Body_00.bmd` (the head atlas shares the same bob ids). Each is 8 directions laid back-to-back
  * (`dirs: 8`), `stride` frames per direction:
@@ -101,7 +120,11 @@ const HUMAN_BINDINGS: SpriteBindings = {
     byAtomic: { [HARVEST_ATOMIC]: CHOP },
     carrying: { idle: STAND_WOOD, moving: WALK_WOOD },
   },
-  building: -1,
+  // The building (HQ) draws bob 11 of the ls_houses_viking atlas, blitted from its own per-kind layer
+  // (see loadHumanSpriteSheet's kindLayers) — its id space is the house bobs, not the human body's, so
+  // this number is meaningless without that layer (the two are bound together below). Was -1 (unbound →
+  // placeholder box) until the decoded house atlas landed.
+  building: HOUSE_BOB,
   // The wood node draws bob 60 of the ls_trees atlas, blitted from its own per-kind layer (see
   // loadHumanSpriteSheet's kindLayers) — its id space is the tree bobs, not the human body's, so this
   // number is meaningless without that layer (the two are bound together below).
@@ -131,19 +154,24 @@ async function loadLayer(stem: string): Promise<SpriteLayer> {
  * compose a complete settler (body + head) the renderer animates directionally per tick.
  */
 export async function loadHumanSpriteSheet(): Promise<SpriteSheet> {
-  const [body, head, tree] = await Promise.all([
+  const [body, head, tree, house] = await Promise.all([
     loadLayer(HUMAN_BODY_ATLAS),
     loadLayer(HUMAN_HEAD_ATLAS),
     loadLayer(TREE_ATLAS),
+    loadLayer(HOUSE_ATLAS),
   ]);
   return {
     source: body.source,
     atlas: body.atlas,
     bindings: HUMAN_BINDINGS,
     overlays: [head],
-    // The tree draws from its own atlas (distinct id space), so it binds as a per-kind layer rather than
-    // sharing the body atlas the settler uses. `resource` -> TREE_BOB resolves a frame in THIS layer.
-    kindLayers: { resource: tree },
+    // The tree and the building each draw from their OWN atlas (distinct id spaces), so they bind as
+    // per-kind layers rather than sharing the body atlas the settler uses. `resource` -> TREE_BOB and
+    // `building` -> HOUSE_BOB resolve frames in THEIR respective layers.
+    kindLayers: { resource: tree, building: house },
+    // The native house bobs are oversized next to the settler; shrink only the building (tree + settler
+    // stay native — their proportion already reads right). See BUILDING_SCALE.
+    kindScales: { building: BUILDING_SCALE },
   };
 }
 

@@ -48,6 +48,13 @@ const TREES: ReadonlyArray<{ x: number; y: number }> = [
 ];
 /** Units each tree yields before it empties — enough for several full snaking gather cycles to watch. */
 const TREE_REMAINING = 8;
+/**
+ * The woodcutter's walk pace in **ticks per tile** (a per-entity `MoveSpeed`, see the `spawnSettler`
+ * command) — 8 ticks/tile = DOUBLE the universal default's 4 → HALF the walking speed, the same calmer
+ * non-sliding pace as `gather-resource`. Scene-only; the global default is unchanged (docs/FIDELITY.md
+ * "Settler walk pace").
+ */
+const WALK_TICKS_PER_TILE = 8;
 
 /**
  * Full-width water barriers at rows 2 / 4 / 6, each with ONE gap, alternating right/left/right. Only the
@@ -113,7 +120,8 @@ function angledContent(): ContentSet {
         atomicBindings: [{ jobType: WOODCUTTER, atomicId: HARVEST_ATOMIC, animation: 'viking_chop' }],
       },
     ],
-    atomicAnimations: [{ id: 'viking_chop', name: 'viking_chop', length: 16 }],
+    // 46 = 15·3 + 1, so a harvest is three full axe swings each ending on impact (see gather-resource.ts).
+    atomicAnimations: [{ id: 'viking_chop', name: 'viking_chop', length: 46 }],
   });
 }
 
@@ -126,6 +134,7 @@ function build(sim: Simulation): void {
     x: WOODCUTTER_START.x,
     y: WOODCUTTER_START.y,
     tribe: VIKING,
+    moveSpeed: WALK_TICKS_PER_TILE,
   });
   for (const t of TREES) {
     const tree = sim.world.create();
@@ -164,14 +173,16 @@ export const angledPathScene: SceneDefinition = {
   content: angledContent(),
   terrain: angledTerrain(),
   build,
-  // The snaking haul is long (~30 tiles each way at 4 ticks/tile, plus chops); give it room for several
-  // full descend-empty / ascend-loaded cycles so the deposit count clearly rises (verified offline).
-  runTicks: 1400,
+  // The snaking haul is long (~30 tiles each way at the scene's 8 ticks/tile pace, plus chops); give it
+  // room for several full descend-empty / ascend-loaded cycles so the deposit count clearly rises. Doubled
+  // from 1400 when the woodcutter's pace was halved (8 vs 4 ticks/tile) so the same cycle count survives.
+  runTicks: 2800,
   checklist: [
     'Trasa drwala NIE jest prosta — pathfinding prowadzi go zygzakiem przez przejścia w ścianach',
-    'Drwal obraca się w stronę kierunku marszu na każdym odcinku (różne kąty)',
-    'Po dojściu do drzewa odpala się animacja ścinania (rąbanie)',
+    'Drwal idzie spokojnym krokiem (NIE sunie po ziemi) i obraca się w stronę marszu na każdym odcinku',
+    'Po dojściu do drzewa: KILKA uderzeń siekierą (nie jedno), a siekiera trafia w PIEŃ (drwal stoi z lewej)',
     'W drodze powrotnej widać animację NIESIENIA drewna (inna niż pusty chód) — wymaga ?atlas=real',
+    'HQ to prawdziwy budynek wikingów (dom/chata) — wymaga ?atlas=real',
     'Drewno trafia do HQ i licznik surowca rośnie (panel HUD lewy-górny)',
   ],
   checks: [

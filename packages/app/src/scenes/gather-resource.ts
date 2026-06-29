@@ -35,6 +35,14 @@ const TREES: ReadonlyArray<{ x: number; y: number }> = [
 ];
 /** Units each tree yields before it empties — enough for several full gather cycles to watch. */
 const TREE_REMAINING = 6;
+/**
+ * The woodcutter's walk pace in **ticks per tile** (stamped as a per-entity `MoveSpeed`, see the
+ * `spawnSettler` command). 8 ticks/tile is DOUBLE the universal default's 4 → HALF the walking speed, so
+ * the settler walks at a calmer, non-sliding pace: at one walk frame per tick its 12-frame gait now spans
+ * 1.5 tiles per cycle instead of 3, so the feet read as stepping rather than gliding. Scene-only — the
+ * global default is unchanged (docs/FIDELITY.md "Settler walk pace").
+ */
+const WALK_TICKS_PER_TILE = 8;
 
 /**
  * A tiny synthetic content set: just enough goods/jobs/buildings to drive one woodcutter's gather
@@ -75,9 +83,13 @@ function gatherContent(): ContentSet {
         atomicBindings: [{ jobType: WOODCUTTER, atomicId: HARVEST_ATOMIC, animation: 'viking_chop' }],
       },
     ],
-    // The renderer plays the full 15-frame woodcut swing off the atomic's `elapsed` (length 16 → render
-    // sees elapsed 1..15). See vertical-slice.ts for the windup/strike phasing detail.
-    atomicAnimations: [{ id: 'viking_chop', name: 'viking_chop', length: 16 }],
+    // The atomic's `length` IS its duration in ticks (ai.ts `atomicDuration`), and the renderer plays the
+    // 15-frame woodcut swing tick-locked off `elapsed` (one frame/tick). The atomic is removed the tick
+    // `elapsed` reaches `length`, so the renderer only ever sees `elapsed 1..length-1` → a clean N-swing
+    // run that ENDS on the impact frame needs `length = 15·N + 1`. 46 = 15·3 + 1 = THREE full swings
+    // (windup→strike ×3), each landing on impact — the original chops a tree several times, not once.
+    // (The single chop used 16 = 15·1 + 1.) Use 15·n + 1 for n swings.
+    atomicAnimations: [{ id: 'viking_chop', name: 'viking_chop', length: 46 }],
   });
 }
 
@@ -95,6 +107,7 @@ function build(sim: Simulation): void {
     x: WOODCUTTER_START.x,
     y: WOODCUTTER_START.y,
     tribe: VIKING,
+    moveSpeed: WALK_TICKS_PER_TILE,
   });
   for (const t of TREES) {
     const tree = sim.world.create();
@@ -135,8 +148,10 @@ export const gatherResourceScene: SceneDefinition = {
   build,
   runTicks: 250,
   checklist: [
-    'Drwal rusza w stronę najbliższego drzewa',
-    'Po dojściu odpala się animacja ścinania (rąbanie)',
+    'Drwal rusza w stronę najbliższego drzewa spokojnym krokiem (NIE sunie po ziemi)',
+    'Po dojściu odpala się animacja ścinania — KILKA uderzeń siekierą, nie jedno (wymaga ?atlas=real)',
+    'Siekiera trafia w PIEŃ drzewa (drwal stoi z lewej), a nie w powietrze obok',
+    'HQ to prawdziwy budynek wikingów (dom/chata) w rozsądnej skali, nie szary prostokąt (wymaga ?atlas=real)',
     'Drwal wraca z drewnem do magazynu (HQ)',
     'Drewno trafia do HQ i licznik surowca rośnie (panel HUD lewy-górny)',
     'Po wyczerpaniu drzewa robotnik idzie do kolejnego',
