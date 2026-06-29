@@ -112,6 +112,12 @@ JSON describing frames, per-frame anchor (feet position for correct isometric so
 animation sequences (walk/work/idle/fight per direction). `render` loads these; `sim` never does —
 the sim only knows an entity's logical state, and `render` maps state → animation.
 
+Two render-binding tables in `ir.json` carry the *joins* into those atlases (the sim ignores both):
+`bobSequences` (the `[bobseq]` named frame ranges per bob set) and `buildingBobs` (the `[GfxHouse]`
+building-type → house-bob join: `(tribeId, typeId, level) → (bmd, palette, bobId)`, pairing each
+record's `LogicType`/`GfxBobId` level-tables — see `extractBuildingBobs`), so the renderer draws each
+building its own house bob from data rather than a transcribed constant.
+
 ## Atomics, the goods graph & progression
 
 Three derived/extracted IR artifacts encode the parts of Cultures that aren't obvious from a flat

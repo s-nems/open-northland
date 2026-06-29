@@ -13,6 +13,7 @@ import {
   extractArmor,
   extractAtomicAnimations,
   extractBobSequences,
+  extractBuildingBobs,
   extractBuildings,
   extractConstructionCosts,
   extractGoods,
@@ -127,6 +128,9 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   const animals = [];
   const vehicles = [];
   const bobSequences = [];
+  // The `[GfxHouse]` building-type -> house-bob join (the data-pinned twin of the renderer's
+  // transcribed per-type table) — render-binding data the sim ignores. See `extractBuildingBobs`.
+  const buildingBobs = [];
   // typeId -> build-material cost, overlaid from the graphics table's `[GfxHouse]` records onto the
   // logic-table buildings below (the logic table carries no construction cost — see `resolveIniSources`).
   const constructionCosts = new Map<number, { goodType: number; amount: number }[]>();
@@ -145,6 +149,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     animals.push(...extractAnimals(sections, src));
     vehicles.push(...extractVehicles(sections, src));
     bobSequences.push(...extractBobSequences(sections, src));
+    buildingBobs.push(...extractBuildingBobs(sections, src));
     for (const [typeId, cost] of extractConstructionCosts(sections)) {
       constructionCosts.set(typeId, cost);
     }
@@ -194,6 +199,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     landscape,
     terrainPatterns,
     bobSequences,
+    buildingBobs,
     tribes,
     atomicAnimations,
     maps,

@@ -760,6 +760,37 @@ export const BobSequenceSet = z.object({
 });
 export type BobSequenceSet = z.infer<typeof BobSequenceSet>;
 
+/**
+ * One `[GfxHouse]` building-type → house-bob binding: which atlas bob a building of a given
+ * `(tribeId, typeId)` draws, the data-pinned twin of the renderer's hand-transcribed per-type table.
+ * Each `[GfxHouse]` record pairs a `LogicType <level> <typeId>` table with a `GfxBobId <level> <bobId>`
+ * table by the **level index** (a home spans levels 0..4, five distinct typeIds at five rising bobs),
+ * and names the body `.bmd` (`GfxBobLibs`) recoloured by one-or-more palette skins (`GfxPalette`); this
+ * is one row of that join — a single `(tribeId, typeId, level)` resolved to its `(bmd, palette, bobId)`.
+ * Render-binding data (like {@link BobSequenceSet}/{@link TerrainPattern}); the pure sim ignores it. The
+ * render picks the row matching the atlas it loaded — `(bmd, palette)` — and draws `bobId` for the
+ * building's `Building.buildingType` ({@link typeId}), so each type shows its own house bob from data
+ * instead of a transcribed constant.
+ */
+export const BuildingBob = z.object({
+  /** The `LogicTribeType` the record applies to (viking 1, frank 2, …) — the same logic `typeId` recurs per tribe. */
+  tribeId: z.number().int().nonnegative(),
+  /** The building `typeId` (the sim's `Building.buildingType`, the `[GfxHouse]` `LogicType` value at this level). */
+  typeId: z.number().int().nonnegative(),
+  /** The growth/size level index (`LogicType`/`GfxBobId`'s leading int) — a home's tier 0..4. */
+  level: z.number().int().nonnegative(),
+  /** The body bob set, normalized (lower-case, forward slashes), e.g. `data/engine2d/bin/bobs/ls_houses_viking.bmd`. */
+  bmd: z.string(),
+  /** One recolour skin (`GfxPalette` value), lower-cased — the atlas this bob is drawn in (`house01`/`house02`/…). */
+  paletteName: z.string(),
+  /** The atlas bob id this `(typeId, level)` draws (the `GfxBobId` for the level). */
+  bobId: z.number().int().nonnegative(),
+  /** The record's `EditName` (`"viking home"`), kept as a render/debug handle when present. */
+  editName: z.string().optional(),
+  source: Provenance.optional(),
+});
+export type BuildingBob = z.infer<typeof BuildingBob>;
+
 /** Top-level manifest written to content/ir.json. */
 export const IrManifest = z.object({
   version: z.number().int().positive(),
@@ -785,6 +816,7 @@ export const ContentSet = z.object({
   landscape: z.array(LandscapeType).default([]),
   terrainPatterns: z.array(TerrainPattern).default([]),
   bobSequences: z.array(BobSequenceSet).default([]),
+  buildingBobs: z.array(BuildingBob).default([]),
   tribes: z.array(TribeType).default([]),
   atomicAnimations: z.array(AtomicAnimation).default([]),
   maps: z.array(MapInfo).default([]),

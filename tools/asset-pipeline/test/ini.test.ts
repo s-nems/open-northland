@@ -9,6 +9,7 @@ import {
   extractArmor,
   extractAtomicAnimations,
   extractBobSequences,
+  extractBuildingBobs,
   extractBuildingGraphics,
   extractBuildings,
   extractConstructionCosts,
@@ -1008,6 +1009,123 @@ LogicConstructionGoods 1 3
 
   it('returns an empty map for sources with no [GfxHouse] records (the logic-only tables)', () => {
     expect(extractConstructionCosts(parseIniSections(HOUSES_INI)).size).toBe(0);
+  });
+});
+
+// Mirrors DataCnmd/budynki12/houses/houses.ini for the bob join: a `[GfxHouse]` record pairs a per-level
+// `LogicType <level> <typeId>` table with a `GfxBobId <level> <bobId>` table, names the body `.bmd`
+// (`GfxBobLibs[0]`) recoloured by one-or-more palette skins, and is keyed to a tribe. A "home" spans
+// several levels (rising typeId + bob); a "well" is one level with TWO palette skins; the "headquarters"
+// has a `LogicType` but no `GfxBobId` (a free stage → no bob row).
+const GFXHOUSE_BOBS_INI = `[GfxHouse]
+EditName "viking home"
+LogicTribeType 1
+LogicType 0 2
+LogicType 1 3
+LogicType 4 6
+GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_houses_viking.bmd" "data\\engine2d\\bin\\bobs\\ls_houses_viking_s.bmd"
+GfxPalette "house01"
+GfxBobId 0 1
+GfxBobId 1 11
+GfxBobId 4 41
+[GfxHouse]
+EditName "viking well"
+LogicTribeType 1
+LogicType 0 10
+GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_houses_viking.bmd"
+GfxPalette "house01" "house02"
+GfxBobId 0 131
+[GfxHouse]
+EditName "headquarters"
+LogicTribeType 1
+LogicType 0 1
+GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_houses_viking.bmd"
+GfxPalette "house01"
+`;
+
+describe('extractBuildingBobs', () => {
+  const src = { file: 'budynki12/houses/houses.ini', block: 'GfxHouse', layer: 'mod' as const };
+
+  it('pairs LogicType and GfxBobId by level, emitting one row per (typeId, level) → bob', () => {
+    const bobs = extractBuildingBobs(parseIniSections(GFXHOUSE_BOBS_INI), src);
+    // The home's three paired levels each resolve to their own typeId + bob (the top tier is the
+    // transcribed `6: 41`; the lower tiers are the growth stages the transcribed table omitted).
+    expect(bobs.filter((b) => b.editName === 'viking home')).toEqual([
+      {
+        tribeId: 1,
+        typeId: 2,
+        level: 0,
+        bmd: 'data/engine2d/bin/bobs/ls_houses_viking.bmd',
+        paletteName: 'house01',
+        bobId: 1,
+        editName: 'viking home',
+        source: src,
+      },
+      {
+        tribeId: 1,
+        typeId: 3,
+        level: 1,
+        bmd: 'data/engine2d/bin/bobs/ls_houses_viking.bmd',
+        paletteName: 'house01',
+        bobId: 11,
+        editName: 'viking home',
+        source: src,
+      },
+      {
+        tribeId: 1,
+        typeId: 6,
+        level: 4,
+        bmd: 'data/engine2d/bin/bobs/ls_houses_viking.bmd',
+        paletteName: 'house01',
+        bobId: 41,
+        editName: 'viking home',
+        source: src,
+      },
+    ]);
+  });
+
+  it('emits one row per palette skin (the same bob recoloured into each `GfxPalette` value)', () => {
+    const well = extractBuildingBobs(parseIniSections(GFXHOUSE_BOBS_INI), src).filter((b) => b.typeId === 10);
+    // `GfxPalette "house01" "house02"` → two rows, the same `(typeId 10 → bob 131)` in each recolour,
+    // so a render that loaded either atlas finds its row.
+    expect(well.map((b) => b.paletteName)).toEqual(['house01', 'house02']);
+    expect(new Set(well.map((b) => b.bobId))).toEqual(new Set([131]));
+  });
+
+  it('omits a level with a LogicType but no matching GfxBobId (the free headquarters stage)', () => {
+    const bobs = extractBuildingBobs(parseIniSections(GFXHOUSE_BOBS_INI), src);
+    expect(bobs.some((b) => b.typeId === 1)).toBe(false);
+  });
+
+  it('skips a record missing a body `.bmd`, any palette, or a LogicTribeType (never throws)', () => {
+    // No GfxBobLibs, no GfxPalette, no LogicTribeType — each alone disqualifies the record.
+    const bobs = extractBuildingBobs(
+      parseIniSections(`[GfxHouse]
+EditName "no bmd"
+LogicTribeType 1
+LogicType 0 2
+GfxPalette "house01"
+GfxBobId 0 9
+[GfxHouse]
+EditName "no palette"
+LogicTribeType 1
+LogicType 0 3
+GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_houses_viking.bmd"
+GfxBobId 0 9
+[GfxHouse]
+EditName "no tribe"
+LogicType 0 4
+GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_houses_viking.bmd"
+GfxPalette "house01"
+GfxBobId 0 9
+`),
+      src,
+    );
+    expect(bobs).toEqual([]);
+  });
+
+  it('returns an empty array for sources with no [GfxHouse] records (the logic-only tables)', () => {
+    expect(extractBuildingBobs(parseIniSections(HOUSES_INI), src)).toEqual([]);
   });
 });
 
