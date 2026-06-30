@@ -37,7 +37,7 @@ import {
  * layer (the HQ in `ls_houses_viking4.bmd`, the mill in the `housemiller01` skin, the smithy in
  * `ls_houses_viking2.bmd`, …) binds a layer-qualified {@link BuildingBobRef} into its own loaded
  * {@link SpriteSheet.families} atlas — all five viking families load, so every viking building draws its
- * own bob (the not-yet-decoded `house02` skin types are the only ones still on the representative house).
+ * own bob (the not-yet-loaded `house02` skin types are the only ones still on the representative house).
  */
 
 /** The decoded human body + head atlases (`test_human_00` palette) served at `/bobs/<name>.*`. */
@@ -76,7 +76,7 @@ const HOUSE_PALETTE = 'house01';
  * is drawn at {@link BUILDING_SCALE} about its feet anchor (the settler + tree stay native, their
  * proportion already reads right). At 0.7 the cottage lands ~3× the settler, the by-eye pick from a 1:1
  * pawn-vs-tree-vs-building montage. Both the bob and the scale are taste constants (the warehouse "viking
- * stock" needs the not-yet-decoded house02 palette) — swap them to a bigger stage / different factor
+ * stock" needs the not-yet-loaded house02 palette) — swap them to a bigger stage / different factor
  * (docs/FIDELITY.md "Building bob"). The HQ store now draws as this house instead of the placeholder box.
  */
 const HOUSE_ATLAS = `ls_houses_viking.${HOUSE_PALETTE}`;
