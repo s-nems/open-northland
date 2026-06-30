@@ -74,6 +74,16 @@ The repeatable recipe per rung: load the extra atlas(es) in `loadHumanSpriteShee
 `typeId` through `resolveSpriteBobId`/`buildHumanBindings` as a per-type bob lookup, add the scene + headless
 check, commit. **Render-only** rungs need no pipeline change (the atlas is already on disk);
 **pipeline-blocked** rungs need an extractor or palette stage first.
+
+> **Current user-directed focus (2026-06-30):** deliver the **COMPLETE viking set** — every viking building
+> and every viking animation across **ALL viking human bodies** (man + alt appearances, warrior, woman, boy,
+> girl, baby, and the viking-specific civ body). (1) Finish the viking **buildings** (rung 1's `house02` skin
+> → all viking `[GfxHouse]` types draw their own bob). (2) Add **multi-body render support**, then bind the
+> **whole** `[bobseq]` vocabulary per body (rung 3) — worked category by category (harvest, indoor crafts,
+> carrying, idle/needs, fight, shoot) then per body (woman/children/viking-civ), with a completeness-gallery
+> scene as the exit gate. The listed categories/seqs are the breakdown, not the limit. Rung 2 (landscape
+> variety) and the **other tribes** are **deferred behind the viking set**.
+
 1. [x] **Buildings per-type frame selection** — **LANDED** (single→multi-`.bmd` viking families; human
    pixel sign-off ✓). Each viking building draws its OWN house bob via a data-pinned `(typeId→bob)` join
    (`extractBuildingBobs` → `buildingBobs` IR, **336 rows / 6 tribes**) and a layer-aware
@@ -86,19 +96,80 @@ check, commit. **Render-only** rungs need no pipeline change (the atlas is alrea
      herb hut, temple, …) draws its own bob — added the four families to `BUILDING_FAMILIES` (the single
      source of truth that drives both `loadLayer` and which rows may layer-qualify) + a `?scene=viking-families`
      acceptance scene (mill / smithy / armory / temple, one per new family). The few types on the
-     not-yet-loaded `house02` skin (stock / brewery / coin mint) still fall back to the representative house —
-     a later rung. **Pending human pixel sign-off** (`?scene=viking-families&atlas=real`).
-   - [ ] **The other tribes** (frank/egypt/saracen/byzantine) — same machinery, the `buildingBobs` table
-     already covers all 6; a per-tribe (or montage) scene; **human pixel sign-off**.
+     not-yet-loaded `house02` skin (stock / brewery / coin mint) still fall back to the representative house
+     (the next sub-item closes them). **Human pixel sign-off ✓ (2026-06-30, `?scene=viking-families&atlas=real`).**
+   - [ ] **Complete the viking building set — the `house02` skin** (stock / brewery / coin mint, the LAST
+     viking types still on the fallback house): load the `ls_houses_viking*.house02` family so they draw
+     their OWN bob. Same recipe — resolve the `(bmd, house02)` pair(s) from `buildingBobs`, add to
+     `BUILDING_FAMILIES`, extend a scene, **human pixel sign-off**. **Exit = EVERY viking building draws its
+     own bob** — prove it with a completeness scene/montage of all viking `[GfxHouse]` types where NONE
+     falls back to the placeholder.
+   - [ ] **The other tribes** (frank/egypt/saracen/byzantine) — deferred behind the viking set; same
+     machinery, the `buildingBobs` table already covers all 6; a per-tribe (or montage) scene; **human
+     pixel sign-off**.
 2. [ ] **Landscape/resource per-type variety** (render-only) — bushes, signs, wonders, harbours + non-yew
    tree species, each via its own `[GfxLandscape]` bob (today every resource is the single yew). Same recipe
    as rung 1 over the already-emitted `extractLandscapeGraphics` atlases (87 landscape types in IR).
-3. [ ] **Faithful per-direction animation** (pipeline + render) — the extractor today reads ONLY the 15
-   `[bobseq]` frame ranges and the render fakes playback with a linear `start + dir*stride + phase` heuristic.
-   The real per-direction frame tables — `[gfxanimatomic]` (**1280**) + `[gfxwalkatomic]` (**511**) in
-   `animations.ini`, keyed by `(tribe, job, atomic-action)` with explicit 8-direction `gfxanimframelistdir`
-   lists (ping-pong swings, irregular direction reuse) — are **not extracted at all**. Add the extractor +
-   drive playback from the real lists. Record the current stride heuristic as a divergence in docs/FIDELITY.md.
+3. [ ] **Complete viking animation set — ALL viking human bodies** (render over already-extracted
+   `[bobseq]`) — **CURRENT FOCUS.** Goal: **every** viking human body draws its **full** `[bobseq]`
+   vocabulary, none left on a wrong/placeholder pose. Today the render binds a SINGLE generic-man body
+   (`cr_hum_body_00`) to only walk / idle / woodcut-chop / wood-carry — a tiny corner of what is extracted.
+   The viking population is several bodies, each its own atlas + `[bobseq]` set (all decoded, none consumed):
+   - **man** `cr_hum_body_00` — 69 seqs: per-job work, the generic needs, 27 `walk_<good>` carry gaits,
+     civilian unarmed fight (the rich one). Alternate man appearances `cr_hum_body_30`/`_50` carry the same
+     69 seq names (confirm whether the viking uses them, e.g. for crowd variety).
+   - **warrior man** `cr_hum_body_05` — 57 seqs: armed attack/throw/walk/wait per weapon (broadsword /
+     longbow / shortbow / spear / sword).
+   - **woman** `cr_hum_body_10` — 13 seqs (civilian fight + generic + a few carry gaits).
+   - **boy** `cr_hum_body_20` (5) · **girl** `cr_hum_body_21` (6) · **baby** `cr_hum_body_22` (3) — small sets.
+   - **viking-specific civ man** `cr_hum_vik_man_civ_body_00` — 4 viking-only seqs (pick_up / wait / walk /
+     …), COMPOSED ON TOP of the generic man (the viking flavour), not a replacement.
+
+   (Bodies `cr_hum_body_70/71/73/74` are monsters — werewolf / weresnake / grizzu / santa — and
+   `cr_ani_body_00` / `cr_veh_body_00` are animals / vehicles → NOT settlers; they belong to rungs 4/5.)
+
+   **Structural prerequisite (do first):**
+   - [ ] **Multi-body render support** — load each viking body atlas under its viking palette and SELECT the
+     body per settler from `(sex, age class, is-warrior)` — the sim already ages baby→child→adult
+     (`growthSystem`) and knows tribe/job, so the selector is data, not magic. Generalise today's single
+     `settler` binding into a per-body bindings table, each driven by its own `[bobseq]` set. Also resolve
+     WHICH palette is "viking" for human bodies (today's `test_human_00` is a placeholder skin).
+
+   **Per-category coverage of the man's rich set** (the breakdown — illustrative seqs, **not** the limit; exit
+   = the whole vocabulary). Recipe per category: pick the `[bobseq]` name(s), route the sim's atomic id /
+   carried good to it in the body bindings, add an acceptance scene + headless check, the user signs off.
+   Playback keeps the per-direction stride heuristic (faithful `[gfxanimatomic]` timing is the last bullet).
+   - [ ] **Harvest by resource** — clay (`clayworker_work_shovel`), stone (`stonecrusher_work_stonecrushing`),
+     grain (`farmer_work_reap_grain`/`_sow`/`_water`), fish (`fisher_work_fishing`/`_walk_angle`), hunter
+     (`hunter_attack_bow`).
+   - [ ] **Indoor crafts (works inside a hut)** — baker / blacksmith / joiner / potter / tailor / druid /
+     artist / fountain (`Baker_*`, `Blacksmith_*`, `Joiner_*`, `Pottery_form`, `tailor_*`, `Druid_work`,
+     `Artist_*`, `fountain_push`).
+   - [ ] **Carrying by good** — select `walk_<good>` by the CARRIED good (all 27 gaits, not just wood).
+   - [ ] **Construction** — `constructionworker_Work_Hammer` at an under-construction site (composes with the
+     Phase-3 ConstructionSystem).
+   - [ ] **Idle & needs ("nudzi się")** — true idle `generic_wait` (distinct from the walk-frame-1 hold) +
+     the NeedsSystem drivers `generic_eat`/`_sleep`/`_pray`/`_kiss`/`_speak`/`_happy_jump`/
+     `_beeing_satisfied`/`_pick_up`.
+   - [ ] **Melee fight** — civilian unarmed (`Civilian_Fight_*`, man body) then armed sword/spear (warrior
+     body `cr_hum_body_05` + its walk / wait / wait_agressive / eat / sleep variants).
+   - [ ] **Ranged / shooting** — warrior `Longbow_attack`/`Shortbow_attack`/`spear_throw` (cr_hum_body_05).
+
+   **Per-body coverage** (women / children / viking-civ have small sets — finish each in one pass):
+   - [ ] **Woman** (`cr_hum_body_10`, 13 seqs) — fight + generic + her carry gaits.
+   - [ ] **Children** — boy (`_20`), girl (`_21`), baby (`_22`): eat / wait / walk / crouch.
+   - [ ] **Viking-civ man overlay** (`cr_hum_vik_man_civ_body_00`, 4 seqs) composed on the generic man.
+   - [ ] **Man alt appearances** (`cr_hum_body_30`/`_50`) — wire if the viking uses them (else record why not).
+
+   - [ ] **Completeness gallery (capstone)** — a `?scene=viking-animations` montage that plays EVERY body ×
+     EVERY bound seq with its name, so the full set is verifiable in one pass and any missing/wrong-pose seq
+     is obvious. Exit gate for "complete viking animations".
+   - [ ] **Faithful per-direction timing** (pipeline + render) — replace the linear `start + dir*stride +
+     phase` stride heuristic with the real per-direction frame tables: `[gfxanimatomic]` (**1280**) +
+     `[gfxwalkatomic]` (**511**) in `animations.ini`, keyed by `(tribe, job, atomic-action)` with explicit
+     8-direction `gfxanimframelistdir` lists (ping-pong swings, irregular direction reuse) — **not extracted
+     at all** today. Add the extractor + drive playback from the real lists. Record the stride heuristic as a
+     divergence in docs/FIDELITY.md.
 4. [ ] **Vehicle graphics** (pipeline + render) — no vehicle-graphics extractor yet; mirror
    `extractBuildingGraphics` for the cart/ship `.bmd`s, emit atlases, add a `'vehicle'` `DrawKind` + binding.
    (6 vehicles exist sim-side, Phase 4 — graphics deferred.)
