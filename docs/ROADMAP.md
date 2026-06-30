@@ -86,7 +86,7 @@ check, commit. **Render-only** rungs need no pipeline change (the atlas is alrea
      herb hut, temple, …) draws its own bob — added the four families to `BUILDING_FAMILIES` (the single
      source of truth that drives both `loadLayer` and which rows may layer-qualify) + a `?scene=viking-families`
      acceptance scene (mill / smithy / armory / temple, one per new family). The few types on the
-     not-yet-decoded `house02` skin (stock / brewery / coin mint) still fall back to the representative house —
+     not-yet-loaded `house02` skin (stock / brewery / coin mint) still fall back to the representative house —
      a later rung. **Pending human pixel sign-off** (`?scene=viking-families&atlas=real`).
    - [ ] **The other tribes** (frank/egypt/saracen/byzantine) — same machinery, the `buildingBobs` table
      already covers all 6; a per-tribe (or montage) scene; **human pixel sign-off**.
