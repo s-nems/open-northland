@@ -9,7 +9,7 @@ import {
   terrainMapToScene,
 } from '@vinland/render';
 import { FixedTimestep } from '@vinland/sim';
-import { cameraFor, floatParam } from './camera.js';
+import { cameraFor, createCameraController, floatParam } from './camera.js';
 import { resolveSpriteSheet } from './real-sprites.js';
 import { loadRealTerrain } from './real-terrain.js';
 import { mountSceneOverlay, mountUnknownSceneOverlay } from './scene-overlay.js';
@@ -72,6 +72,14 @@ export async function renderSceneMode(
     },
   });
 
+  // Interactive camera over the scene: `?zoom` is the starting frame, then the human pans (middle-mouse
+  // drag / arrow keys) and zooms (scroll wheel). Survives an overlay restart (the sim is rebuilt, the
+  // camera isn't), so the framing the human set up persists across replays.
+  const cameraCtl = createCameraController(
+    canvas,
+    cameraFor(buildScene(sim.snapshot(), terrainGrid), zoom, CANVAS_W, CANVAS_H),
+  );
+
   let timestep = new FixedTimestep();
   let lastMs = performance.now();
 
@@ -84,9 +92,10 @@ export async function renderSceneMode(
     } else if (!control.paused) {
       timestep.advance(elapsed * control.speed, () => sim.step());
     }
+    cameraCtl.update(elapsed);
     const snap = sim.snapshot();
     const sc = buildScene(snap, terrainGrid);
-    renderScene(app, sc, cameraFor(sc, zoom, CANVAS_W, CANVAS_H), sheet, snap.tick, terrain);
+    renderScene(app, sc, cameraCtl.camera(), sheet, snap.tick, terrain);
     renderHud(app, placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', screen));
     overlay.update(snap.tick);
     requestAnimationFrame(frame);

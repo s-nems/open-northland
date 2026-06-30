@@ -1,9 +1,15 @@
 import type { Camera, DrawItem } from '@vinland/render';
 
 /**
- * Camera helpers shared by the live (`main.ts`) and shot (`shot.ts`) entries. Pure geometry over the
- * draw list — no Pixi, no sim. The `?zoom=` knob exists so a human can actually judge a decoded bob's
+ * Camera helpers shared by the live (`main.ts`) and shot (`shot.ts`) entries. The geometry half is
+ * pure — no Pixi, no sim. The `?zoom=` knob exists so a human can actually judge a decoded bob's
  * pixels: a ~30px sprite is lost on a 960px canvas, so a verification frame magnifies and re-centres.
+ *
+ * The live entries additionally wrap an interactive {@link CameraController} around the static
+ * {@link cameraFor} starting frame, so a human can pan (middle-mouse drag / arrow keys) and zoom
+ * (scroll wheel) the view. That's app-layer I/O (DOM + floats — fine here, never in `sim`); the pan/
+ * zoom *math* is the pure {@link panCamera}/{@link zoomCameraAt} reducers, unit-tested headless. The
+ * deterministic `?shot` entry never installs the controller, so the reproducible PNG is unaffected.
  */
 
 /** Parse a positive-float URL param (e.g. `?zoom=4`), falling back when absent or invalid. */
@@ -45,4 +51,127 @@ function centroid(
     count++;
   }
   return count > 0 ? { x: sumX / count, y: sumY / count } : null;
+}
+
+// ─── Interactive camera ──────────────────────────────────────────────────────────────────────────
+
+/** Zoom bounds the scroll-wheel clamps to, so the world can't shrink to nothing or balloon unusably. */
+export const MIN_ZOOM = 0.25;
+export const MAX_ZOOM = 8;
+/** Screen pixels the camera scrolls per second while an arrow key is held. */
+const ARROW_PAN_SPEED = 600;
+/** Per-wheel-notch zoom factor (one notch in multiplies, one out divides). */
+const WHEEL_ZOOM_STEP = 1.1;
+/** The arrow keys the controller pans on (so it ignores every other key). */
+const ARROW_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
+
+/** Pan the camera by a screen-pixel delta (mouse drag / arrow step). Pure; preserves `scale`. */
+export function panCamera(cam: Camera, dx: number, dy: number): Camera {
+  return { ...cam, offsetX: cam.offsetX + dx, offsetY: cam.offsetY + dy };
+}
+
+/**
+ * Zoom by `factor`, keeping the world point currently under `(cursorX, cursorY)` pinned to that screen
+ * point (so the view magnifies toward the cursor, not the layer origin). `screen = world*scale + offset`,
+ * so the world under the cursor is `(cursor − offset)/scale`; after rescaling we re-solve the offset that
+ * keeps that world point under the cursor. The new scale is clamped to [{@link MIN_ZOOM},{@link MAX_ZOOM}];
+ * if the clamp leaves the scale unchanged the camera is returned untouched. Pure.
+ */
+export function zoomCameraAt(cam: Camera, factor: number, cursorX: number, cursorY: number): Camera {
+  const scale = cam.scale ?? 1;
+  const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, scale * factor));
+  if (next === scale) return cam;
+  const worldX = (cursorX - cam.offsetX) / scale;
+  const worldY = (cursorY - cam.offsetY) / scale;
+  return { offsetX: cursorX - worldX * next, offsetY: cursorY - worldY * next, scale: next };
+}
+
+/** An installed interactive camera: read the current transform, advance held-key pan, tear down. */
+export interface CameraController {
+  /** The current {@link Camera} to hand {@link import('@vinland/render').renderScene}. */
+  camera(): Camera;
+  /** Apply held-arrow-key panning for a wall-clock delta in ms — call once per frame. */
+  update(dtMs: number): void;
+  /** Remove every installed DOM listener. */
+  dispose(): void;
+}
+
+/**
+ * Wire interactive camera movement onto `canvas`, starting from the `initial` frame: **middle-mouse
+ * drag** grabs and pulls the world; the **arrow keys** scroll the camera (press right to look right);
+ * the **scroll wheel** zooms toward the cursor. App-layer only — DOM + floats are fine here and the
+ * sim is never touched; this just translates DOM events into the pure {@link panCamera}/
+ * {@link zoomCameraAt} reducers over a mutable camera. Drag uses mouse (not pointer) events so
+ * `preventDefault` on the middle button suppresses the browser's autoscroll widget; move/up listen on
+ * `window` so a drag continues when the cursor leaves the canvas.
+ */
+export function createCameraController(canvas: HTMLCanvasElement, initial: Camera): CameraController {
+  let cam: Camera = initial;
+  const held = new Set<string>();
+  let dragging = false;
+  let lastX = 0;
+  let lastY = 0;
+
+  const onMouseDown = (e: MouseEvent): void => {
+    if (e.button !== 1) return; // middle button only
+    dragging = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    e.preventDefault(); // suppress the middle-click autoscroll widget
+  };
+  const onMouseMove = (e: MouseEvent): void => {
+    if (!dragging) return;
+    cam = panCamera(cam, e.clientX - lastX, e.clientY - lastY);
+    lastX = e.clientX;
+    lastY = e.clientY;
+  };
+  const onMouseUp = (e: MouseEvent): void => {
+    if (e.button === 1) dragging = false;
+  };
+  const onWheel = (e: WheelEvent): void => {
+    e.preventDefault(); // don't scroll the page
+    const rect = canvas.getBoundingClientRect();
+    const factor = e.deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP;
+    cam = zoomCameraAt(cam, factor, e.clientX - rect.left, e.clientY - rect.top);
+  };
+  const onKeyDown = (e: KeyboardEvent): void => {
+    if (!ARROW_KEYS.has(e.key)) return;
+    held.add(e.key);
+    e.preventDefault(); // arrows would otherwise scroll the page
+  };
+  const onKeyUp = (e: KeyboardEvent): void => {
+    held.delete(e.key);
+  };
+
+  canvas.addEventListener('mousedown', onMouseDown);
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+  canvas.addEventListener('wheel', onWheel, { passive: false });
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+
+  return {
+    camera: () => cam,
+    update: (dtMs) => {
+      if (held.size === 0) return;
+      const step = (ARROW_PAN_SPEED * dtMs) / 1000;
+      let dx = 0;
+      let dy = 0;
+      // Camera-scroll convention: an arrow reveals the world in its direction (press right → look
+      // right → the world slides left → offset shrinks).
+      if (held.has('ArrowLeft')) dx += step;
+      if (held.has('ArrowRight')) dx -= step;
+      if (held.has('ArrowUp')) dy += step;
+      if (held.has('ArrowDown')) dy -= step;
+      cam = panCamera(cam, dx, dy);
+    },
+    dispose: () => {
+      canvas.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      canvas.removeEventListener('wheel', onWheel);
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    },
+  };
 }
