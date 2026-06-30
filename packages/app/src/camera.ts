@@ -112,6 +112,20 @@ export function createCameraController(canvas: HTMLCanvasElement, initial: Camer
   let lastX = 0;
   let lastY = 0;
 
+  // The canvas is CSS-stretched (`index.html` sizes `#game` to the viewport) while its backing store —
+  // the space the camera works in — is fixed at `canvas.width`×`canvas.height`. So every client (CSS-px)
+  // coord must be scaled into backing px, or a drag pans faster than the cursor and a wheel zoom anchors
+  // off the cursor. `rect` is returned too, so the wheel handler subtracts the canvas origin in CSS px
+  // *before* scaling. Guards a zero-size (unlaid-out) canvas.
+  const backingScale = (): { sx: number; sy: number; rect: DOMRect } => {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      sx: rect.width === 0 ? 1 : canvas.width / rect.width,
+      sy: rect.height === 0 ? 1 : canvas.height / rect.height,
+      rect,
+    };
+  };
+
   const onMouseDown = (e: MouseEvent): void => {
     if (e.button !== 1) return; // middle button only
     dragging = true;
@@ -121,7 +135,8 @@ export function createCameraController(canvas: HTMLCanvasElement, initial: Camer
   };
   const onMouseMove = (e: MouseEvent): void => {
     if (!dragging) return;
-    cam = panCamera(cam, e.clientX - lastX, e.clientY - lastY);
+    const { sx, sy } = backingScale();
+    cam = panCamera(cam, (e.clientX - lastX) * sx, (e.clientY - lastY) * sy);
     lastX = e.clientX;
     lastY = e.clientY;
   };
@@ -130,9 +145,9 @@ export function createCameraController(canvas: HTMLCanvasElement, initial: Camer
   };
   const onWheel = (e: WheelEvent): void => {
     e.preventDefault(); // don't scroll the page
-    const rect = canvas.getBoundingClientRect();
+    const { sx, sy, rect } = backingScale();
     const factor = e.deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP;
-    cam = zoomCameraAt(cam, factor, e.clientX - rect.left, e.clientY - rect.top);
+    cam = zoomCameraAt(cam, factor, (e.clientX - rect.left) * sx, (e.clientY - rect.top) * sy);
   };
   const onKeyDown = (e: KeyboardEvent): void => {
     if (!ARROW_KEYS.has(e.key)) return;
@@ -142,6 +157,12 @@ export function createCameraController(canvas: HTMLCanvasElement, initial: Camer
   const onKeyUp = (e: KeyboardEvent): void => {
     held.delete(e.key);
   };
+  // Losing focus mid-gesture (alt-tab, devtools) drops the keyup/mouseup, which would otherwise leave a
+  // key stuck in `held` (the camera pans forever) or `dragging` stuck true. Reset on blur.
+  const onBlur = (): void => {
+    held.clear();
+    dragging = false;
+  };
 
   canvas.addEventListener('mousedown', onMouseDown);
   window.addEventListener('mousemove', onMouseMove);
@@ -149,12 +170,15 @@ export function createCameraController(canvas: HTMLCanvasElement, initial: Camer
   canvas.addEventListener('wheel', onWheel, { passive: false });
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
+  window.addEventListener('blur', onBlur);
 
   return {
     camera: () => cam,
     update: (dtMs) => {
       if (held.size === 0) return;
-      const step = (ARROW_PAN_SPEED * dtMs) / 1000;
+      // Clamp the delta so a held key doesn't lurch the camera after the tab was backgrounded (RAF
+      // pauses, then resumes with one huge elapsed) — the pan stays smooth, never a jump.
+      const step = (ARROW_PAN_SPEED * Math.min(dtMs, 100)) / 1000;
       let dx = 0;
       let dy = 0;
       // Camera-scroll convention: an arrow reveals the world in its direction (press right → look
@@ -172,6 +196,7 @@ export function createCameraController(canvas: HTMLCanvasElement, initial: Camer
       canvas.removeEventListener('wheel', onWheel);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
     },
   };
 }
