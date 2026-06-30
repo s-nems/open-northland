@@ -8,7 +8,7 @@ import {
   renderScene,
 } from '@vinland/render';
 import { FixedTimestep } from '@vinland/sim';
-import { cameraFor, floatParam } from './camera.js';
+import { cameraFor, createCameraController, floatParam } from './camera.js';
 import { resolveSpriteSheet } from './real-sprites.js';
 import { loadRealTerrain } from './real-terrain.js';
 import { renderSceneMode } from './scene-mode.js';
@@ -76,6 +76,14 @@ async function main(): Promise<void> {
   const HUD_TRIBE = 1;
   const screen = { width: CANVAS_W, height: CANVAS_H };
 
+  // Interactive camera: `?zoom` (+ the settler-centroid framing) is the STARTING frame; from there a
+  // human pans (middle-mouse drag / arrow keys) and zooms (scroll wheel). The HUD is drawn outside the
+  // camera layer below, so it stays pinned while the world moves.
+  const cameraCtl = createCameraController(
+    canvas,
+    cameraFor(buildScene(sim.snapshot(), terrainGrid), zoom, CANVAS_W, CANVAS_H),
+  );
+
   const timestep = new FixedTimestep();
   let lastMs = performance.now();
 
@@ -83,16 +91,17 @@ async function main(): Promise<void> {
     const elapsed = nowMs - lastMs;
     lastMs = nowMs;
     timestep.advance(elapsed * speed, () => sim.step());
+    cameraCtl.update(elapsed);
     const snap = sim.snapshot();
     const scene = buildScene(snap, terrainGrid);
-    renderScene(app, scene, cameraFor(scene, zoom, CANVAS_W, CANVAS_H), sheet, snap.tick, terrain);
+    renderScene(app, scene, cameraCtl.camera(), sheet, snap.tick, terrain);
     // HUD overlay on top of the scene (renderScene cleared the stage; this adds to it).
     renderHud(app, placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', screen));
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
 
-  console.log('Vinland shell up: vertical slice rendering. See docs/ROADMAP.md.');
+  console.log('Vinland shell up: vertical slice rendering. Drag (middle mouse) / arrows pan, wheel zooms.');
 }
 
 void main();
