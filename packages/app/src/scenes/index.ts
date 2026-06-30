@@ -3,6 +3,7 @@ import { buildingTypesScene } from './building-types.js';
 import { gatherResourceScene } from './gather-resource.js';
 import type { SceneDefinition } from './types.js';
 import { vikingFamiliesScene } from './viking-families.js';
+import { vikingHouse02Scene } from './viking-house02.js';
 
 export type { SceneDefinition, SceneCheck } from './types.js';
 export { createSceneSim, resetComponentStores } from './runtime.js';
@@ -17,6 +18,7 @@ export const SCENES: readonly SceneDefinition[] = [
   angledPathScene,
   buildingTypesScene,
   vikingFamiliesScene,
+  vikingHouse02Scene,
 ];
 
 /** Look up a scene by its `?scene=<id>` value, or `undefined` if no scene has that id. */

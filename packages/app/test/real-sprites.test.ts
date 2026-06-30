@@ -335,14 +335,15 @@ describe('buildingBobRefsByType', () => {
     expect(buildingBobRefsByType([], 1, DEFAULT_FAMILY, FAMILIES)).toEqual({});
   });
 
-  // The PRODUCTION families list (the five viking families loaded in loadHumanSpriteSheet). Drives the
-  // reducer with the real BUILDING_FAMILIES so the rung's claim — "every viking building draws its own
-  // bob" — is pinned without a browser: each new family's representative type routes to its OWN atlas
-  // layer, the not-yet-decoded house02 type is dropped (constant backs it), and the default stays a bare id.
-  describe('with the production BUILDING_FAMILIES (all five viking families loaded)', () => {
-    // One representative row per family + a house02-only type, transcribed from content/ir.json's
-    // buildingBobs (LogicTribeType 1). The (bmd, palette) PAIR is what each family entry matches on:
-    // the miller shares ls_houses_viking.bmd with the default but recolours it `housemiller01`.
+  // The PRODUCTION families list (the seven viking families loaded in loadHumanSpriteSheet). Drives the
+  // reducer with the real BUILDING_FAMILIES so the rung's claim — "EVERY viking building draws its own
+  // bob" — is pinned without a browser: each family's representative type routes to its OWN atlas layer,
+  // including the two house02 families that close the set (stock / brewery / coin mint), and the default
+  // stays a bare id. No viking [GfxHouse] type is dropped any more.
+  describe('with the production BUILDING_FAMILIES (all seven viking families loaded)', () => {
+    // One representative row per family, transcribed from content/ir.json's buildingBobs (LogicTribeType
+    // 1). The (bmd, palette) PAIR is what each family entry matches on: the miller and house02 both share
+    // ls_houses_viking.bmd with the default but recolour it `housemiller01` / `house02`.
     const real = [
       { tribeId: 1, typeId: 6, level: 4, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 41 }, // home → default
       {
@@ -379,7 +380,23 @@ describe('buildingBobRefsByType', () => {
         paletteName: 'housedruid01',
         bobId: 39,
       }, // temple
-      { tribeId: 1, typeId: 7, level: 0, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house02', bobId: 53 }, // stock — house02 only, unloaded
+      { tribeId: 1, typeId: 7, level: 0, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house02', bobId: 53 }, // stock — house02 on ls_houses_viking.bmd
+      {
+        tribeId: 1,
+        typeId: 16,
+        level: 0,
+        bmd: 'x/ls_houses_viking2.bmd',
+        paletteName: 'house02',
+        bobId: 220,
+      }, // brewery — house02 on ls_houses_viking2.bmd
+      {
+        tribeId: 1,
+        typeId: 33,
+        level: 0,
+        bmd: 'x/ls_houses_viking2.bmd',
+        paletteName: 'house02',
+        bobId: 170,
+      }, // coin mint — house02 on ls_houses_viking2.bmd
     ];
 
     it('routes each viking type to its own loaded family layer (the rung is render-only, data already there)', () => {
@@ -390,7 +407,10 @@ describe('buildingBobRefsByType', () => {
         27: { layer: 'ls_houses_viking3.house01', bob: 50 },
         1: { layer: 'ls_houses_viking4.house01', bob: 34 },
         37: { layer: 'ls_houses_viking4.housedruid01', bob: 39 },
-        // typeId 7 (stock) is house02 only — that skin is a later rung, so it is DROPPED (HOUSE_BOB backs it).
+        // The two house02 families close the set — stock / brewery / coin mint now bind their own bob.
+        7: { layer: 'ls_houses_viking.house02', bob: 53 },
+        16: { layer: 'ls_houses_viking2.house02', bob: 220 },
+        33: { layer: 'ls_houses_viking2.house02', bob: 170 },
       });
     });
 
