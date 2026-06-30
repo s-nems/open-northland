@@ -34,8 +34,10 @@ import {
  * `buildingBobs` IR ({@link buildingBobRefsByType}) overlaid onto the transcribed {@link VIKING_HOUSE01_BOBS}
  * (data wins per type; the constant backs its five known types when `content/` is absent). A building type
  * whose canonical bob lives in a *different* `.bmd`/palette than the default `ls_houses_viking.house01`
- * layer (the viking HQ is `ls_houses_viking4.bmd` bob 34) binds a layer-qualified {@link BuildingBobRef}
- * into its own loaded {@link SpriteSheet.families} atlas.
+ * layer (the HQ in `ls_houses_viking4.bmd`, the mill in the `housemiller01` skin, the smithy in
+ * `ls_houses_viking2.bmd`, …) binds a layer-qualified {@link BuildingBobRef} into its own loaded
+ * {@link SpriteSheet.families} atlas — all five viking families load, so every viking building draws its
+ * own bob (the not-yet-decoded `house02` skin types are the only ones still on the representative house).
  */
 
 /** The decoded human body + head atlases (`test_human_00` palette) served at `/bobs/<name>.*`. */
@@ -113,10 +115,20 @@ const VIKING_TRIBE = 1;
  * `(bmd, palette)` identity tells {@link buildingBobRefsByType} which canonical rows draw from that
  * shared layer (a bare bob id) versus a named {@link SpriteSheet.families} layer (a `{ layer, bob }`).
  */
-const DEFAULT_BUILDING_FAMILY = { bmdBasename: HOUSE_BMD, paletteName: HOUSE_PALETTE } as const;
+export const DEFAULT_BUILDING_FAMILY = { bmdBasename: HOUSE_BMD, paletteName: HOUSE_PALETTE } as const;
 
-/** The served atlas stem (`<bmd-stem>.<palette>`) + {@link SpriteSheet.families} key for `ls_houses_viking4.bmd` recoloured `house01`. */
+/**
+ * The served atlas stems (`<bmd-stem>.<palette>`) = {@link SpriteSheet.families} keys for the named viking
+ * building families loaded beside the default `ls_houses_viking.house01`. Two are sibling `.bmd`s on the
+ * default `house01` skin (`viking2`/`viking3`); two are a *different palette* on a shared `.bmd` —
+ * `housemiller01` recolours `ls_houses_viking.bmd` (the mill) and `housedruid01` recolours
+ * `ls_houses_viking4.bmd` (the herb hut + temple) — so the served stem is `<bmd>.<palette>`, not `<bmd>.house01`.
+ */
 const VIKING4_HOUSE01 = 'ls_houses_viking4.house01';
+const VIKING2_HOUSE01 = 'ls_houses_viking2.house01';
+const VIKING3_HOUSE01 = 'ls_houses_viking3.house01';
+const VIKING_MILLER01 = 'ls_houses_viking.housemiller01';
+const VIKING4_DRUID01 = 'ls_houses_viking4.housedruid01';
 
 /**
  * The named building-family atlases loaded BESIDE the default one — each a separate decoded
@@ -126,12 +138,22 @@ const VIKING4_HOUSE01 = 'ls_houses_viking4.house01';
  * list (it falls back to {@link VIKING_HOUSE01_BOBS}/the default house), so a family must be both listed
  * here AND loaded in {@link loadHumanSpriteSheet} for its types to draw their real bob.
  *
- * This rung loads only the **viking4 / house01** family — the viking **headquarters** (typeId 1, bob 34),
- * plus the animal farm / druid hut / barracks / tower that share that `.bmd`. The remaining viking
- * families (`ls_houses_viking2/3`, `housemiller01`, `housedruid01`) follow in the next rung.
+ * This loads **all five viking families** so every viking building draws its own bob: the default
+ * `ls_houses_viking.house01` (the homes / well / hive / farm / bakery, bound as the `building` kind),
+ * `ls_houses_viking4.house01` (HQ / animal farm / druid hut / barracks / tower), `ls_houses_viking2.house01`
+ * (pottery / joinery / smithy), `ls_houses_viking3.house01` (sewery / armory / mason hut / school), the
+ * `housemiller01` skin of `ls_houses_viking.bmd` (the mill, typeId 13) and the `housedruid01` skin of
+ * `ls_houses_viking4.bmd` (herb hut / temple, typeIds 34/37). The few viking types on the not-yet-decoded
+ * `house02` skin (stock / brewery / coin mint) still fall back to the representative house — that skin is a
+ * later rung. `bmdBasename` may repeat across entries (miller vs the default both live in
+ * `ls_houses_viking.bmd`); the `(bmdBasename, paletteName)` PAIR is what disambiguates the family.
  */
-const BUILDING_FAMILIES: readonly BuildingFamily[] = [
+export const BUILDING_FAMILIES: readonly BuildingFamily[] = [
   { bmdBasename: 'ls_houses_viking4.bmd', paletteName: HOUSE_PALETTE, layer: VIKING4_HOUSE01 },
+  { bmdBasename: 'ls_houses_viking2.bmd', paletteName: HOUSE_PALETTE, layer: VIKING2_HOUSE01 },
+  { bmdBasename: 'ls_houses_viking3.bmd', paletteName: HOUSE_PALETTE, layer: VIKING3_HOUSE01 },
+  { bmdBasename: HOUSE_BMD, paletteName: 'housemiller01', layer: VIKING_MILLER01 },
+  { bmdBasename: 'ls_houses_viking4.bmd', paletteName: 'housedruid01', layer: VIKING4_DRUID01 },
 ];
 
 /**
@@ -445,8 +467,8 @@ export async function loadHumanSpriteSheet(): Promise<SpriteSheet> {
   // BUILDING_FAMILIES is the SINGLE SOURCE OF TRUTH for the named building families: each entry's atlas is
   // loaded here AND only its `layer` key is eligible for a layer-qualified ref from buildingBobRefsByType,
   // so the loaded set and the reducer's emitted set cannot drift (a ref to an unloaded family would fall
-  // through to the default layer and draw a WRONG bob). This rung: viking4/house01 — the HQ + animal farm /
-  // druid hut / barracks / tower.
+  // through to the default layer and draw a WRONG bob). All five viking families load now (viking2/3/4 +
+  // the miller/druid palette skins), so every viking building draws its own bob — see BUILDING_FAMILIES.
   const families = Object.fromEntries(familyEntries);
   const houseBobs = buildingBobRefsByType(
     ir?.buildingBobs ?? [],

@@ -81,10 +81,13 @@ check, commit. **Render-only** rungs need no pipeline change (the atlas is alrea
    `ls_houses_viking4` bob 34). The IR extract, render-consumes-join, layer-aware `BuildingBobRef` binding,
    and the FIRST viking family (HQ + animal farm / druid hut / barracks / tower) all landed →
    [archive](ROADMAP-ARCHIVE.md). **Remaining:**
-   - [ ] **Load the rest of the viking families** (`ls_houses_viking2/3`, `housemiller01`, `housedruid01`)
-     so every viking building (stock, brewery, mill, pottery, joinery, smithy, armory, …) draws its own bob
-     — the reducer already resolves them; just add the `loadLayer` calls + `BUILDING_FAMILIES`/`families`
-     entries + scene coverage. **human pixel sign-off**.
+   - [x] **Load the rest of the viking families** (`ls_houses_viking2/3` + the `housemiller01`/`housedruid01`
+     palette-skins) so every viking building (mill, pottery, joinery, smithy, armory, sewery, mason, school,
+     herb hut, temple, …) draws its own bob — added the four families to `BUILDING_FAMILIES` (the single
+     source of truth that drives both `loadLayer` and which rows may layer-qualify) + a `?scene=viking-families`
+     acceptance scene (mill / smithy / armory / temple, one per new family). The few types on the
+     not-yet-decoded `house02` skin (stock / brewery / coin mint) still fall back to the representative house —
+     a later rung. **Pending human pixel sign-off** (`?scene=viking-families&atlas=real`).
    - [ ] **The other tribes** (frank/egypt/saracen/byzantine) — same machinery, the `buildingBobs` table
      already covers all 6; a per-tribe (or montage) scene; **human pixel sign-off**.
 2. [ ] **Landscape/resource per-type variety** (render-only) — bushes, signs, wonders, harbours + non-yew
