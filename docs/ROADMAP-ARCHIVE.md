@@ -1791,3 +1791,228 @@ they seed stay oracle-blocked (no mechanics oracle — docs/FIDELITY.md). The re
   (livestock-ownership, 20/35) + `ignoresHousesAnimal` (pathing-through-buildings, 1/35) — which
   **closes the animal-record consumer coverage: every extracted `animaltypes.ini` field now has a sim
   read view** (the behaviours they seed stay deferred).
+
+## Phase 2 / render-ladder / Cross-cutting-DX sweep — 2026-06-30 (third doc-bloat pass)
+Verbatim trails for items that landed during the building-bob render run; swept out of the live
+ROADMAP so the current target stays legible. The collapsed live ROADMAP keeps a one-line summary +
+the unchecked next steps; the full clean-room evidence is below.
+
+### Phase 2 — Resource/tree bob + animation ranges + building bob bound (the `Bind a REAL decoded bob atlas` children)
+  - [x] **Resource/tree bob bound** — `landscapes.cif` `[GfxLandscape]` → `ls_trees.bmd` via
+        `extractLandscapeGraphics`, emitted through the existing `convertBmdTree`, drawn under `?atlas=real`
+        as a per-kind `SpriteSheet.kindLayers` layer (the woodcutter's wood node is now a real tree, not a
+        green box). Commits `e663e71` + `42b0b1a`; deviation (species/frame pick) in docs/FIDELITY.md.
+  - [x] **Animation ranges from data, not magic numbers** — `extractBobSequences` reads
+        `animations.ini`'s `[bobseq]` tables into the IR's `bobSequences` (15 sets / 359 sequences), and
+        `?atlas=real` now derives the settler's walk/chop/carry `DirectionalAnim`s from them by sequence
+        name (`stride = length / 8`) instead of hard-coded frame constants — `app/src/real-sprites.ts`
+        `buildHumanBindings`/`directionalAnimFromSeq`. The extracted ranges match the old constants
+        byte-for-byte (walk 1988/96, chop 5106/120, walk_wood 4580/96), kept as a graceful fallback for a
+        checkout without `content/`. Render-taste tuning (which seq drives which state, the chop
+        `phaseStart` windup, the single-frame idle hold) stays in code. Unit-tested; pixels still need the
+        scene sign-off below.
+  - [x] **Building bob bound** — the HQ now draws the decoded `ls_houses_viking.bmd` (palette `house01`,
+        bob 11 — the viking home, a stone-and-thatch cottage) under `?atlas=real`, as a per-kind
+        `SpriteSheet.kindLayers` layer like the tree (the same universal `.bmd`→atlas path; the bob layout
+        is identical across all `.bmd`), down-scaled via `SpriteSheet.kindScales` (`BUILDING_SCALE` 0.7) so
+        the native-oversized house reads in proportion with the native settler + tree. Render `building`
+        binding + scale in `app/src/real-sprites.ts`; deviation (one frame for every type; render scale)
+        in docs/FIDELITY.md.
+    - [x] **Pipeline `extractBuildingGraphics` leg** — the mod's `[GfxHouse]` table
+          (`budynki12/houses/houses.ini`) now emits every settlement house's `ls_houses_*.bmd` body → atlas
+          (one binding per `GfxPalette` value, so a body's multiple skins all build), through the existing
+          `convertBmdTree` like the landscape leg. So `npm run pipeline` reproducibly produces ALL house
+          atlases — including the warehouse's `ls_houses_viking.house02` (the previously-missing asset),
+          not just the one `house01` an agent had hand-built. Render-side per-`[GfxHouse]`-type frame
+          selection (each building draws ITS house bob) **landed as rung 1 of the Render breadth ladder**
+          below (single `ls_houses_viking.house01` family; the multi-`.bmd` generalisation is its remainder).
+
+### Phase 2 — Render terrain from real landscape ground textures (full trail)
+- [x] **Render terrain from real landscape ground textures** — **LANDED (approximated, behind `?terrain`).**
+      The flat 4-colour `TILE_COLOURS` tint is replaced by real decoded `text_*.pcx` ground: the meadow grass
+      + rock mountain textures now draw per cell (human pixel-check done — a real `?map=` shot shows grass +
+      rock patches, not flat colour). **Placement is APPROXIMATED (a recorded deviation, docs/FIDELITY.md):
+      the 1:1 pattern algorithm is oracle-blocked** (OpenVikings does not render terrain → no algorithm
+      oracle; no `map.dat` lane holds a direct pattern id — the per-cell pattern is engine-computed from
+      corner types + variant lanes), so every cell of a landscape family draws the SAME representative
+      ground tile. Steps 1/2/4/5 done; step 3 (per-cell variety) deferred. **Known gap:** no map's `lmlt`
+      decodes a water typeId, so water never shows (the water surface is map-decode-blocked, ROADMAP Phase 4
+      Sea/Northland). Data model in docs/SOURCES.md "Terrain ground graphics + landscape objects".
+  1. ✅ **Pipeline — patterns + triangle types.** `extractPatterns`/`extractTrianglePatternTypes`
+     (`decoders/ini.ts`) → zod `GfxPattern`/`TrianglePatternType` IR (`packages/data`), unit-tested. `id`
+     is the **0-based position** in the `GfxPattern` list (no explicit id field — the extractor keeps every
+     record so ids stay contiguous). Hands-on against the real game `.cif`: **927 patterns** (ids 0..926, 56
+     textures, logicType ∈ {0..10}, 0 wrong-arity coords) + **10 triangle types** (NOT 82 — "82" was the
+     decoded *string* count; SOURCES.md corrected), and **every `logicType ≠ 0` resolves** to a triangle
+     `type` (the `logicType` cross-ref is sound). Faithful extraction (docs/FIDELITY.md "ground-graphics
+     tables"); the 56 `text_*.pcx` already decode (pcx stage) — no new decoder. **Not yet wired into the
+     ContentSet / `npm run pipeline` emit — that is step 2's "emit the table to IR".**
+  1. ✅ — see the extraction note in the archive trail above (kept terse here).
+  2. ✅ **Pipeline — typeId→pattern map (approximated).** `buildTerrainPatterns` (`decoders/ini.ts`) classifies
+     each landscape typeId by name (`water`→water, `rock`/`stone`→mountain, else→land), binds it to ONE
+     representative `GfxPattern` per family (shortest-seed-name pick: `water 01`/`meadow 01`/`mountain 01`) +
+     the logic-type `debugColor`, emitted as the `TerrainPattern` IR (`ContentSet.terrainPatterns`) by `npm
+     run pipeline`. Hands-on: **87 rows** (land 82 / water 1 / mountain 4). Approximation recorded in
+     docs/FIDELITY.md. Commit `8960db6`.
+  3. ⏸️ **Pipeline — per-cell variety (DEFERRED).** Use `lmpa`/`lmpb` (0..10) as a variant index into the
+     type's pattern family; emit those lanes beside `typeIds`. Skipped for the MVP (uniform-per-type ships).
+  4. ✅ **Render — textured ground.** `terrain.ts` (pure UV/diamond geometry, unit-tested) + `pixi-renderer.ts`
+     `buildTerrainLayer`: one **batched `Mesh` per texture page** (all same-page cells in one positions/uvs/
+     indices buffer — far cheaper than the per-cell flat-diamond it replaces), the pattern's `GfxCoords`
+     bbox → the tile's UV sub-rect, with a `debugColor` flat-diamond fallback for unbound cells. Commit
+     `4c141bc`.
+  5. ✅ **App + shot.** `?terrain` flag (`real-terrain.ts` loads the table + `text_*.png` pages over new
+     `/ir.json` + `/textures` vite routes), wired through `main.ts` + `shot.ts` + `npm run shot --terrain`.
+     Human pixel-check **done** (a `wilczy_lad_sub` shot shows real grass + rock). The only 1:1 oracle is the
+     running original game (a later human-driven calibration). Commit `4c141bc`.
+  - **Open (deferred):** step 3 per-cell variety; water-surface cells (map-decode-blocked); caching the
+    terrain mesh across frames (it rebuilds per frame like the rest of the scene — fine for the shot + the
+    real maps, a live-perf optimization for the 640k-cell maps).
+
+### Render breadth ladder — rung 1 (Buildings per-type frame selection) full trail
+1. [x] **Buildings per-type frame selection** (render-only) — **LANDED (single-atlas family; human pixel
+   sign-off ✓).** A building draw item now carries its `Building.buildingType`, and a
+   `BuildingTypeBinding` (`byType: typeId→bob, default`) draws each viking type its OWN house bob — the
+   `[GfxHouse]` `LogicType`→`GfxBobId` join (`real-sprites.ts` `VIKING_HOUSE01_BOBS`: home 41 / well 131 /
+   hive 91 / farm 60 / bakery 105, transcribed from `houses.ini`), no longer the one bob 11 reused for all
+   55 types. New `building-types` acceptance scene shows the five side by side; unit-tested + the table
+   pinned. **Supersedes** the "Remaining" note on the Phase-2 *Building bob bound* item.
+   - [x] **Extract the `(typeId→bob)` join into the IR** — `extractBuildingBobs` (`decoders/ini.ts`) reads
+     each `[GfxHouse]`'s paired `LogicType <lvl> <typeId>` ⊗ `GfxBobId <lvl> <bobId>` level-tables (the same
+     level pairing `extractConstructionCosts` uses) → the validated `BuildingBob` IR (`ContentSet.buildingBobs`,
+     one row per `(tribeId, typeId, level, bmd, palette, bobId)`), emitted by `npm run pipeline`. The five
+     lumped `[GfxHouse]` brackets (the saracen/egypt blocks pack 4–24 houses under one header) are split
+     per-`EditName`, and the join is **multi-valued** by level/variant (wonders, wall orientations, HQ-vs-house) —
+     the consumer disambiguates by `level`/`editName`. Hands-on over the real `houses.ini`: **336 rows / 234
+     distinct (tribe, typeId) / 6 tribes / 17 palette skins**, reproducing the 5 transcribed `house01` mappings
+     *exactly* (home `6`→41, well `10`→131, hive `11`→91, farm `12`→60, bakery `15`→105) **and** recovering the
+     home growth chain (t2→bob1 … t6→bob41) the constant dropped. Faithful, data-pinned (docs/FIDELITY.md).
+     Unit-tested; the sim ignores it (render-binding data, golden hash untouched). (`extractConstructionCosts`/
+     `extractBuildingGraphics` share the same pre-existing lumping bug — a flagged follow-up.)
+   - [x] **Render consumes the join (data-pinned end-to-end)** — `BuildingTypeBinding.byType` is now derived
+     from the extracted `buildingBobs` table (`real-sprites.ts` `buildingBobsByType`: filtered to the loaded
+     `(bmd, palette)` = `ls_houses_viking.bmd`/`house01`, highest-`level` row per typeId), **overlaid** onto
+     the transcribed `VIKING_HOUSE01_BOBS` and fed through `buildHumanBindings` like `bodySequencesByName`
+     feeds the walk/chop ranges — real data wins per type, the constant backs its five known types when the
+     IR is partial/absent (graceful type-by-type degradation). Hands-on
+     over the real regenerated `ir.json`: the data path reproduces the signed-off constant for typeIds
+     6/10/11/12/15 **exactly** (so `?scene=building-types&atlas=real` renders identically) and additionally
+     recovers the home (t2..t6 = typeIds 2..6 → 1/11/21/31/41) + bakery (14→101) growth-stage bobs the constant
+     dropped. Unit-tested (`buildingBobsByType` reduction + the empty-map fallback); commit pins it.
+   - **Remaining — multi-`.bmd`/palette per type (DESIGNED + decomposed; data scoped, see SOURCES.md
+     "Building graphics families").** Investigation settled the shape: the render's `building` kind binds ONE
+     atlas layer (`ls_houses_viking.house01`), but viking buildings span **6+ `.bmd`s** (`ls_houses_viking`,
+     `viking2/3/4`, `frank_well_hive`, `frank_mill`, `f_*`) × **multiple palettes each** (every `(bmd,palette)`
+     is its own decoded PNG), and **`(tribe,typeId)` is NOT unique** (viking typeId 10 = well in `house01`,
+     other bobs in `house02`/`dungeon01`), so the join needs an `editName`-keyed disambiguation, not just
+     highest-level. The real viking **HQ (typeId 1) is `ls_houses_viking4.bmd` bob 34** ("viking headquarters"),
+     a different atlas than the one loaded. Ordered sub-steps (each its own `/iterate`):
+     1. [x] **Render — layer-aware building binding** (render-only, no visual change) — **LANDED.**
+        `BuildingTypeBinding.byType`/`default` are now `BuildingBobRef` (`number | {layer, bob}`); a pure
+        `resolveBuildingDraw(binding,item) → {bob, layer?}` (`sprites.ts`) unwraps them (a plain id → no
+        layer = the default building layer; a `{layer, bob}` carries its family name). `SpriteSheet` gained
+        `families` (name→`SpriteLayer`) + `familyScales`, and `atlasLayers` (`pixi-renderer.ts`) blits a
+        layer-qualified building from its named family's own source/atlas/scale — falling through to the
+        single `kindLayers.building` path for a plain ref or an unloaded family, so a sheet without
+        `families` is byte-identical (the app still emits plain-number bindings; the synthetic-atlas shot is
+        unchanged). Unit-tested (7 `resolveBuildingDraw` cases). No app/scene change yet.
+     2. [x] **App — canonical (family,bob) reducer + load viking atlases + draw the real HQ.** The
+        data-driven reducer + the FIRST viking family **LANDED (human pixel sign-off ✓).**
+        `real-sprites.ts` `buildingBobRefsByType` picks the canonical `(bmd,palette,bob)` per (viking,
+        typeId) across ALL viking families — palette-preference → `editName` disambiguation (HQ →
+        `ls_houses_viking4.bmd` bob 34 "viking headquarters", not bob 44 "…house") → max-level → lowest-bob
+        — emitting a **bare id** for the default `ls_houses_viking.house01` layer or a **layer-qualified
+        `{layer,bob}`** for a LOADED named family; a row whose family is NOT loaded is **dropped** (it falls
+        back to the default house, never a wrong bob borrowed from the default layer). `loadHumanSpriteSheet`
+        loads the `ls_houses_viking4.house01` family into `SpriteSheet.families`, lighting up the **HQ** +
+        animal farm / druid hut / barracks / tower (bobs 34/30/5/10/25/15/20, verified over the real
+        `ir.json`); the `building-types` scene gains the HQ — laid out in two screen rows (large back row,
+        small front row) so the big iso sprites don't overlap. Unit-tested; the default house01 types are
+        unchanged. Human confirmed the six distinct buildings (incl. the HQ as an imposing structure) on
+        screen.
+
+### Cross-cutting DX — Web Worker / time-travel inspector / content hot-reload (full trails)
+- [ ] **Run the sim in a Web Worker.** It's pure/headless/deterministic, so moving `step()` off the
+      main thread keeps render at 60fps under heavy ticks. Design the Phase-2 snapshot as a plain
+      **transferable** structure (no class instances / live `Map`s) so this is free later, not a retrofit.
+      **Transferability now PINNED** (`test/snapshot-transferable.test.ts`): the load-bearing
+      precondition — that a real `step()`-driven `WorldSnapshot` survives the `postMessage` boundary —
+      is proven against the actual structured-clone algorithm, not just asserted in the docstring. A
+      live run's snapshot `structuredClone()`s without throwing (a function / class instance / live
+      `Map` would raise `DataCloneError`), round-trips deep-equal AND byte-identical via `JSON.stringify`
+      (lossless transfer), deep-copies without aliasing the sim's live state (a worker owns its copy),
+      and a building's `Stockpile` `Map` is confirmed lowered by `takeSnapshot` to a clone-safe sorted
+      `[k,v]` array. **Open:** the app-side Worker wiring itself (host ↔ worker `postMessage` protocol,
+      render reading the transferred snapshot) — an `app`/`render` concern, not headless-verifiable.
+- [ ] **Time-travel / replay inspector.** With `rng.getState/setState`, the command log, and
+      `hashState`, a dev overlay can scrub ticks, diff state between two ticks, and dump an entity.
+      "Hash diverged at tick 432" → jump there → inspect. Biggest debuggability multiplier for agents.
+      **Headless core landed** (`packages/sim/src/replay.ts`): a pure `replay({content,seed,map?,log,untilTick?})`
+      reconstructs the exact state at any tick by re-applying the command log into a fresh sim — the
+      "jump to tick N" primitive (scrub backward past later commands = the live state AT tick N;
+      run past the last command = the deterministic tail). Its oracle is `hashState()` byte-equality
+      with the original run at every tick (`test/replay.test.ts`; hands-on: a 1000-tick command-driven
+      run replayed bit-for-bit at 4 scrub points, and state created OUTSIDE the command seam correctly
+      does NOT reconstruct — replay rebuilds command-driven state only). Single-world constraint: the
+      replayed sim supersedes the original (component stores are shared singletons — docs/LESSONS.md
+      [56e8d3e]). The **per-tick hash/snapshot ring buffer** that feeds it is also landed
+      (`packages/sim/src/hashtrace.ts`): a pure, bounded `HashTrace` records `{tick, hash, snapshot?}`
+      during a live run (a large cheap hash window + a smaller recent-snapshot window, oldest dropped
+      when full) and `divergedFrom(other)` localizes the FIRST tick two runs' hashes split — "hash
+      diverged at tick N" computed WITHOUT re-replaying (hands-on: a 200-tick live run recorded, a
+      2000-tick run capped at 500 held exactly the most-recent 500, a different-seed run localized to
+      tick 1). It is a passive recorder the caller drives (it deliberately does NOT hook `step()`), so
+      the inspector is opt-in and can't perturb the golden hashes. The **"diff state between two ticks"**
+      half is also landed (`packages/sim/src/snapshot-diff.ts`): a pure `diffSnapshots(a,b)` merge-joins
+      two plain `WorldSnapshot`s into a per-entity / per-component delta (entities added/removed, and for
+      survivors the components added/removed/changed with before/after), canonical-JSON equality mirroring
+      `hashState()` so "diverged" agrees with the hash, output ascending-id / sorted-name without a
+      re-sort (hands-on: a real `step()`-run diffed tick 2→8 surfaced the spawned woodcutter as the lone
+      `added` entity with its `Position`+`Settler` components, byte-identically re-diffable). The
+      **"dump an entity"** half is also landed (`packages/sim/src/entity-dump.ts`): a pure
+      `dumpEntity(snapshot,id)` binary-searches the canonical entity list for ONE entity's full component
+      view at a tick (null when absent), and `traceEntity(snapshots,id)` follows that entity across a tick
+      window — per step its alive flag, components, the spawn/despawn life-edge, and (on a survivor
+      transition) its per-component `changes`, reusing the same canonical-JSON comparison as
+      `diffSnapshots` so an entity's per-tick delta equals its slice of the full two-tick diff (hands-on: a
+      real 8-tick run dumped the spawned woodcutter's `Position`+`Settler` block and traced it absent→
+      SPAWNED@3→`Settler:changed` per tick, byte-identically re-traceable). The **end-to-end composition**
+      is also landed (`packages/sim/src/localize-divergence.ts`): a `localizeDivergence(runA,traceA,runB,
+      traceB)` wires the four primitives into the inspector's documented workflow — `HashTrace.divergedFrom`
+      finds the first split tick WITHOUT re-replaying, then `replay()`s BOTH runs to that tick (serially,
+      respecting the single-world shared-store constraint — A snapshot, clear, B snapshot) and
+      `diffSnapshots()` the two states, returning `{tick,hashA,hashB,diff}` (or `null` when the traces'
+      overlap agrees). Self-verifiable headlessly (hands-on: two runs differing by one tick-7
+      `spawnSettler` localized to tick 7 with the carpenter as the lone `added` entity, byte-equal to a
+      hand-replayed `diffSnapshots`; identical runs → `null`). The **single-run "free scrubbing"**
+      composition is also landed (`packages/sim/src/scrub-window.ts`): a `scrubWindow(run,fromTick,toTick)`
+      reconstructs a CONTIGUOUS window of plain `WorldSnapshot`s from one command log in a single forward
+      pass (replay once, enqueue each logged command on its recorded tick, snapshot the in-window ticks —
+      byte-identical to N separate `replay()`s but O(toTick), not O(window×toTick)), ready to feed
+      `traceEntity()` (the whole window) and `diffSnapshots()` (adjacent pairs); it clamps `fromTick` to 1
+      (tick 0 is the un-snapshotted initial state), yields `[]` on an empty window, throws on a negative
+      target, and steps the deterministic tail past the last command. Self-verifiable headlessly (hands-on:
+      a 30-tick run scrubbed `[4..8]`, the carpenter traced absent→SPAWNED@6, the 5→6 step diffed to the
+      lone added settler, and both an in-window tick and a tail tick byte-equalled an independent `replay()`).
+      **Open:** the dev OVERLAY that wires scrub/diff/dump into UI (a `render` concern, human-eyed) — it
+      calls `localizeDivergence()` for the "diverged at N → inspect" path and `scrubWindow()`+`traceEntity()`
+      for free scrubbing.
+- [ ] **Content hot-reload.** Content is validated JSON injected into the sim; wire Vite HMR to
+      re-parse and rebase the sim on file change → instant balance-tweak feedback, no rebuild.
+      **Headless core landed** (`packages/sim/src/rebase-content.ts`): a pure `rebaseContent(rawContent,
+      {seed,map?,log,untilTick?})` validates a freshly-read RAW content blob through the data package's
+      `parseContentSet` (zod schema + cross-reference pass) and, if valid, REBASES the run onto it by
+      replaying the command log into a fresh `Simulation` built with the NEW `ContentSet` — so the
+      rebuilt run carries the same player history forward under the new rules. Bad content is an
+      EXPECTED boundary failure (a half-saved file), so it returns a typed `{kind:'error',message}`
+      WITHOUT touching the shared stores — the live sim is undisturbed (CLAUDE.md "throw for bugs,
+      return for expected failures"). It rebuilds rather than swapping `content` in place because a
+      mid-run state is the product of every past tick's content, so only a full replay yields a state a
+      clean run could also reach (determinism). Two oracles, both self-verifiable headlessly (hands-on:
+      a real 60-tick `step()` run rebased onto IDENTICAL content reproduced its hash bit-for-bit;
+      rebased onto an HQ-starting-wood edit `10→42` reached a DIFFERENT hash at the same tick and
+      carried the new datum; rebased BACK to the original restored the original hash exactly — the
+      reload is reversible; a malformed `typeId` returned `error` and built nothing). **Open:** the
+      Vite-HMR glue that watches the content file and calls this on change (a `render`/`app` concern,
+      not headless-verifiable) — and a FUTURE-ticks-only reload policy (apply new content without a
+      replay), an app-layer choice on top of this primitive.
