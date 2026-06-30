@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { buildHumanBindings, buildingBobRefsByType, directionalAnimFromSeq } from '../src/real-sprites.js';
+import {
+  BUILDING_FAMILIES,
+  DEFAULT_BUILDING_FAMILY,
+  buildHumanBindings,
+  buildingBobRefsByType,
+  directionalAnimFromSeq,
+} from '../src/real-sprites.js';
 
 /**
  * The seq→frame-range math behind `?atlas=real` — the self-verifiable half of consuming the decoded
@@ -327,5 +333,76 @@ describe('buildingBobRefsByType', () => {
   it('returns {} when nothing matches the tribe (caller then uses the constant fallback)', () => {
     expect(buildingBobRefsByType(rows, 99, DEFAULT_FAMILY, FAMILIES)).toEqual({});
     expect(buildingBobRefsByType([], 1, DEFAULT_FAMILY, FAMILIES)).toEqual({});
+  });
+
+  // The PRODUCTION families list (the five viking families loaded in loadHumanSpriteSheet). Drives the
+  // reducer with the real BUILDING_FAMILIES so the rung's claim — "every viking building draws its own
+  // bob" — is pinned without a browser: each new family's representative type routes to its OWN atlas
+  // layer, the not-yet-decoded house02 type is dropped (constant backs it), and the default stays a bare id.
+  describe('with the production BUILDING_FAMILIES (all five viking families loaded)', () => {
+    // One representative row per family + a house02-only type, transcribed from content/ir.json's
+    // buildingBobs (LogicTribeType 1). The (bmd, palette) PAIR is what each family entry matches on:
+    // the miller shares ls_houses_viking.bmd with the default but recolours it `housemiller01`.
+    const real = [
+      { tribeId: 1, typeId: 6, level: 4, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house01', bobId: 41 }, // home → default
+      {
+        tribeId: 1,
+        typeId: 13,
+        level: 0,
+        bmd: 'x/ls_houses_viking.bmd',
+        paletteName: 'housemiller01',
+        bobId: 70,
+      }, // mill
+      {
+        tribeId: 1,
+        typeId: 31,
+        level: 0,
+        bmd: 'x/ls_houses_viking2.bmd',
+        paletteName: 'house01',
+        bobId: 150,
+      }, // smithy
+      { tribeId: 1, typeId: 27, level: 0, bmd: 'x/ls_houses_viking3.bmd', paletteName: 'house01', bobId: 50 }, // armory
+      {
+        tribeId: 1,
+        typeId: 1,
+        level: 0,
+        bmd: 'x/ls_houses_viking4.bmd',
+        paletteName: 'house01',
+        bobId: 34,
+        editName: 'viking headquarters',
+      }, // HQ
+      {
+        tribeId: 1,
+        typeId: 37,
+        level: 0,
+        bmd: 'x/ls_houses_viking4.bmd',
+        paletteName: 'housedruid01',
+        bobId: 39,
+      }, // temple
+      { tribeId: 1, typeId: 7, level: 0, bmd: 'x/ls_houses_viking.bmd', paletteName: 'house02', bobId: 53 }, // stock — house02 only, unloaded
+    ];
+
+    it('routes each viking type to its own loaded family layer (the rung is render-only, data already there)', () => {
+      expect(buildingBobRefsByType(real, 1, DEFAULT_BUILDING_FAMILY, BUILDING_FAMILIES)).toEqual({
+        6: 41, // default building layer — a bare id
+        13: { layer: 'ls_houses_viking.housemiller01', bob: 70 },
+        31: { layer: 'ls_houses_viking2.house01', bob: 150 },
+        27: { layer: 'ls_houses_viking3.house01', bob: 50 },
+        1: { layer: 'ls_houses_viking4.house01', bob: 34 },
+        37: { layer: 'ls_houses_viking4.housedruid01', bob: 39 },
+        // typeId 7 (stock) is house02 only — that skin is a later rung, so it is DROPPED (HOUSE_BOB backs it).
+      });
+    });
+
+    it('keeps the loaded set and the emittable set in lockstep (every family layer is fetchable)', () => {
+      // Each family's `layer` is the served atlas stem loadHumanSpriteSheet fetches; a ref the reducer
+      // emits must name one of these, else it would fall through to the default layer and draw a WRONG bob.
+      const loadedLayers = new Set(BUILDING_FAMILIES.map((f) => f.layer));
+      for (const ref of Object.values(
+        buildingBobRefsByType(real, 1, DEFAULT_BUILDING_FAMILY, BUILDING_FAMILIES),
+      )) {
+        if (typeof ref !== 'number') expect(loadedLayers.has(ref.layer)).toBe(true);
+      }
+    });
   });
 });

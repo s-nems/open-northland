@@ -2,6 +2,7 @@ import { angledPathScene } from './angled-path.js';
 import { buildingTypesScene } from './building-types.js';
 import { gatherResourceScene } from './gather-resource.js';
 import type { SceneDefinition } from './types.js';
+import { vikingFamiliesScene } from './viking-families.js';
 
 export type { SceneDefinition, SceneCheck } from './types.js';
 export { createSceneSim, resetComponentStores } from './runtime.js';
@@ -11,7 +12,12 @@ export { createSceneSim, resetComponentStores } from './runtime.js';
  * mechanic test (`packages/app/test/scenes.test.ts`) and (b) reachable in the browser at
  * `?scene=<id>`. See `docs/SCENES.md` for the workflow.
  */
-export const SCENES: readonly SceneDefinition[] = [gatherResourceScene, angledPathScene, buildingTypesScene];
+export const SCENES: readonly SceneDefinition[] = [
+  gatherResourceScene,
+  angledPathScene,
+  buildingTypesScene,
+  vikingFamiliesScene,
+];
 
 /** Look up a scene by its `?scene=<id>` value, or `undefined` if no scene has that id. */
 export function getScene(id: string): SceneDefinition | undefined {
