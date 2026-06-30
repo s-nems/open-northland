@@ -875,3 +875,10 @@ the next iteration inherits it.
   `loadLayer` and gates which rows `buildingBobRefsByType` may layer-qualify) so the loaded set and the
   emitted set can't drift; a row in an unloaded family is dropped (→ the constant/default backs it).
   (render/data-binding)
+- [4b74aeb] Canvas pointer math must convert client (CSS-px) coords into the **backing-store** space the
+  renderer works in: `#game` is CSS-stretched to the viewport while the Pixi backing store is fixed
+  960×540, so feeding raw `clientX`/drag-deltas to a camera that lives in backing px makes drag pan
+  faster than the cursor and breaks the anchored-zoom invariant (the world point under the cursor drifts).
+  Scale by `canvas.width/rect.width` (subtract `rect.left` first for absolute cursor coords). The reducer
+  unit test passed because it fed coords already in camera space — the DOM→camera conversion was the
+  untested gap, surfaced only by zooming in the live page. (app/render)
