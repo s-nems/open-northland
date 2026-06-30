@@ -36,8 +36,9 @@ import {
  * whose canonical bob lives in a *different* `.bmd`/palette than the default `ls_houses_viking.house01`
  * layer (the HQ in `ls_houses_viking4.bmd`, the mill in the `housemiller01` skin, the smithy in
  * `ls_houses_viking2.bmd`, …) binds a layer-qualified {@link BuildingBobRef} into its own loaded
- * {@link SpriteSheet.families} atlas — all five viking families load, so every viking building draws its
- * own bob (the not-yet-loaded `house02` skin types are the only ones still on the representative house).
+ * {@link SpriteSheet.families} atlas — all seven viking families load (the five `house01`/skin families
+ * plus the two `house02` families for stock / brewery / coin mint), so EVERY viking building draws its
+ * own bob — none falls back to the representative house.
  */
 
 /** The decoded human body + head atlases (`test_human_00` palette) served at `/bobs/<name>.*`. */
@@ -75,9 +76,10 @@ const HOUSE_PALETTE = 'house01';
  * the settler's height — far larger than the original showed a house next to a person — so the building
  * is drawn at {@link BUILDING_SCALE} about its feet anchor (the settler + tree stay native, their
  * proportion already reads right). At 0.7 the cottage lands ~3× the settler, the by-eye pick from a 1:1
- * pawn-vs-tree-vs-building montage. Both the bob and the scale are taste constants (the warehouse "viking
- * stock" needs the not-yet-loaded house02 palette) — swap them to a bigger stage / different factor
- * (docs/FIDELITY.md "Building bob"). The HQ store now draws as this house instead of the placeholder box.
+ * pawn-vs-tree-vs-building montage. Both the bob and the scale are taste constants — swap them to a
+ * bigger stage / different factor (docs/FIDELITY.md "Building bob"). This {@link HOUSE_BOB} is now only
+ * the {@link BuildingTypeBinding.default} fallback for a type with no `buildingBobs` row at all; every
+ * real viking type binds its own bob through {@link BUILDING_FAMILIES}.
  */
 const HOUSE_ATLAS = `ls_houses_viking.${HOUSE_PALETTE}`;
 const HOUSE_BOB = 11;
@@ -129,6 +131,13 @@ const VIKING2_HOUSE01 = 'ls_houses_viking2.house01';
 const VIKING3_HOUSE01 = 'ls_houses_viking3.house01';
 const VIKING_MILLER01 = 'ls_houses_viking.housemiller01';
 const VIKING4_DRUID01 = 'ls_houses_viking4.housedruid01';
+// The `house02` skin — the LAST viking building types still on the fallback house live here: stock
+// (typeIds 7/8/9) recolours `ls_houses_viking.bmd`, and brewery (16) + coin mint (33) recolour
+// `ls_houses_viking2.bmd`. Loading these two pairs binds every remaining viking [GfxHouse] type to its
+// own bob (the reducer prefers `house01`, so a type with a house01 row is unaffected — only the
+// house01-less stock/brewery/coin mint resolve here).
+const VIKING_HOUSE02 = 'ls_houses_viking.house02';
+const VIKING2_HOUSE02 = 'ls_houses_viking2.house02';
 
 /**
  * The named building-family atlases loaded BESIDE the default one — each a separate decoded
@@ -138,15 +147,17 @@ const VIKING4_DRUID01 = 'ls_houses_viking4.housedruid01';
  * list (it falls back to {@link VIKING_HOUSE01_BOBS}/the default house), so a family must be both listed
  * here AND loaded in {@link loadHumanSpriteSheet} for its types to draw their real bob.
  *
- * This loads **all five viking families** so every viking building draws its own bob: the default
+ * This loads **all seven viking families** so EVERY viking building draws its own bob: the default
  * `ls_houses_viking.house01` (the homes / well / hive / farm / bakery, bound as the `building` kind),
  * `ls_houses_viking4.house01` (HQ / animal farm / druid hut / barracks / tower), `ls_houses_viking2.house01`
  * (pottery / joinery / smithy), `ls_houses_viking3.house01` (sewery / armory / mason hut / school), the
- * `housemiller01` skin of `ls_houses_viking.bmd` (the mill, typeId 13) and the `housedruid01` skin of
- * `ls_houses_viking4.bmd` (herb hut / temple, typeIds 34/37). The few viking types on the not-yet-decoded
- * `house02` skin (stock / brewery / coin mint) still fall back to the representative house — that skin is a
- * later rung. `bmdBasename` may repeat across entries (miller vs the default both live in
- * `ls_houses_viking.bmd`); the `(bmdBasename, paletteName)` PAIR is what disambiguates the family.
+ * `housemiller01` skin of `ls_houses_viking.bmd` (the mill, typeId 13), the `housedruid01` skin of
+ * `ls_houses_viking4.bmd` (herb hut / temple, typeIds 34/37), and the two `house02` families that close the
+ * set — `ls_houses_viking.house02` (the stock, typeIds 7/8/9) and `ls_houses_viking2.house02` (brewery 16 +
+ * coin mint 33), the LAST viking types that used to fall back. `bmdBasename` may repeat across entries
+ * (miller / house02 / the default all live in `ls_houses_viking.bmd`); the `(bmdBasename, paletteName)`
+ * PAIR is what disambiguates the family. The reducer prefers `house01`, so a type with a house01 row is
+ * unaffected by the house02 families — only the house01-less stock / brewery / coin mint resolve there.
  */
 export const BUILDING_FAMILIES: readonly BuildingFamily[] = [
   { bmdBasename: 'ls_houses_viking4.bmd', paletteName: HOUSE_PALETTE, layer: VIKING4_HOUSE01 },
@@ -154,6 +165,8 @@ export const BUILDING_FAMILIES: readonly BuildingFamily[] = [
   { bmdBasename: 'ls_houses_viking3.bmd', paletteName: HOUSE_PALETTE, layer: VIKING3_HOUSE01 },
   { bmdBasename: HOUSE_BMD, paletteName: 'housemiller01', layer: VIKING_MILLER01 },
   { bmdBasename: 'ls_houses_viking4.bmd', paletteName: 'housedruid01', layer: VIKING4_DRUID01 },
+  { bmdBasename: HOUSE_BMD, paletteName: 'house02', layer: VIKING_HOUSE02 },
+  { bmdBasename: 'ls_houses_viking2.bmd', paletteName: 'house02', layer: VIKING2_HOUSE02 },
 ];
 
 /**
@@ -467,8 +480,9 @@ export async function loadHumanSpriteSheet(): Promise<SpriteSheet> {
   // BUILDING_FAMILIES is the SINGLE SOURCE OF TRUTH for the named building families: each entry's atlas is
   // loaded here AND only its `layer` key is eligible for a layer-qualified ref from buildingBobRefsByType,
   // so the loaded set and the reducer's emitted set cannot drift (a ref to an unloaded family would fall
-  // through to the default layer and draw a WRONG bob). All five viking families load now (viking2/3/4 +
-  // the miller/druid palette skins), so every viking building draws its own bob — see BUILDING_FAMILIES.
+  // through to the default layer and draw a WRONG bob). All seven viking families load now (viking2/3/4 +
+  // the miller/druid skins + the two house02 families), so EVERY viking building draws its own bob — see
+  // BUILDING_FAMILIES.
   const families = Object.fromEntries(familyEntries);
   const houseBobs = buildingBobRefsByType(
     ir?.buildingBobs ?? [],
