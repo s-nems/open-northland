@@ -65,6 +65,24 @@ For small, hard-won *gotchas* (not reworks) see [LESSONS.md](LESSONS.md); the li
 
 ## Reflection log
 
+- **2026-06-30** (ROADMAP doc-bloat pass) — The one-day **building-bob render run** (~16 commits,
+  `f2feda2`..`c920242`) re-bloated `ROADMAP.md` **191→424 lines** — it crossed the 300 budget *during*
+  the feature run (the ratchet), each landed `[x]` item accreting its full inline "Hands-on:" trail. The
+  worst offenders: the **Cross-cutting DX** section (3 completed headless cores = ~85 lines, the
+  time-travel inspector alone a single 52-line paragraph), the **render-ladder rung 1** (~66 lines of
+  done sub-items wrapping two live `[ ]` next-steps), and the **Phase-2 bob/terrain** trails (~70 lines).
+  **Swept** every completed-item trail verbatim into `ROADMAP-ARCHIVE.md` (new dated section, +225 lines),
+  collapsing each live entry to a one-line summary + `→ [archive]` pointer **while preserving the
+  unchecked target detail** (rung 1's "Load the rest of the viking families" + "other tribes", rungs 2–6,
+  the Phase-4 current target untouched). **`ROADMAP.md` 424→260 lines** (−39%, under budget). Docs-only —
+  **golden state-hash + atomic-trace unchanged; 999 tests + check + build green.** No proposals
+  added/closed. **Cadence note:** this is the *fourth* ROADMAP doc-bloat sweep (1230→113, …, 285→191,
+  now 424→260) — fast feature runs re-bloat the live doc within days because each `[x]` is recorded with
+  its full hands-on trail inline; the sweep is cheap and working as designed, but the re-bloat rate is
+  worth watching. Next `/iterate` roadmap step (render-ladder rung 1 remainder): **load the rest of the
+  viking building families** (`ls_houses_viking2/3`, `housemiller01`, `housedruid01`) so every viking
+  building draws its own bob — render-only, the reducer already resolves them; ends in a human pixel
+  sign-off.
 - **2026-06-28** (ROADMAP doc-bloat pass) — The **read-view-surfacing vein** (~`df9847b`..`24bec38`)
   had appended a clause per landed read-view feat onto the live Phase-4 bullets until the worst —
   **"Import full base"** — was a single **79-line** run-on (the whole bullet), with Sea/Northland (27),
