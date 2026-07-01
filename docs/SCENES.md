@@ -43,9 +43,11 @@ Defined in `packages/app/src/scenes/<id>.ts` (the type is `scenes/types.ts`):
 ## Add a scene (the loop)
 
 1. **Write** `packages/app/src/scenes/<id>.ts` exporting a `SceneDefinition`. Model it on
-   `all-buildings.ts`. Keep `content` minimal — just the goods/jobs/buildings the mechanic needs. Note the
-   terrain-size caveat there: `buildScene`/`renderScene` emit a sprite per tile every frame with no
-   culling/pooling, so keep the grid small (a big grass field crashes the tab).
+   `all-buildings.ts`. Keep `content` minimal — just the goods/jobs/buildings the mechanic needs. Terrain
+   size is no longer a constraint: the retained `WorldRenderer` meshes terrain once and pools + culls
+   sprites, so a big grass field is cheap (the `stress-crowd` scene is a 256×256 map with thousands of
+   bobs). The browser view shows a live FPS / entity / drawn / pooled readout (bottom-left) so you can
+   judge render performance and see culling bite (`drawn` ≪ `entities` when zoomed in).
 2. **Register** it in `packages/app/src/scenes/index.ts` (`SCENES`). This automatically adds both its
    headless test case and its `?scene=` link — no other wiring.
 3. **Prove the mechanic:** `npm test -- scenes`. The check labels point at exactly what failed. This is

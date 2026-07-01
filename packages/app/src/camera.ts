@@ -55,8 +55,16 @@ function centroid(
 
 // ─── Interactive camera ──────────────────────────────────────────────────────────────────────────
 
-/** Zoom bounds the scroll-wheel clamps to, so the world can't shrink to nothing or balloon unusably. */
-export const MIN_ZOOM = 0.25;
+/**
+ * Zoom bounds the scroll-wheel clamps to, so the world can't shrink to nothing or balloon unusably. The
+ * lower bound is a deliberate FLOOR on how far out you can go: an RTS renders only what's on screen, so
+ * the min zoom is what bounds the visible tile + bob count (and thus the frame cost) — not a whole-map
+ * fit. `0.15` (~6× out) frames a big slab of a large map — a battle, a settlement cluster — which is the
+ * stated need; seeing an entire 256×256 map at once (`scale ≈ 0.06`, tens of thousands of bobs) is not a
+ * requirement and is where cost balloons, so it's intentionally off the table. Raise it if a scene still
+ * churns when fully out; lower it only alongside a zoom-out LOD (marker sprites + animation freeze).
+ */
+export const MIN_ZOOM = 0.15;
 export const MAX_ZOOM = 8;
 /** Screen pixels the camera scrolls per second while an arrow key is held. */
 const ARROW_PAN_SPEED = 600;
@@ -88,7 +96,7 @@ export function zoomCameraAt(cam: Camera, factor: number, cursorX: number, curso
 
 /** An installed interactive camera: read the current transform, advance held-key pan, tear down. */
 export interface CameraController {
-  /** The current {@link Camera} to hand {@link import('@vinland/render').renderScene}. */
+  /** The current {@link Camera} to hand the renderer's `update`. */
   camera(): Camera;
   /** Apply held-arrow-key panning for a wall-clock delta in ms — call once per frame. */
   update(dtMs: number): void;

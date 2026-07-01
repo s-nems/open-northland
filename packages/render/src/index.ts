@@ -5,6 +5,8 @@ export const ONE: number = SIM_ONE;
 
 export {
   buildScene,
+  buildSpriteScene,
+  drawableEntityRefs,
   terrainMapToScene,
   type DrawItem,
   type DrawKind,
@@ -34,15 +36,25 @@ export {
 export {
   createPixiApp,
   loadAtlasSource,
-  renderScene,
-  renderHud,
-  DEFAULT_HUD_STYLE,
   type Camera,
   type SpriteSheet,
   type SpriteLayer,
   type TerrainTextureSet,
-  type HudStyle,
 } from './pixi-renderer.js';
+export {
+  WorldRenderer,
+  reconcileSprites,
+  DEFAULT_HUD_STYLE,
+  type HudStyle,
+  type HudFrame,
+} from './world-renderer.js';
+export {
+  cameraViewport,
+  isVisible,
+  visibleTileRange,
+  type Viewport,
+  type TileRange,
+} from './viewport.js';
 export {
   DIAMOND_INDICES,
   diamondCorners,

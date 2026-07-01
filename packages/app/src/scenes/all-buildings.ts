@@ -20,22 +20,22 @@ import type { SceneDefinition } from './types.js';
  * human's to judge.
  */
 
-// Layout note — the terrain is kept SMALL on purpose. `buildScene` emits a draw item per tile with no
-// culling and `renderScene` rebuilds every sprite each frame with no pooling, so tile count = sprites
-// churned per frame. The old scenes used 15×15..19×19 (~225..361 tiles); a big field (52×52 ≈ 2704) churns
-// thousands of sprites per frame and crashes the tab. This grid stays in the proven-safe range.
+// Layout note — the buildings sit on a comfortably LARGE grass field now. The retained renderer
+// (WorldRenderer: terrain meshed once, sprites pooled + culled) makes tile count cheap, so the old
+// "keep the grid tiny or the tab crashes" caveat is gone — a big field just proves the fix (see the
+// stress-crowd scene for the extreme). Buildings are spread wide enough to read each one when zoomed in.
 /** Buildings per row of the placement grid (41 / 7 → 6 rows, the last part-filled). */
 const COLUMNS = 7;
-/** World tiles between adjacent columns — ~96 px apart on screen (iso `(x−y)·32`); wide enough to read. */
-const COLUMN_STEP = 3;
+/** World tiles between adjacent columns — wide apart on screen so each building reads on its own. */
+const COLUMN_STEP = 6;
 /** World tiles between adjacent rows — steps each row back so front rows overlap-and-occlude the taller back ones. */
-const ROW_STEP = 3;
-/** Grid origin (a small grass margin around the buildings). */
-const ORIGIN_X = 2;
-const ORIGIN_Y = 2;
-/** All-grass grid, sized to just contain the lattice (max tile ≈ (20, 17)) — ~440 tiles, safely small. */
-const GRID_W = 22;
-const GRID_H = 20;
+const ROW_STEP = 6;
+/** Grid origin (a grass margin around the buildings, so the field extends beyond them to pan over). */
+const ORIGIN_X = 8;
+const ORIGIN_Y = 8;
+/** A big all-grass field (96×96 = 9216 tiles, ~3.4× the old crash threshold) around the lattice. */
+const GRID_W = 96;
+const GRID_H = 96;
 /** Start zoomed out so all 41 frame at once; the human then pans/zooms (interactive camera) to inspect. */
 const INITIAL_ZOOM = 0.5;
 

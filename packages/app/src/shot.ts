@@ -1,11 +1,10 @@
 import {
+  WorldRenderer,
   buildHud,
-  buildScene,
+  buildSpriteScene,
   createPixiApp,
   layoutHud,
   placeHud,
-  renderHud,
-  renderScene,
 } from '@vinland/render';
 import { cameraFor, floatParam } from './camera.js';
 import { loadHumanSpriteSheet, syntheticSpriteSheet } from './real-sprites.js';
@@ -59,7 +58,7 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
 
   const sim = runSlice(seed, ticks, loaded ?? undefined);
   const snap = sim.snapshot();
-  const scene = buildScene(snap, sliceTerrain(loaded ?? undefined));
+  const terrainGrid = sliceTerrain(loaded ?? undefined);
 
   const app = await createPixiApp(canvas, CANVAS_W, CANVAS_H);
   // `?atlas=real` binds the REAL decoded human-body atlas (settlers draw actual decoded pixels — the
@@ -75,21 +74,29 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
         : undefined;
   // `?zoom=N` magnifies + re-centres on the sprites so a human can judge a decoded bob's pixels (a
   // ~30px settler is otherwise lost on the canvas); absent, the historical centre-ish pan at scale 1.
-  const camera = cameraFor(scene, floatParam(params, 'zoom', 1), CANVAS_W, CANVAS_H);
+  const camera = cameraFor(buildSpriteScene(snap), floatParam(params, 'zoom', 1), CANVAS_W, CANVAS_H);
   // `?terrain` draws the ground from REAL decoded `text_*.pcx` textures (the approximated typeId→pattern
   // map) for the human pixel-check; gitignored content over the /ir.json + /textures server (see
   // real-terrain.ts). Absent, terrain stays the reproducible flat-tint default the committed PNG depends on.
   const terrain = params.has('terrain') ? await loadRealTerrain() : undefined;
-  // Pass the sim's tick so the tick-driven sprite animation draws the frame for this exact step (the
-  // shot is a single deterministic frame at `ticks`, so the cycle phase is `tick % cycle`).
-  renderScene(app, scene, camera, sheet, snap.tick, terrain);
-  // Overlay the single-tribe (viking, tribe 1) HUD panel on top of the scene, so the human eyeballing
-  // the shot also sees the on-screen panel's typography (the un-self-verifiable half of the HUD).
-  // `?hud=0` suppresses it for a clean sprite-inspection frame (the panel otherwise occludes a sprite
-  // the zoom centres near the top-left corner).
-  if (params.get('hud') !== '0') {
-    renderHud(app, placeHud(layoutHud(buildHud(snap, 1)), 'top-left', { width: CANVAS_W, height: CANVAS_H }));
-  }
+
+  // The retained renderer draws the single deterministic frame: terrain meshed once, sprites pooled, one
+  // render pass. The default frame closely matches the old immediate-mode shot, but is NOT pixel-identical:
+  // the flat-tint ground drops the old per-cell grid outline (`buildFlatTerrain`), same as the textured path.
+  const renderer = new WorldRenderer(app, { sheet });
+  renderer.setTerrain(terrainGrid, terrain);
+  // Overlay the single-tribe (viking, tribe 1) HUD panel unless `?hud=0` (a clean sprite-inspection
+  // frame). Pass the sim's tick so the tick-driven animation draws the frame for this exact step.
+  const hud =
+    params.get('hud') !== '0'
+      ? {
+          placement: placeHud(layoutHud(buildHud(snap, 1)), 'top-left', {
+            width: CANVAS_W,
+            height: CANVAS_H,
+          }),
+        }
+      : undefined;
+  renderer.update(snap, camera, snap.tick, hud);
 
   window.__vinlandShotReady = true;
 }
