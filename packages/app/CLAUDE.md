@@ -20,8 +20,11 @@ reproducible default so the committed build + the `npm run shot` PNG never depen
 
 - `?shot[&seed&ticks&hud]` — headless deterministic screenshot entry (`shot.ts`).
 - `?scene=<id>` — run a registered **acceptance scene** with its checklist overlay (`scene-mode.ts`).
-- `?map=<id>` · `?atlas=real|<any>` · `?terrain` · `?zoom=N` · `?speed=N` — real decoded grid / sprite
-  atlas / ground textures / camera magnify / playback rate. These compose with `?scene=`.
+- `?map=<id>` · `?atlas` · `?terrain` · `?zoom=N` · `?speed=N` — real decoded grid / sprite atlas / ground
+  textures / camera magnify / playback rate. These compose with `?scene=`. Real graphics are the **default**
+  for live + scene (`resolveSpriteSheet` degrades to synthetic markers when `content/` is absent, so a bare
+  checkout still boots); `?atlas=synthetic` forces markers, `?atlas=none` placeholder geometry. `?shot` keeps
+  its own content-free default so the committed PNG never depends on gitignored bytes.
 
 ## Acceptance scenes — let a human sign off a mechanic
 

@@ -1,18 +1,14 @@
 import {
-  SYNTHETIC_BINDINGS,
-  type SpriteSheet,
   buildHud,
   buildScene,
   createPixiApp,
-  createSyntheticAtlasSource,
   layoutHud,
   placeHud,
   renderHud,
   renderScene,
-  syntheticAtlasFrames,
 } from '@vinland/render';
 import { cameraFor, floatParam } from './camera.js';
-import { loadHumanSpriteSheet } from './real-sprites.js';
+import { loadHumanSpriteSheet, syntheticSpriteSheet } from './real-sprites.js';
 import { loadRealTerrain } from './real-terrain.js';
 import { loadTerrainMap, runSlice, sliceTerrain } from './vertical-slice.js';
 
@@ -103,13 +99,4 @@ function wantsSyntheticAtlas(params: URLSearchParams): boolean {
   if (!params.has('atlas')) return false;
   const v = params.get('atlas');
   return v === '' || v === 'synthetic' || v === '1' || v === 'true';
-}
-
-/** Build the {@link SpriteSheet} for the free synthetic atlas (geometry + bindings + GPU texture). */
-function syntheticSpriteSheet(): SpriteSheet {
-  return {
-    source: createSyntheticAtlasSource(),
-    atlas: syntheticAtlasFrames(),
-    bindings: SYNTHETIC_BINDINGS,
-  };
 }

@@ -2,7 +2,14 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { VIKING, VIKING_BUILDINGS } from '../src/viking-buildings.js';
+import {
+  VIKING,
+  VIKING_BUILDINGS,
+  findVikingBuildings,
+  resolveVikingBuilding,
+  vikingBuildingById,
+  vikingBuildingByTypeId,
+} from '../src/viking-buildings.js';
 
 /**
  * The committed viking-building catalog is the single source of truth for name → typeId. This test pins it
@@ -27,7 +34,17 @@ interface Ir {
 }
 
 const IR_PATH = resolve(dirname(fileURLToPath(import.meta.url)), '../../../content/ir.json');
-const ir: Ir | null = existsSync(IR_PATH) ? (JSON.parse(readFileSync(IR_PATH, 'utf8')) as Ir) : null;
+
+/** Read + parse ir.json if present; an absent OR malformed file degrades to null (skip), never crashing the file. */
+function loadIr(): Ir | null {
+  if (!existsSync(IR_PATH)) return null;
+  try {
+    return JSON.parse(readFileSync(IR_PATH, 'utf8')) as Ir;
+  } catch {
+    return null;
+  }
+}
+const ir = loadIr();
 
 describe('viking building catalog', () => {
   it('has a unique typeId and id per entry', () => {
@@ -54,5 +71,28 @@ describe('viking building catalog', () => {
         true,
       );
     }
+  });
+});
+
+describe('viking building lookups', () => {
+  it('resolves a building by its exact id and typeId', () => {
+    expect(vikingBuildingById('stock_02')?.typeId).toBe(9);
+    expect(vikingBuildingByTypeId(9)?.id).toBe('stock_02');
+    expect(vikingBuildingById('does_not_exist')).toBeUndefined();
+  });
+
+  it('finds buildings by a fuzzy id/label query (the "warehouse level 2" use case)', () => {
+    // The label carries the human synonym ("Warehouse"), so a search the game/user would type resolves the
+    // three stocks even though the machine ids say "stock_*".
+    const warehouses = findVikingBuildings('warehouse');
+    expect(warehouses.map((b) => b.id)).toEqual(['stock_00', 'stock_01', 'stock_02']);
+    expect(findVikingBuildings('temple').map((b) => b.typeId)).toEqual([37]);
+  });
+
+  it('resolves by id or typeId and throws on an unknown ref', () => {
+    expect(resolveVikingBuilding('headquarters').typeId).toBe(1);
+    expect(resolveVikingBuilding(1).id).toBe('headquarters');
+    expect(() => resolveVikingBuilding('nope')).toThrow();
+    expect(() => resolveVikingBuilding(999)).toThrow();
   });
 });
