@@ -11,6 +11,65 @@ import { vehicleMayCarry } from './readviews/vehicles.js';
 // systems/ split would otherwise create. See docs/TECH-DEBT.md.
 
 /**
+ * Ascending entity-id (canonical) ordering of `entities` — the deterministic scan order a system needs
+ * when it **picks** an entity (nearest target, first open job): the same order `World.canonicalEntities`
+ * uses, so a distance / first-match tie-break lands on the identical winner (goldens unchanged). Build
+ * this ONCE per tick from a `world.query(...)` (which is `O(min store)`) and scan the result across all
+ * units, instead of each unit re-scanning + re-sorting the whole world — the fix that turns a per-unit
+ * full-world scan from `O(units · entities · log n)` into `O(entities + units · matching)`.
+ *
+ * Determinism note: fed a `world.query(C)` this yields the same ascending-id subsequence the old
+ * `canonicalEntities()`-then-filter scan did — but only because the ECS holds `store ⊆ alive` (a
+ * component store never keeps a destroyed entity; `destroy()` clears all stores). That invariant is
+ * already load-bearing (`query` drives every system loop); a use-after-`destroy` bug would make
+ * query-based pickers diverge from `alive`-based ones.
+ */
+export function canonicalById(entities: Iterable<Entity>): Entity[] {
+  return [...entities].sort((a, b) => a - b);
+}
+
+/** The empty bucket returned for an unoccupied tile — shared + frozen so a miss allocates nothing. */
+const NO_ENTITIES: readonly Entity[] = Object.freeze([]);
+
+/** Injective per-tile key for a spatial bucket (integer tile `x`,`y`). A string so a system with no
+ *  terrain handle (hence no map width) can still index by tile without a magic packing constant. */
+export function tileKey(x: number, y: number): string {
+  return `${x},${y}`;
+}
+
+/**
+ * A per-tick **spatial bucket**: `entities` grouped by their integer {@link Position} tile, each bucket
+ * preserving the input order (feed it a {@link canonicalById} list → ascending-id buckets). Answers
+ * "what is on tile (x,y)?" in O(1) via {@link TileBuckets.at}, replacing a full-world scan for on-tile
+ * checks (am I standing on a workplace?). Position-less entities are dropped. Determinism: a first-match
+ * pick over a bucket lands on the same entity a canonical full scan would, because the tile is fixed and
+ * the bucket keeps ascending-id order. Rebuilt each tick (derived state, never hashed) — the cheap seam
+ * toward a full ring-search grid without touching sim state.
+ */
+export class TileBuckets {
+  private readonly byTile = new Map<string, Entity[]>();
+
+  constructor(world: World, entities: Iterable<Entity>) {
+    for (const e of entities) {
+      const p = world.tryGet(e, Position);
+      if (p === undefined) continue;
+      const key = tileKey(fx.toInt(p.x), fx.toInt(p.y));
+      let bucket = this.byTile.get(key);
+      if (bucket === undefined) {
+        bucket = [];
+        this.byTile.set(key, bucket);
+      }
+      bucket.push(e);
+    }
+  }
+
+  /** The entities on tile (x,y), in ascending-id order — empty (shared) when the tile is unoccupied. */
+  at(x: number, y: number): readonly Entity[] {
+    return this.byTile.get(tileKey(x, y)) ?? NO_ENTITIES;
+  }
+}
+
+/**
  * The per-good capacity of a store's stockpile.
  *
  * - An **under-construction building** (a {@link Building} still at `built < ONE` — a construction

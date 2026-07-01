@@ -32,16 +32,26 @@ export class World {
   private readonly alive = new Set<Entity>();
   /** Components in first-registration order — stable, used for canonical hashing/snapshots. */
   private readonly registered: Array<Component<unknown>> = [];
+  /**
+   * Memoized ascending-id list from {@link canonicalEntities}, rebuilt lazily and invalidated only when
+   * the alive set changes ({@link create}/{@link destroy}). Without it, a system that scans the world
+   * per entity (job assignment, AI target-finding) re-`[...alive].sort()`s every call — `O(n)` sorts of
+   * an `O(n)` list = the quadratic stall that pinned a few-thousand-unit crowd at ~1 fps. Membership is
+   * unaffected by component add/remove, so only birth/death dirties it.
+   */
+  private canonicalCache: Entity[] | null = null;
 
   create(): Entity {
     const id = this.nextId++ as Entity;
     this.alive.add(id);
+    this.canonicalCache = null;
     return id;
   }
 
   destroy(entity: Entity): void {
     for (const c of this.registered) c.store.delete(entity);
     this.alive.delete(entity);
+    this.canonicalCache = null;
   }
 
   isAlive(entity: Entity): boolean {
@@ -102,9 +112,16 @@ export class World {
     return this.registered;
   }
 
-  /** Ascending-sorted alive entity ids — the canonical order for snapshots and golden hashes. */
-  canonicalEntities(): Entity[] {
-    return [...this.alive].sort((a, b) => a - b);
+  /**
+   * Ascending-sorted alive entity ids — the canonical order for snapshots, golden hashes, and any
+   * system that must *pick* an entity deterministically. Memoized per alive-set generation (see
+   * {@link canonicalCache}); the result is shared + read-only — never mutate it (sort/reverse a copy).
+   */
+  canonicalEntities(): readonly Entity[] {
+    if (this.canonicalCache === null) {
+      this.canonicalCache = [...this.alive].sort((a, b) => a - b);
+    }
+    return this.canonicalCache;
   }
 
   /**

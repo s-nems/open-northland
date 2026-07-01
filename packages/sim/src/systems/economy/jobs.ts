@@ -3,7 +3,7 @@ import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { buildingEnabled, jobEnabled, settlerMeetsNeed } from '../progression.js';
-import { buildingWorkerJobs, recipeOf } from '../shared.js';
+import { TileBuckets, buildingWorkerJobs, canonicalById, recipeOf } from '../shared.js';
 
 /**
  * JobSystem (assignment half) — give an **idle** settler the job of an understaffed workplace it
@@ -39,19 +39,27 @@ import { buildingWorkerJobs, recipeOf } from '../shared.js';
  * entity must be canonical, unlike a boolean membership test). No RNG, no wall-clock.
  */
 export const jobSystem: System = (world, ctx) => {
+  // The workplaces to match against, built ONCE per tick in canonical order (not re-scanned + re-sorted
+  // per settler): every worker binding is a Building, so this is the only entity set either pass scans.
+  // Turns the assignment from O(settlers · entities · log n) into O(buildings + settlers · buildings).
+  const buildings = canonicalById(world.query(Building));
+  // Spatial bucket of buildings by tile: "adopt" only ever binds the building UNDER a settler's feet, so
+  // an O(1) same-tile lookup replaces a full building scan per settler (the jobSystem stress cost — most
+  // settlers stand on no building, so most lookups hit the empty bucket and do zero work).
+  const buildingsByTile = new TileBuckets(world, buildings);
   for (const e of world.canonicalEntities()) {
     const settler = world.tryGet(e, Settler);
     if (settler === undefined || world.has(e, JobAssignment)) continue; // already bound: nothing to do
 
     if (settler.jobType !== null) {
       // Pass 1 — adopt a pre-employed, unbound settler standing on a workplace it staffs.
-      const here = workplaceStaffedHereBy(world, ctx, e, settler.tribe, settler.jobType);
+      const here = workplaceStaffedHereBy(buildingsByTile, world, ctx, e, settler.tribe, settler.jobType);
       if (here !== null) world.add(e, JobAssignment, { workplace: here });
       continue; // an employed settler is never re-assigned
     }
 
     // Pass 2 — assign + bind an idle settler to a concrete open workplace.
-    const open = openJobAt(world, ctx, settler.tribe, settler.experience);
+    const open = openJobAt(buildings, world, ctx, settler.tribe, settler.experience);
     if (open !== null) {
       settler.jobType = open.jobType;
       world.add(e, JobAssignment, { workplace: open.building });
@@ -65,12 +73,13 @@ export const jobSystem: System = (world, ctx) => {
  * conditions — or `null` if no workplace currently offers it a job.
  */
 function openJobAt(
+  buildings: readonly Entity[],
   world: World,
   ctx: SystemContext,
   tribe: number,
   experience: ReadonlyMap<number, number>,
 ): { building: Entity; jobType: number } | null {
-  for (const b of world.canonicalEntities()) {
+  for (const b of buildings) {
     const building = world.tryGet(b, Building);
     if (building === undefined || building.tribe !== tribe) continue;
     if (!buildingEnabled(world, ctx, tribe, building.buildingType)) continue; // not tech-enabled yet
@@ -121,6 +130,7 @@ function jobUnderstaffed(world: World, ctx: SystemContext, building: Entity, job
  * never depends on store order.
  */
 function workplaceStaffedHereBy(
+  buildingsByTile: TileBuckets,
   world: World,
   ctx: SystemContext,
   settler: Entity,
@@ -129,16 +139,14 @@ function workplaceStaffedHereBy(
 ): Entity | null {
   const sp = world.tryGet(settler, Position);
   if (sp === undefined) return null;
-  const sx = fx.toInt(sp.x);
-  const sy = fx.toInt(sp.y);
-  for (const b of world.canonicalEntities()) {
-    const building = world.tryGet(b, Building);
-    if (building === undefined || building.tribe !== tribe) continue;
+  // Only the buildings on the settler's own tile can be adopted — the bucket already restricts to them
+  // (in ascending-id order) and guarantees the same-tile match, so the loop just applies the type gates.
+  for (const b of buildingsByTile.at(fx.toInt(sp.x), fx.toInt(sp.y))) {
+    const building = world.get(b, Building); // present: the bucket is built from the Building query
+    if (building.tribe !== tribe) continue;
     if (recipeOf(world, ctx, b) === undefined) continue; // only a producing workplace pins its worker
     if (!buildingWorkerJobs(world, ctx, b).has(jobType)) continue; // not a job this workplace employs
-    const bp = world.tryGet(b, Position);
-    if (bp === undefined) continue;
-    if (fx.toInt(bp.x) === sx && fx.toInt(bp.y) === sy) return b;
+    return b;
   }
   return null;
 }

@@ -191,6 +191,53 @@ check, commit. **Render-only** rungs need no pipeline change (the atlas is alrea
    atlases need the single-colour shadow-palette path (the Phase-1 "palettes + `.hlt` remap" decode, still
    TODO). Do after Stage 2 lands.
 
+**Render performance / scale — retained renderer** (infrastructure, orthogonal to the breadth ladder). The
+immediate-mode `renderScene` churned one Pixi object per tile + per entity **every frame** and crashed the
+tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, thousands of bobs, deep zoom-out).
+- [x] **Retained `WorldRenderer` + culling + stress scene** — persistent scene graph: terrain meshed ONCE
+      (`setTerrain`), sprites pooled by entity id + reused, textures cached per atlas frame, one `app.render()`
+      per frame; pure viewport culling (`viewport.ts`, unit-tested) skips off-screen entities. `?scene=stress-crowd`
+      (256×256, ~2.5k bobs) + a live FPS overlay are the human's perf proof; `?scene=all-buildings` enlarged to a
+      96×96 field.
+- [x] **Terrain chunking + zoom cap (pulled forward)** — terrain is meshed in `TERRAIN_CHUNK_TILES`-square blocks
+      each with a world-space AABB; `WorldRenderer.update` toggles `chunk.container.visible` against the viewport,
+      so **render cost tracks the screen, not the map** (the RTS rule — OpenRA's visible-cell region; see
+      `packages/render/CLAUDE.md`). A whole-map single mesh rasterized off-screen ground every frame; chunking
+      removed that. `MIN_ZOOM` raised to `0.15` — the target is a **battle-scale** view (a big slab of a large
+      map), NOT fitting a whole 256² map on screen; the floor bounds the visible tile + bob count. Whole-map
+      zoom-out would need the LOD rung below.
+- [x] **Measured the real bottleneck — it was the SIM, not the renderer.** Profiling `?scene=stress-crowd`
+      (per-frame `step` vs `snapshot` vs `render`): **render ≈ 1.2 ms, snapshot ≈ 1.5 ms, sim step ≈ 2400 ms**
+      (~480 ms/tick for 2592 idle settlers, 2848 entities total). The stress scene's 1 fps was the sim; a real GPU wouldn't change it.
+      Root cause was a PATTERN, not one bug: `aiSystem` and `jobSystem` each looped every unit and scanned
+      `world.canonicalEntities()` — which `[...alive].sort()`-ed the whole world **per call** → `O(units² · log n)`.
+- [x] **Sim scaling, tier 1 (≈8.5×, 480→57 ms/tick, goldens byte-identical).** (a) `World.canonicalEntities()`
+      **memoized per alive-set generation** (invalidated only by `create`/`destroy`) — one sort per tick, not one
+      per scan; result is shared + read-only. (b) `aiSystem` + `jobSystem` build **per-tick candidate lists**
+      (`canonicalById(world.query(C))`, `systems/shared.ts`) and scan those, not the whole world. jobSystem
+      191→26 ms, aiSystem 450→31 ms. Ascending-id order preserved → identical tie-break winner → determinism holds.
+- [x] **Sim scaling, tier 2 — idle dormancy + same-tile spatial index (goldens byte-identical).** Final result:
+      step **480 → 1.9 ms/tick** at 2848 units (~250×), and the `stress-crowd` browser scene **1 → 92–100 fps** at
+      battle-scale zoom / 120 fps (RAF cap) zoomed in, even on headless SwiftShader. Two determinism-safe moves:
+      (a) **dormancy gate** — `hasHaulableOutput` decides ONCE per tick whether any carrier work exists; if not,
+      idle settlers skip the per-settler `nearestWorkplaceOutput` scan (identical outcome, no per-unit work), so an
+      idle crowd costs ~0. (b) **`TileBuckets`** (`systems/shared.ts`) — a per-tick spatial bucket of entities by
+      tile; `jobSystem`'s "am I standing on a workplace I staff?" adopt-check is now an O(1) same-tile lookup, not a
+      building scan per settler. Both only elide work that provably returns null → same winner → goldens hold.
+- [ ] **Sim scaling, tier 3 — full ring-search nearest-X** (smaller now; deferred). `TileBuckets` answers same-tile
+      in O(1); the remaining gap is "nearest resource/store when it's NOT on my tile" (still `O(idle · candidates)`).
+      Extend `TileBuckets` to a grid ring search (expand Manhattan bands from the unit, finish the whole
+      minimum-distance band, pick canonically, short-circuit an empty category). Mitigated today by: busy units are
+      already skipped, the dormancy gate skips empty categories, candidate lists bound the scan to matching entities.
+      Also still open: **content-index** (`Map` by typeId vs `content.*.find()`), **sim in a Web Worker** (parallel
+      to render — snapshot already transferable). Each stays deterministic / golden-guarded.
+- [ ] **Zoom-out LOD** (deferred) — below a zoom threshold, freeze per-frame animation and draw simplified
+      per-player-tinted markers (a `ParticleContainer`) instead of full bobs, skipping the depth sort. Hooks in
+      as a `lodPolicy(camera.scale)` gate in `WorldRenderer.update`. Only needed if we ever want below-`MIN_ZOOM`
+      whole-map framing; the battle-scale target does not.
+- [ ] **Retained HUD** (deferred) — pool the HUD `Text` rows instead of rebuilding them each frame (the double
+      `app.render()` is already gone). Minor; do if the HUD shows up in a profile.
+
 ## Phase 3 — Economy, progression & population  (substance complete; only human-gated render checks remain)
 - [x] **Goods graph** — explicit IR artifact: input side + output-side recipe join +
       raw→produced→food node layers. → [archive](ROADMAP-ARCHIVE.md).
