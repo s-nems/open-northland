@@ -185,12 +185,12 @@ Format: `- <mechanic>: <how it differs> — <why> (<commit>)`.
   viking4 family (HQ→34, 17→30, 35/36→5/10, 39→25, 40/41→15/20). The bind path is faithful (decoded
   `[GfxHouse]` viking graphics via the universal `.bmd`→atlas path); the per-type bobs are now data-pinned
   to `houses.ini`, the scale + atlas-coverage are the by-eye/scope constants a human tunes.
-  **Human-confirmed** via `?scene=building-types&atlas=real` (two-row layout): six distinct viking
-  buildings render, including the real HQ as an imposing structure; and `?scene=viking-families&atlas=real`
-  (mill / smithy / armory / temple, one per newly-loaded family — confirmed 2026-06-30). The two `house02`
-  families that close the set add a third scene `?scene=viking-house02&atlas=real` (stock / brewery / coin
-  mint, the last three types off the fallback) — **pending human pixel sign-off**. (building per-type
-  house-bob bind) 
+  Per-type bobs were first human-confirmed 2026-06-30 (six distinct types incl. the real HQ; the mill /
+  smithy / armory / temple families). Those focused scenes are now consolidated into one:
+  **`?scene=all-buildings`** places all 41 viking building types from the committed catalog
+  (`viking-buildings.ts`) at once — real graphics are the render DEFAULT now (no `&atlas=real`). Whether
+  every one of the 41 draws its own distinct structure is a **standing human pixel sign-off** on that
+  scene. (building per-type house-bob bind) 
 
 - Chopping settler position: a mid-chop woodcutter's drawn sprite is nudged left (`CHOP_NUDGE_X` in
   `render/src/scene.ts`) so its right-swing axe lands in the tree it shares a cell with — a render-only

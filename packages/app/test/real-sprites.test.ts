@@ -10,7 +10,7 @@ import {
 /**
  * The seq→frame-range math behind `?atlas=real` — the self-verifiable half of consuming the decoded
  * `bobSequences` (the `extractBobSequences` pipeline leg). The browser half (do the pixels animate
- * right?) is the gather-resource / angled-path acceptance scenes; this proves the range derivation +
+ * right?) is the `all-buildings` acceptance scene; this proves the range derivation +
  * the graceful fallback deterministically, without a browser.
  */
 
