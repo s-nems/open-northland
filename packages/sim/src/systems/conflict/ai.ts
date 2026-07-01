@@ -19,7 +19,15 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
 import { buildingEnabled, carrierCarryCapacity, settlerMeetsNeed } from '../progression.js';
-import { buildingWorkerJobs, inRange, isFood, isTemple, recipeOf, stockCapacity } from '../shared.js';
+import {
+  buildingWorkerJobs,
+  canonicalById,
+  inRange,
+  isFood,
+  isTemple,
+  recipeOf,
+  stockCapacity,
+} from '../shared.js';
 
 /**
  * AISystem — the settler planner: two layered passes per tick.
@@ -72,6 +80,17 @@ export const aiSystem: System = (world, ctx) => {
  * the choice never depends on store insertion history.
  */
 function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph): void {
+  // Build each target category ONCE per tick (ascending entity-id, canonical). Without this every idle
+  // settler re-scanned + re-sorted the WHOLE world per `nearest*` call — `canonicalEntities()` is an
+  // alloc+sort of all entities — so the planner was O(settlers · entities · log n) and pinned a big idle
+  // crowd at ~480 ms/tick. Scanning a per-tick candidate list is O(candidates); the ascending-id order
+  // matches the old full scan, so the distance+id tie-break picks the identical winner (goldens hold).
+  const targets = collectTargets(world);
+  // Dormancy gate: the carrier fallback (`nearestWorkplaceOutput`) is a full stockpile scan per settler.
+  // If NOTHING is haulable anywhere this tick, every settler's scan returns null — so decide it ONCE and
+  // let idle settlers skip the scan (identical outcome, no per-settler work). This is what makes an idle
+  // crowd cost ~0: a settler with no reachable work does not re-scan the world every tick.
+  const anyHaulable = hasHaulableOutput(world, ctx, targets.stockpiles);
   for (const e of world.query(Settler, Position)) {
     // Busy: an atomic is running, or the settler is en route to a target. Leave it to play out.
     if (world.has(e, CurrentAtomic)) continue;
@@ -109,7 +128,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
         );
         continue;
       }
-      const food = nearestFoodStore(world, ctx, terrain, here);
+      const food = nearestFoodStore(targets.stockpiles, world, ctx, terrain, here);
       if (food !== null) {
         const cell = entityCell(world, terrain, food.store);
         if (cell === here) {
@@ -154,7 +173,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // ≥ threshold settler with no temple anywhere falls through to normal work (piety stays clamped at
     // ONE — a settlement with no temple has no way to pray, like the original).
     if (settler.piety >= PIETY_PRAY_THRESHOLD) {
-      const temple = nearestTemple(world, ctx, terrain, here);
+      const temple = nearestTemple(targets.buildings, world, ctx, terrain, here);
       if (temple !== null) {
         const cell = entityCell(world, terrain, temple);
         if (cell === here) {
@@ -184,7 +203,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
 
     if (load !== undefined && load.amount > 0) {
       // Loaded: take the goods to a store that can stock them.
-      const store = nearestStoreFor(world, ctx, terrain, here, load.goodType);
+      const store = nearestStoreFor(targets.stockpiles, world, ctx, terrain, here, load.goodType);
       if (store === null) continue; // nowhere to deposit — idle this tick (a later slice may wait/drop)
       const cell = entityCell(world, terrain, store);
       if (cell === here) {
@@ -220,7 +239,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // Empty-handed: go harvest. Pick the nearest resource this settler is allowed to harvest — gated
     // both by its job's atomic permissions AND by its accrued XP clearing the good's `needforgood`
     // threshold (the who-may-do-it gate). `jobType` is non-null here (guarded above).
-    const node = nearestHarvestableFor(world, ctx, terrain, here, {
+    const node = nearestHarvestableFor(targets.resources, world, ctx, terrain, here, {
       jobType: settler.jobType,
       tribe: settler.tribe,
       experience: settler.experience,
@@ -246,7 +265,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // Nothing to harvest: act as a carrier — haul finished outputs out of a workplace to a store
     // that can stock them (so a producing workplace doesn't clog on its own output and goods reach
     // the settlement's stores). Nearest workplace with a haulable output it can deliver somewhere.
-    const haul = nearestWorkplaceOutput(world, ctx, terrain, here);
+    const haul = anyHaulable ? nearestWorkplaceOutput(targets.stockpiles, world, ctx, terrain, here) : null;
     if (haul === null) continue; // nothing to harvest AND nothing to haul — idle this tick
     const cell = entityCell(world, terrain, haul.workplace);
     if (cell === here) {
@@ -387,6 +406,36 @@ function atomicDuration(
 const DEFAULT_ATOMIC_DURATION = 4;
 
 /**
+ * The atomic planner's target candidates for one tick, each an **ascending-entity-id** list — the same
+ * order `world.canonicalEntities()` scanned, so the distance + id tie-break in every `nearest*` helper
+ * still picks the identical winner (goldens stay byte-identical). Built once per tick by {@link
+ * collectTargets} and shared across all settlers instead of each re-scanning + re-sorting the whole world.
+ */
+interface TargetCandidates {
+  /** Harvest targets: entities with {@link Resource} + {@link Position}. */
+  readonly resources: readonly Entity[];
+  /** Stores / food stores / workplace outputs: entities with {@link Stockpile} + {@link Position}. */
+  readonly stockpiles: readonly Entity[];
+  /** Building-keyed targets (temples): entities with {@link Building} + {@link Position}. */
+  readonly buildings: readonly Entity[];
+}
+
+/**
+ * Snapshot the planner's target categories once for the tick. Each `query` is one pass over the matching
+ * entities; {@link canonicalById} makes the scan order canonical (ascending id), matching the old
+ * full-world scan so the winner — and therefore every golden — is unchanged. This is what turns the
+ * planner from `O(settlers · entities · log n)` (per-settler re-scan + re-sort of the world) into
+ * `O(entities + settlers · candidates)`, the fix for the big-crowd stall (see {@link atomicPlanner}).
+ */
+function collectTargets(world: World): TargetCandidates {
+  return {
+    resources: canonicalById(world.query(Resource, Position)),
+    stockpiles: canonicalById(world.query(Stockpile, Position)),
+    buildings: canonicalById(world.query(Building, Position)),
+  };
+}
+
+/**
  * The nearest harvestable {@link Resource} the given settler is allowed to harvest, by fixed-point
  * Manhattan distance from `here`, with ascending-cell-id as the deterministic tie-break. A resource
  * is eligible only if it has units remaining AND its harvest passes **both** data-driven gates:
@@ -405,6 +454,7 @@ const DEFAULT_ATOMIC_DURATION = 4;
  * + the settler's components (no RNG/wall-clock).
  */
 function nearestHarvestableFor(
+  candidates: readonly Entity[],
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -415,7 +465,7 @@ function nearestHarvestableFor(
   let best: Entity | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
-  for (const e of world.canonicalEntities()) {
+  for (const e of candidates) {
     const res = world.tryGet(e, Resource);
     if (res === undefined || res.remaining <= 0) continue;
     if (!world.has(e, Position)) continue;
@@ -445,6 +495,7 @@ function nearestHarvestableFor(
  * input, or a passive store, is a valid sink.
  */
 function nearestStoreFor(
+  candidates: readonly Entity[],
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -454,7 +505,7 @@ function nearestStoreFor(
   let best: Entity | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
-  for (const e of world.canonicalEntities()) {
+  for (const e of candidates) {
     if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
     const recipe = recipeOf(world, ctx, e);
     if (recipe?.outputs.some((o) => o.goodType === goodType)) continue; // never deliver to its producer
@@ -482,6 +533,7 @@ function nearestStoreFor(
  * makes); the eater consumes one unit on the `eat` atomic's completion (AtomicSystem).
  */
 function nearestFoodStore(
+  candidates: readonly Entity[],
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -490,7 +542,7 @@ function nearestFoodStore(
   let best: { store: Entity; goodType: number } | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
-  for (const e of world.canonicalEntities()) {
+  for (const e of candidates) {
     if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
     const stock = world.get(e, Stockpile);
     const cell = entityCell(world, terrain, e);
@@ -515,11 +567,17 @@ function nearestFoodStore(
  * — the genuinely-new piece a target-bound need introduces (eat resolves to a store, sleep to no site;
  * pray resolves to a specific building the settler must reach).
  */
-function nearestTemple(world: World, ctx: SystemContext, terrain: TerrainGraph, here: CellId): Entity | null {
+function nearestTemple(
+  candidates: readonly Entity[],
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  here: CellId,
+): Entity | null {
   let best: Entity | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
-  for (const e of world.canonicalEntities()) {
+  for (const e of candidates) {
     if (!world.has(e, Building) || !world.has(e, Position)) continue;
     if (!isTemple(world, ctx, e)) continue;
     const cell = entityCell(world, terrain, e);
@@ -546,7 +604,29 @@ function nearestTemple(world: World, ctx: SystemContext, terrain: TerrainGraph, 
  * store can take it" check ({@link nearestStoreFor}) keeps the carrier from picking up a good it
  * could never deliver (which would just shuttle it back and forth).
  */
+/**
+ * Whether ANY workplace holds a haulable output this tick — a producing {@link Building} ({@link recipeOf}
+ * defined) whose {@link Stockpile} holds ≥1 unit of one of its recipe outputs. The population-level gate
+ * for {@link nearestWorkplaceOutput}: if this is false no carrier can haul, so idle settlers skip the
+ * per-settler scan entirely (the same "holds an output" test the scan's inner loop applies, so a false
+ * here means every scan would return null — identical behavior, done once instead of per settler). It is
+ * deliberately WEAKER than the full scan (no "a store can take it" check): a true still runs the real
+ * scan, which returns null if delivery is impossible — the gate only ever elides a provably-empty scan.
+ */
+function hasHaulableOutput(world: World, ctx: SystemContext, stockpiles: readonly Entity[]): boolean {
+  for (const e of stockpiles) {
+    const recipe = recipeOf(world, ctx, e);
+    if (recipe === undefined) continue;
+    const stock = world.get(e, Stockpile);
+    for (const [goodType, amount] of stockpileEntries(stock)) {
+      if (amount > 0 && recipe.outputs.some((o) => o.goodType === goodType)) return true;
+    }
+  }
+  return false;
+}
+
 function nearestWorkplaceOutput(
+  candidates: readonly Entity[],
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -555,7 +635,7 @@ function nearestWorkplaceOutput(
   let best: { workplace: Entity; goodType: number } | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
-  for (const e of world.canonicalEntities()) {
+  for (const e of candidates) {
     if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
     const recipe = recipeOf(world, ctx, e);
     if (recipe === undefined) continue; // not a workplace — passive stores aren't hauled FROM
@@ -566,7 +646,8 @@ function nearestWorkplaceOutput(
     for (const [goodType, amount] of stockpileEntries(stock)) {
       if (amount <= 0) continue;
       if (!recipe.outputs.some((o) => o.goodType === goodType)) continue; // only haul outputs
-      if (nearestStoreFor(world, ctx, terrain, cell, goodType) === null) continue; // nowhere to deliver
+      // Deliverability check reuses the SAME stockpile candidates (a store is a Stockpile+Position too).
+      if (nearestStoreFor(candidates, world, ctx, terrain, cell, goodType) === null) continue;
       if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
         best = { workplace: e, goodType };
         bestDist = dist;

@@ -205,3 +205,17 @@ For small, hard-won *gotchas* (not reworks) see [LESSONS.md](LESSONS.md); the li
   local permission allowlist + granted read access to the two reference siblings; added
   `handsOnEvidence`/`lesson` fields to the supervisor closeout. Logged proposals #3–#6 (the
   determinism hook deferred after weighing per-edit friction vs. the existing `npm test`/CI gate).
+- **2026-07-01** (render-scale + sim-scale slice; 3 review agents) — Landed the retained `WorldRenderer`
+  (pool + viewport-culled terrain chunks) and the sim scaling tier-1/2 (memoized `canonicalEntities`,
+  per-tick candidate lists, dormancy gate, `TileBuckets`) — see `docs/ROADMAP.md` and the per-package
+  `CLAUDE.md`s. Deferred cleanups surfaced by review, none blocking (all tests + check green):
+  (a) **`buildScene` is off the live render path** — `WorldRenderer` projects terrain itself + consumes
+  `buildSpriteScene`; `buildScene` now survives only as the headless projection/ordering oracle its
+  tests pin (`scene.test.ts`, `scene.integration.test.ts`, `vertical-slice.test.ts`). Keep it OR fold
+  those tests onto `buildSpriteScene` + a terrain-projection test and drop it. Its terrain projection
+  duplicates `WorldRenderer.buildFlatTerrain`/`buildTexturedTerrain`; both call the same `terrain.ts`
+  helpers so they can't silently diverge, but the duplication is real. (b) **No render spatial index** —
+  sprite cull is an O(entities) per-frame test; a `ScreenMap`-style index (query = O(visible)) is the
+  next render-scale rung. (c) **Sim tier-3** (ring-search nearest-X, content-index Map, sim→Web Worker)
+  tracked in ROADMAP. (d) latent: `WorldRenderer.textureFor` keys the cache by `AtlasFrame` identity
+  (assumes 1 frame ↔ 1 source; holds today).
