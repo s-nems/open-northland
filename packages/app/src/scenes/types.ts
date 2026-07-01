@@ -35,6 +35,11 @@ export interface SceneDefinition {
   readonly build: (sim: Simulation) => void;
   /** Ticks the headless acceptance test advances before checking {@link checks}. */
   readonly runTicks: number;
+  /**
+   * Starting camera zoom for the browser view when `?zoom=` is absent (default 1). A scene that spreads
+   * many entities (e.g. every building at once) sets this < 1 so it frames by default; `?zoom=` overrides.
+   */
+  readonly initialZoom?: number;
   /** Human-readable "what to look for" — the on-screen acceptance checklist. */
   readonly checklist: readonly string[];
   /** Machine assertions the headless test enforces (the mechanic must hold). */

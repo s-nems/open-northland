@@ -52,10 +52,10 @@ async function main(): Promise<void> {
   const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
   const terrainGrid = sliceTerrain(loaded ?? undefined);
-  // `?atlas` binds a sprite atlas so sprites draw as textured atlas frames; absent, they draw as
-  // placeholder geometry. `?atlas=real` binds the REAL decoded human-body atlas (settlers only; gitignored
-  // content over the /bobs server — see real-sprites.ts); any other `?atlas` value binds the free synthetic
-  // atlas (the reproducible default texture, no copyrighted data). Shared with the `?scene=` entry.
+  // Real decoded graphics are the DEFAULT (see resolveSpriteSheet): absent or `?atlas=real` draws the real
+  // atlases (gitignored content over the /bobs server), degrading to synthetic markers when content/ is
+  // missing. `?atlas=synthetic` forces the free markers; `?atlas=none` draws placeholder geometry. Shared
+  // with the `?scene=` entry.
   const sheet = await resolveSpriteSheet(params);
   // `?terrain` draws the ground from REAL decoded `text_*.pcx` textures (the approximated typeId→pattern
   // map) instead of the flat 4-colour tint; gitignored content over the /ir.json + /textures server

@@ -18,9 +18,10 @@ import { SCENES, createSceneSim, getScene } from './scenes/index.js';
 /**
  * The `?scene=<id>` entry: render a registered **acceptance scene** live, with the checklist overlay,
  * so a human can watch the mechanic and sign off. The SAME `?atlas`/`?terrain`/`?zoom`/`?speed` flags
- * the live slice honours work here (e.g. `?scene=gather-resource&atlas=real&zoom=2` for decoded sprites
- * magnified). The sim is the exact one the headless acceptance test runs — determinism guarantees the
- * human watches what the test proved (see docs/SCENES.md).
+ * the live slice honours work here (e.g. `?scene=all-buildings&zoom=2` to magnify one building). Real
+ * decoded graphics are the DEFAULT now (`resolveSpriteSheet`) — no `?atlas=real` needed; `?atlas=none`
+ * opts out to placeholder geometry. The sim is the exact one the headless acceptance test runs —
+ * determinism guarantees the human watches what the test proved (see docs/SCENES.md).
  */
 
 const CANVAS_W = 960;
@@ -46,7 +47,7 @@ export async function renderSceneMode(
   const terrainGrid = terrainMapToScene(scene.terrain);
   const sheet = await resolveSpriteSheet(params);
   const terrain = params.has('terrain') ? await loadRealTerrain() : undefined;
-  const zoom = floatParam(params, 'zoom', 1);
+  const zoom = floatParam(params, 'zoom', scene.initialZoom ?? 1);
   const screen = { width: CANVAS_W, height: CANVAS_H };
 
   // Mutable playback control the overlay buttons drive. `sim` is reassigned on restart (a fresh

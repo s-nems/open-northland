@@ -509,20 +509,37 @@ export async function loadHumanSpriteSheet(): Promise<SpriteSheet> {
   };
 }
 
+/** The reproducible synthetic atlas (flat-coloured markers, no copyrighted data) — the graceful fallback. */
+function syntheticSpriteSheet(): SpriteSheet {
+  return {
+    source: createSyntheticAtlasSource(),
+    atlas: syntheticAtlasFrames(),
+    bindings: SYNTHETIC_BINDINGS,
+  };
+}
+
 /**
  * Resolve the sprite sheet for the `?atlas` flag — the single answer shared by the live (`main.ts`) and
- * scene (`scene-mode.ts`) entries so both honour the flag identically: `?atlas=real` → the decoded human
- * atlas; any other `?atlas` value → the reproducible synthetic atlas (flat-coloured markers, no
- * copyrighted data); absent → `undefined`, so sprites draw as placeholder geometry.
+ * scene (`scene-mode.ts`) entries so both honour it identically. **Real decoded graphics are the DEFAULT**
+ * (we always want to see the real thing): absent OR `?atlas=real` → the decoded atlases, degrading to the
+ * synthetic marker atlas when `content/` is missing (a checkout without decoded bytes must still boot).
+ * Explicit opt-outs: `?atlas=synthetic` (or `=1`/`=true`/empty) → the synthetic markers; `?atlas=none`
+ * (or `=off`) → `undefined`, so sprites draw as placeholder geometry. NOTE: the reproducible `?shot` entry
+ * does NOT use this — it keeps its own content-free default so the committed screenshot never depends on
+ * gitignored bytes.
  */
 export async function resolveSpriteSheet(params: URLSearchParams): Promise<SpriteSheet | undefined> {
-  if (params.get('atlas') === 'real') return loadHumanSpriteSheet();
-  if (params.has('atlas')) {
-    return {
-      source: createSyntheticAtlasSource(),
-      atlas: syntheticAtlasFrames(),
-      bindings: SYNTHETIC_BINDINGS,
-    };
+  const atlas = params.get('atlas');
+  if (atlas === 'synthetic' || atlas === '1' || atlas === 'true' || atlas === '') {
+    return syntheticSpriteSheet();
   }
-  return undefined;
+  if (atlas === 'none' || atlas === 'off') return undefined;
+  // Default (absent) and `?atlas=real`: draw real decoded graphics, falling back to synthetic markers if
+  // the decoded atlases aren't present (loadHumanSpriteSheet throws on a missing layer — see loadLayer).
+  try {
+    return await loadHumanSpriteSheet();
+  } catch (err) {
+    console.warn('real atlas unavailable (is content/ populated?) — falling back to synthetic markers', err);
+    return syntheticSpriteSheet();
+  }
 }

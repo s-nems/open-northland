@@ -43,7 +43,9 @@ Defined in `packages/app/src/scenes/<id>.ts` (the type is `scenes/types.ts`):
 ## Add a scene (the loop)
 
 1. **Write** `packages/app/src/scenes/<id>.ts` exporting a `SceneDefinition`. Model it on
-   `gather-resource.ts`. Keep `content` minimal — just the goods/jobs/buildings the mechanic needs.
+   `all-buildings.ts`. Keep `content` minimal — just the goods/jobs/buildings the mechanic needs. Note the
+   terrain-size caveat there: `buildScene`/`renderScene` emit a sprite per tile every frame with no
+   culling/pooling, so keep the grid small (a big grass field crashes the tab).
 2. **Register** it in `packages/app/src/scenes/index.ts` (`SCENES`). This automatically adds both its
    headless test case and its `?scene=` link — no other wiring.
 3. **Prove the mechanic:** `npm test -- scenes`. The check labels point at exactly what failed. This is
