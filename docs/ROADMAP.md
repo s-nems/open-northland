@@ -79,8 +79,8 @@ check, commit. **Render-only** rungs need no pipeline change (the atlas is alrea
 > and every viking animation across **ALL viking human bodies** (man + alt appearances, warrior, woman, boy,
 > girl, baby, and the viking-specific civ body). (1) Finish the viking **buildings** — the binding is now
 > COMPLETE (rung 1's `house02` skin landed; all 40 viking `[GfxHouse]` types draw their own bob, 0
-> fall-backs), with the focused `?scene=viking-house02` sign-off + a completeness-montage capstone the only
-> remaining gates. (2) Add **multi-body render support**, then bind the
+> fall-backs), with the single `?scene=all-buildings` gallery (the completeness-montage capstone — all 41
+> types at once) the only remaining sign-off gate. (2) Add **multi-body render support**, then bind the
 > **whole** `[bobseq]` vocabulary per body (rung 3) — worked category by category (harvest, indoor crafts,
 > carrying, idle/needs, fight, shoot) then per body (woman/children/viking-civ), with a completeness-gallery
 > scene as the exit gate. The listed categories/seqs are the breakdown, not the limit. Rung 2 (landscape
@@ -99,22 +99,22 @@ check, commit. **Render-only** rungs need no pipeline change (the atlas is alrea
      source of truth that drives both `loadLayer` and which rows may layer-qualify) + a `?scene=viking-families`
      acceptance scene (mill / smithy / armory / temple, one per new family). At this step the few types on the
      not-yet-loaded `house02` skin (stock / brewery / coin mint) still fell back to the representative house
-     (the next sub-item, now landed, closes them). **Human pixel sign-off ✓ (2026-06-30, `?scene=viking-families&atlas=real`).**
+     (the next sub-item, now landed, closes them). **Human pixel sign-off ✓ (2026-06-30; the focused viking-families scene has since been consolidated into `?scene=all-buildings`).**
    - [ ] **Complete the viking building set — the `house02` skin** (stock / brewery / coin mint, the LAST
      viking types still on the fallback house): **binding LANDED, pending human pixel sign-off.** The two
      `house02` families are now loaded in `BUILDING_FAMILIES` — `ls_houses_viking.house02` (stock 7/8/9) and
      `ls_houses_viking2.house02` (brewery 16, coin mint 33) — so the reducer binds all **40** viking
      `[GfxHouse]` typeIds to their OWN bob with **0 fall-backs** (verified running `buildingBobRefsByType`
-     over the real `ir.json`; the previously signed-off five stay byte-identical). A focused
-     `?scene=viking-house02` shows the three newly-bound types. **Pixel sign-off:**
-     `?scene=viking-house02&atlas=real` — confirm stock / brewery / coin mint each draw a distinct,
-     non-placeholder house. → flip to `[x]` once confirmed.
+     over the real `ir.json`; the previously signed-off five stay byte-identical). These three types now draw
+     in the consolidated `?scene=all-buildings` gallery. **Pixel sign-off** folds into that scene's single-pass
+     check — confirm stock / brewery / coin mint each draw a distinct, non-placeholder house. → flip to `[x]`
+     once confirmed.
    - [ ] **Completeness montage (capstone)** — **Exit gate for "EVERY viking building draws its own bob".**
-     A `?scene=viking-buildings` gallery placing one of every distinct viking building (HQ / home / stock /
-     well / hive / farm / mill / bakery / brewery / animal-farm / sewery / pottery / joinery / armory /
-     mason / smithy / coin-mint / herb-hut / druid-hut / temple / school / barracks / tower), zoomed to fit,
-     so the whole set is verifiable in ONE pass and any wrong/placeholder bob is obvious. (The binding is
-     already complete — this is the single-pass *proof* scene.)
+     **Scene LANDED, pending human pixel sign-off.** `?scene=all-buildings` places all **41** viking building
+     types from the committed catalog (`viking-buildings.ts`) at once, real graphics by default, zoomed to
+     fit — the whole set verifiable in ONE pass so any wrong/placeholder bob is obvious. It replaces the three
+     focused building scenes (building-types / viking-families / viking-house02, now deleted). → flip to `[x]`
+     once the single-pass pixel check is confirmed.
    - [ ] **The other tribes** (frank/egypt/saracen/byzantine) — deferred behind the viking set; same
      machinery, the `buildingBobs` table already covers all 6; a per-tribe (or montage) scene; **human
      pixel sign-off**.

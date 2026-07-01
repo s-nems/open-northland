@@ -67,9 +67,11 @@ export const VIKING_BUILDINGS: readonly VikingBuilding[] = [
   { typeId: 19, id: 'work_sewery_01', label: 'Tailor / clothier (level 1)', kind: 'workplace' },
   { typeId: 20, id: 'work_pottery_00', label: 'Pottery (level 0)', kind: 'workplace' },
   { typeId: 21, id: 'work_pottery_01', label: 'Pottery (level 1)', kind: 'workplace' },
-  // Source-data quirk: id/kind say pottery/tower but the mod binds a WALL bob ("Mur h") to this typeId.
-  // Carried verbatim (the drift test pins id+kind to ir.json); it draws as a wall — faithful, not a bug.
-  { typeId: 22, id: 'work_pottery_02', label: 'Pottery (level 2)', kind: 'tower' },
+  // typeId 22 is a DEFENCE WALL, not a pottery: the id `work_pottery_02` is a pipeline naming artifact
+  // (the type sits in the slot after the two potteries), but its kind is `tower` and the mod binds the
+  // wall bob ("Mur h", mur.bmd) to it — matching the original's eng string 22 "Defence wall". id + kind
+  // are carried verbatim (the drift test pins them to ir.json); the label names the real function.
+  { typeId: 22, id: 'work_pottery_02', label: 'Defence wall', kind: 'tower' },
   { typeId: 23, id: 'work_joinery_00', label: 'Joinery (level 0)', kind: 'workplace' },
   { typeId: 24, id: 'work_joinery_01', label: 'Joinery (level 1)', kind: 'workplace' },
   { typeId: 25, id: 'work_joinery_02', label: 'Joinery (level 2)', kind: 'workplace' },

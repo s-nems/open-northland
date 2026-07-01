@@ -49,11 +49,11 @@ function tileFor(index: number): { x: number; y: number } {
   };
 }
 
-/** Place every catalog building, fully built, at its lattice tile — via the same seam a build menu uses. */
+/** Place every catalog building by name (its `id`), fully built — exactly as a build menu would. */
 function build(sim: Simulation): void {
   VIKING_BUILDINGS.forEach((b, index) => {
     const { x, y } = tileFor(index);
-    placeVikingBuilding(sim, b.typeId, x, y);
+    placeVikingBuilding(sim, b.id, x, y);
   });
 }
 

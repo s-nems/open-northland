@@ -408,16 +408,24 @@ export function buildHumanBindings(
 }
 
 /**
+ * The decoded atlas isn't served (the pipeline hasn't run / `content/` is empty) — an ENVIRONMENT
+ * precondition, distinct from a genuine decode bug. {@link resolveSpriteSheet} catches ONLY this to
+ * degrade to the synthetic markers; any other error (a bad manifest, a texture-load failure) propagates
+ * so a real bug surfaces instead of being silently masked as "missing content".
+ */
+export class MissingAtlasError extends Error {}
+
+/**
  * Load one decoded atlas layer (`<stem>.{atlas.json,png}`) from the gitignored `content/` (served at
- * `/bobs/`): the manifest → in-memory frame geometry, the PNG → a GPU texture. Throws a pointed error
- * if the decoded files are missing (the pipeline hasn't been run / `content/` is empty) — an
- * environment precondition, not a recoverable boundary the renderer should silently swallow.
+ * `/bobs/`): the manifest → in-memory frame geometry, the PNG → a GPU texture. Throws
+ * {@link MissingAtlasError} if the decoded files are missing (the pipeline hasn't been run / `content/`
+ * is empty) — an environment precondition the caller may recover from; other failures throw as-is.
  */
 async function loadLayer(stem: string): Promise<SpriteLayer> {
   const res = await fetch(`/bobs/${stem}.atlas.json`);
   if (!res.ok) {
-    throw new Error(
-      `?atlas=real: decoded atlas '${stem}' not found (HTTP ${res.status}). Run \`npm run pipeline\` against an owned game copy to populate content/.`,
+    throw new MissingAtlasError(
+      `atlas: decoded atlas '${stem}' not found (HTTP ${res.status}). Run \`npm run pipeline\` against an owned game copy to populate content/.`,
     );
   }
   const manifest = (await res.json()) as AtlasManifest;
@@ -509,8 +517,9 @@ export async function loadHumanSpriteSheet(): Promise<SpriteSheet> {
   };
 }
 
-/** The reproducible synthetic atlas (flat-coloured markers, no copyrighted data) — the graceful fallback. */
-function syntheticSpriteSheet(): SpriteSheet {
+/** The reproducible synthetic atlas (flat-coloured markers, no copyrighted data) — the graceful fallback,
+ *  also the `?shot`/`?atlas=synthetic` sheet (shared with `shot.ts` so the two can't drift). */
+export function syntheticSpriteSheet(): SpriteSheet {
   return {
     source: createSyntheticAtlasSource(),
     atlas: syntheticAtlasFrames(),
@@ -534,11 +543,13 @@ export async function resolveSpriteSheet(params: URLSearchParams): Promise<Sprit
     return syntheticSpriteSheet();
   }
   if (atlas === 'none' || atlas === 'off') return undefined;
-  // Default (absent) and `?atlas=real`: draw real decoded graphics, falling back to synthetic markers if
-  // the decoded atlases aren't present (loadHumanSpriteSheet throws on a missing layer — see loadLayer).
+  // Default (absent) and `?atlas=real`: draw real decoded graphics, falling back to synthetic markers ONLY
+  // when the decoded atlases aren't present (a checkout without content/). A MissingAtlasError is that
+  // expected precondition; any other error is a real bug and propagates rather than being masked as markers.
   try {
     return await loadHumanSpriteSheet();
   } catch (err) {
+    if (!(err instanceof MissingAtlasError)) throw err;
     console.warn('real atlas unavailable (is content/ populated?) — falling back to synthetic markers', err);
     return syntheticSpriteSheet();
   }

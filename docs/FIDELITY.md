@@ -384,7 +384,8 @@ Format: `- <mechanic>: <how it differs> — <why> (<commit>)`.
   per-axis MovementSystem never emit. The `nav/terrain.ts` comment pins this as faithful to the original's
   cell graph ("no diagonal steps"), but the original's humans visibly walk 8 directions, so whether the
   real engine moves on an 8-connected (or finer) graph is **not yet pinned** — an oracle/observation
-  question. The `angled-path` acceptance scene exercises everything the 4-connected model supports (all
-  four reachable facings, in both the empty walk and the loaded carry gait); full 8-direction movement is a
-  deferred slice (8-connected A* + diagonal MovementSystem steps + diagonal cost), recorded here so the
-  4-facing cap reads as a known limit, not an animation bug. (angled-path scene + carry-wood gait)
+  question. The 4-connected model supports all four reachable facings in both the empty walk and the loaded
+  carry gait (this was exercised by the `angled-path` acceptance scene, since removed when the scenes were
+  consolidated to `all-buildings`; the pathfinding + gait mechanics stay covered by the sim golden tests);
+  full 8-direction movement is a deferred slice (8-connected A* + diagonal MovementSystem steps + diagonal
+  cost), recorded here so the 4-facing cap reads as a known limit, not an animation bug. (carry-wood gait)
