@@ -1,11 +1,10 @@
 import {
+  WorldRenderer,
   buildHud,
-  buildScene,
+  buildSpriteScene,
   createPixiApp,
   layoutHud,
   placeHud,
-  renderHud,
-  renderScene,
 } from '@vinland/render';
 import { FixedTimestep } from '@vinland/sim';
 import { cameraFor, createCameraController, floatParam } from './camera.js';
@@ -61,6 +60,10 @@ async function main(): Promise<void> {
   // map) instead of the flat 4-colour tint; gitignored content over the /ir.json + /textures server
   // (see real-terrain.ts). Absent, terrain stays the reproducible flat-tint default.
   const terrain = params.has('terrain') ? await loadRealTerrain() : undefined;
+  // Retained renderer: mesh the terrain ONCE, reuse a pooled sprite graph each frame (no per-frame
+  // object churn) so large maps + deep zoom-out stay within the GPU budget.
+  const renderer = new WorldRenderer(app, { sheet });
+  renderer.setTerrain(terrainGrid, terrain);
   // `?zoom=N` magnifies + re-centres on the sprites (the same knob the shot uses) so a decoded bob is
   // big enough to inspect in the live view; absent, scale 1.
   const zoom = floatParam(params, 'zoom', 1);
@@ -81,7 +84,7 @@ async function main(): Promise<void> {
   // camera layer below, so it stays pinned while the world moves.
   const cameraCtl = createCameraController(
     canvas,
-    cameraFor(buildScene(sim.snapshot(), terrainGrid), zoom, CANVAS_W, CANVAS_H),
+    cameraFor(buildSpriteScene(sim.snapshot()), zoom, CANVAS_W, CANVAS_H),
   );
 
   const timestep = new FixedTimestep();
@@ -93,10 +96,10 @@ async function main(): Promise<void> {
     timestep.advance(elapsed * speed, () => sim.step());
     cameraCtl.update(elapsed);
     const snap = sim.snapshot();
-    const scene = buildScene(snap, terrainGrid);
-    renderScene(app, scene, cameraCtl.camera(), sheet, snap.tick, terrain);
-    // HUD overlay on top of the scene (renderScene cleared the stage; this adds to it).
-    renderHud(app, placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', screen));
+    // One retained update: reconcile the pooled sprites, refresh the pinned HUD, render once.
+    renderer.update(snap, cameraCtl.camera(), snap.tick, {
+      placement: placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', screen),
+    });
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

@@ -1,5 +1,6 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { ONE, tileToScreen } from './index.js';
+import { type Viewport, isVisible } from './viewport.js';
 
 /**
  * The PURE scene-building layer — the part of rendering an agent CAN self-verify.
@@ -278,6 +279,13 @@ function readCarrying(components: Readonly<Record<string, unknown>>): boolean {
  *
  * Pure: a function of the snapshot + grid only. The same snapshot always yields the same list — the
  * determinism that lets the screenshot harness produce a reproducible frame.
+ *
+ * NOTE: the live render path is {@link WorldRenderer}, which projects terrain itself and consumes
+ * {@link buildSpriteScene} (sprites only) — it no longer calls `buildScene`. `buildScene` is retained as
+ * the **headless oracle** for the projection + depth-ordering the renderer must match (its tests pin
+ * back-to-front terrain + feet-anchor sprite order that a Pixi renderer can't easily unit-test). The
+ * terrain-projection duplication between here and `WorldRenderer.buildFlatTerrain`/`buildTexturedTerrain`
+ * is logged in `docs/TECH-DEBT.md` — they share the `terrain.ts` helpers, so they can't silently diverge.
  */
 export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): DrawItem[] {
   const tiles: DrawItem[] = [];
@@ -301,6 +309,47 @@ export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): Draw
     });
   }
 
+  // Stable, total order: tiles (all negative depth) ahead of sprites, sprites by (y, x, id).
+  return [...tiles, ...collectSprites(snapshot)];
+}
+
+/**
+ * The depth-sorted SPRITE draw list alone (no terrain) — the per-frame half the retained
+ * {@link import('./world-renderer.js').WorldRenderer} consumes. Terrain is static and built ONCE
+ * (`setTerrain`), so it no longer flows through the per-frame path; this emits only the
+ * moving/animated entities. Pass a `viewport` to CULL to what the camera frames (an item is kept iff
+ * its screen anchor is inside the — already margin-inflated — box); culling changes *which* items are
+ * emitted, never their relative order, so the retained pool + depth-sort stay correct. Absent a
+ * viewport, every sprite is emitted (the whole-map / fully-zoomed-out case). Pure.
+ */
+export function buildSpriteScene(snapshot: WorldSnapshot, viewport?: Viewport): DrawItem[] {
+  return collectSprites(snapshot, viewport);
+}
+
+/**
+ * The set of entity ids that draw as a sprite (a drawable marker + a Position) — the liveness set the
+ * retained pool reconciles against to DESTROY sprites of entities that have left the snapshot (died),
+ * as distinct from ones merely culled off-screen (still live, kept in the pool). Pure.
+ */
+export function drawableEntityRefs(snapshot: WorldSnapshot): Set<number> {
+  const refs = new Set<number>();
+  for (const entity of snapshot.entities) {
+    if (classify(entity.components) === null) continue;
+    if (readPosition(entity.components) === null) continue;
+    refs.add(entity.id);
+  }
+  return refs;
+}
+
+/**
+ * Build the depth-sorted sprite draw list from the snapshot's entities — the shared core of
+ * {@link buildScene} and {@link buildSpriteScene}. Each drawable entity is projected to its feet anchor
+ * and tagged with the render-side reads (state/facing/carrying/atomic/buildingType) a per-kind binding
+ * needs; when a `viewport` is given, one whose drawn anchor falls outside the framed box is dropped.
+ * Sorted by feet anchor `(y, x)` then entity id — a total, stable order (the same property the
+ * pre-split list had), so culling only removes items without reshuffling the survivors. Pure.
+ */
+function collectSprites(snapshot: WorldSnapshot, viewport?: Viewport): DrawItem[] {
   const sprites: DrawItem[] = [];
   for (const entity of snapshot.entities) {
     const kind = classify(entity.components);
@@ -325,10 +374,14 @@ export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): Draw
     // A chopping settler shares its tree's cell; nudge its drawn sprite left so the right-swing axe
     // lands in the trunk at the cell centre (render-only — the depth sort below still uses the true tile).
     const chopNudgeX = state === 'acting' && actingAtomic === CHOP_ATOMIC_ID ? CHOP_NUDGE_X : 0;
+    const drawX = screen.x + chopNudgeX;
+    // Cull to the framed viewport (when culling). Uses the DRAWN anchor; the box is pre-inflated by the
+    // renderer to cover a tall sprite's extent, so a building straddling the edge still draws.
+    if (viewport !== undefined && !isVisible(viewport, drawX, screen.y)) continue;
     sprites.push({
       kind,
       ref: entity.id,
-      x: screen.x + chopNudgeX,
+      x: drawX,
       y: screen.y,
       // Feet-anchor depth: lower (greater y), then further-right (greater x), then id. A total order,
       // so the sort is deterministic regardless of snapshot iteration nuances.
@@ -341,9 +394,8 @@ export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): Draw
       ...(buildingType !== undefined ? { typeId: buildingType } : {}),
     });
   }
-
-  // Stable, total order: tiles (all negative depth) ahead of sprites, sprites by (y, x, id). The
-  // entity-id tie-break makes two sprites on the exact same tile order deterministically.
+  // Stable, total order: sprites by (y, x, id). The entity-id tie-break makes two sprites on the exact
+  // same tile order deterministically.
   sprites.sort((a, b) => a.depth - b.depth || a.ref - b.ref);
-  return [...tiles, ...sprites];
+  return sprites;
 }

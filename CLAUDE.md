@@ -109,6 +109,9 @@ this root file lean). Golden rules 1–2 above are the crisp always-on version.
   fixed-point + branded-type rules, and the golden-update discipline. The hygiene test enforces it.
 - **`tools/asset-pipeline/CLAUDE.md`** — pipeline-only notes: prefer the mod's `.ini`, validate
   visual decoders against the OpenVikings oracle, never commit decoded/copyrighted bytes.
+- **`packages/render/CLAUDE.md`** — drawing at RTS scale: cost scales with the SCREEN, not the map
+  (retained graph, viewport-culled terrain chunks + sprites, batch-by-texture, tint per player) — the
+  OpenRA-derived rules. Also: headless FPS is software-GL; measure sim vs render before blaming the GPU.
 - **`packages/app/CLAUDE.md`** — the app shell: URL-flag entries (`?scene=`/`?atlas=`/`?terrain`/…) and
   the **acceptance-scene** system (how to add one so a human can watch a mechanic and sign off).
 

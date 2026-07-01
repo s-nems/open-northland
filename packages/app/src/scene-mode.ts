@@ -1,15 +1,15 @@
 import {
+  WorldRenderer,
   buildHud,
-  buildScene,
+  buildSpriteScene,
   createPixiApp,
   layoutHud,
   placeHud,
-  renderHud,
-  renderScene,
   terrainMapToScene,
 } from '@vinland/render';
 import { FixedTimestep } from '@vinland/sim';
 import { cameraFor, createCameraController, floatParam } from './camera.js';
+import { mountPerfOverlay } from './perf-overlay.js';
 import { resolveSpriteSheet } from './real-sprites.js';
 import { loadRealTerrain } from './real-terrain.js';
 import { mountSceneOverlay, mountUnknownSceneOverlay } from './scene-overlay.js';
@@ -50,6 +50,14 @@ export async function renderSceneMode(
   const zoom = floatParam(params, 'zoom', scene.initialZoom ?? 1);
   const screen = { width: CANVAS_W, height: CANVAS_H };
 
+  // Retained renderer: mesh the terrain ONCE, then reuse a pooled sprite graph each frame (no per-frame
+  // object churn), so a big scene renders + deep-zoom-outs without exhausting the GPU.
+  const renderer = new WorldRenderer(app, { sheet });
+  renderer.setTerrain(terrainGrid, terrain);
+  // FPS / entity / drawn / pooled readout (bottom-left) so a human can judge render performance at scale
+  // — the instrument the stress scene is watched with (and harmless on the small scenes).
+  const perf = mountPerfOverlay();
+
   // Mutable playback control the overlay buttons drive. `sim` is reassigned on restart (a fresh
   // deterministic run), so the loop reads it through the closure each frame.
   const control = { paused: false, stepOnce: false, speed: floatParam(params, 'speed', 0.5) };
@@ -78,7 +86,7 @@ export async function renderSceneMode(
   // camera isn't), so the framing the human set up persists across replays.
   const cameraCtl = createCameraController(
     canvas,
-    cameraFor(buildScene(sim.snapshot(), terrainGrid), zoom, CANVAS_W, CANVAS_H),
+    cameraFor(buildSpriteScene(sim.snapshot()), zoom, CANVAS_W, CANVAS_H),
   );
 
   let timestep = new FixedTimestep();
@@ -95,10 +103,11 @@ export async function renderSceneMode(
     }
     cameraCtl.update(elapsed);
     const snap = sim.snapshot();
-    const sc = buildScene(snap, terrainGrid);
-    renderScene(app, sc, cameraCtl.camera(), sheet, snap.tick, terrain);
-    renderHud(app, placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', screen));
+    renderer.update(snap, cameraCtl.camera(), snap.tick, {
+      placement: placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', screen),
+    });
     overlay.update(snap.tick);
+    perf.update(elapsed, { entities: snap.entities.length, ...renderer.stats() });
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
