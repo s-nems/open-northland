@@ -84,6 +84,7 @@ export {
   pietyInRange,
   enjoymentInRange,
   buildingSane,
+  cachesCoherent,
   populationWithinHousing,
 } from './harness/invariants.js';
 

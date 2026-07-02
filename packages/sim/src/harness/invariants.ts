@@ -66,6 +66,16 @@ export const enjoymentInRange: Invariant = (world) => {
   return out;
 };
 
+/**
+ * Every incrementally-maintained World cache re-derives to the same value as its live copy —
+ * incremental caches are the classic lockstep-desync source, so the derived value is recomputed
+ * from scratch and asserted equal on every checked tick. The actual recomputation lives with the
+ * caches ({@link World.verifyCaches}); this invariant just runs it, so a missed invalidation is
+ * caught at the tick it happens with a named cache, not later as an unexplained golden/hash
+ * divergence.
+ */
+export const cachesCoherent: Invariant = (world) => world.verifyCaches();
+
 /** Building construction progress and level stay sane. */
 export const buildingSane: Invariant = (world) => {
   const out: string[] = [];
@@ -124,6 +134,7 @@ export const CORE_INVARIANTS: readonly Invariant[] = [
   pietyInRange,
   enjoymentInRange,
   buildingSane,
+  cachesCoherent,
 ];
 
 /** Run a set of invariants; returns all violations across them. */
