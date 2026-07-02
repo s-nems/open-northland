@@ -2,7 +2,7 @@ import type { BuildingType, Recipe } from '@vinland/data';
 import { Building, Position, Settler, Vehicle } from '../components/index.js';
 import { ONE, fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
-import type { TerrainGraph } from '../nav/terrain.js';
+import type { CellId, TerrainGraph } from '../nav/terrain.js';
 import type { SystemContext } from './context.js';
 import { interactionTile, tileKey } from './footprint.js';
 import { vehicleMayCarry } from './readviews/vehicles.js';
@@ -340,4 +340,55 @@ export function isTemple(world: World, ctx: SystemContext, building: Entity): bo
  */
 export function inRange(terrain: TerrainGraph, cell: number): boolean {
   return Number.isInteger(cell) && cell >= 0 && cell < terrain.cellCount;
+}
+
+/**
+ * The cell an entity occupies — its {@link Position} snapped to the terrain grid. The plain positional
+ * resolver for units/creatures/fixtures (a settler, a herd animal, a resource node), where the entity's
+ * own tile IS the cell to measure from. Building targets a settler must reach *through a door* use the
+ * AI planner's interaction-aware resolver instead (walls are walk-blocked); this is the common case,
+ * shared by combat targeting and the herding follow-drive.
+ */
+export function entityCell(world: World, terrain: TerrainGraph, e: Entity): CellId {
+  const p = world.get(e, Position);
+  return terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
+}
+
+/** Integer Manhattan distance between two cells — the cheap reach/nearness heuristic the AI planner,
+ *  combat range check, and herding leader-distance measure with (A* computes the real path cost). */
+export function manhattan(terrain: TerrainGraph, a: CellId, b: CellId): number {
+  const ca = terrain.coordsOf(a);
+  const cb = terrain.coordsOf(b);
+  return Math.abs(ca.x - cb.x) + Math.abs(ca.y - cb.y);
+}
+
+/** Duration (ticks) used when an atomic's animation-length chain doesn't resolve — a non-zero default
+ *  so an unresolved atomic still takes visible time rather than completing instantly. */
+export const DEFAULT_ATOMIC_DURATION = 4;
+
+/**
+ * Resolve an atomic's duration (animation length in ticks) through the data: the settler's tribe binds
+ * `(jobType, atomicId)` to an animation name (`setatomic`, last-wins) and `atomicAnimations` gives that
+ * name's `length`. Falls back to {@link DEFAULT_ATOMIC_DURATION} when the chain doesn't resolve (the
+ * readable mod set is a subset of the base animations, and test fixtures may bind neither) — a missing
+ * timing must not hang or zero-out the atomic. Shared by the AI planner (harvest/eat/sleep/pray/haul)
+ * and combat (the attack swing); both resolve durations the identical way.
+ */
+export function atomicDuration(
+  ctx: SystemContext,
+  settler: { tribe: number; jobType: number | null },
+  atomicId: number,
+): number {
+  if (settler.jobType === null) return DEFAULT_ATOMIC_DURATION;
+  const tribe = ctx.content.tribes.find((t) => t.typeId === settler.tribe);
+  if (tribe === undefined) return DEFAULT_ATOMIC_DURATION;
+  // Last-wins over the file-order bindings (matches the original's config-override semantics).
+  let animation: string | undefined;
+  for (const b of tribe.atomicBindings) {
+    if (b.jobType === settler.jobType && b.atomicId === atomicId) animation = b.animation;
+  }
+  if (animation === undefined) return DEFAULT_ATOMIC_DURATION;
+  const anim = ctx.content.atomicAnimations.find((a) => a.name === animation);
+  const length = anim?.length ?? 0;
+  return length > 0 ? length : DEFAULT_ATOMIC_DURATION;
 }

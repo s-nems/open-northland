@@ -21,11 +21,13 @@ import type { System, SystemContext } from '../context.js';
 import { interactionTile } from '../footprint.js';
 import { buildingEnabled, carrierCarryCapacity, settlerMeetsNeed } from '../progression.js';
 import {
+  atomicDuration,
   buildingWorkerJobs,
   canonicalById,
   inRange,
   isFood,
   isTemple,
+  manhattan,
   recipeOf,
   stockCapacity,
 } from '../shared.js';
@@ -377,36 +379,6 @@ function startAtomic(
 }
 
 /**
- * Resolve an atomic's duration (animation length in ticks) through the data: the settler's tribe
- * binds `(jobType, atomicId)` to an animation name (`setatomic`, last-wins), and `atomicAnimations`
- * gives that name's `length`. Falls back to {@link DEFAULT_ATOMIC_DURATION} when the chain doesn't
- * resolve (the readable mod set is a subset of the base animations, and test fixtures may bind
- * neither) — a missing timing must not hang or zero-out the atomic.
- */
-function atomicDuration(
-  ctx: SystemContext,
-  settler: { tribe: number; jobType: number | null },
-  atomicId: number,
-): number {
-  if (settler.jobType === null) return DEFAULT_ATOMIC_DURATION;
-  const tribe = ctx.content.tribes.find((t) => t.typeId === settler.tribe);
-  if (tribe === undefined) return DEFAULT_ATOMIC_DURATION;
-  // Last-wins over the file-order bindings (matches the original's config-override semantics).
-  let animation: string | undefined;
-  for (const b of tribe.atomicBindings) {
-    if (b.jobType === settler.jobType && b.atomicId === atomicId) animation = b.animation;
-  }
-  if (animation === undefined) return DEFAULT_ATOMIC_DURATION;
-  const anim = ctx.content.atomicAnimations.find((a) => a.name === animation);
-  const length = anim?.length ?? 0;
-  return length > 0 ? length : DEFAULT_ATOMIC_DURATION;
-}
-
-/** Duration (ticks) used when the atomic→animation→length chain doesn't resolve. A non-zero default
- *  so an unresolved atomic still takes visible time rather than completing instantly. */
-const DEFAULT_ATOMIC_DURATION = 4;
-
-/**
  * The atomic planner's target candidates for one tick, each an **ascending-entity-id** list — the same
  * order `world.canonicalEntities()` scanned, so the distance + id tie-break in every `nearest*` helper
  * still picks the identical winner (goldens stay byte-identical). Built once per tick by {@link
@@ -752,13 +724,6 @@ function entityCell(world: World, ctx: SystemContext, terrain: TerrainGraph, e: 
   if (at !== null) return terrain.cellAtClamped(at.x, at.y);
   const p = world.get(e, Position);
   return terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
-}
-
-/** Integer Manhattan distance between two cells (a cheap planner heuristic; A* does the real cost). */
-function manhattan(terrain: TerrainGraph, a: CellId, b: CellId): number {
-  const ca = terrain.coordsOf(a);
-  const cb = terrain.coordsOf(b);
-  return Math.abs(ca.x - cb.x) + Math.abs(ca.y - cb.y);
 }
 
 /**
