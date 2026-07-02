@@ -6,17 +6,11 @@
  * (unit-testable headless) and an impure `web/` Web Audio sink.
  */
 
-// Pure decision layer (headless-testable; no Web Audio / DOM).
+// Pure decision layer (headless-testable; no Web Audio / DOM). The event→sound MusicType/group
+// constants (JINGLE_*, GROUP_*) are intentionally NOT re-exported: they are implementation detail of
+// `defaultBindings`, which is the surface a consumer overrides.
 export { buildSoundIndex, type SoundIndex } from './data/bank.js';
-export {
-  JINGLE_BIRTH,
-  JINGLE_DEATH,
-  JINGLE_HOUSE_BUILT,
-  GROUP_HAMMER_WOOD,
-  GROUP_WOODCUTTER_AXE,
-  GROUP_CARPENTER_SAW,
-  defaultBindings,
-} from './data/bindings.js';
+export { defaultBindings } from './data/bindings.js';
 export {
   type AudioTerrain,
   type DirectorInput,
@@ -26,17 +20,13 @@ export {
   MAX_AMBIENT_BEDS,
   AMBIENT_MAX_GAIN,
   AMBIENT_FULL_COVERAGE,
+  AMBIENT_MAX_SAMPLES,
 } from './data/director.js';
-export {
-  type Spatial,
-  computeSpatial,
-  CULL_MARGIN_PX,
-  EDGE_GAIN,
-  MAX_PAN,
-} from './data/spatial.js';
+export { type Spatial, computeSpatial, CULL_MARGIN_PX, EDGE_GAIN, MAX_PAN } from './data/spatial.js';
 export type { AmbientLoop, AudioFrame, EventSound, OneShot, SoundBindings } from './data/types.js';
 
-// Impure Web Audio sink (browser-only).
+// Impure Web Audio sink (browser-only). The engine's default-tuning constants stay exported as the
+// documented knobs behind `AudioEngineOptions`.
 export {
   type AudioEngineOptions,
   WebAudioEngine,

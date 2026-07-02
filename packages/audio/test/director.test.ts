@@ -1,6 +1,6 @@
 import type { GfxPattern, SoundBank, TerrainPattern } from '@vinland/data';
-import type { Camera } from '@vinland/render';
-import { ONE } from '@vinland/render';
+import type { Camera } from '@vinland/render/data';
+import { ONE } from '@vinland/render/data';
 import type { SimEvent, WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import {
@@ -132,5 +132,20 @@ describe('directAudio ambient', () => {
   it('produces no ambient when the visible terrain has no bound bed', () => {
     const bare: AudioTerrain = { width: 10, height: 10, typeIds: new Array(100).fill(42) };
     expect(direct([], bare).ambient).toHaveLength(0);
+  });
+
+  it('produces no ambient when the camera frames only empty space off the map', () => {
+    // Pan the map far off the right edge so the viewport no longer overlaps the grid's projected box.
+    const offMap = directAudio({
+      events: [],
+      snapshot: snapshotAt(),
+      camera: { offsetX: 100_000, offsetY: 0, scale: 1 },
+      canvasW: CANVAS_W,
+      canvasH: CANVAS_H,
+      index,
+      bindings,
+      terrain: meadow,
+    });
+    expect(offMap.ambient).toHaveLength(0);
   });
 });
