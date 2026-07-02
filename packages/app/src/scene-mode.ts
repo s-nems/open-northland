@@ -2,7 +2,7 @@ import {
   WorldRenderer,
   buildHud,
   buildSpriteScene,
-  createPixiApp,
+  createWindowPixiApp,
   layoutHud,
   placeHud,
   terrainMapToScene,
@@ -24,8 +24,6 @@ import { SCENES, createSceneSim, getScene } from './scenes/index.js';
  * determinism guarantees the human watches what the test proved (see docs/SCENES.md).
  */
 
-const CANVAS_W = 960;
-const CANVAS_H = 540;
 /** The acceptance scenes are single-tribe viking (tribe 1); draw that tribe's HUD panel each frame. */
 const HUD_TRIBE = 1;
 
@@ -43,13 +41,13 @@ export async function renderSceneMode(
     return;
   }
 
-  const app = await createPixiApp(canvas, CANVAS_W, CANVAS_H);
+  // Window-sized 1:1 backing store: resizing the browser changes the visible field, never the scale.
+  const app = await createWindowPixiApp(canvas);
   const terrainGrid = terrainMapToScene(scene.terrain);
   // The scene's own goods key the per-good carry looks (content-relative ids — the scene knows them).
   const sheet = await resolveSpriteSheet(params, scene.content.goods);
   const terrain = params.has('terrain') ? await loadRealTerrain() : undefined;
   const zoom = floatParam(params, 'zoom', scene.initialZoom ?? 1);
-  const screen = { width: CANVAS_W, height: CANVAS_H };
 
   // Retained renderer: mesh the terrain ONCE, then reuse a pooled sprite graph each frame (no per-frame
   // object churn), so a big scene renders + deep-zoom-outs without exhausting the GPU.
@@ -87,7 +85,7 @@ export async function renderSceneMode(
   // camera isn't), so the framing the human set up persists across replays.
   const cameraCtl = createCameraController(
     canvas,
-    cameraFor(buildSpriteScene(sim.snapshot()), zoom, CANVAS_W, CANVAS_H),
+    cameraFor(buildSpriteScene(sim.snapshot()), zoom, app.screen.width, app.screen.height),
   );
 
   let timestep = new FixedTimestep();
@@ -104,8 +102,9 @@ export async function renderSceneMode(
     }
     cameraCtl.update(elapsed);
     const snap = sim.snapshot();
+    // `app.screen` is the LIVE renderer size (it tracks window resizes), so the HUD stays pinned.
     renderer.update(snap, cameraCtl.camera(), snap.tick, {
-      placement: placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', screen),
+      placement: placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', app.screen),
     });
     overlay.update(snap.tick);
     perf.update(elapsed, { entities: snap.entities.length, ...renderer.stats() });

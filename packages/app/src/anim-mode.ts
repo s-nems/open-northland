@@ -7,7 +7,7 @@ import {
   type SpriteAtlas,
   type SpriteLayer,
   clipDirs,
-  createPixiApp,
+  createWindowPixiApp,
 } from '@vinland/render';
 import { MIN_ZOOM, createCameraController, floatParam } from './camera.js';
 import { type BobSeqRow, MissingAtlasError, loadBodyClips, loadGalleryLayers } from './real-sprites.js';
@@ -38,8 +38,6 @@ import {
  * checkout without `content/` shows a "run the pipeline" message instead of crashing.
  */
 
-const CANVAS_W = 1120;
-const CANVAS_H = 720;
 const DEFAULT_COLUMNS = 8;
 /** Screen margin (px) the grid's top-left starts at under the initial camera. */
 const GRID_MARGIN = 40;
@@ -406,7 +404,8 @@ async function startGallery(
   cells: readonly GalleryCellSpec[],
   overlay: { readonly char: VikingCharacter | null; readonly view: GalleryView },
 ): Promise<void> {
-  const app = await createPixiApp(canvas, CANVAS_W, CANVAS_H);
+  // Window-sized 1:1 backing store: resizing the browser changes the visible field, never the scale.
+  const app = await createWindowPixiApp(canvas);
   const columns = intParam(params, 'cols', DEFAULT_COLUMNS);
   const direction = parseDirection(params.get('dir'));
   const gallery = new AnimationGallery(app, { cells, columns, direction });
@@ -414,7 +413,7 @@ async function startGallery(
   // Initial camera: fit the grid WIDTH into the canvas (capped at 1×), top-left at a margin; the human
   // pans (middle-mouse / arrows) and zooms (wheel) from there. `?zoom=` overrides the fit.
   const content = gallery.contentSize();
-  const fitZoom = Math.max(MIN_ZOOM, Math.min(1, (CANVAS_W - 2 * GRID_MARGIN) / content.width));
+  const fitZoom = Math.max(MIN_ZOOM, Math.min(1, (app.screen.width - 2 * GRID_MARGIN) / content.width));
   const zoom = floatParam(params, 'zoom', fitZoom);
   const cameraCtl = createCameraController(canvas, {
     offsetX: GRID_MARGIN,
