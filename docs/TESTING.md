@@ -60,6 +60,16 @@ fixed scenario (e.g. `[walk, harvest, pickup, walk, pileup, …]`) and diff agai
 golden. When AI/economy tuning changes behavior, the diff is human/agent-readable — far more
 useful than "hash changed." Intentional change → update the golden in the same commit.
 
+### 6. Command-stream fuzz — determinism over inputs the goldens never construct
+The goldens pin ONE curated scenario; nondeterminism and command-validation bugs hide in the input
+space they never reach. `packages/sim/test/fuzz-determinism.test.ts` drives the real `step()`
+schedule with **seeded-random command streams** — deliberately including invalid commands (unknown
+type ids, stale or wrong-kind entity targets, tech-gated placements), since in lockstep any peer
+can send anything and rejection must be deterministic — and asserts, per stream: two live runs are
+byte-identical at hash checkpoints; replaying the recorded log reproduces the final hash; the core
+invariants (including cache re-derivation, `cachesCoherent`) hold every tick. A failure reproduces
+from the fuzz seed. New command variants belong in its generator the same commit they land.
+
 ## Running & debugging tests
 
 All levels run under `npm test` (vitest). For the inner loop:

@@ -16,13 +16,16 @@ fixed-point integers (`src/fixed.ts`), never floats. No DOM, no I/O, no `import`
 ## Determinism anti-patterns (an LLM reaches for these — don't)
 
 - `Math.random` / `Date.now` / `new Date` / `performance.now` → use `world.rng` (seeded) or the tick
-  counter. **Enforced:** `test/hygiene.test.ts` regex-scans `src/**.ts` for these four patterns and
-  fails the build (and CI) — a violation can't land green.
+  counter. **Enforced:** `test/hygiene.test.ts` regex-scans `src/**.ts` and fails the build (and CI)
+  — a violation can't land green. The scan also bans transcendental float math (`Math.sqrt/sin/cos/
+  pow/…` — last-bit results vary across engines; `fixed.ts` is the one sanctioned wrapper) and
+  locale-dependent APIs (`localeCompare`/`toLocale*`/`Intl` — output varies by environment).
 - Iterating a `Map`/`Set` for a **game decision** (insertion order is history-dependent) → iterate a
   canonical order: `world.canonicalEntities()` (sorted ids), `stockpileEntries()` (sorted by
   goodType). Membership (`.has`) is fine.
-- Floats for state → `fx` fixed-point (`fixed.ts`); no `Math.sqrt/sin/cos` (use `fx.isqrt`). Mint
-  `Fixed` only via `fx.*` — it's a branded type, a raw `number` won't assign.
+- Floats for state → `fx` fixed-point (`fixed.ts`); no `Math.sqrt/sin/cos` (use `fx.isqrt`; the
+  hygiene scan enforces this). Mint `Fixed` only via `fx.*` — it's a branded type, a raw `number`
+  won't assign.
 - Recycling entity ids → ids are monotonic, never reused.
 - Bespoke per-job logic / hardcoding "two tribes" → behavior is an **atomic planner** over the data
   vocabulary; tribes/jobs/atomics are **data** (see `docs/ECS.md`).
@@ -41,7 +44,10 @@ reach `ONE` — count an integer `elapsed` to the exact `elapsed >= duration` (s
 + golden atomic-trace tests — the tripwire. **Only update a golden if the change was intentional,
 and name the mechanic in the commit.** A moved golden on a *refactor* means a real change crept in —
 stop and reassess. Run `npm test`; if an invariant fires (`src/invariants.ts`) it reports the exact
-tick — use it.
+tick — use it. Beyond the goldens, `test/fuzz-determinism.test.ts` runs seeded-random command
+streams (run-twice hash equality + replay fidelity + invariants) — **add new command variants to its
+generator in the same commit**, and register any new incrementally-maintained cache in
+`World.verifyCaches()` (the `cachesCoherent` invariant re-derives every cache each checked tick).
 
 ## Scaling to thousands of units
 
