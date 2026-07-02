@@ -7,7 +7,7 @@ import {
 } from '@vinland/data';
 import { type SceneTerrain, terrainMapToScene } from '@vinland/render';
 import { Simulation, type TerrainMap, components, fx } from '@vinland/sim';
-import { type GoodRef, HARVEST_ATOMIC } from './real-sprites.js';
+import { type GoodRef, HARVEST_ATOMIC } from '../content/settler-gfx.js';
 
 /**
  * The Phase-2 vertical-slice scenario, built deterministically so a screenshot frame is reproducible.
@@ -82,7 +82,7 @@ function demoLandscape(
  * {@link demoLandscape}) so the sim's cell-graph can be built over a real decoded grid.
  */
 /** The slice's haulable goods as `(typeId, id)` pairs — shared by {@link demoContent} (which adds the
- *  sim-side fields) and the render binding (the per-good carry-look join keys, see `real-sprites.ts`). */
+ *  sim-side fields) and the render binding (the per-good carry-look join keys, see `content/settler-gfx.ts`). */
 const WOOD_GOOD = { typeId: WOOD, id: 'wood' } as const;
 const PLANK_GOOD = { typeId: 2, id: 'plank' } as const;
 

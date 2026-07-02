@@ -1,20 +1,22 @@
 import { type SpriteAtlas, indexAtlasFrames } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
+import { VIKING_CHARACTERS } from '../src/catalog/roster.js';
+import {
+  BUILDING_FAMILIES,
+  DEFAULT_BUILDING_FAMILY,
+  buildingBobRefsByType,
+  constructionRefsByType,
+} from '../src/content/building-gfx.js';
 import {
   ADULT_CHARACTER_BY_JOB,
-  BUILDING_FAMILIES,
   CHARACTER_SPECS,
-  DEFAULT_BUILDING_FAMILY,
   YOUNG_CHARACTER_BY_JOB,
   buildHumanBindings,
-  buildingBobRefsByType,
   carryAnimsByGood,
   carryHeadAnims,
   characterBinding,
-  constructionRefsByType,
   directionalAnimFromSeq,
-} from '../src/real-sprites.js';
-import { VIKING_CHARACTERS } from '../src/viking-roster.js';
+} from '../src/content/settler-gfx.js';
 
 /**
  * The seq→frame-range math behind `?atlas=real` — the self-verifiable half of consuming the decoded

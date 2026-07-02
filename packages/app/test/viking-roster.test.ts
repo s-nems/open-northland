@@ -3,7 +3,6 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GALLERY_DIRS, clipDirs } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
-import type { BobSeqRow } from '../src/real-sprites.js';
 import {
   DEFAULT_CHARACTER,
   DEFAULT_CHARACTER_PALETTE,
@@ -13,7 +12,8 @@ import {
   findCharacter,
   headLabel,
   pickWalkRow,
-} from '../src/viking-roster.js';
+} from '../src/catalog/roster.js';
+import type { BobSeqRow } from '../src/content/ir.js';
 
 /**
  * The viking roster's data half — pure and self-verifiable. The roster is transcribed from the mod's

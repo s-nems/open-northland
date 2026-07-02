@@ -6,10 +6,10 @@ import {
   layoutHud,
   placeHud,
 } from '@vinland/render';
-import { cameraFor, floatParam } from './camera.js';
-import { loadHumanSpriteSheet, syntheticSpriteSheet } from './real-sprites.js';
-import { loadRealTerrain } from './real-terrain.js';
-import { loadTerrainMap, runSlice, sliceTerrain } from './vertical-slice.js';
+import { loadHumanSpriteSheet, syntheticSpriteSheet } from '../content/sprite-sheet.js';
+import { loadRealTerrain } from '../content/terrain.js';
+import { loadTerrainMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
+import { cameraFor, floatParam } from '../view/camera.js';
 
 /**
  * The deterministic, headless render entry the screenshot harness waits on (docs/TESTING.md
@@ -62,7 +62,7 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
 
   const app = await createPixiApp(canvas, CANVAS_W, CANVAS_H);
   // `?atlas=real` binds the REAL decoded human-body atlas (settlers draw actual decoded pixels — the
-  // human-gated decoder/render check; gitignored content over the /bobs server, see real-sprites.ts).
+  // human-gated decoder/render check; gitignored content over the /bobs server, see content/sprite-sheet.ts).
   // `?atlas` (or `?atlas=synthetic`) binds the FREE synthetic atlas so the textured-sprite draw path is
   // exercised without copyrighted data. Absent, sprites draw as placeholder geometry — the
   // byte-reproducible default the committed shot PNG depends on.
@@ -77,7 +77,7 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
   const camera = cameraFor(buildSpriteScene(snap), floatParam(params, 'zoom', 1), CANVAS_W, CANVAS_H);
   // `?terrain` draws the ground from REAL decoded `text_*.pcx` textures (the approximated typeId→pattern
   // map) for the human pixel-check; gitignored content over the /ir.json + /textures server (see
-  // real-terrain.ts). Absent, terrain stays the reproducible flat-tint default the committed PNG depends on.
+  // content/terrain.ts). Absent, terrain stays the reproducible flat-tint default the committed PNG depends on.
   const terrain = params.has('terrain') ? await loadRealTerrain() : undefined;
 
   // The retained renderer draws the single deterministic frame: terrain meshed once, sprites pooled, one

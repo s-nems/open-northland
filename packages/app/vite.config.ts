@@ -1,4 +1,4 @@
-import { createReadStream, existsSync } from 'node:fs';
+import { createReadStream, existsSync, readdirSync } from 'node:fs';
 import { dirname, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type Plugin, defineConfig } from 'vite';
@@ -26,6 +26,31 @@ const texturesRoot = resolve(here, '../../content/Data/engine2d/bin/textures');
 // The validated IR (`content/ir.json`) carries the approximated `terrainPatterns` typeId→ground table
 // the `?terrain` binding reads; bridged in at `/ir.json` (the one file, not the tree).
 const irFile = resolve(here, '../../content/ir.json');
+
+// The MENU (entries/menu.ts) lists the decoded maps as clickable cards; it reads their stems from this
+// route — the `.json` filenames under `content/maps` (minus the extension), sorted. Absent `content/`
+// returns nothing (the middleware falls through to Vite's 404), so the menu shows a "run the pipeline"
+// hint instead of map cards. Only names a directory listing, never file bytes — the `/maps` route above
+// serves the grids themselves (with traversal rejected).
+function serveMapsIndex(): Plugin {
+  return {
+    name: 'vinland-serve-maps-index',
+    configureServer(server) {
+      server.middlewares.use('/maps-index', (_req, res, next) => {
+        if (!existsSync(mapsRoot)) {
+          next();
+          return;
+        }
+        const stems = readdirSync(mapsRoot)
+          .filter((f) => f.endsWith('.json'))
+          .map((f) => f.slice(0, -'.json'.length))
+          .sort();
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(stems));
+      });
+    },
+  };
+}
 
 function serveContentMaps(): Plugin {
   return {
@@ -100,7 +125,13 @@ function serveContentIr(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [serveContentMaps(), serveContentBobs(), serveContentTextures(), serveContentIr()],
+  plugins: [
+    serveMapsIndex(),
+    serveContentMaps(),
+    serveContentBobs(),
+    serveContentTextures(),
+    serveContentIr(),
+  ],
   server: { port: 5173, open: false },
   build: { target: 'es2022', outDir: 'dist' },
 });

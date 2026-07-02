@@ -1,7 +1,7 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { type Simulation, components, fx } from '@vinland/sim';
-import { HARVEST_ATOMIC } from '../real-sprites.js';
-import { GRASS, VIKING, grassTerrain } from '../viking-buildings.js';
+import { GRASS, VIKING, grassTerrain } from '../catalog/buildings.js';
+import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
 import type { SceneDefinition } from './types.js';
 
 /**

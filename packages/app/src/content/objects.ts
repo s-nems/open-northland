@@ -5,7 +5,7 @@ import {
   loadAtlasSource,
   tileToScreen,
 } from '@vinland/render';
-import type { LandscapeGfxRow, TerrainIr } from './real-terrain.js';
+import type { LandscapeGfxRow, TerrainIr } from './terrain.js';
 
 /**
  * The map-object binding: turn a decoded map's `objects` layer (the original's `emla` half-cell

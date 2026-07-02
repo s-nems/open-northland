@@ -3,6 +3,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { AtlasFrame, SpriteAtlas, SpriteLayer } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
+import { findCharacter } from '../src/catalog/roster.js';
+import { BODY_IMAGELIB, type BobSeqRow } from '../src/content/ir.js';
 import {
   buildAnimCells,
   buildGalleryClips,
@@ -12,9 +14,7 @@ import {
   parseView,
   prettyClipLabel,
   rosterLabel,
-} from '../src/anim-mode.js';
-import { BODY_IMAGELIB, type BobSeqRow } from '../src/real-sprites.js';
-import { findCharacter } from '../src/viking-roster.js';
+} from '../src/entries/anim-cells.js';
 
 /** A minimal {@link SpriteLayer} for the pure cell-builder tests: only `.atlas.frames` is read; the GPU
  *  `source` is a stub (the builders pass the layer through by reference, never touch its texture). */

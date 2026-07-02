@@ -1,5 +1,4 @@
 import { type Simulation, components } from '@vinland/sim';
-import { MIN_ZOOM } from '../camera.js';
 import {
   VIKING,
   VIKING_BUILDINGS,
@@ -7,7 +6,8 @@ import {
   placeVikingBuilding,
   placedBuildingTypes,
   vikingBuildingContent,
-} from '../viking-buildings.js';
+} from '../catalog/buildings.js';
+import { MIN_ZOOM } from '../view/camera.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -99,7 +99,7 @@ export const stressCrowdScene: SceneDefinition = {
   summary: `Wielka mapa ${MAP}×${MAP} (${MAP * MAP} kafli) z pełną kratą budynków i ~${SETTLERS.length} postaciami naraz — dowód, że renderer (pooling + culling + batching) utrzymuje płynność tam, gdzie stary crashował. Sprawdź licznik FPS (lewy dolny róg), przewijaj po mapie i oddalaj (do limitu — widok „bitwy”, duży kawał mapy; NIE cała mapa naraz — to celowo ograniczone). Teren i postacie poza kadrem są cullowane. Tłum jest bezczynny celowo (izoluje koszt renderowania od AI symulacji).`,
   seed: 256,
   // Same synthetic content the all-buildings scene uses (every catalog building, an idle job, grass,
-  // viking tribe) — the one source of truth stays in viking-buildings.ts.
+  // viking tribe) — the one source of truth stays in catalog/buildings.ts.
   content: vikingBuildingContent(VIKING_BUILDINGS),
   terrain: grassTerrain(MAP, MAP),
   build,

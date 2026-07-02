@@ -9,7 +9,7 @@ import {
   resolveVikingBuilding,
   vikingBuildingById,
   vikingBuildingByTypeId,
-} from '../src/viking-buildings.js';
+} from '../src/catalog/buildings.js';
 
 /**
  * The committed viking-building catalog is the single source of truth for name → typeId. This test pins it
