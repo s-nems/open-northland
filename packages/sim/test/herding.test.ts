@@ -141,7 +141,8 @@ describe('herdingSystem — follow-the-leader cohesion', () => {
     const follower = herderAt(sim, 10, 0, leader); // far out
 
     const startX = fx.toInt(sim.world.get(follower, Position).x);
-    for (let i = 0; i < 40; i++) sim.step(); // herding -> navigation -> pathfinding -> movement
+    // ~7 tiles back into the radius at the ⅛ tile/tick pace = ~56 move ticks + plan/path latency.
+    for (let i = 0; i < 80; i++) sim.step(); // herding -> navigation -> pathfinding -> movement
     const endX = fx.toInt(sim.world.get(follower, Position).x);
 
     expect(endX).toBeLessThan(startX); // moved back toward the leader at (0,0)

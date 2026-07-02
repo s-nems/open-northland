@@ -523,6 +523,21 @@ describe('characterBinding', () => {
     });
   });
 
+  it('binds a non-x8 action strip facing-locked (eat/sleep/pick_up — the clipDirs reading)', () => {
+    const seqs = new Map([
+      ['wait', { name: 'wait', start: 1931, length: 57 }],
+      ['eat', { name: 'eat', start: 1530, length: 17 }],
+    ]);
+    const spec = {
+      rosterId: 'civilian',
+      waitSeq: 'wait',
+      atomics: { 10: { seq: 'eat' } },
+    } as const;
+    expect(characterBinding(spec, seqs, [])?.byAtomic).toEqual({
+      10: { start: 1530, dirs: 1, stride: 17 },
+    });
+  });
+
   it('resolves the spec atomics into byAtomic (the setatomic join) with the phase override', () => {
     const seqs = new Map([
       ['wait', { name: 'wait', start: 1931, length: 57 }],

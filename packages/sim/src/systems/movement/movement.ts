@@ -6,10 +6,15 @@ import type { System } from '../context.js';
 /**
  * How far an entity following a {@link PathFollow} advances per tick, in fixed-point tile units.
  * Cell-centre waypoints are one tile apart, so at this speed an entity reaches the next waypoint in
- * four ticks (a deliberate, tunable settler pace). A divisor of ONE keeps each step landing exactly
+ * eight ticks (a deliberate, tunable settler pace). A divisor of ONE keeps each step landing exactly
  * on integer fractions — no accumulated rounding drift — so two runs stay byte-identical.
+ *
+ * The magnitude is calibration-by-observation (no readable human `movespeed` exists — see
+ * docs/FIDELITY.md "Movement step speed"): the earlier ¼ tile/tick read clearly TOO FAST against the
+ * original (and made the walk skate — the 12-frame leg cycle spanned 3 tiles); at ⅛ a full leg cycle
+ * covers 1.5 tiles and the on-screen pace matches the original's unhurried walk much closer.
  */
-export const MOVE_SPEED_PER_TICK: Fixed = fx.div(fx.fromInt(1), fx.fromInt(4));
+export const MOVE_SPEED_PER_TICK: Fixed = fx.div(fx.fromInt(1), fx.fromInt(8));
 
 /**
  * MovementSystem — advances entity positions one tick.

@@ -63,11 +63,11 @@ describe('movementSystem — path following', () => {
     expect(pos(sim, e).x).toBeCloseTo(0, 6);
     expect(sim.world.get(e, PathFollow).index).toBe(1);
     sim.step();
-    expect(pos(sim, e).x).toBeCloseTo(0.25, 6); // now a quarter-tile toward wp1
+    expect(pos(sim, e).x).toBeCloseTo(0.125, 6); // now an eighth-tile toward wp1
   });
 
-  it('reaches a one-tile-away waypoint in four steps once it is the active target', () => {
-    expect(MOVE_SPEED_PER_TICK).toBe(fx.div(fx.fromInt(1), fx.fromInt(4)));
+  it('reaches a one-tile-away waypoint in eight steps once it is the active target', () => {
+    expect(MOVE_SPEED_PER_TICK).toBe(fx.div(fx.fromInt(1), fx.fromInt(8)));
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     // Start already on waypoint 0, so the run is purely wp0 -> wp1 (one tile east).
     const e = followerAt(sim, 0, 0, [
@@ -75,10 +75,11 @@ describe('movementSystem — path following', () => {
       { x: 1, y: 0 },
     ]);
     sim.step(); // consume wp0 (already on it), index -> 1; no move toward wp1 yet
-    sim.step(); // +0.25 -> 0.25
-    sim.step(); // +0.25 -> 0.50
-    sim.step(); // +0.25 -> 0.75
-    sim.step(); // +0.25 -> 1.00 (arrived at wp1, last waypoint -> path removed)
+    for (let i = 0; i < 7; i++) {
+      sim.step(); // +0.125 each — still short of the tile after 7 of 8 steps
+      expect(sim.world.has(e, PathFollow)).toBe(true);
+    }
+    sim.step(); // 8th step lands exactly on wp1 (8 * 0.125 = 1.0), last waypoint -> path removed
     expect(pos(sim, e).x).toBeCloseTo(1, 6);
     expect(sim.world.has(e, PathFollow)).toBe(false); // path complete, dropped
   });
@@ -99,8 +100,8 @@ describe('movementSystem — path following', () => {
       { x: 2, y: 0 },
       { x: 3, y: 0 },
     ]);
-    // 3 tiles to cover at 1/4 tile/tick = 12 move-steps; +1 tick to consume the start waypoint.
-    for (let i = 0; i < 13; i++) sim.step();
+    // 3 tiles to cover at 1/8 tile/tick = 24 move-steps; +1 tick to consume the start waypoint.
+    for (let i = 0; i < 25; i++) sim.step();
     expect(pos(sim, e).x).toBeCloseTo(3, 6);
     expect(sim.world.has(e, PathFollow)).toBe(false);
   });
@@ -112,13 +113,11 @@ describe('movementSystem — path following', () => {
       { x: 1, y: 1 },
     ]);
     sim.step(); // consume wp0 (already on it); no move toward (1,1) yet
-    sim.step(); // first move toward (1,1): +0.25 on each axis
+    sim.step(); // first move toward (1,1): +0.125 on each axis
     const p1 = pos(sim, e);
-    expect(p1.x).toBeCloseTo(0.25, 6);
-    expect(p1.y).toBeCloseTo(0.25, 6);
-    sim.step();
-    sim.step();
-    sim.step(); // 4 move-steps of 0.25 on each axis -> exactly (1,1)
+    expect(p1.x).toBeCloseTo(0.125, 6);
+    expect(p1.y).toBeCloseTo(0.125, 6);
+    for (let i = 0; i < 7; i++) sim.step(); // 8 move-steps of 0.125 on each axis -> exactly (1,1)
     expect(pos(sim, e).x).toBeCloseTo(1, 6);
     expect(pos(sim, e).y).toBeCloseTo(1, 6);
     expect(sim.world.has(e, PathFollow)).toBe(false);
@@ -132,26 +131,26 @@ describe('movementSystem — per-entity pace (MoveSpeed)', () => {
       { x: 0, y: 0 },
       { x: 1, y: 0 },
     ]);
-    // Half the settler pace: ONE/8 = 0.125 tile/tick (vs the default ONE/4 = 0.25).
-    sim.world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(8)), runPerTick: null });
+    // Half the settler pace: ONE/16 = 0.0625 tile/tick (vs the default ONE/8 = 0.125).
+    sim.world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(16)), runPerTick: null });
     sim.step(); // consume wp0 (already on it), index -> 1; no move toward wp1 yet
     sim.step(); // first move toward wp1 at the entity's OWN pace
-    expect(pos(sim, e).x).toBeCloseTo(0.125, 6); // an eighth of a tile, not a quarter
+    expect(pos(sim, e).x).toBeCloseTo(0.0625, 6); // a sixteenth of a tile, not an eighth
   });
 
-  it('reaches a one-tile waypoint in eight steps at ONE/8 (slower than the default four)', () => {
+  it('reaches a one-tile waypoint in sixteen steps at ONE/16 (slower than the default eight)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = followerAt(sim, 0, 0, [
       { x: 0, y: 0 },
       { x: 1, y: 0 },
     ]);
-    sim.world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(8)), runPerTick: null });
+    sim.world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(16)), runPerTick: null });
     sim.step(); // consume wp0; index -> 1
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 15; i++) {
       sim.step();
-      expect(sim.world.has(e, PathFollow)).toBe(true); // still short of the tile after 7 of 8 steps
+      expect(sim.world.has(e, PathFollow)).toBe(true); // still short of the tile after 15 of 16 steps
     }
-    sim.step(); // 8th step lands exactly on wp1 (8 * 0.125 = 1.0), last waypoint -> path dropped
+    sim.step(); // 16th step lands exactly on wp1 (16 * 0.0625 = 1.0), last waypoint -> path dropped
     expect(pos(sim, e).x).toBeCloseTo(1, 6);
     expect(sim.world.has(e, PathFollow)).toBe(false);
   });
@@ -172,8 +171,8 @@ describe('movementSystem — precedence: PathFollow over Velocity', () => {
     });
     sim.step(); // consume wp0 (already on it); no move yet
     sim.step(); // first move toward wp1
-    // If Velocity had also applied, x would jump by +1/tick; path-follow alone gives 0.25/tick.
-    expect(pos(sim, e).x).toBeCloseTo(0.25, 6);
+    // If Velocity had also applied, x would jump by +1/tick; path-follow alone gives 0.125/tick.
+    expect(pos(sim, e).x).toBeCloseTo(0.125, 6);
   });
 
   it('does not velocity-integrate on the same tick the path completes (no double-move)', () => {

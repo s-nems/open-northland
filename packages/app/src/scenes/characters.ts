@@ -156,11 +156,14 @@ function settlersWithJob(sim: Simulation, jobType: number): number {
   return n;
 }
 
-/** Whether every marcher ARRIVED: stands exactly on its post with its MoveGoal satisfied (removed). */
+/** Whether every marcher ARRIVED: stands exactly on its post with its MoveGoal satisfied (removed).
+ *  Scoped to the marcher JOBS — the woodcutters legitimately carry planner MoveGoals all run long. */
 function allMarchersArrived(sim: Simulation): boolean {
+  const marcherJobs = new Set<number | null>(MARCHES.map((m) => m.jobType));
   const posts = MARCHES.map((m) => ({ x: fx.fromInt(m.to.x), y: fx.fromInt(m.to.y) }));
   let arrived = 0;
   for (const e of [...sim.world.query(Settler, Position)]) {
+    if (!marcherJobs.has(sim.world.get(e, Settler).jobType)) continue;
     if (sim.world.has(e, MoveGoal)) return false; // still walking (or never routed) — not arrived
     const p = sim.world.get(e, Position);
     if (posts.some((t) => t.x === p.x && t.y === p.y)) arrived++;
@@ -181,7 +184,9 @@ export const charactersScene: SceneDefinition = {
   content: content(),
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  runTicks: 400,
+  // Enough for the full loop at the ⅛ tile/tick pace: the marches (~9 tiles ≈ 72 ticks) and at least
+  // one complete harvest→carry→deposit round trip (~2×11 tiles + the swing ≈ 200+ ticks).
+  runTicks: 800,
   initialZoom: 1,
   checklist: [
     'Na starcie kobieta (z lewej) i czterej żołnierze (z prawej) WCHODZĄ marszem na swoje miejsca — każdy żołnierz idzie swoim chodem broni (przyciśnij Restart, by odtworzyć wmarsz)',
