@@ -1,16 +1,7 @@
-import {
-  type Application,
-  Container,
-  Graphics,
-  Rectangle,
-  Sprite,
-  Text,
-  Texture,
-  type TextureSource,
-} from 'pixi.js';
+import { type Application, Container, Graphics, Sprite, Text } from 'pixi.js';
 import type { Camera } from '../data/iso.js';
-import type { AtlasFrame } from '../data/sprites.js';
 import type { SpriteLayer } from './pixi-app.js';
+import { TextureCache } from './texture-cache.js';
 
 /**
  * A DATA-DRIVEN animation gallery — the animation twin of the all-buildings catalog, for the character
@@ -186,7 +177,7 @@ export class AnimationGallery {
   private readonly app: Application;
   private readonly root = new Container();
   private readonly cells: GalleryCell[] = [];
-  private readonly textureCache = new Map<AtlasFrame, Texture>();
+  private readonly textures = new TextureCache();
   private direction: GalleryDirection;
   private readonly columns: number;
   private readonly cellCount: number;
@@ -289,7 +280,7 @@ export class AnimationGallery {
           spr.visible = false;
           continue;
         }
-        spr.texture = this.textureFor(layer.source, frame);
+        spr.texture = this.textures.get(layer.source, frame);
         spr.position.set(frame.offsetX, frame.offsetY);
         spr.visible = true;
       }
@@ -297,18 +288,9 @@ export class AnimationGallery {
     this.app.render();
   }
 
-  private textureFor(source: TextureSource, frame: AtlasFrame): Texture {
-    let tex = this.textureCache.get(frame);
-    if (tex === undefined) {
-      tex = new Texture({ source, frame: new Rectangle(frame.x, frame.y, frame.width, frame.height) });
-      this.textureCache.set(frame, tex);
-    }
-    return tex;
-  }
-
   /** Tear down the retained graph + texture cache. */
   dispose(): void {
     this.root.destroy({ children: true });
-    this.textureCache.clear();
+    this.textures.clear();
   }
 }

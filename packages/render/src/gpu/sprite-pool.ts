@@ -1,0 +1,332 @@
+import type { WorldSnapshot } from '@vinland/sim';
+import { Container, Graphics, Sprite, type TextureSource } from 'pixi.js';
+import { depthKey } from '../data/iso.js';
+import { type DrawItem, type DrawKind, buildSpriteScene, drawableEntityRefs } from '../data/scene.js';
+import {
+  type AtlasFrame,
+  type BuildingDraw,
+  type SpriteKind,
+  pickByJob,
+  resolveBuildingDraw,
+  resolveConstructionDraws,
+  resolveSettlerBobId,
+  resolveSpriteBobId,
+} from '../data/sprites.js';
+import type { Viewport } from '../data/viewport.js';
+import type { SpriteLayer, SpriteSheet } from './pixi-app.js';
+import type { TextureCache } from './texture-cache.js';
+
+/**
+ * The retained per-entity sprite pool — a display object per drawable entity, keyed by its (monotonic,
+ * never-reused) entity id and REUSED across frames: only the container position, the sprites'
+ * textures/offsets, and their visibility change, so the steady state allocates nothing. Each frame the
+ * pool is reconciled to the culled, depth-sorted draw list; an entity that scrolled off-screen is kept
+ * pooled (it may scroll back), one that LEFT the snapshot (died) is destroyed. This is where the
+ * frame-selection data decisions (`resolveSettlerBobId`/`resolveBuildingDraw`, unit-tested upstream)
+ * become actual bound textures — the GPU half a human judges.
+ */
+
+/** Placeholder body colour per drawable sprite kind (drawn when no atlas frame binds the entity). */
+const KIND_COLOURS: Record<Exclude<DrawKind, 'tile'>, number> = {
+  building: 0xc8a04a,
+  settler: 0xe8e0d0,
+  resource: 0x2f7d32,
+};
+
+/** One resolved atlas layer to draw for an entity: which source page, which frame rect, at what scale. */
+interface ResolvedLayer {
+  readonly source: TextureSource;
+  readonly frame: AtlasFrame;
+  readonly scale: number;
+}
+
+/**
+ * One entity's persistent display objects, kept across frames and reused: a {@link Container} at the
+ * entity's feet anchor holding its atlas layer {@link Sprite}s (body + head overlays, or a single
+ * kind/family sprite) and a lazily-built placeholder {@link Graphics}. Per frame only the container
+ * position, the sprites' textures/offsets, and their visibility change — nothing is re-allocated.
+ */
+interface PooledEntity {
+  readonly container: Container;
+  readonly kind: Exclude<DrawKind, 'tile'>;
+  readonly sprites: Sprite[];
+  placeholder?: Graphics;
+  attached: boolean;
+  lastSeen: number;
+}
+
+/**
+ * Which pooled entities must be DESTROYED this frame: those whose entity has left the snapshot (died),
+ * NOT ones merely culled off-screen (still in `liveRefs`, kept in the pool for when they scroll back).
+ * Pure + testable without a GPU — the pool-bookkeeping decision split out from the Pixi mutation.
+ */
+export function reconcileSprites(
+  liveRefs: ReadonlySet<number>,
+  pooledKeys: Iterable<number>,
+): { toDestroy: number[] } {
+  const toDestroy: number[] = [];
+  for (const key of pooledKeys) {
+    if (!liveRefs.has(key)) toDestroy.push(key);
+  }
+  return { toDestroy };
+}
+
+export class SpritePool {
+  private readonly pool = new Map<number, PooledEntity>();
+  private frameId = 0;
+  private drawn = 0;
+
+  /**
+   * @param spriteLayer the renderer's shared, depth-sorted entity layer (also holds the tall map
+   *   objects) — pooled entities attach HERE.
+   * @param textures the renderer's shared frame→texture cache.
+   * @param sheet the loaded bob atlas + bindings; `undefined` draws placeholder geometry for every entity.
+   */
+  constructor(
+    private readonly spriteLayer: Container,
+    private readonly textures: TextureCache,
+    private readonly sheet: SpriteSheet | undefined,
+  ) {}
+
+  /**
+   * Reconcile the pool to one frame: get-or-create a display object per drawn (culled, depth-sorted)
+   * entity, update it in place, order it by its feet-anchor {@link depthKey}, detach entities not drawn
+   * this frame (culled or gone), and destroy the ones that LEFT the snapshot (died). No allocation in
+   * the steady state — only a first-seen entity or a growing layer set mints a new object.
+   */
+  reconcile(snapshot: WorldSnapshot, vp: Viewport, tick: number): void {
+    const items = buildSpriteScene(snapshot, vp);
+    this.frameId++;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item === undefined) continue;
+      let pe = this.pool.get(item.ref);
+      if (pe === undefined) {
+        pe = createPooled(item.kind as Exclude<DrawKind, 'tile'>);
+        this.pool.set(item.ref, pe);
+      }
+      this.updatePooled(pe, item, tick);
+      // Depth = the feet-anchor SCREEN y (+ a small deterministic x tiebreak), the same key the tall
+      // map objects use, so a settler and the tree it walks behind sort into one painter order.
+      // NOTE this deliberately diverges from the headless `buildScene` oracle's row-major
+      // (tileY, tileX) list order: screen y ∝ (col + row) is the iso-correct occlusion key once
+      // static objects interleave with entities.
+      pe.container.zIndex = depthKey(item.x, item.y);
+      if (!pe.attached) {
+        this.spriteLayer.addChild(pe.container);
+        pe.attached = true;
+      }
+      pe.lastSeen = this.frameId;
+    }
+    this.drawn = items.length;
+
+    // Detach pooled entities not drawn this frame (culled or gone) so the layer's sort stays O(visible).
+    for (const pe of this.pool.values()) {
+      if (pe.lastSeen !== this.frameId && pe.attached) {
+        this.spriteLayer.removeChild(pe.container);
+        pe.attached = false;
+      }
+    }
+
+    // Destroy sprites of entities that LEFT the snapshot (died) — not the ones merely culled off-screen.
+    const live = drawableEntityRefs(snapshot);
+    for (const ref of reconcileSprites(live, this.pool.keys()).toDestroy) {
+      const pe = this.pool.get(ref);
+      if (pe !== undefined) {
+        pe.container.destroy({ children: true });
+        this.pool.delete(ref);
+      }
+    }
+  }
+
+  /** Entities drawn last frame + sprites currently pooled — for the perf overlay's on-screen readout. */
+  stats(): { drawn: number; pooled: number } {
+    return { drawn: this.drawn, pooled: this.pool.size };
+  }
+
+  /**
+   * Destroy EVERY pooled entity — including ones currently detached (culled off-screen), which a
+   * scene-graph walk from the sprite layer can't reach because they were removed from it. Called on the
+   * renderer's dispose.
+   */
+  destroy(): void {
+    for (const pe of this.pool.values()) pe.container.destroy({ children: true });
+    this.pool.clear();
+  }
+
+  /**
+   * Update one pooled entity for this frame: move its container to the feet anchor, then either bind its
+   * atlas layers (reusing/growing its child sprites) or show its placeholder geometry — reusing objects
+   * instead of re-creating them.
+   */
+  private updatePooled(pe: PooledEntity, item: DrawItem, tick: number): void {
+    pe.container.position.set(item.x, item.y);
+    const layers = this.resolveLayers(item, tick);
+    if (layers === null) {
+      // Unbound / no sheet → placeholder marker (footprint diamond + body box), hide any atlas sprites.
+      for (const s of pe.sprites) s.visible = false;
+      if (pe.placeholder === undefined) {
+        pe.placeholder = drawPlaceholder(new Graphics(), pe.kind);
+        pe.container.addChild(pe.placeholder);
+      }
+      pe.placeholder.visible = true;
+      return;
+    }
+    if (pe.placeholder !== undefined) pe.placeholder.visible = false;
+    for (let i = 0; i < layers.length; i++) {
+      const layer = layers[i];
+      if (layer === undefined) continue;
+      let spr = pe.sprites[i];
+      if (spr === undefined) {
+        spr = new Sprite();
+        pe.sprites.push(spr);
+        pe.container.addChild(spr);
+      }
+      spr.texture = this.textures.get(layer.source, layer.frame);
+      // Feet-anchored: the frame's authored draw offset, scaled about the anchor (the container origin).
+      spr.position.set(layer.frame.offsetX * layer.scale, layer.frame.offsetY * layer.scale);
+      spr.scale.set(layer.scale);
+      spr.visible = true;
+    }
+    // Hide any leftover sprites from a frame that needed more layers than this one.
+    for (let i = layers.length; i < pe.sprites.length; i++) {
+      const s = pe.sprites[i];
+      if (s !== undefined) s.visible = false;
+    }
+  }
+
+  /**
+   * Resolve the ordered atlas layers an entity draws, or `null` to draw the placeholder — returns DATA
+   * (source + frame + scale) instead of display objects so the caller can reuse pooled sprites.
+   * Faithfully reproduces the family → kind-layer → shared-body decision (an unloaded named family falls
+   * through to the default building layer; a loaded family/kind layer with a missing/empty frame returns
+   * `null` → placeholder, since its id space differs).
+   */
+  private resolveLayers(item: DrawItem, tick: number): ResolvedLayer[] | null {
+    const sheet = this.sheet;
+    if (sheet === undefined) return null;
+
+    // Per-job settler CHARACTER (the `[jobbasegraphics]` join): the job's own body + one stable head
+    // pick + its own binding, resolved in that body's frame-id space. Falls through to the sheet-global
+    // settler path only when the sheet carries no characters (the synthetic sheet — unchanged).
+    if (item.kind === 'settler' && sheet.characters !== undefined) {
+      const char = pickByJob(sheet.characters, item.jobType, item.young === true);
+      const bob = resolveSettlerBobId(char.binding, item, tick);
+      const layers: ResolvedLayer[] = [];
+      const bodyFrame = char.body.atlas.frames.get(bob);
+      if (bodyFrame !== undefined && bodyFrame.width > 0 && bodyFrame.height > 0) {
+        layers.push({ source: char.body.source, frame: bodyFrame, scale: 1 });
+      }
+      // ONE head per individual, stable by entity id (ids are monotonic, never reused), so a crowd
+      // shows varied faces without per-frame flicker — the render-side analogue of the original's
+      // per-individual random head pick. The head may resolve through its OWN binding (the head-borrow
+      // case — a carry variant whose head bobs are empty plays the base walk's head instead).
+      const heads = char.heads;
+      if (heads !== undefined && heads.length > 0) {
+        const head = heads[item.ref % heads.length];
+        const headBob =
+          char.headBinding !== undefined ? resolveSettlerBobId(char.headBinding, item, tick) : bob;
+        const headFrame = head?.atlas.frames.get(headBob);
+        if (head !== undefined && headFrame !== undefined && headFrame.width > 0 && headFrame.height > 0) {
+          layers.push({ source: head.source, frame: headFrame, scale: 1 });
+        }
+      }
+      return layers.length > 0 ? layers : null;
+    }
+
+    let bobId: number | null;
+    if (item.kind === 'building') {
+      // An under-construction building draws its ACTIVE construction-stage stack (grey foundation →
+      // stages → body, several sprites in stacking order) when the binding carries the layers; each
+      // stage resolves through the same family/default-layer decision a finished body uses. A stage
+      // whose frame is missing/empty is skipped; if none resolves, fall through to the body draw
+      // (a partial atlas degrades to the finished look rather than drawing nothing).
+      const stack = resolveConstructionDraws(sheet.bindings.building, item);
+      if (stack !== null) {
+        const layers: ResolvedLayer[] = [];
+        for (const draw of stack) {
+          const resolved = this.buildingLayerFor(sheet, draw);
+          if (resolved !== null) layers.push(resolved);
+        }
+        if (layers.length > 0) return layers;
+      }
+      const draw = resolveBuildingDraw(sheet.bindings.building, item);
+      // A LOADED named family resolves through the shared helper (missing/empty frame → placeholder);
+      // an UNLOADED one falls through to the default building layer below (a deliberate difference
+      // from the construction path, which drops the stage instead).
+      if (draw.layer !== undefined && sheet.families?.[draw.layer] !== undefined) {
+        const resolved = this.buildingLayerFor(sheet, draw);
+        return resolved === null ? null : [resolved];
+      }
+      bobId = draw.bob;
+    } else {
+      bobId = resolveSpriteBobId(item, sheet.bindings, tick);
+    }
+    if (bobId === null) return null;
+
+    const kindLayer: SpriteLayer | undefined =
+      item.kind === 'tile' ? undefined : sheet.kindLayers?.[item.kind as SpriteKind];
+    if (kindLayer !== undefined) {
+      const frame = kindLayer.atlas.frames.get(bobId);
+      if (frame === undefined || frame.width === 0 || frame.height === 0) return null;
+      const scale = sheet.kindScales?.[item.kind as SpriteKind] ?? 1;
+      return [{ source: kindLayer.source, frame, scale }];
+    }
+
+    // Shared body atlas + overlay (head) layers, all indexed by the same resolved bob id.
+    const id = bobId;
+    const layers: ResolvedLayer[] = [];
+    const add = (layer: SpriteLayer): void => {
+      const frame = layer.atlas.frames.get(id);
+      if (frame !== undefined && frame.width > 0 && frame.height > 0) {
+        layers.push({ source: layer.source, frame, scale: 1 });
+      }
+    };
+    add({ source: sheet.source, atlas: sheet.atlas });
+    for (const overlay of sheet.overlays ?? []) add(overlay);
+    return layers.length > 0 ? layers : null;
+  }
+
+  /**
+   * Resolve ONE building draw (a finished body or a construction stage) to its atlas layer — the
+   * family / default-building-layer decision shared by the body and construction paths. Returns null
+   * for an unloaded family or a missing/empty frame (the caller skips or falls back).
+   */
+  private buildingLayerFor(sheet: SpriteSheet, draw: BuildingDraw): ResolvedLayer | null {
+    if (draw.layer !== undefined) {
+      const family = sheet.families?.[draw.layer];
+      if (family === undefined) return null; // unloaded named family — no wrong-bob borrow
+      const frame = family.atlas.frames.get(draw.bob);
+      if (frame === undefined || frame.width === 0 || frame.height === 0) return null;
+      const scale = sheet.familyScales?.[draw.layer] ?? sheet.kindScales?.building ?? 1;
+      return { source: family.source, frame, scale };
+    }
+    const kindLayer = sheet.kindLayers?.building;
+    if (kindLayer === undefined) return null;
+    const frame = kindLayer.atlas.frames.get(draw.bob);
+    if (frame === undefined || frame.width === 0 || frame.height === 0) return null;
+    return { source: kindLayer.source, frame, scale: sheet.kindScales?.building ?? 1 };
+  }
+}
+
+/** A fresh, empty pooled entity (container + kind; sprites/placeholder grow lazily on first update). */
+function createPooled(kind: Exclude<DrawKind, 'tile'>): PooledEntity {
+  return { container: new Container(), kind, sprites: [], attached: false, lastSeen: 0 };
+}
+
+/**
+ * Draw a feet-anchored sprite placeholder into `g`, relative to its container origin `(0,0)`: a small
+ * footprint diamond on the ground + a body box rising from it, coloured by kind — so an unbound entity
+ * (or the no-atlas default) still shows depth-sortable geometry. Built ONCE per entity (kind is stable);
+ * only its visibility toggles per frame.
+ */
+function drawPlaceholder(g: Graphics, kind: Exclude<DrawKind, 'tile'>): Graphics {
+  const colour = KIND_COLOURS[kind];
+  const bodyW = kind === 'building' ? 28 : 14;
+  const bodyH = kind === 'building' ? 40 : 24;
+  g.moveTo(0, -5).lineTo(9, 0).lineTo(0, 5).lineTo(-9, 0).closePath().fill({ color: 0x000000, alpha: 0.3 });
+  g.rect(-bodyW / 2, -bodyH, bodyW, bodyH)
+    .fill({ color: colour })
+    .stroke({ color: 0x000000, width: 1, alpha: 0.5 });
+  return g;
+}
