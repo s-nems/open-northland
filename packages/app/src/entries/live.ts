@@ -1,4 +1,5 @@
 import {
+  type Camera,
   WorldRenderer,
   buildHud,
   buildSpriteScene,
@@ -13,7 +14,7 @@ import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { fetchTerrainIr, loadRealTerrain } from '../content/terrain.js';
 import { demoGoods, loadTerrainMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
-import { cameraFor, createCameraController } from '../view/camera.js';
+import { cameraCenteredOnTile, cameraFor, createCameraController } from '../view/camera.js';
 import { enableAudioOnGesture } from '../view/overlay.js';
 import { floatParam } from './params.js';
 
@@ -32,6 +33,21 @@ import { floatParam } from './params.js';
 const HUD_TRIBE = 1;
 /** The slice sim's deterministic seed. */
 const SLICE_SEED = 7;
+
+/**
+ * Parse `?center=x,y` (integer tile coords) into a camera centred on that tile (via
+ * {@link cameraCenteredOnTile}), or `null` for an absent/malformed value so the caller falls back to the
+ * default settler-centroid framing.
+ */
+function centerTile(raw: string | null, zoom: number, width: number, height: number): Camera | null {
+  if (raw === null) return null;
+  const parts = raw.split(',').map((s) => Number.parseInt(s, 10));
+  const [tx, ty] = parts;
+  if (parts.length !== 2 || tx === undefined || ty === undefined || Number.isNaN(tx) || Number.isNaN(ty)) {
+    return null;
+  }
+  return cameraCenteredOnTile(tx, ty, zoom, width, height);
+}
 
 export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   const app = await createWindowPixiApp(canvas);
@@ -93,10 +109,13 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
   // Interactive camera: `?zoom` (+ the settler-centroid framing) is the STARTING frame; from there a
   // human pans (middle-mouse drag / arrow keys) and zooms (scroll wheel). The HUD is drawn outside the
   // camera layer below, so it stays pinned while the world moves.
-  const cameraCtl = createCameraController(
-    canvas,
-    cameraFor(buildSpriteScene(sim.snapshot()), zoom, app.screen.width, app.screen.height),
-  );
+  // `?center=x,y` overrides the starting frame to centre a given tile (a decoded map's feature — a
+  // bridge, a coastline — the settler-centroid framing would never land on); a human inspection knob
+  // like `?zoom`, degrading to the default framing on a malformed value.
+  const initialCamera =
+    centerTile(params.get('center'), zoom, app.screen.width, app.screen.height) ??
+    cameraFor(buildSpriteScene(sim.snapshot()), zoom, app.screen.width, app.screen.height);
+  const cameraCtl = createCameraController(canvas, initialCamera);
 
   // Original decoded sounds, played positionally: action SFX + terrain ambient viewport-culled +
   // attenuated + panned by the camera, plus non-spatial life-event jingles (see @vinland/audio). Real

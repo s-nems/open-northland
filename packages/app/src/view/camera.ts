@@ -1,4 +1,4 @@
-import type { Camera, DrawItem } from '@vinland/render';
+import { type Camera, type DrawItem, tileToScreen } from '@vinland/render';
 
 /**
  * Camera helpers shared by the live (`entries/live.ts`) and shot (`entries/shot.ts`) entries. The geometry half is
@@ -26,6 +26,23 @@ export function cameraFor(scene: readonly DrawItem[], zoom: number, width: numbe
   const focusX = focus?.x ?? 0;
   const focusY = focus?.y ?? 0;
   return { offsetX: width / 2 - focusX * zoom, offsetY: height / 2 - focusY * zoom, scale: zoom };
+}
+
+/**
+ * The camera that puts tile `(tileX, tileY)` at the viewport centre at `zoom` — the inverse of the iso
+ * projection the renderer applies (`screen = world*scale + offset`, like {@link cameraFor}). Backs the
+ * `?center=x,y` inspection knob (`entries/live.ts`): a decoded map's feature — a bridge, a coastline —
+ * that the settler-centroid framing would never land on. Pure.
+ */
+export function cameraCenteredOnTile(
+  tileX: number,
+  tileY: number,
+  zoom: number,
+  width: number,
+  height: number,
+): Camera {
+  const s = tileToScreen(tileX, tileY);
+  return { offsetX: width / 2 - s.x * zoom, offsetY: height / 2 - s.y * zoom, scale: zoom };
 }
 
 /** Mean (x,y) of the draw items whose kind passes `keep`, or null when none match. */
