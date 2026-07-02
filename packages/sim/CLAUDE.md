@@ -9,8 +9,8 @@ Also read [`docs/ECS.md`](../../docs/ECS.md) (the model) and [`docs/TESTING.md`]
 
 Two runs from the same seed + same inputs must produce **byte-identical** state
 (`Simulation.hashState()`). That is what makes mechanics testable headless and lockstep-multiplayer
-possible later. Randomness comes only from the injected seeded RNG (`src/rng.ts`); sim state is
-fixed-point integers (`src/fixed.ts`), never floats. No DOM, no I/O, no `import` from
+possible later. Randomness comes only from the injected seeded RNG (`src/core/rng.ts`); sim state is
+fixed-point integers (`src/core/fixed.ts`), never floats. No DOM, no I/O, no `import` from
 `render`/`app`/Pixi.
 
 ## Determinism anti-patterns (an LLM reaches for these — don't)

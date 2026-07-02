@@ -45,10 +45,16 @@ describe('World cache coherence', () => {
     w.canonicalEntities(); // materialize the memo
     // Inject the failure mode the check exists for: the alive set changes but the memo is not
     // invalidated. No public seam can produce this (that is the point — it is a would-be bug), so
-    // corrupt the private field directly to prove the checker detects it.
+    // corrupt the private field directly to prove the checker detects it. Both report branches:
+    // a wrong LENGTH (an id missing/extra) and a same-length wrong CONTENT (an id swapped).
     Reflect.set(w, 'canonicalCache', Object.freeze([999 as Entity]));
-    const violations = w.verifyCaches();
-    expect(violations).toHaveLength(1);
-    expect(violations[0]).toContain('canonicalEntities cache');
+    const shortViolations = w.verifyCaches();
+    expect(shortViolations).toHaveLength(1);
+    expect(shortViolations[0]).toContain('canonicalEntities cache');
+
+    Reflect.set(w, 'canonicalCache', Object.freeze([1 as Entity, 999 as Entity]));
+    const swappedViolations = w.verifyCaches();
+    expect(swappedViolations).toHaveLength(1);
+    expect(swappedViolations[0]).toContain('diverges at index 1');
   });
 });

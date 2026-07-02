@@ -713,7 +713,7 @@ export type MapInfo = z.infer<typeof MapInfo>;
  * at load, not as a confusing out-of-bounds read inside `buildTerrainGraph`.
  */
 export const TerrainMapFile = z
-  .object({
+  .strictObject({
     /** Map width in cells. */
     width: z.number().int().positive(),
     /** Map height in cells. */

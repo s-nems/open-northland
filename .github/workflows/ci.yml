@@ -11,6 +11,9 @@ jobs:
     # lockstep MP), so the golden state-hash + determinism tests must run on more than one platform
     # to back that promise. Windows is deliberately absent until someone can verify it locally.
     strategy:
+      # fail-fast would cancel the sibling OS on first failure — destroying exactly the signal the
+      # matrix exists for (is a golden mismatch platform-specific or universal?).
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
