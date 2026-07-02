@@ -9,10 +9,15 @@ import { z } from 'zod';
  *
  * NOTE: this is the Phase-1 starting shape. Fields will grow as decoders are written. Keep every
  * cross-reference id resolvable (see validateContentSet) so dangling references fail at load time.
+ *
+ * Every object schema is STRICT (`z.strictObject`) — an unknown key is an ERROR, never silently
+ * stripped. A key the schema doesn't know is either a typo in hand-edited content (which zod's
+ * default strip mode would swallow, silently losing the edit) or an extractor emitting a field the
+ * schema hasn't modeled yet (which must force a schema update, not vanish). Refuse, don't guess.
  */
 
 /** Where an IR record came from in the original data — kept for auditability. */
-export const Provenance = z.object({
+export const Provenance = z.strictObject({
   file: z.string(),
   block: z.string().optional(),
   layer: z.enum(['base', 'mod']).default('base'),
@@ -36,7 +41,7 @@ export const AtomicId = z.number().int().nonnegative();
  * *object* of the atomic: `harvest` cuts/mines/reaps it, `plant`/`cultivate` grow it, `produce`
  * is the atomic a workplace runs to make it.
  */
-export const GoodAtomics = z.object({
+export const GoodAtomics = z.strictObject({
   harvest: AtomicId.optional(),
   cultivate: AtomicId.optional(),
   plant: AtomicId.optional(),
@@ -50,7 +55,7 @@ export type GoodAtomics = z.infer<typeof GoodAtomics>;
  * + 2×good14), so the flat multiset is collapsed to `{ goodType, amount }` pairs in first-seen order.
  * This is the *input side* of the goods graph, keyed by the **output** good (the good being made).
  */
-export const ProductionInput = z.object({
+export const ProductionInput = z.strictObject({
   goodType: TypeId,
   amount: z.number().int().positive(),
 });
@@ -64,7 +69,7 @@ export type ProductionInput = z.infer<typeof ProductionInput>;
  * can be consumed by some recipe (`isInputGoodFlag`). A good may be several at once (a produced good
  * that is itself an input to another recipe); all default false when the flag is absent.
  */
-export const GoodClassification = z.object({
+export const GoodClassification = z.strictObject({
   /** `isProducedOnMapFlag` — a raw good harvested/gathered from the map (wheat, stone, fruit, water). */
   producedOnMap: z.boolean().default(false),
   /** `isProducedInHouseFlag` — a good produced in a workplace (flour, bread, food_simple/food_extra). */
@@ -74,7 +79,7 @@ export const GoodClassification = z.object({
 });
 export type GoodClassification = z.infer<typeof GoodClassification>;
 
-export const GoodType = z.object({
+export const GoodType = z.strictObject({
   typeId: TypeId,
   id: z.string(), // human-readable slug, e.g. "wood"
   name: z.string().optional(),
@@ -98,7 +103,7 @@ export const GoodType = z.object({
 });
 export type GoodType = z.infer<typeof GoodType>;
 
-export const JobType = z.object({
+export const JobType = z.strictObject({
   typeId: TypeId,
   id: z.string(),
   name: z.string().optional(),
@@ -127,7 +132,7 @@ export type JobType = z.infer<typeof JobType>;
  * repeat-count tuning for the track. Both numbers are captured raw — their exact runtime curve is the
  * ProgressionSystem's concern, pinned later; this is the data-extraction slice only (no XP logic yet).
  */
-export const HumanJobExperienceType = z.object({
+export const HumanJobExperienceType = z.strictObject({
   /** The track's `type` id (unique within this table). */
   typeId: TypeId,
   /** Stable slug from `name` (e.g. "collector wood" -> `collector_wood`); `jobxp_<typeId>` if unnamed. */
@@ -145,29 +150,29 @@ export const HumanJobExperienceType = z.object({
 });
 export type HumanJobExperienceType = z.infer<typeof HumanJobExperienceType>;
 
-export const StockSlot = z.object({
+export const StockSlot = z.strictObject({
   goodType: TypeId,
   capacity: z.number().int().nonnegative(),
   initial: z.number().int().nonnegative().default(0),
 });
 export type StockSlot = z.infer<typeof StockSlot>;
 
-export const WorkerSlot = z.object({
+export const WorkerSlot = z.strictObject({
   jobType: TypeId,
   count: z.number().int().nonnegative(),
 });
 export type WorkerSlot = z.infer<typeof WorkerSlot>;
 
 /** A recipe: a workplace turns inputs into outputs over time. */
-export const Recipe = z.object({
-  inputs: z.array(z.object({ goodType: TypeId, amount: z.number().int().positive() })).default([]),
-  outputs: z.array(z.object({ goodType: TypeId, amount: z.number().int().positive() })).default([]),
+export const Recipe = z.strictObject({
+  inputs: z.array(z.strictObject({ goodType: TypeId, amount: z.number().int().positive() })).default([]),
+  outputs: z.array(z.strictObject({ goodType: TypeId, amount: z.number().int().positive() })).default([]),
   /** Game ticks to complete one production cycle. */
   ticks: z.number().int().positive().default(20),
 });
 export type Recipe = z.infer<typeof Recipe>;
 
-export const BuildingType = z.object({
+export const BuildingType = z.strictObject({
   typeId: TypeId,
   id: z.string(), // e.g. "headquarters"
   /**
@@ -206,12 +211,14 @@ export const BuildingType = z.object({
    * upgrade cost, so a leveled `home` building resolves the cost of *its* tier here (not cumulative).
    * The input data the future ConstructionSystem (place → deliver materials → build) consumes.
    */
-  construction: z.array(z.object({ goodType: TypeId, amount: z.number().int().positive() })).default([]),
+  construction: z
+    .array(z.strictObject({ goodType: TypeId, amount: z.number().int().positive() }))
+    .default([]),
   source: Provenance.optional(),
 });
 export type BuildingType = z.infer<typeof BuildingType>;
 
-export const WeaponType = z.object({
+export const WeaponType = z.strictObject({
   /** The weapon's `type` id. NOTE: unlike the other type tables this is NOT globally unique — a
    *  weapon is keyed by `(tribeType, typeId)` in the original `weapontypes`, so the same `typeId`
    *  (e.g. 2 = "fist") recurs once per tribe. Resolve a weapon with both ids, not `typeId` alone. */
@@ -263,7 +270,7 @@ export const WeaponType = z.object({
 });
 export type WeaponType = z.infer<typeof WeaponType>;
 
-export const ArmorType = z.object({
+export const ArmorType = z.strictObject({
   /**
    * The armor's `type` id — the **armor class** a {@link WeaponType.damage} record keys against
    * (`damagevalue <armorClass> <value>`). Globally unique here (unlike {@link WeaponType.typeId}):
@@ -309,7 +316,7 @@ export type ArmorType = z.infer<typeof ArmorType>;
  *   - the flags `catchable` (can be tamed/captured), `warrantable`, `cannotbeattacked`, `ignorehouses`.
  * The graphics/sound/spawn extras are skipped — this is the behaviour type-table slice, not a renderer.
  */
-export const AnimalType = z.object({
+export const AnimalType = z.strictObject({
   /** Slug of `name`/comment when present, else `animal_<tribeType>`. Not a cross-ref key — `tribeType` is. */
   id: z.string(),
   name: z.string().optional(),
@@ -353,7 +360,7 @@ export const AnimalType = z.object({
 });
 export type AnimalType = z.infer<typeof AnimalType>;
 
-export const VehicleType = z.object({
+export const VehicleType = z.strictObject({
   /** `vehicletype` `type` — the `logicvehicletype` namespace (1..N) the `jobEnablesVehicle` tech-graph
    *  edges and a `vehicle` building's `logicvehicletype` cross-reference into. */
   typeId: TypeId,
@@ -385,7 +392,7 @@ export const VehicleType = z.object({
 });
 export type VehicleType = z.infer<typeof VehicleType>;
 
-export const LandscapeType = z.object({
+export const LandscapeType = z.strictObject({
   typeId: TypeId,
   id: z.string(),
   walkable: z.boolean().default(true),
@@ -423,7 +430,7 @@ export type RgbColor = z.infer<typeof RgbColor>;
  * **absent-means-false** — the source omits a `0` flag entirely (e.g. the `water` record lists no
  * `humancanwalkon`), so a missing key is a `false`, not unknown.
  */
-export const TrianglePatternType = z.object({
+export const TrianglePatternType = z.strictObject({
   /** `type` — the logic-type id (1..10) a {@link GfxPattern.logicType} references. */
   type: TypeId,
   /** `debugname` — the human-readable type label ("water"/"land"/"mountain"/...). */
@@ -475,7 +482,7 @@ export type GfxCoords = z.infer<typeof GfxCoords>;
  * 927 records are well-formed (name + texture + 6-int coords + a `logicType` of 0..10, where `0` is the
  * misc/border tiles that classify to no logic type).
  */
-export const GfxPattern = z.object({
+export const GfxPattern = z.strictObject({
   /** The 0-based position in the `GfxPattern` list — the engine's positional pattern id (no explicit field exists). */
   id: z.number().int().nonnegative(),
   /** `EditName` — the editor label (e.g. `"block desertStone 01 03 01"`). */
@@ -505,7 +512,7 @@ export type GfxPattern = z.infer<typeof GfxPattern>;
  * computes the per-cell pattern from corner types + variant lanes, an oracle-blocked algorithm. The
  * `debugColor` is the flat-tint fallback when the texture is unavailable.
  */
-export const TerrainPattern = z.object({
+export const TerrainPattern = z.strictObject({
   /** The {@link LandscapeType.typeId} (1-based) this ground binding applies to — the per-cell value in `content/maps`. */
   typeId: TypeId,
   /** The coarse ground family the typeId's name classified into (the approximation axis). */
@@ -537,7 +544,7 @@ export type TerrainPattern = z.infer<typeof TerrainPattern>;
  * earlier one), matching the original engine's config-override semantics. The extractor keeps every
  * line rather than pre-deduping, so the raw source stays faithfully represented.
  */
-export const AtomicBinding = z.object({
+export const AtomicBinding = z.strictObject({
   jobType: TypeId,
   atomicId: AtomicId,
   animation: z.string(),
@@ -562,7 +569,7 @@ export type AtomicBinding = z.infer<typeof AtomicBinding>;
 export const JobEnablesKind = z.enum(['good', 'house', 'job', 'vehicle']);
 export type JobEnablesKind = z.infer<typeof JobEnablesKind>;
 
-export const JobEnables = z.object({
+export const JobEnables = z.strictObject({
   /** The job whose presence unlocks the target (`jobEnables*`'s first int). */
   jobType: TypeId,
   /** Which type table `targetId` indexes (from the `jobEnables<Kind>` key). */
@@ -594,7 +601,7 @@ export type JobRequirementKind = z.infer<typeof JobRequirementKind>;
 export const JobRequirementTarget = z.enum(['job', 'good']);
 export type JobRequirementTarget = z.infer<typeof JobRequirementTarget>;
 
-export const JobRequirement = z.object({
+export const JobRequirement = z.strictObject({
   /** `need` (XP already accrued) vs `train` (schooling), from the `need`/`train` key prefix. */
   requirement: JobRequirementKind,
   /** `job` vs `good`, from the `forjob`/`forgood` key suffix — which table `targetId` indexes. */
@@ -608,7 +615,7 @@ export const JobRequirement = z.object({
 });
 export type JobRequirement = z.infer<typeof JobRequirement>;
 
-export const TribeType = z.object({
+export const TribeType = z.strictObject({
   typeId: TypeId,
   id: z.string(),
   name: z.string().optional(),
@@ -630,7 +637,7 @@ export type TribeType = z.infer<typeof TribeType>;
  * {@link AtomicId} stays a raw id with no master table. `value` is optional and may be signed.
  * `extended` marks the `eventx` variant (a distinct event channel in the source) from plain `event`.
  */
-export const AtomicEvent = z.object({
+export const AtomicEvent = z.strictObject({
   at: z.number().int().nonnegative(),
   type: z.number().int().nonnegative(),
   value: z.number().int().optional(),
@@ -646,7 +653,7 @@ export type AtomicEvent = z.infer<typeof AtomicEvent>;
  * `events` (yields/effects) live. Cross-referencing tribe bindings against these names is deferred:
  * the mod's readable set is a subset of the base-game animations, so absent names aren't dangling.
  */
-export const AtomicAnimation = z.object({
+export const AtomicAnimation = z.strictObject({
   /** Filesystem-safe slug of `name`, for legibility/parity with the other IR types. Display-only —
    *  it lowercases, so it is NOT the join key; resolve `setatomic` bindings against `name`, not `id`. */
   id: z.string(),
@@ -675,7 +682,7 @@ export type AtomicAnimation = z.infer<typeof AtomicAnimation>;
  * `playerdata`/`AIData` — is deliberately **not** extracted here: it is the campaign/trigger layer
  * (docs/ROADMAP.md Phase 5), a far larger vocabulary than this metadata slice. See docs/SOURCES.md.
  */
-export const MapInfo = z.object({
+export const MapInfo = z.strictObject({
   /** Stable slug id (from the map folder name, lower-cased) — the cross-reference key. */
   id: z.string(),
   /** Map width in cells (`logiccontrol` `mapsize <w> <h>`, first value). */
@@ -687,7 +694,7 @@ export const MapInfo = z.object({
   /** Map kind (`misc_maptype` `maptype`): observed 1 = single-player/campaign, 4 = skirmish/multiplayer. */
   mapType: z.number().int().nonnegative().optional(),
   /** Campaign + mission slot (`misc_maptype` `mapcampaignid <campaign> <mission>`), present only on campaign maps. */
-  campaign: z.object({ campaignId: z.number().int(), missionId: z.number().int() }).optional(),
+  campaign: z.strictObject({ campaignId: z.number().int(), missionId: z.number().int() }).optional(),
   /** String-table id of the map's display name (`misc_mapname` `mapnamestringid`) — resolved against the locale strings, a later step. */
   nameStringId: z.number().int().optional(),
   /** String-table id of the map's description (`misc_mapname` `mapdescriptionstringid`). */
@@ -733,7 +740,7 @@ export type TerrainMapFile = z.infer<typeof TerrainMapFile>;
  * This is the data the renderer previously hard-coded as frame-range constants (`WALK` start 1988, …);
  * extracting it removes the guesswork — the frame ids come from the source, not a magic number.
  */
-export const BobSequence = z.object({
+export const BobSequence = z.strictObject({
   /** The exact sequence name (`seq "<name>"`) — the resolvable key, e.g. `human_man_generic_walk`. */
   name: z.string(),
   /** The run's first bob id (frame 0 of direction 0). */
@@ -749,7 +756,7 @@ export type BobSequence = z.infer<typeof BobSequence>;
  * by the `imagelib` stem (`cr_hum_body_00.bmd` → the `cr_hum_body_00.<palette>` atlas), the same id space
  * the bob ids address. Render-binding data (like {@link TerrainPattern}); the pure sim ignores it.
  */
-export const BobSequenceSet = z.object({
+export const BobSequenceSet = z.strictObject({
   /** The bob set this table indexes, normalized (lower-case, forward slashes), e.g. `cr_hum_body_00.bmd`. */
   imagelib: z.string(),
   /** The matching shadow bob set (`shadowlib`), normalized, when the record names one. */
@@ -772,7 +779,7 @@ export type BobSequenceSet = z.infer<typeof BobSequenceSet>;
  * building's `Building.buildingType` ({@link typeId}), so each type shows its own house bob from data
  * instead of a transcribed constant.
  */
-export const BuildingBob = z.object({
+export const BuildingBob = z.strictObject({
   /** The `LogicTribeType` the record applies to (viking 1, frank 2, …) — the same logic `typeId` recurs per tribe. */
   tribeId: z.number().int().nonnegative(),
   /** The building `typeId` (the sim's `Building.buildingType`, the `[GfxHouse]` `LogicType` value at this level). */
@@ -792,9 +799,9 @@ export const BuildingBob = z.object({
 export type BuildingBob = z.infer<typeof BuildingBob>;
 
 /** Top-level manifest written to content/ir.json. */
-export const IrManifest = z.object({
+export const IrManifest = z.strictObject({
   version: z.number().int().positive(),
-  generatedFrom: z.object({
+  generatedFrom: z.strictObject({
     game: z.string(),
     mod: z.string().optional(),
   }),
@@ -803,7 +810,7 @@ export const IrManifest = z.object({
 export type IrManifest = z.infer<typeof IrManifest>;
 
 /** A fully-loaded, validated content set ready for the sim. */
-export const ContentSet = z.object({
+export const ContentSet = z.strictObject({
   manifest: IrManifest,
   goods: z.array(GoodType),
   jobs: z.array(JobType),
