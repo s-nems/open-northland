@@ -1069,9 +1069,10 @@ export type BuildingConstructionLayer = z.infer<typeof BuildingConstructionLayer
  * {@link SoundStaticGroup} carries one volume int (0–100); a {@link SoundAmbient} carries a
  * `(volume, probability, ...)` triple that drives the sparse one-shot birds/wingflaps. We keep the
  * raw list rather than naming each slot so the extractor stays faithful to a format we have only
- * partially reversed (the audio layer reads `params[0]` as volume and treats the rest as sparse-play
- * hints). `file` is normalized to a forward-slash, lower-cased path relative to the sounds root
- * (`data/engine2d/bin/sounds`), so it joins straight onto the served `/sounds/<file>` route.
+ * partially reversed — captured for a future audio layer to interpret (per-SFX volume / spawn
+ * probability), like {@link SoundStaticGroup.logicSoundType}; today's `@vinland/audio` reads only
+ * `file` (gains come from named constants). `file` is normalized to a forward-slash, lower-cased path
+ * relative to the sounds root (`data/engine2d/bin/sounds`), so it joins onto the served `/sounds/<file>` route.
  */
 export const SoundSfx = z.strictObject({
   /** Wav path relative to `data/engine2d/bin/sounds`, forward-slashed + lower-cased (e.g. `ambient/water3.wav`). */

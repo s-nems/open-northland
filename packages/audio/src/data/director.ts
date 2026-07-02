@@ -1,6 +1,14 @@
-import { type Camera, ONE, cameraViewport, visibleTileRange } from '@vinland/render';
+import {
+  type Camera,
+  ONE,
+  aabbIntersects,
+  cameraViewport,
+  tileToScreen,
+  visibleTileRange,
+} from '@vinland/render/data';
 import type { SimEvent, WorldSnapshot } from '@vinland/sim';
 import type { SoundIndex } from './bank.js';
+import { clamp } from './math.js';
 import { computeSpatial } from './spatial.js';
 import type { AmbientLoop, AudioFrame, EventSound, OneShot, SoundBindings } from './types.js';
 
@@ -43,10 +51,6 @@ export const AMBIENT_MAX_GAIN = 0.5;
 export const AMBIENT_FULL_COVERAGE = 0.4;
 /** Cap on tiles sampled per frame for ambient — a stride keeps a zoomed-out whole-map view bounded. */
 export const AMBIENT_MAX_SAMPLES = 4096;
-
-function clamp(v: number, lo: number, hi: number): number {
-  return v < lo ? lo : v > hi ? hi : v;
-}
 
 /** The entity whose position locates a spatial event (or undefined for `at`-carrying events). */
 function eventEntity(ev: SimEvent): number | undefined {
@@ -124,6 +128,20 @@ function ambientFor(input: DirectorInput): AmbientLoop[] {
   const { terrain, camera, canvasW, canvasH, index } = input;
   if (terrain === undefined || terrain.width <= 0 || terrain.height <= 0) return [];
   const vp = cameraViewport(camera, canvasW, canvasH);
+  // The map's projected world-space bounds: its four corner tiles. When the camera frames only empty
+  // space beyond the grid, the viewport doesn't overlap this box, so no terrain is on screen and no
+  // ambient should play — `visibleTileRange`'s clamp would otherwise collapse to a phantom edge tile.
+  const c0 = tileToScreen(0, 0);
+  const c1 = tileToScreen(terrain.width - 1, 0);
+  const c2 = tileToScreen(0, terrain.height - 1);
+  const c3 = tileToScreen(terrain.width - 1, terrain.height - 1);
+  const mapBox = {
+    minX: Math.min(c0.x, c1.x, c2.x, c3.x),
+    maxX: Math.max(c0.x, c1.x, c2.x, c3.x),
+    minY: Math.min(c0.y, c1.y, c2.y, c3.y),
+    maxY: Math.max(c0.y, c1.y, c2.y, c3.y),
+  };
+  if (!aabbIntersects(vp, mapBox)) return [];
   const band = visibleTileRange(vp, terrain.width, terrain.height);
   const cols = band.maxCol - band.minCol + 1;
   const rows = band.maxRow - band.minRow + 1;
@@ -135,8 +153,8 @@ function ambientFor(input: DirectorInput): AmbientLoop[] {
   for (let row = band.minRow; row <= band.maxRow; row += stride) {
     for (let col = band.minCol; col <= band.maxCol; col += stride) {
       const typeId = terrain.typeIds[row * terrain.width + col];
+      if (typeId === undefined) continue; // out-of-range (malformed grid): don't dilute the coverage denominator
       sampled++;
-      if (typeId === undefined) continue;
       const beds = index.ambientByTerrainType.get(typeId);
       if (beds === undefined) continue;
       for (const bed of beds) counts.set(bed, (counts.get(bed) ?? 0) + 1);

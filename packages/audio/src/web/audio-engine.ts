@@ -26,6 +26,8 @@ export const DEFAULT_MASTER_GAIN = 0.8;
 export const ONE_SHOT_COOLDOWN_S = 0.12;
 /** Ambient beds fade in / out / between gains over this many seconds. */
 export const AMBIENT_FADE_S = 0.6;
+/** Prune the one-shot cooldown map when it grows past this many entries (keys are per-entity, never reused). */
+export const COOLDOWN_PRUNE_SIZE = 512;
 
 interface RunningLoop {
   readonly source: AudioBufferSourceNode;
@@ -105,7 +107,7 @@ export class WebAudioEngine {
   /** Fetch + decode a wav into an `AudioBuffer`, cached (null cached on failure so we never re-fetch). */
   private async load(ctx: AudioContext, file: string): Promise<AudioBuffer | null> {
     const cached = this.buffers.get(file);
-    if (cached !== undefined) return cached instanceof Promise ? cached : cached;
+    if (cached !== undefined) return cached; // a resolved buffer, a cached-null failure, or an in-flight promise
     const promise = (async (): Promise<AudioBuffer | null> => {
       try {
         const res = await fetch(this.baseUrl + file);
@@ -127,23 +129,48 @@ export class WebAudioEngine {
     const now = ctx.currentTime;
     const last = this.lastPlayed.get(shot.key);
     if (last !== undefined && now - last < ONE_SHOT_COOLDOWN_S) return;
+    this.pruneCooldowns(now);
     this.lastPlayed.set(shot.key, now);
     if (shot.files.length === 0) return;
     // Randomness belongs here (impure), not in the pure director: pick one wav from the group.
     const file = shot.files[Math.floor(Math.random() * shot.files.length)] as string;
     void this.load(ctx, file).then((buffer) => {
-      if (buffer === null || this.ctx !== ctx || ctx.state !== 'running' || this.master === null) {
+      if (
+        buffer === null ||
+        !this.enabled ||
+        this.ctx !== ctx ||
+        ctx.state !== 'running' ||
+        this.master === null
+      ) {
         return;
       }
       const source = ctx.createBufferSource();
       source.buffer = buffer;
-      const panner = ctx.createStereoPanner();
-      panner.pan.value = shot.pan;
       const gain = ctx.createGain();
       gain.gain.value = shot.gain;
-      source.connect(panner).connect(gain).connect(this.master);
+      // StereoPannerNode is absent on some old `webkitAudioContext` builds; degrade to unpanned rather
+      // than throwing inside this un-awaited promise (which would silently drop all positional SFX).
+      const head = this.pannerFor(ctx, shot.pan) ?? source;
+      if (head !== source) source.connect(head);
+      head.connect(gain).connect(this.master);
       source.start();
     });
+  }
+
+  /** A `StereoPannerNode` set to `pan`, or null when the context can't make one (old webkit). */
+  private pannerFor(ctx: AudioContext, pan: number): StereoPannerNode | null {
+    if (typeof ctx.createStereoPanner !== 'function') return null;
+    const panner = ctx.createStereoPanner();
+    panner.pan.value = pan;
+    return panner;
+  }
+
+  /** Drop cooldown entries older than the cooldown window once the map grows — keys are never reused. */
+  private pruneCooldowns(now: number): void {
+    if (this.lastPlayed.size < COOLDOWN_PRUNE_SIZE) return;
+    for (const [key, when] of this.lastPlayed) {
+      if (now - when >= ONE_SHOT_COOLDOWN_S) this.lastPlayed.delete(key);
+    }
   }
 
   private reconcileAmbient(ctx: AudioContext, target: readonly AmbientLoop[]): void {
@@ -172,8 +199,12 @@ export class WebAudioEngine {
   private startLoop(ctx: AudioContext, loop: AmbientLoop): void {
     if (this.master === null) return;
     void this.load(ctx, loop.file).then((buffer) => {
+      // Re-check `enabled`: a mute (setEnabled(false)) can land while this first load is in flight, and
+      // stopAllLoops() only stops already-tracked loops — without this guard the bed would start audibly
+      // AND never be reconciled away (apply() early-returns while muted).
       if (
         buffer === null ||
+        !this.enabled ||
         this.ctx !== ctx ||
         ctx.state !== 'running' ||
         this.master === null ||

@@ -1,4 +1,5 @@
-import { type Camera, tileToScreen } from '@vinland/render';
+import { type Camera, tileToScreen } from '@vinland/render/data';
+import { clamp } from './math.js';
 
 /**
  * The PURE spatial-audio math: project a world tile to the screen through the SAME camera transform
@@ -25,10 +26,6 @@ export interface Spatial {
   readonly gain: number;
   /** -1 (hard left) .. +1 (hard right), scaled by {@link MAX_PAN}. */
   readonly pan: number;
-}
-
-function clamp(v: number, lo: number, hi: number): number {
-  return v < lo ? lo : v > hi ? hi : v;
 }
 
 /**

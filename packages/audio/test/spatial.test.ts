@@ -1,4 +1,4 @@
-import type { Camera } from '@vinland/render';
+import type { Camera } from '@vinland/render/data';
 import { describe, expect, it } from 'vitest';
 import { CULL_MARGIN_PX, EDGE_GAIN, MAX_PAN, computeSpatial } from '../src/index.js';
 
