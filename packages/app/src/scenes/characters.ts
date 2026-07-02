@@ -1,5 +1,7 @@
-import { IR_VERSION, parseContentSet } from '@vinland/data';
-import { type Simulation, type TerrainMap, components, fx } from '@vinland/sim';
+import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
+import { type Simulation, components, fx } from '@vinland/sim';
+import { HARVEST_ATOMIC } from '../real-sprites.js';
+import { GRASS, VIKING, grassTerrain } from '../viking-buildings.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -17,7 +19,6 @@ import type { SceneDefinition } from './types.js';
  * the human's checklist — an agent cannot self-judge them.
  */
 
-const GRASS = 0;
 /** The REAL IR wood typeId (5) — deliberately ≠ the demo slice's wood(1), proving the per-good carry
  *  join keys on the CONTENT the scene runs, not on a hardcoded id. */
 const WOOD = 5;
@@ -29,19 +30,13 @@ const SOLDIER_UNARMED = 31;
 const SOLDIER_SWORD_LONG = 35;
 const SOLDIER_BOW_LONG = 41;
 const HEADQUARTERS = 1;
-const VIKING = 1;
-const HARVEST_ATOMIC = 24;
 
 const MAP_W = 16;
 const MAP_H = 12;
 
 const { Building, Position, Resource, Settler, Stockpile } = components;
 
-function grassTerrain(): TerrainMap {
-  return { width: MAP_W, height: MAP_H, typeIds: new Array(MAP_W * MAP_H).fill(GRASS) };
-}
-
-function content() {
+function content(): ContentSet {
   return parseContentSet({
     manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-characters-scene' }, locale: 'eng' },
     goods: [
@@ -139,7 +134,7 @@ export const charactersScene: SceneDefinition = {
     'rysują generycznego cywila; głowy różnią się per osobnik (stabilnie po id).',
   seed: 31,
   content: content(),
-  terrain: grassTerrain(),
+  terrain: grassTerrain(MAP_W, MAP_H),
   build,
   runTicks: 400,
   initialZoom: 1.2,

@@ -596,7 +596,7 @@ describe('the job → character tables (the [jobbasegraphics] transcription)', (
       expect(specId, `job ${job}`).toBeDefined();
       expect(specId?.startsWith('warrior'), `job ${job} → ${specId}`).toBe(true);
       // Every referenced spec exists and shares the warrior BODY (the skin the job change swaps in).
-      expect(CHARACTER_SPECS[specId ?? '']?.rosterId).toBe('warrior');
+      expect(specId !== undefined && CHARACTER_SPECS[specId].rosterId).toBe('warrior');
     }
     expect(ADULT_CHARACTER_BY_JOB[5]).toBe('woman');
   });

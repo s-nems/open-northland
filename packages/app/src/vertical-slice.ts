@@ -1,6 +1,7 @@
 import { type ContentSet, IR_VERSION, parseContentSet, parseTerrainMap } from '@vinland/data';
 import { type SceneTerrain, terrainMapToScene } from '@vinland/render';
 import { Simulation, type TerrainMap, components, fx } from '@vinland/sim';
+import { type GoodRef, HARVEST_ATOMIC } from './real-sprites.js';
 
 /**
  * The Phase-2 vertical-slice scenario, built deterministically so a screenshot frame is reproducible.
@@ -24,7 +25,6 @@ const CARRIER = 36;
 const HEADQUARTERS = 1;
 const SAWMILL = 2;
 const VIKING = 1;
-const HARVEST_ATOMIC = 24;
 
 const { Position, Resource } = components;
 
@@ -81,7 +81,7 @@ const WOOD_GOOD = { typeId: WOOD, id: 'wood' } as const;
 const PLANK_GOOD = { typeId: 2, id: 'plank' } as const;
 
 /** The goods the slice sim actually runs, for the sprite sheet's per-good carry binding (`main.ts`). */
-export function demoGoods(): readonly { typeId: number; id: string }[] {
+export function demoGoods(): readonly GoodRef[] {
   return [WOOD_GOOD, PLANK_GOOD];
 }
 

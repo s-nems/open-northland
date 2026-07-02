@@ -36,13 +36,20 @@ export interface VikingCharacter {
 /** The served palette every roster body/head decodes with today (the viking base skin). */
 export const DEFAULT_CHARACTER_PALETTE = 'test_human_00';
 
-/** The four civilian-man looks (`head_00..03`) plus the extra viking male job looks (`head_80..83`, `head_90..93`)
- *  — all bound to `cr_hum_body_00` for viking jobs 6 / 27 / 30, all covering the generic walk. */
-const CIVILIAN_LOOKS = [
+/** The civilist-job (`logicjob 6`) head looks `head_00..03` — the in-game generic man's faces. The
+ *  per-job settler binding (`real-sprites.ts`) overlays exactly these; the scout (80..83) and druid
+ *  (90..93) looks below stay gallery-only until those jobs exist in a running sim. */
+export const CIVILIST_JOB_HEADS = [
   'cr_hum_head_00',
   'cr_hum_head_01',
   'cr_hum_head_02',
   'cr_hum_head_03',
+] as const;
+
+/** The civilist looks plus the extra viking male job looks (`head_80..83` scout, `head_90..93` druid)
+ *  — all bound to `cr_hum_body_00` for viking jobs 6 / 27 / 30, all covering the generic walk. */
+const CIVILIAN_LOOKS = [
+  ...CIVILIST_JOB_HEADS,
   'cr_hum_head_80',
   'cr_hum_head_81',
   'cr_hum_head_82',
