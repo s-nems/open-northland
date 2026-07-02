@@ -77,7 +77,27 @@ records: 10 headers + 72 properties), and `CnModMaps/tutorial_001/map.cif` (476,
 `decoders/ini.ts` `extractMapInfo` and wired into the pipeline (`cli.ts` `decodeMapTree` → 13 maps).
 The map's **binary tile grid is NOT in `map.cif`** — that file is *only* the logic-header
 `CStringArray` (0 trailing bytes, confirmed on two real maps). The grid lives in the sibling
-**`map.dat`** (see below); `MissionData`/`StaticObjects` scripting is the Phase-5 campaign layer.
+**`map.dat`** (see below). The `map.cif` string-array ALSO carries the campaign layer as readable
+`level`-tagged lines once decoded (`decoders/cif.ts` `decodeCifStringArray`): a `MissionData`
+section per trigger (goal/result opcodes), a `playerdata` section (per-player + diplomacy), and —
+the key one for map import — a **`StaticObjects`** section of the map's authored placements. Its
+verbs (counts on `SPECJALNA- MOSTY NA RZECE`, a 6-player map): **`sethouse` 62**, **`sethuman` 168**,
+**`setanimal` 433**, plus `addgoods`/`setproducedgood`/`setguide`. Line grammar (all coords are
+**half-cells** — the 2W×2H lattice `emla` uses; `÷2` → cell):
+
+```
+sethouse  <class=5> "<GfxHouse EditName>" <level> <player> <X> <Y> <rot>   e.g. "viking headquarters house" 0 1 171 330 2
+sethuman  <?0> "<tribe>" "<role>" <X> <Y> <a> <b>                          e.g. "viking" "civilist" 385 83 0 0
+setanimal <...> <X> <Y> <...>
+addgoods  "<good>" <amount>            # applies to the preceding sethouse's stock
+```
+
+The building **name is the original `[GfxHouse]` `EditName`** ("viking tower", "viking bakery", …),
+NOT the clean IR `id`; `<level>` selects among the leveled typeIds (`"viking home" 4` → `home_level_04`).
+So resolving a placement to a sim `typeId` needs the `EditName`+`level → LogicType` map, which lives in
+the `[GfxHouse]` graphics sections the pipeline already walks (`extractBuildingBobs` et al.). Importing
+these placements (replacing the app's synthetic first-walkable-cells fallback) is a tracked slice —
+see docs/ROADMAP.md.
 
 ### `map.dat` chunk container (located Phase-2 spike — tile grid found, decode pending)
 

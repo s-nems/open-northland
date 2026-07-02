@@ -63,6 +63,17 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `?map=<id>` is the human sign-off entry. **Open (deferred):** `lmhe` height shading; `emt3`/`emt4`
       road/foundation overlays; per-object growth state; `lmpa`/`lmpb` triangle logic → sim water/walkability +
       object collision; the `fx wave*` engine-fx records. Data model in docs/SOURCES.md.
+- [ ] **Import a decoded map's authored placements** (`map.cif` `StaticObjects`) — today `?map=` runs the
+      synthetic vertical slice and dumps 6 demo entities on the *first walkable cells* (the top-left map
+      corner, buried in forest), so imported maps look mis-placed. The real data decodes cleanly
+      (`sethouse`/`sethuman`/`setanimal`; grammar + half-cell coords in docs/SOURCES.md). Slice:
+      (a) **pipeline** — resolve each `sethouse` `EditName`+`level` → `[GfxHouse]` `LogicType` typeId and each
+      `sethuman` role → roster id, emit an optional `entities:{buildings,settlers[,animals]}` layer into
+      `maps/<id>.json`; (b) **schema** — extend `TerrainMapFile` (data pkg) with the layer;
+      (c) **app** — when a loaded map carries `entities`, place THOSE (over the **real** building content set,
+      not the synthetic demo — needs `?map=` to run real buildings so each placed typeId draws its own bob)
+      instead of `walkableCells`. Oracle-free (data-driven); own focused window. Fixes "budynki w złych
+      miejscach / chowają się za terenem" at the source.
 - **Exit:** click to place one workplace; a settler autonomously supplies it via atomics; a carrier
   hauls outputs to a store; the 1000-tick golden hash + trace stay stable. **(Headless slice + golden
   proven; the real-atlas bind + final human pixel check remain.)**
