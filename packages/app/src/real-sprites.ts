@@ -231,6 +231,18 @@ const FALLBACK_WAIT: DirectionalAnim = { start: 1931, dirs: 1, stride: 57 };
 /** The chop atomic id (the original's `harvest`), mapped to the woodcutting swing. Exported as the
  *  ONE app-side declaration of this semantic id (the slice + scenes reuse it). */
 export const HARVEST_ATOMIC = 24;
+/**
+ * The other atomic ids the SIM issues today, transcribed from the sim's planners (`ai.ts` eat 10 /
+ * sleep 8 / pray 12, `atomic.ts` pickup 22 / deposit 23 — themselves pinned to the original's
+ * `setatomic` table): the `byAtomic` join keys the character specs bind body animations to. Kept here
+ * (not imported from sim) because they are the ANIMATION table's keys — the same numeric contract the
+ * original's `tribetypes` uses, stable across both packages.
+ */
+const EAT_ATOMIC = 10;
+const SLEEP_ATOMIC = 8;
+const PRAY_ATOMIC = 12;
+const PICKUP_ATOMIC = 22;
+const DEPOSIT_ATOMIC = 23;
 
 /** One decoded `[bobseq]` sequence as it ships in `content/ir.json`'s `bobSequences`. */
 export interface BobSeqRow {
@@ -625,13 +637,30 @@ export const CHARACTER_SPECS = {
     walkSeq: 'human_man_generic_walk',
     waitSeq: 'human_man_generic_wait',
     carryPrefix: 'human_man_generic_walk_',
-    atomics: { [HARVEST_ATOMIC]: { seq: CHOP_SEQ, phaseStart: CHOP_PHASE_START } },
+    // Every atomic the sim issues that this body authors a sequence for. The pick-up bend serves both
+    // pickup AND deposit (the body authors no separate put-down; the same stoop reads as either — and
+    // a bound atomic wins over the carry override, so the depositor stoops as its load leaves).
+    atomics: {
+      [HARVEST_ATOMIC]: { seq: CHOP_SEQ, phaseStart: CHOP_PHASE_START },
+      [EAT_ATOMIC]: { seq: 'human_man_generic_eat' },
+      [SLEEP_ATOMIC]: { seq: 'human_man_generic_sleep' },
+      [PRAY_ATOMIC]: { seq: 'human_man_generic_pray' },
+      [PICKUP_ATOMIC]: { seq: 'human_man_generic_pick_up' },
+      [DEPOSIT_ATOMIC]: { seq: 'human_man_generic_pick_up' },
+    },
   },
   woman: {
     rosterId: 'woman',
     walkSeq: 'human_woman_generic_walk',
     waitSeq: 'human_woman_generic_wait',
     carryPrefix: 'human_woman_generic_walk_',
+    atomics: {
+      [EAT_ATOMIC]: { seq: 'human_woman_generic_eat' },
+      [SLEEP_ATOMIC]: { seq: 'human_woman_generic_sleep' },
+      [PRAY_ATOMIC]: { seq: 'human_woman_generic_pray' },
+      [PICKUP_ATOMIC]: { seq: 'human_woman_generic_pick_up' },
+      [DEPOSIT_ATOMIC]: { seq: 'human_woman_generic_pick_up' },
+    },
   },
   boy: {
     rosterId: 'boy',
@@ -751,8 +780,14 @@ export function characterBinding(
 
   const byAtomic: Record<number, SpriteFrameRef> = {};
   for (const [atomicId, action] of Object.entries(spec.atomics ?? {})) {
-    const anim = eightDirAnim(seqByName, action.seq);
-    if (anim === undefined) continue;
+    const row = seqByName.get(action.seq);
+    if (row === undefined || row.length <= 0) continue;
+    // A clean ×8 action (the chop 120, the pray 120) is directional; a non-×8 one (eat 17, sleep 20,
+    // pick_up 19) plays its WHOLE strip facing-locked — the same `clipDirs` reading the waits use.
+    const anim: DirectionalAnim =
+      row.length % DIRS === 0
+        ? { start: row.start, dirs: DIRS, stride: row.length / DIRS }
+        : { start: row.start, dirs: 1, stride: row.length };
     byAtomic[Number(atomicId)] = {
       ...anim,
       ...(action.phaseStart !== undefined ? { phaseStart: action.phaseStart } : {}),
