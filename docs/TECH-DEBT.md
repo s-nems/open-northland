@@ -28,7 +28,7 @@ For small, hard-won *gotchas* (not reworks) see [LESSONS.md](LESSONS.md); the li
   already enforces this in `npm test` + CI, and `/iterate` runs `npm test` before every commit, so a bad
   pattern can't reach a commit today — the hook only buys ~1–3s earlier feedback at the cost of a
   `vitest` cold-start on *every* sim edit (+ a `jq` dependency). If adopted, implement as a
-  near-instant `grep` guard mirroring `test/hygiene.test.ts:13-18`, not a vitest run (but that
+  near-instant `grep` guard mirroring `test/core/hygiene.test.ts:13-18`, not a vitest run (but that
   duplicates the authoritative test and can drift). `.claude/` is gitignored, so this is local tooling.
 
 ### 2. Parallel git-worktree iterations (supervisor)

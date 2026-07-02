@@ -840,7 +840,7 @@ Goal: one tribe, headless-correct, then on screen. Establish the invariants that
             feet-sorted sprites (2 off-white settlers, 2 green resources, 2 gold buildings) occluding
             back-to-front in the right iso half. Pixel fidelity / feel still deferred to a human.
 - [x] Golden state-hash + golden **atomic-action trace** over ~1000 ticks; invariants each tick.
-      Done — `packages/sim/test/golden-trace.test.ts`. The *integration* golden (the per-mechanic
+      Done — `packages/sim/test/core/golden-trace.test.ts`. The *integration* golden (the per-mechanic
       goldens pin one slice each; this pins the whole economy): a self-supplying woodcutter + a carrier
       placed via the **command log** (HQ + sawmill + both settlers), two finite wood nodes, run **1000
       ticks** through the real `Simulation.step()` schedule. Pins three complementary fingerprints —
@@ -1935,7 +1935,7 @@ the unchecked next steps; the full clean-room evidence is below.
 - [ ] **Run the sim in a Web Worker.** It's pure/headless/deterministic, so moving `step()` off the
       main thread keeps render at 60fps under heavy ticks. Design the Phase-2 snapshot as a plain
       **transferable** structure (no class instances / live `Map`s) so this is free later, not a retrofit.
-      **Transferability now PINNED** (`test/snapshot-transferable.test.ts`): the load-bearing
+      **Transferability now PINNED** (`test/inspect/snapshot-transferable.test.ts`): the load-bearing
       precondition — that a real `step()`-driven `WorldSnapshot` survives the `postMessage` boundary —
       is proven against the actual structured-clone algorithm, not just asserted in the docstring. A
       live run's snapshot `structuredClone()`s without throwing (a function / class instance / live
@@ -1951,7 +1951,7 @@ the unchecked next steps; the full clean-room evidence is below.
       reconstructs the exact state at any tick by re-applying the command log into a fresh sim — the
       "jump to tick N" primitive (scrub backward past later commands = the live state AT tick N;
       run past the last command = the deterministic tail). Its oracle is `hashState()` byte-equality
-      with the original run at every tick (`test/replay.test.ts`; hands-on: a 1000-tick command-driven
+      with the original run at every tick (`test/replay/replay.test.ts`; hands-on: a 1000-tick command-driven
       run replayed bit-for-bit at 4 scrub points, and state created OUTSIDE the command seam correctly
       does NOT reconstruct — replay rebuilds command-driven state only). Single-world constraint: the
       replayed sim supersedes the original (component stores are shared singletons — docs/LESSONS.md

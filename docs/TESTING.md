@@ -21,7 +21,7 @@ exact tick a regression appears. Lean on it.
 Fast, many, no `Simulation`. Targets: `fixed.ts` math (and its overflow assertions), `rng.ts`
 reproducibility, the ECS (`world.ts`) query/insertion-order contract, and **one system over a
 hand-built world** (e.g. `movementSystem` advances positions by velocity).
-See `packages/sim/test/determinism.test.ts`.
+See `packages/sim/test/core/determinism.test.ts`.
 
 ### 2. Integration — many systems over many ticks
 Build a `Simulation` from the synthetic `testContent()` fixture, run hundreds of ticks, and assert:
@@ -30,7 +30,7 @@ Build a `Simulation` from the synthetic `testContent()` fixture, run hundreds of
   domain laws as they land: **goods conservation** (goods are created only by production, destroyed
   only by consumption), **liveness/no-deadlock** (some settler makes progress each interval),
   **path validity** (waypoints are walkable cells).
-See `packages/sim/test/scenario.test.ts`.
+See `packages/sim/test/core/scenario.test.ts`.
 
 ### 3. E2E at the game level — headless scenarios (the key agent layer)
 The `scenario()` harness (`src/scenario.ts`) scripts the **same commands the UI issues**
@@ -62,7 +62,7 @@ useful than "hash changed." Intentional change → update the golden in the same
 
 ### 6. Command-stream fuzz — determinism over inputs the goldens never construct
 The goldens pin ONE curated scenario; nondeterminism and command-validation bugs hide in the input
-space they never reach. `packages/sim/test/fuzz-determinism.test.ts` drives the real `step()`
+space they never reach. `packages/sim/test/core/fuzz-determinism.test.ts` drives the real `step()`
 schedule with **seeded-random command streams** — deliberately including invalid commands (unknown
 type ids, stale or wrong-kind entity targets, tech-gated placements), since in lockstep any peer
 can send anything and rejection must be deterministic — and asserts, per stream: two live runs are

@@ -16,7 +16,7 @@ fixed-point integers (`src/core/fixed.ts`), never floats. No DOM, no I/O, no `im
 ## Determinism anti-patterns (an LLM reaches for these — don't)
 
 - `Math.random` / `Date.now` / `new Date` / `performance.now` → use `world.rng` (seeded) or the tick
-  counter. **Enforced:** `test/hygiene.test.ts` regex-scans `src/**.ts` and fails the build (and CI)
+  counter. **Enforced:** `test/core/hygiene.test.ts` regex-scans `src/**.ts` and fails the build (and CI)
   — a violation can't land green. The scan also bans transcendental float math (`Math.sqrt/sin/cos/
   pow/…` — last-bit results vary across engines; `fixed.ts` is the one sanctioned wrapper) and
   locale-dependent APIs (`localeCompare`/`toLocale*`/`Intl` — output varies by environment).
@@ -44,7 +44,7 @@ reach `ONE` — count an integer `elapsed` to the exact `elapsed >= duration` (s
 + golden atomic-trace tests — the tripwire. **Only update a golden if the change was intentional,
 and name the mechanic in the commit.** A moved golden on a *refactor* means a real change crept in —
 stop and reassess. Run `npm test`; if an invariant fires (`src/invariants.ts`) it reports the exact
-tick — use it. Beyond the goldens, `test/fuzz-determinism.test.ts` runs seeded-random command
+tick — use it. Beyond the goldens, `test/core/fuzz-determinism.test.ts` runs seeded-random command
 streams (run-twice hash equality + replay fidelity + invariants) — **add new command variants to its
 generator in the same commit**, and register any new incrementally-maintained cache in
 `World.verifyCaches()` (the `cachesCoherent` invariant re-derives every cache each checked tick).
@@ -85,4 +85,4 @@ ascending-id scan order or elided only provably-empty work, so the winner never 
 - **Content-index:** replace `ctx.content.buildings.find(t => t.typeId === …)` (and friends) in hot loops
   with a `Map` by typeId built at content load. Pure lookup, determinism-neutral.
 - **Sim in a Web Worker:** run the deterministic step off the render thread (snapshot is already
-  transferable — `test/snapshot-transferable.test.ts`). Doesn't speed the sim, but unblocks rendering.
+  transferable — `test/inspect/snapshot-transferable.test.ts`). Doesn't speed the sim, but unblocks rendering.
