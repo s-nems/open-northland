@@ -63,6 +63,10 @@ gitignored bytes:
   the **indexed** atlas through the `256×16` player-colour LUT via `render`'s `PalettedSprite` (only the clothing
   band recolours; see docs/FIDELITY.md "Player (team) colours"). A per-tone **skin/hair variant** axis (distinct
   from team colour) is still a deferred pipeline follow-up (docs/FIDELITY.md).
+- `?sound=off` — mute the original decoded sounds (`@vinland/audio`), which are **default-on** in live mode:
+  positional action SFX + terrain ambient (viewport-culled, attenuated, panned) + non-spatial life-event
+  jingles, driven by the same snapshot + events `render` reads. Browser autoplay policy keeps audio
+  suspended until the first click/key; a checkout without `content/` (no sound bank) degrades to silence.
 - `?map=<id>` · `?atlas` · `?terrain=off` · `?objects=off` · `?zoom=N` · `?speed=N` — real decoded map /
   sprite atlas / ground-texture + map-object opt-outs / camera magnify / playback rate. These compose with
   `?scene=`. Real graphics are the **default** for live + scene (`resolveSpriteSheet` degrades to synthetic

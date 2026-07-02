@@ -23,6 +23,12 @@ const bobsRoot = resolve(here, '../../content/Data/engine2d/bin/bobs');
 // `?terrain` real-ground render samples them (see real-terrain.ts). Same stance as `/bobs`: gitignored,
 // outside the vite root, bridged in at `/textures/<name>.png` with traversal rejected + `.png` only.
 const texturesRoot = resolve(here, '../../content/Data/engine2d/bin/textures');
+// Decoded original sound effects (`.wav`) the `@vinland/audio` layer plays. Same stance as `/bobs` /
+// `/textures`: gitignored (copied from an owned game copy by the pipeline), outside the vite root, so a
+// middleware bridges them in at `/sounds/<path>` for the audio engine's `fetch` + `decodeAudioData`.
+// Path traversal is rejected and only `.wav` is served, so `/sounds/` can only reach a real sound.
+const soundsRoot = resolve(here, '../../content/Data/engine2d/bin/sounds');
+
 // The validated IR (`content/ir.json`) carries the approximated `terrainPatterns` typeId→ground table
 // the `?terrain` binding reads; bridged in at `/ir.json` (the one file, not the tree).
 const irFile = resolve(here, '../../content/ir.json');
@@ -108,6 +114,24 @@ function serveContentTextures(): Plugin {
   };
 }
 
+function serveContentSounds(): Plugin {
+  return {
+    name: 'vinland-serve-content-sounds',
+    configureServer(server) {
+      server.middlewares.use('/sounds', (req, res, next) => {
+        const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';
+        const file = normalize(resolve(soundsRoot, rel));
+        if (!file.startsWith(soundsRoot + sep) || !file.endsWith('.wav') || !existsSync(file)) {
+          next();
+          return;
+        }
+        res.setHeader('Content-Type', 'audio/wav');
+        createReadStream(file).pipe(res);
+      });
+    },
+  };
+}
+
 function serveContentIr(): Plugin {
   return {
     name: 'vinland-serve-content-ir',
@@ -130,6 +154,7 @@ export default defineConfig({
     serveContentMaps(),
     serveContentBobs(),
     serveContentTextures(),
+    serveContentSounds(),
     serveContentIr(),
   ],
   server: { port: 5173, open: false },
