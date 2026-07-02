@@ -1,6 +1,6 @@
 import { IR_VERSION, parseContentSet } from '@vinland/data';
 import { ONE, type Simulation, components, fx, systems } from '@vinland/sim';
-import { GRASS, VIKING, grassTerrain } from '../viking-buildings.js';
+import { GRASS, VIKING, grassTerrain } from '../catalog/buildings.js';
 import type { SceneDefinition } from './types.js';
 
 /**

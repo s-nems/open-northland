@@ -1,6 +1,6 @@
 import type { Camera } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
-import { MAX_ZOOM, MIN_ZOOM, panCamera, zoomCameraAt } from '../src/camera.js';
+import { MAX_ZOOM, MIN_ZOOM, panCamera, zoomCameraAt } from '../src/view/camera.js';
 
 /**
  * The headless half of the interactive camera: the pan/zoom *math* is pure, so it's unit-tested here.

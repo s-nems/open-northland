@@ -5,7 +5,7 @@ import { type Simulation, type TerrainMap, components } from '@vinland/sim';
  * The committed catalog of viking buildings — the SINGLE SOURCE OF TRUTH that maps a human name to the
  * one key the whole engine shares: `Building.buildingType` (the `typeId`, the original's `[GfxHouse]`
  * `LogicType`). That typeId is what {@link placeVikingBuilding} stamps on the sim entity AND what the
- * renderer keys its per-type bob lookup on (`real-sprites.ts` `buildingBobRefsByType`), so naming a
+ * renderer keys its per-type bob lookup on (`content/building-gfx.ts` `buildingBobRefsByType`), so naming a
  * building here is enough to place it on the map AND draw its own graphic — no guessing, no reaching into
  * the gitignored `content/ir.json`.
  *

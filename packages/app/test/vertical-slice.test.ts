@@ -2,7 +2,7 @@ import { buildScene, terrainMapToScene } from '@vinland/render';
 import type { Component, TerrainMap, WorldSnapshot } from '@vinland/sim';
 import { components } from '@vinland/sim';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadTerrainMap, runSlice, sliceTerrain } from '../src/vertical-slice.js';
+import { loadTerrainMap, runSlice, sliceTerrain } from '../src/slice/vertical-slice.js';
 
 /**
  * Component stores are module-level singletons shared by every `Simulation` instance, so a sim built

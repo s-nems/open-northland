@@ -5,7 +5,7 @@ import {
   placeVikingBuilding,
   placedBuildingTypes,
   vikingBuildingContent,
-} from '../viking-buildings.js';
+} from '../catalog/buildings.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -61,7 +61,7 @@ export const allBuildingsScene: SceneDefinition = {
   id: 'all-buildings',
   title: 'Wszystkie budynki wikingów',
   summary:
-    'Wszystkie 41 budynków wikingów stoi obok siebie na trawie — każdy w pełni zbudowany, rysujący SWÓJ własny bob (prawdziwa grafika jest teraz domyślna). Scena testowa: budynki są kładzione przez ten sam mechanizm co menu budowy, po nazwie z katalogu (viking-buildings.ts).',
+    'Wszystkie 41 budynków wikingów stoi obok siebie na trawie — każdy w pełni zbudowany, rysujący SWÓJ własny bob (prawdziwa grafika jest teraz domyślna). Scena testowa: budynki są kładzione przez ten sam mechanizm co menu budowy, po nazwie z katalogu (catalog/buildings.ts).',
   seed: 41,
   content: vikingBuildingContent(VIKING_BUILDINGS),
   terrain: grassTerrain(GRID_W, GRID_H),

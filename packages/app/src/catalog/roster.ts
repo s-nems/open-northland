@@ -1,5 +1,5 @@
 import { GALLERY_DIRS, clipDirs } from '@vinland/render';
-import type { BobSeqRow } from './real-sprites.js';
+import type { BobSeqRow } from '../content/ir.js';
 
 /**
  * The viking character ROSTER the `?anim` gallery can play — the data behind the character selector and
@@ -37,7 +37,7 @@ export interface VikingCharacter {
 export const DEFAULT_CHARACTER_PALETTE = 'test_human_00';
 
 /** The civilist-job (`logicjob 6`) head looks `head_00..03` — the in-game generic man's faces. The
- *  per-job settler binding (`real-sprites.ts`) overlays exactly these; the scout (80..83) and druid
+ *  per-job settler binding (`content/settler-gfx.ts`) overlays exactly these; the scout (80..83) and druid
  *  (90..93) looks below stay gallery-only until those jobs exist in a running sim. */
 export const CIVILIST_JOB_HEADS = [
   'cr_hum_head_00',

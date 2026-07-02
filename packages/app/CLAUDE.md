@@ -13,15 +13,44 @@
 - **One-way flow:** app issues commands into the sim and reads `snapshot()` out; never reach into live
   component stores from render glue. Determinism is the sim's; the app just drives wall-clock → ticks.
 
+## Package layout
+
+`src/` is grouped by concern (not flat) so each thing has ONE obvious home — add new code to the folder
+that matches its role instead of piling another method onto a growing file:
+
+- **`main.ts`** — the thin URL dispatcher. Reads `window.location.search`, picks ONE entry, hands off. No
+  wiring lives here; it only routes.
+- **`entries/`** — one module per URL entry (the "modes"): `menu.ts` (the default landing), `live.ts`
+  (`?live`/`?map=`), `scene.ts` (`?scene=`), `anim.ts` (+ `anim-cells.ts` pure builders + `anim-overlay.ts`
+  panel), `shot.ts` (`?shot`). An entry owns its Pixi app + loop; it pulls binding data from `content/`.
+- **`content/`** — the decoded-content → render binding (the gitignored-`content/` I/O boundary): `ir.ts`
+  (atlas/IR byte loading), `building-gfx.ts` + `settler-gfx.ts` (the pure per-type/per-character bob-binding
+  reducers, unit-tested), `sprite-sheet.ts` (assembles the `SpriteSheet` + `resolveSpriteSheet`), `terrain.ts`,
+  `objects.ts`. This is where the old 1200-line `real-sprites.ts` now lives, split by responsibility.
+- **`catalog/`** — committed clean-room data catalogs (English naming over the original's typeIds):
+  `buildings.ts` (the 41 viking buildings), `roster.ts` (the character roster).
+- **`view/`** — browser-view helpers: `camera.ts` (pure pan/zoom math + the DOM controller), `overlay.ts`
+  (shared panel chrome — `el`/`button`/`navButton`/styles, used by every panel), `scene-overlay.ts`,
+  `perf-overlay.ts`.
+- **`slice/vertical-slice.ts`** — the demo scenario (synthetic content + `runSlice` + map loading) the live
+  + shot entries share.
+- **`scenes/`** — the acceptance-scene system (see below).
+
 ## URL-flag entries
 
-The app dispatches on `window.location.search` (see `main.ts`). Each flag is opt-in and degrades to a
-reproducible default so the committed build + the `npm run shot` PNG never depend on gitignored bytes:
+The app dispatches on `window.location.search` (see `main.ts`, a thin router into `entries/`). **With no
+flag the default is the main menu** (`entries/menu.ts`) — a landing page of clickable cards (every
+acceptance scene, the live sandbox, the animation gallery, each decoded map from the dev server's
+`/maps-index` route), so a human never has to remember a `?…` string. Each flag below is opt-in and
+degrades to a reproducible default so the committed build + the `npm run shot` PNG never depend on
+gitignored bytes:
 
-- `?shot[&seed&ticks&hud]` — headless deterministic screenshot entry (`shot.ts`).
-- `?scene=<id>` — run a registered **acceptance scene** with its checklist overlay (`scene-mode.ts`).
+- `?live` (or `?map=<id>`) — the live **vertical-slice sandbox** (`entries/live.ts`): the fixed-timestep
+  loop drawn every frame. The menu's "Podgląd na żywo" card.
+- `?shot[&seed&ticks&hud]` — headless deterministic screenshot entry (`entries/shot.ts`).
+- `?scene=<id>` — run a registered **acceptance scene** with its checklist overlay (`entries/scene.ts`).
 - `?anim[&char=<id>&view=anim|heads&dir=full|0..7&cols=N&filter=<substr>&zoom&speed]` — the character
-  **animation gallery** (`anim-mode.ts` + `viking-roster.ts`), the extracted `[bobseq]` played from the atlas
+  **animation gallery** (`entries/anim.ts` + `catalog/roster.ts`), the extracted `[bobseq]` played from the atlas
   with a direction selector so a human can validate all animations in all 8 facings. **Bare `?anim` (no
   `?char=`) is the DEFAULT: the full-roster montage** — one walking cell per viking look (every roster body ×
   each of its heads) on one screen. `?char=<id>` drills into one body — its full animation set (`?view=anim`)

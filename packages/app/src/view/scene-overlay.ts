@@ -1,4 +1,5 @@
-import type { SceneDefinition } from './scenes/index.js';
+import type { SceneDefinition } from '../scenes/index.js';
+import { BUTTON_STYLE, PANEL_STYLE, button, el } from './overlay.js';
 
 /**
  * The on-canvas acceptance overlay — the "czy jest OK?" panel a human reads while watching a scene.
@@ -25,50 +26,7 @@ export interface SceneOverlayHandle {
   update(tick: number): void;
 }
 
-const PANEL_STYLE = [
-  'position:fixed',
-  'top:12px',
-  'right:12px',
-  'width:320px',
-  'box-sizing:border-box',
-  'padding:12px 14px',
-  'background:rgba(20,16,12,0.92)',
-  'color:#e8dcc8',
-  'font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace',
-  'border:1px solid #5a4a36',
-  'border-radius:8px',
-  'box-shadow:0 6px 24px rgba(0,0,0,0.45)',
-  'z-index:50',
-].join(';');
-
-const BUTTON_STYLE = [
-  'cursor:pointer',
-  'background:#3a2f22',
-  'color:#e8dcc8',
-  'border:1px solid #6b5840',
-  'border-radius:5px',
-  'padding:4px 8px',
-  'font:12px ui-monospace,monospace',
-].join(';');
-
 const SPEEDS: readonly number[] = [0.25, 0.5, 1, 2];
-
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  style: string,
-  text?: string,
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  node.style.cssText = style;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
-
-function button(label: string, onClick: () => void): HTMLButtonElement {
-  const b = el('button', BUTTON_STYLE, label);
-  b.addEventListener('click', onClick);
-  return b;
-}
 
 /** Mount the acceptance overlay for a scene and wire its controls to `handlers`. Returns a live handle. */
 export function mountSceneOverlay(
