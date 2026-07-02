@@ -6,17 +6,22 @@ import type { SceneDefinition } from './types.js';
 
 /**
  * Acceptance scene: **sim-state → character animation** — one world where every render-side join the
- * per-job character binding makes is watchable at once: a woodcutter living its full loop (breathing
- * idle → walk → chop swing → hauling the visible log home), a woman in her own body, and the soldier
- * family in the armoured body (unarmed breathing, broadsword and longbow walk-holds — the "becomes a
- * warrior, the skin changes" join). The content uses the REAL job ids the binding tables key on
- * (woman 5, soldiers 31/35/41 — the `[jobbasegraphics]` join keys); the woodcutter uses a NON-mapped id
- * to prove every ordinary trade falls back to the generic man.
+ * per-job character binding makes is watchable at once, and (deliberately) almost everyone MOVES:
+ * three woodcutters live the full loop (breathing idle → walk → chop swing → hauling the visible log
+ * home), while the woman and the soldier family enter with a MARCH — each spawns at the map edge with
+ * a {@link components.MoveGoal} to its post, so the reviewer sees the woman's own walk and every
+ * soldier's weapon gait (unarmed / broadsword / longbow) before they settle into their breathing
+ * weapon-idle loops. The overlay's Restart replays the whole entrance.
+ *
+ * The content uses the REAL job ids the binding tables key on (woman 5, soldiers 31/35/41 — the
+ * `[jobbasegraphics]` join keys); the woodcutters use a NON-mapped id to prove every ordinary trade
+ * falls back to the generic man.
  *
  * The headless half proves the MECHANIC: the harvest→carry→deposit loop actually ran (wood physically
- * hauled into the HQ store — so the carrying state the human watches really occurred), and the
- * woman/soldier settlers are alive with their mapped jobs. The pixels (which body/animation draws) are
- * the human's checklist — an agent cannot self-judge them.
+ * hauled into the HQ store — so the carrying state the human watches really occurred), and every
+ * marcher ARRIVED at its post (its MoveGoal satisfied + position exactly on target — so the walks the
+ * human watches really happened). The pixels (which body/animation draws) are the human's checklist —
+ * an agent cannot self-judge them.
  */
 
 /** The REAL IR wood typeId (5) — deliberately ≠ the demo slice's wood(1), proving the per-good carry
@@ -34,7 +39,7 @@ const HEADQUARTERS = 1;
 const MAP_W = 16;
 const MAP_H = 12;
 
-const { Building, Position, Resource, Settler, Stockpile } = components;
+const { Building, MoveGoal, Position, Resource, Settler, Stockpile } = components;
 
 function content(): ContentSet {
   return parseContentSet({
@@ -56,7 +61,7 @@ function content(): ContentSet {
         typeId: HEADQUARTERS,
         id: 'headquarters',
         kind: 'headquarters',
-        workers: [{ jobType: WOODCUTTER, count: 1 }],
+        workers: [{ jobType: WOODCUTTER, count: 3 }],
         stock: [{ goodType: WOOD, capacity: 150, initial: 0 }],
       },
     ],
@@ -75,33 +80,60 @@ function content(): ContentSet {
 
 /** Every placement, spread so each character reads separately at the default zoom. */
 const HQ_AT = { x: 3, y: 3 };
+/** Four wood nodes clustered south-east — the woodcutters' work site, far enough from the HQ that the
+ *  loaded haul crosses most of the screen. */
 const TREES = [
   { x: 11, y: 8 },
   { x: 12, y: 8 },
+  { x: 12, y: 9 },
+  { x: 13, y: 7 },
 ];
-const CUTTER_AT = { x: 10, y: 8 };
-const WOMAN_AT = { x: 6, y: 7 };
-const SOLDIERS = [
-  { x: 7, y: 4, jobType: SOLDIER_UNARMED },
-  { x: 8, y: 4, jobType: SOLDIER_UNARMED },
-  { x: 9, y: 4, jobType: SOLDIER_SWORD_LONG },
-  { x: 10, y: 4, jobType: SOLDIER_BOW_LONG },
+/** Three woodcutters — constant walk/chop/haul traffic, so the scene is never still. */
+const CUTTERS = [
+  { x: 10, y: 8 },
+  { x: 10, y: 9 },
+  { x: 11, y: 7 },
+];
+/**
+ * The ENTRANCE MARCHES: each mapped character spawns at `from` (the map edge) and walks to its post
+ * `to` via a {@link MoveGoal}, so its own gait — the woman's walk, each soldier's weapon walk — is on
+ * screen for the first stretch of the scene. The march is also the arrival mechanic the headless
+ * check asserts (goal satisfied + position exactly on `to`).
+ */
+const MARCHES = [
+  { from: { x: 15, y: 1 }, to: { x: 7, y: 4 }, jobType: SOLDIER_UNARMED },
+  { from: { x: 15, y: 2 }, to: { x: 8, y: 4 }, jobType: SOLDIER_UNARMED },
+  { from: { x: 15, y: 3 }, to: { x: 9, y: 4 }, jobType: SOLDIER_SWORD_LONG },
+  { from: { x: 15, y: 4 }, to: { x: 10, y: 4 }, jobType: SOLDIER_BOW_LONG },
+  { from: { x: 2, y: 9 }, to: { x: 6, y: 6 }, jobType: WOMAN },
 ] as const;
 /** Wood per tree — enough that the loop is still mid-haul whenever the human looks. */
 const TREE_WOOD = 8;
 
 function build(sim: Simulation): void {
   sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: HQ_AT.x, y: HQ_AT.y, tribe: VIKING });
-  sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: CUTTER_AT.x, y: CUTTER_AT.y, tribe: VIKING });
-  sim.enqueue({ kind: 'spawnSettler', jobType: WOMAN, x: WOMAN_AT.x, y: WOMAN_AT.y, tribe: VIKING });
-  for (const s of SOLDIERS) {
-    sim.enqueue({ kind: 'spawnSettler', jobType: s.jobType, x: s.x, y: s.y, tribe: VIKING });
+  for (const c of CUTTERS) {
+    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: c.x, y: c.y, tribe: VIKING });
+  }
+  for (const m of MARCHES) {
+    sim.enqueue({ kind: 'spawnSettler', jobType: m.jobType, x: m.from.x, y: m.from.y, tribe: VIKING });
   }
   // Wood nodes placed directly (the slice's pattern) — the harvest→carry→deposit loop's source.
   for (const cell of TREES) {
     const tree = sim.world.create();
     sim.world.add(tree, Position, { x: fx.fromInt(cell.x), y: fx.fromInt(cell.y) });
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: TREE_WOOD, harvestAtomic: HARVEST_ATOMIC });
+  }
+  // Apply the spawns (one tick), then send each marcher walking: MoveGoal is the sim's own
+  // "wants to be at" record — the navigation planner paths it there and removes the goal on arrival.
+  // Deterministic: build() runs identically for the headless test and the browser view. Marchers are
+  // matched by their exact spawn position (they have no drives, so they haven't moved on tick 1).
+  sim.step();
+  for (const e of [...sim.world.query(Settler, Position)]) {
+    const p = sim.world.get(e, Position);
+    const march = MARCHES.find((m) => p.x === fx.fromInt(m.from.x) && p.y === fx.fromInt(m.from.y));
+    if (march === undefined) continue;
+    sim.world.add(e, MoveGoal, { cell: march.to.y * MAP_W + march.to.x });
   }
 }
 
@@ -124,26 +156,39 @@ function settlersWithJob(sim: Simulation, jobType: number): number {
   return n;
 }
 
+/** Whether every marcher ARRIVED: stands exactly on its post with its MoveGoal satisfied (removed). */
+function allMarchersArrived(sim: Simulation): boolean {
+  const posts = MARCHES.map((m) => ({ x: fx.fromInt(m.to.x), y: fx.fromInt(m.to.y) }));
+  let arrived = 0;
+  for (const e of [...sim.world.query(Settler, Position)]) {
+    if (sim.world.has(e, MoveGoal)) return false; // still walking (or never routed) — not arrived
+    const p = sim.world.get(e, Position);
+    if (posts.some((t) => t.x === p.x && t.y === p.y)) arrived++;
+  }
+  return arrived === MARCHES.length;
+}
+
 export const charactersScene: SceneDefinition = {
   id: 'characters',
   title: 'Postacie — animacja spięta ze stanem sima',
   summary:
-    'Jeden świat, w którym widać każdy render-owy join stan→animacja: drwal przechodzi pełną pętlę ' +
-    '(oddychający bezruch → marsz → zamach siekierą → niesie WIDOCZNĄ kłodę do magazynu), kobieta stoi ' +
-    'we własnym ciele, a rodzina żołnierska nosi opancerzone ciało wojownika (job → skin). Zwykłe zawody ' +
-    'rysują generycznego cywila; głowy różnią się per osobnik (stabilnie po id).',
+    'Jeden świat, w którym widać każdy render-owy join stan→animacja — i prawie wszyscy się RUSZAJĄ: ' +
+    'trzej drwale krążą w pętli (marsz → zamach siekierą → niosą WIDOCZNĄ kłodę do magazynu), a kobieta ' +
+    'i żołnierze wchodzą na scenę marszem do swoich stanowisk (każdy żołnierz swoim chodem broni: bez ' +
+    'broni / miecz dwuręczny / łuk), po czym oddychają w pętli z bronią w rękach. Zwykłe zawody rysują ' +
+    'generycznego cywila; głowy różnią się per osobnik. Restart odtwarza cały wmarsz.',
   seed: 31,
   content: content(),
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
   runTicks: 400,
-  initialZoom: 1.2,
+  initialZoom: 1,
   checklist: [
-    'Drwal (cywil): stojąc ODDYCHA (pętla idle, nie stopklatka), idzie pełnym krokiem, przy drzewie wykonuje zamach siekierą',
-    'Po ścince drwal niesie WIDOCZNĄ kłodę do magazynu (inny chód niż z pustymi rękami) i odkłada ją',
-    'Kobieta (lewa strona) ma własne ciało/suknię i własną pętlę oddychania — nie jest przebranym mężczyzną',
-    'Czterej żołnierze mają opancerzone ciało wojownika: dwaj bez broni oddychają, jeden trzyma miecz dwuręczny, jeden łuk (postawa per broń)',
-    'Dwaj żołnierze bez broni mają RÓŻNE głowy/hełmy (wariacja per osobnik), nikt na scenie nie zamarza w bezruchu',
+    'Na starcie kobieta (z lewej) i czterej żołnierze (z prawej) WCHODZĄ marszem na swoje miejsca — każdy żołnierz idzie swoim chodem broni (przyciśnij Restart, by odtworzyć wmarsz)',
+    'Drwale (cywile): idą pełnym krokiem, przy drzewie zamach siekierą, potem niosą WIDOCZNĄ kłodę do magazynu (inny chód niż z pustymi rękami)',
+    'Kobieta ma własne ciało/suknię i własną pętlę oddychania — nie jest przebranym mężczyzną',
+    'Żołnierze po dojściu ODDYCHAJĄ z bronią w rękach (pętla wait per broń — miecz dwuręczny, łuk, dwaj bez broni), nikt nie zamarza w stopklatce',
+    'Dwaj żołnierze bez broni mają RÓŻNE głowy/hełmy (wariacja per osobnik)',
   ],
   checks: [
     {
@@ -151,12 +196,14 @@ export const charactersScene: SceneDefinition = {
       predicate: (sim) => hqWood(sim) > 0,
     },
     {
-      label: 'the woman settler is alive with the woman job (the body-swap join key)',
-      predicate: (sim) => settlersWithJob(sim, WOMAN) === 1,
+      label: 'every marcher arrived at its post (MoveGoal satisfied, position exactly on target)',
+      predicate: allMarchersArrived,
     },
     {
-      label: 'the soldier family is alive with its mapped jobs (unarmed ×2, broadsword, longbow)',
+      label:
+        'the mapped characters are alive with their join-key jobs (woman, unarmed ×2, broadsword, longbow)',
       predicate: (sim) =>
+        settlersWithJob(sim, WOMAN) === 1 &&
         settlersWithJob(sim, SOLDIER_UNARMED) === 2 &&
         settlersWithJob(sim, SOLDIER_SWORD_LONG) === 1 &&
         settlersWithJob(sim, SOLDIER_BOW_LONG) === 1,

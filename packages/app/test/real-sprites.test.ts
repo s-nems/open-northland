@@ -504,7 +504,7 @@ describe('characterBinding', () => {
     const spec = {
       rosterId: 'warrior',
       walkSeq: 'human_man_warrior_empty_walk',
-      wait: { kind: 'loop', seq: 'human_man_warrior_empty_wait' },
+      waitSeq: 'human_man_warrior_empty_wait',
     } as const;
     expect(characterBinding(spec, WARRIOR_SEQS, [])).toEqual({
       idle: { start: 1120, dirs: 1, stride: 57 },
@@ -512,11 +512,10 @@ describe('characterBinding', () => {
     });
   });
 
-  it('builds a walk-hold character: idle is the walk held at frame 0 per facing (the armed stance)', () => {
+  it('falls back to a walk-hold idle (frame 0 per facing) when the spec names no wait strip', () => {
     const spec = {
       rosterId: 'warrior',
       walkSeq: 'human_man_Warrior_Sword_Walk',
-      wait: { kind: 'walk-hold' },
     } as const;
     expect(characterBinding(spec, WARRIOR_SEQS, [])).toEqual({
       idle: { start: 3283, dirs: 8, stride: 12, frames: 1 },
@@ -531,7 +530,7 @@ describe('characterBinding', () => {
     ]);
     const spec = {
       rosterId: 'civilian',
-      wait: { kind: 'loop', seq: 'wait' },
+      waitSeq: 'wait',
       atomics: { 24: { seq: 'chop', phaseStart: 9 } },
     } as const;
     expect(characterBinding(spec, seqs, [])?.byAtomic).toEqual({
@@ -549,7 +548,7 @@ describe('characterBinding', () => {
     const spec = {
       rosterId: 'civilian',
       walkSeq: 'w_walk',
-      wait: { kind: 'loop', seq: 'w_wait' },
+      waitSeq: 'w_wait',
       carryPrefix: 'w_walk_',
     } as const;
     const binding = characterBinding(spec, seqs, [
@@ -570,7 +569,7 @@ describe('characterBinding', () => {
 
   it('a walk-less character (the baby) idles its wait and never binds moving', () => {
     const seqs = new Map([['baby_wait', { name: 'baby_wait', start: 104, length: 42 }]]);
-    const spec = { rosterId: 'baby', wait: { kind: 'loop', seq: 'baby_wait' } } as const;
+    const spec = { rosterId: 'baby', waitSeq: 'baby_wait' } as const;
     expect(characterBinding(spec, seqs, [])).toEqual({
       idle: { start: 104, dirs: 1, stride: 42 },
     });
@@ -578,16 +577,8 @@ describe('characterBinding', () => {
 
   it('returns null when neither the walk nor a loop wait resolves (an IR without this body)', () => {
     const empty = new Map<string, { name: string; start: number; length: number }>();
-    expect(
-      characterBinding(
-        { rosterId: 'warrior', walkSeq: 'missing', wait: { kind: 'walk-hold' } } as const,
-        empty,
-        [],
-      ),
-    ).toBeNull();
-    expect(
-      characterBinding({ rosterId: 'civilian', wait: { kind: 'loop', seq: 'missing' } } as const, empty, []),
-    ).toBeNull();
+    expect(characterBinding({ rosterId: 'warrior', walkSeq: 'missing' } as const, empty, [])).toBeNull();
+    expect(characterBinding({ rosterId: 'civilian', waitSeq: 'missing' } as const, empty, [])).toBeNull();
   });
 });
 
