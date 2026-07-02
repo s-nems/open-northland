@@ -40,3 +40,23 @@ export interface Camera {
    */
   readonly scale?: number;
 }
+
+/**
+ * The deterministic secondary depth key weight: a feet-anchored sprite sorts by `depthKey = y + x *
+ * this`. Small enough that the x term can never overturn a meaningful y difference (max |x| on a
+ * 1024-wide map ≈ 32k px → contributes ~0.03), large enough to order same-row overlaps stably
+ * regardless of attach order.
+ */
+export const DEPTH_X_TIEBREAK = 1 / (1 << 20);
+
+/**
+ * The screen-depth sort key for a feet anchor at projected `(x, y)` px: primarily the screen `y`
+ * (lower on screen = drawn later = in front), with a tiny `x` tiebreak ({@link DEPTH_X_TIEBREAK}) so
+ * two sprites on the same row order deterministically instead of flickering with attach/detach churn
+ * (Pixi's `sortableChildren` sort is stable only in children-array order, which panning reshuffles).
+ * The pooled entities and the tall map objects share this key so a settler and the tree it walks
+ * behind sort into one painter order. Pure.
+ */
+export function depthKey(x: number, y: number): number {
+  return y + x * DEPTH_X_TIEBREAK;
+}

@@ -48,14 +48,10 @@ export {
   type SpriteLayer,
   type TerrainTextureSet,
 } from './gpu/pixi-app.js';
-export {
-  WorldRenderer,
-  reconcileSprites,
-  DEFAULT_HUD_STYLE,
-  type HudStyle,
-  type HudFrame,
-  type MapObjectSprite,
-} from './gpu/world-renderer.js';
+export { WorldRenderer } from './gpu/world-renderer.js';
+export { reconcileSprites } from './gpu/sprite-pool.js';
+export { DEFAULT_HUD_STYLE, type HudStyle, type HudFrame } from './gpu/hud-layer.js';
+export type { MapObjectSprite } from './gpu/map-object-layer.js';
 export {
   AnimationGallery,
   galleryCellLayout,
