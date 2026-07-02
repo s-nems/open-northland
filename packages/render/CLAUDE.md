@@ -37,7 +37,7 @@ Concretely, that means:
   death (left the snapshot). `reconcileSprites` is the pure, tested half of that bookkeeping.
 - **Batch, don't fragment.** No per-sprite filters/masks/blend modes (they break Pixi's batcher). Per
   player colour is `Sprite.tint` (a batch attribute), NOT a tinted texture or a separate container.
-- **Bound the zoom-out** (`world-renderer.ts` `MIN_ZOOM`). We deliberately do NOT support fitting a whole huge
+- **Bound the zoom-out** (`app/src/view/camera.ts` `MIN_ZOOM`). We deliberately do NOT support fitting a whole huge
   map on screen — the requirement is a big *battle-scale* view. The min zoom is the floor that bounds
   the visible tile + bob count. Lowering it needs a zoom-out LOD (marker quads + animation freeze), not
   just a smaller number.
