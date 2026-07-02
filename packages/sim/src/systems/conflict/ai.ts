@@ -12,10 +12,18 @@ import {
 import type { AtomicEffect } from '../../core/commands.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { TerrainGraph } from '../../nav/terrain.js';
+import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
 import { carrierCarryCapacity } from '../progression.js';
-import { atomicDuration, inRange, isFood } from '../shared.js';
+import { atomicDuration, inRange, isFood, recipeOf } from '../shared.js';
+import {
+  deliveryTargetFor,
+  isPorterBoundToStore,
+  nearestGroundPile,
+  nearestMissingInputSource,
+  workplaceOutputToHaul,
+  workplaceProductiveIfStaffed,
+} from './ai-supply.js';
 import {
   boundWorkplaceTarget,
   collectTargets,
@@ -23,10 +31,8 @@ import {
   interactionCell,
   nearestFoodStore,
   nearestHarvestableFor,
-  nearestStoreFor,
   nearestTemple,
   nearestWorkplaceOutput,
-  staffsBoundWorkplaceHere,
 } from './ai-targets.js';
 
 /**
@@ -193,17 +199,23 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       // Devout but no temple reachable: fall through to normal work (piety stays pinned at ONE).
     }
 
-    // The production operator: a settler empty-handed and standing on a workplace whose `workers`
-    // names its job is "at work" — the ProductionSystem's worker-presence gate runs on its being
-    // there. Leave it put (don't send it off to harvest/haul, which would unstaff the workplace).
-    // Carrying goods overrides (it must still deposit its load); a store (no recipe) doesn't pin.
-    if ((load === undefined || load.amount <= 0) && staffsBoundWorkplaceHere(world, ctx, e)) {
-      continue;
-    }
-
+    // 1. CARRYING — deposit the load where it belongs. {@link deliveryTargetFor} routes it: a fetched
+    // recipe input to the bound workshop that consumes it, a harvested/collected good to the settler's
+    // bound store (a warehouse, or a flag pile), else the nearest capable store (the unchanged default
+    // for an unbound hauler — the vertical-slice woodcutter/carrier route exactly as before). A carrying
+    // settler always delivers first (it must free its hands before it can staff, harvest, or fetch).
     if (load !== undefined && load.amount > 0) {
-      // Loaded: take the goods to a store that can stock them.
-      const store = nearestStoreFor(targets.stockpiles, world, ctx, terrain, here, load.goodType);
+      const store = deliveryTargetFor(
+        targets.stockpiles,
+        world,
+        ctx,
+        terrain,
+        here,
+        e,
+        settler.jobType,
+        settler.tribe,
+        load.goodType,
+      );
       if (store === null) continue; // nowhere to deposit — idle this tick (a later slice may wait/drop)
       const cell = interactionCell(world, ctx, terrain, store);
       if (cell === here) {
@@ -221,24 +233,23 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       continue;
     }
 
-    // The WALK-TO-WORKPLACE drive: an employed, empty-handed settler that ISN'T yet on its bound
-    // workplace (the staffs-here pin above didn't fire) walks to the specific building the JobSystem
-    // bound it to ({@link JobAssignment}). A freshly-assigned operator standing elsewhere (e.g. a
-    // carpenter spawned at the HQ, whose job can harvest nothing) must physically reach its station
-    // before the ProductionSystem's worker-presence gate can run — without this it would fall through
-    // to harvest/haul and never staff the workplace. Heading for ITS bound building (not "nearest
-    // unstaffed") keeps the worker latched to its own mill across a brief step-off the tile, and lets
-    // two same-type workplaces staff independently. A settler whose job a resource permits still
-    // reaches harvest below when it has no binding (an unassigned harvester returns from here at null).
-    const station = boundWorkplaceTarget(world, ctx, e, settler.jobType, settler.tribe);
-    if (station !== null) {
-      world.add(e, MoveGoal, { cell: interactionCell(world, ctx, terrain, station) });
+    // Empty-handed from here.
+
+    // 2. PRODUCER — a worker bound to a recipe workshop runs its OWN supply→produce→deliver loop
+    // ({@link planProducer}): stay on the station while a cycle can run, else haul the finished output
+    // out to a store, else fetch a missing recipe input from a store that holds it. This is what feeds
+    // a workshop whose inputs sit in a warehouse (the harvester delivers there, not straight to the
+    // shop) — subsumes the old staffs-here pin AND the walk-to-workplace drive.
+    const workplace = boundWorkplaceTarget(world, ctx, e, settler.jobType, settler.tribe);
+    if (workplace !== null) {
+      planProducer(world, ctx, terrain, e, settler, here, workplace, targets.stockpiles);
       continue;
     }
 
-    // Empty-handed: go harvest. Pick the nearest resource this settler is allowed to harvest — gated
-    // both by its job's atomic permissions AND by its accrued XP clearing the good's `needforgood`
-    // threshold (the who-may-do-it gate). `jobType` is non-null here (guarded above).
+    // 3. HARVEST — a gatherer picks the nearest resource its job is allowed to harvest, gated both by
+    // its job's atomic permissions AND by its accrued XP clearing the good's `needforgood` threshold
+    // (the who-may-do-it gate). `jobType` is non-null here (guarded above). Ordered before the porter
+    // drive so a gatherer harvests rather than ferrying loose piles while resources remain.
     const node = nearestHarvestableFor(targets.resources, world, ctx, terrain, here, {
       jobType: settler.jobType,
       tribe: settler.tribe,
@@ -262,21 +273,45 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       continue;
     }
 
-    // Nothing to harvest: act as a carrier — haul finished outputs out of a workplace to a store
-    // that can stock them (so a producing workplace doesn't clog on its own output and goods reach
-    // the settlement's stores). Nearest workplace with a haulable output it can deliver somewhere.
+    // 4. PORTER — a settler bound to a storage fixture (no recipe) collects the nearest loose ground
+    // pile and carries it to its warehouse (the carrying branch above then routes the load there). This
+    // is the "tragarz" who ferries goods gatherers drop at a flag into the store they belong to.
+    if (isPorterBoundToStore(world, ctx, e)) {
+      const pile = nearestGroundPile(targets.stockpiles, world, ctx, terrain, here);
+      if (pile !== null) {
+        const cell = interactionCell(world, ctx, terrain, pile.pile);
+        if (cell === here) {
+          const amount = carrierCarryCapacity(world, ctx, settler.tribe);
+          startAtomic(
+            world,
+            e,
+            PICKUP_ATOMIC_ID,
+            { kind: 'pickup', goodType: pile.goodType, amount, from: pile.pile },
+            atomicDuration(ctx, settler, PICKUP_ATOMIC_ID),
+            pile.pile,
+          );
+        } else {
+          world.add(e, MoveGoal, { cell });
+        }
+        continue;
+      }
+    }
+
+    // 5. CARRIER FALLBACK — with nothing to harvest, produce, or collect, act as a carrier: haul a
+    // finished workplace output to a store (so a producing workshop doesn't clog and goods reach the
+    // settlement's stores). Nearest workplace with a haulable output it can deliver somewhere.
     const haul = anyHaulable ? nearestWorkplaceOutput(targets.stockpiles, world, ctx, terrain, here) : null;
     if (haul === null) continue; // nothing to harvest AND nothing to haul — idle this tick
     const cell = interactionCell(world, ctx, terrain, haul.workplace);
     if (cell === here) {
       // Lift a batch sized by the tribe's best unlocked vehicle (`stockSlots`), or one unit on foot
       // when no vehicle is available — `pickupFromStore` caps the move to what the source actually holds.
-      const load = carrierCarryCapacity(world, ctx, settler.tribe);
+      const amount = carrierCarryCapacity(world, ctx, settler.tribe);
       startAtomic(
         world,
         e,
         PICKUP_ATOMIC_ID,
-        { kind: 'pickup', goodType: haul.goodType, amount: load, from: haul.workplace },
+        { kind: 'pickup', goodType: haul.goodType, amount, from: haul.workplace },
         atomicDuration(ctx, settler, PICKUP_ATOMIC_ID),
         haul.workplace,
       );
@@ -284,6 +319,90 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       world.add(e, MoveGoal, { cell });
     }
   }
+}
+
+/**
+ * The producer self-service loop for a settler bound to a recipe workshop `workplace` — the behavior
+ * behind "kowal fetches the goods a sword needs, forges it, and carries it back". In priority:
+ *
+ *  a. **Stay & produce** — if staying on the station would run a cycle ({@link workplaceProductiveIfStaffed}:
+ *     already producing, or built with all inputs present + output room), walk to the station (if not on
+ *     it) and hold there so the ProductionSystem's worker-presence gate stays satisfied.
+ *  b. **Haul the output** — else, if the shop holds a finished output a store can take, carry it out
+ *     (clears the shop for the next cycle and delivers the product). The carrying branch routes it to a
+ *     store, not back to the shop.
+ *  c. **Fetch an input** — else, fetch a missing recipe input from a store that holds it (the smith
+ *     walking to the warehouse for iron); the carrying branch then delivers it to this workshop.
+ *  d. **Wait** — nothing to fetch or haul: return to / hold the station until an input arrives.
+ *
+ * Every branch is recipe-driven — no per-job or per-good code — so any single-worker workshop self-
+ * services. The workplace is known to carry a recipe (the caller's {@link boundWorkplaceTarget} guard).
+ */
+function planProducer(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  settler: { tribe: number; jobType: number | null },
+  here: CellId,
+  workplace: Entity,
+  stockpiles: readonly Entity[],
+): void {
+  const recipe = recipeOf(world, ctx, workplace);
+  if (recipe === undefined) return; // guarded by the caller, but keep the types honest
+
+  // a. Would staying produce a cycle? Be on the station (walk there / hold) so production runs.
+  if (workplaceProductiveIfStaffed(world, ctx, workplace, recipe)) {
+    walkToOrHold(world, e, here, interactionCell(world, ctx, terrain, workplace));
+    return;
+  }
+
+  // b. Can't produce now — carry the finished output out to a store first (frees the shop, delivers it).
+  const outGood = workplaceOutputToHaul(stockpiles, world, ctx, terrain, workplace, recipe, here);
+  if (outGood !== null) {
+    const cell = interactionCell(world, ctx, terrain, workplace);
+    if (cell === here) {
+      const amount = carrierCarryCapacity(world, ctx, settler.tribe);
+      startAtomic(
+        world,
+        e,
+        PICKUP_ATOMIC_ID,
+        { kind: 'pickup', goodType: outGood, amount, from: workplace },
+        atomicDuration(ctx, settler, PICKUP_ATOMIC_ID),
+        workplace,
+      );
+    } else {
+      world.add(e, MoveGoal, { cell });
+    }
+    return;
+  }
+
+  // c. Fetch a missing recipe input from a store that holds it (the smith going to the warehouse).
+  const src = nearestMissingInputSource(stockpiles, world, ctx, terrain, here, workplace, recipe);
+  if (src !== null) {
+    const cell = interactionCell(world, ctx, terrain, src.store);
+    if (cell === here) {
+      startAtomic(
+        world,
+        e,
+        PICKUP_ATOMIC_ID,
+        { kind: 'pickup', goodType: src.goodType, amount: src.amount, from: src.store },
+        atomicDuration(ctx, settler, PICKUP_ATOMIC_ID),
+        src.store,
+      );
+    } else {
+      world.add(e, MoveGoal, { cell });
+    }
+    return;
+  }
+
+  // d. Nothing to fetch or haul — return to / hold the station and wait for an input to arrive.
+  walkToOrHold(world, e, here, interactionCell(world, ctx, terrain, workplace));
+}
+
+/** Set a {@link MoveGoal} to `target` unless the settler is already on it (then it stays put). */
+function walkToOrHold(world: World, e: Entity, here: CellId, target: CellId): void {
+  if (target !== here) world.add(e, MoveGoal, { cell: target });
 }
 
 /**

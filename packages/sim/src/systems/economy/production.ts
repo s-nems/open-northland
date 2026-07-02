@@ -82,8 +82,14 @@ export const productionSystem: System = (world, ctx) => {
  * overflows (and outputs aren't produced and then dropped). The tech gate mirrors the `placeBuilding`
  * house gate: a good gated by `jobEnablesGood` isn't produced until an enabling-job settler is in the
  * tribe (a tannery makes no leather without the tanner).
+ *
+ * Exported so the AI planner can ask "would this workplace produce a cycle if its worker stayed put?"
+ * (the producer self-service decision — {@link workplaceProductiveIfStaffed}) with the exact same gate
+ * the ProductionSystem applies, rather than a drifting re-implementation. Does NOT check `built >= ONE`
+ * (the start loop checks that separately) or worker-presence (the caller decides whether the worker is
+ * there), so the planner combines those itself.
  */
-function canStartCycle(world: World, ctx: SystemContext, building: Entity, recipe: Recipe): boolean {
+export function canStartCycle(world: World, ctx: SystemContext, building: Entity, recipe: Recipe): boolean {
   const tribe = world.get(building, Building).tribe;
   for (const output of recipe.outputs) {
     if (!goodEnabled(world, ctx, tribe, output.goodType)) return false; // good not yet tech-unlocked

@@ -302,38 +302,12 @@ function jobAtomics(ctx: SystemContext, jobType: number): ReadonlySet<number> {
 const EMPTY_ATOMICS: ReadonlySet<number> = new Set<number>();
 
 /**
- * Whether the settler is standing on its **bound workplace** ({@link JobAssignment}) and that building
- * is a producing workplace it staffs — a {@link Building} with a `recipe` (not a passive store/HQ),
- * sharing the settler's integer tile, whose `workers` slots name the settler's `jobType`. Such a
- * settler is the workplace's operator — the atomic planner leaves it put so the ProductionSystem's
- * worker-presence gate stays satisfied. An unbound settler is never pinned (it has no station yet).
- *
- * Keying on the binding (not on standing-on-*any*-workplace) is what keeps a worker latched to ITS
- * mill: a woodcutter the HQ lists as a worker isn't frozen on the HQ (its binding is the sawmill, or
- * it has none and must go harvest), and a brief step onto a *different* same-type mill doesn't re-home
- * it. Determinism: a single binding lookup + a positional compare, no chosen-entity ordering.
- */
-export function staffsBoundWorkplaceHere(world: World, ctx: SystemContext, settler: Entity): boolean {
-  const binding = world.tryGet(settler, JobAssignment);
-  if (binding === undefined) return false; // unemployed/unbound: nothing pins it here
-  const s = world.get(settler, Settler);
-  if (s.jobType === null) return false; // job was cleared but binding lingers — not an operator
-  const b = binding.workplace;
-  if (recipeOf(world, ctx, b) === undefined) return false; // bound building isn't a producing workplace
-  if (!buildingWorkerJobs(world, ctx, b).has(s.jobType)) return false; // doesn't employ this job
-  const at = interactionTile(world, ctx, b); // the door cell — where an operator stands (footprint types)
-  const sp = world.tryGet(settler, Position);
-  if (at === null || sp === undefined) return false;
-  return at.x === fx.toInt(sp.x) && at.y === fx.toInt(sp.y);
-}
-
-/**
- * The building a bound `tribe` settler of `jobType` should WALK TO in order to staff it — its
- * {@link JobAssignment} workplace, the target of the walk-to-workplace drive (the movement half
- * {@link staffsBoundWorkplaceHere}, the already-here pin, was missing). The settler heads for *its own*
- * mill, not the nearest unstaffed one, so it stays latched across a brief step-off and two same-type
- * workplaces staff independently. Returns the bound building, or null when the settler isn't bound to
- * a usable station (so it falls through to harvest/haul) — which holds when:
+ * The building a bound `tribe` settler of `jobType` should WALK TO / hold at in order to staff it — its
+ * {@link JobAssignment} workplace, the station the producer drive ({@link planProducer} in ai.ts) heads
+ * for and pins on. The settler heads for *its own* mill, not the nearest unstaffed one, so it stays
+ * latched across a brief step-off and two same-type workplaces staff independently. Returns the bound
+ * building, or null when the settler isn't bound to a usable station (so it falls through to harvest/
+ * haul / porter drives) — which holds when:
  *
  *  - it has no {@link JobAssignment} (an unassigned harvester — go harvest), OR
  *  - the bound building is gone / not a producing workplace it staffs / not tech-enabled / not the
