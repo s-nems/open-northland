@@ -62,6 +62,15 @@ const FALLBACK_WAIT: DirectionalAnim = { start: 1931, dirs: 1, stride: 57 };
  *  ONE app-side declaration of this semantic id (the slice + scenes reuse it). */
 export const HARVEST_ATOMIC = 24;
 /**
+ * The harvest atomics for the OTHER raw goods (stone 25, clay 26, iron 27 — the original's per-good
+ * `atomicForHarvesting` ids for ore/rock/mud). They all replay the one authored harvest swing on the
+ * generic man ({@link CHOP_SEQ}): the mod ships a single generic harvest motion for the man body, so a
+ * miner/stonemason/clay-digger swings the same as the woodcutter until per-resource swings are decoded
+ * (docs/FIDELITY.md). Without this a settler running one of these atomics would STAND (no `byAtomic`
+ * match) instead of visibly digging — the craft-chain scene's stonemason/miner/clay-digger.
+ */
+const HARVEST_ATOMICS_OTHER = [25, 26, 27] as const;
+/**
  * The other atomic ids the SIM issues today, transcribed from the sim's planners (`ai.ts` eat 10 /
  * sleep 8 / pray 12, `atomic.ts` pickup 22 / deposit 23 — themselves pinned to the original's
  * `setatomic` table): the `byAtomic` join keys the character specs bind body animations to. Kept here
@@ -305,6 +314,10 @@ export const CHARACTER_SPECS = {
     // a bound atomic wins over the carry override, so the depositor stoops as its load leaves).
     atomics: {
       [HARVEST_ATOMIC]: { seq: CHOP_SEQ, phaseStart: CHOP_PHASE_START },
+      // The other raw-good harvests (stone/clay/iron) share the one authored harvest swing.
+      ...Object.fromEntries(
+        HARVEST_ATOMICS_OTHER.map((id) => [id, { seq: CHOP_SEQ, phaseStart: CHOP_PHASE_START }]),
+      ),
       [EAT_ATOMIC]: { seq: 'human_man_generic_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_man_generic_sleep' },
       [PRAY_ATOMIC]: { seq: 'human_man_generic_pray' },
