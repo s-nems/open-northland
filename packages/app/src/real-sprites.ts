@@ -3,7 +3,11 @@ import {
   type BuildingBobRef,
   type DirectionalAnim,
   SYNTHETIC_BINDINGS,
+  type SettlerCharacter,
+  type SettlerCharacterSet,
+  type SettlerStateBinding,
   type SpriteBindings,
+  type SpriteFrameRef,
   type SpriteLayer,
   type SpriteSheet,
   atlasFromManifest,
@@ -11,6 +15,7 @@ import {
   loadAtlasSource,
   syntheticAtlasFrames,
 } from '@vinland/render';
+import { VIKING_CHARACTERS, characterStem, characterStems } from './viking-roster.js';
 
 /**
  * The `?atlas=real` binding: draw settlers from REAL decoded bob atlases instead of the synthetic one.
@@ -501,13 +506,361 @@ export async function loadBodyClips(imagelib: string = BODY_IMAGELIB): Promise<B
   return [...(set?.sequences ?? [])];
 }
 
+// ─── per-job settler characters (the `[jobbasegraphics]` join) ─────────────────────────────────────
+
+/**
+ * A good the loaded content set defines — the `(typeId, id-slug)` pair the per-good carry join keys on.
+ * Passed by the entry that KNOWS which content the sim runs (the live slice's demo goods, a scene's own
+ * goods), since the render binding is per-`goodType` NUMBER and those ids are content-relative.
+ */
+export interface GoodRef {
+  readonly typeId: number;
+  readonly id: string;
+}
+
+/**
+ * Good id-slug → carry-walk sequence SUFFIX, where the slug itself isn't the suffix. The body bob sets
+ * name their loaded gaits `<body>_walk_<suffix>` (walk_wood, walk_stone, walk_iron_gold, …); most real
+ * IR good slugs match their suffix verbatim (wood/stone/mud/flour/bread/…), and this table maps the
+ * rest onto the CLOSEST authored carry look (several goods share one: every potion → `potion`, iron and
+ * gold share the `iron_gold` ingot walk). There is NO readable good→carry-animation table in the mod
+ * (the base binding is encrypted `.cif`), so this name join is an approximation — docs/FIDELITY.md
+ * "Carry look per good". A slug in neither the sequences nor this table falls back to the character's
+ * generic loaded gait (the wood log), then to its plain walk.
+ */
+const CARRY_SEQ_SUFFIX: Readonly<Record<string, string>> = {
+  wheat: 'grain',
+  iron: 'iron_gold',
+  gold: 'iron_gold',
+  coin: 'iron_gold',
+  food_simple: 'food',
+  food_extra: 'food',
+  fruit: 'food',
+  sausage: 'meat',
+  tool_wooden: 'tools',
+  tool_iron: 'tools',
+  bow_short: 'shortbow',
+  bow_long: 'longbow',
+  spear_wooden: 'spear',
+  spear_iron: 'spear',
+  sword_shord: 'sword', // the real IR's slug (sic) for the short sword
+  sword_long: 'broadsword',
+  holy_oil: 'incense',
+  potion_food_small: 'potion',
+  potion_food_big: 'potion',
+  potion_stamina_small: 'potion',
+  potion_stamina_big: 'potion',
+  potion_heal_small: 'potion',
+  potion_heal_big: 'potion',
+  plank: 'wood', // the demo slice's sawn plank — hauled like the log it came from
+};
+
+/**
+ * Build the per-`goodType` loaded-gait table for one body: for each content good, resolve its carry
+ * sequence `<prefix><suffix>` (suffix = the slug, via {@link CARRY_SEQ_SUFFIX} when aliased) and bind
+ * `moving` to the full ×8 cycle + `idle` to its first-frame hold (the still loaded pose a depositor
+ * stands in). A good whose sequence is missing (or not a clean ×8 strip) is simply omitted — the
+ * generic carrying slots back it. Pure + exported for unit tests.
+ */
+export function carryAnimsByGood(
+  seqByName: ReadonlyMap<string, BobSeqRow>,
+  prefix: string,
+  goods: readonly GoodRef[],
+): Record<number, { idle: SpriteFrameRef; moving: SpriteFrameRef }> {
+  const out: Record<number, { idle: SpriteFrameRef; moving: SpriteFrameRef }> = {};
+  for (const good of goods) {
+    const suffix = CARRY_SEQ_SUFFIX[good.id] ?? good.id;
+    const seq = seqByName.get(prefix + suffix);
+    if (seq === undefined || seq.length <= 0 || seq.length % DIRS !== 0) continue;
+    const moving: DirectionalAnim = { start: seq.start, dirs: DIRS, stride: seq.length / DIRS };
+    out[good.typeId] = { moving, idle: { ...moving, frames: 1 } };
+  }
+  return out;
+}
+
+/**
+ * One in-game settler LOOK to build — which roster body/heads it composes and which of that body's
+ * `[bobseq]` names animate each state. Transcribed per body from the decoded sequence lists (the names
+ * differ per body: the man walks `human_man_generic_walk`, the unarmed soldier
+ * `human_man_warrior_empty_walk`, each armed soldier its weapon's own `..._<Weapon>_walk`). Sequence
+ * names are matched VERBATIM (the source casing is mixed — `Warrior_Sword_Walk` vs `warrior_empty_walk`).
+ */
+export interface CharacterSpec {
+  /** Key into {@link VIKING_CHARACTERS} for the body + default head stems. */
+  readonly rosterId: string;
+  /** Head look stems override (WITHOUT palette); defaults to the roster entry's full head list. The
+   *  civilian narrows to the civilist-job heads 00..03 (the roster also carries the scout/druid looks). */
+  readonly headBmds?: readonly string[];
+  /** The ×8 locomotion cycle; absent (the baby) → the character stands its wait even while moving. */
+  readonly walkSeq?: string;
+  /**
+   * The standing idle. `loop` plays the named strip whole as a single-direction breathing loop (the
+   * generic waits aren't a clean ×8 — the original plays them facing-locked). `walk-hold` holds the
+   * walk's first frame per facing instead — used for the armed soldiers, whose weapon waits are short
+   * non-×8 strips with an UNCALIBRATED facing layout (docs/FIDELITY.md "Animation facing order"); a
+   * directional still with the right weapon beats a mis-split strip.
+   */
+  readonly wait: { readonly kind: 'loop'; readonly seq: string } | { readonly kind: 'walk-hold' };
+  /** Prefix of this body's per-good carry cycles (`<prefix><good>`), when the body has any. */
+  readonly carryPrefix?: string;
+  /** Atomic id → its action sequence on this body (the `setatomic` join, e.g. the woodcut swing). */
+  readonly atomics?: Readonly<Record<number, { readonly seq: string; readonly phaseStart?: number }>>;
+}
+
+/** The civilist-job head looks (00..03) — the in-game generic man's faces; the roster's extra looks
+ *  (80..83 scout, 90..93 druid) stay gallery-only until those jobs exist in a running sim. */
+const CIVILIST_HEADS = ['cr_hum_head_00', 'cr_hum_head_01', 'cr_hum_head_02', 'cr_hum_head_03'] as const;
+
+/** Specs for every in-game look, keyed by the id the job tables below reference. */
+export const CHARACTER_SPECS: Readonly<Record<string, CharacterSpec>> = {
+  civilian: {
+    rosterId: 'civilian',
+    headBmds: CIVILIST_HEADS,
+    walkSeq: 'human_man_generic_walk',
+    wait: { kind: 'loop', seq: 'human_man_generic_wait' },
+    carryPrefix: 'human_man_generic_walk_',
+    atomics: { [HARVEST_ATOMIC]: { seq: CHOP_SEQ, phaseStart: 9 } },
+  },
+  woman: {
+    rosterId: 'woman',
+    walkSeq: 'human_woman_generic_walk',
+    wait: { kind: 'loop', seq: 'human_woman_generic_wait' },
+    carryPrefix: 'human_woman_generic_walk_',
+  },
+  boy: {
+    rosterId: 'boy',
+    walkSeq: 'human_child_boy_generic_walk',
+    wait: { kind: 'loop', seq: 'human_child_boy_generic_wait' },
+  },
+  girl: {
+    rosterId: 'girl',
+    walkSeq: 'human_child_girl_generic_walk',
+    wait: { kind: 'loop', seq: 'human_child_girl_generic_wait_1' },
+  },
+  baby: {
+    rosterId: 'baby',
+    wait: { kind: 'loop', seq: 'human_child_baby_generic_wait' },
+  },
+  warrior: {
+    rosterId: 'warrior',
+    walkSeq: 'human_man_warrior_empty_walk',
+    wait: { kind: 'loop', seq: 'human_man_warrior_empty_wait' },
+  },
+  'warrior-spear': {
+    rosterId: 'warrior',
+    walkSeq: 'human_man_Warrior_spear_walk',
+    wait: { kind: 'walk-hold' },
+  },
+  'warrior-sword': {
+    rosterId: 'warrior',
+    walkSeq: 'human_man_Warrior_Sword_Walk',
+    wait: { kind: 'walk-hold' },
+  },
+  'warrior-broadsword': {
+    rosterId: 'warrior',
+    walkSeq: 'human_man_Warrior_Broadsword_walk',
+    wait: { kind: 'walk-hold' },
+  },
+  'warrior-shortbow': {
+    rosterId: 'warrior',
+    walkSeq: 'human_man_Warrior_Shortbow_walk',
+    wait: { kind: 'walk-hold' },
+  },
+  'warrior-longbow': {
+    rosterId: 'warrior',
+    walkSeq: 'human_man_Warrior_Longbow_walk',
+    wait: { kind: 'walk-hold' },
+  },
+};
+
+/**
+ * Adult `jobType` → character spec id — the viking `[jobbasegraphics]` job → body join, transcribed
+ * from the mod's `types/humanstype/jobgraphics.ini` (`logictribe 1`) + the real `jobtypes` soldier
+ * family: woman 5 → the woman body; the soldier jobs 31..41 → the armoured `cr_hum_body_05`, each
+ * weapon class animating ITS weapon's walk (the axe jobs 38/39 borrow the closest two-hander, the
+ * broadsword — the body authors no axe set; the sabers 36/37 borrow the sword/broadsword one-handers).
+ * Every unmapped job (all civilian trades — they share the generic man body in the original) falls to
+ * the `civilian` default.
+ */
+export const ADULT_CHARACTER_BY_JOB: Readonly<Record<number, string>> = {
+  5: 'woman', // woman
+  31: 'warrior', // soldier_unarmed
+  32: 'warrior-spear', // soldier_spear_wooden
+  33: 'warrior-spear', // soldier_spear_iron
+  34: 'warrior-sword', // soldier_sword_short
+  35: 'warrior-broadsword', // soldier_sword_long
+  36: 'warrior-sword', // soldier_saber_short
+  37: 'warrior-broadsword', // soldier_saber_long
+  38: 'warrior-broadsword', // soldier_axe_small (no authored axe set — closest two-hander)
+  39: 'warrior-broadsword', // soldier_axe_big
+  40: 'warrior-shortbow', // soldier_bow_short
+  41: 'warrior-longbow', // soldier_bow_long
+};
+
+/**
+ * Age-class `jobType` (1..4, a settler that CARRIES `Age`) → character spec id — the baby/child bodies
+ * from the same `[jobbasegraphics]` table. Keyed only for young settlers so a synthetic fixture's adult
+ * job id 1/2 can never draw a baby (the [dc3ef54] collision, disambiguated by the `Age` component).
+ */
+export const YOUNG_CHARACTER_BY_JOB: Readonly<Record<number, string>> = {
+  1: 'baby', // baby_female
+  2: 'baby', // baby_male
+  3: 'girl', // child_female
+  4: 'boy', // child_male
+};
+
+/**
+ * Build one character's {@link SettlerStateBinding} from its spec + its body's decoded `[bobseq]` rows:
+ * walk → `moving`, the wait (loop or walk-hold) → `idle`, the spec's atomics → `byAtomic`, and the
+ * per-good carry table (+ the wood-log generic fallback) → `carrying`. Returns `null` when neither the
+ * walk nor a loop wait resolves (an IR predating this body's sequences) — the character is then dropped
+ * and its jobs fall back to the default look, never a bogus frame range. Pure + exported for unit tests.
+ */
+export function characterBinding(
+  spec: CharacterSpec,
+  seqByName: ReadonlyMap<string, BobSeqRow>,
+  goods: readonly GoodRef[],
+): SettlerStateBinding | null {
+  const walkRow = spec.walkSeq !== undefined ? seqByName.get(spec.walkSeq) : undefined;
+  const walk: DirectionalAnim | undefined =
+    walkRow !== undefined && walkRow.length > 0 && walkRow.length % DIRS === 0
+      ? { start: walkRow.start, dirs: DIRS, stride: walkRow.length / DIRS }
+      : undefined;
+  const waitRow = spec.wait.kind === 'loop' ? seqByName.get(spec.wait.seq) : undefined;
+  // A loop wait plays its whole strip facing-locked (the strips aren't ×8); a walk-hold stands the
+  // walk's first frame per facing. Whichever resolves becomes idle; neither → the character is unusable.
+  const idle: SpriteFrameRef | null =
+    waitRow !== undefined && waitRow.length > 0
+      ? { start: waitRow.start, dirs: 1, stride: waitRow.length }
+      : walk !== undefined
+        ? { ...walk, frames: 1 }
+        : null;
+  if (idle === null) return null;
+
+  const byAtomic: Record<number, SpriteFrameRef> = {};
+  for (const [atomicId, action] of Object.entries(spec.atomics ?? {})) {
+    const row = seqByName.get(action.seq);
+    if (row === undefined || row.length <= 0 || row.length % DIRS !== 0) continue;
+    byAtomic[Number(atomicId)] = {
+      start: row.start,
+      dirs: DIRS,
+      stride: row.length / DIRS,
+      ...(action.phaseStart !== undefined ? { phaseStart: action.phaseStart } : {}),
+    };
+  }
+
+  // The generic loaded gait: the body's wood-log walk (the one carry look every body that hauls at all
+  // authors), backing any good without its own cycle. A body with no carry sequences (children, the
+  // soldiers) hauls invisibly on its plain walk — faithful enough: those never carry in the original.
+  const carryByGood =
+    spec.carryPrefix !== undefined ? carryAnimsByGood(seqByName, spec.carryPrefix, goods) : {};
+  const woodRow = spec.carryPrefix !== undefined ? seqByName.get(`${spec.carryPrefix}wood`) : undefined;
+  const genericCarry: DirectionalAnim | undefined =
+    woodRow !== undefined && woodRow.length > 0 && woodRow.length % DIRS === 0
+      ? { start: woodRow.start, dirs: DIRS, stride: woodRow.length / DIRS }
+      : undefined;
+  const carrying =
+    genericCarry !== undefined || Object.keys(carryByGood).length > 0
+      ? {
+          ...(genericCarry !== undefined
+            ? { moving: genericCarry, idle: { ...genericCarry, frames: 1 } }
+            : {}),
+          ...(Object.keys(carryByGood).length > 0 ? { byGood: carryByGood } : {}),
+        }
+      : undefined;
+
+  return {
+    idle,
+    ...(walk !== undefined ? { moving: walk } : {}),
+    ...(Object.keys(byAtomic).length > 0 ? { byAtomic } : {}),
+    ...(carrying !== undefined ? { carrying } : {}),
+  };
+}
+
+/** The `[bobseq]` rows of ONE imagelib in the served IR, indexed by verbatim sequence name. */
+function sequencesFor(ir: RenderIr | null, imagelib: string): Map<string, BobSeqRow> {
+  const byName = new Map<string, BobSeqRow>();
+  const set = (ir?.bobSequences ?? []).find((s) => s.imagelib === imagelib);
+  for (const seq of set?.sequences ?? []) byName.set(seq.name, seq);
+  return byName;
+}
+
+/**
+ * Load the per-job {@link SettlerCharacterSet}: every {@link CHARACTER_SPECS} look whose body atlas AND
+ * sequences resolve, joined to jobs via {@link ADULT_CHARACTER_BY_JOB} / {@link YOUNG_CHARACTER_BY_JOB}.
+ * Bodies are loaded once per roster entry (the six soldier looks share one armoured body atlas); a head
+ * that 404s is skipped (the look draws with fewer faces), a BODY that 404s or an unresolvable binding
+ * drops that look (its jobs fall back to the default). Returns `undefined` — no characters, the sheet
+ * degrades to the single-body legacy path — when the IR carries no sequences or the CIVILIAN look (the
+ * required default) can't be built.
+ */
+async function loadCharacters(
+  ir: RenderIr | null,
+  goods: readonly GoodRef[],
+): Promise<SettlerCharacterSet | undefined> {
+  if (ir?.bobSequences === undefined || ir.bobSequences.length === 0) return undefined;
+
+  // One load per roster body: its body layer (hard requirement per look) + its head layers (soft).
+  const rosterIds = [...new Set(Object.values(CHARACTER_SPECS).map((s) => s.rosterId))];
+  const layersByRoster = new Map<string, { body: SpriteLayer; headsByStem: Map<string, SpriteLayer> }>();
+  await Promise.all(
+    rosterIds.map(async (rosterId) => {
+      const character = VIKING_CHARACTERS.find((c) => c.id === rosterId);
+      if (character === undefined) return;
+      const stems = characterStems(character);
+      try {
+        const { body, heads } = await loadGalleryLayers(stems.bodyStem, stems.headStems);
+        const headsByStem = new Map<string, SpriteLayer>();
+        heads.forEach((layer, i) => {
+          const stem = stems.headStems[i];
+          if (layer !== undefined && stem !== undefined) headsByStem.set(stem, layer);
+        });
+        layersByRoster.set(rosterId, { body, headsByStem });
+      } catch (err) {
+        if (!(err instanceof MissingAtlasError)) throw err; // a real bug propagates; a missing body just drops the look
+      }
+    }),
+  );
+
+  const bySpec = new Map<string, SettlerCharacter>();
+  for (const [specId, spec] of Object.entries(CHARACTER_SPECS)) {
+    const layers = layersByRoster.get(spec.rosterId);
+    const roster = VIKING_CHARACTERS.find((c) => c.id === spec.rosterId);
+    if (layers === undefined || roster === undefined) continue;
+    const binding = characterBinding(spec, sequencesFor(ir, roster.imagelib), goods);
+    if (binding === null) continue;
+    const heads = (spec.headBmds ?? roster.headBmds)
+      .map((bmd) => layers.headsByStem.get(characterStem(bmd)))
+      .filter((l): l is SpriteLayer => l !== undefined);
+    bySpec.set(specId, {
+      body: layers.body,
+      ...(heads.length > 0 ? { heads } : {}),
+      binding,
+    });
+  }
+
+  const fallback = bySpec.get('civilian');
+  if (fallback === undefined) return undefined;
+  const byJob: Record<number, SettlerCharacter> = {};
+  for (const [job, specId] of Object.entries(ADULT_CHARACTER_BY_JOB)) {
+    const char = bySpec.get(specId);
+    if (char !== undefined) byJob[Number(job)] = char;
+  }
+  const youngByJob: Record<number, SettlerCharacter> = {};
+  for (const [job, specId] of Object.entries(YOUNG_CHARACTER_BY_JOB)) {
+    const char = bySpec.get(specId);
+    if (char !== undefined) youngByJob[Number(job)] = char;
+  }
+  return { byJob, youngByJob, default: fallback };
+}
+
 /**
  * Load the real human {@link SpriteSheet}: the body layer as the base sheet, the head layer as an overlay
  * drawn on top at the same bob id, paired with bindings whose walk/chop ranges are read from the decoded
  * `bobSequences` (see {@link buildHumanBindings}). Together they compose a complete settler (body + head)
  * the renderer animates directionally per tick.
  */
-export async function loadHumanSpriteSheet(): Promise<SpriteSheet> {
+export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Promise<SpriteSheet> {
   const [body, head, tree, house, familyEntries, ir] = await Promise.all([
     loadLayer(HUMAN_BODY_ATLAS),
     loadLayer(HUMAN_HEAD_ATLAS),
@@ -516,6 +869,10 @@ export async function loadHumanSpriteSheet(): Promise<SpriteSheet> {
     Promise.all(BUILDING_FAMILIES.map(async (f) => [f.layer, await loadLayer(f.layer)] as const)),
     loadIr(),
   ]);
+  // Per-job characters (the `[jobbasegraphics]` join): built after the hard-required layers above so a
+  // missing extra body degrades per look, never failing the sheet. `undefined` (no IR sequences / no
+  // civilian look) keeps the legacy single-body settler path.
+  const characters = await loadCharacters(ir, goods);
   // BUILDING_FAMILIES is the SINGLE SOURCE OF TRUTH for the named building families: each entry's atlas is
   // loaded here AND only its `layer` key is eligible for a layer-qualified ref from buildingBobRefsByType,
   // so the loaded set and the reducer's emitted set cannot drift (a ref to an unloaded family would fall
@@ -545,6 +902,8 @@ export async function loadHumanSpriteSheet(): Promise<SpriteSheet> {
     // The native house bobs are oversized next to the settler; shrink only the building (tree + settler
     // stay native — their proportion already reads right). Named families inherit this. See BUILDING_SCALE.
     kindScales: { building: BUILDING_SCALE },
+    // Per-job settler looks (woman / soldier family / children via Age) — the sim-state → skin join.
+    ...(characters !== undefined ? { characters } : {}),
   };
 }
 
@@ -598,7 +957,12 @@ export function syntheticSpriteSheet(): SpriteSheet {
  * does NOT use this — it keeps its own content-free default so the committed screenshot never depends on
  * gitignored bytes.
  */
-export async function resolveSpriteSheet(params: URLSearchParams): Promise<SpriteSheet | undefined> {
+export async function resolveSpriteSheet(
+  params: URLSearchParams,
+  /** The goods of the content set the sim will RUN (demo/scene) — keys the per-good carry looks; the
+   *  ids are content-relative numbers, so only the entry that builds the sim knows them. */
+  goods: readonly GoodRef[] = [],
+): Promise<SpriteSheet | undefined> {
   const atlas = params.get('atlas');
   if (atlas === 'synthetic' || atlas === '1' || atlas === 'true' || atlas === '') {
     return syntheticSpriteSheet();
@@ -608,7 +972,7 @@ export async function resolveSpriteSheet(params: URLSearchParams): Promise<Sprit
   // when the decoded atlases aren't present (a checkout without content/). A MissingAtlasError is that
   // expected precondition; any other error is a real bug and propagates rather than being masked as markers.
   try {
-    return await loadHumanSpriteSheet();
+    return await loadHumanSpriteSheet(goods);
   } catch (err) {
     if (!(err instanceof MissingAtlasError)) throw err;
     console.warn('real atlas unavailable (is content/ populated?) — falling back to synthetic markers', err);

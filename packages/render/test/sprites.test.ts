@@ -3,6 +3,7 @@ import type { DrawItem, SpriteState } from '../src/index.js';
 import {
   type AtlasManifest,
   type BuildingTypeBinding,
+  type ByJobTable,
   DEFAULT_FACING,
   type DirectionalAnim,
   type SettlerStateBinding,
@@ -10,6 +11,7 @@ import {
   type SpriteBindings,
   atlasFromManifest,
   indexAtlasFrames,
+  pickByJob,
   resolveBuildingDraw,
   resolveSpriteBobId,
   resolveSpriteFrame,
@@ -462,5 +464,111 @@ describe('atlasFromManifest', () => {
     expect(wrapped.width).toBe(direct.width);
     expect(wrapped.height).toBe(direct.height);
     expect([...wrapped.frames]).toEqual([...direct.frames]);
+  });
+});
+
+describe('resolveSpriteBobId — per-good carry look (carrying.byGood)', () => {
+  /** A hauling settler item carrying a specific good (or none — the generic loaded look). */
+  function hauler(state: SpriteState, facing: number, carryGood?: number): DrawItem {
+    return {
+      kind: 'settler',
+      ref: 1,
+      x: 0,
+      y: 0,
+      depth: 0,
+      state,
+      facing,
+      carrying: true,
+      ...(carryGood !== undefined ? { carryGood } : {}),
+    };
+  }
+  const WALK: DirectionalAnim = { start: 1988, dirs: 8, stride: 12 };
+  const WALK_WOOD: DirectionalAnim = { start: 4580, dirs: 8, stride: 12 };
+  const WALK_STONE: DirectionalAnim = { start: 4100, dirs: 8, stride: 12 };
+  const STAND_STONE: DirectionalAnim = { start: 4100, dirs: 8, stride: 12, frames: 1 };
+  const STONE = 3;
+  const bindings: SpriteBindings = {
+    settler: {
+      idle: { ...WALK, frames: 1 },
+      moving: WALK,
+      carrying: {
+        idle: { ...WALK_WOOD, frames: 1 },
+        moving: WALK_WOOD,
+        byGood: { [STONE]: { idle: STAND_STONE, moving: WALK_STONE } },
+      },
+    },
+    building: 20,
+    resource: 30,
+  };
+
+  it('a settler hauling a byGood-bound good walks THAT cycle, not the generic loaded one', () => {
+    expect(resolveSpriteBobId(hauler('moving', 3, STONE), bindings, 5)).toBe(4100 + 3 * 12 + 5);
+  });
+
+  it('a settler hauling an unbound good falls back to the generic loaded cycle', () => {
+    expect(resolveSpriteBobId(hauler('moving', 3, 99), bindings, 5)).toBe(4580 + 3 * 12 + 5);
+  });
+
+  it('a settler hauling with NO carryGood on the item uses the generic loaded cycle', () => {
+    expect(resolveSpriteBobId(hauler('moving', 3), bindings, 5)).toBe(4580 + 3 * 12 + 5);
+  });
+
+  it('the per-good stand backs the idle/deposit states too', () => {
+    expect(resolveSpriteBobId(hauler('idle', 2, STONE), bindings, 99)).toBe(4100 + 2 * 12);
+  });
+
+  it('a byGood slot missing one state falls back to the generic loaded slot for that state', () => {
+    const partial: SpriteBindings = {
+      settler: {
+        idle: { ...WALK, frames: 1 },
+        moving: WALK,
+        carrying: {
+          idle: { ...WALK_WOOD, frames: 1 },
+          moving: WALK_WOOD,
+          byGood: { [STONE]: { moving: WALK_STONE } }, // no per-good idle
+        },
+      },
+      building: 20,
+      resource: 30,
+    };
+    expect(resolveSpriteBobId(hauler('idle', 2, STONE), partial, 0)).toBe(4580 + 2 * 12);
+    expect(resolveSpriteBobId(hauler('moving', 2, STONE), partial, 0)).toBe(4100 + 2 * 12);
+  });
+});
+
+describe('pickByJob — the per-job character pick', () => {
+  const table: ByJobTable<string> = {
+    byJob: { 5: 'woman', 31: 'warrior' },
+    youngByJob: { 1: 'baby', 3: 'girl' },
+    default: 'civilian',
+  };
+
+  it('an adult job picks from byJob; a miss (any trade) falls to the default', () => {
+    expect(pickByJob(table, 5, false)).toBe('woman');
+    expect(pickByJob(table, 31, false)).toBe('warrior');
+    expect(pickByJob(table, 11, false)).toBe('civilian');
+  });
+
+  it('a young settler picks from youngByJob — never the adult table', () => {
+    expect(pickByJob(table, 1, true)).toBe('baby');
+    expect(pickByJob(table, 3, true)).toBe('girl');
+    // A young settler whose age class isn't mapped falls to the default, not to byJob.
+    expect(pickByJob(table, 5, true)).toBe('civilian');
+  });
+
+  it('an ADULT with a fixture job id colliding with an age class stays the default (dc3ef54)', () => {
+    // The demo woodcutter is jobType 1 — the real baby_female id. Without the Age flag it must NEVER
+    // draw the baby body.
+    expect(pickByJob(table, 1, false)).toBe('civilian');
+  });
+
+  it('a jobless (undefined) settler picks the default', () => {
+    expect(pickByJob(table, undefined, false)).toBe('civilian');
+    expect(pickByJob(table, undefined, true)).toBe('civilian');
+  });
+
+  it('a table with no youngByJob sends young settlers to the default', () => {
+    const bare: ByJobTable<string> = { byJob: { 5: 'woman' }, default: 'civilian' };
+    expect(pickByJob(bare, 1, true)).toBe('civilian');
   });
 });

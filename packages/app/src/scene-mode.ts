@@ -45,7 +45,8 @@ export async function renderSceneMode(
 
   const app = await createPixiApp(canvas, CANVAS_W, CANVAS_H);
   const terrainGrid = terrainMapToScene(scene.terrain);
-  const sheet = await resolveSpriteSheet(params);
+  // The scene's own goods key the per-good carry looks (content-relative ids — the scene knows them).
+  const sheet = await resolveSpriteSheet(params, scene.content.goods);
   const terrain = params.has('terrain') ? await loadRealTerrain() : undefined;
   const zoom = floatParam(params, 'zoom', scene.initialZoom ?? 1);
   const screen = { width: CANVAS_W, height: CANVAS_H };

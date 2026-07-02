@@ -21,7 +21,14 @@ import {
   buildSpriteScene,
   drawableEntityRefs,
 } from './scene.js';
-import { type AtlasFrame, type SpriteKind, resolveBuildingDraw, resolveSpriteBobId } from './sprites.js';
+import {
+  type AtlasFrame,
+  type SpriteKind,
+  pickByJob,
+  resolveBuildingDraw,
+  resolveSettlerBobId,
+  resolveSpriteBobId,
+} from './sprites.js';
 import { DIAMOND_INDICES, diamondCorners, rectUVs } from './terrain.js';
 import { cameraViewport } from './viewport.js';
 
@@ -366,6 +373,31 @@ export class WorldRenderer {
   private resolveLayers(item: DrawItem, tick: number): ResolvedLayer[] | null {
     const sheet = this.sheet;
     if (sheet === undefined) return null;
+
+    // Per-job settler CHARACTER (the `[jobbasegraphics]` join): the job's own body + one stable head
+    // pick + its own binding, resolved in that body's frame-id space. Falls through to the sheet-global
+    // settler path only when the sheet carries no characters (the synthetic sheet — unchanged).
+    if (item.kind === 'settler' && sheet.characters !== undefined) {
+      const char = pickByJob(sheet.characters, item.jobType, item.young === true);
+      const bob = resolveSettlerBobId(char.binding, item, tick);
+      const layers: ResolvedLayer[] = [];
+      const bodyFrame = char.body.atlas.frames.get(bob);
+      if (bodyFrame !== undefined && bodyFrame.width > 0 && bodyFrame.height > 0) {
+        layers.push({ source: char.body.source, frame: bodyFrame, scale: 1 });
+      }
+      // ONE head per individual, stable by entity id (ids are monotonic, never reused), so a crowd
+      // shows varied faces without per-frame flicker — the render-side analogue of the original's
+      // per-individual random head pick.
+      const heads = char.heads;
+      if (heads !== undefined && heads.length > 0) {
+        const head = heads[item.ref % heads.length];
+        const headFrame = head?.atlas.frames.get(bob);
+        if (head !== undefined && headFrame !== undefined && headFrame.width > 0 && headFrame.height > 0) {
+          layers.push({ source: head.source, frame: headFrame, scale: 1 });
+        }
+      }
+      return layers.length > 0 ? layers : null;
+    }
 
     let bobId: number | null;
     if (item.kind === 'building') {

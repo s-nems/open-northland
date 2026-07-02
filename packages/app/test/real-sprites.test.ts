@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ADULT_CHARACTER_BY_JOB,
   BUILDING_FAMILIES,
+  CHARACTER_SPECS,
   DEFAULT_BUILDING_FAMILY,
+  YOUNG_CHARACTER_BY_JOB,
   buildHumanBindings,
   buildingBobRefsByType,
+  carryAnimsByGood,
+  characterBinding,
   directionalAnimFromSeq,
 } from '../src/real-sprites.js';
+import { VIKING_CHARACTERS } from '../src/viking-roster.js';
 
 /**
  * The seq→frame-range math behind `?atlas=real` — the self-verifiable half of consuming the decoded
@@ -439,5 +445,179 @@ describe('buildingBobRefsByType', () => {
         if (typeof ref !== 'number') expect(loadedLayers.has(ref.layer)).toBe(true);
       }
     });
+  });
+});
+
+describe('carryAnimsByGood', () => {
+  const seqs = new Map([
+    ['walk_wood', { name: 'walk_wood', start: 4580, length: 96 }],
+    ['walk_stone', { name: 'walk_stone', start: 4100, length: 96 }],
+    ['walk_grain', { name: 'walk_grain', start: 2852, length: 96 }],
+    ['walk_iron_gold', { name: 'walk_iron_gold', start: 3044, length: 96 }],
+    ['walk_odd', { name: 'walk_odd', start: 9000, length: 17 }], // not ×8 — must be skipped
+  ]);
+
+  it('maps a good whose slug matches a carry sequence verbatim', () => {
+    const table = carryAnimsByGood(seqs, 'walk_', [{ typeId: 5, id: 'wood' }]);
+    expect(table[5]).toEqual({
+      moving: { start: 4580, dirs: 8, stride: 12 },
+      idle: { start: 4580, dirs: 8, stride: 12, frames: 1 },
+    });
+  });
+
+  it('maps aliased slugs (wheat→grain, iron/gold→iron_gold) onto their shared carry look', () => {
+    const table = carryAnimsByGood(seqs, 'walk_', [
+      { typeId: 4, id: 'wheat' },
+      { typeId: 6, id: 'iron' },
+      { typeId: 7, id: 'gold' },
+    ]);
+    expect((table[4]?.moving as { start: number }).start).toBe(2852);
+    expect((table[6]?.moving as { start: number }).start).toBe(3044);
+    expect((table[7]?.moving as { start: number }).start).toBe(3044); // iron + gold share the ingot walk
+  });
+
+  it('omits a good with no carry sequence (and a non-×8 strip) — the generic gait backs it', () => {
+    const table = carryAnimsByGood(seqs, 'walk_', [
+      { typeId: 10, id: 'wool' }, // no walk_wool authored
+      { typeId: 11, id: 'odd' }, // walk_odd exists but is not a clean ×8 strip
+    ]);
+    expect(table[10]).toBeUndefined();
+    expect(table[11]).toBeUndefined();
+  });
+
+  it('keys the table on the CONTENT-relative good typeId (the demo wood(1) vs the real wood(5))', () => {
+    const demo = carryAnimsByGood(seqs, 'walk_', [{ typeId: 1, id: 'wood' }]);
+    expect(Object.keys(demo)).toEqual(['1']);
+  });
+});
+
+describe('characterBinding', () => {
+  const WARRIOR_SEQS = new Map([
+    ['human_man_warrior_empty_wait', { name: 'human_man_warrior_empty_wait', start: 1120, length: 57 }],
+    ['human_man_warrior_empty_walk', { name: 'human_man_warrior_empty_walk', start: 1177, length: 96 }],
+    ['human_man_Warrior_Sword_Walk', { name: 'human_man_Warrior_Sword_Walk', start: 3283, length: 96 }],
+  ]);
+
+  it('builds a loop-wait character: idle plays the whole strip facing-locked, moving the ×8 walk', () => {
+    const spec = {
+      rosterId: 'warrior',
+      walkSeq: 'human_man_warrior_empty_walk',
+      wait: { kind: 'loop', seq: 'human_man_warrior_empty_wait' },
+    } as const;
+    expect(characterBinding(spec, WARRIOR_SEQS, [])).toEqual({
+      idle: { start: 1120, dirs: 1, stride: 57 },
+      moving: { start: 1177, dirs: 8, stride: 12 },
+    });
+  });
+
+  it('builds a walk-hold character: idle is the walk held at frame 0 per facing (the armed stance)', () => {
+    const spec = {
+      rosterId: 'warrior',
+      walkSeq: 'human_man_Warrior_Sword_Walk',
+      wait: { kind: 'walk-hold' },
+    } as const;
+    expect(characterBinding(spec, WARRIOR_SEQS, [])).toEqual({
+      idle: { start: 3283, dirs: 8, stride: 12, frames: 1 },
+      moving: { start: 3283, dirs: 8, stride: 12 },
+    });
+  });
+
+  it('resolves the spec atomics into byAtomic (the setatomic join) with the phase override', () => {
+    const seqs = new Map([
+      ['wait', { name: 'wait', start: 1931, length: 57 }],
+      ['chop', { name: 'chop', start: 5106, length: 120 }],
+    ]);
+    const spec = {
+      rosterId: 'civilian',
+      wait: { kind: 'loop', seq: 'wait' },
+      atomics: { 24: { seq: 'chop', phaseStart: 9 } },
+    } as const;
+    expect(characterBinding(spec, seqs, [])?.byAtomic).toEqual({
+      24: { start: 5106, dirs: 8, stride: 15, phaseStart: 9 },
+    });
+  });
+
+  it('binds the per-good carry table + the wood generic fallback off the carryPrefix', () => {
+    const seqs = new Map([
+      ['w_wait', { name: 'w_wait', start: 10, length: 30 }],
+      ['w_walk', { name: 'w_walk', start: 100, length: 96 }],
+      ['w_walk_wood', { name: 'w_walk_wood', start: 200, length: 96 }],
+      ['w_walk_stone', { name: 'w_walk_stone', start: 300, length: 96 }],
+    ]);
+    const spec = {
+      rosterId: 'civilian',
+      walkSeq: 'w_walk',
+      wait: { kind: 'loop', seq: 'w_wait' },
+      carryPrefix: 'w_walk_',
+    } as const;
+    const binding = characterBinding(spec, seqs, [
+      { typeId: 3, id: 'stone' },
+      { typeId: 10, id: 'wool' }, // unmapped — backed by the generic wood gait
+    ]);
+    expect(binding?.carrying).toEqual({
+      moving: { start: 200, dirs: 8, stride: 12 },
+      idle: { start: 200, dirs: 8, stride: 12, frames: 1 },
+      byGood: {
+        3: {
+          moving: { start: 300, dirs: 8, stride: 12 },
+          idle: { start: 300, dirs: 8, stride: 12, frames: 1 },
+        },
+      },
+    });
+  });
+
+  it('a walk-less character (the baby) idles its wait and never binds moving', () => {
+    const seqs = new Map([['baby_wait', { name: 'baby_wait', start: 104, length: 42 }]]);
+    const spec = { rosterId: 'baby', wait: { kind: 'loop', seq: 'baby_wait' } } as const;
+    expect(characterBinding(spec, seqs, [])).toEqual({
+      idle: { start: 104, dirs: 1, stride: 42 },
+    });
+  });
+
+  it('returns null when neither the walk nor a loop wait resolves (an IR without this body)', () => {
+    const empty = new Map<string, { name: string; start: number; length: number }>();
+    expect(
+      characterBinding(
+        { rosterId: 'warrior', walkSeq: 'missing', wait: { kind: 'walk-hold' } } as const,
+        empty,
+        [],
+      ),
+    ).toBeNull();
+    expect(
+      characterBinding({ rosterId: 'civilian', wait: { kind: 'loop', seq: 'missing' } } as const, empty, []),
+    ).toBeNull();
+  });
+});
+
+describe('the job → character tables (the [jobbasegraphics] transcription)', () => {
+  it('maps the soldier family (31..41) onto the armoured warrior looks, per weapon class', () => {
+    for (let job = 31; job <= 41; job++) {
+      const specId = ADULT_CHARACTER_BY_JOB[job];
+      expect(specId, `job ${job}`).toBeDefined();
+      expect(specId?.startsWith('warrior'), `job ${job} → ${specId}`).toBe(true);
+      // Every referenced spec exists and shares the warrior BODY (the skin the job change swaps in).
+      expect(CHARACTER_SPECS[specId ?? '']?.rosterId).toBe('warrior');
+    }
+    expect(ADULT_CHARACTER_BY_JOB[5]).toBe('woman');
+  });
+
+  it('maps the age classes (1..4, Age-gated) onto the baby/child bodies', () => {
+    expect(YOUNG_CHARACTER_BY_JOB[1]).toBe('baby');
+    expect(YOUNG_CHARACTER_BY_JOB[2]).toBe('baby');
+    expect(YOUNG_CHARACTER_BY_JOB[3]).toBe('girl');
+    expect(YOUNG_CHARACTER_BY_JOB[4]).toBe('boy');
+    // The adult table must NOT claim the age-class ids — an adult fixture job 1..4 stays the default.
+    for (const id of [1, 2, 3, 4]) expect(ADULT_CHARACTER_BY_JOB[id]).toBeUndefined();
+  });
+
+  it('every spec a job table references exists in CHARACTER_SPECS, and specs use only roster bodies', () => {
+    const specIds = [...Object.values(ADULT_CHARACTER_BY_JOB), ...Object.values(YOUNG_CHARACTER_BY_JOB)];
+    for (const id of specIds) expect(CHARACTER_SPECS[id], id).toBeDefined();
+    for (const [id, spec] of Object.entries(CHARACTER_SPECS)) {
+      expect(
+        VIKING_CHARACTERS.some((c) => c.id === spec.rosterId),
+        `${id} → roster '${spec.rosterId}'`,
+      ).toBe(true);
+    }
   });
 });

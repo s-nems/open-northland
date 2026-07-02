@@ -1,4 +1,5 @@
 import { allBuildingsScene } from './all-buildings.js';
+import { charactersScene } from './characters.js';
 import { stressCrowdScene } from './stress-crowd.js';
 import type { SceneDefinition } from './types.js';
 
@@ -10,7 +11,7 @@ export { createSceneSim, resetComponentStores } from './runtime.js';
  * mechanic test (`packages/app/test/scenes.test.ts`) and (b) reachable in the browser at
  * `?scene=<id>`. See `docs/SCENES.md` for the workflow.
  */
-export const SCENES: readonly SceneDefinition[] = [allBuildingsScene, stressCrowdScene];
+export const SCENES: readonly SceneDefinition[] = [allBuildingsScene, charactersScene, stressCrowdScene];
 
 /** Look up a scene by its `?scene=<id>` value, or `undefined` if no scene has that id. */
 export function getScene(id: string): SceneDefinition | undefined {

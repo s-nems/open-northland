@@ -1,5 +1,5 @@
 import { Application, Assets, type Texture, type TextureSource } from 'pixi.js';
-import type { SpriteAtlas, SpriteBindings, SpriteKind } from './sprites.js';
+import type { ByJobTable, SettlerStateBinding, SpriteAtlas, SpriteBindings, SpriteKind } from './sprites.js';
 import type { CellTexture } from './terrain.js';
 
 /**
@@ -38,6 +38,36 @@ export interface SpriteLayer {
   readonly source: TextureSource;
   readonly atlas: SpriteAtlas;
 }
+
+/**
+ * One composited settler LOOK — the original's `[jobbasegraphics]` record: a body bob set, the head
+ * looks that overlay it, and the per-state animation binding played from that body's own `[bobseq]`
+ * ranges. Several jobs may share one character (the whole soldier family is the armoured
+ * `cr_hum_body_05`; every unmapped trade is the generic man), and each body's sequences live in its OWN
+ * frame-id space — which is why the binding travels WITH the layers instead of staying a sheet-global.
+ */
+export interface SettlerCharacter {
+  /** The body bob atlas — the base layer, whose `[bobseq]` ranges the {@link binding} indexes. */
+  readonly body: SpriteLayer;
+  /**
+   * The head looks that can overlay this body (the `gfxbobmanagerhead` slots), drawn at the same bob id
+   * as the body frame. The renderer picks ONE per individual — stable by entity id — so a crowd shows
+   * varied faces the way the original's per-individual random head does. Empty/omitted for a body-only
+   * character (the baby, whose head is baked into the body bob).
+   */
+  readonly heads?: readonly SpriteLayer[];
+  /** The per-state animation binding resolved against this body's own `[bobseq]` frame ranges. */
+  readonly binding: SettlerStateBinding;
+}
+
+/**
+ * The per-job settler character table ({@link ByJobTable} of {@link SettlerCharacter}) — the render-side
+ * `[jobbasegraphics]` join: an item's `jobType` (+ its young flag, see {@link ByJobTable}) picks which
+ * body/heads/binding compose the settler. When a sheet carries one, settlers draw through it INSTEAD of
+ * the sheet-global `bindings.settler` + `source`/`overlays` pair (which remain the fallback shape for a
+ * sheet without characters — the synthetic atlas — so old sheets draw byte-identically).
+ */
+export type SettlerCharacterSet = ByJobTable<SettlerCharacter>;
 
 /**
  * A loaded bob atlas ready for the GPU: the atlas image as a Pixi {@link TextureSource} plus the pure
@@ -93,6 +123,14 @@ export interface SpriteSheet {
    * family with no entry inherits the `building` kind scale, preserving the existing proportion.
    */
   readonly familyScales?: Readonly<Record<string, number>>;
+  /**
+   * Per-job settler **characters** (the `[jobbasegraphics]` job → body/head/animation join). When
+   * present, a settler draws its job's {@link SettlerCharacter} — the armoured soldier body for the
+   * soldier family, the woman/child bodies for theirs, the generic man for every unmapped job — instead
+   * of the sheet-global body (`source`/`overlays`) + `bindings.settler`. Absent (the synthetic sheet, an
+   * old caller), the sheet-global path draws exactly as before.
+   */
+  readonly characters?: SettlerCharacterSet;
 }
 
 /**
