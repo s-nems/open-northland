@@ -39,7 +39,7 @@ export class World {
    * an `O(n)` list = the quadratic stall that pinned a few-thousand-unit crowd at ~1 fps. Membership is
    * unaffected by component add/remove, so only birth/death dirties it.
    */
-  private canonicalCache: Entity[] | null = null;
+  private canonicalCache: readonly Entity[] | null = null;
 
   create(): Entity {
     const id = this.nextId++ as Entity;
@@ -119,9 +119,40 @@ export class World {
    */
   canonicalEntities(): readonly Entity[] {
     if (this.canonicalCache === null) {
-      this.canonicalCache = [...this.alive].sort((a, b) => a - b);
+      // Frozen so a consumer that mutates the shared array (.sort()/.reverse() in place — the
+      // documented never-do) throws AT THE MUTATION SITE instead of silently corrupting the
+      // canonical order every other consumer reads (a nondeterminism that would only surface as a
+      // distant golden/desync failure).
+      this.canonicalCache = Object.freeze([...this.alive].sort((a, b) => a - b));
     }
     return this.canonicalCache;
+  }
+
+  /**
+   * Recompute every incrementally-maintained cache from scratch and report mismatches with the live
+   * copy (empty = coherent). Incremental caches are the classic lockstep-desync source: a derived
+   * value must be re-derivable from authoritative state at any time, so a missed invalidation shows
+   * up HERE, at the tick it happens, not as an unexplained golden/hash divergence later. Wired into
+   * the core invariants (`harness/invariants.ts`), so every invariant-checked scenario/golden/fuzz
+   * run validates it each tick. Today the only cross-tick cache is the {@link canonicalEntities}
+   * memo; register future ones (ring-search spatial index, content-by-typeId maps) here as they land.
+   */
+  verifyCaches(): string[] {
+    if (this.canonicalCache === null) return [];
+    const fresh = [...this.alive].sort((a, b) => a - b);
+    if (this.canonicalCache.length !== fresh.length) {
+      return [
+        `canonicalEntities cache holds ${this.canonicalCache.length} ids but ${fresh.length} are alive — a create/destroy missed invalidation`,
+      ];
+    }
+    for (let i = 0; i < fresh.length; i++) {
+      if (this.canonicalCache[i] !== fresh[i]) {
+        return [
+          `canonicalEntities cache diverges at index ${i}: cached ${this.canonicalCache[i]}, alive ${fresh[i]} — stale memo`,
+        ];
+      }
+    }
+    return [];
   }
 
   /**
