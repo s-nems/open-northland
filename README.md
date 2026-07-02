@@ -55,6 +55,11 @@ npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content
 npm run dev                 # launch the app (Vite) in a browser
 ```
 
+Useful URL flags on the dev app: `?scene=all-buildings` runs an acceptance scene with its checklist
+overlay, and **`?anim`** opens the character **animation gallery** — every viking-civilian animation
+played from the atlas with a direction selector, to validate the animations (the locomotion set in all 8
+facings; single-direction animations like eat/sleep/wait play their full loop). Both need decoded `content/`.
+
 `--game` is the path to your game-install folder; the example assumes you placed it **next to this
 repo** (`../Cultures 8th Wonder`), but any absolute or relative path works. `--mod DataCnmd` selects
 the readable `culturesnation` mod data that ships with the game — it's preferred because its rules
