@@ -1,10 +1,12 @@
 /**
  * A* pathfinding over the terrain CELL-ADJACENCY GRAPH (docs/ROADMAP.md, Phase 2).
  *
- * This is the pure search the PathfindingSystem drives. It walks {@link TerrainGraph.walkableNeighbours}
- * (the canonical N,E,S,W edge set), using {@link cellManhattanDistance} as the admissible heuristic and
- * {@link TerrainGraph.walkCost} as the per-step edge cost. The result is the lowest-cost cell sequence
- * from `start` to `goal`, inclusive of both, or `null` when no walkable route exists.
+ * This is the pure search the PathfindingSystem drives. It walks {@link TerrainGraph.steps} (the
+ * canonical 8-connected edge set: N,E,S,W then NE,SE,SW,NW), using {@link cellOctileDistance} as the
+ * admissible heuristic and each step's own cost (orthogonal ONE, diagonal √2) as the edge cost. The
+ * result is the lowest-cost cell sequence from `start` to `goal`, inclusive of both, or `null` when
+ * no walkable route exists — an 8-connected route walks straight at the target instead of the
+ * axis-aligned staircase 4-connected search produced.
  *
  * DETERMINISM: every tie is broken by a fixed, history-independent rule so two runs (or two clients in
  * lockstep) pick byte-identical paths. The open set is a flat array scanned for the canonical minimum —
@@ -14,7 +16,7 @@
  * an unwalkable endpoint yields `null` (no route), not a throw, since it is a recoverable query.
  */
 import { type Fixed, fx } from '../core/fixed.js';
-import { type CellId, type TerrainGraph, cellManhattanDistance } from './terrain.js';
+import { type CellId, type TerrainGraph, cellOctileDistance } from './terrain.js';
 
 /** A* per-cell bookkeeping. `g` = best known cost from start; `f` = g + heuristic; `h` = heuristic. */
 interface CellRecord {
@@ -55,7 +57,7 @@ export function findPath(
   // reads and there is no insertion-order to leak into a game decision.
   const records: Array<CellRecord | undefined> = new Array(graph.cellCount);
   // At the start cell g is 0, so f === h; compute the heuristic once.
-  const startH = cellManhattanDistance(graph, start, goal);
+  const startH = cellOctileDistance(graph, start, goal);
   records[start] = {
     cell: start,
     g: fx.fromInt(0),
@@ -88,12 +90,13 @@ export function findPath(
 
     current.open = false; // close it — admissible heuristic means it is now settled
 
-    for (const next of graph.walkableNeighbours(current.cell)) {
-      if (blocked?.has(next)) continue; // a building's cell — never entered
-      const tentativeG = fx.add(current.g, graph.walkCost(next));
+    // 8-connected steps carry their own cost (orthogonal ONE, diagonal √2) and already exclude
+    // blocked cells + corner-cuts, so the search body just relaxes each.
+    for (const { cell: next, cost } of graph.steps(current.cell, blocked)) {
+      const tentativeG = fx.add(current.g, cost);
       const existing = records[next];
       if (existing === undefined) {
-        const h = cellManhattanDistance(graph, next, goal);
+        const h = cellOctileDistance(graph, next, goal);
         records[next] = {
           cell: next,
           g: tentativeG,

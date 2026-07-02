@@ -7,8 +7,17 @@
  *
  * DETERMINISM: the graph is a plain-data world resource (not entities). Cells are addressed by a
  * monotonic row-major id (`y * width + x`), and neighbours are emitted in a fixed canonical order
- * (N, E, S, W) so traversal is byte-identical across runs — the precondition for A* with canonical
- * tie-breaking and lockstep replay. All costs are `Fixed`; no floats touch state.
+ * (orthogonal N, E, S, W, then diagonal NE, SE, SW, NW) so traversal is byte-identical across runs —
+ * the precondition for A* with canonical tie-breaking and lockstep replay. All costs are `Fixed`; no
+ * floats touch state.
+ *
+ * The graph is 8-CONNECTED for pathfinding ({@link TerrainGraph.steps}): a settler may step
+ * diagonally, so it walks toward a target in a straight line rather than an axis-aligned staircase
+ * that reads as an "arc" once the iso projection skews it. Diagonals cost √2 (octile metric, so the
+ * pathfinder minimises real distance) and forbid corner-cutting — a diagonal is legal only when both
+ * shared orthogonal cells are themselves passable, so a unit never squeezes through a wall/building
+ * corner. The 4-connected {@link TerrainGraph.neighbours}/{@link TerrainGraph.walkableNeighbours}
+ * remain for placement/valency adjacency, which is not a movement question.
  */
 import type { ContentSet, LandscapeType } from '@vinland/data';
 import type { Brand } from '../core/brand.js';
@@ -17,13 +26,67 @@ import { type Fixed, ONE, fx } from '../core/fixed.js';
 /** A cell address: the row-major index `y * width + x`. Branded so a raw number can't stand in. */
 export type CellId = Brand<number, 'CellId'>;
 
-/** Canonical neighbour offsets in N, E, S, W order — the fixed traversal order for determinism. */
+/** Canonical orthogonal neighbour offsets in N, E, S, W order — the fixed traversal order for determinism. */
 const NEIGHBOUR_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
   [0, -1], // N
   [1, 0], // E
   [0, 1], // S
   [-1, 0], // W
 ] as const;
+
+/**
+ * Canonical diagonal neighbour offsets in NE, SE, SW, NW order, each paired with the two orthogonal
+ * cells it "cuts between": a diagonal step is legal only when BOTH of those cells are passable, so a
+ * settler can never clip through the corner of a wall or building (the standard no-corner-cut rule).
+ * The fixed order (after the orthogonals) keeps 8-connected expansion history-independent.
+ */
+const DIAGONAL_OFFSETS: ReadonlyArray<{
+  readonly dx: number;
+  readonly dy: number;
+  /** The two orthogonal corner cells (relative offsets) that must both be passable. */
+  readonly corners: readonly [readonly [number, number], readonly [number, number]];
+}> = [
+  {
+    dx: 1,
+    dy: -1,
+    corners: [
+      [1, 0],
+      [0, -1],
+    ],
+  }, // NE — needs E and N
+  {
+    dx: 1,
+    dy: 1,
+    corners: [
+      [1, 0],
+      [0, 1],
+    ],
+  }, // SE — needs E and S
+  {
+    dx: -1,
+    dy: 1,
+    corners: [
+      [-1, 0],
+      [0, 1],
+    ],
+  }, // SW — needs W and S
+  {
+    dx: -1,
+    dy: -1,
+    corners: [
+      [-1, 0],
+      [0, -1],
+    ],
+  }, // NW — needs W and N
+] as const;
+
+/**
+ * Fixed-point √2 — the cost of a diagonal (8-connected) step relative to an orthogonal one (cost
+ * ONE). Minted via {@link fx.isqrt} (the one sanctioned integer square root) so no `Math.sqrt` /
+ * float touches sim state. Truncates slightly BELOW the true √2, which keeps the octile heuristic
+ * admissible (it can only under-estimate the real cost). ≈ 1.41421·ONE.
+ */
+const SQRT2: Fixed = fx.isqrt(fx.fromInt(2));
 
 /** Resolved, sim-ready properties of one landscape type (derived once from the IR at build time). */
 interface CellTypeProps {
@@ -154,9 +217,56 @@ export class TerrainGraph {
     return out;
   }
 
-  /** The walkable subset of {@link neighbours}, same canonical order — the pathfinder's edge set. */
+  /**
+   * The walkable subset of {@link neighbours} (4-connected), same canonical order. This is the
+   * ADJACENCY relation for placement/valency, NOT the pathfinder's edge set — movement is
+   * 8-connected via {@link steps}.
+   */
   walkableNeighbours(cell: CellId): CellId[] {
     return this.neighbours(cell).filter((n) => this.isWalkable(n));
+  }
+
+  /**
+   * The pathfinder's 8-connected edge set from `cell`: each walkable step (orthogonal N,E,S,W then
+   * diagonal NE,SE,SW,NW, canonical) paired with its fixed-point cost — orthogonal = the destination
+   * cell's {@link walkCost}, diagonal = that cost × √2 (the octile metric, so A* minimises real
+   * distance and prefers a straight diagonal over an L-shaped detour). `blocked` is the dynamic
+   * walk-block overlay (cells standing buildings occupy); a step onto a blocked or unwalkable cell is
+   * omitted, and a DIAGONAL is emitted only when both shared orthogonal corner cells are themselves
+   * passable — the no-corner-cut rule, so a unit never slips diagonally between two blockers.
+   *
+   * Determinism: fixed emission order + fixed per-step costs, all `Fixed`; the returned list drives
+   * the A* relaxation, so its order is part of the canonical path choice (pinned by the pathfinding
+   * goldens).
+   */
+  steps(cell: CellId, blocked?: ReadonlySet<CellId>): Array<{ cell: CellId; cost: Fixed }> {
+    const { x, y } = this.coordsOf(cell);
+    const out: Array<{ cell: CellId; cost: Fixed }> = [];
+    const passable = (nx: number, ny: number): boolean => {
+      if (!this.inBounds(nx, ny)) return false;
+      const c = (ny * this.width + nx) as CellId;
+      return this.isWalkable(c) && !(blocked?.has(c) ?? false);
+    };
+    // Orthogonal steps first, canonical N,E,S,W — cost is the destination's walk cost.
+    for (const [dx, dy] of NEIGHBOUR_OFFSETS) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (!passable(nx, ny)) continue;
+      const c = (ny * this.width + nx) as CellId;
+      out.push({ cell: c, cost: this.walkCost(c) });
+    }
+    // Diagonal steps, canonical NE,SE,SW,NW — legal only with both orthogonal corners passable; the
+    // step costs √2× the destination's walk cost.
+    for (const d of DIAGONAL_OFFSETS) {
+      const nx = x + d.dx;
+      const ny = y + d.dy;
+      if (!passable(nx, ny)) continue;
+      const [[c0x, c0y], [c1x, c1y]] = d.corners;
+      if (!passable(x + c0x, y + c0y) || !passable(x + c1x, y + c1y)) continue; // no corner-cutting
+      const c = (ny * this.width + nx) as CellId;
+      out.push({ cell: c, cost: fx.mul(this.walkCost(c), SQRT2) });
+    }
+    return out;
   }
 }
 
@@ -185,9 +295,27 @@ export function buildTerrainGraph(content: ContentSet, map: TerrainMap): Terrain
   return new TerrainGraph(map.width, map.height, typeIds, props);
 }
 
-/** A fixed-point Manhattan-style step distance between two cells (for A* heuristics later). */
+/** A fixed-point Manhattan-style step distance between two cells (4-connected metric). */
 export function cellManhattanDistance(g: TerrainGraph, a: CellId, b: CellId): Fixed {
   const ca = g.coordsOf(a);
   const cb = g.coordsOf(b);
   return fx.fromInt(Math.abs(ca.x - cb.x) + Math.abs(ca.y - cb.y));
+}
+
+/**
+ * The fixed-point OCTILE distance between two cells — the admissible, consistent A* heuristic for the
+ * 8-connected graph (orthogonal step cost ONE, diagonal cost √2). It is the exact minimum cost across
+ * open terrain: take `min(dx,dy)` diagonal steps (each √2) toward alignment, then `|dx-dy|` orthogonal
+ * steps for the remainder. With obstacles the true cost only rises, so this never over-estimates —
+ * A* stays optimal. Mirrors the {@link SQRT2} step cost so the heuristic and edge costs agree.
+ */
+export function cellOctileDistance(g: TerrainGraph, a: CellId, b: CellId): Fixed {
+  const ca = g.coordsOf(a);
+  const cb = g.coordsOf(b);
+  const dx = Math.abs(ca.x - cb.x);
+  const dy = Math.abs(ca.y - cb.y);
+  const lo = Math.min(dx, dy);
+  const hi = Math.max(dx, dy);
+  // (hi - lo) orthogonal steps at cost ONE + lo diagonal steps at cost √2.
+  return fx.add(fx.fromInt(hi - lo), fx.mul(fx.fromInt(lo), SQRT2));
 }
