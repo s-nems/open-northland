@@ -2,24 +2,30 @@ import {
   AnimationGallery,
   type GalleryCellSpec,
   type SpriteLayer,
+  type TextureSource,
   createWindowPixiApp,
 } from '@vinland/render';
 import {
   DEFAULT_CHARACTER_PALETTE,
+  INDEXED_CHARACTER_PALETTE,
+  PLAYER_COLOR_COUNT,
+  PLAYER_COLOR_NAMES,
   VIKING_CHARACTERS,
   type VikingCharacter,
   characterStems,
   findCharacter,
 } from '../catalog/roster.js';
-import { MissingAtlasError, loadBodyClips, loadGalleryLayers } from '../content/ir.js';
+import { MissingAtlasError, loadBodyClips, loadGalleryLayers, loadPlayerLut } from '../content/ir.js';
 import { MIN_ZOOM, createCameraController } from '../view/camera.js';
 import { mountMessage } from '../view/overlay.js';
 import {
   type GalleryView,
   type RosterLoad,
   buildAnimCells,
+  buildColorCells,
   buildHeadsCells,
   buildRosterCells,
+  parseColor,
   parseDirection,
   parseView,
 } from './anim-cells.js';
@@ -113,7 +119,14 @@ async function renderRosterMontage(canvas: HTMLCanvasElement, params: URLSearchP
 async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   const char = findCharacter(params.get('char'));
   const view = parseView(params.get('view'));
-  const { bodyStem, headStems } = characterStems(char, DEFAULT_CHARACTER_PALETTE);
+  const color = parseColor(params.get('color'), PLAYER_COLOR_COUNT);
+  // Paletted mode = the colours montage, or an explicit `?color=` on the anim/heads views. It loads the
+  // INDEXED atlases + the player-colour LUT so the character is recoloured per player at draw time.
+  const paletted = view === 'colors' || color !== null;
+  const { bodyStem, headStems } = characterStems(
+    char,
+    paletted ? INDEXED_CHARACTER_PALETTE : DEFAULT_CHARACTER_PALETTE,
+  );
 
   let body: SpriteLayer;
   let heads: (SpriteLayer | undefined)[];
@@ -128,15 +141,30 @@ async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSear
     return;
   }
 
+  let lut: TextureSource | undefined;
+  if (paletted) {
+    lut = await loadPlayerLut();
+    if (lut === undefined) {
+      mountMessage(
+        'Brak palety graczy (content/)',
+        'Uruchom `npm run pipeline` na posiadanej kopii gry — kolory graczy wymagają wygenerowanego `player-lut.png`.',
+      );
+      return;
+    }
+  }
+
   const filter = params.get('filter') ?? '';
   const rows = await loadBodyClips(char.imagelib);
+  const player = color ?? 0;
   const cells =
-    view === 'heads'
-      ? buildHeadsCells(char, rows, body, heads, filter)
-      : buildAnimCells(rows, body, heads[0], filter);
+    view === 'colors'
+      ? buildColorCells(rows, body, heads[0], PLAYER_COLOR_NAMES, filter)
+      : view === 'heads'
+        ? buildHeadsCells(char, rows, body, heads, filter).map((c) => ({ ...c, player }))
+        : buildAnimCells(rows, body, heads[0], filter).map((c) => ({ ...c, player }));
 
   if (cells.length === 0) {
-    const what = view === 'heads' ? 'głów' : 'sekwencji';
+    const what = view === 'heads' ? 'głów' : view === 'colors' ? 'kolorów' : 'sekwencji';
     mountMessage(
       `Brak ${what}`,
       filter === ''
@@ -146,9 +174,11 @@ async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSear
     return;
   }
 
-  await startGallery(canvas, params, cells, { char, view });
+  const palette = lut !== undefined ? { source: lut, colours: PLAYER_COLOR_COUNT } : undefined;
+  await startGallery(canvas, params, cells, { char, view }, palette);
   console.log(
-    `Vinland animation gallery: ${char.label} (${char.imagelib}), view=${view}, ${cells.length} cells.`,
+    `Vinland animation gallery: ${char.label} (${char.imagelib}), view=${view}` +
+      `${color !== null ? `, color=${PLAYER_COLOR_NAMES[color]}` : ''}, ${cells.length} cells.`,
   );
 }
 
@@ -158,12 +188,18 @@ async function startGallery(
   params: URLSearchParams,
   cells: readonly GalleryCellSpec[],
   overlay: { readonly char: VikingCharacter | null; readonly view: GalleryView },
+  palette?: { readonly source: TextureSource; readonly colours: number },
 ): Promise<void> {
   // Window-sized 1:1 backing store: resizing the browser changes the visible field, never the scale.
   const app = await createWindowPixiApp(canvas);
   const columns = intParam(params, 'cols', DEFAULT_COLUMNS, 1);
   const direction = parseDirection(params.get('dir'));
-  const gallery = new AnimationGallery(app, { cells, columns, direction });
+  const gallery = new AnimationGallery(app, {
+    cells,
+    columns,
+    direction,
+    ...(palette !== undefined ? { palette } : {}),
+  });
 
   // Initial camera: fit the grid WIDTH into the canvas (capped at 1×), top-left at a margin; the human
   // pans (middle-mouse / arrows) and zooms (wheel) from there. `?zoom=` overrides the fit.

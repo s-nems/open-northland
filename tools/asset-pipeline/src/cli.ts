@@ -29,6 +29,7 @@ import { writeIr } from './stages/ir.js';
 import { unpackLibTree } from './stages/lib.js';
 import { convertMapDatTree } from './stages/maps.js';
 import { convertPcxTree } from './stages/pcx.js';
+import { convertIndexedCharacterAtlases, convertPlayerColorLut } from './stages/player-colors.js';
 
 async function run(args: Args): Promise<void> {
   console.log(`[pipeline] game=${args.game} mod=${args.mod ?? '(none)'} out=${args.out}`);
@@ -77,6 +78,20 @@ async function run(args: Args): Promise<void> {
     `[pipeline] bmd -> atlas: ${atlases.length} of ${bindings.length} readable binding(s) -> ` +
       `${distinct} atlas file(s) (${distinctBmd} distinct .bmd) into ${args.out} ` +
       `(${palettes.length} palette aliases)`,
+  );
+
+  // Player (team) colours: keep the human character bobs recolourable at draw time. Emit an indexed atlas
+  // (palette index in red, mask in alpha) for every `cr_hum_*` body/head, plus one 256×16 player-colour LUT
+  // (10 shipped `playerNN.pcx` + 6 hue-rotated extras). The renderer reads each index through the player's
+  // LUT row, so one atlas serves all 16 players — see packages/render palette-LUT shader + docs/FIDELITY.md.
+  const indexed = await convertIndexedCharacterAtlases(bindings, args.out);
+  const lut = await convertPlayerColorLut(args.out, args.out).catch((err: unknown) => {
+    console.warn(`[pipeline] player-colour LUT skipped: ${(err as Error).message}`);
+    return undefined;
+  });
+  console.log(
+    `[pipeline] player colours: ${indexed.length} indexed character atlas(es)` +
+      `${lut ? `, ${lut.colors}-colour LUT -> ${lut.png}` : ' (LUT skipped)'}`,
   );
 
   const ir = await writeIr(args);

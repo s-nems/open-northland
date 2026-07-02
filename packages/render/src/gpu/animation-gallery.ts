@@ -1,5 +1,6 @@
-import { type Application, Container, Graphics, Sprite, Text } from 'pixi.js';
+import { type Application, Container, Graphics, Sprite, Text, type TextureSource } from 'pixi.js';
 import type { Camera } from '../data/iso.js';
+import { PalettedSprite } from './paletted-sprite.js';
 import type { SpriteLayer } from './pixi-app.js';
 import { TextureCache } from './texture-cache.js';
 
@@ -156,6 +157,12 @@ export interface GalleryCellSpec {
   readonly overlays?: readonly SpriteLayer[];
   /** Label override for this cell (e.g. a head name in the looks montage); defaults to {@link GalleryClip.label}. */
   readonly label?: string;
+  /**
+   * The player-colour row (0-based) this cell draws when the gallery is in **paletted** mode (a `palette`
+   * was passed to the {@link AnimationGallery}). Ignored otherwise. Defaults to 0. The colours montage
+   * varies this per cell (same look, one cell per player colour); a single-colour view sets it on every cell.
+   */
+  readonly player?: number;
 }
 
 /** One cell's retained display objects (built once, textures swapped per frame). */
@@ -164,8 +171,10 @@ interface GalleryCell {
   readonly container: Container;
   /** This cell's layers in draw order (index 0 = body, rest = overlays) — its OWN, not gallery-shared. */
   readonly layers: readonly SpriteLayer[];
-  /** One sprite per layer, in the same order. */
-  readonly sprites: Sprite[];
+  /** One sprite per layer, in the same order — plain {@link Sprite}s, or {@link PalettedSprite}s in paletted mode. */
+  readonly sprites: (Sprite | PalettedSprite)[];
+  /** The player-colour row this cell draws (paletted mode only); 0 otherwise. */
+  readonly player: number;
 }
 
 /**
@@ -181,6 +190,8 @@ export class AnimationGallery {
   private direction: GalleryDirection;
   private readonly columns: number;
   private readonly cellCount: number;
+  /** When set, cells draw through the player-colour LUT ({@link PalettedSprite}) instead of baked textures. */
+  private readonly palette: { readonly source: TextureSource; readonly colours: number } | undefined;
 
   constructor(
     app: Application,
@@ -188,12 +199,19 @@ export class AnimationGallery {
       readonly cells: readonly GalleryCellSpec[];
       readonly columns: number;
       readonly direction?: GalleryDirection;
+      /**
+       * The player-colour LUT (a `256 × colours` texture) + its row count. When given, every cell draws
+       * through it via {@link PalettedSprite} at the cell's {@link GalleryCellSpec.player} row — the 16
+       * player colours the atlas indices are read through. Absent → the plain baked-texture path.
+       */
+      readonly palette?: { readonly source: TextureSource; readonly colours: number };
     },
   ) {
     this.app = app;
     this.columns = Math.max(1, Math.floor(opts.columns));
     this.direction = opts.direction ?? 'full';
     this.cellCount = opts.cells.length;
+    this.palette = opts.palette;
     app.stage.addChild(this.root);
 
     // The feet anchor sits at the cell's horizontal centre, {@link FOOT_INSET_Y} up from its bottom; each
@@ -230,14 +248,17 @@ export class AnimationGallery {
       label.position.set(localLeft + 4, localTop + LABEL_Y);
       container.addChild(label);
       const layers: readonly SpriteLayer[] = [spec.body, ...(spec.overlays ?? [])];
-      const sprites: Sprite[] = [];
+      const sprites: (Sprite | PalettedSprite)[] = [];
       for (let i = 0; i < layers.length; i++) {
-        const spr = new Sprite();
+        const spr =
+          this.palette !== undefined
+            ? new PalettedSprite(this.palette.source, this.palette.colours)
+            : new Sprite();
         sprites.push(spr);
         container.addChild(spr);
       }
       this.root.addChild(container);
-      this.cells.push({ clip: spec.clip, container, layers, sprites });
+      this.cells.push({ clip: spec.clip, container, layers, sprites, player: spec.player ?? 0 });
     }
   }
 
@@ -267,8 +288,16 @@ export class AnimationGallery {
     this.root.position.set(camera.offsetX, camera.offsetY);
     // `clock` is a rising view-frame counter; hold each animation frame for TICKS_PER_FRAME of them.
     const step = Math.floor(clock / TICKS_PER_FRAME);
+    // Paletted meshes position themselves in screen space (a custom-shader mesh can't ride the scene-graph
+    // transform), so mirror the camera the retained Sprites get from `root`: feet anchor = camera applied to
+    // the cell container's local position; scale = camera zoom.
+    const scale = camera.scale ?? 1;
+    const resW = this.app.screen.width;
+    const resH = this.app.screen.height;
     for (const cell of this.cells) {
       const bodyBob = galleryBobId(cell.clip, this.direction, step);
+      const originX = camera.offsetX + scale * cell.container.position.x;
+      const originY = camera.offsetY + scale * cell.container.position.y;
       for (let i = 0; i < cell.layers.length; i++) {
         const layer = cell.layers[i];
         const spr = cell.sprites[i];
@@ -280,8 +309,15 @@ export class AnimationGallery {
           spr.visible = false;
           continue;
         }
-        spr.texture = this.textures.get(layer.source, frame);
-        spr.position.set(frame.offsetX, frame.offsetY);
+        if (spr instanceof PalettedSprite) {
+          // Indexed atlas read through the LUT at this cell's player row — the palette drives the colour.
+          spr.setFrame(layer.source, frame, layer.atlas.width, layer.atlas.height);
+          spr.place(originX, originY, scale, resW, resH);
+          spr.player = cell.player;
+        } else {
+          spr.texture = this.textures.get(layer.source, frame);
+          spr.position.set(frame.offsetX, frame.offsetY);
+        }
         spr.visible = true;
       }
     }

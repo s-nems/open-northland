@@ -88,6 +88,27 @@ export function expandBobFrame(frame: BobFrame, palette: Uint8Array): RgbaImage 
   return { width, height, rgba };
 }
 
+/**
+ * Expands one decoded {@link BobFrame} into an **indexed** RGBA image: the palette INDEX in the red
+ * channel, `mask` in alpha, green/blue left 0. No palette is applied — the colour is deferred to the
+ * renderer, which reads each index through a per-player palette LUT (see `player-palette.ts`). This is
+ * the alternative to {@link expandBobFrame} for the character bodies, whose clothing band must be
+ * recoloured per player at draw time. A written pixel is opaque (alpha 255) and carries its real index
+ * (index 0 is a valid colour for bobs); an unwritten pixel is fully transparent (all-zero), so the index
+ * is only read where alpha is set.
+ */
+export function expandBobFrameIndexed(frame: BobFrame): RgbaImage {
+  const { width, height, pixels, mask } = frame;
+  const rgba = new Uint8Array(width * height * 4);
+  for (let i = 0; i < pixels.length; i++) {
+    if (mask[i] === 0) continue; // transparent: leave RGBA all-zero
+    const o = i * 4;
+    rgba[o] = pixels[i] ?? 0; // palette index → red channel (G/B stay 0)
+    rgba[o + 3] = 0xff;
+  }
+  return { width, height, rgba };
+}
+
 /** Blits a source RGBA image into `dst` at (`dx`,`dy`). Caller guarantees the source fits inside `dst`. */
 function blit(dst: RgbaImage, src: RgbaImage, dx: number, dy: number): void {
   const dstStride = dst.width * 4;
@@ -123,7 +144,32 @@ interface PreparedFrame {
  * {@link expandBobFrame}; a structurally odd bob is tolerated by {@link decodeBobFrame} upstream.
  */
 export function packBobAtlas(bmd: Bmd, palette: Uint8Array, maxWidth = DEFAULT_ATLAS_MAX_WIDTH): BobAtlas {
-  // 1. Decode + colour every bob; record which produced pixels.
+  return packBobAtlasWith(bmd, (frame) => expandBobFrame(frame, palette), maxWidth);
+}
+
+/**
+ * Packs every bob into an **indexed** atlas (palette index in red, mask in alpha) instead of an RGB one —
+ * the {@link expandBobFrameIndexed} twin of {@link packBobAtlas}, for the character bodies whose player
+ * colour is applied at draw time via a palette LUT. Placement + manifest are byte-identical to the RGB
+ * atlas of the same `.bmd` (same frame sizes → same shelf packing), so the two atlases share frame
+ * geometry; only the pixel channels differ.
+ */
+export function packIndexedBobAtlas(bmd: Bmd, maxWidth = DEFAULT_ATLAS_MAX_WIDTH): BobAtlas {
+  return packBobAtlasWith(bmd, expandBobFrameIndexed, maxWidth);
+}
+
+/**
+ * Shared packing core: decode + expand every bob (via `expand`, which colours or index-encodes it),
+ * shelf-pack the non-empty frames, and emit the sheet + manifest. Parameterising only the per-frame
+ * expansion keeps the RGB ({@link packBobAtlas}) and indexed ({@link packIndexedBobAtlas}) atlases on one
+ * packing/manifest path. `expand` is called only for frames with pixels, so it always receives a real frame.
+ */
+function packBobAtlasWith(
+  bmd: Bmd,
+  expand: (frame: BobFrame) => RgbaImage,
+  maxWidth = DEFAULT_ATLAS_MAX_WIDTH,
+): BobAtlas {
+  // 1. Decode + expand every bob; record which produced pixels.
   const prepared: PreparedFrame[] = [];
   for (let i = 0; i < bmd.bobCount; i++) {
     const bob = bmd.bobs[i];
@@ -146,7 +192,7 @@ export function packBobAtlas(bmd: Bmd, palette: Uint8Array, maxWidth = DEFAULT_A
       offsetY: bob.area.y,
       width: frame.width,
       height: frame.height,
-      image: hasPixels ? expandBobFrame(frame, palette) : undefined,
+      image: hasPixels ? expand(frame) : undefined,
       opaque,
     });
   }

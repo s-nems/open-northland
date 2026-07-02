@@ -22,12 +22,30 @@ import type { BobSeqRow } from '../content/ir.js';
 /** The base locomotion sequence whose head the empty-headed carry variants borrow (see clip build). */
 const WALK_SEQ = 'human_man_generic_walk';
 
-/** The two gallery layouts: play every sequence (`anim`), or play the walk once per head look (`heads`). */
-export type GalleryView = 'anim' | 'heads';
+/**
+ * The gallery layouts: play every sequence (`anim`), play the walk once per head look (`heads`), or play
+ * the walk once per **player colour** (`colors` — the team-colour montage).
+ */
+export type GalleryView = 'anim' | 'heads' | 'colors';
 
-/** Parse `?view=` — `heads`/`looks`/`glowy` → the looks montage, anything else (incl. absent) → the animation view. */
+/**
+ * Parse `?view=` — `heads`/`looks`/`glowy` → the looks montage, `colors`/`kolory` → the player-colour
+ * montage, anything else (incl. absent) → the animation view.
+ */
 export function parseView(raw: string | null): GalleryView {
-  return raw === 'heads' || raw === 'looks' || raw === 'glowy' ? 'heads' : 'anim';
+  if (raw === 'heads' || raw === 'looks' || raw === 'glowy') return 'heads';
+  if (raw === 'colors' || raw === 'colours' || raw === 'kolory') return 'colors';
+  return 'anim';
+}
+
+/**
+ * Parse `?color=` — an integer player-colour row `0..count-1` selects that colour for the anim/heads views;
+ * absent or out of range → `null` (the un-recoloured baked look).
+ */
+export function parseColor(raw: string | null, count: number): number | null {
+  if (raw === null) return null;
+  const n = Number.parseInt(raw, 10);
+  return Number.isInteger(n) && n >= 0 && n < count ? n : null;
 }
 
 /** Parse `?dir=` — `full`/absent → `'full'`, an integer `0..GALLERY_DIRS-1` → that block, else → `'full'`. */
@@ -144,6 +162,33 @@ export function buildHeadsCells(
       continue;
     }
     cells.push({ clip: walkClip, body, overlays: [layer], label });
+  }
+  return cells;
+}
+
+/**
+ * The cells for the COLOURS view: the plain walk ({@link pickWalkRow}) played once per player colour, each
+ * cell captioned by its colour name and tagged with its {@link GalleryCellSpec.player} row (so the paletted
+ * gallery reads it through that LUT row). `colorNames[i]` is player `i`. A `filter` narrows by colour name.
+ * Returns `[]` when the body has no playable walk. Pure over the loaded layers (browser-free, unit-tested).
+ */
+export function buildColorCells(
+  rows: readonly BobSeqRow[],
+  body: SpriteLayer,
+  defaultHead: SpriteLayer | undefined,
+  colorNames: readonly string[],
+  filter = '',
+): GalleryCellSpec[] {
+  const walkRow = pickWalkRow(rows);
+  if (walkRow === undefined) return [];
+  const walkClip = clipFromRow(walkRow);
+  const overlays = defaultHead !== undefined ? [defaultHead] : [];
+  const needle = filter.toLowerCase();
+  const cells: GalleryCellSpec[] = [];
+  for (let i = 0; i < colorNames.length; i++) {
+    const label = colorNames[i] ?? String(i);
+    if (needle !== '' && !label.toLowerCase().includes(needle)) continue;
+    cells.push({ clip: walkClip, body, overlays, label, player: i });
   }
   return cells;
 }
