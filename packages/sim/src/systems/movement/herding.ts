@@ -7,9 +7,6 @@ import {
   Position,
   Settler,
 } from '../../components/index.js';
-import { fx } from '../../core/fixed.js';
-import type { Entity, World } from '../../ecs/world.js';
-import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System } from '../context.js';
 import { herdParams } from '../readviews/index.js';
 import { entityCell, manhattan } from '../shared.js';
