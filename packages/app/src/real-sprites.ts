@@ -601,14 +601,14 @@ export interface CharacterSpec {
   /** The ×8 locomotion cycle; absent (the baby) → the character stands its wait even while moving. */
   readonly walkSeq?: string;
   /**
-   * The standing idle. `loop` plays the named strip whole as a single-direction breathing loop (the
-   * generic waits aren't a clean ×8 — the original plays them facing-locked). `walk-hold` holds the
-   * walk's first frame per facing instead — used for the armed soldiers, whose weapon waits are short
-   * non-×8 strips with an UNCALIBRATED facing layout (the per-sequence facing-order gap of the
-   * docs/FIDELITY.md "Character animation gallery" row); a directional still with the right weapon
-   * beats a mis-split strip.
+   * The standing-idle `[bobseq]`, played WHOLE as a single-direction breathing loop — no wait strip is
+   * a clean ×8 (the generic waits 57/35/39, the weapon waits 22..29), and the established `clipDirs`
+   * rule reads a non-×8 strip as facing-locked, exactly how the original plays them (docs/FIDELITY.md
+   * "Character animation gallery"). So an armed soldier BREATHES holding his weapon, like everyone
+   * else. Absent (or missing from the IR), idle falls back to holding the walk's first frame per
+   * facing — a directional still, the never-crash floor.
    */
-  readonly wait: { readonly kind: 'loop'; readonly seq: string } | { readonly kind: 'walk-hold' };
+  readonly waitSeq?: string;
   /** Prefix of this body's per-good carry cycles (`<prefix><good>`), when the body has any. */
   readonly carryPrefix?: string;
   /** Atomic id → its action sequence on this body (the `setatomic` join, e.g. the woodcut swing). */
@@ -623,59 +623,59 @@ export const CHARACTER_SPECS = {
     rosterId: 'civilian',
     headBmds: CIVILIST_JOB_HEADS,
     walkSeq: 'human_man_generic_walk',
-    wait: { kind: 'loop', seq: 'human_man_generic_wait' },
+    waitSeq: 'human_man_generic_wait',
     carryPrefix: 'human_man_generic_walk_',
     atomics: { [HARVEST_ATOMIC]: { seq: CHOP_SEQ, phaseStart: CHOP_PHASE_START } },
   },
   woman: {
     rosterId: 'woman',
     walkSeq: 'human_woman_generic_walk',
-    wait: { kind: 'loop', seq: 'human_woman_generic_wait' },
+    waitSeq: 'human_woman_generic_wait',
     carryPrefix: 'human_woman_generic_walk_',
   },
   boy: {
     rosterId: 'boy',
     walkSeq: 'human_child_boy_generic_walk',
-    wait: { kind: 'loop', seq: 'human_child_boy_generic_wait' },
+    waitSeq: 'human_child_boy_generic_wait',
   },
   girl: {
     rosterId: 'girl',
     walkSeq: 'human_child_girl_generic_walk',
-    wait: { kind: 'loop', seq: 'human_child_girl_generic_wait_1' },
+    waitSeq: 'human_child_girl_generic_wait_1',
   },
   baby: {
     rosterId: 'baby',
-    wait: { kind: 'loop', seq: 'human_child_baby_generic_wait' },
+    waitSeq: 'human_child_baby_generic_wait',
   },
   warrior: {
     rosterId: 'warrior',
     walkSeq: 'human_man_warrior_empty_walk',
-    wait: { kind: 'loop', seq: 'human_man_warrior_empty_wait' },
+    waitSeq: 'human_man_warrior_empty_wait',
   },
   'warrior-spear': {
     rosterId: 'warrior',
     walkSeq: 'human_man_Warrior_spear_walk',
-    wait: { kind: 'walk-hold' },
+    waitSeq: 'human_man_Warrior_spear_wait',
   },
   'warrior-sword': {
     rosterId: 'warrior',
     walkSeq: 'human_man_Warrior_Sword_Walk',
-    wait: { kind: 'walk-hold' },
+    waitSeq: 'human_man_Warrior_Sword_Wait',
   },
   'warrior-broadsword': {
     rosterId: 'warrior',
     walkSeq: 'human_man_Warrior_Broadsword_walk',
-    wait: { kind: 'walk-hold' },
+    waitSeq: 'human_man_Warrior_Broadsword_wait',
   },
   'warrior-shortbow': {
     rosterId: 'warrior',
     walkSeq: 'human_man_Warrior_Shortbow_walk',
-    wait: { kind: 'walk-hold' },
+    waitSeq: 'human_man_Warrior_Shortbow_wait',
   },
   'warrior-longbow': {
     rosterId: 'warrior',
     walkSeq: 'human_man_Warrior_Longbow_walk',
-    wait: { kind: 'walk-hold' },
+    waitSeq: 'human_man_Warrior_Longbow_wait',
   },
 } satisfies Readonly<Record<string, CharacterSpec>>;
 
@@ -738,7 +738,7 @@ export function characterBinding(
   goods: readonly GoodRef[],
 ): SettlerStateBinding | null {
   const walk = eightDirAnim(seqByName, spec.walkSeq);
-  const waitRow = spec.wait.kind === 'loop' ? seqByName.get(spec.wait.seq) : undefined;
+  const waitRow = spec.waitSeq !== undefined ? seqByName.get(spec.waitSeq) : undefined;
   // A loop wait plays its whole strip facing-locked (the strips aren't ×8); a walk-hold stands the
   // walk's first frame per facing. Whichever resolves becomes idle; neither → the character is unusable.
   const idle: SpriteFrameRef | null =
