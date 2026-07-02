@@ -71,6 +71,14 @@ export function navButton(label: string, active: boolean, href: string): HTMLBut
   return b;
 }
 
+/**
+ * The shared "you've reviewed it? tell the chat" footer both acceptance panels (scene + animation
+ * gallery) end with — only the sentence differs (`text`). Keeps the border/opacity styling in one place.
+ */
+export function signOffFooter(text: string): HTMLElement {
+  return el('div', 'opacity:0.65;font-size:12px;border-top:1px solid #5a4a36;padding-top:6px', text);
+}
+
 /** Mount a small message panel (missing `content/`, an empty filter, …) instead of a blank canvas. */
 export function mountMessage(title: string, detail: string): void {
   const panel = el('div', PANEL_STYLE);

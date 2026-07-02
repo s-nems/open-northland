@@ -11,7 +11,8 @@ import { loadMapObjects } from '../content/objects.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { fetchTerrainIr, loadRealTerrain } from '../content/terrain.js';
 import { demoGoods, loadTerrainMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
-import { cameraFor, createCameraController, floatParam } from '../view/camera.js';
+import { cameraFor, createCameraController } from '../view/camera.js';
+import { floatParam } from './params.js';
 
 /**
  * The live sandbox entry (`?live`, and the target of `?map=<id>`): a deterministic vertical slice driven

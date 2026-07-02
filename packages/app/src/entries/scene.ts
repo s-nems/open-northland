@@ -11,9 +11,10 @@ import { FixedTimestep } from '@vinland/sim';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { SCENES, createSceneSim, getScene } from '../scenes/index.js';
-import { cameraFor, createCameraController, floatParam } from '../view/camera.js';
+import { cameraFor, createCameraController } from '../view/camera.js';
 import { mountPerfOverlay } from '../view/perf-overlay.js';
 import { mountSceneOverlay, mountUnknownSceneOverlay } from '../view/scene-overlay.js';
+import { floatParam } from './params.js';
 
 /**
  * The `?scene=<id>` entry: render a registered **acceptance scene** live, with the checklist overlay,

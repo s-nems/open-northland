@@ -1,6 +1,6 @@
 import type { GalleryDirection } from '@vinland/render';
 import { VIKING_CHARACTERS, type VikingCharacter } from '../catalog/roster.js';
-import { BUTTON_STYLE, PANEL_STYLE, el, navButton } from '../view/overlay.js';
+import { BUTTON_STYLE, PANEL_STYLE, el, navButton, signOffFooter } from '../view/overlay.js';
 import type { GalleryView } from './anim-cells.js';
 
 /**
@@ -156,13 +156,7 @@ export function mountGalleryOverlay(
           ];
   for (const item of items) list.append(el('li', 'margin:2px 0', item));
   panel.append(list);
-  panel.append(
-    el(
-      'div',
-      'opacity:0.65;font-size:12px;border-top:1px solid #5a4a36;padding-top:6px',
-      'Gdy ocenisz animacje, wróć do czatu i napisz, czy są OK.',
-    ),
-  );
+  panel.append(signOffFooter('Gdy ocenisz animacje, wróć do czatu i napisz, czy są OK.'));
 
   document.body.append(panel);
 }
