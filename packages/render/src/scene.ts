@@ -337,7 +337,10 @@ function readJobType(components: Readonly<Record<string, unknown>>): number | un
  * NOTE: the live render path is {@link WorldRenderer}, which projects terrain itself and consumes
  * {@link buildSpriteScene} (sprites only) — it no longer calls `buildScene`. `buildScene` is retained as
  * the **headless oracle** for the projection + depth-ordering the renderer must match (its tests pin
- * back-to-front terrain + feet-anchor sprite order that a Pixi renderer can't easily unit-test). The
+ * back-to-front terrain + feet-anchor sprite order that a Pixi renderer can't easily unit-test).
+ * KNOWN DIVERGENCE: the live renderer's painter key is the feet-anchor SCREEN y (∝ col+row, so
+ * static map objects interleave correctly), while this oracle's sprite key is row-major
+ * `(tileY, tileX)` — the two orders differ for items more than a row apart on one screen band. The
  * terrain-projection duplication between here and `WorldRenderer.buildFlatTerrain`/`buildTexturedTerrain`
  * is logged in `docs/TECH-DEBT.md` — they share the `terrain.ts` helpers, so they can't silently diverge.
  */

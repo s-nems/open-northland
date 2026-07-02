@@ -25,11 +25,12 @@
  *
  * This module decodes the **container** (the chunk table) plus the one *raw* payload, `lsiz`
  * (`[u32 width][u32 height]`, the grid dims that cross-check the `map.cif` `mapsize`), the
- * **`pck`/`X8el` packed per-cell byte grid layers** (`lmhe`,`lmlt`,`lmpa`,…) via {@link unpackMapLayer},
- * and the **`X6el` 2-byte-per-cell entity-ownership layers** (`empa`/`empb`) via {@link unpackX6elLayer}.
- * The grid layers are RLE-packed planes opening with a small inner header (see below); `X8el` packs
- * single bytes, `X6el` the same RLE family over little-endian u16 elements. `findChunk` still exposes
- * every chunk's raw payload view.
+ * **`pck`/`X8el` packed byte grid layers** (`lmhe`,`lmlt`,`lmpa`,…) via {@link unpackMapLayer},
+ * the **`X6el` u16 grid layers** (`empa`/`empb` = the per-triangle ground-pattern picks, `emla` =
+ * the placed landscape objects) via {@link unpackX6elLayer}, and the **name-dictionary chunks**
+ * (`eapd`/`eald`/`eatd`) via {@link decodeStringListChunk}. The grid layers are RLE-packed planes
+ * opening with a small inner header (see below); `X8el` packs single bytes, `X6el` the same RLE
+ * family over little-endian u16 elements. `findChunk` still exposes every chunk's raw payload view.
  *
  * Pure functions only (no I/O): `(bytes) => decoded`. The CLI wires file reads around them.
  */
@@ -241,8 +242,9 @@ export function encodeMapSize(size: MapDatSize): Uint8Array {
  * = b` bytes copied verbatim. Decoding stops at exactly `unpackedLength` output bytes, which (on
  * every real `X8el` layer probed) consumes the stream exactly to the payload end.
  *
- * `X8el` = one byte per output cell (e.g. `lmhe` height ≈ 1 B/cell; `lmlt` landscape-type is
- * 4 B/cell — four per-corner type ids); `X6el` (`empa`/`empb` entity ownership, 2 B/cell) packs the
+ * `X8el` = one byte per output element (e.g. `lmhe` height, 1 B per CELL; `lmlt` landscape-object
+ * typeIds, 1 B per HALF-CELL of the row-major `2W × 2H` lattice — see {@link HALF_CELLS_PER_CELL});
+ * `X6el` (`empa`/`empb` per-cell ground-pattern picks, `emla` per-half-cell object ids) packs the
  * same RLE family over little-endian u16 elements — decoded by {@link unpackX6elLayer}.
  */
 export const MAP_LAYER_HEADER_SIZE = 0x15;
@@ -410,23 +412,26 @@ function LATIN1ish(s: string): Uint8Array {
 // ---------------------------------------------------------------------------
 
 /**
- * The number of bytes one `X6el` cell occupies in the unpacked grid (a little-endian u16). The
- * `empa`/`empb` ownership planes carry one such element per map cell (the unpacked length is exactly
- * `width × height × 2` on every real map).
+ * The number of bytes one `X6el` element occupies in the unpacked grid (a little-endian u16). The
+ * `empa`/`empb` ground-pattern lanes carry one element per map CELL (unpacked length exactly
+ * `width × height × 2`); `emla` carries one per HALF-CELL (`2W × 2H` elements).
  */
 export const X6EL_BYTES_PER_CELL = 2;
 
-/** A decoded `X6el` ownership layer: the per-cell little-endian u16 ids, row-major. */
+/** A decoded `X6el` layer: the little-endian u16 elements, row-major. */
 export interface MapLayerU16 {
   /** The codec id from the inner header (always `"X6el"`). */
   readonly codec: string;
-  /** One u16 per map cell (length === width × height). 0 = unowned; otherwise an object/owner id. */
+  /**
+   * One u16 per grid element, row-major. For `empa`/`empb` an index into the map's `eapd` pattern
+   * dictionary; for `emla` an index into `eald` (0xffff = no object).
+   */
   readonly cells: Uint16Array;
 }
 
 /**
- * Unpacks an `X6el` grid layer (`empa`/`empb`, the entity/territory-ownership planes) into its
- * row-major per-cell **u16** grid.
+ * Unpacks an `X6el` grid layer (`empa`/`empb` ground-pattern picks, `emla` object placements) into
+ * its row-major **u16** grid.
  *
  * The container header is byte-identical to {@link unpackMapLayer}'s `X8el` header (21-byte inner
  * header: version, "kcp" marker, codec id, sub-format 0x72, the u32 unpacked **byte** length), but
@@ -712,10 +717,14 @@ export function decodeStringListChunk(chunk: MapDatChunk): string[] {
     if (off + len + 1 > p.length) {
       throw new Error(`mapdat: chunk "${chunk.tag}" string entry ${i} overruns the payload`);
     }
+    if (p[off + len] !== 0) {
+      // A misidentified chunk decodes to garbage names silently unless the terminator is verified.
+      throw new Error(`mapdat: chunk "${chunk.tag}" string entry ${i} is not 0x00-terminated`);
+    }
     let s = '';
     for (let k = 0; k < len; k++) s += String.fromCharCode(p[off + k] as number);
     out.push(s);
-    off += len + 1; // skip the trailing 0x00
+    off += len + 1; // skip the (verified) trailing 0x00
   }
   return out;
 }

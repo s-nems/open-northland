@@ -55,7 +55,8 @@ const EMLA_EMPTY = 0xffff;
  * deterministic remap). The u16 lane values index `eapd` positionally; the emitted layer carries the
  * NAMES (the engine's own version-robust join key onto the extracted `GfxPattern` table). Returns
  * undefined when the map lacks any of the three chunks (older/foreign saves); throws on an index
- * outside the dictionary (a corrupt lane — the per-file catch skips the whole map).
+ * outside the dictionary (a corrupt lane — {@link mapDatToTerrain} catches per LAYER and emits the
+ * grid without it).
  */
 function groundFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['ground'] {
   const empa = findChunk(map, 'empa');
@@ -99,7 +100,8 @@ function groundFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['gro
  * order — deterministic) over a **compacted** per-map type-name list (ascending dictionary order).
  * This is every pre-placed tree/stone/bush/mine decal/wave the map ships; a name joins onto the
  * extracted `[GfxLandscape]` table (`LandscapeGfx.editName`). Returns undefined when the map lacks
- * either chunk; throws on an index outside the dictionary (corrupt lane).
+ * either chunk; throws on an index outside the dictionary (corrupt lane — caught per layer by
+ * {@link mapDatToTerrain}).
  */
 function objectsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['objects'] {
   const emla = findChunk(map, 'emla');
@@ -144,10 +146,12 @@ function objectsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['ob
  * imports `sim`), and joins the 1:1 render layers when the map carries them: the per-triangle ground
  * patterns ({@link groundFromMapDat}: `empa`/`empb` + `eapd`) and the placed landscape objects
  * ({@link objectsFromMapDat}: `emla` + `eald`). Like {@link mapCifToInfo} the decoders stay pure;
- * this is the only wiring. Throws a `mapdat:`-prefixed error for a non-container, a missing
- * `lsiz`/`lmlt`, an unsupported codec, or a dims/length mismatch; {@link convertMapDatTree} catches
- * it per-file so one bad map can't abort the batch. The `lmhe` height lane and the `emt3`/`emt4`
- * overlay-pattern lanes (roads/house foundations) are still out of scope (deferred render layers).
+ * this is the only wiring. Throws a `mapdat:`-prefixed error for a non-container or a missing/corrupt
+ * `lsiz`/`lmlt` (the sim grid is mandatory; {@link convertMapDatTree} catches per-file); a corrupt
+ * OPTIONAL render lane is caught per layer here (warn + emit the grid without it), so a map whose nav
+ * grid decodes fine never disappears over its enrichments. The `lmhe` height lane and the
+ * `emt3`/`emt4` overlay-pattern lanes (roads/house foundations) are still out of scope (deferred
+ * render layers).
  */
 export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
   const map = decodeMapDat(bytes);
@@ -157,8 +161,25 @@ export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
     throw new Error('mapdat: no lmlt landscape-type chunk (cannot build the terrain grid)');
   }
   const terrain = lmltToTerrainMap(unpackMapLayer(lmlt), size);
-  const ground = groundFromMapDat(map, size);
-  const objects = objectsFromMapDat(map, size);
+  // The render layers are OPTIONAL enrichments: a corrupt lane degrades to a grid-only artifact
+  // (warn + omit) rather than skipping the whole map — the sim nav grid emitted fine before these
+  // lanes existed and must keep doing so.
+  let ground: MapDatTerrainFile['ground'];
+  try {
+    ground = groundFromMapDat(map, size);
+  } catch (err) {
+    console.warn(
+      `[pipeline] map ground lanes unreadable, emitting grid without them: ${(err as Error).message}`,
+    );
+  }
+  let objects: MapDatTerrainFile['objects'];
+  try {
+    objects = objectsFromMapDat(map, size);
+  } catch (err) {
+    console.warn(
+      `[pipeline] map object lanes unreadable, emitting grid without them: ${(err as Error).message}`,
+    );
+  }
   return {
     ...terrain,
     ...(ground !== undefined ? { ground } : {}),

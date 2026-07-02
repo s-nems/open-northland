@@ -549,6 +549,13 @@ export const LandscapeBlockArea = z.tuple([
 export type LandscapeBlockArea = z.infer<typeof LandscapeBlockArea>;
 
 /**
+ * The `logicType` value meaning "no logic classification" — the schema default for a record that
+ * omits the key (a pure-decor {@link LandscapeGfx}, a misc/border {@link GfxPattern}). Cross-ref
+ * checks skip it; every REAL record carries an explicit 1-based id.
+ */
+export const LOGIC_TYPE_NONE = 0;
+
+/**
  * One growth/valency state's frame list from a `[GfxLandscape]` record's repeated
  * `GfxFrames <state> <bobId…>` lines. For an animated object ({@link LandscapeGfx.loopAnimation})
  * the bob ids are the loop's frames in play order; for a static object they are alternates/stages.
@@ -866,9 +873,35 @@ export const TerrainMapFile = z
     }),
   )
   .refine(
+    (m) =>
+      m.ground === undefined ||
+      [...m.ground.a, ...m.ground.b].every((idx) => idx < (m.ground as TerrainGround).patterns.length),
+    () => ({
+      message: 'terrain map ground lane indexes outside its patterns list',
+      path: ['ground'],
+    }),
+  )
+  .refine(
     (m) => m.objects === undefined || m.objects.placements.length % 3 === 0,
     () => ({
       message: 'terrain map objects.placements must be flat [hx, hy, typeIndex] triples',
+      path: ['objects', 'placements'],
+    }),
+  )
+  .refine(
+    (m) => {
+      if (m.objects === undefined) return true;
+      const p = m.objects.placements;
+      for (let i = 0; i + 2 < p.length; i += 3) {
+        const hx = p[i] as number;
+        const hy = p[i + 1] as number;
+        if (hx >= m.width * 2 || hy >= m.height * 2) return false;
+        if ((p[i + 2] as number) >= m.objects.types.length) return false;
+      }
+      return true;
+    },
+    () => ({
+      message: 'terrain map objects.placements triple out of range (half-cell coords / types index)',
       path: ['objects', 'placements'],
     }),
   );

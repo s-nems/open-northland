@@ -22,7 +22,11 @@ export interface MapObjectsData {
   readonly placements: readonly number[];
 }
 
-/** The translucency waves composite over the water ground with (the `GfxDynamicBackground` blit). */
+/**
+ * The opacity a `GfxDynamicBackground` object (the 8 wave records) composites over the water ground
+ * with — our reading of the engine's translucent blit; the exact original factor is unpinned
+ * (docs/FIDELITY.md).
+ */
 const WAVE_ALPHA = 0.5;
 
 /** One loaded body atlas: frame geometry + GPU source, keyed by `<bmd stem>.<palette>`. */
@@ -61,9 +65,9 @@ async function loadLayer(key: string): Promise<LoadedLayer | null> {
  *    (trees, stones) depth-sorts against settlers by its feet anchor.
  *  - **position** — the half-cell `(hx, hy)` projected at half-tile resolution (`tileToScreen` of
  *    the fractional cell), the object lattice the original places on.
- *  - **phase** — `(hx + hy) % frames` staggers neighbouring loops so a sea of waves ripples
- *    instead of blinking in unison (a render-only choice; the original's per-object phase is not
- *    stored in the map).
+ *  - **phase** — 0 for every object, so the loops play IN UNISON: the wave bobs are authored to
+ *    tile seamlessly with their neighbours at the SAME frame, and a per-object stagger breaks that
+ *    tiling into noise (the map stores no per-object phase — docs/FIDELITY.md).
  *
  * A type that can't resolve (no record, no atlas, no usable frame) is counted + skipped — a partial
  * `content/` must degrade, not abort. Placements resolve in file order (deterministic).
