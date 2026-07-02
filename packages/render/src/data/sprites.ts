@@ -5,7 +5,7 @@ import type { DrawItem, DrawKind, SpriteState } from './scene.js';
  * self-verify, kept separate from the GPU texture binding (the un-self-verifiable pixel half, deferred
  * to a human).
  *
- * Today the GPU layer ({@link import('../gpu/pixi-app.js').renderScene}) draws each sprite as flat
+ * Today the GPU layer ({@link import('../gpu/sprite-pool.js').SpritePool}) draws each sprite as flat
  * placeholder geometry because real bob atlases are decoded from a copyrighted game copy and gitignored
  * (see CLAUDE.md "Legal guardrails"). The remaining open render leg is to draw the actual atlas frame
  * instead. That swap has two halves:

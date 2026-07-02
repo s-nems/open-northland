@@ -1,7 +1,7 @@
 import { Container, Mesh, MeshGeometry, Sprite, Texture, type TextureSource } from 'pixi.js';
 import { TILE_HALF_W, depthKey } from '../data/iso.js';
 import type { AtlasFrame } from '../data/sprites.js';
-import type { Viewport } from '../data/viewport.js';
+import { type Viewport, aabbIntersects, isVisible } from '../data/viewport.js';
 import { TERRAIN_CHUNK_TILES } from './terrain-layer.js';
 import type { TextureCache } from './texture-cache.js';
 
@@ -222,8 +222,7 @@ export class MapObjectLayer {
     // Landscape decor: the written tick is tracked PER CHUNK so a chunk scrolled into view mid-tick
     // (or while paused) still catches up to the current frame.
     for (const chunk of this.decorChunks) {
-      const visible =
-        chunk.maxX >= vp.minX && chunk.minX <= vp.maxX && chunk.maxY >= vp.minY && chunk.minY <= vp.maxY;
+      const visible = aabbIntersects(vp, chunk);
       chunk.container.visible = visible;
       if (!visible || chunk.animated.length === 0 || chunk.lastWrittenTick === tick) continue;
       chunk.lastWrittenTick = tick;
@@ -246,8 +245,7 @@ export class MapObjectLayer {
     // use); its texture is refreshed only on attach or an animation-tick advance.
     const animAdvanced = tick !== this.lastAnimTick;
     for (const block of this.tallBlocks) {
-      const blockVisible =
-        block.maxX >= vp.minX && block.minX <= vp.maxX && block.maxY >= vp.minY && block.minY <= vp.maxY;
+      const blockVisible = aabbIntersects(vp, block);
       if (!blockVisible) {
         if (block.attachedCount > 0) {
           for (const po of block.objects) {
@@ -262,7 +260,7 @@ export class MapObjectLayer {
       }
       for (const po of block.objects) {
         const obj = po.obj;
-        const visible = obj.x >= vp.minX && obj.x <= vp.maxX && obj.y >= vp.minY && obj.y <= vp.maxY;
+        const visible = isVisible(vp, obj.x, obj.y);
         if (!visible) {
           if (po.attached && po.sprite !== null) {
             this.spriteLayer.removeChild(po.sprite);

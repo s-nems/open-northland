@@ -68,8 +68,10 @@ export {
 export {
   cameraViewport,
   isVisible,
+  aabbIntersects,
   visibleTileRange,
   type Viewport,
+  type Box,
   type TileRange,
 } from './data/viewport.js';
 export {

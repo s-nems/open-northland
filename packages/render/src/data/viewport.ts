@@ -50,6 +50,24 @@ export function isVisible(vp: Viewport, x: number, y: number, margin = 0): boole
   return x >= vp.minX - margin && x <= vp.maxX + margin && y >= vp.minY - margin && y <= vp.maxY + margin;
 }
 
+/** A world-space axis-aligned box (a terrain/decor chunk or a tall-object block AABB). */
+export interface Box {
+  readonly minX: number;
+  readonly minY: number;
+  readonly maxX: number;
+  readonly maxY: number;
+}
+
+/**
+ * Whether an axis-aligned world-space `box` overlaps the viewport — the block-cull primitive the
+ * terrain and map-object layers share (a chunk/block is drawn iff its AABB meets the framed rect).
+ * Pure rect-rect intersection; touching edges count as visible. Any slack is baked into the box's own
+ * bounds by the caller. `Viewport` is itself a {@link Box}, so this doubles as a rect-rect test.
+ */
+export function aabbIntersects(vp: Viewport, box: Box): boolean {
+  return box.maxX >= vp.minX && box.minX <= vp.maxX && box.maxY >= vp.minY && box.minY <= vp.maxY;
+}
+
 /** A closed tile band (inclusive `min` AND inclusive `max`) clamped to the grid — a chunk-cull rectangle. */
 export interface TileRange {
   readonly minCol: number;

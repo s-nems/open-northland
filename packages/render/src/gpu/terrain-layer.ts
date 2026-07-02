@@ -10,7 +10,7 @@ import {
   triangleCorners,
   triangleUVs,
 } from '../data/terrain.js';
-import type { Viewport } from '../data/viewport.js';
+import { type Viewport, aabbIntersects } from '../data/viewport.js';
 import type { GroundPattern, TerrainTextureSet } from './pixi-app.js';
 
 /**
@@ -107,8 +107,7 @@ export class TerrainLayer {
    */
   cull(vp: Viewport): void {
     for (const chunk of this.chunks) {
-      chunk.container.visible =
-        chunk.maxX >= vp.minX && chunk.minX <= vp.maxX && chunk.maxY >= vp.minY && chunk.minY <= vp.maxY;
+      chunk.container.visible = aabbIntersects(vp, chunk);
     }
   }
 
