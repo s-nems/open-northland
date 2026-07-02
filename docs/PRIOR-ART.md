@@ -17,12 +17,12 @@ lands, move its one-liner to Adopted; prune anything the codebase makes obsolete
   the command APPLIES and skip bad input deterministically (still logged, so replay is faithful),
   never throw. (OpenRA drops stale orders silently in `UnitOrders.ProcessOrder`; OpenTTD runs every
   command through an identical test-then-exec on all clients.) → `systems/conflict/command.ts`;
-  the skip paths are fuzzed as first-class inputs (`test/fuzz-determinism.test.ts`).
+  the skip paths are fuzzed as first-class inputs (`test/core/fuzz-determinism.test.ts`).
 - **Full-state canonical hash + human-readable behavior golden.** A state hash says *that* something
   changed; a diffable action transcript says *what*. (OpenTTD's regression suite diffs a scripted
   game's text output; Widelands dumps a typed "syncstream" of sync-relevant events precisely so a
   hash mismatch becomes a textual diff.) → `hashState()` + the golden atomic-action trace
-  (`test/golden-trace.test.ts`). Note: our full-state hash is *stronger* than what most of these
+  (`test/core/golden-trace.test.ts`). Note: our full-state hash is *stronger* than what most of these
   projects run per-tick (OpenRA hashes only annotated `[Sync]` fields; OpenTTD's per-tick token is
   just the RNG state) — see the tiered-hashing deferral below for when that cost bites.
 - **Replay from the command log is the save/debug backbone.** (OpenRA's replays and even its SAVES
@@ -31,7 +31,7 @@ lands, move its one-liner to Adopted; prune anything the codebase makes obsolete
 - **Randomized-input determinism hunting.** Curated goldens never construct the inputs where
   nondeterminism hides; seeded-random command streams (including invalid ones) must stay
   run-twice-identical, replayable, and invariant-clean. (OpenTTD hunts desyncs with randomized games
-  under a desync-debug mode.) → `test/fuzz-determinism.test.ts`.
+  under a desync-debug mode.) → `test/core/fuzz-determinism.test.ts`.
 - **Cache re-derivation checks.** Incrementally-maintained caches are the classic lockstep-desync
   source; every memo must recompute from authoritative state to the same bytes, checked per tick.
   (OpenTTD's `-d desync` runs `CheckCaches()` every tick.) → `World.verifyCaches()` + the
@@ -45,7 +45,7 @@ lands, move its one-liner to Adopted; prune anything the codebase makes obsolete
 - **Integer-only sim math, mechanically enforced.** Transcendental float ops and locale-dependent
   APIs may differ across engines/platforms — banned by source scan, not convention. (OpenRA avoids
   floats entirely: fixed-point coordinates, table-based trig at a power-of-two angle scale.)
-  → `fixed.ts` (`fx.*`, `isqrt`) + the widened `test/hygiene.test.ts` scan.
+  → `fixed.ts` (`fx.*`, `isqrt`) + the widened `test/core/hygiene.test.ts` scan.
 - **Cross-platform CI for the determinism promise.** Byte-identical state across platforms is a
   testable claim only if CI runs the goldens on more than one OS. → the ubuntu+macos matrix in
   `.github/workflows/ci.yml`.

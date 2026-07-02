@@ -67,7 +67,7 @@ npm run dev            # vite app
 ```
 
 Tooling: **Biome** (format + lint, config in `biome.json`) and **vitest**; CI (`.github/workflows/ci.yml`)
-runs check + typecheck + test on every push/PR. A source-hygiene test (`packages/sim/test/hygiene.test.ts`)
+runs check + typecheck + test on every push/PR. A source-hygiene test (`packages/sim/test/core/hygiene.test.ts`)
 fails the build if a nondeterministic global leaks into `sim` — the determinism rules are enforced, not just documented.
 
 ## Conventions
