@@ -3,7 +3,7 @@ import type { AtlasFrame, SettlerStateBinding, SpriteAtlas, SpriteBindings } fro
 
 /**
  * A FREE, SYNTHETIC sprite atlas — the texture to bind so the atlas-sprite draw path (the textured
- * sub-rect branch of {@link import('./pixi-app.js').renderScene}) is actually exercised end to
+ * sub-rect branch of {@link import('./sprite-pool.js').SpritePool}) is actually exercised end to
  * end, *without* any copyrighted game data.
  *
  * Real bob atlases are decoded from an owned game copy and gitignored (see CLAUDE.md "Legal

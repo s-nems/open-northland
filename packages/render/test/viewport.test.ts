@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Camera } from '../src/index.js';
-import { cameraViewport, isVisible, tileToScreen, visibleTileRange } from '../src/index.js';
+import { aabbIntersects, cameraViewport, isVisible, tileToScreen, visibleTileRange } from '../src/index.js';
 
 /**
  * Unit tests for the pure viewport-culling math — the "what's on screen" half of scaling to big maps,
@@ -53,6 +53,25 @@ describe('isVisible', () => {
     expect(isVisible(vp, -1, 50, 5)).toBe(true);
     expect(isVisible(vp, 105, 50, 10)).toBe(true);
     expect(isVisible(vp, -20, 50, 5)).toBe(false);
+  });
+});
+
+describe('aabbIntersects', () => {
+  const vp = { minX: 0, minY: 0, maxX: 100, maxY: 100 };
+
+  it('is true for a box overlapping the viewport, false for one clear of it', () => {
+    expect(aabbIntersects(vp, { minX: 50, minY: 50, maxX: 150, maxY: 150 })).toBe(true);
+    expect(aabbIntersects(vp, { minX: 200, minY: 0, maxX: 300, maxY: 100 })).toBe(false); // off to the right
+    expect(aabbIntersects(vp, { minX: 0, minY: -300, maxX: 100, maxY: -200 })).toBe(false); // above
+  });
+
+  it('counts a touching edge as visible (inclusive bounds, matching the old inline cull)', () => {
+    expect(aabbIntersects(vp, { minX: 100, minY: 0, maxX: 200, maxY: 100 })).toBe(true); // shares the right edge
+    expect(aabbIntersects(vp, { minX: 101, minY: 0, maxX: 200, maxY: 100 })).toBe(false); // one px clear
+  });
+
+  it('is true when the box strictly contains the viewport', () => {
+    expect(aabbIntersects(vp, { minX: -50, minY: -50, maxX: 150, maxY: 150 })).toBe(true);
   });
 });
 
