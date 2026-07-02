@@ -57,6 +57,7 @@ export {
   GALLERY_DIRS,
   COMPASS_TO_BLOCK,
   type GalleryClip,
+  type GalleryCellSpec,
   type GalleryDirection,
   type GalleryCellBox,
 } from './animation-gallery.js';

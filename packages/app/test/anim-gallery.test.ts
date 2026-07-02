@@ -1,10 +1,30 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { AtlasFrame, SpriteAtlas } from '@vinland/render';
+import type { AtlasFrame, SpriteAtlas, SpriteLayer } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
-import { buildGalleryClips, parseDirection, prettyClipLabel } from '../src/anim-mode.js';
+import {
+  buildAnimCells,
+  buildGalleryClips,
+  buildHeadsCells,
+  buildRosterCells,
+  parseDirection,
+  parseView,
+  prettyClipLabel,
+  rosterLabel,
+} from '../src/anim-mode.js';
 import { BODY_IMAGELIB, type BobSeqRow } from '../src/real-sprites.js';
+import { findCharacter } from '../src/viking-roster.js';
+
+/** A minimal {@link SpriteLayer} for the pure cell-builder tests: only `.atlas.frames` is read; the GPU
+ *  `source` is a stub (the builders pass the layer through by reference, never touch its texture). */
+const frameAt = (present: boolean): AtlasFrame =>
+  present
+    ? { x: 0, y: 0, width: 10, height: 10, offsetX: 0, offsetY: 0 }
+    : { x: 0, y: 0, width: 0, height: 0, offsetX: 0, offsetY: 0 };
+function fakeLayer(frames: Iterable<[number, AtlasFrame]> = []): SpriteLayer {
+  return { atlas: { width: 1, height: 1, frames: new Map(frames) }, source: {} as SpriteLayer['source'] };
+}
 
 /**
  * The animation gallery's data half. `prettyClipLabel` is pure (self-verifiable). The catalog of
@@ -82,6 +102,138 @@ describe('buildGalleryClips', () => {
     // headEmptyAt is true for every id, but with no walk head to borrow the clip still renders body-only;
     // the borrow still points at the walk start (the renderer just finds no head frame and hides it).
     expect(clips[0]?.headStart).toBe(1988);
+  });
+});
+
+describe('parseView', () => {
+  it('maps heads/looks/glowy to the looks montage, everything else to the animation view', () => {
+    for (const raw of ['heads', 'looks', 'glowy']) expect(parseView(raw)).toBe('heads');
+    for (const raw of [null, 'anim', 'x', '']) expect(parseView(raw)).toBe('anim');
+  });
+});
+
+describe('buildAnimCells', () => {
+  const rows: BobSeqRow[] = [
+    { name: 'human_man_generic_walk', start: 1988, length: 96 },
+    { name: 'human_man_generic_eat', start: 1530, length: 17 },
+  ];
+
+  it('makes one cell per sequence, each drawn body + default head', () => {
+    const head = fakeLayer([[1988, frameAt(true)]]);
+    const body = fakeLayer();
+    const cells = buildAnimCells(rows, body, head);
+    expect(cells.map((c) => c.clip.label)).toEqual(['generic walk', 'generic eat']);
+    expect(cells.every((c) => c.body === body)).toBe(true);
+    expect(cells.every((c) => c.overlays?.[0] === head)).toBe(true);
+  });
+
+  it('drops the overlay (body-only) when the character has no head', () => {
+    const cells = buildAnimCells(rows, fakeLayer(), undefined);
+    expect(cells[0]?.overlays).toEqual([]);
+  });
+});
+
+describe('buildHeadsCells', () => {
+  // The warrior body's broadsword walk (×8) is the clip the montage should latch onto over the wait/attack.
+  const rows: BobSeqRow[] = [
+    { name: 'human_man_Warrior_Broadsword_wait', start: 396, length: 22 },
+    { name: 'human_man_Warrior_Broadsword_walk', start: 440, length: 96 },
+  ];
+
+  it('plays the walk once per head, captioned + aligned 1:1 to the head slots', () => {
+    const warrior = findCharacter('warrior');
+    const heads = warrior.headBmds.map(() => fakeLayer());
+    const body = fakeLayer();
+    const cells = buildHeadsCells(warrior, rows, body, heads);
+    expect(cells.length).toBe(warrior.headBmds.length);
+    expect(cells.map((c) => c.label)).toEqual(['Głowa 05', 'Głowa 06', 'Głowa 07', 'Głowa 08']);
+    // Every cell plays the SAME walk clip (start 440, ×8) with its own head over the shared body.
+    expect(cells.every((c) => c.clip.start === 440 && c.clip.dirs === 8 && c.body === body)).toBe(true);
+    expect(cells.map((c) => c.overlays?.[0])).toEqual(heads);
+  });
+
+  it('filters the looks by head label / bmd substring', () => {
+    const warrior = findCharacter('warrior');
+    const heads = warrior.headBmds.map(() => fakeLayer());
+    const cells = buildHeadsCells(warrior, rows, fakeLayer(), heads, '07');
+    expect(cells.map((c) => c.label)).toEqual(['Głowa 07']);
+  });
+
+  it('returns [] when the body has no playable clip', () => {
+    expect(buildHeadsCells(findCharacter('warrior'), [], fakeLayer(), [])).toEqual([]);
+  });
+
+  it('emits one bare body-only cell for a headless character (the baby)', () => {
+    const baby = findCharacter('baby');
+    expect(baby.headBmds).toEqual([]); // body-only creature
+    const cells = buildHeadsCells(
+      baby,
+      [{ name: 'human_child_baby_generic_crouch', start: 0, length: 104 }],
+      fakeLayer(),
+      [],
+    );
+    expect(cells.length).toBe(1);
+    expect(cells[0]?.label).toBe('Niemowlę');
+    expect(cells[0]?.overlays).toEqual([]); // no head overlay
+  });
+});
+
+describe('rosterLabel', () => {
+  it('appends the head index for a multi-look body, and is bare for a single-look body', () => {
+    // Use each character's OWN heads (civilian owns 00–03/80–83/90–93; the woman is single-look).
+    expect(rosterLabel(findCharacter('civilian'), 'cr_hum_head_02')).toBe('Cywil 02');
+    expect(rosterLabel(findCharacter('warrior'), 'cr_hum_head_05')).toBe('Wojownik 05');
+    expect(rosterLabel(findCharacter('woman'), 'cr_hum_head_10')).toBe('Kobieta');
+  });
+});
+
+describe('buildRosterCells', () => {
+  const civ = findCharacter('civilian');
+  const woman = findCharacter('woman');
+  const load = () => [
+    {
+      char: civ,
+      body: fakeLayer(),
+      heads: civ.headBmds.map(() => fakeLayer()),
+      rows: [{ name: 'human_man_generic_walk', start: 1988, length: 96 }],
+    },
+    {
+      char: woman,
+      body: fakeLayer(),
+      heads: [fakeLayer()],
+      rows: [{ name: 'human_woman_generic_walk', start: 504, length: 96 }],
+    },
+  ];
+
+  it('emits one walking cell per look across the whole roster, captioned per character', () => {
+    const cells = buildRosterCells(load());
+    expect(cells.length).toBe(civ.headBmds.length + 1); // every civilian look + the single woman look
+    expect(cells[0]?.label).toBe('Cywil 00');
+    expect(cells[0]?.clip.start).toBe(1988); // the civilian walk
+    expect(cells.at(-1)?.label).toBe('Kobieta');
+    expect(cells.at(-1)?.clip.start).toBe(504); // the woman walk
+  });
+
+  it('filters looks by caption, and skips a character with no playable clip', () => {
+    expect(buildRosterCells(load(), 'kobieta').map((c) => c.label)).toEqual(['Kobieta']);
+    const noClip = [{ char: woman, body: fakeLayer(), heads: [fakeLayer()], rows: [] }];
+    expect(buildRosterCells(noClip)).toEqual([]);
+  });
+
+  it('emits one bare body-only cell for a headless character (the baby)', () => {
+    const baby = findCharacter('baby');
+    const cells = buildRosterCells([
+      {
+        char: baby,
+        body: fakeLayer(),
+        heads: [],
+        rows: [{ name: 'human_child_baby_generic_crouch', start: 0, length: 104 }],
+      },
+    ]);
+    expect(cells.length).toBe(1);
+    expect(cells[0]?.label).toBe('Niemowlę');
+    expect(cells[0]?.overlays).toEqual([]);
+    expect(cells[0]?.clip.start).toBe(0); // the crouch (baby has no _walk)
   });
 });
 
