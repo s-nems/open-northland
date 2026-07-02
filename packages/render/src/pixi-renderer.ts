@@ -6,7 +6,7 @@ import type { CellTexture } from './terrain.js';
  * The Pixi boot + GPU-input types shared by the renderer. The per-frame drawing moved to the retained
  * {@link import('./world-renderer.js').WorldRenderer} (persistent scene graph, pooled sprites, terrain
  * meshed once) — this file keeps only the one-time GPU setup ({@link createPixiApp},
- * {@link loadAtlasSource}) and the plain-data input shapes the renderer consumes ({@link Camera},
+ * {@link createWindowPixiApp}, {@link loadAtlasSource}) and the plain-data input shapes the renderer consumes ({@link Camera},
  * {@link SpriteSheet}, {@link SpriteLayer}, {@link TerrainTextureSet}).
  *
  * The atlas *image* comes from a free / synthetic atlas (real bobs are decoded from a copyrighted game
@@ -174,7 +174,9 @@ export interface GroundPattern {
  * The shared one-time GPU options. WebGL preference + antialias-off are deliberate: they cut the
  * cross-machine pixel variance that would otherwise make even an eyeball-the-PNG comparison noisy
  * (golden-image diffs stay out of scope — see docs/TESTING.md). `resolution: 1` + `autoDensity: false`
- * keep the backing store in CSS pixels, so one world pixel is one screen pixel at camera scale 1.
+ * keep the backing store in CSS pixels, so one world pixel is one CSS pixel at camera scale 1 (on a
+ * HiDPI display the browser upscales by devicePixelRatio; `#game`'s `image-rendering: pixelated`
+ * keeps that upscale crisp for the pixel art).
  */
 const APP_OPTIONS = {
   background: 0x1a1410,
@@ -202,17 +204,19 @@ export async function createPixiApp(
 }
 
 /**
- * Initialise a Pixi {@link Application} whose backing store TRACKS the window at a fixed 1:1 pixel
- * scale. Pixi's resize plugin (`resizeTo: window`) re-sizes the renderer on every window resize, so
- * with the canvas CSS-sized to the viewport the world never stretches — resizing the window only
- * grows/shrinks the visible field, exactly like an RTS at native resolution. Interactive entries
- * (live slice, scenes, gallery) boot through this; read the live size from `app.screen` per frame,
- * never from a captured constant.
+ * Initialise a Pixi {@link Application} whose backing store TRACKS the window at a fixed 1:1
+ * CSS-pixel scale. Pixi's resize plugin (`resizeTo: window`) re-sizes the renderer on every window
+ * resize, so with the canvas CSS-sized to the viewport the world never stretches — resizing the
+ * window only grows/shrinks the visible field, exactly like an RTS at native resolution. Interactive
+ * entries (live slice, scenes, gallery) boot through this; read the live size from `app.screen` per
+ * frame, never from a captured constant.
  */
 export async function createWindowPixiApp(canvas: HTMLCanvasElement): Promise<Application> {
   const app = new Application();
   await app.init({
     canvas,
+    // The plugin's `resizeTo` setter already sizes the renderer to the window during init; the
+    // explicit dimensions only guard against that init-time resize ever becoming deferred.
     width: window.innerWidth,
     height: window.innerHeight,
     resizeTo: window,
