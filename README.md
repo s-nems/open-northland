@@ -98,6 +98,7 @@ and lockstep-friendly. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and
 - [`docs/DATA-FORMAT.md`](docs/DATA-FORMAT.md) — the intermediate content format (IR)
 - [`docs/SOURCES.md`](docs/SOURCES.md) — original file formats and the legal posture
 - [`docs/TESTING.md`](docs/TESTING.md) — the determinism / self-validation test pyramid
+- [`docs/PRIOR-ART.md`](docs/PRIOR-ART.md) — practices from other engine reimplementations: adopted / deferred / consciously different
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — the phased plan and current target
 
 ## Contributing

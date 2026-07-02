@@ -347,9 +347,13 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
       scripted behavior** a data-only pipeline would miss.
 - [ ] Save/load: command-log replay + **snapshot fast-load** (replay-all is unviable for hours-long
       settlements). Snapshot schema designed alongside components in Phase 2, finalized here.
+      Format policy pre-designed in docs/PRIOR-ART.md: versioned metadata trailer, content
+      fingerprint + final-hash integrity stamp, refuse-on-mismatch, snapshot round-trip resume test.
 - [ ] Audio (transcoded ogg; no DirectMusic `.sgt`/`.dls` dependency).
 - [ ] Tauri desktop builds for Mac/Win/Linux (renderer stays WebView-compatible).
-- [ ] (Stretch) lockstep multiplayer — the determinism work pays off here.
+- [ ] (Stretch) lockstep multiplayer — the determinism work pays off here. Order-pipeline decisions
+      pre-recorded in docs/PRIOR-ART.md: host-stamped execution tick, sim-vs-session command split,
+      pause/speed/disconnect as logged commands.
 
 ## Cross-cutting DX (modern wins — the deterministic core makes these cheap)
 - [ ] **Run the sim in a Web Worker.** Move `step()` off the main thread (it's pure/headless/deterministic)
