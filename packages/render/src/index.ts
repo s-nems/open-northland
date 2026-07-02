@@ -39,6 +39,7 @@ export {
 } from './sprites.js';
 export {
   createPixiApp,
+  createWindowPixiApp,
   loadAtlasSource,
   type Camera,
   type GroundPattern,

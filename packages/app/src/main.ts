@@ -2,7 +2,7 @@ import {
   WorldRenderer,
   buildHud,
   buildSpriteScene,
-  createPixiApp,
+  createWindowPixiApp,
   layoutHud,
   placeHud,
 } from '@vinland/render';
@@ -26,9 +26,6 @@ import { demoGoods, loadTerrainMap, runSlice, sliceTerrain } from './vertical-sl
  *  - otherwise → the live, wall-clock fixed-timestep loop, drawing the vertical slice each frame so
  *    `npm run dev` is watchable. (Real content/map loading + input still come in later Phase-2/3 steps.)
  */
-const CANVAS_W = 960;
-const CANVAS_H = 540;
-
 async function main(): Promise<void> {
   const canvas = document.getElementById('game');
   if (!(canvas instanceof HTMLCanvasElement)) throw new Error('missing #game canvas');
@@ -52,10 +49,12 @@ async function main(): Promise<void> {
     return;
   }
 
-  // Live mode: a deterministic slice driven by the fixed-timestep loop, drawn every frame.
+  // Live mode: a deterministic slice driven by the fixed-timestep loop, drawn every frame. The
+  // backing store tracks the window at 1:1 pixels (createWindowPixiApp), so resizing the browser
+  // changes the visible field, never the scale — read live dimensions from `app.screen`.
   // `?map=<id>` draws an actual decoded `content/maps/<id>.json` grid as the terrain; absent or
   // unloadable, it falls back to the synthetic grass strip (the maps are gitignored).
-  const app = await createPixiApp(canvas, CANVAS_W, CANVAS_H);
+  const app = await createWindowPixiApp(canvas);
   const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
   const terrainGrid = sliceTerrain(loaded ?? undefined);
@@ -112,14 +111,13 @@ async function main(): Promise<void> {
   const sim = runSlice(7, 0, loaded ?? undefined);
   // The slice is single-tribe (viking, tribe 1); draw its HUD panel each frame.
   const HUD_TRIBE = 1;
-  const screen = { width: CANVAS_W, height: CANVAS_H };
 
   // Interactive camera: `?zoom` (+ the settler-centroid framing) is the STARTING frame; from there a
   // human pans (middle-mouse drag / arrow keys) and zooms (scroll wheel). The HUD is drawn outside the
   // camera layer below, so it stays pinned while the world moves.
   const cameraCtl = createCameraController(
     canvas,
-    cameraFor(buildSpriteScene(sim.snapshot()), zoom, CANVAS_W, CANVAS_H),
+    cameraFor(buildSpriteScene(sim.snapshot()), zoom, app.screen.width, app.screen.height),
   );
 
   const timestep = new FixedTimestep();
@@ -132,8 +130,9 @@ async function main(): Promise<void> {
     cameraCtl.update(elapsed);
     const snap = sim.snapshot();
     // One retained update: reconcile the pooled sprites, refresh the pinned HUD, render once.
+    // `app.screen` is the LIVE renderer size (it tracks window resizes), so the HUD stays pinned.
     renderer.update(snap, cameraCtl.camera(), snap.tick, {
-      placement: placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', screen),
+      placement: placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', app.screen),
     });
     requestAnimationFrame(frame);
   }

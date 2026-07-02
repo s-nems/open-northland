@@ -171,11 +171,25 @@ export interface GroundPattern {
 }
 
 /**
- * Initialise a Pixi {@link Application} bound to an existing canvas. Separated from drawing so the
- * (async) GPU init runs once; the renderer's `update` is then a cheap synchronous redraw. WebGL
- * preference + antialias-off are deliberate: they cut the cross-machine pixel variance that would
- * otherwise make even an eyeball-the-PNG comparison noisy (golden-image diffs stay out of scope — see
- * docs/TESTING.md).
+ * The shared one-time GPU options. WebGL preference + antialias-off are deliberate: they cut the
+ * cross-machine pixel variance that would otherwise make even an eyeball-the-PNG comparison noisy
+ * (golden-image diffs stay out of scope — see docs/TESTING.md). `resolution: 1` + `autoDensity: false`
+ * keep the backing store in CSS pixels, so one world pixel is one screen pixel at camera scale 1.
+ */
+const APP_OPTIONS = {
+  background: 0x1a1410,
+  antialias: false,
+  preference: 'webgl',
+  autoDensity: false,
+  resolution: 1,
+} as const;
+
+/**
+ * Initialise a Pixi {@link Application} bound to an existing canvas at a FIXED backing-store size.
+ * Separated from drawing so the (async) GPU init runs once; the renderer's `update` is then a cheap
+ * synchronous redraw. This is the deterministic-capture variant (the `?shot` PNG must be
+ * byte-reproducible, so its dimensions can never track a window) — an interactive entry wants
+ * {@link createWindowPixiApp} instead.
  */
 export async function createPixiApp(
   canvas: HTMLCanvasElement,
@@ -183,15 +197,26 @@ export async function createPixiApp(
   height: number,
 ): Promise<Application> {
   const app = new Application();
+  await app.init({ canvas, width, height, ...APP_OPTIONS });
+  return app;
+}
+
+/**
+ * Initialise a Pixi {@link Application} whose backing store TRACKS the window at a fixed 1:1 pixel
+ * scale. Pixi's resize plugin (`resizeTo: window`) re-sizes the renderer on every window resize, so
+ * with the canvas CSS-sized to the viewport the world never stretches — resizing the window only
+ * grows/shrinks the visible field, exactly like an RTS at native resolution. Interactive entries
+ * (live slice, scenes, gallery) boot through this; read the live size from `app.screen` per frame,
+ * never from a captured constant.
+ */
+export async function createWindowPixiApp(canvas: HTMLCanvasElement): Promise<Application> {
+  const app = new Application();
   await app.init({
     canvas,
-    width,
-    height,
-    background: 0x1a1410,
-    antialias: false,
-    preference: 'webgl',
-    autoDensity: false,
-    resolution: 1,
+    width: window.innerWidth,
+    height: window.innerHeight,
+    resizeTo: window,
+    ...APP_OPTIONS,
   });
   return app;
 }

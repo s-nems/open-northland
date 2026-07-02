@@ -120,11 +120,12 @@ export function createCameraController(canvas: HTMLCanvasElement, initial: Camer
   let lastX = 0;
   let lastY = 0;
 
-  // The canvas is CSS-stretched (`index.html` sizes `#game` to the viewport) while its backing store —
-  // the space the camera works in — is fixed at `canvas.width`×`canvas.height`. So every client (CSS-px)
-  // coord must be scaled into backing px, or a drag pans faster than the cursor and a wheel zoom anchors
-  // off the cursor. `rect` is returned too, so the wheel handler subtracts the canvas origin in CSS px
-  // *before* scaling. Guards a zero-size (unlaid-out) canvas.
+  // Client (CSS-px) coords must land in the backing-store px the camera works in. The live entries now
+  // keep the two 1:1 (`createWindowPixiApp` sizes the backing store to the window, `index.html` CSS-sizes
+  // `#game` the same), so this is normally identity — but it stays exact for any embedding where they
+  // diverge (a fixed-size canvas, a resize event not yet flushed), else a drag pans faster than the
+  // cursor and a wheel zoom anchors off the cursor. `rect` is returned too, so the wheel handler
+  // subtracts the canvas origin in CSS px *before* scaling. Guards a zero-size (unlaid-out) canvas.
   const backingScale = (): { sx: number; sy: number; rect: DOMRect } => {
     const rect = canvas.getBoundingClientRect();
     return {
