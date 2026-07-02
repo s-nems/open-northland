@@ -6,7 +6,7 @@ import {
   galleryBobId,
   galleryCellLayout,
   headBobId,
-} from '../src/animation-gallery.js';
+} from '../src/index.js';
 
 /**
  * The PURE half of the animation gallery — layout, direction count, frame selection, head remap — the part

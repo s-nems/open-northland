@@ -5,7 +5,7 @@ import type { DrawItem, DrawKind, SpriteState } from './scene.js';
  * self-verify, kept separate from the GPU texture binding (the un-self-verifiable pixel half, deferred
  * to a human).
  *
- * Today the GPU layer ({@link import('./pixi-renderer.js').renderScene}) draws each sprite as flat
+ * Today the GPU layer ({@link import('../gpu/pixi-app.js').renderScene}) draws each sprite as flat
  * placeholder geometry because real bob atlases are decoded from a copyrighted game copy and gitignored
  * (see CLAUDE.md "Legal guardrails"). The remaining open render leg is to draw the actual atlas frame
  * instead. That swap has two halves:
@@ -162,10 +162,10 @@ export interface CarryingBinding {
 
 /**
  * A building type's bob reference: either a plain bob id drawn from the **default** building atlas layer
- * (the single shared `ls_houses_viking.house01` layer, {@link import('./pixi-renderer.js').SpriteSheet.kindLayers}'s
+ * (the single shared `ls_houses_viking.house01` layer, {@link import('../gpu/pixi-app.js').SpriteSheet.kindLayers}'s
  * `building` entry), OR a **layer-qualified** `{ layer, bob }` naming WHICH family atlas the bob comes
  * from — the multi-`.bmd` case where a building type lives in its own `.bmd`/palette (e.g. the viking HQ
- * in `ls_houses_viking4.bmd`). A `layer` keys into {@link import('./pixi-renderer.js').SpriteSheet.families};
+ * in `ls_houses_viking4.bmd`). A `layer` keys into {@link import('../gpu/pixi-app.js').SpriteSheet.families};
  * the GPU blits the `bob` from that family's own source + frame-id space (and its per-family scale). A bare
  * number keeps the pre-multi-`.bmd` bindings valid unchanged.
  */
@@ -174,8 +174,8 @@ export type BuildingBobRef = number | { readonly layer: string; readonly bob: nu
 /**
  * A resolved building draw ({@link resolveBuildingDraw}'s output): which `bob` id, and optionally which
  * named atlas-layer family it draws from. `layer === undefined` means the default building layer
- * ({@link import('./pixi-renderer.js').SpriteSheet.kindLayers}'s `building`); a `layer` names a
- * {@link import('./pixi-renderer.js').SpriteSheet.families} entry whose own atlas/source the `bob` indexes.
+ * ({@link import('../gpu/pixi-app.js').SpriteSheet.kindLayers}'s `building`); a `layer` names a
+ * {@link import('../gpu/pixi-app.js').SpriteSheet.families} entry whose own atlas/source the `bob` indexes.
  */
 export interface BuildingDraw {
   readonly bob: number;
@@ -188,7 +188,7 @@ export interface BuildingDraw {
  * {@link byType} maps a building's `buildingType` ({@link DrawItem.typeId}) to its {@link BuildingBobRef};
  * a type absent from it falls back to {@link default} (the representative house). A plain-number ref draws
  * from the shared building atlas layer; a layer-qualified `{ layer, bob }` ref draws from a per-family
- * atlas ({@link import('./pixi-renderer.js').SpriteSheet.families}) — the multi-`.bmd`/per-palette case.
+ * atlas ({@link import('../gpu/pixi-app.js').SpriteSheet.families}) — the multi-`.bmd`/per-palette case.
  */
 export interface BuildingTypeBinding {
   /** Bob ref per building typeId — the `[GfxHouse]` `LogicType` → `GfxBobId` table (optionally layer-qualified). */
@@ -279,7 +279,7 @@ function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
  * slots — so a hauling settler walks the loaded cycle; a *bound* atomic still wins, as a settler only
  * carries after harvesting empty-handed. The chosen {@link SpriteFrameRef} is then resolved through
  * {@link frameOf} (directional + animated when it's a {@link DirectionalAnim}). Pure. Exported so the
- * per-character render path ({@link import('./pixi-renderer.js').SettlerCharacter}) resolves its own
+ * per-character render path ({@link import('../gpu/pixi-app.js').SettlerCharacter}) resolves its own
  * binding through the exact same state machine the single-binding path uses.
  */
 export function resolveSettlerBobId(
@@ -450,8 +450,8 @@ export interface AtlasManifest {
  * Adapt a decoded {@link AtlasManifest} (parsed from a `<name>.atlas.json`) into the in-memory
  * {@link SpriteAtlas} the GPU layer looks frames up in. A thin pure wrapper over {@link indexAtlasFrames}
  * — the seam where a real, decoded bob atlas enters the renderer, the analogue of
- * {@link import('./synthetic-atlas.js').syntheticAtlasFrames} for the synthetic one. The matching atlas
- * *image* is loaded separately on the GPU side ({@link import('./pixi-renderer.js').loadAtlasSource}).
+ * {@link import('../gpu/synthetic-atlas.js').syntheticAtlasFrames} for the synthetic one. The matching atlas
+ * *image* is loaded separately on the GPU side ({@link import('../gpu/pixi-app.js').loadAtlasSource}).
  */
 export function atlasFromManifest(manifest: AtlasManifest): SpriteAtlas {
   return indexAtlasFrames(manifest.width, manifest.height, manifest.frames);
@@ -459,7 +459,7 @@ export function atlasFromManifest(manifest: AtlasManifest): SpriteAtlas {
 
 /**
  * A job-keyed lookup with a **young** (age-class) side table and a total fallback — the shape the
- * per-character settler binding uses ({@link import('./pixi-renderer.js').SettlerCharacterSet}), kept
+ * per-character settler binding uses ({@link import('../gpu/pixi-app.js').SettlerCharacterSet}), kept
  * generic + pure here so the pick is unit-testable without GPU layers.
  *
  * Why two tables: the original's age classes reuse LOW `jobtypes` ids (1..4 = baby/child), and a

@@ -1,15 +1,15 @@
 import { CanvasSource, type TextureSource } from 'pixi.js';
-import type { AtlasFrame, SettlerStateBinding, SpriteAtlas, SpriteBindings } from './sprites.js';
+import type { AtlasFrame, SettlerStateBinding, SpriteAtlas, SpriteBindings } from '../data/sprites.js';
 
 /**
  * A FREE, SYNTHETIC sprite atlas — the texture to bind so the atlas-sprite draw path (the textured
- * sub-rect branch of {@link import('./pixi-renderer.js').renderScene}) is actually exercised end to
+ * sub-rect branch of {@link import('./pixi-app.js').renderScene}) is actually exercised end to
  * end, *without* any copyrighted game data.
  *
  * Real bob atlases are decoded from an owned game copy and gitignored (see CLAUDE.md "Legal
  * guardrails"), so they can't be the default texture in a committed, reproducible harness. This module
  * stands in a tiny hand-authored atlas instead: a few flat coloured marker frames (one per drawable
- * {@link import('./sprites.js').SpriteKind}) drawn procedurally into a canvas. It is NOT art — it's a
+ * {@link import('../data/sprites.js').SpriteKind}) drawn procedurally into a canvas. It is NOT art — it's a
  * proof-of-wiring placeholder that lets a human eyeball that *the textured branch* projects + depth-
  * sorts correctly (frames land at their feet anchor, occlude back-to-front), the one render property
  * that needs an eye. When real bob atlases exist, the same {@link SpriteSheet} shape binds them with

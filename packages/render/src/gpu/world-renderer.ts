@@ -11,16 +11,15 @@ import {
   Texture,
   type TextureSource,
 } from 'pixi.js';
-import type { HudPlacement } from './hud.js';
-import { type Camera, TILE_HALF_H, TILE_HALF_W, tileToScreen } from './iso.js';
-import type { GroundPattern, SpriteLayer, SpriteSheet, TerrainTextureSet } from './pixi-renderer.js';
+import type { HudPlacement } from '../data/hud.js';
+import { type Camera, TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../data/iso.js';
 import {
   type DrawItem,
   type DrawKind,
   type SceneTerrain,
   buildSpriteScene,
   drawableEntityRefs,
-} from './scene.js';
+} from '../data/scene.js';
 import {
   type AtlasFrame,
   type BuildingDraw,
@@ -30,7 +29,7 @@ import {
   resolveConstructionDraws,
   resolveSettlerBobId,
   resolveSpriteBobId,
-} from './sprites.js';
+} from '../data/sprites.js';
 import {
   DIAMOND_INDICES,
   TRIANGLE_A_CORNERS,
@@ -39,8 +38,9 @@ import {
   rectUVs,
   triangleCorners,
   triangleUVs,
-} from './terrain.js';
-import { cameraViewport } from './viewport.js';
+} from '../data/terrain.js';
+import { cameraViewport } from '../data/viewport.js';
+import type { GroundPattern, SpriteLayer, SpriteSheet, TerrainTextureSet } from './pixi-app.js';
 
 /**
  * The RETAINED-mode world renderer — the scalable replacement for the old immediate-mode `renderScene`.

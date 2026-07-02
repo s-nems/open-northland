@@ -139,7 +139,7 @@ export interface DrawItem {
 /**
  * A decoded map's 1:1 per-triangle ground lanes (the `ground` layer of `content/maps/<id>.json`):
  * pattern `EditName`s + each cell's two triangle picks as indices into them. Render-only data — the
- * renderer joins a name through {@link import('./pixi-renderer.js').TerrainTextureSet.groundFor}.
+ * renderer joins a name through {@link import('../gpu/pixi-app.js').TerrainTextureSet.groundFor}.
  */
 export interface SceneGround {
   readonly patterns: readonly string[];
@@ -396,7 +396,7 @@ export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): Draw
 
 /**
  * The depth-sorted SPRITE draw list alone (no terrain) — the per-frame half the retained
- * {@link import('./world-renderer.js').WorldRenderer} consumes. Terrain is static and built ONCE
+ * {@link import('../gpu/world-renderer.js').WorldRenderer} consumes. Terrain is static and built ONCE
  * (`setTerrain`), so it no longer flows through the per-frame path; this emits only the
  * moving/animated entities. Pass a `viewport` to CULL to what the camera frames (an item is kept iff
  * its screen anchor is inside the — already margin-inflated — box); culling changes *which* items are

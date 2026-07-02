@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { reconcileSprites } from '../src/world-renderer.js';
+import { reconcileSprites } from '../src/index.js';
 
 /**
  * Unit test for the retained renderer's one PURE decision — pool bookkeeping — extracted so it is

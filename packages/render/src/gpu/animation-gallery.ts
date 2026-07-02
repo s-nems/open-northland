@@ -8,9 +8,9 @@ import {
   Texture,
   type TextureSource,
 } from 'pixi.js';
-import type { Camera } from './iso.js';
-import type { SpriteLayer } from './pixi-renderer.js';
-import type { AtlasFrame } from './sprites.js';
+import type { Camera } from '../data/iso.js';
+import type { AtlasFrame } from '../data/sprites.js';
+import type { SpriteLayer } from './pixi-app.js';
 
 /**
  * A DATA-DRIVEN animation gallery — the animation twin of the all-buildings catalog, for the character

@@ -1,6 +1,12 @@
 import { Application, Assets, type Texture, type TextureSource } from 'pixi.js';
-import type { ByJobTable, SettlerStateBinding, SpriteAtlas, SpriteBindings, SpriteKind } from './sprites.js';
-import type { CellTexture } from './terrain.js';
+import type {
+  ByJobTable,
+  SettlerStateBinding,
+  SpriteAtlas,
+  SpriteBindings,
+  SpriteKind,
+} from '../data/sprites.js';
+import type { CellTexture } from '../data/terrain.js';
 
 /**
  * The Pixi boot + GPU-input types shared by the renderer. The per-frame drawing moved to the retained
@@ -8,7 +14,7 @@ import type { CellTexture } from './terrain.js';
  * meshed once) — this file keeps only the one-time GPU setup ({@link createPixiApp},
  * {@link createWindowPixiApp}, {@link loadAtlasSource}) and the plain-data input shapes the renderer
  * consumes ({@link SpriteSheet}, {@link SpriteLayer}, {@link TerrainTextureSet}); the {@link Camera}
- * transform moved to {@link import('./iso.js').Camera} alongside the projection math it inverts.
+ * transform moved to {@link import('../data/iso.js').Camera} alongside the projection math it inverts.
  *
  * The atlas *image* comes from a free / synthetic atlas (real bobs are decoded from a copyrighted game
  * copy and gitignored — see CLAUDE.md "Legal guardrails"); the frame *geometry* + *bindings* are plain
@@ -103,7 +109,7 @@ export interface SpriteSheet {
    * Named **building family** atlas layers — the multi-`.bmd` building case. A viking settlement draws
    * its buildings from many `.bmd`s × palettes (`ls_houses_viking`, `ls_houses_viking4`, …), each a
    * separate decoded atlas with its OWN frame-id space, so the single {@link kindLayers}.`building` layer
-   * can't address them all. A {@link import('./sprites.js').BuildingTypeBinding} entry may be
+   * can't address them all. A {@link import('../data/sprites.js').BuildingTypeBinding} entry may be
    * layer-qualified (`{ layer, bob }`); when it names a `layer` present here, the GPU blits its `bob` from
    * THIS family's own `source`+`atlas` (one feet-anchored sprite) instead of {@link kindLayers}.`building`.
    * A plain-number / unqualified building binding (and every non-`building` kind) ignores this map and
@@ -215,7 +221,7 @@ export async function createWindowPixiApp(canvas: HTMLCanvasElement): Promise<Ap
 /**
  * Load a decoded atlas PNG (a `<name>.png` the `.bmd`→atlas build emits) as a Pixi {@link TextureSource}
  * ready to bind as a {@link SpriteSheet.source}. The GPU/pixel twin of the pure
- * {@link import('./sprites.js').atlasFromManifest} — together they turn a decoded `<name>.{png,atlas.json}`
+ * {@link import('../data/sprites.js').atlasFromManifest} — together they turn a decoded `<name>.{png,atlas.json}`
  * pair into a {@link SpriteSheet}. `nearest` scaling keeps the pixel-art bobs crisp and cuts the
  * cross-machine sampling variance (matching {@link createPixiApp}'s antialias-off), so an eyeball-the-PNG
  * check stays meaningful. Real bob atlases are decoded from a copyrighted game copy and gitignored (see

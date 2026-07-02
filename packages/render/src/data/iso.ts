@@ -2,7 +2,7 @@ import { ONE as SIM_ONE } from '@vinland/sim';
 
 /**
  * Isometric projection + the camera transform — the foundational, dependency-light math the rest of
- * `render` builds on. It lives in its OWN module (not the {@link import('./index.js')} barrel) so the
+ * `render` builds on. It lives in its OWN module (not the {@link import('../index.js')} barrel) so the
  * pure scene/terrain/viewport modules and the GPU renderer can import it WITHOUT importing the barrel
  * that re-exports them — the barrel↔module import cycle that used to force a TDZ workaround (a const
  * read before its initializer ran). No Pixi, no canvas, no sim state read back: plain projection.
