@@ -9,9 +9,12 @@ top unchecked milestone. Do the smallest next step toward it; don't build ahead.
 > navigation is a **cell graph** (the triangle grid is a *render* concern); there are **N tribes**,
 > not two. See docs/SOURCES.md and docs/ECS.md.
 
-> **Completed phases are summarized one line each; the full clean-room verification trail (the
-> "Hands-on:" notes) lives in [ROADMAP-ARCHIVE.md](ROADMAP-ARCHIVE.md)** — the executor never reads
-> the archive. `/reflect` sweeps newly-completed items there so the live target stays legible.
+> **Keep this doc lean — it is read every `/iterate`.** A completed item collapses to a one-line
+> summary + `→ [archive]` pointer; its full clean-room "Hands-on:" verification trail goes **straight
+> into [ROADMAP-ARCHIVE.md](ROADMAP-ARCHIVE.md)** (the executor never reads the archive), **not inline
+> here**. Do not let a landed `[x]` accrete its trail onto the live line — that per-iteration habit is
+> the ratchet `/reflect` has had to sweep four times. Detail also survives in git; the live roadmap
+> carries only the current target and what is still open.
 
 ## Phase 0 — Foundation  ✅
 Monorepo; deterministic ECS + scaled-integer fixed-point + seeded RNG + canonical full-state hash +
@@ -53,21 +56,13 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
           `ls_houses_*.bmd` body → atlas (one binding per `GfxPalette`), so `npm run pipeline` produces ALL
           house atlases. → [archive](ROADMAP-ARCHIVE.md). (Render-side per-type frame selection landed as
           render-breadth-ladder rung 1 below.)
-- [x] **Render terrain from real landscape ground textures** — **LANDED 1:1 for decoded maps** (pending the
-      final human pixel sign-off). The map-import slice cracked the `map.dat` lanes: `empa`/`empb` hold the
-      **baked per-triangle `GfxPattern` choice** (the "oracle-blocked pattern algorithm" runs in the EDITOR at
-      author time — the save stores its output), `emla`+`eald` the placed landscape objects, `lmlt` is the
-      logic-OBJECT lane (raw = typeId, 0 = none — the old +1 shift was a bug, fixed). `maps/<id>.json` now
-      carries `ground` + `objects`; the renderer draws per-triangle 1:1 ground (`buildGroundTerrain`), every
-      placed object (trees/stones/mines/palisades/bridges) with loop animation (waves/sway) and translucent
-      wave blending, real graphics ON by default in live mode (`?terrain=off` / `?objects=off` opt-outs).
-      `?map=<id>` is the human sign-off entry (a real-map scene can't be a SceneDefinition — copyrighted
-      content can't enter the headless tests; the `?anim` precedent). Synthetic grids keep the approximated
-      per-family ground (docs/FIDELITY.md). **Open (deferred):** `lmhe` height shading; `emt3`/`emt4` road/
-      house-foundation overlays; per-object growth STATE from map data; `lmpa`/`lmpb` triangle logic types →
-      sim water/walkability + object block-area collision (the extracted `landscapeGfx` footprints are the
-      input); the `fx wave*` engine-fx records (no drawable bob — placeholder `test_effect.bmd`). Data model
-      in docs/SOURCES.md "`map.dat` chunk container" + "Terrain ground graphics + landscape objects".
+- [x] **Render terrain from real landscape ground textures** — **LANDED 1:1 for decoded maps** (pending
+      final human pixel sign-off; → [archive](ROADMAP-ARCHIVE.md)). The `map.dat` lanes decode to per-triangle
+      `GfxPattern` ground + placed objects (`maps/<id>.json` `ground`+`objects`); the renderer draws 1:1 ground
+      + every object with loop animation, real graphics on by default (`?terrain=off`/`?objects=off` opt-outs).
+      `?map=<id>` is the human sign-off entry. **Open (deferred):** `lmhe` height shading; `emt3`/`emt4`
+      road/foundation overlays; per-object growth state; `lmpa`/`lmpb` triangle logic → sim water/walkability +
+      object collision; the `fx wave*` engine-fx records. Data model in docs/SOURCES.md.
 - **Exit:** click to place one workplace; a settler autonomously supplies it via atomics; a carrier
   hauls outputs to a store; the 1000-tick golden hash + trace stay stable. **(Headless slice + golden
   proven; the real-atlas bind + final human pixel check remain.)**
@@ -93,38 +88,15 @@ check, commit. **Render-only** rungs need no pipeline change (the atlas is alrea
 > scene as the exit gate. The listed categories/seqs are the breakdown, not the limit. Rung 2 (landscape
 > variety) and the **other tribes** are **deferred behind the viking set**.
 
-1. [x] **Buildings per-type frame selection** — **LANDED** (single→multi-`.bmd` viking families; human
-   pixel sign-off ✓). Each viking building draws its OWN house bob via a data-pinned `(typeId→bob)` join
-   (`extractBuildingBobs` → `buildingBobs` IR, **336 rows / 6 tribes**) and a layer-aware
-   `BuildingTypeBinding` that resolves the canonical `(family,bob)` per type across viking families (HQ =
-   `ls_houses_viking4` bob 34). The IR extract, render-consumes-join, layer-aware `BuildingBobRef` binding,
-   and the FIRST viking family (HQ + animal farm / druid hut / barracks / tower) all landed →
-   [archive](ROADMAP-ARCHIVE.md). **Remaining:**
-   - [x] **Load the rest of the viking families** (`ls_houses_viking2/3` + the `housemiller01`/`housedruid01`
-     palette-skins) so every viking building (mill, pottery, joinery, smithy, armory, sewery, mason, school,
-     herb hut, temple, …) draws its own bob — added the four families to `BUILDING_FAMILIES` (the single
-     source of truth that drives both `loadLayer` and which rows may layer-qualify) + a `?scene=viking-families`
-     acceptance scene (mill / smithy / armory / temple, one per new family). At this step the few types on the
-     not-yet-loaded `house02` skin (stock / brewery / coin mint) still fell back to the representative house
-     (the next sub-item, now landed, closes them). **Human pixel sign-off ✓ (2026-06-30; the focused viking-families scene has since been consolidated into `?scene=all-buildings`).**
-   - [ ] **Complete the viking building set — the `house02` skin** (stock / brewery / coin mint, the LAST
-     viking types still on the fallback house): **binding LANDED, pending human pixel sign-off.** The two
-     `house02` families are now loaded in `BUILDING_FAMILIES` — `ls_houses_viking.house02` (stock 7/8/9) and
-     `ls_houses_viking2.house02` (brewery 16, coin mint 33) — so the reducer binds all **40** viking
-     `[GfxHouse]` typeIds to their OWN bob with **0 fall-backs** (verified running `buildingBobRefsByType`
-     over the real `ir.json`; the previously signed-off five stay byte-identical). These three types now draw
-     in the consolidated `?scene=all-buildings` gallery. **Pixel sign-off** folds into that scene's single-pass
-     check — confirm stock / brewery / coin mint each draw a distinct, non-placeholder house. → flip to `[x]`
-     once confirmed.
-   - [ ] **Completeness montage (capstone)** — **Exit gate for "EVERY viking building draws its own bob".**
-     **Scene LANDED, pending human pixel sign-off.** `?scene=all-buildings` places all **41** viking building
-     types from the committed catalog (`viking-buildings.ts`) at once, real graphics by default, zoomed to
-     fit — the whole set verifiable in ONE pass so any wrong/placeholder bob is obvious. It replaces the three
-     focused building scenes (building-types / viking-families / viking-house02, now deleted). → flip to `[x]`
-     once the single-pass pixel check is confirmed.
+1. [x] **Buildings per-type frame selection** — **LANDED** (→ [archive](ROADMAP-ARCHIVE.md)): every viking
+   building draws its OWN house bob via a data-pinned `(typeId→bob)` join (`extractBuildingBobs` →
+   `buildingBobs` IR) + a layer-aware `BuildingTypeBinding` across all viking families — all 40 viking
+   `[GfxHouse]` typeIds bind with **0 fall-backs**. **Remaining:**
+   - [ ] **Capstone pixel sign-off (pending):** `?scene=all-buildings` places all 41 viking types at once
+     (real graphics, zoomed to fit) — the single remaining human check that every type (incl. the last three:
+     stock / brewery / coin mint) draws a distinct, non-placeholder house. → flip to `[x]` once confirmed.
    - [ ] **The other tribes** (frank/egypt/saracen/byzantine) — deferred behind the viking set; same
-     machinery, the `buildingBobs` table already covers all 6; a per-tribe (or montage) scene; **human
-     pixel sign-off**.
+     machinery (`buildingBobs` already covers all 6); a per-tribe (or montage) scene; **human pixel sign-off**.
 2. [ ] **Landscape/resource per-type variety** (render-only) — bushes, signs, wonders, harbours + non-yew
    tree species, each via its own `[GfxLandscape]` bob (today every resource is the single yew). Same recipe
    as rung 1 over the already-emitted `extractLandscapeGraphics` atlases (87 landscape types in IR).
@@ -201,36 +173,16 @@ check, commit. **Render-only** rungs need no pipeline change (the atlas is alrea
 **Render performance / scale — retained renderer** (infrastructure, orthogonal to the breadth ladder). The
 immediate-mode `renderScene` churned one Pixi object per tile + per entity **every frame** and crashed the
 tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, thousands of bobs, deep zoom-out).
-- [x] **Retained `WorldRenderer` + culling + stress scene** — persistent scene graph: terrain meshed ONCE
-      (`setTerrain`), sprites pooled by entity id + reused, textures cached per atlas frame, one `app.render()`
-      per frame; pure viewport culling (`viewport.ts`, unit-tested) skips off-screen entities. `?scene=stress-crowd`
-      (256×256, ~2.5k bobs) + a live FPS overlay are the human's perf proof; `?scene=all-buildings` enlarged to a
-      96×96 field.
-- [x] **Terrain chunking + zoom cap (pulled forward)** — terrain is meshed in `TERRAIN_CHUNK_TILES`-square blocks
-      each with a world-space AABB; `WorldRenderer.update` toggles `chunk.container.visible` against the viewport,
-      so **render cost tracks the screen, not the map** (the RTS rule — OpenRA's visible-cell region; see
-      `packages/render/CLAUDE.md`). A whole-map single mesh rasterized off-screen ground every frame; chunking
-      removed that. `MIN_ZOOM` raised to `0.15` — the target is a **battle-scale** view (a big slab of a large
-      map), NOT fitting a whole 256² map on screen; the floor bounds the visible tile + bob count. Whole-map
-      zoom-out would need the LOD rung below.
-- [x] **Measured the real bottleneck — it was the SIM, not the renderer.** Profiling `?scene=stress-crowd`
-      (per-frame `step` vs `snapshot` vs `render`): **render ≈ 1.2 ms, snapshot ≈ 1.5 ms, sim step ≈ 2400 ms**
-      (~480 ms/tick for 2592 idle settlers, 2848 entities total). The stress scene's 1 fps was the sim; a real GPU wouldn't change it.
-      Root cause was a PATTERN, not one bug: `aiSystem` and `jobSystem` each looped every unit and scanned
-      `world.canonicalEntities()` — which `[...alive].sort()`-ed the whole world **per call** → `O(units² · log n)`.
-- [x] **Sim scaling, tier 1 (≈8.5×, 480→57 ms/tick, goldens byte-identical).** (a) `World.canonicalEntities()`
-      **memoized per alive-set generation** (invalidated only by `create`/`destroy`) — one sort per tick, not one
-      per scan; result is shared + read-only. (b) `aiSystem` + `jobSystem` build **per-tick candidate lists**
-      (`canonicalById(world.query(C))`, `systems/shared.ts`) and scan those, not the whole world. jobSystem
-      191→26 ms, aiSystem 450→31 ms. Ascending-id order preserved → identical tie-break winner → determinism holds.
-- [x] **Sim scaling, tier 2 — idle dormancy + same-tile spatial index (goldens byte-identical).** Final result:
-      step **480 → 1.9 ms/tick** at 2848 units (~250×), and the `stress-crowd` browser scene **1 → 92–100 fps** at
-      battle-scale zoom / 120 fps (RAF cap) zoomed in, even on headless SwiftShader. Two determinism-safe moves:
-      (a) **dormancy gate** — `hasHaulableOutput` decides ONCE per tick whether any carrier work exists; if not,
-      idle settlers skip the per-settler `nearestWorkplaceOutput` scan (identical outcome, no per-unit work), so an
-      idle crowd costs ~0. (b) **`TileBuckets`** (`systems/shared.ts`) — a per-tick spatial bucket of entities by
-      tile; `jobSystem`'s "am I standing on a workplace I staff?" adopt-check is now an O(1) same-tile lookup, not a
-      building scan per settler. Both only elide work that provably returns null → same winner → goldens hold.
+- [x] **Retained `WorldRenderer` + viewport culling + terrain chunking** — persistent scene graph (terrain
+      meshed once in `TERRAIN_CHUNK_TILES` blocks toggled against the viewport, sprites pooled, one
+      `app.render()`/frame), so **render cost tracks the screen, not the map**; `MIN_ZOOM 0.15` for a
+      battle-scale view. `?scene=stress-crowd` (256×256, ~2.5k bobs) + FPS overlay are the perf proof. Rules
+      in `packages/render/CLAUDE.md`. → [archive](ROADMAP-ARCHIVE.md).
+- [x] **Sim scaling — the real bottleneck was the SIM, not the GPU: step 480 → 1.9 ms/tick at 2848 units
+      (~250×), goldens byte-identical; stress scene 1 → ~100 fps.** Memoized `canonicalEntities()`, per-tick
+      candidate lists, an idle-dormancy gate, and `TileBuckets` (same-tile O(1)) — each elides only
+      provably-null work so the tie-break winner never changes. Full rationale in `packages/sim/CLAUDE.md`
+      ("Scaling to thousands"). → [archive](ROADMAP-ARCHIVE.md).
 - [ ] **Sim scaling, tier 3 — full ring-search nearest-X** (smaller now; deferred). `TileBuckets` answers same-tile
       in O(1); the remaining gap is "nearest resource/store when it's NOT on my tile" (still `O(idle · candidates)`).
       Extend `TileBuckets` to a grid ring search (expand Manhattan bands from the unit, finish the whole
@@ -258,42 +210,27 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
       the `.ini` nor OpenVikings carries the XP→tier curve, so it is deferred to calibration-by-observation
       (docs/FIDELITY.md).
 - [ ] **JobSystem** — **landed** (→ archive): idle settlers take open, tech-enabled, understaffed jobs
-      (`needforjob`-gated, `systems/jobs.ts`), each bound per-workplace (`JobAssignment{workplace}`),
-      walking to its station, with the demolish path unbinding+idling stranded workers; `vehicletypes`
-      extracted + `jobEnablesVehicle` resolved, and `stockSlots` wired so a carrier's batch is sized by the
-      largest unlocked vehicle (`carrierCarryCapacity`). **Open (recorded deviation):** the carrier→vehicle
-      PAIRING (a per-carrier vehicle entity / cart logistics / per-vehicle carry-filter) is oracle-blocked
-      and deferred to a vehicle-entity slice (docs/FIDELITY.md — *Carrier→vehicle pairing*).
+      (`needforjob`-gated), bound per-workplace (`JobAssignment`), walking to their station; carrier batch
+      sized by the largest unlocked vehicle (`carrierCarryCapacity`). **Open (recorded deviation):** the
+      carrier→vehicle PAIRING (per-carrier vehicle entity / cart logistics / carry-filter) is oracle-blocked
+      (docs/FIDELITY.md — *Carrier→vehicle pairing*).
 - [ ] ConstructionSystem: place → deliver materials → build; **house leveling** → capacity → the
-      births→housing loop. **Substance-complete** (→ [archive](ROADMAP-ARCHIVE.md)): the `homeSize` housing
-      read model; per-level build-cost extracted from `houses.ini` `[GfxHouse]` `LogicConstructionGoods`
-      (`BuildingType.construction`, 53/55 buildings); a `placeBuilding{underConstruction}` site builds when
-      its hold accumulates the cost (`constructionSystem`); the carrier path delivers build materials with no
-      construction-specific transport code (`stockCapacity`'s site branch); an under-construction workshop
-      produces nothing (`productionSystem` gate); a built `home` upgrades a tier when it accumulates the next
-      tier's cost, raising `housingCapacity`, with its own delivery branch; the whole births→housing→upgrade
-      loop proven composing over the real `step()` (`births-housing-upgrade-loop.test.ts`). Inert on the
-      golden (no `home`-kind building). Faithful (build cost is the extracted graphics-table param).
-      **Building ground footprints LANDED (2026-07-02):** the `[GfxHouse]` walk-block / build-block / door
-      cells extracted per typeId (`BuildingType.footprint` + IR `constructionLayers`); free placement with
-      collision + min-distance (`canPlaceBuilding` gates `placeBuilding`), a level-0 house reserves its
-      family's max footprint, buildings walk-block their body from the foundation tick (paths route around),
-      all building interaction happens at the DOOR cell, `built` rises with delivered materials, and the
-      render stacks the `GfxBobConstructionLayer` stages (grey foundation → stages → body) —
-      `?scene=house-placement` is the acceptance scene (docs/FIDELITY.md has the 6 new rows). **Open
-      (deferred):** builder-driven build progress (`constructionworker_Work_Hammer` +
-      `LogicConstructionWorkArea`), the enter-building/hide-worker split incl. `GfxOverlay` OPEN workshops
-      (bakery), the `upgrade=1` construction-layer rows, repath-on-new-foundation.
+      births→housing loop. **Substance-complete + building ground footprints** (→
+      [archive](ROADMAP-ARCHIVE.md), docs/FIDELITY.md): build cost extracted from `[GfxHouse]
+      LogicConstructionGoods`; a `placeBuilding{underConstruction}` site builds as the carrier path delivers
+      materials; a built `home` upgrades a tier on accumulating the next tier's cost; free placement with
+      footprint collision + min-distance, walk-blocking bodies, and door-cell interaction;
+      `?scene=house-placement` signs it off. **Open (deferred):** builder-driven build progress
+      (`constructionworker_Work_Hammer`), the enter-building/hide-worker split (`GfxOverlay` open workshops),
+      repath-on-new-foundation.
 - [ ] **ReproductionSystem** — **landed** (→ [archive](ROADMAP-ARCHIVE.md)): one birth per tribe per tick
-      while `tribePopulation < housingCapacity` (the `populationWithinHousing` invariant); a newborn is the
-      data-pinned youngest age class (`baby_female`), and `growthSystem` ages it baby→child→adult over
-      `GROWUP_TICKS`, then employs it. **Approximated:** birth rate/sex + growth cadence are below the
-      readable `.ini` (docs/FIDELITY.md). Inert on the golden (no `home`-kind content → 0 births).
-- [ ] HUD: stocks, population, jobs, the goods graph. **Landed** (→ archive): the sim-side read views
-      (`tribeStocks`/`tribePopulation`/`tribePopulationByJob`/`goodsGraph`, `systems/shared.ts`) and the
-      render-side HUD chain over the frozen snapshot (`buildHud`→`layoutHud`→`placeHud`→`renderHud`,
-      `packages/render/src/hud.ts` + `pixi-renderer.ts`), overlaid each frame in `main.ts` + `shot.ts`.
-      Pure + total + unit-tested; only the glyph rasterization/typography is left for a human via the shot.
+      while `tribePopulation < housingCapacity` (the `populationWithinHousing` invariant); newborn is the
+      data-pinned youngest age class, `growthSystem` ages it baby→child→adult then employs it. **Approximated:**
+      birth rate/sex + growth cadence are below the readable `.ini` (docs/FIDELITY.md). Inert on the golden.
+- [ ] HUD: stocks, population, jobs, the goods graph. **Landed** (→ archive): sim-side read views
+      (`tribeStocks`/`tribePopulation`/`tribePopulationByJob`/`goodsGraph`) + the render-side HUD chain over
+      the frozen snapshot (`packages/render/src/hud.ts`). Only glyph rasterization/typography is left for a
+      human via the shot.
 - **Open Phase-3 work** is the three **human-gated render items** (the Phase-1 oracle
   pixel-diffs; the Phase-2 real decoded-bob-atlas bind; the Phase-2 real terrain-tile render) — an
   agent cannot self-judge pixels. The
@@ -302,62 +239,37 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
 
 ## Phase 4 — Conflict & content breadth (N tribes)  ← **current target**
 - [ ] CombatSystem from `weapontypes`/`armortypes` (a large subsystem: soldier classes, armor tiers,
-      heroes, amulets/potions — scope it honestly). **Substance landed** (→ [archive](ROADMAP-ARCHIVE.md)):
-      the `combatDamage` `weapontypes`×`armortypes` net-damage join + the full targeting→`attack`(atomic
-      81)→hit→death loop (`combatSystem`/`resolveHit`/`Health` drain/`cleanupSystem`); a combatant resolves
-      its per-class join through a worn `Armor{armorClass}` and can **wield a *specific* worn
-      `Weapon{weaponTypeId}`** overriding the `(tribe,job)` default (both stamped via `spawnSettler{…}`;
-      docs/FIDELITY.md). The data-side **soldier-class→weapon roster join** (`weaponsByJob`/`weaponsForJob`)
-      is landed (see "Import full base"). Faithful (net-damage param + atomic id 81). Inert on the golden.
-      **Open (oracle-blocked, deferred):** walk-into-melee advance, swing cadence, the weapon-good
-      acquire/carry equip drive (which roster weapon a class picks) + the soldier-class→weapon/armor loadout
-      binding (docs/FIDELITY.md).
-- [x] **N data-defined tribes** (viking/frank/saracen/byzantine/egypt), asymmetry expressed through each
-      tribe's atomic bindings + `allow*`/`needfor*` graph — never hardcode "two". **Substance-complete**
-      (→ [archive](ROADMAP-ARCHIVE.md)): all 41 `[tribetype]`s extracted, every per-tribe rule resolved off
-      `settler.tribe`, and `playableTribes`/`isAnimalTribe` split civilizations from animals **by the tech
-      graph alone**. `two-civ-combat.test.ts` runs two playable tribes' **asymmetric** weapon/attack
-      bindings through the real `step()` (mace vs sword), deterministic. A combatant is stamped from the
-      command data (`spawnSettler{hitpoints,armorClass}`); HP magnitude **approximated** (docs/FIDELITY.md).
-      **Open (oracle-blocked, deferred):** tribe-vs-tribe diplomacy/alliances, soldier-class→armor-tier
-      content binding.
-- [x] **Animals as non-controllable tribes** (`animaltypes.ini`: aggression, groups, hitpoints) —
-      **substance-complete** (→ [archive](ROADMAP-ARCHIVE.md)). All 35 creature tribes extracted and
-      **every** field consumed: the aggression inputs drive the `mayAttack` relation / `Anger{until}` timer
-      / `Health` stamp / `mayHunt` predation; animals spawn as herds (`spawnAnimalHerd`/`HerdMember`),
-      fight (jobless animal → weapon-by-tribe, reach honored), a hunter's killing blow yields the carcass's
-      meat (`harvest_cadaver`), and a creature walks at its data-pinned `movespeed` pace (`MoveSpeed` +
-      `movementSystem`, `runspeed` gait stamped inert). Every `animaltypes.ini` field has a sim read view
-      (`herdParams`/`locomotionOf`/`animalHitpoints`/`animalBabyHitpoints`/`isWarrantableAnimal`/
-      `ignoresHousesAnimal`). Proven by `populated-map-combat.test.ts` (deterministic). Faithful to the
-      hitpoint/`movespeed` magnitudes; the scale **direction** + the flee/charge/target/swing-cadence
-      DRIVES are **approximated/deferred** (no oracle; docs/FIDELITY.md "Animal locomotion pace").
+      heroes, amulets/potions — scope it honestly). **Substance landed** (→ [archive](ROADMAP-ARCHIVE.md),
+      docs/FIDELITY.md): the `combatDamage` net-damage join + the full targeting→`attack`→hit→death loop; a
+      combatant wields a worn `Weapon`/`Armor` overriding the `(tribe,job)` default. Faithful (net-damage
+      param + atomic id 81); inert on the golden. **Open (oracle-blocked):** walk-into-melee advance, swing
+      cadence, the equip drive (which roster weapon a class picks) + the soldier-class→loadout binding.
+- [x] **N data-defined tribes** (viking/frank/saracen/byzantine/egypt), asymmetry via each tribe's atomic
+      bindings + `allow*`/`needfor*` graph — never hardcode "two". **Substance-complete** (→
+      [archive](ROADMAP-ARCHIVE.md)): all 41 `[tribetype]`s extracted, every rule resolved off `settler.tribe`,
+      `playableTribes`/`isAnimalTribe` split civs from animals by the tech graph alone; `two-civ-combat.test.ts`
+      runs asymmetric bindings through the real `step()`. HP magnitude approximated (docs/FIDELITY.md). **Open
+      (deferred):** tribe-vs-tribe diplomacy, soldier-class→armor-tier binding.
+- [x] **Animals as non-controllable tribes** (`animaltypes.ini`) — **substance-complete** (→
+      [archive](ROADMAP-ARCHIVE.md)): all 35 creature tribes extracted, every field consumed — aggression
+      drives `mayAttack`/`Anger`/`mayHunt`, animals spawn as herds, fight, and a hunter's kill yields the
+      carcass's meat; each walks at its data-pinned `movespeed`. Proven by `populated-map-combat.test.ts`.
+      Faithful to the hitpoint/`movespeed` magnitudes; the scale DIRECTION + flee/charge/swing DRIVES are
+      approximated/deferred (docs/FIDELITY.md "Animal locomotion pace").
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
-      `fisher_sea`/`trader_sea`/`carpenter ship`, `vehicle_ship`. **First steps landed** (→
-      [archive](ROADMAP-ARCHIVE.md)): the `vehicle_ship` rows + each hold's cargo allow-list + the
-      `logicSize` footprint class classified by the data alone (`shipVehicles`/`vehicleMayCarry`/
-      `vehicleSizeOf` — completing vehicle-record read-view coverage), the ships a tribe has UNLOCKED
-      (`tribeShipsUnlocked`), a placed boat-hull ENTITY carrying a `Stockpile` (`placeBoat`) with its
-      cargo-LOAD gate inherited through `stockCapacity`, the `fisher_sea`/`trader_sea` jobs by the `_sea`
-      suffix (`seaJobs`), and the landscape `allowedon{land,water,everything}` placement-layer triple
-      (`systems/readviews/landscape.ts`). **Open:** water-VALENCY terrain — which CELLS are water is now
-      **decode-UNBLOCKED** (the map-import slice pinned `lmpa`/`lmpb` = per-triangle
-      `trianglepatterntypes` logic ids carrying `iswater`/`humancanwalkon`; a decoded map's ground
-      patterns also carry `logicType` — the remaining work is emitting a water lane + consuming it in
-      `buildTerrainGraph`), boat movement + embark/disembark atomics (no such atomic in the readable
-      `.ini`), and the sea-job BEHAVIOR (a sea worker reaching its station by boat — rides on boat movement).
+      `fisher_sea`/`trader_sea`, `vehicle_ship`. **First steps landed** (→ [archive](ROADMAP-ARCHIVE.md)):
+      the `vehicle_ship` rows + cargo allow-lists + `logicSize` class, a placed boat-hull `Stockpile` entity
+      (`placeBoat`) with its cargo-load gate, the `_sea` jobs, and the landscape placement-layer triple.
+      **Open:** water-VALENCY terrain is now **decode-unblocked** (the map's `lmpa`/`lmpb` per-triangle logic
+      ids carry `iswater`/`humancanwalkon`; remaining work is emitting a water lane + consuming it in
+      `buildTerrainGraph`); boat movement + embark/disembark atomics (no such atomic in the readable `.ini`);
+      the sea-job BEHAVIOR (rides on boat movement).
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).
-      **Substance-complete** (→ [archive](ROADMAP-ARCHIVE.md)): the mod ships NO overriding base
-      `Data/logic` type tables (verified on disk), so there is no logic-table overlay merge; the pipeline
-      reads each rule table from its single readable source. The mod's readable overlays are all landed —
-      the `jobgraphics.ini` cart/ship recolours (`resolveGraphicsBindings`), the `houses.ini` per-level
-      build cost (`extractConstructionCosts`, the only balance datum, 53/55), and the `types/weapons.ini`
-      weapon fields (`goodType`/`mainType`/`weight`/`munitionType`/`damageType`/`jobType`). Every
-      extracted field on the weapon/armor, atomic-animation, vehicle, landscape-placement, and animal
-      tables now has a **sim read view** (the data-extraction vein, exhausted; the full per-table
-      inventory is in the archive). **Open:** the behaviours those read views seed are all oracle-blocked
-      (no mechanics oracle — docs/FIDELITY.md); the file's graphics/coords + render-side timing/cue
-      channels are render-atlas overlays.
+      **Substance-complete** (→ [archive](ROADMAP-ARCHIVE.md)): the mod ships NO overriding base logic tables
+      (so no overlay merge); its readable overlays are all landed (jobgraphics recolours, the `[GfxHouse]`
+      build cost, the `weapons.ini` fields), and every extracted field on the weapon/armor/atomic-animation/
+      vehicle/landscape/animal tables now has a sim read view — the data-extraction vein is exhausted.
+      **Open:** the behaviours those read views seed are all oracle-blocked (docs/FIDELITY.md).
 - **Exit:** N tribes can coexist/fight; sea travel works; most content types represented.
 
 ## Phase 5 — Campaigns, polish, platform
@@ -375,25 +287,17 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
       pause/speed/disconnect as logged commands.
 
 ## Cross-cutting DX (modern wins — the deterministic core makes these cheap)
-- [ ] **Run the sim in a Web Worker.** Move `step()` off the main thread (it's pure/headless/deterministic)
-      so render stays 60fps under heavy ticks. **Transferability PINNED** → [archive](ROADMAP-ARCHIVE.md): a
-      real `step()`-driven `WorldSnapshot` round-trips through `structuredClone`/`postMessage` deep-equal +
-      byte-identical (no functions/class instances/live `Map`s). **Open:** the app-side Worker wiring (host↔
-      worker protocol, render reading the transferred snapshot) — an `app`/`render` concern.
-- [ ] **Time-travel / replay inspector.** Scrub ticks, diff state between two ticks, dump an entity —
-      "hash diverged at tick N → jump there → inspect." **Headless core fully landed** →
-      [archive](ROADMAP-ARCHIVE.md): pure `replay()` (exact state at any tick), the `HashTrace` ring buffer +
-      `divergedFrom` (localize the first split without re-replaying), `diffSnapshots`, `dumpEntity`/
-      `traceEntity`, `localizeDivergence` (the end-to-end diverged-at-N→diff workflow), and `scrubWindow` (a
-      contiguous snapshot window in one forward pass) — all oracle'd by `hashState()` byte-equality. **Open:**
-      the dev OVERLAY wiring scrub/diff/dump into UI (a `render` concern, human-eyed).
+- [ ] **Run the sim in a Web Worker.** Move `step()` off the main thread so render stays 60fps under heavy
+      ticks. Snapshot transferability is PINNED (→ [archive](ROADMAP-ARCHIVE.md); `structuredClone` round-trip
+      test). **Open:** the app-side Worker wiring (host↔worker protocol, render reading the transferred snapshot).
+- [ ] **Time-travel / replay inspector.** Scrub ticks, diff state between two ticks, dump an entity. **Headless
+      core landed** (→ [archive](ROADMAP-ARCHIVE.md)): `replay()`, `HashTrace`/`divergedFrom`, `diffSnapshots`,
+      `dumpEntity`/`traceEntity`, `localizeDivergence`, `scrubWindow` — all hash-oracle'd. **Open:** the dev
+      OVERLAY wiring it into UI (a `render` concern).
 - [ ] **Content hot-reload.** Wire Vite HMR to re-parse validated content JSON and rebase the sim on file
-      change → instant balance-tweak feedback, no rebuild. **Headless core landed** →
-      [archive](ROADMAP-ARCHIVE.md): pure `rebaseContent(raw, {seed,map?,log,untilTick?})` validates via
-      `parseContentSet` and replays the command log into a fresh sim under the new rules (same history, new
-      rules); bad content returns a typed error without touching shared stores. Reversible + deterministic,
-      dual-oracle'd by hash. **Open:** the Vite-HMR glue that watches the file and calls this (an `app`/
-      `render` concern), plus a future-ticks-only reload policy.
+      change → instant balance feedback. **Headless core landed** (→ [archive](ROADMAP-ARCHIVE.md)): pure
+      `rebaseContent(...)` replays the command log under new rules (reversible, deterministic, hash-oracle'd).
+      **Open:** the Vite-HMR glue that watches the file + a future-ticks-only reload policy.
 
 ## Risks & open unknowns (watch these)
 

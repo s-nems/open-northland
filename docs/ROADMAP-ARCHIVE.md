@@ -5,9 +5,12 @@ the live [ROADMAP.md](ROADMAP.md)). It preserves the clean-room verification tra
 "**Hands-on:**" notes) for every landed slice, so the live roadmap can stay lean without losing the
 evidence. New completed items are swept here from `ROADMAP.md` during `/reflect`'s doc-bloat pass.
 
-For the live plan and the current target, see [ROADMAP.md](ROADMAP.md). The phase/item text below is
-preserved **verbatim** as it stood when each slice landed (so a stale aside like Phase 2's
-"← first real target" marker is a historical snapshot, not the current target).
+For the live plan and the current target, see [ROADMAP.md](ROADMAP.md).
+
+**One entry per roadmap item, filed under its phase — a re-sweep UPDATES that entry in place, it never
+appends a new dated "Nth doc-bloat pass" section.** (Appending is what triplicated Animals / Combat /
+N-tribes / Construction across three parallel narratives.) Keep the final golden hash + the one headline
+verified number; drop superseded intermediate hashes and re-explanation — git history is the full record.
 
 ---
 
@@ -382,70 +385,6 @@ is here, not later** — core types (`housetypes`, `weapontypes`, `trianglepatte
 ## Phase 2 — Vertical slice (prove the sim)  ← **first real target**
 Goal: one tribe, headless-correct, then on screen. Establish the invariants that the rest depends on.
 
-> **TL;DR (live target).** The slice runs end-to-end and deterministic: terrain cell-graph → A\* →
-> movement → the atomic planner (harvest→carry→pileup) → one workplace with capacity → the carrier
-> (haul workplace outputs to a store) → **CommandSystem (the mutation seam) + the snapshot read-view**
-> → the **golden state-hash + atomic-action trace over 1000 ticks** are all built and green. The
-> **pure depth-sort scene layer** (snapshot → iso draw list, sprites sorted by feet anchor) is now
-> built and unit-tested too, and the **GPU draw + `npm run shot` screenshot harness** (a Pixi
-> renderer consuming the draw list + a deterministic headless `?shot` entry + a committed Playwright
-> script) now produces a reproducible PNG — eyeballed gross-correct (iso terrain behind feet-sorted
-> sprites), pixel fidelity still deferred to a human. **The terrain-graph decode chain is now fully
-> closed:** `map.dat` `hoix` container → `pck`/`X8el` layer unpack → `lmltToTerrainMap` (the `lmlt`
-> 4-corner landscape-type lane reduced to one per-cell typeId) → the sim's `buildTerrainGraph`, proven
-> hands-on on real maps (`oasis_o_plenty` 250×250 → a 62500-cell graph). **That chain is now wired into
-> the CLI** — `npm run pipeline` emits a per-map `TerrainMap` to `content/maps/<id>.json` (130 grids on
-> the real game; all 125 distinct files load through the real `buildTerrainGraph`, 0 failures, after
-> fixing the 0-based→1-based `lmlt`→IR-typeId seam). **And that grid now loads INTO the sim:**
-> `parseTerrainMap` (the `@vinland/data` loader/validator boundary) reads a `content/maps/<id>.json`
-> into the structural `TerrainMap`, and `scenario(content, { map })` / `new Simulation({ map })` build
-> the cell-graph from it in place of the synthetic grass grid — proven hands-on by feeding the real
-> emitted `oasis_o_plenty.json` (250×250 = 62500 cells) through the loader into a real terrain graph
-> and stepping the sim deterministically over it. **The `map.dat` packed-layer decode chain is now
-> complete:** the `X6el` `empa`/`empb` 2-byte entity-ownership layers are decoded too
-> (`unpackX6elLayer` — same inner header as X8el, the RLE family over little-endian u16 elements;
-> verified across all 130 real maps, 260 layers, 0 mismatches, all round-trip byte-exact). What the
-> ownership ids *mean* is a Phase-5 layer. **The map→scene seam is now in place:**
-> `terrainMapToScene` (`packages/render/src/scene.ts`) projects a loaded `TerrainMap` (the
-> `parseTerrainMap` shape) straight onto the renderer's `SceneTerrain`, varied landscape typeIds and
-> all, and the vertical-slice demo's terrain is derived through it (no hand-duplicated grid).
-> **And the shot/dev entry now LOADS an actual `content/maps/<id>.json`:** `?map=<id>` (the gitignored
-> repo-root grids bridged to `/maps/<id>.json` by a vite dev-server middleware; `loadTerrainMap`
-> fetches + `parseTerrainMap`-validates) draws a real decoded grid behind the slice sprites, falling
-> back to the synthetic strip when absent — proven hands-on by `npm run shot -- --map mroczny_swiat_sub2`
-> (a real 50×50 grid → a 2500-tile PNG, 0 page errors).
-> **And the SIM now navigates a loaded map too:** `runSlice(seed, ticks, map?)` (`vertical-slice.ts`),
-> when handed a loaded `TerrainMap`, places the slice's six entities (HQ, sawmill, woodcutter, carrier,
-> two wood nodes) on the **first walkable cells of the real grid** (canonical row-major order) instead
-> of the hardcoded 6×1 strip, and folds the grid's landscape typeIds into the synthetic demo content
-> (each declared walkable) so `buildTerrainGraph` builds the cell-graph over it without a content gap.
-> Both `shot.ts`/`main.ts` pass the loaded map to the sim AND the renderer, so `?map=<id>` now runs the
-> slice ON the decoded grid. Proven hands-on by loading the real `content/maps/cn_1.json` (50×50 = 2500
-> cells, typeIds {1,2,16,24,45,48}) → a 2500-cell terrain graph, the 6 entities spread across real cells
-> ((38,19),(13,20),(22,7),…), deterministic over 100 ticks (`be0e8d14`).
-> **And the textured-sprite branch is now exercised end to end with a FREE synthetic atlas:**
-> `synthetic-atlas.ts` (`packages/render`) stands in a tiny hand-authored atlas — one flat-colour
-> marker frame per drawable kind (settler/building/resource), the *frame geometry* pure + unit-tested
-> (`syntheticAtlasFrames`/`SYNTHETIC_BINDINGS`), the canvas→`CanvasSource` texture the human-judged
-> pixel half — so the renderer's textured branch can be bound *without* copyrighted bobs. The shot/dev
-> entry binds it behind `?atlas` (`npm run shot -- --atlas`); the default stays placeholder geometry
-> (byte-reproducible). Eyeballed gross-correct: textured atlas sprites at their feet anchors, depth-
-> sorted, iso terrain behind — distinct pixels from the placeholder default. Real bob atlases bind
-> through the same `SpriteSheet` shape with no renderer change.
-> **The per-state sprite binding now lands:** `buildScene` derives each settler's coarse
-> {@link SpriteState} (`idle`/`moving`/`acting`, from `CurrentAtomic`/`PathFollow`) + carries the acting
-> `atomicId` (the `setatomic` join key) onto its `DrawItem`, and `SpriteBindings.settler` may now be a
-> `SettlerStateBinding` (`idle`/`moving`/`acting` bob ids + a `byAtomic` per-atomic override) so
-> `resolveSpriteFrame` picks the *right* frame per state, falling back idle←moving/acting and a plain
-> number staying valid (back-compat). The free synthetic atlas binds three distinct settler markers
-> (idle off-white / moving blue / acting warm), so `?atlas` exercises the per-state path end to end —
-> eyeballed gross-correct (a walking settler draws its blue marker, not the idle one).
-> **Next smallest step:** bind a REAL decoded bob atlas through the same `SpriteSheet` shape and
-> populate the `setatomic`→bob `byAtomic` table from the extracted tribe bindings (gated on an owned
-> game copy + a human eyeballing the pixels via the OpenVikings oracle). (A "per-type walk-cost field"
-> is *not* a pending step: `landscapetypes.ini` has no movement weight — only `maximumValency` +
-> placement flags — so uniform unit cost is faithful.) Lines tagged *(core done…)* pass tests today but
-> await one wiring piece.
 - [x] **CommandSystem + serializable command schema** — the ONLY way state mutates. Done —
       `systems/command.ts` (`commandSystem`, first in `SYSTEM_ORDER`) drains a per-sim
       {@link CommandQueue} (`commands.ts`) each tick and applies each serializable {@link Command}
@@ -1172,17 +1111,6 @@ Swept from ROADMAP.md during the doc-bloat reflection pass. These items stay **o
 roadmap (each carries an oracle-blocked or human-gated deferral); their full landed-narrative is
 preserved here so the live item can read as a one-line summary. Text is verbatim as it stood when swept.
 
-- [ ] **ProgressionSystem** — experience + tech graph. **Landed** (→ archive): `humanjobexperiencetypes`
-      XP extract + accrual; `jobEnables{House,Good}` placement/production gates wired; the
-      `{need,train}for{job,good}` extract + the `needfor*` read side + the `needforgood` harvest gate +
-      the `needforjob` job-assignment gate (consumed by the JobSystem slice below).
-      **Next:** interpret `baseRepeatCounter` into the multi-tier competence curve (output quality/speed
-      by XP tier) — **blocked on an oracle**: the XP→tier→output curve is in neither the `.ini` (no
-      `level`/`tier` field; `baseRepeatCounter` is on only 3/70 records) nor OpenVikings (its sim is a
-      stub), so interpreting it now would be invented, not faithful; deferred until calibration-by-observation
-      against the running original (see docs/FIDELITY.md). **All four `jobEnables` edge kinds are now
-      consumed** (`house` placement / `good` production / `vehicle` carry-capacity / `job` assignment),
-      so the tech-graph read side is complete; only the XP→tier competence curve remains oracle-blocked.
 - [ ] **JobSystem** — assignment **landed** (idle settlers take open, tech-enabled, understaffed
       workplace jobs, gated by `needforjob` XP — `systems/jobs.ts`), each is **bound to its workplace**
       (the `JobAssignment{workplace}` record — understaffing is now per-building, so two same-type
@@ -1214,17 +1142,6 @@ preserved here so the live item can read as a one-line summary. Text is verbatim
       edge) is consumed, the divergence is knowable, and the faithful path is named, deferred to a
       vehicle-entity slice once an oracle exists. With that decision recorded, the JobSystem has no
       remaining *unrecorded* unmodelled behavior.
-- [ ] ConstructionSystem: place → deliver materials → build; **house leveling** (`home level 00..04`)
-      → population capacity → the births→housing→births loop. **Housing read model landed** — the
-      `homeSize` param (`logichousetype` `logichomesize`: home level 00→1 … 04→5) is extracted into the
-      `BuildingType` IR, and `housingCapacity`/`tribePopulation` (`systems/shared.ts`) are its first sim
-      consumer: the ceiling-vs-count the births loop gates on (births are now wired — the
-      ReproductionSystem below). **Material-delivery half is source-blocked:** `houses.ini` carries NO
-      build-cost/material key (only `logicstock`/`logicworker`/`logicproduction`/`logichomesize`), so
-      "deliver materials → build" has no readable oracle (the cost lives below the `.ini`) and is
-      deferred; for now a placed building is immediately built (`built = ONE`). **Next:** house
-      *leveling* (`home level 00..04` raising capacity) — blocked on the same below-`.ini` upgrade-cost
-      source as material delivery, so deferred together.
 - [ ] **ReproductionSystem** — birth **landed** (`systems/reproduction.ts`): one settler per tribe per
       tick while `tribePopulation < housingCapacity` — the first WRITER of the housing read model, born a
       **baby** at the tribe's lowest-id built `home` tile. The cadence IS the gate (deterministic, no RNG,
@@ -1425,6 +1342,7 @@ is preserved here verbatim so the live item can read as a one-line summary.
       real **multi-civilization** scenario exercising two playable tribes' asymmetric bindings end-to-end (the
       asymmetry is in the data; a scenario proves the sim runs it) — or the hunter's `harvest_cadaver`
       (atomic 33) follow-up that yields meat from a felled animal.
+      **Later-landed (folded here when the Phase-4 re-sweep was deduped):** the `harvest_cadaver` follow-up above is now LANDED — a hunter's killing blow on `catchable` prey yields the carcass's meat (`cadaverYieldOf` `maximumcadaversize` meat → the slayer's back, good 21). Locomotion is surfaced as a pure read view (`locomotionOf` — `movespeed`/`runspeed`), and the **walk-pace mechanic LANDED** (the `MoveSpeed{perTick}` component + `movementSystem`: a creature whose record sets `movespeed` walks `ONE/movespeed` tile/tick — a boar's `movespeed 8` grazes at 0.125 vs the 0.25 settler default; the direction of the scale, larger = slower, is the one approximation, docs/FIDELITY.md). A `runspeed` also stamps the faster `MoveSpeed{runPerTick}` gait (inert until the deferred flee/charge drive).
 
 ### CombatSystem from `weapontypes`/`armortypes` — substance landed (refinements deferred)
 - [ ] CombatSystem from `weapontypes`/`armortypes` (a large subsystem: many soldier classes, armor
@@ -1502,6 +1420,7 @@ is preserved here verbatim so the live item can read as a one-line summary.
       aggression/hitpoints/groups model that drives civ-vs-animal combat), and/or seed a real
       **multi-civilization** scenario/slice exercising two playable tribes' asymmetric bindings
       end-to-end (the asymmetry is in the data; a scenario proves the sim runs it).
+      **Later-landed (folded here when the Phase-4 re-sweep was deduped):** the **multi-civilization scenario** above now runs end-to-end (`two-civ-combat.test.ts`: two playable tribes with **asymmetric** weapon + `setatomic 81` swing bindings fight through the real `step()` — mutual, a frail side felled+reaped, deterministic). A civilization becomes a combatant **from the command data** — `spawnSettler{hitpoints}` stamps a `Health` pool (Settler-side Health stamping; HP magnitude approximated, docs/FIDELITY.md), and an optional `Armor{armorClass}` (`spawnSettler{armorClass}`) so a hit resolves the per-class `weapontypes`×`armortypes` net-damage join against the worn class rather than always class 0. **Open (oracle-blocked):** tribe-vs-tribe diplomacy/alliances and the soldier-class→armor-tier content binding.
 
 ---
 
@@ -1581,83 +1500,6 @@ the live item can read as a one-line summary again.
       haul the next-tier cost in, it **upgrades** to level-1 (cap 5), and births fill the new slots (3 total =
       the L1 ceiling), invariant never breached, deterministic. Surfaced that every settler (carriers included)
       is a housed mouth (`tribePopulation` counts all), so a settlement seeds workers UNDER capacity.
-
-### Phase 3 — ReproductionSystem — landed
-- [ ] **ReproductionSystem** — **landed** (→ archive): one birth per tribe per tick while
-      `tribePopulation < housingCapacity` (deterministic cadence, the `populationWithinHousing` invariant);
-      a newborn is the data-pinned youngest age class (`baby_female`), `systems/ageclass.ts` recognizes the
-      non-working age classes (ids 1–4), and `growthSystem` ages a born settler (the `Age` component)
-      baby→child→adult over `GROWUP_TICKS`, sex preserved, then employs it. **Approximated:** birth
-      rate/sex + growth cadence are below the readable `.ini` (docs/FIDELITY.md). Inert on the golden (no
-      `home`-kind content → 0 births).
-
-### Phase 4 — CombatSystem (`weapontypes`/`armortypes`) — substance landed
-- [ ] CombatSystem from `weapontypes`/`armortypes` (a large subsystem: soldier classes, armor tiers,
-      heroes, amulets/potions — scope it honestly). **Substance landed** (→ [archive](ROADMAP-ARCHIVE.md)):
-      `armortypes` extracted + the `combatDamage(content)` read view (the verbatim `weapontypes`×`armortypes`
-      net-damage join, all 105 weapons, out-of-table classes treated unarmored); the full
-      targeting→`attack`(atomic 81)→hit→death loop (`combatSystem` + the `resolveHit`/`Health{hitpoints}`
-      drain + `cleanupSystem` reaping a 0-HP entity, `settlerDied` emitted). Faithful (net-damage param +
-      atomic id 81). **Armor-on-a-settler now LANDED:** a combatant may wear an `Armor{armorClass}` tier
-      (stamped via `spawnSettler{armorClass}`), and a hit resolves the per-class `damage[targetClass] −
-      blockingValue` join, not always class 0 (docs/FIDELITY.md "Settler-side Armor stamping"). **Deferred
-      refinements** (walk-into-melee advance, swing cadence, soldier-class→armor binding — ride on later
-      items + an oracle; docs/FIDELITY.md). Inert on the golden (no settler carries `Health`/`Armor`).
-
-### Phase 4 — N data-defined tribes — substance-complete
-- [x] **N data-defined tribes** (viking/frank/saracen/byzantine/egypt), asymmetry expressed through each
-      tribe's atomic bindings + `allow*`/`needfor*` graph — never hardcode "two". **Substance-complete**
-      (→ [archive](ROADMAP-ARCHIVE.md) for the scaffolding narrative): all 41 `[tribetype]`s extracted, every
-      per-tribe rule resolved off `settler.tribe` (tribe-agnostic by construction), and the
-      `playableTribes`/`isPlayableTribe`/`isAnimalTribe` read views distinguish controllable civilizations
-      from animals **by the tech graph alone** (only a civilization carries `jobEnables` edges) — wired into
-      combat targeting so a civ doesn't mis-fire the PvP rule on wildlife. The **multi-civilization scenario
-      now runs end-to-end** (`two-civ-combat.test.ts`): two playable tribes wielding **asymmetric** weapon +
-      attack-animation bindings fight each other through the real `step()` schedule — each resolves ITS OWN
-      `weapontypes` damage/reach + `setatomic 81` swing duration off `settler.tribe` (viking mace 50/reach2/dur4
-      vs saxon sword 30/reach3/dur6), the fight is mutual, a frail side is felled+reaped, and the skirmish is
-      deterministic. The asymmetry is purely in the data; a real N-tribe set is the same shape with more rows.
-      **Settler-side `Health` stamping now LANDED:** a civilization becomes a **combatant FROM THE COMMAND
-      DATA** — `spawnSettler{hitpoints}` stamps a `Health` pool through the one mutation seam (the settler
-      analogue of `spawnAnimalHerd`'s `hitpoints_adult`), so a fighter no longer needs a test reaching into
-      the world; omitting `hitpoints` leaves a non-combatant (golden untouched). The HP **magnitude is
-      approximated** — humans' hitpoints are below the readable `.ini` (the engine manages them via
-      `atomicanimations` CHANGE_HITPOINTS events; docs/FIDELITY.md "Settler-side Health stamping").
-      **Settler ARMOR now LANDED:** a combatant carries an optional `Armor{armorClass}` (stamped via
-      `spawnSettler{armorClass}`), and a hit resolves the per-class `weapontypes`×`armortypes` net-damage
-      join against the target's worn class rather than always class 0 (docs/FIDELITY.md "Settler-side Armor
-      stamping"). **Open (oracle-blocked, deferred):** tribe-vs-tribe diplomacy/alliances, and the
-      soldier-class→armor-tier content binding (which job/unit wears which class — caller-supplied for now).
-
-### Phase 4 — Animals as non-controllable tribes — substance-complete (locomotion)
-- [x] **Animals as non-controllable tribes** (`animaltypes.ini`: aggression, groups, hitpoints) —
-      **substance-complete** (→ [archive](ROADMAP-ARCHIVE.md) for the full landed-narrative). The
-      `animaltypes.ini` table (35 creature tribes, keyed on `tribetype`) is extracted, and **every**
-      aggression input is consumed: `aggressive`/`cannotbeattacked` (the `mayAttack` civ⇄animal hostility
-      relation), `getAngry`/`angryGameTime` (the provoked-anger `Anger{until}` timer), `hitpoints_adult`
-      (the `Health` stamp), `catchable` (the hunter-strike predation relation `mayHunt`, the real
-      provocation source). Animals spawn as herds (`spawnAnimalHerd` + the `seedAnimalHerds` map
-      populator + the `HerdMember` follow-the-leader drive), do damage (jobless animal → weapon-by-tribe),
-      and a weapon's `[minRange,maxRange]` reach band is honored. A hunter's **killing blow on catchable
-      prey now yields the carcass's meat** (the `harvest_cadaver` payoff: `cadaverYieldOf` `maximumcadaversize`
-      meat → the slayer's back, good 21). End-to-end proven by `populated-map-combat.test.ts`
-      (seed→combat→hit→death, deterministic). The herd/spawn (`herdParams`) AND locomotion
-      (`locomotionOf` — `movespeed`/`runspeed` as `{walkSpeed,runSpeed}`) params are surfaced as pure
-      one-call read views off the already-extracted IR (9/35 real animals set `movespeed`, 5/35 a
-      `runspeed`; null for a civ/unknown). **Walk-pace mechanic now LANDED** (→ the `MoveSpeed{perTick}`
-      component + `movementSystem`): a spawned creature whose record sets `movespeed` walks at its own
-      data-pinned pace (`ONE/movespeed` tile/tick — a boar's `movespeed 8` grazes at 0.125 vs the settler
-      default 0.25), the first consumer of `locomotionOf`; one whose record omits it keeps the universal
-      pace (golden untouched). Faithful to the `movespeed` magnitude; the **direction of the scale**
-      (larger = slower, the only reading consistent with `runspeed < movespeed`) is the one approximation,
-      recorded in docs/FIDELITY.md. **Run gait now STAMPED on the entity** (→ `MoveSpeed{runPerTick}`): a
-      creature with a `runspeed` also carries `runPerTick = ONE/runspeed` (the *faster* gait; null when
-      omitted) — the data landed on the entity ("data before its consumer", as `Armor`/`cargoGoods`) so
-      the deferred flee/charge drive is a pure read-switch, not a re-extraction. The mover still reads only
-      the walk pace, so the field is **inert today**; the flee/charge DRIVE (*when* an animal runs vs walks)
-      is undocumented "soul" behaviour with no oracle, deferred (docs/FIDELITY.md "Animal locomotion pace").
-      Target-acquisition / swing-cadence / in-place-strike / separate-walk-to-corpse-`harvest_cadaver`-atomic
-      approximations also in docs/FIDELITY.md.
 
 ### Phase 4 — Sea/Northland identity — first steps landed
 - [ ] **Sea/Northland identity:** water valency, boats as mobile stores, embark/disembark atomics,
@@ -1838,7 +1680,7 @@ the unchecked next steps; the full clean-room evidence is below.
       ground tile. Steps 1/2/4/5 done; step 3 (per-cell variety) deferred. **Known gap:** no map's `lmlt`
       decodes a water typeId, so water never shows (the water surface is map-decode-blocked, ROADMAP Phase 4
       Sea/Northland). Data model in docs/SOURCES.md "Terrain ground graphics + landscape objects".
-  1. ✅ **Pipeline — patterns + triangle types.** `extractPatterns`/`extractTrianglePatternTypes`
+  1. [x] **Pipeline — patterns + triangle types.** `extractPatterns`/`extractTrianglePatternTypes`
      (`decoders/ini.ts`) → zod `GfxPattern`/`TrianglePatternType` IR (`packages/data`), unit-tested. `id`
      is the **0-based position** in the `GfxPattern` list (no explicit id field — the extractor keeps every
      record so ids stay contiguous). Hands-on against the real game `.cif`: **927 patterns** (ids 0..926, 56
@@ -1847,21 +1689,20 @@ the unchecked next steps; the full clean-room evidence is below.
      `type` (the `logicType` cross-ref is sound). Faithful extraction (docs/FIDELITY.md "ground-graphics
      tables"); the 56 `text_*.pcx` already decode (pcx stage) — no new decoder. **Not yet wired into the
      ContentSet / `npm run pipeline` emit — that is step 2's "emit the table to IR".**
-  1. ✅ — see the extraction note in the archive trail above (kept terse here).
-  2. ✅ **Pipeline — typeId→pattern map (approximated).** `buildTerrainPatterns` (`decoders/ini.ts`) classifies
+  2. [x] **Pipeline — typeId→pattern map (approximated).** `buildTerrainPatterns` (`decoders/ini.ts`) classifies
      each landscape typeId by name (`water`→water, `rock`/`stone`→mountain, else→land), binds it to ONE
      representative `GfxPattern` per family (shortest-seed-name pick: `water 01`/`meadow 01`/`mountain 01`) +
      the logic-type `debugColor`, emitted as the `TerrainPattern` IR (`ContentSet.terrainPatterns`) by `npm
      run pipeline`. Hands-on: **87 rows** (land 82 / water 1 / mountain 4). Approximation recorded in
      docs/FIDELITY.md. Commit `8960db6`.
-  3. ⏸️ **Pipeline — per-cell variety (DEFERRED).** Use `lmpa`/`lmpb` (0..10) as a variant index into the
+  3. [ ] **Pipeline — per-cell variety (DEFERRED).** Use `lmpa`/`lmpb` (0..10) as a variant index into the
      type's pattern family; emit those lanes beside `typeIds`. Skipped for the MVP (uniform-per-type ships).
-  4. ✅ **Render — textured ground.** `terrain.ts` (pure UV/diamond geometry, unit-tested) + `pixi-renderer.ts`
+  4. [x] **Render — textured ground.** `terrain.ts` (pure UV/diamond geometry, unit-tested) + `pixi-renderer.ts`
      `buildTerrainLayer`: one **batched `Mesh` per texture page** (all same-page cells in one positions/uvs/
      indices buffer — far cheaper than the per-cell flat-diamond it replaces), the pattern's `GfxCoords`
      bbox → the tile's UV sub-rect, with a `debugColor` flat-diamond fallback for unbound cells. Commit
      `4c141bc`.
-  5. ✅ **App + shot.** `?terrain` flag (`real-terrain.ts` loads the table + `text_*.png` pages over new
+  5. [x] **App + shot.** `?terrain` flag (`real-terrain.ts` loads the table + `text_*.png` pages over new
      `/ir.json` + `/textures` vite routes), wired through `main.ts` + `shot.ts` + `npm run shot --terrain`.
      Human pixel-check **done** (a `wilczy_lad_sub` shot shows real grass + rock). The only 1:1 oracle is the
      running original game (a later human-driven calibration). Commit `4c141bc`.

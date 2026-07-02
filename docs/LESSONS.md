@@ -12,6 +12,9 @@ the next iteration inherits it.
 **Contract.**
 - Format: `- [<sha>] <lesson> — <fix/why> (<area>)`. Ground every entry in the commit that taught it.
 - Keep it lean: most steps add nothing. Add a line only when re-learning it would cost real time.
+- **Before adding, scan for an existing entry on the same trap and *extend* it — don't append a
+  near-duplicate.** If you've hit the same trap a third time, it's a rule: graduate it to
+  `CLAUDE.md` / `packages/sim/CLAUDE.md` and leave one line here.
 - Curation (a `/reflect` duty): promote a recurring / rule-worthy lesson into `CLAUDE.md` and prune
   it here; drop entries the code has made obsolete. This is the anti-bloat valve.
 
@@ -31,11 +34,6 @@ the next iteration inherits it.
 - [9a497c9] `npm run build` (tsc) only compiles `src/**` — test files aren't in the project graph and
   vitest doesn't typecheck, so adding a required `SystemContext` field leaves stale test `ctx` literals
   type-broken yet green; grep `SystemContext = {` across `test/` when the context shape changes. (sim/tooling)
-- [4ef956f] A roadmap "extract X from file Y" promise can name a field that file Y doesn't have —
-  `landscapetypes.ini` has no per-type movement weight (only `maximumValency` + placement flags), so
-  the long-carried "real per-type walk-cost field, pending extraction" was chasing a non-existent
-  source. Before implementing a "pending extraction" step, grep the actual source file's key set
-  first; correct the roadmap when the field isn't there rather than inventing a mapping. (data/roadmap)
 - [79e02a7] Importing a `test/` file (e.g. a fixture) from production `src/` drags it into that
   package's `tsc --build` graph, which emits `.js`/`.d.ts` *in-place next to the .ts* — stray
   untracked artifacts `biome check` then lints and fails on. Keep dev/demo fixtures self-contained in
@@ -50,11 +48,6 @@ the next iteration inherits it.
   sibling `map.dat`. Probe the whole asset *directory*, not just the named file; and check the
   OpenVikings oracle's IO/container helpers (`CIoHelper.cs` `SIoHelperChunk`) even though it "doesn't
   simulate" — it still pins the on-disk container layout. (pipeline/format)
-- [fa70452] A `sim` mechanic with data-pinned *parameters* (atomic durations, job gates, stock caps)
-  is NOT thereby `faithful` — its *behavior* (planner/loop shape) has no oracle (OpenVikings' tick is
-  a stub). Classify those rows `approximated` with "calibration-by-observation pending"; reserve
-  `faithful` for when both axes are pinned. Over-claiming faithful is the blind spot FIDELITY.md
-  exists to catch. (docs/fidelity)
 - [cfc2431] A binary format's "size" field can mean *different* things at adjacent offsets: the
   map.dat packed-layer header carries `innerSize` (the whole inner blob, +0x01 and again +0x11) AND
   a separate `unpackedLength` (+0x0D, the decoded byte count) — using the inner size as the stream
@@ -90,11 +83,14 @@ the next iteration inherits it.
   **explicitly LE** (`lo | hi<<8`), matching the file's existing `DataView(..., true)` reads, and pin
   it with a test that decodes a *hand-built LE stream* (not a round-trip) so an endianness regression
   fails even on a little-endian host. (pipeline/format)
-- [690a547] vitest resolves a cross-package import (`@vinland/data`) through that package's BUILT
-  `dist/` entry, not its `src/`, so a brand-new export is `… is not a function` in another package's
-  test until you `npm run build` — green-looking source, runtime-missing symbol. After adding an export
-  consumed by a *different* package's test, rebuild before `npm test` (or the failure looks like a typo,
-  not a stale build). (tooling)
+- [690a547] **Rebuild `dist/` before trusting a cross-package test.** vitest resolves a cross-package
+  import (`@vinland/data`) through that package's BUILT `dist/`, not its `src/`, so a brand-new export
+  is `… is not a function` in another package's test until you `npm run build` — green source,
+  runtime-missing symbol. The twin trap [7dbb3c9]: a new zod **schema field** is silently STRIPPED — a
+  stale `dist/schema.js` `.parse()`-drops any key it doesn't know, so the extractor visibly sets it but
+  the test's `toEqual` shows it MISSING (a false-red that reads like a casing/getInt bug);
+  `grep -c <field> packages/data/dist/schema.js` tells you if dist is current (0 = stale). Rebuild
+  after adding an export OR a schema field consumed by another package's test. (tooling)
 - [11cde56] The browser app can't read the gitignored repo-root `content/` directly (it's outside the
   vite root, and `fetch` needs an HTTP path). Bridge it with a **vite dev-server middleware**
   (`configureServer` → `server.middlewares.use('/maps', …)`) that serves the out-of-root files — but
@@ -103,16 +99,19 @@ the next iteration inherits it.
   regex on the fetch side + a resolved-path `startsWith(root + sep)` check in the middleware), and keep
   the consumer's load path **fallback-on-failure** so a checkout WITHOUT the gitignored content still
   runs. This is dev/shot-server only — a production `vite build` won't serve it. (app/render)
-- [ac6a287] Component stores are module-level singletons SHARED by every `Simulation`/`World` instance
-  (`defineComponent` makes one `Map`; `new World()` resets the id counter but NOT the stores). So a
-  test that builds two sims in one process without clearing leaks the first run's entities into the
-  second, and because `world.query` iterates **store insertion order**, the second sim's planner then
-  acts on stale entities → non-deterministic. `hashState()` does NOT catch it: it hashes
-  `canonicalEntities()` (sorted), so two runs can hash-equal mid-tick yet diverge once a query-order
-  decision fires. Clear every component's store between runs (`for (v of Object.values(components)) if
-  (v.store instanceof Map) v.store.clear()` — filter, the namespace also re-exports helpers), exactly
-  as `golden-trace.test.ts` does in `beforeEach`. Surfaced only on a multi-ROW map (the 1-D 6×1 strip
-  never exercised a query-order-dependent target choice). (sim/test)
+- [ac6a287] **(THE recurring trap — rediscovered 6×; graduated to `packages/sim/CLAUDE.md`.)** Component
+  stores are module-level singletons SHARED by every `Simulation`/`World` (`defineComponent` makes one
+  `Map`; `new World()` resets the id counter but NOT the stores). Any code that builds >1 sim in one
+  process leaks the earlier run's entities/components onto the later run's fresh-but-reused ids, and
+  because `world.query` iterates **store insertion order**, a planner then acts on stale entities →
+  nondeterminism. This bites two ways: (a) a multi-run **hands-on** smoke/determinism harness — a two-run
+  `hashState()` compare FALSE-fails, or a "bug" is really state-bleed; (b) a **test** whose `beforeEach`
+  clears only a hand-picked subset — green alone, red in-suite (a stale `CurrentAtomic`/`Health`/
+  `JobAssignment` on a reused id diverts a decision). `hashState()` won't catch mid-tick query-order
+  divergence (it hashes sorted `canonicalEntities()`). Fix: clear the WHOLE namespace between runs —
+  `for (const c of Object.values(components)) if (c?.store instanceof Map) c.store.clear()` (a subset
+  misses a component a future system adds; a brand-new optional component must join every clear list),
+  exactly as the vitest suites' `beforeEach` does. (sim/test)
 - [12db5fa] An un-self-judgeable render step (pixels need a human) still has a self-verifiable HALF: the
   *data decision*. The atlas-sprite swap splits into "which atlas frame does this DrawItem draw"
   (`resolveSpriteFrame` — a pure lookup, fully unit-testable: bound→frame, tile/unbound/missing/0×0→null)
@@ -190,7 +189,6 @@ the next iteration inherits it.
   leisure site. Verify the satisfier is actually distinguishable in `houses.ini` BEFORE planning a
   drive — don't assume the previous need's approach ports. When it can't be pinned, ship the rise+reset
   half (both pinned to data) and defer the drive in FIDELITY rather than inventing a satisfier. (sim/fidelity)
-
 - [8302ea7] A named atomic isn't necessarily a new NEED — it may be a second SATISFIER of an existing
   one. `make_love` (id 78) reads like a distinct social need, but its animation restores the **same
   channel 3** as `enjoy` (`event <at> 3 +800` vs enjoy's `+100`), i.e. the leisure/`enjoyment` bar — so
@@ -209,24 +207,22 @@ the next iteration inherits it.
   source's interleaving. The `tribetypes` `jobEnables{Good,House,Job,Vehicle}` lines interleave the
   four kinds within a job's block; a single `sec.props` pass keyed on a kind-lookup keeps verbatim
   file order. Check the real source's ordering before choosing grouped vs single-pass extraction. (pipeline/fidelity)
-- [dc1bb9b] A boolean "does ANY entity match?" query is order-independent, so it may iterate
-  `world.query(...)` (insertion order) directly — it's a membership test like `Map.has`, which the
-  determinism contract permits. Only a query whose RESULT depends on *which* match wins (a pick / a
-  sum-with-order / a first-found mutation) needs `canonicalEntities()` + a sort. The `jobEnables`
-  placement gate (`buildingEnabled`) returns true on the first enabling-job settler found and never
-  cares which one — so a sorted scan would be dead cost. Ask "does the output change if matches are
-  reordered?" before reaching for the canonical sort. (sim/determinism)
+- [dc1bb9b] **Canonicalize only a PICK, not every scan.** Ask "does the output change if matches are
+  reordered?" — only a query whose RESULT depends on *which* match wins (a pick / a sum-with-order / a
+  first-found mutation) needs `canonicalEntities()` + a sort. Three cases iterate raw `world.query(...)`
+  insertion order and STAY deterministic because the outcome is order-invariant: (a) a boolean "does ANY
+  match?" membership scan (like `Map.has` — e.g. the `buildingEnabled` placement gate); (b) an aggregate
+  whose VALUES commute (a `Map`-valued read-view sum like `tribeStocks` — but document that a *display*
+  consumer must sort the keys itself, insertion order isn't canonical); (c) a per-entity planner pass
+  where one entity acting doesn't change another's eligibility (combatSystem/aiSystem target scans — the
+  target *pick itself* still uses `canonicalEntities()` + an id tie-break). The determinism test (two
+  same-seed runs hash-equal) is what proves it, not the iteration choice. (sim/determinism)
 - [f6619a4] The mod's own `tribetypes - info.txt` doc can be wrong: it says `trainfor*`'s school
   expType is "always 77", but the real data also uses 57 (30/270 train lines), and it implies the
   `needfor*` expType is a `humanjobexperiencetypes` id (1..70) when need-ids actually reach 72/73/75.
   Extract the OBSERVED value, not the documented constant, and `grep` the real key set's value range
   before deciding what to cross-validate — an id that overshoots the resolvable table is the tell
   that a field is a wider/synthetic id space and must NOT be range-checked (false-positives). (pipeline/fidelity)
-- [75b4e9c] Component stores are module-level singletons shared across every `Simulation` instance, so a
-  multi-run hands-on smoke SCRIPT (not via the test harness, which clears them in `beforeEach`) leaks
-  entities between runs — my "cross-tribe unlock" false alarm was run B's settler bleeding into run C.
-  Clear the stores (or use one sim per process) between smoke runs; a direct helper call confirmed the
-  gate itself was correct. (sim/verification)
 - [c587b2b] When a *threshold-reader* consumes state a *writer* accrued, the fidelity win is that they
   key on the **same** id space with no translation layer: the `needfor*` `experienceTypes` reference the
   exact `humanjobexperiencetypes` track typeIds `grantWorkExperience` writes onto `Settler.experience`,
@@ -318,12 +314,6 @@ the next iteration inherits it.
   system uses to stay inert in the goldens: the births fire only on `home`-kind content the golden/slice
   fixture never builds, so the golden hash + trace are untouched ([6264132]) — verify by grepping the
   fixture for the triggering shape before claiming the hash is stable. (sim/invariants)
-- [37ba48a] A standalone smoke script that runs two `Simulation`s in one process sees them DIVERGE
-  even on identical state — because `defineComponent` stores are module-level singletons that leak
-  entities/ids across runs. The unit tests don't hit this (their `beforeEach` calls `c.store.clear()`).
-  When hands-on-verifying determinism outside vitest, clear every component store between runs (the
-  golden tests' pattern) before concluding a real non-determinism bug — `git stash` + re-run on `main`
-  to check the divergence is in your change, not the harness, ruled it out here. (sim/determinism)
 - [dc3ef54] A planner gate that keys on a `jobType`-ID predicate (`isNonWorkingAge`) silently snares an
   unrelated worker when a SYNTHETIC fixture's job id collides with a real data id: the golden slice's
   woodcutter is `jobType 1`, the same number as the real `baby_female` age class, so a new "skip
@@ -333,25 +323,20 @@ the next iteration inherits it.
   one), not on the ambiguous id. When adding a sim rule keyed on a numeric content id that also has a
   reserved/structural meaning, prefer a component/flag the lifecycle maintains over the raw id — and run
   the goldens immediately, an emptied trace is the collision's tell. (sim/ai)
-- [cef9629] A `Map`-valued **read view** (a HUD aggregate like `tribeStocks`) may safely iterate a
-  `Map`/`Set` non-canonically — the determinism anti-pattern bans non-canonical iteration only for a
-  *game decision*, and an aggregate whose VALUES are order-independent (a sum — addition commutes) is
-  not one. The returned Map's iteration order is still insertion-order (store-traversal-dependent), so
-  document that a display consumer must sort by key itself, and build each per-store sum via the
-  canonical `stockpileEntries` to keep the idiom (the values are identical either way). The tell that
-  it's a true read view: no system reads it back to branch on it — verify the change leaves the golden
-  hash untouched (a read view adds no state). (sim/read-model)
 - [4874a0f] When folding a nullable field (`Settler.jobType`) onto a sentinel key, use `?? sentinel`
   (nullish), never `|| sentinel`: a `JobType` id of `0` (`none`) is a VALID id, and `||` would silently
   fold every id-0 settler into the idle bucket. Pick the sentinel OUTSIDE the field's value space — a
   negative (`IDLE_JOB = -1`) for an id space that starts at 0 — so the "unassigned" bucket can never
   collide with a real id. (sim/read-model)
-- [c00bf18] A `systems/*` export is NOT on `@vinland/sim`'s top level — `index.ts` re-exports it via
-  `export * as systems from './systems/...'`, so the import is `import { systems } from '@vinland/sim';
-  systems.goodsGraph`, not a named top-level import. The unit test passed (it imports straight from
-  `../src/systems/index.js`), but the 3b hands-on `node -e` against `@vinland/sim` threw `does not
-  provide an export named goodsGraph` — the exact "green test, broken at the real entry point" gap the
-  hands-on step exists to catch. Mirror the real consumer's import surface in the smoke check. (sim/barrel)
+- [c00bf18] **Mirror the real consumer's import surface, across BOTH barrels.** A `systems/*` export is
+  NOT on `@vinland/sim`'s top level — `index.ts` re-exports it via `export * as systems from
+  './systems/...'`, so the import is `systems.goodsGraph`, not a named top-level import; the unit test
+  (importing `../src/systems/index.js`) passed while the hands-on `node -e` against `@vinland/sim` threw
+  `does not provide an export named goodsGraph`. And a new read-view must land in TWO barrels
+  ([de7f3fa]): `systems/readviews/index.ts` AND `systems/index.ts` (which re-imports and re-exports for
+  the namespace); adding it to only the first leaves it `X is not a function` at the import site — NOT a
+  build error (tsc happily compiles a barrel that doesn't re-export all its child does). Grep both
+  `index.ts` for a sibling symbol and mirror it. (sim/barrel)
 - [faa7885] The render-side HUD must RE-DERIVE its aggregates from the `WorldSnapshot`, NOT call the
   sim's `tribeStocks`/`tribePopulationByJob` read views — those take a live `World`, and `render`
   reading the live stores breaks the pure-consumer rule (the whole point of the snapshot seam). The
@@ -370,7 +355,6 @@ the next iteration inherits it.
   sibling's GPU-resource lifecycle too: `renderScene` never `.destroy()`s its per-frame `Graphics`/
   `Texture`, so a new overlay shouldn't either — destroying-on-remove is a separate render-perf pass over
   BOTH, not a HUD-only divergence. (render/pixi)
-
 - [0708fb4] A read view that returns a `Map` keyed by a "canonical identity" silently DROPS records
   when that identity isn't actually unique — the combat view keyed weapons by the documented
   `(tribeType, typeId)` cross-ref key ([bfe2491]), but the real ANIMAL weapons reuse even that pair
@@ -380,13 +364,20 @@ the next iteration inherits it.
   (one per source entry, source order) and carry the non-unique key as a FIELD, not the Map key — and
   always assert the hands-on output COUNT equals the source count, a keyed-collection size is the tell.
   (sim/read-model)
-- [0cbe894] `.ini` key matching in the extractors is CASE-SENSITIVE (`p.key === key`) and the parser
-  preserves the source casing verbatim — so an extractor must spell each key with the file's exact
-  casing, which is often MIXED within one file (`armortypes.ini`: `type`/`goodtype` lowercase but
-  `mainType`/`materialType`/`blockingValue` camelCase). `getInt(sec, 'maintype')` silently returns
-  undefined where the file says `mainType`; the field just vanishes (no error), only caught by a
-  hands-on pipeline run + asserting the value. `grep -oE '^[a-zA-Z]+' <file> | sort -u` the real keys
-  first; match each verbatim (the established convention — see `atomicForHarvesting`). (asset-pipeline)
+- [0cbe894] **Grep the REAL source — and the real extractor, and the real `ir.json` — before extracting;
+  never the schema, the fixture, or a roadmap promise.** (a) `.ini` key matching is CASE-SENSITIVE and
+  the parser preserves verbatim casing, often MIXED within one file (`armortypes.ini` `type` lowercase
+  but `mainType` camelCase; `weapons.ini` camelCase `mainType` beside lowercase `munitiontype`,
+  [dfa7d02]) — `getInt(sec,'maintype')` silently returns undefined where the file says `mainType`, the
+  field just vanishes; `grep -oE '^[a-zA-Z]+' <file> | sort -u` the keys and match each verbatim. (b) A
+  roadmap "extract X from Y" can name a field Y doesn't HAVE ([4ef956f]: `landscapetypes.ini` has no
+  walk-cost) or an overlay-MERGE that doesn't exist ([796fcb2]: the mod ships no logic-table twins —
+  `find` the mod tree first); fix the roadmap, don't invent a mapping. (c) A `Logic*` datum can live in
+  the GRAPHICS twin, not the logic file ([3215de3]: `houses.ini` `[GfxHouse] LogicConstructionGoods`) —
+  grep the other readable file for the prefix before calling it "oracle-blocked". (d) Schema-present +
+  validated ≠ EXTRACTED — a `.default(...)` the pipeline never populates ([4b01d2a]:
+  `LandscapeType.walkable`) is a bogus fidelity basis; grep the EXTRACTOR, confirm on the real
+  `content/ir.json` where defaults and source diverge (the fixture hides it). (asset-pipeline)
 - [9b41021] A "shared helper leaf" module (the one the cyclic systems import to break import cycles)
   silently becomes a dumping ground: terminal read views (HUD/render projections no per-tick system
   feeds back into a decision) keep getting added there because the barrel re-exports them either way,
@@ -413,15 +404,6 @@ the next iteration inherits it.
   `world.destroy`s while scanning a store must collect-then-destroy (gather matches into a list first,
   mutate after) — and sort that list canonically when its side effects are observed (the emitted
   `settlerDied` events render reads), even though events aren't in `hashState`. (sim/combat)
-- [8addb28] A per-entity planner pass (combatSystem giving each idle combatant a target) can iterate
-  the non-canonical `world.query(...)` (smallest-store insertion order) and STAY deterministic — but
-  only because each decision is **order-invariant**: an attacker's target eligibility (`Health > 0`,
-  different tribe, in range) never depends on whether another attacker already acted this pass, and the
-  *target pick itself* uses canonical `canonicalEntities()` + an id tie-break. The rule isn't "always
-  sort the driver"; it's "the OUTCOME must not depend on visit order" — adding a `CurrentAtomic` to A
-  doesn't change whether A is a valid target for B, so the set of (attacker→target) decisions is the
-  same regardless of order (same stance as aiSystem's `query(Settler, Position)`). The determinism test
-  (two same-seed runs hash-equal) is what proves it, not the iteration choice. (sim/determinism)
 - [8addb28] `sim.events` are cleared each tick, so a test that runs many `step()`s and then reads
   `sim.snapshot().events` only sees the LAST tick's events — a one-shot event (a kill's `settlerDied`)
   fired mid-loop is gone. Accumulate across the loop (`deaths += ...events.filter(...)` per step) to
@@ -526,14 +508,6 @@ the next iteration inherits it.
   precondition). When hands-on-verifying a combat/targeting change end-to-end, build the sim WITH a
   walkable map (and a real-content map needs a real walkable landscape typeId — typeId 0 is absent from
   the real IR, use one that exists) and give every intended combatant a `Health` pool. (sim/combat)
-- [c8e6639] An ad-hoc hands-on determinism check (run the scenario twice, compare `hashState()`)
-  FALSE-FAILED — reported `hash-equal: false` for a change that was perfectly deterministic — because
-  the two runs shared the **module-singleton component stores** (`Position.store` etc. are global
-  across `Simulation` instances) and the second run inherited the first's leftover entities. The
-  vitest suites avoid this with a `beforeEach` `clearStores()`; a throwaway harness that loops two
-  runs in one function does NOT get that, so it must `Foo.store.clear()` for every touched component
-  between runs (or the hash diverges from stale state, not from real nondeterminism). Don't trust a
-  bare two-run hash compare until the stores are cleared between them. (sim/test/core/determinism)
 - [bfa4a13] A hands-on number can COINCIDE across the old and new code path and silently fail to prove
   the new branch ran: armor mitigation resolved a leather-clad hit to `damage["1"] 60 − blockingValue
   10 = 50`, the *same* number as the old unarmored `damage["0"] 50`, so "first attack damage = 50" was
@@ -541,10 +515,6 @@ the next iteration inherits it.
   **state hash differing** between the two runs (the `Armor` component live in the hash). When verifying
   a new code path, pick fixture values whose output DIFFERS — or lean on `hashState()`, not a scalar that
   can collide. (sim/combat)
-- [d7eb755] A fidelity comment's "count" of a repeated `.ini` key (`logicgood`) is the *line count*, not
-  the highest enumerated id — I eyeballed `54` from the max good id (55) when the actual `logicgood` line
-  count is `49`. When a doc states "N ids", derive N from the hands-on output (`cargoGoods.length`) or an
-  `awk` line count, never from the value range. (pipeline/fidelity)
 - [8fb6543] A new entity that carries `Stockpile`+`Position` (the boat `Vehicle` hull) is ALREADY a
   deposit sink the instant it exists — `nearestStoreFor`/`pileup` scan `Stockpile`+`Position`, not
   `Building`, and `stockCapacity` returned `MAX_SAFE_INTEGER` for it (the "no Building ⇒ bare fixture,
@@ -559,38 +529,10 @@ the next iteration inherits it.
   passes silently and only a reviewer catches it — the exact de39b3d finding, recurring). When you
   copy a doc block from a sibling module as a template, downgrade any `{@link X}` whose `X` you didn't
   also import to plain `` `X` `` backticks. (docs)
-- [796fcb2] A roadmap "bring over the mod's data edits" item can imply an overlay-MERGE that doesn't
-  exist: the previous step's hint was to diff which `DataCnmd` `.ini` rows override the base
-  `Data/logic` type tables — but the mod ships ZERO copies of `goodtypes`/`jobtypes`/`landscapetypes`/
-  `vehicletypes`/`armortypes`/`animaltypes`.ini (`find DataCnmd -iname '<t>.ini'` is empty), so there
-  is no logic-table merge to do; each rule table already has a single readable source. The mod's actual
-  readable contribution is graphics/tribe/house/weapon/atomic `.ini`s, most already preferred. The real
-  unbuilt overlay was a GRAPHICS one (mod `types/vehiclestype/jobgraphics.ini` twin of the base
-  `vehicles/jobgraphics.cif`, broader per-tribe). Before scoping a "mod overlays base table X" merge,
-  `find` the mod tree for X's filename first — a [4ef956f]-family non-existent-source trap. (pipeline/roadmap)
-
-- [3215de3] A "graphics" file can carry BALANCE data — don't trust a source-blocked claim by filename.
-  The roadmap deferred house build/upgrade costs as "below the `.ini`", reading only `types/houses.ini`
-  (the `[logichousetype]` logic table, which indeed has no cost key). But its graphics twin
-  `budynki12/houses/houses.ini` (`[GfxHouse]`) carries `LogicConstructionGoods` — the per-level
-  build-material cost — among the render keys. Before recording a datum as oracle-blocked, grep the
-  OTHER readable file for the same `Logic*` prefix; the engine splits one entity's logic across a
-  "logic" and a "graphics" `.ini`, and a `Logic*` key can live in the graphics one. Same-typeId rows
-  recur per `LogicTribeType` AND per `sizeIdx` with different costs, so a flat-by-typeId overlay must
-  pick a deterministic winner (lowest tribe, lowest size) and record the collapse in FIDELITY. (pipeline/fidelity)
 - [e4d77a8] The sim's `EventBuffer` exposes `current()`/`clear()`, NOT a `drain()` — and it's only
   cleared at tick start by `step()`. When unit-testing a system by calling it DIRECTLY (not via
   `step()`), the buffer is never cleared, so read its emitted events with `current()`; reaching for
   `drain()` (a different bus's API) won't compile. (sim/testing)
-- [f4593c4] A `step()`-based test that PASSES in isolation but FAILS in its file is the [ac6a287]
-  store-leak: a partial `beforeEach` clear (only the components the test names) leaks an earlier
-  test's entity through a store it DIDN'T clear (a stale `CurrentAtomic`/`Production`/`Health` on a
-  reused id), and because entity ids are fresh-per-`Simulation` but the stores are global singletons,
-  the leaked component lands on this test's entity and silently diverts a planner decision (here a
-  carrier never moved). `hashState()` won't flag it (a `-t` single-test run hashes fine). Fix: clear
-  the WHOLE component namespace, not a hand-picked subset — `for (const c of Object.values(components))
-  if (c?.store instanceof Map) c.store.clear()` — so a future component added by an unrelated system in
-  the schedule can't leak in. The tell is "green alone, red in-suite". (sim/test)
 - [3950dc3] An in-place mutation inside a `world.query` loop (a home upgrade flipping `Building.buildingType`)
   is safe to NOT re-process the same tick — but for the right reason: `world.query` is a **lazy generator**
   iterating `smallest.store.keys()` live, NOT a snapshot, so the "at most once" guarantee comes from each
@@ -644,12 +586,6 @@ the next iteration inherits it.
   behaviour half is blocked — and don't invent the drive to avoid an "unused field". Validate the benign
   edge cases against the REAL IR (here: 0/35 animals set `runspeed` without `movespeed`, so the run pace
   is never silently dropped) so the gate you anchor on is provably right, not just plausible. (sim)
-- [d049b1d] `docs/ROADMAP.md` re-bloats within a *day* of a sweep: each `/iterate` appends its full "now
-  LANDED" hands-on trail to the live roadmap item, ~8 lines/iteration, so the executor-read doc blows past
-  the ~300-line budget again in ~20 iterations (d049b1d swept it 410→159; it hit 320 the same day). When a
-  ratchet-violation recurs this fast the headline fix is still the mechanical sweep (verbatim narrative →
-  ROADMAP-ARCHIVE.md, one-line summary + archive pointer live), but log the *source* habit in TECH-DEBT —
-  the per-iteration changelog-into-ROADMAP pattern is the structural cause, not the symptom. (docs/reflect)
 - [6badd48] A `nonnegative`-`TypeId` schema field does NOT protect a cross-ref from a `0` SENTINEL —
   many `.ini` foreign keys use `0` to mean "none" (weapon `goodtype 0` = a natural fist/claw with no
   craftable good, the armor-class-0 / `damage["0"]` = "unarmored" pattern one axis over), but `TypeId`
@@ -660,135 +596,30 @@ the next iteration inherits it.
   schema to reject it (a `nonnegative` brand won't) and don't widen the cross-ref to special-case 0.
   Confirm the split on real data (105 weapons → 70 resolving / 35 dropped, 0 dangling) so the sentinel
   count is provably the natural-weapon set, not a silently-mangled good ref. (pipeline/data)
-- [dfa7d02] Two `.ini` keys in the SAME file can use different casing conventions — `weapons.ini` has
-  camelCase `mainType` but all-lowercase `munitiontype` right next to it. Don't assume a file is
-  uniformly cased: check the real source line for EACH key (`grep -n munitiontype weapons.ini`), since
-  `getInt(sec, 'munitionType')` would silently return undefined for every record (the [386] vanish-trap)
-  and tests on a same-cased fixture would stay green. The hands-on real-IR count is the catch: a non-zero
-  carrier count (30/105) proves the key resolved; 0 would mean a casing miss. (pipeline/data)
-- [7dbb3c9] A NEW zod schema field (`WeaponType.damageType`) that the extractor sets is silently
-  STRIPPED until you rebuild — the pipeline test imports `@vinland/data` from its compiled `dist/`, and
-  a stale `dist/schema.js` zod object `.parse()`-drops any key it doesn't know. Symptom: the extractor
-  visibly sets the field but the test's `toEqual` shows it MISSING (a false-red that looks like a casing
-  miss or a getInt bug). Fix: `npm run build` after a schema change before re-running the pipeline tests;
-  `grep -c <field> packages/data/dist/schema.js` tells you whether dist is current (0 = stale). The twin
-  of the stale-committed-IR false-GREEN [49b6a22]: stale dist false-REDs an extractor's new field. (pipeline/data)
-- [59dc5c8] A "presence ⇔ classification" read view over an OPTIONAL marker field (`munitionType !==
-  undefined ⇒ ranged`) is only correct because the real source has NO value-0 row of that key — `getInt`
-  returns `0` (present, not undefined) for a literal `munitiontype 0`, which `!== undefined` would call
-  "ranged". Here it's safe AND faithful: `weapons.ini` only ever writes `1`/`2` (grep'd: 25×`munitiontype
-  1`, 5×`2`, 5×`damagetype 2`, zero `…type 0`), and even a hypothetical `…type 0` would mean "ammo class
-  0", still ranged by the source's grammar — so the presence test matches the marker's documented
-  semantics, not a coincidence. Before reading an optional field's *presence* as a boolean class, grep the
-  real source for a `<key> 0` line: if one exists, distinguish absent (undefined) from zero explicitly;
-  if none, presence is the faithful test. The first consumer of an "extracted ahead of its drive" marker
-  ([27aa306]) is naturally a pure read view (the `shipVehicles` twin), not the drive itself. (sim/read-model)
-- [c05fa8b] A marker field's CARDINALITY dictates the read view's SHAPE, not just its predicate: the two
-  *optional/presence* weapon markers (`munitionType`/`damageType`, absent on most rows) each yield a binary
-  `filter` (`rangedWeapons`/`siegeWeapons`), but `mainType` is a *multi-valued enum carried by EVERY row*
-  (all 105 weapons, classes 1..7), so its faithful view is a GROUPING — a `Map<class, WeaponType[]>`
-  (`weaponsByClass`) — not a filter that would arbitrarily privilege one class. Keep the grouping lossless
-  the same way the filters are (array VALUES in source order, never a keyed-by-`(tribeType,typeId)`
-  collection — that pair recurs/reuses, the [0708fb4] drop trap), and only the KEY space (distinct classes)
-  is keyed. A `Map`-valued read view may be built by one non-canonical pass ([cef9629]) because each
-  bucket's order is fixed by source order and no system branches on its iteration order — but DOCUMENT that
-  a display consumer must sort the keys itself (insertion = first-class-appearance, not ascending id).
-  Before reaching for `.filter`, ask whether the marker partitions (every row has one) or selects (most
-  rows lack it). (sim/read-model)
-- [c0dcbcb] When mirroring a grouping read view onto a sibling table, the values stay arrays even if the
-  sibling's *record* key IS globally unique — because a grouping keys on the CLASS field (`mainType`),
-  not the record id, and the class is many-to-one (4 armor records → 2 classes). The [c05fa8b] lesson
-  (cardinality dictates filter-vs-grouping) is about whether to group; this is the next question once you
-  ARE grouping: array-vs-scalar values are dictated by the GROUPING key's cardinality, not the record
-  id's. So `armorByClass` keeps `weaponsByClass`'s array values for a different reason than
-  `weaponsByClass` did (there: the `(tribeType,typeId)` record key isn't unique; here: the record
-  `typeId` IS unique but several records share a `mainType`) — same lossless shape, distinct rationale.
-  Keep the twin's shape identical to its sibling regardless, so a consumer treats both tables uniformly. (sim/read-model)
-- [f9a83f0] An "oracle-blocked" mechanic can have a self-verifiable DATA half already sitting extracted +
-  cross-ref-validated but with no consumer: `weapon.jobType` (the wielding soldier-class) was extracted,
-  schema'd, and validated sessions ago, so the "soldier-class→weapon binding" was blocked only on its
-  *equip behavior* — the *roster JOIN* was one `Map<jobType, WeaponType[]>` read view away. Before
-  deferring a binding as oracle-blocked, check whether its cross-ref field is already in the IR; the
-  data-join read view is the faithful, testable half you CAN land now. (sim/read-model)
-- [af3cd84] To find the smallest faithful next data step, scan an already-extracted record for the one
-  field that has NO read-side consumer while its siblings all do: `ArmorType.materialType` was extracted
-  + schema'd + validated but unread, where `mainType`/`blockingValue`/`goodType`/`typeId` each already
-  had an accessor — so a `materialType` grouping (`armorByMaterial`, the finer tier axis vs `mainType`'s
-  coarse light/heavy) was a pure read view away, FIDELITY n/a, golden untouched. "Which extracted field
-  lacks a consumer" is a concrete, self-verifiable smallest-step heuristic when the BEHAVIOR is
-  oracle-blocked. (sim/read-model)
-- [cc9c3d2] The shape of a read accessor follows its schema OPTIONALITY, not a uniform "drop-undefined"
-  reflex: a `.default(0)` QUANTITY field (`WeaponType.weight`/`ArmorType.weight`) is always a `number`
-  post-parse, so its accessor returns `number` and needs no `?? 0` and no `undefined` bucket — `0` *is*
-  the weightless value, not a "no record" sentinel. That is structurally different from the `.optional()`
-  CLASS-ENUM fields (`mainType`/`materialType`) whose accessors are `number | undefined` and whose
-  groupings drop the undefined bucket. Don't copy the optional-field grouping idiom onto a defaulted
-  quantity — read it straight. (sim/read-model)
-- [3862cd5] A same-day reflection that cleared ONE structural axis (doc-bloat in ROADMAP.md) does NOT
-  clear a DIFFERENT axis: between two doc-bloat passes the same day, `readviews/combat.ts` quietly grew
-  139→504 lines (a whole second concern piled on by the feature run between them). `/iterate`'s step-0.5
-  structure scan must re-measure source-file sizes every pass — "we reflected today" is not a reason to
-  skip it when the prior reflection was on a different axis. The fix is the established readviews
-  precedent: split by concern into a sibling module (here `classes.ts` for the weapon/armor class
-  taxonomy), barrel re-exports unchanged, goldens byte-identical. (reflect/structure)
-- [4b01d2a] A schema field being present + validated does NOT mean it is EXTRACTED — it can be a zod
-  `.default(...)` the pipeline never populates from source. `LandscapeType.walkable`/`buildable` parse
-  fine and the test fixture sets them, but the real extractor (`tools/asset-pipeline/src/decoders/ini.ts`)
-  leaves them at their defaults — only `allowedon{land,water,everything}`/`maximumValency` are read from
-  the `.ini`. Before surfacing a "data-pinned" read view over a field, grep the EXTRACTOR for it, not just
-  the schema/fixture; a default-backed field would give a bogus fidelity basis. Confirm on the real
-  `content/ir.json`, where defaults and source values diverge (the fixture hides it). (fidelity/data)
-- [de7f3fa] A new read-view export must be added in TWO barrels, not one — `systems/readviews/index.ts`
-  re-exports the concern modules, but `systems/index.ts` *re-imports from that barrel and re-exports
-  again* (a named list it owns for `@vinland/sim`'s `systems` namespace + SYSTEM_ORDER). Adding the
-  symbol only to the readviews barrel leaves it invisible at the `@vinland/sim` import site, and the test
-  (which imports from `../src/systems/index.js`, the second barrel) fails with `X is not a function` —
-  NOT a build error (tsc happily compiles a barrel that doesn't re-export everything its child does), the
-  [c00bf18] "green-ish source, runtime-missing symbol" gap. After adding a readview, grep BOTH `index.ts`
-  files for a sibling symbol and mirror it in each (the second barrel lists it twice — its import block AND
-  its export block). (sim/barrel)
-- [101108e] The "find the extracted-but-unread field" smallest-step heuristic generalizes past type
-  tables (goods/jobs/weapons) to the **animation** IR, AND past the grouping/predicate idiom to a
-  name-keyed RESOLVER: `AtomicAnimation.interruptible`/`startDirection` were extracted (245/896 + 89/896
-  in the real IR, NOT defaults — confirmed on `content/ir.json`, not the fixture which leaves them
-  default) yet unread, while `length` already drove `atomicDuration`. The faithful read view was the
-  `content.atomicAnimations.find(a => a.name === n)` that `ai.ts`/`combat.ts` already spell out inline,
-  named once (`atomicAnimationByName`) plus thin accessors for the two unread scalars. When two systems
-  inline the same name-keyed `.find`, the unread-field read view IS that resolver — don't reach only for
-  groupings. Left the two call sites un-refactored (golden-trace paths; behavior-neutral cleanup is
-  separate scope). (sim/read-model)
-- [a82afa7] A read-view module that names a "triple"/"complete set" in its header can still be missing a
-  member: `landscape.ts` declared the `allowedon{water,everything}` placement-layer classification "the
-  triple" yet had only 2 of 3 views — the land half (`allowedonland`, 86/87 of the real rows) was unread.
-  When closing per-table consumer coverage, enumerate the EXTRACTED fields (grep the extractor), not the
-  views the module *claims* to cover; the land+universal views partition the 87 rows exactly, a cheap
-  invariant the hands-on run can assert. (sim/read-model)
-- [24bec38] A field documented only in PROSE across several system files is a latent read-view gap, and
-  the prose can disagree with the data: `AtomicAnimation.events` channel-restore magnitudes were asserted
-  in needs.ts/ai.ts/atomic.ts comments ("eat +4000", "make_love a bigger +800 boost") but never read from
-  the IR — yet `make_love`'s NET channel-3 delta is +4000 (8 ticks × ~+800), not the per-event +800 the
-  comment cites. The summed read view (`atomicEventChannelDelta`) is the data-pinned truth; the comment
-  was citing one event's value, not the animation's total. When you find a magnitude hardcoded in a doc
-  comment, add the read view that derives it from data (a sum over the events of that `type`) rather than
-  trusting the prose — and surface BOTH the per-event value and the summed total, they differ. (sim/read-model)
-- [d49f9ea] An AGGREGATE read view can hide a still-unread PER-ELEMENT field — closing a table's coverage
-  at the record level is not the same as the element level. `atomicEventChannelDelta` summed an animation's
-  `events` by `type` and the docs declared "every extracted `AtomicAnimation` field now has a read view",
-  but the sum COLLAPSED `AtomicEvent.extended` (the `eventx`/`event` source-key split): two events of the
-  same `type` but different streams fold into one total, so the per-event flag stayed invisible. When a view
-  reduces an array, the array's element fields are NOT automatically covered — enumerate the nested
-  record's fields too (here `eventx` marks the 14 `*_produce_*` smith animations' worker-self-drain stream).
-  Verified end-to-end by wiring the real `decodeIni`→`extractAtomicAnimations`→`parseContentSet`→read-view
-  path against the mod `.ini`, not just the fixture (43/~2900 lines `eventx`, all `*_produce_*`). (sim/read-model)
-
-- [56e8d3e] A hands-on (3b) harness that spins up a SECOND `Simulation` to check determinism/contrast must
-  clear the component stores between instances — the stores are module-level singletons SHARED across every
-  `Simulation` (every sim test `beforeEach`-clears them). My first worn-weapon harness re-ran a case in a
-  fresh `Simulation` WITHOUT clearing, so entities accreted across runs: the "determinism" re-run hashed
-  differently and the no-weapon contrast case inherited a stale attacker — two RED results that looked like
-  bugs in the change but were harness state-bleed (the real signal, `damage:70` via the worn override, was
-  correct all along). When a hands-on check creates >1 sim, clear stores per run or the singleton stores
-  silently cross-contaminate. (sim/testing)
+- [c05fa8b] **A read view's SHAPE follows the field's cardinality + optionality.** Cardinality: a field
+  EVERY row carries (a class enum like `mainType`, all 105 weapons) → a lossless GROUPING
+  `Map<class, T[]>` (`weaponsByClass`); a field MOST rows LACK (an optional marker like `munitionType`) →
+  a binary FILTER (`rangedWeapons`). Optionality ([cc9c3d2]): a `.default(0)` QUANTITY is always a number
+  post-parse — read it straight, `0` IS the value, no `?? 0` / undefined bucket; a `.optional()` enum is
+  `number|undefined` — drop the undefined bucket. Grouping VALUES stay arrays even when the record id is
+  unique, because you key on the many-to-one CLASS field, not the id ([c0dcbcb]). Keep it lossless: array
+  values in SOURCE ORDER, never keyed on a non-unique pair (the [0708fb4] drop trap), and assert the
+  hands-on output count == source count. Reading an optional field's PRESENCE as a boolean class needs a
+  `grep '<key> 0'` first — `getInt` returns `0` (present) for a literal `key 0`, so distinguish absent
+  from zero unless the source never writes it ([59dc5c8]). A Map-valued view may be built non-canonically
+  ([dc1bb9b]) but a display consumer sorts the keys itself. (sim/read-model)
+- [af3cd84] **Smallest faithful step when behavior is oracle-blocked: a lossless read view over an
+  already-extracted-but-unread field.** Scan a record for the one field whose siblings all have accessors
+  but it doesn't (`ArmorType.materialType` vs `mainType`/`blockingValue`/`goodType`) — the view is
+  FIDELITY-n/a, golden-untouched, self-verifiable. Generalizes past type tables to the **animation IR**
+  and past groupings to a **name-keyed resolver** when two systems inline the same
+  `content.X.find(a => a.name === n)` ([101108e]: `atomicAnimationByName`). An oracle-blocked BINDING
+  often already has its cross-ref field extracted, so the data-join read view is the testable half you
+  can land now ([f9a83f0]: `weapon.jobType` → `weaponsForJob`). Enumerate the EXTRACTED fields (grep the
+  extractor), not the views a module's header CLAIMS ([a82afa7]: a "triple" with 2 of 3), and not just at
+  record level — an aggregate/sum HIDES still-unread PER-ELEMENT fields, enumerate the nested record too
+  ([d49f9ea]: a channel-delta sum hid `AtomicEvent.extended`). A magnitude hardcoded in a doc COMMENT is a
+  latent gap and the prose can be WRONG — derive it from the IR ([24bec38]). (sim/read-model)
 - [d35b6d1] A replay/scrub primitive's "guard against dropping commands" can BAN its own core use case —
   my first `replay()` threw when `untilTick` was before the last logged command, reasoning "trailing
   commands would be dropped → divergence". But scrubbing BACKWARD past later commands is the whole point
@@ -847,12 +678,12 @@ the next iteration inherits it.
   the input log byte-for-byte (modulo commands past `untilTick`). That is what lets the hot-reload
   workflow CHAIN — a second `rebaseContent` can take the first rebase's log and carry the whole player
   history forward; the rebase isn't a dead-end snapshot. (sim)
-- [7c3577d] A `.cif` table's "N records" count in SOURCES.md is the decoder's **string-pool line count**,
-  NOT the section/record count: `trianglepatterntypes.cif` "(82)" is 10 section headers + 72 property
-  lines = 82 strings, but only **10** `[trianglepatterntype]` records (housetypes 798 / weapontypes 2995
-  on the same SOURCES.md line are likewise string counts, not 798 houses / 2995 weapons). Before sizing
-  an extractor or a test to a doc count, decode the file and count level-1 sections — don't trust the
-  string total as a record total. (pipeline)
+- [7c3577d] **Count the RIGHT thing — derive N from the hands-on output, never a value range or a string
+  total.** (a) A `.cif` table's "N records" in SOURCES.md is the decoder's string-pool LINE count, not the
+  record count: `trianglepatterntypes.cif` "(82)" is 10 headers + 72 property lines = 82 strings but only
+  **10** records (housetypes 798 / weapontypes 2995 likewise) — decode and count level-1 sections. (b) A
+  repeated-`.ini`-key "count" is the LINE count, not the highest enumerated id ([d7eb755]: `logicgood` is
+  49 lines, not 54 read off max good id 55) — derive it from `cargoGoods.length` / an `awk` line count. (pipeline)
 - [99c7a13] One `[GfxHouse]` bracket can pack MANY records: the mod groups 4–24 houses under a single
   `[GfxHouse]` header, each sub-house delimited only by a fresh `EditName` (no new `[...]`), so
   `parseIniSections` (opens a section only on a bracket) lumps them into ONE `RuleSection`. An extractor

@@ -43,11 +43,20 @@ reach `ONE` — count an integer `elapsed` to the exact `elapsed >= duration` (s
 `hashState()` canonically hashes all components on all entities; `test/` holds the golden state-hash
 + golden atomic-trace tests — the tripwire. **Only update a golden if the change was intentional,
 and name the mechanic in the commit.** A moved golden on a *refactor* means a real change crept in —
-stop and reassess. Run `npm test`; if an invariant fires (`src/invariants.ts`) it reports the exact
+stop and reassess. Run `npm test`; if an invariant fires (`src/harness/invariants.ts`) it reports the exact
 tick — use it. Beyond the goldens, `test/core/fuzz-determinism.test.ts` runs seeded-random command
 streams (run-twice hash equality + replay fidelity + invariants) — **add new command variants to its
 generator in the same commit**, and register any new incrementally-maintained cache in
 `World.verifyCaches()` (the `cachesCoherent` invariant re-derives every cache each checked tick).
+
+**Component stores are module-level singletons shared by every `Simulation`/`World`** (`defineComponent`
+makes one `Map`; `new World()` resets the id counter, NOT the stores). So anything that builds >1 sim in
+one process — a test file, or a hands-on smoke/determinism harness — MUST clear the whole component
+namespace between runs, or the earlier run's entities leak onto the later run's reused ids and a
+query-order decision diverges: `for (const c of Object.values(components)) if (c?.store instanceof Map)
+c.store.clear()` (a hand-picked subset misses a component a future system adds). The vitest suites do this
+in `beforeEach`; a throwaway harness does not get it for free. This is the loop's most-rediscovered trap
+(see docs/LESSONS.md `[ac6a287]`).
 
 ## Scaling to thousands of units
 
