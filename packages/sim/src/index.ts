@@ -51,6 +51,7 @@ export {
   TerrainGraph,
   buildTerrainGraph,
   cellManhattanDistance,
+  cellOctileDistance,
   type CellId,
   type TerrainMap,
 } from './nav/terrain.js';

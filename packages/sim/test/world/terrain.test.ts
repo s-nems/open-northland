@@ -7,6 +7,7 @@ import {
   type TerrainMap,
   buildTerrainGraph,
   cellManhattanDistance,
+  cellOctileDistance,
   fx,
 } from '../../src/index.js';
 import { SYSTEM_ORDER, type System, type SystemContext } from '../../src/systems/index.js';
@@ -137,6 +138,65 @@ describe('cellManhattanDistance', () => {
     const b = g.cellAt(2, 2);
     expect(cellManhattanDistance(g, a, b)).toBe(fx.fromInt(4));
     expect(cellManhattanDistance(g, a, a)).toBe(fx.fromInt(0));
+  });
+});
+
+/** The diagonal step cost / heuristic weight the graph uses — fixed-point √2 via the sanctioned isqrt. */
+const DIAG = fx.isqrt(fx.fromInt(2));
+
+/** An all-grass (fully walkable) map of the given size. */
+function grassMap(width: number, height: number): TerrainMap {
+  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+}
+
+describe('steps — the pathfinder 8-connected edge set', () => {
+  it('emits orthogonal steps (cost ONE) then diagonal steps (cost √2) in canonical order', () => {
+    const g = buildTerrainGraph(testContent(), grassMap(3, 3));
+    const steps = g.steps(g.cellAt(1, 1)); // centre of an open 3×3: 4 orthogonal + 4 diagonal
+    const byCoord = steps.map((s) => ({ ...g.coordsOf(s.cell), cost: s.cost }));
+    expect(byCoord).toEqual([
+      { x: 1, y: 0, cost: ONE }, // N
+      { x: 2, y: 1, cost: ONE }, // E
+      { x: 1, y: 2, cost: ONE }, // S
+      { x: 0, y: 1, cost: ONE }, // W
+      { x: 2, y: 0, cost: DIAG }, // NE
+      { x: 2, y: 2, cost: DIAG }, // SE
+      { x: 0, y: 2, cost: DIAG }, // SW
+      { x: 0, y: 0, cost: DIAG }, // NW
+    ]);
+  });
+
+  it('omits a diagonal whose shared orthogonal corner is unwalkable (no corner-cut)', () => {
+    // 2×2 with water at (1,0). From (0,0): E is water (dropped); the SE diagonal to (1,1) is grass but
+    // its corner (1,0) is water, so the diagonal is forbidden — only S survives.
+    const g = buildTerrainGraph(testContent(), {
+      width: 2,
+      height: 2,
+      typeIds: [GRASS, WATER, GRASS, GRASS],
+    });
+    const steps = g.steps(g.cellAt(0, 0)).map((s) => g.coordsOf(s.cell));
+    expect(steps).toEqual([{ x: 0, y: 1 }]);
+  });
+
+  it('honours the dynamic blocked overlay for the corner cells too', () => {
+    const g = buildTerrainGraph(testContent(), grassMap(2, 2));
+    const blocked = new Set<CellId>([g.cellAt(1, 0)]); // dynamically block the E cell
+    const steps = g.steps(g.cellAt(0, 0), blocked).map((s) => g.coordsOf(s.cell));
+    // E blocked; the SE diagonal shares that corner, so it is forbidden too — only S survives.
+    expect(steps).toEqual([{ x: 0, y: 1 }]);
+  });
+});
+
+describe('cellOctileDistance', () => {
+  it('is min(dx,dy) diagonals at √2 plus |dx-dy| orthogonals at ONE', () => {
+    const g = buildTerrainGraph(testContent(), grassMap(5, 5));
+    // (0,0)->(4,3): three diagonal steps + one orthogonal.
+    expect(cellOctileDistance(g, g.cellAt(0, 0), g.cellAt(4, 3))).toBe(
+      fx.add(fx.fromInt(1), fx.mul(fx.fromInt(3), DIAG)),
+    );
+    // Pure diagonal: two diagonal steps, no orthogonal remainder.
+    expect(cellOctileDistance(g, g.cellAt(0, 0), g.cellAt(2, 2))).toBe(fx.mul(fx.fromInt(2), DIAG));
+    expect(cellOctileDistance(g, g.cellAt(0, 0), g.cellAt(0, 0))).toBe(fx.fromInt(0));
   });
 });
 
