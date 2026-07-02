@@ -8,7 +8,8 @@ import {
   Texture,
   type TextureSource,
 } from 'pixi.js';
-import type { Camera, SpriteLayer } from './pixi-renderer.js';
+import type { Camera } from './iso.js';
+import type { SpriteLayer } from './pixi-renderer.js';
 import type { AtlasFrame } from './sprites.js';
 
 /**

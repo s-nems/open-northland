@@ -6,27 +6,14 @@ import type { CellTexture } from './terrain.js';
  * The Pixi boot + GPU-input types shared by the renderer. The per-frame drawing moved to the retained
  * {@link import('./world-renderer.js').WorldRenderer} (persistent scene graph, pooled sprites, terrain
  * meshed once) — this file keeps only the one-time GPU setup ({@link createPixiApp},
- * {@link createWindowPixiApp}, {@link loadAtlasSource}) and the plain-data input shapes the renderer consumes ({@link Camera},
- * {@link SpriteSheet}, {@link SpriteLayer}, {@link TerrainTextureSet}).
+ * {@link createWindowPixiApp}, {@link loadAtlasSource}) and the plain-data input shapes the renderer
+ * consumes ({@link SpriteSheet}, {@link SpriteLayer}, {@link TerrainTextureSet}); the {@link Camera}
+ * transform moved to {@link import('./iso.js').Camera} alongside the projection math it inverts.
  *
  * The atlas *image* comes from a free / synthetic atlas (real bobs are decoded from a copyrighted game
  * copy and gitignored — see CLAUDE.md "Legal guardrails"); the frame *geometry* + *bindings* are plain
  * data. Floats everywhere are fine: this is `render`, never read back into the deterministic sim.
  */
-
-/** A camera transform applied to every projected screen position before drawing. */
-export interface Camera {
-  /** Pixel offset added to every item's screen position (pan). */
-  readonly offsetX: number;
-  readonly offsetY: number;
-  /**
-   * Uniform zoom factor (1 = no scale). Magnifies the whole scene about the layer origin, so a small
-   * pixel-art bob is large enough for a human to judge decode fidelity. Applied as the draw layer's
-   * scale, with {@link offsetX}/{@link offsetY} as the layer position — so `screen = world*scale +
-   * offset`. Defaults to 1.
-   */
-  readonly scale?: number;
-}
 
 /**
  * One drawable atlas layer: a GPU {@link TextureSource} paired with its {@link SpriteAtlas} frame

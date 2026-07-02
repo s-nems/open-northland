@@ -12,8 +12,8 @@ import {
   type TextureSource,
 } from 'pixi.js';
 import type { HudPlacement } from './hud.js';
-import { TILE_HALF_H, TILE_HALF_W, tileToScreen } from './index.js';
-import type { Camera, GroundPattern, SpriteLayer, SpriteSheet, TerrainTextureSet } from './pixi-renderer.js';
+import { type Camera, TILE_HALF_H, TILE_HALF_W, tileToScreen } from './iso.js';
+import type { GroundPattern, SpriteLayer, SpriteSheet, TerrainTextureSet } from './pixi-renderer.js';
 import {
   type DrawItem,
   type DrawKind,
