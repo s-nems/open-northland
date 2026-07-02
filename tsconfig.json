@@ -4,6 +4,7 @@
     { "path": "packages/data" },
     { "path": "packages/sim" },
     { "path": "packages/render" },
+    { "path": "packages/audio" },
     { "path": "packages/app" },
     { "path": "tools/asset-pipeline" }
   ]
