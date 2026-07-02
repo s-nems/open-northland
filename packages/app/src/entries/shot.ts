@@ -9,7 +9,8 @@ import {
 import { loadHumanSpriteSheet, syntheticSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { loadTerrainMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
-import { cameraFor, floatParam } from '../view/camera.js';
+import { cameraFor } from '../view/camera.js';
+import { floatParam, intParam } from './params.js';
 
 /**
  * The deterministic, headless render entry the screenshot harness waits on (docs/TESTING.md
@@ -31,13 +32,6 @@ declare global {
 
 const CANVAS_W = 960;
 const CANVAS_H = 540;
-
-function intParam(params: URLSearchParams, name: string, fallback: number): number {
-  const raw = params.get(name);
-  if (raw === null) return fallback;
-  const n = Number.parseInt(raw, 10);
-  return Number.isFinite(n) && n >= 0 ? n : fallback;
-}
 
 /**
  * Run the slice, draw a single deterministic frame to `canvas`, and flag readiness. The camera pans

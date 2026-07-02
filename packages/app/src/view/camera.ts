@@ -1,7 +1,7 @@
 import type { Camera, DrawItem } from '@vinland/render';
 
 /**
- * Camera helpers shared by the live (`main.ts`) and shot (`shot.ts`) entries. The geometry half is
+ * Camera helpers shared by the live (`entries/live.ts`) and shot (`entries/shot.ts`) entries. The geometry half is
  * pure — no Pixi, no sim. The `?zoom=` knob exists so a human can actually judge a decoded bob's
  * pixels: a ~30px sprite is lost on a 960px canvas, so a verification frame magnifies and re-centres.
  *
@@ -11,14 +11,6 @@ import type { Camera, DrawItem } from '@vinland/render';
  * zoom *math* is the pure {@link panCamera}/{@link zoomCameraAt} reducers, unit-tested headless. The
  * deterministic `?shot` entry never installs the controller, so the reproducible PNG is unaffected.
  */
-
-/** Parse a positive-float URL param (e.g. `?zoom=4`), falling back when absent or invalid. */
-export function floatParam(params: URLSearchParams, name: string, fallback: number): number {
-  const raw = params.get(name);
-  if (raw === null) return fallback;
-  const n = Number.parseFloat(raw);
-  return Number.isFinite(n) && n > 0 ? n : fallback;
-}
 
 /**
  * Build the camera for a frame. At zoom 1 it keeps the historical pan (the iso strip projects to

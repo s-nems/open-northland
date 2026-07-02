@@ -12,7 +12,7 @@ import {
   findCharacter,
 } from '../catalog/roster.js';
 import { MissingAtlasError, loadBodyClips, loadGalleryLayers } from '../content/ir.js';
-import { MIN_ZOOM, createCameraController, floatParam } from '../view/camera.js';
+import { MIN_ZOOM, createCameraController } from '../view/camera.js';
 import { mountMessage } from '../view/overlay.js';
 import {
   type GalleryView,
@@ -24,6 +24,7 @@ import {
   parseView,
 } from './anim-cells.js';
 import { mountGalleryOverlay } from './anim-overlay.js';
+import { floatParam, intParam } from './params.js';
 
 /**
  * The `?anim` entry — the character **animation gallery**, the animation twin of the `?scene=all-buildings`
@@ -47,14 +48,6 @@ import { mountGalleryOverlay } from './anim-overlay.js';
 const DEFAULT_COLUMNS = 8;
 /** Screen margin (px) the grid's top-left starts at under the initial camera. */
 const GRID_MARGIN = 40;
-
-/** Parse a positive-int URL param (e.g. `?cols=6`), falling back when absent or invalid. */
-function intParam(params: URLSearchParams, name: string, fallback: number): number {
-  const raw = params.get(name);
-  if (raw === null) return fallback;
-  const n = Number.parseInt(raw, 10);
-  return Number.isInteger(n) && n > 0 ? n : fallback;
-}
 
 export async function renderAnimationGallery(
   canvas: HTMLCanvasElement,
@@ -168,7 +161,7 @@ async function startGallery(
 ): Promise<void> {
   // Window-sized 1:1 backing store: resizing the browser changes the visible field, never the scale.
   const app = await createWindowPixiApp(canvas);
-  const columns = intParam(params, 'cols', DEFAULT_COLUMNS);
+  const columns = intParam(params, 'cols', DEFAULT_COLUMNS, 1);
   const direction = parseDirection(params.get('dir'));
   const gallery = new AnimationGallery(app, { cells, columns, direction });
 

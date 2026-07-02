@@ -1,5 +1,5 @@
 import type { SceneDefinition } from '../scenes/index.js';
-import { BUTTON_STYLE, PANEL_STYLE, button, el } from './overlay.js';
+import { BUTTON_STYLE, PANEL_STYLE, button, el, signOffFooter } from './overlay.js';
 
 /**
  * The on-canvas acceptance overlay — the "czy jest OK?" panel a human reads while watching a scene.
@@ -87,13 +87,7 @@ export function mountSceneOverlay(
 
   const tickLine = el('div', 'opacity:0.7;margin-bottom:6px', 'tick: 0');
   panel.append(tickLine);
-  panel.append(
-    el(
-      'div',
-      'opacity:0.65;font-size:12px;border-top:1px solid #5a4a36;padding-top:6px',
-      'Gdy ocenisz scenę, wróć do czatu i napisz, czy jest OK.',
-    ),
-  );
+  panel.append(signOffFooter('Gdy ocenisz scenę, wróć do czatu i napisz, czy jest OK.'));
 
   document.body.append(panel);
   return {
