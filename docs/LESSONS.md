@@ -533,7 +533,7 @@ the next iteration inherits it.
   vitest suites avoid this with a `beforeEach` `clearStores()`; a throwaway harness that loops two
   runs in one function does NOT get that, so it must `Foo.store.clear()` for every touched component
   between runs (or the hash diverges from stale state, not from real nondeterminism). Don't trust a
-  bare two-run hash compare until the stores are cleared between them. (sim/test/determinism)
+  bare two-run hash compare until the stores are cleared between them. (sim/test/core/determinism)
 - [bfa4a13] A hands-on number can COINCIDE across the old and new code path and silently fail to prove
   the new branch ran: armor mitigation resolved a leather-clad hit to `damage["1"] 60 − blockingValue
   10 = 50`, the *same* number as the old unarmored `damage["0"] 50`, so "first attack damage = 50" was

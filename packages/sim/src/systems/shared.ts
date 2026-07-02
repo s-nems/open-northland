@@ -364,7 +364,7 @@ export function manhattan(terrain: TerrainGraph, a: CellId, b: CellId): number {
 
 /** Duration (ticks) used when an atomic's animation-length chain doesn't resolve — a non-zero default
  *  so an unresolved atomic still takes visible time rather than completing instantly. */
-export const DEFAULT_ATOMIC_DURATION = 4;
+const DEFAULT_ATOMIC_DURATION = 4;
 
 /**
  * Resolve an atomic's duration (animation length in ticks) through the data: the settler's tribe binds
