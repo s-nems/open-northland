@@ -1,3 +1,4 @@
+import { type SpriteAtlas, indexAtlasFrames } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
 import {
   ADULT_CHARACTER_BY_JOB,
@@ -8,6 +9,7 @@ import {
   buildHumanBindings,
   buildingBobRefsByType,
   carryAnimsByGood,
+  carryHeadAnims,
   characterBinding,
   directionalAnimFromSeq,
 } from '../src/real-sprites.js';
@@ -619,5 +621,38 @@ describe('the job → character tables (the [jobbasegraphics] transcription)', (
         `${id} → roster '${spec.rosterId}'`,
       ).toBe(true);
     }
+  });
+});
+
+describe('carryHeadAnims — the head-borrow for head-empty carry cycles', () => {
+  const WALK = { start: 1988, dirs: 8, stride: 12 } as const;
+  const STONE_CARRY = { start: 4100, dirs: 8, stride: 12 } as const;
+  const WOOD_CARRY = { start: 4580, dirs: 8, stride: 12 } as const;
+  /** A head atlas that authors the wood carry's frames but ships the stone carry empty (the real
+   *  decode's shape: 19 of 27 man carry variants have no head bobs). */
+  function headAtlas(): SpriteAtlas {
+    return indexAtlasFrames(64, 64, [
+      { bobId: WOOD_CARRY.start, rect: { x: 0, y: 0, width: 10, height: 10 }, offsetX: 0, offsetY: 0 },
+      { bobId: STONE_CARRY.start, rect: { x: 0, y: 0, width: 0, height: 0 }, offsetX: 0, offsetY: 0 },
+    ]);
+  }
+  const byGood = {
+    3: { moving: STONE_CARRY, idle: { ...STONE_CARRY, frames: 1 } },
+    5: { moving: WOOD_CARRY, idle: { ...WOOD_CARRY, frames: 1 } },
+  };
+
+  it('borrows the base walk for a head-empty carry cycle, keeps an authored one', () => {
+    const head = carryHeadAnims(byGood, WALK, headAtlas());
+    expect(head[3]).toEqual({ moving: WALK, idle: { ...WALK, frames: 1 } }); // stone: borrowed
+    expect(head[5]).toBe(byGood[5]); // wood: its own authored head range
+  });
+
+  it('returns the input table BY IDENTITY when every head is authored (no head binding needed)', () => {
+    const allAuthored = { 5: { moving: WOOD_CARRY, idle: { ...WOOD_CARRY, frames: 1 } } };
+    expect(carryHeadAnims(allAuthored, WALK, headAtlas())).toBe(allAuthored);
+  });
+
+  it('returns the input table when there is no walk to borrow', () => {
+    expect(carryHeadAnims(byGood, undefined, headAtlas())).toBe(byGood);
   });
 });

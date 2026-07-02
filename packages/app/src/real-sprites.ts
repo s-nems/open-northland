@@ -7,6 +7,7 @@ import {
   type SettlerCharacter,
   type SettlerCharacterSet,
   type SettlerStateBinding,
+  type SpriteAtlas,
   type SpriteBindings,
   type SpriteFrameRef,
   type SpriteLayer,
@@ -783,6 +784,42 @@ export function characterBinding(
   };
 }
 
+/**
+ * The HEAD-side twin of a per-good carry table: which anim the head overlay resolves through per good.
+ * Most of the man's carry-walk variants ship **empty head bobs** (19 of 27 in the real decode — the
+ * head is authored once, on the base walk), so a head drawn at the carry range's own ids would vanish:
+ * a stone-hauler would walk HEADLESS. For each good this checks the head atlas at the carry cycle's
+ * first frame — authored → the good keeps its own range; empty → the head **borrows the base walk** at
+ * the same (facing, frame) offset, exactly the gallery's proven head-reuse rule (docs/FIDELITY.md
+ * "Character animation gallery"). Returns the INPUT table by identity when nothing borrows (no walk to
+ * borrow, or every head is authored), so the caller can skip building a head binding at all. Pure +
+ * exported for unit tests.
+ */
+export function carryHeadAnims(
+  byGood: NonNullable<CarryingBinding['byGood']>,
+  walk: DirectionalAnim | undefined,
+  headAtlas: SpriteAtlas,
+): NonNullable<CarryingBinding['byGood']> {
+  if (walk === undefined) return byGood;
+  const out: Record<number, { readonly idle?: SpriteFrameRef; readonly moving?: SpriteFrameRef }> = {};
+  let borrowed = false;
+  for (const [goodType, slot] of Object.entries(byGood)) {
+    const moving = slot.moving;
+    let headAuthored = true;
+    if (typeof moving === 'object') {
+      const frame = headAtlas.frames.get(moving.start);
+      headAuthored = frame !== undefined && frame.width > 0 && frame.height > 0;
+    }
+    if (headAuthored) {
+      out[Number(goodType)] = slot;
+    } else {
+      out[Number(goodType)] = { moving: walk, idle: { ...walk, frames: 1 } };
+      borrowed = true;
+    }
+  }
+  return borrowed ? out : byGood;
+}
+
 /** The `[bobseq]` rows of ONE imagelib in the served IR, indexed by verbatim sequence name. */
 function sequencesFor(ir: RenderIr | null, imagelib: string): Map<string, BobSeqRow> {
   const byName = new Map<string, BobSeqRow>();
@@ -824,7 +861,13 @@ async function loadCharacters(
         });
         layersByRoster.set(rosterId, { body, headsByStem });
       } catch (err) {
-        if (!(err instanceof MissingAtlasError)) throw err; // a real bug propagates; a missing body just drops the look
+        // An OPTIONAL look must never kill the boot: a missing body (MissingAtlasError) is the expected
+        // undecoded-content case; any other failure (a corrupt manifest, a truncated PNG) is a real bug
+        // — surface it loudly, but still degrade this look to the default instead of failing the whole
+        // sheet. Strict propagation stays on the BASE sheet's own loads (loadHumanSpriteSheet).
+        if (!(err instanceof MissingAtlasError)) {
+          console.warn(`character look '${rosterId}' failed to load — falling back to the default look`, err);
+        }
       }
     }),
   );
@@ -839,10 +882,24 @@ async function loadCharacters(
     const heads = (spec.headBmds ?? roster.headBmds)
       .map((bmd) => layers.headsByStem.get(characterStem(bmd)))
       .filter((l): l is SpriteLayer => l !== undefined);
+    // Head-borrow: goods whose carry cycle ships empty head bobs resolve the HEAD through the base walk
+    // instead (carryHeadAnims) — else a stone/grain hauler draws headless. All of a body's heads share
+    // one bob layout, so checking the first head atlas stands for the set.
+    const byGood = binding.carrying?.byGood;
+    const headAtlas = heads[0]?.atlas;
+    const walk = typeof binding.moving === 'object' ? binding.moving : undefined;
+    let headBinding: SettlerStateBinding | undefined;
+    if (byGood !== undefined && headAtlas !== undefined) {
+      const headByGood = carryHeadAnims(byGood, walk, headAtlas);
+      if (headByGood !== byGood) {
+        headBinding = { ...binding, carrying: { ...binding.carrying, byGood: headByGood } };
+      }
+    }
     bySpec.set(specId, {
       body: layers.body,
       ...(heads.length > 0 ? { heads } : {}),
       binding,
+      ...(headBinding !== undefined ? { headBinding } : {}),
     });
   }
 

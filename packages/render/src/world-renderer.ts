@@ -387,11 +387,14 @@ export class WorldRenderer {
       }
       // ONE head per individual, stable by entity id (ids are monotonic, never reused), so a crowd
       // shows varied faces without per-frame flicker — the render-side analogue of the original's
-      // per-individual random head pick.
+      // per-individual random head pick. The head may resolve through its OWN binding (the head-borrow
+      // case — a carry variant whose head bobs are empty plays the base walk's head instead).
       const heads = char.heads;
       if (heads !== undefined && heads.length > 0) {
         const head = heads[item.ref % heads.length];
-        const headFrame = head?.atlas.frames.get(bob);
+        const headBob =
+          char.headBinding !== undefined ? resolveSettlerBobId(char.headBinding, item, tick) : bob;
+        const headFrame = head?.atlas.frames.get(headBob);
         if (head !== undefined && headFrame !== undefined && headFrame.width > 0 && headFrame.height > 0) {
           layers.push({ source: head.source, frame: headFrame, scale: 1 });
         }

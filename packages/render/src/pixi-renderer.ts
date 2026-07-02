@@ -58,6 +58,13 @@ export interface SettlerCharacter {
   readonly heads?: readonly SpriteLayer[];
   /** The per-state animation binding resolved against this body's own `[bobseq]` frame ranges. */
   readonly binding: SettlerStateBinding;
+  /**
+   * The binding the HEAD overlay resolves through when it must differ from {@link binding} — the
+   * head-borrow case: most carry-walk variants ship EMPTY head bobs (the head is authored once, on the
+   * base walk), so their head plays the walk range at the same (facing, frame) offset while the body
+   * carries the load. Absent, heads resolve at the body's own bob id (the usual case).
+   */
+  readonly headBinding?: SettlerStateBinding;
 }
 
 /**
