@@ -221,8 +221,8 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
       materials; a built `home` upgrades a tier on accumulating the next tier's cost; free placement with
       footprint collision + min-distance, walk-blocking bodies, and door-cell interaction;
       `?scene=house-placement` signs it off. **Open (deferred):** builder-driven build progress
-      (`constructionworker_Work_Hammer`), the enter-building/hide-worker split (`GfxOverlay` open workshops),
-      repath-on-new-foundation.
+      (`constructionworker_Work_Hammer` + `LogicConstructionWorkArea`), the enter-building/hide-worker split
+      (`GfxOverlay` open workshops), the `upgrade=1` construction-layer rows, repath-on-new-foundation.
 - [ ] **ReproductionSystem** — **landed** (→ [archive](ROADMAP-ARCHIVE.md)): one birth per tribe per tick
       while `tribePopulation < housingCapacity` (the `populationWithinHousing` invariant); newborn is the
       data-pinned youngest age class, `growthSystem` ages it baby→child→adult then employs it. **Approximated:**
