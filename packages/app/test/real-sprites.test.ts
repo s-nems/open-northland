@@ -661,6 +661,8 @@ describe('carryHeadAnims — the head-borrow for head-empty carry cycles', () =>
 
   it('returns the input table when there is no walk to borrow', () => {
     expect(carryHeadAnims(byGood, undefined, headAtlas())).toBe(byGood);
+  });
+});
 
 describe('constructionRefsByType', () => {
   const DEFAULT_FAMILY = { bmdBasename: 'ls_houses_viking.bmd', paletteName: 'house01' };

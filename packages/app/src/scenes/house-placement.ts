@@ -57,12 +57,12 @@ const GRID = 40;
 const MILL_AT = { x: 8, y: 18 };
 /** The three construction sites, spread so their reserved zones stay clear of each other. */
 const SITES = [
-  { typeId: HOME_0, x: 18, y: 12 },
-  { typeId: BAKERY, x: 24, y: 18 },
-  { typeId: WELL, x: 18, y: 24 },
+  { typeId: HOME_0, x: 15, y: 13 },
+  { typeId: BAKERY, x: 20, y: 18 },
+  { typeId: WELL, x: 15, y: 23 },
 ];
 /** The rejected fourth placement: its body would land inside the home site's reserved ring. */
-const REJECTED_AT = { x: 16, y: 12 };
+const REJECTED_AT = { x: 13, y: 13 };
 /** Idle settlers (the carriers) spawn east of the mill, so their hauls cross the sites' ground. */
 const SETTLERS = [
   { x: 12, y: 16 },
@@ -142,8 +142,8 @@ function build(sim: Simulation): void {
       underConstruction: true,
     });
   }
-  // The overlap: its 2×2 body (x∈[16..17]) would stand inside the home site's reserved ring
-  // (x∈[17..20] × y∈[11..14]) — the free-placement rule must reject it (still logged for replay).
+  // The overlap: its 2×2 body (x∈[13..14]) would stand inside the home site's reserved ring
+  // (x∈[14..17] × y∈[12..16]) — the free-placement rule must reject it (still logged for replay).
   sim.enqueue({
     kind: 'placeBuilding',
     buildingType: WELL,
@@ -176,7 +176,9 @@ function buildings(sim: Simulation): { buildingType: number; built: number; leve
   return out;
 }
 
-const RUN_TICKS = 900;
+// Sized to the sim's slowed walk pace (an eighth of a tile per tick): four carriers cover the
+// ~11-tile mill→site hauls for 16 wood units well inside this budget, deterministically.
+const RUN_TICKS = 2200;
 
 export const housePlacementScene: SceneDefinition = {
   id: 'house-placement',
