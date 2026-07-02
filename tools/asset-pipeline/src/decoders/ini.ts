@@ -20,7 +20,10 @@ import {
   AtomicAnimation,
   BobSequenceSet,
   BuildingBob,
+  BuildingConstructionLayer,
+  type BuildingFootprint,
   BuildingType,
+  type FootprintCell,
   GfxPattern,
   type GoodAtomics,
   type GoodClassification,
@@ -1092,6 +1095,198 @@ export function extractConstructionCosts(
     }
   }
   return new Map([...winner].map(([typeId, { cost }]) => [typeId, cost]));
+}
+
+/**
+ * Expands one footprint-area source line (`<x> <y> <run>` after any leading level index) into its
+ * cells: `run` cells starting at `(x, y)`, extending along +x — the row encoding every
+ * `Logic*BlockArea` key uses. Non-numeric / non-positive runs yield no cells (malformed line).
+ */
+function expandAreaRun(x: number, y: number, run: number): FootprintCell[] {
+  if (!Number.isInteger(x) || !Number.isInteger(y) || !Number.isInteger(run) || run <= 0) return [];
+  const cells: FootprintCell[] = [];
+  for (let i = 0; i < run; i++) cells.push({ dx: x + i, dy: y });
+  return cells;
+}
+
+/** Canonical footprint-cell order (ascending y, then x) + exact-duplicate removal, so the emitted IR
+ *  is byte-stable regardless of source line order. */
+function canonicalCells(cells: Iterable<FootprintCell>): FootprintCell[] {
+  const byKey = new Map<string, FootprintCell>();
+  for (const c of cells) byKey.set(`${c.dx},${c.dy}`, c);
+  return [...byKey.values()].sort((a, b) => a.dy - b.dy || a.dx - b.dx);
+}
+
+/**
+ * Extracts each building type's **ground footprint** from the graphics table's `[GfxHouse]` records —
+ * the collision/placement model the logic table never carried (the same graphics-table overlay as
+ * {@link extractConstructionCosts}, keyed by the `LogicType <sizeIdx> <typeId>` join):
+ *
+ *   - `LogicWalkBlockArea <sizeIdx> <x> <y> <run>` — the cells the standing building at that size
+ *     level makes unwalkable (its body) → `blocked` for that level's `typeId`.
+ *   - `LogicBuildBlockArea <x> <y> <run>` — defined ONCE per record with **no level index**: the
+ *     level-independent build-exclusion zone. Every level's typeId gets the same zone — which is
+ *     exactly the original's "a level-0 hut reserves the space of its top level" behavior.
+ *   - `LogicDoorPoint <sizeIdx> <x> <y>` — that level's entry cell → `door`.
+ *
+ * Emitted per typeId: `blocked` (this level), `familyBody` (the union of every level's `blocked` —
+ * the largest body the upgrade chain reaches), and `reserved` (`familyBody` ∪ the build-exclusion
+ * zone; the union matters because a few real records — walls' gate cells, two frank/byzantine houses
+ * — have walk-block cells the build area does not cover). Cells are canonically ordered (ascending
+ * y, then x) and de-duplicated so the IR is byte-stable.
+ *
+ * Collisions resolve exactly like {@link extractConstructionCosts}: cross-tribe, the **lowest
+ * `LogicTribeType`** record wins (the reference-tribe convention — footprints genuinely differ per
+ * tribe skin; docs/FIDELITY.md); within a record, the **lowest `sizeIdx`** wins for a typeId mapped
+ * at several sizes. Returns an empty map for sources with no `[GfxHouse]` records.
+ */
+export function extractBuildingFootprints(sections: readonly RuleSection[]): Map<number, BuildingFootprint> {
+  const winner = new Map<number, { tribeType: number; sizeIdx: number; footprint: BuildingFootprint }>();
+  for (const sec of sections) {
+    if (sec.name !== 'GfxHouse') continue;
+    for (const rec of splitGfxHouseRecords(sec)) {
+      const tribeType = getInt(rec, 'LogicTribeType') ?? Number.POSITIVE_INFINITY;
+      const typeByLevel = new Map<number, number>();
+      for (const p of findProps(rec, 'LogicType')) {
+        const sizeIdx = Number.parseInt(p.values[0] ?? '', 10);
+        const typeId = Number.parseInt(p.values[1] ?? '', 10);
+        if (Number.isNaN(sizeIdx) || Number.isNaN(typeId)) continue;
+        typeByLevel.set(sizeIdx, typeId);
+      }
+      if (typeByLevel.size === 0) continue;
+
+      // The record-wide (level-independent) build-exclusion zone.
+      const buildZone: FootprintCell[] = [];
+      for (const p of findProps(rec, 'LogicBuildBlockArea')) {
+        const [x, y, run] = p.values.map((v) => Number.parseInt(v, 10));
+        buildZone.push(...expandAreaRun(x ?? Number.NaN, y ?? Number.NaN, run ?? Number.NaN));
+      }
+      // Per-level walk-block bodies + door points.
+      const blockedByLevel = new Map<number, FootprintCell[]>();
+      for (const p of findProps(rec, 'LogicWalkBlockArea')) {
+        const [sizeIdx, x, y, run] = p.values.map((v) => Number.parseInt(v, 10));
+        if (sizeIdx === undefined || Number.isNaN(sizeIdx)) continue;
+        const cells = blockedByLevel.get(sizeIdx) ?? [];
+        cells.push(...expandAreaRun(x ?? Number.NaN, y ?? Number.NaN, run ?? Number.NaN));
+        blockedByLevel.set(sizeIdx, cells);
+      }
+      const doorByLevel = new Map<number, FootprintCell>();
+      for (const p of findProps(rec, 'LogicDoorPoint')) {
+        const [sizeIdx, x, y] = p.values.map((v) => Number.parseInt(v, 10));
+        if (sizeIdx === undefined || Number.isNaN(sizeIdx)) continue;
+        if (x === undefined || y === undefined || Number.isNaN(x) || Number.isNaN(y)) continue;
+        if (!doorByLevel.has(sizeIdx)) doorByLevel.set(sizeIdx, { dx: x, dy: y });
+      }
+
+      // A record with no collision data at all (the vehicle/cart records) contributes nothing.
+      if (buildZone.length === 0 && blockedByLevel.size === 0) continue;
+
+      const familyBody = canonicalCells([...blockedByLevel.values()].flat());
+      const reserved = canonicalCells([...familyBody, ...buildZone]);
+
+      for (const [sizeIdx, typeId] of typeByLevel) {
+        const existing = winner.get(typeId);
+        // Lower tribeType wins; for the same tribe, lower sizeIdx wins (the base build stage).
+        if (
+          existing !== undefined &&
+          (existing.tribeType < tribeType ||
+            (existing.tribeType === tribeType && existing.sizeIdx <= sizeIdx))
+        ) {
+          continue;
+        }
+        winner.set(typeId, {
+          tribeType,
+          sizeIdx,
+          footprint: {
+            blocked: canonicalCells(blockedByLevel.get(sizeIdx) ?? []),
+            familyBody,
+            reserved,
+            door: doorByLevel.get(sizeIdx),
+          },
+        });
+      }
+    }
+  }
+  return new Map([...winner].map(([typeId, { footprint }]) => [typeId, footprint]));
+}
+
+/**
+ * Extracts the `[GfxHouse]` **construction-stage layers** (`GfxBobConstructionLayer <sizeIdx>
+ * <upgrade> <bobId> <shadowBobId|-1> <fromPct> <toPct>`) — which atlas bobs an under-construction
+ * building draws at a given build progress ({@link BuildingConstructionLayer} documents the range/
+ * stacking semantics). The `(sizeIdx → typeId)` join, the `(bmd, palette)` atlas keying, and the
+ * per-palette row fan-out all mirror {@link extractBuildingBobs} (the finished-body binding these
+ * layers extend); `stackIdx` preserves the record's file order per `(typeId, palette)` — the draw
+ * stacking order. A malformed line (non-numeric fields) is skipped, never thrown.
+ */
+export function extractConstructionLayers(
+  sections: readonly RuleSection[],
+  src: SourceRef,
+): BuildingConstructionLayer[] {
+  const layers: BuildingConstructionLayer[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'GfxHouse') continue;
+    for (const rec of splitGfxHouseRecords(sec)) {
+      const tribeId = getInt(rec, 'LogicTribeType');
+      if (tribeId === undefined) continue;
+      const bmd = findProp(rec, 'GfxBobLibs')?.values[0];
+      if (bmd === undefined || bmd.trim() === '') continue;
+      const palettes = (findProp(rec, 'GfxPalette')?.values ?? []).filter((v) => v.trim() !== '');
+      if (palettes.length === 0) continue;
+      const editName = getStr(rec, 'EditName');
+      const typeByLevel = new Map<number, number>();
+      for (const p of findProps(rec, 'LogicType')) {
+        const level = Number.parseInt(p.values[0] ?? '', 10);
+        const typeId = Number.parseInt(p.values[1] ?? '', 10);
+        if (Number.isNaN(level) || Number.isNaN(typeId)) continue;
+        typeByLevel.set(level, typeId);
+      }
+      const normalizedBmd = normalizeAssetPath(bmd);
+      // File order per level — the stacking order at draw time (the finished body is listed so the
+      // active-layer stack keeps it on top at high progress).
+      const stackByLevel = new Map<number, number>();
+      for (const p of findProps(rec, 'GfxBobConstructionLayer')) {
+        const [level, upgrade, bobId, shadowBobId, fromPct, toPct] = p.values.map((v) =>
+          Number.parseInt(v, 10),
+        );
+        if (
+          level === undefined ||
+          upgrade === undefined ||
+          bobId === undefined ||
+          shadowBobId === undefined ||
+          fromPct === undefined ||
+          toPct === undefined ||
+          [level, upgrade, bobId, shadowBobId, fromPct, toPct].some((n) => Number.isNaN(n))
+        ) {
+          continue;
+        }
+        const typeId = typeByLevel.get(level);
+        if (typeId === undefined) continue;
+        const stackIdx = stackByLevel.get(level) ?? 0;
+        stackByLevel.set(level, stackIdx + 1);
+        for (const paletteName of palettes) {
+          layers.push(
+            BuildingConstructionLayer.parse({
+              tribeId,
+              typeId,
+              level,
+              upgrade: upgrade !== 0,
+              stackIdx,
+              bmd: normalizedBmd,
+              paletteName: normalizePaletteName(paletteName),
+              bobId,
+              shadowBobId: shadowBobId >= 0 ? shadowBobId : undefined,
+              fromPct: Math.max(0, Math.min(100, fromPct)),
+              toPct: Math.max(0, Math.min(100, toPct)),
+              editName,
+              source: { file: src.file, block: 'GfxHouse', layer: src.layer ?? 'base' },
+            }),
+          );
+        }
+      }
+    }
+  }
+  return layers;
 }
 
 /** Ticks for one production cycle when no produce-atomic animation length resolves (unpinned). */

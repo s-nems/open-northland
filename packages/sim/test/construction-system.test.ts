@@ -155,11 +155,14 @@ function finishedEvents(sim: Simulation): readonly SimEvent[] {
 }
 
 describe('constructionSystem', () => {
-  it('does NOT finish a site missing some of its materials', () => {
+  it('does NOT finish a site missing some of its materials — built tracks the delivered fraction', () => {
     const sim = new Simulation({ seed: 1, content: constructionContent() });
     const e = placeSite(sim, HOUSE, { [STONE]: 1 }); // needs 2 stone + 1 wood, has only 1 stone
     constructionSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, Building).built).toBe(fx.fromInt(0)); // still under construction
+    // Still under construction, but the site's progress now EXPOSES the delivered fraction (1 of 3
+    // total units) so the render can stage the construction graphics — strictly below ONE until the
+    // full cost is present (the production/housing `built >= ONE` gates stay unreached).
+    expect(sim.world.get(e, Building).built).toBe(fx.div(ONE, fx.fromInt(3)));
     expect(finishedEvents(sim)).toHaveLength(0);
     // The partial materials are NOT consumed — the site keeps waiting on the rest.
     expect(sim.world.get(e, Stockpile).amounts.get(STONE)).toBe(1);

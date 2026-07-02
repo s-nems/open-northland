@@ -10,9 +10,11 @@ import {
   extractAtomicAnimations,
   extractBobSequences,
   extractBuildingBobs,
+  extractBuildingFootprints,
   extractBuildingGraphics,
   extractBuildings,
   extractConstructionCosts,
+  extractConstructionLayers,
   extractGoods,
   extractGraphicsBindings,
   extractJobBaseGraphics,
@@ -1010,6 +1012,130 @@ LogicConstructionGoods 1 3
 
   it('returns an empty map for sources with no [GfxHouse] records (the logic-only tables)', () => {
     expect(extractConstructionCosts(parseIniSections(HOUSES_INI)).size).toBe(0);
+  });
+});
+
+// Mirrors the real footprint grammar: `LogicBuildBlockArea <x> <y> <run>` (record-wide, NO level
+// index), `LogicWalkBlockArea <sizeIdx> <x> <y> <run>` and `LogicDoorPoint <sizeIdx> <x> <y>` (per
+// level). The two-level "hut" grows its walk-block between levels while the build zone stays fixed.
+const GFXHOUSE_FOOTPRINT_INI = `[GfxHouse]
+EditName "viking hut"
+LogicTribeType 1
+LogicType 0 2
+LogicType 1 3
+LogicBuildBlockArea -2 -1 4
+LogicBuildBlockArea -2 0 5
+LogicBuildBlockArea -1 1 3
+LogicDoorPoint 0 -1 1
+LogicDoorPoint 1 0 1
+LogicWalkBlockArea 0 -1 -1 2
+LogicWalkBlockArea 0 -1 0 3
+LogicWalkBlockArea 1 -1 -1 3
+LogicWalkBlockArea 1 -1 0 3
+LogicWalkBlockArea 1 0 1 1
+`;
+
+describe('extractBuildingFootprints', () => {
+  it('expands area runs, keys walk-block/door by level, and shares the build zone family-wide', () => {
+    const footprints = extractBuildingFootprints(parseIniSections(GFXHOUSE_FOOTPRINT_INI));
+    const level0 = footprints.get(2);
+    const level1 = footprints.get(3);
+    expect(level0).toBeDefined();
+    expect(level1).toBeDefined();
+    // Level 0's body: rows (-1,-1)x2 and (-1,0)x3, canonical (y then x) order.
+    expect(level0?.blocked).toEqual([
+      { dx: -1, dy: -1 },
+      { dx: 0, dy: -1 },
+      { dx: -1, dy: 0 },
+      { dx: 0, dy: 0 },
+      { dx: 1, dy: 0 },
+    ]);
+    // Level 1 grows: an extra cell in the -1 row and the (0,1) cell.
+    expect(level1?.blocked).toContainEqual({ dx: 1, dy: -1 });
+    expect(level1?.blocked).toContainEqual({ dx: 0, dy: 1 });
+    // familyBody = union of BOTH levels' bodies — identical on every level's typeId.
+    expect(level0?.familyBody).toEqual(level1?.familyBody);
+    expect(level0?.familyBody).toContainEqual({ dx: 0, dy: 1 }); // level 1's growth, visible at level 0
+    // reserved = familyBody ∪ the build zone (the level-independent exclusion ring).
+    expect(level0?.reserved).toEqual(level1?.reserved);
+    expect(level0?.reserved).toContainEqual({ dx: -2, dy: -1 }); // build-zone-only margin cell
+    // Every family-body cell is reserved (the union keeps walk cells the build zone misses).
+    for (const c of level0?.familyBody ?? []) expect(level0?.reserved).toContainEqual(c);
+    // The door is per level.
+    expect(level0?.door).toEqual({ dx: -1, dy: 1 });
+    expect(level1?.door).toEqual({ dx: 0, dy: 1 });
+  });
+
+  it('collapses a per-(tribe, typeId) footprint to the lowest-tribeType record', () => {
+    const otherTribe = `[GfxHouse]
+EditName "saracen hut"
+LogicTribeType 4
+LogicType 0 2
+LogicBuildBlockArea -9 -9 1
+LogicWalkBlockArea 0 -9 -9 1
+LogicDoorPoint 0 -9 -8
+`;
+    const footprints = extractBuildingFootprints(
+      parseIniSections(`${otherTribe}\n${GFXHOUSE_FOOTPRINT_INI}`),
+    );
+    // tribe 1 wins even though tribe 4 was parsed first.
+    expect(footprints.get(2)?.door).toEqual({ dx: -1, dy: 1 });
+  });
+
+  it('skips a record with no collision data and returns an empty map without [GfxHouse]', () => {
+    const noAreas = `[GfxHouse]
+EditName "cart"
+LogicTribeType 1
+LogicType 0 40
+`;
+    expect(extractBuildingFootprints(parseIniSections(noAreas)).size).toBe(0);
+    expect(extractBuildingFootprints(parseIniSections(HOUSES_INI)).size).toBe(0);
+  });
+});
+
+// Mirrors the real construction-layer grammar: `GfxBobConstructionLayer <sizeIdx> <upgrade> <bobId>
+// <shadowBobId|-1> <fromPct> <toPct>`, joined to typeIds via `LogicType` and fanned out per palette.
+const GFXHOUSE_LAYERS_INI = `[GfxHouse]
+EditName "viking hut"
+LogicTribeType 1
+LogicType 0 2
+LogicType 1 3
+GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_houses_viking.bmd"
+GfxPalette "house01" "house02"
+GfxBobId 0 1
+GfxBobId 1 11
+GfxBobConstructionLayer 0 0 3 -1 10 70
+GfxBobConstructionLayer 0 0 2 5 0 50
+GfxBobConstructionLayer 0 0 1 -1 20 100
+GfxBobConstructionLayer 0 1 11 -1 0 100
+GfxBobConstructionLayer 1 0 13 -1 10 70
+`;
+
+describe('extractConstructionLayers', () => {
+  const src = { file: 'budynki12/houses/houses.ini', layer: 'mod' as const };
+
+  it('joins layers to typeIds by level, keeping file order as stackIdx and fanning out per palette', () => {
+    const layers = extractConstructionLayers(parseIniSections(GFXHOUSE_LAYERS_INI), src);
+    const level0 = layers.filter((l) => l.typeId === 2 && l.paletteName === 'house01');
+    expect(level0.map((l) => ({ bob: l.bobId, up: l.upgrade, i: l.stackIdx }))).toEqual([
+      { bob: 3, up: false, i: 0 },
+      { bob: 2, up: false, i: 1 },
+      { bob: 1, up: false, i: 2 },
+      { bob: 11, up: true, i: 3 }, // the upgrade-overlay row is kept but flagged
+    ]);
+    // `-1` shadow → absent; a real shadow id is kept.
+    expect(level0[0]?.shadowBobId).toBeUndefined();
+    expect(level0[1]?.shadowBobId).toBe(5);
+    expect(level0[1]?.fromPct).toBe(0);
+    expect(level0[1]?.toPct).toBe(50);
+    // Level 1's layer lands on typeId 3; both palettes get every row.
+    expect(layers.filter((l) => l.typeId === 3)).toHaveLength(2);
+    expect(layers.filter((l) => l.paletteName === 'house02')).toHaveLength(5);
+    expect(level0[0]?.bmd).toBe('data/engine2d/bin/bobs/ls_houses_viking.bmd');
+  });
+
+  it('returns an empty array for sources with no [GfxHouse] records', () => {
+    expect(extractConstructionLayers(parseIniSections(HOUSES_INI), src)).toEqual([]);
   });
 });
 

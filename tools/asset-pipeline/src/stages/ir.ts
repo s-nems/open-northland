@@ -1,6 +1,6 @@
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
+import { type BuildingFootprint, type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import type { Args } from '../args.js';
 import { decodeCifStringArray } from '../decoders/cif.js';
 import {
@@ -14,8 +14,10 @@ import {
   extractAtomicAnimations,
   extractBobSequences,
   extractBuildingBobs,
+  extractBuildingFootprints,
   extractBuildings,
   extractConstructionCosts,
+  extractConstructionLayers,
   extractGoods,
   extractJobExperience,
   extractJobs,
@@ -135,6 +137,11 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   // typeId -> build-material cost, overlaid from the graphics table's `[GfxHouse]` records onto the
   // logic-table buildings below (the logic table carries no construction cost — see `resolveIniSources`).
   const constructionCosts = new Map<number, { goodType: number; amount: number }[]>();
+  // typeId -> ground footprint (collision body / build-exclusion zone / door), the second graphics-table
+  // overlay onto the logic buildings (see `extractBuildingFootprints`).
+  const footprints = new Map<number, BuildingFootprint>();
+  // `[GfxHouse]` construction-stage layers (render-binding data, like buildingBobs).
+  const constructionLayers = [];
   for (const { path, file, layer } of sources) {
     const sections = parseIniSections(decodeIni(await readFile(path)));
     const src: SourceRef = { file, layer };
@@ -151,8 +158,12 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     vehicles.push(...extractVehicles(sections, src));
     bobSequences.push(...extractBobSequences(sections, src));
     buildingBobs.push(...extractBuildingBobs(sections, src));
+    constructionLayers.push(...extractConstructionLayers(sections, src));
     for (const [typeId, cost] of extractConstructionCosts(sections)) {
       constructionCosts.set(typeId, cost);
+    }
+    for (const [typeId, footprint] of extractBuildingFootprints(sections)) {
+      footprints.set(typeId, footprint);
     }
   }
   const maps = await decodeMapTree(args.game);
@@ -181,11 +192,17 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   const landscapeGfx = landscapeSections
     ? extractLandscapeGfx(landscapeSections, { file: landscapeFile, layer: 'base' })
     : [];
-  // Overlay each building's build-material cost from the graphics table (joined by `typeId`); a
-  // building the graphics table omits keeps the schema-default empty cost.
+  // Overlay each building's build-material cost + ground footprint from the graphics table (joined
+  // by `typeId`); a building the graphics table omits keeps the schema-default empty cost and no
+  // footprint (it places with no collision — the pre-footprint behavior).
   const buildingsWithCosts = buildings.map((b) => {
     const cost = constructionCosts.get(b.typeId);
-    return cost ? { ...b, construction: cost } : b;
+    const footprint = footprints.get(b.typeId);
+    return {
+      ...b,
+      ...(cost ? { construction: cost } : {}),
+      ...(footprint ? { footprint } : {}),
+    };
   });
   // Output-side recipe join: a workplace's `produces` output good -> that good's `productionInputs`
   // materializes each producing building's `recipe` (cross-table, so after the tables are built).
@@ -213,6 +230,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     terrainPatterns,
     bobSequences,
     buildingBobs,
+    constructionLayers,
     tribes,
     atomicAnimations,
     maps,

@@ -4,6 +4,7 @@ import { ONE, fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { TerrainGraph } from '../nav/terrain.js';
 import type { SystemContext } from './context.js';
+import { interactionTile } from './footprint.js';
 import { vehicleMayCarry } from './readviews/vehicles.js';
 
 // The genuinely cross-system helpers, kept in a leaf module so every per-system file imports them
@@ -180,19 +181,22 @@ const EMPTY_JOBS: ReadonlySet<number> = new Set<number>();
  *
  * A building type that declares **no** worker slots is unstaffed-by-design and counts as always
  * present (passive stores / fixtures without workers keep working) — the gate constrains only a
- * workplace that actually names a worker. Presence is integer-tile coincidence (settler tile ==
- * building tile), so it needs no terrain graph and works on a mapless fixture too. The match is
- * canonical-order-independent (a boolean any-match, not a chosen entity), so no determinism concern.
+ * workplace that actually names a worker. Presence is integer-tile coincidence with the building's
+ * **interaction tile** (its door cell when the type's footprint names one, else its anchor tile —
+ * {@link interactionTile}; the walls themselves are walk-blocked, so an operator works AT the door,
+ * exactly where the AI walk-to-station drive delivers it), so it needs no terrain graph and works on
+ * a mapless fixture too. The match is canonical-order-independent (a boolean any-match, not a chosen
+ * entity), so no determinism concern.
  *
  * Cross-system: ProductionSystem gates both starting and advancing a cycle on this.
  */
 export function workerPresentAt(world: World, ctx: SystemContext, building: Entity): boolean {
   const jobs = buildingWorkerJobs(world, ctx, building);
   if (jobs.size === 0) return true; // unstaffed-by-design: no worker requirement to satisfy
-  const bp = world.tryGet(building, Position);
-  if (bp === undefined) return false; // a placed-but-position-less workplace can't be stood on
-  const bx = fx.toInt(bp.x);
-  const by = fx.toInt(bp.y);
+  const at = interactionTile(world, ctx, building);
+  if (at === null) return false; // a placed-but-position-less workplace can't be stood on
+  const bx = at.x;
+  const by = at.y;
   for (const e of world.query(Settler, Position)) {
     const settler = world.get(e, Settler);
     if (settler.jobType === null || !jobs.has(settler.jobType)) continue;

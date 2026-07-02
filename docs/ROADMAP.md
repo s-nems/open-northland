@@ -274,6 +274,16 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
       tier's cost, raising `housingCapacity`, with its own delivery branch; the whole births→housing→upgrade
       loop proven composing over the real `step()` (`births-housing-upgrade-loop.test.ts`). Inert on the
       golden (no `home`-kind building). Faithful (build cost is the extracted graphics-table param).
+      **Building ground footprints LANDED (2026-07-02):** the `[GfxHouse]` walk-block / build-block / door
+      cells extracted per typeId (`BuildingType.footprint` + IR `constructionLayers`); free placement with
+      collision + min-distance (`canPlaceBuilding` gates `placeBuilding`), a level-0 house reserves its
+      family's max footprint, buildings walk-block their body from the foundation tick (paths route around),
+      all building interaction happens at the DOOR cell, `built` rises with delivered materials, and the
+      render stacks the `GfxBobConstructionLayer` stages (grey foundation → stages → body) —
+      `?scene=house-placement` is the acceptance scene (docs/FIDELITY.md has the 6 new rows). **Open
+      (deferred):** builder-driven build progress (`constructionworker_Work_Hammer` +
+      `LogicConstructionWorkArea`), the enter-building/hide-worker split incl. `GfxOverlay` OPEN workshops
+      (bakery), the `upgrade=1` construction-layer rows, repath-on-new-foundation.
 - [ ] **ReproductionSystem** — **landed** (→ [archive](ROADMAP-ARCHIVE.md)): one birth per tribe per tick
       while `tribePopulation < housingCapacity` (the `populationWithinHousing` invariant); a newborn is the
       data-pinned youngest age class (`baby_female`), and `growthSystem` ages it baby→child→adult over

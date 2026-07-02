@@ -172,6 +172,43 @@ export const Recipe = z.strictObject({
 });
 export type Recipe = z.infer<typeof Recipe>;
 
+/** One cell offset of a building footprint, relative to the building's placed anchor tile. */
+export const FootprintCell = z.strictObject({
+  dx: z.number().int(),
+  dy: z.number().int(),
+});
+export type FootprintCell = z.infer<typeof FootprintCell>;
+
+/**
+ * A building type's ground footprint, extracted from the graphics table's `[GfxHouse]` record (the
+ * readable `DataCnmd/budynki12/houses/houses.ini`) — the collision/placement model the original
+ * carries per house. All cells are offsets from the building's anchor tile (its `Position`), each
+ * source line `<x> <y> <run>` expanding to `run` cells starting at `(x, y)` and extending along +x.
+ *
+ *  - `blocked` — `LogicWalkBlockArea <sizeIdx> <x> <y> <run>` for THIS type's size level: the cells
+ *    the standing building makes unwalkable (its physical body — settlers cannot path through them).
+ *  - `familyBody` — the union of `blocked` across ALL the record's size levels: the largest body the
+ *    building can grow to through its upgrade chain (a level-0 hut's future max-level walls).
+ *  - `reserved` — `familyBody` ∪ the record's `LogicBuildBlockArea` cells (which the source defines
+ *    ONCE per record, with no level index — the level-independent build-exclusion zone). This is the
+ *    area the building keeps clear of other construction: a level-0 hut reserves exactly what its
+ *    top level needs, plus the margin ring the source draws around the walls (the "minimum distance
+ *    from other houses / blocking terrain" the original enforces).
+ *  - `door` — `LogicDoorPoint <sizeIdx> <x> <y>` for this size level: the entry cell settlers use to
+ *    interact with the building (always adjacent to, never inside, the walls in the viking data).
+ *
+ * Absent on a building the graphics table omits (and on synthetic test content) — such a type places
+ * with no collision, blocks nothing, and is interacted with on its anchor tile (the pre-footprint
+ * behavior).
+ */
+export const BuildingFootprint = z.strictObject({
+  blocked: z.array(FootprintCell).default([]),
+  familyBody: z.array(FootprintCell).default([]),
+  reserved: z.array(FootprintCell).default([]),
+  door: FootprintCell.optional(),
+});
+export type BuildingFootprint = z.infer<typeof BuildingFootprint>;
+
 export const BuildingType = z.strictObject({
   typeId: TypeId,
   id: z.string(), // e.g. "headquarters"
@@ -214,6 +251,12 @@ export const BuildingType = z.strictObject({
   construction: z
     .array(z.strictObject({ goodType: TypeId, amount: z.number().int().positive() }))
     .default([]),
+  /**
+   * Ground footprint (collision body / build-exclusion zone / door cell) from the graphics table's
+   * `[GfxHouse]` record, overlaid by `typeId` like {@link construction}. Absent when the graphics
+   * table has no record for the type (and on synthetic test content) — see {@link BuildingFootprint}.
+   */
+  footprint: BuildingFootprint.optional(),
   source: Provenance.optional(),
 });
 export type BuildingType = z.infer<typeof BuildingType>;
@@ -973,6 +1016,52 @@ export const BuildingBob = z.strictObject({
 });
 export type BuildingBob = z.infer<typeof BuildingBob>;
 
+/**
+ * One `[GfxHouse]` **construction-stage layer**: `GfxBobConstructionLayer <sizeIdx> <upgrade> <bobId>
+ * <shadowBobId|-1> <fromPct> <toPct>` — which atlas bob(s) an under-construction building draws at a
+ * given build progress. A record lists several layers per size level with OVERLAPPING `[fromPct,
+ * toPct]` ranges; at progress `p` (percent, 0..100) every layer whose range contains `p` draws,
+ * STACKED in file order (`stackIdx`) — the last-listed active layer (the finished body, whose range
+ * always ends at 100) lands on top. At `p = 0` only the first stage (the grey foundation, range
+ * starting at 0) is visible; at `p = 100` only the finished body (+ its shadow) remains.
+ *
+ * `upgrade` (the source's second int, 0 or 1): the 1-rows reference the NEXT size level's finished
+ * body and are NOT part of this level's from-scratch construction — they belong to the original's
+ * upgrade-in-progress overlay (semantics not fully decoded; docs/FIDELITY.md). Consumers of the
+ * from-scratch construction render use only the `upgrade === false` rows.
+ *
+ * Render-binding data like {@link BuildingBob} (same `(tribeId, typeId)` keying, same `(bmd,
+ * palette)` atlas resolution); the pure sim ignores it.
+ */
+export const BuildingConstructionLayer = z.strictObject({
+  /** The `LogicTribeType` the record applies to — the same logic `typeId` recurs per tribe. */
+  tribeId: z.number().int().nonnegative(),
+  /** The building `typeId` at this size level (the `LogicType` value — the sim's `Building.buildingType`). */
+  typeId: z.number().int().nonnegative(),
+  /** The growth/size level index (the source's leading int) — a home's tier 0..4. */
+  level: z.number().int().nonnegative(),
+  /** True for the source's `1` rows — the upgrade-overlay layers a from-scratch render skips. */
+  upgrade: z.boolean(),
+  /** Position of this layer in the record's file order — the stacking order at draw time. */
+  stackIdx: z.number().int().nonnegative(),
+  /** The body bob set, normalized — the same `.bmd` the type's {@link BuildingBob} rows index. */
+  bmd: z.string(),
+  /** One recolour skin (`GfxPalette` value), lower-cased. */
+  paletteName: z.string(),
+  /** The atlas bob to draw while this layer is active. */
+  bobId: z.number().int().nonnegative(),
+  /** The layer's shadow bob, when the source names one (`-1` = none → absent). */
+  shadowBobId: z.number().int().nonnegative().optional(),
+  /** Build progress percent at which the layer appears (inclusive). */
+  fromPct: z.number().int().min(0).max(100),
+  /** Build progress percent up to which the layer stays visible (inclusive). */
+  toPct: z.number().int().min(0).max(100),
+  /** The record's `EditName`, kept as a render/debug handle when present. */
+  editName: z.string().optional(),
+  source: Provenance.optional(),
+});
+export type BuildingConstructionLayer = z.infer<typeof BuildingConstructionLayer>;
+
 /** Top-level manifest written to content/ir.json. */
 export const IrManifest = z.strictObject({
   version: z.number().int().positive(),
@@ -1001,6 +1090,7 @@ export const ContentSet = z.strictObject({
   terrainPatterns: z.array(TerrainPattern).default([]),
   bobSequences: z.array(BobSequenceSet).default([]),
   buildingBobs: z.array(BuildingBob).default([]),
+  constructionLayers: z.array(BuildingConstructionLayer).default([]),
   tribes: z.array(TribeType).default([]),
   atomicAnimations: z.array(AtomicAnimation).default([]),
   maps: z.array(MapInfo).default([]),

@@ -17,6 +17,7 @@ import type { Command } from '../../core/commands.js';
 import { ONE, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
+import { canPlaceBuilding } from '../footprint.js';
 import { buildingEnabled, tribeShipsUnlocked } from '../progression.js';
 import { animalHitpoints, herdParams, locomotionOf } from '../readviews/index.js';
 
@@ -139,6 +140,18 @@ function placeBuilding(
   // (`jobEnablesHouse`). A gated-out placement is a recoverable boundary failure (a stale/illegal UI
   // command), so it is skipped here but still recorded by commandSystem — replay stays faithful.
   if (!buildingEnabled(world, ctx, command.tribe, command.buildingType)) return;
+
+  // Ground-collision gate — the original's FREE placement rule: the type's footprint must fit here
+  // (its reserved zone on walkable ground, clear of resource nodes, its walls and every existing
+  // building's walls outside each other's zones — see {@link canPlaceBuilding}). A placement that
+  // doesn't fit is the same recoverable boundary failure as a tech-gated one: skipped, still logged.
+  // A mapless sim (no terrain) or a footprint-less type (synthetic content) validates trivially.
+  if (
+    ctx.terrain !== undefined &&
+    !canPlaceBuilding(world, ctx, ctx.terrain, command.buildingType, command.x, command.y)
+  ) {
+    return;
+  }
 
   const e = world.create();
   world.add(e, Position, { x: fx.fromInt(command.x), y: fx.fromInt(command.y) });

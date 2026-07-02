@@ -125,6 +125,15 @@ export interface DrawItem {
    * (docs/LESSONS.md [dc3ef54]): only a young settler keys the child/baby body table. Omitted for adults.
    */
   readonly young?: boolean;
+  /**
+   * For an UNDER-CONSTRUCTION building: its build progress as a whole percent (0..99 — the sim's
+   * `Building.built` fixed-point fraction, floored). The construction-stage binding
+   * ({@link import('./sprites.js').BuildingTypeBinding.constructionByType}) picks which `[GfxHouse]`
+   * construction layers are visible at this progress (the grey foundation at 0, rising stages after).
+   * OMITTED for a finished building (`built >= ONE`) — the normal per-type body draw then applies —
+   * and for non-building kinds.
+   */
+  readonly builtPct?: number;
 }
 
 /**
@@ -220,6 +229,19 @@ function readActingAtomic(components: Readonly<Record<string, unknown>>): number
 function readBuildingType(components: Readonly<Record<string, unknown>>): number | undefined {
   const b = components.Building as { buildingType?: unknown } | undefined;
   return b !== undefined && typeof b.buildingType === 'number' ? b.buildingType : undefined;
+}
+
+/**
+ * An UNDER-CONSTRUCTION building's progress as a whole percent (0..99), or `undefined` for a finished
+ * building (`built >= ONE` — the normal body draw applies) or a missing/malformed component. The sim's
+ * `Building.built` is a fixed-point fraction of ONE; the floor keeps a nearly-done site below 100 so
+ * the construction stages stay up until the finish tick flips the draw to the completed body. Pure
+ * read of plain snapshot data — never re-enters the sim.
+ */
+function readBuiltPct(components: Readonly<Record<string, unknown>>): number | undefined {
+  const b = components.Building as { built?: unknown } | undefined;
+  if (b === undefined || typeof b.built !== 'number' || b.built >= ONE) return undefined;
+  return Math.max(0, Math.min(99, Math.floor((b.built * 100) / ONE)));
 }
 
 /**
@@ -432,6 +454,9 @@ function collectSprites(snapshot: WorldSnapshot, viewport?: Viewport): DrawItem[
     // A building carries its type id so a per-type binding draws its own house bob (the `[GfxHouse]`
     // `LogicType` → `GfxBobId` join); other kinds key off no type, so it's omitted for them.
     const buildingType = kind === 'building' ? readBuildingType(entity.components) : undefined;
+    // An under-construction building carries its progress percent so the construction-stage binding
+    // can pick the visible `[GfxHouse]` layers (grey foundation → stages → completed body).
+    const builtPct = kind === 'building' ? readBuiltPct(entity.components) : undefined;
     // A chopping settler shares its tree's cell; nudge its drawn sprite left so the right-swing axe
     // lands in the trunk at the cell centre (render-only — the depth sort below still uses the true tile).
     const chopNudgeX = state === 'acting' && actingAtomic === CHOP_ATOMIC_ID ? CHOP_NUDGE_X : 0;
@@ -456,6 +481,7 @@ function collectSprites(snapshot: WorldSnapshot, viewport?: Viewport): DrawItem[
       ...(jobType !== undefined ? { jobType } : {}),
       ...(young ? { young: true } : {}),
       ...(buildingType !== undefined ? { typeId: buildingType } : {}),
+      ...(builtPct !== undefined ? { builtPct } : {}),
     });
   }
   // Stable, total order: sprites by (y, x, id). The entity-id tie-break makes two sprites on the exact
