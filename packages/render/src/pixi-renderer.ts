@@ -47,7 +47,7 @@ export interface SpriteLayer {
  * frame-id space — which is why the binding travels WITH the layers instead of staying a sheet-global.
  */
 export interface SettlerCharacter {
-  /** The body bob atlas — the base layer, whose `[bobseq]` ranges the {@link binding} indexes. */
+  /** The body bob atlas — the base layer, whose `[bobseq]` ranges the {@link SettlerCharacter.binding} indexes. */
   readonly body: SpriteLayer;
   /**
    * The head looks that can overlay this body (the `gfxbobmanagerhead` slots), drawn at the same bob id

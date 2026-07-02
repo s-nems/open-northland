@@ -18,7 +18,6 @@ export {
   indexAtlasFrames,
   pickByJob,
   resolveBuildingDraw,
-  resolveSettlerBobId,
   resolveSpriteFrame,
   resolveSpriteBobId,
   DEFAULT_FACING,

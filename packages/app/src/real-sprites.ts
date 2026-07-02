@@ -1,6 +1,7 @@
 import {
   type AtlasManifest,
   type BuildingBobRef,
+  type CarryingBinding,
   type DirectionalAnim,
   SYNTHETIC_BINDINGS,
   type SettlerCharacter,
@@ -15,7 +16,7 @@ import {
   loadAtlasSource,
   syntheticAtlasFrames,
 } from '@vinland/render';
-import { VIKING_CHARACTERS, characterStem, characterStems } from './viking-roster.js';
+import { CIVILIST_JOB_HEADS, VIKING_CHARACTERS, characterStem, characterStems } from './viking-roster.js';
 
 /**
  * The `?atlas=real` binding: draw settlers from REAL decoded bob atlases instead of the synthetic one.
@@ -213,11 +214,12 @@ const WALK_WOOD_SEQ = 'human_man_generic_walk_wood';
 const FALLBACK_WALK: DirectionalAnim = { start: 1988, dirs: DIRS, stride: 12 };
 // The 15-frame woodcut bobseq is a continuous loop. Verified by rendering every frame to a filmstrip:
 // frames 0..8 are the axe coming DOWN to the tree (the strike, impact ~frame 8) and 9..14 are the axe
-// RISING (the windup). So we play the FULL cycle but START at the windup (`phaseStart: 9`): it plays
+// RISING (the windup). So we play the FULL cycle but START at the windup (CHOP_PHASE_START): it plays
 // 9..14 (raise the axe) then 0..8 (swing down, impact) — a complete chop that *begins* with the windup
 // and *ends* on the strike landing in the tree. Tick-locked cadence (one frame/tick) on the atomic's
 // `elapsed`, same speed as every other animation.
-const FALLBACK_CHOP: DirectionalAnim = { start: 5106, dirs: DIRS, stride: 15, phaseStart: 9 };
+const CHOP_PHASE_START = 9;
+const FALLBACK_CHOP: DirectionalAnim = { start: 5106, dirs: DIRS, stride: 15, phaseStart: CHOP_PHASE_START };
 const FALLBACK_WALK_WOOD: DirectionalAnim = { start: 4580, dirs: DIRS, stride: 12 };
 // The idle/wait loop (verified against an owned copy: 1931/57). 57 isn't a clean ×8, so wait is NOT a
 // directional cycle — it's a SINGLE-direction animation (`dirs: 1`, the whole 57-frame strip), the same
@@ -225,8 +227,9 @@ const FALLBACK_WALK_WOOD: DirectionalAnim = { start: 4580, dirs: DIRS, stride: 1
 // (not a facing-sliced 1/8 excerpt) is what makes a standing settler breathe rather than freeze.
 const FALLBACK_WAIT: DirectionalAnim = { start: 1931, dirs: 1, stride: 57 };
 
-/** The chop atomic id (the demo slice's `harvest`), mapped to the woodcutting swing. */
-const HARVEST_ATOMIC = 24;
+/** The chop atomic id (the original's `harvest`), mapped to the woodcutting swing. Exported as the
+ *  ONE app-side declaration of this semantic id (the slice + scenes reuse it). */
+export const HARVEST_ATOMIC = 24;
 
 /** One decoded `[bobseq]` sequence as it ships in `content/ir.json`'s `bobSequences`. */
 export interface BobSeqRow {
@@ -395,7 +398,7 @@ export function buildHumanBindings(
     waitRow !== undefined && waitRow.length > 0
       ? { start: waitRow.start, dirs: 1, stride: waitRow.length }
       : FALLBACK_WAIT;
-  const chop = directionalAnimFromSeq(seqByName, CHOP_SEQ, { phaseStart: 9 }, FALLBACK_CHOP);
+  const chop = directionalAnimFromSeq(seqByName, CHOP_SEQ, { phaseStart: CHOP_PHASE_START }, FALLBACK_CHOP);
   const walkWood = directionalAnimFromSeq(seqByName, WALK_WOOD_SEQ, {}, FALLBACK_WALK_WOOD);
   const standWood = directionalAnimFromSeq(
     seqByName,
@@ -482,18 +485,6 @@ async function loadIr(): Promise<RenderIr | null> {
 }
 
 /**
- * Index the {@link BODY_IMAGELIB} bob set's `[bobseq]` sequences by name (the `extractBobSequences` leg).
- * Empty when the IR is absent or carries no sequences → {@link buildHumanBindings} falls back to the
- * known-good `FALLBACK_*` ranges.
- */
-function bodySequencesByName(ir: RenderIr | null): Map<string, BobSeqRow> {
-  const byName = new Map<string, BobSeqRow>();
-  const set = (ir?.bobSequences ?? []).find((s) => s.imagelib === BODY_IMAGELIB);
-  for (const seq of set?.sequences ?? []) byName.set(seq.name, seq);
-  return byName;
-}
-
-/**
  * Load every `[bobseq]` of one body bob set (default {@link BODY_IMAGELIB}) from the served
  * `content/ir.json`, in file order — the raw animation list the {@link import('@vinland/render').AnimationGallery}
  * plays. Returns `[]` when the IR is absent (a checkout without `content/`), so the gallery can show a
@@ -556,6 +547,22 @@ const CARRY_SEQ_SUFFIX: Readonly<Record<string, string>> = {
 };
 
 /**
+ * A named ×8 `[bobseq]` row as a {@link DirectionalAnim}, or `undefined` when the row is missing,
+ * empty, or not a clean ×8 strip — the one guard every per-character animation slot shares, so a
+ * malformed/partial IR can never become a bogus frame range. The null-on-miss twin of
+ * {@link directionalAnimFromSeq} (which serves the legacy binding's fallback-required contract). Pure.
+ */
+function eightDirAnim(
+  seqByName: ReadonlyMap<string, BobSeqRow>,
+  name: string | undefined,
+): DirectionalAnim | undefined {
+  if (name === undefined) return undefined;
+  const row = seqByName.get(name);
+  if (row === undefined || row.length <= 0 || row.length % DIRS !== 0) return undefined;
+  return { start: row.start, dirs: DIRS, stride: row.length / DIRS };
+}
+
+/**
  * Build the per-`goodType` loaded-gait table for one body: for each content good, resolve its carry
  * sequence `<prefix><suffix>` (suffix = the slug, via {@link CARRY_SEQ_SUFFIX} when aliased) and bind
  * `moving` to the full ×8 cycle + `idle` to its first-frame hold (the still loaded pose a depositor
@@ -566,13 +573,12 @@ export function carryAnimsByGood(
   seqByName: ReadonlyMap<string, BobSeqRow>,
   prefix: string,
   goods: readonly GoodRef[],
-): Record<number, { idle: SpriteFrameRef; moving: SpriteFrameRef }> {
+): NonNullable<CarryingBinding['byGood']> {
   const out: Record<number, { idle: SpriteFrameRef; moving: SpriteFrameRef }> = {};
   for (const good of goods) {
     const suffix = CARRY_SEQ_SUFFIX[good.id] ?? good.id;
-    const seq = seqByName.get(prefix + suffix);
-    if (seq === undefined || seq.length <= 0 || seq.length % DIRS !== 0) continue;
-    const moving: DirectionalAnim = { start: seq.start, dirs: DIRS, stride: seq.length / DIRS };
+    const moving = eightDirAnim(seqByName, prefix + suffix);
+    if (moving === undefined) continue;
     out[good.typeId] = { moving, idle: { ...moving, frames: 1 } };
   }
   return out;
@@ -597,8 +603,9 @@ export interface CharacterSpec {
    * The standing idle. `loop` plays the named strip whole as a single-direction breathing loop (the
    * generic waits aren't a clean ×8 — the original plays them facing-locked). `walk-hold` holds the
    * walk's first frame per facing instead — used for the armed soldiers, whose weapon waits are short
-   * non-×8 strips with an UNCALIBRATED facing layout (docs/FIDELITY.md "Animation facing order"); a
-   * directional still with the right weapon beats a mis-split strip.
+   * non-×8 strips with an UNCALIBRATED facing layout (the per-sequence facing-order gap of the
+   * docs/FIDELITY.md "Character animation gallery" row); a directional still with the right weapon
+   * beats a mis-split strip.
    */
   readonly wait: { readonly kind: 'loop'; readonly seq: string } | { readonly kind: 'walk-hold' };
   /** Prefix of this body's per-good carry cycles (`<prefix><good>`), when the body has any. */
@@ -607,19 +614,17 @@ export interface CharacterSpec {
   readonly atomics?: Readonly<Record<number, { readonly seq: string; readonly phaseStart?: number }>>;
 }
 
-/** The civilist-job head looks (00..03) — the in-game generic man's faces; the roster's extra looks
- *  (80..83 scout, 90..93 druid) stay gallery-only until those jobs exist in a running sim. */
-const CIVILIST_HEADS = ['cr_hum_head_00', 'cr_hum_head_01', 'cr_hum_head_02', 'cr_hum_head_03'] as const;
-
-/** Specs for every in-game look, keyed by the id the job tables below reference. */
-export const CHARACTER_SPECS: Readonly<Record<string, CharacterSpec>> = {
+/** Specs for every in-game look, keyed by the id the job tables below reference. Declared with
+ *  `satisfies` (not a widened `Record<string, …>`) so the keys stay literal and a typo'd spec id in a
+ *  job table is a COMPILE error, not a silent fall-to-default. */
+export const CHARACTER_SPECS = {
   civilian: {
     rosterId: 'civilian',
-    headBmds: CIVILIST_HEADS,
+    headBmds: CIVILIST_JOB_HEADS,
     walkSeq: 'human_man_generic_walk',
     wait: { kind: 'loop', seq: 'human_man_generic_wait' },
     carryPrefix: 'human_man_generic_walk_',
-    atomics: { [HARVEST_ATOMIC]: { seq: CHOP_SEQ, phaseStart: 9 } },
+    atomics: { [HARVEST_ATOMIC]: { seq: CHOP_SEQ, phaseStart: CHOP_PHASE_START } },
   },
   woman: {
     rosterId: 'woman',
@@ -671,7 +676,17 @@ export const CHARACTER_SPECS: Readonly<Record<string, CharacterSpec>> = {
     walkSeq: 'human_man_Warrior_Longbow_walk',
     wait: { kind: 'walk-hold' },
   },
-};
+} satisfies Readonly<Record<string, CharacterSpec>>;
+
+/** A key of {@link CHARACTER_SPECS} — the literal spec-id union the job tables are typed by. */
+export type CharacterSpecId = keyof typeof CHARACTER_SPECS;
+
+/** The specs as `[id, spec]` pairs, WIDENED to the {@link CharacterSpec} interface — the literal value
+ *  types differ per entry (that's what makes the ids literal), so iteration goes through this view. */
+const CHARACTER_SPEC_ENTRIES = Object.entries(CHARACTER_SPECS) as readonly (readonly [
+  CharacterSpecId,
+  CharacterSpec,
+])[];
 
 /**
  * Adult `jobType` → character spec id — the viking `[jobbasegraphics]` job → body join, transcribed
@@ -682,7 +697,7 @@ export const CHARACTER_SPECS: Readonly<Record<string, CharacterSpec>> = {
  * Every unmapped job (all civilian trades — they share the generic man body in the original) falls to
  * the `civilian` default.
  */
-export const ADULT_CHARACTER_BY_JOB: Readonly<Record<number, string>> = {
+export const ADULT_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> = {
   5: 'woman', // woman
   31: 'warrior', // soldier_unarmed
   32: 'warrior-spear', // soldier_spear_wooden
@@ -702,7 +717,7 @@ export const ADULT_CHARACTER_BY_JOB: Readonly<Record<number, string>> = {
  * from the same `[jobbasegraphics]` table. Keyed only for young settlers so a synthetic fixture's adult
  * job id 1/2 can never draw a baby (the [dc3ef54] collision, disambiguated by the `Age` component).
  */
-export const YOUNG_CHARACTER_BY_JOB: Readonly<Record<number, string>> = {
+export const YOUNG_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> = {
   1: 'baby', // baby_female
   2: 'baby', // baby_male
   3: 'girl', // child_female
@@ -721,11 +736,7 @@ export function characterBinding(
   seqByName: ReadonlyMap<string, BobSeqRow>,
   goods: readonly GoodRef[],
 ): SettlerStateBinding | null {
-  const walkRow = spec.walkSeq !== undefined ? seqByName.get(spec.walkSeq) : undefined;
-  const walk: DirectionalAnim | undefined =
-    walkRow !== undefined && walkRow.length > 0 && walkRow.length % DIRS === 0
-      ? { start: walkRow.start, dirs: DIRS, stride: walkRow.length / DIRS }
-      : undefined;
+  const walk = eightDirAnim(seqByName, spec.walkSeq);
   const waitRow = spec.wait.kind === 'loop' ? seqByName.get(spec.wait.seq) : undefined;
   // A loop wait plays its whole strip facing-locked (the strips aren't ×8); a walk-hold stands the
   // walk's first frame per facing. Whichever resolves becomes idle; neither → the character is unusable.
@@ -739,12 +750,10 @@ export function characterBinding(
 
   const byAtomic: Record<number, SpriteFrameRef> = {};
   for (const [atomicId, action] of Object.entries(spec.atomics ?? {})) {
-    const row = seqByName.get(action.seq);
-    if (row === undefined || row.length <= 0 || row.length % DIRS !== 0) continue;
+    const anim = eightDirAnim(seqByName, action.seq);
+    if (anim === undefined) continue;
     byAtomic[Number(atomicId)] = {
-      start: row.start,
-      dirs: DIRS,
-      stride: row.length / DIRS,
+      ...anim,
       ...(action.phaseStart !== undefined ? { phaseStart: action.phaseStart } : {}),
     };
   }
@@ -754,11 +763,8 @@ export function characterBinding(
   // soldiers) hauls invisibly on its plain walk — faithful enough: those never carry in the original.
   const carryByGood =
     spec.carryPrefix !== undefined ? carryAnimsByGood(seqByName, spec.carryPrefix, goods) : {};
-  const woodRow = spec.carryPrefix !== undefined ? seqByName.get(`${spec.carryPrefix}wood`) : undefined;
-  const genericCarry: DirectionalAnim | undefined =
-    woodRow !== undefined && woodRow.length > 0 && woodRow.length % DIRS === 0
-      ? { start: woodRow.start, dirs: DIRS, stride: woodRow.length / DIRS }
-      : undefined;
+  const genericCarry =
+    spec.carryPrefix !== undefined ? eightDirAnim(seqByName, `${spec.carryPrefix}wood`) : undefined;
   const carrying =
     genericCarry !== undefined || Object.keys(carryByGood).length > 0
       ? {
@@ -800,12 +806,13 @@ async function loadCharacters(
 ): Promise<SettlerCharacterSet | undefined> {
   if (ir?.bobSequences === undefined || ir.bobSequences.length === 0) return undefined;
 
+  const rosterById = new Map(VIKING_CHARACTERS.map((c) => [c.id, c]));
   // One load per roster body: its body layer (hard requirement per look) + its head layers (soft).
-  const rosterIds = [...new Set(Object.values(CHARACTER_SPECS).map((s) => s.rosterId))];
+  const rosterIds = [...new Set(CHARACTER_SPEC_ENTRIES.map(([, s]) => s.rosterId))];
   const layersByRoster = new Map<string, { body: SpriteLayer; headsByStem: Map<string, SpriteLayer> }>();
   await Promise.all(
     rosterIds.map(async (rosterId) => {
-      const character = VIKING_CHARACTERS.find((c) => c.id === rosterId);
+      const character = rosterById.get(rosterId);
       if (character === undefined) return;
       const stems = characterStems(character);
       try {
@@ -823,9 +830,9 @@ async function loadCharacters(
   );
 
   const bySpec = new Map<string, SettlerCharacter>();
-  for (const [specId, spec] of Object.entries(CHARACTER_SPECS)) {
+  for (const [specId, spec] of CHARACTER_SPEC_ENTRIES) {
     const layers = layersByRoster.get(spec.rosterId);
-    const roster = VIKING_CHARACTERS.find((c) => c.id === spec.rosterId);
+    const roster = rosterById.get(spec.rosterId);
     if (layers === undefined || roster === undefined) continue;
     const binding = characterBinding(spec, sequencesFor(ir, roster.imagelib), goods);
     if (binding === null) continue;
@@ -889,7 +896,7 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   return {
     source: body.source,
     atlas: body.atlas,
-    bindings: buildHumanBindings(bodySequencesByName(ir), houseBobs),
+    bindings: buildHumanBindings(sequencesFor(ir, BODY_IMAGELIB), houseBobs),
     overlays: [head],
     // The tree and the DEFAULT building each draw from their OWN atlas (distinct id spaces), so they bind
     // as per-kind layers rather than sharing the body atlas the settler uses. `resource` -> TREE_BOB and

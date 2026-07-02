@@ -410,24 +410,6 @@ export function atlasFromManifest(manifest: AtlasManifest): SpriteAtlas {
 }
 
 /**
- * Resolve the atlas frame a drawable {@link DrawItem} should draw, given the per-kind {@link SpriteBindings}
- * and the loaded {@link SpriteAtlas}. Returns `null` — meaning "no bound sprite, draw the placeholder" —
- * when:
- *  - the item is a terrain tile (tiles bind by landscape typeId, a separate path), or
- *  - the kind has no binding, or
- *  - the bound bob id isn't in the atlas (a missing/0×0 frame).
- *
- * For a settler the bob id is chosen by the item's {@link SpriteState} (and atomic id) via
- * {@link resolveSettlerBobId} — a settler walking resolves its `moving` frame, one mid-swing its `acting`
- * frame — when the binding is a {@link SettlerStateBinding}; a plain-number settler binding draws the
- * same frame regardless of state (back-compat).
- *
- * Pure + total: a function of the item + the two tables only, no I/O or GPU. The GPU layer calls this
- * per draw item; a `null` keeps the current placeholder geometry, a frame is the atlas rect to blit.
- * This is the load-bearing data decision (which sprite) made self-verifiable; the un-self-verifiable
- * part (binding the rect to a texture and sampling pixels) stays on the GPU side for a human to judge.
- */
-/**
  * A job-keyed lookup with a **young** (age-class) side table and a total fallback — the shape the
  * per-character settler binding uses ({@link import('./pixi-renderer.js').SettlerCharacterSet}), kept
  * generic + pure here so the pick is unit-testable without GPU layers.
@@ -435,9 +417,10 @@ export function atlasFromManifest(manifest: AtlasManifest): SpriteAtlas {
  * Why two tables: the original's age classes reuse LOW `jobtypes` ids (1..4 = baby/child), and a
  * synthetic fixture's adult job ids can collide with them (the demo woodcutter is jobType 1 — the real
  * `baby_female` id; see docs/LESSONS.md [dc3ef54]). The sim disambiguates by the `Age` component (only a
- * born-young settler carries one), so the pick does too: a **young** item keys {@link youngByJob}, an
- * adult keys {@link byJob}, and any miss (including a `null`-job idle adult) lands on {@link default} —
- * a fixture's adult "jobType 1" can never draw the baby body.
+ * born-young settler carries one), so the pick does too: a **young** item keys
+ * {@link ByJobTable.youngByJob}, an adult keys {@link ByJobTable.byJob}, and any miss (including a
+ * `null`-job idle adult) lands on {@link ByJobTable.default} — a fixture's adult "jobType 1" can never
+ * draw the baby body.
  */
 export interface ByJobTable<T> {
   /** Adult looks by `jobType` (e.g. woman 5, the soldier family 31..41). */
@@ -458,6 +441,24 @@ export function pickByJob<T>(table: ByJobTable<T>, jobType: number | undefined, 
   return hit ?? table.default;
 }
 
+/**
+ * Resolve the atlas frame a drawable {@link DrawItem} should draw, given the per-kind {@link SpriteBindings}
+ * and the loaded {@link SpriteAtlas}. Returns `null` — meaning "no bound sprite, draw the placeholder" —
+ * when:
+ *  - the item is a terrain tile (tiles bind by landscape typeId, a separate path), or
+ *  - the kind has no binding, or
+ *  - the bound bob id isn't in the atlas (a missing/0×0 frame).
+ *
+ * For a settler the bob id is chosen by the item's {@link SpriteState} (and atomic id) via
+ * {@link resolveSettlerBobId} — a settler walking resolves its `moving` frame, one mid-swing its `acting`
+ * frame — when the binding is a {@link SettlerStateBinding}; a plain-number settler binding draws the
+ * same frame regardless of state (back-compat).
+ *
+ * Pure + total: a function of the item + the two tables only, no I/O or GPU. The GPU layer calls this
+ * per draw item; a `null` keeps the current placeholder geometry, a frame is the atlas rect to blit.
+ * This is the load-bearing data decision (which sprite) made self-verifiable; the un-self-verifiable
+ * part (binding the rect to a texture and sampling pixels) stays on the GPU side for a human to judge.
+ */
 export function resolveSpriteFrame(
   item: DrawItem,
   bindings: SpriteBindings,
