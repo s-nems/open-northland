@@ -49,17 +49,20 @@ gitignored bytes:
   loop drawn every frame. The menu's "Podgląd na żywo" card.
 - `?shot[&seed&ticks&hud]` — headless deterministic screenshot entry (`entries/shot.ts`).
 - `?scene=<id>` — run a registered **acceptance scene** with its checklist overlay (`entries/scene.ts`).
-- `?anim[&char=<id>&view=anim|heads&dir=full|0..7&cols=N&filter=<substr>&zoom&speed]` — the character
-  **animation gallery** (`entries/anim.ts` + `catalog/roster.ts`), the extracted `[bobseq]` played from the atlas
-  with a direction selector so a human can validate all animations in all 8 facings. **Bare `?anim` (no
+- `?anim[&char=<id>&view=anim|heads|colors&color=0..15&dir=full|0..7&cols=N&filter=<substr>&zoom&speed]` — the
+  character **animation gallery** (`entries/anim.ts` + `catalog/roster.ts`), the extracted `[bobseq]` played from
+  the atlas with a direction selector so a human can validate all animations in all 8 facings. **Bare `?anim` (no
   `?char=`) is the DEFAULT: the full-roster montage** — one walking cell per viking look (every roster body ×
   each of its heads) on one screen. `?char=<id>` drills into one body — its full animation set (`?view=anim`)
   or, for a multi-look body, its heads montage (`?view=heads`, the plain walk once per head). The roster
   (civilian / **warrior** with its broadsword/sword/bow/spear/bare-handed set / woman / boy / girl / baby) is
   the mod's viking `[jobbasegraphics]` body/head pairs; the baby is body-only. Character/view changes reload
   the page (different atlases); direction is live. Real graphics required (shows a "run the pipeline" message
-  when `content/` is absent). All bodies decode with one palette today — a per-tone **skin/hair variant** axis
-  is a deferred pipeline follow-up (docs/FIDELITY.md).
+  when `content/` is absent). **Player (team) colours:** `?view=colors` is the 16-colour montage (the walk once
+  per player colour); `?color=N` (0–15) paints a character's whole animation set in one player colour — both draw
+  the **indexed** atlas through the `256×16` player-colour LUT via `render`'s `PalettedSprite` (only the clothing
+  band recolours; see docs/FIDELITY.md "Player (team) colours"). A per-tone **skin/hair variant** axis (distinct
+  from team colour) is still a deferred pipeline follow-up (docs/FIDELITY.md).
 - `?map=<id>` · `?atlas` · `?terrain=off` · `?objects=off` · `?zoom=N` · `?speed=N` — real decoded map /
   sprite atlas / ground-texture + map-object opt-outs / camera magnify / playback rate. These compose with
   `?scene=`. Real graphics are the **default** for live + scene (`resolveSpriteSheet` degrades to synthetic

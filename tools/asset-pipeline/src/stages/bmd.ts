@@ -43,7 +43,7 @@ export function bmdToAtlas(bmdBytes: Uint8Array, palette: Uint8Array): BobAtlas 
  * normalized reference up to get the real path under `outDir`. Built once per run and shared by every
  * binding. Mirrors the `normalizeAssetPath` the extractors use (forward slashes, lower-case).
  */
-async function indexOutTree(outDir: string): Promise<Map<string, string>> {
+export async function indexOutTree(outDir: string): Promise<Map<string, string>> {
   const index = new Map<string, string>();
   for await (const file of walkFiles(outDir)) {
     const rel = relative(outDir, file);

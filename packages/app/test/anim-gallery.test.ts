@@ -7,9 +7,11 @@ import { findCharacter } from '../src/catalog/roster.js';
 import { BODY_IMAGELIB, type BobSeqRow } from '../src/content/ir.js';
 import {
   buildAnimCells,
+  buildColorCells,
   buildGalleryClips,
   buildHeadsCells,
   buildRosterCells,
+  parseColor,
   parseDirection,
   parseView,
   prettyClipLabel,
@@ -106,9 +108,39 @@ describe('buildGalleryClips', () => {
 });
 
 describe('parseView', () => {
-  it('maps heads/looks/glowy to the looks montage, everything else to the animation view', () => {
+  it('maps heads/looks/glowy → looks, colors/colours/kolory → colour montage, else animation view', () => {
     for (const raw of ['heads', 'looks', 'glowy']) expect(parseView(raw)).toBe('heads');
+    for (const raw of ['colors', 'colours', 'kolory']) expect(parseView(raw)).toBe('colors');
     for (const raw of [null, 'anim', 'x', '']) expect(parseView(raw)).toBe('anim');
+  });
+});
+
+describe('parseColor', () => {
+  it('maps in-range integers to that row; absent/garbage/out-of-range → null', () => {
+    for (const raw of [null, 'abc', '-1', '16', '99']) expect(parseColor(raw, 16)).toBeNull();
+    expect(parseColor('0', 16)).toBe(0);
+    expect(parseColor('1', 16)).toBe(1);
+    expect(parseColor('15', 16)).toBe(15);
+  });
+});
+
+describe('buildColorCells', () => {
+  const rows: BobSeqRow[] = [{ name: 'human_man_generic_walk', start: 100, length: 96 }];
+  const body = fakeLayer();
+  const head = fakeLayer();
+
+  it('makes one walk cell per colour name, tagged with its player row + overlay', () => {
+    const cells = buildColorCells(rows, body, head, ['blue', 'red', 'green']);
+    expect(cells.map((c) => c.label)).toEqual(['blue', 'red', 'green']);
+    expect(cells.map((c) => c.player)).toEqual([0, 1, 2]);
+    // Every cell plays the SAME walk clip and shares the body + head layers.
+    expect(cells.every((c) => c.clip.start === 100 && c.body === body)).toBe(true);
+    expect(cells[0]?.overlays).toEqual([head]);
+  });
+
+  it('filters by colour name and returns [] when the body has no walk', () => {
+    expect(buildColorCells(rows, body, head, ['blue', 'red'], 'red').map((c) => c.player)).toEqual([1]);
+    expect(buildColorCells([], body, head, ['blue'])).toEqual([]);
   });
 });
 

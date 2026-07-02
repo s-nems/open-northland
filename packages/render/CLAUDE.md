@@ -19,7 +19,7 @@ reference RTS renderer. Its shape, and our twin of it:
 | `Viewport` visible-cell region | `viewport.ts` `cameraViewport` (+ `visibleTileRange`, a provided utility) | the world-space box on screen, inverted from the camera |
 | `TerrainSpriteLayer` drawn per visible region | `WorldRenderer` terrain **chunks** + per-chunk AABB `.visible` cull | a 1024² map draws the same few blocks a 64² one does |
 | `ScreenMap` spatial index → renderable actors in box | sprite cull in `buildSpriteScene(snapshot, vp)` — an **O(entities) test** today, not a spatial query | draw ≈ on-screen bobs, not all bobs (`drawn ≪ entities`); a real `ScreenMap` index (query = O(visible)) is still TODO |
-| Sprites batched by sheet; `PaletteReference` per player | one atlas source + `Sprite.tint` per player | thousands of same-atlas bobs collapse to a few draw calls |
+| Sprites batched by sheet; `PaletteReference` per player | one atlas source; character team colour = one indexed atlas read through a `256×N` LUT (`PalettedSprite`), other kinds batch by sheet | thousands of same-atlas bobs collapse to a few draw calls; all N player colours share ONE character atlas + LUT |
 | Z-sorted renderables each frame | `spriteLayer.sortableChildren` + per-frame `zIndex` | correct iso depth without caching a moving value |
 
 Concretely, that means:
@@ -35,8 +35,13 @@ Concretely, that means:
   screen. **This was the fix that let terrain scale** (a whole-map single mesh pinned software-GL at 1fps).
 - **Cull sprites to the viewport**; keep culled entities pooled (they scroll back), destroy only on
   death (left the snapshot). `reconcileSprites` is the pure, tested half of that bookkeeping.
-- **Batch, don't fragment.** No per-sprite filters/masks/blend modes (they break Pixi's batcher). Per
-  player colour is `Sprite.tint` (a batch attribute), NOT a tinted texture or a separate container.
+- **Batch, don't fragment.** No per-sprite filters/masks/blend modes (they break Pixi's batcher). A simple
+  whole-sprite team wash could ride `Sprite.tint` (a batch attribute), but the **player (team) colour** is a
+  *band-limited palette remap* (only the clothing patches recolour, not faces/tools) — a flat tint can't do
+  that. So character team colour uses `gpu/paletted-sprite.ts` (`PalettedSprite`): an **indexed** atlas read
+  through a `256×N` player-colour LUT in a custom-shader `Mesh`. That mesh bypasses the batcher (one draw
+  call each) — the accepted cost for a faithful ramp remap; keep it to characters, and the sim (not the GPU)
+  is the battle-scale wall regardless. See docs/FIDELITY.md "Player (team) colours".
 - **Bound the zoom-out** (`app/src/view/camera.ts` `MIN_ZOOM`). We deliberately do NOT support fitting a whole huge
   map on screen — the requirement is a big *battle-scale* view. The min zoom is the floor that bounds
   the visible tile + bob count. Lowering it needs a zoom-out LOD (marker quads + animation freeze), not

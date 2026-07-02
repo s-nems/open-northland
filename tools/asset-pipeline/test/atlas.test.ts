@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { ATLAS_GUTTER, type AtlasFrame, expandBobFrame, packBobAtlas } from '../src/decoders/atlas.js';
+import {
+  ATLAS_GUTTER,
+  type AtlasFrame,
+  expandBobFrame,
+  expandBobFrameIndexed,
+  packBobAtlas,
+  packIndexedBobAtlas,
+} from '../src/decoders/atlas.js';
 import {
   BOB_TYPE_8BIT,
   BOB_TYPE_EMPTY,
@@ -219,5 +226,52 @@ describe('packBobAtlas', () => {
     const { image, manifest } = packBobAtlas(bmd, rampPalette());
     expect(manifest.width).toBe(image.width);
     expect(manifest.height).toBe(image.height);
+  });
+});
+
+describe('expandBobFrameIndexed', () => {
+  it('writes the palette index to red + mask to alpha, leaving unmasked pixels transparent', () => {
+    const frame: BobFrame = {
+      width: 3,
+      height: 1,
+      pixels: Uint8Array.from([5, 200, 9]),
+      mask: Uint8Array.from([1, 1, 0]),
+    };
+    const rgba = expandBobFrameIndexed(frame).rgba;
+    // idx 5 -> (5,0,0,255); idx 200 -> (200,0,0,255); masked-off -> (0,0,0,0).
+    expect([...rgba]).toEqual([5, 0, 0, 255, 200, 0, 0, 255, 0, 0, 0, 0]);
+  });
+
+  it('keeps index 0 as a real (opaque) index when its mask bit is set', () => {
+    const frame: BobFrame = { width: 1, height: 1, pixels: Uint8Array.of(0), mask: Uint8Array.of(1) };
+    expect([...expandBobFrameIndexed(frame).rgba]).toEqual([0, 0, 0, 255]);
+  });
+});
+
+describe('packIndexedBobAtlas', () => {
+  it('shares placement/manifest with the RGB atlas but stores indices, not colours', () => {
+    const bmd = makeBmd([
+      {
+        type: BOB_TYPE_8BIT,
+        width: 2,
+        height: 1,
+        packed: [0x02, 7, 8, 0x00],
+        lines: [{ offset: 0, xMin: 0 }],
+        areaX: 3,
+        areaY: 4,
+      },
+    ]);
+    const rgb = packBobAtlas(bmd, rampPalette());
+    const indexed = packIndexedBobAtlas(bmd);
+    // Same shelf packing → identical manifest geometry.
+    expect(indexed.manifest).toEqual(rgb.manifest);
+
+    const px = (img: typeof indexed.image, x: number, y: number): number[] => {
+      const o = (y * img.width + x) * 4;
+      return [...img.rgba.subarray(o, o + 4)];
+    };
+    // Indexed atlas carries the raw index in red (7, 8), alpha opaque — not the palette colour.
+    expect(px(indexed.image, ATLAS_GUTTER, ATLAS_GUTTER)).toEqual([7, 0, 0, 255]);
+    expect(px(indexed.image, ATLAS_GUTTER + 1, ATLAS_GUTTER)).toEqual([8, 0, 0, 255]);
   });
 });

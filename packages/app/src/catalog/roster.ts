@@ -36,6 +36,41 @@ export interface VikingCharacter {
 /** The served palette every roster body/head decodes with today (the viking base skin). */
 export const DEFAULT_CHARACTER_PALETTE = 'test_human_00';
 
+/**
+ * The stem slug of the **indexed** (recolourable) character atlas — `<bmd>.indexed`, emitted by the
+ * pipeline's player-colour stage alongside the baked ones. Passed to {@link characterStems} to load the
+ * atlas the player-colour LUT is read through (see `packages/render` PalettedSprite).
+ */
+export const INDEXED_CHARACTER_PALETTE = 'indexed';
+
+/**
+ * The 16 player (team) colour names, slot order = player id — mirrors the pipeline's `PLAYER_COLORS`
+ * (`tools/asset-pipeline/src/decoders/player-palette.ts`): the original's 10 (`playerNN.pcx`) then 6
+ * hue-rotated extras. Used only for the gallery's colour-montage captions; the colours themselves live in
+ * the LUT texture. Blue is the human player's default.
+ */
+export const PLAYER_COLOR_NAMES = [
+  'blue',
+  'red',
+  'yellow',
+  'cyan',
+  'green',
+  'purple',
+  'grey',
+  'orange',
+  'neon',
+  'black',
+  'spring',
+  'teal',
+  'azure',
+  'indigo',
+  'magenta',
+  'pink',
+] as const;
+
+/** How many player colours the LUT + montage cover (up to 16 players). */
+export const PLAYER_COLOR_COUNT = PLAYER_COLOR_NAMES.length;
+
 /** The civilist-job (`logicjob 6`) head looks `head_00..03` — the in-game generic man's faces. The
  *  per-job settler binding (`content/settler-gfx.ts`) overlays exactly these; the scout (80..83) and druid
  *  (90..93) looks below stay gallery-only until those jobs exist in a running sim. */

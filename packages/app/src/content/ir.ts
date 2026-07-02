@@ -1,4 +1,10 @@
-import { type AtlasManifest, type SpriteLayer, atlasFromManifest, loadAtlasSource } from '@vinland/render';
+import {
+  type AtlasManifest,
+  type SpriteLayer,
+  type TextureSource,
+  atlasFromManifest,
+  loadAtlasSource,
+} from '@vinland/render';
 
 /**
  * The decoded-content I/O layer for the settler/building bindings: fetch the gitignored `content/`
@@ -75,6 +81,17 @@ export async function loadLayer(stem: string): Promise<SpriteLayer> {
   }
   const manifest = (await res.json()) as AtlasManifest;
   return { atlas: atlasFromManifest(manifest), source: await loadAtlasSource(`/bobs/${stem}.png`) };
+}
+
+/**
+ * Load the player-colour LUT texture (`/bobs/player-lut.png`, a `256 × colours` sheet) that the paletted
+ * character atlases are read through. Returns `undefined` when the pipeline hasn't produced it (a checkout
+ * without `content/`), so a caller degrades to the baked-palette gallery instead of crashing.
+ */
+export async function loadPlayerLut(): Promise<TextureSource | undefined> {
+  const res = await fetch('/bobs/player-lut.png', { method: 'HEAD' });
+  if (!res.ok) return undefined;
+  return loadAtlasSource('/bobs/player-lut.png');
 }
 
 /**

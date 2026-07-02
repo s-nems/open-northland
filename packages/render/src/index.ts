@@ -65,6 +65,8 @@ export {
   type GalleryDirection,
   type GalleryCellBox,
 } from './gpu/animation-gallery.js';
+export { PalettedSprite } from './gpu/paletted-sprite.js';
+export type { TextureSource } from 'pixi.js';
 export {
   cameraViewport,
   isVisible,
