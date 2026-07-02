@@ -20,10 +20,17 @@ reproducible default so the committed build + the `npm run shot` PNG never depen
 
 - `?shot[&seed&ticks&hud]` — headless deterministic screenshot entry (`shot.ts`).
 - `?scene=<id>` — run a registered **acceptance scene** with its checklist overlay (`scene-mode.ts`).
-- `?anim[&dir=full|0..7&cols=N&filter=<substr>&zoom&speed]` — the character **animation gallery**
-  (`anim-mode.ts`): every extracted `[bobseq]` of the viking civilian body played from the atlas, with a
-  direction selector, so a human can validate all animations in all 8 facings. Real graphics required
-  (shows a "run the pipeline" message when `content/` is absent).
+- `?anim[&char=<id>&view=anim|heads&dir=full|0..7&cols=N&filter=<substr>&zoom&speed]` — the character
+  **animation gallery** (`anim-mode.ts` + `viking-roster.ts`), the extracted `[bobseq]` played from the atlas
+  with a direction selector so a human can validate all animations in all 8 facings. **Bare `?anim` (no
+  `?char=`) is the DEFAULT: the full-roster montage** — one walking cell per viking look (every roster body ×
+  each of its heads) on one screen. `?char=<id>` drills into one body — its full animation set (`?view=anim`)
+  or, for a multi-look body, its heads montage (`?view=heads`, the plain walk once per head). The roster
+  (civilian / **warrior** with its broadsword/sword/bow/spear/bare-handed set / woman / boy / girl / baby) is
+  the mod's viking `[jobbasegraphics]` body/head pairs; the baby is body-only. Character/view changes reload
+  the page (different atlases); direction is live. Real graphics required (shows a "run the pipeline" message
+  when `content/` is absent). All bodies decode with one palette today — a per-tone **skin/hair variant** axis
+  is a deferred pipeline follow-up (docs/FIDELITY.md).
 - `?map=<id>` · `?atlas` · `?terrain` · `?zoom=N` · `?speed=N` — real decoded grid / sprite atlas / ground
   textures / camera magnify / playback rate. These compose with `?scene=`. Real graphics are the **default**
   for live + scene (`resolveSpriteSheet` degrades to synthetic markers when `content/` is absent, so a bare

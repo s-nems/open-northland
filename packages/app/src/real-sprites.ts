@@ -549,16 +549,33 @@ export async function loadHumanSpriteSheet(): Promise<SpriteSheet> {
 }
 
 /**
- * Load ONLY the human body + head atlas layers — the two the animation gallery (`?anim`) composites. Unlike
- * {@link loadHumanSpriteSheet} it does NOT pull in the tree / default-house / seven building-family atlases
- * (which a gallery never draws), so a partial `content/` — the character bobs present but some building
- * family missing — still opens the gallery instead of falsely reporting "no graphics", and it skips the
- * redundant network fetches. Throws {@link MissingAtlasError} when the body/head atlases themselves are
- * absent (the real precondition the caller degrades on), exactly like {@link loadHumanSpriteSheet}.
+ * Load a gallery character's layers: one body atlas + N head atlases, given the already-resolved served
+ * stems (`<bmd-stem>.<palette>`, e.g. `cr_hum_body_05.test_human_00`) — the only human loader the animation
+ * gallery (`?anim`) needs. Unlike {@link loadHumanSpriteSheet} it does NOT pull in the tree / house /
+ * building-family atlases (a gallery never draws them), so a partial `content/` still opens the gallery.
+ *
+ * The **body is the hard requirement** — an absent body throws {@link MissingAtlasError} (the precondition
+ * the caller degrades on). A **missing HEAD degrades to `undefined`** (its slot in `heads`) rather than
+ * failing the whole character: the animation view needs only `heads[0]`, and the roster/heads montages skip
+ * an absent look, so one 404'd head can't drop a body that decoded fine. `heads` preserves stem order, so
+ * it lines up 1:1 with the character's head list; a body-only character (empty `headStems`) gets `[]`. Any
+ * non-precondition error (a bad manifest, a texture-load failure) still propagates.
  */
-export async function loadHumanBodyHead(): Promise<{ body: SpriteLayer; head: SpriteLayer }> {
-  const [body, head] = await Promise.all([loadLayer(HUMAN_BODY_ATLAS), loadLayer(HUMAN_HEAD_ATLAS)]);
-  return { body, head };
+export async function loadGalleryLayers(
+  bodyStem: string,
+  headStems: readonly string[],
+): Promise<{ body: SpriteLayer; heads: (SpriteLayer | undefined)[] }> {
+  const bodyPromise = loadLayer(bodyStem);
+  const headsPromise = Promise.all(
+    headStems.map((s) =>
+      loadLayer(s).catch((err: unknown) => {
+        if (err instanceof MissingAtlasError) return undefined; // a missing head just isn't drawn
+        throw err;
+      }),
+    ),
+  );
+  const [body, heads] = await Promise.all([bodyPromise, headsPromise]);
+  return { body, heads };
 }
 
 /** The reproducible synthetic atlas (flat-coloured markers, no copyrighted data) — the graceful fallback,

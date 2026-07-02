@@ -56,9 +56,12 @@ npm run dev                 # launch the app (Vite) in a browser
 ```
 
 Useful URL flags on the dev app: `?scene=all-buildings` runs an acceptance scene with its checklist
-overlay, and **`?anim`** opens the character **animation gallery** — every viking-civilian animation
-played from the atlas with a direction selector, to validate the animations (the locomotion set in all 8
-facings; single-direction animations like eat/sleep/wait play their full loop). Both need decoded `content/`.
+overlay, and **`?anim`** opens the character **animation gallery**. Bare `?anim` (no params) lands on the
+**full-roster montage** — every viking look walking on one screen. Add `?char=<id>` to drill into one body's
+animations (civilian / **warrior** with its broadsword / sword / bow / spear / bare-handed set / woman /
+children / baby), and `?char=<id>&view=heads` for that body's **heads/looks montage** (the same walk once per
+head, so you see every face/hat). A direction selector validates the locomotion set in all 8 facings;
+single-direction animations (eat/sleep/wait, attacks) play their full loop. Needs decoded `content/`.
 
 `--game` is the path to your game-install folder; the example assumes you placed it **next to this
 repo** (`../Cultures 8th Wonder`), but any absolute or relative path works. `--mod DataCnmd` selects

@@ -149,11 +149,30 @@ export function headBobId(clip: GalleryClip, bodyBob: number): number {
   return (clip.headStart ?? clip.start) + (bodyBob - clip.start);
 }
 
+/**
+ * One cell to draw: its {@link GalleryClip} plus the layers that compose it — a body and any overlays
+ * (heads). Each cell carries its OWN layers, so a single grid can mix characters or looks: the
+ * animation view gives every cell the same (body, head) and varies the clip; the "heads" montage gives
+ * every cell the same walk clip and varies the head overlay. An optional {@link label} overrides the
+ * clip's own label (the looks montage labels a cell by its head, not the shared walk).
+ */
+export interface GalleryCellSpec {
+  readonly clip: GalleryClip;
+  /** The base layer (drawn first). */
+  readonly body: SpriteLayer;
+  /** Overlay layers drawn on top of the body at the composited head/attachment bob id (usually one head). */
+  readonly overlays?: readonly SpriteLayer[];
+  /** Label override for this cell (e.g. a head name in the looks montage); defaults to {@link GalleryClip.label}. */
+  readonly label?: string;
+}
+
 /** One cell's retained display objects (built once, textures swapped per frame). */
 interface GalleryCell {
   readonly clip: GalleryClip;
   readonly container: Container;
-  /** Body sprite + head overlay sprites, in draw order (index 0 = body). */
+  /** This cell's layers in draw order (index 0 = body, rest = overlays) — its OWN, not gallery-shared. */
+  readonly layers: readonly SpriteLayer[];
+  /** One sprite per layer, in the same order. */
   readonly sprites: Sprite[];
 }
 
@@ -165,28 +184,24 @@ interface GalleryCell {
 export class AnimationGallery {
   private readonly app: Application;
   private readonly root = new Container();
-  private readonly layers: SpriteLayer[];
   private readonly cells: GalleryCell[] = [];
   private readonly textureCache = new Map<AtlasFrame, Texture>();
   private direction: GalleryDirection;
   private readonly columns: number;
-  private readonly clipCount: number;
+  private readonly cellCount: number;
 
   constructor(
     app: Application,
     opts: {
-      readonly body: SpriteLayer;
-      readonly overlays?: readonly SpriteLayer[];
-      readonly clips: readonly GalleryClip[];
+      readonly cells: readonly GalleryCellSpec[];
       readonly columns: number;
       readonly direction?: GalleryDirection;
     },
   ) {
     this.app = app;
-    this.layers = [opts.body, ...(opts.overlays ?? [])];
     this.columns = Math.max(1, Math.floor(opts.columns));
     this.direction = opts.direction ?? 'full';
-    this.clipCount = opts.clips.length;
+    this.cellCount = opts.cells.length;
     app.stage.addChild(this.root);
 
     // The feet anchor sits at the cell's horizontal centre, {@link FOOT_INSET_Y} up from its bottom; each
@@ -194,10 +209,10 @@ export class AnimationGallery {
     // uses for a settler). The cell's own top-left, in the container's local space, is thus constant:
     const localLeft = -CELL_W / 2;
     const localTop = -(CELL_H - FOOT_INSET_Y);
-    const boxes = galleryCellLayout(opts.clips.length, this.columns);
+    const boxes = galleryCellLayout(opts.cells.length, this.columns);
     for (const box of boxes) {
-      const clip = opts.clips[box.index];
-      if (clip === undefined) continue;
+      const spec = opts.cells[box.index];
+      if (spec === undefined) continue;
       const container = new Container();
       container.position.set(box.x + CELL_W / 2, box.y + CELL_H - FOOT_INSET_Y);
       // A faint cell frame so the grid reads as discrete cells even when a bob is small.
@@ -209,7 +224,7 @@ export class AnimationGallery {
       // Wrap the label to the cell width so long names (`generic walk broadsword`) stay inside their cell
       // instead of overrunning the neighbour — the grid must stay readable at a glance.
       const label = new Text({
-        text: clip.label,
+        text: spec.label ?? spec.clip.label,
         style: {
           fill: 0xe8dcc8,
           fontSize: 10,
@@ -222,14 +237,15 @@ export class AnimationGallery {
       // Label pinned to the cell top (relative to the feet-anchored container origin).
       label.position.set(localLeft + 4, localTop + LABEL_Y);
       container.addChild(label);
+      const layers: readonly SpriteLayer[] = [spec.body, ...(spec.overlays ?? [])];
       const sprites: Sprite[] = [];
-      for (let i = 0; i < this.layers.length; i++) {
+      for (let i = 0; i < layers.length; i++) {
         const spr = new Sprite();
         sprites.push(spr);
         container.addChild(spr);
       }
       this.root.addChild(container);
-      this.cells.push({ clip, container, sprites });
+      this.cells.push({ clip: spec.clip, container, layers, sprites });
     }
   }
 
@@ -245,7 +261,7 @@ export class AnimationGallery {
 
   /** The pixel size of the whole grid (so the app can frame it with an initial camera). */
   contentSize(): { readonly width: number; readonly height: number } {
-    const rows = Math.max(1, Math.ceil(this.clipCount / this.columns));
+    const rows = Math.max(1, Math.ceil(this.cellCount / this.columns));
     return { width: this.columns * CELL_W, height: rows * CELL_H };
   }
 
@@ -261,8 +277,8 @@ export class AnimationGallery {
     const step = Math.floor(clock / TICKS_PER_FRAME);
     for (const cell of this.cells) {
       const bodyBob = galleryBobId(cell.clip, this.direction, step);
-      for (let i = 0; i < this.layers.length; i++) {
-        const layer = this.layers[i];
+      for (let i = 0; i < cell.layers.length; i++) {
+        const layer = cell.layers[i];
         const spr = cell.sprites[i];
         if (layer === undefined || spr === undefined) continue;
         // Layer 0 is the body; the rest are head overlays, which may borrow another sequence's head bob.
