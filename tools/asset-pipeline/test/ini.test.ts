@@ -2767,10 +2767,7 @@ describe('extractSounds (soundfx.cif)', () => {
     });
     // LogicSoundType captured; the case-varied second `sfx` line is folded into the same group.
     expect(bank.staticGroups[1]?.logicSoundType).toBe(42);
-    expect(bank.staticGroups[1]?.sfx.map((s) => s.file)).toEqual([
-      'static/bear1.wav',
-      'static/bear2.wav',
-    ]);
+    expect(bank.staticGroups[1]?.sfx.map((s) => s.file)).toEqual(['static/bear1.wav', 'static/bear2.wav']);
 
     expect(bank.ambient).toHaveLength(2);
     expect(bank.ambient[0]).toEqual({

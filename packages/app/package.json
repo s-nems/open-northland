@@ -10,6 +10,7 @@
     "shot": "node scripts/shot.mjs"
   },
   "dependencies": {
+    "@vinland/audio": "*",
     "@vinland/data": "*",
     "@vinland/render": "*",
     "@vinland/sim": "*"

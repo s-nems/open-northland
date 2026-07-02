@@ -6,8 +6,10 @@ import {
   layoutHud,
   placeHud,
 } from '@vinland/render';
-import { FixedTimestep } from '@vinland/sim';
+import { FixedTimestep, type SimEvent } from '@vinland/sim';
+import { createSoundDriver, fetchAudioIr } from '../content/audio.js';
 import { loadMapObjects } from '../content/objects.js';
+import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { fetchTerrainIr, loadRealTerrain } from '../content/terrain.js';
 import { demoGoods, loadTerrainMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
@@ -95,13 +97,39 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
     cameraFor(buildSpriteScene(sim.snapshot()), zoom, app.screen.width, app.screen.height),
   );
 
+  // Original decoded sounds, played positionally: action SFX + terrain ambient viewport-culled +
+  // attenuated + panned by the camera, plus non-spatial life-event jingles (see @vinland/audio). Real
+  // sounds are default-on (like the atlases/textures); `?sound=off` opts out, and a checkout without
+  // `content/` (no sound bank) degrades to silence via createSoundDriver → null. Browser autoplay policy
+  // keeps audio suspended until the first user gesture, so we resume it on the first pointer/key event.
+  const wantSound = params.get('sound') !== 'off';
+  const soundDriver = wantSound
+    ? createSoundDriver(await fetchAudioIr(), { chopAtomicId: HARVEST_ATOMIC })
+    : null;
+  if (soundDriver !== null) {
+    const startAudio = (): void => {
+      void soundDriver.resume();
+      window.removeEventListener('pointerdown', startAudio);
+      window.removeEventListener('keydown', startAudio);
+    };
+    window.addEventListener('pointerdown', startAudio);
+    window.addEventListener('keydown', startAudio);
+  }
+
   const timestep = new FixedTimestep();
   let lastMs = performance.now();
 
   function frame(nowMs: number): void {
     const elapsed = nowMs - lastMs;
     lastMs = nowMs;
-    timestep.advance(elapsed * speed, () => sim.step());
+    // Collect events from EVERY sim step this frame (not just the last tick): the fixed-timestep loop
+    // may advance several ticks between rendered frames, and each step clears the buffer — so an audio
+    // trigger on an intermediate tick would otherwise be lost.
+    const frameEvents: SimEvent[] = [];
+    timestep.advance(elapsed * speed, () => {
+      sim.step();
+      frameEvents.push(...sim.events.current());
+    });
     cameraCtl.update(elapsed);
     const snap = sim.snapshot();
     // One retained update: reconcile the pooled sprites, refresh the pinned HUD, render once.
@@ -109,6 +137,18 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
     renderer.update(snap, cameraCtl.camera(), snap.tick, {
       placement: placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', app.screen),
     });
+    // Sound is a pure consumer of the same snapshot + events render reads: fire this frame's one-shots
+    // and refresh the ambient beds under the (moving) camera. No-op until the gesture resumes audio.
+    if (soundDriver !== null) {
+      soundDriver.update({
+        events: frameEvents,
+        snapshot: snap,
+        camera: cameraCtl.camera(),
+        canvasW: app.screen.width,
+        canvasH: app.screen.height,
+        terrain: terrainGrid,
+      });
+    }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

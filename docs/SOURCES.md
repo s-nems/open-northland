@@ -12,7 +12,7 @@ Counts observed in `Cultures 8th Wonder` (base `Data` + `DataX` + mod `DataCnmd`
 
 | Ext | ~Count | What it is | Decode reference in research notes (`Source/`) |
 |---|---|---|---|
-| `.wav` | 752 | sound effects | — (use as-is / transcode to ogg) |
+| `.wav` | 752 | sound effects (16-bit mono 22050 Hz PCM) | browser plays PCM natively (no transcode); `soundfx.cif` maps them to events/terrain — see FIDELITY.md "Sound bank" + `@vinland/audio` |
 | `.pcx` | 426 | palette-indexed pictures | `an original routine/CPicture.cs`, `an original routine/XBPictureTool.cs` |
 | `.bmd` | 247 | "bob" framed sprite animations | `an original routine/CBobManager.cs` (3.8k lines), `an original routine/CBitmap.cs` |
 | `.hlt` | 242 | lighting / remap tables | `an original routine/CRemapTable.cs`, `CHighColorCreator.cs`, `CTrueColorCreator.cs` |

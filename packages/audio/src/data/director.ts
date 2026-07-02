@@ -150,8 +150,7 @@ function ambientFor(input: DirectorInput): AmbientLoop[] {
     .flatMap(({ name, coverage }): AmbientLoop[] => {
       const file = index.ambientLoopByName.get(name);
       if (file === undefined) return [];
-      const gain =
-        AMBIENT_MAX_GAIN * clamp(Math.sqrt(coverage) / Math.sqrt(AMBIENT_FULL_COVERAGE), 0, 1);
+      const gain = AMBIENT_MAX_GAIN * clamp(Math.sqrt(coverage) / Math.sqrt(AMBIENT_FULL_COVERAGE), 0, 1);
       return [{ name, file, gain }];
     });
 }

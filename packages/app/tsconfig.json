@@ -7,5 +7,5 @@
     "noEmit": false
   },
   "include": ["src/**/*.ts"],
-  "references": [{ "path": "../data" }, { "path": "../sim" }, { "path": "../render" }]
+  "references": [{ "path": "../data" }, { "path": "../sim" }, { "path": "../render" }, { "path": "../audio" }]
 }
