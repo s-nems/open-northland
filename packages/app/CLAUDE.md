@@ -74,8 +74,10 @@ gitignored bytes:
   audition every action→sound binding, the voice pools split by sex/age, the jingles and the ambient beds.
   The human-oracle seam for audio (an agent can't self-judge a sound). NOTE the key is `sounds` (plural) —
   distinct from the `sound` (singular) MUTE modifier above, so `?live&sound=off` and `?sounds` don't collide.
-- `?map=<id>` · `?atlas` · `?terrain=off` · `?objects=off` · `?zoom=N` · `?speed=N` — real decoded map /
-  sprite atlas / ground-texture + map-object opt-outs / camera magnify / playback rate. These compose with
+- `?map=<id>` · `?atlas` · `?terrain=off` · `?objects=off` · `?zoom=N` · `?speed=N` · `?center=x,y` — real
+  decoded map / sprite atlas / ground-texture + map-object opt-outs / camera magnify / playback rate /
+  centre the camera on tile `(x,y)` (an inspection knob for a decoded-map feature — a bridge, a coastline —
+  the settler-centroid framing never reaches; malformed → default framing). These compose with
   `?scene=`. Real graphics are the **default** for live + scene (`resolveSpriteSheet` degrades to synthetic
   markers when `content/` is absent, so a bare checkout still boots); `?atlas=synthetic` forces markers,
   `?atlas=none` placeholder geometry. **Real ground textures are likewise default-on** in live mode

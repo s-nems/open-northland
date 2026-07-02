@@ -1,6 +1,6 @@
-import type { Camera } from '@vinland/render';
+import { type Camera, tileToScreen } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
-import { MAX_ZOOM, MIN_ZOOM, panCamera, zoomCameraAt } from '../src/view/camera.js';
+import { MAX_ZOOM, MIN_ZOOM, cameraCenteredOnTile, panCamera, zoomCameraAt } from '../src/view/camera.js';
 
 /**
  * The headless half of the interactive camera: the pan/zoom *math* is pure, so it's unit-tested here.
@@ -19,6 +19,18 @@ describe('panCamera', () => {
     const out = panCamera(cam, 7, 8);
     expect(out).toEqual({ offsetX: 7, offsetY: 8 });
     expect(out.scale).toBeUndefined();
+  });
+});
+
+describe('cameraCenteredOnTile', () => {
+  it('projects the chosen tile to the viewport centre at the given zoom', () => {
+    const [tileX, tileY, zoom, w, h] = [124, 23, 0.7, 1680, 1050];
+    const cam = cameraCenteredOnTile(tileX, tileY, zoom, w, h);
+    const s = tileToScreen(tileX, tileY);
+    expect(cam.scale).toBe(zoom);
+    // screen = world*scale + offset — the tile lands dead centre.
+    expect(cam.offsetX + s.x * zoom).toBeCloseTo(w / 2);
+    expect(cam.offsetY + s.y * zoom).toBeCloseTo(h / 2);
   });
 });
 
