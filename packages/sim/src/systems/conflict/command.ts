@@ -54,7 +54,9 @@ import { animalHitpoints, herdParams, locomotionOf } from '../readviews/index.js
  *    recipe-selection slice; recorded in the log so replay stays faithful).
  *  - `demolish` — destroy a building entity (ids are never recycled), **first unbinding every
  *    settler employed there** (see {@link unbindWorkersOf}) so a worker isn't left latched to a dead
- *    workplace — it returns to idle and the JobSystem re-employs it elsewhere next tick.
+ *    workplace — it returns to idle and the JobSystem re-employs it elsewhere next tick. Only an
+ *    entity that actually IS a building is destroyed: a demolish aimed at anything else (a settler,
+ *    a resource, a boat — a stale or hostile command) is skipped.
  *
  * A command that references an unknown type id or a dead entity is a recoverable boundary failure
  * (bad UI input / a stale command), not a programmer bug: it is skipped (the log still records it,
@@ -86,7 +88,11 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       // by the caller so a replay reaches the same state once this is implemented.
       return;
     case 'demolish':
-      if (world.isAlive(command.building)) {
+      // Validate the TARGET KIND at execution, not just liveness: in lockstep any peer can send any
+      // command (and a queued command's target can change between issue and apply), so a demolish
+      // aimed at a non-building entity — a settler, a resource node, a boat — must be a skip, never
+      // a destroy. Same recoverable-bad-input stance as an unknown type id (still logged for replay).
+      if (world.has(command.building, Building)) {
         unbindWorkersOf(world, command.building);
         world.destroy(command.building);
       }

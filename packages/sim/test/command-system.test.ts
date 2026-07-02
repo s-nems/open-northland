@@ -263,6 +263,20 @@ describe('CommandSystem', () => {
     expect(sim.world.entityCount).toBe(0);
   });
 
+  it('demolish aimed at a non-building entity is skipped (never destroys a settler)', () => {
+    const sim = fresh();
+    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
+    sim.step();
+    const settler = nthEntity(sim, 0);
+
+    // A stale/hostile command targeting a live NON-building must validate the target kind at
+    // execution (in lockstep any peer can send any command) — skip, don't destroy.
+    sim.enqueue({ kind: 'demolish', building: settler });
+    sim.step();
+    expect(sim.world.isAlive(settler)).toBe(true);
+    expect(sim.commands.log).toHaveLength(2); // still logged for faithful replay
+  });
+
   it('demolish unbinds the workplace operators: each returns to idle and re-employable', () => {
     const sim = fresh();
     // A sawmill (type 2, one carpenter slot) and a carpenter standing on its tile. The JobSystem (in
