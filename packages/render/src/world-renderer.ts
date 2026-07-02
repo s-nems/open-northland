@@ -801,15 +801,12 @@ export class WorldRenderer {
         if (layers.length > 0) return layers;
       }
       const draw = resolveBuildingDraw(sheet.bindings.building, item);
-      if (draw.layer !== undefined) {
-        const family = sheet.families?.[draw.layer];
-        if (family !== undefined) {
-          const frame = family.atlas.frames.get(draw.bob);
-          if (frame === undefined || frame.width === 0 || frame.height === 0) return null;
-          const scale = sheet.familyScales?.[draw.layer] ?? sheet.kindScales?.building ?? 1;
-          return [{ source: family.source, frame, scale }];
-        }
-        // Unloaded named family → fall through to the default building layer below.
+      // A LOADED named family resolves through the shared helper (missing/empty frame → placeholder);
+      // an UNLOADED one falls through to the default building layer below (a deliberate difference
+      // from the construction path, which drops the stage instead).
+      if (draw.layer !== undefined && sheet.families?.[draw.layer] !== undefined) {
+        const resolved = this.buildingLayerFor(sheet, draw);
+        return resolved === null ? null : [resolved];
       }
       bobId = draw.bob;
     } else {

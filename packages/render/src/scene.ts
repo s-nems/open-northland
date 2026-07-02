@@ -240,7 +240,9 @@ function readBuildingType(components: Readonly<Record<string, unknown>>): number
  */
 function readBuiltPct(components: Readonly<Record<string, unknown>>): number | undefined {
   const b = components.Building as { built?: unknown } | undefined;
-  if (b === undefined || typeof b.built !== 'number' || b.built >= ONE) return undefined;
+  if (b === undefined || typeof b.built !== 'number' || !Number.isFinite(b.built) || b.built >= ONE) {
+    return undefined; // finished (or malformed — NaN would poison every range test downstream)
+  }
   return Math.max(0, Math.min(99, Math.floor((b.built * 100) / ONE)));
 }
 

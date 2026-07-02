@@ -1047,6 +1047,22 @@ export function extractBuildings(sections: readonly RuleSection[], src: SourceRe
  *      cost wins (the base/first build stage). Both collapses are recorded as approximations in
  *      docs/FIDELITY.md — a fully-faithful model would key the cost by `(tribe, typeId, sizeIdx)`.
  */
+/**
+ * The `LogicType <sizeIdx> <typeId>` table of one `[GfxHouse]` section/sub-record — the size-level →
+ * building-typeId join every graphics-table extractor pairs its per-level lines against
+ * (construction costs, footprints, construction layers, building bobs). Malformed lines are skipped.
+ */
+function logicTypeByLevel(sec: RuleSection): Map<number, number> {
+  const typeByLevel = new Map<number, number>();
+  for (const p of findProps(sec, 'LogicType')) {
+    const sizeIdx = Number.parseInt(p.values[0] ?? '', 10);
+    const typeId = Number.parseInt(p.values[1] ?? '', 10);
+    if (Number.isNaN(sizeIdx) || Number.isNaN(typeId)) continue;
+    typeByLevel.set(sizeIdx, typeId);
+  }
+  return typeByLevel;
+}
+
 export function extractConstructionCosts(
   sections: readonly RuleSection[],
 ): Map<number, { goodType: number; amount: number }[]> {
@@ -1061,13 +1077,7 @@ export function extractConstructionCosts(
     const tribeType = getInt(sec, 'LogicTribeType') ?? Number.POSITIVE_INFINITY;
     // sizeIdx -> typeId. A typeId may appear at several sizeIdx; each (sizeIdx -> typeId) is kept so
     // the construction-goods loop below can pair each cost line to its level's typeId.
-    const typeByLevel = new Map<number, number>();
-    for (const p of findProps(sec, 'LogicType')) {
-      const sizeIdx = Number.parseInt(p.values[0] ?? '', 10);
-      const typeId = Number.parseInt(p.values[1] ?? '', 10);
-      if (Number.isNaN(sizeIdx) || Number.isNaN(typeId)) continue;
-      typeByLevel.set(sizeIdx, typeId);
-    }
+    const typeByLevel = logicTypeByLevel(sec);
     for (const p of findProps(sec, 'LogicConstructionGoods')) {
       const sizeIdx = Number.parseInt(p.values[0] ?? '', 10);
       if (Number.isNaN(sizeIdx)) continue;
@@ -1146,13 +1156,7 @@ export function extractBuildingFootprints(sections: readonly RuleSection[]): Map
     if (sec.name !== 'GfxHouse') continue;
     for (const rec of splitGfxHouseRecords(sec)) {
       const tribeType = getInt(rec, 'LogicTribeType') ?? Number.POSITIVE_INFINITY;
-      const typeByLevel = new Map<number, number>();
-      for (const p of findProps(rec, 'LogicType')) {
-        const sizeIdx = Number.parseInt(p.values[0] ?? '', 10);
-        const typeId = Number.parseInt(p.values[1] ?? '', 10);
-        if (Number.isNaN(sizeIdx) || Number.isNaN(typeId)) continue;
-        typeByLevel.set(sizeIdx, typeId);
-      }
+      const typeByLevel = logicTypeByLevel(rec);
       if (typeByLevel.size === 0) continue;
 
       // The record-wide (level-independent) build-exclusion zone.
@@ -1178,11 +1182,12 @@ export function extractBuildingFootprints(sections: readonly RuleSection[]): Map
         if (!doorByLevel.has(sizeIdx)) doorByLevel.set(sizeIdx, { dx: x, dy: y });
       }
 
-      // A record with no collision data at all (the vehicle/cart records) contributes nothing.
-      if (buildZone.length === 0 && blockedByLevel.size === 0) continue;
-
       const familyBody = canonicalCells([...blockedByLevel.values()].flat());
       const reserved = canonicalCells([...familyBody, ...buildZone]);
+      // A record with no collision CELLS at all (the vehicle/cart records; a record whose only area
+      // lines are malformed) contributes nothing — an all-empty footprint would look footprinted yet
+      // validate every placement. Gate on the expanded cells, not on the raw line/level count.
+      if (reserved.length === 0) continue;
 
       for (const [sizeIdx, typeId] of typeByLevel) {
         const existing = winner.get(typeId);
@@ -1234,13 +1239,7 @@ export function extractConstructionLayers(
       const palettes = (findProp(rec, 'GfxPalette')?.values ?? []).filter((v) => v.trim() !== '');
       if (palettes.length === 0) continue;
       const editName = getStr(rec, 'EditName');
-      const typeByLevel = new Map<number, number>();
-      for (const p of findProps(rec, 'LogicType')) {
-        const level = Number.parseInt(p.values[0] ?? '', 10);
-        const typeId = Number.parseInt(p.values[1] ?? '', 10);
-        if (Number.isNaN(level) || Number.isNaN(typeId)) continue;
-        typeByLevel.set(level, typeId);
-      }
+      const typeByLevel = logicTypeByLevel(rec);
       const normalizedBmd = normalizeAssetPath(bmd);
       // File order per level — the stacking order at draw time (the finished body is listed so the
       // active-layer stack keeps it on top at high progress).
@@ -1864,13 +1863,7 @@ export function extractBuildingBobs(sections: readonly RuleSection[], src: Sourc
       // Pair the two per-level tables by their leading level index (the same join
       // `extractConstructionCosts` does for cost lines). A typeId may recur at several levels; each
       // level keeps its own bob.
-      const typeByLevel = new Map<number, number>();
-      for (const p of findProps(rec, 'LogicType')) {
-        const level = Number.parseInt(p.values[0] ?? '', 10);
-        const typeId = Number.parseInt(p.values[1] ?? '', 10);
-        if (Number.isNaN(level) || Number.isNaN(typeId)) continue;
-        typeByLevel.set(level, typeId);
-      }
+      const typeByLevel = logicTypeByLevel(rec);
       const bobByLevel = new Map<number, number>();
       for (const p of findProps(rec, 'GfxBobId')) {
         const level = Number.parseInt(p.values[0] ?? '', 10);

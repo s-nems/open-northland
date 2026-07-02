@@ -342,9 +342,10 @@ export function resolveBuildingDraw(binding: number | BuildingTypeBinding, item:
  * result is every layer whose `[fromPct, toPct]` range contains the progress, in the table's stacking
  * order (the source's file order — the finished body is listed so it lands on top at high progress).
  * At 0% that is the grey foundation alone; ranges overlap by design, so mid-build shows several stacked
- * stages, exactly the original's staged construction. An empty active set (a gap in the ranges) returns
- * the layer list's FIRST entry as a floor — a site never draws as nothing (the foundation marks the
- * occupied ground from the placement tick). Pure: the layer *decision*; the GPU half binds the frames.
+ * stages, exactly the original's staged construction. An empty active set (a gap in the ranges) falls
+ * back to the LOWEST-`fromPct` layer (the earliest stage — the foundation, not whatever happens to be
+ * listed first) so a site never draws as nothing (the foundation marks the occupied ground from the
+ * placement tick). Pure: the layer *decision*; the GPU half binds the frames.
  */
 export function resolveConstructionDraws(
   binding: number | BuildingTypeBinding,
@@ -355,7 +356,10 @@ export function resolveConstructionDraws(
   if (layers === undefined || layers.length === 0) return null;
   const pct = item.builtPct;
   const active = layers.filter((l) => pct >= l.fromPct && pct <= l.toPct);
-  const chosen = active.length > 0 ? active : [layers[0] as ConstructionLayerRef];
+  const chosen =
+    active.length > 0
+      ? active
+      : [layers.reduce((lo, l) => (l.fromPct < lo.fromPct ? l : lo), layers[0] as ConstructionLayerRef)];
   return chosen.map((l) => (l.layer === undefined ? { bob: l.bob } : { bob: l.bob, layer: l.layer }));
 }
 

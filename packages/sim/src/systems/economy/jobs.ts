@@ -4,7 +4,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { interactionTile } from '../footprint.js';
 import { buildingEnabled, jobEnabled, settlerMeetsNeed } from '../progression.js';
-import { buildingWorkerJobs, canonicalById, recipeOf, tileKey } from '../shared.js';
+import { TileBuckets, buildingWorkerJobs, canonicalById, recipeOf } from '../shared.js';
 
 /**
  * JobSystem (assignment half) — give an **idle** settler the job of an understaffed workplace it
@@ -45,11 +45,12 @@ export const jobSystem: System = (world, ctx) => {
   // Turns the assignment from O(settlers · entities · log n) into O(buildings + settlers · buildings).
   const buildings = canonicalById(world.query(Building));
   // Spatial bucket of buildings by their INTERACTION tile (the door cell for a footprint type, the
-  // anchor tile otherwise — {@link interactionTile}): "adopt" binds the workplace a settler is standing
-  // AT (the AI walk-to-station drive delivers an operator to the door, not onto the now-walk-blocked
-  // walls), and the O(1) per-settler lookup replaces a full building scan (the jobSystem stress cost —
-  // most settlers stand at no door, so most lookups hit the empty bucket and do zero work).
-  const buildingsByTile = bucketsByInteractionTile(world, ctx, buildings);
+  // anchor tile otherwise — {@link interactionTile}, passed as the bucket's tile resolver): "adopt"
+  // binds the workplace a settler is standing AT (the AI walk-to-station drive delivers an operator to
+  // the door, not onto the now-walk-blocked walls), and the O(1) per-settler lookup replaces a full
+  // building scan (the jobSystem stress cost — most settlers stand at no door, so most lookups hit the
+  // shared empty bucket and do zero work).
+  const buildingsByTile = new TileBuckets(world, buildings, (b) => interactionTile(world, ctx, b));
   for (const e of world.canonicalEntities()) {
     const settler = world.tryGet(e, Settler);
     if (settler === undefined || world.has(e, JobAssignment)) continue; // already bound: nothing to do
@@ -133,7 +134,7 @@ function jobUnderstaffed(world: World, ctx: SystemContext, building: Entity, job
  * never depends on store order.
  */
 function workplaceStaffedHereBy(
-  buildingsByTile: ReadonlyMap<string, readonly Entity[]>,
+  buildingsByTile: TileBuckets,
   world: World,
   ctx: SystemContext,
   settler: Entity,
@@ -144,7 +145,7 @@ function workplaceStaffedHereBy(
   if (sp === undefined) return null;
   // Only the buildings whose interaction tile is the settler's own tile can be adopted — the bucket
   // already restricts to them (in ascending-id order), so the loop just applies the type gates.
-  for (const b of buildingsByTile.get(tileKey(fx.toInt(sp.x), fx.toInt(sp.y))) ?? []) {
+  for (const b of buildingsByTile.at(fx.toInt(sp.x), fx.toInt(sp.y))) {
     const building = world.get(b, Building); // present: the bucket is built from the Building query
     if (building.tribe !== tribe) continue;
     if (recipeOf(world, ctx, b) === undefined) continue; // only a producing workplace pins its worker
@@ -158,31 +159,4 @@ function workplaceStaffedHereBy(
  * deterministically (lowest job id first) rather than in `Set` insertion order. */
 function canonicalJobs(jobs: ReadonlySet<number>): number[] {
   return [...jobs].sort((a, b) => a - b);
-}
-
-/**
- * `buildings` grouped by their **interaction tile** ({@link interactionTile} — the door cell for a
- * footprint type, the anchor tile otherwise), each bucket preserving the input order (fed the
- * canonical list → ascending-id buckets). The door-aware analogue of {@link TileBuckets} (which
- * groups by raw {@link Position} — wrong for a building whose walls are walk-blocked: nobody can
- * stand ON it, its workers stand at its door). Rebuilt per tick; derived state, never hashed.
- */
-function bucketsByInteractionTile(
-  world: World,
-  ctx: SystemContext,
-  buildings: Iterable<Entity>,
-): ReadonlyMap<string, readonly Entity[]> {
-  const byTile = new Map<string, Entity[]>();
-  for (const b of buildings) {
-    const at = interactionTile(world, ctx, b);
-    if (at === null) continue;
-    const key = tileKey(at.x, at.y);
-    let bucket = byTile.get(key);
-    if (bucket === undefined) {
-      bucket = [];
-      byTile.set(key, bucket);
-    }
-    bucket.push(b);
-  }
-  return byTile;
 }

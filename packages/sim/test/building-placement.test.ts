@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import * as components from '../src/components/index.js';
 import { Building, PathFollow, PathRequest, Position, Resource, Settler } from '../src/components/index.js';
 import type { Entity } from '../src/ecs/world.js';
-import { Simulation, type TerrainMap, fx } from '../src/index.js';
+import { Simulation, type TerrainMap, findPath, fx } from '../src/index.js';
 import type { TerrainGraph } from '../src/nav/terrain.js';
 import type { SystemContext } from '../src/systems/index.js';
 import { buildingBlockedCells, canPlaceBuilding, interactionTile } from '../src/systems/index.js';
@@ -90,7 +90,14 @@ function placedBuilding(sim: Simulation, index = 0): Entity {
 }
 
 function ctxOf(sim: Simulation): SystemContext {
-  return { content: sim.content, rng: sim.rng, tick: sim.tick, events: sim.events, terrain: sim.terrain };
+  return {
+    content: sim.content,
+    rng: sim.rng,
+    tick: sim.tick,
+    events: sim.events,
+    commands: sim.commands,
+    terrain: sim.terrain,
+  };
 }
 
 function buildingsPlaced(sim: Simulation): number {
@@ -99,13 +106,14 @@ function buildingsPlaced(sim: Simulation): number {
 
 // Component stores are module-level singletons shared across Simulation instances — clear ALL of
 // them (not a hand-picked subset) so no earlier test's entity leaks in (docs/LESSONS.md [ac6a287]).
-beforeEach(() => {
+function clearStores(): void {
   for (const c of Object.values(components)) {
     if (typeof c === 'object' && c !== null && 'store' in c && c.store instanceof Map) {
       c.store.clear();
     }
   }
-});
+}
+beforeEach(clearStores);
 
 describe('canPlaceBuilding — the free-placement collision rule', () => {
   it('accepts a footprinted type on open ground and places it through the command seam', () => {
@@ -269,11 +277,7 @@ describe('door cell — settlers interact with a house at its entry point', () =
 describe('determinism', () => {
   it('two same-seed runs through placement + rejection + pathing hash identically', () => {
     const run = (): string => {
-      for (const c of Object.values(components)) {
-        if (typeof c === 'object' && c !== null && 'store' in c && c.store instanceof Map) {
-          c.store.clear();
-        }
-      }
+      clearStores();
       const sim = mappedSim();
       sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
       sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 6, y: 5, tribe: VIKING }); // rejected
@@ -282,5 +286,73 @@ describe('determinism', () => {
       return sim.hashState();
     };
     expect(run()).toBe(run());
+  });
+});
+
+describe('wall gate — a door listed inside the walls stays walkable', () => {
+  // The real data's defence wall (`work_pottery_02`, the "Mur" records) puts its LogicDoorPoint
+  // INSIDE its own LogicWalkBlockArea: the door IS the wall's passable gate. Without the carve-out
+  // a walk-to-door goal would be a blocked cell → findPath fails → the request is never re-issued →
+  // the settler wedges forever. Pinned here on a synthetic gate fixture of the same shape.
+  const GATE = 11;
+  const GATE_FOOTPRINT = {
+    blocked: [
+      { dx: -1, dy: 0 },
+      { dx: 0, dy: 0 }, // the gate cell — ALSO the door below, like the real wall records
+      { dx: 1, dy: 0 },
+    ],
+    familyBody: [
+      { dx: -1, dy: 0 },
+      { dx: 0, dy: 0 },
+      { dx: 1, dy: 0 },
+    ],
+    reserved: [-1, 0, 1].flatMap((dy) => [-2, -1, 0, 1, 2].map((dx) => ({ dx, dy }))),
+    door: { dx: 0, dy: 0 },
+  };
+
+  function gateContent(): ContentSet {
+    const base = placementContent();
+    return parseContentSet({
+      ...base,
+      buildings: [
+        ...base.buildings,
+        { typeId: GATE, id: 'wall_gate', kind: 'tower', footprint: GATE_FOOTPRINT },
+      ],
+    });
+  }
+
+  it('leaves the door cell out of the walk-block overlay and routes THROUGH the gate', () => {
+    const sim = new Simulation({ seed: 1, content: gateContent(), map: grassMap(9, 7) });
+    sim.enqueue({ kind: 'placeBuilding', buildingType: GATE, x: 4, y: 3, tribe: VIKING });
+    sim.step();
+    const terrain = terrainOf(sim);
+    const blocked = buildingBlockedCells(sim.world, ctxOf(sim), terrain);
+    expect(blocked.has(terrain.cellAt(3, 3))).toBe(true); // wall segment
+    expect(blocked.has(terrain.cellAt(5, 3))).toBe(true); // wall segment
+    expect(blocked.has(terrain.cellAt(4, 3))).toBe(false); // the gate/door — carved out, passable
+    // A path to the gate cell itself (the interaction tile) succeeds instead of wedging.
+    expect(interactionTile(sim.world, ctxOf(sim), placedBuilding(sim))).toEqual({ x: 4, y: 3 });
+    const walker = sim.world.create();
+    sim.world.add(walker, Position, { x: fx.fromInt(0), y: fx.fromInt(3) });
+    sim.world.add(walker, PathRequest, {
+      start: terrain.cellAt(0, 3),
+      goal: terrain.cellAt(4, 3),
+      failed: false,
+    });
+    sim.step();
+    expect(sim.world.has(walker, PathFollow)).toBe(true);
+  });
+});
+
+describe('findPath — the blocked-start/goal exemptions', () => {
+  it('trivially succeeds when start === goal even on a building cell (already there)', () => {
+    const sim = mappedSim(grassMap(8, 5));
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 3, y: 1, tribe: VIKING });
+    sim.step();
+    const terrain = terrainOf(sim);
+    const blocked = buildingBlockedCells(sim.world, ctxOf(sim), terrain);
+    const wall = terrain.cellAt(3, 1);
+    expect(blocked.has(wall)).toBe(true);
+    expect(findPath(terrain, wall, wall, blocked)).toEqual([wall]); // standing on it — not "unreachable"
   });
 });
