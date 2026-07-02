@@ -18,23 +18,24 @@ the only thing you write to:
   copyrighted; it is the *input* to the asset pipeline. Never copy its assets into this repo.
 
 **Legal guardrails (an agent must uphold these too):** this is an independent, clean-room
-reimplementation under **GPL-3.0** (see `LICENSE`). (a) Never commit original assets, decoded
+reimplementation under **GPL-3.0-or-later** (see `LICENSE`). (a) Never commit original assets, decoded
 content, or binaries — `content/` is gitignored and tests use the synthetic fixture, not real game
 data (see `docs/TESTING.md`). (b) `OpenVikings_reversing/` is **format documentation**, not code to
 port — take facts about file layouts, never its source/architecture. (c) Don't brand the project
 with the original's names or logos: it's *Vinland*, an unaffiliated rebuild — no "Cultures"
-branding, no original logos/screenshots in README or promo copy. The canonical statement lives in
-`README.md` **Legal** and `docs/SOURCES.md`; keep them in sync if you touch licensing wording.
+branding, no original logos/screenshots in README or promo copy. The **canonical** legal statement
+lives in `docs/SOURCES.md` (**Legal line**); this file and `README.md` **Legal** are pointers to it —
+edit SOURCES.md first, then reconcile the others if you touch licensing wording.
 
 ## Golden rules
 
 1. **The `sim` package is deterministic and pure.** No `Math.random`, no `Date.now`, no `Date`,
    no DOM, no I/O, no `import` from `render`/`app`/Pixi. Randomness comes only from the injected
-   seeded RNG (`packages/sim/src/rng.ts`). Two runs from the same seed + same inputs must produce
+   seeded RNG (`packages/sim/src/core/rng.ts`). Two runs from the same seed + same inputs must produce
    byte-identical state. This is what makes mechanics testable headless and multiplayer-lockstep
    possible later. If you break determinism, the golden tests in `packages/sim/test` will fail —
    keep them green.
-2. **Sim positions are fixed-point integers**, not floats (`packages/sim/src/fixed.ts`). Rendering
+2. **Sim positions are fixed-point integers**, not floats (`packages/sim/src/core/fixed.ts`). Rendering
    interpolates to smooth floats; the sim never does. Floats are allowed only in `render`/`app`.
 3. **Content is data, not code.** Game rules (buildings, jobs, goods, weapons, tribes) live in the
    intermediate format under `content/`, validated by the zod schemas in `packages/data`. To
@@ -130,6 +131,7 @@ this root file lean). Golden rules 1–2 above are the crisp always-on version.
 
 ## Start here
 
-`docs/ARCHITECTURE.md` → `docs/ECS.md` → `docs/DATA-FORMAT.md` → `docs/TESTING.md` → `docs/FIDELITY.md` → `docs/ROADMAP.md`.
+`docs/README.md` indexes every doc; the reading order is `docs/ARCHITECTURE.md` → `docs/ECS.md` →
+`docs/DATA-FORMAT.md` → `docs/TESTING.md` → `docs/FIDELITY.md` → `docs/ROADMAP.md`.
 The roadmap names the current target slice; do the smallest next step toward it. `docs/FIDELITY.md`
 names whether that slice is *faithful* — the goal tests can't see.

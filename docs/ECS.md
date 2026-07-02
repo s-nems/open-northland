@@ -82,7 +82,7 @@ its own graph — never hardcode tribe count or identities.
 2. **Deterministic iteration.** Queries iterate the smallest store in **insertion order** (no
    per-call sort — that was a perf trap). Order is reproducible across identical runs, which is what
    determinism needs. For canonical snapshots/hashes, sort ids explicitly (`world.canonicalEntities()`).
-3. **Fixed-point math for anything that affects state.** `fx` helpers (`fixed.ts`): scaled integers
+3. **Fixed-point math for anything that affects state.** `fx` helpers (`core/fixed.ts`): scaled integers
    in a JS double (exact to 2^53), with dev-mode overflow assertions. Never `Math.sqrt/sin/cos` in
    sim — use `fx.isqrt`. Floats are fine for pure rendering only.
 4. **Commands in, snapshot out.** State mutates ONLY via serializable commands (CommandSystem). A
@@ -138,11 +138,11 @@ across runs.
 
 ## Snapshot / save / multiplayer (design now, build later)
 
-Because the sim is deterministic and command-driven: a save is `{ seed, contentVersion, map,
-commandLog }` for replay, plus a **state snapshot** for fast load (replaying hours of ticks is
-unviable). Every component is plain data, so snapshot is a straightforward serialization — design
-the snapshot read-view **in Phase 2** (so `render` reads a stable view, never mid-mutation) and
-finalize the disk format in Phase 5. Lockstep MP = exchange commands, everyone runs the same sim.
+The command-log-plus-snapshot save model and lockstep-MP plan live in
+docs/ARCHITECTURE.md ("Save / load & multiplayer"). The ECS-specific consequence: **every component
+is plain data**, so a snapshot is a straightforward serialization — design the snapshot read-view
+**in Phase 2** (so `render` reads a stable view, never mid-mutation), finalize the disk format in
+Phase 5.
 
 ## What to build first
 
@@ -155,7 +155,7 @@ then widen.
 
 - **Floats:** transcendental ops can differ across engines/CPUs; fatal for lockstep/replay. Scaled
   integers in a double are exact to 2^53 and identical everywhere (basic ops + round are
-  IEEE-deterministic). See `fixed.ts`.
+  IEEE-deterministic). See `core/fixed.ts`.
 - **Big ECS libs:** `bitecs` is fast but terse and hard to follow, and we'd fight it for
   deterministic iteration order. At thousands (not millions) of entities a small explicit ECS wins
   on legibility with no real perf cost.
