@@ -69,7 +69,7 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
 
 ### Render breadth ladder — more decoded assets on-screen (one category per `/iterate`)
 The pipeline already emits atlases for most assets (~80% of the bob `.bmd`s), but the render
-(`app/src/real-sprites.ts`) currently draws only settlers + one tree species + one HQ house. This ladder
+(`app/src/content/`) currently draws only settlers + one tree species + one HQ house. This ladder
 wires the rest on-screen, **cheapest first**; each rung is one iteration that adds a
 `packages/app/src/scenes/` acceptance scene for the human pixel sign-off (an agent can't self-judge pixels).
 The repeatable recipe per rung: load the extra atlas(es) in `loadHumanSpriteSheet`, route the entity's
@@ -229,7 +229,7 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
       birth rate/sex + growth cadence are below the readable `.ini` (docs/FIDELITY.md). Inert on the golden.
 - [ ] HUD: stocks, population, jobs, the goods graph. **Landed** (→ archive): sim-side read views
       (`tribeStocks`/`tribePopulation`/`tribePopulationByJob`/`goodsGraph`) + the render-side HUD chain over
-      the frozen snapshot (`packages/render/src/hud.ts`). Only glyph rasterization/typography is left for a
+      the frozen snapshot (`packages/render/src/data/hud.ts`). Only glyph rasterization/typography is left for a
       human via the shot.
 - **Open Phase-3 work** is the three **human-gated render items** (the Phase-1 oracle
   pixel-diffs; the Phase-2 real decoded-bob-atlas bind; the Phase-2 real terrain-tile render) — an

@@ -124,9 +124,9 @@ Playwright MCP**:
   to golden-image diffs. (The MCP is fine for a one-off "boot it and look," never the backbone.)
 - **Prerequisite — a deterministic, headless render entry (now built).** The harness needs *"render
   scenario X at seed S, advance N ticks, draw one frame, then signal ready"* — not the wall-clock
-  `requestAnimationFrame` loop. That entry now exists: `packages/app/src/shot.ts` (`?shot[&seed&ticks]`)
+  `requestAnimationFrame` loop. That entry now exists: `packages/app/src/entries/shot.ts` (`?shot[&seed&ticks]`)
   builds the vertical slice (`vertical-slice.ts`), steps a fixed N ticks, draws ONE frame via the Pixi
-  renderer (`packages/render/src/pixi-renderer.ts`), and sets `window.__vinlandShotReady`. `npm run
+  renderer (`packages/render/src/gpu/pixi-app.ts`), and sets `window.__vinlandShotReady`. `npm run
   shot` (`packages/app/scripts/shot.mjs`) boots the app's Vite dev server, drives Chromium via the
   committed Playwright script, waits on that flag, and writes a PNG (`--seed/--ticks/--out`). The
   renderer draws placeholder geometry (iso tile diamonds + feet-anchored body boxes) — atlas sprites

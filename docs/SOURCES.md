@@ -184,7 +184,7 @@ Two graphics families sit beside the map grid; **both decode with existing decod
   `EdytorByRemik/ajhefbcsirbdvbkuysrghdkrbg.ini`. **WIRED twice:** `extractLandscapeGraphics` derives the
   `(bmd, palette)` atlas work list → `convertBmdTree`; `extractLandscapeGfx` extracts the FULL table into IR
   (`landscapeGfx`) — a decoded map's `objects` placements join onto it by `EditName` and the app draws every
-  placed object with animation (`real-objects.ts` → `WorldRenderer.setMapObjects`). The **same atlas path covers
+  placed object with animation (`app/src/content/objects.ts` → `WorldRenderer.setMapObjects`). The **same atlas path covers
   `ls_houses_*.bmd`** for the buildings — see "Building graphics families" below.
 - **Ground TEXTURES** (the triangle-mesh terrain) — `Data/engine2d/bin/textures/text_*.pcx` (58) + `tran_*.pcx`
   (27 transition tiles), 64-px indexed tiles with inline palette, **already decoded to `text_*.png`** by the pcx
