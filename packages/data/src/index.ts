@@ -1,6 +1,13 @@
 export * from './schema.js';
 
-import { type BuildingType, ContentSet, type GoodType, type JobType, TerrainMapFile } from './schema.js';
+import {
+  type BuildingType,
+  ContentSet,
+  type GoodType,
+  type JobType,
+  LOGIC_TYPE_NONE,
+  TerrainMapFile,
+} from './schema.js';
 
 /**
  * Parse + validate a content set (typically the contents of content/ assembled into one object).
@@ -132,13 +139,23 @@ export function validateCrossReferences(set: ContentSet): void {
 
   // A landscape object's `LogicType`, when set, must resolve into the landscape type table — the
   // placed object counts as that type on the map's logic lanes (every real record carries 1..87;
-  // 0 is the schema's "pure decor" default for a record that omits the key).
+  // LOGIC_TYPE_NONE is the schema's "pure decor" default for a record that omits the key).
   const landscapeIds = new Set(set.landscape.map((l) => l.typeId));
   for (const g of set.landscapeGfx) {
-    if (g.logicType !== 0 && !landscapeIds.has(g.logicType))
+    if (g.logicType !== LOGIC_TYPE_NONE && !landscapeIds.has(g.logicType))
       errors.push(
         `landscapeGfx "${g.editName ?? `#${g.index}`}" references unknown landscape typeId ${g.logicType}`,
       );
+  }
+
+  // A terrainPatterns row's representative pick must exist in the full pattern table when that
+  // table is carried (it became in-set checkable once `gfxPatterns` joined the ContentSet).
+  if (set.gfxPatterns.length > 0) {
+    const patternIds = new Set(set.gfxPatterns.map((p) => p.id));
+    for (const t of set.terrainPatterns) {
+      if (!patternIds.has(t.patternId))
+        errors.push(`terrainPattern for typeId ${t.typeId} references unknown patternId ${t.patternId}`);
+    }
   }
 
   // Each experience track names its owning job (always) and, when good-specific, the good it trains on.

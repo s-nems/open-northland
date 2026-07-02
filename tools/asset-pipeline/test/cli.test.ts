@@ -925,7 +925,10 @@ describe('mapDatToTerrain', () => {
     expect(terrain.objects).toBeUndefined();
   });
 
-  it('throws when a lane indexes outside its dictionary (corrupt save)', () => {
+  it('degrades a corrupt render lane to a grid-only artifact (warn, keep the nav grid)', () => {
+    // The empa lane indexes outside its dictionary — the whole map used to be skipped for this,
+    // dropping a nav grid that decoded fine; now only the optional render layer is dropped.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const bytes = encodeMapDat([
       { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
       { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0])) },
@@ -933,7 +936,11 @@ describe('mapDatToTerrain', () => {
       { tag: 'empb', version: 1, payload: packX6elLayer(Uint16Array.from([0])) },
       { tag: 'eapd', version: 1, payload: stringList(['border']) },
     ]);
-    expect(() => mapDatToTerrain(bytes)).toThrow(/outside the 1-entry eapd dictionary/);
+    const terrain = mapDatToTerrain(bytes);
+    expect(terrain.typeIds).toEqual([1]); // the nav grid survives
+    expect(terrain.ground).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/ground lanes unreadable.*eapd dictionary/));
+    warn.mockRestore();
   });
 });
 

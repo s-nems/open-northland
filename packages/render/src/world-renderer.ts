@@ -89,8 +89,8 @@ const KIND_COLOURS: Record<Exclude<DrawKind, 'tile'>, number> = {
 /**
  * World-space slack (px) the sprite cull box is grown by on every side, so a TALL sprite whose feet are
  * just off-screen but whose body pokes into view still draws (culling is by the feet anchor). Generous
- * enough to cover the tallest scaled building; small next to a real map (≈8 tiles), so culling still
- * bites. Tunable.
+ * enough to cover the tallest scaled building or map object (trees/palisades share this box); small
+ * next to a real map (≈8 tiles), so culling still bites. Tunable.
  */
 const SPRITE_CULL_MARGIN = 512;
 
@@ -172,10 +172,11 @@ function meshGeometry(batch: TerrainBatch): MeshGeometry {
 /**
  * One placed landscape object, fully resolved by the app (atlas source + frame list + position):
  * a tree, stone, bush, mine decal or animated wave from a decoded map's `objects` layer. `frames`
- * with more than one entry is a looping animation ({@link phase} staggers neighbours so waves ripple
- * instead of blinking in unison). `decor` objects are flat ground decor (waves, grass, flowers,
- * mine stains): they batch into per-chunk meshes UNDER the entity sprites; non-decor (tall) objects
- * (trees, stones) depth-sort against entities by their world-`y` feet anchor.
+ * with more than one entry is a looping animation played from {@link phase} (the app sets phase 0
+ * everywhere — the wave bobs tile seamlessly only when neighbours show the SAME frame). `decor`
+ * objects are flat ground decor (waves, grass, flowers, mine stains): they batch into per-chunk
+ * meshes UNDER the entity sprites; non-decor (tall) objects (trees, stones) depth-sort against
+ * entities by their world-`y` feet anchor.
  */
 export interface MapObjectSprite {
   /** World-space feet anchor (px), already projected by the app (`tileToScreen` of the half-cell). */
@@ -186,17 +187,33 @@ export interface MapObjectSprite {
   readonly frames: readonly AtlasFrame[];
   readonly scale: number;
   readonly decor: boolean;
-  /** Starting frame offset into {@link frames} (per-object stagger for loops). */
+  /** Starting frame offset into {@link frames} (kept for future per-object phase data). */
   readonly phase: number;
   /** Draw opacity (1 = opaque). Waves composite translucently over the water ground. */
   readonly alpha: number;
 }
 
-/** One tall (non-decor) map object's pooled sprite + its static draw data. */
+/** One tall (non-decor) map object: its static draw data + a LAZILY-minted pooled sprite. */
 interface PooledObject {
   readonly obj: MapObjectSprite;
-  readonly sprite: Sprite;
+  /** Minted on first visibility (a big map holds 10k–270k tall objects; most never scroll into view). */
+  sprite: Sprite | null;
   attached: boolean;
+}
+
+/**
+ * One block of tall map objects, AABB-culled as a whole before its members are point-tested — the
+ * per-frame cull cost tracks the SCREEN (visible blocks), not the map (the render contract; a
+ * whole-map flat scan would be an O(objects) loop per frame on maps with 10k–270k trees).
+ */
+interface TallBlock {
+  readonly minX: number;
+  readonly minY: number;
+  readonly maxX: number;
+  readonly maxY: number;
+  readonly objects: PooledObject[];
+  /** How many members are currently attached — lets an off-screen block skip its detach scan. */
+  attachedCount: number;
 }
 
 /**
@@ -212,6 +229,9 @@ interface DecorChunk {
   readonly maxY: number;
   /** Animated batches to rewrite on an anim-tick advance (empty for an all-static chunk). */
   readonly animated: AnimatedDecorBatch[];
+  /** The tick the animated buffers were last written for — per chunk, so a chunk scrolling into
+   *  view while the sim is paused still gets caught up to the current tick's frame. */
+  lastWrittenTick: number;
 }
 
 /** One animated decor batch: its mesh buffers + the objects whose quads fill them, in quad order. */
@@ -232,6 +252,13 @@ interface AnimatedDecorBatch {
 function decorChunkPx(): number {
   return TERRAIN_CHUNK_TILES * TILE_HALF_W * 2;
 }
+
+/**
+ * The deterministic secondary depth key: `zIndex = y + x * this`. Small enough that the x term can
+ * never overturn a meaningful y difference (max |x| on a 1024-wide map ≈ 32k px → contributes
+ * ~0.03), large enough to order same-row overlaps stably regardless of attach order.
+ */
+const DEPTH_X_TIEBREAK = 1 / (1 << 20);
 
 /** Write one object's current frame as a quad into flat position/uv buffers at `quadIndex`. */
 function writeObjectQuad(
@@ -304,9 +331,9 @@ export class WorldRenderer {
   /** Flat map-object decor (waves, grass, mine stains) — batched meshes above terrain, below sprites. */
   private readonly decorLayer = new Container();
   private decorChunks: DecorChunk[] = [];
-  /** Tall map objects (trees, stones) pooled as sprites in the entity layer (depth-sorted by y). */
-  private tallObjects: PooledObject[] = [];
-  /** The animation tick the decor/tall object frames were last written for. */
+  /** Tall map objects (trees, stones) in AABB-culled blocks; sprites minted lazily on first view. */
+  private tallBlocks: TallBlock[] = [];
+  /** The animation tick the tall-object frames were last refreshed for. */
   private lastAnimTick = -1;
   /** Pooled per-entity containers, depth-ordered by zIndex each frame (`sortableChildren`). */
   private readonly spriteLayer = new Container();
@@ -368,22 +395,43 @@ export class WorldRenderer {
    */
   setMapObjects(objects: readonly MapObjectSprite[]): void {
     this.destroyMapObjects();
+    const chunkPx = decorChunkPx();
     const byBlock = new Map<string, MapObjectSprite[]>();
+    const tallByBlock = new Map<string, MapObjectSprite[]>();
     for (const obj of objects) {
       if (obj.frames.length === 0) continue;
-      if (!obj.decor) {
-        this.tallObjects.push({ obj, sprite: new Sprite(), attached: false });
-        continue;
-      }
-      const key = `${Math.floor(obj.x / decorChunkPx())},${Math.floor(obj.y / decorChunkPx())}`;
-      let block = byBlock.get(key);
+      const key = `${Math.floor(obj.x / chunkPx)},${Math.floor(obj.y / chunkPx)}`;
+      const buckets = obj.decor ? byBlock : tallByBlock;
+      let block = buckets.get(key);
       if (block === undefined) {
         block = [];
-        byBlock.set(key, block);
+        buckets.set(key, block);
       }
       block.push(obj);
     }
     for (const block of byBlock.values()) this.decorChunks.push(this.buildDecorChunk(block));
+    for (const block of tallByBlock.values()) {
+      let minX = Number.POSITIVE_INFINITY;
+      let minY = Number.POSITIVE_INFINITY;
+      let maxX = Number.NEGATIVE_INFINITY;
+      let maxY = Number.NEGATIVE_INFINITY;
+      for (const obj of block) {
+        // The block box only needs to cover the feet ANCHORS (the per-object cull is a point test
+        // against the margin-inflated viewport, same convention as the entity cull).
+        minX = Math.min(minX, obj.x);
+        minY = Math.min(minY, obj.y);
+        maxX = Math.max(maxX, obj.x);
+        maxY = Math.max(maxY, obj.y);
+      }
+      this.tallBlocks.push({
+        minX,
+        minY,
+        maxX,
+        maxY,
+        objects: block.map((obj) => ({ obj, sprite: null, attached: false })),
+        attachedCount: 0,
+      });
+    }
   }
 
   /** Batch one decor block: group its objects by texture source into a static and an animated mesh each. */
@@ -463,7 +511,8 @@ export class WorldRenderer {
       }
     }
     this.decorLayer.addChild(container);
-    return { container, minX, minY, maxX, maxY, animated };
+    // Animated quads were written for tick 0 at build; the first update rewrites any other tick.
+    return { container, minX, minY, maxX, maxY, animated, lastWrittenTick: 0 };
   }
 
   /** Free the decor meshes + tall-object sprites (a map change re-invalidates both). */
@@ -475,8 +524,10 @@ export class WorldRenderer {
       chunk.container.destroy({ children: true });
     }
     this.decorChunks = [];
-    for (const po of this.tallObjects) po.sprite.destroy();
-    this.tallObjects = [];
+    for (const block of this.tallBlocks) {
+      for (const po of block.objects) po.sprite?.destroy();
+    }
+    this.tallBlocks = [];
     this.lastAnimTick = -1;
   }
 
@@ -505,13 +556,14 @@ export class WorldRenderer {
 
     // Landscape objects: cull the decor blocks like terrain; advance loop animations at the sim tick
     // rate, rewriting only the VISIBLE animated batches (an off-screen wave costs nothing, and a
-    // static block is never touched after build).
-    const animAdvanced = tick !== this.lastAnimTick;
+    // static block is never touched after build). The written tick is tracked PER CHUNK so a chunk
+    // scrolled into view mid-tick (or while paused) still catches up to the current frame.
     for (const chunk of this.decorChunks) {
       const visible =
         chunk.maxX >= vp.minX && chunk.minX <= vp.maxX && chunk.maxY >= vp.minY && chunk.minY <= vp.maxY;
       chunk.container.visible = visible;
-      if (!visible || !animAdvanced) continue;
+      if (!visible || chunk.animated.length === 0 || chunk.lastWrittenTick === tick) continue;
+      chunk.lastWrittenTick = tick;
       for (const batch of chunk.animated) {
         for (let q = 0; q < batch.objects.length; q++) {
           const obj = batch.objects[q] as MapObjectSprite;
@@ -524,28 +576,55 @@ export class WorldRenderer {
         batch.geometry.getBuffer('aUV').update();
       }
     }
-    // Tall objects (trees/stones): pooled sprites culled per frame, depth-sorted against entities by
-    // their feet anchor (the same world-`y` key the entity containers use below).
-    for (const po of this.tallObjects) {
-      const obj = po.obj;
-      const visible = obj.x >= vp.minX && obj.x <= vp.maxX && obj.y >= vp.minY && obj.y <= vp.maxY;
-      if (!visible) {
-        if (po.attached) {
-          this.spriteLayer.removeChild(po.sprite);
-          po.attached = false;
+    // Tall objects (trees/stones): block-culled, then per-member point-tested against the (already
+    // margin-inflated) viewport — the scan cost tracks the visible blocks, not the map. A member's
+    // sprite is minted on FIRST visibility (most of a big map's trees never scroll into view) and
+    // depth-sorted against entities by its feet anchor (the same world-`y` key the entity
+    // containers use below); its texture is refreshed only on attach or an animation-tick advance.
+    const animAdvanced = tick !== this.lastAnimTick;
+    for (const block of this.tallBlocks) {
+      const blockVisible =
+        block.maxX >= vp.minX && block.minX <= vp.maxX && block.maxY >= vp.minY && block.minY <= vp.maxY;
+      if (!blockVisible) {
+        if (block.attachedCount > 0) {
+          for (const po of block.objects) {
+            if (po.attached && po.sprite !== null) {
+              this.spriteLayer.removeChild(po.sprite);
+              po.attached = false;
+            }
+          }
+          block.attachedCount = 0;
         }
         continue;
       }
-      const frame = objectFrameAt(obj, tick);
-      if (frame === undefined) continue;
-      po.sprite.texture = this.textureFor(obj.source, frame);
-      po.sprite.position.set(obj.x + frame.offsetX * obj.scale, obj.y + frame.offsetY * obj.scale);
-      po.sprite.scale.set(obj.scale);
-      po.sprite.alpha = obj.alpha;
-      po.sprite.zIndex = obj.y;
-      if (!po.attached) {
-        this.spriteLayer.addChild(po.sprite);
-        po.attached = true;
+      for (const po of block.objects) {
+        const obj = po.obj;
+        const visible = obj.x >= vp.minX && obj.x <= vp.maxX && obj.y >= vp.minY && obj.y <= vp.maxY;
+        if (!visible) {
+          if (po.attached && po.sprite !== null) {
+            this.spriteLayer.removeChild(po.sprite);
+            po.attached = false;
+            block.attachedCount--;
+          }
+          continue;
+        }
+        if (po.sprite === null) {
+          po.sprite = new Sprite();
+          po.sprite.alpha = obj.alpha;
+          po.sprite.scale.set(obj.scale);
+          po.sprite.zIndex = obj.y + obj.x * DEPTH_X_TIEBREAK; // static — set once
+        }
+        if (!po.attached || (animAdvanced && obj.frames.length > 1)) {
+          const frame = objectFrameAt(obj, tick);
+          if (frame === undefined) continue;
+          po.sprite.texture = this.textureFor(obj.source, frame);
+          po.sprite.position.set(obj.x + frame.offsetX * obj.scale, obj.y + frame.offsetY * obj.scale);
+        }
+        if (!po.attached) {
+          this.spriteLayer.addChild(po.sprite);
+          po.attached = true;
+          block.attachedCount++;
+        }
       }
     }
     this.lastAnimTick = tick;
@@ -561,11 +640,14 @@ export class WorldRenderer {
         this.pool.set(item.ref, pe);
       }
       this.updatePooled(pe, item, tick);
-      // Depth = the feet-anchor world y (the same key the tall map objects use), NOT the list index —
-      // so a settler and the tree it walks behind sort into one order. `buildSpriteScene` sorts by
-      // (y, x, id), so y-keyed zIndex preserves its order for distinct rows; Array.sort is stable, so
-      // same-y items keep their insertion order.
-      pe.container.zIndex = item.y;
+      // Depth = the feet-anchor SCREEN y (+ a small deterministic x tiebreak), the same key the tall
+      // map objects use, so a settler and the tree it walks behind sort into one painter order.
+      // NOTE this deliberately diverges from the headless `buildScene` oracle's row-major
+      // (tileY, tileX) list order: screen y ∝ (col + row) is the iso-correct occlusion key once
+      // static objects interleave with entities; the x term keeps same-y overlaps stable across
+      // attach/detach churn (Pixi's sort is stable only in children-array order, which panning
+      // reshuffles).
+      pe.container.zIndex = item.y + item.x * DEPTH_X_TIEBREAK;
       if (!pe.attached) {
         this.spriteLayer.addChild(pe.container);
         pe.attached = true;
