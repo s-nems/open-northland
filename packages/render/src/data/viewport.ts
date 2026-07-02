@@ -3,7 +3,7 @@ import { type Camera, TILE_HALF_H, TILE_HALF_W, tileToScreen } from './iso.js';
 /**
  * The PURE viewport-culling math — the "what is on screen" half of drawing a large world, kept out of
  * the GPU so it is unit-testable without a screen (the same self-verifiable/human-gated split
- * `scene.ts` and `sprites.ts` keep). The retained {@link import('./world-renderer.js').WorldRenderer}
+ * `scene.ts` and `sprites.ts` keep). The retained {@link import('../gpu/world-renderer.js').WorldRenderer}
  * calls these to skip entities/terrain outside the camera, so a 256×256 map only pays for the tiles a
  * player can see; when fully zoomed OUT (everything visible) they simply pass everything through and
  * the renderer leans on GPU batching instead.

@@ -1,6 +1,6 @@
 import type { Simulation } from '@vinland/sim';
 
-export { ONE, TILE_HALF_W, TILE_HALF_H, tileToScreen, type Camera } from './iso.js';
+export { ONE, TILE_HALF_W, TILE_HALF_H, tileToScreen, type Camera } from './data/iso.js';
 export {
   buildScene,
   buildSpriteScene,
@@ -11,7 +11,7 @@ export {
   type SceneGround,
   type SceneTerrain,
   type SpriteState,
-} from './scene.js';
+} from './data/scene.js';
 export {
   atlasFromManifest,
   indexAtlasFrames,
@@ -36,7 +36,7 @@ export {
   type SpriteBindings,
   type SpriteFrameRef,
   type SpriteKind,
-} from './sprites.js';
+} from './data/sprites.js';
 export {
   createPixiApp,
   createWindowPixiApp,
@@ -47,7 +47,7 @@ export {
   type SpriteSheet,
   type SpriteLayer,
   type TerrainTextureSet,
-} from './pixi-renderer.js';
+} from './gpu/pixi-app.js';
 export {
   WorldRenderer,
   reconcileSprites,
@@ -55,7 +55,7 @@ export {
   type HudStyle,
   type HudFrame,
   type MapObjectSprite,
-} from './world-renderer.js';
+} from './gpu/world-renderer.js';
 export {
   AnimationGallery,
   galleryCellLayout,
@@ -68,14 +68,14 @@ export {
   type GalleryCellSpec,
   type GalleryDirection,
   type GalleryCellBox,
-} from './animation-gallery.js';
+} from './gpu/animation-gallery.js';
 export {
   cameraViewport,
   isVisible,
   visibleTileRange,
   type Viewport,
   type TileRange,
-} from './viewport.js';
+} from './data/viewport.js';
 export {
   DIAMOND_INDICES,
   TRIANGLE_A_CORNERS,
@@ -87,7 +87,7 @@ export {
   triangleUVs,
   type SrcRect,
   type CellTexture,
-} from './terrain.js';
+} from './data/terrain.js';
 export {
   buildHud,
   layoutHud,
@@ -101,14 +101,14 @@ export {
   type HudScreen,
   type JobCount,
   type StockCount,
-} from './hud.js';
+} from './data/hud.js';
 export {
   createSyntheticAtlasSource,
   syntheticAtlasFrames,
   SYNTHETIC_BINDINGS,
   SYNTHETIC_ATLAS_WIDTH,
   SYNTHETIC_ATLAS_HEIGHT,
-} from './synthetic-atlas.js';
+} from './gpu/synthetic-atlas.js';
 
 /**
  * The renderer is a PURE CONSUMER of sim state (see docs/ARCHITECTURE.md). It reads a snapshot
