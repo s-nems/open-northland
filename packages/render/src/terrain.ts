@@ -1,4 +1,4 @@
-import { TILE_HALF_H, TILE_HALF_W } from './index.js';
+import { TILE_HALF_H, TILE_HALF_W } from './iso.js';
 
 /**
  * The PURE geometry half of textured terrain — the self-verifiable twin of the GPU mesh build in

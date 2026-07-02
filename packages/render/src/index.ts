@@ -1,8 +1,6 @@
-import { ONE as SIM_ONE, type Simulation } from '@vinland/sim';
+import type { Simulation } from '@vinland/sim';
 
-/** Fixed-point scale (one whole tile), re-exported so the scene layer reads snapshot positions. */
-export const ONE: number = SIM_ONE;
-
+export { ONE, TILE_HALF_W, TILE_HALF_H, tileToScreen, type Camera } from './iso.js';
 export {
   buildScene,
   buildSpriteScene,
@@ -43,7 +41,6 @@ export {
   createPixiApp,
   createWindowPixiApp,
   loadAtlasSource,
-  type Camera,
   type GroundPattern,
   type SettlerCharacter,
   type SettlerCharacterSet,
@@ -133,18 +130,6 @@ export interface Renderer {
   /** Convert a screen coordinate to a world tile (for input/picking). */
   screenToTile(sx: number, sy: number): { tileX: number; tileY: number };
   dispose(): void;
-}
-
-/** Isometric projection constants — tile diamond half-extents in pixels. Tune to the art. */
-export const TILE_HALF_W = 32;
-export const TILE_HALF_H = 16;
-
-/** Cartesian tile (col,row) -> isometric screen offset (before camera). Pure, unit-tested-able. */
-export function tileToScreen(col: number, row: number): { x: number; y: number } {
-  return {
-    x: (col - row) * TILE_HALF_W,
-    y: (col + row) * TILE_HALF_H,
-  };
 }
 
 // TODO(Phase 2): implement PixiRenderer satisfying Renderer. See docs/ROADMAP.md.

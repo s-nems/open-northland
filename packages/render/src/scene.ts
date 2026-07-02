@@ -1,5 +1,5 @@
 import type { WorldSnapshot } from '@vinland/sim';
-import { ONE, tileToScreen } from './index.js';
+import { ONE, tileToScreen } from './iso.js';
 import { type Viewport, isVisible } from './viewport.js';
 
 /**
