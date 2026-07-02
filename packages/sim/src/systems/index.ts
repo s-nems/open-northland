@@ -6,7 +6,7 @@ import type { System, SystemContext } from './context.js';
 import { constructionSystem } from './economy/construction.js';
 import { jobSystem } from './economy/jobs.js';
 import { productionSystem } from './economy/production.js';
-import { buildingBlockedCells, buildingFootprintOf, canPlaceBuilding, interactionTile } from './footprint.js';
+import { buildingBlockedCells, canPlaceBuilding, interactionTile } from './footprint.js';
 import {
   BABY_FEMALE,
   BABY_MALE,
@@ -125,7 +125,7 @@ export {
   needsSystem,
 };
 export { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem };
-export { buildingBlockedCells, buildingFootprintOf, canPlaceBuilding, interactionTile };
+export { buildingBlockedCells, canPlaceBuilding, interactionTile };
 export { productionSystem };
 export { atomicSystem };
 export { jobSystem };

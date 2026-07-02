@@ -195,7 +195,8 @@ export type FootprintCell = z.infer<typeof FootprintCell>;
  *    top level needs, plus the margin ring the source draws around the walls (the "minimum distance
  *    from other houses / blocking terrain" the original enforces).
  *  - `door` — `LogicDoorPoint <sizeIdx> <x> <y>` for this size level: the entry cell settlers use to
- *    interact with the building (always adjacent to, never inside, the walls in the viking data).
+ *    interact with the building (adjacent to the walls for houses; the defence-wall records put it
+ *    INSIDE the walk-block — a wall's door is its passable gate, which the sim's nav overlay carves out).
  *
  * Absent on a building the graphics table omits (and on synthetic test content) — such a type places
  * with no collision, blocks nothing, and is interacted with on its anchor tile (the pre-footprint

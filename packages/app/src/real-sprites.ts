@@ -293,6 +293,7 @@ interface BuildingBobRow {
 interface ConstructionLayerRow {
   readonly tribeId: number;
   readonly typeId: number;
+  readonly level: number;
   readonly upgrade: boolean;
   readonly stackIdx: number;
   readonly bmd: string;
@@ -300,6 +301,7 @@ interface ConstructionLayerRow {
   readonly bobId: number;
   readonly fromPct: number;
   readonly toPct: number;
+  readonly editName?: string;
 }
 
 /** A loaded named building-family atlas: its `(bmd, palette)` identity + the {@link SpriteSheet.families} key it draws from. */
@@ -386,16 +388,31 @@ export function buildingBobRefsByType(
   for (const [typeId, list] of byType) {
     const row = pickCanonicalBuildingRow(typeId, list, defaultFamily.paletteName);
     if (row === undefined) continue;
-    const base = bmdBasename(row.bmd);
-    if (base === defaultFamily.bmdBasename && row.paletteName === defaultFamily.paletteName) {
-      out[typeId] = row.bobId; // the shared default building layer — a bare id
-      continue;
-    }
-    const family = families.find((f) => f.bmdBasename === base && f.paletteName === row.paletteName);
-    if (family !== undefined) out[typeId] = { layer: family.layer, bob: row.bobId };
-    // else: family not loaded → drop (the constant/default backs this typeId, no wrong-bob regression).
+    const layer = familyLayerFor(row.bmd, row.paletteName, defaultFamily, families);
+    if (layer === null) continue; // family not loaded → drop (the constant/default backs this typeId)
+    out[typeId] = layer.layer === undefined ? row.bobId : { layer: layer.layer, bob: row.bobId };
   }
   return out;
+}
+
+/**
+ * Resolve a row's `(bmd, palette)` to the atlas family it draws from — the shared no-wrong-bob-borrow
+ * rule of {@link buildingBobRefsByType} and {@link constructionRefsByType}: `{}` = the default building
+ * layer (a bare-id ref), `{ layer }` = a LOADED named family (a layer-qualified ref), `null` = an
+ * unloaded family — the caller must DROP the row, because the renderer would fall an unknown family
+ * through to the default layer and draw a wrong bob from a disjoint frame-id space. `bmd` is matched on
+ * its trailing basename so a sibling like `ls_houses_viking2.bmd` can't be a false positive.
+ */
+function familyLayerFor(
+  bmd: string,
+  paletteName: string,
+  defaultFamily: { readonly bmdBasename: string; readonly paletteName: string },
+  families: readonly BuildingFamily[],
+): { layer?: string } | null {
+  const base = bmdBasename(bmd);
+  if (base === defaultFamily.bmdBasename && paletteName === defaultFamily.paletteName) return {};
+  const family = families.find((f) => f.bmdBasename === base && f.paletteName === paletteName);
+  return family === undefined ? null : { layer: family.layer };
 }
 
 /**
@@ -406,9 +423,18 @@ export function buildingBobRefsByType(
  * layer-qualified stage); a row in an UNLOADED family is dropped (its frame-id space differs — never
  * borrow), and a typeId whose stages end up ALL dropped is omitted entirely (it keeps its normal body
  * draw at every progress rather than showing a partial stack). Only from-scratch rows are consumed
- * (`upgrade === false`; the 1-rows are the original's upgrade-overlay pass — docs/FIDELITY.md), the
- * preferred palette is used when any row has it, and each type's stages keep their source stacking
- * order (`stackIdx`). Pure + exported so the reduction is unit-tested without a browser.
+ * (`upgrade === false`; the 1-rows are the original's upgrade-overlay pass — docs/FIDELITY.md).
+ *
+ * A typeId's stages must all come from **one source record at one size level** — several records can
+ * carry the same typeId (the HQ's `"viking headquarters"` vs its `"viking headquarters house"` variant;
+ * the pottery maps one typeId at two sizeIdx; the two wall orientations share typeId 22), and merging
+ * their per-record `stackIdx` streams would interleave two different stage stacks. So the reduction
+ * first restricts to the preferred palette (when present), then picks ONE `(editName, level)` group:
+ * the {@link CANONICAL_EDIT_NAME} match when it names this typeId (the same disambiguation the body
+ * binding applies), else the lowest `level` (the base build stage — the extractors' lowest-sizeIdx
+ * convention), ties to the lexicographically smallest `editName` (deterministic, order-independent).
+ * The chosen group's stages keep their source stacking order (`stackIdx`). Pure + exported so the
+ * reduction is unit-tested without a browser.
  */
 export function constructionRefsByType(
   rows: readonly ConstructionLayerRow[],
@@ -426,24 +452,49 @@ export function constructionRefsByType(
   const out: Record<number, ConstructionLayerRef[]> = {};
   for (const [typeId, list] of byType) {
     const inPreferred = list.filter((r) => r.paletteName === defaultFamily.paletteName);
-    const candidates = (inPreferred.length > 0 ? inPreferred : list)
-      .slice()
-      .sort((a, b) => a.stackIdx - b.stackIdx);
+    const pool = inPreferred.length > 0 ? inPreferred : list;
+    // ONE record-level group per type (see the JSDoc): group by (editName, level), pick canonically.
+    const groups = new Map<string, ConstructionLayerRow[]>();
+    for (const r of pool) {
+      const key = `${r.editName ?? ''}|${r.level}`;
+      const group = groups.get(key);
+      if (group === undefined) groups.set(key, [r]);
+      else group.push(r);
+    }
+    const canonName = CANONICAL_EDIT_NAME[typeId];
+    let chosen: ConstructionLayerRow[] | undefined;
+    for (const group of groups.values()) {
+      const first = group[0];
+      if (first === undefined) continue;
+      const current = chosen?.[0];
+      if (
+        chosen === undefined ||
+        current === undefined ||
+        // The canonical editName wins outright; otherwise lowest level, then smallest editName.
+        (canonName !== undefined && first.editName === canonName && current.editName !== canonName) ||
+        (!(canonName !== undefined && current.editName === canonName) &&
+          (first.level < current.level ||
+            (first.level === current.level && (first.editName ?? '') < (current.editName ?? ''))))
+      ) {
+        chosen = group;
+      }
+    }
+    if (chosen === undefined) continue;
+
+    const candidates = chosen.slice().sort((a, b) => a.stackIdx - b.stackIdx);
     const refs: ConstructionLayerRef[] = [];
     let dropped = false;
     for (const r of candidates) {
-      const base = bmdBasename(r.bmd);
-      if (base === defaultFamily.bmdBasename && r.paletteName === defaultFamily.paletteName) {
-        refs.push({ bob: r.bobId, fromPct: r.fromPct, toPct: r.toPct });
-        continue;
+      const layer = familyLayerFor(r.bmd, r.paletteName, defaultFamily, families);
+      if (layer === null) {
+        dropped = true; // a stage in an unloaded family — the whole type keeps its body draw
+        break;
       }
-      const family = families.find((f) => f.bmdBasename === base && f.paletteName === r.paletteName);
-      if (family !== undefined) {
-        refs.push({ layer: family.layer, bob: r.bobId, fromPct: r.fromPct, toPct: r.toPct });
-        continue;
-      }
-      dropped = true; // a stage in an unloaded family — the whole type keeps its body draw
-      break;
+      refs.push(
+        layer.layer === undefined
+          ? { bob: r.bobId, fromPct: r.fromPct, toPct: r.toPct }
+          : { layer: layer.layer, bob: r.bobId, fromPct: r.fromPct, toPct: r.toPct },
+      );
     }
     if (!dropped && refs.length > 0) out[typeId] = refs;
   }

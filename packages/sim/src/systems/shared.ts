@@ -4,7 +4,7 @@ import { ONE, fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { TerrainGraph } from '../nav/terrain.js';
 import type { SystemContext } from './context.js';
-import { interactionTile } from './footprint.js';
+import { interactionTile, tileKey } from './footprint.js';
 import { vehicleMayCarry } from './readviews/vehicles.js';
 
 // The genuinely cross-system helpers, kept in a leaf module so every per-system file imports them
@@ -32,29 +32,40 @@ export function canonicalById(entities: Iterable<Entity>): Entity[] {
 /** The empty bucket returned for an unoccupied tile — shared + frozen so a miss allocates nothing. */
 const NO_ENTITIES: readonly Entity[] = Object.freeze([]);
 
-/** Injective per-tile key for a spatial bucket (integer tile `x`,`y`). A string so a system with no
- *  terrain handle (hence no map width) can still index by tile without a magic packing constant. */
-export function tileKey(x: number, y: number): string {
-  return `${x},${y}`;
-}
+// tileKey lives in footprint.ts (the leaf below this one — shared.ts already imports interactionTile
+// from it, so defining it there keeps the import graph acyclic); re-exported here so consumers keep
+// the established `from './shared.js'` import site.
+export { tileKey };
 
 /**
- * A per-tick **spatial bucket**: `entities` grouped by their integer {@link Position} tile, each bucket
- * preserving the input order (feed it a {@link canonicalById} list → ascending-id buckets). Answers
- * "what is on tile (x,y)?" in O(1) via {@link TileBuckets.at}, replacing a full-world scan for on-tile
- * checks (am I standing on a workplace?). Position-less entities are dropped. Determinism: a first-match
- * pick over a bucket lands on the same entity a canonical full scan would, because the tile is fixed and
- * the bucket keeps ascending-id order. Rebuilt each tick (derived state, never hashed) — the cheap seam
- * toward a full ring-search grid without touching sim state.
+ * A per-tick **spatial bucket**: `entities` grouped by their integer tile, each bucket preserving the
+ * input order (feed it a {@link canonicalById} list → ascending-id buckets). Answers "what is on tile
+ * (x,y)?" in O(1) via {@link TileBuckets.at}, replacing a full-world scan for on-tile checks (am I
+ * standing on a workplace?). By default an entity buckets by its raw {@link Position} tile; an optional
+ * `tileOf` resolver overrides that per entity (the JobSystem buckets buildings by their door-aware
+ * {@link interactionTile}) — an entity the resolver maps to `null` (and a Position-less one) is dropped.
+ * Determinism: a first-match pick over a bucket lands on the same entity a canonical full scan would,
+ * because the tile is fixed and the bucket keeps ascending-id order. Rebuilt each tick (derived state,
+ * never hashed) — the cheap seam toward a full ring-search grid without touching sim state.
  */
 export class TileBuckets {
   private readonly byTile = new Map<string, Entity[]>();
 
-  constructor(world: World, entities: Iterable<Entity>) {
+  constructor(
+    world: World,
+    entities: Iterable<Entity>,
+    tileOf?: (e: Entity) => { x: number; y: number } | null,
+  ) {
     for (const e of entities) {
-      const p = world.tryGet(e, Position);
-      if (p === undefined) continue;
-      const key = tileKey(fx.toInt(p.x), fx.toInt(p.y));
+      let tile: { x: number; y: number } | null;
+      if (tileOf === undefined) {
+        const p = world.tryGet(e, Position);
+        tile = p === undefined ? null : { x: fx.toInt(p.x), y: fx.toInt(p.y) };
+      } else {
+        tile = tileOf(e);
+      }
+      if (tile === null) continue;
+      const key = tileKey(tile.x, tile.y);
       let bucket = this.byTile.get(key);
       if (bucket === undefined) {
         bucket = [];

@@ -1,5 +1,5 @@
 import { IR_VERSION, parseContentSet } from '@vinland/data';
-import { ONE, type Simulation, components, systems } from '@vinland/sim';
+import { ONE, type Simulation, components, fx, systems } from '@vinland/sim';
 import { GRASS, VIKING, grassTerrain } from '../viking-buildings.js';
 import type { SceneDefinition } from './types.js';
 
@@ -157,6 +157,18 @@ function build(sim: Simulation): void {
   }
 }
 
+/** The full SystemContext of a scene sim — the shape the footprint read views take. */
+function ctxOf(sim: Simulation): systems.SystemContext {
+  return {
+    content: sim.content,
+    rng: sim.rng,
+    tick: sim.tick,
+    events: sim.events,
+    commands: sim.commands,
+    ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
+  };
+}
+
 /** Every placed building entity's live component, in a plain array (checks read it repeatedly). */
 function buildings(sim: Simulation): { buildingType: number; built: number; level: number }[] {
   const out: { buildingType: number; built: number; level: number }[] = [];
@@ -205,34 +217,19 @@ export const housePlacementScene: SceneDefinition = {
       predicate: (sim) => {
         const terrain = sim.terrain;
         if (terrain === undefined) return false;
-        const ctx = {
-          content: sim.content,
-          rng: sim.rng,
-          tick: sim.tick,
-          events: sim.events,
-          commands: sim.commands,
-          terrain,
-        };
-        return systems.buildingBlockedCells(sim.world, ctx, terrain).size >= 4 * BODY_2X2.length;
+        return systems.buildingBlockedCells(sim.world, ctxOf(sim), terrain).size >= 4 * BODY_2X2.length;
       },
     },
     {
-      label: 'no settler ever ended up standing inside a building body',
+      label: 'no settler stands inside a building body at the final tick',
       predicate: (sim) => {
         const terrain = sim.terrain;
         if (terrain === undefined) return false;
-        const ctx = {
-          content: sim.content,
-          rng: sim.rng,
-          tick: sim.tick,
-          events: sim.events,
-          commands: sim.commands,
-          terrain,
-        };
-        const blocked = systems.buildingBlockedCells(sim.world, ctx, terrain);
+        const blocked = systems.buildingBlockedCells(sim.world, ctxOf(sim), terrain);
         for (const e of sim.world.query(components.Settler, components.Position)) {
           const p = sim.world.get(e, components.Position);
-          const cell = terrain.cellAtClamped(Math.round(p.x / ONE), Math.round(p.y / ONE));
+          // fx.toInt — the same tile flooring the sim's own occupancy model uses (TileBuckets).
+          const cell = terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
           if (blocked.has(cell)) return false;
         }
         return true;

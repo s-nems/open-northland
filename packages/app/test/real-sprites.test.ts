@@ -670,6 +670,7 @@ describe('constructionRefsByType', () => {
   const row = (over: Record<string, unknown>) => ({
     tribeId: 1,
     typeId: 2,
+    level: 0,
     upgrade: false,
     stackIdx: 0,
     bmd: 'data/x/ls_houses_viking.bmd',
@@ -677,6 +678,7 @@ describe('constructionRefsByType', () => {
     bobId: 100,
     fromPct: 0,
     toPct: 100,
+    editName: 'viking hut',
     ...over,
   });
 
@@ -713,5 +715,29 @@ describe('constructionRefsByType', () => {
       row({ typeId: 7, tribeId: 2, bobId: 50 }), // another tribe
     ];
     expect(constructionRefsByType(rows, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({});
+  });
+
+  it('never interleaves two records sharing one typeId — one (editName, level) group wins', () => {
+    // The real-data shapes: the HQ's two editName variants at level 0, and a pottery-style typeId
+    // mapped at two levels within one record. Each stack must come from ONE record-level group.
+    const variants = [
+      row({ editName: 'viking headquarters house', bobId: 46, stackIdx: 0 }),
+      row({ editName: 'viking headquarters', bobId: 36, stackIdx: 0 }),
+      row({ editName: 'viking headquarters house', bobId: 44, stackIdx: 1 }),
+      row({ editName: 'viking headquarters', bobId: 34, stackIdx: 1 }),
+    ];
+    // Lowest level ties → lexicographically smaller editName ('viking headquarters') wins whole.
+    expect(constructionRefsByType(variants, 1, DEFAULT_FAMILY, FAMILIES)[2]?.map((l) => l.bob)).toEqual([
+      36, 34,
+    ]);
+    const twoLevels = [
+      row({ level: 2, bobId: 9, stackIdx: 0 }),
+      row({ level: 1, bobId: 5, stackIdx: 0 }),
+      row({ level: 1, bobId: 6, stackIdx: 1 }),
+    ];
+    // The lowest level (the base build stage) wins; level 2's stage is not mixed in.
+    expect(constructionRefsByType(twoLevels, 1, DEFAULT_FAMILY, FAMILIES)[2]?.map((l) => l.bob)).toEqual([
+      5, 6,
+    ]);
   });
 });

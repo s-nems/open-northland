@@ -46,8 +46,10 @@ export function findPath(
   blocked?: ReadonlySet<CellId>,
 ): CellId[] | null {
   if (!graph.isWalkable(start) || !graph.isWalkable(goal)) return null;
-  if (blocked?.has(goal)) return null; // an occupied goal is unreachable
+  // Already-there wins over the overlay: consistent with the blocked-START exemption, an entity
+  // standing on its own (even occupied) goal cell trivially succeeds rather than reading "unreachable".
   if (start === goal) return [start];
+  if (blocked?.has(goal)) return null; // an occupied goal is unreachable
 
   // Dense per-cell records indexed by cell id — a flat array, not a Map, so lookups are pure array
   // reads and there is no insertion-order to leak into a game decision.
