@@ -130,6 +130,17 @@ export function validateCrossReferences(set: ContentSet): void {
       errors.push(`animal "${a.id}" references unknown tribeType ${a.tribeType}`);
   }
 
+  // A landscape object's `LogicType`, when set, must resolve into the landscape type table — the
+  // placed object counts as that type on the map's logic lanes (every real record carries 1..87;
+  // 0 is the schema's "pure decor" default for a record that omits the key).
+  const landscapeIds = new Set(set.landscape.map((l) => l.typeId));
+  for (const g of set.landscapeGfx) {
+    if (g.logicType !== 0 && !landscapeIds.has(g.logicType))
+      errors.push(
+        `landscapeGfx "${g.editName ?? `#${g.index}`}" references unknown landscape typeId ${g.logicType}`,
+      );
+  }
+
   // Each experience track names its owning job (always) and, when good-specific, the good it trains on.
   for (const x of set.jobExperience) {
     if (!jobIds.has(x.jobType))

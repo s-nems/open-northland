@@ -89,3 +89,52 @@ export function patternSrcRect(coordsA: readonly number[], coordsB: readonly num
   const minY = Math.min(...fys);
   return { x: minX, y: minY, w: Math.max(...fxs) - minX, h: Math.max(...fys) - minY };
 }
+
+// ─── per-triangle 1:1 ground (the decoded map's `empa`/`empb` pattern choice) ──────────────────────
+//
+// A `GfxPattern` textures a cell with TWO triangles, and every real pattern lists its UV points in one
+// fixed convention (verified across all 927 records): `coordsA` = the tile square's (TL, BR, BL),
+// `coordsB` = its (TL, TR, BR) — the square split along its TL→BR diagonal. Under the 45° iso
+// projection the square's TL/TR/BR/BL corners land on the diamond's top/right/bottom/left, so:
+//
+//   triangle A: UV points (TL, BR, BL) → diamond corners (top, bottom, left)   — the LEFT half
+//   triangle B: UV points (TL, TR, BR) → diamond corners (top, right, bottom)  — the RIGHT half
+//
+// Rendering each triangle with its own pattern (the map's baked per-triangle choice) is what makes
+// coastlines/transition blocks join up 1:1 like the original.
+
+/** Triangle A's diamond-corner indices (into the `[top, right, bottom, left]` corner order), matching its UV point order. */
+export const TRIANGLE_A_CORNERS: readonly number[] = [0, 2, 3];
+
+/** Triangle B's diamond-corner indices (into the `[top, right, bottom, left]` corner order), matching its UV point order. */
+export const TRIANGLE_B_CORNERS: readonly number[] = [0, 1, 2];
+
+/**
+ * One triangle's 3 vertex positions for a cell centred at `(sx, sy)`: the diamond corners named by
+ * `cornerIndices` (one of {@link TRIANGLE_A_CORNERS} / {@link TRIANGLE_B_CORNERS}), as a flat
+ * `[x0,y0, x1,y1, x2,y2]` buffer in UV-point order.
+ */
+export function triangleCorners(sx: number, sy: number, cornerIndices: readonly number[]): number[] {
+  const diamond = diamondCorners(sx, sy);
+  const out: number[] = [];
+  for (const c of cornerIndices) {
+    out.push(diamond[c * 2] as number, diamond[c * 2 + 1] as number);
+  }
+  return out;
+}
+
+/**
+ * One pattern triangle's 3 normalised UVs from its 6-int pixel-coord tuple (`coordsA`/`coordsB`),
+ * as a flat `[u0,v0, u1,v1, u2,v2]` buffer in the tuple's point order. The original's coords are
+ * inclusive pixel corners (`0..63` for a 64px tile) — the sub-texel difference is immaterial at
+ * tile scale, so the division is straight.
+ */
+export function triangleUVs(coords: readonly number[], pageW: number, pageH: number): number[] {
+  const out: number[] = [];
+  for (let p = 0; p < 3; p++) {
+    const x = coords[p * 2] ?? 0;
+    const y = coords[p * 2 + 1] ?? 0;
+    out.push(x / pageW, y / pageH);
+  }
+  return out;
+}

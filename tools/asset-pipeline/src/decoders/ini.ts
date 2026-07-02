@@ -32,6 +32,7 @@ import {
   type JobRequirementKind,
   type JobRequirementTarget,
   JobType,
+  LandscapeGfx,
   LandscapeType,
   MapInfo,
   TerrainPattern,
@@ -1464,6 +1465,68 @@ export function extractLandscapeGraphics(sections: readonly RuleSection[]): Land
     });
   }
   return bindings;
+}
+
+/**
+ * Extracts the FULL `[GfxLandscape]` table from `landscapes.cif` into validated {@link LandscapeGfx}
+ * IR — every placeable landscape object (866 records: trees, stones, bushes, mine decals, waves, signs,
+ * wonders), each joining its visual half (`GfxBobLibs` body+shadow, `GfxPalette`, per-state `GfxFrames`,
+ * `GfxStatic`/`GfxLoopAnimation`) to its logic half (`LogicType` → the landscape type table,
+ * `LogicMaximumValency`, `LogicIsWorkable`, the `LogicWalkBlockArea`/`LogicBuildBlockArea`/
+ * `LogicWorkArea` footprints). This is the table a decoded map's object placements join onto **by
+ * `EditName`** (the map's `eald` dictionary stores names) — distinct from
+ * {@link extractLandscapeGraphics}, which only derives the `(bmd, palette)` atlas work list.
+ *
+ * Like {@link extractPatterns} this keeps **every** record in file order ({@link LandscapeGfx.index}
+ * is the positional id, so skipping a malformed record would renumber the rest); visual fields are
+ * read defensively (`undefined` on absence) rather than aborting the batch. Keys are the editor's
+ * CamelCase except the lower-case `logicispileableonmap` (matched verbatim per the case-sensitive
+ * parser — see docs/LESSONS.md [0cbe894]); `GfxFrames`/block-area lines repeat per state/offset and
+ * are kept in file order.
+ */
+export function extractLandscapeGfx(sections: readonly RuleSection[], src: SourceRef): LandscapeGfx[] {
+  const records: LandscapeGfx[] = [];
+  let index = 0;
+  for (const sec of sections) {
+    if (sec.name !== 'GfxLandscape') continue;
+    const libs = findProp(sec, 'GfxBobLibs');
+    const bmd = libs?.values[0];
+    const shadow = libs?.values[1];
+    const paletteName = getStr(sec, 'GfxPalette');
+    const blockAreas = (key: string): number[][] =>
+      findProps(sec, key)
+        .map((p) => p.values.map((v) => Number.parseInt(v, 10)))
+        .filter((vals) => vals.length === 4 && vals.every((n) => !Number.isNaN(n)));
+    const frames = findProps(sec, 'GfxFrames')
+      .map((p) => p.values.map((v) => Number.parseInt(v, 10)))
+      .filter((vals) => vals.length >= 2 && vals.every((n) => !Number.isNaN(n)))
+      .map((vals) => ({ state: vals[0] as number, bobIds: vals.slice(1) }));
+    records.push(
+      LandscapeGfx.parse({
+        index: index++,
+        editName: getStr(sec, 'EditName'),
+        editGroups: [...(findProp(sec, 'EditGroups')?.values ?? [])],
+        logicType: getInt(sec, 'LogicType') ?? 0,
+        maxValency: getInt(sec, 'LogicMaximumValency'),
+        isWorkable: getInt(sec, 'LogicIsWorkable') === 1,
+        walkBlockAreas: blockAreas('LogicWalkBlockArea'),
+        buildBlockAreas: blockAreas('LogicBuildBlockArea'),
+        workAreas: blockAreas('LogicWorkArea'),
+        bmd: bmd !== undefined && bmd.trim() !== '' ? normalizeAssetPath(bmd) : undefined,
+        shadowBmd: shadow !== undefined && shadow.trim() !== '' ? normalizeAssetPath(shadow) : undefined,
+        paletteName:
+          paletteName !== undefined && paletteName.trim() !== ''
+            ? normalizePaletteName(paletteName)
+            : undefined,
+        frames,
+        isStatic: getInt(sec, 'GfxStatic') !== 0,
+        loopAnimation: getInt(sec, 'GfxLoopAnimation') === 1,
+        dynamicBackground: getInt(sec, 'GfxDynamicBackground') === 1,
+        source: { file: src.file, block: 'GfxLandscape', layer: src.layer ?? 'base' },
+      }),
+    );
+  }
+  return records;
 }
 
 /**

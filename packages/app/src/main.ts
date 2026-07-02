@@ -9,8 +9,9 @@ import {
 import { FixedTimestep } from '@vinland/sim';
 import { renderAnimationGallery } from './anim-mode.js';
 import { cameraFor, createCameraController, floatParam } from './camera.js';
+import { loadMapObjects } from './real-objects.js';
 import { resolveSpriteSheet } from './real-sprites.js';
-import { loadRealTerrain } from './real-terrain.js';
+import { fetchTerrainIr, loadRealTerrain } from './real-terrain.js';
 import { renderSceneMode } from './scene-mode.js';
 import { renderShot } from './shot.js';
 import { demoGoods, loadTerrainMap, runSlice, sliceTerrain } from './vertical-slice.js';
@@ -63,14 +64,29 @@ async function main(): Promise<void> {
   // missing. `?atlas=synthetic` forces the free markers; `?atlas=none` draws placeholder geometry. Shared
   // with the `?scene=` entry.
   const sheet = await resolveSpriteSheet(params, demoGoods());
-  // `?terrain` draws the ground from REAL decoded `text_*.pcx` textures (the approximated typeId→pattern
-  // map) instead of the flat 4-colour tint; gitignored content over the /ir.json + /textures server
-  // (see real-terrain.ts). Absent, terrain stays the reproducible flat-tint default.
-  const terrain = params.has('terrain') ? await loadRealTerrain() : undefined;
+  // Real ground textures are the DEFAULT (like the sprite atlases): a decoded map draws its 1:1
+  // per-triangle patterns, a synthetic grid the approximated per-typeId ground; both degrade to the
+  // flat tint when content/ is absent. `?terrain=off` forces the flat tint. (see real-terrain.ts)
+  let ir = null;
+  let terrain: Awaited<ReturnType<typeof loadRealTerrain>> | undefined;
+  if (params.get('terrain') !== 'off') {
+    try {
+      ir = await fetchTerrainIr();
+      terrain = await loadRealTerrain(ir);
+    } catch (err) {
+      console.warn(`real terrain unavailable, flat tint fallback: ${String(err)}`);
+    }
+  }
   // Retained renderer: mesh the terrain ONCE, reuse a pooled sprite graph each frame (no per-frame
   // object churn) so large maps + deep zoom-out stay within the GPU budget.
   const renderer = new WorldRenderer(app, { sheet });
   renderer.setTerrain(terrainGrid, terrain);
+  // A decoded map's placed landscape objects (trees/stones/mine decals + the animated wave fx that
+  // ARE the original's water surface) — resolved through the landscapeGfx IR + the /bobs atlases.
+  // `?objects=off` draws the bare ground (a diagnostic view for judging the terrain alone).
+  if (loaded?.objects !== undefined && ir !== null && params.get('objects') !== 'off') {
+    renderer.setMapObjects(await loadMapObjects(loaded.objects, ir));
+  }
   // `?zoom=N` magnifies + re-centres on the sprites (the same knob the shot uses) so a decoded bob is
   // big enough to inspect in the live view; absent, scale 1.
   const zoom = floatParam(params, 'zoom', 1);

@@ -20,6 +20,7 @@ import {
   extractJobExperience,
   extractJobs,
   extractLandscape,
+  extractLandscapeGfx,
   extractLandscapeGraphics,
   extractMapInfo,
   extractPaletteIndex,
@@ -2001,6 +2002,122 @@ describe('extractLandscapeGraphics', () => {
       { level: 2, text: 'GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_trees.bmd"' },
     ];
     expect(extractLandscapeGraphics(cifLinesToSections(noPalette))).toEqual([]);
+  });
+});
+
+describe('extractLandscapeGfx', () => {
+  // Mirrors the real [GfxLandscape] grammar (decrypted twin: EdytorByRemik/*.ini): a full palm record
+  // with logic footprints + three per-state GfxFrames lines, and an animated wave record (loop
+  // animation, no shadow lib). Records keep their 0-based position like extractPatterns.
+  const lines: CifLine[] = [
+    { level: 1, text: 'GfxLandscape' },
+    { level: 2, text: 'EditName "palm 03"' },
+    { level: 2, text: 'EditGroups "trees palm"' },
+    { level: 2, text: 'LogicType 4' },
+    { level: 2, text: 'LogicMaximumValency 3' },
+    { level: 2, text: 'LogicIsWorkable 1' },
+    { level: 2, text: 'LogicWalkBlockArea 3 0 0 1' },
+    { level: 2, text: 'LogicBuildBlockArea 3 -1 -1 2' },
+    { level: 2, text: 'LogicBuildBlockArea 3 -1 0 3' },
+    { level: 2, text: 'LogicWorkArea 3 -1 -1 2' },
+    {
+      level: 2,
+      text: 'GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_trees.bmd" "data\\engine2d\\bin\\bobs\\ls_trees_s.bmd"',
+    },
+    { level: 2, text: 'GfxPalette "Tree03"' },
+    { level: 2, text: 'GfxFrames 3 382 383' },
+    { level: 2, text: 'GfxFrames 2 390 391' },
+    { level: 2, text: 'GfxFrames 1 398 399' },
+    { level: 2, text: 'GfxStatic 1' },
+    { level: 2, text: 'GfxLoopAnimation 0' },
+    { level: 2, text: 'GfxDynamicBackground 0' },
+    { level: 1, text: 'GfxLandscape' },
+    { level: 2, text: 'EditName "wave 02"' },
+    { level: 2, text: 'EditGroups "misc_waves"' },
+    { level: 2, text: 'LogicType 1' },
+    { level: 2, text: 'LogicMaximumValency 1' },
+    { level: 2, text: 'LogicIsWorkable 0' },
+    { level: 2, text: 'GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_water.bmd"' },
+    { level: 2, text: 'GfxPalette "wave01"' },
+    { level: 2, text: 'GfxFrames 1 130 131 132' },
+    { level: 2, text: 'GfxStatic 0' },
+    { level: 2, text: 'GfxLoopAnimation 1' },
+    { level: 2, text: 'GfxDynamicBackground 1' },
+  ];
+
+  it('maps [GfxLandscape] to validated IR: positional index, logic footprints, per-state frames, animation flags', () => {
+    const records = extractLandscapeGfx(cifLinesToSections(lines), {
+      file: 'Data/engine2d/inis/landscapes/landscapes.cif',
+      layer: 'base',
+    });
+    const src = {
+      file: 'Data/engine2d/inis/landscapes/landscapes.cif',
+      block: 'GfxLandscape',
+      layer: 'base',
+    };
+    expect(records).toEqual([
+      {
+        index: 0,
+        editName: 'palm 03',
+        editGroups: ['trees palm'],
+        logicType: 4,
+        maxValency: 3,
+        isWorkable: true,
+        walkBlockAreas: [[3, 0, 0, 1]],
+        buildBlockAreas: [
+          [3, -1, -1, 2],
+          [3, -1, 0, 3],
+        ],
+        workAreas: [[3, -1, -1, 2]],
+        bmd: 'data/engine2d/bin/bobs/ls_trees.bmd',
+        shadowBmd: 'data/engine2d/bin/bobs/ls_trees_s.bmd',
+        paletteName: 'tree03',
+        frames: [
+          { state: 3, bobIds: [382, 383] },
+          { state: 2, bobIds: [390, 391] },
+          { state: 1, bobIds: [398, 399] },
+        ],
+        isStatic: true,
+        loopAnimation: false,
+        dynamicBackground: false,
+        source: src,
+      },
+      {
+        index: 1,
+        editName: 'wave 02',
+        editGroups: ['misc_waves'],
+        logicType: 1,
+        maxValency: 1,
+        isWorkable: false,
+        walkBlockAreas: [],
+        buildBlockAreas: [],
+        workAreas: [],
+        bmd: 'data/engine2d/bin/bobs/ls_water.bmd',
+        shadowBmd: undefined,
+        paletteName: 'wave01',
+        frames: [{ state: 1, bobIds: [130, 131, 132] }],
+        isStatic: false,
+        loopAnimation: true,
+        dynamicBackground: true,
+        source: src,
+      },
+    ]);
+  });
+
+  it('keeps a bob-less record in its positional slot (unlike the atlas work-list extractor)', () => {
+    const marker: CifLine[] = [
+      { level: 1, text: 'GfxLandscape' },
+      { level: 2, text: 'EditName "logic marker"' },
+      { level: 2, text: 'LogicType 1' },
+      { level: 1, text: 'GfxLandscape' },
+      { level: 2, text: 'EditName "second"' },
+      { level: 2, text: 'LogicType 1' },
+    ];
+    const records = extractLandscapeGfx(cifLinesToSections(marker), { file: 'f.cif' });
+    expect(records.map((r) => [r.index, r.editName, r.bmd])).toEqual([
+      [0, 'logic marker', undefined],
+      [1, 'second', undefined],
+    ]);
   });
 });
 

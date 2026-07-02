@@ -1,19 +1,24 @@
-import { type CellTexture, type TerrainTextureSet, loadAtlasSource, patternSrcRect } from '@vinland/render';
+import {
+  type CellTexture,
+  type GroundPattern,
+  type TerrainTextureSet,
+  loadAtlasSource,
+  patternSrcRect,
+} from '@vinland/render';
 
 /**
- * The `?terrain` binding: draw the ground from REAL decoded `text_*.pcx` textures instead of the flat
- * `TILE_COLOURS` tint. The visible payoff of the terrain-ground-texture slice (docs/ROADMAP.md Phase 2,
- * steps 2+4) — it puts actual decoded ground pixels under the cells so a person can judge the
- * approximated typeId→pattern placement against the original.
+ * The real-ground binding: draw the terrain from REAL decoded `text_*.pcx` textures instead of the
+ * flat `TILE_COLOURS` tint. Two levels of fidelity, both served from the gitignored `content/` over
+ * the dev/shot vite server (the `/ir.json` + `/textures/` routes — no copyrighted bytes in the repo):
  *
- * Like `?map=`/`?atlas=real`, it loads from the GITIGNORED `content/` over the dev/shot vite server (the
- * `/ir.json` + `/textures/` routes) — no copyrighted bytes enter the repo, and the committed default
- * (no `?terrain`) keeps the flat-tint fallback so tests + the reproducible shot are unaffected.
- *
- * It reads the **approximated** `terrainPatterns` table the pipeline emits (`buildTerrainPatterns`):
- * each landscape typeId → one representative ground pattern (its `text_NNN` page + the tile's UV
- * sub-rect) + the logic-type `debugColor` flat-tint fallback. The renderer batches the cells per page
- * into meshes; this side only fetches the table + the pages it references.
+ *  - **1:1 per-triangle** (a decoded original map): the map's `ground` lanes carry the exact
+ *    `GfxPattern` choice per cell triangle (the editor bakes its pattern algorithm's output into
+ *    `map.dat`); {@link TerrainTextureSet.groundFor} joins each pattern `EditName` onto the full
+ *    927-record `gfxPatterns` IR table for its page + UV triangles. Coastlines/transition blocks
+ *    join up exactly like the original.
+ *  - **approximated per-typeId** (synthetic grids / maps without ground lanes): the
+ *    `terrainPatterns` table binds each landscape typeId to one representative pattern
+ *    (`buildTerrainPatterns` — a recorded deviation, docs/FIDELITY.md).
  */
 
 /** One `TerrainPattern` row as it ships in `content/ir.json` (the fields the render binding needs). */
@@ -25,7 +30,49 @@ interface TerrainPatternRow {
   readonly debugColor?: [number, number, number];
 }
 
+/** One `GfxPattern` row as it ships in `content/ir.json` (the 1:1 per-triangle join fields). */
+interface GfxPatternRow {
+  readonly editName?: string;
+  readonly texture?: string;
+  readonly coordsA?: number[];
+  readonly coordsB?: number[];
+}
+
+/** The slice of `content/ir.json` the terrain + map-object bindings read. */
+export interface TerrainIr {
+  readonly terrainPatterns?: TerrainPatternRow[];
+  readonly gfxPatterns?: GfxPatternRow[];
+  readonly landscapeGfx?: LandscapeGfxRow[];
+}
+
+/** One `LandscapeGfx` row as it ships in `content/ir.json` (the map-object binding fields). */
+export interface LandscapeGfxRow {
+  readonly editName?: string;
+  readonly bmd?: string;
+  readonly paletteName?: string;
+  readonly frames?: { state: number; bobIds: number[] }[];
+  readonly isStatic?: boolean;
+  readonly loopAnimation?: boolean;
+  readonly dynamicBackground?: boolean;
+  readonly walkBlockAreas?: number[][];
+}
+
 type LoadedSource = Awaited<ReturnType<typeof loadAtlasSource>>;
+
+/**
+ * Fetch the served `content/ir.json` once for the terrain + map-object bindings. Throws a pointed
+ * error if the IR is missing (the pipeline hasn't been run) — an environment precondition the caller
+ * turns into its graceful fallback.
+ */
+export async function fetchTerrainIr(): Promise<TerrainIr> {
+  const res = await fetch('/ir.json');
+  if (!res.ok) {
+    throw new Error(
+      `terrain: content/ir.json not found (HTTP ${res.status}). Run \`npm run pipeline\` against an owned game copy to populate content/.`,
+    );
+  }
+  return (await res.json()) as TerrainIr;
+}
 
 /** Texture page key from a `data/.../text_NNN.pcx` path: the basename without its extension (`text_NNN`). */
 function pageKeyOf(texture: string): string {
@@ -40,20 +87,15 @@ function rgbToHex(rgb: readonly [number, number, number] | undefined): number | 
 }
 
 /**
- * Load the real {@link TerrainTextureSet}: fetch the emitted `terrainPatterns` table from the served
- * `ir.json`, derive a {@link CellTexture} per landscape typeId (page key + UV sub-rect + fallback
- * colour), then load each referenced `text_NNN.png` page as a GPU source. Throws a pointed error if the
- * IR is missing (the pipeline hasn't been run) — an environment precondition, not a recoverable failure.
+ * Load the real {@link TerrainTextureSet}: the approximated per-typeId {@link CellTexture} table
+ * (from `terrainPatterns`) PLUS the 1:1 per-triangle pattern join (from the full `gfxPatterns`
+ * table, keyed by `EditName`), then every referenced `text_NNN.png` page as a GPU source. Throws if
+ * the IR is missing (an environment precondition, not a recoverable failure); pass a pre-fetched
+ * `ir` to share the (multi-MB) fetch with the map-object loader.
  */
-export async function loadRealTerrain(): Promise<TerrainTextureSet> {
-  const res = await fetch('/ir.json');
-  if (!res.ok) {
-    throw new Error(
-      `?terrain: content/ir.json not found (HTTP ${res.status}). Run \`npm run pipeline\` against an owned game copy to populate content/.`,
-    );
-  }
-  const ir = (await res.json()) as { terrainPatterns?: TerrainPatternRow[] };
-  const rows = ir.terrainPatterns ?? [];
+export async function loadRealTerrain(ir?: TerrainIr): Promise<TerrainTextureSet> {
+  const tables = ir ?? (await fetchTerrainIr());
+  const rows = tables.terrainPatterns ?? [];
   const cellByType = new Map<number, CellTexture>();
   const pageKeys = new Set<string>();
   for (const row of rows) {
@@ -68,13 +110,32 @@ export async function loadRealTerrain(): Promise<TerrainTextureSet> {
       ...(fallbackColour !== undefined ? { fallbackColour } : {}),
     });
   }
-  // Load only the distinct pages the table references (a handful after the per-family approximation),
-  // in parallel like loadHumanSpriteSheet's layers.
+  // The 1:1 join: every well-formed GfxPattern by its EditName (unique across the real 927 records).
+  const patternByName = new Map<string, GroundPattern>();
+  for (const row of tables.gfxPatterns ?? []) {
+    if (
+      row.editName === undefined ||
+      row.texture === undefined ||
+      row.coordsA === undefined ||
+      row.coordsB === undefined
+    ) {
+      continue;
+    }
+    const pageKey = pageKeyOf(row.texture);
+    pageKeys.add(pageKey);
+    patternByName.set(row.editName, { pageKey, coordsA: row.coordsA, coordsB: row.coordsB });
+  }
+  // Load the distinct pages either table references (~56 on the real data), in parallel like
+  // loadHumanSpriteSheet's layers.
   const pages = new Map<string, LoadedSource>();
   await Promise.all(
     [...pageKeys].map(async (key) => {
       pages.set(key, await loadAtlasSource(`/textures/${key}.png`));
     }),
   );
-  return { pages, cellFor: (typeId) => cellByType.get(typeId) };
+  return {
+    pages,
+    cellFor: (typeId) => cellByType.get(typeId),
+    groundFor: (name) => patternByName.get(name),
+  };
 }

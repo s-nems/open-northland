@@ -572,50 +572,55 @@ export function packX6elLayer(cells: Uint16Array, version = 1): Uint8Array {
 }
 
 // ---------------------------------------------------------------------------
-// `lmlt` landscape-type layer -> single per-cell typeId grid (the cell-graph input)
+// Half-cell landscape lanes (`lmlt`, `emla`, …) + the map's name dictionaries
 // ---------------------------------------------------------------------------
 
 /**
- * The `lmlt` (landscape-type) layer is 4 bytes per cell — one **0-based** landscape type index per
- * **triangle corner** of the cell's render tessellation (probed across real maps: raw values 0..85,
- * ~64% of cells carry four identical corners = uniform terrain, the rest are shoreline/edge
- * transitions where the corners differ). The render tessellation needs all four; the navigation
- * cell-graph wants ONE landscape type per cell.
- *
- * NOTE the **+1 indexing seam**: the binary layer is 0-based (the engine arrays the type table from
- * 0, so raw `0` = the first type, "void"), but the IR `LandscapeType.typeId` mirrors the readable
- * `.ini` `type` field, which is **1-based** (`type 1 = void`). {@link lmltToTerrainMap} adds
- * {@link LMLT_TYPEID_BASE} so a raw `0..86` corner maps onto the IR's `1..87` typeId — otherwise the
- * sim's `buildTerrainGraph` rejects the grid (raw `0` has no matching `LandscapeType`).
+ * The landscape grid lanes (`lmlt`, `lmlv`, `emla`, …) carry 4 values per map cell — but NOT as
+ * per-cell corner quads: each lane is a plain **row-major `2·width × 2·height` half-cell grid**
+ * (pinned empirically: rendering `lmlt`/`emla` as a `2W × 2H` image draws the map's island shapes
+ * cleanly, while a per-cell 2×2 interleave draws two side-by-side half-resolution copies — the tell
+ * that consecutive values run along a `2W` row, not around one cell). A map cell (x, y) owns the four
+ * half-cells `(2x, 2y)`, `(2x+1, 2y)`, `(2x, 2y+1)`, `(2x+1, 2y+1)`; landscape objects sit on this
+ * finer lattice (`emla`), and `lmlt` mirrors each placed object's logic type onto it.
  */
-export const LMLT_CORNERS_PER_CELL = 4;
+export const HALF_CELLS_PER_CELL = 4;
 
 /**
- * The offset added to a raw 0-based `lmlt` corner index to reach the IR's 1-based `LandscapeType.typeId`
- * (the readable `landscapetypes.ini` `type` field is 1-based; the binary layer is 0-based). Confirmed
- * on every real map: the only grid value absent from the 1..87 IR table is raw `0`, and `+1` closes it
- * exactly (raw `0` = "void" = IR typeId 1; raw `86` = IR typeId 87, the table's max).
+ * The `lmlt` value marking a half-cell with **no landscape object** (the lane's dominant value —
+ * open ground/sea). Raw non-zero values are the IR `LandscapeType.typeId` **directly** (1-based, as
+ * in the readable `landscapetypes.ini`): pinned by the `[GfxLandscape]` records' explicit `LogicType`
+ * — e.g. every `"clay mine …"` object carries `LogicType 12` (`mud_mine`, typeId 12) and the probed
+ * maps' clay half-cells hold raw `12` with matching counts (`palm` → `LogicType 4` = `tree`,
+ * `"fx wave …"` → `LogicType 1` = `void`, exact count matches across lanes). An earlier reading
+ * (+1-shifted 0-based indices) mapped every object one row off (tree → tree_falling) — see
+ * docs/FIDELITY.md.
  */
-export const LMLT_TYPEID_BASE = 1;
+export const LMLT_EMPTY = 0;
 
 /**
- * Reduces a cell's four corner typeIds to a single representative typeId: the **dominant** (most
- * frequent) corner, ties broken by the **lowest typeId** (canonical + deterministic — never depends
- * on corner order). On a uniform cell (all four equal, the common case) it returns that value; on a
- * transition cell it returns whichever landscape type covers most of the cell, so a mostly-land cell
- * grazing water reads as land and vice-versa.
- *
- * Pure helper for {@link lmltToTerrainMap}; exported for direct unit testing of the corner rule.
+ * The IR `LandscapeType.typeId` an empty half-cell reduces to: `void` (typeId 1) — the "nothing
+ * here" landscape type, so a grid built from the lane always resolves against the IR table.
  */
-export function reduceCornersToCell(c0: number, c1: number, c2: number, c3: number): number {
-  const corners = [c0, c1, c2, c3];
+export const VOID_TYPE_ID = 1;
+
+/**
+ * Reduces a cell's four half-cell values to a single representative: the **dominant** (most
+ * frequent) value, ties broken by the **lowest** (canonical + deterministic — never depends on
+ * half-cell order). On a uniform cell (all four equal, the common case) it returns that value; on a
+ * mixed cell it returns whichever value covers most of the cell.
+ *
+ * Pure helper for {@link lmltToTerrainMap}; exported for direct unit testing of the reduction rule.
+ */
+export function reduceHalfCellsToCell(c0: number, c1: number, c2: number, c3: number): number {
+  const values = [c0, c1, c2, c3];
   let best = c0;
   let bestCount = 0;
-  for (const candidate of corners) {
+  for (const candidate of values) {
     let count = 0;
-    for (const other of corners) if (other === candidate) count++;
-    // Strictly-greater keeps the first (lowest-index) winner; the lowest-typeId tie-break is applied
-    // explicitly so the result never depends on which corner happened to come first.
+    for (const other of values) if (other === candidate) count++;
+    // Strictly-greater keeps the first (lowest-index) winner; the lowest-value tie-break is applied
+    // explicitly so the result never depends on which half-cell happened to come first.
     if (count > bestCount || (count === bestCount && candidate < best)) {
       best = candidate;
       bestCount = count;
@@ -633,17 +638,16 @@ export interface MapDatTerrainMap {
 }
 
 /**
- * Collapses an unpacked `lmlt` layer (4 corner type indices per cell) plus the `lsiz` dimensions into
- * a single per-cell landscape-typeId grid — the plain `{ width, height, typeIds }` shape the sim's
- * `buildTerrainGraph` (`packages/sim/src/terrain.ts`) consumes as a `TerrainMap`. Each cell's type is
- * the {@link reduceCornersToCell} dominant corner, then **shifted by {@link LMLT_TYPEID_BASE}** from
- * the layer's 0-based index onto the IR's 1-based `LandscapeType.typeId` (the readable
- * `landscapetypes.ini` `type` is 1-based; the binary layer is 0-based — see {@link LMLT_TYPEID_BASE}).
- * Returns a plain value (not a sim type) so the build tool never imports from `sim`; the sim validates
- * the typeIds against its IR table.
+ * Collapses an unpacked `lmlt` layer (the `2W × 2H` half-cell landscape-object lane) plus the `lsiz`
+ * dimensions into a single per-cell landscape-typeId grid — the plain `{ width, height, typeIds }`
+ * shape the sim's `buildTerrainGraph` (`packages/sim/src/terrain.ts`) consumes as a `TerrainMap`.
+ * Each cell's type is the {@link reduceHalfCellsToCell} dominant of its 2×2 half-cell block; raw
+ * values are the IR typeId directly ({@link LMLT_EMPTY} = no object → {@link VOID_TYPE_ID}). Returns
+ * a plain value (not a sim type) so the build tool never imports from `sim`; the sim validates the
+ * typeIds against its IR table.
  *
- * APPROXIMATED: the per-corner→per-cell reduction has no behavioral oracle (OpenVikings decodes the
- * container but does not simulate navigation). Dominant-corner is a faithful-shaped, deterministic
+ * APPROXIMATED: the half-cell→cell reduction has no behavioral oracle (OpenVikings decodes the
+ * container but does not simulate navigation). Dominant-value is a faithful-shaped, deterministic
  * choice for a bulk-terrain nav grid; refine if the oracle later pins a different rule. Walkability
  * itself is resolved downstream from the IR `LandscapeType` flags, not here.
  *
@@ -651,21 +655,67 @@ export interface MapDatTerrainMap {
  */
 export function lmltToTerrainMap(layer: MapLayer, size: MapDatSize): MapDatTerrainMap {
   const cells = size.width * size.height;
-  const expected = cells * LMLT_CORNERS_PER_CELL;
+  const expected = cells * HALF_CELLS_PER_CELL;
   if (layer.cells.length !== expected) {
     throw new Error(
-      `mapdat: lmlt layer has ${layer.cells.length} bytes, expected ${expected} (${size.width}×${size.height} × ${LMLT_CORNERS_PER_CELL} corners)`,
+      `mapdat: lmlt layer has ${layer.cells.length} bytes, expected ${expected} (${size.width}×${size.height} × ${HALF_CELLS_PER_CELL} half-cells)`,
     );
   }
   const g = layer.cells;
+  const hw = size.width * 2; // half-cell grid width (row-major 2W × 2H)
   const typeIds = new Array<number>(cells);
-  for (let cell = 0; cell < cells; cell++) {
-    const o = cell * LMLT_CORNERS_PER_CELL;
-    // The dominant-corner reduction is index-invariant (it compares corner values), so it runs on the
-    // raw 0-based indices; the chosen index is then shifted onto the IR's 1-based typeId.
-    typeIds[cell] =
-      reduceCornersToCell(g[o] as number, g[o + 1] as number, g[o + 2] as number, g[o + 3] as number) +
-      LMLT_TYPEID_BASE;
+  for (let y = 0; y < size.height; y++) {
+    for (let x = 0; x < size.width; x++) {
+      const top = 2 * y * hw + 2 * x;
+      const bottom = (2 * y + 1) * hw + 2 * x;
+      const raw = reduceHalfCellsToCell(
+        g[top] as number,
+        g[top + 1] as number,
+        g[bottom] as number,
+        g[bottom + 1] as number,
+      );
+      typeIds[y * size.width + x] = raw === LMLT_EMPTY ? VOID_TYPE_ID : raw;
+    }
   }
   return { width: size.width, height: size.height, typeIds };
+}
+
+// ---------------------------------------------------------------------------
+// Name-dictionary chunks (`eapd` patterns, `eald` landscape objects, `eatd` texture groups)
+// ---------------------------------------------------------------------------
+
+/**
+ * Decodes a name-dictionary chunk (`eapd`/`eald`/`eatd`) into its string list. The payload is a
+ * `[u32 count]` header then `count` entries of `[u8 length][length bytes][0x00]` (Latin-1, the same
+ * length-prefixed grammar as the `.cif` string pool). These dictionaries are how a map references
+ * shared tables version-robustly **by name**: `eapd` mirrors the `pattern.cif` `[GfxPattern]` list
+ * (927 names, positional), `eald` the `landscapes.cif` `[GfxLandscape]` list (866 names) — the
+ * `empa`/`empb`/`emla` lanes index these lists, and the names join back onto the extracted IR.
+ *
+ * Throws on a count that overruns the payload (corrupt/truncated chunk).
+ */
+export function decodeStringListChunk(chunk: MapDatChunk): string[] {
+  const p = chunk.payload;
+  if (p.length < 4) {
+    throw new Error(`mapdat: chunk "${chunk.tag}" is too short for a string-list header`);
+  }
+  const view = new DataView(p.buffer, p.byteOffset, p.byteLength);
+  const count = view.getUint32(0, true);
+  const out: string[] = [];
+  let off = 4;
+  for (let i = 0; i < count; i++) {
+    if (off >= p.length) {
+      throw new Error(`mapdat: chunk "${chunk.tag}" string list truncated at entry ${i}/${count}`);
+    }
+    const len = p[off] as number;
+    off += 1;
+    if (off + len + 1 > p.length) {
+      throw new Error(`mapdat: chunk "${chunk.tag}" string entry ${i} overruns the payload`);
+    }
+    let s = '';
+    for (let k = 0; k < len; k++) s += String.fromCharCode(p[off + k] as number);
+    out.push(s);
+    off += len + 1; // skip the trailing 0x00
+  }
+  return out;
 }

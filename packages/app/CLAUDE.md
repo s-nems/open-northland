@@ -31,10 +31,16 @@ reproducible default so the committed build + the `npm run shot` PNG never depen
   the page (different atlases); direction is live. Real graphics required (shows a "run the pipeline" message
   when `content/` is absent). All bodies decode with one palette today — a per-tone **skin/hair variant** axis
   is a deferred pipeline follow-up (docs/FIDELITY.md).
-- `?map=<id>` · `?atlas` · `?terrain` · `?zoom=N` · `?speed=N` — real decoded grid / sprite atlas / ground
-  textures / camera magnify / playback rate. These compose with `?scene=`. Real graphics are the **default**
-  for live + scene (`resolveSpriteSheet` degrades to synthetic markers when `content/` is absent, so a bare
-  checkout still boots); `?atlas=synthetic` forces markers, `?atlas=none` placeholder geometry. `?shot` keeps
+- `?map=<id>` · `?atlas` · `?terrain=off` · `?objects=off` · `?zoom=N` · `?speed=N` — real decoded map /
+  sprite atlas / ground-texture + map-object opt-outs / camera magnify / playback rate. These compose with
+  `?scene=`. Real graphics are the **default** for live + scene (`resolveSpriteSheet` degrades to synthetic
+  markers when `content/` is absent, so a bare checkout still boots); `?atlas=synthetic` forces markers,
+  `?atlas=none` placeholder geometry. **Real ground textures are likewise default-on** in live mode
+  (degrading to the flat tint without `content/`); `?terrain=off` forces the flat tint. **`?map=<id>` is the
+  full original-map import view** — 1:1 per-triangle ground (the map's baked `GfxPattern` lanes) + every
+  placed landscape object (trees/stones/mines/palisades + animated waves); `?objects=off` shows the bare
+  ground. Like `?anim`, `?map=` is a real-content human-validation entry, NOT a `SceneDefinition` (a scene's
+  headless half must run on synthetic content — copyrighted map data can't enter the tests). `?shot` keeps
   its own content-free default so the committed PNG never depends on gitignored bytes.
 
 ## Acceptance scenes — let a human sign off a mechanic

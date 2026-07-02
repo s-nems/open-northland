@@ -100,40 +100,53 @@ Chunk order on a real tutorial map (40 chunks): a **landscape group** (`logi`,`l
 group** (`emmm` → `embr`,`empa/empb`,`emt1..4`,`emla`,… → `xend`) then `tend`. Decoded facts:
 - **`lsiz`** payload = `[u32 width][u32 height]` — cross-checks the `map.cif` `mapsize` **exactly**
   (tutorial_001 128×218, tutorial_002 142×146). The one *raw* chunk (8-byte payload).
-- The per-cell grid layers (`lmhe`,`lmlt`,`lmlv`,`lmms`,`lmpa/lmpb`,`embr`,`empa/empb`,`emt1..4`,
-  `emla`,…) are **RLE-packed byte planes** — **now decoded** (`decoders/mapdat.ts` `unpackMapLayer`).
-  The 21-byte inner header (reverse-engineered across 5 real maps; the original engine's packer is
-  not in the oracle) is: `[u8 ver][u32 innerSize]` then the on-disk marker **`"kcp"`** ("pck"
-  reversed, like a chunk tag) + the codec id **`X8el`/`X6el`** (the `8`/`6` is the bit depth) + a
-  constant **`0x72`** sub-format byte + `[u32 unpackedLength][u32 innerSize-again]`, then the packed
-  stream to the payload end. The codec **is** the `.bmd` packed-line family (`CBobManager.cs`) with
-  the raw/run roles swapped: a control byte with the high bit **set** = a run of `(b&0x7F)` copies of
-  the next byte, **clear** = a literal run of `b` bytes; decode stops at exactly `unpackedLength`
-  (consuming the stream to the payload end on every real X8el layer). `X8el` = one byte per output
-  cell: `lmhe` (height) ≈ 1 B/cell; `lmlt`/`lmlv`/`lmms`/`lmco` are 4 B/cell (per-corner triangle
-  type ids). The `X6el` layers (`empa`/`empb` entity ownership, 2 B/cell) use a separate bit-packing
-  and are not yet unpacked. The landscape-**type** grid (the Phase-2 cell-graph input) is `lmlt`
-  (4 B/cell, values within the 87-type table) — four per-corner triangle types; `lmltToTerrainMap`
-  reduces them to one per-cell typeId (dominant corner, lowest-typeId tie-break) and yields the plain
-  `{ width, height, typeIds }` shape the sim's `buildTerrainGraph` consumes.
-- Not every chunk is a grid: `laco`/`lasw`/`lafm` (landscape) and `eapd`/`eatd`/`eald` (entity) are
-  **structured record lists** — depth-prefixed text/object tables (e.g. `eatd` holds `meadow 1`/…
-  type names, `eald` holds `player01 sign 0…` placements), the same depth-prefixed grammar as the
-  `.cif` string pool. These are the pre-placed-objects / per-player layers (Phase-5 territory),
-  separate from the per-cell terrain grid.
+- The grid layers are **RLE-packed planes** — decoded (`decoders/mapdat.ts` `unpackMapLayer` for the
+  byte `X8el` codec, `unpackX6elLayer` for the u16 `X6el` codec). The 21-byte inner header
+  (reverse-engineered across 5 real maps; the original engine's packer is not in the oracle) is:
+  `[u8 ver][u32 innerSize]` then the on-disk marker **`"kcp"`** ("pck" reversed, like a chunk tag) +
+  the codec id **`X8el`/`X6el`** (the `8`/`6` is the element bit depth: u8 vs u16) + a constant
+  **`0x72`** sub-format byte + `[u32 unpackedLength][u32 innerSize-again]`, then the packed stream to
+  the payload end. The codec **is** the `.bmd` packed-line family (`CBobManager.cs`) with the raw/run
+  roles swapped: a control byte with the high bit **set** = a run of `(b&0x7F)` copies of the next
+  element, **clear** = a literal run of `b` elements; decode stops at exactly `unpackedLength`.
+- **Layer resolutions.** A "4 B/cell" landscape lane is NOT a per-cell corner quad: it is a plain
+  **row-major `2W × 2H` half-cell grid** (pinned by rendering the lanes as images — the half-cell
+  layout draws the map's island shapes cleanly; a per-cell 2×2 interleave draws two side-by-side
+  half-res copies). `lmhe` (height, 0..~240) and `embr` (~127-centred, a brightness/shading lane) are
+  per-CELL (1 B); `empa`/`empb`/`emla` are u16 half-cell...-vs-cell as below.
+- **Lane semantics** (pinned empirically on `Arabskie Wyspy` + cross-checked against the decrypted
+  `landscapes.cif` twin; exact per-lane count matches):
+  - **`lmlt`** (u8, half-cell) — the **logic landscape-OBJECT type**: raw value **IS** the 1-based
+    `landscapetypes.ini` typeId of the object standing there (`[GfxLandscape].LogicType` — clay-mine
+    decals hold 12 = `mud_mine`, palms 4 = `tree`, wave fx 1 = `void`), raw **0 = no object**.
+    `lmltToTerrainMap` reduces each cell's 2×2 half-cell block to the dominant value (0 → `void`).
+  - **`empa`/`empb`** (u16, per CELL) — the **1:1 ground pattern per triangle** (A/B): an index into
+    the map's own `eapd` pattern-name dictionary → a `pattern.cif` `[GfxPattern]`. **The editor bakes
+    its pattern algorithm's OUTPUT into the save** — no algorithm needs reversing for 1:1 ground.
+  - **`emla`** (u16, half-cell) — the **placed landscape object**: an index into the map's `eald`
+    dictionary → a `landscapes.cif` `[GfxLandscape]` record by `EditName` (every tree/stone/bush/
+    mine decal/animated wave; 0xffff = none). The sea is covered in `wave`/`fx wave` records — the
+    water surface IS placed wave objects.
+  - **`lmpa`/`lmpb`** (u8, per cell) — the per-triangle **logic pattern type**
+    (`trianglepatterntypes.cif` ids: water/land/mountain/… — the walkability/water classification).
+  - **`lmms`** — water-depth/shore gradient bands (rings 1..6 around land, 7 = open sea);
+    **`lmtw`** — coastline transition codes (63 = not-coast); **`lmco`** — island/region ids
+    (connected components); **`lmlv`**/`lmwb`/`lmbb`/`lmsb`/`lmpr` — further per-half-cell flags
+    (unconsumed). **`emt1..emt4`** (u8, per cell, 255 = none) — sparse pattern overrides/overlays
+    (u8-ranged pattern-dictionary indices; superseded by `empa`/`empb` for ground, still unconsumed).
+- The record-list chunks are **name dictionaries + object tables**: `eapd` = the `[GfxPattern]`
+  EditName list (927, positional — how a map references patterns version-robustly BY NAME), `eald` =
+  the `[GfxLandscape]` EditName list (866), `eatd` = the editor's ground-group names (38);
+  `laco`/`lasw`/`lafm` are binary record lists (coords + ids — unconsumed). Grammar: `[u32 count]`
+  then `[u8 len][bytes][0x00]` per entry (`decodeStringListChunk`).
 
-**Status:** the **container is decoded** — `tools/asset-pipeline/src/decoders/mapdat.ts`
-(`decodeMapDat` walks the flat `hoix`-chunk table to EOF; `decodeMapSize` reads the raw `lsiz` dims;
-round-trip tested via `encodeMapDat`, no committed fixtures; hands-on verified on two real maps:
-FORTECA 39 chunks/250×250, oasis_o_plenty 40 chunks/250×250). The **`pck`/`X8el` packed-layer
-codec is also decoded** (`unpackMapLayer`/`packMapLayer`, round-trip tested; hands-on: 69 X8el
-layers across 3 real maps unpacked, 0 mismatches, real grids `pack→unpack` byte-exact). The
-**`lmlt` landscape-type lane → per-cell grid is derived** (`lmltToTerrainMap`: 4-corner → dominant
-single typeId), feeding the sim's `buildTerrainGraph` end-to-end (hands-on: `oasis_o_plenty`
-250×250 → 62500-cell graph; `WICHRY_ZIMY` 32400). **Remaining:** wiring that chain into the CLI (a
-per-map `TerrainMap` artifact into `content/`); and the `X6el` (`empa`/`empb`) 2-byte
-entity-ownership layers (a separate bit-packing). (No decoded bytes are committed — `map.dat` is copyrighted input, like every other
-game file.)
+**Status:** container + both packed codecs + the dictionaries are decoded, and the pipeline emits the
+full render model per map (`stages/maps.ts` `mapDatToTerrain`): the sim grid (`typeIds`, from `lmlt`)
++ `ground` (per-triangle pattern names, from `empa`/`empb`+`eapd`) + `objects` (sparse half-cell
+placements, from `emla`+`eald`) → `content/maps/<id>.json`, all consumed by the renderer end-to-end
+(`?map=<id>`). **Remaining:** `lmhe` heights, the `emt3`/`emt4` overlay lanes (roads/house
+foundations), `lmpa`/`lmpb` → sim water/walkability, `laco`/`lasw`/`lafm`. (No decoded bytes are
+committed — `map.dat` is copyrighted input, like every other game file.)
 - **Atomic actions are the behavior vocabulary** (see docs/ECS.md) and are partly free in readable
   data: `tribetypes.ini` `setatomic` (atomic→animation per tribe), `jobtypes.ini` `allowatomic`,
   `goodtypes.ini` `atomicFor*`. The atomic *timings/effects* live in `atomicanimations.cif` — **but
@@ -152,20 +165,24 @@ game file.)
   loads archives, renders intro — but the **game simulation is not implemented** (its logic tick
   dispatcher just increments a counter). So it helps us with *formats*, not with *mechanics*.
 
-### Terrain ground graphics + landscape objects (data model mapped — render pending)
+### Terrain ground graphics + landscape objects (data model mapped — render WIRED 1:1)
 
 Two graphics families sit beside the map grid; **both decode with existing decoders** (`.bmd`/`.pcx`/`.cif`).
 
-- **Landscape OBJECTS** (trees, bushes, signs, wonders, harbours) — `Data/engine2d/inis/landscapes/landscapes.cif`,
-  a `.cif`-only `[GfxLandscape]` list: the `[jobgraphics]` analog for static map decor. Each record carries
-  `EditName "yew 01"`, `GfxBobLibs "<body>.bmd" "<shadow>.bmd"` (e.g. `ls_trees.bmd`/`ls_trees_s.bmd`),
-  `GfxPalette "<editname>"` (resolved via `palettes.ini`, e.g. `tree_yew01` → `palettes\landscapes\tree_yew01.pcx`),
-  `GfxFrames <stage> <bobIds…>` and `GfxTransition`. **WIRED:** `extractLandscapeGraphics` (`decoders/ini.ts`)
-  → the existing `convertBmdTree` atlas path → render `resource` bind (99 records use `ls_trees.bmd`; bob 60 of
-  `ls_trees.tree_yew01` is the bound wood-node tree). The **same path covers `ls_houses_*.bmd`** for the
-  buildings (the `[GfxHouse]` table → `extractBuildingGraphics` atlases + `extractBuildingBobs` `(typeId→bob)`
-  join, both emitted); the render now draws the `ls_houses_viking.house01` family per type — see "Building
-  graphics families" below for the multi-`.bmd` scope the render still has to grow into.
+- **Landscape OBJECTS** (trees, bushes, signs, wonders, harbours, waves) — `Data/engine2d/inis/landscapes/landscapes.cif`,
+  a `.cif`-only `[GfxLandscape]` list (866 records): the `[jobgraphics]` analog for static map decor. Each record carries
+  `EditName "yew 01"`, `EditGroups`, the **logic half** (`LogicType` = a `landscapetypes.ini` typeId,
+  `LogicMaximumValency`, `LogicIsWorkable`, repeated `LogicWalkBlockArea`/`LogicBuildBlockArea`/`LogicWorkArea`
+  footprints — the future object-collision data), `GfxBobLibs "<body>.bmd" "<shadow>.bmd"` (e.g.
+  `ls_trees.bmd`/`ls_trees_s.bmd`), `GfxPalette "<editname>"` (resolved via `palettes.ini`, e.g. `tree_yew01` →
+  `palettes\landscapes\tree_yew01.pcx`), per-state `GfxFrames <stage> <bobIds…>` (a loop-animated record's frame
+  list — trees sway, waves roll), `GfxStatic`/`GfxLoopAnimation`, `GfxDynamicBackground` (set on exactly the 8
+  wave records = the translucent water blit) and `GfxTransition` (unconsumed). A decrypted twin ships in
+  `EdytorByRemik/ajhefbcsirbdvbkuysrghdkrbg.ini`. **WIRED twice:** `extractLandscapeGraphics` derives the
+  `(bmd, palette)` atlas work list → `convertBmdTree`; `extractLandscapeGfx` extracts the FULL table into IR
+  (`landscapeGfx`) — a decoded map's `objects` placements join onto it by `EditName` and the app draws every
+  placed object with animation (`real-objects.ts` → `WorldRenderer.setMapObjects`). The **same atlas path covers
+  `ls_houses_*.bmd`** for the buildings — see "Building graphics families" below.
 - **Ground TEXTURES** (the triangle-mesh terrain) — `Data/engine2d/bin/textures/text_*.pcx` (58) + `tran_*.pcx`
   (27 transition tiles), 64-px indexed tiles with inline palette, **already decoded to `text_*.png`** by the pcx
   stage. The texture→cell binding is `Data/engine2d/inis/patterns/pattern.cif`, a `.cif`-only `[GfxPattern]` list
@@ -173,16 +190,17 @@ Two graphics families sit beside the map grid; **both decode with existing decod
   `Data/logic/trianglepatterntypes.cif` `type`, **10 records**, type ids 1..10: water/land/blocked/mountain/sand/
   beach/desertstone/moor/snow/plaster, each with `iswater`/`humancanwalkon`/`debugcolor` — "82" is the file's
   decoded *string* count (10 headers + 72 property lines), not the record count), `GfxTexture "…text_NNN.pcx"`, `GfxCoordsA`/`GfxCoordsB` = the two triangles' UVs (3 pixel-coord
-  points each, into the texture). `landscapetypes.ini` also carries a `debugcolor R G B` per type (a free
-  per-type colour — a cheap legible fallback if textures are deferred).
-- **The 1:1 pattern algorithm is ORACLE-BLOCKED.** No `map.dat` landscape lane holds a direct pattern id:
-  `lmlt` 4 B/cell (per-corner landscape type 0..78 → the 87-type table), `lmpa`/`lmpb` 1 B/cell (0..10, a
-  variant index), `lmco` 4 B/cell (0..8, connection/corner), `lmms` 4 B/cell (0..7), `lmtw` (0..63), `lmlv`
-  (0..5). The per-cell pattern is **computed by the engine** from the corner types + these variant lanes — and
-  **OpenVikings does not render terrain** (`Source/Engine/EngineDisplay2D.cs` is a stub; its logic tick just
-  counts), so there is **no algorithm oracle**. → the rebuild ships **real textures with approximated per-type
-  placement** (docs/ROADMAP.md Phase 2; a recorded deviation), not 1:1; the only 1:1 oracle is the running
-  original game (a human-driven trial loop). Reversing the algorithm empirically is a deferred research task.
+  points each, into the texture). Every real record lists its UV points in ONE convention — `coordsA` = the tile
+  square's (TL, BR, BL), `coordsB` = (TL, TR, BR) — so triangle A/B map onto the iso diamond's left/right halves
+  (`packages/render/src/terrain.ts`). `landscapetypes.ini` also carries a `debugcolor R G B` per type (the
+  flat-tint fallback).
+- **The 1:1 pattern choice is NOT algorithm-blocked — it is stored in the map.** The earlier "oracle-blocked
+  pattern algorithm" reading was wrong: the `empa`/`empb` lanes hold the final per-triangle `GfxPattern` pick
+  (via the `eapd` name dictionary), i.e. the editor runs its placement algorithm at AUTHOR time and bakes the
+  result into `map.dat`. The renderer replays it verbatim (`WorldRenderer.buildGroundTerrain`), so decoded maps
+  draw coastlines/transition blocks exactly; only a SYNTHETIC grid still uses the approximated per-typeId
+  representative ground (`buildTerrainPatterns`). Reversing the *generator* would only matter for a future
+  in-app map editor.
 
 ### Building graphics families (render multi-`.bmd` scope)
 

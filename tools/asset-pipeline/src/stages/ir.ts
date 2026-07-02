@@ -20,6 +20,7 @@ import {
   extractJobExperience,
   extractJobs,
   extractLandscape,
+  extractLandscapeGfx,
   extractPatterns,
   extractTrianglePatternTypes,
   extractTribes,
@@ -172,6 +173,14 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     file: patternFile,
     layer: 'base',
   });
+  // The full `[GfxLandscape]` object table (`.cif`-only) — the table a decoded map's `objects`
+  // placements join onto by `EditName` (trees/stones/bushes/mine decals/waves; visual frames +
+  // logic footprints). Distinct from the `(bmd, palette)` atlas work list the bmd stage derives.
+  const landscapeFile = join('Data', 'engine2d', 'inis', 'landscapes', 'landscapes.cif');
+  const landscapeSections = await loadCifSections(join(args.game, landscapeFile));
+  const landscapeGfx = landscapeSections
+    ? extractLandscapeGfx(landscapeSections, { file: landscapeFile, layer: 'base' })
+    : [];
   // Overlay each building's build-material cost from the graphics table (joined by `typeId`); a
   // building the graphics table omits keeps the schema-default empty cost.
   const buildingsWithCosts = buildings.map((b) => {
@@ -197,6 +206,10 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     animals,
     vehicles,
     landscape,
+    landscapeGfx,
+    // The full positional pattern table — a decoded map's `ground.patterns` names join onto it
+    // (`GfxPattern.editName`) for the texture page + per-triangle UVs.
+    gfxPatterns,
     terrainPatterns,
     bobSequences,
     buildingBobs,

@@ -127,12 +127,27 @@ export interface DrawItem {
   readonly young?: boolean;
 }
 
+/**
+ * A decoded map's 1:1 per-triangle ground lanes (the `ground` layer of `content/maps/<id>.json`):
+ * pattern `EditName`s + each cell's two triangle picks as indices into them. Render-only data — the
+ * renderer joins a name through {@link import('./pixi-renderer.js').TerrainTextureSet.groundFor}.
+ */
+export interface SceneGround {
+  readonly patterns: readonly string[];
+  /** Row-major per-cell index into {@link patterns} for triangle A (left half of the diamond). */
+  readonly a: readonly number[];
+  /** Row-major per-cell index into {@link patterns} for triangle B (right half of the diamond). */
+  readonly b: readonly number[];
+}
+
 /** The terrain grid the snapshot is positioned over (dimensions + row-major landscape typeIds). */
 export interface SceneTerrain {
   readonly width: number;
   readonly height: number;
   /** Row-major landscape typeId per cell, length `width*height`. */
   readonly typeIds: readonly number[];
+  /** The 1:1 per-triangle ground patterns, when the map carries them (a decoded original map). */
+  readonly ground?: SceneGround;
 }
 
 /**
@@ -151,8 +166,14 @@ export function terrainMapToScene(map: {
   readonly width: number;
   readonly height: number;
   readonly typeIds: readonly number[];
+  readonly ground?: SceneGround;
 }): SceneTerrain {
-  return { width: map.width, height: map.height, typeIds: map.typeIds };
+  return {
+    width: map.width,
+    height: map.height,
+    typeIds: map.typeIds,
+    ...(map.ground !== undefined ? { ground: map.ground } : {}),
+  };
 }
 
 /**

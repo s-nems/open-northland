@@ -4,12 +4,16 @@ import type { MapInfo } from '@vinland/data';
 import { decodeCifStringArray } from '../decoders/cif.js';
 import { type SourceRef, cifLinesToSections, extractMapInfo } from '../decoders/ini.js';
 import {
+  type MapDat,
+  type MapDatSize,
   type MapDatTerrainMap,
   decodeMapDat,
   decodeMapSize,
+  decodeStringListChunk,
   findChunk,
   lmltToTerrainMap,
   unpackMapLayer,
+  unpackX6elLayer,
 } from '../decoders/mapdat.js';
 import { walkFiles } from '../walk.js';
 
@@ -26,26 +30,140 @@ export function mapCifToInfo(bytes: Uint8Array, id: string, src: SourceRef): Map
   return extractMapInfo(sections, id, src);
 }
 
+/** The emitted `maps/<id>.json` shape: the sim grid + the optional 1:1 render layers. */
+export interface MapDatTerrainFile extends MapDatTerrainMap {
+  /** Per-triangle ground patterns (`empa`/`empb` lanes joined through the `eapd` name dictionary). */
+  readonly ground?: {
+    readonly patterns: string[];
+    readonly a: number[];
+    readonly b: number[];
+  };
+  /** Placed landscape objects (`emla` half-cell lane joined through the `eald` name dictionary). */
+  readonly objects?: {
+    readonly types: string[];
+    readonly placements: number[];
+  };
+}
+
+/** The `emla` lane's "no object here" sentinel (u16 max). */
+const EMLA_EMPTY = 0xffff;
+
 /**
- * Pure composition: one `map.dat`'s bytes -> the per-cell landscape-typeId grid the sim's
- * `buildTerrainGraph` consumes. Decodes the `hoix` container ({@link decodeMapDat}), reads the `lsiz`
- * grid dims ({@link decodeMapSize}), unpacks the `lmlt` landscape-type layer ({@link unpackMapLayer}),
- * and collapses its four per-corner typeIds per cell to one ({@link lmltToTerrainMap}) — the
- * `{ width, height, typeIds }` shape (`MapDatTerrainMap`, structurally a sim `TerrainMap`; the build
- * tool never imports `sim`). Like {@link mapCifToInfo} the decoders stay pure; this is the only
- * wiring. Throws a `mapdat:`-prefixed error for a non-container, a missing `lsiz`/`lmlt`, an
- * unsupported codec, or a dims/length mismatch; {@link convertMapDatTree} catches it per-file so one
- * bad map can't abort the batch. The `lmhe` height + `eatd`/`eald` object layers are out of scope here
- * (the nav graph only needs the landscape type).
+ * Decodes the `empa`/`empb` per-cell ground-pattern lanes + the `eapd` pattern-name dictionary into
+ * the emitted `ground` layer: each cell's two triangles as indices into a **compacted** per-map
+ * pattern-name list (only the names the map actually uses, in ascending dictionary order — a
+ * deterministic remap). The u16 lane values index `eapd` positionally; the emitted layer carries the
+ * NAMES (the engine's own version-robust join key onto the extracted `GfxPattern` table). Returns
+ * undefined when the map lacks any of the three chunks (older/foreign saves); throws on an index
+ * outside the dictionary (a corrupt lane — the per-file catch skips the whole map).
  */
-export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainMap {
+function groundFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['ground'] {
+  const empa = findChunk(map, 'empa');
+  const empb = findChunk(map, 'empb');
+  const eapd = findChunk(map, 'eapd');
+  if (empa === undefined || empb === undefined || eapd === undefined) return undefined;
+  const names = decodeStringListChunk(eapd);
+  const laneA = unpackX6elLayer(empa).cells;
+  const laneB = unpackX6elLayer(empb).cells;
+  const cells = size.width * size.height;
+  if (laneA.length !== cells || laneB.length !== cells) {
+    throw new Error(`mapdat: empa/empb lanes have ${laneA.length}/${laneB.length} cells, expected ${cells}`);
+  }
+  // Compact: collect the used dictionary ids (ascending), remap the lanes onto the compact list.
+  const used = new Set<number>();
+  for (const v of laneA) used.add(v);
+  for (const v of laneB) used.add(v);
+  const usedIds = [...used].sort((x, y) => x - y);
+  const compactIndex = new Map<number, number>();
+  const patterns: string[] = [];
+  for (const id of usedIds) {
+    const name = names[id];
+    if (name === undefined) {
+      throw new Error(`mapdat: empa/empb pattern id ${id} outside the ${names.length}-entry eapd dictionary`);
+    }
+    compactIndex.set(id, patterns.length);
+    patterns.push(name);
+  }
+  const a = new Array<number>(cells);
+  const b = new Array<number>(cells);
+  for (let i = 0; i < cells; i++) {
+    a[i] = compactIndex.get(laneA[i] as number) as number;
+    b[i] = compactIndex.get(laneB[i] as number) as number;
+  }
+  return { patterns, a, b };
+}
+
+/**
+ * Decodes the `emla` half-cell landscape-object lane + the `eald` object-name dictionary into the
+ * emitted `objects` layer: a sparse flat `[hx, hy, typeIndex]` triple list (row-major half-cell scan
+ * order — deterministic) over a **compacted** per-map type-name list (ascending dictionary order).
+ * This is every pre-placed tree/stone/bush/mine decal/wave the map ships; a name joins onto the
+ * extracted `[GfxLandscape]` table (`LandscapeGfx.editName`). Returns undefined when the map lacks
+ * either chunk; throws on an index outside the dictionary (corrupt lane).
+ */
+function objectsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['objects'] {
+  const emla = findChunk(map, 'emla');
+  const eald = findChunk(map, 'eald');
+  if (emla === undefined || eald === undefined) return undefined;
+  const names = decodeStringListChunk(eald);
+  const lane = unpackX6elLayer(emla).cells;
+  const hw = size.width * 2;
+  const hh = size.height * 2;
+  if (lane.length !== hw * hh) {
+    throw new Error(`mapdat: emla lane has ${lane.length} half-cells, expected ${hw * hh}`);
+  }
+  const used = new Set<number>();
+  for (const v of lane) if (v !== EMLA_EMPTY) used.add(v);
+  const usedIds = [...used].sort((x, y) => x - y);
+  const compactIndex = new Map<number, number>();
+  const types: string[] = [];
+  for (const id of usedIds) {
+    const name = names[id];
+    if (name === undefined) {
+      throw new Error(`mapdat: emla object id ${id} outside the ${names.length}-entry eald dictionary`);
+    }
+    compactIndex.set(id, types.length);
+    types.push(name);
+  }
+  const placements: number[] = [];
+  for (let hy = 0; hy < hh; hy++) {
+    for (let hx = 0; hx < hw; hx++) {
+      const v = lane[hy * hw + hx] as number;
+      if (v === EMLA_EMPTY) continue;
+      placements.push(hx, hy, compactIndex.get(v) as number);
+    }
+  }
+  return { types, placements };
+}
+
+/**
+ * Pure composition: one `map.dat`'s bytes -> the emitted `maps/<id>.json` value. Decodes the `hoix`
+ * container ({@link decodeMapDat}), reads the `lsiz` grid dims ({@link decodeMapSize}), collapses the
+ * `lmlt` half-cell landscape-object lane to the per-cell typeId grid ({@link lmltToTerrainMap} — the
+ * `{ width, height, typeIds }` shape the sim's `buildTerrainGraph` consumes; the build tool never
+ * imports `sim`), and joins the 1:1 render layers when the map carries them: the per-triangle ground
+ * patterns ({@link groundFromMapDat}: `empa`/`empb` + `eapd`) and the placed landscape objects
+ * ({@link objectsFromMapDat}: `emla` + `eald`). Like {@link mapCifToInfo} the decoders stay pure;
+ * this is the only wiring. Throws a `mapdat:`-prefixed error for a non-container, a missing
+ * `lsiz`/`lmlt`, an unsupported codec, or a dims/length mismatch; {@link convertMapDatTree} catches
+ * it per-file so one bad map can't abort the batch. The `lmhe` height lane and the `emt3`/`emt4`
+ * overlay-pattern lanes (roads/house foundations) are still out of scope (deferred render layers).
+ */
+export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
   const map = decodeMapDat(bytes);
   const size = decodeMapSize(map);
   const lmlt = findChunk(map, 'lmlt');
   if (lmlt === undefined) {
     throw new Error('mapdat: no lmlt landscape-type chunk (cannot build the terrain grid)');
   }
-  return lmltToTerrainMap(unpackMapLayer(lmlt), size);
+  const terrain = lmltToTerrainMap(unpackMapLayer(lmlt), size);
+  const ground = groundFromMapDat(map, size);
+  const objects = objectsFromMapDat(map, size);
+  return {
+    ...terrain,
+    ...(ground !== undefined ? { ground } : {}),
+    ...(objects !== undefined ? { objects } : {}),
+  };
 }
 
 /**
@@ -136,7 +254,7 @@ export async function convertMapDatTree(gameDir: string, outDir: string): Promis
   const done: MapDatConversion[] = [];
   for (const rel of found) {
     const id = mapIdFromPath(rel);
-    let terrain: MapDatTerrainMap;
+    let terrain: MapDatTerrainFile;
     try {
       terrain = mapDatToTerrain(await readFile(join(gameDir, rel)));
     } catch (err) {
@@ -146,7 +264,9 @@ export async function convertMapDatTree(gameDir: string, outDir: string): Promis
     const output = join('maps', `${id}.json`);
     const outPath = join(outDir, output);
     await mkdir(dirname(outPath), { recursive: true });
-    await writeFile(outPath, `${JSON.stringify(terrain, null, 2)}\n`);
+    // Compact JSON: the ground/object lanes are hundreds of thousands of numbers — pretty-printing
+    // them one-per-line would blow the artifact up ~8×.
+    await writeFile(outPath, `${JSON.stringify(terrain)}\n`);
     done.push({ id, width: terrain.width, height: terrain.height, output });
   }
   return done;

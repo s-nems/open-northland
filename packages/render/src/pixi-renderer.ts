@@ -154,6 +154,20 @@ export interface TerrainTextureSet {
   readonly pages: ReadonlyMap<string, TextureSource>;
   /** The approximated per-landscape-typeId ground binding, or `undefined` when a typeId has no representative. */
   cellFor(typeId: number): CellTexture | undefined;
+  /**
+   * The 1:1 per-triangle pattern by `EditName` — the join a decoded map's `ground.patterns` names
+   * resolve through (the `GfxPattern` IR row's page + the two triangles' pixel-coord UV tuples).
+   * Optional: a set built without the full pattern table (or a map without ground lanes) falls back
+   * to the approximated {@link cellFor} path.
+   */
+  groundFor?(name: string): GroundPattern | undefined;
+}
+
+/** One resolved 1:1 ground pattern: its texture page + the two triangles' 6-int UV pixel tuples. */
+export interface GroundPattern {
+  readonly pageKey: string;
+  readonly coordsA: readonly number[];
+  readonly coordsB: readonly number[];
 }
 
 /**
