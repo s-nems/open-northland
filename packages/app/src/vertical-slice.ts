@@ -1,4 +1,10 @@
-import { type ContentSet, IR_VERSION, parseContentSet, parseTerrainMap } from '@vinland/data';
+import {
+  type ContentSet,
+  IR_VERSION,
+  type TerrainMapFile,
+  parseContentSet,
+  parseTerrainMap,
+} from '@vinland/data';
 import { type SceneTerrain, terrainMapToScene } from '@vinland/render';
 import { Simulation, type TerrainMap, components, fx } from '@vinland/sim';
 import { type GoodRef, HARVEST_ATOMIC } from './real-sprites.js';
@@ -153,7 +159,7 @@ function grassMap(): TerrainMap {
  * carry through; otherwise the synthetic grass strip is projected — the reproducible default for
  * `npm run shot` + the unit tests, which must not depend on the gitignored `content/`.
  */
-export function sliceTerrain(map?: TerrainMap): SceneTerrain {
+export function sliceTerrain(map?: TerrainMap | TerrainMapFile): SceneTerrain {
   return terrainMapToScene(map ?? grassMap());
 }
 
@@ -180,7 +186,7 @@ function safeMapId(id: string): string | null {
 export async function loadTerrainMap(
   id: string,
   fetchImpl: typeof fetch = fetch,
-): Promise<TerrainMap | null> {
+): Promise<TerrainMapFile | null> {
   const safe = safeMapId(id);
   if (safe === null) {
     console.warn(`loadTerrainMap: ignoring unsafe map id "${id}"`);

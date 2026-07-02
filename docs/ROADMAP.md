@@ -53,14 +53,21 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
           `ls_houses_*.bmd` body → atlas (one binding per `GfxPalette`), so `npm run pipeline` produces ALL
           house atlases. → [archive](ROADMAP-ARCHIVE.md). (Render-side per-type frame selection landed as
           render-breadth-ladder rung 1 below.)
-- [x] **Render terrain from real landscape ground textures** — **LANDED (approximated, behind `?terrain`).**
-      Real decoded `text_*.pcx` ground (meadow grass + rock) draws per cell instead of the flat 4-colour tint
-      (human pixel-check done). **Placement is APPROXIMATED** (docs/FIDELITY.md): the 1:1 pattern algorithm is
-      oracle-blocked, so every cell of a landscape family draws the same representative tile. Pipeline
-      patterns/triangle-types + typeId→pattern map + the batched-`Mesh` textured ground + the `?terrain`
-      app/shot flag all landed → [archive](ROADMAP-ARCHIVE.md). **Open (deferred):** per-cell variety; water-
-      surface cells (map-decode-blocked, Phase 4 Sea/Northland); terrain-mesh caching. Data model in
-      docs/SOURCES.md "Terrain ground graphics + landscape objects".
+- [x] **Render terrain from real landscape ground textures** — **LANDED 1:1 for decoded maps** (pending the
+      final human pixel sign-off). The map-import slice cracked the `map.dat` lanes: `empa`/`empb` hold the
+      **baked per-triangle `GfxPattern` choice** (the "oracle-blocked pattern algorithm" runs in the EDITOR at
+      author time — the save stores its output), `emla`+`eald` the placed landscape objects, `lmlt` is the
+      logic-OBJECT lane (raw = typeId, 0 = none — the old +1 shift was a bug, fixed). `maps/<id>.json` now
+      carries `ground` + `objects`; the renderer draws per-triangle 1:1 ground (`buildGroundTerrain`), every
+      placed object (trees/stones/mines/palisades/bridges) with loop animation (waves/sway) and translucent
+      wave blending, real graphics ON by default in live mode (`?terrain=off` / `?objects=off` opt-outs).
+      `?map=<id>` is the human sign-off entry (a real-map scene can't be a SceneDefinition — copyrighted
+      content can't enter the headless tests; the `?anim` precedent). Synthetic grids keep the approximated
+      per-family ground (docs/FIDELITY.md). **Open (deferred):** `lmhe` height shading; `emt3`/`emt4` road/
+      house-foundation overlays; per-object growth STATE from map data; `lmpa`/`lmpb` triangle logic types →
+      sim water/walkability + object block-area collision (the extracted `landscapeGfx` footprints are the
+      input); the `fx wave*` engine-fx records (no drawable bob — placeholder `test_effect.bmd`). Data model
+      in docs/SOURCES.md "`map.dat` chunk container" + "Terrain ground graphics + landscape objects".
 - **Exit:** click to place one workplace; a settler autonomously supplies it via atomics; a carrier
   hauls outputs to a store; the 1000-tick golden hash + trace stay stable. **(Headless slice + golden
   proven; the real-atlas bind + final human pixel check remain.)**
@@ -323,10 +330,12 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
       (`tribeShipsUnlocked`), a placed boat-hull ENTITY carrying a `Stockpile` (`placeBoat`) with its
       cargo-LOAD gate inherited through `stockCapacity`, the `fisher_sea`/`trader_sea` jobs by the `_sea`
       suffix (`seaJobs`), and the landscape `allowedon{land,water,everything}` placement-layer triple
-      (`systems/readviews/landscape.ts`). **Open:** water-VALENCY terrain (which CELLS are water —
-      map-decode-blocked; the water surface lives in the triangle/terrain grid, not a `landscapetypes.ini`
-      flag), boat movement + embark/disembark atomics (no such atomic in the readable `.ini`), and the
-      sea-job BEHAVIOR (a sea worker reaching its station by boat — rides on boat movement).
+      (`systems/readviews/landscape.ts`). **Open:** water-VALENCY terrain — which CELLS are water is now
+      **decode-UNBLOCKED** (the map-import slice pinned `lmpa`/`lmpb` = per-triangle
+      `trianglepatterntypes` logic ids carrying `iswater`/`humancanwalkon`; a decoded map's ground
+      patterns also carry `logicType` — the remaining work is emitting a water lane + consuming it in
+      `buildTerrainGraph`), boat movement + embark/disembark atomics (no such atomic in the readable
+      `.ini`), and the sea-job BEHAVIOR (a sea worker reaching its station by boat — rides on boat movement).
 - [ ] Import full base + `culturesnation` content; bring over the mod's balance edits (data).
       **Substance-complete** (→ [archive](ROADMAP-ARCHIVE.md)): the mod ships NO overriding base
       `Data/logic` type tables (verified on disk), so there is no logic-table overlay merge; the pipeline

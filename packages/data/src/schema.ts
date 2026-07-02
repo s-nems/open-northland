@@ -534,6 +534,88 @@ export const TerrainPattern = z.strictObject({
 export type TerrainPattern = z.infer<typeof TerrainPattern>;
 
 /**
+ * One footprint entry of a `[GfxLandscape]` record's repeated `LogicWalkBlockArea` /
+ * `LogicBuildBlockArea` / `LogicWorkArea` lines: `<valency> <dx> <dy> <tileMask>` — a cell offset
+ * relative to the object's anchor plus the valency/mask the engine applies there. Extracted verbatim
+ * (the mask semantics are not yet consumed); this is the data a future collision/footprint system
+ * reads, so it is captured with the record rather than re-decoding the `.cif` later.
+ */
+export const LandscapeBlockArea = z.tuple([
+  z.number().int(),
+  z.number().int(),
+  z.number().int(),
+  z.number().int(),
+]);
+export type LandscapeBlockArea = z.infer<typeof LandscapeBlockArea>;
+
+/**
+ * One growth/valency state's frame list from a `[GfxLandscape]` record's repeated
+ * `GfxFrames <state> <bobId…>` lines. For an animated object ({@link LandscapeGfx.loopAnimation})
+ * the bob ids are the loop's frames in play order; for a static object they are alternates/stages.
+ */
+export const LandscapeGfxFrames = z.object({
+  /** The `GfxFrames` leading int — the object's growth/remaining-valency state this list draws. */
+  state: z.number().int().nonnegative(),
+  /** The state's bob ids into the record's {@link LandscapeGfx.bmd} atlas, in file order. */
+  bobIds: z.array(z.number().int().nonnegative()),
+});
+export type LandscapeGfxFrames = z.infer<typeof LandscapeGfxFrames>;
+
+/**
+ * One full `[GfxLandscape]` record from `Data/engine2d/inis/landscapes/landscapes.cif` (866 records)
+ * — a placeable **landscape object** (tree, stone, bush, mine decal, wave fx, sign, wonder, …): the
+ * visual half (`GfxBobLibs` body+shadow `.bmd`, `GfxPalette` recolour, per-state `GfxFrames`,
+ * static/loop animation flags) joined to the logic half (`LogicType` → the {@link LandscapeType}
+ * table, valency, workability, walk/build/work footprints). A decoded original map places these by
+ * **`EditName`** (the map's `eald` dictionary stores the names; its `emla` half-cell lane indexes
+ * that dictionary), so the name is the join key from `content/maps/<id>.json` objects to this table.
+ *
+ * Like {@link GfxPattern}, the record has no explicit id — {@link index} is the 0-based position in
+ * the `.cif`, and the extractor keeps every record so positions never renumber. The pure sim ignores
+ * the Gfx fields; the Logic fields feed a future object-collision/harvest slice.
+ */
+export const LandscapeGfx = z.object({
+  /** The 0-based position in the `[GfxLandscape]` list (the engine's positional id). */
+  index: z.number().int().nonnegative(),
+  /** `EditName` — the placement join key (e.g. `"palm 03"`, `"fx wave slow"`). */
+  editName: z.string().optional(),
+  /** `EditGroups` — editor grouping tags, kept verbatim. */
+  editGroups: z.array(z.string()).default([]),
+  /** `LogicType` — the {@link LandscapeType.typeId} this object counts as (tree=4, rock=15, …); 0/absent = pure decor. */
+  logicType: TypeId.default(0),
+  /** `LogicMaximumValency` — the object's harvest/cluster capacity (tree=3, …). */
+  maxValency: z.number().int().nonnegative().optional(),
+  /** `LogicIsWorkable` — whether a settler can work (harvest) this object. */
+  isWorkable: z.boolean().default(false),
+  /** Repeated `LogicWalkBlockArea` lines — the walk-collision footprint. */
+  walkBlockAreas: z.array(LandscapeBlockArea).default([]),
+  /** Repeated `LogicBuildBlockArea` lines — the build-blocking footprint. */
+  buildBlockAreas: z.array(LandscapeBlockArea).default([]),
+  /** Repeated `LogicWorkArea` lines — where a worker stands to work the object. */
+  workAreas: z.array(LandscapeBlockArea).default([]),
+  /** `GfxBobLibs` first value — the body bob set, normalized (e.g. `data/engine2d/bin/bobs/ls_trees.bmd`). */
+  bmd: z.string().optional(),
+  /** `GfxBobLibs` second value — the shadow bob set, normalized, when the record names one. */
+  shadowBmd: z.string().optional(),
+  /** `GfxPalette` — the recolour skin (lower-cased), keying the `(bmd, palette)` atlas. */
+  paletteName: z.string().optional(),
+  /** Per-state frame lists (`GfxFrames`), file order. */
+  frames: z.array(LandscapeGfxFrames).default([]),
+  /** `GfxStatic` — 1 = a still object (no per-frame playback). */
+  isStatic: z.boolean().default(true),
+  /** `GfxLoopAnimation` — 1 = the state's frame list loops continuously (waves, fire, smoke). */
+  loopAnimation: z.boolean().default(false),
+  /**
+   * `GfxDynamicBackground` — set on exactly the 8 wave records in the real data: the object is
+   * composited translucently over the (water) ground rather than drawn opaque (the engine's
+   * transparency blit — `PrintBob_UsingTransparency` in the oracle).
+   */
+  dynamicBackground: z.boolean().default(false),
+  source: Provenance.optional(),
+});
+export type LandscapeGfx = z.infer<typeof LandscapeGfx>;
+
+/**
  * Per-(job, atomic) animation binding from `tribetypes` `setatomic <jobType> <atomicId> "anim"`.
  * This is how a tribe expresses its identity: the SAME atomic id plays a tribe-specific animation.
  * `animation` names an entry in `atomicanimations` — see {@link AtomicAnimation} for its
@@ -704,13 +786,53 @@ export const MapInfo = z.strictObject({
 export type MapInfo = z.infer<typeof MapInfo>;
 
 /**
+ * The 1:1 ground-texture layer of a decoded map: the original's `empa`/`empb` per-cell lanes hold the
+ * **final per-triangle {@link GfxPattern} choice** (the editor bakes its pattern algorithm's output
+ * into the save), referenced through the map's own `eapd` pattern-name dictionary. {@link patterns}
+ * is that dictionary compacted to the names this map actually uses; {@link a}/{@link b} give each
+ * cell's two triangles (A = top, B = bottom of the diamond) as indices into it. The renderer joins a
+ * name onto the extracted {@link GfxPattern} table (`EditName` is the engine's own version-robust
+ * join key) for the texture page + UV coords.
+ */
+export const TerrainGround = z.object({
+  /** The pattern `EditName`s this map uses (compacted from the map's `eapd` dictionary). */
+  patterns: z.array(z.string()),
+  /** Row-major per-cell index into {@link patterns} for triangle A (length = width*height). */
+  a: z.array(z.number().int().nonnegative()),
+  /** Row-major per-cell index into {@link patterns} for triangle B (length = width*height). */
+  b: z.array(z.number().int().nonnegative()),
+});
+export type TerrainGround = z.infer<typeof TerrainGround>;
+
+/**
+ * The placed landscape objects of a decoded map: the original's `emla` lane is a **half-cell**
+ * (2·width × 2·height) grid of indices into the map's `eald` object-name dictionary — every tree,
+ * stone, bush, mine decal and animated wave the map ships. {@link types} is that dictionary compacted
+ * to the names actually placed; {@link placements} is the sparse flat list of `[hx, hy, typeIndex]`
+ * triples (half-cell coordinates — divide by 2 for the cell, the remainder is the sub-cell corner),
+ * row-major order. A name joins onto the {@link LandscapeGfx} table for the object's bob frames,
+ * palette, animation flags and logic footprints.
+ */
+export const TerrainObjects = z.object({
+  /** The `[GfxLandscape]` `EditName`s this map places (compacted from the map's `eald` dictionary). */
+  types: z.array(z.string()),
+  /** Flat `[hx, hy, typeIndex]` triples in row-major half-cell order (length % 3 === 0). */
+  placements: z.array(z.number().int().nonnegative()),
+});
+export type TerrainObjects = z.infer<typeof TerrainObjects>;
+
+/**
  * A decoded terrain grid file (`content/maps/<id>.json`) — the per-map nav-graph input the pipeline
- * emits from `map.dat` (the `lmlt` 4-corner landscape lane reduced to one typeId per cell, `+1`-shifted
- * onto the 1-based IR {@link LandscapeType} typeId). This is the on-disk twin of the sim's `TerrainMap`
- * (the sim defines that structural type without zod; this schema is the validating loader boundary so
- * the build tool / app can `parseTerrainMap` a file before it ever reaches the pure sim). The
+ * emits from `map.dat` (the `lmlt` half-cell landscape-object lane reduced to one typeId per cell;
+ * raw values ARE the 1-based IR {@link LandscapeType} typeIds, with raw 0 = "no object" mapped to
+ * `void`). This is the on-disk twin of the sim's `TerrainMap` (the sim defines that structural type
+ * without zod; this schema is the validating loader boundary so the build tool / app can
+ * `parseTerrainMap` a file before it ever reaches the pure sim). The
  * `typeIds.length === width * height` invariant is enforced here so a truncated/oversized grid fails
  * at load, not as a confusing out-of-bounds read inside `buildTerrainGraph`.
+ *
+ * The optional {@link ground} / {@link objects} layers carry the map's 1:1 visual data (per-triangle
+ * ground patterns; placed landscape objects) — render-only consumers; the sim reads only the grid.
  */
 export const TerrainMapFile = z
   .strictObject({
@@ -720,6 +842,10 @@ export const TerrainMapFile = z
     height: z.number().int().positive(),
     /** Row-major landscape typeId per cell (length must equal width*height). */
     typeIds: z.array(TypeId),
+    /** The 1:1 per-triangle ground patterns (`empa`/`empb` + `eapd`), when the map carries them. */
+    ground: TerrainGround.optional(),
+    /** The placed landscape objects (`emla` + `eald`), when the map carries them. */
+    objects: TerrainObjects.optional(),
   })
   .refine(
     (m) => m.typeIds.length === m.width * m.height,
@@ -728,6 +854,22 @@ export const TerrainMapFile = z
         m.width * m.height
       })`,
       path: ['typeIds'],
+    }),
+  )
+  .refine(
+    (m) =>
+      m.ground === undefined ||
+      (m.ground.a.length === m.width * m.height && m.ground.b.length === m.width * m.height),
+    (m) => ({
+      message: `terrain map ground lanes must be width*height (${m.width * m.height}) cells`,
+      path: ['ground'],
+    }),
+  )
+  .refine(
+    (m) => m.objects === undefined || m.objects.placements.length % 3 === 0,
+    () => ({
+      message: 'terrain map objects.placements must be flat [hx, hy, typeIndex] triples',
+      path: ['objects', 'placements'],
     }),
   );
 export type TerrainMapFile = z.infer<typeof TerrainMapFile>;
@@ -821,6 +963,8 @@ export const ContentSet = z.strictObject({
   animals: z.array(AnimalType).default([]),
   vehicles: z.array(VehicleType).default([]),
   landscape: z.array(LandscapeType).default([]),
+  landscapeGfx: z.array(LandscapeGfx).default([]),
+  gfxPatterns: z.array(GfxPattern).default([]),
   terrainPatterns: z.array(TerrainPattern).default([]),
   bobSequences: z.array(BobSequenceSet).default([]),
   buildingBobs: z.array(BuildingBob).default([]),

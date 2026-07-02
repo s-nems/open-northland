@@ -7,7 +7,7 @@ import { BOB_TYPE_8BIT, type Bmd, PACKED_X_SHIFT, encodeBmd } from '../src/decod
 import { StorableId, encryptMode1 } from '../src/decoders/cif.js';
 import type { BmdPaletteBinding, PaletteAlias } from '../src/decoders/ini.js';
 import { encodeLib } from '../src/decoders/lib.js';
-import { encodeMapDat, encodeMapSize, packMapLayer } from '../src/decoders/mapdat.js';
+import { encodeMapDat, encodeMapSize, packMapLayer, packX6elLayer } from '../src/decoders/mapdat.js';
 import { decodePcx, encodePcx, expandToRgba } from '../src/decoders/pcx.js';
 import { decodePng, encodePng } from '../src/decoders/png.js';
 import {
@@ -815,29 +815,41 @@ describe('decodeMapTree', () => {
 });
 
 /**
- * Builds a synthetic `map.dat`: an `lsiz` dims chunk + an `lmlt` landscape-type layer (4 per-corner
- * typeIds per cell, RLE-packed via the faithful `packMapLayer`). `corners` is row-major, 4 values per
- * cell. No copyrighted bytes — the encoder round-trips the decoder under test.
+ * Builds a synthetic `map.dat`: an `lsiz` dims chunk + an `lmlt` landscape-object layer (a row-major
+ * `2W × 2H` half-cell grid, RLE-packed via the faithful `packMapLayer`). `halfCells` is the raw lane
+ * (4 values per cell as a 2×2 block spanning two lane rows). No copyrighted bytes — the encoder
+ * round-trips the decoder under test.
  */
-function buildMapDat(width: number, height: number, corners: number[]): Uint8Array {
+function buildMapDat(width: number, height: number, halfCells: number[]): Uint8Array {
   return encodeMapDat([
     { tag: 'lsiz', version: 1, payload: encodeMapSize({ width, height }) },
-    { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from(corners)) },
+    { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from(halfCells)) },
   ]);
 }
 
 describe('mapDatToTerrain', () => {
-  it('decodes a synthetic map.dat into the per-cell TerrainMap (dominant corner per cell, +1 IR typeId)', () => {
-    // 2×1 grid. Cell 0: corners all raw 2 (uniform). Cell 1: corners [5,5,2,2] -> tie, lowest raw 2 wins.
-    // Each raw corner index is shifted +1 onto the 1-based IR typeId.
-    const terrain = mapDatToTerrain(buildMapDat(2, 1, [2, 2, 2, 2, 5, 5, 2, 2]));
-    expect(terrain).toEqual({ width: 2, height: 1, typeIds: [3, 3] }); // raw 2 -> IR typeId 3
+  it('decodes a synthetic map.dat into the per-cell TerrainMap (dominant half-cell per cell)', () => {
+    // 2×1 grid = a 4×2 half-cell lane. Cell 0's 2×2 block is uniform raw 2; cell 1's block is
+    // [5,2,5,2] -> tie at 2 -> the lowest raw value (2) wins. Raw values ARE the IR typeIds.
+    const terrain = mapDatToTerrain(
+      buildMapDat(2, 1, [
+        2,
+        2,
+        5,
+        2, // half-cell row 0
+        2,
+        2,
+        5,
+        2, // half-cell row 1
+      ]),
+    );
+    expect(terrain).toEqual({ width: 2, height: 1, typeIds: [2, 2] });
   });
 
-  it('reduces a non-uniform cell to its dominant corner typeId', () => {
-    // 1×1 grid, corners [5,5,5,2] -> raw 5 dominates (3 vs 1) -> IR typeId 6.
+  it('reduces a non-uniform cell to its dominant half-cell typeId', () => {
+    // 1×1 grid, block [5,5,5,2] -> raw 5 dominates (3 vs 1) and passes through unshifted.
     const terrain = mapDatToTerrain(buildMapDat(1, 1, [5, 5, 5, 2]));
-    expect(terrain).toEqual({ width: 1, height: 1, typeIds: [6] });
+    expect(terrain).toEqual({ width: 1, height: 1, typeIds: [5] });
   });
 
   it('throws on a map.dat with no lmlt landscape-type chunk', () => {
@@ -849,6 +861,79 @@ describe('mapDatToTerrain', () => {
 
   it('throws on a non-container buffer', () => {
     expect(() => mapDatToTerrain(Uint8Array.from([1, 2, 3, 4]))).toThrow(/mapdat/);
+  });
+
+  /** Encodes a name-dictionary payload: [u32 count] then per entry [u8 len][bytes][0x00]. */
+  const stringList = (names: string[]): Uint8Array => {
+    const bytes: number[] = [names.length & 0xff, (names.length >>> 8) & 0xff, 0, 0];
+    for (const n of names) {
+      bytes.push(n.length);
+      for (let i = 0; i < n.length; i++) bytes.push(n.charCodeAt(i) & 0xff);
+      bytes.push(0);
+    }
+    return Uint8Array.from(bytes);
+  };
+
+  it('emits the ground layer from empa/empb + the eapd name dictionary, compacted to used names', () => {
+    // 2×1 grid. The eapd dictionary has 4 names; the lanes only use ids 1 and 3, so the emitted
+    // pattern list is compacted to those two (ascending), and the lanes remap onto it.
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 2, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0])) },
+      { tag: 'empa', version: 1, payload: packX6elLayer(Uint16Array.from([1, 3])) },
+      { tag: 'empb', version: 1, payload: packX6elLayer(Uint16Array.from([3, 3])) },
+      {
+        tag: 'eapd',
+        version: 1,
+        payload: stringList(['border', 'meadow 01', 'water 01', 'block meadow 00 01 00']),
+      },
+    ]);
+    const terrain = mapDatToTerrain(bytes);
+    expect(terrain.ground).toEqual({
+      patterns: ['meadow 01', 'block meadow 00 01 00'],
+      a: [0, 1],
+      b: [1, 1],
+    });
+  });
+
+  it('emits the objects layer from emla + the eald name dictionary as sparse half-cell triples', () => {
+    // 1×1 grid = a 2×2 half-cell object lane. Two placements (ids 2 and 0), the rest empty (0xffff).
+    // Types compact to the used names ascending by dictionary id; placements scan row-major.
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 4, 0, 0])) },
+      { tag: 'emla', version: 1, payload: packX6elLayer(Uint16Array.from([0xffff, 2, 0, 0xffff])) },
+      { tag: 'eald', version: 1, payload: stringList(['stones 02 grey', 'unused', 'palm 03']) },
+    ]);
+    const terrain = mapDatToTerrain(bytes);
+    expect(terrain.objects).toEqual({
+      types: ['stones 02 grey', 'palm 03'],
+      placements: [
+        1,
+        0,
+        1, // (hx 1, hy 0) -> palm 03 (dictionary id 2 -> compact 1)
+        0,
+        1,
+        0, // (hx 0, hy 1) -> stones 02 grey (dictionary id 0 -> compact 0)
+      ],
+    });
+  });
+
+  it('omits ground/objects when the map lacks the lanes (an lmlt-only save)', () => {
+    const terrain = mapDatToTerrain(buildMapDat(1, 1, [2, 2, 2, 2]));
+    expect(terrain.ground).toBeUndefined();
+    expect(terrain.objects).toBeUndefined();
+  });
+
+  it('throws when a lane indexes outside its dictionary (corrupt save)', () => {
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0])) },
+      { tag: 'empa', version: 1, payload: packX6elLayer(Uint16Array.from([7])) },
+      { tag: 'empb', version: 1, payload: packX6elLayer(Uint16Array.from([0])) },
+      { tag: 'eapd', version: 1, payload: stringList(['border']) },
+    ]);
+    expect(() => mapDatToTerrain(bytes)).toThrow(/outside the 1-entry eapd dictionary/);
   });
 });
 
@@ -865,7 +950,16 @@ describe('convertMapDatTree', () => {
     await mkdir(join(game, 'CnModMaps', 'forteca'), { recursive: true });
     await writeFile(
       join(game, 'CnModMaps', 'tutorial_002', 'map.dat'),
-      buildMapDat(2, 1, [2, 2, 2, 2, 5, 5, 5, 5]),
+      buildMapDat(2, 1, [
+        3,
+        3,
+        6,
+        6, // half-cell row 0
+        3,
+        3,
+        6,
+        6, // half-cell row 1
+      ]),
     );
     await writeFile(join(game, 'CnModMaps', 'forteca', 'map.dat'), buildMapDat(1, 1, [2, 2, 2, 2]));
   });
@@ -879,7 +973,8 @@ describe('convertMapDatTree', () => {
     expect(done.map((d) => d.id)).toEqual(['forteca', 'tutorial_002']); // sorted by rel path
     expect(done.find((d) => d.id === 'tutorial_002')).toMatchObject({ width: 2, height: 1 });
 
-    // The emitted JSON is the TerrainMap the sim's buildTerrainGraph consumes (raw 2,5 -> IR 3,6).
+    // The emitted JSON is the TerrainMap the sim's buildTerrainGraph consumes (raw values ARE the
+    // IR typeIds; this synthetic map carries no ground/object lanes, so none are emitted).
     const grid = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.json'), 'utf8'));
     expect(grid).toEqual({ width: 2, height: 1, typeIds: [3, 6] });
     // The id joins onto the same-folder map.cif's MapInfo id.

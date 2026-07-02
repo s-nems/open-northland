@@ -3,9 +3,13 @@ import {
   DIAMOND_INDICES,
   TILE_HALF_H,
   TILE_HALF_W,
+  TRIANGLE_A_CORNERS,
+  TRIANGLE_B_CORNERS,
   diamondCorners,
   patternSrcRect,
   rectUVs,
+  triangleCorners,
+  triangleUVs,
 } from '../src/index.js';
 
 /**
@@ -67,5 +71,63 @@ describe('rectUVs', () => {
 describe('DIAMOND_INDICES', () => {
   it('triangulates the 4-corner diamond as (top,right,bottom)+(top,bottom,left)', () => {
     expect(DIAMOND_INDICES).toEqual([0, 1, 2, 0, 2, 3]);
+  });
+});
+
+describe('triangleCorners', () => {
+  it('triangle A is the diamond LEFT half in UV-point order (top, bottom, left)', () => {
+    expect(triangleCorners(100, 50, TRIANGLE_A_CORNERS)).toEqual([
+      100,
+      50 - TILE_HALF_H, // top   ↔ UV point 0 (the tile's TL)
+      100,
+      50 + TILE_HALF_H, // bottom ↔ UV point 1 (BR)
+      100 - TILE_HALF_W,
+      50, // left  ↔ UV point 2 (BL)
+    ]);
+  });
+
+  it('triangle B is the diamond RIGHT half in UV-point order (top, right, bottom)', () => {
+    expect(triangleCorners(100, 50, TRIANGLE_B_CORNERS)).toEqual([
+      100,
+      50 - TILE_HALF_H, // top   ↔ UV point 0 (TL)
+      100 + TILE_HALF_W,
+      50, // right ↔ UV point 1 (TR)
+      100,
+      50 + TILE_HALF_H, // bottom ↔ UV point 2 (BR)
+    ]);
+  });
+
+  it('the two halves together cover exactly the diamond (share the top-bottom diagonal)', () => {
+    const a = triangleCorners(0, 0, TRIANGLE_A_CORNERS);
+    const b = triangleCorners(0, 0, TRIANGLE_B_CORNERS);
+    // A ∪ B = the 4 diamond corners; A ∩ B = the top + bottom (the shared split diagonal).
+    const points = (flat: readonly number[]): string[] => {
+      const out: string[] = [];
+      for (let i = 0; i < flat.length; i += 2) out.push(`${flat[i]},${flat[i + 1]}`);
+      return out;
+    };
+    const union = new Set([...points(a), ...points(b)]);
+    expect(union.size).toBe(4);
+    const shared = points(a).filter((p) => points(b).includes(p));
+    expect(shared).toEqual([`0,${-TILE_HALF_H}`, `0,${TILE_HALF_H}`]);
+  });
+});
+
+describe('triangleUVs', () => {
+  it('normalises a pattern triangle`s pixel coords over the page in point order', () => {
+    // The canonical coordsA convention (TL, BR, BL of a 64px tile) on a 256×256 page.
+    expect(triangleUVs([0, 0, 63, 63, 0, 63], 256, 256)).toEqual([0, 0, 63 / 256, 63 / 256, 0, 63 / 256]);
+  });
+
+  it('handles a block tile deeper in the page (the transition-tile case)', () => {
+    // "block water shallow 00 03 02" coordsA: (192,128) (255,191) (192,191) on a 256×256 page.
+    expect(triangleUVs([192, 128, 255, 191, 192, 191], 256, 256)).toEqual([
+      0.75,
+      0.5,
+      255 / 256,
+      191 / 256,
+      0.75,
+      191 / 256,
+    ]);
   });
 });

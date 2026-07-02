@@ -13,7 +13,7 @@ import {
 } from 'pixi.js';
 import type { HudPlacement } from './hud.js';
 import { TILE_HALF_H, TILE_HALF_W, tileToScreen } from './index.js';
-import type { Camera, SpriteLayer, SpriteSheet, TerrainTextureSet } from './pixi-renderer.js';
+import type { Camera, GroundPattern, SpriteLayer, SpriteSheet, TerrainTextureSet } from './pixi-renderer.js';
 import {
   type DrawItem,
   type DrawKind,
@@ -29,7 +29,15 @@ import {
   resolveSettlerBobId,
   resolveSpriteBobId,
 } from './sprites.js';
-import { DIAMOND_INDICES, diamondCorners, rectUVs } from './terrain.js';
+import {
+  DIAMOND_INDICES,
+  TRIANGLE_A_CORNERS,
+  TRIANGLE_B_CORNERS,
+  diamondCorners,
+  rectUVs,
+  triangleCorners,
+  triangleUVs,
+} from './terrain.js';
 import { cameraViewport } from './viewport.js';
 
 /**
@@ -162,6 +170,113 @@ function meshGeometry(batch: TerrainBatch): MeshGeometry {
 }
 
 /**
+ * One placed landscape object, fully resolved by the app (atlas source + frame list + position):
+ * a tree, stone, bush, mine decal or animated wave from a decoded map's `objects` layer. `frames`
+ * with more than one entry is a looping animation ({@link phase} staggers neighbours so waves ripple
+ * instead of blinking in unison). `decor` objects are flat ground decor (waves, grass, flowers,
+ * mine stains): they batch into per-chunk meshes UNDER the entity sprites; non-decor (tall) objects
+ * (trees, stones) depth-sort against entities by their world-`y` feet anchor.
+ */
+export interface MapObjectSprite {
+  /** World-space feet anchor (px), already projected by the app (`tileToScreen` of the half-cell). */
+  readonly x: number;
+  readonly y: number;
+  readonly source: TextureSource;
+  /** The object's frame list (1 = static; >1 = a loop played at the sim tick rate). */
+  readonly frames: readonly AtlasFrame[];
+  readonly scale: number;
+  readonly decor: boolean;
+  /** Starting frame offset into {@link frames} (per-object stagger for loops). */
+  readonly phase: number;
+  /** Draw opacity (1 = opaque). Waves composite translucently over the water ground. */
+  readonly alpha: number;
+}
+
+/** One tall (non-decor) map object's pooled sprite + its static draw data. */
+interface PooledObject {
+  readonly obj: MapObjectSprite;
+  readonly sprite: Sprite;
+  attached: boolean;
+}
+
+/**
+ * One decor chunk: flat map objects batched by texture source into meshes (built once for static
+ * objects; animated ones have their vertex/uv buffers rewritten in place when the play-head
+ * advances — and only while the chunk is visible). AABB-culled like terrain chunks.
+ */
+interface DecorChunk {
+  readonly container: Container;
+  readonly minX: number;
+  readonly minY: number;
+  readonly maxX: number;
+  readonly maxY: number;
+  /** Animated batches to rewrite on an anim-tick advance (empty for an all-static chunk). */
+  readonly animated: AnimatedDecorBatch[];
+}
+
+/** One animated decor batch: its mesh buffers + the objects whose quads fill them, in quad order. */
+interface AnimatedDecorBatch {
+  readonly objects: MapObjectSprite[];
+  readonly positions: Float32Array;
+  readonly uvs: Float32Array;
+  readonly geometry: MeshGeometry;
+  readonly pageW: number;
+  readonly pageH: number;
+}
+
+/**
+ * Decor chunks partition world space into square blocks of this many px (a terrain-chunk's scale).
+ * Computed lazily — a module-level `TERRAIN_CHUNK_TILES * TILE_HALF_W` would read the barrel's
+ * const before its initializer runs (the index↔world-renderer import cycle's TDZ).
+ */
+function decorChunkPx(): number {
+  return TERRAIN_CHUNK_TILES * TILE_HALF_W * 2;
+}
+
+/** Write one object's current frame as a quad into flat position/uv buffers at `quadIndex`. */
+function writeObjectQuad(
+  positions: Float32Array | number[],
+  uvs: Float32Array | number[],
+  quadIndex: number,
+  obj: MapObjectSprite,
+  frame: AtlasFrame,
+  pageW: number,
+  pageH: number,
+): void {
+  const x0 = obj.x + frame.offsetX * obj.scale;
+  const y0 = obj.y + frame.offsetY * obj.scale;
+  const x1 = x0 + frame.width * obj.scale;
+  const y1 = y0 + frame.height * obj.scale;
+  const p = quadIndex * 8;
+  positions[p] = x0;
+  positions[p + 1] = y0;
+  positions[p + 2] = x1;
+  positions[p + 3] = y0;
+  positions[p + 4] = x1;
+  positions[p + 5] = y1;
+  positions[p + 6] = x0;
+  positions[p + 7] = y1;
+  const u0 = frame.x / pageW;
+  const v0 = frame.y / pageH;
+  const u1 = (frame.x + frame.width) / pageW;
+  const v1 = (frame.y + frame.height) / pageH;
+  uvs[p] = u0;
+  uvs[p + 1] = v0;
+  uvs[p + 2] = u1;
+  uvs[p + 3] = v0;
+  uvs[p + 4] = u1;
+  uvs[p + 5] = v1;
+  uvs[p + 6] = u0;
+  uvs[p + 7] = v1;
+}
+
+/** The frame an object shows at a given animation tick (static objects always show frame 0). */
+function objectFrameAt(obj: MapObjectSprite, tick: number): AtlasFrame | undefined {
+  if (obj.frames.length <= 1) return obj.frames[0];
+  return obj.frames[(tick + obj.phase) % obj.frames.length];
+}
+
+/**
  * Which pooled entities must be DESTROYED this frame: those whose entity has left the snapshot (died),
  * NOT ones merely culled off-screen (still in `liveRefs`, kept in the pool for when they scroll back).
  * Pure + testable without a GPU — the pool-bookkeeping decision split out from the Pixi mutation.
@@ -186,6 +301,13 @@ export class WorldRenderer {
   private readonly terrainLayer = new Container();
   /** The meshed terrain blocks + their world-space AABBs, culled to the viewport each frame. */
   private terrainChunks: TerrainChunk[] = [];
+  /** Flat map-object decor (waves, grass, mine stains) — batched meshes above terrain, below sprites. */
+  private readonly decorLayer = new Container();
+  private decorChunks: DecorChunk[] = [];
+  /** Tall map objects (trees, stones) pooled as sprites in the entity layer (depth-sorted by y). */
+  private tallObjects: PooledObject[] = [];
+  /** The animation tick the decor/tall object frames were last written for. */
+  private lastAnimTick = -1;
   /** Pooled per-entity containers, depth-ordered by zIndex each frame (`sortableChildren`). */
   private readonly spriteLayer = new Container();
   /** HUD overlay — a sibling of the world layer (NOT under the camera), so it stays pinned. */
@@ -201,6 +323,7 @@ export class WorldRenderer {
     this.sheet = opts?.sheet;
     this.spriteLayer.sortableChildren = true;
     this.worldLayer.addChild(this.terrainLayer);
+    this.worldLayer.addChild(this.decorLayer);
     this.worldLayer.addChild(this.spriteLayer);
     app.stage.addChild(this.worldLayer);
     app.stage.addChild(this.hudLayer);
@@ -235,6 +358,129 @@ export class WorldRenderer {
   }
 
   /**
+   * (Re)build the retained landscape-object layers from a decoded map's placements — call ONCE per
+   * map, like {@link setTerrain}. Decor objects (flat ground decor: waves, grass, flowers, mine
+   * stains) are batched into per-block meshes under the entity sprites, one draw call per texture
+   * page per block, AABB-culled like terrain; an animated decor object's quad is rewritten in place
+   * only when the play-head advances (and only in visible blocks). Tall objects (trees, stones —
+   * anything that occludes a settler) become pooled sprites in the ENTITY layer, depth-sorted
+   * against settlers/buildings by their world-`y` feet anchor and viewport-culled each frame.
+   */
+  setMapObjects(objects: readonly MapObjectSprite[]): void {
+    this.destroyMapObjects();
+    const byBlock = new Map<string, MapObjectSprite[]>();
+    for (const obj of objects) {
+      if (obj.frames.length === 0) continue;
+      if (!obj.decor) {
+        this.tallObjects.push({ obj, sprite: new Sprite(), attached: false });
+        continue;
+      }
+      const key = `${Math.floor(obj.x / decorChunkPx())},${Math.floor(obj.y / decorChunkPx())}`;
+      let block = byBlock.get(key);
+      if (block === undefined) {
+        block = [];
+        byBlock.set(key, block);
+      }
+      block.push(obj);
+    }
+    for (const block of byBlock.values()) this.decorChunks.push(this.buildDecorChunk(block));
+  }
+
+  /** Batch one decor block: group its objects by texture source into a static and an animated mesh each. */
+  private buildDecorChunk(block: readonly MapObjectSprite[]): DecorChunk {
+    const container = new Container();
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+    // Batch key = (source, alpha): quads in one mesh share a texture AND an opacity (mesh.alpha).
+    const bySource = new Map<
+      string,
+      { source: TextureSource; alpha: number; still: MapObjectSprite[]; moving: MapObjectSprite[] }
+    >();
+    let sourceId = 0;
+    const sourceIds = new Map<TextureSource, number>();
+    for (const obj of block) {
+      let id = sourceIds.get(obj.source);
+      if (id === undefined) {
+        id = sourceId++;
+        sourceIds.set(obj.source, id);
+      }
+      const key = `${id}:${obj.alpha}`;
+      let group = bySource.get(key);
+      if (group === undefined) {
+        group = { source: obj.source, alpha: obj.alpha, still: [], moving: [] };
+        bySource.set(key, group);
+      }
+      (obj.frames.length > 1 ? group.moving : group.still).push(obj);
+      // The AABB covers every frame the object can show (frames differ a little in size/offset).
+      for (const frame of obj.frames) {
+        minX = Math.min(minX, obj.x + frame.offsetX * obj.scale);
+        minY = Math.min(minY, obj.y + frame.offsetY * obj.scale);
+        maxX = Math.max(maxX, obj.x + (frame.offsetX + frame.width) * obj.scale);
+        maxY = Math.max(maxY, obj.y + (frame.offsetY + frame.height) * obj.scale);
+      }
+    }
+    const animated: AnimatedDecorBatch[] = [];
+    for (const group of bySource.values()) {
+      const source = group.source;
+      if (group.still.length > 0) {
+        const positions = new Float32Array(group.still.length * 8);
+        const uvs = new Float32Array(group.still.length * 8);
+        const indices = new Uint32Array(group.still.length * 6);
+        for (let q = 0; q < group.still.length; q++) {
+          const obj = group.still[q] as MapObjectSprite;
+          writeObjectQuad(positions, uvs, q, obj, obj.frames[0] as AtlasFrame, source.width, source.height);
+          indices.set([q * 4, q * 4 + 1, q * 4 + 2, q * 4, q * 4 + 2, q * 4 + 3], q * 6);
+        }
+        const geometry = new MeshGeometry({ positions, uvs, indices });
+        const mesh = new Mesh({ geometry, texture: new Texture({ source }) });
+        mesh.alpha = group.alpha;
+        container.addChild(mesh);
+      }
+      if (group.moving.length > 0) {
+        const positions = new Float32Array(group.moving.length * 8);
+        const uvs = new Float32Array(group.moving.length * 8);
+        const indices = new Uint32Array(group.moving.length * 6);
+        for (let q = 0; q < group.moving.length; q++) {
+          const obj = group.moving[q] as MapObjectSprite;
+          const frame = objectFrameAt(obj, 0) as AtlasFrame;
+          writeObjectQuad(positions, uvs, q, obj, frame, source.width, source.height);
+          indices.set([q * 4, q * 4 + 1, q * 4 + 2, q * 4, q * 4 + 2, q * 4 + 3], q * 6);
+        }
+        const geometry = new MeshGeometry({ positions, uvs, indices });
+        const mesh = new Mesh({ geometry, texture: new Texture({ source }) });
+        mesh.alpha = group.alpha;
+        container.addChild(mesh);
+        animated.push({
+          objects: group.moving,
+          positions,
+          uvs,
+          geometry,
+          pageW: source.width,
+          pageH: source.height,
+        });
+      }
+    }
+    this.decorLayer.addChild(container);
+    return { container, minX, minY, maxX, maxY, animated };
+  }
+
+  /** Free the decor meshes + tall-object sprites (a map change re-invalidates both). */
+  private destroyMapObjects(): void {
+    for (const chunk of this.decorChunks) {
+      for (const child of chunk.container.children) {
+        if (child instanceof Mesh) child.geometry.destroy();
+      }
+      chunk.container.destroy({ children: true });
+    }
+    this.decorChunks = [];
+    for (const po of this.tallObjects) po.sprite.destroy();
+    this.tallObjects = [];
+    this.lastAnimTick = -1;
+  }
+
+  /**
    * Draw ONE frame: apply the camera, reconcile the sprite pool to the (culled, depth-sorted) list,
    * refresh the HUD, and render once. No allocation in the steady state — pooled sprites are updated in
    * place; only a first-seen entity or a growing layer set mints a new object.
@@ -257,6 +503,53 @@ export class WorldRenderer {
         chunk.maxX >= vp.minX && chunk.minX <= vp.maxX && chunk.maxY >= vp.minY && chunk.minY <= vp.maxY;
     }
 
+    // Landscape objects: cull the decor blocks like terrain; advance loop animations at the sim tick
+    // rate, rewriting only the VISIBLE animated batches (an off-screen wave costs nothing, and a
+    // static block is never touched after build).
+    const animAdvanced = tick !== this.lastAnimTick;
+    for (const chunk of this.decorChunks) {
+      const visible =
+        chunk.maxX >= vp.minX && chunk.minX <= vp.maxX && chunk.maxY >= vp.minY && chunk.minY <= vp.maxY;
+      chunk.container.visible = visible;
+      if (!visible || !animAdvanced) continue;
+      for (const batch of chunk.animated) {
+        for (let q = 0; q < batch.objects.length; q++) {
+          const obj = batch.objects[q] as MapObjectSprite;
+          const frame = objectFrameAt(obj, tick);
+          if (frame !== undefined) {
+            writeObjectQuad(batch.positions, batch.uvs, q, obj, frame, batch.pageW, batch.pageH);
+          }
+        }
+        batch.geometry.getBuffer('aPosition').update();
+        batch.geometry.getBuffer('aUV').update();
+      }
+    }
+    // Tall objects (trees/stones): pooled sprites culled per frame, depth-sorted against entities by
+    // their feet anchor (the same world-`y` key the entity containers use below).
+    for (const po of this.tallObjects) {
+      const obj = po.obj;
+      const visible = obj.x >= vp.minX && obj.x <= vp.maxX && obj.y >= vp.minY && obj.y <= vp.maxY;
+      if (!visible) {
+        if (po.attached) {
+          this.spriteLayer.removeChild(po.sprite);
+          po.attached = false;
+        }
+        continue;
+      }
+      const frame = objectFrameAt(obj, tick);
+      if (frame === undefined) continue;
+      po.sprite.texture = this.textureFor(obj.source, frame);
+      po.sprite.position.set(obj.x + frame.offsetX * obj.scale, obj.y + frame.offsetY * obj.scale);
+      po.sprite.scale.set(obj.scale);
+      po.sprite.alpha = obj.alpha;
+      po.sprite.zIndex = obj.y;
+      if (!po.attached) {
+        this.spriteLayer.addChild(po.sprite);
+        po.attached = true;
+      }
+    }
+    this.lastAnimTick = tick;
+
     // Reconcile the pool: get-or-create each drawn entity, update it in place, order it by zIndex.
     this.frameId++;
     for (let i = 0; i < items.length; i++) {
@@ -268,7 +561,11 @@ export class WorldRenderer {
         this.pool.set(item.ref, pe);
       }
       this.updatePooled(pe, item, tick);
-      pe.container.zIndex = i; // paint order == the depth-sorted list index (sprites move, so re-set each frame)
+      // Depth = the feet-anchor world y (the same key the tall map objects use), NOT the list index —
+      // so a settler and the tree it walks behind sort into one order. `buildSpriteScene` sorts by
+      // (y, x, id), so y-keyed zIndex preserves its order for distinct rows; Array.sort is stable, so
+      // same-y items keep their insertion order.
+      pe.container.zIndex = item.y;
       if (!pe.attached) {
         this.spriteLayer.addChild(pe.container);
         pe.attached = true;
@@ -307,6 +604,7 @@ export class WorldRenderer {
   /** Tear down the whole retained graph + caches. */
   dispose(): void {
     this.destroyTerrain(); // frees mesh geometry the layer.destroy below would otherwise orphan
+    this.destroyMapObjects();
     // Destroy EVERY pooled entity — including ones currently detached (culled off-screen), which the
     // scene-graph walk in worldLayer.destroy can't reach because they were removed from the sprite layer.
     for (const pe of this.pool.values()) pe.container.destroy({ children: true });
@@ -489,8 +787,14 @@ export class WorldRenderer {
 
   /** One batched {@link Mesh} per texture page + a fallback {@link Graphics} for unbound cells, **per
    *  block** — the GPU twin of the pure `terrain.ts` geometry, built ONCE from the grid (no per-frame
-   *  re-batch); the per-block split is what lets {@link update} cull off-screen ground. */
+   *  re-batch); the per-block split is what lets {@link update} cull off-screen ground. A decoded map
+   *  carrying its 1:1 `ground` lanes (and a texture set exposing the pattern join) takes the
+   *  per-triangle path instead; the approximated per-typeId path stays for synthetic grids. */
   private buildTexturedTerrain(terrain: SceneTerrain, textures: TerrainTextureSet): void {
+    if (terrain.ground !== undefined && textures.groundFor !== undefined) {
+      this.buildGroundTerrain(terrain, terrain.ground, textures);
+      return;
+    }
     this.buildTerrainChunks(terrain, (c0, r0, c1, r1) => {
       const byPage = new Map<string, TerrainBatch & { source: TextureSource }>();
       const fallback = new Graphics();
@@ -515,6 +819,76 @@ export class WorldRenderer {
           batch.positions.push(...diamondCorners(screen.x, screen.y));
           batch.uvs.push(...rectUVs(cellTex.rect, source.width, source.height));
           for (const idx of DIAMOND_INDICES) batch.indices.push(base + idx);
+        }
+      }
+      const children: (Mesh | Graphics)[] = [];
+      if (fallbackUsed) children.push(fallback);
+      for (const batch of byPage.values()) {
+        children.push(
+          new Mesh({ geometry: meshGeometry(batch), texture: new Texture({ source: batch.source }) }),
+        );
+      }
+      return children;
+    });
+  }
+
+  /**
+   * The 1:1 per-triangle ground: each cell's two triangles draw the exact {@link GroundPattern} the
+   * decoded map baked into its `empa`/`empb` lanes (triangle A = the diamond's left half, B = the
+   * right — see `terrain.ts`), batched per texture page per block like the per-typeId path. The
+   * per-map pattern names are resolved through {@link TerrainTextureSet.groundFor} ONCE into an
+   * index-aligned table; a cell whose pattern (or page) is unresolved falls back to a flat diamond.
+   */
+  private buildGroundTerrain(
+    terrain: SceneTerrain,
+    ground: NonNullable<SceneTerrain['ground']>,
+    textures: TerrainTextureSet,
+  ): void {
+    // Resolve the map's compact pattern list once (index-aligned); nulls fall back per cell.
+    const resolved: ({ source: TextureSource; pageKey: string; pattern: GroundPattern } | null)[] =
+      ground.patterns.map((name) => {
+        const pattern = textures.groundFor?.(name);
+        if (pattern === undefined) return null;
+        const source = textures.pages.get(pattern.pageKey);
+        if (source === undefined) return null;
+        return { source, pageKey: pattern.pageKey, pattern };
+      });
+    this.buildTerrainChunks(terrain, (c0, r0, c1, r1) => {
+      const byPage = new Map<string, TerrainBatch & { source: TextureSource }>();
+      const fallback = new Graphics();
+      let fallbackUsed = false;
+      const pushTriangle = (
+        entry: { source: TextureSource; pageKey: string; pattern: GroundPattern },
+        corners: readonly number[],
+        coords: readonly number[],
+        sx: number,
+        sy: number,
+      ): void => {
+        let batch = byPage.get(entry.pageKey);
+        if (batch === undefined) {
+          batch = { positions: [], uvs: [], indices: [], source: entry.source };
+          byPage.set(entry.pageKey, batch);
+        }
+        const base = batch.positions.length / 2;
+        batch.positions.push(...triangleCorners(sx, sy, corners));
+        batch.uvs.push(...triangleUVs(coords, entry.source.width, entry.source.height));
+        batch.indices.push(base, base + 1, base + 2);
+      };
+      for (let row = r0; row <= r1; row++) {
+        for (let col = c0; col <= c1; col++) {
+          const cell = row * terrain.width + col;
+          const screen = tileToScreen(col, row);
+          const a = resolved[ground.a[cell] ?? -1] ?? null;
+          const b = resolved[ground.b[cell] ?? -1] ?? null;
+          if (a === null || b === null) {
+            const typeId = terrain.typeIds[cell] ?? -1;
+            const cellTex = textures.cellFor(typeId);
+            fallbackDiamond(fallback, screen.x, screen.y, cellTex?.fallbackColour ?? DEFAULT_TILE_COLOUR);
+            fallbackUsed = true;
+            // Draw whichever half DID resolve on top of the fallback diamond.
+          }
+          if (a !== null) pushTriangle(a, TRIANGLE_A_CORNERS, a.pattern.coordsA, screen.x, screen.y);
+          if (b !== null) pushTriangle(b, TRIANGLE_B_CORNERS, b.pattern.coordsB, screen.x, screen.y);
         }
       }
       const children: (Mesh | Graphics)[] = [];

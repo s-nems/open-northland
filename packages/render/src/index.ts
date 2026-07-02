@@ -10,6 +10,7 @@ export {
   terrainMapToScene,
   type DrawItem,
   type DrawKind,
+  type SceneGround,
   type SceneTerrain,
   type SpriteState,
 } from './scene.js';
@@ -40,6 +41,7 @@ export {
   createPixiApp,
   loadAtlasSource,
   type Camera,
+  type GroundPattern,
   type SettlerCharacter,
   type SettlerCharacterSet,
   type SpriteSheet,
@@ -52,6 +54,7 @@ export {
   DEFAULT_HUD_STYLE,
   type HudStyle,
   type HudFrame,
+  type MapObjectSprite,
 } from './world-renderer.js';
 export {
   AnimationGallery,
@@ -75,9 +78,13 @@ export {
 } from './viewport.js';
 export {
   DIAMOND_INDICES,
+  TRIANGLE_A_CORNERS,
+  TRIANGLE_B_CORNERS,
   diamondCorners,
   rectUVs,
   patternSrcRect,
+  triangleCorners,
+  triangleUVs,
   type SrcRect,
   type CellTexture,
 } from './terrain.js';

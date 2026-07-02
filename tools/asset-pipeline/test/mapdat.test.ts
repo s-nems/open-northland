@@ -1,17 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import {
   CHUNK_HEADER_SIZE,
+  HALF_CELLS_PER_CELL,
   HOIX_MARKER,
-  LMLT_CORNERS_PER_CELL,
   MAP_LAYER_CODEC_X6,
   MAP_LAYER_CODEC_X8,
   MAP_LAYER_HEADER_SIZE,
   MAP_LAYER_SUBFORMAT,
+  type MapDatChunk,
   type MapLayer,
   TEND_ID,
+  VOID_TYPE_ID,
   XEND_ID,
   decodeMapDat,
   decodeMapSize,
+  decodeStringListChunk,
   encodeMapDat,
   encodeMapSize,
   findChunk,
@@ -19,7 +22,7 @@ import {
   lmltToTerrainMap,
   packMapLayer,
   packX6elLayer,
-  reduceCornersToCell,
+  reduceHalfCellsToCell,
   tagToId,
   unpackMapLayer,
   unpackX6elLayer,
@@ -436,71 +439,165 @@ describe('unpackX6elLayer / pck-X6el round-trip', () => {
   });
 });
 
-describe('reduceCornersToCell', () => {
-  it('returns the value of a uniform cell (all four corners equal)', () => {
-    expect(reduceCornersToCell(7, 7, 7, 7)).toBe(7);
-    expect(reduceCornersToCell(0, 0, 0, 0)).toBe(0);
+describe('reduceHalfCellsToCell', () => {
+  it('returns the value of a uniform cell (all four half-cells equal)', () => {
+    expect(reduceHalfCellsToCell(7, 7, 7, 7)).toBe(7);
+    expect(reduceHalfCellsToCell(0, 0, 0, 0)).toBe(0);
   });
 
-  it('returns the dominant (most-frequent) corner', () => {
-    expect(reduceCornersToCell(5, 5, 5, 2)).toBe(5); // 3 vs 1
-    expect(reduceCornersToCell(2, 5, 5, 5)).toBe(5); // dominant regardless of position
-    expect(reduceCornersToCell(9, 3, 3, 9)).toBe(3); // 2 vs 2 -> lower id wins (tie-break)
+  it('returns the dominant (most-frequent) value', () => {
+    expect(reduceHalfCellsToCell(5, 5, 5, 2)).toBe(5); // 3 vs 1
+    expect(reduceHalfCellsToCell(2, 5, 5, 5)).toBe(5); // dominant regardless of position
+    expect(reduceHalfCellsToCell(9, 3, 3, 9)).toBe(3); // 2 vs 2 -> lower id wins (tie-break)
   });
 
-  it('breaks ties by the lowest typeId, independent of corner order', () => {
-    // Four distinct corners — each count 1, so the tie-break selects the minimum every time.
-    expect(reduceCornersToCell(8, 1, 4, 2)).toBe(1);
-    expect(reduceCornersToCell(2, 4, 1, 8)).toBe(1);
-    // Two pairs tied at count 2 -> the smaller id of the two pair values.
-    expect(reduceCornersToCell(6, 6, 1, 1)).toBe(1);
-    expect(reduceCornersToCell(1, 6, 1, 6)).toBe(1);
+  it('breaks ties by the lowest value, independent of half-cell order', () => {
+    // Four distinct values — each count 1, so the tie-break selects the minimum every time.
+    expect(reduceHalfCellsToCell(8, 1, 4, 2)).toBe(1);
+    expect(reduceHalfCellsToCell(2, 4, 1, 8)).toBe(1);
+    // Two pairs tied at count 2 -> the smaller of the two pair values.
+    expect(reduceHalfCellsToCell(6, 6, 1, 1)).toBe(1);
+    expect(reduceHalfCellsToCell(1, 6, 1, 6)).toBe(1);
   });
 });
 
 describe('lmltToTerrainMap', () => {
-  /** Builds a MapLayer from a flat corner-byte array (4 per cell). */
-  const layer = (corners: number[]): MapLayer => ({
+  /** Builds a MapLayer from a flat half-cell byte array (row-major 2W × 2H). */
+  const layer = (halfCells: number[]): MapLayer => ({
     codec: MAP_LAYER_CODEC_X8,
-    cells: Uint8Array.from(corners),
+    cells: Uint8Array.from(halfCells),
   });
 
-  it('collapses 4 corners per cell into one row-major typeId grid (+1 to the 1-based IR typeId)', () => {
-    // 2×1 grid: cell 0 uniform raw 3, cell 1 dominant raw 5 (with a stray 2). Each +1 onto the IR typeId.
-    const map = lmltToTerrainMap(layer([3, 3, 3, 3, 5, 5, 5, 2]), { width: 2, height: 1 });
+  it('collapses each 2×2 half-cell block into one row-major typeId (raw value IS the typeId)', () => {
+    // 2×1 grid = a 4×2 half-cell lane. Cell 0's block is columns 0-1 of both rows (uniform raw 3);
+    // cell 1's block is columns 2-3 (dominant raw 5 with a stray 2 in the bottom row).
+    const map = lmltToTerrainMap(
+      layer([
+        3,
+        3,
+        5,
+        5, // half-cell row 0
+        3,
+        3,
+        5,
+        2, // half-cell row 1
+      ]),
+      { width: 2, height: 1 },
+    );
     expect(map.width).toBe(2);
     expect(map.height).toBe(1);
-    expect(map.typeIds).toEqual([4, 6]); // raw 3->4, raw 5->6
+    expect(map.typeIds).toEqual([3, 5]); // raw values pass through unshifted
     expect(map.typeIds.length).toBe(2 * 1);
   });
 
-  it('shifts a raw 0-based corner onto the 1-based IR typeId (the off-by-one the sim rejects raw)', () => {
-    // The real-data trap: the layer is 0-based but LandscapeType.typeId is 1-based (type 1 = void), so
-    // a raw 0 corner must map to IR typeId 1 — buildTerrainGraph throws on a raw 0 absent from the table.
+  it('gathers each cell block from BOTH lane rows, not four consecutive bytes', () => {
+    // 2×1 grid whose lane rows disagree: reading four consecutive bytes would see [1,1,1,1] for
+    // cell 0; the correct 2×2 block is columns 0-1 of each row = [1,1,9,9] -> tie -> lowest (1),
+    // and cell 1's block [1,1,9,9] likewise. A wrong flat read would give cell 1 = [9,9,9,9] = 9.
+    const map = lmltToTerrainMap(
+      layer([
+        1,
+        1,
+        1,
+        1, // half-cell row 0
+        9,
+        9,
+        9,
+        9, // half-cell row 1
+      ]),
+      { width: 2, height: 1 },
+    );
+    expect(map.typeIds).toEqual([1, 1]);
+  });
+
+  it('maps the empty half-cell marker (raw 0 = no object) onto the void typeId', () => {
+    // Raw values are the 1-based IR typeIds directly ([GfxLandscape] LogicType pins this); raw 0
+    // means "no landscape object here" and reduces to `void` (typeId 1) so the sim's
+    // buildTerrainGraph always resolves the grid against the IR table.
     const map = lmltToTerrainMap(layer([0, 0, 0, 0]), { width: 1, height: 1 });
-    expect(map.typeIds).toEqual([1]);
+    expect(map.typeIds).toEqual([VOID_TYPE_ID]);
   });
 
   it('produces a typeIds grid sized exactly width × height', () => {
     const cells = 3 * 2;
-    const corners = new Array(cells * LMLT_CORNERS_PER_CELL).fill(0);
-    const map = lmltToTerrainMap(layer(corners), { width: 3, height: 2 });
+    const halfCells = new Array(cells * HALF_CELLS_PER_CELL).fill(0);
+    const map = lmltToTerrainMap(layer(halfCells), { width: 3, height: 2 });
     expect(map.typeIds.length).toBe(cells);
-    expect(map.typeIds).toEqual(new Array(cells).fill(1)); // raw 0 -> IR typeId 1
+    expect(map.typeIds).toEqual(new Array(cells).fill(VOID_TYPE_ID));
   });
 
   it('is deterministic — same layer + dims yield byte-identical typeIds', () => {
-    const corners = [1, 2, 2, 1, 7, 7, 7, 7, 9, 4, 4, 9];
-    const a = lmltToTerrainMap(layer(corners), { width: 3, height: 1 });
-    const b = lmltToTerrainMap(layer(corners), { width: 3, height: 1 });
+    // 3×1 grid = a 6×2 half-cell lane.
+    const halfCells = [
+      1,
+      2,
+      7,
+      7,
+      9,
+      4, // half-cell row 0
+      2,
+      1,
+      7,
+      7,
+      4,
+      9, // half-cell row 1
+    ];
+    const a = lmltToTerrainMap(layer(halfCells), { width: 3, height: 1 });
+    const b = lmltToTerrainMap(layer(halfCells), { width: 3, height: 1 });
     expect(a.typeIds).toEqual(b.typeIds);
-    expect(a.typeIds).toEqual([2, 8, 5]); // raw [1,7,4] (1<2 tie, uniform 7, 4<9 tie) +1
+    expect(a.typeIds).toEqual([1, 7, 4]); // 1<2 tie, uniform 7, 4<9 tie — raw values unshifted
   });
 
   it('throws when the layer length is not width × height × 4', () => {
-    // 6 corner bytes can't be a 2×1 grid (needs 8).
+    // 6 half-cell bytes can't be a 2×1 grid (needs 8).
     expect(() => lmltToTerrainMap(layer([1, 1, 1, 1, 2, 2]), { width: 2, height: 1 })).toThrow(
       /lmlt layer has 6 bytes, expected 8/,
     );
+  });
+});
+
+describe('decodeStringListChunk', () => {
+  /** Builds a raw string-list chunk payload: [u32 count] then per entry [u8 len][bytes][0x00]. */
+  const listChunk = (names: string[]): MapDatChunk => {
+    const bytes: number[] = [names.length & 0xff, (names.length >>> 8) & 0xff, 0, 0];
+    for (const n of names) {
+      bytes.push(n.length);
+      for (let i = 0; i < n.length; i++) bytes.push(n.charCodeAt(i) & 0xff);
+      bytes.push(0);
+    }
+    const payload = Uint8Array.from(bytes);
+    return {
+      tag: 'eapd',
+      id: 0,
+      version: 1,
+      length: payload.length,
+      depth: 0,
+      checksum: 0,
+      payloadOffset: 0,
+      payload,
+    };
+  };
+
+  it('decodes the count-prefixed length-prefixed name list', () => {
+    expect(decodeStringListChunk(listChunk(['meadow 01', 'block water 00 00 00', '']))).toEqual([
+      'meadow 01',
+      'block water 00 00 00',
+      '',
+    ]);
+  });
+
+  it('round-trips an empty list', () => {
+    expect(decodeStringListChunk(listChunk([]))).toEqual([]);
+  });
+
+  it('throws on a count that overruns the payload', () => {
+    const chunk = listChunk(['abc']);
+    const truncated = { ...chunk, payload: chunk.payload.slice(0, chunk.payload.length - 2) };
+    expect(() => decodeStringListChunk(truncated)).toThrow(/overruns|truncated/);
+  });
+
+  it('throws on a payload too short for the header', () => {
+    const chunk = { ...listChunk([]), payload: Uint8Array.from([1, 0]) };
+    expect(() => decodeStringListChunk(chunk)).toThrow(/too short/);
   });
 });
