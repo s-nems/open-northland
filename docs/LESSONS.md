@@ -882,7 +882,7 @@ the next iteration inherits it.
   Scale by `canvas.width/rect.width` (subtract `rect.left` first for absolute cursor coords). The reducer
   unit test passed because it fed coords already in camera space — the DOM→camera conversion was the
   untested gap, surfaced only by zooming in the live page. (app/render)
-- [map-import] An "oracle-blocked algorithm" can be a non-problem because the SAVE stores the
+- [a7095e7] An "oracle-blocked algorithm" can be a non-problem because the SAVE stores the
   algorithm's OUTPUT: the per-triangle ground-pattern choice everyone assumed needed reversing sits
   verbatim in `map.dat`'s `empa`/`empb` lanes (the editor runs the placement algorithm at author
   time). Before scheduling an algorithm-reversing research task, probe the save format for the
@@ -890,7 +890,7 @@ the next iteration inherits it.
   found the maps reference shared tables **by NAME dictionaries** (`eapd`/`eald` mirror the
   `pattern.cif`/`landscapes.cif` EditName lists exactly), which is the version-robust join key the
   emitted JSON should carry too. (pipeline/format)
-- [map-import] A "4 B/cell" lane may really be a row-major `2W × 2H` HALF-CELL grid, and a
+- [a7095e7] A "4 B/cell" lane may really be a row-major `2W × 2H` HALF-CELL grid, and a
   numeric-index lane's base may be pinnable by CROSS-LANE count matching: rendering candidate layouts
   as categorical PNG images instantly falsifies the wrong one (per-cell interleave drew two
   side-by-side half-res copies; row-major drew the islands), and matching each `lmlt` value's count
