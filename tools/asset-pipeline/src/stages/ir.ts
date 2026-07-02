@@ -24,6 +24,7 @@ import {
   extractLandscape,
   extractLandscapeGfx,
   extractPatterns,
+  extractSounds,
   extractTrianglePatternTypes,
   extractTribes,
   extractVehicles,
@@ -192,6 +193,15 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   const landscapeGfx = landscapeSections
     ? extractLandscapeGfx(landscapeSections, { file: landscapeFile, layer: 'base' })
     : [];
+  // The decoded `soundfx.cif` sound bank (`.cif`-only) — the named wav groups + terrain ambient beds +
+  // life-event jingles the browser audio layer joins onto sim events / on-screen terrain. Base-game
+  // file; a partial install that lacks it yields an empty bank (the app degrades to silence). Purely
+  // render/audio-binding data — the pure sim never reads it.
+  const soundFile = join('Data', 'engine2d', 'inis', 'soundfx', 'soundfx.cif');
+  const soundSections = await loadCifSections(join(args.game, soundFile));
+  const sounds = soundSections
+    ? extractSounds(soundSections)
+    : { staticGroups: [], ambient: [], jingles: [] };
   // Overlay each building's build-material cost + ground footprint from the graphics table (joined
   // by `typeId`); a building the graphics table omits keeps the schema-default empty cost and no
   // footprint (it places with no collision — the pre-footprint behavior).
@@ -234,6 +244,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     tribes,
     atomicAnimations,
     maps,
+    sounds,
   });
 }
 
