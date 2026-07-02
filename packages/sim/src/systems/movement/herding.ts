@@ -12,6 +12,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System } from '../context.js';
 import { herdParams } from '../readviews/index.js';
+import { entityCell, manhattan } from '../shared.js';
 
 /**
  * HerdingSystem — the **follow-the-leader** movement drive for a herding animal.
@@ -70,16 +71,3 @@ export const herdingSystem: System = (world, ctx) => {
     world.add(e, MoveGoal, { cell: leaderCell }); // strayed too far — head back to the leader
   }
 };
-
-/** The cell an entity occupies — its {@link Position} snapped to a cell. */
-function entityCell(world: World, terrain: TerrainGraph, e: Entity): CellId {
-  const p = world.get(e, Position);
-  return terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
-}
-
-/** Integer Manhattan distance between two cells (the cheap reach heuristic the planner/combat use). */
-function manhattan(terrain: TerrainGraph, a: CellId, b: CellId): number {
-  const ca = terrain.coordsOf(a);
-  const cb = terrain.coordsOf(b);
-  return Math.abs(ca.x - cb.x) + Math.abs(ca.y - cb.y);
-}

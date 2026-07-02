@@ -16,6 +16,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
 import { isAggressiveAnimal, isAnimalTribe, mayAttack, mayHunt } from '../readviews/index.js';
+import { atomicDuration, entityCell, manhattan } from '../shared.js';
 
 /**
  * CombatSystem (the **targeting** half of the combat loop) — choose who each idle combatant swings
@@ -386,47 +387,3 @@ function startAttack(
  * (drain the target's hitpoints, AtomicSystem).
  */
 const ATTACK_ATOMIC_ID = 81;
-
-/**
- * Resolve the attack atomic's duration (animation length in ticks) through the data, exactly like the
- * AI planner's `atomicDuration`: the attacker's tribe binds `(jobType, atomicId)` to an animation name
- * (`setatomic`, last-wins) and `atomicAnimations` gives that name's `length`. Falls back to
- * {@link DEFAULT_ATTACK_DURATION} when the chain doesn't resolve (a test fixture may bind neither) — a
- * missing timing must not hang or zero-out the swing. (Kept local rather than shared with ai.ts: the
- * planner's copy is private to that module; duplicating this tiny resolver avoids widening the
- * cross-system `shared.ts` leaf for one more reader — refactor to a shared helper if a third appears.)
- */
-function atomicDuration(
-  ctx: SystemContext,
-  settler: { tribe: number; jobType: number | null },
-  atomicId: number,
-): number {
-  if (settler.jobType === null) return DEFAULT_ATTACK_DURATION;
-  const tribe = ctx.content.tribes.find((t) => t.typeId === settler.tribe);
-  if (tribe === undefined) return DEFAULT_ATTACK_DURATION;
-  let animation: string | undefined;
-  for (const b of tribe.atomicBindings) {
-    if (b.jobType === settler.jobType && b.atomicId === atomicId) animation = b.animation; // last-wins
-  }
-  if (animation === undefined) return DEFAULT_ATTACK_DURATION;
-  const anim = ctx.content.atomicAnimations.find((a) => a.name === animation);
-  const length = anim?.length ?? 0;
-  return length > 0 ? length : DEFAULT_ATTACK_DURATION;
-}
-
-/** Duration (ticks) used when the attack atomic→animation→length chain doesn't resolve — a non-zero
- *  default so an unresolved swing still takes visible time rather than landing instantly. */
-const DEFAULT_ATTACK_DURATION = 4;
-
-/** The cell an entity occupies — its {@link Position} snapped to a cell. */
-function entityCell(world: World, terrain: TerrainGraph, e: Entity): CellId {
-  const p = world.get(e, Position);
-  return terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
-}
-
-/** Integer Manhattan distance between two cells (the planner's cheap reach heuristic). */
-function manhattan(terrain: TerrainGraph, a: CellId, b: CellId): number {
-  const ca = terrain.coordsOf(a);
-  const cb = terrain.coordsOf(b);
-  return Math.abs(ca.x - cb.x) + Math.abs(ca.y - cb.y);
-}
