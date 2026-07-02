@@ -67,8 +67,11 @@ set of **depth-prefixed text lines**: the first byte is a nesting level (`1` = s
 grammar as the readable `.ini`. Strings are latin1 in the oracle; display text with Polish glyphs is
 CP1250 — re-decode at the IR layer where it matters, not in the container decoder.
 
-Verified end-to-end (decoder output): `housetypes.cif` (798 records), `weapontypes.cif` (2995),
-`trianglepatterntypes.cif` (82), and `CnModMaps/tutorial_001/map.cif` (476, incl. `mapsize`,
+Verified end-to-end — counts here are **raw decoded string-lines out of the container**, not
+extracted records (the extractor collapses a section's header + property lines into one record, so
+its counts are smaller — see the ground-graphics section and docs/FIDELITY.md): `housetypes.cif`
+(798), `weapontypes.cif` (2995), `trianglepatterntypes.cif` (82 lines = **10** `TrianglePatternType`
+records: 10 headers + 72 properties), and `CnModMaps/tutorial_001/map.cif` (476, incl. `mapsize`,
 `mapguid`, `MissionData`). A map's **declarative logic-header metadata** (`mapsize`/`mapguid` from
 `logiccontrol` + `misc_maptype`/`misc_mapname`) is now extracted to a `MapInfo` IR record by
 `decoders/ini.ts` `extractMapInfo` and wired into the pipeline (`cli.ts` `decodeMapTree` → 13 maps).

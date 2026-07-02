@@ -27,9 +27,13 @@ not a binary-faithful clone. Where the original is buggy or unbalanced, Vinland 
 
 ## Status
 
-Early — foundation / scaffolding. The deterministic core, type vocabulary, test harness and the
-`.cif` decoder exist; the vertical slice (one tribe, end to end) is the current target. See
-[`docs/ROADMAP.md`](docs/ROADMAP.md) for the phased plan.
+Single-tribe economy running end-to-end. The deterministic sim core, the asset pipeline (including
+`.cif` decode), and a self-sustaining one-tribe settlement — settlers executing atomic actions, a
+goods economy, a progression/tech graph, and population growth — all run headless and deterministic.
+The current target is **Phase 4: N-tribe conflict and content breadth**; combat, the five playable
+tribes, and animals-as-tribes already have their substance landed. Several render/pixel checks stay
+human-gated (an agent can't self-judge pixels). See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the
+phased plan and current target.
 
 ## Getting started
 
@@ -93,11 +97,15 @@ and lockstep-friendly. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and
 
 ## Documentation
 
+[`docs/README.md`](docs/README.md) indexes everything and gives the reading order. The essentials:
+
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — the big picture and package boundaries
 - [`docs/ECS.md`](docs/ECS.md) — the entity-component-system and atomic-action planner
 - [`docs/DATA-FORMAT.md`](docs/DATA-FORMAT.md) — the intermediate content format (IR)
-- [`docs/SOURCES.md`](docs/SOURCES.md) — original file formats and the legal posture
 - [`docs/TESTING.md`](docs/TESTING.md) — the determinism / self-validation test pyramid
+- [`docs/SCENES.md`](docs/SCENES.md) — acceptance scenes (watch a mechanic, sign off)
+- [`docs/FIDELITY.md`](docs/FIDELITY.md) — is the rebuild *faithful*, not just self-consistent?
+- [`docs/SOURCES.md`](docs/SOURCES.md) — original file formats and the (canonical) legal posture
 - [`docs/PRIOR-ART.md`](docs/PRIOR-ART.md) — practices from other engine reimplementations: adopted / deferred / consciously different
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — the phased plan and current target
 
@@ -110,8 +118,11 @@ determinism rules, and the legal guardrails.
 
 ## Legal
 
+> The authoritative statement of the project's legal posture is
+> [`docs/SOURCES.md`](docs/SOURCES.md) (**Legal line**); this section restates it for readers.
+
 **License.** Vinland is free software, released under the **GNU General Public License v3.0 (or
-later)**. See [`LICENSE`](LICENSE). Vinland is distributed in the hope that it will be useful, but
+later)** (`GPL-3.0-or-later`). See [`LICENSE`](LICENSE). Vinland is distributed in the hope that it will be useful, but
 **without any warranty**; see the license for details.
 
 **No game content.** This repository contains **no original game assets** and no copyrighted content

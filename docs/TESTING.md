@@ -26,14 +26,14 @@ See `packages/sim/test/core/determinism.test.ts`.
 ### 2. Integration — many systems over many ticks
 Build a `Simulation` from the synthetic `testContent()` fixture, run hundreds of ticks, and assert:
 - **Determinism:** two sims, same seed + inputs ⇒ identical `hashState()`.
-- **Invariants** (`src/invariants.ts`): no negative stock, hunger in range, building sanity — and
+- **Invariants** (`src/harness/invariants.ts`): no negative stock, hunger in range, building sanity — and
   domain laws as they land: **goods conservation** (goods are created only by production, destroyed
   only by consumption), **liveness/no-deadlock** (some settler makes progress each interval),
   **path validity** (waypoints are walkable cells).
 See `packages/sim/test/core/scenario.test.ts`.
 
 ### 3. E2E at the game level — headless scenarios (the key agent layer)
-The `scenario()` harness (`src/scenario.ts`) scripts the **same commands the UI issues**
+The `scenario()` harness (`src/harness/scenario.ts`) scripts the **same commands the UI issues**
 (place building, spawn settler, set production), runs the deterministic sim for N ticks, and
 asserts outcomes plus invariants **after every tick** (so a failure reports the exact breaking
 tick, not just "something's wrong at the end"). This exercises the whole game loop —
