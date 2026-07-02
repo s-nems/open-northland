@@ -3,6 +3,7 @@ import { fx } from '../../core/fixed.js';
 import { findPath } from '../../nav/pathfinding.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System } from '../context.js';
+import { buildingBlockedCells } from '../footprint.js';
 import { inRange } from '../shared.js';
 
 // pathfindingSystem lives in routing.ts (not pathfinding.ts) to avoid an eyeball collision with the
@@ -40,13 +41,18 @@ export const pathfindingSystem: System = (world, ctx) => {
   // Serve in ascending entity-id order so the per-tick budget cut is canonical (never insertion
   // order). canonicalEntities() is the sorted id list; filter to those with a live request.
   let served = 0;
+  // The walk-block overlay (cells standing buildings occupy), built lazily ONCE per tick — only a
+  // tick that actually routes pays for it. Derived state, rebuilt from the live Building components
+  // every time, so it can never drift from an upgrade/demolition (see buildingBlockedCells).
+  let blocked: ReadonlySet<CellId> | undefined;
   for (const e of world.canonicalEntities()) {
     if (served >= PATHFINDING_BUDGET_PER_TICK) break;
     const req = world.tryGet(e, PathRequest);
     if (req === undefined || req.failed) continue; // already-failed requests aren't retried
     served++;
 
-    const path = resolvePath(terrain, req.start, req.goal);
+    blocked ??= buildingBlockedCells(world, ctx, terrain);
+    const path = resolvePath(terrain, req.start, req.goal, blocked);
     if (path === null) {
       req.failed = true; // signal the planner; keep the request so it isn't silently re-issued
       world.remove(e, PathFollow); // drop any stale path so movement doesn't follow a dead route
@@ -68,7 +74,12 @@ export const pathfindingSystem: System = (world, ctx) => {
  * `0..cellCount-1` is a bad request (e.g. a goal off a smaller map) — treat it as "no route"
  * (null) rather than letting it throw inside the heuristic, since a request is boundary input.
  */
-function resolvePath(terrain: TerrainGraph, start: number, goal: number): CellId[] | null {
+function resolvePath(
+  terrain: TerrainGraph,
+  start: number,
+  goal: number,
+  blocked: ReadonlySet<CellId>,
+): CellId[] | null {
   if (!inRange(terrain, start) || !inRange(terrain, goal)) return null;
-  return findPath(terrain, start as CellId, goal as CellId);
+  return findPath(terrain, start as CellId, goal as CellId, blocked);
 }

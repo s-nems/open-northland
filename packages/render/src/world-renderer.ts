@@ -23,9 +23,11 @@ import {
 } from './scene.js';
 import {
   type AtlasFrame,
+  type BuildingDraw,
   type SpriteKind,
   pickByJob,
   resolveBuildingDraw,
+  resolveConstructionDraws,
   resolveSettlerBobId,
   resolveSpriteBobId,
 } from './sprites.js';
@@ -784,6 +786,20 @@ export class WorldRenderer {
 
     let bobId: number | null;
     if (item.kind === 'building') {
+      // An under-construction building draws its ACTIVE construction-stage stack (grey foundation →
+      // stages → body, several sprites in stacking order) when the binding carries the layers; each
+      // stage resolves through the same family/default-layer decision a finished body uses. A stage
+      // whose frame is missing/empty is skipped; if none resolves, fall through to the body draw
+      // (a partial atlas degrades to the finished look rather than drawing nothing).
+      const stack = resolveConstructionDraws(sheet.bindings.building, item);
+      if (stack !== null) {
+        const layers: ResolvedLayer[] = [];
+        for (const draw of stack) {
+          const resolved = this.buildingLayerFor(sheet, draw);
+          if (resolved !== null) layers.push(resolved);
+        }
+        if (layers.length > 0) return layers;
+      }
       const draw = resolveBuildingDraw(sheet.bindings.building, item);
       if (draw.layer !== undefined) {
         const family = sheet.families?.[draw.layer];
@@ -822,6 +838,27 @@ export class WorldRenderer {
     add({ source: sheet.source, atlas: sheet.atlas });
     for (const overlay of sheet.overlays ?? []) add(overlay);
     return layers.length > 0 ? layers : null;
+  }
+
+  /**
+   * Resolve ONE building draw (a finished body or a construction stage) to its atlas layer — the
+   * family / default-building-layer decision shared by the body and construction paths. Returns null
+   * for an unloaded family or a missing/empty frame (the caller skips or falls back).
+   */
+  private buildingLayerFor(sheet: SpriteSheet, draw: BuildingDraw): ResolvedLayer | null {
+    if (draw.layer !== undefined) {
+      const family = sheet.families?.[draw.layer];
+      if (family === undefined) return null; // unloaded named family — no wrong-bob borrow
+      const frame = family.atlas.frames.get(draw.bob);
+      if (frame === undefined || frame.width === 0 || frame.height === 0) return null;
+      const scale = sheet.familyScales?.[draw.layer] ?? sheet.kindScales?.building ?? 1;
+      return { source: family.source, frame, scale };
+    }
+    const kindLayer = sheet.kindLayers?.building;
+    if (kindLayer === undefined) return null;
+    const frame = kindLayer.atlas.frames.get(draw.bob);
+    if (frame === undefined || frame.width === 0 || frame.height === 0) return null;
+    return { source: kindLayer.source, frame, scale: sheet.kindScales?.building ?? 1 };
   }
 
   private textureFor(source: TextureSource, frame: AtlasFrame): Texture {

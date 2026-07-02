@@ -2,6 +2,7 @@ import {
   type AtlasManifest,
   type BuildingBobRef,
   type CarryingBinding,
+  type ConstructionLayerRef,
   type DirectionalAnim,
   SYNTHETIC_BINDINGS,
   type SettlerCharacter,
@@ -288,6 +289,19 @@ interface BuildingBobRow {
   readonly editName?: string;
 }
 
+/** One `[GfxHouse]` `GfxBobConstructionLayer` row as it ships in `content/ir.json`'s `constructionLayers`. */
+interface ConstructionLayerRow {
+  readonly tribeId: number;
+  readonly typeId: number;
+  readonly upgrade: boolean;
+  readonly stackIdx: number;
+  readonly bmd: string;
+  readonly paletteName: string;
+  readonly bobId: number;
+  readonly fromPct: number;
+  readonly toPct: number;
+}
+
 /** A loaded named building-family atlas: its `(bmd, palette)` identity + the {@link SpriteSheet.families} key it draws from. */
 interface BuildingFamily {
   /** The `.bmd` basename the family's rows carry, e.g. `ls_houses_viking4.bmd`. */
@@ -385,6 +399,58 @@ export function buildingBobRefsByType(
 }
 
 /**
+ * Reduce the decoded `constructionLayers` IR (the `extractConstructionLayers` leg) to the render's
+ * per-type construction-stage binding for ONE tribe — the staged-graphics twin of
+ * {@link buildingBobRefsByType}, sharing its family rules: a row's `(bmd, palette)` must be the
+ * {@link defaultFamily} (a bare-id stage on the default building layer) or a loaded named family (a
+ * layer-qualified stage); a row in an UNLOADED family is dropped (its frame-id space differs — never
+ * borrow), and a typeId whose stages end up ALL dropped is omitted entirely (it keeps its normal body
+ * draw at every progress rather than showing a partial stack). Only from-scratch rows are consumed
+ * (`upgrade === false`; the 1-rows are the original's upgrade-overlay pass — docs/FIDELITY.md), the
+ * preferred palette is used when any row has it, and each type's stages keep their source stacking
+ * order (`stackIdx`). Pure + exported so the reduction is unit-tested without a browser.
+ */
+export function constructionRefsByType(
+  rows: readonly ConstructionLayerRow[],
+  tribeId: number,
+  defaultFamily: { readonly bmdBasename: string; readonly paletteName: string },
+  families: readonly BuildingFamily[],
+): Record<number, ConstructionLayerRef[]> {
+  const byType = new Map<number, ConstructionLayerRow[]>();
+  for (const r of rows) {
+    if (r.tribeId !== tribeId || r.upgrade) continue;
+    const list = byType.get(r.typeId);
+    if (list === undefined) byType.set(r.typeId, [r]);
+    else list.push(r);
+  }
+  const out: Record<number, ConstructionLayerRef[]> = {};
+  for (const [typeId, list] of byType) {
+    const inPreferred = list.filter((r) => r.paletteName === defaultFamily.paletteName);
+    const candidates = (inPreferred.length > 0 ? inPreferred : list)
+      .slice()
+      .sort((a, b) => a.stackIdx - b.stackIdx);
+    const refs: ConstructionLayerRef[] = [];
+    let dropped = false;
+    for (const r of candidates) {
+      const base = bmdBasename(r.bmd);
+      if (base === defaultFamily.bmdBasename && r.paletteName === defaultFamily.paletteName) {
+        refs.push({ bob: r.bobId, fromPct: r.fromPct, toPct: r.toPct });
+        continue;
+      }
+      const family = families.find((f) => f.bmdBasename === base && f.paletteName === r.paletteName);
+      if (family !== undefined) {
+        refs.push({ layer: family.layer, bob: r.bobId, fromPct: r.fromPct, toPct: r.toPct });
+        continue;
+      }
+      dropped = true; // a stage in an unloaded family — the whole type keeps its body draw
+      break;
+    }
+    if (!dropped && refs.length > 0) out[typeId] = refs;
+  }
+  return out;
+}
+
+/**
  * The demo binding into the human atlases — the render twin of `vertical-slice.ts`'s `demoContent`. The
  * settler's walk/chop ranges are derived from `seqByName` (the extracted `bobSequences` for
  * `cr_hum_body_00.bmd`), so there are no hard-coded frame ids left here; an absent manifest falls back to
@@ -401,6 +467,7 @@ export function buildingBobRefsByType(
 export function buildHumanBindings(
   seqByName: ReadonlyMap<string, BobSeqRow>,
   houseBobsByType?: Readonly<Record<number, BuildingBobRef>>,
+  constructionByType?: Readonly<Record<number, readonly ConstructionLayerRef[]>>,
 ): SpriteBindings {
   const walk = directionalAnimFromSeq(seqByName, WALK_SEQ, {}, FALLBACK_WALK);
   // Idle is the WAIT animation played as ONE direction (its length isn't a clean ×8, so it isn't a
@@ -441,7 +508,16 @@ export function buildHumanBindings(
     // real data wins per type, the constant backs its five known types when the IR is partial/absent
     // ({...undefined} / {...{}} spread to nothing → just the constant). A type in NEITHER falls back to
     // the representative HOUSE_BOB via BuildingTypeBinding.default.
-    building: { byType: { ...VIKING_HOUSE01_BOBS, ...houseBobsByType }, default: HOUSE_BOB },
+    building: {
+      byType: { ...VIKING_HOUSE01_BOBS, ...houseBobsByType },
+      default: HOUSE_BOB,
+      // Construction-stage layers per type (the `GfxBobConstructionLayer` join) — an under-construction
+      // building draws its progress-gated stage stack instead of the finished body. Absent/empty when
+      // the IR is missing (`{...undefined}` spreads to nothing → no table → body draw at every progress).
+      ...(constructionByType !== undefined && Object.keys(constructionByType).length > 0
+        ? { constructionByType }
+        : {}),
+    },
     resource: TREE_BOB,
   };
 }
@@ -478,6 +554,7 @@ export const BODY_IMAGELIB = 'cr_hum_body_00.bmd';
 interface RenderIr {
   readonly bobSequences?: readonly { imagelib: string; sequences?: BobSeqRow[] }[];
   readonly buildingBobs?: readonly BuildingBobRow[];
+  readonly constructionLayers?: readonly ConstructionLayerRow[];
 }
 
 /**
@@ -985,10 +1062,18 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
     DEFAULT_BUILDING_FAMILY,
     BUILDING_FAMILIES,
   );
+  // The construction-stage layers (the same `[GfxHouse]` records' `GfxBobConstructionLayer` rows),
+  // reduced under the same family rules — an under-construction building draws its staged stack.
+  const constructionRefs = constructionRefsByType(
+    ir?.constructionLayers ?? [],
+    VIKING_TRIBE,
+    DEFAULT_BUILDING_FAMILY,
+    BUILDING_FAMILIES,
+  );
   return {
     source: body.source,
     atlas: body.atlas,
-    bindings: buildHumanBindings(sequencesFor(ir, BODY_IMAGELIB), houseBobs),
+    bindings: buildHumanBindings(sequencesFor(ir, BODY_IMAGELIB), houseBobs, constructionRefs),
     overlays: [head],
     // The tree and the DEFAULT building each draw from their OWN atlas (distinct id spaces), so they bind
     // as per-kind layers rather than sharing the body atlas the settler uses. `resource` -> TREE_BOB and

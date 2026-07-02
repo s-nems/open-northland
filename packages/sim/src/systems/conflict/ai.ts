@@ -18,6 +18,7 @@ import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
+import { interactionTile } from '../footprint.js';
 import { buildingEnabled, carrierCarryCapacity, settlerMeetsNeed } from '../progression.js';
 import {
   buildingWorkerJobs,
@@ -130,7 +131,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       }
       const food = nearestFoodStore(targets.stockpiles, world, ctx, terrain, here);
       if (food !== null) {
-        const cell = entityCell(world, terrain, food.store);
+        const cell = entityCell(world, ctx, terrain, food.store);
         if (cell === here) {
           startAtomic(
             world,
@@ -175,7 +176,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     if (settler.piety >= PIETY_PRAY_THRESHOLD) {
       const temple = nearestTemple(targets.buildings, world, ctx, terrain, here);
       if (temple !== null) {
-        const cell = entityCell(world, terrain, temple);
+        const cell = entityCell(world, ctx, terrain, temple);
         if (cell === here) {
           startAtomic(
             world,
@@ -205,7 +206,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       // Loaded: take the goods to a store that can stock them.
       const store = nearestStoreFor(targets.stockpiles, world, ctx, terrain, here, load.goodType);
       if (store === null) continue; // nowhere to deposit — idle this tick (a later slice may wait/drop)
-      const cell = entityCell(world, terrain, store);
+      const cell = entityCell(world, ctx, terrain, store);
       if (cell === here) {
         startAtomic(
           world,
@@ -232,7 +233,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // reaches harvest below when it has no binding (an unassigned harvester returns from here at null).
     const station = boundWorkplaceTarget(world, ctx, e, settler.jobType, settler.tribe);
     if (station !== null) {
-      world.add(e, MoveGoal, { cell: entityCell(world, terrain, station) });
+      world.add(e, MoveGoal, { cell: entityCell(world, ctx, terrain, station) });
       continue;
     }
 
@@ -246,7 +247,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     });
     if (node !== null) {
       const res = world.get(node, Resource);
-      const cell = entityCell(world, terrain, node);
+      const cell = entityCell(world, ctx, terrain, node);
       if (cell === here) {
         startAtomic(
           world,
@@ -267,7 +268,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // the settlement's stores). Nearest workplace with a haulable output it can deliver somewhere.
     const haul = anyHaulable ? nearestWorkplaceOutput(targets.stockpiles, world, ctx, terrain, here) : null;
     if (haul === null) continue; // nothing to harvest AND nothing to haul — idle this tick
-    const cell = entityCell(world, terrain, haul.workplace);
+    const cell = entityCell(world, ctx, terrain, haul.workplace);
     if (cell === here) {
       // Lift a batch sized by the tribe's best unlocked vehicle (`stockSlots`), or one unit on foot
       // when no vehicle is available — `pickupFromStore` caps the move to what the source actually holds.
@@ -472,7 +473,7 @@ function nearestHarvestableFor(
     if (!allowed.has(res.harvestAtomic)) continue; // data-driven gate: job must permit this atomic
     // XP gate: this settler must have cleared the harvested good's `needforgood` thresholds.
     if (!settlerMeetsNeed(ctx, settler.tribe, 'good', res.goodType, settler.experience)) continue;
-    const cell = entityCell(world, terrain, e);
+    const cell = entityCell(world, ctx, terrain, e);
     const dist = manhattan(terrain, here, cell);
     if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
       best = e;
@@ -512,7 +513,7 @@ function nearestStoreFor(
     const stock = world.get(e, Stockpile);
     const have = stock.amounts.get(goodType) ?? 0;
     if (have >= stockCapacity(world, ctx, e, goodType)) continue; // full for this good — skip
-    const cell = entityCell(world, terrain, e);
+    const cell = entityCell(world, ctx, terrain, e);
     const dist = manhattan(terrain, here, cell);
     if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
       best = e;
@@ -545,7 +546,7 @@ function nearestFoodStore(
   for (const e of candidates) {
     if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
     const stock = world.get(e, Stockpile);
-    const cell = entityCell(world, terrain, e);
+    const cell = entityCell(world, ctx, terrain, e);
     const dist = manhattan(terrain, here, cell);
     for (const [goodType, amount] of stockpileEntries(stock)) {
       if (amount <= 0 || !isFood(ctx, goodType)) continue;
@@ -580,7 +581,7 @@ function nearestTemple(
   for (const e of candidates) {
     if (!world.has(e, Building) || !world.has(e, Position)) continue;
     if (!isTemple(world, ctx, e)) continue;
-    const cell = entityCell(world, terrain, e);
+    const cell = entityCell(world, ctx, terrain, e);
     const dist = manhattan(terrain, here, cell);
     if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
       best = e;
@@ -640,7 +641,7 @@ function nearestWorkplaceOutput(
     const recipe = recipeOf(world, ctx, e);
     if (recipe === undefined) continue; // not a workplace — passive stores aren't hauled FROM
     const stock = world.get(e, Stockpile);
-    const cell = entityCell(world, terrain, e);
+    const cell = entityCell(world, ctx, terrain, e);
     const dist = manhattan(terrain, here, cell);
     // Canonical (ascending goodType) so the chosen good never depends on Map insertion history.
     for (const [goodType, amount] of stockpileEntries(stock)) {
@@ -697,10 +698,10 @@ function staffsBoundWorkplaceHere(world: World, ctx: SystemContext, settler: Ent
   const b = binding.workplace;
   if (recipeOf(world, ctx, b) === undefined) return false; // bound building isn't a producing workplace
   if (!buildingWorkerJobs(world, ctx, b).has(s.jobType)) return false; // doesn't employ this job
-  const bp = world.tryGet(b, Position);
+  const at = interactionTile(world, ctx, b); // the door cell — where an operator stands (footprint types)
   const sp = world.tryGet(settler, Position);
-  if (bp === undefined || sp === undefined) return false;
-  return fx.toInt(bp.x) === fx.toInt(sp.x) && fx.toInt(bp.y) === fx.toInt(sp.y);
+  if (at === null || sp === undefined) return false;
+  return at.x === fx.toInt(sp.x) && at.y === fx.toInt(sp.y);
 }
 
 /**
@@ -738,8 +739,17 @@ function boundWorkplaceTarget(
   return b;
 }
 
-/** The cell an entity occupies — its {@link Position} (a resource node, a store) snapped to a cell. */
-function entityCell(world: World, terrain: TerrainGraph, e: Entity): CellId {
+/**
+ * The cell a walk-to / are-we-there target resolves to. For a {@link Building} this is its
+ * **interaction tile** — the door cell when the type's footprint names one ({@link interactionTile}),
+ * since the walls themselves are now walk-blocked and the original's settlers enter through the door.
+ * Everything else (a resource node, a bare store fixture, a boat hull) keeps its {@link Position}
+ * tile. Distances, walk goals, and the `cell === here` arrival checks all resolve through here, so
+ * the goal a settler walks to and the tile that counts as "at the building" can never disagree.
+ */
+function entityCell(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity): CellId {
+  const at = interactionTile(world, ctx, e);
+  if (at !== null) return terrain.cellAtClamped(at.x, at.y);
   const p = world.get(e, Position);
   return terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
 }

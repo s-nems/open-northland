@@ -11,6 +11,7 @@ import {
   carryAnimsByGood,
   carryHeadAnims,
   characterBinding,
+  constructionRefsByType,
   directionalAnimFromSeq,
 } from '../src/real-sprites.js';
 import { VIKING_CHARACTERS } from '../src/viking-roster.js';
@@ -660,5 +661,57 @@ describe('carryHeadAnims — the head-borrow for head-empty carry cycles', () =>
 
   it('returns the input table when there is no walk to borrow', () => {
     expect(carryHeadAnims(byGood, undefined, headAtlas())).toBe(byGood);
+
+describe('constructionRefsByType', () => {
+  const DEFAULT_FAMILY = { bmdBasename: 'ls_houses_viking.bmd', paletteName: 'house01' };
+  const FAMILIES = [
+    { bmdBasename: 'ls_houses_viking4.bmd', paletteName: 'house01', layer: 'ls_houses_viking4.house01' },
+  ];
+  const row = (over: Record<string, unknown>) => ({
+    tribeId: 1,
+    typeId: 2,
+    upgrade: false,
+    stackIdx: 0,
+    bmd: 'data/x/ls_houses_viking.bmd',
+    paletteName: 'house01',
+    bobId: 100,
+    fromPct: 0,
+    toPct: 100,
+    ...over,
+  });
+
+  it('keeps a type’s from-scratch stages in stacking order, dropping the upgrade-overlay rows', () => {
+    const rows = [
+      row({ stackIdx: 2, bobId: 1, fromPct: 20 }),
+      row({ stackIdx: 0, bobId: 3, fromPct: 10, toPct: 70 }),
+      row({ stackIdx: 3, bobId: 11, upgrade: true }), // the `1` row — not a from-scratch stage
+      row({ stackIdx: 1, bobId: 2, toPct: 50 }),
+    ];
+    expect(constructionRefsByType(rows, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({
+      2: [
+        { bob: 3, fromPct: 10, toPct: 70 },
+        { bob: 2, fromPct: 0, toPct: 50 },
+        { bob: 1, fromPct: 20, toPct: 100 },
+      ],
+    });
+  });
+
+  it('layer-qualifies a stage in a loaded named family and prefers the default palette', () => {
+    const rows = [
+      row({ bmd: 'data/x/ls_houses_viking4.bmd', bobId: 34 }),
+      row({ paletteName: 'house02', bobId: 999 }), // the other skin — ignored while house01 rows exist
+    ];
+    expect(constructionRefsByType(rows, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({
+      2: [{ layer: 'ls_houses_viking4.house01', bob: 34, fromPct: 0, toPct: 100 }],
+    });
+  });
+
+  it('omits a type with a stage in an UNLOADED family (never a partial stack) and other tribes', () => {
+    const rows = [
+      row({ bobId: 1 }),
+      row({ stackIdx: 1, bmd: 'data/x/ls_houses_viking9.bmd', bobId: 2 }), // unloaded family
+      row({ typeId: 7, tribeId: 2, bobId: 50 }), // another tribe
+    ];
+    expect(constructionRefsByType(rows, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({});
   });
 });

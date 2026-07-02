@@ -32,9 +32,21 @@ interface CellRecord {
  * Find the lowest-cost walkable path from `start` to `goal` on the cell graph, inclusive of both
  * endpoints. Returns `null` when no route exists or either endpoint is unwalkable. `start === goal`
  * yields the single-cell path `[start]` (when walkable).
+ *
+ * `blocked` is the DYNAMIC walk-block overlay (cells standing buildings occupy —
+ * `buildingBlockedCells`), applied on top of the graph's static terrain walkability: a blocked cell
+ * is never entered (goal included), but a blocked START is deliberately exempt — an entity standing
+ * where a foundation just appeared must be able to step OFF the footprint (its first move leaves the
+ * blocked cell; it can never move back in).
  */
-export function findPath(graph: TerrainGraph, start: CellId, goal: CellId): CellId[] | null {
+export function findPath(
+  graph: TerrainGraph,
+  start: CellId,
+  goal: CellId,
+  blocked?: ReadonlySet<CellId>,
+): CellId[] | null {
   if (!graph.isWalkable(start) || !graph.isWalkable(goal)) return null;
+  if (blocked?.has(goal)) return null; // an occupied goal is unreachable
   if (start === goal) return [start];
 
   // Dense per-cell records indexed by cell id — a flat array, not a Map, so lookups are pure array
@@ -75,6 +87,7 @@ export function findPath(graph: TerrainGraph, start: CellId, goal: CellId): Cell
     current.open = false; // close it — admissible heuristic means it is now settled
 
     for (const next of graph.walkableNeighbours(current.cell)) {
+      if (blocked?.has(next)) continue; // a building's cell — never entered
       const tentativeG = fx.add(current.g, graph.walkCost(next));
       const existing = records[next];
       if (existing === undefined) {

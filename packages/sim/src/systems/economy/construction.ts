@@ -1,5 +1,5 @@
 import { Building, Stockpile } from '../../components/index.js';
-import { ONE } from '../../core/fixed.js';
+import { type Fixed, ONE, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System } from '../context.js';
 import { homeNextTier } from '../shared.js';
@@ -53,7 +53,17 @@ export const constructionSystem: System = (world, ctx) => {
     if (type === undefined) continue; // unknown type — can't price the build (shouldn't happen)
 
     if (building.built < ONE) {
-      if (!materialsPresent(world, e, type.construction)) continue; // still waiting on deliveries
+      if (!materialsPresent(world, e, type.construction)) {
+        // Still waiting on deliveries: expose the site's PROGRESS as the delivered-material fraction
+        // (0 = the bare grey foundation, rising as carriers land materials) so the render can show
+        // the original's staged construction graphics. The fraction only ever reaches ONE through
+        // the completion branch below (an integer floor keeps a partial delivery strictly < ONE),
+        // so the `built >= ONE` gates (production / housing) stay exact. APPROXIMATED: the original
+        // advances a site by builders WORKING it, not by deliveries alone — the builder-driven pace
+        // is deferred (docs/FIDELITY.md "ConstructionSystem").
+        building.built = deliveredFraction(world, e, type.construction);
+        continue;
+      }
       consumeMaterials(world, e, type.construction);
       building.built = ONE; // built — production / housing now count it
       ctx.events.emit({ kind: 'buildingFinished', entity: e });
@@ -72,6 +82,29 @@ export const constructionSystem: System = (world, ctx) => {
     ctx.events.emit({ kind: 'buildingUpgraded', entity: e, level: building.level });
   }
 };
+
+/**
+ * The fraction (fixed-point, in [0, ONE)) of the site's `construction` cost already delivered into
+ * its stockpile: Σ min(held, needed) / Σ needed, each line capped at its own need so an over-delivery
+ * of one material can't mask a missing other. Strictly below ONE until every line is present in full
+ * (the integer division floors), so only the completion branch ever sets `built = ONE`. An empty
+ * cost never reaches here (the caller's `materialsPresent` is trivially true for it).
+ */
+function deliveredFraction(
+  world: World,
+  building: Entity,
+  cost: ReadonlyArray<{ goodType: number; amount: number }>,
+): Fixed {
+  const stock = world.get(building, Stockpile).amounts;
+  let needed = 0;
+  let delivered = 0;
+  for (const line of cost) {
+    needed += line.amount;
+    delivered += Math.min(Math.max(stock.get(line.goodType) ?? 0, 0), line.amount);
+  }
+  if (needed <= 0) return fx.fromInt(0);
+  return fx.div(fx.fromInt(delivered), fx.fromInt(needed));
+}
 
 /** Whether the construction site's own stockpile holds every `construction` material in full. An
  *  empty cost (a free type) is trivially satisfied. */

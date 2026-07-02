@@ -195,6 +195,26 @@ export interface BuildingTypeBinding {
   readonly byType: Readonly<Record<number, BuildingBobRef>>;
   /** Bob ref for a typeId absent from {@link byType} — the fallback house (optionally layer-qualified). */
   readonly default: BuildingBobRef;
+  /**
+   * Construction-stage layers per building typeId — the `[GfxHouse]` `GfxBobConstructionLayer` table
+   * (from-scratch rows only), each type's layers in the source's stacking (file) order. An
+   * under-construction {@link DrawItem} (`builtPct` present) draws every layer whose `[fromPct, toPct]`
+   * range contains its progress, stacked in list order ({@link resolveConstructionDraws}) — the grey
+   * foundation alone at 0%, rising stages after. A type absent here (or a table-less binding) keeps its
+   * normal finished-body draw at every progress.
+   */
+  readonly constructionByType?: Readonly<Record<number, readonly ConstructionLayerRef[]>>;
+}
+
+/**
+ * One construction-stage layer of a building type: the bob to draw (optionally from a named atlas-layer
+ * family, like {@link BuildingBobRef}) while build progress is within `[fromPct, toPct]` (inclusive).
+ */
+export interface ConstructionLayerRef {
+  readonly bob: number;
+  readonly layer?: string;
+  readonly fromPct: number;
+  readonly toPct: number;
 }
 
 /**
@@ -313,6 +333,30 @@ export function resolveBuildingDraw(binding: number | BuildingTypeBinding, item:
   if (typeof binding === 'number') return { bob: binding };
   const ref = (item.typeId !== undefined ? binding.byType[item.typeId] : undefined) ?? binding.default;
   return typeof ref === 'number' ? { bob: ref } : { bob: ref.bob, layer: ref.layer };
+}
+
+/**
+ * Resolve the STACK of construction-stage draws an under-construction building shows, or `null` when
+ * the normal body draw applies. Non-null only when the item is a building mid-construction
+ * ({@link DrawItem.builtPct} present) whose binding carries construction layers for its type: then the
+ * result is every layer whose `[fromPct, toPct]` range contains the progress, in the table's stacking
+ * order (the source's file order — the finished body is listed so it lands on top at high progress).
+ * At 0% that is the grey foundation alone; ranges overlap by design, so mid-build shows several stacked
+ * stages, exactly the original's staged construction. An empty active set (a gap in the ranges) returns
+ * the layer list's FIRST entry as a floor — a site never draws as nothing (the foundation marks the
+ * occupied ground from the placement tick). Pure: the layer *decision*; the GPU half binds the frames.
+ */
+export function resolveConstructionDraws(
+  binding: number | BuildingTypeBinding,
+  item: DrawItem,
+): BuildingDraw[] | null {
+  if (typeof binding === 'number' || item.builtPct === undefined || item.typeId === undefined) return null;
+  const layers = binding.constructionByType?.[item.typeId];
+  if (layers === undefined || layers.length === 0) return null;
+  const pct = item.builtPct;
+  const active = layers.filter((l) => pct >= l.fromPct && pct <= l.toPct);
+  const chosen = active.length > 0 ? active : [layers[0] as ConstructionLayerRef];
+  return chosen.map((l) => (l.layer === undefined ? { bob: l.bob } : { bob: l.bob, layer: l.layer }));
 }
 
 /**

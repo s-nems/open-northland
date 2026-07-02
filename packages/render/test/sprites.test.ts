@@ -13,6 +13,7 @@ import {
   indexAtlasFrames,
   pickByJob,
   resolveBuildingDraw,
+  resolveConstructionDraws,
   resolveSpriteBobId,
   resolveSpriteFrame,
 } from '../src/index.js';
@@ -251,6 +252,60 @@ describe('resolveBuildingDraw — layer-qualified (multi-.bmd) building binding'
     expect(resolveBuildingDraw(binding, building(1)).bob).toBe(
       resolveSpriteBobId(building(1), { settler: 10, building: binding, resource: 30 }),
     );
+  });
+});
+
+describe('resolveConstructionDraws — construction-stage stack for an under-construction building', () => {
+  /** A building draw item at a given construction progress percent (omit = finished). */
+  function site(typeId: number, builtPct?: number): DrawItem {
+    return {
+      kind: 'building',
+      ref: 1,
+      x: 0,
+      y: 0,
+      depth: 0,
+      typeId,
+      ...(builtPct !== undefined ? { builtPct } : {}),
+    };
+  }
+  // The viking-home shape: foundation 0-50, scaffold 10-70, body 20-100 (stacking = list order); the
+  // body stage is layer-qualified to show a family stage resolves like a family body.
+  const binding: BuildingTypeBinding = {
+    byType: { 2: 1 },
+    default: 11,
+    constructionByType: {
+      2: [
+        { bob: 102, fromPct: 0, toPct: 50 },
+        { bob: 103, fromPct: 10, toPct: 70 },
+        { bob: 101, layer: 'viking4', fromPct: 20, toPct: 100 },
+      ],
+    },
+  };
+
+  it('shows only the grey foundation at 0% and the full overlap mid-build, in stacking order', () => {
+    expect(resolveConstructionDraws(binding, site(2, 0))).toEqual([{ bob: 102 }]);
+    expect(resolveConstructionDraws(binding, site(2, 30))).toEqual([
+      { bob: 102 },
+      { bob: 103 },
+      { bob: 101, layer: 'viking4' },
+    ]);
+    expect(resolveConstructionDraws(binding, site(2, 99))).toEqual([{ bob: 101, layer: 'viking4' }]);
+  });
+
+  it('returns null for a finished building, an unmapped type, and a table-less/plain binding', () => {
+    expect(resolveConstructionDraws(binding, site(2))).toBeNull(); // no builtPct — finished
+    expect(resolveConstructionDraws(binding, site(999, 30))).toBeNull(); // type has no stage table
+    expect(resolveConstructionDraws({ byType: {}, default: 11 }, site(2, 30))).toBeNull();
+    expect(resolveConstructionDraws(20, site(2, 30))).toBeNull(); // plain-number binding
+  });
+
+  it('floors an out-of-range progress on the first stage so a site never draws as nothing', () => {
+    const gappy: BuildingTypeBinding = {
+      byType: {},
+      default: 11,
+      constructionByType: { 2: [{ bob: 102, fromPct: 10, toPct: 50 }] },
+    };
+    expect(resolveConstructionDraws(gappy, site(2, 0))).toEqual([{ bob: 102 }]); // below every range
   });
 });
 
