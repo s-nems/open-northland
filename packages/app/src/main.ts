@@ -7,6 +7,7 @@ import {
   placeHud,
 } from '@vinland/render';
 import { FixedTimestep } from '@vinland/sim';
+import { renderAnimationGallery } from './anim-mode.js';
 import { cameraFor, createCameraController, floatParam } from './camera.js';
 import { resolveSpriteSheet } from './real-sprites.js';
 import { loadRealTerrain } from './real-terrain.js';
@@ -41,6 +42,12 @@ async function main(): Promise<void> {
   const sceneId = params.get('scene');
   if (sceneId !== null) {
     await renderSceneMode(canvas, sceneId, params);
+    return;
+  }
+  // `?anim` opens the character **animation gallery**: every extracted `[bobseq]` played from the atlas,
+  // with a direction selector, so a human can validate all animations in all 8 facings (see anim-mode.ts).
+  if (params.has('anim')) {
+    await renderAnimationGallery(canvas, params);
     return;
   }
 

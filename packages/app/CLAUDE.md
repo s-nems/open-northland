@@ -20,6 +20,10 @@ reproducible default so the committed build + the `npm run shot` PNG never depen
 
 - `?shot[&seed&ticks&hud]` — headless deterministic screenshot entry (`shot.ts`).
 - `?scene=<id>` — run a registered **acceptance scene** with its checklist overlay (`scene-mode.ts`).
+- `?anim[&dir=full|0..7&cols=N&filter=<substr>&zoom&speed]` — the character **animation gallery**
+  (`anim-mode.ts`): every extracted `[bobseq]` of the viking civilian body played from the atlas, with a
+  direction selector, so a human can validate all animations in all 8 facings. Real graphics required
+  (shows a "run the pipeline" message when `content/` is absent).
 - `?map=<id>` · `?atlas` · `?terrain` · `?zoom=N` · `?speed=N` — real decoded grid / sprite atlas / ground
   textures / camera magnify / playback rate. These compose with `?scene=`. Real graphics are the **default**
   for live + scene (`resolveSpriteSheet` degrades to synthetic markers when `content/` is absent, so a bare

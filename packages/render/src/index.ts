@@ -49,6 +49,18 @@ export {
   type HudFrame,
 } from './world-renderer.js';
 export {
+  AnimationGallery,
+  galleryCellLayout,
+  clipDirs,
+  galleryBobId,
+  headBobId,
+  GALLERY_DIRS,
+  COMPASS_TO_BLOCK,
+  type GalleryClip,
+  type GalleryDirection,
+  type GalleryCellBox,
+} from './animation-gallery.js';
+export {
   cameraViewport,
   isVisible,
   visibleTileRange,

@@ -51,6 +51,8 @@ describe('buildHumanBindings', () => {
   it('derives the settler walk/chop/carry anims from the decoded sequences', () => {
     const seqs = new Map([
       ['human_man_generic_walk', { name: 'human_man_generic_walk', start: 1988, length: 96 }],
+      // Idle is the WAIT sequence played SINGLE-direction (57 isn't ×8) — the full loop, not a frozen hold.
+      ['human_man_generic_wait', { name: 'human_man_generic_wait', start: 1931, length: 57 }],
       [
         'human_man_woodcutter_work_woodcutting',
         { name: 'human_man_woodcutter_work_woodcutting', start: 5106, length: 120 },
@@ -59,7 +61,8 @@ describe('buildHumanBindings', () => {
     ]);
     const bindings = buildHumanBindings(seqs);
     expect(bindings.settler).toEqual({
-      idle: { start: 1988, dirs: 8, stride: 12, frames: 1 },
+      // Idle = the WHOLE wait strip as ONE direction (57 frames), not a facing-sliced 1/8 — and it ANIMATES.
+      idle: { start: 1931, dirs: 1, stride: 57 },
       moving: { start: 1988, dirs: 8, stride: 12 },
       byAtomic: { 24: { start: 5106, dirs: 8, stride: 15, phaseStart: 9 } },
       carrying: {
@@ -67,6 +70,18 @@ describe('buildHumanBindings', () => {
         moving: { start: 4580, dirs: 8, stride: 12 },
       },
     });
+  });
+
+  it('binds idle to a full-loop single-direction wait (never a frozen hold, never a facing-sliced excerpt)', () => {
+    // The never-frozen guarantee: idle is a multi-frame DirectionalAnim, not a `frames: 1` still. With no
+    // decoded seq it falls back to the known-good wait range (start 1931) — single-direction (dirs 1), so
+    // it plays the WHOLE 57-frame loop rather than a 1/8 slice (57 isn't a clean ×8).
+    const idle = buildHumanBindings(new Map()).settler;
+    const anim = typeof idle === 'number' ? undefined : idle.idle;
+    expect(anim).toEqual({ start: 1931, dirs: 1, stride: 57 });
+    // Not a `frames: 1` hold — the effective cycle (frames ?? stride) is the whole strip, so it animates.
+    const cycle = typeof anim === 'number' || anim === undefined ? 0 : (anim.frames ?? anim.stride);
+    expect(cycle).toBe(57);
   });
 
   it('falls back to the transcribed house table when no buildingBobs map is supplied', () => {
@@ -109,7 +124,7 @@ describe('buildHumanBindings', () => {
     // The committed FALLBACK_* ranges must equal what the real animations.ini yields, so a checkout
     // without content/ draws the same cycles as one with it. Asserting the empty-map result pins that.
     expect(buildHumanBindings(new Map()).settler).toEqual({
-      idle: { start: 1988, dirs: 8, stride: 12, frames: 1 },
+      idle: { start: 1931, dirs: 1, stride: 57 }, // FALLBACK_WAIT: the whole wait loop, single-direction
       moving: { start: 1988, dirs: 8, stride: 12 },
       byAtomic: { 24: { start: 5106, dirs: 8, stride: 15, phaseStart: 9 } },
       carrying: {

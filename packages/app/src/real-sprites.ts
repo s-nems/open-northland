@@ -191,6 +191,10 @@ const CANONICAL_EDIT_NAME: Readonly<Record<number, string>> = {
  */
 const DIRS = 8;
 const WALK_SEQ = 'human_man_generic_walk';
+// The standing IDLE loop — the settler breathing/shifting weight while it has nothing to do. The original
+// plays this (not a frozen frame) whenever a settler stands, so a settler is NEVER a still image. Bound to
+// the `idle` state so every standing settler animates; replaces the earlier frame-0 hold of the walk seq.
+const WAIT_SEQ = 'human_man_generic_wait';
 const CHOP_SEQ = 'human_man_woodcutter_work_woodcutting';
 // The LOADED gait — the settler walking while hauling a log. Same directional layout as the empty walk;
 // the frames simply carry the wood. Bound to the settler's `carrying` override so a woodcutter walking
@@ -210,12 +214,17 @@ const FALLBACK_WALK: DirectionalAnim = { start: 1988, dirs: DIRS, stride: 12 };
 // `elapsed`, same speed as every other animation.
 const FALLBACK_CHOP: DirectionalAnim = { start: 5106, dirs: DIRS, stride: 15, phaseStart: 9 };
 const FALLBACK_WALK_WOOD: DirectionalAnim = { start: 4580, dirs: DIRS, stride: 12 };
+// The idle/wait loop (verified against an owned copy: 1931/57). 57 isn't a clean ×8, so wait is NOT a
+// directional cycle — it's a SINGLE-direction animation (`dirs: 1`, the whole 57-frame strip), the same
+// way the gallery's `clipDirs` classifies a non-×8 length (see docs/FIDELITY.md). Playing the full loop
+// (not a facing-sliced 1/8 excerpt) is what makes a standing settler breathe rather than freeze.
+const FALLBACK_WAIT: DirectionalAnim = { start: 1931, dirs: 1, stride: 57 };
 
 /** The chop atomic id (the demo slice's `harvest`), mapped to the woodcutting swing. */
 const HARVEST_ATOMIC = 24;
 
 /** One decoded `[bobseq]` sequence as it ships in `content/ir.json`'s `bobSequences`. */
-interface BobSeqRow {
+export interface BobSeqRow {
   readonly name: string;
   readonly start: number;
   readonly length: number;
@@ -373,7 +382,14 @@ export function buildHumanBindings(
   houseBobsByType?: Readonly<Record<number, BuildingBobRef>>,
 ): SpriteBindings {
   const walk = directionalAnimFromSeq(seqByName, WALK_SEQ, {}, FALLBACK_WALK);
-  const stand = directionalAnimFromSeq(seqByName, WALK_SEQ, { frames: 1 }, { ...FALLBACK_WALK, frames: 1 });
+  // Idle is the WAIT animation played as ONE direction (its length isn't a clean ×8, so it isn't a
+  // directional cycle — the original plays it locked to a facing; docs/FIDELITY.md). The FULL loop, so a
+  // standing settler breathes — not a frozen frame, and not a truncated facing-sliced 1/8 excerpt.
+  const waitRow = seqByName.get(WAIT_SEQ);
+  const wait: DirectionalAnim =
+    waitRow !== undefined && waitRow.length > 0
+      ? { start: waitRow.start, dirs: 1, stride: waitRow.length }
+      : FALLBACK_WAIT;
   const chop = directionalAnimFromSeq(seqByName, CHOP_SEQ, { phaseStart: 9 }, FALLBACK_CHOP);
   const walkWood = directionalAnimFromSeq(seqByName, WALK_WOOD_SEQ, {}, FALLBACK_WALK_WOOD);
   const standWood = directionalAnimFromSeq(
@@ -392,9 +408,11 @@ export function buildHumanBindings(
     // gait instead of the empty walk, and stands a loaded pose while it deposits. The chop still wins
     // while harvesting because a settler only carries *after* the harvest.
     settler: {
-      idle: stand,
+      idle: wait,
       moving: walk,
       byAtomic: { [HARVEST_ATOMIC]: chop },
+      // Loaded-idle stays a still standing pose: the data has no loaded WAIT loop (hands full), and a
+      // carrier only stands loaded for the brief deposit transient, so a hold reads fine here.
       carrying: { idle: standWood, moving: walkWood },
     },
     // Each viking building type draws its own house bob (the `[GfxHouse]` `LogicType` → `GfxBobId` join),
@@ -433,7 +451,7 @@ async function loadLayer(stem: string): Promise<SpriteLayer> {
 }
 
 /** The `[bobseq]` imagelib whose sequences drive the settler — the body bob set the head atlas shares ids with. */
-const BODY_IMAGELIB = 'cr_hum_body_00.bmd';
+export const BODY_IMAGELIB = 'cr_hum_body_00.bmd';
 
 /** The render-binding lanes the `?atlas=real` path reads from the served `content/ir.json`. */
 interface RenderIr {
@@ -468,6 +486,19 @@ function bodySequencesByName(ir: RenderIr | null): Map<string, BobSeqRow> {
   const set = (ir?.bobSequences ?? []).find((s) => s.imagelib === BODY_IMAGELIB);
   for (const seq of set?.sequences ?? []) byName.set(seq.name, seq);
   return byName;
+}
+
+/**
+ * Load every `[bobseq]` of one body bob set (default {@link BODY_IMAGELIB}) from the served
+ * `content/ir.json`, in file order — the raw animation list the {@link import('@vinland/render').AnimationGallery}
+ * plays. Returns `[]` when the IR is absent (a checkout without `content/`), so the gallery can show a
+ * "run the pipeline" message instead of crashing. The atlas *image* is loaded separately
+ * ({@link loadHumanSpriteSheet}); this is only the frame RANGES the gallery indexes.
+ */
+export async function loadBodyClips(imagelib: string = BODY_IMAGELIB): Promise<BobSeqRow[]> {
+  const ir = await loadIr();
+  const set = (ir?.bobSequences ?? []).find((s) => s.imagelib === imagelib);
+  return [...(set?.sequences ?? [])];
 }
 
 /**
@@ -515,6 +546,19 @@ export async function loadHumanSpriteSheet(): Promise<SpriteSheet> {
     // stay native — their proportion already reads right). Named families inherit this. See BUILDING_SCALE.
     kindScales: { building: BUILDING_SCALE },
   };
+}
+
+/**
+ * Load ONLY the human body + head atlas layers — the two the animation gallery (`?anim`) composites. Unlike
+ * {@link loadHumanSpriteSheet} it does NOT pull in the tree / default-house / seven building-family atlases
+ * (which a gallery never draws), so a partial `content/` — the character bobs present but some building
+ * family missing — still opens the gallery instead of falsely reporting "no graphics", and it skips the
+ * redundant network fetches. Throws {@link MissingAtlasError} when the body/head atlases themselves are
+ * absent (the real precondition the caller degrades on), exactly like {@link loadHumanSpriteSheet}.
+ */
+export async function loadHumanBodyHead(): Promise<{ body: SpriteLayer; head: SpriteLayer }> {
+  const [body, head] = await Promise.all([loadLayer(HUMAN_BODY_ATLAS), loadLayer(HUMAN_HEAD_ATLAS)]);
+  return { body, head };
 }
 
 /** The reproducible synthetic atlas (flat-coloured markers, no copyrighted data) — the graceful fallback,
