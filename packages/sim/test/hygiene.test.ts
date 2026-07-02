@@ -19,11 +19,13 @@ const FORBIDDEN: Array<{ pattern: RegExp; why: string; allowFile?: RegExp }> = [
     // Transcendental/irrational float math: IEEE-754 only pins the basic ops (+ - * /); these may
     // differ in the last bit across engines/CPUs — the classic cross-platform lockstep desync.
     // fixed.ts is exempt: fx.isqrt seeds with Math.sqrt then integer-corrects the result, which is
-    // deterministic — it is the sanctioned wrapper everything else must call instead.
+    // deterministic — it is the sanctioned wrapper everything else must call instead. Known gap: the
+    // `**` operator with a fractional exponent is the same hazard as Math.pow, but a regex can't
+    // tell it apart from an exact integer power (`2 ** k`), so it is not scanned — reviewers watch it.
     pattern:
       /\bMath\.(?:sqrt|cbrt|sin|cos|tan|asin|acos|atan|atan2|sinh|cosh|tanh|asinh|acosh|atanh|exp|expm1|log|log1p|log2|log10|pow|hypot|fround)\b/,
     why: 'transcendental float math can differ across engines — use fx.* integer helpers (e.g. fx.isqrt)',
-    allowFile: /core[/\\]fixed\.ts$/,
+    allowFile: /[/\\]core[/\\]fixed\.ts$/,
   },
   {
     // Locale/ICU-dependent output varies by environment (OS, Node build, browser) — another
@@ -54,11 +56,12 @@ describe('determinism hygiene', () => {
   it('packages/sim/src contains no nondeterministic globals', () => {
     const violations: string[] = [];
     for (const file of tsFiles(SIM_SRC)) {
+      // Exemption is a per-file fact — resolve it once, not per line × pattern.
+      const rules = FORBIDDEN.filter(({ allowFile }) => !allowFile?.test(file));
       const lines = readFileSync(file, 'utf8').split('\n');
       lines.forEach((raw, i) => {
         const line = stripComments(raw);
-        for (const { pattern, why, allowFile } of FORBIDDEN) {
-          if (allowFile?.test(file)) continue;
+        for (const { pattern, why } of rules) {
           if (pattern.test(line)) violations.push(`${file}:${i + 1}  ${line.trim()}  -> ${why}`);
         }
       });
