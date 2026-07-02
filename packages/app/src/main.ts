@@ -13,7 +13,7 @@ import { resolveSpriteSheet } from './real-sprites.js';
 import { loadRealTerrain } from './real-terrain.js';
 import { renderSceneMode } from './scene-mode.js';
 import { renderShot } from './shot.js';
-import { loadTerrainMap, runSlice, sliceTerrain } from './vertical-slice.js';
+import { demoGoods, loadTerrainMap, runSlice, sliceTerrain } from './vertical-slice.js';
 
 /**
  * App shell entry point. Wires input -> sim commands, runs the fixed-timestep loop, and asks the
@@ -62,7 +62,7 @@ async function main(): Promise<void> {
   // atlases (gitignored content over the /bobs server), degrading to synthetic markers when content/ is
   // missing. `?atlas=synthetic` forces the free markers; `?atlas=none` draws placeholder geometry. Shared
   // with the `?scene=` entry.
-  const sheet = await resolveSpriteSheet(params);
+  const sheet = await resolveSpriteSheet(params, demoGoods());
   // `?terrain` draws the ground from REAL decoded `text_*.pcx` textures (the approximated typeId→pattern
   // map) instead of the flat 4-colour tint; gitignored content over the /ir.json + /textures server
   // (see real-terrain.ts). Absent, terrain stays the reproducible flat-tint default.

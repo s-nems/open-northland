@@ -72,7 +72,7 @@ export interface SpriteAtlas {
  * face its heading). The facing index comes from {@link DrawItem.facing} (else {@link DEFAULT_FACING}).
  *
  * Whether the sequence loops forever or plays once is **not a property of the animation** — it is which
- * clock {@link settlerBobId} drives it by: a gait (walk) runs on the free `tick` clock (an endless
+ * clock {@link resolveSettlerBobId} drives it by: a gait (walk) runs on the free `tick` clock (an endless
  * loop), an action (chop) runs on the atomic's own `elapsed` clock and, because the action's `duration`
  * is tuned to a whole number of cycles, plays exactly that many full swings and ends as the action
  * completes — no mid-swing cutoff, no speed that changes with the action length.
@@ -140,10 +140,24 @@ export interface SettlerStateBinding {
    * unchanged — and a *bound* atomic animation (e.g. the chop in {@link byAtomic}) still wins, since a
    * settler only carries *after* it has finished harvesting empty-handed.
    */
-  readonly carrying?: {
-    readonly idle?: SpriteFrameRef;
-    readonly moving?: SpriteFrameRef;
-  };
+  readonly carrying?: CarryingBinding;
+}
+
+/**
+ * The loaded-gait slots of a {@link SettlerStateBinding}: the generic hauling look (`idle`/`moving`)
+ * plus an optional **per-good** table. The original draws a DIFFERENT carry cycle per hauled good
+ * (`human_man_generic_walk_wood` for a log, `_walk_stone`, `_walk_fish`, …); {@link byGood} keys those
+ * on the sim's `Carrying.goodType` ({@link DrawItem.carryGood}), so a settler hauling bread shows the
+ * bread walk, one hauling stone the stone slab. A good absent from the table falls back to the generic
+ * `idle`/`moving` slots (then to the un-loaded counterparts), so a sparse table is always total.
+ */
+export interface CarryingBinding {
+  readonly idle?: SpriteFrameRef;
+  readonly moving?: SpriteFrameRef;
+  /** Per-`goodType` hauling look (the `..._walk_<good>` bobseq join); a miss uses the generic slots. */
+  readonly byGood?: Readonly<
+    Record<number, { readonly idle?: SpriteFrameRef; readonly moving?: SpriteFrameRef }>
+  >;
 }
 
 /**
@@ -240,17 +254,30 @@ function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
  * {@link SettlerStateBinding} picks by state with a fixed fallback chain so a sparse table is always
  * total: `acting` tries `byAtomic[id]` → `acting` → `idle`; `moving` tries `moving` → `idle`; `idle` is
  * `idle`. When the item is {@link DrawItem.carrying} a good, the {@link SettlerStateBinding.carrying}
- * loaded-gait override is consulted first for the `moving`/`idle` slots (so a hauling settler walks the
- * loaded cycle); a *bound* atomic still wins, as a settler only carries after harvesting empty-handed.
- * The chosen {@link SpriteFrameRef} is then resolved through {@link frameOf} (directional + animated
- * when it's a {@link DirectionalAnim}). Pure.
+ * loaded-gait override is consulted first for the `moving`/`idle` slots — the hauled good's own
+ * {@link CarryingBinding.byGood} look when bound ({@link DrawItem.carryGood}), else the generic loaded
+ * slots — so a hauling settler walks the loaded cycle; a *bound* atomic still wins, as a settler only
+ * carries after harvesting empty-handed. The chosen {@link SpriteFrameRef} is then resolved through
+ * {@link frameOf} (directional + animated when it's a {@link DirectionalAnim}). Pure. Exported so the
+ * per-character render path ({@link import('./pixi-renderer.js').SettlerCharacter}) resolves its own
+ * binding through the exact same state machine the single-binding path uses.
  */
-function settlerBobId(binding: number | SettlerStateBinding, item: DrawItem, tick: number): number {
+export function resolveSettlerBobId(
+  binding: number | SettlerStateBinding,
+  item: DrawItem,
+  tick: number,
+): number {
   if (typeof binding === 'number') return binding;
   const facing = item.facing ?? DEFAULT_FACING;
   const state: SpriteState = item.state ?? 'idle';
-  // Loaded-gait overrides, in effect only while the settler is hauling a good.
-  const carry = item.carrying ? binding.carrying : undefined;
+  // Loaded-gait overrides, in effect only while the settler is hauling a good: the good's own look
+  // first (the per-good `walk_<good>` join), then the generic loaded slots.
+  const carrying = item.carrying ? binding.carrying : undefined;
+  const byGood = item.carryGood !== undefined ? carrying?.byGood?.[item.carryGood] : undefined;
+  const carry =
+    carrying === undefined
+      ? undefined
+      : { idle: byGood?.idle ?? carrying.idle, moving: byGood?.moving ?? carrying.moving };
   if (state === 'acting') {
     // An action animation runs on the atomic's OWN clock: `elapsed` ticks since the action started
     // (0-based, so frame 0 shows on its first tick). Frames advance at the binding's fixed cadence, so
@@ -292,7 +319,7 @@ export function resolveBuildingDraw(binding: number | BuildingTypeBinding, item:
  * Resolve the atlas bob id a drawable {@link DrawItem} should draw — the frame *selection* alone (no
  * atlas lookup), so the GPU layer can draw the **same** id from several layered atlases (body + head)
  * without re-deciding per layer. Returns `null` for a terrain tile or an unbound kind. A settler's id
- * is chosen by state + facing + `tick` via {@link settlerBobId} (animated/directional when the binding
+ * is chosen by state + facing + `tick` via {@link resolveSettlerBobId} (animated/directional when the binding
  * is a {@link DirectionalAnim}); a building's by its `typeId` via {@link resolveBuildingDraw} (its own
  * house bob when the binding is a {@link BuildingTypeBinding}); a resource uses its plain bound id. Pure.
  */
@@ -300,7 +327,8 @@ export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tic
   if (item.kind === 'tile') return null; // tiles bind by typeId, not these per-kind bindings
   const binding = bindings[item.kind];
   if (binding === undefined) return null; // kind unbound -> placeholder
-  if (item.kind === 'settler') return settlerBobId(binding as number | SettlerStateBinding, item, tick);
+  if (item.kind === 'settler')
+    return resolveSettlerBobId(binding as number | SettlerStateBinding, item, tick);
   if (item.kind === 'building') return resolveBuildingDraw(binding as number | BuildingTypeBinding, item).bob;
   return binding as number; // resource — its plain bound id
 }
@@ -390,7 +418,7 @@ export function atlasFromManifest(manifest: AtlasManifest): SpriteAtlas {
  *  - the bound bob id isn't in the atlas (a missing/0×0 frame).
  *
  * For a settler the bob id is chosen by the item's {@link SpriteState} (and atomic id) via
- * {@link settlerBobId} — a settler walking resolves its `moving` frame, one mid-swing its `acting`
+ * {@link resolveSettlerBobId} — a settler walking resolves its `moving` frame, one mid-swing its `acting`
  * frame — when the binding is a {@link SettlerStateBinding}; a plain-number settler binding draws the
  * same frame regardless of state (back-compat).
  *
@@ -399,6 +427,37 @@ export function atlasFromManifest(manifest: AtlasManifest): SpriteAtlas {
  * This is the load-bearing data decision (which sprite) made self-verifiable; the un-self-verifiable
  * part (binding the rect to a texture and sampling pixels) stays on the GPU side for a human to judge.
  */
+/**
+ * A job-keyed lookup with a **young** (age-class) side table and a total fallback — the shape the
+ * per-character settler binding uses ({@link import('./pixi-renderer.js').SettlerCharacterSet}), kept
+ * generic + pure here so the pick is unit-testable without GPU layers.
+ *
+ * Why two tables: the original's age classes reuse LOW `jobtypes` ids (1..4 = baby/child), and a
+ * synthetic fixture's adult job ids can collide with them (the demo woodcutter is jobType 1 — the real
+ * `baby_female` id; see docs/LESSONS.md [dc3ef54]). The sim disambiguates by the `Age` component (only a
+ * born-young settler carries one), so the pick does too: a **young** item keys {@link youngByJob}, an
+ * adult keys {@link byJob}, and any miss (including a `null`-job idle adult) lands on {@link default} —
+ * a fixture's adult "jobType 1" can never draw the baby body.
+ */
+export interface ByJobTable<T> {
+  /** Adult looks by `jobType` (e.g. woman 5, the soldier family 31..41). */
+  readonly byJob: Readonly<Record<number, T>>;
+  /** Looks for an `Age`-carrying (born-young) settler, keyed by its age-class `jobType` (1..4). */
+  readonly youngByJob?: Readonly<Record<number, T>>;
+  /** The total fallback — the generic look every unmapped job resolves to. */
+  readonly default: T;
+}
+
+/**
+ * Pick from a {@link ByJobTable} for a draw item's `jobType` + young flag: young → {@link ByJobTable.youngByJob},
+ * adult → {@link ByJobTable.byJob}, any miss → {@link ByJobTable.default}. Pure + total.
+ */
+export function pickByJob<T>(table: ByJobTable<T>, jobType: number | undefined, young: boolean): T {
+  if (jobType === undefined) return table.default;
+  const hit = young ? table.youngByJob?.[jobType] : table.byJob[jobType];
+  return hit ?? table.default;
+}
+
 export function resolveSpriteFrame(
   item: DrawItem,
   bindings: SpriteBindings,

@@ -105,6 +105,26 @@ export interface DrawItem {
    * original's `..._walk_wood` bobseq instead of `..._walk`). Omitted when the settler carries nothing.
    */
   readonly carrying?: boolean;
+  /**
+   * For a {@link carrying} settler: the hauled `Carrying.goodType`, so a per-good loaded-gait binding
+   * ({@link import('./sprites.js').CarryingBinding.byGood}) draws the RIGHT load (a log for wood, a slab
+   * for stone — the original's `..._walk_<good>` bobseq per good). Omitted when not carrying.
+   */
+  readonly carryGood?: number;
+  /**
+   * For a settler: its `Settler.jobType` — the key a per-character binding
+   * ({@link import('./sprites.js').ByJobTable}) picks the body/head look by (the original's
+   * `[jobbasegraphics]` job → body/head join: a soldier draws the armoured `cr_hum_body_05`, a woman
+   * `cr_hum_body_10`, …). Omitted when the settler has no job (`jobType` null) — the binding then falls
+   * back to its default look.
+   */
+  readonly jobType?: number;
+  /**
+   * For a settler: whether it is a born-young (baby/child) settler — the sim `Age` component is present.
+   * Disambiguates the age-class `jobType` ids (1..4) from a synthetic fixture's colliding adult job ids
+   * (docs/LESSONS.md [dc3ef54]): only a young settler keys the child/baby body table. Omitted for adults.
+   */
+  readonly young?: boolean;
 }
 
 /** The terrain grid the snapshot is positioned over (dimensions + row-major landscape typeIds). */
@@ -258,13 +278,26 @@ function readSpriteState(components: Readonly<Record<string, unknown>>): SpriteS
 }
 
 /**
- * Whether a snapshot settler is hauling a good — the mere presence of its (plain-cloned) `Carrying`
- * component (the sim adds it on harvest, removes it on deposit). Read as a flag orthogonal to
- * {@link readSpriteState} so a binding can pick the loaded gait while the settler still reads as
- * `moving`/`acting`. Pure read of plain snapshot data — never re-enters the sim.
+ * What a snapshot settler is hauling — the (plain-cloned) `Carrying` component's `goodType` (the sim
+ * adds the component on harvest, removes it on deposit), or `null` when it carries nothing. Read as a
+ * fact orthogonal to {@link readSpriteState} so a binding can pick the loaded gait (and the per-good
+ * look) while the settler still reads as `moving`/`acting`. A present-but-malformed component still
+ * reads as carrying (goodType `undefined` → the generic loaded look). Pure read of plain snapshot data.
  */
-function readCarrying(components: Readonly<Record<string, unknown>>): boolean {
-  return 'Carrying' in components;
+function readCarrying(components: Readonly<Record<string, unknown>>): { goodType?: number } | null {
+  const c = components.Carrying as { goodType?: unknown } | undefined;
+  if (c === undefined) return null;
+  return typeof c.goodType === 'number' ? { goodType: c.goodType } : {};
+}
+
+/**
+ * A settler's `Settler.jobType` — the per-character body/head join key ({@link DrawItem.jobType}) — or
+ * `undefined` for a jobless (`null`) settler / malformed component (the binding then falls back to its
+ * default look). Pure read of plain snapshot data — never re-enters the sim.
+ */
+function readJobType(components: Readonly<Record<string, unknown>>): number | undefined {
+  const s = components.Settler as { jobType?: unknown } | undefined;
+  return s !== undefined && typeof s.jobType === 'number' ? s.jobType : undefined;
 }
 
 /**
@@ -367,7 +400,11 @@ function collectSprites(snapshot: WorldSnapshot, viewport?: Viewport): DrawItem[
     const actingAtomic = kind === 'settler' ? readActingAtomic(entity.components) : null;
     const elapsed = kind === 'settler' ? readAtomicElapsed(entity.components) : null;
     const facing = kind === 'settler' ? readFacing(entity.components) : undefined;
-    const carrying = kind === 'settler' ? readCarrying(entity.components) : false;
+    const carrying = kind === 'settler' ? readCarrying(entity.components) : null;
+    const jobType = kind === 'settler' ? readJobType(entity.components) : undefined;
+    // Only a born-young settler carries `Age` — the component-presence disambiguation of the age-class
+    // jobType ids (1..4) from colliding synthetic adult ids (docs/LESSONS.md [dc3ef54]).
+    const young = kind === 'settler' && 'Age' in entity.components;
     // A building carries its type id so a per-type binding draws its own house bob (the `[GfxHouse]`
     // `LogicType` → `GfxBobId` join); other kinds key off no type, so it's omitted for them.
     const buildingType = kind === 'building' ? readBuildingType(entity.components) : undefined;
@@ -390,7 +427,10 @@ function collectSprites(snapshot: WorldSnapshot, viewport?: Viewport): DrawItem[
       ...(actingAtomic !== null ? { atomicId: actingAtomic } : {}),
       ...(elapsed !== null ? { elapsed } : {}),
       ...(facing !== undefined ? { facing } : {}),
-      ...(carrying ? { carrying: true } : {}),
+      ...(carrying !== null ? { carrying: true } : {}),
+      ...(carrying?.goodType !== undefined ? { carryGood: carrying.goodType } : {}),
+      ...(jobType !== undefined ? { jobType } : {}),
+      ...(young ? { young: true } : {}),
       ...(buildingType !== undefined ? { typeId: buildingType } : {}),
     });
   }

@@ -75,13 +75,23 @@ function demoLandscape(
  * data). When a `map` is passed, its landscape typeIds are folded into the table (see
  * {@link demoLandscape}) so the sim's cell-graph can be built over a real decoded grid.
  */
+/** The slice's haulable goods as `(typeId, id)` pairs — shared by {@link demoContent} (which adds the
+ *  sim-side fields) and the render binding (the per-good carry-look join keys, see `real-sprites.ts`). */
+const WOOD_GOOD = { typeId: WOOD, id: 'wood' } as const;
+const PLANK_GOOD = { typeId: 2, id: 'plank' } as const;
+
+/** The goods the slice sim actually runs, for the sprite sheet's per-good carry binding (`main.ts`). */
+export function demoGoods(): readonly { typeId: number; id: string }[] {
+  return [WOOD_GOOD, PLANK_GOOD];
+}
+
 function demoContent(map?: TerrainMap): ContentSet {
   return parseContentSet({
     manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-demo-slice' }, locale: 'eng' },
     goods: [
       { typeId: 0, id: 'none' },
-      { typeId: WOOD, id: 'wood', weight: 1, atomics: { harvest: HARVEST_ATOMIC } },
-      { typeId: 2, id: 'plank', weight: 1 },
+      { ...WOOD_GOOD, weight: 1, atomics: { harvest: HARVEST_ATOMIC } },
+      { ...PLANK_GOOD, weight: 1 },
     ],
     jobs: [
       { typeId: 0, id: 'idle' },

@@ -203,8 +203,35 @@ describe('buildScene', () => {
     const byRef = (r: number) => scene.find((d) => d.kind === 'settler' && d.ref === r);
     expect(byRef(1)?.state).toBe('moving');
     expect(byRef(1)?.carrying).toBeUndefined();
+    expect(byRef(1)?.carryGood).toBeUndefined();
     expect(byRef(2)?.state).toBe('moving'); // still moving — carrying is orthogonal to the coarse state
     expect(byRef(2)?.carrying).toBe(true);
+    expect(byRef(2)?.carryGood).toBe(1); // the hauled goodType rides along — the per-good look join key
+  });
+
+  it('carries the settler jobType + the young (Age) flag — the per-character body join keys', () => {
+    const scene = buildScene(
+      snapshotOf([
+        // An adult with a job: jobType rides along, no young flag (no Age component).
+        entity(1, 0, 0, { Settler: { tribe: 0, jobType: 31 } }),
+        // A jobless adult (jobType null): the field is omitted → the binding's default look.
+        entity(2, 1, 0, { Settler: { tribe: 0, jobType: null } }),
+        // A born-young settler: the Age component flips young:true, disambiguating the age-class
+        // jobType 1 from a fixture adult using the same number (docs/LESSONS.md [dc3ef54]).
+        entity(3, 2, 0, { Settler: { tribe: 0, jobType: 1 }, Age: { ticks: 5 } }),
+        // A fixture ADULT whose job id collides with an age class: jobType 1 but NO Age → young omitted.
+        entity(4, 2, 1, { Settler: { tribe: 0, jobType: 1 } }),
+      ]),
+      FLAT_3x2,
+    );
+    const byRef = (r: number) => scene.find((d) => d.kind === 'settler' && d.ref === r);
+    expect(byRef(1)?.jobType).toBe(31);
+    expect(byRef(1)?.young).toBeUndefined();
+    expect(byRef(2)?.jobType).toBeUndefined();
+    expect(byRef(3)?.jobType).toBe(1);
+    expect(byRef(3)?.young).toBe(true);
+    expect(byRef(4)?.jobType).toBe(1);
+    expect(byRef(4)?.young).toBeUndefined();
   });
 
   it('nudges a chopping settler left so the axe lands in the tree, without moving its depth', () => {
