@@ -48,6 +48,11 @@ maps the rest.
   step-by-step agent prompts for the faithful gathering economy (per-good node graphics, visible
   piles/flags, multi-chop tree felling, shrinking mineral deposits, data-driven resource
   collision, chop cadence). Consumed in order; deleted when done.
+- [plans/combat.md](plans/combat.md) — user-driven `/worktree` plan: step-by-step agent prompts
+  for faithful combat (stances, melee approach + cadence, per-material damage tables, ranged
+  projectiles, warrior-body animations, blood/cadavers/HP bars, barracks recruitment + training,
+  towers/defence mode, a final calibration session vs the original). Consumed in order; deleted
+  when done.
 - [TECH-DEBT.md](TECH-DEBT.md) — trigger-gated / speculative reworks deliberately parked (not a
   structural-health queue — `/reflect` owns and *executes* structure), plus the reflection log.
 
