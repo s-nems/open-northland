@@ -19,6 +19,6 @@ The root [`CLAUDE.md`](../../CLAUDE.md) carries the project-wide + legal rules; 
   fixture, never real game data. No original assets enter the repo (root `CLAUDE.md` Legal).
 - The documented run: `npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content`.
   `start` runs the compiled `dist/cli.js` (raw-TS strip-types can't resolve the `.js` import
-  specifiers — see `docs/LESSONS.md`).
+  specifiers — see `docs/lessons/tooling.md`). Format/extractor gotchas: `docs/lessons/pipeline.md`.
 - **Provenance:** every IR record keeps its source file + original field names so the conversion is
   auditable and re-runnable. Don't silently rename semantics.

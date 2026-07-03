@@ -53,7 +53,9 @@ is overdue for a **reflection** pass — a deliberate health/architecture/docs/r
 - State in one line what step you're doing and why it's the next-smallest.
 
 ## 2. Do the work
-- Skim `docs/LESSONS.md` first for gotchas in this area — the loop's hard-won memory; don't re-learn them.
+- First read the per-area lessons file(s) for the code you'll touch — `docs/lessons/{sim,pipeline,render,tooling}.md`
+  (index + contract: `docs/LESSONS.md`) — the loop's hard-won memory; don't re-learn those traps,
+  and don't load areas the step won't touch.
 - Implement only that step. Match the style of surrounding code. No scope creep — resist pulling in
   the next roadmap item even if tempting.
 - Follow the determinism anti-patterns in `packages/sim/CLAUDE.md` (sim work). Mechanics change →
@@ -154,7 +156,8 @@ n/a: \<why\>". See `docs/FIDELITY.md`.
   command + the one scene to open + the one or two things to look at). The work is committed, but the
   user has the final say on whether it looks right.
 - If the step surfaced a non-obvious, generalizable lesson (a determinism trap, a "green tests but
-  broke at the real entry point" slip), append one grounded line to `docs/LESSONS.md`
-  (`- [<sha>] <lesson> — <fix> (<area>)`) and stage it with the commit. Most steps add nothing — keep it lean.
+  broke at the real entry point" slip), append one grounded line to the matching
+  `docs/lessons/<area>.md` (`- [<sha>] <lesson> — <fix> (<area>)`; contract in `docs/LESSONS.md`)
+  and stage it with the commit. Most steps add nothing — keep it lean.
 - Then **stop**. Don't start another step — the user opens a fresh context window and runs
   `/iterate` again.

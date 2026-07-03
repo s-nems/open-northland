@@ -34,7 +34,8 @@ maps the rest.
 
 ## Process / working notes
 
-- [LESSONS.md](LESSONS.md) — hard-won gotchas, one per commit, so a later agent doesn't relearn them.
+- [LESSONS.md](LESSONS.md) — hard-won gotchas: the index + contract; the entries live in per-area
+  files under [lessons/](lessons/) so an iteration reads only the area it touches.
 - [TECH-DEBT.md](TECH-DEBT.md) — trigger-gated / speculative reworks deliberately parked (not a
   structural-health queue — `/reflect` owns and *executes* structure), plus the reflection log.
 
@@ -47,14 +48,15 @@ Load-on-demand rules next to the code they bind: `../packages/sim/CLAUDE.md` (de
 ## Keeping these docs lean (anti-bloat convention)
 
 Three docs are **read by the executor every `/iterate`** and re-bloat fastest: **ROADMAP.md**,
-**FIDELITY.md**, **LESSONS.md**. Keep them scannable:
+**FIDELITY.md**, **lessons/**. Keep them scannable (`npm run scan:structure` flags the budgets):
 
 - **ROADMAP.md** — a completed item collapses to a one-line summary + `→ archive` pointer. Its full
   "Hands-on:" verification trail goes **into ROADMAP-ARCHIVE.md**, not inline (a live item never
   accretes its trail — that is the ratchet `/reflect` keeps having to sweep).
 - **FIDELITY.md** — each ledger row is `status + one line on how it's pinned` (source + the one key
   verified number). The blow-by-blow lives in the commit message, not the row.
-- **LESSONS.md** — one line per lesson; **extend an existing entry rather than appending a near-duplicate**.
+- **lessons/*.md** — one entry per trap, filed by area, headline first; **extend an existing entry
+  rather than appending a near-duplicate**; graduate a thrice-hit trap to a `CLAUDE.md`.
 - **ROADMAP-ARCHIVE.md** — one entry per roadmap item, filed under its phase; a re-sweep **updates
   that entry in place**, never appends a new dated section.
 
