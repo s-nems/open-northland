@@ -18,6 +18,9 @@ export interface PerfInfo {
   readonly drawn: number;
   /** Entity sprites currently pooled (bounded by the live drawable entity count). */
   readonly pooled: number;
+  /** CPU time (ms) the caller spent this frame in sim + snapshot + render-build (everything it can
+   *  time); the remainder of the frame budget is GPU/compositor. Optional — omit to hide the split. */
+  readonly cpuMs?: number;
 }
 
 export interface PerfOverlayHandle {
@@ -43,6 +46,9 @@ const PANEL_STYLE = [
 
 /** Weight of the newest frame in the FPS moving average (smaller = smoother, slower to react). */
 const FPS_SMOOTHING = 0.1;
+/** How many frames the worst-frame tracker holds before resetting — so the spike readout reflects the
+ *  recent window, not the whole session. */
+const WORST_WINDOW_FRAMES = 120;
 
 /** Mount the perf readout (bottom-left). Returns a live handle to refresh each frame. */
 export function mountPerfOverlay(): PerfOverlayHandle {
@@ -51,14 +57,30 @@ export function mountPerfOverlay(): PerfOverlayHandle {
   panel.textContent = 'fps —';
   document.body.append(panel);
 
-  // Exponential moving average of the frame time (ms), seeded lazily on the first real delta.
+  // Exponential moving averages (ms), seeded lazily on the first real delta.
   let avgMs = 0;
+  let avgCpu = 0;
+  // Worst (longest) frame in the current window — catches periodic GC/compositor spikes an average hides.
+  let worstMs = 0;
+  let worstCount = 0;
   return {
     update(elapsedMs: number, info: PerfInfo): void {
       if (elapsedMs > 0)
         avgMs = avgMs === 0 ? elapsedMs : avgMs * (1 - FPS_SMOOTHING) + elapsedMs * FPS_SMOOTHING;
       const fps = avgMs > 0 ? Math.round(1000 / avgMs) : 0;
-      panel.textContent = `fps ${fps}   entities ${info.entities}   drawn ${info.drawn}   pooled ${info.pooled}`;
+      if (elapsedMs > worstMs) worstMs = elapsedMs;
+      if (++worstCount >= WORST_WINDOW_FRAMES) {
+        worstMs = elapsedMs;
+        worstCount = 0;
+      }
+      let line = `fps ${fps}`;
+      if (info.cpuMs !== undefined) {
+        avgCpu = avgCpu === 0 ? info.cpuMs : avgCpu * (1 - FPS_SMOOTHING) + info.cpuMs * FPS_SMOOTHING;
+        // The frame budget splits into CPU (what the loop timed) and GPU/compositor (the rest).
+        const gpu = Math.max(0, avgMs - avgCpu);
+        line += `  cpu ${avgCpu.toFixed(1)}  gpu ${gpu.toFixed(1)}  worst ${worstMs.toFixed(0)}ms`;
+      }
+      panel.textContent = `${line}   entities ${info.entities}   drawn ${info.drawn}   pooled ${info.pooled}`;
     },
   };
 }

@@ -108,6 +108,9 @@ export async function renderSceneMode(
   function frame(nowMs: number): void {
     const elapsed = nowMs - lastMs;
     lastMs = nowMs;
+    // Time the CPU work (sim + snapshot + render-build/submit + audio) so the overlay can split the
+    // frame into CPU vs GPU/compositor — the split that tells whether a slow frame is our code or the GPU.
+    const cpu0 = performance.now();
     // Accumulate events from every step this frame (each step clears the buffer) for the audio layer.
     const frameEvents: SimEvent[] = [];
     const collect = (): void => {
@@ -127,7 +130,6 @@ export async function renderSceneMode(
       placement: placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', app.screen),
     });
     overlay.update(snap.tick);
-    perf.update(elapsed, { entities: snap.entities.length, ...renderer.stats() });
     if (soundDriver !== null) {
       soundDriver.update({
         events: frameEvents,
@@ -139,6 +141,8 @@ export async function renderSceneMode(
         dtMs: elapsed,
       });
     }
+    const cpuMs = performance.now() - cpu0;
+    perf.update(elapsed, { entities: snap.entities.length, cpuMs, ...renderer.stats() });
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
