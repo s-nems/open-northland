@@ -8,9 +8,13 @@ import type { HudFrame } from './hud-layer.js';
 import { MapObjectLayer } from './map-object-layer.js';
 import type { MapObjectSprite } from './map-object-layer.js';
 import type { SpriteSheet, TerrainTextureSet } from './pixi-app.js';
-import { SpritePool } from './sprite-pool.js';
+import { SelectionLayer } from './selection-layer.js';
+import { type EntityBounds, SpritePool } from './sprite-pool.js';
 import { TerrainLayer } from './terrain-layer.js';
 import { TextureCache } from './texture-cache.js';
+
+/** Shared empty selection so the common no-selection `update` allocates nothing. */
+const NO_SELECTION: ReadonlySet<number> = new Set();
 
 /**
  * The RETAINED-mode world renderer — the scalable replacement for the old immediate-mode `renderScene`,
@@ -54,6 +58,8 @@ export class WorldRenderer {
   private readonly terrain = new TerrainLayer();
   private readonly mapObjects: MapObjectLayer;
   private readonly pool: SpritePool;
+  /** Feet rings under the currently-selected entities (world-space, BELOW the sprites). */
+  private readonly selectionLayer = new SelectionLayer();
   private readonly hud = new HudLayer();
 
   constructor(app: Application, opts?: { readonly sheet?: SpriteSheet | undefined }) {
@@ -61,9 +67,11 @@ export class WorldRenderer {
     this.spriteLayer.sortableChildren = true;
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
     this.pool = new SpritePool(this.spriteLayer, this.textureCache, opts?.sheet);
-    // Z-order within the world layer: terrain (back) → flat decor → sprites + tall objects (front).
+    // Z-order within the world layer: terrain (back) → flat decor → selection rings → sprites + tall
+    // objects (front). The rings sit under the sprites so a unit in front occludes a ring behind it.
     this.worldLayer.addChild(this.terrain.container);
     this.worldLayer.addChild(this.mapObjects.decorContainer);
+    this.worldLayer.addChild(this.selectionLayer.container);
     this.worldLayer.addChild(this.spriteLayer);
     app.stage.addChild(this.worldLayer);
     // The HUD is pinned (NOT under the camera), so it's a direct child of the stage.
@@ -88,10 +96,18 @@ export class WorldRenderer {
 
   /**
    * Draw ONE frame: apply the camera, cull the terrain, advance the map objects, reconcile the sprite
-   * pool to the (culled, depth-sorted) list, repaint the HUD, and render once. No allocation in the
-   * steady state — the sub-layers update in place; only a first-seen entity or a growing layer set mints.
+   * pool to the (culled, depth-sorted) list, draw the selection rings, repaint the HUD, and render once.
+   * No allocation in the steady state — the sub-layers update in place; only a first-seen entity or a
+   * growing layer set mints. `selection` is the app's currently-selected entity ids (empty by default),
+   * projected to feet rings; it is transient view state like the camera, never sim state.
    */
-  update(snapshot: WorldSnapshot, camera: Camera, tick = 0, hud?: HudFrame): void {
+  update(
+    snapshot: WorldSnapshot,
+    camera: Camera,
+    tick = 0,
+    hud?: HudFrame,
+    selection: ReadonlySet<number> = NO_SELECTION,
+  ): void {
     // Camera: the world layer's own transform (screen = world*scale + offset).
     this.worldLayer.scale.set(camera.scale ?? 1);
     this.worldLayer.position.set(camera.offsetX, camera.offsetY);
@@ -101,6 +117,9 @@ export class WorldRenderer {
     this.terrain.cull(vp);
     this.mapObjects.update(vp, tick);
     this.pool.reconcile(snapshot, vp, tick);
+    // Selection rings read the pool's just-computed per-entity bounds, so a building's marker sizes to its
+    // actual sprite footprint (reconcile ran first, so the bounds are this frame's).
+    this.selectionLayer.draw(snapshot, selection, (ref) => this.pool.boundsOf(ref));
     this.hud.draw(hud);
     this.app.render();
   }
@@ -108,6 +127,15 @@ export class WorldRenderer {
   /** Entities drawn last frame + sprites currently pooled — for the perf overlay's on-screen readout. */
   stats(): { drawn: number; pooled: number } {
     return this.pool.stats();
+  }
+
+  /**
+   * The WORLD-space bounding box of an entity's sprite as drawn last frame, or `undefined` if it wasn't
+   * on screen. The app's picking uses it for an exact "click the graphic" hit test (a big building gets a
+   * big box, a small one a small box) — see {@link EntityBounds}.
+   */
+  entityBounds(ref: number): EntityBounds | undefined {
+    return this.pool.boundsOf(ref);
   }
 
   /** Tear down the whole retained graph + caches. */

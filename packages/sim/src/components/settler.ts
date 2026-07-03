@@ -116,3 +116,23 @@ export const JobAssignment = defineComponent<{ workplace: Entity }>('JobAssignme
  * a fixed per-tick increment and a fixed stage cadence, no RNG/wall-clock.
  */
 export const Age = defineComponent<{ ticks: number }>('Age');
+
+/**
+ * A **player move order** in flight on a settler — the soft, TIMED override the RTS "go there" command
+ * stamps ({@link import('../systems/conflict/orders.js').moveUnit}). It is what makes a manual move
+ * faithful to *Cultures*: the unit walks to the ordered spot, STANDS there a while, then the economy AI
+ * reclaims it — the order never seizes the unit permanently.
+ *
+ * `holdTicks` is how long to stand after arriving (short for a worker, long for a soldier — set from
+ * the unit's combatant-ness at order time). `expiresAt` is the tick the hold ends, **null until the
+ * unit arrives** and the hold begins — the {@link import('../systems/conflict/orders.js').playerOrderSystem}
+ * sets it on arrival and removes the component on expiry (or when a need drive takes the unit over).
+ * While present, the AISystem's ECONOMY branch skips the unit (it stays put) but its NEEDS drives still
+ * fire, so hunger/fatigue can pull it away mid-hold.
+ *
+ * A **separate optional component** (the JobAssignment/Age pattern): only a unit under an active order
+ * carries one; every existing spawn / the golden path has none, so it leaves the golden hash untouched.
+ * `holdTicks`/`expiresAt` are plain integers (or null), so it hashes deterministically. Determinism:
+ * set from the command + tick counter, no RNG / wall-clock.
+ */
+export const PlayerOrder = defineComponent<{ holdTicks: number; expiresAt: number | null }>('PlayerOrder');

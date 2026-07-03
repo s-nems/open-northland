@@ -12,3 +12,4 @@ export * from './movement.js';
 export * from './settler.js';
 export * from './combat.js';
 export * from './economy.js';
+export * from './ownership.js';

@@ -3,8 +3,10 @@ import {
   Carrying,
   CurrentAtomic,
   MoveGoal,
+  Owner,
   PathFollow,
   PathRequest,
+  PlayerOrder,
   Position,
   Resource,
   Settler,
@@ -14,8 +16,9 @@ import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
+import { buildingBlockedCells } from '../footprint.js';
 import { carrierCarryCapacity } from '../progression.js';
-import { atomicDuration, inRange, isFood, recipeOf } from '../shared.js';
+import { TileBuckets, atomicDuration, canonicalById, inRange, isFood, recipeOf } from '../shared.js';
 import {
   deliveryTargetFor,
   isPorterBoundToStore,
@@ -97,6 +100,21 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // let idle settlers skip the scan (identical outcome, no per-settler work). This is what makes an idle
   // crowd cost ~0: a settler with no reachable work does not re-scan the world every tick.
   const anyHaulable = hasHaulableOutput(world, ctx, targets.stockpiles);
+  // Idle-spacing occupancy: owned settlers currently AT REST (not travelling) bucketed by integer tile,
+  // in ascending-id order. The de-stack drive (the planner's last resort for a unit with nothing to do)
+  // reads this so a crowded idle unit steps to a free neighbour instead of standing stacked on top of
+  // another — the "characters don't hard-collide, but won't come to REST on an occupied tile" behaviour.
+  // Gated on Owner so it only ever moves gameplay (player-owned) units; the unowned golden/economy
+  // fixtures build an empty bucket set, so their planner output is byte-identical. Built ONCE from the
+  // tick-start positions (stable across the loop's own mutations); `claimed` stops two de-stackers
+  // choosing the same free cell, `blockedLazy` memoises the building walk-block overlay for the rare tick
+  // one is actually needed.
+  const restingOwned = canonicalById(world.query(Settler, Position, Owner)).filter(
+    (e) => !world.has(e, MoveGoal) && !world.has(e, PathRequest) && !world.has(e, PathFollow),
+  );
+  const occupancy = new TileBuckets(world, restingOwned);
+  const claimed = new Set<CellId>();
+  const blockedLazy: { cells?: ReadonlySet<CellId> } = {};
   for (const e of world.query(Settler, Position)) {
     // Busy: an atomic is running, or the settler is en route to a target. Leave it to play out.
     if (world.has(e, CurrentAtomic)) continue;
@@ -198,6 +216,15 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       }
       // Devout but no temple reachable: fall through to normal work (piety stays pinned at ONE).
     }
+
+    // PLAYER-ORDER hold: a unit standing where the human sent it stays put — the economy planner below
+    // leaves it be. Placed BELOW the needs drives (eat/sleep/pray) on purpose: the move order is a
+    // soft, TIMED override, not a lock, so hunger/fatigue/piety still pull the unit away — faithful to
+    // the original (a worker returns to work soon; a warrior holds longer; either may wander off to
+    // eat/sleep). playerOrderSystem removes the order on hold-expiry or when a need takes over, at
+    // which point the economy re-tasks the unit. (While travelling to the spot the unit was already
+    // skipped above as busy; this gate matters once it has ARRIVED and is idle.)
+    if (world.has(e, PlayerOrder)) continue;
 
     // 1. CARRYING — deposit the load where it belongs. {@link deliveryTargetFor} routes it: a fetched
     // recipe input to the bound workshop that consumes it, a harvested/collected good to the settler's
@@ -301,7 +328,15 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // finished workplace output to a store (so a producing workshop doesn't clog and goods reach the
     // settlement's stores). Nearest workplace with a haulable output it can deliver somewhere.
     const haul = anyHaulable ? nearestWorkplaceOutput(targets.stockpiles, world, ctx, terrain, here) : null;
-    if (haul === null) continue; // nothing to harvest AND nothing to haul — idle this tick
+    if (haul === null) {
+      // Nothing to harvest and nothing to haul — genuinely idle (every economic drive above declined,
+      // and a staffing/held/needing unit already `continue`d earlier). If this owned unit shares its tile
+      // with a lower-id resting owned unit, step off to the nearest free cell so the crowd spreads out;
+      // the lowest-id occupant is the keeper and holds its ground. A no-op for an unowned fixture (empty
+      // occupancy), so goldens are untouched. See {@link deStackIdle}.
+      deStackIdle(world, ctx, terrain, e, fx.toInt(p.x), fx.toInt(p.y), occupancy, claimed, blockedLazy);
+      continue;
+    }
     const cell = interactionCell(world, ctx, terrain, haul.workplace);
     if (cell === here) {
       // Lift a batch sized by the tribe's best unlocked vehicle (`stockSlots`), or one unit on foot
@@ -492,6 +527,84 @@ function startAtomic(
     targetEntity: target,
     targetTile: null,
   });
+}
+
+/** Max cells a de-stack ring search visits before giving up — a boxed-in unit simply stays put. */
+const SPACING_SEARCH_CAP = 48;
+
+/**
+ * The idle-spacing drive: if `e` — a resting, owned, otherwise-idle settler on tile (tileX,tileY) —
+ * shares that tile with a LOWER-id resting owned settler, send it (a {@link MoveGoal}) to the nearest
+ * free cell so the two don't stand stacked. The lowest-id occupant on the tile is the keeper (it stays);
+ * every other occupant steps aside. A unit boxed in (no free cell within the search cap) just stays.
+ *
+ * This is the sim half of the "no hard collision, but units won't come to rest on an occupied tile"
+ * behaviour: transit is never blocked (a walker passes through freely), only a unit that has ARRIVED with
+ * nothing to do relocates off a shared tile. Determinism: the keeper test is a canonical id compare; the
+ * target is a canonical breadth-first search; `claimed` keeps two de-stackers off the same new cell.
+ */
+function deStackIdle(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  tileX: number,
+  tileY: number,
+  occupancy: TileBuckets,
+  claimed: Set<CellId>,
+  blockedLazy: { cells?: ReadonlySet<CellId> },
+): void {
+  // Only PLAYER-owned units space out. An unowned settler is NOT in the owned-only `occupancy`, so the
+  // keeper test below (`bucket[0] === e`) could never recognise it as the keeper — without this guard an
+  // unowned unit sharing a tile with ≥2 owned resting units would wrongly de-stack. Gating here keeps the
+  // unowned golden/economy fixtures byte-identical (the stated invariant) and neutrals put in real play.
+  if (!world.has(e, Owner)) return;
+  const bucket = occupancy.at(tileX, tileY);
+  if (bucket.length < 2 || bucket[0] === e) return; // alone on the tile, or the keeper — hold ground
+  // Build the building walk-block overlay once, only when a real de-stack is attempted (so a tick with no
+  // crowded idle unit pays nothing). Excludes a target under a standing building: routing A* would refuse
+  // a blocked goal, and a MoveGoal whose route can't resolve would freeze the unit (nothing clears a
+  // failed non-player request), so we never aim at one.
+  blockedLazy.cells ??= buildingBlockedCells(world, ctx, terrain);
+  const from = terrain.cellAtClamped(tileX, tileY);
+  const free = nearestFreeCell(terrain, from, occupancy, claimed, blockedLazy.cells);
+  if (free === null) return; // boxed in — nothing better than staying
+  claimed.add(free);
+  world.add(e, MoveGoal, { cell: free });
+}
+
+/**
+ * The nearest cell to `from` that is walkable, unblocked by a building, holds no resting occupant, and
+ * hasn't been claimed by another de-stacker this tick — a breadth-first ring search over the graph's
+ * canonical N,E,S,W neighbours (so the first hit at the minimum distance is history-independent),
+ * bounded by {@link SPACING_SEARCH_CAP}. Returns null when nothing free is reachable within the cap.
+ * Blocked cells are neither entered nor traversed, mirroring the pathfinder that will carry the move out.
+ */
+function nearestFreeCell(
+  terrain: TerrainGraph,
+  from: CellId,
+  occupancy: TileBuckets,
+  claimed: ReadonlySet<CellId>,
+  blocked: ReadonlySet<CellId>,
+): CellId | null {
+  const seen = new Set<CellId>([from]);
+  let frontier: CellId[] = [from];
+  let visited = 0;
+  while (frontier.length > 0 && visited < SPACING_SEARCH_CAP) {
+    const next: CellId[] = [];
+    for (const cell of frontier) {
+      for (const n of terrain.walkableNeighbours(cell)) {
+        if (seen.has(n) || blocked.has(n)) continue;
+        seen.add(n);
+        visited++;
+        const { x, y } = terrain.coordsOf(n);
+        if (!claimed.has(n) && occupancy.at(x, y).length === 0) return n;
+        next.push(n);
+      }
+    }
+    frontier = next;
+  }
+  return null;
 }
 
 /**

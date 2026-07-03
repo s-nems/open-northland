@@ -50,6 +50,8 @@ const HERD_TRIBES = [10, 11, 12, 13, 14, VIKING, INVALID_TYPE] as const;
 const AXE = 7;
 const LEATHER = 1;
 const COMBATANT_HITPOINTS = 500;
+/** Owner slots: two valid players + one out-of-range (skipped → neutral) — exercises `stampOwner`. */
+const OWNERS = [0, 1, 99] as const;
 /** Entity-targeting commands draw ids from [1, TARGET_ID_RANGE] — live, dead, and never-created. */
 const TARGET_ID_RANGE = 80;
 /** ~1 command every this-many ticks keeps the stream busy without swamping the map. */
@@ -85,7 +87,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(MAP_W);
   const y = rng.int(MAP_H);
-  const roll = rng.int(6);
+  const roll = rng.int(8);
   switch (roll) {
     case 0:
       return {
@@ -95,6 +97,7 @@ function nextCommand(rng: Rng): Command {
         y,
         tribe: VIKING,
         ...(rng.int(3) === 0 ? { underConstruction: true } : {}),
+        ...(rng.int(2) === 0 ? { owner: pick(rng, OWNERS) } : {}),
       };
     case 1: {
       // Every third settler is a combatant (Health + armor + a specific weapon + a walk pace) so the
@@ -109,6 +112,7 @@ function nextCommand(rng: Rng): Command {
         ...(combatant
           ? { hitpoints: COMBATANT_HITPOINTS, armorClass: LEATHER, weaponTypeId: AXE, moveSpeed: 4 }
           : {}),
+        ...(rng.int(2) === 0 ? { owner: pick(rng, OWNERS) } : {}),
       };
     }
     case 2:
@@ -116,17 +120,35 @@ function nextCommand(rng: Rng): Command {
     case 3:
       // The fixture ships no vehicles, so EVERY placeBoat is the skipped-but-logged path — replay
       // must reproduce the same state through a log full of no-op commands.
-      return { kind: 'placeBoat', vehicleType: pick(rng, [1, INVALID_TYPE]), x, y, tribe: VIKING };
+      return {
+        kind: 'placeBoat',
+        vehicleType: pick(rng, [1, INVALID_TYPE]),
+        x,
+        y,
+        tribe: VIKING,
+        ...(rng.int(2) === 0 ? { owner: pick(rng, OWNERS) } : {}),
+      };
     case 4:
       return {
         kind: 'setProduction',
         building: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         goodType: rng.int(4),
       };
-    default:
+    case 5:
       // Random target ids hit live buildings, live NON-buildings (settlers, herds — must be
       // skipped), dead entities, and ids never created. All four must resolve deterministically.
       return { kind: 'demolish', building: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+    case 6:
+      // A move order at a random id: hits owned settlers (obeyed), unowned settlers / buildings /
+      // dead ids (skipped). Exercises the moveUnit skip paths + the PlayerOrder timed override.
+      return { kind: 'moveUnit', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity, x, y };
+    default:
+      // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.
+      return {
+        kind: 'setJob',
+        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        jobType: pick(rng, JOB_TYPES),
+      };
   }
 }
 

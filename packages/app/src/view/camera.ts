@@ -122,27 +122,31 @@ export interface CameraController {
  * `preventDefault` on the middle button suppresses the browser's autoscroll widget; move/up listen on
  * `window` so a drag continues when the cursor leaves the canvas.
  */
+/**
+ * The CSS-px → backing-store-px scale for a canvas (+ its client `rect`). Client (CSS-px) mouse coords
+ * must land in the backing-store px the camera + picking work in. The live entries keep the two 1:1
+ * (`createWindowPixiApp` sizes the backing store to the window, `index.html` CSS-sizes `#game` the
+ * same), so this is normally identity — but it stays exact for any embedding where they diverge (a
+ * fixed-size canvas, a resize not yet flushed), else a drag pans faster than the cursor, a wheel zoom
+ * anchors off the cursor, and a click picks the wrong tile. The `rect` is returned so a handler can
+ * subtract the canvas origin in CSS px *before* scaling. Guards a zero-size (unlaid-out) canvas. Shared
+ * by the camera controller and the selection controller (`view/unit-controls.ts`).
+ */
+export function backingScale(canvas: HTMLCanvasElement): { sx: number; sy: number; rect: DOMRect } {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    sx: rect.width === 0 ? 1 : canvas.width / rect.width,
+    sy: rect.height === 0 ? 1 : canvas.height / rect.height,
+    rect,
+  };
+}
+
 export function createCameraController(canvas: HTMLCanvasElement, initial: Camera): CameraController {
   let cam: Camera = initial;
   const held = new Set<string>();
   let dragging = false;
   let lastX = 0;
   let lastY = 0;
-
-  // Client (CSS-px) coords must land in the backing-store px the camera works in. The live entries now
-  // keep the two 1:1 (`createWindowPixiApp` sizes the backing store to the window, `index.html` CSS-sizes
-  // `#game` the same), so this is normally identity — but it stays exact for any embedding where they
-  // diverge (a fixed-size canvas, a resize event not yet flushed), else a drag pans faster than the
-  // cursor and a wheel zoom anchors off the cursor. `rect` is returned too, so the wheel handler
-  // subtracts the canvas origin in CSS px *before* scaling. Guards a zero-size (unlaid-out) canvas.
-  const backingScale = (): { sx: number; sy: number; rect: DOMRect } => {
-    const rect = canvas.getBoundingClientRect();
-    return {
-      sx: rect.width === 0 ? 1 : canvas.width / rect.width,
-      sy: rect.height === 0 ? 1 : canvas.height / rect.height,
-      rect,
-    };
-  };
 
   const onMouseDown = (e: MouseEvent): void => {
     if (e.button !== 1) return; // middle button only
@@ -153,7 +157,7 @@ export function createCameraController(canvas: HTMLCanvasElement, initial: Camer
   };
   const onMouseMove = (e: MouseEvent): void => {
     if (!dragging) return;
-    const { sx, sy } = backingScale();
+    const { sx, sy } = backingScale(canvas);
     cam = panCamera(cam, (e.clientX - lastX) * sx, (e.clientY - lastY) * sy);
     lastX = e.clientX;
     lastY = e.clientY;
@@ -163,7 +167,7 @@ export function createCameraController(canvas: HTMLCanvasElement, initial: Camer
   };
   const onWheel = (e: WheelEvent): void => {
     e.preventDefault(); // don't scroll the page
-    const { sx, sy, rect } = backingScale();
+    const { sx, sy, rect } = backingScale(canvas);
     const factor = e.deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP;
     cam = zoomCameraAt(cam, factor, (e.clientX - rect.left) * sx, (e.clientY - rect.top) * sy);
   };

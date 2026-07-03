@@ -5,6 +5,7 @@ import { housePlacementScene } from './house-placement.js';
 import { soundShowcaseScene } from './sound-showcase.js';
 import { stressCrowdScene } from './stress-crowd.js';
 import type { SceneDefinition } from './types.js';
+import { unitOrdersScene } from './unit-orders.js';
 
 export type { SceneDefinition, SceneCheck } from './types.js';
 export { createSceneSim, resetComponentStores } from './runtime.js';
@@ -21,6 +22,7 @@ export const SCENES: readonly SceneDefinition[] = [
   housePlacementScene,
   soundShowcaseScene,
   stressCrowdScene,
+  unitOrdersScene,
 ];
 
 /** Look up a scene by its `?scene=<id>` value, or `undefined` if no scene has that id. */

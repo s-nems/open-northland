@@ -262,7 +262,7 @@ function walkableTypeIds(map?: TerrainMap): ReadonlySet<number> {
  * too few walkable cells (an all-water grid under the demo's base table) **falls back to the strip**
  * — the slice always runs (matching the file's graceful-degradation contract), never throwing.
  */
-export function runSlice(seed: number, ticks: number, map?: TerrainMap): Simulation {
+export function runSlice(seed: number, ticks: number, map?: TerrainMap, owner?: number): Simulation {
   // Resolve placement first: a usable map yields its first six walkable cells; no map (or a map with
   // too few walkable cells) falls back to the synthetic strip — content + terrain + cells all revert
   // together so the fallback sim is exactly the no-map slice.
@@ -284,10 +284,13 @@ export function runSlice(seed: number, ticks: number, map?: TerrainMap): Simulat
   const cutter = cellAt(2);
   const carrier = cellAt(3);
 
-  sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: hq.x, y: hq.y, tribe: VIKING });
-  sim.enqueue({ kind: 'placeBuilding', buildingType: SAWMILL, x: mill.x, y: mill.y, tribe: VIKING });
-  sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: cutter.x, y: cutter.y, tribe: VIKING });
-  sim.enqueue({ kind: 'spawnSettler', jobType: CARRIER, x: carrier.x, y: carrier.y, tribe: VIKING });
+  // `owner` (optional) tags the slice's buildings + settlers to a player so they're selectable/orderable
+  // in the interactive live entry. Omitted (the shot/default path) leaves them neutral — hash untouched.
+  const own = owner !== undefined ? { owner } : {};
+  sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: hq.x, y: hq.y, tribe: VIKING, ...own });
+  sim.enqueue({ kind: 'placeBuilding', buildingType: SAWMILL, x: mill.x, y: mill.y, tribe: VIKING, ...own });
+  sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: cutter.x, y: cutter.y, tribe: VIKING, ...own });
+  sim.enqueue({ kind: 'spawnSettler', jobType: CARRIER, x: carrier.x, y: carrier.y, tribe: VIKING, ...own });
   for (const cell of [cellAt(4), cellAt(5)]) {
     const tree = sim.world.create();
     sim.world.add(tree, Position, { x: fx.fromInt(cell.x), y: fx.fromInt(cell.y) });

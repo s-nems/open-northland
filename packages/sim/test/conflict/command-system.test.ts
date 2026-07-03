@@ -8,6 +8,7 @@ import {
   JobAssignment,
   MoveGoal,
   MoveSpeed,
+  Owner,
   PathFollow,
   PathRequest,
   Position,
@@ -60,6 +61,7 @@ function clearStores(): void {
   Vehicle.store.clear();
   Weapon.store.clear();
   MoveSpeed.store.clear();
+  Owner.store.clear();
 }
 
 beforeEach(clearStores);
@@ -238,6 +240,37 @@ describe('CommandSystem', () => {
     sim.step();
     expect(sim.world.has(nthEntity(sim, 0), MoveSpeed)).toBe(false); // omitted -> no MoveSpeed
     expect(sim.world.has(nthEntity(sim, 1), MoveSpeed)).toBe(false); // 0 -> no MoveSpeed
+  });
+
+  it('spawnSettler with a valid owner stamps an Owner (the player that controls it)', () => {
+    const sim = fresh();
+    // A settler spawned for a player carries an Owner{player} — the gate the app uses to decide which
+    // units the human may select and order. Orthogonal to tribe (the civilization).
+    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 1, y: 2, tribe: VIKING, owner: 0 });
+    sim.step();
+    expect(sim.world.get(nthEntity(sim, 0), Owner)).toEqual({ player: 0 });
+  });
+
+  it('placeBuilding with a valid owner stamps an Owner on the building', () => {
+    const sim = fresh();
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 3, y: 4, tribe: VIKING, owner: 2 });
+    sim.step();
+    expect(sim.world.get(nthEntity(sim, 0), Owner)).toEqual({ player: 2 });
+  });
+
+  it('leaves an unowned entity Owner-less for an omitted or out-of-range owner (neutral — golden path)', () => {
+    const sim = fresh();
+    // The default (omitted) and the out-of-range (>= MAX_PLAYERS, or negative) paths both stamp NO
+    // Owner — the separate-optional-component pattern (like Health/Armor/MoveSpeed): a neutral entity
+    // has none, leaving the golden hash untouched. An out-of-range owner is a recoverable bad input —
+    // the entity is still created, just unowned.
+    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
+    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 1, y: 0, tribe: VIKING, owner: 16 });
+    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 2, y: 0, tribe: VIKING, owner: -1 });
+    sim.step();
+    expect(sim.world.has(nthEntity(sim, 0), Owner)).toBe(false); // omitted -> neutral
+    expect(sim.world.has(nthEntity(sim, 1), Owner)).toBe(false); // 16 (>= MAX_PLAYERS) -> neutral
+    expect(sim.world.has(nthEntity(sim, 2), Owner)).toBe(false); // -1 -> neutral
   });
 
   it('skips a command with an unknown type id (recoverable bad input — no throw, still logged)', () => {

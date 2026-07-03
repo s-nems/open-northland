@@ -97,3 +97,15 @@ For small, hard-won *gotchas* (not reworks) see [LESSONS.md](LESSONS.md); the li
 - **2026-06-24** — First reflection: extracted `systems/context.ts` + `movementSystem` from the
   growing `systems/index.ts` god-module; proposed the full `systems/` split + ROADMAP compaction
   (both since landed).
+- **2026-07-03** (unit-orders worktree; perf review) — Landed RTS unit orders (Owner model, moveUnit/
+  setJob, idle-spacing de-stack, group formation, selection rings, always-on info panel, per-entity
+  sprite bounds for pixel-accurate picking). Per-frame costs the diff introduced were addressed (pooled
+  selection rings, reused frame snapshot in `controls.tick`, in-place `boundsFrame`-stamped sprite bounds
+  — no per-frame alloc). **Deferred (pre-existing, not from this diff; negligible at the current few-tens-
+  of-entities slice, hot only when a selection is held at thousands):** (a) `SelectionLayer.draw` scans
+  all `snapshot.entities` each frame while any selection is held (O(entities), wants O(selection)); (b)
+  `unit-panel.ts` `tick` does `snapshot.entities.find(...)` per selected settler each frame. Both want a
+  **by-id lookup on `WorldSnapshot`** — but the snapshot is contractually "plain data, no live Maps"
+  (transferable to a render Worker; `snapshot-transferable.test.ts`), so the index must be a parallel
+  array/typed structure or a render-side per-frame map shared by both consumers, not a `Map` on the
+  snapshot. Sequenced after the `ScreenMap` sprite index (same O(entities)-cull family, item (b) above).

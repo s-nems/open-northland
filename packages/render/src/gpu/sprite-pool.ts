@@ -41,6 +41,29 @@ interface ResolvedLayer {
 }
 
 /**
+ * The WORLD-space axis-aligned bounding box of an entity's drawn sprite this frame (pre-camera, the same
+ * space as a {@link DrawItem}'s `x`/`y`). The union of its visible atlas layers (or its placeholder box),
+ * translated to the feet anchor. This is what makes "click anywhere on the graphic" and a footprint-sized
+ * selection marker EXACT per building/settler — the picker + selection ring read it instead of guessing a
+ * fixed box, so a big headquarters and a small hut each get a hit box the size of their own sprite.
+ */
+export interface EntityBounds {
+  readonly minX: number;
+  readonly minY: number;
+  readonly maxX: number;
+  readonly maxY: number;
+}
+
+/** The mutable backing of an entity's bounds — one per pooled entity, restamped in place each frame so
+ *  the per-frame bounds pass allocates nothing (see {@link PooledEntity.bounds}). */
+interface MutableBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+/**
  * One entity's persistent display objects, kept across frames and reused: a {@link Container} at the
  * entity's feet anchor holding its atlas layer {@link Sprite}s (body + head overlays, or a single
  * kind/family sprite) and a lazily-built placeholder {@link Graphics}. Per frame only the container
@@ -53,6 +76,10 @@ interface PooledEntity {
   placeholder?: Graphics;
   attached: boolean;
   lastSeen: number;
+  /** This entity's world-space sprite AABB, restamped IN PLACE each frame it's drawn (no per-frame alloc). */
+  readonly bounds: MutableBounds;
+  /** The `frameId` the bounds were last stamped on; `boundsOf` only returns them when it's the current one. */
+  boundsFrame: number;
 }
 
 /**
@@ -145,6 +172,18 @@ export class SpritePool {
   }
 
   /**
+   * The WORLD-space bounding box of an entity's sprite as DRAWN last frame, or `undefined` if it wasn't
+   * drawn (off-screen / not in the snapshot). The picker uses it for an exact "click the graphic" hit
+   * test and the selection ring to size a building marker to its actual footprint — see {@link EntityBounds}.
+   */
+  boundsOf(ref: number): EntityBounds | undefined {
+    const pe = this.pool.get(ref);
+    // Only the CURRENT frame's stamp is valid: a pooled-but-culled entity keeps a stale stamp, so it
+    // correctly reads as "no bounds" (off-screen → the picker falls back to its kind box).
+    return pe !== undefined && pe.boundsFrame === this.frameId ? pe.bounds : undefined;
+  }
+
+  /**
    * Destroy EVERY pooled entity — including ones currently detached (culled off-screen), which a
    * scene-graph walk from the sprite layer can't reach because they were removed from it. Called on the
    * renderer's dispose.
@@ -170,9 +209,17 @@ export class SpritePool {
         pe.container.addChild(pe.placeholder);
       }
       pe.placeholder.visible = true;
+      const { bodyW, bodyH } = placeholderBody(pe.kind);
+      const halfW = Math.max(9, bodyW / 2);
+      this.stampBounds(pe, item.x - halfW, item.y - bodyH, item.x + halfW, item.y + 5);
       return;
     }
     if (pe.placeholder !== undefined) pe.placeholder.visible = false;
+    // Accumulate the union of the drawn layers' rects (feet-local) → the entity's exact sprite bounds.
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
       if (layer === undefined) continue;
@@ -184,15 +231,33 @@ export class SpritePool {
       }
       spr.texture = this.textures.get(layer.source, layer.frame);
       // Feet-anchored: the frame's authored draw offset, scaled about the anchor (the container origin).
-      spr.position.set(layer.frame.offsetX * layer.scale, layer.frame.offsetY * layer.scale);
+      const ox = layer.frame.offsetX * layer.scale;
+      const oy = layer.frame.offsetY * layer.scale;
+      spr.position.set(ox, oy);
       spr.scale.set(layer.scale);
       spr.visible = true;
+      if (ox < minX) minX = ox;
+      if (oy < minY) minY = oy;
+      if (ox + layer.frame.width * layer.scale > maxX) maxX = ox + layer.frame.width * layer.scale;
+      if (oy + layer.frame.height * layer.scale > maxY) maxY = oy + layer.frame.height * layer.scale;
     }
     // Hide any leftover sprites from a frame that needed more layers than this one.
     for (let i = layers.length; i < pe.sprites.length; i++) {
       const s = pe.sprites[i];
       if (s !== undefined) s.visible = false;
     }
+    if (minX <= maxX) {
+      this.stampBounds(pe, item.x + minX, item.y + minY, item.x + maxX, item.y + maxY);
+    }
+  }
+
+  /** Restamp a pooled entity's bounds IN PLACE for this frame — no allocation in the per-frame pass. */
+  private stampBounds(pe: PooledEntity, minX: number, minY: number, maxX: number, maxY: number): void {
+    pe.bounds.minX = minX;
+    pe.bounds.minY = minY;
+    pe.bounds.maxX = maxX;
+    pe.bounds.maxY = maxY;
+    pe.boundsFrame = this.frameId;
   }
 
   /**
@@ -311,7 +376,15 @@ export class SpritePool {
 
 /** A fresh, empty pooled entity (container + kind; sprites/placeholder grow lazily on first update). */
 function createPooled(kind: Exclude<DrawKind, 'tile'>): PooledEntity {
-  return { container: new Container(), kind, sprites: [], attached: false, lastSeen: 0 };
+  return {
+    container: new Container(),
+    kind,
+    sprites: [],
+    attached: false,
+    lastSeen: 0,
+    bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
+    boundsFrame: -1,
+  };
 }
 
 /**
@@ -320,10 +393,14 @@ function createPooled(kind: Exclude<DrawKind, 'tile'>): PooledEntity {
  * (or the no-atlas default) still shows depth-sortable geometry. Built ONCE per entity (kind is stable);
  * only its visibility toggles per frame.
  */
+/** The feet-local body dimensions the placeholder marker is drawn at, by kind (see {@link drawPlaceholder}). */
+function placeholderBody(kind: Exclude<DrawKind, 'tile'>): { bodyW: number; bodyH: number } {
+  return kind === 'building' ? { bodyW: 28, bodyH: 40 } : { bodyW: 14, bodyH: 24 };
+}
+
 function drawPlaceholder(g: Graphics, kind: Exclude<DrawKind, 'tile'>): Graphics {
   const colour = KIND_COLOURS[kind];
-  const bodyW = kind === 'building' ? 28 : 14;
-  const bodyH = kind === 'building' ? 40 : 24;
+  const { bodyW, bodyH } = placeholderBody(kind);
   g.moveTo(0, -5).lineTo(9, 0).lineTo(0, 5).lineTo(-9, 0).closePath().fill({ color: 0x000000, alpha: 0.3 });
   g.rect(-bodyW / 2, -bodyH, bodyW, bodyH)
     .fill({ color: colour })

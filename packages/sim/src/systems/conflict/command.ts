@@ -1,5 +1,13 @@
 import { indexById } from '@vinland/data';
-import { Building, JobAssignment, Position, Settler, Stockpile, Vehicle } from '../../components/index.js';
+import {
+  Building,
+  JobAssignment,
+  Position,
+  Settler,
+  Stockpile,
+  Vehicle,
+  stampOwner,
+} from '../../components/index.js';
 import { assertNever } from '../../core/brand.js';
 import type { Command } from '../../core/commands.js';
 import { ONE, fx } from '../../core/fixed.js';
@@ -7,6 +15,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { canPlaceBuilding } from '../footprint.js';
 import { buildingEnabled, tribeShipsUnlocked } from '../progression.js';
+import { moveUnit, setJob } from './orders.js';
 import { spawnAnimalHerd, spawnSettler } from './spawn.js';
 
 /**
@@ -46,6 +55,10 @@ import { spawnAnimalHerd, spawnSettler } from './spawn.js';
  *    workplace — it returns to idle and the JobSystem re-employs it elsewhere next tick. Only an
  *    entity that actually IS a building is destroyed: a demolish aimed at anything else (a settler,
  *    a resource, a boat — a stale or hostile command) is skipped.
+ *  - `moveUnit` / `setJob` — the PLAYER-order commands that steer an EXISTING owned settler (the RTS
+ *    "go there" / "change profession"): `moveUnit` sets a `MoveGoal` + a `PlayerOrder` soft timed
+ *    override, `setJob` swaps the `jobType` and re-idles the unit. Both live in {@link moveUnit}/
+ *    {@link setJob} (./orders.ts) and skip a dead/non-settler/neutral target (still logged).
  *
  * A command that references an unknown type id or a dead entity is a recoverable boundary failure
  * (bad UI input / a stale command), not a programmer bug: it is skipped (the log still records it,
@@ -85,6 +98,12 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
         unbindWorkersOf(world, command.building);
         world.destroy(command.building);
       }
+      return;
+    case 'moveUnit':
+      moveUnit(world, ctx, command);
+      return;
+    case 'setJob':
+      setJob(world, ctx, command);
       return;
     default:
       assertNever(command);
@@ -157,6 +176,9 @@ function placeBuilding(
     }
   }
   world.add(e, Stockpile, { amounts });
+  // A building placed for a specific PLAYER carries an `Owner` (the separate-optional stamp): it is
+  // that player's to select/command. Omitted / out-of-range leaves it neutral (golden path).
+  stampOwner(world, e, command.owner);
   ctx.events.emit({ kind: 'buildingPlaced', entity: e, at: { x: command.x, y: command.y } });
 }
 
@@ -191,6 +213,9 @@ function placeBoat(world: World, ctx: SystemContext, command: Extract<Command, {
   const e = world.create();
   world.add(e, Position, { x: fx.fromInt(command.x), y: fx.fromInt(command.y) });
   world.add(e, Vehicle, { vehicleType: command.vehicleType, tribe: command.tribe });
+  // A hull placed for a specific PLAYER carries an `Owner` (the separate-optional stamp). Omitted /
+  // out-of-range leaves it neutral (golden path).
+  stampOwner(world, e, command.owner);
   // A hull arrives EMPTY — a boat-as-mobile-store is filled by hauling cargo to it (the `cargoGoods`
   // load filter, a deferred slice), not pre-seeded with starting goods like a headquarters. Its hold
   // CAPACITY is the ship type's `stockSlots` (read off the VehicleType, like `largestShipCapacity`).
