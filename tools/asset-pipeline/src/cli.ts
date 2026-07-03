@@ -85,7 +85,7 @@ async function run(args: Args): Promise<void> {
   // (10 shipped `playerNN.pcx` + 6 hue-rotated extras). The renderer reads each index through the player's
   // LUT row, so one atlas serves all 16 players — see packages/render palette-LUT shader + docs/FIDELITY.md.
   const indexed = await convertIndexedCharacterAtlases(bindings, args.out);
-  const lut = await convertPlayerColorLut(args.out, args.out).catch((err: unknown) => {
+  const lut = await convertPlayerColorLut(args.out).catch((err: unknown) => {
     console.warn(`[pipeline] player-colour LUT skipped: ${(err as Error).message}`);
     return undefined;
   });

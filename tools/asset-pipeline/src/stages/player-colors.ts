@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { packIndexedBobAtlas } from '../decoders/atlas.js';
 import { decodeBmd } from '../decoders/bmd.js';
@@ -6,7 +6,6 @@ import type { BmdPaletteBinding } from '../decoders/ini.js';
 import { decodePcx } from '../decoders/pcx.js';
 import {
   PLAYER_COLORS,
-  PLAYER_COLOR_BANDS,
   buildPlayerLutImage,
   composePlayerPalette,
   synthesizePlayerSource,
@@ -39,53 +38,54 @@ const SYNTHETIC_REFERENCE_PCX = 'player01.pcx';
 /** Human character bobs get the recolourable indexed atlas; everything else keeps its baked RGB atlas. */
 const CHARACTER_BMD_RE = /(^|\/)cr_hum_/i;
 
-/** Read a `creatures/<file>.pcx` 768-byte trailer palette from the unpacked tree; throws if absent. */
-async function readCreaturePalette(paletteDir: string, file: string): Promise<Uint8Array> {
-  const pal = decodePcx(await readFile(join(paletteDir, CREATURES_DIR, file))).palette;
+/**
+ * Read a `creatures/<file>.pcx` 768-byte trailer palette from the unpacked tree, resolved case-insensitively
+ * via `tree` ({@link indexOutTree}) — the archive members keep their original (unpredictable) case, so a direct
+ * `join` would miss on a case-sensitive filesystem (Linux CI), exactly why the bmd stage resolves the same way.
+ * Throws if the file is absent from `<out>` or has no palette trailer.
+ */
+async function readCreaturePalette(
+  outDir: string,
+  tree: ReadonlyMap<string, string>,
+  file: string,
+): Promise<Uint8Array> {
+  const key = join(CREATURES_DIR, file).replace(/\\/g, '/').toLowerCase();
+  const onDisk = tree.get(key);
+  if (onDisk === undefined) throw new Error(`player-colors: ${file} not found under out`);
+  const pal = decodePcx(await readFile(join(outDir, onDisk))).palette;
   if (pal === undefined) throw new Error(`player-colors: ${file} has no 256-colour palette trailer`);
   return pal;
 }
 
-/** The LUT stage's emitted paths + how many player colours it composed. */
+/** The LUT stage's emitted path + how many player colours it composed. */
 export interface PlayerColorLutResult {
   readonly png: string;
-  readonly descriptor: string;
   readonly colors: number;
 }
 
 /**
- * Build the 16 per-player palettes (the original's 10 `playerNN.pcx` + 6 hue-rotated extras), stack them
- * into a `256×16` LUT PNG, and write it + a descriptor JSON (band + colour names) under `<out>`'s bobs dir.
- * `paletteDir` is the tree holding `creatures/*.pcx` (the unpacked `<out>` in a full run). Throws on a
- * missing base/reference palette — those are required for any player colour to exist.
+ * Build the 16 per-player palettes (the original's 10 `playerNN.pcx` + 6 hue-rotated extras), stack them into
+ * a `256×16` LUT PNG, and write it under `<out>`'s bobs dir. Reads the base + `playerNN.pcx` sources from the
+ * same `<out>` tree (the pipeline unpacked them there). Throws on a missing base/reference palette — those are
+ * required for any player colour to exist. The colours' names/ids live in code (`PLAYER_COLORS`, mirrored
+ * app-side for the gallery labels) and the LUT row order IS that slot order, so no sidecar descriptor is needed.
  */
-export async function convertPlayerColorLut(
-  paletteDir: string,
-  outDir: string,
-): Promise<PlayerColorLutResult> {
-  const base = await readCreaturePalette(paletteDir, BASE_PALETTE_PCX);
-  const reference = await readCreaturePalette(paletteDir, SYNTHETIC_REFERENCE_PCX);
+export async function convertPlayerColorLut(outDir: string): Promise<PlayerColorLutResult> {
+  const tree = await indexOutTree(outDir);
+  const base = await readCreaturePalette(outDir, tree, BASE_PALETTE_PCX);
+  const reference = await readCreaturePalette(outDir, tree, SYNTHETIC_REFERENCE_PCX);
   const palettes: Uint8Array[] = [];
   for (const color of PLAYER_COLORS) {
     const source =
       color.source.kind === 'pcx'
-        ? await readCreaturePalette(paletteDir, color.source.file)
+        ? await readCreaturePalette(outDir, tree, color.source.file)
         : synthesizePlayerSource(reference, color.source.hue);
     palettes.push(composePlayerPalette(base, source));
   }
-  const image = buildPlayerLutImage(palettes);
+  await mkdir(join(outDir, BOBS_DIR), { recursive: true }); // bobs dir may not exist if no atlas landed there
   const pngRel = join(BOBS_DIR, 'player-lut.png');
-  const descRel = join(BOBS_DIR, 'player-colors.json');
-  await writeFile(join(outDir, pngRel), encodePng(image));
-  const descriptor = {
-    band: PLAYER_COLOR_BANDS,
-    width: image.width,
-    height: image.height,
-    lut: 'player-lut.png',
-    colors: PLAYER_COLORS.map((c) => ({ id: c.id, name: c.name })),
-  };
-  await writeFile(join(outDir, descRel), `${JSON.stringify(descriptor, null, 2)}\n`);
-  return { png: pngRel, descriptor: descRel, colors: palettes.length };
+  await writeFile(join(outDir, pngRel), encodePng(buildPlayerLutImage(palettes)));
+  return { png: pngRel, colors: palettes.length };
 }
 
 /**
