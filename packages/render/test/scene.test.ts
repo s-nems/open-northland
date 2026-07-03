@@ -212,6 +212,23 @@ describe('buildScene', () => {
     expect(byRef(4)?.state).toBe('idle'); // failed route wins over the lingering goal
   });
 
+  it('reads a settler’s owning player (the team-colour key) from its Owner component', () => {
+    // The render team-colour join: Owner.player → DrawItem.player → the PalettedSprite LUT row. An UNOWNED
+    // settler (no Owner) carries no player and draws the base palette (row 0).
+    const scene = buildScene(
+      snapshotOf([
+        entity(1, 0, 0, { Settler: { tribe: 0 }, Owner: { player: 3 } }),
+        entity(2, 1, 0, { Settler: { tribe: 0 } }), // wildlife / neutral — unowned
+        entity(3, 2, 0, { Settler: { tribe: 0 }, Owner: { player: 0 } }), // player 0 is a real slot, not "none"
+      ]),
+      FLAT_3x2,
+    );
+    const byRef = (r: number) => scene.find((d) => d.kind === 'settler' && d.ref === r);
+    expect(byRef(1)?.player).toBe(3);
+    expect(byRef(2)?.player).toBeUndefined();
+    expect(byRef(3)?.player).toBe(0);
+  });
+
   it('flags a settler hauling a good with carrying:true (the loaded-gait join key)', () => {
     const scene = buildScene(
       snapshotOf([

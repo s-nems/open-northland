@@ -136,6 +136,13 @@ export interface DrawItem {
    */
   readonly jobType?: number;
   /**
+   * For a settler: the owning player slot (the sim `Owner.player`), so the renderer can paint the unit in
+   * that player's TEAM COLOUR — the render `PalettedSprite` reads its clothing-band indices through the
+   * player's row of the `256×N` colour LUT. Omitted for an UNOWNED settler (wildlife / a neutral fixture),
+   * which draws the base palette (LUT row 0). This is the render half of the sim's owner-hostility axis.
+   */
+  readonly player?: number;
+  /**
    * For a settler: whether it is a born-young (baby/child) settler — the sim `Age` component is present.
    * Disambiguates the age-class `jobType` ids (1..4) from a synthetic fixture's colliding adult job ids
    * (docs/LESSONS.md [dc3ef54]): only a young settler keys the child/baby body table. Omitted for adults.
@@ -419,6 +426,16 @@ function readStockpile(components: Readonly<Record<string, unknown>>): {
 }
 
 /**
+ * The owning player slot of a settler — the sim `Owner.player`, the render team-colour key ({@link
+ * DrawItem.player}). `undefined` when the settler carries no `Owner` (wildlife / a neutral fixture), which
+ * the renderer draws in the base palette. Pure read of plain snapshot data.
+ */
+function readOwnerPlayer(components: Readonly<Record<string, unknown>>): number | undefined {
+  const o = components.Owner as { player?: unknown } | undefined;
+  return o !== undefined && typeof o.player === 'number' ? o.player : undefined;
+}
+
+/**
  * Build the depth-sorted isometric draw list for a frame.
  *
  * Ordering — the core correctness property a human eyeball would otherwise have to catch:
@@ -523,6 +540,7 @@ function collectSprites(snapshot: WorldSnapshot, viewport?: Viewport): DrawItem[
     const facing = kind === 'settler' ? readFacing(entity.components) : undefined;
     const carrying = kind === 'settler' ? readCarrying(entity.components) : null;
     const jobType = kind === 'settler' ? readJobType(entity.components) : undefined;
+    const player = kind === 'settler' ? readOwnerPlayer(entity.components) : undefined;
     // Only a born-young settler carries `Age` — the component-presence disambiguation of the age-class
     // jobType ids (1..4) from colliding synthetic adult ids (docs/LESSONS.md [dc3ef54]).
     const young = kind === 'settler' && 'Age' in entity.components;
@@ -560,6 +578,7 @@ function collectSprites(snapshot: WorldSnapshot, viewport?: Viewport): DrawItem[
       ...(carrying !== null ? { carrying: true } : {}),
       ...(carrying?.goodType !== undefined ? { carryGood: carrying.goodType } : {}),
       ...(jobType !== undefined ? { jobType } : {}),
+      ...(player !== undefined ? { player } : {}),
       ...(young ? { young: true } : {}),
       ...(buildingType !== undefined ? { typeId: buildingType } : {}),
       ...(builtPct !== undefined ? { builtPct } : {}),

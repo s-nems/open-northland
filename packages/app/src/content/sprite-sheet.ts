@@ -8,7 +8,13 @@ import {
   createSyntheticAtlasSource,
   syntheticAtlasFrames,
 } from '@vinland/render';
-import { VIKING_CHARACTERS, characterStem, characterStems } from '../catalog/roster.js';
+import {
+  DEFAULT_CHARACTER_PALETTE,
+  INDEXED_CHARACTER_PALETTE,
+  VIKING_CHARACTERS,
+  characterStem,
+  characterStems,
+} from '../catalog/roster.js';
 import {
   BUILDING_FAMILIES,
   BUILDING_SCALE,
@@ -26,6 +32,7 @@ import {
   loadGalleryLayers,
   loadIr,
   loadLayer,
+  loadPlayerLut,
   sequencesFor,
 } from './ir.js';
 import {
@@ -71,6 +78,7 @@ const HUMAN_HEAD_ATLAS = 'cr_hum_head_00.test_human_00';
 async function loadCharacters(
   ir: RenderIr | null,
   goods: readonly GoodRef[],
+  palette: string,
 ): Promise<SettlerCharacterSet | undefined> {
   if (ir?.bobSequences === undefined || ir.bobSequences.length === 0) return undefined;
 
@@ -82,7 +90,7 @@ async function loadCharacters(
     rosterIds.map(async (rosterId) => {
       const character = rosterById.get(rosterId);
       if (character === undefined) return;
-      const stems = characterStems(character);
+      const stems = characterStems(character, palette);
       try {
         const { body, heads } = await loadGalleryLayers(stems.bodyStem, stems.headStems);
         const headsByStem = new Map<string, SpriteLayer>();
@@ -111,7 +119,7 @@ async function loadCharacters(
     const binding = characterBinding(spec, sequencesFor(ir, roster.imagelib), goods);
     if (binding === null) continue;
     const heads = (spec.headBmds ?? roster.headBmds)
-      .map((bmd) => layers.headsByStem.get(characterStem(bmd)))
+      .map((bmd) => layers.headsByStem.get(characterStem(bmd, palette)))
       .filter((l): l is SpriteLayer => l !== undefined);
     // Head-borrow: goods whose carry cycle ships empty head bobs resolve the HEAD through the base walk
     // instead (carryHeadAnims) — else a stone/grain hauler draws headless. All of a body's heads share
@@ -190,10 +198,16 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
     Promise.all(BUILDING_FAMILIES.map(async (f) => [f.layer, await loadLayer(f.layer)] as const)),
     loadIr(),
   ]);
+  // Player-colour LUT for TEAM COLOURS: if the pipeline emitted it (`/bobs/player-lut.png`), load the
+  // characters as the recolourable INDEXED atlas and draw them through this LUT per player; if it is ABSENT
+  // (a checkout whose pipeline predates the LUT stage), fall back to the baked-palette characters so the
+  // real-graphics path still draws (just single-coloured). One indexed atlas + one LUT serve every player.
+  const lut = await loadPlayerLut();
+  const characterPalette = lut !== undefined ? INDEXED_CHARACTER_PALETTE : DEFAULT_CHARACTER_PALETTE;
   // Per-job characters (the `[jobbasegraphics]` join): built after the hard-required layers above so a
   // missing extra body degrades per look, never failing the sheet. `undefined` (no IR sequences / no
   // civilian look) keeps the legacy single-body settler path.
-  const characters = await loadCharacters(ir, goods);
+  const characters = await loadCharacters(ir, goods, characterPalette);
   // BUILDING_FAMILIES is the SINGLE SOURCE OF TRUTH for the named building families: each entry's atlas is
   // loaded here AND only its `layer` key is eligible for a layer-qualified ref from buildingBobRefsByType,
   // so the loaded set and the reducer's emitted set cannot drift (a ref to an unloaded family would fall
@@ -254,6 +268,9 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
     kindScales: { building: BUILDING_SCALE },
     // Per-job settler looks (woman / soldier family / children via Age) — the sim-state → skin join.
     ...(characters !== undefined ? { characters } : {}),
+    // Team-colour LUT: present ⇒ characters are the indexed atlas and the pool paints each per its player
+    // (SpritePool's PalettedSprite path); absent ⇒ the baked characters draw as plain sprites, as before.
+    ...(lut !== undefined ? { palette: { source: lut, colours: lut.pixelHeight } } : {}),
   };
 }
 
