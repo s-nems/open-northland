@@ -14,7 +14,12 @@ import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { SCENES, createSceneSim, getScene } from '../scenes/index.js';
 import { cameraFor, createCameraController } from '../view/camera.js';
-import { menuEntriesFromContent, mountGameToolPanel, shiftHud } from '../view/game-tool-panel.js';
+import {
+  applyGameSpeed,
+  menuEntriesFromContent,
+  mountGameToolPanel,
+  shiftHud,
+} from '../view/game-tool-panel.js';
 import { enableAudioOnGesture } from '../view/overlay.js';
 import { mountPerfOverlay } from '../view/perf-overlay.js';
 import { mountSceneOverlay, mountUnknownSceneOverlay } from '../view/scene-overlay.js';
@@ -66,36 +71,17 @@ export async function renderSceneMode(
   // — the instrument the stress scene is watched with (and harmless on the small scenes).
   const perf = mountPerfOverlay();
 
-  // Mutable playback control the overlay buttons drive. `sim` is reassigned on restart (a fresh
-  // deterministic run), so the loop reads it through the closure each frame.
-  // The tool panel's game-speed button OWNS the tick rate: it is mounted below and pushes its default (×1)
-  // through `onSpeed` during mount — before the first frame — so the button, the overlay slider and the loop
-  // agree from frame 0. (`?speed=` no longer seeds a scene; the panel + overlay slider are the speed controls.)
-  const control = { paused: false, stepOnce: false, speed: 1 };
-  let sim = createSceneSim(scene);
+  // Playback control the tool-panel speed button drives (the sole speed/pause GUI now — the old scene-overlay
+  // playback buttons were removed). `?speed=` seeds the initial multiplier (default ×1); the panel's speed
+  // button drives it live (×1 → ×2 → ×3 → pause) without clobbering the seed at mount.
+  const control = { paused: false, speed: floatParam(params, 'speed', 1) };
+  const sim = createSceneSim(scene);
 
-  const overlay = mountSceneOverlay(scene, {
-    initialSpeed: control.speed,
-    onTogglePause: () => {
-      control.paused = !control.paused;
-      return control.paused;
-    },
-    onStep: () => {
-      control.stepOnce = true;
-    },
-    onRestart: () => {
-      sim = createSceneSim(scene);
-      timestep = new FixedTimestep(); // fresh accumulator so the replay starts on a clean tick boundary
-      controls.clearSelection(); // the rebuilt sim mints new entity ids — drop the stale selection
-    },
-    onSpeed: (v) => {
-      control.speed = v;
-    },
-  });
+  // The acceptance overlay is now purely the sign-off checklist + a debug tick (no playback controls).
+  const overlay = mountSceneOverlay(scene);
 
   // Interactive camera over the scene: `?zoom` is the starting frame, then the human pans (middle-mouse
-  // drag / arrow keys) and zooms (scroll wheel). Survives an overlay restart (the sim is rebuilt, the
-  // camera isn't), so the framing the human set up persists across replays.
+  // drag / arrow keys) and zooms (scroll wheel).
   const cameraCtl = createCameraController(
     canvas,
     cameraFor(buildSpriteScene(sim.snapshot()), zoom, app.screen.width, app.screen.height),
@@ -125,16 +111,12 @@ export async function renderSceneMode(
     buildings: menuEntriesFromContent(scene.content),
     tribe: HUD_TRIBE,
     owner: HUMAN_PLAYER,
-    onSpeed: (spec) => {
-      control.paused = spec.state === 'paused';
-      if (spec.state !== 'paused') control.speed = spec.tickMultiplier;
-    },
+    onSpeed: (spec) => applyGameSpeed(control, spec),
   });
 
   // RTS unit control over the scene: left-click / drag-box to select the human's units, right-click to
   // send them, Space for the unit panel. Harmless on scenes with no owned units (nothing is pickable);
-  // the unit-orders scene populates the human's vikings. `snapshot`/`enqueue` read the CURRENT `sim`
-  // through the closure, so they follow an overlay restart (which also clears the selection above).
+  // the unit-orders scene populates the human's vikings.
   const controls = createUnitControls({
     canvas,
     camera: () => cameraCtl.camera(),
@@ -147,7 +129,7 @@ export async function renderSceneMode(
     claimPointer: (x: number, y: number) => toolPanel.claimPointer(x, y),
   });
 
-  let timestep = new FixedTimestep();
+  const timestep = new FixedTimestep();
   let lastMs = performance.now();
 
   function frame(nowMs: number): void {
@@ -162,10 +144,7 @@ export async function renderSceneMode(
       sim.step();
       frameEvents.push(...sim.events.current());
     };
-    if (control.stepOnce) {
-      collect(); // manual single-step (paused): advance one tick irrespective of the accumulator
-      control.stepOnce = false;
-    } else if (!control.paused) {
+    if (!control.paused) {
       timestep.advance(elapsed * control.speed, collect);
     }
     cameraCtl.update(elapsed);

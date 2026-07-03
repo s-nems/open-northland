@@ -54,15 +54,17 @@ uniform vec2 uLutSize;      // (256, N)
 uniform vec4 uPlacement;    // .w = player-colour row to read (0 .. N-1)
 uniform vec2 uColorKey;     // .x > 0.5: treat the GUI transparent-key colours (below) as transparent
 
-// GUI transparent key. The in-game GUI palettes (iconsleft/context/…) reserve palette index 0 as a MAGENTA
-// sentinel (255,0,255) and a band of near-black entries (max channel ≲ 24/255) as each element's background,
-// both meant to read as see-through — but a bob writes them opaque (transparency is skip-runs, never a
-// colour key), so an icon drawn straight would carry an opaque dark square. When uColorKey.x is set (GUI
-// icons only) we discard those two colour classes so an icon shows only its glyph. Character LUTs never
-// produce them and leave uColorKey.x = 0, so this is inert for the world sprites.
+// GUI transparent key — OUR floating-HUD deviation, NOT an original mechanism (the engine blitter has no
+// colour key; see docs/FIDELITY.md "Left tool panel"). The in-game GUI palettes (iconsleft/context/…) reserve
+// palette index 0 as a MAGENTA sentinel (255,0,255) and a band of near-black entries (max channel ≲ 28/255)
+// as each element's background. A bob writes them opaque (transparency is skip-runs), so an element drawn
+// straight would carry an opaque dark rectangle over the world — which the original hid by rendering gameplay
+// in a dedicated area, but we render full-screen. When uColorKey.x is set (GUI panel sprites only) we discard
+// those two colour classes so the element shows only its art. Character LUTs never produce them and leave
+// uColorKey.x = 0, so this is inert for the world sprites.
 const float KEY_MAGENTA_HI = 0.9;  // r AND b above this …
 const float KEY_MAGENTA_LO = 0.1;  // … with g below this → the magenta sentinel (index 0)
-const float KEY_NEAR_BLACK = 0.11; // max channel below this → the near-black background band
+const float KEY_NEAR_BLACK = 0.11; // max channel below this (≈28/255) → the near-black background band
 
 void main(void) {
   // textureLod(..., 0.0): sample the BASE level only. An index/LUT read must never hit a blended mip — an

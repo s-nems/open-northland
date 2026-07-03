@@ -4,7 +4,7 @@ import type { Application } from 'pixi.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
 import { intParam } from '../entries/params.js';
 import type { MenuBuildingEntry } from '../hud/building-menu.js';
-import { DEFAULT_GAME_SPEED_STATE, type GameSpeedStateSpec, gameSpeedSpec } from '../hud/game-speed.js';
+import type { GameSpeedStateSpec } from '../hud/game-speed.js';
 import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel-layout.js';
 import { type ToolPanelController, mountToolPanel } from '../hud/tool-panel.js';
 import { backingScale } from './camera.js';
@@ -50,12 +50,25 @@ export interface GameToolPanelHandle {
   readonly controller: ToolPanelController;
   /** px to shift the always-on stocks HUD right so it sits beside the strip instead of under it. */
   readonly hudShift: number;
-  /** The tick multiplier the panel starts at — seed the loop control with it before frame 0 so button,
-   *  overlay slider and loop agree from the first frame. */
-  readonly initialSpeed: number;
   /** True when a client point is over the HUD (strip / open window / active placement) — the input router
    *  asks this BEFORE world picking so a HUD click never falls through to unit selection/orders. */
   claimPointer(clientX: number, clientY: number): boolean;
+}
+
+/** The mutable loop control both entries drive (a subset — `scene` also carries `stepOnce`). */
+export interface LoopSpeedControl {
+  paused: boolean;
+  speed: number;
+}
+
+/**
+ * Apply the panel's game-speed spec to an entry's loop control (pause + tick multiplier). Shared so `live`
+ * and `scene` wire the panel's `onSpeed` identically: a `paused` spec pauses the loop; any running spec sets
+ * the multiplier (and un-pauses).
+ */
+export function applyGameSpeed(control: LoopSpeedControl, spec: GameSpeedStateSpec): void {
+  control.paused = spec.state === 'paused';
+  if (spec.state !== 'paused') control.speed = spec.tickMultiplier;
 }
 
 /** The buildings the menu lists: a content set's own building types, labelled via the viking catalog. */
@@ -105,7 +118,6 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
   return {
     controller,
     hudShift,
-    initialSpeed: gameSpeedSpec(DEFAULT_GAME_SPEED_STATE).tickMultiplier,
     claimPointer: (x, y) => controller.claimsPointer(x, y),
   };
 }

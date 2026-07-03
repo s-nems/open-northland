@@ -59,22 +59,20 @@ Defined in `packages/app/src/scenes/<id>.ts` (the type is `scenes/types.ts`):
 
 ## Watching a scene (controls)
 
-The overlay (top-right) shows the title, summary, the acceptance checklist, and playback controls:
-
-- **⏸ Pauza / ▶ Wznów** — freeze the loop.
-- **⏭ Krok** — advance exactly one tick (while paused) to inspect a single frame.
-- **⟲ Restart** — replay from tick 0 (deterministic — identical every time).
-- **Tempo (0.25–2×)** — slow a walk/animation down to a pace you can judge (same knob as `?speed=`).
-
-The left HUD shows the tribe's live stocks, so you can watch a counter rise as goods are gathered.
+The overlay (top-right) shows the scene's title, summary, the acceptance checklist, and a live tick — it is
+the sign-off panel only. **Playback is the in-game GUI now:** the **LEFT tool panel** owns speed + pause (its
+game-speed button cycles ×1 → ×2 → ×3 → pause). For a slower-than-×1 pace to judge a walk/animation, pass
+`?speed=` (e.g. `?scene=<id>&speed=0.5`) — the discrete button can't reach sub-1×. Reload the page to replay
+from tick 0 (deterministic — identical every time). The left HUD shows the tribe's live stocks, so you can
+watch a counter rise as goods are gathered.
 
 ## Determinism footgun (why `createSceneSim` resets stores)
 
 Sim component stores are **module-level singletons** shared by every `Simulation` (see
-`packages/sim/src/ecs/world.ts`). A page load starts clean, but the overlay's **restart** rebuilds the
-sim in the same JS context — so `createSceneSim` wipes the stores first (`scenes/runtime.ts`), exactly as
-the app's vertical-slice test does. Always build scene sims through `createSceneSim`; never `new
-Simulation` directly for a scene.
+`packages/sim/src/ecs/world.ts`). A single page load starts clean, but the **headless test harness builds
+many scene sims in one process** — so `createSceneSim` wipes the stores first (`scenes/runtime.ts`), exactly
+as the app's vertical-slice test does, or an earlier build's entities leak onto a later one's reused ids.
+Always build scene sims through `createSceneSim`; never `new Simulation` directly for a scene.
 
 ## See also
 
