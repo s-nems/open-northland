@@ -37,7 +37,6 @@ const CARRIER = 36;
 const HEADQUARTERS = 1;
 const SAWMILL = 2;
 const VIKING = 1;
-const HARVEST_ATOMIC = 24;
 const PICKUP_ATOMIC = 22;
 
 beforeEach(() => {

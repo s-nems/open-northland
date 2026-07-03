@@ -3,7 +3,6 @@ import {
   JobAssignment,
   Position,
   Resource,
-  Settler,
   Stockpile,
   stockpileEntries,
 } from '../../components/index.js';
