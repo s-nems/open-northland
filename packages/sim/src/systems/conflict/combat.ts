@@ -10,6 +10,7 @@ import {
   Owner,
   PathFollow,
   PathRequest,
+  PlayerOrder,
   Position,
   Settler,
   Weapon,
@@ -189,10 +190,18 @@ function engageCombatant(
 
   const owned = world.has(e, Owner);
   const ordered = world.has(e, AttackOrder);
+  // A live PLAYER MOVE order (a {@link PlayerOrder}, and NOT an explicit {@link AttackOrder}) is the human's
+  // authoritative "go there and HOLD" command — it SUPPRESSES auto-engagement so the unit carries the order
+  // out instead of re-acquiring a nearby enemy and attacking (the reported "takes one step, then re-grabs
+  // the target and swings"). `moveUnit` clears any prior Engagement/AttackOrder, so an ordered unit holds
+  // cleanly with no stale combat state; an explicit AttackOrder is the OPPOSITE intent (fight THAT one) and
+  // still engages. Once the hold lapses (playerOrderSystem drops the PlayerOrder) the unit auto-defends
+  // again. This is the combat side of the soft-override philosophy the order handlers document.
+  if (world.has(e, PlayerOrder) && !ordered) return;
   const engaged = world.has(e, Engagement);
   const travelling = world.has(e, MoveGoal) || world.has(e, PathRequest) || world.has(e, PathFollow);
-  // A travelling unit that is not yet fighting is walking under another drive (a player move order, an
-  // economy walk) — don't yank it into combat. An engaged/ordered unit is re-checked even while moving.
+  // A travelling unit that is not yet fighting is walking under another drive (an economy walk) — don't
+  // yank it into combat. An engaged/ordered unit is re-checked even while moving.
   if (travelling && !engaged && !ordered) return;
 
   const attacker = world.get(e, Settler);
