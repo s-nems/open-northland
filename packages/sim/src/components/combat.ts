@@ -1,4 +1,4 @@
-import { defineComponent } from '../ecs/world.js';
+import { type Entity, defineComponent } from '../ecs/world.js';
 
 /**
  * A combatant's **hitpoints** — the life pool the hit-resolution loop drains. A settler/animal with
@@ -90,3 +90,41 @@ export const Weapon = defineComponent<{ weaponTypeId: number }>('Weapon');
  * removed by the exact `tick >= until` compare — no RNG, no wall-clock.
  */
 export const Anger = defineComponent<{ until: number }>('Anger');
+
+/**
+ * A combatant's **combat-engagement** marker — "this unit is fighting (or advancing on) an enemy right
+ * now". The CombatSystem stamps it while a combatant is swinging at, or chasing, an enemy, and removes
+ * it the moment the fight ends (no valid enemy in reach/sight). Two consumers read it:
+ *
+ *  - the **AISystem** skips ECONOMY planning for an engaged unit (the {@link PlayerOrder}-skip pattern):
+ *    combat owns the unit's movement (the chase) and its atomic (the swing), so the economy must not
+ *    re-task it mid-fight. Placed below the needs drives so it is a **soft** override — hunger/fatigue/
+ *    piety can still pull a combatant away, faithful to the autonomous-settler model;
+ *  - the CombatSystem itself uses `repathAt` to **throttle the chase**: a chaser re-issues its walk toward
+ *    a moving enemy only every {@link REPATH_CADENCE} ticks (following its live path in between), so a
+ *    field of chasers never triggers a per-tick full re-path — the RTS-scale rule (golden rule 7).
+ *
+ * It is a **separate optional component** (like {@link Health}/{@link Anger}): only a mid-fight combatant
+ * carries one, so a peaceful settler / the golden slice has none and the hash is untouched. Only OWNED
+ * combatants engage (the walk-into-melee advance is the player's army's; wildlife fights in place), so a
+ * neutral/economy fixture never carries it. `repathAt` is a monotonic integer tick value (no fixed-point),
+ * so it hashes deterministically. Determinism: set/cleared from the integer tick + the ring-search target,
+ * no RNG/wall-clock.
+ */
+export const Engagement = defineComponent<{ repathAt: number }>('Engagement');
+
+/**
+ * An explicit **attack order** on an OWNED combatant — the RTS "attack that unit" focus the
+ * `attackUnit` command stamps (the combat twin of {@link PlayerOrder}'s move order). Where the auto-
+ * engagement drive re-acquires the nearest enemy within sight each tick, an ordered unit chases and
+ * strikes THIS specific `target` **regardless of sight radius**, until the target dies / becomes an
+ * invalid target (then the CombatSystem drops the order and the unit reverts to auto-engagement) — the
+ * focused "kill that one" the player commands. Reissuing a move/profession order, or the target
+ * becoming un-hostile, supersedes it.
+ *
+ * It is a **separate optional component** (like {@link Engagement}): only a unit under an explicit
+ * attack order carries one, so the golden slice / a peaceful unit has none and the hash is untouched.
+ * `target` is an {@link Entity} id (a monotonic integer), so it hashes deterministically. Determinism:
+ * set once from the command's target, read/cleared by pure component + hostility checks — no RNG/wall-clock.
+ */
+export const AttackOrder = defineComponent<{ target: Entity }>('AttackOrder');

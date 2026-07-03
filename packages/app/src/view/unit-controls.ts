@@ -23,8 +23,10 @@ import { type Profession, type UnitPanel, mountUnitPanel } from './unit-panel.js
  * Bindings (standard RTS, chosen to not clash with the camera's middle-drag/wheel/arrows):
  *  - **LPM click** — select the unit/building under the cursor (Shift adds to the selection).
  *  - **LPM drag** — a marquee box; on release, select every owned unit whose feet fall inside it.
- *  - **PPM** — order the selected settlers to walk to the clicked tile; a GROUP fans out into a formation
- *    cluster around it (one unit per tile), a single unit goes exactly there (the `moveUnit` command).
+ *  - **PPM** on an ENEMY unit — order the selected combatants to ATTACK it (the `attackUnit` command:
+ *    they chase and strike that target); **PPM** on the ground — order them to walk there (a GROUP fans
+ *    out into a formation cluster, a single unit goes exactly there — the `moveUnit` command). The
+ *    move-order-onto-an-enemy = attack idiom is the original's RTS convention.
  *  - **Space** — toggle the profession-change actions panel. The info card (needs / building state) is
  *    always shown bottom-right the moment something is selected — no keypress needed.
  *  - **Esc** — clear the selection.
@@ -100,19 +102,41 @@ export function createUnitControls(opts: UnitControlsOptions): UnitControls {
   let startX = 0;
   let startY = 0;
 
-  /** Owned, pickable targets (settlers + buildings) with their world-px feet anchors, from the snapshot. */
-  const targets = (kind?: 'settler'): Pickable[] => {
-    const snap = opts.snapshot();
+  /** Map each entity id → the player that owns it (absent for a neutral/unowned entity), from a snapshot. */
+  const ownersOf = (snap: WorldSnapshot): Map<number, number> => {
     const ownerOf = new Map<number, number>();
     for (const e of snap.entities) {
       const owner = e.components.Owner as { player?: unknown } | undefined;
       if (owner !== undefined && typeof owner.player === 'number') ownerOf.set(e.id, owner.player);
     }
+    return ownerOf;
+  };
+
+  /** Owned, pickable targets (settlers + buildings) with their world-px feet anchors, from the snapshot. */
+  const targets = (kind?: 'settler'): Pickable[] => {
+    const snap = opts.snapshot();
+    const ownerOf = ownersOf(snap);
     const out: Pickable[] = [];
     for (const it of buildSpriteScene(snap)) {
       if (it.kind !== 'settler' && it.kind !== 'building') continue;
       if (kind !== undefined && it.kind !== kind) continue;
       if (ownerOf.get(it.ref) !== opts.humanPlayer) continue;
+      out.push({ ref: it.ref, x: it.x, y: it.y, kind: it.kind, box: opts.boundsOf?.(it.ref) });
+    }
+    return out;
+  };
+
+  /** ENEMY settlers — units owned by ANOTHER player (a neutral/unowned unit is not a right-click attack
+   *  target; the sim re-validates hostility and drops an order at a non-hostile target). These are the
+   *  hit-test set for the "right-click an enemy = attack" order. */
+  const enemyTargets = (): Pickable[] => {
+    const snap = opts.snapshot();
+    const ownerOf = ownersOf(snap);
+    const out: Pickable[] = [];
+    for (const it of buildSpriteScene(snap)) {
+      if (it.kind !== 'settler') continue; // only a unit is an attack target
+      const owner = ownerOf.get(it.ref);
+      if (owner === undefined || owner === opts.humanPlayer) continue; // neutral or own — not an enemy
       out.push({ ref: it.ref, x: it.x, y: it.y, kind: it.kind, box: opts.boundsOf?.(it.ref) });
     }
     return out;
@@ -136,8 +160,8 @@ export function createUnitControls(opts: UnitControlsOptions): UnitControls {
 
   const onMouseDown = (e: MouseEvent): void => {
     if (e.button === 2) {
-      // Right button: order the selected settlers to the clicked tile.
-      issueMoveOrder(e);
+      // Right button: attack an enemy under the cursor, else move to the clicked tile.
+      issueRightClickOrder(e);
       return;
     }
     if (e.button !== 0) return; // middle = camera pan (handled by the camera controller)
@@ -174,6 +198,24 @@ export function createUnitControls(opts: UnitControlsOptions): UnitControls {
       if (hit !== null) setSelection([hit], e.shiftKey);
       else if (!e.shiftKey) setSelection([], false); // click on empty ground clears
     }
+  };
+
+  /** Right-click resolves to an ATTACK order when an enemy unit is under the cursor (the selected
+   *  combatants chase + strike it), otherwise to a MOVE order at the clicked tile — the RTS idiom the
+   *  original uses (move-order-onto-an-enemy = attack). */
+  const issueRightClickOrder = (e: MouseEvent): void => {
+    if (selected.size === 0) return;
+    const w = toWorld(e.clientX, e.clientY);
+    const enemy = pickTopAt(enemyTargets(), w.x, w.y);
+    if (enemy !== null) {
+      // Only the selected units that can fight (settlers) get the attack order; buildings are dropped.
+      for (const t of targets('settler')) {
+        if (selected.has(t.ref))
+          opts.enqueue({ kind: 'attackUnit', entity: t.ref as Entity, target: enemy as Entity });
+      }
+      return;
+    }
+    issueMoveOrder(e);
   };
 
   const issueMoveOrder = (e: MouseEvent): void => {

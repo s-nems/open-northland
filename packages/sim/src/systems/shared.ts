@@ -79,6 +79,70 @@ export class TileBuckets {
   at(x: number, y: number): readonly Entity[] {
     return this.byTile.get(tileKey(x, y)) ?? NO_ENTITIES;
   }
+
+  /**
+   * The **nearest bucketed entity** to tile `(fromX, fromY)` that satisfies `accept`, searched as
+   * expanding Manhattan tile-RINGS from `minDist` outward to `maxDist` — the grid ring search the
+   * scaling doctrine (packages/sim/CLAUDE.md "Full ring-search nearest-X", ROADMAP tier 3) calls for,
+   * so a per-seeker "who's the closest enemy?" query costs O(bounded rings) instead of a full-world
+   * scan. Returns the entity + its integer Manhattan distance, or null when nothing in the band matches.
+   *
+   * The winner is the SAME one a canonical full scan would pick — **(min distance, then min entity
+   * id)** — because the search **finishes the whole minimum-distance ring before choosing**: it never
+   * stops at the first hit within a ring, it scans every tile of that ring and keeps the smallest id
+   * (buckets are ascending-id, and the min is taken across the ring), so the result is independent of
+   * the tile-iteration order (determinism). Rings are visited in strictly increasing distance, so the
+   * first ring with any accepted entity holds the nearest; the search then returns without touching a
+   * farther ring (the short-circuit that makes it cheap), and it stops entirely once `d` passes
+   * `maxDist` (an empty query never scans past its radius).
+   *
+   * `minDist` skips entities nearer than a floor (a ranged weapon's near reach, or excluding the
+   * seeker itself at distance 0). The metric is integer tile Manhattan — the exact metric
+   * {@link manhattan} measures over cells and the one an entity's bucket tile
+   * (`fx.toInt(Position)`) is keyed on — so a ring at distance `d` holds precisely the entities a full
+   * scan would score at distance `d`. Determinism: no RNG/wall-clock; a pure ring walk with a min-id
+   * tie-break. Reads no world state beyond the pre-bucketed entities — `accept` is the caller's pure
+   * per-candidate relation (a hostility test), evaluated at most once per candidate in the band.
+   */
+  nearest(
+    fromX: number,
+    fromY: number,
+    minDist: number,
+    maxDist: number,
+    accept: (e: Entity) => boolean,
+  ): { entity: Entity; distance: number } | null {
+    for (let d = minDist; d <= maxDist; d++) {
+      let best: Entity | null = null;
+      // Ring d = every tile at Manhattan distance EXACTLY d. For each column offset dx in [-d, d] the
+      // two rows dy = ±(d - |dx|) complete the diamond (a single row when the remainder is 0, at the
+      // ring's E/W tips). The whole ring is scanned before choosing so the min-id pick is canonical.
+      for (let dx = -d; dx <= d; dx++) {
+        const rem = d - Math.abs(dx);
+        best = this.pickMinId(fromX + dx, fromY + rem, accept, best);
+        if (rem !== 0) best = this.pickMinId(fromX + dx, fromY - rem, accept, best);
+      }
+      if (best !== null) return { entity: best, distance: d };
+    }
+    return null;
+  }
+
+  /** The lower-id of `best` and the smallest accepted entity on tile (x,y) — the per-tile step of the
+   *  ring search's min-id pick (buckets are ascending-id, so the first accepted entity on a tile is its
+   *  smallest, but we still min against `best` across the ring's other tiles). */
+  private pickMinId(
+    x: number,
+    y: number,
+    accept: (e: Entity) => boolean,
+    best: Entity | null,
+  ): Entity | null {
+    for (const e of this.at(x, y)) {
+      if (!accept(e)) continue;
+      // Ascending-id bucket: the first accepted entity is this tile's smallest — take it against the
+      // running ring minimum and stop scanning this tile.
+      return best === null || e < best ? e : best;
+    }
+    return best;
+  }
 }
 
 /**

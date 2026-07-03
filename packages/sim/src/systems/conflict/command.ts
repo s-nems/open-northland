@@ -15,7 +15,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { canPlaceBuilding } from '../footprint.js';
 import { buildingEnabled, tribeShipsUnlocked } from '../progression.js';
-import { moveUnit, setJob } from './orders.js';
+import { attackUnit, moveUnit, setJob } from './orders.js';
 import { spawnAnimalHerd, spawnSettler } from './spawn.js';
 
 /**
@@ -55,10 +55,12 @@ import { spawnAnimalHerd, spawnSettler } from './spawn.js';
  *    workplace — it returns to idle and the JobSystem re-employs it elsewhere next tick. Only an
  *    entity that actually IS a building is destroyed: a demolish aimed at anything else (a settler,
  *    a resource, a boat — a stale or hostile command) is skipped.
- *  - `moveUnit` / `setJob` — the PLAYER-order commands that steer an EXISTING owned settler (the RTS
- *    "go there" / "change profession"): `moveUnit` sets a `MoveGoal` + a `PlayerOrder` soft timed
- *    override, `setJob` swaps the `jobType` and re-idles the unit. Both live in {@link moveUnit}/
- *    {@link setJob} (./orders.ts) and skip a dead/non-settler/neutral target (still logged).
+ *  - `moveUnit` / `setJob` / `attackUnit` — the PLAYER-order commands that steer an EXISTING owned
+ *    settler (the RTS "go there" / "change profession" / "attack that one"): `moveUnit` sets a `MoveGoal`
+ *    + a `PlayerOrder` soft timed override, `setJob` swaps the `jobType` and re-idles the unit,
+ *    `attackUnit` stamps an `AttackOrder` combat focus (chase + strike a target regardless of sight).
+ *    All live in ./orders.ts ({@link moveUnit}/{@link setJob}/{@link attackUnit}) and skip a
+ *    dead/non-settler/neutral (and, for attack, non-combatant) target (still logged).
  *
  * A command that references an unknown type id or a dead entity is a recoverable boundary failure
  * (bad UI input / a stale command), not a programmer bug: it is skipped (the log still records it,
@@ -104,6 +106,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'setJob':
       setJob(world, ctx, command);
+      return;
+    case 'attackUnit':
+      attackUnit(world, ctx, command);
       return;
     default:
       assertNever(command);
