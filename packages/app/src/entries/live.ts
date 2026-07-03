@@ -147,6 +147,7 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
         canvasW: app.screen.width,
         canvasH: app.screen.height,
         terrain: terrainGrid,
+        dtMs: elapsed,
       });
     }
     requestAnimationFrame(frame);

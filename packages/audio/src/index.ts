@@ -10,11 +10,13 @@
 // constants (JINGLE_*, GROUP_*) are intentionally NOT re-exported: they are implementation detail of
 // `defaultBindings`, which is the surface a consumer overrides.
 export { buildSoundIndex, type SoundIndex } from './data/bank.js';
-export { defaultBindings } from './data/bindings.js';
+export { defaultBindings, VIKING_VOICE_GROUPS } from './data/bindings.js';
 export {
   type AudioTerrain,
   type DirectorInput,
+  type OnScreenSettler,
   directAudio,
+  onScreenSettlers,
   JINGLE_GAIN,
   SFX_GAIN,
   MAX_AMBIENT_BEDS,
@@ -34,4 +36,11 @@ export {
   ONE_SHOT_COOLDOWN_S,
   AMBIENT_FADE_S,
 } from './web/audio-engine.js';
-export { type SoundFrameInput, SoundDriver } from './web/sound-driver.js';
+export {
+  type SoundFrameInput,
+  type SoundDriverOptions,
+  SoundDriver,
+  VOICE_GAIN,
+  VOICE_RATE_PER_SEC,
+  VOICE_COOLDOWN_MS,
+} from './web/sound-driver.js';
