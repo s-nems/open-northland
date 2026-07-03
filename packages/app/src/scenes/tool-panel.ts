@@ -116,7 +116,7 @@ export const toolPanelScene: SceneDefinition = {
   initialZoom: 1,
   checklist: [
     'Pasek narzędzi po LEWEJ rysuje się oryginalną grafiką, ostro (poprawne kolory palety); nie zajmuje całej wysokości',
-    'Ikony przycisków mają PRZEZROCZYSTE tło — widać pasek pod spodem, nie ciemne kwadraty zakrywające go',
+    'Panel (pasek + ikony) ma PRZEZROCZYSTE tło — widać teren pod spodem, nie czarne prostokąty zakrywające go',
     'Najechanie na przycisk podświetla go (stan hover)',
     'Przycisk PRĘDKOŚCI zmienia grafikę i tempo: x1 → x2 → x3 → pauza (osadnicy przyspieszają / zatrzymują się)',
     'Przycisk BUDYNKI otwiera okno menu; zakładki po polsku: Wszystko / Praca / Magazyn / Dom / Wojsko',
