@@ -11,7 +11,7 @@ starting the next — later prompts consume earlier outputs. Prompts are self-co
 tell the agent to re-verify facts against the sources (this doc is research output, not ground
 truth). Check a box when the step is merged; delete this file when all steps land.
 
-- [ ] 1. Pipeline: GUI atlas + strings + cursors
+- [x] 1. Pipeline: GUI atlas + strings + cursors — landed: `stages/gui.ts` + `decoders/cursor.ts` (indexed+preview atlases, `256×N` palette LUT, `ingamegui` strings, `.cur`→PNG); app seam `content/gui-gfx.ts` + `/gui` route. See SOURCES.md "GUI".
 - [ ] 2. Pipeline: `.fnt` bitmap-font decoder
 - [ ] 3. GUI sprite map (interactive — user is the oracle)
 - [ ] 4. App: left tool panel with original art

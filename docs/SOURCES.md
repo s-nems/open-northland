@@ -249,6 +249,72 @@ trees), but the **selection** is the hard part:
   bob 0. The `buildingBobs` table already covers all 6 tribes — the work is render plumbing + the editName
   disambiguation, not more extraction.
 
+### GUI / in-game HUD (art, palettes, strings, cursors) — extracted by `stages/gui.ts`
+
+The whole in-game HUD is a small, self-contained asset set that ships as **loose files** (the
+`culturesnation` mod does not override it, and the packed `DataX/Libs/data0001.lib` is only a mirror —
+**do not unpack it** for these). The `gui` pipeline stage (`tools/asset-pipeline/src/stages/gui.ts` +
+`decoders/cursor.ts`) reads them straight from the game tree.
+
+**Sources (all under the game root):**
+
+| File(s) | Format | What it is |
+|---|---|---|
+| `Data/engine2d/bin/bobs/ls_gui_window.bmd` | CBobManager `0x3F4`, **193 bobs** | the entire HUD chrome: left tool-panel + icons, order/context buttons, window frames/borders, progress/hit/disabled bars, minimap frame |
+| `Data/engine2d/bin/bobs/ls_gui_bubbles.bmd` | CBobManager `0x3F4`, **23 bobs** | speech / thought bubbles |
+| `Data/gui/palettes/*.pcx` | 2×2 PCX **palette carriers** (real payload = the 256-colour trailer) | per-element colorization palettes (see the map below) |
+| `Data/engine2d/bin/palettes/gui/gui_bubbles.pcx` | palette carrier | the bubble sheet's palette |
+| `Data/text/{eng,pol,…}/strings/ingamegui/ingamegui<table>.cif` | `CStringArray 0x3FD` | the **9** UI string tables `main, misc, miscwindow, misclogic, messages, humanwindow, humanlistwindow, housewindow, vehiclewindow` (filenames carry an `ingamegui` prefix); plaintext refs live in the sibling `backup (errors)/*.ini` (note `misclogic` there is `ingameguimisclogic_backup.ini`) |
+| `DataX/Mouse/{MouseNormal,MousePressed,MouseRight}.cur` | Win32 `.cur` (multi-depth 1/4/8-bpp, 32×32, DIB + AND mask) | mouse cursors; hotspots (1,1)/(1,1)/(10,10) |
+| `Data/gui/bitmaps/bg*.pcx` | PCX pictures | 299×299 window/dialog backgrounds (decoded by the existing pcx stage) |
+
+The bobs are **8-bit indexed** and carry no embedded palette — the engine colours each element at draw
+time with an explicit palette (oracle: `CBobManager.PrintBob(..., CPalette?)` takes the palette as an
+argument). The **per-language `Data/gui/lang/{eng,ger,pol,rus}/bobs/ls_gui_window.bmd` copies are
+byte-identical** to the `engine2d` one (sha256-verified), so we extract the single `engine2d` copy.
+
+**Element → palette map** (oracle: `Source/NC2GuiToolsBase/CGuiBaseDataManager.cs` loads them;
+`Source/NC2InGameGuiManager/CGuiManager.cs` uses them):
+
+- **`iconsleft`** — the whole left tool panel: the background strip (bob `0x33`), the 9 command buttons
+  (`CreateToolButton`), the speed button (`0x31`), the priority frame/button (`0x3f`/`0x40`), the
+  overview toggle (`0x91`). This is the palette **most** of `ls_gui_window` is drawn through, so it is the
+  stage's **default preview palette** for the window sheet.
+- **`context`** — the radial human order/command icon buttons (per-command icon id from
+  `GetHumanCommandIconId`).
+- **`frame` / `bg_normal` / `bg_hilite` / `bg_invert`** — window frames/borders + window backgrounds;
+  **`bar_standart` / `bar_hitpoints` / `bar_disabled`** — the normal / active / greyed selection bars;
+  **`papyrus`** — scroll panels. (These are loaded/named by the manager but their draw sites live in the
+  window/selection classes OpenVikings hasn't ported, so the pairing is by asset+field name, not a
+  quoted usage site.) **`ingame_remap_01..03`** are the world-darkening remap tables
+  (`CWorldDisplayElement.DarkenBitmap_Init`), carried here for completeness.
+- `font_{white,dark,dimmed,red}` are the **font step's** concern; `campaignmap`/`campaignbuttons`/
+  `menu_remap` are menu/campaign, not in-game HUD — none are in the GUI palette LUT.
+
+**Named `ls_gui_window` frame ids** (for the future frame→name map; oracle `CGuiManager.cs`): `0x33`
+tool background · `0x2a/0x2d/0x2e/0x2c/0x32/0x2b/0x38/0x2f/0x30` the 9 left command buttons · `0x31`
+speed (`0x34/0x35/0x36` its speed-factor states) · `0x3f` priority frame · `0x40` priority button
+(`0x41/0x42` its states) · `0x91` overview toggle.
+
+**Stage outputs** (under the gitignored `content/`; the app reads them via the `vite.config.ts` routes):
+
+- **Atlases + palette LUT ride `/bobs/`** (they are bob atlases): per sheet a recolourable **indexed**
+  atlas `Data/engine2d/bin/bobs/<sheet>.indexed.{png,atlas.json}` (palette index in red, mask in alpha)
+  and an **RGBA preview** `<sheet>.<previewPalette>.{png,atlas.json}` (default-coloured, for human
+  inspection); plus the **`gui-palettes-lut.png`** — a `256 × 14` LUT stacking every GUI palette (row
+  order fixed by `GUI_PALETTES`, mirrored in `packages/app/src/content/gui-gfx.ts`), loaded like the
+  player-colour LUT so the renderer colours an indexed pixel through its element's row.
+- **`content/gui/strings/<lang>.json`** — `{ <table>: { <stringId>: <displayText> } }`, CP1250-decoded
+  (served at `/gui/…`). `eng` + `pol` extracted. Each `.cif` is a `[control]`/`[text]` config (verified vs
+  the `backup (errors)/*.ini`): `[control] stringidmultiplier <N>` then a `[text]` run of `stringn <id>
+  "<text>"` (sets the running id) / `string "<text>"` (auto-increments) — so the key is the **in-game
+  string id** (`id × multiplier`, and every shipped table's multiplier is 1), not the container slot id.
+  Parsed with the existing `cifLinesToSections`.
+- **`content/gui/cursors/<name>.{cur,png}`** — the verbatim `.cur` (for CSS `cursor: url()`) + a decoded
+  RGBA PNG, with hotspots in the manifest.
+- **`content/gui/manifest.json`** — the top-level index (atlases, palette LUT + row names, string
+  languages/tables, cursors) the app's `loadGuiManifest` reads.
+
 ## How to use OpenVikings as reference
 
 When writing a pipeline decoder, open the matching C# file above and translate the **format

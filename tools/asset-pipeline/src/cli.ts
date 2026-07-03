@@ -25,6 +25,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { type Args, parseArgs, resolveArgs } from './args.js';
 import { convertBmdTree, resolveGraphicsBindings } from './stages/bmd.js';
+import { convertGuiStage } from './stages/gui.js';
 import { writeIr } from './stages/ir.js';
 import { unpackLibTree } from './stages/lib.js';
 import { convertMapDatTree } from './stages/maps.js';
@@ -43,6 +44,7 @@ async function run(args: Args): Promise<void> {
   // > 6. Decode map logic headers -> map IR     -> decoders/cif.ts + ini.ts (this stage; metadata only)
   // > 7. Write content/ir.json + validate with parseContentSet()  (this stage)
   // > 8. Decode map.dat terrain grids -> maps/  -> decoders/mapdat.ts (this stage; the nav-graph grid)
+  // > 9. Extract GUI/HUD art+strings+cursors    -> decoders/cursor.ts + stages/gui.ts (this stage)
   //
   // The unpack extracts loose copies of the embedded .pcx/.bmd/.cif into <out> (gitignored).
   const extracted = await unpackLibTree(args.game, args.out);
@@ -92,6 +94,18 @@ async function run(args: Args): Promise<void> {
   console.log(
     `[pipeline] player colours: ${indexed.length} indexed character atlas(es)` +
       `${lut ? `, ${lut.colors}-colour LUT -> ${lut.png}` : ' (LUT skipped)'}`,
+  );
+
+  // GUI/HUD: the in-game HUD bob sheets (ls_gui_window 193 bobs + ls_gui_bubbles 23) -> an indexed atlas
+  // (render colours per element at draw time) + an RGBA preview atlas + a 256×N palette LUT, the nine
+  // ingamegui string tables per language -> id->text JSON, and the mouse cursors -> PNG + verbatim .cur.
+  // All from loose files (the HUD ships unpacked); outputs land under content/ for the app's /bobs + /gui
+  // routes. See stages/gui.ts + docs/SOURCES.md "GUI".
+  const gui = await convertGuiStage(args.game, args.out);
+  console.log(
+    `[pipeline] gui: ${gui.atlases} atlas(es) (${gui.frames} frames), ${gui.palettes}-palette LUT, ` +
+      `${gui.strings.map((s) => `${s.lang}:${s.tables}t/${s.strings}s`).join(' ') || 'no strings'}, ` +
+      `${gui.cursors} cursor(s) into ${join(args.out, 'gui')}`,
   );
 
   const ir = await writeIr(args);

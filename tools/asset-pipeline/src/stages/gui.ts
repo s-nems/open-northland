@@ -1,0 +1,459 @@
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { basename, dirname, join } from 'node:path';
+import { type BobAtlas, packBobAtlas, packIndexedBobAtlas } from '../decoders/atlas.js';
+import { decodeBmd } from '../decoders/bmd.js';
+import { decodeCifStringArray } from '../decoders/cif.js';
+import { decodeCursor } from '../decoders/cursor.js';
+import { cifLinesToSections } from '../decoders/ini.js';
+import { decodePcx } from '../decoders/pcx.js';
+import { buildPlayerLutImage } from '../decoders/player-palette.js';
+import { encodePng } from '../decoders/png.js';
+
+/**
+ * GUI extraction stage — the original in-game HUD art, colorization palettes, UI strings, and mouse
+ * cursors, converted from an OWNED game copy into `content/` for the app to consume. It is the GUI twin
+ * of the character/building bob stages, reusing their pieces:
+ *
+ *  - **Atlas art.** `ls_gui_window.bmd` (193 bobs: tool-panel chrome, order buttons, window frames,
+ *    progress/hit bars, minimap chrome) and `ls_gui_bubbles.bmd` (23 speech/thought bubbles) are the same
+ *    CBobManager `.bmd` the settlers use, so each becomes (a) an **indexed** atlas (`packIndexedBobAtlas` —
+ *    palette index in red, mask in alpha) the renderer colours per element at draw time through a palette
+ *    LUT, plus (b) an **RGBA preview** atlas (`packBobAtlas`) coloured with one sensible default palette so
+ *    a human can eyeball "chrome, not noise". Both ride the existing `/bobs/` route (`<stem>.png` +
+ *    `<stem>.atlas.json`), so the app's `loadLayer` reads them unchanged.
+ *  - **Palettes.** The engine colours each HUD element with a `Data/gui/palettes/*.pcx` (2×2 carriers
+ *    whose real payload is the 256-colour trailer). We stack them into one `256 × N` LUT PNG — the exact
+ *    mechanism as the player-colour LUT ({@link buildPlayerLutImage}) — with the row order fixed by
+ *    {@link GUI_PALETTES} (mirrored app-side, so no sidecar descriptor is needed). The renderer reads an
+ *    indexed atlas pixel through the LUT row for its element's palette. Which palette pairs with which
+ *    element is documented in `docs/SOURCES.md` (from the OpenVikings `CGuiBaseDataManager`/`CGuiManager`
+ *    oracle: `iconsleft` = the whole tool panel, `context` = the order icons, `frame`/`bg_*`/`bar_*`/
+ *    `papyrus` = windows & bars).
+ *  - **Strings.** The nine `ingamegui*.cif` UI tables per language are `CStringArray`s (already decoded by
+ *    `cif.ts`); we emit id→text JSON per language, re-decoded to CP1250 for the display glyphs.
+ *  - **Cursors.** The three `DataX/Mouse/*.cur` are standard Win32 cursors — decoded to PNG (with hotspot)
+ *    and copied through verbatim so the app can use either the `.cur` (CSS `cursor: url()`) or the PNG.
+ *
+ * Boundary failures are warned-and-skipped, never fatal (matching the other tree-walk stages): a missing
+ * `.bmd`/palette/string table/cursor drops that one output rather than aborting the run. All sources are
+ * loose files read straight from `gameDir` (the HUD ships unpacked; the culturesnation mod does not
+ * override it), so this stage does not depend on the `.lib` unpack. No copyrighted bytes enter the repo —
+ * everything lands under the gitignored `content/`.
+ */
+
+/** The engine2d bobs dir the GUI atlases + palette LUT are written to (rides the app's `/bobs/` route). */
+const GUI_BOBS_DIR = join('Data', 'engine2d', 'bin', 'bobs');
+/** The `content/gui/` subtree the strings + cursors + top-level manifest are written to (served at `/gui/`). */
+const GUI_CONTENT_DIR = 'gui';
+/** The dir holding the 2×2 palette carriers the engine colours HUD elements with. */
+const GUI_PALETTES_DIR = join('Data', 'gui', 'palettes');
+/** The speech/thought-bubble palette (a different tree from the element palettes). */
+const BUBBLES_PALETTE_FILE = join('Data', 'engine2d', 'bin', 'palettes', 'gui', 'gui_bubbles.pcx');
+/** Filename stem of the emitted GUI palette LUT (a `/bobs/` PNG, loaded like the player-colour LUT). */
+export const GUI_PALETTE_LUT_STEM = 'gui-palettes-lut';
+
+/** One GUI colorization palette: its LUT-row name and the `.pcx` carrier it is read from (under `gameDir`). */
+interface GuiPaletteSource {
+  readonly name: string;
+  readonly file: string;
+}
+
+/**
+ * The GUI colorization palettes, in LUT-row order (row index = array index). The 13 in-game HUD element
+ * palettes from `Data/gui/palettes/` (the `font_*` ones belong to the later font step; `campaignmap`/
+ * `campaignbuttons`/`menu_remap` are menu/campaign, not in-game HUD), then `gui_bubbles` for the bubble
+ * sheet. The renderer reads an indexed GUI atlas pixel through the row named here for its element. This
+ * order is the contract with the app (mirrored in `packages/app/src/content/gui-gfx.ts`) — append, never
+ * reorder, or the app's row indices drift.
+ */
+const GUI_PALETTES: readonly GuiPaletteSource[] = [
+  { name: 'iconsleft', file: join(GUI_PALETTES_DIR, 'iconsleft.pcx') },
+  { name: 'context', file: join(GUI_PALETTES_DIR, 'context.pcx') },
+  { name: 'frame', file: join(GUI_PALETTES_DIR, 'frame.pcx') },
+  { name: 'bar_standart', file: join(GUI_PALETTES_DIR, 'bar_standart.pcx') },
+  { name: 'bar_hitpoints', file: join(GUI_PALETTES_DIR, 'bar_hitpoints.pcx') },
+  { name: 'bar_disabled', file: join(GUI_PALETTES_DIR, 'bar_disabled.pcx') },
+  { name: 'bg_normal', file: join(GUI_PALETTES_DIR, 'bg_normal.pcx') },
+  { name: 'bg_hilite', file: join(GUI_PALETTES_DIR, 'bg_hilite.pcx') },
+  { name: 'bg_invert', file: join(GUI_PALETTES_DIR, 'bg_invert.pcx') },
+  { name: 'ingame_remap_01', file: join(GUI_PALETTES_DIR, 'ingame_remap_01.pcx') },
+  { name: 'ingame_remap_02', file: join(GUI_PALETTES_DIR, 'ingame_remap_02.pcx') },
+  { name: 'ingame_remap_03', file: join(GUI_PALETTES_DIR, 'ingame_remap_03.pcx') },
+  { name: 'papyrus', file: join(GUI_PALETTES_DIR, 'papyrus.pcx') },
+  { name: 'gui_bubbles', file: BUBBLES_PALETTE_FILE },
+];
+
+/** The GUI bob sheets to atlas, each with the palette its RGBA preview is coloured through. */
+interface GuiAtlasSource {
+  readonly stem: string;
+  readonly bmd: string;
+  /** A {@link GUI_PALETTES} name — the palette that colours the most of this sheet (best default preview). */
+  readonly previewPalette: string;
+}
+
+/**
+ * The GUI bob sheets. `ls_gui_window` is drawn mostly through `iconsleft` (the whole tool panel; the order
+ * icons use `context`) per the OpenVikings oracle, so `iconsleft` is the best single preview palette; the
+ * bubble sheet uses its own `gui_bubbles` palette.
+ */
+const GUI_ATLASES: readonly GuiAtlasSource[] = [
+  { stem: 'ls_gui_window', bmd: join(GUI_BOBS_DIR, 'ls_gui_window.bmd'), previewPalette: 'iconsleft' },
+  { stem: 'ls_gui_bubbles', bmd: join(GUI_BOBS_DIR, 'ls_gui_bubbles.bmd'), previewPalette: 'gui_bubbles' },
+];
+
+/** The nine in-game GUI string tables (files are `ingamegui<table>.cif` under `Data/text/<lang>/strings/ingamegui/`). */
+const STRING_TABLES = [
+  'main',
+  'misc',
+  'miscwindow',
+  'misclogic',
+  'messages',
+  'humanwindow',
+  'humanlistwindow',
+  'housewindow',
+  'vehiclewindow',
+] as const;
+
+/** The three mouse cursors under `DataX/Mouse/`, in a stable order. */
+const CURSORS = ['MouseNormal', 'MousePressed', 'MouseRight'] as const;
+const MOUSE_DIR = join('DataX', 'Mouse');
+
+/** Languages whose GUI strings are extracted (the deliverable's "at least eng and pol"). */
+const STRING_LANGS = ['eng', 'pol'] as const;
+
+/** CP1250 (Windows-1250) decoder — the display strings' real codepage (see `decoders/ini.ts`). */
+const CP1250 = new TextDecoder('windows-1250');
+
+/**
+ * Reads a loose game file, tolerating a differently-cased filename (the shipped names are lower-case, but a
+ * user's install could differ, and CI is case-sensitive). Tries the exact path first, then a
+ * case-insensitive scan of the parent directory. Throws a `gui:`-prefixed error if absent.
+ */
+async function readGameFile(gameDir: string, relPath: string): Promise<Uint8Array> {
+  try {
+    return await readFile(join(gameDir, relPath));
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+  }
+  const dir = join(gameDir, dirname(relPath));
+  const want = basename(relPath).toLowerCase();
+  let names: string[];
+  try {
+    names = await readdir(dir);
+  } catch {
+    throw new Error(`gui: ${relPath} not found under ${gameDir}`);
+  }
+  const match = names.find((n) => n.toLowerCase() === want);
+  if (match === undefined) throw new Error(`gui: ${relPath} not found under ${gameDir}`);
+  return readFile(join(dir, match));
+}
+
+/** A neutral 256-colour grayscale palette (index i → (i,i,i)), used to keep a LUT row stable if a palette is absent. */
+function identityPalette(): Uint8Array {
+  const p = new Uint8Array(768);
+  for (let i = 0; i < 256; i++) p.fill(i, i * 3, i * 3 + 3);
+  return p;
+}
+
+/** One emitted GUI bob atlas: the app-side `loadLayer` stems for its indexed + preview forms, plus frame count. */
+export interface GuiAtlasResult {
+  readonly stem: string;
+  /** `loadLayer` stem for the recolourable indexed atlas (`<stem>.indexed`). */
+  readonly indexedStem: string;
+  /** `loadLayer` stem for the default-coloured RGBA preview (`<stem>.<previewPalette>`). */
+  readonly previewStem: string;
+  readonly previewPalette: string;
+  readonly frames: number;
+}
+
+/** Writes an atlas's `<stem>.png` + `<stem>.atlas.json` under `GUI_BOBS_DIR` (the `/bobs/` convention). */
+async function writeAtlas(outDir: string, stem: string, atlas: BobAtlas): Promise<void> {
+  await mkdir(join(outDir, GUI_BOBS_DIR), { recursive: true });
+  await writeFile(join(outDir, GUI_BOBS_DIR, `${stem}.png`), encodePng(atlas.image));
+  await writeFile(
+    join(outDir, GUI_BOBS_DIR, `${stem}.atlas.json`),
+    `${JSON.stringify(atlas.manifest, null, 2)}\n`,
+  );
+}
+
+/**
+ * Decodes each GUI bob sheet into an indexed atlas + an RGBA preview atlas, written under `GUI_BOBS_DIR`.
+ * `paletteByName` supplies the preview colours (from {@link convertGuiPaletteLut}). A missing/malformed
+ * `.bmd`, or an absent preview palette, warns-and-skips that sheet. Returns one {@link GuiAtlasResult} per
+ * sheet that converted.
+ */
+export async function convertGuiAtlases(
+  gameDir: string,
+  outDir: string,
+  paletteByName: ReadonlyMap<string, Uint8Array>,
+): Promise<GuiAtlasResult[]> {
+  const done: GuiAtlasResult[] = [];
+  for (const src of GUI_ATLASES) {
+    let bytes: Uint8Array;
+    try {
+      bytes = await readGameFile(gameDir, src.bmd);
+    } catch (err) {
+      console.warn(`[pipeline] gui: skipped ${src.stem}: ${(err as Error).message}`);
+      continue;
+    }
+    const preview = paletteByName.get(src.previewPalette);
+    if (preview === undefined) {
+      console.warn(
+        `[pipeline] gui: skipped ${src.stem}: preview palette "${src.previewPalette}" unavailable`,
+      );
+      continue;
+    }
+    let indexed: BobAtlas;
+    let colored: BobAtlas;
+    try {
+      const bmd = decodeBmd(bytes);
+      indexed = packIndexedBobAtlas(bmd);
+      colored = packBobAtlas(bmd, preview);
+    } catch (err) {
+      console.warn(`[pipeline] gui: skipped ${src.stem}: ${(err as Error).message}`);
+      continue;
+    }
+    const indexedStem = `${src.stem}.indexed`;
+    const previewStem = `${src.stem}.${src.previewPalette}`;
+    await writeAtlas(outDir, indexedStem, indexed);
+    await writeAtlas(outDir, previewStem, colored);
+    done.push({
+      stem: src.stem,
+      indexedStem,
+      previewStem,
+      previewPalette: src.previewPalette,
+      frames: indexed.manifest.frames.length,
+    });
+  }
+  return done;
+}
+
+/** The emitted GUI palette LUT plus the resolved palettes (for the preview colouring + the manifest). */
+export interface GuiPaletteLutResult {
+  /** `loadLayer`/`loadAtlasSource` stem of the `256 × N` LUT PNG under `/bobs/`. */
+  readonly stem: string;
+  /** LUT row order (row index = array index) — the app mirrors this to pick a palette row. */
+  readonly names: string[];
+  /** name → 768-byte palette, for colouring the preview atlases. Absent palettes are identity-filled. */
+  readonly byName: Map<string, Uint8Array>;
+}
+
+/**
+ * Reads every {@link GUI_PALETTES} carrier, stacks their 256-colour trailers into one `256 × N` LUT PNG
+ * (via {@link buildPlayerLutImage}, the same mechanism as the player-colour LUT), and writes it under
+ * `GUI_BOBS_DIR`. A missing/palette-less carrier is warned and replaced with a neutral grayscale row so
+ * the row order (the app's contract) stays fixed regardless of a partial install.
+ */
+export async function convertGuiPaletteLut(gameDir: string, outDir: string): Promise<GuiPaletteLutResult> {
+  const ordered: Uint8Array[] = [];
+  const byName = new Map<string, Uint8Array>();
+  for (const src of GUI_PALETTES) {
+    let palette: Uint8Array | undefined;
+    try {
+      palette = decodePcx(await readGameFile(gameDir, src.file)).palette;
+    } catch (err) {
+      console.warn(
+        `[pipeline] gui: palette ${src.name} unreadable (${(err as Error).message}); using neutral row`,
+      );
+    }
+    if (palette === undefined) palette = identityPalette();
+    ordered.push(palette);
+    byName.set(src.name, palette);
+  }
+  await mkdir(join(outDir, GUI_BOBS_DIR), { recursive: true });
+  await writeFile(
+    join(outDir, GUI_BOBS_DIR, `${GUI_PALETTE_LUT_STEM}.png`),
+    encodePng(buildPlayerLutImage(ordered)),
+  );
+  return { stem: GUI_PALETTE_LUT_STEM, names: GUI_PALETTES.map((p) => p.name), byName };
+}
+
+/** One converted language's GUI strings: the served path + how many tables it carried. */
+export interface GuiStringsResult {
+  readonly lang: string;
+  /** Path under `content/` (served at `/gui/strings/<lang>.json`). */
+  readonly path: string;
+  readonly tables: number;
+  readonly strings: number;
+}
+
+/** Re-decodes an oracle-faithful latin1 string as CP1250 (its real codepage) for display glyphs. */
+function toCp1250(latin1: string): string {
+  return CP1250.decode(Uint8Array.from(latin1, (c) => c.charCodeAt(0) & 0xff));
+}
+
+/**
+ * Parses one decoded `ingamegui*.cif` `CStringArray` into `{ <stringId>: <displayText> }`. The table is a
+ * two-section config (verified against the shipped `backup (errors)/*.ini`): a `[control]` section with
+ * `stringidmultiplier <N>`, then a `[text]` section of `stringn <id> "<text>"` (sets the running id
+ * explicitly) and `string "<text>"` (auto-increments it) entries — so the display id is NOT the container
+ * slot id but the running string id. We reuse {@link cifLinesToSections} (the type-table section parser) to
+ * split it, then walk the `[text]` props applying the id rule; the multiplier (1 in every shipped table)
+ * scales the id, matching the engine's per-table id namespacing. Display text is CP1250-decoded.
+ */
+function parseStringTable(bytes: Uint8Array): Record<string, string> {
+  const sections = cifLinesToSections(decodeCifStringArray(bytes).lines);
+  const control = sections.find((s) => s.name === 'control');
+  const rawMult = control?.props.find((p) => p.key === 'stringidmultiplier')?.values[0];
+  const multiplier = rawMult !== undefined ? Number.parseInt(rawMult, 10) || 1 : 1;
+  const text = sections.find((s) => s.name === 'text');
+
+  const byId: Record<string, string> = {};
+  let next = 0; // the running id the next bare `string` takes
+  for (const prop of text?.props ?? []) {
+    let id: number;
+    let display: string | undefined;
+    if (prop.key === 'stringn') {
+      id = Number.parseInt(prop.values[0] ?? '', 10);
+      display = prop.values[1];
+      next = id + 1;
+    } else if (prop.key === 'string') {
+      id = next;
+      display = prop.values[0];
+      next += 1;
+    } else {
+      continue; // not a string entry
+    }
+    if (Number.isNaN(id) || display === undefined) continue;
+    byId[id * multiplier] = toCp1250(display);
+  }
+  return byId;
+}
+
+/**
+ * Decodes the nine `ingamegui*.cif` UI string tables for each language into one `content/gui/strings/<lang>.json`
+ * of `{ <table>: { <stringId>: <displayText> } }` (CP1250-decoded, keyed by the in-game string id — see
+ * {@link parseStringTable}). A missing table warns-and-skips (that table is simply absent from the language's
+ * JSON); a language with no tables at all is skipped entirely.
+ */
+export async function convertGuiStrings(
+  gameDir: string,
+  outDir: string,
+  langs: readonly string[] = STRING_LANGS,
+): Promise<GuiStringsResult[]> {
+  const done: GuiStringsResult[] = [];
+  for (const lang of langs) {
+    const tables: Record<string, Record<string, string>> = {};
+    let tableCount = 0;
+    let stringCount = 0;
+    for (const table of STRING_TABLES) {
+      const rel = join('Data', 'text', lang, 'strings', 'ingamegui', `ingamegui${table}.cif`);
+      let byId: Record<string, string>;
+      try {
+        byId = parseStringTable(await readGameFile(gameDir, rel));
+      } catch (err) {
+        console.warn(`[pipeline] gui: skipped strings ${lang}/${table}: ${(err as Error).message}`);
+        continue;
+      }
+      tables[table] = byId;
+      tableCount++;
+      stringCount += Object.keys(byId).length;
+    }
+    if (tableCount === 0) continue; // no tables for this language — emit nothing
+    await mkdir(join(outDir, GUI_CONTENT_DIR, 'strings'), { recursive: true });
+    const path = join(GUI_CONTENT_DIR, 'strings', `${lang}.json`);
+    await writeFile(join(outDir, path), `${JSON.stringify(tables, null, 2)}\n`);
+    done.push({ lang, path, tables: tableCount, strings: stringCount });
+  }
+  return done;
+}
+
+/** One converted cursor: the copied `.cur`, the decoded `.png`, the hotspot, and the pixel size. */
+export interface GuiCursorResult {
+  readonly name: string;
+  /** Path under `content/gui/` (served at `/gui/...`) of the verbatim `.cur` (for CSS `cursor: url()`). */
+  readonly cur: string;
+  /** Path under `content/gui/` of the decoded RGBA PNG fallback/preview. */
+  readonly png: string;
+  readonly hotspotX: number;
+  readonly hotspotY: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * Decodes each `DataX/Mouse/*.cur` to a PNG (with its hotspot) and copies the raw `.cur` through, both
+ * under `content/gui/cursors/`. A missing/malformed cursor warns-and-skips. Returns one result per cursor.
+ */
+export async function convertCursors(gameDir: string, outDir: string): Promise<GuiCursorResult[]> {
+  const done: GuiCursorResult[] = [];
+  await mkdir(join(outDir, GUI_CONTENT_DIR, 'cursors'), { recursive: true });
+  for (const name of CURSORS) {
+    const rel = join(MOUSE_DIR, `${name}.cur`);
+    let bytes: Uint8Array;
+    try {
+      bytes = await readGameFile(gameDir, rel);
+    } catch (err) {
+      console.warn(`[pipeline] gui: skipped cursor ${name}: ${(err as Error).message}`);
+      continue;
+    }
+    let cursor: ReturnType<typeof decodeCursor>;
+    try {
+      cursor = decodeCursor(bytes);
+    } catch (err) {
+      console.warn(`[pipeline] gui: skipped cursor ${name}: ${(err as Error).message}`);
+      continue;
+    }
+    const curRel = join(GUI_CONTENT_DIR, 'cursors', `${name}.cur`);
+    const pngRel = join(GUI_CONTENT_DIR, 'cursors', `${name}.png`);
+    await writeFile(join(outDir, curRel), bytes); // verbatim copy for CSS cursor: url()
+    await writeFile(join(outDir, pngRel), encodePng(cursor.image));
+    done.push({
+      name,
+      cur: curRel,
+      png: pngRel,
+      hotspotX: cursor.hotspotX,
+      hotspotY: cursor.hotspotY,
+      width: cursor.width,
+      height: cursor.height,
+    });
+  }
+  return done;
+}
+
+/** The top-level `content/gui/manifest.json` — the app's single entry point to discover every GUI output. */
+export interface GuiManifest {
+  readonly atlases: GuiAtlasResult[];
+  readonly paletteLut: { readonly stem: string; readonly names: string[] };
+  readonly strings: { readonly languages: string[]; readonly tables: readonly string[] };
+  readonly cursors: GuiCursorResult[];
+}
+
+/** What {@link convertGuiStage} did, for the CLI log line. */
+export interface GuiStageSummary {
+  readonly atlases: number;
+  readonly frames: number;
+  readonly palettes: number;
+  readonly strings: GuiStringsResult[];
+  readonly cursors: number;
+}
+
+/**
+ * Runs the whole GUI extraction: palette LUT (which also yields the preview palettes) → indexed + preview
+ * atlases → per-language strings → cursors → the top-level `content/gui/manifest.json`. Returns a summary
+ * for the CLI log. Each sub-step is independently resilient (warn-and-skip), so a partial game install
+ * still produces whatever it can.
+ */
+export async function convertGuiStage(gameDir: string, outDir: string): Promise<GuiStageSummary> {
+  const palettes = await convertGuiPaletteLut(gameDir, outDir);
+  const atlases = await convertGuiAtlases(gameDir, outDir, palettes.byName);
+  const strings = await convertGuiStrings(gameDir, outDir);
+  const cursors = await convertCursors(gameDir, outDir);
+
+  const manifest: GuiManifest = {
+    atlases,
+    paletteLut: { stem: palettes.stem, names: palettes.names },
+    strings: { languages: strings.map((s) => s.lang), tables: STRING_TABLES },
+    cursors,
+  };
+  await mkdir(join(outDir, GUI_CONTENT_DIR), { recursive: true });
+  await writeFile(join(outDir, GUI_CONTENT_DIR, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+
+  return {
+    atlases: atlases.length,
+    frames: atlases.reduce((sum, a) => sum + a.frames, 0),
+    palettes: palettes.names.length,
+    strings,
+    cursors: cursors.length,
+  };
+}
