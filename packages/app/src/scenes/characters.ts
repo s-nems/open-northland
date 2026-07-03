@@ -1,7 +1,7 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { type Simulation, components, fx } from '@vinland/sim';
 import { GRASS, VIKING, grassTerrain } from '../catalog/buildings.js';
-import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
+import { HARVEST_ATOMIC, HARVEST_SWING_LENGTH } from '../content/settler-gfx.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -74,7 +74,7 @@ function content(): ContentSet {
       },
     ],
     // length 16 → the renderer sees elapsed 1..15, one full windup→strike woodcut swing (the slice's tuning).
-    atomicAnimations: [{ id: 'viking_chop', name: 'viking_chop', length: 16 }],
+    atomicAnimations: [{ id: 'viking_chop', name: 'viking_chop', length: HARVEST_SWING_LENGTH }],
   });
 }
 

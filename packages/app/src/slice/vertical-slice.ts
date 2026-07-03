@@ -7,7 +7,7 @@ import {
 } from '@vinland/data';
 import { type SceneTerrain, terrainMapToScene } from '@vinland/render';
 import { Simulation, type TerrainMap, components, fx } from '@vinland/sim';
-import { type GoodRef, HARVEST_ATOMIC } from '../content/settler-gfx.js';
+import { type GoodRef, HARVEST_ATOMIC, HARVEST_SWING_LENGTH } from '../content/settler-gfx.js';
 
 /**
  * The Phase-2 vertical-slice scenario, built deterministically so a screenshot frame is reproducible.
@@ -142,7 +142,7 @@ function demoContent(map?: TerrainMap): ContentSet {
     // 9..14 raise the axe, then 0..8 swing down to the impact). length 16 → render sees elapsed 1..15 →
     // all 15 frames, ending on frame 8 (the strike landing in the tree), then the chop completes and
     // wood is taken. The complete swing — windup then strike — at constant speed. ~0.8s at 20 ticks/s.
-    atomicAnimations: [{ id: 'viking_chop', name: 'viking_chop', length: 16 }],
+    atomicAnimations: [{ id: 'viking_chop', name: 'viking_chop', length: HARVEST_SWING_LENGTH }],
   });
 }
 

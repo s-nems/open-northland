@@ -175,3 +175,11 @@ extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
   Adjacent finding: a field the plan groups with a feature may be UNIVERSAL — `landscapetype` is on
   all 65 goods (the on-ground lane), so it belongs on `GoodType`, not the gathering-only sub-object.
   Scan every record for a field's real prevalence before deciding where it lives. (pipeline/format)
+- [stale-content-yew-fallback] The gathering graphics (per-good nodes, ground-pile heaps, flag heaps) are
+  DATA-driven off `ir.json`'s `gatheringPipeline`; with an EMPTY/old pipeline the whole render degrades
+  gracefully to the yew-tree fallback + placeholder heaps — in EVERY scene, silently, no error. So a
+  symlinked/stale `content/` (goods with no `gathering` sub-object → `buildGatheringPipeline` skips them
+  → 0 rows) looks like "the graphics binding is broken per scene" when it's really stale data. When a task
+  changes pipeline OUTPUT, honour the worktree exception: regenerate `content/` in the worktree instead of
+  symlinking the primary's, else you debug a data-freshness problem as a code bug. Confirm the fix by
+  inspecting `ir.gatheringPipeline.length` (should be 11), not by re-reading the binding code. (pipeline/content)

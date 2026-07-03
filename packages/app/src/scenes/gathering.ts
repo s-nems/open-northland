@@ -1,6 +1,7 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { type Component, type Simulation, components, fx } from '@vinland/sim';
 import { GRASS, VIKING, grassTerrain } from '../catalog/buildings.js';
+import { HARVEST_SWING_LENGTH } from '../content/settler-gfx.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -97,7 +98,9 @@ function content(): ContentSet {
         atomicBindings: [{ jobType: WOODCUTTER, atomicId: HARVEST_WOOD, animation: 'viking_chop' }],
       },
     ],
-    atomicAnimations: [{ id: 'viking_chop', name: 'viking_chop', length: 6 }],
+    // The chop swing length is the ONE global constant (settler-gfx) — a full windup→impact swing; a
+    // scene-local number (this was 6) replays only the windup and restarts every atomic.
+    atomicAnimations: [{ id: 'viking_chop', name: 'viking_chop', length: HARVEST_SWING_LENGTH }],
   });
 }
 
@@ -177,7 +180,9 @@ export const gatheringScene: SceneDefinition = {
   content: content(),
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  runTicks: 1000,
+  // The full fell→carry→deliver cycle settles at ~tick 1076 with the real-length chop swing
+  // (HARVEST_SWING_LENGTH); 1300 leaves headroom so the headless checks see the settled end state.
+  runTicks: 1300,
   initialZoom: 0.9,
   checklist: [
     'Drwal podchodzi do drzewa i RĄBIE je kilka razy (animacja topora), po czym drzewo znika — a na jego miejscu zostaje PIEŃ/gałęzie i osobno KŁODA (sterta drewna) na ziemi',

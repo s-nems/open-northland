@@ -81,3 +81,12 @@ extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
   `MoveGoal` or a non-failed `PathRequest` as `moving`; keep a FAILED `PathRequest` `idle` so a stuck unit
   doesn't moonwalk; and make facing sticky in the pool across the gap. The bug hid because the state
   read's unit test only covered `PathFollow`/`CurrentAtomic`, not the between-paths transient. (render)
+- [harvest-swing-length] An action animation (chop) plays on the atomic's own `elapsed` clock, so the
+  swing plays fully ONLY if the sim atomic's `duration` covers one whole render cycle. The render draws
+  frames at ticks `1..duration-1` (clock = `elapsed-1`; the completion tick removes the atomic before it
+  draws), so a full `CHOP_STRIDE`-frame swing needs `duration = CHOP_STRIDE + 1` ticks — a SHORTER value
+  replays only the leading (windup) frames and restarts every atomic, the visible "axe never strikes"
+  glitch. This length lived as a per-scene literal in each scene's `atomicAnimations` and drifted (the
+  gathering scene had 6 vs the swing's 16); fix by driving EVERY scene off the one `HARVEST_SWING_LENGTH`
+  export (settler-gfx), derived from the render `CHOP_STRIDE`, so a scene can't mistune it. A per-scene
+  magic number that must equal a value owned elsewhere is a bug waiting to drift — export the source. (app/render)
