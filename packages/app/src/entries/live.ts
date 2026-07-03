@@ -14,6 +14,7 @@ import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { fetchTerrainIr, loadRealTerrain } from '../content/terrain.js';
 import { demoGoods, loadTerrainMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
 import { cameraFor, createCameraController } from '../view/camera.js';
+import { enableAudioOnGesture } from '../view/overlay.js';
 import { floatParam } from './params.js';
 
 /**
@@ -101,20 +102,13 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
   // attenuated + panned by the camera, plus non-spatial life-event jingles (see @vinland/audio). Real
   // sounds are default-on (like the atlases/textures); `?sound=off` opts out, and a checkout without
   // `content/` (no sound bank) degrades to silence via createSoundDriver → null. Browser autoplay policy
-  // keeps audio suspended until the first user gesture, so we resume it on the first pointer/key event.
+  // keeps audio suspended until a user gesture; the enable-sound prompt persists until the context is
+  // confirmed running, so the gesture can't be dropped while the slice is still loading.
   const wantSound = params.get('sound') !== 'off';
   const soundDriver = wantSound
     ? createSoundDriver(await fetchAudioIr(), { chopAtomicId: HARVEST_ATOMIC })
     : null;
-  if (soundDriver !== null) {
-    const startAudio = (): void => {
-      void soundDriver.resume();
-      window.removeEventListener('pointerdown', startAudio);
-      window.removeEventListener('keydown', startAudio);
-    };
-    window.addEventListener('pointerdown', startAudio);
-    window.addEventListener('keydown', startAudio);
-  }
+  if (soundDriver !== null) enableAudioOnGesture(soundDriver);
 
   const timestep = new FixedTimestep();
   let lastMs = performance.now();

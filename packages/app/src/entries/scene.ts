@@ -14,6 +14,7 @@ import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { SCENES, createSceneSim, getScene } from '../scenes/index.js';
 import { cameraFor, createCameraController } from '../view/camera.js';
+import { enableAudioOnGesture } from '../view/overlay.js';
 import { mountPerfOverlay } from '../view/perf-overlay.js';
 import { mountSceneOverlay, mountUnknownSceneOverlay } from '../view/scene-overlay.js';
 import { floatParam } from './params.js';
@@ -93,20 +94,13 @@ export async function renderSceneMode(
 
   // Original decoded sounds over the scene (default-on; `?sound=off` opts out): positional action SFX +
   // terrain ambient + non-spatial jingles + on-screen settler voice chatter — so a crowd scene murmurs.
-  // Suspended until the first user gesture (autoplay policy); silent without `content/`. See @vinland/audio.
+  // Suspended until a user gesture (autoplay policy); silent without `content/`. The prompt persists until
+  // the context is confirmed running, so the gesture can't be missed while the scene loads. See @vinland/audio.
   const wantSound = params.get('sound') !== 'off';
   const soundDriver = wantSound
     ? createSoundDriver(await fetchAudioIr(), { chopAtomicId: HARVEST_ATOMIC })
     : null;
-  if (soundDriver !== null) {
-    const startAudio = (): void => {
-      void soundDriver.resume();
-      window.removeEventListener('pointerdown', startAudio);
-      window.removeEventListener('keydown', startAudio);
-    };
-    window.addEventListener('pointerdown', startAudio);
-    window.addEventListener('keydown', startAudio);
-  }
+  if (soundDriver !== null) enableAudioOnGesture(soundDriver);
 
   let timestep = new FixedTimestep();
   let lastMs = performance.now();
