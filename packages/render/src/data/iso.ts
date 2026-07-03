@@ -13,15 +13,19 @@ export const ONE: number = SIM_ONE;
 
 /**
  * The original engine's cell pitch in native pixels, MEASURED from the running game (docs/FIDELITY.md
- * "projection" — calibration-by-observation, 2026-07). Screenshots of the original were scale-anchored by
- * template-matching decoded bobs (the 730px stone bridge pinned one shot at exactly 1.25×), then the cell
- * lattice was read from planted-bush constellations (123 matched bushes; the elementary lattice step
- * clusters at (±17.0, +18.7) native), the map-data water grid fitted against the observed river, and the
- * fog-of-war staircase angles. Four independent methods agree: **cell width ≈ 34.5 px** (±0.3), **row
- * step ≈ 18.7 px** (±0.4).
+ * "projection" — calibration-by-observation, 2026-07, superseding an earlier fit that aliased to exactly
+ * HALF these values). From a uniform 7-shot corpus tiling the full 250-column top strip of one map:
+ * the shots' capture scale was pinned at exactly 1.25× by five independent building-sprite templates
+ * (peak scores 0.96–0.98), then 19 detected buildings were joined to their map half-cell placements and
+ * the lattice solved least-squares with a free column step, row step, row-parity term and elevation term
+ * — x rms 0.31 px, y rms 1.21 px, parity 0.00: **cell width 68.0 px, row step 38.0 px** (±0.1), and a
+ * vertical lift of ≈1.24 px per elevation unit (unrendered for now, docs/FIDELITY.md). Cross-check
+ * without templates: 7 shots × ~3170 px with the observed small seam overlaps ≈ 250 cells × 68 × 1.25.
+ * At this pitch the pattern-page texture triangles (~64 px) rasterize ~1:1 onto the cell diamond, which
+ * is why terrain detail reads exactly like the original's.
  */
-export const CALIBRATED_HALF_W = 17.25;
-export const CALIBRATED_HALF_H = 18.7;
+export const CALIBRATED_HALF_W = 34;
+export const CALIBRATED_HALF_H = 38;
 
 /**
  * Projection constants — the measured original cell pitch (docs/FIDELITY.md "projection"):

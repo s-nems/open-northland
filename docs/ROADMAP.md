@@ -63,21 +63,18 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `?map=<id>` is the human sign-off entry. **Open (deferred):** `lmhe` height shading; `emt3`/`emt4`
       road/foundation overlays; `lmpa`/`lmpb` triangle logic → sim water/walkability +
       object collision; the `fx wave*` engine-fx records. Data model in docs/SOURCES.md.
-- [x] **Faithful map projection — raster-with-stagger** (2026-07-03, docs/FIDELITY.md "projection"):
-      `tileToScreen` is now the MEASURED staggered raster (col step = pure horizontal 34.5px, row step =
-      pure vertical 18.7px, odd rows shifted half a cell; continuous triangle-wave stagger for walking
-      units; `halfCellToScreen` for the plain `emla` object lattice), with the terrain mesher, chunk
-      AABBs, `visibleTileRange`, picking and formation slots migrated. Verified against the calibration
-      screenshot: map = rectangle, river N–S, bridge horizontal, directions match. Render-only.
+- [x] **Faithful map projection — raster-with-stagger, pitch 68×38** (2026-07-03, docs/FIDELITY.md
+      "projection"): `tileToScreen` is the MEASURED staggered raster (col step = pure horizontal 68px,
+      row step = pure vertical 38px, odd rows shifted half a cell; continuous triangle-wave stagger for
+      walking units; `halfCellToScreen` for the plain `emla` object lattice), with the terrain mesher,
+      chunk AABBs, `visibleTileRange`, picking and formation slots migrated. The first calibration
+      (34.5×18.7) aliased to exactly HALF the true pitch — the owner's world-too-dense report caught
+      it; the second pass re-derived the metric from a uniform 7-shot top-strip corpus (capture scale
+      1.25× pinned by 5 building templates; 19-building lattice fit with free stagger + elevation
+      terms, x-rms 0.31 px, y-rms 1.21 px; template-free panorama arithmetic agrees). Render-only.
       **Still open — `lmhe` elevation:** emit the layer from the pipeline (`unpackMapLayer` of `lmhe`
-      into `maps/<id>.json`) and lift `y` by the fitted ~0.5px/unit in the projection consumers, then
-      re-verify shore/hill silhouettes against the screenshots.
-      **REOPENED — world metric (density) contested** (2026-07-03, docs/FIDELITY.md "projection"
-      REOPENED note): the owner judges the world too dense at this pitch (buildings/trees/resources
-      too close); the bush-lattice measurement contradicts the accepted row step (a no-stagger fit
-      can alias 2×), and a 37.4 row-step experiment was rejected on sight. Re-derive the pitch, the
-      half-cell y-mapping and the screenshot DPI from a fresh screenshot corpus (UI bitmaps pin DPI
-      independently of world sprites; the minimap pins the world aspect) before touching the mesher.
+      into `maps/<id>.json`) and lift `y` by the fitted ≈1.24 native px/unit in the projection
+      consumers, then re-verify shore/hill silhouettes against the screenshots.
 - [x] **Per-object growth/damage state from the `lmlv` lane** (2026-07-03, docs/FIDELITY.md
       "Landscape-object layer"): the byte lane is the 1-based per-placement index into the record's
       `GfxFrames` state lists (trees full-grown→sapling, stone variants, wall damage; sentinel 100 =
@@ -91,6 +88,15 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       map places its authored 62 buildings + 168 settlers (placed 230, skipped 0). Deferred: `setanimal`
       placement (herd semantics), `addgoods`/`setproducedgood`/`setguide`, rotation→facing
       (docs/FIDELITY.md "Authored entity placements").
+      **Corpus-comparison follow-ups** (2026-07-03, from the mosty-5 side-by-side at the settled 68×38
+      pitch): (a) authored buildings must draw their authored `EditName` VARIANT — the map places
+      `"viking headquarters house"` (bob 44, confirmed in the shot) but the import collapses to typeId
+      and the canonical binding draws `"viking headquarters"` (bob 34, the crane-roofed variant; both
+      names occur across the 13 entity-bearing maps, 29 vs 6, so thread the name through instead of
+      flipping the canonical); (b) the mill draws its static drum — the original animates the sails
+      (`GfxHouse` anim lane, unbound); (c) the north forest reads YOUNGER than the original's same
+      spots — per-species `lmlv` state-list order suspect (full-grown-first assumption may not hold
+      for every record).
 - **Exit:** click to place one workplace; a settler autonomously supplies it via atomics; a carrier
   hauls outputs to a store; the 1000-tick golden hash + trace stay stable. **(Headless slice + golden
   proven; the real-atlas bind + final human pixel check remain.)**

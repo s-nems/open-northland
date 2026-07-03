@@ -122,9 +122,9 @@ describe('visibleTileRange', () => {
   });
 
   it('clamps a fully off-map viewport to the grid edge (nothing out of range)', () => {
-    // y is far below the last row, so the row band clamps to the bottom edge; x spans cols 0..4
-    // (100px ≈ 2.9 cell widths + the diamond/stagger slack), well inside the 10-wide grid.
+    // y is far below the last row, so the row band clamps to the bottom edge; x spans cols 0..2
+    // (100px ≈ 1.5 cell widths + the diamond/stagger slack), well inside the 10-wide grid.
     const vp = { minX: 0, maxX: 100, minY: 100000, maxY: 100100 };
-    expect(visibleTileRange(vp, 10, 10)).toEqual({ minCol: 0, maxCol: 4, minRow: 9, maxRow: 9 });
+    expect(visibleTileRange(vp, 10, 10)).toEqual({ minCol: 0, maxCol: 2, minRow: 9, maxRow: 9 });
   });
 });
