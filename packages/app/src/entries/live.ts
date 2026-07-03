@@ -80,8 +80,11 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
   // `?pitch=<fullTileWidth>` — the live verification knob for the master sprite-vs-terrain scale (the
   // whole look; a human dials it, an agent can't self-judge pixels — see `iso.ts`/docs/FIDELITY.md).
   // Applied BEFORE any projection (scene build, terrain mesh, object lattice) so every layer picks it up.
-  // The height follows the MEASURED ratio (CALIBRATED_HALF_H/CALIBRATED_HALF_W ≈ 1.08 — the original's
-  // cells are near-square on screen, not iso 2:1); `?pitchy=<fullCellDownStep>` overrides it separately.
+  // The height follows the MEASURED ratio (CALIBRATED_HALF_H/CALIBRATED_HALF_W ≈ 1.12 — the original's
+  // cells are near-square on screen, not iso 2:1); `?pitchy=<cellDiamondHeight>` overrides it separately.
+  // NOTE `?pitchy` is the full DIAMOND height (2× the row step): the measured 68×38 metric is
+  // `?pitch=68&pitchy=76` — passing the row step (38) squashes the world 2× (the aliasing failure the
+  // recalibration fixed).
   const tileWidth = floatParam(params, 'pitch', DEFAULT_TILE_WIDTH);
   const halfW = tileWidth / 2;
   const cellDown = floatParam(params, 'pitchy', 2 * halfW * (CALIBRATED_HALF_H / CALIBRATED_HALF_W));

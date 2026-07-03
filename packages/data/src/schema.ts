@@ -976,11 +976,14 @@ export const TerrainObjects = z.object({
   /** Flat `[hx, hy, typeIndex]` triples in row-major half-cell order (length % 3 === 0). */
   placements: z.array(z.number().int().nonnegative()),
   /**
-   * Per-placement object STATE from the `lmlv` lane (parallel to {@link placements}, one entry per
-   * triple): a 1-based index into the type's {@link LandscapeGfx} `frames` state lists — a tree's
-   * growth stage (1 = full-grown … 3 = sapling), a stone-pile's variant, a wall's damage state.
-   * Walls carry the sentinel `100` (= intact); any value outside the record's list range renders
-   * state 0. Absent on maps decoded before the lane was understood (render then defaults to 1).
+   * Per-placement object LEVEL from the `lmlv` lane (parallel to {@link placements}, one entry per
+   * triple): 1-based and counting UP FROM THE LOWEST state, while the type's {@link LandscapeGfx}
+   * `frames` lists are authored highest-first — so level N (= the list count) is the full-grown
+   * tree / full deposit / intact wall (the FIRST list) and level 1 the sapling / dregs / rubble
+   * (the last); consumers map `index = N − level`. Walls carry the sentinel `100` (= intact); that
+   * and any other out-of-range value render the first (full) list. Absent on maps decoded before
+   * the lane was understood (render then defaults to the full state). Direction pinned against the
+   * screenshot corpus (docs/FIDELITY.md "Landscape-object layer").
    */
   levels: z.array(z.number().int().nonnegative()).optional(),
 });
@@ -997,7 +1000,14 @@ export type TerrainObjects = z.infer<typeof TerrainObjects>;
  * captured yet — a tracked gap (docs/FIDELITY.md map-entity import).
  */
 export const TerrainEntities = z.object({
-  /** `sethouse` placements: `[GfxHouse]` EditName + level pick the building type; `player` is 1-based. */
+  /**
+   * `sethouse` placements: `[GfxHouse]` EditName + level pick the building type. `player` is read as
+   * 1-based — an ASSUMPTION, not a pin: the column is the constant `1` across all 13 entity-bearing
+   * maps (untestable from data; the other player-carrying map sections are 0-based), so verify by
+   * observing ownership in the running original (docs/FIDELITY.md "Authored entity placements").
+   * `rot` is decoded verbatim with no consumer yet — the rotation→facing slice is deferred
+   * (docs/ROADMAP.md entity-import item).
+   */
   buildings: z
     .array(
       z.strictObject({
@@ -1112,6 +1122,13 @@ export const TerrainMapFile = z
     () => ({
       message: 'terrain map objects.placements triple out of range (half-cell coords / types index)',
       path: ['objects', 'placements'],
+    }),
+  )
+  .refine(
+    (m) => m.objects?.levels === undefined || m.objects.levels.length === m.objects.placements.length / 3,
+    () => ({
+      message: 'terrain map objects.levels must carry one entry per placement triple',
+      path: ['objects', 'levels'],
     }),
   );
 export type TerrainMapFile = z.infer<typeof TerrainMapFile>;

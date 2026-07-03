@@ -344,7 +344,8 @@ export function resolveAuthoredPlacements(
   const bobByNameLevel = new Map<string, { typeId: number; tribeId: number }>();
   for (const b of rows.buildingBobs ?? []) {
     if (b.editName === undefined || b.typeId === undefined) continue;
-    const key = `${b.editName} ${b.level ?? 0}`;
+    // NUL-separated key: a plain space would let `"foo 1" L0` collide with `"foo" L10`.
+    const key = `${b.editName}\u0000${b.level ?? 0}`;
     if (!bobByNameLevel.has(key)) bobByNameLevel.set(key, { typeId: b.typeId, tribeId: b.tribeId ?? 0 });
   }
   const jobByName = new Map<string, number>();
@@ -358,12 +359,13 @@ export function resolveAuthoredPlacements(
       tribeByName.set(t.id, t.typeId);
   }
   const half = (h: number): number => Math.floor(h / 2);
-  const inBounds = (hx: number, hy: number): boolean => half(hx) < map.width && half(hy) < map.height;
+  const inBounds = (hx: number, hy: number): boolean =>
+    hx >= 0 && hy >= 0 && half(hx) < map.width && half(hy) < map.height;
 
   const placements: AuthoredPlacement[] = [];
   let skipped = 0;
   for (const b of entities.buildings) {
-    const hit = bobByNameLevel.get(`${b.name} ${b.level}`);
+    const hit = bobByNameLevel.get(`${b.name}\u0000${b.level}`);
     if (hit === undefined || !inBounds(b.hx, b.hy)) {
       skipped++;
       continue;

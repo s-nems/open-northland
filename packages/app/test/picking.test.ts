@@ -48,7 +48,7 @@ describe('worldToTile', () => {
 
   it('rounds a point inside a diamond to that diamond cell', () => {
     const centre = tileToScreen(4, 2);
-    // A few px off-centre (well within the 32×16 half-diamond) still resolves to (4,2).
+    // A few px off-centre (well within the cell diamond's half-extents) still resolves to (4,2).
     expect(worldToTile(centre.x + 6, centre.y - 3)).toEqual({ col: 4, row: 2 });
   });
 });

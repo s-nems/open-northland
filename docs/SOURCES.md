@@ -87,7 +87,7 @@ verbs (counts on `SPECJALNA- MOSTY NA RZECE`, a 6-player map): **`sethouse` 62**
 
 ```
 sethouse  <class=5> "<GfxHouse EditName>" <level> <player> <X> <Y> <rot>   e.g. "viking headquarters house" 0 1 171 330 2
-sethuman  <?0> "<tribe>" "<role>" <X> <Y> <a> <b>                          e.g. "viking" "civilist" 385 83 0 0
+sethuman  <player 0-based> "<tribe>" "<role>" <X> <Y> <a> <b>              e.g. "viking" "civilist" 385 83 0 0  (trailing <a> <b> semantics unknown, dropped)
 setanimal <...> <X> <Y> <...>
 addgoods  "<good>" <amount>            # applies to the preceding sethouse's stock
 ```
