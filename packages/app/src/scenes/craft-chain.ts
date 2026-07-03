@@ -1,4 +1,10 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
+import {
+  type BuildingFootprint,
+  type ContentSet,
+  type FootprintCell,
+  IR_VERSION,
+  parseContentSet,
+} from '@vinland/data';
 import { type Simulation, components, fx } from '@vinland/sim';
 import { GRASS, VIKING, grassTerrain } from '../catalog/buildings.js';
 import type { SceneDefinition } from './types.js';
@@ -11,9 +17,9 @@ import type { SceneDefinition } from './types.js';
  *
  *  - the WOODCUTTER (drewno) and MINER (żelazo) are bound to the WAREHOUSE, so they haul their harvest
  *    straight into its store — the "deliver to the warehouse you're assigned to" route;
- *  - the STONEMASON (kamień) and CLAY-DIGGER (glina) are bound to a FLAG (a bare ground pile) west of the
- *    map, so they drop their harvest on the ground there — the "deliver to a flag" route — and the PORTER
- *    (tragarz), bound to the warehouse, collects those loose piles and carries them home;
+ *  - the STONEMASON (kamień) and CLAY-DIGGER (glina) trek in from the far west and are bound to a FLAG (a
+ *    bare ground pile) beside the warehouse, so they drop their harvest on the ground there — the "deliver
+ *    to a flag" route — and the PORTER (tragarz), bound to the warehouse, ferries those loose piles home;
  *  - the SMITH (kowal), bound to the FORGE, fetches ONLY the goods its recipe needs (iron + wood) out of
  *    the warehouse, forges a sword, and hauls the finished sword back to the warehouse;
  *  - a CIVILIAN (cywil) has no job and just stands — "cywil nie robi nic".
@@ -62,6 +68,23 @@ const MAP_H = 14;
 /** How long one forging cycle takes, in ticks — short enough that a sword lands well inside the run. */
 const FORGE_TICKS = 60;
 
+/**
+ * A rectangular `w`×`h` building body anchored at its top-left, with a 1-cell keep-out `reserved` ring
+ * around it and a `door` on one edge. This is ordinary footprint DATA — the very same shape every real
+ * (extracted `[GfxHouse]`) building carries. The sim's GLOBAL collision + placement systems read it and
+ * do the rest for free: `buildingBlockedCells` blocks the walls so a settler routes AROUND the building
+ * and enters through the door, and `canPlaceBuilding` keeps other buildings out of the reserved ring so
+ * two can't be stacked. Synthetic scene content just has to declare it (real content gets it from the
+ * pipeline); nothing here is scene-local behavior. `familyBody` == `blocked` (no upgrade levels).
+ */
+function rectFootprint(w: number, h: number, door: FootprintCell): BuildingFootprint {
+  const body: FootprintCell[] = [];
+  for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) body.push({ dx, dy });
+  const reserved: FootprintCell[] = [];
+  for (let dy = -1; dy <= h; dy++) for (let dx = -1; dx <= w; dx++) reserved.push({ dx, dy });
+  return { blocked: body, familyBody: body, reserved, door };
+}
+
 function content(): ContentSet {
   return parseContentSet({
     manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-craft-chain-scene' }, locale: 'eng' },
@@ -87,6 +110,8 @@ function content(): ContentSet {
         typeId: WAREHOUSE,
         id: 'warehouse',
         kind: 'storage',
+        // A 2×2 body with a door on its south wall — settlers deliver at the door, never through a wall.
+        footprint: rectFootprint(2, 2, { dx: 0, dy: 2 }),
         stock: [
           { goodType: WOOD, capacity: 50, initial: 0 },
           { goodType: STONE, capacity: 50, initial: 0 },
@@ -99,6 +124,9 @@ function content(): ContentSet {
         typeId: FORGE,
         id: 'forge',
         kind: 'workplace',
+        // A 2×2 body with a door on its north wall (facing the warehouse) — the smith walks around the
+        // forge and stands on the door tile to work, instead of gliding through the building.
+        footprint: rectFootprint(2, 2, { dx: 0, dy: -1 }),
         workers: [{ jobType: SMITH, count: 1 }],
         stock: [
           { goodType: IRON, capacity: 10, initial: 0 },
@@ -136,11 +164,15 @@ function content(): ContentSet {
   });
 }
 
-// ── layout (map 20×14). Iron + wood clusters sit near the warehouse (east) so their direct hauls are
-//    short; stone + clay sit far west by the flag so the porter's ferry is the long, visible route. ──
-const WAREHOUSE_AT = { x: 14, y: 4 };
-const FORGE_AT = { x: 16, y: 8 };
-const FLAG_AT = { x: 6, y: 7 };
+// ── layout (map 20×14). The warehouse sits upper-right and the forge is offset DIAGONALLY to its
+//    lower-left — far enough that the two (over-sized) building sprites have clear daylight between them,
+//    not just the logical keep-out rings. Their reserved zones don't touch, so canPlaceBuilding would
+//    accept the layout. Wood + iron sit east so their direct hauls into the warehouse are short; the flag
+//    sits just west of the warehouse so the PORTER's ferry is a short, visible hop right beside it, while
+//    the stone + clay diggers trek in from the far west to fill it. ──
+const WAREHOUSE_AT = { x: 14, y: 3 }; // 2×2 body (14,3)-(15,4); door south at (14,5)
+const FORGE_AT = { x: 11, y: 10 }; // 2×2 body (11,10)-(12,11); door north at (11,9)
+const FLAG_AT = { x: 10, y: 3 }; // a bare ground pile just west of the warehouse
 
 interface Cluster {
   readonly good: number;
@@ -153,48 +185,51 @@ interface Cluster {
 const NODE_UNITS = 4;
 
 const CLUSTERS: readonly Cluster[] = [
-  // Wood + iron → delivered STRAIGHT to the warehouse (the "assigned to the warehouse" route).
+  // Wood + iron → delivered STRAIGHT to the warehouse (the "assigned to the warehouse" route). Their
+  // nodes sit east of the buildings (x ≥ 16), clear of both reserved keep-out rings.
   {
     good: WOOD,
     harvest: HARVEST_WOOD,
     nodes: [
-      { x: 10, y: 2 },
-      { x: 11, y: 2 },
+      { x: 17, y: 2 },
+      { x: 18, y: 2 },
     ],
-    gatherer: { x: 11, y: 3, job: WOODCUTTER, deliverTo: 'warehouse' },
+    gatherer: { x: 17, y: 3, job: WOODCUTTER, deliverTo: 'warehouse' },
   },
   {
     good: IRON,
     harvest: HARVEST_IRON,
     nodes: [
-      { x: 10, y: 11 },
-      { x: 11, y: 11 },
+      { x: 15, y: 11 },
+      { x: 15, y: 12 },
     ],
-    gatherer: { x: 11, y: 10, job: MINER, deliverTo: 'warehouse' },
+    gatherer: { x: 14, y: 11, job: MINER, deliverTo: 'warehouse' },
   },
   // Stone + clay → dropped at the FLAG (the "deliver to a flag on the ground" route); the porter ferries them.
+  // Their nodes sit at the far west edge so the gather leg is the long, visible trek in to the flag.
   {
     good: STONE,
     harvest: HARVEST_STONE,
     nodes: [
-      { x: 2, y: 3 },
-      { x: 3, y: 3 },
+      { x: 2, y: 2 },
+      { x: 3, y: 2 },
     ],
-    gatherer: { x: 3, y: 4, job: STONEMASON, deliverTo: 'flag' },
+    gatherer: { x: 3, y: 3, job: STONEMASON, deliverTo: 'flag' },
   },
   {
     good: CLAY,
     harvest: HARVEST_CLAY,
     nodes: [
-      { x: 2, y: 10 },
-      { x: 3, y: 10 },
+      { x: 2, y: 11 },
+      { x: 3, y: 11 },
     ],
-    gatherer: { x: 3, y: 9, job: CLAY_DIGGER, deliverTo: 'flag' },
+    gatherer: { x: 3, y: 10, job: CLAY_DIGGER, deliverTo: 'flag' },
   },
 ];
 
-const PORTER_AT = { x: 9, y: 7 };
-const CIVILIAN_AT = { x: 16, y: 4 };
+const PORTER_AT = { x: 12, y: 4 }; // right beside the warehouse — a short, visible flag → warehouse ferry
+const SMITH_AT = { x: 11, y: 7 }; // between the buildings, near the forge door; it paths onto the door to work
+const CIVILIAN_AT = { x: 4, y: 12 }; // off in the SW corner, unmistakably a bystander — "cywil nie robi nic"
 
 /** Create a built building of `buildingType` at (x,y) with an empty store. */
 function placeBuilding(sim: Simulation, buildingType: number, x: number, y: number): number {
@@ -254,7 +289,7 @@ function build(sim: Simulation): void {
 
   // The porter (ferries flag piles → warehouse), the smith (forge loop), and an idle civilian.
   placeSettler(sim, PORTER_AT.x, PORTER_AT.y, PORTER, warehouse);
-  placeSettler(sim, FORGE_AT.x, FORGE_AT.y, SMITH, forge);
+  placeSettler(sim, SMITH_AT.x, SMITH_AT.y, SMITH, forge);
   placeSettler(sim, CIVILIAN_AT.x, CIVILIAN_AT.y, null); // cywil — no job, does nothing
 }
 
@@ -298,11 +333,12 @@ export const craftChainScene: SceneDefinition = {
   initialZoom: 0.62,
   checklist: [
     'Każdy zbieracz kopie TYLKO swój surowiec: drwal → drewno, górnik → żelazo, kamieniarz → kamień, kopacz → glina (zamach przy złożu, potem marsz z WIDOCZNYM ładunkiem — kłoda / kamień / glina / sztaba)',
-    'Drwal i górnik niosą surowiec prosto do magazynu; kamieniarz i kopacz zrzucają na flagę (na zachodzie), a tragarz kursuje flaga → magazyn',
-    'Kowal kursuje magazyn → kuźnia: bierze żelazo i drewno (nie kamień/glinę), stoi przy kuźni gdy kuje, po czym niesie MIECZ z powrotem do magazynu',
-    'Cywil (przy magazynie) stoi bezczynnie — nic nie kopie ani nie nosi',
+    'Drwal i górnik niosą surowiec prosto do magazynu; kamieniarz i kopacz przynoszą urobek z dalekiego zachodu na FLAGĘ tuż obok magazynu, a tragarz kursuje flaga → magazyn (krótki, widoczny odcinek — tragarz jest zajęty przy samym magazynie)',
+    'Kowal kursuje magazyn → kuźnia: bierze żelazo i drewno (nie kamień/glinę), OBCHODZI kuźnię i wchodzi przez drzwi (nie przenika przez ścianę), stoi na progu gdy kuje, po czym niesie MIECZ z powrotem do magazynu',
+    'Magazyn i kuźnia stoją osobno, z wolnym pasem między nimi — kolizja i strefa odstępu budynków działa globalnie (z footprintów), więc nie da się ich postawić na sobie',
+    'Cywil (w lewym-dolnym rogu, z dala od magazynu) stoi bezczynnie — nic nie kopie ani nie nosi ("cywil nie robi nic")',
     'Postacie idą po skosie prosto do celu (nie schodkami/łukiem) — po naprawie pathfindingu',
-    'Uwaga: wszystkie złoża rysują się jak drzewa (osobna grafika złóż to inny temat); rozpoznaj je po ładunku, który niesie zbieracz',
+    'Znane braki (następny krok — grafika świata): złoża wciąż rysują się jak drzewa, a sterty na ziemi i flaga są jeszcze niewidoczne — rozpoznaj surowiec po ładunku, który niesie postać',
   ],
   checks: [
     {
