@@ -1,6 +1,6 @@
 import type { Simulation } from '@vinland/sim';
 
-export { ONE, TILE_HALF_W, TILE_HALF_H, tileToScreen, type Camera } from './data/iso.js';
+export { ONE, TILE_HALF_W, TILE_HALF_H, setTilePitch, tileToScreen, type Camera } from './data/iso.js';
 export {
   buildScene,
   buildSpriteScene,

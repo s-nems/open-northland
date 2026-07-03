@@ -6,6 +6,7 @@ import {
   createWindowPixiApp,
   layoutHud,
   placeHud,
+  setTilePitch,
 } from '@vinland/render';
 import { FixedTimestep, type SimEvent } from '@vinland/sim';
 import { createSoundDriver, fetchAudioIr } from '../content/audio.js';
@@ -16,7 +17,11 @@ import { fetchTerrainIr, loadRealTerrain } from '../content/terrain.js';
 import { demoGoods, loadTerrainMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
 import { cameraCenteredOnTile, cameraFor, createCameraController } from '../view/camera.js';
 import { enableAudioOnGesture } from '../view/overlay.js';
+import { mountPerfOverlay } from '../view/perf-overlay.js';
 import { floatParam } from './params.js';
+
+/** The default full tile-diamond width in px (`2 × TILE_HALF_W`) when `?pitch=` is absent. */
+const DEFAULT_TILE_WIDTH = 64;
 
 /**
  * The live sandbox entry (`?live`, and the target of `?map=<id>`): a deterministic vertical slice driven
@@ -51,6 +56,12 @@ function centerTile(raw: string | null, zoom: number, width: number, height: num
 
 export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   const app = await createWindowPixiApp(canvas);
+  // `?pitch=<fullTileWidth>` — the live calibration knob for the master sprite-vs-terrain scale (the
+  // whole look; a human dials it, an agent can't self-judge pixels — see `iso.ts`/docs/FIDELITY.md).
+  // Applied BEFORE any projection (scene build, terrain mesh, object lattice) so every layer picks it up.
+  // Kept at the iso-standard 2:1 W:H (half-width = pitch/2, half-height = pitch/4); absent → 64px default.
+  const tileWidth = floatParam(params, 'pitch', DEFAULT_TILE_WIDTH);
+  setTilePitch(tileWidth / 2, tileWidth / 4);
   const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
   const terrainGrid = sliceTerrain(loaded ?? undefined);
@@ -129,6 +140,11 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
     : null;
   if (soundDriver !== null) enableAudioOnGesture(soundDriver);
 
+  // On-canvas FPS + entity/drawn/pooled readout (bottom-left) so a human can judge whether the map holds
+  // a frame rate and whether culling is biting (`drawn` ≪ `entities` zoomed in) — the same instrument the
+  // `?scene=` entry mounts. Real-GPU only: headless Chromium is software-GL, ~50× low (docs/LESSONS).
+  const perf = mountPerfOverlay();
+
   const timestep = new FixedTimestep();
   let lastMs = performance.now();
 
@@ -163,6 +179,7 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
         dtMs: elapsed,
       });
     }
+    perf.update(elapsed, { entities: snap.entities.length, ...renderer.stats() });
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
