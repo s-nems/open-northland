@@ -6,7 +6,7 @@ import {
   defaultBindings,
 } from '@vinland/audio';
 import type { SoundBank } from '@vinland/data';
-import { fetchAudioIr } from '../content/audio.js';
+import { fetchAudioIr, hasSoundContent } from '../content/audio.js';
 import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
 import { el } from '../view/overlay.js';
 
@@ -283,9 +283,7 @@ export async function renderSoundGallery(
   const ir = await fetchAudioIr();
   const sounds = ir?.sounds;
   // Empty (or absent) bank ⇒ nothing to audition — the same emptiness the live driver treats as "run silent".
-  const total =
-    sounds === undefined ? 0 : sounds.staticGroups.length + sounds.ambient.length + sounds.jingles.length;
-  if (sounds === undefined || total === 0) {
+  if (!hasSoundContent(sounds)) {
     mountFullPageMessage(
       'Brak zdekodowanych dźwięków',
       'Uruchom `npm run pipeline` na posiadanej kopii gry, aby wygenerować bank dźwięków (content/ jest gitignore). Bez niego aplikacja gra po cichu.',

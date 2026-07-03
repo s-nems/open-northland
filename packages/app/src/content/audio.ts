@@ -17,6 +17,18 @@ interface AudioIr {
   readonly terrainPatterns?: readonly TerrainPattern[];
 }
 
+/**
+ * True when the bank actually carries at least one clip (in any category) — the ONE "is there anything
+ * to play / show?" test shared by the live {@link createSoundDriver} and the `?sounds` gallery, so their
+ * silent/empty decisions can't drift (add a 4th category and both update together). Narrows `sounds` to a
+ * present, non-empty {@link SoundBank}.
+ */
+export function hasSoundContent(sounds: SoundBank | undefined): sounds is SoundBank {
+  return (
+    sounds !== undefined && sounds.staticGroups.length + sounds.ambient.length + sounds.jingles.length > 0
+  );
+}
+
 /** Fetch the served IR, or null when it is absent/unreadable (a checkout without `content/`). */
 export async function fetchAudioIr(): Promise<AudioIr | null> {
   try {
@@ -38,9 +50,7 @@ export function createSoundDriver(
   opts?: { readonly chopAtomicId?: number },
 ): SoundDriver | null {
   const sounds = ir?.sounds;
-  const total =
-    sounds === undefined ? 0 : sounds.staticGroups.length + sounds.ambient.length + sounds.jingles.length;
-  if (sounds === undefined || total === 0) return null;
+  if (!hasSoundContent(sounds)) return null;
   const index = buildSoundIndex(sounds, ir?.gfxPatterns ?? [], ir?.terrainPatterns ?? []);
   return new SoundDriver(index, defaultBindings(opts), { baseUrl: '/sounds/' });
 }
