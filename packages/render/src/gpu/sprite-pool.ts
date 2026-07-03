@@ -1,6 +1,6 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { Container, Graphics, Sprite, type TextureSource } from 'pixi.js';
-import { depthKey } from '../data/iso.js';
+import { type Camera, depthKey } from '../data/iso.js';
 import { type DrawItem, type DrawKind, buildSpriteScene, drawableEntityRefs } from '../data/scene.js';
 import {
   type AtlasFrame,
@@ -15,6 +15,7 @@ import {
   resolveStockpileDraw,
 } from '../data/sprites.js';
 import type { Viewport } from '../data/viewport.js';
+import { PalettedSprite } from './paletted-sprite.js';
 import type { SpriteLayer, SpriteSheet } from './pixi-app.js';
 import type { TextureCache } from './texture-cache.js';
 
@@ -36,11 +37,16 @@ const KIND_COLOURS: Record<Exclude<DrawKind, 'tile'>, number> = {
   stockpile: 0xb08040, // a sandy heap/flag marker, distinct from the green resource node
 };
 
-/** One resolved atlas layer to draw for an entity: which source page, which frame rect, at what scale. */
+/** One resolved atlas layer to draw for an entity: which source page, which frame rect, at what scale.
+ *  `atlasW`/`atlasH` (the source sheet's pixel size) ride along ONLY for the paletted settler path — the
+ *  {@link PalettedSprite} mesh samples the indexed atlas by UV, so it needs the sheet dimensions; the plain
+ *  {@link Sprite} path binds a cached sub-texture and ignores them. */
 interface ResolvedLayer {
   readonly source: TextureSource;
   readonly frame: AtlasFrame;
   readonly scale: number;
+  readonly atlasW?: number;
+  readonly atlasH?: number;
 }
 
 /**
@@ -75,7 +81,12 @@ interface MutableBounds {
 interface PooledEntity {
   readonly container: Container;
   readonly kind: Exclude<DrawKind, 'tile'>;
-  readonly sprites: Sprite[];
+  /** This entity's atlas layers. A PALETTED settler (team colours on) draws {@link PalettedSprite} meshes;
+   *  every other entity draws plain {@link Sprite}s. Homogeneous per entity — set by {@link PooledEntity.paletted}. */
+  readonly sprites: (Sprite | PalettedSprite)[];
+  /** Whether this entity draws team-coloured {@link PalettedSprite} meshes (a settler, with a LUT + indexed
+   *  characters loaded). Fixed at creation — the sprite CLASS can't change, so the pool decides once. */
+  readonly paletted: boolean;
   placeholder?: Graphics;
   attached: boolean;
   lastSeen: number;
@@ -127,7 +138,14 @@ export class SpritePool {
    * this frame (culled or gone), and destroy the ones that LEFT the snapshot (died). No allocation in
    * the steady state — only a first-seen entity or a growing layer set mints a new object.
    */
-  reconcile(snapshot: WorldSnapshot, vp: Viewport, tick: number): void {
+  reconcile(
+    snapshot: WorldSnapshot,
+    vp: Viewport,
+    tick: number,
+    camera: Camera,
+    resW: number,
+    resH: number,
+  ): void {
     const items = buildSpriteScene(snapshot, vp);
     this.frameId++;
     for (let i = 0; i < items.length; i++) {
@@ -135,10 +153,11 @@ export class SpritePool {
       if (item === undefined) continue;
       let pe = this.pool.get(item.ref);
       if (pe === undefined) {
-        pe = createPooled(item.kind as Exclude<DrawKind, 'tile'>);
+        const kind = item.kind as Exclude<DrawKind, 'tile'>;
+        pe = createPooled(kind, this.isPaletted(kind));
         this.pool.set(item.ref, pe);
       }
-      this.updatePooled(pe, item, tick);
+      this.updatePooled(pe, item, tick, camera, resW, resH);
       // Depth = the feet-anchor SCREEN y (+ a small deterministic x tiebreak), the same key the tall
       // map objects use, so a settler and the tree it walks behind sort into one painter order.
       // NOTE this deliberately diverges from the headless `buildScene` oracle's row-major
@@ -204,7 +223,14 @@ export class SpritePool {
    * atlas layers (reusing/growing its child sprites) or show its placeholder geometry — reusing objects
    * instead of re-creating them.
    */
-  private updatePooled(pe: PooledEntity, item: DrawItem, tick: number): void {
+  private updatePooled(
+    pe: PooledEntity,
+    item: DrawItem,
+    tick: number,
+    camera: Camera,
+    resW: number,
+    resH: number,
+  ): void {
     pe.container.position.set(item.x, item.y);
     // Sticky facing: a re-pathing settler drops its PathFollow for a tick (no heading to read), so `facing`
     // is momentarily absent — reuse its last real heading so the walk doesn't flip to DEFAULT_FACING for a
@@ -230,7 +256,17 @@ export class SpritePool {
       return;
     }
     if (pe.placeholder !== undefined) pe.placeholder.visible = false;
-    // Accumulate the union of the drawn layers' rects (feet-local) → the entity's exact sprite bounds.
+    // A PALETTED settler draws team-coloured PalettedSprite meshes. A custom-shader mesh can't ride the
+    // camera-transformed spriteLayer (Pixi leaves its transform UBO unbound), so it SELF-places in screen
+    // space — mirror the camera the plain sprites inherit: screen feet-anchor = camera applied to this
+    // entity's world-screen anchor (item.x/y). Cheap to compute once; unused on the plain-sprite path.
+    const camScale = camera.scale ?? 1;
+    const originX = camera.offsetX + camScale * item.x;
+    const originY = camera.offsetY + camScale * item.y;
+    const playerRow = item.player ?? 0; // an unowned settler reads LUT row 0 (the base palette)
+    // Accumulate the union of the drawn layers' rects (feet-local) → the entity's exact sprite bounds. The
+    // bounds live in WORLD-screen space (item.x + feet-local offsets), the same for a mesh or a plain sprite,
+    // so the picker/selection ring reads one consistent box regardless of how the layer was drawn.
     let minX = Number.POSITIVE_INFINITY;
     let minY = Number.POSITIVE_INFINITY;
     let maxX = Number.NEGATIVE_INFINITY;
@@ -238,19 +274,41 @@ export class SpritePool {
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
       if (layer === undefined) continue;
-      let spr = pe.sprites[i];
-      if (spr === undefined) {
-        spr = new Sprite();
-        pe.sprites.push(spr);
-        pe.container.addChild(spr);
-      }
-      spr.texture = this.textures.get(layer.source, layer.frame);
       // Feet-anchored: the frame's authored draw offset, scaled about the anchor (the container origin).
       const ox = layer.frame.offsetX * layer.scale;
       const oy = layer.frame.offsetY * layer.scale;
-      spr.position.set(ox, oy);
-      spr.scale.set(layer.scale);
-      spr.visible = true;
+      if (pe.paletted && this.sheet?.palette !== undefined) {
+        const lut = this.sheet.palette;
+        let spr = pe.sprites[i] as PalettedSprite | undefined; // pe.paletted ⇒ every layer is a PalettedSprite
+        if (spr === undefined) {
+          spr = new PalettedSprite(lut.source, lut.colours);
+          pe.sprites[i] = spr;
+          pe.container.addChild(spr);
+        }
+        // The mesh samples the INDEXED atlas by UV, so it needs the sheet size; the frame's own draw offset
+        // is baked into its quad, and place() maps native pixels → screen at the camera zoom (× the layer
+        // art scale) about the feet anchor. `player` selects the LUT row (the team colour).
+        spr.setFrame(
+          layer.source,
+          layer.frame,
+          layer.atlasW ?? layer.frame.width,
+          layer.atlasH ?? layer.frame.height,
+        );
+        spr.place(originX, originY, camScale * layer.scale, resW, resH);
+        spr.player = playerRow;
+        spr.visible = true;
+      } else {
+        let spr = pe.sprites[i] as Sprite | undefined;
+        if (spr === undefined) {
+          spr = new Sprite();
+          pe.sprites[i] = spr;
+          pe.container.addChild(spr);
+        }
+        spr.texture = this.textures.get(layer.source, layer.frame);
+        spr.position.set(ox, oy);
+        spr.scale.set(layer.scale);
+        spr.visible = true;
+      }
       if (ox < minX) minX = ox;
       if (oy < minY) minY = oy;
       if (ox + layer.frame.width * layer.scale > maxX) maxX = ox + layer.frame.width * layer.scale;
@@ -264,6 +322,15 @@ export class SpritePool {
     if (minX <= maxX) {
       this.stampBounds(pe, item.x + minX, item.y + minY, item.x + maxX, item.y + maxY);
     }
+  }
+
+  /** Whether an entity of `kind` draws team-coloured {@link PalettedSprite} meshes: a settler, with BOTH the
+   *  player-colour LUT ({@link SpriteSheet.palette}) and the indexed {@link SpriteSheet.characters} loaded
+   *  (real graphics + the pipeline's colour stage). Fixed for the pool's life — the sheet never changes — so
+   *  a pooled entity's sprite CLASS is decided once at creation. Without the LUT this is false everywhere and
+   *  every entity draws plain {@link Sprite}s exactly as before. */
+  private isPaletted(kind: Exclude<DrawKind, 'tile'>): boolean {
+    return kind === 'settler' && this.sheet?.palette !== undefined && this.sheet.characters !== undefined;
   }
 
   /** Restamp a pooled entity's bounds IN PLACE for this frame — no allocation in the per-frame pass. */
@@ -295,7 +362,15 @@ export class SpritePool {
       const layers: ResolvedLayer[] = [];
       const bodyFrame = char.body.atlas.frames.get(bob);
       if (bodyFrame !== undefined && bodyFrame.width > 0 && bodyFrame.height > 0) {
-        layers.push({ source: char.body.source, frame: bodyFrame, scale: 1 });
+        // atlasW/H ride along for the paletted mesh path (it samples the indexed sheet by UV); the plain
+        // sprite path ignores them. See ResolvedLayer / updatePooled.
+        layers.push({
+          source: char.body.source,
+          frame: bodyFrame,
+          scale: 1,
+          atlasW: char.body.atlas.width,
+          atlasH: char.body.atlas.height,
+        });
       }
       // ONE head per individual, stable by entity id (ids are monotonic, never reused), so a crowd
       // shows varied faces without per-frame flicker — the render-side analogue of the original's
@@ -308,7 +383,13 @@ export class SpritePool {
           char.headBinding !== undefined ? resolveSettlerBobId(char.headBinding, item, tick) : bob;
         const headFrame = head?.atlas.frames.get(headBob);
         if (head !== undefined && headFrame !== undefined && headFrame.width > 0 && headFrame.height > 0) {
-          layers.push({ source: head.source, frame: headFrame, scale: 1 });
+          layers.push({
+            source: head.source,
+            frame: headFrame,
+            scale: 1,
+            atlasW: head.atlas.width,
+            atlasH: head.atlas.height,
+          });
         }
       }
       return layers.length > 0 ? layers : null;
@@ -415,11 +496,12 @@ export class SpritePool {
 }
 
 /** A fresh, empty pooled entity (container + kind; sprites/placeholder grow lazily on first update). */
-function createPooled(kind: Exclude<DrawKind, 'tile'>): PooledEntity {
+function createPooled(kind: Exclude<DrawKind, 'tile'>, paletted: boolean): PooledEntity {
   return {
     container: new Container(),
     kind,
     sprites: [],
+    paletted,
     attached: false,
     lastSeen: 0,
     bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },

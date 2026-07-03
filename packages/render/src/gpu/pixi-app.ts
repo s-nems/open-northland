@@ -131,6 +131,15 @@ export interface SpriteSheet {
    * old caller), the sheet-global path draws exactly as before.
    */
   readonly characters?: SettlerCharacterSet;
+  /**
+   * The player-colour **LUT** for team colours: the `256 × colours` palette texture the {@link characters}
+   * are drawn through when their atlases are the recolourable INDEXED variant (palette index in red). When
+   * present, {@link import('./sprite-pool.js').SpritePool} draws each settler with a {@link
+   * import('./paletted-sprite.js').PalettedSprite} at its `DrawItem.player` LUT row; when ABSENT (no LUT
+   * decoded, or the baked-palette characters) it falls back to a plain tinted-atlas {@link import('pixi.js').Sprite}
+   * exactly as before. One indexed atlas + one LUT serve all `colours` players.
+   */
+  readonly palette?: { readonly source: TextureSource; readonly colours: number };
 }
 
 /**

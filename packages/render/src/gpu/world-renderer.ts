@@ -116,7 +116,9 @@ export class WorldRenderer {
     const vp = cameraViewport(camera, this.app.screen.width, this.app.screen.height, SPRITE_CULL_MARGIN);
     this.terrain.cull(vp);
     this.mapObjects.update(vp, tick);
-    this.pool.reconcile(snapshot, vp, tick);
+    // The pool needs the camera + canvas size to place team-colour PalettedSprite meshes (screen-space,
+    // they can't ride the worldLayer transform); the plain-sprite path ignores them.
+    this.pool.reconcile(snapshot, vp, tick, camera, this.app.screen.width, this.app.screen.height);
     // Selection rings read the pool's just-computed per-entity bounds, so a building's marker sizes to its
     // actual sprite footprint (reconcile ran first, so the bounds are this frame's).
     this.selectionLayer.draw(snapshot, selection, (ref) => this.pool.boundsOf(ref));
