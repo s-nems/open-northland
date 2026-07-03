@@ -109,3 +109,12 @@ extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
   frame first (dump each index's LUT luminance) — the glyph ramp must sit clear above the cutoff, or the key
   eats the icon. Enable it on EVERY panel sprite (strip + buttons), and record it as a deliberate DEVIATION in
   FIDELITY (the original panel is opaque), not a reconstruction. (render/app)
+- [reverted c3c0fa1] Two traps in calibration-by-observation fits, both hit while pinning the tile pitch:
+  (1) a point-lattice fit whose model omits a plausible degree of freedom **aliases instead of failing** —
+  fitting `sy = B·hy` (no odd-row stagger term) against a possibly-staggered lattice converged cleanly to
+  what may be 2× the true row step, and the residuals looked fine; always fit the general staggered model
+  and let the data zero the stagger. (2) don't scale-anchor a screenshot with the same CLASS of evidence
+  you then measure — pinning shot DPI by template-matching a world sprite, then "verifying" world sprite
+  scale against that anchor, is circular; anchor with an independent class (UI bitmaps, minimap geometry).
+  A wrong-projection symptom that pattern-matches "objects too dense" cannot distinguish pitch-too-small
+  from sprites-too-big without such an independent anchor. (render/calibration)

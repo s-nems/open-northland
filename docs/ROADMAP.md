@@ -72,6 +72,12 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       **Still open — `lmhe` elevation:** emit the layer from the pipeline (`unpackMapLayer` of `lmhe`
       into `maps/<id>.json`) and lift `y` by the fitted ~0.5px/unit in the projection consumers, then
       re-verify shore/hill silhouettes against the screenshots.
+      **REOPENED — world metric (density) contested** (2026-07-03, docs/FIDELITY.md "projection"
+      REOPENED note): the owner judges the world too dense at this pitch (buildings/trees/resources
+      too close); the bush-lattice measurement contradicts the accepted row step (a no-stagger fit
+      can alias 2×), and a 37.4 row-step experiment was rejected on sight. Re-derive the pitch, the
+      half-cell y-mapping and the screenshot DPI from a fresh screenshot corpus (UI bitmaps pin DPI
+      independently of world sprites; the minimap pins the world aspect) before touching the mesher.
 - [x] **Per-object growth/damage state from the `lmlv` lane** (2026-07-03, docs/FIDELITY.md
       "Landscape-object layer"): the byte lane is the 1-based per-placement index into the record's
       `GfxFrames` state lists (trees full-grown→sapling, stone variants, wall damage; sentinel 100 =
