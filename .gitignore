@@ -27,7 +27,16 @@ dist/
 .idea/
 .vscode/*
 !.vscode/extensions.json
-.claude/
+
+# Agent tooling: the SHARED half (commands, agents, workflows, project hooks) is tracked — it is
+# part of the project and must reach every checkout/worktree. Local state (settings.local.json,
+# reports, locks) stays untracked. `/.claude/*` + negations, NOT a bare `.claude/` (a fully-ignored
+# dir can't have tracked children).
+/.claude/*
+!/.claude/commands/
+!/.claude/agents/
+!/.claude/workflows/
+!/.claude/settings.json
 
 # Browser-automation artifacts (acceptance-scene verification, screenshots, console dumps)
 .playwright-mcp/
