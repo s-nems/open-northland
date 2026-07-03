@@ -14,7 +14,6 @@ import { testContent } from '../fixtures/content.js';
  */
 
 const GRASS = 0;
-const WATER = 1;
 
 // Component stores are module-level singletons (see pathfinding-system.test.ts), so clear the stores
 // this suite touches before each case to keep membership assertions scoped to the current test.

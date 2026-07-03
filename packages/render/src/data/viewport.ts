@@ -1,4 +1,4 @@
-import { type Camera, TILE_HALF_H, TILE_HALF_W, tileToScreen } from './iso.js';
+import { type Camera, TILE_HALF_H, TILE_HALF_W } from './iso.js';
 
 /**
  * The PURE viewport-culling math — the "what is on screen" half of drawing a large world, kept out of

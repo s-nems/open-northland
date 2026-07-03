@@ -340,7 +340,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     const run = (): string => {
       clearStores();
       const sim = new Simulation({ seed: 9, content: constructionContent(), map: grassMap(6, 1) });
-      const site = siteAt(sim, HOUSE, 3, 0);
+      siteAt(sim, HOUSE, 3, 0);
       loadedCarrierAt(sim, 0, 0, STONE, 1);
       loadedCarrierAt(sim, 1, 0, STONE, 1);
       loadedCarrierAt(sim, 5, 0, WOOD, 1);

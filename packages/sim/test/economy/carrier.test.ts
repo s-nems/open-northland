@@ -28,7 +28,6 @@ import { testContent } from '../fixtures/content.js';
  */
 
 const GRASS = 0;
-const WOOD = 1;
 const PLANK = 2;
 const CARRIER = 36; // fixture job with NO allowedAtomics — it can't harvest, only haul
 const SAWMILL = 2; // workplace: recipe wood->plank

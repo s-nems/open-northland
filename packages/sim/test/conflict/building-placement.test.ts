@@ -1,4 +1,4 @@
-import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
+import { type ContentSet, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
 import {
