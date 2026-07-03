@@ -1,12 +1,5 @@
-import {
-  type HudLayout,
-  type HudModel,
-  PalettedSprite,
-  type SpriteLayer,
-  buildHud,
-  layoutHud,
-} from '@vinland/render';
-import type { Command, WorldSnapshot } from '@vinland/sim';
+import { type HudLayout, PalettedSprite, type SpriteLayer } from '@vinland/render';
+import type { Command } from '@vinland/sim';
 import { type Application, Container, Graphics, Text } from 'pixi.js';
 import {
   type FontColorName,
@@ -89,8 +82,12 @@ export interface ToolPanelOptions {
 export interface ToolPanelController {
   /** True when a client point should be CLAIMED by the HUD (over the strip, an open window, or in placement). */
   claimsPointer(clientX: number, clientY: number): boolean;
-  /** Per-frame hook: re-place the screen-space sprites and refresh the open statistics window. */
-  update(snapshot: WorldSnapshot): void;
+  /**
+   * Per-frame hook: re-place the screen-space sprites and refresh the open statistics window. Takes the
+   * frame's ALREADY-BUILT HUD layout (the caller builds it once for the always-on HUD) so the panel does
+   * not run a second O(entities) `buildHud` scan.
+   */
+  update(hud: HudLayout): void;
   /** The current game-speed spec (so the entry can initialise its loop control before the first frame). */
   speed(): GameSpeedStateSpec;
   dispose(): void;
@@ -254,6 +251,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   windowContainer.addChild(menuGraphics);
   let statsOpen = false;
   let statsKey = '';
+  /** The stats window's ACTUAL drawn rect — the single source of truth for its hit region + close-on-outside. */
+  let statsRect: PlacedRect | null = null;
   const statsRuns: TextRun[] = [];
   const statsGraphics = new Graphics();
   windowContainer.addChild(statsGraphics);
@@ -280,7 +279,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       for (const c of speedLabel.container.removeChildren()) c.destroy();
       const t = new Text({ text: glyph, style: { fill: '#f2ead6', fontSize: FALLBACK_TEXT_PX * scale } });
       speedLabel.container.addChild(t);
-      speedLabel.container.position.set(speedBtnRect.x + 4 * scale, speedBtnRect.y + speedBtnRect.h / 2 - 6);
+      speedLabel.container.position.set(
+        speedBtnRect.x + 4 * scale,
+        speedBtnRect.y + speedBtnRect.h / 2 - 3 * scale,
+      );
     }
     opts.onSpeedChange(spec);
   };
@@ -303,7 +305,20 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       .fill(WINDOW_FILL)
       .stroke({ color: WINDOW_BORDER, width: Math.max(1, scale) });
 
-    const title = makeText(uiString('miscwindow', 32, 'Budynki'), 'white');
+    // Draw the close affordance (an X in a box) so the top-right close hot-region is visible.
+    const cr = menuLayout.closeRect;
+    const cm = Math.max(2, 2 * scale);
+    menuGraphics
+      .rect(cr.x, cr.y, cr.w, cr.h)
+      .fill({ color: 0x000000, alpha: 0.3 })
+      .stroke({ color: WINDOW_BORDER, width: Math.max(1, scale) })
+      .moveTo(cr.x + cm, cr.y + cm)
+      .lineTo(cr.x + cr.w - cm, cr.y + cr.h - cm)
+      .moveTo(cr.x + cr.w - cm, cr.y + cm)
+      .lineTo(cr.x + cm, cr.y + cr.h - cm)
+      .stroke({ color: 0xd8ccb0, width: Math.max(1, scale) });
+
+    const title = makeText(uiString('miscwindow', 0, 'Zbuduj Okno'), 'white');
     windowContainer.addChild(title.container);
     menuRuns.push(title);
 
@@ -353,11 +368,12 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     for (const r of statsRuns) r.destroy();
     statsRuns.length = 0;
     statsGraphics.clear();
+    statsRect = null;
   };
 
   const statsOrigin = (): { x: number; y: number } => ({
     x: layout.width + (WIN_PAD + STATS_WIDTH + 3 * WIN_PAD) * scale,
-    y: layout.strip.y + 30,
+    y: layout.strip.y + 15 * scale,
   });
 
   const rebuildStats = (rows: readonly string[]): void => {
@@ -365,6 +381,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     const { x: ox, y: oy } = statsOrigin();
     const w = STATS_WIDTH * scale;
     const h = (WIN_TITLE_H + rows.length * WIN_LINE_H + WIN_PAD) * scale;
+    statsRect = { x: ox, y: oy, w, h };
     statsGraphics
       .rect(ox, oy, w, h)
       .fill(WINDOW_FILL)
@@ -390,11 +407,13 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     }
   };
 
-  const refreshStats = (snapshot: WorldSnapshot): void => {
-    const model: HudModel = buildHud(snapshot, opts.tribe);
-    const laid: HudLayout = layoutHud(model);
-    const rows = laid.rows.map((r) => r.text);
-    const key = rows.join('|');
+  const refreshStats = (hud: HudLayout): void => {
+    const rows = hud.rows.map((r) => r.text);
+    // Change-detection key EXCLUDES the volatile tick line (`layoutHud` row 0 is `Tribe N · tick T`): the
+    // tick advances every frame, so keying on it would defeat the guard and rebuild the ~hundreds of glyph
+    // meshes each frame. Rebuild only when a TALLY (population/jobs/stocks) actually changes; the displayed
+    // tick then refreshes on that rebuild.
+    const key = rows.filter((t) => !t.includes('tick')).join('|');
     if (key === statsKey) return;
     statsKey = key;
     rebuildStats(rows);
@@ -416,7 +435,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     const w = 260 * scale;
     const h = (WIN_TITLE_H + WIN_PAD) * scale;
     const x = layout.width + WIN_PAD * scale;
-    const y = 4;
+    const y = 2 * scale;
     bannerGraphics
       .rect(x, y, w, h)
       .fill(WINDOW_FILL)
@@ -465,12 +484,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     const { x, y } = toCanvas(clientX, clientY);
     if (pointOverToolPanel(layout, x, y)) return true;
     if (menuOpen && menuLayout !== null && within(menuLayout.window, x, y)) return true;
-    if (statsOpen) {
-      const { x: ox, y: oy } = statsOrigin();
-      const w = STATS_WIDTH * scale;
-      const h = (WIN_TITLE_H + Math.max(1, statsRuns.length) * WIN_LINE_H + WIN_PAD) * scale;
-      if (within({ x: ox, y: oy, w, h }, x, y)) return true;
-    }
+    if (statsOpen && statsRect !== null && within(statsRect, x, y)) return true;
     if (placementType !== null) return true; // placement claims the whole canvas until placed/cancelled
     return false;
   };
@@ -482,18 +496,23 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     if (e.button === 2) {
       if (placementType !== null) {
         e.preventDefault();
+        // Stop the SAME event reaching unit-controls' mousedown (it re-checks claimPointer AFTER this
+        // handler runs — cancelPlacement clears the claim, so without this the right-click would ALSO
+        // issue a world move order). We register first (mounted before unit-controls), so this wins.
+        e.stopImmediatePropagation();
         cancelPlacement();
       }
       return;
     }
     if (e.button !== 0) return;
 
+    // Track whether the panel CONSUMES this press; if so, stop it from also reaching world picking.
+    let consumed = false;
     const btn = hitTestToolPanel(layout, x, y);
     if (btn !== null) {
       activateButton(btn);
-      return;
-    }
-    if (menuOpen && menuLayout !== null) {
+      consumed = true;
+    } else if (menuOpen && menuLayout !== null) {
       const hit = hitTestBuildingMenu(menuLayout, x, y);
       if (hit !== null) {
         if (hit.kind === 'close') closeMenu();
@@ -503,15 +522,16 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           placeMenu(app.screen.width, app.screen.height);
         } else if (hit.kind === 'building') enterPlacement(hit.typeId);
         // 'window' → consumed, no-op
-        return;
+        consumed = true;
       }
     }
-    if (statsOpen && claimsPointer(e.clientX, e.clientY)) {
-      // A click anywhere on the (small) stats window closes it — v1 has no window chrome controls.
+    // A click strictly INSIDE the stats window closes it (v1 has no window chrome controls). Checked only
+    // when the click wasn't a menu/button hit, so it doesn't fire for a placement click over the world.
+    if (!consumed && statsOpen && statsRect !== null && within(statsRect, x, y)) {
       closeStats();
-      return;
+      consumed = true;
     }
-    if (placementType !== null) {
+    if (!consumed && placementType !== null) {
       const tile = opts.screenToTile(e.clientX, e.clientY);
       if (tile !== null) {
         enqueue({
@@ -523,8 +543,11 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           owner: opts.owner,
         });
       }
-      // Stay in placement mode for repeated placement; Esc / right-click exits.
+      // Placement claims the click whether or not the tile is on-map; stay in placement for repeats
+      // (Esc / right-click / the Buildings button exit).
+      consumed = true;
     }
+    if (consumed) e.stopImmediatePropagation();
   };
 
   const onMouseMove = (e: MouseEvent): void => {
@@ -553,13 +576,13 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   return {
     claimsPointer,
     speed: () => gameSpeedSpec(speedState),
-    update(snapshot): void {
+    update(hud): void {
       const rw = app.screen.width;
       const rh = app.screen.height;
       for (const p of panelSprites) p.spr.place(p.rect.x, p.rect.y, scale, rw, rh);
       if (menuOpen) placeMenu(rw, rh);
-      if (statsOpen) refreshStats(snapshot);
-      if (bannerRun !== null) bannerRun.place(layout.width + WIN_PAD * scale, 4 + 3 * scale, scale, rw, rh);
+      if (statsOpen) refreshStats(hud);
+      if (bannerRun !== null) bannerRun.place(layout.width + WIN_PAD * scale, 5 * scale, scale, rw, rh);
     },
     dispose(): void {
       canvas.removeEventListener('mousedown', onMouseDown);
