@@ -18,7 +18,12 @@ import type { SceneDefinition } from './types.js';
  * a sword-swing pose yet.
  */
 
-const SOLDIER = 1;
+// The original's `soldier_sword_short` job (id 34 in `jobtypes`). Using the REAL soldier job id — not a
+// synthetic `1` — makes the squads render as the armoured WARRIOR body: the render `[jobbasegraphics]`
+// join maps job 34 → the `warrior-sword` character (see packages/app `ADULT_CHARACTER_BY_JOB`), where an
+// unknown id falls back to the civilian default. The sim keys combat off (tribe, jobType), so the sword
+// binds to this job all the same. (34 ≠ HUNTER_JOB 15, so the dormancy gate never misreads it as a hunter.)
+const SOLDIER = 34;
 const COIN = 3; // the good the viking tech edge unlocks (makes VIKING a playable civ, not an animal tribe)
 const SWORD = 7;
 const BLUE = 0; // player 0
