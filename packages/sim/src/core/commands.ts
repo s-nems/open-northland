@@ -159,6 +159,26 @@ export type Command =
       readonly kind: 'attackUnit';
       readonly entity: Entity;
       readonly target: Entity;
+    }
+  | {
+      /**
+       * Set one OWNED unit's **military stance** — the original's per-unit `MILITARY_MODE`
+       * (`setStance`), the player's control over how a unit reacts to enemies: `ATTACK` (auto-engage on
+       * sight), `DEFEND` (hold a radius around where the stance was set), `IGNORE` (never auto-engage —
+       * the scout's mode), `FLEE` (run from danger — the civilian's mode). The CombatSystem gates
+       * auto-engagement on the resulting {@link import('../components/index.js').Stance}; an explicit
+       * {@link Command} `attackUnit` order still overrides the mode (fight THAT one regardless of stance).
+       *
+       * For `DEFEND` the unit's current tile is captured as the defend **anchor** (the centre of the
+       * defend radius / the tile it returns to when clear). Recoverable bad input (skipped, still logged
+       * for faithful replay): a dead/stale target, a non-settler, a NEUTRAL (unowned — not the player's to
+       * command) entity, or a `mode` outside the five `MILITARY_MODE` ids. Carries no issuing-player yet
+       * (the per-player authority check lands with lockstep). See `setStance`.
+       */
+      readonly kind: 'setStance';
+      readonly entity: Entity;
+      /** The target {@link import('../systems/readviews/stances.js').MILITARY_MODE} id (0..4). */
+      readonly mode: number;
     };
 
 export type CommandKind = Command['kind'];

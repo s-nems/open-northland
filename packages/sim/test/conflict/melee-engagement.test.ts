@@ -14,12 +14,14 @@ import {
   Position,
   Resource,
   Settler,
+  Stance,
   Weapon,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation, type TerrainMap, fx } from '../../src/index.js';
 import { attackUnit, moveUnit } from '../../src/systems/conflict/orders.js';
 import { SIGHT_RADIUS_TILES, type SystemContext, aiSystem, combatSystem } from '../../src/systems/index.js';
+import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -98,7 +100,13 @@ function fighterAt(
     experience: new Map(),
   });
   sim.world.add(e, Health, { hitpoints: opts.hitpoints ?? 1000, max: opts.hitpoints ?? 1000 });
-  if (opts.owner !== undefined) sim.world.add(e, Owner, { player: opts.owner });
+  if (opts.owner !== undefined) {
+    sim.world.add(e, Owner, { player: opts.owner });
+    // These OWNED test units are aggressive combatants — an explicit ATTACK stance (they spawn via a direct
+    // world.add here, not the spawnSettler command, so the job-default stamp doesn't run; the fixture's job
+    // 1 is a woodcutter, which would otherwise default to FLEE and make them run instead of fight).
+    sim.world.add(e, Stance, { mode: MILITARY_MODE.ATTACK, anchorCell: null });
+  }
   return e;
 }
 

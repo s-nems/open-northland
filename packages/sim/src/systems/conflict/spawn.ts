@@ -4,6 +4,7 @@ import {
   Health,
   HerdMember,
   MoveSpeed,
+  Owner,
   Position,
   Settler,
   Weapon,
@@ -14,6 +15,7 @@ import { ONE, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { animalHitpoints, herdParams, locomotionOf } from '../readviews/index.js';
+import { stampDefaultStance } from './orders.js';
 
 // The entity-SPAWNING command handlers, split out of command.ts (which keeps the dispatcher + the
 // structure-placement handlers). Both create fresh Settler-model entities — a civilization settler and
@@ -79,6 +81,11 @@ export function spawnSettler(
   // is the human player's to select and order. Omitted / out-of-range owner leaves it neutral (the
   // golden / vertical-slice path), hash untouched.
   stampOwner(world, e, command.owner);
+  // An OWNED settler also gets its job's default military stance (soldiers→ATTACK, scout/hunter→IGNORE,
+  // every other civilian→FLEE — the `defaultStanceForJob` table); the player overrides it with
+  // `setStance` later. Owned-ONLY (gated on the stamped Owner): a neutral/wildlife/golden settler carries
+  // NO Stance, so the military-mode feature leaves every unowned entity — and every golden hash — untouched.
+  if (world.has(e, Owner)) stampDefaultStance(world, e, command.jobType);
   ctx.events.emit({ kind: 'settlerBorn', entity: e });
 }
 

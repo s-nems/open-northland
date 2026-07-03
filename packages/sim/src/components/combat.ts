@@ -114,6 +114,56 @@ export const Anger = defineComponent<{ until: number }>('Anger');
 export const Engagement = defineComponent<{ repathAt: number }>('Engagement');
 
 /**
+ * A combatant's **military stance** — the original's `MILITARY_MODE_{NONE,ATTACK,DEFEND,IGNORE,FLEE}`
+ * (`logicdefines.inc` ~l.1107, ids 0..4; the {@link import('../systems/readviews/stances.js').MILITARY_MODE}
+ * constants) as a per-unit behavior mode the CombatSystem reads to decide auto-engagement:
+ *
+ *  - **ATTACK** (`1`) — auto-acquire the nearest enemy in sight, chase it, and fight (the step-2 drive).
+ *  - **DEFEND** (`2`) — engage only enemies inside a small radius of `anchorCell` (the tile the stance was
+ *    set on), never chase past a leash, and return to the anchor when clear.
+ *  - **IGNORE** (`3`) — never auto-engage (the scout's mode); an explicit {@link AttackOrder} still works.
+ *  - **FLEE** (`4`) — run away from the nearest threat at the run gait (the {@link Fleeing} drive).
+ *  - **NONE** (`0`) — no assigned mode; treated as passive (like IGNORE) — the defaults never set it.
+ *
+ * `anchorCell` is the DEFEND anchor (a raw row-major cell id, like {@link import('./movement.js').MoveGoal}'s
+ * `cell`), captured from the unit's tile when `setStance(DEFEND)` is issued; **null** for every other mode.
+ *
+ * It is stamped on every **owned** settler at spawn / job-change (the job-based default table,
+ * {@link import('../systems/readviews/stances.js').defaultStanceForJob}) and changed by the `setStance`
+ * command. A **separate optional component** stamped OWNED-only (like {@link Owner}): a neutral/wildlife/
+ * golden-slice settler carries none, so the military-mode feature adds NO component to any unowned entity
+ * and every golden hash stays byte-identical — the CombatSystem keys stance behavior off the owner axis
+ * (unowned combatants keep their content-relation behavior unchanged). `mode` is a small integer id and
+ * `anchorCell` a plain cell id (or null), so it hashes deterministically like every other component.
+ * Determinism: set from the command / the pure default lookup, read by pure gates — no RNG/wall-clock.
+ */
+export const Stance = defineComponent<{ mode: number; anchorCell: number | null }>('Stance');
+
+/**
+ * A fleeing unit's **run-away drive state** — "this {@link Stance} `FLEE` combatant is actively running
+ * from a threat right now" (distinct from the persistent FLEE *mode*: a FLEE unit with no threat in sight
+ * works normally and carries no `Fleeing`). The CombatSystem's flee drive stamps it when a threat enters
+ * sight and removes it after the threat has been out of sight for the cool-down. Two consumers read it:
+ *
+ *  - the **MovementSystem** walks a `Fleeing` path-follower at the **run gait** (the faster pace — reads
+ *    {@link import('./movement.js').MoveSpeed}'s `runPerTick`, else the walk pace × a run multiplier), so a
+ *    fleeing civilian outpaces its pursuer; a unit with no `Fleeing` walks normally (golden untouched);
+ *  - the CombatSystem uses `repathAt` to **throttle the re-aim** — the flee destination (away from the
+ *    nearest threat) is recomputed only every few ticks, not per tick (the same chase-throttle discipline
+ *    as {@link Engagement}, golden rule 7).
+ *
+ * `calmUntil` is the cool-down clock: **null** while a threat is in sight (still in danger); set to
+ * `tick + cool-down` when the last threat leaves sight; when the tick reaches it (a full cool-down with no
+ * threat) the drive ends and the unit returns to the economy. A threat reappearing resets it to null.
+ *
+ * A **separate optional component** (like {@link Engagement}): only an actively-fleeing owned unit carries
+ * one, so a peaceful settler / the golden slice has none and the hash is untouched. `repathAt` is a
+ * monotonic integer tick and `calmUntil` an integer tick or null, so it hashes deterministically.
+ * Determinism: set/cleared from the integer tick + the ring-search threat, no RNG/wall-clock.
+ */
+export const Fleeing = defineComponent<{ repathAt: number; calmUntil: number | null }>('Fleeing');
+
+/**
  * An explicit **attack order** on an OWNED combatant — the RTS "attack that unit" focus the
  * `attackUnit` command stamps (the combat twin of {@link PlayerOrder}'s move order). Where the auto-
  * engagement drive re-acquires the nearest enemy within sight each tick, an ordered unit chases and

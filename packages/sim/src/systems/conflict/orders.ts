@@ -4,6 +4,7 @@ import {
   AttackOrder,
   CurrentAtomic,
   Engagement,
+  Fleeing,
   Health,
   JobAssignment,
   MoveGoal,
@@ -13,11 +14,14 @@ import {
   PlayerOrder,
   Position,
   Settler,
+  Stance,
   Weapon,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands.js';
+import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
+import { MILITARY_MODE, defaultStanceForJob, isMilitaryMode } from '../readviews/index.js';
 
 /**
  * The PLAYER-order handlers (`moveUnit` / `setJob`) + the {@link playerOrderSystem} that plays a move
@@ -100,6 +104,7 @@ export function moveUnit(
   // route: an explicit player command overrides the autonomous drives (economy AND auto-combat).
   world.remove(e, Engagement);
   world.remove(e, AttackOrder);
+  world.remove(e, Fleeing); // a move order supersedes the flee drive too (and its run gait)
   world.add(e, MoveGoal, { cell: goal });
   const holdTicks = isCombatantUnit(world, e) ? MOVE_ORDER_HOLD_SOLDIER : MOVE_ORDER_HOLD_CIVILIAN;
   // expiresAt null = the hold hasn't started; playerOrderSystem begins it on arrival.
@@ -134,6 +139,60 @@ export function setJob(
   world.remove(e, MoveGoal);
   world.remove(e, PathRequest);
   world.remove(e, PathFollow);
+  world.remove(e, Engagement); // drop any auto-combat state — the new trade re-decides its stance
+  world.remove(e, AttackOrder);
+  world.remove(e, Fleeing);
+  // A profession change re-idles the unit AND resets its military stance to the new job's default (a
+  // soldier→civilian flip should stop auto-engaging and start fleeing; the reverse should engage). The
+  // player can override afterwards with `setStance`. Owned-only: `e` is guaranteed owned by the guard
+  // above, so the stamp keeps the "Stance is an owned-only component" invariant (goldens untouched).
+  stampDefaultStance(world, e, command.jobType);
+}
+
+/**
+ * Stamp the job-based **default military stance** on an owned settler (the
+ * {@link import('../readviews/stances.js').defaultStanceForJob} lookup) — the single stamp point shared
+ * by the spawn handler and the profession-change handler, so the default rule lives in one place. Resets
+ * the anchor to null (only `setStance(DEFEND)` sets an anchor). The caller guarantees `e` is owned; the
+ * Stance component stays owned-only so no unowned/golden entity ever carries one.
+ */
+export function stampDefaultStance(world: World, e: Entity, jobType: number | null): void {
+  world.add(e, Stance, { mode: defaultStanceForJob(jobType), anchorCell: null });
+}
+
+/**
+ * Set one OWNED unit's **military stance** (the `setStance` command) — the player's control over how a
+ * unit reacts to enemies (the original's `MILITARY_MODE`). It writes the new `mode` onto the unit's
+ * {@link Stance}; for `DEFEND` it also captures the unit's **current tile as the anchor** (the centre of
+ * the defend radius / the tile it returns to when clear), and for every other mode it clears the anchor.
+ * The CombatSystem re-decides the unit's behavior from the new mode on its next pass — it disengages an
+ * IGNORE unit, starts a FLEE unit running when a threat is near, holds a DEFEND unit at its anchor — so
+ * the handler itself only updates the mode; it does NOT force-cancel a running swing or an explicit
+ * {@link AttackOrder} (an attack order intentionally overrides the stance, e.g. IGNORE + "attack that one").
+ *
+ * Recoverable bad input (skipped, still logged for faithful replay): a dead/stale target, a non-settler,
+ * a NEUTRAL (unowned) entity — only a player's own unit has a military mode — or a `mode` outside the five
+ * {@link MILITARY_MODE} ids. Mapless is fine (a DEFEND anchor is simply null with no cells). The command
+ * carries no issuing-player yet; the per-player authority check lands with lockstep.
+ */
+export function setStance(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'setStance' }>,
+): void {
+  const e = command.entity;
+  if (!world.isAlive(e) || !world.has(e, Settler) || !world.has(e, Owner)) return;
+  if (!isMilitaryMode(command.mode)) return; // an out-of-range mode is bad input — skip
+
+  // A DEFEND stance anchors on the tile the unit stands on now (the centre it guards / returns to). Every
+  // other mode carries no anchor. Mapless (no terrain) leaves the anchor null — DEFEND then behaves like a
+  // radius around the unit's own cell only where cells exist.
+  let anchorCell: number | null = null;
+  if (command.mode === MILITARY_MODE.DEFEND && ctx.terrain !== undefined && world.has(e, Position)) {
+    const p = world.get(e, Position);
+    anchorCell = ctx.terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
+  }
+  world.add(e, Stance, { mode: command.mode, anchorCell });
 }
 
 /**
@@ -174,6 +233,7 @@ export function attackUnit(
   world.remove(e, PathRequest);
   world.remove(e, PathFollow);
   world.remove(e, PlayerOrder);
+  world.remove(e, Fleeing); // an explicit attack order overrides the flee mode — stop running, fight
   world.add(e, AttackOrder, { target });
   // Stamp Engagement up front so aiSystem skips economy for this unit on the same tick the order lands;
   // repathAt = tick means the CombatSystem re-paths the chase on its first pass.

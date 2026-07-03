@@ -1,6 +1,6 @@
-import { MoveSpeed, PathFollow, Position, Velocity } from '../../components/index.js';
+import { Fleeing, MoveSpeed, PathFollow, Position, Velocity } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
-import type { Entity } from '../../ecs/world.js';
+import type { Entity, World } from '../../ecs/world.js';
 import type { System } from '../context.js';
 
 /**
@@ -15,6 +15,29 @@ import type { System } from '../context.js';
  * covers 1.5 tiles and the on-screen pace matches the original's unhurried walk much closer.
  */
 export const MOVE_SPEED_PER_TICK: Fixed = fx.div(fx.fromInt(1), fx.fromInt(8));
+
+/**
+ * How many times faster a **fleeing** unit runs than it walks — its run gait is the walk pace × this
+ * multiplier when it carries no readable run speed of its own (a human: `animaltypes.ini` gives animals a
+ * `runspeed` but humans have none). Set so a fleeing civilian clearly OUTPACES a walking pursuer (a
+ * calibration constant — the original's run-vs-walk ratio is unreadable; docs/FIDELITY.md "Combat stance —
+ * FLEE"). An integer multiple of the ⅛-tile walk keeps the run step dividing ONE evenly, so no rounding
+ * drift enters — two runs stay byte-identical.
+ */
+export const RUN_SPEED_MULTIPLIER = 2;
+
+/**
+ * A fleeing unit's per-tick **run** gait: its own {@link MoveSpeed} `runPerTick` when it has one (the first
+ * consumer of the extracted animal `runspeed` — a fleeing creature runs at its data-pinned run pace), else
+ * its walk pace ({@link MoveSpeed} `perTick`, or the universal {@link MOVE_SPEED_PER_TICK}) × the
+ * {@link RUN_SPEED_MULTIPLIER} (a human's approximated run speed). Pure fixed-point — a deterministic read.
+ */
+function runGait(world: World, e: Entity): Fixed {
+  const ms = world.tryGet(e, MoveSpeed);
+  if (ms?.runPerTick != null) return ms.runPerTick; // a data-pinned run gait (an animal's runspeed)
+  const walk = ms?.perTick ?? MOVE_SPEED_PER_TICK;
+  return fx.mul(walk, fx.fromInt(RUN_SPEED_MULTIPLIER)); // no readable human run speed → walk × multiplier
+}
 
 /**
  * MovementSystem — advances entity positions one tick.
@@ -49,8 +72,13 @@ export const movementSystem: System = (world) => {
       continue;
     }
 
-    // The entity's own pace when it carries a MoveSpeed (a data-paced animal), else the settler default.
-    const speed = world.has(e, MoveSpeed) ? world.get(e, MoveSpeed).perTick : MOVE_SPEED_PER_TICK;
+    // A FLEEING unit runs (the faster run gait — {@link runGait}); otherwise it walks at its own pace when
+    // it carries a MoveSpeed (a data-paced animal), else the universal settler default.
+    const speed = world.has(e, Fleeing)
+      ? runGait(world, e)
+      : world.has(e, MoveSpeed)
+        ? world.get(e, MoveSpeed).perTick
+        : MOVE_SPEED_PER_TICK;
     const p = world.get(e, Position);
     p.x = stepToward(p.x, target.x, speed);
     p.y = stepToward(p.y, target.y, speed);
