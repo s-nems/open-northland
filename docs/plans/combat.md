@@ -110,7 +110,7 @@ player colour).
 ---
 
 ## Step 1 — sim: true damage model, ATTACK-frame hit, swing cadence
-
+[DONE]
 ```text
 Re-pin Vinland's combat damage resolution to the original's data model and make a melee exchange
 run at the data's cadence: damage selected by the victim's armor MATERIAL column, applied at the
@@ -188,7 +188,7 @@ capstone); extend packages/app/test/scenes.test.ts only if an existing scene's c
 Guardrails: read-only outside this repo; packages/sim/CLAUDE.md determinism contract; golden
 rule 7 (this step must NOT add new full-world scans — targeting stays as-is until step 2).
 ```
-
+[DONE]
 ## Step 2 — sim: engagement — hostility, ring search, walk-into-melee, attack order
 
 ```text
@@ -253,8 +253,8 @@ surfacing the scene URL.
 Guardrails: packages/sim/CLAUDE.md (determinism + "Scaling to thousands"); golden rule 7 is the
 point of this step — no per-seeker full scans may survive it.
 ```
-
-## Step 3 — sim: stances — attack / defend / ignore / flee
+[IN PROGRESS]
+## Step 3 — sim: stances — attack / defend / ignore / flee 
 
 ```text
 Add the original's four military behavior modes as a per-unit stance driving auto-engagement,

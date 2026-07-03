@@ -157,7 +157,7 @@ Verification: a unit test that the map is total over the atlas (every frame name
 ```
 
 ## Step 3 — app UI layer
-
+[IN PROGRESS]
 ### Prompt 4: left tool panel
 
 ```text
