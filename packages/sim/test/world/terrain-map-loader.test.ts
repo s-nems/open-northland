@@ -58,6 +58,36 @@ describe('parseTerrainMap (the content/maps loader)', () => {
   it('rejects a non-integer / negative cell typeId', () => {
     expect(() => parseTerrainMap({ width: 1, height: 1, typeIds: [-1] })).toThrow();
   });
+
+  it('accepts the optional authored-entities layer and defaults its absent arrays', () => {
+    const map = parseTerrainMap({
+      ...JSON.parse(mapFileJson()),
+      entities: {
+        buildings: [{ name: 'viking barracks', level: 0, player: 1, hx: 4, hy: 6, rot: 2 }],
+        humans: [{ tribe: 'viking', role: 'builder', player: 0, hx: 2, hy: 2 }],
+        // animals omitted — the schema defaults it to [] so consumers never branch on undefined
+      },
+    });
+    expect(map.entities?.buildings[0]?.name).toBe('viking barracks');
+    expect(map.entities?.humans[0]?.role).toBe('builder');
+    expect(map.entities?.animals).toEqual([]);
+  });
+
+  it('rejects a malformed entities layer (negative half-cell / unknown key)', () => {
+    const base = JSON.parse(mapFileJson());
+    expect(() =>
+      parseTerrainMap({
+        ...base,
+        entities: { buildings: [{ name: 'x', level: 0, player: 1, hx: -1, hy: 0 }] },
+      }),
+    ).toThrow();
+    expect(() =>
+      parseTerrainMap({
+        ...base,
+        entities: { humans: [{ tribe: 'viking', role: 'builder', player: 0, hx: 1, hy: 1, extra: 1 }] },
+      }),
+    ).toThrow();
+  });
 });
 
 describe('a loaded map drives the sim in place of the synthetic grass grid', () => {

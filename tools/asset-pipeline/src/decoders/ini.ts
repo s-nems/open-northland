@@ -1530,6 +1530,87 @@ export function extractMapInfo(sections: readonly RuleSection[], id: string, src
   return MapInfo.parse(info);
 }
 
+/** The decoded `StaticObjects` placements of one map — the on-disk `entities` layer's shape. */
+export interface MapStaticObjects {
+  buildings: {
+    name: string;
+    level: number;
+    player: number;
+    hx: number;
+    hy: number;
+    rot?: number;
+  }[];
+  humans: { tribe: string; role: string; player: number; hx: number; hy: number }[];
+  animals: { species: string; hx: number; hy: number }[];
+}
+
+/**
+ * Extracts a map's `[StaticObjects]` authored placements — the pre-placed houses, humans and animals a
+ * scenario starts with. Verb grammar (all coordinates **half-cells**, the `emla` 2W×2H lattice):
+ *
+ * ```
+ * sethouse  <class> "<GfxHouse EditName>" <level> <player(1-based)> <hx> <hy> <rot>
+ * sethuman  <player(0-based)> "<tribe>" "<jobtype role>" <hx> <hy> <a> <b>
+ * setanimal <class> "<species>" "<age>" <hx> <hy> <a> <b>
+ * ```
+ *
+ * Names are kept VERBATIM (the version-robust join key the loader resolves against the IR by name);
+ * the two player columns keep their original bases, documented on the schema. The stock/production/
+ * guide verbs (`addgoods`/`setproducedgood`/`setguide`) are not captured yet (docs/FIDELITY.md). A
+ * malformed row is skipped, not thrown — one bad line must not drop a whole map's placements.
+ * Returns `undefined` when the map has no `StaticObjects` section or it places nothing.
+ */
+export function extractStaticObjects(sections: readonly RuleSection[]): MapStaticObjects | undefined {
+  const sec = sections.find((s) => s.name === 'StaticObjects');
+  if (sec === undefined) return undefined;
+  const int = (v: string | undefined): number | undefined => {
+    const n = Number.parseInt(v ?? '', 10);
+    return Number.isNaN(n) || n < 0 ? undefined : n;
+  };
+  const out: MapStaticObjects = { buildings: [], humans: [], animals: [] };
+  for (const p of sec.props) {
+    if (p.key === 'sethouse') {
+      const [, name, levelRaw, playerRaw, hxRaw, hyRaw, rotRaw] = p.values;
+      const level = int(levelRaw);
+      const player = int(playerRaw);
+      const hx = int(hxRaw);
+      const hy = int(hyRaw);
+      const rot = int(rotRaw);
+      if (
+        name === undefined ||
+        level === undefined ||
+        player === undefined ||
+        hx === undefined ||
+        hy === undefined
+      )
+        continue;
+      out.buildings.push({ name, level, player, hx, hy, ...(rot !== undefined ? { rot } : {}) });
+    } else if (p.key === 'sethuman') {
+      const [playerRaw, tribe, role, hxRaw, hyRaw] = p.values;
+      const player = int(playerRaw);
+      const hx = int(hxRaw);
+      const hy = int(hyRaw);
+      if (
+        tribe === undefined ||
+        role === undefined ||
+        player === undefined ||
+        hx === undefined ||
+        hy === undefined
+      )
+        continue;
+      out.humans.push({ tribe, role, player, hx, hy });
+    } else if (p.key === 'setanimal') {
+      const [, species, , hxRaw, hyRaw] = p.values;
+      const hx = int(hxRaw);
+      const hy = int(hyRaw);
+      if (species === undefined || hx === undefined || hy === undefined) continue;
+      out.animals.push({ species, hx, hy });
+    }
+  }
+  if (out.buildings.length + out.humans.length + out.animals.length === 0) return undefined;
+  return out;
+}
+
 /**
  * One resolved palette alias: a name a graphics record references (via `gfxpalettebody "<name>"`)
  * mapped to the `.pcx` whose trailer palette holds the actual 256 colours. The path is normalized to

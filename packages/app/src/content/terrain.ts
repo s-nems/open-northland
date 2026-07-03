@@ -38,11 +38,17 @@ interface GfxPatternRow {
   readonly coordsB?: number[];
 }
 
-/** The slice of `content/ir.json` the terrain + map-object bindings read. */
+/** The slice of `content/ir.json` the terrain + map-object bindings read. The four trailing row
+ *  views feed the authored-entity joins (`resolveAuthoredPlacements` — a `map.cif` building/human
+ *  name resolves to its sim typeId through these), so a map with `entities` needs no second fetch. */
 export interface TerrainIr {
   readonly terrainPatterns?: TerrainPatternRow[];
   readonly gfxPatterns?: GfxPatternRow[];
   readonly landscapeGfx?: LandscapeGfxRow[];
+  readonly buildingBobs?: { editName?: string; level?: number; typeId?: number; tribeId?: number }[];
+  readonly buildings?: { typeId?: number; id?: string; kind?: string }[];
+  readonly jobs?: { typeId?: number; id?: string; name?: string }[];
+  readonly tribes?: { typeId?: number; id?: string }[];
 }
 
 /** One `LandscapeGfx` row as it ships in `content/ir.json` (the map-object binding fields). */
