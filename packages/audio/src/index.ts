@@ -29,7 +29,14 @@ export {
   AMBIENT_FULL_COVERAGE,
   AMBIENT_MAX_SAMPLES,
 } from './data/director.js';
-export { type Spatial, computeSpatial, CULL_MARGIN_PX, EDGE_GAIN, MAX_PAN } from './data/spatial.js';
+export {
+  type Spatial,
+  computeSpatial,
+  CULL_MARGIN_PX,
+  EDGE_GAIN,
+  MAX_PAN,
+  ZOOM_GAIN_FLOOR,
+} from './data/spatial.js';
 export type { AmbientLoop, AudioFrame, EventSound, OneShot, SoundBindings } from './data/types.js';
 
 // Impure Web Audio sink (browser-only). The engine's default-tuning constants stay exported as the
