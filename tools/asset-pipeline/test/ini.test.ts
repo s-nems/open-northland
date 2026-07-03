@@ -2,6 +2,7 @@ import { AtomicAnimation, TribeType, parseContentSet } from '@vinland/data';
 import { describe, expect, it } from 'vitest';
 import type { CifLine } from '../src/decoders/cif.js';
 import {
+  buildGatheringPipeline,
   buildTerrainPatterns,
   cifLinesToSections,
   decodeIni,
@@ -55,6 +56,10 @@ type 5
 landscapetype 7
 isInputGoodFlag 1
 isProducedOnMapFlag 1
+isBioLandscapeFlag 1
+landscapeToHarvest 4
+landscapeToPickup 6
+landscapeToStore 7
 atomicForHarvesting 24
 
 [goodtype]
@@ -334,6 +339,17 @@ name "tree falling"
 allowedonland 1
 maximumValency 5
 [landscapetype]
+type 6
+name "trunk"
+allowedonland 1
+maximumValency 5
+transition 3 6 2 -1 5
+[landscapetype]
+type 7
+name "wood"
+allowedonland 1
+maximumValency 5
+[landscapetype]
 type 49
 name "wall"
 allowedonland 1
@@ -459,6 +475,8 @@ describe('extractGoods', () => {
         productionInputs: [],
         // `isInputGoodFlag 1` only — a raw input good neither produced on-map nor in-house here.
         classification: { producedOnMap: false, producedInHouse: false, inputGood: true },
+        // `landscapetype 3` present, but no `landscapeTo*` chain -> no `gathering` (water is not gathered).
+        landscapeType: 3,
         source: src,
       },
       {
@@ -470,6 +488,9 @@ describe('extractGoods', () => {
         productionInputs: [],
         // a raw good gathered from the map that is also a recipe input.
         classification: { producedOnMap: true, producedInHouse: false, inputGood: true },
+        landscapeType: 7,
+        // the three-stage pipeline: tree(4) -> trunk(6) -> wood(7); `isBioLandscapeFlag 1` -> bio.
+        gathering: { harvest: 4, pickup: 6, store: 7, bioLandscape: true },
         source: src,
       },
       {
@@ -521,6 +542,27 @@ describe('extractGoods', () => {
     expect(() => extractGoods(parseIniSections('[goodtype]\nname "x"\n'), { file: 'f.ini' })).toThrow(
       /without a numeric `type`/,
     );
+  });
+
+  it('captures a partial gathering chain + bioLandscape verbatim (honey ships no landscapeToHarvest)', () => {
+    const [honey] = extractGoods(
+      parseIniSections(
+        '[goodtype]\nname "honey"\ntype 12\nlandscapetype 32\nisBioLandscapeFlag 0\nlandscapeToPickup 32\nlandscapeToStore 32\n',
+      ),
+      { file: 'goodtypes.ini' },
+    );
+    expect(honey?.landscapeType).toBe(32);
+    // The absent harvest lane stays undefined — a faithful omission, not a guessed default.
+    expect(honey?.gathering).toEqual({ pickup: 32, store: 32, bioLandscape: false });
+  });
+
+  it('omits `gathering` for a produced good with no landscapeTo* chain (keeps its landscapeType)', () => {
+    const [flour] = extractGoods(
+      parseIniSections('[goodtype]\nname "flour"\ntype 11\nlandscapetype 30\nisProducedInHouseFlag 1\n'),
+      { file: 'goodtypes.ini' },
+    );
+    expect(flour?.landscapeType).toBe(30);
+    expect(flour?.gathering).toBeUndefined();
   });
 });
 
@@ -1641,9 +1683,33 @@ describe('extractLandscape', () => {
       file: 'Data/logic/landscapetypes.ini',
       layer: 'base',
     });
-    expect(land.map((l) => l.id)).toEqual(['void', 'water', 'tree', 'tree_falling', 'wall']);
+    expect(land.map((l) => l.id)).toEqual(['void', 'water', 'tree', 'tree_falling', 'trunk', 'wood', 'wall']);
     const treeFalling = land.find((l) => l.id === 'tree_falling');
     expect(treeFalling).toMatchObject({ typeId: 5, id: 'tree_falling', walkable: true, buildable: true });
+  });
+
+  it('captures the raw `name` and the `transition` tuples verbatim (semantics undecoded)', () => {
+    const byId = new Map(
+      extractLandscape(parseIniSections(LANDSCAPE_INI), { file: 'landscapetypes.ini' }).map((l) => [l.id, l]),
+    );
+    // The raw display name is kept alongside the slug id.
+    expect(byId.get('tree')).toMatchObject({ typeId: 4, name: 'tree' });
+    // Both `transition` lines survive in file order as raw int tuples — no field is interpreted.
+    expect(byId.get('tree')?.transitions).toEqual([
+      [7, 4, 2, 1, 0],
+      [11, 5, 2, 0, 0],
+    ]);
+    // A type with a single transition keeps it; a type with none defaults to [].
+    expect(byId.get('trunk')?.transitions).toEqual([[3, 6, 2, -1, 5]]);
+    expect(byId.get('void')?.transitions).toEqual([]);
+  });
+
+  it('keeps a variable-arity transition tuple (the 2-int `mine` form) as-is', () => {
+    const [mine] = extractLandscape(
+      parseIniSections('[landscapetype]\ntype 12\nname "mud_mine"\ntransition 12 13\n'),
+      { file: 'landscapetypes.ini' },
+    );
+    expect(mine?.transitions).toEqual([[12, 13]]);
   });
 
   it('extracts maximumValency and the allowedon* placement flags (1/0 ints -> booleans)', () => {
@@ -2248,6 +2314,67 @@ describe('extractLandscapeGfx', () => {
   });
 });
 
+describe('buildGatheringPipeline', () => {
+  // A goods table (wood: a full 4->6->7 chain; honey: pickup/store only; flour: produced, no chain)
+  // + a small gfx table whose logicTypes place stages 4 (two tree species -> indices 0,1), 6 (trunk
+  // -> 2), 7 (wood pile -> 3). No gfx record carries logicType 32 (honey), exercising the empty-join.
+  const goods = extractGoods(
+    parseIniSections(
+      '[goodtype]\nname "wood"\ntype 5\nlandscapetype 7\nisBioLandscapeFlag 1\nlandscapeToHarvest 4\nlandscapeToPickup 6\nlandscapeToStore 7\natomicForHarvesting 24\n' +
+        '[goodtype]\nname "honey"\ntype 12\nlandscapetype 32\nlandscapeToPickup 32\nlandscapeToStore 32\n' +
+        '[goodtype]\nname "flour"\ntype 11\nlandscapetype 30\nisProducedInHouseFlag 1\n',
+    ),
+    { file: 'goodtypes.ini' },
+  );
+  const gfxRecord = (editName: string, logicType: number): CifLine[] => [
+    { level: 1, text: 'GfxLandscape' },
+    { level: 2, text: `EditName "${editName}"` },
+    { level: 2, text: `LogicType ${logicType}` },
+    { level: 2, text: 'GfxBobLibs "a.bmd"' },
+    { level: 2, text: 'GfxPalette "p"' },
+  ];
+  const gfx = extractLandscapeGfx(
+    cifLinesToSections([
+      ...gfxRecord('pine 01', 4),
+      ...gfxRecord('oak 01', 4),
+      ...gfxRecord('trunk 01', 6),
+      ...gfxRecord('wood pile 01', 7),
+    ]),
+    { file: 'landscapes.cif' },
+  );
+
+  it('resolves each gathering good to its three stages, joined to the gfx records by logicType', () => {
+    const wood = buildGatheringPipeline(goods, gfx).find((p) => p.goodId === 'wood');
+    expect(wood).toEqual({
+      goodType: 5,
+      goodId: 'wood',
+      harvestAtomic: 24,
+      bioLandscape: true,
+      // stage id -> the LandscapeGfx.index values whose logicType matches, in ascending order.
+      harvest: { landscapeType: 4, gfxIndices: [0, 1] },
+      pickup: { landscapeType: 6, gfxIndices: [2] },
+      store: { landscapeType: 7, gfxIndices: [3] },
+    });
+  });
+
+  it('leaves an absent lane out and yields empty gfxIndices for a stage no gfx places (honey)', () => {
+    const honey = buildGatheringPipeline(goods, gfx).find((p) => p.goodId === 'honey');
+    // No harvest lane in the source, and no gfx record carries logicType 32 -> empty, not dropped.
+    expect(honey).toEqual({
+      goodType: 12,
+      goodId: 'honey',
+      bioLandscape: false,
+      pickup: { landscapeType: 32, gfxIndices: [] },
+      store: { landscapeType: 32, gfxIndices: [] },
+    });
+    expect(honey?.harvest).toBeUndefined();
+  });
+
+  it('skips a produced good that carries no gathering chain', () => {
+    expect(buildGatheringPipeline(goods, gfx).map((p) => p.goodId)).toEqual(['wood', 'honey']);
+  });
+});
+
 describe('extractBuildingGraphics', () => {
   // Mirrors the real DataCnmd/budynki12/houses/houses.ini [GfxHouse] grammar (CamelCase keys, as the .ini
   // parser yields it): a "viking home" that recolours one body bob into TWO skins on a single
@@ -2636,6 +2763,80 @@ describe('IR integration', () => {
         buildings: [],
       }),
     ).toThrow(/good "coin" consumes unknown input goodType 7/);
+  });
+
+  it('rejects a good whose gathering stage names an unknown landscape typeId (cross-reference)', () => {
+    // wood's harvest stage points at landscape 4, but the landscape table omits it -> the stage dangles.
+    const goods = extractGoods(
+      parseIniSections(
+        '[goodtype]\nname "wood"\ntype 5\nlandscapetype 7\nlandscapeToHarvest 4\nlandscapeToPickup 6\nlandscapeToStore 7\n',
+      ),
+      { file: 'goodtypes.ini' },
+    );
+    expect(() =>
+      parseContentSet({
+        manifest: { version: 1, generatedFrom: { game: 'Cultures 8th Wonder' } },
+        goods,
+        jobs: [],
+        buildings: [],
+        landscape: [
+          { typeId: 6, id: 'trunk' },
+          { typeId: 7, id: 'wood' },
+        ], // landscape 4 (the harvest source) is missing
+      }),
+    ).toThrow(/good "wood" gathering harvest references unknown landscape typeId 4/);
+  });
+
+  it('rejects a good whose `landscapetype` names an unknown landscape typeId (cross-reference)', () => {
+    expect(() =>
+      parseContentSet({
+        manifest: { version: 1, generatedFrom: { game: 'Cultures 8th Wonder' } },
+        goods: [{ typeId: 5, id: 'wood', landscapeType: 99 }],
+        jobs: [],
+        buildings: [],
+        landscape: [],
+      }),
+    ).toThrow(/good "wood" references unknown landscape typeId 99/);
+  });
+
+  it('rejects a gatheringPipeline record whose good is unknown (cross-reference)', () => {
+    expect(() =>
+      parseContentSet({
+        manifest: { version: 1, generatedFrom: { game: 'Cultures 8th Wonder' } },
+        goods: [], // no good 5 -> the pipeline record dangles
+        jobs: [],
+        buildings: [],
+        landscape: [{ typeId: 7, id: 'wood' }],
+        gatheringPipeline: [{ goodType: 5, goodId: 'wood', store: { landscapeType: 7, gfxIndices: [] } }],
+      }),
+    ).toThrow(/gatheringPipeline good "wood" references unknown goodType 5/);
+  });
+
+  it('rejects a gatheringPipeline stage naming an unknown landscape typeId (cross-reference)', () => {
+    expect(() =>
+      parseContentSet({
+        manifest: { version: 1, generatedFrom: { game: 'Cultures 8th Wonder' } },
+        goods: [{ typeId: 5, id: 'wood' }],
+        jobs: [],
+        buildings: [],
+        landscape: [], // the store stage's landscape 7 is missing
+        gatheringPipeline: [{ goodType: 5, goodId: 'wood', store: { landscapeType: 7, gfxIndices: [] } }],
+      }),
+    ).toThrow(/gatheringPipeline good "wood" store references unknown landscape typeId 7/);
+  });
+
+  it('rejects a gatheringPipeline stage naming a gfx index no landscapeGfx record has (cross-reference)', () => {
+    expect(() =>
+      parseContentSet({
+        manifest: { version: 1, generatedFrom: { game: 'Cultures 8th Wonder' } },
+        goods: [{ typeId: 5, id: 'wood' }],
+        jobs: [],
+        buildings: [],
+        landscape: [{ typeId: 7, id: 'wood' }],
+        landscapeGfx: [], // no gfx records -> index 0 resolves to nothing
+        gatheringPipeline: [{ goodType: 5, goodId: 'wood', store: { landscapeType: 7, gfxIndices: [0] } }],
+      }),
+    ).toThrow(/gatheringPipeline good "wood" store references unknown landscapeGfx index 0/);
   });
 
   it('rejects a tribe whose setatomic binds an unknown jobType (cross-reference)', () => {

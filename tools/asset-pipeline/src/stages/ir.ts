@@ -6,6 +6,7 @@ import { decodeCifStringArray } from '../decoders/cif.js';
 import {
   type RuleSection,
   type SourceRef,
+  buildGatheringPipeline,
   buildTerrainPatterns,
   cifLinesToSections,
   decodeIni,
@@ -193,6 +194,10 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   const landscapeGfx = landscapeSections
     ? extractLandscapeGfx(landscapeSections, { file: landscapeFile, layer: 'base' })
     : [];
+  // The resolved gathering-pipeline join: per map-gathered good, its three landscape stages +
+  // the `[GfxLandscape]` records (by `logicType`) that place each — materialized once so a later
+  // gathering system doesn't re-scan the goods × landscapeGfx tables. See `buildGatheringPipeline`.
+  const gatheringPipeline = buildGatheringPipeline(goods, landscapeGfx);
   // The decoded `soundfx.cif` sound bank (`.cif`-only) — the named wav groups + terrain ambient beds +
   // life-event jingles the browser audio layer joins onto sim events / on-screen terrain. Base-game
   // file; a partial install that lacks it yields an empty bank (the app degrades to silence). Purely
@@ -234,6 +239,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     vehicles,
     landscape,
     landscapeGfx,
+    gatheringPipeline,
     // The full positional pattern table — a decoded map's `ground.patterns` names join onto it
     // (`GfxPattern.editName`) for the texture page + per-triangle UVs.
     gfxPatterns,

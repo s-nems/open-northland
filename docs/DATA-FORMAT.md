@@ -131,6 +131,14 @@ type list (see docs/ECS.md for why these are central):
 - **`goods-graph.json`** — the production DAG, mechanically derived from
   `goodtypes.productionInputGoods` (e.g. `bread ← flour + water`, `plank ← wood`). Materialized as
   an explicit artifact so agents and systems read one source of truth, not implicit cross-system logic.
+- **`gatheringPipeline`** — the resolved map-*gathering* join (the raw side of the goods graph): per
+  gathered good, the three `landscapeTo{Harvest,Pickup,Store}` lifecycle stages (`tree(4) → trunk(6)
+  → wood(7)` for wood) each joined to the `[GfxLandscape]` records that place it (by `logicType`).
+  Materialized from the new `GoodType.gathering` chain + the `landscape`/`landscapeGfx` tables so a
+  later gathering system reads the stages and their placeable gfx directly — see `buildGatheringPipeline`
+  and docs/SOURCES.md "Gathering pipeline". The per-good source fields also land on `GoodType`
+  (`landscapeType`, `gathering`) and the `[landscapetype]` lifecycle inputs on `LandscapeType`
+  (`name`, raw `transitions`).
 - **`experience.json` + the tribe dependency graph** — `humanjobexperiencetypes` XP factors plus
   `tribetypes.ini` `needfor*`/`allow*`/`jobEnables*`/`trainforjob`. This is the progression spine
   (`ProgressionSystem`) and the main expression of tribe asymmetry.

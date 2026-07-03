@@ -168,3 +168,10 @@ extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
   (the prior `+1` shift "verified" only because every value+1 also existed in the table — an
   existence check is not a semantics check). Visualize lanes as images and cross-correlate counts
   before trusting an indexing convention. (pipeline/format)
+- [gathering-pipeline] A research/plan doc's data table is a starting point, not the extraction
+  spec — RE-DERIVE it from the source. The gathering-economy plan listed 7 gathered goods; the real
+  `goodtypes.ini` had **11** carrying `landscapeTo*` (adds wheat/leather/honey/meat, incl. honey with
+  NO harvest lane), so the extractor keys off "any `landscapeTo*` present", not the documented list.
+  Adjacent finding: a field the plan groups with a feature may be UNIVERSAL — `landscapetype` is on
+  all 65 goods (the on-ground lane), so it belongs on `GoodType`, not the gathering-only sub-object.
+  Scan every record for a field's real prevalence before deciding where it lives. (pipeline/format)
