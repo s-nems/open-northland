@@ -61,7 +61,7 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `GfxPattern` ground + placed objects (`maps/<id>.json` `ground`+`objects`); the renderer draws 1:1 ground
       + every object with loop animation, real graphics on by default (`?terrain=off`/`?objects=off` opt-outs).
       `?map=<id>` is the human sign-off entry. **Open (deferred):** `lmhe` height shading; `emt3`/`emt4`
-      road/foundation overlays; per-object growth state; `lmpa`/`lmpb` triangle logic → sim water/walkability +
+      road/foundation overlays; `lmpa`/`lmpb` triangle logic → sim water/walkability +
       object collision; the `fx wave*` engine-fx records. Data model in docs/SOURCES.md.
 - [x] **Faithful map projection — raster-with-stagger** (2026-07-03, docs/FIDELITY.md "projection"):
       `tileToScreen` is now the MEASURED staggered raster (col step = pure horizontal 34.5px, row step =
@@ -72,6 +72,11 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       **Still open — `lmhe` elevation:** emit the layer from the pipeline (`unpackMapLayer` of `lmhe`
       into `maps/<id>.json`) and lift `y` by the fitted ~0.5px/unit in the projection consumers, then
       re-verify shore/hill silhouettes against the screenshots.
+- [x] **Per-object growth/damage state from the `lmlv` lane** (2026-07-03, docs/FIDELITY.md
+      "Landscape-object layer"): the byte lane is the 1-based per-placement index into the record's
+      `GfxFrames` state lists (trees full-grown→sapling, stone variants, wall damage; sentinel 100 =
+      intact). Pipeline emits `objects.levels` parallel to `placements`; the object binding picks
+      `frames[level−1]` (out-of-range → first list). Closes the "uniform giant trees" deviation.
 - [x] **Import a decoded map's authored placements** (`map.cif` `StaticObjects`, 2026-07-03): the
       pipeline decodes `sethouse`/`sethuman`/`setanimal` VERBATIM (names + half-cells) into
       `maps/<id>.json` `entities` (schema: `TerrainEntities` in @vinland/data; 13/125 maps carry the

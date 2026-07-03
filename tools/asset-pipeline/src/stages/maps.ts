@@ -48,6 +48,7 @@ export interface MapDatTerrainFile extends MapDatTerrainMap {
   readonly objects?: {
     readonly types: string[];
     readonly placements: number[];
+    readonly levels?: number[];
   };
   /** Authored entity placements (the sibling `map.cif`'s `StaticObjects` verbs, names verbatim). */
   readonly entities?: MapStaticObjects;
@@ -107,9 +108,12 @@ function groundFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['gro
  * emitted `objects` layer: a sparse flat `[hx, hy, typeIndex]` triple list (row-major half-cell scan
  * order — deterministic) over a **compacted** per-map type-name list (ascending dictionary order).
  * This is every pre-placed tree/stone/bush/mine decal/wave the map ships; a name joins onto the
- * extracted `[GfxLandscape]` table (`LandscapeGfx.editName`). Returns undefined when the map lacks
- * either chunk; throws on an index outside the dictionary (corrupt lane — caught per layer by
- * {@link mapDatToTerrain}).
+ * extracted `[GfxLandscape]` table (`LandscapeGfx.editName`). The sibling `lmlv` byte lane carries
+ * each placement's STATE — a 1-based index into the record's `GfxFrames` state lists (a tree's
+ * growth stage: 1 = full-grown … 3 = sapling; a wall's damage state, with `100` = intact) — emitted
+ * as a parallel `levels` array (omitted when the map lacks the lane). Returns undefined when the
+ * map lacks either object chunk; throws on an index outside the dictionary (corrupt lane — caught
+ * per layer by {@link mapDatToTerrain}).
  */
 function objectsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['objects'] {
   const emla = findChunk(map, 'emla');
@@ -121,6 +125,11 @@ function objectsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['ob
   const hh = size.height * 2;
   if (lane.length !== hw * hh) {
     throw new Error(`mapdat: emla lane has ${lane.length} half-cells, expected ${hw * hh}`);
+  }
+  const lmlv = findChunk(map, 'lmlv');
+  const stateLane = lmlv !== undefined ? unpackMapLayer(lmlv).cells : undefined;
+  if (stateLane !== undefined && stateLane.length !== lane.length) {
+    throw new Error(`mapdat: lmlv lane has ${stateLane.length} half-cells, expected ${lane.length}`);
   }
   const used = new Set<number>();
   for (const v of lane) if (v !== EMLA_EMPTY) used.add(v);
@@ -136,14 +145,17 @@ function objectsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['ob
     types.push(name);
   }
   const placements: number[] = [];
+  const levels: number[] = [];
   for (let hy = 0; hy < hh; hy++) {
     for (let hx = 0; hx < hw; hx++) {
-      const v = lane[hy * hw + hx] as number;
+      const i = hy * hw + hx;
+      const v = lane[i] as number;
       if (v === EMLA_EMPTY) continue;
       placements.push(hx, hy, compactIndex.get(v) as number);
+      if (stateLane !== undefined) levels.push(stateLane[i] as number);
     }
   }
-  return { types, placements };
+  return stateLane !== undefined ? { types, placements, levels } : { types, placements };
 }
 
 /**
