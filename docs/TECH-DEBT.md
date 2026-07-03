@@ -109,3 +109,12 @@ For small, hard-won *gotchas* (not reworks) see [LESSONS.md](LESSONS.md); the li
   (transferable to a render Worker; `snapshot-transferable.test.ts`), so the index must be a parallel
   array/typed structure or a render-side per-frame map shared by both consumers, not a `Map` on the
   snapshot. Sequenced after the `ScreenMap` sprite index (same O(entities)-cull family, item (b) above).
+- **2026-07-03** (tree-felling worktree; perf review) — Landed faithful multi-hit harvest + drop-on-ground
+  (felling). The per-tick collect scan was given its own `GroundDrop` candidate list + a good→harvestAtomic
+  index (O(drops), ~0 when none) so it never walks the full stockpile list, addressing the reviewer's
+  should-fix. **Deferred (render-side, not a sim hot-loop concern):** a felled tree leaves a permanent
+  `Stump` decor entity (never reaped), so a fully-felled large forest accumulates ~tens of thousands of
+  drawable stumps that stay in the per-frame O(entities) sprite cull (`packages/render/CLAUDE.md`). It is
+  net-neutral vs the old "leave the depleted node in place" behaviour and the planner never scans stumps
+  (they carry no Resource/Stockpile/Building marker), but eventually wants a decay/pool or a static
+  terrain-decor layer (sequenced with the `ScreenMap` sprite index — same O(entities)-cull family).
