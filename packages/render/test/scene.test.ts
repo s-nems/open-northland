@@ -280,3 +280,75 @@ describe('buildScene', () => {
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
   });
 });
+
+describe('buildScene — resource + stockpile (gathering economy) classification', () => {
+  it("carries a resource node's goodType (the per-good node join key)", () => {
+    const scene = buildScene(
+      snapshotOf([entity(1, 1, 1, { Resource: { goodType: 7, remaining: 5 } })]),
+      FLAT_3x2,
+    );
+    const node = scene.find((d) => d.kind === 'resource');
+    expect(node?.goodType).toBe(7);
+    expect(node?.fill).toBeUndefined(); // a node has no fill amount (that's a pile's)
+  });
+
+  it('classifies a bare Stockpile (no Building) as a stockpile, carrying its dominant good + fill', () => {
+    // The snapshot clones a Stockpile.amounts Map to an ascending-by-goodType [good, amount] array.
+    const scene = buildScene(snapshotOf([entity(1, 1, 1, { Stockpile: { amounts: [[3, 4]] } })]), FLAT_3x2);
+    const pile = scene.find((d) => d.kind === 'stockpile');
+    expect(pile).toBeDefined();
+    expect(pile?.goodType).toBe(3);
+    expect(pile?.fill).toBe(4);
+  });
+
+  it('reads an EMPTY bare Stockpile as a flag: stockpile kind, no goodType, no fill', () => {
+    const scene = buildScene(snapshotOf([entity(1, 1, 1, { Stockpile: { amounts: [] } })]), FLAT_3x2);
+    const flag = scene.find((d) => d.kind === 'stockpile');
+    expect(flag).toBeDefined();
+    expect(flag?.goodType).toBeUndefined();
+    expect(flag?.fill).toBeUndefined();
+  });
+
+  it('picks the dominant good (most units, lowest goodType on a tie) for a mixed pile', () => {
+    // amounts ascending by goodType: good 2 has 5 units (the max), good 5 has 3 → dominant is good 2.
+    const most = buildScene(
+      snapshotOf([
+        entity(1, 1, 1, {
+          Stockpile: {
+            amounts: [
+              [2, 5],
+              [5, 3],
+            ],
+          },
+        }),
+      ]),
+      FLAT_3x2,
+    ).find((d) => d.kind === 'stockpile');
+    expect(most?.goodType).toBe(2);
+    expect(most?.fill).toBe(5);
+    // On a tie the first (lowest goodType) wins — deterministic, order-independent.
+    const tie = buildScene(
+      snapshotOf([
+        entity(1, 1, 1, {
+          Stockpile: {
+            amounts: [
+              [2, 3],
+              [5, 3],
+            ],
+          },
+        }),
+      ]),
+      FLAT_3x2,
+    ).find((d) => d.kind === 'stockpile');
+    expect(tie?.goodType).toBe(2);
+  });
+
+  it('keeps a building store (Building + Stockpile) a building, never a stockpile', () => {
+    const scene = buildScene(
+      snapshotOf([entity(1, 1, 1, { Building: { buildingType: 7 }, Stockpile: { amounts: [[1, 10]] } })]),
+      FLAT_3x2,
+    );
+    expect(scene.find((d) => d.kind === 'building')).toBeDefined();
+    expect(scene.find((d) => d.kind === 'stockpile')).toBeUndefined();
+  });
+});

@@ -3,10 +3,12 @@ import type {
   CarryingBinding,
   ConstructionLayerRef,
   DirectionalAnim,
+  ResourceTypeBinding,
   SettlerStateBinding,
   SpriteAtlas,
   SpriteBindings,
   SpriteFrameRef,
+  StockpileBinding,
 } from '@vinland/render';
 import { CIVILIST_JOB_HEADS } from '../catalog/roster.js';
 import { HOUSE_BOB, TREE_BOB, VIKING_HOUSE01_BOBS } from './building-gfx.js';
@@ -128,6 +130,8 @@ export function buildHumanBindings(
   seqByName: ReadonlyMap<string, BobSeqRow>,
   houseBobsByType?: Readonly<Record<number, BuildingBobRef>>,
   constructionByType?: Readonly<Record<number, readonly ConstructionLayerRef[]>>,
+  resourceBinding?: ResourceTypeBinding,
+  stockpileBinding?: StockpileBinding,
 ): SpriteBindings {
   const walk = directionalAnimFromSeq(seqByName, WALK_SEQ, {}, FALLBACK_WALK);
   // Idle is the WAIT animation played as ONE direction (its length isn't a clean ×8, so it isn't a
@@ -178,7 +182,14 @@ export function buildHumanBindings(
         ? { constructionByType }
         : {}),
     },
-    resource: TREE_BOB,
+    // Each gathered good draws its own standing node (the `landscapeToHarvest` join, built from the
+    // Step-1 gathering pipeline — a tree for wood, a rock for stone, a mine for iron/gold/clay, a
+    // mushroom), overlaid onto the yew fallback. Absent (a checkout without the join) → the plain
+    // TREE_BOB every resource used to draw. See resource-gfx.ts.
+    resource: resourceBinding ?? TREE_BOB,
+    // Dropped ground piles draw their good's own `ls_goods` heap (growing with the pile's contents) and a
+    // bare/empty pile draws the delivery flag. Omitted (no join) → a stockpile draws the placeholder heap.
+    ...(stockpileBinding !== undefined ? { stockpile: stockpileBinding } : {}),
   };
 }
 

@@ -9,8 +9,10 @@ import {
   pickByJob,
   resolveBuildingDraw,
   resolveConstructionDraws,
+  resolveResourceDraw,
   resolveSettlerBobId,
   resolveSpriteBobId,
+  resolveStockpileDraw,
 } from '../data/sprites.js';
 import type { Viewport } from '../data/viewport.js';
 import type { SpriteLayer, SpriteSheet } from './pixi-app.js';
@@ -31,6 +33,7 @@ const KIND_COLOURS: Record<Exclude<DrawKind, 'tile'>, number> = {
   building: 0xc8a04a,
   settler: 0xe8e0d0,
   resource: 0x2f7d32,
+  stockpile: 0xb08040, // a sandy heap/flag marker, distinct from the green resource node
 };
 
 /** One resolved atlas layer to draw for an entity: which source page, which frame rect, at what scale. */
@@ -310,7 +313,7 @@ export class SpritePool {
       if (stack !== null) {
         const layers: ResolvedLayer[] = [];
         for (const draw of stack) {
-          const resolved = this.buildingLayerFor(sheet, draw);
+          const resolved = this.layeredLayerFor(sheet, 'building', draw);
           if (resolved !== null) layers.push(resolved);
         }
         if (layers.length > 0) return layers;
@@ -320,10 +323,32 @@ export class SpritePool {
       // an UNLOADED one falls through to the default building layer below (a deliberate difference
       // from the construction path, which drops the stage instead).
       if (draw.layer !== undefined && sheet.families?.[draw.layer] !== undefined) {
-        const resolved = this.buildingLayerFor(sheet, draw);
+        const resolved = this.layeredLayerFor(sheet, 'building', draw);
         return resolved === null ? null : [resolved];
       }
       bobId = draw.bob;
+    } else if (item.kind === 'resource') {
+      // A resource node resolves its per-good draw the SAME way a building does: a layer-qualified ref
+      // (a rock/mine `.bmd` family) draws from that family atlas; a bare ref (the default yew) falls
+      // through to the `kindLayers.resource` tree layer (or the shared synthetic atlas) below. The
+      // reducer only emits a layer for a LOADED family, so a layer-qualified miss is a real gap
+      // (placeholder), never a wrong-bob borrow from the tree atlas.
+      const draw = resolveResourceDraw(sheet.bindings.resource, item);
+      if (draw.layer !== undefined && sheet.families?.[draw.layer] !== undefined) {
+        const resolved = this.layeredLayerFor(sheet, 'resource', draw);
+        return resolved === null ? null : [resolved];
+      }
+      bobId = draw.bob;
+    } else if (item.kind === 'stockpile') {
+      // A ground pile / flag has NO shared `kindLayers` layer of its own, so it draws ONLY from a loaded
+      // named family (the `ls_goods` pile / `ls_temp` flag atlases). A bare or unloaded-family ref draws
+      // the placeholder heap — never falls through to the body atlas (which would blit a settler frame).
+      const binding = sheet.bindings.stockpile;
+      if (binding === undefined) return null;
+      const draw = resolveStockpileDraw(binding, item);
+      if (draw.layer === undefined) return null; // no family → placeholder heap
+      const resolved = this.layeredLayerFor(sheet, 'stockpile', draw);
+      return resolved === null ? null : [resolved];
     } else {
       bobId = resolveSpriteBobId(item, sheet.bindings, tick);
     }
@@ -353,24 +378,27 @@ export class SpritePool {
   }
 
   /**
-   * Resolve ONE building draw (a finished body or a construction stage) to its atlas layer — the
-   * family / default-building-layer decision shared by the body and construction paths. Returns null
-   * for an unloaded family or a missing/empty frame (the caller skips or falls back).
+   * Resolve ONE layered draw (a finished building body / construction stage, or a per-good resource /
+   * stockpile object) to its atlas layer — the family / dedicated-kind-layer decision shared by every
+   * layered kind. A `draw.layer` draws from that named {@link SpriteSheet.families} atlas (at its
+   * `familyScales` entry, else the kind's `kindScales`, else native); a bare draw draws from the kind's
+   * own {@link SpriteSheet.kindLayers} layer. Returns null for an unloaded family, a kind with no
+   * dedicated layer, or a missing/empty frame (the caller skips or falls back to the placeholder).
    */
-  private buildingLayerFor(sheet: SpriteSheet, draw: BuildingDraw): ResolvedLayer | null {
+  private layeredLayerFor(sheet: SpriteSheet, kind: SpriteKind, draw: BuildingDraw): ResolvedLayer | null {
     if (draw.layer !== undefined) {
       const family = sheet.families?.[draw.layer];
       if (family === undefined) return null; // unloaded named family — no wrong-bob borrow
       const frame = family.atlas.frames.get(draw.bob);
       if (frame === undefined || frame.width === 0 || frame.height === 0) return null;
-      const scale = sheet.familyScales?.[draw.layer] ?? sheet.kindScales?.building ?? 1;
+      const scale = sheet.familyScales?.[draw.layer] ?? sheet.kindScales?.[kind] ?? 1;
       return { source: family.source, frame, scale };
     }
-    const kindLayer = sheet.kindLayers?.building;
+    const kindLayer = sheet.kindLayers?.[kind];
     if (kindLayer === undefined) return null;
     const frame = kindLayer.atlas.frames.get(draw.bob);
     if (frame === undefined || frame.width === 0 || frame.height === 0) return null;
-    return { source: kindLayer.source, frame, scale: sheet.kindScales?.building ?? 1 };
+    return { source: kindLayer.source, frame, scale: sheet.kindScales?.[kind] ?? 1 };
   }
 }
 
@@ -395,7 +423,9 @@ function createPooled(kind: Exclude<DrawKind, 'tile'>): PooledEntity {
  */
 /** The feet-local body dimensions the placeholder marker is drawn at, by kind (see {@link drawPlaceholder}). */
 function placeholderBody(kind: Exclude<DrawKind, 'tile'>): { bodyW: number; bodyH: number } {
-  return kind === 'building' ? { bodyW: 28, bodyH: 40 } : { bodyW: 14, bodyH: 24 };
+  if (kind === 'building') return { bodyW: 28, bodyH: 40 };
+  if (kind === 'stockpile') return { bodyW: 20, bodyH: 12 }; // a low, wide heap/flag base
+  return { bodyW: 14, bodyH: 24 };
 }
 
 function drawPlaceholder(g: Graphics, kind: Exclude<DrawKind, 'tile'>): Graphics {
