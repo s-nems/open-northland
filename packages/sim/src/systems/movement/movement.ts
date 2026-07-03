@@ -20,17 +20,21 @@ export const MOVE_SPEED_PER_TICK: Fixed = fx.div(fx.fromInt(1), fx.fromInt(8));
  * How many times faster a **fleeing** unit runs than it walks — its run gait is the walk pace × this
  * multiplier when it carries no readable run speed of its own (a human: `animaltypes.ini` gives animals a
  * `runspeed` but humans have none). Set so a fleeing civilian clearly OUTPACES a walking pursuer (a
- * calibration constant — the original's run-vs-walk ratio is unreadable; docs/FIDELITY.md "Combat stance —
- * FLEE"). An integer multiple of the ⅛-tile walk keeps the run step dividing ONE evenly, so no rounding
- * drift enters — two runs stay byte-identical.
+ * calibration constant — the original's run-vs-walk ratio is unreadable; docs/FIDELITY.md "Combat flee").
+ * An integer multiple of the ⅛-tile walk keeps the run step dividing ONE evenly, so no rounding drift
+ * enters — two runs stay byte-identical.
  */
 export const RUN_SPEED_MULTIPLIER = 2;
 
 /**
- * A fleeing unit's per-tick **run** gait: its own {@link MoveSpeed} `runPerTick` when it has one (the first
- * consumer of the extracted animal `runspeed` — a fleeing creature runs at its data-pinned run pace), else
- * its walk pace ({@link MoveSpeed} `perTick`, or the universal {@link MOVE_SPEED_PER_TICK}) × the
- * {@link RUN_SPEED_MULTIPLIER} (a human's approximated run speed). Pure fixed-point — a deterministic read.
+ * A fleeing unit's per-tick **run** gait: its own {@link MoveSpeed} `runPerTick` when it has one (a data-
+ * pinned run pace — an animal's `runspeed`), else its walk pace ({@link MoveSpeed} `perTick`, or the
+ * universal {@link MOVE_SPEED_PER_TICK}) × the {@link RUN_SPEED_MULTIPLIER} (a human's approximated run
+ * speed). This is the code path that FIRST reads `runPerTick`, but only a fleeing entity carrying a
+ * `MoveSpeed` reaches the first branch — and today only owned humans flee (via the FLEE stance) while
+ * `MoveSpeed`/`runPerTick` is animal-only, so every real fleer takes the walk×multiplier fallback; the
+ * animal run gait stays unexercised until an animal flee/charge drive lands (docs/FIDELITY.md "Animal
+ * locomotion pace"). Pure fixed-point — a deterministic read.
  */
 function runGait(world: World, e: Entity): Fixed {
   const ms = world.tryGet(e, MoveSpeed);
