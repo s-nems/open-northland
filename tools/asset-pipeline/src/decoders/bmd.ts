@@ -41,7 +41,6 @@
 
 import { StorableId } from './cif.js';
 
-const STORABLE_HEADER_BYTES = 8; // [u32 id][u32 version]
 const BMD_ID = StorableId.CBobManager; // 0x3F4
 const MEMORY_ID = StorableId.CMemory; // 0x3E9
 const BOB_RECORD_BYTES = 24; // i32 type + 4×i32 rect + u32 misc

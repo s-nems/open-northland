@@ -1,13 +1,6 @@
 export * from './schema.js';
 
-import {
-  type BuildingType,
-  ContentSet,
-  type GoodType,
-  type JobType,
-  LOGIC_TYPE_NONE,
-  TerrainMapFile,
-} from './schema.js';
+import { ContentSet, LOGIC_TYPE_NONE, TerrainMapFile } from './schema.js';
 
 /**
  * Parse + validate a content set (typically the contents of content/ assembled into one object).
