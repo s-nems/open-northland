@@ -1,6 +1,7 @@
 import { type SpriteAtlas, indexAtlasFrames } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
 import { VIKING_CHARACTERS } from '../src/catalog/roster.js';
+import { stateIndexForLevel } from '../src/content/objects.js';
 import {
   BUILDING_FAMILIES,
   DEFAULT_BUILDING_FAMILY,
@@ -743,5 +744,23 @@ describe('constructionRefsByType', () => {
     expect(constructionRefsByType(twoLevels, 1, DEFAULT_FAMILY, FAMILIES)[2]?.map((l) => l.bob)).toEqual([
       5, 6,
     ]);
+  });
+});
+
+describe('stateIndexForLevel — the lmlv level → GfxFrames state-list index', () => {
+  it('counts levels up from the lowest state onto the highest-first lists', () => {
+    // A 3-state tree (full-grown, mid, sapling in file order): level 3 = full-grown, level 1 = sapling.
+    expect(stateIndexForLevel(3, 3)).toBe(0);
+    expect(stateIndexForLevel(2, 3)).toBe(1);
+    expect(stateIndexForLevel(1, 3)).toBe(2);
+    // A 5-state deposit: level 5 = the full pile (first list), level 1 = the dregs (last).
+    expect(stateIndexForLevel(5, 5)).toBe(0);
+    expect(stateIndexForLevel(1, 5)).toBe(4);
+  });
+
+  it('falls back to the first (full) list for out-of-range levels, incl. the wall intact sentinel', () => {
+    expect(stateIndexForLevel(100, 5)).toBe(0);
+    expect(stateIndexForLevel(0, 3)).toBe(0);
+    expect(stateIndexForLevel(4, 3)).toBe(0);
   });
 });
