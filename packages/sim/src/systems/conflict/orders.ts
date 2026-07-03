@@ -93,6 +93,13 @@ export function moveUnit(
   world.remove(e, MoveGoal);
   world.remove(e, PathRequest);
   world.remove(e, PathFollow);
+  // A move order SUPERSEDES combat: drop any auto-engagement and attack focus so the unit walks off and
+  // holds instead of re-acquiring its target and fighting. Without this a soldier that was engaged keeps
+  // its Engagement, the CombatSystem re-chases the enemy, and the order only ever moves it one step (the
+  // reported bug). This is the same "the order is authoritative" principle applied above to the atomic +
+  // route: an explicit player command overrides the autonomous drives (economy AND auto-combat).
+  world.remove(e, Engagement);
+  world.remove(e, AttackOrder);
   world.add(e, MoveGoal, { cell: goal });
   const holdTicks = isCombatantUnit(world, e) ? MOVE_ORDER_HOLD_SOLDIER : MOVE_ORDER_HOLD_CIVILIAN;
   // expiresAt null = the hold hasn't started; playerOrderSystem begins it on arrival.
