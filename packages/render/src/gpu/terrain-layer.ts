@@ -132,8 +132,9 @@ export class TerrainLayer {
    * block's inclusive tile range to `meshBlock`, wrap the display objects it returns in ONE {@link
    * Container} (kept at the world origin, so children stay in absolute world coords), record the block's
    * AABB, and add it to the terrain layer. Empty blocks are skipped. The box is computed analytically
-   * from the block's corner tiles — screen `x = (col−row)·halfW`, `y = (col+row)·halfH`, each diamond
-   * reaching ±half a tile — so no per-cell scan is needed to know where a block lives on screen.
+   * from the block's corner tiles — the staggered raster `x = (2·col + parity)·halfW`, `y = row·halfH`,
+   * each diamond reaching ±halfW/±halfH — so no per-cell scan is needed to know where a block lives
+   * on screen.
    */
   private buildChunks(
     terrain: SceneTerrain,
@@ -150,10 +151,10 @@ export class TerrainLayer {
         this.container.addChild(container);
         this.chunks.push({
           container,
-          minX: (c0 - r1) * TILE_HALF_W - TILE_HALF_W,
-          maxX: (c1 - r0) * TILE_HALF_W + TILE_HALF_W,
-          minY: (c0 + r0) * TILE_HALF_H - TILE_HALF_H,
-          maxY: (c1 + r1) * TILE_HALF_H + TILE_HALF_H,
+          minX: 2 * c0 * TILE_HALF_W - TILE_HALF_W,
+          maxX: (2 * c1 + 1) * TILE_HALF_W + TILE_HALF_W,
+          minY: r0 * TILE_HALF_H - TILE_HALF_H,
+          maxY: r1 * TILE_HALF_H + TILE_HALF_H,
         });
       }
     }

@@ -29,8 +29,9 @@ const SETTLER_RING = { rx: 20, ry: 11 };
 const BUILDING_RING = { rx: 54, ry: 30 };
 /** Floor on a building ring's half-width, so even a small building reads as a building-sized marker. */
 const MIN_BUILDING_RX = 28;
-/** Ground-ellipse squash: the iso tile's height/width ratio (16/32), so a footprint ellipse lies flat. */
-const ISO_RATIO = TILE_HALF_H / TILE_HALF_W;
+/** Ground-ellipse squash: a ground circle spans a cell width (2·halfW) E–W but only a row step
+ *  (halfH) N–S under the staggered raster, so a flat footprint ellipse squashes by their ratio. */
+const ISO_RATIO = TILE_HALF_H / (2 * TILE_HALF_W);
 /** The selection ring colour (a bright green, the RTS "this is yours and selected" cue) + line weight. */
 const RING_COLOR = 0x66ff66;
 const RING_WIDTH = 2;

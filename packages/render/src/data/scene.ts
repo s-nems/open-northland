@@ -493,9 +493,10 @@ export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): Draw
       ref: cell,
       x: screen.x,
       y: screen.y,
-      // Tiles sort among themselves back-to-front (col+row), shifted into a band strictly below
-      // every sprite depth (sprite depths are >= 0 world rows; tiles are negative).
-      depth: TILE_DEPTH_BASE + (col + row),
+      // Tiles sort among themselves back-to-front (ascending row — under the staggered raster,
+      // diamonds interlock only across rows, and a same-row pair never overlaps), shifted into a
+      // band strictly below every sprite depth (sprite depths are >= 0 world rows; tiles negative).
+      depth: TILE_DEPTH_BASE + row,
       typeId,
     });
   }

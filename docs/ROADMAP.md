@@ -63,16 +63,15 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `?map=<id>` is the human sign-off entry. **Open (deferred):** `lmhe` height shading; `emt3`/`emt4`
       road/foundation overlays; per-object growth state; `lmpa`/`lmpb` triangle logic → sim water/walkability +
       object collision; the `fx wave*` engine-fx records. Data model in docs/SOURCES.md.
-- [ ] **Faithful map projection — raster-with-stagger + elevation** (from the 2026-07-03 pitch
-      calibration, docs/FIDELITY.md "projection"): the original projects nodes as a RASTER (a row down =
-      a pure vertical ~18.7px step; odd rows shifted half a cell; `lmhe` elevation lifts y ~0.5px/unit),
-      not our rotated diamond — measured by fitting decoded map data against screenshots of the running
-      game (raster fits 3–7× better). The pitch/scale is already faithful (`17.25×18.7`); what's still
-      off is DIRECTION (an original E–W river runs diagonally here) and the coastline geometry (the
-      "kanciaste" report — the original's triangle mesh + stagger produces different shore silhouettes).
-      Slice: switch `tileToScreen` to the stagger model and rework its consumers (terrain chunk mesher,
-      `visibleTileRange` inversion, picking, spatial audio), wire `lmhe` into the y-projection, then
-      re-verify against the calibration screenshots. Render-only; the sim grid is untouched.
+- [x] **Faithful map projection — raster-with-stagger** (2026-07-03, docs/FIDELITY.md "projection"):
+      `tileToScreen` is now the MEASURED staggered raster (col step = pure horizontal 34.5px, row step =
+      pure vertical 18.7px, odd rows shifted half a cell; continuous triangle-wave stagger for walking
+      units; `halfCellToScreen` for the plain `emla` object lattice), with the terrain mesher, chunk
+      AABBs, `visibleTileRange`, picking and formation slots migrated. Verified against the calibration
+      screenshot: map = rectangle, river N–S, bridge horizontal, directions match. Render-only.
+      **Still open — `lmhe` elevation:** emit the layer from the pipeline (`unpackMapLayer` of `lmhe`
+      into `maps/<id>.json`) and lift `y` by the fitted ~0.5px/unit in the projection consumers, then
+      re-verify shore/hill silhouettes against the screenshots.
 - [x] **Import a decoded map's authored placements** (`map.cif` `StaticObjects`, 2026-07-03): the
       pipeline decodes `sethouse`/`sethuman`/`setanimal` VERBATIM (names + half-cells) into
       `maps/<id>.json` `entities` (schema: `TerrainEntities` in @vinland/data; 13/125 maps carry the

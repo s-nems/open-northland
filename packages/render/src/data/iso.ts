@@ -17,29 +17,24 @@ export const ONE: number = SIM_ONE;
  * template-matching decoded bobs (the 730px stone bridge pinned one shot at exactly 1.25×), then the cell
  * lattice was read from planted-bush constellations (123 matched bushes; the elementary lattice step
  * clusters at (±17.0, +18.7) native), the map-data water grid fitted against the observed river, and the
- * fog-of-war staircase angles. Four independent methods agree: **cell width ≈ 34.5 px** (±0.3), **mesh
- * row height ≈ 18.7 px** (±0.4).
- *
- * The same fit also showed the original projects rows as a RASTER WITH STAGGER (a row down is a pure
- * vertical step; odd rows shift half a cell) — NOT this renderer's rotated diamond. Migrating the
- * projection is a tracked follow-up (docs/FIDELITY.md); until then these constants preserve the
- * original's cell size and per-cell screen density under the diamond model.
+ * fog-of-war staircase angles. Four independent methods agree: **cell width ≈ 34.5 px** (±0.3), **row
+ * step ≈ 18.7 px** (±0.4).
  */
 export const CALIBRATED_HALF_W = 17.25;
 export const CALIBRATED_HALF_H = 18.7;
 
 /**
- * Isometric projection constants — the tile diamond's half-extents in pixels, i.e. the on-screen cell
- * PITCH (stepping one cell moves the draw position by `(±TILE_HALF_W, TILE_HALF_H)`). This is the master
- * scale the whole world hangs off: every ground triangle, every feet-anchored bob (drawn at its NATIVE
- * pixel size — see the render CLAUDE.md) and the camera derive from it, so getting it right is what makes
- * a bob read at the correct size against the terrain.
+ * Projection constants — the measured original cell pitch (docs/FIDELITY.md "projection"):
+ * `TILE_HALF_W` is HALF the cell width (a column step right = `2·TILE_HALF_W` px), `TILE_HALF_H` is one
+ * ROW step down (also half the cell diamond's height — rows interlock at half-diamond spacing). This is
+ * the master scale the whole world hangs off: every ground triangle, every feet-anchored bob (drawn at
+ * its NATIVE pixel size — see the render CLAUDE.md) and the camera derive from it, so getting it right
+ * is what makes a bob read at the correct size against the terrain.
  *
- * Defaults: the measured original pitch {@link CALIBRATED_HALF_W}×{@link CALIBRATED_HALF_H}. Note the
- * ratio is ~1:1.08 (near-square diamonds), not the classic iso 2:1 — that is what the original measures
- * as (see above). Still LIVE-TUNABLE for verification: the live entry sets it from
- * `?pitch=<fullTileWidth>` (+ optional `?pitchy=<fullCellDownStep>`) via {@link setTilePitch}, keeping
- * the measured ratio when only `?pitch` is given.
+ * Defaults: the measured original pitch {@link CALIBRATED_HALF_W}×{@link CALIBRATED_HALF_H}. Still
+ * LIVE-TUNABLE for verification: the live entry sets it from `?pitch=<fullCellWidth>` (+ optional
+ * `?pitchy=<cellDiamondHeight>`) via {@link setTilePitch}, keeping the measured ratio when only
+ * `?pitch` is given.
  *
  * Calibration history (why the earlier values were wrong): `32×16` was eyeballed from the art;
  * footprint-vs-sprite ratios (bridge collision area vs visible deck) once suggested `20×10` and
@@ -60,11 +55,39 @@ export function setTilePitch(halfW: number, halfH: number): void {
   TILE_HALF_H = halfH;
 }
 
-/** Cartesian tile (col,row) -> isometric screen offset (before camera). Pure, unit-tested-able. */
+/**
+ * Tile (col,row) → screen offset (before camera): the original's RASTER-WITH-STAGGER projection,
+ * MEASURED from the running game (docs/FIDELITY.md "projection" — the map-data water grid fitted the
+ * screenshots under this model 3–7× better than a rotated diamond). A column step is a pure horizontal
+ * `2·TILE_HALF_W`; a row step is a pure vertical `TILE_HALF_H` with ODD rows shifted half a cell right —
+ * so the whole map reads as a rectangle (not a rotated diamond) and map N/S/E/W match the screen's.
+ * Cell diamonds are `2·TILE_HALF_W` wide and `2·TILE_HALF_H` tall, interlocking across rows.
+ *
+ * Continuous in both arguments (entities walk fractional positions): the parity stagger is interpolated
+ * as a triangle wave over the row, so moving one row down slides `±TILE_HALF_W` sideways along the way —
+ * the same diagonal a unit walks along the original's mesh edges. Pure.
+ */
 export function tileToScreen(col: number, row: number): { x: number; y: number } {
+  const cycle = ((row % 2) + 2) % 2; // row's place in the 2-row stagger cycle, robust to negatives
+  const stagger = 1 - Math.abs(1 - cycle); // 0 at even rows, 1 at odd, linear between
   return {
-    x: (col - row) * TILE_HALF_W,
-    y: (col + row) * TILE_HALF_H,
+    x: (2 * col + stagger) * TILE_HALF_W,
+    y: row * TILE_HALF_H,
+  };
+}
+
+/**
+ * Half-cell (hx,hy) → screen offset (before camera). The original's `emla` object lattice is a PLAIN
+ * rectangular grid at half-cell resolution — `(hx·TILE_HALF_W, hy·TILE_HALF_H/2)` — with the cell
+ * stagger arising from which half-cells the cells occupy (cell `(c,r)` sits at half-cell
+ * `(2c + (r&1), 2r)`; {@link tileToScreen} of an integer cell lands exactly here). Map objects
+ * (trees/stones/waves) are authored at half-cells and must NOT get the fractional-row stagger
+ * interpolation a walking entity gets, hence the dedicated mapping. Pure.
+ */
+export function halfCellToScreen(hx: number, hy: number): { x: number; y: number } {
+  return {
+    x: hx * TILE_HALF_W,
+    y: (hy * TILE_HALF_H) / 2,
   };
 }
 

@@ -6,6 +6,7 @@ export {
   ONE,
   TILE_HALF_W,
   TILE_HALF_H,
+  halfCellToScreen,
   setTilePitch,
   tileToScreen,
   type Camera,

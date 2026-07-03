@@ -1,4 +1,4 @@
-import { type Camera, type EntityBounds, TILE_HALF_H, TILE_HALF_W } from '@vinland/render';
+import { type Camera, type EntityBounds, TILE_HALF_H, TILE_HALF_W, tileToScreen } from '@vinland/render';
 
 /**
  * Pure PICKING math — the screen→world→tile inverse of the render projection, plus the point/box
@@ -43,15 +43,29 @@ export function screenToWorld(camera: Camera, sx: number, sy: number): { x: numb
 }
 
 /**
- * Invert the isometric projection: a WORLD-px point → the tile (col,row) it falls on, rounded to the
- * nearest cell. `tileToScreen(col,row) = ((col-row)·HALF_W, (col+row)·HALF_H)`, so
- * `col = x/(2·HALF_W) + y/(2·HALF_H)` and `row = y/(2·HALF_H) - x/(2·HALF_W)` (the same inverse
- * `visibleTileRange` uses render-side). Rounded so a click anywhere in a diamond maps to its cell.
+ * Invert the staggered-raster projection: a WORLD-px point → the tile (col,row) whose interlocking
+ * diamond contains it. `tileToScreen(col,row) = ((2·col + (row&1))·HALF_W, row·HALF_H)`; rows overlap
+ * (a diamond spans ±HALF_H, a full row step each way), so the point's row band admits three candidate
+ * rows — for each, the nearest column on that row's parity is scored by the diamond norm
+ * `|dx|/HALF_W + |dy|/HALF_H` (≤ 1 inside a diamond) and the closest wins. Deterministic: strict
+ * `<` keeps the lowest candidate row on the knife-edge of a shared diamond edge.
  */
 export function worldToTile(wx: number, wy: number): Tile {
-  const a = wx / (2 * TILE_HALF_W);
-  const b = wy / (2 * TILE_HALF_H);
-  return { col: Math.round(a + b), row: Math.round(b - a) };
+  const rowGuess = Math.round(wy / TILE_HALF_H);
+  let best: Tile = { col: 0, row: 0 };
+  let bestD = Number.POSITIVE_INFINITY;
+  for (const row of [rowGuess - 1, rowGuess, rowGuess + 1]) {
+    const parity = row & 1;
+    const col = Math.round((wx / TILE_HALF_W - parity) / 2);
+    const dx = Math.abs(wx - (2 * col + parity) * TILE_HALF_W) / TILE_HALF_W;
+    const dy = Math.abs(wy - row * TILE_HALF_H) / TILE_HALF_H;
+    const d = dx + dy;
+    if (d < bestD) {
+      best = { col, row };
+      bestD = d;
+    }
+  }
+  return best;
 }
 
 /** Clamp a tile to the map bounds `[0,width) × [0,height)` (a click off the map still yields a legal cell). */
@@ -187,8 +201,7 @@ export function assignFormation(
   const orders: FormationOrder[] = [];
   for (const slot of slots) {
     // World-px centre of the slot tile, to measure each candidate unit's distance to it.
-    const sx = (slot.col - slot.row) * TILE_HALF_W;
-    const sy = (slot.col + slot.row) * TILE_HALF_H;
+    const { x: sx, y: sy } = tileToScreen(slot.col, slot.row);
     let best: number | null = null;
     let bestD = Number.POSITIVE_INFINITY;
     for (const ref of remaining) {
