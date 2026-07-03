@@ -21,11 +21,12 @@ describe('gui-atlas-map', () => {
     expect(new Set(names).size).toBe(names.length);
   });
 
-  it('zero-pads every unknown_NNN placeholder to its own frame index', () => {
+  it('names any placeholder exactly unknown_<zero-padded index> (no mis-padded/typo placeholders slip through)', () => {
     GUI_FRAMES.forEach((frame, index) => {
-      const m = UNKNOWN_NAME.exec(frame.name);
-      if (m === null) return; // a real (identified) name — nothing to check here
-      expect(Number.parseInt(m[1], 10)).toBe(index);
+      // Guard BOTH directions: a real name never starts with "unknown", and anything that does must be the
+      // exact canonical placeholder for its index — so a mis-padded `unknown_42` can't masquerade as identified.
+      if (!frame.name.startsWith('unknown')) return; // an identified name — nothing to check here
+      expect(frame.name).toBe(`unknown_${String(index).padStart(3, '0')}`);
       // an unknown_NNN name may carry a 'montage' best-guess role, but a code-pinned frame is always named
       expect(frame.source).not.toBe('openvikings');
     });

@@ -818,8 +818,8 @@ export const GUI_FRAMES: readonly GuiFrameMeta[] = [
     name: 'order_icon_fallback',
     role: 'order_icon',
     palette: 'context',
-    source: 'montage',
-    note: 'round wooden command/action-order button (context palette)',
+    source: 'openvikings',
+    note: 'gfx 0x6b default order/command icon when a command has no specific gfx (CGuiManager.cs:1962 "gfxId = 0x6Bu", GetHumanCommandIconId fallback :2223); round wooden button, context palette',
   },
   /* 108 0x6c */ {
     name: 'unknown_108',
@@ -1085,7 +1085,7 @@ export const GUI_FRAMES: readonly GuiFrameMeta[] = [
     role: 'overview_toggle',
     palette: 'iconsleft',
     source: 'openvikings',
-    note: 'gfx 0x91 _overviewToggleButton, rect (0,TopBarY-38,38x38), msg 0x0f45, tooltip str 0x0C "map"',
+    note: 'gfx 0x91 _overviewToggleButton, rect (0,TopBarY-38,38x38), msg 0x0f45, tooltip str 0x0C "opens overview map"; code palette is TopBarPalette (iconsleft is a best-guess default)',
   },
   /* 146 0x92 */ {
     name: 'unknown_146',
