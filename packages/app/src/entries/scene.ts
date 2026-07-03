@@ -15,13 +15,14 @@ import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import type { MenuBuildingEntry } from '../hud/building-menu.js';
+import { DEFAULT_GAME_SPEED_STATE, gameSpeedSpec } from '../hud/game-speed.js';
 import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel-layout.js';
 import { mountToolPanel } from '../hud/tool-panel.js';
 import { SCENES, createSceneSim, getScene } from '../scenes/index.js';
 import { backingScale, cameraFor, createCameraController } from '../view/camera.js';
 import { enableAudioOnGesture } from '../view/overlay.js';
 import { mountPerfOverlay } from '../view/perf-overlay.js';
-import { clampTile, screenToWorld, worldToTile } from '../view/picking.js';
+import { screenToWorld, worldToTile } from '../view/picking.js';
 import { mountSceneOverlay, mountUnknownSceneOverlay } from '../view/scene-overlay.js';
 import { createUnitControls } from '../view/unit-controls.js';
 import { professionsFromContent } from '../view/unit-panel.js';
@@ -94,7 +95,14 @@ export async function renderSceneMode(
 
   // Mutable playback control the overlay buttons drive. `sim` is reassigned on restart (a fresh
   // deterministic run), so the loop reads it through the closure each frame.
-  const control = { paused: false, stepOnce: false, speed: floatParam(params, 'speed', 0.5) };
+  // A tool-panel scene's game-speed button OWNS the tick rate — start at its default (×1) so the button,
+  // the overlay slider, and the loop agree from frame 0 (else the panel would clobber `?speed=`/0.5 at mount
+  // and desync the slider). Non-panel scenes keep the `?speed=` debug rate (default 0.5).
+  const initialSpeed =
+    scene.toolPanel === true
+      ? gameSpeedSpec(DEFAULT_GAME_SPEED_STATE).tickMultiplier
+      : floatParam(params, 'speed', 0.5);
+  const control = { paused: false, stepOnce: false, speed: initialSpeed };
   let sim = createSceneSim(scene);
 
   const overlay = mountSceneOverlay(scene, {
@@ -141,7 +149,9 @@ export async function renderSceneMode(
   const clientToTile = (clientX: number, clientY: number): { col: number; row: number } | null => {
     const { sx, sy, rect } = backingScale(canvas);
     const w = screenToWorld(cameraCtl.camera(), (clientX - rect.left) * sx, (clientY - rect.top) * sy);
-    const t = clampTile(worldToTile(w.x, w.y), scene.terrain.width, scene.terrain.height);
+    const t = worldToTile(w.x, w.y);
+    // Honour the placement contract: a click OFF the map is null (no clamp-to-border placement).
+    if (t.col < 0 || t.col >= scene.terrain.width || t.row < 0 || t.row >= scene.terrain.height) return null;
     return { col: t.col, row: t.row };
   };
   const toolPanel =
@@ -203,18 +213,19 @@ export async function renderSceneMode(
     }
     cameraCtl.update(elapsed);
     const snap = sim.snapshot();
+    // Build the tribe HUD read-view ONCE per frame (an O(entities) scan) and share it between the always-on
+    // stocks panel and the tool panel's statistics window — so the stats window adds no second scan.
+    const hud = layoutHud(buildHud(snap, HUD_TRIBE));
     // Re-place the tool panel's screen-space sprites BEFORE the renderer's `app.render()` (they carry the
-    // canvas resolution in their shader), and refresh an open statistics window from this frame's snapshot.
-    toolPanel?.update(snap);
+    // canvas resolution in their shader), and refresh an open statistics window from this frame's HUD.
+    toolPanel?.update(hud);
     // `app.screen` is the LIVE renderer size (it tracks window resizes), so the HUD stays pinned. When the
     // tool panel is mounted the always-on stocks HUD is shifted right to clear the left strip.
     renderer.update(
       snap,
       cameraCtl.camera(),
       snap.tick,
-      {
-        placement: shiftHud(placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', app.screen), hudShift),
-      },
+      { placement: shiftHud(placeHud(hud, 'top-left', app.screen), hudShift) },
       controls.selectedIds(),
     );
     controls.tick(snap); // reuse the frame's snapshot — don't rebuild a second one

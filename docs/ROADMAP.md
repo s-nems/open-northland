@@ -224,8 +224,9 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
       + pure hit-test/speed/menu unit tests (`packages/app/test/tool-panel.test.ts`); pixels human-signed
       (docs/FIDELITY.md "Left tool panel"). **Open (deferred):** sprite 9-slice window chrome (v1 windows are a
       parchment `Graphics` panel) + building-icon thumbnails + menu scrolling; wiring the panel into `?live`;
-      the not-yet-actioned tool buttons (diplomacy / population / mission / tech-tree / options windows); the
-      minimap region (a separate task).
+      the not-yet-actioned tool buttons — diplomacy / population / mission / tech-tree / options windows + a
+      real HELP window (help is temporarily aliased to the statistics window in v1); the minimap region (a
+      separate task).
 
 ## Phase 3 — Economy, progression & population  (substance complete; only human-gated render checks remain)
 - [x] **Goods graph** — explicit IR artifact: input side + output-side recipe join +

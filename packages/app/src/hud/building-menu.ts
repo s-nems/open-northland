@@ -3,9 +3,10 @@
  *
  * The original build window ("Zbuduj Okno") groups buildings under five category tabs whose labels come
  * from the ingamegui `miscwindow` string table (ids 2–6): "Wszystko / Praca / Magazyn / Dom / Wojsko".
- * The buildings themselves carry no category field, so the tab a building falls under is DERIVED from its
- * `kind` (the original `logichousetype logicmaintype`): the tab labels + string ids are pinned to the data,
- * the kind→tab mapping is ours and recorded in docs/FIDELITY.md.
+ * The category a building falls under IS its `logichousetype` `logicmaintype` (1=stock, 2=home, 3=work,
+ * 4=training, 5=tower), which the pipeline extracts losslessly as the building `kind` — so the derivation
+ * below is DATA-PINNED, not a guess. Only the fold of maintypes 4 (training) + 5 (tower) into the one
+ * "Wojsko" tab is our reconstruction (the original's tab→maintype binding isn't decoded); see docs/FIDELITY.md.
  *
  * The layout is parameterised by a screen origin + integer scale (design px, scaled like the tool panel),
  * so the view draws from it and the input layer hit-tests it — both without touching Pixi.
