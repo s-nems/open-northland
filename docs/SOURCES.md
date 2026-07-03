@@ -344,10 +344,25 @@ byte-identical** to the `engine2d` one (sha256-verified), so we extract the sing
 - `font_{white,dark,dimmed,red}` are the **font step's** concern; `campaignmap`/`campaignbuttons`/
   `menu_remap` are menu/campaign, not in-game HUD — none are in the GUI palette LUT.
 
-**Named `ls_gui_window` frame ids** (for the future frame→name map; oracle `CGuiManager.cs`): `0x33`
-tool background · `0x2a/0x2d/0x2e/0x2c/0x32/0x2b/0x38/0x2f/0x30` the 9 left command buttons · `0x31`
-speed (`0x34/0x35/0x36` its speed-factor states) · `0x3f` priority frame · `0x40` priority button
-(`0x41/0x42` its states) · `0x91` overview toggle.
+**Named `ls_gui_window` frame ids** — the checked-in frame→name map is
+`packages/app/src/content/gui-atlas-map.ts` (`GUI_FRAMES` catalog + `GUI_FRAME` constants + `guiFrameIndex`);
+totality is enforced by `packages/app/test/gui-atlas-map.test.ts`. `firstBobId=0`, so a **gfx id equals the
+atlas frame index directly**. Per-frame provenance is the map's `source` field:
+- **`openvikings`** (authoritative, from `CGuiManager.cs` `Desktop_Open`/`MiscButtons_*`/`MiscWindows_*`):
+  `0x33` tool-panel background · the 9 left buttons, each pinned by its tooltip stringId — `0x2a` buildings,
+  `0x2b` population, `0x2c` diplomacy, `0x2d` extras, `0x2e` mission, `0x2f` options, `0x30` help, `0x32`
+  statistics, `0x38` tech-tree (the decompiler's `_btnHelp`/`_btnButtonN` field names are unreliable; the
+  stringId→tooltip binding is ground truth) · `0x31` speed (`0x34/0x35/0x36` = ×2/×3/paused states) · `0x3f`
+  priority frame · `0x40` priority button (`0x41/0x42` = important/only-important states) · `0x6b` order-icon
+  fallback · `0x91` overview toggle.
+- **`montage`** — every other frame, identified by eye from a numbered render of all 193 frames (the
+  labeled-montage technique): window-border 9-slice pieces, large papyrus window backgrounds, the round
+  wooden order-command icons (`context` palette), resource glyphs, progress/hit **bars** (they render as
+  solid blocks under the `bar_*` palettes), directional/scroll arrows. These keep a placeholder
+  `unknown_NNN` name + a best-guess `role`/`note` until a human confirms them, then get promoted.
+- The **per-command order-icon gfx ids** are NOT recovered from code — OpenVikings'
+  `sHumanCommandTypeToIconId` (`DAT_1003337c8`) is an unfilled placeholder, so only the `0x6b` fallback is
+  code-pinned; the specific radial-command icons (~`0x48`–`0x88`) are montage guesses.
 
 **Stage outputs** (under the gitignored `content/`; the app reads them via the `vite.config.ts` routes):
 
