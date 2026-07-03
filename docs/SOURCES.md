@@ -19,7 +19,7 @@ Counts observed in `Cultures 8th Wonder` (base `Data` + `DataX` + mod `DataCnmd`
 | `.cif` | 167 | compiled/**encrypted** "Cultures Information File" (rules, maps) | decrypt: `NXBasics/XBTools.cs` `XB_Decrypt_Memory`; also `NC2Logic/CIoHelper.cs`, `Dexter/DexMD5.cs` |
 | `.ini` | 66 | **readable** rule config | trivial text parse; prefer these |
 | `.sgt`/`.dls` | 49+ | **DirectMusic** segments/instruments — Windows-only | transcode offline to ogg; do not depend on DirectMusic |
-| `.fnt` | 63 | bitmap fonts | `NXBasics/CFont.cs` |
+| `.fnt` | 63 | bitmap fonts (CFont `0x3F5` wrapping a CBobManager `0x3F4`) — **decoded** by `decoders/fnt.ts` + `stages/fonts.ts` (see "Fonts" below) | `NXBasics/CFont.cs` |
 | `.lib` | — | packed archive (group + files + checksum) | `NXBasics/CSimpleFileLibrary.cs` |
 | file IO base | — | low-level readers, endian | `NXBasics/CFile.cs`, `Dexter/DexterFile.cs`, `Dexter/DexterEndian.cs` |
 | palettes | — | palette objects | `NXBasics/CPalette.cs` |
@@ -367,6 +367,54 @@ speed (`0x34/0x35/0x36` its speed-factor states) · `0x3f` priority frame · `0x
   RGBA PNG, with hotspots in the manifest.
 - **`content/gui/manifest.json`** — the top-level index (atlases, palette LUT + row names, string
   languages/tables, cursors) the app's `loadGuiManifest` reads.
+
+### UI fonts (`.fnt`) — extracted by `stages/fonts.ts`
+
+The UI bitmap fonts are the last loose-file HUD asset. A `.fnt` is a **`CFont` (storable id `0x3F5`)**
+that is a *thin wrapper around the same `CBobManager` (`0x3F4`) `.bmd` bob container the settlers/HUD
+use* — so the glyph atlas is just the ordinary bob atlas of the inner container, and
+`decoders/fnt.ts` reuses `decoders/bmd.ts` wholesale. On disk (oracle: `NXBasics/CFont.cs` +
+`XBStorable.cs`):
+
+```
+[u32 id=0x3F5][u32 version]   CFont header
+[u32 value08]                 unknown font word (carried verbatim)
+[u32 value0C]                 empirically the NOMINAL PIXEL SIZE (8/10/12 for font08/10/12; 8 debug)
+[u32 id=0x3F4][ CBobManager ] the nested bob container — decodeBmd() parses the rest
+```
+
+i.e. a 16-byte CFont prefix in front of a `.bmd`. **Glyph lookup** (CFont): character `c` (≥ `0x20`)
+draws bob `c − 0x20`; **space/tab** are special-cased to bob `0x49` for both drawing and width, so a
+space takes that bob's advance while its own bob 0 stays empty. **Layout formulas** (ported to
+`fnt.ts`): advance `= spacing + rect.X + rect.W + 1` (`GetCharacterWidth`), glyph extent
+`= rect.H + rect.Y + 1` (`GetCharacterHeight`), line height `= max extent over glyphs`
+(`GetPixelHeight`). `spacing` (CFont+0x10) is NOT stored — it is applied externally via `SetSpacing`,
+so decoded advances use spacing 0. A **baseline** is derived (advisory) from a reference capital's
+bottom edge; the original has no baseline (it lays out top-anchored) — see FIDELITY.md.
+
+**Sources (under the game root):**
+
+| File(s) | Format | What it is |
+|---|---|---|
+| `Data/gui/fonts/{font08,font10,font12,fontdebug}.fnt` | CFont `0x3F5`, **224 glyphs** (chars `0x20‑0xFF`) | the central-European (CP1250) UI fonts — carry the full Polish glyph range; `fontdebug` is a partial debug face |
+| `Data/gui/fonts/{latin,rus}/*.fnt` | CFont `0x3F5` | the alternate-codepage sets the engine swaps in per language (extracted, keyed by variant; the fonts are byte-indexed, so the codepage belongs to the consuming language) |
+| `Data/gui/palettes/font_{white,dark,dimmed,red}.pcx` | PCX palette carriers (256-colour trailer) | the four text colours (glyph pixels are palette indices; the colour palette resolves them) |
+
+**Stage outputs** (under the gitignored `content/`):
+
+- **Glyph atlases + colour LUT ride `/bobs/`** (they are bob atlases): per font a recolourable
+  **indexed** atlas `<key>.indexed.{png,atlas.json}` (palette index in red, mask in alpha) and an
+  **RGBA preview** `<key>.white.{png,atlas.json}` (default colour, for human inspection); plus the
+  **`font-palettes-lut.png`** — a `256 × 4` LUT stacking the four font colours (row order fixed by
+  `FONT_COLORS`, mirrored in `packages/app/src/content/font-gfx.ts`), loaded like the player/GUI LUTs
+  so the renderer colours a glyph index through its text-colour row. `<key>` is the size stem
+  (`font10`) for the default set, `<variant>_<stem>` (`latin_font10`) otherwise.
+- **`content/gui/fonts/<key>.metrics.json`** — the `FontMetrics`: `firstChar`/`charCount`,
+  `lineHeight`, `baseline`, `spaceBobId`, `nominalSize`, and a per-glyph `{char, bobId, advance,
+  offsetX, offsetY, width, height, empty}` table in char order (the atlas gives *where the pixels
+  are*; the metrics give *how to lay them out*).
+- **`content/gui/fonts/manifest.json`** — the top-level index (fonts + their stems/metrics paths, the
+  colour LUT + row names) the app's `loadFontManifest` reads.
 
 ## How to use OpenVikings as reference
 

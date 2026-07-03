@@ -25,6 +25,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { type Args, parseArgs, resolveArgs } from './args.js';
 import { convertBmdTree, resolveGraphicsBindings } from './stages/bmd.js';
+import { convertFontStage } from './stages/fonts.js';
 import { convertGuiStage } from './stages/gui.js';
 import { writeIr } from './stages/ir.js';
 import { unpackLibTree } from './stages/lib.js';
@@ -106,6 +107,17 @@ async function run(args: Args): Promise<void> {
     `[pipeline] gui: ${gui.atlases} atlas(es) (${gui.frames} frames), ${gui.palettes}-palette LUT, ` +
       `${gui.strings.map((s) => `${s.lang}:${s.tables}t/${s.strings}s`).join(' ') || 'no strings'}, ` +
       `${gui.cursors} cursor(s) into ${join(args.out, 'gui')}`,
+  );
+
+  // Fonts: the UI bitmap fonts (font08/10/12/fontdebug × the default/latin/rus sets) -> an indexed glyph
+  // atlas (render colours per text-colour at draw time) + an RGBA preview atlas + a 256×4 font-colour LUT
+  // (white/dark/dimmed/red) + a per-font metrics JSON (per-glyph advance/offset/size, line height, baseline).
+  // Each `.fnt` is a CFont wrapping the same CBobManager bob container the settlers/HUD use; all from loose
+  // files. See stages/fonts.ts + docs/SOURCES.md ".fnt".
+  const fonts = await convertFontStage(args.game, args.out);
+  console.log(
+    `[pipeline] fonts: ${fonts.fonts} font(s) (${fonts.glyphs} glyphs), ` +
+      `${fonts.colors}-colour LUT into ${join(args.out, 'gui', 'fonts')}`,
   );
 
   const ir = await writeIr(args);
