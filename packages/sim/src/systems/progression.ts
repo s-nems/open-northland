@@ -7,6 +7,7 @@ import type {
 import { Settler } from '../components/index.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { SystemContext } from './context.js';
+import { WEAPON_MAIN_TYPE } from './readviews/combat.js';
 import { isShipVehicle } from './readviews/vehicles.js';
 
 /**
@@ -83,6 +84,96 @@ export function grantWorkExperience(
   if (track === undefined) return; // this (job, good) pairing trains no specialization
   const current = s.experience.get(track.typeId) ?? 0;
   s.experience.set(track.typeId, current + track.experienceFactor);
+}
+
+/**
+ * The **fight experience-type** ids (`logicdefines.inc` `JOB_EXPERIENCE_TYPE_FIGHT_*`, l.598-603) — the
+ * per-weapon-class buckets combat XP accrues into on `Settler.experience`. Crucially the **SAME expType
+ * id space the `needfor*` soldier-upgrade gates read**: the viking `needforjob` for the iron-spear
+ * soldier requires expType `SPEAR` (72), the long-sword soldier `SWORD` (73), the long-bow soldier
+ * `BOW` (75) — so accruing fight XP here locks the better soldier classes behind fight experience
+ * through the existing {@link settlerMeetsNeed} gate, with no new mechanism. No `HumanJobExperienceType`
+ * record backs these ids (they carry no `experienceFactor` of their own); the accrual RATE comes from
+ * the `soldier general` track ({@link SOLDIER_GENERAL_EXPERIENCE_TYPE}). Pinned to `logicdefines.inc`.
+ */
+export const FIGHT_EXPERIENCE_TYPE = {
+  FIST: 71,
+  SPEAR: 72,
+  SWORD: 73,
+  AXE: 74,
+  BOW: 75,
+  CATAPULT: 76,
+} as const;
+
+/** The `humanjobexperiencetypes` track whose `experienceFactor` sets the per-swing fight-XP RATE — the
+ *  `soldier general` track (`type 69`, base-soldier general specialization, factor 1 in the base data).
+ *  The fight buckets ({@link FIGHT_EXPERIENCE_TYPE}) have no record of their own, so a fight swing
+ *  accrues *this* track's factor into the weapon's bucket. */
+const SOLDIER_GENERAL_EXPERIENCE_TYPE = 69;
+
+/**
+ * The fight-XP **bucket** a weapon of coarse class `weaponMainType` ({@link WEAPON_MAIN_TYPE}) accrues
+ * into — its {@link FIGHT_EXPERIENCE_TYPE}. Maps each weapon family to its fight track:
+ * unarmed→FIST, spear→SPEAR, sword→SWORD, axe→AXE, bow→BOW, catapult→CATAPULT. **Saber has no fight
+ * track** in the data (no `JOB_EXPERIENCE_TYPE_FIGHT_SABER`, and no saber-soldier `needfor` reads one),
+ * so a saber swing maps to `undefined` — it accrues no fight XP (noted approximated, docs/FIDELITY.md).
+ */
+const FIGHT_EXPERIENCE_TYPE_BY_WEAPON_MAIN_TYPE: ReadonlyMap<number, number> = new Map([
+  [WEAPON_MAIN_TYPE.UNARMED, FIGHT_EXPERIENCE_TYPE.FIST],
+  [WEAPON_MAIN_TYPE.SPEAR, FIGHT_EXPERIENCE_TYPE.SPEAR],
+  [WEAPON_MAIN_TYPE.SWORD, FIGHT_EXPERIENCE_TYPE.SWORD],
+  [WEAPON_MAIN_TYPE.AXE, FIGHT_EXPERIENCE_TYPE.AXE],
+  [WEAPON_MAIN_TYPE.BOW, FIGHT_EXPERIENCE_TYPE.BOW],
+  [WEAPON_MAIN_TYPE.CATAPULT, FIGHT_EXPERIENCE_TYPE.CATAPULT],
+]);
+
+/**
+ * The fight-experience bucket a `weaponMainType` accrues into, or `undefined` when the weapon has no
+ * fight track (saber, or a `mainType` outside {@link WEAPON_MAIN_TYPE}). A pure lookup over the
+ * constant {@link FIGHT_EXPERIENCE_TYPE_BY_WEAPON_MAIN_TYPE} map (`.get`, not iteration — deterministic).
+ */
+export function fightExperienceTypeFor(weaponMainType: number): number | undefined {
+  return FIGHT_EXPERIENCE_TYPE_BY_WEAPON_MAIN_TYPE.get(weaponMainType);
+}
+
+/**
+ * Grant an attacker fight XP for a **damaging swing** — accrue the {@link SOLDIER_GENERAL_EXPERIENCE_TYPE}
+ * track's `experienceFactor` (1/swing in the base data) into the bucket for the swinging weapon's class
+ * ({@link fightExperienceTypeFor} — the `FIGHT_EXPERIENCE_TYPE` `needfor*` gates read). The combat sibling
+ * of {@link grantWorkExperience}: where work XP trains a `(job, good)` specialization, a fight swing
+ * trains the weapon class, so better soldier classes unlock through the SAME accrued-XP gate.
+ *
+ * No-ops when: the weapon has no `mainType` (`weaponMainType` undefined — an unarmed/mainType-less
+ * combatant), the weapon class has no fight track (saber → `undefined`), the attacker is gone, or
+ * content carries no `soldier general` track (rate 0 — a fixture without it accrues nothing).
+ *
+ * FIDELITY (approximated — docs/FIDELITY.md): the accrual **trigger** (per-damaging-swing) has no
+ * readable oracle — the original may accrue per swing or per kill. Per-damaging-swing is the
+ * deterministic reading. The raw XP accrues only; the XP→level→stat CURVE (`baseRepeatCounter`, the
+ * combat bonuses a level grants) is a later calibration slice. Determinism: a pure content read + a
+ * write to the settler's XP Map (keyed by the fixed bucket id), no RNG/wall-clock.
+ */
+export function grantFightExperience(
+  world: World,
+  ctx: SystemContext,
+  attacker: Entity,
+  weaponMainType: number | undefined,
+): void {
+  if (weaponMainType === undefined) return; // an unarmed / mainType-less weapon trains no fight class
+  const bucket = fightExperienceTypeFor(weaponMainType);
+  if (bucket === undefined) return; // a weapon class with no fight track (saber)
+  const rate = fightExperienceRate(ctx);
+  if (rate <= 0) return; // no `soldier general` track in content — nothing to accrue
+  const s = world.tryGet(attacker, Settler);
+  if (s === undefined) return; // attacker gone
+  s.experience.set(bucket, (s.experience.get(bucket) ?? 0) + rate);
+}
+
+/** The per-swing fight-XP rate — the {@link SOLDIER_GENERAL_EXPERIENCE_TYPE} track's `experienceFactor`
+ *  (1 in the base data), or `0` when content carries no such track. A pure content read. */
+function fightExperienceRate(ctx: SystemContext): number {
+  const track = ctx.content.jobExperience.find((t) => t.typeId === SOLDIER_GENERAL_EXPERIENCE_TYPE);
+  return track?.experienceFactor ?? 0;
 }
 
 /**

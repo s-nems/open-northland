@@ -251,13 +251,23 @@ export type AtomicEffect =
    *  too. The need→satisfier *drive* is deferred for the same reason as `enjoy` — no readable building
    *  satisfier in `houses.ini` (see docs/FIDELITY.md) — so for now this is the reset half only. */
   | { readonly kind: 'make_love' }
-  /** The settler lands a hit on `target`: subtracts `damage` from the target's `Health.hitpoints`
-   *  (clamped at 0 — armor never heals) on completion. `damage` is the **resolved net damage**, looked
-   *  up by the planner from the `combatDamage` read view (the attacker's weapon × the target's armor
-   *  class) and carried here already-resolved — exactly as `pickup`/`eat` carry a resolved `amount`,
-   *  so the executor stays a pure subtraction with no content/weapon lookup of its own. A `target`
-   *  with no `Health` (already destroyed, or a non-combatant) is a no-op (the swing missed/struck air). */
-  | { readonly kind: 'attack'; readonly target: Entity; readonly damage: number }
+  /** The settler swings at `target`: the blow subtracts `damage` from the target's `Health.hitpoints`
+   *  (clamped at 0 — armor never heals). `damage` is the **resolved column damage**, looked up by the
+   *  planner from the weapon's `damagevalue[targetMaterial]` (the attacker's weapon × the target's armor
+   *  material) and carried here already-resolved — exactly as `pickup`/`eat` carry a resolved `amount`,
+   *  so the executor stays a pure subtraction with no content/weapon lookup of its own. The hit lands at
+   *  `hitAt` (the animation's ATTACK-event frame, `ATOMIC_EVENT_TYPE_ATTACK`); when omitted it falls back
+   *  to the completion frame (an animation with no ATTACK event). `weaponMainType` (the weapon's coarse
+   *  class, `WeaponType.mainType`) keys the fight-experience bucket the swing accrues into; omitted → no
+   *  fight XP (a weapon with no `mainType`). A `target` with no `Health` (already destroyed, or a
+   *  non-combatant) is a no-op (the swing struck air). */
+  | {
+      readonly kind: 'attack';
+      readonly target: Entity;
+      readonly damage: number;
+      readonly hitAt?: number;
+      readonly weaponMainType?: number;
+    }
   | { readonly kind: 'idle' };
 
 export type AtomicEffectKind = AtomicEffect['kind'];
