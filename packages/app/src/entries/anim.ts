@@ -174,7 +174,10 @@ async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSear
     return;
   }
 
-  const palette = lut !== undefined ? { source: lut, colours: PLAYER_COLOR_COUNT } : undefined;
+  // The LUT row count for the shader comes from the TEXTURE's own height, not a constant, so the fragment's
+  // row lookup can't desync from the actual PNG if the two ever diverge (parseColor still bounds `?color=` by
+  // PLAYER_COLOR_COUNT, a UI range).
+  const palette = lut !== undefined ? { source: lut, colours: lut.pixelHeight } : undefined;
   await startGallery(canvas, params, cells, { char, view }, palette);
   console.log(
     `Vinland animation gallery: ${char.label} (${char.imagelib}), view=${view}` +

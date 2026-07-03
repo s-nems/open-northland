@@ -54,12 +54,14 @@ uniform vec2 uLutSize;      // (256, N)
 uniform vec4 uPlacement;    // .w = player-colour row to read (0 .. N-1)
 
 void main(void) {
-  vec4 texel = texture(uTexture, vUV);
+  // textureLod(..., 0.0): sample the BASE level only. An index/LUT read must never hit a blended mip — an
+  // averaged index would decode to the wrong palette entry. (Pixi v8 defaults to no mipmaps, but be explicit.)
+  vec4 texel = textureLod(uTexture, vUV, 0.0);
   if (texel.a < 0.5) discard; // transparent bob pixel
   // Recover the exact palette index (0..255) from the red channel, then read the player's LUT row.
   float index = floor(texel.r * 255.0 + 0.5);
   vec2 lutUV = vec2((index + 0.5) / uLutSize.x, (uPlacement.w + 0.5) / uLutSize.y);
-  finalColor = vec4(texture(uLut, lutUV).rgb, 1.0);
+  finalColor = vec4(textureLod(uLut, lutUV, 0.0).rgb, 1.0);
 }`;
 
 /** A unit quad's index buffer (two triangles) — positions/UVs are rewritten per frame in {@link PalettedSprite.setFrame}. */

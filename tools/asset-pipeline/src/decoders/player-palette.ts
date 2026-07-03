@@ -23,8 +23,10 @@
 
 import type { RgbaImage } from './image.js';
 
+/** Entries in a palette (8-bit index space → 256 colours). */
+const PALETTE_SIZE = 256;
 /** Bytes in a 256-entry RGB palette (`[R,G,B] × 256`) — the pipeline's shared palette currency. */
-const PALETTE_BYTES = 768;
+const PALETTE_BYTES = PALETTE_SIZE * 3;
 
 /** First index of the source `Player NN` ramp inside a `playerNN.pcx` (colour-range 1 = indices 16–31). */
 export const PLAYER_RAMP_START = 16;
@@ -43,17 +45,6 @@ export const PLAYER_COLOR_BANDS: readonly (readonly [number, number])[] = [
   [160, 175],
   [240, 255],
 ];
-
-/** True if palette index `i` is in a player-colour band (its colour is decided by the player). */
-export function isPlayerColorIndex(i: number): boolean {
-  for (const [lo, hi] of PLAYER_COLOR_BANDS) {
-    if (i >= lo && i <= hi) return true;
-  }
-  return false;
-}
-
-/** How many player colours we generate (the original's 10 + 6 hue-rotated extras → up to 16 players). */
-export const PLAYER_COLOR_COUNT = 16;
 
 /** One player colour: its slot id, a human name, and where its band colours come from. */
 export interface PlayerColorDef {
@@ -206,7 +197,7 @@ export function synthesizePlayerSource(reference: Uint8Array, hueDeg: number): U
  */
 export function buildPlayerLutImage(palettes: readonly Uint8Array[]): RgbaImage {
   if (palettes.length === 0) throw new Error('player-palette: need at least one palette for the LUT');
-  const width = 256;
+  const width = PALETTE_SIZE;
   const height = palettes.length;
   const rgba = new Uint8Array(width * height * 4);
   for (let y = 0; y < height; y++) {

@@ -77,18 +77,25 @@ export function mountGalleryOverlay(
   }
   panel.append(charRow);
 
-  // View selector — a single character with 2+ looks: its animation set vs its heads montage. The roster IS
-  // the all-looks view, and a single-/no-head character (woman / child / baby) has nothing to montage.
-  if (char !== null && char.headBmds.length >= 2) {
+  // View selector — a drilled-in character: its animation set, its heads montage (only when it has 2+ looks),
+  // and its player-COLOUR montage (the walk once per team colour). The roster IS the all-looks view.
+  if (char !== null) {
     panel.append(el('div', 'font-weight:700;margin:2px 0 4px', 'Widok:'));
     const viewRow = el('div', 'display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px');
     viewRow.append(
       navButton('Animacje', view === 'anim', galleryUrl(params, { char: char.id, view: 'anim' })),
-      navButton(
-        `Głowy (${char.headBmds.length})`,
-        view === 'heads',
-        galleryUrl(params, { char: char.id, view: 'heads' }),
-      ),
+    );
+    if (char.headBmds.length >= 2) {
+      viewRow.append(
+        navButton(
+          `Głowy (${char.headBmds.length})`,
+          view === 'heads',
+          galleryUrl(params, { char: char.id, view: 'heads' }),
+        ),
+      );
+    }
+    viewRow.append(
+      navButton('Kolory (16)', view === 'colors', galleryUrl(params, { char: char.id, view: 'colors' })),
     );
     panel.append(viewRow);
   }
@@ -98,7 +105,9 @@ export function mountGalleryOverlay(
       ? `${cellCount} wyglądów wikingów naraz — każdy idzie ten sam walk. Kliknij postać, by zobaczyć jej animacje.`
       : view === 'heads'
         ? `${cellCount} looków (głów) „${char.label}", każdy idzie ten sam walk.`
-        : `${cellCount} sekwencji „${char.label}" naraz, każda w pętli.`;
+        : view === 'colors'
+          ? `${cellCount} kolorów graczy „${char.label}", każdy idzie ten sam walk. (?color=N = cały set animacji w jednym kolorze.)`
+          : `${cellCount} sekwencji „${char.label}" naraz, każda w pętli.`;
   panel.append(el('div', 'opacity:0.85;margin-bottom:8px', summary));
 
   // Direction selector — LIVE (no reload); applies to every cell.
@@ -146,14 +155,21 @@ export function mountGalleryOverlay(
             'Po wyborze kierunku wszystkie looki patrzą w tę samą, właściwą stronę',
             'ZNANY BRAK: kolor skóry/włosów to dziś jedna paleta (warianty = osobny krok w pipeline)',
           ]
-        : [
-            'Każda animacja gra płynnie i się zapętla — żadna klatka nie jest zamrożona ani zniekształcona',
-            'Postać ma ciało + głowę (nie sam korpus)',
-            'RUCH (walk + warianty niesienia/broni) po wyborze kierunku patrzy we właściwą stronę',
-            'WOJOWNIK: ataki (miecz/łuk/oszczep/pięści) są czytelne (grają całą sekwencję, 1-kierunkowo)',
-            'Animacje 1-kierunkowe (wait, eat, sleep, ataki) ignorują wybór kierunku — grają całą sekwencję',
-            'ZNANY BRAK: gesty/praca/ataki mogą mieć błędne kierunki — kolejność per-animacja nieskalibrowana',
-          ];
+        : view === 'colors'
+          ? [
+              '16 kolorów graczy naraz (blue/red/yellow/… — 10 z oryginału + 6 dodanych do 16 graczy)',
+              'Ten sam wiking w każdej celi — różni się TYLKO kolor ubrania (kamizelka/tunika), nie twarz/skóra/metal',
+              'Kolory wyraźnie rozróżnialne (żeby odróżnić graczy w walce)',
+              '?color=N (0–15) = pełny set animacji tej postaci w jednym kolorze (np. wojownik w czerwieni)',
+            ]
+          : [
+              'Każda animacja gra płynnie i się zapętla — żadna klatka nie jest zamrożona ani zniekształcona',
+              'Postać ma ciało + głowę (nie sam korpus)',
+              'RUCH (walk + warianty niesienia/broni) po wyborze kierunku patrzy we właściwą stronę',
+              'WOJOWNIK: ataki (miecz/łuk/oszczep/pięści) są czytelne (grają całą sekwencję, 1-kierunkowo)',
+              'Animacje 1-kierunkowe (wait, eat, sleep, ataki) ignorują wybór kierunku — grają całą sekwencję',
+              'ZNANY BRAK: gesty/praca/ataki mogą mieć błędne kierunki — kolejność per-animacja nieskalibrowana',
+            ];
   for (const item of items) list.append(el('li', 'margin:2px 0', item));
   panel.append(list);
   panel.append(signOffFooter('Gdy ocenisz animacje, wróć do czatu i napisz, czy są OK.'));

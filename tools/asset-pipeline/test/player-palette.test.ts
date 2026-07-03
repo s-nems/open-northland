@@ -2,11 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   PLAYER_COLORS,
   PLAYER_COLOR_BANDS,
-  PLAYER_COLOR_COUNT,
   PLAYER_RAMP_START,
   buildPlayerLutImage,
   composePlayerPalette,
-  isPlayerColorIndex,
   synthesizePlayerSource,
 } from '../src/decoders/player-palette.js';
 
@@ -35,22 +33,14 @@ const solid = (r: number, g: number, b: number): Uint8Array => {
   return p;
 };
 
-describe('isPlayerColorIndex', () => {
-  it('covers the clothing patches (5/10/15) only, not the source-ramp indices', () => {
+describe('composePlayerPalette', () => {
+  it('writes the source ramp (idx 16..31) into every clothing patch; base elsewhere', () => {
+    // The clothing patches (5/10/15) that receive the player ramp — NOT the source-ramp indices 16..31.
     expect(PLAYER_COLOR_BANDS).toEqual([
       [80, 95],
       [160, 175],
       [240, 255],
     ]);
-    // In the target bands
-    for (const i of [80, 90, 95, 160, 175, 240, 255]) expect(isPlayerColorIndex(i)).toBe(true);
-    // Out of band — incl. the source ramp (16–31) which is NOT a target band
-    for (const i of [0, 16, 31, 79, 96, 159, 223, 239]) expect(isPlayerColorIndex(i)).toBe(false);
-  });
-});
-
-describe('composePlayerPalette', () => {
-  it('writes the source ramp (idx 16..31) into every clothing patch; base elsewhere', () => {
     const base = solid(10, 20, 30);
     // A source whose index i has colour (i, 0, 0), so we can check the ramp maps 16..31 → 80.., 160.., 240..
     const source = new Uint8Array(768);
@@ -140,7 +130,7 @@ describe('buildPlayerLutImage', () => {
 
 describe('PLAYER_COLORS', () => {
   it('defines 16 colours with ids 0..15 in order; 0..9 from pcx, 10..15 synthetic', () => {
-    expect(PLAYER_COLORS.length).toBe(PLAYER_COLOR_COUNT);
+    expect(PLAYER_COLORS.length).toBe(16);
     PLAYER_COLORS.forEach((c, i) => {
       expect(c.id).toBe(i);
       expect(c.source.kind).toBe(i < 10 ? 'pcx' : 'synthetic');
