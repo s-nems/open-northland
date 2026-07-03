@@ -42,6 +42,8 @@ maps the rest.
   kept as an alternative** — not the default; don't push them.
 - [LESSONS.md](LESSONS.md) — hard-won gotchas: the index + contract; the entries live in per-area
   files under [lessons/](lessons/) so an iteration reads only the area it touches.
+- [plans/original-ui.md](plans/original-ui.md) — user-driven `/worktree` plan: step-by-step agent
+  prompts to extract and rebuild the original in-game HUD. Consumed in order; deleted when done.
 - [TECH-DEBT.md](TECH-DEBT.md) — trigger-gated / speculative reworks deliberately parked (not a
   structural-health queue — `/reflect` owns and *executes* structure), plus the reflection log.
 
