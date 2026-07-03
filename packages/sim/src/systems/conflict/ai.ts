@@ -12,6 +12,7 @@ import {
   Position,
   Resource,
   Settler,
+  Stance,
 } from '../../components/index.js';
 import type { AtomicEffect } from '../../core/commands.js';
 import { type Fixed, fx } from '../../core/fixed.js';
@@ -20,6 +21,7 @@ import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
 import { buildingBlockedCells } from '../footprint.js';
 import { carrierCarryCapacity } from '../progression.js';
+import { MILITARY_MODE } from '../readviews/index.js';
 import {
   TileBuckets,
   atomicDuration,
@@ -242,6 +244,14 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // economy resumes; a COLLAPSING need overrides the flee inside combatSystem, so this skip never traps a
     // starving unit (it yields the marker first).
     if (world.has(e, Fleeing)) continue;
+
+    // DEFEND stance: a unit guarding a post HOLDS it against the economy — it is not re-tasked to hauling/
+    // staffing, so it stays at its anchor (the CombatSystem walks it back when displaced and fights threats
+    // in its radius). Placed with the other soft-override skips (below the needs drives), so a guard may
+    // still leave to eat/sleep. Owned-ONLY (`Stance` is owned-only), so unowned/golden fixtures are
+    // untouched. Without this a DEFEND unit with a civilian job would wander off to work when no enemy is near.
+    const stance = world.tryGet(e, Stance);
+    if (stance !== undefined && stance.mode === MILITARY_MODE.DEFEND) continue;
 
     // PLAYER-ORDER hold: a unit standing where the human sent it stays put — the economy planner below
     // leaves it be. Placed BELOW the needs drives (eat/sleep/pray) on purpose: the move order is a

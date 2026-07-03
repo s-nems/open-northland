@@ -12,6 +12,7 @@ import {
   PathRequest,
   PlayerOrder,
   Position,
+  Resource,
   Settler,
   Stance,
 } from '../../src/components/index.js';
@@ -66,11 +67,15 @@ beforeEach(() => {
     PathFollow,
     PathRequest,
     PlayerOrder,
+    Resource,
     Age,
   ]) {
     c.store.clear();
   }
 });
+
+const WOOD = 1; // the fixture's wood good (harvest atomic 24), what a woodcutter (job 1) gathers
+const HARVEST_ATOMIC = 24;
 
 function grassMap(width: number, height: number): TerrainMap {
   return { width, height, typeIds: new Array(width * height).fill(GRASS) };
@@ -222,6 +227,21 @@ describe('IGNORE — never auto-engage, but an explicit order still fights', () 
     // The order makes the IGNORE unit strike the ordered target.
     expect(sim.world.get(scout, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: enemy });
   });
+
+  it('when the ordered target dies, an IGNORE unit reverts to ignoring — it does NOT auto-engage a bystander', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const scout = combatant(sim, 0, 0, P0, MILITARY_MODE.IGNORE);
+    const focus = combatant(sim, 1, 0, P1, MILITARY_MODE.IGNORE); // the ordered target
+    combatant(sim, 2, 0, P1, MILITARY_MODE.IGNORE); // a bystander enemy, in reach, the scout must NOT hit
+    attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: scout, target: focus });
+    sim.world.get(focus, Health).hitpoints = 0; // the ordered target dies
+
+    combatSystem(sim.world, ctxOf(sim));
+    // The stale order is dropped and the IGNORE stance re-decides THIS tick — no swing at the bystander.
+    expect(sim.world.has(scout, AttackOrder)).toBe(false);
+    expect(sim.world.has(scout, CurrentAtomic)).toBe(false);
+    expect(sim.world.has(scout, Engagement)).toBe(false);
+  });
 });
 
 describe('stance change mid-chase', () => {
@@ -238,6 +258,27 @@ describe('stance change mid-chase', () => {
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(chaser, Engagement)).toBe(false); // IGNORE disengages
     expect(sim.world.has(chaser, MoveGoal)).toBe(false);
+  });
+
+  it('switching ATTACK → FLEE mid-chase sheds the stale Engagement (no permanent bench)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
+    const unit = combatant(sim, 10, 0, P0, MILITARY_MODE.ATTACK);
+    const enemy = combatant(sim, 16, 0, P1, MILITARY_MODE.IGNORE); // spotted, beyond reach → chase
+
+    combatSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(unit, Engagement)).toBe(true); // chasing
+
+    setStance(sim.world, ctxOf(sim), { kind: 'setStance', entity: unit, mode: MILITARY_MODE.FLEE });
+    combatSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(unit, Engagement)).toBe(false); // the attack Engagement is shed on entering flee
+    expect(sim.world.has(unit, Fleeing)).toBe(true); // now fleeing the same enemy
+
+    // Threat gone: after the cool-down the unit fully disengages — crucially NO Engagement is left stuck
+    // (the bug this guards: a leaked Engagement benches the unit forever and keeps combat awake).
+    sim.world.destroy(enemy);
+    sim.run(60);
+    expect(sim.world.has(unit, Engagement)).toBe(false);
+    expect(sim.world.has(unit, Fleeing)).toBe(false);
   });
 });
 
@@ -284,6 +325,19 @@ describe('FLEE — civilians run from danger', () => {
     sim.world.get(civ, Settler).hunger = ONE; // pin hunger at ONE (collapse)
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(civ, Fleeing)).toBe(false); // yielded to the need despite the threat
+  });
+
+  it('a need collapsing DURING the cool-down yields at once (does not idle out the full cool-down)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
+    const civ = combatant(sim, 20, 0, P0, MILITARY_MODE.FLEE);
+    const threat = combatant(sim, 25, 0, P1, MILITARY_MODE.IGNORE);
+    combatSystem(sim.world, ctxOf(sim));
+    sim.world.destroy(threat); // threat gone → the cool-down begins
+    combatSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(civ, Fleeing)).toBe(true); // still cooling down (no collapse yet)
+    sim.world.get(civ, Settler).hunger = ONE; // collapse mid-cool-down
+    combatSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(civ, Fleeing)).toBe(false); // shed at once, not after FLEE_COOLDOWN_TICKS
   });
 });
 
@@ -350,5 +404,18 @@ describe('DEFEND — hold an anchor, don’t chase past the leash', () => {
     sim.run(120);
     const gx = tileOf(sim, guard).x;
     expect(Math.abs(gx - anchorX)).toBeLessThanOrEqual(DEFEND_LEASH_TILES);
+  });
+
+  it('holds its post against the economy — a militia-job guard does not wander off to work', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 1) });
+    // A DEFEND unit on a CIVILIAN job (woodcutter) — without the economy-skip it would walk off to harvest.
+    const guard = combatant(sim, 5, 0, P0, MILITARY_MODE.DEFEND, { jobType: WOODCUTTER });
+    // A wood node it could harvest, off to the side.
+    const wood = sim.world.create();
+    sim.world.add(wood, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
+    sim.world.add(wood, Resource, { goodType: WOOD, remaining: 100, harvestAtomic: HARVEST_ATOMIC });
+
+    sim.run(30);
+    expect(tileOf(sim, guard)).toEqual({ x: 5, y: 0 }); // stayed on its post, never walked to the wood
   });
 });

@@ -133,7 +133,7 @@ export const REPATH_CADENCE = 8;
  * DEFEND stance — how far (Manhattan tiles) from its **anchor** a defender auto-acquires an enemy: it
  * engages only threats inside this radius of the tile the DEFEND stance was set on, ignoring anything
  * beyond (it holds its post rather than roaming). APPROXIMATED — the original's exact defend radius is
- * unreadable (docs/FIDELITY.md "Combat stance — DEFEND"); calibration-by-observation pending.
+ * unreadable (docs/FIDELITY.md "Combat stances"); calibration-by-observation pending.
  */
 export const DEFEND_RADIUS_TILES = 4;
 
@@ -148,7 +148,7 @@ export const DEFEND_LEASH_TILES = 6;
 /**
  * FLEE stance — how many tiles a fleeing unit runs **away** from the nearest threat each time it re-aims:
  * the flee destination is the walkable cell this far off in the best away-direction. APPROXIMATED — no
- * readable flee-distance (docs/FIDELITY.md "Combat stance — FLEE").
+ * readable flee-distance (docs/FIDELITY.md "Combat flee").
  */
 export const FLEE_STEP_TILES = 6;
 
@@ -156,14 +156,14 @@ export const FLEE_STEP_TILES = 6;
  * FLEE stance — how many ticks a fleeing unit holds its current run route before re-aiming away from the
  * (moving) threat. The flee twin of {@link REPATH_CADENCE}: a per-tick re-path of every fleer would be the
  * RTS-scale regression golden rule 7 forbids; between re-aims the unit runs its last route (the run gait
- * keeps it ahead of a walking pursuer). OUR design (docs/FIDELITY.md "Combat stance — FLEE").
+ * keeps it ahead of a walking pursuer). OUR design (docs/FIDELITY.md "Combat flee").
  */
 export const FLEE_REPATH_CADENCE = 6;
 
 /**
  * FLEE stance — how many ticks a fleeing unit must go with **no threat in sight** before it stops running
  * and returns to the economy (the cool-down). Prevents a unit twitching in and out of flee as a threat
- * flickers at the sight edge. APPROXIMATED (docs/FIDELITY.md "Combat stance — FLEE").
+ * flickers at the sight edge. APPROXIMATED (docs/FIDELITY.md "Combat flee").
  */
 export const FLEE_COOLDOWN_TICKS = 40;
 
@@ -172,7 +172,7 @@ export const FLEE_COOLDOWN_TICKS = 40;
  * FLEE drive — a settler this close to starving/collapsing stops to eat/sleep even in danger (the AISystem's
  * need drive then owns it), while every lesser need yields to the flee. Set well ABOVE the ¾ eat/sleep
  * thresholds (a fleeing settler skips normal meals but not a near-death one). APPROXIMATED (docs/FIDELITY.md
- * "Combat stance — FLEE"): the original's flee-vs-need arbitration is unreadable.
+ * "Combat flee"): the original's flee-vs-need arbitration is unreadable.
  */
 const NEED_COLLAPSE_THRESHOLD: Fixed = fx.div(fx.fromInt(19), fx.fromInt(20)); // 0.95·ONE
 
@@ -267,7 +267,7 @@ function engageCombatant(
   if (world.get(e, Health).hitpoints <= 0) return; // dead, not yet reaped — no free swing
 
   const owned = world.has(e, Owner);
-  const ordered = world.has(e, AttackOrder);
+  let ordered = world.has(e, AttackOrder);
   // A live PLAYER MOVE order (a {@link PlayerOrder}, and NOT an explicit {@link AttackOrder}) is the human's
   // authoritative "go there and HOLD" command — it SUPPRESSES auto-behavior (auto-engage AND flee) so the
   // unit carries the order out. `moveUnit` clears any prior Engagement/AttackOrder/Fleeing, so an ordered
@@ -275,6 +275,15 @@ function engageCombatant(
   if (world.has(e, PlayerOrder) && !ordered) return;
 
   const attacker = world.get(e, Settler);
+  // An explicit attack order that has OUTLIVED its target (dead / no longer a valid hostile) is dropped
+  // HERE, before the stance dispatch, so the unit re-decides by its STANCE this tick — an IGNORE scout goes
+  // back to ignoring, a FLEE civilian to fleeing, a DEFEND guard to its post — instead of the order's
+  // now-stale general-hostility spec falling through to a one-tick ATTACK-style re-acquire regardless of
+  // stance. An ATTACK unit still re-acquires the nearest enemy the SAME tick (its own stance path does).
+  if (ordered && !isValidTarget(world, ctx, e, attacker, world.get(e, AttackOrder).target)) {
+    world.remove(e, AttackOrder);
+    ordered = false;
+  }
   // The unit's military stance drives its auto-behavior. Unowned combatants carry no Stance — modelled as
   // `null`, they keep the legacy content-relation behaviour (swing an in-reach enemy, no advance/flee).
   const stance = owned ? stanceMode(world, e, attacker.jobType) : null;
@@ -288,6 +297,11 @@ function engageCombatant(
     clearChase(world, e);
   }
   if (willFlee) {
+    // A fleeing unit is NOT attack-engaged: shed any Engagement left from a prior ATTACK/DEFEND chase (e.g.
+    // `setStance(FLEE)` issued mid-chase). Without this the stale marker outlives the flee — once the threat
+    // clears, `fleeDrive` drops `Fleeing` but not `Engagement`, benching the unit (aiSystem skips it) and
+    // keeping combat awake forever. The `Fleeing` marker (not `Engagement`) is what holds a fleer off the economy.
+    world.remove(e, Engagement);
     fleeDrive(world, ctx, terrain, index, e, attacker);
     return;
   }
@@ -461,10 +475,25 @@ function fleeDrive(
   e: Entity,
   attacker: { tribe: number; jobType: number | null },
 ): void {
+  // A COLLAPSING need (near-death hunger/fatigue) overrides the flee whether or not a threat is in sight —
+  // the settler stops to eat/sleep even in danger, and doesn't sit idle through the cool-down after a
+  // threat leaves. Yield only on the transition (Fleeing still set): shed the marker + the run route so the
+  // AISystem re-tasks the unit; once yielded (no marker) leave the need-walk alone so we don't cancel the
+  // eat/sleep goal the AI sets each tick. (Checked FIRST so it wins over both the threat and the cool-down.)
+  if (needCollapsing(world, e)) {
+    if (world.has(e, Fleeing)) {
+      world.remove(e, Fleeing);
+      clearChase(world, e);
+    }
+    return;
+  }
+
   const here = entityCell(world, terrain, e);
   const { x, y } = terrain.coordsOf(here);
   const accept = (t: Entity): boolean => isValidTarget(world, ctx, e, attacker, t);
-  const threat = index.nearest(x, y, 1, SIGHT_RADIUS_TILES, accept);
+  // Near bound 0 (not the weapon-reach floor of 1): fear has no dead zone — a fleeing unit reacts to a
+  // hostile on its very tile too (entities share tiles freely), not just one a step away.
+  const threat = index.nearest(x, y, 0, SIGHT_RADIUS_TILES, accept);
   const fleeing = world.tryGet(e, Fleeing);
 
   if (threat === null) {
@@ -472,17 +501,6 @@ function fleeDrive(
     if (fleeing.calmUntil === null) fleeing.calmUntil = ctx.tick + FLEE_COOLDOWN_TICKS;
     if (ctx.tick >= fleeing.calmUntil) {
       world.remove(e, Fleeing); // safe long enough — return to work
-      clearChase(world, e);
-    }
-    return;
-  }
-
-  if (needCollapsing(world, e)) {
-    // A collapsing need overrides the flee. Yield only on the transition (Fleeing still set): shed it + the
-    // run route so the AISystem re-tasks the unit; once yielded (no marker) leave the need-walk alone so we
-    // don't cancel the eat/sleep goal the AI sets each tick.
-    if (world.has(e, Fleeing)) {
-      world.remove(e, Fleeing);
       clearChase(world, e);
     }
     return;
