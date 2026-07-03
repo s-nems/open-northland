@@ -110,8 +110,10 @@ function content(): ContentSet {
         typeId: WAREHOUSE,
         id: 'warehouse',
         kind: 'storage',
-        // A 2×2 body with a door on its south wall — settlers deliver at the door, never through a wall.
-        footprint: rectFootprint(2, 2, { dx: 0, dy: 2 }),
+        // A 2×2 body; the door sits just off the SOUTH-east front (dx1,dy2) so a settler stands in FRONT
+        // of the sprite (a strictly greater iso depth, col+row) — visible at the entrance, never hidden
+        // behind the building or standing off beside it.
+        footprint: rectFootprint(2, 2, { dx: 1, dy: 2 }),
         stock: [
           { goodType: WOOD, capacity: 50, initial: 0 },
           { goodType: STONE, capacity: 50, initial: 0 },
@@ -124,9 +126,11 @@ function content(): ContentSet {
         typeId: FORGE,
         id: 'forge',
         kind: 'workplace',
-        // A 2×2 body with a door on its north wall (facing the warehouse) — the smith walks around the
-        // forge and stands on the door tile to work, instead of gliding through the building.
-        footprint: rectFootprint(2, 2, { dx: 0, dy: -1 }),
+        // A 2×2 body; the door is on the SOUTH-east front (dx1,dy2), NOT the north side. A north door
+        // sits at a LOWER iso depth than the building body, so the forge sprite would draw on top of and
+        // hide the smith standing there. With a front door the smith walks AROUND the forge to the door
+        // and stands there in front of it (visible) to work.
+        footprint: rectFootprint(2, 2, { dx: 1, dy: 2 }),
         workers: [{ jobType: SMITH, count: 1 }],
         stock: [
           { goodType: IRON, capacity: 10, initial: 0 },
@@ -170,8 +174,8 @@ function content(): ContentSet {
 //    accept the layout. Wood + iron sit east so their direct hauls into the warehouse are short; the flag
 //    sits just west of the warehouse so the PORTER's ferry is a short, visible hop right beside it, while
 //    the stone + clay diggers trek in from the far west to fill it. ──
-const WAREHOUSE_AT = { x: 14, y: 3 }; // 2×2 body (14,3)-(15,4); door south at (14,5)
-const FORGE_AT = { x: 11, y: 10 }; // 2×2 body (11,10)-(12,11); door north at (11,9)
+const WAREHOUSE_AT = { x: 14, y: 3 }; // 2×2 body (14,3)-(15,4); front door at (15,5)
+const FORGE_AT = { x: 11, y: 10 }; // 2×2 body (11,10)-(12,11); front door at (12,12)
 const FLAG_AT = { x: 10, y: 3 }; // a bare ground pile just west of the warehouse
 
 interface Cluster {
