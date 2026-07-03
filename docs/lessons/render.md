@@ -118,3 +118,11 @@ extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
   scale against that anchor, is circular; anchor with an independent class (UI bitmaps, minimap geometry).
   A wrong-projection symptom that pattern-matches "objects too dense" cannot distinguish pitch-too-small
   from sprites-too-big without such an independent anchor. (render/calibration)
+- [resolution of the above] The aliasing was real and EXACTLY 2×: the true pitch is 68×38, the first
+  calibration's 34.5×18.7 was the half-lattice, and all four of its "independent" methods agreed because
+  they sampled the same half-cell grid. What broke the tie: a uniform single-session screenshot corpus
+  spanning a KNOWN map extent (7 shots tiling the full 250-column top strip → template-free px-per-cell),
+  plus a many-anchor lattice fit joining detected buildings to their map half-cell coords with stagger and
+  elevation terms free (19 pairs, sub-pixel rms; correspondence bootstrapped by a 1D Hough vote instead of
+  assumed). When two calibrations disagree by a clean integer factor, suspect lattice aliasing first and
+  hunt for a measurement whose scale comes from map DATA, not from any sprite. (render/calibration)
