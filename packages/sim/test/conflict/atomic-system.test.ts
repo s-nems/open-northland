@@ -134,13 +134,15 @@ describe('atomicSystem — effects', () => {
     expect(sim.world.get(resource, Resource).remaining).toBe(0); // stays at floor, no negative
   });
 
-  it('harvest still grants the unit when the node entity is already gone', () => {
+  it('harvest on an already-gone node yields NOTHING (the swing struck air — goods conserved)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = sim.world.create();
-    const resource = sim.world.create(); // never given a Resource component (e.g. consumed/destroyed)
+    const resource = sim.world.create(); // never given a Resource component (felled/destroyed already)
     startAtomic(sim, e, { kind: 'harvest', resource, goodType: WOOD }, 1);
     atomicSystem(sim.world, ctxOf(sim)); // must not throw on the missing node
-    expect(sim.world.get(e, Carrying)).toEqual({ goodType: WOOD, amount: 1 });
+    // A vanished node means the swing hit nothing — no unit is conjured onto the back (a chop that
+    // landed after another collector already felled the tree carries nothing).
+    expect(sim.world.has(e, Carrying)).toBe(false);
   });
 
   it('pickup adds the amount, merging with an existing same-good load', () => {
@@ -405,6 +407,8 @@ describe('atomicSystem — end-to-end: harvest -> carry -> pileup', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const settler = sim.world.create();
     const resource = sim.world.create();
+    // A plain single-hit wood node (no Felling): one swing yields one unit onto the back.
+    sim.world.add(resource, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 24 });
     const store = sim.world.create();
     sim.world.add(store, Building, { buildingType: SAWMILL, tribe: 1, built: ONE, level: 0 });
     sim.world.add(store, Stockpile, { amounts: new Map() });

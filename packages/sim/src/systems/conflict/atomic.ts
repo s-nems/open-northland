@@ -2,10 +2,14 @@ import {
   Anger,
   Carrying,
   CurrentAtomic,
+  Felling,
+  GroundDrop,
   Health,
+  Position,
   Resource,
   Settler,
   Stockpile,
+  Stump,
 } from '../../components/index.js';
 import { assertNever } from '../../core/brand.js';
 import type { AtomicEffect } from '../../core/commands.js';
@@ -145,11 +149,11 @@ export const atomicSystem: System = (world, ctx) => {
 function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: AtomicEffect): void {
   switch (effect.kind) {
     case 'harvest':
-      // The settler gathers HARVEST_YIELD unit(s) of the resource's good onto its back (carriers
-      // haul; goods never teleport) AND the harvested node loses that many units. The yield and the
-      // depletion use the same constant so a node releases exactly what settlers carry away — goods
-      // are conserved and a finite node empties (planner's `remaining <= 0` gate then skips it).
-      harvestFromNode(world, settler, effect.resource, effect.goodType);
+      // Two harvest shapes, keyed by the node's own {@link Felling} component (data, not a goodType
+      // check): a FELLABLE node (a tree) is chopped down over several swings and drops its whole yield
+      // as a ground trunk; a single-hit node (stone/clay) yields one unit onto the back and drains by
+      // one. See {@link harvestFromNode}. Goods are conserved either way (nothing teleports).
+      harvestFromNode(world, ctx, settler, effect.resource, effect.goodType);
       // Completing a work atomic that yields a good trains the settler's `(job, good)` specialization
       // — the original grants XP within a narrow `(job, good)` track, not just per job (see
       // ProgressionSystem). No-op when the job/good pairing has no track.
@@ -224,17 +228,76 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
 const HARVEST_YIELD = 1;
 
 /**
- * Resolve one completed harvest: grant {@link HARVEST_YIELD} of `goodType` onto the settler's back
- * and deplete the harvested node by the same amount (clamped at 0). The node may already be gone
- * (destroyed/consumed between the atomic starting and completing) — a missing {@link Resource} just
- * skips the decrement; the carry still happens (the swing was made). `remaining` reaching 0 is the
- * planner's "nothing left here" gate, so the node is left in place (a later slice may clean it up).
+ * Resolve one completed harvest swing, in one of two shapes decided by the node's own {@link Felling}
+ * component (never a hardcoded goodType — the felling lifecycle is content-declared and stamped on the
+ * node at spawn):
+ *
+ *  - **Fellable node** (a tree, `Felling` present): the swing is a CHOP — it drives the node one step
+ *    toward falling and grants NOTHING onto the settler's back. The whole yield lands at once as a
+ *    ground trunk when the node comes down ({@link fellNode}, on the chop that zeroes `chopsLeft`), for
+ *    the collector to carry off. This is the multi-hit harvest + drop-on-ground the ROADMAP names.
+ *  - **Single-hit node** (stone/clay/…, no `Felling`): the swing grants {@link HARVEST_YIELD} of
+ *    `goodType` onto the settler's back and depletes the node by the same amount (clamped at 0), so the
+ *    node releases exactly what is carried away. (Step 4 reworks these into per-unit ground drops.)
+ *
+ * A missing {@link Resource} means the node was already felled/destroyed between the swing starting and
+ * completing (another collector beat this one to it) — the swing hit nothing, so it yields nothing;
+ * goods stay conserved (no unit is conjured for a chop that landed on air).
  */
-function harvestFromNode(world: World, settler: Entity, node: Entity, goodType: number): void {
-  addCarry(world, settler, goodType, HARVEST_YIELD);
+function harvestFromNode(
+  world: World,
+  ctx: SystemContext,
+  settler: Entity,
+  node: Entity,
+  goodType: number,
+): void {
   const res = world.tryGet(node, Resource);
-  if (res === undefined) return; // node already gone — nothing to deplete
+  if (res === undefined) return; // node already felled/gone — the swing struck nothing (conserved)
+  const felling = world.tryGet(node, Felling);
+  if (felling !== undefined) {
+    felling.chopsLeft -= 1;
+    if (felling.chopsLeft <= 0) fellNode(world, ctx, node, res.goodType, res.remaining);
+    return;
+  }
+  addCarry(world, settler, goodType, HARVEST_YIELD);
   res.remaining = Math.max(0, res.remaining - HARVEST_YIELD);
+}
+
+/**
+ * Fell a {@link Felling} node whose last chop just landed: remove the standing node (so the planner
+ * never re-scans a depleted stump-to-be — the fix for the old "skip a `remaining <= 0` node forever"),
+ * drop its whole `yield` at its cell as a bare {@link Stockpile} trunk pile (a {@link GroundDrop} the
+ * collector then carries off, consumed by the unchanged pickup/porter/delivery machinery), leave a
+ * {@link Stump} decor where it stood, and announce it (`resourceFelled`) for render/audio. Goods are
+ * conserved — the trunk holds exactly what the standing node was worth, nothing created or lost by the
+ * tree coming down. The node's `goodType`/`yield` are read BEFORE the destroy (the component object is
+ * dropped from its store by `world.destroy`). Pure over entity state; no RNG/wall-clock.
+ */
+function fellNode(world: World, ctx: SystemContext, node: Entity, goodType: number, yield_: number): void {
+  const pos = world.get(node, Position);
+  const { x, y } = pos;
+  // The felled wood: a ground trunk pile holding the whole yield, at the node's cell — the pickup/
+  // delivery machinery already handles a bare Stockpile+Position, the GroundDrop marker scopes the
+  // collector's own-trunk drive + the emptied-pile cleanup (see reapEmptyGroundDrop).
+  const trunk = world.create();
+  world.add(trunk, Position, { x, y });
+  world.add(trunk, Stockpile, { amounts: new Map([[goodType, yield_]]) });
+  world.add(trunk, GroundDrop, { goodType });
+  // The stump / debris left where the tree stood — pure decor (non-blocking, not harvestable).
+  const stump = world.create();
+  world.add(stump, Position, { x, y });
+  world.add(stump, Stump, { goodType });
+  // The standing node is gone from every planner scan from here on.
+  world.destroy(node);
+  ctx.events.emit({
+    kind: 'resourceFelled',
+    node,
+    trunk,
+    stump,
+    goodType,
+    amount: yield_,
+    at: { x: fx.toInt(x), y: fx.toInt(y) },
+  });
 }
 
 /**
@@ -452,6 +515,22 @@ function pickupFromStore(
   if (moved <= 0) return; // source emptied since the planner chose it — nothing to carry
   stock.amounts.set(goodType, have - moved);
   addCarry(world, settler, goodType, moved);
+  reapEmptyGroundDrop(world, from); // a fully-collected felled trunk vanishes (a designated flag stays)
+}
+
+/**
+ * Reap a bare {@link GroundDrop} pile (a felled trunk / dropped-good heap) once a pickup has emptied it,
+ * so a long game doesn't accrete an empty pile per felled tree. Only a `GroundDrop` is auto-removed — a
+ * *designated* delivery flag (an equally-bare `Stockpile` with no marker) persists as a collection
+ * point. The emptiness test reads the `amounts` for a pure "holds nothing" predicate (not an
+ * order-dependent choice), so raw Map iteration is fine here. No-op for a non-drop / still-stocked pile.
+ */
+function reapEmptyGroundDrop(world: World, pile: Entity): void {
+  if (!world.has(pile, GroundDrop)) return; // a designated flag / building store — never auto-reaped
+  const stock = world.tryGet(pile, Stockpile);
+  if (stock === undefined) return;
+  for (const amount of stock.amounts.values()) if (amount > 0) return; // still holds something
+  world.destroy(pile);
 }
 
 /**

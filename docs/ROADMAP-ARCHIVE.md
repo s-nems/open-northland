@@ -1804,6 +1804,44 @@ Two rung-2 bullets landed together as **Step 2 of the gathering-economy plan** (
   single-player-flag approximations. **Deferred to later gathering steps:** per-object species variety +
   node shrink-by-remaining (Step 4), produced-good piles, per-owner flag colour.
 
+### Phase 3 — Faithful multi-hit harvest + drop-on-ground (full trail)
+**Step 3 of the gathering-economy plan** — replace the single-hit wood harvest (one atomic teleported 1
+unit onto the gatherer's back; a depleted node was skipped forever) with the original's observed cycle: a
+tree is FELLED over several chops, drops a trunk on the ground, and the collector carries it off.
+- **Data (content, not code):** `GoodGathering.chopsToFell` + `yieldPerNode` (OBSERVED calibration
+  constants — the readable `.ini` carries neither, verified absent) added to the schema; the extractor
+  emits 0 (= single-hit / pending calibration). The felling path is gated on these content params, NOT a
+  hardcoded goodType (golden rule 3).
+- **Sim:** three separate-component markers (`Felling{chopsLeft}` on a fellable node, `Stump{goodType}`
+  decor, `GroundDrop{goodType}` on a felled trunk) — the idiomatic opt-in pattern, so nodes without them
+  hash/plan exactly as before. `harvestFromNode` (`atomic.ts`) branches on `Felling`: a chop decrements
+  `chopsLeft` and yields nothing; on 0, `fellNode` destroys the node, spawns a trunk `GroundDrop` holding
+  the whole `remaining` yield + a `Stump`, and emits a typed `resourceFelled` event. The planner
+  (`ai.ts`/`ai-targets.ts`) gains `nearestCollectablePileFor` (a felling collector prefers its own fresh
+  trunk over a distant tree) weighed against `nearestHarvestableFor`; `nearestStoreFor` excludes
+  `GroundDrop` as a sink (no deliver-back-into-the-trunk livelock); an emptied `GroundDrop` is auto-reaped
+  (`pickupFromStore`) while a designated flag persists. `lowestStockedGood` hoisted to `shared.ts` (dedup).
+- **Render:** a new `'stump'` `DrawKind` (`scene.ts` classify + goodType read; `sprites.ts`
+  `SpriteBindings.stump` reusing `resolveResourceDraw`; `sprite-pool.ts` a stump branch drawing from a
+  loaded family). App: `resolveStumpRef` / `buildStumpBinding` bind the `ls_trees_dead` "tree debris"
+  frame, loaded alongside the gathering families. Audio: `resourceFelled` treated as an `at`-carrying
+  event (director).
+- **Verification:** `npm test` (1373) + `npm run check` + `npm run build` green. New
+  `test/conflict/felling.test.ts` (chop decrement / node removal / trunk + stump spawn with exact yield /
+  event / GroundDrop reap-vs-flag-persist / planner fell-vs-collect split / end-to-end conservation). The
+  vertical-slice **golden hash + atomic trace re-pinned intentionally** (a4fa8225 → 1260b766): the
+  woodcutter now fells its 2 trees (3 chops each) → 2 stumps, routing wood through trunk piles; goods
+  conserved (10 stored + 8 felled → 18 planks, produced 18), every core invariant holds every tick. Two
+  atomic-system tests updated to the new "a harvest on a vanished node yields nothing" semantics (the old
+  "carry even if gone" quirk was dead code — nothing destroyed nodes before felling); two pipeline
+  gathering-shape assertions updated for the two new default-0 fields. `?scene=gathering` rewritten to run
+  the live fell→carry→pile-at-flag cycle (headless half asserts every tree felled / one stump each / whole
+  yield delivered / display nodes untouched); browser half + stump pixels are the human's sign-off.
+- **Deferred:** the per-good single-hit → per-unit-drop rework for stone/clay/… (Step 4, reuses this
+  drop/collect machinery + the `GroundDrop` marker); the "tree falling" transition ANIMATION and the choppy
+  pick-up/deposit animation-length fix (render polish). See docs/FIDELITY.md "Multi-hit harvest / felling"
+  + the *Instant fell* / *Felling calibration* deviations.
+
 ### Cross-cutting DX — Web Worker / time-travel inspector / content hot-reload (full trails)
 - [ ] **Run the sim in a Web Worker.** It's pure/headless/deterministic, so moving `step()` off the
       main thread keeps render at 60fps under heavy ticks. Design the Phase-2 snapshot as a plain

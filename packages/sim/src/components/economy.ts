@@ -55,6 +55,48 @@ export const Resource = defineComponent<{
 }>('Resource');
 
 /**
+ * Marks a {@link Resource} node that is **felled**, not gathered unit-by-unit — a tree the collector
+ * chops down over several swings, faithful to the original's `tree → "tree falling" → trunk` lifecycle
+ * (`landscapetypes.ini`; the good's `chopsToFell`/`yieldPerNode` gathering params). Present only on a
+ * fellable node (the sim stamps it at spawn iff the good declares `chopsToFell > 0`); a single-hit node
+ * (stone/clay, Step 4) carries no `Felling` and keeps the one-unit-per-swing behaviour. This is the
+ * **separate-component pattern** the codebase uses for opt-in behaviour ({@link Vehicle}, `Health`,
+ * `Owner`): a node without it hashes and plans exactly as before, so the goldens/scenes that place
+ * plain resources are untouched.
+ *
+ * `chopsLeft` counts the chops still needed to fell the node — each completed harvest atomic decrements
+ * it (yielding NOTHING onto the settler's back, unlike a single-hit gather), and the node falls when it
+ * reaches 0: the standing node is destroyed (so the planner never sees a depleted stump-to-be again) and
+ * its whole `Resource.remaining` yield drops at its cell as a bare {@link Stockpile} trunk pile (a
+ * {@link GroundDrop}) the collector then carries off. Determinism: a plain integer counter, mutated only
+ * by the AtomicSystem's harvest effect in the store's deterministic order.
+ */
+export const Felling = defineComponent<{ chopsLeft: number }>('Felling');
+
+/**
+ * A **stump / debris** decor entity left where a {@link Felling} node fell — the tree-debris the
+ * original leaves behind (`ls_trees_dead.bmd` "tree debris", `landscapetype` logic 1: a pure-decor
+ * landscape, non-blocking and not harvestable). It carries only a {@link Position} and this marker, so
+ * it draws (the render side keys a per-good debris frame off `goodType`) but takes part in no sim
+ * decision — the planner's resource/stockpile/building scans never see it. `goodType` records which
+ * resource it is the remains of (a chopped tree → wood), so a future per-good decor binding can pick
+ * the right debris. Inert on every golden that fells nothing (the separate-component pattern).
+ */
+export const Stump = defineComponent<{ goodType: number }>('Stump');
+
+/**
+ * Marks a bare {@link Stockpile} that is a **dropped resource pile** — the trunk a felled {@link Felling}
+ * node leaves on the ground (Step 4 reuses it for a mined good's per-unit ground drops). It rides ON TOP
+ * of the plain `Stockpile + Position` shape the existing ground-pile machinery already handles
+ * (`nearestGroundPile`, the porter drive), so pickup/delivery consume it unchanged; the marker adds two
+ * things a *designated* delivery flag (an equally-bare `Stockpile`) must NOT get: (1) it is the target a
+ * felling collector's own collect-trunk drive prefers, and (2) it is **auto-reaped when emptied** (a
+ * collected trunk vanishes, unlike a persistent flag), so a long game doesn't accrete an empty pile per
+ * felled tree. A pure marker (`goodType` for legibility/debug); its presence is what the sim keys on.
+ */
+export const GroundDrop = defineComponent<{ goodType: number }>('GroundDrop');
+
+/**
  * An in-progress production cycle on a workplace (a {@link Building} whose building type carries a
  * `recipe`). The ProductionSystem consumes the recipe's input goods from the building's own
  * {@link Stockpile} when a cycle starts, advances the integer `elapsed` tick counter, and on the

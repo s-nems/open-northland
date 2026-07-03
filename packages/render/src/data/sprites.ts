@@ -281,6 +281,10 @@ export type SpriteBindings = Readonly<{
   building: number | BuildingTypeBinding;
   resource: number | ResourceTypeBinding;
   stockpile?: number | StockpileBinding;
+  /** A felled tree's stump/debris binding — the {@link ResourceTypeBinding} twin for a `Stump` decor
+   *  entity, drawn per-good from the dead-tree/debris atlas (`ls_trees_dead`). Reuses the resource
+   *  resolver ({@link resolveResourceDraw}); absent keeps old sheets valid (stump draws the placeholder). */
+  stump?: number | ResourceTypeBinding;
 }>;
 
 /**
@@ -471,6 +475,9 @@ export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tic
     return resolveSettlerBobId(binding as number | SettlerStateBinding, item, tick);
   if (item.kind === 'building') return resolveBuildingDraw(binding as number | BuildingTypeBinding, item).bob;
   if (item.kind === 'resource') return resolveResourceDraw(binding as number | ResourceTypeBinding, item).bob;
+  // A stump reuses the per-good resource resolver — it draws its debris frame the same way a node draws
+  // its species, just from the dead-tree atlas its binding names.
+  if (item.kind === 'stump') return resolveResourceDraw(binding as number | ResourceTypeBinding, item).bob;
   return resolveStockpileDraw(binding as number | StockpileBinding, item).bob; // stockpile
 }
 

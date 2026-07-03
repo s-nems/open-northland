@@ -38,8 +38,10 @@ import {
 import {
   buildResourceBinding,
   buildStockpileBinding,
+  buildStumpBinding,
   gatheringAtlasStems,
   resolveGatheringRefs,
+  resolveStumpRef,
 } from './resource-gfx.js';
 import {
   ADULT_CHARACTER_BY_JOB,
@@ -235,11 +237,15 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   // load-then-drop-unloaded contract the building families use. The default yew node stays the
   // `kindLayers.resource` layer, so it is excluded from the loaded families.
   const gatheringRefs = resolveGatheringRefs(goods, ir);
-  const { families: gatheringFamilies, loaded: gatheringLoaded } = await loadGatheringFamilies(
-    gatheringAtlasStems(gatheringRefs),
-  );
+  // The felled-tree stump/debris draws from `ls_trees_dead` — resolve its ref and load its atlas
+  // ALONGSIDE the node/pile/flag families (same load-then-drop-unloaded contract).
+  const stumpRef = resolveStumpRef(ir);
+  const stems = gatheringAtlasStems(gatheringRefs);
+  if (stumpRef !== undefined) stems.add(stumpRef.stem);
+  const { families: gatheringFamilies, loaded: gatheringLoaded } = await loadGatheringFamilies(stems);
   const resourceBinding = buildResourceBinding(gatheringRefs, gatheringLoaded);
   const stockpileBinding = buildStockpileBinding(gatheringRefs, gatheringLoaded);
+  const stumpBinding = buildStumpBinding(stumpRef, gatheringLoaded);
   // One family map: the building families + the gathering families. Their served stems are disjoint
   // (`ls_houses_*` vs `ls_ground`/`ls_goods`/`ls_temp`/`ls_mushrooms`), so the merge never collides.
   const families = { ...buildingFamilies, ...gatheringFamilies };
@@ -252,6 +258,7 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
       constructionRefs,
       resourceBinding,
       stockpileBinding,
+      stumpBinding,
     ),
     overlays: [head],
     // The tree and the DEFAULT building each draw from their OWN atlas (distinct id spaces), so they bind

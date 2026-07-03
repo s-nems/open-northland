@@ -13,8 +13,21 @@ export function testContent(): ContentSet {
     manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
     goods: [
       { typeId: 0, id: 'none' },
-      // Wood is harvested with atomic 24 (atomicForHarvesting), the join key the planner reads.
-      { typeId: 1, id: 'wood', weight: 1, atomics: { harvest: 24 } },
+      // Wood is harvested with atomic 24 (atomicForHarvesting), the join key the planner reads. Its
+      // `gathering` carries the tree→trunk felling lifecycle: a node is FELLED over `chopsToFell` chops
+      // (yielding nothing onto the back) and drops its whole `yieldPerNode` as a ground trunk. Both are
+      // OBSERVED calibration constants (the readable `.ini` has neither — docs/FIDELITY.md); a spawn
+      // site stamps them onto a node as a `Felling` component + the node's `remaining`. `yieldPerNode`
+      // 4 keeps the golden slice's per-node wood at 4 (2 trees → 8 harvested), so goods still total 18.
+      {
+        typeId: 1,
+        id: 'wood',
+        weight: 1,
+        atomics: { harvest: 24 },
+        // Only the felling params (the sim reads these); the landscape-stage refs (harvest/pickup/store
+        // typeIds) are a render/pipeline join this synthetic fixture doesn't model, so they're omitted.
+        gathering: { bioLandscape: true, chopsToFell: 3, yieldPerNode: 4 },
+      },
       { typeId: 2, id: 'plank', weight: 1 },
       // An edible good — the eat-drive recognises it by the `food` id prefix (isFood), like the
       // original's food_simple/food_extra; a hungry settler eats it from its carry or a store.

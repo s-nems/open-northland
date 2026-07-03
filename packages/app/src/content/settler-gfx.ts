@@ -132,6 +132,7 @@ export function buildHumanBindings(
   constructionByType?: Readonly<Record<number, readonly ConstructionLayerRef[]>>,
   resourceBinding?: ResourceTypeBinding,
   stockpileBinding?: StockpileBinding,
+  stumpBinding?: ResourceTypeBinding,
 ): SpriteBindings {
   const walk = directionalAnimFromSeq(seqByName, WALK_SEQ, {}, FALLBACK_WALK);
   // Idle is the WAIT animation played as ONE direction (its length isn't a clean ×8, so it isn't a
@@ -190,6 +191,9 @@ export function buildHumanBindings(
     // Dropped ground piles draw their good's own `ls_goods` heap (growing with the pile's contents) and a
     // bare/empty pile draws the delivery flag. Omitted (no join) → a stockpile draws the placeholder heap.
     ...(stockpileBinding !== undefined ? { stockpile: stockpileBinding } : {}),
+    // A felled tree's stump draws the dead-tree/debris frame (`ls_trees_dead`). Omitted (no join) → the
+    // stump draws the placeholder. See resource-gfx.ts (resolveStumpRef).
+    ...(stumpBinding !== undefined ? { stump: stumpBinding } : {}),
   };
 }
 

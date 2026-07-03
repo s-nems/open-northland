@@ -99,6 +99,26 @@ export const GoodGathering = z.strictObject({
   store: TypeId.optional(),
   /** `isBioLandscapeFlag` — the pipeline's landscapes are living/growing (trees, herb, mushroom) vs mined (stone, ore, gold). */
   bioLandscape: z.boolean().default(false),
+  /**
+   * **OBSERVED, not extracted** — how many chop atomics fell a standing node of this good before it
+   * drops its whole yield as a ground trunk (the tree→"tree falling"→trunk lifecycle the
+   * {@link harvest}/{@link pickup} stages name). The readable `.ini` carries NO such count (no
+   * `baserepeatcounter` for the collector job — verified absent), so this is a calibration constant
+   * a scene/fixture sets and `docs/FIDELITY.md` tracks ("observed, pending calibration against the
+   * original"). `0` (the default, and what the extractor emits) means **not a felling good** — a
+   * single-hit gather (stone/clay yield one unit per swing, the node persisting), the pre-felling
+   * behaviour Step 4 reworks. `> 0` marks a fell-once-whole-yield good (wood) — the sim stamps a
+   * `Felling` component on such a node so the harvest atomic chops it down instead of yielding a unit.
+   */
+  chopsToFell: z.number().int().nonnegative().default(0),
+  /**
+   * **OBSERVED, not extracted** — the whole-node yield a felled node drops as its ground trunk (units
+   * of this good). Like {@link chopsToFell} the readable data carries no per-tree wood count, so this
+   * is a calibration constant (docs/FIDELITY.md). Only meaningful when {@link chopsToFell} `> 0` (a
+   * felling good); the sim stamps it as the node's `Resource.remaining`, released in full as the trunk
+   * pile when the node falls. `0` (the default) leaves it to the spawn site.
+   */
+  yieldPerNode: z.number().int().nonnegative().default(0),
 });
 export type GoodGathering = z.infer<typeof GoodGathering>;
 

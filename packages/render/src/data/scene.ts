@@ -43,7 +43,7 @@ const CHOP_ATOMIC_ID = 24;
 const CHOP_NUDGE_X = -24;
 
 /** Kinds of thing the scene draws, in their natural layer grouping. */
-export type DrawKind = 'tile' | 'building' | 'settler' | 'resource' | 'stockpile';
+export type DrawKind = 'tile' | 'building' | 'settler' | 'resource' | 'stockpile' | 'stump';
 
 /**
  * A sprite's coarse logical state, the join key onto a per-state animation binding (the original's
@@ -227,6 +227,10 @@ function readPosition(components: Readonly<Record<string, unknown>>): PositionVa
 function classify(components: Readonly<Record<string, unknown>>): DrawKind | null {
   if ('Building' in components) return 'building';
   if ('Resource' in components) return 'resource';
+  // A felled tree's leftover stump/debris — pure decor (a Position + Stump marker, no other drawable
+  // component), drawn by a per-good {@link import('./sprites.js').ResourceTypeBinding} like a resource
+  // node but from the dead-tree/debris atlas. Checked before Settler/Stockpile (a stump is neither).
+  if ('Stump' in components) return 'stump';
   if ('Settler' in components) return 'settler';
   // A bare Stockpile with NO Building is a loose ground pile or a delivery flag (the gathering economy's
   // dropped goods + collection points, spawned by ai-supply.ts). Checked AFTER Building so a warehouse/HQ
@@ -395,6 +399,17 @@ function readResourceGood(components: Readonly<Record<string, unknown>>): number
 }
 
 /**
+ * A stump's `Stump.goodType` — the resource it is the remains of (a chopped tree → wood), the per-good
+ * join key ({@link DrawItem.goodType}) a {@link import('./sprites.js').ResourceTypeBinding} draws its
+ * debris frame by. `undefined` for a missing/malformed component (the binding falls back to its
+ * default). Pure read of plain snapshot data — never re-enters the sim.
+ */
+function readStumpGood(components: Readonly<Record<string, unknown>>): number | undefined {
+  const s = components.Stump as { goodType?: unknown } | undefined;
+  return s !== undefined && typeof s.goodType === 'number' ? s.goodType : undefined;
+}
+
+/**
  * What a bare {@link import('@vinland/sim').Stockpile} draw item represents: the good its ground pile
  * mainly holds + how many units (its per-fill heap frame), or `{}` when it holds nothing — an empty pile
  * is a bare **delivery flag**. The snapshot clones a `Stockpile.amounts` Map to an ascending-by-goodType
@@ -554,8 +569,9 @@ function collectSprites(snapshot: WorldSnapshot, viewport?: Viewport): DrawItem[
     // a bare stockpile carries the good its pile holds most of (+ the fill amount), or nothing when it is a
     // delivery flag. Both feed the per-good {@link ResourceTypeBinding}/{@link StockpileBinding}.
     const resourceGood = kind === 'resource' ? readResourceGood(entity.components) : undefined;
+    const stumpGood = kind === 'stump' ? readStumpGood(entity.components) : undefined;
     const stockpile = kind === 'stockpile' ? readStockpile(entity.components) : undefined;
-    const goodType = kind === 'resource' ? resourceGood : stockpile?.goodType;
+    const goodType = kind === 'resource' ? resourceGood : kind === 'stump' ? stumpGood : stockpile?.goodType;
     // A chopping settler shares its tree's cell; nudge its drawn sprite left so the right-swing axe
     // lands in the trunk at the cell centre (render-only — the depth sort below still uses the true tile).
     const chopNudgeX = state === 'acting' && actingAtomic === CHOP_ATOMIC_ID ? CHOP_NUDGE_X : 0;

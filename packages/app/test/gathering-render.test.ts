@@ -4,53 +4,60 @@ import type { LandscapeGfxRow, RenderIr } from '../src/content/ir.js';
 import {
   buildResourceBinding,
   buildStockpileBinding,
+  buildStumpBinding,
   resolveGatheringRefs,
+  resolveStumpRef,
 } from '../src/content/resource-gfx.js';
 import { gatheringScene } from '../src/scenes/gathering.js';
 import { createSceneSim } from '../src/scenes/index.js';
 
 /**
  * The headless half of the `?scene=gathering` acceptance scene (the browser half is the human's pixel
- * sign-off). Two render DATA facts an agent CAN self-verify: (a) the scene's world CLASSIFIES right — a
- * resource node carries its `goodType`, a held pile is a `stockpile` with good + fill, an empty pile is a
- * bare flag; and (b) the per-good binding RESOLVES each good to its OWN node/pile, not the shared yew.
+ * sign-off). The scene now runs the FELLING CYCLE, so the render DATA an agent CAN self-verify is: after
+ * the run the world classifies as the felled outcome — the static per-good nodes are `resource`s carrying
+ * their goodType, each felled tree left a `stump` (carrying wood), and the delivered wood is a `stockpile`
+ * (the flag heap) — plus that the per-good + stump bindings RESOLVE each good/stump to its OWN object.
  */
 
 const scene = gatheringScene;
-// The scene's gatherable goodTypes (see gathering.ts) — the sim runs these, keyed under scene-local ids.
+// The scene's goodTypes (see gathering.ts) — the sim runs these, keyed under scene-local ids.
 const GOODS = { wood: 1, stone: 2, mud: 3, iron: 4, gold: 5, mushroom: 6 } as const;
+const DISPLAY_GOODS = [GOODS.stone, GOODS.mud, GOODS.iron, GOODS.gold, GOODS.mushroom];
+const TREES = 3;
+const TREE_WOOD_YIELD = 3;
 
-describe('gathering scene — render classification (classify + collectSprites)', () => {
+describe('gathering scene — render classification after the felling cycle', () => {
   const sim = createSceneSim(scene);
   sim.run(scene.runTicks);
   const draws = buildSpriteScene(sim.snapshot());
 
-  it('draws one standing resource node per gatherable good, each carrying its goodType', () => {
+  it('the static per-good display nodes each classify as a resource carrying its goodType', () => {
     const nodes = draws.filter((d) => d.kind === 'resource');
-    expect(nodes).toHaveLength(Object.keys(GOODS).length);
-    expect(new Set(nodes.map((n) => n.goodType))).toEqual(new Set(Object.values(GOODS)));
+    expect(nodes).toHaveLength(DISPLAY_GOODS.length);
+    expect(new Set(nodes.map((n) => n.goodType))).toEqual(new Set(DISPLAY_GOODS));
     // A node has no fill amount (that is a pile's, for its heap frame).
     expect(nodes.every((n) => n.fill === undefined)).toBe(true);
   });
 
-  it('draws each held ground pile as a stockpile carrying its good + fill amount', () => {
-    const held = draws.filter((d) => d.kind === 'stockpile' && d.goodType !== undefined);
-    // wood + stone piles, three fills each (see PILE_GOODS × PILE_FILLS).
-    expect(held).toHaveLength(6);
-    const woodFills = held.filter((d) => d.goodType === GOODS.wood).map((d) => d.fill);
-    expect(new Set(woodFills)).toEqual(new Set([1, 3, 5])); // the heap grows small→full
+  it('every felled tree leaves a stump draw carrying its goodType (wood)', () => {
+    const stumps = draws.filter((d) => d.kind === 'stump');
+    expect(stumps).toHaveLength(TREES);
+    expect(stumps.every((s) => s.goodType === GOODS.wood)).toBe(true);
   });
 
-  it('draws the bare delivery flag as a stockpile with NO good (and no fill)', () => {
-    const flags = draws.filter((d) => d.kind === 'stockpile' && d.goodType === undefined);
-    expect(flags).toHaveLength(1);
-    expect(flags[0]?.fill).toBeUndefined();
+  it('the delivered wood piles at the collection flag (a stockpile carrying wood + its fill)', () => {
+    // Once the trunks are collected and reaped, the only stockpile left is the flag with the whole yield.
+    const piles = draws.filter((d) => d.kind === 'stockpile');
+    expect(piles).toHaveLength(1);
+    expect(piles[0]?.goodType).toBe(GOODS.wood);
+    expect(piles[0]?.fill).toBe(TREES * TREE_WOOD_YIELD);
   });
 });
 
-describe('gathering scene — per-good binding resolution (each good draws its OWN object)', () => {
-  // A synthetic decoded IR mirroring the real join for the scene's goods (matched by id-slug). The scene
-  // typeIds (1,2) differ from these pipeline goodTypes on purpose — the render binds by slug.
+describe('gathering scene — per-good + stump binding resolution (each draws its OWN object)', () => {
+  // A synthetic decoded IR mirroring the real join for the scene's goods (matched by id-slug) + the
+  // dead-tree debris record. The scene typeIds differ from these pipeline goodTypes on purpose — the
+  // render binds by slug (nodes/piles) or by a single default (the stump).
   const B = 'data/engine2d/bin/bobs';
   const rec = (
     index: number,
@@ -83,6 +90,7 @@ describe('gathering scene — per-good binding resolution (each good draws its O
       ),
       rec(4, 17, 'goods_stone', [{ state: 1, bobIds: [15] }], 'ls_goods'),
       rec(5, 1, 'human_player01', [{ state: 1, bobIds: [76] }], 'ls_temp', 'player01 work extern 01'),
+      rec(6, 1, 'tree01', [{ state: 1, bobIds: [338] }], 'ls_trees_dead', 'tree debris medium'),
     ],
     gatheringPipeline: [
       {
@@ -109,9 +117,11 @@ describe('gathering scene — per-good binding resolution (each good draws its O
     'ls_goods.goods_wood',
     'ls_goods.goods_stone',
     'ls_temp.human_player01',
+    'ls_trees_dead.tree01',
   ]);
   const resource = buildResourceBinding(refs, loaded);
   const stockpile = buildStockpileBinding(refs, loaded);
+  const stump = buildStumpBinding(resolveStumpRef(ir), loaded);
 
   const node = (goodType: number) => ({ kind: 'resource' as const, ref: 1, x: 0, y: 0, depth: 0, goodType });
   const pile = (goodType: number, fill: number) => ({
@@ -148,5 +158,23 @@ describe('gathering scene — per-good binding resolution (each good draws its O
     // An empty pile (a flag) resolves to the ls_temp "work extern" flag, independent of any good.
     const flag = resolveStockpileDraw(stockpile, { kind: 'stockpile', ref: 1, x: 0, y: 0, depth: 0 });
     expect(flag).toEqual({ layer: 'ls_temp.human_player01', bob: 76 });
+  });
+
+  it('resolves a stump to the dead-tree debris frame (the same resolver a resource node uses)', () => {
+    expect(stump).toBeDefined();
+    // A stump reuses resolveResourceDraw; its single default draws the ls_trees_dead debris bob.
+    const drawn = resolveResourceDraw(stump as NonNullable<typeof stump>, {
+      kind: 'stump',
+      ref: 1,
+      x: 0,
+      y: 0,
+      depth: 0,
+      goodType: GOODS.wood,
+    });
+    expect(drawn).toEqual({ layer: 'ls_trees_dead.tree01', bob: 338 });
+  });
+
+  it('drops the stump binding when the debris atlas did not load (falls back to the placeholder)', () => {
+    expect(buildStumpBinding(resolveStumpRef(ir), new Set())).toBeUndefined();
   });
 });
