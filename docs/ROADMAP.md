@@ -220,13 +220,17 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
 - [x] **In-game LEFT tool panel** (GUI rework Part 4) — the original toolbar strip + tool buttons, a working
       game-speed button (cycles ×1/×2/×3/pause, drives the app tick rate), a categorised building menu (issues
       `placeBuilding`), and statistics/help windows, drawn screen-space from the extracted GUI atlas + `.fnt`
-      fonts at the OpenVikings-pinned geometry (integer `?uiscale`, default 2×). Proven by `?scene=tool-panel`
-      + pure hit-test/speed/menu unit tests (`packages/app/test/tool-panel.test.ts`); pixels human-signed
+      fonts at the OpenVikings-pinned geometry (integer `?uiscale`, default 1×). **GLOBAL** — part of the
+      standard game HUD, mounted over `?live` AND every `?scene=` via the shared `view/game-tool-panel.ts`
+      (not a per-scene opt-in). Icon buttons are colour-keyed (magenta + near-black band → transparent) so the
+      glyph sits on the strip, not an opaque dark square. Proven by `?scene=tool-panel` + pure
+      hit-test/speed/menu unit tests (`packages/app/test/tool-panel.test.ts`); pixels human-signed
       (docs/FIDELITY.md "Left tool panel"). **Open (deferred):** sprite 9-slice window chrome (v1 windows are a
-      parchment `Graphics` panel) + building-icon thumbnails + menu scrolling; wiring the panel into `?live`;
-      the not-yet-actioned tool buttons — diplomacy / population / mission / tech-tree / options windows + a
-      real HELP window (help is temporarily aliased to the statistics window in v1); the minimap region (a
-      separate task).
+      parchment `Graphics` panel) + building-icon thumbnails + menu scrolling; a **placement-preview** (footprint
+      ghost + red/green validity feedback — today an invalid placement is silently rejected); the strip-vs-glyph
+      composition may want an art pass (glyphs sit over the ornamental strip); the not-yet-actioned tool buttons —
+      diplomacy / population / mission / tech-tree / options windows + a real HELP window (help is temporarily
+      aliased to the statistics window in v1); the minimap region (a separate task).
 
 ## Phase 3 — Economy, progression & population  (substance complete; only human-gated render checks remain)
 - [x] **Goods graph** — explicit IR artifact: input side + output-side recipe join +

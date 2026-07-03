@@ -16,6 +16,7 @@ import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { fetchTerrainIr, loadRealTerrain } from '../content/terrain.js';
 import { demoGoods, loadTerrainMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
 import { cameraCenteredOnTile, cameraFor, createCameraController } from '../view/camera.js';
+import { menuEntriesFromContent, mountGameToolPanel, shiftHud } from '../view/game-tool-panel.js';
 import { enableAudioOnGesture } from '../view/overlay.js';
 import { mountPerfOverlay } from '../view/perf-overlay.js';
 import { createUnitControls } from '../view/unit-controls.js';
@@ -112,11 +113,10 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
   // `?zoom=N` magnifies + re-centres on the sprites (the same knob the shot uses) so a decoded bob is
   // big enough to inspect in the live view; absent, scale 1.
   const zoom = floatParam(params, 'zoom', 1);
-  // `?speed=` scales wall-clock fed to the fixed-timestep loop, so the sim (and the tick-driven sprite
-  // animation, which advances one frame per tick) run slower/faster than the 20Hz default — a human
-  // knob to watch a walk/chop cycle at a pace they can judge against the original. Default 0.5 (calm
-  // enough to evaluate); `?speed=1` is the full sim rate, higher values fast-forward.
-  const speed = floatParam(params, 'speed', 0.5);
+  // Playback control. The tool panel's game-speed button (mounted below) OWNS the tick rate: it pushes its
+  // default ×1 through `onSpeed` during mount — before the first frame — and cycles ×1 → ×2 → ×3 → pause on
+  // click. It supersedes the old `?speed=` seed; the panel is now the live speed control.
+  const control = { paused: false, speed: 1 };
   // The slice sim, kept live and stepped one tick per fixed interval below. When a map loaded, the sim
   // navigates that real grid (placement on its walkable cells); else the synthetic strip. The units are
   // owned by the human player so they can be selected + ordered.
@@ -150,6 +150,26 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
   // `?scene=` entry mounts. Real-GPU only: headless Chromium is software-GL, ~50× low (docs/LESSONS).
   const perf = mountPerfOverlay();
 
+  // The original LEFT tool panel — the standard game HUD, mounted here in the live sandbox exactly as it is
+  // over every scene (via the shared helper). Its game-speed button drives `control`, the building menu
+  // enqueues `placeBuilding` on a map click, and it claims its own clicks so the HUD never falls through to
+  // world picking.
+  const toolPanel = await mountGameToolPanel({
+    app,
+    canvas,
+    params,
+    camera: () => cameraCtl.camera(),
+    enqueue: (command) => sim.enqueue(command),
+    mapSize: { width: terrainGrid.width, height: terrainGrid.height },
+    buildings: menuEntriesFromContent(sim.content),
+    tribe: HUD_TRIBE,
+    owner: HUMAN_PLAYER,
+    onSpeed: (spec) => {
+      control.paused = spec.state === 'paused';
+      if (spec.state !== 'paused') control.speed = spec.tickMultiplier;
+    },
+  });
+
   // RTS unit control: left-click / drag-box to select the human's units, right-click to send them,
   // Space to open the selected-unit panel (profession change). The professions the panel offers are the
   // slice content's jobs (minus idle). Reads the camera + snapshot through closures, issues commands
@@ -163,6 +183,7 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
     professions: professionsFromContent(sim.content),
     enqueue: (command) => sim.enqueue(command),
     boundsOf: (ref) => renderer.entityBounds(ref), // pixel-accurate picking against the real sprite
+    claimPointer: (x: number, y: number) => toolPanel.claimPointer(x, y),
   });
 
   const timestep = new FixedTimestep();
@@ -175,19 +196,26 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
     // may advance several ticks between rendered frames, and each step clears the buffer — so an audio
     // trigger on an intermediate tick would otherwise be lost.
     const frameEvents: SimEvent[] = [];
-    timestep.advance(elapsed * speed, () => {
-      sim.step();
-      frameEvents.push(...sim.events.current());
-    });
+    if (!control.paused) {
+      timestep.advance(elapsed * control.speed, () => {
+        sim.step();
+        frameEvents.push(...sim.events.current());
+      });
+    }
     cameraCtl.update(elapsed);
     const snap = sim.snapshot();
+    // Build the tribe HUD read-view ONCE and share it between the always-on stocks panel and the tool
+    // panel's statistics window (so the stats window adds no second O(entities) scan).
+    const hud = layoutHud(buildHud(snap, HUD_TRIBE));
+    // Re-place the tool panel's screen-space sprites BEFORE the renderer's render, and refresh an open stats window.
+    toolPanel.controller.update(hud);
     // One retained update: reconcile the pooled sprites, draw the selection rings, refresh the pinned
-    // HUD, render once. `app.screen` is the LIVE renderer size (it tracks window resizes).
+    // HUD (shifted right to clear the left strip), render once. `app.screen` tracks window resizes.
     renderer.update(
       snap,
       cameraCtl.camera(),
       snap.tick,
-      { placement: placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', app.screen) },
+      { placement: shiftHud(placeHud(hud, 'top-left', app.screen), toolPanel.hudShift) },
       controls.selectedIds(),
     );
     controls.tick(snap); // reuse the frame's snapshot — don't rebuild a second one

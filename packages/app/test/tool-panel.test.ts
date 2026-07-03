@@ -45,7 +45,7 @@ describe('tool-panel-layout', () => {
     expect(buildToolPanelLayout(2.9).scale).toBe(2);
     expect(buildToolPanelLayout(0).scale).toBe(1);
     expect(buildToolPanelLayout(-3).scale).toBe(1);
-    expect(DEFAULT_UI_SCALE).toBe(2);
+    expect(DEFAULT_UI_SCALE).toBe(1);
   });
 
   it('hit-tests the button under a point and returns null off the buttons', () => {

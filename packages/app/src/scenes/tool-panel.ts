@@ -1,3 +1,4 @@
+import type { BuildingFootprint } from '@vinland/data';
 import type { Simulation } from '@vinland/sim';
 import { components } from '@vinland/sim';
 import {
@@ -20,7 +21,7 @@ import type { SceneDefinition } from './types.js';
  * harness cannot drive. This scene's HEADLESS half proves the one sim-observable seam — that a building
  * chosen in the menu reaches the world through `placeBuilding` — by placing, in `build`, the very buildings
  * a menu selection would (via {@link placeVikingBuilding}, "exactly what a build menu … would call"). Its
- * BROWSER half is the human's sign-off on the pixels (crisp art at 2×, palette colours, hover, Polish tabs).
+ * BROWSER half is the human's sign-off on the pixels (crisp art, palette colours, transparent icons, hover).
  *
  * Content is SYNTHETIC (catalog typeIds so the real house atlases bind, zod-validated — no copyrighted data),
  * spanning every category so all five tabs (Wszystko / Praca / Magazyn / Dom / Wojsko) have entries.
@@ -47,6 +48,28 @@ const MENU_ENTRIES: readonly MenuBuildingEntry[] = CATALOG_SET.map((b) => ({
   label: b.label,
   kind: b.kind,
 }));
+
+/**
+ * A modest square footprint stamped on every building here so `canPlaceBuilding` ENFORCES the original's
+ * free-placement collision rule in this scene — otherwise the synthetic content is footprint-less and every
+ * placement validates trivially (why placement felt unrestricted). A 3×3 `reserved` build-exclusion zone
+ * (anchor ± {@link RESERVE_RADIUS}) keeps buildings ≥1 empty tile apart and off the map edge; the body is the
+ * anchor cell and there are no `blocked` walls (nav is unaffected). The REAL game already carries per-type
+ * footprints from the extracted `[GfxHouse]` data, so `?live` enforces this without the stand-in.
+ */
+const RESERVE_RADIUS = 1;
+function squareZone(radius: number): { dx: number; dy: number }[] {
+  const cells: { dx: number; dy: number }[] = [];
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) cells.push({ dx, dy });
+  }
+  return cells;
+}
+const SPACING_FOOTPRINT: BuildingFootprint = {
+  blocked: [],
+  familyBody: [{ dx: 0, dy: 0 }],
+  reserved: squareZone(RESERVE_RADIUS),
+};
 
 /** The building the "menu" places in the headless proof — the first entry the Praca (work) tab would list. */
 const MENU_WORK_PICK = buildingsInCategory(MENU_ENTRIES, 'work')[0]?.typeId ?? 12;
@@ -79,23 +102,26 @@ export const toolPanelScene: SceneDefinition = {
   title: 'Lewy panel narzędzi: menu budowy, prędkość gry, statystyki',
   summary:
     'Oryginalny lewy pasek narzędzi zbudowany z wyekstrahowanego atlasu GUI, czcionek .fnt i geometrii ' +
-    'przypiętej do OpenVikings (skala 2×, `?uiscale=`). Przycisk PRĘDKOŚCI cyklicznie zmienia tempo gry ' +
-    '(x1 → x2 → x3 → pauza), przycisk BUDYNKI otwiera menu z kategoriami (Wszystko/Praca/Magazyn/Dom/Wojsko) ' +
-    '— klik budynku włącza tryb stawiania, klik na mapie stawia go (placeBuilding). STATYSTYKI/POMOC otwierają ' +
-    'okno z danymi HUD w oryginalnej czcionce. Panel przejmuje kliknięcia nad sobą (nie trafiają w świat).',
+    'przypiętej do OpenVikings (skala 1×, `?uiscale=2|3` powiększa). Przycisk PRĘDKOŚCI cyklicznie zmienia ' +
+    'tempo gry (x1 → x2 → x3 → pauza), przycisk BUDYNKI otwiera menu z kategoriami ' +
+    '(Wszystko/Praca/Magazyn/Dom/Wojsko) — klik budynku włącza tryb stawiania, klik na mapie stawia go ' +
+    '(placeBuilding, z regułą odstępu: budynku nie postawisz zbyt blisko innego ani przy krawędzi mapy). ' +
+    'STATYSTYKI/POMOC otwierają okno z danymi HUD w oryginalnej czcionce. Panel przejmuje kliknięcia nad ' +
+    'sobą (nie trafiają w świat). Ten sam panel jest GLOBALNY — pokazuje się też w `?live` i innych scenach.',
   seed: 11,
-  content: vikingBuildingContent(CATALOG_SET),
+  content: vikingBuildingContent(CATALOG_SET, () => SPACING_FOOTPRINT),
   terrain: grassTerrain(GRID, GRID),
   build,
   runTicks: 300,
   initialZoom: 1,
-  toolPanel: true,
   checklist: [
-    'Pasek narzędzi po LEWEJ rysuje się oryginalną grafiką, ostro w skali 2× (nie rozmyty, poprawne kolory palety)',
+    'Pasek narzędzi po LEWEJ rysuje się oryginalną grafiką, ostro (poprawne kolory palety); nie zajmuje całej wysokości',
+    'Ikony przycisków mają PRZEZROCZYSTE tło — widać pasek pod spodem, nie ciemne kwadraty zakrywające go',
     'Najechanie na przycisk podświetla go (stan hover)',
     'Przycisk PRĘDKOŚCI zmienia grafikę i tempo: x1 → x2 → x3 → pauza (osadnicy przyspieszają / zatrzymują się)',
     'Przycisk BUDYNKI otwiera okno menu; zakładki po polsku: Wszystko / Praca / Magazyn / Dom / Wojsko',
     'Klik budynku w menu → baner „stawiania"; klik na mapie stawia budynek (pojawia się nowa bryła)',
+    'Reguła odstępu działa: tuż obok istniejącego budynku (lub przy krawędzi mapy) klik NIE stawia budynku',
     'STATYSTYKI (lub POMOC) otwiera okno z danymi HUD w oryginalnej czcionce',
     'Kliknięcie NAD panelem/oknem nie zaznacza jednostek ani nie wydaje rozkazu w świecie',
   ],

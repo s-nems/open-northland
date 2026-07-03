@@ -95,8 +95,12 @@ export interface ToolPanelLayout {
   readonly height: number;
 }
 
-/** The default integer UI scale (the original art is ~half our canvas density; 2× reads crisply). */
-export const DEFAULT_UI_SCALE = 2;
+/**
+ * The default integer UI scale. The pinned strip is 433 design px tall (nearly the original's whole
+ * 480-line screen); at 1× that already fills roughly half a modern window, and 2× overflowed it — so 1×
+ * is the readable default and `?uiscale=2|3` magnifies for a large display.
+ */
+export const DEFAULT_UI_SCALE = 1;
 
 function scaleRect(r: DesignRect, s: number): PlacedRect {
   return { x: r.x * s, y: r.y * s, w: r.w * s, h: r.h * s };

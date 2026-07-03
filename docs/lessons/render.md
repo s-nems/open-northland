@@ -98,3 +98,13 @@ extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
   non-empty glyph reading the font colour-LUT row, laid out top-anchored by `pen += advance` (the original
   `CFont` model) — empty glyphs advance but draw nothing. Call the panel's `update()` BEFORE the
   renderer's `update()` (which ends in `app.render()`), or the sprites render one frame stale. (app/render)
+- GUI **icon transparency is a palette colour-key, not a bob mask.** The in-game GUI palettes reserve
+  index 0 (magenta `255,0,255`) + a near-black band (top ~8 entries, max channel ≲ 24/255) as each element's
+  transparent background — but a bob's transparency is skip-runs only; its WRITTEN pixels (including that
+  background) are opaque (confirmed vs the OpenVikings `PrintPackedLine_8Bit`/`_DoubleByte` oracle — no
+  colour key in the blitter). So an icon button drawn straight carries an opaque dark square that covers the
+  strip. The fix is a shader colour-key: `PalettedSprite.colorKey` (opt-in per sprite, default off so world
+  characters are untouched) discards the magenta + near-black LUT colours. Verify the threshold against a
+  real frame first (dump each index's LUT luminance) — the glyph ramp must sit clear above the near-black
+  cutoff, or the key eats the icon. Enable it on the buttons, NOT the strip (the strip's dark field IS the
+  panel). (render/app)
