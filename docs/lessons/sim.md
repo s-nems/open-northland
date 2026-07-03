@@ -467,3 +467,11 @@ extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
   skips `GroundDrop`); the same marker scopes its auto-reap-when-emptied (a collected trunk vanishes, a
   designated flag — a marker-less bare `Stockpile` — persists). When adding an entity kind that is both
   gathered-from and delivered-to, decide the source/sink role explicitly, don't let one bare shape be both. (sim)
+- [9ae3294] Two systems that both write a unit's `MoveGoal` fight each other unless the yielding one
+  clears movement ONLY on the transition. `combatSystem` runs AFTER `aiSystem` in `SYSTEM_ORDER`, so
+  when the flee drive yields to a collapsing need it can't hand off this tick — it sets up next tick's
+  AI. If it cleared the flee `MoveGoal` every tick it saw the collapse, it would ALSO cancel the eat/
+  sleep `MoveGoal` the AI freshly set (indistinguishable — both are just a `MoveGoal`), and the unit
+  oscillates forever, never reaching food. The fix: shed the drive's marker + route only while the
+  marker is still present (the one transition tick); once yielded (no marker) leave the other system's
+  goal untouched. General rule for any "soft override that hands control back". (sim)
