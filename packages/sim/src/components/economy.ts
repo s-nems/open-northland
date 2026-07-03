@@ -58,11 +58,12 @@ export const Resource = defineComponent<{
  * Marks a {@link Resource} node that is **felled**, not gathered unit-by-unit — a tree the collector
  * chops down over several swings, faithful to the original's `tree → "tree falling" → trunk` lifecycle
  * (`landscapetypes.ini`; the good's `chopsToFell`/`yieldPerNode` gathering params). Present only on a
- * fellable node (the sim stamps it at spawn iff the good declares `chopsToFell > 0`); a single-hit node
- * (stone/clay, Step 4) carries no `Felling` and keeps the one-unit-per-swing behaviour. This is the
- * **separate-component pattern** the codebase uses for opt-in behaviour ({@link Vehicle}, `Health`,
- * `Owner`): a node without it hashes and plans exactly as before, so the goldens/scenes that place
- * plain resources are untouched.
+ * fellable node: today the **placement code** (scenes / vertical-slice / tests) stamps it from the good's
+ * `gathering.chopsToFell` (there is no resource-spawn *system* yet — the content→`Felling` gate lands
+ * when the map/resource spawn path does); a single-hit node (stone/clay, Step 4) is placed without a
+ * `Felling` and keeps the one-unit-per-swing behaviour. This is the **separate-component pattern** the
+ * codebase uses for opt-in behaviour ({@link Vehicle}, `Health`, `Owner`): a node without it hashes and
+ * plans exactly as before, so the goldens/scenes that place plain resources are untouched.
  *
  * `chopsLeft` counts the chops still needed to fell the node — each completed harvest atomic decrements
  * it (yielding NOTHING onto the settler's back, unlike a single-hit gather), and the node falls when it
