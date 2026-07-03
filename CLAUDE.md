@@ -52,6 +52,13 @@ edit SOURCES.md first, then reconcile the others if you touch licensing wording.
    whether it is *faithful*** — a different axis no test covers (OpenVikings' sim is a stub, so
    mechanics have no automatic oracle). Log any conscious divergence in `docs/FIDELITY.md`; never
    bake it in silently.
+7. **RTS scale is a budget: per-tick sim cost scales with active *work*, never entities²; per-frame
+   render cost scales with the *screen*, never the map.** The target is huge maps, thousands of
+   units, 8 players, and lockstep multiplayer later — a full-world scan inside a per-entity loop, or
+   per-frame Pixi object churn, is a regression even with green tests (the two recurring LLM
+   anti-patterns). Doctrine + landed levers: `packages/sim/CLAUDE.md` "Scaling to thousands" and
+   `packages/render/CLAUDE.md`. Profile sim vs render before optimizing either; perf fixes must
+   stay deterministic (elide only provably-null work — the pick winner never changes).
 
 ## Commands
 
@@ -63,6 +70,7 @@ npm test -- scenario   # run one file/suite by name substring (fast inner loop)
 npm run test:watch     # vitest watch mode
 npm run check          # biome lint + format check (CI runs this)
 npm run check:fix      # biome autofix + format
+npm run scan:structure # structural-health survey: oversized files, flat dirs, doc budgets
 npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content
 npm run dev            # vite app
 ```
@@ -78,6 +86,9 @@ fails the build if a nondeterministic global leaks into `sim` — the determinis
 - **Commits: Conventional Commits, imperative, capitalized, no AI attribution.** No scope here
   (this is not a `~/Projects/yonder` repo). E.g. `feat: Add fixed-point pathfinding grid`.
 - Keep new code in the style of the file around it.
+- **No silent hacks.** A workaround, `TODO`, or deliberately-skipped case must name where it is
+  tracked (a `docs/ROADMAP.md` item, a `docs/TECH-DEBT.md` entry, or a `docs/FIDELITY.md` deviation)
+  in the same commit — an untracked hack is a bug with a delay, not a shortcut.
 
 ## How to verify your work (the self-validation loop)
 

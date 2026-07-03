@@ -32,13 +32,18 @@ highest-leverage item yourself).
 Look across several lenses and **generate multiple candidate improvements before choosing**. Use
 `Explore`/`general-purpose` subagents to fan out for breadth when it helps (keep your own context lean
 — ask them for findings, not file dumps).
-- **Structure scan (run this first — it must yield a candidate).** Measure the three structural-health
-  axes and name the current worst offender on each. The metric is the *trigger to look*; your judgment
-  is the verdict. The **ratchet**: an offender that *grew* since the last reflection (`git diff --stat`
-  vs. the last reflection SHA) is the prime suspect — structure must not be allowed to drift worse.
-  - **Oversized files** — `find packages -name '*.ts' -not -path '*/node_modules/*' -not -name '*.test.ts' | xargs wc -l | sort -rn | head`. A source past **~300 lines** is a split *candidate* — confirm it genuinely does multiple jobs before splitting (today: `systems/ai.ts`, `data/src/schema.ts`).
-  - **Flat folders** — a `src/` dir with **≥6 source files and no subfolders**, or one whose files obviously cluster, wants grouping (e.g. `render/src/` → `scene`/`gpu`/`loaders`; `sim/src/` root → `engine`/`util`/`domain`). Keep the determinism-critical `sim` layout legible; folder moves are import-path-only and golden-proven.
-  - **Doc bloat** — `wc -l docs/*.md`. Any **executor-read** doc over budget (~300 lines: `ROADMAP.md`, the always-on `CLAUDE.md`s) is a target; sweep completed roadmap items to `docs/ROADMAP-ARCHIVE.md` (reflection-only — the executor never reads it) so the live target dominates.
+- **Structure scan (run this first — it must yield a candidate).** Run `npm run scan:structure` — it
+  measures the three structural-health axes (oversized sources / flat folders / doc budgets) against
+  their ~300-line budgets. The metric is the *trigger to look*; your judgment is the verdict. The
+  **ratchet**: an offender that *grew* since the last reflection (`git diff --stat` vs. the last
+  reflection SHA) is the prime suspect — structure must not be allowed to drift worse.
+  - **Oversized files** — a flagged source is a split *candidate*; confirm it genuinely does multiple
+    jobs before splitting.
+  - **Flat folders** — a flagged dir (or one whose files obviously cluster) wants grouping. Keep the
+    determinism-critical `sim` layout legible; folder moves are import-path-only and golden-proven.
+  - **Doc bloat** — a flagged **executor-read** doc drowns the live signal: sweep completed roadmap
+    items to `docs/ROADMAP-ARCHIVE.md` (reflection-only — the executor never reads it); curate the
+    `docs/lessons/` area files (promote/prune) rather than letting them grow.
 - **History & churn** — `git log --oneline -n 30` (add `--stat`). What's been built since the last
   reflection? Where is churn concentrated? A file/system that keeps getting patched is a rework
   candidate. Read `docs/TECH-DEBT.md`: trigger-gated entries whose trigger has now fired, and the last
@@ -48,6 +53,13 @@ Look across several lenses and **generate multiple candidate improvements before
   really an integration test, a system file accreting unrelated helpers (e.g. `systems/ai.ts`).
 - **Architecture** — is the current shape still serving the road ahead? Any decision visibly
   straining? Anything you keep coding *around* instead of fixing?
+- **Performance ratchet (golden rule 7 — this is an RTS headed for lockstep multiplayer).** Did a
+  recent slice add a full-world scan inside a per-entity loop (sim) or per-frame object churn /
+  map-scaled work (render)? Grep the churn hotspots for the anti-patterns named in
+  `packages/sim/CLAUDE.md` "Scaling to thousands" / `packages/render/CLAUDE.md`. If a sim system
+  looks suspect, *measure* (per-system timers over `dist/` in a throwaway script — never
+  `performance.now` in `src`) rather than guessing; a confirmed regression is a prime candidate,
+  and the fix must stay golden-proven (elide only provably-null work).
 - **Docs drift & cadence** — do `ARCHITECTURE.md` / `ECS.md` / `DATA-FORMAT.md` / `TESTING.md` still
   match the code (a recent slice may have added a component/system/invariant the docs never caught)?
   Classify every doc by read-cadence — *always-on* (`CLAUDE.md` golden rules) stays lean; *on-demand*
@@ -120,18 +132,21 @@ honest as mechanics land or get calibrated, and surface any mechanic running on 
 approximation (that, not a failing test, is how fidelity drift shows up).
 
 ## 6. First commit
-- Append a one-line **Reflection log** entry to `docs/TECH-DEBT.md` (date, what you improved,
-  proposals added/closed) — this is also the git-native anchor the next `/iterate` reads to judge
-  when the last reflection was.
+- Append a **Reflection log** entry to `docs/TECH-DEBT.md` — **at most ~5 lines**: date, what you
+  improved, the one before→after metric, proposals added/closed, and the next roadmap step. The
+  blow-by-blow lives in the commit message, not the log (past entries ran 20+ lines and bloated the
+  doc). This entry is also the git-native anchor the next `/iterate` reads to judge when the last
+  reflection was.
 - Commit per project convention — **Conventional Commits, imperative, capitalized, no scope, no AI
   attribution** — using the honest type for the work: `refactor:` / `docs:` / `test:` / `chore:`.
   Stage only this pass's files (the change + `docs/TECH-DEBT.md`).
 
 ## 7. Review, address, second commit, done
 - Review the **commit's** diff (`git diff HEAD~1..HEAD`) with `/code-review high`.
-- **Mandatory** for any `sim` refactor: spawn a focused review subagent (Agent tool) with a
-  *determinism/purity-of-`sim`* lens — a refactor that quietly breaks determinism is the exact
-  failure mode this guards. For wider changes add a *correctness/edge-cases* lens too.
+- **Mandatory** for any `sim` refactor: spawn the **`determinism-reviewer`** agent
+  (`.claude/agents/`) — a refactor that quietly breaks determinism is the exact failure mode this
+  guards. If the pass touched a per-tick system or per-frame render path, add **`perf-reviewer`**.
+  For wider changes add a *correctness/edge-cases* lens too.
 - Triage with your own judgment — fix what's real and in-scope; for anything you skip, record a
   one-line reason. Re-run `npm test` / `npm run check` if you changed code. If a re-run goes red and
   you can't fix it, **revert the review fixes** (keep the green first commit) and report — never leave

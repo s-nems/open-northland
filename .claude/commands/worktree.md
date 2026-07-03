@@ -33,8 +33,9 @@ Two hard gates in this flow:
     `ln -s ../vinland/content content` (run from the worktree root). **Exception:** if the task
     changes the asset pipeline's *output*, do not symlink — run `npm run pipeline` into the
     worktree's own `content/` instead, so the primary checkout's content is never clobbered.
-  - `.claude/` — copy `settings.local.json` and `commands/` from the primary checkout
-    (`~/Projects/vikings/vinland/.claude/`) so permissions and project commands work here.
+  - `.claude/settings.local.json` — copy it from the primary checkout
+    (`~/Projects/vikings/vinland/.claude/`) so local permissions apply here. The shared tooling
+    (`commands/`, `agents/`, `workflows/`, `settings.json`) is tracked and arrives with the checkout.
 
 ## 2. Do the work
 
@@ -68,9 +69,11 @@ Follow the `/iterate` §3 gates (`.claude/commands/iterate.md` — copied into t
 ## 5. Review
 
 - Spawn parallel review subagents (Agent tool) over the branch diff vs main
-  (`git diff main...HEAD`). **Mandatory** lens if the change touches `sim` determinism/purity,
-  fixed-point math, or content schemas: *determinism/purity of `sim`*. For larger changes add
-  *correctness/edge-cases* and *simplicity/reuse*. A trivial data/test tweak needs none.
+  (`git diff main...HEAD`), using the named lenses in `.claude/agents/`: **`determinism-reviewer`
+  mandatory** if the change touches `sim` determinism/purity, fixed-point math, or content schemas;
+  **`perf-reviewer` mandatory** for a per-tick system or per-frame render path;
+  **`fidelity-reviewer`** for mechanic/data work. For larger changes add *correctness/edge-cases*
+  and *simplicity/reuse*. A trivial data/test tweak needs none.
 - Triage findings with your own judgment — fix what is real and in-scope, record a one-line reason
   for anything deliberately skipped. Re-run `npm test` / `npm run check` after fixes; commit them.
 
