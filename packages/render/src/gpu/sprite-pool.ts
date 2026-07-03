@@ -232,13 +232,18 @@ export class SpritePool {
     resH: number,
   ): void {
     pe.container.position.set(item.x, item.y);
-    // Sticky facing: a re-pathing settler drops its PathFollow for a tick (no heading to read), so `facing`
-    // is momentarily absent — reuse its last real heading so the walk doesn't flip to DEFAULT_FACING for a
-    // frame each tile (the pool half of the repath gap `readSpriteState` smooths). The spread only allocates
-    // on the rare gap frame; the steady following state has a facing and passes `item` through untouched.
+    // Sticky facing: a MOVING settler that dropped its PathFollow for a tick (the repath gap — state stays
+    // `moving` via MoveGoal/PathRequest but there is no heading to read) reuses its last real heading so the
+    // walk doesn't flip to DEFAULT_FACING for a frame each tile (the pool half of what `readSpriteState`
+    // smooths). Gating on `state === 'moving'` is what keeps the spread to that RARE gap frame: an IDLE
+    // settler ALSO has no facing but must not allocate a copy every frame — it just draws the default idle
+    // facing, as before. A settler with a live heading has `facing` set and passes `item` through untouched.
     if (item.facing !== undefined) pe.lastFacing = item.facing;
     const drawItem =
-      pe.kind === 'settler' && item.facing === undefined && pe.lastFacing !== undefined
+      pe.kind === 'settler' &&
+      item.state === 'moving' &&
+      item.facing === undefined &&
+      pe.lastFacing !== undefined
         ? { ...item, facing: pe.lastFacing }
         : item;
     const layers = this.resolveLayers(drawItem, tick);

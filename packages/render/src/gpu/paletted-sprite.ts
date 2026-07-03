@@ -87,6 +87,12 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
   private readonly texUvs = new Float32Array(8);
   private readonly paletteShader: Shader;
   private readonly vars: PalettedUniforms;
+  /** The (source, frame, atlas size) the quad buffers were last built for — {@link setFrame} skips the
+   *  rebuild + GPU re-upload when they are unchanged (an idle settler / a held animation bob). */
+  private lastSource?: TextureSource;
+  private lastFrame?: AtlasFrame;
+  private lastAtlasW = -1;
+  private lastAtlasH = -1;
 
   /**
    * @param lut the `256 × colours` palette LUT {@link TextureSource} (nearest-sampled). Shared across every
@@ -118,9 +124,12 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
     this.vars = shader.resources.vars as PalettedUniforms;
   }
 
-  /** The player-colour row (0-based) this sprite reads from the LUT. */
+  /** The player-colour row (0-based) this sprite reads from the LUT. Clamped to the LUT's row count so an
+   *  out-of-range player id (more players than the LUT ships colours for) reads the last real colour rather
+   *  than sampling past the texture into garbage — the shader has no bounds check of its own. */
   set player(row: number) {
-    this.vars.uniforms.uPlacement[3] = row;
+    const rows = this.vars.uniforms.uLutSize[1] ?? 1;
+    this.vars.uniforms.uPlacement[3] = row < 0 ? 0 : row > rows - 1 ? rows - 1 : row;
     this.vars.update();
   }
   get player(): number {
@@ -134,18 +143,44 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
    */
   setFrame(source: TextureSource, frame: AtlasFrame, atlasWidth: number, atlasHeight: number): void {
     this.paletteShader.resources.uTexture = source;
+    // Skip rebuilding + re-uploading the quad when the SAME frame is set again (an idle settler / a held
+    // animation bob): the native-pixel geometry + UVs are unchanged — camera zoom is applied in-shader via
+    // uPlacement, not baked here — so the buffers already hold the right values. Only an animation-frame
+    // change or a new atlas rebuilds, so an unchanging crowd uploads nothing. `frame` is the atlas's stable
+    // per-bob object (a Map value), so a reference check is exact.
+    if (
+      source === this.lastSource &&
+      frame === this.lastFrame &&
+      atlasWidth === this.lastAtlasW &&
+      atlasHeight === this.lastAtlasH
+    ) {
+      return;
+    }
+    this.lastSource = source;
+    this.lastFrame = frame;
+    this.lastAtlasW = atlasWidth;
+    this.lastAtlasH = atlasHeight;
     const { x, y, width, height, offsetX, offsetY } = frame;
-    // Local-space quad in native bob pixels, pre-offset by the frame's draw origin (like a Sprite's position).
-    const x0 = offsetX;
-    const y0 = offsetY;
-    const x1 = offsetX + width;
-    const y1 = offsetY + height;
-    this.positions.set([x0, y0, x1, y0, x1, y1, x0, y1]);
-    const u0 = x / atlasWidth;
-    const v0 = y / atlasHeight;
-    const u1 = (x + width) / atlasWidth;
-    const v1 = (y + height) / atlasHeight;
-    this.texUvs.set([u0, v0, u1, v0, u1, v1, u0, v1]);
+    // Local-space quad in native bob pixels, pre-offset by the frame's draw origin (like a Sprite's
+    // position). Write the eight floats STRAIGHT into the typed array — no throwaway literal `[...]` per call.
+    const p = this.positions;
+    p[0] = offsetX;
+    p[1] = offsetY;
+    p[2] = offsetX + width;
+    p[3] = offsetY;
+    p[4] = offsetX + width;
+    p[5] = offsetY + height;
+    p[6] = offsetX;
+    p[7] = offsetY + height;
+    const t = this.texUvs;
+    t[0] = x / atlasWidth;
+    t[1] = y / atlasHeight;
+    t[2] = (x + width) / atlasWidth;
+    t[3] = y / atlasHeight;
+    t[4] = (x + width) / atlasWidth;
+    t[5] = (y + height) / atlasHeight;
+    t[6] = x / atlasWidth;
+    t[7] = (y + height) / atlasHeight;
     const geo = this.geometry;
     geo.positions.set(this.positions);
     geo.uvs.set(this.texUvs);
