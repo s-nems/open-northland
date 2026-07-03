@@ -44,6 +44,10 @@ maps the rest.
   files under [lessons/](lessons/) so an iteration reads only the area it touches.
 - [plans/original-ui.md](plans/original-ui.md) — user-driven `/worktree` plan: step-by-step agent
   prompts to extract and rebuild the original in-game HUD. Consumed in order; deleted when done.
+- [plans/gathering-economy.md](plans/gathering-economy.md) — user-driven `/worktree` plan:
+  step-by-step agent prompts for the faithful gathering economy (per-good node graphics, visible
+  piles/flags, multi-chop tree felling, shrinking mineral deposits, data-driven resource
+  collision, chop cadence). Consumed in order; deleted when done.
 - [TECH-DEBT.md](TECH-DEBT.md) — trigger-gated / speculative reworks deliberately parked (not a
   structural-health queue — `/reflect` owns and *executes* structure), plus the reflection log.
 
