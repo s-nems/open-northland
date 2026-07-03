@@ -25,7 +25,18 @@ export {
   tribeStocks,
 } from './hud.js';
 
-export { type CombatDamageRow, type CombatProfile, combatDamage, weaponKey } from './combat.js';
+export {
+  ARMOR_MATERIAL,
+  WEAPON_MAIN_TYPE,
+  type CombatDamageRow,
+  type CombatProfile,
+  armorMaterialForClass,
+  combatDamage,
+  damageVsBuilding,
+  damageVsWood,
+  weaponDamageVsMaterial,
+  weaponKey,
+} from './combat.js';
 
 export {
   armorByClass,
@@ -91,8 +102,10 @@ export {
 
 export {
   ATOMIC_EVENT_CHANNEL,
+  ATOMIC_EVENT_TYPE_ATTACK,
   atomicAnimationByName,
   atomicEventChannelDelta,
+  atomicEventFrame,
   atomicHasExtendedEvents,
   atomicStartDirection,
   isInterruptibleAtomic,

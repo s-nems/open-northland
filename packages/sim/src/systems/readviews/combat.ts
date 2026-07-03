@@ -1,39 +1,132 @@
 import type { ContentSet, WeaponType } from '@vinland/data';
+import { armorMaterialOf } from './classes.js';
 
 // Pure, terminal **read views** for combat — the static weapon-vs-armor damage *lookup* table the
-// CombatSystem reads. No mechanic is added here (nothing is hit, no hitpoints change); see ./index.ts
+// CombatSystem reads, plus the shared damage-column resolution both it and the per-hit CombatSystem
+// join through. No mechanic is added here (nothing is hit, no hitpoints change); see ./index.ts
 // for why read views are grouped out of systems/shared.ts.
 
 /**
- * One row of the {@link combatDamage} view — a single weapon resolved against **one** armor class:
- * how much damage it lands on a target wearing that armor.
+ * The **armor material tier** a weapon's `damagevalue <material> <value>` table is indexed by — the
+ * VICTIM's armor `materialType` (`logicdefines.inc` `ARMOR_MATERIAL_TYPE_*`, l.951). The per-material
+ * value in the weapon's table **is** the resolved damage: armor works by **column selection**, not by
+ * subtracting a mitigation. `NONE` (0) is a bare target (a weapon's `damage["0"]`). `WOOD` (6) and
+ * `HOUSE` (7) are NOT worn armor — they are the damage a weapon does to **trees/walls** and to
+ * **buildings**, surfaced by {@link damageVsWood}/{@link damageVsBuilding} rather than treated as a
+ * living target's armor tier. For the four base armor records `materialType == typeId`
+ * (woolen 1 / leather 2 / chain 3 / plate 4), so the column and the armor class coincide there; the
+ * material is the faithful index for the higher structure columns and for legibility.
+ *
+ * FIDELITY: pinned to `logicdefines.inc` `ARMOR_MATERIAL_TYPE_*` (golden rule #4) — the original's own
+ * material ids, not invented.
+ */
+export const ARMOR_MATERIAL = {
+  /** No armor — a bare target (`damage["0"]`). */
+  NONE: 0,
+  /** Woolen. */
+  WOOL: 1,
+  /** Leather. */
+  LEATHER: 2,
+  /** Chain mail. */
+  CHAIN: 3,
+  /** Plate. */
+  PLATE: 4,
+  /** Stone (unused by the base armor records). */
+  STONE: 5,
+  /** A tree/wall target — the weapon's damage-vs-wood column (see {@link damageVsWood}). */
+  WOOD: 6,
+  /** A building target — the weapon's damage-vs-building column (see {@link damageVsBuilding}). */
+  HOUSE: 7,
+} as const;
+
+/**
+ * The coarse **weapon class** a `WeaponType.mainType` carries (`logicdefines.inc` `WEAPON_MAIN_TYPE_*`,
+ * l.892). Distinct from {@link ARMOR_MATERIAL} — this is the ATTACKER's weapon family, the axis the
+ * fight-experience buckets key on (`progression.ts` maps it to the `JOB_EXPERIENCE_TYPE_FIGHT_*` id).
+ *
+ * FIDELITY: pinned to `logicdefines.inc` `WEAPON_MAIN_TYPE_*` — the original's own class ids.
+ */
+export const WEAPON_MAIN_TYPE = {
+  /** No weapon. */
+  NONE: 0,
+  /** Fist / natural weapon (the `WEAPON_MAIN_TYPE_UNARMED` slot). */
+  UNARMED: 1,
+  /** Spear. */
+  SPEAR: 2,
+  /** Sword. */
+  SWORD: 3,
+  /** Saber. */
+  SABER: 4,
+  /** Axe. */
+  AXE: 5,
+  /** Bow. */
+  BOW: 6,
+  /** Catapult (siege). */
+  CATAPULT: 7,
+} as const;
+
+/**
+ * The damage a weapon lands on a target of armor `material` — the raw `weapon.damage[material]` value,
+ * `0` when the weapon lists none for that material. This **is** the resolved damage: the original's
+ * `damagevalue` table pre-tabulates the per-material outcome, so armor selects the column and nothing
+ * is subtracted (the `blockingValue 5` uniform on every base armor record has an UNKNOWN engine role —
+ * see docs/FIDELITY.md — and is deliberately NOT applied). Shared by {@link combatDamage} (the whole
+ * table) and the CombatSystem's per-hit resolution (one column), so the two can't drift.
+ */
+export function weaponDamageVsMaterial(weapon: Pick<WeaponType, 'damage'>, material: number): number {
+  return weapon.damage[String(material)] ?? 0;
+}
+
+/**
+ * The damage a weapon does to a **tree/wall** target — its {@link ARMOR_MATERIAL.WOOD} column. A read
+ * view (not an armor tier): the gathering/siege drives that chop trees or breach palisades read this,
+ * separate from the living-target rows {@link combatDamage} tabulates.
+ */
+export function damageVsWood(weapon: Pick<WeaponType, 'damage'>): number {
+  return weaponDamageVsMaterial(weapon, ARMOR_MATERIAL.WOOD);
+}
+
+/**
+ * The damage a weapon does to a **building** target — its {@link ARMOR_MATERIAL.HOUSE} column. A read
+ * view (not an armor tier): the deferred tower/siege step that lets a weapon damage a structure reads
+ * this, separate from the living-target rows {@link combatDamage} tabulates.
+ */
+export function damageVsBuilding(weapon: Pick<WeaponType, 'damage'>): number {
+  return weaponDamageVsMaterial(weapon, ARMOR_MATERIAL.HOUSE);
+}
+
+/**
+ * The armor **material tier** a worn `armorClass` (an {@link import('@vinland/data').ArmorType} `typeId`)
+ * resolves to — the column {@link weaponDamageVsMaterial} indexes. Resolves the class's `[armortype]`
+ * record and reads its `materialType` (== `typeId` for the four base armors). A class with **no record**
+ * (a bare 0, an out-of-table 6/7 stamped directly on a structure target, or a bad id) returns the
+ * class value itself as its own material column, so an undefined tier resolves to *some* column rather
+ * than crashing — the "armor the data doesn't define selects its own column" stance.
+ */
+export function armorMaterialForClass(content: ContentSet, armorClass: number): number {
+  const armor = content.armor.find((a) => a.typeId === armorClass);
+  if (armor === undefined) return armorClass; // no record — the class value is its own column
+  return armorMaterialOf(armor) ?? armor.typeId; // materialType (== typeId for the 4 base armors)
+}
+
+/**
+ * One row of the {@link combatDamage} view — a single weapon resolved against **one** armor material:
+ * how much damage it lands on a target of that material.
  */
 export interface CombatDamageRow {
-  /** The target's armor class — the key the original's `damagevalue <armorClass> <value>` uses.
-   *  Class `0` = **unarmored** (a bare target, no `[armortype]` record). */
-  armorClass: number;
-  /** The weapon's listed damage against this armor class (`WeaponType.damage["<armorClass>"]`), i.e.
-   *  the raw per-class value the original `weapontypes` table pre-tabulates. `0` if the weapon lists
-   *  no value for this class (it does the target no harm). */
-  rawDamage: number;
-  /** The mitigation the target's armor subtracts (`ArmorType.blockingValue` for `armorClass`). `0`
-   *  for an unarmored class (`0`) and for a class with **no `[armortype]` record** (the higher tiers
-   *  `6`/`7` the real `weapontypes` references but `armortypes.ini` doesn't define) — those are treated
-   *  as unarmored rather than crashing, the KNOWN GAP the roadmap names. */
-  blockingValue: number;
-  /** The **net** damage actually dealt: `max(0, rawDamage - blockingValue)`. Clamped at `0` so a
-   *  target's armor can fully absorb a weak hit but never *heals* the target (no negative damage). */
-  netDamage: number;
-  /** Whether `armorClass` has a real `[armortype]` record (`1..4` in the base data). `false` for the
-   *  unarmored class `0` and for an out-of-table class (`6`/`7`) — both resolve as unarmored
-   *  (`blockingValue 0`); the flag lets a consumer tell "bare target" from "undefined armor tier". */
-  hasArmorRecord: boolean;
+  /** The target's armor **material tier** — the column the weapon's `damagevalue <material> <value>`
+   *  table is indexed by ({@link ARMOR_MATERIAL}: 0 unarmored, 1 wool, 2 leather, 3 chain, 4 plate). */
+  material: number;
+  /** The weapon's damage against this material (`weapon.damage[material]`) — the value the original
+   *  PRE-RESOLVES per material (armor selects the column; nothing is subtracted). `0` if the weapon
+   *  lists no value for this material (it does that target no harm). */
+  damage: number;
 }
 
 /**
  * One weapon's combat profile in the {@link combatDamage} view — its identity (the composite
  * `(tribeType, typeId)`, exactly as the cross-ref system keys `weapontypes`, plus the `id` slug for
- * display) and its resolved {@link CombatDamageRow}s, one per armor class it can target.
+ * display) and its resolved {@link CombatDamageRow}s, one per armor material a living target can wear.
  */
 export interface CombatProfile {
   /** Owning tribe (`WeaponType.tribeType`) — part of the canonical `(tribeType, typeId)` identity. */
@@ -46,25 +139,26 @@ export interface CombatProfile {
   /** The composite key `"<tribeType>:<typeId>"` ({@link weaponKey}) — the cross-ref identity, surfaced
    *  so a consumer can index by it (mind that animal weapons reuse a pair; see the fn doc). */
   key: string;
-  /** Net damage vs. every armor class this weapon can target, ascending by `armorClass`. */
+  /** Damage vs. every armor material a living target can wear, ascending by `material`. */
   rows: readonly CombatDamageRow[];
 }
 
 /**
  * The **combat damage table** as a derived **read view** over `content` — the read half of the
  * CombatSystem, exactly analogous to the HUD's content-only {@link goodsGraph}: it joins each
- * {@link WeaponType} against every armor class (plus the unarmored class `0`), resolving
- * the **net** damage a weapon lands on a target — `max(0, weapon.damage[armorClass] -
- * armor.blockingValue)`. No mechanic is added (nothing is hit, no entity loses hitpoints); this is the
- * static damage *lookup* the later combat atomics will read, surfaced once so a hit doesn't re-walk
- * the two tables.
+ * {@link WeaponType} against every armor **material** a living target can wear (the unarmored material
+ * `0` plus each `[armortype]` record's `materialType`), tabulating the damage the weapon lands —
+ * `weapon.damage[material]`, the value the original pre-resolves per material. **No mitigation is
+ * subtracted** (armor works by column selection; the uniform `blockingValue 5` has an unknown engine
+ * role — docs/FIDELITY.md), and the structure columns {@link ARMOR_MATERIAL.WOOD}/`HOUSE` are NOT
+ * rows here — they are the vs-tree/vs-building views ({@link damageVsWood}/{@link damageVsBuilding}),
+ * not a living target's armor. No mechanic is added (nothing is hit, no entity loses hitpoints); this
+ * is the static damage *lookup* the combat atomics read, surfaced once so a hit doesn't re-walk the
+ * two tables.
  *
- * The armor classes covered are the **union** of `content.armor`'s `typeId`s (the real 1..4) and the
- * unarmored class `0`, plus any extra class a weapon's `damage` references — the real `weapontypes`
- * lists classes **6 and 7** with *no* `[armortype]` record (higher tiers outside the 4-record table).
- * Those out-of-table classes are treated as **unarmored** (`blockingValue 0`, `hasArmorRecord false`)
- * rather than dropped or thrown on — the KNOWN GAP the roadmap calls out. So every armor class a
- * weapon can target gets a row, and an absent armor record never crashes the join.
+ * The materials covered are the **union** of the unarmored material `0` and every `content.armor`
+ * record's `materialType` (== `typeId` for the four base armors), sorted ascending — so every armor
+ * tier gets a row and a weapon that lists no value for a tier still gets a `0`-damage row for it.
  *
  * Returned as an **array of {@link CombatProfile}**, one per `content.weapons` entry, in source array
  * order — **not** a Map keyed by weapon identity, deliberately: no weapon key is globally unique. A
@@ -72,49 +166,31 @@ export interface CombatProfile {
  * `(tribeType, typeId)` `key`; but the real **animal** weapons reuse even that pair (tribe 5 has both
  * `chicken` and `claw` at typeId 1; tribe 8 lists `bearfist` twice), so a Map keyed on the composite
  * would silently drop those records (last-wins). An array loses nothing — every weapon gets a profile —
- * which a read view must guarantee. Each profile's `rows` are sorted ascending by `armorClass`.
+ * which a read view must guarantee. Each profile's `rows` are sorted ascending by `material`.
  *
- * FIDELITY n/a: a pure derived **read view** of the already-extracted `weapontypes`/`armortypes` IR,
- * like {@link goodsGraph} — it adds no behavior (no hit resolution, no hitpoints, no targeting) and
- * invents no data; the `damage`/`blockingValue` params it joins are the faithful values the pipeline
- * pinned (see docs/FIDELITY.md "Armor type table"). The *combat behavior* (who hits whom, when, the
- * hitpoint loop) is a separate, still-unbuilt mechanic with no oracle — this is only its lookup table.
+ * FIDELITY: pinned to the extracted `weapontypes` `damagevalue` params, keyed by the victim's armor
+ * `materialType` (`logicdefines.inc ARMOR_MATERIAL_TYPE`) — the original's own column-selection model
+ * (see docs/FIDELITY.md "Combat damage read side"). It adds no behavior (no hit resolution, no
+ * hitpoints, no targeting) and invents no data. The *combat behavior* (who hits whom, when, the
+ * hitpoint loop) is a separate mechanic — this is only its lookup table.
  *
- * Determinism: a pure function of `content` (no world, no RNG, no wall-clock); the class union is
- * built by walking the armor `typeId`s + the weapon's `damage` keys into a Set then **sorting**, and
- * the profiles keep `content.weapons` array order, so the same content yields a byte-identical array
- * every call.
+ * Determinism: a pure function of `content` (no world, no RNG, no wall-clock); the material union is
+ * built by walking the armor `materialType`s into a Set then **sorting**, and the profiles keep
+ * `content.weapons` array order, so the same content yields a byte-identical array every call.
  */
 export function combatDamage(content: ContentSet): CombatProfile[] {
-  // Armor class -> its record's blockingValue. Class 0 (unarmored) and any out-of-table class a
-  // weapon references resolve to "no record" (mitigation 0) below.
-  const blockingByClass = new Map<number, number>();
-  for (const armor of content.armor) blockingByClass.set(armor.typeId, armor.blockingValue);
+  // The armor materials a LIVING target can wear: the unarmored material 0 + every armor record's
+  // materialType. The structure columns (6/7) are NOT rows — they are damageVsWood/damageVsBuilding.
+  const materials = new Set<number>([ARMOR_MATERIAL.NONE]);
+  for (const armor of content.armor) materials.add(armorMaterialOf(armor) ?? armor.typeId);
+  const sorted = [...materials].sort((a, b) => a - b);
 
   const profiles: CombatProfile[] = [];
   for (const weapon of content.weapons) {
-    // The armor classes THIS weapon can target: the unarmored class 0, every defined armor record,
-    // and any extra class its own `damage` lists (the out-of-table 6/7). A Set de-dupes; sorting
-    // makes the row order stable regardless of how the classes were discovered.
-    const classes = new Set<number>([0, ...blockingByClass.keys()]);
-    for (const key of Object.keys(weapon.damage)) {
-      const c = Number(key);
-      if (Number.isInteger(c)) classes.add(c);
-    }
-
-    const rows: CombatDamageRow[] = [];
-    for (const armorClass of [...classes].sort((a, b) => a - b)) {
-      const rawDamage = weapon.damage[String(armorClass)] ?? 0;
-      const hasArmorRecord = blockingByClass.has(armorClass);
-      const blockingValue = hasArmorRecord ? (blockingByClass.get(armorClass) ?? 0) : 0;
-      rows.push({
-        armorClass,
-        rawDamage,
-        blockingValue,
-        netDamage: Math.max(0, rawDamage - blockingValue),
-        hasArmorRecord,
-      });
-    }
+    const rows: CombatDamageRow[] = sorted.map((material) => ({
+      material,
+      damage: weaponDamageVsMaterial(weapon, material),
+    }));
     profiles.push({
       tribeType: weapon.tribeType,
       typeId: weapon.typeId,

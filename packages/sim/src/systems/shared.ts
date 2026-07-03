@@ -379,16 +379,32 @@ export function atomicDuration(
   settler: { tribe: number; jobType: number | null },
   atomicId: number,
 ): number {
-  if (settler.jobType === null) return DEFAULT_ATOMIC_DURATION;
-  const tribe = ctx.content.tribes.find((t) => t.typeId === settler.tribe);
-  if (tribe === undefined) return DEFAULT_ATOMIC_DURATION;
-  // Last-wins over the file-order bindings (matches the original's config-override semantics).
-  let animation: string | undefined;
-  for (const b of tribe.atomicBindings) {
-    if (b.jobType === settler.jobType && b.atomicId === atomicId) animation = b.animation;
-  }
+  const animation = atomicAnimationName(ctx, settler, atomicId);
   if (animation === undefined) return DEFAULT_ATOMIC_DURATION;
   const anim = ctx.content.atomicAnimations.find((a) => a.name === animation);
   const length = anim?.length ?? 0;
   return length > 0 ? length : DEFAULT_ATOMIC_DURATION;
+}
+
+/**
+ * Resolve the **animation name** a settler's tribe binds `(jobType, atomicId)` to — the `setatomic`
+ * join key, last-wins over the file-order bindings (matching the original's config-override
+ * semantics). Returns `undefined` when the settler has no job, its tribe isn't in content, or no
+ * binding matches (the readable mod set is a subset of the base animations). The shared name lookup
+ * behind {@link atomicDuration} (the animation's `length`) and the combat swing's hit-frame / need-drain
+ * reads (its `events`), so all three resolve the animation the identical way.
+ */
+export function atomicAnimationName(
+  ctx: SystemContext,
+  settler: { tribe: number; jobType: number | null },
+  atomicId: number,
+): string | undefined {
+  if (settler.jobType === null) return undefined;
+  const tribe = ctx.content.tribes.find((t) => t.typeId === settler.tribe);
+  if (tribe === undefined) return undefined;
+  let animation: string | undefined;
+  for (const b of tribe.atomicBindings) {
+    if (b.jobType === settler.jobType && b.atomicId === atomicId) animation = b.animation;
+  }
+  return animation;
 }

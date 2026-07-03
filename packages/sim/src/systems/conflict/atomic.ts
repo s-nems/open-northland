@@ -9,20 +9,44 @@ import {
 } from '../../components/index.js';
 import { assertNever } from '../../core/brand.js';
 import type { AtomicEffect } from '../../core/commands.js';
-import { fx } from '../../core/fixed.js';
+import { type Fixed, ONE, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
-import { grantWorkExperience } from '../progression.js';
+import { grantFightExperience, grantWorkExperience } from '../progression.js';
 import {
+  ATOMIC_EVENT_CHANNEL,
   HUNTER_JOB,
   MEAT_GOOD,
   angryGameTimeOf,
+  atomicEventChannelDelta,
   cadaverYieldOf,
   isAggressiveAnimal,
   isCatchableAnimal,
+  isInterruptibleAtomic,
   isProvokableAnimal,
 } from '../readviews/index.js';
-import { stockCapacity } from '../shared.js';
+import { atomicAnimationName, atomicDuration, stockCapacity } from '../shared.js';
+
+/**
+ * The numeric atomic id a struck civilian runs to **flinch** — the original's `setatomic <job> 82
+ * "..._attacked"` slot (id 82 = the ATTACKED/stagger slot; the mod binds it for the civilian classes —
+ * `viking_woman_attacked` / `viking_civilist_attacked`, length 50, no events — NOT for soldiers/heroes/
+ * animals, verified in `DataCnmd/tribetypes12/tribetypes.ini`). Purely visual: the atomic carries an
+ * `idle` effect (no state mutation), it just occupies the victim so a struck civilian visibly staggers
+ * and can't act for its duration. Bound data-driven — a class with no 82 binding never staggers.
+ */
+const ATTACKED_ATOMIC_ID = 82;
+
+/**
+ * The original's per-need **reserve span** the raw `event <at> <channel> <delta>` need tuples move
+ * against (~10000 in the source — the scale the needs/eat rows document, e.g. a meal `event 30 2 +4000`
+ * refills ~40% of it; see `lifecycle/needs.ts` / `conflict/ai.ts`). The sim's 0..ONE need bar maps onto
+ * it, so a raw reserve delta `D` becomes a bar delta `D / NEED_EVENT_RESERVE · ONE`. **Approximated**:
+ * the exact reserve max isn't readable (docs/FIDELITY.md) — the combat-swing drain preserves the data's
+ * DIRECTION (a drain raises the need) and RELATIVE magnitude (a woman's −100 swing costs 5× a soldier's
+ * −20), scaled onto the bar; the general event-driven needs drive stays deferred.
+ */
+const NEED_EVENT_RESERVE = 10000;
 
 /**
  * AtomicSystem — the executor half of the settler planner: advance the {@link CurrentAtomic} a
@@ -39,25 +63,53 @@ import { stockCapacity } from '../shared.js';
  *
  * `applyEffect` is an exhaustive switch over the {@link AtomicEffect} union (`assertNever` makes a
  * new variant a compile error here), so behavior is the typed effect, not an opaque atomicId. The
- * harvest→pickup→carry→pileup chain that the single-settler slice needs is implemented; `attack`
- * resolves a hit (drains the target's {@link Health}, the first combat behavior); `produce` belongs
- * to ProductionSystem and only signals completion here for now.
+ * harvest→pickup→carry→pileup chain that the single-settler slice needs is implemented; `produce`
+ * belongs to ProductionSystem and only signals completion here for now.
+ *
+ * **`attack` is the exception to "apply on completion":** a swing lands its blow MID-animation at the
+ * ATTACK-event frame (`resolveAttackHit` — drains the target's {@link Health}, trains the weapon's
+ * fight XP, staggers a struck civilian), and the attacker pays the swing's need cost on completion
+ * (`paySwingNeedCost`). A survivor is re-targeted next idle tick, so swings repeat at the animation's
+ * cadence. This is the combat behavior; targeting/who-attacks-whom lives in the CombatSystem.
  *
  * Determinism: no RNG, no wall-clock. Entities are visited in the CurrentAtomic store's deterministic
  * insertion order, and each effect is a pure function of the entity + its target's current state
  * (Stockpile writes go through the canonical Map, never iterated for a decision). Fixed-point only.
  */
 export const atomicSystem: System = (world, ctx) => {
-  for (const e of world.query(CurrentAtomic)) {
-    const atomic = world.get(e, CurrentAtomic);
+  // Snapshot the active atomics before advancing them: a landed hit can STAGGER its victim (add a
+  // `CurrentAtomic` mid-loop, see `applyStagger`), and iterating the store we're mutating would
+  // otherwise visit that fresh stagger this same tick. The snapshot fixes the visited set to the
+  // atomics live at tick start, so a stagger begins advancing the NEXT tick — deterministic and
+  // independent of insertion order. Behavior-preserving for all non-combat content (nothing else adds
+  // a CurrentAtomic during this loop). O(active atomics) — the work already being done this tick.
+  for (const e of [...world.query(CurrentAtomic)]) {
+    const atomic = world.tryGet(e, CurrentAtomic);
+    if (atomic === undefined) continue; // atomic gone since the snapshot (defensive — no effect removes another's)
     const duration = Math.max(1, atomic.duration);
     atomic.elapsed += 1;
     // Derived 0..ONE display value (render interpolation); clamped so it never exceeds ONE.
     atomic.progress = fx.div(fx.fromInt(Math.min(atomic.elapsed, duration)), fx.fromInt(duration));
+
+    // An attack lands its blow MID-animation at the ATTACK-event frame (`hitAt`), not at completion —
+    // a spear thrust connects partway through its swing, the follow-through then playing out to
+    // `duration`. When the animation carries no ATTACK event (`hitAt` absent) the hit falls back to the
+    // completion frame. `elapsed` steps through every integer, so it equals the (clamped) frame exactly
+    // once — the swing lands a single blow.
+    if (atomic.effect.kind === 'attack') {
+      const hitFrame = Math.min(Math.max(1, atomic.effect.hitAt ?? duration), duration);
+      if (atomic.elapsed === hitFrame) resolveAttackHit(world, ctx, e, atomic.effect);
+    }
+
     if (atomic.elapsed < duration) continue; // still running
 
     // Completed this tick: apply the effect, notify render/audio, and free the settler.
     applyEffect(world, ctx, e, atomic.effect);
+    // An attacker pays the swing's NEED cost on completion — the attack animation's REST/HUNGER channel
+    // drains (`event <at> {1,2} <delta>`), resolved through the atomic's own id (so it stays scoped to
+    // combat and reads the exact animation that just played). Done here, not in `applyEffect`, because
+    // it needs the atomic id to resolve that animation.
+    if (atomic.effect.kind === 'attack') paySwingNeedCost(world, ctx, e, atomic.atomicId);
     ctx.events.emit({ kind: 'atomicCompleted', entity: e, atomicId: atomic.atomicId });
     world.remove(e, CurrentAtomic);
   }
@@ -127,15 +179,10 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       // atomic just completing is the signal; no extra state change.
       return;
     case 'attack':
-      // The hit-resolution step — the first real combat behavior. The effect carries the already
-      // RESOLVED net damage (the planner looked it up from `combatDamage`: the attacker's weapon ×
-      // the target's armor class), so the executor just drains the target's hitpoints, exactly as
-      // `pickup`/`eat` apply a pre-resolved amount. Targeting/who-attacks-whom and the death/cleanup
-      // loop are later slices; this is the hit landing. The blow ALSO provokes an otherwise-passive
-      // `getAngry` animal into temporary hostility (the `animaltypes.ini` provoked-anger half), and a
-      // hunter's KILLING blow on catchable prey yields the cadaver's meat onto the hunter's back
-      // (`settler` is the attacker — the entity that ran this `attack` atomic).
-      resolveHit(world, ctx, settler, effect.target, effect.damage);
+      // The blow itself already landed MID-animation at the ATTACK-event frame (the executor loop's
+      // `resolveAttackHit`), so there is nothing to apply on completion here. The attacker's swing
+      // NEED-DRAIN is paid in the loop right after this call (`paySwingNeedCost`) — it lives there, not
+      // in this switch, because it needs the atomic's id to resolve the animation that just played.
       return;
     case 'produce':
       // Owned by ProductionSystem (a later slice). Completing the atomic + emitting the event is
@@ -169,43 +216,128 @@ function harvestFromNode(world: World, settler: Entity, node: Entity, goodType: 
 }
 
 /**
- * Resolve one completed `attack`: drain `damage` net hitpoints from the `target`'s {@link Health},
- * clamped at 0 (a hit never *heals* — armor can fully absorb a blow but the pool never goes negative,
- * the same clamp `combatDamage` applies to net damage). `damage` is the pre-resolved net value the
- * planner looked up from `combatDamage` (the attacker's weapon × the target's armor class), so the
- * executor needs no content/weapon lookup. A `target` with no `Health` is a no-op — it was already
- * destroyed between the swing starting and landing, or is a non-combatant (the swing struck air);
- * never throw, mirroring how `harvest`/`pickup` tolerate a vanished resource/store. Reaching 0
- * hitpoints is "dead"; the `cleanupSystem` then reaps the corpse (removing the entity, emitting
+ * Resolve an `attack` swing's blow at the ATTACK-event frame — the mid-animation hit (see the executor
+ * loop). Drains `effect.damage` hitpoints from the `target`'s {@link Health}, clamped at 0 (a hit never
+ * *heals* — armor can fully absorb a blow but the pool never goes negative). `effect.damage` is the
+ * pre-resolved column value the planner looked up (`weapon.damagevalue[targetMaterial]`), so the
+ * executor needs no content/weapon lookup for it. A `target` with no `Health` is a no-op — it was
+ * already destroyed between the swing starting and landing, or is a non-combatant (the swing struck
+ * air); never throw, mirroring how `harvest`/`pickup` tolerate a vanished resource/store. Reaching 0
+ * hitpoints is "dead"; the `cleanupSystem` reaps the corpse (removing the entity, emitting
  * `settlerDied`) at the end of the tick.
  *
- * The hit ALSO **provokes** an otherwise-passive `getAngry` animal: if the struck target is a
- * {@link isProvokableAnimal} animal (an `animaltypes.ini` record with `getangry`, e.g. a boar/deer),
- * an {@link Anger} timer is stamped/refreshed on it (`until = tick + angryGameTime`) — the
- * `combatSystem` then treats it like an aggressive animal until the timer lapses, so a struck animal
- * defends itself. An always-`aggressive` animal needs no provocation (it is already hostile), so we
- * only stamp anger on a provokable one; this is the provoked-anger half of `animaltypes.ini`
- * aggression (docs/FIDELITY.md "Civ-vs-animal aggression").
- *
- * Finally, when the blow is **lethal** AND it is a hunter's strike on catchable prey, the kill yields
- * the cadaver's meat ({@link harvestCadaver}) — the `harvest_cadaver` follow-up payoff.
+ * A landed blow also drives four follow-ups:
+ *  - **Provokes** an otherwise-passive `getAngry` animal ({@link provokeAnger}): a struck boar/deer
+ *    gets an {@link Anger} timer so it fights back (the `animaltypes.ini` provoked-anger half; an
+ *    already-`aggressive` animal needs none — docs/FIDELITY.md "Civ-vs-animal aggression").
+ *  - **Fight XP** ({@link grantFightExperience}) on a **damaging** swing — accrues into the swinging
+ *    weapon's fight bucket (keyed by `effect.weaponMainType`), the same expType space the soldier-class
+ *    `needfor*` gates read. A 0-damage or missed swing trains nothing.
+ *  - **Cadaver meat** ({@link harvestCadaver}) when the blow is **lethal** AND a hunter's strike on
+ *    catchable prey — the `harvest_cadaver` payoff.
+ *  - **Stagger** ({@link applyStagger}) when the target **survives** — a struck civilian visibly
+ *    flinches (its data-driven `82` ATTACKED atomic), if interruptible. A felled target isn't staggered
+ *    (it's being reaped); a soldier/animal with no `82` binding never flinches.
  */
-function resolveHit(
+function resolveAttackHit(
   world: World,
   ctx: SystemContext,
   attacker: Entity,
-  target: Entity,
-  damage: number,
+  effect: Extract<AtomicEffect, { kind: 'attack' }>,
 ): void {
-  const health = world.tryGet(target, Health);
+  const health = world.tryGet(effect.target, Health);
   if (health === undefined) return; // target gone / non-combatant — the swing struck nothing
-  // `combatDamage` already clamps net damage at 0, so a well-formed effect carries `damage >= 0`; the
-  // inner `Math.max(0, damage)` is the defensive guard against a malformed (negative) effect *healing*
-  // the target — silently corrupting hitpoints is the worse failure, so floor it rather than trust the
-  // caller. The outer `Math.max(0, …)` floors the pool itself (a hit never drives it below 0).
-  health.hitpoints = Math.max(0, health.hitpoints - Math.max(0, damage));
-  provokeAnger(world, ctx, target);
-  if (health.hitpoints <= 0) harvestCadaver(world, ctx, attacker, target); // a lethal blow may yield meat
+  // A hit that connected (the target had a pool) AND did harm — the condition the fight-XP + stagger
+  // follow-ups need. Computed BEFORE the drain so an overkill still counts as a damaging swing.
+  const dealtDamage = effect.damage > 0;
+  // The inner `Math.max(0, damage)` guards against a malformed (negative) effect *healing* the target;
+  // the outer floors the pool itself (a hit never drives it below 0).
+  health.hitpoints = Math.max(0, health.hitpoints - Math.max(0, effect.damage));
+  provokeAnger(world, ctx, effect.target);
+  if (dealtDamage) grantFightExperience(world, ctx, attacker, effect.weaponMainType); // train the weapon class
+  if (health.hitpoints <= 0) {
+    harvestCadaver(world, ctx, attacker, effect.target); // a lethal blow may yield meat — no flinch (dying)
+  } else {
+    applyStagger(world, ctx, effect.target); // a survivor flinches (data-driven; only if it has an 82 binding)
+  }
+}
+
+/**
+ * Give a struck **survivor** its data-driven flinch — the original's `setatomic <job> 82 "..._attacked"`
+ * ATTACKED atomic ({@link ATTACKED_ATOMIC_ID}). No-ops unless the victim's `(tribe, job)` binds atomic
+ * 82 (only the civilian classes do — woman/civilist; soldiers/heroes/animals have no binding, so they
+ * never stagger), keeping it purely data-driven with no per-job code. The flinch is a `CurrentAtomic`
+ * carrying an **`idle`** effect (no state mutation) for the ATTACKED animation's length — purely visual
+ * occupancy: the struck civilian visibly staggers and can't act for its duration, then frees up.
+ *
+ * Only interrupts an **interruptible** current action: if the victim is mid-swing or already
+ * mid-flinch (both `interruptable 0` in the data) it is NOT re-staggered — no stunlock, and its own
+ * uninterruptible action plays out. An idle victim (no `CurrentAtomic`) always flinches. Overwrites the
+ * victim's current atomic when it does flinch ({@link World.add} sets, so an interruptible walk is cut
+ * short for the flinch — faithful to being knocked off task by a blow).
+ */
+function applyStagger(world: World, ctx: SystemContext, target: Entity): void {
+  const victim = world.tryGet(target, Settler);
+  if (victim === undefined) return; // not a settler/animal — nothing to stagger
+  const staggerAnim = atomicAnimationName(ctx, victim, ATTACKED_ATOMIC_ID);
+  if (staggerAnim === undefined) return; // this class has no `82` binding — it doesn't flinch (data-driven)
+  // Don't cut short an uninterruptible action (the victim's own attack swing, or an in-progress flinch).
+  const current = world.tryGet(target, CurrentAtomic);
+  if (current !== undefined) {
+    const currentAnim = atomicAnimationName(ctx, victim, current.atomicId);
+    // An unresolved current animation is treated as non-interruptible (the `isInterruptibleAtomic`
+    // safe default) — don't preempt an action with no timing record.
+    if (currentAnim === undefined || !isInterruptibleAtomic(ctx.content, currentAnim)) return;
+  }
+  world.add(target, CurrentAtomic, {
+    atomicId: ATTACKED_ATOMIC_ID,
+    elapsed: 0,
+    progress: fx.fromInt(0),
+    duration: atomicDuration(ctx, victim, ATTACKED_ATOMIC_ID),
+    effect: { kind: 'idle' },
+    targetEntity: null,
+    targetTile: null,
+  });
+}
+
+/**
+ * Make an attacker pay a completed swing's **need cost** — the attack animation's REST/HUNGER channel
+ * drains, applied to the attacker's `fatigue`/`hunger`. Reads the exact animation that just played
+ * (resolved through the atomic's `atomicId`) and sums its {@link ATOMIC_EVENT_CHANNEL.REST}/`HUNGER`
+ * `event <at> <channel> <delta>` tuples ({@link atomicEventChannelDelta}) — a soldier swing carries
+ * `event 2 1 -20` + `event 2 2 -20` (−20 each), a woman/civilist swing −100. The raw RESERVE delta is
+ * scaled onto the sim's 0..ONE need bar ({@link NEED_EVENT_RESERVE}) and **subtracted** from the need:
+ * a negative reserve delta (a drain) *raises* the need (`fatigue`/`hunger` climb toward the top of the
+ * bar), so fighting tires and hungers the attacker. Clamped to `[0, ONE]` (the need-bar invariant).
+ *
+ * No-ops when the attacker is gone/jobless or its attack animation doesn't resolve / carries no drain
+ * (delta 0). The first combat consumer of the extracted event deltas — scoped to combat atomics; the
+ * general event-driven needs drive (replacing the approximated per-tick rise/reset) stays deferred
+ * (docs/FIDELITY.md).
+ */
+function paySwingNeedCost(world: World, ctx: SystemContext, attacker: Entity, atomicId: number): void {
+  const s = world.tryGet(attacker, Settler);
+  if (s === undefined) return; // attacker gone
+  const animation = atomicAnimationName(ctx, s, atomicId);
+  if (animation === undefined) return; // no attack animation to read a drain from
+  const restDelta = atomicEventChannelDelta(ctx.content, animation, ATOMIC_EVENT_CHANNEL.REST);
+  const hungerDelta = atomicEventChannelDelta(ctx.content, animation, ATOMIC_EVENT_CHANNEL.HUNGER);
+  s.fatigue = clampNeed(fx.sub(s.fatigue, reserveDeltaToBar(restDelta)));
+  s.hunger = clampNeed(fx.sub(s.hunger, reserveDeltaToBar(hungerDelta)));
+}
+
+/** Scale a raw need-event RESERVE delta (`event <at> <channel> <delta>`; negative drains the reserve)
+ *  onto the sim's 0..ONE need bar — `delta / NEED_EVENT_RESERVE · ONE`. Subtracting the result from a
+ *  need turns a reserve drain (negative delta) into a need rise. `fx.div` truncates toward zero. */
+function reserveDeltaToBar(reserveDelta: number): Fixed {
+  return fx.div(fx.fromInt(reserveDelta), fx.fromInt(NEED_EVENT_RESERVE));
+}
+
+/** Clamp a need value to the `[0, ONE]` bar invariant (the same bound `needsSystem` keeps). */
+function clampNeed(value: Fixed): Fixed {
+  if (value < 0) return fx.fromInt(0);
+  if (value > ONE) return ONE;
+  return value;
 }
 
 /**

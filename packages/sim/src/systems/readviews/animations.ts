@@ -36,6 +36,18 @@ export const ATOMIC_EVENT_CHANNEL = {
 } as const;
 
 /**
+ * The `atomicanimations.ini` `event <at> <type>` **type** id marking the frame a swing's blow LANDS —
+ * `ATOMIC_ANIMATION_EVENT_TYPE_ATTACK` (`logicdefines.inc` l.745). Distinct from the
+ * {@link ATOMIC_EVENT_CHANNEL} need-bar ids: this is a mid-animation *timing cue* (it carries no
+ * magnitude — a bare `event <at> 25`), the frame the CombatSystem resolves the hit at rather than
+ * waiting for the whole animation to complete (a spear thrust connects at frame 17 of its 27-frame
+ * swing, the follow-through then playing out). {@link atomicEventFrame} reads it.
+ *
+ * FIDELITY: pinned to `logicdefines.inc` `ATOMIC_ANIMATION_EVENT_TYPE_ATTACK` (golden rule #4).
+ */
+export const ATOMIC_EVENT_TYPE_ATTACK = 25;
+
+/**
  * Resolve an {@link AtomicAnimation} by its exact `name` — the join key a tribe's `setatomic <job>
  * <atomic> "anim"` binding references ({@link AtomicAnimation.name}, NOT the lowercased `id`). This is
  * the canonical form of the inline `content.atomicAnimations.find((a) => a.name === name)` that
@@ -149,4 +161,27 @@ export function atomicEventChannelDelta(content: ContentSet, name: string, chann
  */
 export function atomicHasExtendedEvents(content: ContentSet, name: string): boolean {
   return atomicAnimationByName(content, name)?.events.some((e) => e.extended) ?? false;
+}
+
+/**
+ * The **frame** (`at`) of the named animation's first `event`/`eventx` of `eventType`, or `undefined`
+ * when the animation carries none (or the name doesn't resolve). Used for the mid-animation *timing
+ * cues* — most notably {@link ATOMIC_EVENT_TYPE_ATTACK} (the frame a swing's blow lands): a combat
+ * atomic resolves its hit when its `elapsed` reaches this frame rather than at completion, and falls
+ * back to completion when the animation has no such event (`undefined`).
+ *
+ * The **first** matching event wins (attack animations carry exactly one ATTACK cue in the real data);
+ * an animation with several events of the same type resolves to the earliest by declaration order.
+ *
+ * FIDELITY n/a: a pure read over the extracted `events` array (the `at`/`type` the pipeline captured) —
+ * it adds no mechanic and invents no data. Determinism: a pure left-to-right scan of `events`
+ * declaration order, byte-stable per content.
+ */
+export function atomicEventFrame(content: ContentSet, name: string, eventType: number): number | undefined {
+  const anim = atomicAnimationByName(content, name);
+  if (anim === undefined) return undefined;
+  for (const event of anim.events) {
+    if (event.type === eventType) return event.at;
+  }
+  return undefined;
 }
