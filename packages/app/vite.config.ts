@@ -32,6 +32,12 @@ const soundsRoot = resolve(here, '../../content/Data/engine2d/bin/sounds');
 // The validated IR (`content/ir.json`) carries the approximated `terrainPatterns` typeId→ground table
 // the `?terrain` binding reads; bridged in at `/ir.json` (the one file, not the tree).
 const irFile = resolve(here, '../../content/ir.json');
+// The GUI extraction stage's non-atlas outputs — the per-language UI string JSON, the mouse cursors
+// (`.cur` + decoded `.png`), and the top-level `content/gui/manifest.json` — bridged in at `/gui/<path>`
+// for the GUI bindings (`content/gui-gfx.ts`). The GUI *atlases* + palette LUT ride the `/bobs/` route
+// above (they are bob atlases); only these text/cursor assets need their own root. Same stance as the
+// others: gitignored, outside the vite root, traversal rejected, and only `.json`/`.png`/`.cur` served.
+const guiRoot = resolve(here, '../../content/gui');
 
 // The MENU (entries/menu.ts) lists the decoded maps as clickable cards; it reads their stems from this
 // route — the `.json` filenames under `content/maps` (minus the extension), sorted. Absent `content/`
@@ -148,6 +154,27 @@ function serveContentIr(): Plugin {
   };
 }
 
+function serveContentGui(): Plugin {
+  return {
+    name: 'vinland-serve-content-gui',
+    configureServer(server) {
+      server.middlewares.use('/gui', (req, res, next) => {
+        const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';
+        const file = normalize(resolve(guiRoot, rel));
+        const isJson = file.endsWith('.json');
+        const isPng = file.endsWith('.png');
+        const isCur = file.endsWith('.cur');
+        if (!file.startsWith(guiRoot + sep) || (!isJson && !isPng && !isCur) || !existsSync(file)) {
+          next();
+          return;
+        }
+        res.setHeader('Content-Type', isPng ? 'image/png' : isCur ? 'image/x-icon' : 'application/json');
+        createReadStream(file).pipe(res);
+      });
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
     serveMapsIndex(),
@@ -156,6 +183,7 @@ export default defineConfig({
     serveContentTextures(),
     serveContentSounds(),
     serveContentIr(),
+    serveContentGui(),
   ],
   server: { port: 5173, open: false },
   build: { target: 'es2022', outDir: 'dist' },
