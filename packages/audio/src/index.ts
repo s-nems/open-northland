@@ -48,4 +48,5 @@ export {
   VOICE_GAIN,
   VOICE_RATE_PER_SEC,
   VOICE_COOLDOWN_MS,
+  MAX_CHATTER_DT_MS,
 } from './web/sound-driver.js';
