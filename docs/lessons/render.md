@@ -106,5 +106,6 @@ extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
   strip. The fix is a shader colour-key: `PalettedSprite.colorKey` (opt-in per sprite, default off so world
   characters are untouched) discards the magenta + near-black LUT colours. Verify the threshold against a
   real frame first (dump each index's LUT luminance) — the glyph ramp must sit clear above the near-black
-  cutoff, or the key eats the icon. Enable it on the buttons, NOT the strip (the strip's dark field IS the
-  panel). (render/app)
+  cutoff, or the key eats the icon. Enable it on EVERY panel sprite (strip + buttons): the strip's near-black
+  field is not a panel, it's the palette's transparent background, so keying it lets the terrain show through
+  instead of a black rectangle covering it. (render/app)

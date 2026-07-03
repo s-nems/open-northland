@@ -197,17 +197,19 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   let speedSprite: PalettedSprite | null = null;
 
   if (hasArt) {
+    // Key EVERY panel sprite (strip + buttons): the GUI palettes encode each element's background as a
+    // magenta/near-black transparent key, but the bob writes it opaque — so drawing it straight paints an
+    // opaque dark rectangle over the terrain. Keying leaves only the ornamental carving + the glyphs, with
+    // the world showing through the background (no black frame around the panel).
     const strip = guiSprite(layout.stripGfx);
     if (strip !== null) {
+      strip.colorKey = true;
       stripContainer.addChild(strip);
       panelSprites.push({ spr: strip, rect: layout.strip });
     }
     for (const b of layout.buttons) {
       const spr = guiSprite(b.gfx);
       if (spr === null) continue;
-      // The buttons ARE icons (the user's "ikonki"): key out their magenta + near-black background so the
-      // glyph sits transparently on the strip, instead of an opaque dark square covering it. The strip
-      // itself is NOT keyed — its dark field is the panel the icons sit on.
       spr.colorKey = true;
       stripContainer.addChild(spr);
       panelSprites.push({ spr, rect: b.placed });
