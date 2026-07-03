@@ -12,6 +12,7 @@ import {
 } from '../decoders/player-palette.js';
 import { encodePng } from '../decoders/png.js';
 import { indexOutTree } from './bmd.js';
+import { BOBS_DIR } from './game-file.js';
 
 /**
  * Player-colour pipeline stage — the render-time-recolour twin of {@link import('./bmd.js').convertBmdTree}.
@@ -29,8 +30,6 @@ import { indexOutTree } from './bmd.js';
 
 /** Directory (relative to the unpacked tree) holding the creature `.pcx` palettes the LUT is built from. */
 const CREATURES_DIR = join('Data', 'engine2d', 'bin', 'palettes', 'creatures');
-/** Where atlases + the LUT are written (siblings of the RGB atlases the bmd stage emits). */
-const BOBS_DIR = join('Data', 'engine2d', 'bin', 'bobs');
 /** The shared human body base palette (the mod's `gfxpalettebasebody`); its band is swapped per player. */
 const BASE_PALETTE_PCX = 'test_human_00.pcx';
 /** The reference ramp the six synthetic (no-original) player colours are hue-rotated from. */
