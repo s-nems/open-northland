@@ -114,7 +114,9 @@ describe('visibleTileRange', () => {
   });
 
   it('clamps a fully off-map viewport to the grid edge (nothing out of range)', () => {
-    const vp = { minX: 100000, maxX: 100100, minY: 100000, maxY: 100100 };
+    // Far down the diamond's +y axis (x ≈ 0), so col and row are both hugely positive for ANY
+    // pitch ratio — the old (1e5, 1e5) corner flipped the row's sign once the pitch stopped being 2:1.
+    const vp = { minX: 0, maxX: 100, minY: 100000, maxY: 100100 };
     expect(visibleTileRange(vp, 10, 10)).toEqual({ minCol: 9, maxCol: 9, minRow: 9, maxRow: 9 });
   });
 });

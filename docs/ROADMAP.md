@@ -63,6 +63,16 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       `?map=<id>` is the human sign-off entry. **Open (deferred):** `lmhe` height shading; `emt3`/`emt4`
       road/foundation overlays; per-object growth state; `lmpa`/`lmpb` triangle logic → sim water/walkability +
       object collision; the `fx wave*` engine-fx records. Data model in docs/SOURCES.md.
+- [ ] **Faithful map projection — raster-with-stagger + elevation** (from the 2026-07-03 pitch
+      calibration, docs/FIDELITY.md "projection"): the original projects nodes as a RASTER (a row down =
+      a pure vertical ~18.7px step; odd rows shifted half a cell; `lmhe` elevation lifts y ~0.5px/unit),
+      not our rotated diamond — measured by fitting decoded map data against screenshots of the running
+      game (raster fits 3–7× better). The pitch/scale is already faithful (`17.25×18.7`); what's still
+      off is DIRECTION (an original E–W river runs diagonally here) and the coastline geometry (the
+      "kanciaste" report — the original's triangle mesh + stagger produces different shore silhouettes).
+      Slice: switch `tileToScreen` to the stagger model and rework its consumers (terrain chunk mesher,
+      `visibleTileRange` inversion, picking, spatial audio), wire `lmhe` into the y-projection, then
+      re-verify against the calibration screenshots. Render-only; the sim grid is untouched.
 - [ ] **Import a decoded map's authored placements** (`map.cif` `StaticObjects`) — today `?map=` runs the
       synthetic vertical slice and dumps 6 demo entities on the *first walkable cells* (the top-left map
       corner, buried in forest), so imported maps look mis-placed. The real data decodes cleanly

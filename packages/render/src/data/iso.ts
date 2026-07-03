@@ -12,30 +12,42 @@ import { ONE as SIM_ONE } from '@vinland/sim';
 export const ONE: number = SIM_ONE;
 
 /**
+ * The original engine's cell pitch in native pixels, MEASURED from the running game (docs/FIDELITY.md
+ * "projection" — calibration-by-observation, 2026-07). Screenshots of the original were scale-anchored by
+ * template-matching decoded bobs (the 730px stone bridge pinned one shot at exactly 1.25×), then the cell
+ * lattice was read from planted-bush constellations (123 matched bushes; the elementary lattice step
+ * clusters at (±17.0, +18.7) native), the map-data water grid fitted against the observed river, and the
+ * fog-of-war staircase angles. Four independent methods agree: **cell width ≈ 34.5 px** (±0.3), **mesh
+ * row height ≈ 18.7 px** (±0.4).
+ *
+ * The same fit also showed the original projects rows as a RASTER WITH STAGGER (a row down is a pure
+ * vertical step; odd rows shift half a cell) — NOT this renderer's rotated diamond. Migrating the
+ * projection is a tracked follow-up (docs/FIDELITY.md); until then these constants preserve the
+ * original's cell size and per-cell screen density under the diamond model.
+ */
+export const CALIBRATED_HALF_W = 17.25;
+export const CALIBRATED_HALF_H = 18.7;
+
+/**
  * Isometric projection constants — the tile diamond's half-extents in pixels, i.e. the on-screen cell
  * PITCH (stepping one cell moves the draw position by `(±TILE_HALF_W, TILE_HALF_H)`). This is the master
  * scale the whole world hangs off: every ground triangle, every feet-anchored bob (drawn at its NATIVE
  * pixel size — see the render CLAUDE.md) and the camera derive from it, so getting it right is what makes
  * a bob read at the correct size against the terrain.
  *
- * The exact value is HUMAN-GATED (pixels — an agent cannot self-judge; docs/FIDELITY.md "projection")
- * and, because it is the whole look, LIVE-TUNABLE: the live entry sets it from `?pitch=<fullTileWidth>`
- * via {@link setTilePitch} (halving to the half-extents, keeping the iso-standard 2:1 W:H), so a human can
- * dial the sprite-vs-terrain scale in real time and report the value instead of a rebuild per guess.
+ * Defaults: the measured original pitch {@link CALIBRATED_HALF_W}×{@link CALIBRATED_HALF_H}. Note the
+ * ratio is ~1:1.08 (near-square diamonds), not the classic iso 2:1 — that is what the original measures
+ * as (see above). Still LIVE-TUNABLE for verification: the live entry sets it from
+ * `?pitch=<fullTileWidth>` (+ optional `?pitchy=<fullCellDownStep>`) via {@link setTilePitch}, keeping
+ * the measured ratio when only `?pitch` is given.
  *
- * Default `32×16` (a 64px-wide tile). Calibration history (why not eyeballed blind): the original
- * projection isn't reverse-engineered, so the ballpark came from the art — a placed object's
- * `LogicWalkBlockArea` footprint is in CELLS and its bob in PIXELS, and flat objects imply ~17–21 px/cell
- * (stone bridge 20×12→676px, clay/iron mine 5×3→134px). A first pass took that literally and set `20×10`,
- * but it OVERSHOT: it made the whole world too zoomed-in — nature (trees/plants/waves) too big, too little
- * free space, water tiles visibly repeating. The bridge footprint (a wide collision area, not the visible
- * deck) had skewed the estimate low. Reverted to `32×16`; the separate "buildings too small" report is
- * fixed by dropping the 0.7 building fudge (they draw NATIVE now), NOT by shrinking the pitch. Per-object
- * scale conflicts a single pitch can't resolve (if nature reads right but buildings/bridge don't) are the
- * signal to reach for a per-class scale, surfaced by sweeping `?pitch=`.
+ * Calibration history (why the earlier values were wrong): `32×16` was eyeballed from the art;
+ * footprint-vs-sprite ratios (bridge collision area vs visible deck) once suggested `20×10` and
+ * overshot. Both are superseded by the measured values above; the full method + numbers live in
+ * docs/FIDELITY.md "projection".
  */
-export let TILE_HALF_W = 32;
-export let TILE_HALF_H = 16;
+export let TILE_HALF_W = CALIBRATED_HALF_W;
+export let TILE_HALF_H = CALIBRATED_HALF_H;
 
 /**
  * Override the tile pitch (the {@link TILE_HALF_W}/{@link TILE_HALF_H} half-extents) at runtime — the live
