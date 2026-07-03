@@ -35,7 +35,7 @@
  * copyrighted fixtures (same rationale as the `.bmd`/`.pcx`/`.lib` encoder pairs).
  */
 
-import { type Bmd, type BobRecord, decodeBmd, encodeBmd } from './bmd.js';
+import { BOB_TYPE_EMPTY, type Bmd, type BobRecord, decodeBmd, encodeBmd } from './bmd.js';
 import { StorableId } from './cif.js';
 
 const FONT_ID = StorableId.CFont; // 0x3F5
@@ -46,9 +46,12 @@ const FONT_PREFIX_BYTES = 16;
 /** Lowest character code a font renders; bob 0 is this char (CFont `FirstPrintableChar`). */
 export const FONT_FIRST_CHAR = 0x20;
 /**
- * The bob a space/tab is measured and drawn through — NOT `' ' - 0x20` (which is bob 0, an empty slot).
- * CFont special-cases whitespace to this bob for both `GetPixelWidth` (advance) and `PrintCharacter`
- * (`SpaceBobId`), so a space takes this bob's advance while drawing nothing (its own bob 0 is empty).
+ * The bob a space/tab is measured through — NOT `' ' - 0x20` (which is bob 0, an empty slot). CFont's
+ * `GetPixelWidth` special-cases whitespace to this bob, so a space takes this bob's ADVANCE. We reproduce
+ * only that width redirect: a space draws NOTHING. The oracle's `PrintCharacter`/`GetBobIdForPrint` would
+ * literally BLIT bob 0x49 — but in a 0x20-based font that bob is the `'i'` glyph (char 0x69), so drawing it
+ * for every space is the original's own quirk that real text layout avoids by advancing the pen and
+ * skipping the blit. That deliberate print-side divergence is recorded in `docs/FIDELITY.md`.
  */
 export const FONT_SPACE_BOB_ID = 0x49;
 
@@ -131,22 +134,26 @@ function bobAt(bmd: Bmd, bobId: number): BobRecord | undefined {
 
 /**
  * The pen advance for one bob: `spacing + area.x + area.width + 1` (CFont `GetCharacterWidth` /
- * `GetPixelWidth`). Returns 0 for an absent bob, matching the original's null-rect guard.
+ * `GetPixelWidth`). Returns 0 for an absent OR EMPTY bob — CFont reads the rect via
+ * `GetBobAreaRectanglePtr`, which nulls both when the id is out of range AND when `Type == 0`
+ * (`CBobManager.cs`), and a null rect makes the advance 0.
  */
 export function bobAdvance(bmd: Bmd, bobId: number, spacing = 0): number {
   const bob = bobAt(bmd, bobId);
-  if (bob === undefined) return 0;
+  if (bob === undefined || bob.type === BOB_TYPE_EMPTY) return 0;
   return spacing + bob.area.x + bob.area.width + 1;
 }
 
 /**
- * The line height: the max glyph extent `area.height + area.y + 1` over every bob (CFont `GetPixelHeight`
- * measures a string's height as this max; over all glyphs it is the font's line height). Faithful — the
- * exact quantity the original computes, just across the whole glyph set.
+ * The line height: the max glyph extent `area.height + area.y + 1` over every NON-EMPTY bob (CFont
+ * `GetPixelHeight` measures a string's height as this max, skipping any char whose `GetBobAreaRectanglePtr`
+ * is null — i.e. a `Type == 0` bob; over all glyphs it is the font's line height). Empty bobs are skipped so
+ * a stale rect on a `Type == 0` slot can't inflate the height (matching the oracle's null-rect skip).
  */
 export function deriveLineHeight(bmd: Bmd): number {
   let max = 0;
   for (const bob of bmd.bobs) {
+    if (bob.type === BOB_TYPE_EMPTY) continue;
     const extent = bob.area.height + bob.area.y + 1;
     if (extent > max) max = extent;
   }
@@ -165,7 +172,7 @@ export function deriveLineHeight(bmd: Bmd): number {
 export function deriveBaseline(bmd: Bmd): number {
   for (const ch of BASELINE_REFERENCE_CHARS) {
     const bob = bobAt(bmd, ch.charCodeAt(0) - FONT_FIRST_CHAR);
-    if (bob !== undefined && bob.type !== 0 && bob.area.height > 0) {
+    if (bob !== undefined && bob.type !== BOB_TYPE_EMPTY && bob.area.height > 0) {
       return bob.area.y + bob.area.height;
     }
   }
@@ -178,7 +185,7 @@ export interface GlyphMetric {
   readonly char: number;
   /** The bob (atlas frame) id to draw for this char: `char - FONT_FIRST_CHAR`. Space's is an empty bob. */
   readonly bobId: number;
-  /** Pen advance after drawing this glyph (`spacing + x + w + 1`); space borrows bob 0x49's advance. */
+  /** Pen advance after this glyph (`spacing + x + w + 1`; 0 for an empty slot); space borrows bob 0x49's advance. */
   readonly advance: number;
   /** Draw offset X from the pen origin (bob `area.x`). */
   readonly offsetX: number;
@@ -213,8 +220,9 @@ export interface FontMetrics {
 /**
  * Builds a font's full layout table from a decoded {@link Font}: one {@link GlyphMetric} per bob (char
  * `FONT_FIRST_CHAR + bobId`), plus the font-wide line height, baseline, and nominal size. Space (char
- * 0x20) is special-cased to borrow bob {@link FONT_SPACE_BOB_ID}'s advance while keeping its own empty bob
- * for drawing — exactly how CFont measures/renders whitespace. Pure; deterministic char-order output.
+ * 0x20) is special-cased to borrow bob {@link FONT_SPACE_BOB_ID}'s advance (CFont `GetPixelWidth`) while
+ * drawing nothing (its own bob 0 is empty; the literal `PrintCharacter` 0x49 blit is not reproduced — see
+ * {@link FONT_SPACE_BOB_ID}). Pure; deterministic char-order output.
  *
  * `spacing` mirrors CFont's external `SetSpacing` (added into every advance); the file carries none, so it
  * defaults to 0 — the value the fonts are drawn with unless the GUI overrides it.
@@ -228,9 +236,10 @@ export function fontMetrics(font: Font, spacing = 0): FontMetrics {
     const bob = bmd.bobs[i] as BobRecord;
     const bobId = bmd.firstBobId + i;
     const char = FONT_FIRST_CHAR + bobId;
-    const empty = bob.type === 0 || bob.area.width <= 0 || bob.area.height <= 0;
-    // Space redirects its advance to bob 0x49 (CFont whitespace rule); every other char uses its own bob.
-    const advance = char === FONT_FIRST_CHAR ? spaceAdvance : spacing + bob.area.x + bob.area.width + 1;
+    const empty = bob.type === BOB_TYPE_EMPTY || bob.area.width <= 0 || bob.area.height <= 0;
+    // Space redirects its advance to bob 0x49 (CFont whitespace rule); every other char uses its own bob's
+    // advance ({@link bobAdvance}, which is 0 for an empty `Type == 0` slot — the oracle's null-rect guard).
+    const advance = char === FONT_FIRST_CHAR ? spaceAdvance : bobAdvance(bmd, bobId, spacing);
     glyphs.push({
       char,
       bobId,

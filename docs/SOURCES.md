@@ -19,7 +19,7 @@ Counts observed in `Cultures 8th Wonder` (base `Data` + `DataX` + mod `DataCnmd`
 | `.cif` | 167 | compiled/**encrypted** "Cultures Information File" (rules, maps) | decrypt: `NXBasics/XBTools.cs` `XB_Decrypt_Memory`; also `NC2Logic/CIoHelper.cs`, `Dexter/DexMD5.cs` |
 | `.ini` | 66 | **readable** rule config | trivial text parse; prefer these |
 | `.sgt`/`.dls` | 49+ | **DirectMusic** segments/instruments — Windows-only | transcode offline to ogg; do not depend on DirectMusic |
-| `.fnt` | 63 | bitmap fonts (CFont `0x3F5` wrapping a CBobManager `0x3F4`) — **decoded** by `decoders/fnt.ts` + `stages/fonts.ts` (see "Fonts" below) | `NXBasics/CFont.cs` |
+| `.fnt` | 63 | bitmap fonts (CFont `0x3F5` wrapping a CBobManager `0x3F4`) — the **in-game UI set** (12 fonts under `Data/gui/fonts/{,latin,rus}`) is **decoded** by `decoders/fnt.ts` + `stages/fonts.ts` (see "Fonts" below); the per-map briefing/hypertext `.fnt` are out of scope | `NXBasics/CFont.cs` |
 | `.lib` | — | packed archive (group + files + checksum) | `NXBasics/CSimpleFileLibrary.cs` |
 | file IO base | — | low-level readers, endian | `NXBasics/CFile.cs`, `Dexter/DexterFile.cs`, `Dexter/DexterEndian.cs` |
 | palettes | — | palette objects | `NXBasics/CPalette.cs` |
@@ -384,13 +384,17 @@ use* — so the glyph atlas is just the ordinary bob atlas of the inner containe
 ```
 
 i.e. a 16-byte CFont prefix in front of a `.bmd`. **Glyph lookup** (CFont): character `c` (≥ `0x20`)
-draws bob `c − 0x20`; **space/tab** are special-cased to bob `0x49` for both drawing and width, so a
-space takes that bob's advance while its own bob 0 stays empty. **Layout formulas** (ported to
-`fnt.ts`): advance `= spacing + rect.X + rect.W + 1` (`GetCharacterWidth`), glyph extent
-`= rect.H + rect.Y + 1` (`GetCharacterHeight`), line height `= max extent over glyphs`
-(`GetPixelHeight`). `spacing` (CFont+0x10) is NOT stored — it is applied externally via `SetSpacing`,
-so decoded advances use spacing 0. A **baseline** is derived (advisory) from a reference capital's
-bottom edge; the original has no baseline (it lays out top-anchored) — see FIDELITY.md.
+draws bob `c − 0x20`. **Whitespace**: CFont's `GetPixelWidth` measures a space through bob `0x49`, so a
+space takes that bob's **advance** — but it **draws nothing** (its own bob 0 is empty); we reproduce only
+the width redirect, not the literal `PrintCharacter` blit of `0x49` (which is the `'i'` glyph, the
+original's own quirk). **Layout formulas** (ported to `fnt.ts`): advance `= spacing + rect.X + rect.W + 1`
+(`GetCharacterWidth`), glyph extent `= rect.H + rect.Y + 1` (`GetCharacterHeight`), line height
+`= max extent over glyphs` (`GetPixelHeight`) — where `GetBobAreaRectanglePtr` **nulls a `Type == 0`
+(empty) bob**, so advance/extent are **0** for an empty slot and empty bobs are skipped for line height
+(an undefined CP1250 slot advances 0; a stale rect on an empty bob can't inflate the height). `spacing`
+(CFont+0x10) is NOT stored — it is applied externally via `SetSpacing`, so decoded advances use spacing 0.
+A **baseline** is derived (advisory) from a reference capital's bottom edge; the original has no baseline
+(it lays out top-anchored) — see FIDELITY.md.
 
 **Sources (under the game root):**
 

@@ -5,7 +5,7 @@ import { type FontMetrics, decodeFnt, fontMetrics } from '../decoders/fnt.js';
 import { decodePcx } from '../decoders/pcx.js';
 import { buildPlayerLutImage } from '../decoders/player-palette.js';
 import { encodePng } from '../decoders/png.js';
-import { identityPalette, readGameFile } from './game-file.js';
+import { BOBS_DIR, identityPalette, readGameFile, writeBobAtlas } from './game-file.js';
 
 /**
  * Font extraction stage — the original UI bitmap fonts (`Data/gui/fonts/*.fnt`), converted from an OWNED
@@ -38,8 +38,6 @@ import { identityPalette, readGameFile } from './game-file.js';
  * `content/`; no copyrighted bytes enter the repo.
  */
 
-/** The `/bobs/` tree the font atlases + colour LUT are written to (same route as the GUI/settler atlases). */
-const FONT_BOBS_DIR = join('Data', 'engine2d', 'bin', 'bobs');
 /** The `content/gui/fonts/` subtree the per-font metrics + manifest are written to (served at `/gui/fonts/`). */
 const FONTS_CONTENT_DIR = join('gui', 'fonts');
 /** Dir holding the `.fnt` files (root set); `latin/` and `rus/` variants live in sibling subdirs. */
@@ -107,16 +105,6 @@ const FONT_SOURCES: readonly FontSource[] = FONT_VARIANTS.flatMap((v) =>
   })),
 );
 
-/** Writes an atlas's `<stem>.png` + `<stem>.atlas.json` under `FONT_BOBS_DIR` (the `/bobs/` convention). */
-async function writeAtlas(outDir: string, stem: string, atlas: BobAtlas): Promise<void> {
-  await mkdir(join(outDir, FONT_BOBS_DIR), { recursive: true });
-  await writeFile(join(outDir, FONT_BOBS_DIR, `${stem}.png`), encodePng(atlas.image));
-  await writeFile(
-    join(outDir, FONT_BOBS_DIR, `${stem}.atlas.json`),
-    `${JSON.stringify(atlas.manifest, null, 2)}\n`,
-  );
-}
-
 /** The emitted font-colour LUT plus the resolved palettes (for the preview colouring + the manifest). */
 export interface FontColorLutResult {
   /** `loadLayer`/`loadAtlasSource` stem of the `256 × 4` LUT PNG under `/bobs/`. */
@@ -130,7 +118,7 @@ export interface FontColorLutResult {
 /**
  * Reads every {@link FONT_COLORS} carrier, stacks their 256-colour trailers into one `256 × 4` LUT PNG (via
  * {@link buildPlayerLutImage}, the same mechanism as the player-colour / GUI palette LUTs), and writes it
- * under `FONT_BOBS_DIR`. A missing/palette-less carrier is warned and replaced with a neutral grayscale row
+ * under `BOBS_DIR`. A missing/palette-less carrier is warned and replaced with a neutral grayscale row
  * so the row order (the app's contract) stays fixed regardless of a partial install.
  */
 export async function convertFontColorLut(gameDir: string, outDir: string): Promise<FontColorLutResult> {
@@ -149,9 +137,9 @@ export async function convertFontColorLut(gameDir: string, outDir: string): Prom
     ordered.push(palette);
     byName.set(src.name, palette);
   }
-  await mkdir(join(outDir, FONT_BOBS_DIR), { recursive: true });
+  await mkdir(join(outDir, BOBS_DIR), { recursive: true });
   await writeFile(
-    join(outDir, FONT_BOBS_DIR, `${FONT_COLOR_LUT_STEM}.png`),
+    join(outDir, BOBS_DIR, `${FONT_COLOR_LUT_STEM}.png`),
     encodePng(buildPlayerLutImage(ordered)),
   );
   return { stem: FONT_COLOR_LUT_STEM, names: FONT_COLORS.map((c) => c.name), byName };
@@ -187,7 +175,7 @@ interface FontMetricsFile extends FontMetrics {
 
 /**
  * Decodes each `.fnt` into an indexed glyph atlas + an RGBA preview atlas (default colour) + a metrics JSON,
- * written under `FONT_BOBS_DIR` (atlases) and `content/gui/fonts/` (metrics). `previewPalette` supplies the
+ * written under `BOBS_DIR` (atlases) and `content/gui/fonts/` (metrics). `previewPalette` supplies the
  * preview colours (from {@link convertFontColorLut}); an absent one falls back to a neutral palette so a
  * preview still renders. A missing/malformed `.fnt` warns-and-skips that font. Returns one {@link FontResult}
  * per font that converted, in {@link FONT_SOURCES} order.
@@ -222,8 +210,8 @@ export async function convertFonts(
 
     const indexedStem = `${src.key}.indexed`;
     const previewStem = `${src.key}.${DEFAULT_FONT_COLOR}`;
-    await writeAtlas(outDir, indexedStem, indexed);
-    await writeAtlas(outDir, previewStem, colored);
+    await writeBobAtlas(outDir, indexedStem, indexed);
+    await writeBobAtlas(outDir, previewStem, colored);
 
     await mkdir(join(outDir, FONTS_CONTENT_DIR), { recursive: true });
     const metricsPath = join(FONTS_CONTENT_DIR, `${src.key}.metrics.json`);

@@ -1,11 +1,16 @@
-import { readFile, readdir } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
+import type { BobAtlas } from '../decoders/atlas.js';
+import { encodePng } from '../decoders/png.js';
 
 /**
- * Small helpers shared by the loose-file extraction stages (`gui`, `fonts`) that read straight from an
- * owned game tree rather than the unpacked `.lib` output. Kept here so a stage never imports another
- * stage just for a file-read helper.
+ * Small helpers shared by the loose-file extraction stages (`gui`, `fonts`): reading straight from an owned
+ * game tree (rather than the unpacked `.lib` output), and writing a bob atlas into the `/bobs/` content
+ * tree. Kept here so a stage never imports another stage just for a shared read/write helper.
  */
+
+/** The `content/` subtree served at the app's `/bobs/` route (bob atlases + the player/GUI/font colour LUTs). */
+export const BOBS_DIR = join('Data', 'engine2d', 'bin', 'bobs');
 
 /**
  * Reads a loose game file, tolerating a differently-cased leaf FILENAME (the shipped names are lower-case,
@@ -41,4 +46,14 @@ export function identityPalette(): Uint8Array {
   const p = new Uint8Array(768);
   for (let i = 0; i < 256; i++) p.fill(i, i * 3, i * 3 + 3);
   return p;
+}
+
+/** Writes a packed bob atlas's `<stem>.png` + `<stem>.atlas.json` under {@link BOBS_DIR} (the `/bobs/` convention). */
+export async function writeBobAtlas(outDir: string, stem: string, atlas: BobAtlas): Promise<void> {
+  await mkdir(join(outDir, BOBS_DIR), { recursive: true });
+  await writeFile(join(outDir, BOBS_DIR, `${stem}.png`), encodePng(atlas.image));
+  await writeFile(
+    join(outDir, BOBS_DIR, `${stem}.atlas.json`),
+    `${JSON.stringify(atlas.manifest, null, 2)}\n`,
+  );
 }

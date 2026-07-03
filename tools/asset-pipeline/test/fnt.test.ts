@@ -153,4 +153,25 @@ describe('fontMetrics', () => {
     expect(spaced.glyphs[AT_A]?.advance).toBe(2 + 1 + 5 + 1); // spacing folded in
     expect(bobAdvance(font.bmd, AT_A, 2)).toBe(2 + 1 + 5 + 1);
   });
+
+  it('gives an empty (Type 0) glyph advance 0 and never lets its rect inflate line height', () => {
+    // The oracle's GetBobAreaRectanglePtr nulls a Type==0 bob → advance 0 and skipped for height. A packed
+    // asset can leave STALE nonzero rect bytes on an empty slot, so the guard must key on the type, not the rect.
+    const bmd = metricsBmd(FONT_SPACE_BOB_ID + 1, {
+      [AT_A]: { x: 1, y: 4, width: 5, height: 10 }, // the only real glyph → extent 15
+      [FONT_SPACE_BOB_ID]: { x: 1, y: 4, width: 2, height: 10 },
+    });
+    const STALE = 5;
+    (bmd.bobs as BobRecord[])[STALE] = {
+      type: BOB_TYPE_EMPTY,
+      area: { x: 7, y: 100, width: 9, height: 3 },
+      misc: 0,
+    };
+    const m = fontMetrics({ version: 0, value08: 0, value0C: 0, bmd });
+    expect(m.glyphs[STALE]?.empty).toBe(true);
+    expect(m.glyphs[STALE]?.advance).toBe(0); // NOT spacing + 7 + 9 + 1
+    expect(bobAdvance(bmd, STALE)).toBe(0);
+    expect(m.lineHeight).toBe(15); // 'A'/0x49 extent, NOT the stale 100 + 3 + 1 = 104
+    expect(deriveLineHeight(bmd)).toBe(15);
+  });
 });

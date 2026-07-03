@@ -8,7 +8,7 @@ import { cifLinesToSections } from '../decoders/ini.js';
 import { decodePcx } from '../decoders/pcx.js';
 import { buildPlayerLutImage } from '../decoders/player-palette.js';
 import { encodePng } from '../decoders/png.js';
-import { identityPalette, readGameFile } from './game-file.js';
+import { BOBS_DIR, identityPalette, readGameFile, writeBobAtlas } from './game-file.js';
 
 /**
  * GUI extraction stage — the original in-game HUD art, colorization palettes, UI strings, and mouse
@@ -42,8 +42,6 @@ import { identityPalette, readGameFile } from './game-file.js';
  * everything lands under the gitignored `content/`.
  */
 
-/** The engine2d bobs dir the GUI atlases + palette LUT are written to (rides the app's `/bobs/` route). */
-const GUI_BOBS_DIR = join('Data', 'engine2d', 'bin', 'bobs');
 /** The `content/gui/` subtree the strings + cursors + top-level manifest are written to (served at `/gui/`). */
 const GUI_CONTENT_DIR = 'gui';
 /** The dir holding the 2×2 palette carriers the engine colours HUD elements with. */
@@ -98,8 +96,8 @@ interface GuiAtlasSource {
  * bubble sheet uses its own `gui_bubbles` palette.
  */
 const GUI_ATLASES: readonly GuiAtlasSource[] = [
-  { stem: 'ls_gui_window', bmd: join(GUI_BOBS_DIR, 'ls_gui_window.bmd'), previewPalette: 'iconsleft' },
-  { stem: 'ls_gui_bubbles', bmd: join(GUI_BOBS_DIR, 'ls_gui_bubbles.bmd'), previewPalette: 'gui_bubbles' },
+  { stem: 'ls_gui_window', bmd: join(BOBS_DIR, 'ls_gui_window.bmd'), previewPalette: 'iconsleft' },
+  { stem: 'ls_gui_bubbles', bmd: join(BOBS_DIR, 'ls_gui_bubbles.bmd'), previewPalette: 'gui_bubbles' },
 ];
 
 /** The nine in-game GUI string tables (files are `ingamegui<table>.cif` under `Data/text/<lang>/strings/ingamegui/`). */
@@ -136,18 +134,8 @@ export interface GuiAtlasResult {
   readonly frames: number;
 }
 
-/** Writes an atlas's `<stem>.png` + `<stem>.atlas.json` under `GUI_BOBS_DIR` (the `/bobs/` convention). */
-async function writeAtlas(outDir: string, stem: string, atlas: BobAtlas): Promise<void> {
-  await mkdir(join(outDir, GUI_BOBS_DIR), { recursive: true });
-  await writeFile(join(outDir, GUI_BOBS_DIR, `${stem}.png`), encodePng(atlas.image));
-  await writeFile(
-    join(outDir, GUI_BOBS_DIR, `${stem}.atlas.json`),
-    `${JSON.stringify(atlas.manifest, null, 2)}\n`,
-  );
-}
-
 /**
- * Decodes each GUI bob sheet into an indexed atlas + an RGBA preview atlas, written under `GUI_BOBS_DIR`.
+ * Decodes each GUI bob sheet into an indexed atlas + an RGBA preview atlas, written under `BOBS_DIR`.
  * `paletteByName` supplies the preview colours (from {@link convertGuiPaletteLut}). A missing/malformed
  * `.bmd`, or an absent preview palette, warns-and-skips that sheet. Returns one {@link GuiAtlasResult} per
  * sheet that converted.
@@ -185,8 +173,8 @@ export async function convertGuiAtlases(
     }
     const indexedStem = `${src.stem}.indexed`;
     const previewStem = `${src.stem}.${src.previewPalette}`;
-    await writeAtlas(outDir, indexedStem, indexed);
-    await writeAtlas(outDir, previewStem, colored);
+    await writeBobAtlas(outDir, indexedStem, indexed);
+    await writeBobAtlas(outDir, previewStem, colored);
     done.push({
       stem: src.stem,
       indexedStem,
@@ -211,7 +199,7 @@ export interface GuiPaletteLutResult {
 /**
  * Reads every {@link GUI_PALETTES} carrier, stacks their 256-colour trailers into one `256 × N` LUT PNG
  * (via {@link buildPlayerLutImage}, the same mechanism as the player-colour LUT), and writes it under
- * `GUI_BOBS_DIR`. A missing/palette-less carrier is warned and replaced with a neutral grayscale row so
+ * `BOBS_DIR`. A missing/palette-less carrier is warned and replaced with a neutral grayscale row so
  * the row order (the app's contract) stays fixed regardless of a partial install.
  */
 export async function convertGuiPaletteLut(gameDir: string, outDir: string): Promise<GuiPaletteLutResult> {
@@ -230,9 +218,9 @@ export async function convertGuiPaletteLut(gameDir: string, outDir: string): Pro
     ordered.push(palette);
     byName.set(src.name, palette);
   }
-  await mkdir(join(outDir, GUI_BOBS_DIR), { recursive: true });
+  await mkdir(join(outDir, BOBS_DIR), { recursive: true });
   await writeFile(
-    join(outDir, GUI_BOBS_DIR, `${GUI_PALETTE_LUT_STEM}.png`),
+    join(outDir, BOBS_DIR, `${GUI_PALETTE_LUT_STEM}.png`),
     encodePng(buildPlayerLutImage(ordered)),
   );
   return { stem: GUI_PALETTE_LUT_STEM, names: GUI_PALETTES.map((p) => p.name), byName };
