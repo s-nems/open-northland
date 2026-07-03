@@ -72,3 +72,12 @@ extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
   Scale by `canvas.width/rect.width` (subtract `rect.left` first for absolute cursor coords). The reducer
   unit test passed because it fed coords already in camera space — the DOM→camera conversion was the
   untested gap, surfaced only by zooming in the live page. (app/render)
+- [3e3537d] The render read of a unit's movement state must treat "in transit" as more than a live
+  `PathFollow`. A combat chaser re-issues its route toward a moving enemy every few ticks, dropping the
+  `PathFollow` for ONE tick while it still holds a `MoveGoal` / a freshly-queued `PathRequest` — reading
+  that gap as `idle` snapped the walk animation to the standing pose (and facing to the default) once per
+  tile, a visible march "stutter" even though the SIM position advanced smoothly every tick (a headless
+  per-tick position trace proved the sim was fine — the artifact was purely the render read). Count a
+  `MoveGoal` or a non-failed `PathRequest` as `moving`; keep a FAILED `PathRequest` `idle` so a stuck unit
+  doesn't moonwalk; and make facing sticky in the pool across the gap. The bug hid because the state
+  read's unit test only covered `PathFollow`/`CurrentAtomic`, not the between-paths transient. (render)
