@@ -285,6 +285,10 @@ export type SpriteBindings = Readonly<{
    *  entity, drawn per-good from the dead-tree/debris atlas (`ls_trees_dead`). Reuses the resource
    *  resolver ({@link resolveResourceDraw}); absent keeps old sheets valid (stump draws the placeholder). */
   stump?: number | ResourceTypeBinding;
+  /** A loose dropped-wood binding — the {@link ResourceTypeBinding} twin for a `GroundDrop` entity, the
+   *  freshly-felled trunk lying on the ground (the `landscapeToPickup` stage) BEFORE a collector carries
+   *  it off. Drawn per-good like the node; absent keeps old sheets valid (the drop draws the placeholder). */
+  trunk?: number | ResourceTypeBinding;
 }>;
 
 /**
@@ -419,7 +423,7 @@ export function resolveConstructionDraws(
 }
 
 /** Unwrap a {@link LayeredBobRef} to the generic {@link BuildingDraw} shape (bob + optional family layer). */
-function unwrapBobRef(ref: LayeredBobRef): BuildingDraw {
+export function unwrapBobRef(ref: LayeredBobRef): BuildingDraw {
   return typeof ref === 'number' ? { bob: ref } : { bob: ref.bob, layer: ref.layer };
 }
 
@@ -469,6 +473,11 @@ export function resolveStockpileDraw(binding: number | StockpileBinding, item: D
  */
 export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tick = 0): number | null {
   if (item.kind === 'tile') return null; // tiles bind by typeId, not these per-kind bindings
+  // A ground drop (freshly-felled trunk) draws its per-good pickup-stage frame from the `trunk` binding via
+  // the SAME per-good resolver a node uses; the DrawKind ('grounddrop', the entity) and binding key ('trunk',
+  // the graphic) differ, so it is resolved explicitly rather than through the generic `bindings[kind]` lookup.
+  if (item.kind === 'grounddrop')
+    return bindings.trunk === undefined ? null : resolveResourceDraw(bindings.trunk, item).bob;
   const binding = bindings[item.kind];
   if (binding === undefined) return null; // kind unbound -> placeholder
   if (item.kind === 'settler')

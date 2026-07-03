@@ -64,6 +64,14 @@ export interface GatheringPileRef {
 export interface GatheringRefs {
   /** Standing-node ref per scene `goodType` (its `landscapeToHarvest` record's full-grown frame). */
   readonly nodesByGood: Readonly<Record<number, GatheringNodeRef>>;
+  /**
+   * Freshly-dropped, NOT-yet-collected pile ref per scene `goodType` — the good's `landscapeToPickup`
+   * record (wood's "trunk" stage: a felled LOG lying on the ground, distinct from the tidy delivered
+   * heap). A loose {@link import('@vinland/sim').GroundDrop} draws this; the original uses a different
+   * graphic for the on-the-ground harvest than for the stored pile (`tree → trunk(pickup) → wood(store)`).
+   * A single representative frame — a felled log reads the same regardless of exact units.
+   */
+  readonly trunksByGood: Readonly<Record<number, GatheringNodeRef>>;
   /** Ground-pile ref per scene `goodType` (its `landscapeToStore` record's per-fill heap frames). */
   readonly pilesByGood: Readonly<Record<number, GatheringPileRef>>;
   /** The delivery-flag ref (`ls_temp` player-01 sign), when the record is present in the IR. */
@@ -144,6 +152,7 @@ export function resolveGatheringRefs(goods: readonly GoodRef[], ir: RenderIr | n
   const byGoodId = new Map<string, GatheringPipelineRow>(pipeline.map((p) => [p.goodId, p]));
 
   const nodesByGood: Record<number, GatheringNodeRef> = {};
+  const trunksByGood: Record<number, GatheringNodeRef> = {};
   const pilesByGood: Record<number, GatheringPileRef> = {};
   for (const good of goods) {
     const p = byGoodId.get(good.id);
@@ -153,6 +162,15 @@ export function resolveGatheringRefs(goods: readonly GoodRef[], ir: RenderIr | n
       const stem = servedStem(nodeRecord);
       const bob = nodeBob(nodeRecord);
       if (stem !== undefined && bob !== undefined) nodesByGood[good.typeId] = { stem, bob };
+    }
+    // The freshly-dropped trunk (the `landscapeToPickup` stage), drawn by a loose GroundDrop before it is
+    // carried off — a single representative frame, the felled log. Only bind it for a good that actually
+    // has a distinct pickup stage; a good without one (its harvest === pickup) falls back to the pile.
+    const trunkRecord = representativeRecord(p.pickup, byIndex);
+    if (trunkRecord !== undefined) {
+      const stem = servedStem(trunkRecord);
+      const bob = nodeBob(trunkRecord);
+      if (stem !== undefined && bob !== undefined) trunksByGood[good.typeId] = { stem, bob };
     }
     const pileRecord = representativeRecord(p.store, byIndex);
     if (pileRecord !== undefined) {
@@ -167,7 +185,7 @@ export function resolveGatheringRefs(goods: readonly GoodRef[], ir: RenderIr | n
   const flagBob = flagRecord !== undefined ? nodeBob(flagRecord) : undefined;
   const flag = flagStem !== undefined && flagBob !== undefined ? { stem: flagStem, bob: flagBob } : undefined;
 
-  return { nodesByGood, pilesByGood, ...(flag !== undefined ? { flag } : {}) };
+  return { nodesByGood, trunksByGood, pilesByGood, ...(flag !== undefined ? { flag } : {}) };
 }
 
 /**
@@ -180,6 +198,9 @@ export function gatheringAtlasStems(refs: GatheringRefs): Set<string> {
   const stems = new Set<string>();
   for (const node of Object.values(refs.nodesByGood)) {
     if (node.stem !== DEFAULT_RESOURCE_STEM) stems.add(node.stem);
+  }
+  for (const trunk of Object.values(refs.trunksByGood)) {
+    if (trunk.stem !== DEFAULT_RESOURCE_STEM) stems.add(trunk.stem);
   }
   for (const pile of Object.values(refs.pilesByGood)) stems.add(pile.stem);
   if (refs.flag !== undefined) stems.add(refs.flag.stem);
@@ -239,6 +260,22 @@ export function buildResourceBinding(refs: GatheringRefs, loaded: ReadonlySet<st
   for (const [good, node] of Object.entries(refs.nodesByGood)) {
     if (node.stem !== DEFAULT_RESOURCE_STEM && !loaded.has(node.stem)) continue; // unloaded family → drop
     byGood[Number(good)] = bobRef(node.stem, node.bob);
+  }
+  return { byGood, default: TREE_BOB };
+}
+
+/**
+ * Reduce the resolved trunk refs (the `landscapeToPickup` stage) to the renderer's per-good
+ * {@link ResourceTypeBinding} — the graphic a loose {@link import('@vinland/sim').GroundDrop} draws while
+ * its felled wood lies on the ground waiting to be carried off. Same shape + load-then-drop-unloaded rule
+ * as {@link buildResourceBinding}; the `TREE_BOB` default is a visible fallback for a good with no bound
+ * trunk (dropped before Step 4 gives the mined goods their own pickup graphics). Pure + unit-tested.
+ */
+export function buildTrunkBinding(refs: GatheringRefs, loaded: ReadonlySet<string>): ResourceTypeBinding {
+  const byGood: Record<number, LayeredBobRef> = {};
+  for (const [good, trunk] of Object.entries(refs.trunksByGood)) {
+    if (trunk.stem !== DEFAULT_RESOURCE_STEM && !loaded.has(trunk.stem)) continue; // unloaded family → drop
+    byGood[Number(good)] = bobRef(trunk.stem, trunk.bob);
   }
   return { byGood, default: TREE_BOB };
 }

@@ -39,6 +39,7 @@ import {
   buildResourceBinding,
   buildStockpileBinding,
   buildStumpBinding,
+  buildTrunkBinding,
   gatheringAtlasStems,
   resolveGatheringRefs,
   resolveStumpRef,
@@ -246,6 +247,9 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   const resourceBinding = buildResourceBinding(gatheringRefs, gatheringLoaded);
   const stockpileBinding = buildStockpileBinding(gatheringRefs, gatheringLoaded);
   const stumpBinding = buildStumpBinding(stumpRef, gatheringLoaded);
+  // The freshly-felled trunk a GroundDrop draws (the `landscapeToPickup` stage), loaded alongside the
+  // node/pile/flag families above (its stems are in `gatheringAtlasStems`).
+  const trunkBinding = buildTrunkBinding(gatheringRefs, gatheringLoaded);
   // One family map: the building families + the gathering families. Their served stems are disjoint
   // (`ls_houses_*` vs `ls_ground`/`ls_goods`/`ls_temp`/`ls_mushrooms`), so the merge never collides.
   const families = { ...buildingFamilies, ...gatheringFamilies };
@@ -259,6 +263,7 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
       resourceBinding,
       stockpileBinding,
       stumpBinding,
+      trunkBinding,
     ),
     overlays: [head],
     // The tree and the DEFAULT building each draw from their OWN atlas (distinct id spaces), so they bind

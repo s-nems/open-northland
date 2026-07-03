@@ -43,7 +43,7 @@ const CHOP_ATOMIC_ID = 24;
 const CHOP_NUDGE_X = -24;
 
 /** Kinds of thing the scene draws, in their natural layer grouping. */
-export type DrawKind = 'tile' | 'building' | 'settler' | 'resource' | 'stockpile' | 'stump';
+export type DrawKind = 'tile' | 'building' | 'settler' | 'resource' | 'stockpile' | 'stump' | 'grounddrop';
 
 /**
  * A sprite's coarse logical state, the join key onto a per-state animation binding (the original's
@@ -232,6 +232,11 @@ function classify(components: Readonly<Record<string, unknown>>): DrawKind | nul
   // node but from the dead-tree/debris atlas. Checked before Settler/Stockpile (a stump is neither).
   if ('Stump' in components) return 'stump';
   if ('Settler' in components) return 'settler';
+  // A freshly-felled trunk still on the ground (a Stockpile carrying the GroundDrop marker) draws its
+  // pickup-stage LOG graphic, distinct from a tidy delivery pile — the original shows a different object
+  // for uncollected harvest than for the stored heap. Checked before the plain Stockpile so a marked drop
+  // never falls through to the flag/heap path.
+  if ('GroundDrop' in components && 'Stockpile' in components) return 'grounddrop';
   // A bare Stockpile with NO Building is a loose ground pile or a delivery flag (the gathering economy's
   // dropped goods + collection points, spawned by ai-supply.ts). Checked AFTER Building so a warehouse/HQ
   // store — which carries both Building and Stockpile — stays a `building`, matching the sim's own
@@ -570,7 +575,10 @@ function collectSprites(snapshot: WorldSnapshot, viewport?: Viewport): DrawItem[
     // delivery flag. Both feed the per-good {@link ResourceTypeBinding}/{@link StockpileBinding}.
     const resourceGood = kind === 'resource' ? readResourceGood(entity.components) : undefined;
     const stumpGood = kind === 'stump' ? readStumpGood(entity.components) : undefined;
-    const stockpile = kind === 'stockpile' ? readStockpile(entity.components) : undefined;
+    // A plain flag/pile AND a loose GroundDrop trunk both read their held good + fill from the stockpile —
+    // the trunk keys its per-good pickup graphic off `goodType`, the flag its heap frame off `goodType`+fill.
+    const stockpile =
+      kind === 'stockpile' || kind === 'grounddrop' ? readStockpile(entity.components) : undefined;
     const goodType = kind === 'resource' ? resourceGood : kind === 'stump' ? stumpGood : stockpile?.goodType;
     // A chopping settler shares its tree's cell; nudge its drawn sprite left so the right-swing axe
     // lands in the trunk at the cell centre (render-only — the depth sort below still uses the true tile).

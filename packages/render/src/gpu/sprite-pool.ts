@@ -13,6 +13,7 @@ import {
   resolveSettlerBobId,
   resolveSpriteBobId,
   resolveStockpileDraw,
+  unwrapBobRef,
 } from '../data/sprites.js';
 import type { Viewport } from '../data/viewport.js';
 import { PalettedSprite } from './paletted-sprite.js';
@@ -36,6 +37,7 @@ const KIND_COLOURS: Record<Exclude<DrawKind, 'tile'>, number> = {
   resource: 0x2f7d32,
   stockpile: 0xb08040, // a sandy heap/flag marker, distinct from the green resource node
   stump: 0x6b4a2a, // a brown stump/debris marker (the felled-tree remnant), distinct from both
+  grounddrop: 0x8a5a2a, // a log-brown marker for a freshly-felled trunk lying on the ground
 };
 
 /** One resolved atlas layer to draw for an entity: which source page, which frame rect, at what scale.
@@ -444,9 +446,29 @@ export class SpritePool {
       // the placeholder heap — never falls through to the body atlas (which would blit a settler frame).
       const binding = sheet.bindings.stockpile;
       if (binding === undefined) return null;
-      const draw = resolveStockpileDraw(binding, item);
+      const draw = resolveStockpileDraw(binding, item); // the per-fill heap when held, the flag when empty
       if (draw.layer === undefined) return null; // no family → placeholder heap
-      const resolved = this.layeredLayerFor(sheet, 'stockpile', draw);
+      const primary = this.layeredLayerFor(sheet, 'stockpile', draw);
+      if (primary === null) return null;
+      // The delivery FLAG stays planted even once wood is piled on it: when the pile HOLDS goods (`draw` is
+      // the heap), plant the flag BEHIND its heap so the collection marker never vanishes under its goods.
+      // An empty pile's `draw` already IS the flag, so nothing extra to add.
+      if (item.goodType !== undefined && typeof binding !== 'number') {
+        const flagDraw = unwrapBobRef(binding.flag);
+        const flagLayer =
+          flagDraw.layer !== undefined ? this.layeredLayerFor(sheet, 'stockpile', flagDraw) : null;
+        if (flagLayer !== null) return [flagLayer, primary]; // flag behind, heap in front
+      }
+      return [primary];
+    } else if (item.kind === 'grounddrop') {
+      // A freshly-felled trunk on the ground draws its per-good pickup-stage LOG from a loaded named family
+      // (the `landscapeToPickup` atlas), reusing the resource resolver — the same no-wrong-borrow rule as
+      // the stump. A bare or unloaded-family ref draws the placeholder log, never a body-atlas frame.
+      const binding = sheet.bindings.trunk;
+      if (binding === undefined) return null;
+      const draw = resolveResourceDraw(binding, item);
+      if (draw.layer === undefined) return null; // no family → placeholder
+      const resolved = this.layeredLayerFor(sheet, 'grounddrop', draw);
       return resolved === null ? null : [resolved];
     } else if (item.kind === 'stump') {
       // A stump has NO shared `kindLayers` layer of its own either — it draws its debris frame ONLY
