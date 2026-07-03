@@ -64,11 +64,23 @@ delete this file when all steps land.
       + `StockpileBinding` (a new `'stockpile'` `DrawKind`) built from the Step-1 `gatheringPipeline` join;
       each good draws its own node/pile, an empty pile the flag. Acceptance scene `?scene=gathering`. See
       docs/FIDELITY.md "Gathering-economy graphics" + ROADMAP-ARCHIVE "rung 2".
-- [ ] 3. Sim: wood cycle — multi-chop fell → trunk on ground → pickup → deliver
+- [x] 3. Sim: wood cycle — multi-chop fell → trunk on ground → pickup → deliver — **landed:** a
+      `Felling{chopsLeft}` marker (stamped from content `gathering.chopsToFell`) turns each chop atomic into
+      a decrement; the last chop DESTROYS the standing node and drops a `GroundDrop` trunk (the whole yield)
+      + a `Stump`, emitting `resourceFelled`; the feller prefers its own fresh trunk, then delivers a load at
+      a time via the existing porter machinery. Render refinements from the visual review: the freshly-felled
+      trunk draws its own `landscapeToPickup` graphic (a `grounddrop` DrawKind, distinct from the delivered
+      `landscapeToStore` heap), the delivery flag stays planted UNDER its heap, and the chop swing is ONE full
+      strike per atomic (`HARVEST_SWING_LENGTH` — the swing-length half of Step 7, done early). Felling pace
+      is ONE global calibration (`catalog/felling.ts`). See docs/FIDELITY.md "Multi-hit harvest / felling".
 - [ ] 4. Sim: mineral deposits shrink by level; mushrooms
 - [ ] 5. Sim: resource collision + build-exclusion from data
 - [ ] 6. App: imported maps spawn real resource nodes
-- [ ] 7. Polish: chop cadence, adjacent stance, animation timing
+- [ ] 7. Polish: chop cadence, adjacent stance, animation timing — **swing length already landed with Step 3**
+      (`HARVEST_SWING_LENGTH` = one full strike per chop atomic). STILL OPEN (the two the user flagged in the
+      Step-3 review): (a) pickup/deposit play a real bend animation (`human_man_generic_pick_up`, 19 frames,
+      currently UNBOUND → the item pops in/out) with a GLOBAL duration constant, not per-scene; (b) the
+      strike → brief idle → reposition cadence between chops. Adjacent stance still needs Step 5.
 
 Out of scope for this plan: tree regrowth/spreading and herb/mushroom cultivation (the bio
 transitions — `isBioLandscapeFlag`, `atomicForPlanting`), bush/fruit growth stages, farming/
