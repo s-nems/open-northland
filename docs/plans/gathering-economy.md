@@ -76,7 +76,7 @@ fishing/hunting jobs, vehicle logistics, and the minimap. Calibration constants 
 yields, deposit sizes) are data + FIDELITY entries, refined later by observing the original.
 
 ---
-
+[DONE]
 ## Step 1 — pipeline: resource-lifecycle logic tables
 
 ```text
@@ -132,7 +132,7 @@ Verification:
 Guardrails: read-only outside this repo; follow tools/asset-pipeline/CLAUDE.md (facts from
 OpenVikings, never its architecture); data only — no sim behavior change, goldens must not move.
 ```
-
+[DONE]
 ## Step 2 — render: nodes per good, ground piles, flags
 
 ```text
@@ -189,6 +189,7 @@ Guardrails: render cost scales with the screen (retained renderer rules,
 packages/render/CLAUDE.md); no sim change — goldens must not move.
 ```
 
+[IN PROGRESS]
 ## Step 3 — sim: the wood cycle (fell → trunk → pickup → deliver)
 
 ```text
