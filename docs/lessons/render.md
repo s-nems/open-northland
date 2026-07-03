@@ -90,3 +90,11 @@ extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
   gathering scene had 6 vs the swing's 16); fix by driving EVERY scene off the one `HARVEST_SWING_LENGTH`
   export (settler-gfx), derived from the render `CHOP_STRIDE`, so a scene can't mistune it. A per-scene
   magic number that must equal a value owned elsewhere is a bug waiting to drift — export the source. (app/render)
+- A screen-space HUD (the left tool panel) draws its sprites/glyphs with `PalettedSprite` (indexed atlas
+  + palette LUT), which by design IGNORES the scene-graph transform — you position each sprite in CANVAS
+  px via `place(x, y, scale, screenW, screenH)` and MUST re-place every frame (it carries the resolution,
+  so a resize needs a fresh `place`). A parent container's position only moves its `Graphics`/`Text`
+  children + sets draw order, never the paletted meshes. The `.fnt` text is one `PalettedSprite` per
+  non-empty glyph reading the font colour-LUT row, laid out top-anchored by `pen += advance` (the original
+  `CFont` model) — empty glyphs advance but draw nothing. Call the panel's `update()` BEFORE the
+  renderer's `update()` (which ends in `app.render()`), or the sprites render one frame stale. (app/render)

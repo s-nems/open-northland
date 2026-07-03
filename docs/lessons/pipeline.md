@@ -183,3 +183,10 @@ extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
   changes pipeline OUTPUT, honour the worktree exception: regenerate `content/` in the worktree instead of
   symlinking the primary's, else you debug a data-freshness problem as a code bug. Confirm the fix by
   inspecting `ir.gatheringPipeline.length` (should be 11), not by re-reading the binding code. (pipeline/content)
+- A checked-in frame-name MAP or loader is NOT the decoded BYTES. `content/` is gitignored + regenerated
+  by hand, so it lags behind added pipeline stages: the GUI window atlas, font atlases, palette LUT, and
+  `gui/strings` were absent on disk though `gui-atlas-map.ts` + the `gui-gfx`/`font-gfx` loaders were long
+  committed. If a "content is present" feature renders nothing, check the specific stage OUTPUT exists on
+  disk, not just that the loader/map code is there. The GUI + font stages read from the GAME copy and only
+  ADD files, so a targeted `convertGuiStage(game, out)` + `convertFontStage(game, out)` regenerates just
+  those (additive — no full re-extract, no clobber of the 400+ existing atlases or `ir.json`). (pipeline/content)

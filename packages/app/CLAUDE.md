@@ -49,6 +49,8 @@ gitignored bytes:
   loop drawn every frame. The menu's "Podgląd na żywo" card.
 - `?shot[&seed&ticks&hud]` — headless deterministic screenshot entry (`entries/shot.ts`).
 - `?scene=<id>` — run a registered **acceptance scene** with its checklist overlay (`entries/scene.ts`).
+  A scene with `toolPanel: true` (e.g. `?scene=tool-panel`) also mounts the original LEFT tool panel;
+  `?uiscale=1|2|3` sets its integer UI scale (default 2×) — the panel's internal geometry stays pinned.
 - `?anim[&char=<id>&view=anim|heads|colors&color=0..15&dir=full|0..7&cols=N&filter=<substr>&zoom&speed]` — the
   character **animation gallery** (`entries/anim.ts` + `catalog/roster.ts`), the extracted `[bobseq]` played from
   the atlas with a direction selector so a human can validate all animations in all 8 facings. **Bare `?anim` (no

@@ -56,6 +56,12 @@ export interface UnitControlsOptions {
    * scales with its size. Optional: without it (or for an off-screen target) picking uses the kind box.
    */
   readonly boundsOf?: (ref: number) => EntityBounds | undefined;
+  /**
+   * The HUD's pointer claim — returns true when a client point is over an on-screen HUD element (the tool
+   * panel, an open window, or a placement in progress). When it does, the press is the HUD's and is NOT
+   * routed to world selection / orders (the explicit HUD-before-world hit-test). Optional: no HUD → no claim.
+   */
+  readonly claimPointer?: (clientX: number, clientY: number) => boolean;
 }
 
 export interface UnitControls {
@@ -162,6 +168,9 @@ export function createUnitControls(opts: UnitControlsOptions): UnitControls {
   };
 
   const onMouseDown = (e: MouseEvent): void => {
+    // The HUD claims its own clicks BEFORE any world picking — a press over the tool panel / an open
+    // window / a placement-in-progress never starts a selection or issues a move order.
+    if (opts.claimPointer?.(e.clientX, e.clientY) === true) return;
     if (e.button === 2) {
       // Right button: attack an enemy under the cursor, else move to the clicked tile.
       issueRightClickOrder(e);
