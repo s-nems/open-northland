@@ -28,12 +28,15 @@ import {
 import { atomicAnimationName, atomicDuration, stockCapacity } from '../shared.js';
 
 /**
- * The numeric atomic id a struck civilian runs to **flinch** — the original's `setatomic <job> 82
- * "..._attacked"` slot (id 82 = the ATTACKED/stagger slot; the mod binds it for the civilian classes —
- * `viking_woman_attacked` / `viking_civilist_attacked`, length 50, no events — NOT for soldiers/heroes/
- * animals, verified in `DataCnmd/tribetypes12/tribetypes.ini`). Purely visual: the atomic carries an
- * `idle` effect (no state mutation), it just occupies the victim so a struck civilian visibly staggers
- * and can't act for its duration. Bound data-driven — a class with no 82 binding never staggers.
+ * The numeric atomic id a struck combatant runs to **flinch** — the original's `setatomic <job> 82
+ * "..._attacked"` slot (id 82 = the ATTACKED/stagger slot). Among the **playable** civilizations only
+ * the civilian classes bind it (`viking_woman_attacked` / `viking_civilist_attacked`, length 50, no
+ * events — playable soldiers/heroes have no 82 row); the **monster tribes** (weresnake/werewolf/
+ * bear-weresnake) also bind it for their creature-soldier classes (`DataCnmd/tribetypes12/tribetypes.ini`),
+ * so a struck were-monster flinches too — the data-driven design working, not a special case. Purely
+ * visual: the atomic carries an `idle` effect (no state mutation), it just occupies the victim so a
+ * struck combatant visibly staggers and can't act for its duration. A class with no 82 binding (a
+ * playable soldier) never staggers, with zero per-job code.
  */
 const ATTACKED_ATOMIC_ID = 82;
 
@@ -77,15 +80,17 @@ const NEED_EVENT_RESERVE = 10000;
  * (Stockpile writes go through the canonical Map, never iterated for a decision). Fixed-point only.
  */
 export const atomicSystem: System = (world, ctx) => {
-  // Snapshot the active atomics before advancing them: a landed hit can STAGGER its victim (add a
-  // `CurrentAtomic` mid-loop, see `applyStagger`), and iterating the store we're mutating would
-  // otherwise visit that fresh stagger this same tick. The snapshot fixes the visited set to the
-  // atomics live at tick start, so a stagger begins advancing the NEXT tick — deterministic and
-  // independent of insertion order. Behavior-preserving for all non-combat content (nothing else adds
-  // a CurrentAtomic during this loop). O(active atomics) — the work already being done this tick.
-  for (const e of [...world.query(CurrentAtomic)]) {
-    const atomic = world.tryGet(e, CurrentAtomic);
-    if (atomic === undefined) continue; // atomic gone since the snapshot (defensive — no effect removes another's)
+  // A landed hit may STAGGER its victim (give it the `82` ATTACKED atomic). That `world.add` is
+  // COLLECTED here and applied only AFTER the loop: adding a `CurrentAtomic` to the store we're
+  // iterating would let a victim later in iteration advance its own fresh stagger this same tick (a
+  // real order-coupling — Map iteration visits a key inserted during iteration). Deferring the add makes
+  // the flinch provably begin advancing the NEXT tick, independent of `CurrentAtomic` insertion order,
+  // and lets the loop iterate the store's live view (self-removal on completion is the only in-loop
+  // store mutation, which Map iteration allows). The eligibility check (binding + interruptibility) is
+  // still made at HIT time (in `collectStagger`), so a victim mid-uninterruptible-swing is never flinched.
+  const pendingStaggers: Array<{ victim: Entity; duration: number }> = [];
+  for (const e of world.query(CurrentAtomic)) {
+    const atomic = world.get(e, CurrentAtomic);
     const duration = Math.max(1, atomic.duration);
     atomic.elapsed += 1;
     // Derived 0..ONE display value (render interpolation); clamped so it never exceeds ONE.
@@ -98,7 +103,7 @@ export const atomicSystem: System = (world, ctx) => {
     // once — the swing lands a single blow.
     if (atomic.effect.kind === 'attack') {
       const hitFrame = Math.min(Math.max(1, atomic.effect.hitAt ?? duration), duration);
-      if (atomic.elapsed === hitFrame) resolveAttackHit(world, ctx, e, atomic.effect);
+      if (atomic.elapsed === hitFrame) resolveAttackHit(world, ctx, e, atomic.effect, pendingStaggers);
     }
 
     if (atomic.elapsed < duration) continue; // still running
@@ -112,6 +117,23 @@ export const atomicSystem: System = (world, ctx) => {
     if (atomic.effect.kind === 'attack') paySwingNeedCost(world, ctx, e, atomic.atomicId);
     ctx.events.emit({ kind: 'atomicCompleted', entity: e, atomicId: atomic.atomicId });
     world.remove(e, CurrentAtomic);
+  }
+
+  // Apply the collected flinches now — the `CurrentAtomic` store is no longer being iterated, so a
+  // struck civilian's ATTACKED atomic starts at `elapsed 0` and first advances next tick, independent
+  // of iteration order. `world.add` overwrites any interruptible action the victim was still running
+  // (it was vetted interruptible at hit time — a blow knocks it off task). Two hits on one victim this
+  // tick both push the same idempotent flinch; last-wins is harmless (identical atomic).
+  for (const { victim, duration } of pendingStaggers) {
+    world.add(victim, CurrentAtomic, {
+      atomicId: ATTACKED_ATOMIC_ID,
+      elapsed: 0,
+      progress: fx.fromInt(0),
+      duration,
+      effect: { kind: 'idle' },
+      targetEntity: null,
+      targetTile: null,
+    });
   }
 };
 
@@ -244,6 +266,7 @@ function resolveAttackHit(
   ctx: SystemContext,
   attacker: Entity,
   effect: Extract<AtomicEffect, { kind: 'attack' }>,
+  pendingStaggers: Array<{ victim: Entity; duration: number }>,
 ): void {
   const health = world.tryGet(effect.target, Health);
   if (health === undefined) return; // target gone / non-combatant — the swing struck nothing
@@ -258,25 +281,35 @@ function resolveAttackHit(
   if (health.hitpoints <= 0) {
     harvestCadaver(world, ctx, attacker, effect.target); // a lethal blow may yield meat — no flinch (dying)
   } else {
-    applyStagger(world, ctx, effect.target); // a survivor flinches (data-driven; only if it has an 82 binding)
+    collectStagger(world, ctx, effect.target, pendingStaggers); // a survivor may flinch (applied after the loop)
   }
 }
 
 /**
- * Give a struck **survivor** its data-driven flinch — the original's `setatomic <job> 82 "..._attacked"`
- * ATTACKED atomic ({@link ATTACKED_ATOMIC_ID}). No-ops unless the victim's `(tribe, job)` binds atomic
- * 82 (only the civilian classes do — woman/civilist; soldiers/heroes/animals have no binding, so they
- * never stagger), keeping it purely data-driven with no per-job code. The flinch is a `CurrentAtomic`
- * carrying an **`idle`** effect (no state mutation) for the ATTACKED animation's length — purely visual
- * occupancy: the struck civilian visibly staggers and can't act for its duration, then frees up.
+ * Decide — at HIT time — whether a struck **survivor** flinches, and if so COLLECT it for the deferred
+ * `world.add` the executor does after its loop (see `atomicSystem`). The flinch is the original's
+ * `setatomic <job> 82 "..._attacked"` ATTACKED atomic ({@link ATTACKED_ATOMIC_ID}) — a `CurrentAtomic`
+ * carrying an **`idle`** effect (no state mutation) for the ATTACKED animation's length, purely visual
+ * occupancy (the struck victim visibly staggers and can't act for its duration, then frees up).
  *
- * Only interrupts an **interruptible** current action: if the victim is mid-swing or already
- * mid-flinch (both `interruptable 0` in the data) it is NOT re-staggered — no stunlock, and its own
- * uninterruptible action plays out. An idle victim (no `CurrentAtomic`) always flinches. Overwrites the
- * victim's current atomic when it does flinch ({@link World.add} sets, so an interruptible walk is cut
- * short for the flinch — faithful to being knocked off task by a blow).
+ * **Purely data-driven — no per-job code:** a class flinches iff its `(tribe, job)` binds atomic 82.
+ * Among the *playable* civilizations only the civilian classes do (woman/civilist); the monster tribes
+ * (weresnake/werewolf/bear-weresnake) also bind it for their creature-soldier classes, which therefore
+ * stagger too — that is the design working, not a special case. A class with no 82 binding (a playable
+ * soldier/hero) never flinches.
+ *
+ * Only flags an **interruptible** current action (checked HERE, at the hit, not at the deferred add):
+ * a victim mid-swing or already mid-flinch (both `interruptable 0` in the data) is NOT re-staggered —
+ * no stunlock, and its own uninterruptible action plays out. An idle victim (no `CurrentAtomic`) always
+ * flinches. The deferred add then overwrites whatever interruptible action remains (a blow knocks the
+ * victim off task).
  */
-function applyStagger(world: World, ctx: SystemContext, target: Entity): void {
+function collectStagger(
+  world: World,
+  ctx: SystemContext,
+  target: Entity,
+  pendingStaggers: Array<{ victim: Entity; duration: number }>,
+): void {
   const victim = world.tryGet(target, Settler);
   if (victim === undefined) return; // not a settler/animal — nothing to stagger
   const staggerAnim = atomicAnimationName(ctx, victim, ATTACKED_ATOMIC_ID);
@@ -289,15 +322,7 @@ function applyStagger(world: World, ctx: SystemContext, target: Entity): void {
     // safe default) — don't preempt an action with no timing record.
     if (currentAnim === undefined || !isInterruptibleAtomic(ctx.content, currentAnim)) return;
   }
-  world.add(target, CurrentAtomic, {
-    atomicId: ATTACKED_ATOMIC_ID,
-    elapsed: 0,
-    progress: fx.fromInt(0),
-    duration: atomicDuration(ctx, victim, ATTACKED_ATOMIC_ID),
-    effect: { kind: 'idle' },
-    targetEntity: null,
-    targetTile: null,
-  });
+  pendingStaggers.push({ victim: target, duration: atomicDuration(ctx, victim, ATTACKED_ATOMIC_ID) });
 }
 
 /**

@@ -379,7 +379,17 @@ export function atomicDuration(
   settler: { tribe: number; jobType: number | null },
   atomicId: number,
 ): number {
-  const animation = atomicAnimationName(ctx, settler, atomicId);
+  return atomicDurationForName(ctx, atomicAnimationName(ctx, settler, atomicId));
+}
+
+/**
+ * The duration (ticks) of a named animation — its `atomicanimations.ini` `length`, or
+ * {@link DEFAULT_ATOMIC_DURATION} when the name is undefined / unresolved / zero-length. The
+ * name-keyed half of {@link atomicDuration}, split out so a caller that has already resolved the
+ * animation NAME (e.g. the combat swing-start, which reads the same animation's hit-frame too) can get
+ * the duration WITHOUT re-walking the tribe's `setatomic` bindings a second time.
+ */
+export function atomicDurationForName(ctx: SystemContext, animation: string | undefined): number {
   if (animation === undefined) return DEFAULT_ATOMIC_DURATION;
   const anim = ctx.content.atomicAnimations.find((a) => a.name === animation);
   const length = anim?.length ?? 0;

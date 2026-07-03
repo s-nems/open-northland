@@ -26,7 +26,7 @@ import {
   mayHunt,
   weaponDamageVsMaterial,
 } from '../readviews/index.js';
-import { atomicAnimationName, atomicDuration, entityCell, manhattan } from '../shared.js';
+import { atomicAnimationName, atomicDurationForName, entityCell, manhattan } from '../shared.js';
 
 /**
  * CombatSystem (the **targeting** half of the combat loop) — choose who each idle combatant swings
@@ -150,20 +150,6 @@ function targetMaterial(world: World, ctx: SystemContext, target: Entity): numbe
   const armor = world.tryGet(target, Armor);
   if (armor === undefined) return ARMOR_MATERIAL.NONE; // bare target — the unarmored column
   return armorMaterialForClass(ctx.content, armor.armorClass);
-}
-
-/** The animation frame a swing's blow lands — the attacker's `(tribe, job)` attack animation's
- *  {@link ATOMIC_EVENT_TYPE_ATTACK} event (`event <frame> 25`), or `undefined` when the animation
- *  carries none (or doesn't resolve). Stored on the `attack` effect so the executor fires the hit
- *  mid-animation at that frame; `undefined` → the executor falls back to the completion frame. */
-function attackHitFrame(
-  ctx: SystemContext,
-  attacker: { tribe: number; jobType: number | null },
-  atomicId: number,
-): number | undefined {
-  const animation = atomicAnimationName(ctx, attacker, atomicId);
-  if (animation === undefined) return undefined;
-  return atomicEventFrame(ctx.content, animation, ATOMIC_EVENT_TYPE_ATTACK);
 }
 
 /**
@@ -385,12 +371,17 @@ function startAttack(
   damage: number,
   weapon: WeaponType,
 ): void {
-  const hitAt = attackHitFrame(ctx, attacker, ATTACK_ATOMIC_ID);
+  // Resolve the attack animation NAME once (the tribe's `setatomic 81` walk), then read BOTH its
+  // duration and its ATTACK-event hit-frame off that single resolution — the swing-start is per-swing,
+  // not per-tick, but re-walking the bindings twice for the same animation is a needless hot-loop cost.
+  const animation = atomicAnimationName(ctx, attacker, ATTACK_ATOMIC_ID);
+  const hitAt =
+    animation === undefined ? undefined : atomicEventFrame(ctx.content, animation, ATOMIC_EVENT_TYPE_ATTACK);
   world.add(e, CurrentAtomic, {
     atomicId: ATTACK_ATOMIC_ID,
     elapsed: 0,
     progress: fx.fromInt(0),
-    duration: atomicDuration(ctx, attacker, ATTACK_ATOMIC_ID),
+    duration: atomicDurationForName(ctx, animation),
     effect: {
       kind: 'attack',
       target,
