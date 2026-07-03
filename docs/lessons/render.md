@@ -98,14 +98,14 @@ extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
   non-empty glyph reading the font colour-LUT row, laid out top-anchored by `pen += advance` (the original
   `CFont` model) — empty glyphs advance but draw nothing. Call the panel's `update()` BEFORE the
   renderer's `update()` (which ends in `app.render()`), or the sprites render one frame stale. (app/render)
-- GUI **icon transparency is a palette colour-key, not a bob mask.** The in-game GUI palettes reserve
-  index 0 (magenta `255,0,255`) + a near-black band (top ~8 entries, max channel ≲ 24/255) as each element's
-  transparent background — but a bob's transparency is skip-runs only; its WRITTEN pixels (including that
-  background) are opaque (confirmed vs the OpenVikings `PrintPackedLine_8Bit`/`_DoubleByte` oracle — no
-  colour key in the blitter). So an icon button drawn straight carries an opaque dark square that covers the
-  strip. The fix is a shader colour-key: `PalettedSprite.colorKey` (opt-in per sprite, default off so world
-  characters are untouched) discards the magenta + near-black LUT colours. Verify the threshold against a
-  real frame first (dump each index's LUT luminance) — the glyph ramp must sit clear above the near-black
-  cutoff, or the key eats the icon. Enable it on EVERY panel sprite (strip + buttons): the strip's near-black
-  field is not a panel, it's the palette's transparent background, so keying it lets the terrain show through
-  instead of a black rectangle covering it. (render/app)
+- GUI panel transparency is OUR deviation, NOT an original mechanism — don't mislabel it. A `.bmd` bob writes
+  its background pixels OPAQUE (transparency is skip-runs only; the engine blitter has no colour-key test —
+  confirmed vs the OpenVikings `PrintPackedLine_8Bit`/`_DoubleByte`), and the original drew gameplay in a
+  dedicated region so its opaque left panel never covered the world. We render the world full-screen with the
+  panel floating over it, so an opaque strip/icon would paint a black rectangle over the terrain. Fix = a
+  shader colour-key, `PalettedSprite.colorKey` (opt-in per sprite, default off so world characters are
+  untouched), discarding the GUI palettes' background colours: index 0 (magenta `255,0,255`) + a near-black
+  band (our heuristic cutoff `KEY_NEAR_BLACK` ≈ 28/255, no oracle basis). Verify the threshold against a real
+  frame first (dump each index's LUT luminance) — the glyph ramp must sit clear above the cutoff, or the key
+  eats the icon. Enable it on EVERY panel sprite (strip + buttons), and record it as a deliberate DEVIATION in
+  FIDELITY (the original panel is opaque), not a reconstruction. (render/app)

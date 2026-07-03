@@ -16,7 +16,12 @@ import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { fetchTerrainIr, loadRealTerrain } from '../content/terrain.js';
 import { demoGoods, loadTerrainMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
 import { cameraCenteredOnTile, cameraFor, createCameraController } from '../view/camera.js';
-import { menuEntriesFromContent, mountGameToolPanel, shiftHud } from '../view/game-tool-panel.js';
+import {
+  applyGameSpeed,
+  menuEntriesFromContent,
+  mountGameToolPanel,
+  shiftHud,
+} from '../view/game-tool-panel.js';
 import { enableAudioOnGesture } from '../view/overlay.js';
 import { mountPerfOverlay } from '../view/perf-overlay.js';
 import { createUnitControls } from '../view/unit-controls.js';
@@ -113,10 +118,11 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
   // `?zoom=N` magnifies + re-centres on the sprites (the same knob the shot uses) so a decoded bob is
   // big enough to inspect in the live view; absent, scale 1.
   const zoom = floatParam(params, 'zoom', 1);
-  // Playback control. The tool panel's game-speed button (mounted below) OWNS the tick rate: it pushes its
-  // default ×1 through `onSpeed` during mount — before the first frame — and cycles ×1 → ×2 → ×3 → pause on
-  // click. It supersedes the old `?speed=` seed; the panel is now the live speed control.
-  const control = { paused: false, speed: 1 };
+  // Playback control. `?speed=` seeds the initial wall-clock multiplier (default ×1; pass e.g.
+  // `?live&speed=0.5` for a calm, sub-1× pace the panel's discrete speed button can't reach). The tool
+  // panel's game-speed button (mounted below) then drives it live — cycling ×1 → ×2 → ×3 → pause — without
+  // clobbering this seed at mount.
+  const control = { paused: false, speed: floatParam(params, 'speed', 1) };
   // The slice sim, kept live and stepped one tick per fixed interval below. When a map loaded, the sim
   // navigates that real grid (placement on its walkable cells); else the synthetic strip. The units are
   // owned by the human player so they can be selected + ordered.
@@ -164,10 +170,7 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
     buildings: menuEntriesFromContent(sim.content),
     tribe: HUD_TRIBE,
     owner: HUMAN_PLAYER,
-    onSpeed: (spec) => {
-      control.paused = spec.state === 'paused';
-      if (spec.state !== 'paused') control.speed = spec.tickMultiplier;
-    },
+    onSpeed: (spec) => applyGameSpeed(control, spec),
   });
 
   // RTS unit control: left-click / drag-box to select the human's units, right-click to send them,

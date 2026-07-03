@@ -88,8 +88,6 @@ export interface ToolPanelController {
    * not run a second O(entities) `buildHud` scan.
    */
   update(hud: HudLayout): void;
-  /** The current game-speed spec (so the entry can initialise its loop control before the first frame). */
-  speed(): GameSpeedStateSpec;
   dispose(): void;
 }
 
@@ -197,10 +195,11 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   let speedSprite: PalettedSprite | null = null;
 
   if (hasArt) {
-    // Key EVERY panel sprite (strip + buttons): the GUI palettes encode each element's background as a
-    // magenta/near-black transparent key, but the bob writes it opaque — so drawing it straight paints an
-    // opaque dark rectangle over the terrain. Keying leaves only the ornamental carving + the glyphs, with
-    // the world showing through the background (no black frame around the panel).
+    // Key EVERY panel sprite (strip + buttons). The GUI palettes reserve index 0 (magenta) + a near-black
+    // band as each element's background, but a bob writes them OPAQUE (the engine blitter has no colour key,
+    // and the original hid its opaque panel by rendering gameplay in a dedicated area). We render the world
+    // full-screen, so this is a DELIBERATE deviation: key those colours transparent so the floating HUD shows
+    // only the ornament + glyphs and never paints a dark rectangle over the terrain (docs/FIDELITY.md).
     const strip = guiSprite(layout.stripGfx);
     if (strip !== null) {
       strip.colorKey = true;
@@ -273,7 +272,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
 
   const speedBtnRect = layout.buttons.find((b) => b.id === 'speed')?.placed;
 
-  const applySpeed = (): void => {
+  const applySpeed = (pushToLoop: boolean): void => {
     const spec = gameSpeedSpec(speedState);
     if (speedSprite !== null && guiLayer !== null) {
       const frame = guiLayer.atlas.frames.get(spec.gfx);
@@ -290,7 +289,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         speedBtnRect.y + speedBtnRect.h / 2 - 3 * scale,
       );
     }
-    opts.onSpeedChange(spec);
+    // Push to the loop only on an actual speed change (a button click), NOT at mount — the entry seeds its
+    // own initial loop speed (default / `?speed=`), and the panel must not clobber it with ×1 before frame 0.
+    if (pushToLoop) opts.onSpeedChange(spec);
   };
 
   // --- Building menu --------------------------------------------------------------------------------
@@ -462,7 +463,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     switch (id) {
       case 'speed':
         speedState = nextGameSpeedState(speedState);
-        applySpeed();
+        applySpeed(true);
         break;
       case 'buildings':
         cancelPlacement();
@@ -577,11 +578,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   canvas.addEventListener('mousemove', onMouseMove);
   window.addEventListener('keydown', onKeyDown);
 
-  applySpeed(); // initialise the speed button graphic + push the initial speed to the loop
+  applySpeed(false); // initialise the speed button graphic only — the loop keeps the entry's seeded speed
 
   return {
     claimsPointer,
-    speed: () => gameSpeedSpec(speedState),
     update(hud): void {
       const rw = app.screen.width;
       const rh = app.screen.height;
