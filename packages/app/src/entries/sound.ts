@@ -1,0 +1,324 @@
+import {
+  type EventSound,
+  type SoundBindings,
+  VIKING_VOICE_POOLS,
+  type VoiceClass,
+  defaultBindings,
+} from '@vinland/audio';
+import type { SoundBank } from '@vinland/data';
+import { createSoundDriver, fetchAudioIr } from '../content/audio.js';
+import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
+import { el } from '../view/overlay.js';
+
+/**
+ * The `?sounds` VERIFICATION GALLERY — the audio twin of the `?anim` character gallery. An agent can't
+ * self-judge whether a sound is the RIGHT sound (root CLAUDE.md "How to verify your work"), so this is the
+ * human-oracle seam for audio: it lists every wired mapping — which sim happening triggers which decoded
+ * clip, the settler voice pools split by sex/age, the life-event jingles and the terrain ambient beds —
+ * each with a ▶ that plays the wav straight off the `/sounds` dev route. A click is a user gesture, so the
+ * browser lets it sound without the live loop's suspended-until-gesture dance.
+ *
+ * Two halves like the anim gallery: a PURE {@link buildSoundGalleryModel} (unit-tested — it is where the
+ * event→sound bindings become an auditable list) and the DOM render below.
+ */
+
+/** A named group and the interchangeable clips the engine picks from — the leaf of every gallery row. */
+export interface ClipList {
+  readonly group: string;
+  readonly clips: readonly string[];
+}
+
+/** One "a happening → its sound" row: what occurs, when, the bound group/jingle, and its clips. */
+export interface ActionRow {
+  /** PL name of the happening (e.g. "Rąbanie drzewa"). */
+  readonly label: string;
+  /** PL description of WHEN it fires (e.g. "każde uderzenie siekierą drwala"). */
+  readonly trigger: string;
+  /** The bound sound's handle (the `SoundFXStatic` group name, or the jingle name). */
+  readonly sound: string;
+  /** Spatial (positioned in the world) vs jingle (non-spatial life-event stinger). */
+  readonly kind: EventSound['kind'];
+  readonly clips: readonly string[];
+}
+
+/** The voice pools for one sex/age class — what an on-screen settler of that class draws its murmur from. */
+export interface VoiceClassView {
+  readonly cls: VoiceClass;
+  readonly label: string;
+  readonly groups: readonly ClipList[];
+}
+
+/** The whole auditable model: happenings, voices (by sex/age), jingles, ambient beds. */
+export interface SoundGalleryModel {
+  readonly actions: readonly ActionRow[];
+  readonly voices: readonly VoiceClassView[];
+  readonly jingles: readonly ClipList[];
+  readonly ambient: readonly ClipList[];
+}
+
+/** An action's binding key: the `chop` atomic, or one of the `byEvent` sim-event kinds. */
+type ActionKind = 'chop' | keyof SoundBindings['byEvent'];
+
+/** The action rows to show, in a readable order — `chop` is the atomic binding, the rest are `byEvent`. */
+const ACTION_EVENTS: readonly {
+  readonly kind: ActionKind;
+  readonly label: string;
+  readonly trigger: string;
+}[] = [
+  { kind: 'chop', label: 'Rąbanie drzewa', trigger: 'każde uderzenie siekierą drwala w drzewo' },
+  { kind: 'buildingPlaced', label: 'Postawienie budynku', trigger: 'gdy gracz stawia nowy budynek' },
+  { kind: 'boatPlaced', label: 'Zwodowanie łodzi', trigger: 'gdy powstaje łódź' },
+  { kind: 'goodProduced', label: 'Produkcja towaru', trigger: 'gdy warsztat wytwarza towar' },
+  { kind: 'buildingFinished', label: 'Ukończenie budowy', trigger: 'gdy budynek zostaje dokończony' },
+  { kind: 'settlerBorn', label: 'Narodziny', trigger: 'gdy rodzi się osadnik' },
+  { kind: 'settlerDied', label: 'Śmierć', trigger: 'gdy osadnik ginie' },
+];
+
+/** PL labels for the three settler voice classes the chatter matches on. */
+const VOICE_LABEL: Readonly<Record<VoiceClass, string>> = {
+  male: 'Mężczyźni',
+  female: 'Kobiety',
+  child: 'Dzieci',
+};
+
+/** The clips of a `SoundFXStatic` group by name (case-insensitive), or `[]` when the bank lacks it. */
+function groupClips(sounds: SoundBank, name: string): readonly string[] {
+  const g = sounds.staticGroups.find((x) => x.name.toLowerCase() === name.toLowerCase());
+  return g?.sfx.map((s) => s.file) ?? [];
+}
+
+/** Resolve a binding into its display sound (name + clips) — a group for spatial, a jingle for a MusicType. */
+function resolveSound(
+  sound: EventSound | undefined,
+  sounds: SoundBank,
+): { readonly sound: string; readonly kind: EventSound['kind']; readonly clips: readonly string[] } | null {
+  if (sound === undefined) return null;
+  if (sound.kind === 'spatial') {
+    return { sound: sound.group, kind: 'spatial', clips: groupClips(sounds, sound.group) };
+  }
+  const j = sounds.jingles.find((x) => x.musicType === sound.musicType);
+  return {
+    sound: j?.name && j.name.length > 0 ? j.name : `MusicType ${sound.musicType}`,
+    kind: 'jingle',
+    clips: j?.sfx.map((s) => s.file) ?? [],
+  };
+}
+
+/**
+ * Turn the decoded bank + the resolved {@link SoundBindings} into the auditable gallery model: the
+ * happening→sound rows (the chop atomic + the event bindings), the sex/age voice pools, the jingles and
+ * the ambient beds. Pure — no DOM, no Audio — so the "which sound answers which happening" join is
+ * unit-tested. `chopAtomicId` is the content's woodcutter-chop atomic (the app owns it, like the driver).
+ */
+export function buildSoundGalleryModel(
+  sounds: SoundBank,
+  bindings: SoundBindings,
+  chopAtomicId: number,
+): SoundGalleryModel {
+  const actions: ActionRow[] = [];
+  for (const ev of ACTION_EVENTS) {
+    const bound = ev.kind === 'chop' ? bindings.byAtomic.get(chopAtomicId) : bindings.byEvent[ev.kind];
+    const resolved = resolveSound(bound, sounds);
+    if (resolved === null) continue; // unbound in this build — omit the row rather than show an empty one
+    actions.push({ label: ev.label, trigger: ev.trigger, ...resolved });
+  }
+
+  const voices: VoiceClassView[] = (['male', 'female', 'child'] as const).map((cls) => ({
+    cls,
+    label: VOICE_LABEL[cls],
+    groups: VIKING_VOICE_POOLS[cls].map((name) => ({ group: name, clips: groupClips(sounds, name) })),
+  }));
+
+  const jingles: ClipList[] = sounds.jingles.map((j) => ({
+    group: j.name && j.name.length > 0 ? j.name : `MusicType ${j.musicType ?? '?'}`,
+    clips: j.sfx.map((s) => s.file),
+  }));
+
+  const ambient: ClipList[] = sounds.ambient.map((a) => ({
+    group: a.name,
+    clips: a.sfx.map((s) => s.file),
+  }));
+
+  return { actions, voices, jingles, ambient };
+}
+
+// ─── DOM render (browser-only; the pure model above is what the test covers) ─────────────────────────
+
+/** Cap on individual per-clip play buttons a group shows — the rest are reachable via "▶ losowy". */
+const MAX_CLIP_BUTTONS = 16;
+
+const ROOT_STYLE = [
+  'position:fixed',
+  'inset:0',
+  'overflow-y:auto',
+  'box-sizing:border-box',
+  'padding:32px 20px 64px',
+  'background:radial-gradient(120% 80% at 50% 0%,#241b12 0%,#160f0a 70%)',
+  'color:#e8dcc8',
+  'font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace',
+  'z-index:100',
+].join(';');
+
+const INNER_STYLE = ['max-width:1040px', 'margin:0 auto'].join(';');
+
+const SECTION_TITLE_STYLE = [
+  'font-weight:700',
+  'font-size:14px',
+  'letter-spacing:0.08em',
+  'text-transform:uppercase',
+  'opacity:0.7',
+  'margin:28px 0 10px',
+  'border-bottom:1px solid #5a4a36',
+  'padding-bottom:6px',
+].join(';');
+
+const CLIP_BTN_STYLE = [
+  'cursor:pointer',
+  'background:#3a2f22',
+  'color:#e8dcc8',
+  'border:1px solid #6b5840',
+  'border-radius:5px',
+  'padding:3px 7px',
+  'margin:2px 4px 2px 0',
+  'font:11px ui-monospace,monospace',
+].join(';');
+
+const ROW_STYLE = [
+  'padding:8px 10px',
+  'margin:6px 0',
+  'background:#2a2016',
+  'border:1px solid #4a3c2c',
+  'border-radius:6px',
+].join(';');
+
+/** The single active player — clicking a new ▶ stops the previous clip so sounds never stack. */
+let current: HTMLAudioElement | null = null;
+/** Play one wav off the `/sounds` dev route (a click gesture, so autoplay policy is satisfied). */
+function play(file: string): void {
+  if (current !== null) current.pause();
+  current = new Audio(`/sounds/${file}`);
+  void current.play().catch(() => undefined);
+}
+
+/** The basename of a `dir/name.wav` path — the short label a play button shows. */
+function basename(file: string): string {
+  const slash = file.lastIndexOf('/');
+  return slash >= 0 ? file.slice(slash + 1) : file;
+}
+
+/** A play button for one clip (labelled by its basename). */
+function clipButton(file: string): HTMLButtonElement {
+  const b = el('button', CLIP_BTN_STYLE, `▶ ${basename(file)}`);
+  b.addEventListener('click', () => play(file));
+  return b;
+}
+
+/** The clip buttons for a group: up to {@link MAX_CLIP_BUTTONS} named clips + a random pick when capped. */
+function clipButtons(clips: readonly string[]): HTMLElement {
+  const wrap = el('div', 'margin-top:4px');
+  if (clips.length === 0) {
+    wrap.append(el('span', 'opacity:0.55;font-size:12px', '(brak nagrań w banku)'));
+    return wrap;
+  }
+  for (const file of clips.slice(0, MAX_CLIP_BUTTONS)) wrap.append(clipButton(file));
+  if (clips.length > MAX_CLIP_BUTTONS) {
+    const rand = el('button', CLIP_BTN_STYLE, `▶ losowy (+${clips.length - MAX_CLIP_BUTTONS} więcej)`);
+    // Math.random is fine here — this is the browser gallery, not the deterministic sim.
+    rand.addEventListener('click', () => play(clips[Math.floor(Math.random() * clips.length)] as string));
+    wrap.append(rand);
+  }
+  return wrap;
+}
+
+/** A titled section wrapping a set of rows. */
+function section(title: string, rows: readonly HTMLElement[]): HTMLElement {
+  const wrap = el('div', '');
+  wrap.append(el('div', SECTION_TITLE_STYLE, title));
+  for (const r of rows) wrap.append(r);
+  return wrap;
+}
+
+/** A group row: its name + clip count on top, the play buttons below. */
+function groupRow(cl: ClipList): HTMLElement {
+  const row = el('div', ROW_STYLE);
+  row.append(el('div', 'font-weight:700', `${cl.group}  ·  ${cl.clips.length} nagrań`));
+  row.append(clipButtons(cl.clips));
+  return row;
+}
+
+/** A happening→sound row: the happening + when it fires, the bound sound + kind badge, then its clips. */
+function actionRow(a: ActionRow): HTMLElement {
+  const row = el('div', ROW_STYLE);
+  const head = el('div', 'display:flex;align-items:baseline;gap:8px;flex-wrap:wrap');
+  head.append(el('span', 'font-weight:700', a.label));
+  const badge = a.kind === 'jingle' ? 'jingiel (bez pozycji)' : 'dźwięk pozycyjny';
+  head.append(el('span', 'opacity:0.6;font-size:12px', `→ ${a.sound}  ·  ${badge}`));
+  row.append(head);
+  row.append(el('div', 'opacity:0.7;font-size:12px;margin-top:2px', a.trigger));
+  row.append(clipButtons(a.clips));
+  return row;
+}
+
+/** Mount a full-page message (missing `content/`) instead of a blank gallery. */
+function mountFullPageMessage(title: string, detail: string): void {
+  const root = el('div', ROOT_STYLE);
+  const inner = el('div', INNER_STYLE);
+  inner.append(
+    el('div', 'font-weight:700;font-size:22px', title),
+    el('div', 'opacity:0.8;margin-top:8px', detail),
+  );
+  root.append(inner);
+  document.body.append(root);
+}
+
+/**
+ * Render the `?sounds` gallery: fetch the decoded bank, build the model, and lay out the four sections
+ * with a ▶ on every clip. Degrades to a "run the pipeline" message when `content/` (and thus the sound
+ * bank) is absent — the same graceful-without-content stance the other real-content entries take.
+ */
+export async function renderSoundGallery(
+  _canvas: HTMLCanvasElement,
+  _params: URLSearchParams,
+): Promise<void> {
+  const ir = await fetchAudioIr();
+  const sounds = ir?.sounds;
+  // createSoundDriver returns null on an empty bank; reuse the same emptiness check for the gallery.
+  if (createSoundDriver(ir, { chopAtomicId: HARVEST_ATOMIC }) === null || sounds === undefined) {
+    mountFullPageMessage(
+      'Brak zdekodowanych dźwięków',
+      'Uruchom `npm run pipeline` na posiadanej kopii gry, aby wygenerować bank dźwięków (content/ jest gitignore). Bez niego aplikacja gra po cichu.',
+    );
+    return;
+  }
+
+  const model = buildSoundGalleryModel(
+    sounds,
+    defaultBindings({ chopAtomicId: HARVEST_ATOMIC }),
+    HARVEST_ATOMIC,
+  );
+
+  const root = el('div', ROOT_STYLE);
+  const inner = el('div', INNER_STYLE);
+  inner.append(
+    el('div', 'font-weight:700;font-size:24px', 'Podgląd dźwięków'),
+    el(
+      'div',
+      'opacity:0.78;margin-top:4px;font-size:13px;line-height:1.5',
+      'Kliknij ▶ przy dowolnym nagraniu, aby je odsłuchać i sprawdzić, czy pasuje. Sekcja „Akcje” pokazuje, który dźwięk odzywa się przy którym zdarzeniu w grze; „Głosy” — pule gwaru tłumu w rozbiciu na płeć/wiek (osadnik brzmi tak, jak wygląda).',
+    ),
+  );
+
+  inner.append(section('Akcje → dźwięk (podpięte pod to, co się dzieje)', model.actions.map(actionRow)));
+  const voiceRows: HTMLElement[] = [];
+  for (const v of model.voices) {
+    voiceRows.push(el('div', 'font-weight:700;opacity:0.85;margin:10px 0 2px', v.label));
+    for (const g of v.groups) voiceRows.push(groupRow(g));
+  }
+  inner.append(section('Głosy osadników (gwar tłumu, wg płci/wieku)', voiceRows));
+  inner.append(section('Jingle (zdarzenia życia)', model.jingles.map(groupRow)));
+  inner.append(section('Ambient (tło terenu)', model.ambient.map(groupRow)));
+
+  root.append(inner);
+  document.body.append(root);
+  console.log('Vinland sound gallery up. Click ▶ on a clip to audition it, then say which ones are off.');
+}

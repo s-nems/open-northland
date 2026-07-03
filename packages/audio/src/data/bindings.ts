@@ -25,22 +25,48 @@ export const GROUP_WOODCUTTER_AXE = 'Woodcutter Axe';
 export const GROUP_CARPENTER_SAW = 'Carpenter Saw';
 
 /**
- * The viking voice pools the ambient settler-chatter layer draws from — `SoundFXStatic` group names
- * straight from `soundfx.cif` (the mod's `humans/sounds.cif` binds these same groups per tribe/sex).
- * Together they hold ~240 clips (clear-throats, coughs, laughs, gasps, small talk) across male / female
- * / child voices, so an on-screen crowd chatters with real variety. The driver picks a group then a
- * clip uniformly. Viking-only for now — the demo world is single-tribe; other tribes' pools
- * (`Talk Franks Male`, `Generic Latin Female`, …) exist in the bank for when the sim carries tribe/sex.
+ * A settler's voice class — the axis the ambient chatter picks its pool by, so a settler SOUNDS like it
+ * LOOKS. An all-male crowd murmurs only male voices; a woman speaks female clips; a child pipes up with a
+ * child one. Without this the chatter played every pool uniformly — women and children coming out of a
+ * crowd of men (the [stress-crowd] mismatch the user heard).
  */
-export const VIKING_VOICE_GROUPS: readonly string[] = [
-  'Generic Viking Male',
-  'Generic Viking Female',
-  'Generic Viking Children',
-  'Talk Viking Male',
-  'Talk Viking Female',
-  'SocialTalk Male',
-  'SocialTalk Female',
-];
+export type VoiceClass = 'male' | 'female' | 'child';
+
+/**
+ * The mod's viking `woman` job (`jobtypes.ini` id 5) — the ONE adult job with a female body/voice; every
+ * other adult trade + the soldiers share the male body. Mirrors the render roster's
+ * `ADULT_CHARACTER_BY_JOB` (packages/app `content/settler-gfx.ts`), so look and sound classify the same
+ * settler the same way. The one canonical jobtypes id this layer needs, in the same status as the atomic
+ * / MusicType ids already baked into this file.
+ */
+const WOMAN_JOB = 5;
+
+/**
+ * Classify a settler's voice from the SAME facts the render layer picks its BODY from: a settler that
+ * still carries an `Age` (baby/child) is a `child`; an adult `woman` (job {@link WOMAN_JOB}) is `female`;
+ * every other adult is `male`. Pure — the caller reads `jobType` + Age-presence off the snapshot. The
+ * reversed `jobtypes.ini` sex split expressed as code, the voice twin of the render roster's job→body join.
+ */
+export function vikingVoiceClass(jobType: number | null, young: boolean): VoiceClass {
+  if (young) return 'child';
+  if (jobType === WOMAN_JOB) return 'female';
+  return 'male';
+}
+
+/**
+ * The viking voice pools the ambient settler-chatter layer draws from, **keyed by sex/age** so the murmur
+ * matches who is on screen — `SoundFXStatic` group names straight from `soundfx.cif` (the mod's
+ * `humans/sounds.cif` binds these same groups per tribe/sex). Each class pools that sex's generic human
+ * noises (clear-throats, coughs, laughs), its small-talk lines and its social chatter; together ~270
+ * clips. The driver classifies a settler ({@link vikingVoiceClass}), then picks a group in that pool, then
+ * a clip. Viking-only for now — the demo world is single-tribe; other tribes' pools (`Talk Franks Male`,
+ * `Generic Latin Female`, …) exist in the bank for when the sim carries tribe.
+ */
+export const VIKING_VOICE_POOLS: Readonly<Record<VoiceClass, readonly string[]>> = {
+  male: ['Generic Viking Male', 'Talk Viking Male', 'SocialTalk Male'],
+  female: ['Generic Viking Female', 'Talk Viking Female', 'SocialTalk Female'],
+  child: ['Generic Viking Children'],
+};
 
 /**
  * Build the default {@link SoundBindings}. `chopAtomicId`, when given, binds `atomicCompleted` for

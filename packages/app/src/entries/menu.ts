@@ -130,6 +130,11 @@ export async function renderMenu(_canvas: HTMLCanvasElement, _params: URLSearchP
     section('Tryby podglądu', [
       card('Podgląd na żywo', 'Pionowy przekrój napędzany pętlą symulacji — świat w ruchu.', '?live'),
       card('Animacje postaci', 'Galeria wikingów: każdy look chodzi, wybór kierunku i postaci.', '?anim'),
+      card(
+        'Podgląd dźwięków',
+        'Odsłuchaj każdy dźwięk: akcje (rąbanie, budowa), głosy (M/K/dzieci), jingle, ambient.',
+        '?sounds',
+      ),
     ]),
   );
 
