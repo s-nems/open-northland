@@ -31,6 +31,22 @@ export interface MapObjectsData {
  */
 const WAVE_ALPHA = 0.5;
 
+/**
+ * Which `GfxFrames` state list a placement's 1-based `lmlv` LEVEL picks. The level counts what
+ * REMAINS/has grown — level 1 is the lowest state (sapling / near-depleted deposit / rubble wall) and
+ * level N the highest (full-grown / full deposit / intact) — while the record's lists are authored
+ * HIGHEST-FIRST (a tree's full-grown state first, a clay deposit's 74×51 full pile before its 32×18
+ * dregs), so the index is `N − level`. Pinned by calibration-by-observation on the bridge-map corpus:
+ * the north forest is `lmlv=3` throughout and the original draws it full-grown (an isolated lmlv=3
+ * cypress matches the full-grown frame at 0.99 vs 0.84/0.87 for the younger states), and the deposit
+ * records' big-to-small list order matches level-as-remaining (docs/FIDELITY.md "Landscape-object
+ * layer"). Any out-of-range level — including the wall "intact" sentinel `100` — falls back to the
+ * first (full) list. Pure.
+ */
+export function stateIndexForLevel(level: number, stateCount: number): number {
+  return level >= 1 && level <= stateCount ? stateCount - level : 0;
+}
+
 /** One loaded body atlas: frame geometry + GPU source, keyed by `<bmd stem>.<palette>`. */
 interface LoadedLayer {
   readonly frames: ReturnType<typeof atlasFromManifest>['frames'];
@@ -58,10 +74,11 @@ async function loadLayer(key: string): Promise<LoadedLayer | null> {
 /**
  * Resolve every placed object into a render-ready {@link MapObjectSprite}:
  *
- *  - **frames** — the `GfxFrames` state list the placement's `lmlv` STATE picks (1-based: a tree's
- *    growth stage, full-grown first in the file; a stone-pile's variant; a wall's damage state —
- *    the wall sentinel `100` = intact and any out-of-range value fall back to the first list), each
- *    bob id resolved through the atlas manifest (0×0 frames dropped). A record with `loopAnimation`
+ *  - **frames** — the `GfxFrames` state list the placement's `lmlv` LEVEL picks
+ *    ({@link stateIndexForLevel}: level 1 = lowest state, level N = full-grown/full/intact, lists
+ *    authored highest-first, so index = N − level; the wall sentinel `100` and any out-of-range
+ *    value fall back to the first, full list), each bob id resolved through the atlas manifest
+ *    (0×0 frames dropped). A record with `loopAnimation`
  *    plays the whole list at the sim tick rate (waves, swaying trees, fire); a static record shows
  *    the list's first frame.
  *  - **decor vs tall** — an object with NO `LogicWalkBlockArea` footprint (waves, grass, flowers,
@@ -135,9 +152,9 @@ export async function loadMapObjects(objects: MapObjectsData, ir: TerrainIr): Pr
     const hx = objects.placements[i] as number;
     const hy = objects.placements[i + 1] as number;
     const states = resolved[objects.placements[i + 2] as number] ?? [];
-    // `lmlv` is 1-based; out-of-range (incl. the wall "intact" sentinel 100) → the first list.
-    const level = objects.levels?.[i / 3] ?? 1;
-    const stateIndex = level >= 1 && level <= states.length ? level - 1 : 0;
+    // `lmlv` counts up from the LOWEST state (see stateIndexForLevel); absent lane → the full first list.
+    const level = objects.levels?.[i / 3] ?? states.length;
+    const stateIndex = stateIndexForLevel(level, states.length);
     const type = states[stateIndex] ?? states[0];
     if (type === null || type === undefined) {
       skipped++;

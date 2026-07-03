@@ -76,10 +76,12 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       into `maps/<id>.json`) and lift `y` by the fitted ≈1.24 native px/unit in the projection
       consumers, then re-verify shore/hill silhouettes against the screenshots.
 - [x] **Per-object growth/damage state from the `lmlv` lane** (2026-07-03, docs/FIDELITY.md
-      "Landscape-object layer"): the byte lane is the 1-based per-placement index into the record's
-      `GfxFrames` state lists (trees full-grown→sapling, stone variants, wall damage; sentinel 100 =
-      intact). Pipeline emits `objects.levels` parallel to `placements`; the object binding picks
-      `frames[level−1]` (out-of-range → first list). Closes the "uniform giant trees" deviation.
+      "Landscape-object layer"): the byte lane is the 1-based per-placement LEVEL counting up from
+      the LOWEST state; the record's `GfxFrames` lists are authored highest-first, so the binding
+      picks `frames[N−level]` (`stateIndexForLevel`; sentinel 100/out-of-range → the full first
+      list). The initial top-down reading drew mature forests as saplings — corrected against the
+      screenshot corpus (isolated lmlv=3 cypress matches the full-grown frame at 0.99). Closes both
+      the "uniform giant trees" and the "far fewer trees" deviations.
 - [x] **Import a decoded map's authored placements** (`map.cif` `StaticObjects`, 2026-07-03): the
       pipeline decodes `sethouse`/`sethuman`/`setanimal` VERBATIM (names + half-cells) into
       `maps/<id>.json` `entities` (schema: `TerrainEntities` in @vinland/data; 13/125 maps carry the
@@ -94,9 +96,14 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       and the canonical binding draws `"viking headquarters"` (bob 34, the crane-roofed variant; both
       names occur across the 13 entity-bearing maps, 29 vs 6, so thread the name through instead of
       flipping the canonical); (b) the mill draws its static drum — the original animates the sails
-      (`GfxHouse` anim lane, unbound); (c) the north forest reads YOUNGER than the original's same
-      spots — per-species `lmlv` state-list order suspect (full-grown-first assumption may not hold
-      for every record).
+      (`GfxHouse` anim lane, unbound); (c) ~~the north forest reads YOUNGER than the original~~ —
+      RESOLVED same day: the `lmlv` level counts up from the lowest state (`index = N − level`,
+      docs/FIDELITY.md "Landscape-object layer"); (d) the rocky-ground area's LAYOUT reads different
+      from the original's (owner report on the same comparison) — suspect the undrawn `emt3`/`emt4`
+      overlays and/or missing `lmhe` elevation shading rather than the pattern lanes, undiagnosed;
+      (e) palisades draw as SINGLE POSTS — the original joins them into a continuous wall (owner:
+      defer, but it is the look's signature; the `wall_03/04/05` records are orientation variants,
+      so the join likely picks a segment per neighbour direction, unpinned).
 - **Exit:** click to place one workplace; a settler autonomously supplies it via atomics; a carrier
   hauls outputs to a store; the 1000-tick golden hash + trace stay stable. **(Headless slice + golden
   proven; the real-atlas bind + final human pixel check remain.)**
