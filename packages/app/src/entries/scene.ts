@@ -7,7 +7,9 @@ import {
   placeHud,
   terrainMapToScene,
 } from '@vinland/render';
-import { FixedTimestep } from '@vinland/sim';
+import { FixedTimestep, type SimEvent } from '@vinland/sim';
+import { createSoundDriver, fetchAudioIr } from '../content/audio.js';
+import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { SCENES, createSceneSim, getScene } from '../scenes/index.js';
@@ -89,17 +91,40 @@ export async function renderSceneMode(
     cameraFor(buildSpriteScene(sim.snapshot()), zoom, app.screen.width, app.screen.height),
   );
 
+  // Original decoded sounds over the scene (default-on; `?sound=off` opts out): positional action SFX +
+  // terrain ambient + non-spatial jingles + on-screen settler voice chatter — so a crowd scene murmurs.
+  // Suspended until the first user gesture (autoplay policy); silent without `content/`. See @vinland/audio.
+  const wantSound = params.get('sound') !== 'off';
+  const soundDriver = wantSound
+    ? createSoundDriver(await fetchAudioIr(), { chopAtomicId: HARVEST_ATOMIC })
+    : null;
+  if (soundDriver !== null) {
+    const startAudio = (): void => {
+      void soundDriver.resume();
+      window.removeEventListener('pointerdown', startAudio);
+      window.removeEventListener('keydown', startAudio);
+    };
+    window.addEventListener('pointerdown', startAudio);
+    window.addEventListener('keydown', startAudio);
+  }
+
   let timestep = new FixedTimestep();
   let lastMs = performance.now();
 
   function frame(nowMs: number): void {
     const elapsed = nowMs - lastMs;
     lastMs = nowMs;
+    // Accumulate events from every step this frame (each step clears the buffer) for the audio layer.
+    const frameEvents: SimEvent[] = [];
+    const collect = (): void => {
+      sim.step();
+      frameEvents.push(...sim.events.current());
+    };
     if (control.stepOnce) {
-      sim.step(); // manual single-step (paused): advance one tick irrespective of the accumulator
+      collect(); // manual single-step (paused): advance one tick irrespective of the accumulator
       control.stepOnce = false;
     } else if (!control.paused) {
-      timestep.advance(elapsed * control.speed, () => sim.step());
+      timestep.advance(elapsed * control.speed, collect);
     }
     cameraCtl.update(elapsed);
     const snap = sim.snapshot();
@@ -109,6 +134,17 @@ export async function renderSceneMode(
     });
     overlay.update(snap.tick);
     perf.update(elapsed, { entities: snap.entities.length, ...renderer.stats() });
+    if (soundDriver !== null) {
+      soundDriver.update({
+        events: frameEvents,
+        snapshot: snap,
+        camera: cameraCtl.camera(),
+        canvasW: app.screen.width,
+        canvasH: app.screen.height,
+        terrain: terrainGrid,
+        dtMs: elapsed,
+      });
+    }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

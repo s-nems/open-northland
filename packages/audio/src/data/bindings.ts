@@ -25,6 +25,24 @@ export const GROUP_WOODCUTTER_AXE = 'Woodcutter Axe';
 export const GROUP_CARPENTER_SAW = 'Carpenter Saw';
 
 /**
+ * The viking voice pools the ambient settler-chatter layer draws from — `SoundFXStatic` group names
+ * straight from `soundfx.cif` (the mod's `humans/sounds.cif` binds these same groups per tribe/sex).
+ * Together they hold ~240 clips (clear-throats, coughs, laughs, gasps, small talk) across male / female
+ * / child voices, so an on-screen crowd chatters with real variety. The driver picks a group then a
+ * clip uniformly. Viking-only for now — the demo world is single-tribe; other tribes' pools
+ * (`Talk Franks Male`, `Generic Latin Female`, …) exist in the bank for when the sim carries tribe/sex.
+ */
+export const VIKING_VOICE_GROUPS: readonly string[] = [
+  'Generic Viking Male',
+  'Generic Viking Female',
+  'Generic Viking Children',
+  'Talk Viking Male',
+  'Talk Viking Female',
+  'SocialTalk Male',
+  'SocialTalk Female',
+];
+
+/**
  * Build the default {@link SoundBindings}. `chopAtomicId`, when given, binds `atomicCompleted` for
  * that content-specific atomic to the woodcutter axe group (the app knows its content's chop atomic id;
  * the audio package cannot). Omit it and `atomicCompleted` simply produces no sound.

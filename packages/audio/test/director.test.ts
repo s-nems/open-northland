@@ -9,6 +9,7 @@ import {
   buildSoundIndex,
   defaultBindings,
   directAudio,
+  onScreenSettlers,
 } from '../src/index.js';
 
 /**
@@ -147,5 +148,32 @@ describe('directAudio ambient', () => {
       terrain: meadow,
     });
     expect(offMap.ambient).toHaveLength(0);
+  });
+});
+
+describe('onScreenSettlers', () => {
+  it('returns only on-screen settlers, spatialised', () => {
+    const snap: WorldSnapshot = {
+      tick: 1,
+      entities: [
+        { id: 3, components: { Position: { x: 5 * ONE, y: 5 * ONE }, Settler: {} } }, // centre → on screen
+        { id: 4, components: { Position: { x: 100 * ONE, y: 100 * ONE }, Settler: {} } }, // far off screen
+        { id: 7, components: { Position: { x: 5 * ONE, y: 5 * ONE }, Building: {} } }, // not a settler
+      ],
+      events: [],
+    };
+    const found = onScreenSettlers(snap, camera, CANVAS_W, CANVAS_H);
+    expect(found.map((s) => s.entity)).toEqual([3]);
+    expect(found[0]?.gain).toBeGreaterThan(0);
+    expect(found[0]?.pan).toBeCloseTo(0, 5); // centred
+  });
+
+  it('returns nothing when the crowd is off screen', () => {
+    const snap: WorldSnapshot = {
+      tick: 1,
+      entities: [{ id: 3, components: { Position: { x: 100 * ONE, y: 100 * ONE }, Settler: {} } }],
+      events: [],
+    };
+    expect(onScreenSettlers(snap, camera, CANVAS_W, CANVAS_H)).toHaveLength(0);
   });
 });

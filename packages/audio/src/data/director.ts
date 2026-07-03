@@ -177,3 +177,36 @@ function ambientFor(input: DirectorInput): AmbientLoop[] {
 export function directAudio(input: DirectorInput): AudioFrame {
   return { oneShots: oneShotsFor(input), ambient: ambientFor(input) };
 }
+
+/** One on-screen settler as a chatter candidate: its id + the spatialisation of a sound from it. */
+export interface OnScreenSettler {
+  readonly entity: number;
+  /** Stereo pan for a voice from this settler, -1..1. */
+  readonly pan: number;
+  /** Distance-attenuated gain for a voice from this settler, 0..1. */
+  readonly gain: number;
+}
+
+/**
+ * The settlers currently on screen (a `Settler` component + an in-view `Position`), each with its
+ * spatialisation — the PURE candidate list the voice-chatter layer picks from. Kept here (not in the
+ * driver) so the "who could speak" half stays headless-testable; the STOCHASTIC "who speaks now" half
+ * lives in the impure {@link import('../web/sound-driver.js').SoundDriver} (it needs randomness + time).
+ */
+export function onScreenSettlers(
+  snapshot: WorldSnapshot,
+  camera: Camera,
+  canvasW: number,
+  canvasH: number,
+): OnScreenSettler[] {
+  const out: OnScreenSettler[] = [];
+  for (const e of snapshot.entities) {
+    if (!('Settler' in e.components)) continue;
+    const p = e.components.Position as { x?: unknown; y?: unknown } | undefined;
+    if (p === undefined || typeof p.x !== 'number' || typeof p.y !== 'number') continue;
+    const spatial = computeSpatial(p.x / ONE, p.y / ONE, camera, canvasW, canvasH);
+    if (spatial === null) continue;
+    out.push({ entity: e.id, pan: spatial.pan, gain: spatial.gain });
+  }
+  return out;
+}
