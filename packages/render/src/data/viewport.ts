@@ -77,30 +77,26 @@ export interface TileRange {
 }
 
 /**
- * The visible `(col,row)` band for the iso diamond: invert {@link tileToScreen} at the viewport's four
- * corners (a world rect maps to a diamond in tile space, so its tile bounding box is the corners' min/max),
- * pad by `tileMargin` tiles, and clamp to `[0,gridW-1]×[0,gridH-1]`. Feeds terrain chunk visibility (a
- * chunk is drawn iff its tile AABB intersects this band). Pure.
- *
- * Inverse of `tileToScreen(col,row) = ((col-row)·HALF_W, (col+row)·HALF_H)`:
- *   `col = x/(2·HALF_W) + y/(2·HALF_H)`, `row = y/(2·HALF_H) − x/(2·HALF_W)`.
+ * The visible `(col,row)` band for the staggered raster: invert {@link tileToScreen}
+ * (`x = (2·col + parity)·HALF_W`, `y = row·HALF_H`) over the world rect. The projection is
+ * axis-aligned, so the band is a straight interval per axis — a cell's diamond reaches `±HALF_W`
+ * around a centre whose x lies in `[2c·HALF_W, (2c+1)·HALF_W]` (the parity shift), and `±HALF_H`
+ * (a full row step — diamonds interlock across rows) around `y = row·HALF_H`. Pad by `tileMargin`
+ * tiles and clamp to `[0,gridW-1]×[0,gridH-1]`. Feeds terrain chunk visibility (a chunk is drawn
+ * iff its tile AABB intersects this band). Pure.
  */
 export function visibleTileRange(vp: Viewport, gridW: number, gridH: number, tileMargin = 0): TileRange {
-  const col = (x: number, y: number): number => x / (2 * TILE_HALF_W) + y / (2 * TILE_HALF_H);
-  const row = (x: number, y: number): number => y / (2 * TILE_HALF_H) - x / (2 * TILE_HALF_W);
-  const corners: readonly (readonly [number, number])[] = [
-    [vp.minX, vp.minY],
-    [vp.maxX, vp.minY],
-    [vp.minX, vp.maxY],
-    [vp.maxX, vp.maxY],
-  ];
-  const cols = corners.map(([x, y]) => col(x, y));
-  const rows = corners.map(([x, y]) => row(x, y));
+  // col c covers x ∈ [(2c−1)·HALF_W, (2c+2)·HALF_W]  (centre span + diamond half-width both sides)
+  const minCol = Math.floor(vp.minX / (2 * TILE_HALF_W) - 1);
+  const maxCol = Math.ceil(vp.maxX / (2 * TILE_HALF_W) + 0.5);
+  // row r covers y ∈ [(r−1)·HALF_H, (r+1)·HALF_H]
+  const minRow = Math.floor(vp.minY / TILE_HALF_H - 1);
+  const maxRow = Math.ceil(vp.maxY / TILE_HALF_H + 1);
   const clamp = (v: number, hi: number): number => Math.min(hi, Math.max(0, v));
   return {
-    minCol: clamp(Math.floor(Math.min(...cols)) - tileMargin, gridW - 1),
-    maxCol: clamp(Math.ceil(Math.max(...cols)) + tileMargin, gridW - 1),
-    minRow: clamp(Math.floor(Math.min(...rows)) - tileMargin, gridH - 1),
-    maxRow: clamp(Math.ceil(Math.max(...rows)) + tileMargin, gridH - 1),
+    minCol: clamp(minCol - tileMargin, gridW - 1),
+    maxCol: clamp(maxCol + tileMargin, gridW - 1),
+    minRow: clamp(minRow - tileMargin, gridH - 1),
+    maxRow: clamp(maxRow + tileMargin, gridH - 1),
   };
 }

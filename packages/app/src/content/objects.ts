@@ -2,8 +2,8 @@ import {
   type AtlasManifest,
   type MapObjectSprite,
   atlasFromManifest,
+  halfCellToScreen,
   loadAtlasSource,
-  tileToScreen,
 } from '@vinland/render';
 import type { LandscapeGfxRow, TerrainIr } from './terrain.js';
 
@@ -63,8 +63,8 @@ async function loadLayer(key: string): Promise<LoadedLayer | null> {
  *  - **decor vs tall** — an object with NO `LogicWalkBlockArea` footprint (waves, grass, flowers,
  *    mine stains) is flat ground decor and draws under the entity sprites; one WITH a footprint
  *    (trees, stones) depth-sorts against settlers by its feet anchor.
- *  - **position** — the half-cell `(hx, hy)` projected at half-tile resolution (`tileToScreen` of
- *    the fractional cell), the object lattice the original places on.
+ *  - **position** — the half-cell `(hx, hy)` projected onto the plain half-cell lattice
+ *    (`halfCellToScreen` — the `emla` grid the original places on; no row stagger at this level).
  *  - **phase** — 0 for every object, so the loops play IN UNISON: the wave bobs are authored to
  *    tile seamlessly with their neighbours at the SAME frame, and a per-object stagger breaks that
  *    tiling into noise (the map stores no per-object phase — docs/FIDELITY.md).
@@ -133,7 +133,7 @@ export async function loadMapObjects(objects: MapObjectsData, ir: TerrainIr): Pr
       skipped++;
       continue;
     }
-    const screen = tileToScreen(hx / 2, hy / 2);
+    const screen = halfCellToScreen(hx, hy);
     out.push({
       x: screen.x,
       y: screen.y,

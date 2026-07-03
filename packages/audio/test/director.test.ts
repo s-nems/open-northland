@@ -1,6 +1,6 @@
 import type { GfxPattern, SoundBank, TerrainPattern } from '@vinland/data';
 import type { Camera } from '@vinland/render/data';
-import { ONE } from '@vinland/render/data';
+import { ONE, tileToScreen } from '@vinland/render/data';
 import type { SimEvent, WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import {
@@ -44,8 +44,14 @@ const bindings = defaultBindings({ chopAtomicId: CHOP_ATOMIC });
 
 const CANVAS_W = 800;
 const CANVAS_H = 600;
-// tileToScreen(5,5) = (0,160); this offset places it at the screen centre.
-const camera: Camera = { offsetX: 400, offsetY: 140, scale: 1 };
+// Centre the camera on tile (5,5) — computed through the live projection so the fixture stays
+// valid whatever the calibrated pitch/model is (a hand-baked offset broke on every recalibration).
+const centre = tileToScreen(5, 5);
+const camera: Camera = {
+  offsetX: CANVAS_W / 2 - centre.x,
+  offsetY: CANVAS_H / 2 - centre.y,
+  scale: 1,
+};
 
 /** A snapshot with a settler (id 3) and a building (id 7), both at tile (5,5). */
 function snapshotAt(events: readonly SimEvent[] = []): WorldSnapshot {

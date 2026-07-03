@@ -84,39 +84,47 @@ describe('aabbIntersects', () => {
 });
 
 describe('visibleTileRange', () => {
-  // The world box is expressed in HALF-TILE multiples, not raw pixels, so the covered tile range is
-  // invariant to the projection PITCH (`TILE_HALF_W/H`) — a `±2` half-extent box always spans the
-  // diamond of tiles (0,0)..(2,2), whatever the calibrated pitch is.
-  const twoTileBox = {
+  // The world box is expressed in pitch multiples (cell width = 2·TILE_HALF_W, row step =
+  // TILE_HALF_H), so the covered band is invariant to the calibrated pitch values: a box spanning
+  // ±1 cell width and ±1 row step around the origin.
+  const smallBox = {
     minX: -2 * TILE_HALF_W,
     maxX: 2 * TILE_HALF_W,
-    minY: -2 * TILE_HALF_H,
-    maxY: 2 * TILE_HALF_H,
+    minY: -TILE_HALF_H,
+    maxY: TILE_HALF_H,
   };
 
-  it('bounds the iso diamond for an origin-centred viewport and clamps negatives to 0', () => {
-    expect(visibleTileRange(twoTileBox, 10, 10)).toEqual({ minCol: 0, maxCol: 2, minRow: 0, maxRow: 2 });
+  it('bounds the staggered band for an origin-centred viewport and clamps negatives to 0', () => {
+    // Cols: centres at 2c·halfW (even rows) reach ±halfW → cols −2..2 touch the box → clamp to 0..2.
+    // Rows: centres at r·halfH reach ±halfH (interlock) → rows −2..2 → clamp to 0..2.
+    expect(visibleTileRange(smallBox, 10, 10)).toEqual({ minCol: 0, maxCol: 2, minRow: 0, maxRow: 2 });
     // The tile the box is centred on projects inside it (sanity on the projection direction).
     expect(tileToScreen(0, 0)).toEqual({ x: 0, y: 0 });
   });
 
   it('pads the band by tileMargin (and re-clamps to the grid)', () => {
-    expect(visibleTileRange(twoTileBox, 10, 10, 1)).toEqual({ minCol: 0, maxCol: 3, minRow: 0, maxRow: 3 });
+    expect(visibleTileRange(smallBox, 10, 10, 1)).toEqual({ minCol: 0, maxCol: 3, minRow: 0, maxRow: 3 });
   });
 
   it('shifts the band as the viewport pans, staying within the grid', () => {
-    // Pan the same-size box to world (128±.., 64±..) — the diamond centre moves to tile (col+row) higher.
-    const vp = { minX: 64, maxX: 192, minY: 32, maxY: 96 };
+    // Pan the box deep into the grid — the band must move off the origin and stay clamped.
+    const vp = {
+      minX: 10 * 2 * TILE_HALF_W,
+      maxX: 14 * 2 * TILE_HALF_W,
+      minY: 8 * TILE_HALF_H,
+      maxY: 12 * TILE_HALF_H,
+    };
     const range = visibleTileRange(vp, 20, 20);
     expect(range.minCol).toBeGreaterThan(0);
-    expect(range.minRow).toBeGreaterThanOrEqual(0);
+    expect(range.minRow).toBeGreaterThan(0);
     expect(range.maxCol).toBeLessThanOrEqual(19);
+    expect(range.maxRow).toBeLessThanOrEqual(19);
   });
 
   it('clamps a fully off-map viewport to the grid edge (nothing out of range)', () => {
-    // Far down the diamond's +y axis (x ≈ 0), so col and row are both hugely positive for ANY
-    // pitch ratio — the old (1e5, 1e5) corner flipped the row's sign once the pitch stopped being 2:1.
+    // y is far below the last row, so the row band clamps to the bottom edge; x spans cols 0..4
+    // (100px ≈ 2.9 cell widths + the diamond/stagger slack), well inside the 10-wide grid.
     const vp = { minX: 0, maxX: 100, minY: 100000, maxY: 100100 };
-    expect(visibleTileRange(vp, 10, 10)).toEqual({ minCol: 9, maxCol: 9, minRow: 9, maxRow: 9 });
+    expect(visibleTileRange(vp, 10, 10)).toEqual({ minCol: 0, maxCol: 4, minRow: 9, maxRow: 9 });
   });
 });
