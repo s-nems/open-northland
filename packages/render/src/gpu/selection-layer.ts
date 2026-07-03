@@ -23,15 +23,20 @@ import type { EntityBounds } from './sprite-pool.js';
  * still reads clearly under the house.
  */
 
-/** Settler feet ring half-extents (px) — an iso ellipse a touch smaller than a tile diamond (32×16). */
+/** Settler feet ring half-extents (px) — a small ground ellipse under a settler's ~40px-wide body
+ *  (deliberately much smaller than the 68×76 cell diamond, which would swallow the sprite). */
 const SETTLER_RING = { rx: 20, ry: 11 };
 /** Fallback building ring when the sprite's real bounds aren't known yet (no sheet / just appeared). */
 const BUILDING_RING = { rx: 54, ry: 30 };
 /** Floor on a building ring's half-width, so even a small building reads as a building-sized marker. */
 const MIN_BUILDING_RX = 28;
 /** Ground-ellipse squash: a ground circle spans a cell width (2·halfW) E–W but only a row step
- *  (halfH) N–S under the staggered raster, so a flat footprint ellipse squashes by their ratio. */
-const ISO_RATIO = TILE_HALF_H / (2 * TILE_HALF_W);
+ *  (halfH) N–S under the staggered raster, so a flat footprint ellipse squashes by their ratio.
+ *  Read per call (not a module const) so the `?pitch=`/`?pitchy=` live overrides — applied after
+ *  module init — reach the rings too. */
+function isoRatio(): number {
+  return TILE_HALF_H / (2 * TILE_HALF_W);
+}
 /** The selection ring colour (a bright green, the RTS "this is yours and selected" cue) + line weight. */
 const RING_COLOR = 0x66ff66;
 const RING_WIDTH = 2;
@@ -108,7 +113,7 @@ function ringSpec(isBuilding: boolean, bounds: EntityBounds | undefined, feetX: 
   if (!isBuilding) return { rx: SETTLER_RING.rx, ry: SETTLER_RING.ry, cx: 0 };
   if (bounds !== undefined) {
     const rx = Math.max(MIN_BUILDING_RX, (bounds.maxX - bounds.minX) / 2);
-    return { rx, ry: rx * ISO_RATIO, cx: (bounds.minX + bounds.maxX) / 2 - feetX };
+    return { rx, ry: rx * isoRatio(), cx: (bounds.minX + bounds.maxX) / 2 - feetX };
   }
   return { rx: BUILDING_RING.rx, ry: BUILDING_RING.ry, cx: 0 };
 }

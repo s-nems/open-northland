@@ -20,7 +20,7 @@ import type { LandscapeGfxRow, TerrainIr } from './terrain.js';
 export interface MapObjectsData {
   readonly types: readonly string[];
   readonly placements: readonly number[];
-  /** Per-placement 1-based state (`lmlv`): growth stage / variant / damage state. Absent → state 1. */
+  /** Per-placement 1-based LEVEL (`lmlv`), counting up from the lowest state ({@link stateIndexForLevel}). Absent → the full state. */
   readonly levels?: readonly number[] | undefined;
 }
 

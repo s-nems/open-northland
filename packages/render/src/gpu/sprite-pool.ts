@@ -164,8 +164,8 @@ export class SpritePool {
       // Depth = the feet-anchor SCREEN y (+ a small deterministic x tiebreak), the same key the tall
       // map objects use, so a settler and the tree it walks behind sort into one painter order.
       // NOTE this deliberately diverges from the headless `buildScene` oracle's row-major
-      // (tileY, tileX) list order: screen y ∝ (col + row) is the iso-correct occlusion key once
-      // static objects interleave with entities.
+      // (tileY, tileX) list order: the feet-anchor screen y (∝ row under the staggered raster) is
+      // the iso-correct occlusion key once static objects interleave with entities.
       pe.container.zIndex = depthKey(item.x, item.y);
       if (!pe.attached) {
         this.spriteLayer.addChild(pe.container);

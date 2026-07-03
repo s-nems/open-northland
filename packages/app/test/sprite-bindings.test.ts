@@ -1,13 +1,13 @@
 import { type SpriteAtlas, indexAtlasFrames } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
 import { VIKING_CHARACTERS } from '../src/catalog/roster.js';
-import { stateIndexForLevel } from '../src/content/objects.js';
 import {
   BUILDING_FAMILIES,
   DEFAULT_BUILDING_FAMILY,
   buildingBobRefsByType,
   constructionRefsByType,
 } from '../src/content/building-gfx.js';
+import { stateIndexForLevel } from '../src/content/objects.js';
 import {
   ADULT_CHARACTER_BY_JOB,
   CHARACTER_SPECS,

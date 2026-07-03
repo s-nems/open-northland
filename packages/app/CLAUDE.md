@@ -87,8 +87,10 @@ gitignored bytes:
   `?live`/`?scene` — use `?speed=` for a sub-1× pace the discrete button can't reach) / centre the camera on
   tile `(x,y)` (an inspection knob for a decoded-map feature — a
   bridge, a coastline — the settler-centroid framing never reaches; malformed → default framing) / **set
-  the tile-diamond width in px** (`?pitch`, the live master-scale knob — sprite-vs-terrain size, kept iso
-  2:1, default 64; sweep it to calibrate the look by eye, `setTilePitch` in `iso.ts`). These compose with
+  the cell-diamond width in px** (`?pitch`, the live master-scale knob — sprite-vs-terrain size; default the
+  MEASURED 68, row step following the measured 38/68 ratio; `?pitchy=<cellDiamondHeight>` — the full
+  diamond height, 2× the row step, measured 76 — overrides the height separately; `setTilePitch` in
+  `iso.ts`, method in docs/FIDELITY.md "projection"). These compose with
   `?scene=`. The live view also mounts the FPS / entity-count perf overlay (bottom-left), like `?scene=`.
   Real graphics are the **default** for live + scene (`resolveSpriteSheet` degrades to synthetic
   markers when `content/` is absent, so a bare checkout still boots); `?atlas=synthetic` forces markers,

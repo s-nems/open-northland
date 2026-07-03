@@ -32,7 +32,7 @@ import type { TextureCache } from './texture-cache.js';
  * entities by their world-`y` feet anchor.
  */
 export interface MapObjectSprite {
-  /** World-space feet anchor (px), already projected by the app (`tileToScreen` of the half-cell). */
+  /** World-space feet anchor (px), already projected by the app (`halfCellToScreen` of the `emla` half-cell). */
   readonly x: number;
   readonly y: number;
   readonly source: TextureSource;

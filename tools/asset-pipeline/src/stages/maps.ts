@@ -109,8 +109,9 @@ function groundFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['gro
  * order — deterministic) over a **compacted** per-map type-name list (ascending dictionary order).
  * This is every pre-placed tree/stone/bush/mine decal/wave the map ships; a name joins onto the
  * extracted `[GfxLandscape]` table (`LandscapeGfx.editName`). The sibling `lmlv` byte lane carries
- * each placement's STATE — a 1-based index into the record's `GfxFrames` state lists (a tree's
- * growth stage: 1 = full-grown … 3 = sapling; a wall's damage state, with `100` = intact) — emitted
+ * each placement's LEVEL — 1-based, counting UP from the lowest state (level 1 = sapling/dregs,
+ * level N = full-grown/full/intact) onto the record's highest-first `GfxFrames` lists, so consumers
+ * map `index = N − level` (a wall's `100` sentinel = intact) — emitted
  * as a parallel `levels` array (omitted when the map lacks the lane). Returns undefined when the
  * map lacks either object chunk; throws on an index outside the dictionary (corrupt lane — caught
  * per layer by {@link mapDatToTerrain}).
