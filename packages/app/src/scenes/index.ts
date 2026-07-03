@@ -7,6 +7,7 @@ import { meleeEngagementScene } from './melee-engagement.js';
 import { soundShowcaseScene } from './sound-showcase.js';
 import { stancesScene } from './stances.js';
 import { stressCrowdScene } from './stress-crowd.js';
+import { toolPanelScene } from './tool-panel.js';
 import type { SceneDefinition } from './types.js';
 import { unitOrdersScene } from './unit-orders.js';
 
@@ -28,6 +29,7 @@ export const SCENES: readonly SceneDefinition[] = [
   soundShowcaseScene,
   stancesScene,
   stressCrowdScene,
+  toolPanelScene,
   unitOrdersScene,
 ];
 

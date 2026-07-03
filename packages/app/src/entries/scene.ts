@@ -1,4 +1,5 @@
 import {
+  type HudPlacement,
   WorldRenderer,
   buildHud,
   buildSpriteScene,
@@ -8,18 +9,40 @@ import {
   terrainMapToScene,
 } from '@vinland/render';
 import { FixedTimestep, type SimEvent } from '@vinland/sim';
+import { vikingBuildingByTypeId } from '../catalog/buildings.js';
 import { createSoundDriver, fetchAudioIr } from '../content/audio.js';
 import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
+import type { MenuBuildingEntry } from '../hud/building-menu.js';
+import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel-layout.js';
+import { mountToolPanel } from '../hud/tool-panel.js';
 import { SCENES, createSceneSim, getScene } from '../scenes/index.js';
-import { cameraFor, createCameraController } from '../view/camera.js';
+import { backingScale, cameraFor, createCameraController } from '../view/camera.js';
 import { enableAudioOnGesture } from '../view/overlay.js';
 import { mountPerfOverlay } from '../view/perf-overlay.js';
+import { clampTile, screenToWorld, worldToTile } from '../view/picking.js';
 import { mountSceneOverlay, mountUnknownSceneOverlay } from '../view/scene-overlay.js';
 import { createUnitControls } from '../view/unit-controls.js';
 import { professionsFromContent } from '../view/unit-panel.js';
-import { floatParam } from './params.js';
+import { floatParam, intParam } from './params.js';
+
+/** The buildings the tool-panel menu lists: the scene's own building types, labelled via the viking catalog. */
+function menuEntriesFromContent(content: {
+  buildings: readonly { typeId: number; id: string; kind: string }[];
+}): MenuBuildingEntry[] {
+  return content.buildings.map((b) => ({
+    typeId: b.typeId,
+    label: vikingBuildingByTypeId(b.typeId)?.label ?? b.id,
+    kind: b.kind,
+  }));
+}
+
+/** Shift a HUD placement right by `dx` px (to clear the left tool-panel strip when it is mounted). */
+function shiftHud(p: HudPlacement, dx: number): HudPlacement {
+  if (dx === 0) return p;
+  return { ...p, panelX: p.panelX + dx, rows: p.rows.map((r) => ({ ...r, x: r.x + dx })) };
+}
 
 /**
  * The `?scene=<id>` entry: render a registered **acceptance scene** live, with the checklist overlay,
@@ -56,6 +79,10 @@ export async function renderSceneMode(
   const sheet = await resolveSpriteSheet(params, scene.content.goods);
   const terrain = params.has('terrain') ? await loadRealTerrain() : undefined;
   const zoom = floatParam(params, 'zoom', scene.initialZoom ?? 1);
+  // Integer UI scale for the tool panel (`?uiscale=1|2|3`); its pinned geometry is multiplied by this.
+  const uiscale = intParam(params, 'uiscale', DEFAULT_UI_SCALE, 1);
+  // How far the always-on stocks HUD is shifted right to sit beside the strip (0 when the panel is off).
+  const hudShift = scene.toolPanel === true ? buildToolPanelLayout(uiscale).width + 6 : 0;
 
   // Retained renderer: mesh the terrain ONCE, then reuse a pooled sprite graph each frame (no per-frame
   // object churn), so a big scene renders + deep-zoom-outs without exhausting the GPU.
@@ -107,6 +134,36 @@ export async function renderSceneMode(
     : null;
   if (soundDriver !== null) enableAudioOnGesture(soundDriver);
 
+  // The original LEFT tool panel (opt-in per scene): the toolbar strip + buttons + working game-speed
+  // button, and the building/statistics windows, drawn screen-space over the world. It claims its own
+  // clicks (`claimsPointer`) so a press on the HUD never reaches world picking, drives the loop's speed
+  // through `onSpeedChange`, and enqueues `placeBuilding` for a menu selection dropped on a tile.
+  const clientToTile = (clientX: number, clientY: number): { col: number; row: number } | null => {
+    const { sx, sy, rect } = backingScale(canvas);
+    const w = screenToWorld(cameraCtl.camera(), (clientX - rect.left) * sx, (clientY - rect.top) * sy);
+    const t = clampTile(worldToTile(w.x, w.y), scene.terrain.width, scene.terrain.height);
+    return { col: t.col, row: t.row };
+  };
+  const toolPanel =
+    scene.toolPanel === true
+      ? await mountToolPanel({
+          app,
+          canvas,
+          uiscale,
+          buildings: menuEntriesFromContent(scene.content),
+          lang: 'pol',
+          tribe: HUD_TRIBE,
+          owner: HUMAN_PLAYER,
+          enqueue: (command) => sim.enqueue(command),
+          screenToTile: clientToTile,
+          onSpeedChange: (spec) => {
+            control.paused = spec.state === 'paused';
+            if (spec.state !== 'paused') control.speed = spec.tickMultiplier;
+          },
+          backingScale,
+        })
+      : null;
+
   // RTS unit control over the scene: left-click / drag-box to select the human's units, right-click to
   // send them, Space for the unit panel. Harmless on scenes with no owned units (nothing is pickable);
   // the unit-orders scene populates the human's vikings. `snapshot`/`enqueue` read the CURRENT `sim`
@@ -120,6 +177,7 @@ export async function renderSceneMode(
     professions: professionsFromContent(scene.content),
     enqueue: (command) => sim.enqueue(command),
     boundsOf: (ref) => renderer.entityBounds(ref), // pixel-accurate picking against the real sprite
+    ...(toolPanel !== null ? { claimPointer: (x: number, y: number) => toolPanel.claimsPointer(x, y) } : {}),
   });
 
   let timestep = new FixedTimestep();
@@ -145,12 +203,18 @@ export async function renderSceneMode(
     }
     cameraCtl.update(elapsed);
     const snap = sim.snapshot();
-    // `app.screen` is the LIVE renderer size (it tracks window resizes), so the HUD stays pinned.
+    // Re-place the tool panel's screen-space sprites BEFORE the renderer's `app.render()` (they carry the
+    // canvas resolution in their shader), and refresh an open statistics window from this frame's snapshot.
+    toolPanel?.update(snap);
+    // `app.screen` is the LIVE renderer size (it tracks window resizes), so the HUD stays pinned. When the
+    // tool panel is mounted the always-on stocks HUD is shifted right to clear the left strip.
     renderer.update(
       snap,
       cameraCtl.camera(),
       snap.tick,
-      { placement: placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', app.screen) },
+      {
+        placement: shiftHud(placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', app.screen), hudShift),
+      },
       controls.selectedIds(),
     );
     controls.tick(snap); // reuse the frame's snapshot — don't rebuild a second one

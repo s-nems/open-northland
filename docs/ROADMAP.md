@@ -217,6 +217,15 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
       whole-map framing; the battle-scale target does not.
 - [ ] **Retained HUD** (deferred) — pool the HUD `Text` rows instead of rebuilding them each frame (the double
       `app.render()` is already gone). Minor; do if the HUD shows up in a profile.
+- [x] **In-game LEFT tool panel** (GUI rework Part 4) — the original toolbar strip + tool buttons, a working
+      game-speed button (cycles ×1/×2/×3/pause, drives the app tick rate), a categorised building menu (issues
+      `placeBuilding`), and statistics/help windows, drawn screen-space from the extracted GUI atlas + `.fnt`
+      fonts at the OpenVikings-pinned geometry (integer `?uiscale`, default 2×). Proven by `?scene=tool-panel`
+      + pure hit-test/speed/menu unit tests (`packages/app/test/tool-panel.test.ts`); pixels human-signed
+      (docs/FIDELITY.md "Left tool panel"). **Open (deferred):** sprite 9-slice window chrome (v1 windows are a
+      parchment `Graphics` panel) + building-icon thumbnails + menu scrolling; wiring the panel into `?live`;
+      the not-yet-actioned tool buttons (diplomacy / population / mission / tech-tree / options windows); the
+      minimap region (a separate task).
 
 ## Phase 3 — Economy, progression & population  (substance complete; only human-gated render checks remain)
 - [x] **Goods graph** — explicit IR artifact: input side + output-side recipe join +

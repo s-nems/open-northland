@@ -40,6 +40,12 @@ export interface SceneDefinition {
    * many entities (e.g. every building at once) sets this < 1 so it frames by default; `?zoom=` overrides.
    */
   readonly initialZoom?: number;
+  /**
+   * Mount the original LEFT tool panel (building menu / game speed / statistics) over this scene in the
+   * BROWSER view (`?scene=`). Opt-in and browser-only — the headless test ignores it; a scene proves the
+   * panel's *mechanics* through pure unit tests + its own `checks`, and the pixels are the human's call.
+   */
+  readonly toolPanel?: boolean;
   /** Human-readable "what to look for" — the on-screen acceptance checklist. */
   readonly checklist: readonly string[];
   /** Machine assertions the headless test enforces (the mechanic must hold). */
