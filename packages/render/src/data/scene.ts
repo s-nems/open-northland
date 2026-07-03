@@ -43,7 +43,7 @@ const CHOP_ATOMIC_ID = 24;
 const CHOP_NUDGE_X = -24;
 
 /** Kinds of thing the scene draws, in their natural layer grouping. */
-export type DrawKind = 'tile' | 'building' | 'settler' | 'resource';
+export type DrawKind = 'tile' | 'building' | 'settler' | 'resource' | 'stockpile';
 
 /**
  * A sprite's coarse logical state, the join key onto a per-state animation binding (the original's
@@ -78,6 +78,22 @@ export interface DrawItem {
    * each building's own house bob). Omitted for kinds that don't key off a type (settler/resource).
    */
   readonly typeId?: number;
+  /**
+   * For a **resource** node its `Resource.goodType`, and for a **stockpile** the good its ground pile
+   * mainly holds — the key a per-good {@link import('./sprites.js').ResourceTypeBinding} /
+   * {@link import('./sprites.js').StockpileBinding} draws each good's own object by (a tree for wood, a
+   * rock for stone, a wood pile vs a stone pile). OMITTED for a stockpile that holds nothing — an empty
+   * bare `Stockpile` is a bare **delivery flag** (a designated collection point), drawn as the flag
+   * sprite rather than a pile. Never set for tiles/buildings/settlers (they key off other fields).
+   */
+  readonly goodType?: number;
+  /**
+   * For a **stockpile** ground pile: how many units of its {@link goodType} it holds — the fill amount a
+   * {@link import('./sprites.js').StockpileBinding} maps to a per-fill heap frame (a small heap at 1, a
+   * full one at the pile's max state), so a pile visibly grows with its contents. OMITTED for an empty
+   * pile (a flag) and for every non-stockpile kind.
+   */
+  readonly fill?: number;
   /** For a sprite: its coarse logical state, so a per-state binding can pick the right frame. */
   readonly state?: SpriteState;
   /** For an `acting` sprite: the numeric atomic id it's executing (the `setatomic` join key). */
@@ -205,6 +221,11 @@ function classify(components: Readonly<Record<string, unknown>>): DrawKind | nul
   if ('Building' in components) return 'building';
   if ('Resource' in components) return 'resource';
   if ('Settler' in components) return 'settler';
+  // A bare Stockpile with NO Building is a loose ground pile or a delivery flag (the gathering economy's
+  // dropped goods + collection points, spawned by ai-supply.ts). Checked AFTER Building so a warehouse/HQ
+  // store — which carries both Building and Stockpile — stays a `building`, matching the sim's own
+  // ground-pile rule (`nearestGroundPile`: Stockpile ∧ Position ∧ ¬Building).
+  if ('Stockpile' in components) return 'stockpile';
   return null; // an entity with a Position but no drawable marker is skipped (e.g. a pure mover)
 }
 
@@ -346,6 +367,48 @@ function readJobType(components: Readonly<Record<string, unknown>>): number | un
 }
 
 /**
+ * A resource node's `Resource.goodType` — the per-good join key ({@link DrawItem.goodType}) a
+ * {@link import('./sprites.js').ResourceTypeBinding} draws its species/deposit by (a tree for wood, a
+ * mine for iron). `undefined` for a missing/malformed component (the binding then falls back to its
+ * default node). Pure read of plain snapshot data — never re-enters the sim.
+ */
+function readResourceGood(components: Readonly<Record<string, unknown>>): number | undefined {
+  const r = components.Resource as { goodType?: unknown } | undefined;
+  return r !== undefined && typeof r.goodType === 'number' ? r.goodType : undefined;
+}
+
+/**
+ * What a bare {@link import('@vinland/sim').Stockpile} draw item represents: the good its ground pile
+ * mainly holds + how many units (its per-fill heap frame), or `{}` when it holds nothing — an empty pile
+ * is a bare **delivery flag**. The snapshot clones a `Stockpile.amounts` Map to an ascending-by-goodType
+ * `[goodType, amount]` array (see `inspect/snapshot.ts`), so this reads that plain shape. The pile's good
+ * is the one it holds MOST of (strict `>` keeps the FIRST max — i.e. the lowest goodType on a tie,
+ * *because* the snapshot pre-sorts `amounts` ascending by goodType). That canonical order is what makes
+ * the pick reproducible across runs. A pile in the gathering economy holds a single good, so this is
+ * unambiguous there; the max rule just keeps a mixed heap deterministic. Pure.
+ */
+function readStockpile(components: Readonly<Record<string, unknown>>): {
+  goodType?: number;
+  fill?: number;
+} {
+  const s = components.Stockpile as { amounts?: unknown } | undefined;
+  if (s === undefined || !Array.isArray(s.amounts)) return {};
+  let bestGood: number | undefined;
+  let bestAmount = 0;
+  for (const pair of s.amounts) {
+    if (!Array.isArray(pair)) continue;
+    const good = pair[0];
+    const amount = pair[1];
+    if (typeof good !== 'number' || typeof amount !== 'number' || amount <= 0) continue;
+    if (amount > bestAmount) {
+      bestAmount = amount;
+      bestGood = good;
+    }
+  }
+  return bestGood === undefined ? {} : { goodType: bestGood, fill: bestAmount };
+}
+
+/**
  * Build the depth-sorted isometric draw list for a frame.
  *
  * Ordering — the core correctness property a human eyeball would otherwise have to catch:
@@ -459,6 +522,12 @@ function collectSprites(snapshot: WorldSnapshot, viewport?: Viewport): DrawItem[
     // An under-construction building carries its progress percent so the construction-stage binding
     // can pick the visible `[GfxHouse]` layers (grey foundation → stages → completed body).
     const builtPct = kind === 'building' ? readBuiltPct(entity.components) : undefined;
+    // A resource node carries its `Resource.goodType` so a per-good binding draws its own species/deposit;
+    // a bare stockpile carries the good its pile holds most of (+ the fill amount), or nothing when it is a
+    // delivery flag. Both feed the per-good {@link ResourceTypeBinding}/{@link StockpileBinding}.
+    const resourceGood = kind === 'resource' ? readResourceGood(entity.components) : undefined;
+    const stockpile = kind === 'stockpile' ? readStockpile(entity.components) : undefined;
+    const goodType = kind === 'resource' ? resourceGood : stockpile?.goodType;
     // A chopping settler shares its tree's cell; nudge its drawn sprite left so the right-swing axe
     // lands in the trunk at the cell centre (render-only — the depth sort below still uses the true tile).
     const chopNudgeX = state === 'acting' && actingAtomic === CHOP_ATOMIC_ID ? CHOP_NUDGE_X : 0;
@@ -484,6 +553,8 @@ function collectSprites(snapshot: WorldSnapshot, viewport?: Viewport): DrawItem[
       ...(young ? { young: true } : {}),
       ...(buildingType !== undefined ? { typeId: buildingType } : {}),
       ...(builtPct !== undefined ? { builtPct } : {}),
+      ...(goodType !== undefined ? { goodType } : {}),
+      ...(stockpile?.fill !== undefined ? { fill: stockpile.fill } : {}),
     });
   }
   // Stable, total order: sprites by (y, x, id). The entity-id tie-break makes two sprites on the exact

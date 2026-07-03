@@ -29,6 +29,12 @@ import {
   sequencesFor,
 } from './ir.js';
 import {
+  buildResourceBinding,
+  buildStockpileBinding,
+  gatheringAtlasStems,
+  resolveGatheringRefs,
+} from './resource-gfx.js';
+import {
   ADULT_CHARACTER_BY_JOB,
   CHARACTER_SPEC_ENTRIES,
   type GoodRef,
@@ -144,6 +150,32 @@ async function loadCharacters(
 }
 
 /**
+ * Load the gathering-economy family atlases (the rock/mine/mushroom node `.bmd`s, the `ls_goods` pile
+ * skins, the `ls_temp` flag) named by the resolved gathering refs, BESIDE the building families. Each
+ * loads best-effort: a {@link MissingAtlasError} (a partial `content/`) just drops that family — its
+ * goods fall back to the yew node / placeholder heap, exactly the building-family degradation. Returns the
+ * loaded layers keyed by served stem (= the `families` key a layer-qualified ref names) + the set of stems
+ * that actually loaded (so the pure binding reducers emit a layer only for a family the GPU can draw).
+ */
+async function loadGatheringFamilies(
+  stems: ReadonlySet<string>,
+): Promise<{ families: Record<string, SpriteLayer>; loaded: Set<string> }> {
+  const families: Record<string, SpriteLayer> = {};
+  const loaded = new Set<string>();
+  await Promise.all(
+    [...stems].map(async (stem) => {
+      try {
+        families[stem] = await loadLayer(stem);
+        loaded.add(stem);
+      } catch (err) {
+        if (!(err instanceof MissingAtlasError)) throw err; // a real decode bug still surfaces
+      }
+    }),
+  );
+  return { families, loaded };
+}
+
+/**
  * Load the real human {@link SpriteSheet}: the body layer as the base sheet, the head layer as an overlay
  * drawn on top at the same bob id, paired with bindings whose walk/chop ranges are read from the decoded
  * `bobSequences` (see {@link buildHumanBindings}). Together they compose a complete settler (body + head)
@@ -168,7 +200,7 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   // through to the default layer and draw a WRONG bob). All seven viking families load now (viking2/3/4 +
   // the miller/druid skins + the two house02 families), so EVERY viking building draws its own bob — see
   // BUILDING_FAMILIES.
-  const families = Object.fromEntries(familyEntries);
+  const buildingFamilies = Object.fromEntries(familyEntries);
   const houseBobs = buildingBobRefsByType(
     ir?.buildingBobs ?? [],
     VIKING_TRIBE,
@@ -183,18 +215,39 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
     DEFAULT_BUILDING_FAMILY,
     BUILDING_FAMILIES,
   );
+  // Gathering economy: resolve each RUN good's node/pile draw from the Step-1 pipeline join (matched by
+  // id-slug), load the atlases they reference (rock/mine/mushroom nodes, `ls_goods` piles, the `ls_temp`
+  // flag) as families, and build the per-good bindings against exactly the families that loaded — the same
+  // load-then-drop-unloaded contract the building families use. The default yew node stays the
+  // `kindLayers.resource` layer, so it is excluded from the loaded families.
+  const gatheringRefs = resolveGatheringRefs(goods, ir);
+  const { families: gatheringFamilies, loaded: gatheringLoaded } = await loadGatheringFamilies(
+    gatheringAtlasStems(gatheringRefs),
+  );
+  const resourceBinding = buildResourceBinding(gatheringRefs, gatheringLoaded);
+  const stockpileBinding = buildStockpileBinding(gatheringRefs, gatheringLoaded);
+  // One family map: the building families + the gathering families. Their served stems are disjoint
+  // (`ls_houses_*` vs `ls_ground`/`ls_goods`/`ls_temp`/`ls_mushrooms`), so the merge never collides.
+  const families = { ...buildingFamilies, ...gatheringFamilies };
   return {
     source: body.source,
     atlas: body.atlas,
-    bindings: buildHumanBindings(sequencesFor(ir, BODY_IMAGELIB), houseBobs, constructionRefs),
+    bindings: buildHumanBindings(
+      sequencesFor(ir, BODY_IMAGELIB),
+      houseBobs,
+      constructionRefs,
+      resourceBinding,
+      stockpileBinding,
+    ),
     overlays: [head],
     // The tree and the DEFAULT building each draw from their OWN atlas (distinct id spaces), so they bind
-    // as per-kind layers rather than sharing the body atlas the settler uses. `resource` -> TREE_BOB and
-    // a bare-id `building` -> HOUSE_BOB resolve frames in THEIR respective layers.
+    // as per-kind layers rather than sharing the body atlas the settler uses. A bare-id `resource` (the
+    // default yew node) and a bare-id `building` resolve frames in THEIR respective layers.
     kindLayers: { resource: tree, building: house },
-    // Named building families (the multi-.bmd case) — a layer-qualified building binding draws its bob
-    // from the matching family atlas here (its own frame-id space). A family inherits the building kind
-    // scale below unless it lists its own `familyScales` entry.
+    // Named families (the multi-.bmd case) — a layer-qualified building/resource/stockpile binding draws
+    // its bob from the matching family atlas here (its own frame-id space). A building family inherits the
+    // building kind scale below unless it lists its own `familyScales` entry; resource/stockpile families
+    // draw native (no kindScale entry).
     families,
     // The native house bobs are oversized next to the settler; shrink only the building (tree + settler
     // stay native — their proportion already reads right). Named families inherit this. See BUILDING_SCALE.

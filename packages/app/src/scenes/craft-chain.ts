@@ -342,7 +342,7 @@ export const craftChainScene: SceneDefinition = {
     'Magazyn i kuźnia stoją osobno, z wolnym pasem między nimi — kolizja i strefa odstępu budynków działa globalnie (z footprintów), więc nie da się ich postawić na sobie',
     'Cywil (w lewym-dolnym rogu, z dala od magazynu) stoi bezczynnie — nic nie kopie ani nie nosi ("cywil nie robi nic")',
     'Postacie idą po skosie prosto do celu (nie schodkami/łukiem) — po naprawie pathfindingu',
-    'Znane braki (następny krok — grafika świata): złoża wciąż rysują się jak drzewa, a sterty na ziemi i flaga są jeszcze niewidoczne — rozpoznaj surowiec po ładunku, który niesie postać',
+    'Grafika świata (krok 2): złoża rysują się per surowiec (żelazo/kamień jako kopalnia/skała, nie drzewo), a sterty na ziemi i flaga są WIDOCZNE — sterta kamienia/gliny na fladze i jej wzrost; dedykowana wystawa to ?scene=gathering',
   ],
   checks: [
     {

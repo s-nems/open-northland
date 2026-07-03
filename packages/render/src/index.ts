@@ -18,6 +18,8 @@ export {
   pickByJob,
   resolveBuildingDraw,
   resolveConstructionDraws,
+  resolveResourceDraw,
+  resolveStockpileDraw,
   resolveSpriteFrame,
   resolveSpriteBobId,
   DEFAULT_FACING,
@@ -31,11 +33,14 @@ export {
   type CarryingBinding,
   type ConstructionLayerRef,
   type DirectionalAnim,
+  type LayeredBobRef,
+  type ResourceTypeBinding,
   type SettlerStateBinding,
   type SpriteAtlas,
   type SpriteBindings,
   type SpriteFrameRef,
   type SpriteKind,
+  type StockpileBinding,
 } from './data/sprites.js';
 export {
   createPixiApp,

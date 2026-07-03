@@ -1772,6 +1772,38 @@ the unchecked next steps; the full clean-room evidence is below.
         unchanged. Human confirmed the six distinct buildings (incl. the HQ as an imposing structure) on
         screen.
 
+### Render breadth ladder — rung 2 (Resource nodes by goodType + loose piles/flags) full trail
+Two rung-2 bullets landed together as **Step 2 of the gathering-economy plan** (`docs/plans/gathering-economy.md`).
+- [x] **Resource nodes by goodType** — every gatherable good draws its OWN decoded standing node instead of
+  the one hardcoded yew: a `ResourceTypeBinding {byGood, default}` (mirrors `BuildingTypeBinding`) resolves a
+  node's `Resource.goodType` (read into the `DrawItem` by `scene.ts` `classify`/`collectSprites`) through
+  `resolveResourceDraw` — a bare bob from the default yew `kindLayers.resource` layer, or a layer-qualified
+  `{layer,bob}` into a loaded `ls_ground`/`ls_mushrooms` family. Built from the Step-1 `gatheringPipeline`
+  join (`resource-gfx.ts` `buildResourceBinding`), matched to each run good by id-SLUG so a scene's own
+  goodType numbering resolves the right real object. Wood→"yew 01" bob 60 (reproduces the prior look),
+  stone→"stones 01 khaki" (`ls_ground.rock03`), clay/iron/gold→"…mine 01" (`ls_ground.clay01/iron01/gold01`),
+  mushroom→"…agaric 01" (`ls_mushrooms.flower01`).
+- [x] **Loose ground piles + flags rendering** — a bare `Stockpile+Position` (previously `classify`→null →
+  invisible) is a new `'stockpile'` `DrawKind`: a HELD pile draws its dominant good's `ls_goods.<good>` heap
+  via a `StockpileBinding {byGood, flag, default}` indexed by the pile's fill amount (5 fill states, growing
+  small→full), an EMPTY pile draws the `ls_temp.human_player01` delivery flag. `resolveStockpileDraw` +
+  `buildStockpileBinding`; a stockpile never falls through to the body atlas (it draws only from a loaded
+  family, else the placeholder heap).
+- **Reused the building `families` mechanism:** the GPU `layeredLayerFor` (generalized from `buildingLayerFor`)
+  resolves building/resource/stockpile layer-qualified refs identically; the needed atlases (`ls_ground`/
+  `ls_goods`/`ls_mushrooms`/`ls_temp` skins) are derived from the join at load time (`gatheringAtlasStems`),
+  loaded best-effort, and only a LOADED family is ever bound (drop-unloaded — no wrong-bob borrow), exactly
+  the building-family contract.
+- **Verification:** `npm test` (1328, +29: render `scene`/`sprites` classify+resolver units, app
+  `resource-gfx` reducer units, `gathering-render` scene units) + `npm run check` + `npm run build` green;
+  **no sim change → goldens byte-identical**. Acceptance scene `?scene=gathering` (one node per good + wood/
+  stone piles at fills 1/3/5 + a flag); headless half asserts the classify + per-good binding resolution.
+  Hands-on: pipeline regenerated (11 gathering pipelines; all stages resolve to real gfx records). Pixel
+  sign-off (each node distinct, piles look like that good and grow, flag reads as a flag) is the human's
+  call — docs/FIDELITY.md "Gathering-economy graphics" records the representative-pick / fill-map /
+  single-player-flag approximations. **Deferred to later gathering steps:** per-object species variety +
+  node shrink-by-remaining (Step 4), produced-good piles, per-owner flag colour.
+
 ### Cross-cutting DX — Web Worker / time-travel inspector / content hot-reload (full trails)
 - [ ] **Run the sim in a Web Worker.** It's pure/headless/deterministic, so moving `step()` off the
       main thread keeps render at 60fps under heavy ticks. Design the Phase-2 snapshot as a plain

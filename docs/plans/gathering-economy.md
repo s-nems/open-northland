@@ -60,7 +60,10 @@ delete this file when all steps land.
       `.landscapeType`, `LandscapeType.name`/raw `.transitions`, and the resolved `gatheringPipeline`
       join (11 goods, all stages resolve to real `[GfxLandscape]` records). See docs/SOURCES.md
       "Gathering pipeline" + docs/FIDELITY.md.
-- [ ] 2. Render: per-good resource nodes + ground piles + flags visible
+- [x] 2. Render: per-good resource nodes + ground piles + flags visible — **landed:** `ResourceTypeBinding`
+      + `StockpileBinding` (a new `'stockpile'` `DrawKind`) built from the Step-1 `gatheringPipeline` join;
+      each good draws its own node/pile, an empty pile the flag. Acceptance scene `?scene=gathering`. See
+      docs/FIDELITY.md "Gathering-economy graphics" + ROADMAP-ARCHIVE "rung 2".
 - [ ] 3. Sim: wood cycle — multi-chop fell → trunk on ground → pickup → deliver
 - [ ] 4. Sim: mineral deposits shrink by level; mushrooms
 - [ ] 5. Sim: resource collision + build-exclusion from data

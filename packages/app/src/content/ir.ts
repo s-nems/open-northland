@@ -56,11 +56,48 @@ export interface ConstructionLayerRow {
   readonly editName?: string;
 }
 
+/** One `[GfxLandscape]` state's frame list as it ships in `content/ir.json`'s `landscapeGfx[].frames`. */
+export interface LandscapeGfxFramesRow {
+  readonly state: number;
+  readonly bobIds: readonly number[];
+}
+
+/** One `[GfxLandscape]` record as it ships in `content/ir.json`'s `landscapeGfx` — the placed decor/resource
+ *  object's atlas binding, keyed to a `[landscapetype]` by {@link logicType} (the gathering-pipeline join). */
+export interface LandscapeGfxRow {
+  readonly index: number;
+  readonly editName?: string;
+  readonly logicType: number;
+  readonly bmd?: string;
+  readonly paletteName?: string;
+  readonly frames?: readonly LandscapeGfxFramesRow[];
+}
+
+/** One resolved gathering-pipeline stage (a landscape type + the `landscapeGfx` records that place it). */
+export interface GatheringStageRow {
+  readonly landscapeType: number;
+  readonly gfxIndices: readonly number[];
+}
+
+/** One good's resolved gathering pipeline as it ships in `content/ir.json`'s `gatheringPipeline` — the
+ *  good→landscape→gfx join (`buildGatheringPipeline`) the render binds per good, keyed by {@link goodId}. */
+export interface GatheringPipelineRow {
+  readonly goodType: number;
+  readonly goodId: string;
+  readonly harvestAtomic?: number;
+  readonly bioLandscape?: boolean;
+  readonly harvest?: GatheringStageRow;
+  readonly pickup?: GatheringStageRow;
+  readonly store?: GatheringStageRow;
+}
+
 /** The render-binding lanes the real-graphics path reads from the served `content/ir.json`. */
 export interface RenderIr {
   readonly bobSequences?: readonly { imagelib: string; sequences?: BobSeqRow[] }[];
   readonly buildingBobs?: readonly BuildingBobRow[];
   readonly constructionLayers?: readonly ConstructionLayerRow[];
+  readonly gatheringPipeline?: readonly GatheringPipelineRow[];
+  readonly landscapeGfx?: readonly LandscapeGfxRow[];
 }
 
 /** The `[bobseq]` imagelib whose sequences drive the settler — the body bob set the head atlas shares ids with. */

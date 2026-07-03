@@ -218,6 +218,51 @@ export interface ConstructionLayerRef {
 }
 
 /**
+ * A bob reference that names WHICH atlas it draws from — the shape {@link BuildingBobRef} already had,
+ * generalized so the per-good resource + stockpile bindings reuse the exact same family-layer mechanism
+ * the buildings do: a plain bob id draws from the kind's {@link import('../gpu/pixi-app.js').SpriteSheet.kindLayers}
+ * layer (the default resource atlas — the tree), a `{ layer, bob }` draws from a named
+ * {@link import('../gpu/pixi-app.js').SpriteSheet.families} atlas (the rock/mine/pile/flag `.bmd`s), each
+ * with its OWN frame-id space. The GPU resolves it identically for every kind ({@link BuildingDraw}).
+ */
+export type LayeredBobRef = number | { readonly layer: string; readonly bob: number };
+
+/**
+ * A resource node's per-good bob binding — the {@link BuildingTypeBinding} twin for harvestable objects,
+ * so each good's node draws ITS own decoded `[GfxLandscape]` object (a tree for wood, a rock for stone, a
+ * mine decal for iron/gold/clay, a mushroom) instead of one shared yew bob. {@link byGood} maps a node's
+ * `Resource.goodType` ({@link DrawItem.goodType}) to its {@link LayeredBobRef}; a good absent from it
+ * falls back to {@link default} (the representative yew tree). A bare-number ref draws from the shared
+ * resource atlas layer (`ls_trees.tree_yew01`); a layer-qualified `{ layer, bob }` ref draws from a
+ * per-`.bmd` family atlas (`ls_ground`/`ls_mushrooms` — the mine/mushroom case).
+ */
+export interface ResourceTypeBinding {
+  /** Bob ref per `goodType` — the good→`landscapeToHarvest`-record→bob join (optionally layer-qualified). */
+  readonly byGood: Readonly<Record<number, LayeredBobRef>>;
+  /** Bob ref for a good absent from {@link byGood} — the fallback node (the representative yew tree). */
+  readonly default: LayeredBobRef;
+}
+
+/**
+ * A ground pile / delivery flag's binding — the {@link ResourceTypeBinding} twin for a bare
+ * `Stockpile+Position`. A HELD pile draws its good's `[GfxLandscape]` `landscapeToStore` heap
+ * (`ls_goods.<good>` — a wood/stone/iron/clay/gold/mushroom pile) at a per-fill frame; an EMPTY pile
+ * (a designated collection point) draws the {@link flag} sprite (`ls_temp` player sign).
+ *
+ * {@link byGood} maps a pile's dominant `goodType` ({@link DrawItem.goodType}) to its heap frames ordered
+ * **fewest→most units**; {@link resolveStockpileDraw} indexes them by the pile's {@link DrawItem.fill}
+ * amount (clamped), so the heap visibly grows. A good with no bound frames falls back to {@link default}.
+ */
+export interface StockpileBinding {
+  /** Per-`goodType` ground-pile heap frames, ordered fewest→most units (the `landscapeToStore` join). */
+  readonly byGood: Readonly<Record<number, readonly LayeredBobRef[]>>;
+  /** The delivery-flag sprite drawn for an EMPTY pile (a collection point holding no goods). */
+  readonly flag: LayeredBobRef;
+  /** Fallback frame for a held pile whose good has no bound heap frames (drawn at any fill). */
+  readonly default: LayeredBobRef;
+}
+
+/**
  * Which atlas bob id draws a given drawable kind. The minimal binding is one representative still
  * frame per kind (`settler` / `building` / `resource`). The settler entry may instead be a
  * {@link SettlerStateBinding} — a per-{@link SpriteState} (and per-atomic-id) table — for the richer
@@ -225,11 +270,17 @@ export interface ConstructionLayerRef {
  * entry may be a {@link BuildingTypeBinding} — a per-{@link DrawItem.typeId} table — so each building
  * type draws its own house bob (the `[GfxHouse]` `LogicType` → `GfxBobId` join). A plain number stays
  * valid for either (back-compat: it's the all-types/all-states frame), so old bindings need no change.
+ *
+ * The `resource` entry may likewise be a {@link ResourceTypeBinding} (a per-good node table) and the
+ * optional `stockpile` a {@link StockpileBinding} (per-good ground piles + a delivery flag) — the
+ * gathering-economy bindings. A plain-number `resource` and an absent `stockpile` keep old sheets valid
+ * (the synthetic marker sheet, older callers): a stockpile with no binding just draws the placeholder box.
  */
 export type SpriteBindings = Readonly<{
   settler: number | SettlerStateBinding;
   building: number | BuildingTypeBinding;
-  resource: number;
+  resource: number | ResourceTypeBinding;
+  stockpile?: number | StockpileBinding;
 }>;
 
 /**
@@ -363,13 +414,54 @@ export function resolveConstructionDraws(
   return chosen.map((l) => (l.layer === undefined ? { bob: l.bob } : { bob: l.bob, layer: l.layer }));
 }
 
+/** Unwrap a {@link LayeredBobRef} to the generic {@link BuildingDraw} shape (bob + optional family layer). */
+function unwrapBobRef(ref: LayeredBobRef): BuildingDraw {
+  return typeof ref === 'number' ? { bob: ref } : { bob: ref.bob, layer: ref.layer };
+}
+
+/**
+ * Resolve which bob id — and from which named atlas-layer family — a RESOURCE draw item draws, from its
+ * (number | per-good table) binding. The {@link ResourceTypeBinding} twin of {@link resolveBuildingDraw}:
+ * a plain-number binding is the same node bob for every good (drawn from the default resource layer); a
+ * {@link ResourceTypeBinding} picks `byGood[item.goodType]` (the node's `Resource.goodType`), falling back
+ * to `default` (the representative yew) when the item carries no good or the good is unmapped — so a sparse
+ * table is always total. Pure: the layer *decision*; the GPU half binds the frame.
+ */
+export function resolveResourceDraw(binding: number | ResourceTypeBinding, item: DrawItem): BuildingDraw {
+  if (typeof binding === 'number') return { bob: binding };
+  const ref = (item.goodType !== undefined ? binding.byGood[item.goodType] : undefined) ?? binding.default;
+  return unwrapBobRef(ref);
+}
+
+/**
+ * Resolve which bob id — and from which named atlas-layer family — a STOCKPILE draw item draws, from its
+ * (number | per-good table) binding. A plain-number binding is the same bob for every pile. A
+ * {@link StockpileBinding}:
+ *  - an EMPTY pile ({@link DrawItem.goodType} absent — a bare delivery flag) draws the {@link StockpileBinding.flag};
+ *  - a HELD pile picks its good's heap frames (`byGood[goodType]`, ordered fewest→most) and indexes them by
+ *    the pile's {@link DrawItem.fill} amount, clamped into range — so the heap grows with its contents;
+ *  - a held pile whose good has no bound frames falls back to {@link StockpileBinding.default}.
+ * Pure: the layer *decision*; the GPU half binds the frame.
+ */
+export function resolveStockpileDraw(binding: number | StockpileBinding, item: DrawItem): BuildingDraw {
+  if (typeof binding === 'number') return { bob: binding };
+  if (item.goodType === undefined) return unwrapBobRef(binding.flag); // empty pile → the delivery flag
+  const frames = binding.byGood[item.goodType];
+  if (frames === undefined || frames.length === 0) return unwrapBobRef(binding.default);
+  // 1-based fill amount → a 0-based frame index, clamped to the heap's available fill states.
+  const idx = Math.min(frames.length, Math.max(1, item.fill ?? 1)) - 1;
+  return unwrapBobRef(frames[idx] ?? binding.default);
+}
+
 /**
  * Resolve the atlas bob id a drawable {@link DrawItem} should draw — the frame *selection* alone (no
  * atlas lookup), so the GPU layer can draw the **same** id from several layered atlases (body + head)
  * without re-deciding per layer. Returns `null` for a terrain tile or an unbound kind. A settler's id
  * is chosen by state + facing + `tick` via {@link resolveSettlerBobId} (animated/directional when the binding
  * is a {@link DirectionalAnim}); a building's by its `typeId` via {@link resolveBuildingDraw} (its own
- * house bob when the binding is a {@link BuildingTypeBinding}); a resource uses its plain bound id. Pure.
+ * house bob when the binding is a {@link BuildingTypeBinding}); a resource by its `goodType` via
+ * {@link resolveResourceDraw} (its own species/deposit node); a stockpile by its good + fill via
+ * {@link resolveStockpileDraw} (a per-good pile, or the flag when empty). Pure.
  */
 export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tick = 0): number | null {
   if (item.kind === 'tile') return null; // tiles bind by typeId, not these per-kind bindings
@@ -378,7 +470,8 @@ export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tic
   if (item.kind === 'settler')
     return resolveSettlerBobId(binding as number | SettlerStateBinding, item, tick);
   if (item.kind === 'building') return resolveBuildingDraw(binding as number | BuildingTypeBinding, item).bob;
-  return binding as number; // resource — its plain bound id
+  if (item.kind === 'resource') return resolveResourceDraw(binding as number | ResourceTypeBinding, item).bob;
+  return resolveStockpileDraw(binding as number | StockpileBinding, item).bob; // stockpile
 }
 
 /**

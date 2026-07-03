@@ -111,16 +111,13 @@ check, commit. **Render-only** rungs need no pipeline change (the atlas is alrea
 2. [ ] **Landscape/resource per-type variety** (render-only) — bushes, signs, wonders, harbours + non-yew
    tree species, each via its own `[GfxLandscape]` bob (today every resource is the single yew). Same recipe
    as rung 1 over the already-emitted `extractLandscapeGraphics` atlases (87 landscape types in IR).
-   - [ ] **Resource nodes by goodType** (from the `craft-chain` scene review) — stone/clay/iron all draw as
-     the yew tree: the mine/deposit decals EXIST in `landscapeGfx` but are never bound. `settler-gfx.ts:181`
-     hardcodes `resource: TREE_BOB`. Fix = a per-goodType `ResourceTypeBinding` (mirror `BuildingTypeBinding`
-     in `sprites.ts`), read `Resource.goodType` into the `DrawItem` (`scene.ts` collectSprites/classify),
-     resolve in `resolveSpriteBobId`. Render+app; the atlases are already on disk.
-   - [ ] **Loose ground piles + flags rendering** (from the `craft-chain` scene review) — a bare
-     `Stockpile+Position` (a dropped resource pile, or a delivery flag) is classified `null` and skipped
-     (`scene.ts:204`), so both are invisible. Add a `'stockpile'` `DrawKind` + classify + a heap/flag sprite
-     (per-good ideally, tying to the same goodType binding). Sprite existence UNKNOWN — check the assets or
-     placeholder one. Makes the flag route + dropped resources visible (they exist in the sim already).
+   - [x] **Resource nodes by goodType** — every gatherable good draws its own decoded node (wood→tree,
+     stone→rock, clay/iron/gold→mine decal, mushroom), via a per-good `ResourceTypeBinding` (mirrors
+     `BuildingTypeBinding`) built from the Step-1 `gatheringPipeline` join; `Resource.goodType` rides the
+     `DrawItem`. → [archive](ROADMAP-ARCHIVE.md).
+   - [x] **Loose ground piles + flags rendering** — a bare `Stockpile+Position` now classifies as a new
+     `'stockpile'` `DrawKind`: a held pile draws its good's `ls_goods` heap (growing with its contents), an
+     empty pile the `ls_temp` delivery flag. Acceptance scene `?scene=gathering`. → [archive](ROADMAP-ARCHIVE.md).
 3. [ ] **Complete viking animation set — ALL viking human bodies** (render over already-extracted
    `[bobseq]`) — **CURRENT FOCUS.** Goal: **every** viking human body draws its **full** `[bobseq]`
    vocabulary, none left on a wrong/placeholder pose. Today the render binds a SINGLE generic-man body

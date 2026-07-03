@@ -14,8 +14,10 @@ import {
   pickByJob,
   resolveBuildingDraw,
   resolveConstructionDraws,
+  resolveResourceDraw,
   resolveSpriteBobId,
   resolveSpriteFrame,
+  resolveStockpileDraw,
 } from '../src/index.js';
 
 /**
@@ -625,5 +627,79 @@ describe('pickByJob — the per-job character pick', () => {
   it('a table with no youngByJob sends young settlers to the default', () => {
     const bare: ByJobTable<string> = { byJob: { 5: 'woman' }, default: 'civilian' };
     expect(pickByJob(bare, 1, true)).toBe('civilian');
+  });
+});
+
+describe('resolveResourceDraw — per-good resource node binding', () => {
+  function resource(goodType?: number): DrawItem {
+    return { ...item('resource'), ...(goodType !== undefined ? { goodType } : {}) };
+  }
+
+  // Wood draws a bare bob from the default resource (tree) layer; stone + iron draw from their own
+  // named `.bmd` families (the ls_ground mine/rock atlases).
+  const binding = {
+    byGood: { 5: 60, 3: { layer: 'ls_ground.rock03', bob: 10 }, 6: { layer: 'ls_ground.iron01', bob: 70 } },
+    default: 60,
+  };
+
+  it('draws a bare bob for a good bound to the default resource layer (the yew)', () => {
+    expect(resolveResourceDraw(binding, resource(5))).toEqual({ bob: 60 });
+  });
+
+  it('draws a layer-qualified bob for a good in its own named family (the mine/rock atlas)', () => {
+    expect(resolveResourceDraw(binding, resource(3))).toEqual({ bob: 10, layer: 'ls_ground.rock03' });
+    expect(resolveResourceDraw(binding, resource(6))).toEqual({ bob: 70, layer: 'ls_ground.iron01' });
+  });
+
+  it('falls back to the default (yew) for an unmapped or good-less node', () => {
+    expect(resolveResourceDraw(binding, resource(999))).toEqual({ bob: 60 });
+    expect(resolveResourceDraw(binding, resource())).toEqual({ bob: 60 });
+  });
+
+  it('a plain-number binding is the same node bob for every good', () => {
+    expect(resolveResourceDraw(42, resource(5))).toEqual({ bob: 42 });
+    expect(resolveResourceDraw(42, resource())).toEqual({ bob: 42 });
+  });
+});
+
+describe('resolveStockpileDraw — per-good ground piles + delivery flag', () => {
+  function pile(goodType?: number, fill?: number): DrawItem {
+    return {
+      ...item('stockpile'),
+      ...(goodType !== undefined ? { goodType } : {}),
+      ...(fill !== undefined ? { fill } : {}),
+    };
+  }
+
+  // Wood pile: 5 fill frames (fewest→most) from the ls_goods.goods_wood atlas; the flag from ls_temp.
+  const binding = {
+    byGood: {
+      5: [
+        { layer: 'ls_goods.goods_wood', bob: 0 },
+        { layer: 'ls_goods.goods_wood', bob: 1 },
+        { layer: 'ls_goods.goods_wood', bob: 2 },
+        { layer: 'ls_goods.goods_wood', bob: 3 },
+        { layer: 'ls_goods.goods_wood', bob: 4 },
+      ],
+    },
+    flag: { layer: 'ls_temp.human_player01', bob: 33 },
+    default: 0,
+  };
+
+  it('draws the flag for an EMPTY pile (no dominant good)', () => {
+    expect(resolveStockpileDraw(binding, pile())).toEqual({ bob: 33, layer: 'ls_temp.human_player01' });
+  });
+
+  it('indexes a held pile by its fill amount (1-based), clamped into the heap frames', () => {
+    expect(resolveStockpileDraw(binding, pile(5, 1))).toEqual({ bob: 0, layer: 'ls_goods.goods_wood' });
+    expect(resolveStockpileDraw(binding, pile(5, 3))).toEqual({ bob: 2, layer: 'ls_goods.goods_wood' });
+    expect(resolveStockpileDraw(binding, pile(5, 5))).toEqual({ bob: 4, layer: 'ls_goods.goods_wood' });
+    // Over-full clamps to the fullest frame; a missing fill defaults to the smallest heap.
+    expect(resolveStockpileDraw(binding, pile(5, 99))).toEqual({ bob: 4, layer: 'ls_goods.goods_wood' });
+    expect(resolveStockpileDraw(binding, pile(5))).toEqual({ bob: 0, layer: 'ls_goods.goods_wood' });
+  });
+
+  it('falls back to the (bare placeholder) default for a held pile whose good has no frames', () => {
+    expect(resolveStockpileDraw(binding, pile(999, 3))).toEqual({ bob: 0 });
   });
 });
