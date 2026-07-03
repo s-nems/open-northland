@@ -23,7 +23,7 @@
 import { realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { type Args, parseArgs, resolveArgs } from './args.js';
+import { type Args, assertOutStaysInCheckout, parseArgs, resolveArgs } from './args.js';
 import { convertBmdTree, resolveGraphicsBindings } from './stages/bmd.js';
 import { convertFontStage } from './stages/fonts.js';
 import { convertGuiStage } from './stages/gui.js';
@@ -148,7 +148,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.ar
   // Resolve relative --game/--out against where `npm run` was invoked (repo root), not the workspace
   // package dir npm sets as cwd — see resolveArgs. Fall back to cwd for a bare `node dist/cli.js`.
   const baseDir = process.env.INIT_CWD ?? process.cwd();
-  run(resolveArgs(parseArgs(process.argv.slice(2)), baseDir)).catch((err: unknown) => {
+  const args = resolveArgs(parseArgs(process.argv.slice(2)), baseDir);
+  // A symlinked out (a worktree sharing the primary's content/) would be clobbered in place — refuse.
+  assertOutStaysInCheckout(args.out, baseDir);
+  run(args).catch((err: unknown) => {
     console.error('[pipeline] failed:', err);
     process.exitCode = 1;
   });
