@@ -104,7 +104,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // alloc+sort of all entities — so the planner was O(settlers · entities · log n) and pinned a big idle
   // crowd at ~480 ms/tick. Scanning a per-tick candidate list is O(candidates); the ascending-id order
   // matches the old full scan, so the distance+id tie-break picks the identical winner (goldens hold).
-  const targets = collectTargets(world);
+  const targets = collectTargets(world, ctx);
   // Dormancy gate: the carrier fallback (`nearestWorkplaceOutput`) is a full stockpile scan per settler.
   // If NOTHING is haulable anywhere this tick, every settler's scan returns null — so decide it ONCE and
   // let idle settlers skip the scan (identical outcome, no per-settler work). This is what makes an idle
@@ -303,7 +303,15 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       tribe: settler.tribe,
       experience: settler.experience,
     });
-    const trunk = nearestCollectablePileFor(targets.stockpiles, world, ctx, terrain, here, settler.jobType);
+    const trunk = nearestCollectablePileFor(
+      targets.groundDrops,
+      targets.harvestAtomicByGood,
+      world,
+      ctx,
+      terrain,
+      here,
+      settler.jobType,
+    );
     const nodeDist =
       node !== null
         ? manhattan(terrain, here, interactionCell(world, ctx, terrain, node))

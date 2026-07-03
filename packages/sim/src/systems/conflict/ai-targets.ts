@@ -43,6 +43,19 @@ export interface TargetCandidates {
   readonly stockpiles: readonly Entity[];
   /** Building-keyed targets (temples): entities with {@link Building} + {@link Position}. */
   readonly buildings: readonly Entity[];
+  /**
+   * Felled trunks / dropped-good piles — entities with {@link GroundDrop} + {@link Stockpile} +
+   * {@link Position}. The **tiny subset** a collector's own-trunk drive scans, so it never walks the
+   * whole {@link stockpiles} list (which includes every building store + delivery flag): with no drops
+   * on the map the collect scan is O(0), the dormancy the drive needs to stay cheap for a big idle crowd.
+   */
+  readonly groundDrops: readonly Entity[];
+  /**
+   * `goodType → its harvest atomic id` (the good's `atomicForHarvesting`), built once per tick from
+   * content — a lookup index so the collect scan resolves a dropped good's harvest atomic without a
+   * `content.goods.find` per pile per settler (the content-index anti-pattern, packages/sim/CLAUDE.md).
+   */
+  readonly harvestAtomicByGood: ReadonlyMap<number, number>;
 }
 
 /**
@@ -52,11 +65,19 @@ export interface TargetCandidates {
  * planner from `O(settlers · entities · log n)` (per-settler re-scan + re-sort of the world) into
  * `O(entities + settlers · candidates)`, the fix for the big-crowd stall (see {@link atomicPlanner}).
  */
-export function collectTargets(world: World): TargetCandidates {
+export function collectTargets(world: World, ctx: SystemContext): TargetCandidates {
+  // A content-load-static good→harvestAtomic index (rebuilt per tick — cheap, O(goods)), so the collect
+  // scan resolves a dropped good's harvest atomic by lookup, not a `content.goods.find` per pile.
+  const harvestAtomicByGood = new Map<number, number>();
+  for (const g of ctx.content.goods) {
+    if (g.atomics.harvest !== undefined) harvestAtomicByGood.set(g.typeId, g.atomics.harvest);
+  }
   return {
     resources: canonicalById(world.query(Resource, Position)),
     stockpiles: canonicalById(world.query(Stockpile, Position)),
     buildings: canonicalById(world.query(Building, Position)),
+    groundDrops: canonicalById(world.query(GroundDrop, Stockpile, Position)),
+    harvestAtomicByGood,
   };
 }
 
@@ -126,6 +147,7 @@ export function nearestHarvestableFor(
  */
 export function nearestCollectablePileFor(
   candidates: readonly Entity[],
+  harvestAtomicByGood: ReadonlyMap<number, number>,
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -136,12 +158,12 @@ export function nearestCollectablePileFor(
   let best: { pile: Entity; goodType: number } | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
+  // `candidates` is the GroundDrop candidate list, so every entry already has GroundDrop+Stockpile+Position
+  // (built by collectTargets) — no per-pile marker re-check, and the scan is O(drops), ~0 when none exist.
   for (const e of candidates) {
-    if (!world.has(e, GroundDrop)) continue; // only a felled trunk / dropped good, not a flag/boat
-    if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
     const good = lowestStockedGood(world.get(e, Stockpile));
     if (good === null) continue; // an emptied drop (about to be reaped) — nothing to collect
-    const harvestAtomic = goodHarvestAtomic(ctx, good);
+    const harvestAtomic = harvestAtomicByGood.get(good);
     if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) continue; // not this job's trade
     const cell = interactionCell(world, ctx, terrain, e);
     const dist = manhattan(terrain, here, cell);
@@ -152,12 +174,6 @@ export function nearestCollectablePileFor(
     }
   }
   return best === null ? null : { ...best, dist: bestDist };
-}
-
-/** A good's `atomicForHarvesting` (the harvest atomic id), or undefined for an unknown/produced good.
- *  The join `nearestCollectablePileFor` uses to decide whether a dropped good is one this job harvests. */
-function goodHarvestAtomic(ctx: SystemContext, goodType: number): number | undefined {
-  return ctx.content.goods.find((g) => g.typeId === goodType)?.atomics.harvest;
 }
 
 /**
