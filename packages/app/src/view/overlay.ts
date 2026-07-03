@@ -115,12 +115,15 @@ export function enableAudioOnGesture(driver: Resumable): void {
   const pill = el('div', AUDIO_PROMPT_STYLE, '🔊 Kliknij w okno, aby włączyć dźwięk');
   document.body.append(pill);
   const onGesture = (): void => {
-    void driver.resume().then(() => {
-      if (!driver.started) return; // resume refused (not a trusted gesture yet) — keep the pill + listeners
-      pill.remove();
-      window.removeEventListener('pointerdown', onGesture);
-      window.removeEventListener('keydown', onGesture);
-    });
+    void driver
+      .resume()
+      .then(() => {
+        if (!driver.started) return; // resume refused (not a trusted gesture yet) — keep the pill + listeners
+        pill.remove();
+        window.removeEventListener('pointerdown', onGesture);
+        window.removeEventListener('keydown', onGesture);
+      })
+      .catch(() => undefined); // constructing/resuming the context can throw (e.g. a context-count cap) — stay silent, not crash
   };
   window.addEventListener('pointerdown', onGesture);
   window.addEventListener('keydown', onGesture);
