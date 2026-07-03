@@ -20,6 +20,8 @@ import type { LandscapeGfxRow, TerrainIr } from './terrain.js';
 export interface MapObjectsData {
   readonly types: readonly string[];
   readonly placements: readonly number[];
+  /** Per-placement 1-based state (`lmlv`): growth stage / variant / damage state. Absent → state 1. */
+  readonly levels?: readonly number[] | undefined;
 }
 
 /**
@@ -56,10 +58,12 @@ async function loadLayer(key: string): Promise<LoadedLayer | null> {
 /**
  * Resolve every placed object into a render-ready {@link MapObjectSprite}:
  *
- *  - **frames** — the record's FIRST `GfxFrames` state list (the file lists the full-grown/highest
- *    state first), each bob id resolved through the atlas manifest (0×0 frames dropped). A record
- *    with `loopAnimation` plays the whole list at the sim tick rate (waves, swaying trees, fire);
- *    a static record shows the list's first frame.
+ *  - **frames** — the `GfxFrames` state list the placement's `lmlv` STATE picks (1-based: a tree's
+ *    growth stage, full-grown first in the file; a stone-pile's variant; a wall's damage state —
+ *    the wall sentinel `100` = intact and any out-of-range value fall back to the first list), each
+ *    bob id resolved through the atlas manifest (0×0 frames dropped). A record with `loopAnimation`
+ *    plays the whole list at the sim tick rate (waves, swaying trees, fire); a static record shows
+ *    the list's first frame.
  *  - **decor vs tall** — an object with NO `LogicWalkBlockArea` footprint (waves, grass, flowers,
  *    mine stains) is flat ground decor and draws under the entity sprites; one WITH a footprint
  *    (trees, stones) depth-sorts against settlers by its feet anchor.
@@ -100,27 +104,29 @@ export async function loadMapObjects(objects: MapObjectsData, ir: TerrainIr): Pr
     readonly decor: boolean;
     readonly alpha: number;
   }
-  const resolved: (ResolvedType | null)[] = objects.types.map((type) => {
+  // One ResolvedType per (type, state list) — index [typeIndex][stateIndex]; empty lists collapse
+  // to null so a placement whose state resolves nothing falls back to state 0 below.
+  const resolved: (ResolvedType | null)[][] = objects.types.map((type) => {
     const record = recordByName.get(type);
-    if (record === undefined) return null;
+    if (record === undefined) return [];
     const key = atlasKeyOf(record);
     const layer = key !== null ? layers.get(key) : undefined;
-    if (layer === undefined) return null;
-    const stateList = record.frames?.[0];
-    if (stateList === undefined) return null;
-    const frames = stateList.bobIds
-      .map((bobId) => layer.frames.get(bobId))
-      .filter((f): f is NonNullable<typeof f> => f !== undefined && f.width > 0 && f.height > 0);
-    if (frames.length === 0) return null;
-    const animated = record.loopAnimation === true && record.isStatic !== true && frames.length > 1;
-    return {
-      source: layer.source,
-      frames: animated ? frames : frames.slice(0, 1),
-      decor: (record.walkBlockAreas ?? []).length === 0,
-      // `GfxDynamicBackground` (exactly the wave records) = the engine's translucent blit over the
-      // water ground; the 50% is our reading of that blend (docs/FIDELITY.md).
-      alpha: record.dynamicBackground === true ? WAVE_ALPHA : 1,
-    };
+    if (layer === undefined) return [];
+    return (record.frames ?? []).map((stateList) => {
+      const frames = stateList.bobIds
+        .map((bobId) => layer.frames.get(bobId))
+        .filter((f): f is NonNullable<typeof f> => f !== undefined && f.width > 0 && f.height > 0);
+      if (frames.length === 0) return null;
+      const animated = record.loopAnimation === true && record.isStatic !== true && frames.length > 1;
+      return {
+        source: layer.source,
+        frames: animated ? frames : frames.slice(0, 1),
+        decor: (record.walkBlockAreas ?? []).length === 0,
+        // `GfxDynamicBackground` (exactly the wave records) = the engine's translucent blit over the
+        // water ground; the 50% is our reading of that blend (docs/FIDELITY.md).
+        alpha: record.dynamicBackground === true ? WAVE_ALPHA : 1,
+      };
+    });
   });
 
   const out: MapObjectSprite[] = [];
@@ -128,7 +134,11 @@ export async function loadMapObjects(objects: MapObjectsData, ir: TerrainIr): Pr
   for (let i = 0; i + 2 < objects.placements.length; i += 3) {
     const hx = objects.placements[i] as number;
     const hy = objects.placements[i + 1] as number;
-    const type = resolved[objects.placements[i + 2] as number];
+    const states = resolved[objects.placements[i + 2] as number] ?? [];
+    // `lmlv` is 1-based; out-of-range (incl. the wall "intact" sentinel 100) → the first list.
+    const level = objects.levels?.[i / 3] ?? 1;
+    const stateIndex = level >= 1 && level <= states.length ? level - 1 : 0;
+    const type = states[stateIndex] ?? states[0];
     if (type === null || type === undefined) {
       skipped++;
       continue;

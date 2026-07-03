@@ -73,6 +73,20 @@ describe('parseTerrainMap (the content/maps loader)', () => {
     expect(map.entities?.animals).toEqual([]);
   });
 
+  it('accepts the objects layer with the optional per-placement levels lane', () => {
+    const map = parseTerrainMap({
+      ...JSON.parse(mapFileJson()),
+      objects: { types: ['palm 03'], placements: [1, 0, 0], levels: [3] },
+    });
+    expect(map.objects?.levels).toEqual([3]);
+    // levels stays optional — a map decoded before the lmlv lane was understood still parses.
+    const bare = parseTerrainMap({
+      ...JSON.parse(mapFileJson()),
+      objects: { types: ['palm 03'], placements: [1, 0, 0] },
+    });
+    expect(bare.objects?.levels).toBeUndefined();
+  });
+
   it('rejects a malformed entities layer (negative half-cell / unknown key)', () => {
     const base = JSON.parse(mapFileJson());
     expect(() =>

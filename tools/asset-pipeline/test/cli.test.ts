@@ -949,6 +949,21 @@ describe('mapDatToTerrain', () => {
     });
   });
 
+  it('emits per-placement levels from the lmlv state lane, parallel to the triples', () => {
+    // Same 2×2 half-cell lane as above + an lmlv byte lane: the state under each PLACED half-cell
+    // rides along (order = placement scan order); empty half-cells' states are dropped.
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 4, 0, 0])) },
+      { tag: 'emla', version: 1, payload: packX6elLayer(Uint16Array.from([0xffff, 2, 0, 0xffff])) },
+      { tag: 'lmlv', version: 1, payload: packMapLayer(Uint8Array.from([0, 3, 100, 0])) },
+      { tag: 'eald', version: 1, payload: stringList(['stones 02 grey', 'unused', 'palm 03']) },
+    ]);
+    const terrain = mapDatToTerrain(bytes);
+    expect(terrain.objects?.placements).toEqual([1, 0, 1, 0, 1, 0]);
+    expect(terrain.objects?.levels).toEqual([3, 100]); // palm at state 3, wall-style sentinel kept verbatim
+  });
+
   it('omits ground/objects when the map lacks the lanes (an lmlt-only save)', () => {
     const terrain = mapDatToTerrain(buildMapDat(1, 1, [2, 2, 2, 2]));
     expect(terrain.ground).toBeUndefined();

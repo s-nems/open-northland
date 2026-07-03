@@ -975,6 +975,14 @@ export const TerrainObjects = z.object({
   types: z.array(z.string()),
   /** Flat `[hx, hy, typeIndex]` triples in row-major half-cell order (length % 3 === 0). */
   placements: z.array(z.number().int().nonnegative()),
+  /**
+   * Per-placement object STATE from the `lmlv` lane (parallel to {@link placements}, one entry per
+   * triple): a 1-based index into the type's {@link LandscapeGfx} `frames` state lists — a tree's
+   * growth stage (1 = full-grown … 3 = sapling), a stone-pile's variant, a wall's damage state.
+   * Walls carry the sentinel `100` (= intact); any value outside the record's list range renders
+   * state 0. Absent on maps decoded before the lane was understood (render then defaults to 1).
+   */
+  levels: z.array(z.number().int().nonnegative()).optional(),
 });
 export type TerrainObjects = z.infer<typeof TerrainObjects>;
 
