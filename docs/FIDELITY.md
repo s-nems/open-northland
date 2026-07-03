@@ -348,3 +348,45 @@ Format: `- <mechanic>: <how it differs> — <why> (<commit>)`.
   (a diagonal covers √2 tiles in the same ticks), and since the iso projection makes tile→screen speed
   anisotropic anyway, uniform screen speed would be a separate calibration-by-observation, not attempted
   here. (8-connected movement + 8-facing gait)
+
+- RTS unit orders (select + box-select + move for civilians): the player can rubber-band-select the
+  human player's units and right-click to send them anywhere (`moveUnit` command → `MoveGoal`), the
+  standard-RTS control scheme. The ORIGINAL *Cultures* does NOT box-select-and-move civilian settlers —
+  they are autonomous, steered indirectly (the "hand" picks up/drops a settler; professions are assigned;
+  soldiers get direct orders). This RTS-style direct control is a **conscious quality-of-life deviation**,
+  requested for the rebuild. It is kept faithful *in spirit* by making the order a SOFT, TIMED override,
+  not a seizure (see below): the economy AI reclaims the unit after a hold, so autonomy — the soul of
+  Cultures — is never disabled, only briefly deferred. The `Owner{player}` ownership model + the 16-player
+  cap (`components/ownership.ts`) that gate "whose units you may command" are new scaffolding for the
+  ROADMAP's up-to-N-players target, not an original data structure. (unit selection + move orders)
+
+- Player move-order dwell (`MOVE_ORDER_HOLD_CIVILIAN`=50, `MOVE_ORDER_HOLD_SOLDIER`=300 ticks;
+  `systems/conflict/orders.ts`): after a moved unit ARRIVES it stands `holdTicks` before the economy AI
+  re-tasks it — short for a worker (it returns to its job), long for a combatant (it holds position),
+  chosen by whether the unit carries a `Health`/`Weapon` (combatant). The needs drives (eat/sleep/pray)
+  still preempt the hold, so a warrior may wander off to eat — the faithful "he'll soon go do his own
+  thing" the user described. **Approximated (no oracle):** the two dwell magnitudes + the combatant-vs-
+  civilian split are by-eye — the original's exact dwell / whether it even distinguishes the two is below
+  the readable `.ini` and OpenVikings' sim is a stub. The interrupt-on-order (a move cancels the current
+  atomic) and the per-player check being absent (any owned unit is orderable — no issuing-player field
+  until lockstep) are the other unpinned choices. Inert in the goldens (no `moveUnit` in the golden
+  stream; `PlayerOrder` is a separate optional component → golden hash untouched). (move-order dwell)
+
+- Idle-spacing / soft collision (`deStackIdle` in `systems/conflict/ai.ts`, `SPACING_SEARCH_CAP`=48):
+  settlers do NOT hard-collide — a walker passes freely through any occupied tile (so a crowd can thread
+  the gaps between village buildings without deadlocking) — but they will not come to REST stacked on one
+  another. When an owned settler has ARRIVED with nothing left to do (every economic + needs + player-order
+  drive above it declined) and shares its tile with a *lower-id* resting owned settler, it steps to the
+  nearest free, unblocked cell (a canonical breadth-first ring search); the lowest-id occupant is the
+  keeper and holds its ground, so a stack of N spreads to N distinct tiles and then stops (no churn).
+  **Faithful in spirit:** the original engine gives every landscape type a per-cell `maximumValency` (the
+  extracted `maxValency`, already on the terrain graph) — units cluster only up to a cell's capacity — so
+  "don't rest stacked" is the original's model, not an invention. **Approximated (no oracle):** the target
+  is *one settler per resting cell* (not the type's real valency number — the readable data gives the cap
+  but not how the engine distributes overflow), the de-stack is a last-resort planner drive rather than a
+  reservation held during pathing, and the "reluctant to ENTER an occupied tile" pathfinding penalty the
+  user also described is deferred (the de-stack at rest already delivers the visible result — units don't
+  pile up — so A* stays unweighted; a soft occupancy cost is a later refinement, docs/TECH-DEBT.md). Gated
+  on `Owner`, so it only ever moves gameplay units; the unowned golden/economy fixtures build an empty
+  occupancy set and are byte-identical. Group move-orders reach distinct tiles via a client-side formation
+  (app `view/picking.ts` `formationTiles`), with this de-stack as the sim-side safety net. (idle spacing)

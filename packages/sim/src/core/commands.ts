@@ -27,6 +27,10 @@ export type Command =
       /** Start the building at `built = 0` (under construction) rather than already built. Omit (the
        *  default) for an immediately-built placement. */
       readonly underConstruction?: boolean;
+      /** The PLAYER that owns this building (a slot in `[0, MAX_PLAYERS)`; stamps an `Owner`). Omit
+       *  (or an out-of-range value) for a neutral/unowned building — the golden path, hash untouched.
+       *  Orthogonal to `tribe` (the civilization). */
+      readonly owner?: number;
     }
   | {
       /**
@@ -71,6 +75,10 @@ export type Command =
        * acceptance scenes without retuning the global default (see docs/FIDELITY.md "Settler walk pace").
        */
       readonly moveSpeed?: number;
+      /** The PLAYER that owns this settler (a slot in `[0, MAX_PLAYERS)`; stamps an `Owner`). Omit
+       *  (or an out-of-range value) for a neutral/unowned settler — the golden path, hash untouched.
+       *  Orthogonal to `tribe` (the civilization). Only an owned settler is selectable/orderable. */
+      readonly owner?: number;
     }
   | {
       /**
@@ -105,9 +113,37 @@ export type Command =
       readonly x: number;
       readonly y: number;
       readonly tribe: number;
+      /** The PLAYER that owns this boat (a slot in `[0, MAX_PLAYERS)`; stamps an `Owner`). Omit (or
+       *  an out-of-range value) for a neutral/unowned hull — the golden path, hash untouched.
+       *  Orthogonal to `tribe` (the civilization). */
+      readonly owner?: number;
     }
   | { readonly kind: 'setProduction'; readonly building: Entity; readonly goodType: number }
-  | { readonly kind: 'demolish'; readonly building: Entity };
+  | { readonly kind: 'demolish'; readonly building: Entity }
+  | {
+      /**
+       * Order one OWNED settler to walk to (x,y) — the RTS "go there" order (the FIRST command that
+       * steers an existing unit rather than creating one). It sets a `MoveGoal` (the existing
+       * pathfinding→movement pipeline carries it out) + a `PlayerOrder` soft timed override, so the
+       * unit stands a while on arrival before the economy AI reclaims it. Skipped for a dead/stale
+       * target, a non-settler, or a neutral (unowned) entity. See the `moveUnit` handler.
+       */
+      readonly kind: 'moveUnit';
+      readonly entity: Entity;
+      readonly x: number;
+      readonly y: number;
+    }
+  | {
+      /**
+       * Change one OWNED settler's profession (the settler UI's "zmiana zawodu"): set its `jobType`
+       * and reset it to a fresh idle worker of the new trade (drop its workplace binding, cancel its
+       * action/route/order) so the JobSystem re-employs it. Skipped for a dead/stale target, a
+       * non-settler, a neutral entity, an unknown `jobType`, or a still-growing child. See `setJob`.
+       */
+      readonly kind: 'setJob';
+      readonly entity: Entity;
+      readonly jobType: number;
+    };
 
 export type CommandKind = Command['kind'];
 

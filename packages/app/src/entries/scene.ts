@@ -17,6 +17,8 @@ import { cameraFor, createCameraController } from '../view/camera.js';
 import { enableAudioOnGesture } from '../view/overlay.js';
 import { mountPerfOverlay } from '../view/perf-overlay.js';
 import { mountSceneOverlay, mountUnknownSceneOverlay } from '../view/scene-overlay.js';
+import { createUnitControls } from '../view/unit-controls.js';
+import { professionsFromContent } from '../view/unit-panel.js';
 import { floatParam } from './params.js';
 
 /**
@@ -30,6 +32,8 @@ import { floatParam } from './params.js';
 
 /** The acceptance scenes are single-tribe viking (tribe 1); draw that tribe's HUD panel each frame. */
 const HUD_TRIBE = 1;
+/** Owned scene units belong to this player, so the interactive select/order controls apply to them. */
+const HUMAN_PLAYER = 0;
 
 export async function renderSceneMode(
   canvas: HTMLCanvasElement,
@@ -78,6 +82,7 @@ export async function renderSceneMode(
     onRestart: () => {
       sim = createSceneSim(scene);
       timestep = new FixedTimestep(); // fresh accumulator so the replay starts on a clean tick boundary
+      controls.clearSelection(); // the rebuilt sim mints new entity ids — drop the stale selection
     },
     onSpeed: (v) => {
       control.speed = v;
@@ -101,6 +106,21 @@ export async function renderSceneMode(
     ? createSoundDriver(await fetchAudioIr(), { chopAtomicId: HARVEST_ATOMIC })
     : null;
   if (soundDriver !== null) enableAudioOnGesture(soundDriver);
+
+  // RTS unit control over the scene: left-click / drag-box to select the human's units, right-click to
+  // send them, Space for the unit panel. Harmless on scenes with no owned units (nothing is pickable);
+  // the unit-orders scene populates the human's vikings. `snapshot`/`enqueue` read the CURRENT `sim`
+  // through the closure, so they follow an overlay restart (which also clears the selection above).
+  const controls = createUnitControls({
+    canvas,
+    camera: () => cameraCtl.camera(),
+    snapshot: () => sim.snapshot(),
+    mapSize: { width: scene.terrain.width, height: scene.terrain.height },
+    humanPlayer: HUMAN_PLAYER,
+    professions: professionsFromContent(scene.content),
+    enqueue: (command) => sim.enqueue(command),
+    boundsOf: (ref) => renderer.entityBounds(ref), // pixel-accurate picking against the real sprite
+  });
 
   let timestep = new FixedTimestep();
   let lastMs = performance.now();
@@ -126,9 +146,14 @@ export async function renderSceneMode(
     cameraCtl.update(elapsed);
     const snap = sim.snapshot();
     // `app.screen` is the LIVE renderer size (it tracks window resizes), so the HUD stays pinned.
-    renderer.update(snap, cameraCtl.camera(), snap.tick, {
-      placement: placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', app.screen),
-    });
+    renderer.update(
+      snap,
+      cameraCtl.camera(),
+      snap.tick,
+      { placement: placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', app.screen) },
+      controls.selectedIds(),
+    );
+    controls.tick(snap); // reuse the frame's snapshot — don't rebuild a second one
     overlay.update(snap.tick);
     if (soundDriver !== null) {
       soundDriver.update({

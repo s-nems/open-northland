@@ -1,4 +1,4 @@
-import { PathFollow, PathRequest } from '../../components/index.js';
+import { PathFollow, PathRequest, Position } from '../../components/index.js';
 import { fx } from '../../core/fixed.js';
 import { findPath } from '../../nav/pathfinding.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
@@ -64,6 +64,22 @@ export const pathfindingSystem: System = (world, ctx) => {
       const { x, y } = terrain.coordsOf(cell);
       return { x: fx.fromInt(x), y: fx.fromInt(y) };
     });
+    // If the entity is mid-tile when this route is issued — a RE-PATH while it was between cell centres
+    // (e.g. a player move order interrupting a walk) — the first waypoint is the centre of the cell it is
+    // ALREADY in, so following the path verbatim makes it visibly back UP to that centre before turning.
+    // Drop that leading waypoint (when a next one exists) so it heads straight for the following cell. An
+    // entity standing exactly on a centre — every AI-issued route, since the planner sets a goal only while
+    // the unit is idle at a cell centre — keeps the full path, so the goldens are untouched.
+    const head = waypoints[0];
+    const p = world.tryGet(e, Position);
+    if (
+      waypoints.length >= 2 &&
+      head !== undefined &&
+      p !== undefined &&
+      (p.x !== head.x || p.y !== head.y)
+    ) {
+      waypoints.shift();
+    }
     world.add(e, PathFollow, { waypoints, index: 0 });
     world.remove(e, PathRequest);
   }

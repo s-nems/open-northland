@@ -18,6 +18,8 @@ import { demoGoods, loadTerrainMap, runSlice, sliceTerrain } from '../slice/vert
 import { cameraCenteredOnTile, cameraFor, createCameraController } from '../view/camera.js';
 import { enableAudioOnGesture } from '../view/overlay.js';
 import { mountPerfOverlay } from '../view/perf-overlay.js';
+import { createUnitControls } from '../view/unit-controls.js';
+import { professionsFromContent } from '../view/unit-panel.js';
 import { floatParam } from './params.js';
 
 /** The default full tile-diamond width in px (`2 × TILE_HALF_W`) when `?pitch=` is absent. */
@@ -38,6 +40,8 @@ const DEFAULT_TILE_WIDTH = 64;
 const HUD_TRIBE = 1;
 /** The slice sim's deterministic seed. */
 const SLICE_SEED = 7;
+/** The human player who owns the slice's units in the live sandbox (so they can be selected + ordered). */
+const HUMAN_PLAYER = 0;
 
 /**
  * Parse `?center=x,y` (integer tile coords) into a camera centred on that tile (via
@@ -114,8 +118,9 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
   // enough to evaluate); `?speed=1` is the full sim rate, higher values fast-forward.
   const speed = floatParam(params, 'speed', 0.5);
   // The slice sim, kept live and stepped one tick per fixed interval below. When a map loaded, the sim
-  // navigates that real grid (placement on its walkable cells); else the synthetic strip.
-  const sim = runSlice(SLICE_SEED, 0, loaded ?? undefined);
+  // navigates that real grid (placement on its walkable cells); else the synthetic strip. The units are
+  // owned by the human player so they can be selected + ordered.
+  const sim = runSlice(SLICE_SEED, 0, loaded ?? undefined, HUMAN_PLAYER);
 
   // Interactive camera: `?zoom` (+ the settler-centroid framing) is the STARTING frame; from there a
   // human pans (middle-mouse drag / arrow keys) and zooms (scroll wheel). The HUD is drawn outside the
@@ -145,6 +150,21 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
   // `?scene=` entry mounts. Real-GPU only: headless Chromium is software-GL, ~50× low (docs/LESSONS).
   const perf = mountPerfOverlay();
 
+  // RTS unit control: left-click / drag-box to select the human's units, right-click to send them,
+  // Space to open the selected-unit panel (profession change). The professions the panel offers are the
+  // slice content's jobs (minus idle). Reads the camera + snapshot through closures, issues commands
+  // into the sim.
+  const controls = createUnitControls({
+    canvas,
+    camera: () => cameraCtl.camera(),
+    snapshot: () => sim.snapshot(),
+    mapSize: { width: terrainGrid.width, height: terrainGrid.height },
+    humanPlayer: HUMAN_PLAYER,
+    professions: professionsFromContent(sim.content),
+    enqueue: (command) => sim.enqueue(command),
+    boundsOf: (ref) => renderer.entityBounds(ref), // pixel-accurate picking against the real sprite
+  });
+
   const timestep = new FixedTimestep();
   let lastMs = performance.now();
 
@@ -161,11 +181,16 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
     });
     cameraCtl.update(elapsed);
     const snap = sim.snapshot();
-    // One retained update: reconcile the pooled sprites, refresh the pinned HUD, render once.
-    // `app.screen` is the LIVE renderer size (it tracks window resizes), so the HUD stays pinned.
-    renderer.update(snap, cameraCtl.camera(), snap.tick, {
-      placement: placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', app.screen),
-    });
+    // One retained update: reconcile the pooled sprites, draw the selection rings, refresh the pinned
+    // HUD, render once. `app.screen` is the LIVE renderer size (it tracks window resizes).
+    renderer.update(
+      snap,
+      cameraCtl.camera(),
+      snap.tick,
+      { placement: placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', app.screen) },
+      controls.selectedIds(),
+    );
+    controls.tick(snap); // reuse the frame's snapshot — don't rebuild a second one
     // Sound is a pure consumer of the same snapshot + events render reads: fire this frame's one-shots
     // and refresh the ambient beds under the (moving) camera. No-op until the gesture resumes audio.
     if (soundDriver !== null) {
@@ -184,5 +209,7 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
   }
   requestAnimationFrame(frame);
 
-  console.log('Vinland live slice up: drag (middle mouse) / arrows pan, wheel zooms.');
+  console.log(
+    'Vinland live slice up: LPM zaznacz / przeciągnij ramką, PPM wyślij, Spacja panel; middle-drag / arrows pan, wheel zoom.',
+  );
 }

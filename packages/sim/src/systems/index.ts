@@ -2,6 +2,7 @@ import { aiSystem } from './conflict/ai.js';
 import { atomicSystem } from './conflict/atomic.js';
 import { combatSystem } from './conflict/combat.js';
 import { commandSystem } from './conflict/command.js';
+import { MOVE_ORDER_HOLD_CIVILIAN, MOVE_ORDER_HOLD_SOLDIER, playerOrderSystem } from './conflict/orders.js';
 import type { System, SystemContext } from './context.js';
 import { constructionSystem } from './economy/construction.js';
 import { jobSystem } from './economy/jobs.js';
@@ -116,6 +117,7 @@ import { progressionSystem, terrainSystem, timeSystem, transportSystem } from '.
 export type { System, SystemContext };
 export { aiSystem };
 export { commandSystem };
+export { MOVE_ORDER_HOLD_CIVILIAN, MOVE_ORDER_HOLD_SOLDIER, playerOrderSystem };
 export { MOVE_SPEED_PER_TICK, movementSystem };
 export {
   ENJOYMENT_RISE_PER_TICK,
@@ -230,6 +232,7 @@ export const SYSTEM_ORDER: readonly System[] = [
   progressionSystem,
   jobSystem,
   herdingSystem,
+  playerOrderSystem,
   aiSystem,
   pathfindingSystem,
   movementSystem,

@@ -1,5 +1,14 @@
 import { indexById } from '@vinland/data';
-import { Armor, Health, HerdMember, MoveSpeed, Position, Settler, Weapon } from '../../components/index.js';
+import {
+  Armor,
+  Health,
+  HerdMember,
+  MoveSpeed,
+  Position,
+  Settler,
+  Weapon,
+  stampOwner,
+} from '../../components/index.js';
 import type { Command } from '../../core/commands.js';
 import { ONE, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -66,6 +75,10 @@ export function spawnSettler(
       runPerTick: null,
     });
   }
+  // A settler spawned for a specific PLAYER carries an `Owner` (the same separate-optional stamp): it
+  // is the human player's to select and order. Omitted / out-of-range owner leaves it neutral (the
+  // golden / vertical-slice path), hash untouched.
+  stampOwner(world, e, command.owner);
   ctx.events.emit({ kind: 'settlerBorn', entity: e });
 }
 
