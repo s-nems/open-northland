@@ -5,6 +5,7 @@ import {
   AttackOrder,
   CurrentAtomic,
   Engagement,
+  Fleeing,
   Health,
   MoveGoal,
   Owner,
@@ -13,9 +14,10 @@ import {
   PlayerOrder,
   Position,
   Settler,
+  Stance,
   Weapon,
 } from '../../components/index.js';
-import { fx } from '../../core/fixed.js';
+import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
@@ -23,8 +25,10 @@ import {
   ARMOR_MATERIAL,
   ATOMIC_EVENT_TYPE_ATTACK,
   HUNTER_JOB,
+  MILITARY_MODE,
   armorMaterialForClass,
   atomicEventFrame,
+  defaultStanceForJob,
   isAggressiveAnimal,
   isAnimalTribe,
   isCatchableAnimal,
@@ -57,10 +61,14 @@ import {
  *  2. **Spatial index** — all combatants are bucketed by tile ONCE ({@link TileBuckets}), so a seeker's
  *     "nearest enemy" query is a bounded grid RING SEARCH ({@link TileBuckets.nearest}) instead of an
  *     O(entities) full scan per seeker (the ROADMAP tier-3 ring-search consumer).
- *  3. **Per combatant** ({@link engageCombatant}) — resolve a target (an explicit {@link AttackOrder}, else
- *     the nearest enemy in sight), then: inside the weapon reach band `[minRange, maxRange]` → stop and
- *     start the `attack` atomic; beyond it (an OWNED unit only) → chase it with a {@link MoveGoal} toward
- *     an approach cell, throttled to {@link REPATH_CADENCE}; no target → disengage back to the economy.
+ *  3. **Per combatant** ({@link engageCombatant}) — act on the unit's {@link Stance} military mode (owned
+ *     units; the original's `MILITARY_MODE`): **ATTACK** auto-acquires the nearest enemy in sight and
+ *     swings (in the weapon reach band) or chases (beyond it, throttled to {@link REPATH_CADENCE});
+ *     **DEFEND** engages only within {@link DEFEND_RADIUS_TILES} of an anchor and never chases past
+ *     {@link DEFEND_LEASH_TILES}, returning to post when clear; **IGNORE** never auto-engages (a hunter
+ *     still hunts prey); **FLEE** runs from the nearest threat at the run gait ({@link fleeDrive}). An
+ *     explicit {@link AttackOrder} overrides the mode (fight THAT one). Unowned combatants carry no Stance
+ *     and keep the legacy swing-in-place behaviour.
  *
  * **Two hostility axes.** *Who* is an enemy is the {@link mayTarget} relation, which composes:
  *  - **Owner (player) hostility** — two OWNED combatants of DIFFERENT players are enemies; SAME player are
@@ -122,6 +130,67 @@ export const SIGHT_RADIUS_TILES = 8;
 export const REPATH_CADENCE = 8;
 
 /**
+ * DEFEND stance — how far (Manhattan tiles) from its **anchor** a defender auto-acquires an enemy: it
+ * engages only threats inside this radius of the tile the DEFEND stance was set on, ignoring anything
+ * beyond (it holds its post rather than roaming). APPROXIMATED — the original's exact defend radius is
+ * unreadable (docs/FIDELITY.md "Combat stance — DEFEND"); calibration-by-observation pending.
+ */
+export const DEFEND_RADIUS_TILES = 4;
+
+/**
+ * DEFEND stance — the **leash**: the farthest (Manhattan tiles) from its anchor a defender will step to
+ * strike an in-radius enemy. Kept a little above {@link DEFEND_RADIUS_TILES} so a melee defender can walk
+ * up to a threat at the radius edge, but never chases far — a target reachable only by breaking the leash
+ * is left alone and the defender returns to its anchor. APPROXIMATED (docs/FIDELITY.md).
+ */
+export const DEFEND_LEASH_TILES = 6;
+
+/**
+ * FLEE stance — how many tiles a fleeing unit runs **away** from the nearest threat each time it re-aims:
+ * the flee destination is the walkable cell this far off in the best away-direction. APPROXIMATED — no
+ * readable flee-distance (docs/FIDELITY.md "Combat stance — FLEE").
+ */
+export const FLEE_STEP_TILES = 6;
+
+/**
+ * FLEE stance — how many ticks a fleeing unit holds its current run route before re-aiming away from the
+ * (moving) threat. The flee twin of {@link REPATH_CADENCE}: a per-tick re-path of every fleer would be the
+ * RTS-scale regression golden rule 7 forbids; between re-aims the unit runs its last route (the run gait
+ * keeps it ahead of a walking pursuer). OUR design (docs/FIDELITY.md "Combat stance — FLEE").
+ */
+export const FLEE_REPATH_CADENCE = 6;
+
+/**
+ * FLEE stance — how many ticks a fleeing unit must go with **no threat in sight** before it stops running
+ * and returns to the economy (the cool-down). Prevents a unit twitching in and out of flee as a threat
+ * flickers at the sight edge. APPROXIMATED (docs/FIDELITY.md "Combat stance — FLEE").
+ */
+export const FLEE_COOLDOWN_TICKS = 40;
+
+/**
+ * The need level (fixed-point, in [0, ONE]) at or above which a **collapsing** hunger/fatigue overrides the
+ * FLEE drive — a settler this close to starving/collapsing stops to eat/sleep even in danger (the AISystem's
+ * need drive then owns it), while every lesser need yields to the flee. Set well ABOVE the ¾ eat/sleep
+ * thresholds (a fleeing settler skips normal meals but not a near-death one). APPROXIMATED (docs/FIDELITY.md
+ * "Combat stance — FLEE"): the original's flee-vs-need arbitration is unreadable.
+ */
+const NEED_COLLAPSE_THRESHOLD: Fixed = fx.div(fx.fromInt(19), fx.fromInt(20)); // 0.95·ONE
+
+/** The eight compass directions (canonical order) a fleeing unit considers running toward — the best
+ *  (farthest-from-threat, walkable) one is chosen, so an obstacle in the straight-away direction diverts
+ *  the run deterministically rather than freezing it. Mirrors the herd-scatter direction set. */
+const FLEE_DIRECTIONS: ReadonlyArray<readonly [number, number]> = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [1, 1],
+  [-1, -1],
+  [1, -1],
+  [-1, 1],
+];
+
+/**
  * The dormancy gate: whether any combat work is possible this tick — a cheap single pass over the
  * combatants. Combat runs if ANY of:
  *  - a combatant already carries combat state ({@link Engagement}/{@link AttackOrder}/{@link Anger}) that
@@ -143,9 +212,11 @@ function combatPossible(world: World, ctx: SystemContext, combatants: Iterable<E
   let hasHunter = false;
   let hasCatchable = false;
   for (const e of combatants) {
-    // Lingering combat state must always be resolved (disengage / reap / clear the order), independent of
-    // whether a live enemy remains — so its presence alone keeps the system awake this tick.
-    if (world.has(e, Engagement) || world.has(e, AttackOrder) || world.has(e, Anger)) return true;
+    // Lingering combat state must always be resolved (disengage / reap / clear the order / wind a flee
+    // cool-down down), independent of whether a live enemy remains — so its presence alone keeps the
+    // system awake this tick.
+    if (world.has(e, Engagement) || world.has(e, AttackOrder) || world.has(e, Anger) || world.has(e, Fleeing))
+      return true;
     const s = world.get(e, Settler);
     const owner = world.tryGet(e, Owner);
     if (owner !== undefined) owners.add(owner.player);
@@ -166,17 +237,24 @@ function combatPossible(world: World, ctx: SystemContext, combatants: Iterable<E
 }
 
 /**
- * Resolve and act on one combatant's engagement this tick: pick a target, then swing / chase / disengage.
- * The gates, in order:
+ * Resolve and act on one combatant's engagement this tick — now **stance-gated** for owned units: pick a
+ * target and swing / chase / defend / flee / disengage per its {@link Stance} military mode. The gates:
  *  - **busy** (a {@link CurrentAtomic} running) or **dead** (`hitpoints <= 0`) → leave it (a mid-swing unit
  *    plays out; a felled-but-unreaped one gets no swing from beyond the grave);
- *  - **travelling and neither engaged nor under an attack order** → leave it (don't hijack a unit walking
- *    under a player move order / economy drive; an already-engaged or ordered unit IS re-evaluated while
- *    travelling, so a chaser can stop-and-swing the instant it steps into reach);
- *  - **attacker eligibility** — an unowned passive animal runs no attack drive (a cow doesn't pick fights;
- *    this also reaps a lapsed {@link Anger}); an owned combatant is always a driver ("attack stance");
- *  - **unarmed** (no resolvable weapon) → disengage;
- *  - then resolve a target and swing (in the reach band) / chase (owned, beyond it) / disengage (none).
+ *  - **live player MOVE order** (a {@link PlayerOrder}, not an {@link AttackOrder}) → leave it (the human's
+ *    "go there and hold" suppresses ALL auto-behavior — engage AND flee — until the hold lapses);
+ *  - **FLEE** ({@link Stance} `FLEE`, no attack order) → run from the nearest threat ({@link fleeDrive}),
+ *    re-evaluated even while travelling (to track a moving threat / wind the cool-down down);
+ *  - **IGNORE** (or the passive `NONE`) → never auto-engage; a HUNTER is the exception (its catchable-prey
+ *    predation survives the IGNORE gate), everything else disengages and waits for an explicit order;
+ *  - **travelling and neither engaged nor ordered** → leave it (don't hijack an economy walk; an engaged /
+ *    ordered / DEFEND-returning unit IS re-evaluated so a chaser stops-and-swings the instant it's in reach);
+ *  - **attacker eligibility** — an unowned passive animal runs no attack drive (also reaps a lapsed
+ *    {@link Anger}); **unarmed** → disengage;
+ *  - else resolve a target under the stance's {@link engageSpec} (ATTACK: sight; DEFEND: anchor radius;
+ *    IGNORE-hunter: prey) and swing (in reach) / chase (owned, leashed for DEFEND) / return-to-anchor
+ *    (DEFEND, none) / disengage (none).
+ * Unowned combatants carry no Stance and keep the legacy content-relation behaviour (swing-in-place).
  */
 function engageCombatant(
   world: World,
@@ -191,20 +269,45 @@ function engageCombatant(
   const owned = world.has(e, Owner);
   const ordered = world.has(e, AttackOrder);
   // A live PLAYER MOVE order (a {@link PlayerOrder}, and NOT an explicit {@link AttackOrder}) is the human's
-  // authoritative "go there and HOLD" command — it SUPPRESSES auto-engagement so the unit carries the order
-  // out instead of re-acquiring a nearby enemy and attacking (the reported "takes one step, then re-grabs
-  // the target and swings"). `moveUnit` clears any prior Engagement/AttackOrder, so an ordered unit holds
-  // cleanly with no stale combat state; an explicit AttackOrder is the OPPOSITE intent (fight THAT one) and
-  // still engages. Once the hold lapses (playerOrderSystem drops the PlayerOrder) the unit auto-defends
-  // again. This is the combat side of the soft-override philosophy the order handlers document.
+  // authoritative "go there and HOLD" command — it SUPPRESSES auto-behavior (auto-engage AND flee) so the
+  // unit carries the order out. `moveUnit` clears any prior Engagement/AttackOrder/Fleeing, so an ordered
+  // unit holds cleanly; an explicit AttackOrder is the OPPOSITE intent (fight THAT one) and still engages.
   if (world.has(e, PlayerOrder) && !ordered) return;
-  const engaged = world.has(e, Engagement);
-  const travelling = world.has(e, MoveGoal) || world.has(e, PathRequest) || world.has(e, PathFollow);
-  // A travelling unit that is not yet fighting is walking under another drive (an economy walk) — don't
-  // yank it into combat. An engaged/ordered unit is re-checked even while moving.
-  if (travelling && !engaged && !ordered) return;
 
   const attacker = world.get(e, Settler);
+  // The unit's military stance drives its auto-behavior. Unowned combatants carry no Stance — modelled as
+  // `null`, they keep the legacy content-relation behaviour (swing an in-reach enemy, no advance/flee).
+  const stance = owned ? stanceMode(world, e, attacker.jobType) : null;
+
+  // FLEE — run from the nearest threat. Runs even while travelling (re-evaluated each tick to track a
+  // moving threat and wind the cool-down down). An explicit attack order overrides the flee mode. A unit
+  // that has STOPPED fleeing (stance changed, or an order took over) sheds the flee state + its run route.
+  const willFlee = stance === MILITARY_MODE.FLEE && !ordered;
+  if (world.has(e, Fleeing) && !willFlee) {
+    world.remove(e, Fleeing);
+    clearChase(world, e);
+  }
+  if (willFlee) {
+    fleeDrive(world, ctx, terrain, index, e, attacker);
+    return;
+  }
+
+  // IGNORE (and the passive NONE, normalized to IGNORE by {@link stanceMode}) — never auto-engage a hostile
+  // enemy; only an explicit attack order fights. A HUNTER is exempt: its catchable-prey predation is an
+  // economic drive independent of the military mode, so it falls through to the engage path (with a
+  // predation-only target filter, {@link engageSpec}).
+  if (stance === MILITARY_MODE.IGNORE && !ordered && attacker.jobType !== HUNTER_JOB) {
+    disengage(world, e);
+    return;
+  }
+
+  const engaged = world.has(e, Engagement);
+  const travelling = world.has(e, MoveGoal) || world.has(e, PathRequest) || world.has(e, PathFollow);
+  // A travelling unit that is not yet fighting is walking under another drive (an economy walk, or a DEFEND
+  // unit heading back to its anchor) — don't yank it into combat. An engaged/ordered unit is re-checked
+  // even while moving.
+  if (travelling && !engaged && !ordered) return;
+
   // An unowned passive animal drives no attack (and a lapsed anger timer is reaped here); an owned unit
   // is always an aggressor. `hostileAnimalNow` is only consulted for the unowned-animal case.
   if (!owned && !ordered && isAnimalTribe(ctx.content, attacker.tribe)) {
@@ -222,9 +325,13 @@ function engageCombatant(
   }
 
   const here = entityCell(world, terrain, e);
-  const found = resolveTarget(world, ctx, terrain, index, e, here, attacker, weapon, owned);
+  const spec = engageSpec(world, ctx, terrain, e, owned, ordered, stance, attacker, weapon);
+  const found = resolveTarget(world, ctx, terrain, index, e, here, attacker, spec);
   if (found === null) {
-    disengage(world, e); // no enemy in reach/sight — return to the economy
+    // No target: a DEFEND unit walks back to its anchor (holding its post); everyone else disengages back
+    // to the economy.
+    if (spec.defend !== null) returnToAnchor(world, e, here, spec.defend.anchorCell);
+    else disengage(world, e);
     return;
   }
 
@@ -246,12 +353,206 @@ function engageCombatant(
 
   // Beyond reach. Only an OWNED combatant advances (the player's army walks into melee); an unowned one
   // simply has no target this tick (the resolveTarget search radius was capped at maxRange for it, so this
-  // branch is unreachable for unowned — kept explicit for the owned chase).
+  // branch is unreachable for unowned — kept explicit for the owned chase). A DEFEND chase is leashed to
+  // the anchor (`spec.defend`), so it never pursues far.
   if (!owned) {
     disengage(world, e);
     return;
   }
-  chase(world, ctx, terrain, e, here, target, weapon, ordered);
+  chase(world, ctx, terrain, e, here, target, weapon, ordered, spec.defend);
+}
+
+/**
+ * The military mode an owned combatant acts under — its {@link Stance} `mode`, or (defensively, if the
+ * component is somehow missing) the job's {@link defaultStanceForJob}. `NONE` (an unset mode the defaults
+ * never produce) is normalized to the passive {@link MILITARY_MODE.IGNORE} so a stray value never becomes
+ * an accidental aggressor. Pure component read, no RNG/wall-clock.
+ */
+function stanceMode(world: World, e: Entity, jobType: number | null): number {
+  const s = world.tryGet(e, Stance);
+  const mode = s === undefined ? defaultStanceForJob(jobType) : s.mode;
+  return mode === MILITARY_MODE.NONE ? MILITARY_MODE.IGNORE : mode;
+}
+
+/**
+ * How a combatant acquires a target this tick, resolved from its stance — the ring-search `accept` filter,
+ * the near/far reach band (`minDist`/`searchRadius`), and (DEFEND only) the anchor leash the chase respects.
+ *  - **DEFEND** (auto, not ordered) → accept only hostile targets within {@link DEFEND_RADIUS_TILES} of the
+ *    anchor, spot within `radius + leash`, and carry the anchor+leash so {@link chase} never pursues past it.
+ *  - **IGNORE hunter** → accept only catchable **prey** ({@link isHuntTarget}) — the predation that survives
+ *    the IGNORE gate — spotted within the sight radius.
+ *  - **ATTACK / ordered / unowned** → general hostility ({@link isValidTarget}); an owned unit spots within
+ *    its {@link SIGHT_RADIUS_TILES} (it advances), an unowned one only within weapon reach (swing-in-place).
+ * The `minDist` is the weapon's near reach (a ranged weapon's dead zone) in every case.
+ */
+function engageSpec(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  owned: boolean,
+  ordered: boolean,
+  stance: number | null,
+  attacker: { tribe: number; jobType: number | null },
+  weapon: { minRange: number; maxRange: number },
+): EngageSpec {
+  const generalAccept = (t: Entity): boolean => isValidTarget(world, ctx, e, attacker, t);
+  const minDist = weapon.minRange;
+  const sight = Math.max(weapon.maxRange, SIGHT_RADIUS_TILES);
+
+  if (owned && !ordered && stance === MILITARY_MODE.DEFEND) {
+    const anchor = defendAnchor(world, terrain, e);
+    const accept = (t: Entity): boolean =>
+      generalAccept(t) && manhattan(terrain, anchor, entityCell(world, terrain, t)) <= DEFEND_RADIUS_TILES;
+    return {
+      accept,
+      minDist,
+      searchRadius: DEFEND_RADIUS_TILES + DEFEND_LEASH_TILES,
+      defend: { anchorCell: anchor, leash: DEFEND_LEASH_TILES },
+    };
+  }
+
+  if (owned && !ordered && stance === MILITARY_MODE.IGNORE && attacker.jobType === HUNTER_JOB) {
+    const accept = (t: Entity): boolean => isHuntTarget(world, ctx, t, attacker.jobType);
+    return { accept, minDist, searchRadius: sight, defend: null };
+  }
+
+  return { accept: generalAccept, minDist, searchRadius: owned ? sight : weapon.maxRange, defend: null };
+}
+
+/** The DEFEND anchor cell — the {@link Stance}'s captured `anchorCell` (the tile the stance was set on),
+ *  falling back to the unit's own cell if it somehow carries none (a DEFEND stamped before it had a tile). */
+function defendAnchor(world: World, terrain: TerrainGraph, e: Entity): CellId {
+  const anchor = world.tryGet(e, Stance)?.anchorCell;
+  return (anchor ?? entityCell(world, terrain, e)) as CellId;
+}
+
+/** Send a DEFEND unit back to its anchor when no enemy is in its defend radius: drop the {@link Engagement}
+ *  (it is no longer fighting) and either hold in place (already home — clear any stale route) or walk home
+ *  (a fresh {@link MoveGoal} to the anchor). Combined with the leash in {@link chase}, this is the "engage
+ *  in a radius, don't chase far, return to post" behaviour of the DEFEND mode. */
+function returnToAnchor(world: World, e: Entity, here: CellId, anchorCell: CellId): void {
+  world.remove(e, Engagement);
+  clearChase(world, e);
+  if (here !== anchorCell) world.add(e, MoveGoal, { cell: anchorCell });
+}
+
+/**
+ * The FLEE drive — run a unit away from the nearest threat (the civilian raid reaction). Reuses the combat
+ * ring-search index (no new scan, golden rule 7): the nearest hostile within {@link SIGHT_RADIUS_TILES} is
+ * the threat. Then, in order:
+ *  - **no threat in sight** → wind the cool-down down: start it on the first clear tick, and after
+ *    {@link FLEE_COOLDOWN_TICKS} clear with none, shed {@link Fleeing} + the run route so the economy
+ *    re-tasks the unit; while cooling down it holds its last route. A unit that was never fleeing does
+ *    nothing (the economy owns it).
+ *  - **a collapsing need** ({@link needCollapsing}) → a near-death hunger/fatigue overrides the flee: on the
+ *    transition out of fleeing (Fleeing still set) shed the marker + run route so the AISystem's eat/sleep
+ *    drive owns the unit; once yielded, leave that need-walk untouched (don't cancel it each tick).
+ *  - **flee** → stamp/refresh {@link Fleeing} (calmUntil null = in danger), and — throttled to
+ *    {@link FLEE_REPATH_CADENCE}, or immediately on a failed route — re-aim to a walkable cell
+ *    {@link FLEE_STEP_TILES} away in the best direction AWAY from the threat ({@link fleeDestination}). The
+ *    MovementSystem walks a Fleeing unit at the faster run gait, so it outpaces a walking pursuer.
+ */
+function fleeDrive(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  index: TileBuckets,
+  e: Entity,
+  attacker: { tribe: number; jobType: number | null },
+): void {
+  const here = entityCell(world, terrain, e);
+  const { x, y } = terrain.coordsOf(here);
+  const accept = (t: Entity): boolean => isValidTarget(world, ctx, e, attacker, t);
+  const threat = index.nearest(x, y, 1, SIGHT_RADIUS_TILES, accept);
+  const fleeing = world.tryGet(e, Fleeing);
+
+  if (threat === null) {
+    if (fleeing === undefined) return; // never in danger — the economy owns this unit
+    if (fleeing.calmUntil === null) fleeing.calmUntil = ctx.tick + FLEE_COOLDOWN_TICKS;
+    if (ctx.tick >= fleeing.calmUntil) {
+      world.remove(e, Fleeing); // safe long enough — return to work
+      clearChase(world, e);
+    }
+    return;
+  }
+
+  if (needCollapsing(world, e)) {
+    // A collapsing need overrides the flee. Yield only on the transition (Fleeing still set): shed it + the
+    // run route so the AISystem re-tasks the unit; once yielded (no marker) leave the need-walk alone so we
+    // don't cancel the eat/sleep goal the AI sets each tick.
+    if (world.has(e, Fleeing)) {
+      world.remove(e, Fleeing);
+      clearChase(world, e);
+    }
+    return;
+  }
+
+  const f = world.add(e, Fleeing, { repathAt: fleeing?.repathAt ?? ctx.tick, calmUntil: null });
+  const travelling = world.has(e, MoveGoal) || world.has(e, PathRequest) || world.has(e, PathFollow);
+  if (world.tryGet(e, PathRequest)?.failed) {
+    clearChase(world, e); // the last flee route was unreachable — re-aim now
+  } else if (travelling && ctx.tick < f.repathAt) {
+    return; // still running a live route — re-aim only on the throttle
+  }
+
+  const dest = fleeDestination(terrain, here, entityCell(world, terrain, threat.entity));
+  clearChase(world, e);
+  if (dest !== here) world.add(e, MoveGoal, { cell: dest }); // dest === here ⇒ boxed in, stand and hope
+  f.repathAt = ctx.tick + FLEE_REPATH_CADENCE;
+}
+
+/** The cell a fleeing unit should run to: the walkable cell {@link FLEE_STEP_TILES} away (of the eight
+ *  compass directions) that is FARTHEST from the threat, tie-broken by min cell id. It must strictly
+ *  increase the distance from the threat over staying put, so a boxed-in unit (no away-cell walkable /
+ *  in-bounds) returns its own cell (`here`) and stays rather than running toward the threat. A bounded
+ *  8-way scan — deterministic (fixed direction order + min-id tie-break), no RNG. */
+function fleeDestination(terrain: TerrainGraph, here: CellId, threatCell: CellId): CellId {
+  const h = terrain.coordsOf(here);
+  const t = terrain.coordsOf(threatCell);
+  let best: CellId = here;
+  let bestScore = Math.abs(h.x - t.x) + Math.abs(h.y - t.y); // a candidate must beat staying put
+  for (const [dx, dy] of FLEE_DIRECTIONS) {
+    const x = h.x + dx * FLEE_STEP_TILES;
+    const y = h.y + dy * FLEE_STEP_TILES;
+    if (!terrain.inBounds(x, y)) continue;
+    const cell = terrain.cellAt(x, y);
+    if (!terrain.isWalkable(cell)) continue;
+    const score = Math.abs(x - t.x) + Math.abs(y - t.y);
+    if (score > bestScore || (score === bestScore && best !== here && cell < best)) {
+      best = cell;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+/** Whether `t` is catchable **prey** a hunter of `hunterJob` may strike — the predation-only target filter
+ *  an IGNORE hunter uses (its animal-hunt drive survives the IGNORE gate, but it ignores player-hostility).
+ *  A live, positioned, Health-bearing settler for which {@link mayHunt} holds. */
+function isHuntTarget(world: World, ctx: SystemContext, t: Entity, hunterJob: number | null): boolean {
+  if (!world.has(t, Settler) || !world.has(t, Health) || !world.has(t, Position)) return false;
+  if (world.get(t, Health).hitpoints <= 0) return false;
+  return mayHunt(ctx.content, hunterJob, world.get(t, Settler).tribe);
+}
+
+/** Whether a settler's hunger or fatigue has reached the {@link NEED_COLLAPSE_THRESHOLD} — a near-death
+ *  need that overrides the FLEE drive (the settler stops to eat/sleep even in danger). */
+function needCollapsing(world: World, e: Entity): boolean {
+  const s = world.get(e, Settler);
+  return s.hunger >= NEED_COLLAPSE_THRESHOLD || s.fatigue >= NEED_COLLAPSE_THRESHOLD;
+}
+
+/** How a combatant acquires + reaches a target this tick, derived from its stance ({@link engageSpec}). */
+interface EngageSpec {
+  /** The ring-search per-candidate hostility/predation filter. */
+  readonly accept: (t: Entity) => boolean;
+  /** Near reach — the ring search ignores anything closer (a ranged weapon's dead zone). */
+  readonly minDist: number;
+  /** Far reach — how far the unit spots a target to swing at / advance on. */
+  readonly searchRadius: number;
+  /** DEFEND leash: the chase never walks past `leash` of `anchorCell`; null for every non-DEFEND mode. */
+  readonly defend: { readonly anchorCell: CellId; readonly leash: number } | null;
 }
 
 /**
@@ -260,9 +561,9 @@ function engageCombatant(
  *  - under an explicit {@link AttackOrder} → that focused `target`, chased regardless of sight, as long as
  *    it is a live, hostile combatant; a target that has died / become an invalid target drops the order and
  *    falls through to auto-engagement (so the unit re-acquires a nearby enemy rather than going idle);
- *  - otherwise → the nearest enemy the ring search finds within `[minRange, searchRadius]` — `searchRadius`
- *    is `maxRange` for an unowned combatant (swing-in-place only, the unchanged behaviour) and
- *    `max(maxRange, SIGHT_RADIUS_TILES)` for an owned one (so it also spots enemies to advance on).
+ *  - otherwise → the nearest target the ring search finds within `[spec.minDist, spec.searchRadius]` that
+ *    the stance's `spec.accept` filter admits (general hostility for ATTACK/unowned, anchor-bounded for
+ *    DEFEND, catchable prey for an IGNORE hunter — see {@link engageSpec}).
  */
 function resolveTarget(
   world: World,
@@ -272,8 +573,7 @@ function resolveTarget(
   self: Entity,
   here: CellId,
   attacker: { tribe: number; jobType: number | null },
-  weapon: { minRange: number; maxRange: number },
-  owned: boolean,
+  spec: EngageSpec,
 ): { target: Entity; dist: number } | null {
   if (world.has(self, AttackOrder)) {
     const focus = world.get(self, AttackOrder).target;
@@ -285,9 +585,7 @@ function resolveTarget(
     world.remove(self, AttackOrder); // target gone / no longer hostile — abandon the order, auto-engage
   }
   const { x, y } = terrain.coordsOf(here);
-  const searchRadius = owned ? Math.max(weapon.maxRange, SIGHT_RADIUS_TILES) : weapon.maxRange;
-  const accept = (t: Entity): boolean => isValidTarget(world, ctx, self, attacker, t);
-  const found = index.nearest(x, y, weapon.minRange, searchRadius, accept);
+  const found = index.nearest(x, y, spec.minDist, spec.searchRadius, spec.accept);
   return found === null ? null : { target: found.entity, dist: found.distance };
 }
 
@@ -326,6 +624,7 @@ function chase(
   target: Entity,
   weapon: { minRange: number; maxRange: number },
   ordered: boolean,
+  defend: { anchorCell: CellId; leash: number } | null,
 ): void {
   const engagement = world.add(e, Engagement, {
     repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick, // repath now on first engagement
@@ -352,6 +651,12 @@ function chase(
     weapon.minRange,
     weapon.maxRange,
   );
+  // DEFEND leash: never step past `leash` tiles from the anchor to reach an enemy — a target hittable only
+  // by breaking the leash is left alone, and the defender walks back to its post instead of pursuing.
+  if (defend !== null && manhattan(terrain, defend.anchorCell, dest) > defend.leash) {
+    returnToAnchor(world, e, here, defend.anchorCell);
+    return;
+  }
   if (dest === here) {
     // No walkable cell in the target's weapon band is reachable, and the unit is out of range (else it
     // would have swung, not chased) — the target can't be closed on (boxed into an unwalkable pocket, or

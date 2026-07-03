@@ -451,6 +451,50 @@ Format: `- <mechanic>: <how it differs> — <why> (<commit>)`.
   goldens (`AttackOrder` is a separate optional component; no `attackUnit` in the golden stream).
   (attack order)
 
+- Combat stances — the four military modes (`Stance` component + `setStance` command, `MILITARY_MODE`
+  in `systems/readviews/stances.ts`, gates in `systems/conflict/combat.ts`). The **enum is data-pinned**:
+  `logicdefines.inc` ~l.1107 `MILITARY_MODE_{NONE 0, ATTACK 1, DEFEND 2, IGNORE 3, FLEE 4}` (the shipped
+  Funatics header), transcribed verbatim as named constants. **Approximated (the BEHAVIOR per mode is NOT
+  readable — no oracle; step-10 calibration-pending):**
+  - **ATTACK** = the step-2 walk-into-melee drive unchanged (auto-acquire in sight, chase, fight).
+  - **DEFEND** = auto-engage only enemies within `DEFEND_RADIUS_TILES`=4 of an **anchor** (the tile the
+    stance was set on, captured by `setStance`), never chase past `DEFEND_LEASH_TILES`=6 of it, and return
+    to the anchor when clear. Both radii are calibration constants (the original's defend radius/leash are
+    unreadable).
+  - **IGNORE** = never auto-engage (the scout's mode); an explicit `attackUnit` order still overrides it.
+    A HUNTER is exempted from the gate for **catchable prey only** (its animal-hunt predation is an
+    economic drive independent of the military mode), so an IGNORE hunter still hunts but ignores humans.
+  - **FLEE** = run from the nearest threat (see the *Combat flee* entry below).
+  Order-over-stance: an `AttackOrder` overrides any stance (fight THAT one). Owned-ONLY: `Stance` is
+  stamped only on owned settlers, so no unowned/wildlife/golden entity ever carries one and every golden
+  hash is untouched — unowned combatants keep the legacy content-relation behaviour. `NONE` is normalized
+  to the passive IGNORE (the defaults never produce it). (combat stances)
+
+- Combat stance defaults — the job → default-mode table (`defaultStanceForJob`, stamped on every owned
+  settler at spawn / profession-change): soldiers (jobs 31..41) + heroes (42..47) → ATTACK; scout (27) +
+  hunter (15) → IGNORE; **every other civilian job + a jobless/child settler → FLEE**. The mode ids are
+  data-pinned but the **assignment of a mode to a job is the user's observation of the original**
+  (observed-approximation — the readable data carries no per-job military-mode field), so the whole table
+  is calibration-pending. Kept a **data-shaped lookup** (a classification of the job id, not per-unit
+  branches). `setStance` overrides it afterwards. (combat stance defaults)
+
+- Combat flee — the civilian run-from-danger drive (`fleeDrive` in `systems/conflict/combat.ts` +
+  `Fleeing` component + the run gait in `systems/movement/movement.ts`). A FLEE-stance combatant with a
+  hostile in sight (the SAME ring-search as ATTACK — no new scan, golden rule 7) runs to the walkable cell
+  `FLEE_STEP_TILES`=6 away that is farthest from the threat, re-aimed every `FLEE_REPATH_CADENCE`=6 ticks,
+  and the MovementSystem walks it at the **run gait** — the first consumer of `MoveSpeed.runPerTick` (an
+  animal's `runspeed`), falling back for a human (no readable run speed) to walk × `RUN_SPEED_MULTIPLIER`=2.
+  It resumes work after `FLEE_COOLDOWN_TICKS`=40 with no threat in sight. Flee preempts economy drives but
+  **yields to a COLLAPSING need** (`NEED_COLLAPSE_THRESHOLD`=0.95·ONE — a near-death hunger/fatigue: the
+  settler stops to eat/sleep even in danger); lesser needs yield to the flee. **Approximated (no oracle,
+  step-10):** the flee trigger/direction/re-aim cadence, the run multiplier, the cool-down, and the
+  flee-vs-need arbitration are all our deterministic design over the data-pinned mode enum; every threshold
+  is a named calibration constant. The flee DRIVE requires a `Health` pool (a fleeing unit is a combat
+  participant the ring-search index already buckets) — a civilian without `Health` carries the FLEE stance
+  inertly; extending flee to every civilian rides with the map-populator giving civilians HP. Inert on the
+  goldens (`Fleeing`/`Stance` are owned-only separate-optional components; no owned combatant in the golden
+  stream). (combat flee)
+
 - Idle-spacing / soft collision (`deStackIdle` in `systems/conflict/ai.ts`, `SPACING_SEARCH_CAP`=48):
   settlers do NOT hard-collide — a walker passes freely through any occupied tile (so a crowd can thread
   the gaps between village buildings without deadlocking) — but they will not come to REST stacked on one

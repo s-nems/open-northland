@@ -92,6 +92,17 @@ export {
 export { isSeaJob, seaJobs } from './jobs.js';
 
 export {
+  HERO_JOB_MAX,
+  HERO_JOB_MIN,
+  MILITARY_MODE,
+  SCOUT_JOB,
+  SOLDIER_JOB_MAX,
+  SOLDIER_JOB_MIN,
+  defaultStanceForJob,
+  isMilitaryMode,
+} from './stances.js';
+
+export {
   isLandLayerType,
   isUniversalLayerType,
   isWaterLayerType,

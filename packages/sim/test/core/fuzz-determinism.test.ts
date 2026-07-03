@@ -52,6 +52,8 @@ const LEATHER = 1;
 const COMBATANT_HITPOINTS = 500;
 /** Owner slots: two valid players + one out-of-range (skipped → neutral) — exercises `stampOwner`. */
 const OWNERS = [0, 1, 99] as const;
+/** Military-mode ids: the five valid `MILITARY_MODE`s + one out-of-range (skipped) — exercises `setStance`. */
+const STANCE_MODES = [0, 1, 2, 3, 4, 7] as const;
 /** Entity-targeting commands draw ids from [1, TARGET_ID_RANGE] — live, dead, and never-created. */
 const TARGET_ID_RANGE = 80;
 /** ~1 command every this-many ticks keeps the stream busy without swamping the map. */
@@ -87,7 +89,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(MAP_W);
   const y = rng.int(MAP_H);
-  const roll = rng.int(9);
+  const roll = rng.int(10);
   switch (roll) {
     case 0:
       return {
@@ -150,6 +152,14 @@ function nextCommand(rng: Rng): Command {
         kind: 'attackUnit',
         entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         target: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+      };
+    case 8:
+      // A stance change at a random id: valid + out-of-range modes, owned/unowned/dead targets.
+      // Exercises the setStance skip paths + the stance-gated engagement/flee drives under a fuzzed stream.
+      return {
+        kind: 'setStance',
+        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        mode: pick(rng, STANCE_MODES),
       };
     default:
       // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.

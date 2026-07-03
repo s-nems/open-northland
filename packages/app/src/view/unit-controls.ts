@@ -92,6 +92,9 @@ export function createUnitControls(opts: UnitControlsOptions): UnitControls {
     onSetJob: (ids, jobType) => {
       for (const id of ids) opts.enqueue({ kind: 'setJob', entity: id as Entity, jobType });
     },
+    onSetStance: (ids, mode) => {
+      for (const id of ids) opts.enqueue({ kind: 'setStance', entity: id as Entity, mode });
+    },
     onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),
   });
 

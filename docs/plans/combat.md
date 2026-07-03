@@ -89,7 +89,7 @@ steps land. Steps 8–9 are severable if the scope must shrink; step 10 can run 
 
 - [ ] 1. Sim: true damage model — material columns, hit at the ATTACK frame, swing cadence
 - [ ] 2. Sim: engagement — owner hostility, ring-search targeting, walk-into-melee, attack order
-- [ ] 3. Sim: stances — attack / defend / ignore / flee
+- [x] 3. Sim: stances — attack / defend / ignore / flee
 - [ ] 4. Sim: ranged combat — projectiles in flight
 - [ ] 5. Render: warrior bodies + combat animations
 - [ ] 6. Render: combat feedback — player colours, HP bars, blood, cadavers, impact sounds

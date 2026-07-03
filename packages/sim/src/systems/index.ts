@@ -1,6 +1,15 @@
 import { aiSystem } from './conflict/ai.js';
 import { atomicSystem } from './conflict/atomic.js';
-import { REPATH_CADENCE, SIGHT_RADIUS_TILES, combatSystem } from './conflict/combat.js';
+import {
+  DEFEND_LEASH_TILES,
+  DEFEND_RADIUS_TILES,
+  FLEE_COOLDOWN_TICKS,
+  FLEE_REPATH_CADENCE,
+  FLEE_STEP_TILES,
+  REPATH_CADENCE,
+  SIGHT_RADIUS_TILES,
+  combatSystem,
+} from './conflict/combat.js';
 import { commandSystem } from './conflict/command.js';
 import { MOVE_ORDER_HOLD_CIVILIAN, MOVE_ORDER_HOLD_SOLDIER, playerOrderSystem } from './conflict/orders.js';
 import type { System, SystemContext } from './context.js';
@@ -54,6 +63,7 @@ import {
   type HerdParams,
   IDLE_JOB,
   type Locomotion,
+  MILITARY_MODE,
   WEAPON_MAIN_TYPE,
   animalBabyHitpoints,
   animalCannotBeAttacked,
@@ -73,6 +83,7 @@ import {
   combatDamage,
   damageVsBuilding,
   damageVsWood,
+  defaultStanceForJob,
   goodsGraph,
   herdParams,
   ignoresHousesAnimal,
@@ -81,6 +92,7 @@ import {
   isCatchableAnimal,
   isInterruptibleAtomic,
   isLandLayerType,
+  isMilitaryMode,
   isPlayableTribe,
   isRangedWeapon,
   isSeaJob,
@@ -176,6 +188,7 @@ export {
   combatDamage,
   damageVsBuilding,
   damageVsWood,
+  defaultStanceForJob,
   goodsGraph,
   herdParams,
   housingCapacity,
@@ -187,9 +200,11 @@ export {
   isCatchableAnimal,
   isInterruptibleAtomic,
   isLandLayerType,
+  isMilitaryMode,
   isPlayableTribe,
   isWarrantableAnimal,
   isRangedWeapon,
+  MILITARY_MODE,
   isSeaJob,
   isShipVehicle,
   isSiegeWeapon,
@@ -236,7 +251,16 @@ export {
   isNonWorkingAge,
 };
 export { cleanupSystem };
-export { REPATH_CADENCE, SIGHT_RADIUS_TILES, combatSystem };
+export {
+  DEFEND_LEASH_TILES,
+  DEFEND_RADIUS_TILES,
+  FLEE_COOLDOWN_TICKS,
+  FLEE_REPATH_CADENCE,
+  FLEE_STEP_TILES,
+  REPATH_CADENCE,
+  SIGHT_RADIUS_TILES,
+  combatSystem,
+};
 export { herdingSystem };
 export { constructionSystem };
 export { progressionSystem, terrainSystem, timeSystem, transportSystem };

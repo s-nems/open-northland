@@ -273,11 +273,15 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
 
 ## Phase 4 — Conflict & content breadth (N tribes)  ← **current target**
 - [ ] CombatSystem from `weapontypes`/`armortypes` (a large subsystem: soldier classes, armor tiers,
-      heroes, amulets/potions — scope it honestly). **Substance landed** (→ [archive](ROADMAP-ARCHIVE.md),
-      docs/FIDELITY.md): the `combatDamage` net-damage join + the full targeting→`attack`→hit→death loop; a
-      combatant wields a worn `Weapon`/`Armor` overriding the `(tribe,job)` default. Faithful (net-damage
-      param + atomic id 81); inert on the golden. **Open (oracle-blocked):** walk-into-melee advance, swing
-      cadence, the equip drive (which roster weapon a class picks) + the soldier-class→loadout binding.
+      heroes, amulets/potions — scope it honestly; the step-by-step rework is `docs/plans/combat.md`).
+      **Substance landed** (→ [archive](ROADMAP-ARCHIVE.md), docs/FIDELITY.md): the material-column damage
+      model + the full targeting→`attack`→hit→death loop at the data's swing cadence; **engagement** (owner
+      hostility, ring-search targeting, walk-into-melee advance, `attackUnit` order); the **four military
+      stances** (attack / defend / ignore / flee — civilians run from danger at a run gait). Faithful
+      (damage column, atomic id 81, the `MILITARY_MODE` enum); inert on the golden (owned-only). **Open:**
+      ranged projectiles-in-flight, warrior render/animations + combat feedback, barracks + towers, and
+      step-10 calibration of the approximated behaviours (sight/defend radii, run speed, flee/need
+      arbitration).
 - [x] **N data-defined tribes** (viking/frank/saracen/byzantine/egypt), asymmetry via each tribe's atomic
       bindings + `allow*`/`needfor*` graph — never hardcode "two". **Substance-complete** (→
       [archive](ROADMAP-ARCHIVE.md)): all 41 `[tribetype]`s extracted, every rule resolved off `settler.tribe`,

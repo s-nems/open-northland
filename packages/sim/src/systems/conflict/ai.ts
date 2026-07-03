@@ -3,6 +3,7 @@ import {
   Carrying,
   CurrentAtomic,
   Engagement,
+  Fleeing,
   MoveGoal,
   Owner,
   PathFollow,
@@ -233,6 +234,14 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // override — hunger/fatigue/piety can still pull a combatant away, faithful to the autonomous-settler
     // model. combatSystem clears the Engagement when the fight ends, at which point the economy resumes.
     if (world.has(e, Engagement)) continue;
+
+    // FLEEING: a unit running from danger (the FLEE stance's active drive) likewise skips economy planning
+    // — the CombatSystem owns its run route. This matters while it stands (boxed in, or arrived at a flee
+    // cell during the cool-down); while actively running it already carries a MoveGoal and is skipped above.
+    // combatSystem sheds the Fleeing marker when the threat is gone (the cool-down), at which point the
+    // economy resumes; a COLLAPSING need overrides the flee inside combatSystem, so this skip never traps a
+    // starving unit (it yields the marker first).
+    if (world.has(e, Fleeing)) continue;
 
     // PLAYER-ORDER hold: a unit standing where the human sent it stays put — the economy planner below
     // leaves it be. Placed BELOW the needs drives (eat/sleep/pray) on purpose: the move order is a

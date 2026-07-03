@@ -5,6 +5,7 @@ import { gatheringScene } from './gathering.js';
 import { housePlacementScene } from './house-placement.js';
 import { meleeEngagementScene } from './melee-engagement.js';
 import { soundShowcaseScene } from './sound-showcase.js';
+import { stancesScene } from './stances.js';
 import { stressCrowdScene } from './stress-crowd.js';
 import type { SceneDefinition } from './types.js';
 import { unitOrdersScene } from './unit-orders.js';
@@ -25,6 +26,7 @@ export const SCENES: readonly SceneDefinition[] = [
   housePlacementScene,
   meleeEngagementScene,
   soundShowcaseScene,
+  stancesScene,
   stressCrowdScene,
   unitOrdersScene,
 ];

@@ -1,6 +1,21 @@
 import type { ContentSet } from '@vinland/data';
-import { ONE, TICKS_PER_SECOND, type WorldSnapshot } from '@vinland/sim';
+import { ONE, TICKS_PER_SECOND, type WorldSnapshot, systems } from '@vinland/sim';
 import { BUTTON_STYLE, el } from './overlay.js';
+
+/** The four player-selectable military stances (`MILITARY_MODE`) the actions panel offers, with Polish
+ *  labels — the buttons issue a `setStance` command through the command seam. NONE is not offered (it is
+ *  the passive fallback the defaults never set). */
+const STANCES: ReadonlyArray<{ mode: number; label: string }> = [
+  { mode: systems.MILITARY_MODE.ATTACK, label: 'Atak' },
+  { mode: systems.MILITARY_MODE.DEFEND, label: 'Obrona' },
+  { mode: systems.MILITARY_MODE.IGNORE, label: 'Ignoruj' },
+  { mode: systems.MILITARY_MODE.FLEE, label: 'Ucieczka' },
+];
+
+/** A stance mode id → its Polish label (for the always-on info card's live "Postawa" line). */
+function stanceLabel(mode: number | undefined): string {
+  return STANCES.find((s) => s.mode === mode)?.label ?? '—';
+}
 
 /**
  * The SELECTED-UNIT panels — the settler/building info card the human reads (the original's settler UI,
@@ -39,6 +54,8 @@ export interface UnitPanelOptions {
   readonly professions: readonly Profession[];
   /** Human player id — the panel only ever shows/acts on this player's units (the controller pre-filters). */
   readonly onSetJob: (entityIds: readonly number[], jobType: number) => void;
+  /** Set the selected units' military stance (`setStance` per unit — the `MILITARY_MODE` buttons). */
+  readonly onSetStance: (entityIds: readonly number[], mode: number) => void;
   readonly onDemolish: (entityId: number) => void;
 }
 
@@ -124,6 +141,19 @@ export function mountUnitPanel(opts: UnitPanelOptions): UnitPanel {
     return row;
   };
 
+  /** The military-stance buttons (Atak / Obrona / Ignoruj / Ucieczka) — each issues a `setStance` on every
+   *  selected settler. The always-on info card's "Postawa" line shows the current mode (live). */
+  const stanceRow = (ids: readonly number[]): HTMLElement => {
+    const row = el('div', 'display:flex;flex-wrap:wrap;gap:4px;margin-top:6px');
+    row.append(el('div', 'width:100%;opacity:0.7;font-size:12px', 'Postawa (tryb wojskowy):'));
+    for (const s of STANCES) {
+      const b = el('button', BUTTON_STYLE, s.label);
+      b.addEventListener('click', () => opts.onSetStance(ids, s.mode));
+      row.append(b);
+    }
+    return row;
+  };
+
   const needBar = (label: string, key: string): HTMLElement => {
     const wrap = el('div', 'display:flex;align-items:center;gap:6px;margin-top:2px');
     wrap.append(el('div', 'width:80px;opacity:0.8', label));
@@ -158,6 +188,7 @@ export function mountUnitPanel(opts: UnitPanelOptions): UnitPanel {
     info.append(infoRow('Plemię', `${num(s.tribe) ?? '—'}`));
     for (const n of NEEDS) info.append(needBar(n.label, n.key));
     info.append(infoRow('Niesie', '—', 'carry'));
+    info.append(infoRow('Postawa', '—', 'stance'));
     info.append(infoRow('Status', '—', 'status'));
   }
 
@@ -225,9 +256,10 @@ export function mountUnitPanel(opts: UnitPanelOptions): UnitPanel {
       }
     }
 
-    // ACTIONS card (Space): profession buttons for the selected settlers, if any.
+    // ACTIONS card (Space): profession + stance buttons for the selected settlers, if any.
     if (settlerIds.length > 0) {
       actions.append(professionRow(settlerIds));
+      actions.append(stanceRow(settlerIds));
     } else {
       actions.append(el('div', 'opacity:0.75', 'Brak akcji dla zaznaczenia.'));
     }
@@ -250,6 +282,11 @@ export function mountUnitPanel(opts: UnitPanelOptions): UnitPanel {
     if (carryEl !== undefined) {
       carryEl.textContent =
         carry === undefined ? '—' : `dobro ${num(carry.goodType) ?? '?'} ×${num(carry.amount) ?? 0}`;
+    }
+    const stanceEl = dynamic.get('stance');
+    if (stanceEl !== undefined) {
+      const stance = ent.components.Stance as { mode?: unknown } | undefined;
+      stanceEl.textContent = stanceLabel(num(stance?.mode));
     }
     const statusEl = dynamic.get('status');
     if (statusEl !== undefined) statusEl.textContent = settlerStatus(ent.components, snapshot.tick);
