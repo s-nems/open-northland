@@ -87,7 +87,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(MAP_W);
   const y = rng.int(MAP_H);
-  const roll = rng.int(8);
+  const roll = rng.int(9);
   switch (roll) {
     case 0:
       return {
@@ -142,6 +142,15 @@ function nextCommand(rng: Rng): Command {
       // A move order at a random id: hits owned settlers (obeyed), unowned settlers / buildings /
       // dead ids (skipped). Exercises the moveUnit skip paths + the PlayerOrder timed override.
       return { kind: 'moveUnit', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity, x, y };
+    case 7:
+      // An attack order at two random ids: hits owned combatants (obeyed → AttackOrder + chase),
+      // non-combatant / unowned / dead issuers (skipped) and live/dead/non-combatant targets. Exercises
+      // the attackUnit skip paths + the combat engagement drive under a fuzzed stream.
+      return {
+        kind: 'attackUnit',
+        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        target: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+      };
     default:
       // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.
       return {

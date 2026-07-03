@@ -2,9 +2,12 @@ import type { WeaponType } from '@vinland/data';
 import {
   Anger,
   Armor,
+  AttackOrder,
   CurrentAtomic,
+  Engagement,
   Health,
   MoveGoal,
+  Owner,
   PathFollow,
   PathRequest,
   Position,
@@ -18,128 +21,374 @@ import type { System, SystemContext } from '../context.js';
 import {
   ARMOR_MATERIAL,
   ATOMIC_EVENT_TYPE_ATTACK,
+  HUNTER_JOB,
   armorMaterialForClass,
   atomicEventFrame,
   isAggressiveAnimal,
   isAnimalTribe,
+  isCatchableAnimal,
   mayAttack,
   mayHunt,
   weaponDamageVsMaterial,
 } from '../readviews/index.js';
-import { atomicAnimationName, atomicDurationForName, entityCell, manhattan } from '../shared.js';
+import {
+  TileBuckets,
+  atomicAnimationName,
+  atomicDurationForName,
+  canonicalById,
+  entityCell,
+  manhattan,
+} from '../shared.js';
 
 /**
- * CombatSystem (the **targeting** half of the combat loop) — choose who each idle combatant swings
- * at and start the {@link CurrentAtomic} `attack` that lands the hit. This is the front half of the
- * targeting→attack→hit→death loop: it picks a target and resolves the net damage; the AtomicSystem's
- * `attack` effect drains the target's {@link Health} (the hit), and the CleanupSystem reaps a felled
- * combatant. Together with those two already-landed halves it closes the loop.
+ * CombatSystem — the whole combat loop's **decision** stage: for each combatant, pick who to fight and
+ * either **swing** at an enemy in reach or **advance** on one that is spotted but out of reach. It closes
+ * the front half of the targeting→attack→hit→death loop (the AtomicSystem's `attack` effect lands the
+ * hit, the CleanupSystem reaps the felled), and it now also drives the *engagement* half — walk-into-melee.
  *
- * A **combatant** is a {@link Settler} that carries a {@link Health} pool (a fighter — a non-combat
- * settler/the golden slice carries none, so it never fights and the hash stays untouched, the
- * separate-optional-component pattern of `JobAssignment`/`Age`). Two hostility models drive who an
- * idle combatant may swing at, unified in {@link mayAttack}:
+ * A **combatant** is a {@link Settler} carrying a {@link Health} pool; a non-combat settler / the golden
+ * slice carries none, so the whole system is inert on them (the hash stays untouched). Each tick:
  *
- *  - **Civilization vs civilization** — a different-civilization combatant is an enemy (the
- *    player-vs-player drive); a same-tribe settler is friendly; alliances are a later slice.
- *  - **Civilization ⇄ aggressive animal** — an **aggressive** animal ({@link isAggressiveAnimal} —
- *    `animaltypes.ini` `aggressive`, attacks unprovoked) and a civilization are mutual enemies, so a
- *    bear/wolf engages a nearby settler **and** that settler fights back. A `cannotbeattacked` animal
- *    (decorative fauna — bees) is exempt as a *target* (a civ can't hit it) but, if aggressive, can
- *    still attack. A **passive** animal (a cow, a deer) is no combat target — hostility leaves it alone.
- *  - **Hunter → catchable prey** — a civilization **hunter** ({@link mayHunt} — job
- *    {@link HUNTER_JOB}) may strike a {@link isCatchableAnimal} prey animal (a cow/deer the hostility
- *    relation leaves alone), the original's `viking_hunter_attack`. This is predation, gated by the
- *    attacker's *job* not tribe hostility; the strike reuses the same `attack` atomic + weapon/hit path,
- *    and (for a `getAngry` prey) is the **provocation source** the `Anger` timer waits on. Animals don't
- *    fight each other here.
+ *  1. **Dormancy gate** ({@link combatPossible}) — one cheap pass decides whether any hostile pair (or any
+ *     lingering combat state to clean up) exists. If not, the system does **zero** further work: a map of
+ *     peaceful settlers, or an all-one-player field, costs nothing (golden rule 7 — no full-world scan on
+ *     an idle tick).
+ *  2. **Spatial index** — all combatants are bucketed by tile ONCE ({@link TileBuckets}), so a seeker's
+ *     "nearest enemy" query is a bounded grid RING SEARCH ({@link TileBuckets.nearest}) instead of an
+ *     O(entities) full scan per seeker (the ROADMAP tier-3 ring-search consumer).
+ *  3. **Per combatant** ({@link engageCombatant}) — resolve a target (an explicit {@link AttackOrder}, else
+ *     the nearest enemy in sight), then: inside the weapon reach band `[minRange, maxRange]` → stop and
+ *     start the `attack` atomic; beyond it (an OWNED unit only) → chase it with a {@link MoveGoal} toward
+ *     an approach cell, throttled to {@link REPATH_CADENCE}; no target → disengage back to the economy.
  *
- * For each idle, living combatant (no `CurrentAtomic` running, not travelling, `hitpoints > 0`), in
- * deterministic store order, the system finds the nearest valid target within the attacker's weapon
- * **range** (Manhattan cells, canonical entity-id tie-break), resolves the **column damage** that hit
- * deals — the attacker's weapon ({@link attackerWeapon}, keyed by the attacker's tribe+job for a
- * settler, or by tribe alone for a jobless spawned animal) `damagevalue[targetMaterial]` versus **the
- * target's armor material** (its {@link Armor} tier's material, or material 0 when it wears none — the
- * column the original pre-resolves, see {@link combatDamage}) — and starts an `attack` atomic carrying
- * that resolved damage, the swing's ATTACK-event hit-frame, and the weapon's class (for fight XP).
+ * **Two hostility axes.** *Who* is an enemy is the {@link mayTarget} relation, which composes:
+ *  - **Owner (player) hostility** — two OWNED combatants of DIFFERENT players are enemies; SAME player are
+ *    friendly (a player's mixed-tribe army never fights itself). This is the axis battle scenes key on
+ *    (viking-vs-viking told apart by player). Binary, no diplomacy/alliances (docs/FIDELITY.md).
+ *  - **Tribe hostility + predation + provoked anger** ({@link mayAttack}/{@link mayHunt}/{@link Anger}) —
+ *    the existing content relations for any pair where at least one side is unowned (wildlife, economy
+ *    fixtures, the golden path): civ-vs-civ by tribe, civ⇄aggressive-animal, hunter→catchable-prey, and a
+ *    struck `getAngry` animal fighting back. Unchanged for unowned combatants.
  *
- * The attacker stays put and swings (combat is in-place at range — no walk-into-melee drive yet; an
- * out-of-range enemy is simply not a target this tick, the original's "advance on the enemy" is a
- * later movement slice). The attack atomic id is {@link ATTACK_ATOMIC_ID} (the original's
- * `setatomic <job> 81 "..._attack"`, bound per job to a weapon-specific animation — see
- * docs/FIDELITY.md); its `duration` is resolved through that binding like every other atomic, and the
- * swing REPEATS at that cadence (a survivor is re-acquired next idle tick — the cadence IS the length).
+ * **Two reach radii.** The weapon's extracted `[minRange, maxRange]` band is where a swing LANDS; an
+ * approximated {@link SIGHT_RADIUS_TILES} is how far an owned combatant SPOTS an enemy to advance on. An
+ * unowned combatant has no advance drive (its search radius is just `maxRange`), so its behaviour is
+ * byte-identical to before — it swings an in-range enemy and otherwise does nothing.
  *
- * FIDELITY: the **damage amount** is the faithful `weapontypes` `damagevalue` param — the column keyed
- * by the **target's armor material** ({@link Armor} → `materialType`, or material 0 unarmored; == the
- * class for the four base armors), with **no `blockingValue` subtraction** (armor selects the column,
- * it does not mitigate — the uniform `blockingValue 5` has an unknown engine role, docs/FIDELITY.md).
- * The **civ-vs-animal hostility gate** reads the faithful `aggressive`/`cannotbeattacked` params, and
- * the **playable-vs-animal split** is the faithful tech-graph signature ({@link isAnimalTribe}).
- * **Approximated (no oracle):** *who* a combatant picks (nearest enemy in range), the *re-target
- * trigger* (each idle tick), and that an unarmed combatant does no damage are *our* deterministic
- * design — the original's target-acquisition AI is the undocumented "soul" (docs/FIDELITY.md). *Which*
- * settler wears *which* armor material is caller-supplied (`spawnSettler`), not yet pinned to a
- * soldier-class→armor binding. The **provoked**-anger half (`getAngry`/
- * `angryGameTime` — a passive animal turned hostile after being struck) is **now wired**: the
- * AtomicSystem stamps an {@link Anger} timer on a struck `getAngry` animal, and this system reads it
- * ({@link hostileAnimalNow} on the attacker side, {@link mayTarget} on the target side) so a provoked
- * animal fights back and is a valid target until the timer lapses, then reverts to passive.
- *
- * Determinism: no RNG, no wall-clock; combatants and targets are scanned in canonical
- * ({@link World.canonicalEntities}) order with a Manhattan-distance + ascending-id tie-break, and the
- * weapon/damage/hostility joins are pure reads over content. No-ops without a terrain graph (a mapless
- * sim has no cells to measure range over — the golden is untouched). Inert on the goldens/slice: no
- * settler there carries `Health`, so the combatant scan finds nobody.
+ * Determinism: no RNG, no wall-clock. Combatants are scanned in canonical ({@link canonicalById}) order;
+ * the ring search finishes the whole minimum-distance band and picks (distance, then id) — the same winner
+ * a full scan would, provably order-independent. No-op without a terrain graph.
  */
 export const combatSystem: System = (world, ctx) => {
-  if (ctx.terrain === undefined) return; // mapless sim: no cells to measure range over
+  if (ctx.terrain === undefined) return; // mapless sim: no cells to measure reach over
   const terrain = ctx.terrain;
-  for (const e of world.query(Settler, Health, Position)) {
-    // Busy / mid-walk / already felled: leave it. A 0-HP attacker is dead-but-not-yet-reaped (cleanup
-    // runs later this tick) — it must not get a free swing from beyond the grave.
-    if (world.has(e, CurrentAtomic)) continue;
-    if (world.has(e, MoveGoal) || world.has(e, PathRequest) || world.has(e, PathFollow)) continue;
-    if (world.get(e, Health).hitpoints <= 0) continue;
 
-    const attacker = world.get(e, Settler);
-    // A NON-hostile animal runs no attack drive at all (a passive cow/deer doesn't pick fights — and
-    // animals don't war on each other here). "Hostile" is an aggressive animal (unprovoked) OR a
-    // **provoked** one whose `Anger` timer is still live ({@link hostileAnimalNow}, which also reaps a
-    // lapsed timer). A civilization OR a hostile animal drives; the per-target `mayAttack`/anger relation
-    // below then decides each candidate. (An unknown-tribe combatant — no animal record — is not an
-    // animal, so it falls through to the civ branch and drives.)
-    if (isAnimalTribe(ctx.content, attacker.tribe) && !hostileAnimalNow(world, ctx, e, attacker.tribe)) {
-      continue;
-    }
+  // The combatant set for THIS tick, in canonical (ascending-id) order — the scan order and the
+  // ring-search index are both built from it, so a distance/first-match tie-break lands on the same
+  // winner every run. `query` is O(min store), and Health-bearing entities are the combatants.
+  const combatants = canonicalById(world.query(Settler, Health, Position));
 
-    // An explicitly-equipped combatant wields its worn `Weapon` (resolved vs its own tribe); a bare one
-    // falls back to its class's default `(tribe, jobType)` weapon.
-    const wornWeaponTypeId = world.tryGet(e, Weapon)?.weaponTypeId;
-    const weapon = attackerWeapon(ctx, attacker.tribe, attacker.jobType, wornWeaponTypeId);
-    if (weapon === null) continue; // no resolvable weapon — this combatant can't attack (approximated)
+  // Dormancy gate: no possible hostile pair AND no combat state to resolve ⇒ skip all combat work.
+  if (!combatPossible(world, ctx, combatants)) return;
 
-    const here = entityCell(world, terrain, e);
-    const pick = nearestEnemyTarget(
-      world,
-      terrain,
-      ctx,
-      here,
-      e,
-      attacker.tribe,
-      attacker.jobType,
-      weapon.minRange,
-      weapon.maxRange,
-    );
-    if (pick === null) continue; // no enemy/prey in range this tick
+  // One per-tick spatial bucket of all combatants for the ring-search enemy query.
+  const index = new TileBuckets(world, combatants);
 
-    // Resolve the damage against THE TARGET's armor MATERIAL (material 0 if it wears no `Armor`): the
-    // weapon's `damagevalue[material]` column — the value the original pre-resolves per material, with
-    // no `blockingValue` subtraction (armor selects the column, it doesn't mitigate — see combatDamage).
-    const damage = weaponDamageVsMaterial(weapon.weapon, targetMaterial(world, ctx, pick.target));
-    startAttack(world, ctx, attacker, e, pick.target, damage, weapon.weapon);
+  for (const e of combatants) {
+    engageCombatant(world, ctx, terrain, index, e);
   }
 };
+
+/**
+ * How far (Manhattan tiles) an OWNED combatant can **spot** an enemy to advance on it — the aggro/advance
+ * radius the walk-into-melee drive searches within. APPROXIMATED (docs/FIDELITY.md "Combat sight radius"):
+ * humans carry NO readable sight/aggro field in the data (only animals have leash radii), so this is a
+ * calibration-by-observation constant pending a look at the running original, not a pinned param. The
+ * weapon's extracted `[minRange, maxRange]` band (where a swing lands) is separate and faithful.
+ */
+export const SIGHT_RADIUS_TILES = 8;
+
+/**
+ * How many ticks a chaser follows its current path toward an enemy before re-issuing a fresh one — the
+ * chase repath throttle. A chaser tracks a MOVING enemy by re-pathing periodically, not every tick; a
+ * per-tick full re-path of every chaser would be the RTS-scale regression golden rule 7 forbids (and the
+ * pathfinding budget is only {@link PATHFINDING_BUDGET_PER_TICK}/tick anyway). Between repaths the unit
+ * keeps walking its last route toward the enemy, and the swing check is distance-based (independent of the
+ * path goal), so a slightly-stale route still delivers it into reach. OUR design (no oracle) —
+ * docs/FIDELITY.md "Combat chase / repath cadence".
+ */
+export const REPATH_CADENCE = 8;
+
+/**
+ * The dormancy gate: whether any combat work is possible this tick — a cheap single pass over the
+ * combatants. Combat runs if ANY of:
+ *  - a combatant already carries combat state ({@link Engagement}/{@link AttackOrder}/{@link Anger}) that
+ *    must be resolved (disengaged, cleared, or an expired anger timer reaped) even with no live enemy;
+ *  - **≥2 distinct player owners** are present (a possible player-vs-player fight);
+ *  - **≥2 distinct civilization tribes** are present (a possible civ-vs-civ fight — the unowned scenarios);
+ *  - a **hostile (aggressive) animal** and a **civilization** are both present (civ⇄animal aggression);
+ *  - a **hunter** and a **catchable** animal are both present (a possible hunt).
+ *
+ * It is CONSERVATIVE — it may pass on a tick where the two hostile sides are out of range (combat then
+ * simply finds no target), but it never skips a tick where a fight or a cleanup is due. This is the lever
+ * that makes a peaceful map, or an all-one-player field, cost ~0 (no per-seeker scan runs at all).
+ */
+function combatPossible(world: World, ctx: SystemContext, combatants: readonly Entity[]): boolean {
+  const owners = new Set<number>();
+  const civTribes = new Set<number>();
+  let hasCiv = false;
+  let hasHostileAnimal = false;
+  let hasHunter = false;
+  let hasCatchable = false;
+  for (const e of combatants) {
+    // Lingering combat state must always be resolved (disengage / reap / clear the order), independent of
+    // whether a live enemy remains — so its presence alone keeps the system awake this tick.
+    if (world.has(e, Engagement) || world.has(e, AttackOrder) || world.has(e, Anger)) return true;
+    const s = world.get(e, Settler);
+    const owner = world.tryGet(e, Owner);
+    if (owner !== undefined) owners.add(owner.player);
+    if (isAnimalTribe(ctx.content, s.tribe)) {
+      if (isAggressiveAnimal(ctx.content, s.tribe)) hasHostileAnimal = true;
+      if (isCatchableAnimal(ctx.content, s.tribe)) hasCatchable = true;
+    } else {
+      hasCiv = true;
+      civTribes.add(s.tribe);
+      if (s.jobType === HUNTER_JOB) hasHunter = true;
+    }
+  }
+  if (owners.size >= 2) return true; // two players → possible pvp
+  if (civTribes.size >= 2) return true; // two civilizations → civ-vs-civ (unowned scenarios)
+  if (hasHostileAnimal && hasCiv) return true; // an aggressive animal near a civilization
+  if (hasHunter && hasCatchable) return true; // a hunter and huntable prey
+  return false;
+}
+
+/**
+ * Resolve and act on one combatant's engagement this tick: pick a target, then swing / chase / disengage.
+ * The gates, in order:
+ *  - **busy** (a {@link CurrentAtomic} running) or **dead** (`hitpoints <= 0`) → leave it (a mid-swing unit
+ *    plays out; a felled-but-unreaped one gets no swing from beyond the grave);
+ *  - **travelling and neither engaged nor under an attack order** → leave it (don't hijack a unit walking
+ *    under a player move order / economy drive; an already-engaged or ordered unit IS re-evaluated while
+ *    travelling, so a chaser can stop-and-swing the instant it steps into reach);
+ *  - **attacker eligibility** — an unowned passive animal runs no attack drive (a cow doesn't pick fights;
+ *    this also reaps a lapsed {@link Anger}); an owned combatant is always a driver ("attack stance");
+ *  - **unarmed** (no resolvable weapon) → disengage;
+ *  - then resolve a target and swing (in the reach band) / chase (owned, beyond it) / disengage (none).
+ */
+function engageCombatant(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  index: TileBuckets,
+  e: Entity,
+): void {
+  if (world.has(e, CurrentAtomic)) return; // mid-swing / mid-need: play it out
+  if (world.get(e, Health).hitpoints <= 0) return; // dead, not yet reaped — no free swing
+
+  const owned = world.has(e, Owner);
+  const ordered = world.has(e, AttackOrder);
+  const engaged = world.has(e, Engagement);
+  const travelling = world.has(e, MoveGoal) || world.has(e, PathRequest) || world.has(e, PathFollow);
+  // A travelling unit that is not yet fighting is walking under another drive (a player move order, an
+  // economy walk) — don't yank it into combat. An engaged/ordered unit is re-checked even while moving.
+  if (travelling && !engaged && !ordered) return;
+
+  const attacker = world.get(e, Settler);
+  // An unowned passive animal drives no attack (and a lapsed anger timer is reaped here); an owned unit
+  // is always an aggressor. `hostileAnimalNow` is only consulted for the unowned-animal case.
+  if (!owned && !ordered && isAnimalTribe(ctx.content, attacker.tribe)) {
+    if (!hostileAnimalNow(world, ctx, e, attacker.tribe)) {
+      disengage(world, e);
+      return;
+    }
+  }
+
+  const wornWeaponTypeId = world.tryGet(e, Weapon)?.weaponTypeId;
+  const weapon = attackerWeapon(ctx, attacker.tribe, attacker.jobType, wornWeaponTypeId);
+  if (weapon === null) {
+    disengage(world, e); // no resolvable weapon — this combatant can't fight (approximated)
+    return;
+  }
+
+  const here = entityCell(world, terrain, e);
+  const target = resolveTarget(world, ctx, terrain, index, e, attacker, weapon, owned);
+  if (target === null) {
+    disengage(world, e); // no enemy in reach/sight — return to the economy
+    return;
+  }
+
+  const dist = manhattan(terrain, here, entityCell(world, terrain, target));
+  if (dist >= weapon.minRange && dist <= weapon.maxRange) {
+    // In the reach band: stop advancing and swing. (Clearing the chase movement is combat's to do — it
+    // only ever owns the movement of an engaged unit.)
+    clearChase(world, e);
+    world.add(e, Engagement, { repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick });
+    const damage = weaponDamageVsMaterial(weapon.weapon, targetMaterial(world, ctx, target));
+    startAttack(world, ctx, attacker, e, target, damage, weapon.weapon);
+    return;
+  }
+
+  // Beyond reach. Only an OWNED combatant advances (the player's army walks into melee); an unowned one
+  // simply has no target this tick (the resolveTarget search radius was capped at maxRange for it, so this
+  // branch is unreachable for unowned — kept explicit for the owned chase).
+  if (!owned) {
+    disengage(world, e);
+    return;
+  }
+  chase(world, ctx, terrain, e, here, target, weapon, ordered);
+}
+
+/**
+ * The enemy this combatant fights this tick, or null:
+ *  - under an explicit {@link AttackOrder} → that focused `target`, chased regardless of sight, as long as
+ *    it is a live, hostile combatant; a target that has died / become an invalid target drops the order and
+ *    falls through to auto-engagement (so the unit re-acquires a nearby enemy rather than going idle);
+ *  - otherwise → the nearest enemy the ring search finds within `[minRange, searchRadius]` — `searchRadius`
+ *    is `maxRange` for an unowned combatant (swing-in-place only, the unchanged behaviour) and
+ *    `max(maxRange, SIGHT_RADIUS_TILES)` for an owned one (so it also spots enemies to advance on).
+ */
+function resolveTarget(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  index: TileBuckets,
+  self: Entity,
+  attacker: { tribe: number; jobType: number | null },
+  weapon: { minRange: number; maxRange: number },
+  owned: boolean,
+): Entity | null {
+  if (world.has(self, AttackOrder)) {
+    const focus = world.get(self, AttackOrder).target;
+    if (isValidTarget(world, ctx, self, attacker, focus)) return focus;
+    world.remove(self, AttackOrder); // target gone / no longer hostile — abandon the order, auto-engage
+  }
+  const { x, y } = terrain.coordsOf(entityCell(world, terrain, self));
+  const searchRadius = owned ? Math.max(weapon.maxRange, SIGHT_RADIUS_TILES) : weapon.maxRange;
+  const accept = (t: Entity): boolean => isValidTarget(world, ctx, self, attacker, t);
+  return index.nearest(x, y, weapon.minRange, searchRadius, accept)?.entity ?? null;
+}
+
+/** Whether `t` is a live combatant this attacker may swing at — a positioned, `Health`-bearing settler
+ *  (not the attacker itself, `hitpoints > 0`) for which the {@link mayTarget} hostility relation holds.
+ *  The shared predicate behind both the attack-order validity check and the ring-search filter. */
+function isValidTarget(
+  world: World,
+  ctx: SystemContext,
+  self: Entity,
+  attacker: { tribe: number; jobType: number | null },
+  t: Entity,
+): boolean {
+  if (t === self) return false;
+  if (!world.has(t, Settler) || !world.has(t, Health) || !world.has(t, Position)) return false;
+  if (world.get(t, Health).hitpoints <= 0) return false;
+  const targetTribe = world.get(t, Settler).tribe;
+  return mayTarget(world, ctx, self, attacker.tribe, attacker.jobType, t, targetTribe);
+}
+
+/**
+ * Advance an OWNED combatant on `target` it can't yet reach — the walk-into-melee drive. It keeps an
+ * {@link Engagement} marker (so the AISystem leaves the unit to combat) and re-issues a {@link MoveGoal}
+ * toward an {@link approachCell} (a cell in the weapon's reach band of the target, closest to the unit —
+ * so a melee unit stops ADJACENT rather than walking onto the enemy) at most every {@link REPATH_CADENCE}
+ * ticks. Between repaths it follows its live route; the swing check (distance-based) catches it the instant
+ * it steps into reach. A dead route (an unreachable target) is dropped so it re-issues; an **ordered**
+ * unit whose route can't resolve gives the order up (the "becomes unreachable" end of an attack order).
+ */
+function chase(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  here: CellId,
+  target: Entity,
+  weapon: { minRange: number; maxRange: number },
+  ordered: boolean,
+): void {
+  const engagement = world.add(e, Engagement, {
+    repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick, // repath now on first engagement
+  });
+
+  // A failed chase route (unreachable target): drop the dead nav state so we re-issue below. For an
+  // explicit attack order an unreachable target ends the order — the "until it dies or becomes unreachable".
+  if (world.tryGet(e, PathRequest)?.failed) {
+    clearChase(world, e);
+    if (ordered) {
+      world.remove(e, AttackOrder);
+      world.remove(e, Engagement);
+      return;
+    }
+  }
+
+  const travelling = world.has(e, MoveGoal) || world.has(e, PathRequest) || world.has(e, PathFollow);
+  if (travelling && ctx.tick < engagement.repathAt) return; // still closing on a live route — don't re-path
+
+  const dest = approachCell(
+    terrain,
+    here,
+    entityCell(world, terrain, target),
+    weapon.minRange,
+    weapon.maxRange,
+  );
+  clearChase(world, e);
+  if (dest !== here) world.add(e, MoveGoal, { cell: dest });
+  engagement.repathAt = ctx.tick + REPATH_CADENCE;
+}
+
+/** The cell a chaser should walk to in order to bring `target` into its weapon band: the walkable cell
+ *  whose Manhattan distance to the target is in `[minRange, maxRange]` and which is CLOSEST to the unit
+ *  (`from`), canonical (min distance, then min cell id). So a melee unit stops one cell short of the enemy
+ *  (distance in-band, hittable) instead of walking onto it (distance 0, below every weapon's near reach —
+ *  which would deadlock). Falls back to the target's own cell when no in-band cell is walkable (a boxed-in
+ *  target; the chase then closes and the swing/disengage logic re-decides). A bounded scan of the band box
+ *  around the target — O((2·maxRange+1)²), tiny for melee — deterministic (fixed order + min-id tie-break). */
+function approachCell(
+  terrain: TerrainGraph,
+  from: CellId,
+  targetCell: CellId,
+  minRange: number,
+  maxRange: number,
+): CellId {
+  const t = terrain.coordsOf(targetCell);
+  const f = terrain.coordsOf(from);
+  let best: CellId | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (let dy = -maxRange; dy <= maxRange; dy++) {
+    for (let dx = -maxRange; dx <= maxRange; dx++) {
+      const band = Math.abs(dx) + Math.abs(dy);
+      if (band < minRange || band > maxRange) continue; // not in the target's reach band
+      const x = t.x + dx;
+      const y = t.y + dy;
+      if (!terrain.inBounds(x, y)) continue;
+      const cell = terrain.cellAt(x, y);
+      if (!terrain.isWalkable(cell)) continue;
+      const d = Math.abs(x - f.x) + Math.abs(y - f.y); // distance from the unit to this candidate cell
+      if (d < bestDist || (d === bestDist && (best === null || cell < best))) {
+        best = cell;
+        bestDist = d;
+      }
+    }
+  }
+  return best ?? targetCell;
+}
+
+/** Drop the combatant's engagement, returning it to the economy: remove the {@link Engagement} marker and
+ *  the chase movement it drove, and any {@link AttackOrder} (a dead/invalid focus). Only touches a unit
+ *  that WAS engaged — a peaceful/economy unit with no marker keeps its own movement untouched. */
+function disengage(world: World, e: Entity): void {
+  if (world.has(e, Engagement)) {
+    world.remove(e, Engagement);
+    clearChase(world, e);
+  }
+  world.remove(e, AttackOrder);
+}
+
+/** Remove the nav state a chase drove (goal + in-flight route) so combat can re-aim or hand the unit back. */
+function clearChase(world: World, e: Entity): void {
+  world.remove(e, MoveGoal);
+  world.remove(e, PathRequest);
+  world.remove(e, PathFollow);
+}
 
 /** The armor **material tier** a target wears — the column a weapon's `damagevalue[material]` selects.
  *  A target with an {@link Armor} tier resolves its `armorClass` to a material via
@@ -158,11 +407,11 @@ function targetMaterial(world: World, ctx: SystemContext, target: Entity): numbe
  * (`ctx.tick < anger.until`). This is the per-entity layer the content-only {@link mayAttack} can't
  * carry: aggression-by-record is a content fact, but provoked anger is per-entity state.
  *
- * Side effect: a **lapsed** timer (`ctx.tick >= until`) is **removed** here — the animal has cooled
- * off, so it reverts to passive and the stale component is reaped (keeping the hash from accumulating
- * dead timers). Removing on read is safe: the combatant scan visits each entity once per tick, and an
- * expired timer carries no remaining meaning. Pure of RNG/wall-clock — the live/lapsed test is the
- * exact integer `tick < until`.
+ * Side effect: a **lapsed** timer (`ctx.tick >= until`) is **removed** here — the animal has cooled off,
+ * so it reverts to passive and the stale component is reaped (keeping the hash from accumulating dead
+ * timers). Removing on read is safe: the combatant scan visits each entity once per tick, and an expired
+ * timer carries no remaining meaning. Pure of RNG/wall-clock — the live/lapsed test is the exact integer
+ * `tick < until`.
  */
 function hostileAnimalNow(world: World, ctx: SystemContext, e: Entity, tribe: number): boolean {
   if (isAggressiveAnimal(ctx.content, tribe)) return true; // unconditionally hostile
@@ -174,84 +423,24 @@ function hostileAnimalNow(world: World, ctx: SystemContext, e: Entity, tribe: nu
 }
 
 /**
- * The nearest **enemy or prey** the attacker may swing at: a {@link Health}-bearing {@link Settler}
- * on a positioned cell within the attacker's weapon **reach band** `[minRange, maxRange]` Manhattan
- * cells of `here` — a target **closer than `minRange`** is too near to hit (a bow can't fire on an
- * adjacent target) and one **past `maxRange`** is out of reach — with a living (`hitpoints > 0`) pool,
- * for which {@link mayTarget}`(self → target)` holds — a hostile civilization, the cross-species enemy
- * (when self is a civ / an aggressive animal), OR (when self is a {@link HUNTER_JOB} hunter) a
- * {@link isCatchableAnimal} prey animal. Scanned in canonical entity-id order with a Manhattan-distance
- * + ascending-id tie-break, so the choice never depends on store insertion history. Returns the target
- * entity, or null if no enemy/prey is in the band.
+ * Whether the attacker entity `self` (of `attackerTribe`/`attackerJob`) may swing at target `t` (of
+ * `targetTribe`) — the composed hostility relation the ring-search filter and the attack-order check
+ * both consult, so the two directions of a fight stay consistent. In order:
  *
- * The attacker itself is excluded (`t === self`); whether a candidate is friendly, an exempt
- * decorative animal, non-catchable wild fauna, huntable prey, or a valid enemy is the {@link mayTarget}
- * relation, which composes {@link mayAttack} (static hostility — the same relation the attacker-eligibility
- * loop above consults) with the per-entity provoked-anger layer (a struck `getAngry` animal carrying a
- * live {@link Anger} timer is a valid target even though its record alone is passive) **and** the
- * {@link mayHunt} predation relation (a hunter may strike catchable prey). The directions of a civ⇄animal
- * fight stay consistent.
- */
-function nearestEnemyTarget(
-  world: World,
-  terrain: TerrainGraph,
-  ctx: SystemContext,
-  here: CellId,
-  self: Entity,
-  selfTribe: number,
-  selfJob: number | null,
-  minRange: number,
-  maxRange: number,
-): { target: Entity } | null {
-  let best: Entity | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  let bestId = Number.POSITIVE_INFINITY;
-  for (const t of world.canonicalEntities()) {
-    if (t === self) continue; // never swing at oneself
-    if (!world.has(t, Settler) || !world.has(t, Health) || !world.has(t, Position)) continue;
-    const targetTribe = world.get(t, Settler).tribe;
-    if (!mayTarget(world, ctx, self, selfTribe, selfJob, t, targetTribe)) continue; // not a valid target for this attacker
-    if (world.get(t, Health).hitpoints <= 0) continue; // already felled — not a target
-    const cell = entityCell(world, terrain, t);
-    const dist = manhattan(terrain, here, cell);
-    // Out of the weapon's reach BAND this tick: too far past `maxRange`, or too close inside `minRange`
-    // (a ranged weapon can't fire on a target right next to it). No advance/retreat-to-range drive yet.
-    if (dist > maxRange || dist < minRange) continue;
-    if (dist < bestDist || (dist === bestDist && t < bestId)) {
-      best = t;
-      bestDist = dist;
-      bestId = t;
-    }
-  }
-  return best === null ? null : { target: best };
-}
-
-/**
- * Whether the attacker entity `self` (of `attackerTribe`, job `attackerJob`) may swing at the target
- * entity `t` (of `targetTribe`) — three composed relations, ORed:
+ *  1. **Owner (player) hostility** — when BOTH `self` and `t` carry an {@link Owner}, the player axis is
+ *     AUTHORITATIVE: different players → enemies, same player → friendly (a player's mixed-tribe army never
+ *     fights itself; two players fielding the same tribe DO fight). The tribe/hunt/anger relations don't
+ *     apply to an owned-vs-owned pair (both sides are player-commanded units, never wildlife). Binary — no
+ *     alliances/diplomacy (docs/FIDELITY.md "Combat hostility axis").
+ *  2. Otherwise (at least one side **unowned** — wildlife, an economy fixture, the golden path) the content
+ *     relations decide, unchanged: the {@link mayAttack} **tribe hostility** (same-tribe friendly, civ-vs-civ
+ *     enemies, civ→aggressive-animal, animals don't war on each other), the {@link mayHunt} **predation**
+ *     (a {@link HUNTER_JOB} hunter may strike catchable prey), and the per-entity **provoked-anger** override
+ *     (a struck `getAngry` animal — a live {@link Anger} — makes a civ⇄animal fight valid in both directions).
  *
- *  1. the content-only {@link mayAttack} **hostility** relation (same-tribe friendly, civ⇄civ enemies,
- *     civ→aggressive-animal, animals don't fight each other);
- *  2. the **predation** relation {@link mayHunt} — a {@link HUNTER_JOB} hunter may strike a
- *     {@link isCatchableAnimal} prey animal (a cow/deer a non-hunter combatant leaves alone). Gated by
- *     the attacker's *job*, not tribe hostility, this is what lets a hunter target passive prey
- *     `mayAttack` excludes; the strike then provokes a `getAngry` prey through the combat `Anger` path;
- *  3. the per-entity **provoked-anger** layer — a **provoked** `getAngry` animal (a live {@link Anger}
- *     timer) makes a civ⇄animal fight valid in **both** directions, the case `mayAttack` (content-only)
- *     can't see:
- *      - a **civ attacker → angry-animal target**: the *target's* anger makes it hittable, so a civ can
- *        strike back the animal harassing it (a passive boar it would otherwise leave alone);
- *      - an **angry-animal attacker → civ target**: the *attacker's* own anger makes it eligible to swing
- *        at the civ (`mayAttack` alone would skip a non-aggressive animal attacker).
- *     This override is gated to a **civilization-vs-animal** pair with the **animal side** carrying a
- *     live timer — it never lets two animals fight, nor changes the civ⇄civ rules. (The
- *     attacker-eligibility loop already vetted `self` as hostile via {@link hostileAnimalNow}; this is the
- *     per-candidate target check, consistent with it.)
- *
- * Determinism: a pure read of `content` + the relevant entity's `Anger` against `ctx.tick` (the exact
- * integer `tick < until`), no RNG/wall-clock. A lapsed timer is NOT reaped here (a const-time candidate
- * check); the once-per-tick reaping is {@link hostileAnimalNow} on the attacker pass — an expired timer
- * simply reads as not-angry, so it never falsely marks a target.
+ * Determinism: a pure read of the two entities' `Owner`, plus `content` + the relevant `Anger` against
+ * `ctx.tick`; no RNG/wall-clock. A lapsed timer is not reaped here (a const-time candidate check) — the
+ * once-per-tick reaping is {@link hostileAnimalNow} on the attacker pass; an expired timer reads not-angry.
  */
 function mayTarget(
   world: World,
@@ -262,15 +451,20 @@ function mayTarget(
   t: Entity,
   targetTribe: number,
 ): boolean {
+  const selfOwner = world.tryGet(self, Owner);
+  const targetOwner = world.tryGet(t, Owner);
+  if (selfOwner !== undefined && targetOwner !== undefined) {
+    // Both player-owned: the OWNER axis alone decides (binary hostility, no diplomacy).
+    return selfOwner.player !== targetOwner.player;
+  }
+  // At least one side neutral/unowned: the content tribe/predation/anger relations (unchanged).
   if (mayAttack(ctx.content, attackerTribe, targetTribe)) return true; // static hostility
   if (mayHunt(ctx.content, attackerJob, targetTribe)) return true; // a hunter striking catchable prey
   const attackerIsAnimal = isAnimalTribe(ctx.content, attackerTribe);
   const targetIsAnimal = isAnimalTribe(ctx.content, targetTribe);
-  // The anger override only bridges a civilization-vs-animal pair — never animal-vs-animal, never
-  // civ-vs-civ (those are fully decided by mayAttack above).
+  // The anger override only bridges a civilization-vs-animal pair — never animal-vs-animal, never civ-vs-civ.
   if (attackerIsAnimal === targetIsAnimal) return false;
-  // The ANIMAL side of the pair must carry a live anger timer (a provoked getAngry animal). Whichever
-  // of attacker/target is the animal is the one whose anger is read.
+  // The ANIMAL side of the pair must carry a live anger timer (a provoked getAngry animal).
   const animalEntity = attackerIsAnimal ? self : t;
   const anger = world.tryGet(animalEntity, Anger);
   return anger !== undefined && ctx.tick < anger.until;

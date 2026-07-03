@@ -143,6 +143,22 @@ export type Command =
       readonly kind: 'setJob';
       readonly entity: Entity;
       readonly jobType: number;
+    }
+  | {
+      /**
+       * Order one OWNED combatant to ATTACK a specific `target` unit — the RTS "attack that one" order
+       * (the combat twin of `moveUnit`). It stamps an `AttackOrder` focus so the unit chases and strikes
+       * `target` **regardless of sight radius** until the target dies / stops being a valid target (then
+       * it reverts to auto-engagement). Like `moveUnit` it is authoritative — it cancels the unit's
+       * current action/route so it obeys at once. Skipped for a dead/stale/non-combatant issuer or target,
+       * a neutral (unowned) issuer, or a self-target. The move-order-onto-an-enemy idiom the app maps to
+       * this (right-click on an enemy = attack) is the original's RTS convention (docs/FIDELITY.md).
+       * The command carries no issuing-player yet (the per-player authority check lands with lockstep),
+       * and hostility is (re)validated each tick by the CombatSystem, not at issue. See `attackUnit`.
+       */
+      readonly kind: 'attackUnit';
+      readonly entity: Entity;
+      readonly target: Entity;
     };
 
 export type CommandKind = Command['kind'];

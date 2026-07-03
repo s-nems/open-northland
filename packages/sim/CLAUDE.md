@@ -86,11 +86,14 @@ ascending-id scan order or elided only provably-empty work, so the winner never 
   same-tile lookup, not a building scan per settler.
 
 **Still open (smaller now; deterministic, golden-guarded):**
-- **Full ring-search nearest-X:** `TileBuckets` does same-tile in O(1); "nearest X when it's NOT on my
-  tile" is still `O(idle · candidates)`. Extend to a grid ring search (OpenRA `ActorMap`): expand Manhattan
-  bands from the unit, **finish the whole minimum-distance band and pick canonically** (never stop at the
-  first hit) so the winner is unchanged, and short-circuit an empty category (else an empty ring search
-  scans the whole map). Mitigated today by busy-unit skip + the dormancy gate + candidate lists.
+- **Full ring-search nearest-X — primitive landed, combat consumes it; economy consumers deferred.** The
+  grid ring search now exists as `TileBuckets.nearest` (`systems/shared.ts`): it expands Manhattan bands
+  from the unit, **finishes the whole minimum-distance band and picks canonically by (distance, id)** (never
+  stops at the first hit, so the winner is unchanged), and short-circuits past `maxDist`. Its **first consumer
+  is `combatSystem`'s nearest-enemy query** — 23× faster than a full scan at 400 combatants, scaling ~linearly
+  (O(seekers·sight²)) not quadratically; combat also has its own dormancy gate (no hostile pair ⇒ zero work).
+  **Still to migrate:** the ECONOMY nearest-X scans (nearest resource/store off-tile — `O(idle · candidates)`),
+  mitigated today by busy-unit skip + the dormancy gate + candidate lists. Point them at `TileBuckets.nearest`.
 - **Content-index:** replace `ctx.content.buildings.find(t => t.typeId === …)` (and friends) in hot loops
   with a `Map` by typeId built at content load. Pure lookup, determinism-neutral.
 - **Sim in a Web Worker:** run the deterministic step off the render thread (snapshot is already

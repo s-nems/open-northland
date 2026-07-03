@@ -2,6 +2,7 @@ import {
   Age,
   Carrying,
   CurrentAtomic,
+  Engagement,
   MoveGoal,
   Owner,
   PathFollow,
@@ -216,6 +217,13 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       }
       // Devout but no temple reachable: fall through to normal work (piety stays pinned at ONE).
     }
+
+    // COMBAT ENGAGEMENT: a unit fighting (or advancing on) an enemy skips economy planning — the
+    // CombatSystem owns its movement (the chase) and its atomic (the swing), so the economy must not
+    // re-task it mid-fight. Placed with the PlayerOrder skip (below the needs drives) so it is a SOFT
+    // override — hunger/fatigue/piety can still pull a combatant away, faithful to the autonomous-settler
+    // model. combatSystem clears the Engagement when the fight ends, at which point the economy resumes.
+    if (world.has(e, Engagement)) continue;
 
     // PLAYER-ORDER hold: a unit standing where the human sent it stays put — the economy planner below
     // leaves it be. Placed BELOW the needs drives (eat/sleep/pray) on purpose: the move order is a

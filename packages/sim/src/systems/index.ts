@@ -1,6 +1,6 @@
 import { aiSystem } from './conflict/ai.js';
 import { atomicSystem } from './conflict/atomic.js';
-import { combatSystem } from './conflict/combat.js';
+import { REPATH_CADENCE, SIGHT_RADIUS_TILES, combatSystem } from './conflict/combat.js';
 import { commandSystem } from './conflict/command.js';
 import { MOVE_ORDER_HOLD_CIVILIAN, MOVE_ORDER_HOLD_SOLDIER, playerOrderSystem } from './conflict/orders.js';
 import type { System, SystemContext } from './context.js';
@@ -236,7 +236,7 @@ export {
   isNonWorkingAge,
 };
 export { cleanupSystem };
-export { combatSystem };
+export { REPATH_CADENCE, SIGHT_RADIUS_TILES, combatSystem };
 export { herdingSystem };
 export { constructionSystem };
 export { progressionSystem, terrainSystem, timeSystem, transportSystem };

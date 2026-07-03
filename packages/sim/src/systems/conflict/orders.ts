@@ -1,7 +1,9 @@
 import { indexById } from '@vinland/data';
 import {
   Age,
+  AttackOrder,
   CurrentAtomic,
+  Engagement,
   Health,
   JobAssignment,
   MoveGoal,
@@ -125,6 +127,50 @@ export function setJob(
   world.remove(e, MoveGoal);
   world.remove(e, PathRequest);
   world.remove(e, PathFollow);
+}
+
+/**
+ * Order one OWNED combatant to ATTACK a specific `target` unit (the RTS "attack that one" — the combat
+ * twin of {@link moveUnit}). It stamps an {@link AttackOrder} focus the CombatSystem reads: the unit
+ * chases and strikes `target` **regardless of sight radius** until the target dies / stops being a valid
+ * target (docs/FIDELITY.md — the soft-override philosophy of {@link moveUnit}: the economy leaves an
+ * engaged unit alone, but needs still preempt). Like a move order it is authoritative — it cancels the
+ * unit's current action/route/hold so it obeys at once — and it also stamps the {@link Engagement} marker
+ * up front so the AISystem skips economy planning for the unit from the very next tick (before the
+ * CombatSystem's own pass re-stamps it), avoiding a one-tick economy leak.
+ *
+ * Recoverable bad input (skipped, still logged for faithful replay): a mapless sim (no cells to fight
+ * over); a dead/stale issuer, a non-settler, a NEUTRAL (unowned — wildlife isn't the player's to command)
+ * or NON-combatant (no {@link Health}) issuer; a dead/stale/non-combatant target; or a self-target.
+ * Hostility is NOT checked here — the CombatSystem re-validates {@link mayTarget} each tick and drops an
+ * order whose target is (or becomes) friendly, so a stale/illegal order self-corrects deterministically.
+ * The command carries no issuing-player yet; the per-player authority check lands with lockstep.
+ */
+export function attackUnit(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'attackUnit' }>,
+): void {
+  if (ctx.terrain === undefined) return; // mapless sim: no cells to fight over
+  const e = command.entity;
+  if (!world.isAlive(e) || !world.has(e, Settler) || !world.has(e, Position)) return;
+  if (!world.has(e, Owner) || !world.has(e, Health)) return; // only an owned combatant may be ordered to fight
+  const target = command.target;
+  if (target === e) return; // a unit can't attack itself
+  if (!world.isAlive(target) || !world.has(target, Settler) || !world.has(target, Health)) return;
+  if (!world.has(target, Position)) return;
+
+  // The order is authoritative — cancel the unit's current action + any in-flight route/hold so it obeys
+  // now (a non-interruptible-atomic exception is a deferred refinement, as with moveUnit).
+  world.remove(e, CurrentAtomic);
+  world.remove(e, MoveGoal);
+  world.remove(e, PathRequest);
+  world.remove(e, PathFollow);
+  world.remove(e, PlayerOrder);
+  world.add(e, AttackOrder, { target });
+  // Stamp Engagement up front so aiSystem skips economy for this unit on the same tick the order lands;
+  // repathAt = tick means the CombatSystem re-paths the chase on its first pass.
+  world.add(e, Engagement, { repathAt: ctx.tick });
 }
 
 /**

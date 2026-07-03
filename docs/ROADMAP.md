@@ -201,13 +201,16 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
       candidate lists, an idle-dormancy gate, and `TileBuckets` (same-tile O(1)) — each elides only
       provably-null work so the tie-break winner never changes. Full rationale in `packages/sim/CLAUDE.md`
       ("Scaling to thousands"). → [archive](ROADMAP-ARCHIVE.md).
-- [ ] **Sim scaling, tier 3 — full ring-search nearest-X** (smaller now; deferred). `TileBuckets` answers same-tile
-      in O(1); the remaining gap is "nearest resource/store when it's NOT on my tile" (still `O(idle · candidates)`).
-      Extend `TileBuckets` to a grid ring search (expand Manhattan bands from the unit, finish the whole
-      minimum-distance band, pick canonically, short-circuit an empty category). Mitigated today by: busy units are
-      already skipped, the dormancy gate skips empty categories, candidate lists bound the scan to matching entities.
-      Also still open: **content-index** (`Map` by typeId vs `content.*.find()`), **sim in a Web Worker** (parallel
-      to render — snapshot already transferable). Each stays deterministic / golden-guarded.
+- [ ] **Sim scaling, tier 3 — full ring-search nearest-X** (primitive + first consumer landed; economy consumers
+      deferred). The grid ring search now exists — `TileBuckets.nearest` (expand Manhattan bands, finish the whole
+      minimum-distance band, pick canonically by (distance, id), short-circuit past the radius) — and its **first
+      consumer is combat's nearest-enemy query** (`combatSystem`, the owner-based melee-engagement slice): **23×
+      faster than a full scan at 400 combatants (12.9 → 0.55 ms/query-pass), and it scales ~linearly not
+      quadratically (4× the units grows the full scan 15.5×, the ring search 3.7×)**; goldens byte-identical.
+      **Remaining:** migrate the ECONOMY nearest-X scans (nearest resource/store when it's NOT on my tile — still
+      `O(idle · candidates)`) onto the same primitive. Mitigated for those today by: busy-unit skip, the dormancy
+      gate, and candidate lists. Also still open: **content-index** (`Map` by typeId vs `content.*.find()`), **sim
+      in a Web Worker** (snapshot already transferable). Each stays deterministic / golden-guarded.
 - [ ] **Zoom-out LOD** (deferred) — below a zoom threshold, freeze per-frame animation and draw simplified
       per-player-tinted markers (a `ParticleContainer`) instead of full bobs, skipping the depth sort. Hooks in
       as a `lodPolicy(camera.scale)` gate in `WorldRenderer.update`. Only needed if we ever want below-`MIN_ZOOM`
