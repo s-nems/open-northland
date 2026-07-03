@@ -1,4 +1,6 @@
 import {
+  CALIBRATED_HALF_H,
+  CALIBRATED_HALF_W,
   type Camera,
   WorldRenderer,
   buildHud,
@@ -28,8 +30,11 @@ import { createUnitControls } from '../view/unit-controls.js';
 import { professionsFromContent } from '../view/unit-panel.js';
 import { floatParam } from './params.js';
 
-/** The default full tile-diamond width in px (`2 × TILE_HALF_W`) when `?pitch=` is absent. */
-const DEFAULT_TILE_WIDTH = 64;
+/**
+ * The default full tile-diamond width in px (`2 × CALIBRATED_HALF_W`) when `?pitch=` is absent — the
+ * cell width MEASURED from the original game (see iso.ts / docs/FIDELITY.md "projection").
+ */
+const DEFAULT_TILE_WIDTH = 2 * CALIBRATED_HALF_W;
 
 /**
  * The live sandbox entry (`?live`, and the target of `?map=<id>`): a deterministic vertical slice driven
@@ -66,12 +71,15 @@ function centerTile(raw: string | null, zoom: number, width: number, height: num
 
 export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   const app = await createWindowPixiApp(canvas);
-  // `?pitch=<fullTileWidth>` — the live calibration knob for the master sprite-vs-terrain scale (the
+  // `?pitch=<fullTileWidth>` — the live verification knob for the master sprite-vs-terrain scale (the
   // whole look; a human dials it, an agent can't self-judge pixels — see `iso.ts`/docs/FIDELITY.md).
   // Applied BEFORE any projection (scene build, terrain mesh, object lattice) so every layer picks it up.
-  // Kept at the iso-standard 2:1 W:H (half-width = pitch/2, half-height = pitch/4); absent → 64px default.
+  // The height follows the MEASURED ratio (CALIBRATED_HALF_H/CALIBRATED_HALF_W ≈ 1.08 — the original's
+  // cells are near-square on screen, not iso 2:1); `?pitchy=<fullCellDownStep>` overrides it separately.
   const tileWidth = floatParam(params, 'pitch', DEFAULT_TILE_WIDTH);
-  setTilePitch(tileWidth / 2, tileWidth / 4);
+  const halfW = tileWidth / 2;
+  const cellDown = floatParam(params, 'pitchy', 2 * halfW * (CALIBRATED_HALF_H / CALIBRATED_HALF_W));
+  setTilePitch(halfW, cellDown / 2);
   const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
   const terrainGrid = sliceTerrain(loaded ?? undefined);
