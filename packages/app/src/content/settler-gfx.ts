@@ -155,6 +155,7 @@ export function buildHumanBindings(
   resourceBinding?: ResourceTypeBinding,
   stockpileBinding?: StockpileBinding,
   stumpBinding?: ResourceTypeBinding,
+  trunkBinding?: ResourceTypeBinding,
 ): SpriteBindings {
   const walk = directionalAnimFromSeq(seqByName, WALK_SEQ, {}, FALLBACK_WALK);
   // Idle is the WAIT animation played as ONE direction (its length isn't a clean ×8, so it isn't a
@@ -216,6 +217,9 @@ export function buildHumanBindings(
     // A felled tree's stump draws the dead-tree/debris frame (`ls_trees_dead`). Omitted (no join) → the
     // stump draws the placeholder. See resource-gfx.ts (resolveStumpRef).
     ...(stumpBinding !== undefined ? { stump: stumpBinding } : {}),
+    // A freshly-felled trunk on the ground (a GroundDrop) draws its good's `landscapeToPickup` log —
+    // distinct from the tidy delivered heap. Omitted (no join) → the drop draws the placeholder.
+    ...(trunkBinding !== undefined ? { trunk: trunkBinding } : {}),
   };
 }
 

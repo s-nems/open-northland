@@ -5,6 +5,7 @@ import {
   FLAG_EDIT_NAME,
   buildResourceBinding,
   buildStockpileBinding,
+  buildTrunkBinding,
   gatheringAtlasStems,
   nodeBob,
   pileFillBobs,
@@ -40,6 +41,15 @@ const STONE_NODE: LandscapeGfxRow = {
   bmd: `${B}/ls_ground.bmd`,
   paletteName: 'rock03',
   frames: [{ state: 4, bobIds: [10] }],
+};
+// The pickup-stage TRUNK (a felled log on the ground) — its own record/atlas, distinct from the pile.
+const WOOD_TRUNK: LandscapeGfxRow = {
+  index: 150,
+  editName: 'wood trunk 01',
+  logicType: 6,
+  bmd: `${B}/ls_goods.bmd`,
+  paletteName: 'goods_trunk',
+  frames: [{ state: 1, bobIds: [70] }],
 };
 const WOOD_PILE: LandscapeGfxRow = {
   index: 200,
@@ -77,12 +87,13 @@ const FLAG: LandscapeGfxRow = {
 };
 
 const IR: RenderIr = {
-  landscapeGfx: [WOOD_NODE, STONE_NODE, WOOD_PILE, STONE_PILE, FLAG],
+  landscapeGfx: [WOOD_NODE, STONE_NODE, WOOD_TRUNK, WOOD_PILE, STONE_PILE, FLAG],
   gatheringPipeline: [
     {
       goodType: 55, // the REAL goodType — deliberately not the scene's (proves the id-slug match)
       goodId: 'wood',
       harvest: { landscapeType: 4, gfxIndices: [100] },
+      pickup: { landscapeType: 6, gfxIndices: [150] },
       store: { landscapeType: 7, gfxIndices: [200] },
     },
     {
@@ -131,6 +142,8 @@ describe('resolveGatheringRefs — the good→landscape→gfx join, matched by i
     expect(refs.nodesByGood[2]).toEqual({ stem: 'ls_ground.rock03', bob: 10 }); // stone → rock
     expect(refs.pilesByGood[1]).toEqual({ stem: 'ls_goods.goods_wood', fillBobs: [0, 1, 2, 3, 4] });
     expect(refs.pilesByGood[2]).toEqual({ stem: 'ls_goods.goods_stone', fillBobs: [15, 16] });
+    expect(refs.trunksByGood[1]).toEqual({ stem: 'ls_goods.goods_trunk', bob: 70 }); // wood → pickup log
+    expect(refs.trunksByGood[2]).toBeUndefined(); // stone has no pickup stage in this fixture
     expect(refs.flag).toEqual({ stem: 'ls_temp.human_player01', bob: 33 });
   });
 
@@ -152,8 +165,30 @@ describe('gatheringAtlasStems — the families to load', () => {
     const stems = gatheringAtlasStems(resolveGatheringRefs(GOODS, IR));
     expect(stems.has(DEFAULT_RESOURCE_STEM)).toBe(false); // the yew is kindLayers.resource, not a family
     expect(stems).toEqual(
-      new Set(['ls_ground.rock03', 'ls_goods.goods_wood', 'ls_goods.goods_stone', 'ls_temp.human_player01']),
+      new Set([
+        'ls_ground.rock03',
+        'ls_goods.goods_trunk',
+        'ls_goods.goods_wood',
+        'ls_goods.goods_stone',
+        'ls_temp.human_player01',
+      ]),
     );
+  });
+});
+
+describe('buildTrunkBinding — the freshly-felled trunk (pickup stage), drop-unloaded', () => {
+  const refs = resolveGatheringRefs(GOODS, IR);
+
+  it('binds a good with a loaded pickup family to its trunk log, layer-qualified', () => {
+    const binding = buildTrunkBinding(refs, new Set(['ls_goods.goods_trunk']));
+    expect(binding.byGood[1]).toEqual({ layer: 'ls_goods.goods_trunk', bob: 70 }); // wood → its trunk
+    expect(binding.byGood[2]).toBeUndefined(); // stone has no pickup stage
+  });
+
+  it('drops a good whose pickup family failed to load (falls back to the default at draw time)', () => {
+    const binding = buildTrunkBinding(refs, new Set()); // trunk atlas not loaded
+    expect(binding.byGood[1]).toBeUndefined();
+    expect(typeof binding.default).toBe('number'); // TREE_BOB fallback
   });
 });
 

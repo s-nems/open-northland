@@ -703,3 +703,27 @@ describe('resolveStockpileDraw — per-good ground piles + delivery flag', () =>
     expect(resolveStockpileDraw(binding, pile(999, 3))).toEqual({ bob: 0 });
   });
 });
+
+describe('resolveSpriteBobId — grounddrop (freshly-felled trunk) via the trunk binding', () => {
+  function drop(goodType?: number): DrawItem {
+    return { ...item('grounddrop'), ...(goodType !== undefined ? { goodType } : {}) };
+  }
+  const bindings = {
+    settler: 10,
+    building: 20,
+    resource: 30,
+    trunk: { byGood: { 5: { layer: 'ls_goods.goods_trunk', bob: 70 } }, default: 99 },
+  };
+
+  it("draws the good's pickup-stage trunk from the `trunk` binding (its own kind, not resource/stockpile)", () => {
+    expect(resolveSpriteBobId(drop(5), bindings)).toBe(70);
+  });
+
+  it('falls back to the trunk default for an unmapped good', () => {
+    expect(resolveSpriteBobId(drop(999), bindings)).toBe(99);
+  });
+
+  it('is a placeholder (null) when no trunk binding is present (old sheets stay valid)', () => {
+    expect(resolveSpriteBobId(drop(5), { settler: 10, building: 20, resource: 30 })).toBeNull();
+  });
+});

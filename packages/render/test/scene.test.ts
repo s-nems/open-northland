@@ -352,6 +352,16 @@ describe('buildScene — resource + stockpile (gathering economy) classification
     expect(flag?.fill).toBeUndefined();
   });
 
+  it('classifies a Stockpile carrying a GroundDrop marker as a grounddrop (the felled trunk), not a flag', () => {
+    const scene = buildScene(
+      snapshotOf([entity(1, 1, 1, { Stockpile: { amounts: [[3, 9]] }, GroundDrop: { goodType: 3 } })]),
+      FLAT_3x2,
+    );
+    const drop = scene.find((d) => d.kind === 'grounddrop');
+    expect(drop?.goodType).toBe(3); // its held good keys the per-good pickup (trunk) graphic
+    expect(scene.find((d) => d.kind === 'stockpile')).toBeUndefined(); // never the flag/heap path
+  });
+
   it('picks the dominant good (most units, lowest goodType on a tie) for a mixed pile', () => {
     // amounts ascending by goodType: good 2 has 5 units (the max), good 5 has 3 → dominant is good 2.
     const most = buildScene(

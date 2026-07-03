@@ -1,6 +1,7 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { type Component, type Simulation, components, fx } from '@vinland/sim';
 import { GRASS, VIKING, grassTerrain } from '../catalog/buildings.js';
+import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../catalog/felling.js';
 import { HARVEST_SWING_LENGTH } from '../content/settler-gfx.js';
 import type { SceneDefinition } from './types.js';
 
@@ -35,10 +36,10 @@ const HARVEST_WOOD = 24; // the render's HARVEST_ATOMIC (the woodcut swing)
 
 const WOODCUTTER = 10; // 10+ band: draws the generic man; the trade is what differs
 
-// ── the felling calibration (OBSERVED — docs/FIDELITY.md): a tree takes CHOPS_TO_FELL swings to come
-//    down and drops TREE_WOOD_YIELD wood as its trunk. Small so the whole stand clears inside the run. ──
-const CHOPS_TO_FELL = 3;
-const TREE_WOOD_YIELD = 3;
+// ── the felling calibration comes from the ONE global source (catalog/felling), NOT a per-scene number —
+//    so every scene that fells trees uses the same pace + yield and can't drift (docs/FIDELITY.md). ──
+const CHOPS_TO_FELL = WOOD_CHOPS_TO_FELL;
+const TREE_WOOD_YIELD = WOOD_YIELD_PER_NODE;
 
 interface Displayable {
   readonly good: number;
@@ -180,9 +181,9 @@ export const gatheringScene: SceneDefinition = {
   content: content(),
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  // The full fell→carry→deliver cycle settles at ~tick 1076 with the real-length chop swing
-  // (HARVEST_SWING_LENGTH); 1300 leaves headroom so the headless checks see the settled end state.
-  runTicks: 1300,
+  // The full fell→carry→deliver cycle settles at ~tick 1220 (six real-length chop swings per tree);
+  // 1500 leaves headroom so the headless checks see the settled end state.
+  runTicks: 1500,
   initialZoom: 0.9,
   checklist: [
     'Drwal podchodzi do drzewa i RĄBIE je kilka razy (animacja topora), po czym drzewo znika — a na jego miejscu zostaje PIEŃ/gałęzie i osobno KŁODA (sterta drewna) na ziemi',
