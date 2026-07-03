@@ -98,8 +98,8 @@ export function nearestMissingInputSource(
  * The finished OUTPUT good a producer should haul out of its own workplace (to clear it so the next cycle
  * fits, and to carry the product to a store), or null if the workplace holds no deliverable output. A
  * candidate good is a recipe output the workplace currently stocks (>0) that some OTHER store can accept
- * ({@link nearestStoreFor} finds a sink) — chosen in canonical (ascending goodType) order via
- * {@link stockCapacity}-gated delivery, so the pick never depends on Map insertion history. The producer
+ * ({@link nearestStoreFor} finds a sink) — walked in `recipe.outputs` order (a fixed content array, not a
+ * Map, so the pick never depends on store insertion history), first deliverable output wins. The producer
  * only reaches this when it cannot produce right now ({@link workplaceProductiveIfStaffed} is false), so
  * hauling its output never steals a tick it should have spent producing.
  */
