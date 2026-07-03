@@ -100,6 +100,16 @@ check, commit. **Render-only** rungs need no pipeline change (the atlas is alrea
 2. [ ] **Landscape/resource per-type variety** (render-only) — bushes, signs, wonders, harbours + non-yew
    tree species, each via its own `[GfxLandscape]` bob (today every resource is the single yew). Same recipe
    as rung 1 over the already-emitted `extractLandscapeGraphics` atlases (87 landscape types in IR).
+   - [ ] **Resource nodes by goodType** (from the `craft-chain` scene review) — stone/clay/iron all draw as
+     the yew tree: the mine/deposit decals EXIST in `landscapeGfx` but are never bound. `settler-gfx.ts:181`
+     hardcodes `resource: TREE_BOB`. Fix = a per-goodType `ResourceTypeBinding` (mirror `BuildingTypeBinding`
+     in `sprites.ts`), read `Resource.goodType` into the `DrawItem` (`scene.ts` collectSprites/classify),
+     resolve in `resolveSpriteBobId`. Render+app; the atlases are already on disk.
+   - [ ] **Loose ground piles + flags rendering** (from the `craft-chain` scene review) — a bare
+     `Stockpile+Position` (a dropped resource pile, or a delivery flag) is classified `null` and skipped
+     (`scene.ts:204`), so both are invisible. Add a `'stockpile'` `DrawKind` + classify + a heap/flag sprite
+     (per-good ideally, tying to the same goodType binding). Sprite existence UNKNOWN — check the assets or
+     placeholder one. Makes the flag route + dropped resources visible (they exist in the sim already).
 3. [ ] **Complete viking animation set — ALL viking human bodies** (render over already-extracted
    `[bobseq]`) — **CURRENT FOCUS.** Goal: **every** viking human body draws its **full** `[bobseq]`
    vocabulary, none left on a wrong/placeholder pose. Today the render binds a SINGLE generic-man body
@@ -231,6 +241,21 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
       (`tribeStocks`/`tribePopulation`/`tribePopulationByJob`/`goodsGraph`) + the render-side HUD chain over
       the frozen snapshot (`packages/render/src/data/hud.ts`). Only glyph rasterization/typography is left for a
       human via the shot.
+- [ ] **Faithful multi-hit harvest + drop-on-ground** (from the `craft-chain` scene review) — today one
+      harvest atomic teleports 1 unit straight onto the gatherer's back (`atomic.ts:164`, `harvestFromNode`)
+      and a depleted node is never removed (`ai-targets.ts:94` just skips it). The original, per user
+      OBSERVATION — the mod's `.ini` has NO multi-hit/drop param (`goodtypes.ini` carries a single
+      `atomicForHarvesting`), so record it in FIDELITY.md as *observed, not extracted*: a tree fells over
+      several chops, then RAW resource lies on the GROUND as a bare `Stockpile+Position` pile (that machinery
+      already exists — `nearestGroundPile` + the porter drive in `ai-supply.ts`), which the gatherer then
+      carries to the collection point; the felled node is finite and removed (leaving a stump). Touches: the
+      `Resource` component (work-accumulator + felled fields), `harvestFromNode` (`atomic.ts`), the AI planner
+      (fell-vs-pickup split, `ai.ts`/`ai-targets.ts`), node cleanup. Medium (~700 LOC); MOVES the golden
+      trace/hash + rewrites the atomic-system/planner tests. Render side needs a felled/stump sprite.
+      **Also fix the pick-up/deposit ANIMATION** (choppy + looping): the render advances a fixed 1 frame/tick
+      (`sprites.ts` frameOf), so a 19-frame `generic_pick_up` in a 4-tick atomic shows only ~4 frames — set
+      the pickup/deposit atomic duration to the animation length (content `atomicBindings`/`atomicAnimations`)
+      so it plays once, fully.
 - **Open Phase-3 work** is the three **human-gated render items** (the Phase-1 oracle
   pixel-diffs; the Phase-2 real decoded-bob-atlas bind; the Phase-2 real terrain-tile render) — an
   agent cannot self-judge pixels. The
