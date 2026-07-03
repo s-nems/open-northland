@@ -224,8 +224,10 @@ Design (follow unless you find a strong reason — then record it):
 3. The felling collector then PICKS UP from that pile (planner: after felling, prefer your own
    trunk pile) and delivers via `deliveryTargetFor`; multiple trips if yield > carry capacity.
 4. Other goods (stone/clay/…) keep the current single-hit behavior in this step — Step 4 owns
-   them. Gate the new path on the good's pipeline shape from Step-1 content (wood's distinct
-   trunk stage), not on a hardcoded goodType.
+   them (they share the drop-to-ground shape but per UNIT, with the node persisting and
+   shrinking; wood is fell-once-whole-yield). Gate the wood path on the felling lifecycle from
+   Step-1 content (the tree→falling→trunk landscape transitions), not on a hardcoded goodType,
+   and shape the drop/pickup machinery so Step 4 can reuse it.
 5. The "tree falling" ANIMATION stage is render polish — deferred to Step 7; v1 swaps standing →
    stump+trunk instantly (note in FIDELITY.md).
 
@@ -249,20 +251,24 @@ full-world scans (golden rule 7); events via ctx.events, render never reaches in
 ## Step 4 — sim: mineral deposits shrink by level
 
 ```text
-Implement mining: stone/iron/gold/clay deposits hold multiple units; each harvested unit is
-carried to the collection point; the deposit's GRAPHIC steps down a level as it empties and the
-node disappears when exhausted. Mushrooms are a trivial pickup variant.
+Implement mining: stone/iron/gold/clay deposits hold multiple units; each mined unit drops on
+the ground as ore, is picked up and carried to the collection point; the deposit's GRAPHIC steps
+down a level as it empties and the node disappears when exhausted. Mushrooms are a trivial
+pickup variant.
 
 Context (re-verify; research 2026-07-03):
 - Original pipeline per good (Step-1 content): stone rock(15)→stone_ore(16)→stone(17) atomic 25
   (29 ticks, harvest event @ frame 20); mud/clay 12→13→14 atomic 26 (23t, @20); iron 18→19→20
   atomic 27 (23t, @19); gold 21→22→23 atomic 28 (23t, @19); mushroom 36→36→37 atomic 32 (35t,
-  @21 — no intermediate stage). NOTE an ambiguity: the data's distinct pickup stage (ore on the
-  ground) suggests a drop-to-ground intermediate like wood's trunk, but the USER'S OBSERVATION
-  of the original is direct-carry (miner chips the deposit, carries each unit off, deposit
-  shrinks). Implement DIRECT-CARRY (each harvest atomic completion = 1 unit onto the back,
-  reusing today's `harvestFromNode` path) and record the ambiguity in docs/FIDELITY.md as
-  "observed direct-carry; data hints at a pickup stage — calibrate against the original".
+  @21 — no intermediate stage, direct pickup). The distinct pickup stage (stone_ore / iron_ore
+  / gold_ore / mud_ore) means minerals FOLLOW THE DATA's drop-to-ground shape, like wood's
+  trunk: each harvest atomic completion drops 1 unit as an ore ground-pile at the deposit's
+  cell (reuse the Step-3 drop/pickup machinery — bare `Stockpile+Position`, drawn by Step 2
+  from the pickup-stage gfx record), then the collector picks it up and delivers via
+  `deliveryTargetFor`. Record in docs/FIDELITY.md as data-pinned (the `landscapeToPickup`
+  stage). Batching is UNKNOWN (chip several units before picking up, or carry each one?) — v1:
+  let the existing pickup take whatever lies there up to carry capacity; note as
+  observed-pending-calibration against the original.
 - Deposit SIZE (units per deposit) is not in readable data → per-good calibration constants in
   content data + FIDELITY "observed" entries (like Step 3's tree yield).
 - Visual levels: the deposit gfx exist in `ls_ground.bmd` records (clay/iron/gold mines — the
@@ -279,7 +285,8 @@ Context (re-verify; research 2026-07-03):
   assuming collision).
 
 Verification: unit tests (level function boundaries: full→N levels→gone; exact total yield =
-deposit size); headless scenario (miner empties a deposit into a store; node removed); goldens
+deposit size); headless scenario (miner chips a deposit → ore piles appear at it → everything
+lands in the store; node removed; ore conserved — no dupes/losses); goldens
 updated intentionally; extend `?scene=gathering` — a deposit visibly steps down levels while
 mined (headless asserts the level read-view; human signs off the pixels). `npm test` +
 `npm run check` green; FIDELITY.md updated.
