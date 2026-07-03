@@ -460,3 +460,10 @@ extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
   the input log byte-for-byte (modulo commands past `untilTick`). That is what lets the hot-reload
   workflow CHAIN — a second `rebaseContent` can take the first rebase's log and carry the whole player
   history forward; the rebase isn't a dead-end snapshot. (sim)
+- [felling] A bare `Stockpile` that is BOTH a collect SOURCE and a valid delivery SINK livelocks: a
+  felled-trunk `GroundDrop` pile is picked up FROM, so if `nearestStoreFor` also treats it as a wood sink
+  the collector deposits the wood straight back into the trunk it just lifted (the nearest sink is the
+  trunk at its own feet). A drop/source pile must be EXCLUDED as a delivery target (`nearestStoreFor`
+  skips `GroundDrop`); the same marker scopes its auto-reap-when-emptied (a collected trunk vanishes, a
+  designated flag — a marker-less bare `Stockpile` — persists). When adding an entity kind that is both
+  gathered-from and delivered-to, decide the source/sink role explicitly, don't let one bare shape be both. (sim)

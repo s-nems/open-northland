@@ -19,7 +19,15 @@ import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
 import { buildingBlockedCells } from '../footprint.js';
 import { carrierCarryCapacity } from '../progression.js';
-import { TileBuckets, atomicDuration, canonicalById, inRange, isFood, recipeOf } from '../shared.js';
+import {
+  TileBuckets,
+  atomicDuration,
+  canonicalById,
+  inRange,
+  isFood,
+  manhattan,
+  recipeOf,
+} from '../shared.js';
 import {
   deliveryTargetFor,
   isPorterBoundToStore,
@@ -33,6 +41,7 @@ import {
   collectTargets,
   hasHaulableOutput,
   interactionCell,
+  nearestCollectablePileFor,
   nearestFoodStore,
   nearestHarvestableFor,
   nearestTemple,
@@ -281,15 +290,42 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       continue;
     }
 
-    // 3. HARVEST — a gatherer picks the nearest resource its job is allowed to harvest, gated both by
-    // its job's atomic permissions AND by its accrued XP clearing the good's `needforgood` threshold
-    // (the who-may-do-it gate). `jobType` is non-null here (guarded above). Ordered before the porter
-    // drive so a gatherer harvests rather than ferrying loose piles while resources remain.
+    // 3. HARVEST / COLLECT — a gatherer either CHOPS the nearest standing resource its job may harvest,
+    // or CARRIES OFF the nearest loose trunk of that trade (a felled tree's dropped wood), whichever is
+    // nearer. Standing on its own fresh trunk (distance 0) it picks the wood up before walking to the
+    // next tree — the original's fell-then-carry collector cadence; on a return trip it takes whichever
+    // of {next tree, remaining trunk} is closer. Harvesting is gated by the job's atomic permissions AND
+    // the good's `needforgood` XP threshold; collecting an already-dropped good is hauling, not
+    // harvesting, so only the job-trade filter applies. Ordered before the porter/carrier drives so a
+    // gatherer works its own resources+trunks before ferrying others'. `jobType` is non-null here.
     const node = nearestHarvestableFor(targets.resources, world, ctx, terrain, here, {
       jobType: settler.jobType,
       tribe: settler.tribe,
       experience: settler.experience,
     });
+    const trunk = nearestCollectablePileFor(targets.stockpiles, world, ctx, terrain, here, settler.jobType);
+    const nodeDist =
+      node !== null
+        ? manhattan(terrain, here, interactionCell(world, ctx, terrain, node))
+        : Number.POSITIVE_INFINITY;
+    // Prefer the trunk on a tie (it is the wood already at hand — grab it before a fresh tree).
+    if (trunk !== null && trunk.dist <= nodeDist) {
+      const cell = interactionCell(world, ctx, terrain, trunk.pile);
+      if (cell === here) {
+        const amount = carrierCarryCapacity(world, ctx, settler.tribe);
+        startAtomic(
+          world,
+          e,
+          PICKUP_ATOMIC_ID,
+          { kind: 'pickup', goodType: trunk.goodType, amount, from: trunk.pile },
+          atomicDuration(ctx, settler, PICKUP_ATOMIC_ID),
+          trunk.pile,
+        );
+      } else {
+        world.add(e, MoveGoal, { cell });
+      }
+      continue;
+    }
     if (node !== null) {
       const res = world.get(node, Resource);
       const cell = interactionCell(world, ctx, terrain, node);

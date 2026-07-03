@@ -35,6 +35,7 @@ const KIND_COLOURS: Record<Exclude<DrawKind, 'tile'>, number> = {
   settler: 0xe8e0d0,
   resource: 0x2f7d32,
   stockpile: 0xb08040, // a sandy heap/flag marker, distinct from the green resource node
+  stump: 0x6b4a2a, // a brown stump/debris marker (the felled-tree remnant), distinct from both
 };
 
 /** One resolved atlas layer to draw for an entity: which source page, which frame rect, at what scale.
@@ -446,6 +447,16 @@ export class SpritePool {
       const draw = resolveStockpileDraw(binding, item);
       if (draw.layer === undefined) return null; // no family → placeholder heap
       const resolved = this.layeredLayerFor(sheet, 'stockpile', draw);
+      return resolved === null ? null : [resolved];
+    } else if (item.kind === 'stump') {
+      // A stump has NO shared `kindLayers` layer of its own either — it draws its debris frame ONLY
+      // from a loaded named family (`ls_trees_dead`), reusing the per-good resource resolver. A bare or
+      // unloaded-family ref draws the placeholder — never falls through to the body atlas.
+      const binding = sheet.bindings.stump;
+      if (binding === undefined) return null;
+      const draw = resolveResourceDraw(binding, item);
+      if (draw.layer === undefined) return null; // no family → placeholder
+      const resolved = this.layeredLayerFor(sheet, 'stump', draw);
       return resolved === null ? null : [resolved];
     } else {
       bobId = resolveSpriteBobId(item, sheet.bindings, tick);

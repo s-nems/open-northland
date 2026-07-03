@@ -1,5 +1,5 @@
 import type { BuildingType, Recipe } from '@vinland/data';
-import { Building, Position, Settler, Vehicle } from '../components/index.js';
+import { Building, Position, Settler, Vehicle, stockpileEntries } from '../components/index.js';
 import { ONE, fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { CellId, TerrainGraph } from '../nav/terrain.js';
@@ -214,6 +214,14 @@ export function stockCapacity(world: World, ctx: SystemContext, store: Entity, g
     return vehicleMayCarry(type, goodType) ? type.stockSlots : 0;
   }
   return Number.MAX_SAFE_INTEGER; // bare store fixture: uncapped
+}
+
+/** The lowest-id good a stockpile holds ≥1 unit of, or null if it is empty. Canonical (ascending
+ *  goodType via {@link stockpileEntries}) so a pick keyed off it never depends on Map insertion order.
+ *  The shared building block behind the ground-pile scans (`nearestGroundPile`, the collect-trunk drive). */
+export function lowestStockedGood(stock: { amounts: Map<number, number> }): number | null {
+  for (const [goodType, amount] of stockpileEntries(stock)) if (amount > 0) return goodType;
+  return null;
 }
 
 /**

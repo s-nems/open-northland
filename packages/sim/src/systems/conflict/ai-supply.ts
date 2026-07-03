@@ -1,18 +1,11 @@
 import type { Recipe } from '@vinland/data';
-import {
-  Building,
-  JobAssignment,
-  Position,
-  Production,
-  Stockpile,
-  stockpileEntries,
-} from '../../components/index.js';
+import { Building, JobAssignment, Position, Production, Stockpile } from '../../components/index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
 import { canStartCycle } from '../economy/production.js';
-import { manhattan, recipeOf, stockCapacity } from '../shared.js';
+import { lowestStockedGood, manhattan, recipeOf, stockCapacity } from '../shared.js';
 import { boundWorkplaceTarget, interactionCell, nearestStoreFor } from './ai-targets.js';
 
 // The AI planner's SUPPLY layer: the scans behind a *producer worker running its own supply→produce→
@@ -225,11 +218,4 @@ function isStorageSink(world: World, ctx: SystemContext, store: Entity): boolean
 function hasRoom(world: World, ctx: SystemContext, store: Entity, goodType: number): boolean {
   const have = world.get(store, Stockpile).amounts.get(goodType) ?? 0;
   return have < stockCapacity(world, ctx, store, goodType);
-}
-
-/** The lowest-id good a stockpile holds at least one unit of, or null if it is empty. Canonical
- *  (ascending goodType via {@link stockpileEntries}) so the porter's pick never depends on Map order. */
-function lowestStockedGood(stock: { amounts: Map<number, number> }): number | null {
-  for (const [goodType, amount] of stockpileEntries(stock)) if (amount > 0) return goodType;
-  return null;
 }

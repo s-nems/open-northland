@@ -1,5 +1,6 @@
 import {
   Building,
+  GroundDrop,
   JobAssignment,
   Position,
   Resource,
@@ -17,6 +18,7 @@ import {
   canonicalById,
   isFood,
   isTemple,
+  lowestStockedGood,
   manhattan,
   recipeOf,
   stockCapacity,
@@ -107,6 +109,58 @@ export function nearestHarvestableFor(
 }
 
 /**
+ * The nearest **collectable ground drop** a felling collector should carry off — a bare
+ * {@link GroundDrop} trunk pile (a felled tree's dropped wood) whose good THIS settler's job may
+ * harvest — with its Manhattan distance, or null if none is in reach. Scoped two ways so it stays the
+ * collector's *own-trade* loop, not a general porter drive: (1) to `GroundDrop` piles only (a felled
+ * trunk / dropped good), never a designated delivery flag or a boat hull — both equally-bare
+ * `Stockpile`s; (2) to a good the settler harvests, via the SAME {@link jobAtomics} gate
+ * {@link nearestHarvestableFor} uses (a woodcutter collects wood, not a stonecutter's dropped stone).
+ *
+ * Nearest by Manhattan + ascending-cell-id (canonical scan); the pile's good is its lowest-id stocked
+ * good ({@link stockpileEntries}, never raw Map order). The planner weighs the returned `dist` against
+ * {@link nearestHarvestableFor}'s node so, standing on its fresh trunk (distance 0), the collector
+ * picks the wood up before wandering to the next tree — the original's fell-then-carry cadence.
+ * Unlike harvesting, collecting an already-dropped good applies no `needforgood` XP gate (carrying a
+ * trunk is hauling, not harvesting). Determinism: pure reads over content + components, no RNG.
+ */
+export function nearestCollectablePileFor(
+  candidates: readonly Entity[],
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  here: CellId,
+  jobType: number,
+): { pile: Entity; goodType: number; dist: number } | null {
+  const allowed = jobAtomics(ctx, jobType);
+  let best: { pile: Entity; goodType: number } | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  let bestCell = Number.POSITIVE_INFINITY;
+  for (const e of candidates) {
+    if (!world.has(e, GroundDrop)) continue; // only a felled trunk / dropped good, not a flag/boat
+    if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
+    const good = lowestStockedGood(world.get(e, Stockpile));
+    if (good === null) continue; // an emptied drop (about to be reaped) — nothing to collect
+    const harvestAtomic = goodHarvestAtomic(ctx, good);
+    if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) continue; // not this job's trade
+    const cell = interactionCell(world, ctx, terrain, e);
+    const dist = manhattan(terrain, here, cell);
+    if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
+      best = { pile: e, goodType: good };
+      bestDist = dist;
+      bestCell = cell;
+    }
+  }
+  return best === null ? null : { ...best, dist: bestDist };
+}
+
+/** A good's `atomicForHarvesting` (the harvest atomic id), or undefined for an unknown/produced good.
+ *  The join `nearestCollectablePileFor` uses to decide whether a dropped good is one this job harvests. */
+function goodHarvestAtomic(ctx: SystemContext, goodType: number): number | undefined {
+  return ctx.content.goods.find((g) => g.typeId === goodType)?.atomics.harvest;
+}
+
+/**
  * The nearest store (a {@link Building} with a {@link Stockpile}) that can stock `goodType` — i.e.
  * its building type declares a stock slot for that good and the slot is not already full — by
  * Manhattan distance from `here`, ascending-cell-id tie-break, scanned in canonical entity-id order.
@@ -130,6 +184,10 @@ export function nearestStoreFor(
   let bestCell = Number.POSITIVE_INFINITY;
   for (const e of candidates) {
     if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
+    // A GroundDrop (a felled trunk / dropped good) is a SOURCE to collect, never a delivery SINK —
+    // otherwise a collector would deposit the wood straight back into the trunk it just lifted from
+    // (a livelock). A designated flag (a bare Stockpile with no marker) stays a valid sink.
+    if (world.has(e, GroundDrop)) continue;
     const recipe = recipeOf(world, ctx, e);
     if (recipe?.outputs.some((o) => o.goodType === goodType)) continue; // never deliver to its producer
     const stock = world.get(e, Stockpile);

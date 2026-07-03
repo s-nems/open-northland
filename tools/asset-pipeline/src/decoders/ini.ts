@@ -338,8 +338,20 @@ function extractGoodGathering(sec: RuleSection): GoodGathering | undefined {
   const pickup = getInt(sec, 'landscapeToPickup');
   const store = getInt(sec, 'landscapeToStore');
   if (harvest === undefined && pickup === undefined && store === undefined) return undefined;
-  const gathering: { harvest?: number; pickup?: number; store?: number; bioLandscape: boolean } = {
+  // `chopsToFell`/`yieldPerNode` are OBSERVED felling calibration constants, NOT in the source `.ini`
+  // (verified absent — no `baserepeatcounter` for the collector job), so the extractor emits them at 0
+  // (= "not calibrated / single-hit"); a scene/fixture sets the real values, tracked in docs/FIDELITY.md.
+  const gathering: {
+    harvest?: number;
+    pickup?: number;
+    store?: number;
+    bioLandscape: boolean;
+    chopsToFell: number;
+    yieldPerNode: number;
+  } = {
     bioLandscape: getInt(sec, 'isBioLandscapeFlag') === 1,
+    chopsToFell: 0,
+    yieldPerNode: 0,
   };
   if (harvest !== undefined) gathering.harvest = harvest;
   if (pickup !== undefined) gathering.pickup = pickup;

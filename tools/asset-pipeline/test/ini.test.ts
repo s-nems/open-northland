@@ -489,8 +489,9 @@ describe('extractGoods', () => {
         // a raw good gathered from the map that is also a recipe input.
         classification: { producedOnMap: true, producedInHouse: false, inputGood: true },
         landscapeType: 7,
-        // the three-stage pipeline: tree(4) -> trunk(6) -> wood(7); `isBioLandscapeFlag 1` -> bio.
-        gathering: { harvest: 4, pickup: 6, store: 7, bioLandscape: true },
+        // the three-stage pipeline: tree(4) -> trunk(6) -> wood(7); `isBioLandscapeFlag 1` -> bio. The
+        // felling params (chops/yield) are OBSERVED, absent from the source, so the extractor emits 0.
+        gathering: { harvest: 4, pickup: 6, store: 7, bioLandscape: true, chopsToFell: 0, yieldPerNode: 0 },
         source: src,
       },
       {
@@ -552,8 +553,15 @@ describe('extractGoods', () => {
       { file: 'goodtypes.ini' },
     );
     expect(honey?.landscapeType).toBe(32);
-    // The absent harvest lane stays undefined — a faithful omission, not a guessed default.
-    expect(honey?.gathering).toEqual({ pickup: 32, store: 32, bioLandscape: false });
+    // The absent harvest lane stays undefined — a faithful omission, not a guessed default. The felling
+    // params (chops/yield) are OBSERVED, absent from the source, so the extractor emits 0.
+    expect(honey?.gathering).toEqual({
+      pickup: 32,
+      store: 32,
+      bioLandscape: false,
+      chopsToFell: 0,
+      yieldPerNode: 0,
+    });
   });
 
   it('omits `gathering` for a produced good with no landscapeTo* chain (keeps its landscapeType)', () => {

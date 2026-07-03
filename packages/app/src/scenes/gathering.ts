@@ -1,31 +1,27 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
-import { type Simulation, components, fx } from '@vinland/sim';
+import { type Component, type Simulation, components, fx } from '@vinland/sim';
 import { GRASS, VIKING, grassTerrain } from '../catalog/buildings.js';
 import type { SceneDefinition } from './types.js';
 
 /**
- * Acceptance scene: **the gathering economy is now VISIBLE.** One standing node of every gatherable good
- * (a tree, a rock, a clay/iron/gold mine, a mushroom), a row of dropped ground piles per good at rising
- * fill amounts, and a bare delivery flag — each drawing its OWN decoded `[GfxLandscape]` graphic instead
- * of the single hardcoded yew tree the renderer used to blit for every resource (docs/ROADMAP.md rung-2
- * "Resource nodes by goodType" + "Loose ground piles + flags rendering").
+ * Acceptance scene: **the multi-hit harvest + drop-on-ground cycle is now LIVE.** A woodcutter walks to a
+ * stand of trees and CHOPS each one down over several swings; the tree FALLS, leaving a STUMP where it
+ * stood and a TRUNK (the felled wood) on the ground holding the tree's whole yield; the woodcutter then
+ * PICKS the wood up and carries it, a load at a time, to a delivery FLAG, whose heap grows as it fills
+ * (ROADMAP Phase 3 "Faithful multi-hit harvest + drop-on-ground"). A static row of the OTHER gatherable
+ * goods' nodes (rock, clay/iron/gold mines, mushroom) sits across the top as the per-good node graphics
+ * showcase (rung-2), untouched — the woodcutter's `allowedAtomics` is wood only, so it never digs them.
  *
- * This is a STATIC display: the world is placed once and nothing gathers (the sim mechanics — multi-chop
- * felling, mineral shrink — are Steps 3–4). Its whole point is the pixels, so the browser half is the
- * real deliverable; the headless half asserts the render DATA the human then judges — that every node
- * classifies as a `resource` carrying its `goodType`, every held pile as a `stockpile` with its good +
- * fill, and the empty pile as a bare flag (see `packages/app/test/gathering-render.test.ts`), plus that
- * the world was populated as intended (the {@link SceneDefinition.checks} below).
- *
- * The goods' typeId NUMBERS here are deliberately NOT the original's (wood is 1, not the real 5): the
- * render binds each node/pile by the good's id-SLUG against the decoded `content/ir.json`, so a scene's
- * own numbering resolves the right tree/mine/pile regardless — the same slug join the carry looks use.
+ * Two consumers of the ONE deterministic run: the headless half asserts the CYCLE mechanic (every tree
+ * felled → a stump each → the whole yield delivered to the flag, goods conserved); the browser half is
+ * the human's pixel/animation sign-off (the chop swing, the tree→stump+trunk swap, the carried log, the
+ * growing flag heap). The goods' typeId NUMBERS are scene-local, matched to the decoded graphics by
+ * id-SLUG (wood→tree/debris, stone→rock, …), so the render binds the right object regardless.
  */
 
-const { Position, Resource, Stockpile } = components;
+const { Felling, Position, Resource, Settler, Stockpile, Stump } = components;
 
-// ── the gatherable goods, id-slug matched to the decoded gathering pipeline (wood→tree, stone→rock,
-//    mud→clay mine, iron/gold→ore mines, mushroom→mushroom). Numbers are scene-local, NOT the original's. ──
+// ── goods, id-slug matched to the decoded gathering pipeline. Numbers are scene-local, NOT the original's. ──
 const WOOD = 1;
 const STONE = 2;
 const MUD = 3;
@@ -33,15 +29,24 @@ const IRON = 4;
 const GOLD = 5;
 const MUSHROOM = 6;
 
-interface Gatherable {
+// ── harvest atomics (one per raw good; the woodcutter may run ONLY the wood chop — the job→atomic gate). ──
+const HARVEST_WOOD = 24; // the render's HARVEST_ATOMIC (the woodcut swing)
+
+const WOODCUTTER = 10; // 10+ band: draws the generic man; the trade is what differs
+
+// ── the felling calibration (OBSERVED — docs/FIDELITY.md): a tree takes CHOPS_TO_FELL swings to come
+//    down and drops TREE_WOOD_YIELD wood as its trunk. Small so the whole stand clears inside the run. ──
+const CHOPS_TO_FELL = 3;
+const TREE_WOOD_YIELD = 3;
+
+interface Displayable {
   readonly good: number;
   readonly id: string;
-  readonly harvest: number; // the good's `atomicForHarvesting` (kept faithful, though nothing runs here)
+  readonly harvest: number;
 }
 
-/** One node per gatherable good, drawn left→right. Harvest atomics are the original's per-good ids. */
-const GATHERABLES: readonly Gatherable[] = [
-  { good: WOOD, id: 'wood', harvest: 24 },
+/** The non-wood gatherables shown as static display nodes (the per-good node graphics showcase). */
+const DISPLAY_NODES: readonly Displayable[] = [
   { good: STONE, id: 'stone', harvest: 25 },
   { good: MUD, id: 'mud', harvest: 26 },
   { good: IRON, id: 'iron', harvest: 27 },
@@ -52,128 +57,151 @@ const GATHERABLES: readonly Gatherable[] = [
 const MAP_W = 18;
 const MAP_H = 14;
 
-/** A full, undepleted node's remaining units — arbitrary here (Step 2 always draws the full node). */
-const NODE_UNITS = 5;
+/** A full display node's remaining units — arbitrary (a static display never depletes). */
+const DISPLAY_NODE_UNITS = 5;
 
-/** The fill amounts the pile rows show, so a human sees the heap grow small → full (the `ls_goods` fill
- *  states run 1..5; 5 is the fullest heap). */
-const PILE_FILLS = [1, 3, 5] as const;
-
-/** The goods whose ground piles are shown at every {@link PILE_FILLS} amount — wood + stone read clearly. */
-const PILE_GOODS = [
-  { good: WOOD, id: 'wood' },
-  { good: STONE, id: 'stone' },
-] as const;
+// The felling stand + collection point, laid out on one row so the walk reads clearly left→right.
+const STAND_Y = 8;
+const TREE_XS = [5, 7, 9] as const; // three trees to fell
+const WOODCUTTER_AT = { x: 2, y: STAND_Y };
+const FLAG_AT = { x: 13, y: STAND_Y };
+const DISPLAY_ROW_Y = 2;
 
 function content(): ContentSet {
   return parseContentSet({
     manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-gathering-scene' }, locale: 'eng' },
     goods: [
       { typeId: 0, id: 'none' },
-      ...GATHERABLES.map((g) => ({ typeId: g.good, id: g.id, weight: 1, atomics: { harvest: g.harvest } })),
+      // Wood declares the felling lifecycle (chops + whole yield) — the sim stamps it onto each tree as a
+      // Felling component. The landscape-stage refs are a render join the synthetic scene doesn't model.
+      {
+        typeId: WOOD,
+        id: 'wood',
+        weight: 1,
+        atomics: { harvest: HARVEST_WOOD },
+        gathering: { bioLandscape: true, chopsToFell: CHOPS_TO_FELL, yieldPerNode: TREE_WOOD_YIELD },
+      },
+      ...DISPLAY_NODES.map((g) => ({ typeId: g.good, id: g.id, weight: 1, atomics: { harvest: g.harvest } })),
     ],
-    jobs: [], // a static display — no settlers, so no jobs
-    buildings: [], // …and no buildings; the nodes/piles/flag are placed directly in build()
+    jobs: [
+      { typeId: 0, id: 'idle' },
+      { typeId: WOODCUTTER, id: 'woodcutter', allowedAtomics: [HARVEST_WOOD] },
+    ],
+    buildings: [], // the collection point is a bare delivery flag, placed directly in build()
     landscape: [{ typeId: GRASS, id: 'grass', walkable: true, buildable: true }],
-    tribes: [{ typeId: VIKING, id: 'viking' }],
+    tribes: [
+      {
+        typeId: VIKING,
+        id: 'viking',
+        // The woodcutter's chop animation (atomic 24) — the planner resolves the chop duration through it.
+        atomicBindings: [{ jobType: WOODCUTTER, atomicId: HARVEST_WOOD, animation: 'viking_chop' }],
+      },
+    ],
+    atomicAnimations: [{ id: 'viking_chop', name: 'viking_chop', length: 6 }],
   });
 }
 
-/** Place a standing resource node of `good` at (x,y). */
-function placeNode(sim: Simulation, good: number, harvest: number, x: number, y: number): void {
+/** Place a standing FELLABLE wood tree at (x,y): its felling spec comes from the wood good's `gathering`. */
+function placeTree(sim: Simulation, x: number, y: number): void {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Resource, { goodType: good, remaining: NODE_UNITS, harvestAtomic: harvest });
+  sim.world.add(e, Resource, { goodType: WOOD, remaining: TREE_WOOD_YIELD, harvestAtomic: HARVEST_WOOD });
+  sim.world.add(e, Felling, { chopsLeft: CHOPS_TO_FELL });
 }
 
-/** Place a bare ground pile of `good` holding `amount` units at (x,y) — a Stockpile with no Building. */
-function placePile(sim: Simulation, good: number, amount: number, x: number, y: number): void {
+/** Place a static (single-hit) display node of `good` at (x,y) — the per-good node graphics showcase. */
+function placeDisplayNode(sim: Simulation, good: number, harvest: number, x: number, y: number): void {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Stockpile, { amounts: new Map([[good, amount]]) });
+  sim.world.add(e, Resource, { goodType: good, remaining: DISPLAY_NODE_UNITS, harvestAtomic: harvest });
 }
 
-/** Place a bare delivery flag at (x,y) — an EMPTY Stockpile with no Building (a designated collection point). */
+/** Place the woodcutter at (x,y). */
+function placeWoodcutter(sim: Simulation, x: number, y: number): void {
+  const e = sim.world.create();
+  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Settler, {
+    tribe: VIKING,
+    jobType: WOODCUTTER,
+    hunger: fx.fromInt(0),
+    fatigue: fx.fromInt(0),
+    piety: fx.fromInt(0),
+    enjoyment: fx.fromInt(0),
+    experience: new Map<number, number>(),
+  });
+}
+
+/** Place a bare delivery flag at (x,y) — an EMPTY Stockpile with no Building (the collection point). */
 function placeFlag(sim: Simulation, x: number, y: number): void {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Stockpile, { amounts: new Map() });
 }
 
-const NODE_ROW_Y = 2;
-const PILE_ROW_Y = [6, 8] as const; // wood piles on row 6, stone piles on row 8
-const FLAG_AT = { x: 2, y: 11 };
-
 function build(sim: Simulation): void {
-  // One node per gatherable good, spread along the top row.
-  GATHERABLES.forEach((g, i) => placeNode(sim, g.good, g.harvest, 2 + i * 2, NODE_ROW_Y));
-  // Two rows of ground piles (wood, stone), each at rising fill amounts so the heap visibly grows.
-  PILE_GOODS.forEach((pg, row) => {
-    PILE_FILLS.forEach((fill, i) => placePile(sim, pg.good, fill, 2 + i * 3, PILE_ROW_Y[row] as number));
-  });
-  // A bare delivery flag (empty pile).
+  // The static per-good node showcase across the top.
+  DISPLAY_NODES.forEach((g, i) => placeDisplayNode(sim, g.good, g.harvest, 3 + i * 3, DISPLAY_ROW_Y));
+  // The felling stand + the woodcutter + the delivery flag.
+  for (const x of TREE_XS) placeTree(sim, x, STAND_Y);
+  placeWoodcutter(sim, WOODCUTTER_AT.x, WOODCUTTER_AT.y);
   placeFlag(sim, FLAG_AT.x, FLAG_AT.y);
 }
 
-/** Count the resource nodes (entities carrying a {@link Resource}). */
-function nodeCount(sim: Simulation): number {
-  let n = 0;
-  for (const _ of sim.world.query(Resource)) n++;
-  return n;
+/** The wood delivered to the collection flag (its stockpile's wood). */
+function flagWood(sim: Simulation): number {
+  for (const e of sim.world.query(Stockpile)) {
+    // The flag is the bare stockpile at FLAG_AT; a felled trunk is also a bare stockpile, so key on the cell.
+    const p = sim.world.get(e, Position);
+    if (fx.toInt(p.x) === FLAG_AT.x && fx.toInt(p.y) === FLAG_AT.y) {
+      return sim.world.get(e, Stockpile).amounts.get(WOOD) ?? 0;
+    }
+  }
+  return 0;
 }
 
-/** Count the bare ground piles/flags (a {@link Stockpile} with NO {@link Building}). */
-function stockpileCount(sim: Simulation): number {
+function count<T>(sim: Simulation, component: Component<T>): number {
   let n = 0;
-  for (const e of sim.world.query(Stockpile)) {
-    if (!sim.world.has(e, components.Building)) n++;
-  }
-  return n;
-}
-
-/** Count the EMPTY bare stockpiles (delivery flags — holding no goods). */
-function flagCount(sim: Simulation): number {
-  let n = 0;
-  for (const e of sim.world.query(Stockpile)) {
-    if (sim.world.has(e, components.Building)) continue;
-    if (sim.world.get(e, Stockpile).amounts.size === 0) n++;
-  }
+  for (const _ of sim.world.query(component)) n++;
   return n;
 }
 
 export const gatheringScene: SceneDefinition = {
   id: 'gathering',
-  title: 'Ekonomia zbierania — surowce, sterty i flaga',
+  title: 'Ścinanie drzew — rąb, upadek, pień, kłoda i znoszenie',
   summary:
-    'Statyczna wystawa grafiki świata: po jednym stojącym złożu każdego surowca (drzewo, skała, kopalnia ' +
-    'gliny/żelaza/złota, grzyb), rzędy zrzuconych stert danego surowca o rosnącej wielkości oraz pusta ' +
-    'flaga dostaw. Każdy obiekt rysuje SWOJĄ grafikę (a nie jedną zahardkodowaną cisę). Nic tu nie zbiera ' +
-    '— mechanika ścinania i kurczenia złóż to kolejne kroki; tu liczą się piksele.',
+    'Drwal podchodzi do drzew i ŚCINA każde kilkoma uderzeniami; drzewo pada, zostaje PIEŃ, a na ziemi ' +
+    'leży KŁODA (całe drewno z drzewa); drwal podnosi drewno i znosi je — porcja po porcji — na FLAGĘ ' +
+    'dostaw, której sterta rośnie. U góry statyczny rząd złóż pozostałych surowców (skała, kopalnie, ' +
+    'grzyb) jako pokaz grafiki — drwal ich nie rusza (rąbie tylko drewno).',
   seed: 11,
   content: content(),
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  runTicks: 2, // static — a couple of ticks just to settle a stable snapshot
-  initialZoom: 0.85,
+  runTicks: 1000,
+  initialZoom: 0.9,
   checklist: [
-    'Każde złoże w górnym rzędzie rysuje SWÓJ obiekt: drewno → drzewo, kamień → skała/głazy, glina → kopalnia gliny, żelazo → kopalnia żelaza, złoto → kopalnia złota, grzyb → grzyb (żadne nie jest już cisą)',
-    'Sterty na ziemi (rzędy poniżej) wyglądają jak sterty TEGO surowca (kłody drewna, bryły kamienia) i ROSNĄ z ilością — mała sterta przy 1, pełna przy 5',
-    'Flaga (lewy dół) czyta się jak wbita w ziemię tabliczka/flaga dostaw, nie jak sterta ani skrzynia',
-    'Proporcje: złoża i sterty pasują wielkością do terenu (jak drzewo/dom), nie są olbrzymie ani malutkie',
-    'Znany skrót (v1): flaga jest w kolorze gracza 01; swap na kolor właściciela to osobny krok (docs/FIDELITY.md)',
+    'Drwal podchodzi do drzewa i RĄBIE je kilka razy (animacja topora), po czym drzewo znika — a na jego miejscu zostaje PIEŃ/gałęzie i osobno KŁODA (sterta drewna) na ziemi',
+    'Drwal PODNOSI drewno z kłody i niesie je (widoczny ładunek) na FLAGĘ; po kilku kursach kłoda znika, a sterta na fladze ROŚNIE',
+    'Po ścięciu wszystkich drzew: trzy pnie stoją tam, gdzie rosły drzewa, a całe drewno (3×3 = 9) leży na fladze',
+    'Górny rząd złóż (skała, glina, żelazo, złoto, grzyb) stoi nietknięty i każde rysuje SWÓJ obiekt (pokaz grafiki)',
+    'Znane skróty (v1): pień rysuje „tree debris” z ls_trees_dead; drzewo pada natychmiast (bez animacji upadku — to krok 7); flaga jest w kolorze gracza 01 (docs/FIDELITY.md)',
   ],
   checks: [
     {
-      label: 'one standing node per gatherable good (six distinct resource nodes placed)',
-      predicate: (sim) => nodeCount(sim) === GATHERABLES.length,
+      label: 'every tree is felled — no Felling nodes remain (the whole stand came down)',
+      predicate: (sim) => count(sim, Felling) === 0,
     },
     {
-      label: 'the ground piles + the delivery flag are all bare stockpiles (no building store among them)',
-      predicate: (sim) => stockpileCount(sim) === PILE_GOODS.length * PILE_FILLS.length + 1,
+      label: 'one stump is left where each tree stood (three trees → three stumps)',
+      predicate: (sim) => count(sim, Stump) === TREE_XS.length,
     },
     {
-      label: 'exactly one bare delivery flag (an empty stockpile) is present',
-      predicate: (sim) => flagCount(sim) === 1,
+      label: 'the whole felled yield (3 trees × 3 wood) is delivered to the collection flag',
+      predicate: (sim) => flagWood(sim) === TREE_XS.length * TREE_WOOD_YIELD,
+    },
+    {
+      label: 'the static per-good display nodes are untouched (five non-wood nodes remain)',
+      predicate: (sim) => count(sim, Resource) === DISPLAY_NODES.length,
     },
   ],
 };

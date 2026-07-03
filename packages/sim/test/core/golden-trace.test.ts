@@ -4,6 +4,8 @@ import {
   Building,
   Carrying,
   CurrentAtomic,
+  Felling,
+  GroundDrop,
   JobAssignment,
   MoveGoal,
   PathFollow,
@@ -13,6 +15,7 @@ import {
   Resource,
   Settler,
   Stockpile,
+  Stump,
 } from '../../src/components/index.js';
 import { CORE_INVARIANTS, Simulation, type TerrainMap, checkInvariants, fx } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -46,13 +49,16 @@ import { testContent } from '../fixtures/content.js';
  *   - a WOODCUTTER and a CARRIER spawned via commands, plus a CARPENTER spawned **on** the sawmill
  *     (x=4) as its operator — the SAWMILL's `workers` slot names the carpenter job, and the production
  *     worker-presence gate only runs the mill while that operator is present;
- *   - two finite wood nodes of 4 units each (placed directly — there is no map/resource command yet).
- * The whole goods chain runs end to end and conserves goods: the woodcutter harvests all 8 tree-wood
- * and piles it at the SAWMILL (its nearest store with a wood slot) → the carpenter runs its own
- * supply→produce→deliver loop, ALSO fetching the HQ's 10 starting wood into the mill (the input-supply
- * drive) and hauling finished planks back out → so all **18** wood (10 stored + 8 harvested) becomes 18
- * planks that end up in the HQ, with the carrier helping haul. Conserved (18 wood in → 18 planks out,
- * verified: 0 wood + 18 planks remain), invariant-clean for the whole 1000-tick tail.
+ *   - two finite FELLABLE wood nodes (placed directly — no map/resource command yet), each felled over
+ *     3 chops and dropping a 4-wood trunk (the wood good's `gathering` felling spec).
+ * The whole goods chain runs end to end and conserves goods: the woodcutter FELLS each tree (3 chops
+ * yielding nothing → the tree drops a ground trunk holding its whole 4 wood), then carries the trunk off
+ * a unit at a time to the SAWMILL (its nearest store with a wood slot, never back to the trunk) → the
+ * carpenter runs its own supply→produce→deliver loop, ALSO fetching the HQ's 10 starting wood into the
+ * mill (the input-supply drive) and hauling finished planks back out → so all **18** wood (10 stored + 8
+ * felled) becomes 18 planks that end up in the HQ, with the carrier helping haul, and 2 stumps are left
+ * where the trees stood. Conserved (18 wood in → 18 planks out, verified: 0 wood + 18 planks remain),
+ * invariant-clean for the whole 1000-tick tail.
  */
 
 const GRASS = 0;
@@ -72,6 +78,9 @@ function clearStores(): void {
     Position,
     Settler,
     Resource,
+    Felling,
+    Stump,
+    GroundDrop,
     Building,
     Stockpile,
     Carrying,
@@ -120,11 +129,21 @@ function runSlice(seed: number, ticks: number): GoldenRun {
   // staffs so the carpenter stays put.
   sim.enqueue({ kind: 'spawnSettler', jobType: CARPENTER, x: 4, y: 0, tribe: VIKING });
 
-  // Finite wood nodes (no resource command exists yet — placed directly, like the lower goldens).
+  // Finite FELLABLE wood nodes (no resource command exists yet — placed directly, like the lower
+  // goldens). The wood good declares the felling lifecycle (chops + whole yield), so each tree is
+  // chopped DOWN over several swings and drops a trunk the collector then carries off — the multi-hit
+  // harvest + drop-on-ground (ROADMAP Phase 3). `yieldPerNode` 4 keeps each tree worth 4 wood (2 trees
+  // → 8 harvested), so the goods total is unchanged (10 stored + 8 → 18 planks).
+  const woodFell = sim.content.goods.find((g) => g.id === 'wood')?.gathering;
   for (const x of [2, 3]) {
     const tree = sim.world.create();
     sim.world.add(tree, Position, { x: fx.fromInt(x), y: fx.fromInt(0) });
-    sim.world.add(tree, Resource, { goodType: WOOD, remaining: 4, harvestAtomic: HARVEST_ATOMIC });
+    sim.world.add(tree, Resource, {
+      goodType: WOOD,
+      remaining: woodFell?.yieldPerNode ?? 0,
+      harvestAtomic: HARVEST_ATOMIC,
+    });
+    sim.world.add(tree, Felling, { chopsLeft: woodFell?.chopsToFell ?? 0 });
   }
 
   const trace: string[] = [];
@@ -148,99 +167,110 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   const TICKS = 1000;
   const SEED = 7;
 
-  // The golden atomic-action trace. Atomic ids: 24 = harvest, 23 = pileup (deposit into a store), 22 =
-  // pickup (lift out of a store). Entity 5 = woodcutter (harvests tree-wood, delivers it to the mill,
-  // then carries at the end), 6 = carrier (hauls planks to the HQ), 7 = carpenter (the mill's operator,
-  // now self-servicing: it pickups the HQ's stored wood into the mill and hauls finished planks back
-  // out — the pickup(22)/pileup(23) pairs on entity 7). If this moves, a settler-economy mechanic
-  // changed — name it in the commit. Last move: the producer self-service drive (packages/sim/src/
-  // systems/conflict/ai-supply.ts) — a bound workshop worker now FETCHES the recipe inputs it lacks
-  // from any store that holds them and HAULS its own finished output out, instead of only staffing the
-  // tile. So the carpenter also pulls the HQ's 10 starting wood into production (8 → 18 planks) and the
-  // trace/hash move to the new self-servicing steady state (produced 18, hash a4fa8225).
+  // The golden atomic-action trace. Atomic ids: 24 = harvest/CHOP (a swing at a tree), 23 = pileup
+  // (deposit into a store), 22 = pickup (lift out of a store / off a trunk). Entity 5 = woodcutter, 6 =
+  // carrier (hauls planks to the HQ), 7 = carpenter (the mill's operator, self-servicing: it pickups the
+  // HQ's stored wood into the mill and hauls finished planks back out). If this moves, a settler-economy
+  // mechanic changed — name it in the commit. Last move: FAITHFUL MULTI-HIT HARVEST + DROP-ON-GROUND
+  // (packages/sim/src/systems/conflict/atomic.ts + ai.ts). A wood node is now FELLED — the woodcutter
+  // (entity 5) chops each tree down over `chopsToFell` (3) swings (24 at 21/24/27) that yield nothing,
+  // the tree drops a trunk holding its whole 4-wood yield, and the collector then picks the trunk up (22)
+  // and delivers it (23), a unit at a time (on-foot carry). So entity 5's old "one 24 per unit straight
+  // onto the back" became "3 chops then 22/23 trips per tree", moving the trace + hash. Goods stay
+  // conserved (10 stored + 8 felled → 18 planks, produced 18) and every core invariant holds every tick;
+  // the settled state hash shifts (a4fa8225 → 1260b766). (The prior move, a4fa8225, was the producer
+  // self-service drive.)
   const GOLDEN_TRACE: readonly string[] = [
     '14:7:22',
     '21:5:24',
+    '24:5:24',
+    '27:5:24',
     '28:7:23',
-    '43:5:23',
-    '56:5:24',
-    '70:5:23',
-    '72:7:22',
-    '78:6:22',
-    '83:5:24',
-    '86:7:23',
-    '92:6:23',
-    '97:5:23',
-    '110:5:24',
-    '111:6:22',
-    '121:7:22',
-    '124:5:23',
-    '125:6:23',
-    '135:7:23',
-    '137:5:24',
-    '151:5:23',
-    '165:6:22',
-    '172:5:24',
-    '175:7:22',
-    '179:6:23',
-    '189:7:23',
-    '193:7:22',
-    '194:5:23',
-    '207:7:23',
-    '215:5:24',
-    '229:6:22',
-    '237:5:23',
-    '239:7:22',
-    '243:6:23',
-    '253:7:23',
-    '258:5:24',
-    '268:7:22',
-    '280:5:23',
-    '282:7:23',
-    '308:5:22',
-    '308:6:22',
-    '308:7:22',
-    '322:5:23',
-    '322:7:22',
-    '336:7:23',
-    '360:6:22',
-    '360:7:22',
-    '374:6:23',
-    '374:7:22',
-    '388:7:23',
-    '412:5:22',
-    '412:7:22',
-    '426:5:23',
-    '426:7:22',
-    '440:7:23',
-    '464:6:22',
-    '464:7:22',
-    '478:6:23',
-    '478:7:22',
-    '492:7:23',
-    '516:5:22',
-    '516:7:22',
-    '530:5:23',
-    '530:7:22',
-    '544:7:23',
-    '568:6:22',
-    '568:7:22',
-    '582:6:23',
-    '582:7:22',
-    '596:7:23',
-    '620:5:22',
-    '620:7:22',
-    '634:5:23',
-    '634:7:22',
-    '648:7:23',
-    '672:6:22',
-    '672:7:22',
-    '686:6:23',
-    '686:7:22',
-    '700:7:23',
-    '724:5:22',
-    '724:7:22',
-    '738:5:23',
+    '31:5:22',
+    '52:7:22',
+    '53:5:23',
+    '66:7:23',
+    '66:5:24',
+    '69:5:24',
+    '72:5:24',
+    '76:5:22',
+    '84:6:22',
+    '84:7:22',
+    '90:5:23',
+    '98:6:23',
+    '104:5:22',
+    '118:5:23',
+    '132:5:22',
+    '137:6:22',
+    '146:5:23',
+    '147:7:22',
+    '151:6:23',
+    '160:5:22',
+    '161:7:23',
+    '174:5:23',
+    '177:7:22',
+    '191:7:23',
+    '196:5:22',
+    '205:6:22',
+    '205:7:22',
+    '218:5:23',
+    '219:6:23',
+    '219:7:22',
+    '233:7:23',
+    '240:5:22',
+    '255:6:22',
+    '262:5:23',
+    '265:7:22',
+    '269:6:23',
+    '279:7:23',
+    '284:5:22',
+    '293:7:22',
+    '306:5:23',
+    '307:7:23',
+    '333:5:22',
+    '333:6:22',
+    '333:7:22',
+    '347:5:23',
+    '347:7:22',
+    '361:7:23',
+    '385:6:22',
+    '385:7:22',
+    '399:6:23',
+    '399:7:22',
+    '413:7:23',
+    '437:5:22',
+    '437:7:22',
+    '451:5:23',
+    '451:7:22',
+    '465:7:23',
+    '489:6:22',
+    '489:7:22',
+    '503:6:23',
+    '503:7:22',
+    '517:7:23',
+    '541:5:22',
+    '541:7:22',
+    '555:5:23',
+    '555:7:22',
+    '569:7:23',
+    '593:6:22',
+    '593:7:22',
+    '607:6:23',
+    '607:7:22',
+    '621:7:23',
+    '645:5:22',
+    '645:7:22',
+    '659:5:23',
+    '659:7:22',
+    '673:7:23',
+    '697:6:22',
+    '697:7:22',
+    '711:6:23',
+    '711:7:22',
+    '725:7:23',
+    '749:5:22',
+    '749:7:22',
+    '763:5:23',
   ];
 
   it('holds every core invariant on every tick', () => {
@@ -251,13 +281,13 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   it('matches the golden final state hash', () => {
     const run = runSlice(SEED, TICKS);
     // Intentional-change discipline: if this moves, a mechanic changed — name it in the commit.
-    // Moved by the producer self-service drive (packages/sim/src/systems/conflict/ai-supply.ts): the
-    // carpenter now fetches the recipe inputs its mill lacks from any store that holds them and hauls
-    // its own finished output out — so it drains the HQ's 10 starting wood into the mill as well as the
-    // 8 harvested wood, producing 18 planks (vs the old pinned-operator's 8). Goods stay conserved (18
-    // wood in → 18 planks out) and every core invariant holds every tick; the settled state hash shifts
-    // (469da255 → a4fa8225). (The prior move, 469da255, was the JobSystem worker→workplace binding.)
-    expect(run.hash).toBe('a4fa8225');
+    // Moved by FAITHFUL MULTI-HIT HARVEST + DROP-ON-GROUND (packages/sim/src/systems/conflict/atomic.ts
+    // + ai.ts): the woodcutter now FELLS each tree over several chops that yield nothing, the tree drops
+    // a ground trunk holding its whole yield, and the collector carries the trunk off — so the two trees
+    // leave 2 stumps + no standing nodes (vs the old 2 depleted `remaining:0` Resource nodes) and the run
+    // routes wood through trunk piles. Goods stay conserved (10 stored + 8 felled → 18 planks) and every
+    // core invariant holds every tick; the settled state hash shifts (a4fa8225 → 1260b766).
+    expect(run.hash).toBe('1260b766');
   });
 
   it('matches the golden atomic-action trace', () => {

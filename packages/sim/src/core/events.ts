@@ -23,6 +23,24 @@ export type SimEvent =
       readonly building: Entity;
       readonly goodType: number;
       readonly amount: number;
+    }
+  | {
+      /**
+       * A {@link import('../components/economy.js').Felling} node was chopped down this tick — the
+       * standing node `node` was destroyed and replaced at `at` by a bare `Stockpile` `trunk` (a
+       * {@link import('../components/economy.js').GroundDrop} holding the whole `amount` of `goodType`)
+       * plus a {@link import('../components/economy.js').Stump} decor. Render/audio use it for the
+       * felling cue (a "timber!" sound, a falling-tree effect); render otherwise reconciles the new
+       * trunk/stump straight from the snapshot, so this is a one-shot notification, not the source of
+       * truth. Deterministic like every event: a pure function of the tick's felled nodes.
+       */
+      readonly kind: 'resourceFelled';
+      readonly node: Entity;
+      readonly trunk: Entity;
+      readonly stump: Entity;
+      readonly goodType: number;
+      readonly amount: number;
+      readonly at: { x: number; y: number };
     };
 
 export type SimEventKind = SimEvent['kind'];

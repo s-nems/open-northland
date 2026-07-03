@@ -252,21 +252,19 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
       (`tribeStocks`/`tribePopulation`/`tribePopulationByJob`/`goodsGraph`) + the render-side HUD chain over
       the frozen snapshot (`packages/render/src/data/hud.ts`). Only glyph rasterization/typography is left for a
       human via the shot.
-- [ ] **Faithful multi-hit harvest + drop-on-ground** (from the `craft-chain` scene review) — today one
-      harvest atomic teleports 1 unit straight onto the gatherer's back (`atomic.ts:164`, `harvestFromNode`)
-      and a depleted node is never removed (`ai-targets.ts:94` just skips it). The original, per user
-      OBSERVATION — the mod's `.ini` has NO multi-hit/drop param (`goodtypes.ini` carries a single
-      `atomicForHarvesting`), so record it in FIDELITY.md as *observed, not extracted*: a tree fells over
-      several chops, then RAW resource lies on the GROUND as a bare `Stockpile+Position` pile (that machinery
-      already exists — `nearestGroundPile` + the porter drive in `ai-supply.ts`), which the gatherer then
-      carries to the collection point; the felled node is finite and removed (leaving a stump). Touches: the
-      `Resource` component (work-accumulator + felled fields), `harvestFromNode` (`atomic.ts`), the AI planner
-      (fell-vs-pickup split, `ai.ts`/`ai-targets.ts`), node cleanup. Medium (~700 LOC); MOVES the golden
-      trace/hash + rewrites the atomic-system/planner tests. Render side needs a felled/stump sprite.
-      **Also fix the pick-up/deposit ANIMATION** (choppy + looping): the render advances a fixed 1 frame/tick
-      (`sprites.ts` frameOf), so a 19-frame `generic_pick_up` in a 4-tick atomic shows only ~4 frames — set
-      the pickup/deposit atomic duration to the animation length (content `atomicBindings`/`atomicAnimations`)
-      so it plays once, fully.
+- [x] **Faithful multi-hit harvest + drop-on-ground** — **LANDED** (→ [archive](ROADMAP-ARCHIVE.md),
+      docs/FIDELITY.md). A wood node carries a `Felling{chopsLeft}` (content-gated on the good's
+      `gathering.chopsToFell`, never a hardcoded goodType): the collector CHOPS it down over several swings
+      (each yielding nothing), the tree FALLS — the standing node is removed and drops its whole yield at its
+      cell as a bare `Stockpile` trunk (a `GroundDrop`) + a `Stump` decor — and the collector then carries the
+      trunk off, a load at a time, via the EXISTING pickup/porter/delivery machinery (goods conserved; the
+      vertical-slice golden fells its 2 trees → 2 stumps, 18 wood → 18 planks, hash/trace re-pinned). Render
+      draws a new `'stump'` DrawKind (the `ls_trees_dead` debris frame); `?scene=gathering` runs the live
+      cycle for the human sign-off. Chops/yield are OBSERVED (content `chopsToFell`/`yieldPerNode`, pending
+      calibration — docs/FIDELITY.md). **Open (deferred):** the per-good single-hit → per-unit-drop rework for
+      stone/clay/… (Step 4, reuses this drop/collect machinery); the "tree falling" transition ANIMATION
+      (render polish); the choppy pick-up/deposit animation fix (set the atomic duration to the animation
+      length — a render-timing fix, still open).
 - **Open Phase-3 work** is the three **human-gated render items** (the Phase-1 oracle
   pixel-diffs; the Phase-2 real decoded-bob-atlas bind; the Phase-2 real terrain-tile render) — an
   agent cannot self-judge pixels. The
