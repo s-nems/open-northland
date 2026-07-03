@@ -12,6 +12,13 @@ export const VOICE_GAIN = 0.7;
 export const VOICE_RATE_PER_SEC = 1.6;
 /** A given settler won't speak again for this long (ms) — so voices feel like people, not a loop. */
 export const VOICE_COOLDOWN_MS = 4000;
+/**
+ * Clamp on the per-frame `dtMs` the chatter emitter integrates. A backgrounded tab pauses RAF, so the
+ * first frame after refocus carries a huge `elapsed` — without this the voice budget would jump by
+ * dozens and fire a cluster of voices at once. The sim clamps its own step backlog the same way; this
+ * is the audio twin (a quarter second ≈ the sim's ~5-step cap at 20 Hz).
+ */
+export const MAX_CHATTER_DT_MS = 250;
 /** Prune the per-settler speak-time map past this size (entities die/spawn; ids are never reused). */
 export const VOICE_MAP_PRUNE_SIZE = 1024;
 
@@ -109,7 +116,8 @@ export class SoundDriver {
    * additive: no chatter when muted, when `dtMs` is absent, or when the crowd is off screen.
    */
   private pickChatter(input: SoundFrameInput): OneShot[] {
-    const dtMs = input.dtMs ?? 0;
+    // Clamp so a refocus-after-background frame (huge `elapsed`) can't burst a cluster of voices at once.
+    const dtMs = Math.min(input.dtMs ?? 0, MAX_CHATTER_DT_MS);
     if (dtMs <= 0) return [];
     this.clockMs += dtMs;
     const settlers = onScreenSettlers(input.snapshot, input.camera, input.canvasW, input.canvasH);
