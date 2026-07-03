@@ -205,6 +205,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     for (const b of layout.buttons) {
       const spr = guiSprite(b.gfx);
       if (spr === null) continue;
+      // The buttons ARE icons (the user's "ikonki"): key out their magenta + near-black background so the
+      // glyph sits transparently on the strip, instead of an opaque dark square covering it. The strip
+      // itself is NOT keyed — its dark field is the panel the icons sit on.
+      spr.colorKey = true;
       stripContainer.addChild(spr);
       panelSprites.push({ spr, rect: b.placed });
       if (b.id === 'speed') speedSprite = spr;

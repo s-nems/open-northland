@@ -46,11 +46,14 @@ degrades to a reproducible default so the committed build + the `npm run shot` P
 gitignored bytes:
 
 - `?live` (or `?map=<id>`) — the live **vertical-slice sandbox** (`entries/live.ts`): the fixed-timestep
-  loop drawn every frame. The menu's "Podgląd na żywo" card.
+  loop drawn every frame. The menu's "Podgląd na żywo" card. Mounts the LEFT tool panel (below).
 - `?shot[&seed&ticks&hud]` — headless deterministic screenshot entry (`entries/shot.ts`).
 - `?scene=<id>` — run a registered **acceptance scene** with its checklist overlay (`entries/scene.ts`).
-  A scene with `toolPanel: true` (e.g. `?scene=tool-panel`) also mounts the original LEFT tool panel;
-  `?uiscale=1|2|3` sets its integer UI scale (default 2×) — the panel's internal geometry stays pinned.
+- **LEFT tool panel** — the original toolbar strip + tool buttons + game-speed button + building/stats windows
+  is part of the standard game HUD, mounted over BOTH `?live` and every `?scene=` via the shared
+  `view/game-tool-panel.ts` (NOT a per-scene flag — it is global). Its game-speed button OWNS the tick rate
+  (it supersedes the old `?speed=` seed). `?uiscale=1|2|3` sets its integer UI scale (default 1×; the strip is
+  433 design px tall, so 1× already fills ~half a modern window) — the panel's internal geometry stays pinned.
 - `?anim[&char=<id>&view=anim|heads|colors&color=0..15&dir=full|0..7&cols=N&filter=<substr>&zoom&speed]` — the
   character **animation gallery** (`entries/anim.ts` + `catalog/roster.ts`), the extracted `[bobseq]` played from
   the atlas with a direction selector so a human can validate all animations in all 8 facings. **Bare `?anim` (no
@@ -78,7 +81,8 @@ gitignored bytes:
   distinct from the `sound` (singular) MUTE modifier above, so `?live&sound=off` and `?sounds` don't collide.
 - `?map=<id>` · `?atlas` · `?terrain=off` · `?objects=off` · `?zoom=N` · `?speed=N` · `?center=x,y` ·
   `?pitch=N` — real decoded map / sprite atlas / ground-texture + map-object opt-outs / camera magnify /
-  playback rate / centre the camera on tile `(x,y)` (an inspection knob for a decoded-map feature — a
+  playback rate (NOTE: superseded by the tool panel's game-speed button in `?live`/`?scene`, which now owns
+  the tick rate) / centre the camera on tile `(x,y)` (an inspection knob for a decoded-map feature — a
   bridge, a coastline — the settler-centroid framing never reaches; malformed → default framing) / **set
   the tile-diamond width in px** (`?pitch`, the live master-scale knob — sprite-vs-terrain size, kept iso
   2:1, default 64; sweep it to calibrate the look by eye, `setTilePitch` in `iso.ts`). These compose with

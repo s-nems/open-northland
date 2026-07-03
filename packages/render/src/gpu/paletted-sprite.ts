@@ -52,6 +52,17 @@ uniform sampler2D uTexture; // indexed atlas: red = palette index / 255, alpha =
 uniform sampler2D uLut;     // 256 x N palette LUT: row = player colour, column = palette index
 uniform vec2 uLutSize;      // (256, N)
 uniform vec4 uPlacement;    // .w = player-colour row to read (0 .. N-1)
+uniform vec2 uColorKey;     // .x > 0.5: treat the GUI transparent-key colours (below) as transparent
+
+// GUI transparent key. The in-game GUI palettes (iconsleft/context/…) reserve palette index 0 as a MAGENTA
+// sentinel (255,0,255) and a band of near-black entries (max channel ≲ 24/255) as each element's background,
+// both meant to read as see-through — but a bob writes them opaque (transparency is skip-runs, never a
+// colour key), so an icon drawn straight would carry an opaque dark square. When uColorKey.x is set (GUI
+// icons only) we discard those two colour classes so an icon shows only its glyph. Character LUTs never
+// produce them and leave uColorKey.x = 0, so this is inert for the world sprites.
+const float KEY_MAGENTA_HI = 0.9;  // r AND b above this …
+const float KEY_MAGENTA_LO = 0.1;  // … with g below this → the magenta sentinel (index 0)
+const float KEY_NEAR_BLACK = 0.11; // max channel below this → the near-black background band
 
 void main(void) {
   // textureLod(..., 0.0): sample the BASE level only. An index/LUT read must never hit a blended mip — an
@@ -61,7 +72,13 @@ void main(void) {
   // Recover the exact palette index (0..255) from the red channel, then read the player's LUT row.
   float index = floor(texel.r * 255.0 + 0.5);
   vec2 lutUV = vec2((index + 0.5) / uLutSize.x, (uPlacement.w + 0.5) / uLutSize.y);
-  finalColor = vec4(textureLod(uLut, lutUV, 0.0).rgb, 1.0);
+  vec3 rgb = textureLod(uLut, lutUV, 0.0).rgb;
+  if (uColorKey.x > 0.5) {
+    bool magenta = rgb.r > KEY_MAGENTA_HI && rgb.g < KEY_MAGENTA_LO && rgb.b > KEY_MAGENTA_HI;
+    bool nearBlack = max(max(rgb.r, rgb.g), rgb.b) < KEY_NEAR_BLACK;
+    if (magenta || nearBlack) discard;
+  }
+  finalColor = vec4(rgb, 1.0);
 }`;
 
 /** A unit quad's index buffer (two triangles) — positions/UVs are rewritten per frame in {@link PalettedSprite.setFrame}. */
@@ -77,6 +94,9 @@ interface PalettedUniforms {
     uPlacement: Float32Array;
     uResolution: Float32Array;
     uLutSize: Float32Array;
+    /** [colorKeyOn, _] — a `Float32Array` (NOT a scalar `f32`, which a shared program won't re-upload
+     *  per-mesh; see the class note) so each sprite carries its own GUI-key flag. */
+    uColorKey: Float32Array;
   };
   /** Bump the group's dirty id so Pixi re-uploads the changed contents. */
   update(): void;
@@ -109,6 +129,7 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
       uPlacement: { value: new Float32Array([0, 0, 1, 0]), type: 'vec4<f32>' as const },
       uResolution: { value: new Float32Array([1, 1]), type: 'vec2<f32>' as const },
       uLutSize: { value: new Float32Array([LUT_WIDTH, colours]), type: 'vec2<f32>' as const },
+      uColorKey: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
     };
     const shader = Shader.from({
       gl: { vertex: VERTEX, fragment: FRAGMENT },
@@ -134,6 +155,19 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
   }
   get player(): number {
     return this.vars.uniforms.uPlacement[3] ?? 0;
+  }
+
+  /**
+   * Enable the **GUI transparent key** for this sprite: discard the magenta sentinel + the near-black
+   * background band its LUT row resolves to, so an in-game GUI icon shows only its glyph (no opaque dark
+   * square over the panel). Off by default — the world/character sprites never touch these colours.
+   */
+  set colorKey(on: boolean) {
+    this.vars.uniforms.uColorKey[0] = on ? 1 : 0;
+    this.vars.update();
+  }
+  get colorKey(): boolean {
+    return (this.vars.uniforms.uColorKey[0] ?? 0) > 0.5;
   }
 
   /**
