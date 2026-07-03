@@ -34,6 +34,12 @@ maps the rest.
 
 ## Process / working notes
 
+- **Workflows** (`.claude/commands/`): **`/worktree` is the primary workflow** — the user authors
+  the task/plan, the agent executes it faithfully in an isolated worktree, the user verifies
+  manually and gives the explicit merge go. `/audit` runs the domain review lenses
+  (determinism / RTS-perf / fidelity + correctness, `.claude/agents/`) over any diff, report-only.
+  `/iterate` + `/reflect` + the `iterate-supervisor` workflow are the **autonomous roadmap loop,
+  kept as an alternative** — not the default; don't push them.
 - [LESSONS.md](LESSONS.md) — hard-won gotchas: the index + contract; the entries live in per-area
   files under [lessons/](lessons/) so an iteration reads only the area it touches.
 - [TECH-DEBT.md](TECH-DEBT.md) — trigger-gated / speculative reworks deliberately parked (not a

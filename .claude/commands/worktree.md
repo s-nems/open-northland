@@ -3,12 +3,20 @@ description: Run a user-specified task in an isolated git worktree — build, te
 argument-hint: <the task to do in this worktree>
 ---
 
-You are running the **worktree workflow**: like `/iterate` in discipline, but the task is specified
-by the user (not picked from the roadmap) and all work happens in an **isolated git worktree**, so
+You are running the **worktree workflow — the project's PRIMARY workflow**: the task and its plan
+come from the user (not from the roadmap), and all work happens in an **isolated git worktree**, so
 several of these can run in parallel sessions without stepping on each other or on the primary
 checkout. Read `CLAUDE.md` (golden rules) before editing — it is the contract and overrides defaults.
 
 The task from the invocation: **$ARGUMENTS** (if empty, ask what the task is before doing anything).
+
+**The user's plan is authoritative.** `$ARGUMENTS` may be a one-line task, a multi-step plan pasted
+inline, or a path to a plan file — when it is a plan, execute its steps and scope **as written**: do
+not substitute your own step selection, do not pull in adjacent work, do not "improve" the scope.
+If reality contradicts the plan (a step is impossible, already done, or clearly wrong once you see
+the code), stop at the smallest safe point and **surface the deviation in the report** — the user
+decides, not you. The user verifies the work manually afterward, so a faithful, legible execution
+of the stated plan beats a cleverer unrequested one.
 
 Two hard gates in this flow:
 - **Never touch the primary checkout** (`~/Projects/vikings/vinland`) until the final merge step —
@@ -65,6 +73,11 @@ Follow the `/iterate` §3 gates (`.claude/commands/iterate.md` — copied into t
 - Commit on the branch, in the worktree. Conventional Commits, imperative, capitalized, no scope,
   no AI attribution. Stage only this task's files. Multiple commits are fine if the task has
   natural stages — history stays as-is through the rebase-merge.
+- **Ledger discipline rides with the commit** (this workflow must keep the docs honest even when
+  `/iterate` sits idle): if the task completes or advances a `docs/ROADMAP.md` item, tick/update it —
+  the verification trail goes into `docs/ROADMAP-ARCHIVE.md`, the live line stays a 1–2-line summary
+  + `→ [archive]` pointer. A non-obvious generalizable lesson → one grounded line in the matching
+  `docs/lessons/<area>.md`. (FIDELITY is already handled in §3c.)
 
 ## 5. Review
 
@@ -79,10 +92,13 @@ Follow the `/iterate` §3 gates (`.claude/commands/iterate.md` — copied into t
 
 ## 6. Stop — report and wait for the go
 
-Report: what was done, test evidence (the exact hands-on command and what it produced), the
-approval links + checklist for anything visual, review findings and how they were addressed, and
-the branch/worktree names. Then **stop**. Merge only when the user explicitly says so; if they ask
-for changes instead, loop back to step 2 (the worktree stays up).
+Report: what was done **against the user's plan, step by step** (done / deviated + why / blocked —
+deviations are the user's call, so flag them loudly), test evidence (the exact hands-on command and
+what it produced), the approval links + checklist for anything visual, review findings and how they
+were addressed, and the branch/worktree names. Add one FYI line if `npm run scan:structure` shows an
+offender this branch pushed over budget (fixing structure is out of scope unless the plan asked).
+Then **stop**. Merge only when the user explicitly says so; if they ask for changes instead, loop
+back to step 2 (the worktree stays up).
 
 ## 7. Merge — rebase style, no merge commit (only after the user's go)
 
