@@ -83,15 +83,16 @@ export const combatSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no cells to measure reach over
   const terrain = ctx.terrain;
 
-  // The combatant set for THIS tick, in canonical (ascending-id) order — the scan order and the
-  // ring-search index are both built from it, so a distance/first-match tie-break lands on the same
-  // winner every run. `query` is O(min store), and Health-bearing entities are the combatants.
+  // Dormancy gate FIRST, over the raw (unsorted) combatant query: it is order-independent (Set
+  // membership + a boolean any-match), so an idle standing army pays only an O(combatants) scan, not the
+  // O(c log c) canonical sort, on a tick with no fight. No possible hostile pair AND no combat state to
+  // resolve ⇒ skip all combat work (golden rule 7 — zero cost when nothing can happen).
+  if (!combatPossible(world, ctx, world.query(Settler, Health, Position))) return;
+
+  // A fight (or cleanup) IS possible: now build the canonical (ascending-id) combatant list — the scan
+  // order and the ring-search index are both built from it, so a distance/first-match tie-break lands on
+  // the same winner every run — and the per-tick spatial bucket for the ring-search enemy query.
   const combatants = canonicalById(world.query(Settler, Health, Position));
-
-  // Dormancy gate: no possible hostile pair AND no combat state to resolve ⇒ skip all combat work.
-  if (!combatPossible(world, ctx, combatants)) return;
-
-  // One per-tick spatial bucket of all combatants for the ring-search enemy query.
   const index = new TileBuckets(world, combatants);
 
   for (const e of combatants) {
@@ -133,7 +134,7 @@ export const REPATH_CADENCE = 8;
  * simply finds no target), but it never skips a tick where a fight or a cleanup is due. This is the lever
  * that makes a peaceful map, or an all-one-player field, cost ~0 (no per-seeker scan runs at all).
  */
-function combatPossible(world: World, ctx: SystemContext, combatants: readonly Entity[]): boolean {
+function combatPossible(world: World, ctx: SystemContext, combatants: Iterable<Entity>): boolean {
   const owners = new Set<number>();
   const civTribes = new Set<number>();
   let hasCiv = false;
@@ -212,18 +213,23 @@ function engageCombatant(
   }
 
   const here = entityCell(world, terrain, e);
-  const target = resolveTarget(world, ctx, terrain, index, e, attacker, weapon, owned);
-  if (target === null) {
+  const found = resolveTarget(world, ctx, terrain, index, e, here, attacker, weapon, owned);
+  if (found === null) {
     disengage(world, e); // no enemy in reach/sight — return to the economy
     return;
   }
 
-  const dist = manhattan(terrain, here, entityCell(world, terrain, target));
+  const { target, dist } = found;
   if (dist >= weapon.minRange && dist <= weapon.maxRange) {
-    // In the reach band: stop advancing and swing. (Clearing the chase movement is combat's to do — it
-    // only ever owns the movement of an engaged unit.)
+    // In the reach band: stop advancing and swing. Clearing the chase movement is a no-op for an unowned
+    // unit (it never travels into combat) and drops the chase route for an owned one that just arrived.
     clearChase(world, e);
-    world.add(e, Engagement, { repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick });
+    // The Engagement marker (economy-skip + chase throttle) is OWNED-only — an unowned combatant swings
+    // in place with no advance drive, so stamping it there would give it a spurious economy-skip AND
+    // perturb its hash (it must stay byte-identical to the pre-engagement behaviour). During the swing the
+    // unit is mid-`CurrentAtomic` anyway, which already gates it off the economy; the marker only matters
+    // in the idle tick between swings, where it keeps an OWNED unit engaged instead of re-tasked.
+    if (owned) world.add(e, Engagement, { repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick });
     const damage = weaponDamageVsMaterial(weapon.weapon, targetMaterial(world, ctx, target));
     startAttack(world, ctx, attacker, e, target, damage, weapon.weapon);
     return;
@@ -240,7 +246,8 @@ function engageCombatant(
 }
 
 /**
- * The enemy this combatant fights this tick, or null:
+ * The enemy this combatant fights this tick (with its Manhattan distance from `here`, so the caller
+ * needn't recompute it), or null:
  *  - under an explicit {@link AttackOrder} → that focused `target`, chased regardless of sight, as long as
  *    it is a live, hostile combatant; a target that has died / become an invalid target drops the order and
  *    falls through to auto-engagement (so the unit re-acquires a nearby enemy rather than going idle);
@@ -254,19 +261,25 @@ function resolveTarget(
   terrain: TerrainGraph,
   index: TileBuckets,
   self: Entity,
+  here: CellId,
   attacker: { tribe: number; jobType: number | null },
   weapon: { minRange: number; maxRange: number },
   owned: boolean,
-): Entity | null {
+): { target: Entity; dist: number } | null {
   if (world.has(self, AttackOrder)) {
     const focus = world.get(self, AttackOrder).target;
-    if (isValidTarget(world, ctx, self, attacker, focus)) return focus;
+    // An ordered target is chased regardless of sight, so measure its real distance (the ring search's
+    // `searchRadius` cap does not apply); the swing/chase decision is on this distance.
+    if (isValidTarget(world, ctx, self, attacker, focus)) {
+      return { target: focus, dist: manhattan(terrain, here, entityCell(world, terrain, focus)) };
+    }
     world.remove(self, AttackOrder); // target gone / no longer hostile — abandon the order, auto-engage
   }
-  const { x, y } = terrain.coordsOf(entityCell(world, terrain, self));
+  const { x, y } = terrain.coordsOf(here);
   const searchRadius = owned ? Math.max(weapon.maxRange, SIGHT_RADIUS_TILES) : weapon.maxRange;
   const accept = (t: Entity): boolean => isValidTarget(world, ctx, self, attacker, t);
-  return index.nearest(x, y, weapon.minRange, searchRadius, accept)?.entity ?? null;
+  const found = index.nearest(x, y, weapon.minRange, searchRadius, accept);
+  return found === null ? null : { target: found.entity, dist: found.distance };
 }
 
 /** Whether `t` is a live combatant this attacker may swing at — a positioned, `Health`-bearing settler
@@ -330,8 +343,19 @@ function chase(
     weapon.minRange,
     weapon.maxRange,
   );
+  if (dest === here) {
+    // No walkable cell in the target's weapon band is reachable, and the unit is out of range (else it
+    // would have swung, not chased) — the target can't be closed on (boxed into an unwalkable pocket, or
+    // the two are stacked on one cell with no free approach). Give up rather than loop engaged-but-frozen:
+    // `disengage` drops the Engagement + chase state AND any AttackOrder (an unreachable ordered target).
+    // Next tick the unit re-acquires another enemy, or the economy relocates it (which also breaks a
+    // shared-tile stall) — so it never stays stuck. Only reachable on obstructed terrain: an all-walkable
+    // map always yields a band cell, so combat on open ground is unaffected.
+    disengage(world, e);
+    return;
+  }
   clearChase(world, e);
-  if (dest !== here) world.add(e, MoveGoal, { cell: dest });
+  world.add(e, MoveGoal, { cell: dest });
   engagement.repathAt = ctx.tick + REPATH_CADENCE;
 }
 

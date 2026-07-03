@@ -189,6 +189,19 @@ describe('walk-into-melee — an OWNED combatant advances on a spotted enemy', (
     expect(sim.world.has(a, MoveGoal)).toBe(false);
   });
 
+  it('an UNOWNED combatant swinging IN RANGE carries no Engagement (unowned byte-identity)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const a = fighterAt(sim, 0, 0, VIKING, WOODCUTTER); // unowned
+    const enemy = fighterAt(sim, 1, 0, FRANK, WOODCUTTER); // unowned enemy, adjacent (in the axe band)
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // It swings (the tribe-hostility fight is unchanged) but is NOT marked engaged — the Engagement stamp
+    // is owned-only, so an unowned combatant's state stays byte-identical to the pre-engagement code.
+    expect(sim.world.get(a, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: enemy });
+    expect(sim.world.has(a, Engagement)).toBe(false);
+  });
+
   it('does NOT engage an enemy beyond the sight radius', () => {
     const far = SIGHT_RADIUS_TILES + 3;
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(far + 2, 1) });
@@ -274,6 +287,31 @@ describe('attackUnit — the explicit attack order', () => {
     expect(sim.world.has(neutral, AttackOrder)).toBe(false);
     expect(sim.world.has(civilian, AttackOrder)).toBe(false);
     expect(sim.world.has(owned, AttackOrder)).toBe(false);
+  });
+
+  it('gives up (disengages, drops the order) when the target cannot be approached into range', () => {
+    // A 3×3 map whose ONLY walkable cell is the centre (1,1); every neighbour is water. An attacker
+    // stacked on its ordered target (distance 0, below melee minRange 1) can never step into the weapon
+    // band — approachCell finds no walkable band cell. The chase must give up, not loop engaged-forever.
+    const boxed: TerrainMap = {
+      width: 3,
+      height: 3,
+      typeIds: [1, 1, 1, 1, 0, 1, 1, 1, 1], // grass (0) only at centre; water (1) around it
+    };
+    const sim = new Simulation({ seed: 1, content: testContent(), map: boxed });
+    const a = fighterAt(sim, 1, 1, VIKING, WOODCUTTER, { owner: P0 });
+    const enemy = fighterAt(sim, 1, 1, VIKING, WOODCUTTER, { owner: P1 }); // same cell — dist 0
+
+    attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: a, target: enemy });
+    expect(sim.world.has(a, AttackOrder)).toBe(true); // the order was accepted
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    // Unreachable target → disengaged, order dropped, no lingering chase (no frozen engaged unit).
+    expect(sim.world.has(a, AttackOrder)).toBe(false);
+    expect(sim.world.has(a, Engagement)).toBe(false);
+    expect(sim.world.has(a, MoveGoal)).toBe(false);
+    expect(sim.world.has(a, CurrentAtomic)).toBe(false);
   });
 
   it('is a no-op on a mapless sim (no cells to fight over)', () => {
