@@ -64,17 +64,19 @@ describe('decodeCursor', () => {
     expect(cur.height).toBe(2);
   });
 
-  it('reads the hotspot from directory entry 0 even when a different image is chosen for pixels', () => {
-    // Entry 0 is a small image carrying the intended hotspot (5,6); the larger entry 1 (chosen for
-    // pixels) carries a defaulted (0,0). The decoded hotspot must come from entry 0.
+  it('reads the hotspot from the SELECTED (chosen) image, not directory entry 0', () => {
+    // Entry 0 is a small fallback carrying a stray hotspot (5,6); the larger entry 1 is selected for
+    // pixels and carries (7,8). Both the pixels AND the hotspot must come from the selected entry —
+    // matching the original's Win32 best-fit (it uses the chosen image's own hotspot). This is why the
+    // real MouseRight resolves (1,1) from its 8-bpp entry, not the (10,10) on its 1-bpp fallback.
     const cur = decodeCursor(
       encodeCursor([
         image({ width: 1, height: 1, pixels: Uint8Array.from([0]), hotspotX: 5, hotspotY: 6 }),
-        image({ hotspotX: 0, hotspotY: 0 }),
+        image({ hotspotX: 7, hotspotY: 8 }),
       ]),
     );
-    expect(cur.width).toBe(2); // the larger image supplied the pixels
-    expect([cur.hotspotX, cur.hotspotY]).toEqual([5, 6]); // ...but entry 0 supplied the hotspot
+    expect(cur.width).toBe(2); // the larger image supplied the pixels...
+    expect([cur.hotspotX, cur.hotspotY]).toEqual([7, 8]); // ...and its own hotspot
   });
 
   it('throws on a non-cursor buffer and on an empty directory', () => {

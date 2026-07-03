@@ -245,6 +245,27 @@ describe('gui stage', () => {
     expect(pol.main['0']).toBe('ęł');
   });
 
+  it('drops only a malformed stringn line, not the bare strings that follow it', async () => {
+    // A non-numeric `stringn` id must NOT poison the running id — otherwise every following bare `string`
+    // (the shipped tables are long auto-incrementing runs) would be silently lost.
+    await writeGame(
+      join('Data', 'text', 'eng', 'strings', 'ingamegui', 'ingameguimain.cif'),
+      buildStringCif([
+        { level: 1, text: 'control' },
+        { level: 2, text: 'stringidmultiplier 1' },
+        { level: 1, text: 'text' },
+        { level: 2, text: 'stringn zz "Bad"' }, // non-numeric id → this line dropped
+        { level: 2, text: 'string "AfterBad"' }, // must still take id 0
+        { level: 2, text: 'stringn 5 "Ok"' },
+      ]),
+    );
+    await convertGuiStrings(game, out, ['eng']);
+    const eng = JSON.parse(await readFile(join(out, 'gui', 'strings', 'eng.json'), 'utf8'));
+    expect(eng.main['0']).toBe('AfterBad'); // survived — the bad stringn didn't NaN-poison the counter
+    expect(eng.main['5']).toBe('Ok');
+    expect(Object.values(eng.main)).not.toContain('Bad'); // only the malformed line itself is gone
+  });
+
   it('decodes each cursor to a PNG, copies the .cur through, and records the hotspot', async () => {
     const cursors = await convertCursors(game, out);
     expect(cursors.map((c) => c.name)).toEqual(['MouseNormal', 'MousePressed', 'MouseRight']);

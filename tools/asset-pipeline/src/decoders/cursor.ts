@@ -17,9 +17,12 @@
  *     stacked over a 1-bpp AND transparency mask). Real height = biHeight / 2.
  *
  * The game's three cursors each pack 1/4/8-bpp variants of one 32×32 image; we decode the highest
- * colour depth available and take transparency from the AND mask (a set AND bit = transparent). The
- * hotspot is read from the FIRST directory entry — the authoring tool stores the intended hotspot there
- * (the lower-depth fallbacks can carry a defaulted (1,1)), so entry 0 is the reliable source.
+ * colour depth available (only 8/24/32-bpp are implemented — the shipped cursors always carry an 8-bpp
+ * entry, which is the one selected, so a ≤4-bpp-only cursor is not a real case) and take transparency
+ * from the AND mask (a set AND bit = transparent). The hotspot is read from that SAME selected entry, so
+ * image + hotspot stay self-consistent — matching what the original's Win32 `LoadCursorFromFileW`
+ * best-fits on the game's 32-bpp display (it picks the 8-bpp image and uses *its* hotspot, not a
+ * lower-depth entry's; e.g. `MouseRight`'s 8-bpp hotspot is (1,1), while its 1-bpp fallback carries (10,10)).
  *
  * Pure functions only (no I/O): `(bytes) => decoded`. `encodeCursor` is a faithful (8-bpp) inverse used
  * to round-trip test without committing copyrighted fixtures — same rationale as the other encoder pairs.
@@ -59,7 +62,7 @@ interface DirEntry {
  * Decodes a `.cur` into straight RGBA, choosing the highest-colour-depth image in the directory and
  * taking transparency from its AND mask. Throws a `cursor:`-prefixed error on a structurally invalid
  * container or an unsupported pixel format (a batch walk should wrap the call per-file). The hotspot is
- * read from directory entry 0 (the intended value; lower-depth entries can carry a defaulted hotspot).
+ * read from the SELECTED (highest-depth) entry, so it is consistent with the decoded image.
  */
 export function decodeCursor(bytes: Uint8Array): DecodedCursor {
   if (bytes.length < ICONDIR_BYTES) {
@@ -105,13 +108,15 @@ export function decodeCursor(bytes: Uint8Array): DecodedCursor {
   }
   if (best < 0) throw new Error('cursor: no image entry has a readable DIB header');
 
-  const image = decodeDib(bytes, view, entries[best]?.imageOffset ?? 0);
-  const first = entries[0] as DirEntry;
+  // Decode the selected entry and take the hotspot from that SAME entry (not entry 0's lower-depth
+  // fallback), matching the original's Win32 best-fit, which uses the selected image's own hotspot.
+  const chosen = entries[best] as DirEntry;
+  const image = decodeDib(bytes, view, chosen.imageOffset);
   return {
     width: image.width,
     height: image.height,
-    hotspotX: first.hotspotX,
-    hotspotY: first.hotspotY,
+    hotspotX: chosen.hotspotX,
+    hotspotY: chosen.hotspotY,
     image,
   };
 }
@@ -165,6 +170,9 @@ function decodeDib(bytes: Uint8Array, view: DataView, off: number): RgbaImage {
         g = bytes[p + 1] ?? 0;
         r = bytes[p + 2] ?? 0;
       } else {
+        // 24/32-bpp true-colour: BGR(A) inline. A 32-bpp DIB's per-pixel alpha is ignored — the AND
+        // mask governs transparency here (the shipped cursors are 8-bpp, so this branch never runs on
+        // real data; it's a defensive path for a foreign true-colour cursor).
         const step = bitCount / 8;
         const p = xorRow + x * step;
         b = bytes[p] ?? 0;

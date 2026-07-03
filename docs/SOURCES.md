@@ -282,12 +282,14 @@ byte-identical** to the `engine2d` one (sha256-verified), so we extract the sing
   stage's **default preview palette** for the window sheet.
 - **`context`** — the radial human order/command icon buttons (per-command icon id from
   `GetHumanCommandIconId`).
-- **`frame` / `bg_normal` / `bg_hilite` / `bg_invert`** — window frames/borders + window backgrounds;
-  **`bar_standart` / `bar_hitpoints` / `bar_disabled`** — the normal / active / greyed selection bars;
-  **`papyrus`** — scroll panels. (These are loaded/named by the manager but their draw sites live in the
-  window/selection classes OpenVikings hasn't ported, so the pairing is by asset+field name, not a
-  quoted usage site.) **`ingame_remap_01..03`** are the world-darkening remap tables
-  (`CWorldDisplayElement.DarkenBitmap_Init`), carried here for completeness.
+- **`frame` / `bg_normal`** — window frames/borders + the normal window background (both **manager-loaded
+  palettes**: `PalFrame`, `PalBgNormal`); **`bar_standart` / `bar_hitpoints` / `bar_disabled`** — the
+  normal / active / greyed selection bars; **`papyrus`** — scroll panels. Their draw sites live in the
+  window/selection classes OpenVikings hasn't ported, so the pairing is by asset+field name, not a quoted
+  usage site. **`bg_hilite` / `bg_invert`** are real `Data/gui/palettes` carriers extracted by filename,
+  but the oracle loads **no palette by those names** (its highlight is a `bg_button_hilite.pcx` *bitmap*,
+  `DynamicData_Load`), so their element pairing is unconfirmed — extracted for completeness alongside
+  **`ingame_remap_01..03`**, which are the world-darkening remap tables (`CWorldDisplayElement.DarkenBitmap_Init`).
 - `font_{white,dark,dimmed,red}` are the **font step's** concern; `campaignmap`/`campaignbuttons`/
   `menu_remap` are menu/campaign, not in-game HUD — none are in the GUI palette LUT.
 
