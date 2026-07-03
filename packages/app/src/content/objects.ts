@@ -141,11 +141,14 @@ export async function loadMapObjects(objects: MapObjectsData, ir: TerrainIr): Pr
       frames: type.frames,
       scale: 1,
       decor: type.decor,
-      // IN PHASE: the wave bobs are authored to tile seamlessly with their neighbours at the SAME
-      // frame (107px sprites on a 64px lattice) — a per-object stagger breaks the tiling into
-      // noise. The whole sea breathing in unison matches the original's look; the map stores no
-      // per-object phase (docs/FIDELITY.md).
-      phase: 0,
+      // A slow SPATIAL phase GRADIENT (`hx + hy`), not a uniform phase: adjacent half-cells stay within
+      // one animation frame of each other (so the wave sheet still reads as continuous, no hard seam),
+      // but across the sea the phase drifts, so the surface no longer pulses as ONE identical stamp — the
+      // "water looks repeated too many times / unnatural" report. A traveling diagonal ripple reads as
+      // moving water; the map stores no per-object phase, so this deterministic gradient is our choice
+      // (docs/FIDELITY.md). Static objects (`frames.length <= 1`) ignore phase, so this only staggers the
+      // looping bobs (waves, swaying trees/fire).
+      phase: hx + hy,
       alpha: type.alpha,
     });
   }
