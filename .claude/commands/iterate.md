@@ -31,13 +31,11 @@ is overdue for a **reflection** pass — a deliberate health/architecture/docs/r
   longer it's been and the more drift you see, the stronger the nudge. No `docs/TECH-DEBT.md` yet with
   real history behind you is itself a strong nudge to do the first reflection.
 - **Structure check (objective, not vibes) — debt is created here, every iteration, and cleaned only
-  in reflection, so let degradation summon its own cleanup.** Run the quick scan `/reflect` uses:
-  largest sources (`find packages -name '*.ts' -not -path '*/node_modules/*' -not -name '*.test.ts' | xargs wc -l | sort -rn | head`),
-  flat `src/` dirs (≥6 files, no subfolders), and executor-read doc sizes (`wc -l docs/ROADMAP.md packages/*/CLAUDE.md`).
-  If any axis is **ratchet-violating** — the worst offender grew past budget (a ~300-line source / a
-  newly-flat dir / a >300-line `ROADMAP.md`) since the last reflection — reflection is **due**,
-  regardless of the commit-type run above. (This is the structural counter-pressure to feature growth;
-  don't wait for the vibe.)
+  in reflection, so let degradation summon its own cleanup.** Run `npm run scan:structure` (the same
+  scan `/reflect` uses: oversized sources, flat dirs, doc budgets). If any axis is
+  **ratchet-violating** — the worst offender grew past budget since the last reflection — reflection
+  is **due**, regardless of the commit-type run above. (This is the structural counter-pressure to
+  feature growth; don't wait for the vibe.)
 - **Decision:** if it's due, run the reflection playbook instead — read `.claude/commands/reflect.md`
   and follow it for this iteration, then stop. If not, continue with Step 1 below as a normal feature
   iteration. (Don't reflect two passes running — recent `refactor:`/`docs:` cleanup means it isn't due.)
@@ -58,8 +56,13 @@ is overdue for a **reflection** pass — a deliberate health/architecture/docs/r
   and don't load areas the step won't touch.
 - Implement only that step. Match the style of surrounding code. No scope creep — resist pulling in
   the next roadmap item even if tempting.
-- Follow the determinism anti-patterns in `packages/sim/CLAUDE.md` (sim work). Mechanics change →
-  add/extend a test at the **lowest level that proves it** (unit → integration → headless scenario).
+- Follow the determinism anti-patterns in `packages/sim/CLAUDE.md` (sim work) and the RTS-scale cost
+  budgets (golden rule 7) — a per-tick system or per-frame render path must not gain a full-world
+  scan or object churn. Mechanics change → add/extend a test at the **lowest level that proves it**
+  (unit → integration → headless scenario).
+- **No silent hacks** (root `CLAUDE.md` convention): a workaround or `TODO` either gets fixed within
+  the step, or lands with its tracking entry (roadmap / `docs/TECH-DEBT.md` / a FIDELITY deviation)
+  in the same commit — never bare.
 
 ## 3. Test (do not skip, do not fake)
 
@@ -120,7 +123,11 @@ n/a: \<why\>". See `docs/FIDELITY.md`.
 
 ## 4. First commit
 - Update `docs/ROADMAP.md`: tick the completed item, and revise wording if the work revealed
-  something (the roadmap is meant to be edited as you learn).
+  something (the roadmap is meant to be edited as you learn). **The verification trail goes to the
+  archive, not the live doc:** write the step's full "Hands-on:" trail as (or into) the item's entry
+  in `docs/ROADMAP-ARCHIVE.md`, and leave the live item a one-to-two-line summary + `→ [archive]`
+  pointer. (Writing trails inline is the ratchet `/reflect` has had to sweep four times — don't
+  recreate it.)
 - If the step touched a **mechanic or data**, update `docs/FIDELITY.md` in the same commit (the
   ledger row + any conscious deviation).
 - Commit per project convention: **Conventional Commits, imperative, capitalized, no scope, no AI
@@ -130,11 +137,18 @@ n/a: \<why\>". See `docs/FIDELITY.md`.
 - Your first commit is already in, so the working tree is clean — review the **commit's** diff
   (`git diff HEAD~1..HEAD`), not the empty working diff. Run `/code-review high` against it for
   correctness + simplification feedback.
-- A fresh-context reviewer is the real defense against rubber-stamping your own work. **Mandatory:**
-  if the change touches `sim` determinism/purity, fixed-point math, or content schemas, spawn at
-  least one focused review subagent (Agent tool) with a *determinism/purity of `sim`* lens. For
-  larger or trickier changes add 1–2 more lenses — *correctness/edge-cases*, *simplicity/reuse*.
-  A one-line data/test tweak needs none; otherwise lean on the subagents rather than self-judgment.
+- A fresh-context reviewer is the real defense against rubber-stamping your own work. The project
+  ships named reviewer agents (`.claude/agents/`) — spawn them via the Agent tool (they run in
+  parallel; pass each the commit range):
+  - **`determinism-reviewer` — mandatory** if the change touches `sim` determinism/purity,
+    fixed-point math, or content schemas.
+  - **`perf-reviewer` — mandatory** if the change touches a per-tick sim system or a per-frame
+    render/app path (golden rule 7 — the RTS-scale budgets).
+  - **`fidelity-reviewer`** when the step implements/tunes a mechanic or extracts/consumes game
+    data (it audits the 3c basis + the FIDELITY ledger).
+  For larger or trickier changes add 1–2 generic lenses — *correctness/edge-cases*,
+  *simplicity/reuse*. A one-line data/test tweak needs none; otherwise lean on the subagents rather
+  than self-judgment.
 
 ## 6. Address feedback
 - Triage the findings **with your own judgment** — fix what is real and in-scope; for anything you
