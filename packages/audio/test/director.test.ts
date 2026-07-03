@@ -152,20 +152,31 @@ describe('directAudio ambient', () => {
 });
 
 describe('onScreenSettlers', () => {
-  it('returns only on-screen settlers, spatialised', () => {
+  it('returns only on-screen settlers, spatialised, with their sex/age classifiers', () => {
     const snap: WorldSnapshot = {
       tick: 1,
       entities: [
-        { id: 3, components: { Position: { x: 5 * ONE, y: 5 * ONE }, Settler: {} } }, // centre → on screen
+        { id: 3, components: { Position: { x: 5 * ONE, y: 5 * ONE }, Settler: { jobType: 0 } } }, // adult male
+        {
+          id: 5,
+          components: { Position: { x: 5 * ONE, y: 5 * ONE }, Settler: { jobType: 5 } }, // adult woman (job 5)
+        },
+        {
+          id: 6,
+          components: { Position: { x: 5 * ONE, y: 5 * ONE }, Settler: { jobType: 4 }, Age: { ticks: 10 } }, // child
+        },
         { id: 4, components: { Position: { x: 100 * ONE, y: 100 * ONE }, Settler: {} } }, // far off screen
         { id: 7, components: { Position: { x: 5 * ONE, y: 5 * ONE }, Building: {} } }, // not a settler
       ],
       events: [],
     };
     const found = onScreenSettlers(snap, camera, CANVAS_W, CANVAS_H);
-    expect(found.map((s) => s.entity)).toEqual([3]);
+    expect(found.map((s) => s.entity)).toEqual([3, 5, 6]);
     expect(found[0]?.gain).toBeGreaterThan(0);
     expect(found[0]?.pan).toBeCloseTo(0, 5); // centred
+    // jobType is read off the snapshot; the Age component marks a young settler.
+    expect(found.map((s) => s.jobType)).toEqual([0, 5, 4]);
+    expect(found.map((s) => s.young)).toEqual([false, false, true]);
   });
 
   it('returns nothing when the crowd is off screen', () => {

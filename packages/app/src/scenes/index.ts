@@ -1,6 +1,7 @@
 import { allBuildingsScene } from './all-buildings.js';
 import { charactersScene } from './characters.js';
 import { housePlacementScene } from './house-placement.js';
+import { soundShowcaseScene } from './sound-showcase.js';
 import { stressCrowdScene } from './stress-crowd.js';
 import type { SceneDefinition } from './types.js';
 
@@ -16,6 +17,7 @@ export const SCENES: readonly SceneDefinition[] = [
   allBuildingsScene,
   charactersScene,
   housePlacementScene,
+  soundShowcaseScene,
   stressCrowdScene,
 ];
 

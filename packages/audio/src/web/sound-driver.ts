@@ -1,7 +1,7 @@
 import type { Camera } from '@vinland/render';
 import type { SimEvent, WorldSnapshot } from '@vinland/sim';
 import type { SoundIndex } from '../data/bank.js';
-import { VIKING_VOICE_GROUPS } from '../data/bindings.js';
+import { VIKING_VOICE_POOLS, type VoiceClass, vikingVoiceClass } from '../data/bindings.js';
 import { type AudioTerrain, directAudio, onScreenSettlers } from '../data/director.js';
 import type { OneShot, SoundBindings } from '../data/types.js';
 import { type AudioEngineOptions, WebAudioEngine } from './audio-engine.js';
@@ -29,10 +29,12 @@ export interface SoundFrameInput {
   readonly dtMs?: number;
 }
 
-/** {@link SoundDriver} construction options — the engine's plus the voice-chatter pool. */
+/** {@link SoundDriver} construction options — the engine's plus the sex/age-keyed voice-chatter pools. */
 export interface SoundDriverOptions extends AudioEngineOptions {
-  /** Voice groups the settler-chatter layer draws from; default {@link VIKING_VOICE_GROUPS}. Empty ⇒ no chatter. */
-  readonly voiceGroups?: readonly string[];
+  /** Voice pools per sex/age the settler-chatter layer draws from; default {@link VIKING_VOICE_POOLS}. */
+  readonly voicePools?: Readonly<Record<VoiceClass, readonly string[]>>;
+  /** Classify a settler (`jobType` + `young`) → its voice class; default {@link vikingVoiceClass}. */
+  readonly voiceClassOf?: (jobType: number | null, young: boolean) => VoiceClass;
 }
 
 /**
@@ -45,7 +47,8 @@ export interface SoundDriverOptions extends AudioEngineOptions {
  */
 export class SoundDriver {
   private readonly engine: WebAudioEngine;
-  private readonly voiceGroups: readonly string[];
+  private readonly voicePools: Readonly<Record<VoiceClass, readonly string[]>>;
+  private readonly voiceClassOf: (jobType: number | null, young: boolean) => VoiceClass;
   /** Fractional voice-clip budget carried between frames (a Poisson-ish emitter over `dtMs`). */
   private chatterBudget = 0;
   /** Monotonic driver clock (ms, summed from `dtMs`) for the per-settler voice cooldown. */
@@ -59,7 +62,8 @@ export class SoundDriver {
     options: SoundDriverOptions = {},
   ) {
     this.engine = new WebAudioEngine(options);
-    this.voiceGroups = options.voiceGroups ?? VIKING_VOICE_GROUPS;
+    this.voicePools = options.voicePools ?? VIKING_VOICE_POOLS;
+    this.voiceClassOf = options.voiceClassOf ?? vikingVoiceClass;
   }
 
   /** Start/resume audio — call from inside a user gesture (first click/key) to satisfy autoplay policy. */
@@ -99,13 +103,14 @@ export class SoundDriver {
 
   /**
    * Emit voice one-shots for on-screen settlers at ~{@link VOICE_RATE_PER_SEC} clips/second across the
-   * visible crowd, each from a random settler (respecting its {@link VOICE_COOLDOWN_MS}) and a random
-   * voice group/clip — so a crowd murmurs with real variety without any one settler looping. Purely
+   * visible crowd, each from a random settler (respecting its {@link VOICE_COOLDOWN_MS}), drawing from the
+   * pool that matches THAT settler's sex/age ({@link SoundDriverOptions.voiceClassOf}) — so the murmur
+   * reflects who is on screen (a crowd of men stays male) instead of pulling every pool uniformly. Purely
    * additive: no chatter when muted, when `dtMs` is absent, or when the crowd is off screen.
    */
   private pickChatter(input: SoundFrameInput): OneShot[] {
     const dtMs = input.dtMs ?? 0;
-    if (dtMs <= 0 || this.voiceGroups.length === 0) return [];
+    if (dtMs <= 0) return [];
     this.clockMs += dtMs;
     const settlers = onScreenSettlers(input.snapshot, input.camera, input.canvasW, input.canvasH);
     if (settlers.length === 0) return [];
@@ -122,7 +127,10 @@ export class SoundDriver {
       if (settler === undefined) break;
       const last = this.lastSpokeAt.get(settler.entity);
       if (last !== undefined && this.clockMs - last < VOICE_COOLDOWN_MS) continue;
-      const group = this.voiceGroups[Math.floor(Math.random() * this.voiceGroups.length)] as string;
+      // Pick a pool by the settler's own sex/age, then a group in it, then let the engine pick a clip.
+      const pool = this.voicePools[this.voiceClassOf(settler.jobType, settler.young)];
+      if (pool.length === 0) continue;
+      const group = pool[Math.floor(Math.random() * pool.length)] as string;
       const files = this.index.groupsByName.get(group.toLowerCase());
       if (files === undefined || files.length === 0) continue;
       this.lastSpokeAt.set(settler.entity, this.clockMs);

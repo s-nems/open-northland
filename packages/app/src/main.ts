@@ -3,6 +3,7 @@ import { renderLive } from './entries/live.js';
 import { renderMenu } from './entries/menu.js';
 import { renderSceneMode } from './entries/scene.js';
 import { renderShot } from './entries/shot.js';
+import { renderSoundGallery } from './entries/sound.js';
 
 /**
  * App shell entry point — the URL DISPATCHER. It reads `window.location.search`, picks exactly one entry
@@ -13,6 +14,8 @@ import { renderShot } from './entries/shot.js';
  *                         on `window.__vinlandShotReady`; no menu, no RAF loop.
  *  - `?scene=<id>`      → a registered acceptance scene with its checklist overlay (`entries/scene.ts`).
  *  - `?anim`            → the character animation gallery (`entries/anim.ts`).
+ *  - `?sounds`          → the sound VERIFICATION gallery (`entries/sound.ts`) — click ▶ to audition every
+ *                         wired clip. Distinct from the `?sound=off` MUTE modifier on live/scene (key `sound`).
  *  - `?live` / `?map=`  → the live vertical-slice sandbox (`entries/live.ts`).
  *  - otherwise          → the MAIN MENU to pick any of the above (`entries/menu.ts`) — the default landing,
  *                         so a human never has to remember a `?…` string.
@@ -26,6 +29,7 @@ async function main(): Promise<void> {
   const sceneId = params.get('scene');
   if (sceneId !== null) return renderSceneMode(canvas, sceneId, params);
   if (params.has('anim')) return renderAnimationGallery(canvas, params);
+  if (params.has('sounds')) return renderSoundGallery(canvas, params);
   if (params.has('live') || params.has('map')) return renderLive(canvas, params);
   return renderMenu(canvas, params);
 }

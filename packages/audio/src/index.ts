@@ -10,7 +10,12 @@
 // constants (JINGLE_*, GROUP_*) are intentionally NOT re-exported: they are implementation detail of
 // `defaultBindings`, which is the surface a consumer overrides.
 export { buildSoundIndex, type SoundIndex } from './data/bank.js';
-export { defaultBindings, VIKING_VOICE_GROUPS } from './data/bindings.js';
+export {
+  defaultBindings,
+  VIKING_VOICE_POOLS,
+  vikingVoiceClass,
+  type VoiceClass,
+} from './data/bindings.js';
 export {
   type AudioTerrain,
   type DirectorInput,

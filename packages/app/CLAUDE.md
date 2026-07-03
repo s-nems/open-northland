@@ -63,10 +63,17 @@ gitignored bytes:
   the **indexed** atlas through the `256×16` player-colour LUT via `render`'s `PalettedSprite` (only the clothing
   band recolours; see docs/FIDELITY.md "Player (team) colours"). A per-tone **skin/hair variant** axis (distinct
   from team colour) is still a deferred pipeline follow-up (docs/FIDELITY.md).
-- `?sound=off` — mute the original decoded sounds (`@vinland/audio`), which are **default-on** in live mode:
-  positional action SFX + terrain ambient (viewport-culled, attenuated, panned) + non-spatial life-event
-  jingles, driven by the same snapshot + events `render` reads. Browser autoplay policy keeps audio
-  suspended until the first click/key; a checkout without `content/` (no sound bank) degrades to silence.
+- `?sound=off` — mute the original decoded sounds (`@vinland/audio`), which are **default-on** in live +
+  scene modes: positional action SFX + terrain ambient (viewport-culled, attenuated, panned) + non-spatial
+  life-event jingles + **sex/age-matched settler voice chatter** (a settler sounds like the body it draws —
+  `vikingVoiceClass` off `Settler.jobType`+`Age`), driven by the same snapshot + events `render` reads.
+  Browser autoplay policy keeps audio suspended until the first click/key; a checkout without `content/`
+  (no sound bank) degrades to silence. The best place to HEAR action→sound is `?scene=sound-showcase`
+  (woodcutters chopping continuously, on-screen).
+- `?sounds` — the sound **verification gallery** (`entries/sound.ts`), the audio twin of `?anim`: click ▶ to
+  audition every action→sound binding, the voice pools split by sex/age, the jingles and the ambient beds.
+  The human-oracle seam for audio (an agent can't self-judge a sound). NOTE the key is `sounds` (plural) —
+  distinct from the `sound` (singular) MUTE modifier above, so `?live&sound=off` and `?sounds` don't collide.
 - `?map=<id>` · `?atlas` · `?terrain=off` · `?objects=off` · `?zoom=N` · `?speed=N` — real decoded map /
   sprite atlas / ground-texture + map-object opt-outs / camera magnify / playback rate. These compose with
   `?scene=`. Real graphics are the **default** for live + scene (`resolveSpriteSheet` degrades to synthetic
