@@ -186,6 +186,32 @@ describe('buildScene', () => {
     expect(byRef(3)?.elapsed).toBe(6); // the atomic's tick clock rides along (the animation cadence)
   });
 
+  it('reads a between-paths settler (MoveGoal / pending PathRequest) as moving, not a stutter', () => {
+    // A chaser re-issuing its route drops PathFollow for a tick while it still holds a MoveGoal or a fresh
+    // PathRequest — it is walking, not standing. Reading that gap as `idle` was the visible march stutter
+    // (the walk animation snapping to the standing pose each tile). A FAILED PathRequest is the genuinely
+    // stuck case and stays `idle` so the unit doesn't moonwalk against an unreachable goal.
+    const scene = buildScene(
+      snapshotOf([
+        entity(1, 0, 0, { Settler: { tribe: 0 }, MoveGoal: { cell: 5 } }),
+        entity(2, 1, 0, { Settler: { tribe: 0 }, PathRequest: { start: 0, goal: 5, failed: false } }),
+        entity(3, 2, 0, { Settler: { tribe: 0 }, PathRequest: { start: 0, goal: 5, failed: true } }),
+        // MoveGoal present but its path already failed → still stuck, still idle (failure wins).
+        entity(4, 2, 1, {
+          Settler: { tribe: 0 },
+          MoveGoal: { cell: 5 },
+          PathRequest: { start: 0, goal: 5, failed: true },
+        }),
+      ]),
+      FLAT_3x2,
+    );
+    const byRef = (r: number) => scene.find((d) => d.kind === 'settler' && d.ref === r);
+    expect(byRef(1)?.state).toBe('moving'); // holding a goal, path not yet issued
+    expect(byRef(2)?.state).toBe('moving'); // route queued, not yet a PathFollow
+    expect(byRef(3)?.state).toBe('idle'); // unreachable goal — stuck, not moving
+    expect(byRef(4)?.state).toBe('idle'); // failed route wins over the lingering goal
+  });
+
   it('flags a settler hauling a good with carrying:true (the loaded-gait join key)', () => {
     const scene = buildScene(
       snapshotOf([

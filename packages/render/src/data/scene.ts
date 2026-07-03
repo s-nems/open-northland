@@ -333,13 +333,23 @@ function readFacing(components: Readonly<Record<string, unknown>>): number | und
 
 /**
  * Derive a sprite's coarse {@link SpriteState} from its snapshot components, in priority order:
- * mid-atomic (`CurrentAtomic`) ⇒ `acting`, else following a path (`PathFollow`) ⇒ `moving`, else
- * `idle`. Acting wins over moving because a settler that started an atomic has stopped to act even if
- * a stale path lingers. Pure read of plain snapshot data — never re-enters the sim.
+ * mid-atomic (`CurrentAtomic`) ⇒ `acting`, else IN TRANSIT (a live path OR a pending goal) ⇒ `moving`,
+ * else `idle`. Acting wins over moving because a settler that started an atomic has stopped to act even
+ * if a stale path lingers. Pure read of plain snapshot data — never re-enters the sim.
+ *
+ * "In transit" is more than a live {@link PathFollow}: a unit re-issuing its route drops the PathFollow
+ * for a tick while it still holds a {@link MoveGoal} / a freshly-queued {@link PathRequest} — most
+ * visibly a combat chaser, which re-paths toward a MOVING enemy every few ticks (systems/conflict
+ * `REPATH_CADENCE`). Treating that gap as `idle` made the walk animation drop to the standing pose for a
+ * frame each tile — the reported march "stutter". A **failed** PathRequest is the opposite case: the goal
+ * is unreachable and the unit is genuinely stuck, so it stays `idle` rather than moonwalk in place.
  */
 function readSpriteState(components: Readonly<Record<string, unknown>>): SpriteState {
   if (readActingAtomic(components) !== null) return 'acting';
   if ('PathFollow' in components) return 'moving';
+  const req = components.PathRequest as { failed?: unknown } | undefined;
+  if (req !== undefined) return req.failed === true ? 'idle' : 'moving';
+  if ('MoveGoal' in components) return 'moving';
   return 'idle';
 }
 

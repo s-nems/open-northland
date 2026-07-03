@@ -83,6 +83,9 @@ interface PooledEntity {
   readonly bounds: MutableBounds;
   /** The `frameId` the bounds were last stamped on; `boundsOf` only returns them when it's the current one. */
   boundsFrame: number;
+  /** Last real facing (0..7) this settler drew with — reused across the 1-tick heading gap a re-pathing
+   *  unit shows, so its walk doesn't flip to the default facing for a frame each tile (see updatePooled). */
+  lastFacing?: number;
 }
 
 /**
@@ -203,7 +206,16 @@ export class SpritePool {
    */
   private updatePooled(pe: PooledEntity, item: DrawItem, tick: number): void {
     pe.container.position.set(item.x, item.y);
-    const layers = this.resolveLayers(item, tick);
+    // Sticky facing: a re-pathing settler drops its PathFollow for a tick (no heading to read), so `facing`
+    // is momentarily absent — reuse its last real heading so the walk doesn't flip to DEFAULT_FACING for a
+    // frame each tile (the pool half of the repath gap `readSpriteState` smooths). The spread only allocates
+    // on the rare gap frame; the steady following state has a facing and passes `item` through untouched.
+    if (item.facing !== undefined) pe.lastFacing = item.facing;
+    const drawItem =
+      pe.kind === 'settler' && item.facing === undefined && pe.lastFacing !== undefined
+        ? { ...item, facing: pe.lastFacing }
+        : item;
+    const layers = this.resolveLayers(drawItem, tick);
     if (layers === null) {
       // Unbound / no sheet → placeholder marker (footprint diamond + body box), hide any atlas sprites.
       for (const s of pe.sprites) s.visible = false;
