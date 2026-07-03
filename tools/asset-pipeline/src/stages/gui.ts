@@ -1,5 +1,5 @@
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
-import { basename, dirname, join } from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { type BobAtlas, packBobAtlas, packIndexedBobAtlas } from '../decoders/atlas.js';
 import { decodeBmd } from '../decoders/bmd.js';
 import { decodeCifStringArray } from '../decoders/cif.js';
@@ -8,6 +8,7 @@ import { cifLinesToSections } from '../decoders/ini.js';
 import { decodePcx } from '../decoders/pcx.js';
 import { buildPlayerLutImage } from '../decoders/player-palette.js';
 import { encodePng } from '../decoders/png.js';
+import { identityPalette, readGameFile } from './game-file.js';
 
 /**
  * GUI extraction stage — the original in-game HUD art, colorization palettes, UI strings, and mouse
@@ -123,39 +124,6 @@ const STRING_LANGS = ['eng', 'pol'] as const;
 
 /** CP1250 (Windows-1250) decoder — the display strings' real codepage (see `decoders/ini.ts`). */
 const CP1250 = new TextDecoder('windows-1250');
-
-/**
- * Reads a loose game file, tolerating a differently-cased leaf FILENAME (the shipped names are lower-case,
- * but a user's install could differ). Tries the exact path first, then a case-insensitive scan of the
- * parent directory for the basename — the directory components themselves must match case (they are
- * fixed-case in the shipped tree, so folding them too would be unused complexity). Throws a
- * `gui:`-prefixed error if absent.
- */
-async function readGameFile(gameDir: string, relPath: string): Promise<Uint8Array> {
-  try {
-    return await readFile(join(gameDir, relPath));
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
-  }
-  const dir = join(gameDir, dirname(relPath));
-  const want = basename(relPath).toLowerCase();
-  let names: string[];
-  try {
-    names = await readdir(dir);
-  } catch {
-    throw new Error(`gui: ${relPath} not found under ${gameDir}`);
-  }
-  const match = names.find((n) => n.toLowerCase() === want);
-  if (match === undefined) throw new Error(`gui: ${relPath} not found under ${gameDir}`);
-  return readFile(join(dir, match));
-}
-
-/** A neutral 256-colour grayscale palette (index i → (i,i,i)), used to keep a LUT row stable if a palette is absent. */
-function identityPalette(): Uint8Array {
-  const p = new Uint8Array(768);
-  for (let i = 0; i < 256; i++) p.fill(i, i * 3, i * 3 + 3);
-  return p;
-}
 
 /** One emitted GUI bob atlas: the app-side `loadLayer` stems for its indexed + preview forms, plus frame count. */
 export interface GuiAtlasResult {
