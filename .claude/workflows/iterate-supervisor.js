@@ -93,7 +93,7 @@ const CLOSEOUT = {
     lesson: {
       type: 'string',
       description:
-        'a non-obvious, generalizable lesson appended to docs/LESSONS.md this iteration (one grounded line, `[<sha>] <lesson>`), or "" if none.',
+        'a non-obvious, generalizable lesson appended to docs/lessons/<area>.md this iteration (one grounded line, `[<sha>] <lesson>`), or "" if none.',
     },
     kind: {
       type: 'string',
@@ -133,7 +133,7 @@ Live report — do this as your LAST action before returning, whether the iterat
     - visual: <if render/visual: "PENDING YOUR CONFIRMATION — <command> -> open <scene> -> check <what to look at>"; else "n/a">
     - review: <findings> -> <how addressed / what was skipped and why>
     - next: <next-smallest step>
-    - lesson: <one grounded line appended to docs/LESSONS.md, or "none">
+    - lesson: <one grounded line appended to docs/lessons/<area>.md, or "none">
     - notes: <blockers / anything a human must know>
 This append is what builds the report incrementally and keeps it durable even if the loop is interrupted before the orchestrator writes its final summary.
 

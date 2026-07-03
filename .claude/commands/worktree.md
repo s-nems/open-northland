@@ -38,7 +38,7 @@ Two hard gates in this flow:
 
 ## 2. Do the work
 
-- Same discipline as `/iterate` step 2: skim `docs/LESSONS.md` for gotchas in the area, implement
+- Same discipline as `/iterate` step 2: read the matching `docs/lessons/<area>.md` for gotchas, implement
   only the requested task, match surrounding style, no scope creep. Sim work follows the
   determinism contract in `packages/sim/CLAUDE.md`; mechanics change → a test at the lowest level
   that proves it.

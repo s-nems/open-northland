@@ -108,10 +108,12 @@ genuinely-independent batch appears). Each entry carries: **problem**, **change*
 **trigger/why-deferred**. Advance or prune any prior entry whose trigger has fired or that has gone
 stale — a *completed* entry is clutter, delete it (git history keeps the record).
 
-Also **tend `docs/LESSONS.md`** (the loop's hard-won gotchas, grounded in commit SHAs): promote any
-recurring / rule-worthy lesson into `CLAUDE.md` (or `packages/sim/CLAUDE.md`) and prune it from
-LESSONS, and drop entries the code has made obsolete. This curation is the anti-bloat valve that
-keeps the compounding memory honest — without it, lessons accumulate and poison context.
+Also **tend the lessons files** (`docs/lessons/*.md` — the loop's hard-won gotchas, grounded in
+commit SHAs; contract in `docs/LESSONS.md`): promote any recurring / rule-worthy lesson into
+`CLAUDE.md` (or the package `CLAUDE.md`) and prune it from the area file, drop entries the code has
+made obsolete, and keep each area file under the ~300-line budget (`sim.md` is the standing
+hotspot). This curation is the anti-bloat valve that keeps the compounding memory honest — without
+it, lessons accumulate and poison context.
 
 Likewise tend **`docs/FIDELITY.md`** when the pass touches mechanics: keep the conformance ledger
 honest as mechanics land or get calibrated, and surface any mechanic running on an unrecorded
