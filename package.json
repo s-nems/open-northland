@@ -17,6 +17,7 @@
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "dev": "npm run dev --workspace @vinland/app",
+    "scan:structure": "node scripts/structure-scan.mjs",
     "shot": "npm run shot --workspace @vinland/app --",
     "pipeline": "npm run start --workspace @vinland/asset-pipeline --"
   },
