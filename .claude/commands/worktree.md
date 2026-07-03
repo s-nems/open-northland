@@ -37,10 +37,14 @@ Two hard gates in this flow:
   commands run there without permission friction.
 - Provision what a fresh checkout lacks (all gitignored, so none of this can leak into the branch):
   - `npm install` (workspaces; node_modules is per-worktree).
-  - `content/` — real graphics are the default and content is gitignored. Symlink the primary's:
-    `ln -s ../vinland/content content` (run from the worktree root). **Exception:** if the task
-    changes the asset pipeline's *output*, do not symlink — run `npm run pipeline` into the
-    worktree's own `content/` instead, so the primary checkout's content is never clobbered.
+  - `content/` — real graphics are the default and content is gitignored. Give the worktree its
+    **own APFS clone** of the primary's content (run from the worktree root):
+    `cp -Rc ../vinland/content content` — `-c` is clonefile: ~5 s for the full 1 GB, near-zero disk
+    (blocks are shared copy-on-write until a file is rewritten). **Never symlink it**: the pipeline
+    writes through the path without clearing it, so a symlinked content would silently clobber the
+    primary checkout's copy in place (the pipeline CLI now refuses a symlinked `--out` for exactly
+    this reason). With a clone, re-running `npm run pipeline` in the worktree is always safe — no
+    "does this task change pipeline output?" judgment call needed.
   - `.claude/settings.local.json` — copy it from the primary checkout
     (`~/Projects/vikings/vinland/.claude/`) so local permissions apply here. The shared tooling
     (`commands/`, `agents/`, `workflows/`, `settings.json`) is tracked and arrives with the checkout.
@@ -115,6 +119,10 @@ back to step 2 (the worktree stays up).
     safety checks working for you).
   - If the primary checkout is **on `main` but dirty** → **stop and report**; a parallel session is
     likely mid-task there. Do not stash, reset, or otherwise touch its state.
+- If the branch changed the asset pipeline's *output* (an extractor, stage, or the IR schema), the
+  primary's `content/` is now stale — worktree content is an isolated clone, so nothing updated it as
+  a side effect. Regenerate it once, from the **primary** checkout:
+  `npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content`.
 
 ## 8. Cleanup
 
@@ -123,8 +131,8 @@ back to step 2 (the worktree stays up).
 - `ExitWorktree` with `action: "keep"` (it returns the session to the primary checkout; it cannot
   delete a worktree entered via `path` — that's the next line).
 - `git worktree remove --force ~/Projects/vikings/vinland-<slug>` — `--force` is only for the
-  untracked node_modules and the content symlink (the symlink is removed, its target untouched);
-  it is safe *because* the ancestor check above passed.
+  untracked node_modules and the content clone (the worktree's own copy; the primary's content is
+  untouched); it is safe *because* the ancestor check above passed.
 - `git branch -d <branch>` (lower-case `-d`: refuses if somehow unmerged — that refusal is signal,
   not an obstacle to `-D` past).
 - Confirm `git worktree list` shows only the primary checkout, then report the closeout: the merged

@@ -1,8 +1,8 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { parseArgs, resolveArgs } from '../src/args.js';
+import { assertOutStaysInCheckout, parseArgs, resolveArgs } from '../src/args.js';
 import { BOB_TYPE_8BIT, type Bmd, PACKED_X_SHIFT, encodeBmd } from '../src/decoders/bmd.js';
 import { StorableId, encryptMode1 } from '../src/decoders/cif.js';
 import type { BmdPaletteBinding, PaletteAlias } from '../src/decoders/ini.js';
@@ -159,6 +159,36 @@ describe('resolveArgs', () => {
       mod: undefined,
       out: '/abs/out',
     });
+  });
+});
+
+describe('assertOutStaysInCheckout', () => {
+  // The bug this guards: a parallel worktree used to symlink its gitignored content/ at the primary
+  // checkout's; a pipeline run there wrote through the symlink and clobbered the primary's content.
+  let base: string;
+  beforeEach(async () => {
+    base = await mkdtemp(join(tmpdir(), 'vinland-out-guard-'));
+  });
+  afterEach(async () => {
+    await rm(base, { recursive: true, force: true });
+  });
+
+  it('allows a real out dir inside the checkout, and a not-yet-existing one', async () => {
+    const checkout = join(base, 'worktree');
+    await mkdir(join(checkout, 'content'), { recursive: true });
+    expect(() => assertOutStaysInCheckout(join(checkout, 'content'), checkout)).not.toThrow();
+    expect(() => assertOutStaysInCheckout(join(checkout, 'not-yet-created'), checkout)).not.toThrow();
+  });
+
+  it('refuses an out symlinked to another checkout, but allows an explicit real path elsewhere', async () => {
+    const primary = join(base, 'primary', 'content');
+    const worktree = join(base, 'worktree');
+    await mkdir(primary, { recursive: true });
+    await mkdir(worktree, { recursive: true });
+    await symlink(primary, join(worktree, 'content'));
+    expect(() => assertOutStaysInCheckout(join(worktree, 'content'), worktree)).toThrow(/symlink/);
+    // Naming the foreign directory directly (no indirection) stays a supported invocation.
+    expect(() => assertOutStaysInCheckout(primary, worktree)).not.toThrow();
   });
 });
 
