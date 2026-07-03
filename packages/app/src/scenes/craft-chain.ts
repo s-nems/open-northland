@@ -7,6 +7,7 @@ import {
 } from '@vinland/data';
 import { type Simulation, components, fx } from '@vinland/sim';
 import { GRASS, VIKING, grassTerrain } from '../catalog/buildings.js';
+import { HARVEST_SWING_LENGTH } from '../content/settler-gfx.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -164,7 +165,7 @@ function content(): ContentSet {
         ],
       },
     ],
-    atomicAnimations: [{ id: 'viking_harvest', name: 'viking_harvest', length: 16 }],
+    atomicAnimations: [{ id: 'viking_harvest', name: 'viking_harvest', length: HARVEST_SWING_LENGTH }],
   });
 }
 

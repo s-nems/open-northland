@@ -52,7 +52,16 @@ const FALLBACK_WALK: DirectionalAnim = { start: 1988, dirs: DIRS, stride: 12 };
 // and *ends* on the strike landing in the tree. Tick-locked cadence (one frame/tick) on the atomic's
 // `elapsed`, same speed as every other animation.
 const CHOP_PHASE_START = 9;
-const FALLBACK_CHOP: DirectionalAnim = { start: 5106, dirs: DIRS, stride: 15, phaseStart: CHOP_PHASE_START };
+/** Frames per facing in the woodcut swing (verified 5106/120 = 15 across the 8 dirs). The ONE source of
+ *  truth for the swing length — both the render cycle below and the sim-side {@link HARVEST_SWING_LENGTH}
+ *  derive from it, so a scene can't pick a chop duration that mismatches the animation the render plays. */
+const CHOP_STRIDE = 15;
+const FALLBACK_CHOP: DirectionalAnim = {
+  start: 5106,
+  dirs: DIRS,
+  stride: CHOP_STRIDE,
+  phaseStart: CHOP_PHASE_START,
+};
 const FALLBACK_WALK_WOOD: DirectionalAnim = { start: 4580, dirs: DIRS, stride: 12 };
 // The idle/wait loop (verified against an owned copy: 1931/57). 57 isn't a clean ×8, so wait is NOT a
 // directional cycle — it's a SINGLE-direction animation (`dirs: 1`, the whole 57-frame strip), the same
@@ -63,6 +72,19 @@ const FALLBACK_WAIT: DirectionalAnim = { start: 1931, dirs: 1, stride: 57 };
 /** The chop atomic id (the original's `harvest`), mapped to the woodcutting swing. Exported as the
  *  ONE app-side declaration of this semantic id (the slice + scenes reuse it). */
 export const HARVEST_ATOMIC = 24;
+
+/**
+ * The sim-side DURATION (in ticks) a harvest/chop atomic must run so the render plays exactly ONE full
+ * woodcut swing — windup→impact — without cutting off and restarting. Every scene/slice that binds a
+ * harvest swing (all of them replay the one {@link CHOP_SEQ} motion) MUST use this as its
+ * `atomicAnimations` length; the ONE source of truth so a chop can't be mistuned per scene.
+ *
+ * It is {@link CHOP_STRIDE} + 1: the swing is `CHOP_STRIDE` frames at one frame/tick, but the render
+ * clock is `elapsed - 1` and the *completion* tick removes the atomic before that frame is drawn — so a
+ * full swing (last drawn frame = the impact at tick `CHOP_STRIDE`) needs `CHOP_STRIDE + 1` sim ticks.
+ * A shorter value (e.g. 6) replays only the windup frames and restarts every atomic — the visible glitch.
+ */
+export const HARVEST_SWING_LENGTH = CHOP_STRIDE + 1;
 /**
  * The harvest atomics for the OTHER raw goods (stone 25, clay 26, iron 27 — the original's per-good
  * `atomicForHarvesting` ids for ore/rock/mud). They all replay the one authored harvest swing on the
