@@ -119,10 +119,15 @@ back to step 2 (the worktree stays up).
     safety checks working for you).
   - If the primary checkout is **on `main` but dirty** → **stop and report**; a parallel session is
     likely mid-task there. Do not stash, reset, or otherwise touch its state.
-- If the branch changed the asset pipeline's *output* (an extractor, stage, or the IR schema), the
-  primary's `content/` is now stale — worktree content is an isolated clone, so nothing updated it as
-  a side effect. Regenerate it once, from the **primary** checkout:
-  `npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content`.
+- **Regenerate the primary's assets** if any merged commit touches the pipeline's *output* — an
+  extractor/stage/decoder under `tools/asset-pipeline/` or a content schema in `packages/data/`
+  (test-only changes don't count; when unsure, regenerate — it is idempotent). Worktree content is
+  an isolated clone, so the merge did **not** update the primary's `content/` as a side effect, and
+  main's content must always match main's pipeline. Run it now, from the **primary** checkout:
+  `npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content`
+  (the script rebuilds first). Read the per-stage summary lines and confirm none failed. Only if a
+  parallel session owns the primary (the dirty case above) leave it — and flag the stale content
+  loudly in the closeout report instead.
 
 ## 8. Cleanup
 
@@ -136,7 +141,9 @@ back to step 2 (the worktree stays up).
 - `git branch -d <branch>` (lower-case `-d`: refuses if somehow unmerged — that refusal is signal,
   not an obstacle to `-D` past).
 - Confirm `git worktree list` shows only the primary checkout, then report the closeout: the merged
-  commits (`git log --oneline` of what landed on main) and that the worktree/branch/processes are gone.
+  commits (`git log --oneline` of what landed on main), that the worktree/branch/processes are gone,
+  and — when the pipeline's output changed — that the primary's `content/` was regenerated (quote a
+  pipeline summary line, or the loud stale-content flag if regeneration had to be skipped).
 
 **Abandoning instead of merging:** if the user says to drop the work, skip step 7; confirm once
 that the branch's commits will be destroyed, then do step 8 with `git branch -D` and without the
