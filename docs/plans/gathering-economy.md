@@ -56,7 +56,10 @@ starting the next — later prompts consume earlier outputs. Prompts are self-co
 tell the agent to re-verify facts against the sources. Check a box when the step is merged;
 delete this file when all steps land.
 
-- [ ] 1. Pipeline: resource-lifecycle logic tables → IR/content
+- [x] 1. Pipeline: resource-lifecycle logic tables → IR/content — **landed:** `GoodType.gathering`/
+      `.landscapeType`, `LandscapeType.name`/raw `.transitions`, and the resolved `gatheringPipeline`
+      join (11 goods, all stages resolve to real `[GfxLandscape]` records). See docs/SOURCES.md
+      "Gathering pipeline" + docs/FIDELITY.md.
 - [ ] 2. Render: per-good resource nodes + ground piles + flags visible
 - [ ] 3. Sim: wood cycle — multi-chop fell → trunk on ground → pickup → deliver
 - [ ] 4. Sim: mineral deposits shrink by level; mushrooms

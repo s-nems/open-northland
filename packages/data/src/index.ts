@@ -141,6 +141,52 @@ export function validateCrossReferences(set: ContentSet): void {
       );
   }
 
+  // A good's landscape references — its `landscapetype` on-the-ground lane and the three
+  // gathering-stage ids — must resolve into the landscape type table (the same dangling-reference
+  // class as landscapeGfx). Every real good carries a defined `landscapetype`; only the ~11
+  // map-gathered goods carry a `gathering` chain.
+  for (const g of set.goods) {
+    if (g.landscapeType !== undefined && !landscapeIds.has(g.landscapeType))
+      errors.push(`good "${g.id}" references unknown landscape typeId ${g.landscapeType}`);
+    if (g.gathering) {
+      for (const [stage, id] of [
+        ['harvest', g.gathering.harvest],
+        ['pickup', g.gathering.pickup],
+        ['store', g.gathering.store],
+      ] as const) {
+        if (id !== undefined && !landscapeIds.has(id))
+          errors.push(`good "${g.id}" gathering ${stage} references unknown landscape typeId ${id}`);
+      }
+    }
+  }
+
+  // Each resolved gathering-pipeline record: its good resolves, every stage's landscape id resolves,
+  // and every gfx index names a real landscapeGfx record. Checked against the SET of actual `.index`
+  // values (not the array length) so the backstop holds even if the gfx table is ever filtered/reordered
+  // while keeping original indices — a cheap integrity guard against a malformed hand-authored set.
+  const landscapeGfxIndices = new Set(set.landscapeGfx.map((g) => g.index));
+  for (const p of set.gatheringPipeline) {
+    if (!goodIds.has(p.goodType))
+      errors.push(`gatheringPipeline good "${p.goodId}" references unknown goodType ${p.goodType}`);
+    for (const [stage, s] of [
+      ['harvest', p.harvest],
+      ['pickup', p.pickup],
+      ['store', p.store],
+    ] as const) {
+      if (s === undefined) continue;
+      if (!landscapeIds.has(s.landscapeType))
+        errors.push(
+          `gatheringPipeline good "${p.goodId}" ${stage} references unknown landscape typeId ${s.landscapeType}`,
+        );
+      for (const idx of s.gfxIndices) {
+        if (!landscapeGfxIndices.has(idx))
+          errors.push(
+            `gatheringPipeline good "${p.goodId}" ${stage} references unknown landscapeGfx index ${idx}`,
+          );
+      }
+    }
+  }
+
   // A terrainPatterns row's representative pick must exist in the full pattern table when that
   // table is carried (it became in-set checkable once `gfxPatterns` joined the ContentSet).
   if (set.gfxPatterns.length > 0) {

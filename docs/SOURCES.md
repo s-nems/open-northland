@@ -225,6 +225,57 @@ Two graphics families sit beside the map grid; **both decode with existing decod
   representative ground (`buildTerrainPatterns`). Reversing the *generator* would only matter for a future
   in-app map editor.
 
+### Gathering pipeline (per-good landscape lifecycle)
+
+How a raw good is gathered off the map is a **data table**, not code: the original models each raw
+good as a chain of `[landscapetype]` states a cell passes through as a settler works it. Two base
+files (both plaintext `Data/logic/*.ini`; the `culturesnation` mod ships **no** overriding logic
+twin, so these ARE the source):
+
+- **`Data/logic/goodtypes.ini`** `[goodtype]` — the gathering fields (extended `extractGoods`):
+  - `landscapeToHarvest` / `landscapeToPickup` / `landscapeToStore` — the three stage `[landscapetype]`
+    ids: the settler HARVESTS the source object, it becomes a PICKUP-able intermediate, and the finished
+    good rests on the ground as a STORE landscape until a carrier stocks it. → `GoodType.gathering`.
+  - `isBioLandscapeFlag` — the pipeline is living/growing vs mined. Set on exactly **3** goods
+    (wood, herb, mushroom); clear on the rest incl. wheat (`isBioLandscapeFlag 0`). →
+    `GoodType.gathering.bioLandscape`.
+  - `landscapetype` — present on **every** good (65/65): the landscape type that represents the good
+    as a placed object (its on-the-ground lane). For a gathered good it equals `landscapeToStore`; for
+    a produced good a distinct dropped-good type; for a vehicle/animal token the `void` type (1). →
+    `GoodType.landscapeType`.
+  - `atomicForHarvesting` (+ `atomicForCultivating`/`atomicForPlanting`) — already extracted onto
+    `GoodType.atomics` (the action a settler runs); surfaced on the pipeline as `harvestAtomic`.
+
+  The 11 goods carrying a `landscapeTo*` chain and their stages (harvest → pickup → store, atomic):
+  **wood** `tree(4) → trunk(6) → wood(7)` a24 · **stone** `rock(15) → stone_ore(16) → stone(17)` a25 ·
+  **mud** `mud_mine(12) → mud_ore(13) → mud(14)` a26 · **iron** `iron_mine(18) → iron_ore(19) →
+  iron(20)` a27 · **gold** `gold_mine(21) → gold_ore(22) → gold(23)` a28 · **wheat** `27 → 28 → 29`
+  a29 · **herb** `herbmine(33) → herbore(34) → herb(35)` a31 · **mushroom** `36 → 36 → 37` a32 ·
+  **leather** `cadaver_leather(79) → 79 → leather(25)` a33 · **meat** `cadaver_meat(80) → 80 →
+  meat(44)` a33 · **honey** `(no harvest) → honey(32) → 32` (picked up, not cut). Every stage id
+  resolves to a defined `[landscapetype]`.
+
+- **`Data/logic/landscapetypes.ini`** `[landscapetype]` (87 records; extended `extractLandscape`) —
+  `type`, `name` (`"tree"`, `"stone_ore"`, `"cadaver_leather"`), `maximumValency`, `allowedonland`/
+  `allowedonwater`/`allowedoneverything`, and repeated `transition` tuples. `debugcolor`/
+  `playeridallowed` (editor/map-gen concerns) are skipped.
+  - **`transition` caveat — semantics NOT decoded.** The tuples drive the lifecycle (how a `tree`
+    becomes a `trunk`, how a mine depletes) but the field meanings are unknown, so they are captured
+    **verbatim** as raw int lists (`LandscapeType.transitions`) — *do not read meaning into the
+    positions*. Arity is variable: most are 5 ints (`transition <a> <b> <c> <d> <e>`), the four `mine`
+    source types carry a 2-int form (`transition 12 13`). (The two `cadaver_*` records write the
+    5-tuple twice on one line separated by `//`; the parser's inline-comment strip keeps the first.)
+
+- **The gfx ↔ logic join** is `[GfxLandscape].LogicType == [landscapetype].type` (the exact analog of
+  the buildings' `[GfxHouse].LogicType`). It already flows into IR as `LandscapeGfx.logicType` (many
+  gfx records share a logic type — e.g. every tree species has `LogicType 4`), so a stage id resolves
+  to a *list* of placeable gfx records. `buildGatheringPipeline` materializes the full join once as the
+  **`gatheringPipeline`** artifact: per gathered good, each stage's landscape id + the `LandscapeGfx.index`
+  values whose `logicType` matches (empty when a stage is a pure-logic lane no gfx places). Later
+  gathering slices consume that instead of re-deriving the good→landscape→gfx chain. (The `[GfxLandscape]`
+  block-area footprints — `walkBlockAreas`/`buildBlockAreas`/`workAreas` — already survive into
+  `LandscapeGfx` and the emitted content, so a stage's gfx record carries its collision/work footprint.)
+
 ### Building graphics families (render multi-`.bmd` scope)
 
 Scoped from the emitted `buildingBobs` IR (336 rows) for the render's multi-`.bmd` rung (ROADMAP Phase 2,

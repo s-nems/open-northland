@@ -24,9 +24,11 @@ import {
   type BuildingFootprint,
   BuildingType,
   type FootprintCell,
+  GatheringPipeline,
   GfxPattern,
   type GoodAtomics,
   type GoodClassification,
+  type GoodGathering,
   GoodType,
   HumanJobExperienceType,
   type JobEnables,
@@ -258,6 +260,7 @@ export function extractGoods(sections: readonly RuleSection[], src: SourceRef): 
     if (sec.name !== 'goodtype') continue;
     const typeId = requireTypeId(sec, 'goodtype', src);
     const name = getStr(sec, 'name');
+    const gathering = extractGoodGathering(sec);
     goods.push(
       GoodType.parse({
         typeId,
@@ -266,6 +269,8 @@ export function extractGoods(sections: readonly RuleSection[], src: SourceRef): 
         atomics: extractGoodAtomics(sec),
         productionInputs: extractProductionInputs(sec),
         classification: extractGoodClassification(sec),
+        landscapeType: getInt(sec, 'landscapetype'),
+        ...(gathering ? { gathering } : {}),
         source: { file: src.file, block: 'goodtype', layer: src.layer ?? 'base' },
       }),
     );
@@ -322,6 +327,27 @@ function extractGoodAtomics(sec: RuleSection): GoodAtomics {
 }
 
 /**
+ * Reads a `[goodtype]`'s three-stage gathering pipeline (`landscapeToHarvest`/`landscapeToPickup`/
+ * `landscapeToStore` → {@link LandscapeType} ids) + the `isBioLandscapeFlag` classification. Returns
+ * `undefined` for a good with NO gathering lane (a produced/in-house good like flour or bread) so the
+ * caller omits the field. A partial chain is kept as-is (honey ships only pickup/store, no harvest) —
+ * an absent lane is a faithful `undefined`, not a guessed default.
+ */
+function extractGoodGathering(sec: RuleSection): GoodGathering | undefined {
+  const harvest = getInt(sec, 'landscapeToHarvest');
+  const pickup = getInt(sec, 'landscapeToPickup');
+  const store = getInt(sec, 'landscapeToStore');
+  if (harvest === undefined && pickup === undefined && store === undefined) return undefined;
+  const gathering: { harvest?: number; pickup?: number; store?: number; bioLandscape: boolean } = {
+    bioLandscape: getInt(sec, 'isBioLandscapeFlag') === 1,
+  };
+  if (harvest !== undefined) gathering.harvest = harvest;
+  if (pickup !== undefined) gathering.pickup = pickup;
+  if (store !== undefined) gathering.store = store;
+  return gathering;
+}
+
+/**
  * Extracts `[landscapetype]` sections into validated {@link LandscapeType} IR. Captures the inputs the
  * Phase-2 cell-adjacency graph needs: `maximumValency` (per-cell capacity → `maxValency`) and the
  * `allowedonland`/`allowedonwater`/`allowedoneverything` placement-layer flags (`1`/`0` ints). These
@@ -329,8 +355,9 @@ function extractGoodAtomics(sec: RuleSection): GoodAtomics {
  * NO per-type movement-cost/weight field in this table — the engine gates movement by walkability +
  * valency, so the graph uses a uniform unit walk cost (see packages/sim/src/terrain.ts). `walkable`/
  * `buildable` keep their schema defaults — they're a later derivation (not cleanly from these flags,
- * which mark placement layer, not traversal). The `transition`/`debugcolor` lines (map-generation +
- * editor concerns) are skipped. See docs/ROADMAP.md Phase 2.
+ * which mark placement layer, not traversal). The raw `name` + the `transition` tuples are captured
+ * verbatim (the tuple field-semantics are NOT decoded — see docs/SOURCES.md); `debugcolor`/
+ * `playeridallowed` (editor concerns) are still skipped. See docs/ROADMAP.md Phase 2.
  */
 export function extractLandscape(sections: readonly RuleSection[], src: SourceRef): LandscapeType[] {
   const landscape: LandscapeType[] = [];
@@ -338,14 +365,21 @@ export function extractLandscape(sections: readonly RuleSection[], src: SourceRe
     if (sec.name !== 'landscapetype') continue;
     const typeId = requireTypeId(sec, 'landscapetype', src);
     const name = getStr(sec, 'name');
+    // Raw `transition` tuples in file order, variable arity (mostly 5 ints, a few `mine` types 2),
+    // captured VERBATIM — the encoding is not reversed, so no semantics are read into the positions.
+    const transitions = findProps(sec, 'transition')
+      .map((p) => p.values.map((v) => Number.parseInt(v, 10)))
+      .filter((vals) => vals.length > 0 && vals.every((n) => !Number.isNaN(n)));
     landscape.push(
       LandscapeType.parse({
         typeId,
         id: name ? slug(name) : `landscape_${typeId}`,
+        name,
         maxValency: getInt(sec, 'maximumValency') ?? 0,
         allowedOnLand: getInt(sec, 'allowedonland') === 1,
         allowedOnWater: getInt(sec, 'allowedonwater') === 1,
         allowedOnEverything: getInt(sec, 'allowedoneverything') === 1,
+        transitions,
         source: { file: src.file, block: 'landscapetype', layer: src.layer ?? 'base' },
       }),
     );
@@ -1725,6 +1759,57 @@ export function extractLandscapeGfx(sections: readonly RuleSection[], src: Sourc
     );
   }
   return records;
+}
+
+/**
+ * Resolves the {@link GatheringPipeline} join for every map-gathered good: `goodType` → its three
+ * `landscapeTo{Harvest,Pickup,Store}` stage ids → the {@link LandscapeGfx} records that place each
+ * stage. The stage→gfx leg joins by `LandscapeGfx.logicType == the stage's landscape type` (the
+ * `[GfxLandscape]` cross-ref to the `[landscapetype]` table — the houses analog is `[GfxHouse]
+ * LogicType`). Materialized once here so a later gathering system reads the stages + their placeable
+ * gfx directly instead of re-scanning the 866-record gfx table each time.
+ *
+ * One record per good carrying a `gathering` chain (the ~11 raw goods); produced/in-house goods are
+ * skipped. A lane the good omits (honey has no `harvest`) is left absent. A stage whose landscape
+ * type has no placeable gfx record yields an EMPTY `gfxIndices` — faithful data (some store lanes are
+ * pure-logic "dropped good" markers), surfaced at build time rather than silently dropped.
+ */
+export function buildGatheringPipeline(
+  goods: readonly GoodType[],
+  landscapeGfx: readonly LandscapeGfx[],
+): GatheringPipeline[] {
+  // logicType -> the gfx records (by positional index, ascending) that place it, built once.
+  const gfxByLogicType = new Map<number, number[]>();
+  for (const g of landscapeGfx) {
+    const list = gfxByLogicType.get(g.logicType);
+    if (list) list.push(g.index);
+    else gfxByLogicType.set(g.logicType, [g.index]);
+  }
+  const stage = (
+    landscapeType: number | undefined,
+  ): { landscapeType: number; gfxIndices: number[] } | undefined =>
+    landscapeType === undefined
+      ? undefined
+      : { landscapeType, gfxIndices: gfxByLogicType.get(landscapeType) ?? [] };
+  const pipeline: GatheringPipeline[] = [];
+  for (const good of goods) {
+    if (good.gathering === undefined) continue;
+    const harvest = stage(good.gathering.harvest);
+    const pickup = stage(good.gathering.pickup);
+    const store = stage(good.gathering.store);
+    pipeline.push(
+      GatheringPipeline.parse({
+        goodType: good.typeId,
+        goodId: good.id,
+        harvestAtomic: good.atomics.harvest,
+        bioLandscape: good.gathering.bioLandscape,
+        ...(harvest ? { harvest } : {}),
+        ...(pickup ? { pickup } : {}),
+        ...(store ? { store } : {}),
+      }),
+    );
+  }
+  return pipeline;
 }
 
 /**

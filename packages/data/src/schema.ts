@@ -79,12 +79,48 @@ export const GoodClassification = z.strictObject({
 });
 export type GoodClassification = z.infer<typeof GoodClassification>;
 
+/**
+ * A raw good's three-stage gathering pipeline, from the `[goodtype]` `landscapeTo*` fields. The
+ * original models gathering as a chain of {@link LandscapeType} states a cell passes through: a
+ * settler HARVESTS the source object ({@link harvest} — a `tree`/`rock`/`mine`), it becomes a
+ * PICKUP-able intermediate ({@link pickup} — a `trunk`/`ore`), and the finished good rests on the
+ * ground as a STORE landscape ({@link store} — `wood`/`stone`) until a carrier stocks it. Wood is
+ * `tree(4) → trunk(6) → wood(7)`. Present only on the ~11 map-gathered goods; a produced/in-house
+ * good (flour, bread) carries none. The resolved good→landscape→gfx join is emitted once as the
+ * {@link GatheringPipeline} artifact so consumers don't re-derive it. Absent stage = the source
+ * omits that lane (honey has no {@link harvest} — it is picked up, not cut).
+ */
+export const GoodGathering = z.strictObject({
+  /** `landscapeToHarvest` — the source landscape a settler works to start the pipeline (wood: `tree`=4). */
+  harvest: TypeId.optional(),
+  /** `landscapeToPickup` — the intermediate the harvested cell becomes, picked up next (wood: `trunk`=6). */
+  pickup: TypeId.optional(),
+  /** `landscapeToStore` — the finished good resting on the ground before it is stocked (wood: `wood`=7). */
+  store: TypeId.optional(),
+  /** `isBioLandscapeFlag` — the pipeline's landscapes are living/growing (trees, herb, mushroom) vs mined (stone, ore, gold). */
+  bioLandscape: z.boolean().default(false),
+});
+export type GoodGathering = z.infer<typeof GoodGathering>;
+
 export const GoodType = z.strictObject({
   typeId: TypeId,
   id: z.string(), // human-readable slug, e.g. "wood"
   name: z.string().optional(),
   weight: z.number().default(0),
   atomics: GoodAtomics.default({}),
+  /**
+   * `landscapetype` — the {@link LandscapeType} that represents this good as a placed object on the
+   * map (its "on the ground" lane). Present on every good: for a gathered good it equals the
+   * {@link GoodGathering.store} stage (`wood`=7), for a produced good it is a distinct dropped-good
+   * type, and for a non-landscape good (a vehicle/animal token) it is the `void` type (1).
+   */
+  landscapeType: TypeId.optional(),
+  /**
+   * The three-stage map-gathering pipeline, when this is a raw map-gathered good — the
+   * `landscapeTo{Harvest,Pickup,Store}` chain + `isBioLandscapeFlag`. Omitted for a produced/in-house
+   * good. See {@link GoodGathering} and the resolved {@link GatheringPipeline} artifact.
+   */
+  gathering: GoodGathering.optional(),
   /**
    * Input goods (+ per-cycle amounts) consumed to produce THIS good — the input side of the goods
    * graph, from `goodtypes` `productionInputGoods`. Empty for a raw/harvested good (no recipe). This
@@ -439,6 +475,8 @@ export type VehicleType = z.infer<typeof VehicleType>;
 export const LandscapeType = z.strictObject({
   typeId: TypeId,
   id: z.string(),
+  /** `name` — the raw display name (`"tree"`, `"stone_ore"`, `"cadaver_leather"`); {@link id} is its slug. */
+  name: z.string().optional(),
   walkable: z.boolean().default(true),
   buildable: z.boolean().default(true),
   /**
@@ -457,6 +495,14 @@ export const LandscapeType = z.strictObject({
   allowedOnWater: z.boolean().default(false),
   /** `allowedoneverything` — this type sits on any layer (only the "void"/empty type). */
   allowedOnEverything: z.boolean().default(false),
+  /**
+   * Raw `transition` tuples in file order, each a variable-length int list captured VERBATIM. These
+   * drive the landscape lifecycle (how a `tree` becomes a `trunk`, how a mine depletes) but their
+   * field semantics are NOT decoded — do not read meaning into the positions here. Most are 5 ints
+   * (`transition <a> <b> <c> <d> <e>`), a few `mine` types carry a 2-int form. Kept so a future
+   * lifecycle system can consume them once the encoding is reversed. See docs/SOURCES.md.
+   */
+  transitions: z.array(z.array(z.number().int())).default([]),
   source: Provenance.optional(),
 });
 export type LandscapeType = z.infer<typeof LandscapeType>;
@@ -665,6 +711,46 @@ export const LandscapeGfx = z.object({
   source: Provenance.optional(),
 });
 export type LandscapeGfx = z.infer<typeof LandscapeGfx>;
+
+/**
+ * One stage of a resolved {@link GatheringPipeline}: a {@link LandscapeType} id plus the
+ * {@link LandscapeGfx} records that place it. The `gfxIndices` are the {@link LandscapeGfx.index}
+ * values whose `logicType` equals {@link landscapeType} — the join a later gathering system needs to
+ * draw the tree/trunk/wood at a cell without re-scanning the 866-record gfx table. Empty when no gfx
+ * record carries that logic type (a pure-logic landscape stage with no placeable object).
+ */
+export const GatheringStage = z.strictObject({
+  /** The stage's {@link LandscapeType.typeId} (`landscapeToHarvest`/`Pickup`/`Store`). */
+  landscapeType: TypeId,
+  /** {@link LandscapeGfx.index} values whose `logicType` == {@link landscapeType} (the placeable gfx for this stage). */
+  gfxIndices: z.array(z.number().int().nonnegative()).default([]),
+});
+export type GatheringStage = z.infer<typeof GatheringStage>;
+
+/**
+ * The resolved gathering pipeline for one raw good — the good→landscape→gfx join materialized once
+ * at build time from {@link GoodType.gathering} + the {@link LandscapeType} + {@link LandscapeGfx}
+ * tables, so a later gathering system reads the three stages (and their placeable gfx) directly
+ * instead of re-deriving the join. One record per map-gathered good; produced/in-house goods have
+ * none. A stage is absent when the source good omits that lane (honey has no {@link harvest}).
+ */
+export const GatheringPipeline = z.strictObject({
+  /** The good this pipeline yields (`{@link GoodType.typeId}`). */
+  goodType: TypeId,
+  /** The good's slug, for legibility (`"wood"`, `"stone"`). */
+  goodId: z.string(),
+  /** `atomicForHarvesting` — the atomic action a settler runs to work the {@link harvest} stage. */
+  harvestAtomic: AtomicId.optional(),
+  /** `isBioLandscapeFlag` — the pipeline is living/growing (trees, herb) vs mined (stone, ore). */
+  bioLandscape: z.boolean().default(false),
+  /** Stage 1 — the source object a settler harvests (a `tree`/`rock`/`mine`). Absent for honey. */
+  harvest: GatheringStage.optional(),
+  /** Stage 2 — the pick-up intermediate (a `trunk`/`ore`). */
+  pickup: GatheringStage.optional(),
+  /** Stage 3 — the finished good resting on the ground (`wood`/`stone`) until stocked. */
+  store: GatheringStage.optional(),
+});
+export type GatheringPipeline = z.infer<typeof GatheringPipeline>;
 
 /**
  * Per-(job, atomic) animation binding from `tribetypes` `setatomic <jobType> <atomicId> "anim"`.
@@ -1170,6 +1256,8 @@ export const ContentSet = z.strictObject({
   vehicles: z.array(VehicleType).default([]),
   landscape: z.array(LandscapeType).default([]),
   landscapeGfx: z.array(LandscapeGfx).default([]),
+  /** Resolved per-good gathering pipelines (good→landscape→gfx join), one per map-gathered good. */
+  gatheringPipeline: z.array(GatheringPipeline).default([]),
   gfxPatterns: z.array(GfxPattern).default([]),
   terrainPatterns: z.array(TerrainPattern).default([]),
   bobSequences: z.array(BobSequenceSet).default([]),
