@@ -2,7 +2,13 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
 import type { MapInfo } from '@vinland/data';
 import { decodeCifStringArray } from '../decoders/cif.js';
-import { type SourceRef, cifLinesToSections, extractMapInfo } from '../decoders/ini.js';
+import {
+  type MapStaticObjects,
+  type SourceRef,
+  cifLinesToSections,
+  extractMapInfo,
+  extractStaticObjects,
+} from '../decoders/ini.js';
 import {
   type MapDat,
   type MapDatSize,
@@ -43,6 +49,8 @@ export interface MapDatTerrainFile extends MapDatTerrainMap {
     readonly types: string[];
     readonly placements: number[];
   };
+  /** Authored entity placements (the sibling `map.cif`'s `StaticObjects` verbs, names verbatim). */
+  readonly entities?: MapStaticObjects;
 }
 
 /** The `emla` lane's "no object here" sentinel (u16 max). */
@@ -281,6 +289,16 @@ export async function convertMapDatTree(gameDir: string, outDir: string): Promis
     } catch (err) {
       console.warn(`[pipeline] skipped map.dat ${rel}: ${(err as Error).message}`);
       continue;
+    }
+    // The authored entity placements live in the SIBLING map.cif's `StaticObjects` section (the
+    // map.dat carries only terrain + landscape lanes). Absent/undecodable cif → the terrain still
+    // emits, just without the optional layer — the same per-layer degradation `ground`/`objects` get.
+    try {
+      const cifBytes = await readFile(join(gameDir, dirname(rel), 'map.cif'));
+      const entities = extractStaticObjects(cifLinesToSections(decodeCifStringArray(cifBytes).lines));
+      if (entities !== undefined) terrain = { ...terrain, entities };
+    } catch {
+      // no sibling map.cif (or undecodable) — entity layer skipped
     }
     const output = join('maps', `${id}.json`);
     const outPath = join(outDir, output);

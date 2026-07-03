@@ -299,3 +299,185 @@ export function runSlice(seed: number, ticks: number, map?: TerrainMap, owner?: 
   sim.run(ticks);
   return sim;
 }
+
+/**
+ * The narrow `ir.json` row views the authored-entity joins read — structural picks over the raw
+ * fetched IR (the full zod `parseContentSet` over the multi-MB file is a load-time cost the entry
+ * doesn't need; these are the same by-NAME join keys the engine itself uses).
+ */
+export interface AuthoredJoinRows {
+  readonly buildingBobs?: readonly {
+    editName?: string;
+    level?: number;
+    typeId?: number;
+    tribeId?: number;
+  }[];
+  readonly buildings?: readonly { typeId?: number; id?: string; kind?: string }[];
+  readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
+  readonly tribes?: readonly { typeId?: number; id?: string }[];
+}
+
+/** A home's non-deliverable upgrade pin (mirrors the catalog's `HOME_UPGRADE_PIN` — an EMPTY
+ *  construction cost is vacuously "materials present", which would silently level every authored home
+ *  to its top tier; a single undeliverable `none` unit keeps each home at its authored level). */
+const AUTHORED_HOME_PIN: readonly { goodType: number; amount: number }[] = [{ goodType: 0, amount: 1 }];
+
+/** One resolved authored placement, ready to enqueue (the pure middle {@link resolveAuthoredPlacements} returns). */
+export type AuthoredPlacement =
+  | { kind: 'building'; typeId: number; tribe: number; x: number; y: number; owner?: number }
+  | { kind: 'human'; jobType: number; tribe: number; x: number; y: number; owner?: number };
+
+/**
+ * Resolve a map's authored `entities` (names + half-cells, verbatim from `map.cif` `StaticObjects`)
+ * into sim placements — the pure, unit-testable middle of the placement import. Joins are by NAME
+ * against the IR rows (a building's `EditName`+`level` → `buildingBobs` typeId+tribe; a human's
+ * `role` → `jobs` typeId, its `tribe` string → `tribes` typeId), half-cells halve to cells, and the
+ * two player columns land on 0-based sim owners (`sethouse` is 1-based, `sethuman` 0-based — schema
+ * notes). Unresolvable or out-of-bounds records are dropped and counted; `setanimal` records are not
+ * placed yet (herd-vs-individual semantics, docs/FIDELITY.md).
+ */
+export function resolveAuthoredPlacements(
+  entities: NonNullable<TerrainMapFile['entities']>,
+  rows: AuthoredJoinRows,
+  map: TerrainMap,
+): { placements: AuthoredPlacement[]; skipped: number } {
+  const bobByNameLevel = new Map<string, { typeId: number; tribeId: number }>();
+  for (const b of rows.buildingBobs ?? []) {
+    if (b.editName === undefined || b.typeId === undefined) continue;
+    const key = `${b.editName} ${b.level ?? 0}`;
+    if (!bobByNameLevel.has(key)) bobByNameLevel.set(key, { typeId: b.typeId, tribeId: b.tribeId ?? 0 });
+  }
+  const jobByName = new Map<string, number>();
+  for (const j of rows.jobs ?? []) {
+    const name = j.name ?? j.id;
+    if (name !== undefined && j.typeId !== undefined && !jobByName.has(name)) jobByName.set(name, j.typeId);
+  }
+  const tribeByName = new Map<string, number>();
+  for (const t of rows.tribes ?? []) {
+    if (t.id !== undefined && t.typeId !== undefined && !tribeByName.has(t.id))
+      tribeByName.set(t.id, t.typeId);
+  }
+  const half = (h: number): number => Math.floor(h / 2);
+  const inBounds = (hx: number, hy: number): boolean => half(hx) < map.width && half(hy) < map.height;
+
+  const placements: AuthoredPlacement[] = [];
+  let skipped = 0;
+  for (const b of entities.buildings) {
+    const hit = bobByNameLevel.get(`${b.name} ${b.level}`);
+    if (hit === undefined || !inBounds(b.hx, b.hy)) {
+      skipped++;
+      continue;
+    }
+    const own = b.player - 1; // sethouse players are 1-based
+    placements.push({
+      kind: 'building',
+      typeId: hit.typeId,
+      tribe: hit.tribeId,
+      x: half(b.hx),
+      y: half(b.hy),
+      ...(components.isValidPlayer(own) ? { owner: own } : {}),
+    });
+  }
+  for (const h of entities.humans) {
+    const jobType = jobByName.get(h.role);
+    const tribe = tribeByName.get(h.tribe);
+    if (jobType === undefined || tribe === undefined || !inBounds(h.hx, h.hy)) {
+      skipped++;
+      continue;
+    }
+    placements.push({
+      kind: 'human',
+      jobType,
+      tribe,
+      x: half(h.hx),
+      y: half(h.hy),
+      ...(components.isValidPlayer(h.player) ? { owner: h.player } : {}),
+    });
+  }
+  return { placements, skipped };
+}
+
+/**
+ * Build + run the slice sim for a map that carries AUTHORED entity placements (`map.cif`
+ * `StaticObjects` → `maps/<id>.json` `entities`): every resolvable `sethouse` becomes a built
+ * building and every `sethuman` a settler at its authored cell — replacing the synthetic
+ * "first walkable cells" demo placement for such maps (docs/ROADMAP.md placement-import slice).
+ *
+ * The content set stays in the demo-content mold (passive typeId+id rows over the map's landscape
+ * via {@link demoLandscape}) so the sim can host the real typeIds without pulling the full IR
+ * through zod; homes get {@link AUTHORED_HOME_PIN}. Returns `null` when nothing resolves (the
+ * caller falls back to {@link runSlice}) — the same graceful-degradation contract as the loaders
+ * above. Deterministic: placements enqueue in file order, no RNG.
+ */
+export function runAuthoredSlice(
+  seed: number,
+  ticks: number,
+  map: TerrainMap,
+  entities: NonNullable<TerrainMapFile['entities']>,
+  rows: AuthoredJoinRows,
+): Simulation | null {
+  const { placements, skipped } = resolveAuthoredPlacements(entities, rows, map);
+  if (placements.length === 0) return null;
+  if (skipped > 0 || entities.animals.length > 0) {
+    console.warn(
+      `runAuthoredSlice: placed ${placements.length}, skipped ${skipped} unresolvable/out-of-bounds, deferred ${entities.animals.length} animals`,
+    );
+  }
+
+  const buildingDefById = new Map<number, { id: string; kind: string }>();
+  for (const b of rows.buildings ?? []) {
+    if (b.typeId !== undefined && b.id !== undefined)
+      buildingDefById.set(b.typeId, { id: b.id, kind: b.kind ?? 'workplace' });
+  }
+  const usedBuildings = [
+    ...new Set(placements.filter((p) => p.kind === 'building').map((p) => p.typeId)),
+  ].sort((a, b) => a - b);
+  const usedJobs = [...new Set(placements.filter((p) => p.kind === 'human').map((p) => p.jobType))].sort(
+    (a, b) => a - b,
+  );
+  const usedTribes = [...new Set(placements.map((p) => p.tribe))].sort((a, b) => a - b);
+  const content = parseContentSet({
+    manifest: { version: IR_VERSION, generatedFrom: { game: 'vinland-authored-slice' }, locale: 'eng' },
+    goods: [{ typeId: 0, id: 'none' }],
+    jobs: [
+      { typeId: 0, id: 'idle' },
+      ...usedJobs.filter((t) => t !== 0).map((typeId) => ({ typeId, id: `job_${typeId}` })),
+    ],
+    buildings: usedBuildings.map((typeId) => {
+      const def = buildingDefById.get(typeId);
+      return {
+        typeId,
+        id: def?.id ?? `building_${typeId}`,
+        ...(def?.kind !== undefined ? { kind: def.kind } : {}),
+        ...(def?.kind === 'home' ? { construction: AUTHORED_HOME_PIN } : {}),
+      };
+    }),
+    landscape: demoLandscape(map),
+    tribes: usedTribes.map((typeId) => ({ typeId, id: `tribe_${typeId}` })),
+  });
+
+  const sim = new Simulation({ seed, content, map });
+  for (const p of placements) {
+    if (p.kind === 'building') {
+      sim.enqueue({
+        kind: 'placeBuilding',
+        buildingType: p.typeId,
+        x: p.x,
+        y: p.y,
+        tribe: p.tribe,
+        ...(p.owner !== undefined ? { owner: p.owner } : {}),
+      });
+    } else {
+      sim.enqueue({
+        kind: 'spawnSettler',
+        jobType: p.jobType,
+        x: p.x,
+        y: p.y,
+        tribe: p.tribe,
+        ...(p.owner !== undefined ? { owner: p.owner } : {}),
+      });
+    }
+  }
+  sim.run(ticks);
+  return sim;
+}

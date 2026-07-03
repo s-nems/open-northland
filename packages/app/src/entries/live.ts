@@ -16,7 +16,13 @@ import { loadMapObjects } from '../content/objects.js';
 import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { fetchTerrainIr, loadRealTerrain } from '../content/terrain.js';
-import { demoGoods, loadTerrainMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
+import {
+  demoGoods,
+  loadTerrainMap,
+  runAuthoredSlice,
+  runSlice,
+  sliceTerrain,
+} from '../slice/vertical-slice.js';
 import { cameraCenteredOnTile, cameraFor, createCameraController } from '../view/camera.js';
 import {
   applyGameSpeed,
@@ -94,7 +100,8 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
   let ir = null;
   const wantTerrain = params.get('terrain') !== 'off';
   const wantObjects = loaded?.objects !== undefined && params.get('objects') !== 'off';
-  if (wantTerrain || wantObjects) {
+  const wantEntities = loaded?.entities !== undefined;
+  if (wantTerrain || wantObjects || wantEntities) {
     try {
       ir = await fetchTerrainIr();
     } catch (err) {
@@ -131,10 +138,14 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
   // panel's game-speed button (mounted below) then drives it live — cycling ×1 → ×2 → ×3 → pause — without
   // clobbering this seed at mount.
   const control = { paused: false, speed: floatParam(params, 'speed', 1) };
-  // The slice sim, kept live and stepped one tick per fixed interval below. When a map loaded, the sim
-  // navigates that real grid (placement on its walkable cells); else the synthetic strip. The units are
-  // owned by the human player so they can be selected + ordered.
-  const sim = runSlice(SLICE_SEED, 0, loaded ?? undefined, HUMAN_PLAYER);
+  // The slice sim, kept live and stepped one tick per fixed interval below. A map that carries
+  // AUTHORED entities (map.cif StaticObjects) places those buildings/settlers at their authored
+  // cells; else the demo slice — on a loaded map's walkable cells, or the synthetic strip. The
+  // demo's units are owned by the human player so they can be selected + ordered.
+  const sim =
+    (wantEntities && loaded?.entities !== undefined && ir !== null
+      ? runAuthoredSlice(SLICE_SEED, 0, loaded, loaded.entities, ir)
+      : null) ?? runSlice(SLICE_SEED, 0, loaded ?? undefined, HUMAN_PLAYER);
 
   // Interactive camera: `?zoom` (+ the settler-centroid framing) is the STARTING frame; from there a
   // human pans (middle-mouse drag / arrow keys) and zooms (scroll wheel). The HUD is drawn outside the

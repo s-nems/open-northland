@@ -2,7 +2,14 @@ import { buildScene, terrainMapToScene } from '@vinland/render';
 import type { Component, TerrainMap, WorldSnapshot } from '@vinland/sim';
 import { components } from '@vinland/sim';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadTerrainMap, runSlice, sliceTerrain } from '../src/slice/vertical-slice.js';
+import {
+  type AuthoredJoinRows,
+  loadTerrainMap,
+  resolveAuthoredPlacements,
+  runAuthoredSlice,
+  runSlice,
+  sliceTerrain,
+} from '../src/slice/vertical-slice.js';
 
 /**
  * Component stores are module-level singletons shared by every `Simulation` instance, so a sim built
@@ -158,5 +165,94 @@ describe('runSlice on a loaded map', () => {
     const strip = runSlice(7, 1).hashState();
     // Falling back means the sim is byte-identical to the no-map slice (same content, terrain, cells).
     expect(fallback).toBe(strip);
+  });
+});
+
+describe('authored placements (map.cif StaticObjects → sim commands)', () => {
+  beforeEach(clearStores);
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** 6×6 all-grass grid (demo typeId 5, walkable) — half-cell coords run 0..11 on each axis. */
+  function authoredMap(): TerrainMap {
+    return { width: 6, height: 6, typeIds: new Array(36).fill(5) };
+  }
+
+  // The narrow IR rows the joins read: two barracks levels, one job, one tribe — the same by-name
+  // keys the real ir.json carries (buildingBobs editName+level, jobs name, tribes id).
+  const rows: AuthoredJoinRows = {
+    buildingBobs: [
+      { editName: 'viking barracks', level: 0, typeId: 30, tribeId: 1 },
+      { editName: 'viking barracks', level: 1, typeId: 31, tribeId: 1 },
+    ],
+    buildings: [
+      { typeId: 30, id: 'barracks', kind: 'workplace' },
+      { typeId: 31, id: 'barracks_l1', kind: 'workplace' },
+    ],
+    jobs: [{ typeId: 7, id: 'builder', name: 'builder' }],
+    tribes: [{ typeId: 1, id: 'viking' }],
+  };
+
+  const entities = {
+    buildings: [
+      // Resolves: editName+level → typeId 30; half-cells (8,4) → cell (4,2); 1-based player 1 → owner 0.
+      { name: 'viking barracks', level: 0, player: 1, hx: 8, hy: 4, rot: 0 },
+      // 1-based player 0 = "no player": owner must be omitted, not -1.
+      { name: 'viking barracks', level: 1, player: 0, hx: 0, hy: 0 },
+      { name: 'unknown house', level: 0, player: 1, hx: 2, hy: 2 }, // no buildingBobs row → skipped
+      { name: 'viking barracks', level: 0, player: 1, hx: 99, hy: 0 }, // cell 49 ≥ width 6 → skipped
+    ],
+    humans: [
+      // Resolves: role → job typeId 7, tribe → typeId 1; (3,5) → cell (1,2); 0-based player 0 stays 0.
+      { tribe: 'viking', role: 'builder', player: 0, hx: 3, hy: 5 },
+      { tribe: 'viking', role: 'mystery_role', player: 0, hx: 3, hy: 5 }, // unknown role → skipped
+    ],
+    animals: [{ species: 'deer', hx: 1, hy: 1 }], // deferred (herd semantics) — never a placement
+  };
+
+  it('joins by name, halves half-cells, and normalizes the two player bases', () => {
+    const { placements, skipped } = resolveAuthoredPlacements(entities, rows, authoredMap());
+    expect(placements).toEqual([
+      { kind: 'building', typeId: 30, tribe: 1, x: 4, y: 2, owner: 0 },
+      { kind: 'building', typeId: 31, tribe: 1, x: 0, y: 0 }, // no owner: sethouse player 0
+      { kind: 'human', jobType: 7, tribe: 1, x: 1, y: 2, owner: 0 },
+    ]);
+    expect(skipped).toBe(3);
+  });
+
+  it('runAuthoredSlice places the resolved buildings + settlers at their authored cells', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {}); // skipped-rows warning is expected here
+    const { Position, Building, Settler } = components;
+    // ticks=1: placeBuilding/spawnSettler commands apply on the first step.
+    const sim = runAuthoredSlice(7, 1, authoredMap(), entities, rows);
+    expect(sim).not.toBeNull();
+    if (sim === null) throw new Error('expected an authored sim');
+
+    const cellsOf = (comp: typeof Building | typeof Settler): string[] =>
+      [...sim.world.query(comp)]
+        .map((e) => sim.world.get(e, Position))
+        .map((p) => `${Math.trunc(p.x / 65536)},${Math.trunc(p.y / 65536)}`)
+        .sort();
+    expect(cellsOf(Building)).toEqual(['0,0', '4,2']);
+    expect(cellsOf(Settler)).toEqual(['1,2']);
+  });
+
+  it('returns null when nothing resolves (caller falls back to the demo slice)', () => {
+    const unresolvable = {
+      buildings: [{ name: 'unknown house', level: 0, player: 1, hx: 2, hy: 2 }],
+      humans: [],
+      animals: [],
+    };
+    expect(runAuthoredSlice(7, 1, authoredMap(), unresolvable, rows)).toBeNull();
+  });
+
+  it('is deterministic (same seed + same authored entities ⇒ same hash)', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const a = runAuthoredSlice(7, 40, authoredMap(), entities, rows)?.hashState();
+    clearStores();
+    const b = runAuthoredSlice(7, 40, authoredMap(), entities, rows)?.hashState();
+    expect(a).toBeDefined();
+    expect(a).toBe(b);
   });
 });

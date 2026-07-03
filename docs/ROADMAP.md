@@ -73,17 +73,14 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       Slice: switch `tileToScreen` to the stagger model and rework its consumers (terrain chunk mesher,
       `visibleTileRange` inversion, picking, spatial audio), wire `lmhe` into the y-projection, then
       re-verify against the calibration screenshots. Render-only; the sim grid is untouched.
-- [ ] **Import a decoded map's authored placements** (`map.cif` `StaticObjects`) — today `?map=` runs the
-      synthetic vertical slice and dumps 6 demo entities on the *first walkable cells* (the top-left map
-      corner, buried in forest), so imported maps look mis-placed. The real data decodes cleanly
-      (`sethouse`/`sethuman`/`setanimal`; grammar + half-cell coords in docs/SOURCES.md). Slice:
-      (a) **pipeline** — resolve each `sethouse` `EditName`+`level` → `[GfxHouse]` `LogicType` typeId and each
-      `sethuman` role → roster id, emit an optional `entities:{buildings,settlers[,animals]}` layer into
-      `maps/<id>.json`; (b) **schema** — extend `TerrainMapFile` (data pkg) with the layer;
-      (c) **app** — when a loaded map carries `entities`, place THOSE (over the **real** building content set,
-      not the synthetic demo — needs `?map=` to run real buildings so each placed typeId draws its own bob)
-      instead of `walkableCells`. Oracle-free (data-driven); own focused window. Fixes "budynki w złych
-      miejscach / chowają się za terenem" at the source.
+- [x] **Import a decoded map's authored placements** (`map.cif` `StaticObjects`, 2026-07-03): the
+      pipeline decodes `sethouse`/`sethuman`/`setanimal` VERBATIM (names + half-cells) into
+      `maps/<id>.json` `entities` (schema: `TerrainEntities` in @vinland/data; 13/125 maps carry the
+      section), and the app resolves them by NAME against the IR at load (`resolveAuthoredPlacements` →
+      `runAuthoredSlice`, falling back to the demo slice when nothing resolves). Hands-on: the bridge
+      map places its authored 62 buildings + 168 settlers (placed 230, skipped 0). Deferred: `setanimal`
+      placement (herd semantics), `addgoods`/`setproducedgood`/`setguide`, rotation→facing
+      (docs/FIDELITY.md "Authored entity placements").
 - **Exit:** click to place one workplace; a settler autonomously supplies it via atomics; a carrier
   hauls outputs to a store; the 1000-tick golden hash + trace stay stable. **(Headless slice + golden
   proven; the real-atlas bind + final human pixel check remain.)**
