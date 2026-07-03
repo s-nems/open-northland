@@ -43,19 +43,25 @@ const HOUSE_PALETTE = 'house01';
  * `budynki12/houses/houses.ini`). Like the tree it lives in its OWN frame-id space (135 bobs, distinct
  * from the human body bobs), so it binds as a per-kind {@link import('@vinland/render').SpriteSheet.kindLayers}
  * layer, not the shared body atlas. {@link HOUSE_BOB} 11 is the "viking home" record's first finished
- * growth stage — a stone-and-thatch cottage (213×198 anchored at its base). At native size every house bob
- * draws ~6–10× the settler's height — far larger than the original showed a house next to a person — so the
- * building is drawn at {@link BUILDING_SCALE} about its feet anchor (the settler + tree stay native, their
- * proportion already reads right). At 0.7 the cottage lands ~3× the settler, the by-eye pick from a 1:1
- * pawn-vs-tree-vs-building montage. Both the bob and the scale are taste constants — swap them to a bigger
- * stage / different factor (docs/FIDELITY.md "Building bob"). This {@link HOUSE_BOB} is now only the
+ * growth stage — a stone-and-thatch cottage (213×198 anchored at its base). It draws at NATIVE size
+ * ({@link BUILDING_SCALE} = 1), like the settler, tree and every landscape object: the tile PITCH is now
+ * calibrated to the art (see `iso.ts`), so a bob's authored pixels read at the right size against the
+ * terrain with no per-kind fudge. (The earlier 0.7 shrink compensated for a pitch that was ~1.5× too
+ * large — it made buildings *too small*, the complaint that drove the pitch recalibration; removing it
+ * lets a house cover roughly its `LogicWalkBlockArea` footprint the way the original did.) The bob is
+ * still a taste constant — swap it to a bigger growth stage (docs/FIDELITY.md "Building bob"). This
+ * {@link HOUSE_BOB} is now only the
  * {@link import('@vinland/render').BuildingTypeBinding.default} fallback for a type with no `buildingBobs`
  * row at all; every real viking type binds its own bob through {@link BUILDING_FAMILIES}.
  */
 export const HOUSE_ATLAS = `ls_houses_viking.${HOUSE_PALETTE}`;
 export const HOUSE_BOB = 11;
-/** Render scale for the building kind — see {@link HOUSE_BOB} (native house bobs are oversized vs the settler). */
-export const BUILDING_SCALE = 0.7;
+/**
+ * Render scale for the building kind — **native (1)**, like every other bob. Buildings no longer carry a
+ * per-kind shrink: the tile pitch (`iso.ts`) is calibrated to the art, so the authored bob size is
+ * already correct against the terrain. Kept as a named knob (a human may still nudge it, docs/FIDELITY.md).
+ */
+export const BUILDING_SCALE = 1;
 
 /**
  * FALLBACK per-building-type bob ids for the viking buildings that share the {@link HOUSE_ATLAS}

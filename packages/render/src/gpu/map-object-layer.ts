@@ -99,10 +99,11 @@ interface AnimatedDecorBatch {
 
 /**
  * Decor chunks partition world space into square blocks of this many px — the SAME scale as the
- * terrain chunks ({@link TERRAIN_CHUNK_TILES}), so the two layers cull in lockstep. A plain module
- * const now the barrel-import cycle is gone (it once had to be computed lazily to dodge a TDZ).
+ * terrain chunks ({@link TERRAIN_CHUNK_TILES}), so the two layers cull in lockstep. Read LIVE (not an
+ * import-time const) so a runtime {@link import('../data/iso.js').setTilePitch} override (`?pitch=`)
+ * keeps the decor cull aligned with the terrain instead of the boot-time pitch.
  */
-const DECOR_CHUNK_PX = TERRAIN_CHUNK_TILES * TILE_HALF_W * 2;
+const decorChunkPx = (): number => TERRAIN_CHUNK_TILES * TILE_HALF_W * 2;
 
 /** Write one object's current frame as a quad into flat position/uv buffers at `quadIndex`. */
 function writeObjectQuad(
@@ -178,7 +179,8 @@ export class MapObjectLayer {
     const tallByBlock = new Map<string, MapObjectSprite[]>();
     for (const obj of objects) {
       if (obj.frames.length === 0) continue;
-      const key = `${Math.floor(obj.x / DECOR_CHUNK_PX)},${Math.floor(obj.y / DECOR_CHUNK_PX)}`;
+      const chunkPx = decorChunkPx();
+      const key = `${Math.floor(obj.x / chunkPx)},${Math.floor(obj.y / chunkPx)}`;
       const buckets = obj.decor ? byBlock : tallByBlock;
       let block = buckets.get(key);
       if (block === undefined) {

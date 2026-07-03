@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { Camera } from '../src/index.js';
-import { aabbIntersects, cameraViewport, isVisible, tileToScreen, visibleTileRange } from '../src/index.js';
+import {
+  TILE_HALF_H,
+  TILE_HALF_W,
+  aabbIntersects,
+  cameraViewport,
+  isVisible,
+  tileToScreen,
+  visibleTileRange,
+} from '../src/index.js';
 
 /**
  * Unit tests for the pure viewport-culling math — the "what's on screen" half of scaling to big maps,
@@ -76,17 +84,24 @@ describe('aabbIntersects', () => {
 });
 
 describe('visibleTileRange', () => {
+  // The world box is expressed in HALF-TILE multiples, not raw pixels, so the covered tile range is
+  // invariant to the projection PITCH (`TILE_HALF_W/H`) — a `±2` half-extent box always spans the
+  // diamond of tiles (0,0)..(2,2), whatever the calibrated pitch is.
+  const twoTileBox = {
+    minX: -2 * TILE_HALF_W,
+    maxX: 2 * TILE_HALF_W,
+    minY: -2 * TILE_HALF_H,
+    maxY: 2 * TILE_HALF_H,
+  };
+
   it('bounds the iso diamond for an origin-centred viewport and clamps negatives to 0', () => {
-    // A ±64×±32 world box around the origin — the diamond spanning tiles (0,0)..(2,2).
-    const vp = { minX: -64, maxX: 64, minY: -32, maxY: 32 };
-    expect(visibleTileRange(vp, 10, 10)).toEqual({ minCol: 0, maxCol: 2, minRow: 0, maxRow: 2 });
+    expect(visibleTileRange(twoTileBox, 10, 10)).toEqual({ minCol: 0, maxCol: 2, minRow: 0, maxRow: 2 });
     // The tile the box is centred on projects inside it (sanity on the projection direction).
     expect(tileToScreen(0, 0)).toEqual({ x: 0, y: 0 });
   });
 
   it('pads the band by tileMargin (and re-clamps to the grid)', () => {
-    const vp = { minX: -64, maxX: 64, minY: -32, maxY: 32 };
-    expect(visibleTileRange(vp, 10, 10, 1)).toEqual({ minCol: 0, maxCol: 3, minRow: 0, maxRow: 3 });
+    expect(visibleTileRange(twoTileBox, 10, 10, 1)).toEqual({ minCol: 0, maxCol: 3, minRow: 0, maxRow: 3 });
   });
 
   it('shifts the band as the viewport pans, staying within the grid', () => {

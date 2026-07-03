@@ -11,9 +11,42 @@ import { ONE as SIM_ONE } from '@vinland/sim';
 /** Fixed-point scale (one whole tile), re-exported so the scene layer reads snapshot positions. */
 export const ONE: number = SIM_ONE;
 
-/** Isometric projection constants — tile diamond half-extents in pixels. Tune to the art. */
-export const TILE_HALF_W = 32;
-export const TILE_HALF_H = 16;
+/**
+ * Isometric projection constants — the tile diamond's half-extents in pixels, i.e. the on-screen cell
+ * PITCH (stepping one cell moves the draw position by `(±TILE_HALF_W, TILE_HALF_H)`). This is the master
+ * scale the whole world hangs off: every ground triangle, every feet-anchored bob (drawn at its NATIVE
+ * pixel size — see the render CLAUDE.md) and the camera derive from it, so getting it right is what makes
+ * a bob read at the correct size against the terrain.
+ *
+ * The exact value is HUMAN-GATED (pixels — an agent cannot self-judge; docs/FIDELITY.md "projection")
+ * and, because it is the whole look, LIVE-TUNABLE: the live entry sets it from `?pitch=<fullTileWidth>`
+ * via {@link setTilePitch} (halving to the half-extents, keeping the iso-standard 2:1 W:H), so a human can
+ * dial the sprite-vs-terrain scale in real time and report the value instead of a rebuild per guess.
+ *
+ * Default `32×16` (a 64px-wide tile). Calibration history (why not eyeballed blind): the original
+ * projection isn't reverse-engineered, so the ballpark came from the art — a placed object's
+ * `LogicWalkBlockArea` footprint is in CELLS and its bob in PIXELS, and flat objects imply ~17–21 px/cell
+ * (stone bridge 20×12→676px, clay/iron mine 5×3→134px). A first pass took that literally and set `20×10`,
+ * but it OVERSHOT: it made the whole world too zoomed-in — nature (trees/plants/waves) too big, too little
+ * free space, water tiles visibly repeating. The bridge footprint (a wide collision area, not the visible
+ * deck) had skewed the estimate low. Reverted to `32×16`; the separate "buildings too small" report is
+ * fixed by dropping the 0.7 building fudge (they draw NATIVE now), NOT by shrinking the pitch. Per-object
+ * scale conflicts a single pitch can't resolve (if nature reads right but buildings/bridge don't) are the
+ * signal to reach for a per-class scale, surfaced by sweeping `?pitch=`.
+ */
+export let TILE_HALF_W = 32;
+export let TILE_HALF_H = 16;
+
+/**
+ * Override the tile pitch (the {@link TILE_HALF_W}/{@link TILE_HALF_H} half-extents) at runtime — the live
+ * calibration knob behind `?pitch=`. Reassigns the module bindings, which every consumer reads live (ES
+ * module live bindings), so the terrain mesh, object lattice, viewport cull and camera all pick it up as
+ * long as it is called BEFORE the scene/renderer is built. Render-only; the sim never reads these.
+ */
+export function setTilePitch(halfW: number, halfH: number): void {
+  TILE_HALF_W = halfW;
+  TILE_HALF_H = halfH;
+}
 
 /** Cartesian tile (col,row) -> isometric screen offset (before camera). Pure, unit-tested-able. */
 export function tileToScreen(col: number, row: number): { x: number; y: number } {
