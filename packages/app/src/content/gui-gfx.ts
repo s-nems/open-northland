@@ -109,18 +109,19 @@ export async function loadGuiManifest(): Promise<GuiManifest | null> {
 }
 
 /**
- * Load one GUI bob atlas layer by its `/bobs/` stem (an indexed `<sheet>.indexed` or a preview
- * `<sheet>.<palette>`) — a thin reuse of {@link loadLayer}, so the GUI atlases go through the exact same
- * manifest→geometry + PNG→texture path as the settler/building atlases. Throws `MissingAtlasError`
- * when the decoded files are absent (the pipeline hasn't run).
+ * The recolourable INDEXED atlas of a GUI sheet (the whole-HUD window sheet / the speech-bubble sheet),
+ * loaded by its `<sheet>.indexed` stem through the shared {@link loadLayer} — so GUI atlases go through the
+ * exact same manifest→geometry + PNG→texture path as the settler/building atlases; the renderer reads each
+ * pixel's index through the GUI palette LUT at draw time. Throws `MissingAtlasError` when the decoded files
+ * are absent (the pipeline hasn't run). The RGBA preview atlases load the same way — `loadLayer(previewStem)`
+ * off a {@link GuiManifest} atlas entry — so no separate preview loader is needed.
  */
-export function loadGuiLayer(stem: string): Promise<SpriteLayer> {
-  return loadLayer(stem);
-}
-
-/** The recolourable indexed atlas of the whole-HUD sheet (read through the palette LUT at draw time). */
 export function loadGuiWindowIndexed(): Promise<SpriteLayer> {
   return loadLayer(`${GUI_WINDOW_STEM}.${INDEXED_GUI_SUFFIX}`);
+}
+
+export function loadGuiBubblesIndexed(): Promise<SpriteLayer> {
+  return loadLayer(`${GUI_BUBBLES_STEM}.${INDEXED_GUI_SUFFIX}`);
 }
 
 /**

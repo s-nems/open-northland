@@ -125,9 +125,11 @@ const STRING_LANGS = ['eng', 'pol'] as const;
 const CP1250 = new TextDecoder('windows-1250');
 
 /**
- * Reads a loose game file, tolerating a differently-cased filename (the shipped names are lower-case, but a
- * user's install could differ, and CI is case-sensitive). Tries the exact path first, then a
- * case-insensitive scan of the parent directory. Throws a `gui:`-prefixed error if absent.
+ * Reads a loose game file, tolerating a differently-cased leaf FILENAME (the shipped names are lower-case,
+ * but a user's install could differ). Tries the exact path first, then a case-insensitive scan of the
+ * parent directory for the basename — the directory components themselves must match case (they are
+ * fixed-case in the shipped tree, so folding them too would be unused complexity). Throws a
+ * `gui:`-prefixed error if absent.
  */
 async function readGameFile(gameDir: string, relPath: string): Promise<Uint8Array> {
   try {
@@ -306,7 +308,8 @@ function parseStringTable(bytes: Uint8Array): Record<string, string> {
     if (prop.key === 'stringn') {
       id = Number.parseInt(prop.values[0] ?? '', 10);
       display = prop.values[1];
-      next = id + 1;
+      if (!Number.isNaN(id)) next = id + 1; // only advance the running id on a VALID explicit id, so one
+      // malformed `stringn` drops only its own line, not every following bare `string` (per-item resilience)
     } else if (prop.key === 'string') {
       id = next;
       display = prop.values[0];
@@ -361,9 +364,9 @@ export async function convertGuiStrings(
 /** One converted cursor: the copied `.cur`, the decoded `.png`, the hotspot, and the pixel size. */
 export interface GuiCursorResult {
   readonly name: string;
-  /** Path under `content/gui/` (served at `/gui/...`) of the verbatim `.cur` (for CSS `cursor: url()`). */
+  /** URL path relative to `/gui/` (forward slashes) of the verbatim `.cur` — for CSS `cursor: url(/gui/<cur>)`. */
   readonly cur: string;
-  /** Path under `content/gui/` of the decoded RGBA PNG fallback/preview. */
+  /** URL path relative to `/gui/` (forward slashes) of the decoded RGBA PNG fallback/preview. */
   readonly png: string;
   readonly hotspotX: number;
   readonly hotspotY: number;
@@ -394,14 +397,14 @@ export async function convertCursors(gameDir: string, outDir: string): Promise<G
       console.warn(`[pipeline] gui: skipped cursor ${name}: ${(err as Error).message}`);
       continue;
     }
-    const curRel = join(GUI_CONTENT_DIR, 'cursors', `${name}.cur`);
-    const pngRel = join(GUI_CONTENT_DIR, 'cursors', `${name}.png`);
-    await writeFile(join(outDir, curRel), bytes); // verbatim copy for CSS cursor: url()
-    await writeFile(join(outDir, pngRel), encodePng(cursor.image));
+    // Disk write uses a native path; the manifest records a forward-slash URL path relative to `/gui/`
+    // (a browser consumer fetches `/gui/<cur>`), so it must not carry OS separators or a `gui/` prefix.
+    await writeFile(join(outDir, GUI_CONTENT_DIR, 'cursors', `${name}.cur`), bytes); // verbatim, for CSS cursor: url()
+    await writeFile(join(outDir, GUI_CONTENT_DIR, 'cursors', `${name}.png`), encodePng(cursor.image));
     done.push({
       name,
-      cur: curRel,
-      png: pngRel,
+      cur: `cursors/${name}.cur`,
+      png: `cursors/${name}.png`,
       hotspotX: cursor.hotspotX,
       hotspotY: cursor.hotspotY,
       width: cursor.width,
