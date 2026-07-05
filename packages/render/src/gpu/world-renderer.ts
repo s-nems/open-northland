@@ -144,7 +144,7 @@ export class WorldRenderer {
     );
     // Selection rings read the pool's just-computed per-entity bounds, so a building's marker sizes to its
     // actual sprite footprint (reconcile ran first, so the bounds are this frame's).
-    this.selectionLayer.draw(snapshot, selection, (ref) => this.pool.boundsOf(ref));
+    this.selectionLayer.draw(snapshot, selection, (ref) => this.pool.boundsOf(ref), this.elevation);
     this.hud.draw(hud);
     this.app.render();
   }

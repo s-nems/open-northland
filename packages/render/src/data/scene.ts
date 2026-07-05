@@ -222,7 +222,7 @@ export interface SceneTerrain {
   /** The 1:1 per-triangle ground patterns, when the map carries them (a decoded original map). */
   readonly ground?: SceneGround;
   /**
-   * The decoded map's per-cell `lmhe` terrain height (row-major, length `width*height`, 0..~234), when
+   * The decoded map's per-cell `lmhe` terrain height (row-major, length `width*height`, 0..~250), when
    * present. The renderer builds an {@link import('./elevation.js').ElevationField} from it to lift the
    * ground mesh + every projected item; absent → flat (no lift). Render-only data — the sim never reads it.
    */
@@ -651,7 +651,8 @@ function collectSprites(
     const screen = tileToScreen(tileX, tileY);
     // Terrain lift at the feet (bilinear over the elevation lane) — the DRAW offset, NOT the depth key.
     // The anchor/`depth` below stay PRE-LIFT so occlusion sorts by map row, not by lifted screen y.
-    const lift = elevation?.liftAt(tileX, tileY) ?? 0;
+    // A flat map (`maxLift === 0`) skips the sampler entirely — the elevation-free path stays free.
+    const lift = elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAt(tileX, tileY) : 0;
     // Only settlers animate per-state in this slice; a building/resource is always idle. When acting,
     // carry the atomic id so a per-state binding can pick the specific action's frame (the `setatomic`
     // join key); otherwise it's omitted under exactOptionalPropertyTypes.
