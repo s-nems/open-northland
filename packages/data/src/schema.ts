@@ -351,7 +351,7 @@ export const WeaponType = z.strictObject({
    * (→ `undefined`), the {@link munitionType} twin. Captured as a plain non-negative int (a magnitude,
    * not a cross-ref — `speed` appears in no other table). The **UNIT is unreadable** (tiles/tick? — the
    * source carries no scale), so the ranged-combat drive maps it onto a per-tick step via a named
-   * calibration constant (docs/FIDELITY.md "Projectile travel"); the extracted value itself is faithful. */
+   * calibration constant (docs/FIDELITY.md "Combat ranged projectiles"); the extracted value itself is faithful. */
   speed: z.number().int().nonnegative().optional(),
   /**
    * `damagetype` — the **damage class** a weapon deals (a siege/area marker in the base data: only the
