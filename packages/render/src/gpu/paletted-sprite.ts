@@ -3,10 +3,11 @@ import type { AtlasFrame } from '../data/sprites.js';
 
 /**
  * GUI transparent-key mode for a {@link PalettedSprite} (see {@link PalettedSprite.colorKey}). `'off'` draws
- * straight; `'magenta'` keys only the index-0 sentinel (opaque order buttons); `'full'` also keys the
- * near-black background band (panel/window backdrops).
+ * straight; `'magenta'` keys only the index-0 sentinel; `'full'` also keys the whole near-black background
+ * band (panel/window backdrops); `'round'` keys magenta + the near-black band ONLY in the frame's corners
+ * (outside the inscribed disc), so a round order button loses its square backdrop but keeps its engraved glyph.
  */
-export type GuiColorKey = 'off' | 'magenta' | 'full';
+export type GuiColorKey = 'off' | 'magenta' | 'full' | 'round';
 
 /**
  * A feet-anchored sprite whose colour is a **per-player palette lookup** rather than a baked texture — the
@@ -59,7 +60,8 @@ uniform sampler2D uTexture; // indexed atlas: red = palette index / 255, alpha =
 uniform sampler2D uLut;     // 256 x N palette LUT: row = player colour, column = palette index
 uniform vec2 uLutSize;      // (256, N)
 uniform vec4 uPlacement;    // .w = player-colour row to read (0 .. N-1)
-uniform vec2 uColorKey;     // .x > 0.5: key the magenta sentinel; .y > 0.5: ALSO key the near-black band
+uniform vec2 uColorKey;     // .x > 0.5: key magenta; .y: near-black mode (0 off / 1 full band / 2 round corners)
+uniform vec4 uFrameUV;      // the current frame's atlas-UV box (min.xy, max.zw) — for the 'round' corner key
 
 // GUI transparent key — OUR floating-HUD deviation, NOT an original mechanism (the engine blitter has no
 // colour key; see docs/FIDELITY.md "Left tool panel"). The in-game GUI palettes (iconsleft/context/…) reserve
@@ -78,6 +80,7 @@ uniform vec2 uColorKey;     // .x > 0.5: key the magenta sentinel; .y > 0.5: ALS
 const float KEY_MAGENTA_HI = 0.9;  // r AND b above this …
 const float KEY_MAGENTA_LO = 0.1;  // … with g below this → the magenta sentinel (index 0)
 const float KEY_NEAR_BLACK = 0.11; // max channel below this (≈28/255) → the near-black background band
+const float KEY_ROUND_R = 0.9;     // 'round' mode: discard near-black only past this normalized radius (corners)
 
 void main(void) {
   // textureLod(..., 0.0): sample the BASE level only. An index/LUT read must never hit a blended mip — an
@@ -94,7 +97,18 @@ void main(void) {
   }
   if (uColorKey.y > 0.5) {
     bool nearBlack = max(max(rgb.r, rgb.g), rgb.b) < KEY_NEAR_BLACK;
-    if (nearBlack) discard;
+    if (nearBlack) {
+      if (uColorKey.y < 1.5) {
+        discard; // 'full': the whole near-black band is removable panel/window backdrop
+      } else {
+        // 'round': the round order button paints its glyph in near-black too, so discard it only in the
+        // CORNERS (outside the inscribed disc), leaving a clean round button with its engraving intact.
+        vec2 span = max(uFrameUV.zw - uFrameUV.xy, vec2(1e-6));
+        vec2 local = (vUV - uFrameUV.xy) / span; // 0..1 within the frame box
+        float rad = length(local - vec2(0.5)) * 2.0; // 0 centre, 1 edge-midpoint, ~1.41 corner
+        if (rad > KEY_ROUND_R) discard;
+      }
+    }
   }
   finalColor = vec4(rgb, 1.0);
 }`;
@@ -112,9 +126,11 @@ interface PalettedUniforms {
     uPlacement: Float32Array;
     uResolution: Float32Array;
     uLutSize: Float32Array;
-    /** [keyMagenta, keyNearBlack] — a `Float32Array` (NOT a scalar `f32`, which a shared program won't
+    /** [keyMagenta, nearBlackMode] — a `Float32Array` (NOT a scalar `f32`, which a shared program won't
      *  re-upload per-mesh; see the class note) so each sprite carries its own GUI-key flags. */
     uColorKey: Float32Array;
+    /** [uMin, vMin, uMax, vMax] — the current frame's atlas-UV box, for the 'round' corner key. */
+    uFrameUV: Float32Array;
   };
   /** Bump the group's dirty id so Pixi re-uploads the changed contents. */
   update(): void;
@@ -148,6 +164,7 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
       uResolution: { value: new Float32Array([1, 1]), type: 'vec2<f32>' as const },
       uLutSize: { value: new Float32Array([LUT_WIDTH, colours]), type: 'vec2<f32>' as const },
       uColorKey: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
+      uFrameUV: { value: new Float32Array([0, 0, 1, 1]), type: 'vec4<f32>' as const },
     };
     const shader = Shader.from({
       gl: { vertex: VERTEX, fragment: FRAGMENT },
@@ -187,13 +204,15 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
    */
   set colorKey(mode: GuiColorKey) {
     const u = this.vars.uniforms.uColorKey;
-    u[0] = mode === 'off' ? 0 : 1; // magenta key: on for 'magenta' + 'full'
-    u[1] = mode === 'full' ? 1 : 0; // near-black band: on for 'full' only
+    u[0] = mode === 'off' ? 0 : 1; // magenta key: on for 'magenta' + 'full' + 'round'
+    u[1] = mode === 'full' ? 1 : mode === 'round' ? 2 : 0; // near-black mode: 0 off, 1 full band, 2 round corners
     this.vars.update();
   }
   get colorKey(): GuiColorKey {
     const u = this.vars.uniforms.uColorKey;
-    if ((u[1] ?? 0) > 0.5) return 'full';
+    const nb = u[1] ?? 0;
+    if (nb >= 1.5) return 'round';
+    if (nb >= 0.5) return 'full';
     return (u[0] ?? 0) > 0.5 ? 'magenta' : 'off';
   }
 
@@ -242,6 +261,13 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
     t[5] = (y + height) / atlasHeight;
     t[6] = x / atlasWidth;
     t[7] = (y + height) / atlasHeight;
+    // The frame's UV box (min, max) — the 'round' corner key normalizes a fragment's UV against it.
+    const uv = this.vars.uniforms.uFrameUV;
+    uv[0] = t[0];
+    uv[1] = t[1];
+    uv[2] = t[4];
+    uv[3] = t[5];
+    this.vars.update();
     const geo = this.geometry;
     geo.positions.set(this.positions);
     geo.uvs.set(this.texUvs);
