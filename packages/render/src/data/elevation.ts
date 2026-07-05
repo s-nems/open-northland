@@ -3,7 +3,7 @@
  * render consumer goes through (the terrain mesh, map objects, entity sprites, the cull pad, picking).
  * No Pixi, no canvas — plain math, unit-tested headlessly like the rest of `render`'s data layer.
  *
- * The map's `lmhe` lane is a per-CELL height (0..~234, `content/maps/<id>.json` `elevation`). The
+ * The map's `lmhe` lane is a per-CELL height (0..~250 observed corpus-wide, `content/maps/<id>.json` `elevation`). The
  * original lifts the projected world UP by a fixed factor per unit — screen_y = projected_y − LIFT·elev
  * — which is what makes hills read as hills and collapses the vertical mismatch vs the corpus (buildings
  * on the hill sat ~25–40 px off). The factor is MEASURED (docs/FIDELITY.md "projection"): the building

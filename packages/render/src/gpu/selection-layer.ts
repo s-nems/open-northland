@@ -1,5 +1,6 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { Container, Graphics } from 'pixi.js';
+import type { ElevationField } from '../data/elevation.js';
 import { ONE, TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../data/iso.js';
 import type { EntityBounds } from './sprite-pool.js';
 
@@ -65,6 +66,7 @@ export class SelectionLayer {
     snapshot: WorldSnapshot,
     selected: ReadonlySet<number>,
     boundsOf?: (ref: number) => EntityBounds | undefined,
+    elevation?: ElevationField,
   ): void {
     this.drawn.clear();
     if (selected.size > 0) {
@@ -74,7 +76,12 @@ export class SelectionLayer {
         if (pos === undefined) continue;
         // Fixed (scaled int) -> float tile -> iso screen anchor (the feet), the same projection the
         // sprite pool uses, so the ring lands exactly under the bob.
-        const s = tileToScreen(pos.x / ONE, pos.y / ONE);
+        const tileX = pos.x / ONE;
+        const tileY = pos.y / ONE;
+        const s = tileToScreen(tileX, tileY);
+        // Ride the terrain lift the sprite pool applies to the bob, so the ring stays under the unit on a
+        // hill instead of floating on the flat ground beneath it. Flat map → 0 (unchanged).
+        const lift = elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAt(tileX, tileY) : 0;
         let ring = this.rings.get(ent.id);
         if (ring === undefined) {
           // Kind + size are fixed for the current selection, so the ring geometry is authored once here.
@@ -83,7 +90,7 @@ export class SelectionLayer {
           this.container.addChild(ring);
           this.rings.set(ent.id, ring);
         }
-        ring.position.set(s.x, s.y);
+        ring.position.set(s.x, s.y - lift);
         this.drawn.add(ent.id);
       }
     }
