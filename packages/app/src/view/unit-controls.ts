@@ -25,13 +25,16 @@ import { type Profession, type UnitPanel, mountUnitPanel } from './unit-panel.js
  * Bindings (standard RTS, chosen to not clash with the camera's middle-drag/wheel/arrows):
  *  - **LPM click** — select the unit/building under the cursor (Shift adds to the selection).
  *  - **LPM drag** — a marquee box; on release, select every owned unit whose feet fall inside it.
- *  - **PPM** on an ENEMY unit — order the selected combatants to ATTACK it (the `attackUnit` command:
- *    they chase and strike that target); **PPM** on the ground — order them to walk there (a GROUP fans
- *    out into a formation cluster, a single unit goes exactly there — the `moveUnit` command). The
- *    move-order-onto-an-enemy = attack idiom is the original's RTS convention.
- *  - **Space** — toggle the original-art ACTION RING (change profession / set stance) around the selected
- *    settler ({@link import('./settler-actions.js')}). The info card (needs / building state) is always
- *    shown bottom-right the moment something is selected — no keypress needed.
+ *  - **PPM** on one of your OWN units — select it and bring up its ACTION MENU (the original's
+ *    "right-click a unit = its commands" idiom, alongside Space); **PPM** on an ENEMY unit — order the
+ *    selected combatants to ATTACK it (the `attackUnit` command: they chase and strike that target);
+ *    **PPM** on the ground — order them to walk there (a GROUP fans out into a formation cluster, a single
+ *    unit goes exactly there — the `moveUnit` command). The move-order-onto-an-enemy = attack idiom is the
+ *    original's RTS convention.
+ *  - **Space** — toggle the original-art ACTION MENU around the selected settler
+ *    ({@link import('./settler-actions.js')}): the full default menu in original art, of which only "change
+ *    profession" is wired today (it opens a profession picker). The info card (needs / building state) is
+ *    always shown bottom-right the moment something is selected — no keypress needed.
  *  - **Esc** — clear the selection.
  *
  * Only the human player's OWN units are pickable (the targets are pre-filtered by `Owner.player`), so a
@@ -104,9 +107,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     professions: opts.professions,
     onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),
   });
-  // The contextual ACTION RING (change profession / set stance) in original GUI art, anchored on the
-  // selected settler. Mounted BEFORE this controller's own canvas listeners so a click on a ring button
-  // consumes the press (stopImmediatePropagation) and never falls through to selection / a move order.
+  // The contextual ACTION MENU (full original-art default menu; only "change profession" is wired on this
+  // slice — it opens the profession picker), anchored on the selected settler. Mounted BEFORE this
+  // controller's own canvas listeners so a click on a menu button consumes the press (stopImmediatePropagation)
+  // and never falls through to selection / a move order.
   const actions: SettlerActions = await mountSettlerActions({
     app: opts.app,
     canvas,
@@ -114,9 +118,6 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     professions: opts.professions,
     onSetJob: (ids, jobType) => {
       for (const id of ids) opts.enqueue({ kind: 'setJob', entity: id as Entity, jobType });
-    },
-    onSetStance: (ids, mode) => {
-      for (const id of ids) opts.enqueue({ kind: 'setStance', entity: id as Entity, mode });
     },
   });
 
@@ -234,12 +235,19 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     }
   };
 
-  /** Right-click resolves to an ATTACK order when an enemy unit is under the cursor (the selected
-   *  combatants chase + strike it), otherwise to a MOVE order at the clicked tile — the RTS idiom the
-   *  original uses (move-order-onto-an-enemy = attack). */
+  /** Right-click resolves to: OPEN THE ACTION MENU when one of your OWN settlers is under the cursor (select
+   *  it, then show its menu — the original's "right-click a unit = its commands" idiom, alongside Space); an
+   *  ATTACK order when an ENEMY unit is under the cursor (the selected combatants chase + strike it);
+   *  otherwise a MOVE order at the clicked tile (move-order-onto-an-enemy = attack, the RTS idiom). */
   const issueRightClickOrder = (e: MouseEvent): void => {
-    if (selected.size === 0) return;
     const w = toWorld(e.clientX, e.clientY);
+    const own = pickTopAt(targets('settler'), w.x, w.y);
+    if (own !== null) {
+      setSelection([own], false); // right-click a unit selects just it …
+      actions.open(); // … and brings up its action menu.
+      return;
+    }
+    if (selected.size === 0) return;
     const enemy = pickTopAt(enemyTargets(), w.x, w.y);
     if (enemy !== null) {
       // Only the selected units that can fight (settlers) get the attack order; buildings are dropped.

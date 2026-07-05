@@ -23,8 +23,9 @@ function stanceLabel(mode: number | undefined): string {
  * Pure DOM + floats (app-layer only).
  *
  * It is pinned bottom-RIGHT and shown the moment anything is selected — no keypress to see a unit's state.
- * The contextual ACTION buttons (change profession, set stance) are a separate, Space-toggled, original-art
- * radial ring anchored on the unit itself ({@link import('./settler-actions.js')}); this card is data only.
+ * The contextual ACTION buttons (the original-art default menu; "change profession" is the wired one) are a
+ * separate menu — Space or a right-click on the unit — anchored on the unit itself
+ * ({@link import('./settler-actions.js')}); this card is data only.
  *
  * Update discipline: the STRUCTURE (labels, the demolish button) is rebuilt only when the selection changes
  * ({@link render}), and the live VALUES (need bars, carry, order status) are mutated in place each frame
@@ -128,16 +129,28 @@ export function mountUnitPanel(opts: UnitPanelOptions): UnitPanel {
     return row;
   };
 
+  /** A settler's current job → its Polish label (kept live so a menu profession-change shows on the card). */
+  function jobLabelOf(jobType: number | undefined): string {
+    return (
+      opts.professions.find((p) => p.jobType === jobType)?.label ??
+      (jobType === undefined || jobType === null ? 'bezrobotny' : `zawód ${jobType}`)
+    );
+  }
+
   function renderSettler(snapshot: WorldSnapshot, id: number): void {
     liveSettlerId = id;
     const ent = entity(snapshot, id);
     const s = (ent?.components.Settler ?? {}) as Comp;
     const owner = (ent?.components.Owner ?? {}) as Comp;
-    const jobType = num(s.jobType);
-    const jobLabel =
-      opts.professions.find((p) => p.jobType === jobType)?.label ??
-      (jobType === undefined || jobType === null ? 'bezrobotny' : `zawód ${jobType}`);
-    info.append(el('div', 'font-weight:700;font-size:14px;margin-bottom:6px', `Wiking — ${jobLabel}`));
+    // The title is dynamic: `tick` refreshes it, so changing this unit's profession via the action menu
+    // updates the card in place (no re-selection needed).
+    const title = el(
+      'div',
+      'font-weight:700;font-size:14px;margin-bottom:6px',
+      `Wiking — ${jobLabelOf(num(s.jobType))}`,
+    );
+    dynamic.set('title', title);
+    info.append(title);
     info.append(infoRow('Gracz', `#${num(owner.player) ?? '—'}`));
     info.append(infoRow('Plemię', `${num(s.tribe) ?? '—'}`));
     for (const n of NEEDS) info.append(needBar(n.label, n.key));
@@ -217,6 +230,8 @@ export function mountUnitPanel(opts: UnitPanelOptions): UnitPanel {
     const ent = entity(snapshot, liveSettlerId);
     if (ent === undefined) return;
     const s = (ent.components.Settler ?? {}) as Comp;
+    const titleEl = dynamic.get('title');
+    if (titleEl !== undefined) titleEl.textContent = `Wiking — ${jobLabelOf(num(s.jobType))}`;
     for (const n of NEEDS) {
       const fill = dynamic.get(`need:${n.key}`);
       if (fill !== undefined) fill.style.width = `${pct(num(s[n.key]))}%`;
