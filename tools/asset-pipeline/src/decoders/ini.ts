@@ -352,8 +352,10 @@ function extractGoodGathering(sec: RuleSection): GoodGathering | undefined {
     depositLevels: number;
   } = {
     bioLandscape: getInt(sec, 'isBioLandscapeFlag') === 1,
-    // OBSERVED calibration the readable `.ini` doesn't carry (chop count / yield / deposit size /
-    // levels): emitted 0 here, pinned by a scene/fixture until measured against the original.
+    // OBSERVED calibration with no readable source (chop count / yield / deposit size — `maximumValency`
+    // is a per-cell valency, not the unit count): emitted 0, pinned by a scene until measured. `depositLevels`
+    // is DIFFERENT — it IS the harvest `[GfxLandscape]` record's fill-state count (gfx DATA), still emitted 0
+    // here (a future join would copy that frame count); until then the spawn site sets it. See docs/FIDELITY.md.
     chopsToFell: 0,
     yieldPerNode: 0,
     depositSize: 0,
