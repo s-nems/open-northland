@@ -106,18 +106,29 @@ describe('movementSystem — path following', () => {
     expect(sim.world.has(e, PathFollow)).toBe(false);
   });
 
-  it('moves along both axes for a diagonal waypoint (per-axis clamp, no overshoot)', () => {
+  it('advances a diagonal waypoint at the SAME tiles/tick as an axis leg (normalized, no √2 speed-up)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 4) });
     const e = followerAt(sim, 0, 0, [
       { x: 0, y: 0 },
       { x: 1, y: 1 },
     ]);
     sim.step(); // consume wp0 (already on it); no move toward (1,1) yet
-    sim.step(); // first move toward (1,1): +0.125 on each axis
+    sim.step(); // first move toward (1,1): a step of length `speed` along the diagonal
     const p1 = pos(sim, e);
-    expect(p1.x).toBeCloseTo(0.125, 6);
-    expect(p1.y).toBeCloseTo(0.125, 6);
-    for (let i = 0; i < 7; i++) sim.step(); // 8 move-steps of 0.125 on each axis -> exactly (1,1)
+    // Each axis advances speed/√2 ≈ 0.0884 (NOT the full 0.125), so the straight-line displacement is
+    // exactly one settler step (0.125) — the same distance/tick an axis leg covers. The old per-axis
+    // clamp moved 0.125 on BOTH axes at once (0.125·√2 ≈ 0.177/tick), the visible diagonal speed-up.
+    expect(p1.x).toBeCloseTo(p1.y, 9); // symmetric heading
+    expect(p1.x).toBeCloseTo(0.08837890625, 6); // speed / √2
+    expect(Math.hypot(p1.x, p1.y)).toBeCloseTo(0.125, 3); // total = one axis-step, not √2 of one
+    // The leg spans √2 tiles, so at 0.125 tile/tick it takes MORE ticks than the 8 an axis 1-tile leg
+    // needs — the no-speed-up guarantee — and lands EXACTLY on the waypoint (the arrival snap).
+    let moveTicks = 1; // the first move above
+    while (sim.world.has(e, PathFollow)) {
+      sim.step();
+      moveTicks++;
+    }
+    expect(moveTicks).toBeGreaterThan(8); // a √2-longer leg cannot finish in an axis leg's 8 ticks
     expect(pos(sim, e).x).toBeCloseTo(1, 6);
     expect(pos(sim, e).y).toBeCloseTo(1, 6);
     expect(sim.world.has(e, PathFollow)).toBe(false);
