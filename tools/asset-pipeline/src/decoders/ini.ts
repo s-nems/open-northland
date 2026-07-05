@@ -348,10 +348,16 @@ function extractGoodGathering(sec: RuleSection): GoodGathering | undefined {
     bioLandscape: boolean;
     chopsToFell: number;
     yieldPerNode: number;
+    depositSize: number;
+    depositLevels: number;
   } = {
     bioLandscape: getInt(sec, 'isBioLandscapeFlag') === 1,
+    // OBSERVED calibration the readable `.ini` doesn't carry (chop count / yield / deposit size /
+    // levels): emitted 0 here, pinned by a scene/fixture until measured against the original.
     chopsToFell: 0,
     yieldPerNode: 0,
+    depositSize: 0,
+    depositLevels: 0,
   };
   if (harvest !== undefined) gathering.harvest = harvest;
   if (pickup !== undefined) gathering.pickup = pickup;

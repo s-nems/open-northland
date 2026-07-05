@@ -1,5 +1,6 @@
 import { buildSpriteScene, resolveResourceDraw, resolveStockpileDraw } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
+import { CLAY_DEPOSIT_UNITS } from '../src/catalog/mining.js';
 import type { LandscapeGfxRow, RenderIr } from '../src/content/ir.js';
 import {
   buildResourceBinding,
@@ -13,30 +14,32 @@ import { createSceneSim } from '../src/scenes/index.js';
 
 /**
  * The headless half of the `?scene=gathering` acceptance scene (the browser half is the human's pixel
- * sign-off). The scene now runs the FELLING CYCLE, so the render DATA an agent CAN self-verify is: after
- * the run the world classifies as the felled outcome — the static per-good nodes are `resource`s carrying
- * their goodType, each felled tree left a `stump` (carrying wood), and the delivered wood is a `stockpile`
- * (the flag heap) — plus that the per-good + stump bindings RESOLVE each good/stump to its OWN object.
+ * sign-off). The scene runs the FELLING + MINING cycles, so the render DATA an agent CAN self-verify is:
+ * after the run the world classifies as the settled outcome — the static per-good nodes are `resource`s
+ * carrying their goodType, each felled tree left a `stump` (carrying wood), the mined deposit is GONE, and
+ * the delivered wood/mud are two `stockpile` flag heaps — plus that the per-good + stump bindings RESOLVE
+ * each good/stump to its OWN object (and a mined deposit steps its node frame down by level).
  */
 
 const scene = gatheringScene;
 // The scene's goodTypes (see gathering.ts) — the sim runs these, keyed under scene-local ids.
 const GOODS = { wood: 1, stone: 2, mud: 3, iron: 4, gold: 5, mushroom: 6 } as const;
-const DISPLAY_GOODS = [GOODS.stone, GOODS.mud, GOODS.iron, GOODS.gold, GOODS.mushroom];
+// mud is the ACTIVELY-mined deposit (removed by the end), NOT a static showcase node.
+const DISPLAY_GOODS = [GOODS.stone, GOODS.iron, GOODS.gold, GOODS.mushroom];
 const TREES = 3;
 const TREE_WOOD_YIELD = 3;
 
-describe('gathering scene — render classification after the felling cycle', () => {
+describe('gathering scene — render classification after the felling + mining cycles', () => {
   const sim = createSceneSim(scene);
   sim.run(scene.runTicks);
   const draws = buildSpriteScene(sim.snapshot());
 
-  it('the static per-good display nodes each classify as a resource carrying its goodType', () => {
+  it('the static per-good display nodes each classify as a resource carrying its goodType (mined deposit gone)', () => {
     const nodes = draws.filter((d) => d.kind === 'resource');
-    expect(nodes).toHaveLength(DISPLAY_GOODS.length);
+    expect(nodes).toHaveLength(DISPLAY_GOODS.length); // the mud deposit was chipped dry and removed
     expect(new Set(nodes.map((n) => n.goodType))).toEqual(new Set(DISPLAY_GOODS));
-    // A node has no fill amount (that is a pile's, for its heap frame).
-    expect(nodes.every((n) => n.fill === undefined)).toBe(true);
+    // A static showcase node carries no level (it draws full); it has no fill amount (that is a pile's).
+    expect(nodes.every((n) => n.fill === undefined && n.level === undefined)).toBe(true);
   });
 
   it('every felled tree leaves a stump draw carrying its goodType (wood)', () => {
@@ -45,12 +48,13 @@ describe('gathering scene — render classification after the felling cycle', ()
     expect(stumps.every((s) => s.goodType === GOODS.wood)).toBe(true);
   });
 
-  it('the delivered wood piles at the collection flag (a stockpile carrying wood + its fill)', () => {
-    // Once the trunks are collected and reaped, the only stockpile left is the flag with the whole yield.
+  it('the delivered wood + mined mud each pile at their own flag (two stockpile heaps, by good)', () => {
+    // Once every trunk + ore pile is collected and reaped, the only stockpiles left are the two flags.
     const piles = draws.filter((d) => d.kind === 'stockpile');
-    expect(piles).toHaveLength(1);
-    expect(piles[0]?.goodType).toBe(GOODS.wood);
-    expect(piles[0]?.fill).toBe(TREES * TREE_WOOD_YIELD);
+    expect(piles).toHaveLength(2);
+    const byGood = new Map(piles.map((p) => [p.goodType, p.fill]));
+    expect(byGood.get(GOODS.wood)).toBe(TREES * TREE_WOOD_YIELD); // the felling flag heap
+    expect(byGood.get(GOODS.mud)).toBe(CLAY_DEPOSIT_UNITS); // the mining flag heap
   });
 });
 
@@ -140,6 +144,50 @@ describe('gathering scene — per-good + stump binding resolution (each draws it
     expect(wood).toEqual({ bob: 60 }); // bare — the default tree layer
     expect(stone).toEqual({ bob: 10, layer: 'ls_ground.rock03' }); // its own mine/rock atlas
     expect(wood).not.toEqual(stone); // the whole point: no longer all the yew
+  });
+
+  it('steps a mined deposit node down by level (empty→full); no level / over-range → the full frame', () => {
+    // A clay mine record with 5 fill states, authored highest-first (state 5 full → state 1 dregs) — the
+    // real ls_ground mine shape. buildResourceBinding orders them empty→full, resolveResourceDraw indexes
+    // by the node's shrink-by-level fill.
+    const mine: RenderIr = {
+      landscapeGfx: [
+        rec(
+          10,
+          12,
+          'clay01',
+          [
+            { state: 5, bobIds: [64] },
+            { state: 4, bobIds: [63] },
+            { state: 3, bobIds: [62] },
+            { state: 2, bobIds: [61] },
+            { state: 1, bobIds: [60] },
+          ],
+          'ls_ground',
+          'clay mine 01',
+        ),
+      ],
+      gatheringPipeline: [{ goodType: 2, goodId: 'mud', harvest: { landscapeType: 12, gfxIndices: [10] } }],
+    };
+    const mineBinding = buildResourceBinding(
+      resolveGatheringRefs([{ typeId: GOODS.mud, id: 'mud' }], mine),
+      new Set(['ls_ground.clay01']),
+    );
+    const draw = (level?: number) =>
+      resolveResourceDraw(mineBinding, {
+        kind: 'resource',
+        ref: 1,
+        x: 0,
+        y: 0,
+        depth: 0,
+        goodType: GOODS.mud,
+        ...(level !== undefined ? { level } : {}),
+      });
+    expect(draw(5)).toEqual({ bob: 64, layer: 'ls_ground.clay01' }); // full deposit
+    expect(draw(3)).toEqual({ bob: 62, layer: 'ls_ground.clay01' }); // half-mined
+    expect(draw(1)).toEqual({ bob: 60, layer: 'ls_ground.clay01' }); // the dregs
+    expect(draw()).toEqual({ bob: 64, layer: 'ls_ground.clay01' }); // no level (a full/plain node) → full
+    expect(draw(99)).toEqual({ bob: 64, layer: 'ls_ground.clay01' }); // over-range clamps to full
   });
 
   it('resolves each pile to its own goods atlas, growing with fill; an empty pile → the flag', () => {

@@ -32,12 +32,28 @@ export function testContent(): ContentSet {
       // An edible good — the eat-drive recognises it by the `food` id prefix (isFood), like the
       // original's food_simple/food_extra; a hungry settler eats it from its carry or a store.
       { typeId: 3, id: 'food_simple', weight: 1 },
+      // Stone is a MINED good (atomic 25): its `gathering.depositSize > 0` marks it a deposit chipped one
+      // unit at a time — a spawn site stamps a `MineDeposit` from `depositSize`/`depositLevels` and the
+      // node's `remaining`, so each harvest drops one ore pile and the deposit shrinks by level until it
+      // is removed. `bioLandscape: false` (mined, not living). OBSERVED calibration (docs/FIDELITY.md).
+      {
+        typeId: 4,
+        id: 'stone',
+        weight: 1,
+        atomics: { harvest: 25 },
+        gathering: { bioLandscape: false, depositSize: 5, depositLevels: 5 },
+      },
+      // Mushroom is the trivial DIRECT pickup (atomic 32): its harvest IS its pickup (no distinct ore
+      // stage, no `depositSize`), so a bare node yields one unit onto the back and is then removed.
+      { typeId: 5, id: 'mushroom', weight: 1, atomics: { harvest: 32 }, gathering: { bioLandscape: true } },
     ],
     jobs: [
       { typeId: 0, id: 'idle' },
       // The woodcutter is permitted the wood harvest atomic (24) — the planner's data-driven gate.
       { typeId: 1, id: 'woodcutter', allowedAtomics: [24] },
       { typeId: 2, id: 'carpenter' },
+      // The miner is permitted the stone harvest atomic (25) — it chips a `MineDeposit` deposit.
+      { typeId: 5, id: 'miner', allowedAtomics: [25] },
       // The hunter (job 15 — `JOB_TYPE_HUMAN_HUNTER`) — the trade that strikes `catchable` prey.
       { typeId: 15, id: 'hunter' },
       { typeId: 36, id: 'carrier' },
@@ -184,6 +200,9 @@ export function testContent(): ContentSet {
         // sleep atomic (8, the original's sleep-slot id) binds to "viking_sleep" the same way.
         atomicBindings: [
           { jobType: 1, atomicId: 24, animation: 'viking_chop' },
+          // The MINER (job 5) plays "viking_mine" for the stone harvest atomic (25) — the planner
+          // resolves the chip duration through this binding -> atomicAnimations length below.
+          { jobType: 5, atomicId: 25, animation: 'viking_mine' },
           { jobType: 1, atomicId: 10, animation: 'viking_eat' },
           { jobType: 1, atomicId: 8, animation: 'viking_sleep' },
           // The pray atomic (12, the original's pray-slot id) binds to "viking_pray" — the planner
@@ -333,6 +352,7 @@ export function testContent(): ContentSet {
     ],
     atomicAnimations: [
       { id: 'viking_chop', name: 'viking_chop', length: 3 },
+      { id: 'viking_mine', name: 'viking_mine', length: 3 },
       { id: 'viking_eat', name: 'viking_eat', length: 5 },
       { id: 'viking_sleep', name: 'viking_sleep', length: 6 },
       { id: 'viking_pray', name: 'viking_pray', length: 7 },

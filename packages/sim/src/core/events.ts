@@ -71,6 +71,21 @@ export type SimEvent =
       readonly target: Entity;
       readonly munitionType: number;
       readonly at: { x: number; y: number };
+    }
+  | {
+      /**
+       * A {@link import('../components/economy.js').Resource} node was EXHAUSTED and removed this tick —
+       * a mined {@link import('../components/economy.js').MineDeposit} deposit whose last unit was chipped
+       * off, or a trivial direct-pickup node (a mushroom) after its single harvest. Distinct from
+       * `resourceFelled` (a tree coming DOWN, which leaves a trunk + stump): a depleted node just
+       * vanishes, its yield already dropped/carried. Render reaps the sprite straight from the snapshot
+       * (the node left it), so this is a one-shot cue for audio/effects and the seam Step 5 hooks to
+       * UNBLOCK the node's collision when it is removed. Deterministic like every event.
+       */
+      readonly kind: 'resourceDepleted';
+      readonly node: Entity;
+      readonly goodType: number;
+      readonly at: { x: number; y: number };
     };
 
 export type SimEventKind = SimEvent['kind'];

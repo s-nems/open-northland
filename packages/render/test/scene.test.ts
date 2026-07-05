@@ -1,6 +1,13 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
-import { ONE, type SceneTerrain, buildScene, terrainMapToScene, tileToScreen } from '../src/index.js';
+import {
+  ONE,
+  type SceneTerrain,
+  buildScene,
+  depositVisualLevel,
+  terrainMapToScene,
+  tileToScreen,
+} from '../src/index.js';
 
 /**
  * Unit tests for the pure scene layer — the part of rendering an agent can self-verify (the pixels
@@ -326,6 +333,30 @@ describe('buildScene', () => {
   });
 });
 
+describe('depositVisualLevel — the shrink-by-level fill bucket', () => {
+  it('buckets remaining/initial into [1, levels]: full → levels, dregs → 1, exhausted → 0', () => {
+    // initial 10 over 5 levels — ~2 units per level (ceil rounds a partial level UP).
+    expect(depositVisualLevel(10, 10, 5)).toBe(5); // full
+    expect(depositVisualLevel(9, 10, 5)).toBe(5); // still reads full until a whole level is gone
+    expect(depositVisualLevel(8, 10, 5)).toBe(4);
+    expect(depositVisualLevel(2, 10, 5)).toBe(1);
+    expect(depositVisualLevel(1, 10, 5)).toBe(1); // the dregs — one unit still shows a level
+    expect(depositVisualLevel(0, 10, 5)).toBe(0); // exhausted (the node is then removed, so 0 never draws)
+  });
+
+  it('steps one level per unit when the deposit size equals the level count', () => {
+    expect(depositVisualLevel(5, 5, 5)).toBe(5);
+    expect(depositVisualLevel(3, 5, 5)).toBe(3);
+    expect(depositVisualLevel(1, 5, 5)).toBe(1);
+  });
+
+  it('guards a mis-stamped deposit (never divides by zero)', () => {
+    expect(depositVisualLevel(4, 0, 5)).toBe(0); // no size
+    expect(depositVisualLevel(4, 5, 0)).toBe(0); // no levels
+    expect(depositVisualLevel(-1, 5, 5)).toBe(0); // negative remaining
+  });
+});
+
 describe('buildScene — resource + stockpile (gathering economy) classification', () => {
   it("carries a resource node's goodType (the per-good node join key)", () => {
     const scene = buildScene(
@@ -335,6 +366,23 @@ describe('buildScene — resource + stockpile (gathering economy) classification
     const node = scene.find((d) => d.kind === 'resource');
     expect(node?.goodType).toBe(7);
     expect(node?.fill).toBeUndefined(); // a node has no fill amount (that's a pile's)
+  });
+
+  it('carries a MINED node its fill level (MineDeposit + Resource.remaining); a plain node carries none', () => {
+    // A half-mined deposit: remaining 5 of 10 over 5 levels → level 3 (ceil(5·5/10)).
+    const mined = buildScene(
+      snapshotOf([
+        entity(1, 1, 1, { Resource: { goodType: 4, remaining: 5 }, MineDeposit: { initial: 10, levels: 5 } }),
+      ]),
+      FLAT_3x2,
+    ).find((d) => d.kind === 'resource');
+    expect(mined?.level).toBe(3);
+    // A plain node (no MineDeposit) carries no level — the binding draws its full-state frame.
+    const plain = buildScene(
+      snapshotOf([entity(1, 1, 1, { Resource: { goodType: 4, remaining: 5 } })]),
+      FLAT_3x2,
+    ).find((d) => d.kind === 'resource');
+    expect(plain?.level).toBeUndefined();
   });
 
   it('classifies a bare Stockpile (no Building) as a stockpile, carrying its dominant good + fill', () => {

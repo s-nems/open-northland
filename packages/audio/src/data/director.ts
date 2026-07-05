@@ -54,8 +54,9 @@ export const AMBIENT_MAX_SAMPLES = 4096;
 
 /** The entity whose position locates a spatial event (or undefined for `at`-carrying events). */
 function eventEntity(ev: SimEvent): number | undefined {
-  // `at`-carrying events locate by their explicit tile, not an entity (resourceFelled fires as a tree
-  // comes down — its position is the felled cell; a projectile launch/impact fires at the shot's cell).
+  // `at`-carrying events locate by their explicit tile, not an entity (resourceFelled/resourceDepleted
+  // fire as a node comes down / is spent — position is that cell, the node already gone; a projectile
+  // launch/impact fires at the shot's cell).
   if (isAtLocatedEvent(ev)) return undefined;
   if (ev.kind === 'goodProduced') return ev.building as number;
   return ev.entity as number;
@@ -67,6 +68,7 @@ function isAtLocatedEvent(ev: SimEvent): ev is Extract<SimEvent, { at: { x: numb
     ev.kind === 'buildingPlaced' ||
     ev.kind === 'boatPlaced' ||
     ev.kind === 'resourceFelled' ||
+    ev.kind === 'resourceDepleted' ||
     ev.kind === 'projectileLaunched' ||
     ev.kind === 'projectileHit'
   );

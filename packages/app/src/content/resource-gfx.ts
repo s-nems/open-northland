@@ -54,6 +54,13 @@ export interface GatheringNodeRef {
   readonly bob: number;
 }
 
+/** A resolved standing-node draw with its per-LEVEL bobs (a mined deposit's empty→full fill states; a
+ *  non-mined node has one). The renderer indexes them by the node's shrink-by-level fill. */
+export interface GatheringNodeLevelsRef {
+  readonly stem: string;
+  readonly bobs: readonly number[];
+}
+
 /** A resolved ground-pile draw: its served atlas stem + the per-fill bob ids, ordered fewest→most units. */
 export interface GatheringPileRef {
   readonly stem: string;
@@ -62,8 +69,9 @@ export interface GatheringPileRef {
 
 /** The per-good gathering draws resolved from the pipeline join (independent of which atlases loaded). */
 export interface GatheringRefs {
-  /** Standing-node ref per scene `goodType` (its `landscapeToHarvest` record's full-grown frame). */
-  readonly nodesByGood: Readonly<Record<number, GatheringNodeRef>>;
+  /** Standing-node ref per scene `goodType` (its `landscapeToHarvest` record's per-level fill frames,
+   *  empty→full — a mined deposit shrinks through them, a non-mined node has just its full state). */
+  readonly nodesByGood: Readonly<Record<number, GatheringNodeLevelsRef>>;
   /**
    * Freshly-dropped, NOT-yet-collected pile ref per scene `goodType` — the good's `landscapeToPickup`
    * record (wood's "trunk" stage: a felled LOG lying on the ground, distinct from the tidy delivered
@@ -95,8 +103,9 @@ export function servedStem(record: LandscapeGfxRow): string | undefined {
 /**
  * The representative full-grown bob of a node record: its HIGHEST-state frame list's first bob. States
  * count up with growth/valency (a tree's `s3` is the full tree, `s1` a sapling; a mine's `s5` is the full
- * deposit), so the top state is the fresh, undepleted node — the frame a Step-2 node always draws (the
- * shrink-by-level pick is Step 4). `undefined` when the record has no frames. Pure.
+ * deposit), so the top state is the fresh, undepleted node — the frame a static/full node draws (a felled
+ * trunk, a flag, a stump; the shrink-by-level pick for a live mined DEPOSIT is {@link nodeLevelBobs}).
+ * `undefined` when the record has no frames. Pure.
  */
 export function nodeBob(record: LandscapeGfxRow): number | undefined {
   let best: { state: number; bob: number } | undefined;
@@ -109,17 +118,38 @@ export function nodeBob(record: LandscapeGfxRow): number | undefined {
 }
 
 /**
+ * The first bob of each of a record's frame states, ordered by ASCENDING state (`state 1` → index 0). The
+ * shared basis for both a pile's fewest→most heap frames and a mine deposit's empty→full level frames — a
+ * higher state is always MORE (more units in a pile, a fuller deposit), so a `fill`/`level` (1-based,
+ * highest = most) indexes `[value - 1]`. `undefined` when the record has no frames. Pure.
+ */
+function firstBobsByStateAscending(record: LandscapeGfxRow): readonly number[] | undefined {
+  const byState = [...(record.frames ?? [])]
+    .filter((f) => f.bobIds[0] !== undefined)
+    .sort((a, b) => a.state - b.state);
+  if (byState.length === 0) return undefined;
+  return byState.map((f) => f.bobIds[0] as number);
+}
+
+/**
  * The per-fill heap bobs of a pile record, ordered FEWEST→MOST units: state `1`'s first bob, then `2`,
  * … up to the record's max state (`ls_goods` piles carry 5 fill states). The
  * {@link StockpileBinding.byGood} table indexes these by a pile's fill amount, so the heap grows with its
  * contents. `undefined` when the record has no frames. Pure.
  */
 export function pileFillBobs(record: LandscapeGfxRow): readonly number[] | undefined {
-  const byState = [...(record.frames ?? [])]
-    .filter((f) => f.bobIds[0] !== undefined)
-    .sort((a, b) => a.state - b.state);
-  if (byState.length === 0) return undefined;
-  return byState.map((f) => f.bobIds[0] as number);
+  return firstBobsByStateAscending(record);
+}
+
+/**
+ * The per-LEVEL node bobs of a resource record, ordered EMPTY→FULL: `state 1`'s first bob (the dregs),
+ * then `2`, … up to the record's full state (the `ls_ground` clay/iron/gold mines carry 5 fill states).
+ * The {@link ResourceTypeBinding.byGood} table indexes these by a mined deposit's shrink-by-level fill, so
+ * the drawn mine SHRINKS as it empties. A non-mined node (a tree/mushroom — one state) yields a one-frame
+ * list, drawn at any level. `undefined` when the record has no frames. Pure.
+ */
+export function nodeLevelBobs(record: LandscapeGfxRow): readonly number[] | undefined {
+  return firstBobsByStateAscending(record);
 }
 
 /** Pick the representative (lowest-index) placeable gfx record of a pipeline stage, or `undefined`. */
@@ -151,7 +181,7 @@ export function resolveGatheringRefs(goods: readonly GoodRef[], ir: RenderIr | n
   const byIndex = new Map<number, LandscapeGfxRow>(gfx.map((g) => [g.index, g]));
   const byGoodId = new Map<string, GatheringPipelineRow>(pipeline.map((p) => [p.goodId, p]));
 
-  const nodesByGood: Record<number, GatheringNodeRef> = {};
+  const nodesByGood: Record<number, GatheringNodeLevelsRef> = {};
   const trunksByGood: Record<number, GatheringNodeRef> = {};
   const pilesByGood: Record<number, GatheringPileRef> = {};
   for (const good of goods) {
@@ -160,8 +190,8 @@ export function resolveGatheringRefs(goods: readonly GoodRef[], ir: RenderIr | n
     const nodeRecord = representativeRecord(p.harvest ?? p.pickup, byIndex);
     if (nodeRecord !== undefined) {
       const stem = servedStem(nodeRecord);
-      const bob = nodeBob(nodeRecord);
-      if (stem !== undefined && bob !== undefined) nodesByGood[good.typeId] = { stem, bob };
+      const bobs = nodeLevelBobs(nodeRecord); // empty→full fill states — a mined deposit shrinks through them
+      if (stem !== undefined && bobs !== undefined) nodesByGood[good.typeId] = { stem, bobs };
     }
     // The freshly-dropped trunk (the `landscapeToPickup` stage), drawn by a loose GroundDrop before it is
     // carried off — a single representative frame, the felled log. Only bind it for a good that actually
@@ -256,10 +286,12 @@ export function buildStumpBinding(
  * bob from the tree atlas — the same no-wrong-borrow rule the building families use). Pure + unit-tested.
  */
 export function buildResourceBinding(refs: GatheringRefs, loaded: ReadonlySet<string>): ResourceTypeBinding {
-  const byGood: Record<number, LayeredBobRef> = {};
+  const byGood: Record<number, readonly LayeredBobRef[]> = {};
   for (const [good, node] of Object.entries(refs.nodesByGood)) {
     if (node.stem !== DEFAULT_RESOURCE_STEM && !loaded.has(node.stem)) continue; // unloaded family → drop
-    byGood[Number(good)] = bobRef(node.stem, node.bob);
+    // Per-level frames (empty→full) — the renderer indexes them by a mined deposit's shrink-by-level fill;
+    // a non-mined node has a single-frame list, drawn at any level.
+    byGood[Number(good)] = node.bobs.map((bob) => bobRef(node.stem, bob));
   }
   return { byGood, default: TREE_BOB };
 }
@@ -272,10 +304,12 @@ export function buildResourceBinding(refs: GatheringRefs, loaded: ReadonlySet<st
  * trunk (dropped before Step 4 gives the mined goods their own pickup graphics). Pure + unit-tested.
  */
 export function buildTrunkBinding(refs: GatheringRefs, loaded: ReadonlySet<string>): ResourceTypeBinding {
-  const byGood: Record<number, LayeredBobRef> = {};
+  const byGood: Record<number, readonly LayeredBobRef[]> = {};
   for (const [good, trunk] of Object.entries(refs.trunksByGood)) {
     if (trunk.stem !== DEFAULT_RESOURCE_STEM && !loaded.has(trunk.stem)) continue; // unloaded family → drop
-    byGood[Number(good)] = bobRef(trunk.stem, trunk.bob);
+    // A single representative log frame (a felled trunk / ore pile reads the same at any amount) — a
+    // one-element level list, so the level-indexing resolver always draws it (a drop carries no level).
+    byGood[Number(good)] = [bobRef(trunk.stem, trunk.bob)];
   }
   return { byGood, default: TREE_BOB };
 }

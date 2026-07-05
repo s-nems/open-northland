@@ -60,10 +60,11 @@ export const Resource = defineComponent<{
  * (`landscapetypes.ini`; the good's `chopsToFell`/`yieldPerNode` gathering params). Present only on a
  * fellable node: today the **placement code** (scenes / vertical-slice / tests) stamps it from the good's
  * `gathering.chopsToFell` (there is no resource-spawn *system* yet — the content→`Felling` gate lands
- * when the map/resource spawn path does); a single-hit node (stone/clay, Step 4) is placed without a
- * `Felling` and keeps the one-unit-per-swing behaviour. This is the **separate-component pattern** the
- * codebase uses for opt-in behaviour ({@link Vehicle}, `Health`, `Owner`): a node without it hashes and
- * plans exactly as before, so the goldens/scenes that place plain resources are untouched.
+ * when the map/resource spawn path does). A {@link MineDeposit} node (stone/iron/gold/clay) instead drops
+ * one unit to the ground per swing and shrinks by level; a node with neither marker is the trivial
+ * direct-pickup (a mushroom: one swing onto the back, then gone). This is the **separate-component
+ * pattern** the codebase uses for opt-in behaviour ({@link Vehicle}, `Health`, `Owner`): a node without
+ * it hashes and plans exactly as before, so the goldens/scenes that place plain resources are untouched.
  *
  * `chopsLeft` counts the chops still needed to fell the node — each completed harvest atomic decrements
  * it (yielding NOTHING onto the settler's back, unlike a single-hit gather), and the node falls when it
@@ -73,6 +74,28 @@ export const Resource = defineComponent<{
  * by the AtomicSystem's harvest effect in the store's deterministic order.
  */
 export const Felling = defineComponent<{ chopsLeft: number }>('Felling');
+
+/**
+ * Marks a {@link Resource} node that is **mined**, not felled or picked whole — a stone/iron/gold/clay
+ * deposit the collector chips one unit at a time, faithful to the original's `mine → ore → pile`
+ * pipeline (a mined good has a DISTINCT `landscapeToPickup` "ore" stage, unlike a mushroom whose harvest
+ * IS its pickup; `bioLandscape 0` in the data — the "mined vs living" split). Present only on a mined
+ * node, stamped by the placement code from the good's `gathering.depositSize`/`depositLevels` (the same
+ * observed calibration route {@link Felling} uses; there is no resource-spawn *system* yet). Its harvest
+ * behaviour: each completed harvest atomic drains one unit off `Resource.remaining` and drops it at the
+ * node's cell as a bare {@link Stockpile} ore pile (a {@link GroundDrop}, exactly the felled-trunk shape
+ * the collector then carries off), and the node is **removed** when `remaining` hits 0 — so a deposit
+ * empties over its whole `initial` size, unlike a fell-once tree.
+ *
+ * `initial` is the deposit's size at spawn (the {@link Resource.remaining} the node started with) — the
+ * denominator the render's shrink-by-level pick needs (a level is `remaining/initial` bucketed into
+ * `levels` visual states, the `[GfxLandscape]` mine record's fill frames; `render`'s scene builder does
+ * that pure integer computation off the snapshot, the way it already derives a pile's heap `fill`).
+ * `levels` is that state count (OBSERVED = the ls_ground mine gfx's 5 fill states; docs/FIDELITY.md).
+ * Both are plain integers, mutated by nothing — pure per-node capacity `remaining` is divided against.
+ * Inert on every golden that mines nothing (the separate-component pattern).
+ */
+export const MineDeposit = defineComponent<{ initial: number; levels: number }>('MineDeposit');
 
 /**
  * A **stump / debris** decor entity left where a {@link Felling} node fell — the tree-debris the

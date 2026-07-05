@@ -94,6 +94,15 @@ export interface DrawItem {
    * pile (a flag) and for every non-stockpile kind.
    */
   readonly fill?: number;
+  /**
+   * For a **mined resource node** (a {@link import('@vinland/sim').MineDeposit} deposit): its visual fill
+   * LEVEL — a small integer in `[1, levels]`, `levels` when the deposit is full stepping down to `1` as it
+   * nears empty. A per-good {@link import('./sprites.js').ResourceTypeBinding} indexes the mine record's
+   * fill-state frames by it, so the drawn deposit visibly SHRINKS in step with what has been mined (the
+   * node twin of a pile's {@link fill}). OMITTED for a plain node (a tree/mushroom/full showcase deposit),
+   * which draws its full-state frame — so an unmined node is unaffected.
+   */
+  readonly level?: number;
   /** For a sprite: its coarse logical state, so a per-state binding can pick the right frame. */
   readonly state?: SpriteState;
   /** For an `acting` sprite: the numeric atomic id it's executing (the `setatomic` join key). */
@@ -409,6 +418,37 @@ function readResourceGood(components: Readonly<Record<string, unknown>>): number
 }
 
 /**
+ * The visual fill LEVEL of a mined deposit ({@link DrawItem.level}): a small integer in `[1, levels]`,
+ * `levels` when full (`remaining === initial`) stepping down to `1` as it nears empty. Pure integer math
+ * — the node twin of {@link readStockpile}'s pile `fill`, done here (in the snapshot read-view) off the
+ * `Resource.remaining` + `MineDeposit.initial`/`levels` the sim exposes, never re-entering the sim.
+ * `ceil(remaining · levels / initial)`: a partially-drained deposit reads as the next level UP, so it
+ * looks full until the first unit is actually gone and only the last unit shows the dregs. Matches the
+ * mine gfx `state` numbering directly (level `k` ⇒ `state k`), which is authored full at the highest state.
+ */
+export function depositVisualLevel(remaining: number, initial: number, levels: number): number {
+  if (remaining <= 0 || initial <= 0 || levels <= 0) return 0;
+  return Math.min(levels, Math.max(1, Math.ceil((remaining * levels) / initial)));
+}
+
+/**
+ * A mined resource node's visual fill level ({@link DrawItem.level}), or `undefined` for a plain node.
+ * Reads the node's {@link import('@vinland/sim').MineDeposit} `initial`/`levels` (its deposit capacity)
+ * against `Resource.remaining` and buckets them via {@link depositVisualLevel}. `undefined` when the node
+ * carries no `MineDeposit` (a tree/mushroom/full showcase node) — the binding then draws its full-state
+ * frame. Pure read of plain snapshot data — never re-enters the sim.
+ */
+function readResourceLevel(components: Readonly<Record<string, unknown>>): number | undefined {
+  const deposit = components.MineDeposit as { initial?: unknown; levels?: unknown } | undefined;
+  const res = components.Resource as { remaining?: unknown } | undefined;
+  if (deposit === undefined || typeof deposit.initial !== 'number' || typeof deposit.levels !== 'number') {
+    return undefined;
+  }
+  if (res === undefined || typeof res.remaining !== 'number') return undefined;
+  return depositVisualLevel(res.remaining, deposit.initial, deposit.levels);
+}
+
+/**
  * A stump's `Stump.goodType` — the resource it is the remains of (a chopped tree → wood), the per-good
  * join key ({@link DrawItem.goodType}) a {@link import('./sprites.js').ResourceTypeBinding} draws its
  * debris frame by. `undefined` for a missing/malformed component (the binding falls back to its
@@ -580,6 +620,9 @@ function collectSprites(snapshot: WorldSnapshot, viewport?: Viewport): DrawItem[
     // a bare stockpile carries the good its pile holds most of (+ the fill amount), or nothing when it is a
     // delivery flag. Both feed the per-good {@link ResourceTypeBinding}/{@link StockpileBinding}.
     const resourceGood = kind === 'resource' ? readResourceGood(entity.components) : undefined;
+    // A MINED node also carries its shrink-by-level fill state so its deposit graphic steps down as it
+    // empties; a plain node (tree/mushroom/full deposit) reads `undefined` and draws its full-state frame.
+    const resourceLevel = kind === 'resource' ? readResourceLevel(entity.components) : undefined;
     const stumpGood = kind === 'stump' ? readStumpGood(entity.components) : undefined;
     // A plain flag/pile AND a loose GroundDrop trunk both read their held good + fill from the stockpile —
     // the trunk keys its per-good pickup graphic off `goodType`, the flag its heap frame off `goodType`+fill.
@@ -614,6 +657,7 @@ function collectSprites(snapshot: WorldSnapshot, viewport?: Viewport): DrawItem[
       ...(builtPct !== undefined ? { builtPct } : {}),
       ...(goodType !== undefined ? { goodType } : {}),
       ...(stockpile?.fill !== undefined ? { fill: stockpile.fill } : {}),
+      ...(resourceLevel !== undefined ? { level: resourceLevel } : {}),
     });
   }
   // Stable, total order: sprites by (y, x, id). The entity-id tie-break makes two sprites on the exact
