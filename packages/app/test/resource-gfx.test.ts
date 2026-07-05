@@ -138,8 +138,10 @@ describe('servedStem / nodeBob / pileFillBobs', () => {
 describe('resolveGatheringRefs — the good→landscape→gfx join, matched by id-slug', () => {
   it('binds each scene good (by slug) to its node + pile under the SCENE typeId', () => {
     const refs = resolveGatheringRefs(GOODS, IR);
-    expect(refs.nodesByGood[1]).toEqual({ stem: 'ls_trees.tree_yew01', bob: 60 }); // wood → yew
-    expect(refs.nodesByGood[2]).toEqual({ stem: 'ls_ground.rock03', bob: 10 }); // stone → rock
+    // Node refs carry per-level bobs, empty→full (a mined deposit shrinks through them); a non-mined node
+    // (one state) is a single-frame list. Wood: state 1 (196) then state 3 (60); stone: one state (10).
+    expect(refs.nodesByGood[1]).toEqual({ stem: 'ls_trees.tree_yew01', bobs: [196, 60] }); // wood → yew
+    expect(refs.nodesByGood[2]).toEqual({ stem: 'ls_ground.rock03', bobs: [10] }); // stone → rock
     expect(refs.pilesByGood[1]).toEqual({ stem: 'ls_goods.goods_wood', fillBobs: [0, 1, 2, 3, 4] });
     expect(refs.pilesByGood[2]).toEqual({ stem: 'ls_goods.goods_stone', fillBobs: [15, 16] });
     expect(refs.trunksByGood[1]).toEqual({ stem: 'ls_goods.goods_trunk', bob: 70 }); // wood → pickup log
@@ -181,7 +183,8 @@ describe('buildTrunkBinding — the freshly-felled trunk (pickup stage), drop-un
 
   it('binds a good with a loaded pickup family to its trunk log, layer-qualified', () => {
     const binding = buildTrunkBinding(refs, new Set(['ls_goods.goods_trunk']));
-    expect(binding.byGood[1]).toEqual({ layer: 'ls_goods.goods_trunk', bob: 70 }); // wood → its trunk
+    // A trunk/ore-pile is a single log frame — a one-element level list (a drop carries no level).
+    expect(binding.byGood[1]).toEqual([{ layer: 'ls_goods.goods_trunk', bob: 70 }]); // wood → its trunk
     expect(binding.byGood[2]).toBeUndefined(); // stone has no pickup stage
   });
 
@@ -198,14 +201,15 @@ describe('buildResourceBinding — the default-vs-family layer decision + drop-u
   it('draws a bare bob for the default family, layer-qualified for a loaded named family', () => {
     const loaded = new Set(['ls_ground.rock03']);
     const binding = buildResourceBinding(refs, loaded);
-    expect(binding.byGood[1]).toBe(60); // wood → bare (default tree layer)
-    expect(binding.byGood[2]).toEqual({ layer: 'ls_ground.rock03', bob: 10 }); // stone → its family
+    // Per-level frame lists, empty→full: wood bare bobs from the default tree layer, stone layer-qualified.
+    expect(binding.byGood[1]).toEqual([196, 60]); // wood → bare (default tree layer)
+    expect(binding.byGood[2]).toEqual([{ layer: 'ls_ground.rock03', bob: 10 }]); // stone → its family
     expect(binding.default).toBe(60); // TREE_BOB fallback
   });
 
   it('drops a good whose named family failed to load (it falls back to the yew default)', () => {
     const binding = buildResourceBinding(refs, new Set()); // rock atlas not loaded
-    expect(binding.byGood[1]).toBe(60); // wood still binds (default family needs no load)
+    expect(binding.byGood[1]).toEqual([196, 60]); // wood still binds (default family needs no load)
     expect(binding.byGood[2]).toBeUndefined(); // stone dropped → resolves to `default` at draw time
   });
 });

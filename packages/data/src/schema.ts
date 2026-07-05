@@ -119,6 +119,24 @@ export const GoodGathering = z.strictObject({
    * pile when the node falls. `0` (the default) leaves it to the spawn site.
    */
   yieldPerNode: z.number().int().nonnegative().default(0),
+  /**
+   * **OBSERVED, not extracted** — the units a MINED deposit of this good holds (stone/iron/gold/clay).
+   * The readable `.ini` carries no deposit size (like the felling counts), so this is a calibration
+   * constant a scene/fixture sets and `docs/FIDELITY.md` tracks. `> 0` marks a **mined** good — a
+   * distinct-`landscapeToPickup` "ore" deposit the collector chips one unit at a time, dropping each as a
+   * ground ore pile and shrinking the node by level until empty (the sim stamps a `MineDeposit` on such a
+   * node). `0` (the default, and what the extractor emits) means NOT a mined good — a fell-once tree
+   * (`chopsToFell > 0`) or the trivial direct pickup (a mushroom, harvested straight onto the back).
+   */
+  depositSize: z.number().int().nonnegative().default(0),
+  /**
+   * **OBSERVED, not extracted** — the number of discrete VISUAL fill states a mined deposit steps down
+   * through as it empties (the deposit's `[GfxLandscape]` mine record's fill frames; the `ls_ground`
+   * clay/iron/gold mines each carry 5 — see docs/FIDELITY.md). The sim stamps it on the deposit's
+   * `MineDeposit` so `render` can bucket `remaining/depositSize` into the right fill-state frame. Only
+   * meaningful when {@link depositSize} `> 0`; `0` (the default) leaves the level count to the spawn site.
+   */
+  depositLevels: z.number().int().nonnegative().default(0),
 });
 export type GoodGathering = z.infer<typeof GoodGathering>;
 

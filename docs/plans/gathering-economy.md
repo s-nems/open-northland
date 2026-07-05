@@ -73,7 +73,13 @@ delete this file when all steps land.
       `landscapeToStore` heap), the delivery flag stays planted UNDER its heap, and the chop swing is ONE full
       strike per atomic (`HARVEST_SWING_LENGTH` — the swing-length half of Step 7, done early). Felling pace
       is ONE global calibration (`catalog/felling.ts`). See docs/FIDELITY.md "Multi-hit harvest / felling".
-- [ ] 4. Sim: mineral deposits shrink by level; mushrooms
+- [x] 4. Sim: mineral deposits shrink by level; mushrooms — **landed:** a mined good carries a
+      `MineDeposit{initial,levels}` (stamped from content `gathering.depositSize`/`depositLevels`): each
+      harvest atomic chips one unit and drops it at the deposit's cell as an ore `GroundDrop` (reusing
+      Step-3's drop/pickup/deliver machinery), the deposit shrinks a visual level (`depositVisualLevel` →
+      `DrawItem.level` → per-level `ResourceTypeBinding` frames), and the node is REMOVED at 0
+      (`resourceDepleted`). A mushroom is the trivial neither-marker direct pickup (onto the back + remove).
+      See docs/FIDELITY.md "Mineral deposits"; `?scene=gathering` runs a live mud-deposit mining cycle.
 - [ ] 5. Sim: resource collision + build-exclusion from data
 - [ ] 6. App: imported maps spawn real resource nodes
 - [ ] 7. Polish: chop cadence, adjacent stance, animation timing — **swing length already landed with Step 3**
@@ -267,7 +273,7 @@ order; fixed-point rules — packages/sim/CLAUDE.md); per-tick cost scales with 
 full-world scans (golden rule 7); events via ctx.events, render never reaches into stores.
 ```
 
-[IN PROGRESS]
+[DONE]
 ## Step 4 — sim: mineral deposits shrink by level
 
 ```text

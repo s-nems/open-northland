@@ -332,16 +332,19 @@ describe('atomicPlanner — end-to-end harvest -> carry -> pileup through the re
     expect(sim.world.get(store, Stockpile).amounts.get(WOOD) ?? 0).toBeGreaterThanOrEqual(2);
   });
 
-  it('depletes a finite node: a 3-unit tree empties and exactly 3 units reach the store', () => {
+  it('depletes a finite node: a 3-unit node empties, is removed, and exactly 3 units reach the store', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const cutter = woodcutterAt(sim, 0, 0);
-    const tree = woodAt(sim, 1, 0, 3); // only three units to give
+    const node = woodAt(sim, 1, 0, 3); // a bare (non-felling) node with only three units to give
+
     const store = storeAt(sim, 2, 0);
 
     // Long enough to harvest the node dry and haul every unit (each cycle is ~tens of ticks).
     for (let i = 0; i < 600; i++) sim.step();
 
-    expect(sim.world.get(tree, Resource).remaining).toBe(0); // node fully harvested
+    // A drained single-unit node is now REMOVED (Step 4), not left as a `remaining:0` husk the planner
+    // would re-scan forever — the collector picked its last unit off the back and it vanished.
+    expect(sim.world.has(node, Resource)).toBe(false);
     expect(sim.world.get(store, Stockpile).amounts.get(WOOD)).toBe(3); // and exactly its 3 units stored
     expect(sim.world.has(cutter, Carrying)).toBe(false); // cutter is unloaded, nothing left to take
   });

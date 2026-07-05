@@ -306,10 +306,22 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
       vertical-slice golden fells its 2 trees → 2 stumps, 18 wood → 18 planks, hash/trace re-pinned). Render
       draws a new `'stump'` DrawKind (the `ls_trees_dead` debris frame); `?scene=gathering` runs the live
       cycle for the human sign-off. Chops/yield are OBSERVED (content `chopsToFell`/`yieldPerNode`, pending
-      calibration — docs/FIDELITY.md). **Open (deferred):** the per-good single-hit → per-unit-drop rework for
-      stone/clay/… (Step 4, reuses this drop/collect machinery); the "tree falling" transition ANIMATION
+      calibration — docs/FIDELITY.md). **Open (deferred):** the "tree falling" transition ANIMATION
       (render polish); the choppy pick-up/deposit animation fix (set the atomic duration to the animation
       length — a render-timing fix, still open).
+- [x] **Mineral deposits shrink by level + mushrooms** (gathering Step 4) — **LANDED** (docs/FIDELITY.md
+      "Mineral deposits"). A mined good (stone/iron/gold/clay) carries a `MineDeposit{initial,levels}`
+      (content-gated on `gathering.depositSize`/`depositLevels`, never a hardcoded goodType): each harvest
+      atomic chips ONE unit and drops it at the deposit's cell as an ore `GroundDrop` (reusing the Step-3
+      drop/pickup/deliver machinery, one unit at a time), the deposit STAYS shrinking a visual level
+      (`depositVisualLevel` → `DrawItem.level` → a per-level `ResourceTypeBinding` frame list) until its last
+      unit, when it is REMOVED (`resourceDepleted` — the same removal path Step 5's collision-unblock hooks).
+      A mushroom is the trivial neither-marker DIRECT pickup (one harvest onto the back, then remove). Goods
+      conserved (a deposit of N → exactly N ore). Deposit size/levels are OBSERVED (content, `catalog/mining.ts`
+      `MINE_LEVELS = 5`; pending calibration). `?scene=gathering` runs a live mud-mining cycle. **Open
+      (deferred):** mushroom/herb regrowth + cultivation (the `isBioLandscapeFlag` bio-transitions,
+      `atomicForPlanting`) is OUT OF SCOPE for the gathering pipeline — a future bio-lifecycle slice; the ore
+      batching (chip several before hauling vs carry-each) awaits calibration against the original.
 - **Open Phase-3 work** is the three **human-gated render items** (the Phase-1 oracle
   pixel-diffs; the Phase-2 real decoded-bob-atlas bind; the Phase-2 real terrain-tile render) — an
   agent cannot self-judge pixels. The

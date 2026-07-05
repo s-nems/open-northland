@@ -5,6 +5,7 @@ import {
   Felling,
   GroundDrop,
   Health,
+  MineDeposit,
   Position,
   Projectile,
   Resource,
@@ -169,10 +170,12 @@ export function applyPendingStaggers(world: World, pendingStaggers: readonly Pen
 function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: AtomicEffect): void {
   switch (effect.kind) {
     case 'harvest':
-      // Two harvest shapes, keyed by the node's own {@link Felling} component (data, not a goodType
-      // check): a FELLABLE node (a tree) is chopped down over several swings and drops its whole yield
-      // as a ground trunk; a single-hit node (stone/clay) yields one unit onto the back and drains by
-      // one. See {@link harvestFromNode}. Goods are conserved either way (nothing teleports).
+      // Three harvest shapes, keyed by the node's own markers (data, not a goodType check): a FELLABLE
+      // node ({@link Felling}, a tree) is chopped down over several swings and drops its whole yield as a
+      // ground trunk; a MINED node ({@link MineDeposit}, an ore deposit) drops one unit at its cell as an
+      // ore pile per swing and shrinks by level; a bare node (a mushroom) yields one unit onto the back.
+      // A mined/bare node is REMOVED once drained. See {@link harvestFromNode}. Goods are conserved every
+      // shape (nothing teleports; a drained node conjures nothing).
       harvestFromNode(world, ctx, settler, effect.resource, effect.goodType);
       // Completing a work atomic that yields a good trains the settler's `(job, good)` specialization
       // — the original grants XP within a narrow `(job, good)` track, not just per job (see
@@ -240,29 +243,32 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
 }
 
 /**
- * Units a single completed `harvest` atomic yields — granted to the settler AND removed from the
- * harvested node. One unit per swing keeps the node draining in step with what gets carried away,
- * so goods are conserved (a node of N units survives exactly N harvests). A real per-good yield
- * (some nodes drop more per swing) is a later balance slice — kept a constant so tuning is a diff.
+ * Units a single completed `harvest` atomic yields — dropped/carried AND removed from the harvested
+ * node. One unit per swing keeps the node draining in step with what leaves it, so goods are conserved
+ * (a node of N units survives exactly N harvests). A real per-good yield (some nodes drop more per
+ * swing) is a later balance slice — kept a constant so tuning is a diff.
  */
 const HARVEST_YIELD = 1;
 
 /**
- * Resolve one completed harvest swing, in one of two shapes decided by the node's own {@link Felling}
- * component (never a hardcoded goodType — the felling lifecycle is content-declared and stamped on the
- * node at spawn):
+ * Resolve one completed harvest swing, in one of three shapes decided by the node's own marker
+ * components (never a hardcoded goodType — the lifecycle is content-declared and stamped at spawn):
  *
- *  - **Fellable node** (a tree, `Felling` present): the swing is a CHOP — it drives the node one step
- *    toward falling and grants NOTHING onto the settler's back. The whole yield lands at once as a
+ *  - **Fellable node** (a tree, {@link Felling} present): the swing is a CHOP — it drives the node one
+ *    step toward falling and grants NOTHING onto the settler's back. The whole yield lands at once as a
  *    ground trunk when the node comes down ({@link fellNode}, on the chop that zeroes `chopsLeft`), for
- *    the collector to carry off. This is the multi-hit harvest + drop-on-ground the ROADMAP names.
- *  - **Single-hit node** (stone/clay/…, no `Felling`): the swing grants {@link HARVEST_YIELD} of
- *    `goodType` onto the settler's back and depletes the node by the same amount (clamped at 0), so the
- *    node releases exactly what is carried away. (Step 4 reworks these into per-unit ground drops.)
+ *    the collector to carry off — the multi-hit harvest + drop-on-ground.
+ *  - **Mined node** (stone/iron/gold/clay, {@link MineDeposit} present): the swing chips ONE unit off
+ *    `remaining` and drops it at the node's cell as an ore pile ({@link dropMinedOre} — the felled-trunk
+ *    shape, a unit at a time), which the collector then carries off; the deposit stays, shrinking a
+ *    visual level, until its last unit is chipped, when it is removed ({@link depleteNode}).
+ *  - **Bare node** (a mushroom, neither marker): the swing grants {@link HARVEST_YIELD} straight onto the
+ *    settler's back (the direct pickup — no ground stage), and the node is removed once drained.
  *
- * A missing {@link Resource} means the node was already felled/destroyed between the swing starting and
+ * A missing {@link Resource} means the node was already felled/exhausted between the swing starting and
  * completing (another collector beat this one to it) — the swing hit nothing, so it yields nothing;
- * goods stay conserved (no unit is conjured for a chop that landed on air).
+ * likewise a `remaining <= 0` node is left untouched. Goods stay conserved (no unit is conjured for a
+ * swing that landed on air, and a drained node's removal never doubles up).
  */
 function harvestFromNode(
   world: World,
@@ -279,8 +285,17 @@ function harvestFromNode(
     if (felling.chopsLeft <= 0) fellNode(world, ctx, node, res.goodType, res.remaining);
     return;
   }
-  addCarry(world, settler, goodType, HARVEST_YIELD);
-  res.remaining = Math.max(0, res.remaining - HARVEST_YIELD);
+  // A node emptied since the planner chose it (a competing collector took its last unit): nothing left
+  // to give, so conserve goods and don't re-remove it (its own drain already removed it).
+  if (res.remaining <= 0) return;
+  const took = Math.min(HARVEST_YIELD, res.remaining);
+  res.remaining -= took;
+  if (world.has(node, MineDeposit)) {
+    dropMinedOre(world, node, res.goodType, took); // an ore pile at the deposit's cell, carried off later
+  } else {
+    addCarry(world, settler, goodType, took); // a mushroom — straight onto the back (direct pickup)
+  }
+  if (res.remaining <= 0) depleteNode(world, ctx, node, res.goodType); // last unit chipped — the node is gone
 }
 
 /**
@@ -318,6 +333,38 @@ function fellNode(world: World, ctx: SystemContext, node: Entity, goodType: numb
     amount: yield_,
     at: { x: fx.toInt(x), y: fx.toInt(y) },
   });
+}
+
+/**
+ * Drop one swing's worth of a mined {@link MineDeposit} deposit at the node's cell as a bare
+ * {@link Stockpile} ore pile (a {@link GroundDrop}) — the SAME on-the-ground shape a felled trunk takes,
+ * so the collector's own-trunk drive + the porter/delivery machinery carry it off unchanged (and the
+ * pile is auto-reaped when emptied, see {@link reapEmptyGroundDrop}). The deposit node itself is left
+ * standing (drained by one in {@link harvestFromNode}); it is removed only when its last unit is chipped
+ * ({@link depleteNode}). Goods are conserved — the pile holds exactly the unit drained off the deposit,
+ * nothing conjured. Pure over entity state; no RNG/wall-clock.
+ */
+function dropMinedOre(world: World, node: Entity, goodType: number, amount: number): void {
+  const { x, y } = world.get(node, Position);
+  const ore = world.create();
+  world.add(ore, Position, { x, y });
+  world.add(ore, Stockpile, { amounts: new Map([[goodType, amount]]) });
+  world.add(ore, GroundDrop, { goodType });
+}
+
+/**
+ * Remove an EXHAUSTED {@link Resource} node (a mined deposit whose last unit was just chipped, or a bare
+ * mushroom after its single pickup) and announce it (`resourceDepleted`) for audio/effects and the Step-5
+ * collision-unblock seam. Unlike {@link fellNode} it leaves nothing behind — the yield already dropped as
+ * ore piles / went onto the back — it just deletes the node so the planner never re-scans a spent deposit
+ * (the fix for the old "skip a `remaining <= 0` node forever"). The node's cell is read BEFORE the destroy
+ * (the component object is dropped from its store by `world.destroy`). Pure over entity state; no RNG.
+ */
+function depleteNode(world: World, ctx: SystemContext, node: Entity, goodType: number): void {
+  const pos = world.get(node, Position);
+  const at = { x: fx.toInt(pos.x), y: fx.toInt(pos.y) };
+  world.destroy(node);
+  ctx.events.emit({ kind: 'resourceDepleted', node, goodType, at });
 }
 
 /**

@@ -14,6 +14,7 @@ export {
 export {
   buildScene,
   buildSpriteScene,
+  depositVisualLevel,
   drawableEntityRefs,
   terrainMapToScene,
   type DrawItem,

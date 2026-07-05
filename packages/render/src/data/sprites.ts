@@ -231,14 +231,18 @@ export type LayeredBobRef = number | { readonly layer: string; readonly bob: num
  * A resource node's per-good bob binding — the {@link BuildingTypeBinding} twin for harvestable objects,
  * so each good's node draws ITS own decoded `[GfxLandscape]` object (a tree for wood, a rock for stone, a
  * mine decal for iron/gold/clay, a mushroom) instead of one shared yew bob. {@link byGood} maps a node's
- * `Resource.goodType` ({@link DrawItem.goodType}) to its {@link LayeredBobRef}; a good absent from it
- * falls back to {@link default} (the representative yew tree). A bare-number ref draws from the shared
- * resource atlas layer (`ls_trees.tree_yew01`); a layer-qualified `{ layer, bob }` ref draws from a
- * per-`.bmd` family atlas (`ls_ground`/`ls_mushrooms` — the mine/mushroom case).
+ * `Resource.goodType` ({@link DrawItem.goodType}) to its per-LEVEL frames, ordered **empty→full** (the
+ * mine record's fill states, `state 1` first); {@link resolveResourceDraw} indexes them by the node's
+ * {@link DrawItem.level} (a mined deposit's shrink-by-level fill), clamped — so a mined deposit visibly
+ * shrinks, while a plain node (no level: a tree/mushroom/full deposit) draws the full (last) frame. A good
+ * absent from it falls back to {@link default} (the representative yew tree). A bare-number ref draws from
+ * the shared resource atlas layer (`ls_trees.tree_yew01`); a layer-qualified `{ layer, bob }` ref draws
+ * from a per-`.bmd` family atlas (`ls_ground`/`ls_mushrooms` — the mine/mushroom case).
  */
 export interface ResourceTypeBinding {
-  /** Bob ref per `goodType` — the good→`landscapeToHarvest`-record→bob join (optionally layer-qualified). */
-  readonly byGood: Readonly<Record<number, LayeredBobRef>>;
+  /** Per-`goodType` node frames ordered EMPTY→FULL — the good→`landscapeToHarvest`-record→per-state-bob
+   *  join (each optionally layer-qualified). A non-mined node has a single-frame list (drawn at any level). */
+  readonly byGood: Readonly<Record<number, readonly LayeredBobRef[]>>;
   /** Bob ref for a good absent from {@link byGood} — the fallback node (the representative yew tree). */
   readonly default: LayeredBobRef;
 }
@@ -431,14 +435,21 @@ export function unwrapBobRef(ref: LayeredBobRef): BuildingDraw {
  * Resolve which bob id — and from which named atlas-layer family — a RESOURCE draw item draws, from its
  * (number | per-good table) binding. The {@link ResourceTypeBinding} twin of {@link resolveBuildingDraw}:
  * a plain-number binding is the same node bob for every good (drawn from the default resource layer); a
- * {@link ResourceTypeBinding} picks `byGood[item.goodType]` (the node's `Resource.goodType`), falling back
- * to `default` (the representative yew) when the item carries no good or the good is unmapped — so a sparse
- * table is always total. Pure: the layer *decision*; the GPU half binds the frame.
+ * {@link ResourceTypeBinding} picks `byGood[item.goodType]`'s per-level frames (the node's
+ * `Resource.goodType`) and indexes them by the node's {@link DrawItem.level} (a mined deposit's
+ * shrink-by-level fill; the frames run empty→full, so `level` = full draws the last). A plain node carries
+ * no `level` and draws the FULL (last) frame — so a tree/mushroom/stump/trunk/full deposit is unaffected.
+ * Falls back to `default` (the representative yew) when the item carries no good or the good is unmapped —
+ * so a sparse table is always total. Pure: the layer *decision*; the GPU half binds the frame.
  */
 export function resolveResourceDraw(binding: number | ResourceTypeBinding, item: DrawItem): BuildingDraw {
   if (typeof binding === 'number') return { bob: binding };
-  const ref = (item.goodType !== undefined ? binding.byGood[item.goodType] : undefined) ?? binding.default;
-  return unwrapBobRef(ref);
+  const frames = item.goodType !== undefined ? binding.byGood[item.goodType] : undefined;
+  if (frames === undefined || frames.length === 0) return unwrapBobRef(binding.default);
+  // A mined node's 1-based fill LEVEL (`levels` = full) → a 0-based frame index, clamped into range; a
+  // plain node carries no level and falls to `frames.length` (the full, last state) — full-node behaviour.
+  const idx = Math.min(frames.length, Math.max(1, item.level ?? frames.length)) - 1;
+  return unwrapBobRef(frames[idx] ?? binding.default);
 }
 
 /**

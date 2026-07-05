@@ -635,10 +635,14 @@ describe('resolveResourceDraw — per-good resource node binding', () => {
     return { ...item('resource'), ...(goodType !== undefined ? { goodType } : {}) };
   }
 
-  // Wood draws a bare bob from the default resource (tree) layer; stone + iron draw from their own
-  // named `.bmd` families (the ls_ground mine/rock atlases).
+  // Each good's per-level frame list (empty→full). Wood draws a bare bob from the default resource (tree)
+  // layer; stone + iron draw from their own named `.bmd` families. A single-frame list is a non-mined node.
   const binding = {
-    byGood: { 5: 60, 3: { layer: 'ls_ground.rock03', bob: 10 }, 6: { layer: 'ls_ground.iron01', bob: 70 } },
+    byGood: {
+      5: [60],
+      3: [{ layer: 'ls_ground.rock03', bob: 10 }],
+      6: [{ layer: 'ls_ground.iron01', bob: 70 }],
+    },
     default: 60,
   };
 
@@ -654,6 +658,27 @@ describe('resolveResourceDraw — per-good resource node binding', () => {
   it('falls back to the default (yew) for an unmapped or good-less node', () => {
     expect(resolveResourceDraw(binding, resource(999))).toEqual({ bob: 60 });
     expect(resolveResourceDraw(binding, resource())).toEqual({ bob: 60 });
+  });
+
+  it('indexes a mined deposit by its level (empty→full); no level / over-range → the full frame', () => {
+    // A 3-level deposit — the shrink-by-level frames run empty (index 0) → full (last).
+    const deposit = {
+      byGood: {
+        3: [
+          { layer: 'ls_ground.clay01', bob: 60 }, // level 1 — dregs
+          { layer: 'ls_ground.clay01', bob: 62 }, // level 2
+          { layer: 'ls_ground.clay01', bob: 64 }, // level 3 — full
+        ],
+      },
+      default: 0,
+    };
+    const at = (level?: number) =>
+      resolveResourceDraw(deposit, { ...resource(3), ...(level !== undefined ? { level } : {}) });
+    expect(at(3)).toEqual({ bob: 64, layer: 'ls_ground.clay01' }); // full
+    expect(at(2)).toEqual({ bob: 62, layer: 'ls_ground.clay01' });
+    expect(at(1)).toEqual({ bob: 60, layer: 'ls_ground.clay01' }); // dregs
+    expect(at()).toEqual({ bob: 64, layer: 'ls_ground.clay01' }); // no level → full (a plain node)
+    expect(at(99)).toEqual({ bob: 64, layer: 'ls_ground.clay01' }); // over-range clamps to full
   });
 
   it('a plain-number binding is the same node bob for every good', () => {
@@ -712,7 +737,7 @@ describe('resolveSpriteBobId — grounddrop (freshly-felled trunk) via the trunk
     settler: 10,
     building: 20,
     resource: 30,
-    trunk: { byGood: { 5: { layer: 'ls_goods.goods_trunk', bob: 70 } }, default: 99 },
+    trunk: { byGood: { 5: [{ layer: 'ls_goods.goods_trunk', bob: 70 }] }, default: 99 },
   };
 
   it("draws the good's pickup-stage trunk from the `trunk` binding (its own kind, not resource/stockpile)", () => {
