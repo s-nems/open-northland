@@ -253,7 +253,7 @@ surfacing the scene URL.
 Guardrails: packages/sim/CLAUDE.md (determinism + "Scaling to thousands"); golden rule 7 is the
 point of this step — no per-seeker full scans may survive it.
 ```
-[IN PROGRESS]
+[DONE]
 ## Step 3 — sim: stances — attack / defend / ignore / flee 
 
 ```text
@@ -305,7 +305,7 @@ surface the scene URL + checklist (note animations still pending step 5).
 Guardrails: packages/sim/CLAUDE.md; the flee threat query MUST reuse step 2's ring search (no
 new scans); all new thresholds are named constants with FIDELITY entries.
 ```
-
+[IN PROGRESS]
 ## Step 4 — sim: ranged combat — projectiles in flight
 
 ```text
