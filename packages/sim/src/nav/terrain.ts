@@ -82,6 +82,31 @@ const LATTICE_ROW_STEPS: readonly [
   ],
 ] as const;
 
+/** One vertical lattice step: two rows up/down (`dy` = ∓2) gated on its two flank cells' seam. */
+type VerticalStep = readonly [dy: number, flankA: GridStep, flankB: GridStep];
+
+/** Derive a parity's vertical steps from its row steps — the flanks of the N (S) seam are exactly
+ *  the NE/NW (SE/SW) step targets, so the two tables can never drift apart. */
+function verticalStepsOf(
+  rowSteps: readonly [ne: GridStep, se: GridStep, sw: GridStep, nw: GridStep],
+): readonly VerticalStep[] {
+  const [ne, se, sw, nw] = rowSteps;
+  return [
+    [-2, nw, ne], // N — the gap between the NW and NE flank cells
+    [2, sw, se], // S — the gap between the SW and SE flank cells
+  ];
+}
+
+/**
+ * The two VERTICAL lattice steps per row parity, canonical N then S (the `THexagonDirection` tail
+ * order). Hoisted to a module table (like {@link LATTICE_ROW_STEPS}) so the hot A* expansion
+ * allocates nothing to look them up.
+ */
+const VERTICAL_LATTICE_STEPS: readonly [even: readonly VerticalStep[], odd: readonly VerticalStep[]] = [
+  verticalStepsOf(LATTICE_ROW_STEPS[0]),
+  verticalStepsOf(LATTICE_ROW_STEPS[1]),
+];
+
 /** Resolved, sim-ready properties of one landscape type (derived once from the IR at build time). */
 interface CellTypeProps {
   readonly walkable: boolean;
@@ -268,13 +293,8 @@ export class TerrainGraph {
       out.push({ cell: c, cost: fx.mul(this.walkCost(c), DIAGONAL_STEP) });
     }
     // Vertical steps last, canonical N then S (the THexagonDirection tail order): two rows straight
-    // up/down through the flanked gap. The flanks are exactly the NE/NW (going N) or SE/SW (going S)
-    // step targets already resolved above via rowSteps.
-    const [ne, se, sw, nw] = rowSteps;
-    const verticals: ReadonlyArray<readonly [dy: number, flankA: GridStep, flankB: GridStep]> = [
-      [-2, nw, ne], // N — the gap between the NW and NE flank cells
-      [2, sw, se], // S — the gap between the SW and SE flank cells
-    ];
+    // up/down through the flanked gap ({@link VERTICAL_LATTICE_STEPS}).
+    const verticals = (y & 1) === 1 ? VERTICAL_LATTICE_STEPS[1] : VERTICAL_LATTICE_STEPS[0];
     for (const [dy, flankA, flankB] of verticals) {
       const ny = y + dy;
       if (!passable(x, ny)) continue;
