@@ -55,19 +55,26 @@ export const AMBIENT_MAX_SAMPLES = 4096;
 /** The entity whose position locates a spatial event (or undefined for `at`-carrying events). */
 function eventEntity(ev: SimEvent): number | undefined {
   // `at`-carrying events locate by their explicit tile, not an entity (resourceFelled fires as a tree
-  // comes down — its position is the felled cell).
-  if (ev.kind === 'buildingPlaced' || ev.kind === 'boatPlaced' || ev.kind === 'resourceFelled') {
-    return undefined;
-  }
+  // comes down — its position is the felled cell; a projectile launch/impact fires at the shot's cell).
+  if (isAtLocatedEvent(ev)) return undefined;
   if (ev.kind === 'goodProduced') return ev.building as number;
   return ev.entity as number;
 }
 
+/** Events that locate by an explicit `at` tile rather than by an emitter entity. */
+function isAtLocatedEvent(ev: SimEvent): ev is Extract<SimEvent, { at: { x: number; y: number } }> {
+  return (
+    ev.kind === 'buildingPlaced' ||
+    ev.kind === 'boatPlaced' ||
+    ev.kind === 'resourceFelled' ||
+    ev.kind === 'projectileLaunched' ||
+    ev.kind === 'projectileHit'
+  );
+}
+
 /** A stable per-emitter key so the engine can debounce a burst of identical events. */
 function eventKey(ev: SimEvent): string {
-  if (ev.kind === 'buildingPlaced' || ev.kind === 'boatPlaced' || ev.kind === 'resourceFelled') {
-    return `${ev.kind}:${ev.at.x},${ev.at.y}`;
-  }
+  if (isAtLocatedEvent(ev)) return `${ev.kind}:${ev.at.x},${ev.at.y}`;
   return `${ev.kind}:${eventEntity(ev) ?? '?'}`;
 }
 
@@ -93,9 +100,7 @@ function eventTile(
   ev: SimEvent,
   positions: ReadonlyMap<number, { col: number; row: number }>,
 ): { col: number; row: number } | null {
-  if (ev.kind === 'buildingPlaced' || ev.kind === 'boatPlaced' || ev.kind === 'resourceFelled') {
-    return { col: ev.at.x, row: ev.at.y };
-  }
+  if (isAtLocatedEvent(ev)) return { col: ev.at.x, row: ev.at.y };
   const id = eventEntity(ev);
   if (id === undefined) return null;
   return positions.get(id) ?? null;

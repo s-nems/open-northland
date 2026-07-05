@@ -1,4 +1,5 @@
 import { allBuildingsScene } from './all-buildings.js';
+import { archersScene } from './archers.js';
 import { charactersScene } from './characters.js';
 import { craftChainScene } from './craft-chain.js';
 import { gatheringScene } from './gathering.js';
@@ -21,6 +22,7 @@ export { createSceneSim, resetComponentStores } from './runtime.js';
  */
 export const SCENES: readonly SceneDefinition[] = [
   allBuildingsScene,
+  archersScene,
   charactersScene,
   craftChainScene,
   gatheringScene,

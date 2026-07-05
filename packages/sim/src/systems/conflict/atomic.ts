@@ -6,6 +6,7 @@ import {
   GroundDrop,
   Health,
   Position,
+  Projectile,
   Resource,
   Settler,
   Stockpile,
@@ -92,7 +93,7 @@ export const atomicSystem: System = (world, ctx) => {
   // and lets the loop iterate the store's live view (self-removal on completion is the only in-loop
   // store mutation, which Map iteration allows). The eligibility check (binding + interruptibility) is
   // still made at HIT time (in `collectStagger`), so a victim mid-uninterruptible-swing is never flinched.
-  const pendingStaggers: Array<{ victim: Entity; duration: number }> = [];
+  const pendingStaggers: PendingStagger[] = [];
   for (const e of world.query(CurrentAtomic)) {
     const atomic = world.get(e, CurrentAtomic);
     const duration = Math.max(1, atomic.duration);
@@ -123,11 +124,30 @@ export const atomicSystem: System = (world, ctx) => {
     world.remove(e, CurrentAtomic);
   }
 
-  // Apply the collected flinches now — the `CurrentAtomic` store is no longer being iterated, so a
-  // struck civilian's ATTACKED atomic starts at `elapsed 0` and first advances next tick, independent
-  // of iteration order. `world.add` overwrites any interruptible action the victim was still running
-  // (it was vetted interruptible at hit time — a blow knocks it off task). Two hits on one victim this
-  // tick both push the same idempotent flinch; last-wins is harmless (identical atomic).
+  // Apply the collected flinches now — the `CurrentAtomic` store is no longer being iterated (see
+  // `applyPendingStaggers` for why the add is deferred).
+  applyPendingStaggers(world, pendingStaggers);
+};
+
+/** One deferred stagger: give `victim` the ATTACKED (`82`) flinch atomic for `duration` ticks. Collected
+ *  at HIT time ({@link collectStagger}), applied only AFTER the hit loop ({@link applyPendingStaggers}) —
+ *  the shared shape both the melee ({@link atomicSystem}) and ranged (`projectileSystem`) hit passes use. */
+export interface PendingStagger {
+  readonly victim: Entity;
+  readonly duration: number;
+}
+
+/**
+ * Apply a hit pass's collected {@link PendingStagger}s — give each struck survivor its ATTACKED (`82`)
+ * flinch atomic. **Deferred** past the pass's own loop on purpose: adding a `CurrentAtomic` to the store
+ * the melee pass is iterating would let a victim visited later advance its own fresh stagger this same
+ * tick (Map iteration visits a key inserted during iteration), an order-coupling; deferring makes the
+ * flinch provably begin advancing the NEXT tick, independent of iteration order. `world.add` overwrites
+ * any interruptible action the victim was still running (it was vetted interruptible at hit time — a blow
+ * knocks it off task). Two hits on one victim this tick push the same idempotent flinch; last-wins is
+ * harmless (identical atomic). Called by {@link atomicSystem} (melee) and the projectileSystem (ranged).
+ */
+export function applyPendingStaggers(world: World, pendingStaggers: readonly PendingStagger[]): void {
   for (const { victim, duration } of pendingStaggers) {
     world.add(victim, CurrentAtomic, {
       atomicId: ATTACKED_ATOMIC_ID,
@@ -139,7 +159,7 @@ export const atomicSystem: System = (world, ctx) => {
       targetTile: null,
     });
   }
-};
+}
 
 /**
  * Apply a completed atomic's effect. Exhaustive over {@link AtomicEffect}: adding a variant is a
@@ -329,23 +349,109 @@ function resolveAttackHit(
   ctx: SystemContext,
   attacker: Entity,
   effect: Extract<AtomicEffect, { kind: 'attack' }>,
-  pendingStaggers: Array<{ victim: Entity; duration: number }>,
+  pendingStaggers: PendingStagger[],
 ): void {
-  const health = world.tryGet(effect.target, Health);
-  if (health === undefined) return; // target gone / non-combatant — the swing struck nothing
-  // A hit that connected (the target had a pool) AND did harm — the condition the fight-XP + stagger
-  // follow-ups need. Computed BEFORE the drain so an overkill still counts as a damaging swing.
-  const dealtDamage = effect.damage > 0;
-  // The inner `Math.max(0, damage)` guards against a malformed (negative) effect *healing* the target;
-  // the outer floors the pool itself (a hit never drives it below 0).
-  health.hitpoints = Math.max(0, health.hitpoints - Math.max(0, effect.damage));
-  provokeAnger(world, ctx, effect.target);
-  if (dealtDamage) grantFightExperience(world, ctx, attacker, effect.weaponMainType); // train the weapon class
-  if (health.hitpoints <= 0) {
-    harvestCadaver(world, ctx, attacker, effect.target); // a lethal blow may yield meat — no flinch (dying)
-  } else {
-    collectStagger(world, ctx, effect.target, pendingStaggers); // a survivor may flinch (applied after the loop)
+  // A RANGED swing (a bow/catapult) LAUNCHES a projectile at this frame instead of landing the blow in
+  // place — the arrow/rock then flies (`projectileSystem`) and deals the same damage on contact. A melee
+  // swing (no `projectile`) resolves the hit here and now.
+  if (effect.projectile !== undefined) {
+    launchProjectile(world, ctx, attacker, effect);
+    return;
   }
+  resolveCombatHit(
+    world,
+    ctx,
+    attacker,
+    effect.target,
+    effect.damage,
+    effect.weaponMainType,
+    pendingStaggers,
+  );
+}
+
+/**
+ * Land one combat blow — the shared hit resolution both a melee swing (at its ATTACK frame) and a
+ * ranged projectile (on contact) run, so the two can't drift (step 1's damage model, one place). Drains
+ * `damage` hitpoints from `target`'s {@link Health}, clamped at 0 (a hit never *heals* — armor can fully
+ * absorb a blow but the pool never goes negative). `damage` is the pre-resolved column value the planner
+ * looked up (`weapon.damagevalue[targetMaterial]`), so this needs no content/weapon lookup. A `target`
+ * with no `Health` is a no-op — already destroyed, or a non-combatant (the blow struck air); never throw.
+ * Reaching 0 hitpoints is "dead"; the `cleanupSystem` reaps the corpse at the end of the tick.
+ *
+ * The four follow-ups a landed blow drives (all keyed on `attacker`, which a projectile's `tryGet` tolerates
+ * as gone — a dead archer's arrow still lands): **provoke** an otherwise-passive `getAngry` animal
+ * ({@link provokeAnger}); **fight XP** ({@link grantFightExperience}) on a **damaging** blow, into the
+ * weapon's fight bucket (`weaponMainType`); **cadaver meat** ({@link harvestCadaver}) on a hunter's lethal
+ * strike on catchable prey; **stagger** ({@link collectStagger}) when the target **survives** (collected
+ * for the deferred {@link applyPendingStaggers} the caller runs after its loop). A felled target isn't
+ * staggered (it's being reaped). Pure over entity state; no RNG/wall-clock.
+ */
+export function resolveCombatHit(
+  world: World,
+  ctx: SystemContext,
+  attacker: Entity,
+  target: Entity,
+  damage: number,
+  weaponMainType: number | undefined,
+  pendingStaggers: PendingStagger[],
+): void {
+  const health = world.tryGet(target, Health);
+  if (health === undefined) return; // target gone / non-combatant — the blow struck nothing
+  // A hit that connected (the target had a pool) AND did harm — the condition the fight-XP + stagger
+  // follow-ups need. Computed BEFORE the drain so an overkill still counts as a damaging blow.
+  const dealtDamage = damage > 0;
+  // The inner `Math.max(0, damage)` guards against a malformed (negative) hit *healing* the target;
+  // the outer floors the pool itself (a hit never drives it below 0).
+  health.hitpoints = Math.max(0, health.hitpoints - Math.max(0, damage));
+  provokeAnger(world, ctx, target);
+  if (dealtDamage) grantFightExperience(world, ctx, attacker, weaponMainType); // train the weapon class
+  if (health.hitpoints <= 0) {
+    harvestCadaver(world, ctx, attacker, target); // a lethal blow may yield meat — no flinch (dying)
+  } else {
+    collectStagger(world, ctx, target, pendingStaggers); // a survivor may flinch (applied after the loop)
+  }
+}
+
+/**
+ * Launch a {@link Projectile} at the shooter's ATTACK-event frame — the ranged branch of a swing (a bow
+ * loosing an arrow, a catapult a rock). Creates a bare entity at the shooter's current cell carrying the
+ * projectile payload (the pre-resolved `damage`, the target it homes on, the weapon class for fight XP,
+ * the ammo class + travel `speed`) and announces it (`projectileLaunched`) for render/audio. The
+ * `projectileSystem` then flies it and lands the same {@link resolveCombatHit} on contact.
+ *
+ * No shot if the shooter has no {@link Position} (it vanished mid-draw) or the target has already been
+ * destroyed by the time the string is loosed (no live `Health` — the archer looses at nothing; mirrors the
+ * melee path's tolerate-a-vanished-target). A target that dies *during* the arrow's flight is the
+ * `projectileSystem`'s expire case, not this one. Pure over entity state; no RNG/wall-clock.
+ */
+function launchProjectile(
+  world: World,
+  ctx: SystemContext,
+  attacker: Entity,
+  effect: Extract<AtomicEffect, { kind: 'attack' }>,
+): void {
+  if (effect.projectile === undefined) return; // not a ranged swing (defensive — the caller gates this)
+  const from = world.tryGet(attacker, Position);
+  if (from === undefined) return; // shooter vanished mid-draw — no shot
+  if (world.tryGet(effect.target, Health) === undefined) return; // target already gone — loose at nothing
+  const shot = world.create();
+  world.add(shot, Position, { x: from.x, y: from.y });
+  world.add(shot, Projectile, {
+    source: attacker,
+    target: effect.target,
+    damage: effect.damage,
+    weaponMainType: effect.weaponMainType ?? null,
+    munitionType: effect.projectile.munitionType,
+    speed: effect.projectile.speed,
+  });
+  ctx.events.emit({
+    kind: 'projectileLaunched',
+    projectile: shot,
+    shooter: attacker,
+    target: effect.target,
+    munitionType: effect.projectile.munitionType,
+    at: { x: fx.toInt(from.x), y: fx.toInt(from.y) },
+  });
 }
 
 /**
@@ -371,7 +477,7 @@ function collectStagger(
   world: World,
   ctx: SystemContext,
   target: Entity,
-  pendingStaggers: Array<{ victim: Entity; duration: number }>,
+  pendingStaggers: PendingStagger[],
 ): void {
   const victim = world.tryGet(target, Settler);
   if (victim === undefined) return; // not a settler/animal — nothing to stagger

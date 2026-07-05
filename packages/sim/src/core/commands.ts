@@ -296,13 +296,20 @@ export type AtomicEffect =
    *  to the completion frame (an animation with no ATTACK event). `weaponMainType` (the weapon's coarse
    *  class, `WeaponType.mainType`) keys the fight-experience bucket the swing accrues into; omitted → no
    *  fight XP (a weapon with no `mainType`). A `target` with no `Health` (already destroyed, or a
-   *  non-combatant) is a no-op (the swing struck air). */
+   *  non-combatant) is a no-op (the swing struck air).
+   *
+   *  `projectile` is present iff this is a **ranged** swing (a bow/catapult): at `hitAt` (the animation's
+   *  release frame) the executor **launches a {@link import('../components/combat.js').Projectile}** toward
+   *  `target` instead of landing the blow in place — the arrow/rock then flies (`projectileSystem`) and
+   *  deals the SAME `damage` on contact (step 1's model, resolved on arrival). It carries the ammunition
+   *  class + travel `speed` the projectile needs. Absent → a melee swing (the blow lands here at `hitAt`). */
   | {
       readonly kind: 'attack';
       readonly target: Entity;
       readonly damage: number;
       readonly hitAt?: number;
       readonly weaponMainType?: number;
+      readonly projectile?: { readonly munitionType: number; readonly speed: number };
     }
   | { readonly kind: 'idle' };
 
