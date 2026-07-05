@@ -1,5 +1,6 @@
 import { type Camera, type EntityBounds, buildSpriteScene } from '@vinland/render';
 import { type Command, type Entity, ONE, type WorldSnapshot } from '@vinland/sim';
+import type { Application } from 'pixi.js';
 import { backingScale } from './camera.js';
 import { el } from './overlay.js';
 import {
@@ -12,6 +13,7 @@ import {
   screenToWorld,
   worldToTile,
 } from './picking.js';
+import { type SettlerActions, mountSettlerActions } from './settler-actions.js';
 import { type Profession, type UnitPanel, mountUnitPanel } from './unit-panel.js';
 
 /**
@@ -27,8 +29,9 @@ import { type Profession, type UnitPanel, mountUnitPanel } from './unit-panel.js
  *    they chase and strike that target); **PPM** on the ground — order them to walk there (a GROUP fans
  *    out into a formation cluster, a single unit goes exactly there — the `moveUnit` command). The
  *    move-order-onto-an-enemy = attack idiom is the original's RTS convention.
- *  - **Space** — toggle the profession-change actions panel. The info card (needs / building state) is
- *    always shown bottom-right the moment something is selected — no keypress needed.
+ *  - **Space** — toggle the original-art ACTION RING (change profession / set stance) around the selected
+ *    settler ({@link import('./settler-actions.js')}). The info card (needs / building state) is always
+ *    shown bottom-right the moment something is selected — no keypress needed.
  *  - **Esc** — clear the selection.
  *
  * Only the human player's OWN units are pickable (the targets are pre-filtered by `Owner.player`), so a
@@ -37,8 +40,12 @@ import { type Profession, type UnitPanel, mountUnitPanel } from './unit-panel.js
  */
 
 export interface UnitControlsOptions {
+  /** The Pixi app — the action ring adds a screen-space container to its stage. */
+  readonly app: Application;
   readonly canvas: HTMLCanvasElement;
-  /** Read the current camera transform (for the screen→world inverse). */
+  /** Integer UI scale (from `?uiscale=`, shared with the tool panel) for the action ring; default 1. */
+  readonly uiscale?: number;
+  /** Read the current camera transform (for the screen→world inverse AND anchoring the action ring). */
   readonly camera: () => Camera;
   /** Read the current frozen snapshot (rebuilt every frame; the controller pulls it on demand). */
   readonly snapshot: () => WorldSnapshot;
@@ -90,10 +97,20 @@ const MARQUEE_STYLE = [
   'display:none',
 ].join(';');
 
-export function createUnitControls(opts: UnitControlsOptions): UnitControls {
+export async function createUnitControls(opts: UnitControlsOptions): Promise<UnitControls> {
   const { canvas } = opts;
   const selected = new Set<number>();
   const panel: UnitPanel = mountUnitPanel({
+    professions: opts.professions,
+    onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),
+  });
+  // The contextual ACTION RING (change profession / set stance) in original GUI art, anchored on the
+  // selected settler. Mounted BEFORE this controller's own canvas listeners so a click on a ring button
+  // consumes the press (stopImmediatePropagation) and never falls through to selection / a move order.
+  const actions: SettlerActions = await mountSettlerActions({
+    app: opts.app,
+    canvas,
+    uiscale: opts.uiscale ?? 1,
     professions: opts.professions,
     onSetJob: (ids, jobType) => {
       for (const id of ids) opts.enqueue({ kind: 'setJob', entity: id as Entity, jobType });
@@ -101,7 +118,6 @@ export function createUnitControls(opts: UnitControlsOptions): UnitControls {
     onSetStance: (ids, mode) => {
       for (const id of ids) opts.enqueue({ kind: 'setStance', entity: id as Entity, mode });
     },
-    onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),
   });
 
   const marquee = el('div', MARQUEE_STYLE);
@@ -268,7 +284,7 @@ export function createUnitControls(opts: UnitControlsOptions): UnitControls {
   const onKeyDown = (e: KeyboardEvent): void => {
     if (e.code === 'Space') {
       e.preventDefault(); // Space would otherwise scroll the page
-      panel.toggleActions(); // the info card is always-on; Space only toggles the profession actions
+      actions.toggle(); // the info card is always-on; Space only toggles the action ring
     } else if (e.code === 'Escape') {
       setSelection([], false);
     }
@@ -282,7 +298,12 @@ export function createUnitControls(opts: UnitControlsOptions): UnitControls {
 
   return {
     selectedIds: () => selected,
-    tick: (snapshot) => panel.tick(snapshot),
+    tick: (snapshot) => {
+      panel.tick(snapshot);
+      // Re-anchor the action ring on the current selection's on-screen centroid (a no-op while it is
+      // closed / nothing is selected). Reuses the frame's snapshot + the live camera — no extra scan.
+      actions.update(opts.camera(), snapshot, selected);
+    },
     clearSelection: () => setSelection([], false),
     dispose: () => {
       canvas.removeEventListener('mousedown', onMouseDown);
@@ -292,6 +313,7 @@ export function createUnitControls(opts: UnitControlsOptions): UnitControls {
       window.removeEventListener('keydown', onKeyDown);
       marquee.remove();
       panel.dispose();
+      actions.dispose();
     },
   };
 }
