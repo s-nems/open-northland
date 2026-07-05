@@ -22,7 +22,6 @@
  * endpoint yields `null` (no route), not a throw, since it is a recoverable query.
  */
 import { type Fixed, fx } from '../core/fixed.js';
-import { ROW_STEP, worldX } from './metric.js';
 import { type CellId, type TerrainGraph, cellLatticeDistance } from './terrain.js';
 
 /** A* per-cell bookkeeping. `g` = best known cost from start; `f` = g + heuristic; `h` = heuristic. */
@@ -31,9 +30,11 @@ interface CellRecord {
   g: Fixed;
   f: Fixed;
   h: Fixed;
-  /** The cell's world-space deviation from the start→goal line (the visual-straightness tie-break) —
-   *  a pure function of the cell + endpoints, computed once at discovery, never path-dependent. */
-  readonly dev: Fixed;
+  /** The cell's deviation from the start→goal line (the visual-straightness tie-break) — a PLAIN
+   *  integer cross product in half-column/row units (only its ordering matters, and axis scaling
+   *  cancels in the comparison), a pure function of the cell + endpoints computed once at discovery,
+   *  never path-dependent. Exact integers well under 2^53 even on huge maps — no Fixed mul overflow. */
+  readonly dev: number;
   /** Predecessor cell on the best known path, or null for the start cell. */
   cameFrom: CellId | null;
   /** False once popped from the open set (closed) — a settled cell is never re-expanded. */
@@ -67,22 +68,24 @@ export function findPath(
   // reads and there is no insertion-order to leak into a game decision.
   const records: Array<CellRecord | undefined> = new Array(graph.cellCount);
 
-  // The start→goal line in WORLD coordinates, for the line-deviation tie-break: a cell's deviation is
-  // the (unnormalised) cross product |Δcell × Δline| — zero on the line, growing with sideways drift.
-  // Left unnormalised deliberately: it only ever compares against other candidates of the SAME search,
-  // so the constant |Δline| factor cancels, and staying pure-integer keeps the search float-free.
+  // The start→goal line for the line-deviation tie-break: a cell's deviation is the (unnormalised)
+  // cross product |Δcell × Δline| — zero on the line, growing with sideways drift. Computed in PLAIN
+  // exact integers: x in HALF-COLUMNS (`2·col + rowParity`, the stagger made integral) and y in raw
+  // ROWS. Each axis's true world scale (÷2 columns, ×19/34 columns) is a constant factor that
+  // multiplies BOTH cross terms alike, so the ordering — all a tie-break needs — is unchanged, while
+  // the magnitudes stay ≤ ~2·span² (exact far past any map size; a Fixed-mul version would overflow
+  // 2^53 on a corner-to-corner route of a ~2000² map). Unnormalised is fine: it only ever compares
+  // against candidates of the SAME search, so the |Δline| factor cancels too.
   const cs = graph.coordsOf(start);
   const cg = graph.coordsOf(goal);
-  const lineDx = fx.sub(
-    worldX(fx.fromInt(cg.x), fx.fromInt(cg.y)),
-    worldX(fx.fromInt(cs.x), fx.fromInt(cs.y)),
-  );
-  const lineDy = fx.mul(fx.fromInt(cg.y - cs.y), ROW_STEP);
-  const deviation = (cell: CellId): Fixed => {
+  const startHX = 2 * cs.x + (cs.y & 1); // start world-x in half-columns — a search invariant
+  const lineHX = 2 * cg.x + (cg.y & 1) - startHX;
+  const lineRows = cg.y - cs.y;
+  const deviation = (cell: CellId): number => {
     const c = graph.coordsOf(cell);
-    const dwx = fx.sub(worldX(fx.fromInt(c.x), fx.fromInt(c.y)), worldX(fx.fromInt(cs.x), fx.fromInt(cs.y)));
-    const dwy = fx.mul(fx.fromInt(c.y - cs.y), ROW_STEP);
-    return fx.abs(fx.sub(fx.mul(dwx, lineDy), fx.mul(dwy, lineDx)));
+    const dhx = 2 * c.x + (c.y & 1) - startHX;
+    const drows = c.y - cs.y;
+    return Math.abs(dhx * lineRows - drows * lineHX);
   };
 
   // At the start cell g is 0, so f === h; compute the heuristic once.
@@ -92,7 +95,7 @@ export function findPath(
     g: fx.fromInt(0),
     h: startH,
     f: startH,
-    dev: fx.fromInt(0), // the start sits on its own line by definition
+    dev: 0, // the start sits on its own line by definition
     cameFrom: null,
     open: true,
   };

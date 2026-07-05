@@ -85,6 +85,12 @@ export const fx = {
   abs(a: Fixed): Fixed {
     return (a < 0 ? -a : a) as Fixed;
   },
+  /** Exact remainder (JS `%` semantics — result carries the sign of `a`); for cyclic phase math.
+   *  Integer-exact on the scaled representation, so it never rounds. */
+  mod(a: Fixed, b: Fixed): Fixed {
+    if (b === 0) throw new Error('fixed-point modulo by zero');
+    return (a % b) as Fixed;
+  },
   /** Deterministic integer square root of a Fixed (Newton on integers); for distances. */
   isqrt(a: Fixed): Fixed {
     if (a <= 0) return 0 as Fixed;
