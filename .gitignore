@@ -40,6 +40,8 @@ dist/
 
 # Browser-automation artifacts (acceptance-scene verification, screenshots, console dumps)
 .playwright-mcp/
+/*.png
+
 
 # Logs
 *.log
