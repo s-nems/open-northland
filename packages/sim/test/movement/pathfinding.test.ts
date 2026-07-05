@@ -64,41 +64,60 @@ describe('findPath — shortest route on an open grid', () => {
     ]);
   });
 
-  it('path length equals the Chebyshev distance + 1 on an obstacle-free grid (8-connected)', () => {
+  it('takes |Δrow| row-crossings plus the un-absorbed columns on an obstacle-free grid', () => {
     const g = grid(5, 5, new Array(25).fill(GRASS));
     const a = g.cellAt(0, 0);
     const b = g.cellAt(4, 3);
     const path = findPath(g, a, b);
     expect(path).not.toBeNull();
-    // 8-connected: the shortest route takes min(dx,dy) diagonal steps toward alignment + |dx-dy|
-    // orthogonal steps for the remainder = max(dx,dy) steps, so max(|dx|,|dy|) + 1 cells.
-    expect(path?.length).toBe(Math.max(4, 3) + 1);
+    // Staggered lattice: 3 row-crossings (each sliding half a column toward the target) + 3 full
+    // column steps cover the 4.5-column world-x offset — 6 steps, 7 cells.
+    expect(path?.length).toBe(7);
     // First and last cells are the endpoints; the path is contiguous (each step a graph neighbour).
     expect(path?.[0]).toBe(a);
     expect(path?.[path.length - 1]).toBe(b);
   });
 
-  it('a pure-diagonal target is reached by a straight diagonal, not a staircase', () => {
-    // (0,0) -> (4,4): every step is diagonal, so the path is the five cells on the main diagonal.
+  it('a screen-straight diagonal target is reached by the alternating lattice edges (a straight line)', () => {
+    // (0,0) -> (2,4) lies exactly down-right on screen: four SE lattice edges — (0,+1) from an even
+    // row, (+1,+1) from an odd one — trace the straight screen line, and no cheaper route exists (the
+    // parity alternation is forced), so the pick is tie-free.
     const g = grid(5, 5, new Array(25).fill(GRASS));
-    const path = findPath(g, g.cellAt(0, 0), g.cellAt(4, 4));
+    const path = findPath(g, g.cellAt(0, 0), g.cellAt(2, 4));
     expect(coords(g, path)).toEqual([
       { x: 0, y: 0 },
-      { x: 1, y: 1 },
-      { x: 2, y: 2 },
-      { x: 3, y: 3 },
-      { x: 4, y: 4 },
+      { x: 0, y: 1 },
+      { x: 1, y: 2 },
+      { x: 1, y: 3 },
+      { x: 2, y: 4 },
     ]);
   });
 
-  it('every step in a returned path is a walkable 8-neighbour of the previous', () => {
+  it('a straight-down-the-screen target weaves the SE/SW edges within half a cell of the column', () => {
+    // (2,0) -> (2,4): straight down on screen. The lattice has no vertical edge, so the route is four
+    // row-crossings whose world-x never strays more than half a column from the target line — the
+    // original's tight weave, not the old wide zigzag. Several weaves tie on cost; assert the shape
+    // (monotone rows, bounded wobble), not one canonical pick.
+    const g = grid(5, 5, new Array(25).fill(GRASS));
+    const path = findPath(g, g.cellAt(2, 0), g.cellAt(2, 4));
+    expect(path).not.toBeNull();
+    const cells = coords(g, path) ?? [];
+    expect(cells.length).toBe(5); // four row-crossings, no column steps
+    cells.forEach((c, i) => {
+      expect(c.y).toBe(i); // rows advance monotonically — straight down
+      const worldXcols = c.x + (c.y & 1) * 0.5; // the cell centre's world-x in column units
+      expect(Math.abs(worldXcols - 2)).toBeLessThanOrEqual(0.5); // never leaves the half-cell band
+    });
+  });
+
+  it('every step in a returned path is a walkable lattice neighbour of the previous', () => {
     const g = grid(5, 5, new Array(25).fill(GRASS));
     const path = findPath(g, g.cellAt(0, 0), g.cellAt(4, 4));
     expect(path).not.toBeNull();
     for (let i = 1; i < (path?.length ?? 0); i++) {
       const prev = path?.[i - 1] as CellId;
       const cur = path?.[i] as CellId;
-      // steps() is the pathfinder's 8-connected edge set (orthogonal + diagonal).
+      // steps() is the pathfinder's 6-connected staggered-lattice edge set.
       expect(g.steps(prev).map((s) => s.cell)).toContain(cur);
     }
   });
@@ -110,12 +129,13 @@ describe('findPath — routes around obstacles', () => {
     //   G W G
     //   G W G
     //   G G G
+    // The lattice route drops through the SE edges to the gap and climbs the NE/NW edges back up:
+    // (0,1) is an odd row, so its SE edge is (+1,+1) — straight into the gap cell.
     const g = grid(3, 3, [GRASS, WATER, GRASS, GRASS, WATER, GRASS, GRASS, GRASS, GRASS]);
     const path = findPath(g, g.cellAt(0, 0), g.cellAt(2, 0));
     expect(coords(g, path)).toEqual([
       { x: 0, y: 0 },
       { x: 0, y: 1 },
-      { x: 0, y: 2 },
       { x: 1, y: 2 }, // through the gap
       { x: 2, y: 2 },
       { x: 2, y: 1 },
@@ -123,9 +143,9 @@ describe('findPath — routes around obstacles', () => {
     ]);
   });
 
-  it('does not cut the corner of a blocker — a diagonal needs both orthogonal cells passable', () => {
-    // 2x2 with water at (1,0). The (0,0)->(1,1) diagonal shares corner cell (1,0), which is blocked,
-    // so the diagonal is illegal; the route must detour through (0,1) rather than clip the corner.
+  it('routes to the interlocked half-shifted cell over a real lattice edge, never a long jump', () => {
+    // 2x2 with water at (1,0). (1,1) is NOT adjacent to (0,0) on the lattice (their diamonds only
+    // interlock via the row between), so the route goes through (0,1) — whose E neighbour is the goal.
     const g = grid(2, 2, [GRASS, WATER, GRASS, GRASS]);
     const path = findPath(g, g.cellAt(0, 0), g.cellAt(1, 1));
     expect(coords(g, path)).toEqual([
@@ -154,14 +174,16 @@ describe('findPath — deterministic tie-breaking', () => {
     expect(findPath(ga, a, b)).toEqual(findPath(gb, a, b));
   });
 
-  it('with a diagonal available, the octile-optimal route is the straight diagonal (not an L)', () => {
-    // Open 3x3; from corner (0,0) to opposite corner (2,2) the two-step diagonal (cost 2·√2 ≈ 2.83)
-    // strictly beats every four-step L (cost 4), so A* has no tie to break — it takes the diagonal.
-    // This is the fix for the "walks in an arc" report: a straight line at the target, not a staircase.
+  it('breaks a cost-tie between equal lattice routes canonically (a pinned pick)', () => {
+    // Open 3x3, (0,0) -> (2,2): cost 2·DIAGONAL_STEP + ONE, reachable by three equal-cost step
+    // orders (E first, E in the middle, E last). The canonical (f, h, cell-id) tie-break picks ONE of
+    // them history-independently; this pins that pick — a moved expectation here means the lockstep
+    // path choice changed, which is a replay-compatibility event, not a style nit.
     const g = grid(3, 3, new Array(9).fill(GRASS));
     const path = findPath(g, g.cellAt(0, 0), g.cellAt(2, 2));
     expect(coords(g, path)).toEqual([
       { x: 0, y: 0 },
+      { x: 1, y: 0 },
       { x: 1, y: 1 },
       { x: 2, y: 2 },
     ]);

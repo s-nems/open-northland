@@ -7,21 +7,24 @@
  *
  * DETERMINISM: the graph is a plain-data world resource (not entities). Cells are addressed by a
  * monotonic row-major id (`y * width + x`), and neighbours are emitted in a fixed canonical order
- * (orthogonal N, E, S, W, then diagonal NE, SE, SW, NW) so traversal is byte-identical across runs —
- * the precondition for A* with canonical tie-breaking and lockstep replay. All costs are `Fixed`; no
- * floats touch state.
+ * so traversal is byte-identical across runs — the precondition for A* with canonical tie-breaking
+ * and lockstep replay. All costs are `Fixed`; no floats touch state.
  *
- * The graph is 8-CONNECTED for pathfinding ({@link TerrainGraph.steps}): a settler may step
- * diagonally, so it walks toward a target in a straight line rather than an axis-aligned staircase
- * that reads as an "arc" once the iso projection skews it. Diagonals cost √2 (octile metric, so the
- * pathfinder minimises real distance) and forbid corner-cutting — a diagonal is legal only when both
- * shared orthogonal cells are themselves passable, so a unit never squeezes through a wall/building
- * corner. The 4-connected {@link TerrainGraph.neighbours}/{@link TerrainGraph.walkableNeighbours}
- * remain for placement/valency adjacency, which is not a movement question.
+ * MOVEMENT is 6-CONNECTED ({@link TerrainGraph.steps}) — the original's STAGGERED-RASTER lattice
+ * (docs/FIDELITY.md "projection": odd rows shifted half a cell right, 68×38 px pitch), where a cell's
+ * true neighbours are E/W plus the four half-shifted cells one row up/down. WHICH grid offsets those
+ * four are depends on the row's parity (see {@link LATTICE_ROW_STEPS}); a square-grid 8-neighbour
+ * reading would invent two "long diagonal" edges per cell that the lattice doesn't have (the old
+ * zigzag routes) and mis-price the four real ones. Edge costs are the edges' real world lengths in
+ * the lattice metric (`nav/metric.ts`): E/W = ONE (a 68 px column step), row-crossing =
+ * {@link DIAGONAL_STEP} ≈ ¾·ONE (a 51 px lattice edge) — so A* minimises true on-screen distance.
+ * The 4-connected {@link TerrainGraph.neighbours}/{@link TerrainGraph.walkableNeighbours} remain for
+ * placement/valency adjacency, which is not a movement question.
  */
 import type { ContentSet, LandscapeType } from '@vinland/data';
 import type { Brand } from '../core/brand.js';
 import { type Fixed, ONE, fx } from '../core/fixed.js';
+import { DIAGONAL_STEP, HALF_COLUMN } from './metric.js';
 
 /** A cell address: the row-major index `y * width + x`. Branded so a raw number can't stand in. */
 export type CellId = Brand<number, 'CellId'>;
@@ -34,59 +37,36 @@ const NEIGHBOUR_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
   [-1, 0], // W
 ] as const;
 
-/**
- * Canonical diagonal neighbour offsets in NE, SE, SW, NW order, each paired with the two orthogonal
- * cells it "cuts between": a diagonal step is legal only when BOTH of those cells are passable, so a
- * settler can never clip through the corner of a wall or building (the standard no-corner-cut rule).
- * The fixed order (after the orthogonals) keeps 8-connected expansion history-independent.
- */
-const DIAGONAL_OFFSETS: ReadonlyArray<{
-  readonly dx: number;
-  readonly dy: number;
-  /** The two orthogonal corner cells (relative offsets) that must both be passable. */
-  readonly corners: readonly [readonly [number, number], readonly [number, number]];
-}> = [
-  {
-    dx: 1,
-    dy: -1,
-    corners: [
-      [1, 0],
-      [0, -1],
-    ],
-  }, // NE — needs E and N
-  {
-    dx: 1,
-    dy: 1,
-    corners: [
-      [1, 0],
-      [0, 1],
-    ],
-  }, // SE — needs E and S
-  {
-    dx: -1,
-    dy: 1,
-    corners: [
-      [-1, 0],
-      [0, 1],
-    ],
-  }, // SW — needs W and S
-  {
-    dx: -1,
-    dy: -1,
-    corners: [
-      [-1, 0],
-      [0, -1],
-    ],
-  }, // NW — needs W and N
+/** The two COLUMN-STEP lattice edges (pure horizontal, one full cell width), canonical E then W. */
+const COLUMN_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
+  [1, 0], // E
+  [-1, 0], // W
 ] as const;
 
 /**
- * Fixed-point √2 — the cost of a diagonal (8-connected) step relative to an orthogonal one (cost
- * ONE). Minted via {@link fx.isqrt} (the one sanctioned integer square root) so no `Math.sqrt` /
- * float touches sim state. Truncates slightly BELOW the true √2, which keeps the octile heuristic
- * admissible (it can only under-estimate the real cost). ≈ 1.41421·ONE.
+ * The four ROW-CROSSING lattice edges per row parity, in canonical NE, SE, SW, NW screen-heading
+ * order. Under the stagger (odd rows shifted half a cell right) the grid offset of "the cell half a
+ * step up-right of me" depends on which row I stand on: from an EVEN row it is `(0,−1)` (the odd row
+ * above is already shifted right), from an ODD row `(+1,−1)` — and mirrored for the other three. The
+ * fixed order (after E/W) keeps expansion history-independent.
  */
-const SQRT2: Fixed = fx.isqrt(fx.fromInt(2));
+const LATTICE_ROW_STEPS: readonly [
+  even: ReadonlyArray<readonly [dx: number, dy: number]>,
+  odd: ReadonlyArray<readonly [dx: number, dy: number]>,
+] = [
+  [
+    [0, -1], // NE
+    [0, 1], // SE
+    [-1, 1], // SW
+    [-1, -1], // NW
+  ],
+  [
+    [1, -1], // NE
+    [1, 1], // SE
+    [0, 1], // SW
+    [0, -1], // NW
+  ],
+] as const;
 
 /** Resolved, sim-ready properties of one landscape type (derived once from the IR at build time). */
 interface CellTypeProps {
@@ -227,13 +207,16 @@ export class TerrainGraph {
   }
 
   /**
-   * The pathfinder's 8-connected edge set from `cell`: each walkable step (orthogonal N,E,S,W then
-   * diagonal NE,SE,SW,NW, canonical) paired with its fixed-point cost — orthogonal = the destination
-   * cell's {@link walkCost}, diagonal = that cost × √2 (the octile metric, so A* minimises real
-   * distance and prefers a straight diagonal over an L-shaped detour). `blocked` is the dynamic
-   * walk-block overlay (cells standing buildings occupy); a step onto a blocked or unwalkable cell is
-   * omitted, and a DIAGONAL is emitted only when both shared orthogonal corner cells are themselves
-   * passable — the no-corner-cut rule, so a unit never slips diagonally between two blockers.
+   * The pathfinder's 6-connected edge set from `cell` — the staggered lattice's real neighbourhood:
+   * the E/W column steps, then the four row-crossing edges in canonical NE, SE, SW, NW screen-heading
+   * order (their grid offsets depend on the row's parity — {@link LATTICE_ROW_STEPS}). Each step is
+   * paired with its fixed-point cost: the destination cell's {@link walkCost} × the edge's world
+   * length (E/W = ONE, row-crossing = {@link DIAGONAL_STEP} ≈ ¾) — so A* minimises TRUE on-screen
+   * distance. `blocked` is the dynamic walk-block overlay (cells standing buildings occupy); a step
+   * onto a blocked or unwalkable cell is omitted. No corner-cut rule is needed on this lattice: the
+   * four row-crossing edges cross a full shared diamond edge (nothing to clip through), and an E/W
+   * step passes a shared vertex between the two row-neighbours — walkability is a property of the
+   * DESTINATION cell, the original's vertex-graph movement model.
    *
    * Determinism: fixed emission order + fixed per-step costs, all `Fixed`; the returned list drives
    * the A* relaxation, so its order is part of the canonical path choice (pinned by the pathfinding
@@ -247,24 +230,23 @@ export class TerrainGraph {
       const c = (ny * this.width + nx) as CellId;
       return this.isWalkable(c) && !(blocked?.has(c) ?? false);
     };
-    // Orthogonal steps first, canonical N,E,S,W — cost is the destination's walk cost.
-    for (const [dx, dy] of NEIGHBOUR_OFFSETS) {
+    // Column steps first, canonical E then W — cost is the destination's walk cost (edge length ONE).
+    for (const [dx, dy] of COLUMN_STEP_OFFSETS) {
       const nx = x + dx;
       const ny = y + dy;
       if (!passable(nx, ny)) continue;
       const c = (ny * this.width + nx) as CellId;
       out.push({ cell: c, cost: this.walkCost(c) });
     }
-    // Diagonal steps, canonical NE,SE,SW,NW — legal only with both orthogonal corners passable; the
-    // step costs √2× the destination's walk cost.
-    for (const d of DIAGONAL_OFFSETS) {
-      const nx = x + d.dx;
-      const ny = y + d.dy;
+    // Row-crossing steps, canonical NE,SE,SW,NW — the parity-matched grid offsets; the step costs
+    // the destination's walk cost × the lattice edge length (≈ ¾ of a column step).
+    const rowSteps = (y & 1) === 1 ? LATTICE_ROW_STEPS[1] : LATTICE_ROW_STEPS[0];
+    for (const [dx, dy] of rowSteps) {
+      const nx = x + dx;
+      const ny = y + dy;
       if (!passable(nx, ny)) continue;
-      const [[c0x, c0y], [c1x, c1y]] = d.corners;
-      if (!passable(x + c0x, y + c0y) || !passable(x + c1x, y + c1y)) continue; // no corner-cutting
       const c = (ny * this.width + nx) as CellId;
-      out.push({ cell: c, cost: fx.mul(this.walkCost(c), SQRT2) });
+      out.push({ cell: c, cost: fx.mul(this.walkCost(c), DIAGONAL_STEP) });
     }
     return out;
   }
@@ -303,19 +285,30 @@ export function cellManhattanDistance(g: TerrainGraph, a: CellId, b: CellId): Fi
 }
 
 /**
- * The fixed-point OCTILE distance between two cells — the admissible, consistent A* heuristic for the
- * 8-connected graph (orthogonal step cost ONE, diagonal cost √2). It is the exact minimum cost across
- * open terrain: take `min(dx,dy)` diagonal steps (each √2) toward alignment, then `|dx-dy|` orthogonal
- * steps for the remainder. With obstacles the true cost only rises, so this never over-estimates —
- * A* stays optimal. Mirrors the {@link SQRT2} step cost so the heuristic and edge costs agree.
+ * The fixed-point STAGGERED-LATTICE step distance between two cells — the admissible, consistent A*
+ * heuristic for the 6-connected graph ({@link TerrainGraph.steps}: E/W cost ONE, row-crossing cost
+ * {@link DIAGONAL_STEP}). It is the exact minimum cost across open terrain: `|Δrow|` row-crossing
+ * steps are mandatory (only they change the row; each also slides half a column sideways), and
+ * whatever WORLD-x offset they cannot absorb costs full column steps. Admissible because any path
+ * needs ≥`|Δrow|` row-crossings and every extra row-crossing spent on sideways progress buys ≤ half
+ * a column at cost {@link DIAGONAL_STEP} > ½·ONE — never cheaper than the bound. With obstacles the
+ * true cost only rises, so A* stays optimal. Mirrors the {@link TerrainGraph.steps} costs so the
+ * heuristic and edge costs agree.
  */
-export function cellOctileDistance(g: TerrainGraph, a: CellId, b: CellId): Fixed {
+export function cellLatticeDistance(g: TerrainGraph, a: CellId, b: CellId): Fixed {
   const ca = g.coordsOf(a);
   const cb = g.coordsOf(b);
-  const dx = Math.abs(ca.x - cb.x);
-  const dy = Math.abs(ca.y - cb.y);
-  const lo = Math.min(dx, dy);
-  const hi = Math.max(dx, dy);
-  // (hi - lo) orthogonal steps at cost ONE + lo diagonal steps at cost √2.
-  return fx.add(fx.fromInt(hi - lo), fx.mul(fx.fromInt(lo), SQRT2));
+  const rows = Math.abs(ca.y - cb.y);
+  // World-x offset between the cell centres, in column units: the column delta plus the half-column
+  // stagger of each cell's row parity (integer rows, so the shift is 0 or exactly HALF_COLUMN).
+  const wdx = fx.abs(
+    fx.add(
+      fx.fromInt(cb.x - ca.x),
+      fx.sub((cb.y & 1) === 1 ? HALF_COLUMN : (0 as Fixed), (ca.y & 1) === 1 ? HALF_COLUMN : (0 as Fixed)),
+    ),
+  );
+  // The row-crossings absorb up to half a column of sideways travel each; the remainder is E/W steps.
+  const absorbed = fx.mul(fx.fromInt(rows), HALF_COLUMN);
+  const columns = wdx > absorbed ? fx.sub(wdx, absorbed) : (0 as Fixed);
+  return fx.add(fx.mul(fx.fromInt(rows), DIAGONAL_STEP), columns);
 }

@@ -109,6 +109,14 @@ extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
   frame first (dump each index's LUT luminance) — the glyph ramp must sit clear above the cutoff, or the key
   eats the icon. Enable it on EVERY panel sprite (strip + buttons), and record it as a deliberate DEVIATION in
   FIDELITY (the original panel is opaque), not a reconstruction. (render/app)
+- [tick-interpolation] `FixedTimestep.advance` RETURNS the interpolation alpha and the loop.ts docstring
+  promised "the renderer interpolates the leftover fraction" — but nothing consumed it, so entities
+  stepped at the raw 20 Hz tick rate on a 60–144 Hz display (the "not smooth" report; a docstring-claimed
+  property nobody wired, the render twin of the [8fbd673] docstring-claims-untested trap). The wiring is
+  three hops (entry loop → WorldRenderer.update → SpritePool), a per-entity two-anchor track
+  (`trackMotion`, pure + unit-tested) lerped by alpha, with a SNAP_DISTANCE teleport guard — and every
+  SELF-PLACING consumer must read the lerped anchor too (the PalettedSprite screen-space origin, bounds,
+  zIndex, selection rings), or they visibly lag the interpolated bob at the tick rate. (render/app)
 - [reverted c3c0fa1] Two traps in calibration-by-observation fits, both hit while pinning the tile pitch:
   (1) a point-lattice fit whose model omits a plausible degree of freedom **aliases instead of failing** —
   fitting `sy = B·hy` (no odd-row stagger term) against a possibly-staggered lattice converged cleanly to

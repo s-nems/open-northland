@@ -67,6 +67,7 @@ export class SelectionLayer {
     selected: ReadonlySet<number>,
     boundsOf?: (ref: number) => EntityBounds | undefined,
     elevation?: ElevationField,
+    anchorOf?: (ref: number) => { x: number; y: number } | undefined,
   ): void {
     this.drawn.clear();
     if (selected.size > 0) {
@@ -74,14 +75,18 @@ export class SelectionLayer {
         if (!selected.has(ent.id)) continue;
         const pos = ent.components.Position as { x: number; y: number } | undefined;
         if (pos === undefined) continue;
-        // Fixed (scaled int) -> float tile -> iso screen anchor (the feet), the same projection the
-        // sprite pool uses, so the ring lands exactly under the bob.
-        const tileX = pos.x / ONE;
-        const tileY = pos.y / ONE;
-        const s = tileToScreen(tileX, tileY);
-        // Ride the terrain lift the sprite pool applies to the bob, so the ring stays under the unit on a
-        // hill instead of floating on the flat ground beneath it. Flat map → 0 (unchanged).
-        const lift = elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAt(tileX, tileY) : 0;
+        // The pool's DRAWN anchor (inter-tick lerped AND terrain-lifted) when the entity was drawn
+        // this frame, so the ring glides with the interpolated bob and rides the hill under it. When
+        // it wasn't drawn (culled off-screen — the ring is off-view anyway, but stays consistently
+        // placed), fall back to the raw snapshot projection plus the same lift the pool would apply.
+        let s = anchorOf?.(ent.id);
+        if (s === undefined) {
+          const tileX = pos.x / ONE;
+          const tileY = pos.y / ONE;
+          const p = tileToScreen(tileX, tileY);
+          const lift = elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAt(tileX, tileY) : 0;
+          s = { x: p.x, y: p.y - lift };
+        }
         let ring = this.rings.get(ent.id);
         if (ring === undefined) {
           // Kind + size are fixed for the current selection, so the ring geometry is authored once here.
@@ -90,7 +95,7 @@ export class SelectionLayer {
           this.container.addChild(ring);
           this.rings.set(ent.id, ring);
         }
-        ring.position.set(s.x, s.y - lift);
+        ring.position.set(s.x, s.y);
         this.drawn.add(ent.id);
       }
     }

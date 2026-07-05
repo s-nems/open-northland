@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   type CellId,
+  DIAGONAL_STEP,
   ONE,
   Simulation,
   TerrainGraph,
   type TerrainMap,
   buildTerrainGraph,
+  cellLatticeDistance,
   cellManhattanDistance,
-  cellOctileDistance,
   fx,
 } from '../../src/index.js';
 import { SYSTEM_ORDER, type System, type SystemContext } from '../../src/systems/index.js';
@@ -141,34 +142,42 @@ describe('cellManhattanDistance', () => {
   });
 });
 
-/** The diagonal step cost / heuristic weight the graph uses — fixed-point √2 via the sanctioned isqrt. */
-const DIAG = fx.isqrt(fx.fromInt(2));
-
 /** An all-grass (fully walkable) map of the given size. */
 function grassMap(width: number, height: number): TerrainMap {
   return { width, height, typeIds: new Array(width * height).fill(GRASS) };
 }
 
-describe('steps — the pathfinder 8-connected edge set', () => {
-  it('emits orthogonal steps (cost ONE) then diagonal steps (cost √2) in canonical order', () => {
+describe('steps — the pathfinder staggered-lattice edge set', () => {
+  it('emits the six lattice edges from an ODD row: E/W (cost ONE) then NE,SE,SW,NW (cost ¾)', () => {
     const g = buildTerrainGraph(testContent(), grassMap(3, 3));
-    const steps = g.steps(g.cellAt(1, 1)); // centre of an open 3×3: 4 orthogonal + 4 diagonal
+    const steps = g.steps(g.cellAt(1, 1)); // centre of an open 3×3, row 1 = odd (half-shifted right)
     const byCoord = steps.map((s) => ({ ...g.coordsOf(s.cell), cost: s.cost }));
     expect(byCoord).toEqual([
-      { x: 1, y: 0, cost: ONE }, // N
       { x: 2, y: 1, cost: ONE }, // E
-      { x: 1, y: 2, cost: ONE }, // S
       { x: 0, y: 1, cost: ONE }, // W
-      { x: 2, y: 0, cost: DIAG }, // NE
-      { x: 2, y: 2, cost: DIAG }, // SE
-      { x: 0, y: 2, cost: DIAG }, // SW
-      { x: 0, y: 0, cost: DIAG }, // NW
+      { x: 2, y: 0, cost: DIAGONAL_STEP }, // NE — odd row: +col up
+      { x: 2, y: 2, cost: DIAGONAL_STEP }, // SE — odd row: +col down
+      { x: 1, y: 2, cost: DIAGONAL_STEP }, // SW — odd row: same col down
+      { x: 1, y: 0, cost: DIAGONAL_STEP }, // NW — odd row: same col up
     ]);
   });
 
-  it('omits a diagonal whose shared orthogonal corner is unwalkable (no corner-cut)', () => {
-    // 2×2 with water at (1,0). From (0,0): E is water (dropped); the SE diagonal to (1,1) is grass but
-    // its corner (1,0) is water, so the diagonal is forbidden — only S survives.
+  it('emits the parity-mirrored offsets from an EVEN row (same screen headings)', () => {
+    const g = buildTerrainGraph(testContent(), grassMap(3, 3));
+    const steps = g.steps(g.cellAt(1, 2)); // row 2 = even (unshifted)
+    const byCoord = steps.map((s) => g.coordsOf(s.cell));
+    expect(byCoord).toEqual([
+      { x: 2, y: 2 }, // E
+      { x: 0, y: 2 }, // W
+      { x: 1, y: 1 }, // NE — even row: same col up (the odd row above is shifted right)
+      { x: 0, y: 1 }, // NW — even row: -col up
+    ]);
+  });
+
+  it('omits an unwalkable destination (walkability gates the DESTINATION cell)', () => {
+    // 2×2 with water at (1,0). From (0,0) (even row): E is water (dropped), SE = (0,1) survives;
+    // SW/NE/NW are off-map. The lattice has no corner-cut rule — its row-crossing edges cross a full
+    // shared diamond edge, so only the destination's own walkability gates a step.
     const g = buildTerrainGraph(testContent(), {
       width: 2,
       height: 2,
@@ -178,25 +187,32 @@ describe('steps — the pathfinder 8-connected edge set', () => {
     expect(steps).toEqual([{ x: 0, y: 1 }]);
   });
 
-  it('honours the dynamic blocked overlay for the corner cells too', () => {
+  it('honours the dynamic blocked overlay', () => {
     const g = buildTerrainGraph(testContent(), grassMap(2, 2));
     const blocked = new Set<CellId>([g.cellAt(1, 0)]); // dynamically block the E cell
     const steps = g.steps(g.cellAt(0, 0), blocked).map((s) => g.coordsOf(s.cell));
-    // E blocked; the SE diagonal shares that corner, so it is forbidden too — only S survives.
+    // E blocked; only the SE lattice edge to (0,1) survives (the rest are off-map).
     expect(steps).toEqual([{ x: 0, y: 1 }]);
   });
 });
 
-describe('cellOctileDistance', () => {
-  it('is min(dx,dy) diagonals at √2 plus |dx-dy| orthogonals at ONE', () => {
+describe('cellLatticeDistance', () => {
+  it('is |Δrow| row-crossings at ¾ plus the un-absorbed world-x remainder at ONE', () => {
     const g = buildTerrainGraph(testContent(), grassMap(5, 5));
-    // (0,0)->(4,3): three diagonal steps + one orthogonal.
-    expect(cellOctileDistance(g, g.cellAt(0, 0), g.cellAt(4, 3))).toBe(
-      fx.add(fx.fromInt(1), fx.mul(fx.fromInt(3), DIAG)),
+    // (0,0)->(4,3): world-x offset 4.5 (4 columns + the odd-row half shift); 3 row-crossings absorb
+    // 1.5 of it, leaving 3 full column steps.
+    expect(cellLatticeDistance(g, g.cellAt(0, 0), g.cellAt(4, 3))).toBe(
+      fx.add(fx.fromInt(3), fx.mul(fx.fromInt(3), DIAGONAL_STEP)),
     );
-    // Pure diagonal: two diagonal steps, no orthogonal remainder.
-    expect(cellOctileDistance(g, g.cellAt(0, 0), g.cellAt(2, 2))).toBe(fx.mul(fx.fromInt(2), DIAG));
-    expect(cellOctileDistance(g, g.cellAt(0, 0), g.cellAt(0, 0))).toBe(fx.fromInt(0));
+    // (0,0)->(2,2): world-x offset 2; 2 row-crossings absorb 1, leaving 1 column step.
+    expect(cellLatticeDistance(g, g.cellAt(0, 0), g.cellAt(2, 2))).toBe(
+      fx.add(fx.fromInt(1), fx.mul(fx.fromInt(2), DIAGONAL_STEP)),
+    );
+    // (0,0)->(0,1): the SE lattice edge itself — one row-crossing, half-column shift fully absorbed.
+    expect(cellLatticeDistance(g, g.cellAt(0, 0), g.cellAt(0, 1))).toBe(DIAGONAL_STEP);
+    // Straight down the screen, (2,0)->(2,4): four row-crossings, zero net world-x offset.
+    expect(cellLatticeDistance(g, g.cellAt(2, 0), g.cellAt(2, 4))).toBe(fx.mul(fx.fromInt(4), DIAGONAL_STEP));
+    expect(cellLatticeDistance(g, g.cellAt(0, 0), g.cellAt(0, 0))).toBe(fx.fromInt(0));
   });
 });
 

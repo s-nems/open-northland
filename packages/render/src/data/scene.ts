@@ -345,31 +345,29 @@ function readAtomicElapsed(components: Readonly<Record<string, unknown>>): numbe
 }
 
 /**
- * The bob's facing-direction index for a unit step toward the next waypoint, keyed by the SIGN of the
- * grid delta `(sign dCol, sign dRow)`. The `CR_Hum_Body` sheet's 8 direction blocks are NOT a uniform
- * screen-angle rotation — each was read off the decoded frames one by one (`docs/FIDELITY.md` "Settler
- * facing"; blocks face `0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N`) — so a screen-angle formula can't
- * pick them; we map each grid step straight to the block whose sprite faces that step's screen heading.
- * Under the measured STAGGERED-RASTER projection (`iso.ts` — recalibrated 2026-07, superseding the old
- * rotated diamond) a grid step's net screen heading is just its sign pair: `+col` is screen-RIGHT,
- * `+row` is screen-DOWN (the odd-row half-cell stagger nets out over a whole step), so map N/S/E/W
- * coincide with the screen's:
- *   E (1,0)→screen right→block 4,  W (−1,0)→left→1,  S (0,1)→down→6,  N (0,−1)→up→7,
- *   SE(1,1)→down-right→block 5,  SW(−1,1)→down-left→0,  NE(1,−1)→up-right→3,  NW(−1,−1)→up-left→2.
- * (The rotated-diamond mapping this replaced sent `+col` to screen-SE and `−col` to screen-NW — the
- * "faces up-left while walking left" bug once the projection became a straight raster but the facing
- * table wasn't recalibrated; docs/FIDELITY.md "Settler facing".)
+ * The bob block index per SCREEN-heading octant, indexed by `round(angle / 45°) mod 8` with the angle
+ * from `Math.atan2(dy, dx)` (screen +x right, +y down): octant 0 = E, 1 = SE, 2 = S, 3 = SW, 4 = W,
+ * 5 = NW, 6 = N, 7 = NE. The `CR_Hum_Body` sheet's 8 direction blocks are NOT a uniform screen-angle
+ * rotation — each was read off the decoded frames one by one (`docs/FIDELITY.md` "Settler facing";
+ * blocks face `0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N`) — hence the lookup.
  */
-const STEP_TO_FACING: Readonly<Record<string, number>> = {
-  '1,0': 4, // E  -> screen right
-  '-1,0': 1, // W  -> screen left
-  '0,1': 6, // S  -> screen down
-  '0,-1': 7, // N  -> screen up
-  '1,1': 5, // SE -> screen down-right
-  '-1,1': 0, // SW -> screen down-left
-  '1,-1': 3, // NE -> screen up-right
-  '-1,-1': 2, // NW -> screen up-left
-};
+const HEADING_OCTANT_TO_BLOCK: readonly number[] = [4, 5, 6, 0, 1, 2, 7, 3];
+
+/**
+ * The facing block whose sprite looks along the given SCREEN heading (px delta, +x right, +y down):
+ * quantize the heading angle to the nearest of the 8 octants and look the block up. Facing must be
+ * derived from the PROJECTED heading, not the grid delta's sign — under the staggered raster the
+ * same grid step `(0,+1)` heads screen down-RIGHT from an even row but down-LEFT from an odd one
+ * (the sign-pair table this replaced faced both as "south", one of the visible zigzag artifacts;
+ * docs/FIDELITY.md "Settler facing"). Floats are fine — render-only, never re-enters the sim.
+ */
+function facingFromScreenHeading(dx: number, dy: number): number {
+  const octant = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)); // -4..4, 0 = screen right
+  return HEADING_OCTANT_TO_BLOCK[((octant % 8) + 8) % 8] ?? DEFAULT_HEADING_BLOCK;
+}
+
+/** The S-facing block — the fallback for an (unreachable) out-of-table octant lookup. */
+const DEFAULT_HEADING_BLOCK = 6;
 
 /**
  * One {@link PathFollow} waypoint, as plain snapshot data (Fixed = scaled int). Redeclared here so
@@ -381,12 +379,13 @@ interface WaypointValue {
 }
 
 /**
- * Derive a settler's facing direction index (0..7) from its live heading: the grid step from its current
- * position toward the {@link PathFollow} waypoint it is walking to, looked up in {@link STEP_TO_FACING}
- * (the block whose sprite faces that step's ISO-screen heading). Only the SIGN of each delta matters —
- * the heading is always a grid direction (cell-to-cell), so a sign pair keys the table exactly, with no
- * angle/rounding. Returns `undefined` when there is no movement to read a heading from (no path, or
- * already on the waypoint) — the binding then falls back to a default facing. Pure read of plain data.
+ * Derive a settler's facing direction index (0..7) from its live heading: the PROJECTED screen step
+ * from its current position toward the {@link PathFollow} waypoint it is walking to, quantized to the
+ * block whose sprite faces that heading ({@link facingFromScreenHeading}). Projecting through
+ * `tileToScreen` (not reading the grid delta's sign) is what makes facing parity-correct under the
+ * staggered raster: a lattice leg one row down faces SE from an even row and SW from an odd one.
+ * Returns `undefined` when there is no movement to read a heading from (no path, or already on the
+ * waypoint) — the binding then falls back to a default facing. Pure read of plain data.
  */
 function readFacing(components: Readonly<Record<string, unknown>>): number | undefined {
   const pf = components.PathFollow as { waypoints?: unknown; index?: unknown } | undefined;
@@ -395,10 +394,12 @@ function readFacing(components: Readonly<Record<string, unknown>>): number | und
   const idx = typeof pf.index === 'number' ? pf.index : 0;
   const wp = pf.waypoints[idx] as WaypointValue | undefined;
   if (wp === undefined || typeof wp.x !== 'number' || typeof wp.y !== 'number') return undefined;
-  const dCol = wp.x - pos.x;
-  const dRow = wp.y - pos.y;
-  if (dCol === 0 && dRow === 0) return undefined; // already there — no heading
-  return STEP_TO_FACING[`${Math.sign(dCol)},${Math.sign(dRow)}`];
+  const from = tileToScreen(pos.x / ONE, pos.y / ONE);
+  const to = tileToScreen(wp.x / ONE, wp.y / ONE);
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  if (dx === 0 && dy === 0) return undefined; // already there — no heading
+  return facingFromScreenHeading(dx, dy);
 }
 
 /**
