@@ -6,6 +6,7 @@ import {
   Simulation,
   TerrainGraph,
   type TerrainMap,
+  VERTICAL_STEP,
   buildTerrainGraph,
   cellLatticeDistance,
   cellManhattanDistance,
@@ -171,7 +172,53 @@ describe('steps — the pathfinder staggered-lattice edge set', () => {
       { x: 0, y: 2 }, // W
       { x: 1, y: 1 }, // NE — even row: same col up (the odd row above is shifted right)
       { x: 0, y: 1 }, // NW — even row: -col up
+      { x: 1, y: 0 }, // N — straight up two rows, same column (S is off-map)
     ]);
+  });
+
+  it('emits the vertical N/S steps (two rows, same column) at the VERTICAL_STEP cost', () => {
+    const g = buildTerrainGraph(testContent(), grassMap(3, 5));
+    const steps = g.steps(g.cellAt(1, 2)); // row 2 = even; rows 0 and 4 are both in bounds
+    const verticals = steps.filter((s) => Math.abs(g.coordsOf(s.cell).y - 2) === 2);
+    expect(verticals.map((s) => ({ ...g.coordsOf(s.cell), cost: s.cost }))).toEqual([
+      { x: 1, y: 0, cost: VERTICAL_STEP }, // N first (the THexagonDirection tail order)
+      { x: 1, y: 4, cost: VERTICAL_STEP }, // S
+    ]);
+  });
+
+  it('drops a vertical step when BOTH intermediate flank cells are unwalkable (a wall seam is not a gap)', () => {
+    // 3×5, all grass except row 3 fully water — going S from (1,2) the seam between (0,3)/(1,3)
+    // is a wall joint; the target row 4 itself is grass, so only the flank rule can drop the step.
+    const typeIds = new Array(15).fill(GRASS);
+    for (let x = 0; x < 3; x++) typeIds[3 * 3 + x] = WATER;
+    const g = buildTerrainGraph(testContent(), { width: 3, height: 5, typeIds });
+    const south = g
+      .steps(g.cellAt(1, 2))
+      .map((s) => g.coordsOf(s.cell))
+      .filter((c) => c.y === 4);
+    expect(south).toEqual([]);
+  });
+
+  it('keeps a vertical step when ONE flank cell is walkable (sliding the seam past a blocked flank)', () => {
+    // Same map but only the SW flank (0,3) is water — the SE flank (1,3) keeps the gap open.
+    const typeIds = new Array(15).fill(GRASS);
+    typeIds[3 * 3 + 0] = WATER;
+    const g = buildTerrainGraph(testContent(), { width: 3, height: 5, typeIds });
+    const south = g
+      .steps(g.cellAt(1, 2))
+      .map((s) => g.coordsOf(s.cell))
+      .filter((c) => c.y === 4);
+    expect(south).toEqual([{ x: 1, y: 4 }]);
+  });
+
+  it('gates the vertical flanks on the dynamic blocked overlay too', () => {
+    const g = buildTerrainGraph(testContent(), grassMap(3, 5));
+    const blocked = new Set<CellId>([g.cellAt(0, 3), g.cellAt(1, 3)]); // both S flanks of (1,2)
+    const south = g
+      .steps(g.cellAt(1, 2), blocked)
+      .map((s) => g.coordsOf(s.cell))
+      .filter((c) => c.y === 4);
+    expect(south).toEqual([]);
   });
 
   it('omits an unwalkable destination (walkability gates the DESTINATION cell)', () => {
@@ -197,7 +244,7 @@ describe('steps — the pathfinder staggered-lattice edge set', () => {
 });
 
 describe('cellLatticeDistance', () => {
-  it('is |Δrow| row-crossings at ¾ plus the un-absorbed world-x remainder at ONE', () => {
+  it('prices a sideways-dominant offset as all-diagonal row-crossings plus E/W column steps', () => {
     const g = buildTerrainGraph(testContent(), grassMap(5, 5));
     // (0,0)->(4,3): world-x offset 4.5 (4 columns + the odd-row half shift); 3 row-crossings absorb
     // 1.5 of it, leaving 3 full column steps.
@@ -210,9 +257,20 @@ describe('cellLatticeDistance', () => {
     );
     // (0,0)->(0,1): the SE lattice edge itself — one row-crossing, half-column shift fully absorbed.
     expect(cellLatticeDistance(g, g.cellAt(0, 0), g.cellAt(0, 1))).toBe(DIAGONAL_STEP);
-    // Straight down the screen, (2,0)->(2,4): four row-crossings, zero net world-x offset.
-    expect(cellLatticeDistance(g, g.cellAt(2, 0), g.cellAt(2, 4))).toBe(fx.mul(fx.fromInt(4), DIAGONAL_STEP));
     expect(cellLatticeDistance(g, g.cellAt(0, 0), g.cellAt(0, 0))).toBe(fx.fromInt(0));
+  });
+
+  it('prices a vertical-dominant offset with straight N/S steps, diagonals only for the offset', () => {
+    const g = buildTerrainGraph(testContent(), grassMap(5, 7));
+    // Straight down the screen, (2,0)->(2,4): two straight vertical steps, no weave premium.
+    expect(cellLatticeDistance(g, g.cellAt(2, 0), g.cellAt(2, 4))).toBe(fx.mul(fx.fromInt(2), VERTICAL_STEP));
+    // (0,0)->(0,3): half a column of offset (the odd-row shift) — one diagonal absorbs it, the
+    // remaining two rows are one vertical step.
+    expect(cellLatticeDistance(g, g.cellAt(0, 0), g.cellAt(0, 3))).toBe(fx.add(VERTICAL_STEP, DIAGONAL_STEP));
+    // (1,0)->(0,6): one column left over six rows (whx=2 < rows=6): two diagonals + two verticals.
+    expect(cellLatticeDistance(g, g.cellAt(1, 0), g.cellAt(0, 6))).toBe(
+      fx.add(fx.mul(fx.fromInt(2), VERTICAL_STEP), fx.mul(fx.fromInt(2), DIAGONAL_STEP)),
+    );
   });
 });
 

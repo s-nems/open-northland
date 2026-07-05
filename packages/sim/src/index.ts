@@ -55,7 +55,15 @@ export {
   type CellId,
   type TerrainMap,
 } from './nav/terrain.js';
-export { DIAGONAL_STEP, HALF_COLUMN, ROW_STEP, staggerShift, worldDistance, worldX } from './nav/metric.js';
+export {
+  DIAGONAL_STEP,
+  HALF_COLUMN,
+  ROW_STEP,
+  VERTICAL_STEP,
+  staggerShift,
+  worldDistance,
+  worldX,
+} from './nav/metric.js';
 export { findPath } from './nav/pathfinding.js';
 export { replay, type ReplayOptions } from './replay/replay.js';
 export {

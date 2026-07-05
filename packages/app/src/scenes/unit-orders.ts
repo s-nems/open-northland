@@ -173,7 +173,7 @@ export const unitOrdersScene: SceneDefinition = {
     'Przeciągnij ramką po grupie wikingów — pod zaznaczonymi pojawiają się zielone pierścienie, a karta info (prawy dolny róg) pokazuje ich liczbę',
     'Kliknij prawym (PPM) na wolnej trawie — zaznaczeni wikingowie idą tam; robotnik po chwili postoju wraca do swoich zajęć',
     'Ruch jest PŁYNNY i w stałym tempie: bez skoków co klatkę, bez przyspieszania/zwalniania między kierunkami (E/W vs skosy vs w dół)',
-    'PPM prosto POD jednostką — schodzi ciasnym splotem SE/SW wzdłuż pionu (odchył ≤ pół pola), twarz zgodna z kierunkiem każdego kroku, bez odpływania w bok',
+    'PPM prosto POD lub NAD jednostką — idzie IDEALNIE pionowo (kroki N/S przez szczeliny między polami), twarzą na wprost (S/N), bez splotu i bez odpływania w bok',
     'Grupa wysłana w jedno miejsce rozsiada się na sąsiednich polach wokół kliknięcia — nikt nie kończy na tym samym polu',
     'Spacja LUB prawy przycisk (PPM) na wikingu rozwija MENU AKCJI wokół jednostki: komplet okrągłych drewnianych przycisków w oryginalnej grafice (nie DOM-owe prostokąty), na czterech ramionach (góra/dół/lewo/prawo) jak w oryginale — ikony mają być OSTRE, nie poszczerbione ani rozmyte',
     'Kliknij przycisk „Zmiana zawodu" (górne ramię, pierwszy z lewej) — otwiera się lista zawodów; wybór zmienia zawód (a karta info to odzwierciedla). Pozostałe przyciski to placeholdery: najazd pokazuje podpowiedź z nazwą, ale klik nic nie robi (i nie rozkazuje jednostce ruchu). Klik między przyciskami nadal działa na jednostkę',

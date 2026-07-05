@@ -28,7 +28,9 @@ function grassMap(width: number, height: number): TerrainMap {
   return { width, height, typeIds: new Array(width * height).fill(GRASS) };
 }
 
-/** Build a mapped sim and place an entity at (x,y) with a straight-line PathFollow to the waypoints. */
+/** Build a mapped sim and place an entity at (x,y) with a straight-line PathFollow to the waypoints.
+ *  Waypoints go through `fx.fromFloat` (exact for the test values used) so a seam waypoint's
+ *  half-column fractional x can be expressed directly. */
 function followerAt(
   sim: Simulation,
   x: number,
@@ -38,7 +40,7 @@ function followerAt(
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, PathFollow, {
-    waypoints: waypoints.map((w) => ({ x: fx.fromInt(w.x), y: fx.fromInt(w.y) })),
+    waypoints: waypoints.map((w) => ({ x: fx.fromFloat(w.x), y: fx.fromFloat(w.y) })),
     index: 0,
   });
   return e;
@@ -128,6 +130,27 @@ describe('movementSystem — path following', () => {
     }
     expect(moveTicks).toBe(6);
     expect(pos(sim, e).y).toBeCloseTo(1, 6);
+  });
+
+  it('walks a vertical leg dead straight on screen: worldX constant through the seam waypoint', () => {
+    // The two sub-legs of a vertical S step (cell centre -> seam -> cell centre, as routing.ts
+    // splices them): grid x bends half a column left and back, EXACTLY cancelling the stagger's
+    // triangle wave — so the world x (what the render projects) never moves. This is the sim-side
+    // guarantee behind "ordered straight down, walks straight down".
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 5) });
+    const e = followerAt(sim, 2, 0, [
+      { x: 2, y: 0 },
+      { x: 1.5, y: 1 }, // the seam (routing writes fractional waypoints; followerAt scales floats)
+      { x: 2, y: 2 },
+    ]);
+    sim.step(); // consume wp0
+    while (sim.world.has(e, PathFollow)) {
+      sim.step();
+      const p = pos(sim, e);
+      const shift = Math.abs(p.y % 2) <= 1 ? Math.abs(p.y % 2) / 2 : 1 - Math.abs(p.y % 2) / 2;
+      expect(p.x + shift).toBeCloseTo(2, 3); // worldX = grid x + stagger shift stays on the column
+    }
+    expect(pos(sim, e)).toEqual({ x: 2, y: 2 });
   });
 
   it('paces an off-lattice re-path leg by the world metric too (no lurch)', () => {
