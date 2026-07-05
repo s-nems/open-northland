@@ -67,7 +67,8 @@ Follow the `/iterate` §3 gates (`.claude/commands/iterate.md` — copied into t
     Launch with an explicit port at 5174+:
     `npm run dev --workspace @vinland/app -- --port 5174` (if 5174 is itself taken by another
     worktree, Vite walks up to the next free port). **Read the actual URL from the output** and use it
-    for the browser drive + approval links below — never assume a port.
+    for the browser drive + approval links below — never assume a port. `scripts/dev-ports.sh` lists
+    every running dev server with its port and checkout, so you can see what's already taken.
   - Drive it yourself with the Playwright MCP tools against that port (load the scene, interact,
     screenshot) to catch crashes and obvious breakage.
   - Then hand the user the approval links: `open` the exact URL(s) (`http://localhost:<port>/?scene=<id>`
