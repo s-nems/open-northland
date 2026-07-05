@@ -44,6 +44,13 @@ export interface MapObjectSprite {
   readonly phase: number;
   /** Draw opacity (1 = opaque). Waves composite translucently over the water ground. */
   readonly alpha: number;
+  /**
+   * Terrain-elevation lift (world px, ≥ 0) at this object's half-cell — SUBTRACTED from the drawn `y` so
+   * a tree/stone rides up the hill it stands on. The feet anchor {@link y} and its {@link depthKey} stay
+   * PRE-LIFT, so a lifted-up object still occludes by map row (a tree on a hill draws behind a settler on
+   * a nearer row). Omitted (0) on a flat map / when the app has no elevation lane. Set by the app loader.
+   */
+  readonly lift?: number;
 }
 
 /** One tall (non-decor) map object: its static draw data + a LAZILY-minted pooled sprite. */
@@ -116,7 +123,8 @@ function writeObjectQuad(
   pageH: number,
 ): void {
   const x0 = obj.x + frame.offsetX * obj.scale;
-  const y0 = obj.y + frame.offsetY * obj.scale;
+  // Lift the drawn quad up the hill (the anchor + depth stay pre-lift; only the draw y moves).
+  const y0 = obj.y - (obj.lift ?? 0) + frame.offsetY * obj.scale;
   const x1 = x0 + frame.width * obj.scale;
   const y1 = y0 + frame.height * obj.scale;
   const p = quadIndex * 8;
@@ -281,7 +289,11 @@ export class MapObjectLayer {
           const frame = objectFrameAt(obj, tick);
           if (frame === undefined) continue;
           po.sprite.texture = this.textures.get(obj.source, frame);
-          po.sprite.position.set(obj.x + frame.offsetX * obj.scale, obj.y + frame.offsetY * obj.scale);
+          // Draw at the lifted feet; the zIndex above kept the pre-lift `obj.y` so depth is by map row.
+          po.sprite.position.set(
+            obj.x + frame.offsetX * obj.scale,
+            obj.y - (obj.lift ?? 0) + frame.offsetY * obj.scale,
+          );
         }
         if (!po.attached) {
           this.spriteLayer.addChild(po.sprite);

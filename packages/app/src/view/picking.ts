@@ -1,4 +1,11 @@
-import { type Camera, type EntityBounds, TILE_HALF_H, TILE_HALF_W, tileToScreen } from '@vinland/render';
+import {
+  type Camera,
+  type ElevationField,
+  type EntityBounds,
+  TILE_HALF_H,
+  TILE_HALF_W,
+  tileToScreen,
+} from '@vinland/render';
 
 /**
  * Pure PICKING math — the screen→world→tile inverse of the render projection, plus the point/box
@@ -43,14 +50,14 @@ export function screenToWorld(camera: Camera, sx: number, sy: number): { x: numb
 }
 
 /**
- * Invert the staggered-raster projection: a WORLD-px point → the tile (col,row) whose interlocking
- * diamond contains it. `tileToScreen(col,row) = ((2·col + (row&1))·HALF_W, row·HALF_H)`; rows overlap
- * (a diamond spans ±HALF_H, a full row step each way), so the point's row band admits three candidate
- * rows — for each, the nearest column on that row's parity is scored by the diamond norm
- * `|dx|/HALF_W + |dy|/HALF_H` (≤ 1 inside a diamond) and the closest wins. Deterministic: strict
- * `<` keeps the lowest candidate row on the knife-edge of a shared diamond edge.
+ * Invert the FLAT staggered-raster projection (no elevation): a WORLD-px point → the tile (col,row)
+ * whose interlocking diamond contains it. `tileToScreen(col,row) = ((2·col + (row&1))·HALF_W,
+ * row·HALF_H)`; rows overlap (a diamond spans ±HALF_H, a full row step each way), so the point's row
+ * band admits three candidate rows — for each, the nearest column on that row's parity is scored by the
+ * diamond norm `|dx|/HALF_W + |dy|/HALF_H` (≤ 1 inside a diamond) and the closest wins. Deterministic:
+ * strict `<` keeps the lowest candidate row on the knife-edge of a shared diamond edge.
  */
-export function worldToTile(wx: number, wy: number): Tile {
+function worldToTileFlat(wx: number, wy: number): Tile {
   const rowGuess = Math.round(wy / TILE_HALF_H);
   let best: Tile = { col: 0, row: 0 };
   let bestD = Number.POSITIVE_INFINITY;
@@ -66,6 +73,37 @@ export function worldToTile(wx: number, wy: number): Tile {
     }
   }
   return best;
+}
+
+/**
+ * How many correction passes the elevation-aware inverse takes before giving up. The renderer lifts a
+ * cell's ground UP by `LIFT·elev` (up to ~7–8 rows on a tall map), so the flat inverse lands rows below
+ * the clicked hilltop; each pass re-samples the current guess's lift and re-solves, converging to the
+ * cell actually drawn under the cursor. A handful of passes reaches a fixed point for real terrain
+ * (smooth slopes); the loop also breaks as soon as the estimate stops moving.
+ */
+const PICK_ELEVATION_PASSES = 8;
+
+/**
+ * Invert the projection to the tile drawn under a WORLD-px point, accounting for the elevation lift. The
+ * renderer draws cell `(col,row)`'s ground at `y = projected_y − liftAt(col,row)`, so a click at screen
+ * `wy` sits on ground whose UNLIFTED `y` is `wy + lift`. We can't know the lift without the cell, so we
+ * iterate: estimate the cell with the flat inverse, sample ITS lift, add it back, re-solve — a fixed
+ * point (the 2-pass the design calls for, iterated so steep slopes still round-trip). Without a field
+ * (or a flat one) this is exactly {@link worldToTileFlat}. Pure + deterministic.
+ */
+export function worldToTile(wx: number, wy: number, elevation?: ElevationField): Tile {
+  if (elevation === undefined || elevation.maxLift === 0) return worldToTileFlat(wx, wy);
+  let guess = worldToTileFlat(wx, wy);
+  for (let pass = 0; pass < PICK_ELEVATION_PASSES; pass++) {
+    // At the integer cell the bilinear sampler returns that cell's own lift exactly (edge-clamped for an
+    // out-of-bounds guess), so this re-solve targets the ground the renderer actually lifted.
+    const lift = elevation.liftAt(guess.col, guess.row);
+    const next = worldToTileFlat(wx, wy + lift);
+    if (next.col === guess.col && next.row === guess.row) return next;
+    guess = next;
+  }
+  return guess;
 }
 
 /** Clamp a tile to the map bounds `[0,width) × [0,height)` (a click off the map still yields a legal cell). */

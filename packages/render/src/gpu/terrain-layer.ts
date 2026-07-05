@@ -1,4 +1,5 @@
 import { Container, Graphics, Mesh, MeshGeometry, Texture, type TextureSource } from 'pixi.js';
+import { type ElevationField, diamondCornerLifts, makeElevationField } from '../data/elevation.js';
 import { TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../data/iso.js';
 import type { SceneTerrain } from '../data/scene.js';
 import {
@@ -56,6 +57,9 @@ interface TerrainChunk {
   readonly maxY: number;
 }
 
+/** A flat field (no lift) — the shared default for the elevation-free path (synthetic grids / no lane). */
+const FLAT_ELEVATION: ElevationField = makeElevationField(undefined, 0, 0);
+
 /** The batched geometry accumulated for one draw call (a colour, or a texture page) within a chunk. */
 interface TerrainBatch {
   readonly positions: number[];
@@ -72,12 +76,20 @@ function meshGeometry(batch: TerrainBatch): MeshGeometry {
   });
 }
 
-/** Trace one flat-colour ground diamond into a shared {@link Graphics} (the textured-terrain fallback). */
-function fallbackDiamond(g: Graphics, sx: number, sy: number, colour: number): void {
-  g.moveTo(sx, sy - TILE_HALF_H)
-    .lineTo(sx + TILE_HALF_W, sy)
-    .lineTo(sx, sy + TILE_HALF_H)
-    .lineTo(sx - TILE_HALF_W, sy)
+/** Trace one flat-colour ground diamond into a shared {@link Graphics} (the textured-terrain fallback).
+ *  `lifts` (`[top, right, bottom, left]`, world px) lifts each corner by terrain height, matching the
+ *  meshed cells around it; absent → flat. */
+function fallbackDiamond(
+  g: Graphics,
+  sx: number,
+  sy: number,
+  colour: number,
+  lifts?: readonly number[],
+): void {
+  g.moveTo(sx, sy - TILE_HALF_H - (lifts?.[0] ?? 0))
+    .lineTo(sx + TILE_HALF_W, sy - (lifts?.[1] ?? 0))
+    .lineTo(sx, sy + TILE_HALF_H - (lifts?.[2] ?? 0))
+    .lineTo(sx - TILE_HALF_W, sy - (lifts?.[3] ?? 0))
     .closePath()
     .fill({ color: colour });
 }
@@ -94,10 +106,10 @@ export class TerrainLayer {
    * page, independent of map size); without them it draws the flat placeholder diamonds. Either way the
    * geometry + page textures are built here and RETAINED, so no terrain work happens per frame.
    */
-  set(terrain: SceneTerrain, textures?: TerrainTextureSet): void {
+  set(terrain: SceneTerrain, textures?: TerrainTextureSet, elevation: ElevationField = FLAT_ELEVATION): void {
     this.destroy();
-    if (textures !== undefined) this.buildTextured(terrain, textures);
-    else this.buildFlat(terrain);
+    if (textures !== undefined) this.buildTextured(terrain, textures, elevation);
+    else this.buildFlat(terrain, elevation);
   }
 
   /**
@@ -138,6 +150,7 @@ export class TerrainLayer {
    */
   private buildChunks(
     terrain: SceneTerrain,
+    maxLift: number,
     meshBlock: (c0: number, r0: number, c1: number, r1: number) => (Mesh | Graphics)[],
   ): void {
     for (let r0 = 0; r0 < terrain.height; r0 += TERRAIN_CHUNK_TILES) {
@@ -153,7 +166,10 @@ export class TerrainLayer {
           container,
           minX: 2 * c0 * TILE_HALF_W - TILE_HALF_W,
           maxX: (2 * c1 + 1) * TILE_HALF_W + TILE_HALF_W,
-          minY: r0 * TILE_HALF_H - TILE_HALF_H,
+          // The lift only ever raises a vertex (−y), so extend the box's TOP by the map-wide-max lift so
+          // culling never clips a chunk whose meshed ground was baked up a hill (the analytic AABB can't
+          // see the baked lift). `maxLift` is 0 for a flat field → the box is unchanged.
+          minY: r0 * TILE_HALF_H - TILE_HALF_H - maxLift,
           maxY: r1 * TILE_HALF_H + TILE_HALF_H,
         });
       }
@@ -165,12 +181,13 @@ export class TerrainLayer {
    *  re-batch); the per-block split is what lets {@link cull} skip off-screen ground. A decoded map
    *  carrying its 1:1 `ground` lanes (and a texture set exposing the pattern join) takes the
    *  per-triangle path instead; the approximated per-typeId path stays for synthetic grids. */
-  private buildTextured(terrain: SceneTerrain, textures: TerrainTextureSet): void {
+  private buildTextured(terrain: SceneTerrain, textures: TerrainTextureSet, elevation: ElevationField): void {
     if (terrain.ground !== undefined && textures.groundFor !== undefined) {
-      this.buildGround(terrain, terrain.ground, textures);
+      this.buildGround(terrain, terrain.ground, textures, elevation);
       return;
     }
-    this.buildChunks(terrain, (c0, r0, c1, r1) => {
+    const lifted = elevation.maxLift > 0;
+    this.buildChunks(terrain, elevation.maxLift, (c0, r0, c1, r1) => {
       const byPage = new Map<string, TerrainBatch & { source: TextureSource }>();
       const fallback = new Graphics();
       let fallbackUsed = false;
@@ -178,10 +195,17 @@ export class TerrainLayer {
         for (let col = c0; col <= c1; col++) {
           const typeId = terrain.typeIds[row * terrain.width + col] ?? -1;
           const screen = tileToScreen(col, row);
+          const lifts = lifted ? diamondCornerLifts(elevation, col, row) : undefined;
           const cellTex = textures.cellFor(typeId);
           const source = cellTex !== undefined ? textures.pages.get(cellTex.pageKey) : undefined;
           if (cellTex === undefined || source === undefined) {
-            fallbackDiamond(fallback, screen.x, screen.y, cellTex?.fallbackColour ?? DEFAULT_TILE_COLOUR);
+            fallbackDiamond(
+              fallback,
+              screen.x,
+              screen.y,
+              cellTex?.fallbackColour ?? DEFAULT_TILE_COLOUR,
+              lifts,
+            );
             fallbackUsed = true;
             continue;
           }
@@ -191,7 +215,7 @@ export class TerrainLayer {
             byPage.set(cellTex.pageKey, batch);
           }
           const base = batch.positions.length / 2;
-          batch.positions.push(...diamondCorners(screen.x, screen.y));
+          batch.positions.push(...diamondCorners(screen.x, screen.y, lifts));
           batch.uvs.push(...rectUVs(cellTex.rect, source.width, source.height));
           for (const idx of DIAMOND_INDICES) batch.indices.push(base + idx);
         }
@@ -218,6 +242,7 @@ export class TerrainLayer {
     terrain: SceneTerrain,
     ground: NonNullable<SceneTerrain['ground']>,
     textures: TerrainTextureSet,
+    elevation: ElevationField,
   ): void {
     // Resolve the map's compact pattern list once (index-aligned); nulls fall back per cell.
     const resolved: ({ source: TextureSource; pageKey: string; pattern: GroundPattern } | null)[] =
@@ -228,7 +253,8 @@ export class TerrainLayer {
         if (source === undefined) return null;
         return { source, pageKey: pattern.pageKey, pattern };
       });
-    this.buildChunks(terrain, (c0, r0, c1, r1) => {
+    const lifted = elevation.maxLift > 0;
+    this.buildChunks(terrain, elevation.maxLift, (c0, r0, c1, r1) => {
       const byPage = new Map<string, TerrainBatch & { source: TextureSource }>();
       const fallback = new Graphics();
       let fallbackUsed = false;
@@ -238,6 +264,7 @@ export class TerrainLayer {
         coords: readonly number[],
         sx: number,
         sy: number,
+        lifts: readonly number[] | undefined,
       ): void => {
         let batch = byPage.get(entry.pageKey);
         if (batch === undefined) {
@@ -245,7 +272,7 @@ export class TerrainLayer {
           byPage.set(entry.pageKey, batch);
         }
         const base = batch.positions.length / 2;
-        batch.positions.push(...triangleCorners(sx, sy, corners));
+        batch.positions.push(...triangleCorners(sx, sy, corners, lifts));
         batch.uvs.push(...triangleUVs(coords, entry.source.width, entry.source.height));
         batch.indices.push(base, base + 1, base + 2);
       };
@@ -253,17 +280,26 @@ export class TerrainLayer {
         for (let col = c0; col <= c1; col++) {
           const cell = row * terrain.width + col;
           const screen = tileToScreen(col, row);
+          // Corner lifts are SHARED between the cell's two triangles (and its neighbours), so the
+          // per-triangle ground stays a single crack-free height field. Computed once per cell.
+          const lifts = lifted ? diamondCornerLifts(elevation, col, row) : undefined;
           const a = resolved[ground.a[cell] ?? -1] ?? null;
           const b = resolved[ground.b[cell] ?? -1] ?? null;
           if (a === null || b === null) {
             const typeId = terrain.typeIds[cell] ?? -1;
             const cellTex = textures.cellFor(typeId);
-            fallbackDiamond(fallback, screen.x, screen.y, cellTex?.fallbackColour ?? DEFAULT_TILE_COLOUR);
+            fallbackDiamond(
+              fallback,
+              screen.x,
+              screen.y,
+              cellTex?.fallbackColour ?? DEFAULT_TILE_COLOUR,
+              lifts,
+            );
             fallbackUsed = true;
             // Draw whichever half DID resolve on top of the fallback diamond.
           }
-          if (a !== null) pushTriangle(a, TRIANGLE_A_CORNERS, a.pattern.coordsA, screen.x, screen.y);
-          if (b !== null) pushTriangle(b, TRIANGLE_B_CORNERS, b.pattern.coordsB, screen.x, screen.y);
+          if (a !== null) pushTriangle(a, TRIANGLE_A_CORNERS, a.pattern.coordsA, screen.x, screen.y, lifts);
+          if (b !== null) pushTriangle(b, TRIANGLE_B_CORNERS, b.pattern.coordsB, screen.x, screen.y, lifts);
         }
       }
       const children: (Mesh | Graphics)[] = [];
@@ -285,13 +321,15 @@ export class TerrainLayer {
    * crash-adjacent path this replaces). The per-cell grid outline is dropped (the textured ground has
    * none either); a solid ground reads the same when zoomed out.
    */
-  private buildFlat(terrain: SceneTerrain): void {
-    this.buildChunks(terrain, (c0, r0, c1, r1) => {
+  private buildFlat(terrain: SceneTerrain, elevation: ElevationField): void {
+    const lifted = elevation.maxLift > 0;
+    this.buildChunks(terrain, elevation.maxLift, (c0, r0, c1, r1) => {
       const byColour = new Map<number, TerrainBatch>();
       for (let row = r0; row <= r1; row++) {
         for (let col = c0; col <= c1; col++) {
           const typeId = terrain.typeIds[row * terrain.width + col] ?? 0;
           const screen = tileToScreen(col, row);
+          const lifts = lifted ? diamondCornerLifts(elevation, col, row) : undefined;
           const colour = TILE_COLOURS[typeId % TILE_COLOURS.length] ?? DEFAULT_TILE_COLOUR;
           let batch = byColour.get(colour);
           if (batch === undefined) {
@@ -299,7 +337,7 @@ export class TerrainLayer {
             byColour.set(colour, batch);
           }
           const base = batch.positions.length / 2;
-          const corners = diamondCorners(screen.x, screen.y);
+          const corners = diamondCorners(screen.x, screen.y, lifts);
           batch.positions.push(...corners);
           for (let v = 0; v < corners.length / 2; v++) batch.uvs.push(0, 0); // every vertex samples the 1×1 white texel
           for (const idx of DIAMOND_INDICES) batch.indices.push(base + idx);

@@ -7,6 +7,7 @@ import {
   buildSpriteScene,
   createWindowPixiApp,
   layoutHud,
+  makeElevationField,
   placeHud,
   setTilePitch,
 } from '@vinland/render';
@@ -93,6 +94,10 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
   const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
   const terrainGrid = sliceTerrain(loaded ?? undefined);
+  // The decoded map's terrain-height field (flat when the map carries no `lmhe` lane). The renderer
+  // builds its own from the terrain grid for the ground mesh + entity lift; this shared instance lifts
+  // the map objects at load and drives elevation-aware picking (worldToTile) below.
+  const elevation = makeElevationField(loaded?.elevation, loaded?.width ?? 0, loaded?.height ?? 0);
   // Real decoded graphics are the DEFAULT (see resolveSpriteSheet): absent or `?atlas=real` draws the real
   // atlases (gitignored content over the /bobs server), degrading to synthetic markers when content/ is
   // missing. `?atlas=synthetic` forces the free markers; `?atlas=none` draws placeholder geometry. Shared
@@ -129,7 +134,7 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
   // The catch keeps a partial content/ (e.g. a missing atlas PNG) a degradation, not an app crash.
   if (wantObjects && loaded?.objects !== undefined && ir !== null) {
     try {
-      renderer.setMapObjects(await loadMapObjects(loaded.objects, ir));
+      renderer.setMapObjects(await loadMapObjects(loaded.objects, ir, elevation));
     } catch (err) {
       console.warn(`map objects unavailable, bare ground fallback: ${String(err)}`);
     }
@@ -190,6 +195,7 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
     camera: () => cameraCtl.camera(),
     enqueue: (command) => sim.enqueue(command),
     mapSize: { width: terrainGrid.width, height: terrainGrid.height },
+    elevation, // a placement click on a lifted hill resolves to the tile drawn there
     buildings: menuEntriesFromContent(sim.content),
     tribe: HUD_TRIBE,
     owner: HUMAN_PLAYER,
@@ -207,6 +213,7 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
     camera: () => cameraCtl.camera(),
     snapshot: () => sim.snapshot(),
     mapSize: { width: terrainGrid.width, height: terrainGrid.height },
+    elevation, // right-click on a lifted hill resolves to the tile drawn there
     humanPlayer: HUMAN_PLAYER,
     professions: professionsFromContent(sim.content),
     enqueue: (command) => sim.enqueue(command),

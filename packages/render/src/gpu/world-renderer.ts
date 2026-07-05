@@ -1,5 +1,6 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { type Application, Container } from 'pixi.js';
+import { type ElevationField, makeElevationField } from '../data/elevation.js';
 import type { Camera } from '../data/iso.js';
 import type { SceneTerrain } from '../data/scene.js';
 import { cameraViewport } from '../data/viewport.js';
@@ -61,6 +62,9 @@ export class WorldRenderer {
   /** Feet rings under the currently-selected entities (world-space, BELOW the sprites). */
   private readonly selectionLayer = new SelectionLayer();
   private readonly hud = new HudLayer();
+  /** The current map's terrain-height field — lifts the ground mesh + every projected item, and its
+   *  `maxLift` is the cull pad. Flat (zero lift) until {@link setTerrain} loads a map carrying `elevation`. */
+  private elevation: ElevationField = makeElevationField(undefined, 0, 0);
 
   constructor(app: Application, opts?: { readonly sheet?: SpriteSheet | undefined }) {
     this.app = app;
@@ -83,7 +87,10 @@ export class WorldRenderer {
    * `textures` it draws textured diamonds; without them the flat placeholder ground. See {@link TerrainLayer}.
    */
   setTerrain(terrain: SceneTerrain, textures?: TerrainTextureSet): void {
-    this.terrain.set(terrain, textures);
+    // Build the height field ONCE per map (from the `lmhe` lane, or flat when absent). The terrain mesh
+    // bakes the lift now; the sprite pool + the cull pad read it each frame in {@link update}.
+    this.elevation = makeElevationField(terrain.elevation, terrain.width, terrain.height);
+    this.terrain.set(terrain, textures, this.elevation);
   }
 
   /**
@@ -111,14 +118,30 @@ export class WorldRenderer {
     // Camera: the world layer's own transform (screen = world*scale + offset).
     this.worldLayer.scale.set(camera.scale ?? 1);
     this.worldLayer.position.set(camera.offsetX, camera.offsetY);
-    // Cull to the framed viewport (grown to cover tall sprites). Fully zoomed out, this passes
-    // everything through and the shared-atlas sprites lean on GPU batching instead.
-    const vp = cameraViewport(camera, this.app.screen.width, this.app.screen.height, SPRITE_CULL_MARGIN);
+    // Cull to the framed viewport (grown to cover tall sprites). Elevation lifts ground + sprites UP by
+    // up to `maxLift`, but their cull ANCHORS/AABBs stay pre-lift, so grow the box by `maxLift` too or a
+    // chunk/sprite baked up a hill would pop at the screen edge (the map-wide-max pad, computed once).
+    // Fully zoomed out, this still passes everything through and leans on GPU batching.
+    const vp = cameraViewport(
+      camera,
+      this.app.screen.width,
+      this.app.screen.height,
+      SPRITE_CULL_MARGIN + this.elevation.maxLift,
+    );
     this.terrain.cull(vp);
     this.mapObjects.update(vp, tick);
     // The pool needs the camera + canvas size to place team-colour PalettedSprite meshes (screen-space,
-    // they can't ride the worldLayer transform); the plain-sprite path ignores them.
-    this.pool.reconcile(snapshot, vp, tick, camera, this.app.screen.width, this.app.screen.height);
+    // they can't ride the worldLayer transform); the plain-sprite path ignores them. The elevation field
+    // lets it lift each entity's DRAWN feet without disturbing its pre-lift depth key.
+    this.pool.reconcile(
+      snapshot,
+      vp,
+      tick,
+      camera,
+      this.app.screen.width,
+      this.app.screen.height,
+      this.elevation,
+    );
     // Selection rings read the pool's just-computed per-entity bounds, so a building's marker sizes to its
     // actual sprite footprint (reconcile ran first, so the bounds are this frame's).
     this.selectionLayer.draw(snapshot, selection, (ref) => this.pool.boundsOf(ref));

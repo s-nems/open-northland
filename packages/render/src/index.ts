@@ -105,6 +105,12 @@ export {
   type CellTexture,
 } from './data/terrain.js';
 export {
+  ELEVATION_LIFT,
+  makeElevationField,
+  diamondCornerLifts,
+  type ElevationField,
+} from './data/elevation.js';
+export {
   buildHud,
   layoutHud,
   placeHud,

@@ -1,5 +1,6 @@
 import {
   type AtlasManifest,
+  type ElevationField,
   type MapObjectSprite,
   atlasFromManifest,
   halfCellToScreen,
@@ -93,7 +94,11 @@ async function loadLayer(key: string): Promise<LoadedLayer | null> {
  * A type that can't resolve (no record, no atlas, no usable frame) is counted + skipped — a partial
  * `content/` must degrade, not abort. Placements resolve in file order (deterministic).
  */
-export async function loadMapObjects(objects: MapObjectsData, ir: TerrainIr): Promise<MapObjectSprite[]> {
+export async function loadMapObjects(
+  objects: MapObjectsData,
+  ir: TerrainIr,
+  elevation?: ElevationField,
+): Promise<MapObjectSprite[]> {
   const recordByName = new Map<string, LandscapeGfxRow>();
   for (const row of ir.landscapeGfx ?? []) {
     if (row.editName !== undefined && !recordByName.has(row.editName)) {
@@ -161,6 +166,9 @@ export async function loadMapObjects(objects: MapObjectsData, ir: TerrainIr): Pr
       continue;
     }
     const screen = halfCellToScreen(hx, hy);
+    // The `emla` half-cell maps to cell coordinate (hx/2, hy/2) — the sampler input. The lift is the
+    // DRAW offset only; `y` (the feet anchor + depth key) stays pre-lift so objects occlude by map row.
+    const lift = elevation?.liftAt(hx / 2, hy / 2) ?? 0;
     out.push({
       x: screen.x,
       y: screen.y,
@@ -168,6 +176,7 @@ export async function loadMapObjects(objects: MapObjectsData, ir: TerrainIr): Pr
       frames: type.frames,
       scale: 1,
       decor: type.decor,
+      ...(lift !== 0 ? { lift } : {}),
       // A slow SPATIAL phase GRADIENT (`hx + hy`), not a uniform phase: adjacent half-cells stay within
       // one animation frame of each other (so the wave sheet still reads as continuous, no hard seam),
       // but across the sea the phase drifts, so the surface no longer pulses as ONE identical stamp — the

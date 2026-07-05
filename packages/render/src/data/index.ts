@@ -8,3 +8,4 @@
  */
 export * from './iso.js';
 export * from './viewport.js';
+export * from './elevation.js';

@@ -1,4 +1,4 @@
-import { type Camera, tileToScreen } from '@vinland/render';
+import { type Camera, makeElevationField, tileToScreen } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
 import {
   type FormationUnit,
@@ -50,6 +50,64 @@ describe('worldToTile', () => {
     const centre = tileToScreen(4, 2);
     // A few px off-centre (well within the cell diamond's half-extents) still resolves to (4,2).
     expect(worldToTile(centre.x + 6, centre.y - 3)).toEqual({ col: 4, row: 2 });
+  });
+});
+
+describe('worldToTile — elevation-aware inverse', () => {
+  const W = 20;
+  const H = 20;
+
+  /** The screen point the renderer draws cell (col,row)'s ground centre at: projected feet lifted up by
+   *  the cell's own elevation. `worldToTile` of this must recover (col,row). */
+  const liftedCentre = (
+    field: ReturnType<typeof makeElevationField>,
+    col: number,
+    row: number,
+  ): { x: number; y: number } => {
+    const s = tileToScreen(col, row);
+    return { x: s.x, y: s.y - field.liftAt(col, row) };
+  };
+
+  it('round-trips every cell on a STEEP east-rising ramp (lift up to ~7 rows)', () => {
+    // elevation = col·12 → the east edge lifts ~228·1.24 ≈ 282 px ≈ 7.4 rows above the flat inverse.
+    const elev: number[] = [];
+    for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) elev.push(c * 12);
+    const field = makeElevationField(elev, W, H);
+    for (let row = 1; row < H - 1; row += 3) {
+      for (let col = 1; col < W - 1; col += 3) {
+        const p = liftedCentre(field, col, row);
+        expect(worldToTile(p.x, p.y, field)).toEqual({ col, row });
+      }
+    }
+  });
+
+  it('round-trips a hill that varies in BOTH axes (the iterated correction converges)', () => {
+    const elev: number[] = [];
+    for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) elev.push(c * 6 + r * 5);
+    const field = makeElevationField(elev, W, H);
+    for (const [col, row] of [
+      [3, 3],
+      [10, 8],
+      [15, 15],
+      [18, 2],
+      [1, 18],
+    ] as const) {
+      const p = liftedCentre(field, col, row);
+      expect(worldToTile(p.x, p.y, field)).toEqual({ col, row });
+    }
+  });
+
+  it('is EXACTLY the flat inverse for a flat field (no elevation lane)', () => {
+    const flat = makeElevationField(undefined, W, H);
+    for (const [col, row] of [
+      [0, 0],
+      [7, 4],
+      [12, 9],
+    ] as const) {
+      const s = tileToScreen(col, row);
+      expect(worldToTile(s.x, s.y, flat)).toEqual(worldToTile(s.x, s.y));
+      expect(worldToTile(s.x, s.y, flat)).toEqual({ col, row });
+    }
   });
 });
 

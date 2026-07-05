@@ -44,6 +44,20 @@ describe('diamondCorners', () => {
       50, // left
     ]);
   });
+
+  it('subtracts the per-corner elevation lift from each corner y (x untouched), in corner order', () => {
+    // lifts = [top, right, bottom, left] world px — raises each corner independently.
+    expect(diamondCorners(100, 50, [4, 1, 3, 2])).toEqual([
+      100,
+      50 - TILE_HALF_H - 4, // top lifted by 4
+      100 + TILE_HALF_W,
+      50 - 1, // right lifted by 1
+      100,
+      50 + TILE_HALF_H - 3, // bottom lifted by 3
+      100 - TILE_HALF_W,
+      50 - 2, // left lifted by 2
+    ]);
+  });
 });
 
 describe('rectUVs', () => {

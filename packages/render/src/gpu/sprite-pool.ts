@@ -1,5 +1,6 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { Container, Graphics, Sprite, type TextureSource } from 'pixi.js';
+import type { ElevationField } from '../data/elevation.js';
 import { type Camera, depthKey } from '../data/iso.js';
 import {
   type DrawItem,
@@ -161,8 +162,9 @@ export class SpritePool {
     camera: Camera,
     resW: number,
     resH: number,
+    elevation?: ElevationField,
   ): void {
-    const items = buildSpriteScene(snapshot, vp);
+    const items = buildSpriteScene(snapshot, vp, elevation);
     this.frameId++;
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -250,7 +252,12 @@ export class SpritePool {
     resW: number,
     resH: number,
   ): void {
-    pe.container.position.set(item.x, item.y);
+    // Terrain lift: draw the sprite at the LIFTED feet (ride the ground up a hill), but note the depth
+    // key in `reconcile` keeps the PRE-LIFT `item.y`, so occlusion still sorts by map row. `item.lift` is
+    // 0 on a flat map → `drawY === item.y` (byte-identical). Bounds/paletted origin below use `drawY` too,
+    // so the picker's hit box tracks the drawn graphic.
+    const drawY = item.y - (item.lift ?? 0);
+    pe.container.position.set(item.x, drawY);
     // Sticky facing: a MOVING settler that dropped its PathFollow for a tick (the repath gap — state stays
     // `moving` via MoveGoal/PathRequest but there is no heading to read) reuses its last real heading so the
     // walk doesn't flip to DEFAULT_FACING for a frame each tile (the pool half of what `readSpriteState`
@@ -276,7 +283,7 @@ export class SpritePool {
       pe.placeholder.visible = true;
       const { bodyW, bodyH } = placeholderBody(pe.kind);
       const halfW = Math.max(9, bodyW / 2);
-      this.stampBounds(pe, item.x - halfW, item.y - bodyH, item.x + halfW, item.y + 5);
+      this.stampBounds(pe, item.x - halfW, drawY - bodyH, item.x + halfW, drawY + 5);
       return;
     }
     if (pe.placeholder !== undefined) pe.placeholder.visible = false;
@@ -286,7 +293,7 @@ export class SpritePool {
     // entity's world-screen anchor (item.x/y). Cheap to compute once; unused on the plain-sprite path.
     const camScale = camera.scale ?? 1;
     const originX = camera.offsetX + camScale * item.x;
-    const originY = camera.offsetY + camScale * item.y;
+    const originY = camera.offsetY + camScale * drawY;
     const playerRow = item.player ?? 0; // an unowned settler reads LUT row 0 (the base palette)
     // Accumulate the union of the drawn layers' rects (feet-local) → the entity's exact sprite bounds. The
     // bounds live in WORLD-screen space (item.x + feet-local offsets), the same for a mesh or a plain sprite,
@@ -344,7 +351,7 @@ export class SpritePool {
       if (s !== undefined) s.visible = false;
     }
     if (minX <= maxX) {
-      this.stampBounds(pe, item.x + minX, item.y + minY, item.x + maxX, item.y + maxY);
+      this.stampBounds(pe, item.x + minX, drawY + minY, item.x + maxX, drawY + maxY);
     }
   }
 
