@@ -62,8 +62,12 @@ Follow the `/iterate` §3 gates (`.claude/commands/iterate.md` — copied into t
 - **3a automated:** `npm test`, `npm run check`, `npm run build` — all green, in the worktree.
 - **3b hands-on:** exercise the real entry point end-to-end (documented command, real inputs) and
   look at the output — green units are not a substitute. For anything player-visible or visual:
-  - Start `npm run dev` **from the worktree**. A parallel session may hold 5173 — Vite will pick
-    another port; read the **actual** URL from the output, never assume.
+  - Start the dev server **from the worktree on a non-5173 port** — 5173 is reserved for the primary
+    `main` checkout, so opening `localhost:5173` always lands on main and never a worktree's build.
+    Launch with an explicit port at 5174+:
+    `npm run dev --workspace @vinland/app -- --port 5174` (if 5174 is itself taken by another
+    worktree, Vite walks up to the next free port). **Read the actual URL from the output** and use it
+    for the browser drive + approval links below — never assume a port.
   - Drive it yourself with the Playwright MCP tools against that port (load the scene, interact,
     screenshot) to catch crashes and obvious breakage.
   - Then hand the user the approval links: `open` the exact URL(s) (`http://localhost:<port>/?scene=<id>`
