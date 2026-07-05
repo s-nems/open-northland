@@ -201,7 +201,7 @@ Guardrails: render cost scales with the screen (retained renderer rules,
 packages/render/CLAUDE.md); no sim change — goldens must not move.
 ```
 
-[IN PROGRESS]
+[DONE]
 ## Step 3 — sim: the wood cycle (fell → trunk → pickup → deliver)
 
 ```text
@@ -267,6 +267,7 @@ order; fixed-point rules — packages/sim/CLAUDE.md); per-tick cost scales with 
 full-world scans (golden rule 7); events via ctx.events, render never reaches into stores.
 ```
 
+[IN PROGRESS]
 ## Step 4 — sim: mineral deposits shrink by level
 
 ```text

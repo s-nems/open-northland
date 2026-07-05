@@ -157,7 +157,7 @@ Verification: a unit test that the map is total over the atlas (every frame name
 ```
 
 ## Step 3 — app UI layer
-[IN PROGRESS]
+[DONE]
 ### Prompt 4: left tool panel
 
 ```text
@@ -212,7 +212,7 @@ Verification (player-visible mechanic -> acceptance scene, per CLAUDE.md):
   correct palette colors, hover states, Polish strings render) and ask for human sign-off.
   Record in docs/FIDELITY.md what is pinned (rects, sprite ids) vs approximated.
 ```
-
+[IN PROGRESS]
 ### Prompt 5: settler order UI
 
 ```text
