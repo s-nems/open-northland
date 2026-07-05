@@ -269,18 +269,20 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
 - [x] **Settler action menu** (GUI rework Part 5) — the contextual command buttons over a selected settler,
       opened by **Space or a right-click on the unit**, rebuilt in original GUI art in place of the DOM "Zmień
       zawód" card: the **whole default human menu** — round wooden `order_*` buttons (`context` palette LUT via
-      `PalettedSprite`, pixel-snapped for crisp glyphs) on four arms whose footprint is transcribed from the
-      OpenVikings `BuildHumanActionButtons` (±100 px arms, 32 px buttons/step, ∓5 corner nudge). On this slice
-      only **"change profession"** is wired — it opens a simple profession PICKER (a grid of the content jobs)
-      that issues `setJob`, and the info card reflects the change live; every other button is an inert
-      **placeholder** (drawn + tooltipped) awaiting its action. Proven by `?scene=unit-orders` + pure
-      layout/hit-test unit tests (`packages/app/test/action-ring-layout.test.ts`); pixels human-signed
-      (docs/FIDELITY.md "Settler action menu"). **Open (deferred / pending calibration):** the default-menu
-      icon+slot assignment is a best-guess read off the running original (its command→gfx table is an unfilled
-      placeholder in the oracle — see FIDELITY); the placeholder buttons' actions (attack / house / animal /
-      vehicle / social / needs) + the warrior/scout menu variants + the picker's original art are the future
-      "implement the action" passes; the centroid anchor + full-palette picker (vs the per-human valid subset)
-      are deliberate divergences. Next: GUI rework Part 6 — the bottom-right details panel in original window art.
+      `PalettedSprite`, drawn as round discs via the `'round'` colour key + pixel-snapped for crisp glyphs) on
+      four arms whose footprint is transcribed from the OpenVikings `BuildHumanActionButtons` (±100 px arms,
+      32 px buttons/step, ∓5 corner nudge). On this slice only **"change profession"** is wired — it opens a
+      scrollable profession-list window (a simple DOM form) that issues `setJob`, and the info card reflects the
+      change live; every other button is an inert **placeholder** (drawn + tooltipped) awaiting its action.
+      Proven by `?scene=unit-orders` + pure layout/hit-test unit tests
+      (`packages/app/test/action-ring-layout.test.ts`); pixels human-signed (docs/FIDELITY.md "Settler action
+      menu"). **Open (deferred):** the civilian default-menu icon+slot binding is now user-confirmed (read off
+      the running original — its command→gfx table is an unfilled placeholder in the oracle, see FIDELITY); the
+      placeholder buttons' actions (attack / house / animal / vehicle / social / needs), the warrior/scout menu
+      variants, the future **dynamic menu** (per-unit-type arms + per-state buttons — e.g. hide the marriage
+      button once married), and the list window's original art are the future "implement the action" passes; the
+      centroid anchor + full-palette list (vs the per-human valid subset) are deliberate divergences. Next: GUI
+      rework Part 6 — the bottom-right details panel in original window art.
 
 ## Phase 3 — Economy, progression & population  (substance complete; only human-gated render checks remain)
 - [x] **Goods graph** — explicit IR artifact: input side + output-side recipe join +

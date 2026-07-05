@@ -62,10 +62,14 @@ export interface PlacedActionButton {
   readonly rect: PlacedRect;
 }
 
-/** A menu resolved to screen space: every button's square + the overall bounds. Shared by the ring + picker. */
+/** A menu resolved to screen space: every button's square + the overall bounding box. */
 export interface ActionRingLayout {
   readonly buttons: readonly PlacedActionButton[];
-  /** The axis-aligned bounding box of all buttons — the region the input router claims for the menu. */
+  /**
+   * The axis-aligned bounding box of all buttons (e.g. for placing UI relative to the menu). The input router
+   * hit-tests INDIVIDUAL buttons ({@link hitTestActionRing}), not this box, so a click in the gaps between the
+   * arms still reaches the world / the unit underneath.
+   */
   readonly bounds: PlacedRect;
 }
 
@@ -206,12 +210,6 @@ export function hitTestActionRing(layout: ActionRingLayout, x: number, y: number
     if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) return p.button;
   }
   return null;
-}
-
-/** Whether a screen point lies within the menu's claimed bounds — the input router asks this before world picking. */
-export function pointOverActionRing(layout: ActionRingLayout, x: number, y: number): boolean {
-  const b = layout.bounds;
-  return layout.buttons.length > 0 && x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h;
 }
 
 // --- The default HUMAN menu (APPROXIMATED — icons glyph-matched to the frame map + the user's read of the

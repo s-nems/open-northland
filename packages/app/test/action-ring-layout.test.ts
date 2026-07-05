@@ -10,7 +10,6 @@ import {
   TOP_ARM,
   hitTestActionRing,
   layoutActionRing,
-  pointOverActionRing,
 } from '../src/hud/action-ring-layout.js';
 
 /**
@@ -109,15 +108,8 @@ describe('action-ring-layout — hit-test (a click → the right behaviour)', ()
     expect(hit?.kind === 'placeholder' && hit.id).toBe('attack');
     // Dead centre (over the settler, between the arms) hits nothing.
     expect(hitTestActionRing(l, 500, 400)).toBeNull();
-  });
-
-  it('claims a point inside the menu bounds and only there', () => {
-    const l = layoutActionRing(HUMAN_DEFAULT_MENU, 500, 400, 1, 2000, 2000);
-    const b = l.bounds;
-    expect(pointOverActionRing(l, b.x + 1, b.y + 1)).toBe(true);
-    expect(pointOverActionRing(l, b.x - 10, b.y - 10)).toBe(false);
-    // An empty menu claims nothing.
-    expect(pointOverActionRing(layoutActionRing([], 500, 400, 1, 2000, 2000), 500, 400)).toBe(false);
+    // An empty menu has no hittable button.
+    expect(hitTestActionRing(layoutActionRing([], 500, 400, 1, 2000, 2000), 500, 400)).toBeNull();
   });
 });
 
