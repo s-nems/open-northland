@@ -433,7 +433,10 @@ function launchProjectile(
   if (effect.projectile === undefined) return; // not a ranged swing (defensive — the caller gates this)
   const from = world.tryGet(attacker, Position);
   if (from === undefined) return; // shooter vanished mid-draw — no shot
-  if (world.tryGet(effect.target, Health) === undefined) return; // target already gone — loose at nothing
+  // No shot at a target already gone OR drained to 0 by an earlier hit this tick (dead but not yet reaped):
+  // don't spend a projectile/launch cue on a corpse. Mirrors the projectileSystem's expiry test on arrival.
+  const targetHealth = world.tryGet(effect.target, Health);
+  if (targetHealth === undefined || targetHealth.hitpoints <= 0) return;
   const shot = world.create();
   world.add(shot, Position, { x: from.x, y: from.y });
   world.add(shot, Projectile, {

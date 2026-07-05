@@ -13,7 +13,7 @@ import { type PendingStagger, applyPendingStaggers, resolveCombatHit } from './a
  * shot). A ¼-tile-per-unit step keeps every real `speed` (3..8) landing on an integer fraction of ONE, so
  * no rounding drift enters — two runs stay byte-identical.
  *
- * APPROXIMATED / calibration-pending (docs/FIDELITY.md "Projectile travel"): the source carries `speed`'s
+ * APPROXIMATED / calibration-pending (docs/FIDELITY.md "Combat ranged projectiles"): the source carries `speed`'s
  * VALUE (faithful — captured verbatim) but NOT its unit, so this scale is a named calibration constant a
  * step-10 observation pins, not a data param. Isolating it here keeps the {@link Projectile} component the
  * faithful data and this one line the approximation.

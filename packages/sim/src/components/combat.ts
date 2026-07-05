@@ -203,7 +203,7 @@ export const AttackOrder = defineComponent<{ target: Entity }>('AttackOrder');
  *    `projectileHit` events carry it); the data-pinned marker the render slice draws the right sprite off;
  *  - `speed` — the weapon's extracted `WeaponType.speed` (a **faithful** param); the `projectileSystem`
  *    maps this onto a per-tick tile step via a named calibration constant (the unit is unreadable —
- *    docs/FIDELITY.md "Projectile travel"). Stored raw (the extracted value) so the component stays the
+ *    docs/FIDELITY.md "Combat ranged projectiles"). Stored raw (the extracted value) so the component stays the
  *    faithful data and the approximated mapping lives in one place (the system).
  *
  * A **separate optional component** on a **bare** entity (only a Position beside it) — no existing system
