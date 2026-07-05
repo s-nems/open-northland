@@ -5,7 +5,7 @@ import {
   type SpriteLayer,
   tileToScreen,
 } from '@vinland/render';
-import { ONE, type WorldSnapshot, systems } from '@vinland/sim';
+import { ONE, type WorldSnapshot } from '@vinland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
 import { GUI_FRAMES, guiFrameIndex } from '../content/gui-atlas-map.js';
 import {
@@ -16,25 +16,31 @@ import {
 } from '../content/gui-gfx.js';
 import {
   type ActionButton,
-  type ActionGroup,
   type ActionRingLayout,
+  HUMAN_DEFAULT_MENU,
   hitTestActionRing,
   jobIconFrame,
   layoutActionRing,
-  stanceIconFrame,
+  layoutJobPicker,
 } from '../hud/action-ring-layout.js';
 import { backingScale } from './camera.js';
 import { el } from './overlay.js';
 import type { Profession } from './unit-panel.js';
 
 /**
- * The settler ACTION RING — the contextual command buttons that fan out around the selected settler(s), in
+ * The settler ACTION MENU — the contextual command buttons that fan out around the selected settler(s), in
  * original GUI art. It is the Pixi + input glue over the pure {@link import('../hud/action-ring-layout.js')}
  * geometry (the twin split of `hud/tool-panel*`): the layout module transcribes the original's radial arm
- * geometry and assigns each command a best-guess order-icon; this module draws those icons as
+ * footprint and assigns each command a best-guess order-icon; this module draws those icons as
  * {@link PalettedSprite}s over the indexed `ls_gui_window` atlas (the round wooden order buttons, `context`
- * palette) and turns a click into a `setJob` / `setStance` through the callback seam — never touching sim
- * state (app-layer I/O, one-way flow).
+ * palette) and turns a click into a `setJob` through the callback seam — never touching sim state (app-layer
+ * I/O, one-way flow).
+ *
+ * We draw the WHOLE default human menu (every arm of the original), but only the "change profession" button
+ * (`open-jobs`) is wired on this slice: clicking it swaps the menu for a simple profession PICKER; picking a
+ * profession issues `setJob` and returns to the menu. Every other button is an inert placeholder (drawn +
+ * tooltipped, does nothing) — the future "implement the action" pass wires them (and the warrior/scout menu
+ * variants). Three modes: `closed` → `menu` (the default arms) → `jobs` (the picker).
  *
  * It is toggled with **Space** (the info card stays always-on) and anchored on the selected settlers'
  * on-screen centroid, re-placed every frame as the camera pans / the units move. When the decoded GUI art is
@@ -43,21 +49,7 @@ import type { Profession } from './unit-panel.js';
  * both modes.
  */
 
-const { MILITARY_MODE } = systems;
-
-/** The four player-selectable military stances the ring offers (NONE is the passive fallback, never offered). */
-const STANCES: readonly { readonly mode: number; readonly label: string }[] = [
-  { mode: MILITARY_MODE.ATTACK, label: 'Atak' },
-  { mode: MILITARY_MODE.DEFEND, label: 'Obrona' },
-  { mode: MILITARY_MODE.IGNORE, label: 'Ignoruj' },
-  { mode: MILITARY_MODE.FLEE, label: 'Ucieczka' },
-];
-
-/** Professions fill the bottom arm (group-type 0); stances the top arm (group-type 1). See the layout module. */
-const JOB_GROUP = 0;
-const STANCE_GROUP = 1;
-
-/** Draw the ring above the world (and the tool panel, which is on the far-left strip — they rarely overlap). */
+/** Draw the menu above the world (and the tool panel, which is on the far-left strip — they rarely overlap). */
 const RING_Z = 1000;
 
 /** Hover highlight over the button under the cursor. */
@@ -81,32 +73,35 @@ const TOOLTIP_STYLE = [
   'display:none',
 ].join(';');
 
+/** Which face the menu is showing: nothing, the default arms, or the profession picker. */
+type MenuMode = 'closed' | 'menu' | 'jobs';
+
 export interface SettlerActionsOptions {
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
-  /** Integer UI scale (from `?uiscale=`, shared with the tool panel); the ring geometry is multiplied by it. */
+  /** Integer UI scale (from `?uiscale=`, shared with the tool panel); the menu geometry is multiplied by it. */
   readonly uiscale: number;
-  /** The professions the ring offers as one-click job changes (content jobs minus idle). */
+  /** The professions the picker offers as one-click job changes (content jobs minus idle). */
   readonly professions: readonly Profession[];
   /** Issue a `setJob` on every selected settler (the one-way command seam). */
   readonly onSetJob: (ids: readonly number[], jobType: number) => void;
-  /** Issue a `setStance` on every selected settler. */
-  readonly onSetStance: (ids: readonly number[], mode: number) => void;
 }
 
 export interface SettlerActions {
   /**
-   * Per-frame: re-place the ring on the current selection's on-screen centroid (and show/hide it). Reads the
-   * settlers' positions from the frame's already-built snapshot; only runs a scan while the ring is OPEN and
-   * a settler is selected, so a closed ring costs nothing.
+   * Per-frame: re-place the menu on the current selection's on-screen centroid (and show/hide it). Reads the
+   * settlers' positions from the frame's already-built snapshot; only runs a scan while the menu is OPEN and
+   * a settler is selected, so a closed menu costs nothing.
    */
   update(camera: Camera, snapshot: WorldSnapshot, selection: ReadonlySet<number>): void;
-  /** Toggle the ring (Space); the info card is unaffected (always-on). */
+  /** Toggle/step the menu (Space): closed→menu, jobs→menu (back out of the picker), menu→closed. */
   toggle(): void;
+  /** Open the default action menu (e.g. a right-click on the settler) — idempotent to the `menu` face. */
+  open(): void;
   isOpen(): boolean;
   /** Force-close (e.g. on a selection clear). */
   close(): void;
-  /** True when a client point is over a visible ring button — the input router asks BEFORE world picking. */
+  /** True when a client point is over a visible menu button — the input router asks BEFORE world picking. */
   claimsPointer(clientX: number, clientY: number): boolean;
   dispose(): void;
 }
@@ -123,8 +118,8 @@ interface ButtonVisual {
 const paletteOfFrame = (gfx: number): GuiPaletteName => GUI_FRAMES[gfx]?.palette ?? 'context';
 
 /**
- * Mount the settler action ring. Async because it loads the (optional) decoded GUI art; everything degrades
- * gracefully so a checkout without `content/` still boots and the ring stays usable (flat discs + tooltips).
+ * Mount the settler action menu. Async because it loads the (optional) decoded GUI art; everything degrades
+ * gracefully so a checkout without `content/` still boots and the menu stays usable (flat discs + tooltips).
  */
 export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<SettlerActions> {
   const { app, canvas } = opts;
@@ -137,30 +132,14 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   const hasArt = guiLayer !== null && guiLut !== null;
   const guiColours = guiLut?.pixelHeight ?? 1;
 
-  // The two command families as ring groups (built ONCE — professions come from content, stances are fixed).
-  const groups: readonly ActionGroup[] = [
-    {
-      group: JOB_GROUP,
-      buttons: opts.professions.map(
-        (p): ActionButton => ({
-          kind: 'job',
-          jobType: p.jobType,
-          icon: jobIconFrame(p.label),
-          label: p.label,
-        }),
-      ),
-    },
-    {
-      group: STANCE_GROUP,
-      buttons: STANCES.map(
-        (s): ActionButton => ({
-          kind: 'stance',
-          mode: s.mode,
-          icon: stanceIconFrame(s.mode),
-          label: s.label,
-        }),
-      ),
-    },
+  // The two faces: the static default menu (built once from HUMAN_DEFAULT_MENU) and the profession picker's
+  // job buttons (from content). Every button of both faces gets a retained visual keyed by identity.
+  const jobButtons: readonly ActionButton[] = opts.professions.map(
+    (p): ActionButton => ({ kind: 'job', jobType: p.jobType, icon: jobIconFrame(p.label), label: p.label }),
+  );
+  const allButtons: readonly ActionButton[] = [
+    ...HUMAN_DEFAULT_MENU.flatMap((g) => g.buttons),
+    ...jobButtons,
   ];
 
   const root = new Container();
@@ -188,27 +167,25 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   };
 
   // Build every button's visual ONCE (retained graph — placed each frame, never re-created). Keyed by the
-  // button object so `update` places by identity, robust to a group the layout drops (an arm index it lacks).
+  // button object so `update` places by identity, robust to a face that shows only a subset of buttons.
   const visuals: ButtonVisual[] = [];
   const visualByButton = new Map<ActionButton, ButtonVisual>();
-  for (const g of groups) {
-    for (const button of g.buttons) {
-      const art = iconSprite(button.icon);
-      let fallback: Graphics | null = null;
-      if (art === null) {
-        fallback = new Graphics();
-        buttonContainer.addChild(fallback);
-      } else {
-        buttonContainer.addChild(art.sprite);
-      }
-      const v: ButtonVisual = { button, sprite: art?.sprite ?? null, fallback, frame: art?.frame ?? null };
-      visuals.push(v);
-      visualByButton.set(button, v);
+  for (const button of allButtons) {
+    const art = iconSprite(button.icon);
+    let fallback: Graphics | null = null;
+    if (art === null) {
+      fallback = new Graphics();
+      buttonContainer.addChild(fallback);
+    } else {
+      buttonContainer.addChild(art.sprite);
     }
+    const v: ButtonVisual = { button, sprite: art?.sprite ?? null, fallback, frame: art?.frame ?? null };
+    visuals.push(v);
+    visualByButton.set(button, v);
   }
 
   // --- State ----------------------------------------------------------------------------------------
-  let open = false;
+  let mode: MenuMode = 'closed';
   let layout: ActionRingLayout = { buttons: [], bounds: { x: 0, y: 0, w: 0, h: 0 } };
   /** The settler ids a click's command applies to (the selected SETTLERS, filtered in `update`). */
   let actionTargets: number[] = [];
@@ -240,47 +217,59 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     };
   };
 
-  /** Place one button's visual centred in its layout rect (the original's `SetCenterGraphicsFlag`). */
+  /**
+   * Place one button's visual centred in its layout rect (the original's `SetCenterGraphicsFlag`), SNAPPED to
+   * whole pixels. The centroid anchor is a float, so an un-snapped origin lands the small icon between screen
+   * pixels — nearest-sampled, that drops/doubles texel columns (the "chipped + blurry" look). Rounding the
+   * final screen origin to integers keeps the 1:1 texel mapping crisp.
+   */
   const placeVisual = (v: ButtonVisual, rect: { x: number; y: number; w: number; h: number }): void => {
     const rw = app.screen.width;
     const rh = app.screen.height;
     if (v.sprite !== null && v.frame !== null) {
       // Centre the frame's WxH box in the rect: drawn-box centre = origin + scale·(offset + size/2).
-      const originX = rect.x + rect.w / 2 - (v.frame.offsetX + v.frame.width / 2) * scale;
-      const originY = rect.y + rect.h / 2 - (v.frame.offsetY + v.frame.height / 2) * scale;
+      const originX = Math.round(rect.x + rect.w / 2 - (v.frame.offsetX + v.frame.width / 2) * scale);
+      const originY = Math.round(rect.y + rect.h / 2 - (v.frame.offsetY + v.frame.height / 2) * scale);
       v.sprite.place(originX, originY, scale, rw, rh);
     } else if (v.fallback !== null) {
       const r = Math.min(rect.w, rect.h) / 2;
       v.fallback
         .clear()
-        .circle(rect.x + rect.w / 2, rect.y + rect.h / 2, r)
+        .circle(Math.round(rect.x + rect.w / 2), Math.round(rect.y + rect.h / 2), r)
         .fill(FALLBACK_FILL)
         .stroke({ color: FALLBACK_RIM, width: Math.max(1, scale) });
     }
   };
 
-  const update = (camera: Camera, snapshot: WorldSnapshot, selection: ReadonlySet<number>): void => {
-    if (!open) {
-      root.visible = false;
-      layout = { buttons: [], bounds: { x: 0, y: 0, w: 0, h: 0 } };
-      actionTargets = [];
-      return;
-    }
-    const centre = selectionCentre(camera, snapshot, selection);
-    if (centre === null) {
-      root.visible = false;
-      layout = { buttons: [], bounds: { x: 0, y: 0, w: 0, h: 0 } };
-      actionTargets = [];
-      return;
-    }
-    actionTargets = centre.ids;
-    layout = layoutActionRing(groups, centre.x, centre.y, scale, app.screen.width, app.screen.height);
-    // Place by button IDENTITY (not index): the layout may drop a whole group whose arm index it lacks, so
-    // hide every visual first, then show + place only the buttons this frame's layout actually produced.
+  /** The layout for the current mode + centre (the default arms, or the profession-picker grid). */
+  const layoutFor = (m: MenuMode, cx: number, cy: number): ActionRingLayout => {
+    const w = app.screen.width;
+    const h = app.screen.height;
+    if (m === 'jobs') return layoutJobPicker(jobButtons, cx, cy, scale, w, h);
+    return layoutActionRing(HUMAN_DEFAULT_MENU, cx, cy, scale, w, h);
+  };
+
+  const hideAll = (): void => {
     for (const v of visuals) {
       if (v.sprite !== null) v.sprite.visible = false;
       if (v.fallback !== null) v.fallback.visible = false;
     }
+  };
+
+  const update = (camera: Camera, snapshot: WorldSnapshot, selection: ReadonlySet<number>): void => {
+    const centre = mode === 'closed' ? null : selectionCentre(camera, snapshot, selection);
+    if (centre === null) {
+      root.visible = false;
+      layout = { buttons: [], bounds: { x: 0, y: 0, w: 0, h: 0 } };
+      actionTargets = [];
+      hideAll();
+      return;
+    }
+    actionTargets = centre.ids;
+    layout = layoutFor(mode, centre.x, centre.y);
+    // Place by button IDENTITY (not index): each face shows only a subset of the built visuals, so hide every
+    // visual first, then show + place only the buttons this frame's layout actually produced.
+    hideAll();
     for (const placed of layout.buttons) {
       const v = visualByButton.get(placed.button);
       if (v === undefined) continue;
@@ -291,34 +280,41 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     root.visible = true;
   };
 
-  // --- Input (own listeners, mirroring the tool panel; registered before unit-controls' so a ring click wins) ---
+  // --- Input (own listeners, mirroring the tool panel; registered before unit-controls' so a menu click wins) ---
   const toCanvas = (clientX: number, clientY: number): { x: number; y: number } => {
     const { sx, sy, rect } = backingScale(canvas);
     return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
   };
 
   const claimsPointer = (clientX: number, clientY: number): boolean => {
-    if (!open || !root.visible) return false;
+    if (mode === 'closed' || !root.visible) return false;
     const { x, y } = toCanvas(clientX, clientY);
-    // Claim only actual button squares — a click in the gap BETWEEN arms (over the unit itself) still
-    // reaches world picking, so the settler stays selectable/orderable through the open ring.
+    // Claim only actual button squares — a click in the gap BETWEEN buttons (over the unit itself) still
+    // reaches world picking, so the settler stays selectable/orderable through the open menu.
     return hitTestActionRing(layout, x, y) !== null;
   };
 
   const onMouseDown = (e: MouseEvent): void => {
-    if (!open || !root.visible || e.button !== 0) return;
+    if (mode === 'closed' || !root.visible || e.button !== 0) return;
     const { x, y } = toCanvas(e.clientX, e.clientY);
     const hit = hitTestActionRing(layout, x, y);
     if (hit === null) return;
-    // A ring click is the ring's — stop it reaching world picking (we register before unit-controls).
+    // A menu click is the menu's — stop it reaching world picking (we register before unit-controls). This
+    // consumes a placeholder click too, so an inert button never falls through to a move/attack order.
     e.stopImmediatePropagation();
-    if (actionTargets.length === 0) return;
-    if (hit.kind === 'job') opts.onSetJob(actionTargets, hit.jobType);
-    else opts.onSetStance(actionTargets, hit.mode);
+    if (hit.kind === 'open-jobs') {
+      mode = 'jobs'; // swap the arms for the profession picker (re-placed next frame).
+      hideTransient();
+    } else if (hit.kind === 'job') {
+      if (actionTargets.length > 0) opts.onSetJob(actionTargets, hit.jobType);
+      mode = 'menu'; // picked — back to the default menu.
+      hideTransient();
+    }
+    // kind 'placeholder' — consumed above, but its action is not yet implemented (inert on this slice).
   };
 
   const onMouseMove = (e: MouseEvent): void => {
-    if (!open || !root.visible) {
+    if (mode === 'closed' || !root.visible) {
       hoverG.clear();
       tooltip.style.display = 'none';
       return;
@@ -348,7 +344,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   };
 
   // Register BEFORE unit-controls attaches its own canvas mousedown (this controller is mounted first), so a
-  // click on a ring button consumes the event and never falls through to selection / a move order. The
+  // click on a menu button consumes the event and never falls through to selection / a move order. The
   // `mouseleave` clears a hover highlight/tooltip that would otherwise linger when the cursor leaves the
   // canvas while still over a button (no further `mousemove` fires to clear it).
   canvas.addEventListener('mousedown', onMouseDown);
@@ -358,15 +354,19 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   return {
     update,
     toggle: (): void => {
-      open = !open;
-      if (!open) {
+      // Space steps back out: closed→menu (open), jobs→menu (leave the picker), menu→closed.
+      mode = mode === 'closed' ? 'menu' : mode === 'jobs' ? 'menu' : 'closed';
+      if (mode === 'closed') {
         root.visible = false;
         hideTransient();
       }
     },
-    isOpen: (): boolean => open,
+    open: (): void => {
+      mode = 'menu'; // update() reveals it next frame off the current selection's centroid.
+    },
+    isOpen: (): boolean => mode !== 'closed',
     close: (): void => {
-      open = false;
+      mode = 'closed';
       root.visible = false;
       hideTransient();
     },

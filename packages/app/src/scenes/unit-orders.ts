@@ -154,10 +154,13 @@ export const unitOrdersScene: SceneDefinition = {
   summary:
     'Pole wikingów gracza (człowieka). Zaznacz pojedynczo (LPM) lub ramką (przeciągnij LPM) — pod ' +
     'zaznaczonymi pojawiają się zielone pierścienie. Kliknij prawym (PPM) na trawie, by ich tam wysłać ' +
-    '(robotnik postoi chwilę i wróci do swoich zajęć). Spacja rozwija wokół jednostki PIERŚCIEŃ AKCJI w ' +
-    'oryginalnej grafice — okrągłe drewniane przyciski: zmiana zawodu (dolny łuk) i postawa wojskowa (górny ' +
-    'łuk). Info o jednostce jest zawsze w prawym dolnym rogu. Neutralny wiking (bez właściciela) nie daje ' +
-    'się zaznaczyć ani rozkazać. HQ też można zaznaczyć i rozebrać.',
+    '(robotnik postoi chwilę i wróci do swoich zajęć). Spacja LUB prawy przycisk (PPM) na wikingu rozwija ' +
+    'wokół jednostki MENU AKCJI w oryginalnej grafice — komplet okrągłych drewnianych przycisków na czterech ' +
+    'ramionach (jak w oryginale). ' +
+    'Na tym etapie działa tylko przycisk „Zmiana zawodu" (górne ramię): otwiera prostą listę zawodów, a ' +
+    'wybór zmienia zawód. Pozostałe przyciski to placeholdery (mają podpowiedź, ale nic nie robią). Info o ' +
+    'jednostce jest zawsze w prawym dolnym rogu. Neutralny wiking (bez właściciela) nie daje się zaznaczyć ' +
+    'ani rozkazać. HQ też można zaznaczyć i rozebrać.',
   seed: 4,
   content: content(),
   terrain: grassTerrain(MAP_W, MAP_H),
@@ -169,8 +172,8 @@ export const unitOrdersScene: SceneDefinition = {
   checklist: [
     'Przeciągnij ramką po grupie wikingów — pod zaznaczonymi pojawiają się zielone pierścienie, a karta info (prawy dolny róg) pokazuje ich liczbę',
     'Kliknij prawym (PPM) na wolnej trawie — zaznaczeni wikingowie idą tam; robotnik po chwili postoju wraca do swoich zajęć',
-    'Spacja rozwija PIERŚCIEŃ AKCJI wokół zaznaczonej jednostki: okrągłe drewniane przyciski w oryginalnej grafice (nie DOM-owe prostokąty), z sensownymi ikonami, na łuku POD jednostką (zawody) i NAD nią (postawy)',
-    'Najedź na przycisk pierścienia — podświetla się i pokazuje podpowiedź z nazwą; kliknięcie zmienia zawód/postawę (a karta info to odzwierciedla), a klik między przyciskami nadal działa na jednostkę',
+    'Spacja LUB prawy przycisk (PPM) na wikingu rozwija MENU AKCJI wokół jednostki: komplet okrągłych drewnianych przycisków w oryginalnej grafice (nie DOM-owe prostokąty), na czterech ramionach (góra/dół/lewo/prawo) jak w oryginale — ikony mają być OSTRE, nie poszczerbione ani rozmyte',
+    'Kliknij przycisk „Zmiana zawodu" (górne ramię, pierwszy z lewej) — otwiera się lista zawodów; wybór zmienia zawód (a karta info to odzwierciedla). Pozostałe przyciski to placeholdery: najazd pokazuje podpowiedź z nazwą, ale klik nic nie robi (i nie rozkazuje jednostce ruchu). Klik między przyciskami nadal działa na jednostkę',
     'Neutralny wiking (na dole z lewej) NIE daje się zaznaczyć ramką ani kliknięciem i nie reaguje na PPM — należy do nikogo',
     'Kliknij budynek (HQ po prawej) — karta info pokazuje jego dane i ma przycisk „Rozbierz"',
   ],

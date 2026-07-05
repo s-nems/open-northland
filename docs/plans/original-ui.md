@@ -15,7 +15,7 @@ truth). Check a box when the step is merged; delete this file when all steps lan
 - [ ] 2. Pipeline: `.fnt` bitmap-font decoder
 - [ ] 3. GUI sprite map (interactive — user is the oracle)
 - [ ] 4. App: left tool panel with original art
-- [x] 5. App: settler order UI with original art — landed: `hud/action-ring-layout.ts` (radial geometry transcribed from OpenVikings `BuildHumanActionButtons`) + `view/settler-actions.ts` (Pixi ring of `order_*` buttons, `context` palette) replacing the DOM actions card; buttons issue `setJob`/`setStance`. See FIDELITY.md "Settler action ring".
+- [x] 5. App: settler order UI with original art — landed: `hud/action-ring-layout.ts` (arm footprint transcribed from OpenVikings `BuildHumanActionButtons`) + `view/settler-actions.ts` (Pixi menu of `order_*` buttons, `context` palette, pixel-snapped) replacing the DOM actions card. Renders the **whole default human menu** (four arms) in original art, opened by **Space or right-click on the unit**; on this slice only "change profession" is wired (opens a simple profession picker → `setJob`, info card reflects it live), the rest are inert placeholders for a future "implement the action" pass (warrior/scout variants noted). See FIDELITY.md "Settler action menu".
 - [ ] 6. App: bottom-right details panel with original art
 
 Out of scope for this plan: the minimap (separate task) and the main menu. The frame-id map and
