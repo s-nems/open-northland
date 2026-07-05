@@ -188,6 +188,21 @@ describe('buildScene', () => {
     expect(facingOf(1, 0)).toBe(2); // NW lattice edge (0,-1)  -> screen up-left    -> block 2
   });
 
+  it('faces N/S on a vertical leg — the seam waypoint projects to a dead-vertical screen heading', () => {
+    // A vertical lattice step is routed as cell centre -> SEAM -> cell centre (routing.ts): from the
+    // odd row 1 the seam below sits at grid (1.5, 2), which projects to the SAME screen x as (1,1) —
+    // heading straight down -> block 6 (S); the seam above at (1.5, 0) heads straight up -> block 7 (N).
+    const walker = (ref: number, seamY: number): ReturnType<typeof entity> =>
+      entity(ref, 1, 1, {
+        Settler: { tribe: 0 },
+        PathFollow: { waypoints: [{ x: 1.5 * ONE, y: seamY * ONE }], index: 0 },
+      });
+    const scene = buildScene(snapshotOf([walker(1, 2), walker(2, 0)]), FLAT_3x2);
+    const settlers = scene.filter((d) => d.kind === 'settler');
+    expect(settlers.find((d) => d.ref === 1)?.facing).toBe(6); // straight down -> S
+    expect(settlers.find((d) => d.ref === 2)?.facing).toBe(7); // straight up   -> N
+  });
+
   it('faces the same grid step by ROW PARITY: (0,+1) reads SW from an odd row, SE from an even one', () => {
     // The stagger flips which way a one-row-down step slides: odd row -> half a cell LEFT (SW), even
     // row -> half a cell RIGHT (SE). The old sign-pair table faced both "S" — a zigzag artifact.

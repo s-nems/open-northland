@@ -477,6 +477,16 @@ extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
   down = any SE/SW interleaving), so the A* tie-break needs a line-deviation key — a pure function of
   (cell, start, goal), so it stays lockstep-safe — or the id tie-break picks a visibly drifting weave.
   (sim/movement)
+- [vertical-step] The lattice has EIGHT movement directions, not six: `THexagonDirection` ends with
+  `NORTH=6, SOUTH=7`, the walk bobs carry N/S facing blocks (art only vertical locomotion would play),
+  and the original visibly walks straight verticals — a 6-edge graph forces a NE/NW weave on every
+  straight-vertical order (the "goes up in a zigzag" report). The N/S step spans TWO rows through the
+  seam between the two flanking intermediate-row cells (gate: ≥1 flank walkable). Two traps: (1) the
+  heuristic must gain a vertical-dominant branch or it OVER-estimates straight-vertical distances
+  (2·ROW_STEP < 2·DIAGONAL_STEP) and breaks admissibility; (2) a vertical leg interpolated linearly in
+  GRID coords swings half a column sideways at the intermediate row (the stagger's triangle wave is not
+  linear across it) — the route must splice the seam crossing as a waypoint (`pathToWaypoints`) so each
+  sub-leg stays inside one row interval, where grid-linear IS world-straight. (sim/movement)
 - [9ae3294] Two systems that both write a unit's `MoveGoal` fight each other unless the yielding one
   clears movement ONLY on the transition. `combatSystem` runs AFTER `aiSystem` in `SYSTEM_ORDER`, so
   when the flee drive yields to a collapsing need it can't hand off this tick — it sets up next tick's

@@ -93,21 +93,35 @@ describe('findPath — shortest route on an open grid', () => {
     ]);
   });
 
-  it('a straight-down-the-screen target weaves the SE/SW edges within half a cell of the column', () => {
-    // (2,0) -> (2,4): straight down on screen. The lattice has no vertical edge, so the route is four
-    // row-crossings whose world-x never strays more than half a column from the target line — the
-    // original's tight weave, not the old wide zigzag. Several weaves tie on cost; assert the shape
-    // (monotone rows, bounded wobble), not one canonical pick.
+  it('a straight-down-the-screen target routes as straight vertical steps — no weave', () => {
+    // (2,0) -> (2,4): straight down on screen. The vertical S lattice step (two rows through the
+    // flanked gap) makes this a true straight line — and it is strictly cheaper than any SE/SW
+    // weave (2·VERTICAL_STEP ≈ 2.24 columns vs 4·DIAGONAL_STEP ≈ 3.0), so the pick is tie-free.
     const g = grid(5, 5, new Array(25).fill(GRASS));
+    const path = findPath(g, g.cellAt(2, 0), g.cellAt(2, 4));
+    expect(coords(g, path)).toEqual([
+      { x: 2, y: 0 },
+      { x: 2, y: 2 },
+      { x: 2, y: 4 },
+    ]);
+  });
+
+  it('slides a vertical run half a column to pass a blocked cell, staying inside the half-cell band', () => {
+    // (2,0) -> (2,4) with water at (2,2): the straight column is broken, but a diagonal onto the
+    // neighbouring seam re-opens a vertical step (its far flank is grass), so the route is
+    // diagonal + vertical + diagonal — never the wide zigzag. The two mirror slides tie on cost;
+    // assert the shape (monotone rows, bounded wobble), not one canonical pick.
+    const typeIds = new Array(25).fill(GRASS);
+    typeIds[2 * 5 + 2] = WATER;
+    const g = grid(5, 5, typeIds);
     const path = findPath(g, g.cellAt(2, 0), g.cellAt(2, 4));
     expect(path).not.toBeNull();
     const cells = coords(g, path) ?? [];
-    expect(cells.length).toBe(5); // four row-crossings, no column steps
-    cells.forEach((c, i) => {
-      expect(c.y).toBe(i); // rows advance monotonically — straight down
+    expect(cells.map((c) => c.y)).toEqual([0, 1, 3, 4]); // diagonal, vertical, diagonal
+    for (const c of cells) {
       const worldXcols = c.x + (c.y & 1) * 0.5; // the cell centre's world-x in column units
       expect(Math.abs(worldXcols - 2)).toBeLessThanOrEqual(0.5); // never leaves the half-cell band
-    });
+    }
   });
 
   it('every step in a returned path is a walkable lattice neighbour of the previous', () => {
@@ -117,7 +131,7 @@ describe('findPath — shortest route on an open grid', () => {
     for (let i = 1; i < (path?.length ?? 0); i++) {
       const prev = path?.[i - 1] as CellId;
       const cur = path?.[i] as CellId;
-      // steps() is the pathfinder's 6-connected staggered-lattice edge set.
+      // steps() is the pathfinder's 8-direction staggered-lattice edge set.
       expect(g.steps(prev).map((s) => s.cell)).toContain(cur);
     }
   });
@@ -129,8 +143,10 @@ describe('findPath — routes around obstacles', () => {
     //   G W G
     //   G W G
     //   G G G
-    // The lattice route drops through the SE edges to the gap and climbs the NE/NW edges back up:
-    // (0,1) is an odd row, so its SE edge is (+1,+1) — straight into the gap cell.
+    // The lattice route drops through the SE edges to the gap ((0,1) is an odd row, so its SE edge
+    // is (+1,+1) — straight into the gap cell), steps E, and climbs back with ONE straight vertical
+    // N step — its NE flank (2,1) is grass, so the seam past the water at (1,1) is open, and
+    // VERTICAL_STEP beats the NE+NW pair (≈1.12 vs ≈1.50). Unique optimum, tie-free.
     const g = grid(3, 3, [GRASS, WATER, GRASS, GRASS, WATER, GRASS, GRASS, GRASS, GRASS]);
     const path = findPath(g, g.cellAt(0, 0), g.cellAt(2, 0));
     expect(coords(g, path)).toEqual([
@@ -138,8 +154,7 @@ describe('findPath — routes around obstacles', () => {
       { x: 0, y: 1 },
       { x: 1, y: 2 }, // through the gap
       { x: 2, y: 2 },
-      { x: 2, y: 1 },
-      { x: 2, y: 0 },
+      { x: 2, y: 0 }, // straight up the flanked seam
     ]);
   });
 

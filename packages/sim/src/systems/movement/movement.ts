@@ -49,7 +49,8 @@ function runGait(world: World, e: Entity): Fixed {
  * MovementSystem — advances entity positions one tick.
  *
  * Two movement modes, in this precedence:
- *  1. {@link PathFollow}: step STRAIGHT toward the current waypoint's cell centre by the entity's own
+ *  1. {@link PathFollow}: step STRAIGHT toward the current waypoint (a cell centre, or the seam
+ *     point a vertical leg crosses the intermediate row at — `routing.ts`) by the entity's own
  *     pace ({@link MoveSpeed}'s `perTick` if it carries one, else the universal {@link MOVE_SPEED_PER_TICK}),
  *     along the LINE to the waypoint with the step length measured in the staggered lattice's WORLD
  *     metric — so every heading covers the same on-screen distance per tick ({@link stepTowardPoint}).

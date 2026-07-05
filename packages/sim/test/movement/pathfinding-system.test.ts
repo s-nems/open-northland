@@ -86,6 +86,36 @@ describe('pathfindingSystem — request to PathFollow handoff', () => {
     sim.step();
     expect(waypointCoords(sim, e)).toEqual([{ x: 1, y: 1 }]);
   });
+
+  it('splices a seam waypoint into each vertical (two-row) step so the leg is world-straight', () => {
+    // (2,0) -> (2,4) routes as two straight S steps; each gets a mid-leg waypoint at the seam the
+    // world-vertical line crosses the intermediate row: half a column LEFT of the column when
+    // leaving an even row (the odd row below is stagger-shifted right), so grid x = 1.5.
+    const { sim, request } = mappedSim(grassMap(5, 5));
+    const e = request(sim.terrain?.cellAt(2, 0) as number, sim.terrain?.cellAt(2, 4) as number);
+    sim.step();
+    const pf = sim.world.get(e, PathFollow);
+    expect(pf.waypoints).toEqual([
+      { x: fx.fromInt(2), y: fx.fromInt(0) },
+      { x: fx.fromFloat(1.5), y: fx.fromInt(1) }, // seam of the first S step
+      { x: fx.fromInt(2), y: fx.fromInt(2) },
+      { x: fx.fromFloat(1.5), y: fx.fromInt(3) }, // seam of the second S step
+      { x: fx.fromInt(2), y: fx.fromInt(4) },
+    ]);
+  });
+
+  it('places the seam half a column RIGHT when the vertical step leaves an ODD row', () => {
+    // (2,1) -> (2,3): both centres sit at world x = 2.5 (the odd-row shift), so the seam on the
+    // even row between them is at grid x = 2.5 — the stagger shift flips the seam's side.
+    const { sim, request } = mappedSim(grassMap(5, 5));
+    const e = request(sim.terrain?.cellAt(2, 1) as number, sim.terrain?.cellAt(2, 3) as number);
+    sim.step();
+    expect(sim.world.get(e, PathFollow).waypoints).toEqual([
+      { x: fx.fromInt(2), y: fx.fromInt(1) },
+      { x: fx.fromFloat(2.5), y: fx.fromInt(2) },
+      { x: fx.fromInt(2), y: fx.fromInt(3) },
+    ]);
+  });
 });
 
 describe('pathfindingSystem — failure handling', () => {

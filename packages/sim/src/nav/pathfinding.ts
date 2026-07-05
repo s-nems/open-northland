@@ -2,11 +2,12 @@
  * A* pathfinding over the terrain CELL-ADJACENCY GRAPH (docs/ROADMAP.md, Phase 2).
  *
  * This is the pure search the PathfindingSystem drives. It walks {@link TerrainGraph.steps} (the
- * canonical 6-connected staggered-lattice edge set: E,W then NE,SE,SW,NW), using
- * {@link cellLatticeDistance} as the admissible heuristic and each step's own cost (its real world
- * length: column ONE, row-crossing ≈ ¾) as the edge cost. The result is the lowest-cost cell
- * sequence from `start` to `goal`, inclusive of both, or `null` when no walkable route exists —
- * minimising TRUE on-screen distance, so a route reads straight under the staggered raster.
+ * canonical 8-direction staggered-lattice edge set: E,W then NE,SE,SW,NW then the vertical N,S),
+ * using {@link cellLatticeDistance} as the admissible heuristic and each step's own cost (its real
+ * world length: column ONE, row-crossing ≈ ¾, vertical two-row ≈ 1.118) as the edge cost. The result
+ * is the lowest-cost cell sequence from `start` to `goal`, inclusive of both, or `null` when no
+ * walkable route exists — minimising TRUE on-screen distance, so a route reads straight under the
+ * staggered raster (a straight-vertical order routes as N/S steps, not a NE/NW weave).
  *
  * DETERMINISM: every tie is broken by a fixed, history-independent rule so two runs (or two clients in
  * lockstep) pick byte-identical paths. The open set is a flat array scanned for the canonical minimum —

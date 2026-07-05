@@ -39,6 +39,15 @@ export const DIAGONAL_STEP: Fixed = fx.isqrt(
   fx.add(fx.mul(HALF_COLUMN, HALF_COLUMN), fx.mul(ROW_STEP, ROW_STEP)),
 );
 
+/**
+ * The world LENGTH of a VERTICAL lattice step (N/S — straight down/up TWO rows, passing through the
+ * gap between the two flanking cells of the intermediate row): exactly 2·{@link ROW_STEP} ≈
+ * 1.1176·ONE, the measured 76 px over the 68 px column step. Defined as the exact double of the
+ * (truncated) ROW_STEP so the pathfinder's edge cost and the heuristic's per-row term compose to the
+ * identical integer — the admissibility proof in `cellLatticeDistance` relies on that.
+ */
+export const VERTICAL_STEP: Fixed = fx.add(ROW_STEP, ROW_STEP);
+
 /** Fixed-point 2 — the stagger's row period (kept local; only the wave math needs it). */
 const TWO: Fixed = fx.fromInt(2);
 
