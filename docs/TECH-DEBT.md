@@ -48,6 +48,42 @@ For small, hard-won *gotchas* (not reworks) see [LESSONS.md](LESSONS.md); the li
 - **Trigger / why-deferred.** Small but premature now — activates when the project takes human
   contributors or a second agent tool.
 
+### 4. Merge per-swing mined ore into one pile per deposit
+
+- **Problem.** `dropMinedOre` (`sim/systems/conflict/atomic.ts`) spawns a fresh `GroundDrop` per mining
+  swing, so a deposit of N units can litter up to N loose 1-unit piles when haulers lag behind miners
+  (where `fellNode` drops ONE trunk). Those piles land in the per-settler economy candidate scans
+  (`ai-targets.ts` Stockpile/GroundDrop lists), so at target scale (many large deposits, dedicated
+  miners outpacing porters) they multiply — up to `depositSize`× — the already-open `O(idle·candidates)`
+  economy scan.
+- **Change.** Accumulate each swing into ONE pile per deposit cell: stamp the node with its active
+  ore-pile entity id and add `HARVEST_YIELD` to that pile's `Stockpile` (mint a fresh pile only after the
+  previous is reaped). Determinism-safe — one stable pile id → the collect scan picks the same winner,
+  goods byte-identical.
+- **Payoff.** Ore-in-flight no longer inflates the per-settler scan; collapses the per-swing
+  create/destroy churn on the `canonicalEntities` memo.
+- **Trigger / why-deferred.** Amplifies a KNOWN-OPEN seam (`packages/sim/CLAUDE.md` "economy nearest-X"),
+  negligible at demo scale (deposits 6–10, one miner per lane). The original's batching (chip several
+  before hauling?) is itself OBSERVED-pending-calibration (FIDELITY "Mineral deposits"), so the pile shape
+  shouldn't be pinned until that's decided. Sequence with the economy `TileBuckets.nearest` migration.
+
+### 5. Reconcile live-painter vs headless-oracle depth tie-break
+
+- **Problem.** The headless depth oracle (`render/src/data/scene.ts`, `SPRITE_PAINT_ORDER·PAINT_ORDER_EPS`,
+  sub-column) orders same-row sprites `(y, x, kind)` — column beats kind; the live painter
+  (`render/src/gpu/sprite-pool.ts`, `SCREEN_PAINT_EPS = 0.25`, which must dwarf the tiny float x-tiebreak
+  to survive precision at large y) orders `(y, kind, x)` — kind beats column. So two DIFFERENT-kind
+  sprites one column apart in the same row can be ordered OPPOSITELY by the mechanic proof and the pixels
+  a human signs off. It never crosses a row (`0.75 << TILE_HALF_H`).
+- **Change.** Make both paths consume ONE depth model (or make the oracle also `(y, kind, x)` — the
+  integer `ROW_STRIDE`=4096 scheme can't express kind-above-column-below-row for wide maps, so it needs a
+  small render-depth redesign, not a constant tweak).
+- **Payoff.** The headless oracle exactly predicts the drawn order — one source of truth for depth.
+- **Trigger / why-deferred.** Latent: the same-CELL case the paint order actually targets AGREES in both
+  paths; the divergence only bites same-row, DIFFERENT-column, different-kind sprites, which don't occur
+  in the current scenes (all ≥3 columns apart). Fix when a scene puts a settler beside a building/tree in
+  the same row and the draw order looks wrong.
+
 ## Reflection log
 
 - **2026-07-03** (agent-tooling pass, user-directed) — Tracked the shared `.claude/` tooling in git

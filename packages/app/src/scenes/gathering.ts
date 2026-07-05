@@ -54,15 +54,25 @@ const IRON = 4;
 const GOLD = 5;
 const MUSHROOM = 6;
 
+/**
+ * The demo trades' job typeIds start here (`GENERIC_MAN_JOB_BASE + lane`). The band is chosen to satisfy
+ * TWO constraints the workers depend on, neither of which a test would otherwise catch:
+ *  - OUTSIDE the render's job→body map (woman 5, soldiers 31–41, young 1–4) so every Zbieracz draws the
+ *    generic MAN body — the one that authors the `_work_` clips.
+ *  - OUTSIDE the sim's behaviour-triggering job ids (`HUNTER_JOB` 15, `SCOUT_JOB` 27) so a picker never
+ *    auto-hunts or scouts. 20–25 is that gap; keep any further trade below 27.
+ * (A bare `job: 15` before this drew the right body but WAS the hunter id — flagged in review.)
+ */
+const GENERIC_MAN_JOB_BASE = 20;
+
 /** How a lane's node is worked: a felled tree, a chipped mineral deposit, or a trivial pluck. */
 type Mode = 'fell' | 'mine' | 'pick';
 
 /**
  * One gatherer lane: a "Zbieracz (…)" worker, its good, the harvest atomic (which selects both the sim
  * DURATION via {@link HARVEST_TICKS} and the render's per-good work clip), and how many source nodes it
- * works. Job typeIds sit OUTSIDE the render's job→body map (5, 31–41) so every worker draws the generic
- * man body — the one that authors the `_work_` clips. All facts are global (catalog + settler-gfx), never
- * per-scene magic numbers.
+ * works. The `job` typeId comes from {@link GENERIC_MAN_JOB_BASE} (see its constraints). All facts are
+ * global (catalog + settler-gfx), never per-scene magic numbers.
  */
 interface Gatherer {
   readonly good: number;
@@ -83,7 +93,7 @@ const GATHERERS: readonly Gatherer[] = [
   {
     good: WOOD,
     id: 'wood',
-    job: 10,
+    job: GENERIC_MAN_JOB_BASE, // 20 (wood lane)
     jobName: 'Zbieracz (Drewno)',
     atomic: HARVEST_ATOMIC,
     anim: 'viking_collector_harvest_tree',
@@ -93,7 +103,7 @@ const GATHERERS: readonly Gatherer[] = [
   {
     good: STONE,
     id: 'stone',
-    job: 11,
+    job: GENERIC_MAN_JOB_BASE + 1, // stone
     jobName: 'Zbieracz (Kamień)',
     atomic: STONE_HARVEST_ATOMIC,
     anim: 'viking_collector_harvest_stone',
@@ -105,7 +115,7 @@ const GATHERERS: readonly Gatherer[] = [
   {
     good: MUD,
     id: 'mud',
-    job: 12,
+    job: GENERIC_MAN_JOB_BASE + 2, // clay
     jobName: 'Zbieracz (Glina)',
     atomic: CLAY_HARVEST_ATOMIC,
     anim: 'viking_collector_harvest_mud',
@@ -117,7 +127,7 @@ const GATHERERS: readonly Gatherer[] = [
   {
     good: IRON,
     id: 'iron',
-    job: 13,
+    job: GENERIC_MAN_JOB_BASE + 3, // iron
     jobName: 'Zbieracz (Żelazo)',
     atomic: IRON_HARVEST_ATOMIC,
     anim: 'viking_collector_harvest_iron',
@@ -129,7 +139,7 @@ const GATHERERS: readonly Gatherer[] = [
   {
     good: GOLD,
     id: 'gold',
-    job: 14,
+    job: GENERIC_MAN_JOB_BASE + 4, // gold
     jobName: 'Zbieracz (Złoto)',
     atomic: GOLD_HARVEST_ATOMIC,
     anim: 'viking_collector_harvest_gold',
@@ -141,7 +151,7 @@ const GATHERERS: readonly Gatherer[] = [
   {
     good: MUSHROOM,
     id: 'mushroom',
-    job: 15,
+    job: GENERIC_MAN_JOB_BASE + 5, // mushroom
     jobName: 'Zbieracz (Grzyby)',
     atomic: MUSHROOM_HARVEST_ATOMIC,
     anim: 'viking_collector_harvest_mushroom',
@@ -243,6 +253,11 @@ function placeTree(sim: Simulation, x: number, y: number): void {
 function placeDeposit(sim: Simulation, g: Gatherer, x: number, y: number): void {
   const units = g.depositUnits ?? 0;
   const levels = g.depositLevels ?? 0;
+  // A deposit with no units is a permanent phantom: the planner skips a `remaining<=0` node and the
+  // drain-then-remove path never runs, so it would linger un-harvestable AND fail a `count(Resource)===0`
+  // check. Fail loud at placement rather than hang the run (programmer error — a mined good needs units).
+  if (units <= 0)
+    throw new Error(`placeDeposit: mined good '${g.id}' needs positive depositUnits (got ${units})`);
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Resource, { goodType: g.good, remaining: units, harvestAtomic: g.atomic });

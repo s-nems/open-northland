@@ -87,10 +87,11 @@ const FALLBACK_WAIT: DirectionalAnim = { start: 1931, dirs: 1, stride: 57 };
 export const HARVEST_ATOMIC = 24;
 
 /**
- * The sim-side DURATION (in ticks) a harvest/chop atomic must run so the render plays exactly ONE full
- * woodcut swing — windup→impact — without cutting off and restarting. Every scene/slice that binds a
- * harvest swing (all of them replay the one {@link CHOP_SEQ} motion) MUST use this as its
- * `atomicAnimations` length; the ONE source of truth so a chop can't be mistuned per scene.
+ * The sim-side DURATION (in ticks) a WOODCUT atomic must run so the render plays exactly ONE full swing —
+ * windup→impact — without cutting off and restarting. This is the chop-swing length specifically (the
+ * vertical slice + any scene binding the bare one-swing chop); per-good harvest durations now live in
+ * {@link HARVEST_TICKS}, which gives wood its faithful 30 and the mined goods their longer dig pace — so
+ * this is no longer the universal harvest length, just the one-clean-swing value the chop clip needs.
  *
  * It is {@link CHOP_STRIDE} + 1: the swing is `CHOP_STRIDE` frames at one frame/tick, but the render
  * clock is `elapsed - 1` and the *completion* tick removes the atomic before that frame is drawn — so a

@@ -289,13 +289,31 @@ function harvestFromNode(
   // to give, so conserve goods and don't re-remove it (its own drain already removed it).
   if (res.remaining <= 0) return;
   const took = Math.min(HARVEST_YIELD, res.remaining);
-  res.remaining -= took;
   if (world.has(node, MineDeposit)) {
     dropMinedOre(world, node, res.goodType, took); // an ore pile at the deposit's cell, carried off later
   } else {
     addCarry(world, settler, goodType, took); // a mushroom — straight onto the back (direct pickup)
   }
+  // Decrement only AFTER the unit is safely dropped/carried: were `addCarry` ever to reject (a full load),
+  // the unit is not lost and the node isn't wrongly depleted. Belt-and-braces — the planner only reaches a
+  // harvest empty-handed, so `addCarry` never throws today; this keeps the old throw-safe ordering anyway.
+  res.remaining -= took;
   if (res.remaining <= 0) depleteNode(world, ctx, node, res.goodType); // last unit chipped — the node is gone
+}
+
+/**
+ * Create a bare ground pile at (x,y) — a {@link Stockpile}+{@link Position}+{@link GroundDrop} holding
+ * `amount` of `goodType`. This is the ONE on-the-ground drop shape a felled trunk and a chipped ore unit
+ * both take, so the pickup/porter/delivery machinery (and `reapEmptyGroundDrop`) handle either unchanged —
+ * defining it once keeps the two drop sites ({@link fellNode}, {@link dropMinedOre}) from drifting apart.
+ * Returns the new entity so a caller can announce it. Pure over entity state; no RNG/wall-clock.
+ */
+function dropGroundPile(world: World, x: Fixed, y: Fixed, goodType: number, amount: number): Entity {
+  const pile = world.create();
+  world.add(pile, Position, { x, y });
+  world.add(pile, Stockpile, { amounts: new Map([[goodType, amount]]) });
+  world.add(pile, GroundDrop, { goodType });
+  return pile;
 }
 
 /**
@@ -311,13 +329,9 @@ function harvestFromNode(
 function fellNode(world: World, ctx: SystemContext, node: Entity, goodType: number, yield_: number): void {
   const pos = world.get(node, Position);
   const { x, y } = pos;
-  // The felled wood: a ground trunk pile holding the whole yield, at the node's cell — the pickup/
-  // delivery machinery already handles a bare Stockpile+Position, the GroundDrop marker scopes the
-  // collector's own-trunk drive + the emptied-pile cleanup (see reapEmptyGroundDrop).
-  const trunk = world.create();
-  world.add(trunk, Position, { x, y });
-  world.add(trunk, Stockpile, { amounts: new Map([[goodType, yield_]]) });
-  world.add(trunk, GroundDrop, { goodType });
+  // The felled wood: a ground trunk pile holding the whole yield, at the node's cell (the shared drop shape,
+  // so the collector's own-trunk drive + the emptied-pile cleanup handle it — see reapEmptyGroundDrop).
+  const trunk = dropGroundPile(world, x, y, goodType, yield_);
   // The stump / debris left where the tree stood — pure decor (non-blocking, not harvestable).
   const stump = world.create();
   world.add(stump, Position, { x, y });
@@ -346,10 +360,7 @@ function fellNode(world: World, ctx: SystemContext, node: Entity, goodType: numb
  */
 function dropMinedOre(world: World, node: Entity, goodType: number, amount: number): void {
   const { x, y } = world.get(node, Position);
-  const ore = world.create();
-  world.add(ore, Position, { x, y });
-  world.add(ore, Stockpile, { amounts: new Map([[goodType, amount]]) });
-  world.add(ore, GroundDrop, { goodType });
+  dropGroundPile(world, x, y, goodType, amount); // the shared felled-trunk shape, one unit's worth
 }
 
 /**
