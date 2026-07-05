@@ -426,9 +426,15 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   // click on a menu button consumes the event and never falls through to selection / a move order. The
   // `mouseleave` clears a hover highlight/tooltip that would otherwise linger when the cursor leaves the
   // canvas while still over a button (no further `mousemove` fires to clear it).
-  // Escape backs out of the open profession list (the twin of a backdrop click).
+  // Escape backs out of the open profession list (the twin of a backdrop click / Space). It must STOP here:
+  // unit-controls also listens for Escape on `window` (to clear the selection), and we registered first — so
+  // without stopImmediatePropagation an Escape over the list would also deselect the unit and close the whole
+  // menu, when it should only step back to the ring with the unit still selected.
   const onKeyDown = (e: KeyboardEvent): void => {
-    if (e.key === 'Escape' && mode === 'jobs') closeJobWindow();
+    if (e.key === 'Escape' && mode === 'jobs') {
+      e.stopImmediatePropagation();
+      closeJobWindow();
+    }
   };
 
   canvas.addEventListener('mousedown', onMouseDown);
