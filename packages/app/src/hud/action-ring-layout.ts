@@ -7,10 +7,11 @@
  * up to **five groups (group-type 0..4)**, each group a short row/column on one side of a 0xE8 (232) px box
  * centred on the cursor. This module reproduces that arm **footprint** (the 100 px arm offset, the 0x20
  * button + step, the ∓5 corner nudge, the centring around the unit) — that part IS recoverable from the
- * decompile. What is NOT recoverable: which command maps to which group-type and which gfx id (the engine's
- * `sHumanCommandTypeToIconId` table is an unfilled placeholder in the oracle — only the 0x6B fallback is
- * code-pinned). So the **button→icon assignment is our best-guess** (glyph-matched to the frame map, and to
- * the layout the user read off the running original), logged in docs/FIDELITY.md as pending calibration.
+ * decompile. What the decompile does NOT recover: which command maps to which gfx id (the engine's
+ * `sHumanCommandTypeToIconId` table is an unfilled placeholder — only the 0x6B fallback is code-pinned). The
+ * **user supplied that binding for the civilian menu** — they read the whole thing off the running original
+ * (clockwise from the top-left) and gave the frame numbers, so {@link HUMAN_DEFAULT_MENU}'s command→icon
+ * assignment is now user-confirmed (see docs/FIDELITY.md); the warrior/scout variants remain to be read off.
  *
  * We render the whole default HUMAN menu as buttons — every arm of the original, in original art — but on
  * this slice only ONE is wired: `open-jobs` (the "change profession" button) opens a scrollable profession
@@ -218,8 +219,8 @@ export function pointOverActionRing(layout: ActionRingLayout, x: number, y: numb
 
 /**
  * The default order-button gfx — the ONLY code-pinned icon: the original's `GetHumanCommandIconId` returns
- * `0x6B` for any command its (unfilled) table doesn't map (`CGuiManager.cs:2214`). Buttons whose glyph is
- * still unread (sleep, the last bottom slot) fall back to it, exactly as the original falls back.
+ * `0x6B` for any command its (unfilled) table doesn't map (`CGuiManager.cs:2214`). The user placed frame 0x6b
+ * itself in the last bottom slot, so it draws here too — the same round wooden button the original falls back to.
  */
 export const ACTION_ICON_FALLBACK = 'order_icon_fallback';
 
@@ -242,48 +243,60 @@ const placeholder = (id: string, icon: ActionIconFrame, label: string): ActionBu
 });
 
 /**
- * The default menu of a civilian human, arm by arm, in the layout the user read off the running original
- * (top = profession + hammer/alert/query, left = attack/house/animal/vehicle, bottom = social/needs, right =
- * house assignments). Icons are best-guess; labels name the INTENDED action even though only `open-jobs`
- * fires today. A warrior/scout differs (mainly the left arm + an extra button) — a future per-unit-type menu
- * is the hook; this civilian menu is the one selected today.
+ * The default menu of a **civilian** human, arm by arm. Each button's `icon` is the exact `ls_gui_window`
+ * frame the ORIGINAL binds to that command — the user read the whole civilian menu off the running game
+ * (clockwise from the top-left button) and gave the frame numbers, so this is no longer a best-guess: it is
+ * the command→icon binding OpenVikings' unfilled `sHumanCommandTypeToIconId` table could not recover. NOTE
+ * the frame NAMES are glyph descriptions (from the montage), so a command's icon name needn't match its label
+ * (the binding is arbitrary — e.g. the "eat" command draws `order_assign_work`); the id + label carry the
+ * command, the icon carries the frame.
+ *
+ * **This menu is meant to become DYNAMIC** (the user's note): a warrior and a scout show slightly different
+ * arms, and per-state buttons appear/vanish (e.g. the marriage button hides once the settler is married). The
+ * hook is to keep the menu as plain DATA — a future `menuFor(unitType, state)` returns the arm list, filtering
+ * by the stable button `id` (hide `marry` when married) and swapping the per-unit-type variant. Only
+ * `open-jobs` fires today; every other button is an inert placeholder (drawn + tooltipped).
  */
 export const HUMAN_DEFAULT_MENU: readonly ActionGroup[] = [
+  // Top row, left→right (0x70 change-profession, 0x86 hammer, 0x6e "!", 0x63 "?").
   {
     group: TOP_ARM,
     buttons: [
       CHANGE_JOB,
-      placeholder('build', 'order_build', 'Budowa'),
+      placeholder('build', 'order_construct', 'Budowa'),
       placeholder('alert', 'order_alert', 'Alarm'),
       placeholder('query', 'order_query', 'Informacja'),
     ],
   },
+  // Left column, top→bottom (0x76 attack, 0x77 house, 0x78 animal, 0x79 vehicle).
   {
     group: LEFT_ARM,
     buttons: [
-      placeholder('attack', 'order_soldier_1', 'Atak'),
+      placeholder('attack', 'order_spearman', 'Atak'),
       placeholder('assign_house', 'order_house', 'Przypisz do domu'),
       placeholder('animal', 'order_animal', 'Zwierzę'),
       placeholder('vehicle', 'order_transport', 'Pojazd'),
     ],
   },
+  // Bottom row, left→right (0x68 marry, 0x7e pray, 0x7d talk, 0x6c sleep, 0x7b eat, 0x6b fallback/last).
   {
     group: BOTTOM_ARM,
     buttons: [
       placeholder('marry', 'order_marry', 'Szukaj partnera'),
       placeholder('pray', 'order_pray', 'Modlitwa'),
       placeholder('talk', 'order_figure_hand', 'Rozmowa'),
-      placeholder('sleep', ACTION_ICON_FALLBACK, 'Sen'),
-      placeholder('eat', 'order_eat', 'Jedzenie'),
+      placeholder('sleep', 'unknown_108', 'Sen'),
+      placeholder('eat', 'order_assign_work', 'Jedzenie'),
       placeholder('bottom_last', ACTION_ICON_FALLBACK, '—'),
     ],
   },
+  // Right column, top→bottom (0x81, 0x60, 0x7f, 0x65) — the four "house assignment" buttons.
   {
     group: RIGHT_ARM,
     buttons: [
-      placeholder('house_a', 'order_house', 'Przypisanie domu'),
-      placeholder('house_b', 'order_build_house', 'Przypisanie domu'),
-      placeholder('house_c', 'order_house_repair', 'Przypisanie domu'),
+      placeholder('house_a', 'order_house_repair', 'Przypisanie domu'),
+      placeholder('house_b', 'order_build', 'Przypisanie domu'),
+      placeholder('house_c', 'order_crest', 'Przypisanie domu'),
       placeholder('house_d', 'order_house_enter', 'Przypisanie domu'),
     ],
   },
