@@ -470,7 +470,7 @@ extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
 - [lattice-metric] A SQUARE-GRID reading of the staggered raster is wrong in three compounding ways at
   once: it invents two phantom "long diagonal" edges per cell (the lattice has SIX neighbours, parity-
   dependent), prices the four real row-crossing edges √2 when their true world length is ¾ of a column
-  (the measured 68×38 pitch makes 51/68 = ¾ exactly), and measures speed in grid units so the on-screen
+  (the measured 68×38 pitch gives √(34²+38²)/68 ≈ 0.7498 — near-exactly ¾), and measures speed in grid units so the on-screen
   pace varies ~2× by heading. Symptoms present as three separate bugs (zigzag routes, sideways drift,
   speed wobble) but share the one root: path costs, pace AND facing must all consume the lattice world
   metric (`nav/metric.ts`), never raw grid units. Also: cost-EQUAL lattice weaves are plentiful (straight

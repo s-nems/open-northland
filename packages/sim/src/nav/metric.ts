@@ -49,7 +49,7 @@ const TWO: Fixed = fx.fromInt(2);
  * negative rows. Pure fixed-point.
  */
 export function staggerShift(row: Fixed): Fixed {
-  const m = (((row % TWO) + TWO) % TWO) as Fixed; // row's place in the 2-row cycle, in [0, 2)
+  const m = fx.mod(fx.add(fx.mod(row, TWO), TWO), TWO); // row's place in the 2-row cycle, in [0, 2)
   const wave = fx.sub(ONE, fx.abs(fx.sub(ONE, m))); // 0 at even rows, ONE at odd, linear between
   return fx.div(wave, TWO);
 }
@@ -68,7 +68,10 @@ export function worldX(x: Fixed, y: Fixed): Fixed {
  * stagger half-period (every lattice-edge leg does — the stagger is linear between integer rows); a
  * longer re-path leg crossing a parity kink under-reads by a few percent for that one leg (the true
  * path bends at the integer row), which only means the mover paces that leg marginally fast — still
- * fully deterministic. Pure fixed-point.
+ * fully deterministic. Pure fixed-point. SPAN BOUND: the squared deltas overflow the 2^53-exact range
+ * once a single span exceeds ~1400 columns — fine for its purpose (leg-length pacing, deltas of a few
+ * cells) but NOT a map-scale distance query; a nearest-X consumer over whole-map spans needs a
+ * rescaled variant, not this one.
  */
 export function worldDistance(ax: Fixed, ay: Fixed, bx: Fixed, by: Fixed): Fixed {
   const dwx = fx.sub(worldX(bx, by), worldX(ax, ay));

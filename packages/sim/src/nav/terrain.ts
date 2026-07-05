@@ -12,19 +12,25 @@
  *
  * MOVEMENT is 6-CONNECTED ({@link TerrainGraph.steps}) — the original's STAGGERED-RASTER lattice
  * (docs/FIDELITY.md "projection": odd rows shifted half a cell right, 68×38 px pitch), where a cell's
- * true neighbours are E/W plus the four half-shifted cells one row up/down. WHICH grid offsets those
- * four are depends on the row's parity (see {@link LATTICE_ROW_STEPS}); a square-grid 8-neighbour
- * reading would invent two "long diagonal" edges per cell that the lattice doesn't have (the old
- * zigzag routes) and mis-price the four real ones. Edge costs are the edges' real world lengths in
- * the lattice metric (`nav/metric.ts`): E/W = ONE (a 68 px column step), row-crossing =
- * {@link DIAGONAL_STEP} ≈ ¾·ONE (a 51 px lattice edge) — so A* minimises true on-screen distance.
- * The 4-connected {@link TerrainGraph.neighbours}/{@link TerrainGraph.walkableNeighbours} remain for
- * placement/valency adjacency, which is not a movement question.
+ * true neighbours are E/W plus the four half-shifted cells one row up/down. This is PINNED, not
+ * inferred: the original's own source includes name the movement direction type `THexagonDirection`
+ * with exactly these six primary directions, E/SE/SW/W/NW/NE = 0..5 (docs/FIDELITY.md "A* pathfinding"
+ * row). WHICH grid offsets the four row-crossers are depends on the row's parity (see
+ * {@link LATTICE_ROW_STEPS}); a square-grid 8-neighbour reading would invent two "long diagonal"
+ * edges per cell that the lattice doesn't have (the old zigzag routes) and mis-price the four real
+ * ones. Edge costs are the edges' real world lengths in the lattice metric (`nav/metric.ts`): E/W =
+ * ONE (a 68 px column step), row-crossing = {@link DIAGONAL_STEP} ≈ ¾·ONE (a 51 px lattice edge) —
+ * so A* minimises true on-screen distance. The 4-connected {@link TerrainGraph.neighbours}/
+ * {@link TerrainGraph.walkableNeighbours} remain for placement/valency adjacency, which is not a
+ * movement question.
  */
 import type { ContentSet, LandscapeType } from '@vinland/data';
 import type { Brand } from '../core/brand.js';
 import { type Fixed, ONE, fx } from '../core/fixed.js';
 import { DIAGONAL_STEP, HALF_COLUMN } from './metric.js';
+
+/** Fixed-point zero, minted once — comparisons/fallbacks below need a branded zero. */
+const ZERO: Fixed = fx.fromInt(0);
 
 /** A cell address: the row-major index `y * width + x`. Branded so a raw number can't stand in. */
 export type CellId = Brand<number, 'CellId'>;
@@ -304,11 +310,11 @@ export function cellLatticeDistance(g: TerrainGraph, a: CellId, b: CellId): Fixe
   const wdx = fx.abs(
     fx.add(
       fx.fromInt(cb.x - ca.x),
-      fx.sub((cb.y & 1) === 1 ? HALF_COLUMN : (0 as Fixed), (ca.y & 1) === 1 ? HALF_COLUMN : (0 as Fixed)),
+      fx.sub((cb.y & 1) === 1 ? HALF_COLUMN : ZERO, (ca.y & 1) === 1 ? HALF_COLUMN : ZERO),
     ),
   );
   // The row-crossings absorb up to half a column of sideways travel each; the remainder is E/W steps.
   const absorbed = fx.mul(fx.fromInt(rows), HALF_COLUMN);
-  const columns = wdx > absorbed ? fx.sub(wdx, absorbed) : (0 as Fixed);
+  const columns = wdx > absorbed ? fx.sub(wdx, absorbed) : ZERO;
   return fx.add(fx.mul(fx.fromInt(rows), DIAGONAL_STEP), columns);
 }
