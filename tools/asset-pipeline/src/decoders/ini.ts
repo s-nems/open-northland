@@ -812,9 +812,12 @@ export function extractAtomicAnimations(sections: readonly RuleSection[], src: S
  * `damagetype` (all-lowercase like `munitiontype`) is the damage **class** a weapon deals — a
  * siege/area marker carried only by the catapults (value `2`); absent on every other weapon, so it's
  * `undefined` there and, like `munitiontype`, captured as a plain id (a class enum in no other table,
- * `2` is not a good id). The remaining combat extras (`soundtype_*`, `createsmoke`) are not in the
- * {@link WeaponType} schema yet and are intentionally skipped here — they belong with the Phase-4
- * CombatSystem, not this type-table slice.
+ * `2` is not a good id). `speed` (all-lowercase like `munitiontype`) is the ranged projectile's travel
+ * speed — carried only by the bow/catapult rows (absent → `undefined` on melee weapons, its
+ * `munitiontype` twin), captured as a plain magnitude (the unit is unreadable — the ranged drive maps
+ * it via a calibration constant, see the schema). The remaining combat extras (`soundtype_*`,
+ * `createsmoke`) are not in the {@link WeaponType} schema yet and are intentionally skipped here — they
+ * belong with the Phase-4 CombatSystem, not this type-table slice.
  * Throws on a section missing the required numeric `type` (matches {@link extractGoods}'s
  * throw-on-malformed stance).
  */
@@ -846,6 +849,9 @@ export function extractWeapons(sections: readonly RuleSection[], src: SourceRef)
         // `munitiontype` is all-lowercase in the source (unlike `mainType`) — the ammo class a ranged
         // weapon fires (bow/catapult); absent on melee weapons, so it doubles as the "is ranged" marker.
         munitionType: getInt(sec, 'munitiontype'),
+        // `speed` (all-lowercase) is the ranged projectile's travel speed (bow 8, catapult 3); like
+        // `munitiontype` it is carried only by ranged rows and absent on melee weapons → undefined.
+        speed: getInt(sec, 'speed'),
         // `damagetype` is all-lowercase too — the damage class (siege marker, catapult-only, value 2);
         // absent on every other weapon → undefined. A class enum, not a cross-ref (no other table).
         damageType: getInt(sec, 'damagetype'),

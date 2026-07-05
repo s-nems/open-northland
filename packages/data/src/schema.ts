@@ -345,6 +345,15 @@ export const WeaponType = z.strictObject({
    * making it the data-pinned "is this weapon ranged" marker the deferred ranged-attack drive reads. */
   munitionType: TypeId.optional(),
   /**
+   * `speed` — a **ranged** weapon's projectile **travel speed** (short/long bow `8`, house bow `7`,
+   * catapult `3` in the base data — a bow's arrow flies faster than a catapult's rock). Carried only by
+   * the rows that also carry a {@link munitionType} (bows + catapults); **absent on every melee weapon**
+   * (→ `undefined`), the {@link munitionType} twin. Captured as a plain non-negative int (a magnitude,
+   * not a cross-ref — `speed` appears in no other table). The **UNIT is unreadable** (tiles/tick? — the
+   * source carries no scale), so the ranged-combat drive maps it onto a per-tick step via a named
+   * calibration constant (docs/FIDELITY.md "Projectile travel"); the extracted value itself is faithful. */
+  speed: z.number().int().nonnegative().optional(),
+  /**
    * `damagetype` — the **damage class** a weapon deals (a siege/area marker in the base data: only the
    * catapults carry it, value `2`). Like {@link mainType} and {@link munitionType} it is a class enum,
    * **not** a cross-ref into another table (`damagetype` appears in no other `.ini`, and `2` is not a
