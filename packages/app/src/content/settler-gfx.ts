@@ -41,8 +41,12 @@ const CHOP_SEQ = 'human_man_woodcutter_work_woodcutting';
 // one clip per trade, which is what the render must play (docs/FIDELITY.md "Gathering work animations").
 // Unlike the ×8 chop these are NOT clean 8-direction strips, so {@link characterBinding} plays them
 // facing-locked (the digger faces its pit) — the whole strip on the atomic's clock.
-const SHOVEL_SEQ = 'human_man_clayworker_work_shovel'; // clay/mud — and iron/gold (no authored miner clip)
-const STONECRUSH_SEQ = 'human_man_stonecrusher_work_stonecrushing'; // stone
+const SHOVEL_SEQ = 'human_man_clayworker_work_shovel'; // clay/mud — the shovel dig (soft ground)
+// The stone-crushing swing IS the original's shared MINING motion (a pickaxe-like strike): the collector
+// job maps stone AND iron AND gold to this one clip (`gfxanimatomic`: action 25/27/28 all →
+// `stonecrushing`; there is no authored miner/pickaxe sequence on the man body). So the three hard
+// minerals dig alike, exactly as the base game wires them (docs/FIDELITY.md "Gathering work animations").
+const STONECRUSH_SEQ = 'human_man_stonecrusher_work_stonecrushing'; // stone + iron + gold (the mining strike)
 const PICKUP_SEQ = 'human_man_generic_pick_up'; // the bend-and-pick; mushroom's pluck + the carry pickup/deposit
 // The LOADED gait — the settler walking while hauling a log. Same directional layout as the empty walk;
 // the frames simply carry the wood. Bound to the settler's `carrying` override so a woodcutter walking
@@ -97,9 +101,10 @@ export const HARVEST_SWING_LENGTH = CHOP_STRIDE + 1;
 /**
  * The per-good harvest atomic ids — the original's `atomicForHarvesting` for each raw good (the collector
  * job runs ONE per good). Each binds to that good's OWN authored work clip in {@link CHARACTER_SPECS}
- * below (stone→crush, clay/iron/gold→shovel-dig, mushroom→pluck), not the shared woodcut swing — so a
- * clay-digger visibly SHOVELS, not chops (docs/FIDELITY.md). Exported so a scene/slice runs the same ids
- * the render animates. ({@link HARVEST_ATOMIC} = 24 is wood.) */
+ * below (stone/iron/gold→the shared mining strike, clay→shovel-dig, mushroom→pluck), not the shared
+ * woodcut swing — so a clay-digger visibly SHOVELS and a stone/iron/gold miner STRIKES, neither chops
+ * (docs/FIDELITY.md). Exported so a scene/slice runs the same ids the render animates.
+ * ({@link HARVEST_ATOMIC} = 24 is wood.) */
 export const STONE_HARVEST_ATOMIC = 25;
 export const CLAY_HARVEST_ATOMIC = 26;
 export const IRON_HARVEST_ATOMIC = 27;
@@ -107,22 +112,32 @@ export const GOLD_HARVEST_ATOMIC = 28;
 export const MUSHROOM_HARVEST_ATOMIC = 32;
 
 /**
- * DATA-pinned per-good harvest DURATIONS (ticks) — the ONE global source so gathering pace can't drift per
- * scene. These are the `atomicanimations.ini` lengths of the collector's per-good harvest atomics
- * (`viking_collector_harvest_*`), read straight from the mod (content/ir.json `atomicAnimations`), NOT an
- * eyeballed number: a dig genuinely takes longer than the flat {@link HARVEST_SWING_LENGTH} the chop clip
- * once forced on every good, which is what makes a deposit read as WORKED rather than tapped-once. A scene
- * declares each harvest atomic's `atomicAnimations` length from here. The clip may be shorter than the
- * duration (the ×8 chop loops, a facing-locked dig plays its opening strokes) — {@link frameOf} is
- * tick-locked, so a longer atomic just means more swinging, never a stretched frame.
+ * A MINED unit's dig duration (ticks) — an OBSERVED visual pace, not the faithful logic length. Each chip
+ * of a stone/iron/gold/clay deposit must read as SEVERAL pickaxe/shovel strikes, but the faithful
+ * `atomicanimations.ini` length (23–29) plays only the OPENING of a long authored dig at our fixed
+ * one-frame/tick cadence — the stonecrusher clip is 174 frames, the shovel 92 — so a unit came out after a
+ * single half-strike ("raz i już niesie"). At ~15 ticks per authored strike (the chop-swing cadence,
+ * {@link HARVEST_SWING_LENGTH}) this runs ~4 strikes per unit, so a deposit reads as WORKED. A deliberate
+ * divergence from the atomic's logic length (docs/FIDELITY.md "Chop swing length + felling pace"); wood +
+ * mushroom keep their faithful lengths (their clips are short enough to read whole).
+ */
+const MINE_STRIKE_TICKS = 60;
+/**
+ * Per-good harvest DURATIONS (ticks) — the ONE global source so gathering pace can't drift per scene. Wood
+ * (30) + mushroom (35) are the FAITHFUL `atomicanimations.ini` lengths of the collector's harvest atomics
+ * (`viking_collector_harvest_*`, content/ir.json); the four MINED goods run the longer {@link
+ * MINE_STRIKE_TICKS} observed pace so a dig reads as several strikes, not one twitch. A scene declares each
+ * harvest atomic's `atomicAnimations` length from here. The clip may be shorter than the duration (the ×8
+ * chop loops, a facing-locked dig plays more of its strokes) — {@link frameOf} is tick-locked, so a longer
+ * atomic just means more swinging, never a stretched frame.
  */
 export const HARVEST_TICKS: Readonly<Record<number, number>> = {
-  [HARVEST_ATOMIC]: 30, // wood     — viking_collector_harvest_tree
-  [STONE_HARVEST_ATOMIC]: 29, // stone    — viking_collector_harvest_stone
-  [CLAY_HARVEST_ATOMIC]: 23, // clay/mud — viking_collector_harvest_mud
-  [IRON_HARVEST_ATOMIC]: 23, // iron     — viking_collector_harvest_iron
-  [GOLD_HARVEST_ATOMIC]: 23, // gold     — viking_collector_harvest_gold
-  [MUSHROOM_HARVEST_ATOMIC]: 35, // mushroom — viking_collector_harvest_mushroom
+  [HARVEST_ATOMIC]: 30, // wood     — faithful (viking_collector_harvest_tree)
+  [STONE_HARVEST_ATOMIC]: MINE_STRIKE_TICKS, // stone — several pickaxe strikes per unit
+  [CLAY_HARVEST_ATOMIC]: MINE_STRIKE_TICKS, // clay/mud — several shovel digs per unit
+  [IRON_HARVEST_ATOMIC]: MINE_STRIKE_TICKS, // iron  — several pickaxe strikes per unit
+  [GOLD_HARVEST_ATOMIC]: MINE_STRIKE_TICKS, // gold  — several pickaxe strikes per unit
+  [MUSHROOM_HARVEST_ATOMIC]: 35, // mushroom — faithful (viking_collector_harvest_mushroom)
 };
 /**
  * The other atomic ids the SIM issues today, transcribed from the sim's planners (`ai.ts` eat 10 /
@@ -386,10 +401,10 @@ export const CHARACTER_SPECS = {
     atomics: {
       // Each raw-good harvest plays that good's OWN authored work clip — the collector's per-good motion.
       [HARVEST_ATOMIC]: { seq: CHOP_SEQ, phaseStart: CHOP_PHASE_START }, // wood — the woodcut axe swing
-      [STONE_HARVEST_ATOMIC]: { seq: STONECRUSH_SEQ }, // stone — the stone-crushing motion
-      [CLAY_HARVEST_ATOMIC]: { seq: SHOVEL_SEQ }, // clay/mud — the clayworker's shovel dig
-      [IRON_HARVEST_ATOMIC]: { seq: SHOVEL_SEQ }, // iron — dig (no authored miner clip → shovel, observed)
-      [GOLD_HARVEST_ATOMIC]: { seq: SHOVEL_SEQ }, // gold — dig (no authored miner clip → shovel, observed)
+      [STONE_HARVEST_ATOMIC]: { seq: STONECRUSH_SEQ }, // stone — the shared mining strike
+      [CLAY_HARVEST_ATOMIC]: { seq: SHOVEL_SEQ }, // clay/mud — the clayworker's shovel dig (soft ground)
+      [IRON_HARVEST_ATOMIC]: { seq: STONECRUSH_SEQ }, // iron — the shared mining strike (faithful job→clip map)
+      [GOLD_HARVEST_ATOMIC]: { seq: STONECRUSH_SEQ }, // gold — the shared mining strike (faithful job→clip map)
       [MUSHROOM_HARVEST_ATOMIC]: { seq: PICKUP_SEQ }, // mushroom — a bend-and-pluck (observed)
       [EAT_ATOMIC]: { seq: 'human_man_generic_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_man_generic_sleep' },

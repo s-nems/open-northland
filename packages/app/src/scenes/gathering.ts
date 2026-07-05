@@ -23,23 +23,25 @@ import type { SceneDefinition } from './types.js';
 /**
  * Acceptance scene: **every raw good is gathered LIVE, each by its own trade.** Six "Zbieracz (…)" workers
  * run in parallel lanes — one per good — and each plays that good's OWN authored work motion: the wood
- * gatherer CHOPS trees (axe), the stone gatherer CRUSHES rock, the clay/iron/gold gatherers DIG with a
- * shovel, the mushroom gatherer PLUCKS. Each mineral is a DEPOSIT the digger chips one ore unit at a time
- * (the graphic steps down a fill level and vanishes when dry); wood is a small felling stand (tree → stump +
+ * gatherer CHOPS trees (axe), the stone/iron/gold gatherers STRIKE the deposit (the shared pickaxe/mining
+ * clip), the clay gatherer DIGS with a shovel, the mushroom gatherer PLUCKS. Each mineral is a DEPOSIT the
+ * digger chips one ore unit at a time — several strikes per unit, so the dig reads as WORKED not tapped once,
+ * and the graphic steps down a fill level and vanishes when dry; wood is a small felling stand (tree → stump +
  * carried log); mushrooms are a trivial patch (one pluck removes each). Every worker carries its harvest, a
  * load at a time, to its own delivery FLAG whose heap grows.
  *
  * Two consumers of the ONE deterministic run: the headless half asserts the mechanics (each good's whole
  * yield reaches its flag; every node/deposit is consumed; goods conserved), the browser half is the human's
- * pixel/animation sign-off — the DISTINCT per-good motion (shovel vs axe vs crush vs pluck), the deposits
+ * pixel/animation sign-off — the DISTINCT per-good motion (pickaxe vs axe vs shovel vs pluck), the deposits
  * shrinking level by level, the carried loads NOT tinted the team colour, and the workers/flags drawing IN
  * FRONT of the terrain they stand on. Good typeId NUMBERS are scene-local, matched to the decoded graphics
  * by id-SLUG (wood→tree, mud→clay mine, …) and to the render's per-atomic work clips by the harvest atomic id.
  *
  * FIDELITY: the original models all six as ONE `collector` job (jobtype 8) with per-good jobExperience
  * specialisations, not six job types; the scene splits them into named trades purely for a clear
- * per-resource demo (docs/FIDELITY.md "Gathering work animations"). The bodies + motions are faithful (the
- * generic man's authored `_work_` clips); iron/gold reuse the shovel (no authored miner clip — observed).
+ * per-resource demo (docs/FIDELITY.md "Gathering work animations"). The bodies + motions are faithful: stone,
+ * iron AND gold share the stonecrusher mining strike exactly as the base game maps them (job→clip action
+ * 25/27/28 → stonecrushing); clay digs the shovel; wood chops the axe.
  */
 
 const { Felling, MineDeposit, Position, Resource, Settler, Stockpile, Stump } = components;
@@ -148,17 +150,22 @@ const GATHERERS: readonly Gatherer[] = [
   },
 ];
 
-const MAP_W = 13;
+const MAP_W = 11;
 const MAP_H = 15;
 
 // Each gatherer gets a horizontal lane: worker → node(s) → flag, laid out left→right so the cycle reads
 // clearly. Lanes stack down the map (one per good). The flag sits nearest its own lane so the worker
 // delivers home, not to a neighbour.
+//
+// FRAMING: `cameraFor` centres the view on the SETTLERS (the leftmost lane element, `WORKER_X`), so the
+// lane extends to the RIGHT of screen-centre — and the browser's instruction panel covers the right edge.
+// The span (worker→flag) is kept SHORT and {@link gatheringScene.initialZoom} modest so the delivery flag
+// never lands under that panel (the "flaga zakryta" report): 6 cells at 0.8× keeps the flag well clear.
 const LANE_Y0 = 2; // first lane's row
 const LANE_STEP = 2; // rows between lanes
 const WORKER_X = 2;
-const NODE_X0 = 6; // first source node (a stand/patch grows right from here)
-const FLAG_X = 10;
+const NODE_X0 = 5; // first source node (a stand/patch grows right from here)
+const FLAG_X = 8;
 
 /** The whole yield a lane delivers to its flag: its felled trees × per-tree wood, its deposit size, or one
  *  per plucked mushroom. The headless conservation check keys on this. */
@@ -315,10 +322,10 @@ export const gatheringScene: SceneDefinition = {
   title: 'Zbieranie: każdy surowiec swoim zawodem (drewno, kamień, glina, żelazo, złoto, grzyby)',
   summary:
     'Sześciu ZBIERACZY pracuje równolegle, każdy swój surowiec i swoją animacją: Zbieracz (Drewno) RĄBIE ' +
-    'drzewa, Zbieracz (Kamień) KRUSZY skałę, Zbieracz (Glina/Żelazo/Złoto) KOPIE ŁOPATĄ złoże (co chwilę ' +
-    'obniża się o poziom i znika), Zbieracz (Grzyby) ZRYWA grzyby. Każdy znosi urobek bryła po bryle na ' +
-    'swoją FLAGĘ. Niesiony surowiec ma swój kolor (nie kolor gracza), a robotnik i flaga rysują się PRZED ' +
-    'terenem, na którym stoją.',
+    'drzewa, Zbieracz (Kamień/Żelazo/Złoto) KUJE złoże KILOFEM (ta sama animacja górnicza), Zbieracz ' +
+    '(Glina) KOPIE ŁOPATĄ, Zbieracz (Grzyby) ZRYWA grzyby. Kucie/kopanie trwa kilka uderzeń na bryłę, złoże ' +
+    'co chwilę obniża się o poziom i znika. Każdy znosi urobek bryła po bryle na swoją FLAGĘ. Niesiony ' +
+    'surowiec ma swój kolor (nie kolor gracza), a robotnik i flaga rysują się PRZED terenem, na którym stoją.',
   seed: 11,
   content: content(),
   terrain: grassTerrain(MAP_W, MAP_H),
@@ -326,18 +333,21 @@ export const gatheringScene: SceneDefinition = {
   // Six lanes run in parallel; the slowest (the largest deposit at faithful per-good durations) settles well
   // inside this. Headroom so the headless checks see the fully-settled end state.
   runTicks: 3000,
-  initialZoom: 0.9,
+  // Modest default so all six lanes — worker THROUGH the delivery flag — sit clear of the instruction
+  // panel on the right (see the FRAMING note by the layout constants); the human can scroll-zoom in.
+  initialZoom: 0.8,
   checklist: [
-    'Każdy Zbieracz gra INNĄ animację pracy: Drewno = topór (rąbanie), Kamień = kruszenie, ' +
-      'Glina/Żelazo/Złoto = ŁOPATA (kopanie), Grzyby = zrywanie — a nie wszyscy tak samo jak drwal',
-    'Kopanie/rąbanie TRWA chwilę (kilka zamachów), a nie „raz i już niesie” — łopata kopie zauważalnie dłużej',
+    'Każdy Zbieracz gra INNĄ animację pracy: Drewno = topór (rąbanie), Kamień/Żelazo/Złoto = KILOF ' +
+      '(ta sama animacja górnicza dla całej trójki), Glina = ŁOPATA, Grzyby = zrywanie — a nie wszyscy jak drwal',
+    'Kucie/kopanie TRWA kilka uderzeń na każdą bryłę, a nie „raz i już niesie” — kilof/łopata pracują ' +
+      'zauważalnie dłużej niż topór',
     'Każde ZŁOŻE (kamień/glina/żelazo/złoto) obniża się o poziom w miarę wykuwania i ZNIKA po ostatniej ' +
       'bryle; drzewo pada i zostaje pień; grzyby znikają po zerwaniu',
     'Niesiony surowiec ma swój naturalny kolor — drewno brązowe, glina/ruda w swoim kolorze, NIE niebieskie ' +
       '(nie kolor frakcji); tylko strój robotnika jest w kolorze gracza',
     'Robotnik stojący na złożu/pniu i FLAGA na ziemi rysują się PRZED terenem (nie chowają się za nim)',
     'Znane skróty (v1): pień rysuje „tree debris”; drzewo/złoże znika natychmiast (bez animacji upadku); ' +
-      'żelazo/złoto kopią tą samą łopatą co glina (brak osobnej animacji górnika — docs/FIDELITY.md)',
+      'kamień/żelazo/złoto dzielą jedną animację górniczą (brak osobnej animacji kilofa — docs/FIDELITY.md)',
   ],
   checks: [
     {
