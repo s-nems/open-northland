@@ -1,6 +1,11 @@
 import { buildSpriteScene, resolveResourceDraw, resolveStockpileDraw } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
-import { CLAY_DEPOSIT_UNITS } from '../src/catalog/mining.js';
+import {
+  CLAY_DEPOSIT_UNITS,
+  GOLD_DEPOSIT_UNITS,
+  IRON_DEPOSIT_UNITS,
+  STONE_DEPOSIT_UNITS,
+} from '../src/catalog/mining.js';
 import type { LandscapeGfxRow, RenderIr } from '../src/content/ir.js';
 import {
   buildResourceBinding,
@@ -14,47 +19,47 @@ import { createSceneSim } from '../src/scenes/index.js';
 
 /**
  * The headless half of the `?scene=gathering` acceptance scene (the browser half is the human's pixel
- * sign-off). The scene runs the FELLING + MINING cycles, so the render DATA an agent CAN self-verify is:
- * after the run the world classifies as the settled outcome — the static per-good nodes are `resource`s
- * carrying their goodType, each felled tree left a `stump` (carrying wood), the mined deposit is GONE, and
- * the delivered wood/mud are two `stockpile` flag heaps — plus that the per-good + stump bindings RESOLVE
+ * sign-off). The scene gathers EVERY raw good — one trade per good — so after the run every source node is
+ * consumed (no `resource` draws), each felled tree left a `stump` (carrying wood), and each good piles WHOLE
+ * at its own delivery flag (one `stockpile` heap per good). Plus that the per-good + stump bindings RESOLVE
  * each good/stump to its OWN object (and a mined deposit steps its node frame down by level).
  */
 
 const scene = gatheringScene;
 // The scene's goodTypes (see gathering.ts) — the sim runs these, keyed under scene-local ids.
 const GOODS = { wood: 1, stone: 2, mud: 3, iron: 4, gold: 5, mushroom: 6 } as const;
-// mud is the ACTIVELY-mined deposit (removed by the end), NOT a static showcase node.
-const DISPLAY_GOODS = [GOODS.stone, GOODS.iron, GOODS.gold, GOODS.mushroom];
-const TREES = 3;
+// The lane sizes the scene plants (gathering.ts GATHERERS): a two-tree wood stand, a three-mushroom patch.
+const WOOD_TREES = 2;
+const MUSHROOM_NODES = 3;
 const TREE_WOOD_YIELD = 3;
 
-describe('gathering scene — render classification after the felling + mining cycles', () => {
+describe('gathering scene — render classification after all six gathering cycles', () => {
   const sim = createSceneSim(scene);
   sim.run(scene.runTicks);
   const draws = buildSpriteScene(sim.snapshot());
 
-  it('the static per-good display nodes each classify as a resource carrying its goodType (mined deposit gone)', () => {
-    const nodes = draws.filter((d) => d.kind === 'resource');
-    expect(nodes).toHaveLength(DISPLAY_GOODS.length); // the mud deposit was chipped dry and removed
-    expect(new Set(nodes.map((n) => n.goodType))).toEqual(new Set(DISPLAY_GOODS));
-    // A static showcase node carries no level (it draws full); it has no fill amount (that is a pile's).
-    expect(nodes.every((n) => n.fill === undefined && n.level === undefined)).toBe(true);
+  it('every source node is consumed by the end — no resource draws remain', () => {
+    // Trees felled → stumps, deposits chipped dry → removed, mushrooms plucked → removed.
+    expect(draws.filter((d) => d.kind === 'resource')).toHaveLength(0);
   });
 
   it('every felled tree leaves a stump draw carrying its goodType (wood)', () => {
     const stumps = draws.filter((d) => d.kind === 'stump');
-    expect(stumps).toHaveLength(TREES);
+    expect(stumps).toHaveLength(WOOD_TREES);
     expect(stumps.every((s) => s.goodType === GOODS.wood)).toBe(true);
   });
 
-  it('the delivered wood + mined mud each pile at their own flag (two stockpile heaps, by good)', () => {
-    // Once every trunk + ore pile is collected and reaped, the only stockpiles left are the two flags.
+  it('each good piles WHOLE at its own gatherer flag (one stockpile heap per good, by good)', () => {
+    // Once every trunk + ore pile is collected, the only stockpiles left are the six delivery flags.
     const piles = draws.filter((d) => d.kind === 'stockpile');
-    expect(piles).toHaveLength(2);
+    expect(piles).toHaveLength(6); // one flag per good
     const byGood = new Map(piles.map((p) => [p.goodType, p.fill]));
-    expect(byGood.get(GOODS.wood)).toBe(TREES * TREE_WOOD_YIELD); // the felling flag heap
-    expect(byGood.get(GOODS.mud)).toBe(CLAY_DEPOSIT_UNITS); // the mining flag heap
+    expect(byGood.get(GOODS.wood)).toBe(WOOD_TREES * TREE_WOOD_YIELD);
+    expect(byGood.get(GOODS.stone)).toBe(STONE_DEPOSIT_UNITS);
+    expect(byGood.get(GOODS.mud)).toBe(CLAY_DEPOSIT_UNITS);
+    expect(byGood.get(GOODS.iron)).toBe(IRON_DEPOSIT_UNITS);
+    expect(byGood.get(GOODS.gold)).toBe(GOLD_DEPOSIT_UNITS);
+    expect(byGood.get(GOODS.mushroom)).toBe(MUSHROOM_NODES);
   });
 });
 
