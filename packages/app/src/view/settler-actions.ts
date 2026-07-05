@@ -1,4 +1,10 @@
-import { type Camera, PalettedSprite, type SpriteLayer, tileToScreen } from '@vinland/render';
+import {
+  type AtlasFrame,
+  type Camera,
+  PalettedSprite,
+  type SpriteLayer,
+  tileToScreen,
+} from '@vinland/render';
 import { ONE, type WorldSnapshot, systems } from '@vinland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
 import { GUI_FRAMES, guiFrameIndex } from '../content/gui-atlas-map.js';
@@ -105,11 +111,13 @@ export interface SettlerActions {
   dispose(): void;
 }
 
-/** One built button: its spec + the sprite (real art) or the fallback disc, kept in flatten order. */
+/** One built button: its spec + the sprite (real art) or the fallback disc + the (invariant) atlas frame. */
 interface ButtonVisual {
   readonly button: ActionButton;
   readonly sprite: PalettedSprite | null;
   readonly fallback: Graphics | null;
+  /** The resolved atlas frame (real-art path) — captured once at build so `placeVisual` never re-resolves it. */
+  readonly frame: AtlasFrame | null;
 }
 
 const paletteOfFrame = (gfx: number): GuiPaletteName => GUI_FRAMES[gfx]?.palette ?? 'context';
@@ -166,32 +174,36 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   const tooltip = el('div', TOOLTIP_STYLE);
   document.body.append(tooltip);
 
-  // A GUI-atlas sprite for one order-icon frame (by semantic name), or `null` if the art / frame is missing.
-  const iconSprite = (frameName: string): PalettedSprite | null => {
+  // The order-icon sprite + its atlas frame for one button, or nulls when the art / frame is missing.
+  const iconSprite = (frameName: string): { sprite: PalettedSprite; frame: AtlasFrame } | null => {
     if (!hasArt || guiLayer === null || guiLut === null) return null;
     const gfx = guiFrameIndex(frameName);
     const frame = guiLayer.atlas.frames.get(gfx);
     if (frame === undefined) return null;
-    const spr = new PalettedSprite(guiLut, guiColours);
-    spr.setFrame(guiLayer.source, frame, guiLayer.atlas.width, guiLayer.atlas.height);
-    spr.player = guiPaletteRow(paletteOfFrame(gfx));
-    spr.colorKey = true; // discard the GUI palettes' opaque background band (see PalettedSprite.colorKey)
-    return spr;
+    const sprite = new PalettedSprite(guiLut, guiColours);
+    sprite.setFrame(guiLayer.source, frame, guiLayer.atlas.width, guiLayer.atlas.height);
+    sprite.player = guiPaletteRow(paletteOfFrame(gfx));
+    sprite.colorKey = true; // discard the GUI palettes' opaque background band (see PalettedSprite.colorKey)
+    return { sprite, frame };
   };
 
-  // Build every button's visual ONCE (retained graph — placed each frame, never re-created).
+  // Build every button's visual ONCE (retained graph — placed each frame, never re-created). Keyed by the
+  // button object so `update` places by identity, robust to a group the layout drops (an arm index it lacks).
   const visuals: ButtonVisual[] = [];
+  const visualByButton = new Map<ActionButton, ButtonVisual>();
   for (const g of groups) {
     for (const button of g.buttons) {
-      const sprite = iconSprite(button.icon);
+      const art = iconSprite(button.icon);
       let fallback: Graphics | null = null;
-      if (sprite === null) {
+      if (art === null) {
         fallback = new Graphics();
         buttonContainer.addChild(fallback);
       } else {
-        buttonContainer.addChild(sprite);
+        buttonContainer.addChild(art.sprite);
       }
-      visuals.push({ button, sprite, fallback });
+      const v: ButtonVisual = { button, sprite: art?.sprite ?? null, fallback, frame: art?.frame ?? null };
+      visuals.push(v);
+      visualByButton.set(button, v);
     }
   }
 
@@ -232,14 +244,11 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   const placeVisual = (v: ButtonVisual, rect: { x: number; y: number; w: number; h: number }): void => {
     const rw = app.screen.width;
     const rh = app.screen.height;
-    if (v.sprite !== null && guiLayer !== null) {
-      const frame = guiLayer.atlas.frames.get(guiFrameIndex(v.button.icon));
-      if (frame !== undefined) {
-        // Centre the frame's WxH box in the rect: drawn-box centre = origin + scale·(offset + size/2).
-        const originX = rect.x + rect.w / 2 - (frame.offsetX + frame.width / 2) * scale;
-        const originY = rect.y + rect.h / 2 - (frame.offsetY + frame.height / 2) * scale;
-        v.sprite.place(originX, originY, scale, rw, rh);
-      }
+    if (v.sprite !== null && v.frame !== null) {
+      // Centre the frame's WxH box in the rect: drawn-box centre = origin + scale·(offset + size/2).
+      const originX = rect.x + rect.w / 2 - (v.frame.offsetX + v.frame.width / 2) * scale;
+      const originY = rect.y + rect.h / 2 - (v.frame.offsetY + v.frame.height / 2) * scale;
+      v.sprite.place(originX, originY, scale, rw, rh);
     } else if (v.fallback !== null) {
       const r = Math.min(rect.w, rect.h) / 2;
       v.fallback
@@ -266,11 +275,18 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     }
     actionTargets = centre.ids;
     layout = layoutActionRing(groups, centre.x, centre.y, scale, app.screen.width, app.screen.height);
-    // layout.buttons is in the same flatten order as `visuals` (groups → buttons), so index-align them.
-    for (let i = 0; i < layout.buttons.length; i++) {
-      const v = visuals[i];
-      const placed = layout.buttons[i];
-      if (v !== undefined && placed !== undefined) placeVisual(v, placed.rect);
+    // Place by button IDENTITY (not index): the layout may drop a whole group whose arm index it lacks, so
+    // hide every visual first, then show + place only the buttons this frame's layout actually produced.
+    for (const v of visuals) {
+      if (v.sprite !== null) v.sprite.visible = false;
+      if (v.fallback !== null) v.fallback.visible = false;
+    }
+    for (const placed of layout.buttons) {
+      const v = visualByButton.get(placed.button);
+      if (v === undefined) continue;
+      if (v.sprite !== null) v.sprite.visible = true;
+      if (v.fallback !== null) v.fallback.visible = true;
+      placeVisual(v, placed.rect);
     }
     root.visible = true;
   };
@@ -326,15 +342,18 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     tooltip.style.display = 'block';
   };
 
-  // Register BEFORE unit-controls attaches its own canvas mousedown (this controller is mounted first), so a
-  // click on a ring button consumes the event and never falls through to selection / a move order.
-  canvas.addEventListener('mousedown', onMouseDown);
-  canvas.addEventListener('mousemove', onMouseMove);
-
   const hideTransient = (): void => {
     hoverG.clear();
     tooltip.style.display = 'none';
   };
+
+  // Register BEFORE unit-controls attaches its own canvas mousedown (this controller is mounted first), so a
+  // click on a ring button consumes the event and never falls through to selection / a move order. The
+  // `mouseleave` clears a hover highlight/tooltip that would otherwise linger when the cursor leaves the
+  // canvas while still over a button (no further `mousemove` fires to clear it).
+  canvas.addEventListener('mousedown', onMouseDown);
+  canvas.addEventListener('mousemove', onMouseMove);
+  canvas.addEventListener('mouseleave', hideTransient);
 
   return {
     update,
@@ -355,6 +374,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     dispose: (): void => {
       canvas.removeEventListener('mousedown', onMouseDown);
       canvas.removeEventListener('mousemove', onMouseMove);
+      canvas.removeEventListener('mouseleave', hideTransient);
       tooltip.remove();
       root.destroy({ children: true });
     },

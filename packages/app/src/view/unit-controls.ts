@@ -181,12 +181,18 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     if (!add) selected.clear();
     for (const id of ids) selected.add(id);
     changed();
+    // Clearing the selection closes the action ring — so re-selecting a unit doesn't silently reopen it
+    // (Space is the toggle; an empty selection resets it), and Esc backs fully out of both.
+    if (selected.size === 0) actions.close();
   };
 
   const onMouseDown = (e: MouseEvent): void => {
-    // The HUD claims its own clicks BEFORE any world picking — a press over the tool panel / an open
-    // window / a placement-in-progress never starts a selection or issues a move order.
+    // The HUD claims its own clicks BEFORE any world picking — a press over the tool panel / an open window /
+    // a placement-in-progress / an open action-ring BUTTON never starts a selection or issues an order. The
+    // ring claim covers the RIGHT button too (its own listener only consumes left clicks), so right-clicking
+    // a ring button doesn't fall through to a world move/attack order.
     if (opts.claimPointer?.(e.clientX, e.clientY) === true) return;
+    if (actions.claimsPointer(e.clientX, e.clientY)) return;
     if (e.button === 2) {
       // Right button: attack an enemy under the cursor, else move to the clicked tile.
       issueRightClickOrder(e);
