@@ -53,6 +53,12 @@ maps the rest.
   projectiles, warrior-body animations, blood/cadavers/HP bars, barracks recruitment + training,
   towers/defence mode, a final calibration session vs the original). Consumed in order; deleted
   when done.
+- [plans/map-visual-fidelity.md](plans/map-visual-fidelity.md) — user-driven `/worktree` plan:
+  step-by-step agent prompts closing the map-import look gaps vs the original (lmhe elevation
+  lift, embr slope shading + edge fade, authored building variants, palisade joins, building
+  animations, emt3/emt4 survey, animal herds, water audit, panorama sign-off). Carries the shared
+  verification kit (reference-shot corpus + pinned viewport fit) and a per-step progress log.
+  Consumed in order; deleted when done.
 - [TECH-DEBT.md](TECH-DEBT.md) — trigger-gated / speculative reworks deliberately parked (not a
   structural-health queue — `/reflect` owns and *executes* structure), plus the reflection log.
 
