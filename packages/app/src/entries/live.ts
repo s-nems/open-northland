@@ -223,6 +223,9 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
 
   const timestep = new FixedTimestep();
   let lastMs = performance.now();
+  // The fixed-timestep interpolation fraction the renderer lerps entity anchors by — refreshed each
+  // un-paused frame from `advance` (a pause freezes it, so units hold their drawn spot mid-leg).
+  let renderAlpha = 1;
 
   function frame(nowMs: number): void {
     const elapsed = nowMs - lastMs;
@@ -232,7 +235,7 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
     // trigger on an intermediate tick would otherwise be lost.
     const frameEvents: SimEvent[] = [];
     if (!control.paused) {
-      timestep.advance(elapsed * control.speed, () => {
+      renderAlpha = timestep.advance(elapsed * control.speed, () => {
         sim.step();
         frameEvents.push(...sim.events.current());
       });
@@ -252,6 +255,7 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
       snap.tick,
       { placement: shiftHud(placeHud(hud, 'top-left', app.screen), toolPanel.hudShift) },
       controls.selectedIds(),
+      renderAlpha,
     );
     controls.tick(snap); // reuse the frame's snapshot — don't rebuild a second one
     // Sound is a pure consumer of the same snapshot + events render reads: fire this frame's one-shots

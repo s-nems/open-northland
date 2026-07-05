@@ -467,6 +467,16 @@ extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
   skips `GroundDrop`); the same marker scopes its auto-reap-when-emptied (a collected trunk vanishes, a
   designated flag — a marker-less bare `Stockpile` — persists). When adding an entity kind that is both
   gathered-from and delivered-to, decide the source/sink role explicitly, don't let one bare shape be both. (sim)
+- [lattice-metric] A SQUARE-GRID reading of the staggered raster is wrong in three compounding ways at
+  once: it invents two phantom "long diagonal" edges per cell (the lattice has SIX neighbours, parity-
+  dependent), prices the four real row-crossing edges √2 when their true world length is ¾ of a column
+  (the measured 68×38 pitch makes 51/68 = ¾ exactly), and measures speed in grid units so the on-screen
+  pace varies ~2× by heading. Symptoms present as three separate bugs (zigzag routes, sideways drift,
+  speed wobble) but share the one root: path costs, pace AND facing must all consume the lattice world
+  metric (`nav/metric.ts`), never raw grid units. Also: cost-EQUAL lattice weaves are plentiful (straight
+  down = any SE/SW interleaving), so the A* tie-break needs a line-deviation key — a pure function of
+  (cell, start, goal), so it stays lockstep-safe — or the id tie-break picks a visibly drifting weave.
+  (sim/movement)
 - [9ae3294] Two systems that both write a unit's `MoveGoal` fight each other unless the yielding one
   clears movement ONLY on the transition. `combatSystem` runs AFTER `aiSystem` in `SYSTEM_ORDER`, so
   when the flee drive yields to a collapsing need it can't hand off this tick — it sets up next tick's

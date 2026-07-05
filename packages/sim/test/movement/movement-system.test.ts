@@ -106,32 +106,48 @@ describe('movementSystem — path following', () => {
     expect(sim.world.has(e, PathFollow)).toBe(false);
   });
 
-  it('advances a diagonal waypoint at the SAME tiles/tick as an axis leg (normalized, no √2 speed-up)', () => {
+  it('paces a row-crossing lattice leg by its WORLD length: ¾ of a column, done in six ticks', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 4) });
     const e = followerAt(sim, 0, 0, [
       { x: 0, y: 0 },
-      { x: 1, y: 1 },
+      { x: 0, y: 1 }, // the SE lattice edge from an even row: one row down, world length ≈ 0.75
     ]);
-    sim.step(); // consume wp0 (already on it); no move toward (1,1) yet
-    sim.step(); // first move toward (1,1): a step of length `speed` along the diagonal
+    sim.step(); // consume wp0 (already on it); no move toward (0,1) yet
+    sim.step(); // first move toward (0,1)
     const p1 = pos(sim, e);
-    // Each axis advances speed/√2 ≈ 0.0884 (NOT the full 0.125), so the straight-line displacement is
-    // exactly one settler step (0.125) — the same distance/tick an axis leg covers. The old per-axis
-    // clamp moved 0.125 on BOTH axes at once (0.125·√2 ≈ 0.177/tick), the visible diagonal speed-up.
-    expect(p1.x).toBeCloseTo(p1.y, 9); // symmetric heading
-    expect(p1.x).toBeCloseTo(0.08837890625, 6); // speed / √2
-    expect(Math.hypot(p1.x, p1.y)).toBeCloseTo(0.125, 3); // total = one axis-step, not √2 of one
-    // The leg spans √2 tiles, so at 0.125 tile/tick it takes MORE ticks than the 8 an axis 1-tile leg
-    // needs — the no-speed-up guarantee — and lands EXACTLY on the waypoint (the arrival snap).
+    // The leg's world length is ≈0.75 of a column, so at ⅛ column/tick the row coordinate advances
+    // ~⅙ per tick (0.125 / 0.75) — SIX ticks per row-crossing leg vs EIGHT per column leg, which is
+    // exactly what keeps the ON-SCREEN pace identical (51 px vs 68 px legs). The old grid-space step
+    // paced this leg as a full tile (8 ticks → ~25% slower on screen), the reported speed wobble.
+    expect(p1.x).toBeCloseTo(0, 9); // the grid delta is pure +row; the stagger lives in the render
+    expect(p1.y).toBeCloseTo(1 / 6, 3);
     let moveTicks = 1; // the first move above
     while (sim.world.has(e, PathFollow)) {
       sim.step();
       moveTicks++;
     }
-    expect(moveTicks).toBeGreaterThan(8); // a √2-longer leg cannot finish in an axis leg's 8 ticks
-    expect(pos(sim, e).x).toBeCloseTo(1, 6);
+    expect(moveTicks).toBe(6);
     expect(pos(sim, e).y).toBeCloseTo(1, 6);
-    expect(sim.world.has(e, PathFollow)).toBe(false);
+  });
+
+  it('paces an off-lattice re-path leg by the world metric too (no lurch)', () => {
+    // (0,0) -> (1,1) is NOT a lattice edge (a re-path can still aim anywhere): its world length is
+    // √(1.5² + 0.5588²) ≈ 1.6 columns — 13 ticks at ⅛/tick, NOT the old grid-√2's 12. The point is
+    // the pace stays the same world-distance-per-tick as every other heading.
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 4) });
+    const e = followerAt(sim, 0, 0, [
+      { x: 0, y: 0 },
+      { x: 1, y: 1 },
+    ]);
+    sim.step(); // consume wp0
+    let moveTicks = 0;
+    while (sim.world.has(e, PathFollow)) {
+      sim.step();
+      moveTicks++;
+    }
+    expect(moveTicks).toBe(13); // ceil(1.6007 / 0.125)
+    expect(pos(sim, e).x).toBeCloseTo(1, 6);
+    expect(pos(sim, e).y).toBeCloseTo(1, 6); // lands EXACTLY on the waypoint (the arrival snap)
   });
 });
 

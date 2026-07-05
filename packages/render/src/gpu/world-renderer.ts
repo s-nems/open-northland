@@ -106,7 +106,11 @@ export class WorldRenderer {
    * pool to the (culled, depth-sorted) list, draw the selection rings, repaint the HUD, and render once.
    * No allocation in the steady state — the sub-layers update in place; only a first-seen entity or a
    * growing layer set mints. `selection` is the app's currently-selected entity ids (empty by default),
-   * projected to feet rings; it is transient view state like the camera, never sim state.
+   * projected to feet rings; it is transient view state like the camera, never sim state. `alpha` is
+   * the fixed-timestep interpolation fraction (the app loop's `FixedTimestep.advance` return): the
+   * pool draws each entity `alpha` of the way from its previous tick anchor to its current one, so
+   * 20 Hz sim motion reads as continuous frame-rate motion; the default 1 draws raw tick positions
+   * (the static `?shot` entry).
    */
   update(
     snapshot: WorldSnapshot,
@@ -114,6 +118,7 @@ export class WorldRenderer {
     tick = 0,
     hud?: HudFrame,
     selection: ReadonlySet<number> = NO_SELECTION,
+    alpha = 1,
   ): void {
     // Camera: the world layer's own transform (screen = world*scale + offset).
     this.worldLayer.scale.set(camera.scale ?? 1);
@@ -132,7 +137,8 @@ export class WorldRenderer {
     this.mapObjects.update(vp, tick);
     // The pool needs the camera + canvas size to place team-colour PalettedSprite meshes (screen-space,
     // they can't ride the worldLayer transform); the plain-sprite path ignores them. The elevation field
-    // lets it lift each entity's DRAWN feet without disturbing its pre-lift depth key.
+    // lets it lift each entity's DRAWN feet without disturbing its pre-lift depth key; `alpha` lerps
+    // each entity between its last two tick anchors.
     this.pool.reconcile(
       snapshot,
       vp,
@@ -141,10 +147,19 @@ export class WorldRenderer {
       this.app.screen.width,
       this.app.screen.height,
       this.elevation,
+      alpha,
     );
-    // Selection rings read the pool's just-computed per-entity bounds, so a building's marker sizes to its
-    // actual sprite footprint (reconcile ran first, so the bounds are this frame's).
-    this.selectionLayer.draw(snapshot, selection, (ref) => this.pool.boundsOf(ref), this.elevation);
+    // Selection rings read the pool's just-computed per-entity bounds + drawn (lerped, lifted) anchors,
+    // so a building's marker sizes to its actual sprite footprint and a moving unit's ring glides with
+    // the interpolated bob (reconcile ran first, so both are this frame's); the elevation field covers
+    // the culled-entity fallback.
+    this.selectionLayer.draw(
+      snapshot,
+      selection,
+      (ref) => this.pool.boundsOf(ref),
+      this.elevation,
+      (ref) => this.pool.anchorOf(ref),
+    );
     this.hud.draw(hud);
     this.app.render();
   }

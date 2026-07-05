@@ -1,12 +1,14 @@
 import { Fleeing, MoveSpeed, PathFollow, Position, Velocity } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { worldDistance } from '../../nav/metric.js';
 import type { System } from '../context.js';
 
 /**
- * How far an entity following a {@link PathFollow} advances per tick, in fixed-point tile units.
- * Cell-centre waypoints are one tile apart, so at this speed an entity reaches the next waypoint in
- * eight ticks (a deliberate, tunable settler pace). A divisor of ONE keeps each step landing exactly
+ * How far an entity following a {@link PathFollow} advances per tick, in WORLD-METRIC units
+ * (`nav/metric.ts`: one unit = one full 68 px cell width). At this pace an E/W leg (one column)
+ * takes eight ticks and a row-crossing lattice leg (¾ the world length) takes six — the on-screen
+ * pace is the same either way, by construction. A divisor of ONE keeps an E/W step landing exactly
  * on integer fractions — no accumulated rounding drift — so two runs stay byte-identical.
  *
  * The magnitude is calibration-by-observation (no readable human `movespeed` exists — see
@@ -49,17 +51,18 @@ function runGait(world: World, e: Entity): Fixed {
  * Two movement modes, in this precedence:
  *  1. {@link PathFollow}: step STRAIGHT toward the current waypoint's cell centre by the entity's own
  *     pace ({@link MoveSpeed}'s `perTick` if it carries one, else the universal {@link MOVE_SPEED_PER_TICK}),
- *     along the LINE to the waypoint so a diagonal leg advances at the same tiles/tick as an axis leg
- *     (no √2 speed-up from stepping each axis independently — {@link stepTowardPoint}). On reaching the
- *     waypoint, advance `index`; when the last waypoint is reached the path is complete and
- *     {@link PathFollow} is removed (the planner sees an entity with no path as idle/arrived). A
- *     path-following entity ignores any Velocity.
+ *     along the LINE to the waypoint with the step length measured in the staggered lattice's WORLD
+ *     metric — so every heading covers the same on-screen distance per tick ({@link stepTowardPoint}).
+ *     On reaching the waypoint, advance `index`; when the last waypoint is reached the path is
+ *     complete and {@link PathFollow} is removed (the planner sees an entity with no path as
+ *     idle/arrived). A path-following entity ignores any Velocity.
  *  2. {@link Velocity} (no PathFollow): the original constant-velocity integration — kept for the
  *     determinism golden and any free-moving entity that isn't path-driven.
  *
  * Fixed-point only; the straight-line step (isqrt homing, mirroring the projectile advance) means no
  * floats and no overshoot — a pure function of position + waypoint, so identical inputs yield identical
- * state. An AXIS leg is byte-identical to the old per-axis clamp; only diagonal legs change.
+ * state. An E/W leg is byte-identical to the old grid-space step; every other heading paces by the
+ * world metric (the intentional change — see {@link stepTowardPoint}).
  */
 export const movementSystem: System = (world) => {
   // Entities the path pass moved this tick. A path can complete (PathFollow removed) within the
@@ -112,23 +115,25 @@ export const movementSystem: System = (world) => {
 /**
  * Advance `p` STRAIGHT toward `target` by at most `speed` along the line between them, snapping onto
  * `target` (and returning `true`) once within one step — the arrival signal the caller advances the
- * path on. Stepping the unit vector × `speed` (not each axis independently) makes a DIAGONAL leg cover
- * the same tiles/tick as an axis leg: the old per-axis clamp moved `speed` on BOTH axes at once, so a
- * diagonal ran √2 fast (docs/FIDELITY.md "Movement / facing granularity"). Mirrors the projectile
- * advance's fixed-point isqrt homing.
+ * path on. The step length is measured in the WORLD METRIC of the staggered lattice
+ * (`nav/metric.ts` {@link worldDistance}: a row step is half a column sideways + 19/34 down), so a
+ * walk covers the same ON-SCREEN distance per tick in every direction — an E/W leg (a full 68 px
+ * column) takes 8 ticks at the default pace, a row-crossing lattice leg (a 51 px edge, ¾ the length)
+ * takes 6. Measuring in raw grid units instead made a north–south walk read ~25% slower than an
+ * east–west one and a re-path leg lurch (the reported speed wobble; docs/FIDELITY.md "Movement on
+ * the staggered lattice"). Mirrors the projectile advance's fixed-point isqrt homing.
  *
- * At the DEFAULT settler pace (`ONE/8` = 2^13) an AXIS leg is byte-identical to the old per-axis clamp:
- * the unit vector is ±1 on one axis and 0 on the other, positions stay multiples of 2^13 (so `dist`
- * equals `|delta|` exactly) and the per-axis step is exactly `speed` — which is why no default-speed
- * golden moved (only diagonal legs changed). A data-pinned animal pace whose step isn't a multiple of
- * 2^8 can round `dist` by ±1 (still fully deterministic run-to-run, just not identical to the old
- * clamp), but no golden exercises animal cardinal path-following. Pure fixed-point (isqrt + one div per
- * axis) — no floats, so identical inputs yield identical state.
+ * An E/W leg is byte-identical to the old grid-space step: both endpoints share a row, so the
+ * stagger shift cancels and the world distance IS `|dx|` — which is why no pure-east golden moved.
+ * Every other heading intentionally changed (that is the fix). The per-tick advance divides the grid
+ * delta by the world distance — truncation can shave an ulp, but the arrival snap absorbs it (no
+ * drift accumulates across legs) and the maths is pure fixed-point, so identical inputs yield
+ * identical state.
  */
 function stepTowardPoint(p: { x: Fixed; y: Fixed }, target: { x: Fixed; y: Fixed }, speed: Fixed): boolean {
   const dx = fx.sub(target.x, p.x);
   const dy = fx.sub(target.y, p.y);
-  const dist = fx.isqrt(fx.add(fx.mul(dx, dx), fx.mul(dy, dy)));
+  const dist = worldDistance(p.x, p.y, target.x, target.y);
   if (dist <= speed) {
     // Within one step (incl. already on it): snap exactly onto the waypoint so no drift accumulates
     // across legs, and signal arrival.
@@ -136,7 +141,8 @@ function stepTowardPoint(p: { x: Fixed; y: Fixed }, target: { x: Fixed; y: Fixed
     p.y = target.y;
     return true;
   }
-  // Advance the unit vector × speed. `dist > speed > 0` here, so each division is safe.
+  // Advance the grid delta scaled to one world-metric step. `dist > speed > 0` here, so each
+  // division is safe.
   p.x = fx.add(p.x, fx.div(fx.mul(dx, speed), dist));
   p.y = fx.add(p.y, fx.div(fx.mul(dy, speed), dist));
   return false;

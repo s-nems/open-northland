@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { reconcileSprites } from '../src/index.js';
+import { type MotionTrack, reconcileSprites, trackMotion } from '../src/index.js';
 
 /**
  * Unit test for the retained renderer's one PURE decision — pool bookkeeping — extracted so it is
@@ -30,5 +30,50 @@ describe('reconcileSprites', () => {
 
   it('preserves pooled iteration order in the destroy list (deterministic)', () => {
     expect(reconcileSprites(new Set<number>(), [5, 1, 3]).toDestroy).toEqual([5, 1, 3]);
+  });
+});
+
+describe('trackMotion — the inter-tick interpolation decision', () => {
+  const fresh = (): MotionTrack => ({ tick: -1, x: 0, y: 0, prevX: 0, prevY: 0 });
+
+  it('snaps both anchors on first sight (no glide in from the origin)', () => {
+    const m = fresh();
+    expect(trackMotion(m, 5, 100, 50, 0.5)).toEqual({ x: 100, y: 50 });
+  });
+
+  it('lerps from the previous tick anchor to the current one by alpha', () => {
+    const m = fresh();
+    trackMotion(m, 1, 100, 50, 0); // first sight — snap
+    expect(trackMotion(m, 2, 108, 50, 0.25)).toEqual({ x: 102, y: 50 });
+    expect(trackMotion(m, 2, 108, 50, 0.75)).toEqual({ x: 106, y: 50 }); // same tick, alpha grows
+  });
+
+  it('is continuous across a tick boundary (alpha→1 meets the next tick at alpha 0)', () => {
+    const m = fresh();
+    trackMotion(m, 1, 100, 0, 0);
+    const endOfTick = trackMotion(m, 2, 108, 0, 1);
+    const startOfNext = trackMotion(m, 3, 116, 0, 0);
+    expect(startOfNext.x).toBe(endOfTick.x); // 108 both ways — no visible jump at the boundary
+  });
+
+  it('clamps alpha outside [0,1]', () => {
+    const m = fresh();
+    trackMotion(m, 1, 0, 0, 0);
+    expect(trackMotion(m, 2, 10, 0, 2).x).toBe(10);
+    expect(trackMotion(m, 3, 20, 0, -1).x).toBe(10);
+  });
+
+  it('snaps (never lerps) across a teleport-sized jump', () => {
+    const m = fresh();
+    trackMotion(m, 1, 0, 0, 0);
+    // 500 px in one tick is a respawn, not a walk — both anchors jump, alpha is irrelevant.
+    expect(trackMotion(m, 2, 500, 0, 0.5)).toEqual({ x: 500, y: 0 });
+  });
+
+  it('keeps lerping over a multi-tick catch-up step (within the snap band)', () => {
+    const m = fresh();
+    trackMotion(m, 1, 0, 0, 0);
+    // The frame ran 3 sim ticks at once (~26 px for a walker): still smooth, from the last DRAWN tick.
+    expect(trackMotion(m, 4, 26, 0, 0.5)).toEqual({ x: 13, y: 0 });
   });
 });

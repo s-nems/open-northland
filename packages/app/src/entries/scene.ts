@@ -134,6 +134,9 @@ export async function renderSceneMode(
 
   const timestep = new FixedTimestep();
   let lastMs = performance.now();
+  // The fixed-timestep interpolation fraction the renderer lerps entity anchors by — refreshed each
+  // un-paused frame from `advance` (a pause freezes it, so units hold their drawn spot mid-leg).
+  let renderAlpha = 1;
 
   function frame(nowMs: number): void {
     const elapsed = nowMs - lastMs;
@@ -148,7 +151,7 @@ export async function renderSceneMode(
       frameEvents.push(...sim.events.current());
     };
     if (!control.paused) {
-      timestep.advance(elapsed * control.speed, collect);
+      renderAlpha = timestep.advance(elapsed * control.speed, collect);
     }
     cameraCtl.update(elapsed);
     const snap = sim.snapshot();
@@ -166,6 +169,7 @@ export async function renderSceneMode(
       snap.tick,
       { placement: shiftHud(placeHud(hud, 'top-left', app.screen), toolPanel.hudShift) },
       controls.selectedIds(),
+      renderAlpha,
     );
     controls.tick(snap); // reuse the frame's snapshot — don't rebuild a second one
     overlay.update(snap.tick);

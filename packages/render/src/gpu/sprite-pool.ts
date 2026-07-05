@@ -37,6 +37,13 @@ import type { TextureCache } from './texture-cache.js';
  * become actual bound textures — the GPU half a human judges.
  */
 
+/**
+ * World-px jump between two consecutive tick anchors past which the motion track SNAPS instead of
+ * lerping — a spawn/teleport, not a walk. The fastest legit case is a multi-tick catch-up frame of a
+ * running unit (≈ 5 ticks × 17 px); real teleports jump hundreds of px, so the band between is safe.
+ */
+const SNAP_DISTANCE = 128;
+
 /** Placeholder body colour per drawable sprite kind (drawn when no atlas frame binds the entity). */
 const KIND_COLOURS: Record<Exclude<DrawKind, 'tile'>, number> = {
   building: 0xc8a04a,
@@ -114,6 +121,54 @@ interface PooledEntity {
   /** Last real facing (0..7) this settler drew with — reused across the 1-tick heading gap a re-pathing
    *  unit shows, so its walk doesn't flip to the default facing for a frame each tile (see updatePooled). */
   lastFacing?: number;
+  /** The entity's last two TICK anchors (world px) — the segment the frame alpha lerps between so a
+   *  20 Hz sim step draws as continuous 60+ fps motion ({@link trackMotion}). `tick` −1 = not seen yet. */
+  readonly motion: MotionTrack;
+  /** The anchor the entity was DRAWN at this frame (the lerped position) — what `anchorOf` serves. */
+  drawX: number;
+  drawY: number;
+}
+
+/** An entity's inter-tick motion track: the current and previous TICK anchors (world px). */
+export interface MotionTrack {
+  /** The tick `x`/`y` belong to; −1 = never tracked (the next update snaps both anchors). */
+  tick: number;
+  x: number;
+  y: number;
+  prevX: number;
+  prevY: number;
+}
+
+/**
+ * Advance a {@link MotionTrack} to this frame's (tick, anchor) and return the DRAWN position: the
+ * previous tick anchor lerped toward the current one by `alpha` (the fixed-timestep fraction,
+ * clamped to [0,1]). A new tick rolls current→previous; a first sighting or a jump past
+ * {@link SNAP_DISTANCE} (a spawn/teleport, not a walk) snaps both anchors so nothing glides across
+ * the map. Pure + testable without a GPU — the interpolation decision split out from the Pixi
+ * mutation, like {@link reconcileSprites}.
+ */
+export function trackMotion(
+  m: MotionTrack,
+  tick: number,
+  x: number,
+  y: number,
+  alpha: number,
+): { x: number; y: number } {
+  if (m.tick === -1 || Math.abs(x - m.x) > SNAP_DISTANCE || Math.abs(y - m.y) > SNAP_DISTANCE) {
+    m.tick = tick;
+    m.x = x;
+    m.y = y;
+    m.prevX = x;
+    m.prevY = y;
+  } else if (m.tick !== tick) {
+    m.prevX = m.x;
+    m.prevY = m.y;
+    m.x = x;
+    m.y = y;
+    m.tick = tick;
+  }
+  const a = alpha < 0 ? 0 : alpha > 1 ? 1 : alpha;
+  return { x: m.prevX + (m.x - m.prevX) * a, y: m.prevY + (m.y - m.prevY) * a };
 }
 
 /**
@@ -163,6 +218,7 @@ export class SpritePool {
     resW: number,
     resH: number,
     elevation?: ElevationField,
+    alpha = 1,
   ): void {
     const items = buildSpriteScene(snapshot, vp, elevation);
     this.frameId++;
@@ -175,7 +231,7 @@ export class SpritePool {
         pe = createPooled(kind, this.isPaletted(kind));
         this.pool.set(item.ref, pe);
       }
-      this.updatePooled(pe, item, tick, camera, resW, resH);
+      this.updatePooled(pe, item, tick, camera, resW, resH, alpha);
       // Depth = the feet-anchor SCREEN y (+ a small deterministic x tiebreak), the same key the tall
       // map objects use, so a settler and the tree it walks behind sort into one painter order.
       // NOTE this deliberately diverges from the headless `buildScene` oracle's row-major
@@ -184,7 +240,10 @@ export class SpritePool {
       // The per-kind bias (a settler in front of the node it stands on, a flag in front of its ground
       // drops) is a sub-pixel epsilon — far below one row's screen-y gap — so it only breaks ties at a
       // shared feet anchor, never reordering sprites a real row apart. See SPRITE_PAINT_ORDER.
-      pe.container.zIndex = depthKey(item.x, item.y) + SPRITE_PAINT_ORDER[item.kind] * SCREEN_PAINT_EPS;
+      // Depth reads the DRAWN (lerped) anchor restored to its PRE-LIFT y (`+ item.lift`), so occlusion
+      // still sorts by map row while the sprite itself rides the hill.
+      pe.container.zIndex =
+        depthKey(pe.drawX, pe.drawY + (item.lift ?? 0)) + SPRITE_PAINT_ORDER[item.kind] * SCREEN_PAINT_EPS;
       if (!pe.attached) {
         this.spriteLayer.addChild(pe.container);
         pe.attached = true;
@@ -230,6 +289,16 @@ export class SpritePool {
   }
 
   /**
+   * The anchor an entity was DRAWN at this frame — the inter-tick LERPED feet position, not the raw
+   * snapshot tile — or `undefined` when it wasn't drawn (culled / gone). The selection layer reads it
+   * so a moving unit's ring glides with the interpolated bob instead of stepping at the tick rate.
+   */
+  anchorOf(ref: number): { x: number; y: number } | undefined {
+    const pe = this.pool.get(ref);
+    return pe !== undefined && pe.lastSeen === this.frameId ? { x: pe.drawX, y: pe.drawY } : undefined;
+  }
+
+  /**
    * Destroy EVERY pooled entity — including ones currently detached (culled off-screen), which a
    * scene-graph walk from the sprite layer can't reach because they were removed from it. Called on the
    * renderer's dispose.
@@ -251,13 +320,21 @@ export class SpritePool {
     camera: Camera,
     resW: number,
     resH: number,
+    alpha: number,
   ): void {
-    // Terrain lift: draw the sprite at the LIFTED feet (ride the ground up a hill), but note the depth
-    // key in `reconcile` keeps the PRE-LIFT `item.y`, so occlusion still sorts by map row. `item.lift` is
-    // 0 on a flat map → `drawY === item.y` (byte-identical). Bounds/paletted origin below use `drawY` too,
-    // so the picker's hit box tracks the drawn graphic.
-    const drawY = item.y - (item.lift ?? 0);
-    pe.container.position.set(item.x, drawY);
+    // Fixed-timestep interpolation over the LIFTED feet: the sim advances in 20 Hz ticks, so drawing
+    // raw snapshot anchors steps a walking bob ~8 px every third frame (the visible judder). Track the
+    // last two TICK anchors of the terrain-lifted feet (`item.y − lift`, riding the ground up a hill —
+    // the lift is bilinear along the walk, so it lerps as smoothly as the motion) and draw at
+    // `prev + (curr − prev)·alpha` — the frame's fractional progress into the current tick — so motion
+    // is continuous at any display rate, half a tick behind the sim (an imperceptible ~25 ms). See
+    // {@link trackMotion} (the pure, unit-tested half). `item.lift` is 0 on a flat map; the depth key
+    // in `reconcile` restores the PRE-LIFT y, so occlusion still sorts by map row. Bounds/paletted
+    // origin below use the drawn anchor too, so the picker's hit box tracks the drawn graphic.
+    const drawn = trackMotion(pe.motion, tick, item.x, item.y - (item.lift ?? 0), alpha);
+    pe.drawX = drawn.x;
+    pe.drawY = drawn.y;
+    pe.container.position.set(pe.drawX, pe.drawY);
     // Sticky facing: a MOVING settler that dropped its PathFollow for a tick (the repath gap — state stays
     // `moving` via MoveGoal/PathRequest but there is no heading to read) reuses its last real heading so the
     // walk doesn't flip to DEFAULT_FACING for a frame each tile (the pool half of what `readSpriteState`
@@ -283,17 +360,17 @@ export class SpritePool {
       pe.placeholder.visible = true;
       const { bodyW, bodyH } = placeholderBody(pe.kind);
       const halfW = Math.max(9, bodyW / 2);
-      this.stampBounds(pe, item.x - halfW, drawY - bodyH, item.x + halfW, drawY + 5);
+      this.stampBounds(pe, pe.drawX - halfW, pe.drawY - bodyH, pe.drawX + halfW, pe.drawY + 5);
       return;
     }
     if (pe.placeholder !== undefined) pe.placeholder.visible = false;
     // A PALETTED settler draws team-coloured PalettedSprite meshes. A custom-shader mesh can't ride the
     // camera-transformed spriteLayer (Pixi leaves its transform UBO unbound), so it SELF-places in screen
     // space — mirror the camera the plain sprites inherit: screen feet-anchor = camera applied to this
-    // entity's world-screen anchor (item.x/y). Cheap to compute once; unused on the plain-sprite path.
+    // entity's DRAWN (lerped) anchor. Cheap to compute once; unused on the plain-sprite path.
     const camScale = camera.scale ?? 1;
-    const originX = camera.offsetX + camScale * item.x;
-    const originY = camera.offsetY + camScale * drawY;
+    const originX = camera.offsetX + camScale * pe.drawX;
+    const originY = camera.offsetY + camScale * pe.drawY;
     const playerRow = item.player ?? 0; // an unowned settler reads LUT row 0 (the base palette)
     // Accumulate the union of the drawn layers' rects (feet-local) → the entity's exact sprite bounds. The
     // bounds live in WORLD-screen space (item.x + feet-local offsets), the same for a mesh or a plain sprite,
@@ -351,7 +428,7 @@ export class SpritePool {
       if (s !== undefined) s.visible = false;
     }
     if (minX <= maxX) {
-      this.stampBounds(pe, item.x + minX, drawY + minY, item.x + maxX, drawY + maxY);
+      this.stampBounds(pe, pe.drawX + minX, pe.drawY + minY, pe.drawX + maxX, pe.drawY + maxY);
     }
   }
 
@@ -567,6 +644,9 @@ function createPooled(kind: Exclude<DrawKind, 'tile'>, paletted: boolean): Poole
     lastSeen: 0,
     bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
     boundsFrame: -1,
+    motion: { tick: -1, x: 0, y: 0, prevX: 0, prevY: 0 },
+    drawX: 0,
+    drawY: 0,
   };
 }
 
