@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { guiFrameIndex } from '../src/content/gui-atlas-map.js';
 import {
   ACTION_ARM_PX,
-  ACTION_ICON_FALLBACK,
   type ActionButton,
   type ActionGroup,
   BOTTOM_ARM,
@@ -10,17 +9,15 @@ import {
   type PlacedActionButton,
   TOP_ARM,
   hitTestActionRing,
-  jobIconFrame,
   layoutActionRing,
-  layoutJobPicker,
   pointOverActionRing,
 } from '../src/hud/action-ring-layout.js';
 
 /**
  * Headless tests for the settler ACTION MENU's pure logic — the radial arm footprint transcribed from the
- * original engine, the profession-picker grid, the hit-test that turns a click into a command, and the
- * (approximated) button→icon assignment. The agent self-validates these; the browser `?scene=unit-orders`
- * view is where a human judges the pixels (round buttons in original art, sensible glyphs). See docs/SCENES.md.
+ * original engine, the hit-test that turns a click into a command, and the (approximated) button→icon
+ * assignment. The agent self-validates these; the browser `?scene=unit-orders` view is where a human judges
+ * the pixels (round buttons in original art, sensible glyphs) + the profession list window. See docs/SCENES.md.
  */
 
 /** Non-null array access — throws (a test bug) rather than reaching for a forbidden `!`. */
@@ -35,13 +32,6 @@ const centre = (p: PlacedActionButton): { x: number; y: number } => ({
 });
 /** An inert placeholder button (the default menu is mostly these). */
 const ph = (id: string): ActionButton => ({ kind: 'placeholder', id, icon: 'order_build', label: id });
-/** A profession button for the picker. */
-const job = (jobType: number, id: string): ActionButton => ({
-  kind: 'job',
-  jobType,
-  icon: 'order_worker',
-  label: id,
-});
 
 describe('action-ring-layout — arm footprint (transcribed from BuildHumanActionButtons)', () => {
   it('places a group as a horizontal row centred under the settler (bottom arm), in reading order', () => {
@@ -104,37 +94,6 @@ describe('action-ring-layout — arm footprint (transcribed from BuildHumanActio
   });
 });
 
-describe('action-ring-layout — profession picker grid', () => {
-  it('lays N professions in a grid centred on the settler', () => {
-    const jobs = [job(1, 'a'), job(2, 'b'), job(3, 'c'), job(4, 'd')];
-    const l = layoutJobPicker(jobs, 500, 400, 1, 2000, 2000);
-    expect(l.buttons).toHaveLength(4);
-    // 4 ≤ 6 cols → a single centred row; the four centres average back to the settler.
-    const xs = l.buttons.map((p) => centre(p).x);
-    expect(xs.reduce((s, x) => s + x, 0) / xs.length).toBeCloseTo(500, 5);
-    for (const p of l.buttons) expect(centre(p).y).toBeCloseTo(400, 5);
-  });
-
-  it('wraps past 6 columns into a second row', () => {
-    const jobs = Array.from({ length: 8 }, (_, i) => job(i + 1, `j${i}`));
-    const l = layoutJobPicker(jobs, 500, 400, 1, 4000, 4000);
-    expect(l.buttons).toHaveLength(8);
-    const rowYs = new Set(l.buttons.map((p) => centre(p).y));
-    expect(rowYs.size).toBe(2); // 6 in the first row, 2 in the second
-    // The 8th button is hit-testable and maps back to its setJob.
-    const last = nth(l.buttons, 7);
-    const hit = hitTestActionRing(l, centre(last).x, centre(last).y);
-    expect(hit?.kind).toBe('job');
-    expect(hit?.kind === 'job' && hit.jobType).toBe(8);
-  });
-
-  it('an empty picker lays out nothing', () => {
-    const l = layoutJobPicker([], 500, 400, 1, 2000, 2000);
-    expect(l.buttons).toHaveLength(0);
-    expect(pointOverActionRing(l, 500, 400)).toBe(false);
-  });
-});
-
 describe('action-ring-layout — hit-test (a click → the right behaviour)', () => {
   it('returns the button under a click and null off the menu', () => {
     const l = layoutActionRing(HUMAN_DEFAULT_MENU, 500, 400, 1, 2000, 2000);
@@ -152,15 +111,6 @@ describe('action-ring-layout — hit-test (a click → the right behaviour)', ()
     expect(hitTestActionRing(l, 500, 400)).toBeNull();
   });
 
-  it('a picker click maps to the right setJob', () => {
-    const jobs = [job(1, 'woodcutter'), job(2, 'carpenter'), job(36, 'carrier')];
-    const l = layoutJobPicker(jobs, 500, 400, 1, 2000, 2000);
-    const carp = l.buttons.find((p) => p.button.kind === 'job' && p.button.jobType === 2);
-    if (carp === undefined) throw new Error('missing carpenter button');
-    const hit = hitTestActionRing(l, centre(carp).x, centre(carp).y);
-    expect(hit?.kind === 'job' && hit.jobType).toBe(2);
-  });
-
   it('claims a point inside the menu bounds and only there', () => {
     const l = layoutActionRing(HUMAN_DEFAULT_MENU, 500, 400, 1, 2000, 2000);
     const b = l.bounds;
@@ -172,20 +122,10 @@ describe('action-ring-layout — hit-test (a click → the right behaviour)', ()
 });
 
 describe('action-ring-layout — icon assignment (approximated, but every name must resolve)', () => {
-  it('maps known professions to their glyph and unknown ones to the code-pinned fallback', () => {
-    expect(jobIconFrame('miner')).toBe('order_mine');
-    expect(jobIconFrame('carrier')).toBe('order_transport');
-    expect(jobIconFrame('soldier_sword_long')).toBe('order_soldier_1'); // stem fallback
-    expect(jobIconFrame('some_future_job')).toBe(ACTION_ICON_FALLBACK);
-  });
-
   it('every icon the default menu draws is a real GUI-atlas frame (a typo would throw here)', () => {
     for (const g of HUMAN_DEFAULT_MENU) {
       for (const b of g.buttons) expect(() => guiFrameIndex(b.icon)).not.toThrow();
     }
-    // …and every profession icon the picker can draw resolves too.
-    const jobs = ['woodcutter', 'carpenter', 'carrier', 'miner', 'stonemason', 'smith', 'scout', 'unmapped'];
-    for (const j of jobs) expect(() => guiFrameIndex(jobIconFrame(j))).not.toThrow();
   });
 
   it('has exactly one live "change profession" button in the default menu', () => {

@@ -13,11 +13,11 @@
  * the layout the user read off the running original), logged in docs/FIDELITY.md as pending calibration.
  *
  * We render the whole default HUMAN menu as buttons — every arm of the original, in original art — but on
- * this slice only ONE is wired: `open-jobs` (the "change profession" button) opens a simple profession
- * PICKER ({@link layoutJobPicker}); every other button is an inert {@link placeholder} (tooltip only) left
- * for a future "implement the action" pass (warrior/scout menus differ — a per-unit-type menu is the hook).
- * This is pure geometry (no Pixi, no DOM), so the layout + hit-test + icon assignment are unit-tested
- * headlessly (the twin of `hud/tool-panel-layout.ts`).
+ * this slice only ONE is wired: `open-jobs` (the "change profession" button) opens a scrollable profession
+ * list WINDOW (a DOM panel, built in `view/settler-actions.ts`); every other button is an inert
+ * {@link placeholder} (tooltip only) left for a future "implement the action" pass (warrior/scout menus
+ * differ — a per-unit-type menu is the hook). This is pure geometry (no Pixi, no DOM), so the layout +
+ * hit-test + icon assignment are unit-tested headlessly (the twin of `hud/tool-panel-layout.ts`).
  */
 
 /** The GUI-atlas frame NAME (see `content/gui-atlas-map.ts`) a button draws; the view resolves it to an index. */
@@ -26,18 +26,9 @@ export type ActionIconFrame = string;
 /** One contextual action a menu button issues — a discriminated union so the view maps it to behaviour. */
 export type ActionButton =
   | {
-      /** The "change profession" button — opens the profession {@link layoutJobPicker}. The one live default button. */
+      /** The "change profession" button — opens the profession list WINDOW (a DOM panel). The one live default button. */
       readonly kind: 'open-jobs';
       readonly icon: ActionIconFrame;
-      readonly label: string;
-    }
-  | {
-      /** A profession in the picker — a one-click `setJob`. */
-      readonly kind: 'job';
-      /** The job's `typeId` — the `setJob` target profession. */
-      readonly jobType: number;
-      readonly icon: ActionIconFrame;
-      /** Human tooltip (the profession's content label). */
       readonly label: string;
     }
   | {
@@ -89,10 +80,6 @@ export const ACTION_ARM_PX = 100;
 export const ACTION_INNER_ARM_PX = 0x44;
 /** First/last-in-group corner nudge (the decompile's `±5` `cornerBias`). */
 export const ACTION_EDGE_NUDGE_PX = 5;
-/** Extra gap between profession buttons in the picker grid (a hair of breathing room; the ring packs tight). */
-export const ACTION_PICKER_GAP_PX = 4;
-/** Max columns the profession picker wraps at before adding a row. */
-export const ACTION_PICKER_MAX_COLS = 6;
 
 /** Group-type constants (indices into {@link ARMS}) — which arm a command family sits on. */
 export const BOTTOM_ARM = 0;
@@ -211,38 +198,6 @@ export function layoutActionRing(
   return clampOnScreen(placed, screenW, screenH);
 }
 
-/**
- * Lay the profession PICKER out: the `buttons` (all `kind:'job'`) in a compact grid centred on the settler,
- * wrapping at {@link ACTION_PICKER_MAX_COLS} columns. The picker replaces the default menu while it is open;
- * picking a profession issues a `setJob` and returns to the menu. Same {@link ActionRingLayout} shape, so the
- * view + hit-test are reused. A "simple form" grid — the original's picker art is a later polish pass.
- */
-export function layoutJobPicker(
-  buttons: readonly ActionButton[],
-  centreX: number,
-  centreY: number,
-  scale: number,
-  screenW: number,
-  screenH: number,
-): ActionRingLayout {
-  const s = Math.max(1, scale);
-  const n = buttons.length;
-  if (n === 0) return { buttons: [], bounds: { x: 0, y: 0, w: 0, h: 0 } };
-  const cols = Math.min(ACTION_PICKER_MAX_COLS, n);
-  const rows = Math.ceil(n / cols);
-  const step = (ACTION_BUTTON_PX + ACTION_PICKER_GAP_PX) * s;
-  // Centre the grid on (centreX, centreY): the first cell centre is half the grid span up-left of centre.
-  const startX = centreX - (step * (cols - 1)) / 2;
-  const startY = centreY - (step * (rows - 1)) / 2;
-  const placed: PlacedActionButton[] = [];
-  for (let i = 0; i < n; i++) {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    placed.push(squareAt(buttons[i] as ActionButton, startX + col * step, startY + row * step, s));
-  }
-  return clampOnScreen(placed, screenW, screenH);
-}
-
 /** The button under a screen point, or `null`. Buttons never overlap, so the first containing square wins. */
 export function hitTestActionRing(layout: ActionRingLayout, x: number, y: number): ActionButton | null {
   for (const p of layout.buttons) {
@@ -269,8 +224,8 @@ export function pointOverActionRing(layout: ActionRingLayout, x: number, y: numb
 export const ACTION_ICON_FALLBACK = 'order_icon_fallback';
 
 /**
- * The "change profession" button — the one live default-menu button (opens the profession picker). Its icon
- * is the original's two-screws glyph (frame `order_change_profession`, user-identified off the running game).
+ * The "change profession" button — the one live default-menu button (opens the profession list window). Its
+ * icon is the original's two-screws glyph (frame `order_change_profession`, user-identified off the running game).
  */
 const CHANGE_JOB: ActionButton = {
   kind: 'open-jobs',
@@ -333,35 +288,3 @@ export const HUMAN_DEFAULT_MENU: readonly ActionGroup[] = [
     ],
   },
 ];
-
-// --- Profession → icon assignment (APPROXIMATED — glyph-matched to the frame map; see the file header) -----
-
-/**
- * Best-guess profession → order-icon, matched by the `order_*` glyph descriptions in `gui-atlas-map.ts`.
- * Keyed by the job's content id (exact), with a stem fallback for families (e.g. every `soldier*`). None of
- * these is code-pinned — the assignment is pending calibration (docs/FIDELITY.md).
- */
-const JOB_ICON_EXACT: Readonly<Record<string, ActionIconFrame>> = {
-  woodcutter: 'order_worker', // figure with crossed tools (no axe glyph exists) — the generic labourer
-  carpenter: 'order_build', // hammer
-  carrier: 'order_transport', // wheelbarrow
-  miner: 'order_mine', // pickaxe
-  stonemason: 'order_construct', // hammer / pickaxe
-  smith: 'order_produce', // gears + blob
-  scout: 'order_scout', // eye with rays
-};
-
-/** Stem fallbacks for job families whose exact id varies (e.g. `soldier_sword_long`). Checked after exact. */
-const JOB_ICON_STEM: readonly (readonly [string, ActionIconFrame])[] = [
-  ['soldier', 'order_soldier_1'], // crossed swords
-  ['work_', 'order_produce'], // generic workplace worker → production glyph
-];
-
-/** The order-icon frame name for a profession (best-guess; `ACTION_ICON_FALLBACK` when nothing matches). */
-export function jobIconFrame(jobId: string): ActionIconFrame {
-  const id = jobId.toLowerCase();
-  const exact = JOB_ICON_EXACT[id];
-  if (exact !== undefined) return exact;
-  for (const [stem, icon] of JOB_ICON_STEM) if (id.startsWith(stem)) return icon;
-  return ACTION_ICON_FALLBACK;
-}
