@@ -8,12 +8,12 @@
  *
  * How the player colour is applied: the RandomPalette recipe (`randompalette.ini`, `player_00…09`) binds the
  * `Player NN` ramp — a 16-colour ramp at colour-range 1 of a `playerNN.pcx` ({@link PLAYER_RAMP_START}) — onto
- * the body palette's clothing **patches**: patch 10 (men's vest, indices 160–175), patch 5 (a clothing piece,
- * 80–95, which the recipe copies from patch 10) and patch 15 (women's dress / shields, 240–255). Those target
- * index runs are {@link PLAYER_COLOR_BANDS}; each receives the full 16-colour ramp. So a per-player palette is
- * the shared base body palette with those bands overwritten by that player's ramp — {@link composePlayerPalette}.
- * (This is confirmed visually: the base `test_human_00`'s patch 10 is the cyan default vest, and remapping it
- * turns the civilian's vest the player colour.)
+ * the men's clothing **patches**: patch 10 (men's vest, indices 160–175) and patch 5 (80–95), which the recipe
+ * mirrors from patch 10. Those target index runs are {@link PLAYER_COLOR_BANDS}; each receives the full
+ * 16-colour ramp. So a per-player palette is the shared base body palette with those bands overwritten by that
+ * player's ramp — {@link composePlayerPalette}. (Confirmed visually: the base `test_human_00`'s patch 10 is the
+ * cyan default vest, and remapping it turns the civilian's vest the player colour.) Patch 15 (240–255, the
+ * carried-good + women's-dress band) is deliberately excluded — see {@link PLAYER_COLOR_BANDS}.
  *
  * The original ships **10** player colours; we generate **16** (up to 16 players) by hue-rotating a reference
  * ramp for the extra six — a conscious divergence, logged in docs/FIDELITY.md. Pure functions only (palette
@@ -34,16 +34,24 @@ export const PLAYER_RAMP_START = 16;
 export const PLAYER_RAMP_LENGTH = 16;
 
 /**
- * The body-palette index runs that receive a player's colour ramp — the RandomPalette clothing patches:
- * patch 5 (80–95), patch 10 (160–175, men's vest) and patch 15 (240–255, women's dress + some shields).
- * Each `[lo, hi]` run is exactly {@link PLAYER_RAMP_LENGTH} wide and is overwritten with the full ramp, so a
- * body only shows the colour on the patches it actually uses. Everything else (skin/hair/metal) is the shared
- * base and is identical across players.
+ * The body-palette index runs that receive a player's colour ramp. These are the patches the original's
+ * per-player recipe (`randompalette.ini` `player_00…09`) actually binds the `Player NN` ramp onto: **patch
+ * 10** (indices 160–175, the men's vest) and **patch 5** (80–95), which the recipe mirrors from patch 10
+ * (`Patch 5 10 10`). Each `[lo, hi]` run is exactly {@link PLAYER_RAMP_LENGTH} wide and is overwritten with
+ * the full ramp, so a body only shows the colour on the patches it actually uses; everything else
+ * (skin/hair/metal/tools) is the shared base and identical across players.
+ *
+ * **Patch 15 (240–255) is deliberately NOT here.** That band is where the CARRIED-GOOD colours live
+ * (`good_Wood`/`good_clay`/… set patch 14 + patch 15), so remapping it painted a hauled log/clay slab the
+ * team colour — the "blue wood" bug. The `player_NN` recipe never touches patch 15; only the separate
+ * `woman_NN` recipe (women's dress) does. Reproducing women's dress colour needs a per-body-class ramp
+ * (man → patch 10, woman → patch 15) rather than this one shared band set — tracked in docs/FIDELITY.md
+ * "Player (team) colours" / docs/TECH-DEBT.md; keeping patch 15 base-coloured is the faithful choice for the
+ * men who do the hauling.
  */
 export const PLAYER_COLOR_BANDS: readonly (readonly [number, number])[] = [
   [80, 95],
   [160, 175],
-  [240, 255],
 ];
 
 /** One player colour: its slot id, a human name, and where its band colours come from. */
