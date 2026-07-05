@@ -50,6 +50,8 @@ export interface MapDatTerrainFile extends MapDatTerrainMap {
     readonly placements: number[];
     readonly levels?: number[];
   };
+  /** Per-cell terrain height (`lmhe` lane, one byte per cell, 0..250 observed); omitted when the map lacks it. */
+  readonly elevation?: number[];
   /** Authored entity placements (the sibling `map.cif`'s `StaticObjects` verbs, names verbatim). */
   readonly entities?: MapStaticObjects;
 }
@@ -160,6 +162,30 @@ function objectsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['ob
 }
 
 /**
+ * Decodes the `lmhe` height lane into the emitted `elevation` layer: the raw per-cell terrain height,
+ * one byte PER CELL (row-major, unpacked length === width·height — NOT the `2W × 2H` half-cell
+ * resolution the landscape-object lanes carry; confirmed empirically across the real maps, values
+ * 0..250 — a hard observed ceiling across the full corpus). Returns undefined when the map lacks the
+ * lane (older/foreign saves); throws on a
+ * dims/length mismatch (a wrong/corrupt layer — caught per LAYER by {@link mapDatToTerrain}, which
+ * then emits the grid without it). Carried through verbatim, mirroring `objects.levels`: the render
+ * lift (≈1.24 native px/unit — see docs/FIDELITY.md "projection") lands in a later step, so nothing
+ * consumes this lane yet.
+ */
+function elevationFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['elevation'] {
+  const lmhe = findChunk(map, 'lmhe');
+  if (lmhe === undefined) return undefined;
+  const cells = unpackMapLayer(lmhe).cells;
+  const expected = size.width * size.height;
+  if (cells.length !== expected) {
+    throw new Error(
+      `mapdat: lmhe height lane has ${cells.length} cells, expected ${expected} (${size.width}×${size.height}, per-cell)`,
+    );
+  }
+  return Array.from(cells);
+}
+
+/**
  * Pure composition: one `map.dat`'s bytes -> the emitted `maps/<id>.json` value. Decodes the `hoix`
  * container ({@link decodeMapDat}), reads the `lsiz` grid dims ({@link decodeMapSize}), collapses the
  * `lmlt` half-cell landscape-object lane to the per-cell typeId grid ({@link lmltToTerrainMap} — the
@@ -170,7 +196,8 @@ function objectsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['ob
  * this is the only wiring. Throws a `mapdat:`-prefixed error for a non-container or a missing/corrupt
  * `lsiz`/`lmlt` (the sim grid is mandatory; {@link convertMapDatTree} catches per-file); a corrupt
  * OPTIONAL render lane is caught per layer here (warn + emit the grid without it), so a map whose nav
- * grid decodes fine never disappears over its enrichments. The `lmhe` height lane and the
+ * grid decodes fine never disappears over its enrichments. The `lmhe` height lane rides along as the
+ * per-cell `elevation` layer ({@link elevationFromMapDat}) — carried through, not yet consumed. The
  * `emt3`/`emt4` overlay-pattern lanes (roads/house foundations) are still out of scope (deferred
  * render layers).
  */
@@ -201,10 +228,19 @@ export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
       `[pipeline] map object lanes unreadable, emitting grid without them: ${(err as Error).message}`,
     );
   }
+  let elevation: MapDatTerrainFile['elevation'];
+  try {
+    elevation = elevationFromMapDat(map, size);
+  } catch (err) {
+    console.warn(
+      `[pipeline] map elevation lane unreadable, emitting grid without it: ${(err as Error).message}`,
+    );
+  }
   return {
     ...terrain,
     ...(ground !== undefined ? { ground } : {}),
     ...(objects !== undefined ? { objects } : {}),
+    ...(elevation !== undefined ? { elevation } : {}),
   };
 }
 

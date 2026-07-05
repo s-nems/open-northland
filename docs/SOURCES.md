@@ -135,7 +135,7 @@ group** (`emmm` → `embr`,`empa/empb`,`emt1..4`,`emla`,… → `xend`) then `te
 - **Layer resolutions.** A "4 B/cell" landscape lane is NOT a per-cell corner quad: it is a plain
   **row-major `2W × 2H` half-cell grid** (pinned by rendering the lanes as images — the half-cell
   layout draws the map's island shapes cleanly; a per-cell 2×2 interleave draws two side-by-side
-  half-res copies). `lmhe` (height, 0..~240) and `embr` (~127-centred, a brightness/shading lane) are
+  half-res copies). `lmhe` (height, 0..250 observed) and `embr` (~127-centred, a brightness/shading lane) are
   per-CELL (1 B); `empa`/`empb`/`emla` are u16 half-cell...-vs-cell as below.
 - **Lane semantics** (pinned empirically on `Arabskie Wyspy` + cross-checked against the decrypted
   `landscapes.cif` twin; exact per-lane count matches):
@@ -167,9 +167,11 @@ group** (`emmm` → `embr`,`empa/empb`,`emt1..4`,`emla`,… → `xend`) then `te
 full render model per map (`stages/maps.ts` `mapDatToTerrain`): the sim grid (`typeIds`, from `lmlt`)
 + `ground` (per-triangle pattern names, from `empa`/`empb`+`eapd`) + `objects` (sparse half-cell
 placements, from `emla`+`eald`) → `content/maps/<id>.json`, all consumed by the renderer end-to-end
-(`?map=<id>`). **Remaining:** `lmhe` heights, the `emt3`/`emt4` overlay lanes (roads/house
-foundations), `lmpa`/`lmpb` → sim water/walkability, `laco`/`lasw`/`lafm`. (No decoded bytes are
-committed — `map.dat` is copyrighted input, like every other game file.)
+(`?map=<id>`); the per-cell `elevation` lane (raw height, from `lmhe` — 1 byte/cell, 0..250 observed) rides
+along too (`elevationFromMapDat`), emitted but NOT yet consumed — the projection y-lift is a later
+step. **Remaining:** the render lift that consumes `elevation`, the `emt3`/`emt4` overlay lanes
+(roads/house foundations), `lmpa`/`lmpb` → sim water/walkability, `laco`/`lasw`/`lafm`. (No decoded
+bytes are committed — `map.dat` is copyrighted input, like every other game file.)
 - **Atomic actions are the behavior vocabulary** (see docs/ECS.md) and are partly free in readable
   data: `tribetypes.ini` `setatomic` (atomic→animation per tribe), `jobtypes.ini` `allowatomic`,
   `goodtypes.ini` `atomicFor*`. The atomic *timings/effects* live in `atomicanimations.cif` — **but

@@ -87,6 +87,19 @@ describe('parseTerrainMap (the content/maps loader)', () => {
     expect(bare.objects?.levels).toBeUndefined();
   });
 
+  it('accepts the optional per-cell elevation lane and enforces its width*height length', () => {
+    const base = JSON.parse(mapFileJson());
+    // Per-cell height: exactly width*height (25) raw byte values (0..250 observed).
+    const map = parseTerrainMap({ ...base, elevation: Array.from({ length: 25 }, (_, i) => i % 235) });
+    expect(map.elevation?.length).toBe(25);
+    // elevation stays optional — a map decoded before the lmhe lane was emitted still parses.
+    expect(parseTerrainMap(base).elevation).toBeUndefined();
+    // a half-cell-resolution lane (100 = 4*25) is rejected: the lane is per-CELL, not per-half-cell.
+    expect(() => parseTerrainMap({ ...base, elevation: Array.from({ length: 100 }, () => 0) })).toThrow(
+      /elevation length 100 != /,
+    );
+  });
+
   it('rejects a malformed entities layer (negative half-cell / unknown key)', () => {
     const base = JSON.parse(mapFileJson());
     expect(() =>

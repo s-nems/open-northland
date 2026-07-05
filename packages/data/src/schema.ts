@@ -1057,6 +1057,8 @@ export type TerrainEntities = z.infer<typeof TerrainEntities>;
  *
  * The optional {@link ground} / {@link objects} layers carry the map's 1:1 visual data (per-triangle
  * ground patterns; placed landscape objects) — render-only consumers; the sim reads only the grid.
+ * The optional {@link elevation} lane is the `lmhe` per-cell terrain height, carried through with no
+ * consumer yet (the projection lift lands in a later step).
  */
 export const TerrainMapFile = z
   .strictObject({
@@ -1070,6 +1072,15 @@ export const TerrainMapFile = z
     ground: TerrainGround.optional(),
     /** The placed landscape objects (`emla` + `eald`), when the map carries them. */
     objects: TerrainObjects.optional(),
+    /**
+     * Per-cell terrain height (`lmhe` lane), row-major, one value per cell (length = width*height) —
+     * NOT the `2W × 2H` half-cell resolution the {@link objects} lane uses. Raw byte values, 0..250
+     * (a hard observed ceiling across the real maps).
+     * Present when the map ships the lane (older/foreign saves omit it). NO consumer yet: the render
+     * lift (≈1.24 native px/unit, MEASURED — see docs/FIDELITY.md "projection") lands in the NEXT
+     * step, so the lane is carried through unread for now.
+     */
+    elevation: z.array(z.number().int().nonnegative()).optional(),
     /** The authored entity placements (`map.cif` `StaticObjects`), when the map carries them. */
     entities: TerrainEntities.optional(),
   })
@@ -1129,6 +1140,13 @@ export const TerrainMapFile = z
     () => ({
       message: 'terrain map objects.levels must carry one entry per placement triple',
       path: ['objects', 'levels'],
+    }),
+  )
+  .refine(
+    (m) => m.elevation === undefined || m.elevation.length === m.width * m.height,
+    (m) => ({
+      message: `terrain map elevation length ${m.elevation?.length} != width*height (${m.width * m.height})`,
+      path: ['elevation'],
     }),
   );
 export type TerrainMapFile = z.infer<typeof TerrainMapFile>;
