@@ -2,27 +2,44 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { type Component, type Simulation, components, fx } from '@vinland/sim';
 import { GRASS, VIKING, grassTerrain } from '../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../catalog/felling.js';
-import { CLAY_DEPOSIT_UNITS, MINE_LEVELS } from '../catalog/mining.js';
-import { HARVEST_SWING_LENGTH } from '../content/settler-gfx.js';
+import {
+  CLAY_DEPOSIT_UNITS,
+  GOLD_DEPOSIT_UNITS,
+  IRON_DEPOSIT_UNITS,
+  MINE_LEVELS,
+  STONE_DEPOSIT_UNITS,
+} from '../catalog/mining.js';
+import {
+  CLAY_HARVEST_ATOMIC,
+  GOLD_HARVEST_ATOMIC,
+  HARVEST_ATOMIC,
+  HARVEST_TICKS,
+  IRON_HARVEST_ATOMIC,
+  MUSHROOM_HARVEST_ATOMIC,
+  STONE_HARVEST_ATOMIC,
+} from '../content/settler-gfx.js';
 import type { SceneDefinition } from './types.js';
 
 /**
- * Acceptance scene: **the felling AND mining cycles are LIVE.** A woodcutter walks to a stand of trees and
- * CHOPS each one down over several swings; the tree FALLS, leaving a STUMP and a TRUNK (the felled wood) on
- * the ground; the woodcutter PICKS the wood up and carries it, a load at a time, to a delivery FLAG whose
- * heap grows (ROADMAP Phase 3 "Faithful multi-hit harvest + drop-on-ground"). Below it, a MINER chips a
- * mineral DEPOSIT: each swing drops one unit at its cell as an ORE pile the miner carries off to its own
- * flag, and the deposit's graphic visibly STEPS DOWN a fill level as it empties — vanishing once its last
- * unit is chipped (gathering Step 4). A static row of the OTHER gatherable goods' nodes (rock, iron/gold
- * mine, mushroom) sits across the top as the per-good node graphics showcase (rung-2), untouched — each
- * worker's `allowedAtomics` is its own trade only, so neither digs them.
+ * Acceptance scene: **every raw good is gathered LIVE, each by its own trade.** Six "Zbieracz (…)" workers
+ * run in parallel lanes — one per good — and each plays that good's OWN authored work motion: the wood
+ * gatherer CHOPS trees (axe), the stone gatherer CRUSHES rock, the clay/iron/gold gatherers DIG with a
+ * shovel, the mushroom gatherer PLUCKS. Each mineral is a DEPOSIT the digger chips one ore unit at a time
+ * (the graphic steps down a fill level and vanishes when dry); wood is a small felling stand (tree → stump +
+ * carried log); mushrooms are a trivial patch (one pluck removes each). Every worker carries its harvest, a
+ * load at a time, to its own delivery FLAG whose heap grows.
  *
- * Two consumers of the ONE deterministic run: the headless half asserts the mechanics (every tree felled →
- * a stump each → its yield at the felling flag; the deposit chipped dry → removed → its whole size at the
- * mining flag; goods conserved); the browser half is the human's pixel/animation sign-off (the chop swing,
- * the tree→stump+trunk swap, the mine shrinking level by level, the carried loads, the growing flag heaps).
- * The goods' typeId NUMBERS are scene-local, matched to the decoded graphics by id-SLUG (wood→tree/debris,
- * mud→clay mine, …), so the render binds the right object regardless.
+ * Two consumers of the ONE deterministic run: the headless half asserts the mechanics (each good's whole
+ * yield reaches its flag; every node/deposit is consumed; goods conserved), the browser half is the human's
+ * pixel/animation sign-off — the DISTINCT per-good motion (shovel vs axe vs crush vs pluck), the deposits
+ * shrinking level by level, the carried loads NOT tinted the team colour, and the workers/flags drawing IN
+ * FRONT of the terrain they stand on. Good typeId NUMBERS are scene-local, matched to the decoded graphics
+ * by id-SLUG (wood→tree, mud→clay mine, …) and to the render's per-atomic work clips by the harvest atomic id.
+ *
+ * FIDELITY: the original models all six as ONE `collector` job (jobtype 8) with per-good jobExperience
+ * specialisations, not six job types; the scene splits them into named trades purely for a clear
+ * per-resource demo (docs/FIDELITY.md "Gathering work animations"). The bodies + motions are faithful (the
+ * generic man's authored `_work_` clips); iron/gold reuse the shovel (no authored miner clip — observed).
  */
 
 const { Felling, MineDeposit, Position, Resource, Settler, Stockpile, Stump } = components;
@@ -35,106 +52,170 @@ const IRON = 4;
 const GOLD = 5;
 const MUSHROOM = 6;
 
-// ── harvest atomics (one per raw good; a worker may run ONLY its trade's atomic — the job→atomic gate). ──
-const HARVEST_WOOD = 24; // the render's HARVEST_ATOMIC (the woodcut swing)
-const HARVEST_MUD = 26; // the mining swing (clay/mud deposit)
+/** How a lane's node is worked: a felled tree, a chipped mineral deposit, or a trivial pluck. */
+type Mode = 'fell' | 'mine' | 'pick';
 
-const WOODCUTTER = 10; // 10+ band: draws the generic man; the trade is what differs
-const MINER = 11;
-
-// ── the felling + mining calibration comes from the ONE global source (catalog/felling + catalog/mining),
-//    NOT per-scene numbers — so every scene uses the same pace/yield/deposit-size and can't drift
-//    (docs/FIDELITY.md). ──
-const CHOPS_TO_FELL = WOOD_CHOPS_TO_FELL;
-const TREE_WOOD_YIELD = WOOD_YIELD_PER_NODE;
-const MUD_DEPOSIT_UNITS = CLAY_DEPOSIT_UNITS; // the mined deposit's size
-const MUD_DEPOSIT_LEVELS = MINE_LEVELS; // its visual fill states (the ls_ground clay mine's 5)
-
-interface Displayable {
+/**
+ * One gatherer lane: a "Zbieracz (…)" worker, its good, the harvest atomic (which selects both the sim
+ * DURATION via {@link HARVEST_TICKS} and the render's per-good work clip), and how many source nodes it
+ * works. Job typeIds sit OUTSIDE the render's job→body map (5, 31–41) so every worker draws the generic
+ * man body — the one that authors the `_work_` clips. All facts are global (catalog + settler-gfx), never
+ * per-scene magic numbers.
+ */
+interface Gatherer {
   readonly good: number;
   readonly id: string;
-  readonly harvest: number;
+  readonly job: number;
+  readonly jobName: string;
+  readonly atomic: number;
+  readonly anim: string;
+  readonly mode: Mode;
+  /** Source nodes placed in the lane: trees (fell), 1 deposit (mine), mushrooms in the patch (pick). */
+  readonly nodes: number;
+  /** Mine deposit size — units chipped out one at a time (also the shrink-by-level denominator). */
+  readonly depositUnits?: number;
+  readonly depositLevels?: number;
 }
 
-/** The non-wood, non-mined gatherables shown as static display nodes (the per-good node graphics
- *  showcase) — mud is NOT here: it is the ACTIVELY-mined deposit below (so the miner touches only it). */
-const DISPLAY_NODES: readonly Displayable[] = [
-  { good: STONE, id: 'stone', harvest: 25 },
-  { good: IRON, id: 'iron', harvest: 27 },
-  { good: GOLD, id: 'gold', harvest: 28 },
-  { good: MUSHROOM, id: 'mushroom', harvest: 32 },
+const GATHERERS: readonly Gatherer[] = [
+  {
+    good: WOOD,
+    id: 'wood',
+    job: 10,
+    jobName: 'Zbieracz (Drewno)',
+    atomic: HARVEST_ATOMIC,
+    anim: 'viking_collector_harvest_tree',
+    mode: 'fell',
+    nodes: 2, // a two-tree stand
+  },
+  {
+    good: STONE,
+    id: 'stone',
+    job: 11,
+    jobName: 'Zbieracz (Kamień)',
+    atomic: STONE_HARVEST_ATOMIC,
+    anim: 'viking_collector_harvest_stone',
+    mode: 'mine',
+    nodes: 1,
+    depositUnits: STONE_DEPOSIT_UNITS,
+    depositLevels: MINE_LEVELS,
+  },
+  {
+    good: MUD,
+    id: 'mud',
+    job: 12,
+    jobName: 'Zbieracz (Glina)',
+    atomic: CLAY_HARVEST_ATOMIC,
+    anim: 'viking_collector_harvest_mud',
+    mode: 'mine',
+    nodes: 1,
+    depositUnits: CLAY_DEPOSIT_UNITS,
+    depositLevels: MINE_LEVELS,
+  },
+  {
+    good: IRON,
+    id: 'iron',
+    job: 13,
+    jobName: 'Zbieracz (Żelazo)',
+    atomic: IRON_HARVEST_ATOMIC,
+    anim: 'viking_collector_harvest_iron',
+    mode: 'mine',
+    nodes: 1,
+    depositUnits: IRON_DEPOSIT_UNITS,
+    depositLevels: MINE_LEVELS,
+  },
+  {
+    good: GOLD,
+    id: 'gold',
+    job: 14,
+    jobName: 'Zbieracz (Złoto)',
+    atomic: GOLD_HARVEST_ATOMIC,
+    anim: 'viking_collector_harvest_gold',
+    mode: 'mine',
+    nodes: 1,
+    depositUnits: GOLD_DEPOSIT_UNITS,
+    depositLevels: MINE_LEVELS,
+  },
+  {
+    good: MUSHROOM,
+    id: 'mushroom',
+    job: 15,
+    jobName: 'Zbieracz (Grzyby)',
+    atomic: MUSHROOM_HARVEST_ATOMIC,
+    anim: 'viking_collector_harvest_mushroom',
+    mode: 'pick',
+    nodes: 3, // a small patch, one pluck each
+  },
 ];
 
-const MAP_W = 18;
-const MAP_H = 14;
+const MAP_W = 13;
+const MAP_H = 15;
 
-/** A full display node's remaining units — arbitrary (a static display never depletes). */
-const DISPLAY_NODE_UNITS = 5;
+// Each gatherer gets a horizontal lane: worker → node(s) → flag, laid out left→right so the cycle reads
+// clearly. Lanes stack down the map (one per good). The flag sits nearest its own lane so the worker
+// delivers home, not to a neighbour.
+const LANE_Y0 = 2; // first lane's row
+const LANE_STEP = 2; // rows between lanes
+const WORKER_X = 2;
+const NODE_X0 = 6; // first source node (a stand/patch grows right from here)
+const FLAG_X = 10;
 
-// The felling stand + collection point, laid out on one row so the walk reads clearly left→right.
-const STAND_Y = 8;
-const TREE_XS = [5, 7, 9] as const; // three trees to fell
-const WOODCUTTER_AT = { x: 2, y: STAND_Y };
-const FLAG_AT = { x: 13, y: STAND_Y };
-const DISPLAY_ROW_Y = 2;
-
-// The mining demo on the bottom row: miner → deposit → its own flag (kept nearest the deposit so the
-// miner delivers here, not to the distant felling flag; far from the trees so the woodcutter uses its own).
-const MINE_ROW_Y = 12;
-const MINER_AT = { x: 2, y: MINE_ROW_Y };
-const DEPOSIT_AT = { x: 6, y: MINE_ROW_Y };
-const MINE_FLAG_AT = { x: 10, y: MINE_ROW_Y };
+/** The whole yield a lane delivers to its flag: its felled trees × per-tree wood, its deposit size, or one
+ *  per plucked mushroom. The headless conservation check keys on this. */
+function expectedYield(g: Gatherer): number {
+  if (g.mode === 'fell') return g.nodes * WOOD_YIELD_PER_NODE;
+  if (g.mode === 'mine') return g.depositUnits ?? 0;
+  return g.nodes; // pick: one unit per node
+}
 
 function content(): ContentSet {
   return parseContentSet({
     manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-gathering-scene' }, locale: 'eng' },
     goods: [
       { typeId: 0, id: 'none' },
-      // Wood declares the felling lifecycle (chops + whole yield) — the sim stamps it onto each tree as a
-      // Felling component. The landscape-stage refs are a render join the synthetic scene doesn't model.
-      {
-        typeId: WOOD,
-        id: 'wood',
+      ...GATHERERS.map((g) => ({
+        typeId: g.good,
+        id: g.id,
         weight: 1,
-        atomics: { harvest: HARVEST_WOOD },
-        gathering: { bioLandscape: true, chopsToFell: CHOPS_TO_FELL, yieldPerNode: TREE_WOOD_YIELD },
-      },
-      // Mud/clay declares the MINING lifecycle (deposit size + fill levels) — the sim stamps it onto the
-      // deposit as a MineDeposit component; a chip drops one ore unit at its cell and the node shrinks a
-      // level until removed. `bioLandscape: false` (mined, not living, like the other minerals).
-      {
-        typeId: MUD,
-        id: 'mud',
-        weight: 1,
-        atomics: { harvest: HARVEST_MUD },
-        gathering: { bioLandscape: false, depositSize: MUD_DEPOSIT_UNITS, depositLevels: MUD_DEPOSIT_LEVELS },
-      },
-      ...DISPLAY_NODES.map((g) => ({ typeId: g.good, id: g.id, weight: 1, atomics: { harvest: g.harvest } })),
+        atomics: { harvest: g.atomic },
+        gathering:
+          g.mode === 'fell'
+            ? { bioLandscape: true, chopsToFell: WOOD_CHOPS_TO_FELL, yieldPerNode: WOOD_YIELD_PER_NODE }
+            : g.mode === 'mine'
+              ? { bioLandscape: false, depositSize: g.depositUnits ?? 0, depositLevels: g.depositLevels ?? 0 }
+              : { bioLandscape: true }, // mushroom: a trivial pickup (no felling, no deposit)
+      })),
     ],
     jobs: [
       { typeId: 0, id: 'idle' },
-      { typeId: WOODCUTTER, id: 'woodcutter', allowedAtomics: [HARVEST_WOOD] },
-      { typeId: MINER, id: 'miner', allowedAtomics: [HARVEST_MUD] },
+      // One named "Zbieracz (…)" per good; each may run ONLY its own harvest atomic, so a worker gathers
+      // exactly its lane's good (the job→atomic gate keeps the trades from poaching each other's nodes).
+      ...GATHERERS.map((g) => ({
+        typeId: g.job,
+        id: `zbieracz_${g.id}`,
+        name: g.jobName,
+        allowedAtomics: [g.atomic],
+      })),
     ],
-    buildings: [], // the collection point is a bare delivery flag, placed directly in build()
+    buildings: [], // the collection points are bare delivery flags, placed directly in build()
     landscape: [{ typeId: GRASS, id: 'grass', walkable: true, buildable: true }],
     tribes: [
       {
         typeId: VIKING,
         id: 'viking',
-        // The chop (atomic 24) + mine (atomic 26) swings — the planner resolves each duration through these.
-        atomicBindings: [
-          { jobType: WOODCUTTER, atomicId: HARVEST_WOOD, animation: 'viking_chop' },
-          { jobType: MINER, atomicId: HARVEST_MUD, animation: 'viking_mine' },
-        ],
+        // The collector's per-good harvest binding (`setatomic <job> <atomic> "<anim>"`): the sim resolves
+        // each harvest's DURATION through this → the atomicAnimation length below. The render binds the
+        // work CLIP off the atomic id separately (settler-gfx CHARACTER_SPECS), so these names need only match.
+        atomicBindings: GATHERERS.map((g) => ({ jobType: g.job, atomicId: g.atomic, animation: g.anim })),
       },
     ],
-    // The chop/mine swing length is the ONE global constant (settler-gfx) — a full windup→impact swing; a
-    // scene-local number (this was 6) replays only the windup and restarts every atomic.
-    atomicAnimations: [
-      { id: 'viking_chop', name: 'viking_chop', length: HARVEST_SWING_LENGTH },
-      { id: 'viking_mine', name: 'viking_mine', length: HARVEST_SWING_LENGTH },
-    ],
+    // Faithful per-good harvest durations (DATA — atomicanimations.ini via HARVEST_TICKS): a dig runs longer
+    // than a chop, so a deposit reads as WORKED, not tapped once.
+    atomicAnimations: GATHERERS.map((g) => ({
+      id: g.anim,
+      name: g.anim,
+      length: HARVEST_TICKS[g.atomic] ?? 1,
+    })),
   });
 }
 
@@ -142,27 +223,33 @@ function content(): ContentSet {
 function placeTree(sim: Simulation, x: number, y: number): void {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Resource, { goodType: WOOD, remaining: TREE_WOOD_YIELD, harvestAtomic: HARVEST_WOOD });
-  sim.world.add(e, Felling, { chopsLeft: CHOPS_TO_FELL });
+  sim.world.add(e, Resource, {
+    goodType: WOOD,
+    remaining: WOOD_YIELD_PER_NODE,
+    harvestAtomic: HARVEST_ATOMIC,
+  });
+  sim.world.add(e, Felling, { chopsLeft: WOOD_CHOPS_TO_FELL });
 }
 
-/** Place a static (single-hit) display node of `good` at (x,y) — the per-good node graphics showcase. */
-function placeDisplayNode(sim: Simulation, good: number, harvest: number, x: number, y: number): void {
+/** Place a MINED mineral deposit at (x,y): each chip drops one ore unit and the node shrinks a fill level
+ *  until removed. Deposit size + levels come from the good's mining calibration. */
+function placeDeposit(sim: Simulation, g: Gatherer, x: number, y: number): void {
+  const units = g.depositUnits ?? 0;
+  const levels = g.depositLevels ?? 0;
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Resource, { goodType: good, remaining: DISPLAY_NODE_UNITS, harvestAtomic: harvest });
+  sim.world.add(e, Resource, { goodType: g.good, remaining: units, harvestAtomic: g.atomic });
+  sim.world.add(e, MineDeposit, { initial: units, levels });
 }
 
-/** Place a standing MINED mud deposit at (x,y): the deposit spec (size + fill levels) comes from the mud
- *  good's `gathering`. Each chip drops one ore unit and the node shrinks a level until it is removed. */
-function placeDeposit(sim: Simulation, x: number, y: number): void {
+/** Place a trivial-pickup node (a mushroom) at (x,y) — one pluck adds it to the back and removes the node. */
+function placePickNode(sim: Simulation, g: Gatherer, x: number, y: number): void {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Resource, { goodType: MUD, remaining: MUD_DEPOSIT_UNITS, harvestAtomic: HARVEST_MUD });
-  sim.world.add(e, MineDeposit, { initial: MUD_DEPOSIT_UNITS, levels: MUD_DEPOSIT_LEVELS });
+  sim.world.add(e, Resource, { goodType: g.good, remaining: 1, harvestAtomic: g.atomic });
 }
 
-/** Place a worker of `jobType` at (x,y) — a woodcutter (fells wood) or a miner (chips the mud deposit). */
+/** Place a worker of `jobType` at (x,y). */
 function placeWorker(sim: Simulation, jobType: number, x: number, y: number): void {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
@@ -184,21 +271,27 @@ function placeFlag(sim: Simulation, x: number, y: number): void {
   sim.world.add(e, Stockpile, { amounts: new Map() });
 }
 
+/** The flag cell for gatherer index `i`. */
+function flagCell(i: number): { x: number; y: number } {
+  return { x: FLAG_X, y: LANE_Y0 + i * LANE_STEP };
+}
+
 function build(sim: Simulation): void {
-  // The static per-good node showcase across the top.
-  DISPLAY_NODES.forEach((g, i) => placeDisplayNode(sim, g.good, g.harvest, 3 + i * 3, DISPLAY_ROW_Y));
-  // The felling stand + the woodcutter + the delivery flag.
-  for (const x of TREE_XS) placeTree(sim, x, STAND_Y);
-  placeWorker(sim, WOODCUTTER, WOODCUTTER_AT.x, WOODCUTTER_AT.y);
-  placeFlag(sim, FLAG_AT.x, FLAG_AT.y);
-  // The mining demo: a miner chips the mud deposit dry, carrying each ore unit to its own flag.
-  placeDeposit(sim, DEPOSIT_AT.x, DEPOSIT_AT.y);
-  placeWorker(sim, MINER, MINER_AT.x, MINER_AT.y);
-  placeFlag(sim, MINE_FLAG_AT.x, MINE_FLAG_AT.y);
+  GATHERERS.forEach((g, i) => {
+    const y = LANE_Y0 + i * LANE_STEP;
+    placeWorker(sim, g.job, WORKER_X, y);
+    for (let n = 0; n < g.nodes; n++) {
+      const x = NODE_X0 + n;
+      if (g.mode === 'fell') placeTree(sim, x, y);
+      else if (g.mode === 'mine') placeDeposit(sim, g, x, y);
+      else placePickNode(sim, g, x, y);
+    }
+    placeFlag(sim, FLAG_X, y);
+  });
 }
 
 /** The units of `good` delivered to the collection flag at cell `at` — its bare stockpile's amount. A
- *  felled trunk / ore pile is also a bare stockpile, so key on the flag's cell (they lie elsewhere). */
+ *  felled trunk / ore pile is also a bare stockpile, so key on the flag's cell (they lie at the node). */
 function flagGood(sim: Simulation, at: { x: number; y: number }, good: number): number {
   for (const e of sim.world.query(Stockpile)) {
     const p = sim.world.get(e, Position);
@@ -215,54 +308,57 @@ function count<T>(sim: Simulation, component: Component<T>): number {
   return n;
 }
 
+const WOOD_TREES = GATHERERS.filter((g) => g.mode === 'fell').reduce((n, g) => n + g.nodes, 0);
+
 export const gatheringScene: SceneDefinition = {
   id: 'gathering',
-  title: 'Zbieranie: ścinanie drzew i wydobycie złoża (kłody, ruda, poziomy)',
+  title: 'Zbieranie: każdy surowiec swoim zawodem (drewno, kamień, glina, żelazo, złoto, grzyby)',
   summary:
-    'U góry drwal ŚCINA drzewa kilkoma uderzeniami — drzewo pada, zostaje PIEŃ i KŁODA na ziemi, którą ' +
-    'drwal znosi na FLAGĘ. Niżej GÓRNIK kuje ZŁOŻE gliny: każde uderzenie zrzuca jedną bryłę RUDY, którą ' +
-    'górnik znosi na swoją flagę, a grafika złoża co jakiś czas OBNIŻA się o poziom, aż złoże ZNIKA po ' +
-    'wykuciu ostatniej bryły. U góry statyczny rząd pozostałych złóż (skała, żelazo, złoto, grzyb) jako ' +
-    'pokaz grafiki — każdy robotnik rusza tylko swój surowiec.',
+    'Sześciu ZBIERACZY pracuje równolegle, każdy swój surowiec i swoją animacją: Zbieracz (Drewno) RĄBIE ' +
+    'drzewa, Zbieracz (Kamień) KRUSZY skałę, Zbieracz (Glina/Żelazo/Złoto) KOPIE ŁOPATĄ złoże (co chwilę ' +
+    'obniża się o poziom i znika), Zbieracz (Grzyby) ZRYWA grzyby. Każdy znosi urobek bryła po bryle na ' +
+    'swoją FLAGĘ. Niesiony surowiec ma swój kolor (nie kolor gracza), a robotnik i flaga rysują się PRZED ' +
+    'terenem, na którym stoją.',
   seed: 11,
   content: content(),
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  // The fell→carry→deliver cycle settles ~tick 1220; the mine chips its deposit (size CLAY_DEPOSIT_UNITS)
-  // dry a good while before that. 1500 leaves headroom so the headless checks see the settled end state.
-  runTicks: 1500,
+  // Six lanes run in parallel; the slowest (the largest deposit at faithful per-good durations) settles well
+  // inside this. Headroom so the headless checks see the fully-settled end state.
+  runTicks: 3000,
   initialZoom: 0.9,
   checklist: [
-    'Drwal RĄBIE drzewo kilka razy (animacja topora), po czym drzewo znika — zostaje PIEŃ/gałęzie i osobno KŁODA (sterta drewna); drwal ją PODNOSI i znosi na FLAGĘ (sterta rośnie), po ścięciu wszystkich zostają trzy pnie i całe drewno (3×3 = 9) na fladze',
-    'GÓRNIK podchodzi do ZŁOŻA gliny i KUJE je: pod złożem pojawia się bryła RUDY, którą górnik zabiera i niesie na swoją flagę — i tak bryła po bryle, aż całe wydobycie (CLAY_DEPOSIT_UNITS) trafi na flagę górnika',
-    'W trakcie kucia grafika ZŁOŻA wyraźnie OBNIŻA się o poziom (mniejsza kupka), a po wykuciu ostatniej bryły złoże ZNIKA z mapy',
-    'Górny rząd złóż (skała, żelazo, złoto, grzyb) stoi nietknięty i każde rysuje SWÓJ obiekt (pokaz grafiki)',
-    'Znane skróty (v1): pień rysuje „tree debris”; drzewo/złoże znika natychmiast (bez animacji upadku — krok 7); ruda to grafika stopnia pickup (clay ore); flagi w kolorze gracza 01; górnik zabiera każdą bryłę osobno (batching do kalibracji — docs/FIDELITY.md)',
+    'Każdy Zbieracz gra INNĄ animację pracy: Drewno = topór (rąbanie), Kamień = kruszenie, ' +
+      'Glina/Żelazo/Złoto = ŁOPATA (kopanie), Grzyby = zrywanie — a nie wszyscy tak samo jak drwal',
+    'Kopanie/rąbanie TRWA chwilę (kilka zamachów), a nie „raz i już niesie” — łopata kopie zauważalnie dłużej',
+    'Każde ZŁOŻE (kamień/glina/żelazo/złoto) obniża się o poziom w miarę wykuwania i ZNIKA po ostatniej ' +
+      'bryle; drzewo pada i zostaje pień; grzyby znikają po zerwaniu',
+    'Niesiony surowiec ma swój naturalny kolor — drewno brązowe, glina/ruda w swoim kolorze, NIE niebieskie ' +
+      '(nie kolor frakcji); tylko strój robotnika jest w kolorze gracza',
+    'Robotnik stojący na złożu/pniu i FLAGA na ziemi rysują się PRZED terenem (nie chowają się za nim)',
+    'Znane skróty (v1): pień rysuje „tree debris”; drzewo/złoże znika natychmiast (bez animacji upadku); ' +
+      'żelazo/złoto kopią tą samą łopatą co glina (brak osobnej animacji górnika — docs/FIDELITY.md)',
   ],
   checks: [
     {
-      label: 'every tree is felled — no Felling nodes remain (the whole stand came down)',
+      label: 'every tree in the wood stand is felled — no Felling nodes remain',
       predicate: (sim) => count(sim, Felling) === 0,
     },
     {
-      label: 'one stump is left where each tree stood (three trees → three stumps)',
-      predicate: (sim) => count(sim, Stump) === TREE_XS.length,
+      label: 'one stump is left where each tree stood',
+      predicate: (sim) => count(sim, Stump) === WOOD_TREES,
     },
     {
-      label: 'the whole felled yield (3 trees × 3 wood) is delivered to the felling flag',
-      predicate: (sim) => flagGood(sim, FLAG_AT, WOOD) === TREE_XS.length * TREE_WOOD_YIELD,
-    },
-    {
-      label: 'the mud deposit is chipped dry and removed (no MineDeposit remains)',
+      label: 'every mineral deposit is chipped dry and removed (no MineDeposit remains)',
       predicate: (sim) => count(sim, MineDeposit) === 0,
     },
     {
-      label: 'the whole mined deposit is delivered to the mining flag (goods conserved end to end)',
-      predicate: (sim) => flagGood(sim, MINE_FLAG_AT, MUD) === MUD_DEPOSIT_UNITS,
+      label: 'every source node is fully consumed (trees felled, deposits drained, mushrooms plucked)',
+      predicate: (sim) => count(sim, Resource) === 0,
     },
     {
-      label: 'the static per-good display nodes are untouched (four non-mined nodes remain)',
-      predicate: (sim) => count(sim, Resource) === DISPLAY_NODES.length,
+      label: 'each good is delivered WHOLE to its own gatherer flag (goods conserved end to end)',
+      predicate: (sim) => GATHERERS.every((g, i) => flagGood(sim, flagCell(i), g.good) === expectedYield(g)),
     },
   ],
 };

@@ -178,9 +178,13 @@ check, commit. **Render-only** rungs need no pipeline change (the atlas is alrea
    = the whole vocabulary). Recipe per category: pick the `[bobseq]` name(s), route the sim's atomic id /
    carried good to it in the body bindings, add an acceptance scene + headless check, the user signs off.
    Playback keeps the per-direction stride heuristic (faithful `[gfxanimatomic]` timing is the last bullet).
-   - [ ] **Harvest by resource** — clay (`clayworker_work_shovel`), stone (`stonecrusher_work_stonecrushing`),
-     grain (`farmer_work_reap_grain`/`_sow`/`_water`), fish (`fisher_work_fishing`/`_walk_angle`), hunter
-     (`hunter_attack_bow`).
+   - [~] **Harvest by resource** — **DONE for the mined/gathered goods:** each harvest atomic plays its OWN
+     authored clip (wood→`woodcutter_work_woodcutting`, stone→`stonecrusher_work_stonecrushing`,
+     clay→`clayworker_work_shovel`; iron/gold reuse the shovel — no authored miner clip; mushroom→`generic_pick_up`),
+     bound globally in `CHARACTER_SPECS`, paced by the faithful per-good `HARVEST_TICKS` (a dig runs longer than
+     a chop), and shown across six named "Zbieracz (…)" trades in `?scene=gathering` (docs/FIDELITY.md "Gathering
+     work animations"). **Still open:** grain (`farmer_work_reap_grain`/`_sow`/`_water`), fish
+     (`fisher_work_fishing`/`_walk_angle`), hunter (`hunter_attack_bow`).
    - [ ] **Indoor crafts (works inside a hut)** — baker / blacksmith / joiner / potter / tailor / druid /
      artist / fountain (`Baker_*`, `Blacksmith_*`, `Joiner_*`, `Pottery_form`, `tailor_*`, `Druid_work`,
      `Artist_*`, `fountain_push`).

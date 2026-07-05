@@ -35,6 +35,15 @@ const WALK_SEQ = 'human_man_generic_walk';
 // the `idle` state so every standing settler animates; replaces the earlier frame-0 hold of the walk seq.
 const WAIT_SEQ = 'human_man_generic_wait';
 const CHOP_SEQ = 'human_man_woodcutter_work_woodcutting';
+// The other authored gathering work clips on the generic man body (`cr_hum_body_00`) — the collector job's
+// per-good motions. The original binds the collector's harvest atomics to `viking_collector_harvest_*`, but
+// those are LOGIC atomic-animation names (timing + events), never body bobseqs; the man body actually authors
+// one clip per trade, which is what the render must play (docs/FIDELITY.md "Gathering work animations").
+// Unlike the ×8 chop these are NOT clean 8-direction strips, so {@link characterBinding} plays them
+// facing-locked (the digger faces its pit) — the whole strip on the atomic's clock.
+const SHOVEL_SEQ = 'human_man_clayworker_work_shovel'; // clay/mud — and iron/gold (no authored miner clip)
+const STONECRUSH_SEQ = 'human_man_stonecrusher_work_stonecrushing'; // stone
+const PICKUP_SEQ = 'human_man_generic_pick_up'; // the bend-and-pick; mushroom's pluck + the carry pickup/deposit
 // The LOADED gait — the settler walking while hauling a log. Same directional layout as the empty walk;
 // the frames simply carry the wood. Bound to the settler's `carrying` override so a woodcutter walking
 // its harvest back to the store plays this instead of the empty walk; its first frame holds a still
@@ -86,14 +95,35 @@ export const HARVEST_ATOMIC = 24;
  */
 export const HARVEST_SWING_LENGTH = CHOP_STRIDE + 1;
 /**
- * The harvest atomics for the OTHER raw goods (stone 25, clay 26, iron 27 — the original's per-good
- * `atomicForHarvesting` ids for ore/rock/mud). They all replay the one authored harvest swing on the
- * generic man ({@link CHOP_SEQ}): the mod ships a single generic harvest motion for the man body, so a
- * miner/stonemason/clay-digger swings the same as the woodcutter until per-resource swings are decoded
- * (docs/FIDELITY.md). Without this a settler running one of these atomics would STAND (no `byAtomic`
- * match) instead of visibly digging — the craft-chain scene's stonemason/miner/clay-digger.
+ * The per-good harvest atomic ids — the original's `atomicForHarvesting` for each raw good (the collector
+ * job runs ONE per good). Each binds to that good's OWN authored work clip in {@link CHARACTER_SPECS}
+ * below (stone→crush, clay/iron/gold→shovel-dig, mushroom→pluck), not the shared woodcut swing — so a
+ * clay-digger visibly SHOVELS, not chops (docs/FIDELITY.md). Exported so a scene/slice runs the same ids
+ * the render animates. ({@link HARVEST_ATOMIC} = 24 is wood.) */
+export const STONE_HARVEST_ATOMIC = 25;
+export const CLAY_HARVEST_ATOMIC = 26;
+export const IRON_HARVEST_ATOMIC = 27;
+export const GOLD_HARVEST_ATOMIC = 28;
+export const MUSHROOM_HARVEST_ATOMIC = 32;
+
+/**
+ * DATA-pinned per-good harvest DURATIONS (ticks) — the ONE global source so gathering pace can't drift per
+ * scene. These are the `atomicanimations.ini` lengths of the collector's per-good harvest atomics
+ * (`viking_collector_harvest_*`), read straight from the mod (content/ir.json `atomicAnimations`), NOT an
+ * eyeballed number: a dig genuinely takes longer than the flat {@link HARVEST_SWING_LENGTH} the chop clip
+ * once forced on every good, which is what makes a deposit read as WORKED rather than tapped-once. A scene
+ * declares each harvest atomic's `atomicAnimations` length from here. The clip may be shorter than the
+ * duration (the ×8 chop loops, a facing-locked dig plays its opening strokes) — {@link frameOf} is
+ * tick-locked, so a longer atomic just means more swinging, never a stretched frame.
  */
-const HARVEST_ATOMICS_OTHER = [25, 26, 27] as const;
+export const HARVEST_TICKS: Readonly<Record<number, number>> = {
+  [HARVEST_ATOMIC]: 30, // wood     — viking_collector_harvest_tree
+  [STONE_HARVEST_ATOMIC]: 29, // stone    — viking_collector_harvest_stone
+  [CLAY_HARVEST_ATOMIC]: 23, // clay/mud — viking_collector_harvest_mud
+  [IRON_HARVEST_ATOMIC]: 23, // iron     — viking_collector_harvest_iron
+  [GOLD_HARVEST_ATOMIC]: 23, // gold     — viking_collector_harvest_gold
+  [MUSHROOM_HARVEST_ATOMIC]: 35, // mushroom — viking_collector_harvest_mushroom
+};
 /**
  * The other atomic ids the SIM issues today, transcribed from the sim's planners (`ai.ts` eat 10 /
  * sleep 8 / pray 12, `atomic.ts` pickup 22 / deposit 23 — themselves pinned to the original's
@@ -354,16 +384,18 @@ export const CHARACTER_SPECS = {
     // pickup AND deposit (the body authors no separate put-down; the same stoop reads as either — and
     // a bound atomic wins over the carry override, so the depositor stoops as its load leaves).
     atomics: {
-      [HARVEST_ATOMIC]: { seq: CHOP_SEQ, phaseStart: CHOP_PHASE_START },
-      // The other raw-good harvests (stone/clay/iron) share the one authored harvest swing.
-      ...Object.fromEntries(
-        HARVEST_ATOMICS_OTHER.map((id) => [id, { seq: CHOP_SEQ, phaseStart: CHOP_PHASE_START }]),
-      ),
+      // Each raw-good harvest plays that good's OWN authored work clip — the collector's per-good motion.
+      [HARVEST_ATOMIC]: { seq: CHOP_SEQ, phaseStart: CHOP_PHASE_START }, // wood — the woodcut axe swing
+      [STONE_HARVEST_ATOMIC]: { seq: STONECRUSH_SEQ }, // stone — the stone-crushing motion
+      [CLAY_HARVEST_ATOMIC]: { seq: SHOVEL_SEQ }, // clay/mud — the clayworker's shovel dig
+      [IRON_HARVEST_ATOMIC]: { seq: SHOVEL_SEQ }, // iron — dig (no authored miner clip → shovel, observed)
+      [GOLD_HARVEST_ATOMIC]: { seq: SHOVEL_SEQ }, // gold — dig (no authored miner clip → shovel, observed)
+      [MUSHROOM_HARVEST_ATOMIC]: { seq: PICKUP_SEQ }, // mushroom — a bend-and-pluck (observed)
       [EAT_ATOMIC]: { seq: 'human_man_generic_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_man_generic_sleep' },
       [PRAY_ATOMIC]: { seq: 'human_man_generic_pray' },
-      [PICKUP_ATOMIC]: { seq: 'human_man_generic_pick_up' },
-      [DEPOSIT_ATOMIC]: { seq: 'human_man_generic_pick_up' },
+      [PICKUP_ATOMIC]: { seq: PICKUP_SEQ },
+      [DEPOSIT_ATOMIC]: { seq: PICKUP_SEQ },
     },
   },
   woman: {
