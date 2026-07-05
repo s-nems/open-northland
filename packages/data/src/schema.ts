@@ -121,8 +121,11 @@ export const GoodGathering = z.strictObject({
   yieldPerNode: z.number().int().nonnegative().default(0),
   /**
    * **OBSERVED, not extracted** — the units a MINED deposit of this good holds (stone/iron/gold/clay).
-   * The readable `.ini` carries no deposit size (like the felling counts), so this is a calibration
-   * constant a scene/fixture sets and `docs/FIDELITY.md` tracks. `> 0` marks a **mined** good — a
+   * The readable `.ini` has no field established to be the harvestable-unit count: `landscapetypes.ini`
+   * `maximumValency` is a per-CELL valency (constant across a good's stages — mud_mine = mud_ore = mud = 6,
+   * and a 1-unit dropped ore pile shares it), NOT the deposit size, so this stays a calibration constant a
+   * scene/fixture sets and `docs/FIDELITY.md` tracks (unlike {@link depositLevels}, which IS gfx data).
+   * `> 0` marks a **mined** good — a
    * distinct-`landscapeToPickup` "ore" deposit the collector chips one unit at a time, dropping each as a
    * ground ore pile and shrinking the node by level until empty (the sim stamps a `MineDeposit` on such a
    * node). `0` (the default, and what the extractor emits) means NOT a mined good — a fell-once tree
@@ -130,11 +133,14 @@ export const GoodGathering = z.strictObject({
    */
   depositSize: z.number().int().nonnegative().default(0),
   /**
-   * **OBSERVED, not extracted** — the number of discrete VISUAL fill states a mined deposit steps down
-   * through as it empties (the deposit's `[GfxLandscape]` mine record's fill frames; the `ls_ground`
-   * clay/iron/gold mines each carry 5 — see docs/FIDELITY.md). The sim stamps it on the deposit's
-   * `MineDeposit` so `render` can bucket `remaining/depositSize` into the right fill-state frame. Only
-   * meaningful when {@link depositSize} `> 0`; `0` (the default) leaves the level count to the spawn site.
+   * The number of discrete VISUAL fill states a mined deposit steps down through as it empties. **DATA,
+   * not yet plumbed here** — this IS the deposit's harvest `[GfxLandscape]` record's own state count
+   * (`frames.length`/`maxValency`: the `ls_ground` clay/iron/gold mines carry 5, stone's rock 4, mushroom
+   * 1 — the render already derives it directly in `nodeLevelBobs`, see docs/FIDELITY.md), so it is NOT an
+   * observed guess. The extractor emits `0` for now (a future join would copy the harvest record's frame
+   * count here); the sim stamps it on the deposit's `MineDeposit` so `render` buckets `remaining/depositSize`
+   * into the right fill-state frame. Only meaningful when {@link depositSize} `> 0`; `0` (the default)
+   * leaves the per-good level count to the spawn site (which sets it to match that good's gfx).
    */
   depositLevels: z.number().int().nonnegative().default(0),
 });

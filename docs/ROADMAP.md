@@ -317,8 +317,10 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
       (`depositVisualLevel` → `DrawItem.level` → a per-level `ResourceTypeBinding` frame list) until its last
       unit, when it is REMOVED (`resourceDepleted` — the same removal path Step 5's collision-unblock hooks).
       A mushroom is the trivial neither-marker DIRECT pickup (one harvest onto the back, then remove). Goods
-      conserved (a deposit of N → exactly N ore). Deposit size/levels are OBSERVED (content, `catalog/mining.ts`
-      `MINE_LEVELS = 5`; pending calibration). `?scene=gathering` runs a live mud-mining cycle. **Open
+      conserved (a deposit of N → exactly N ore). Deposit SIZE is OBSERVED (no readable unit-count source —
+      `maximumValency` is a per-cell valency, not the count); the fill-LEVEL count is gfx DATA (the mine
+      record's frame count — 5 for clay/iron/gold, 4 for stone, per-good; the render derives it), see
+      docs/FIDELITY.md. `?scene=gathering` runs a live mud-mining cycle. **Open
       (deferred):** mushroom/herb regrowth + cultivation (the `isBioLandscapeFlag` bio-transitions,
       `atomicForPlanting`) is OUT OF SCOPE for the gathering pipeline — a future bio-lifecycle slice; the ore
       batching (chip several before hauling vs carry-each) awaits calibration against the original.
