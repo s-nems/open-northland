@@ -41,6 +41,36 @@ export type SimEvent =
       readonly goodType: number;
       readonly amount: number;
       readonly at: { x: number; y: number };
+    }
+  | {
+      /**
+       * A ranged weapon LOOSED a {@link import('../components/combat.js').Projectile} this tick — the
+       * `shooter` released an arrow/rock (`munitionType`: 1 arrow / 2 rock) at `target` from `at`, at its
+       * ATTACK-event frame. `projectile` is the entity now in flight (render draws it from the snapshot
+       * each frame; this one-shot is the launch CUE — a bow-twang sound, a muzzle puff). Deterministic
+       * like every event: a pure function of the tick's launched shots. Paired with {@link 'projectileHit'}.
+       */
+      readonly kind: 'projectileLaunched';
+      readonly projectile: Entity;
+      readonly shooter: Entity;
+      readonly target: Entity;
+      readonly munitionType: number;
+      readonly at: { x: number; y: number };
+    }
+  | {
+      /**
+       * A {@link import('../components/combat.js').Projectile} LANDED its blow this tick — the arrow/rock
+       * `projectile` (loosed by `shooter`, `munitionType` 1 arrow / 2 rock) reached `target` at `at` and
+       * dealt its damage; the projectile entity is destroyed the same tick. Render/audio use it for the
+       * impact cue (a thunk sound, a hit spark) — the ranged twin of an `atomicCompleted` melee swing. A
+       * projectile whose target died mid-flight EXPIRES silently (no hit event). Deterministic like every event.
+       */
+      readonly kind: 'projectileHit';
+      readonly projectile: Entity;
+      readonly shooter: Entity;
+      readonly target: Entity;
+      readonly munitionType: number;
+      readonly at: { x: number; y: number };
     };
 
 export type SimEventKind = SimEvent['kind'];

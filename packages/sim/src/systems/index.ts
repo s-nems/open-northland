@@ -12,6 +12,7 @@ import {
 } from './conflict/combat.js';
 import { commandSystem } from './conflict/command.js';
 import { MOVE_ORDER_HOLD_CIVILIAN, MOVE_ORDER_HOLD_SOLDIER, playerOrderSystem } from './conflict/orders.js';
+import { PROJECTILE_TILES_PER_SPEED_UNIT, projectileSystem } from './conflict/projectile.js';
 import type { System, SystemContext } from './context.js';
 import { constructionSystem } from './economy/construction.js';
 import { jobSystem } from './economy/jobs.js';
@@ -153,6 +154,7 @@ export { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem };
 export { buildingBlockedCells, canPlaceBuilding, interactionTile };
 export { productionSystem };
 export { atomicSystem };
+export { PROJECTILE_TILES_PER_SPEED_UNIT, projectileSystem };
 export { jobSystem };
 export {
   FIGHT_EXPERIENCE_TYPE,
@@ -287,6 +289,7 @@ export const SYSTEM_ORDER: readonly System[] = [
   transportSystem,
   constructionSystem,
   combatSystem,
+  projectileSystem,
   reproductionSystem,
   growthSystem,
   cleanupSystem,

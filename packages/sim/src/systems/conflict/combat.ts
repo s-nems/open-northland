@@ -32,6 +32,7 @@ import {
   isAggressiveAnimal,
   isAnimalTribe,
   isCatchableAnimal,
+  isRangedWeapon,
   mayAttack,
   mayHunt,
   weaponDamageVsMaterial,
@@ -927,6 +928,17 @@ function startAttack(
   const animation = atomicAnimationName(ctx, attacker, ATTACK_ATOMIC_ID);
   const hitAt =
     animation === undefined ? undefined : atomicEventFrame(ctx.content, animation, ATOMIC_EVENT_TYPE_ATTACK);
+  // A RANGED weapon (a bow/catapult — `munitiontype` present) with a positive travel `speed` fires a
+  // PROJECTILE at the release frame instead of landing the blow in place. The `projectile` payload rides
+  // on the `attack` effect so the executor launches it at `hitAt`; a ranged weapon missing its `speed`
+  // (malformed content) or a melee weapon falls back to the in-place hit (no `projectile` key).
+  const projectile =
+    isRangedWeapon(weapon) &&
+    weapon.speed !== undefined &&
+    weapon.speed > 0 &&
+    weapon.munitionType !== undefined
+      ? { munitionType: weapon.munitionType, speed: weapon.speed }
+      : undefined;
   world.add(e, CurrentAtomic, {
     atomicId: ATTACK_ATOMIC_ID,
     elapsed: 0,
@@ -936,11 +948,12 @@ function startAttack(
       kind: 'attack',
       target,
       damage,
-      // Omit an absent hit-frame / mainType so a weapon/animation that carries neither yields the exact
-      // `{ kind, target, damage }` effect (no `undefined`-valued keys) — the fallback-to-completion and
-      // no-XP paths are the absence of the field, not a sentinel.
+      // Omit an absent hit-frame / mainType / projectile so a melee weapon+animation that carries none
+      // yields the exact `{ kind, target, damage }` effect (no `undefined`-valued keys) — the
+      // fallback-to-completion, no-XP, and melee-hit paths are the absence of the field, not a sentinel.
       ...(hitAt !== undefined ? { hitAt } : {}),
       ...(weapon.mainType !== undefined ? { weaponMainType: weapon.mainType } : {}),
+      ...(projectile !== undefined ? { projectile } : {}),
     },
     targetEntity: target,
     targetTile: null,

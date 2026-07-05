@@ -178,3 +178,45 @@ export const Fleeing = defineComponent<{ repathAt: number; calmUntil: number | n
  * set once from the command's target, read/cleared by pure component + hostility checks — no RNG/wall-clock.
  */
 export const AttackOrder = defineComponent<{ target: Entity }>('AttackOrder');
+
+/**
+ * A **projectile in flight** — an arrow/rock a ranged weapon (a bow/catapult) launched at the shooter's
+ * ATTACK-event frame, homing on its target until it lands the blow or expires. It is a first-class
+ * {@link Entity} carrying a {@link import('./movement.js').Position} (its current point, advanced each
+ * tick by the `projectileSystem`) plus this payload — so per-tick cost scales with the count of ACTIVE
+ * projectiles, not with entities² (golden rule 7), and a spent projectile is destroyed the moment it
+ * hits/expires (the cleanupSystem-style prompt collection).
+ *
+ * The payload is everything the on-contact hit needs, resolved once at launch so the flight itself is a
+ * pure advance (no content lookup mid-air):
+ *  - `source` — the shooter, for the fight-XP grant + the provoked-anger side effect on impact (a
+ *    `tryGet` no-ops if it died mid-flight, so a dead archer's arrow still lands);
+ *  - `target` — the entity the projectile homes on; it re-aims at the target's CURRENT position each
+ *    tick (homing, approximated — the original's ballistic-vs-homing choice is unreadable, docs/FIDELITY.md).
+ *    A target that dies / vanishes mid-flight ⇒ the projectile **expires** (no re-target);
+ *  - `damage` — the **pre-resolved** material-column damage (`weapon.damagevalue[targetMaterial]`, step
+ *    1's model) the blow lands. Resolved at launch, not on contact — equivalent here because armor is
+ *    immutable in flight, and it keeps the payload a plain value like the melee `attack` effect's `damage`;
+ *  - `weaponMainType` — the weapon's coarse class keying the fight-XP bucket the landing swing accrues
+ *    into (`null` for a weapon with no `mainType` → no fight XP), the twin of the `attack` effect's field;
+ *  - `munitionType` — the ammunition class (1 arrow / 2 rock) for render/audio (the `projectileLaunched`/
+ *    `projectileHit` events carry it); the data-pinned marker the render slice draws the right sprite off;
+ *  - `speed` — the weapon's extracted `WeaponType.speed` (a **faithful** param); the `projectileSystem`
+ *    maps this onto a per-tick tile step via a named calibration constant (the unit is unreadable —
+ *    docs/FIDELITY.md "Projectile travel"). Stored raw (the extracted value) so the component stays the
+ *    faithful data and the approximated mapping lives in one place (the system).
+ *
+ * A **separate optional component** on a **bare** entity (only a Position beside it) — no existing system
+ * scans it (combat/AI/movement all key on `Settler`/`Health`/`PathFollow`, which a projectile lacks), so
+ * it is inert on the goldens (they launch no ranged shot) and adds no per-tick cost when none are in
+ * flight. Every field is a whole integer / entity id (no fixed-point), so it hashes deterministically like
+ * every other component. Determinism: created + advanced from pure integer/fixed-point math, no RNG/wall-clock.
+ */
+export const Projectile = defineComponent<{
+  source: Entity;
+  target: Entity;
+  damage: number;
+  weaponMainType: number | null;
+  munitionType: number;
+  speed: number;
+}>('Projectile');
