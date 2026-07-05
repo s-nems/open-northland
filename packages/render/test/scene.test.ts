@@ -83,6 +83,36 @@ describe('buildScene', () => {
     expect(sprites.map((s) => s.ref)).toEqual([1, 2]); // back (id 1) first, front (id 2) last
   });
 
+  it('paints a settler IN FRONT of the resource node it stands on (same cell), overriding id order', () => {
+    // Settler id 1 shares the node's cell (a harvester stands ON the deposit/tree). The settler has the
+    // LOWER id, so the plain id tiebreak would draw it FIRST (behind) — the "worker vanishes into the
+    // node" bug. The per-kind paint bias must reorder it AFTER the node (in front).
+    const scene = buildScene(
+      snapshotOf([
+        entity(1, 1, 1, { Settler: { tribe: 0 } }),
+        entity(2, 1, 1, { Resource: { goodType: 1 } }),
+      ]),
+      FLAT_3x2,
+    );
+    const order = scene.filter((d) => d.kind === 'settler' || d.kind === 'resource').map((d) => d.kind);
+    expect(order).toEqual(['resource', 'settler']); // node behind, settler in front
+  });
+
+  it('paints a delivery flag IN FRONT of the ground drops on its cell, overriding id order', () => {
+    // The flag (bare Stockpile, id 3) sits on the same cell as a loose ore/log drop (Stockpile+GroundDrop,
+    // id 4). The flag has the LOWER id, so id order would draw it behind the drop; the paint bias lifts the
+    // flag in front (a stockpile outranks a grounddrop).
+    const scene = buildScene(
+      snapshotOf([
+        entity(3, 1, 1, { Stockpile: { amounts: [[1, 2]] } }),
+        entity(4, 1, 1, { Stockpile: { amounts: [[1, 1]] }, GroundDrop: {} }),
+      ]),
+      FLAT_3x2,
+    );
+    const order = scene.filter((d) => d.kind === 'grounddrop' || d.kind === 'stockpile').map((d) => d.kind);
+    expect(order).toEqual(['grounddrop', 'stockpile']); // drop behind, flag in front
+  });
+
   it('breaks an equal-feet tie by x then by entity id (a total, stable order)', () => {
     // Two on the same row (y=1): the one further right (greater x) draws in front.
     // Two on the exact same tile: lower entity id draws first.

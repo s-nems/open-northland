@@ -1,7 +1,13 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { Container, Graphics, Sprite, type TextureSource } from 'pixi.js';
 import { type Camera, depthKey } from '../data/iso.js';
-import { type DrawItem, type DrawKind, buildSpriteScene, drawableEntityRefs } from '../data/scene.js';
+import {
+  type DrawItem,
+  type DrawKind,
+  SPRITE_PAINT_ORDER,
+  buildSpriteScene,
+  drawableEntityRefs,
+} from '../data/scene.js';
 import {
   type AtlasFrame,
   type BuildingDraw,
@@ -39,6 +45,13 @@ const KIND_COLOURS: Record<Exclude<DrawKind, 'tile'>, number> = {
   stump: 0x6b4a2a, // a brown stump/debris marker (the felled-tree remnant), distinct from both
   grounddrop: 0x8a5a2a, // a log-brown marker for a freshly-felled trunk lying on the ground
 };
+
+/**
+ * Screen-px depth added per {@link SPRITE_PAINT_ORDER} step in the live painter key. Comfortably above the
+ * `depthKey` x-tiebreak's max contribution (so the kind order wins at a shared feet anchor) yet far below
+ * one iso row's screen-y gap (so it never lifts a sprite past one a genuine row behind/ahead of it).
+ */
+const SCREEN_PAINT_EPS = 0.25;
 
 /** One resolved atlas layer to draw for an entity: which source page, which frame rect, at what scale.
  *  `atlasW`/`atlasH` (the source sheet's pixel size) ride along ONLY for the paletted settler path — the
@@ -166,7 +179,10 @@ export class SpritePool {
       // NOTE this deliberately diverges from the headless `buildScene` oracle's row-major
       // (tileY, tileX) list order: the feet-anchor screen y (∝ row under the staggered raster) is
       // the iso-correct occlusion key once static objects interleave with entities.
-      pe.container.zIndex = depthKey(item.x, item.y);
+      // The per-kind bias (a settler in front of the node it stands on, a flag in front of its ground
+      // drops) is a sub-pixel epsilon — far below one row's screen-y gap — so it only breaks ties at a
+      // shared feet anchor, never reordering sprites a real row apart. See SPRITE_PAINT_ORDER.
+      pe.container.zIndex = depthKey(item.x, item.y) + SPRITE_PAINT_ORDER[item.kind] * SCREEN_PAINT_EPS;
       if (!pe.attached) {
         this.spriteLayer.addChild(pe.container);
         pe.attached = true;

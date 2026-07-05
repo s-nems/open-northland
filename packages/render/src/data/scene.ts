@@ -27,6 +27,29 @@ const ROW_STRIDE = 4096;
 const TILE_DEPTH_BASE = -1_000_000;
 
 /**
+ * Same-feet-anchor paint priority per drawable kind — a higher value draws LATER (in front) when two
+ * sprites resolve to (nearly) the same depth. A worker STANDS ON the resource cell it harvests and a
+ * delivery flag SITS ON the ground drops piling up around it, so without a tiebreak the taller node/drop
+ * paints over the unit/flag by mere attach order. The rule the eye expects: the **settler** is the focus
+ * and sits in front of the terrain node/stump it works, and the **flag/pile** (`stockpile`) sits in front
+ * of the loose `grounddrop` ore/logs. Applied as a sub-cell epsilon ({@link PAINT_ORDER_EPS}) — orders of
+ * magnitude below one row's depth separation — so it ONLY breaks ties at a shared anchor and never
+ * reorders sprites that are a genuine row apart. `tile` is 0 (tiles carry their own sub-zero depth band).
+ */
+export const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
+  tile: 0,
+  resource: 0,
+  stump: 0,
+  building: 1,
+  grounddrop: 1,
+  stockpile: 2,
+  settler: 3,
+};
+/** Depth added per {@link SPRITE_PAINT_ORDER} step in the oracle sort key. `< 1 / maxOrder` so the whole
+ *  bias stays under one tile-column (base depths differ by ≥ 1 across cells) and can't cross a cell. */
+const PAINT_ORDER_EPS = 1 / 16;
+
+/**
  * The atomic id of the woodcut swing (the demo slice's `harvest`, the `tribetypes` `setatomic` join key;
  * the same id `real-sprites.ts` binds the chop animation to). A settler harvesting a tree stands ON the
  * resource cell (the planner positions it there, `ai.ts`), so at the cell centre its sprite overlaps the
@@ -641,9 +664,10 @@ function collectSprites(snapshot: WorldSnapshot, viewport?: Viewport): DrawItem[
       ref: entity.id,
       x: drawX,
       y: screen.y,
-      // Feet-anchor depth: lower (greater y), then further-right (greater x), then id. A total order,
-      // so the sort is deterministic regardless of snapshot iteration nuances.
-      depth: tileY * ROW_STRIDE + tileX,
+      // Feet-anchor depth: lower (greater y), then further-right (greater x), then a per-kind sub-cell
+      // bias (a settler in front of the node it stands on, a flag in front of its ground drops), then id.
+      // A total order, so the sort is deterministic regardless of snapshot iteration nuances.
+      depth: tileY * ROW_STRIDE + tileX + SPRITE_PAINT_ORDER[kind] * PAINT_ORDER_EPS,
       state,
       ...(actingAtomic !== null ? { atomicId: actingAtomic } : {}),
       ...(elapsed !== null ? { elapsed } : {}),
