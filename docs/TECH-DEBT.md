@@ -118,3 +118,13 @@ For small, hard-won *gotchas* (not reworks) see [LESSONS.md](LESSONS.md); the li
   net-neutral vs the old "leave the depleted node in place" behaviour and the planner never scans stumps
   (they carry no Resource/Stockpile/Building marker), but eventually wants a decay/pool or a static
   terrain-decor layer (sequenced with the `ScreenMap` sprite index — same O(entities)-cull family).
+- **2026-07-05** (gathering-mining worktree; carried-good colour fix) — The player-colour LUT no longer remaps
+  **patch 15** (idx 240–255) so a hauled good keeps its natural colour (the "blue wood" bug: carried goods
+  live on patch 14 + 15, and the shared LUT was overwriting patch 15 with the team ramp). **Deferred —
+  WOMEN's team colour:** the original binds patch 15 to women's dress (`woman_NN`) but patch 10 to men
+  (`player_NN`), and a single `256×N` LUT can't remap a DIFFERENT band per body-class from one row (patch 15
+  is women's-dress AND every body's carried-good band, so it's one-or-the-other). Reproducing women's dress
+  colour needs a **per-body-class ramp**: build the LUT with man rows (patch 10 + 5) and woman rows (patch 15
+  + 5), and have `SpritePool` pick the row block by the settler's body sex (the roster already knows it). Low
+  urgency (no women in the current scenes; men are the haulers the fix targets). See docs/FIDELITY.md "Player
+  (team) colours" divergence (b).
