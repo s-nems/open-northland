@@ -41,21 +41,33 @@ export interface CellTexture {
  */
 export const DIAMOND_INDICES: readonly number[] = [0, 1, 2, 0, 2, 3];
 
+/** No terrain lift — the shared default so the elevation-free path builds byte-identical vertices. */
+const NO_CORNER_LIFTS: readonly number[] = [0, 0, 0, 0];
+
 /**
  * The 4 diamond-corner positions (in projected world space, before the camera transform) for a cell
  * centred at `(sx, sy)`, in `[top, right, bottom, left]` order — the same diamond the flat-tint
  * `tileGraphic` traces (`center ± TILE_HALF`), returned as a flat `[x0,y0, x1,y1, …]` vertex buffer.
+ *
+ * `lifts` (world px, `[top, right, bottom, left]`, from `elevation.ts` `diamondCornerLifts`) is
+ * SUBTRACTED from each corner's `y` to lift the terrain by height — baked ONCE at mesh build. Shared
+ * corners get identical lifts (the sampler's watertight canonical coordinate), so the mesh stays
+ * crack-free. Absent → flat (default), so a synthetic/elevation-free grid is unchanged.
  */
-export function diamondCorners(sx: number, sy: number): readonly number[] {
+export function diamondCorners(
+  sx: number,
+  sy: number,
+  lifts: readonly number[] = NO_CORNER_LIFTS,
+): readonly number[] {
   return [
     sx,
-    sy - TILE_HALF_H, // top
+    sy - TILE_HALF_H - (lifts[0] ?? 0), // top
     sx + TILE_HALF_W,
-    sy, // right
+    sy - (lifts[1] ?? 0), // right
     sx,
-    sy + TILE_HALF_H, // bottom
+    sy + TILE_HALF_H - (lifts[2] ?? 0), // bottom
     sx - TILE_HALF_W,
-    sy, // left
+    sy - (lifts[3] ?? 0), // left
   ];
 }
 
@@ -112,10 +124,17 @@ export const TRIANGLE_B_CORNERS: readonly number[] = [0, 1, 2];
 /**
  * One triangle's 3 vertex positions for a cell centred at `(sx, sy)`: the diamond corners named by
  * `cornerIndices` (one of {@link TRIANGLE_A_CORNERS} / {@link TRIANGLE_B_CORNERS}), as a flat
- * `[x0,y0, x1,y1, x2,y2]` buffer in UV-point order.
+ * `[x0,y0, x1,y1, x2,y2]` buffer in UV-point order. `lifts` (see {@link diamondCorners}) lifts the
+ * shared diamond by terrain height before the triangle's corners are picked, so the two triangles of a
+ * cell — and the cells around it — join at identical lifted vertices.
  */
-export function triangleCorners(sx: number, sy: number, cornerIndices: readonly number[]): number[] {
-  const diamond = diamondCorners(sx, sy);
+export function triangleCorners(
+  sx: number,
+  sy: number,
+  cornerIndices: readonly number[],
+  lifts: readonly number[] = NO_CORNER_LIFTS,
+): number[] {
+  const diamond = diamondCorners(sx, sy, lifts);
   const out: number[] = [];
   for (const c of cornerIndices) {
     out.push(diamond[c * 2] as number, diamond[c * 2 + 1] as number);

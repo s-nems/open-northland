@@ -1,4 +1,4 @@
-import type { Camera, HudPlacement } from '@vinland/render';
+import type { Camera, ElevationField, HudPlacement } from '@vinland/render';
 import type { Command } from '@vinland/sim';
 import type { Application } from 'pixi.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
@@ -34,6 +34,9 @@ export interface GameToolPanelDeps {
   readonly enqueue: (command: Command) => void;
   /** The map bounds — a placement click outside them is rejected (no clamp-to-border). */
   readonly mapSize: { readonly width: number; readonly height: number };
+  /** The map's terrain-height field, so a placement click on a lifted hill resolves to the tile drawn
+   *  there (elevation-aware inverse). Optional: absent / flat → the plain unlifted inverse. */
+  readonly elevation?: ElevationField;
   /** The buildings the menu lists (typeId + label + kind). */
   readonly buildings: readonly MenuBuildingEntry[];
   /** The tribe whose stats the statistics window shows. */
@@ -96,7 +99,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
   const clientToTile = (clientX: number, clientY: number): { col: number; row: number } | null => {
     const { sx, sy, rect } = backingScale(deps.canvas);
     const w = screenToWorld(deps.camera(), (clientX - rect.left) * sx, (clientY - rect.top) * sy);
-    const t = worldToTile(w.x, w.y);
+    const t = worldToTile(w.x, w.y, deps.elevation);
     if (t.col < 0 || t.col >= deps.mapSize.width || t.row < 0 || t.row >= deps.mapSize.height) return null;
     return { col: t.col, row: t.row };
   };

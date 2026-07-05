@@ -72,10 +72,12 @@ and the renderer. → [archive](ROADMAP-ARCHIVE.md).
       it; the second pass re-derived the metric from a uniform 7-shot top-strip corpus (capture scale
       1.25× pinned by 5 building templates; 19-building lattice fit with free stagger + elevation
       terms, x-rms 0.31 px, y-rms 1.21 px; template-free panorama arithmetic agrees). Render-only.
-      **Still open — `lmhe` elevation lift:** the pipeline now EMITS the per-cell height layer
-      (`maps/<id>.json` `elevation`, `stages/maps.ts` `elevationFromMapDat`, length = width·height,
-      0..250 observed); still to do is lifting `y` by the fitted ≈1.24 native px/unit in the projection
-      consumers, then re-verifying shore/hill silhouettes against the screenshots.
+      **`lmhe` elevation lift DONE** (2026-07-05): the projection lifts `y` by `LIFT·elev`
+      (`LIFT = 1.2376` native px/unit, `render/data/elevation.ts` `ELEVATION_LIFT`) through ONE
+      bilinear sampler seam — ground mesh (baked, watertight corners), map objects, entity sprites,
+      the cull pad (`maxLift`) and picking (`worldToTile` iterated inverse); depth stays pre-lift so
+      occlusion sorts by map row. Verified vs mosty-5 (hill buildings sit at the original's heights,
+      the rock hill rises). Slope-shading + the map-edge fade (`embr`) are the next step.
 - [x] **Per-object growth/damage state from the `lmlv` lane** (2026-07-03, docs/FIDELITY.md
       "Landscape-object layer"): the byte lane is the 1-based per-placement LEVEL counting up from
       the LOWEST state; the record's `GfxFrames` lists are authored highest-first, so the binding

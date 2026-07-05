@@ -1,4 +1,5 @@
 import type { WorldSnapshot } from '@vinland/sim';
+import type { ElevationField } from './elevation.js';
 import { ONE, tileToScreen } from './iso.js';
 import { type Viewport, isVisible } from './viewport.js';
 
@@ -189,6 +190,14 @@ export interface DrawItem {
    * and for non-building kinds.
    */
   readonly builtPct?: number;
+  /**
+   * The terrain-elevation lift (world px, ≥ 0) at this item's feet — subtracted from the DRAWN `y` so
+   * the sprite sits on the lifted ground (a settler on a hill rides up with it). ORTHOGONAL to {@link
+   * x}/{@link y}: the anchor and its {@link depth} stay PRE-LIFT (the painter key must remain the feet
+   * row, so a lifted-up sprite on a nearer row still occludes one behind it — the renderer draws at
+   * `y − lift` but sorts by `y`). Omitted (treated as 0) on a flat map / synthetic content.
+   */
+  readonly lift?: number;
 }
 
 /**
@@ -212,6 +221,12 @@ export interface SceneTerrain {
   readonly typeIds: readonly number[];
   /** The 1:1 per-triangle ground patterns, when the map carries them (a decoded original map). */
   readonly ground?: SceneGround;
+  /**
+   * The decoded map's per-cell `lmhe` terrain height (row-major, length `width*height`, 0..~234), when
+   * present. The renderer builds an {@link import('./elevation.js').ElevationField} from it to lift the
+   * ground mesh + every projected item; absent → flat (no lift). Render-only data — the sim never reads it.
+   */
+  readonly elevation?: readonly number[];
 }
 
 /**
@@ -231,12 +246,14 @@ export function terrainMapToScene(map: {
   readonly height: number;
   readonly typeIds: readonly number[];
   readonly ground?: SceneGround;
+  readonly elevation?: readonly number[];
 }): SceneTerrain {
   return {
     width: map.width,
     height: map.height,
     typeIds: map.typeIds,
     ...(map.ground !== undefined ? { ground: map.ground } : {}),
+    ...(map.elevation !== undefined ? { elevation: map.elevation } : {}),
   };
 }
 
@@ -546,7 +563,11 @@ function readOwnerPlayer(components: Readonly<Record<string, unknown>>): number 
  * terrain-projection duplication between here and `WorldRenderer.buildFlatTerrain`/`buildTexturedTerrain`
  * is logged in `docs/TECH-DEBT.md` — they share the `terrain.ts` helpers, so they can't silently diverge.
  */
-export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): DrawItem[] {
+export function buildScene(
+  snapshot: WorldSnapshot,
+  terrain: SceneTerrain,
+  elevation?: ElevationField,
+): DrawItem[] {
   const tiles: DrawItem[] = [];
   // Terrain: one tile per cell, row-major (y outer, x inner) = back-to-front in iso space. Its depth
   // is forced below any sprite (negative world-space band) so ground never paints over a sprite.
@@ -570,7 +591,7 @@ export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): Draw
   }
 
   // Stable, total order: tiles (all negative depth) ahead of sprites, sprites by (y, x, id).
-  return [...tiles, ...collectSprites(snapshot)];
+  return [...tiles, ...collectSprites(snapshot, undefined, elevation)];
 }
 
 /**
@@ -582,8 +603,12 @@ export function buildScene(snapshot: WorldSnapshot, terrain: SceneTerrain): Draw
  * emitted, never their relative order, so the retained pool + depth-sort stay correct. Absent a
  * viewport, every sprite is emitted (the whole-map / fully-zoomed-out case). Pure.
  */
-export function buildSpriteScene(snapshot: WorldSnapshot, viewport?: Viewport): DrawItem[] {
-  return collectSprites(snapshot, viewport);
+export function buildSpriteScene(
+  snapshot: WorldSnapshot,
+  viewport?: Viewport,
+  elevation?: ElevationField,
+): DrawItem[] {
+  return collectSprites(snapshot, viewport, elevation);
 }
 
 /**
@@ -609,7 +634,11 @@ export function drawableEntityRefs(snapshot: WorldSnapshot): Set<number> {
  * Sorted by feet anchor `(y, x)` then entity id — a total, stable order (the same property the
  * pre-split list had), so culling only removes items without reshuffling the survivors. Pure.
  */
-function collectSprites(snapshot: WorldSnapshot, viewport?: Viewport): DrawItem[] {
+function collectSprites(
+  snapshot: WorldSnapshot,
+  viewport?: Viewport,
+  elevation?: ElevationField,
+): DrawItem[] {
   const sprites: DrawItem[] = [];
   for (const entity of snapshot.entities) {
     const kind = classify(entity.components);
@@ -620,6 +649,9 @@ function collectSprites(snapshot: WorldSnapshot, viewport?: Viewport): DrawItem[
     const tileX = pos.x / ONE;
     const tileY = pos.y / ONE;
     const screen = tileToScreen(tileX, tileY);
+    // Terrain lift at the feet (bilinear over the elevation lane) — the DRAW offset, NOT the depth key.
+    // The anchor/`depth` below stay PRE-LIFT so occlusion sorts by map row, not by lifted screen y.
+    const lift = elevation?.liftAt(tileX, tileY) ?? 0;
     // Only settlers animate per-state in this slice; a building/resource is always idle. When acting,
     // carry the atomic id so a per-state binding can pick the specific action's frame (the `setatomic`
     // join key); otherwise it's omitted under exactOptionalPropertyTypes.
@@ -682,6 +714,7 @@ function collectSprites(snapshot: WorldSnapshot, viewport?: Viewport): DrawItem[
       ...(goodType !== undefined ? { goodType } : {}),
       ...(stockpile?.fill !== undefined ? { fill: stockpile.fill } : {}),
       ...(resourceLevel !== undefined ? { level: resourceLevel } : {}),
+      ...(lift !== 0 ? { lift } : {}),
     });
   }
   // Stable, total order: sprites by (y, x, id). The entity-id tie-break makes two sprites on the exact

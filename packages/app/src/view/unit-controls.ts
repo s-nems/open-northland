@@ -1,4 +1,4 @@
-import { type Camera, type EntityBounds, buildSpriteScene } from '@vinland/render';
+import { type Camera, type ElevationField, type EntityBounds, buildSpriteScene } from '@vinland/render';
 import { type Command, type Entity, ONE, type WorldSnapshot } from '@vinland/sim';
 import type { Application } from 'pixi.js';
 import { backingScale } from './camera.js';
@@ -54,6 +54,9 @@ export interface UnitControlsOptions {
   readonly snapshot: () => WorldSnapshot;
   /** Map dimensions, to clamp a move target to a legal cell. */
   readonly mapSize: { readonly width: number; readonly height: number };
+  /** The map's terrain-height field, so a right-click on a lifted hill resolves to the tile drawn there
+   *  (elevation-aware inverse). Optional: absent / flat → the plain unlifted inverse. */
+  readonly elevation?: ElevationField;
   /** The human player whose units are selectable/orderable. */
   readonly humanPlayer: number;
   /** Professions the panel offers as one-click job changes. */
@@ -267,7 +270,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     if (movers.length === 0) return;
     const { width, height } = opts.mapSize;
     const w = toWorld(e.clientX, e.clientY);
-    const target = clampTile(worldToTile(w.x, w.y), width, height);
+    const target = clampTile(worldToTile(w.x, w.y, opts.elevation), width, height);
     // A group fans out over tiles AROUND the click (a formation cluster); a single unit goes exactly
     // there. Slots avoid tiles already held by OTHER units so the group seats onto free ground; the sim's
     // idle de-stack is the final safety net if two still coincide.

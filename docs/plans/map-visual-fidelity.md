@@ -23,7 +23,7 @@ Three conventions that keep the relay honest across fresh instances:
   reference corpus is the actual exit. Delete this file when all steps land.
 
 - [ ] 1. Pipeline: emit the `lmhe` elevation lane
-- [ ] 2. Render: elevation lift across every projection consumer
+- [x] 2. Render: elevation lift across every projection consumer
 - [ ] 3. Pipeline+render: the `embr` brightness lane (slope shading + likely the map-edge fade)
 - [ ] 4. App: authored buildings draw their authored `EditName` variant (the HQ bob-44 fix)
 - [ ] 5. App: palisades/walls join into continuous runs
@@ -468,6 +468,17 @@ closing. Stop before merge.
 
 Format: `N. <date> — <what landed>; <key numbers/findings>; <deviations from the prompt, if any>.`
 
+- 2. 2026-07-05 — elevation lift landed render-side: `screen_y = projected_y − LIFT·elev`,
+  `LIFT = 1.547/1.25 = 1.2376` native px/unit (`render/data/elevation.ts` `ELEVATION_LIFT`). ONE
+  bilinear sampler seam (`makeElevationField().liftAt`, edge-clamped) feeds every consumer: the ground
+  mesh (per-corner lift at a watertight canonical cell coordinate, `diamondCornerLifts`, baked once),
+  map objects (at the half-cell), entity sprites (at the projection call sites), the cull pad
+  (`maxLift = max(elev)·LIFT` on chunk AABBs + the viewport), and picking (`worldToTile` iterated
+  inverse, round-trips steep cells). DEPTH stays PRE-LIFT (painter key = un-lifted feet row → a lifted
+  sprite on a nearer row still occludes correctly; pinned by a test). Hands-on vs mosty-5: north-base
+  buildings sit at the original's heights, the right-side rock hill visibly rises. Known-and-deferred
+  to step 3: the un-faded map-edge sawtooth + un-shaded slopes (the `embr` lane). No deviation from the
+  prompt. maxLift on this map ≈ 234·1.2376 ≈ 290 px.
 - 0. 2026-07-05 — baseline for this plan: pitch 68×38 + staggered raster merged (main `4acd7eb`);
   `lmlv` level counts up from the lowest state (`index = N − level`); elevation lift measured
   ≈1.24 native px/unit (unrendered); reference corpus + mosty-5 viewport fit pinned (see the
