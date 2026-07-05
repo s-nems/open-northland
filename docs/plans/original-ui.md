@@ -15,7 +15,7 @@ truth). Check a box when the step is merged; delete this file when all steps lan
 - [ ] 2. Pipeline: `.fnt` bitmap-font decoder
 - [ ] 3. GUI sprite map (interactive — user is the oracle)
 - [ ] 4. App: left tool panel with original art
-- [ ] 5. App: settler order UI with original art
+- [x] 5. App: settler order UI with original art — landed: `hud/action-ring-layout.ts` (radial geometry transcribed from OpenVikings `BuildHumanActionButtons`) + `view/settler-actions.ts` (Pixi ring of `order_*` buttons, `context` palette) replacing the DOM actions card; buttons issue `setJob`/`setStance`. See FIDELITY.md "Settler action ring".
 - [ ] 6. App: bottom-right details panel with original art
 
 Out of scope for this plan: the minimap (separate task) and the main menu. The frame-id map and
@@ -212,7 +212,7 @@ Verification (player-visible mechanic -> acceptance scene, per CLAUDE.md):
   correct palette colors, hover states, Polish strings render) and ask for human sign-off.
   Record in docs/FIDELITY.md what is pinned (rects, sprite ids) vs approximated.
 ```
-[IN PROGRESS]
+[DONE]
 ### Prompt 5: settler order UI
 
 ```text

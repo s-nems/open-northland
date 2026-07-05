@@ -2,9 +2,8 @@ import type { ContentSet } from '@vinland/data';
 import { ONE, TICKS_PER_SECOND, type WorldSnapshot, systems } from '@vinland/sim';
 import { BUTTON_STYLE, el } from './overlay.js';
 
-/** The four player-selectable military stances (`MILITARY_MODE`) the actions panel offers, with Polish
- *  labels — the buttons issue a `setStance` command through the command seam. NONE is not offered (it is
- *  the passive fallback the defaults never set). */
+/** The four military stances (`MILITARY_MODE`), with Polish labels — used to name the live "Postawa" line
+ *  (the stance BUTTONS live in the action ring; see `view/settler-actions.ts`). */
 const STANCES: ReadonlyArray<{ mode: number; label: string }> = [
   { mode: systems.MILITARY_MODE.ATTACK, label: 'Atak' },
   { mode: systems.MILITARY_MODE.DEFEND, label: 'Obrona' },
@@ -12,65 +11,56 @@ const STANCES: ReadonlyArray<{ mode: number; label: string }> = [
   { mode: systems.MILITARY_MODE.FLEE, label: 'Ucieczka' },
 ];
 
-/** A stance mode id → its Polish label (for the always-on info card's live "Postawa" line). */
+/** A stance mode id → its Polish label (for the info card's live "Postawa" line). */
 function stanceLabel(mode: number | undefined): string {
   return STANCES.find((s) => s.mode === mode)?.label ?? '—';
 }
 
 /**
- * The SELECTED-UNIT panels — the settler/building info card the human reads (the original's settler UI,
- * roughly). It reads the frozen snapshot (never live sim state) and issues its profession-change /
- * demolish actions back through the command seam (`onSetJob`/`onDemolish`), so it stays on the app's
- * one-way flow. Pure DOM + floats (app-layer only).
+ * The always-on SELECTED-UNIT **info** card — the settler/building state the human reads (the original's
+ * bottom-right details window, roughly). It reads the frozen snapshot (never live sim state) and issues its
+ * one action (a building `demolish`) back through the command seam, so it stays on the app's one-way flow.
+ * Pure DOM + floats (app-layer only).
  *
- * TWO panels, split by how the human wants them (per the RTS feel request):
- *  - the **INFO** card (needs/hunger, player, tribe, carry, status; or a building's data + demolish) is
- *    ALWAYS shown, pinned bottom-RIGHT, the moment anything is selected — no keypress to see a unit's state;
- *  - the **ACTIONS** card (the profession-change buttons) is toggled with **Space**, pinned bottom-centre,
- *    so the extra controls only appear when the human asks for them.
+ * It is pinned bottom-RIGHT and shown the moment anything is selected — no keypress to see a unit's state.
+ * The contextual ACTION buttons (change profession, set stance) are a separate, Space-toggled, original-art
+ * radial ring anchored on the unit itself ({@link import('./settler-actions.js')}); this card is data only.
  *
- * Update discipline: the STRUCTURE (labels, buttons) is rebuilt only when the selection changes
+ * Update discipline: the STRUCTURE (labels, the demolish button) is rebuilt only when the selection changes
  * ({@link render}), and the live VALUES (need bars, carry, order status) are mutated in place each frame
- * ({@link tick}). Rebuilding every frame would drop a half-finished click on a profession button — the
- * scene-overlay's build-once-update-text pattern avoids exactly that.
+ * ({@link tick}) — the scene-overlay's build-once-update-text pattern.
  */
 
-/** A selectable profession offered by the actions panel's buttons — the job's typeId + a human label. */
+/** A selectable profession the action ring offers — the job's typeId + a human label. Shared with the ring. */
 export interface Profession {
   readonly jobType: number;
   readonly label: string;
 }
 
 /**
- * The professions the panel offers as one-click job changes, derived from a content set's jobs — every
- * job except idle (typeId 0), labelled by its content id. The single source both the live entry and the
- * scene entry build their profession list from, so the "which jobs are offered" rule lives in one place.
+ * The professions offered as one-click job changes, derived from a content set's jobs — every job except
+ * idle (typeId 0), labelled by its content id. The single source both the live/scene entries and the action
+ * ring build their profession list from, so the "which jobs are offered" rule lives in one place.
  */
 export function professionsFromContent(content: ContentSet): Profession[] {
   return content.jobs.filter((j) => j.typeId !== 0).map((j) => ({ jobType: j.typeId, label: j.id }));
 }
 
 export interface UnitPanelOptions {
+  /** The professions offered — used here only to LABEL a settler's current job (the buttons are the ring's). */
   readonly professions: readonly Profession[];
-  /** Human player id — the panel only ever shows/acts on this player's units (the controller pre-filters). */
-  readonly onSetJob: (entityIds: readonly number[], jobType: number) => void;
-  /** Set the selected units' military stance (`setStance` per unit — the `MILITARY_MODE` buttons). */
-  readonly onSetStance: (entityIds: readonly number[], mode: number) => void;
   readonly onDemolish: (entityId: number) => void;
 }
 
 export interface UnitPanel {
-  /** Rebuild both panels' bodies for a new selection (called on every selection change). */
+  /** Rebuild the info card for a new selection (called on every selection change). */
   render(snapshot: WorldSnapshot, selected: ReadonlySet<number>): void;
-  /** Refresh the info panel's live values in place for the current selection (called each frame). */
+  /** Refresh the info card's live values in place for the current selection (called each frame). */
   tick(snapshot: WorldSnapshot): void;
-  /** Toggle the Space-driven ACTIONS (profession) panel; the info panel is unaffected (always-on). */
-  toggleActions(): void;
-  isActionsOpen(): boolean;
   dispose(): void;
 }
 
-/** Shared chrome for both cards; each adds its own corner anchor. */
+/** Panel chrome. */
 const PANEL_BASE = [
   'position:fixed',
   'box-sizing:border-box',
@@ -87,15 +77,6 @@ const PANEL_BASE = [
 const INFO_STYLE = [...PANEL_BASE, 'right:12px', 'bottom:12px', 'min-width:230px', 'max-width:320px'].join(
   ';',
 );
-/** The Space-toggled ACTIONS card: bottom-CENTRE. */
-const ACTIONS_STYLE = [
-  ...PANEL_BASE,
-  'left:50%',
-  'bottom:12px',
-  'transform:translateX(-50%)',
-  'min-width:280px',
-  'max-width:440px',
-].join(';');
 
 const NEEDS: ReadonlyArray<{ key: string; label: string }> = [
   { key: 'hunger', label: 'Głód' },
@@ -117,42 +98,15 @@ function pct(fixed: number | undefined): number {
   return fixed === undefined ? 0 : Math.max(0, Math.min(100, Math.round((fixed / ONE) * 100)));
 }
 
-/** Mount both panels (hidden until something is selected / Space is pressed). */
+/** Mount the info card (hidden until something is selected). */
 export function mountUnitPanel(opts: UnitPanelOptions): UnitPanel {
   const info = el('div', INFO_STYLE);
-  const actions = el('div', ACTIONS_STYLE);
   info.style.display = 'none';
-  actions.style.display = 'none';
-  document.body.append(info, actions);
+  document.body.append(info);
 
-  let actionsOpen = false;
   // Value nodes refreshed by tick(), keyed by a stable name; rebuilt by render() each selection change.
   let dynamic: Map<string, HTMLElement> = new Map();
   let liveSettlerId: number | null = null; // the single settler whose live bars tick() refreshes
-
-  const professionRow = (ids: readonly number[]): HTMLElement => {
-    const row = el('div', 'display:flex;flex-wrap:wrap;gap:4px');
-    row.append(el('div', 'width:100%;opacity:0.7;font-size:12px', 'Zmień zawód:'));
-    for (const p of opts.professions) {
-      const b = el('button', BUTTON_STYLE, p.label);
-      b.addEventListener('click', () => opts.onSetJob(ids, p.jobType));
-      row.append(b);
-    }
-    return row;
-  };
-
-  /** The military-stance buttons (Atak / Obrona / Ignoruj / Ucieczka) — each issues a `setStance` on every
-   *  selected settler. The always-on info card's "Postawa" line shows the current mode (live). */
-  const stanceRow = (ids: readonly number[]): HTMLElement => {
-    const row = el('div', 'display:flex;flex-wrap:wrap;gap:4px;margin-top:6px');
-    row.append(el('div', 'width:100%;opacity:0.7;font-size:12px', 'Postawa (tryb wojskowy):'));
-    for (const s of STANCES) {
-      const b = el('button', BUTTON_STYLE, s.label);
-      b.addEventListener('click', () => opts.onSetStance(ids, s.mode));
-      row.append(b);
-    }
-    return row;
-  };
 
   const needBar = (label: string, key: string): HTMLElement => {
     const wrap = el('div', 'display:flex;align-items:center;gap:6px;margin-top:2px');
@@ -190,6 +144,7 @@ export function mountUnitPanel(opts: UnitPanelOptions): UnitPanel {
     info.append(infoRow('Niesie', '—', 'carry'));
     info.append(infoRow('Postawa', '—', 'stance'));
     info.append(infoRow('Status', '—', 'status'));
+    info.append(el('div', 'opacity:0.6;font-size:11px;margin-top:6px', 'Spacja — akcje jednostki'));
   }
 
   function renderBuilding(snapshot: WorldSnapshot, id: number): void {
@@ -222,10 +177,9 @@ export function mountUnitPanel(opts: UnitPanelOptions): UnitPanel {
     return amounts.map((pair) => (Array.isArray(pair) ? `${pair[0]}:${pair[1]}` : '')).join('  ');
   }
 
-  /** Rebuild both cards for a new selection; show/hide the info card by whether anything is selected. */
+  /** Rebuild the info card for a new selection; show/hide it by whether anything is selected. */
   function render(snapshot: WorldSnapshot, selected: ReadonlySet<number>): void {
     info.replaceChildren();
-    actions.replaceChildren();
     dynamic = new Map();
     liveSettlerId = null;
 
@@ -233,37 +187,27 @@ export function mountUnitPanel(opts: UnitPanelOptions): UnitPanel {
     const settlerIds = ids.filter((id) => entity(snapshot, id)?.components.Settler !== undefined);
     const buildingIds = ids.filter((id) => entity(snapshot, id)?.components.Building !== undefined);
 
-    // INFO card (always-on): unit/building state.
     if (ids.length === 0) {
       info.style.display = 'none';
-    } else {
-      info.style.display = 'block';
-      if (settlerIds.length === 0 && buildingIds.length === 1) {
-        renderBuilding(snapshot, buildingIds[0] as number);
-      } else if (settlerIds.length === 1) {
-        renderSettler(snapshot, settlerIds[0] as number);
-      } else if (settlerIds.length > 1) {
-        info.append(
-          el(
-            'div',
-            'font-weight:700;font-size:14px;margin-bottom:6px',
-            `${settlerIds.length} zaznaczonych wikingów`,
-          ),
-        );
-        info.append(el('div', 'opacity:0.75', 'Kliknij prawym, aby wysłać. Spacja — zmiana zawodu.'));
-      } else {
-        info.append(el('div', 'opacity:0.75', `${ids.length} zaznaczonych`));
-      }
+      return;
     }
-
-    // ACTIONS card (Space): profession + stance buttons for the selected settlers, if any.
-    if (settlerIds.length > 0) {
-      actions.append(professionRow(settlerIds));
-      actions.append(stanceRow(settlerIds));
+    info.style.display = 'block';
+    if (settlerIds.length === 0 && buildingIds.length === 1) {
+      renderBuilding(snapshot, buildingIds[0] as number);
+    } else if (settlerIds.length === 1) {
+      renderSettler(snapshot, settlerIds[0] as number);
+    } else if (settlerIds.length > 1) {
+      info.append(
+        el(
+          'div',
+          'font-weight:700;font-size:14px;margin-bottom:6px',
+          `${settlerIds.length} zaznaczonych wikingów`,
+        ),
+      );
+      info.append(el('div', 'opacity:0.75', 'Kliknij prawym, aby wysłać. Spacja — akcje jednostek.'));
     } else {
-      actions.append(el('div', 'opacity:0.75', 'Brak akcji dla zaznaczenia.'));
+      info.append(el('div', 'opacity:0.75', `${ids.length} zaznaczonych`));
     }
-    actions.style.display = actionsOpen ? 'block' : 'none';
 
     tick(snapshot);
   }
@@ -310,14 +254,8 @@ export function mountUnitPanel(opts: UnitPanelOptions): UnitPanel {
   return {
     render,
     tick,
-    toggleActions: () => {
-      actionsOpen = !actionsOpen;
-      actions.style.display = actionsOpen ? 'block' : 'none';
-    },
-    isActionsOpen: () => actionsOpen,
     dispose: () => {
       info.remove();
-      actions.remove();
     },
   };
 }

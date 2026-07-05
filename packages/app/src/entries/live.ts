@@ -16,6 +16,7 @@ import { loadMapObjects } from '../content/objects.js';
 import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { fetchTerrainIr, loadRealTerrain } from '../content/terrain.js';
+import { DEFAULT_UI_SCALE } from '../hud/tool-panel-layout.js';
 import {
   demoGoods,
   loadTerrainMap,
@@ -34,7 +35,7 @@ import { enableAudioOnGesture } from '../view/overlay.js';
 import { mountPerfOverlay } from '../view/perf-overlay.js';
 import { createUnitControls } from '../view/unit-controls.js';
 import { professionsFromContent } from '../view/unit-panel.js';
-import { floatParam } from './params.js';
+import { floatParam, intParam } from './params.js';
 
 /**
  * The default full tile-diamond width in px (`2 × CALIBRATED_HALF_W`) when `?pitch=` is absent — the
@@ -199,8 +200,10 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
   // Space to open the selected-unit panel (profession change). The professions the panel offers are the
   // slice content's jobs (minus idle). Reads the camera + snapshot through closures, issues commands
   // into the sim.
-  const controls = createUnitControls({
+  const controls = await createUnitControls({
+    app,
     canvas,
+    uiscale: intParam(params, 'uiscale', DEFAULT_UI_SCALE, 1),
     camera: () => cameraCtl.camera(),
     snapshot: () => sim.snapshot(),
     mapSize: { width: terrainGrid.width, height: terrainGrid.height },

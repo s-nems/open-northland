@@ -266,6 +266,19 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
       composition may want an art pass (glyphs sit over the ornamental strip); the not-yet-actioned tool buttons —
       diplomacy / population / mission / tech-tree / options windows + a real HELP window (help is temporarily
       aliased to the statistics window in v1); the minimap region (a separate task).
+- [x] **Settler action ring** (GUI rework Part 5) — the contextual command buttons over a selected settler
+      (Space toggles), rebuilt in original GUI art in place of the DOM "Zmień zawód" card: round wooden
+      `order_*` buttons (`context` palette LUT via `PalettedSprite`) on radial arms whose geometry is
+      transcribed verbatim from the OpenVikings `BuildHumanActionButtons` (232 px box, ±100 px arms, 32 px
+      buttons/step, ∓5 corner nudge). Professions fill the bottom arm (issue `setJob`), stances the top
+      (`setStance`); a DOM tooltip names each button. Proven by `?scene=unit-orders` + pure layout/hit-test
+      unit tests (`packages/app/test/action-ring-layout.test.ts`); pixels human-signed (docs/FIDELITY.md
+      "Settler action ring"). **Open (deferred / pending calibration):** the button→icon assignment + the
+      group→command mapping + the centroid anchor are approximations (the original's layout builder is a stub
+      and its command→gfx table is an unfilled placeholder in the oracle — see FIDELITY); the full contextual
+      command-validity system (show only a human's valid commands, intersected across a multi-selection) is
+      unmodelled; groups 2–4 (right/left/inner arms) are unused pending more command families. Next: GUI
+      rework Part 6 — the bottom-right details panel in original window art.
 
 ## Phase 3 — Economy, progression & population  (substance complete; only human-gated render checks remain)
 - [x] **Goods graph** — explicit IR artifact: input side + output-side recipe join +

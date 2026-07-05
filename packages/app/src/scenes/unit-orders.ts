@@ -11,9 +11,12 @@ import type { SceneDefinition } from './types.js';
  * The headless half proves the MECHANICS through the real command seam: a scripted `moveUnit` walks its
  * viking to a far target (arrives + stands there), a scripted `setJob` changes one viking's profession,
  * every spawned viking is owned by the human, and a `moveUnit` aimed at the NEUTRAL viking is skipped
- * (ownership gate). The pixels — the green selection rings, the marquee box, the panel — are the human's
- * checklist (an agent can't self-judge them); the interactive select/order/panel is wired in the
- * `?scene=` browser entry, so the reviewer drives the SAME world the checks assert.
+ * (ownership gate). The interactive **action ring** (Space → original-art radial buttons that issue the same
+ * `setJob`/`setStance`) is proven separately + headlessly by `test/action-ring-layout.test.ts` (a click on a
+ * button maps to the right command). The pixels — the green selection rings, the marquee box, the round
+ * order buttons — are the human's checklist (an agent can't self-judge them); the interactive
+ * select/order/ring is wired in the `?scene=` browser entry, so the reviewer drives the SAME world the
+ * checks assert.
  */
 
 const WOOD = 1;
@@ -151,9 +154,10 @@ export const unitOrdersScene: SceneDefinition = {
   summary:
     'Pole wikingów gracza (człowieka). Zaznacz pojedynczo (LPM) lub ramką (przeciągnij LPM) — pod ' +
     'zaznaczonymi pojawiają się zielone pierścienie. Kliknij prawym (PPM) na trawie, by ich tam wysłać ' +
-    '(robotnik postoi chwilę i wróci do swoich zajęć). Spacja otwiera panel jednostki (zawód, gracz, ' +
-    'potrzeby) z przyciskami zmiany zawodu. Neutralny wiking (bez właściciela) nie daje się zaznaczyć ' +
-    'ani rozkazać. HQ też można zaznaczyć i rozebrać.',
+    '(robotnik postoi chwilę i wróci do swoich zajęć). Spacja rozwija wokół jednostki PIERŚCIEŃ AKCJI w ' +
+    'oryginalnej grafice — okrągłe drewniane przyciski: zmiana zawodu (dolny łuk) i postawa wojskowa (górny ' +
+    'łuk). Info o jednostce jest zawsze w prawym dolnym rogu. Neutralny wiking (bez właściciela) nie daje ' +
+    'się zaznaczyć ani rozkazać. HQ też można zaznaczyć i rozebrać.',
   seed: 4,
   content: content(),
   terrain: grassTerrain(MAP_W, MAP_H),
@@ -163,11 +167,12 @@ export const unitOrdersScene: SceneDefinition = {
   runTicks: 340,
   initialZoom: 1,
   checklist: [
-    'Przeciągnij ramką po grupie wikingów — pod zaznaczonymi pojawiają się zielone pierścienie, a licznik w panelu pokazuje ich liczbę',
+    'Przeciągnij ramką po grupie wikingów — pod zaznaczonymi pojawiają się zielone pierścienie, a karta info (prawy dolny róg) pokazuje ich liczbę',
     'Kliknij prawym (PPM) na wolnej trawie — zaznaczeni wikingowie idą tam; robotnik po chwili postoju wraca do swoich zajęć',
-    'Spacja otwiera panel zaznaczonej jednostki (zawód, gracz #, paski potrzeb); przyciski „Zmień zawód" zmieniają profesję',
+    'Spacja rozwija PIERŚCIEŃ AKCJI wokół zaznaczonej jednostki: okrągłe drewniane przyciski w oryginalnej grafice (nie DOM-owe prostokąty), z sensownymi ikonami, na łuku POD jednostką (zawody) i NAD nią (postawy)',
+    'Najedź na przycisk pierścienia — podświetla się i pokazuje podpowiedź z nazwą; kliknięcie zmienia zawód/postawę (a karta info to odzwierciedla), a klik między przyciskami nadal działa na jednostkę',
     'Neutralny wiking (na dole z lewej) NIE daje się zaznaczyć ramką ani kliknięciem i nie reaguje na PPM — należy do nikogo',
-    'Kliknij budynek (HQ po prawej) — panel pokazuje jego dane i ma przycisk „Rozbierz"',
+    'Kliknij budynek (HQ po prawej) — karta info pokazuje jego dane i ma przycisk „Rozbierz"',
   ],
   checks: [
     {

@@ -12,6 +12,7 @@ import { createSoundDriver, fetchAudioIr } from '../content/audio.js';
 import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
+import { DEFAULT_UI_SCALE } from '../hud/tool-panel-layout.js';
 import { SCENES, createSceneSim, getScene } from '../scenes/index.js';
 import { cameraFor, createCameraController } from '../view/camera.js';
 import {
@@ -25,7 +26,7 @@ import { mountPerfOverlay } from '../view/perf-overlay.js';
 import { mountSceneOverlay, mountUnknownSceneOverlay } from '../view/scene-overlay.js';
 import { createUnitControls } from '../view/unit-controls.js';
 import { professionsFromContent } from '../view/unit-panel.js';
-import { floatParam } from './params.js';
+import { floatParam, intParam } from './params.js';
 
 /**
  * The `?scene=<id>` entry: render a registered **acceptance scene** live, with the checklist overlay,
@@ -117,8 +118,10 @@ export async function renderSceneMode(
   // RTS unit control over the scene: left-click / drag-box to select the human's units, right-click to
   // send them, Space for the unit panel. Harmless on scenes with no owned units (nothing is pickable);
   // the unit-orders scene populates the human's vikings.
-  const controls = createUnitControls({
+  const controls = await createUnitControls({
+    app,
     canvas,
+    uiscale: intParam(params, 'uiscale', DEFAULT_UI_SCALE, 1),
     camera: () => cameraCtl.camera(),
     snapshot: () => sim.snapshot(),
     mapSize: { width: scene.terrain.width, height: scene.terrain.height },
