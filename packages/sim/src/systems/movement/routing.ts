@@ -98,18 +98,20 @@ function pathToWaypoints(terrain: TerrainGraph, path: ReadonlyArray<CellId>): Ar
   const waypoints: Array<{ x: Fixed; y: Fixed }> = [];
   let prev: { x: number; y: number } | undefined;
   for (const cell of path) {
-    const { x, y } = terrain.coordsOf(cell);
-    if (prev !== undefined && Math.abs(y - prev.y) === 2) {
+    const c = terrain.coordsOf(cell);
+    if (prev !== undefined && Math.abs(c.y - prev.y) === 2) {
       // A vertical step (only the N/S edge spans two rows, and it never changes the column) — splice
-      // the seam crossing so both sub-legs are world-straight.
+      // the seam crossing so both sub-legs are world-straight. At the map's west border this seam can
+      // sit at grid x = −0.5 (column 0, even row — the world-vertical line hugs the border cells'
+      // outer edge): a legal transient position — every consumer clamps/truncates back into the grid.
       const midX =
         (prev.y & 1) === 0
           ? fx.sub(fx.fromInt(prev.x), HALF_COLUMN)
           : fx.add(fx.fromInt(prev.x), HALF_COLUMN);
-      waypoints.push({ x: midX, y: fx.fromInt((prev.y + y) / 2) });
+      waypoints.push({ x: midX, y: fx.fromInt((prev.y + c.y) / 2) });
     }
-    waypoints.push({ x: fx.fromInt(x), y: fx.fromInt(y) });
-    prev = { x, y };
+    waypoints.push({ x: fx.fromInt(c.x), y: fx.fromInt(c.y) });
+    prev = c;
   }
   return waypoints;
 }
