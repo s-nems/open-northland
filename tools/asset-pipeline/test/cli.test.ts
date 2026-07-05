@@ -964,10 +964,39 @@ describe('mapDatToTerrain', () => {
     expect(terrain.objects?.levels).toEqual([3, 100]); // palm at state 3, wall-style sentinel kept verbatim
   });
 
-  it('omits ground/objects when the map lacks the lanes (an lmlt-only save)', () => {
+  it('emits the per-cell elevation lane from lmhe (one byte per cell, not half-cell)', () => {
+    // 2×1 grid: lmlt is the 4×2 half-cell object lane, but lmhe is PER CELL — exactly width·height
+    // values (2), carried through verbatim (raw byte height, 0..250 observed).
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 2, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0])) },
+      { tag: 'lmhe', version: 1, payload: packMapLayer(Uint8Array.from([12, 234])) },
+    ]);
+    const terrain = mapDatToTerrain(bytes);
+    expect(terrain.elevation).toEqual([12, 234]);
+  });
+
+  it('degrades a wrong-sized lmhe lane to a grid-only artifact (warn, keep the nav grid)', () => {
+    // The lmhe lane carries the half-cell count (4) instead of the per-cell count (1) — a dims
+    // mismatch drops only the optional elevation layer, never the nav grid.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0])) },
+      { tag: 'lmhe', version: 1, payload: packMapLayer(Uint8Array.from([5, 5, 5, 5])) },
+    ]);
+    const terrain = mapDatToTerrain(bytes);
+    expect(terrain.typeIds).toEqual([1]); // the nav grid survives
+    expect(terrain.elevation).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/elevation lane unreadable.*expected 1/));
+    warn.mockRestore();
+  });
+
+  it('omits ground/objects/elevation when the map lacks the lanes (an lmlt-only save)', () => {
     const terrain = mapDatToTerrain(buildMapDat(1, 1, [2, 2, 2, 2]));
     expect(terrain.ground).toBeUndefined();
     expect(terrain.objects).toBeUndefined();
+    expect(terrain.elevation).toBeUndefined();
   });
 
   it('degrades a corrupt render lane to a grid-only artifact (warn, keep the nav grid)', () => {
