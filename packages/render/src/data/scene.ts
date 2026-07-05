@@ -300,21 +300,26 @@ function readAtomicElapsed(components: Readonly<Record<string, unknown>>): numbe
  * grid delta `(sign dCol, sign dRow)`. The `CR_Hum_Body` sheet's 8 direction blocks are NOT a uniform
  * screen-angle rotation — each was read off the decoded frames one by one (`docs/FIDELITY.md` "Settler
  * facing"; blocks face `0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N`) — so a screen-angle formula can't
- * pick them; we map each grid step straight to the block whose sprite faces that step's ISO-screen
- * heading. A grid step projects to screen as `(dCol−dRow, dCol+dRow)`:
- *   E (1,0)→screen SE→block 5,  S (0,1)→SW→0,  W (−1,0)→NW→2,  N (0,−1)→NE→3,
- *   SE(1,1)→screen S →block 6,  SW(−1,1)→W →1,  NW(−1,−1)→N→7,  NE(1,−1)→E→4.
- * The four AXIS steps (the only ones a 4-connected path emits) are the screen-diagonal facings 5/0/2/3.
+ * pick them; we map each grid step straight to the block whose sprite faces that step's screen heading.
+ * Under the measured STAGGERED-RASTER projection (`iso.ts` — recalibrated 2026-07, superseding the old
+ * rotated diamond) a grid step's net screen heading is just its sign pair: `+col` is screen-RIGHT,
+ * `+row` is screen-DOWN (the odd-row half-cell stagger nets out over a whole step), so map N/S/E/W
+ * coincide with the screen's:
+ *   E (1,0)→screen right→block 4,  W (−1,0)→left→1,  S (0,1)→down→6,  N (0,−1)→up→7,
+ *   SE(1,1)→down-right→block 5,  SW(−1,1)→down-left→0,  NE(1,−1)→up-right→3,  NW(−1,−1)→up-left→2.
+ * (The rotated-diamond mapping this replaced sent `+col` to screen-SE and `−col` to screen-NW — the
+ * "faces up-left while walking left" bug once the projection became a straight raster but the facing
+ * table wasn't recalibrated; docs/FIDELITY.md "Settler facing".)
  */
 const STEP_TO_FACING: Readonly<Record<string, number>> = {
-  '1,0': 5, // E  -> screen SE
-  '0,1': 0, // S  -> screen SW
-  '-1,0': 2, // W  -> screen NW
-  '0,-1': 3, // N  -> screen NE
-  '1,1': 6, // SE -> screen S
-  '-1,1': 1, // SW -> screen W
-  '-1,-1': 7, // NW -> screen N
-  '1,-1': 4, // NE -> screen E
+  '1,0': 4, // E  -> screen right
+  '-1,0': 1, // W  -> screen left
+  '0,1': 6, // S  -> screen down
+  '0,-1': 7, // N  -> screen up
+  '1,1': 5, // SE -> screen down-right
+  '-1,1': 0, // SW -> screen down-left
+  '1,-1': 3, // NE -> screen up-right
+  '-1,-1': 2, // NW -> screen up-left
 };
 
 /**

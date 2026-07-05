@@ -47,16 +47,19 @@ function runGait(world: World, e: Entity): Fixed {
  * MovementSystem — advances entity positions one tick.
  *
  * Two movement modes, in this precedence:
- *  1. {@link PathFollow}: step toward the current waypoint's cell centre by the entity's own pace
- *     ({@link MoveSpeed}'s `perTick` if it carries one, else the universal {@link MOVE_SPEED_PER_TICK}),
- *     per-axis clamped so we never overshoot. On reaching the waypoint, advance `index`; when the
- *     last waypoint is reached the path is complete and {@link PathFollow} is removed (the planner
- *     sees an entity with no path as idle/arrived). A path-following entity ignores any Velocity.
+ *  1. {@link PathFollow}: step STRAIGHT toward the current waypoint's cell centre by the entity's own
+ *     pace ({@link MoveSpeed}'s `perTick` if it carries one, else the universal {@link MOVE_SPEED_PER_TICK}),
+ *     along the LINE to the waypoint so a diagonal leg advances at the same tiles/tick as an axis leg
+ *     (no √2 speed-up from stepping each axis independently — {@link stepTowardPoint}). On reaching the
+ *     waypoint, advance `index`; when the last waypoint is reached the path is complete and
+ *     {@link PathFollow} is removed (the planner sees an entity with no path as idle/arrived). A
+ *     path-following entity ignores any Velocity.
  *  2. {@link Velocity} (no PathFollow): the original constant-velocity integration — kept for the
  *     determinism golden and any free-moving entity that isn't path-driven.
  *
- * Fixed-point only; per-axis clamp-toward means no floats, no sqrt/normalisation, no overshoot —
- * the step is a pure function of position + waypoint, so identical inputs yield identical state.
+ * Fixed-point only; the straight-line step (isqrt homing, mirroring the projectile advance) means no
+ * floats and no overshoot — a pure function of position + waypoint, so identical inputs yield identical
+ * state. An AXIS leg is byte-identical to the old per-axis clamp; only diagonal legs change.
  */
 export const movementSystem: System = (world) => {
   // Entities the path pass moved this tick. A path can complete (PathFollow removed) within the
@@ -84,10 +87,7 @@ export const movementSystem: System = (world) => {
         ? world.get(e, MoveSpeed).perTick
         : MOVE_SPEED_PER_TICK;
     const p = world.get(e, Position);
-    p.x = stepToward(p.x, target.x, speed);
-    p.y = stepToward(p.y, target.y, speed);
-
-    if (p.x === target.x && p.y === target.y) {
+    if (stepTowardPoint(p, target, speed)) {
       // Arrived at this waypoint; advance to the next, or finish the path.
       if (pf.index + 1 >= pf.waypoints.length) {
         world.remove(e, PathFollow); // path complete
@@ -110,14 +110,34 @@ export const movementSystem: System = (world) => {
 };
 
 /**
- * Move `from` toward `target` by at most `speed` (the entity's per-tick pace), clamping so the result
- * never passes `target`. Returns `target` exactly once within one step of it — the equality the caller
- * uses to detect arrival. Pure fixed-point: no division of the delta, so no rounding drift.
+ * Advance `p` STRAIGHT toward `target` by at most `speed` along the line between them, snapping onto
+ * `target` (and returning `true`) once within one step — the arrival signal the caller advances the
+ * path on. Stepping the unit vector × `speed` (not each axis independently) makes a DIAGONAL leg cover
+ * the same tiles/tick as an axis leg: the old per-axis clamp moved `speed` on BOTH axes at once, so a
+ * diagonal ran √2 fast (docs/FIDELITY.md "Movement / facing granularity"). Mirrors the projectile
+ * advance's fixed-point isqrt homing.
+ *
+ * At the DEFAULT settler pace (`ONE/8` = 2^13) an AXIS leg is byte-identical to the old per-axis clamp:
+ * the unit vector is ±1 on one axis and 0 on the other, positions stay multiples of 2^13 (so `dist`
+ * equals `|delta|` exactly) and the per-axis step is exactly `speed` — which is why no default-speed
+ * golden moved (only diagonal legs changed). A data-pinned animal pace whose step isn't a multiple of
+ * 2^8 can round `dist` by ±1 (still fully deterministic run-to-run, just not identical to the old
+ * clamp), but no golden exercises animal cardinal path-following. Pure fixed-point (isqrt + one div per
+ * axis) — no floats, so identical inputs yield identical state.
  */
-function stepToward(from: Fixed, target: Fixed, speed: Fixed): Fixed {
-  const delta = fx.sub(target, from);
-  if (delta === 0) return target;
-  const dist = fx.abs(delta);
-  if (dist <= speed) return target; // within one step — snap to the target
-  return delta > 0 ? fx.add(from, speed) : fx.sub(from, speed);
+function stepTowardPoint(p: { x: Fixed; y: Fixed }, target: { x: Fixed; y: Fixed }, speed: Fixed): boolean {
+  const dx = fx.sub(target.x, p.x);
+  const dy = fx.sub(target.y, p.y);
+  const dist = fx.isqrt(fx.add(fx.mul(dx, dx), fx.mul(dy, dy)));
+  if (dist <= speed) {
+    // Within one step (incl. already on it): snap exactly onto the waypoint so no drift accumulates
+    // across legs, and signal arrival.
+    p.x = target.x;
+    p.y = target.y;
+    return true;
+  }
+  // Advance the unit vector × speed. `dist > speed > 0` here, so each division is safe.
+  p.x = fx.add(p.x, fx.div(fx.mul(dx, speed), dist));
+  p.y = fx.add(p.y, fx.div(fx.mul(dy, speed), dist));
+  return false;
 }

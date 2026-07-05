@@ -132,7 +132,9 @@ describe('buildScene', () => {
 
   it('derives a settler facing from its heading toward the next PathFollow waypoint', () => {
     // Settler at (1,1); the waypoint it walks toward sets the screen-space heading -> direction index.
-    // Screen projection is iso (col-row, col+row) with a 2:1 aspect, so e.g. walking +col reads SE.
+    // The staggered-raster projection (iso.ts) maps +col to screen-right and +row to screen-down, so a
+    // grid step's screen heading is just its sign pair — map N/S/E/W coincide with the screen's (no
+    // diamond rotation), e.g. walking +col reads E (not SE).
     const pf = (wx: number, wy: number): Record<string, unknown> => ({
       Settler: { tribe: 0 },
       PathFollow: { waypoints: [{ x: wx * ONE, y: wy * ONE }], index: 0 },
@@ -141,11 +143,11 @@ describe('buildScene', () => {
       buildScene(snapshotOf([entity(1, 1, 1, pf(wx, wy))]), FLAT_3x2).find((d) => d.kind === 'settler')
         ?.facing;
     // Bob blocks face 0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N (docs/FIDELITY.md "Settler facing");
-    // a grid step maps to the block facing its iso-screen heading via STEP_TO_FACING.
-    expect(facingOf(2, 1)).toBe(5); // grid-E (+col)   -> screen down-right (SE) -> block 5
-    expect(facingOf(0, 1)).toBe(2); // grid-W (-col)   -> screen up-left   (NW) -> block 2
-    expect(facingOf(2, 2)).toBe(6); // grid-SE (+col,+row) -> screen straight down (S) -> block 6
-    expect(facingOf(0, 0)).toBe(7); // grid-NW (-col,-row) -> screen straight up   (N) -> block 7
+    // a grid step maps to the block facing its screen heading via STEP_TO_FACING.
+    expect(facingOf(2, 1)).toBe(4); // grid-E (+col)       -> screen right      (E)  -> block 4
+    expect(facingOf(0, 1)).toBe(1); // grid-W (-col)       -> screen left       (W)  -> block 1
+    expect(facingOf(2, 2)).toBe(5); // grid-SE (+col,+row) -> screen down-right (SE) -> block 5
+    expect(facingOf(0, 0)).toBe(2); // grid-NW (-col,-row) -> screen up-left    (NW) -> block 2
   });
 
   it('omits facing when a settler has no heading (no path, or already on the waypoint)', () => {

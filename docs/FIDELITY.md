@@ -361,29 +361,35 @@ Format: `- <mechanic>: <how it differs> — <why> (<commit>)`.
   uniform screen-angle rotation, so no `atan2`-bucketing formula can pick them. The true per-block facing
   (a human read off each labelled direction block) is `0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N`.
   `readFacing` (`packages/render/src/data/scene.ts`) therefore maps the settler's grid step **directly** to the
-  block facing that step's iso-screen heading via the `STEP_TO_FACING` table (`E→SE→5, S→SW→0, W→NW→2,
-  N→NE→3`, plus the four diagonal steps), with no angle/rounding. **Earlier this used a screen-angle
-  formula assuming a regular rotation** — it happened to get the SE heading right but rendered other
-  headings facing the wrong way (e.g. a settler walking screen-up-left faced down-left). The direct table
-  is a faithful match to the asset, not an approximation; `DEFAULT_FACING` is block 5 (SE, toward camera).
-  (settler facing — direct grid-step→block table)
+  block facing that step's SCREEN heading via the `STEP_TO_FACING` table, with no angle/rounding. Under the
+  measured STAGGERED-RASTER projection (`iso.ts`, recalibrated 2026-07) `+col` is screen-right and `+row` is
+  screen-down, so map N/S/E/W coincide with the screen's and each grid step keys its own heading:
+  `E→E→4, W→W→1, S→S→6, N→N→7`, plus the four diagonal steps `SE→5, SW→0, NE→3, NW→2`. **RECALIBRATED
+  (2026-07):** the table previously assumed the old ROTATED-DIAMOND projection (a step projected as
+  `(dCol−dRow, dCol+dRow)`, so `+col`→screen-SE→block 5); when the projection became a straight raster
+  (`a5f6ee2`) the facing table was NOT updated, so a settler walking screen-LEFT faced up-left (NW block 2)
+  and screen-RIGHT faced down-right (SE block 5) — the visible "walks sideways but faces a diagonal" bug.
+  The direct table is a faithful match to the asset under the current projection, not an approximation;
+  `DEFAULT_FACING` is block 5 (SE, toward camera). (settler facing — direct grid-step→block table)
 
 - Movement / facing granularity — **8-connected movement + full 8-facing gait (LANDED)**: pathfinding is
   now 8-connected — `packages/sim/src/nav/terrain.ts` `steps()` emits diagonal steps alongside the
   orthogonal `NEIGHBOUR_OFFSETS`, at √2 cost under the octile heuristic, with a no-corner-cut rule (see
   the *A\* pathfinding* row). Because a path leg can now be a **diagonal grid step**, the render's
-  `readFacing` (`packages/render/src/data/scene.ts`, `STEP_TO_FACING`) produces the four screen-cardinal
-  facings a diagonal maps to (W/E/S/N = blocks 1/4/6/7) as well as the four screen-diagonal facings a
-  single-axis step maps to (SW/NW/NE/SE = blocks 0/2/3/5) — so **all eight** `CR_Hum_Body` directions are
-  now reachable in both the empty walk and the loaded carry gait (the old 4-facing cap is gone). The
-  per-axis `MovementSystem` already walks a diagonal waypoint on both axes, so no movement change was
-  needed. **APPROXIMATED (behavior, no oracle):** whether the REAL engine moves on an 8-connected graph
+  `readFacing` (`packages/render/src/data/scene.ts`, `STEP_TO_FACING`) produces the four screen-DIAGONAL
+  facings a diagonal step maps to (SE/SW/NE/NW = blocks 5/0/3/2) as well as the four screen-CARDINAL
+  facings a single-axis step maps to (E/W/S/N = blocks 4/1/6/7) — so **all eight** `CR_Hum_Body` directions
+  are reachable in both the empty walk and the loaded carry gait (the old 4-facing cap is gone). The
+  `MovementSystem` walks a diagonal waypoint on both axes (a genuine diagonal leg), so all eight headings
+  occur. **APPROXIMATED (behavior, no oracle):** whether the REAL engine moves on an 8-connected graph
   (vs finer/continuous), and its exact diagonal cost + corner policy, are unpinned — the original's
-  humans visibly walk 8 directions, which motivates the choice, but OpenVikings' sim is a stub. Per-
-  DIRECTION screen speed is **not** normalised: `stepToward` keeps every cell-step at the same tick cost
-  (a diagonal covers √2 tiles in the same ticks), and since the iso projection makes tile→screen speed
-  anisotropic anyway, uniform screen speed would be a separate calibration-by-observation, not attempted
-  here. (8-connected movement + 8-facing gait)
+  humans visibly walk 8 directions, which motivates the choice, but OpenVikings' sim is a stub. Per-tile
+  WORLD speed IS now normalised (2026-07): `stepTowardPoint` advances the unit vector × the pace, so a
+  diagonal leg covers the same TILES/tick as an axis leg (taking √2 more ticks for the √2-longer leg)
+  instead of the old per-axis clamp's √2 speed-up — matching the original's uniform-length hex-mesh edges
+  (one walk pace in every direction). What stays unpinned is the on-SCREEN pace: the staggered-raster
+  projection slides a row step sideways, so tile→screen speed is mildly anisotropic — exact screen pace
+  is still calibration-by-observation. (8-connected movement + 8-facing gait)
 
 - RTS unit orders (select + box-select + move for civilians): the player can rubber-band-select the
   human player's units and right-click to send them anywhere (`moveUnit` command → `MoveGoal`), the
