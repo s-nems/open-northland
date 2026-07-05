@@ -162,7 +162,10 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     const sprite = new PalettedSprite(guiLut, guiColours);
     sprite.setFrame(guiLayer.source, frame, guiLayer.atlas.width, guiLayer.atlas.height);
     sprite.player = guiPaletteRow(paletteOfFrame(gfx));
-    sprite.colorKey = true; // discard the GUI palettes' opaque background band (see PalettedSprite.colorKey)
+    // Magenta-only key: the round wooden order buttons are opaque by design and paint their bevel + engraved
+    // glyph in the near-black band — keying that band (as the panel does) would punch holes through the art
+    // (the "chipped/holey" look). See PalettedSprite.colorKey.
+    sprite.colorKey = 'magenta';
     return { sprite, frame };
   };
 
