@@ -2,6 +2,13 @@ import { Mesh, MeshGeometry, Shader, type TextureSource } from 'pixi.js';
 import type { AtlasFrame } from '../data/sprites.js';
 
 /**
+ * GUI transparent-key mode for a {@link PalettedSprite} (see {@link PalettedSprite.colorKey}). `'off'` draws
+ * straight; `'magenta'` keys only the index-0 sentinel (opaque order buttons); `'full'` also keys the
+ * near-black background band (panel/window backdrops).
+ */
+export type GuiColorKey = 'off' | 'magenta' | 'full';
+
+/**
  * A feet-anchored sprite whose colour is a **per-player palette lookup** rather than a baked texture — the
  * render half of the player (team) colour feature. The character atlas is decoded as INDICES (palette index
  * in red, mask in alpha; see the pipeline's `expandBobFrameIndexed`), and this sprite reads each index
@@ -52,16 +59,22 @@ uniform sampler2D uTexture; // indexed atlas: red = palette index / 255, alpha =
 uniform sampler2D uLut;     // 256 x N palette LUT: row = player colour, column = palette index
 uniform vec2 uLutSize;      // (256, N)
 uniform vec4 uPlacement;    // .w = player-colour row to read (0 .. N-1)
-uniform vec2 uColorKey;     // .x > 0.5: treat the GUI transparent-key colours (below) as transparent
+uniform vec2 uColorKey;     // .x > 0.5: key the magenta sentinel; .y > 0.5: ALSO key the near-black band
 
 // GUI transparent key — OUR floating-HUD deviation, NOT an original mechanism (the engine blitter has no
 // colour key; see docs/FIDELITY.md "Left tool panel"). The in-game GUI palettes (iconsleft/context/…) reserve
 // palette index 0 as a MAGENTA sentinel (255,0,255) and a band of near-black entries (max channel ≲ 28/255)
 // as each element's background. A bob writes them opaque (transparency is skip-runs), so an element drawn
 // straight would carry an opaque dark rectangle over the world — which the original hid by rendering gameplay
-// in a dedicated area, but we render full-screen. When uColorKey.x is set (GUI panel sprites only) we discard
-// those two colour classes so the element shows only its art. Character LUTs never produce them and leave
-// uColorKey.x = 0, so this is inert for the world sprites.
+// in a dedicated area, but we render full-screen.
+//
+// The two classes are keyed INDEPENDENTLY (uColorKey.x = magenta, uColorKey.y = near-black), because they are
+// NOT both "background" for every element. Large panel/window elements (iconsleft) use the near-black band as a
+// removable backdrop → key both. But the round wooden ORDER buttons (context palette) paint their OWN bevel rim
+// AND their engraved glyph in that same near-black — keying it there punches holes THROUGH the art (the
+// "chipped/holey" look). Those buttons are fully opaque by design, so they key magenta only (near-black off) and
+// render as solid buttons. Character LUTs produce neither class and leave both flags 0, so this is inert for
+// the world sprites.
 const float KEY_MAGENTA_HI = 0.9;  // r AND b above this …
 const float KEY_MAGENTA_LO = 0.1;  // … with g below this → the magenta sentinel (index 0)
 const float KEY_NEAR_BLACK = 0.11; // max channel below this (≈28/255) → the near-black background band
@@ -77,8 +90,11 @@ void main(void) {
   vec3 rgb = textureLod(uLut, lutUV, 0.0).rgb;
   if (uColorKey.x > 0.5) {
     bool magenta = rgb.r > KEY_MAGENTA_HI && rgb.g < KEY_MAGENTA_LO && rgb.b > KEY_MAGENTA_HI;
+    if (magenta) discard;
+  }
+  if (uColorKey.y > 0.5) {
     bool nearBlack = max(max(rgb.r, rgb.g), rgb.b) < KEY_NEAR_BLACK;
-    if (magenta || nearBlack) discard;
+    if (nearBlack) discard;
   }
   finalColor = vec4(rgb, 1.0);
 }`;
@@ -96,8 +112,8 @@ interface PalettedUniforms {
     uPlacement: Float32Array;
     uResolution: Float32Array;
     uLutSize: Float32Array;
-    /** [colorKeyOn, _] — a `Float32Array` (NOT a scalar `f32`, which a shared program won't re-upload
-     *  per-mesh; see the class note) so each sprite carries its own GUI-key flag. */
+    /** [keyMagenta, keyNearBlack] — a `Float32Array` (NOT a scalar `f32`, which a shared program won't
+     *  re-upload per-mesh; see the class note) so each sprite carries its own GUI-key flags. */
     uColorKey: Float32Array;
   };
   /** Bump the group's dirty id so Pixi re-uploads the changed contents. */
@@ -160,16 +176,25 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
   }
 
   /**
-   * Enable the **GUI transparent key** for this sprite: discard the magenta sentinel + the near-black
-   * background band its LUT row resolves to, so an in-game GUI icon shows only its glyph (no opaque dark
-   * square over the panel). Off by default — the world/character sprites never touch these colours.
+   * The **GUI transparent key** mode for this sprite (default `'off'`; the world/character sprites never touch
+   * these colours, so it stays off for them):
+   * - `'off'`    — draw the LUT colours straight (fully opaque).
+   * - `'magenta'`— discard only the magenta sentinel (palette index 0). For the round wooden ORDER buttons,
+   *   which are opaque by design and paint their bevel + engraving in the near-black band — keying that band
+   *   would punch holes through the glyph.
+   * - `'full'`   — discard magenta AND the near-black background band. For large panel/window elements whose
+   *   near-black backdrop must not paint a dark rectangle over the world.
    */
-  set colorKey(on: boolean) {
-    this.vars.uniforms.uColorKey[0] = on ? 1 : 0;
+  set colorKey(mode: GuiColorKey) {
+    const u = this.vars.uniforms.uColorKey;
+    u[0] = mode === 'off' ? 0 : 1; // magenta key: on for 'magenta' + 'full'
+    u[1] = mode === 'full' ? 1 : 0; // near-black band: on for 'full' only
     this.vars.update();
   }
-  get colorKey(): boolean {
-    return (this.vars.uniforms.uColorKey[0] ?? 0) > 0.5;
+  get colorKey(): GuiColorKey {
+    const u = this.vars.uniforms.uColorKey;
+    if ((u[1] ?? 0) > 0.5) return 'full';
+    return (u[0] ?? 0) > 0.5 ? 'magenta' : 'off';
   }
 
   /**

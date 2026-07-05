@@ -268,8 +268,15 @@ export function pointOverActionRing(layout: ActionRingLayout, x: number, y: numb
  */
 export const ACTION_ICON_FALLBACK = 'order_icon_fallback';
 
-/** The "change profession" button — the one live default-menu button (opens the profession picker). */
-const CHANGE_JOB: ActionButton = { kind: 'open-jobs', icon: 'order_worker', label: 'Zmiana zawodu' };
+/**
+ * The "change profession" button — the one live default-menu button (opens the profession picker). Its icon
+ * is the original's two-screws glyph (frame `order_change_profession`, user-identified off the running game).
+ */
+const CHANGE_JOB: ActionButton = {
+  kind: 'open-jobs',
+  icon: 'order_change_profession',
+  label: 'Zmiana zawodu',
+};
 
 /** Build an inert default-menu button. */
 const placeholder = (id: string, icon: ActionIconFrame, label: string): ActionButton => ({

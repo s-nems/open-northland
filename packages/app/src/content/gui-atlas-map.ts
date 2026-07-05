@@ -825,11 +825,11 @@ export const GUI_FRAMES: readonly GuiFrameMeta[] = [
     note: 'gfx 0x6b default order/command icon when a command has no specific gfx (CGuiManager.cs:1962 "gfxId = 0x6Bu", GetHumanCommandIconId fallback :2223); round wooden button, context palette',
   },
   /* 108 0x6c */ {
-    name: 'unknown_108',
+    name: 'order_change_profession',
     role: 'order_icon',
     palette: 'context',
     source: 'montage',
-    note: 'round wooden command/action-order button (context palette)',
+    note: 'round wooden order button (context palette); glyph: two screws (one larger, one smaller) — user-identified as the "change profession" command; provisional name pending exact command',
   },
   /* 109 0x6d */ {
     name: 'order_eat',

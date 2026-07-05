@@ -202,14 +202,14 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     // only the ornament + glyphs and never paints a dark rectangle over the terrain (docs/FIDELITY.md).
     const strip = guiSprite(layout.stripGfx);
     if (strip !== null) {
-      strip.colorKey = true;
+      strip.colorKey = 'full';
       stripContainer.addChild(strip);
       panelSprites.push({ spr: strip, rect: layout.strip });
     }
     for (const b of layout.buttons) {
       const spr = guiSprite(b.gfx);
       if (spr === null) continue;
-      spr.colorKey = true;
+      spr.colorKey = 'full';
       stripContainer.addChild(spr);
       panelSprites.push({ spr, rect: b.placed });
       if (b.id === 'speed') speedSprite = spr;
