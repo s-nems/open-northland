@@ -20,7 +20,7 @@ export type GuiColorKey = 'off' | 'magenta' | 'full' | 'round';
  * It is a custom-shader {@link Mesh} (a unit quad), because Pixi's batched `Sprite` can't run a custom
  * fragment shader and a flat `Sprite.tint` would recolour the whole figure (face + tools), not just the
  * team band. A custom-shader mesh bypasses batching (one draw call each) — acceptable at battle scale where
- * the sim, not the renderer, is the wall (see docs + render/CLAUDE.md), and the payoff is the one-atlas,
+ * the sim, not the renderer, is the wall (see docs + render/AGENTS.md), and the payoff is the one-atlas,
  * N-colour model.
  *
  * **Positioning is manual (screen space).** Pixi does NOT wire its transform uniform blocks into a custom

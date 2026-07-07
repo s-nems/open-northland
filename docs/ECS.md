@@ -78,7 +78,7 @@ its own graph — never hardcode tribe count or identities.
 1. **No ambient nondeterminism.** No `Math.random`, `Date.now`, `Date`, `performance.now`. Use
    `world.rng` (seeded). No reliance on `Map`/`Set` iteration order for game decisions — iterate a
    **canonical** order (e.g. `stockpileEntries()` sorts by goodType). See the determinism
-   anti-patterns in `packages/sim/CLAUDE.md`.
+   anti-patterns in `packages/sim/AGENTS.md`.
 2. **Deterministic iteration.** Queries iterate the smallest store in **insertion order** (no
    per-call sort — that was a perf trap). Order is reproducible across identical runs, which is what
    determinism needs. For canonical snapshots/hashes, sort ids explicitly (`world.canonicalEntities()`).

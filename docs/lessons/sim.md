@@ -1,7 +1,7 @@
 # Lessons — sim (mechanics, determinism, goldens, sim tests)
 
 Part of the loop's hard-won memory. The contract (one entry per trap, commit-grounded,
-extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
+extend-don't-duplicate, graduate a thrice-hit trap to an `AGENTS.md`) lives in
 [`../LESSONS.md`](../LESSONS.md) — read it before adding here.
 
 - [fec4ded] Integer atomic durations: `progress = ONE/duration` truncates, so an odd duration never
@@ -18,7 +18,7 @@ extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
   `noUnusedLocals` won't flag one *member* of a still-partly-used import group (`{ Building, Stockpile }`
   where only `Building` is used). Eyeball the new file's imports against its body after a module split —
   green build + green check don't prove every import is live. (sim/tooling)
-- [ac6a287] **(THE recurring trap — rediscovered 6×; graduated to `packages/sim/CLAUDE.md`.)** Component
+- [ac6a287] **(THE recurring trap — rediscovered 6×; graduated to `packages/sim/AGENTS.md`.)** Component
   stores are module-level singletons SHARED by every `Simulation`/`World` (`defineComponent` makes one
   `Map`; `new World()` resets the id counter but NOT the stores). Any code that builds >1 sim in one
   process leaks the earlier run's entities/components onto the later run's fresh-but-reused ids, and

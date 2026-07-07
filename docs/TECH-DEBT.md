@@ -40,13 +40,13 @@ For small, hard-won *gotchas* (not reworks) see [LESSONS.md](LESSONS.md); the li
 
 ### 3. Community / multi-tool docs
 
-- **Problem.** No `CONTRIBUTING.md`, `.github/` PR+issue templates, or `AGENTS.md` (the cross-tool
-  agent-instructions convention) — fine while solo + agent-driven, a gap if the project opens up.
-- **Change.** Add them when the project takes human contributors or multiple agent tools. Legal
-  posture is already covered (`README.md` Legal, `docs/SOURCES.md`, `CLAUDE.md`).
+- **Problem.** No `CONTRIBUTING.md` or `.github/` PR+issue templates — fine while solo +
+  agent-driven, a gap if the project opens up.
+- **Change.** Add them when the project takes human contributors. Legal posture and cross-tool agent
+  instructions are already covered (`README.md` Legal, `docs/SOURCES.md`, `AGENTS.md`).
 - **Payoff.** Lowers the contribution barrier; one canonical agent-instructions file across tools.
 - **Trigger / why-deferred.** Small but premature now — activates when the project takes human
-  contributors or a second agent tool.
+  contributors.
 
 ### 4. Merge per-swing mined ore into one pile per deposit
 
@@ -62,7 +62,7 @@ For small, hard-won *gotchas* (not reworks) see [LESSONS.md](LESSONS.md); the li
   goods byte-identical.
 - **Payoff.** Ore-in-flight no longer inflates the per-settler scan; collapses the per-swing
   create/destroy churn on the `canonicalEntities` memo.
-- **Trigger / why-deferred.** Amplifies a KNOWN-OPEN seam (`packages/sim/CLAUDE.md` "economy nearest-X"),
+- **Trigger / why-deferred.** Amplifies a KNOWN-OPEN seam (`packages/sim/AGENTS.md` "economy nearest-X"),
   negligible at demo scale (deposits 6–10, one miner per lane). The original's batching (chip several
   before hauling?) is itself OBSERVED-pending-calibration (FIDELITY "Mineral deposits"), so the pile shape
   shouldn't be pinned until that's decided. Sequence with the economy `TileBuckets.nearest` migration.
@@ -97,7 +97,7 @@ For small, hard-won *gotchas* (not reworks) see [LESSONS.md](LESSONS.md); the li
 - **2026-07-01** (render-scale + sim-scale slice; 3 review agents) — Landed the retained `WorldRenderer`
   (pool + viewport-culled terrain chunks) and the sim scaling tier-1/2 (memoized `canonicalEntities`,
   per-tick candidate lists, dormancy gate, `TileBuckets`) — see `docs/ROADMAP.md` and the per-package
-  `CLAUDE.md`s. Deferred cleanups surfaced by review, none blocking (all tests + check green):
+  `AGENTS.md` files. Deferred cleanups surfaced by review, none blocking (all tests + check green):
   (a) **`buildScene` is off the live render path** — `WorldRenderer` projects terrain itself + consumes
   `buildSpriteScene`; `buildScene` now survives only as the headless projection/ordering oracle its
   tests pin (`scene.test.ts`, `scene.integration.test.ts`, `vertical-slice.test.ts`). Keep it OR fold
@@ -127,7 +127,7 @@ For small, hard-won *gotchas* (not reworks) see [LESSONS.md](LESSONS.md); the li
 - **2026-06-25** (pipeline-reconsider pass) — Reworked `/reflect` to *execute* structure
   (behavior-preserving gate, ratchet, structure scan; jsdoc never the headline); split ROADMAP
   1230→113 (archive born); reframed this file as the trigger-gated parking lot.
-- **2026-06-24** (agent-tooling pass) — Added the LESSONS memory channel + per-package `CLAUDE.md`
+- **2026-06-24** (agent-tooling pass) — Added the LESSONS memory channel + per-package `AGENTS.md`
   contracts; wired `/iterate`/`/reflect` to read/write/curate them; expanded local permissions +
   sibling read access; added supervisor closeout fields. Logged proposals #3–#6.
 - **2026-06-24** — First reflection: extracted `systems/context.ts` + `movementSystem` from the
@@ -150,7 +150,7 @@ For small, hard-won *gotchas* (not reworks) see [LESSONS.md](LESSONS.md); the li
   index (O(drops), ~0 when none) so it never walks the full stockpile list, addressing the reviewer's
   should-fix. **Deferred (render-side, not a sim hot-loop concern):** a felled tree leaves a permanent
   `Stump` decor entity (never reaped), so a fully-felled large forest accumulates ~tens of thousands of
-  drawable stumps that stay in the per-frame O(entities) sprite cull (`packages/render/CLAUDE.md`). It is
+  drawable stumps that stay in the per-frame O(entities) sprite cull (`packages/render/AGENTS.md`). It is
   net-neutral vs the old "leave the depleted node in place" behaviour and the planner never scans stumps
   (they carry no Resource/Stockpile/Building marker), but eventually wants a decay/pool or a static
   terrain-decor layer (sequenced with the `ScreenMap` sprite index — same O(entities)-cull family).

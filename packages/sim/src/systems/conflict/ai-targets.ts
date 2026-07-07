@@ -53,7 +53,7 @@ export interface TargetCandidates {
   /**
    * `goodType → its harvest atomic id` (the good's `atomicForHarvesting`), built once per tick from
    * content — a lookup index so the collect scan resolves a dropped good's harvest atomic without a
-   * `content.goods.find` per pile per settler (the content-index anti-pattern, packages/sim/CLAUDE.md).
+   * `content.goods.find` per pile per settler (the content-index anti-pattern, packages/sim/AGENTS.md).
    */
   readonly harvestAtomicByGood: ReadonlyMap<number, number>;
 }

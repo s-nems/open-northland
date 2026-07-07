@@ -1916,7 +1916,7 @@ tree is FELLED over several chops, drops a trunk on the ground, and the collecto
       replaying the command log into a fresh `Simulation` built with the NEW `ContentSet` — so the
       rebuilt run carries the same player history forward under the new rules. Bad content is an
       EXPECTED boundary failure (a half-saved file), so it returns a typed `{kind:'error',message}`
-      WITHOUT touching the shared stores — the live sim is undisturbed (CLAUDE.md "throw for bugs,
+      WITHOUT touching the shared stores — the live sim is undisturbed (AGENTS.md "throw for bugs,
       return for expected failures"). It rebuilds rather than swapping `content` in place because a
       mid-run state is the product of every past tick's content, so only a full replay yields a state a
       clean run could also reach (determinism). Two oracles, both self-verifiable headlessly (hands-on:

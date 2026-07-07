@@ -232,11 +232,11 @@ tab past ~2700 tiles — a blocker for the target (256×256 maps, 8 players, tho
       meshed once in `TERRAIN_CHUNK_TILES` blocks toggled against the viewport, sprites pooled, one
       `app.render()`/frame), so **render cost tracks the screen, not the map**; `MIN_ZOOM 0.15` for a
       battle-scale view. `?scene=stress-crowd` (256×256, ~2.5k bobs) + FPS overlay are the perf proof. Rules
-      in `packages/render/CLAUDE.md`. → [archive](ROADMAP-ARCHIVE.md).
+      in `packages/render/AGENTS.md`. → [archive](ROADMAP-ARCHIVE.md).
 - [x] **Sim scaling — the real bottleneck was the SIM, not the GPU: step 480 → 1.9 ms/tick at 2848 units
       (~250×), goldens byte-identical; stress scene 1 → ~100 fps.** Memoized `canonicalEntities()`, per-tick
       candidate lists, an idle-dormancy gate, and `TileBuckets` (same-tile O(1)) — each elides only
-      provably-null work so the tie-break winner never changes. Full rationale in `packages/sim/CLAUDE.md`
+      provably-null work so the tie-break winner never changes. Full rationale in `packages/sim/AGENTS.md`
       ("Scaling to thousands"). → [archive](ROADMAP-ARCHIVE.md).
 - [ ] **Sim scaling, tier 3 — full ring-search nearest-X** (primitive + first consumer landed; economy consumers
       deferred). The grid ring search now exists — `TileBuckets.nearest` (expand Manhattan bands, finish the whole

@@ -14,7 +14,7 @@ export interface SceneCheck {
  *    The AGENT proves the *mechanic* with no screen (see `packages/app/test/scenes.test.ts`).
  *  - **Browser (`npm run dev` → `?scene=<id>`)** — the SAME sim, rendered each frame with the
  *    {@link checklist} overlaid, so a HUMAN judges the *pixels/animation* — the one thing an agent
- *    cannot self-judge (CLAUDE.md "How to verify your work"; see `docs/SCENES.md`).
+ *    cannot self-judge (AGENTS.md "How to verify your work"; see `docs/SCENES.md`).
  *
  * Because the sim is deterministic, the two consumers observe the SAME run (same seed + content +
  * setup): what the headless test proves is exactly what the human watches. Adding a scene to the

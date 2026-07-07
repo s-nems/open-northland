@@ -33,7 +33,7 @@ const NO_SELECTION: ReadonlySet<number> = new Set();
  * entities share ONE depth-sorted `spriteLayer` so they interleave in a single painter order. Per frame
  * the *drawn* work is O(visible) with near-zero allocation, so a 256×256 map with thousands of animated
  * bobs holds up; the cull itself is still an O(entities) visibility pass (a true spatial index — OpenRA's
- * `ScreenMap` — that makes the QUERY O(visible) is a future seam, see `CLAUDE.md`).
+ * `ScreenMap` — that makes the QUERY O(visible) is a future seam, see `AGENTS.md`).
  *
  * Still the GPU half an agent cannot self-verify (pixels need a human). The load-bearing DATA decisions
  * it consumes stay upstream + unit-tested: the depth-sorted draw list (`buildSpriteScene`), the frame

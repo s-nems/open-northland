@@ -12,7 +12,7 @@ import { el } from '../view/overlay.js';
 
 /**
  * The `?sounds` VERIFICATION GALLERY — the audio twin of the `?anim` character gallery. An agent can't
- * self-judge whether a sound is the RIGHT sound (root CLAUDE.md "How to verify your work"), so this is the
+ * self-judge whether a sound is the RIGHT sound (root AGENTS.md "How to verify your work"), so this is the
  * human-oracle seam for audio: it lists every wired mapping — which sim happening triggers which decoded
  * clip, the settler voice pools split by sex/age, the life-event jingles and the terrain ambient beds —
  * each with a ▶ that plays the wav straight off the `/sounds` dev route. A click is a user gesture, so the

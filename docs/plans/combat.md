@@ -72,7 +72,7 @@ entirely readable** (re-verify before coding — this doc is research output, no
   attack atomic 81 → `atomic.ts` `resolveHit` → `lifecycle/cleanup.ts` reap + `settlerDied`);
   components `Health/Armor/Weapon/Anger` (`components/combat.ts`), `Owner{player}`
   (`ownership.ts`), `MoveSpeed.runPerTick` extracted but unconsumed; `nearestEnemyTarget` is a
-  **full-scan O(combatants × entities)** — `packages/sim/CLAUDE.md` flags it and the ROADMAP
+  **full-scan O(combatants × entities)** — `packages/sim/AGENTS.md` flags it and the ROADMAP
   "ring-search nearest-X" (tier 3) is the named fix; no `attack`/`stance` command exists;
   render binds NO attack animation (atomic 81 falls back to idle), the decoded warrior body
   `cr_hum_body_05` (57 seqs: per-weapon `human_man_Warrior_*_Attack`, `Walk/Wait_agressive`,
@@ -185,7 +185,7 @@ Verification: npm test green (goldens untouched or the move explained mechanic-b
 npm run check green. This step is sim-only — no scene sign-off yet (step 7 is the visible
 capstone); extend packages/app/test/scenes.test.ts only if an existing scene's checks break.
 
-Guardrails: read-only outside this repo; packages/sim/CLAUDE.md determinism contract; golden
+Guardrails: read-only outside this repo; packages/sim/AGENTS.md determinism contract; golden
 rule 7 (this step must NOT add new full-world scans — targeting stays as-is until step 2).
 ```
 [DONE]
@@ -203,7 +203,7 @@ Context (2026-07-03 — re-verify; re-read the current seams, main moves):
   with different players are hostile; owned-vs-unowned same-tribe is neutral; the animal
   relations (`mayAttack`/`mayHunt`/`Anger` in readviews/tribes.ts) stay as they are. Alliances/
   diplomacy are out of scope — binary hostility, log the simplification in FIDELITY.
-- Spatial query (golden rule 7 — the O(n²) full scan is flagged in packages/sim/CLAUDE.md and
+- Spatial query (golden rule 7 — the O(n²) full scan is flagged in packages/sim/AGENTS.md and
   ROADMAP tier 3): build the grid ring search over TileBuckets (systems/shared.ts) — expand
   Manhattan bands from the seeker, finish the WHOLE minimum-distance band, pick canonically
   (distance, then entity id), short-circuit when a band exceeds the query radius. Bucket hostile
@@ -250,7 +250,7 @@ packages/app/test/scenes.test.ts; goldens byte-identical. Scene sign-off note fo
 mechanics visible but attack ANIMATION still missing until step 5 — say so explicitly when
 surfacing the scene URL.
 
-Guardrails: packages/sim/CLAUDE.md (determinism + "Scaling to thousands"); golden rule 7 is the
+Guardrails: packages/sim/AGENTS.md (determinism + "Scaling to thousands"); golden rule 7 is the
 point of this step — no per-seeker full scans may survive it.
 ```
 [DONE]
@@ -302,7 +302,7 @@ Deliverables:
 Verification: npm test + npm run check green; goldens untouched; scene headless checks green;
 surface the scene URL + checklist (note animations still pending step 5).
 
-Guardrails: packages/sim/CLAUDE.md; the flee threat query MUST reuse step 2's ring search (no
+Guardrails: packages/sim/AGENTS.md; the flee threat query MUST reuse step 2's ring search (no
 new scans); all new thresholds are named constants with FIDELITY entries.
 ```
 [IN PROGRESS]
@@ -356,7 +356,7 @@ Deliverables:
 Verification: npm test + npm run check green; goldens untouched; scene headless checks green;
 surface the scene URL (projectile is INVISIBLE until step 6 — say so).
 
-Guardrails: packages/sim/CLAUDE.md; fixed-point only; events not callbacks.
+Guardrails: packages/sim/AGENTS.md; fixed-point only; events not callbacks.
 ```
 
 ## Step 5 — render: warrior bodies + combat animations
@@ -406,13 +406,13 @@ Deliverables:
    bow release matches the projectile launch, the stagger is visible, facing tracks the
    target).
 4. FIDELITY rows: binding joins faithful (animations.ini), facing order + any montage-resolved
-   facts recorded as human-verified; renders stay screen-scaled (render CLAUDE.md).
+   facts recorded as human-verified; renders stay screen-scaled (render AGENTS.md).
 
 Verification: npm test + npm run check green (headless scene checks can only assert state, not
 pixels); END with the human sign-off — npm run dev URLs for the scenes + ?anim and the montage
 questions. An agent cannot self-judge pixels: ask plainly whether each animation looks right.
 
-Guardrails: packages/render/CLAUDE.md (retained, batched, screen-scaled); no copyrighted bytes
+Guardrails: packages/render/AGENTS.md (retained, batched, screen-scaled); no copyrighted bytes
 committed (content/ stays gitignored); the labeled-montage lesson for every visual fact.
 ```
 
@@ -471,7 +471,7 @@ projectileHit) and binding tables, pixels are the human's; END with dev-server U
 checklist and ask for sign-off. Audio: assert bindings headlessly (the audio-verification
 lesson — a fetched wav is not an audible wav; the human confirms by ear).
 
-Guardrails: packages/render/CLAUDE.md (pooling, culling, batch discipline — bars/particles are
+Guardrails: packages/render/AGENTS.md (pooling, culling, batch discipline — bars/particles are
 per-screen, never per-map); render may use floats but visual randomness must be
 tick-seeded-deterministic; no sim reach-in (events only).
 ```
@@ -573,7 +573,7 @@ Deliverables:
 Verification: npm test + npm run check green; goldens untouched; scene URL + checklist +
 sign-off request.
 
-Guardrails: sim CLAUDE.md; content-is-data (no hardcoded class tables); track any UI
+Guardrails: sim AGENTS.md; content-is-data (no hardcoded class tables); track any UI
 placeholder in TECH-DEBT.
 ```
 
@@ -624,7 +624,7 @@ Deliverables:
 Verification: npm test + npm run check green; goldens untouched; scene URL + checklist +
 sign-off.
 
-Guardrails: sim CLAUDE.md; golden rule 7 (building targeting joins the ring-search index, no
+Guardrails: sim AGENTS.md; golden rule 7 (building targeting joins the ring-search index, no
 new scans); reuse demolish/footprint seams — no parallel teardown path.
 ```
 

@@ -798,7 +798,7 @@ export function extractAtomicAnimations(sections: readonly RuleSection[], src: S
 /**
  * Extracts `[weapontype]` sections into validated {@link WeaponType} IR. The mod ships a readable
  * `DataCnmd/types/weapons.ini` (the base game's `Data/logic/weapontypes.cif` is the encrypted twin),
- * so this prefers that `.ini` per CLAUDE.md golden rule #4.
+ * so this prefers that `.ini` per AGENTS.md golden rule #4.
  *
  * Each `damagevalue <armorClass> <value>` line becomes one entry in the role-keyed `damage` record
  * (the armor class is the string key, matching the schema's `record<string,number>` shape and the
@@ -1024,7 +1024,7 @@ function houseKind(mainType: number | undefined): string {
 
 /**
  * Extracts `[logichousetype]` sections (the mod's readable `DataCnmd/types/houses.ini`, preferred over
- * the base game's encrypted `housetypes.cif` per CLAUDE.md golden rule #4) into validated
+ * the base game's encrypted `housetypes.cif` per AGENTS.md golden rule #4) into validated
  * {@link BuildingType} IR. Unlike the other type tables a house record keys its id on `logictype` (not
  * `type`) and its name on `debugname`. Captured per record:
  *   - `logicworker <jobType> <count>`  -> {@link WorkerSlot}[] (the worker the building employs;
@@ -2014,7 +2014,7 @@ function splitGfxHouseRecords(sec: RuleSection): RuleSection[] {
  * per-type table (`real-sprites.ts` `VIKING_HOUSE01_BOBS`). {@link extractBuildingGraphics} reads the
  * SAME records but keeps only `(bmd, palette)` to emit each recolour atlas; this leg keeps the
  * `(typeId → bobId)` mapping those atlases are indexed by, so the render can draw each building its own
- * house bob from data instead of a transcribed constant (CLAUDE.md "content is data, not code").
+ * house bob from data instead of a transcribed constant (AGENTS.md "content is data, not code").
  *
  * Each house record (recovered by {@link splitGfxHouseRecords} — a `[GfxHouse]` bracket can hold many)
  * pairs two per-level tables by their leading **level index** — exactly the `sizeIdx` pairing

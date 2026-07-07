@@ -8,7 +8,7 @@ import { renderSoundGallery } from './entries/sound.js';
 /**
  * App shell entry point — the URL DISPATCHER. It reads `window.location.search`, picks exactly one entry
  * (each in `entries/`), and hands off. This is the ONLY package that depends on both `sim` and `render`,
- * but the wiring lives in the entries; here we only route. See packages/app/CLAUDE.md "URL-flag entries".
+ * but the wiring lives in the entries; here we only route. See packages/app/AGENTS.md "URL-flag entries".
  *
  *  - `?shot`            → deterministic, headless screenshot entry (`entries/shot.ts`) — the harness waits
  *                         on `window.__vinlandShotReady`; no menu, no RAF loop.

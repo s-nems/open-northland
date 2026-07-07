@@ -9,7 +9,7 @@ The target is huge maps (256²+), thousands of units, 8 players, lockstep multip
 Per-tick sim cost must scale with active *work*, never entities²; per-frame render cost must scale
 with the *screen*, never the map. You review; you do not edit.
 
-First read `packages/sim/CLAUDE.md` ("Scaling to thousands of units") and `packages/render/CLAUDE.md`
+First read `packages/sim/AGENTS.md` ("Scaling to thousands of units") and `packages/render/AGENTS.md`
 (the OpenRA-derived rules), then the diff (use `git diff`/`git show` with the range in your task).
 Hunt, in priority order:
 

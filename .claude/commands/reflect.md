@@ -7,7 +7,7 @@ You are running **one** *reflection* pass — the deliberate counterpart to `/it
 advancing the roadmap, you **stop and rethink**: improve the project's *health* — **structure** (file
 size, folder grouping, doc size), code quality, architecture, type safety, and docs/roadmap accuracy.
 Think like a senior engineer doing a walkthrough: look widely, weigh leverage, act surgically. Read
-`CLAUDE.md` first — its golden rules bind any code you touch (`sim` is deterministic/pure, fixed-point
+`AGENTS.md` first — its golden rules bind any code you touch (`sim` is deterministic/pure, fixed-point
 ints, content-is-data, prefer the mod's `.ini`). This project commits **directly to `main`** — do not
 create a feature branch.
 
@@ -56,14 +56,14 @@ Look across several lenses and **generate multiple candidate improvements before
 - **Performance ratchet (golden rule 7 — this is an RTS headed for lockstep multiplayer).** Did a
   recent slice add a full-world scan inside a per-entity loop (sim) or per-frame object churn /
   map-scaled work (render)? Grep the churn hotspots for the anti-patterns named in
-  `packages/sim/CLAUDE.md` "Scaling to thousands" / `packages/render/CLAUDE.md`. If a sim system
+  `packages/sim/AGENTS.md` "Scaling to thousands" / `packages/render/AGENTS.md`. If a sim system
   looks suspect, *measure* (per-system timers over `dist/` in a throwaway script — never
   `performance.now` in `src`) rather than guessing; a confirmed regression is a prime candidate,
   and the fix must stay golden-proven (elide only provably-null work).
 - **Docs drift & cadence** — do `ARCHITECTURE.md` / `ECS.md` / `DATA-FORMAT.md` / `TESTING.md` still
   match the code (a recent slice may have added a component/system/invariant the docs never caught)?
-  Classify every doc by read-cadence — *always-on* (`CLAUDE.md` golden rules) stays lean; *on-demand*
-  (per-package `CLAUDE.md`, `DATA-FORMAT`, `ECS`) loads only where relevant; *reflection-only*
+  Classify every doc by read-cadence — *always-on* (`AGENTS.md` golden rules) stays lean; *on-demand*
+  (per-package `AGENTS.md`, `DATA-FORMAT`, `ECS`) loads only where relevant; *reflection-only*
   (`TECH-DEBT`, `LESSONS`, `FIDELITY`, `ROADMAP-ARCHIVE`) the executor needn't read at all. JSDoc/
   comments earn their keep only when they encode the **non-derivable** (why / invariant / units /
   fidelity-source / gotcha) — prune any that merely **restate the code**.
@@ -122,7 +122,7 @@ stale — a *completed* entry is clutter, delete it (git history keeps the recor
 
 Also **tend the lessons files** (`docs/lessons/*.md` — the loop's hard-won gotchas, grounded in
 commit SHAs; contract in `docs/LESSONS.md`): promote any recurring / rule-worthy lesson into
-`CLAUDE.md` (or the package `CLAUDE.md`) and prune it from the area file, drop entries the code has
+`AGENTS.md` (or the package `AGENTS.md`) and prune it from the area file, drop entries the code has
 made obsolete, and keep each area file under the ~300-line budget (`sim.md` is the standing
 hotspot). This curation is the anti-bloat valve that keeps the compounding memory honest — without
 it, lessons accumulate and poison context.

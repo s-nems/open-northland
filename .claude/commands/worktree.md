@@ -6,7 +6,7 @@ argument-hint: <the task to do in this worktree>
 You are running the **worktree workflow — the project's PRIMARY workflow**: the task and its plan
 come from the user (not from the roadmap), and all work happens in an **isolated git worktree**, so
 several of these can run in parallel sessions without stepping on each other or on the primary
-checkout. Read `CLAUDE.md` (golden rules) before editing — it is the contract and overrides defaults.
+checkout. Read `AGENTS.md` (golden rules) before editing — it is the contract and overrides defaults.
 
 The task from the invocation: **$ARGUMENTS** (if empty, ask what the task is before doing anything).
 
@@ -53,7 +53,7 @@ Two hard gates in this flow:
 
 - Same discipline as `/iterate` step 2: read the matching `docs/lessons/<area>.md` for gotchas, implement
   only the requested task, match surrounding style, no scope creep. Sim work follows the
-  determinism contract in `packages/sim/CLAUDE.md`; mechanics change → a test at the lowest level
+  determinism contract in `packages/sim/AGENTS.md`; mechanics change → a test at the lowest level
   that proves it.
 
 ## 3. Test (do not skip, do not fake)

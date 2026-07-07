@@ -2,7 +2,7 @@
 
 The sim is deterministic and headless, so an agent can prove *mechanics* by running `npm test`. But an
 agent **cannot self-judge pixels** — whether the worker actually *looks* like it walks to the clay pit,
-plays a believable dig animation, and carries the load home is a human call (see `CLAUDE.md`, "How to
+plays a believable dig animation, and carries the load home is a human call (see `AGENTS.md`, "How to
 verify your work"). **Acceptance scenes** close that gap.
 
 > The workflow this enables: you ask for a mechanic ("zrób zbieranie gliny"); the agent writes the code,
@@ -76,6 +76,6 @@ Always build scene sims through `createSceneSim`; never `new Simulation` directl
 
 ## See also
 
-- `packages/app/CLAUDE.md` — the app shell contract (URL flags, layering).
+- `packages/app/AGENTS.md` — the app shell contract (URL flags, layering).
 - `docs/TESTING.md` — the full test pyramid the headless half plugs into.
 - `docs/ARCHITECTURE.md` — the sim → snapshot → render one-way flow scenes ride on.

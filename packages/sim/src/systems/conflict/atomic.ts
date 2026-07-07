@@ -729,7 +729,7 @@ function consumeFood(world: World, settler: Entity, from: Entity | null, goodTyp
  * A settler carries one good at a time (single-slot {@link Carrying}). Asking it to pick up a
  * *different* good while still loaded would silently overwrite — and so destroy — the held good,
  * breaking goods conservation. That can only be a planner bug (the planner must pile up the current
- * load first), so we throw rather than corrupt state (CLAUDE.md: throw for bugs).
+ * load first), so we throw rather than corrupt state (AGENTS.md: throw for bugs).
  */
 function addCarry(world: World, settler: Entity, goodType: number, amount: number): void {
   const held = world.tryGet(settler, Carrying);
