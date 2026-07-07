@@ -21,7 +21,7 @@ import type { World } from '../../ecs/world.js';
  * `jobType`. This view does not pre-split, to stay a single faithful "settlers by job" tally that
  * any grouping can read.
  *
- * FIDELITY n/a: a pure derived **read view** of existing sim state, like {@link tribeStocks} — it
+ * source-basis n/a: a pure derived **read view** of existing sim state, like {@link tribeStocks} — it
  * adds no mechanic (nothing is produced/consumed/moved), so there is no original behavior to pin; the
  * `jobType`s it tallies are set by the already-faithful birth/growth/job-assignment systems.
  *
@@ -62,7 +62,7 @@ export const IDLE_JOB = -1;
  * map (the HUD shows 0 / omits it); a zero entry that a store happens to carry is kept (it is real
  * capacity holding nothing) — callers that want only non-empty goods filter on the value.
  *
- * FIDELITY n/a: a pure derived **read view** of existing sim state, like `tribePopulation` — it
+ * source-basis n/a: a pure derived **read view** of existing sim state, like `tribePopulation` — it
  * adds no mechanic (nothing is produced/consumed/moved), so there is no original behavior to pin; the
  * stocks it reads are produced by the already-faithful production/carry loops.
  *
@@ -128,10 +128,10 @@ export interface GoodsGraphNode {
  * source's). Every good gets a node even if nothing produces or consumes it, so an edge always has
  * both endpoints present.
  *
- * FIDELITY n/a: a pure derived **read view** of the already-extracted goods-graph IR, like
+ * source-basis n/a: a pure derived **read view** of the already-extracted goods-graph IR, like
  * {@link tribeStocks} — it adds no mechanic (nothing is produced/consumed/moved) and invents no
  * data; the layers/edges it surfaces are the faithful `classification`/`productionInputs` params the
- * pipeline pinned (see ROADMAP Phase 3 "Goods graph").
+ * pipeline pinned (see historical plan phase 3 "Goods graph").
  *
  * Determinism: a pure function of `content` (no world, no RNG, no wall-clock) — but `content.goods`
  * is a plain array and the `producedBy` list is explicitly **sorted**, so the same content yields a

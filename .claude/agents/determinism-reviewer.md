@@ -1,6 +1,6 @@
 ---
 name: determinism-reviewer
-description: Reviews a Vinland diff with the sim determinism/purity lens. Spawn for ANY change touching packages/sim (mandatory in the /iterate and /reflect review steps). Pass it the commit range or diff to review.
+description: Reviews a Vinland diff with the sim determinism/purity lens. Spawn for changes touching packages/sim, fixed-point math, command flow, or content schemas. Pass it the commit range or diff to review.
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -29,9 +29,6 @@ First read `packages/sim/AGENTS.md` (the contract) and the diff you were given (
    `World.verifyCaches()`.
 7. **Mid-loop mutation** — `world.destroy`/`world.remove` while iterating the store being scanned
    (collect-then-mutate), dangling entity references on the new destroy/teardown path.
-
-Also skim `docs/lessons/sim.md` for traps matching the diff's area — a recurring lesson the diff
-re-introduces is a finding.
 
 Return a concise findings list: `file:line — what breaks determinism/purity and under which input`,
 each with a severity (blocker / should-fix / note) and a one-line suggested fix. If the diff is

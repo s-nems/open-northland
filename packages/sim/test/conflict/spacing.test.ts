@@ -23,7 +23,7 @@ import { testContent } from '../fixtures/content.js';
  * Tests for the IDLE-SPACING (de-stack) drive: owned settlers don't HARD-collide (a walker passes freely
  * through any tile) but they won't come to REST stacked on top of one another — a unit that has arrived
  * with nothing to do and shares its tile with a lower-id resting owned unit steps off to the nearest free
- * cell. Faithful in spirit to the original's per-cell valency (docs/FIDELITY.md). Gated on Owner, so the
+ * cell. Faithful in spirit to the original's per-cell valency (source basis). Gated on Owner, so the
  * unowned golden/economy fixtures never de-stack (their planner output stays byte-identical).
  */
 

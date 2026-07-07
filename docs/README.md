@@ -1,88 +1,60 @@
-# Vinland docs — index
+# Vinland Docs
 
-Start with the **contract** (`../AGENTS.md`) — the golden rules override everything here. This file
-maps the rest.
+Start with the contract: [`../AGENTS.md`](../AGENTS.md). It contains the always-on rules for agents
+and overrides older notes in plans or commits.
 
-## Read in this order (design)
+## Core Design
 
-1. [ARCHITECTURE.md](ARCHITECTURE.md) — the big picture: package boundaries, the one-way
-   commands-in/snapshot-out data flow, why each technology was chosen, save/load & multiplayer.
-2. [ECS.md](ECS.md) — the simulation core: entities/components/systems, the **atomic-action model**
-   (the soul of Cultures), the progression/tech graph, system execution order per tick.
-3. [DATA-FORMAT.md](DATA-FORMAT.md) — the intermediate representation (IR): the zod-validated content
-   model, numeric-vs-string ids, sprite/animation/map manifests.
-4. [TESTING.md](TESTING.md) — the determinism/self-validation pyramid and what an agent **cannot**
-   self-validate (pixels).
-5. [SCENES.md](SCENES.md) — acceptance scenes: one scene, two consumers (a headless test + a human
-   sign-off); how to add one.
+1. [ARCHITECTURE.md](ARCHITECTURE.md) — package boundaries, command/snapshot flow, technology choices,
+   save/load and multiplayer direction.
+2. [ECS.md](ECS.md) — entities, components, systems, atomic actions, progression, and tick order.
+3. [DATA-FORMAT.md](DATA-FORMAT.md) — the validated content IR and id conventions.
+4. [TESTING.md](TESTING.md) — deterministic test pyramid and visual/audio limits.
+5. [SCENES.md](SCENES.md) — acceptance scenes for human sign-off.
+6. [SOURCES.md](SOURCES.md) — original file formats, source/oracle map, and legal statement.
 
-## Fidelity & planning
+## Plans
 
-- [FIDELITY.md](FIDELITY.md) — **is the rebuild *faithful*, not just self-consistent?** The
-  conformance ledger; the axis no test covers. Read before tuning a mechanic.
-- [ROADMAP.md](ROADMAP.md) — the phased plan and the **current target**. The executor works the top
-  unchecked item.
-- [ROADMAP-ARCHIVE.md](ROADMAP-ARCHIVE.md) — the completed-work verification trail, swept out of the
-  live roadmap. Reflection-only; the executor never reads it.
+`docs/plans/` is the live planning surface. The user writes or updates a plan, then invokes
+`/worktree` for one step at a time. The executing agent updates the same plan before asking to merge:
+tick the step, add a short progress note, and record any source-basis or approximation that matters.
+
+Current plans:
+
+- [plans/original-ui.md](plans/original-ui.md) — original in-game HUD extraction and rebuild.
+- [plans/gathering-economy.md](plans/gathering-economy.md) — faithful resource gathering, piles,
+  felling, mining, and collision.
+- [plans/combat.md](plans/combat.md) — combat, stances, damage, projectiles, recruitment, towers.
+- [plans/map-visual-fidelity.md](plans/map-visual-fidelity.md) — map-import visual gaps against
+  original screenshots.
+
+Delete a plan when all its steps land and no pending decision remains.
 
 ## Reference
 
-- [SOURCES.md](SOURCES.md) — original file formats (`.cif`/`.bmd`/`.pcx`/`.lib`/`.ini`, `map.dat`),
-  how to use the OpenVikings oracle, and the **canonical legal statement** (Legal line).
-- [PRIOR-ART.md](PRIOR-ART.md) — practices borrowed from other engine reimplementations: adopted /
-  deferred / consciously different.
+- [PRIOR-ART.md](PRIOR-ART.md) — practices from other engine reimplementations. Optional, useful when
+  choosing an architecture or validation approach.
+- Package-local `AGENTS.md` files hold area-specific rules:
+  `../packages/sim/AGENTS.md`, `../packages/render/AGENTS.md`,
+  `../packages/app/AGENTS.md`, `../tools/asset-pipeline/AGENTS.md`.
 
-## Process / working notes
+## Workflow Files
 
-- **Workflows** (`.claude/commands/`): optional Claude Code shortcuts over the canonical
-  `AGENTS.md` contract. **`/worktree` is the primary workflow** — the user authors the task/plan,
-  the agent executes it faithfully in an isolated worktree, the user verifies manually and gives the
-  explicit merge go. `/audit` runs the domain review lenses (determinism / RTS-perf / fidelity +
-  correctness, `.claude/agents/`) over any diff, report-only. `/iterate` + `/reflect` + the
-  `iterate-supervisor` workflow are the **autonomous roadmap loop, kept as an alternative** — not the
-  default; don't push them.
-- [LESSONS.md](LESSONS.md) — hard-won gotchas: the index + contract; the entries live in per-area
-  files under [lessons/](lessons/) so an iteration reads only the area it touches.
-- [plans/original-ui.md](plans/original-ui.md) — user-driven `/worktree` plan: step-by-step agent
-  prompts to extract and rebuild the original in-game HUD. Consumed in order; deleted when done.
-- [plans/gathering-economy.md](plans/gathering-economy.md) — user-driven `/worktree` plan:
-  step-by-step agent prompts for the faithful gathering economy (per-good node graphics, visible
-  piles/flags, multi-chop tree felling, shrinking mineral deposits, data-driven resource
-  collision, chop cadence). Consumed in order; deleted when done.
-- [plans/combat.md](plans/combat.md) — user-driven `/worktree` plan: step-by-step agent prompts
-  for faithful combat (stances, melee approach + cadence, per-material damage tables, ranged
-  projectiles, warrior-body animations, blood/cadavers/HP bars, barracks recruitment + training,
-  towers/defence mode, a final calibration session vs the original). Consumed in order; deleted
-  when done.
-- [plans/map-visual-fidelity.md](plans/map-visual-fidelity.md) — user-driven `/worktree` plan:
-  step-by-step agent prompts closing the map-import look gaps vs the original (lmhe elevation
-  lift, embr slope shading + edge fade, authored building variants, palisade joins, building
-  animations, emt3/emt4 survey, animal herds, water audit, panorama sign-off). Carries the shared
-  verification kit (reference-shot corpus + pinned viewport fit) and a per-step progress log.
-  Consumed in order; deleted when done.
-- [TECH-DEBT.md](TECH-DEBT.md) — trigger-gated / speculative reworks deliberately parked (not a
-  structural-health queue — `/reflect` owns and *executes* structure), plus the reflection log.
+Claude Code shortcuts live under `.claude/commands/`:
 
-## Per-package contracts
+- `/worktree` — primary workflow: isolated branch/worktree, verify, review, update plan, wait for
+  user approval, fast-forward merge.
+- `/audit` — report-only review battery over a diff.
 
-Load-on-demand rules next to the code they bind: `../packages/sim/AGENTS.md` (determinism contract),
-`../packages/render/AGENTS.md` (RTS-scale drawing), `../packages/app/AGENTS.md` (URL flags + scenes),
-`../tools/asset-pipeline/AGENTS.md` (prefer the mod's `.ini`; validate decoders vs the oracle).
+Reviewer agents live under `.claude/agents/` and are intentionally small: sim determinism, RTS-scale
+performance, source-basis/fidelity, architecture, and code quality.
 
-## Keeping these docs lean (anti-bloat convention)
+## Lean Docs Rule
 
-Three docs are **read by the executor every `/iterate`** and re-bloat fastest: **ROADMAP.md**,
-**FIDELITY.md**, **lessons/**. Keep them scannable (`npm run scan:structure` flags the budgets):
+Do not add new running ledgers for old global planning, lessons, fidelity, or tech debt. Preserve only
+current, actionable state:
 
-- **ROADMAP.md** — a completed item collapses to a one-line summary + `→ archive` pointer. Its full
-  "Hands-on:" verification trail goes **into ROADMAP-ARCHIVE.md**, not inline (a live item never
-  accretes its trail — that is the ratchet `/reflect` keeps having to sweep).
-- **FIDELITY.md** — each ledger row is `status + one line on how it's pinned` (source + the one key
-  verified number). The blow-by-blow lives in the commit message, not the row.
-- **lessons/*.md** — one entry per trap, filed by area, headline first; **extend an existing entry
-  rather than appending a near-duplicate**; graduate a thrice-hit trap to an `AGENTS.md`.
-- **ROADMAP-ARCHIVE.md** — one entry per roadmap item, filed under its phase; a re-sweep **updates
-  that entry in place**, never appends a new dated section.
-
-Detail always survives in git history and commit messages — the docs carry the *current* state, not
-the narrative of how it got there.
+- durable rules go in `AGENTS.md` or package-local `AGENTS.md`;
+- active work goes in `docs/plans/`;
+- completed details stay in git history and commit messages;
+- future work becomes a concrete plan step or external issue.

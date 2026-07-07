@@ -8,7 +8,7 @@ import type { FontMetrics, GlyphMetric } from '../content/font-gfx.js';
  * {@link PalettedSprite} reading the `256 × 4` font colour LUT: same mechanism as player/GUI colours, one
  * row per colour (white/dark/dimmed/red). Layout follows the original's top-anchored model (OpenVikings
  * `CFont.cs`): blit each non-empty glyph at `pen + (offsetX, offsetY)`, advance the pen by the glyph's
- * `advance`, skip empty glyphs (space/undefined). See docs/FIDELITY.md ".fnt".
+ * `advance`, skip empty glyphs (space/undefined). See source basis ".fnt".
  *
  * A run is a retained `Container` of one PalettedSprite per glyph; {@link BitmapTextRun.place} re-anchors it
  * in screen pixels (the panel re-places on resize/scale change — screen-space meshes carry the resolution).

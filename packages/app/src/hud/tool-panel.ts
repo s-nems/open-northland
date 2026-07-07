@@ -50,7 +50,7 @@ import {
  * the decoded GUI art is absent (a checkout that hasn't run the GUI pipeline stage) the panel DEGRADES to
  * flat `Graphics` blocks at the exact same pinned geometry, staying visible and fully interactive; the
  * pop-up window chrome is a parchment `Graphics` panel in both modes (a sprite 9-slice is a follow-up, see
- * docs/ROADMAP.md). Text is the decoded `.fnt` bitmap font when present, else a Pixi `Text` fallback.
+ * docs/plans/). Text is the decoded `.fnt` bitmap font when present, else a Pixi `Text` fallback.
  *
  * The pure geometry / speed-state / menu logic lives in the sibling `tool-panel-layout` / `game-speed` /
  * `building-menu` modules (headlessly unit-tested); this module is only the Pixi + input glue.
@@ -199,7 +199,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     // band as each element's background, but a bob writes them OPAQUE (the engine blitter has no colour key,
     // and the original hid its opaque panel by rendering gameplay in a dedicated area). We render the world
     // full-screen, so this is a DELIBERATE deviation: key those colours transparent so the floating HUD shows
-    // only the ornament + glyphs and never paints a dark rectangle over the terrain (docs/FIDELITY.md).
+    // only the ornament + glyphs and never paints a dark rectangle over the terrain (source basis).
     const strip = guiSprite(layout.stripGfx);
     if (strip !== null) {
       strip.colorKey = 'full';
@@ -476,7 +476,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         else statsOpen = true;
         break;
       default:
-        // extras / mission / diplomacy / population / tech_tree / options — not wired in v1 (see ROADMAP).
+        // extras / mission / diplomacy / population / tech_tree / options — not wired in v1 (see plan).
         break;
     }
   };

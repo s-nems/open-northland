@@ -29,7 +29,7 @@ not ground truth):
   mushroom & herb 35/@21. One swing per atomic — **no multi-chop count anywhere in readable
   data** (`humanjobexperiencetypes.ini` has `baserepeatcounter` for farmer/fisher/hunter but NOT
   for collector job 8), and **no tree-yield amount** either → both become named calibration
-  constants observed from the original (docs/FIDELITY.md "observed" entries).
+  constants observed from the original (plan progress note "observed" entries).
 - Graphics are ALREADY extracted (866 `[GfxLandscape]` records in `content/ir.json` via
   `extractLandscapeGfx`, `tools/asset-pipeline/src/decoders/ini.ts` ~1685–1728): tree species
   with growth states + a "falling" state (`ls_trees.bmd`), felled debris/trunks
@@ -59,11 +59,11 @@ delete this file when all steps land.
 - [x] 1. Pipeline: resource-lifecycle logic tables → IR/content — **landed:** `GoodType.gathering`/
       `.landscapeType`, `LandscapeType.name`/raw `.transitions`, and the resolved `gatheringPipeline`
       join (11 goods, all stages resolve to real `[GfxLandscape]` records). See docs/SOURCES.md
-      "Gathering pipeline" + docs/FIDELITY.md.
+      "Gathering pipeline" + plan progress note.
 - [x] 2. Render: per-good resource nodes + ground piles + flags visible — **landed:** `ResourceTypeBinding`
       + `StockpileBinding` (a new `'stockpile'` `DrawKind`) built from the Step-1 `gatheringPipeline` join;
       each good draws its own node/pile, an empty pile the flag. Acceptance scene `?scene=gathering`. See
-      docs/FIDELITY.md "Gathering-economy graphics" + ROADMAP-ARCHIVE "rung 2".
+      plan progress note "Gathering-economy graphics" + historical archive "rung 2".
 - [x] 3. Sim: wood cycle — multi-chop fell → trunk on ground → pickup → deliver — **landed:** a
       `Felling{chopsLeft}` marker (stamped from content `gathering.chopsToFell`) turns each chop atomic into
       a decrement; the last chop DESTROYS the standing node and drops a `GroundDrop` trunk (the whole yield)
@@ -72,14 +72,14 @@ delete this file when all steps land.
       trunk draws its own `landscapeToPickup` graphic (a `grounddrop` DrawKind, distinct from the delivered
       `landscapeToStore` heap), the delivery flag stays planted UNDER its heap, and the chop swing is ONE full
       strike per atomic (`HARVEST_SWING_LENGTH` — the swing-length half of Step 7, done early). Felling pace
-      is ONE global calibration (`catalog/felling.ts`). See docs/FIDELITY.md "Multi-hit harvest / felling".
+      is ONE global calibration (`catalog/felling.ts`). See plan progress note "Multi-hit harvest / felling".
 - [x] 4. Sim: mineral deposits shrink by level; mushrooms — **landed:** a mined good carries a
       `MineDeposit{initial,levels}` (stamped from content `gathering.depositSize`/`depositLevels`): each
       harvest atomic chips one unit and drops it at the deposit's cell as an ore `GroundDrop` (reusing
       Step-3's drop/pickup/deliver machinery), the deposit shrinks a visual level (`depositVisualLevel` →
       `DrawItem.level` → per-level `ResourceTypeBinding` frames), and the node is REMOVED at 0
       (`resourceDepleted`). A mushroom is the trivial neither-marker direct pickup (onto the back + remove).
-      See docs/FIDELITY.md "Mineral deposits"; `?scene=gathering` runs a live mud-deposit mining cycle.
+      See plan progress note "Mineral deposits"; `?scene=gathering` runs a live mud-deposit mining cycle.
 - [ ] 5. Sim: resource collision + build-exclusion from data
 - [ ] 6. App: imported maps spawn real resource nodes
 - [ ] 7. Polish: chop cadence, adjacent stance, animation timing — **swing length already landed with Step 3**
@@ -91,7 +91,7 @@ delete this file when all steps land.
 Out of scope for this plan: tree regrowth/spreading and herb/mushroom cultivation (the bio
 transitions — `isBioLandscapeFlag`, `atomicForPlanting`), bush/fruit growth stages, farming/
 fishing/hunting jobs, vehicle logistics, and the minimap. Calibration constants (chop count,
-yields, deposit sizes) are data + FIDELITY entries, refined later by observing the original.
+yields, deposit sizes) are data + plan progress notes, refined later by observing the original.
 
 ---
 [DONE]
@@ -156,8 +156,8 @@ OpenVikings, never its architecture); data only — no sim behavior change, gold
 ```text
 Make the gathering economy VISIBLE: every resource node draws its own graphic (not the hardcoded
 yew tree), dropped goods on the ground draw as per-good piles, and delivery flags draw as flags.
-This lands the two rung-2 roadmap bullets ("Resource nodes by goodType", "Loose ground piles +
-flags rendering") — tick them in docs/ROADMAP.md when done.
+This lands the two visibility bullets ("Resource nodes by goodType", "Loose ground piles +
+flags rendering") — tick the matching checklist item in this plan when done.
 
 Context (research-time line refs — re-verify):
 - packages/render/src/data/scene.ts: `DrawKind = 'tile'|'building'|'settler'|'resource'` (~46);
@@ -201,7 +201,7 @@ Verification: `npm test` + `npm run check` green; run the pipeline if content/ i
 surfacing `npm run dev` → `http://localhost:5173/?scene=gathering` + a visual checklist (each
 good's node visibly distinct; piles look like piles of THAT good and grow with amount; the flag
 reads as a flag) and ask for human sign-off — an agent cannot self-judge pixels. Record any
-frame-pick approximations in docs/FIDELITY.md.
+frame-pick approximations in plan progress note.
 
 Guardrails: render cost scales with the screen (retained renderer rules,
 packages/render/AGENTS.md); no sim change — goldens must not move.
@@ -214,7 +214,7 @@ packages/render/AGENTS.md); no sim change — goldens must not move.
 Replace the single-hit wood harvest with the original's observed cycle: the collector chops a
 standing tree repeatedly; the tree falls; a STUMP stays at the spot and a TRUNK (the felled wood)
 lies on the ground holding the tree's whole yield; the collector picks the wood up and carries it
-to his collection point (store or flag); the depleted node is REMOVED. This is the roadmap item
+to his collection point (store or flag); the depleted node is REMOVED. This is the plan item
 "Faithful multi-hit harvest + drop-on-ground" (Phase 3) — tick it when done.
 
 Context (re-verify; research 2026-07-03):
@@ -224,7 +224,7 @@ Context (re-verify; research 2026-07-03):
   (`viking_collector_harvest_tree`, atomicanimations.ini) is 30 ticks, ONE swing per atomic.
   Original data does NOT carry: the number of chops to fell, nor the wood units per tree
   (verified absent — no baserepeatcounter for collector job 8). Both are OBSERVED calibration
-  constants → content data fields (golden rule 3: data, not code) + docs/FIDELITY.md entries
+  constants → content data fields (golden rule 3: data, not code) + plan progress note entries
   marked "observed, pending calibration against the original".
 - Current sim (research-time refs): `Resource{goodType, remaining, harvestAtomic}`
   (packages/sim/src/components/economy.ts ~51); one atomic completion = 1 unit teleported onto
@@ -254,7 +254,7 @@ Design (follow unless you find a strong reason — then record it):
    Step-1 content (the tree→falling→trunk landscape transitions), not on a hardcoded goodType,
    and shape the drop/pickup machinery so Step 4 can reuse it.
 5. The "tree falling" ANIMATION stage is render polish — deferred to Step 7; v1 swaps standing →
-   stump+trunk instantly (note in FIDELITY.md).
+   stump+trunk instantly (note in plan progress note).
 
 Verification (this MOVES goldens — that is expected and must be intentional):
 - Unit tests: fell-progress decrement, node removal, trunk-pile spawn with exact yield, stump
@@ -266,7 +266,7 @@ Verification (this MOVES goldens — that is expected and must be intentional):
   commit (packages/sim/AGENTS.md golden discipline). Extend the `?scene=gathering` acceptance
   scene: watch chop→fall→carry→pile-at-flag; headless half asserts the cycle; end with the dev
   URL + checklist + ask for human sign-off.
-- `npm test` + `npm run check` green; docs/FIDELITY.md updated (chop count, yield, instant-fell).
+- `npm test` + `npm run check` green; plan progress note updated (chop count, yield, instant-fell).
 
 Guardrails: sim purity (no Math.random/Date — variation only via world.rng; canonical iteration
 order; fixed-point rules — packages/sim/AGENTS.md); per-tick cost scales with active WORK, no
@@ -291,22 +291,22 @@ Context (re-verify; research 2026-07-03):
   trunk: each harvest atomic completion drops 1 unit as an ore ground-pile at the deposit's
   cell (reuse the Step-3 drop/pickup machinery — bare `Stockpile+Position`, drawn by Step 2
   from the pickup-stage gfx record), then the collector picks it up and delivers via
-  `deliveryTargetFor`. Record in docs/FIDELITY.md as data-pinned (the `landscapeToPickup`
+  `deliveryTargetFor`. Record in plan progress note as data-pinned (the `landscapeToPickup`
   stage). Batching is UNKNOWN (chip several units before picking up, or carry each one?) — v1:
   let the existing pickup take whatever lies there up to carry capacity; note as
   observed-pending-calibration against the original.
 - Deposit SIZE (units per deposit) is not in readable data → per-good calibration constants in
-  content data + FIDELITY "observed" entries (like Step 3's tree yield).
+  content data + plan progress note "observed" entries (like Step 3's tree yield).
 - Visual levels: the deposit gfx exist in `ls_ground.bmd` records (clay/iron/gold mines — the
   IR shows level variants; VERIFY in content/ir.json whether levels are multiple `frames`
   states within one record or separate editName records, and bind accordingly). Wire: sim
   computes a small integer level from remaining/initial (integer math, deterministic), exposes
   it through the snapshot read-view into `DrawItem`; the Step-2 `ResourceTypeBinding` grows a
   per-level frame pick. Depletion: remove the node (Step-5 collision must unblock via the same
-  removal path); if the IR has an empty-pit decor state, leave it, else leave nothing (FIDELITY
-  note).
+  removal path); if the IR has an empty-pit decor state, leave it, else leave nothing (record the
+  choice in the plan progress note).
 - Mushrooms: one pickup (atomic 32) yields the unit and removes the node; regrowth/cultivation
-  is out of scope (leave a docs/ROADMAP.md note under the gathering items).
+  is out of scope (leave a compact note under this plan's gathering items).
 - Clay blocks NO movement (that's Step 5's data-driven concern — nothing to do here beyond not
   assuming collision).
 
@@ -315,7 +315,7 @@ deposit size); headless scenario (miner chips a deposit → ore piles appear at 
 lands in the store; node removed; ore conserved — no dupes/losses); goldens
 updated intentionally; extend `?scene=gathering` — a deposit visibly steps down levels while
 mined (headless asserts the level read-view; human signs off the pixels). `npm test` +
-`npm run check` green; FIDELITY.md updated.
+`npm run check` green; plan progress note updated.
 
 Guardrails: same as Step 3 (determinism, golden discipline, no full-world scans, data not code).
 ```
@@ -362,7 +362,7 @@ Verification:
 - Headless scenario: woodcutter routes AROUND a tree line to reach a target; collector works a
   tree from an adjacent cell. Goldens updated intentionally.
 - Scene: extend `?scene=gathering` (or a small dedicated one) — settlers visibly walk around
-  nodes, never through; human sign-off. `npm test` + `npm run check` green; FIDELITY.md notes
+  nodes, never through; human sign-off. `npm test` + `npm run check` green; plan progress note notes
   the cell-granularity approximation of the sub-tile footprints.
 
 Guardrails: determinism (the blocked set must be a pure function of sim state); perf doctrine
@@ -385,7 +385,7 @@ Context (re-verify; research 2026-07-03):
   gfx record → logic landscape type id → is it some good's `landscapeToHarvest` (or
   `landscapeToPickup`/`landscapeToStore` — decide + document how to treat pre-placed trunks and
   piles; simplest v1: only harvest-stage objects spawn nodes). Everything else stays decor.
-- A related-but-separate roadmap item imports `map.cif` `StaticObjects`
+- A related-but-separate plan item imports `map.cif` `StaticObjects`
   (sethouse/sethuman/setanimal) — this step covers only the RESOURCE objects from the map.dat
   `objects` lane; check whether that sibling item has landed and coordinate (don't collide, do
   reuse its command/seam shape if present).
@@ -411,7 +411,7 @@ Verification: `npm test` + `npm run check` green; then the human check — `npm 
 camp actually harvests them, no double-drawn or vanished objects; report tick-cost/fps numbers.
 
 Guardrails: content/ stays gitignored; determinism (spawn order canonical); coordinate with the
-StaticObjects roadmap item; read packages/app/AGENTS.md for the entry/scene conventions.
+StaticObjects plan item; read packages/app/AGENTS.md for the entry/scene conventions.
 ```
 
 ## Step 7 — polish: chop cadence, adjacent stance, animation timing
@@ -425,17 +425,17 @@ Context (re-verify; research 2026-07-03):
 - Data: `viking_collector_harvest_tree` (atomicanimations.ini, mod copy under
   DataCnmd/atomicanimations12/) is length 30 with the harvest trigger `event 20 18` (frame 19
   effect cue, frame 10 stamina/spirit costs). The extracted `events` already land in the IR
-  (`extractAtomicAnimations`). docs/FIDELITY.md currently notes the render impact frame is
+  (`extractAtomicAnimations`). plan progress note currently notes the render impact frame is
   APPROXIMATED (~frame 8 of the 16-frame chop bobseq, phaseStart 9) — resolve or update that
   entry against the data.
 - Verify `atomicDuration` (readviews/animations.ts) actually resolves the real 30-tick length
   through the `setatomic` binding chain for harvest atomics in real content — if it falls back
   to DEFAULT_ATOMIC_DURATION (4), fix the binding, not the constant.
-- Known roadmap bug (Phase-3 item, same bullet as Step 3): pickup/deposit animations are choppy
+- Known plan bug (Phase-3 item, same bullet as Step 3): pickup/deposit animations are choppy
   — the render advances 1 frame/tick while the atomic is shorter than the animation (19-frame
   `generic_pick_up` in a 4-tick atomic). Fix: pin those atomic durations to their animation
   lengths in content (`atomicBindings`/`atomicAnimations`) so each plays exactly once, fully.
-- Cadence: the original (USER OBSERVATION — record in FIDELITY.md as observed) does not swing
+- Cadence: the original (USER OBSERVATION — record in plan progress note as observed) does not swing
   continuously: strike → a brief idle beat → a small step/turn to a new angle (sometimes the
   same) → next strike. Between Step-3 chop atomics, insert a short interruptible idle and an
   occasional deterministic stance variation — facing/adjacent-cell re-pick driven by world.rng
@@ -443,11 +443,11 @@ Context (re-verify; research 2026-07-03):
 - Stance & alignment: the collector works from an adjacent cell (Step 5); align facing + the
   render anchor (half-cell offsets) so the axe head meets the trunk across all the adjacent
   positions that occur. An agent CANNOT self-judge pixels: use the `?scene=gathering` scene plus,
-  if helpful, a labeled montage or a short GIF per facing (docs/lessons — the montage technique)
+  if helpful, a labeled montage or a short GIF per facing (AGENTS.md — the montage technique)
   and let the user be the oracle. Same for the optional stretch: play the tree's "falling" gfx
   state (the `[GfxLandscape]` falling frames / landscape type 5) as a render transient on the
   Step-3 `resourceFelled` event before swapping to stump+trunk — do it only if the frames are
-  there and it stays render-side; else leave the FIDELITY note as-is.
+  there and it stays render-side; else leave the plan progress note as-is.
 
 Verification: headless — cadence state machine deterministic (two same-seed runs identical;
 goldens updated intentionally if the planner sequence changes); atomic durations for
@@ -455,7 +455,7 @@ harvest/pickup/deposit assert against content data, not constants. `npm test` + 
 green. End with `npm run dev` → `?scene=gathering` + a checklist (axe meets trunk from every
 stance; strike lands on the data's event frame, no sliding/moonwalking; the pause+reposition
 rhythm reads like the original; pickup plays once, fully) and ask for human sign-off; update
-docs/FIDELITY.md (impact frame now data-pinned; cadence observed; falling state done/deferred).
+plan progress note (impact frame now data-pinned; cadence observed; falling state done/deferred).
 
 Guardrails: sim determinism (world.rng only); render never mutates sim; keep the golden
 discipline (name the mechanic when a golden moves).

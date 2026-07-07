@@ -26,7 +26,7 @@ import { testContent } from '../fixtures/content.js';
  * binds eat atomic 10 → "viking_eat" (length 5); the headquarters (building 1) declares a food stock
  * slot, so it can be the larder a settler eats from. The eat atomic id (10) is pinned to the original
  * `setatomic <job> 10 "..._eat_slot_food"` bindings; the ¾·ONE threshold + "which good is food"
- * (slug-inferred) are approximated (docs/FIDELITY.md).
+ * (slug-inferred) are approximated (source basis).
  */
 
 const GRASS = 0;

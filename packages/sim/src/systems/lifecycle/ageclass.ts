@@ -22,11 +22,11 @@
  * collision — a synthetic fixture's adult job id can equal a real age-class id, but only a born-young
  * settler carries `Age`; `isNonWorkingAge` stays the structural id→stage predicate the JobSystem uses.)
  *
- * FIDELITY (faithful — params; approximated — cadence): the age-class ids are pinned to the original
+ * source-basis (faithful — params; approximated — cadence): the age-class ids are pinned to the original
  * `logicdefines.inc` constants + the `jobtypes.ini` records (no interpretation). The **growth cadence**
  * ({@link GROWUP_TICKS} — how long each stage lasts) is *approximated*: its timing lives below the
  * readable rule files (no readable "grows up after N ticks" key) and is calibration-by-observation; see
- * docs/FIDELITY.md. This module fixes the *structure* (which ids are which stage) faithfully and the
+ * source basis. This module fixes the *structure* (which ids are which stage) faithfully and the
  * *timing* as the recorded approximated constant. Sex selection at birth is likewise deferred (see
  * {@link NEWBORN_AGE_CLASS}); a settler grows up keeping the sex it was born with (baby_female →
  * child_female → adult; baby_male → child_male → adult).
@@ -47,7 +47,7 @@ export const CHILD_MALE = 4;
 /** The job id a newborn is born at — `baby_female` (the lowest-id age class). The original picks a
  * sex per birth; we have no readable sex-determination oracle and no RNG-free source at the birth
  * site, so the youngest age class is chosen deterministically (an approximated deviation recorded in
- * docs/FIDELITY.md — the *structure* "a newborn is a baby" is pinned; *which sex* is not). */
+ * source basis — the *structure* "a newborn is a baby" is pinned; *which sex* is not). */
 export const NEWBORN_AGE_CLASS = BABY_FEMALE;
 
 /** Whether a `jobType` is a **baby** (the youngest, pre-child stage) — ids 1–2. */
@@ -76,7 +76,7 @@ export function isNonWorkingAge(jobType: number | null): boolean {
  * grows into a child after `GROWUP_TICKS`, a child into an adult after another `GROWUP_TICKS` (so it is
  * employable at `2 * GROWUP_TICKS`).
  *
- * FIDELITY (approximated — see docs/FIDELITY.md): the original's growth cadence lives below the readable
+ * source-basis (approximated — see source basis): the original's growth cadence lives below the readable
  * rule files — there is no "grows up after N ticks" key in `jobtypes.ini`/`tribetypes.ini`/`houses.ini`
  * — so this is an unpinned constant in the established hunger-rise mould ({@link HUNGER_RISE_PER_TICK}):
  * the basic "a settler is born young and matures into a worker over time" core, deterministic and
@@ -95,7 +95,7 @@ function isMaleStage(jobType: number | null): boolean {
 /**
  * GrowthSystem — age each {@link Age}-bearing settler one tick and **promote** it through the
  * non-working life stages as it matures: baby → child after {@link GROWUP_TICKS}, child →
- * adult-eligible after another. Closes the ROADMAP's growth transition (baby→child→adult-eligible,
+ * adult-eligible after another. Closes the plan's growth transition (baby→child→adult-eligible,
  * freeing a grown child for the JobSystem) and the loop the ReproductionSystem opened — a colony's
  * newborns mature into workers rather than staying babies forever.
  *
@@ -108,14 +108,14 @@ function isMaleStage(jobType: number | null): boolean {
  *
  * The age-class *structure* (which ids are which stage, the sex split) is faithful (pinned to
  * `logicdefines.inc`/`jobtypes.ini`); the *cadence* {@link GROWUP_TICKS} is the recorded approximated
- * constant (no readable grow-up-rate oracle — docs/FIDELITY.md).
+ * constant (no readable grow-up-rate oracle — source basis).
  *
  * Determinism: a fixed integer increment and fixed stage boundaries, no RNG/wall-clock. The per-entity
  * update reads/writes only that settler's own `Age`/`Settler`, so the Settler-store iteration order
  * can't leak into the result; promotion is a pure function of the new `ticks` count. Removing the `Age`
  * component on graduation is collect-then-mutate-safe — `query(Age, Settler)` yields entity ids, and we
  * remove from the `Age` store after reading, never mid-iterating a structure the query is walking
- * (mirrors the demolish-unbind teardown discipline in LESSONS [71f13ab]).
+ * (mirrors the demolish-unbind teardown discipline in AGENTS [71f13ab]).
  */
 export const growthSystem: System = (world) => {
   const graduated: Entity[] = [];

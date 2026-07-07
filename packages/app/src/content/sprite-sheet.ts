@@ -56,7 +56,7 @@ import {
 
 /**
  * Assemble the real decoded {@link SpriteSheet} from the loaded atlases + binding reducers — the
- * decoder/render-binding proof the roadmap gates on a human eye. It puts actual decoded `cr_hum_body_00`
+ * decoder/render-binding proof the plan gates on a human eye. It puts actual decoded `cr_hum_body_00`
  * + `cr_hum_head_00` pixels (plus the tree / per-building house bobs) on screen so a person can judge
  * palette / transparency / feet-anchor / animation fidelity against the original. Loads from the
  * GITIGNORED `content/` over the dev/shot vite server — no copyrighted bytes enter the repo; the

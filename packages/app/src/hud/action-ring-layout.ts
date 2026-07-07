@@ -11,7 +11,7 @@
  * `sHumanCommandTypeToIconId` table is an unfilled placeholder — only the 0x6B fallback is code-pinned). The
  * **user supplied that binding for the civilian menu** — they read the whole thing off the running original
  * (clockwise from the top-left) and gave the frame numbers, so {@link HUMAN_DEFAULT_MENU}'s command→icon
- * assignment is now user-confirmed (see docs/FIDELITY.md); the warrior/scout variants remain to be read off.
+ * assignment is now user-confirmed (see source basis); the warrior/scout variants remain to be read off.
  *
  * We render the whole default HUMAN menu as buttons — every arm of the original, in original art — but on
  * this slice only ONE is wired: `open-jobs` (the "change profession" button) opens a scrollable profession
@@ -213,7 +213,7 @@ export function hitTestActionRing(layout: ActionRingLayout, x: number, y: number
 }
 
 // --- The default HUMAN menu (APPROXIMATED — icons glyph-matched to the frame map + the user's read of the
-//     running original; every button but `open-jobs` is inert. See the file header + docs/FIDELITY.md) ------
+//     running original; every button but `open-jobs` is inert. See the file header + source basis) ------
 
 /**
  * The default order-button gfx — the ONLY code-pinned icon: the original's `GetHumanCommandIconId` returns

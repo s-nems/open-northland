@@ -19,7 +19,7 @@ import type { ArmorType, ContentSet, WeaponType } from '@vinland/data';
  * deferred ranged-attack drive will switch on (a bow's `[minRange,maxRange]` band already gates its
  * reach in `attackerWeapon`; the *fire-from-afar behavior* is the still-unbuilt, oracle-blocked half).
  *
- * FIDELITY n/a: a pure derived classification off the already-extracted `munitionType` param (see
+ * source-basis n/a: a pure derived classification off the already-extracted `munitionType` param (see
  * {@link WeaponType.munitionType}) — it adds no mechanic and invents no data. The reading "munitionType
  * present ⇔ ranged" is the marker's documented semantics, pinned to the real data (30/105 weapons carry
  * it: the 5 bow types per tribe + the catapult). Determinism: a pure field test, no world/RNG/wall-clock.
@@ -37,7 +37,7 @@ export function isRangedWeapon(weapon: WeaponType): boolean {
  * does not hold (a bow is ranged yet not siege) — the two markers are independent classifications, so this
  * is the narrower set. The seed the deferred siege/AoE combat-resolution drive will switch on.
  *
- * FIDELITY n/a: a pure derived classification off the already-extracted `damageType` param (see
+ * source-basis n/a: a pure derived classification off the already-extracted `damageType` param (see
  * {@link WeaponType.damageType}). The reading "damageType present ⇔ siege" is the marker's documented
  * semantics, pinned to the real data (5/105 weapons carry it: the catapult, one per tribe). Determinism:
  * a pure field test — no world, no RNG, no wall-clock.
@@ -58,7 +58,7 @@ export function isSiegeWeapon(weapon: WeaponType): boolean {
  * drop records. Source order is the same stable, lossless stance `combatDamage` keeps; the bow rows
  * already sit in a deterministic order in the IR. {@link isRangedWeapon} is the matching predicate.
  *
- * FIDELITY n/a: a pure derived read view over the already-extracted weapon IR (like `shipVehicles`
+ * source-basis n/a: a pure derived read view over the already-extracted weapon IR (like `shipVehicles`
  * over vehicles) — adds no mechanic, invents no classification (the ranged/melee split is read straight
  * off the `munitionType` marker the pipeline pinned). Determinism: a pure `filter` over the plain
  * `content.weapons` array (a fresh array, so the shared content is never mutated); no world/RNG/wall-clock.
@@ -76,7 +76,7 @@ export function rangedWeapons(content: ContentSet): WeaponType[] {
  * Returned as a {@link WeaponType} **array in `content.weapons` source order**, lossless like
  * {@link rangedWeapons} (no keyed collection — see there). {@link isSiegeWeapon} is the matching predicate.
  *
- * FIDELITY n/a: a pure derived read view over the already-extracted weapon IR — adds no mechanic, invents
+ * source-basis n/a: a pure derived read view over the already-extracted weapon IR — adds no mechanic, invents
  * no classification (read straight off the `damageType` marker the pipeline pinned). Determinism: a pure
  * `filter` over the plain `content.weapons` array (a fresh array); no world, no RNG, no wall-clock.
  */
@@ -96,7 +96,7 @@ export function siegeWeapons(content: ContentSet): WeaponType[] {
  * *grouping* ({@link weaponsByClass}), not a filter. This accessor is the field reader the grouping (and
  * the deferred soldier-class→weapon-class roster binding) keys on — captured ahead of that drive.
  *
- * FIDELITY n/a: a pure field accessor over the already-extracted `mainType` param (see
+ * source-basis n/a: a pure field accessor over the already-extracted `mainType` param (see
  * {@link WeaponType.mainType}) — it adds no mechanic and invents no data. Determinism: a pure field
  * read — no world, no RNG, no wall-clock.
  */
@@ -120,7 +120,7 @@ export function weaponClassOf(weapon: WeaponType): number | undefined {
  * same value the source carries (44/105 real weapons weigh `0`), so there is no "no record" sentinel to
  * distinguish: `0` *is* weightless.
  *
- * FIDELITY n/a: a pure field accessor over the already-extracted `weight` param (see
+ * source-basis n/a: a pure field accessor over the already-extracted `weight` param (see
  * {@link WeaponType.weight}) — it adds no mechanic and invents no data (the `{0,1,2}` magnitudes are the
  * faithful `weapons.ini` values the pipeline pinned). Determinism: a pure field read — no world, no RNG,
  * no wall-clock.
@@ -150,7 +150,7 @@ export function weaponWeightOf(weapon: WeaponType): number {
  * visit order), and no system reads it back to branch on a game decision. A display consumer that wants
  * the classes in id order must **sort the keys itself**.
  *
- * FIDELITY n/a: a pure derived read view over the already-extracted weapon IR (like `shipVehicles` over
+ * source-basis n/a: a pure derived read view over the already-extracted weapon IR (like `shipVehicles` over
  * vehicles) — adds no mechanic, invents no classification (the class split is read straight off the
  * `mainType` marker the pipeline pinned). Determinism: a single pass over the plain `content.weapons`
  * array building a fresh Map (the shared content is never mutated); no world, no RNG, no wall-clock —
@@ -180,7 +180,7 @@ export function weaponsByClass(content: ContentSet): Map<number, WeaponType[]> {
  * enum carried by every armor record, so its read view is a *grouping* ({@link armorByClass}), not a
  * filter — exactly as `mainType` partitions the weapon table.
  *
- * FIDELITY n/a: a pure field accessor over the already-extracted `mainType` param (see
+ * source-basis n/a: a pure field accessor over the already-extracted `mainType` param (see
  * {@link ArmorType.mainType}) — it adds no mechanic and invents no data. Determinism: a pure field read —
  * no world, no RNG, no wall-clock.
  */
@@ -210,7 +210,7 @@ export function armorClassOf(armor: ArmorType): number | undefined {
  * never depends on visit order), and no system reads it back to branch on a game decision. A display
  * consumer that wants the classes in id order must **sort the keys itself**.
  *
- * FIDELITY n/a: a pure derived read view over the already-extracted armor IR (like {@link weaponsByClass}
+ * source-basis n/a: a pure derived read view over the already-extracted armor IR (like {@link weaponsByClass}
  * over weapons) — adds no mechanic, invents no classification (the class split is read straight off the
  * `mainType` marker the pipeline pinned). Determinism: a single pass over the plain `content.armor` array
  * building a fresh Map (the shared content is never mutated); no world, no RNG, no wall-clock — so the
@@ -237,7 +237,7 @@ export function armorByClass(content: ContentSet): Map<number, ArmorType[]> {
  * soldier-class→armor-tier binding joins on, the last extracted armor field to get a read accessor
  * (the others — `mainType`/`blockingValue`/`goodType`/`typeId` — already have one).
  *
- * FIDELITY n/a: a pure field accessor over the already-extracted `materialType` param (see
+ * source-basis n/a: a pure field accessor over the already-extracted `materialType` param (see
  * {@link ArmorType.materialType}) — it adds no mechanic and invents no data. Determinism: a pure field
  * read — no world, no RNG, no wall-clock.
  */
@@ -260,7 +260,7 @@ export function armorMaterialOf(armor: ArmorType): number | undefined {
  * monotonically to weight (leather tier `2` weighs `0` while cloth tier `1` weighs `1`), so weight is its
  * own field, not derivable from the tier.
  *
- * FIDELITY n/a: a pure field accessor over the already-extracted `weight` param (see
+ * source-basis n/a: a pure field accessor over the already-extracted `weight` param (see
  * {@link ArmorType.weight}) — it adds no mechanic and invents no data (the `{0,1,3,3}` magnitudes are the
  * faithful `armortypes.ini` values the pipeline pinned). Determinism: a pure field read — no world, no
  * RNG, no wall-clock.
@@ -292,7 +292,7 @@ export function armorWeightOf(armor: ArmorType): number {
  * never depends on visit order), and no system reads it back to branch on a game decision. A display
  * consumer that wants the tiers in id order must **sort the keys itself**.
  *
- * FIDELITY n/a: a pure derived read view over the already-extracted armor IR (like {@link armorByClass}
+ * source-basis n/a: a pure derived read view over the already-extracted armor IR (like {@link armorByClass}
  * over the same table) — adds no mechanic, invents no classification (the tier split is read straight off
  * the `materialType` marker the pipeline pinned). Determinism: a single pass over the plain
  * `content.armor` array building a fresh Map (the shared content is never mutated); no world, no RNG, no
@@ -314,7 +314,7 @@ export function armorByMaterial(content: ContentSet): Map<number, ArmorType[]> {
  * The weapons **grouped by the job (soldier-class) that wields them** ({@link WeaponType.jobType}) as a
  * derived **read view** over `content` — `Map<jobType, WeaponType[]>`, one bucket per wielding job,
  * classifying `content.weapons` *by the data alone*. This is the data-defined **soldier-class→weapon
- * roster join** the roadmap names as the deferred combat-roster slice's prerequisite: each
+ * roster join** the plan names as the deferred combat-roster slice's prerequisite: each
  * `[weapontype]` carries a `jobtype` naming the job that fights with it (`jobtype 31` = the unarmed
  * fist-fighter, `jobtype 6` = a swordsman, etc.), so this view answers "which weapons does soldier-class
  * N wield" without inventing or hardcoding a single binding. The *equip behavior* (a settler of that
@@ -325,7 +325,7 @@ export function armorByMaterial(content: ContentSet): Map<number, ArmorType[]> {
  * here resolves to a real `[jobtype]`). It is a many-to-one join exactly like `mainType` (one job wields
  * several weapons across the tribes — `jobtype 31` covers 7 records), so the natural view groups the
  * table rather than selecting a subset, and the **values stay arrays** (the grouping-key cardinality
- * dictates that, per docs/LESSONS.md `[c0dcbcb]`, not the weapon's own non-unique `(tribeType,typeId)`).
+ * dictates that, per AGENTS.md `[c0dcbcb]`, not the weapon's own non-unique `(tribeType,typeId)`).
  *
  * Each bucket is a {@link WeaponType} **array in `content.weapons` source order** — lossless like
  * {@link weaponsByClass} (a weapon's `(tribeType, typeId)` isn't globally unique, so the values must be
@@ -341,7 +341,7 @@ export function armorByMaterial(content: ContentSet): Map<number, ArmorType[]> {
  * never depends on visit order), and no system reads it back to branch on a game decision. A display
  * consumer that wants the jobs in id order must **sort the keys itself**.
  *
- * FIDELITY n/a: a pure derived read view over the already-extracted weapon IR (like {@link weaponsByClass}
+ * source-basis n/a: a pure derived read view over the already-extracted weapon IR (like {@link weaponsByClass}
  * over weapons) — adds no mechanic, invents no classification (the wielding job is read straight off the
  * `jobtype` cross-ref the pipeline pinned and cross-ref-validated). Determinism: a single pass over the
  * plain `content.weapons` array building a fresh Map (the shared content is never mutated); no world, no
@@ -367,7 +367,7 @@ export function weaponsByJob(content: ContentSet): Map<number, WeaponType[]> {
  * oracle-blocked). Returns a fresh array (empty if no weapon names `job`), so the shared content is never
  * mutated.
  *
- * FIDELITY n/a: a pure derived `filter` over the already-extracted, cross-ref-validated `jobType` param —
+ * source-basis n/a: a pure derived `filter` over the already-extracted, cross-ref-validated `jobType` param —
  * adds no mechanic, invents no data. Determinism: a pure filter over the plain `content.weapons` array;
  * no world, no RNG, no wall-clock.
  */

@@ -6,12 +6,12 @@ import { testContent } from '../fixtures/content.js';
 
 /**
  * Tests for `replay()` — the deterministic headless core of the "time-travel / replay inspector" DX
- * win (ROADMAP "Cross-cutting DX"). The command log IS the save format, so a recorded run is fully
+ * win (plan "Cross-cutting DX"). The command log IS the save format, so a recorded run is fully
  * reconstructable from `(content, seed, map?, log)`; `replay()` rebuilds the exact state at any tick
  * by re-applying the log into a fresh sim. The oracle is `hashState()`: a replay to tick N must be
  * byte-identical to the original live run at tick N.
  *
- * Component stores are module-level singletons SHARED across every `Simulation` (docs/LESSONS.md
+ * Component stores are module-level singletons SHARED across every `Simulation` (AGENTS.md
  * [56e8d3e]) — a replayed sim and the original cannot be alive at once. So each phase here CLEARS the
  * stores before building a new sim, and any value to compare against (a hash STRING, a snapshot
  * value) is captured BEFORE the next sim is built, never read live across the boundary.

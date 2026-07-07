@@ -34,7 +34,7 @@ import { replay } from './replay.js';
  *
  * ## Single-world constraint (inherited from {@link replay})
  *
- * Component stores are module-level singletons shared across every `Simulation` (docs/LESSONS.md
+ * Component stores are module-level singletons shared across every `Simulation` (AGENTS.md
  * [56e8d3e]); the rebuilt sim therefore SUPERSEDES the original — the caller must stop reading the old
  * sim's live stores once this returns `ok` (its captured `snapshot()`/`hashState()` strings, being
  * plain values, stay valid). On an `error` result NOTHING is rebuilt: the bad content never reached a

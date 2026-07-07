@@ -10,7 +10,7 @@ import type { GoodRef } from './settler-gfx.js';
  * ground piles + a delivery flag). Each good's node draws ITS own decoded object — a tree for wood, a
  * rock for stone, a mine decal for iron/gold/clay, a mushroom — and each pile draws that good's own
  * `ls_goods` heap growing with its contents, replacing the one hardcoded yew bob every resource used to
- * draw (docs/ROADMAP.md rung-2 "Resource nodes by goodType" + "Loose ground piles + flags rendering").
+ * draw (docs/plans/rung-2 "Resource nodes by goodType" + "Loose ground piles + flags rendering").
  *
  * The join is keyed by the good's id-SLUG, not its typeId: the render binds against the REAL decoded
  * `content/ir.json` (the tree/mine/pile atlases), while the sim runs a scene/slice's OWN content whose
@@ -36,7 +36,7 @@ export const DEFAULT_RESOURCE_STEM = TREE_ATLAS;
  * loose ground pile IS. Deliberately NOT the `"… sign"` record (a building-occupancy emblem that marks a
  * STAFFED building, not a ground collection point) nor the `residence`/`construction`/`soldier` markers.
  * A bare (empty) stockpile draws this as its flag. v1 is the player-01 colour; a per-PLAYER palette swap
- * (players 02–16 have their own `human_playerNN` records) is a deferred follow-up — see docs/FIDELITY.md
+ * (players 02–16 have their own `human_playerNN` records) is a deferred follow-up — see source basis
  * "Gathering-economy graphics".
  */
 export const FLAG_EDIT_NAME = 'player01 work extern 01';
@@ -248,7 +248,7 @@ function bobRef(stem: string, bob: number): LayeredBobRef {
  * `ls_trees_dead.bmd` (logicType 1 = pure decor), the stump/remnant a chopped tree leaves behind (the
  * multi-hit harvest's `Stump` decor entity draws it). Deliberately the debris, not the standing
  * `tree_dead` (logicType 4, an undisturbed dead tree) nor the `tree_dead falling` (logicType 5, the
- * mid-fall frame — that transition is the Step-7 falling-animation polish, docs/FIDELITY.md).
+ * mid-fall frame — that transition is the Step-7 falling-animation polish, source basis).
  */
 export const STUMP_EDIT_NAME = 'tree debris medium';
 

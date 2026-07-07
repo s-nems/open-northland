@@ -20,7 +20,7 @@ import { BOBS_DIR } from './game-file.js';
  * per player: it emits (a) an **indexed** atlas per character `.bmd` (palette index in red, mask in alpha —
  * no colour applied) and (b) a single **player-colour LUT** PNG (256×16, one composed palette row per player)
  * plus a small descriptor JSON. The renderer reads each atlas index through the player's LUT row, so one
- * indexed atlas serves all 16 player colours (see `packages/render` palette-LUT shader + `docs/FIDELITY.md`).
+ * indexed atlas serves all 16 player colours (see `packages/render` palette-LUT shader + `source basis`).
  *
  * Not the original's mechanism byte-for-byte (it composes a per-creature palette at spawn from
  * `randompalette.ini`); it is the same idea — the player colour is decided by the palette the `.bmd` index is

@@ -18,7 +18,7 @@ import {
  *    join up exactly like the original.
  *  - **approximated per-typeId** (synthetic grids / maps without ground lanes): the
  *    `terrainPatterns` table binds each landscape typeId to one representative pattern
- *    (`buildTerrainPatterns` — a recorded deviation, docs/FIDELITY.md).
+ *    (`buildTerrainPatterns` — a recorded deviation, source basis).
  */
 
 /** One `TerrainPattern` row as it ships in `content/ir.json` (the fields the render binding needs). */

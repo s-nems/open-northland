@@ -2,12 +2,12 @@ import { TILE_HALF_H, TILE_HALF_W } from './iso.js';
 
 /**
  * The PURE geometry half of textured terrain — the self-verifiable twin of the GPU mesh build in
- * `gpu/terrain-layer.ts` (docs/ROADMAP.md Phase 2, step 4). It turns the approximated typeId→pattern table
+ * `gpu/terrain-layer.ts` (docs/plans/Phase 2, step 4). It turns the approximated typeId→pattern table
  * (`TerrainPattern` IR) into per-cell diamond vertices + UVs, with **no Pixi import**, so the
  * vertex/UV math is unit-tested headlessly while only the rasterised pixels stay human-gated.
  *
  * The original tiles each isometric cell from a `text_NNN` ground texture via two UV triangles; this
- * slice **approximates** that (a recorded deviation, docs/FIDELITY.md): every cell of a landscape
+ * slice **approximates** that (a recorded deviation, source basis): every cell of a landscape
  * family draws the SAME representative tile, mapped as one square sub-rect onto the diamond. The exact
  * per-cell pattern algorithm is oracle-blocked (no terrain render in OpenVikings).
  */

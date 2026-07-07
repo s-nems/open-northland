@@ -38,14 +38,14 @@ const CHOP_SEQ = 'human_man_woodcutter_work_woodcutting';
 // The other authored gathering work clips on the generic man body (`cr_hum_body_00`) — the collector job's
 // per-good motions. The original binds the collector's harvest atomics to `viking_collector_harvest_*`, but
 // those are LOGIC atomic-animation names (timing + events), never body bobseqs; the man body actually authors
-// one clip per trade, which is what the render must play (docs/FIDELITY.md "Gathering work animations").
+// one clip per trade, which is what the render must play (source basis "Gathering work animations").
 // Unlike the ×8 chop these are NOT clean 8-direction strips, so {@link characterBinding} plays them
 // facing-locked (the digger faces its pit) — the whole strip on the atomic's clock.
 const SHOVEL_SEQ = 'human_man_clayworker_work_shovel'; // clay/mud — the shovel dig (soft ground)
 // The stone-crushing swing IS the original's shared MINING motion (a pickaxe-like strike): the collector
 // job maps stone AND iron AND gold to this one clip (`gfxanimatomic`: action 25/27/28 all →
 // `stonecrushing`; there is no authored miner/pickaxe sequence on the man body). So the three hard
-// minerals dig alike, exactly as the base game wires them (docs/FIDELITY.md "Gathering work animations").
+// minerals dig alike, exactly as the base game wires them (source basis "Gathering work animations").
 const STONECRUSH_SEQ = 'human_man_stonecrusher_work_stonecrushing'; // stone + iron + gold (the mining strike)
 const PICKUP_SEQ = 'human_man_generic_pick_up'; // the bend-and-pick; mushroom's pluck + the carry pickup/deposit
 // The LOADED gait — the settler walking while hauling a log. Same directional layout as the empty walk;
@@ -78,7 +78,7 @@ const FALLBACK_CHOP: DirectionalAnim = {
 const FALLBACK_WALK_WOOD: DirectionalAnim = { start: 4580, dirs: DIRS, stride: 12 };
 // The idle/wait loop (verified against an owned copy: 1931/57). 57 isn't a clean ×8, so wait is NOT a
 // directional cycle — it's a SINGLE-direction animation (`dirs: 1`, the whole 57-frame strip), the same
-// way the gallery's `clipDirs` classifies a non-×8 length (see docs/FIDELITY.md). Playing the full loop
+// way the gallery's `clipDirs` classifies a non-×8 length (see source basis). Playing the full loop
 // (not a facing-sliced 1/8 excerpt) is what makes a standing settler breathe rather than freeze.
 const FALLBACK_WAIT: DirectionalAnim = { start: 1931, dirs: 1, stride: 57 };
 
@@ -104,7 +104,7 @@ export const HARVEST_SWING_LENGTH = CHOP_STRIDE + 1;
  * job runs ONE per good). Each binds to that good's OWN authored work clip in {@link CHARACTER_SPECS}
  * below (stone/iron/gold→the shared mining strike, clay→shovel-dig, mushroom→pluck), not the shared
  * woodcut swing — so a clay-digger visibly SHOVELS and a stone/iron/gold miner STRIKES, neither chops
- * (docs/FIDELITY.md). Exported so a scene/slice runs the same ids the render animates.
+ * (source basis). Exported so a scene/slice runs the same ids the render animates.
  * ({@link HARVEST_ATOMIC} = 24 is wood.) */
 export const STONE_HARVEST_ATOMIC = 25;
 export const CLAY_HARVEST_ATOMIC = 26;
@@ -119,7 +119,7 @@ export const MUSHROOM_HARVEST_ATOMIC = 32;
  * one-frame/tick cadence — the stonecrusher clip is 174 frames, the shovel 92 — so a unit came out after a
  * single half-strike ("raz i już niesie"). At ~15 ticks per authored strike (the chop-swing cadence,
  * {@link HARVEST_SWING_LENGTH}) this runs ~4 strikes per unit, so a deposit reads as WORKED. A deliberate
- * divergence from the atomic's logic length (docs/FIDELITY.md "Chop swing length + felling pace"); wood +
+ * divergence from the atomic's logic length (source basis "Chop swing length + felling pace"); wood +
  * mushroom keep their faithful lengths (their clips are short enough to read whole).
  */
 const MINE_STRIKE_TICKS = 60;
@@ -205,7 +205,7 @@ export function buildHumanBindings(
 ): SpriteBindings {
   const walk = directionalAnimFromSeq(seqByName, WALK_SEQ, {}, FALLBACK_WALK);
   // Idle is the WAIT animation played as ONE direction (its length isn't a clean ×8, so it isn't a
-  // directional cycle — the original plays it locked to a facing; docs/FIDELITY.md). The FULL loop, so a
+  // directional cycle — the original plays it locked to a facing; source basis). The FULL loop, so a
   // standing settler breathes — not a frozen frame, and not a truncated facing-sliced 1/8 excerpt.
   const waitRow = seqByName.get(WAIT_SEQ);
   const wait: DirectionalAnim =
@@ -287,7 +287,7 @@ export interface GoodRef {
  * IR good slugs match their suffix verbatim (wood/stone/mud/flour/bread/…), and this table maps the
  * rest onto the CLOSEST authored carry look (several goods share one: every potion → `potion`, iron and
  * gold share the `iron_gold` ingot walk). There is NO readable good→carry-animation table in the mod
- * (the base binding is encrypted `.cif`), so this name join is an approximation — docs/FIDELITY.md
+ * (the base binding is encrypted `.cif`), so this name join is an approximation — source basis
  * "Carry look per good". A slug in neither the sequences nor this table falls back to the character's
  * generic loaded gait (the wood log), then to its plain walk.
  */
@@ -374,7 +374,7 @@ export interface CharacterSpec {
   /**
    * The standing-idle `[bobseq]`, played WHOLE as a single-direction breathing loop — no wait strip is
    * a clean ×8 (the generic waits 57/35/39, the weapon waits 22..29), and the established `clipDirs`
-   * rule reads a non-×8 strip as facing-locked, exactly how the original plays them (docs/FIDELITY.md
+   * rule reads a non-×8 strip as facing-locked, exactly how the original plays them (source basis
    * "Character animation gallery"). So an armed soldier BREATHES holding his weapon, like everyone
    * else. Absent (or missing from the IR), idle falls back to holding the walk's first frame per
    * facing — a directional still, the never-crash floor.
@@ -590,7 +590,7 @@ export function characterBinding(
  * head is authored once, on the base walk), so a head drawn at the carry range's own ids would vanish:
  * a stone-hauler would walk HEADLESS. For each good this checks the head atlas at the carry cycle's
  * first frame — authored → the good keeps its own range; empty → the head **borrows the base walk** at
- * the same (facing, frame) offset, exactly the gallery's proven head-reuse rule (docs/FIDELITY.md
+ * the same (facing, frame) offset, exactly the gallery's proven head-reuse rule (source basis
  * "Character animation gallery"). Returns the INPUT table by identity when nothing borrows (no walk to
  * borrow, or every head is authored), so the caller can skip building a head binding at all. Pure +
  * exported for unit tests.

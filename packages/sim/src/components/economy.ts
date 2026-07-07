@@ -23,7 +23,7 @@ export function stockpileEntries(s: { amounts: Map<number, number> }): Array<[nu
 }
 
 /**
- * A **placed vehicle hull** — the "boats as mobile stores" entity the ROADMAP Phase-4 Sea/Northland
+ * A **placed vehicle hull** — the "boats as mobile stores" entity the historical plan phase-4 Sea/Northland
  * item names: a ship put on the map as a movable stockpile rather than a static building. `vehicleType`
  * cross-references the `VehicleType.typeId` (its `stockSlots` hold capacity, `cargoGoods`
  * load-filter, `passengerSlots`), and `tribe` is its owner — the same `(type, tribe)` shape a
@@ -91,7 +91,7 @@ export const Felling = defineComponent<{ chopsLeft: number }>('Felling');
  * denominator the render's shrink-by-level pick needs (a level is `remaining/initial` bucketed into
  * `levels` visual states, the `[GfxLandscape]` mine record's fill frames; `render`'s scene builder does
  * that pure integer computation off the snapshot, the way it already derives a pile's heap `fill`).
- * `levels` is that state count (OBSERVED = the ls_ground mine gfx's 5 fill states; docs/FIDELITY.md).
+ * `levels` is that state count (OBSERVED = the ls_ground mine gfx's 5 fill states; source basis).
  * Both are plain integers, mutated by nothing — pure per-node capacity `remaining` is divided against.
  * Inert on every golden that mines nothing (the separate-component pattern).
  */

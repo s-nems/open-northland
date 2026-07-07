@@ -90,7 +90,7 @@ export interface DirectionalAnim {
    * Sim ticks per animation frame — the fixed cadence the sequence advances at (default `1`, one frame
    * per tick). Larger values play the sequence slower (a frame is held for several ticks) while keeping
    * it tick-locked and constant-speed. The original's per-`bobseq` frame duration maps here; until it
-   * is extracted, `1` is the pinned cadence (see docs/FIDELITY.md).
+   * is extracted, `1` is the pinned cadence (see source basis).
    */
   readonly ticksPerFrame?: number;
   /**
@@ -109,7 +109,7 @@ export type SpriteFrameRef = number | DirectionalAnim;
 
 /**
  * A settler's per-state frames — which atlas bob to draw for each coarse {@link SpriteState}. This is
- * the richer binding the roadmap calls for: a settler walking shows its `moving` bob, one mid-swing its
+ * the richer binding the plan calls for: a settler walking shows its `moving` bob, one mid-swing its
  * `acting` bob (the original keys these off `tribetypes` `setatomic`, atomic → animation). `idle` is
  * the required base; `moving`/`acting` are optional and fall back to `idle` when absent, and an
  * `acting` settler can bind a *specific* atomic id via {@link SettlerStateBinding.byAtomic} (so chop vs
@@ -299,7 +299,7 @@ export type SpriteBindings = Readonly<{
  * The facing used when a draw item carries none (`item.facing` is undefined — an idle/acting settler
  * with no live movement to derive a heading from). `5` is **SE** on screen (toward the camera-right) in
  * the `CR_Hum_Body` direction layout (the blocks face `0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N`; see
- * docs/FIDELITY.md "Settler facing"), a toward-camera pose so a still settler faces plausibly rather than
+ * source basis "Settler facing"), a toward-camera pose so a still settler faces plausibly rather than
  * snapping to a back/profile view. Per-entity "hold the last heading" is a later refinement.
  */
 export const DEFAULT_FACING = 5;
@@ -584,7 +584,7 @@ export function atlasFromManifest(manifest: AtlasManifest): SpriteAtlas {
  *
  * Why two tables: the original's age classes reuse LOW `jobtypes` ids (1..4 = baby/child), and a
  * synthetic fixture's adult job ids can collide with them (the demo woodcutter is jobType 1 — the real
- * `baby_female` id; see docs/LESSONS.md [dc3ef54]). The sim disambiguates by the `Age` component (only a
+ * `baby_female` id; see AGENTS.md [dc3ef54]). The sim disambiguates by the `Age` component (only a
  * born-young settler carries one), so the pick does too: a **young** item keys
  * {@link ByJobTable.youngByJob}, an adult keys {@link ByJobTable.byJob}, and any miss (including a
  * `null`-job idle adult) lands on {@link ByJobTable.default} — a fixture's adult "jobType 1" can never

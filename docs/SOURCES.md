@@ -12,7 +12,7 @@ Counts observed in `Cultures 8th Wonder` (base `Data` + `DataX` + mod `DataCnmd`
 
 | Ext | ~Count | What it is | Decode reference in OpenVikings (`Source/`) |
 |---|---|---|---|
-| `.wav` | 752 | sound effects (16-bit mono 22050 Hz PCM) | browser plays PCM natively (no transcode); `soundfx.cif` maps them to events/terrain — see FIDELITY.md "Sound bank" + `@vinland/audio` |
+| `.wav` | 752 | sound effects (16-bit mono 22050 Hz PCM) | browser plays PCM natively (no transcode); `soundfx.cif` maps them to events/terrain, consumed by `@vinland/audio` |
 | `.pcx` | 426 | palette-indexed pictures | `NXBasics/CPicture.cs`, `NXBasics/XBPictureTool.cs` |
 | `.bmd` | 247 | "bob" framed sprite animations | `NXBasics/CBobManager.cs` (3.8k lines), `NXBasics/CBitmap.cs` |
 | `.hlt` | 242 | lighting / remap tables | `NXBasics/CRemapTable.cs`, `CHighColorCreator.cs`, `CTrueColorCreator.cs` |
@@ -69,7 +69,7 @@ CP1250 — re-decode at the IR layer where it matters, not in the container deco
 
 Verified end-to-end — counts here are **raw decoded string-lines out of the container**, not
 extracted records (the extractor collapses a section's header + property lines into one record, so
-its counts are smaller — see the ground-graphics section and docs/FIDELITY.md): `housetypes.cif`
+its counts are smaller — see the ground-graphics section): `housetypes.cif`
 (798), `weapontypes.cif` (2995), `trianglepatterntypes.cif` (82 lines = **10** `TrianglePatternType`
 records: 10 headers + 72 properties), and `CnModMaps/tutorial_001/map.cif` (476, incl. `mapsize`,
 `mapguid`, `MissionData`). A map's **declarative logic-header metadata** (`mapsize`/`mapguid` from
@@ -97,7 +97,7 @@ NOT the clean IR `id`; `<level>` selects among the leveled typeIds (`"viking hom
 So resolving a placement to a sim `typeId` needs the `EditName`+`level → LogicType` map, which lives in
 the `[GfxHouse]` graphics sections the pipeline already walks (`extractBuildingBobs` et al.). Importing
 these placements (replacing the app's synthetic first-walkable-cells fallback) is a tracked slice —
-see docs/ROADMAP.md.
+see `docs/plans/`.
 
 ### `map.dat` chunk container (located Phase-2 spike — tile grid found, decode pending)
 
@@ -177,7 +177,7 @@ bytes are committed — `map.dat` is copyrighted input, like every other game fi
   `goodtypes.ini` `atomicFor*`. The atomic *timings/effects* live in `atomicanimations.cif` — **but
   the mod ships a readable twin** `DataCnmd/atomicanimations12/atomicanimations.ini` (~6900 lines:
   `length`, `event <frame> <kind> <arg>`, `startdirection`, `interruptable`). This defuses a top
-  roadmap risk: the timings are not blocked on `.cif` reversing. Calibration-by-observation may
+  plan risk: the timings are not blocked on `.cif` reversing. Calibration-by-observation may
   still be needed for tuning, but the vocabulary *and* base timings are free.
 - **Rules are largely declarative, behavior is not.** The type tables (`Data/logic/` +
   `DataCnmd/types/`) make the *rules* port tractable. The *behavior* — settler AI/atomic planner,
@@ -280,8 +280,7 @@ twin, so these ARE the source):
 
 ### Building graphics families (render multi-`.bmd` scope)
 
-Scoped from the emitted `buildingBobs` IR (336 rows) for the render's multi-`.bmd` rung (ROADMAP Phase 2,
-Render-breadth-ladder rung 1 remainder). The bind path is one universal `.bmd`→atlas decoder (the same as
+Scoped from the emitted `buildingBobs` IR (336 rows) for the render's multi-`.bmd` step. The bind path is one universal `.bmd`→atlas decoder (the same as
 trees), but the **selection** is the hard part:
 
 - **A building type spans many `.bmd`s × palettes.** Viking buildings alone draw from `ls_houses_viking.bmd`,
@@ -411,7 +410,7 @@ original's own quirk). **Layout formulas** (ported to `fnt.ts`): advance `= spac
 (an undefined CP1250 slot advances 0; a stale rect on an empty bob can't inflate the height). `spacing`
 (CFont+0x10) is NOT stored — it is applied externally via `SetSpacing`, so decoded advances use spacing 0.
 A **baseline** is derived (advisory) from a reference capital's bottom edge; the original has no baseline
-(it lays out top-anchored) — see FIDELITY.md.
+(it lays out top-anchored).
 
 **Sources (under the game root):**
 

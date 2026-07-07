@@ -178,7 +178,7 @@ describe('buildScene', () => {
     const facingOf = (wx: number, wy: number): number | undefined =>
       buildScene(snapshotOf([entity(1, 1, 1, pf(wx, wy))]), FLAT_3x2).find((d) => d.kind === 'settler')
         ?.facing;
-    // Bob blocks face 0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N (docs/FIDELITY.md "Settler facing").
+    // Bob blocks face 0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N (source basis "Settler facing").
     // The six lattice headings from an odd-row cell:
     expect(facingOf(2, 1)).toBe(4); // E  column step          -> screen right      -> block 4
     expect(facingOf(0, 1)).toBe(1); // W  column step          -> screen left       -> block 1
@@ -329,7 +329,7 @@ describe('buildScene', () => {
         // A jobless adult (jobType null): the field is omitted → the binding's default look.
         entity(2, 1, 0, { Settler: { tribe: 0, jobType: null } }),
         // A born-young settler: the Age component flips young:true, disambiguating the age-class
-        // jobType 1 from a fixture adult using the same number (docs/LESSONS.md [dc3ef54]).
+        // jobType 1 from a fixture adult using the same number (AGENTS.md [dc3ef54]).
         entity(3, 2, 0, { Settler: { tribe: 0, jobType: 1 }, Age: { ticks: 5 } }),
         // A fixture ADULT whose job id collides with an age class: jobType 1 but NO Age → young omitted.
         entity(4, 2, 1, { Settler: { tribe: 0, jobType: 1 } }),

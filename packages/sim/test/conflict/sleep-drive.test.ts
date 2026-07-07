@@ -24,7 +24,7 @@ import { testContent } from '../fixtures/content.js';
  *
  * The viking tribe binds sleep atomic 8 → "viking_sleep" (length 6); the sleep atomic id (8) is
  * pinned to the original `setatomic <job> 8 "..._sleep"` bindings; the ¾·ONE threshold + in-place
- * rest (the original sleeps at home; housing doesn't exist yet) are approximated (docs/FIDELITY.md).
+ * rest (the original sleeps at home; housing doesn't exist yet) are approximated (source basis).
  */
 
 const GRASS = 0;

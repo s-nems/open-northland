@@ -51,7 +51,7 @@ export const FONT_FIRST_CHAR = 0x20;
  * only that width redirect: a space draws NOTHING. The oracle's `PrintCharacter`/`GetBobIdForPrint` would
  * literally BLIT bob 0x49 — but in a 0x20-based font that bob is the `'i'` glyph (char 0x69), so drawing it
  * for every space is the original's own quirk that real text layout avoids by advancing the pen and
- * skipping the blit. That deliberate print-side divergence is recorded in `docs/FIDELITY.md`.
+ * skipping the blit. That deliberate print-side divergence is recorded in `source basis`.
  */
 export const FONT_SPACE_BOB_ID = 0x49;
 
@@ -167,7 +167,7 @@ export function deriveLineHeight(bmd: Bmd): number {
  * and advancing by {@link bobAdvance}, which reproduces the original layout exactly without a baseline.
  * This value is a convenience for a renderer that wants to align mixed content; it falls back to the line
  * height when no reference glyph has pixels (e.g. a partial debug font). Documented as heuristic in
- * `docs/FIDELITY.md`.
+ * `source basis`.
  */
 export function deriveBaseline(bmd: Bmd): number {
   for (const ch of BASELINE_REFERENCE_CHARS) {

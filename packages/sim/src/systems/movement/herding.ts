@@ -31,11 +31,11 @@ import { entityCell, manhattan } from '../shared.js';
  * fighting or already-returning animal is left alone; cohesion is the **idle-default** behaviour, the
  * same precedence the AI planner gives travel.
  *
- * FIDELITY: the **cohesion radius** is the verbatim extracted `animaltypes.ini` `maximumleaderdistance`
+ * source-basis: the **cohesion radius** is the verbatim extracted `animaltypes.ini` `maximumleaderdistance`
  * param (faithful — *how far* a follower may stray). **Approximated (no oracle):** that a strayed
  * follower walks straight back **to the leader's cell** (the original's herd-cohesion AI — flocking
  * offsets, formation, wander-while-near — is the undocumented "soul"); a `maximumleaderdistance` of 0
- * means "stay on the leader's cell", the literal reading of the param. Recorded in docs/FIDELITY.md.
+ * means "stay on the leader's cell", the literal reading of the param. Recorded in source basis.
  *
  * Determinism: no RNG, no wall-clock. Followers are visited in deterministic store order (the
  * `aiSystem` pattern), and each follower's decision is a pure function of **its own** components + its

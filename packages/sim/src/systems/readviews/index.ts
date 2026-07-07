@@ -4,7 +4,7 @@
 // import to break import cycles): a read view participates in no cycle — nothing in the per-tick
 // `SYSTEM_ORDER` imports one — so grouping them here keeps `shared.ts` to the genuine helpers and
 // makes "this is a projection, not a mechanic" legible at the module boundary. Each adds **no**
-// behavior (nothing produced/consumed/moved), so they carry "FIDELITY n/a". See docs/TECH-DEBT.md.
+// behavior (nothing produced/consumed/moved), so they carry "source-basis n/a". See docs/plans/.
 //
 // Split by concern into six sibling modules (the views grew past one ~300-line file each):
 //  - ./hud.ts      — the HUD/goods-graph projections over world state + content.

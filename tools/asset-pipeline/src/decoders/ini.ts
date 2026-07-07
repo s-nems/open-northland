@@ -340,7 +340,7 @@ function extractGoodGathering(sec: RuleSection): GoodGathering | undefined {
   if (harvest === undefined && pickup === undefined && store === undefined) return undefined;
   // `chopsToFell`/`yieldPerNode` are OBSERVED felling calibration constants, NOT in the source `.ini`
   // (verified absent — no `baserepeatcounter` for the collector job), so the extractor emits them at 0
-  // (= "not calibrated / single-hit"); a scene/fixture sets the real values, tracked in docs/FIDELITY.md.
+  // (= "not calibrated / single-hit"); a scene/fixture sets the real values, tracked in source basis.
   const gathering: {
     harvest?: number;
     pickup?: number;
@@ -355,7 +355,7 @@ function extractGoodGathering(sec: RuleSection): GoodGathering | undefined {
     // OBSERVED calibration with no readable source (chop count / yield / deposit size — `maximumValency`
     // is a per-cell valency, not the unit count): emitted 0, pinned by a scene until measured. `depositLevels`
     // is DIFFERENT — it IS the harvest `[GfxLandscape]` record's fill-state count (gfx DATA), still emitted 0
-    // here (a future join would copy that frame count); until then the spawn site sets it. See docs/FIDELITY.md.
+    // here (a future join would copy that frame count); until then the spawn site sets it. See source basis.
     chopsToFell: 0,
     yieldPerNode: 0,
     depositSize: 0,
@@ -377,7 +377,7 @@ function extractGoodGathering(sec: RuleSection): GoodGathering | undefined {
  * `buildable` keep their schema defaults — they're a later derivation (not cleanly from these flags,
  * which mark placement layer, not traversal). The raw `name` + the `transition` tuples are captured
  * verbatim (the tuple field-semantics are NOT decoded — see docs/SOURCES.md); `debugcolor`/
- * `playeridallowed` (editor concerns) are still skipped. See docs/ROADMAP.md Phase 2.
+ * `playeridallowed` (editor concerns) are still skipped. See docs/plans/Phase 2.
  */
 export function extractLandscape(sections: readonly RuleSection[], src: SourceRef): LandscapeType[] {
   const landscape: LandscapeType[] = [];
@@ -498,7 +498,7 @@ type TerrainFamily = (typeof TERRAIN_FAMILIES)[number]['family'];
  * `lmlt` value is a landscape typeId, but those types are mostly OBJECTS (void/tree/rock/iron/wheat/…),
  * not ground classes — so the GROUND under a cell is approximated from the type's NAME: a `water` name →
  * water, a `rock`/`stone` name → mountain, everything else (incl. tree/bush/wood, whose ground is land)
- * → land. This is the deviation the 1:1-oracle-blocked terrain render ships (docs/FIDELITY.md).
+ * → land. This is the deviation the 1:1-oracle-blocked terrain render ships (source basis).
  */
 function classifyTerrainFamily(landscapeId: string): TerrainFamily {
   const n = landscapeId.toLowerCase();
@@ -534,12 +534,12 @@ function pickRepresentativePattern(
 
 /**
  * Builds the **approximated** typeId→ground-pattern table the terrain renderer consumes
- * ({@link TerrainPattern} IR, ROADMAP Phase 2 step 2): for each {@link LandscapeType}, classify its
+ * ({@link TerrainPattern} IR, historical plan phase 2 step 2): for each {@link LandscapeType}, classify its
  * ground family ({@link classifyTerrainFamily}) and bind it to that family's one representative
  * {@link GfxPattern} ({@link pickRepresentativePattern}) — its `text_NNN` texture + the two triangles'
  * UVs — plus the family logic type's `debugColor` (the flat-tint fallback). A cross-table builder (like
  * {@link fillBuildingRecipes}), so it runs after the three source tables are extracted. **This is a
- * recorded deviation, not a 1:1 match** (docs/FIDELITY.md): the original computes the per-cell pattern
+ * recorded deviation, not a 1:1 match** (source basis): the original computes the per-cell pattern
  * from corner types + variant lanes, an oracle-blocked algorithm; here every typeId of a family gets the
  * SAME representative ground. A landscape typeId whose family has no usable pattern is skipped (binds no
  * ground → the renderer keeps its flat-colour fallback for those cells).
@@ -813,7 +813,7 @@ export function extractAtomicAnimations(sections: readonly RuleSection[], src: S
  * per tribe (e.g. `type 2` = "fist" for every tribe); see {@link WeaponType}. `mainType` (the coarse
  * weapon class) and `weight` (encumbrance) are captured as the weapon-side twins of an armor's
  * `mainType`/`weight` — note `mainType` is the file's exact camelCase key (a lowercased `maintype`
- * would silently vanish; see docs/LESSONS.md). `munitiontype` (all-lowercase in the source, unlike
+ * would silently vanish; see AGENTS.md). `munitiontype` (all-lowercase in the source, unlike
  * `mainType`) is the ammunition class a *ranged* weapon fires (1 = bow ammo, 2 = catapult projectile;
  * only bows/catapults carry it — melee weapons omit it → `undefined`), captured as a plain id (it is
  * a class enum, not a cross-ref — `munitiontype` exists in no other table and 1/2 are not good ids).
@@ -1093,7 +1093,7 @@ export function extractBuildings(sections: readonly RuleSection[], src: SourceRe
  *     only), while egypt/saracen model the same typeId as a *standalone full build* (the cumulative
  *     list). To keep a single flat {@link BuildingType.construction} field we collapse to the
  *     **lowest-tribeType** record (the deterministic "reference tribe" convention `fillBuildingRecipes`
- *     already uses); the per-tribe divergence is recorded in docs/FIDELITY.md.
+ *     already uses); the per-tribe divergence is recorded in source basis.
  *   - `LogicType <sizeIdx> <typeId>` — the building `typeId` at that size level (a home spans several:
  *     `home level 00..04` are five distinct typeIds, one per `sizeIdx`), joined to the cost by `sizeIdx`.
  *   - `LogicConstructionGoods <sizeIdx> <good> <good> …` — the goods to build that level, a flat id
@@ -1109,7 +1109,7 @@ export function extractBuildings(sections: readonly RuleSection[], src: SourceRe
  *   2. within a record — a `typeId` can map to MORE THAN ONE `sizeIdx` (e.g. pottery `LogicType {1:21,
  *      2:21}`, and a multi-stage wonder repeats one typeId across rising sizes); the **lowest `sizeIdx`**
  *      cost wins (the base/first build stage). Both collapses are recorded as approximations in
- *      docs/FIDELITY.md — a fully-faithful model would key the cost by `(tribe, typeId, sizeIdx)`.
+ *      source basis — a fully-faithful model would key the cost by `(tribe, typeId, sizeIdx)`.
  */
 /**
  * The `LogicType <sizeIdx> <typeId>` table of one `[GfxHouse]` section/sub-record — the size-level →
@@ -1211,7 +1211,7 @@ function canonicalCells(cells: Iterable<FootprintCell>): FootprintCell[] {
  *
  * Collisions resolve exactly like {@link extractConstructionCosts}: cross-tribe, the **lowest
  * `LogicTribeType`** record wins (the reference-tribe convention — footprints genuinely differ per
- * tribe skin; docs/FIDELITY.md); within a record, the **lowest `sizeIdx`** wins for a typeId mapped
+ * tribe skin; source basis); within a record, the **lowest `sizeIdx`** wins for a typeId mapped
  * at several sizes. Returns an empty map for sources with no `[GfxHouse]` records.
  */
 export function extractBuildingFootprints(sections: readonly RuleSection[]): Map<number, BuildingFootprint> {
@@ -1378,7 +1378,7 @@ function tribeBindingLookup(tribe: TribeType): Map<string, string> {
  * positive animation length; later goods are tried only as a fallback so a building always pins to a
  * real length when any of its outputs can.
  *
- * APPROXIMATED on two axes, both recorded in docs/FIDELITY.md: (a) production length **varies per
+ * APPROXIMATED on two axes, both recorded in source basis: (a) production length **varies per
  * tribe** in the source (e.g. viking coiner=200 vs frank coiner=60), so pinning to one reference
  * tribe loses the per-tribe spread — a per-tribe recipe table is the fully-faithful model, deferred;
  * (b) a multi-output workplace has one `length` per output atomic, collapsed here to the primary
@@ -1424,7 +1424,7 @@ function resolveRecipeTicks(
  *   - `recipe.ticks` = the produce-atomic animation length resolved through the **reference tribe**
  *     (the lowest-`typeId` tribe — deterministic) by {@link resolveRecipeTicks}, falling back to
  *     {@link DEFAULT_RECIPE_TICKS} only when no produced good's produce-atomic resolves a length.
- *     APPROXIMATED (recorded in docs/FIDELITY.md): the source length varies per tribe and per output;
+ *     APPROXIMATED (recorded in source basis): the source length varies per tribe and per output;
  *     the reference-tribe primary-output length is the faithful-leaning single value the merged
  *     recipe can carry until a per-tribe recipe table lands.
  *
@@ -1483,7 +1483,7 @@ export function fillBuildingRecipes(
  * `CStringArray` opens with a `logiccontrol` section (`mapsize <w> <h>`, `mapguid <16 bytes>`) plus
  * `misc_maptype`/`misc_mapname` metadata sections; this pulls those declarative scalars and leaves the
  * map's scripting payload (`MissionData`/`StaticObjects`/`playerdata`) untouched — that is the Phase-5
- * campaign layer, not this metadata slice (see {@link MapInfo} and docs/ROADMAP.md). `id` is supplied by
+ * campaign layer, not this metadata slice (see {@link MapInfo} and docs/plans/). `id` is supplied by
  * the caller (the map folder name), since the header carries no human-readable map id.
  *
  * Throws when the required `logiccontrol` `mapsize`/`mapguid` are absent or malformed — a `map.cif`
@@ -1570,7 +1570,7 @@ export interface MapStaticObjects {
  *
  * Names are kept VERBATIM (the version-robust join key the loader resolves against the IR by name);
  * the two player columns keep their original bases, documented on the schema. The stock/production/
- * guide verbs (`addgoods`/`setproducedgood`/`setguide`) are not captured yet (docs/FIDELITY.md). A
+ * guide verbs (`addgoods`/`setproducedgood`/`setguide`) are not captured yet (source basis). A
  * malformed row is skipped, not thrown — one bad line must not drop a whole map's placements.
  * Returns `undefined` when the map has no `StaticObjects` section or it places nothing.
  */
@@ -1662,7 +1662,7 @@ function normalizePaletteName(name: string): string {
 /**
  * Extracts the `palettes.ini` (`Data/engine2d/inis/palettes/palettes.ini`) `[GfxPalette256]` records
  * into name→`.pcx` palette aliases. This is the first leg of the `.bmd` palette-pairing graph
- * (docs/ROADMAP.md Phase 1): a graphics record names a bob set's palette by `editname`
+ * (docs/plans/Phase 1): a graphics record names a bob set's palette by `editname`
  * (`gfxpalettebody "tree01"`), `palettes.ini` resolves that name to a `gfxfile` `.pcx`, and the
  * `.pcx` trailer palette is the colour table {@link import('./pcx.js').decodePcx} already returns.
  *
@@ -1696,7 +1696,7 @@ export function extractPaletteIndex(sections: readonly RuleSection[]): PaletteAl
 /**
  * One bob set's palette pairing: a `.bmd` body (and its optional shadow `.bmd`) bound to the palette
  * `editname` its `[jobgraphics]` record names — the **second leg** of the `.bmd`→palette graph
- * (docs/ROADMAP.md Phase 1). The first leg ({@link extractPaletteIndex}) resolves `paletteName` to a
+ * (docs/plans/Phase 1). The first leg ({@link extractPaletteIndex}) resolves `paletteName` to a
  * `.pcx` trailer palette; together they answer "which 256 colours colour this `.bmd`". The `.bmd`
  * paths are normalized (forward-slash, lower-case) so a lookup against the unpacked `--out` tree is
  * host-OS/case-independent, matching {@link PaletteAlias.gfxFile}.
@@ -1820,7 +1820,7 @@ export function extractLandscapeGraphics(sections: readonly RuleSection[]): Land
  * is the positional id, so skipping a malformed record would renumber the rest); visual fields are
  * read defensively (`undefined` on absence) rather than aborting the batch. Keys are the editor's
  * CamelCase except the lower-case `logicispileableonmap` (matched verbatim per the case-sensitive
- * parser — see docs/LESSONS.md [0cbe894]); `GfxFrames`/block-area lines repeat per state/offset and
+ * parser — see AGENTS.md [0cbe894]); `GfxFrames`/block-area lines repeat per state/offset and
  * are kept in file order.
  */
 export function extractLandscapeGfx(sections: readonly RuleSection[], src: SourceRef): LandscapeGfx[] {
@@ -1952,7 +1952,7 @@ export interface BuildingGraphicsBinding extends BmdPaletteBinding {
  * body bob or without any palette is skipped, never thrown — this indexes hundreds of records and one
  * malformed entry must not abort the offline batch. `tribeId`/`jobId` are left undefined: an atlas keys on
  * `(bmd, palette)` only, so the per-tribe `LogicTribeType` cross-ref does not affect the emitted bytes
- * (the render-side per-building-type bob selection is a later, separate leg — see docs/ROADMAP.md).
+ * (the render-side per-building-type bob selection is a later, separate leg — see docs/plans/).
  */
 export function extractBuildingGraphics(sections: readonly RuleSection[]): BuildingGraphicsBinding[] {
   const bindings: BuildingGraphicsBinding[] = [];
@@ -1992,7 +1992,7 @@ export function extractBuildingGraphics(sections: readonly RuleSection[]): Build
  *
  * NOTE: {@link extractConstructionCosts} and {@link extractBuildingGraphics} read the same sections
  * with the SAME pre-existing lumping bug (so saracen/egypt costs + atlases are likewise incomplete) —
- * a flagged follow-up (docs/FIDELITY.md); this helper exists to be reused when that lands.
+ * a flagged follow-up (source basis); this helper exists to be reused when that lands.
  */
 function splitGfxHouseRecords(sec: RuleSection): RuleSection[] {
   const records: RuleSection[] = [];
@@ -2151,7 +2151,7 @@ export interface IndexedBobManager {
 
 /**
  * One human's full graphics binding from a mod `[jobbasegraphics]` record — the **richer variant** of
- * {@link BmdPaletteBinding} (docs/ROADMAP.md Phase 1). Unlike the flat `[jobgraphics]` schema (one body
+ * {@link BmdPaletteBinding} (docs/plans/Phase 1). Unlike the flat `[jobgraphics]` schema (one body
  * `.bmd` + one palette), a human draws as a **body** bob plus zero-or-more numbered **head** bobs, each
  * a `gfxbobmanagerbody/head <index> "<bmd>" ["<shadow>"]` line whose leading int index shifts the `.bmd`
  * path off `values[0]` (so it cannot reuse {@link extractGraphicsBindings}). Palettes split three ways:

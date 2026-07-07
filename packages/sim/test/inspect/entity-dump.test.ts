@@ -13,7 +13,7 @@ import { testContent } from '../fixtures/content.js';
 
 /**
  * Tests for `dumpEntity()` / `traceEntity()` — the "dump an entity" third of the time-travel / replay
- * inspector (ROADMAP "Cross-cutting DX"). Both are pure functions of plain `WorldSnapshot` values, so
+ * inspector (plan "Cross-cutting DX"). Both are pure functions of plain `WorldSnapshot` values, so
  * most cases are hand-built snapshots (no sim needed); the last case proves they compose over a real
  * `step()`-driven run so the overlay's actual path is exercised end to end.
  */

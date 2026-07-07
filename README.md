@@ -30,10 +30,9 @@ not a binary-faithful clone. Where the original is buggy or unbalanced, Vinland 
 Single-tribe economy running end-to-end. The deterministic sim core, the asset pipeline (including
 `.cif` decode), and a self-sustaining one-tribe settlement — settlers executing atomic actions, a
 goods economy, a progression/tech graph, and population growth — all run headless and deterministic.
-The current target is **Phase 4: N-tribe conflict and content breadth**; combat, the five playable
-tribes, and animals-as-tribes already have their substance landed. Several render/pixel checks stay
-human-gated (an agent can't self-judge pixels). See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the
-phased plan and current target.
+Combat, the five playable tribes, animals-as-tribes, and original-asset render paths are in progress.
+Several render/pixel checks stay human-gated because an agent cannot self-judge pixels. Active work is
+tracked in [`docs/plans/`](docs/plans/).
 
 ## Getting started
 
@@ -87,7 +86,7 @@ vinland/
 ├── tools/
 │   └── asset-pipeline/  # offline CLI: original .cif/.bmd/.pcx/.lib/.ini -> content/ (PNG+JSON)
 ├── content/     # GENERATED intermediate assets (gitignored — derived from YOUR game copy)
-└── docs/        # architecture, ECS, data format, roadmap, sources
+└── docs/        # architecture, ECS, data format, plans, sources
 ```
 
 Why the split: the **sim** package has zero rendering dependencies, so it runs headless under
@@ -104,10 +103,9 @@ and lockstep-friendly. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and
 - [`docs/DATA-FORMAT.md`](docs/DATA-FORMAT.md) — the intermediate content format (IR)
 - [`docs/TESTING.md`](docs/TESTING.md) — the determinism / self-validation test pyramid
 - [`docs/SCENES.md`](docs/SCENES.md) — acceptance scenes (watch a mechanic, sign off)
-- [`docs/FIDELITY.md`](docs/FIDELITY.md) — is the rebuild *faithful*, not just self-consistent?
 - [`docs/SOURCES.md`](docs/SOURCES.md) — original file formats and the (canonical) legal posture
 - [`docs/PRIOR-ART.md`](docs/PRIOR-ART.md) — practices from other engine reimplementations: adopted / deferred / consciously different
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — the phased plan and current target
+- [`docs/plans/`](docs/plans/) — active implementation plans
 
 ## Contributing
 

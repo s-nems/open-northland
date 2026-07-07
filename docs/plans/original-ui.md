@@ -15,7 +15,7 @@ truth). Check a box when the step is merged; delete this file when all steps lan
 - [ ] 2. Pipeline: `.fnt` bitmap-font decoder
 - [ ] 3. GUI sprite map (interactive — user is the oracle)
 - [ ] 4. App: left tool panel with original art
-- [x] 5. App: settler order UI with original art — landed: `hud/action-ring-layout.ts` (arm footprint transcribed from OpenVikings `BuildHumanActionButtons`) + `view/settler-actions.ts` (Pixi menu of `order_*` buttons, `context` palette, pixel-snapped) replacing the DOM actions card. Renders the **whole default human menu** (four arms) in original art, opened by **Space or right-click on the unit**; on this slice only "change profession" is wired (opens a simple profession picker → `setJob`, info card reflects it live), the rest are inert placeholders for a future "implement the action" pass (warrior/scout variants noted). See FIDELITY.md "Settler action menu".
+- [x] 5. App: settler order UI with original art — landed: `hud/action-ring-layout.ts` (arm footprint transcribed from OpenVikings `BuildHumanActionButtons`) + `view/settler-actions.ts` (Pixi menu of `order_*` buttons, `context` palette, pixel-snapped) replacing the DOM actions card. Renders the **whole default human menu** (four arms) in original art, opened by **Space or right-click on the unit**; on this slice only "change profession" is wired (opens a simple profession picker → `setJob`, info card reflects it live), the rest are inert placeholders for a future "implement the action" pass (warrior/scout variants noted). See plan progress note "Settler action menu".
 - [ ] 6. App: bottom-right details panel with original art
 
 Out of scope for this plan: the minimap (separate task) and the main menu. The frame-id map and
@@ -134,7 +134,7 @@ Context:
   state variants 0x34/0x35/0x36; message-priority frame 0x3f + button 0x40 (variant 0x42). Read
   the whole file and harvest EVERY triple — transcribe them into the map with semantic names.
 - The remaining frames are unknown -> the human is the oracle. Use the labeled-montage technique
-  (see docs/lessons): never guess a visual fact silently.
+  (see AGENTS.md): never guess a visual fact silently.
 
 Deliverables:
 1. A script (scratchpad, or a small pipeline flag) rendering a NUMBERED montage of all atlas
@@ -175,7 +175,7 @@ Context:
   "Statystyki" are in the ingamegui string JSONs.
 - Original design resolution is 640x480-1024x768; our canvas is arbitrary. Decision to implement:
   integer UI scaling (default 2x, URL flag override, e.g. `?uiscale=1|2|3`), panel anchored
-  top-left. Log the scaling as a conscious deviation in docs/FIDELITY.md; the panel's INTERNAL
+  top-left. Log the scaling as a conscious deviation in plan progress note; the panel's INTERNAL
   geometry stays pinned to the original rects.
 - Rendering approach: inspect the existing overlay/panel code first
   (`packages/app/src/view/overlay.ts`, `packages/render/src/gpu/hud-layer.ts`, and
@@ -197,10 +197,10 @@ Scope (v1):
 3. Building menu: opens a framed window (frame sprites + bg*.pcx background) listing buildings
    from content by category, original category strings, .fnt font; clicking a building enters the
    existing place-building flow (`placeBuilding` command) if present on main, else stub the
-   selection callback and track the gap in ROADMAP/TECH-DEBT.
+   selection callback and track the gap in docs/plans.
 4. Statistics/help buttons: v1 = open a framed window showing the existing HUD read-view data
    (`packages/render/src/data/hud.ts`) in the original font; the full original stats windows are
-   follow-up — track in ROADMAP.
+   follow-up — track in plan.
 5. Minimap: OUT OF SCOPE (separate task); leave its screen region alone.
 
 Verification (player-visible mechanic -> acceptance scene, per AGENTS.md):
@@ -210,7 +210,7 @@ Verification (player-visible mechanic -> acceptance scene, per AGENTS.md):
 - `npm test` + `npm run check` green.
 - End by surfacing `npm run dev` -> the scene URL + a visual checklist (panel art crisp at 2x,
   correct palette colors, hover states, Polish strings render) and ask for human sign-off.
-  Record in docs/FIDELITY.md what is pinned (rects, sprite ids) vs approximated.
+  Record in plan progress note what is pinned (rects, sprite ids) vs approximated.
 ```
 [DONE]
 ### Prompt 5: settler order UI
@@ -230,7 +230,7 @@ Context:
   group-type; vehicles/houses -> vertical text buttons. The exact radial geometry lives in
   `l_Selection_ActionButtons_BringUp`, which is a TODO stub in OpenVikings — the precise layout
   is NOT recoverable from code. Approximate it (a radial ring around the selected settler,
-  original button sprites, `context` palette) and record the approximation in docs/FIDELITY.md
+  original button sprites, `context` palette) and record the approximation in plan progress note
   as "pending calibration against the original game".
 - Strings: `ingameguihumanwindow` / `ingameguimisc` JSONs. Keep the existing Space-toggle and
   right-click-move semantics (player move-order stays a soft timed override — see the orders
@@ -243,11 +243,11 @@ Scope:
 2. Command flow unchanged: buttons issue `setJob` etc. through the existing command queue; UI
    stays view-side, no sim reach-in.
 3. Multi-human selection: follow the 1-2-humans-radial / group-type rule as far as the data
-   allows; document divergences in FIDELITY.md.
+   allows; document divergences in plan progress note.
 
 Verification: extend the unit-orders acceptance scene — headless half proves the buttons issue
 the right commands; `npm test` + `npm run check` green; end with the dev-server URL + visual
-checklist + FIDELITY.md updated; ask for human sign-off.
+checklist + plan progress note updated; ask for human sign-off.
 ```
 
 ### Prompt 6: bottom-right details panel
@@ -267,7 +267,7 @@ Context:
   extracted window-frame/border sprites (`frame` palette) and bar sprites
   (`bar_standart`/`bar_hitpoints`/`bar_disabled`), with original strings (`ingameguihousewindow`,
   `ingameguihumanlistwindow`, `ingameguihumanwindow`); the geometry is approximated — log in
-  docs/FIDELITY.md as pending calibration against the original game.
+  plan progress note as pending calibration against the original game.
 
 Scope:
 1. Framed original-art window anchored bottom-right; the four need bars (hunger / fatigue /
@@ -277,6 +277,6 @@ Scope:
 3. Reuse the HUD hit-test/input routing introduced with the left panel.
 
 Verification: extend the acceptance scene (headless: the panel model reflects selection and
-building state); `npm test` + `npm run check` green; dev URL + visual checklist; FIDELITY.md
+building state); `npm test` + `npm run check` green; dev URL + visual checklist; plan progress note
 updated; ask for human sign-off.
 ```

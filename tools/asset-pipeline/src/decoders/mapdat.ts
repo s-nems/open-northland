@@ -599,7 +599,7 @@ export const HALF_CELLS_PER_CELL = 4;
  * maps' clay half-cells hold raw `12` with matching counts (`palm` → `LogicType 4` = `tree`,
  * `"fx wave …"` → `LogicType 1` = `void`, exact count matches across lanes). An earlier reading
  * (+1-shifted 0-based indices) mapped every object one row off (tree → tree_falling) — see
- * docs/FIDELITY.md.
+ * source basis.
  */
 export const LMLT_EMPTY = 0;
 

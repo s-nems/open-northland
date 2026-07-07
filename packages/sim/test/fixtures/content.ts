@@ -16,7 +16,7 @@ export function testContent(): ContentSet {
       // Wood is harvested with atomic 24 (atomicForHarvesting), the join key the planner reads. Its
       // `gathering` carries the tree→trunk felling lifecycle: a node is FELLED over `chopsToFell` chops
       // (yielding nothing onto the back) and drops its whole `yieldPerNode` as a ground trunk. Both are
-      // OBSERVED calibration constants (the readable `.ini` has neither — docs/FIDELITY.md); a spawn
+      // OBSERVED calibration constants (the readable `.ini` has neither — source basis); a spawn
       // site stamps them onto a node as a `Felling` component + the node's `remaining`. `yieldPerNode`
       // 4 keeps the golden slice's per-node wood at 4 (2 trees → 8 harvested), so goods still total 18.
       {
@@ -35,7 +35,7 @@ export function testContent(): ContentSet {
       // Stone is a MINED good (atomic 25): its `gathering.depositSize > 0` marks it a deposit chipped one
       // unit at a time — a spawn site stamps a `MineDeposit` from `depositSize`/`depositLevels` and the
       // node's `remaining`, so each harvest drops one ore pile and the deposit shrinks by level until it
-      // is removed. `bioLandscape: false` (mined, not living). OBSERVED calibration (docs/FIDELITY.md).
+      // is removed. `bioLandscape: false` (mined, not living). OBSERVED calibration (source basis).
       {
         typeId: 4,
         id: 'stone',

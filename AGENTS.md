@@ -1,152 +1,129 @@
 # AGENTS.md — agent guide for Vinland
 
-You are working on **Vinland**, a TypeScript rebuild of *Cultures – 8th Wonder of the World*.
-This file is the contract. Read it fully before editing.
+You are working on **Vinland**, a TypeScript rebuild of *Cultures - 8th Wonder of the World*.
+This file is the canonical agent contract. Read it before editing.
 
-`AGENTS.md` is the canonical agent contract. Tool-specific files such as `CLAUDE.md` and `GEMINI.md`
-are compatibility shims that import this file; keep durable project rules here or in package-local
-`AGENTS.md` files, not duplicated in client-specific config.
+Tool-specific files such as `CLAUDE.md` and `GEMINI.md` are compatibility shims that import this
+file. Keep durable project rules here or in package-local `AGENTS.md` files, not in client-specific
+config or growing process ledgers.
 
-## Where things are
+## Where Things Are
 
-This repo (`vinland/`) is normally checked out inside a **workspace parent directory** and, when
-present locally, sits alongside two sibling reference folders — all read-only to you; this repo is
-the only thing you write to:
+This repo (`vinland/`) normally sits beside two read-only reference folders:
 
-- `vinland/` — **this project** (the only one you write to).
-- `OpenVikings_reversing/` — C#/.NET binary-faithful reverse engineering of the original engine.
-  **Reference only.** Use it to learn the original file formats (it already decodes `.bmd`,
-  `.lib`, palettes, `.pcx`, fonts). Do not port its architecture — its goal (binary fidelity) is
-  the opposite of ours. Format → source-file map is in `docs/SOURCES.md`.
-- `Cultures 8th Wonder/` — the **original game + the `culturesnation` mod** (`DataCnmd/`). This is
-  copyrighted; it is the *input* to the asset pipeline. Never copy its assets into this repo.
+- `OpenVikings_reversing/` — C#/.NET reverse engineering of original file formats. Use it as an
+  oracle for layouts and decoders, not as architecture to port.
+- `Cultures 8th Wonder/` — the original game plus the `culturesnation` mod (`DataCnmd/`). It is the
+  asset-pipeline input. Never commit its assets, decoded content, or binaries.
 
-**Legal guardrails (an agent must uphold these too):** this is an independent, clean-room
-reimplementation under **GPL-3.0-or-later** (see `LICENSE`). (a) Never commit original assets, decoded
-content, or binaries — `content/` is gitignored and tests use the synthetic fixture, not real game
-data (see `docs/TESTING.md`). (b) `OpenVikings_reversing/` is **format documentation**, not code to
-port — take facts about file layouts, never its source/architecture. (c) Don't brand the project
-with the original's names or logos: it's *Vinland*, an unaffiliated rebuild — no "Cultures"
-branding, no original logos/screenshots in README or promo copy. The **canonical** legal statement
-lives in `docs/SOURCES.md` (**Legal line**); this file and `README.md` **Legal** are pointers to it —
-edit SOURCES.md first, then reconcile the others if you touch licensing wording.
+Legal guardrails: Vinland is an independent clean-room GPL-3.0-or-later rebuild. Do not copy original
+assets into the repo, do not port OpenVikings source, and do not brand this project with the
+original's names, logos, or screenshots. The canonical legal wording is in `docs/SOURCES.md`.
 
-## Golden rules
+## Golden Rules
 
-1. **The `sim` package is deterministic and pure.** No `Math.random`, no `Date.now`, no `Date`,
-   no DOM, no I/O, no `import` from `render`/`app`/Pixi. Randomness comes only from the injected
-   seeded RNG (`packages/sim/src/core/rng.ts`). Two runs from the same seed + same inputs must produce
-   byte-identical state. This is what makes mechanics testable headless and multiplayer-lockstep
-   possible later. If you break determinism, the golden tests in `packages/sim/test` will fail —
-   keep them green.
-2. **Sim positions are fixed-point integers**, not floats (`packages/sim/src/core/fixed.ts`). Rendering
-   interpolates to smooth floats; the sim never does. Floats are allowed only in `render`/`app`.
-3. **Content is data, not code.** Game rules (buildings, jobs, goods, weapons, tribes) live in the
-   intermediate format under `content/`, validated by the zod schemas in `packages/data`. To
-   change balance, change data, not systems. See `docs/DATA-FORMAT.md`.
-4. **Prefer the mod's `.ini` sources.** Many base-game rules are encrypted `.cif`; the
-   `culturesnation` mod ships readable `.ini` equivalents under `DataCnmd/`. Prefer those.
-5. **Dependencies are minimal and readable.** Custom tiny ECS over heavy ECS libs (determinism +
-   legibility). Pixi only inside `render`. Zod for schemas. Vitest for tests. Don't add a
-   dependency without a reason recorded in the PR/commit.
-6. **Faithful first; deviations are deferred and recorded, never default.** The goal is a faithful
-   rebuild that can *then* be modded — a mechanic must match the original's behavior, pinned to the
-   extracted data params, the mod's `.ini` semantics, or observation of the running original. `npm
-   test` proves the sim is self-consistent and deterministic; **`docs/FIDELITY.md` is where we track
-   whether it is *faithful*** — a different axis no test covers (OpenVikings' sim is a stub, so
-   mechanics have no automatic oracle). Log any conscious divergence in `docs/FIDELITY.md`; never
-   bake it in silently.
-7. **RTS scale is a budget: per-tick sim cost scales with active *work*, never entities²; per-frame
-   render cost scales with the *screen*, never the map.** The target is huge maps, thousands of
-   units, 8 players, and lockstep multiplayer later — a full-world scan inside a per-entity loop, or
-   per-frame Pixi object churn, is a regression even with green tests (the two recurring LLM
-   anti-patterns). Doctrine + landed levers: `packages/sim/AGENTS.md` "Scaling to thousands" and
-   `packages/render/AGENTS.md`. Profile sim vs render before optimizing either; perf fixes must
-   stay deterministic (elide only provably-null work — the pick winner never changes).
+1. **The `sim` package is deterministic and pure.** No `Math.random`, `Date.now`, DOM, I/O, Pixi,
+   `render`, or `app` imports. Randomness comes only from the seeded RNG. Same seed + same inputs must
+   produce byte-identical state.
+2. **Sim state uses fixed-point integers.** Rendering interpolates floats; the sim never accumulates
+   float state. Mint `Fixed` only through `fx.*`.
+3. **Content is data, not code.** Buildings, jobs, goods, weapons, tribes, graphics bindings, and
+   balance live in the validated IR under `content/`; systems consume data instead of hardcoding
+   special cases.
+4. **Prefer readable original sources.** The mod's `.ini` files under `DataCnmd/` are preferred when
+   present; base-game plaintext `.ini` files are still better than encrypted `.cif`; OpenVikings is
+   the format oracle.
+5. **Faithful first, with named approximations.** Tests prove self-consistency, not that a mechanic
+   matches the original. For mechanics, extraction, timings, visuals, and constants, state the source
+   basis: extracted data, readable source semantics, OpenVikings format evidence, or observed original
+   behavior. If something is approximated, name what and why in the code comment, test, commit, or plan
+   progress note. Do not create a new running ledger.
+6. **RTS scale is a budget.** Per-tick sim cost scales with active work, never entities squared.
+   Per-frame render cost scales with the screen, never the whole map.
+7. **Keep context lean.** `docs/plans/` are the live planning surface. Durable rules graduate to this
+   file or package-local `AGENTS.md`. Completed history, exploratory notes, and long verification
+   trails belong in git history or short plan progress notes, not always-read docs.
 
 ## Commands
 
 ```bash
-npm install            # workspaces
-npm run build          # tsc across packages
-npm test               # vitest: unit + integration + e2e + determinism-hygiene
-npm test -- scenario   # run one file/suite by name substring (fast inner loop)
-npm run test:watch     # vitest watch mode
-npm run check          # biome lint + format check (CI runs this)
-npm run check:fix      # biome autofix + format
-npm run scan:structure # structural-health survey: oversized files, flat dirs, doc budgets
+npm install
+npm run build
+npm test
+npm test -- scenario
+npm run test:watch
+npm run check
+npm run check:fix
+npm run scan:structure
 npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content
-npm run dev            # vite app
+npm run dev
 ```
 
-Tooling: **Biome** (format + lint, config in `biome.json`) and **vitest**; CI (`.github/workflows/ci.yml`)
-runs check + typecheck + test on every push/PR. A source-hygiene test (`packages/sim/test/core/hygiene.test.ts`)
-fails the build if a nondeterministic global leaks into `sim` — the determinism rules are enforced, not just documented.
+Biome handles formatting/linting, Vitest handles tests, and CI runs check + typecheck + test. The sim
+hygiene test rejects nondeterministic globals in `packages/sim`.
 
-## Conventions
+## Plan-Driven Workflow
 
-- **Language of code & docs: English** (tooling/agent ergonomics). User communication: Polish is fine.
-- **TypeScript strict.** No `any` in `sim`/`data`. Explicit return types on exported functions.
-- **Commits: Conventional Commits, imperative, capitalized, no AI attribution.** No scope here
-  (this is not a `~/Projects/yonder` repo). E.g. `feat: Add fixed-point pathfinding grid`.
-- Keep new code in the style of the file around it.
-- **No silent hacks.** A workaround, `TODO`, or deliberately-skipped case must name where it is
-  tracked (a `docs/ROADMAP.md` item, a `docs/TECH-DEBT.md` entry, or a `docs/FIDELITY.md` deviation)
-  in the same commit — an untracked hack is a bug with a delay, not a shortcut.
+- Plans live in `docs/plans/`. The user chooses the next step and invokes the worktree workflow
+  manually for that step.
+- `/worktree` is the primary agentic workflow: create an isolated git worktree, execute only the
+  requested plan step, verify, review, update the plan progress note, wait for explicit user approval,
+  then fast-forward merge.
+- Do not revive old global planning, fidelity, lessons, or tech-debt ledgers. If future work is worth
+  tracking, add or update a concrete plan step under `docs/plans/` or use an external issue.
+- If a plan's research note is wrong, update the plan with the corrected fact and source basis rather
+  than propagating the stale claim.
 
-## How to verify your work (the self-validation loop)
+## Verification
 
-The sim is deterministic and headless **so that you can check your own work** by running `npm test`
-and reading pass/fail — at the unit, integration, and game-level (e2e) layers. Read
-`docs/TESTING.md`; the pyramid is real and the harness exists (`scenario()`, `invariants.ts`,
-the synthetic `testContent()` fixture). The loop:
+1. Prove code at the lowest useful level: unit, integration, headless scenario, then app scene.
+2. Run the matching gates. For normal code, expect `npm test`, `npm run check`, and `npm run build`.
+3. Pipeline or schema changes need a real pipeline run against the owned game copy.
+4. Golden hashes only move for intentional behavior changes. A moved golden during a refactor means
+   behavior changed.
+5. Visual or audio correctness needs a human. Agents can check no crashes, data decisions, screenshots,
+   and obvious breakage; they cannot self-sign pixels or sound.
+6. Player-visible mechanics should have an acceptance scene under `packages/app/src/scenes/`, with a
+   headless assertion and a browser checklist.
 
-1. Write/extend the test at the **lowest level** that proves the change (unit → integration →
-   headless scenario). Mechanics change → a test in `packages/sim/test`.
-2. Run `npm test`. If an invariant fired, it reports the **exact tick** — use that.
-3. Don't claim something works because it typechecks. **Run it.** Golden state + atomic-trace tests
-   must stay green; only update a golden if the change was intentional, and say which mechanic.
-4. Rendering/visual change → an agent CANNOT self-judge pixels. Run the screenshot diff if present,
-   otherwise say it needs a human. Validate decoded assets against the **OpenVikings oracle**.
-5. **Player-visible mechanic** (a job, behavior, building — anything a person watches happen) → add or
-   extend an **acceptance scene** under `packages/app/src/scenes/` (registered in `scenes/index.ts`).
-   Its headless half (`packages/app/test/scenes.test.ts`) proves the *mechanic* deterministically — that
-   is point 1, and it must be green. Its browser half is the *human's* sign-off: end your turn by
-   surfacing `npm run dev` → `http://localhost:5173/?scene=<id>` **and** the scene's checklist, and ask
-   plainly whether it looks right. Same scene, two consumers — see `docs/SCENES.md`.
+## Durable Gotchas
 
-## Per-package contracts (load on demand)
+- Component stores are module-level singletons. Any test or harness that builds more than one sim in a
+  process must clear the whole component namespace, not a hand-picked subset.
+- Canonicalize only decisions whose result depends on which entity wins. Membership checks and
+  commutative sums do not need sorting; picks and first-found mutations do.
+- Before extracting data, grep the real source file, the extractor, and generated `ir.json`. Do not
+  trust schema names, fixtures, or plan prose as proof.
+- `.ini` keys are case-sensitive and list shapes differ: repeated single-value keys and one-line
+  multi-value keys need different helpers.
+- Numeric ids are often scoped. Check the real key space before indexing by `id` or validating a
+  cross-reference.
+- Decoded maps already store final ground-pattern choices in their ground lanes; do not reinvent a
+  terrain transition algorithm for imported maps.
+- The current map projection is observed from the original: staggered raster, 68 px cell width, 38 px
+  row step, elevation lift about 1.24 native px/unit, and pre-lift depth sorting.
+- The original game has no automatic sim oracle in OpenVikings. When behavior is not data-pinned,
+  prefer a small named approximation over a hidden magic constant.
 
-The strict rules live next to the code they bind, so they load only when you work there (and keep
-this root file lean). Golden rules 1–2 above are the crisp always-on version.
+## Per-Package Contracts
 
-- **`packages/sim/AGENTS.md`** — the detailed `sim` determinism contract: the forbidden-globals
-  anti-patterns (`Math.random`/`Date.now`/… → `world.rng`), canonical `Map`/`Set` iteration, the
-  fixed-point + branded-type rules, and the golden-update discipline. The hygiene test enforces it.
-- **`tools/asset-pipeline/AGENTS.md`** — pipeline-only notes: prefer the mod's `.ini`, validate
-  visual decoders against the OpenVikings oracle, never commit decoded/copyrighted bytes.
-- **`packages/render/AGENTS.md`** — drawing at RTS scale: cost scales with the SCREEN, not the map
-  (retained graph, viewport-culled terrain chunks + sprites, batch-by-texture, tint per player) — the
-  OpenRA-derived rules. Also: headless FPS is software-GL; measure sim vs render before blaming the GPU.
-- **`packages/app/AGENTS.md`** — the app shell: URL-flag entries (`?scene=`/`?atlas=`/`?terrain`/…) and
-  the **acceptance-scene** system (how to add one so a human can watch a mechanic and sign off).
+Load these only when working in that area:
 
-## Modern conventions baked in (follow them)
+- `packages/sim/AGENTS.md` — deterministic sim rules, fixed-point details, golden discipline, scaling.
+- `packages/render/AGENTS.md` — screen-bounded Pixi rendering and visual verification.
+- `packages/app/AGENTS.md` — URL entries, real-content loading, acceptance scenes.
+- `tools/asset-pipeline/AGENTS.md` — extraction, decoder provenance, source/oracle discipline.
 
-- **Branded types** (`brand.ts`): `Fixed` and `Entity` are nominal — a raw `number` won't assign.
-  Mint `Fixed` only via `fx.*`. Add brands for new semantic ids rather than passing bare `number`.
-- **Discriminated unions** for commands/atomic-effects/events (`commands.ts`, `events.ts`), with
-  `assertNever` in every `switch` so adding a variant is a compile error until handled. Don't use
-  numeric opcodes for control flow — keep numeric ids only as the *data* cross-reference.
-- **Events, not reach-in**: one-shot things go through `ctx.events` (typed `SimEvent`); `render`
-  consumes them. Never let `render` read live component stores, and never deliver events via
-  callbacks (that would let a subscriber mutate sim state).
-- **Throw for bugs, return for expected failures**: throw on programmer errors (missing component,
-  div-by-zero); return a typed result for recoverable boundary failures (bad content/mod).
+## Docs
 
-## Start here
+Start with `docs/README.md`. The core design docs are:
 
-`docs/README.md` indexes every doc; the reading order is `docs/ARCHITECTURE.md` → `docs/ECS.md` →
-`docs/DATA-FORMAT.md` → `docs/TESTING.md` → `docs/FIDELITY.md` → `docs/ROADMAP.md`.
-The roadmap names the current target slice; do the smallest next step toward it. `docs/FIDELITY.md`
-names whether that slice is *faithful* — the goal tests can't see.
+- `docs/ARCHITECTURE.md`
+- `docs/ECS.md`
+- `docs/DATA-FORMAT.md`
+- `docs/TESTING.md`
+- `docs/SCENES.md`
+- `docs/SOURCES.md`
+
+`docs/plans/` contains live user-authored implementation plans. Keep them concise enough for the next
+agent to continue the work without reading old transcripts.

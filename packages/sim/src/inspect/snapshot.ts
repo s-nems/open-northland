@@ -5,7 +5,7 @@ import type { World } from '../ecs/world.js';
  * A read-only snapshot of the world at a tick boundary — the seam `render`/audio read instead of
  * the live component stores. Taken AFTER a `step()` completes (never mid-mutation), it is a plain,
  * structurally-cloned value: no class instances, no live `Map`s, no `Entity` brands — every
- * component value is JSON-ish data. That has two payoffs the roadmap calls for:
+ * component value is JSON-ish data. That has two payoffs the plan calls for:
  *
  *  1. **Render never reads mid-mutation.** `render` consumes a frozen snapshot + the tick's events,
  *     so a system writing a component store can't be observed half-applied. (The double-buffer

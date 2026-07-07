@@ -8,7 +8,7 @@ import { NEWBORN_AGE_CLASS } from './ageclass.js';
 /**
  * ReproductionSystem (birth half) — grow a tribe's population while it has spare housing. This is the
  * **first WRITER** of the housing read model ({@link housingCapacity}/{@link tribePopulation}): the
- * read side measured the ceiling-vs-count, and this closes the loop the ROADMAP names —
+ * read side measured the ceiling-vs-count, and this closes the loop the plan names —
  * `house leveling → population capacity → births→housing→births` — by creating a settler whenever a
  * tribe's population is below the capacity its built homes provide.
  *
@@ -33,17 +33,17 @@ import { NEWBORN_AGE_CLASS } from './ageclass.js';
  * `JOB_TYPE_HUMAN_BABY_FEMALE`). The JobSystem leaves a baby unemployed (its `jobType` is non-null, so
  * it is skipped by the idle-only assignment, and no workplace lists a baby in its `workers` slots, so it
  * is never adopted either). The growth transition baby→child→adult is a **separate, deferred** mechanic
- * (its cadence has no readable oracle — see {@link NEWBORN_AGE_CLASS} / docs/FIDELITY.md); this slice
+ * (its cadence has no readable oracle — see {@link NEWBORN_AGE_CLASS} / source basis); this slice
  * lands only the data-pinned age-class *structure*.
  *
- * FIDELITY: the housing *capacity* is the data-pinned `homeSize` and the newborn's **age class** is
+ * source-basis: the housing *capacity* is the data-pinned `homeSize` and the newborn's **age class** is
  * the data-pinned baby job id ({@link NEWBORN_AGE_CLASS}) — both faithful by extraction. The **birth
  * cadence** (one per tick per tribe), the **anchor tile**, and the **sex** are approximated — the
  * original's birth rate / family model / where a child appears / which sex live below the readable
  * `.ini` (no birth-rate key in `houses.ini`/`tribetypes.ini`; `make_love` restores the leisure channel,
  * it carries no birth yield). The faithful baseline is "grow to the housing ceiling and stop, as
- * babies", which this matches; the rate + the **growth cadence** (baby→child→adult, ROADMAP's next
- * item) are calibration-by-observation (see docs/FIDELITY.md).
+ * babies", which this matches; the rate + the **growth cadence** (baby→child→adult, plan's next
+ * item) are calibration-by-observation (see source basis).
  *
  * Determinism: tribes are processed in ascending order (a sorted distinct-tribe list derived from the
  * built homes), and the anchor is the lowest-id home via {@link World.canonicalEntities} — both the

@@ -5,7 +5,7 @@
  * so the felling pace can't drift between scenes (the recurring per-scene-magic-number complaint). Add a new
  * fellable good's calibration here, not in the scene.
  *
- * OBSERVED, pending calibration against the original (docs/FIDELITY.md "Multi-hit harvest / felling") — the
+ * OBSERVED, pending calibration against the original (source basis "Multi-hit harvest / felling") — the
  * original's data carries no chop count. This is the SCENE lever; the REAL-content lever is separate: the
  * pipeline's `extractGoodGathering` emits `0` (single-hit) until the value is pinned into the mod data, so
  * the live game does not yet fell. Keep the two in mind together when the number is finally calibrated.

@@ -4,7 +4,7 @@ Goal: a decoded original map rendered in Vinland should be **visually indistingu
 original game** (short of animation cadence a static shot can't judge). The import already lands
 1:1 ground patterns (`empa`/`empb`), placed objects with growth states (`emla`+`lmlv`), authored
 buildings/settlers (`StaticObjects`), and the MEASURED projection (cell 68×38 native px, staggered
-raster — docs/FIDELITY.md "projection"). This plan closes the remaining gaps, ordered by visual
+raster — plan progress note "projection"). This plan closes the remaining gaps, ordered by visual
 impact and dependency.
 
 **How to use:** run each prompt below, in order, in a fresh session (`/worktree`). Merge before
@@ -17,7 +17,7 @@ Three conventions that keep the relay honest across fresh instances:
   one line to the **Progress log** at the bottom (what landed, key measured values, any deviation
   from the prompt) — the next step's agent starts by reading that log instead of re-deriving.
 - **Investigate-first steps (3, 7, 9) have two legitimate outcomes**: implement, or
-  defer-with-evidence (survey numbers + a FIDELITY/SOURCES note). "We measured it and it's not
+  defer-with-evidence (survey numbers + a plan progress note/SOURCES note). "We measured it and it's not
   the engine's behaviour" counts as done; silent skips don't.
 - **Every step ends at the owner's eyes**: gates green is necessary, the side-by-side against the
   reference corpus is the actual exit. Delete this file when all steps land.
@@ -44,7 +44,7 @@ gitignored.
   `~/Projects/vikings/reference-shots/mosty-na-rzece-toprow/mosty-{1..7}.png` — the full 250-column
   top strip of the map `specjalna_mosty_na_rzece` (decoded twin:
   `content/maps/specjalna_mosty_na_rzece.json`, 250×200), left→right with small overlaps, capture
-  scale **exactly 1.25×** native art px (pinned by 5 building templates, docs/FIDELITY.md).
+  scale **exactly 1.25×** native art px (pinned by 5 building templates, plan progress note).
 - **Pinned viewport mapping for `mosty-5.png`** (the north base; sub-pixel lattice fit, 19
   buildings): `img_x = −11996.0 + 42.4958·hx`, `img_y = 240.2 + 23.766·hy − 1.547·elev(hx/2, hy/2)`
   where `(hx,hy)` are half-cells and `elev` the per-cell `lmhe` value (bilinear). Native px =
@@ -87,7 +87,7 @@ Context (re-verify against the sources; game root = "../Cultures 8th Wonder", re
   `z.array(z.number().int().nonnegative())` with a `.refine` pinning length === width·height
   (mirror the existing ground/levels refines). Document the lane semantics in the docstring:
   per-cell terrain height, 0..~240; the render lift (≈1.24 native px/unit, measured — see
-  docs/FIDELITY.md "projection") lands in the NEXT step, so nothing consumes it yet.
+  plan progress note "projection") lands in the NEXT step, so nothing consumes it yet.
 - Unit tests at the lowest level: extend the pipeline map-stage tests + the schema tests
   (synthetic fixtures only, never real game bytes — see the existing lane tests for the pattern).
 
@@ -98,7 +98,7 @@ Verification:
    with length 250·200; report min/max/mean and the value at cell (col 124, row 23) (the bridge
    deck) and around (col 160, rows 5..30) (the north-base hill, expect ~20..34).
 3. Update docs/SOURCES.md ("Remaining:" line) + docs/DATA-FORMAT.md if it lists the map JSON
-   lanes; FIDELITY: extend the projection row's deferred-elevation note to "lane emitted, lift
+   lanes; Plan note: extend the projection row's deferred-elevation note to "lane emitted, lift
    pending". Conventional Commit, no AI attribution. Stop before merge and report.
 ```
 
@@ -115,7 +115,7 @@ read as hills, collapses the remaining vertical mismatches vs the corpus (buildi
 ```text
 Lift the rendered world by terrain elevation: screen_y = projected_y − LIFT·elev, with
 LIFT ≈ 1.24 px per unit (native art px; the calibration evidence and exact fitted numbers are in
-docs/FIDELITY.md "projection" — E = 1.547 img px/unit at 1.25× capture, y-rms 5.0→1.2 with the
+plan progress note "projection" — E = 1.547 img px/unit at 1.25× capture, y-rms 5.0→1.2 with the
 term). The `elevation` lane (per-cell, from step 1) is in content/maps/<id>.json.
 
 Design constraints (read packages/render/AGENTS.md first):
@@ -146,8 +146,8 @@ Verification:
    the elevation term is in docs/plans/map-visual-fidelity.md "Shared verification kit"). The
    buildings/trees on the hill should now sit at the original's heights (residuals ≲ a few px);
    the rock hill on the right should visibly rise. Show the user, they judge.
-3. FIDELITY: move elevation from deferred to implemented in the projection row (lift value +
-   method pointer); ROADMAP: tick the lmhe sub-item. Stop before merge.
+3. Plan note: move elevation from deferred to implemented in the projection row (lift value +
+   method pointer); plan: tick the lmhe sub-item. Stop before merge.
 ```
 
 ---
@@ -177,7 +177,7 @@ Investigate FIRST, implement second:
    docs/plans/map-visual-fidelity.md "Shared verification kit"; sample aligned pixel pairs
    (original vs our flat render) over textured ground and regress luminance ratio vs embr —
    expect something near ratio = embr/127, but MEASURE it (report the fit + residuals). Record
-   the pinned curve in docs/FIDELITY.md (calibration-by-observation) — the ground row.
+   the pinned curve in plan progress note (calibration-by-observation) — the ground row.
 3. Check whether OBJECTS/buildings are shaded too: compare a tree standing on a dark slope vs one
    on lit ground in the corpus. If objects are shaded, apply the same multiplier to map-object
    sprites/batches (tint) and building/settler sprites at their anchor cell; if not, terrain only.
@@ -187,12 +187,12 @@ Investigate FIRST, implement second:
    vertex-colour attribute — keep batching intact (packages/render/AGENTS.md; no per-sprite
    filters). If the border fade is NOT in embr, measure the falloff (width in rows + curve) from
    the corpus top edges and implement it as an explicit border multiplier — record it as
-   approximated (engine-side, not map data) in FIDELITY.
+   approximated (engine-side, not map data) in plan progress note.
 
 Verification: unit tests for the sampler/curve mapping; the mosty-5 side-by-side (rock hill
 shading + the top-edge fade should now match; the sawtooth silhouette should disappear into
 black); also eyeball mosty-1 (map corner) and mosty-7 (right edge). Show the user. Update
-SOURCES ("Remaining"), FIDELITY, ROADMAP. Stop before merge.
+SOURCES ("Remaining"), plan progress note, plan. Stop before merge.
 ```
 
 ---
@@ -213,8 +213,8 @@ Make authored building placements draw the exact `[GfxHouse]` variant their map 
 the typeId-canonical bob. Today: resolveAuthoredPlacements (packages/app/src/slice/
 vertical-slice.ts) joins entities.buildings[].name+level → buildingBobs → typeId, then the render
 binding (packages/app/src/content/building-gfx.ts, buildingBobRefsByType + CANONICAL_EDIT_NAME)
-picks ONE bob per typeId — wrong for maps authoring the non-canonical variant (docs/FIDELITY.md
-"Authored entity placements", deviation (e); docs/ROADMAP.md corpus-comparison follow-ups (a)).
+picks ONE bob per typeId — wrong for maps authoring the non-canonical variant. Record the source
+basis and any remaining approximation in this plan's progress note.
 
 Hard constraint: gfx must NOT enter the sim (packages/sim/AGENTS.md — no render data in
 components). Design a seam on the app side, e.g.: resolveAuthoredPlacements already knows the
@@ -226,7 +226,7 @@ the same channel the SpriteSheet bindings travel; the sprite pool consults it be
 binding. Keep the fallback path (no entities / no override) byte-identical.
 
 Watch out: the variant's bob may live in a family/palette the sheet loader does not load yet
-(BUILDING_FAMILIES gates what may be layer-qualified — see the lesson in docs/lessons/render.md
+(BUILDING_FAMILIES gates what may be layer-qualified — see the lesson in AGENTS.md/render.md
 about unloaded families falling through to the wrong layer). Only override with refs whose family
 is actually loaded; count + report the rest.
 
@@ -236,7 +236,7 @@ longhouse variant (bob 44 @ ls_houses_viking4.house02); show the user the side-b
 spot-check a map authoring "viking headquarters" (6 placements across the corpus — find one via
 content/maps/*.json) still draws bob 34. Quick timeboxed check while in here: does any placed
 building family carry per-rotation graphics that the authored `rot` field could pick? If none,
-note it in FIDELITY (rot stays decoded-unused) and move on. Stop before merge.
+note it in plan progress note (rot stays decoded-unused) and move on. Stop before merge.
 ```
 
 ---
@@ -247,7 +247,7 @@ The original's palisade is a signature look: single posts join into an unbroken 
 `wall_03` post per placement (the map only ever places `wall_03` on the bridge map), so runs read
 as separate poles. The variants `wall_03/04/05` ("Mur h" / "Mur V" naming in the IR) are almost
 certainly orientation segments the ENGINE picks per neighbour direction. Bonus trail:
-docs/FIDELITY.md notes the wall cells carry `lmlp` values 4/5 — that lane may literally encode the
+plan progress note notes the wall cells carry `lmlp` values 4/5 — that lane may literally encode the
 orientation.
 
 ### Prompt 5
@@ -263,7 +263,7 @@ Investigate first:
    (wall_03 is 15×71 — a single post). Which does the map place (only wall_03 on the bridge map),
    at which half-cell adjacencies (dump the wall placements' neighbour graph — are runs 1
    half-cell apart along N-S? E-W? diagonals?).
-2. The `lmlp` lane trail: the wall cells carry lmlp 4/5 (docs/FIDELITY.md "Landscape-object
+2. The `lmlp` lane trail: the wall cells carry lmlp 4/5 (plan progress note "Landscape-object
    layer"). Decode lmlp for those cells (decoders/mapdat.ts) and test the correlation: does 4 vs 5
    split by run direction? If yes, the lane IS the orientation — pipeline-emit it for wall cells
    (or resolve at load) instead of inferring from neighbours.
@@ -275,7 +275,7 @@ Implement the join in the app's object binding (packages/app/src/content/objects
 per-placement variant/frame pick from the neighbour directions (or the lane), still one sprite
 per placement, deterministic, load-time only. If the original's rule can't be fully pinned,
 implement the closest neighbour-direction rule, and record the split (pinned vs approximated) in
-FIDELITY. Tests: unit-test the direction rule on synthetic placement sets. Verify: side-by-side
+plan progress note. Tests: unit-test the direction rule on synthetic placement sets. Verify: side-by-side
 of the palisade area vs mosty-5; show the user. Stop before merge.
 ```
 
@@ -292,8 +292,7 @@ today.
 ```text
 Wire building animations: the original's windmill shows rotating sails
 (~/Projects/vikings/reference-shots/mosty-na-rzece-toprow/mosty-5.png, center-left); our render
-of the same frame draws only the static mill body (bob 70 @ ls_houses_viking.housemiller01) —
-docs/ROADMAP.md corpus-comparison follow-ups (b).
+of the same frame draws only the static mill body (bob 70 @ ls_houses_viking.housemiller01).
 
 Investigate the data first (re-verify, don't trust this summary): the mod's
 DataCnmd/budynki12/houses/houses.ini [GfxHouse] records — which fields describe animation
@@ -314,7 +313,7 @@ stays a static sprite (byte-identical path).
 Tests: unit-test the IR extraction + the frame-selection (pure), pin one mill sequence. Verify
 hands-on: the mill in the mosty-5 frame shows sails (static shot) and animates live (the user
 judges the motion + speed at http://localhost:5173/?map=specjalna_mosty_na_rzece&center=160,15 —
-they know the original's pace). FIDELITY: new row or extend the building-graphics row (what is
+they know the original's pace). Plan note: new row or extend the building-graphics row (what is
 pinned: frames/layout; what approximated: cadence). Stop before merge.
 ```
 
@@ -349,10 +348,10 @@ change the LOOK (roads/foundations the ground lanes don't already carry)? If yes
 the pipeline (same optional-lane pattern as elevation/brightness) and draw as an overlay triangle
 pass over the ground (same UV machinery as empa/empb — packages/render/src/data/terrain.ts).
 If they are editor leftovers that the baked empa/empb already superseded (the SOURCES hypothesis),
-document that with the survey numbers in docs/SOURCES.md + FIDELITY and DEFER.
+document that with the survey numbers in docs/SOURCES.md + plan progress note and DEFER.
 
-Either way: tests for whatever lands, gates green, side-by-side for any visual change, honest
-ledger updates. Stop before merge.
+Either way: tests for whatever lands, gates green, side-by-side for any visual change, and an
+honest plan progress note. Stop before merge.
 ```
 
 ---
@@ -368,7 +367,7 @@ atlases exist (`cr_ani_body_00.{bear01,cattle01,deer01,chicken01,wolves01,…}`)
 ```text
 Place a map's authored setanimal records as visible animals. Current state: the pipeline decodes
 entities.animals (species name + half-cell) but resolveAuthoredPlacements skips them
-(docs/FIDELITY.md "Authored entity placements", deferred (a) — the original's animal system is
+(plan progress note "Authored entity placements", deferred (a) — the original's animal system is
 herd/AI-driven, so they must not become settlers).
 
 Scope this step deliberately SMALL: standing animals, no behaviour. Sim side: a minimal Animal
@@ -380,7 +379,7 @@ Resolve species names against the IR animals table (by-name join like humans; co
 unresolvable). Render side: bind the cr_ani_body_00.<species> atlases (they exist in content/;
 check the IR animal graphics rows for the species→palette join) and draw the idle/stand frames —
 follow how settler bindings resolve body atlases (packages/app/src/content/settler-gfx.ts) but
-keep it a separate, simpler binding. Wandering/AI + herds stay DEFERRED (FIDELITY note).
+keep it a separate, simpler binding. Wandering/AI + herds stay DEFERRED (plan progress note).
 
 Tests: sim unit test for spawnAnimal determinism (golden-adjacent: same seed+map → identical
 state), app unit test for the species join. Hands-on: ?map=specjalna_mosty_na_rzece — deer/hares
@@ -394,7 +393,7 @@ path (no new per-frame cost class). Stop before merge.
 ## Step 9 — water & waves audit
 
 The sea/river surface IS placed wave objects (`wave */fx wave*` records). Two open questions
-recorded in FIDELITY: our wave loop **phase** is a deliberate deviation (a spatial `hx+hy`
+recorded in Plan note: our wave loop **phase** is a deliberate deviation (a spatial `hx+hy`
 gradient; the original may play neighbours in identical phase), and the `fx wave*` records
 (24 085 of 65 953 placements on the bridge map!) are entirely undrawn (they point at
 `test_effect.bmd` with no palette — engine-fx placeholders).
@@ -410,9 +409,9 @@ the strip, ask the owner for one coastal screenshot instead of guessing.
 1. PHASE: in ONE original shot, template-match the wave frames (the wave records' GfxFrames lists,
    atlases under content/Data/engine2d/bin/bobs/) over a patch of water and read WHICH frame each
    neighbouring wave shows. Same frame everywhere → the original plays in unison and our spatial
-   gradient (packages/app/src/content/objects.ts, phase: hx+hy — logged deviation, FIDELITY
+   gradient (packages/app/src/content/objects.ts, phase: hx+hy — logged deviation, plan progress note
    "Landscape-object layer" (b)) must revert to phase 0; a spatial pattern → pin it. Decide from
-   pixels, not taste; update the code + FIDELITY to match the finding.
+   pixels, not taste; update the code + plan progress note to match the finding.
 2. `fx wave*`: investigate what the engine does with them (OpenVikings formats + the records'
    fields; they sit on lmlt=1 void cells). If they are runtime-effect spawn points (foam,
    sparkle) we cannot reproduce yet, document precisely and defer; if they alias to drawable art,
@@ -421,7 +420,7 @@ the strip, ask the owner for one coastal screenshot instead of guessing.
    are decoded but unconsumed — check whether the baked empa/empb patterns already carry the
    whole shore look, i.e. nothing to do).
 4. While in the water code: verify the wave alpha (our 0.5 reading of GfxDynamicBackground) against
-   an aligned corpus patch — measure, don't eyeball; update the constant + FIDELITY if off.
+   an aligned corpus patch — measure, don't eyeball; update the constant + plan progress note if off.
 
 Tests for any behavioural change (phase selection is pure). Side-by-side of a river patch
 (mosty-3/4) for the user. Stop before merge.
@@ -444,7 +443,7 @@ Final map-visuals audit + the acceptance artifact.
    (usually a missing extractor binding — see the lesson: a "missing asset" is usually a .bmd on
    disk that no extractor binds; mirror the nearest extractor + wire into
    resolveGraphicsBindings), and document the legitimately-undrawable rest (fx placeholders) in
-   FIDELITY. Target: every remaining skip is explained, none is silent.
+   plan progress note. Target: every remaining skip is explained, none is silent.
 2. VEGETATION: verify species/palette variants land (e.g. OrangeTree 01 vs 02, yew 01 vs 02 →
    different palettes of the same bmd — the yellow/green canopy mix). Compare a forest patch of
    mosty-5/6 vs ours; if the mix reads off, chase the palette join.
@@ -453,10 +452,9 @@ Final map-visuals audit + the acceptance artifact.
    fit like mosty-5 — the kit in docs/plans/map-visual-fidelity.md) and compose aligned
    original-vs-ours pairs for ALL SEVEN shots (mosty-1..7). Present them to the owner in one
    gallery; also hand them the live URL to pan the full map.
-4. LEDGER SWEEP: FIDELITY's terrain/object/entity rows must state exactly what is now
-   faithful/approximated/deferred (no stale claims); ROADMAP's map-import items ticked with
-   archive pointers per the ledger discipline; docs/plans/map-visual-fidelity.md checkboxes all
-   done → per its own header, DELETE the plan file in this final commit.
+4. PLAN SWEEP: the progress log must state exactly what is now faithful/approximated/deferred
+   (no stale claims); docs/plans/map-visual-fidelity.md checkboxes all done -> per its own header,
+   DELETE the plan file in this final commit.
 
 The owner signs off the look (they are the oracle). Fix-forward anything they flag before
 closing. Stop before merge.

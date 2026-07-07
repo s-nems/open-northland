@@ -7,7 +7,7 @@
  * DESIGN space. We keep the hex→decimal literals in a named table (the constant *is* the geometry, so this
  * satisfies the no-magic-numbers rule) and anchor the strip top-left, scaling the whole thing by an INTEGER
  * `uiscale` (default 2×, `?uiscale=` override) so it reads on an arbitrary-size canvas. The panel's INTERNAL
- * layout stays pinned — only the uniform scale is ours (logged in docs/FIDELITY.md "Left tool panel").
+ * layout stays pinned — only the uniform scale is ours (logged in source basis "Left tool panel").
  *
  * `gfx` is the original engine gfx id, which for `ls_gui_window` equals the atlas frame id (firstBobId=0,
  * see `content/gui-atlas-map.ts`), so the view resolves the sprite with `atlas.frames.get(spec.gfx)`.
@@ -55,7 +55,7 @@ export interface ToolButtonSpec {
  * Each `CreateToolButton(SRectangle(x,y,w,h), gfxId, stringId, msgId, …)` maps 1:1 to a row here; the msg
  * ids (0xf3c–0xf46) are the click routes and are recorded in the commit, not needed at draw/hit-test time.
  * Ids follow the checked-in atlas-map names; the OpenVikings decompile labels gfx 0x2f `_btnHelp` (str 1)
- * where the atlas map names 47 `options`/48 `help` — a provisional-naming discrepancy tracked in FIDELITY.
+ * where the atlas map names 47 `options`/48 `help` — a provisional-naming discrepancy tracked in source-basis.
  */
 export const TOOL_BUTTONS: readonly ToolButtonSpec[] = [
   { id: 'buildings', rect: { x: 0, y: 0x29, w: 0x28, h: 0x23 }, gfx: 0x2a, tooltipStringId: 2 },

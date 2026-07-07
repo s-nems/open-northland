@@ -123,7 +123,7 @@ function upgradedEvents(sim: Simulation): readonly SimEvent[] {
 }
 
 // Clear EVERY component store — the module-level singleton stores are shared across Simulation
-// instances (docs/LESSONS.md [ac6a287]); a store missed here leaks a prior test's entity, which
+// instances (AGENTS.md [ac6a287]); a store missed here leaks a prior test's entity, which
 // (e.g. a stale Health/CurrentAtomic on a reused id) silently diverts the carrier-delivery scan.
 beforeEach(clearStores);
 

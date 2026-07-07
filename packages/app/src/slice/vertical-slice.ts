@@ -334,7 +334,7 @@ export type AuthoredPlacement =
  * `role` → `jobs` typeId, its `tribe` string → `tribes` typeId), half-cells halve to cells, and the
  * two player columns land on 0-based sim owners (`sethouse` is 1-based, `sethuman` 0-based — schema
  * notes). Unresolvable or out-of-bounds records are dropped and counted; `setanimal` records are not
- * placed yet (herd-vs-individual semantics, docs/FIDELITY.md).
+ * placed yet (herd-vs-individual semantics, source basis).
  */
 export function resolveAuthoredPlacements(
   entities: NonNullable<TerrainMapFile['entities']>,
@@ -403,7 +403,7 @@ export function resolveAuthoredPlacements(
  * Build + run the slice sim for a map that carries AUTHORED entity placements (`map.cif`
  * `StaticObjects` → `maps/<id>.json` `entities`): every resolvable `sethouse` becomes a built
  * building and every `sethuman` a settler at its authored cell — replacing the synthetic
- * "first walkable cells" demo placement for such maps (docs/ROADMAP.md placement-import slice).
+ * "first walkable cells" demo placement for such maps (docs/plans/placement-import slice).
  *
  * The content set stays in the demo-content mold (passive typeId+id rows over the map's landscape
  * via {@link demoLandscape}) so the sim can host the real typeIds without pulling the full IR

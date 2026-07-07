@@ -40,7 +40,7 @@ export type Command =
        * stamp); omit it (the default) and the settler is a non-combatant with no `Health`, the golden /
        * vertical-slice path whose hash this leaves untouched. The pool **magnitude is caller-supplied**:
        * a human's hitpoints are below the readable `.ini` (only `animaltypes.ini` carries them), so this
-       * value is *approximated*, not pinned to a param (docs/FIDELITY.md "Combat hit resolution").
+       * value is *approximated*, not pinned to a param (source basis "Combat hit resolution").
        *
        * When `armorClass` is a positive `[armortype]` tier (1..4) the combatant also wears that armor
        * (an `Armor` component): an incoming hit is mitigated by the tier's `blockingValue` rather than
@@ -72,7 +72,7 @@ export type Command =
        * at the universal {@link import('../systems/movement/movement.js').MOVE_SPEED_PER_TICK} (the golden
        * / vertical-slice path whose hash this leaves untouched), the same separate-optional-component
        * stance as `hitpoints`/`armorClass`/`weaponTypeId` above. Used to give a *visually* slower pace in
-       * acceptance scenes without retuning the global default (see docs/FIDELITY.md "Settler walk pace").
+       * acceptance scenes without retuning the global default (see source basis "Settler walk pace").
        */
       readonly moveSpeed?: number;
       /** The PLAYER that owns this settler (a slot in `[0, MAX_PLAYERS)`; stamps an `Owner`). Omit
@@ -100,7 +100,7 @@ export type Command =
        * Place a **boat hull** of `vehicleType` at (x,y) for `tribe` — a ship put on the map as a
        * **mobile store** (the boat analogue of `placeBuilding`): it creates a {@link Vehicle} hull
        * carrying an (empty) {@link Stockpile} whose capacity is the ship type's `stockSlots`, the
-       * "boats as mobile stores" entity the Sea/Northland roadmap item names. Gated by the tribe's
+       * "boats as mobile stores" entity the Sea/Northland plan item names. Gated by the tribe's
        * ship-unlock tech graph (`tribeShipsUnlocked`): a hull is placed only if `vehicleType` is a
        * ship the tribe has currently UNLOCKED (a `vehicle_ship` row whose `jobEnablesVehicle` edge is
        * satisfied), so a cart, a catapult, or a not-yet-unlocked ship is a recoverable bad command —
@@ -152,7 +152,7 @@ export type Command =
        * it reverts to auto-engagement). Like `moveUnit` it is authoritative — it cancels the unit's
        * current action/route so it obeys at once. Skipped for a dead/stale/non-combatant issuer or target,
        * a neutral (unowned) issuer, or a self-target. The move-order-onto-an-enemy idiom the app maps to
-       * this (right-click on an enemy = attack) is the original's RTS convention (docs/FIDELITY.md).
+       * this (right-click on an enemy = attack) is the original's RTS convention (source basis).
        * The command carries no issuing-player yet (the per-player authority check lands with lockstep),
        * and hostility is (re)validated each tick by the CombatSystem, not at issue. See `attackUnit`.
        */
@@ -277,7 +277,7 @@ export type AtomicEffect =
   /** The settler enjoys itself to restore leisure: zeroes its `enjoyment` on completion (no goods
    *  consumed — like `sleep`/`pray`, recreation is free). The pairing reset for the NeedsSystem's
    *  enjoyment rise (the `enjoy` atomic, id 17). The need→satisfier *drive* is deferred — `enjoy` has
-   *  no readable building satisfier to walk to (see docs/FIDELITY.md) — so for now this effect is the
+   *  no readable building satisfier to walk to (see source basis) — so for now this effect is the
    *  reset half, exercised directly (no planner branch chooses it yet). */
   | { readonly kind: 'enjoy' }
   /** The settler makes love to restore leisure: zeroes its `enjoyment` on completion (no goods
@@ -285,7 +285,7 @@ export type AtomicEffect =
    *  its animation (`viking_civilist_make_love`) restores the **same channel 3** as `enjoy` via
    *  `event <at> 3 +800` tuples (a bigger leisure boost than enjoy's +100), so it resets `enjoyment`
    *  too. The need→satisfier *drive* is deferred for the same reason as `enjoy` — no readable building
-   *  satisfier in `houses.ini` (see docs/FIDELITY.md) — so for now this is the reset half only. */
+   *  satisfier in `houses.ini` (see source basis) — so for now this is the reset half only. */
   | { readonly kind: 'make_love' }
   /** The settler swings at `target`: the blow subtracts `damage` from the target's `Health.hitpoints`
    *  (clamped at 0 — armor never heals). `damage` is the **resolved column damage**, looked up by the

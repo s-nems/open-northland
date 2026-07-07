@@ -6,7 +6,7 @@ import { testContent } from '../fixtures/content.js';
 
 /**
  * Tests for `HashTrace` — the per-tick hash (+ bounded snapshot) ring buffer that feeds the
- * "time-travel / replay inspector" (ROADMAP "Cross-cutting DX"). It is the "find tick N" half:
+ * "time-travel / replay inspector" (plan "Cross-cutting DX"). It is the "find tick N" half:
  * cheaply records `{tick, hash}` during a live run so two runs' divergence is detectable WITHOUT
  * re-replaying. `replay()` is the companion "jump to tick N" half. The oracle here is `hashState()`:
  * a real run feeds the trace its own per-tick hashes, and a diverging run is localized to the first

@@ -1,155 +1,123 @@
 ---
-description: Run a user-specified task in an isolated git worktree — build, test, get approval, review; on the user's explicit go, rebase onto main and fast-forward merge (no merge commit), then clean everything up.
-argument-hint: <the task to do in this worktree>
+description: Execute a user-specified Vinland task in an isolated git worktree, verify it, update the source plan, wait for approval, then fast-forward merge.
+argument-hint: <task, plan step, or docs/plans/<file>.md step>
 ---
 
-You are running the **worktree workflow — the project's PRIMARY workflow**: the task and its plan
-come from the user (not from the roadmap), and all work happens in an **isolated git worktree**, so
-several of these can run in parallel sessions without stepping on each other or on the primary
-checkout. Read `AGENTS.md` (golden rules) before editing — it is the contract and overrides defaults.
+You are running the **primary Vinland workflow**. The user writes plans under `docs/plans/` and
+manually invokes `/worktree` for one plan step at a time. Execute the requested scope faithfully in
+an isolated git worktree, report for manual verification, and merge only after the user explicitly
+says to merge.
 
-The task from the invocation: **$ARGUMENTS** (if empty, ask what the task is before doing anything).
+The task from the invocation: **$ARGUMENTS**. If it is empty, ask for the task before doing anything.
 
-**The user's plan is authoritative.** `$ARGUMENTS` may be a one-line task, a multi-step plan pasted
-inline, or a path to a plan file — when it is a plan, execute its steps and scope **as written**: do
-not substitute your own step selection, do not pull in adjacent work, do not "improve" the scope.
-If reality contradicts the plan (a step is impossible, already done, or clearly wrong once you see
-the code), stop at the smallest safe point and **surface the deviation in the report** — the user
-decides, not you. The user verifies the work manually afterward, so a faithful, legible execution
-of the stated plan beats a cleverer unrequested one.
+Hard rules:
+- Read `AGENTS.md` before editing. Load package-local `AGENTS.md` only for packages you touch.
+- The user's plan is authoritative. Do not substitute your own next step or pull adjacent work.
+- Never touch the primary checkout (`~/Projects/vikings/vinland`) until the final merge step.
+- Never merge without explicit user approval.
+- Before merge, update the relevant plan file so progress survives across worktree sessions.
 
-Two hard gates in this flow:
-- **Never touch the primary checkout** (`~/Projects/vikings/vinland`) until the final merge step —
-  another session may be working there.
-- **Never merge without the user's explicit go** ("merge", "go on", …). Steps 1–6 end with a report
-  and a stop.
+## 1. Create the Worktree
 
-## 1. Create the worktree
+- Derive a short kebab-case slug. Branch name: `feat/<slug>` or the honest conventional type
+  (`fix/<slug>`, `refactor/<slug>`, `docs/<slug>`). Worktree path:
+  `~/Projects/vikings/vinland-<slug>`.
+- Create it from `main`, regardless of the primary checkout's current branch:
+  `git -C ~/Projects/vikings/vinland worktree add ../vinland-<slug> -b <branch> main`.
+- Switch this session into that path with the available worktree/session tool.
+- Provision gitignored local state if missing:
+  - `npm install`
+  - clone real generated content from the primary checkout when needed:
+    `cp -Rc ../vinland/content content`. Do not symlink `content/`; the pipeline writes in place.
+  - copy `.claude/settings.local.json` from the primary checkout if the local Claude session needs it.
 
-- Derive a short kebab-case slug from the task. Branch name: `feat/<slug>` (or `fix:`/`refactor:`
-  type prefix as appropriate). Worktree path: **`~/Projects/vikings/vinland-<slug>`** — a sibling of
-  `vinland/` inside the workspace, so the relative reference paths (`../Cultures 8th Wonder`,
-  `../OpenVikings_reversing`, the pipeline's `--game` arg) resolve exactly as they do from the
-  primary checkout. If the directory already exists, pick a different slug.
-- Create it **based on `main`**, not on whatever the primary checkout happens to have checked out:
-  `git -C ~/Projects/vikings/vinland worktree add ../vinland-<slug> -b <branch> main`
-- Switch this session into it with the `EnterWorktree` tool (`path: <worktree>`), so edits and
-  commands run there without permission friction.
-- Provision what a fresh checkout lacks (all gitignored, so none of this can leak into the branch):
-  - `npm install` (workspaces; node_modules is per-worktree).
-  - `content/` — real graphics are the default and content is gitignored. Give the worktree its
-    **own APFS clone** of the primary's content (run from the worktree root):
-    `cp -Rc ../vinland/content content` — `-c` is clonefile: ~5 s for the full 1 GB, near-zero disk
-    (blocks are shared copy-on-write until a file is rewritten). **Never symlink it**: the pipeline
-    writes through the path without clearing it, so a symlinked content would silently clobber the
-    primary checkout's copy in place (the pipeline CLI now refuses a symlinked `--out` for exactly
-    this reason). With a clone, re-running `npm run pipeline` in the worktree is always safe — no
-    "does this task change pipeline output?" judgment call needed.
-  - `.claude/settings.local.json` — copy it from the primary checkout
-    (`~/Projects/vikings/vinland/.claude/`) so local permissions apply here. The shared tooling
-    (`commands/`, `agents/`, `workflows/`, `settings.json`) is tracked and arrives with the checkout.
+## 2. Understand the Step
 
-## 2. Do the work
+- If `$ARGUMENTS` names a plan file or step, open that plan and identify exactly one step to execute.
+- Re-check factual claims against source files before coding. Plans are research notes, not ground
+  truth.
+- If the step is already done, impossible, or contradicted by code/source reality, stop at the
+  smallest safe point and report the deviation. The user decides the new scope.
 
-- Same discipline as `/iterate` step 2: read the matching `docs/lessons/<area>.md` for gotchas, implement
-  only the requested task, match surrounding style, no scope creep. Sim work follows the
-  determinism contract in `packages/sim/AGENTS.md`; mechanics change → a test at the lowest level
-  that proves it.
+## 3. Do the Work
 
-## 3. Test (do not skip, do not fake)
+- Keep edits scoped to the requested step.
+- Mechanics and extracted data must name their source basis in the changed code, tests, plan progress
+  note, or commit message: extracted `.ini`/`.cif` data, OpenVikings format oracle, or observation of
+  the running original. If behavior is approximated, say what is approximated and why.
+- Do not create new running ledgers for lessons, tech debt, fidelity, or roadmap state. Durable rules
+  belong in `AGENTS.md` or package-local `AGENTS.md`; planned future work belongs in `docs/plans/`.
 
-Follow the `/iterate` §3 gates (`.claude/commands/iterate.md` — copied into this worktree in step 1):
-- **3a automated:** `npm test`, `npm run check`, `npm run build` — all green, in the worktree.
-- **3b hands-on:** exercise the real entry point end-to-end (documented command, real inputs) and
-  look at the output — green units are not a substitute. For anything player-visible or visual:
-  - Start the dev server **from the worktree on a non-5173 port** — 5173 is reserved for the primary
-    `main` checkout, so opening `localhost:5173` always lands on main and never a worktree's build.
-    Launch with an explicit port at 5174+:
-    `npm run dev --workspace @vinland/app -- --port 5174` (if 5174 is itself taken by another
-    worktree, Vite walks up to the next free port). **Read the actual URL from the output** and use it
-    for the browser drive + approval links below — never assume a port. `scripts/dev-ports.sh` lists
-    every running dev server with its port and checkout, so you can see what's already taken.
-  - Drive it yourself with the Playwright MCP tools against that port (load the scene, interact,
-    screenshot) to catch crashes and obvious breakage.
-  - Then hand the user the approval links: `open` the exact URL(s) (`http://localhost:<port>/?scene=<id>`
-    etc.) and give the one-or-two-things-to-look-at checklist. **Visual correctness is the user's
-    call — never self-sign it**; report such work as *pending visual confirmation*.
-- **3c fidelity:** if the task implements/tunes a mechanic or extracts data, state its fidelity
-  basis and update `docs/FIDELITY.md` in the same commit ("fidelity n/a: <why>" for pure infra).
+## 4. Verify
 
-## 4. Commit
+Run the gates that match the change, and do not fake them:
+- Normal code path: `npm test`, `npm run check`, `npm run build`.
+- Pipeline/data path: run the real pipeline command when extraction output or schema behavior changes:
+  `npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content`.
+- Player-visible or visual path: start the dev server from the worktree on a non-5173 port, use the
+  actual printed URL, exercise the relevant scene/page, and report the URL plus a short checklist for
+  the user. Visual and audio correctness require the user's sign-off.
 
-- Commit on the branch, in the worktree. Conventional Commits, imperative, capitalized, no scope,
-  no AI attribution. Stage only this task's files. Multiple commits are fine if the task has
-  natural stages — history stays as-is through the rebase-merge.
-- **Ledger discipline rides with the commit** (this workflow must keep the docs honest even when
-  `/iterate` sits idle): if the task completes or advances a `docs/ROADMAP.md` item, tick/update it —
-  the verification trail goes into `docs/ROADMAP-ARCHIVE.md`, the live line stays a 1–2-line summary
-  + `→ [archive]` pointer. A non-obvious generalizable lesson → one grounded line in the matching
-  `docs/lessons/<area>.md`. (FIDELITY is already handled in §3c.)
+## 5. Commit and Review
 
-## 5. Review
+- Commit on the branch. Use Conventional Commits, imperative and capitalized, with no AI attribution.
+  Stage only this task's files.
+- Run the review lenses that apply over `git diff main...HEAD`:
+  - `determinism-reviewer` for `packages/sim`, fixed-point math, command flow, or content schemas.
+  - `perf-reviewer` for per-tick sim systems or per-frame render/app paths.
+  - `fidelity-reviewer` for mechanics, extraction, or source-basis claims.
+  - `architecture-reviewer` for cross-package changes, new systems/seams, dependency changes, or
+    workflow/data-flow changes.
+  - `code-quality-reviewer` for non-trivial code changes, larger refactors, new systems, or risky
+    tests.
+  - Add a general correctness/edge-case review only when the named lenses do not cover the main risk.
+- Triage findings yourself, fix real in-scope issues, re-run affected gates, and commit fixes.
 
-- Spawn parallel review subagents (Agent tool) over the branch diff vs main
-  (`git diff main...HEAD`), using the named lenses in `.claude/agents/`: **`determinism-reviewer`
-  mandatory** if the change touches `sim` determinism/purity, fixed-point math, or content schemas;
-  **`perf-reviewer` mandatory** for a per-tick system or per-frame render path;
-  **`fidelity-reviewer`** for mechanic/data work. For larger changes add *correctness/edge-cases*
-  and *simplicity/reuse*. A trivial data/test tweak needs none.
-- Triage findings with your own judgment — fix what is real and in-scope, record a one-line reason
-  for anything deliberately skipped. Re-run `npm test` / `npm run check` after fixes; commit them.
+## 6. Update the Plan Before Handoff
 
-## 6. Stop — report and wait for the go
+If this task came from `docs/plans/*.md`, update that plan **in this branch before asking to merge**:
+- Tick the completed checkbox, or mark it blocked/deviated with a one-line reason.
+- Add or update a compact progress note with: date, branch, what landed, verification, source basis,
+  and visual/audio sign-off status if relevant.
+- Keep the note short. Do not paste transcripts or long implementation narratives.
 
-Report: what was done **against the user's plan, step by step** (done / deviated + why / blocked —
-deviations are the user's call, so flag them loudly), test evidence (the exact hands-on command and
-what it produced), the approval links + checklist for anything visual, review findings and how they
-were addressed, and the branch/worktree names. Add one FYI line if `npm run scan:structure` shows an
-offender this branch pushed over budget (fixing structure is out of scope unless the plan asked).
-Then **stop**. Merge only when the user explicitly says so; if they ask for changes instead, loop
-back to step 2 (the worktree stays up).
+If no plan file was involved, state that explicitly in the report. Do not invent one unless the user
+asked for it.
 
-## 7. Merge — rebase style, no merge commit (only after the user's go)
+## 7. Stop and Report
 
-- **Re-read main now** — parallel sessions land work on it mid-flight, so the value from step 1 is
-  stale. There is no remote in this repo; `main` is a local branch (nothing to fetch or push).
-- In the worktree: `git rebase main`. Resolve conflicts here. If main had moved or there were
-  conflicts, re-run `npm test` + `npm run check` before continuing (and redo the hands-on check if
-  a conflict touched the feature's area).
-- Fast-forward `main` onto the rebased branch — never a merge commit:
-  - If the primary checkout is **on `main` and clean** → `git -C ~/Projects/vikings/vinland merge
-    --ff-only <branch>` (keeps its working tree in sync with the new main).
-  - If the primary checkout is **on another branch** → from the worktree: `git fetch . <branch>:main`
-    (fetch refuses non-fast-forward updates and refuses if main is checked out anywhere — both are
-    safety checks working for you).
-  - If the primary checkout is **on `main` but dirty** → **stop and report**; a parallel session is
-    likely mid-task there. Do not stash, reset, or otherwise touch its state.
-- **Regenerate the primary's assets** if any merged commit touches the pipeline's *output* — an
-  extractor/stage/decoder under `tools/asset-pipeline/` or a content schema in `packages/data/`
-  (test-only changes don't count; when unsure, regenerate — it is idempotent). Worktree content is
-  an isolated clone, so the merge did **not** update the primary's `content/` as a side effect, and
-  main's content must always match main's pipeline. Run it now, from the **primary** checkout:
-  `npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content`
-  (the script rebuilds first). Read the per-stage summary lines and confirm none failed. Only if a
-  parallel session owns the primary (the dirty case above) leave it — and flag the stale content
-  loudly in the closeout report instead.
+Report and wait:
+- what was done against the requested plan step,
+- tests/build/pipeline/hands-on evidence,
+- visual/audio approval URL and checklist if relevant,
+- review findings and how they were handled,
+- branch and worktree names,
+- the exact plan progress update you committed, or "no plan file involved".
 
-## 8. Cleanup
+Stop here. If the user requests changes, continue in the same worktree. If the user says to merge,
+continue below.
 
-- Stop every process this workflow started (dev servers, background tasks) before removing anything.
-- Verify the merge landed: `git merge-base --is-ancestor <branch> main` must succeed.
-- `ExitWorktree` with `action: "keep"` (it returns the session to the primary checkout; it cannot
-  delete a worktree entered via `path` — that's the next line).
-- `git worktree remove --force ~/Projects/vikings/vinland-<slug>` — `--force` is only for the
-  untracked node_modules and the content clone (the worktree's own copy; the primary's content is
-  untouched); it is safe *because* the ancestor check above passed.
-- `git branch -d <branch>` (lower-case `-d`: refuses if somehow unmerged — that refusal is signal,
-  not an obstacle to `-D` past).
-- Confirm `git worktree list` shows only the primary checkout, then report the closeout: the merged
-  commits (`git log --oneline` of what landed on main), that the worktree/branch/processes are gone,
-  and — when the pipeline's output changed — that the primary's `content/` was regenerated (quote a
-  pipeline summary line, or the loud stale-content flag if regeneration had to be skipped).
+## 8. Merge After Explicit Approval
 
-**Abandoning instead of merging:** if the user says to drop the work, skip step 7; confirm once
-that the branch's commits will be destroyed, then do step 8 with `git branch -D` and without the
-ancestor check.
+- Re-read `main`; parallel work may have landed.
+- In the worktree, run `git rebase main`. Resolve conflicts there.
+- If conflicts or main changes touched this area, re-run the relevant gates and refresh the plan note
+  if the outcome changed. The branch must still include the final plan update before merge.
+- Fast-forward `main`:
+  - If the primary checkout is clean on `main`: `git -C ~/Projects/vikings/vinland merge --ff-only <branch>`.
+  - If the primary checkout is on another branch: from the worktree, `git fetch . <branch>:main`.
+  - If the primary checkout is dirty on `main`: stop and report. Do not stash or reset it.
+- If the pipeline output changed, regenerate primary `content/` from the primary checkout after merge.
+
+## 9. Cleanup
+
+- Stop processes started by this workflow.
+- Verify `git merge-base --is-ancestor <branch> main`.
+- Exit the worktree session, then remove the worktree and branch:
+  `git worktree remove --force ~/Projects/vikings/vinland-<slug>`
+  `git branch -d <branch>`
+- Final report: merged commits, removed worktree/branch/processes, and any primary `content/`
+  regeneration summary.
+
+**Abandoning:** if the user says to drop the work, confirm once, remove the worktree, and delete the
+branch with `git branch -D <branch>`.

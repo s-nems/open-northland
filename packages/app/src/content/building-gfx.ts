@@ -22,7 +22,7 @@ import type { BuildingBobRow, ConstructionLayerRow } from './ir.js';
  * body bobs), so it binds as a per-kind {@link import('@vinland/render').SpriteSheet.kindLayers} layer,
  * not the shared body atlas. {@link TREE_BOB} is that record's first displayed full-grown frame
  * (`GfxFrames 3 60 …` → bob 60, a 101×111 tree anchored at its base). Species/frame are a deliberate
- * first pick — a human eyeballs the pixels and we swap the constant to taste (docs/FIDELITY.md "Tree
+ * first pick — a human eyeballs the pixels and we swap the constant to taste (source basis "Tree
  * bob"). The wood `Resource` nodes the woodcutter chops now draw as this tree instead of the flat green
  * placeholder box.
  */
@@ -49,7 +49,7 @@ const HOUSE_PALETTE = 'house01';
  * terrain with no per-kind fudge. (The earlier 0.7 shrink compensated for a pitch that was ~1.5× too
  * large — it made buildings *too small*, the complaint that drove the pitch recalibration; removing it
  * lets a house cover roughly its `LogicWalkBlockArea` footprint the way the original did.) The bob is
- * still a taste constant — swap it to a bigger growth stage (docs/FIDELITY.md "Building bob"). This
+ * still a taste constant — swap it to a bigger growth stage (source basis "Building bob"). This
  * {@link HOUSE_BOB} is now only the
  * {@link import('@vinland/render').BuildingTypeBinding.default} fallback for a type with no `buildingBobs`
  * row at all; every real viking type binds its own bob through {@link BUILDING_FAMILIES}.
@@ -59,7 +59,7 @@ export const HOUSE_BOB = 11;
 /**
  * Render scale for the building kind — **native (1)**, like every other bob. Buildings no longer carry a
  * per-kind shrink: the tile pitch (`iso.ts`) is calibrated to the art, so the authored bob size is
- * already correct against the terrain. Kept as a named knob (a human may still nudge it, docs/FIDELITY.md).
+ * already correct against the terrain. Kept as a named knob (a human may still nudge it, source basis).
  */
 export const BUILDING_SCALE = 1;
 
@@ -279,7 +279,7 @@ function familyLayerFor(
  * layer-qualified stage); a row in an UNLOADED family is dropped (its frame-id space differs — never
  * borrow), and a typeId whose stages end up ALL dropped is omitted entirely (it keeps its normal body
  * draw at every progress rather than showing a partial stack). Only from-scratch rows are consumed
- * (`upgrade === false`; the 1-rows are the original's upgrade-overlay pass — docs/FIDELITY.md).
+ * (`upgrade === false`; the 1-rows are the original's upgrade-overlay pass — source basis).
  *
  * A typeId's stages must all come from **one source record at one size level** — several records can
  * carry the same typeId (the HQ's `"viking headquarters"` vs its `"viking headquarters house"` variant;

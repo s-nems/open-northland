@@ -7,7 +7,7 @@ import type { ContentSet, LandscapeType } from '@vinland/data';
 // keep their schema defaults — see tools/asset-pipeline/src/decoders/ini.ts) yet had no sim consumer; the
 // terrain graph reads only `walkable`/`maxValency`. The water-layer view is the placement-side seed the
 // Sea/Northland slice reads — distinct from water-VALENCY terrain (which cells are water), which lives in
-// the map tile grid, not this table (docs/ROADMAP.md Phase 4). No mechanic is added here (nothing is placed
+// the map tile grid, not this table (docs/plans/Phase 4). No mechanic is added here (nothing is placed
 // over water); see ./index.ts for why read views are grouped out of systems/shared.ts.
 
 /**
@@ -18,7 +18,7 @@ import type { ContentSet, LandscapeType } from '@vinland/data';
  * water" gate, the data's own water-layer marker, NOT a claim that a *cell* is water (that is the map
  * tile grid's terrain valency, decoded elsewhere).
  *
- * FIDELITY: pinned to the extracted `allowedonwater` int (`1`/`0`). Adds no mechanic (nothing placed,
+ * source-basis: pinned to the extracted `allowedonwater` int (`1`/`0`). Adds no mechanic (nothing placed,
  * nothing moved) — a derived classification over the already-extracted landscape IR.
  */
 export function isWaterLayerType(type: LandscapeType): boolean {
@@ -36,7 +36,7 @@ export function isWaterLayerType(type: LandscapeType): boolean {
  * enumeration order is stable regardless of `content.landscape` declaration order — the same canonical
  * shape `shipVehicles`/`seaJobs` return. {@link isWaterLayerType} is the matching single-type predicate.
  *
- * FIDELITY n/a: a pure derived **read view** over the already-extracted landscape IR (like `shipVehicles`
+ * source-basis n/a: a pure derived **read view** over the already-extracted landscape IR (like `shipVehicles`
  * over vehicles) — it adds no mechanic and invents no classification: the water-layer split is read straight
  * off the `allowedonwater` flag the pipeline pinned (see {@link isWaterLayerType}). Determinism: a pure
  * function of `content` (no world, no RNG, no wall-clock) over the plain `content.landscape` array, explicitly
@@ -53,7 +53,7 @@ export function waterLayerLandscape(content: ContentSet): LandscapeType[] {
  * regardless of land/water. The universal-layer twin of {@link isWaterLayerType}, completing the
  * placement-layer triple (`allowedon{land,water,everything}`) the source data carries.
  *
- * FIDELITY: pinned to the extracted `allowedoneverything` int (`1`/`0`). Adds no mechanic — a derived
+ * source-basis: pinned to the extracted `allowedoneverything` int (`1`/`0`). Adds no mechanic — a derived
  * classification over the already-extracted landscape IR.
  */
 export function isUniversalLayerType(type: LandscapeType): boolean {
@@ -69,7 +69,7 @@ export function isUniversalLayerType(type: LandscapeType): boolean {
  * Returned as a {@link LandscapeType} **array** sorted ascending by `typeId`, the same canonical shape the
  * sibling views return. {@link isUniversalLayerType} is the matching single-type predicate.
  *
- * FIDELITY n/a: a pure derived **read view** over the already-extracted landscape IR — it adds no mechanic
+ * source-basis n/a: a pure derived **read view** over the already-extracted landscape IR — it adds no mechanic
  * and invents no classification: the universal-layer split is read straight off the `allowedoneverything`
  * flag the pipeline pinned. Determinism: a pure function of `content` over the plain `content.landscape`
  * array, explicitly **sorted** by `typeId`, so the same content yields a byte-identical array every call.
@@ -88,7 +88,7 @@ export function universalLayerLandscape(content: ContentSet): LandscapeType[] {
  * int. NOTE this is the *placement layer*, distinct from `walkable` (which keeps a schema default the
  * pipeline never sets — see the module header); a type can be land-layer yet non-walkable (a tree, a wall).
  *
- * FIDELITY: pinned to the extracted `allowedonland` int (`1`/`0`). Adds no mechanic — a derived
+ * source-basis: pinned to the extracted `allowedonland` int (`1`/`0`). Adds no mechanic — a derived
  * classification over the already-extracted landscape IR.
  */
 export function isLandLayerType(type: LandscapeType): boolean {
@@ -105,7 +105,7 @@ export function isLandLayerType(type: LandscapeType): boolean {
  * Returned as a {@link LandscapeType} **array** sorted ascending by `typeId`, the same canonical shape the
  * sibling views return. {@link isLandLayerType} is the matching single-type predicate.
  *
- * FIDELITY n/a: a pure derived **read view** over the already-extracted landscape IR — it adds no mechanic
+ * source-basis n/a: a pure derived **read view** over the already-extracted landscape IR — it adds no mechanic
  * and invents no classification: the land-layer split is read straight off the `allowedonland` flag the
  * pipeline pinned. Determinism: a pure function of `content` over the plain `content.landscape` array,
  * explicitly **sorted** by `typeId`, so the same content yields a byte-identical array every call.

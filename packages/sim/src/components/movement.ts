@@ -37,7 +37,7 @@ export const HerdMember = defineComponent<{ leader: Entity }>('HerdMember');
  *
  * The animal-spawn mechanic stamps it on each herd creature from the `animaltypes.ini` `movespeed`
  * param: a creature with an explicit `movespeed` of `N` walks `ONE / N` tile/tick (a larger `movespeed`
- * is a *slower* step — see the `spawnAnimalHerd` handler and docs/FIDELITY.md "Animal locomotion pace"),
+ * is a *slower* step — see the `spawnAnimalHerd` handler and source basis "Animal locomotion pace"),
  * so a cow grazes at its own data-pinned speed instead of the settler default. A creature whose record
  * omits `movespeed` carries no `MoveSpeed` (the engine default applies = the universal pace).
  *
@@ -48,7 +48,7 @@ export const HerdMember = defineComponent<{ leader: Entity }>('HerdMember');
  * fleeing entity that carries a `MoveSpeed` reaches that branch, and today only owned humans flee (via the
  * FLEE stance) while `MoveSpeed` is animal-only, so no runtime path actually reads `runPerTick` yet: an
  * animal flee/charge DRIVE (an animal switching to its run gait) is still undocumented "soul" behaviour
- * with no oracle, deferred (docs/FIDELITY.md "Animal locomotion pace"). Landing the param on the entity now
+ * with no oracle, deferred (source basis "Animal locomotion pace"). Landing the param on the entity now
  * — the same "data-on-the-entity before its consumer" discipline as `Armor`/`cargoGoods` — means that drive
  * becomes a pure read switch, not a re-extraction. `null` when the record omits `runspeed` (only the walk
  * pace is known).

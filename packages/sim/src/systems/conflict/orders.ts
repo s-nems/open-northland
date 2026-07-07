@@ -35,13 +35,13 @@ import { MILITARY_MODE, defaultStanceForJob, isMilitaryMode } from '../readviews
  * AI. A worker resumes its job quickly; a soldier stands longer; and the needs drives (eat/sleep/pray)
  * can pull either away at any time (see {@link playerOrderSystem}). RTS-style box-select-and-move for
  * civilians is itself a deviation from the original's hand/profession control — recorded in
- * docs/FIDELITY.md.
+ * source basis.
  */
 
 /**
  * How many ticks a CIVILIAN (non-combatant) unit STANDS at the ordered spot after arriving before the
  * economy AI re-tasks it. Short — a blacksmith sent somewhere pauses briefly, then walks back to work.
- * APPROXIMATED (no oracle for the original's exact dwell): 50 ticks ≈ 2.5 s at 20 Hz (docs/FIDELITY.md
+ * APPROXIMATED (no oracle for the original's exact dwell): 50 ticks ≈ 2.5 s at 20 Hz (source basis
  * "Player move-order dwell"). A rise-driven need (hunger/fatigue/piety) can end the hold sooner.
  */
 export const MOVE_ORDER_HOLD_CIVILIAN = 50;
@@ -49,7 +49,7 @@ export const MOVE_ORDER_HOLD_CIVILIAN = 50;
  * How many ticks a COMBATANT (a unit carrying Health or a Weapon — a warrior) STANDS at the ordered
  * spot before the economy AI re-tasks it. Long — a warrior holds position far longer than a worker
  * (~15 s at 20 Hz), but its needs still preempt (it may wander off to eat/sleep). APPROXIMATED
- * (docs/FIDELITY.md "Player move-order dwell").
+ * (source basis "Player move-order dwell").
  */
 export const MOVE_ORDER_HOLD_SOLDIER = 300;
 
@@ -78,7 +78,7 @@ function clearPlayerOrder(world: World, e: Entity): void {
  * player-owned unit is orderable — wildlife isn't the player's to command). A mapless sim has no cells
  * to navigate, so the order is a no-op there too. The command carries no issuing-player yet, so it
  * doesn't verify WHICH player owns the unit — the app only issues orders for the human's own units;
- * the per-player check lands with lockstep (docs/FIDELITY.md).
+ * the per-player check lands with lockstep (source basis).
  */
 export function moveUnit(
   world: World,
@@ -199,7 +199,7 @@ export function setStance(
  * Order one OWNED combatant to ATTACK a specific `target` unit (the RTS "attack that one" — the combat
  * twin of {@link moveUnit}). It stamps an {@link AttackOrder} focus the CombatSystem reads: the unit
  * chases and strikes `target` **regardless of sight radius** until the target dies / stops being a valid
- * target (docs/FIDELITY.md — the soft-override philosophy of {@link moveUnit}: the economy leaves an
+ * target (source basis — the soft-override philosophy of {@link moveUnit}: the economy leaves an
  * engaged unit alone, but needs still preempt). Like a move order it is authoritative — it cancels the
  * unit's current action/route/hold so it obeys at once — and it also stamps the {@link Engagement} marker
  * up front so the AISystem skips economy planning for the unit from the very next tick (before the

@@ -47,7 +47,7 @@ export function spawnSettler(
   // non-positive `hitpoints` (the default — the non-combatant / golden / vertical-slice path) leaves the
   // settler `Health`-less and the hash untouched, the separate-optional-component pattern. The MAGNITUDE
   // is caller-supplied and *approximated* — a human's hitpoints are below the readable `.ini`
-  // (docs/FIDELITY.md "Combat hit resolution").
+  // (source basis "Combat hit resolution").
   if (command.hitpoints !== undefined && command.hitpoints > 0) {
     world.add(e, Health, { hitpoints: command.hitpoints, max: command.hitpoints });
   }
@@ -90,13 +90,13 @@ export function spawnSettler(
 }
 
 /**
- * Spawn a **herd of an animal tribe** around a birth point — the animal-placement mechanic the ROADMAP
+ * Spawn a **herd of an animal tribe** around a birth point — the animal-placement mechanic the plan
  * Phase-4 "animals as non-controllable tribes" item names: it actually puts a group of creatures on the
  * map, consuming the {@link herdParams}/{@link animalHitpoints} read views the previous slices landed.
  *
  * The herd is `max(1, maximumgroupsize)` creatures (`maximumgroupsize` 0 — a source-omitted/solitary
  * animal — still yields one), each a {@link Settler} of the animal `tribe` (animals reuse the **same
- * entity/AI model** as a settler — the ROADMAP requirement, not a bolt-on) at `jobType: null` (an animal
+ * entity/AI model** as a settler — the plan requirement, not a bolt-on) at `jobType: null` (an animal
  * isn't born into a trade) carrying a {@link Health} pool stamped from its `hitpoints_adult`
  * ({@link animalHitpoints}). The creatures are scattered around (x,y) within `maximumdistancetobirthpoint`
  * by a **deterministic** offset ({@link herdMemberOffset} — an expanding 8-direction ring, no RNG), so a
@@ -110,7 +110,7 @@ export function spawnSettler(
  * no herd params to read — so the command is skipped (still logged by commandSystem, so replay stays
  * faithful), the same recoverable-boundary-failure stance as an unknown building/job id.
  *
- * FIDELITY: the **group size**, **HP pool**, **birth-point range**, **leader presence**, and the
+ * source-basis: the **group size**, **HP pool**, **birth-point range**, **leader presence**, and the
  * **walking/running-pace magnitudes** (`movespeed`/`runspeed`) are the verbatim extracted
  * `animaltypes.ini` params (faithful). A creature with an explicit `movespeed` gets a
  * {@link MoveSpeed}{`perTick = ONE/movespeed`} (a larger `movespeed` walks a *slower* step), so it grazes
@@ -118,13 +118,13 @@ export function spawnSettler(
  * universal settler default. Its `runspeed` is stamped as the same view's `runPerTick` (`ONE/runspeed`,
  * the *faster* gait — a `runspeed` is always a smaller number than its `movespeed`), **recorded on the
  * entity but not yet consumed** — the flee/charge drive that switches to the run gait is deferred,
- * undocumented "soul" behaviour with no oracle (docs/FIDELITY.md "Animal locomotion pace").
+ * undocumented "soul" behaviour with no oracle (source basis "Animal locomotion pace").
  * **Approximated (no oracle):** the *scatter pattern* (where within the range each creature lands), that
  * animals spawn at `jobType: null` (so they carry no weapon yet — the animal→weapon `(tribeType, typeId)`
  * binding is a deferred refinement), that the spawn is a one-shot placement with no respawn/territory
  * upkeep, and the **direction of the `movespeed` scale** (that a larger number is slower — the
  * step-period reading, the only reading consistent with `runspeed < movespeed`) — the original's herd-AI
- * is the undocumented "soul" (recorded in docs/FIDELITY.md). No births→growth here: an animal is spawned
+ * is the undocumented "soul" (recorded in source basis). No births→growth here: an animal is spawned
  * adult (carries no {@link Age}); the per-tribe spawn cadence / map populator is a later slice.
  *
  * Determinism: the leader is the herd's lowest-id member (creation is monotonic, so the first `create()`
@@ -141,11 +141,11 @@ export function spawnAnimalHerd(
   const hitpoints = animalHitpoints(ctx.content, command.tribe) ?? 0; // an animal record always has both
 
   // The animal's data-pinned locomotion paces: a `movespeed`/`runspeed` of N moves ONE/N tile/tick (a
-  // larger speed value = a slower step — see docs/FIDELITY.md "Animal locomotion pace"). A record that
+  // larger speed value = a slower step — see source basis "Animal locomotion pace"). A record that
   // omits `movespeed` (walkSpeed 0) stamps NO MoveSpeed, so it walks at the universal settler default;
   // one that omits `runspeed` carries a null run pace (only its walk gait is known). The run pace is
   // recorded on the entity but not yet consumed — the flee/charge drive that switches to it is deferred
-  // (docs/FIDELITY.md "Animal locomotion pace"); the MovementSystem reads only the walk pace today.
+  // (source basis "Animal locomotion pace"); the MovementSystem reads only the walk pace today.
   // A record with a `runspeed` but NO `movespeed` would drop its run pace (no MoveSpeed is stamped at
   // all), but no real animal does that (0/35 — verified) and the run gait is meaningless without a base
   // walk pace to deviate from, so the walk-gait gate below is the right anchor.
@@ -199,7 +199,7 @@ export function spawnAnimalHerd(
  * beyond that — or with `range` 0 — the radius clamp re-uses ring directions, so two creatures can land
  * on the same tile. That is harmless (the sim places no position-uniqueness invariant — entities share
  * tiles freely) and never reached by real data (`animaltypes` `maximumgroupsize` is 3..6, well under 9);
- * the scatter is an explicitly *approximated* placement (docs/FIDELITY.md), not a packing guarantee.
+ * the scatter is an explicitly *approximated* placement (source basis), not a packing guarantee.
  */
 function herdMemberOffset(i: number, range: number): { dx: number; dy: number } {
   if (i === 0 || range <= 0) return { dx: 0, dy: 0 }; // the first (leader) sits on the birth point

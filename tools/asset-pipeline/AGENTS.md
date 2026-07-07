@@ -19,6 +19,10 @@ The root [`AGENTS.md`](../../AGENTS.md) carries the project-wide + legal rules; 
   fixture, never real game data. No original assets enter the repo (root `AGENTS.md` Legal).
 - The documented run: `npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content`.
   `start` runs the compiled `dist/cli.js` (raw-TS strip-types can't resolve the `.js` import
-  specifiers — see `docs/lessons/tooling.md`). Format/extractor gotchas: `docs/lessons/pipeline.md`.
+  specifiers). Rebuild `dist/` before trusting cross-package pipeline tests after adding exports or
+  schema fields.
 - **Provenance:** every IR record keeps its source file + original field names so the conversion is
   auditable and re-runnable. Don't silently rename semantics.
+- **Probe the real source before coding.** `.ini` keys are case-sensitive, repeated keys and
+  multi-value lines need different helpers, and numeric ids are often scoped by tribe/type. Validate
+  against real generated `ir.json`, not only synthetic fixtures.

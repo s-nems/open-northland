@@ -21,7 +21,7 @@ import { type SystemContext, aiSystem, atomicSystem } from '../../src/systems/in
 import { testContent } from '../fixtures/content.js';
 
 /**
- * FAITHFUL MULTI-HIT HARVEST + DROP-ON-GROUND (ROADMAP Phase 3). A wood node is FELLED, not gathered
+ * FAITHFUL MULTI-HIT HARVEST + DROP-ON-GROUND (historical plan phase 3). A wood node is FELLED, not gathered
  * unit-by-unit: the collector chops it down over `chopsToFell` swings (each yielding NOTHING onto its
  * back), then the tree falls — the standing node is removed, its whole `yieldPerNode` yield drops at
  * its cell as a bare {@link GroundDrop} trunk pile, and a {@link Stump} decor is left behind. The
@@ -29,7 +29,7 @@ import { testContent } from '../fixtures/content.js';
  * are conserved: nothing is created or lost by the tree coming down.
  *
  * The felling constants come from CONTENT (the wood good's `gathering.chopsToFell`/`yieldPerNode`,
- * OBSERVED calibration values — docs/FIDELITY.md), read here so the tests carry no magic literals.
+ * OBSERVED calibration values — source basis), read here so the tests carry no magic literals.
  */
 
 const GRASS = 0;

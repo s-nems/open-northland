@@ -105,8 +105,9 @@ test catches the global class, the hash-divergence test catches the rest.
 - **Behavioral fidelity to the original** — the pyramid proves the sim is self-consistent and
   deterministic *against the synthetic fixture*; it does **not** prove a mechanic behaves like
   *Cultures*. There is no automatic mechanics oracle (OpenVikings' logic tick is a stub). Faithfulness
-  is pinned to the extracted data params / the mod's `.ini` semantics / calibration-by-observation and
-  tracked in **`docs/FIDELITY.md`**, not by a passing test. Green + deterministic ≠ faithful.
+  is pinned to the extracted data params, readable `.ini` semantics, OpenVikings format evidence, or
+  calibration-by-observation. Record that basis in the code, test, commit, or relevant plan progress
+  note. Green + deterministic != faithful.
 
 ### Visual validation via Playwright — the decision (and why not the MCP)
 

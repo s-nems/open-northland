@@ -26,12 +26,12 @@ import { animalRecord } from '../systems/readviews/index.js';
  * choice is a pure function of `(content, terrain, options)` — no RNG, no wall-clock — and a map with
  * no walkable cells (all water/blocking) simply seeds nothing.
  *
- * FIDELITY: the **set of animal tribes** (every recorded `[animaltype]`) is faithful, and each herd's
+ * source-basis: the **set of animal tribes** (every recorded `[animaltype]`) is faithful, and each herd's
  * size / HP / range / leader come from the verbatim `animaltypes.ini` params (via `spawnAnimalHerd`).
  * **Approximated (no oracle):** *where on the map* each birth point lands and *how many* herds a map
  * gets — the original reads animal birth/spawn points from per-map scenario data (below the readable
  * `.ini`; OpenVikings' sim is a stub), so the even walkable-cell distribution here is a deterministic
- * stand-in, not a pinned placement. Recorded in docs/FIDELITY.md ("Animal map populator").
+ * stand-in, not a pinned placement. Recorded in source basis ("Animal map populator").
  */
 export interface SeedAnimalsOptions {
   /**

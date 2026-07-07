@@ -18,7 +18,7 @@ import { type SystemContext, atomicSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
- * MINERAL DEPOSITS — SHRINK BY LEVEL, DROP ORE TO GROUND (ROADMAP Phase 3, gathering Step 4). A mined
+ * MINERAL DEPOSITS — SHRINK BY LEVEL, DROP ORE TO GROUND (historical plan phase 3, gathering Step 4). A mined
  * good (stone/iron/gold/clay) is a {@link MineDeposit}: the collector chips it ONE unit at a time, each
  * completed harvest atomic dropping one unit at the deposit's cell as a bare {@link GroundDrop} ore pile
  * (the same on-the-ground shape a felled trunk takes) — NOT onto the back — while the deposit stays,
@@ -30,7 +30,7 @@ import { testContent } from '../fixtures/content.js';
  * harvest lands the unit straight on the back and the node is removed.
  *
  * The calibration (deposit size + levels) comes from CONTENT (the stone good's `gathering.depositSize`/
- * `depositLevels`, OBSERVED — docs/FIDELITY.md), read here so the tests carry no magic literals.
+ * `depositLevels`, OBSERVED — source basis), read here so the tests carry no magic literals.
  */
 
 const GRASS = 0;

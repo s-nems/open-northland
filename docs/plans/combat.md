@@ -72,7 +72,7 @@ entirely readable** (re-verify before coding — this doc is research output, no
   attack atomic 81 → `atomic.ts` `resolveHit` → `lifecycle/cleanup.ts` reap + `settlerDied`);
   components `Health/Armor/Weapon/Anger` (`components/combat.ts`), `Owner{player}`
   (`ownership.ts`), `MoveSpeed.runPerTick` extracted but unconsumed; `nearestEnemyTarget` is a
-  **full-scan O(combatants × entities)** — `packages/sim/AGENTS.md` flags it and the ROADMAP
+  **full-scan O(combatants × entities)** — `packages/sim/AGENTS.md` flags it and the plan
   "ring-search nearest-X" (tier 3) is the named fix; no `attack`/`stance` command exists;
   render binds NO attack animation (atomic 81 falls back to idle), the decoded warrior body
   `cr_hum_body_05` (57 seqs: per-weapon `human_man_Warrior_*_Attack`, `Walk/Wait_agressive`,
@@ -99,12 +99,12 @@ steps land. Steps 8–9 are severable if the scope must shrink; step 10 can run 
 - [ ] 10. Calibration against the original (interactive — the user is the oracle)
 
 Out of scope for this plan: the **catapult/siege vehicle** (blocked on vehicle graphics —
-ROADMAP render-breadth rung 4 — and vehicle-entity sim; its data facts are recorded above for
+historical plan render-breadth rung 4 — and vehicle-entity sim; its data facts are recorded above for
 when it lands), **heroes + potions/amulets** (jobs 42–47, goods 44–55 — every magnitude is
 unreadable, pure calibration; defer until step 10's machinery exists), **walls/gates as
 damageable landscape** (needs the landscape-transition machinery the gathering-economy plan
 builds), **diplomacy/alliances** (hostility stays binary per player), and **other-tribe render
-sets** (roadmap defers them behind the viking set — battles are viking vs viking, told apart by
+sets** (plan defers them behind the viking set — battles are viking vs viking, told apart by
 player colour).
 
 ---
@@ -126,12 +126,12 @@ sessions, so re-read the current combat seams first):
   by the VICTIM's armor materialType (0 none, 1 wool, 2 leather, 3 chain, 4 plate, 6 wood,
   7 house). The per-material value IS the resolved damage — armor works by column selection, not
   subtraction. `blockingValue` (uniform 5) has an UNKNOWN engine role — stop subtracting it;
-  record the unknown in docs/FIDELITY.md. Columns 6/7 are damage vs trees/walls and vs BUILDINGS
+  record the unknown in plan progress note. Columns 6/7 are damage vs trees/walls and vs BUILDINGS
   — expose them as read views (damageVsWood/damageVsBuilding, consumed by the towers step) and
   stop treating them as unarmored fallbacks. Current code: `combatDamage` in
   packages/sim/src/systems/readviews/combat.ts computes max(0, damage[class] − blockingValue).
   For the 4 real armors materialType == typeId, so the numbers only shift by the −5; the
-  semantic fix matters for 6/7 and for faithfulness. Update the FIDELITY rows that mention the
+  semantic fix matters for 6/7 and for faithfulness. Update the plan progress notes that mention the
   net-damage join.
 - Hit timing (DataCnmd/atomicanimations12/atomicanimations.ini): each attack animation carries
   `event <frame> 25` (ATTACK) mid-animation — viking_soldier_attack_sword_short length 12,
@@ -151,10 +151,10 @@ sessions, so re-read the current combat seams first):
   per-job code.
 - Need drain: soldier swings carry `event 2 1 -20` + `event 2 2 -20`; woman/civilist −100. The
   `atomicEventChannelDelta` read view (systems/readviews/animations.ts) already decodes these
-  channels (1 = rest, 2 = hunger — the FIDELITY "Atomic durations" row documents the channel
+  channels (1 = rest, 2 = hunger — the plan progress note "Atomic durations" row documents the channel
   map). Apply the attack animation's channel deltas to the attacker on swing completion — first
   combat consumer of the extracted event deltas. Keep it scoped to combat atomics; note in
-  FIDELITY that the general event-driven needs drive stays deferred.
+  plan progress note that the general event-driven needs drive stays deferred.
 - Combat XP: on a swing that dealt damage, accrue `experiencefactor` (Data/logic/
   humanjobexperiencetypes.ini — `soldier general` type 69 = 1/swing) into
   `Settler.experience` under the fight bucket keyed by the weapon's mainType
@@ -172,13 +172,13 @@ Deliverables:
    unarmored, no blockingValue subtraction) + `damageVsWood`/`damageVsBuilding` read views +
    updated unit tests.
 2. ATTACK-event-frame hit resolution in the atomic executor (fall back to completion-time only
-   when an animation lacks the event — log that fallback in FIDELITY).
+   when an animation lacks the event — log that fallback in plan progress note).
 3. Repeating swings (cadence = animation length), data-driven stagger (82), attacker need
    drain from the animation events, fight-bucket XP accrual.
 4. Tests in packages/sim/test/conflict/ at the lowest level per mechanic + an extended headless
    scenario: two spawned squads exchange blows at the data's cadence; a plate-armored target
    takes 2090 from an iron spear and 950 from a long sword (the AP asymmetry as a test).
-5. docs/FIDELITY.md rows updated/added (damage model faithful (params); blockingValue unknown →
+5. plan progress note rows updated/added (damage model faithful (params); blockingValue unknown →
    recorded; hit-frame faithful; XP trigger + stagger interruptibility approximated).
 
 Verification: npm test green (goldens untouched or the move explained mechanic-by-mechanic),
@@ -202,16 +202,16 @@ Context (2026-07-03 — re-verify; re-read the current seams, main moves):
   player, so hostility must key on `Owner.player` (components/ownership.ts): two OWNED settlers
   with different players are hostile; owned-vs-unowned same-tribe is neutral; the animal
   relations (`mayAttack`/`mayHunt`/`Anger` in readviews/tribes.ts) stay as they are. Alliances/
-  diplomacy are out of scope — binary hostility, log the simplification in FIDELITY.
+  diplomacy are out of scope — binary hostility, log the simplification in plan progress note.
 - Spatial query (golden rule 7 — the O(n²) full scan is flagged in packages/sim/AGENTS.md and
-  ROADMAP tier 3): build the grid ring search over TileBuckets (systems/shared.ts) — expand
+  historical plan tier 3): build the grid ring search over TileBuckets (systems/shared.ts) — expand
   Manhattan bands from the seeker, finish the WHOLE minimum-distance band, pick canonically
   (distance, then entity id), short-circuit when a band exceeds the query radius. Bucket hostile
   combatants per tick (by player) so each seeker queries only real candidates; add a dormancy
   gate — no hostile pair on the map ⇒ zero combat work (the established pattern). Perf-test it:
   the step's scenario must not regress ms/tick at a few hundred units (measure, don't guess).
 - Sight radius: humans have NO readable sight/aggro radius (animals have leash fields only).
-  Name a constant (e.g. SIGHT_RADIUS_TILES) — an approximated calibration constant, FIDELITY
+  Name a constant (e.g. SIGHT_RADIUS_TILES) — an approximated calibration constant, plan progress note
   entry "calibration-by-observation pending (step 10)". Weapon reach stays the extracted
   [minRange, maxRange] band.
 - Walk-into-melee: an ATTACK-stance combatant (stances land in step 3 — until then treat every
@@ -241,9 +241,9 @@ Deliverables:
    occur, winner deterministic.
 4. Perf evidence in the PR/commit: ms/tick before/after at ~400 combatants (headless), ring
    search vs full scan.
-5. FIDELITY rows: hostility axis (approximated — no diplomacy), sight radius (calibration
+5. plan progress notes: hostility axis (approximated — no diplomacy), sight radius (calibration
    pending), chase/repath cadence (our design), attack order (observed-approximation).
-   ROADMAP tier-3 ring-search line updated (combat consumer landed).
+   historical plan tier-3 ring-search line updated (combat consumer landed).
 
 Verification: npm test + npm run check green; the new scene's headless checks green in
 packages/app/test/scenes.test.ts; goldens byte-identical. Scene sign-off note for the human:
@@ -266,7 +266,7 @@ Context (2026-07-03 — re-verify; re-read current seams):
   `setStance` command (owned units only, discriminated union + assertNever), and stance-gated
   behavior in the combat/AI systems from step 2.
 - Per-mode semantics (the enum is readable, the BEHAVIOR is not — approximate, log each in
-  FIDELITY as calibration-pending, revisit in step 10):
+  plan progress note as calibration-pending, revisit in step 10):
   - ATTACK: step 2's behavior — auto-acquire within sight, chase, fight.
   - DEFEND: engage only enemies inside a small defend radius around an anchor (the tile where
     the stance was set); never chase beyond a leash; return to the anchor when clear. Named
@@ -296,14 +296,14 @@ Deliverables:
    speed, the scout stands, soldiers engage; checks: civilian distance-to-threat increases and
    their gait is the run speed, scout position unchanged, soldiers converge and win; plus a
    DEFEND check (defender holds its anchor, doesn't chase past the leash).
-4. FIDELITY rows per mode + the defaults table; sim tests for each stance transition edge
+4. plan progress notes per mode + the defaults table; sim tests for each stance transition edge
    (stance change mid-chase, flee↔need collapse, order-over-stance precedence).
 
 Verification: npm test + npm run check green; goldens untouched; scene headless checks green;
 surface the scene URL + checklist (note animations still pending step 5).
 
 Guardrails: packages/sim/AGENTS.md; the flee threat query MUST reuse step 2's ring search (no
-new scans); all new thresholds are named constants with FIDELITY entries.
+new scans); all new thresholds are named constants with plan progress notes.
 ```
 [IN PROGRESS]
 ## Step 4 — sim: ranged combat — projectiles in flight
@@ -328,7 +328,7 @@ Context (2026-07-03 — re-verify; re-read current seams):
   material-column damage on contact; a dead/vanished target ⇒ the projectile expires at the
   last position (no re-target). Homing-vs-ballistic and hit-guarantee are unreadable — log the
   choice (`soundtype_NoHit` implies misses exist in the original; approximate always-hit,
-  FIDELITY).
+  plan progress note).
 - Behavior: the shooter obeys the dead zone (an enemy inside minRange cannot be shot — already
   enforced in targeting; keep it) — what an archer DOES then (kite? stand?) is unreadable:
   stand idle and log, revisit in step 10. Emit SimEvents (`projectileLaunched`,
@@ -350,7 +350,7 @@ Deliverables:
    inside minRange stops being shot, deterministic outcome.
 4. Sim tests: release frame, travel arithmetic in fixed-point, dead-target expiry, min-range
    dead zone; determinism hash test with projectiles active.
-5. FIDELITY rows: projectile model (speed param faithful; unit mapping + homing + always-hit
+5. plan progress notes: projectile model (speed param faithful; unit mapping + homing + always-hit
    approximated), archer-under-minRange behavior (calibration pending).
 
 Verification: npm test + npm run check green; goldens untouched; scene headless checks green;
@@ -364,12 +364,12 @@ Guardrails: packages/sim/AGENTS.md; fixed-point only; events not callbacks.
 ```text
 Put the decoded warrior body on screen: soldiers draw cr_hum_body_05 with per-weapon attack,
 aggressive walk/wait, and shoot sequences; civilians stagger and brawl with their fight sets.
-This is the fight/shoot slice of ROADMAP render rung 3.
+This is the fight/shoot slice of historical plan render rung 3.
 
 Context (2026-07-03 — re-verify; re-read current seams, and check whether rung 3's multi-body
 support landed on main first):
 - Bodies: the roster binds jobs to bodies/atlases. Soldier jobs 31–41 (+ heroes) draw
-  `cr_hum_body_05` (57 seqs), civilians stay on the current man/woman bodies. If the roadmap's
+  `cr_hum_body_05` (57 seqs), civilians stay on the current man/woman bodies. If the plan's
   "multi-body render support" prerequisite has NOT landed yet, implement the minimal version
   here: per-body atlas load + a (job → body) selector in the bindings table
   (packages/app/src/content/settler-gfx.ts ADULT_CHARACTER_BY_JOB already routes 31–41 to
@@ -389,7 +389,7 @@ support landed on main first):
   stagger; ranged release should READ as a shot (the seq's release frame should coincide with
   step 1's ATTACK event frame — verify visually, the frame data is extracted). Stance/combat
   state → Walk/Wait_agressive vs civilian gait where the seqs exist.
-- Facing: non-locomotion seq direction order is the known open gap (docs/lessons — the ?anim
+- Facing: non-locomotion seq direction order is the known open gap (AGENTS.md — the ?anim
   gallery is the validation tool). An attacker must FACE its target: derive facing from the
   attacker→target vector; validate per-seq direction order with a labeled montage and ask the
   user (the montage lesson) — never silently guess a visual fact.
@@ -405,7 +405,7 @@ Deliverables:
    melee/archers/stances scenes' checklists with animation items (swing reads as a swing, the
    bow release matches the projectile launch, the stagger is visible, facing tracks the
    target).
-4. FIDELITY rows: binding joins faithful (animations.ini), facing order + any montage-resolved
+4. plan progress notes: binding joins faithful (animations.ini), facing order + any montage-resolved
    facts recorded as human-verified; renders stay screen-scaled (render AGENTS.md).
 
 Verification: npm test + npm run check green (headless scene checks can only assert state, not
@@ -424,20 +424,20 @@ becoming cadavers, and per-material impact sounds.
 
 Context (2026-07-03 — re-verify; re-read current seams):
 - Player colours: the 256×16 player LUT + clothing-band remap already exist
-  (packages/render/src/gpu/paletted-sprite.ts, FIDELITY "Player (team) colours" row) but
+  (packages/render/src/gpu/paletted-sprite.ts, plan progress note "Player (team) colours" row) but
   `DrawItem` carries no owner. Thread `Owner.player` through the snapshot → scene collect →
   DrawItem → PalettedSprite.player so each army renders its player colour. Unowned = the
   default row.
 - HP bar: the original draws one (OpenVikings CGuiBaseDataManager.cs loads
   gui/palettes/bar_hitpoints.pcx). If plans/original-ui.md step 1 (GUI atlas) has landed, use
   the extracted bar sprites + bar_hitpoints palette; otherwise draw a minimal two-tone quad and
-  leave a tracked swap note (TECH-DEBT) — geometry approximated either way. WHEN the bar shows
+  leave a tracked swap note (docs/plans) — geometry approximated either way. WHEN the bar shows
   (always? damaged-only? selected?) is unreadable — damaged-only as the approximation,
   calibration-pending. Bars are per-visible-entity overlays — pool them (selection-layer
   pattern), cost scales with the screen.
 - Blood: the original's HIT particle (logicdefines.inc PARTICEL_EFFECT HIT 1) has no readable
   asset — approximate a small red burst at the victim on the hit event; any visual randomness
-  must be seeded from (tick, entity) so screenshots reproduce. FIDELITY: approximated.
+  must be seeded from (tick, entity) so screenshots reproduce. Plan note: approximated.
 - Death → cadaver: NO death [bobseq] exists — the original turns the dead into cadaver
   landscape objects (skeleton_falling 87 → cadaver_skeleton 81; leather/meat 79/80 for
   animals). The landscapeGfx IR (866 records) already carries these records + frames — on
@@ -454,7 +454,7 @@ Context (2026-07-03 — re-verify; re-read current seams):
   GET_HIT/death sfx + the existing jingle. Follow packages/audio's event-binding pattern.
 - Projectile sprite: no readable arrow/rock asset was found in the research pass. Hunt the
   decoded bobs once (arrow-like frames in the effects/temp bmds); if none, draw a minimal
-  oriented sprite/line and track the gap (TECH-DEBT) — do NOT silently ship nothing: the
+  oriented sprite/line and track the gap (docs/plans) — do NOT silently ship nothing: the
   projectile must be visible.
 
 Deliverables:
@@ -463,7 +463,7 @@ Deliverables:
    projectile visible in flight.
 3. Weapon impact/miss/death sounds wired from the extracted ids through the audio bindings.
 4. Scene checklists extended (colours distinct, bar tracks damage, blood at the hit moment,
-   corpse appears and decays, arrow visible and lands with a thunk); FIDELITY rows for every
+   corpse appears and decays, arrow visible and lands with a thunk); plan progress notes for every
    approximation above.
 
 Verification: npm test + npm run check green; headless halves assert the EVENTS (died,
@@ -505,8 +505,8 @@ Context (2026-07-03 — re-verify; re-read current seams):
 - Battle golden: add a sim-level golden (packages/sim/test pattern — state hash + a short
   atomic trace over N ticks of a small scripted battle) so future combat changes are
   intentional (the golden-update discipline: only update with the mechanic named).
-- Docs reconciliation: ROADMAP Phase-4 CombatSystem line — check off what landed, restate what
-  remains (steps 8–10 + out-of-scope items); FIDELITY gets a combat summary sweep (every row
+- Docs reconciliation: historical plan phase-4 CombatSystem line — check off what landed, restate what
+  remains (steps 8–10 + out-of-scope items); plan progress note gets a combat summary sweep (every row
   this plan touched, statuses honest); README index still points here.
 
 Deliverables:
@@ -514,7 +514,7 @@ Deliverables:
 2. The battle golden test (hash + trace) in packages/sim/test.
 3. Measured perf numbers in the commit message (ms/tick at battle scale, before/after where
    relevant).
-4. ROADMAP + FIDELITY reconciled.
+4. plan + plan progress note reconciled.
 
 Verification: npm test + npm run check green; END with npm run dev →
 http://localhost:5173/?scene=battle (and battle-stress) + the full checklist, and ask for the
@@ -540,13 +540,13 @@ Context (2026-07-03 — re-verify; re-read current seams):
   +25 (TRAINING XP, bucket 77); _exercise → +1 free; atomics EXERCISE 89 / TRAIN 90
   (logicdefines). The `needforjob`/`trainforjob` gates (extracted, JobSystem-consumed) already
   key soldier classes on fight/training expTypes — training feeds an EXISTING gate.
-- Recruitment (the equip drive — the ROADMAP's named oracle-blocked item; the flow below is
+- Recruitment (the equip drive — the plan's named oracle-blocked item; the flow below is
   observed-approximation, log it): the player sets a civilian's job to a soldier class (the
   existing setJob command + the barracks UI panel or scene script). The recruit walks to the
   barracks door (interactionTile), consumes ONE matching weapon good from the barracks stock →
   Weapon component + the job flips to the weapon's jobtype; if an armor good is in stock,
   consume the best available → Armor (which armor a class gets is unreadable —
-  best-available, FIDELITY). No weapon in stock ⇒ the order fails visibly (the typed-result
+  best-available, plan progress note). No weapon in stock ⇒ the order fails visibly (the typed-result
   boundary-failure pattern, not a throw).
 - Training drive: an idle soldier assigned to the barracks runs `train` while the barracks
   holds coins (spend via the event, +25 into bucket 77), else `exercise` (+1). Level EFFECTS
@@ -567,14 +567,14 @@ Deliverables:
    visibly changes — step 5's bindings), train while coins last (XP rises, coins drain),
    exercise after; a needforjob-gated class unlocks once the XP threshold is met. Headless
    checks on all of it; human checklist for the visible transformation.
-4. FIDELITY rows: recruit flow + armor pick (observed-approximation), train/exercise
+4. plan progress notes: recruit flow + armor pick (observed-approximation), train/exercise
    (faithful params: costs, XP, lengths), the unlock gate (already-pinned needforjob).
 
 Verification: npm test + npm run check green; goldens untouched; scene URL + checklist +
 sign-off request.
 
 Guardrails: sim AGENTS.md; content-is-data (no hardcoded class tables); track any UI
-placeholder in TECH-DEBT.
+placeholder in docs/plans.
 ```
 
 ## Step 9 — sim+app: towers, defence mode, building damage
@@ -592,7 +592,7 @@ Context (2026-07-03 — re-verify; re-read current seams):
   damageVsBuilding read view); catapult aside, house columns are small — sieging with
   field troops is slow BY DATA, keep it that way.
 - Building HP: NOT readable (encrypted housetypes.cif). Give Building an optional Health with
-  a named approximated constant (single value or size-scaled — pick one, justify, FIDELITY
+  a named approximated constant (single value or size-scaled — pick one, justify, plan progress note
   calibration-pending). Destruction: at 0 HP remove the building (+ its footprint overlay,
   jobs unbind — the demolish seam already handles teardown; reuse it), emit an event; rubble
   visual = reuse the construction-layer machinery inverted or a decal — keep minimal, track
@@ -604,7 +604,7 @@ Context (2026-07-03 — re-verify; re-read current seams):
   worker-slot machinery) fire their OWN bows from the tower's tile with their extracted
   ranges; whether garrisoned units are hidden/protected is unreadable — hide them (enter the
   building, the door-cell pattern) and make them untargetable while garrisoned,
-  FIDELITY-logged.
+  recorded in the plan progress note.
 - Defence mode: a toggleable per-building flag (command + panel toggle on
   defence-mode-capable types) — while ON, the building fires house-bow projectiles (step 4
   machinery) at the nearest hostile in range at the house-bow animation cadence (verify which
@@ -618,7 +618,7 @@ Deliverables:
 1. Building Health + ordered building damage via the house column + destruction/teardown.
 2. Garrison fire from towers + hidden-garrison semantics.
 3. Defence mode (command, panel toggle, house-bow fire).
-4. Scene + tests + FIDELITY rows (building HP, auto-target policy, garrison shelter, cadence
+4. Scene + tests + plan progress notes (building HP, auto-target policy, garrison shelter, cadence
    — all calibration-pending; the damage COLUMN is faithful data).
 
 Verification: npm test + npm run check green; goldens untouched; scene URL + checklist +
@@ -632,7 +632,7 @@ new scans); reuse demolish/footprint seams — no parallel teardown path.
 
 ```text
 Convert the combat approximations into observed facts: a structured observation session against
-the running original, turning FIDELITY "calibration-pending" rows into pinned constants.
+the running original, turning plan progress note "calibration-pending" rows into pinned constants.
 
 Context (2026-07-03): the unreadable set (human base HP, sight/aggro radius, the XP→level curve
 and its stat effects, DEFEND/FLEE exact behavior, archer-under-minRange behavior, HP-bar
@@ -643,7 +643,7 @@ the battle/stances/archers scenes mirror each probe so original and rebuild are 
 for like.
 
 Process:
-1. Read docs/FIDELITY.md and collect every combat row marked approximated/calibration-pending
+1. Read plan progress note and collect every combat row marked approximated/calibration-pending
    into a numbered probe list. For each, design the cheapest observation that pins it, e.g.:
    - Human HP: count hits-to-kill with a known weapon vs a known armor (iron spear = 3800 vs
      unarmored → HP ≈ n×3800; cross-check with a second weapon).
@@ -657,13 +657,13 @@ Process:
    how; screen-share/screenshots/their notes all work). Walk it interactively; record answers
    verbatim.
 3. Apply: observed values replace the named constants (data swaps, not code changes — that was
-   the point of naming them); each FIDELITY row flips to "faithful (observed <date>)" or gets
+   the point of naming them); each plan progress note flips to "faithful (observed <date>)" or gets
    the honest refined approximation; behavioral surprises that contradict our model become
-   either fixes (small) or new ROADMAP/TECH-DEBT items (large) — never silent.
+   either fixes (small) or new docs/plans items (large) — never silent.
 4. Re-run the scenes side by side (original footage vs ?scene=battle) and note remaining gaps.
 
-Deliverables: the updated constants + FIDELITY sweep + a short observation log (docs/lessons or
-the ROADMAP archive per current convention); goldens updated ONLY where a constant change moves
+Deliverables: the updated constants + plan progress sweep + a short observation log (AGENTS.md or
+the git history per current convention); goldens updated ONLY where a constant change moves
 them, named mechanic by mechanic.
 
 Verification: npm test + npm run check green; the user confirms the battle scene now "feels"

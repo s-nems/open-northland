@@ -13,7 +13,7 @@ import {
 } from '../src/index.js';
 
 /**
- * The PURE, self-verifiable half of textured terrain (docs/ROADMAP.md Phase 2 step 4): the diamond
+ * The PURE, self-verifiable half of textured terrain (docs/plans/Phase 2 step 4): the diamond
  * vertex/UV geometry the GPU mesh build consumes. Pixels stay human-gated (the shot), but the
  * vertex/UV math is unit-tested here so a regression in the projection / UV mapping is caught headless.
  */

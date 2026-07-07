@@ -13,7 +13,7 @@ import type { BobSeqRow } from '../content/ir.js';
  * ({@link DEFAULT_CHARACTER_PALETTE}) to form the atlas stem (`cr_hum_body_05` → `cr_hum_body_05.test_human_00`).
  * Skin/hair are palette remaps in the original (`randompalette.ini`), not separate art; our decode bakes
  * one palette, so the roster carries a single look per body today — a per-tone palette axis is the
- * deferred Phase-B follow-up (docs/FIDELITY.md "Character skin/hair variants").
+ * deferred Phase-B follow-up (source basis "Character skin/hair variants").
  */
 export interface VikingCharacter {
   /** URL id (`?char=`) + selector key, e.g. `warrior`. */

@@ -9,7 +9,7 @@ import { vehicleMayCarry } from './readviews/vehicles.js';
 
 // The genuinely cross-system helpers, kept in a leaf module so every per-system file imports them
 // from here (never from the barrel or from each other) — this breaks the import cycles the
-// systems/ split would otherwise create. See docs/TECH-DEBT.md.
+// systems/ split would otherwise create. See docs/plans/.
 
 /**
  * Ascending entity-id (canonical) ordering of `entities` — the deterministic scan order a system needs
@@ -83,7 +83,7 @@ export class TileBuckets {
   /**
    * The **nearest bucketed entity** to tile `(fromX, fromY)` that satisfies `accept`, searched as
    * expanding Manhattan tile-RINGS from `minDist` outward to `maxDist` — the grid ring search the
-   * scaling doctrine (packages/sim/AGENTS.md "Full ring-search nearest-X", ROADMAP tier 3) calls for,
+   * scaling doctrine (packages/sim/AGENTS.md "Full ring-search nearest-X", historical plan tier 3) calls for,
    * so a per-seeker "who's the closest enemy?" query costs O(bounded rings) instead of a full-world
    * scan. Returns the entity + its integer Manhattan distance, or null when nothing in the band matches.
    *
@@ -175,7 +175,7 @@ export class TileBuckets {
  *   half* of "boats as mobile stores": the hull was placed empty (the `placeBoat` command); here a
  *   haul INTO it is filtered by what the vehicle type may hold and bounded by how much. The `stockSlots`
  *   total is applied as a per-good upper bound (a faithful upper bound — the whole-hold-shared-across-
- *   goods cap is a deferred refinement; see docs/FIDELITY.md).
+ *   goods cap is a deferred refinement; see source basis).
  * - A store with **neither** Building nor Vehicle (a bare test fixture) is treated as uncapped so a
  *   fixture without a type still accepts deposits.
  *
@@ -298,7 +298,7 @@ export function workerPresentAt(world: World, ctx: SystemContext, building: Enti
  * are a separate potion-consumable mechanic, not the eat slot, so the `food_`-prefix match excludes
  * them by construction.)
  *
- * FIDELITY (approximated — see docs/FIDELITY.md): the eat atomic id (10) is pinned to the original's
+ * source-basis (approximated — see source basis): the eat atomic id (10) is pinned to the original's
  * `setatomic` bindings, but *which goods feed* is inferred from the slug rather than a source flag
  * (the original maps the food goods to the eat slot at a level not in the readable rule files). Refine
  * to a content flag if the slot→good binding is later decoded. Cross-system: the AI eat-drive planner
@@ -315,7 +315,7 @@ export function isFood(ctx: SystemContext, goodType: number): boolean {
  * **built** `home` buildings. This is the sim's first consumer of the extracted `homeSize` param
  * (the original `logichousetype` `logichomesize` — the population a residence shelters: home level
  * 00 → 1, ... level 04 → 5). It is the ceiling the population grows into — the housing half of the
- * roadmap's `house leveling → population capacity → births→housing→births` loop, the number the
+ * plan's `house leveling → population capacity → births→housing→births` loop, the number the
  * ReproductionSystem will gate births on (a tribe can only grow while it has room).
  *
  * Only a **built** residence counts (`built >= ONE`): a home still under construction shelters no
@@ -323,7 +323,7 @@ export function isFood(ctx: SystemContext, goodType: number): boolean {
  * `built = 0`, so the gate is forward-compatible). A `home`-kind building type with no `homeSize`
  * (none in the real data, but the schema defaults it to 0) contributes nothing.
  *
- * FIDELITY: the per-home capacity is the extracted `homeSize` param — faithful by construction; what
+ * source-basis: the per-home capacity is the extracted `homeSize` param — faithful by construction; what
  * the capacity *gates* (births) is a later mechanic. Determinism: a pure sum over buildings (addition
  * commutes, so the `query` store order can't change the total — no canonical sort needed); no
  * RNG/wall-clock. A building whose type is absent from content contributes nothing.
@@ -387,7 +387,7 @@ export function tribePopulation(world: World, tribe: number): number {
  * "workplace with nothing to make and no one to staff it" shape is how a temple is told apart from a
  * sawmill/mill (which always carry a recipe + workers).
  *
- * FIDELITY (approximated — see docs/FIDELITY.md): the temple→pray need→satisfier link lives below the
+ * source-basis (approximated — see source basis): the temple→pray need→satisfier link lives below the
  * readable rule files (the original binds the religious building to the pray slot at the engine level,
  * not in `houses.ini`), so the satisfier is *inferred* from this structural signature — exactly like
  * the food→eat-slot binding ({@link isFood}) is inferred from the `food_` id prefix. Refine to a

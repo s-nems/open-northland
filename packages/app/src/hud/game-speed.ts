@@ -6,7 +6,7 @@
  * gfx 0x34, 3 → gfx 0x35 (and a separate "maximise" flag reuses 0x31 with a "MAX!" tooltip). We model the
  * four *visible* states as a click cycle and map each to an app-side tick multiplier — game speed is an app
  * concern (the sim tick stays fixed-step at `TICKS_PER_SECOND`), so what's pinned is the factor→gfx family
- * and the factor values; the cycle order and multiplier wiring are ours (docs/FIDELITY.md).
+ * and the factor values; the cycle order and multiplier wiring are ours (source basis).
  *
  * Pure (no Pixi/DOM): the view reads `gfx`, the loop reads `tickMultiplier`, both unit-tested.
  */

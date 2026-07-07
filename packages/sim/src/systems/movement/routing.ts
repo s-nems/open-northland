@@ -9,7 +9,7 @@ import { inRange } from '../shared.js';
 
 // pathfindingSystem lives in routing.ts (not pathfinding.ts) to avoid an eyeball collision with the
 // A* core in ../pathfinding.ts, which this system consumes. The cross-system `inRange` guard comes
-// from the shared leaf. See docs/TECH-DEBT.md.
+// from the shared leaf. See docs/plans/.
 
 /**
  * The maximum number of {@link PathRequest}s the pathfinder will resolve in a single tick. A*

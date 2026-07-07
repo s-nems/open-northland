@@ -6,7 +6,7 @@ import { testContent } from '../fixtures/content.js';
 
 /**
  * Pins the snapshot's **"transferable for free"** claim (see `snapshot.ts` docstring; the
- * "run the sim in a Web Worker" Cross-cutting DX item). The roadmap requires the snapshot to be a
+ * "run the sim in a Web Worker" Cross-cutting DX item). The plan requires the snapshot to be a
  * plain transferable structure so moving `step()` off the main thread is free, **not** a
  * serialization retrofit. The actual `postMessage` boundary serializes via the structured clone
  * algorithm, so the load-bearing test is: a REAL `step()`-driven snapshot survives `structuredClone`

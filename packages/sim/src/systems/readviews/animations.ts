@@ -21,7 +21,7 @@ import type { AtomicAnimation, ContentSet } from '@vinland/data';
  * lookup ({@link atomicEventChannelDelta}). The wider `type` vocabulary (sounds/cues/yields at ids
  * 8..36) stays an undocumented render/effect channel space — deferred, not enumerated here.
  *
- * FIDELITY: pinned to the mod's readable `atomicanimations.ini` `event <at> <type> <value>` semantics
+ * source-basis: pinned to the mod's readable `atomicanimations.ini` `event <at> <type> <value>` semantics
  * (golden rule #4) — these are the original's own channel ids, not invented.
  */
 export const ATOMIC_EVENT_CHANNEL = {
@@ -43,7 +43,7 @@ export const ATOMIC_EVENT_CHANNEL = {
  * waiting for the whole animation to complete (a spear thrust connects at frame 17 of its 27-frame
  * swing, the follow-through then playing out). {@link atomicEventFrame} reads it.
  *
- * FIDELITY: pinned to `logicdefines.inc` `ATOMIC_ANIMATION_EVENT_TYPE_ATTACK` (golden rule #4).
+ * source-basis: pinned to `logicdefines.inc` `ATOMIC_ANIMATION_EVENT_TYPE_ATTACK` (golden rule #4).
  */
 export const ATOMIC_EVENT_TYPE_ATTACK = 25;
 
@@ -57,7 +57,7 @@ export const ATOMIC_EVENT_TYPE_ATTACK = 25;
  * `setatomic` name it has no `[atomicanimation]` for, so an absent name is expected, not malformed
  * (the callers fall back to a default duration; see {@link AtomicAnimation}).
  *
- * FIDELITY n/a: a pure name-keyed lookup over the already-extracted animation IR — it adds no
+ * source-basis n/a: a pure name-keyed lookup over the already-extracted animation IR — it adds no
  * mechanic and invents no data (the `name` join key is the original's own `setatomic` reference).
  * Determinism: a pure function of `content` (no world, no RNG, no wall-clock); `find` returns the
  * first match in `content.atomicAnimations` declaration order, byte-stable per content.
@@ -78,7 +78,7 @@ export function atomicAnimationByName(content: ContentSet, name: string): Atomic
  * default that never preempts work that has no timing record), matching how {@link atomicDuration}
  * falls back rather than throwing on an unresolved name.
  *
- * FIDELITY: pinned to the extracted `interruptible` flag (`interruptable` in the source) — read
+ * source-basis: pinned to the extracted `interruptible` flag (`interruptable` in the source) — read
  * straight off the param the pipeline captured, not inferred. Adds no mechanic (nothing is interrupted
  * yet) — a derived classification over the already-extracted animation IR.
  */
@@ -95,7 +95,7 @@ export function isInterruptibleAtomic(content: ContentSet, name: string): boolea
  * facing/orientation drive reads; it carries through `undefined` (vs coercing to a `0` "north") because
  * "no pinned facing" is semantically distinct from "face north" — the schema leaves it `optional`.
  *
- * FIDELITY: pinned to the extracted `startDirection` (`startdirection` in the source) — read straight
+ * source-basis: pinned to the extracted `startDirection` (`startdirection` in the source) — read straight
  * off the captured param. Adds no mechanic (nothing faces a direction yet) — a derived accessor over
  * the already-extracted animation IR.
  */
@@ -122,7 +122,7 @@ export function atomicStartDirection(content: ContentSet, name: string): number 
  * `value` is `optional` in the IR (a bare `event <at> <type>` with no magnitude — a cue, not a delta);
  * such an event contributes `0`, so it neither throws nor skews the sum.
  *
- * FIDELITY: pinned to the extracted `events` array (`event <at> <type> <value>` in the mod's readable
+ * source-basis: pinned to the extracted `events` array (`event <at> <type> <value>` in the mod's readable
  * `atomicanimations.ini`, golden rule #4) — read straight off the captured tuples, summing the
  * original's own per-tick deltas. Adds no mechanic (no bar is restored yet) — a derived aggregate over
  * the already-extracted animation IR. Determinism: a pure left-to-right fold over `events` declaration
@@ -153,7 +153,7 @@ export function atomicEventChannelDelta(content: ContentSet, name: string, chann
  * Returns `false` for an unknown name and for an animation whose events are all plain `event`s,
  * matching how the sibling accessors fall back rather than throwing on an unresolved name.
  *
- * FIDELITY: pinned to the extracted `extended` flag (`eventx` vs `event` key in the mod's readable
+ * source-basis: pinned to the extracted `extended` flag (`eventx` vs `event` key in the mod's readable
  * `atomicanimations.ini`, golden rule #4) — read straight off the captured per-event marker, not
  * inferred. Adds no mechanic (no second-stream effect is applied yet) — a derived predicate over the
  * already-extracted animation IR, the last unread `AtomicEvent` field. Determinism: a pure
@@ -173,7 +173,7 @@ export function atomicHasExtendedEvents(content: ContentSet, name: string): bool
  * The **first** matching event wins (attack animations carry exactly one ATTACK cue in the real data);
  * an animation with several events of the same type resolves to the earliest by declaration order.
  *
- * FIDELITY n/a: a pure read over the extracted `events` array (the `at`/`type` the pipeline captured) —
+ * source-basis n/a: a pure read over the extracted `events` array (the `at`/`type` the pipeline captured) —
  * it adds no mechanic and invents no data. Determinism: a pure left-to-right scan of `events`
  * declaration order, byte-stable per content.
  */
