@@ -80,7 +80,7 @@ Verification:
   ~193.
 - `npm test` and `npm run check` green.
 
-Guardrails: read-only outside this repo; follow `tools/asset-pipeline/CLAUDE.md` (validate
+Guardrails: read-only outside this repo; follow `tools/asset-pipeline/AGENTS.md` (validate
 decoders against the OpenVikings oracle; take format facts, never its architecture).
 ```
 
@@ -203,7 +203,7 @@ Scope (v1):
    follow-up — track in ROADMAP.
 5. Minimap: OUT OF SCOPE (separate task); leave its screen region alone.
 
-Verification (player-visible mechanic -> acceptance scene, per CLAUDE.md):
+Verification (player-visible mechanic -> acceptance scene, per AGENTS.md):
 - Add/extend an acceptance scene under `packages/app/src/scenes/` (register in scenes/index.ts):
   headless half proves buttons hit-test, the speed control changes tick rate, the menu opens and
   issues/stubs placeBuilding — green in `packages/app/test/scenes.test.ts`.

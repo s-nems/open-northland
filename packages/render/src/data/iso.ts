@@ -32,7 +32,7 @@ export const CALIBRATED_HALF_H = 38;
  * `TILE_HALF_W` is HALF the cell width (a column step right = `2·TILE_HALF_W` px), `TILE_HALF_H` is one
  * ROW step down (also half the cell diamond's height — rows interlock at half-diamond spacing). This is
  * the master scale the whole world hangs off: every ground triangle, every feet-anchored bob (drawn at
- * its NATIVE pixel size — see the render CLAUDE.md) and the camera derive from it, so getting it right
+ * its NATIVE pixel size — see the render AGENTS.md) and the camera derive from it, so getting it right
  * is what makes a bob read at the correct size against the terrain.
  *
  * Defaults: the measured original pitch {@link CALIBRATED_HALF_W}×{@link CALIBRATED_HALF_H}. Still

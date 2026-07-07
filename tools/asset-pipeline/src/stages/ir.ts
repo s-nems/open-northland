@@ -66,7 +66,7 @@ export interface IniSource {
 
 /**
  * Resolves the readable `.ini` sources for the type tables we can extract today, **preferring the
- * mod's readable `.ini` over the base game** (CLAUDE.md golden rule #4): tribes + atomic animations +
+ * mod's readable `.ini` over the base game** (AGENTS.md golden rule #4): tribes + atomic animations +
  * weapons + buildings live only under `DataCnmd/types/` (the base game's twins are encrypted `.cif`),
  * while goods/jobs/landscape/vehicles/armor/animals are base `Data/logic/*.ini`. A source whose file is missing on disk is
  * dropped with a warning — a partial install (or no mod) still produces an IR from whatever is present,

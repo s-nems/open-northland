@@ -36,7 +36,7 @@ import { TileBuckets, buildingWorkerJobs, canonicalById, recipeOf } from '../sha
  *
  * Determinism: settlers and workplaces are both scanned in canonical (ascending entity-id) order via
  * {@link World.canonicalEntities}, and the first open match wins — so the assignment never depends on
- * component-store insertion history (CLAUDE.md anti-pattern: a Map/Set iteration that *picks* an
+ * component-store insertion history (AGENTS.md anti-pattern: a Map/Set iteration that *picks* an
  * entity must be canonical, unlike a boolean membership test). No RNG, no wall-clock.
  */
 export const jobSystem: System = (world, ctx) => {
@@ -104,7 +104,7 @@ function openJobAt(
  * each fill their own slots independently — a worker bound to mill A doesn't make mill B look staffed.
  *
  * Determinism: a count of bound settlers (addition commutes), so iterating `query` insertion order is
- * fine — it's not a *pick*, just a sum (CLAUDE.md: only a chosen-entity scan needs canonical order).
+ * fine — it's not a *pick*, just a sum (AGENTS.md: only a chosen-entity scan needs canonical order).
  */
 function jobUnderstaffed(world: World, ctx: SystemContext, building: Entity, jobType: number): boolean {
   const b = world.get(building, Building);

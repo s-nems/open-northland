@@ -154,7 +154,7 @@ game copy and is gitignored. Therefore tests use the **committed synthetic fixtu
 (`packages/sim/test/fixtures/content.ts`) — hand-authored, no copyrighted data. Keep it in lockstep
 with the schema. Never make a golden test depend on generated `content/`.
 
-## The agent's checklist (also in CLAUDE.md)
+## The agent's checklist (also in AGENTS.md)
 
 1. Write/extend the test at the **lowest level** that proves the change (unit > integration > e2e).
 2. Run `npm test`. Read failures; if invariants fired, note the **tick** they reported.

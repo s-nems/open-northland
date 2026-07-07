@@ -1,6 +1,6 @@
 # Vinland docs — index
 
-Start with the **contract** (`../CLAUDE.md`) — the golden rules override everything here. This file
+Start with the **contract** (`../AGENTS.md`) — the golden rules override everything here. This file
 maps the rest.
 
 ## Read in this order (design)
@@ -34,12 +34,13 @@ maps the rest.
 
 ## Process / working notes
 
-- **Workflows** (`.claude/commands/`): **`/worktree` is the primary workflow** — the user authors
-  the task/plan, the agent executes it faithfully in an isolated worktree, the user verifies
-  manually and gives the explicit merge go. `/audit` runs the domain review lenses
-  (determinism / RTS-perf / fidelity + correctness, `.claude/agents/`) over any diff, report-only.
-  `/iterate` + `/reflect` + the `iterate-supervisor` workflow are the **autonomous roadmap loop,
-  kept as an alternative** — not the default; don't push them.
+- **Workflows** (`.claude/commands/`): optional Claude Code shortcuts over the canonical
+  `AGENTS.md` contract. **`/worktree` is the primary workflow** — the user authors the task/plan,
+  the agent executes it faithfully in an isolated worktree, the user verifies manually and gives the
+  explicit merge go. `/audit` runs the domain review lenses (determinism / RTS-perf / fidelity +
+  correctness, `.claude/agents/`) over any diff, report-only. `/iterate` + `/reflect` + the
+  `iterate-supervisor` workflow are the **autonomous roadmap loop, kept as an alternative** — not the
+  default; don't push them.
 - [LESSONS.md](LESSONS.md) — hard-won gotchas: the index + contract; the entries live in per-area
   files under [lessons/](lessons/) so an iteration reads only the area it touches.
 - [plans/original-ui.md](plans/original-ui.md) — user-driven `/worktree` plan: step-by-step agent
@@ -64,9 +65,9 @@ maps the rest.
 
 ## Per-package contracts
 
-Load-on-demand rules next to the code they bind: `../packages/sim/CLAUDE.md` (determinism contract),
-`../packages/render/CLAUDE.md` (RTS-scale drawing), `../packages/app/CLAUDE.md` (URL flags + scenes),
-`../tools/asset-pipeline/CLAUDE.md` (prefer the mod's `.ini`; validate decoders vs the oracle).
+Load-on-demand rules next to the code they bind: `../packages/sim/AGENTS.md` (determinism contract),
+`../packages/render/AGENTS.md` (RTS-scale drawing), `../packages/app/AGENTS.md` (URL flags + scenes),
+`../tools/asset-pipeline/AGENTS.md` (prefer the mod's `.ini`; validate decoders vs the oracle).
 
 ## Keeping these docs lean (anti-bloat convention)
 
@@ -79,7 +80,7 @@ Three docs are **read by the executor every `/iterate`** and re-bloat fastest: *
 - **FIDELITY.md** — each ledger row is `status + one line on how it's pinned` (source + the one key
   verified number). The blow-by-blow lives in the commit message, not the row.
 - **lessons/*.md** — one entry per trap, filed by area, headline first; **extend an existing entry
-  rather than appending a near-duplicate**; graduate a thrice-hit trap to a `CLAUDE.md`.
+  rather than appending a near-duplicate**; graduate a thrice-hit trap to an `AGENTS.md`.
 - **ROADMAP-ARCHIVE.md** — one entry per roadmap item, filed under its phase; a re-sweep **updates
   that entry in place**, never appends a new dated section.
 

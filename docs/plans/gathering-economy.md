@@ -104,7 +104,7 @@ block-area footprints.
 
 Context (research findings, 2026-07-03 — re-verify against the sources before coding; game root
 = "../Cultures 8th Wonder" relative to the repo root, read-only; prefer the mod's readable files
-per CLAUDE.md, but note the mod ships no overriding base logic tables — the base
+per AGENTS.md, but note the mod ships no overriding base logic tables — the base
 `Data/logic/*.ini` here are already plaintext):
 - `Data/logic/goodtypes.ini`: each `[goodtype]` has `landscapeToHarvest` / `landscapeToPickup` /
   `landscapeToStore` (landscape type ids for the three gathering stages) + `atomicForHarvesting`
@@ -147,7 +147,7 @@ Verification:
   the table above must resolve its three stages to real gfx records (report any that don't).
 - `npm test` and `npm run check` green.
 
-Guardrails: read-only outside this repo; follow tools/asset-pipeline/CLAUDE.md (facts from
+Guardrails: read-only outside this repo; follow tools/asset-pipeline/AGENTS.md (facts from
 OpenVikings, never its architecture); data only — no sim behavior change, goldens must not move.
 ```
 [DONE]
@@ -185,7 +185,7 @@ Scope:
 1. `DrawItem` gains `goodType` (and whatever minimal field distinguishes pile-vs-flag); a new
    'stockpile' DrawKind; `classify()` maps bare `Stockpile+Position` (no Building) to it;
    `collectSprites()` reads `Resource.goodType` / stockpile contents through the snapshot
-   read-view seam (render must NOT touch live component stores — packages/render/CLAUDE.md).
+   read-view seam (render must NOT touch live component stores — packages/render/AGENTS.md).
 2. A `ResourceTypeBinding { byGood, default }` (+ the stockpile analogue: per-good pile frames by
    fill level, flag sprite for an empty/designated flag) in sprites.ts; `resolveSpriteBobId()`
    resolves through them; settler-gfx.ts builds them from the Step-1 content join instead of
@@ -204,7 +204,7 @@ reads as a flag) and ask for human sign-off — an agent cannot self-judge pixel
 frame-pick approximations in docs/FIDELITY.md.
 
 Guardrails: render cost scales with the screen (retained renderer rules,
-packages/render/CLAUDE.md); no sim change — goldens must not move.
+packages/render/AGENTS.md); no sim change — goldens must not move.
 ```
 
 [DONE]
@@ -263,13 +263,13 @@ Verification (this MOVES goldens — that is expected and must be intentional):
   holds exactly `treeWoodYield` wood, the node entity is gone, a stump exists; wood is CONSERVED
   (chopped tree yields exactly its constant, no dupes/losses) — assert as an invariant.
 - Update the golden state-hash + atomic-trace tests intentionally, naming the mechanic in the
-  commit (packages/sim/CLAUDE.md golden discipline). Extend the `?scene=gathering` acceptance
+  commit (packages/sim/AGENTS.md golden discipline). Extend the `?scene=gathering` acceptance
   scene: watch chop→fall→carry→pile-at-flag; headless half asserts the cycle; end with the dev
   URL + checklist + ask for human sign-off.
 - `npm test` + `npm run check` green; docs/FIDELITY.md updated (chop count, yield, instant-fell).
 
 Guardrails: sim purity (no Math.random/Date — variation only via world.rng; canonical iteration
-order; fixed-point rules — packages/sim/CLAUDE.md); per-tick cost scales with active WORK, no
+order; fixed-point rules — packages/sim/AGENTS.md); per-tick cost scales with active WORK, no
 full-world scans (golden rule 7); events via ctx.events, render never reaches into stores.
 ```
 
@@ -345,7 +345,7 @@ Context (re-verify; research 2026-07-03):
   of buildings but NOT for thousands of trees. Maintain the resource blocked-set INCREMENTALLY:
   build once at load, update on node spawn/removal (the Step-3/4 removal paths), never a
   per-tick full-world scan. Keep it deterministic (pure function of state, no iteration-order
-  leaks); document the pattern in packages/sim/CLAUDE.md if you extend it.
+  leaks); document the pattern in packages/sim/AGENTS.md if you extend it.
 - Placement: `canPlaceBuilding` already refuses to build over Resource nodes with the
   building-margin rule (~173–176); upgrade it to the node's own `buildBlockAreas` ring so
   "can't build right next to a resource" is pinned to data.
@@ -366,7 +366,7 @@ Verification:
   the cell-granularity approximation of the sub-tile footprints.
 
 Guardrails: determinism (the blocked set must be a pure function of sim state); perf doctrine
-(packages/sim/CLAUDE.md "Scaling to thousands"); no render reach-in.
+(packages/sim/AGENTS.md "Scaling to thousands"); no render reach-in.
 ```
 
 ## Step 6 — app: imported maps spawn real resource nodes
@@ -411,7 +411,7 @@ Verification: `npm test` + `npm run check` green; then the human check — `npm 
 camp actually harvests them, no double-drawn or vanished objects; report tick-cost/fps numbers.
 
 Guardrails: content/ stays gitignored; determinism (spawn order canonical); coordinate with the
-StaticObjects roadmap item; read packages/app/CLAUDE.md for the entry/scene conventions.
+StaticObjects roadmap item; read packages/app/AGENTS.md for the entry/scene conventions.
 ```
 
 ## Step 7 — polish: chop cadence, adjacent stance, animation timing

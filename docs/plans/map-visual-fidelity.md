@@ -118,7 +118,7 @@ LIFT ≈ 1.24 px per unit (native art px; the calibration evidence and exact fit
 docs/FIDELITY.md "projection" — E = 1.547 img px/unit at 1.25× capture, y-rms 5.0→1.2 with the
 term). The `elevation` lane (per-cell, from step 1) is in content/maps/<id>.json.
 
-Design constraints (read packages/render/CLAUDE.md first):
+Design constraints (read packages/render/AGENTS.md first):
 - ONE sampling seam: a small pure elevation sampler (bilinear over cell centres, clamped at map
   edges) lives in render's data layer; every consumer goes through it. Fractional positions
   (walking settlers) sample bilinearly — no snapping.
@@ -184,7 +184,7 @@ Investigate FIRST, implement second:
    Either way record the finding.
 4. Implementation: per-vertex colour on the terrain mesh (corner = bilinear embr sample, like the
    elevation lift from step 2 — share the sampler seam), baked at mesh build; Pixi mesh colour or
-   vertex-colour attribute — keep batching intact (packages/render/CLAUDE.md; no per-sprite
+   vertex-colour attribute — keep batching intact (packages/render/AGENTS.md; no per-sprite
    filters). If the border fade is NOT in embr, measure the falloff (width in rows + curve) from
    the corpus top edges and implement it as an explicit border multiplier — record it as
    approximated (engine-side, not map data) in FIDELITY.
@@ -216,7 +216,7 @@ binding (packages/app/src/content/building-gfx.ts, buildingBobRefsByType + CANON
 picks ONE bob per typeId — wrong for maps authoring the non-canonical variant (docs/FIDELITY.md
 "Authored entity placements", deviation (e); docs/ROADMAP.md corpus-comparison follow-ups (a)).
 
-Hard constraint: gfx must NOT enter the sim (packages/sim/CLAUDE.md — no render data in
+Hard constraint: gfx must NOT enter the sim (packages/sim/AGENTS.md — no render data in
 components). Design a seam on the app side, e.g.: resolveAuthoredPlacements already knows the
 buildingBobs row (bmd/palette/bobId) per placement — carry that ref alongside the placement,
 and after runAuthoredSlice's sim.run(0) build an entityId→BuildingBobRef override map by matching
@@ -375,7 +375,7 @@ Scope this step deliberately SMALL: standing animals, no behaviour. Sim side: a 
 archetype (Position + an AnimalSpecies component carrying the species typeId; no jobs, no AI —
 idle only), spawned via a new spawnAnimal command following the spawnSettler pattern
 (discriminated union + assertNever — adding the variant must break compilation until handled;
-fuzz/golden obligations per packages/sim/CLAUDE.md). Deterministic placement in file order.
+fuzz/golden obligations per packages/sim/AGENTS.md). Deterministic placement in file order.
 Resolve species names against the IR animals table (by-name join like humans; count + skip
 unresolvable). Render side: bind the cr_ani_body_00.<species> atlases (they exist in content/;
 check the IR animal graphics rows for the species→palette join) and draw the idle/stand frames —

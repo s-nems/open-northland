@@ -113,7 +113,7 @@ and lockstep-friendly. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and
 
 Contributions are welcome. Keep new code in the style of the file around it, keep the `sim` package
 deterministic and pure, and run `npm run check && npm test` before opening a PR. Agents working in
-this repo should read [`CLAUDE.md`](CLAUDE.md) first — it is the contract for conventions, the
+this repo should read [`AGENTS.md`](AGENTS.md) first — it is the contract for conventions, the
 determinism rules, and the legal guardrails.
 
 ## Legal

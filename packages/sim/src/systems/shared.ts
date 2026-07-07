@@ -83,7 +83,7 @@ export class TileBuckets {
   /**
    * The **nearest bucketed entity** to tile `(fromX, fromY)` that satisfies `accept`, searched as
    * expanding Manhattan tile-RINGS from `minDist` outward to `maxDist` — the grid ring search the
-   * scaling doctrine (packages/sim/CLAUDE.md "Full ring-search nearest-X", ROADMAP tier 3) calls for,
+   * scaling doctrine (packages/sim/AGENTS.md "Full ring-search nearest-X", ROADMAP tier 3) calls for,
    * so a per-seeker "who's the closest enemy?" query costs O(bounded rings) instead of a full-world
    * scan. Returns the entity + its integer Manhattan distance, or null when nothing in the band matches.
    *

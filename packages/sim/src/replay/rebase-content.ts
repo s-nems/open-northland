@@ -58,7 +58,7 @@ export interface RebaseInputs {
 
 /**
  * The outcome of a content hot-reload. Bad content is an EXPECTED boundary failure (a designer can
- * save a half-edited or malformed file), so it is a typed result, not a throw — CLAUDE.md "throw for
+ * save a half-edited or malformed file), so it is a typed result, not a throw — AGENTS.md "throw for
  * bugs, return for expected failures". A discriminated union (`assertNever`-friendly) so a caller's
  * switch is exhaustive: `ok` carries the rebased `Simulation`; `error` carries the validation message
  * (zod path or cross-reference error) and the original sim is left untouched.

@@ -7,7 +7,7 @@ import type { DrawItem, DrawKind, SpriteState } from './scene.js';
  *
  * Today the GPU layer ({@link import('../gpu/sprite-pool.js').SpritePool}) draws each sprite as flat
  * placeholder geometry because real bob atlases are decoded from a copyrighted game copy and gitignored
- * (see CLAUDE.md "Legal guardrails"). The remaining open render leg is to draw the actual atlas frame
+ * (see AGENTS.md "Legal guardrails"). The remaining open render leg is to draw the actual atlas frame
  * instead. That swap has two halves:
  *  - **which atlas frame a draw item references** — a pure data lookup (`DrawItem` → frame rect), the
  *    half this module makes testable without a screen; and

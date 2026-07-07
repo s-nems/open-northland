@@ -17,7 +17,7 @@ import type { CellTexture } from '../data/terrain.js';
  * transform moved to {@link import('../data/iso.js').Camera} alongside the projection math it inverts.
  *
  * The atlas *image* comes from a free / synthetic atlas (real bobs are decoded from a copyrighted game
- * copy and gitignored — see CLAUDE.md "Legal guardrails"); the frame *geometry* + *bindings* are plain
+ * copy and gitignored — see AGENTS.md "Legal guardrails"); the frame *geometry* + *bindings* are plain
  * data. Floats everywhere are fine: this is `render`, never read back into the deterministic sim.
  */
 
@@ -234,7 +234,7 @@ export async function createWindowPixiApp(canvas: HTMLCanvasElement): Promise<Ap
  * pair into a {@link SpriteSheet}. `nearest` scaling keeps the pixel-art bobs crisp and cuts the
  * cross-machine sampling variance (matching {@link createPixiApp}'s antialias-off), so an eyeball-the-PNG
  * check stays meaningful. Real bob atlases are decoded from a copyrighted game copy and gitignored (see
- * CLAUDE.md "Legal guardrails"); this only takes a URL, so the *bytes* never live in the repo — the app
+ * AGENTS.md "Legal guardrails"); this only takes a URL, so the *bytes* never live in the repo — the app
  * serves them from the gitignored `content/` over the dev/shot server, exactly as `?map=` serves grids.
  */
 export async function loadAtlasSource(url: string): Promise<TextureSource> {

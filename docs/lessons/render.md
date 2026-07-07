@@ -1,7 +1,7 @@
 # Lessons — render & app (Pixi, scenes, bindings, browser glue)
 
 Part of the loop's hard-won memory. The contract (one entry per trap, commit-grounded,
-extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
+extend-don't-duplicate, graduate a thrice-hit trap to an `AGENTS.md`) lives in
 [`../LESSONS.md`](../LESSONS.md) — read it before adding here.
 
 - [11cde56] The browser app can't read the gitignored repo-root `content/` directly (it's outside the

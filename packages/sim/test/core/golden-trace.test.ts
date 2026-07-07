@@ -40,7 +40,7 @@ import { testContent } from '../fixtures/content.js';
  * Invariants run **after every tick** (not just at the end), so a system that transiently breaks the
  * world (negative stock, hunger out of range) is caught at the exact tick it happens, not masked by a
  * later recovery. If any golden below moves, it must be an *intentional* mechanic change — name it in
- * the commit (see packages/sim/CLAUDE.md "the golden rule of the goldens").
+ * the commit (see packages/sim/AGENTS.md "the golden rule of the goldens").
  *
  * Scenario (a self-supplying woodcutter + a self-servicing carpenter + a carrier — the slice's exit goal):
  *   - a 6×1 grass strip;

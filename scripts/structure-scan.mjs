@@ -73,12 +73,12 @@ if (flat === 0) console.log('  (none)');
 // ── 3. Doc budgets (executor-read docs + always-on contracts + command files) ──
 console.log(`\n── Doc budgets (budget ~${DOC_BUDGET} lines) ──`);
 const docs = [
-  'CLAUDE.md',
+  'AGENTS.md',
   'docs/ROADMAP.md',
   'docs/FIDELITY.md',
   'docs/TECH-DEBT.md',
   ...(exists('docs/lessons') ? walk('docs/lessons') : []),
-  ...srcRoots.flatMap((r) => walk(r)).filter((p) => p.endsWith('/CLAUDE.md')),
+  ...srcRoots.flatMap((r) => walk(r)).filter((p) => p.endsWith('/AGENTS.md')),
   ...(exists('.claude/commands') ? walk('.claude/commands') : []),
 ].filter(exists);
 for (const doc of docs) {

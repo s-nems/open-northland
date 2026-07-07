@@ -451,7 +451,7 @@ pixel-for-pixel — the highest-value reuse, turning "I think the decoder is rig
 ## Legal line
 
 This is the canonical statement of the project's legal posture; `README.md` **Legal** and
-`CLAUDE.md` point here.
+`AGENTS.md` point here.
 
 - **License: GPL-3.0-or-later** (`LICENSE` at the repo root; declared in `package.json`). Same
   family as OpenMW; mirrors OpenVikings' stance.

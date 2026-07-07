@@ -13,7 +13,7 @@
  * readable palette bindings (base animals `[jobgraphics]` + the mod's human `[jobbasegraphics]` skin),
  * and readable `.ini` rules -> a validated `content/ir.json`
  * (goods/jobs/landscape from base `Data/logic`, tribes + atomic animations from the mod's `DataCnmd`,
- * preferring the mod per CLAUDE.md), the declarative logic-header metadata of every `map.cif`
+ * preferring the mod per AGENTS.md), the declarative logic-header metadata of every `map.cif`
  * (dimensions/GUID/type/name ids), and the per-cell landscape grid of every `map.dat` -> a
  * `maps/<id>.json` `TerrainMap` (the sim's nav-graph input). The remaining stages (standalone
  * palettes, the `.cif`-only type tables, the map's `MissionData`/`StaticObjects` mission scripting,

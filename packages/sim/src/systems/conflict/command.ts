@@ -129,7 +129,7 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
  *
  * Determinism: a `query(Settler, JobAssignment)` scan that only *mutates the matched settlers* (drops
  * the binding, resets the job) — order-independent, no chosen-entity pick, so iterating store order is
- * permitted (CLAUDE.md: only a scan whose result depends on *which* entity wins needs the canonical
+ * permitted (AGENTS.md: only a scan whose result depends on *which* entity wins needs the canonical
  * order). The matches are collected before mutating because `world.remove` deletes from the
  * `JobAssignment` store, which `world.query` may be iterating — snapshot first, then mutate.
  */

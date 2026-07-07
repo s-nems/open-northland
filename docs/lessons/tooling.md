@@ -1,7 +1,7 @@
 # Lessons — tooling & process (build/test glue, cross-package, docs)
 
 Part of the loop's hard-won memory. The contract (one entry per trap, commit-grounded,
-extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
+extend-don't-duplicate, graduate a thrice-hit trap to an `AGENTS.md`) lives in
 [`../LESSONS.md`](../LESSONS.md) — read it before adding here.
 
 - [ca10cf4] raw-TS strip-types can't resolve the sim's `.js` import specifiers, so the test fixture

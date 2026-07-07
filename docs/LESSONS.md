@@ -13,8 +13,8 @@ not all of them** (that per-area read is what keeps this memory from polluting e
 - [`lessons/render.md`](lessons/render.md) — render & app: Pixi, scenes, bindings, browser glue.
 - [`lessons/tooling.md`](lessons/tooling.md) — build/test glue, cross-package traps, docs.
 
-**Scope.** Not rules (those graduate to [`CLAUDE.md`](../CLAUDE.md) /
-[`packages/sim/CLAUDE.md`](../packages/sim/CLAUDE.md)), not the plan ([`ROADMAP.md`](ROADMAP.md)),
+**Scope.** Not rules (those graduate to [`AGENTS.md`](../AGENTS.md) /
+[`packages/sim/AGENTS.md`](../packages/sim/AGENTS.md)), not the plan ([`ROADMAP.md`](ROADMAP.md)),
 not deferred reworks ([`TECH-DEBT.md`](TECH-DEBT.md)).
 
 **Contract.**
@@ -22,9 +22,9 @@ not deferred reworks ([`TECH-DEBT.md`](TECH-DEBT.md)).
   one-line trap statement; detail after the dash. Ground every entry in the commit that taught it.
 - Keep it lean: most steps add nothing. Add a line only when re-learning it would cost real time.
 - **Before adding, scan the area file for an existing entry on the same trap and *extend* it —
-  don't append a near-duplicate.** A trap hit a third time is a rule: graduate it to `CLAUDE.md` /
-  the package `CLAUDE.md` and leave one line here.
-- Curation (a `/reflect` duty): promote recurring / rule-worthy lessons into `CLAUDE.md` and prune
+  don't append a near-duplicate.** A trap hit a third time is a rule: graduate it to `AGENTS.md` /
+  the package `AGENTS.md` and leave one line here.
+- Curation (a `/reflect` duty): promote recurring / rule-worthy lessons into `AGENTS.md` and prune
   them here; drop entries the code has made obsolete; keep each area file under the ~300-line doc
   budget (`npm run scan:structure` flags it — `sim.md` is the standing hotspot). This is the
   anti-bloat valve that keeps the compounding memory honest.

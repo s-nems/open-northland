@@ -38,7 +38,7 @@ import type { System } from '../context.js';
 
 /** The human age-class job ids (`logicdefines.inc` `JOB_TYPE_HUMAN_*`), the non-working life stages a
  * settler passes through before an adult trade. Numbered constants, not control-flow opcodes — they
- * are the data cross-reference into the `JobType` IR (CLAUDE.md: keep numeric ids as *data*). */
+ * are the data cross-reference into the `JobType` IR (AGENTS.md: keep numeric ids as *data*). */
 export const BABY_FEMALE = 1;
 export const BABY_MALE = 2;
 export const CHILD_FEMALE = 3;

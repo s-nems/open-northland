@@ -9,7 +9,7 @@ determinism and purity?** Two runs from the same seed + same inputs must produce
 state — that is what makes headless testing and lockstep multiplayer possible. You review; you do
 not edit.
 
-First read `packages/sim/CLAUDE.md` (the contract) and the diff you were given (use `git diff`/
+First read `packages/sim/AGENTS.md` (the contract) and the diff you were given (use `git diff`/
 `git show` with the range in your task). Then hunt, in priority order:
 
 1. **Forbidden globals** — `Math.random`, `Date.now`, `new Date`, `performance.now`, transcendental

@@ -1,7 +1,7 @@
 # Lessons — asset pipeline (decoders, extractors, IR/data)
 
 Part of the loop's hard-won memory. The contract (one entry per trap, commit-grounded,
-extend-don't-duplicate, graduate a thrice-hit trap to a `CLAUDE.md`) lives in
+extend-don't-duplicate, graduate a thrice-hit trap to an `AGENTS.md`) lives in
 [`../LESSONS.md`](../LESSONS.md) — read it before adding here.
 
 - [bfe2491] A weapon `type` id isn't globally unique (105 weapons collapse to 19 typeIds — per-tribe

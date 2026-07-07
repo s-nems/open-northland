@@ -6,7 +6,7 @@ import { TileBuckets } from '../../src/systems/shared.js';
 
 /**
  * Unit tests for the {@link TileBuckets.nearest} grid RING SEARCH — the spatial primitive behind the
- * combat enemy query (packages/sim/CLAUDE.md "Full ring-search nearest-X", ROADMAP tier 3). The
+ * combat enemy query (packages/sim/AGENTS.md "Full ring-search nearest-X", ROADMAP tier 3). The
  * contract these pin: the winner is the canonical (min-distance, then min-id) one a full scan would
  * pick, found by completing the whole minimum-distance ring; the `[minDist, maxDist]` band is honored
  * on both ends; and the search short-circuits past its radius (an empty query never scans forever).

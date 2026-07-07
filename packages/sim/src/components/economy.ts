@@ -13,7 +13,7 @@ export const Building = defineComponent<{
  * A goods store attached to a building: goodType -> amount, with per-good capacity from the
  * building type. DETERMINISM: never iterate this Map directly for game decisions — use
  * stockpileEntries() which returns ascending-goodType order. Raw Map iteration is insertion-order
- * (history-dependent) and is a determinism footgun (see CLAUDE.md anti-patterns).
+ * (history-dependent) and is a determinism footgun (see AGENTS.md anti-patterns).
  */
 export const Stockpile = defineComponent<{ amounts: Map<number, number> }>('Stockpile');
 

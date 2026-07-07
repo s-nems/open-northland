@@ -6,7 +6,7 @@ import type { AtlasFrame, SettlerStateBinding, SpriteAtlas, SpriteBindings } fro
  * sub-rect branch of {@link import('./sprite-pool.js').SpritePool}) is actually exercised end to
  * end, *without* any copyrighted game data.
  *
- * Real bob atlases are decoded from an owned game copy and gitignored (see CLAUDE.md "Legal
+ * Real bob atlases are decoded from an owned game copy and gitignored (see AGENTS.md "Legal
  * guardrails"), so they can't be the default texture in a committed, reproducible harness. This module
  * stands in a tiny hand-authored atlas instead: a few flat coloured marker frames (one per drawable
  * {@link import('../data/sprites.js').SpriteKind}) drawn procedurally into a canvas. It is NOT art — it's a

@@ -4,7 +4,7 @@ argument-hint: [optional focus — a roadmap item or subsystem to bias the step 
 ---
 
 You are running **one** iteration of the Vinland work loop. Keep the working window small: do the
-**smallest** next step, finish it cleanly, and stop. Read `CLAUDE.md` (golden rules: `sim` is
+**smallest** next step, finish it cleanly, and stop. Read `AGENTS.md` (golden rules: `sim` is
 deterministic/pure, fixed-point ints, content-is-data, prefer mod `.ini`) before editing — it is the
 contract and overrides defaults.
 
@@ -56,11 +56,11 @@ is overdue for a **reflection** pass — a deliberate health/architecture/docs/r
   and don't load areas the step won't touch.
 - Implement only that step. Match the style of surrounding code. No scope creep — resist pulling in
   the next roadmap item even if tempting.
-- Follow the determinism anti-patterns in `packages/sim/CLAUDE.md` (sim work) and the RTS-scale cost
+- Follow the determinism anti-patterns in `packages/sim/AGENTS.md` (sim work) and the RTS-scale cost
   budgets (golden rule 7) — a per-tick system or per-frame render path must not gain a full-world
   scan or object churn. Mechanics change → add/extend a test at the **lowest level that proves it**
   (unit → integration → headless scenario).
-- **No silent hacks** (root `CLAUDE.md` convention): a workaround or `TODO` either gets fixed within
+- **No silent hacks** (root `AGENTS.md` convention): a workaround or `TODO` either gets fixed within
   the step, or lands with its tracking entry (roadmap / `docs/TECH-DEBT.md` / a FIDELITY deviation)
   in the same commit — never bare.
 

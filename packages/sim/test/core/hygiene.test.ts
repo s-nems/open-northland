@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 /**
- * Encodes the determinism anti-patterns (CLAUDE.md) as a TEST, not just a doc: the sim must contain
+ * Encodes the determinism anti-patterns (AGENTS.md) as a TEST, not just a doc: the sim must contain
  * no ambient nondeterminism. An LLM agent will reach for Math.random/Date.now reflexively; this
  * turns "the agent read the rule" into "the build fails". Scans packages/sim/src only (not tests).
  */
