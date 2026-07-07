@@ -5,7 +5,7 @@ import type { RunReplay } from './localize-divergence.js';
 
 /**
  * `scrubWindow` — the **single-run "free scrubbing"** composition of the time-travel / replay
- * inspector (ROADMAP "Cross-cutting DX": the overlay can "scrub ticks, diff state between two ticks,
+ * inspector (plan "Cross-cutting DX": the overlay can "scrub ticks, diff state between two ticks,
  * and dump an entity"; it "calls `replay()`+`traceEntity()` for free scrubbing"). Where
  * {@link localizeDivergence} composes the TWO-run path ("hash diverged at tick N → inspect what
  * differs"), this composes the ONE-run path: reconstruct a contiguous window of plain
@@ -29,7 +29,7 @@ import type { RunReplay } from './localize-divergence.js';
  * ## Single-world constraint (the reason this isn't trivial glue)
  *
  * Component stores are MODULE-LEVEL SINGLETONS shared across every `Simulation` ({@link replay}'s
- * doc; docs/LESSONS.md [56e8d3e]) — so this rebuilds a sim in the shared stores as a side effect (that
+ * doc; AGENTS.md [56e8d3e]) — so this rebuilds a sim in the shared stores as a side effect (that
  * is what reconstructing state requires) and SUPERSEDES any prior live sim. The caller must hold no
  * live sim across this call; on return the stores hold the run's reconstructed state at `toTick`. The
  * returned snapshots are plain values and stay valid regardless. It is otherwise as "pure" as

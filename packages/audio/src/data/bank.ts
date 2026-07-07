@@ -32,7 +32,7 @@ function pushInto(map: Map<string, string[]>, key: string, value: string): void 
  *
  * The terrain→ambient join is coarse by construction: `terrainPatterns` already approximates each
  * `typeId` to ONE representative pattern, so a `typeId` inherits only that pattern's groups — see
- * `docs/FIDELITY.md`. It is the faithful *mechanism* (the original keys ambient off pattern groups),
+ * `source basis`. It is the faithful *mechanism* (the original keys ambient off pattern groups),
  * pinned to the data we have, and covers the common land/water/desert beds.
  */
 export function buildSoundIndex(

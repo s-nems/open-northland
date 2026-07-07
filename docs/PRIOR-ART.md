@@ -7,8 +7,8 @@ OpenTTD (Transport Tycoon), OpenMW (Morrowind), devilutionX (Diablo), 0 A.D., Wi
 external projects are cited**; code comments state the underlying rationale on its own terms.
 
 Three sections: what Vinland already does (with the seam it lives in), what is deferred behind a
-named trigger, and where we consciously differ. Curate like TECH-DEBT.md: when a deferred entry
-lands, move its one-liner to Adopted; prune anything the codebase makes obsolete.
+named trigger, and where we consciously differ. Review this occasionally; when a deferred entry
+lands, move its one-liner to Adopted and prune anything the codebase makes obsolete.
 
 ## Adopted (the seam it lives in)
 
@@ -58,11 +58,12 @@ lands, move its one-liner to Adopted; prune anything the codebase makes obsolete
   Chrono Divide, openage all decode a user-owned copy; openage names the same three-stage shape we
   use — source-shaped read → concept mapping → engine-shaped validated IR.) → the asset pipeline +
   gitignored `content/` + synthetic test fixture.
-- **Faithful-first with a deviation ledger.** A fidelity-chasing project needs the ledger precisely
-  because no test oracle exists for "matches the original". (OpenMW ships vanilla behavior by
-  default with every fix a named, documented toggle; devilutionX keeps original bugs annotated
-  in-source and fixes them only as auditable, changelogged decisions; Chrono Divide confines all
-  divergence to one documented override layer.) → `docs/FIDELITY.md`.
+- **Faithful-first with named approximations.** A fidelity-chasing project needs explicit source
+  basis precisely because no test oracle exists for "matches the original". (OpenMW ships vanilla
+  behavior by default with every fix a named, documented toggle; devilutionX keeps original bugs
+  annotated in-source and fixes them only as auditable, changelogged decisions; Chrono Divide
+  confines divergence to a documented override layer.) → `AGENTS.md` golden rule 5 and compact plan
+  progress notes.
 
 ## Deferred (trigger-gated)
 
@@ -94,10 +95,11 @@ lands, move its one-liner to Adopted; prune anything the codebase makes obsolete
   full canonical hash every N ticks. (OpenTTD broadcasts the RNG state as its per-frame sync token;
   0 A.D. runs quick positional hashes per turn and full hashes rarely.) *Trigger: profiling, not
   speculation.*
-- **Spatial index bins + proximity triggers.** The ROADMAP tier-3 ring search, plus two refinements:
+- **Spatial index bins + proximity triggers.** The existing ring-search path, plus two refinements:
   coarse fixed-size cell bins (~10 tiles) for range queries, and subscription-style cell/proximity
   triggers so "is anyone near me yet?" stops being a per-tick poll. Batch position-index updates at
-  a defined point in the tick. (OpenRA's `ActorMap`.) *Trigger: the existing tier-3 roadmap item.*
+  a defined point in the tick. (OpenRA's `ActorMap`.) *Trigger: a concrete plan step or profiling
+  result.*
 - **Hierarchical pathfinding with O(1) reachability rejection.** Partition the map into ~10×10
   grids, flood-fill connected regions into an abstract graph reused as the A* heuristic; dirty only
   affected grids on terrain/building change; keep a flood-fill domain index so "no path exists" is a
@@ -117,12 +119,12 @@ lands, move its one-liner to Adopted; prune anything the codebase makes obsolete
   emits the DATA-FORMAT reference from the schema so docs can't drift from validation. (OpenRA
   generates its trait docs from in-code `[Desc]` attributes.) *Trigger: DATA-FORMAT.md drift pain,
   or external modders.*
-- **Fidelity decisions as named data toggles.** Evolve FIDELITY.md entries that players would care
-  about into schema-validated flags — faithful by default, each divergence carrying the original
+- **Source-basis decisions as named data toggles.** Evolve player-visible approximations into
+  schema-validated flags when useful — faithful by default, each divergence carrying the original
   behavior, the default, and the justification. Pair with a greppable in-code marker at each
-  divergence site cross-linked to the ledger. (OpenMW's game settings; fheroes2 records the
-  default-choice debate; devilutionX's in-source original-bug annotations.) *Trigger: the first
-  deviation worth making switchable.*
+  divergence site. (OpenMW's game settings; fheroes2 records the default-choice debate;
+  devilutionX's in-source original-bug annotations.) *Trigger: the first deviation worth making
+  switchable.*
 - **Threshold-gated tick profiler.** App-side (wall-clock is banned in sim src): per-system timers
   that log a hierarchical "long tick" report only when a threshold is exceeded — attribution lands
   on the specific system/entity, and instrumentation is ~free until something is actually slow.
@@ -135,8 +137,8 @@ lands, move its one-liner to Adopted; prune anything the codebase makes obsolete
   (goldens + fuzz + hygiene in CI) — keep it inverted; add the field-diagnosis half (sync report
   rings, peer trace diffing) only when MP exists.
 - **Fidelity is the goal, not a constraint to shed.** OpenRA is openly a modernization ("not
-  restricted by the technical limitations of the original") and needs no fidelity ledger. That is
-  the anti-model that validates ours: golden rule 6 exists because Vinland chases the original.
+  restricted by the technical limitations of the original"). That is the anti-model that validates
+  ours: `AGENTS.md` has a source-basis rule because Vinland chases the original.
 - **Compatibility boundaries are chosen per artifact.** devilutionX kept save-file compatibility
   with the original game but dropped wire-protocol compatibility. Vinland's equivalents (content IR,
   saves, replays, goldens) should each get an explicit keep/break policy when Phase 5 defines them —

@@ -20,7 +20,7 @@ import { TextureCache } from './texture-cache.js';
  * every cell so a human can flip all animations to one of the 8 facings (validate direction) or "full"
  * (play each whole sequence). The 8-direction split assumes `dirs = 8, stride = floor(length/8)` — the
  * same convention `sprites.ts` uses for the settler — because the readable data carries NO per-sequence
- * direction count (no oracle; see docs/FIDELITY.md); "full" always plays the true, complete strip so a
+ * direction count (no oracle; see source basis); "full" always plays the true, complete strip so a
  * non-8-directional clip (e.g. eat/sleep) is watchable rather than mis-split.
  */
 
@@ -53,7 +53,7 @@ export const GALLERY_DIRS = 8;
 
 /**
  * Block index (0..7) to draw for each COMPASS step, in order `N, NE, E, SE, S, SW, W, NW` — inverted from
- * the `CR_Hum_Body` facing table (`0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N`; docs/FIDELITY.md). "Full"
+ * the `CR_Hum_Body` facing table (`0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N`; source basis). "Full"
  * mode walks this order so the character turns in a clean circle (N→NE→E→…) instead of the jumbled
  * storage order (SW→W→NW→NE→…) — the "ładne kółko" that makes 8 facings easy to verify.
  */
@@ -102,7 +102,7 @@ export function galleryCellLayout(count: number, columns: number): GalleryCellBo
 /**
  * The direction count a sequence `length` is laid out for: a clean ×8 length is 8-directional, anything
  * else is single-direction (the original plays a non-×8 animation locked to one facing). The readable data
- * carries no explicit per-sequence count (no oracle — docs/FIDELITY.md), so this length heuristic is the
+ * carries no explicit per-sequence count (no oracle — source basis), so this length heuristic is the
  * best available and matches observation (walk 96 → 8; eat 17 / wait 57 / jump 21 → 1). Pure.
  */
 export function clipDirs(length: number): number {

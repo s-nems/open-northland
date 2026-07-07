@@ -6,7 +6,7 @@
  * (the recurring per-scene-magic-number complaint). Add a new mined good's calibration here, not in the
  * scene. Mirrors {@link import('./felling.js')} for the felling half of the gathering pipeline.
  *
- * The deposit SIZE is genuinely OBSERVED (docs/FIDELITY.md "Mineral deposits"): the readable data has no
+ * The deposit SIZE is genuinely OBSERVED (source basis "Mineral deposits"): the readable data has no
  * field established to be the harvestable-unit count — `landscapetypes.ini` `maximumValency` is a per-cell
  * valency (constant across a good's stages, e.g. mud_mine = mud_ore = mud = 6), not the count. So these
  * sizes are demonstrative, pending calibration against the original; the pipeline emits `0` (not a deposit)

@@ -11,9 +11,9 @@ import type { ContentSet, VehicleType } from '@vinland/data';
  * `passengerSlots > 0`: in the real `vehicletypes.ini` the only rows that carry passengers are the two
  * ships (`ship small` `passengerslots 19`, `ship big` `passengerslots 9`) — every cart and the catapult
  * list `passengerslots 0`. A ship is precisely "a vehicle that transports people (across water)", which
- * is the `vehicle_ship` identity the roadmap names.
+ * is the `vehicle_ship` identity the plan names.
  *
- * FIDELITY: pinned to the extracted `passengerslots` param. The two ships are *also* the only rows with
+ * source-basis: pinned to the extracted `passengerslots` param. The two ships are *also* the only rows with
  * `logicsize 2` (carts `0`, catapult `1`) and `logiccommander 24` (a ship pilot, carts use `25`,
  * catapult `31`) — three independent signals converge, so `passengerSlots > 0` is a sound reading and
  * not a coincidence of the synthetic fixture. We key on `passengerSlots` (not `logicSize`) because it is
@@ -35,7 +35,7 @@ export function isShipVehicle(vehicle: VehicleType): boolean {
  * enumeration order is stable regardless of `content.vehicles` declaration order — the canonical order a
  * "for each ship type" loop wants. {@link isShipVehicle} is the matching single-vehicle predicate.
  *
- * FIDELITY n/a: a pure derived **read view** over the already-extracted vehicle IR (like {@link playableTribes}
+ * source-basis n/a: a pure derived **read view** over the already-extracted vehicle IR (like {@link playableTribes}
  * over tribes) — it adds no mechanic and invents no classification: the ship-vs-cart split is read straight
  * off the `passengerslots` param the pipeline pinned (see {@link isShipVehicle}). Determinism: a pure
  * function of `content` (no world, no RNG, no wall-clock) over the plain `content.vehicles` array,
@@ -53,7 +53,7 @@ export function shipVehicles(content: ContentSet): VehicleType[] {
  * `carrierCarryCapacity` this is the *static* content capacity — it does NOT gate on a tribe's tech graph
  * (no `jobEnablesVehicle`/live-settler check); the unlock side rides on the later boat-entity slice.
  *
- * FIDELITY: pinned to the extracted `stockslots` param; the unlock/pairing is deferred (docs/FIDELITY.md
+ * source-basis: pinned to the extracted `stockslots` param; the unlock/pairing is deferred (source basis
  * — *Carrier→vehicle pairing*). Determinism: a pure max over `content.vehicles` (associative/commutative,
  * scan order can't change the result); no RNG, no wall-clock.
  */
@@ -72,7 +72,7 @@ export function largestShipCapacity(content: ContentSet): number {
  * with no `logicgood` (the catapult) yields an empty set — it carries no cargo. Applies to any vehicle,
  * not just ships (a cart's hold is filtered the same way); name kept generic.
  *
- * FIDELITY: pinned to the extracted `logicgood` param. In the real `vehicletypes.ini` the carts and both
+ * source-basis: pinned to the extracted `logicgood` param. In the real `vehicletypes.ini` the carts and both
  * ships enumerate the full haulable-goods list (49 ids) while the catapult lists none — so a membership
  * test against this set is the engine's "can this good ride in this hold" gate. Determinism: a pure `Set`
  * built from the already-extracted `cargoGoods` array; callers test membership (`.has`), which is
@@ -88,7 +88,7 @@ export function vehicleCargoGoods(vehicle: VehicleType): Set<number> {
  * a boat-as-mobile-store (or a cart) checks before accepting a unit of cargo. False for any good on a
  * vehicle that lists no `logicgood` (the catapult carries nothing).
  *
- * FIDELITY: pinned to the extracted `logicgood` param (see {@link vehicleCargoGoods}). Determinism: a
+ * source-basis: pinned to the extracted `logicgood` param (see {@link vehicleCargoGoods}). Determinism: a
  * pure array membership test over the already-extracted `cargoGoods`; no world, no RNG, no wall-clock.
  */
 export function vehicleMayCarry(vehicle: VehicleType, goodType: number): boolean {
@@ -119,7 +119,7 @@ export function vehicleMayCarry(vehicle: VehicleType, goodType: number): boolean
  * carries, so there is no "no record" sentinel: `0` *is* the cart footprint — the weight-field
  * (`weaponWeightOf`/`armorWeightOf` in ./classes.ts) shape, not the class-enum-grouping shape.
  *
- * FIDELITY n/a: a pure field accessor over the already-extracted `logicSize` param (see
+ * source-basis n/a: a pure field accessor over the already-extracted `logicSize` param (see
  * {@link VehicleType.logicSize}) — it adds no mechanic and invents no data (the `{0,1,2}` magnitudes are
  * the faithful `vehicletypes.ini` values the pipeline pinned). Determinism: a pure field read — no world,
  * no RNG, no wall-clock.

@@ -16,7 +16,7 @@
  * carried-good + women's-dress band) is deliberately excluded — see {@link PLAYER_COLOR_BANDS}.
  *
  * The original ships **10** player colours; we generate **16** (up to 16 players) by hue-rotating a reference
- * ramp for the extra six — a conscious divergence, logged in docs/FIDELITY.md. Pure functions only (palette
+ * ramp for the extra six — a conscious divergence, logged in source basis. Pure functions only (palette
  * maths on 768-byte RGB triples + RGBA LUT images); the I/O that reads the `.pcx` sources + writes the LUT PNG
  * lives in the pipeline stage.
  */
@@ -45,8 +45,8 @@ export const PLAYER_RAMP_LENGTH = 16;
  * (`good_Wood`/`good_clay`/… set patch 14 + patch 15), so remapping it painted a hauled log/clay slab the
  * team colour — the "blue wood" bug. The `player_NN` recipe never touches patch 15; only the separate
  * `woman_NN` recipe (women's dress) does. Reproducing women's dress colour needs a per-body-class ramp
- * (man → patch 10, woman → patch 15) rather than this one shared band set — tracked in docs/FIDELITY.md
- * "Player (team) colours" / docs/TECH-DEBT.md; keeping patch 15 base-coloured is the faithful choice for the
+ * (man → patch 10, woman → patch 15) rather than this one shared band set — tracked in source basis
+ * "Player (team) colours" / docs/plans/; keeping patch 15 base-coloured is the faithful choice for the
  * men who do the hauling.
  */
 export const PLAYER_COLOR_BANDS: readonly (readonly [number, number])[] = [
@@ -71,7 +71,7 @@ export interface PlayerColorDef {
  * The 16 player colours, slot order = player id. Ids 0–9 are the original's `TPlayerColorId` order
  * (`logicdefines.inc`): blue is the human player's default, then red/yellow/cyan/green/purple/grey/orange/
  * neon/black. Ids 10–15 have NO original equivalent — six hue-rotated ramps chosen to sit in the gaps
- * between the shipped hues (a divergence, see docs/FIDELITY.md). The `pcx` files are read from the game's
+ * between the shipped hues (a divergence, see source basis). The `pcx` files are read from the game's
  * `Data/engine2d/bin/palettes/creatures/`.
  */
 export const PLAYER_COLORS: readonly PlayerColorDef[] = [

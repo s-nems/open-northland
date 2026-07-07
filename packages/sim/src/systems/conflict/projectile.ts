@@ -13,7 +13,7 @@ import { type PendingStagger, applyPendingStaggers, resolveCombatHit } from './a
  * shot). A ¼-tile-per-unit step keeps every real `speed` (3..8) landing on an integer fraction of ONE, so
  * no rounding drift enters — two runs stay byte-identical.
  *
- * APPROXIMATED / calibration-pending (docs/FIDELITY.md "Combat ranged projectiles"): the source carries `speed`'s
+ * APPROXIMATED / calibration-pending (source basis "Combat ranged projectiles"): the source carries `speed`'s
  * VALUE (faithful — captured verbatim) but NOT its unit, so this scale is a named calibration constant a
  * step-10 observation pins, not a data param. Isolating it here keeps the {@link Projectile} component the
  * faithful data and this one line the approximation.
@@ -29,7 +29,7 @@ export const PROJECTILE_TILES_PER_SPEED_UNIT: Fixed = fx.div(fx.fromInt(1), fx.f
  * Per projectile (visited in canonical ascending-id order so a stagger tie-break is order-independent):
  *  1. **target gone / dead / unpositioned** → the projectile EXPIRES at its last position: it is destroyed
  *     with no hit (no re-target — the original's homing-vs-ballistic + always-hit behaviour is unreadable,
- *     so this approximates a homing shot that simply drops when its mark falls; docs/FIDELITY.md);
+ *     so this approximates a homing shot that simply drops when its mark falls; source basis);
  *  2. **within one step of the target** → it ARRIVES: land {@link resolveCombatHit} (the same material-column
  *     damage a melee swing deals — resolved on contact), announce `projectileHit`, and destroy it;
  *  3. **still short** → advance straight toward the target by one {@link projectileStep}, re-aiming next tick

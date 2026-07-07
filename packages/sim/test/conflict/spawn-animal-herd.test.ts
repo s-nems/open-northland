@@ -5,7 +5,7 @@ import { ONE, Simulation, fx } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
- * Tests for the `spawnAnimalHerd` command — the animal-PLACEMENT mechanic (ROADMAP Phase 4 "animals as
+ * Tests for the `spawnAnimalHerd` command — the animal-PLACEMENT mechanic (plan Phase 4 "animals as
  * non-controllable tribes"): it puts a herd of creatures on the map, consuming the `herdParams` /
  * `animalHitpoints` read views. The fixture's BEAR (tribe 10) is a herd of `maximumGroupSize` 3 that
  * `searchForLeader`s, ranging `maximumDistanceToBirthPoint` 2, with `hitpoints_adult` 15000; the BEE

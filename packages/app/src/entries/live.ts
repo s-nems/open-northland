@@ -40,7 +40,7 @@ import { floatParam, intParam } from './params.js';
 
 /**
  * The default full tile-diamond width in px (`2 × CALIBRATED_HALF_W`) when `?pitch=` is absent — the
- * cell width MEASURED from the original game (see iso.ts / docs/FIDELITY.md "projection").
+ * cell width MEASURED from the original game (see iso.ts / source basis "projection").
  */
 const DEFAULT_TILE_WIDTH = 2 * CALIBRATED_HALF_W;
 
@@ -80,7 +80,7 @@ function centerTile(raw: string | null, zoom: number, width: number, height: num
 export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   const app = await createWindowPixiApp(canvas);
   // `?pitch=<fullTileWidth>` — the live verification knob for the master sprite-vs-terrain scale (the
-  // whole look; a human dials it, an agent can't self-judge pixels — see `iso.ts`/docs/FIDELITY.md).
+  // whole look; a human dials it, an agent can't self-judge pixels — see `iso.ts`/source basis).
   // Applied BEFORE any projection (scene build, terrain mesh, object lattice) so every layer picks it up.
   // The height follows the MEASURED ratio (CALIBRATED_HALF_H/CALIBRATED_HALF_W ≈ 1.12 — the original's
   // cells are near-square on screen, not iso 2:1); `?pitchy=<cellDiamondHeight>` overrides it separately.
@@ -181,7 +181,7 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
 
   // On-canvas FPS + entity/drawn/pooled readout (bottom-left) so a human can judge whether the map holds
   // a frame rate and whether culling is biting (`drawn` ≪ `entities` zoomed in) — the same instrument the
-  // `?scene=` entry mounts. Real-GPU only: headless Chromium is software-GL, ~50× low (docs/LESSONS).
+  // `?scene=` entry mounts. Real-GPU only: headless Chromium is software-GL, ~50× low (docs/AGENTS).
   const perf = mountPerfOverlay();
 
   // The original LEFT tool panel — the standard game HUD, mounted here in the live sandbox exactly as it is

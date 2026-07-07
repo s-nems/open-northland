@@ -61,11 +61,11 @@ export const Armor = defineComponent<{ armorClass: number }>('Armor');
  * a worn weapon the data doesn't define grants no attack rather than crashing, the same "the data doesn't
  * define it → it does nothing" stance {@link Armor} takes for an out-of-table class.
  *
- * FIDELITY: the weapon's stats (damage/reach) are the verbatim extracted `weapontypes` params; *which*
+ * source-basis: the weapon's stats (damage/reach) are the verbatim extracted `weapontypes` params; *which*
  * settler holds *which* weapon is caller-supplied (`spawnSettler{weaponTypeId}`), NOT yet pinned to a
  * soldier-class→weapon loadout (the equip drive — the *acquire/carry-the-weapon-good behavior* — stays
  * oracle-blocked, the same "structure faithful, loadout approximated" stance as {@link Armor};
- * docs/FIDELITY.md "Settler-side Weapon stamping"). Determinism: read by a pure content scan in the
+ * source basis "Settler-side Weapon stamping"). Determinism: read by a pure content scan in the
  * CombatSystem, no RNG/wall-clock.
  */
 export const Weapon = defineComponent<{ weaponTypeId: number }>('Weapon');
@@ -192,7 +192,7 @@ export const AttackOrder = defineComponent<{ target: Entity }>('AttackOrder');
  *  - `source` — the shooter, for the fight-XP grant + the provoked-anger side effect on impact (a
  *    `tryGet` no-ops if it died mid-flight, so a dead archer's arrow still lands);
  *  - `target` — the entity the projectile homes on; it re-aims at the target's CURRENT position each
- *    tick (homing, approximated — the original's ballistic-vs-homing choice is unreadable, docs/FIDELITY.md).
+ *    tick (homing, approximated — the original's ballistic-vs-homing choice is unreadable, source basis).
  *    A target that dies / vanishes mid-flight ⇒ the projectile **expires** (no re-target);
  *  - `damage` — the **pre-resolved** material-column damage (`weapon.damagevalue[targetMaterial]`, step
  *    1's model) the blow lands. Resolved at launch, not on contact — equivalent here because armor is
@@ -203,7 +203,7 @@ export const AttackOrder = defineComponent<{ target: Entity }>('AttackOrder');
  *    `projectileHit` events carry it); the data-pinned marker the render slice draws the right sprite off;
  *  - `speed` — the weapon's extracted `WeaponType.speed` (a **faithful** param); the `projectileSystem`
  *    maps this onto a per-tick tile step via a named calibration constant (the unit is unreadable —
- *    docs/FIDELITY.md "Combat ranged projectiles"). Stored raw (the extracted value) so the component stays the
+ *    source basis "Combat ranged projectiles"). Stored raw (the extracted value) so the component stays the
  *    faithful data and the approximated mapping lives in one place (the system).
  *
  * A **separate optional component** on a **bare** entity (only a Position beside it) — no existing system

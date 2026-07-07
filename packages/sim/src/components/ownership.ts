@@ -5,7 +5,7 @@ import { type Entity, type World, defineComponent } from '../ecs/world.js';
  * `[0, MAX_PLAYERS)`. A *player* is WHO controls an entity (issues orders, owns the economy) — a
  * concept ORTHOGONAL to a settler/building/vehicle's `tribe` (its civilization/species): two
  * players can both field vikings, and the `tribe` alone can't tell them apart. The cap is a
- * deliberate, revisable ceiling (the ROADMAP's "up to N players"), not a fidelity constant — raise
+ * deliberate, revisable ceiling (the plan's "up to N players"), not a fidelity constant — raise
  * it when the lobby / AI-player work needs more slots.
  */
 export const MAX_PLAYERS = 16;

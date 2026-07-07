@@ -20,7 +20,7 @@ import type { TerrainMap } from '../nav/terrain.js';
  * ## Single-world constraint (important)
  *
  * Component stores are MODULE-LEVEL SINGLETONS shared across every `Simulation` (see
- * `ecs/world.ts` `defineComponent`; every sim test `beforeEach`-clears them; docs/LESSONS.md
+ * `ecs/world.ts` `defineComponent`; every sim test `beforeEach`-clears them; AGENTS.md
  * [56e8d3e]). So a replayed sim and the original sim CANNOT be alive at once — they would collide in
  * the same stores. `replay()` therefore returns a reconstructed sim that supersedes any prior one;
  * the caller must not keep reading the old sim's live stores afterward (its frozen `snapshot()` /

@@ -6,7 +6,7 @@
  * The map's `lmhe` lane is a per-CELL height (0..~250 observed corpus-wide, `content/maps/<id>.json` `elevation`). The
  * original lifts the projected world UP by a fixed factor per unit — screen_y = projected_y − LIFT·elev
  * — which is what makes hills read as hills and collapses the vertical mismatch vs the corpus (buildings
- * on the hill sat ~25–40 px off). The factor is MEASURED (docs/FIDELITY.md "projection"): the building
+ * on the hill sat ~25–40 px off). The factor is MEASURED (source basis "projection"): the building
  * lattice fit resolves the elevation term at E = 1.547 IMAGE px/unit at the corpus's 1.25× capture scale
  * (y-rms 5.0→1.2 with the term), i.e. {@link ELEVATION_LIFT} native art px/unit.
  *
@@ -14,7 +14,7 @@
  * projection, so two runs from one seed stay byte-identical (the golden tests don't see it).
  */
 
-/** The fitted vertical lift in IMAGE px per elevation unit, at the corpus's capture scale (docs/FIDELITY.md "projection"). */
+/** The fitted vertical lift in IMAGE px per elevation unit, at the corpus's capture scale (source basis "projection"). */
 const FITTED_LIFT_IMG_PX = 1.547;
 /** The corpus capture scale the fit was measured at (five independent building templates peak at 1.25×). */
 const CORPUS_CAPTURE_SCALE = 1.25;

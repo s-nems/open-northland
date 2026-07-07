@@ -169,7 +169,7 @@ function objectsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['ob
  * lane (older/foreign saves); throws on a
  * dims/length mismatch (a wrong/corrupt layer — caught per LAYER by {@link mapDatToTerrain}, which
  * then emits the grid without it). Carried through verbatim, mirroring `objects.levels`: the render
- * lift (≈1.24 native px/unit — see docs/FIDELITY.md "projection") lands in a later step, so nothing
+ * lift (≈1.24 native px/unit — see source basis "projection") lands in a later step, so nothing
  * consumes this lane yet.
  */
 function elevationFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['elevation'] {

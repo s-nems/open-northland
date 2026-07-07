@@ -61,7 +61,7 @@ import {
  *     an idle tick).
  *  2. **Spatial index** — all combatants are bucketed by tile ONCE ({@link TileBuckets}), so a seeker's
  *     "nearest enemy" query is a bounded grid RING SEARCH ({@link TileBuckets.nearest}) instead of an
- *     O(entities) full scan per seeker (the ROADMAP tier-3 ring-search consumer).
+ *     O(entities) full scan per seeker (the historical plan tier-3 ring-search consumer).
  *  3. **Per combatant** ({@link engageCombatant}) — act on the unit's {@link Stance} military mode (owned
  *     units; the original's `MILITARY_MODE`): **ATTACK** auto-acquires the nearest enemy in sight and
  *     swings (in the weapon reach band) or chases (beyond it, throttled to {@link REPATH_CADENCE});
@@ -74,7 +74,7 @@ import {
  * **Two hostility axes.** *Who* is an enemy is the {@link mayTarget} relation, which composes:
  *  - **Owner (player) hostility** — two OWNED combatants of DIFFERENT players are enemies; SAME player are
  *    friendly (a player's mixed-tribe army never fights itself). This is the axis battle scenes key on
- *    (viking-vs-viking told apart by player). Binary, no diplomacy/alliances (docs/FIDELITY.md).
+ *    (viking-vs-viking told apart by player). Binary, no diplomacy/alliances (source basis).
  *  - **Tribe hostility + predation + provoked anger** ({@link mayAttack}/{@link mayHunt}/{@link Anger}) —
  *    the existing content relations for any pair where at least one side is unowned (wildlife, economy
  *    fixtures, the golden path): civ-vs-civ by tribe, civ⇄aggressive-animal, hunter→catchable-prey, and a
@@ -112,7 +112,7 @@ export const combatSystem: System = (world, ctx) => {
 
 /**
  * How far (Manhattan tiles) an OWNED combatant can **spot** an enemy to advance on it — the aggro/advance
- * radius the walk-into-melee drive searches within. APPROXIMATED (docs/FIDELITY.md "Combat sight radius"):
+ * radius the walk-into-melee drive searches within. APPROXIMATED (source basis "Combat sight radius"):
  * humans carry NO readable sight/aggro field in the data (only animals have leash radii), so this is a
  * calibration-by-observation constant pending a look at the running original, not a pinned param. The
  * weapon's extracted `[minRange, maxRange]` band (where a swing lands) is separate and faithful.
@@ -126,7 +126,7 @@ export const SIGHT_RADIUS_TILES = 8;
  * pathfinding budget is only {@link PATHFINDING_BUDGET_PER_TICK}/tick anyway). Between repaths the unit
  * keeps walking its last route toward the enemy, and the swing check is distance-based (independent of the
  * path goal), so a slightly-stale route still delivers it into reach. OUR design (no oracle) —
- * docs/FIDELITY.md "Combat chase / repath cadence".
+ * source basis "Combat chase / repath cadence".
  */
 export const REPATH_CADENCE = 8;
 
@@ -134,7 +134,7 @@ export const REPATH_CADENCE = 8;
  * DEFEND stance — how far (Manhattan tiles) from its **anchor** a defender auto-acquires an enemy: it
  * engages only threats inside this radius of the tile the DEFEND stance was set on, ignoring anything
  * beyond (it holds its post rather than roaming). APPROXIMATED — the original's exact defend radius is
- * unreadable (docs/FIDELITY.md "Combat stances"); calibration-by-observation pending.
+ * unreadable (source basis "Combat stances"); calibration-by-observation pending.
  */
 export const DEFEND_RADIUS_TILES = 4;
 
@@ -142,14 +142,14 @@ export const DEFEND_RADIUS_TILES = 4;
  * DEFEND stance — the **leash**: the farthest (Manhattan tiles) from its anchor a defender will step to
  * strike an in-radius enemy. Kept a little above {@link DEFEND_RADIUS_TILES} so a melee defender can walk
  * up to a threat at the radius edge, but never chases far — a target reachable only by breaking the leash
- * is left alone and the defender returns to its anchor. APPROXIMATED (docs/FIDELITY.md).
+ * is left alone and the defender returns to its anchor. APPROXIMATED (source basis).
  */
 export const DEFEND_LEASH_TILES = 6;
 
 /**
  * FLEE stance — how many tiles a fleeing unit runs **away** from the nearest threat each time it re-aims:
  * the flee destination is the walkable cell this far off in the best away-direction. APPROXIMATED — no
- * readable flee-distance (docs/FIDELITY.md "Combat flee").
+ * readable flee-distance (source basis "Combat flee").
  */
 export const FLEE_STEP_TILES = 6;
 
@@ -157,14 +157,14 @@ export const FLEE_STEP_TILES = 6;
  * FLEE stance — how many ticks a fleeing unit holds its current run route before re-aiming away from the
  * (moving) threat. The flee twin of {@link REPATH_CADENCE}: a per-tick re-path of every fleer would be the
  * RTS-scale regression golden rule 7 forbids; between re-aims the unit runs its last route (the run gait
- * keeps it ahead of a walking pursuer). OUR design (docs/FIDELITY.md "Combat flee").
+ * keeps it ahead of a walking pursuer). OUR design (source basis "Combat flee").
  */
 export const FLEE_REPATH_CADENCE = 6;
 
 /**
  * FLEE stance — how many ticks a fleeing unit must go with **no threat in sight** before it stops running
  * and returns to the economy (the cool-down). Prevents a unit twitching in and out of flee as a threat
- * flickers at the sight edge. APPROXIMATED (docs/FIDELITY.md "Combat flee").
+ * flickers at the sight edge. APPROXIMATED (source basis "Combat flee").
  */
 export const FLEE_COOLDOWN_TICKS = 40;
 
@@ -172,7 +172,7 @@ export const FLEE_COOLDOWN_TICKS = 40;
  * The need level (fixed-point, in [0, ONE]) at or above which a **collapsing** hunger/fatigue overrides the
  * FLEE drive — a settler this close to starving/collapsing stops to eat/sleep even in danger (the AISystem's
  * need drive then owns it), while every lesser need yields to the flee. Set well ABOVE the ¾ eat/sleep
- * thresholds (a fleeing settler skips normal meals but not a near-death one). APPROXIMATED (docs/FIDELITY.md
+ * thresholds (a fleeing settler skips normal meals but not a near-death one). APPROXIMATED (source basis
  * "Combat flee"): the original's flee-vs-need arbitration is unreadable.
  */
 const NEED_COLLAPSE_THRESHOLD: Fixed = fx.div(fx.fromInt(19), fx.fromInt(20)); // 0.95·ONE
@@ -788,7 +788,7 @@ function hostileAnimalNow(world: World, ctx: SystemContext, e: Entity, tribe: nu
  *     AUTHORITATIVE: different players → enemies, same player → friendly (a player's mixed-tribe army never
  *     fights itself; two players fielding the same tribe DO fight). The tribe/hunt/anger relations don't
  *     apply to an owned-vs-owned pair (both sides are player-commanded units, never wildlife). Binary — no
- *     alliances/diplomacy (docs/FIDELITY.md "Combat hostility axis").
+ *     alliances/diplomacy (source basis "Combat hostility axis").
  *  2. Otherwise (at least one side **unowned** — wildlife, an economy fixture, the golden path) the content
  *     relations decide, unchanged: the {@link mayAttack} **tribe hostility** (same-tribe friendly, civ-vs-civ
  *     enemies, civ→aggressive-animal, animals don't war on each other), the {@link mayHunt} **predation**

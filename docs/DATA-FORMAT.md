@@ -92,7 +92,7 @@ names today. `construction` is the build-material cost (`{goodType, amount}[]`) 
 **graphics** table (`DataCnmd/budynki12/houses/houses.ini` `[GfxHouse]` `LogicConstructionGoods`,
 `extractConstructionCosts`) — the logic table above carries no cost key; empty for the always-present
 headquarters/wonder. A home's level chain (typeIds 2..6) reads its tier's upgrade cost (reference
-tribe; the per-tribe spread is a recorded FIDELITY deviation).
+tribe; the per-tribe spread is a recorded source-basis deviation).
 
 The sim consumes the IR; it never parses `.ini`. The mapping from raw fields to IR fields lives in
 the pipeline decoder for that type, and is documented inline there.

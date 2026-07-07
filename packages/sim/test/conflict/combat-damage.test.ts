@@ -14,7 +14,7 @@ import {
  * The combat damage read model — `combatDamage` selects the weapon's `damagevalue[material]` **column**
  * for each armor **material** a living target can wear (unarmored 0 + each `[armortype]` record's
  * `materialType`). The per-material value IS the resolved damage: armor works by COLUMN SELECTION, not
- * by subtracting a `blockingValue` (that uniform 5 has an unknown engine role — docs/FIDELITY.md — and
+ * by subtracting a `blockingValue` (that uniform 5 has an unknown engine role — source basis — and
  * is NOT applied). The structure columns `WOOD` (6) / `HOUSE` (7) are NOT armor rows — they are the
  * vs-tree / vs-building views (`damageVsWood`/`damageVsBuilding`). These tests pin the column model, the
  * material union, the shared `weaponDamageVsMaterial` join, the composite `(tribeType, typeId)` key, and

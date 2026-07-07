@@ -82,7 +82,7 @@ function grassMap(width: number, height: number): TerrainMap {
 }
 
 // Clear EVERY component store — the module-level singleton stores are shared across Simulation
-// instances (docs/LESSONS.md [ac6a287]/[f4593c4]); a missed store leaks a prior test's entity, which
+// instances (AGENTS.md [ac6a287]/[f4593c4]); a missed store leaks a prior test's entity, which
 // (a stale Health/CurrentAtomic on a reused id) silently diverts a planner/carrier decision.
 beforeEach(clearStores);
 
@@ -130,7 +130,7 @@ function loadedCarrierAt(sim: Simulation, x: number, y: number, goodType: number
   return e;
 }
 
-/** All `settlerBorn` events this tick (cleared each tick — accumulate across a loop, docs/LESSONS [8addb28]). */
+/** All `settlerBorn` events this tick (cleared each tick — accumulate across a loop, docs/AGENTS [8addb28]). */
 function bornThisTick(sim: Simulation): readonly SimEvent[] {
   return sim.events.current().filter((ev) => ev.kind === 'settlerBorn');
 }

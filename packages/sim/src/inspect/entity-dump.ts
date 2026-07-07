@@ -3,7 +3,7 @@ import type { EntitySnapshot, WorldSnapshot } from './snapshot.js';
 
 /**
  * `dumpEntity` / `traceEntity` — the **"dump an entity"** third of the time-travel / replay inspector
- * (ROADMAP "Cross-cutting DX": the overlay can "scrub ticks, diff state between two ticks, and dump an
+ * (plan "Cross-cutting DX": the overlay can "scrub ticks, diff state between two ticks, and dump an
  * entity"). `replay()` jumps to tick N and `HashTrace` finds tick N; `diffSnapshots()` shows what
  * changed across two ticks; this isolates ONE entity — its full component view at a tick, and its
  * timeline across a window — so "hash diverged at tick 432 → jump there → inspect entity 7" closes.

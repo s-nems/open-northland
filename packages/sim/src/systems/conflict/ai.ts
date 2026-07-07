@@ -94,7 +94,7 @@ export const aiSystem: System = (world, ctx) => {
  * The atomic id and its duration come from CONTENT, not code: the harvest atomic is the resource
  * good's `atomics.harvest`, and `duration` is resolved through the tribe's `setatomic` binding →
  * `atomicAnimations` length (see {@link atomicDuration}). This is the data-driven planner the
- * roadmap calls for — behavior is the atomic vocabulary, not bespoke per-job logic.
+ * plan calls for — behavior is the atomic vocabulary, not bespoke per-job logic.
  *
  * "Utility" is minimal here (nearest reachable target by Manhattan distance, harvest-or-deposit by
  * load state); hunger/needs and job assignment are later slices (NeedsSystem/JobSystem). Targets are
@@ -190,7 +190,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // fatigue has crossed the threshold sleeps IN PLACE to clear it (no walk, no target site).
     // Above harvest/haul/staffing so a worn-out operator stops working to rest. Sleeping where it
     // stands is the slice stand-in for the original's home-bound sleep — the housing/home system
-    // that would give a sleep target doesn't exist yet (see docs/FIDELITY.md).
+    // that would give a sleep target doesn't exist yet (see source basis).
     if (settler.fatigue >= FATIGUE_SLEEP_THRESHOLD) {
       startAtomic(
         world,
@@ -513,7 +513,7 @@ function walkToOrHold(world: World, e: Entity, here: CellId, target: CellId): vo
 
 /**
  * The numeric atomic id a settler runs to eat (the original's `setatomic <job> 10 "..._eat_slot_food"`
- * — id 10 is the eat slot across every tribe's bindings; see docs/FIDELITY.md). Like the other ids
+ * — id 10 is the eat slot across every tribe's bindings; see source basis). Like the other ids
  * it is the content cross-reference / animation join key; the typed `eat` effect is the behavior
  * (consume one unit of food + reset hunger, AtomicSystem).
  */
@@ -522,7 +522,7 @@ const EAT_ATOMIC_ID = 10;
 /**
  * Hunger level (fixed-point, in [0, ONE]) at or above which a settler stops working to eat. Set to
  * ¾ of a full bar: a settler works most of the way up the hunger bar, then seeks food before it
- * pins at ONE. APPROXIMATED (see docs/FIDELITY.md): the original drives eating off the per-animation
+ * pins at ONE. APPROXIMATED (see source basis): the original drives eating off the per-animation
  * hunger events (`event 30 2 <delta>` against a ~10000-scale bar) with no single readable "go eat at
  * X" threshold; this constant is the slice's deterministic eat trigger until that vocabulary is
  * decoded and calibration-by-observation pins the real cadence.
@@ -532,7 +532,7 @@ const HUNGER_EAT_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾�
 /**
  * The numeric atomic id a settler runs to sleep (the original's `setatomic <job> 8 "..._sleep"` — id
  * 8 is the sleep slot across every tribe's bindings, bound for every job, even babies; see
- * docs/FIDELITY.md). Like the other ids it is the content cross-reference / animation join key; the
+ * source basis). Like the other ids it is the content cross-reference / animation join key; the
  * typed `sleep` effect is the behavior (zero fatigue, AtomicSystem).
  */
 const SLEEP_ATOMIC_ID = 8;
@@ -540,7 +540,7 @@ const SLEEP_ATOMIC_ID = 8;
 /**
  * Fatigue level (fixed-point, in [0, ONE]) at or above which a settler stops working to sleep. Set to
  * ¾ of a full bar, mirroring {@link HUNGER_EAT_THRESHOLD}: a settler works most of the way up the
- * fatigue bar, then rests before it pins at ONE. APPROXIMATED (see docs/FIDELITY.md): like the eat
+ * fatigue bar, then rests before it pins at ONE. APPROXIMATED (see source basis): like the eat
  * trigger, the original drives sleeping off the per-animation rest events (`event <at> 1 <delta>`)
  * with no single readable "sleep at X" threshold; this constant is the slice's deterministic sleep
  * trigger until that vocabulary is decoded and calibration-by-observation pins the real cadence.
@@ -549,7 +549,7 @@ const FATIGUE_SLEEP_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // 
 
 /**
  * The numeric atomic id a settler runs to pray (the original's `MAP_MOVEABLES_ATOMIC_ACTION_TYPE_PRAY
- * = 12`, bound `setatomic 6 12 "..._pray"` for the civilist job across tribes; see docs/FIDELITY.md).
+ * = 12`, bound `setatomic 6 12 "..._pray"` for the civilist job across tribes; see source basis).
  * Like the other ids it is the content cross-reference / animation join key; the typed `pray` effect
  * is the behavior (zero piety, AtomicSystem).
  */
@@ -558,7 +558,7 @@ const PRAY_ATOMIC_ID = 12;
 /**
  * Piety level (fixed-point, in [0, ONE]) at or above which a settler stops working to pray, mirroring
  * {@link HUNGER_EAT_THRESHOLD}/{@link FATIGUE_SLEEP_THRESHOLD} at ¾ of a full bar. APPROXIMATED (see
- * docs/FIDELITY.md): like the eat/sleep triggers, the original drives praying off the per-animation
+ * source basis): like the eat/sleep triggers, the original drives praying off the per-animation
  * devotion events with no single readable "pray at X" threshold; this constant is the slice's
  * deterministic pray trigger until that vocabulary is decoded and calibration-by-observation lands.
  */

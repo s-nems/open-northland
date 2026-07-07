@@ -35,11 +35,11 @@ import { homeNextTier } from '../shared.js';
  * upgrade-specific transport code — and the upgrade *trigger* below (materials present → consume →
  * level up) fires once they land, closing the births→housing→upgrade→more-housing loop.
  *
- * FIDELITY: the material cost is the extracted `construction` param (graphics-table
- * `LogicConstructionGoods`, docs/FIDELITY.md "Build-material cost") and the level chain is the extracted
+ * source-basis: the material cost is the extracted `construction` param (graphics-table
+ * `LogicConstructionGoods`, source basis "Build-material cost") and the level chain is the extracted
  * typeId sequence — both faithful by construction; the *behaviors* (consume-when-all-present → flip
  * built / upgrade tier) are our design (the engine's build/upgrade loop has no oracle), recorded in
- * docs/FIDELITY.md "ConstructionSystem". Determinism: no RNG, no wall-clock; buildings are visited in
+ * source basis "ConstructionSystem". Determinism: no RNG, no wall-clock; buildings are visited in
  * the Building store's deterministic insertion order, every decision reads CONTENT, and every stockpile
  * write goes through the canonical Map (never iterated for a decision). A newly-upgraded home is not
  * re-upgraded the same tick: `world.query` yields each entity id exactly once, and the upgrade mutates
@@ -60,7 +60,7 @@ export const constructionSystem: System = (world, ctx) => {
         // the completion branch below (an integer floor keeps a partial delivery strictly < ONE),
         // so the `built >= ONE` gates (production / housing) stay exact. APPROXIMATED: the original
         // advances a site by builders WORKING it, not by deliveries alone — the builder-driven pace
-        // is deferred (docs/FIDELITY.md "ConstructionSystem").
+        // is deferred (source basis "ConstructionSystem").
         building.built = deliveredFraction(world, e, type.construction);
         continue;
       }

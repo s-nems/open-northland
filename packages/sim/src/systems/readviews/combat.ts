@@ -17,7 +17,7 @@ import { armorMaterialOf } from './classes.js';
  * (woolen 1 / leather 2 / chain 3 / plate 4), so the column and the armor class coincide there; the
  * material is the faithful index for the higher structure columns and for legibility.
  *
- * FIDELITY: pinned to `logicdefines.inc` `ARMOR_MATERIAL_TYPE_*` (golden rule #4) — the original's own
+ * source-basis: pinned to `logicdefines.inc` `ARMOR_MATERIAL_TYPE_*` (golden rule #4) — the original's own
  * material ids, not invented.
  */
 export const ARMOR_MATERIAL = {
@@ -44,7 +44,7 @@ export const ARMOR_MATERIAL = {
  * l.892). Distinct from {@link ARMOR_MATERIAL} — this is the ATTACKER's weapon family, the axis the
  * fight-experience buckets key on (`progression.ts` maps it to the `JOB_EXPERIENCE_TYPE_FIGHT_*` id).
  *
- * FIDELITY: pinned to `logicdefines.inc` `WEAPON_MAIN_TYPE_*` — the original's own class ids.
+ * source-basis: pinned to `logicdefines.inc` `WEAPON_MAIN_TYPE_*` — the original's own class ids.
  */
 export const WEAPON_MAIN_TYPE = {
   /** No weapon. */
@@ -70,7 +70,7 @@ export const WEAPON_MAIN_TYPE = {
  * `0` when the weapon lists none for that material. This **is** the resolved damage: the original's
  * `damagevalue` table pre-tabulates the per-material outcome, so armor selects the column and nothing
  * is subtracted (the `blockingValue 5` uniform on every base armor record has an UNKNOWN engine role —
- * see docs/FIDELITY.md — and is deliberately NOT applied). Shared by {@link combatDamage} (the whole
+ * see source basis — and is deliberately NOT applied). Shared by {@link combatDamage} (the whole
  * table) and the CombatSystem's per-hit resolution (one column), so the two can't drift.
  */
 export function weaponDamageVsMaterial(weapon: Pick<WeaponType, 'damage'>, material: number): number {
@@ -150,7 +150,7 @@ export interface CombatProfile {
  * `0` plus each `[armortype]` record's `materialType`), tabulating the damage the weapon lands —
  * `weapon.damage[material]`, the value the original pre-resolves per material. **No mitigation is
  * subtracted** (armor works by column selection; the uniform `blockingValue 5` has an unknown engine
- * role — docs/FIDELITY.md), and the structure columns {@link ARMOR_MATERIAL.WOOD}/`HOUSE` are NOT
+ * role — source basis), and the structure columns {@link ARMOR_MATERIAL.WOOD}/`HOUSE` are NOT
  * rows here — they are the vs-tree/vs-building views ({@link damageVsWood}/{@link damageVsBuilding}),
  * not a living target's armor. No mechanic is added (nothing is hit, no entity loses hitpoints); this
  * is the static damage *lookup* the combat atomics read, surfaced once so a hit doesn't re-walk the
@@ -168,9 +168,9 @@ export interface CombatProfile {
  * would silently drop those records (last-wins). An array loses nothing — every weapon gets a profile —
  * which a read view must guarantee. Each profile's `rows` are sorted ascending by `material`.
  *
- * FIDELITY: pinned to the extracted `weapontypes` `damagevalue` params, keyed by the victim's armor
+ * source-basis: pinned to the extracted `weapontypes` `damagevalue` params, keyed by the victim's armor
  * `materialType` (`logicdefines.inc ARMOR_MATERIAL_TYPE`) — the original's own column-selection model
- * (see docs/FIDELITY.md "Combat damage read side"). It adds no behavior (no hit resolution, no
+ * (see source basis "Combat damage read side"). It adds no behavior (no hit resolution, no
  * hitpoints, no targeting) and invents no data. The *combat behavior* (who hits whom, when, the
  * hitpoint loop) is a separate mechanic — this is only its lookup table.
  *
@@ -207,7 +207,7 @@ export function combatDamage(content: ContentSet): CombatProfile[] {
  * `WeaponType.typeId` is NOT globally unique (the same id recurs once per tribe — `2 = "fist"` for
  * every tribe), so a weapon is keyed by **both** ids; a weapon with no `tribeType` keys under the
  * empty-tribe slot (`":<typeId>"`). Mirrors how the extractor keys `weapontypes` by `(tribeType,
- * typeId)` (see docs/LESSONS.md `[bfe2491]`). NOTE even this pair is reused by a few animal weapons,
+ * typeId)` (see AGENTS.md `[bfe2491]`). NOTE even this pair is reused by a few animal weapons,
  * so it identifies a weapon's *class* but is not a unique key — see {@link combatDamage}.
  */
 export function weaponKey(weapon: Pick<WeaponType, 'tribeType' | 'typeId'>): string {

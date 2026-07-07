@@ -1,19 +1,19 @@
 /**
- * Structural-health survey — the objective scan behind /iterate §0.5 and /reflect §1.
+ * Structural-health survey for source and doc bloat.
  * Reports the three axes with their budgets (the metric is the trigger to LOOK; judgment decides):
  *
  *   1. Oversized sources  — non-test .ts past ~300 lines is a split candidate.
  *   2. Flat folders       — a src dir with ≥6 direct source files and no subfolders wants grouping.
  *   3. Doc budgets        — executor-read docs past ~300 lines drown the live signal.
  *
- * Informational only (always exits 0): the ratchet verdict — did the worst offender GROW since the
- * last reflection — still needs `git diff --stat` against the last reflection SHA.
+ * Informational only (always exits 0): use judgment before turning a metric into work.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const SOURCE_BUDGET = 300;
 const DOC_BUDGET = 300;
+const PLAN_BUDGET = 800;
 const FLAT_DIR_MIN_FILES = 6;
 
 const lineCount = (path) => readFileSync(path, 'utf8').split('\n').length;
@@ -70,18 +70,26 @@ for (const [dir, count] of [...dirs.entries()].sort((a, b) => b[1] - a[1])) {
 }
 if (flat === 0) console.log('  (none)');
 
-// ── 3. Doc budgets (executor-read docs + always-on contracts + command files) ──
+// ── 3. Doc budgets (always-on contracts + command files) ──
 console.log(`\n── Doc budgets (budget ~${DOC_BUDGET} lines) ──`);
 const docs = [
   'AGENTS.md',
-  'docs/ROADMAP.md',
-  'docs/FIDELITY.md',
-  'docs/TECH-DEBT.md',
-  ...(exists('docs/lessons') ? walk('docs/lessons') : []),
   ...srcRoots.flatMap((r) => walk(r)).filter((p) => p.endsWith('/AGENTS.md')),
   ...(exists('.claude/commands') ? walk('.claude/commands') : []),
 ].filter(exists);
 for (const doc of docs) {
   const lines = lineCount(doc);
   console.log(`${String(lines).padStart(6)}  ${lines > DOC_BUDGET ? 'OVER  ' : 'ok    '}${doc}`);
+}
+
+console.log(`\n── Active plans (budget ~${PLAN_BUDGET} lines; load only the relevant plan) ──`);
+const plans = exists('docs/plans')
+  ? walk('docs/plans')
+      .filter((p) => p.endsWith('.md'))
+      .sort()
+  : [];
+if (plans.length === 0) console.log('  (none)');
+for (const plan of plans) {
+  const lines = lineCount(plan);
+  console.log(`${String(lines).padStart(6)}  ${lines > PLAN_BUDGET ? 'OVER  ' : 'ok    '}${plan}`);
 }

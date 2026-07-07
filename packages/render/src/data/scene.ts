@@ -76,7 +76,7 @@ export type DrawKind = 'tile' | 'building' | 'settler' | 'resource' | 'stockpile
  * (and the atomic's numeric id rides along as {@link DrawItem.atomicId} so a binding can pick the
  * *specific* action's frame), else a live `PathFollow` ⇒ `moving`, else `idle`. Buildings/resources
  * are always `idle` (they don't animate per-state in this slice). This is the render-side reading of
- * sim state the roadmap calls "animation playback driven by each entity's logical state"; it never
+ * sim state the plan calls "animation playback driven by each entity's logical state"; it never
  * re-enters the sim.
  */
 export type SpriteState = 'idle' | 'moving' | 'acting';
@@ -142,7 +142,7 @@ export interface DrawItem {
   /**
    * For a settler: its facing direction index (0..7) — the screen-space heading a directional
    * animation binding indexes by. The `CR_Hum_Body` bob layout is NOT a uniform rotation; its 8 blocks
-   * face (read off the decoded frames, `docs/FIDELITY.md` "Settler facing"): `0 SW, 1 W, 2 NW, 3 NE,
+   * face (read off the decoded frames, `source basis` "Settler facing"): `0 SW, 1 W, 2 NW, 3 NE,
    * 4 E, 5 SE, 6 S, 7 N`. Derived from the live {@link readFacing} heading; omitted when the settler
    * isn't moving (the binding then falls back to {@link DEFAULT_FACING}).
    */
@@ -178,7 +178,7 @@ export interface DrawItem {
   /**
    * For a settler: whether it is a born-young (baby/child) settler — the sim `Age` component is present.
    * Disambiguates the age-class `jobType` ids (1..4) from a synthetic fixture's colliding adult job ids
-   * (docs/LESSONS.md [dc3ef54]): only a young settler keys the child/baby body table. Omitted for adults.
+   * (AGENTS.md [dc3ef54]): only a young settler keys the child/baby body table. Omitted for adults.
    */
   readonly young?: boolean;
   /**
@@ -348,7 +348,7 @@ function readAtomicElapsed(components: Readonly<Record<string, unknown>>): numbe
  * The bob block index per SCREEN-heading octant, indexed by `round(angle / 45°) mod 8` with the angle
  * from `Math.atan2(dy, dx)` (screen +x right, +y down): octant 0 = E, 1 = SE, 2 = S, 3 = SW, 4 = W,
  * 5 = NW, 6 = N, 7 = NE. The `CR_Hum_Body` sheet's 8 direction blocks are NOT a uniform screen-angle
- * rotation — each was read off the decoded frames one by one (`docs/FIDELITY.md` "Settler facing";
+ * rotation — each was read off the decoded frames one by one (`source basis` "Settler facing";
  * blocks face `0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N`) — hence the lookup.
  */
 const HEADING_OCTANT_TO_BLOCK: readonly number[] = [4, 5, 6, 0, 1, 2, 7, 3];
@@ -359,7 +359,7 @@ const HEADING_OCTANT_TO_BLOCK: readonly number[] = [4, 5, 6, 0, 1, 2, 7, 3];
  * derived from the PROJECTED heading, not the grid delta's sign — under the staggered raster the
  * same grid step `(0,+1)` heads screen down-RIGHT from an even row but down-LEFT from an odd one
  * (the sign-pair table this replaced faced both as "south", one of the visible zigzag artifacts;
- * docs/FIDELITY.md "Settler facing"). Floats are fine — render-only, never re-enters the sim.
+ * source basis "Settler facing"). Floats are fine — render-only, never re-enters the sim.
  */
 function facingFromScreenHeading(dx: number, dy: number): number {
   const octant = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)); // -4..4, 0 = screen right
@@ -562,7 +562,7 @@ function readOwnerPlayer(components: Readonly<Record<string, unknown>>): number 
  * staggered raster, so static map objects interleave correctly), while this oracle's sprite key is row-major
  * `(tileY, tileX)` — the two orders differ for items more than a row apart on one screen band. The
  * terrain-projection duplication between here and `WorldRenderer.buildFlatTerrain`/`buildTexturedTerrain`
- * is logged in `docs/TECH-DEBT.md` — they share the `terrain.ts` helpers, so they can't silently diverge.
+ * is logged in `docs/plans/` — they share the `terrain.ts` helpers, so they can't silently diverge.
  */
 export function buildScene(
   snapshot: WorldSnapshot,
@@ -665,7 +665,7 @@ function collectSprites(
     const jobType = kind === 'settler' ? readJobType(entity.components) : undefined;
     const player = kind === 'settler' ? readOwnerPlayer(entity.components) : undefined;
     // Only a born-young settler carries `Age` — the component-presence disambiguation of the age-class
-    // jobType ids (1..4) from colliding synthetic adult ids (docs/LESSONS.md [dc3ef54]).
+    // jobType ids (1..4) from colliding synthetic adult ids (AGENTS.md [dc3ef54]).
     const young = kind === 'settler' && 'Age' in entity.components;
     // A building carries its type id so a per-type binding draws its own house bob (the `[GfxHouse]`
     // `LogicType` → `GfxBobId` join); other kinds key off no type, so it's omitted for them.

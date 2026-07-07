@@ -1,13 +1,13 @@
 /**
  * The WORLD METRIC of the staggered-raster lattice — the sim-side twin of the measured projection
- * (docs/FIDELITY.md "projection"; the render half lives in `render`'s `iso.ts`).
+ * (source basis "projection"; the render half lives in `render`'s `iso.ts`).
  *
  * The original's map is NOT a square grid: cells sit on a STAGGERED raster (odd rows shifted half a
  * cell right), with the measured pitch **68 px per column step × 38 px per row step**. Distances the
  * sim reasons about for MOVEMENT (how long a step is, hence how fast a walk covers it on screen) must
  * use that geometry, not naive grid units — a grid-space metric makes a north–south walk read ~25%
  * slower than an east–west one and prices the lattice's edges wrongly for the pathfinder (the old
- * octile costs were the root of the zigzag routes; docs/FIDELITY.md "Movement on the staggered
+ * octile costs were the root of the zigzag routes; source basis "Movement on the staggered
  * lattice").
  *
  * Everything here is expressed in COLUMN UNITS: one full cell width (a column step, 68 px) = ONE.
@@ -24,7 +24,7 @@ export const HALF_COLUMN: Fixed = fx.div(ONE, fx.fromInt(2));
 
 /**
  * The vertical world extent of ONE ROW STEP, in column units: the measured 38 px row step over the
- * 68 px column step (docs/FIDELITY.md "projection" — 19/34 exactly). The render's
+ * 68 px column step (source basis "projection" — 19/34 exactly). The render's
  * `CALIBRATED_HALF_H / (2·CALIBRATED_HALF_W)` is the same ratio in pixels; keep the two in step.
  */
 export const ROW_STEP: Fixed = fx.div(fx.fromInt(19), fx.fromInt(34));

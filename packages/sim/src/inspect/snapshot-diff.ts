@@ -2,7 +2,7 @@ import type { EntitySnapshot, WorldSnapshot } from './snapshot.js';
 
 /**
  * `diffSnapshots` — the **"diff state between two ticks"** half of the time-travel / replay inspector
- * (ROADMAP "Cross-cutting DX"). `replay()` jumps to tick N and `HashTrace` finds tick N; this turns
+ * (plan "Cross-cutting DX"). `replay()` jumps to tick N and `HashTrace` finds tick N; this turns
  * two of those reconstructed states into a per-entity / per-component DELTA the overlay renders ("what
  * changed between tick 431 and tick 432?", "dump entity 7's changes").
  *

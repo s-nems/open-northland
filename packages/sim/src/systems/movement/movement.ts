@@ -12,7 +12,7 @@ import type { System } from '../context.js';
  * on integer fractions — no accumulated rounding drift — so two runs stay byte-identical.
  *
  * The magnitude is calibration-by-observation (no readable human `movespeed` exists — see
- * docs/FIDELITY.md "Movement step speed"): the earlier ¼ tile/tick read clearly TOO FAST against the
+ * source basis "Movement step speed"): the earlier ¼ tile/tick read clearly TOO FAST against the
  * original (and made the walk skate — the 12-frame leg cycle spanned 3 tiles); at ⅛ a full leg cycle
  * covers 1.5 tiles and the on-screen pace matches the original's unhurried walk much closer.
  */
@@ -22,7 +22,7 @@ export const MOVE_SPEED_PER_TICK: Fixed = fx.div(fx.fromInt(1), fx.fromInt(8));
  * How many times faster a **fleeing** unit runs than it walks — its run gait is the walk pace × this
  * multiplier when it carries no readable run speed of its own (a human: `animaltypes.ini` gives animals a
  * `runspeed` but humans have none). Set so a fleeing civilian clearly OUTPACES a walking pursuer (a
- * calibration constant — the original's run-vs-walk ratio is unreadable; docs/FIDELITY.md "Combat flee").
+ * calibration constant — the original's run-vs-walk ratio is unreadable; source basis "Combat flee").
  * An integer multiple of the ⅛-tile walk keeps the run step dividing ONE evenly, so no rounding drift
  * enters — two runs stay byte-identical.
  */
@@ -35,7 +35,7 @@ export const RUN_SPEED_MULTIPLIER = 2;
  * speed). This is the code path that FIRST reads `runPerTick`, but only a fleeing entity carrying a
  * `MoveSpeed` reaches the first branch — and today only owned humans flee (via the FLEE stance) while
  * `MoveSpeed`/`runPerTick` is animal-only, so every real fleer takes the walk×multiplier fallback; the
- * animal run gait stays unexercised until an animal flee/charge drive lands (docs/FIDELITY.md "Animal
+ * animal run gait stays unexercised until an animal flee/charge drive lands (source basis "Animal
  * locomotion pace"). Pure fixed-point — a deterministic read.
  */
 function runGait(world: World, e: Entity): Fixed {
@@ -121,7 +121,7 @@ export const movementSystem: System = (world) => {
  * walk covers the same ON-SCREEN distance per tick in every direction — an E/W leg (a full 68 px
  * column) takes 8 ticks at the default pace, a row-crossing lattice leg (a 51 px edge, ¾ the length)
  * takes 6. Measuring in raw grid units instead made a north–south walk read ~25% slower than an
- * east–west one and a re-path leg lurch (the reported speed wobble; docs/FIDELITY.md "Movement on
+ * east–west one and a re-path leg lurch (the reported speed wobble; source basis "Movement on
  * the staggered lattice"). Mirrors the projectile advance's fixed-point isqrt homing.
  *
  * An E/W leg is byte-identical to the old grid-space step: both endpoints share a row, so the

@@ -5,7 +5,7 @@ import { Simulation, type TerrainMap, fx, seedAnimalHerds } from '../../src/inde
 import { testContent } from '../fixtures/content.js';
 
 /**
- * **Populated-map combat scenario** — the end-to-end slice the ROADMAP Phase-4 "animals as
+ * **Populated-map combat scenario** — the end-to-end slice the plan Phase-4 "animals as
  * non-controllable tribes" item names ("a scenario/slice that *runs* a populated map end-to-end:
  * civ + seeded wildlife fighting via the combat drive"). Every piece is unit-tested in isolation
  * (the `seedAnimalHerds` populator, the `spawnAnimalHerd` command, the `combatSystem` targeting drive,

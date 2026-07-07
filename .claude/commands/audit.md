@@ -1,5 +1,5 @@
 ---
-description: Run the project's domain review lenses (sim-determinism / RTS-perf / fidelity + a correctness pass) over a diff and report ranked findings — review only, applies nothing.
+description: Run the project's review lenses over a diff and report ranked findings — review only, applies nothing.
 argument-hint: [what to review — a git range, a branch, or paths; default: working diff, else branch diff vs main, else HEAD~1..HEAD]
 ---
 
@@ -19,11 +19,17 @@ findings, apply nothing** — the user decides what gets fixed.
 Pass each agent the exact range/scope. Spawn only the lenses the diff can trip — and say which you
 skipped and why:
 
-- **`determinism-reviewer`** — the diff touches `packages/sim`, fixed-point math, or content schemas.
+- **`determinism-reviewer`** — the diff touches `packages/sim`, fixed-point math, command flow, or
+  content schemas.
 - **`perf-reviewer`** — the diff touches a per-tick sim system or a per-frame render/app path.
-- **`fidelity-reviewer`** — the diff implements/tunes a mechanic or extracts/consumes game data.
-- **A general correctness/edge-cases subagent** (`general-purpose`) — always, unless the diff is a
-  trivial doc/data tweak.
+- **`fidelity-reviewer`** — the diff implements/tunes a mechanic, extracts/consumes game data, or
+  makes source-basis claims.
+- **`architecture-reviewer`** — the diff crosses package boundaries, adds dependencies, creates a new
+  system/seam, changes workflow/docs architecture, or reshapes data flow.
+- **`code-quality-reviewer`** — any non-trivial code change, larger refactor, new system, or risky
+  test change.
+- **A general correctness/edge-cases subagent** (`general-purpose`) — for broad or high-risk changes
+  when the named lenses do not cover plain behavioral correctness. Skip for trivial doc/data tweaks.
 
 ## 3. Report (and stop)
 

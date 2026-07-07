@@ -5,11 +5,11 @@ import type { System } from '../context.js';
 /**
  * How much a settler's hunger rises each tick, in fixed-point [0,ONE] hunger units.
  *
- * FIDELITY (approximated — see docs/FIDELITY.md): the original drives hunger through
+ * source-basis (approximated — see source basis): the original drives hunger through
  * `atomicanimations.ini` `event <at> 2 <delta>` tuples — an activity animation drains a fixed amount
  * (e.g. `event 30 2 -100`) while an `eat_slot_food` animation restores it (`event 30 2 +4000`), on a
  * large integer scale where one meal ≈ +4000. That event-driven, per-animation model needs the atomic
- * `event (type,value)` vocabulary decoded (a deferred extraction — see ROADMAP Phase-1 risks), so for
+ * `event (type,value)` vocabulary decoded (a deferred extraction — see historical plan phase-1 risks), so for
  * now hunger rises at a small CONSTANT per-tick rate: this is the basic "hunger grows over time, eating
  * resets it" core, deterministic and bounded, with the event-driven per-activity rates as the faithful
  * target. The rate ONE/4096 per tick fills an empty bar in 4096 ticks — long enough that a settler
@@ -21,7 +21,7 @@ export const HUNGER_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(4096));
 /**
  * How much a settler's fatigue (tiredness) rises each tick, in fixed-point [0,ONE] units.
  *
- * FIDELITY (approximated — see docs/FIDELITY.md): like {@link HUNGER_RISE_PER_TICK}, the original
+ * source-basis (approximated — see source basis): like {@link HUNGER_RISE_PER_TICK}, the original
  * drives rest through per-animation `atomicanimations.ini` events — activity ticks fatigue up while a
  * `sleep` animation restores it (`viking_civilist_sleep` carries `event <at> 1 +4000` tuples on the
  * same ~10000-scale bar hunger uses, type 1 being the rest channel as type 2 is hunger). That
@@ -35,7 +35,7 @@ export const FATIGUE_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(8192));
 /**
  * How much a settler's piety need rises each tick, in fixed-point [0,ONE] units.
  *
- * FIDELITY (approximated — see docs/FIDELITY.md): the first **target-bound** non-food need (satisfied
+ * source-basis (approximated — see source basis): the first **target-bound** non-food need (satisfied
  * by praying *at a temple*, not in place / at a store). Like {@link HUNGER_RISE_PER_TICK} and
  * {@link FATIGUE_RISE_PER_TICK}, the original drives it through per-animation `atomicanimations.ini`
  * events on a numbered channel (type 1 = rest, type 2 = hunger; the religious channel is another id),
@@ -51,7 +51,7 @@ export const PIETY_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(16384));
 /**
  * How much a settler's enjoyment (recreation/leisure) need rises each tick, in fixed-point [0,ONE] units.
  *
- * FIDELITY (approximated — see docs/FIDELITY.md): the leisure need, satisfied by the `enjoy` atomic
+ * source-basis (approximated — see source basis): the leisure need, satisfied by the `enjoy` atomic
  * (id 17). Like {@link HUNGER_RISE_PER_TICK}/{@link FATIGUE_RISE_PER_TICK}/{@link PIETY_RISE_PER_TICK},
  * the original drives it through per-animation `atomicanimations.ini` events on a numbered channel —
  * `viking_civilist_enjoy` carries `event <at> 3 <delta>` tuples (channel 3 = the enjoy/leisure need, as
@@ -61,7 +61,7 @@ export const PIETY_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(16384));
  * piety (ONE/32768 ≈ one outing per two prayers) — recreation is the least-pressing of the bars; the
  * constant is the recorded faithful-target stand-in. The *reset* (the `enjoy` atomic id 17) is wired
  * (AtomicSystem); the *drive* (where it is satisfied) is deferred — unlike pray (at a temple), `enjoy`
- * has no readable building satisfier in `houses.ini` to walk to (see docs/FIDELITY.md). This is the
+ * has no readable building satisfier in `houses.ini` to walk to (see source basis). This is the
  * rise half.
  */
 export const ENJOYMENT_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(32768));
@@ -79,7 +79,7 @@ export const ENJOYMENT_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(32768));
  * restore the same channel-3 bar — the `enjoy` atomic (id 17) and `make_love` (id 78, a bigger
  * `event <at> 3 +800` boost; not a separate need) — both wired (AtomicSystem), but their *drive* is
  * deferred: unlike pray (at a temple), neither has a readable building satisfier in `houses.ini` to
- * walk to (see docs/FIDELITY.md). This system is the needs-rise half; with make_love wired, every named
+ * walk to (see source basis). This system is the needs-rise half; with make_love wired, every named
  * non-food need (sleep/pray/enjoy/make_love) has its atomic reset.
  *
  * Determinism: no RNG, no wall-clock — each need advances by a fixed Fixed step that divides ONE

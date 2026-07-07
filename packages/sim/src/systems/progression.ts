@@ -70,7 +70,7 @@ export function trackFor(
  * is keyed on). `experienceFactor` is the original's per-track accrual rate (raw integer, 1..250 in
  * the base data); summing it per completed work is the basic "repetition builds expertise" accrual —
  * the non-linear XP→level curve (`baseRepeatCounter`) is a later balance slice, deferred (see
- * docs/FIDELITY.md).
+ * source basis).
  */
 export function grantWorkExperience(
   world: World,
@@ -116,7 +116,7 @@ const SOLDIER_GENERAL_EXPERIENCE_TYPE = 69;
  * into — its {@link FIGHT_EXPERIENCE_TYPE}. Maps each weapon family to its fight track:
  * unarmed→FIST, spear→SPEAR, sword→SWORD, axe→AXE, bow→BOW, catapult→CATAPULT. **Saber has no fight
  * track** in the data (no `JOB_EXPERIENCE_TYPE_FIGHT_SABER`, and no saber-soldier `needfor` reads one),
- * so a saber swing maps to `undefined` — it accrues no fight XP (noted approximated, docs/FIDELITY.md).
+ * so a saber swing maps to `undefined` — it accrues no fight XP (noted approximated, source basis).
  */
 const FIGHT_EXPERIENCE_TYPE_BY_WEAPON_MAIN_TYPE: ReadonlyMap<number, number> = new Map([
   [WEAPON_MAIN_TYPE.UNARMED, FIGHT_EXPERIENCE_TYPE.FIST],
@@ -147,7 +147,7 @@ export function fightExperienceTypeFor(weaponMainType: number): number | undefin
  * combatant), the weapon class has no fight track (saber → `undefined`), the attacker is gone, or
  * content carries no `soldier general` track (rate 0 — a fixture without it accrues nothing).
  *
- * FIDELITY (approximated — docs/FIDELITY.md): the accrual **trigger** (per-damaging-swing) has no
+ * source-basis (approximated — source basis): the accrual **trigger** (per-damaging-swing) has no
  * readable oracle — the original may accrue per swing or per kill. Per-damaging-swing is the
  * deterministic reading. The raw XP accrues only; the XP→level→stat CURVE (`baseRepeatCounter`, the
  * combat bonuses a level grants) is a later calibration slice. Determinism: a pure content read + a
@@ -285,9 +285,9 @@ function tribeUnlockEnabled(
  * any cart is available. The `vehicle` `targetId` keys into `VehicleType.typeId` (the distinct
  * `logicvehicletype` namespace), the same id the `jobEnablesVehicle` edge resolved against.
  *
- * FIDELITY: the *capacity numbers* are the extracted `stockSlots` param and the *unlock* is the
+ * source-basis: the *capacity numbers* are the extracted `stockSlots` param and the *unlock* is the
  * extracted `jobEnablesVehicle` edge — both pinned to data. What is APPROXIMATED (see
- * docs/FIDELITY.md) is the carrier→vehicle PAIRING: the original assigns a specific vehicle per
+ * source basis) is the carrier→vehicle PAIRING: the original assigns a specific vehicle per
  * haul, and a carrier visibly fetches/parks a cart; here a carrier abstractly hauls at its tribe's
  * best unlocked capacity (no per-carrier vehicle entity yet). The slice's point is to consume the
  * `stockSlots`/`vehicle`-edge data, not to model cart logistics — that is a later vehicle-entity slice.
@@ -309,7 +309,7 @@ export function carrierCarryCapacity(world: World, ctx: SystemContext, tribe: nu
 /**
  * The **ship vehicle types a `tribe` has currently UNLOCKED** — the ships ({@link isShipVehicle}: the
  * `vehicle_ship` rows, `passengerSlots > 0`) whose `jobEnablesVehicle` tech-graph gate is satisfied for
- * the tribe right now, sorted ascending by `typeId`. This is the **ship-unlock tech gate** the ROADMAP
+ * the tribe right now, sorted ascending by `typeId`. This is the **ship-unlock tech gate** the plan
  * Phase-4 "Sea/Northland identity" item names as open: the content-only {@link shipVehicles} read view
  * answers *which vehicles are ships*; this answers the live-world question *which of those can THIS tribe
  * field yet* — the gate a boat-building/embark slice asks before it lets a tribe spawn a hull.
@@ -321,9 +321,9 @@ export function carrierCarryCapacity(world: World, ctx: SystemContext, tribe: nu
  * (e.g. a shipwright) is alive in the tribe. A tribe absent from content gates nothing, so every ship is
  * unlocked (consistent with the carrier capacity / house / good gates).
  *
- * FIDELITY: pinned to data on both axes — the ship/cart split is the extracted `passengerslots` param
+ * source-basis: pinned to data on both axes — the ship/cart split is the extracted `passengerslots` param
  * (see {@link isShipVehicle}) and the unlock is the extracted `jobEnablesVehicle` edge (the *Carrier*
- * row, docs/FIDELITY.md). It adds **no mechanic** (nothing embarks, no hull is spawned) — a derived
+ * row, source basis). It adds **no mechanic** (nothing embarks, no hull is spawned) — a derived
  * read over the already-extracted vehicle IR + the same membership query the capacity gate runs; the
  * boats-as-mobile-store ENTITIES and embark/disembark atomics stay deferred to the boat-entity slice.
  *
@@ -349,7 +349,7 @@ export function tribeShipsUnlocked(world: World, ctx: SystemContext, tribe: numb
  * it to `amount`. A requirement with no `experienceTypes` (none observed in the real data, but the schema
  * permits an empty list) is vacuously met — there is no track to measure against.
  *
- * APPROXIMATED (see docs/FIDELITY.md): the original measures the threshold per the same below-the-`.ini`
+ * APPROXIMATED (see source basis): the original measures the threshold per the same below-the-`.ini`
  * XP logic the per-animation `event` deltas live in — whether a two-`expType` line means "sum both" or
  * "either alone" has no readable oracle. Summing the named tracks is the deterministic reading (a
  * single threshold over the relevant specializations); refine when the original's XP curve is observed.

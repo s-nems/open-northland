@@ -20,7 +20,7 @@ import { testContent } from '../fixtures/content.js';
  * (the whole window) and `diffSnapshots` (adjacent pairs). Its oracle is byte-equality with a
  * per-tick `replay()` — the same determinism guarantee `localizeDivergence` leans on.
  *
- * Component stores are module-level singletons SHARED across every `Simulation` (docs/LESSONS.md
+ * Component stores are module-level singletons SHARED across every `Simulation` (AGENTS.md
  * [56e8d3e]) — so each recording phase and each manual replay clears the stores first, exactly as
  * localize-divergence.test.ts does, and `scrubWindow` supersedes the stores like `replay`.
  */

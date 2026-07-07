@@ -28,7 +28,7 @@ export interface MapObjectsData {
 /**
  * The opacity a `GfxDynamicBackground` object (the 8 wave records) composites over the water ground
  * with — our reading of the engine's translucent blit; the exact original factor is unpinned
- * (docs/FIDELITY.md).
+ * (source basis).
  */
 const WAVE_ALPHA = 0.5;
 
@@ -40,7 +40,7 @@ const WAVE_ALPHA = 0.5;
  * dregs), so the index is `N − level`. Pinned by calibration-by-observation on the bridge-map corpus:
  * the north forest is `lmlv=3` throughout and the original draws it full-grown (an isolated lmlv=3
  * cypress matches the full-grown frame at 0.99 vs 0.84/0.87 for the younger states), and the deposit
- * records' big-to-small list order matches level-as-remaining (docs/FIDELITY.md "Landscape-object
+ * records' big-to-small list order matches level-as-remaining (source basis "Landscape-object
  * layer"). Any out-of-range level — including the wall "intact" sentinel `100` — falls back to the
  * first (full) list. Pure.
  */
@@ -89,7 +89,7 @@ async function loadLayer(key: string): Promise<LoadedLayer | null> {
  *    (`halfCellToScreen` — the `emla` grid the original places on; no row stagger at this level).
  *  - **phase** — 0 for every object, so the loops play IN UNISON: the wave bobs are authored to
  *    tile seamlessly with their neighbours at the SAME frame, and a per-object stagger breaks that
- *    tiling into noise (the map stores no per-object phase — docs/FIDELITY.md).
+ *    tiling into noise (the map stores no per-object phase — source basis).
  *
  * A type that can't resolve (no record, no atlas, no usable frame) is counted + skipped — a partial
  * `content/` must degrade, not abort. Placements resolve in file order (deterministic).
@@ -145,7 +145,7 @@ export async function loadMapObjects(
         frames: animated ? frames : frames.slice(0, 1),
         decor: (record.walkBlockAreas ?? []).length === 0,
         // `GfxDynamicBackground` (exactly the wave records) = the engine's translucent blit over the
-        // water ground; the 50% is our reading of that blend (docs/FIDELITY.md).
+        // water ground; the 50% is our reading of that blend (source basis).
         alpha: record.dynamicBackground === true ? WAVE_ALPHA : 1,
       };
     });
@@ -182,7 +182,7 @@ export async function loadMapObjects(
       // but across the sea the phase drifts, so the surface no longer pulses as ONE identical stamp — the
       // "water looks repeated too many times / unnatural" report. A traveling diagonal ripple reads as
       // moving water; the map stores no per-object phase, so this deterministic gradient is our choice
-      // (docs/FIDELITY.md). Static objects (`frames.length <= 1`) ignore phase, so this only staggers the
+      // (source basis). Static objects (`frames.length <= 1`) ignore phase, so this only staggers the
       // looping bobs (waves, swaying trees/fire).
       phase: hx + hy,
       alpha: type.alpha,

@@ -137,7 +137,7 @@ import { progressionSystem, terrainSystem, timeSystem, transportSystem } from '.
 // genuinely cross-system helpers live in ./shared.ts; the terminal HUD/combat read views (projections
 // no system feeds back into a decision) live in ./readviews/ (split by concern: hud/combat/classes/tribes/vehicles/jobs).
 // This barrel re-exports them so `@vinland/sim`'s `systems` namespace (and the tests) keep a single
-// import site, and it owns SYSTEM_ORDER. This is the finished systems/ split — see docs/TECH-DEBT.md.
+// import site, and it owns SYSTEM_ORDER. This is the finished systems/ split — see docs/plans/.
 export type { System, SystemContext };
 export { aiSystem };
 export { commandSystem };

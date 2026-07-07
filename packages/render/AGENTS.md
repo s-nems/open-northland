@@ -41,7 +41,7 @@ Concretely, that means:
   that. So character team colour uses `gpu/paletted-sprite.ts` (`PalettedSprite`): an **indexed** atlas read
   through a `256×N` player-colour LUT in a custom-shader `Mesh`. That mesh bypasses the batcher (one draw
   call each) — the accepted cost for a faithful ramp remap; keep it to characters, and the sim (not the GPU)
-  is the battle-scale wall regardless. See docs/FIDELITY.md "Player (team) colours".
+  is the battle-scale wall regardless.
 - **Bound the zoom-out** (`app/src/view/camera.ts` `MIN_ZOOM`). We deliberately do NOT support fitting a whole huge
   map on screen — the requirement is a big *battle-scale* view. The min zoom is the floor that bounds
   the visible tile + bob count. Lowering it needs a zoom-out LOD (marker quads + animation freeze), not

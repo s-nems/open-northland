@@ -194,7 +194,7 @@ function placeBuilding(
 /**
  * Place a **boat hull** — the boat analogue of {@link placeBuilding}: it creates a {@link Vehicle} hull
  * at (x,y) carrying an empty {@link Stockpile} (the "boats as mobile stores" entity the Sea/Northland
- * roadmap item names — a ship is a movable stockpile, its capacity being the ship type's `stockSlots`).
+ * plan item names — a ship is a movable stockpile, its capacity being the ship type's `stockSlots`).
  *
  * The placement is gated by the tribe's **ship-unlock tech graph** ({@link tribeShipsUnlocked}): only a
  * `vehicleType` that is a ship the tribe has currently UNLOCKED (a `vehicle_ship` row — `passengerSlots > 0`
@@ -204,11 +204,11 @@ function placeBuilding(
  * an **empty** hold: a boat is loaded by hauling cargo to it (applying the `cargoGoods` filter — a deferred
  * load slice), not pre-stocked with starting goods.
  *
- * FIDELITY: pinned to the extracted vehicle IR on both axes the entity reads — the ship/cart split is the
+ * source-basis: pinned to the extracted vehicle IR on both axes the entity reads — the ship/cart split is the
  * `passengerslots` param (`shipVehicles`/`isShipVehicle`) and the unlock is the `jobEnablesVehicle` edge
  * ({@link tribeShipsUnlocked}). The hull is a *static* placed store here: movement, passenger embark/disembark, the
  * cargo-load filter, and water-valency terrain (which cells it floats on) are deferred follow-ups
- * (docs/FIDELITY.md "Sea/Northland — boat hull entity"). Determinism: a pure read of the unlocked-ship set
+ * (source basis "Sea/Northland — boat hull entity"). Determinism: a pure read of the unlocked-ship set
  * (a filtered/sorted content scan + an order-independent live-settler membership query) then a single
  * `create()`; no RNG, no wall-clock.
  */

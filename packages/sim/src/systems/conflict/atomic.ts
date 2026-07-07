@@ -51,7 +51,7 @@ const ATTACKED_ATOMIC_ID = 82;
  * against (~10000 in the source — the scale the needs/eat rows document, e.g. a meal `event 30 2 +4000`
  * refills ~40% of it; see `lifecycle/needs.ts` / `conflict/ai.ts`). The sim's 0..ONE need bar maps onto
  * it, so a raw reserve delta `D` becomes a bar delta `D / NEED_EVENT_RESERVE · ONE`. **Approximated**:
- * the exact reserve max isn't readable (docs/FIDELITY.md) — the combat-swing drain preserves the data's
+ * the exact reserve max isn't readable (source basis) — the combat-swing drain preserves the data's
  * DIRECTION (a drain raises the need) and RELATIVE magnitude (a woman's −100 swing costs 5× a soldier's
  * −20), scaled onto the bar; the general event-driven needs drive stays deferred.
  */
@@ -211,14 +211,14 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       // Recreation clears enjoyment (no goods consumed — like sleeping/praying, leisure is free).
       // Pairs with the NeedsSystem's per-tick enjoyment rise to close the rise→enjoy→reset loop. The
       // satisfier *drive* (where this is run) is deferred — `enjoy` has no readable building satisfier
-      // (see docs/FIDELITY.md) — so no planner branch chooses it yet; the reset is wired and ready.
+      // (see source basis) — so no planner branch chooses it yet; the reset is wired and ready.
       if (world.has(settler, Settler)) world.get(settler, Settler).enjoyment = fx.fromInt(0);
       return;
     case 'make_love':
       // Making love also clears enjoyment (no goods consumed — like enjoy). The make_love atomic
       // (id 78) is not a separate need: its animation restores the SAME channel 3 as `enjoy`
       // (`event <at> 3 +800` tuples), the leisure bar — so it resets `enjoyment` too. The drive is
-      // deferred for the same reason as `enjoy` (no readable building satisfier — see docs/FIDELITY.md);
+      // deferred for the same reason as `enjoy` (no readable building satisfier — see source basis);
       // no planner branch chooses it yet, the reset is wired and ready.
       if (world.has(settler, Settler)) world.get(settler, Settler).enjoyment = fx.fromInt(0);
       return;
@@ -392,7 +392,7 @@ function depleteNode(world: World, ctx: SystemContext, node: Entity, goodType: n
  * A landed blow also drives four follow-ups:
  *  - **Provokes** an otherwise-passive `getAngry` animal ({@link provokeAnger}): a struck boar/deer
  *    gets an {@link Anger} timer so it fights back (the `animaltypes.ini` provoked-anger half; an
- *    already-`aggressive` animal needs none — docs/FIDELITY.md "Civ-vs-animal aggression").
+ *    already-`aggressive` animal needs none — source basis "Civ-vs-animal aggression").
  *  - **Fight XP** ({@link grantFightExperience}) on a **damaging** swing — accrues into the swinging
  *    weapon's fight bucket (keyed by `effect.weaponMainType`), the same expType space the soldier-class
  *    `needfor*` gates read. A 0-damage or missed swing trains nothing.
@@ -568,7 +568,7 @@ function collectStagger(
  * No-ops when the attacker is gone/jobless or its attack animation doesn't resolve / carries no drain
  * (delta 0). The first combat consumer of the extracted event deltas — scoped to combat atomics; the
  * general event-driven needs drive (replacing the approximated per-tick rise/reset) stays deferred
- * (docs/FIDELITY.md).
+ * (source basis).
  */
 function paySwingNeedCost(world: World, ctx: SystemContext, attacker: Entity, atomicId: number): void {
   const s = world.tryGet(attacker, Settler);
@@ -611,10 +611,10 @@ function clampNeed(value: Fixed): Fixed {
  * another good, the meat is dropped (skipped) rather than crashing the tick; a hunter carrying meat
  * already merges the new units.
  *
- * FIDELITY: the meat **good** and **per-kill amount** are pinned params (the `meat` id + the prey's
+ * source-basis: the meat **good** and **per-kill amount** are pinned params (the `meat` id + the prey's
  * `maximumcadaversize`); that the yield lands *on the killing blow* rather than via a separate
  * walk-to-corpse `harvest_cadaver` atomic, and the 1-cadaver-unit→1-meat-unit mapping, are approximated
- * (docs/FIDELITY.md "Hunter cadaver-harvest yield"). Pure over `content` + entity state, no RNG/wall-clock.
+ * (source basis "Hunter cadaver-harvest yield"). Pure over `content` + entity state, no RNG/wall-clock.
  */
 function harvestCadaver(world: World, ctx: SystemContext, attacker: Entity, target: Entity): void {
   const hunter = world.tryGet(attacker, Settler);

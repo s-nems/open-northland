@@ -37,7 +37,7 @@ describe('composePlayerPalette', () => {
   it('writes the source ramp (idx 16..31) into every clothing patch; base elsewhere', () => {
     // The men's clothing patches (5 + 10) that receive the player ramp — NOT the source-ramp indices 16..31.
     // Patch 15 (240–255) is excluded on purpose: it holds carried-good colours (the "blue wood" bug); the
-    // `player_NN` recipe only remaps patches 10 + 5 (see PLAYER_COLOR_BANDS doc / docs/FIDELITY.md).
+    // `player_NN` recipe only remaps patches 10 + 5 (see PLAYER_COLOR_BANDS doc / source basis).
     expect(PLAYER_COLOR_BANDS).toEqual([
       [80, 95],
       [160, 175],

@@ -32,7 +32,7 @@ export const TypeId = z.number().int().nonnegative();
  * (`allowatomic`/`baseatomics`) and tribes (`setatomic`). The readable data ships NO master
  * atomictypes table — an atomic id's meaning is implicit in how those sources reference it
  * (e.g. the id under `atomicForHarvesting` is the harvest atomic for that good). The Phase-2
- * atomic planner consumes these bindings. See docs/ECS.md "Settler AI" and docs/ROADMAP.md Phase 1.
+ * atomic planner consumes these bindings. See docs/ECS.md "Settler AI" and docs/plans/Phase 1.
  */
 export const AtomicId = z.number().int().nonnegative();
 
@@ -104,7 +104,7 @@ export const GoodGathering = z.strictObject({
    * drops its whole yield as a ground trunk (the tree→"tree falling"→trunk lifecycle the
    * {@link harvest}/{@link pickup} stages name). The readable `.ini` carries NO such count (no
    * `baserepeatcounter` for the collector job — verified absent), so this is a calibration constant
-   * a scene/fixture sets and `docs/FIDELITY.md` tracks ("observed, pending calibration against the
+   * a scene/fixture sets and `source basis` tracks ("observed, pending calibration against the
    * original"). `0` (the default, and what the extractor emits) means **not a felling good** — a
    * single-hit gather (stone/clay yield one unit per swing, the node persisting), the pre-felling
    * behaviour Step 4 reworks. `> 0` marks a fell-once-whole-yield good (wood) — the sim stamps a
@@ -114,7 +114,7 @@ export const GoodGathering = z.strictObject({
   /**
    * **OBSERVED, not extracted** — the whole-node yield a felled node drops as its ground trunk (units
    * of this good). Like {@link chopsToFell} the readable data carries no per-tree wood count, so this
-   * is a calibration constant (docs/FIDELITY.md). Only meaningful when {@link chopsToFell} `> 0` (a
+   * is a calibration constant (source basis). Only meaningful when {@link chopsToFell} `> 0` (a
    * felling good); the sim stamps it as the node's `Resource.remaining`, released in full as the trunk
    * pile when the node falls. `0` (the default) leaves it to the spawn site.
    */
@@ -124,7 +124,7 @@ export const GoodGathering = z.strictObject({
    * The readable `.ini` has no field established to be the harvestable-unit count: `landscapetypes.ini`
    * `maximumValency` is a per-CELL valency (constant across a good's stages — mud_mine = mud_ore = mud = 6,
    * and a 1-unit dropped ore pile shares it), NOT the deposit size, so this stays a calibration constant a
-   * scene/fixture sets and `docs/FIDELITY.md` tracks (unlike {@link depositLevels}, which IS gfx data).
+   * scene/fixture sets and `source basis` tracks (unlike {@link depositLevels}, which IS gfx data).
    * `> 0` marks a **mined** good — a
    * distinct-`landscapeToPickup` "ore" deposit the collector chips one unit at a time, dropping each as a
    * ground ore pile and shrinking the node by level until empty (the sim stamps a `MineDeposit` on such a
@@ -136,7 +136,7 @@ export const GoodGathering = z.strictObject({
    * The number of discrete VISUAL fill states a mined deposit steps down through as it empties. **DATA,
    * not yet plumbed here** — this IS the deposit's harvest `[GfxLandscape]` record's own state count
    * (`frames.length`/`maxValency`: the `ls_ground` clay/iron/gold mines carry 5, stone's rock 4, mushroom
-   * 1 — the render already derives it directly in `nodeLevelBobs`, see docs/FIDELITY.md), so it is NOT an
+   * 1 — the render already derives it directly in `nodeLevelBobs`, see source basis), so it is NOT an
    * observed guess. The extractor emits `0` for now (a future join would copy the harvest record's frame
    * count here); the sim stamps it on the deposit's `MineDeposit` so `render` buckets `remaining/depositSize`
    * into the right fill-state frame. Only meaningful when {@link depositSize} `> 0`; `0` (the default)
@@ -169,14 +169,14 @@ export const GoodType = z.strictObject({
    * Input goods (+ per-cycle amounts) consumed to produce THIS good — the input side of the goods
    * graph, from `goodtypes` `productionInputGoods`. Empty for a raw/harvested good (no recipe). This
    * is the source the building `recipe` inputs are filled from (the workplace's `produces` output good
-   * names the output; this good's `productionInputs` names what that cycle consumes). See ROADMAP Phase 3.
+   * names the output; this good's `productionInputs` names what that cycle consumes). See historical plan phase 3.
    */
   productionInputs: z.array(ProductionInput).default([]),
   /**
    * The good's node layer in the goods graph, from the `[goodtype]` boolean flags — distinguishes a
    * raw (map-gathered) good from a produced (in-house) one, and marks which goods are recipe inputs.
    * The {@link productionInputs} edges plus these layers are the explicit goods-graph IR. See
-   * {@link GoodClassification} and ROADMAP Phase 3.
+   * {@link GoodClassification} and historical plan phase 3.
    */
   classification: GoodClassification.default({}),
   source: Provenance.optional(),
@@ -315,7 +315,7 @@ export const BuildingType = z.strictObject({
    * The production recipe, filled by the pipeline's output-side join (`fillBuildingRecipes`) for a
    * workplace with a non-empty `produces`; absent on a non-producing building. `inputs` come from the
    * produced good's `productionInputs`, `outputs` = each `produces` good at amount 1; `ticks` is the
-   * schema default until the per-tribe atomic-timing pass pins it (docs/FIDELITY.md).
+   * schema default until the per-tribe atomic-timing pass pins it (source basis).
    */
   recipe: Recipe.optional(),
   /**
@@ -375,7 +375,7 @@ export const WeaponType = z.strictObject({
    * (→ `undefined`), the {@link munitionType} twin. Captured as a plain non-negative int (a magnitude,
    * not a cross-ref — `speed` appears in no other table). The **UNIT is unreadable** (tiles/tick? — the
    * source carries no scale), so the ranged-combat drive maps it onto a per-tick step via a named
-   * calibration constant (docs/FIDELITY.md "Combat ranged projectiles"); the extracted value itself is faithful. */
+   * calibration constant (source basis "Combat ranged projectiles"); the extracted value itself is faithful. */
   speed: z.number().int().nonnegative().optional(),
   /**
    * `damagetype` — the **damage class** a weapon deals (a siege/area marker in the base data: only the
@@ -646,12 +646,12 @@ export type GfxPattern = z.infer<typeof GfxPattern>;
 
 /**
  * The **approximated** per-landscape-typeId ground binding — the typeId→pattern map the terrain renderer
- * consumes (ROADMAP Phase 2, step 2). Every map cell carries a {@link LandscapeType.typeId} (1-based, the
+ * consumes (historical plan phase 2, step 2). Every map cell carries a {@link LandscapeType.typeId} (1-based, the
  * `lmlt` per-cell value), but those types are mostly OBJECTS (void/tree/rock/iron/wheat…), not ground
  * classes. This table approximates each typeId's GROUND by a coarse **family** — its `id` slug naming
  * water → `water`, `rock`/`stone` → `mountain`, everything else (incl. tree/bush/wood, whose ground is
  * land) → `land` — and binds the family to ONE representative {@link GfxPattern} (its `text_NNN` texture +
- * the two triangles' UVs). **This is a deviation, not a 1:1 match** (docs/FIDELITY.md): the original
+ * the two triangles' UVs). **This is a deviation, not a 1:1 match** (source basis): the original
  * computes the per-cell pattern from corner types + variant lanes, an oracle-blocked algorithm. The
  * `debugColor` is the flat-tint fallback when the texture is unavailable.
  */
@@ -952,7 +952,7 @@ export type AtomicAnimation = z.infer<typeof AtomicAnimation>;
  *
  * The map's scripting payload — `MissionData` goals/results, `StaticObjects` pre-placed houses/goods,
  * `playerdata`/`AIData` — is deliberately **not** extracted here: it is the campaign/trigger layer
- * (docs/ROADMAP.md Phase 5), a far larger vocabulary than this metadata slice. See docs/SOURCES.md.
+ * (docs/plans/Phase 5), a far larger vocabulary than this metadata slice. See docs/SOURCES.md.
  */
 export const MapInfo = z.strictObject({
   /** Stable slug id (from the map folder name, lower-cased) — the cross-reference key. */
@@ -1016,7 +1016,7 @@ export const TerrainObjects = z.object({
    * (the last); consumers map `index = N − level`. Walls carry the sentinel `100` (= intact); that
    * and any other out-of-range value render the first (full) list. Absent on maps decoded before
    * the lane was understood (render then defaults to the full state). Direction pinned against the
-   * screenshot corpus (docs/FIDELITY.md "Landscape-object layer").
+   * screenshot corpus (source basis "Landscape-object layer").
    */
   levels: z.array(z.number().int().nonnegative()).optional(),
 });
@@ -1030,16 +1030,16 @@ export type TerrainObjects = z.infer<typeof TerrainObjects>;
  * load by NAME against the IR ({@link BuildingBob} `editName`+`level`, {@link JobType} `name`) — the
  * engine's own version-robust join, mirroring how {@link TerrainGround} joins patterns. The
  * `addgoods`/`setproducedgood`/`setguide` verbs (stock, production presets, scout guides) are NOT
- * captured yet — a tracked gap (docs/FIDELITY.md map-entity import).
+ * captured yet — a tracked gap (source basis map-entity import).
  */
 export const TerrainEntities = z.object({
   /**
    * `sethouse` placements: `[GfxHouse]` EditName + level pick the building type. `player` is read as
    * 1-based — an ASSUMPTION, not a pin: the column is the constant `1` across all 13 entity-bearing
    * maps (untestable from data; the other player-carrying map sections are 0-based), so verify by
-   * observing ownership in the running original (docs/FIDELITY.md "Authored entity placements").
+   * observing ownership in the running original (source basis "Authored entity placements").
    * `rot` is decoded verbatim with no consumer yet — the rotation→facing slice is deferred
-   * (docs/ROADMAP.md entity-import item).
+   * (docs/plans/entity-import item).
    */
   buildings: z
     .array(
@@ -1110,7 +1110,7 @@ export const TerrainMapFile = z
      * NOT the `2W × 2H` half-cell resolution the {@link objects} lane uses. Raw byte values, 0..250
      * (a hard observed ceiling across the real maps).
      * Present when the map ships the lane (older/foreign saves omit it). NO consumer yet: the render
-     * lift (≈1.24 native px/unit, MEASURED — see docs/FIDELITY.md "projection") lands in the NEXT
+     * lift (≈1.24 native px/unit, MEASURED — see source basis "projection") lands in the NEXT
      * step, so the lane is carried through unread for now.
      */
     elevation: z.array(z.number().int().nonnegative()).optional(),
@@ -1261,7 +1261,7 @@ export type BuildingBob = z.infer<typeof BuildingBob>;
  *
  * `upgrade` (the source's second int, 0 or 1): the 1-rows reference the NEXT size level's finished
  * body and are NOT part of this level's from-scratch construction — they belong to the original's
- * upgrade-in-progress overlay (semantics not fully decoded; docs/FIDELITY.md). Consumers of the
+ * upgrade-in-progress overlay (semantics not fully decoded; source basis). Consumers of the
  * from-scratch construction render use only the `upgrade === false` rows.
  *
  * Render-binding data like {@link BuildingBob} (same `(tribeId, typeId)` keying, same `(bmd,

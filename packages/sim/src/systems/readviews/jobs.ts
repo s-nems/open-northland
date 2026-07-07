@@ -24,7 +24,7 @@ const SEA_JOB_SUFFIX = '_sea';
  * job-side identity the Sea/Northland item names (`fisher_sea`/`trader_sea`), the classification a
  * settler-assignment gate or a "needs a boat to reach its station" check will read.
  *
- * FIDELITY: pinned to the extracted job `id` — the only param that distinguishes a sea job from its
+ * source-basis: pinned to the extracted job `id` — the only param that distinguishes a sea job from its
  * land counterpart in the readable data (the sea variants' `allowedAtomics` are empty, their atomics
  * coming per-tribe via `setatomic`, so the name is the data's own discriminator, not an invented one).
  * In the real IR the suffix isolates EXACTLY `fisher_sea` (23) and `trader_sea` (26) — no false
@@ -46,7 +46,7 @@ export function isSeaJob(job: JobType): boolean {
  * enumeration order is stable regardless of `content.jobs` declaration order — the canonical order a
  * "for each sea job" loop wants, the same shape `shipVehicles` returns for vehicles.
  *
- * FIDELITY n/a: a pure derived **read view** over the already-extracted job IR (like `shipVehicles`
+ * source-basis n/a: a pure derived **read view** over the already-extracted job IR (like `shipVehicles`
  * over vehicles) — it adds no mechanic and invents no classification: the sea-vs-land split is read
  * straight off the `id` suffix the original data carries (see {@link isSeaJob}). Determinism: a pure
  * function of `content` (no world, no RNG, no wall-clock) over the plain `content.jobs` array, explicitly

@@ -16,10 +16,10 @@ import type { System, SystemContext } from '../context.js';
  * component the entity carried (its own `Settler`/`Position`/`JobAssignment`/… vanish with it). The
  * destroyed entity is the one holding any cross-references (a worker's `JobAssignment` points
  * settler→building, never building→settler), so destroying it creates no dangling reference the way
- * destroying a *building* out from under a bound worker would (see LESSONS [71f13ab] — that hazard is
+ * destroying a *building* out from under a bound worker would (see AGENTS [71f13ab] — that hazard is
  * the reverse direction, handled at the `demolish` seam).
  *
- * FIDELITY: "a combatant at 0 hitpoints is dead and removed" is the faithful baseline (a felled
+ * source-basis: "a combatant at 0 hitpoints is dead and removed" is the faithful baseline (a felled
  * settler/animal leaves the field). The *hitpoint pool* it drains and *who deals the damage* are the
  * approximated halves (no oracle — humans' hitpoints are below the readable `.ini`; the targeting
  * drive is a later slice); this system only reaps a pool another mechanic emptied. The `cause` string
@@ -28,14 +28,14 @@ import type { System, SystemContext } from '../context.js';
  *
  * Determinism: the dead set is gathered by scanning the {@link Health} store, then COLLECTED into a
  * canonical (ascending-id) list BEFORE any destroy — mutating the store mid-`query` is a footgun
- * (LESSONS [71f13ab]), and a canonical destroy order makes the emitted `settlerDied` events a pure,
+ * (AGENTS [71f13ab]), and a canonical destroy order makes the emitted `settlerDied` events a pure,
  * reproducible function of state (the event order is hashed into nothing, but render reads it, so it
  * must be stable). No RNG, no wall-clock. Inert on the goldens/slice: they construct no `Health`-
  * bearing entity (combat is unreached there), so no entity is ever destroyed and the hash is
  * untouched — the [6264132] "only fires on a state the goldens never construct" pattern.
  */
 export const cleanupSystem: System = (world, ctx) => {
-  // Collect-then-destroy: never `world.destroy` while iterating the store the scan reads (LESSONS
+  // Collect-then-destroy: never `world.destroy` while iterating the store the scan reads (AGENTS
   // [71f13ab]). Canonical (ascending-id) order so the `settlerDied` events render consumes are stable.
   const dead: Entity[] = [];
   for (const e of world.query(Health)) {

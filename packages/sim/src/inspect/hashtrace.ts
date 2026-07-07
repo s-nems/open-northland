@@ -2,7 +2,7 @@ import type { WorldSnapshot } from './snapshot.js';
 
 /**
  * `HashTrace` — the per-tick hash (+ bounded snapshot) ring buffer that feeds the "time-travel /
- * replay inspector" DX win (ROADMAP "Cross-cutting DX"). It is the **"find tick N"** half of the
+ * replay inspector" DX win (plan "Cross-cutting DX"). It is the **"find tick N"** half of the
  * inspector; `replay()` is the **"jump to tick N"** half:
  *
  *  - `replay({content,seed,map?,log,untilTick})` reconstructs the exact state AT a tick by re-applying

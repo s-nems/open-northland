@@ -17,7 +17,7 @@
  * (dimensions/GUID/type/name ids), and the per-cell landscape grid of every `map.dat` -> a
  * `maps/<id>.json` `TerrainMap` (the sim's nav-graph input). The remaining stages (standalone
  * palettes, the `.cif`-only type tables, the map's `MissionData`/`StaticObjects` mission scripting,
- * and the oracle pixel-diff) are still TODO; see docs/ROADMAP.md.
+ * and the oracle pixel-diff) are still TODO; see docs/plans/.
  */
 
 import { realpathSync } from 'node:fs';
@@ -86,7 +86,7 @@ async function run(args: Args): Promise<void> {
   // Player (team) colours: keep the human character bobs recolourable at draw time. Emit an indexed atlas
   // (palette index in red, mask in alpha) for every `cr_hum_*` body/head, plus one 256×16 player-colour LUT
   // (10 shipped `playerNN.pcx` + 6 hue-rotated extras). The renderer reads each index through the player's
-  // LUT row, so one atlas serves all 16 players — see packages/render palette-LUT shader + docs/FIDELITY.md.
+  // LUT row, so one atlas serves all 16 players — see packages/render palette-LUT shader + source basis.
   const indexed = await convertIndexedCharacterAtlases(bindings, args.out);
   const lut = await convertPlayerColorLut(args.out).catch((err: unknown) => {
     console.warn(`[pipeline] player-colour LUT skipped: ${(err as Error).message}`);

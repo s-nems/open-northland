@@ -3,7 +3,7 @@
 The `sim` package is **deterministic and pure**. This is the detailed contract for working *here*;
 the root [`AGENTS.md`](../../AGENTS.md) carries the one-paragraph version + the project-wide rules.
 Also read [`docs/ECS.md`](../../docs/ECS.md) (the model) and [`docs/TESTING.md`](../../docs/TESTING.md)
-(how to prove a change). Recurring gotchas live in [`docs/lessons/sim.md`](../../docs/lessons/sim.md).
+(how to prove a change).
 
 ## The invariant
 
@@ -36,7 +36,7 @@ fixed-point integers (`src/core/fixed.ts`), never floats. No DOM, no I/O, no `im
 
 `fixed.ts` is scaled integers in a JS double (exact to 2^53) with dev-mode overflow assertions.
 Truncation bites: `ONE / duration` truncates, so don't accumulate a per-tick `Fixed` fraction to
-reach `ONE` — count an integer `elapsed` to the exact `elapsed >= duration` (see `docs/lessons/sim.md`).
+reach `ONE` — count an integer `elapsed` to the exact `elapsed >= duration`.
 
 ## Proving your change (the golden rule of the goldens)
 
@@ -56,7 +56,7 @@ namespace between runs, or the earlier run's entities leak onto the later run's 
 query-order decision diverges: `for (const c of Object.values(components)) if (c?.store instanceof Map)
 c.store.clear()` (a hand-picked subset misses a component a future system adds). The vitest suites do this
 in `beforeEach`; a throwaway harness does not get it for free. This is the loop's most-rediscovered trap
-(see docs/lessons/sim.md `[ac6a287]`).
+and belongs in every new multi-sim harness.
 
 ## Scaling to thousands of units
 

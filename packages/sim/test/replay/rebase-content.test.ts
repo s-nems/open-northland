@@ -13,13 +13,13 @@ import { testContent } from '../fixtures/content.js';
 
 /**
  * Tests for `rebaseContent()` — the headless, self-verifiable half of the "Content hot-reload" DX win
- * (ROADMAP "Cross-cutting DX"). The app reads/watches a content file (Vite-HMR glue, render-side);
+ * (plan "Cross-cutting DX"). The app reads/watches a content file (Vite-HMR glue, render-side);
  * this validates the new raw blob and, if valid, REBASES the run onto it by replaying the command log
  * into a fresh sim built with the NEW content. Two oracles: (1) rebasing onto the SAME content
  * reproduces the run byte-for-byte (`hashState()` — inherited from `replay`); (2) rebasing onto
  * CHANGED content reaches a state the changed data dictates, NOT the old one.
  *
- * Component stores are module-level singletons SHARED across every `Simulation` (docs/LESSONS.md
+ * Component stores are module-level singletons SHARED across every `Simulation` (AGENTS.md
  * [56e8d3e]) — a rebased sim supersedes the original. So each phase CLEARS the stores before building
  * a new sim, and any value compared across the boundary (a hash STRING) is captured BEFORE the rebuild.
  */

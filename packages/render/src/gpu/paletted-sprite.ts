@@ -64,7 +64,7 @@ uniform vec2 uColorKey;     // .x > 0.5: key magenta; .y: near-black mode (0 off
 uniform vec4 uFrameUV;      // the current frame's atlas-UV box (min.xy, max.zw) — for the 'round' corner key
 
 // GUI transparent key — OUR floating-HUD deviation, NOT an original mechanism (the engine blitter has no
-// colour key; see docs/FIDELITY.md "Left tool panel"). The in-game GUI palettes (iconsleft/context/…) reserve
+// colour key; see source basis "Left tool panel"). The in-game GUI palettes (iconsleft/context/…) reserve
 // palette index 0 as a MAGENTA sentinel (255,0,255) and a band of near-black entries (max channel ≲ 28/255)
 // as each element's background. A bob writes them opaque (transparency is skip-runs), so an element drawn
 // straight would carry an opaque dark rectangle over the world — which the original hid by rendering gameplay

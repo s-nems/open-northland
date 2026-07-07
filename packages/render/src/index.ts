@@ -154,4 +154,4 @@ export interface Renderer {
   dispose(): void;
 }
 
-// TODO(Phase 2): implement PixiRenderer satisfying Renderer. See docs/ROADMAP.md.
+// TODO(Phase 2): implement PixiRenderer satisfying Renderer. See docs/plans/.

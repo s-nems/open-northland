@@ -68,8 +68,8 @@ gitignored bytes:
   when `content/` is absent). **Player (team) colours:** `?view=colors` is the 16-colour montage (the walk once
   per player colour); `?color=N` (0–15) paints a character's whole animation set in one player colour — both draw
   the **indexed** atlas through the `256×16` player-colour LUT via `render`'s `PalettedSprite` (only the clothing
-  band recolours; see docs/FIDELITY.md "Player (team) colours"). A per-tone **skin/hair variant** axis (distinct
-  from team colour) is still a deferred pipeline follow-up (docs/FIDELITY.md).
+  band recolours). A per-tone **skin/hair variant** axis (distinct from team colour) is still a
+  deferred pipeline follow-up; track it in a concrete plan before implementing.
 - `?sound=off` — mute the original decoded sounds (`@vinland/audio`), which are **default-on** in live +
   scene modes: positional action SFX + terrain ambient (viewport-culled, attenuated, panned) + non-spatial
   life-event jingles + **sex/age-matched settler voice chatter** (a settler sounds like the body it draws —
@@ -90,7 +90,7 @@ gitignored bytes:
   the cell-diamond width in px** (`?pitch`, the live master-scale knob — sprite-vs-terrain size; default the
   MEASURED 68, row step following the measured 38/68 ratio; `?pitchy=<cellDiamondHeight>` — the full
   diamond height, 2× the row step, measured 76 — overrides the height separately; `setTilePitch` in
-  `iso.ts`, method in docs/FIDELITY.md "projection"). These compose with
+  `iso.ts`). These compose with
   `?scene=`. The live view also mounts the FPS / entity-count perf overlay (bottom-left), like `?scene=`.
   Real graphics are the **default** for live + scene (`resolveSpriteSheet` degrades to synthetic
   markers when `content/` is absent, so a bare checkout still boots); `?atlas=synthetic` forces markers,

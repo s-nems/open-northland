@@ -41,7 +41,7 @@ export const Settler = defineComponent<{
    * piety (satisfied at a *temple*), neither `enjoy` nor `make_love` has a **readable building
    * satisfier** to walk to — the only no-recipe/no-worker/no-stock houses in `houses.ini` are the temple
    * and a decorative wall, neither a leisure site — so the DRIVE (where it is satisfied) is deferred
-   * pending a content building→need binding; only the rise + the two resets are pinned (docs/FIDELITY.md).
+   * pending a content building→need binding; only the rise + the two resets are pinned (source basis).
    */
   enjoyment: Fixed;
   /** specialization id -> experience points (humanjobexperiencetypes). */

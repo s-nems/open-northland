@@ -14,7 +14,7 @@ import type { GalleryView } from './anim-cells.js';
 /**
  * The eight facing options + "full", in a human-friendly compass order (NOT raw block index order). The
  * `dir` is the `CR_Hum_Body` block index the gallery indexes (`0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S,
- * 7 N` — docs/FIDELITY.md "Settler facing"); the label is the screen facing that block draws.
+ * 7 N` — source basis "Settler facing"); the label is the screen facing that block draws.
  */
 const DIRECTION_OPTIONS: readonly { readonly label: string; readonly dir: GalleryDirection }[] = [
   { label: 'Pełna', dir: 'full' },

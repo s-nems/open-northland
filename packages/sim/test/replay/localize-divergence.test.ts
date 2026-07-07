@@ -19,7 +19,7 @@ import { testContent } from '../fixtures/content.js';
  * primitives (`HashTrace.divergedFrom` → `replay` ×2 → `diffSnapshots`) into the inspector's
  * documented "hash diverged at tick N → jump there → inspect what differs" workflow.
  *
- * Component stores are module-level singletons SHARED across every `Simulation` (docs/LESSONS.md
+ * Component stores are module-level singletons SHARED across every `Simulation` (AGENTS.md
  * [56e8d3e]) — so each recording phase and each manual replay clears the stores first, exactly as
  * replay.test.ts does, and `localizeDivergence` clears between its own two internal replays.
  */

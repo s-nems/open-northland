@@ -21,10 +21,10 @@ import type { AnimalType, ContentSet, TribeType } from '@vinland/data';
  * "for each playable tribe" loop (births, AI, scoring) wants. {@link isPlayableTribe} is the matching
  * membership predicate for a single `tribeType` without materializing the list.
  *
- * FIDELITY n/a: a pure derived **read view** over the already-extracted tribe IR, like {@link goodsGraph}
+ * source-basis n/a: a pure derived **read view** over the already-extracted tribe IR, like {@link goodsGraph}
  * — it adds no mechanic (nothing produced/consumed/moved) and invents no classification: the
  * playable-vs-animal split is read straight off whether the source `[tribetype]` block declared a
- * `jobEnables*` tech graph, the faithful param the pipeline pinned (ROADMAP Phase 4 "N data-defined
+ * `jobEnables*` tech graph, the faithful param the pipeline pinned (historical plan phase 4 "N data-defined
  * tribes": asymmetry through each tribe's bindings + `allow*`/`needfor*` graph, never hardcode "two").
  *
  * Determinism: a pure function of `content` (no world, no RNG, no wall-clock) over the plain
@@ -64,7 +64,7 @@ export function isPlayableTribe(content: ContentSet, tribeType: number): boolean
  * animal tribe out of the **player-vs-player** enemy predicate — civ-vs-animal aggression is a
  * separate, data-driven (`animaltypes.ini`) model, not the same-different-tribe rule.
  *
- * FIDELITY n/a: a pure derived **read view** over the already-extracted tribe IR, like
+ * source-basis n/a: a pure derived **read view** over the already-extracted tribe IR, like
  * {@link isPlayableTribe} — it adds no mechanic and invents no classification; the animal-vs-civ split
  * is read straight off whether the source `[tribetype]` declared a `jobEnables*` tech graph. Pure over
  * `content`, no RNG/wall-clock.
@@ -76,13 +76,13 @@ export function isAnimalTribe(content: ContentSet, tribeType: number): boolean {
 
 /**
  * The {@link AnimalType} behaviour record for `tribeType`, or null — a pure read over `content.animals`,
- * keyed by `tribeType` (an animal's identity IS its owning tribe — see docs/FIDELITY.md "Animal type
+ * keyed by `tribeType` (an animal's identity IS its owning tribe — see source basis "Animal type
  * table"). Returns the **first** match in source-array order: the real `animaltypes.ini` reuses a
  * `tribetype` for a couple of records (tribe 23 appears twice), so the table is an array, not a Map —
  * keying by `tribeType` would silently drop a record (the same array-not-Map decision the weapon/combat
  * read views make). null when the tribe has no animal record (a civilization, or an unknown tribe).
  *
- * FIDELITY n/a: a pure derived **read view** over the already-extracted `animaltypes` IR — it adds no
+ * source-basis n/a: a pure derived **read view** over the already-extracted `animaltypes` IR — it adds no
  * mechanic and invents no data; the behaviour flags it surfaces are the faithful params the pipeline
  * pinned. Pure over `content`, no RNG/wall-clock.
  */
@@ -101,9 +101,9 @@ export function animalRecord(content: ContentSet, tribeType: number): AnimalType
  * otherwise-passive animal **provoked** into temporary hostility (it was attacked, then stays hostile
  * for `angryGameTime` ticks) — is the companion {@link isProvokableAnimal}/{@link angryGameTimeOf}
  * read side, consumed via the per-entity {@link Anger} timer the AtomicSystem stamps and the
- * CombatSystem reads (docs/FIDELITY.md "Civ-vs-animal aggression").
+ * CombatSystem reads (source basis "Civ-vs-animal aggression").
  *
- * FIDELITY n/a here (a read view); the *behaviour* it drives is tracked in docs/FIDELITY.md. Pure over
+ * source-basis n/a here (a read view); the *behaviour* it drives is tracked in source basis. Pure over
  * `content`, no RNG/wall-clock.
  */
 export function isAggressiveAnimal(content: ContentSet, tribeType: number): boolean {
@@ -119,8 +119,8 @@ export function isAggressiveAnimal(content: ContentSet, tribeType: number): bool
  * lapses). An always-`aggressive` animal (a bear) needs no provocation — it is hostile unconditionally
  * — and a tribe with no animal record (a civilization, an unknown tribe) is not provokable. The
  * **anger duration** ({@link angryGameTimeOf}) is the matching `angryGameTime` magnitude. Pure over
- * `content`, no RNG/wall-clock; FIDELITY n/a here (a read view) — the *behaviour* it drives is tracked
- * in docs/FIDELITY.md ("Civ-vs-animal aggression").
+ * `content`, no RNG/wall-clock; source-basis n/a here (a read view) — the *behaviour* it drives is tracked
+ * in source basis ("Civ-vs-animal aggression").
  */
 export function isProvokableAnimal(content: ContentSet, tribeType: number): boolean {
   return animalRecord(content, tribeType)?.getAngry ?? false;
@@ -132,7 +132,7 @@ export function isProvokableAnimal(content: ContentSet, tribeType: number): bool
  * unknown tribe — it cannot be provoked, so it has no anger duration). The AtomicSystem stamps an
  * {@link Anger}`{until: tick + angryGameTimeOf(...)}` when a {@link isProvokableAnimal} animal is
  * struck; the timer lapses (and the component is removed) once the current tick reaches `until`. Pure
- * over `content`, no RNG/wall-clock; FIDELITY n/a (read view — the param is the verbatim extracted
+ * over `content`, no RNG/wall-clock; source-basis n/a (read view — the param is the verbatim extracted
  * `angryGameTime`).
  */
 export function angryGameTimeOf(content: ContentSet, tribeType: number): number {
@@ -144,7 +144,7 @@ export function angryGameTimeOf(content: ContentSet, tribeType: number): number 
  * `animaltypes.ini` record sets `cannotbeattacked` (decorative/non-combat fauna: bees, butterflies). The
  * combat targeting drive uses this to **exempt** such an animal from a civilization's attacks (it is
  * never a valid target), even if it is somehow flagged aggressive. A tribe with no animal record is not
- * exempt (it is not a decorative animal). Pure over `content`, no RNG/wall-clock; FIDELITY n/a (read view).
+ * exempt (it is not a decorative animal). Pure over `content`, no RNG/wall-clock; source-basis n/a (read view).
  */
 export function animalCannotBeAttacked(content: ContentSet, tribeType: number): boolean {
   return animalRecord(content, tribeType)?.cannotBeAttacked ?? false;
@@ -159,8 +159,8 @@ export function animalCannotBeAttacked(content: ContentSet, tribeType: number): 
  * `animaltypes.ini` driver the sim consumes (alongside `aggressive`/`getangry`/`cannotbeattacked`). A
  * tribe with no animal record (a civilization, an unknown tribe) is not catchable.
  *
- * FIDELITY n/a here (a read view); the *behaviour* it drives (the hunter strike) is tracked in
- * docs/FIDELITY.md ("Hunter strike on catchable prey"). Pure over `content`, no RNG/wall-clock.
+ * source-basis n/a here (a read view); the *behaviour* it drives (the hunter strike) is tracked in
+ * source basis ("Hunter strike on catchable prey"). Pure over `content`, no RNG/wall-clock.
  */
 export function isCatchableAnimal(content: ContentSet, tribeType: number): boolean {
   return animalRecord(content, tribeType)?.catchable ?? false;
@@ -175,9 +175,9 @@ export function isCatchableAnimal(content: ContentSet, tribeType: number): boole
  * livestock-ownership drive (a herder claiming an animal, a pen of owned cattle) reads. A tribe with no
  * animal record (a civilization, an unknown tribe) is not warrantable.
  *
- * FIDELITY n/a here (a read view over the verbatim extracted `warrantable` flag); the *ownership
+ * source-basis n/a here (a read view over the verbatim extracted `warrantable` flag); the *ownership
  * behaviour* it will drive (claiming/penning/breeding owned livestock) is a later slice with no oracle,
- * tracked separately in docs/FIDELITY.md. Pure over `content`, no RNG/wall-clock.
+ * tracked separately in source basis. Pure over `content`, no RNG/wall-clock.
  */
 export function isWarrantableAnimal(content: ContentSet, tribeType: number): boolean {
   return animalRecord(content, tribeType)?.warrantable ?? false;
@@ -192,9 +192,9 @@ export function isWarrantableAnimal(content: ContentSet, tribeType: number): boo
  * tile blocks the creature's route. A tribe with no animal record (a civilization, an unknown tribe)
  * does not ignore houses (it paths around them like any settler).
  *
- * FIDELITY n/a here (a read view over the verbatim extracted `ignorehouses` flag); the *pathing
+ * source-basis n/a here (a read view over the verbatim extracted `ignorehouses` flag); the *pathing
  * behaviour* it will drive (an animal route that treats building tiles as walkable) is a later slice
- * with no oracle, tracked separately in docs/FIDELITY.md. With this, **every** extracted
+ * with no oracle, tracked separately in source basis. With this, **every** extracted
  * `animaltypes.ini` field now has a sim read view. Pure over `content`, no RNG/wall-clock.
  */
 export function ignoresHousesAnimal(content: ContentSet, tribeType: number): boolean {
@@ -231,9 +231,9 @@ export const HUNTER_JOB = 15;
  * AtomicSystem's `attack` effect), not through this relation — so the hunter strike is the
  * provocation **source** the anger timer waits on. Pure over `content`, no RNG/wall-clock.
  *
- * FIDELITY: the prey set is the verbatim `catchable` param and the hunter trade is the pinned
+ * source-basis: the prey set is the verbatim `catchable` param and the hunter trade is the pinned
  * `JOB_TYPE_HUMAN_HUNTER 15`; *which* prey a hunter picks (nearest in range) and the absence of a
- * walk-to-prey/harvest-cadaver follow-up are approximated (docs/FIDELITY.md "Hunter strike on catchable
+ * walk-to-prey/harvest-cadaver follow-up are approximated (source basis "Hunter strike on catchable
  * prey").
  */
 export function mayHunt(content: ContentSet, attackerJobType: number | null, targetTribe: number): boolean {
@@ -249,10 +249,10 @@ export function mayHunt(content: ContentSet, attackerJobType: number | null, tar
  * animal record (a civilization — humans' HP is below the `.ini`, so it is content-stamped elsewhere).
  * This is the {@link Health}-component stamp source for an animal combatant: a spawned animal gets a
  * `Health{hitpoints: max, max}` from this, exactly as the combat hit-resolution mechanic already reads
- * `Health` (docs/FIDELITY.md "Combat hit resolution"). The animal-spawn/herding slice that actually
+ * `Health` (source basis "Combat hit resolution"). The animal-spawn/herding slice that actually
  * places animals on the map will call this; the value is the faithful extracted param.
  *
- * FIDELITY: the **hitpoint magnitude** is the verbatim extracted `hitpoints_adult` (a faithful param);
+ * source-basis: the **hitpoint magnitude** is the verbatim extracted `hitpoints_adult` (a faithful param);
  * the *spawning* of animals (where/when/how many) is a later slice with no oracle. Pure over `content`,
  * no RNG/wall-clock.
  */
@@ -273,12 +273,12 @@ export function animalHitpoints(content: ContentSet, tribeType: number): number 
  * It is NOT derived from {@link animalHitpoints}: the source carries the two pools independently and
  * they diverge (a wolf's baby 500 is half its adult 1000; some animals set baby == adult, others set
  * only the adult and leave baby at the extractor default 0) — so it reads the field straight, never
- * inferred (cf. docs/LESSONS.md `[cc9c3d2]` — a distinct extracted quantity, not a fallback).
+ * inferred (cf. AGENTS.md `[cc9c3d2]` — a distinct extracted quantity, not a fallback).
  *
- * FIDELITY: the **baby hitpoint magnitude** is the verbatim extracted `hitpoints_baby` (a faithful
+ * source-basis: the **baby hitpoint magnitude** is the verbatim extracted `hitpoints_baby` (a faithful
  * param); the *life-stage growth* it will drive (when a baby spawns, ages, and re-stamps to the adult
  * pool) is a later slice with no oracle — the animal twin of the civ baby→adult `growthSystem`
- * (docs/FIDELITY.md). Pure over `content`, no RNG/wall-clock.
+ * (source basis). Pure over `content`, no RNG/wall-clock.
  */
 export function animalBabyHitpoints(content: ContentSet, tribeType: number): number | null {
   const animal = animalRecord(content, tribeType);
@@ -303,10 +303,10 @@ export function animalBabyHitpoints(content: ContentSet, tribeType: number): num
  *  - `stayPointRange` (`maximumdistancetostaypoint`) — the territory radius around the animal's stay
  *    point (how far it wanders before turning back).
  *
- * FIDELITY n/a: a pure derived **read view** over the already-extracted `animaltypes` IR — it adds no
+ * source-basis n/a: a pure derived **read view** over the already-extracted `animaltypes` IR — it adds no
  * mechanic and invents no data; the *spawning/herding behaviour* these params will drive (where/when a
  * group appears, how it follows a leader) is a later slice with no oracle, tracked separately in
- * docs/FIDELITY.md. Pure over `content`, no RNG/wall-clock.
+ * source basis. Pure over `content`, no RNG/wall-clock.
  */
 export interface HerdParams {
   /** `maximumgroupsize` — herd/pack size (0 = solitary / source-omitted). */
@@ -347,10 +347,10 @@ export function herdParams(content: ContentSet, tribeType: number): HerdParams |
  *    (0 = the source omitted it; 5 of the 35 carry it, always a *slower* number than their
  *    `movespeed` — it is the engine's separate run-animation cadence, not "faster than walk").
  *
- * FIDELITY n/a: a pure derived **read view** over the already-extracted `animaltypes` IR — it adds
+ * source-basis n/a: a pure derived **read view** over the already-extracted `animaltypes` IR — it adds
  * no mechanic and invents no data; the *movement behaviour* these speeds will drive (when an animal
  * walks vs runs, how a speed maps to per-tick cell advance) is a later slice with no oracle, tracked
- * separately in docs/FIDELITY.md. Pure over `content`, no RNG/wall-clock.
+ * separately in source basis. Pure over `content`, no RNG/wall-clock.
  */
 export interface Locomotion {
   /** `movespeed` — the walking/grazing pace (0 = source-omitted, engine default). */
@@ -387,10 +387,10 @@ export const MEAT_GOOD = 21;
  * `attack` effect awards it on the killing blow). A non-catchable or zero-`maximumcadaversize` animal
  * yields nothing.
  *
- * FIDELITY: the **magnitude** is the verbatim extracted `maximumcadaversize` param and the **good** is the
+ * source-basis: the **magnitude** is the verbatim extracted `maximumcadaversize` param and the **good** is the
  * pinned `meat` id; that the kill yields meat *in place on the killing blow* (no separate walk-to-corpse
  * `harvest_cadaver` atomic yet) and that one cadaver-size unit maps to one meat unit are the approximated
- * halves (docs/FIDELITY.md "Hunter cadaver-harvest yield"). Pure over `content`, no RNG/wall-clock.
+ * halves (source basis "Hunter cadaver-harvest yield"). Pure over `content`, no RNG/wall-clock.
  */
 export function cadaverYieldOf(content: ContentSet, tribeType: number): number {
   return animalRecord(content, tribeType)?.maximumCadaverSize ?? 0;
@@ -408,7 +408,7 @@ export function cadaverYieldOf(content: ContentSet, tribeType: number): number {
  *  - **Civilization vs civilization (different tribes) → yes** — the player-vs-player drive. A
  *    different-tribe combatant with **no** record at all (an unknown tribe — a synthetic test enemy) is
  *    NOT an animal, so this branch treats it as a civilization and a valid enemy (the three-truth-states
- *    rule — see docs/LESSONS.md `[fe2470f]`: `!isPlayableTribe` ≠ `isAnimalTribe`).
+ *    rule — see AGENTS.md `[fe2470f]`: `!isPlayableTribe` ≠ `isAnimalTribe`).
  *  - **Civilization → animal → yes only if the animal is {@link isAggressiveAnimal} AND not
  *    {@link animalCannotBeAttacked}.** A civ engages a *hostile* (aggressive) animal but not passive
  *    prey (a cow/deer — hunting is the separate `catchable`/hunter mechanic, not combat); and a
@@ -420,11 +420,11 @@ export function cadaverYieldOf(content: ContentSet, tribeType: number): number {
  *    only the combat loop); `cannotbeattacked` gates only being a *target*, not attacking, so an
  *    aggressive but `cannotbeattacked` animal (a bee) can still attack a civ.
  *
- * FIDELITY: the hostility gate reads the faithful extracted params — the civ-vs-animal split off
+ * source-basis: the hostility gate reads the faithful extracted params — the civ-vs-animal split off
  * `isAnimalTribe`'s tech-graph signature, and `aggressive`/`cannotbeattacked` off `animaltypes.ini`.
  * The cross-civilization "all different tribes are enemies" rule (no alliances/neutrality yet) and the
  * "civ engages only aggressive animals, animals don't fight each other" simplifications are our
- * deterministic design pending an oracle (docs/FIDELITY.md "Civ-vs-animal aggression"). Pure over
+ * deterministic design pending an oracle (source basis "Civ-vs-animal aggression"). Pure over
  * `content`, no RNG/wall-clock.
  */
 export function mayAttack(content: ContentSet, attackerTribe: number, targetTribe: number): boolean {

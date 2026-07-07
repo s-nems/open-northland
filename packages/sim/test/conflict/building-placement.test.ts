@@ -112,7 +112,7 @@ function buildingsPlaced(sim: Simulation): number {
 }
 
 // Component stores are module-level singletons shared across Simulation instances — clear ALL of
-// them (not a hand-picked subset) so no earlier test's entity leaks in (docs/LESSONS.md [ac6a287]).
+// them (not a hand-picked subset) so no earlier test's entity leaks in (AGENTS.md [ac6a287]).
 function clearStores(): void {
   for (const c of Object.values(components)) {
     if (typeof c === 'object' && c !== null && 'store' in c && c.store instanceof Map) {

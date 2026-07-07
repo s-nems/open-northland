@@ -11,12 +11,12 @@
  * and lockstep replay. All costs are `Fixed`; no floats touch state.
  *
  * MOVEMENT has 8 DIRECTIONS ({@link TerrainGraph.steps}) — the original's STAGGERED-RASTER lattice
- * (docs/FIDELITY.md "projection": odd rows shifted half a cell right, 68×38 px pitch), where a cell's
+ * (source basis "projection": odd rows shifted half a cell right, 68×38 px pitch), where a cell's
  * true neighbours are E/W plus the four half-shifted cells one row up/down, PLUS a straight VERTICAL
  * step (N/S: two rows up/down, through the gap between the two flanking cells of the intermediate
  * row). The direction COUNT is PINNED, not inferred: the original's own source includes name the
  * movement direction type `THexagonDirection` with E/SE/SW/W/NW/NE = 0..5 **and NORTH = 6, SOUTH =
- * 7** (docs/FIDELITY.md "A* pathfinding" row) — and the walk animations carry all eight facing
+ * 7** (source basis "A* pathfinding" row) — and the walk animations carry all eight facing
  * blocks, N/S included, which only a vertical locomotion step would ever play. The vertical step's
  * exact SEMANTICS (two rows, flanked-gap passability) are approximated — no offset table survives in
  * the readable sources. WHICH grid offsets the row-crossers are depends on the row's parity (see

@@ -3,7 +3,7 @@ import type { System } from './context.js';
 /**
  * Not-yet-implemented placeholder systems, kept together so the execution order and intent stay
  * explicit and version-controlled. They are part of the ongoing systems/ split (see
- * docs/TECH-DEBT.md): the real systems live in their own files (command.ts, movement.ts, …) and the
+ * docs/plans/): the real systems live in their own files (command.ts, movement.ts, …) and the
  * barrel (index.ts) defines SYSTEM_ORDER over all of them. Each stub maps onto an original content
  * type (goodtypes/jobtypes/housetypes/weapontypes/animaltypes/vehicletypes/tribetypes); as one
  * becomes real it graduates to its own file, and the end-state is index.ts = barrel + SYSTEM_ORDER.
@@ -11,7 +11,7 @@ import type { System } from './context.js';
 const todo =
   (name: string): System =>
   () => {
-    /* not yet implemented — see docs/ROADMAP.md */
+    /* not yet implemented — see docs/plans/*/
     void name;
   };
 

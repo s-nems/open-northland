@@ -37,9 +37,9 @@ import type { SceneDefinition } from './types.js';
  * FRONT of the terrain they stand on. Good typeId NUMBERS are scene-local, matched to the decoded graphics
  * by id-SLUG (wood→tree, mud→clay mine, …) and to the render's per-atomic work clips by the harvest atomic id.
  *
- * FIDELITY: the original models all six as ONE `collector` job (jobtype 8) with per-good jobExperience
+ * source-basis: the original models all six as ONE `collector` job (jobtype 8) with per-good jobExperience
  * specialisations, not six job types; the scene splits them into named trades purely for a clear
- * per-resource demo (docs/FIDELITY.md "Gathering work animations"). The bodies + motions are faithful: stone,
+ * per-resource demo (source basis "Gathering work animations"). The bodies + motions are faithful: stone,
  * iron AND gold share the stonecrusher mining strike exactly as the base game maps them (job→clip action
  * 25/27/28 → stonecrushing); clay digs the shovel; wood chops the axe.
  */
@@ -362,7 +362,7 @@ export const gatheringScene: SceneDefinition = {
       '(nie kolor frakcji); tylko strój robotnika jest w kolorze gracza',
     'Robotnik stojący na złożu/pniu i FLAGA na ziemi rysują się PRZED terenem (nie chowają się za nim)',
     'Znane skróty (v1): pień rysuje „tree debris”; drzewo/złoże znika natychmiast (bez animacji upadku); ' +
-      'kamień/żelazo/złoto dzielą jedną animację górniczą (brak osobnej animacji kilofa — docs/FIDELITY.md)',
+      'kamień/żelazo/złoto dzielą jedną animację górniczą (brak osobnej animacji kilofa — source basis)',
   ],
   checks: [
     {

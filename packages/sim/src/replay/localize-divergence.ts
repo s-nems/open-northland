@@ -8,7 +8,7 @@ import { type ReplayOptions, replay } from './replay.js';
 /**
  * `localizeDivergence` — the headless composition that wires the four replay-inspector primitives
  * into the inspector's documented end-to-end workflow: **"hash diverged at tick N → jump there →
- * inspect what differs"** (ROADMAP "Cross-cutting DX"). The four pieces already exist standalone:
+ * inspect what differs"** (plan "Cross-cutting DX"). The four pieces already exist standalone:
  *
  *  - {@link HashTrace.divergedFrom} finds the FIRST tick two runs' hashes split — "diverged at N".
  *  - {@link replay} reconstructs the exact state of EITHER run at tick N from its command log.
@@ -22,7 +22,7 @@ import { type ReplayOptions, replay } from './replay.js';
  * ## Single-world constraint (the reason this isn't trivial glue)
  *
  * Component stores are MODULE-LEVEL SINGLETONS shared across every `Simulation` ({@link replay}'s
- * doc; docs/LESSONS.md [56e8d3e]) — so the two runs' reconstructed sims CANNOT be alive at once. This
+ * doc; AGENTS.md [56e8d3e]) — so the two runs' reconstructed sims CANNOT be alive at once. This
  * function therefore replays them SERIALLY: it replays run A to the divergence tick, captures A's
  * plain {@link WorldSnapshot} (a plain value, valid after the stores are reused), clears the stores,
  * replays run B to the same tick (which supersedes A), captures B's snapshot, then diffs the two

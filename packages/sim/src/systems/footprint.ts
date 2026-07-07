@@ -141,7 +141,7 @@ export function buildingBlockedCells(world: World, ctx: SystemContext, terrain: 
  * behavior synthetic content keeps). Settlers never block placement (the foundation appears under
  * them and they walk off — the walls only enter the nav overlay, {@link buildingBlockedCells}).
  *
- * FIDELITY (approximated, docs/FIDELITY.md "Building placement"): the footprint cells and the
+ * source-basis (approximated, source basis "Building placement"): the footprint cells and the
  * body/zone split are the extracted `LogicWalkBlockArea`/`LogicBuildBlockArea` data (faithful); the
  * exact overlap RULE (body-vs-zone symmetric, zones may overlap) is our reading of those two areas —
  * the engine's check has no oracle. Determinism: pure boolean over content + world state; any

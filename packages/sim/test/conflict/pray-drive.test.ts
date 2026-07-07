@@ -26,7 +26,7 @@ import { testContent } from '../fixtures/content.js';
  * The viking tribe binds pray atomic 12 → "viking_pray" (length 7); the pray atomic id (12) is pinned
  * to the original `setatomic 6 12 "..._pray"` bindings + the `HOUSE_TYPE_WORK_TEMPLE` (logictype 37,
  * logicmaintype 3, no workers/stock/production) temple signature `isTemple` recognises; the ¾·ONE
- * threshold + the temple→pray-need inference are approximated (docs/FIDELITY.md).
+ * threshold + the temple→pray-need inference are approximated (source basis).
  */
 
 const GRASS = 0;

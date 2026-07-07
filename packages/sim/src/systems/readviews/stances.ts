@@ -10,7 +10,7 @@ import { HUNTER_JOB } from './tribes.js';
  * `MILITARY_MODE_{NONE 0, ATTACK 1, DEFEND 2, IGNORE 3, FLEE 4}` (the shipped Funatics header — the
  * enum is data-pinned, verbatim). A unit's {@link import('../../components/combat.js').Stance} carries
  * one; the CombatSystem gates auto-engagement on it (the *behavior* per mode is approximated — no oracle —
- * see docs/FIDELITY.md). Kept as named constants so no combat/UI code inlines the raw ids (project rule:
+ * see source basis). Kept as named constants so no combat/UI code inlines the raw ids (project rule:
  * no magic numbers for domain ids).
  *
  *  - **NONE** — no assigned mode. The defaults never produce it; a unit set to it is treated as passive
@@ -76,9 +76,9 @@ export const HERO_JOB_MAX = 47;
  *  - **every other civilian job** (and a jobless/idle settler, `jobType` 0 or null — a child spawns jobless)
  *    → {@link MILITARY_MODE.FLEE} (civilians run from danger).
  *
- * FIDELITY: the mode ids are data-pinned; the **assignment of a mode to a job** is the user's observation
+ * source-basis: the mode ids are data-pinned; the **assignment of a mode to a job** is the user's observation
  * of the original (observed-approximation) — the readable data carries no per-job military-mode field —
- * so the whole table is a calibration-pending default (docs/FIDELITY.md "Combat stance defaults"). Pure of
+ * so the whole table is a calibration-pending default (source basis "Combat stance defaults"). Pure of
  * world/RNG/wall-clock: a total function of the integer job id (`HUNTER_JOB` pinned in `tribes.ts`, imported
  * to keep the single hunter-id source).
  */
