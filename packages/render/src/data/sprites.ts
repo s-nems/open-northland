@@ -473,6 +473,21 @@ export function resolveStockpileDraw(binding: number | StockpileBinding, item: D
 }
 
 /**
+ * Resolve the ordered layer refs for a stockpile. A filled delivery flag draws its heap first and the
+ * flag second, so the flag stays visible on top of the gathered goods. The GPU layer binds these refs to
+ * real atlas layers; this pure helper pins the draw order without needing Pixi in tests.
+ */
+export function resolveStockpileLayerDraws(
+  binding: number | StockpileBinding,
+  item: DrawItem,
+): BuildingDraw[] {
+  if (typeof binding === 'number') return [{ bob: binding }];
+  const primary = resolveStockpileDraw(binding, item);
+  if (item.goodType === undefined) return [primary];
+  return [primary, unwrapBobRef(binding.flag)];
+}
+
+/**
  * Resolve the atlas bob id a drawable {@link DrawItem} should draw — the frame *selection* alone (no
  * atlas lookup), so the GPU layer can draw the **same** id from several layered atlases (body + head)
  * without re-deciding per layer. Returns `null` for a terrain tile or an unbound kind. A settler's id

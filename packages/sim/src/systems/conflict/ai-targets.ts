@@ -7,11 +7,10 @@ import {
   Stockpile,
   stockpileEntries,
 } from '../../components/index.js';
-import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
-import { interactionTile } from '../footprint.js';
+import { interactionTile, positionedInteractionCell, resourceWorkCell } from '../footprint.js';
 import { buildingEnabled, settlerMeetsNeed } from '../progression.js';
 import {
   buildingWorkerJobs,
@@ -118,7 +117,7 @@ export function nearestHarvestableFor(
     if (!allowed.has(res.harvestAtomic)) continue; // data-driven gate: job must permit this atomic
     // XP gate: this settler must have cleared the harvested good's `needforgood` thresholds.
     if (!settlerMeetsNeed(ctx, settler.tribe, 'good', res.goodType, settler.experience)) continue;
-    const cell = interactionCell(world, ctx, terrain, e);
+    const cell = interactionCell(world, ctx, terrain, e, here);
     const dist = manhattan(terrain, here, cell);
     if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
       best = e;
@@ -165,7 +164,7 @@ export function nearestCollectablePileFor(
     if (good === null) continue; // an emptied drop (about to be reaped) — nothing to collect
     const harvestAtomic = harvestAtomicByGood.get(good);
     if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) continue; // not this job's trade
-    const cell = interactionCell(world, ctx, terrain, e);
+    const cell = interactionCell(world, ctx, terrain, e, here);
     const dist = manhattan(terrain, here, cell);
     if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
       best = { pile: e, goodType: good };
@@ -209,7 +208,7 @@ export function nearestStoreFor(
     const stock = world.get(e, Stockpile);
     const have = stock.amounts.get(goodType) ?? 0;
     if (have >= stockCapacity(world, ctx, e, goodType)) continue; // full for this good — skip
-    const cell = interactionCell(world, ctx, terrain, e);
+    const cell = interactionCell(world, ctx, terrain, e, here);
     const dist = manhattan(terrain, here, cell);
     if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
       best = e;
@@ -242,7 +241,7 @@ export function nearestFoodStore(
   for (const e of candidates) {
     if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
     const stock = world.get(e, Stockpile);
-    const cell = interactionCell(world, ctx, terrain, e);
+    const cell = interactionCell(world, ctx, terrain, e, here);
     const dist = manhattan(terrain, here, cell);
     for (const [goodType, amount] of stockpileEntries(stock)) {
       if (amount <= 0 || !isFood(ctx, goodType)) continue;
@@ -277,7 +276,7 @@ export function nearestTemple(
   for (const e of candidates) {
     if (!world.has(e, Building) || !world.has(e, Position)) continue;
     if (!isTemple(world, ctx, e)) continue;
-    const cell = interactionCell(world, ctx, terrain, e);
+    const cell = interactionCell(world, ctx, terrain, e, here);
     const dist = manhattan(terrain, here, cell);
     if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
       best = e;
@@ -337,7 +336,7 @@ export function nearestWorkplaceOutput(
     const recipe = recipeOf(world, ctx, e);
     if (recipe === undefined) continue; // not a workplace — passive stores aren't hauled FROM
     const stock = world.get(e, Stockpile);
-    const cell = interactionCell(world, ctx, terrain, e);
+    const cell = interactionCell(world, ctx, terrain, e, here);
     const dist = manhattan(terrain, here, cell);
     // Canonical (ascending goodType) so the chosen good never depends on Map insertion history.
     for (const [goodType, amount] of stockpileEntries(stock)) {
@@ -413,13 +412,22 @@ export function boundWorkplaceTarget(
  * The cell a walk-to / are-we-there target resolves to. For a {@link Building} this is its
  * **interaction tile** — the door cell when the type's footprint names one ({@link interactionTile}),
  * since the walls themselves are now walk-blocked and the original's settlers enter through the door.
- * Everything else (a resource node, a bare store fixture, a boat hull) keeps its {@link Position}
- * tile. Distances, walk goals, and the `cell === here` arrival checks all resolve through here, so
- * the goal a settler walks to and the tile that counts as "at the building" can never disagree.
+ * A footprinted {@link Resource} resolves to its data-driven work cell, while an unfootprinted one
+ * keeps the old anchor-tile fixture behavior. Everything else (a bare store fixture, a boat hull, a
+ * loose ground drop) resolves to its {@link Position} tile unless that tile is under a resource walk
+ * block, in which case the nearest free neighbour is used. Distances, walk goals, and the
+ * `cell === here` arrival checks all resolve through here, so the goal a settler walks to and the
+ * tile that counts as "at the target" can never disagree.
  */
-export function interactionCell(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity): CellId {
+export function interactionCell(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  from?: CellId,
+): CellId {
   const at = interactionTile(world, ctx, e);
   if (at !== null) return terrain.cellAtClamped(at.x, at.y);
-  const p = world.get(e, Position);
-  return terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
+  if (world.has(e, Resource)) return resourceWorkCell(world, terrain, e, from);
+  return positionedInteractionCell(world, terrain, e, from);
 }

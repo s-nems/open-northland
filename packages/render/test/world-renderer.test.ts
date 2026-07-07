@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { type MotionTrack, reconcileSprites, trackMotion } from '../src/index.js';
+import {
+  type MotionTrack,
+  compactResolvedStockpileLayers,
+  reconcileSprites,
+  trackMotion,
+} from '../src/index.js';
 
 /**
  * Unit test for the retained renderer's one PURE decision — pool bookkeeping — extracted so it is
@@ -30,6 +35,14 @@ describe('reconcileSprites', () => {
 
   it('preserves pooled iteration order in the destroy list (deterministic)', () => {
     expect(reconcileSprites(new Set<number>(), [5, 1, 3]).toDestroy).toEqual([5, 1, 3]);
+  });
+});
+
+describe('compactResolvedStockpileLayers', () => {
+  it('requires the primary heap before drawing optional flag overlays', () => {
+    expect(compactResolvedStockpileLayers<string>([null, 'flag'])).toBeNull();
+    expect(compactResolvedStockpileLayers<string>(['heap', null])).toEqual(['heap']);
+    expect(compactResolvedStockpileLayers<string>(['heap', 'flag'])).toEqual(['heap', 'flag']);
   });
 });
 

@@ -18,6 +18,7 @@ import type { AtomicEffect } from '../../core/commands.js';
 import { type Fixed, ONE, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
+import { unstampResourceFootprint } from '../footprint.js';
 import { grantFightExperience, grantWorkExperience } from '../progression.js';
 import {
   ATOMIC_EVENT_CHANNEL,
@@ -337,6 +338,7 @@ function fellNode(world: World, ctx: SystemContext, node: Entity, goodType: numb
   world.add(stump, Position, { x, y });
   world.add(stump, Stump, { goodType });
   // The standing node is gone from every planner scan from here on.
+  unstampResourceFootprint(world, node);
   world.destroy(node);
   ctx.events.emit({
     kind: 'resourceFelled',
@@ -374,6 +376,7 @@ function dropMinedOre(world: World, node: Entity, goodType: number, amount: numb
 function depleteNode(world: World, ctx: SystemContext, node: Entity, goodType: number): void {
   const pos = world.get(node, Position);
   const at = { x: fx.toInt(pos.x), y: fx.toInt(pos.y) };
+  unstampResourceFootprint(world, node);
   world.destroy(node);
   ctx.events.emit({ kind: 'resourceDepleted', node, goodType, at });
 }

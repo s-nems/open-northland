@@ -80,13 +80,18 @@ delete this file when all steps land.
       `DrawItem.level` → per-level `ResourceTypeBinding` frames), and the node is REMOVED at 0
       (`resourceDepleted`). A mushroom is the trivial neither-marker direct pickup (onto the back + remove).
       See plan progress note "Mineral deposits"; `?scene=gathering` runs a live mud-deposit mining cycle.
-- [ ] 5. Sim: resource collision + build-exclusion from data
+- [x] 5. Sim: resource collision + build-exclusion from data — **landed:** `ResourceFootprint` is
+      stamped from the harvest-stage `[GfxLandscape]` `walkBlockAreas`/`buildBlockAreas`/`workAreas`,
+      resource walk-blocks feed pathfinding through `dynamicBlockedCells`, `canPlaceBuilding` respects a
+      node's build-exclusion zone, and the planner resolves harvest/drop targets through data-driven work
+      cells. `?scene=gathering` now stamps footprints for every lane; clay/mushrooms remain non-blocking.
 - [ ] 6. App: imported maps spawn real resource nodes
 - [ ] 7. Polish: chop cadence, adjacent stance, animation timing — **swing length already landed with Step 3**
       (`HARVEST_SWING_LENGTH` = one full strike per chop atomic). STILL OPEN (the two the user flagged in the
       Step-3 review): (a) pickup/deposit play a real bend animation (`human_man_generic_pick_up`, 19 frames,
       currently UNBOUND → the item pops in/out) with a GLOBAL duration constant, not per-scene; (b) the
-      strike → brief idle → reposition cadence between chops. Adjacent stance still needs Step 5.
+      strike → brief idle → reposition cadence between chops. Step 5 landed the sim-side adjacent work cell;
+      render-facing/anchor polish remains here.
 
 Out of scope for this plan: tree regrowth/spreading and herb/mushroom cultivation (the bio
 transitions — `isBioLandscapeFlag`, `atomicForPlanting`), bush/fruit growth stages, farming/
@@ -320,6 +325,7 @@ mined (headless asserts the level read-view; human signs off the pixels). `npm t
 Guardrails: same as Step 3 (determinism, golden discipline, no full-world scans, data not code).
 ```
 
+[DONE]
 ## Step 5 — sim: resource collision + build-exclusion from data
 
 ```text

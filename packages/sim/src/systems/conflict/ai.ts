@@ -19,7 +19,7 @@ import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
-import { buildingBlockedCells } from '../footprint.js';
+import { dynamicBlockedCells } from '../footprint.js';
 import { carrierCarryCapacity } from '../progression.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 import {
@@ -167,7 +167,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       }
       const food = nearestFoodStore(targets.stockpiles, world, ctx, terrain, here);
       if (food !== null) {
-        const cell = interactionCell(world, ctx, terrain, food.store);
+        const cell = interactionCell(world, ctx, terrain, food.store, here);
         if (cell === here) {
           startAtomic(
             world,
@@ -212,7 +212,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     if (settler.piety >= PIETY_PRAY_THRESHOLD) {
       const temple = nearestTemple(targets.buildings, world, ctx, terrain, here);
       if (temple !== null) {
-        const cell = interactionCell(world, ctx, terrain, temple);
+        const cell = interactionCell(world, ctx, terrain, temple, here);
         if (cell === here) {
           startAtomic(
             world,
@@ -280,7 +280,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
         load.goodType,
       );
       if (store === null) continue; // nowhere to deposit — idle this tick (a later slice may wait/drop)
-      const cell = interactionCell(world, ctx, terrain, store);
+      const cell = interactionCell(world, ctx, terrain, store, here);
       if (cell === here) {
         startAtomic(
           world,
@@ -333,11 +333,11 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     );
     const nodeDist =
       node !== null
-        ? manhattan(terrain, here, interactionCell(world, ctx, terrain, node))
+        ? manhattan(terrain, here, interactionCell(world, ctx, terrain, node, here))
         : Number.POSITIVE_INFINITY;
     // Prefer the trunk on a tie (it is the wood already at hand — grab it before a fresh tree).
     if (trunk !== null && trunk.dist <= nodeDist) {
-      const cell = interactionCell(world, ctx, terrain, trunk.pile);
+      const cell = interactionCell(world, ctx, terrain, trunk.pile, here);
       if (cell === here) {
         const amount = carrierCarryCapacity(world, ctx, settler.tribe);
         startAtomic(
@@ -355,7 +355,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     }
     if (node !== null) {
       const res = world.get(node, Resource);
-      const cell = interactionCell(world, ctx, terrain, node);
+      const cell = interactionCell(world, ctx, terrain, node, here);
       if (cell === here) {
         startAtomic(
           world,
@@ -377,7 +377,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     if (isPorterBoundToStore(world, ctx, e)) {
       const pile = nearestGroundPile(targets.stockpiles, world, ctx, terrain, here);
       if (pile !== null) {
-        const cell = interactionCell(world, ctx, terrain, pile.pile);
+        const cell = interactionCell(world, ctx, terrain, pile.pile, here);
         if (cell === here) {
           const amount = carrierCarryCapacity(world, ctx, settler.tribe);
           startAtomic(
@@ -408,7 +408,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       deStackIdle(world, ctx, terrain, e, fx.toInt(p.x), fx.toInt(p.y), occupancy, claimed, blockedLazy);
       continue;
     }
-    const cell = interactionCell(world, ctx, terrain, haul.workplace);
+    const cell = interactionCell(world, ctx, terrain, haul.workplace, here);
     if (cell === here) {
       // Lift a batch sized by the tribe's best unlocked vehicle (`stockSlots`), or one unit on foot
       // when no vehicle is available — `pickupFromStore` caps the move to what the source actually holds.
@@ -459,14 +459,14 @@ function planProducer(
 
   // a. Would staying produce a cycle? Be on the station (walk there / hold) so production runs.
   if (workplaceProductiveIfStaffed(world, ctx, workplace, recipe)) {
-    walkToOrHold(world, e, here, interactionCell(world, ctx, terrain, workplace));
+    walkToOrHold(world, e, here, interactionCell(world, ctx, terrain, workplace, here));
     return;
   }
 
   // b. Can't produce now — carry the finished output out to a store first (frees the shop, delivers it).
   const outGood = workplaceOutputToHaul(stockpiles, world, ctx, terrain, workplace, recipe, here);
   if (outGood !== null) {
-    const cell = interactionCell(world, ctx, terrain, workplace);
+    const cell = interactionCell(world, ctx, terrain, workplace, here);
     if (cell === here) {
       const amount = carrierCarryCapacity(world, ctx, settler.tribe);
       startAtomic(
@@ -486,7 +486,7 @@ function planProducer(
   // c. Fetch a missing recipe input from a store that holds it (the smith going to the warehouse).
   const src = nearestMissingInputSource(stockpiles, world, ctx, terrain, here, workplace, recipe);
   if (src !== null) {
-    const cell = interactionCell(world, ctx, terrain, src.store);
+    const cell = interactionCell(world, ctx, terrain, src.store, here);
     if (cell === here) {
       startAtomic(
         world,
@@ -503,7 +503,7 @@ function planProducer(
   }
 
   // d. Nothing to fetch or haul — return to / hold the station and wait for an input to arrive.
-  walkToOrHold(world, e, here, interactionCell(world, ctx, terrain, workplace));
+  walkToOrHold(world, e, here, interactionCell(world, ctx, terrain, workplace, here));
 }
 
 /** Set a {@link MoveGoal} to `target` unless the settler is already on it (then it stays put). */
@@ -636,7 +636,7 @@ function deStackIdle(
   // crowded idle unit pays nothing). Excludes a target under a standing building: routing A* would refuse
   // a blocked goal, and a MoveGoal whose route can't resolve would freeze the unit (nothing clears a
   // failed non-player request), so we never aim at one.
-  blockedLazy.cells ??= buildingBlockedCells(world, ctx, terrain);
+  blockedLazy.cells ??= dynamicBlockedCells(world, ctx, terrain);
   const from = terrain.cellAtClamped(tileX, tileY);
   const free = nearestFreeCell(terrain, from, occupancy, claimed, blockedLazy.cells);
   if (free === null) return; // boxed in — nothing better than staying

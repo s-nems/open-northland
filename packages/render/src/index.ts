@@ -31,6 +31,7 @@ export {
   resolveConstructionDraws,
   resolveResourceDraw,
   resolveStockpileDraw,
+  resolveStockpileLayerDraws,
   resolveSpriteFrame,
   resolveSpriteBobId,
   DEFAULT_FACING,
@@ -65,7 +66,13 @@ export {
   type TerrainTextureSet,
 } from './gpu/pixi-app.js';
 export { WorldRenderer } from './gpu/world-renderer.js';
-export { reconcileSprites, trackMotion, type EntityBounds, type MotionTrack } from './gpu/sprite-pool.js';
+export {
+  compactResolvedStockpileLayers,
+  reconcileSprites,
+  trackMotion,
+  type EntityBounds,
+  type MotionTrack,
+} from './gpu/sprite-pool.js';
 export { DEFAULT_HUD_STYLE, type HudStyle, type HudFrame } from './gpu/hud-layer.js';
 export type { MapObjectSprite } from './gpu/map-object-layer.js';
 export {

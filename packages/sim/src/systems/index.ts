@@ -17,7 +17,19 @@ import type { System, SystemContext } from './context.js';
 import { constructionSystem } from './economy/construction.js';
 import { jobSystem } from './economy/jobs.js';
 import { productionSystem } from './economy/production.js';
-import { buildingBlockedCells, canPlaceBuilding, interactionTile } from './footprint.js';
+import {
+  buildingBlockedCells,
+  canPlaceBuilding,
+  dynamicBlockedCells,
+  interactionTile,
+  positionedInteractionCell,
+  resourceBlockedCells,
+  resourceFootprintForGood,
+  resourceFootprintFromLandscapeGfx,
+  resourceWorkCell,
+  stampResourceFootprint,
+  unstampResourceFootprint,
+} from './footprint.js';
 import {
   BABY_FEMALE,
   BABY_MALE,
@@ -151,7 +163,19 @@ export {
   needsSystem,
 };
 export { PATHFINDING_BUDGET_PER_TICK, pathfindingSystem };
-export { buildingBlockedCells, canPlaceBuilding, interactionTile };
+export {
+  buildingBlockedCells,
+  canPlaceBuilding,
+  dynamicBlockedCells,
+  interactionTile,
+  positionedInteractionCell,
+  resourceBlockedCells,
+  resourceFootprintForGood,
+  resourceFootprintFromLandscapeGfx,
+  resourceWorkCell,
+  stampResourceFootprint,
+  unstampResourceFootprint,
+};
 export { productionSystem };
 export { atomicSystem };
 export { PROJECTILE_TILES_PER_SPEED_UNIT, projectileSystem };

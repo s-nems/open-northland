@@ -18,6 +18,7 @@ import {
   resolveSpriteBobId,
   resolveSpriteFrame,
   resolveStockpileDraw,
+  resolveStockpileLayerDraws,
 } from '../src/index.js';
 
 /**
@@ -726,6 +727,13 @@ describe('resolveStockpileDraw — per-good ground piles + delivery flag', () =>
 
   it('falls back to the (bare placeholder) default for a held pile whose good has no frames', () => {
     expect(resolveStockpileDraw(binding, pile(999, 3))).toEqual({ bob: 0 });
+  });
+
+  it('orders a filled delivery flag as heap first, flag second so the marker stays visible', () => {
+    expect(resolveStockpileLayerDraws(binding, pile(5, 3))).toEqual([
+      { bob: 2, layer: 'ls_goods.goods_wood' },
+      { bob: 33, layer: 'ls_temp.human_player01' },
+    ]);
   });
 });
 

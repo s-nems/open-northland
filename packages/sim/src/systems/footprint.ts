@@ -1,5 +1,21 @@
-import type { BuildingFootprint, FootprintCell } from '@vinland/data';
-import { Building, Position, Resource } from '../components/index.js';
+import type {
+  BuildingFootprint,
+  ContentSet,
+  FootprintCell,
+  LandscapeBlockArea,
+  LandscapeGfx,
+} from '@vinland/data';
+import {
+  Building,
+  GroundDrop,
+  Position,
+  Resource,
+  ResourceFootprint,
+  type ResourceFootprintCell,
+  type ResourceFootprintData,
+  Stockpile,
+  stockpileEntries,
+} from '../components/index.js';
 import { fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { CellId, TerrainGraph } from '../nav/terrain.js';
@@ -14,6 +30,9 @@ import type { SystemContext } from './context.js';
 // A building TYPE without a footprint (synthetic test content; the one real graphics-less type)
 // keeps the pre-footprint behavior everywhere: it places without collision checks, blocks no cell,
 // and is interacted with on its anchor tile.
+//
+// Resource footprints are opt-in via ResourceFootprint. A bare Resource keeps the legacy same-tile
+// fixture behavior; a stamped one consumes the original `[GfxLandscape]` walk/build/work areas.
 
 /** Injective per-tile key for a spatial set/bucket (integer tile `x`,`y`). A string so a consumer with
  *  no terrain handle (hence no map width) can still key by tile — and so a negative/off-map coordinate
@@ -27,6 +46,86 @@ export function tileKey(x: number, y: number): string {
 /** The footprint of a building type, or undefined when the type is unknown or carries none. */
 function buildingFootprintOf(ctx: SystemContext, buildingType: number): BuildingFootprint | undefined {
   return ctx.content.buildings.find((t) => t.typeId === buildingType)?.footprint;
+}
+
+/** Collapse a `[GfxLandscape]` area table to the fresh/full object's cells. */
+function footprintCellsForFullState(areas: readonly LandscapeBlockArea[]): ResourceFootprintCell[] {
+  if (areas.length === 0) return [];
+  let fullState = 0;
+  for (const [state] of areas) if (state > fullState) fullState = state;
+  const seen = new Set<string>();
+  const out: ResourceFootprintCell[] = [];
+  for (const [state, dx, dy, run] of areas) {
+    if (state !== fullState) continue;
+    if (run <= 0) continue;
+    for (let i = 0; i < run; i++) {
+      const cell = { dx: dx + i, dy };
+      const key = tileKey(cell.dx, cell.dy);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(cell);
+    }
+  }
+  return out;
+}
+
+/**
+ * Convert one decoded `[GfxLandscape]` record into the sim's resource-footprint component payload.
+ * The source stores repeated rows per valency/growth state; collision for Step 5 is static until the
+ * node is removed, so the full/fresh state is the correct conservative consumer.
+ */
+export function resourceFootprintFromLandscapeGfx(record: LandscapeGfx): ResourceFootprintData {
+  return {
+    walk: footprintCellsForFullState(record.walkBlockAreas),
+    build: footprintCellsForFullState(record.buildBlockAreas),
+    work: footprintCellsForFullState(record.workAreas),
+    sourceGfxIndex: record.index,
+  };
+}
+
+/** Resolve the representative harvest-stage landscape gfx record for a good's resource node. */
+export function resourceFootprintForGood(
+  content: ContentSet,
+  goodType: number,
+  gfxIndex?: number,
+): ResourceFootprintData | null {
+  const pipeline = content.gatheringPipeline.find((p) => p.goodType === goodType);
+  const stage = pipeline?.harvest ?? pipeline?.pickup;
+  if (stage === undefined) return null;
+  const byIndex = new Map<number, LandscapeGfx>(content.landscapeGfx.map((g) => [g.index, g]));
+  if (gfxIndex !== undefined) {
+    if (!stage.gfxIndices.includes(gfxIndex)) return null;
+    const record = byIndex.get(gfxIndex);
+    return record === undefined ? null : resourceFootprintFromLandscapeGfx(record);
+  }
+  for (const index of stage.gfxIndices) {
+    const record = byIndex.get(index);
+    if (record !== undefined) return resourceFootprintFromLandscapeGfx(record);
+  }
+  return null;
+}
+
+/** Stamp a resource node with its content-derived footprint, returning false when no source record exists. */
+export function stampResourceFootprint(
+  world: World,
+  content: ContentSet,
+  resource: Entity,
+  goodType: number,
+  gfxIndex?: number,
+): boolean {
+  const footprint = resourceFootprintForGood(content, goodType, gfxIndex);
+  if (footprint === null) return false;
+  world.add(resource, ResourceFootprint, footprint);
+  refreshResourceBlockedCacheEntry(world, resource);
+  return true;
+}
+
+/** Remove a resource footprint through the incremental blocked-cell cache before destroying a node. */
+export function unstampResourceFootprint(world: World, resource: Entity): void {
+  if (!world.has(resource, ResourceFootprint)) return;
+  world.remove(resource, ResourceFootprint);
+  removeResourceBlockedCacheEntry(world, resource);
+  syncResourceBlockedCacheGeneration(world);
 }
 
 /**
@@ -75,6 +174,260 @@ function translatedCells(
     if (terrain.inBounds(x, y)) out.push(terrain.cellAt(x, y));
   }
   return out;
+}
+
+function translatedCellKeys(cells: readonly FootprintCell[], anchorX: number, anchorY: number): Set<string> {
+  const out = new Set<string>();
+  for (const c of cells) out.add(tileKey(anchorX + c.dx, anchorY + c.dy));
+  return out;
+}
+
+interface ResourceBlockedCache {
+  generation: number;
+  readonly terrain: TerrainGraph;
+  readonly cells: Set<CellId>;
+  readonly counts: Map<CellId, number>;
+  readonly entries: Map<Entity, readonly CellId[]>;
+}
+
+const resourceBlockedCache = new WeakMap<World, ResourceBlockedCache>();
+
+function resourceBlockedCellsFor(world: World, terrain: TerrainGraph, resource: Entity): CellId[] | null {
+  const footprint = world.tryGet(resource, ResourceFootprint);
+  const p = world.tryGet(resource, Position);
+  if (footprint === undefined || p === undefined) return null;
+  const ax = fx.toInt(p.x);
+  const ay = fx.toInt(p.y);
+  return translatedCells(terrain, footprint.walk, ax, ay);
+}
+
+function addResourceBlockedCacheEntry(
+  cache: ResourceBlockedCache,
+  resource: Entity,
+  cells: readonly CellId[],
+): void {
+  removeResourceBlockedCacheEntryFrom(cache, resource);
+  cache.entries.set(resource, cells);
+  for (const cell of cells) {
+    const count = (cache.counts.get(cell) ?? 0) + 1;
+    cache.counts.set(cell, count);
+    cache.cells.add(cell);
+  }
+}
+
+function removeResourceBlockedCacheEntryFrom(cache: ResourceBlockedCache, resource: Entity): void {
+  const cells = cache.entries.get(resource);
+  if (cells === undefined) return;
+  cache.entries.delete(resource);
+  for (const cell of cells) {
+    const count = (cache.counts.get(cell) ?? 0) - 1;
+    if (count > 0) {
+      cache.counts.set(cell, count);
+    } else {
+      cache.counts.delete(cell);
+      cache.cells.delete(cell);
+    }
+  }
+}
+
+function refreshResourceBlockedCacheEntry(world: World, resource: Entity): void {
+  const cache = resourceBlockedCache.get(world);
+  if (cache === undefined) return;
+  const cells = resourceBlockedCellsFor(world, cache.terrain, resource);
+  if (cells === null) {
+    removeResourceBlockedCacheEntryFrom(cache, resource);
+  } else {
+    addResourceBlockedCacheEntry(cache, resource, cells);
+  }
+  syncResourceBlockedCacheGeneration(world);
+}
+
+function removeResourceBlockedCacheEntry(world: World, resource: Entity): void {
+  const cache = resourceBlockedCache.get(world);
+  if (cache === undefined) return;
+  removeResourceBlockedCacheEntryFrom(cache, resource);
+}
+
+function syncResourceBlockedCacheGeneration(world: World): void {
+  const cache = resourceBlockedCache.get(world);
+  if (cache !== undefined) cache.generation = world.componentGeneration(ResourceFootprint);
+}
+
+function deriveResourceBlockedCache(world: World, terrain: TerrainGraph): ResourceBlockedCache {
+  const cache: ResourceBlockedCache = {
+    generation: world.componentGeneration(ResourceFootprint),
+    terrain,
+    cells: new Set<CellId>(),
+    counts: new Map<CellId, number>(),
+    entries: new Map<Entity, readonly CellId[]>(),
+  };
+  for (const e of world.query(ResourceFootprint, Position)) {
+    const cells = resourceBlockedCellsFor(world, terrain, e);
+    if (cells !== null) addResourceBlockedCacheEntry(cache, e, cells);
+  }
+  return cache;
+}
+
+function deriveResourceBlockedCells(world: World, terrain: TerrainGraph): Set<CellId> {
+  return deriveResourceBlockedCache(world, terrain).cells;
+}
+
+function sameCells(a: ReadonlySet<CellId>, b: ReadonlySet<CellId>): boolean {
+  if (a.size !== b.size) return false;
+  for (const cell of a) if (!b.has(cell)) return false;
+  return true;
+}
+
+function verifyResourceBlockedCache(world: World, terrain: TerrainGraph): string[] {
+  const cached = resourceBlockedCache.get(world);
+  if (cached === undefined) return [];
+  if (cached.terrain !== terrain) return [];
+  if (cached.generation !== world.componentGeneration(ResourceFootprint)) return [];
+  const fresh = deriveResourceBlockedCells(world, terrain);
+  if (sameCells(cached.cells, fresh)) return [];
+  return [
+    `resourceBlockedCells cache holds ${cached.cells.size} cells but re-derived ${fresh.size} — stale resource footprint overlay`,
+  ];
+}
+
+/**
+ * The cells standing resource nodes make unwalkable. Built once per world/terrain and maintained by
+ * `stampResourceFootprint` / `unstampResourceFootprint` for the resource spawn/removal paths, so clearing
+ * a forest mutates just the affected node's cells instead of scanning every resource on the next route.
+ * A direct ResourceFootprint store mutation still falls back to a full rebuild for correctness.
+ */
+export function resourceBlockedCells(world: World, terrain: TerrainGraph): ReadonlySet<CellId> {
+  const generation = world.componentGeneration(ResourceFootprint);
+  const cached = resourceBlockedCache.get(world);
+  if (cached !== undefined && cached.terrain === terrain && cached.generation === generation) {
+    return cached.cells;
+  }
+
+  const cache = deriveResourceBlockedCache(world, terrain);
+  resourceBlockedCache.set(world, cache);
+  world.registerCacheVerifier('resourceBlockedCells', () => verifyResourceBlockedCache(world, terrain));
+  return cache.cells;
+}
+
+/** Building walk-blocks plus the cached resource walk-block overlay. */
+export function dynamicBlockedCells(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+): ReadonlySet<CellId> {
+  const blocked = buildingBlockedCells(world, ctx, terrain);
+  for (const cell of resourceBlockedCells(world, terrain)) blocked.add(cell);
+  return blocked;
+}
+
+function cellDistance(terrain: TerrainGraph, a: CellId, b: CellId): number {
+  const ca = terrain.coordsOf(a);
+  const cb = terrain.coordsOf(b);
+  return Math.abs(ca.x - cb.x) + Math.abs(ca.y - cb.y);
+}
+
+function nearestCell(
+  terrain: TerrainGraph,
+  candidates: readonly CellId[],
+  from: CellId | undefined,
+): CellId | null {
+  let best: CellId | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (const cell of candidates) {
+    const dist = from === undefined ? 0 : cellDistance(terrain, from, cell);
+    if (best === null || dist < bestDist || (dist === bestDist && cell < best)) {
+      best = cell;
+      bestDist = dist;
+    }
+  }
+  return best;
+}
+
+function nearestFreeNeighbour(
+  terrain: TerrainGraph,
+  anchor: CellId,
+  blocked: ReadonlySet<CellId>,
+  from: CellId | undefined,
+): CellId | null {
+  return nearestCell(
+    terrain,
+    terrain.walkableNeighbours(anchor).filter((cell) => !blocked.has(cell)),
+    from,
+  );
+}
+
+function resourceAtTile(world: World, x: number, y: number, goodType: number): Entity | null {
+  for (const resource of world.query(Resource, Position)) {
+    const pos = world.get(resource, Position);
+    if (fx.toInt(pos.x) !== x || fx.toInt(pos.y) !== y) continue;
+    if (world.get(resource, Resource).goodType !== goodType) continue;
+    return resource;
+  }
+  return null;
+}
+
+function stockedGoodAt(world: World, entity: Entity): number | null {
+  const stock = world.tryGet(entity, Stockpile);
+  if (stock === undefined) return null;
+  for (const [goodType, amount] of stockpileEntries(stock)) {
+    if (amount > 0) return goodType;
+  }
+  return null;
+}
+
+/**
+ * The cell a collector should stand on to work a resource. Prefer the data's non-anchor work cells,
+ * since those give the adjacent stance for blocking nodes; a resource whose only legal work cell is
+ * its anchor (for example a one-tile mushroom fixture) remains workable.
+ */
+export function resourceWorkCell(
+  world: World,
+  terrain: TerrainGraph,
+  resource: Entity,
+  from?: CellId,
+): CellId {
+  const p = world.get(resource, Position);
+  const ax = fx.toInt(p.x);
+  const ay = fx.toInt(p.y);
+  const anchor = terrain.cellAtClamped(ax, ay);
+  const footprint = world.tryGet(resource, ResourceFootprint);
+  if (footprint === undefined) return anchor;
+
+  const blocked = resourceBlockedCells(world, terrain);
+  const work = translatedCells(terrain, footprint.work, ax, ay).filter(
+    (cell) => terrain.isWalkable(cell) && !blocked.has(cell),
+  );
+  const adjacent = work.filter((cell) => cell !== anchor);
+  const picked = nearestCell(terrain, adjacent.length > 0 ? adjacent : work, from);
+  if (picked !== null) return picked;
+  return nearestFreeNeighbour(terrain, anchor, blocked, from) ?? anchor;
+}
+
+/**
+ * The interaction cell for a plain positioned target. If a loose ground drop lies under a still-standing
+ * resource, collect it from that resource's work cell. That makes mined goods follow the intended cadence:
+ * one chip drops one ore/clay at the deposit, then the collector picks it up before starting another chip.
+ * Blocking deposits get the adjacent stance because their anchor is unwalkable; low non-blocking deposits
+ * (clay) still use the same work-cell rule so they do not get mined dry before the first pickup.
+ */
+export function positionedInteractionCell(
+  world: World,
+  terrain: TerrainGraph,
+  entity: Entity,
+  from?: CellId,
+): CellId {
+  const p = world.get(entity, Position);
+  const x = fx.toInt(p.x);
+  const y = fx.toInt(p.y);
+  const anchor = terrain.cellAtClamped(x, y);
+  const drop = world.tryGet(entity, GroundDrop);
+  if (drop !== undefined) {
+    const resource = resourceAtTile(world, x, y, stockedGoodAt(world, entity) ?? drop.goodType);
+    if (resource !== null) return resourceWorkCell(world, terrain, resource, from);
+  }
+  const blocked = resourceBlockedCells(world, terrain);
+  if (!blocked.has(anchor)) return anchor;
+  return nearestFreeNeighbour(terrain, anchor, blocked, from) ?? anchor;
 }
 
 /**
@@ -128,8 +481,8 @@ export function buildingBlockedCells(world: World, ctx: SystemContext, terrain: 
  *
  *  1. every cell of its `reserved` zone (the build-exclusion area — the max-level body plus the
  *     source's margin ring) is on the map and on WALKABLE terrain (the "minimum distance from
- *     blocking terrain": water/rock/void may not touch the zone), and holds no {@link Resource}
- *     node (a tree/stone keeps the same distance a house does);
+ *     blocking terrain": water/rock/void may not touch the zone), and stays clear of resource
+ *     walk-block bodies;
  *  2. against every existing building: my `familyBody` (the largest body my level chain reaches —
  *     placing level 0 reserves the top level's space) stays out of ITS `reserved` zone, and its
  *     `familyBody` stays out of MY `reserved` zone. Each house keeps every other house's walls at
@@ -161,7 +514,7 @@ export function canPlaceBuilding(
   // Set keys are shared.ts's injective string tileKey — NOT a numeric `y*width+x` packing, which
   // would alias an off-map cell onto a real tile on the adjacent row (an existing footprint-less
   // building placed at a negative coordinate would then falsely reject a distant placement).
-  // 1. The reserved zone must lie on the map, on walkable ground, clear of resource nodes.
+  // 1. The reserved zone must lie on the map and on walkable ground.
   const reserved = new Set<string>();
   for (const c of footprint.reserved) {
     const cx = x + c.dx;
@@ -170,15 +523,29 @@ export function canPlaceBuilding(
     if (!terrain.isWalkable(terrain.cellAt(cx, cy))) return false; // blocking terrain too close
     reserved.add(tileKey(cx, cy));
   }
-  for (const e of world.query(Resource, Position)) {
-    const p = world.get(e, Position);
-    if (reserved.has(tileKey(fx.toInt(p.x), fx.toInt(p.y)))) return false; // a tree/stone in the zone
-  }
 
-  // 2. Body-vs-zone against every existing building (symmetric, so the margin holds both ways).
+  // The new building's full family body (max-level walls), reused for resource and building zone checks.
   const familyBody = new Set<string>();
   for (const c of footprint.familyBody) familyBody.add(tileKey(x + c.dx, y + c.dy));
 
+  // Resource-vs-building collision. A footprinted resource contributes its extracted walk body and
+  // build-exclusion zone; a legacy resource with no footprint keeps the old anchor-in-reserved rule.
+  for (const e of world.query(Resource, Position)) {
+    const p = world.get(e, Position);
+    const rx = fx.toInt(p.x);
+    const ry = fx.toInt(p.y);
+    const resource = world.tryGet(e, ResourceFootprint);
+    if (resource === undefined) {
+      if (reserved.has(tileKey(rx, ry))) return false;
+      continue;
+    }
+    const resourceBody = translatedCellKeys(resource.walk, rx, ry);
+    for (const key of resourceBody) if (reserved.has(key)) return false;
+    const resourceZone = translatedCellKeys(resource.build, rx, ry);
+    for (const key of resourceZone) if (familyBody.has(key)) return false;
+  }
+
+  // 2. Body-vs-zone against every existing building (symmetric, so the margin holds both ways).
   for (const e of world.query(Building, Position)) {
     const other = world.get(e, Building);
     const p = world.get(e, Position);
