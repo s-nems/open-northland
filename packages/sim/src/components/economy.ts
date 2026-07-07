@@ -54,6 +54,33 @@ export const Resource = defineComponent<{
   harvestAtomic: number;
 }>('Resource');
 
+/** One integer cell offset relative to a placed resource node's anchor tile. */
+export interface ResourceFootprintCell {
+  readonly dx: number;
+  readonly dy: number;
+}
+
+/**
+ * Data-driven collision/work footprint for a standing {@link Resource} node, copied from its
+ * harvest-stage `[GfxLandscape]` record (`LogicWalkBlockArea`, `LogicBuildBlockArea`, `LogicWorkArea`).
+ *
+ * The marker is deliberately separate from {@link Resource}: old synthetic tests and one-off fixtures
+ * that place a bare resource keep the pre-footprint same-tile behavior, while real/imported nodes and
+ * acceptance scenes stamp this component from content. `walk` cells enter the dynamic pathfinding
+ * overlay, `build` cells reserve the no-building ring, and `work` cells are where a collector stands
+ * to run the harvest atomic. The original footprint rows are valency-state keyed; the resolver stamps
+ * the highest state (the fresh/full node) so collision is static until the node is removed.
+ */
+export interface ResourceFootprintData {
+  readonly walk: readonly ResourceFootprintCell[];
+  readonly build: readonly ResourceFootprintCell[];
+  readonly work: readonly ResourceFootprintCell[];
+  /** Source `[GfxLandscape].index`, retained for provenance/debugging. */
+  readonly sourceGfxIndex: number;
+}
+
+export const ResourceFootprint = defineComponent<ResourceFootprintData>('ResourceFootprint');
+
 /**
  * Marks a {@link Resource} node that is **felled**, not gathered unit-by-unit — a tree the collector
  * chops down over several swings, faithful to the original's `tree → "tree falling" → trunk` lifecycle

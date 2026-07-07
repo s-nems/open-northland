@@ -4,7 +4,7 @@ import { HALF_COLUMN } from '../../nav/metric.js';
 import { findPath } from '../../nav/pathfinding.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System } from '../context.js';
-import { buildingBlockedCells } from '../footprint.js';
+import { dynamicBlockedCells } from '../footprint.js';
 import { inRange } from '../shared.js';
 
 // pathfindingSystem lives in routing.ts (not pathfinding.ts) to avoid an eyeball collision with the
@@ -43,9 +43,9 @@ export const pathfindingSystem: System = (world, ctx) => {
   // Serve in ascending entity-id order so the per-tick budget cut is canonical (never insertion
   // order). canonicalEntities() is the sorted id list; filter to those with a live request.
   let served = 0;
-  // The walk-block overlay (cells standing buildings occupy), built lazily ONCE per tick — only a
-  // tick that actually routes pays for it. Derived state, rebuilt from the live Building components
-  // every time, so it can never drift from an upgrade/demolition (see buildingBlockedCells).
+  // The walk-block overlay (standing building bodies + resource footprints), built lazily ONCE per
+  // routing tick — only a tick that actually routes pays for it. Building cells are derived live;
+  // resource cells come from the ResourceFootprint generation cache.
   let blocked: ReadonlySet<CellId> | undefined;
   for (const e of world.canonicalEntities()) {
     if (served >= PATHFINDING_BUDGET_PER_TICK) break;
@@ -53,7 +53,7 @@ export const pathfindingSystem: System = (world, ctx) => {
     if (req === undefined || req.failed) continue; // already-failed requests aren't retried
     served++;
 
-    blocked ??= buildingBlockedCells(world, ctx, terrain);
+    blocked ??= dynamicBlockedCells(world, ctx, terrain);
     const path = resolvePath(terrain, req.start, req.goal, blocked);
     if (path === null) {
       req.failed = true; // signal the planner; keep the request so it isn't silently re-issued

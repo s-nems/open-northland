@@ -32,6 +32,13 @@ export class World {
   private readonly alive = new Set<Entity>();
   /** Components in first-registration order — stable, used for canonical hashing/snapshots. */
   private readonly registered: Array<Component<unknown>> = [];
+  /** Per-component mutation generation, used by derived caches that depend on a component store. */
+  private readonly componentGenerations = new Map<Component<unknown>, number>();
+  /**
+   * Optional cache verifiers registered by derived-cache owners. They run under `verifyCaches()` so a
+   * stale cache is caught by the normal invariant path instead of surfacing as a distant golden drift.
+   */
+  private readonly cacheVerifiers = new Map<string, () => string[]>();
   /**
    * Memoized ascending-id list from {@link canonicalEntities}, rebuilt lazily and invalidated only when
    * the alive set changes ({@link create}/{@link destroy}). Without it, a system that scans the world
@@ -49,7 +56,9 @@ export class World {
   }
 
   destroy(entity: Entity): void {
-    for (const c of this.registered) c.store.delete(entity);
+    for (const c of this.registered) {
+      if (c.store.delete(entity)) this.bumpComponentGeneration(c);
+    }
     this.alive.delete(entity);
     this.canonicalCache = null;
   }
@@ -63,11 +72,12 @@ export class World {
       this.registered.push(component as Component<unknown>);
     }
     component.store.set(entity, value);
+    this.bumpComponentGeneration(component as Component<unknown>);
     return value;
   }
 
   remove<T>(entity: Entity, component: Component<T>): void {
-    component.store.delete(entity);
+    if (component.store.delete(entity)) this.bumpComponentGeneration(component as Component<unknown>);
   }
 
   has<T>(entity: Entity, component: Component<T>): boolean {
@@ -128,31 +138,44 @@ export class World {
     return this.canonicalCache;
   }
 
+  /** The mutation generation for one component store. A cache can memoize against this value. */
+  componentGeneration(component: Component<unknown>): number {
+    return this.componentGenerations.get(component) ?? 0;
+  }
+
+  /** Register or replace a named derived-cache verifier. The verifier must be pure over current state. */
+  registerCacheVerifier(name: string, verifier: () => string[]): void {
+    this.cacheVerifiers.set(name, verifier);
+  }
+
   /**
    * Recompute every incrementally-maintained cache from scratch and report mismatches with the live
    * copy (empty = coherent). Incremental caches are the classic lockstep-desync source: a derived
    * value must be re-derivable from authoritative state at any time, so a missed invalidation shows
    * up HERE, at the tick it happens, not as an unexplained golden/hash divergence later. Wired into
    * the core invariants (`harness/invariants.ts`), so every invariant-checked scenario/golden/fuzz
-   * run validates it each tick. Today the only cross-tick cache is the {@link canonicalEntities}
-   * memo; register future ones (ring-search spatial index, content-by-typeId maps) here as they land.
+   * run validates it each tick. Derived-cache owners register verifiers via {@link registerCacheVerifier}
+   * when they first build a cache for this world.
    */
   verifyCaches(): string[] {
-    if (this.canonicalCache === null) return [];
+    const out: string[] = [];
     const fresh = [...this.alive].sort((a, b) => a - b);
-    if (this.canonicalCache.length !== fresh.length) {
-      return [
+    if (this.canonicalCache !== null && this.canonicalCache.length !== fresh.length) {
+      out.push(
         `canonicalEntities cache holds ${this.canonicalCache.length} ids but ${fresh.length} are alive — a create/destroy missed invalidation`,
-      ];
-    }
-    for (let i = 0; i < fresh.length; i++) {
-      if (this.canonicalCache[i] !== fresh[i]) {
-        return [
-          `canonicalEntities cache diverges at index ${i}: cached ${this.canonicalCache[i]}, alive ${fresh[i]} — stale memo`,
-        ];
+      );
+    } else if (this.canonicalCache !== null) {
+      for (let i = 0; i < fresh.length; i++) {
+        if (this.canonicalCache[i] !== fresh[i]) {
+          out.push(
+            `canonicalEntities cache diverges at index ${i}: cached ${this.canonicalCache[i]}, alive ${fresh[i]} — stale memo`,
+          );
+          break;
+        }
       }
     }
-    return [];
+    for (const verify of this.cacheVerifiers.values()) out.push(...verify());
+    return out;
   }
 
   /**
@@ -171,5 +194,9 @@ export class World {
 
   get entityCount(): number {
     return this.alive.size;
+  }
+
+  private bumpComponentGeneration(component: Component<unknown>): void {
+    this.componentGenerations.set(component, (this.componentGenerations.get(component) ?? 0) + 1);
   }
 }

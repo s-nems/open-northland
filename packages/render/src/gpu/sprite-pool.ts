@@ -19,8 +19,7 @@ import {
   resolveResourceDraw,
   resolveSettlerBobId,
   resolveSpriteBobId,
-  resolveStockpileDraw,
-  unwrapBobRef,
+  resolveStockpileLayerDraws,
 } from '../data/sprites.js';
 import type { Viewport } from '../data/viewport.js';
 import { PalettedSprite } from './paletted-sprite.js';
@@ -183,6 +182,23 @@ export function reconcileSprites(
     if (!liveRefs.has(key)) toDestroy.push(key);
   }
   return { toDestroy };
+}
+
+/**
+ * Compact a resolved stockpile layer stack. The first draw is required: for an empty delivery marker it is
+ * the flag, and for a filled marker it is the heap. Later layers are optional overlays, so a missing flag
+ * can degrade to a heap, but a missing heap must fall back to placeholder instead of rendering a full pile
+ * as a bare flag.
+ */
+export function compactResolvedStockpileLayers<T>(layers: readonly (T | null)[]): T[] | null {
+  const primary = layers[0];
+  if (primary === undefined || primary === null) return null;
+  const out: T[] = [primary];
+  for (let i = 1; i < layers.length; i++) {
+    const layer = layers[i];
+    if (layer !== undefined && layer !== null) out.push(layer);
+  }
+  return out;
 }
 
 export class SpritePool {
@@ -547,20 +563,14 @@ export class SpritePool {
       // the placeholder heap — never falls through to the body atlas (which would blit a settler frame).
       const binding = sheet.bindings.stockpile;
       if (binding === undefined) return null;
-      const draw = resolveStockpileDraw(binding, item); // the per-fill heap when held, the flag when empty
-      if (draw.layer === undefined) return null; // no family → placeholder heap
-      const primary = this.layeredLayerFor(sheet, 'stockpile', draw);
-      if (primary === null) return null;
-      // The delivery FLAG stays planted even once wood is piled on it: when the pile HOLDS goods (`draw` is
-      // the heap), plant the flag BEHIND its heap so the collection marker never vanishes under its goods.
-      // An empty pile's `draw` already IS the flag, so nothing extra to add.
-      if (item.goodType !== undefined && typeof binding !== 'number') {
-        const flagDraw = unwrapBobRef(binding.flag);
-        const flagLayer =
-          flagDraw.layer !== undefined ? this.layeredLayerFor(sheet, 'stockpile', flagDraw) : null;
-        if (flagLayer !== null) return [flagLayer, primary]; // flag behind, heap in front
-      }
-      return [primary];
+      const draws = resolveStockpileLayerDraws(binding, item);
+      return compactResolvedStockpileLayers(
+        draws.map((draw) =>
+          draw.layer === undefined
+            ? null // no family -> placeholder heap/flag, never a wrong atlas borrow
+            : this.layeredLayerFor(sheet, 'stockpile', draw),
+        ),
+      );
     } else if (item.kind === 'grounddrop') {
       // A freshly-felled trunk on the ground draws its per-good pickup-stage LOG from a loaded named family
       // (the `landscapeToPickup` atlas), reusing the resource resolver — the same no-wrong-borrow rule as

@@ -74,7 +74,7 @@ export function nearestMissingInputSource(
       if (e === workplace) continue; // never source an input from the workplace we're supplying
       if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
       if ((world.get(e, Stockpile).amounts.get(input.goodType) ?? 0) <= 0) continue; // holds none
-      const cell = interactionCell(world, ctx, terrain, e);
+      const cell = interactionCell(world, ctx, terrain, e, here);
       const dist = manhattan(terrain, here, cell);
       if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
         best = e;
@@ -183,7 +183,7 @@ export function nearestGroundPile(
     if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
     const good = lowestStockedGood(world.get(e, Stockpile));
     if (good === null) continue; // an empty pile is nothing to collect
-    const cell = interactionCell(world, ctx, terrain, e);
+    const cell = interactionCell(world, ctx, terrain, e, here);
     const dist = manhattan(terrain, here, cell);
     if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
       best = { pile: e, goodType: good };

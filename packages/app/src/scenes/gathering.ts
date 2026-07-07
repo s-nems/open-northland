@@ -1,5 +1,5 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
-import { type Component, type Simulation, components, fx } from '@vinland/sim';
+import { type Component, type Simulation, components, fx, systems } from '@vinland/sim';
 import { GRASS, VIKING, grassTerrain } from '../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../catalog/felling.js';
 import {
@@ -177,6 +177,53 @@ const WORKER_X = 2;
 const NODE_X0 = 5; // first source node (a stand/patch grows right from here)
 const FLAG_X = 8;
 
+const RESOURCE_LANDSCAPE_BASE = 1000;
+const RESOURCE_GFX_BASE = 2000;
+
+function resourceLandscapeType(good: number): number {
+  return RESOURCE_LANDSCAPE_BASE + good;
+}
+
+function resourceGfxIndex(good: number): number {
+  return RESOURCE_GFX_BASE + good;
+}
+
+function landscapeState(g: Gatherer): number {
+  return Math.max(1, g.depositLevels ?? 3);
+}
+
+function walkBlockAreas(g: Gatherer): number[][] {
+  const state = landscapeState(g);
+  // Clay/mud and mushrooms are low ground patches in the decoded data; they do not block walking.
+  if (g.good === MUD || g.mode === 'pick') return [];
+  return [[state, 0, 0, 1]];
+}
+
+function buildBlockAreas(g: Gatherer): number[][] {
+  const state = landscapeState(g);
+  if (g.good === MUD || g.mode === 'pick') return [];
+  return [
+    [state, -1, 0, 1],
+    [state, 0, 0, 1],
+    [state, 1, 0, 1],
+  ];
+}
+
+function workAreas(g: Gatherer): number[][] {
+  const state = landscapeState(g);
+  if (g.mode === 'pick') return [[1, 0, 0, 1]];
+  if (g.good === MUD)
+    return [
+      [state, -1, 0, 1],
+      [state, 0, 0, 1],
+      [state, 1, 0, 1],
+    ];
+  return [
+    [state, -1, 0, 1],
+    [state, 1, 0, 1],
+  ];
+}
+
 /** The whole yield a lane delivers to its flag: its felled trees × per-tree wood, its deposit size, or one
  *  per plucked mushroom. The headless conservation check keys on this. */
 function expectedYield(g: Gatherer): number {
@@ -215,7 +262,30 @@ function content(): ContentSet {
       })),
     ],
     buildings: [], // the collection points are bare delivery flags, placed directly in build()
-    landscape: [{ typeId: GRASS, id: 'grass', walkable: true, buildable: true }],
+    landscape: [
+      { typeId: GRASS, id: 'grass', walkable: true, buildable: true },
+      ...GATHERERS.map((g) => ({
+        typeId: resourceLandscapeType(g.good),
+        id: `${g.id}_harvest_node`,
+        walkable: true,
+        buildable: true,
+      })),
+    ],
+    landscapeGfx: GATHERERS.map((g) => ({
+      index: resourceGfxIndex(g.good),
+      editName: `scene ${g.id} resource`,
+      logicType: resourceLandscapeType(g.good),
+      maxValency: landscapeState(g),
+      isWorkable: true,
+      walkBlockAreas: walkBlockAreas(g),
+      buildBlockAreas: buildBlockAreas(g),
+      workAreas: workAreas(g),
+    })),
+    gatheringPipeline: GATHERERS.map((g) => ({
+      goodType: g.good,
+      goodId: g.id,
+      harvest: { landscapeType: resourceLandscapeType(g.good), gfxIndices: [resourceGfxIndex(g.good)] },
+    })),
     tribes: [
       {
         typeId: VIKING,
@@ -245,6 +315,9 @@ function placeTree(sim: Simulation, x: number, y: number): void {
     remaining: WOOD_YIELD_PER_NODE,
     harvestAtomic: HARVEST_ATOMIC,
   });
+  if (!systems.stampResourceFootprint(sim.world, sim.content, e, WOOD)) {
+    throw new Error('placeTree: missing resource footprint for wood');
+  }
   sim.world.add(e, Felling, { chopsLeft: WOOD_CHOPS_TO_FELL });
 }
 
@@ -261,6 +334,9 @@ function placeDeposit(sim: Simulation, g: Gatherer, x: number, y: number): void 
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Resource, { goodType: g.good, remaining: units, harvestAtomic: g.atomic });
+  if (!systems.stampResourceFootprint(sim.world, sim.content, e, g.good)) {
+    throw new Error(`placeDeposit: missing resource footprint for ${g.id}`);
+  }
   sim.world.add(e, MineDeposit, { initial: units, levels });
 }
 
@@ -269,6 +345,9 @@ function placePickNode(sim: Simulation, g: Gatherer, x: number, y: number): void
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Resource, { goodType: g.good, remaining: 1, harvestAtomic: g.atomic });
+  if (!systems.stampResourceFootprint(sim.world, sim.content, e, g.good)) {
+    throw new Error(`placePickNode: missing resource footprint for ${g.id}`);
+  }
 }
 
 /** Place a worker of `jobType` at (x,y). */
@@ -360,7 +439,8 @@ export const gatheringScene: SceneDefinition = {
       'bryle; drzewo pada i zostaje pień; grzyby znikają po zerwaniu',
     'Niesiony surowiec ma swój naturalny kolor — drewno brązowe, glina/ruda w swoim kolorze, NIE niebieskie ' +
       '(nie kolor frakcji); tylko strój robotnika jest w kolorze gracza',
-    'Robotnik stojący na złożu/pniu i FLAGA na ziemi rysują się PRZED terenem (nie chowają się za nim)',
+    'Przy blokujących drzewach/kamieniach/złożach robotnik stoi na wolnym polu pracy OBOK, nie w środku ' +
+      'obiektu; niska glina/grzyby nadal mogą być zbierane z ich dopuszczalnych pól pracy',
     'Znane skróty (v1): pień rysuje „tree debris”; drzewo/złoże znika natychmiast (bez animacji upadku); ' +
       'kamień/żelazo/złoto dzielą jedną animację górniczą (brak osobnej animacji kilofa — source basis)',
   ],
