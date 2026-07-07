@@ -64,7 +64,7 @@ gitignored.
   say so in the report, and never commit any of it.
 
 ---
-
+[DONE]
 ## Step 1 — pipeline: emit the `lmhe` elevation lane
 
 The single biggest missing ingredient: terrain height. Everything downstream (lift, shading,
@@ -103,7 +103,7 @@ Verification:
 ```
 
 ---
-
+[DONE]
 ## Step 2 — render: elevation lift across every projection consumer
 
 Applies the measured ≈**1.24 native px per elevation unit** upward lift. This is what makes hills
