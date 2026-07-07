@@ -305,7 +305,7 @@ surface the scene URL + checklist (note animations still pending step 5).
 Guardrails: packages/sim/AGENTS.md; the flee threat query MUST reuse step 2's ring search (no
 new scans); all new thresholds are named constants with plan progress notes.
 ```
-[IN PROGRESS]
+[DONE]
 ## Step 4 — sim: ranged combat — projectiles in flight
 
 ```text
