@@ -7,16 +7,16 @@ import {
   Stockpile,
   Vehicle,
   stampOwner,
-} from '../../components/index.js';
-import { assertNever } from '../../core/brand.js';
-import type { Command } from '../../core/commands.js';
-import { ONE, fx } from '../../core/fixed.js';
-import type { Entity, World } from '../../ecs/world.js';
-import type { System, SystemContext } from '../context.js';
-import { canPlaceBuilding } from '../footprint.js';
-import { buildingEnabled, tribeShipsUnlocked } from '../progression.js';
-import { attackUnit, moveUnit, setJob, setStance } from './orders.js';
-import { spawnAnimalHerd, spawnSettler } from './spawn.js';
+} from '../components/index.js';
+import { assertNever } from '../core/brand.js';
+import type { Command } from '../core/commands.js';
+import { ONE, fx } from '../core/fixed.js';
+import type { Entity, World } from '../ecs/world.js';
+import { attackUnit, moveUnit, setJob, setStance } from './conflict/orders.js';
+import { spawnAnimalHerd, spawnSettler } from './conflict/spawn.js';
+import type { System, SystemContext } from './context.js';
+import { canPlaceBuilding } from './footprint.js';
+import { buildingEnabled, tribeShipsUnlocked } from './progression.js';
 
 /**
  * CommandSystem — the ONLY way sim state mutates from the outside. It runs first each tick, drains

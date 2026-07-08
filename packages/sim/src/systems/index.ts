@@ -1,7 +1,7 @@
-import { aiSystem } from './conflict/ai.js';
-import { atomicSystem } from './conflict/atomic.js';
+import { aiSystem } from './agents/ai.js';
+import { atomicSystem } from './agents/atomic.js';
+import { commandSystem } from './command.js';
 import { combatSystem } from './conflict/combat.js';
-import { commandSystem } from './conflict/command.js';
 import { playerOrderSystem } from './conflict/orders.js';
 import { projectileSystem } from './conflict/projectile.js';
 import type { System, SystemContext } from './context.js';
@@ -23,10 +23,10 @@ import { progressionSystem, terrainSystem, timeSystem, transportSystem } from '.
 // The planner internals (ai-targets/ai-supply/spawn) are deliberately NOT re-exported — they are
 // implementation detail of the AI/command systems, not surface.
 export type { System, SystemContext };
-export * from './conflict/ai.js';
-export * from './conflict/atomic.js';
+export * from './agents/ai.js';
+export * from './agents/atomic.js';
 export * from './conflict/combat.js';
-export * from './conflict/command.js';
+export * from './command.js';
 export * from './conflict/orders.js';
 export * from './conflict/projectile.js';
 export * from './economy/construction.js';
