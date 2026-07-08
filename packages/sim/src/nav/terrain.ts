@@ -127,13 +127,14 @@ function resolveTypeProps(t: LandscapeType): CellTypeProps {
   return {
     walkable: t.walkable,
     buildable: t.buildable,
-    // Walk cost is a uniform unit per walkable step — and that is FAITHFUL, not a placeholder:
+    // Walk cost is a uniform unit per walkable step — faithful for THIS table:
     // `landscapetypes.ini` carries NO per-type movement weight (its only per-type numbers are
     // `maximumValency` = a per-cell capacity cap, and the `allowedon{land,water,everything}`
-    // PLACEMENT-layer flags — neither is a traversal cost). The original engine gates movement by
-    // walkability + valency, not a per-cell weight. A real cost field would need a source that has
-    // one (e.g. a map tile-grid attribute), not this table. Stays Fixed so the pathfinder never
-    // converts; blocking cells keep this cost but are never traversed.
+    // PLACEMENT-layer flags — neither is a traversal cost). The original DOES weight movement by
+    // GROUND class, though: `trianglepatterntypes.cif` carries per-logicType `moveresistance`
+    // (land 2, sand 3, mountain 4, snow 5 — now emitted as the IR's `trianglePatternTypes`); a
+    // ground-class walk-cost is a future step, not this landscape-object table's field. Stays Fixed
+    // so the pathfinder never converts; blocking cells keep this cost but are never traversed.
     walkCost: ONE,
     maxValency: t.maxValency,
   };

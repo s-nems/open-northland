@@ -6,11 +6,12 @@ import { TextureCache } from '../src/gpu/texture-cache.js';
 import { TILE_HALF_H, TILE_HALF_W, makeElevationField, tileToScreen } from '../src/index.js';
 
 /**
- * The build-placement overlay's agent-checkable halves. The wash itself is a GPU composite (a solid
- * band with the buildable diamonds erased — seamless by construction, no per-cell boundaries), which
- * needs a real renderer + human eyes; what IS pinnable headlessly is the pure band geometry
- * ({@link overlayBounds} — the composite must cover every diamond incl. the stagger overhang and the
- * terrain lift) and the cursor ghost's placement contract (anchor, depth, hide/show).
+ * The build-placement overlay's agent-checkable halves. The wash itself is a GPU composite (each
+ * side's overlap-fused diamonds rendered opaque off-screen, then drawn translucent — seamless by
+ * construction, no per-cell boundaries), which needs a real renderer + human eyes; what IS pinnable
+ * headlessly is the pure band geometry ({@link overlayBounds} — the composite must cover every
+ * diamond incl. the stagger overhang and the terrain lift) and the cursor ghost's placement contract
+ * (anchor, depth, hide/show).
  */
 
 const FLAT = makeElevationField(undefined, 0, 0);

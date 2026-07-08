@@ -244,6 +244,9 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     // (`GfxPattern.editName`) for the texture page + per-triangle UVs.
     gfxPatterns,
     terrainPatterns,
+    // The per-logicType ground classes (`humancanwalkon`/`housecanbebuildon`/`iswater`) the
+    // map-collision join reads — emitted verbatim so ground blocking is data, not a hardcoded split.
+    trianglePatternTypes: triangleTypes,
     bobSequences,
     buildingBobs,
     constructionLayers,

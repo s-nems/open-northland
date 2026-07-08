@@ -336,11 +336,21 @@ export interface PlacementProbe {
  */
 interface BlockerMemo {
   tick: number;
+  content: ContentSet;
   terrain: TerrainGraph;
   blockers: PlacementBlockers;
 }
 const blockerMemo = new WeakMap<World, BlockerMemo>();
 
+/**
+ * KNOWN FRAGILITY (named, currently safe by call order): the "constant within one tick" premise can
+ * be violated by DIRECT `world.add`/`remove` between steps — the fixture idiom (a harness stamping
+ * Resources without ticking). Today every such mutation happens either before the first probe of its
+ * tick or after the last one, and the COMMAND gate never reads this memo (`canPlaceBuilding` always
+ * collects fresh), so a stale set can only mis-tint the overlay for a frame. If a same-tick
+ * probe→mutate→probe sequence ever appears, key this on the Building/Resource store generations
+ * instead of the tick.
+ */
 function memoizedBlockers(
   world: World,
   content: ContentSet,
@@ -348,9 +358,16 @@ function memoizedBlockers(
   tick: number,
 ): PlacementBlockers {
   const cached = blockerMemo.get(world);
-  if (cached !== undefined && cached.tick === tick && cached.terrain === terrain) return cached.blockers;
+  if (
+    cached !== undefined &&
+    cached.tick === tick &&
+    cached.content === content &&
+    cached.terrain === terrain
+  ) {
+    return cached.blockers;
+  }
   const blockers = collectPlacementBlockers(world, content, terrain);
-  blockerMemo.set(world, { tick, terrain, blockers });
+  blockerMemo.set(world, { tick, content, terrain, blockers });
   return blockers;
 }
 

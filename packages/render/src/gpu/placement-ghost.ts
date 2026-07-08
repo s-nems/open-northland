@@ -27,6 +27,7 @@ export interface PlacementGhost {
   readonly buildingType: number;
 }
 
+/** Tuned by eye against the original's translucent cursor house (no measurable oracle). */
 const GHOST_ALPHA = 0.55;
 /** Placeholder tint when no atlas frame resolves (bare checkout / synthetic sheet without the type). */
 const PLACEHOLDER_COLOR = 0xc8a04a;

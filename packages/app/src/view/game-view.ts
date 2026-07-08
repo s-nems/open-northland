@@ -62,36 +62,42 @@ export interface GameViewDeps {
 const OVERLAY_BAND_MARGIN = 2;
 
 /**
- * The build-mode overlay frame: the visible tile band plus which of its cells REJECT the held
- * building's anchor — the SAME rule `placeBuilding` gates on (`Simulation.placementProbe`), so the
- * dimmed area is exactly where a click would be refused (blocked by terrain — trees/stones/ore/
+ * The build-mode overlay-frame builder: the visible tile band plus which of its cells REJECT the
+ * held building's anchor — the SAME rule `placeBuilding` gates on (`Simulation.placementProbe`), so
+ * the dimmed area is exactly where a click would be refused (blocked by terrain — trees/stones/ore/
  * water — or by another building's margin). Screen-bounded per golden rule 6 (per-frame cost scales
- * with the screen): only the visible band is probed, and only while placing. Returns null for a
- * mapless sim (no placement rule → no wash).
+ * with the screen): only the visible band is probed, and only while placing — and the band probe is
+ * MEMOIZED on (type, sim tick, band), because sim state mutates only at tick boundaries: a still
+ * camera over a paused/idle sim reuses last frame's result instead of re-probing thousands of tiles
+ * per RAF. Returns null for a mapless sim (no placement rule → no wash).
  */
-function placementOverlayFrame(
+function makeOverlayFrameSource(
   sim: Simulation,
-  buildingType: number,
-  camera: Camera,
-  screenW: number,
-  screenH: number,
   mapSize: { readonly width: number; readonly height: number },
-): PlacementOverlayFrame | null {
-  const probe = sim.placementProbe(buildingType);
-  if (probe === null) return null;
-  const range = visibleTileRange(
-    cameraViewport(camera, screenW, screenH),
-    mapSize.width,
-    mapSize.height,
-    OVERLAY_BAND_MARGIN,
-  );
-  const blocked: { col: number; row: number }[] = [];
-  for (let row = range.minRow; row <= range.maxRow; row++) {
-    for (let col = range.minCol; col <= range.maxCol; col++) {
-      if (!probe.canPlace(col, row)) blocked.push({ col, row });
+): (buildingType: number, camera: Camera, screenW: number, screenH: number) => PlacementOverlayFrame | null {
+  let key = '';
+  let frame: PlacementOverlayFrame | null = null;
+  return (buildingType, camera, screenW, screenH) => {
+    const probe = sim.placementProbe(buildingType);
+    if (probe === null) return null;
+    const range = visibleTileRange(
+      cameraViewport(camera, screenW, screenH),
+      mapSize.width,
+      mapSize.height,
+      OVERLAY_BAND_MARGIN,
+    );
+    const nextKey = `${buildingType}:${sim.tick}:${range.minCol},${range.maxCol},${range.minRow},${range.maxRow}`;
+    if (nextKey === key && frame !== null) return frame;
+    const blocked: { col: number; row: number }[] = [];
+    for (let row = range.minRow; row <= range.maxRow; row++) {
+      for (let col = range.minCol; col <= range.maxCol; col++) {
+        if (!probe.canPlace(col, row)) blocked.push({ col, row });
+      }
     }
-  }
-  return { ...range, blocked };
+    key = nextKey;
+    frame = { ...range, blocked };
+    return frame;
+  };
 }
 
 /**
@@ -129,15 +135,19 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
   // The original LEFT tool panel — the standard game HUD. Its game-speed button drives `control`, the
   // building menu enqueues `placeBuilding` on a map click, and it claims its own clicks so the HUD
   // never falls through to world picking.
+  // The ONE live placement rule the click gate and the cursor ghost share (they must never drift —
+  // the ghost previews exactly what a click will do); a mapless sim (no probe) places freely,
+  // matching the command gate's stance.
+  const canPlaceAt = (typeId: number, col: number, row: number): boolean =>
+    sim.placementProbe(typeId)?.canPlace(col, row) ?? true;
+
   const toolPanel = await mountGameToolPanel({
     app,
     canvas,
     uiscale,
     camera: () => cameraCtl.camera(),
     enqueue: (command) => sim.enqueue(command),
-    // The live placement rule the click + cursor ghost share; a mapless sim (no probe) places freely,
-    // matching the command gate's stance.
-    canPlaceAt: (typeId, col, row) => sim.placementProbe(typeId)?.canPlace(col, row) ?? true,
+    canPlaceAt,
     mapSize: deps.mapSize,
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
     buildings: menuEntriesFromContent(sim.content),
@@ -176,6 +186,9 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     boundsOf: (ref) => renderer.entityBounds(ref), // pixel-accurate picking against the real sprite
     claimPointer: (x: number, y: number) => toolPanel.claimPointer(x, y),
   });
+
+  // The memoized build-mode band probe (see makeOverlayFrameSource) — one instance per view.
+  const overlayFrame = makeOverlayFrameSource(sim, deps.mapSize);
 
   const timestep = new FixedTimestep();
   let lastMs = performance.now();
@@ -217,14 +230,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     renderer.updatePlacementOverlay(
       placeType === null
         ? null
-        : placementOverlayFrame(
-            sim,
-            placeType,
-            cameraCtl.camera(),
-            app.screen.width,
-            app.screen.height,
-            deps.mapSize,
-          ),
+        : overlayFrame(placeType, cameraCtl.camera(), app.screen.width, app.screen.height),
     );
     // (No HUD-claim check: the HUD draws over the world layer, so the ghost can't cover it.)
     const hovered =
@@ -232,9 +238,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
         ? toolPanel.clientToTile(pointer.clientX, pointer.clientY)
         : null;
     renderer.updatePlacementGhost(
-      placeType !== null &&
-        hovered !== null &&
-        (sim.placementProbe(placeType)?.canPlace(hovered.col, hovered.row) ?? true)
+      placeType !== null && hovered !== null && canPlaceAt(placeType, hovered.col, hovered.row)
         ? { col: hovered.col, row: hovered.row, buildingType: placeType }
         : null,
     );

@@ -1,4 +1,9 @@
-import type { ContentSet, LandscapeBlockArea, LandscapeGfx } from '@vinland/data';
+import {
+  type ContentSet,
+  type LandscapeBlockArea,
+  type LandscapeGfx,
+  fullStateBlockAreaCells,
+} from '@vinland/data';
 import {
   Position,
   ResourceFootprint,
@@ -9,31 +14,16 @@ import { contentIndex } from '../../core/content-index.js';
 import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
-import { tileKey, translatedCells } from './geometry.js';
+import { translatedCells } from './geometry.js';
 
 // RESOURCE footprints — the `[GfxLandscape]` walk/build/work areas a stamped resource occupies, and
 // the incrementally-maintained per-world blocked-cell cache (with its coherence verifier). Opt-in
 // via ResourceFootprint: a bare Resource keeps the legacy same-tile fixture behavior.
 
-/** Collapse a `[GfxLandscape]` area table to the fresh/full object's cells. */
+/** Collapse a `[GfxLandscape]` area table to the fresh/full object's cells — the shared
+ *  `fullStateBlockAreaCells` reading (also the app's map-collision join), typed to the component cell. */
 function footprintCellsForFullState(areas: readonly LandscapeBlockArea[]): ResourceFootprintCell[] {
-  if (areas.length === 0) return [];
-  let fullState = 0;
-  for (const [state] of areas) if (state > fullState) fullState = state;
-  const seen = new Set<string>();
-  const out: ResourceFootprintCell[] = [];
-  for (const [state, dx, dy, run] of areas) {
-    if (state !== fullState) continue;
-    if (run <= 0) continue;
-    for (let i = 0; i < run; i++) {
-      const cell = { dx: dx + i, dy };
-      const key = tileKey(cell.dx, cell.dy);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push(cell);
-    }
-  }
-  return out;
+  return fullStateBlockAreaCells(areas);
 }
 
 /**

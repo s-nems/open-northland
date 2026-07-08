@@ -24,12 +24,13 @@ that matches its role instead of piling another method onto a growing file:
   (`?map=`), `scene.ts` (`?scene=`), `anim.ts` (+ `anim-cells.ts` pure builders + `anim-overlay.ts`
   panel), `sound.ts` (`?sounds`), `shot.ts` (`?shot`). An entry assembles its world (terrain, sim, renderer,
   starting camera); the two playable entries then hand off to the shared `view/game-view.ts` runtime.
-- **`content/`** — the decoded-content → render binding (the gitignored-`content/` I/O boundary): `net.ts`
-  (the shared fetch/degrade helpers), `ir.ts` (the ONE memoized `ir.json` fetch + the `ContentIr` view +
-  atlas loading), `building-gfx.ts` + `settler-gfx.ts` (the pure per-type/per-character bob-binding
-  reducers, unit-tested), `sprite-sheet.ts` (assembles the `SpriteSheet` + `resolveSpriteSheet`),
-  `terrain.ts`, `objects.ts`, `gui-gfx.ts`/`gui-art.ts`/`gui-atlas-map.ts` + `font-gfx.ts` (the GUI/font
-  art bindings), `audio.ts`.
+- **`content/`** — the decoded-content bindings (the gitignored-`content/` I/O boundary; mostly →
+  render, plus one → sim): `net.ts` (the shared fetch/degrade helpers), `ir.ts` (the ONE memoized
+  `ir.json` fetch + the `ContentIr` view + atlas loading), `building-gfx.ts` + `settler-gfx.ts` (the
+  pure per-type/per-character bob-binding reducers, unit-tested), `sprite-sheet.ts` (assembles the
+  `SpriteSheet` + `resolveSpriteSheet`), `terrain.ts`, `objects.ts`, `collision.ts` (the decoded-map →
+  SIM join: ground classes + object block areas → the semantic collision grid), `gui-gfx.ts`/
+  `gui-art.ts`/`gui-atlas-map.ts` + `font-gfx.ts` (the GUI/font art bindings), `audio.ts`.
 - **`catalog/`** — committed clean-room data catalogs (English naming over the original's typeIds):
   `buildings.ts` (the 41 viking buildings), `roster.ts` (the character roster), `atomics.ts` (the harvest
   atomic ids), `felling.ts`/`mining.ts` (gathering pins).

@@ -531,6 +531,10 @@ export const LandscapeType = z.strictObject({
   /** `name` — the raw display name (`"tree"`, `"stone_ore"`, `"cadaver_leather"`); {@link id} is its slug. */
   name: z.string().optional(),
   walkable: z.boolean().default(true),
+  /** LOAD-BEARING default: the extractor keeps `true` here (the source table carries no per-type
+   *  build flag), and the sim's placement rule now reads it (`TerrainGraph.isBuildable`). Feeding
+   *  extracted landscape rows STRAIGHT into a sim terrain would therefore make water/rock buildable —
+   *  real maps must go through the app's collision resolve (semantic classes), never raw. */
   buildable: z.boolean().default(true),
   /**
    * `maximumValency` — the per-cell capacity of this landscape type, the number that gates how many
@@ -1424,6 +1428,9 @@ export const ContentSet = z.strictObject({
   gatheringPipeline: z.array(GatheringPipeline).default([]),
   gfxPatterns: z.array(GfxPattern).default([]),
   terrainPatterns: z.array(TerrainPattern).default([]),
+  /** The per-logicType ground classes (`trianglepatterntypes.cif`) a {@link GfxPattern.logicType}
+   *  references — the walk/build/water flags the map-collision join classes real ground by. */
+  trianglePatternTypes: z.array(TrianglePatternType).default([]),
   bobSequences: z.array(BobSequenceSet).default([]),
   buildingBobs: z.array(BuildingBob).default([]),
   constructionLayers: z.array(BuildingConstructionLayer).default([]),

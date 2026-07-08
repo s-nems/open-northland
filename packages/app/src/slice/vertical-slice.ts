@@ -164,7 +164,9 @@ export function runSlice(
 ): Simulation {
   // Resolve placement first: a usable map yields its first six walkable cells; no map (or a map with
   // too few walkable cells) falls back to the synthetic strip — content + terrain + cells all revert
-  // together so the fallback sim is exactly the no-map slice.
+  // together, so the fallback world matches the no-map slice (exactly, when the caller also passed no
+  // `footprints`; a real-content caller's fallback carries them, differing only in inert content rows —
+  // fixtures force-place, so nothing behavioral changes).
   const mapCells = map ? walkableCells(map, sandboxWalkableTypeIds(map), PLACEMENT_CELL_COUNT) : null;
   const usable = map !== undefined && mapCells !== null;
   // `footprints` (the live real-content entry passes them, from ir.json) replace the catalog's
