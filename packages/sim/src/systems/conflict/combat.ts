@@ -41,7 +41,6 @@ import { attackerWeapon, startAttack, targetMaterial } from './weapons.js';
 // Re-exported so the public surface (the systems barrel + tests) keeps its single combat import
 // site after the conflict/ split (targeting.ts and flee.ts stay internal).
 export { SIGHT_RADIUS_TILES } from './targeting.js';
-export { FLEE_COOLDOWN_TICKS } from './flee.js';
 
 /**
  * CombatSystem — the whole combat loop's **decision** stage: for each combatant, pick who to fight and

@@ -46,7 +46,7 @@ const ATTACKED_ATOMIC_ID = 82;
 /**
  * The original's per-need **reserve span** the raw `event <at> <channel> <delta>` need tuples move
  * against (~10000 in the source — the scale the needs/eat rows document, e.g. a meal `event 30 2 +4000`
- * refills ~40% of it; see `lifecycle/needs.ts` / `conflict/ai.ts`). The sim's 0..ONE need bar maps onto
+ * refills ~40% of it; see `lifecycle/needs.ts` / `agents/drives-needs.ts`). The sim's 0..ONE need bar maps onto
  * it, so a raw reserve delta `D` becomes a bar delta `D / NEED_EVENT_RESERVE · ONE`. **Approximated**:
  * the exact reserve max isn't readable (source basis) — the combat-swing drain preserves the data's
  * DIRECTION (a drain raises the need) and RELATIVE magnitude (a woman's −100 swing costs 5× a soldier's
