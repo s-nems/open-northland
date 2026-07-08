@@ -3,6 +3,7 @@ import type {
   CarryingBinding,
   ConstructionLayerRef,
   DirectionalAnim,
+  FrameListAnim,
   ResourceTypeBinding,
   SettlerStateBinding,
   SpriteAtlas,
@@ -139,6 +140,14 @@ const SLEEP_ATOMIC = 8;
 const PRAY_ATOMIC = 12;
 const PICKUP_ATOMIC = 22;
 const DEPOSIT_ATOMIC = 23;
+/**
+ * The combat attack swing (`setatomic <job> 81 "..._attack"`; the sim's `ATTACK_ATOMIC_ID`,
+ * `packages/sim/src/systems/conflict/weapons.ts`) — the `byAtomic` key the warrior/civilian specs bind
+ * their weapon swing to. Its animation is NOT a bobseq range but the `[gfxanimatomic]` directional
+ * frame-list layout (a melee pool is not `length / 8`), so its binding is a render `FrameListAnim` built
+ * from {@link import('./ir.js').gfxAtomicFrameLists}, not {@link directionalAnimFromSeq}. Exported so the
+ * sheet loader filters the gfxAtomics table for this exact action. */
+export const ATTACK_ATOMIC = 81;
 
 /**
  * Build a {@link DirectionalAnim} from a decoded `[bobseq]` sequence: `start` is the run's first bob id,
@@ -371,6 +380,22 @@ export interface CharacterSpec {
   readonly carryPrefix?: string;
   /** Atomic id → its action sequence on this body (the `setatomic` join, e.g. the woodcut swing). */
   readonly atomics?: Readonly<Record<number, { readonly seq: string; readonly phaseStart?: number }>>;
+  /**
+   * The combat attack swing bobseq NAME (the `[gfxanimatomic]` action-81 `gfxbobseqbody` for this look's
+   * viking job), bound to {@link ATTACK_ATOMIC}. Unlike {@link atomics}, its directional layout comes
+   * from the per-facing frame lists (a melee swing pool is not a clean ×8 strip), so
+   * {@link characterBinding} builds a render `FrameListAnim` from the extracted gfxAtomics table keyed by
+   * this name — the name must be BOTH a `[bobseq]` on this body AND a viking gfxAtomics record.
+   */
+  readonly attack?: string;
+  /**
+   * The combat-engaged gait bobseq names (`..._walk_agressive` / `..._wait_agressive`) — the readied
+   * walk/stand a soldier plays while advancing on or squaring up to an enemy. Bound to
+   * {@link import('@vinland/render').SettlerStateBinding.engaged}; absent for looks with no aggressive
+   * variant (the unarmed body, civilians). The walk is a clean ×8 cycle, the wait a facing-locked strip
+   * (like the relaxed wait).
+   */
+  readonly engaged?: { readonly moving?: string; readonly idle?: string };
 }
 
 /** Specs for every in-game look, keyed by the id the job tables below reference. Declared with
@@ -383,6 +408,9 @@ export const CHARACTER_SPECS = {
     walkSeq: 'human_man_generic_walk',
     waitSeq: 'human_man_generic_wait',
     carryPrefix: 'human_man_generic_walk_',
+    // The civilist brawls with fists when it fights (job 6 — the viking action-81 join); the same
+    // generic man body every civilian trade shares, so any civilian that runs an attack atomic punches.
+    attack: 'human_man_Civilian_Fight_punch',
     // Every atomic the sim issues that this body authors a sequence for. The pick-up bend serves both
     // pickup AND deposit (the body authors no separate put-down; the same stoop reads as either — and
     // a bound atomic wins over the carry override, so the depositor stoops as its load leaves).
@@ -406,6 +434,8 @@ export const CHARACTER_SPECS = {
     walkSeq: 'human_woman_generic_walk',
     waitSeq: 'human_woman_generic_wait',
     carryPrefix: 'human_woman_generic_walk_',
+    // The woman's fist brawl (job 5 viking action-81) on her own body (cr_hum_body_10).
+    attack: 'human_woman_Civilian_Fight_woman_punch',
     atomics: {
       [EAT_ATOMIC]: { seq: 'human_woman_generic_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_woman_generic_sleep' },
@@ -428,35 +458,66 @@ export const CHARACTER_SPECS = {
     rosterId: 'baby',
     waitSeq: 'human_child_baby_generic_wait',
   },
+  // Attack + aggressive-gait bindings are the VIKING (`logicdefines.inc` TRIBE_TYPE_HUMAN_VIKING = 1)
+  // `[gfxanimatomic]` action-81 joins — transcribed, NOT guessed: short sword swings Sword_Attack_2,
+  // long sword the Broadsword swing, the longbow the Longbow swing (the per-direction frame counts match
+  // the viking atomicanimation lengths: spear 27, sword_long 29, bows 12/28). The unarmed body authors
+  // no `_agressive` gait, so 'warrior' omits `engaged` (it uses its relaxed walk/wait when engaged).
   warrior: {
     rosterId: 'warrior',
     walkSeq: 'human_man_warrior_empty_walk',
     waitSeq: 'human_man_warrior_empty_wait',
+    attack: 'human_man_warrior_empty_punch',
   },
   'warrior-spear': {
     rosterId: 'warrior',
     walkSeq: 'human_man_Warrior_spear_walk',
     waitSeq: 'human_man_Warrior_spear_wait',
+    attack: 'human_man_Warrior_spear_attack',
+    engaged: {
+      moving: 'human_man_Warrior_spear_walk_agressive',
+      idle: 'human_man_Warrior_spear_wait_agressive',
+    },
   },
   'warrior-sword': {
     rosterId: 'warrior',
     walkSeq: 'human_man_Warrior_Sword_Walk',
     waitSeq: 'human_man_Warrior_Sword_Wait',
+    attack: 'human_man_Warrior_Sword_Attack_2',
+    engaged: {
+      moving: 'human_man_Warrior_Sword_Walk_agressive',
+      idle: 'human_man_Warrior_Sword_Wait_agressive',
+    },
   },
   'warrior-broadsword': {
     rosterId: 'warrior',
     walkSeq: 'human_man_Warrior_Broadsword_walk',
     waitSeq: 'human_man_Warrior_Broadsword_wait',
+    attack: 'human_man_Warrior_Broadsword_attack',
+    engaged: {
+      moving: 'human_man_Warrior_Broadsword_walk_agressive',
+      idle: 'human_man_Warrior_Broadsword_wait_agressive',
+    },
   },
   'warrior-shortbow': {
     rosterId: 'warrior',
     walkSeq: 'human_man_Warrior_Shortbow_walk',
     waitSeq: 'human_man_Warrior_Shortbow_wait',
+    attack: 'human_man_Warrior_Shortbow_attack',
+    engaged: {
+      moving: 'human_man_Warrior_Shortbow_walk_agressive',
+      idle: 'human_man_Warrior_Shortbow_wait_agressive',
+    },
   },
   'warrior-longbow': {
     rosterId: 'warrior',
     walkSeq: 'human_man_Warrior_Longbow_walk',
     waitSeq: 'human_man_Warrior_Longbow_wait',
+    attack: 'human_man_Warrior_Longbow_attack',
+    engaged: {
+      moving: 'human_man_Warrior_Longbow_walk_agressive',
+      idle: 'human_man_Warrior_Longbow_wait_agressive',
+    },
   },
 } satisfies Readonly<Record<string, CharacterSpec>>;
 
@@ -517,6 +578,7 @@ export function characterBinding(
   spec: CharacterSpec,
   seqByName: ReadonlyMap<string, BobSeqRow>,
   goods: readonly GoodRef[],
+  attackFrameLists?: ReadonlyMap<string, readonly (readonly number[])[]>,
 ): SettlerStateBinding | null {
   const walk = eightDirAnim(seqByName, spec.walkSeq);
   const waitRow = spec.waitSeq !== undefined ? seqByName.get(spec.waitSeq) : undefined;
@@ -546,6 +608,37 @@ export function characterBinding(
     };
   }
 
+  // The combat attack swing → a FrameListAnim on {@link ATTACK_ATOMIC}: the swing pool's `start` from the
+  // `[bobseq]` row, its per-direction layout from the extracted viking `[gfxanimatomic]` frame lists
+  // (keyed by the same seq name). Bound only when BOTH resolve — a body/IR missing either just has no
+  // attack animation (the unit stands its ready pose mid-swing), never a bogus uniform slice.
+  if (spec.attack !== undefined) {
+    const row = seqByName.get(spec.attack);
+    const frameLists = attackFrameLists?.get(spec.attack);
+    if (row !== undefined && row.length > 0 && frameLists !== undefined && frameLists.length > 0) {
+      const swing: FrameListAnim = { start: row.start, frameLists };
+      byAtomic[ATTACK_ATOMIC] = swing;
+    }
+  }
+
+  // The combat-engaged gait: the aggressive walk (a clean ×8 cycle) + the aggressive wait (a facing-locked
+  // strip, like the relaxed wait). Each slot is bound only when its seq resolves; a look with no
+  // aggressive variant (the unarmed body, civilians) yields no `engaged` and falls back to its relaxed
+  // gait while engaged.
+  const engagedMoving = eightDirAnim(seqByName, spec.engaged?.moving);
+  const engagedWaitRow = spec.engaged?.idle !== undefined ? seqByName.get(spec.engaged.idle) : undefined;
+  const engagedIdle: SpriteFrameRef | undefined =
+    engagedWaitRow !== undefined && engagedWaitRow.length > 0
+      ? { start: engagedWaitRow.start, dirs: 1, stride: engagedWaitRow.length }
+      : undefined;
+  const engaged =
+    engagedMoving !== undefined || engagedIdle !== undefined
+      ? {
+          ...(engagedMoving !== undefined ? { moving: engagedMoving } : {}),
+          ...(engagedIdle !== undefined ? { idle: engagedIdle } : {}),
+        }
+      : undefined;
+
   // The generic loaded gait: the body's wood-log walk (the one carry look every body that hauls at all
   // authors), backing any good without its own cycle. A body with no carry sequences (children, the
   // soldiers) hauls invisibly on its plain walk — faithful enough: those never carry in the original.
@@ -568,6 +661,7 @@ export function characterBinding(
     ...(walk !== undefined ? { moving: walk } : {}),
     ...(Object.keys(byAtomic).length > 0 ? { byAtomic } : {}),
     ...(carrying !== undefined ? { carrying } : {}),
+    ...(engaged !== undefined ? { engaged } : {}),
   };
 }
 

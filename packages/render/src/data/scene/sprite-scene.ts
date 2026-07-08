@@ -5,11 +5,14 @@ import { type Viewport, isVisible } from '../viewport.js';
 import { type DrawItem, type MutableDrawItem, SPRITE_PAINT_ORDER, type SpriteState } from './draw-item.js';
 import {
   classify,
+  facingTowardTile,
   readActingAtomic,
   readAtomicElapsed,
+  readAtomicTargetEntity,
   readBuildingType,
   readBuiltPct,
   readCarrying,
+  readEngaged,
   readFacing,
   readJobType,
   readOwnerPlayer,
@@ -61,6 +64,15 @@ const CHOP_ATOMIC_ID = 24;
  * unchanged — only the drawn anchor moves — so determinism and occlusion are untouched. Tunable by eye.
  */
 const CHOP_NUDGE_X = -24;
+
+/**
+ * The atomic id of a combat attack swing — the original's `setatomic <job> 81 "..._attack"` (id 81 is
+ * the attack slot across every fighting job; the sim's `ATTACK_ATOMIC_ID`, `systems/conflict/weapons.ts`).
+ * A settler mid-attack has stopped moving, so it has no {@link readFacing} heading; it FACES its target
+ * instead (the attacker→target screen step). The same numeric contract as the sim, transcribed here (like
+ * {@link CHOP_ATOMIC_ID}) rather than imported — render reads the snapshot's plain ids, never sim code.
+ */
+const ATTACK_ATOMIC_ID = 81;
 
 /** One frame's sprite scene: the culled, depth-sorted draw list PLUS the pre-cull liveness set —
  *  produced in a single pass over the snapshot (see {@link collectSpriteScene}). */
@@ -117,6 +129,15 @@ export function collectSpriteScene(
 ): SpriteScene {
   const items: MutableDrawItem[] = [];
   const liveRefs = new Set<number>();
+  // Pre-pass: every entity's FLOAT tile position by id, so a mid-swing attacker can face its target's
+  // LIVE position (which may be off-screen / culled). One O(entities) pass, the same order the cull
+  // already costs; render-only (never re-enters the sim). Built only when needed keeps the common
+  // no-combat frame free — but the map is cheap and combat is the norm here, so it is always built.
+  const tilePosByRef = new Map<number, { x: number; y: number }>();
+  for (const entity of snapshot.entities) {
+    const p = readPosition(entity.components);
+    if (p !== null) tilePosByRef.set(entity.id, { x: p.x / ONE, y: p.y / ONE });
+  }
   for (const entity of snapshot.entities) {
     const components = entity.components;
     const kind = classify(components);
@@ -160,7 +181,18 @@ export function collectSpriteScene(
       if (actingAtomic !== null) item.atomicId = actingAtomic;
       const elapsed = readAtomicElapsed(components);
       if (elapsed !== null) item.elapsed = elapsed;
-      const facing = readFacing(components);
+      // A combat-engaged unit reads the readied `..._agressive` gait (the sim `Engagement` marker).
+      if (readEngaged(components)) item.engaged = true;
+      // Facing: a mid-attack swing (atomic 81) has no walking heading, so it faces its target's LIVE
+      // tile (looked up by id); otherwise the movement heading. Combat facing WINS when it resolves, so
+      // a stale path can't leave an attacker swinging at empty air.
+      let facing: number | undefined;
+      if (actingAtomic === ATTACK_ATOMIC_ID) {
+        const targetRef = readAtomicTargetEntity(components);
+        const to = targetRef !== null ? tilePosByRef.get(targetRef) : undefined;
+        if (to !== undefined) facing = facingTowardTile({ x: tileX, y: tileY }, to);
+      }
+      facing ??= readFacing(components);
       if (facing !== undefined) item.facing = facing;
       const carrying = readCarrying(components);
       if (carrying !== null) {

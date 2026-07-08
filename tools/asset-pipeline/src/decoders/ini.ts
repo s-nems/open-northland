@@ -25,6 +25,7 @@ import {
   BuildingType,
   type FootprintCell,
   GatheringPipeline,
+  GfxAnimAtomic,
   GfxPattern,
   type GoodAtomics,
   type GoodClassification,
@@ -2197,6 +2198,81 @@ export function extractBobSequences(sections: readonly RuleSection[], src: Sourc
     );
   }
   return sets;
+}
+
+/**
+ * Extracts the `[gfxanimatomic]` records from `mapmoveableanimations/animations.ini` into
+ * {@link GfxAnimAtomic} rows — the atomic-action → directional body-animation binding the renderer needs
+ * to play an ACTION (an attack swing, a work stroke) FACING its target. Unlike {@link extractBobSequences}
+ * (which reads only the `[bobseq]` frame ranges), this reads the `gfxanimframelistdir <dir> <idx…>` lines
+ * that lay an animation out per facing — the layout a bare `start`/`length` cannot encode (a melee swing
+ * pool is not `length / 8` and authors per-facing holds/reuse; see {@link GfxAnimAtomic}).
+ *
+ * Each `gfxanimframelistdir` is placed at its leading `<dir>` slot so `dirFrames[d]` is facing `d`
+ * regardless of file order; a record with a single non-directional `gfxanimframelist` yields one
+ * facing-locked list. A record missing its tribe/job/action/body-seq, or carrying no frame list at all, is
+ * skipped (never thrown) — one malformed record must not abort the batch. The same `(job, action)` recurs
+ * per tribe, and one job/action may have SEVERAL records (the unarmed soldier's four punch variants); all
+ * are emitted, and a consumer resolves by `(tribe, job, action)` or by `bodySeq` name.
+ */
+export function extractGfxAnimAtomics(sections: readonly RuleSection[], src: SourceRef): GfxAnimAtomic[] {
+  const out: GfxAnimAtomic[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'gfxanimatomic') continue;
+    const tribe = getInt(sec, 'logictribe');
+    const job = getInt(sec, 'logicjob');
+    const action = getInt(sec, 'logicatomicaction');
+    const bodySeq = getStr(sec, 'gfxbobseqbody');
+    if (
+      tribe === undefined ||
+      job === undefined ||
+      action === undefined ||
+      bodySeq === undefined ||
+      bodySeq.trim() === ''
+    ) {
+      continue;
+    }
+    const headSeq = getStr(sec, 'gfxbobseqhead');
+    // Per-direction frame lists: place each `gfxanimframelistdir <dir> <idx…>` at its `<dir>` slot so the
+    // outer index is the facing. A missing intermediate dir stays an empty list (playback holds frame 0).
+    const dirProps = findProps(sec, 'gfxanimframelistdir');
+    let dirFrames: number[][];
+    if (dirProps.length > 0) {
+      const byDir = new Map<number, number[]>();
+      for (const p of dirProps) {
+        const dir = Number.parseInt(p.values[0] ?? '', 10);
+        if (Number.isNaN(dir) || dir < 0) continue;
+        const ids = p.values
+          .slice(1)
+          .map((v) => Number.parseInt(v, 10))
+          .filter((n) => !Number.isNaN(n) && n >= 0);
+        byDir.set(dir, ids);
+      }
+      if (byDir.size === 0) continue;
+      const maxDir = Math.max(...byDir.keys());
+      dirFrames = [];
+      for (let d = 0; d <= maxDir; d++) dirFrames.push(byDir.get(d) ?? []);
+    } else {
+      // A non-directional record: one facing-locked list (`gfxanimframelist <idx…>` — no leading dir).
+      const single = findProps(sec, 'gfxanimframelist')[0];
+      if (single === undefined) continue;
+      const ids = single.values.map((v) => Number.parseInt(v, 10)).filter((n) => !Number.isNaN(n) && n >= 0);
+      dirFrames = [ids];
+    }
+    if (dirFrames.every((list) => list.length === 0)) continue; // nothing to draw
+    out.push(
+      GfxAnimAtomic.parse({
+        tribe,
+        job,
+        action,
+        bodySeq,
+        ...(headSeq !== undefined && headSeq.trim() !== '' ? { headSeq } : {}),
+        dirFrames,
+        source: { file: src.file, block: 'gfxanimatomic', layer: src.layer ?? 'base' },
+      }),
+    );
+  }
+  return out;
 }
 
 /** One indexed bob-manager slot: a slot index + its body `.bmd` and (for body bobs) an optional shadow `.bmd`. */

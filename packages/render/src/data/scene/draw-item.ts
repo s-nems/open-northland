@@ -122,6 +122,14 @@ export interface DrawItem {
    */
   readonly carryGood?: number;
   /**
+   * For a settler: whether it is combat-**engaged** (the sim `Engagement` marker is present) — advancing
+   * on or standing off against an enemy. ORTHOGONAL to {@link state}: a binding reads it to swap the
+   * relaxed economy walk/wait for the readied `..._agressive` gait ({@link
+   * import('../sprites/index.js').SettlerStateBinding.engaged}) while the unit closes on or squares up to
+   * a foe. A bound attack swing still wins while mid-swing. Omitted when the unit is not fighting.
+   */
+  readonly engaged?: boolean;
+  /**
    * For a settler: its `Settler.jobType` — the key a per-character binding
    * ({@link import('../sprites/index.js').ByJobTable}) picks the body/head look by (the original's
    * `[jobbasegraphics]` job → body/head join: a soldier draws the armoured `cr_hum_body_05`, a woman

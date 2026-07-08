@@ -29,6 +29,7 @@ import {
   BODY_IMAGELIB,
   type ContentIr,
   MissingAtlasError,
+  gfxAtomicFrameLists,
   loadGalleryLayers,
   loadIr,
   loadLayer,
@@ -46,6 +47,7 @@ import {
 } from './resource-gfx.js';
 import {
   ADULT_CHARACTER_BY_JOB,
+  ATTACK_ATOMIC,
   CHARACTER_SPEC_ENTRIES,
   type GoodRef,
   YOUNG_CHARACTER_BY_JOB,
@@ -68,6 +70,15 @@ import {
 /** The decoded human body + head atlases (`test_human_00` palette) served at `/bobs/<name>.*`. */
 const HUMAN_BODY_ATLAS = 'cr_hum_body_00.test_human_00';
 const HUMAN_HEAD_ATLAS = 'cr_hum_head_00.test_human_00';
+
+/**
+ * The viking `[gfxanimatomic]` `logictribe` — `logicdefines.inc` `TRIBE_TYPE_HUMAN_VIKING = 1`. NOT the
+ * tribetypes `logicType` (also 1 for viking, but 4 there is Saracen), and NOT a value to guess: the same
+ * body bobseq name recurs across the human tribes with DIFFERENT per-direction frame lists, so the attack
+ * swings must be drawn from THIS tribe's records (`gfxAtomicFrameLists`), else a soldier swings a
+ * different tribe's motion. See the scoped-id gotcha in the root AGENTS.md.
+ */
+const VIKING_ANIM_TRIBE = 1;
 
 /**
  * Load the per-job {@link SettlerCharacterSet}: every {@link import('./settler-gfx.js').CHARACTER_SPECS}
@@ -114,12 +125,17 @@ async function loadCharacters(
     }),
   );
 
+  // The viking directional attack frame lists (`[gfxanimatomic]` action-81), indexed by swing bobseq
+  // name — the layout each warrior/civilian spec's `attack` seq becomes a FrameListAnim from. Built once
+  // (not per spec); a spec whose seq is absent just has no attack animation.
+  const attackFrameLists = gfxAtomicFrameLists(ir, VIKING_ANIM_TRIBE, ATTACK_ATOMIC);
+
   const bySpec = new Map<string, SettlerCharacter>();
   for (const [specId, spec] of CHARACTER_SPEC_ENTRIES) {
     const layers = layersByRoster.get(spec.rosterId);
     const roster = rosterById.get(spec.rosterId);
     if (layers === undefined || roster === undefined) continue;
-    const binding = characterBinding(spec, sequencesFor(ir, roster.imagelib), goods);
+    const binding = characterBinding(spec, sequencesFor(ir, roster.imagelib), goods, attackFrameLists);
     if (binding === null) continue;
     const heads = (spec.headBmds ?? roster.headBmds)
       .map((bmd) => layers.headsByStem.get(characterStem(bmd, palette)))
@@ -129,7 +145,10 @@ async function loadCharacters(
     // one bob layout, so checking the first head atlas stands for the set.
     const byGood = binding.carrying?.byGood;
     const headAtlas = heads[0]?.atlas;
-    const walk = typeof binding.moving === 'object' ? binding.moving : undefined;
+    // The head-borrow reference is the plain walk (a uniform DirectionalAnim); moving is never the
+    // explicit-frame-list kind (only the attack swing is), so exclude a FrameListAnim to keep the type.
+    const moving = binding.moving;
+    const walk = typeof moving === 'object' && !('frameLists' in moving) ? moving : undefined;
     let headBinding: SettlerStateBinding | undefined;
     if (byGood !== undefined && headAtlas !== undefined) {
       const headByGood = carryHeadAnims(byGood, walk, headAtlas);

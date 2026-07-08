@@ -35,11 +35,22 @@ function wrap(n: number, m: number): number {
  */
 function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
   if (typeof ref === 'number') return ref;
+  const ticksPerFrame = Math.max(1, ref.ticksPerFrame ?? 1);
+  const step = Math.floor(clock / ticksPerFrame);
+  // A FrameListAnim (the `[gfxanimatomic]` directional action layout) selects ITS facing's explicit
+  // list and replays it verbatim (holds/repeats are authored into the list, not a uniform stride):
+  // draw id = pool start + the local index at the wrapped phase. An empty/absent list holds frame 0.
+  if ('frameLists' in ref) {
+    const lists = ref.frameLists;
+    if (lists.length === 0) return ref.start;
+    const list = lists[wrap(facing, lists.length)] ?? [];
+    if (list.length === 0) return ref.start;
+    const idx = wrap((ref.phaseStart ?? 0) + step, list.length);
+    return ref.start + (list[idx] ?? 0);
+  }
   const dir = wrap(facing, ref.dirs);
   const cycle = ref.frames ?? ref.stride;
   if (cycle <= 0) return ref.start + dir * ref.stride;
-  const ticksPerFrame = Math.max(1, ref.ticksPerFrame ?? 1);
-  const step = Math.floor(clock / ticksPerFrame);
   const phase = wrap((ref.phaseStart ?? 0) + step, cycle);
   return ref.start + dir * ref.stride + phase;
 }
@@ -75,6 +86,11 @@ export function resolveSettlerBobId(
     carrying === undefined
       ? undefined
       : { idle: byGood?.idle ?? carrying.idle, moving: byGood?.moving ?? carrying.moving };
+  // Combat-engaged gait override (the `..._agressive` walk/wait), in effect only while the sim marks the
+  // unit engaged. Wins over the loaded gait — an engaged soldier is fighting, not hauling — and falls
+  // back to its un-engaged counterpart when a slot is unbound (the unarmed body authors no aggressive
+  // variant). A bound attack swing (byAtomic) still wins below while the unit is mid-swing.
+  const engaged = item.engaged ? binding.engaged : undefined;
   if (state === 'acting') {
     // An action animation runs on the atomic's OWN clock: `elapsed` ticks since the action started
     // (0-based, so frame 0 shows on its first tick). Frames advance at the binding's fixed cadence, so
@@ -87,13 +103,15 @@ export function resolveSettlerBobId(
       const specific = byAtomic[item.atomicId];
       if (specific !== undefined) return frameOf(specific, facing, clock);
     }
-    // No animation bound for this atomic → a still pose: the loaded stand while hauling (the deposit),
-    // else the generic acting/idle. A deposit/pickup has no decoded swing; standing is faithful-enough
-    // and never borrows the woodcut swing at a wrong speed.
-    return frameOf(carry?.idle ?? binding.acting ?? binding.idle, facing, clock);
+    // No animation bound for this atomic → a still pose: the engaged/loaded stand, else the generic
+    // acting/idle. A deposit/pickup has no decoded swing; standing is faithful-enough and never borrows
+    // the woodcut swing at a wrong speed.
+    return frameOf(engaged?.idle ?? carry?.idle ?? binding.acting ?? binding.idle, facing, clock);
   }
-  if (state === 'moving') return frameOf(carry?.moving ?? binding.moving ?? binding.idle, facing, tick);
-  return frameOf(carry?.idle ?? binding.idle, facing, tick);
+  if (state === 'moving') {
+    return frameOf(engaged?.moving ?? carry?.moving ?? binding.moving ?? binding.idle, facing, tick);
+  }
+  return frameOf(engaged?.idle ?? carry?.idle ?? binding.idle, facing, tick);
 }
 
 /**

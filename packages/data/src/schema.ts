@@ -1241,6 +1241,46 @@ export const BobSequenceSet = z.strictObject({
 export type BobSequenceSet = z.infer<typeof BobSequenceSet>;
 
 /**
+ * One `[gfxanimatomic]` record from `mapmoveableanimations/animations.ini` — the atomic-action → body
+ * animation binding, joining `(logictribe, logicjob, logicatomicaction)` to the `gfxbobseqbody`
+ * `[bobseq]` it plays and, crucially, the **explicit per-direction frame-index lists** that lay that
+ * animation out across the 8 facings. Render-binding data (like {@link BobSequenceSet}); the pure sim
+ * ignores it.
+ *
+ * This is the directional layout a {@link BobSequence}'s bare `start`/`length` CANNOT encode: an action
+ * animation is NOT a uniform `length / 8` strip. Each `gfxanimframelistdir <dir> <idx…>` line gives one
+ * facing its own ordered list of LOCAL frame indices into the bodySeq pool (global bob id =
+ * `bodySeq.start + idx`), and those lists differ per facing and author holds/repeats inline (a spear
+ * windup repeats its first frame five times, `[79,79,79,79,79,80,…]`) and reuse (mirror directions share
+ * frames). A melee swing pool is not even divisible by 8 (`Sword_Attack` 102, `spear_attack` 108), so a
+ * `start + facing*stride` slice is meaningless — playback must replay these lists verbatim. A record with
+ * a single non-directional `gfxanimframelist` yields ONE list ({@link dirFrames} length 1 = facing-locked).
+ */
+export const GfxAnimAtomic = z.strictObject({
+  /** `logictribe` the record binds (viking 4, frank 2, …) — the same `(job, action)` recurs per tribe. */
+  tribe: z.number().int().nonnegative(),
+  /** `logicjob` — the soldier/settler jobType whose atomic this animates (soldiers 31..41, civilist 6, woman 5). */
+  job: z.number().int().nonnegative(),
+  /** `logicatomicaction` — the atomic slot (81 ATTACK, …), the same numeric id the sim's `setatomic` join keys. */
+  action: z.number().int().nonnegative(),
+  /** The `gfxbobseqbody` `[bobseq]` name whose frame pool the {@link dirFrames} index into. */
+  bodySeq: z.string(),
+  /** The `gfxbobseqhead` `[bobseq]` name, when the record overlays a separate head bob (else the head
+   *  atlas mirrors the body's resolved id). */
+  headSeq: z.string().optional(),
+  /**
+   * Per-direction frame-index lists — one array per facing (`gfxanimframelistdir <dir> <idx…>` placed at
+   * its `<dir>` slot, so `dirFrames[d]` is facing `d` regardless of file order), each a list of LOCAL
+   * indices into the {@link bodySeq} pool. A non-directional record (`gfxanimframelist`) yields a single
+   * list (length-1 outer array = facing-locked). Replayed verbatim — the authored holds/repeats ARE the
+   * cadence, never a uniform slice.
+   */
+  dirFrames: z.array(z.array(z.number().int().nonnegative())),
+  source: Provenance.optional(),
+});
+export type GfxAnimAtomic = z.infer<typeof GfxAnimAtomic>;
+
+/**
  * One `[GfxHouse]` building-type → house-bob binding: which atlas bob a building of a given
  * `(tribeId, typeId)` draws, the data-pinned twin of the renderer's hand-transcribed per-type table.
  * Each `[GfxHouse]` record pairs a `LogicType <level> <typeId>` table with a `GfxBobId <level> <bobId>`
@@ -1432,6 +1472,8 @@ export const ContentSet = z.strictObject({
    *  references — the walk/build/water flags the map-collision join classes real ground by. */
   trianglePatternTypes: z.array(TrianglePatternType).default([]),
   bobSequences: z.array(BobSequenceSet).default([]),
+  /** `[gfxanimatomic]` atomic-action → directional body-animation bindings (render-binding data). */
+  gfxAtomics: z.array(GfxAnimAtomic).default([]),
   buildingBobs: z.array(BuildingBob).default([]),
   constructionLayers: z.array(BuildingConstructionLayer).default([]),
   tribes: z.array(TribeType).default([]),

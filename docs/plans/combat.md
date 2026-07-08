@@ -96,7 +96,10 @@ file when all steps land. Steps 8–9 are severable if the scope must shrink; st
 - [x] 3. Sim: stances — attack / defend / ignore / flee
 - [x] 4. Sim: ranged combat — **landed:** `Projectile` entities launched at the release frame,
       travel + on-contact damage (systems/conflict/projectile.ts).
-- [ ] 5. Render: warrior bodies + combat animations
+- [x] 5. Render: warrior bodies + combat animations — **landed:** attack swings drawn from the extracted
+      `[gfxanimatomic]` per-direction frame lists (new `gfxAtomics` IR lane + render `FrameListAnim`), the
+      readied `_agressive` walk/wait while engaged, an attacker faces its target's live tile; civilist/woman
+      fist brawl; `?scene=combat` + `?anim` are the sign-off surfaces.
 - [ ] 6. Render: combat feedback — player colours, HP bars, blood, cadavers, impact sounds
 - [ ] 7. App: battle acceptance scenes + battle golden + scale proof
 - [ ] 8. Sim+app: barracks — recruitment (equip) + training
@@ -129,63 +132,51 @@ The full state is greppable in the code (`calibration` / `APPROXIMATED` / `SIGHT
 - Hostility is binary per player — no diplomacy/alliances (`systems/conflict/combat.ts`);
   fight-bucket XP accrual trigger approximated (`systems/conflict/atomic.ts`).
 
+## Progress note — step 5 (render: warrior bodies + combat animations)
+
+2026-07-08, branch `feat/warrior-combat-anims`. Landed the combat animation render, faithful to the
+extracted `[gfxanimatomic]` join. Verification: `npm test` (1607) + `npm run check` + `npm run build`
+green; the pipeline re-run regenerated `content/` with the new `gfxAtomics` lane; author-eyeballed a
+`?scene=combat` screenshot (soldiers draw with weapon + head, no console errors) and the `?anim` warrior
+gallery. **Human pixel sign-off still pending** — the swing/facing/feel is the user's call.
+
+- **New IR lane `gfxAtomics`** (`packages/data` schema `GfxAnimAtomic`, pipeline
+  `extractGfxAnimAtomics`): the `(tribe, job, action)` → body bobseq + **per-direction frame-index lists**
+  the directional action layout needs. A melee swing pool is NOT a `length/8` strip and authors per-facing
+  holds/reuse, so the bare `bobSequences` range can't drive it. Faithful, complete extraction (all tribes).
+- **Render `FrameListAnim`** (`packages/render` `bindings.ts` + `settler.ts`): a third `SpriteFrameRef`
+  kind that replays an explicit per-facing frame list verbatim on the atomic clock. The attack swing binds
+  to it; heads follow for free (the head atlas covers every body frame id, empty-frame guard handles
+  baked-in heads).
+- **Attack seqs are the VIKING (`logictribe 1` = `TRIBE_TYPE_HUMAN_VIKING`) source join**, transcribed not
+  guessed — short sword `Sword_Attack_2`, long sword `Broadsword_attack`, short/long bow
+  `Shortbow/Longbow_attack`, spear `spear_attack`, unarmed `empty_punch`, civilist/woman fist brawl. The
+  per-direction counts match the viking atomic-animation lengths (spear 27, sword_long 29, bows 12/28).
+  **Scoped-id gotcha recorded:** the `[gfxanimatomic]` `logictribe` numbering is `logicdefines.inc`
+  `TRIBE_TYPE_*` (viking 1), and the SAME body seq recurs across human tribes with DIFFERENT frame lists —
+  filtering by the wrong tribe yields a plausible-but-wrong swing (`sprite-sheet.ts VIKING_ANIM_TRIBE`).
+- **Facing:** an attacker (atomic 81) faces its target's LIVE tile (`readAtomicTargetEntity` + a per-frame
+  id→tile map in `sprite-scene.ts`), overriding a stale path — a stationary swing has no walk heading. The
+  per-seq direction ORDER is assumed to match the walk's block order (`HEADING_OCTANT_TO_BLOCK`); **flagged
+  for the montage sign-off**, not yet human-confirmed.
+- **Aggressive gait:** `SettlerStateBinding.engaged` swaps the `_agressive` walk/wait while the sim
+  `Engagement` marker is set (`readEngaged`). The unarmed body authors no aggressive variant → falls back
+  to its relaxed gait (named).
+- **Approximations (calibration/sign-off pending):** (a) a few gfx frame-list lengths differ slightly from
+  the sim atomic duration (unarmed 17 vs 12, civilist 17 vs 16, woman 15 vs 16, `Sword_Attack_2` 22 vs 29)
+  → the swing loops tick-locked like the chop; **impact-frame alignment to the sim hit-frame is
+  montage-verify**. (b) **No `_attacked` stagger bobseq exists for vikings** (only a logic-timing record) —
+  a struck unit has NO dr, it just loses HP; honest data gap, recorded in the scene checklist. (c) Saber/axe
+  jobs 36–39 have no viking gfx binding → they borrow their spec's sword/broadsword swing (named). (d) The
+  unarmed body picks the `empty_punch` variant of four; the original randomises.
+- **`?scene=combat`** (`packages/app/src/scenes/combat.ts`): a small readable red-vs-blue clash (sword +
+  short/long bow) — the visual sign-off surface. Headless checks assert the deterministic outcome only.
+  Note: the scene camera frames on the initial-snapshot centroid, which is EMPTY before the spawn commands
+  run, so it falls back to the tile origin — units sit right-of-centre until the human pans (interactive
+  camera). Spear/broadsword/unarmed/woman swings are validated per-body in `?anim` until the battle scene
+  (step 7) / barracks (step 8) field those classes.
+
 ---
-
-## Step 5 — render: warrior bodies + combat animations
-
-```text
-Put the decoded warrior body on screen: soldiers draw cr_hum_body_05 with per-weapon attack,
-aggressive walk/wait, and shoot sequences; civilians stagger and brawl with their fight sets.
-
-Context (2026-07-03 — re-verify; re-read current seams, and check whether multi-body render
-support landed on main first):
-- Bodies: the roster binds jobs to bodies/atlases. Soldier jobs 31–41 (+ heroes) draw
-  `cr_hum_body_05` (57 seqs), civilians stay on the current man/woman bodies. If the plan's
-  "multi-body render support" prerequisite has NOT landed yet, implement the minimal version
-  here: per-body atlas load + a (job → body) selector in the bindings table
-  (packages/app/src/content/settler-gfx.ts ADULT_CHARACTER_BY_JOB already routes 31–41 to
-  warrior specs — the atlas/binding half is what's missing).
-- Sequence ground truth: DO NOT guess seq names from patterns. The binding table is
-  DataCnmd/animation/mapmoveableanimations/animations.ini — records join (logictribe, logicjob,
-  logicatomicaction 81/82/83) → `gfxbobseqbody` (+frame lists); transcribe the joins for the
-  viking soldier jobs + civilist/woman into the bindings (the extracted `bobSequences` IR
-  already carries every [bobseq] range). Known seq families on cr_hum_body_05:
-  human_man_Warrior_{Sword,Broadsword,spear}_Attack(+_2), _{Longbow,Shortbow}_attack,
-  spear_throw, Walk/Wait_agressive + per-weapon walk/wait; unarmed
-  human_man_warrior_empty_{punch,double_punch,dragon_punch,high_kick,walk,wait}; civilians
-  Civilian_Fight_* (man body) and the woman body's fight seqs; staggers per class (
-  `<class>_attacked` atomic 82).
-- Bind the sim: atomic 81 → the weapon-correct attack seq (the settler's Weapon component /
-  job's weapon decides — the (jobType→weapon) join is weapons.ini `jobtype`); atomic 82 → the
-  stagger; ranged release should READ as a shot (the seq's release frame should coincide with
-  step 1's ATTACK event frame — verify visually, the frame data is extracted). Stance/combat
-  state → Walk/Wait_agressive vs civilian gait where the seqs exist.
-- Facing: non-locomotion seq direction order is the known open gap (AGENTS.md — the ?anim
-  gallery is the validation tool). An attacker must FACE its target: derive facing from the
-  attacker→target vector; validate per-seq direction order with a labeled montage and ask the
-  user (the montage lesson) — never silently guess a visual fact.
-- Cadence: playback stays 1 frame/sim-tick (the pinned render rule); attack anims are length
-  12–29, matching their atomic durations by construction — verify no stretch/cutoff.
-
-Deliverables:
-1. Warrior-body atlas load + (job → body) selection + the per-weapon 81/82(/83) sequence
-   bindings for viking soldiers, civilist, woman — transcribed from animations.ini, no
-   invented names.
-2. Aggressive walk/wait wiring for engaged/ATTACK-stance units where sequences exist.
-3. ?anim gallery covers the new bodies/seqs (the existing validation entry); extend the
-   melee/archers/stances scenes' checklists with animation items (swing reads as a swing, the
-   bow release matches the projectile launch, the stagger is visible, facing tracks the
-   target).
-4. plan progress notes: binding joins faithful (animations.ini), facing order + any montage-resolved
-   facts recorded as human-verified; renders stay screen-scaled (render AGENTS.md).
-
-Verification: npm test + npm run check green (headless scene checks can only assert state, not
-pixels); END with the human sign-off — npm run dev URLs for the scenes + ?anim and the montage
-questions. An agent cannot self-judge pixels: ask plainly whether each animation looks right.
-
-Guardrails: packages/render/AGENTS.md (retained, batched, screen-scaled); no copyrighted bytes
-committed (content/ stays gitignored); the labeled-montage lesson for every visual fact.
-```
 
 ## Step 6 — render: combat feedback — colours, HP bars, blood, cadavers, sounds
 

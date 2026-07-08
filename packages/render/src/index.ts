@@ -43,6 +43,7 @@ export {
   type CarryingBinding,
   type ConstructionLayerRef,
   type DirectionalAnim,
+  type FrameListAnim,
   type LayeredBobRef,
   type ResourceTypeBinding,
   type SettlerStateBinding,
