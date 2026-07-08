@@ -64,7 +64,7 @@ file when all steps land.
 - [x] 2. Render: per-good resource nodes + ground piles + flags visible — **landed:** `ResourceTypeBinding`
       + `StockpileBinding` (a new `'stockpile'` `DrawKind`) built from the Step-1 `gatheringPipeline` join;
       each good draws its own node/pile, an empty pile the flag. Acceptance scene `?scene=gathering`. See
-      plan progress note "Gathering-economy graphics" + historical archive "rung 2".
+      plan progress note "Gathering-economy graphics".
 - [x] 3. Sim: wood cycle — multi-chop fell → trunk on ground → pickup → deliver — **landed:** a
       `Felling{chopsLeft}` marker (stamped from content `gathering.chopsToFell`) turns each chop atomic into
       a decrement; the last chop DESTROYS the standing node and drops a `GroundDrop` trunk (the whole yield)

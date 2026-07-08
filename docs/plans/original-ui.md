@@ -31,48 +31,27 @@ stays gitignored).
 
 ---
 
-## Step 2 — sprite map
-
-### Prompt 3: name the GUI atlas frames (interactive)
+## Step 3 — GUI sprite map: confirm the montage-guessed frames (interactive)
 
 ```text
-Build the frame-id -> semantic-name map for the GUI atlas (from `ls_gui_window.bmd`, ~193 frames)
-so app code references UI sprites by name — no magic frame numbers.
+Finish the GUI frame map interactively. The typed map itself already landed —
+packages/app/src/content/gui-atlas-map.ts (OpenVikings-pinned entries + montage best guesses,
+per-entry provenance, totality enforced by packages/app/test/gui-atlas-map.test.ts) — so do NOT
+rebuild it. What remains is the HUMAN pass over the montage-guessed and unknown frames: the round
+order-command icons (~0x48–0x88 — step 5's action ring consumes them), window 9-slice pieces,
+bars, arrows, and every `unknown_NNN` placeholder.
 
-Context:
-- The gui atlas + manifest are in `content/` (pipeline gui stage); regenerate via
-  `npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content` if absent.
-- OpenVikings gives ground truth for a subset: `Source/NC2InGameGuiManager/CGuiManager.cs`,
-  method `Desktop_Open()` (~lines 703-819) plus the `MiscButtons_*_Update` methods, contains
-  literal (rect, gfxId, command) triples for the left panel — e.g. panel background strip gfx
-  0x33 at rect (0, 10, 50x433); tool buttons gfx 0x2a, 0x2d, ...; speed button gfx 0x31 with
-  state variants 0x34/0x35/0x36; message-priority frame 0x3f + button 0x40 (variant 0x42). Read
-  the whole file and harvest EVERY triple — transcribe them into the map with semantic names.
-- The remaining frames are unknown -> the human is the oracle. Use the labeled-montage technique
-  (see AGENTS.md): never guess a visual fact silently.
+Process: regenerate content/ if absent (npm run pipeline -- --game "../Cultures 8th Wonder"
+--mod DataCnmd --out content); render a NUMBERED montage of all 193 ls_gui_window frames (grid,
+large readable index labels, a sensible palette, 2x scale); present best guesses grouped by
+visual similarity and STOP — the user confirms/corrects (the labeled-montage technique; never
+silently guess a visual fact). Apply the answers: rename confirmed frames, promote their `source`
+per the map's provenance convention, keep the totality test green.
 
-Deliverables:
-1. A script (scratchpad, or a small pipeline flag) rendering a NUMBERED montage of all atlas
-   frames: grid layout, large readable index labels, a sensible palette, 2x scale — one or more
-   PNGs.
-2. A checked-in, typed map (our own metadata — committable): frame index -> { name, role,
-   palette, states }, with exported named constants so app code never hardcodes an index. Place
-   it where the app's graphics bindings live (or `packages/data` if it validates better there).
-   Unknown frames are named `unknown_NNN`.
-3. Provenance notes in the map file header (or the SOURCES.md GUI section): which entries are
-   pinned to OpenVikings code vs human-identified vs unknown.
-
-Process: harvest the OpenVikings ids FIRST, then generate the montage, open it for the user,
-present best guesses for the remaining frames grouped by visual similarity, and STOP — ask the
-user to confirm/correct. Iterate until the frames that matter (left panel, order UI, window
-frames, bars) are named. Do not guess silently.
-
-Verification: a unit test that the map is total over the atlas (every frame named or
-`unknown_NNN`, no duplicate names); `npm test` + `npm run check` green.
+Verification: `npm test` + `npm run check` green; provenance notes in the map header updated.
 ```
 
-## Step 3 — app UI layer
-### Prompt 6: bottom-right details panel
+## Step 6 — app: bottom-right details panel
 
 ```text
 Rebuild the bottom-right details panel (settler info, multi-selection count, building inventory)

@@ -1,6 +1,6 @@
 # Sim performance — remaining scale follow-ups (agent prompts)
 
-Goal: land the perf doctrine's remaining follow-ups (moved here from `packages/sim/AGENTS.md`
+Goal: land the perf doctrine's remaining follow-ups (moved 2026-07-08 from `packages/sim/AGENTS.md`
 "Scaling to thousands of units" — that file keeps rules, not roadmap). All three are deterministic,
 golden-guarded refactors: an optimization may only elide provably-null work or memoize an invariant
 result — the canonical pick winner must never change, and goldens must stay byte-identical (a moved
