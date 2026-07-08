@@ -26,7 +26,7 @@ that matches its role instead of piling another method onto a growing file:
 - **`content/`** — the decoded-content → render binding (the gitignored-`content/` I/O boundary): `ir.ts`
   (atlas/IR byte loading), `building-gfx.ts` + `settler-gfx.ts` (the pure per-type/per-character bob-binding
   reducers, unit-tested), `sprite-sheet.ts` (assembles the `SpriteSheet` + `resolveSpriteSheet`), `terrain.ts`,
-  `objects.ts`. This is where the old 1200-line `real-sprites.ts` now lives, split by responsibility.
+  `objects.ts`.
 - **`catalog/`** — committed clean-room data catalogs (English naming over the original's typeIds):
   `buildings.ts` (the 41 viking buildings), `roster.ts` (the character roster).
 - **`game/`** — the GLOBAL game content + rules shared by every mode: `rules.ts` (player/tribe constants
@@ -57,7 +57,7 @@ gitignored bytes:
   is part of the standard game HUD, mounted over BOTH `?live` and every `?scene=` via the shared
   `view/game-tool-panel.ts` (NOT a per-scene flag — it is global). Its game-speed button drives the tick
   rate live (×1/×2/×3/pause); `?speed=` still seeds the initial rate (and reaches sub-1× the button can't).
-  It replaced the scene-overlay's old playback buttons (the overlay is now the sign-off checklist only).
+  The scene overlay is the sign-off checklist only (no playback buttons).
   `?uiscale=1|2|3` sets its integer UI scale (default 1×; the strip is 433 design px tall, so 1× already fills
   ~half a modern window) — the panel's internal geometry stays pinned.
 - `?anim[&char=<id>&view=anim|heads|colors&color=0..15&dir=full|0..7&cols=N&filter=<substr>&zoom&speed]` — the

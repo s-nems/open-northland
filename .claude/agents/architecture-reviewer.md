@@ -24,5 +24,8 @@ Hunt, in priority order:
 6. **Plan fit** — if this was a plan step, the implementation solves adjacent future steps prematurely
    or leaves the current step without a clean integration path.
 
+Confirm each finding against the current source (open the cited file, not just the diff hunk)
+before reporting; drop anything you cannot pin to a real `file:line`.
+
 Return concise findings: `file:line — architectural risk — failure mode — suggested direction`,
 ranked blocker / should-fix / note. If the architecture is sound, say so directly.

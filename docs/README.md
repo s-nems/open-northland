@@ -27,7 +27,11 @@ Current plans:
 - [plans/combat.md](plans/combat.md) — combat, stances, damage, projectiles, recruitment, towers.
 - [plans/map-visual-fidelity.md](plans/map-visual-fidelity.md) — map-import visual gaps against
   original screenshots.
+- [plans/sim-perf.md](plans/sim-perf.md) — remaining deterministic perf follow-ups (ring-search
+  migration, content indexes, sim-in-a-worker).
 
+Plan hygiene: the checkbox is a step's only status marker. When a step merges, tick its box and
+delete its prompt block (the progress note carries the state; git history keeps the prompt).
 Delete a plan when all its steps land and no pending decision remains.
 
 ## Reference
@@ -45,9 +49,14 @@ Claude Code shortcuts live under `.claude/commands/`:
 - `/worktree` — primary workflow: isolated branch/worktree, verify, review, update plan, wait for
   user approval, fast-forward merge.
 - `/audit` — report-only review battery over a diff.
+- `/plan` — research/author a new plan, or reconcile an existing one against code reality.
 
 Reviewer agents live under `.claude/agents/` and are intentionally small: sim determinism, RTS-scale
 performance, source-basis/fidelity, architecture, and code quality.
+
+A committed PostToolUse hook (`.claude/settings.json` → `scripts/hooks/sim-determinism-guard.mjs`)
+re-scans every edited `packages/sim/src` file for forbidden nondeterminism patterns at write time;
+the authoritative gate stays the sim hygiene test.
 
 ## Lean Docs Rule
 

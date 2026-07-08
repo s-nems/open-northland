@@ -168,8 +168,8 @@ full render model per map (`stages/maps.ts` `mapDatToTerrain`): the sim grid (`t
 + `ground` (per-triangle pattern names, from `empa`/`empb`+`eapd`) + `objects` (sparse half-cell
 placements, from `emla`+`eald`) → `content/maps/<id>.json`, all consumed by the renderer end-to-end
 (`?map=<id>`); the per-cell `elevation` lane (raw height, from `lmhe` — 1 byte/cell, 0..250 observed) rides
-along too (`elevationFromMapDat`), emitted but NOT yet consumed — the projection y-lift is a later
-step. **Remaining:** the render lift that consumes `elevation`, the `emt3`/`emt4` overlay lanes
+along too (`elevationFromMapDat`) and is consumed by the render elevation lift
+(`packages/render/src/data/elevation.ts`). **Remaining:** the `emt3`/`emt4` overlay lanes
 (roads/house foundations), `lmpa`/`lmpb` → sim water/walkability, `laco`/`lasw`/`lafm`. (No decoded
 bytes are committed — `map.dat` is copyrighted input, like every other game file.)
 - **Atomic actions are the behavior vocabulary** (see docs/ECS.md) and are partly free in readable

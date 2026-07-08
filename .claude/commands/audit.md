@@ -35,8 +35,8 @@ skipped and why:
 
 - Merge and dedupe the findings; rank blocker → should-fix → note. Each: `file:line — the defect —
   the failure scenario — the one-line suggested fix`.
-- Add your own verdict per finding (agree / disagree + why) — the agents can be wrong, and the user
-  reads your triage, not four raw reports.
+- Add your own verdict per finding (agree / disagree + why), reading the cited code first — the
+  agents are wrong in both directions, and the user reads your triage, not four raw reports.
 - Name what **no lens can judge**: anything visual needs the user's eyes (say which scene/URL).
 - Close with one line: **merge-ready / needs fixes (which) / needs your eyes (where)**. Do not edit
   any file; if the user wants fixes applied, they will say so.

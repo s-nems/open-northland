@@ -69,6 +69,8 @@ hygiene test rejects nondeterministic globals in `packages/sim`.
 - `/worktree` is the primary agentic workflow: create an isolated git worktree, execute only the
   requested plan step, verify, review, update the plan progress note, wait for explicit user approval,
   then fast-forward merge.
+- A merged step's prompt block is deleted from its plan in the same branch; the ticked checkbox and a
+  compact progress note are the surviving state (the checkbox is the only status marker).
 - Do not revive old global planning, fidelity, lessons, or tech-debt ledgers. If future work is worth
   tracking, add or update a concrete plan step under `docs/plans/` or use an external issue.
 - If a plan's research note is wrong, update the plan with the corrected fact and source basis rather
