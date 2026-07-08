@@ -1,5 +1,5 @@
 ---
-description: Execute a user-specified Vinland task in an isolated git worktree, verify it, update the source plan, wait for approval, then fast-forward merge.
+description: Execute a user-specified Vinland task in an isolated git worktree, verify it, update the source plan, wait for approval, then review and fast-forward merge.
 argument-hint: <task, plan step, or docs/plans/<file>.md step>
 ---
 
@@ -61,17 +61,13 @@ Run the gates that match the change, and do not fake them:
   capture of the scene URL) and fix gross breakage — blank canvas, missing sprites, console errors.
   The user's eyes are for fidelity and feel, never for catching a broken page.
 
-## 5. Commit and Review
+## 5. Commit
 
 - Commit on the branch. Use Conventional Commits, imperative and capitalized, with no AI attribution.
   Stage only this task's files.
-- Run the review battery over `git diff main...HEAD`: spawn the applicable lenses **in parallel,
-  one message**, selected exactly as `.claude/commands/audit.md` step 2 defines them (determinism /
-  perf / fidelity / architecture / code-quality, plus a general correctness pass only when no named
-  lens covers the main risk). Pass each the exact range.
-- Triage the findings yourself: re-read the cited code before accepting or dismissing a finding —
-  reviewers are wrong in both directions. Fix real in-scope issues, re-run affected gates, and
-  commit the fixes.
+- Do **not** run the review battery yet. Reviews are expensive and pointless if the user rejects the
+  work on manual verification — they run in step 8, after the user approves the change and says to
+  merge.
 
 ## 6. Update the Plan Before Handoff
 
@@ -93,15 +89,25 @@ Report and wait:
 - what was done against the requested plan step,
 - tests/build/pipeline/hands-on evidence,
 - visual/audio approval URL and checklist if relevant,
-- review findings and how they were handled,
 - branch and worktree names,
 - the exact plan progress update you committed, or "no plan file involved".
 
 Stop here. If the user requests changes, continue in the same worktree. If the user says to merge,
-continue below.
+continue below — the review battery runs then, not before.
 
-## 8. Merge After Explicit Approval
+## 8. Review and Merge After Explicit Approval
 
+First run the review battery, now that the user has approved the work:
+- Run it over `git diff main...HEAD`: spawn the applicable lenses **in parallel, one message**,
+  selected exactly as `.claude/commands/audit.md` step 2 defines them (determinism / perf /
+  fidelity / architecture / code-quality, plus a general correctness pass only when no named lens
+  covers the main risk). Pass each the exact range.
+- Triage the findings yourself: re-read the cited code before accepting or dismissing a finding —
+  reviewers are wrong in both directions. Fix real in-scope issues, re-run affected gates, and
+  commit the fixes. If a fix changes user-visible behavior, report it and wait for a fresh go-ahead
+  instead of merging.
+
+Then merge:
 - Re-read `main`; parallel work may have landed.
 - In the worktree, run `git rebase main`. Resolve conflicts there.
 - If conflicts or main changes touched this area, re-run the relevant gates and refresh the plan note
