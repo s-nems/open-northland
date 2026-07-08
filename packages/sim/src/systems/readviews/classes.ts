@@ -7,7 +7,7 @@ import type { ArmorType, ContentSet, WeaponType } from '@vinland/data';
 // weapon); these are the data-defined seeds the deferred, oracle-blocked combat drives (ranged
 // fire, siege/AoE, equip, carry-penalty) will switch on. Split out of ./combat.ts — which keeps the
 // static weapon-vs-armor *damage lookup table* (`combatDamage`/`weaponKey`) — when that file grew
-// past one ~300-line concern; see ./index.ts for why read views live out of systems/shared.ts.
+// past one ~300-line concern; see ./index.ts for how read views relate to systems.
 
 /**
  * Whether a {@link WeaponType} is **ranged** — a weapon that fires ammunition (a bow or a catapult), as
