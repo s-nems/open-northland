@@ -57,6 +57,10 @@ export class HudLayer {
   private readonly panel = new Graphics();
   /** The pooled text rows, grown on demand and hidden (never destroyed) when a frame needs fewer. */
   private readonly rows: Text[] = [];
+  /** Monotonic style generation + the generation each pooled row was last styled at — a row hidden
+   *  across a style change is restyled on REUSE (the hide loop doesn't touch styles), never stale. */
+  private styleGen = 0;
+  private readonly rowStyleGen: number[] = [];
   private lastStyle: HudStyle | undefined;
   /** The panel box the backdrop was last painted for (`[x, y, w, h]`; NaN = never painted). */
   private lastBox: [number, number, number, number] = [Number.NaN, Number.NaN, Number.NaN, Number.NaN];
@@ -76,7 +80,10 @@ export class HudLayer {
     const styleChanged = this.lastStyle === undefined || !sameStyle(style, this.lastStyle);
     // Snapshot the style by VALUE — a caller may legally mutate one options object in place, and a
     // stored reference would then always compare equal to itself and mask the change.
-    if (styleChanged) this.lastStyle = { ...style };
+    if (styleChanged) {
+      this.lastStyle = { ...style };
+      this.styleGen++;
+    }
     const p = hud.placement;
 
     const [bx, by, bw, bh] = this.lastBox;
@@ -101,12 +108,15 @@ export class HudLayer {
         this.container.addChild(text);
       } else {
         // Only touch what re-rasterizes: `.text`/`.style` writes redraw the glyph canvas, a position
-        // write is a cheap transform update.
-        if (styleChanged) {
+        // write is a cheap transform update. Compare per-row GENERATIONS (not just this frame's
+        // `styleChanged`): a row that sat hidden across a style change was skipped then, so it
+        // restyles here on reuse.
+        if (this.rowStyleGen[i] !== this.styleGen) {
           text.style = { fill: style.textColor, fontSize: style.fontSize, fontFamily: style.fontFamily };
         }
         if (text.text !== row.text) text.text = row.text;
       }
+      this.rowStyleGen[i] = this.styleGen;
       text.position.set(row.x, row.y);
       text.visible = true;
     }
