@@ -44,6 +44,29 @@ original's names, logos, or screenshots. The canonical legal wording is in `docs
    file or package-local `AGENTS.md`. Completed history, exploratory notes, and long verification
    trails belong in git history or short plan progress notes, not always-read docs.
 
+## Code Organization & Quality
+
+Write to these directly; the review agents enforce them.
+
+- **Readability first.** Code must be understandable quickly without the PR context. Names carry
+  domain meaning; comments explain units, invariants, and source basis — never restate the code.
+- **Group by feature, not flat.** When a module passes ~300 lines or mixes concerns, split it by
+  concern into a feature subfolder with an `index.ts` barrel that keeps import paths stable. Prefer
+  deepening the tree over widening a flat directory; group by feature (`hud/tool-panel/`), not by
+  kind (`utils/`, `helpers/`).
+- **Delete dead code.** Unused exports, commented-out blocks, and leftover shims go; git history is
+  the archive.
+- **Deduplicate at the second real caller.** Accidental copy-paste is a defect — and so is an
+  abstraction added before a second caller exists.
+- **Boy-scout rule.** Leave code the change touches cleaner than found: fix a misleading name,
+  delete dead weight, split what you are already editing. Scope it to the code the step passes
+  through — do not turn a step into a rewrite.
+- **Modern TypeScript.** Strict mode is on; keep it meaningful: no `any` (use `unknown` plus
+  narrowing), model alternatives as discriminated unions with exhaustive `switch` (a `never` check)
+  rather than boolean flags, prefer string-literal unions and `as const` tables over `enum`, mark
+  data not meant to mutate `readonly`, use `import type` for type-only imports, and avoid non-null
+  assertions — prove the invariant or handle the absent case.
+
 ## Commands
 
 ```bash
