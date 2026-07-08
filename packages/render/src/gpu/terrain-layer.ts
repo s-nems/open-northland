@@ -80,7 +80,9 @@ function meshGeometry(batch: TerrainBatch): MeshGeometry {
  * The per-texture-page batch accumulator for ONE chunk, shared by the two textured build paths
  * (per-typeId diamonds and per-triangle 1:1 ground): get-or-create a batch per page, trace unbound
  * cells into a shared fallback {@link Graphics}, then emit one {@link Mesh} per page (+ the fallback
- * when any cell used it) — so the draw-call count per block is ~one per touched page.
+ * when any cell used it) — so the draw-call count per block is ~one per touched page. SINGLE-USE per
+ * chunk build: accumulate first, then call {@link children} exactly once (it hands ownership of the
+ * accumulated display objects to the chunk).
  */
 class ChunkBatcher {
   private readonly byPage = new Map<string, TerrainBatch & { source: TextureSource }>();

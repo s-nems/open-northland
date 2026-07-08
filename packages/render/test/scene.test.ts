@@ -1,10 +1,12 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
+import { collectSpriteScene } from '../src/data/scene.js';
 import {
   ONE,
   type SceneTerrain,
   buildScene,
   depositVisualLevel,
+  drawableEntityRefs,
   terrainMapToScene,
   tileToScreen,
 } from '../src/index.js';
@@ -513,5 +515,46 @@ describe('buildScene — resource + stockpile (gathering economy) classification
     );
     expect(scene.find((d) => d.kind === 'building')).toBeDefined();
     expect(scene.find((d) => d.kind === 'stockpile')).toBeUndefined();
+  });
+});
+
+describe('collectSpriteScene — the single-pass draw list + liveness set', () => {
+  // The retained pool's destroy-vs-cull rule hangs on this invariant: a viewport-CULLED entity must
+  // still be in `liveRefs` (alive, kept pooled for when it scrolls back) while absent from `items`
+  // (not drawn). If `liveRefs` were ever collected after the cull, every off-screen sprite would be
+  // destroyed and re-minted on each scroll — the churn the retained pool exists to prevent.
+  it('keeps a culled entity in liveRefs while dropping it from items', () => {
+    const near = tileToScreen(1, 1);
+    // A viewport framing only the near settler's anchor; the far one (way off to the right) is culled.
+    const viewport = { minX: near.x - 10, maxX: near.x + 10, minY: near.y - 10, maxY: near.y + 10 };
+    const scene = collectSpriteScene(
+      snapshotOf([
+        entity(1, 1, 1, { Settler: { tribe: 0 } }), // framed
+        entity(2, 40, 40, { Settler: { tribe: 0 } }), // far off-screen — culled, still alive
+      ]),
+      viewport,
+    );
+    expect(scene.items.map((d) => d.ref)).toEqual([1]);
+    expect([...scene.liveRefs].sort()).toEqual([1, 2]);
+  });
+
+  it('excludes non-drawable entities from BOTH items and liveRefs (they were never pooled)', () => {
+    const scene = collectSpriteScene(
+      snapshotOf([
+        entity(1, 1, 1, { Settler: { tribe: 0 } }),
+        entity(2, 1, 1, {}), // a Position with no drawable marker (e.g. a pure mover)
+      ]),
+    );
+    expect(scene.items.map((d) => d.ref)).toEqual([1]);
+    expect([...scene.liveRefs]).toEqual([1]);
+  });
+
+  it('matches drawableEntityRefs (the thin exported view over the same pass)', () => {
+    const snapshot = snapshotOf([
+      entity(1, 1, 1, { Settler: { tribe: 0 } }),
+      entity(2, 2, 1, { Resource: { goodType: 1 } }),
+      entity(3, 0, 0, {}), // not drawable
+    ]);
+    expect(drawableEntityRefs(snapshot)).toEqual(collectSpriteScene(snapshot).liveRefs);
   });
 });

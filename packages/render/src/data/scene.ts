@@ -356,16 +356,12 @@ export function buildSpriteScene(
 /**
  * The set of entity ids that draw as a sprite (a drawable marker + a Position) — the liveness set the
  * retained pool reconciles against to DESTROY sprites of entities that have left the snapshot (died),
- * as distinct from ones merely culled off-screen (still live, kept in the pool). Pure.
+ * as distinct from ones merely culled off-screen (still live, kept in the pool). A thin view over
+ * {@link collectSpriteScene} so the liveness policy has ONE owner (the pool's per-frame path reads the
+ * same set from the combined pass instead of calling this). Pure.
  */
-export function drawableEntityRefs(snapshot: WorldSnapshot): Set<number> {
-  const refs = new Set<number>();
-  for (const entity of snapshot.entities) {
-    if (classify(entity.components) === null) continue;
-    if (readPosition(entity.components) === null) continue;
-    refs.add(entity.id);
-  }
-  return refs;
+export function drawableEntityRefs(snapshot: WorldSnapshot): ReadonlySet<number> {
+  return collectSpriteScene(snapshot).liveRefs;
 }
 
 /** One frame's sprite scene: the culled, depth-sorted draw list PLUS the pre-cull liveness set —
