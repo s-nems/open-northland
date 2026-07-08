@@ -12,6 +12,7 @@ import type {
   StockpileBinding,
 } from '@vinland/render';
 import {
+  ATTACK_ATOMIC,
   CLAY_HARVEST_ATOMIC,
   GOLD_HARVEST_ATOMIC,
   HARVEST_ATOMIC,
@@ -140,14 +141,6 @@ const SLEEP_ATOMIC = 8;
 const PRAY_ATOMIC = 12;
 const PICKUP_ATOMIC = 22;
 const DEPOSIT_ATOMIC = 23;
-/**
- * The combat attack swing (`setatomic <job> 81 "..._attack"`; the sim's `ATTACK_ATOMIC_ID`,
- * `packages/sim/src/systems/conflict/weapons.ts`) — the `byAtomic` key the warrior/civilian specs bind
- * their weapon swing to. Its animation is NOT a bobseq range but the `[gfxanimatomic]` directional
- * frame-list layout (a melee pool is not `length / 8`), so its binding is a render `FrameListAnim` built
- * from {@link import('./ir.js').gfxAtomicFrameLists}, not {@link directionalAnimFromSeq}. Exported so the
- * sheet loader filters the gfxAtomics table for this exact action. */
-export const ATTACK_ATOMIC = 81;
 
 /**
  * Build a {@link DirectionalAnim} from a decoded `[bobseq]` sequence: `start` is the run's first bob id,
@@ -203,11 +196,7 @@ export function buildHumanBindings(
   // Idle is the WAIT animation played as ONE direction (its length isn't a clean ×8, so it isn't a
   // directional cycle — the original plays it locked to a facing; source basis). The FULL loop, so a
   // standing settler breathes — not a frozen frame, and not a truncated facing-sliced 1/8 excerpt.
-  const waitRow = seqByName.get(WAIT_SEQ);
-  const wait: DirectionalAnim =
-    waitRow !== undefined && waitRow.length > 0
-      ? { start: waitRow.start, dirs: 1, stride: waitRow.length }
-      : FALLBACK_WAIT;
+  const wait: DirectionalAnim = singleDirAnim(seqByName.get(WAIT_SEQ)) ?? FALLBACK_WAIT;
   const chop = directionalAnimFromSeq(seqByName, CHOP_SEQ, { phaseStart: CHOP_PHASE_START }, FALLBACK_CHOP);
   const walkWood = directionalAnimFromSeq(seqByName, WALK_WOOD_SEQ, {}, FALLBACK_WALK_WOOD);
   const standWood = directionalAnimFromSeq(
@@ -328,6 +317,17 @@ function eightDirAnim(
   const row = seqByName.get(name);
   if (row === undefined || row.length <= 0 || row.length % DIRS !== 0) return undefined;
   return { start: row.start, dirs: DIRS, stride: row.length / DIRS };
+}
+
+/**
+ * A `[bobseq]` row as a FACING-LOCKED clip (`dirs: 1`, the whole strip played on one facing) — the
+ * `clipDirs` reading for a non-×8 strip (a wait/idle, the aggressive ready stance). `undefined` for a
+ * missing/empty row so a caller can chain a fallback. The single-direction twin of {@link eightDirAnim};
+ * takes the row directly since its callers already hold it. Pure.
+ */
+function singleDirAnim(row: BobSeqRow | undefined): DirectionalAnim | undefined {
+  if (row === undefined || row.length <= 0) return undefined;
+  return { start: row.start, dirs: 1, stride: row.length };
 }
 
 /**
@@ -581,15 +581,11 @@ export function characterBinding(
   attackFrameLists?: ReadonlyMap<string, readonly (readonly number[])[]>,
 ): SettlerStateBinding | null {
   const walk = eightDirAnim(seqByName, spec.walkSeq);
-  const waitRow = spec.waitSeq !== undefined ? seqByName.get(spec.waitSeq) : undefined;
   // A loop wait plays its whole strip facing-locked (the strips aren't ×8); a walk-hold stands the
   // walk's first frame per facing. Whichever resolves becomes idle; neither → the character is unusable.
   const idle: SpriteFrameRef | null =
-    waitRow !== undefined && waitRow.length > 0
-      ? { start: waitRow.start, dirs: 1, stride: waitRow.length }
-      : walk !== undefined
-        ? { ...walk, frames: 1 }
-        : null;
+    singleDirAnim(spec.waitSeq !== undefined ? seqByName.get(spec.waitSeq) : undefined) ??
+    (walk !== undefined ? { ...walk, frames: 1 } : null);
   if (idle === null) return null;
 
   const byAtomic: Record<number, SpriteFrameRef> = {};
@@ -626,11 +622,9 @@ export function characterBinding(
   // aggressive variant (the unarmed body, civilians) yields no `engaged` and falls back to its relaxed
   // gait while engaged.
   const engagedMoving = eightDirAnim(seqByName, spec.engaged?.moving);
-  const engagedWaitRow = spec.engaged?.idle !== undefined ? seqByName.get(spec.engaged.idle) : undefined;
-  const engagedIdle: SpriteFrameRef | undefined =
-    engagedWaitRow !== undefined && engagedWaitRow.length > 0
-      ? { start: engagedWaitRow.start, dirs: 1, stride: engagedWaitRow.length }
-      : undefined;
+  const engagedIdle = singleDirAnim(
+    spec.engaged?.idle !== undefined ? seqByName.get(spec.engaged.idle) : undefined,
+  );
   const engaged =
     engagedMoving !== undefined || engagedIdle !== undefined
       ? {

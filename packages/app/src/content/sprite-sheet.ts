@@ -8,6 +8,7 @@ import {
   createSyntheticAtlasSource,
   syntheticAtlasFrames,
 } from '@vinland/render';
+import { ATTACK_ATOMIC } from '../catalog/atomics.js';
 import {
   DEFAULT_CHARACTER_PALETTE,
   INDEXED_CHARACTER_PALETTE,
@@ -47,7 +48,6 @@ import {
 } from './resource-gfx.js';
 import {
   ADULT_CHARACTER_BY_JOB,
-  ATTACK_ATOMIC,
   CHARACTER_SPEC_ENTRIES,
   type GoodRef,
   YOUNG_CHARACTER_BY_JOB,

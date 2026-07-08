@@ -129,14 +129,25 @@ export function collectSpriteScene(
 ): SpriteScene {
   const items: MutableDrawItem[] = [];
   const liveRefs = new Set<number>();
-  // Pre-pass: every entity's FLOAT tile position by id, so a mid-swing attacker can face its target's
-  // LIVE position (which may be off-screen / culled). One O(entities) pass, the same order the cull
-  // already costs; render-only (never re-enters the sim). Built only when needed keeps the common
-  // no-combat frame free — but the map is cheap and combat is the norm here, so it is always built.
-  const tilePosByRef = new Map<number, { x: number; y: number }>();
+  // A mid-swing attacker faces its target's LIVE position, which needs random access by id (a target may
+  // be off-screen / culled, and `WorldSnapshot` carries no id index). Build that index ONLY on a frame
+  // that has an attacker — a cheap early-exit scan decides — so economy / `?map` play (no combat) never
+  // pays for it. It stores the snapshot's own Position object (readPosition returns it, not a copy), so
+  // the fill is N Map.sets with NO per-entity allocation/divide; the `/ONE` to tile space is deferred to
+  // the rare attacker lookup below.
+  let hasAttacker = false;
   for (const entity of snapshot.entities) {
-    const p = readPosition(entity.components);
-    if (p !== null) tilePosByRef.set(entity.id, { x: p.x / ONE, y: p.y / ONE });
+    if (readActingAtomic(entity.components) === ATTACK_ATOMIC_ID) {
+      hasAttacker = true;
+      break;
+    }
+  }
+  const posByRef = new Map<number, { x: number; y: number }>();
+  if (hasAttacker) {
+    for (const entity of snapshot.entities) {
+      const p = readPosition(entity.components);
+      if (p !== null) posByRef.set(entity.id, p);
+    }
   }
   for (const entity of snapshot.entities) {
     const components = entity.components;
@@ -189,8 +200,10 @@ export function collectSpriteScene(
       let facing: number | undefined;
       if (actingAtomic === ATTACK_ATOMIC_ID) {
         const targetRef = readAtomicTargetEntity(components);
-        const to = targetRef !== null ? tilePosByRef.get(targetRef) : undefined;
-        if (to !== undefined) facing = facingTowardTile({ x: tileX, y: tileY }, to);
+        const to = targetRef !== null ? posByRef.get(targetRef) : undefined;
+        // Divide to tile space only here (the rare swing), not for every entity in the pre-pass.
+        if (to !== undefined)
+          facing = facingTowardTile({ x: tileX, y: tileY }, { x: to.x / ONE, y: to.y / ONE });
       }
       facing ??= readFacing(components);
       if (facing !== undefined) item.facing = facing;
