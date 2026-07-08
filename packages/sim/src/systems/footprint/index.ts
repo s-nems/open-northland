@@ -24,6 +24,8 @@ export {
   canPlaceBuilding,
   dynamicBlockedCells,
   interactionTile,
+  placementProbe,
+  type PlacementProbe,
   positionedInteractionCell,
   resourceWorkCell,
 } from './placement.js';

@@ -64,6 +64,7 @@ export {
   type TerrainTextureSet,
 } from './gpu/pixi-app.js';
 export { WorldRenderer } from './gpu/world-renderer.js';
+export type { PlacementOverlayCell } from './gpu/placement-overlay.js';
 export {
   compactResolvedStockpileLayers,
   reconcileSprites,

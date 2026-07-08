@@ -9,6 +9,7 @@ import type { HudFrame } from './hud-layer.js';
 import { MapObjectLayer } from './map-objects/index.js';
 import type { MapObjectSprite } from './map-objects/index.js';
 import type { SpriteSheet, TerrainTextureSet } from './pixi-app.js';
+import { type PlacementOverlayCell, PlacementOverlayLayer } from './placement-overlay.js';
 import { SelectionLayer } from './selection-layer.js';
 import { type EntityBounds, SpritePool } from './sprite-pool/index.js';
 import { TerrainLayer } from './terrain/index.js';
@@ -59,6 +60,8 @@ export class WorldRenderer {
   private readonly terrain = new TerrainLayer();
   private readonly mapObjects: MapObjectLayer;
   private readonly pool: SpritePool;
+  /** The build-mode dim wash over non-buildable tiles (world-space, BELOW the sprites). */
+  private readonly placementOverlay = new PlacementOverlayLayer();
   /** Feet rings under the currently-selected entities (world-space, BELOW the sprites). */
   private readonly selectionLayer = new SelectionLayer();
   private readonly hud = new HudLayer();
@@ -71,10 +74,12 @@ export class WorldRenderer {
     this.spriteLayer.sortableChildren = true;
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
     this.pool = new SpritePool(this.spriteLayer, this.textureCache, opts?.sheet);
-    // Z-order within the world layer: terrain (back) → flat decor → selection rings → sprites + tall
-    // objects (front). The rings sit under the sprites so a unit in front occludes a ring behind it.
+    // Z-order within the world layer: terrain (back) → flat decor → build-placement wash → selection
+    // rings → sprites + tall objects (front). The wash + rings sit under the sprites so a house/tree/unit
+    // in front draws over them (the wash dims the ground, not the sprites standing on it).
     this.worldLayer.addChild(this.terrain.container);
     this.worldLayer.addChild(this.mapObjects.decorContainer);
+    this.worldLayer.addChild(this.placementOverlay.container);
     this.worldLayer.addChild(this.selectionLayer.container);
     this.worldLayer.addChild(this.spriteLayer);
     app.stage.addChild(this.worldLayer);
@@ -167,6 +172,16 @@ export class WorldRenderer {
     this.app.render();
   }
 
+  /**
+   * Set (or clear) the BUILD-PLACEMENT dim wash — the tiles a held building can't be placed on, decided
+   * by the sim's placement probe and passed in as plain data. Called each frame while build mode is
+   * active (with the visible blocked cells) and once with `null` when it ends; the layer skips the
+   * rebuild when the set is unchanged. Takes effect on the next {@link update}'s single `render`.
+   */
+  updatePlacementOverlay(cells: readonly PlacementOverlayCell[] | null): void {
+    this.placementOverlay.set(cells, this.elevation);
+  }
+
   /** Entities drawn last frame + sprites currently pooled — for the perf overlay's on-screen readout. */
   stats(): { drawn: number; pooled: number } {
     return this.pool.stats();
@@ -186,6 +201,7 @@ export class WorldRenderer {
     this.terrain.destroy(); // frees mesh geometry the layer.destroy below would otherwise orphan
     this.mapObjects.destroy();
     this.pool.destroy(); // destroys detached (culled) entities the scene-graph walk can't reach
+    this.placementOverlay.destroy();
     this.worldLayer.destroy({ children: true });
     this.hud.destroy();
     this.textureCache.clear();

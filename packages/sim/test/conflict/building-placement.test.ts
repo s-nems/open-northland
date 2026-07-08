@@ -17,6 +17,7 @@ import {
   buildingBlockedCells,
   canPlaceBuilding,
   interactionTile,
+  placementProbe,
   workerPresentAt,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -198,6 +199,47 @@ describe('canPlaceBuilding — the free-placement collision rule', () => {
     sim.enqueue({ kind: 'placeBuilding', buildingType: HQ, x: 5, y: 5, tribe: VIKING }); // same tile!
     sim.step();
     expect(buildingsPlaced(sim)).toBe(2); // no collision model — both land, like before footprints
+  });
+});
+
+describe('placementProbe — the build-overlay seam agrees with canPlaceBuilding', () => {
+  // The overlay greys tiles the probe rejects, so it must match the command-time rule cell-for-cell —
+  // both now share one precomputed-blockers check. Prove agreement over a whole grid with real obstacles.
+  it('matches canPlaceBuilding at every anchor with a tree, water, and a building on the map', () => {
+    const map = grassMap(16, 16);
+    map.typeIds[5 * 16 + 8] = WATER; // blocking terrain
+    const sim = new Simulation({ seed: 1, content: placementContent(), map });
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 11, y: 11, tribe: VIKING });
+    sim.step();
+    const tree = sim.world.create();
+    sim.world.add(tree, Position, { x: fx.fromInt(3), y: fx.fromInt(3) });
+    sim.world.add(tree, Resource, { goodType: 1, remaining: 5, harvestAtomic: 24 });
+
+    const probe = placementProbe(sim.world, sim.content, terrainOf(sim), HUT);
+    let blocked = 0;
+    let free = 0;
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        const expected = canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, x, y);
+        expect(probe.canPlace(x, y)).toBe(expected);
+        expected ? free++ : blocked++;
+      }
+    }
+    // Sanity: the obstacles + map edge really do split the grid both ways (not trivially all-true).
+    expect(blocked).toBeGreaterThan(0);
+    expect(free).toBeGreaterThan(0);
+  });
+
+  it('reports a footprint-less type placeable everywhere (its command-time behavior)', () => {
+    const sim = mappedSim();
+    const probe = placementProbe(sim.world, sim.content, terrainOf(sim), HQ);
+    expect(probe.canPlace(0, 0)).toBe(true);
+    expect(probe.canPlace(5, 5)).toBe(true);
+  });
+
+  it('returns null from Simulation.placementProbe on a mapless sim (no rule → no overlay)', () => {
+    const sim = new Simulation({ seed: 1, content: placementContent() });
+    expect(sim.placementProbe(HUT)).toBeNull();
   });
 });
 

@@ -1,3 +1,4 @@
+import type { BuildingFootprint, ContentSet } from '@vinland/data';
 import {
   Building,
   GroundDrop,
@@ -49,7 +50,7 @@ export function interactionTile(
   if (b === undefined || p === undefined) return null;
   const ax = fx.toInt(p.x);
   const ay = fx.toInt(p.y);
-  const door = buildingFootprintOf(ctx, b.buildingType)?.door;
+  const door = buildingFootprintOf(ctx.content, b.buildingType)?.door;
   if (door === undefined) return { x: ax, y: ay };
   const at = { x: ax + door.dx, y: ay + door.dy };
   if (ctx.terrain !== undefined && !ctx.terrain.inBounds(at.x, at.y)) return { x: ax, y: ay };
@@ -157,7 +158,7 @@ export function buildingBlockedCells(world: World, ctx: SystemContext, terrain: 
   const doors = new Set<CellId>();
   for (const e of world.query(Building, Position)) {
     const b = world.get(e, Building);
-    const footprint = buildingFootprintOf(ctx, b.buildingType);
+    const footprint = buildingFootprintOf(ctx.content, b.buildingType);
     if (footprint === undefined || footprint.blocked.length === 0) continue;
     const p = world.get(e, Position);
     const ax = fx.toInt(p.x);
@@ -186,30 +187,121 @@ export function dynamicBlockedCells(
 }
 
 /**
- * Whether a building of `buildingType` may be placed with its anchor at integer tile `(x, y)` —
- * the original's FREE placement rule: no grid fields, just collision + a minimum distance from
- * blocking terrain and other houses, both encoded by the type's extracted footprint. Valid iff:
+ * The precomputed obstacle sets a placement check reads — the resource + building bodies/zones the
+ * new building's footprint must avoid, gathered ONCE from `world`+`content` and then reused across
+ * every candidate anchor. A single `canPlaceBuilding` builds one throwaway; the placement-overlay
+ * {@link placementProbe} builds one and probes the whole visible viewport against it (so the overlay
+ * stays O(visible cells), not O(cells × entities)).
  *
- *  1. every cell of its `reserved` zone (the build-exclusion area — the max-level body plus the
- *     source's margin ring) is on the map and on WALKABLE terrain (the "minimum distance from
- *     blocking terrain": water/rock/void may not touch the zone), and stays clear of resource
- *     walk-block bodies;
- *  2. against every existing building: my `familyBody` (the largest body my level chain reaches —
- *     placing level 0 reserves the top level's space) stays out of ITS `reserved` zone, and its
- *     `familyBody` stays out of MY `reserved` zone. Each house keeps every other house's walls at
- *     least its own margin away — but two margins may overlap, so houses still pack closely (the
- *     original's "very free" placement). A footprint-less existing building (synthetic content)
- *     counts as a 1-cell body/zone on its anchor tile.
+ * All keys are geometry.ts's injective string {@link tileKey} — NOT a numeric `y*width+x` packing,
+ * which would alias an off-map cell onto a real tile on the adjacent row (a footprint-less building
+ * at a negative coordinate would then falsely reject a distant placement).
+ */
+interface PlacementBlockers {
+  readonly terrain: TerrainGraph;
+  /** Cells a resource WALK body (or a footprint-less resource's anchor) occupies — a building's
+   *  reserved zone may not touch these (the "minimum distance from a node"). */
+  readonly resourceBodies: Set<string>;
+  /** Cells a resource BUILD-exclusion zone covers — a building's family body may not touch these. */
+  readonly resourceZones: Set<string>;
+  /** Union of every existing building's family body (a footprint-less building: its 1-cell anchor). */
+  readonly buildingBodies: Set<string>;
+  /** Union of every existing building's reserved zone (a footprint-less building: its 1-cell anchor). */
+  readonly buildingZones: Set<string>;
+}
+
+/** Gather the resource + building obstacle sets from the world once. Determinism: set UNIONS over
+ *  `world.query` (membership only, no pick), so store-iteration order cannot change any later answer. */
+function collectPlacementBlockers(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+): PlacementBlockers {
+  const resourceBodies = new Set<string>();
+  const resourceZones = new Set<string>();
+  for (const e of world.query(Resource, Position)) {
+    const p = world.get(e, Position);
+    const rx = fx.toInt(p.x);
+    const ry = fx.toInt(p.y);
+    const fp = world.tryGet(e, ResourceFootprint);
+    if (fp === undefined) {
+      resourceBodies.add(tileKey(rx, ry)); // legacy anchor-only resource keeps the old same-tile rule
+      continue;
+    }
+    for (const key of translatedCellKeys(fp.walk, rx, ry)) resourceBodies.add(key);
+    for (const key of translatedCellKeys(fp.build, rx, ry)) resourceZones.add(key);
+  }
+  const buildingBodies = new Set<string>();
+  const buildingZones = new Set<string>();
+  for (const e of world.query(Building, Position)) {
+    const b = world.get(e, Building);
+    const p = world.get(e, Position);
+    const ox = fx.toInt(p.x);
+    const oy = fx.toInt(p.y);
+    const fp = buildingFootprintOf(content, b.buildingType);
+    // A footprint-less building is a 1-cell body/zone on its anchor.
+    const body = fp?.familyBody.length ? fp.familyBody : ANCHOR_ONLY;
+    const zone = fp?.reserved.length ? fp.reserved : ANCHOR_ONLY;
+    for (const c of body) buildingBodies.add(tileKey(ox + c.dx, oy + c.dy));
+    for (const c of zone) buildingZones.add(tileKey(ox + c.dx, oy + c.dy));
+  }
+  return { terrain, resourceBodies, resourceZones, buildingBodies, buildingZones };
+}
+
+/**
+ * Whether `footprint` may be placed with its anchor at integer tile `(x,y)` against the precomputed
+ * {@link PlacementBlockers} — the original's FREE placement rule: no grid fields, just collision +
+ * a minimum distance from blocking terrain and other houses, both encoded by the extracted footprint.
+ * Valid iff:
  *
- * A `buildingType` without a footprint validates trivially (no collision model — the pre-footprint
- * behavior synthetic content keeps). Settlers never block placement (the foundation appears under
- * them and they walk off — the walls only enter the nav overlay, {@link buildingBlockedCells}).
+ *  1. every cell of the `reserved` zone (the build-exclusion area — the max-level body plus the
+ *     source's margin ring) is on the map and on WALKABLE terrain (water/rock/void may not touch the
+ *     zone), clear of resource walk-block bodies, and clear of every existing building's walls;
+ *  2. the new building's `familyBody` (the largest body its level chain reaches — placing level 0
+ *     reserves the top level's space) stays out of every resource build-zone and every existing
+ *     building's reserved zone. The body-vs-zone test is symmetric, so each house keeps every other
+ *     house's walls at least its own margin away — but two margins may overlap, so houses still pack
+ *     closely (the original's "very free" placement).
  *
  * source-basis (approximated, source basis "Building placement"): the footprint cells and the
  * body/zone split are the extracted `LogicWalkBlockArea`/`LogicBuildBlockArea` data (faithful); the
  * exact overlap RULE (body-vs-zone symmetric, zones may overlap) is our reading of those two areas —
- * the engine's check has no oracle. Determinism: pure boolean over content + world state; any
- * overlap rejects, so scan order cannot change the answer.
+ * the engine's check has no oracle. Determinism: pure boolean over the blocker sets; any overlap
+ * rejects, so evaluation order cannot change the answer.
+ */
+function canPlaceAnchor(
+  blockers: PlacementBlockers,
+  footprint: BuildingFootprint,
+  x: number,
+  y: number,
+): boolean {
+  const { terrain } = blockers;
+  // 1. The reserved zone must lie on the map, on walkable ground, and clear of node/wall bodies.
+  for (const c of footprint.reserved) {
+    const cx = x + c.dx;
+    const cy = y + c.dy;
+    if (!terrain.inBounds(cx, cy)) return false; // zone off the map edge
+    if (!terrain.isWalkable(terrain.cellAt(cx, cy))) return false; // blocking terrain too close
+    const key = tileKey(cx, cy);
+    if (blockers.resourceBodies.has(key)) return false; // a tree/stone/ore/water node's body
+    if (blockers.buildingBodies.has(key)) return false; // another building's walls in my zone
+  }
+  // 2. My family body must stay clear of resource + building exclusion zones (the symmetric margin).
+  for (const c of footprint.familyBody) {
+    const key = tileKey(x + c.dx, y + c.dy);
+    if (blockers.resourceZones.has(key)) return false;
+    if (blockers.buildingZones.has(key)) return false; // my walls in another building's zone
+  }
+  return true;
+}
+
+/**
+ * Whether a building of `buildingType` may be placed with its anchor at integer tile `(x, y)`. A
+ * `buildingType` without a footprint validates trivially (no collision model — the pre-footprint
+ * behavior synthetic content keeps). Settlers never block placement (the foundation appears under
+ * them and they walk off — the walls only enter the nav overlay, {@link buildingBlockedCells}).
+ * The rule and its source basis live on {@link canPlaceAnchor}; this builds a one-shot
+ * {@link PlacementBlockers} for the single command-time check.
  */
 export function canPlaceBuilding(
   world: World,
@@ -219,59 +311,33 @@ export function canPlaceBuilding(
   x: number,
   y: number,
 ): boolean {
-  const footprint = buildingFootprintOf(ctx, buildingType);
+  const footprint = buildingFootprintOf(ctx.content, buildingType);
   if (footprint === undefined) return true; // no collision model — places freely (synthetic content)
+  return canPlaceAnchor(collectPlacementBlockers(world, ctx.content, terrain), footprint, x, y);
+}
 
-  // Set keys are geometry.ts's injective string tileKey — NOT a numeric `y*width+x` packing, which
-  // would alias an off-map cell onto a real tile on the adjacent row (an existing footprint-less
-  // building placed at a negative coordinate would then falsely reject a distant placement).
-  // 1. The reserved zone must lie on the map and on walkable ground.
-  const reserved = new Set<string>();
-  for (const c of footprint.reserved) {
-    const cx = x + c.dx;
-    const cy = y + c.dy;
-    if (!terrain.inBounds(cx, cy)) return false; // zone off the map edge
-    if (!terrain.isWalkable(terrain.cellAt(cx, cy))) return false; // blocking terrain too close
-    reserved.add(tileKey(cx, cy));
-  }
+/** A ready-to-query buildability test for ONE building type: the type's footprint resolved against a
+ *  precomputed snapshot of the world's obstacle sets. Built once (see {@link placementProbe}) and then
+ *  asked `canPlace(x,y)` per tile — the placement-overlay's screen-bounded seam. */
+export interface PlacementProbe {
+  /** Whether a building of the probed type may be placed with its anchor at integer tile `(x, y)`. */
+  canPlace(x: number, y: number): boolean;
+}
 
-  // The new building's full family body (max-level walls), reused for resource and building zone checks.
-  const familyBody = new Set<string>();
-  for (const c of footprint.familyBody) familyBody.add(tileKey(x + c.dx, y + c.dy));
-
-  // Resource-vs-building collision. A footprinted resource contributes its extracted walk body and
-  // build-exclusion zone; a legacy resource with no footprint keeps the old anchor-in-reserved rule.
-  for (const e of world.query(Resource, Position)) {
-    const p = world.get(e, Position);
-    const rx = fx.toInt(p.x);
-    const ry = fx.toInt(p.y);
-    const resource = world.tryGet(e, ResourceFootprint);
-    if (resource === undefined) {
-      if (reserved.has(tileKey(rx, ry))) return false;
-      continue;
-    }
-    const resourceBody = translatedCellKeys(resource.walk, rx, ry);
-    for (const key of resourceBody) if (reserved.has(key)) return false;
-    const resourceZone = translatedCellKeys(resource.build, rx, ry);
-    for (const key of resourceZone) if (familyBody.has(key)) return false;
-  }
-
-  // 2. Body-vs-zone against every existing building (symmetric, so the margin holds both ways).
-  for (const e of world.query(Building, Position)) {
-    const other = world.get(e, Building);
-    const p = world.get(e, Position);
-    const ox = fx.toInt(p.x);
-    const oy = fx.toInt(p.y);
-    const otherFp = buildingFootprintOf(ctx, other.buildingType);
-    // A footprint-less building is a 1-cell body/zone on its anchor.
-    const otherBody = otherFp?.familyBody.length ? otherFp.familyBody : ANCHOR_ONLY;
-    const otherZone = otherFp?.reserved.length ? otherFp.reserved : ANCHOR_ONLY;
-    for (const c of otherBody) {
-      if (reserved.has(tileKey(ox + c.dx, oy + c.dy))) return false; // its walls in my zone
-    }
-    for (const c of otherZone) {
-      if (familyBody.has(tileKey(ox + c.dx, oy + c.dy))) return false; // my walls in its zone
-    }
-  }
-  return true;
+/**
+ * Build a {@link PlacementProbe} for `buildingType` — resolve its footprint and snapshot the world's
+ * obstacle sets ONCE, so the app's build-mode overlay can probe every visible tile against the exact
+ * same rule the `placeBuilding` command gates on ({@link canPlaceBuilding}), without rescanning the
+ * world per cell. A footprint-less type always reports placeable (its command-time behavior).
+ */
+export function placementProbe(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  buildingType: number,
+): PlacementProbe {
+  const footprint = buildingFootprintOf(content, buildingType);
+  if (footprint === undefined) return { canPlace: () => true };
+  const blockers = collectPlacementBlockers(world, content, terrain);
+  return { canPlace: (x, y) => canPlaceAnchor(blockers, footprint, x, y) };
 }

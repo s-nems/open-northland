@@ -28,6 +28,9 @@ export interface PlacementDeps {
 /** Placement mode: pick a building in the menu, then every left-click drops one until Esc/right-click. */
 export interface PlacementController {
   isActive(): boolean;
+  /** The building typeId currently being placed, or null when not in placement — drives the map's
+   *  buildable/blocked overlay (the type decides which tiles its footprint fits). */
+  activeType(): number | null;
   enter(typeId: number): void;
   cancel(): void;
   /**
@@ -53,6 +56,7 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
 
   return {
     isActive: () => placementType !== null,
+    activeType: () => placementType,
     enter: (typeId): void => {
       placementType = typeId;
       graphics.clear();

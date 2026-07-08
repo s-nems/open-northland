@@ -8,6 +8,7 @@ import { type Entity, World } from './ecs/world.js';
 import { type Invariant as _Invariant, checkInvariants as _checkInvariants } from './harness/invariants.js';
 import { type WorldSnapshot, takeSnapshot } from './inspect/snapshot.js';
 import { type TerrainGraph, type TerrainMap, buildTerrainGraph } from './nav/terrain.js';
+import { type PlacementProbe, placementProbe } from './systems/footprint/index.js';
 import { SYSTEM_ORDER, type SystemContext } from './systems/index.js';
 
 export interface SimOptions {
@@ -91,6 +92,19 @@ export class Simulation {
    */
   snapshot(): WorldSnapshot {
     return takeSnapshot(this.world, this.currentTick, this.events.current());
+  }
+
+  /**
+   * A buildability test for one building type at the current tick boundary — the read seam the app's
+   * build-mode overlay probes per visible tile to grey out where a click would be rejected. Reads
+   * the same rule the `placeBuilding` command gates on ({@link canPlaceBuilding}); snapshots the
+   * world's obstacle sets ONCE so probing a viewport stays O(visible tiles). Read-only, like
+   * {@link snapshot}; never mutates and so is determinism-irrelevant. Returns null for a mapless sim
+   * (no terrain graph → no placement rule), where the caller shows no overlay.
+   */
+  placementProbe(buildingType: number): PlacementProbe | null {
+    if (this.terrain === undefined) return null;
+    return placementProbe(this.world, this.content, this.terrain, buildingType);
   }
 
   /** Run N ticks. */
