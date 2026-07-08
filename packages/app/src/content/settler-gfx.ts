@@ -180,7 +180,7 @@ export function directionalAnimFromSeq(
 }
 
 /**
- * The demo binding into the human atlases — the render twin of `slice/vertical-slice.ts`'s `demoContent`.
+ * The demo binding into the human atlases — the render twin of the global sandbox content.
  * The settler's walk/chop ranges are derived from `seqByName` (the extracted `bobSequences` for
  * `cr_hum_body_00.bmd`), so there are no hard-coded frame ids left here; an absent manifest falls back to
  * the known-good `FALLBACK_*` ranges. The building's per-type bobs **overlay** the extracted

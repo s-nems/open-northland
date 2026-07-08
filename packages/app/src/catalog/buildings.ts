@@ -1,4 +1,3 @@
-import { type BuildingFootprint, type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { type Simulation, type TerrainMap, components } from '@vinland/sim';
 
 /**
@@ -132,57 +131,6 @@ export function placeVikingBuilding(sim: Simulation, ref: number | string, x: nu
     x,
     y,
     tribe: VIKING,
-  });
-}
-
-/** The `none` good and `idle` job the synthetic scene content needs so building/job cross-refs resolve. */
-const NONE_GOOD = 0;
-const IDLE_JOB = 0;
-/**
- * A non-deliverable placeholder build cost stamped on homes only (see {@link vikingBuildingContent}): a
- * single unit of the `none` good. It exists solely to keep `materialsPresent` FALSE for a home's next-tier
- * upgrade in a passive showcase (no carriers deliver it), pinning `home_level_00..03` at their own typeId.
- */
-const HOME_UPGRADE_PIN: readonly { goodType: number; amount: number }[] = [
-  { goodType: NONE_GOOD, amount: 1 },
-];
-
-/**
- * A minimal, zod-validated synthetic {@link ContentSet} for `entries`: each building as a passive
- * structure (no workers, no stock, no `jobEnables*` so every type is ungated and places immediately) on
- * grass, for the viking tribe. Carries NO copyrighted data — `parseContentSet` fails loudly on drift.
- *
- * Homes get a {@link HOME_UPGRADE_PIN} build cost: the ConstructionSystem levels a built `home` up its
- * typeId chain once the next tier's `construction` materials sit in the home's own stockpile, and an
- * EMPTY cost is vacuously "present" — which would silently collapse `home_level_00..03` up to the top
- * tier. A non-deliverable cost (nothing hauls it here) keeps every home pinned at its own level.
- */
-export function vikingBuildingContent(
-  entries: readonly VikingBuilding[],
-  footprintOf?: (b: VikingBuilding) => BuildingFootprint | undefined,
-): ContentSet {
-  return parseContentSet({
-    manifest: {
-      version: IR_VERSION,
-      generatedFrom: { game: 'vinland-acceptance-scene' },
-      locale: 'eng',
-    },
-    goods: [{ typeId: NONE_GOOD, id: 'none' }],
-    jobs: [{ typeId: IDLE_JOB, id: 'idle' }],
-    buildings: entries.map((b) => {
-      const footprint = footprintOf?.(b);
-      return {
-        typeId: b.typeId,
-        id: b.id,
-        kind: b.kind,
-        ...(b.kind === HOME_KIND ? { construction: HOME_UPGRADE_PIN } : {}),
-        // A footprint (optional) makes canPlaceBuilding enforce the original's collision/spacing rule for
-        // this type; without one the type places freely (the pre-footprint behaviour synthetic content keeps).
-        ...(footprint ? { footprint } : {}),
-      };
-    }),
-    landscape: [{ typeId: GRASS, id: 'grass', walkable: true, buildable: true }],
-    tribes: [{ typeId: VIKING, id: 'viking' }],
   });
 }
 

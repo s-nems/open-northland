@@ -120,8 +120,8 @@ describe('runSlice on a loaded map', () => {
   }
 
   it('builds + steps the sim over the real grid without a content gap', () => {
-    // The plain strip uses only typeIds {0,1}; this grid uses {5,16,22}. If demoContent did not fold
-    // those in, buildTerrainGraph would throw "landscape typeId N absent from content" at construction.
+    // The plain strip uses only typeIds {0,1}; this grid uses {5,16,22}. If the global sandbox content did
+    // not fold those in, buildTerrainGraph would throw "landscape typeId N absent from content".
     const sim = runSlice(7, 30, gridMap());
     expect(sim.terrain?.width).toBe(4);
     expect(sim.terrain?.height).toBe(3);

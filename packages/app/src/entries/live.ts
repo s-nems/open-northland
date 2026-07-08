@@ -17,12 +17,13 @@ import { loadMapObjects } from '../content/objects.js';
 import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { fetchTerrainIr, loadRealTerrain } from '../content/terrain.js';
+import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
 import { DEFAULT_UI_SCALE } from '../hud/tool-panel-layout.js';
 import {
-  demoGoods,
   loadTerrainMap,
   runAuthoredSlice,
   runSlice,
+  sandboxGoods,
   sliceTerrain,
 } from '../slice/vertical-slice.js';
 import { cameraCenteredOnTile, cameraFor, createCameraController } from '../view/camera.js';
@@ -55,12 +56,8 @@ const DEFAULT_TILE_WIDTH = 2 * CALIBRATED_HALF_W;
  * the synthetic grass strip (the maps are gitignored).
  */
 
-/** The slice is single-tribe (viking, tribe 1); draw its HUD panel each frame. */
-const HUD_TRIBE = 1;
 /** The slice sim's deterministic seed. */
 const SLICE_SEED = 7;
-/** The human player who owns the slice's units in the live sandbox (so they can be selected + ordered). */
-const HUMAN_PLAYER = 0;
 
 /**
  * Parse `?center=x,y` (integer tile coords) into a camera centred on that tile (via
@@ -102,7 +99,7 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
   // atlases (gitignored content over the /bobs server), degrading to synthetic markers when content/ is
   // missing. `?atlas=synthetic` forces the free markers; `?atlas=none` draws placeholder geometry. Shared
   // with the `?scene=` entry.
-  const sheet = await resolveSpriteSheet(params, demoGoods());
+  const sheet = await resolveSpriteSheet(params, sandboxGoods());
   // Real ground textures + map objects are the DEFAULT (like the sprite atlases), each behind its
   // own opt-out (`?terrain=off` → flat tint, `?objects=off` → bare ground) and each degrading
   // gracefully when content/ is absent — the shared multi-MB ir.json is fetched once for both.

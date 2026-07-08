@@ -19,7 +19,7 @@ A scene is a single deterministic world setup (`SceneDefinition`) consumed two w
 | **Headless** | `packages/app/test/scenes.test.ts` | the **mechanic** (asserts `checks` + core invariants, and re-runs for byte-identical determinism) | the **agent** (`npm test`) |
 | **Browser** | `npm run dev` → `?scene=<id>` | the **pixels/animation** | a **human** (the checklist overlay) |
 
-Because the sim is deterministic (same seed + content + setup → byte-identical run), the two observe the
+Because the sim is deterministic (same seed + global content/rules + setup → byte-identical run), the two observe the
 **same** run: what the test proves is exactly what you watch. The mechanic can never silently differ from
 the demo.
 
@@ -30,8 +30,6 @@ Defined in `packages/app/src/scenes/<id>.ts` (the type is `scenes/types.ts`):
 - `id` — URL-safe; the `?scene=<id>` value and the test's `describe()` name.
 - `title` / `summary` — shown in the overlay.
 - `seed` — fixes the RNG.
-- `content` — a **synthetic** `ContentSet` (goods/jobs/buildings/...), zod-validated by `parseContentSet`.
-  Never copyrighted game data — scenes ship in the repo, the real decoded `content/` is gitignored.
 - `terrain` — the `TerrainMap` the sim navigates and the renderer projects.
 - `build(sim)` — populate the fresh sim: `sim.enqueue(...)` commands (place buildings, spawn settlers)
   and/or `sim.world.create()` resource entities (there is no `spawnResource` command — place them like
@@ -40,13 +38,17 @@ Defined in `packages/app/src/scenes/<id>.ts` (the type is `scenes/types.ts`):
 - `checklist` — the human-readable "what to look for", rendered as the overlay's acceptance list.
 - `checks` — `{ label, predicate(sim) }[]`; the mechanic the headless test enforces.
 
+Scenes do **not** define goods, jobs, buildings, weapons, animation bindings, controls, sound, speed, or
+build-menu contents. Those global sandbox rules live in `packages/app/src/game/sandbox-content.ts` and are
+shared by `?scene=...`, `?live`, and synthetic map fallbacks. A scene is only a deterministic map/setup.
+
 ## Add a scene (the loop)
 
 1. **Write** `packages/app/src/scenes/<id>.ts` exporting a `SceneDefinition`. Model it on
-   `all-buildings.ts`. Keep `content` minimal — just the goods/jobs/buildings the mechanic needs. Terrain
-   size is no longer a constraint: the retained `WorldRenderer` meshes terrain once and pools + culls
-   sprites, so a big grass field is cheap (the `stress-crowd` scene is a 256×256 map with thousands of
-   bobs). The browser view shows a live FPS / entity / drawn / pooled readout (bottom-left) so you can
+   `sandbox.ts`. Keep it to placement/layout plus checks; use the global sandbox content instead of local
+   content fixtures. Terrain size is no longer a constraint: the retained `WorldRenderer` meshes terrain
+   once and pools + culls sprites. The browser view shows a live FPS / entity / drawn / pooled readout
+   (bottom-left) so you can
    judge render performance and see culling bite (`drawn` ≪ `entities` when zoomed in).
 2. **Register** it in `packages/app/src/scenes/index.ts` (`SCENES`). This automatically adds both its
    headless test case and its `?scene=` link — no other wiring.

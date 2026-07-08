@@ -1,43 +1,41 @@
-import {
-  type ContentSet,
-  IR_VERSION,
-  type TerrainMapFile,
-  parseContentSet,
-  parseTerrainMap,
-} from '@vinland/data';
+import { type TerrainMapFile, parseTerrainMap } from '@vinland/data';
 import { type SceneTerrain, terrainMapToScene } from '@vinland/render';
 import { Simulation, type TerrainMap, components, fx } from '@vinland/sim';
-import { type GoodRef, HARVEST_ATOMIC, HARVEST_SWING_LENGTH } from '../content/settler-gfx.js';
+import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
+import { PRIMARY_TRIBE } from '../game/rules.js';
+import {
+  BUILDING_HEADQUARTERS,
+  BUILDING_JOINERY,
+  GOOD_WOOD,
+  JOB_CARRIER,
+  JOB_GATHERER_WOOD,
+  sandboxContent,
+  sandboxGoods,
+  sandboxWalkableTypeIds,
+} from '../game/sandbox-content.js';
+
+export { sandboxGoods };
 
 /**
  * The Phase-2 vertical-slice scenario, built deterministically so a screenshot frame is reproducible.
  *
  * This mirrors the world the render scene **integration test** exercises (a 6×1 grass strip: HQ +
- * sawmill placed via commands, a woodcutter + a carrier, two wood nodes), so the headless shot entry
+ * joinery placed via commands, a wood gatherer + a carrier, two wood nodes), so the headless shot entry
  * draws the exact frame the unit tests already assert the draw list of.
  *
- * The content set here is a tiny, HAND-AUTHORED synthetic fixture — the demo twin of the sim's test
- * fixture (`packages/sim/test/fixtures/content.ts`), kept as its own copy rather than reaching into
- * another package's `test/` dir from production code (which would drag the test tree into the build
- * graph). It carries NO copyrighted game data, just enough goods/jobs/buildings to render the slice;
- * `parseContentSet` (zod) fails loudly if the schema drifts. Real content is generated into the
- * gitignored `content/` from an owned game copy (docs/TESTING.md "Reproducibility of fixtures").
+ * The content comes from the global sandbox fixture (`game/sandbox-content.ts`), the same ruleset used by
+ * acceptance scenes. This file chooses only placement cells for the tiny shot/live fallback; it no longer
+ * owns a separate list of buildable buildings, jobs, or animation bindings.
  */
 
 const GRASS = 0;
-const WOOD = 1;
-const WOODCUTTER = 1;
-const CARRIER = 36;
-const HEADQUARTERS = 1;
-const SAWMILL = 2;
-const VIKING = 1;
 
 const { Position, Resource } = components;
 
 const WIDTH = 6;
 const HEIGHT = 1;
 
-/** The fixed placement cells on the synthetic 6×1 strip: [HQ, sawmill, woodcutter, carrier, tree, tree]. */
+/** The fixed placement cells on the synthetic 6×1 strip: [HQ, joinery, wood gatherer, carrier, tree, tree]. */
 const STRIP_CELLS: ReadonlyArray<{ x: number; y: number }> = [
   { x: 5, y: 0 },
   { x: 4, y: 0 },
@@ -46,105 +44,6 @@ const STRIP_CELLS: ReadonlyArray<{ x: number; y: number }> = [
   { x: 2, y: 0 },
   { x: 3, y: 0 },
 ];
-
-/** The two landscape types the synthetic strip uses (grass walkable, water blocking). */
-const BASE_LANDSCAPE = [
-  { typeId: GRASS, id: 'grass', walkable: true, buildable: true },
-  { typeId: 1, id: 'water', walkable: false, buildable: false },
-];
-
-/**
- * The landscape table for the demo's content set. Without a map it is the two-type synthetic strip.
- *
- * A loaded `content/maps/<id>.json` references many landscape typeIds the synthetic strip never uses
- * (a real grid carries e.g. `{1,2,5,10,11,…,37}`), and `buildTerrainGraph` throws on any typeId
- * absent from content — so when a map is given we synthesize a walkable `LandscapeType` for every id
- * the grid actually contains that the base table doesn't already cover. This is purely so the demo
- * sim can navigate a real grid; it carries NO real walkability/valency semantics (that is the IR's
- * job — the demo content is explicitly synthetic). Ids are emitted in ascending order so the content
- * set is deterministic.
- */
-function demoLandscape(
-  map?: TerrainMap,
-): Array<{ typeId: number; id: string; walkable: boolean; buildable: boolean }> {
-  if (map === undefined) return BASE_LANDSCAPE;
-  const covered = new Set(BASE_LANDSCAPE.map((t) => t.typeId));
-  const extra = [...new Set(map.typeIds)].filter((id) => !covered.has(id)).sort((a, b) => a - b);
-  return [
-    ...BASE_LANDSCAPE,
-    ...extra.map((id) => ({ typeId: id, id: `terrain_${id}`, walkable: true, buildable: true })),
-  ];
-}
-
-/**
- * A small synthetic content set sufficient to render + navigate the vertical slice (no copyrighted
- * data). When a `map` is passed, its landscape typeIds are folded into the table (see
- * {@link demoLandscape}) so the sim's cell-graph can be built over a real decoded grid.
- */
-/** The slice's haulable goods as `(typeId, id)` pairs — shared by {@link demoContent} (which adds the
- *  sim-side fields) and the render binding (the per-good carry-look join keys, see `content/settler-gfx.ts`). */
-const WOOD_GOOD = { typeId: WOOD, id: 'wood' } as const;
-const PLANK_GOOD = { typeId: 2, id: 'plank' } as const;
-
-/** The goods the slice sim actually runs, for the sprite sheet's per-good carry binding (`main.ts`). */
-export function demoGoods(): readonly GoodRef[] {
-  return [WOOD_GOOD, PLANK_GOOD];
-}
-
-function demoContent(map?: TerrainMap): ContentSet {
-  return parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-demo-slice' }, locale: 'eng' },
-    goods: [
-      { typeId: 0, id: 'none' },
-      { ...WOOD_GOOD, weight: 1, atomics: { harvest: HARVEST_ATOMIC } },
-      { ...PLANK_GOOD, weight: 1 },
-    ],
-    jobs: [
-      { typeId: 0, id: 'idle' },
-      { typeId: WOODCUTTER, id: 'woodcutter', allowedAtomics: [HARVEST_ATOMIC] },
-      { typeId: 2, id: 'carpenter' },
-      { typeId: CARRIER, id: 'carrier' },
-    ],
-    buildings: [
-      {
-        typeId: HEADQUARTERS,
-        id: 'headquarters',
-        kind: 'headquarters',
-        workers: [{ jobType: WOODCUTTER, count: 3 }],
-        stock: [
-          { goodType: WOOD, capacity: 150, initial: 10 },
-          { goodType: 2, capacity: 150, initial: 0 },
-        ],
-      },
-      {
-        typeId: SAWMILL,
-        id: 'sawmill',
-        kind: 'workplace',
-        workers: [{ jobType: 2, count: 1 }],
-        stock: [
-          { goodType: WOOD, capacity: 20, initial: 0 },
-          { goodType: 2, capacity: 20, initial: 0 },
-        ],
-        recipe: { inputs: [{ goodType: WOOD, amount: 1 }], outputs: [{ goodType: 2, amount: 1 }], ticks: 20 },
-      },
-    ],
-    landscape: demoLandscape(map),
-    tribes: [
-      {
-        typeId: VIKING,
-        id: 'viking',
-        atomicBindings: [{ jobType: WOODCUTTER, atomicId: HARVEST_ATOMIC, animation: 'viking_chop' }],
-      },
-    ],
-    // The renderer animates the chop at a fixed cadence (one frame/tick) off the atomic's `elapsed`, and
-    // the atomic is removed on the tick it completes (render only ever sees elapsed 1..length-1). The
-    // CHOP binding plays the full 15-frame woodcut loop starting at the windup (phaseStart 9 → frames
-    // 9..14 raise the axe, then 0..8 swing down to the impact). length 16 → render sees elapsed 1..15 →
-    // all 15 frames, ending on frame 8 (the strike landing in the tree), then the chop completes and
-    // wood is taken. The complete swing — windup then strike — at constant speed. ~0.8s at 20 ticks/s.
-    atomicAnimations: [{ id: 'viking_chop', name: 'viking_chop', length: HARVEST_SWING_LENGTH }],
-  });
-}
 
 function grassMap(): TerrainMap {
   return { width: WIDTH, height: HEIGHT, typeIds: new Array(WIDTH * HEIGHT).fill(GRASS) };
@@ -205,18 +104,18 @@ export async function loadTerrainMap(
   }
 }
 
-/** The six placement slots the slice needs: HQ, sawmill, woodcutter, carrier, and two wood nodes. */
+/** The six placement slots the slice needs: HQ, joinery, wood gatherer, carrier, and two wood nodes. */
 const PLACEMENT_CELL_COUNT = 6;
 
 /**
  * The first `count` walkable cells of `map`, in canonical row-major id order, as integer `(x, y)`
  * tile coords — or `null` if the map has fewer than `count` walkable cells. "Walkable" is resolved
- * from the demo content's landscape table (the same `walkable` flag `buildTerrainGraph` reads), so
+ * from the global sandbox landscape table (the same `walkable` flag `buildTerrainGraph` reads), so
  * the slice's entities land only on cells the sim can stand on — placing a building on water would
- * make the woodcutter's path unreachable. Deterministic: a fixed scan order, no RNG.
+ * make the gatherer's path unreachable. Deterministic: a fixed scan order, no RNG.
  *
  * Returns `null` (a recoverable boundary failure, not a throw) for a map with too few walkable cells:
- * some real grids are ~all water under the demo's two-type base table (e.g. a coastal scenario whose
+ * some real grids are ~all water under the sandbox's base table (e.g. a coastal scenario whose
  * land is all typeId 1), and `runSlice` falls back to the synthetic strip rather than crashing the
  * shot/dev entry — the same graceful-degradation contract as {@link loadTerrainMap}.
  */
@@ -235,29 +134,15 @@ function walkableCells(
 }
 
 /**
- * The set of landscape typeIds the demo marks walkable for a given map — the placement filter for
- * {@link walkableCells}. Derived from {@link demoLandscape} (the same table `demoContent` feeds the
- * sim), so the "walkable" answer here is exactly what `buildTerrainGraph` will resolve, without
- * paying for a full `parseContentSet`.
- */
-function walkableTypeIds(map?: TerrainMap): ReadonlySet<number> {
-  return new Set(
-    demoLandscape(map)
-      .filter((t) => t.walkable)
-      .map((t) => t.typeId),
-  );
-}
-
-/**
  * Build the vertical-slice simulation (seed-fixed) and run it `ticks` ticks deterministically. The
  * returned sim is at a tick boundary, ready for `snapshot()` → `buildScene` → the renderer. No RAF,
  * no wall-clock: this is the "render scenario X at seed S, step N ticks" entry the harness needs.
  *
  * Without a `map` the slice runs on the synthetic 6×1 grass strip (the reproducible default the shot
- * PNG depends on). With a loaded `content/maps/<id>.json` grid, the SAME six entities (HQ, sawmill,
- * woodcutter, carrier, two wood nodes) are placed on the first walkable cells of the real grid instead
+ * PNG depends on). With a loaded `content/maps/<id>.json` grid, the SAME six entities (HQ, joinery,
+ * wood gatherer, carrier, two wood nodes) are placed on the first walkable cells of the real grid instead
  * of the hardcoded strip — so the sim actually navigates the decoded map, not a stand-in. The grid's
- * landscape typeIds are folded into the demo content (see {@link demoContent}) so its cell-graph
+ * landscape typeIds are folded into the global sandbox content so its cell-graph
  * builds; placement uses {@link walkableCells} so nothing lands on a blocking cell. A loaded map with
  * too few walkable cells (an all-water grid under the demo's base table) **falls back to the strip**
  * — the slice always runs (matching the file's graceful-degradation contract), never throwing.
@@ -266,9 +151,9 @@ export function runSlice(seed: number, ticks: number, map?: TerrainMap, owner?: 
   // Resolve placement first: a usable map yields its first six walkable cells; no map (or a map with
   // too few walkable cells) falls back to the synthetic strip — content + terrain + cells all revert
   // together so the fallback sim is exactly the no-map slice.
-  const mapCells = map ? walkableCells(map, walkableTypeIds(map), PLACEMENT_CELL_COUNT) : null;
+  const mapCells = map ? walkableCells(map, sandboxWalkableTypeIds(map), PLACEMENT_CELL_COUNT) : null;
   const usable = map !== undefined && mapCells !== null;
-  const content = demoContent(usable ? map : undefined);
+  const content = sandboxContent(usable ? map : undefined);
   const terrain = usable ? map : grassMap();
   const cells = mapCells ?? STRIP_CELLS;
   const sim = new Simulation({ seed, content, map: terrain });
@@ -287,14 +172,42 @@ export function runSlice(seed: number, ticks: number, map?: TerrainMap, owner?: 
   // `owner` (optional) tags the slice's buildings + settlers to a player so they're selectable/orderable
   // in the interactive live entry. Omitted (the shot/default path) leaves them neutral — hash untouched.
   const own = owner !== undefined ? { owner } : {};
-  sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: hq.x, y: hq.y, tribe: VIKING, ...own });
-  sim.enqueue({ kind: 'placeBuilding', buildingType: SAWMILL, x: mill.x, y: mill.y, tribe: VIKING, ...own });
-  sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: cutter.x, y: cutter.y, tribe: VIKING, ...own });
-  sim.enqueue({ kind: 'spawnSettler', jobType: CARRIER, x: carrier.x, y: carrier.y, tribe: VIKING, ...own });
+  sim.enqueue({
+    kind: 'placeBuilding',
+    buildingType: BUILDING_HEADQUARTERS,
+    x: hq.x,
+    y: hq.y,
+    tribe: PRIMARY_TRIBE,
+    ...own,
+  });
+  sim.enqueue({
+    kind: 'placeBuilding',
+    buildingType: BUILDING_JOINERY,
+    x: mill.x,
+    y: mill.y,
+    tribe: PRIMARY_TRIBE,
+    ...own,
+  });
+  sim.enqueue({
+    kind: 'spawnSettler',
+    jobType: JOB_GATHERER_WOOD,
+    x: cutter.x,
+    y: cutter.y,
+    tribe: PRIMARY_TRIBE,
+    ...own,
+  });
+  sim.enqueue({
+    kind: 'spawnSettler',
+    jobType: JOB_CARRIER,
+    x: carrier.x,
+    y: carrier.y,
+    tribe: PRIMARY_TRIBE,
+    ...own,
+  });
   for (const cell of [cellAt(4), cellAt(5)]) {
     const tree = sim.world.create();
     sim.world.add(tree, Position, { x: fx.fromInt(cell.x), y: fx.fromInt(cell.y) });
-    sim.world.add(tree, Resource, { goodType: WOOD, remaining: 4, harvestAtomic: HARVEST_ATOMIC });
+    sim.world.add(tree, Resource, { goodType: GOOD_WOOD, remaining: 4, harvestAtomic: HARVEST_ATOMIC });
   }
   sim.run(ticks);
   return sim;
@@ -316,11 +229,6 @@ export interface AuthoredJoinRows {
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
   readonly tribes?: readonly { typeId?: number; id?: string }[];
 }
-
-/** A home's non-deliverable upgrade pin (mirrors the catalog's `HOME_UPGRADE_PIN` — an EMPTY
- *  construction cost is vacuously "materials present", which would silently level every authored home
- *  to its top tier; a single undeliverable `none` unit keeps each home at its authored level). */
-const AUTHORED_HOME_PIN: readonly { goodType: number; amount: number }[] = [{ goodType: 0, amount: 1 }];
 
 /** One resolved authored placement, ready to enqueue (the pure middle {@link resolveAuthoredPlacements} returns). */
 export type AuthoredPlacement =
@@ -405,11 +313,10 @@ export function resolveAuthoredPlacements(
  * building and every `sethuman` a settler at its authored cell — replacing the synthetic
  * "first walkable cells" demo placement for such maps (docs/plans/placement-import slice).
  *
- * The content set stays in the demo-content mold (passive typeId+id rows over the map's landscape
- * via {@link demoLandscape}) so the sim can host the real typeIds without pulling the full IR
- * through zod; homes get {@link AUTHORED_HOME_PIN}. Returns `null` when nothing resolves (the
- * caller falls back to {@link runSlice}) — the same graceful-degradation contract as the loaders
- * above. Deterministic: placements enqueue in file order, no RNG.
+ * The content is the global sandbox content plus any extra authored type ids that are not in the sandbox
+ * catalog yet, so authored maps do not shrink the build menu or profession rules. Returns `null` when
+ * nothing resolves (the caller falls back to {@link runSlice}) — the same graceful-degradation contract
+ * as the loaders above. Deterministic: placements enqueue in file order, no RNG.
  */
 export function runAuthoredSlice(
   seed: number,
@@ -438,23 +345,16 @@ export function runAuthoredSlice(
     (a, b) => a - b,
   );
   const usedTribes = [...new Set(placements.map((p) => p.tribe))].sort((a, b) => a - b);
-  const content = parseContentSet({
-    manifest: { version: IR_VERSION, generatedFrom: { game: 'vinland-authored-slice' }, locale: 'eng' },
-    goods: [{ typeId: 0, id: 'none' }],
-    jobs: [
-      { typeId: 0, id: 'idle' },
-      ...usedJobs.filter((t) => t !== 0).map((typeId) => ({ typeId, id: `job_${typeId}` })),
-    ],
+  const content = sandboxContent(map, {
+    jobs: usedJobs.filter((typeId) => typeId !== 0).map((typeId) => ({ typeId, id: `job_${typeId}` })),
     buildings: usedBuildings.map((typeId) => {
       const def = buildingDefById.get(typeId);
       return {
         typeId,
         id: def?.id ?? `building_${typeId}`,
         ...(def?.kind !== undefined ? { kind: def.kind } : {}),
-        ...(def?.kind === 'home' ? { construction: AUTHORED_HOME_PIN } : {}),
       };
     }),
-    landscape: demoLandscape(map),
     tribes: usedTribes.map((typeId) => ({ typeId, id: `tribe_${typeId}` })),
   });
 

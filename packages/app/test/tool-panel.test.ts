@@ -23,7 +23,7 @@ import {
 
 /**
  * Headless tests for the LEFT tool panel's pure logic — the geometry hit-test, the speed state machine,
- * and the building-menu model. The agent self-validates these; the browser `?scene=tool-panel` view is
+ * and the building-menu model. The agent self-validates these; the browser `?scene=sandbox` view is
  * where a human judges the pixels (crisp art, palette colours, Polish strings). See docs/SCENES.md.
  */
 

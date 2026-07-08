@@ -5,7 +5,7 @@ import type { SpriteLayer } from './pixi-app.js';
 import { TextureCache } from './texture-cache.js';
 
 /**
- * A DATA-DRIVEN animation gallery — the animation twin of the all-buildings catalog, for the character
+ * A DATA-DRIVEN animation gallery — the animation twin of the sandbox/catalog, for the character
  * instead of the map. It plays every extracted `[bobseq]` of a body bob set straight from the atlas, so a
  * human can validate that each animation decodes and cycles correctly. It is a PURE VIEWER: no sim, no
  * determinism concern (floats + a wall-clock frame counter are fine here, `render` never feeds the sim).
@@ -86,7 +86,7 @@ export interface GalleryCellBox {
 
 /**
  * Lay `count` cells out row-major into `columns` columns of {@link CELL_W}×{@link CELL_H} — the wrapped
- * grid the gallery draws (the all-buildings catalog's row-major placement, generalised). Pure + total.
+ * grid the gallery draws (the catalog's row-major placement, generalised). Pure + total.
  */
 export function galleryCellLayout(count: number, columns: number): GalleryCellBox[] {
   const cols = Math.max(1, Math.floor(columns));
