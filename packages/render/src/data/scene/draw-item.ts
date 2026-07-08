@@ -193,4 +193,12 @@ export interface SceneTerrain {
    * ground mesh + every projected item; absent → flat (no lift). Render-only data — the sim never reads it.
    */
   readonly elevation?: readonly number[];
+  /**
+   * The decoded map's per-cell `embr` baked shading (row-major, length `width*height`, u8 with 127 =
+   * neutral), when present. The renderer builds a {@link import('../brightness.js').BrightnessField}
+   * from it and bakes luminance × value/127 into the ground mesh per vertex — slope light/shadow plus
+   * the fade-to-black map border; absent → unshaded. Terrain only (objects/entities are NOT shaded —
+   * measured against the corpus). Render-only data — the sim never reads it.
+   */
+  readonly brightness?: readonly number[];
 }

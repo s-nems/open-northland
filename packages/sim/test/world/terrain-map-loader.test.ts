@@ -100,6 +100,18 @@ describe('parseTerrainMap (the content/maps loader)', () => {
     );
   });
 
+  it('accepts the optional per-cell brightness lane and enforces its width*height length', () => {
+    const base = JSON.parse(mapFileJson());
+    // Per-cell baked shading (`embr`): exactly width*height (25) raw byte values, 127 = neutral.
+    const map = parseTerrainMap({ ...base, brightness: Array.from({ length: 25 }, (_, i) => i * 10) });
+    expect(map.brightness?.length).toBe(25);
+    // brightness stays optional — a map decoded before the embr lane was emitted still parses.
+    expect(parseTerrainMap(base).brightness).toBeUndefined();
+    expect(() => parseTerrainMap({ ...base, brightness: Array.from({ length: 100 }, () => 0) })).toThrow(
+      /brightness length 100 != /,
+    );
+  });
+
   it('rejects a malformed entities layer (negative half-cell / unknown key)', () => {
     const base = JSON.parse(mapFileJson());
     expect(() =>

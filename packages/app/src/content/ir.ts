@@ -117,6 +117,8 @@ export interface ContentIr {
   readonly constructionLayers?: readonly ConstructionLayerRow[];
   readonly gatheringPipeline?: readonly GatheringPipelineRow[];
   readonly landscapeGfx?: readonly LandscapeGfxRow[];
+  /** The `[landscapetype]` logic table (typeId + name) — the {@link LandscapeGfxRow.logicType} join key. */
+  readonly landscape?: readonly { typeId?: number; name?: string }[];
   /** The approximated per-typeId ground binding (`buildTerrainPatterns`) the terrain renderer reads. */
   readonly terrainPatterns?: readonly TerrainPattern[];
   /** The full 927-record `[GfxPattern]` table — the 1:1 per-triangle ground join for decoded maps. */

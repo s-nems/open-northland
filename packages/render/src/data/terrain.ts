@@ -121,6 +121,56 @@ export const TRIANGLE_A_CORNERS: readonly number[] = [0, 2, 3];
 /** Triangle B's diamond-corner indices (into the `[top, right, bottom, left]` corner order), matching its UV point order. */
 export const TRIANGLE_B_CORNERS: readonly number[] = [0, 1, 2];
 
+// ─── the CENTRE-vertex split (per-cell lane detail the corner vertices cannot carry) ───────────────
+//
+// The two ground triangles share the diamond's top↔bottom diagonal, whose midpoint is the cell
+// CENTRE. A corner-only mesh interpolates the per-cell lanes (elevation/brightness) purely from
+// corner samples — and every corner is a between-cell blend, so a cell's OWN lane value never
+// reaches any pixel: one-cell shading detail flattens toward its neighbours (measured on the bridge
+// map: a 55-embr cell among ~127 neighbours rendered ×0.84 instead of the corpus-pinned ×0.43 —
+// corner interpolation predicts exactly the flattened value). Splitting each triangle at the centre
+// adds ONE vertex per cell carrying the cell's own bilinear samples (at the canonical coordinate
+// `(col, row)` the corner samples share — `cell-field.ts`), which restores the measured per-cell
+// response while leaving the diamond's OUTER edges untouched, so the mesh stays watertight with its
+// neighbours. Used only on the shaded (brightness-lane) path; the unshaded mesh stays byte-identical.
+
+/**
+ * Index triples for triangle A split at the centre, into the vertex order
+ * `[top, bottom, left, centre]` its split builder pushes: `(top, centre, left)` + `(centre, bottom, left)`.
+ */
+export const TRIANGLE_A_SPLIT_INDICES: readonly number[] = [0, 3, 2, 3, 1, 2];
+
+/**
+ * Index triples for triangle B split at the centre, into the vertex order
+ * `[top, right, bottom, centre]` its split builder pushes: `(top, right, centre)` + `(centre, right, bottom)`.
+ */
+export const TRIANGLE_B_SPLIT_INDICES: readonly number[] = [0, 1, 3, 3, 1, 2];
+
+/**
+ * The midpoint of two UV points of a pattern triangle's `[u0,v0, u1,v1, u2,v2]` buffer — the centre
+ * vertex's UV. The centre bisects the top↔bottom split edge, and UVs vary linearly over a triangle,
+ * so the midpoint UV reproduces the exact same texture mapping across both halves. `ia`/`ib` are the
+ * POINT indices (0..2) of the split edge's endpoints in the buffer's point order.
+ */
+export function uvMidpoint(uvs: readonly number[], ia: number, ib: number): [number, number] {
+  return [
+    ((uvs[ia * 2] ?? 0) + (uvs[ib * 2] ?? 0)) / 2,
+    ((uvs[ia * 2 + 1] ?? 0) + (uvs[ib * 2 + 1] ?? 0)) / 2,
+  ];
+}
+
+/**
+ * The 4-triangle centre-fan index list for a diamond whose vertex buffer is the 4 corners
+ * (`[top, right, bottom, left]`, {@link diamondCorners}) followed by the centre vertex (index 4) —
+ * the shaded twin of {@link DIAMOND_INDICES} for the per-typeId path.
+ */
+export const DIAMOND_FAN_INDICES: readonly number[] = [0, 1, 4, 1, 2, 4, 2, 3, 4, 3, 0, 4];
+
+/** The centre of a page sub-rect in normalised UV — the {@link DIAMOND_FAN_INDICES} centre vertex's UV. */
+export function rectCenterUV(rect: SrcRect, pageW: number, pageH: number): [number, number] {
+  return [(rect.x + rect.w / 2) / pageW, (rect.y + rect.h / 2) / pageH];
+}
+
 /**
  * One triangle's 3 vertex positions for a cell centred at `(sx, sy)`: the diamond corners named by
  * `cornerIndices` (one of {@link TRIANGLE_A_CORNERS} / {@link TRIANGLE_B_CORNERS}), as a flat

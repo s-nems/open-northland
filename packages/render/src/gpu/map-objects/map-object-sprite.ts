@@ -30,6 +30,16 @@ export interface MapObjectSprite {
    * a nearer row). Omitted (0) on a flat map / when the app has no elevation lane. Set by the app loader.
    */
   readonly lift?: number;
+  /**
+   * The baked `embr` luminance multiplier at this object's anchor cell (1 = neutral; the measured
+   * curve in `data/brightness.ts`). The original shades landscape-object pixels with the ground's
+   * baked plane — pinned on the corpus for mine decals, stones and grass (masked opaque-pixel ratio
+   * tracks embr from ×0.58 to ×1.58) — EXCEPT trees, which draw full-bright even on embr=0 border
+   * cells; the app loader omits the field for those (and on unshaded maps). Decor batches apply it
+   * per vertex (full range); tall pooled sprites apply it as a tint, which CLAMPS at ×1 — a named
+   * approximation, Pixi's batch tint cannot brighten.
+   */
+  readonly brightness?: number;
 }
 
 /** The frame an object shows at a given animation tick (static objects always show frame 0). */

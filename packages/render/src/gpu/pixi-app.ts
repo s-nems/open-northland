@@ -181,7 +181,10 @@ export interface GroundPattern {
  * keeps that upscale crisp for the pixel art).
  */
 const APP_OPTIONS = {
-  background: 0x1a1410,
+  // Pure black, like the original's void beyond the map edge: the `embr` border fade runs the ground
+  // to (0,0,0), and any other clear colour re-exposes the edge diamonds as a sawtooth silhouette
+  // (observed against the reference corpus — its off-map area is exactly #000).
+  background: 0x000000,
   antialias: false,
   preference: 'webgl',
   autoDensity: false,

@@ -1090,8 +1090,9 @@ export type TerrainEntities = z.infer<typeof TerrainEntities>;
  *
  * The optional {@link ground} / {@link objects} layers carry the map's 1:1 visual data (per-triangle
  * ground patterns; placed landscape objects) — render-only consumers; the sim reads only the grid.
- * The optional {@link elevation} lane is the `lmhe` per-cell terrain height, carried through with no
- * consumer yet (the projection lift lands in a later step).
+ * The optional {@link elevation} (`lmhe` terrain height) and {@link brightness} (`embr` baked
+ * shading) lanes are per-cell render inputs: the projection lift and the terrain mesh's per-vertex
+ * shading respectively.
  */
 export const TerrainMapFile = z
   .strictObject({
@@ -1109,11 +1110,20 @@ export const TerrainMapFile = z
      * Per-cell terrain height (`lmhe` lane), row-major, one value per cell (length = width*height) —
      * NOT the `2W × 2H` half-cell resolution the {@link objects} lane uses. Raw byte values, 0..250
      * (a hard observed ceiling across the real maps).
-     * Present when the map ships the lane (older/foreign saves omit it). NO consumer yet: the render
-     * lift (≈1.24 native px/unit, MEASURED — see source basis "projection") lands in the NEXT
-     * step, so the lane is carried through unread for now.
+     * Present when the map ships the lane (older/foreign saves omit it). Consumed by the render's
+     * elevation lift (≈1.24 native px/unit, MEASURED — see source basis "projection";
+     * `packages/render/src/data/elevation.ts`).
      */
     elevation: z.array(z.number().int().nonnegative()).optional(),
+    /**
+     * Per-cell baked brightness (`embr` lane), row-major, one value per cell (length = width*height),
+     * raw byte values 0..255 with 127 = neutral. The engine's baked shading plane: slope light/shadow
+     * plus the fade-to-black map border (the outermost 2–3 rows/columns hold 0). Present when the map
+     * ships the lane. Consumed by the terrain mesh's per-vertex shading (luminance × brightness/127,
+     * the response curve calibrated against the reference corpus —
+     * `packages/render/src/data/brightness.ts`).
+     */
+    brightness: z.array(z.number().int().nonnegative()).optional(),
     /** The authored entity placements (`map.cif` `StaticObjects`), when the map carries them. */
     entities: TerrainEntities.optional(),
   })
@@ -1180,6 +1190,13 @@ export const TerrainMapFile = z
     (m) => ({
       message: `terrain map elevation length ${m.elevation?.length} != width*height (${m.width * m.height})`,
       path: ['elevation'],
+    }),
+  )
+  .refine(
+    (m) => m.brightness === undefined || m.brightness.length === m.width * m.height,
+    (m) => ({
+      message: `terrain map brightness length ${m.brightness?.length} != width*height (${m.width * m.height})`,
+      path: ['brightness'],
     }),
   );
 export type TerrainMapFile = z.infer<typeof TerrainMapFile>;

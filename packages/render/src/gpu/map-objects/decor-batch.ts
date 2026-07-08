@@ -1,5 +1,6 @@
-import { Container, Mesh, MeshGeometry, Texture, type TextureSource } from 'pixi.js';
+import { Container, Mesh, MeshGeometry, type Shader, Texture, type TextureSource } from 'pixi.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
+import { makeShadedDecorShader } from '../terrain/shaded-mesh.js';
 import { type MapObjectSprite, objectFrameAt } from './map-object-sprite.js';
 
 /**
@@ -7,6 +8,11 @@ import { type MapObjectSprite, objectFrameAt } from './map-object-sprite.js';
  * batched into per-block quad meshes UNDER the entity sprites — one draw call per (texture page,
  * alpha) per block, built once; an animated batch's vertex/uv buffers are rewritten in place when the
  * play-head advances (and only while the block is visible).
+ *
+ * On a brightness-shaded map ({@link MapObjectSprite.brightness}) each quad carries its anchor
+ * cell's multiplier as a constant per-vertex `aBrightness` (the ground's shaded-mesh shader — same
+ * one-draw-call batching, full >1 range), because the original bakes the `embr` shading into these
+ * ground-coupled decals too (measured on the corpus — see the field's doc).
  */
 
 /** Write one object's current frame as a quad into flat position/uv buffers at `quadIndex`. */
@@ -50,14 +56,16 @@ export function writeObjectQuad(
 /** One built quad-batch mesh + the buffers behind it (the caller keeps the buffers only for an
  *  ANIMATED batch, whose quads are rewritten in place when the play-head advances). */
 interface QuadBatch {
-  readonly mesh: Mesh;
+  readonly mesh: Mesh<MeshGeometry, Shader>;
   readonly positions: Float32Array;
   readonly uvs: Float32Array;
   readonly geometry: MeshGeometry;
 }
 
 /** Batch `objects` (all sharing `source` + `alpha`) into ONE mesh of quads, each written for its
- *  tick-0 frame — the shared build step for a decor group's static and animated halves. */
+ *  tick-0 frame — the shared build step for a decor group's static and animated halves. A batch with
+ *  any per-object brightness draws through the shaded ground shader, each quad's four vertices
+ *  carrying its anchor cell's multiplier (constant per quad, so an animated rewrite never touches it). */
 function buildQuadBatch(
   objects: readonly MapObjectSprite[],
   source: TextureSource,
@@ -66,14 +74,21 @@ function buildQuadBatch(
   const positions = new Float32Array(objects.length * 8);
   const uvs = new Float32Array(objects.length * 8);
   const indices = new Uint32Array(objects.length * 6);
+  const shaded = objects.some((obj) => obj.brightness !== undefined);
+  const brightness = shaded ? new Float32Array(objects.length * 4) : null;
   for (let q = 0; q < objects.length; q++) {
     const obj = objects[q] as MapObjectSprite;
     const frame = objectFrameAt(obj, 0) as AtlasFrame;
     writeObjectQuad(positions, uvs, q, obj, frame, source.width, source.height);
     indices.set([q * 4, q * 4 + 1, q * 4 + 2, q * 4, q * 4 + 2, q * 4 + 3], q * 6);
+    brightness?.fill(obj.brightness ?? 1, q * 4, q * 4 + 4);
   }
   const geometry = new MeshGeometry({ positions, uvs, indices });
-  const mesh = new Mesh({ geometry, texture: new Texture({ source }) });
+  if (brightness !== null) geometry.addAttribute('aBrightness', { buffer: brightness });
+  const mesh =
+    brightness !== null
+      ? new Mesh({ geometry, texture: new Texture({ source }), shader: makeShadedDecorShader(source) })
+      : new Mesh({ geometry, texture: new Texture({ source }) });
   mesh.alpha = alpha;
   return { mesh, positions, uvs, geometry };
 }

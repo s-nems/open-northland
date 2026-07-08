@@ -28,6 +28,8 @@ export interface MapDatTerrainFile extends MapDatTerrainMap {
   };
   /** Per-cell terrain height (`lmhe` lane, one byte per cell, 0..250 observed); omitted when the map lacks it. */
   readonly elevation?: number[];
+  /** Per-cell baked brightness (`embr` lane, one byte per cell, 127 = neutral); omitted when the map lacks it. */
+  readonly brightness?: number[];
   /** Authored entity placements (the sibling `map.cif`'s `StaticObjects` verbs, names verbatim). */
   readonly entities?: MapStaticObjects;
 }
@@ -162,6 +164,31 @@ function elevationFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['
 }
 
 /**
+ * Decodes the `embr` brightness lane into the emitted `brightness` layer: the baked per-cell shading
+ * plane, one byte PER CELL like `lmhe` (row-major, unpacked length === width·height — confirmed on the
+ * real maps, e.g. the 250×200 bridge map unpacks to exactly 50 000). 127 is the neutral value (flat
+ * lit ground); lower values are baked slope shadow, higher baked slope light (up to 255 ≈ 2×), and the
+ * map's outermost 2–3 rows/columns hold 0 — the engine's fade-to-black border is IN the lane (verified:
+ * the corpus shots' border cells are literally black, and ~all of the bridge map's 2 323 zero cells
+ * are that frame). Carried through verbatim, mirroring `elevation`; the render-side response curve
+ * (luminance × brightness/127, calibrated against the corpus) lives in
+ * `packages/render/src/data/brightness.ts`. Returns undefined when the map lacks the lane; throws on a
+ * dims/length mismatch (caught per LAYER by {@link mapDatToTerrain}).
+ */
+function brightnessFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['brightness'] {
+  const embr = findChunk(map, 'embr');
+  if (embr === undefined) return undefined;
+  const cells = unpackMapLayer(embr).cells;
+  const expected = size.width * size.height;
+  if (cells.length !== expected) {
+    throw new Error(
+      `mapdat: embr brightness lane has ${cells.length} cells, expected ${expected} (${size.width}×${size.height}, per-cell)`,
+    );
+  }
+  return Array.from(cells);
+}
+
+/**
  * Pure composition: one `map.dat`'s bytes -> the emitted `maps/<id>.json` value. Decodes the `hoix`
  * container ({@link decodeMapDat}), reads the `lsiz` grid dims ({@link decodeMapSize}), collapses the
  * `lmlt` half-cell landscape-object lane to the per-cell typeId grid ({@link lmltToTerrainMap} — the
@@ -174,7 +201,9 @@ function elevationFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['
  * OPTIONAL render lane is caught per layer here (warn + emit the grid without it), so a map whose nav
  * grid decodes fine never disappears over its enrichments. The `lmhe` height lane rides along as the
  * per-cell `elevation` layer ({@link elevationFromMapDat}) — consumed render-side by the elevation
- * lift (`packages/render/src/data/elevation.ts`). The
+ * lift (`packages/render/src/data/elevation.ts`) — and the `embr` baked-shading lane as the per-cell
+ * `brightness` layer ({@link brightnessFromMapDat}) — consumed by the terrain mesh's per-vertex
+ * shading (`packages/render/src/data/brightness.ts`). The
  * `emt3`/`emt4` overlay-pattern lanes (roads/house foundations) are still out of scope (deferred
  * render layers).
  */
@@ -213,10 +242,19 @@ export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
       `[pipeline] map elevation lane unreadable, emitting grid without it: ${(err as Error).message}`,
     );
   }
+  let brightness: MapDatTerrainFile['brightness'];
+  try {
+    brightness = brightnessFromMapDat(map, size);
+  } catch (err) {
+    console.warn(
+      `[pipeline] map brightness lane unreadable, emitting grid without it: ${(err as Error).message}`,
+    );
+  }
   return {
     ...terrain,
     ...(ground !== undefined ? { ground } : {}),
     ...(objects !== undefined ? { objects } : {}),
     ...(elevation !== undefined ? { elevation } : {}),
+    ...(brightness !== undefined ? { brightness } : {}),
   };
 }

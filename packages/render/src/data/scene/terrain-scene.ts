@@ -34,6 +34,7 @@ export function terrainMapToScene(map: {
   readonly typeIds: readonly number[];
   readonly ground?: SceneGround;
   readonly elevation?: readonly number[];
+  readonly brightness?: readonly number[];
 }): SceneTerrain {
   return {
     width: map.width,
@@ -41,6 +42,7 @@ export function terrainMapToScene(map: {
     typeIds: map.typeIds,
     ...(map.ground !== undefined ? { ground: map.ground } : {}),
     ...(map.elevation !== undefined ? { elevation: map.elevation } : {}),
+    ...(map.brightness !== undefined ? { brightness: map.brightness } : {}),
   };
 }
 

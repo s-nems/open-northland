@@ -1,15 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DIAMOND_FAN_INDICES,
   DIAMOND_INDICES,
   TILE_HALF_H,
   TILE_HALF_W,
   TRIANGLE_A_CORNERS,
+  TRIANGLE_A_SPLIT_INDICES,
   TRIANGLE_B_CORNERS,
+  TRIANGLE_B_SPLIT_INDICES,
   diamondCorners,
   patternSrcRect,
+  rectCenterUV,
   rectUVs,
   triangleCorners,
   triangleUVs,
+  uvMidpoint,
 } from '../src/index.js';
 
 /**
@@ -143,5 +148,39 @@ describe('triangleUVs', () => {
       0.75,
       191 / 256,
     ]);
+  });
+});
+
+describe('centre-vertex split (the shaded ground path)', () => {
+  it('the split triples reference each corner of their triangle plus the shared centre', () => {
+    // A's vertex order is [top, bottom, left, centre]; B's [top, right, bottom, centre]. Both split
+    // pairs must cover all 4 vertices and put the centre (index 3) in every sub-triangle.
+    for (const idx of [TRIANGLE_A_SPLIT_INDICES, TRIANGLE_B_SPLIT_INDICES]) {
+      expect(idx.length).toBe(6);
+      expect(new Set(idx)).toEqual(new Set([0, 1, 2, 3]));
+      expect(idx.slice(0, 3)).toContain(3);
+      expect(idx.slice(3)).toContain(3);
+    }
+  });
+
+  it('the diamond fan covers every corner once per adjacent pair, all through the centre (index 4)', () => {
+    expect(DIAMOND_FAN_INDICES.length).toBe(12); // 4 triangles
+    for (let t = 0; t < 4; t++) {
+      const tri = DIAMOND_FAN_INDICES.slice(t * 3, t * 3 + 3);
+      expect(tri).toContain(4); // every fan triangle meets the centre vertex
+    }
+    // Each outer edge (adjacent corner pair) appears exactly once: corners 0..3 each in two triangles.
+    const cornerUses = [0, 1, 2, 3].map((c) => DIAMOND_FAN_INDICES.filter((i) => i === c).length);
+    expect(cornerUses).toEqual([2, 2, 2, 2]);
+  });
+
+  it('uvMidpoint bisects the split edge in the pattern point order', () => {
+    // coordsA convention (TL, BR, BL): the split edge is points (0, 1) — TL↔BR, the tile diagonal.
+    const uvs = triangleUVs([0, 0, 63, 63, 0, 63], 256, 256);
+    expect(uvMidpoint(uvs, 0, 1)).toEqual([31.5 / 256, 31.5 / 256]);
+  });
+
+  it('rectCenterUV is the sub-rect centre in normalised page UV', () => {
+    expect(rectCenterUV({ x: 64, y: 128, w: 64, h: 64 }, 256, 256)).toEqual([96 / 256, 160 / 256]);
   });
 });
