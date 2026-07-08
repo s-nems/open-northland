@@ -25,6 +25,17 @@ file when all steps land.
 - [x] 5. App: settler order UI with original art — landed: `hud/action-ring-layout.ts` (arm footprint transcribed from OpenVikings `BuildHumanActionButtons`) + `view/settler-actions.ts` (Pixi menu of `order_*` buttons, `context` palette, pixel-snapped) replacing the DOM actions card. Renders the **whole default human menu** (four arms) in original art, opened by **Space or right-click on the unit**; on this slice only "change profession" is wired (opens a simple profession picker → `setJob`, info card reflects it live), the rest are inert placeholders for a future "implement the action" pass (warrior/scout variants noted). See plan progress note "Settler action menu".
 - [ ] 6. App: bottom-right details panel with original art
 
+Progress note — UI polish pass over landed steps 4+5 (2026-07-08, `feat/ui-polish`, user-requested,
+not a numbered step): (a) the settler action ring draws at 75% of the shared uiscale
+(`ACTION_RING_UI_FACTOR`, deliberate deviation from the original's 1:1 size — it crowded the
+settler); (b) interactive entries render at device resolution (`createWindowPixiApp`
+resolution=devicePixelRatio; `?shot` stays at 1 for determinism) so the supersampled HUD is crisp
+on HiDPI; (c) the speed button cycles running speeds only (×1→×2→×3→×1), `P` toggles pause
+(remembers speed), and pausing washes the world with a multiply sepia quad — an eyeballed
+approximation of the original's brown paused map (observed behaviour). Verified: unit tests for the
+new speed control + ring scale, Playwright pass at DPR 2 (cycle glyphs, pause wash on/off, ring
+size, selection/picking). Visual sign-off: user.
+
 Out of scope for this plan: the minimap (separate task) and the main menu. The frame-id map and
 geometry constants are our own metadata (committable); decoded original bytes are not (`content/`
 stays gitignored).
