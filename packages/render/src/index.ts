@@ -19,8 +19,8 @@ export {
   type SceneGround,
   type SceneTerrain,
   type SpriteState,
-} from './data/scene.js';
-export { depositVisualLevel } from './data/snapshot-readers.js';
+} from './data/scene/index.js';
+export { depositVisualLevel } from './data/scene/index.js';
 export {
   atlasFromManifest,
   indexAtlasFrames,
@@ -51,7 +51,7 @@ export {
   type SpriteFrameRef,
   type SpriteKind,
   type StockpileBinding,
-} from './data/sprites.js';
+} from './data/sprites/index.js';
 export {
   createPixiApp,
   createWindowPixiApp,
@@ -70,9 +70,9 @@ export {
   trackMotion,
   type EntityBounds,
   type MotionTrack,
-} from './gpu/sprite-pool.js';
+} from './gpu/sprite-pool/index.js';
 export { DEFAULT_HUD_STYLE, type HudStyle, type HudFrame } from './gpu/hud-layer.js';
-export type { MapObjectSprite } from './gpu/map-object-layer.js';
+export type { MapObjectSprite } from './gpu/map-objects/index.js';
 export {
   AnimationGallery,
   galleryCellLayout,
@@ -85,7 +85,7 @@ export {
   type GalleryCellSpec,
   type GalleryDirection,
   type GalleryCellBox,
-} from './gpu/animation-gallery.js';
+} from './gpu/gallery/index.js';
 export { type GuiColorKey, PalettedSprite } from './gpu/paletted-sprite.js';
 export type { TextureSource } from 'pixi.js';
 export {

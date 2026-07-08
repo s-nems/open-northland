@@ -1,12 +1,12 @@
 import { Rectangle, Texture, type TextureSource } from 'pixi.js';
-import type { AtlasFrame } from '../data/sprites.js';
+import type { AtlasFrame } from '../data/sprites/index.js';
 
 /**
  * A cache of one {@link Texture} per atlas {@link AtlasFrame} (a sub-rect view into a shared page
  * {@link TextureSource}). Each frame belongs to exactly one atlas→source, so keying the cache by the
  * frame object is 1:1 — the same frame always yields the same reused `Texture`, so the retained draw
  * path never re-mints a texture in the steady state (near-zero per-frame allocation). Shared by the
- * {@link import('./sprite-pool.js').SpritePool}, the tall map objects
+ * {@link import('./sprite-pool/index.js').SpritePool}, the tall map objects
  * ({@link import('./map-object-layer.js').MapObjectLayer}), and the
  * {@link import('./animation-gallery.js').AnimationGallery} — every retained Pixi view needs the exact
  * same frame→texture memoization.

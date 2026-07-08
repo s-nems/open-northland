@@ -1,6 +1,6 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
-import { collectSpriteScene } from '../src/data/scene.js';
+import { collectSpriteScene } from '../src/data/scene/index.js';
 import {
   ONE,
   type SceneTerrain,

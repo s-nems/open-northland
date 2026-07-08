@@ -2,7 +2,7 @@ import type { WorldSnapshot } from '@vinland/sim';
 import { Container, Graphics } from 'pixi.js';
 import type { ElevationField } from '../data/elevation.js';
 import { ONE, TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../data/iso.js';
-import type { EntityBounds } from './sprite-pool.js';
+import type { EntityBounds } from './sprite-pool/index.js';
 
 /**
  * The SELECTION layer — a feet-anchored ring under each currently-selected entity, drawn in WORLD

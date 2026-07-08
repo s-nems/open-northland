@@ -5,7 +5,7 @@ import type {
   SpriteAtlas,
   SpriteBindings,
   SpriteKind,
-} from '../data/sprites.js';
+} from '../data/sprites/index.js';
 import type { CellTexture } from '../data/terrain.js';
 
 /**
@@ -109,7 +109,7 @@ export interface SpriteSheet {
    * Named **building family** atlas layers — the multi-`.bmd` building case. A viking settlement draws
    * its buildings from many `.bmd`s × palettes (`ls_houses_viking`, `ls_houses_viking4`, …), each a
    * separate decoded atlas with its OWN frame-id space, so the single {@link kindLayers}.`building` layer
-   * can't address them all. A {@link import('../data/sprites.js').BuildingTypeBinding} entry may be
+   * can't address them all. A {@link import('../data/sprites/index.js').BuildingTypeBinding} entry may be
    * layer-qualified (`{ layer, bob }`); when it names a `layer` present here, the GPU blits its `bob` from
    * THIS family's own `source`+`atlas` (one feet-anchored sprite) instead of {@link kindLayers}.`building`.
    * A plain-number / unqualified building binding (and every non-`building` kind) ignores this map and
@@ -134,7 +134,7 @@ export interface SpriteSheet {
   /**
    * The player-colour **LUT** for team colours: the `256 × colours` palette texture the {@link characters}
    * are drawn through when their atlases are the recolourable INDEXED variant (palette index in red). When
-   * present, {@link import('./sprite-pool.js').SpritePool} draws each settler with a {@link
+   * present, {@link import('./sprite-pool/index.js').SpritePool} draws each settler with a {@link
    * import('./paletted-sprite.js').PalettedSprite} at its `DrawItem.player` LUT row; when ABSENT (no LUT
    * decoded, or the baked-palette characters) it falls back to a plain tinted-atlas {@link import('pixi.js').Sprite}
    * exactly as before. One indexed atlas + one LUT serve all `colours` players.
@@ -230,7 +230,7 @@ export async function createWindowPixiApp(canvas: HTMLCanvasElement): Promise<Ap
 /**
  * Load a decoded atlas PNG (a `<name>.png` the `.bmd`→atlas build emits) as a Pixi {@link TextureSource}
  * ready to bind as a {@link SpriteSheet.source}. The GPU/pixel twin of the pure
- * {@link import('../data/sprites.js').atlasFromManifest} — together they turn a decoded `<name>.{png,atlas.json}`
+ * {@link import('../data/sprites/index.js').atlasFromManifest} — together they turn a decoded `<name>.{png,atlas.json}`
  * pair into a {@link SpriteSheet}. `nearest` scaling keeps the pixel-art bobs crisp and cuts the
  * cross-machine sampling variance (matching {@link createPixiApp}'s antialias-off), so an eyeball-the-PNG
  * check stays meaningful. Real bob atlases are decoded from a copyrighted game copy and gitignored (see

@@ -1,9 +1,9 @@
-import { ONE, tileToScreen } from './iso.js';
-import type { DrawKind, SpriteState } from './scene.js';
+import { ONE, tileToScreen } from '../iso.js';
+import type { DrawKind, SpriteState } from './draw-item.js';
 
 /**
  * The PURE snapshot-component readers — every function here turns one plain-cloned snapshot
- * component into the render-side fact a {@link import('./scene.js').DrawItem} carries (state, facing,
+ * component into the render-side fact a {@link import('./draw-item.js').DrawItem} carries (state, facing,
  * carried good, build progress, …). Split out of `scene.ts` so the *reads* (total, defensive
  * decoders of plain data) live apart from the *scene assembly* (projection + depth sort) that
  * consumes them — each is unit-testable and changeable on its own.
@@ -33,7 +33,7 @@ export function classify(components: Readonly<Record<string, unknown>>): DrawKin
   if ('Building' in components) return 'building';
   if ('Resource' in components) return 'resource';
   // A felled tree's leftover stump/debris — pure decor (a Position + Stump marker, no other drawable
-  // component), drawn by a per-good {@link import('./sprites.js').ResourceTypeBinding} like a resource
+  // component), drawn by a per-good {@link import('../sprites/index.js').ResourceTypeBinding} like a resource
   // node but from the dead-tree/debris atlas. Checked before Settler/Stockpile (a stump is neither).
   if ('Stump' in components) return 'stump';
   if ('Settler' in components) return 'settler';
@@ -63,8 +63,8 @@ export function readActingAtomic(components: Readonly<Record<string, unknown>>):
 
 /**
  * A building entity's type id — the `Building.buildingType` (the `[GfxHouse]` `LogicType` the placement
- * command stamped). Stamped onto the building draw item as {@link import('./scene.js').DrawItem.typeId}
- * so a per-type {@link import('./sprites.js').BuildingTypeBinding} can draw each building its own house
+ * command stamped). Stamped onto the building draw item as {@link import('./draw-item.js').DrawItem.typeId}
+ * so a per-type {@link import('../sprites/index.js').BuildingTypeBinding} can draw each building its own house
  * bob. `undefined` for a missing/malformed component (the binding then falls back to its default house).
  */
 export function readBuildingType(components: Readonly<Record<string, unknown>>): number | undefined {
@@ -193,7 +193,7 @@ export function readCarrying(components: Readonly<Record<string, unknown>>): { g
 
 /**
  * A settler's `Settler.jobType` — the per-character body/head join key
- * ({@link import('./scene.js').DrawItem.jobType}) — or `undefined` for a jobless (`null`) settler /
+ * ({@link import('./draw-item.js').DrawItem.jobType}) — or `undefined` for a jobless (`null`) settler /
  * malformed component (the binding then falls back to its default look).
  */
 export function readJobType(components: Readonly<Record<string, unknown>>): number | undefined {
@@ -203,7 +203,7 @@ export function readJobType(components: Readonly<Record<string, unknown>>): numb
 
 /**
  * A resource node's `Resource.goodType` — the per-good join key
- * ({@link import('./scene.js').DrawItem.goodType}) a {@link import('./sprites.js').ResourceTypeBinding}
+ * ({@link import('./draw-item.js').DrawItem.goodType}) a {@link import('../sprites/index.js').ResourceTypeBinding}
  * draws its species/deposit by (a tree for wood, a mine for iron). `undefined` for a missing/malformed
  * component (the binding then falls back to its default node).
  */
@@ -213,7 +213,7 @@ export function readResourceGood(components: Readonly<Record<string, unknown>>):
 }
 
 /**
- * The visual fill LEVEL of a mined deposit ({@link import('./scene.js').DrawItem.level}): a small integer
+ * The visual fill LEVEL of a mined deposit ({@link import('./draw-item.js').DrawItem.level}): a small integer
  * in `[1, levels]`, `levels` when full (`remaining === initial`) stepping down to `1` as it nears empty.
  * Pure integer math — the node twin of {@link readStockpile}'s pile `fill`, done here (in the snapshot
  * read-view) off the `Resource.remaining` + `MineDeposit.initial`/`levels` the sim exposes, never
@@ -228,7 +228,7 @@ export function depositVisualLevel(remaining: number, initial: number, levels: n
 }
 
 /**
- * A mined resource node's visual fill level ({@link import('./scene.js').DrawItem.level}), or `undefined`
+ * A mined resource node's visual fill level ({@link import('./draw-item.js').DrawItem.level}), or `undefined`
  * for a plain node. Reads the node's {@link import('@vinland/sim').MineDeposit} `initial`/`levels` (its
  * deposit capacity) against `Resource.remaining` and buckets them via {@link depositVisualLevel}.
  * `undefined` when the node carries no `MineDeposit` (a tree/mushroom/full showcase node) — the binding
@@ -246,7 +246,7 @@ export function readResourceLevel(components: Readonly<Record<string, unknown>>)
 
 /**
  * A stump's `Stump.goodType` — the resource it is the remains of (a chopped tree → wood), the per-good
- * join key ({@link import('./scene.js').DrawItem.goodType}) a {@link import('./sprites.js').ResourceTypeBinding}
+ * join key ({@link import('./draw-item.js').DrawItem.goodType}) a {@link import('../sprites/index.js').ResourceTypeBinding}
  * draws its debris frame by. `undefined` for a missing/malformed component (the binding falls back to
  * its default).
  */
@@ -288,7 +288,7 @@ export function readStockpile(components: Readonly<Record<string, unknown>>): {
 
 /**
  * The owning player slot of a settler — the sim `Owner.player`, the render team-colour key
- * ({@link import('./scene.js').DrawItem.player}). `undefined` when the settler carries no `Owner`
+ * ({@link import('./draw-item.js').DrawItem.player}). `undefined` when the settler carries no `Owner`
  * (wildlife / a neutral fixture), which the renderer draws in the base palette.
  */
 export function readOwnerPlayer(components: Readonly<Record<string, unknown>>): number | undefined {
