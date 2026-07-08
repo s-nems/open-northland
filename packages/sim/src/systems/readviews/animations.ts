@@ -5,12 +5,11 @@ import { contentIndex } from '../../core/content-index.js';
 // `content.atomicAnimations` plus thin accessors for the animation scalars no sim system reads
 // directly (`interruptible`, `startDirection`), the per-channel net delta over the `events` array,
 // and the `eventx`/`event` stream split (`extended` — the last unread per-event field).
-// The `length` scalar already drives `atomicDuration` (ai.ts) and the combat swing cadence (combat.ts)
-// via an inline `atomicAnimations.find(...)`; this gives that name-lookup a single named home and
+// The `length` scalar drives `atomicDuration` (below) and the combat swing cadence (conflict/weapons.ts);
+// this module is the single named home of that name-lookup and
 // surfaces the remaining extracted-but-unread fields, the read-side consumer the deferred
 // interrupt/facing/needs drives join on. No mechanic is added here (nothing is interrupted, nothing
-// faces a direction, no bar is restored); see ./index.ts for why read views live apart from
-// systems/shared.ts.
+// faces a direction, no bar is restored); see ./index.ts for how read views relate to systems.
 
 /**
  * The `atomicanimations.ini` `event <at> <type> <value>` **channel** ids — the numbered need bar a
@@ -51,9 +50,8 @@ export const ATOMIC_EVENT_TYPE_ATTACK = 25;
 /**
  * Resolve an {@link AtomicAnimation} by its exact `name` — the join key a tribe's `setatomic <job>
  * <atomic> "anim"` binding references ({@link AtomicAnimation.name}, NOT the lowercased `id`). This is
- * the canonical form of the inline `content.atomicAnimations.find((a) => a.name === name)` that
- * `atomicDuration` (ai.ts) and the combat swing-cadence lookup (combat.ts) each spell out by hand:
- * the same name-keyed scan, named once. Returns `undefined` when the name doesn't resolve — the
+ * the single canonical name-keyed lookup `atomicDuration` (below) and the combat swing-cadence
+ * read (conflict/weapons.ts) both resolve through. Returns `undefined` when the name doesn't resolve — the
  * readable mod animation set is a subset of the base-game animations, and a test fixture may bind a
  * `setatomic` name it has no `[atomicanimation]` for, so an absent name is expected, not malformed
  * (the callers fall back to a default duration; see {@link AtomicAnimation}).

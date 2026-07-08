@@ -74,23 +74,28 @@ ascending-id scan order or elided only provably-empty work, so the winner never 
 - `World.canonicalEntities()` **memoized per alive-set generation** — invalidated only by `create`/
   `destroy`, so scanning it N times a tick costs one sort, not N. Result is **shared + read-only**; never
   mutate it (sort/reverse a copy).
-- **Per-tick candidate lists** — `canonicalById(world.query(C))` (`systems/shared.ts`); scan the matching
+- **Per-tick candidate lists** — `canonicalById(world.query(C))` (`systems/spatial.ts`); scan the matching
   entities, not the whole world. Used in `aiSystem` (resources/stockpiles/buildings) + `jobSystem`.
 - **Dormancy gate** — `hasHaulableOutput` decides ONCE per tick whether any carrier work exists; if not,
   idle settlers skip the per-settler `nearestWorkplaceOutput` scan. The lever that makes an idle crowd ~0:
   a unit with no reachable work does not re-scan every tick. Safe because a false means every scan returns
   null anyway (it's the same predicate the scan applies, minus the deliverability check, so it only ever
   elides a provably-null scan).
-- **`TileBuckets`** (`systems/shared.ts`) — a per-tick spatial bucket of entities by integer tile; O(1)
+- **`TileBuckets`** (`systems/spatial.ts`) — a per-tick spatial bucket of entities by integer tile; O(1)
   "what's on this tile?". `jobSystem`'s adopt-check (am I standing on a workplace I staff?) is now a
-  same-tile lookup, not a building scan per settler.
+  same-tile lookup, not a building scan per settler. Feed it a `canonicalById` list — the ring
+  search's min-id pick is only canonical over ascending-id buckets.
 - **`TileBuckets.nearest`** — the grid ring search: expands Manhattan bands from the unit, **finishes
   the whole minimum-distance band and picks canonically by (distance, id)** (never stops at the first
   hit, so the winner is unchanged), and short-circuits past `maxDist`. First consumer: `combatSystem`'s
   nearest-enemy query — 23× faster than a full scan at 400 combatants, ~O(seekers·sight²) not
   quadratic; combat also has its own dormancy gate (no hostile pair ⇒ zero work). New nearest-X code
   should consume this, not write another scan.
+- **Content-index** (`core/content-index.ts`) — WeakMap-memoized O(1) Maps over a `ContentSet`,
+  each table reproducing the duplicate-key semantics of the exact scan it replaced (mostly first-wins
+  = what `.find` returned; the `setatomic` binding tables are last-wins, the source's override rule).
+  Replaced every hot linear content scan, including the per-combatant weapon lookups.
 
-**Remaining follow-ups** (economy nearest-X onto `TileBuckets.nearest`, content typeId indexes for
-hot-loop lookups, sim in a Web Worker) are concrete plan steps in `docs/plans/sim-perf.md` — this
-file keeps the rules and the landed levers, not the roadmap.
+**Remaining follow-ups** (economy nearest-X onto `TileBuckets.nearest`, sim in a Web Worker) are
+concrete plan steps in `docs/plans/sim-perf.md` — this file keeps the rules and the landed levers,
+not the roadmap.

@@ -95,7 +95,7 @@ export const buildingSane: Invariant = (world) => {
  * returns a plain `Invariant` — a scenario opts in via `invariants: [populationWithinHousing(content)]`.
  * It is NOT in {@link CORE_INVARIANTS} (those run content-free against any world).
  *
- * Capacity and population are recomputed here from the world directly (not via `systems/shared.ts`, to
+ * Capacity and population are recomputed here from the world directly (not via `systems/stores.ts`, to
  * keep `invariants` free of a `SystemContext`): capacity = the sum of `homeSize` over a tribe's built
  * `home` buildings, population = its living settler count. Both are commutative reductions, so the
  * `query` store order can't change them.
