@@ -58,7 +58,7 @@ npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content
 npm run dev                 # launch the app (Vite) in a browser
 ```
 
-Useful URL flags on the dev app: `?scene=all-buildings` runs an acceptance scene with its checklist
+Useful URL flags on the dev app: `?scene=sandbox` runs the current acceptance scene with its checklist
 overlay, and **`?anim`** opens the character **animation gallery**. Bare `?anim` (no params) lands on the
 **full-roster montage** — every viking look walking on one screen. Add `?char=<id>` to drill into one body's
 animations (civilian / **warrior** with its broadsword / sword / bow / spear / bare-handed set / woman /

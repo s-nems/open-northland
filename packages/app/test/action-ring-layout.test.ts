@@ -15,7 +15,7 @@ import {
 /**
  * Headless tests for the settler ACTION MENU's pure logic — the radial arm footprint transcribed from the
  * original engine, the hit-test that turns a click into a command, and the (approximated) button→icon
- * assignment. The agent self-validates these; the browser `?scene=unit-orders` view is where a human judges
+ * assignment. The agent self-validates these; the browser `?scene=sandbox` view is where a human judges
  * the pixels (round buttons in original art, sensible glyphs) + the profession list window. See docs/SCENES.md.
  */
 

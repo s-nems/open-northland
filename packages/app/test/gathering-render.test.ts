@@ -1,5 +1,6 @@
 import { buildSpriteScene, resolveResourceDraw, resolveStockpileDraw } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
+import { WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import {
   CLAY_DEPOSIT_UNITS,
   GOLD_DEPOSIT_UNITS,
@@ -14,24 +15,39 @@ import {
   resolveGatheringRefs,
   resolveStumpRef,
 } from '../src/content/resource-gfx.js';
-import { gatheringScene } from '../src/scenes/gathering.js';
+import {
+  GATHERERS,
+  GOOD_GOLD,
+  GOOD_IRON,
+  GOOD_MUD,
+  GOOD_MUSHROOM,
+  GOOD_STONE,
+  GOOD_WOOD,
+} from '../src/game/sandbox-content.js';
 import { createSceneSim } from '../src/scenes/index.js';
+import { sandboxScene } from '../src/scenes/sandbox.js';
 
 /**
- * The headless half of the `?scene=gathering` acceptance scene (the browser half is the human's pixel
- * sign-off). The scene gathers EVERY raw good — one trade per good — so after the run every source node is
+ * The headless half of the `?scene=sandbox` acceptance scene (the browser half is the human's pixel
+ * sign-off). The global sandbox gathers EVERY raw good — one trade per good — so after the run every source node is
  * consumed (no `resource` draws), each felled tree left a `stump` (carrying wood), and each good piles WHOLE
  * at its own delivery flag (one `stockpile` heap per good). Plus that the per-good + stump bindings RESOLVE
  * each good/stump to its OWN object (and a mined deposit steps its node frame down by level).
  */
 
-const scene = gatheringScene;
-// The scene's goodTypes (see gathering.ts) — the sim runs these, keyed under scene-local ids.
-const GOODS = { wood: 1, stone: 2, mud: 3, iron: 4, gold: 5, mushroom: 6 } as const;
-// The lane sizes the scene plants (gathering.ts GATHERERS): a two-tree wood stand, a three-mushroom patch.
-const WOOD_TREES = 2;
-const MUSHROOM_NODES = 3;
-const TREE_WOOD_YIELD = 3;
+const scene = sandboxScene;
+// The global sandbox goodTypes — the sim runs these everywhere, no scene-local ids.
+const GOODS = {
+  wood: GOOD_WOOD,
+  stone: GOOD_STONE,
+  mud: GOOD_MUD,
+  iron: GOOD_IRON,
+  gold: GOOD_GOLD,
+  mushroom: GOOD_MUSHROOM,
+} as const;
+const WOOD_TREES = GATHERERS.find((g) => g.good === GOOD_WOOD)?.nodes ?? 0;
+const MUSHROOM_NODES = GATHERERS.find((g) => g.good === GOOD_MUSHROOM)?.nodes ?? 0;
+const TREE_WOOD_YIELD = WOOD_YIELD_PER_NODE;
 
 describe('gathering scene — render classification after all six gathering cycles', () => {
   const sim = createSceneSim(scene);

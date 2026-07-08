@@ -61,7 +61,7 @@ const CARD_STYLE = [
   'font:inherit',
 ].join(';');
 
-/** A clickable card that navigates the page to `search` (e.g. `?scene=all-buildings`) on click. */
+/** A clickable card that navigates the page to `search` (e.g. `?scene=sandbox`) on click. */
 function card(title: string, subtitle: string, search: string): HTMLButtonElement {
   const b = el('button', CARD_STYLE);
   b.append(

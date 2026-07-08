@@ -1,4 +1,3 @@
-import type { ContentSet } from '@vinland/data';
 import type { Simulation, TerrainMap } from '@vinland/sim';
 
 /** A single machine-checkable assertion about a scene's run — the mechanic the headless test enforces. */
@@ -16,8 +15,8 @@ export interface SceneCheck {
  *    {@link checklist} overlaid, so a HUMAN judges the *pixels/animation* — the one thing an agent
  *    cannot self-judge (AGENTS.md "How to verify your work"; see `docs/SCENES.md`).
  *
- * Because the sim is deterministic, the two consumers observe the SAME run (same seed + content +
- * setup): what the headless test proves is exactly what the human watches. Adding a scene to the
+ * Because the sim is deterministic, the two consumers observe the SAME run (same seed + global rules +
+ * scene setup): what the headless test proves is exactly what the human watches. Adding a scene to the
  * registry automatically adds its headless test AND its `?scene=` link.
  */
 export interface SceneDefinition {
@@ -27,9 +26,7 @@ export interface SceneDefinition {
   readonly summary: string;
   /** Seed for the deterministic RNG. */
   readonly seed: number;
-  /** Validated content set (goods/jobs/buildings/...). SYNTHETIC — never copyrighted game data. */
-  readonly content: ContentSet;
-  /** Terrain grid the sim navigates and the renderer projects. */
+  /** Terrain grid the sim navigates and the renderer projects. The global content/rules are not scene-owned. */
   readonly terrain: TerrainMap;
   /** Populate the fresh sim (enqueue commands, create resource nodes). Runs once before any tick. */
   readonly build: (sim: Simulation) => void;

@@ -28,7 +28,7 @@ export const GROUP_CARPENTER_SAW = 'Carpenter Saw';
  * A settler's voice class — the axis the ambient chatter picks its pool by, so a settler SOUNDS like it
  * LOOKS. An all-male crowd murmurs only male voices; a woman speaks female clips; a child pipes up with a
  * child one. Without this the chatter played every pool uniformly — women and children coming out of a
- * crowd of men (the [stress-crowd] mismatch the user heard).
+ * crowd of men (the crowd-voice mismatch the user heard).
  */
 export type VoiceClass = 'male' | 'female' | 'child';
 

@@ -1,4 +1,5 @@
 import { type Component, Simulation, components } from '@vinland/sim';
+import { sandboxContent } from '../game/sandbox-content.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -20,13 +21,17 @@ export function resetComponentStores(): void {
 
 /**
  * Build a fresh, deterministic {@link Simulation} for a scene at tick 0: reset the singleton stores,
- * construct the sim over the scene's content + terrain, then run the scene's setup. The headless test
- * advances it and asserts; the app keeps it live and renders each frame. Same inputs → byte-identical
- * run, so the test's proof and the human's view are the same world.
+ * construct the sim over the global sandbox content + scene terrain, then run the scene's setup. The
+ * headless test advances it and asserts; the app keeps it live and renders each frame. Same inputs →
+ * byte-identical run, so the test's proof and the human's view are the same world.
  */
 export function createSceneSim(scene: SceneDefinition): Simulation {
   resetComponentStores();
-  const sim = new Simulation({ seed: scene.seed, content: scene.content, map: scene.terrain });
+  const sim = new Simulation({
+    seed: scene.seed,
+    content: sandboxContent(scene.terrain),
+    map: scene.terrain,
+  });
   scene.build(sim);
   return sim;
 }

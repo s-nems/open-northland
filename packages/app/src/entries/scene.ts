@@ -12,6 +12,7 @@ import { createSoundDriver, fetchAudioIr } from '../content/audio.js';
 import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
+import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
 import { DEFAULT_UI_SCALE } from '../hud/tool-panel-layout.js';
 import { SCENES, createSceneSim, getScene } from '../scenes/index.js';
 import { cameraFor, createCameraController } from '../view/camera.js';
@@ -31,16 +32,11 @@ import { floatParam, intParam } from './params.js';
 /**
  * The `?scene=<id>` entry: render a registered **acceptance scene** live, with the checklist overlay,
  * so a human can watch the mechanic and sign off. The SAME `?atlas`/`?terrain`/`?zoom`/`?speed` flags
- * the live slice honours work here (e.g. `?scene=all-buildings&zoom=2` to magnify one building). Real
+ * the live slice honours work here (e.g. `?scene=sandbox&zoom=2` to magnify one building). Real
  * decoded graphics are the DEFAULT now (`resolveSpriteSheet`) — no `?atlas=real` needed; `?atlas=none`
  * opts out to placeholder geometry. The sim is the exact one the headless acceptance test runs —
  * determinism guarantees the human watches what the test proved (see docs/SCENES.md).
  */
-
-/** The acceptance scenes are single-tribe viking (tribe 1); draw that tribe's HUD panel each frame. */
-const HUD_TRIBE = 1;
-/** Owned scene units belong to this player, so the interactive select/order controls apply to them. */
-const HUMAN_PLAYER = 0;
 
 export async function renderSceneMode(
   canvas: HTMLCanvasElement,
@@ -59,8 +55,9 @@ export async function renderSceneMode(
   // Window-sized 1:1 backing store: resizing the browser changes the visible field, never the scale.
   const app = await createWindowPixiApp(canvas);
   const terrainGrid = terrainMapToScene(scene.terrain);
-  // The scene's own goods key the per-good carry looks (content-relative ids — the scene knows them).
-  const sheet = await resolveSpriteSheet(params, scene.content.goods);
+  const sim = createSceneSim(scene);
+  // Goods are global sandbox content now, not scene-local data.
+  const sheet = await resolveSpriteSheet(params, sim.content.goods);
   const terrain = params.has('terrain') ? await loadRealTerrain() : undefined;
   const zoom = floatParam(params, 'zoom', scene.initialZoom ?? 1);
 
@@ -76,8 +73,6 @@ export async function renderSceneMode(
   // playback buttons were removed). `?speed=` seeds the initial multiplier (default ×1); the panel's speed
   // button drives it live (×1 → ×2 → ×3 → pause) without clobbering the seed at mount.
   const control = { paused: false, speed: floatParam(params, 'speed', 1) };
-  const sim = createSceneSim(scene);
-
   // The acceptance overlay is now purely the sign-off checklist + a debug tick (no playback controls).
   const overlay = mountSceneOverlay(scene);
 
@@ -109,15 +104,14 @@ export async function renderSceneMode(
     camera: () => cameraCtl.camera(),
     enqueue: (command) => sim.enqueue(command),
     mapSize: { width: scene.terrain.width, height: scene.terrain.height },
-    buildings: menuEntriesFromContent(scene.content),
+    buildings: menuEntriesFromContent(sim.content),
     tribe: HUD_TRIBE,
     owner: HUMAN_PLAYER,
     onSpeed: (spec) => applyGameSpeed(control, spec),
   });
 
   // RTS unit control over the scene: left-click / drag-box to select the human's units, right-click to
-  // send them, Space for the unit panel. Harmless on scenes with no owned units (nothing is pickable);
-  // the unit-orders scene populates the human's vikings.
+  // send them, Space for the unit panel. Harmless on scenes with no owned units (nothing is pickable).
   const controls = await createUnitControls({
     app,
     canvas,
@@ -126,7 +120,7 @@ export async function renderSceneMode(
     snapshot: () => sim.snapshot(),
     mapSize: { width: scene.terrain.width, height: scene.terrain.height },
     humanPlayer: HUMAN_PLAYER,
-    professions: professionsFromContent(scene.content),
+    professions: professionsFromContent(sim.content),
     enqueue: (command) => sim.enqueue(command),
     boundsOf: (ref) => renderer.entityBounds(ref), // pixel-accurate picking against the real sprite
     claimPointer: (x: number, y: number) => toolPanel.claimPointer(x, y),

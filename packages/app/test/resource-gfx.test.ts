@@ -18,7 +18,7 @@ import type { GoodRef } from '../src/content/settler-gfx.js';
  * The gathering-economy render binding — the self-verifiable half of "draw each resource/pile/flag from
  * the Step-1 pipeline join". Proves the good→landscape→gfx reduction (representative pick, fill states,
  * the id-slug match, the default-vs-family layer decision, the load-then-drop-unloaded rule)
- * deterministically without a browser; the pixels are the `?scene=gathering` acceptance scene's job.
+ * deterministically without a browser; the pixels are the `?scene=sandbox` acceptance scene's job.
  */
 
 const B = 'data/engine2d/bin/bobs';

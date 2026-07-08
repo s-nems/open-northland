@@ -33,7 +33,7 @@ import { mountGalleryOverlay } from './anim-overlay.js';
 import { floatParam, intParam } from './params.js';
 
 /**
- * The `?anim` entry — the character **animation gallery**, the animation twin of the `?scene=all-buildings`
+ * The `?anim` entry — the character **animation gallery**, the animation twin of the sandbox/catalog
  * catalog. It plays the extracted `[bobseq]` of a viking body straight from the atlas so a human can
  * validate that each animation decodes, cycles, and (for the locomotion clips) reads correctly in all 8
  * directions. A pure viewer: no sim, DOM + wall-clock are fine here (`app` boundary). This file holds the

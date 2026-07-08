@@ -29,11 +29,15 @@ that matches its role instead of piling another method onto a growing file:
   `objects.ts`. This is where the old 1200-line `real-sprites.ts` now lives, split by responsibility.
 - **`catalog/`** — committed clean-room data catalogs (English naming over the original's typeIds):
   `buildings.ts` (the 41 viking buildings), `roster.ts` (the character roster).
+- **`game/`** — the GLOBAL game content + rules shared by every mode: `rules.ts` (player/tribe constants
+  — `HUMAN_PLAYER`, `ENEMY_PLAYER`, `PRIMARY_TRIBE`, `HUD_TRIBE`) and `sandbox-content.ts` (the one
+  `sandboxContent()` `ContentSet` — goods/jobs/buildings/weapons/animation bindings — plus the
+  place/spawn helpers). Scenes and the vertical slice consume this; they do NOT define their own content.
 - **`view/`** — browser-view helpers: `camera.ts` (pure pan/zoom math + the DOM controller), `overlay.ts`
   (shared panel chrome — `el`/`button`/`navButton`/styles, used by every panel), `scene-overlay.ts`,
   `perf-overlay.ts`.
-- **`slice/vertical-slice.ts`** — the demo scenario (synthetic content + `runSlice` + map loading) the live
-  + shot entries share.
+- **`slice/vertical-slice.ts`** — the demo scenario (`runSlice` + map loading over the global `game/`
+  content) the live + shot entries share.
 - **`scenes/`** — the acceptance-scene system (see below).
 
 ## URL-flag entries
@@ -75,8 +79,8 @@ gitignored bytes:
   life-event jingles + **sex/age-matched settler voice chatter** (a settler sounds like the body it draws —
   `vikingVoiceClass` off `Settler.jobType`+`Age`), driven by the same snapshot + events `render` reads.
   Browser autoplay policy keeps audio suspended until the first click/key; a checkout without `content/`
-  (no sound bank) degrades to silence. The best place to HEAR action→sound is `?scene=sound-showcase`
-  (woodcutters chopping continuously, on-screen).
+  (no sound bank) degrades to silence. The current scene for hearing action→sound is `?scene=sandbox`
+  (woodcutters and gatherers working on-screen).
 - `?sounds` — the sound **verification gallery** (`entries/sound.ts`), the audio twin of `?anim`: click ▶ to
   audition every action→sound binding, the voice pools split by sex/age, the jingles and the ambient beds.
   The human-oracle seam for audio (an agent can't self-judge a sound). NOTE the key is `sounds` (plural) —
@@ -112,9 +116,9 @@ An agent **cannot self-judge pixels** (root `AGENTS.md` "How to verify your work
 
 To add one (full guide in [`docs/SCENES.md`](../../docs/SCENES.md)):
 
-1. Write `src/scenes/<id>.ts` exporting a `SceneDefinition` — synthetic `content` (zod-validated, never
-   copyrighted data), a `terrain` grid, a `build(sim)` that places the world, a human `checklist`, and
-   machine `checks` (the mechanic the headless test asserts).
+1. Write `src/scenes/<id>.ts` exporting a `SceneDefinition` — a `terrain` grid, a `build(sim)` that places
+   the world, a human `checklist`, and machine `checks` (the mechanic the headless test asserts). Do not
+   add scene-local content/rules; shared sandbox content lives in `src/game/sandbox-content.ts`.
 2. Register it in `src/scenes/index.ts` (`SCENES`). That auto-adds its headless test AND its `?scene=` link.
 3. `npm test` (mechanic green) → then surface `npm run dev` → `http://localhost:5173/?scene=<id>` and the
    checklist, and ask the user whether it looks right. Don't claim the visual is correct yourself.

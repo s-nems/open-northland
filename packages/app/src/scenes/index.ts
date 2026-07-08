@@ -1,17 +1,5 @@
-import { allBuildingsScene } from './all-buildings.js';
-import { archersScene } from './archers.js';
-import { charactersScene } from './characters.js';
-import { craftChainScene } from './craft-chain.js';
-import { gatheringScene } from './gathering.js';
-import { housePlacementScene } from './house-placement.js';
-import { meleeEngagementScene } from './melee-engagement.js';
-import { resourceFootprintsScene } from './resource-footprints.js';
-import { soundShowcaseScene } from './sound-showcase.js';
-import { stancesScene } from './stances.js';
-import { stressCrowdScene } from './stress-crowd.js';
-import { toolPanelScene } from './tool-panel.js';
+import { sandboxScene } from './sandbox.js';
 import type { SceneDefinition } from './types.js';
-import { unitOrdersScene } from './unit-orders.js';
 
 export type { SceneDefinition, SceneCheck } from './types.js';
 export { createSceneSim, resetComponentStores } from './runtime.js';
@@ -21,21 +9,7 @@ export { createSceneSim, resetComponentStores } from './runtime.js';
  * mechanic test (`packages/app/test/scenes.test.ts`) and (b) reachable in the browser at
  * `?scene=<id>`. See `docs/SCENES.md` for the workflow.
  */
-export const SCENES: readonly SceneDefinition[] = [
-  allBuildingsScene,
-  archersScene,
-  charactersScene,
-  craftChainScene,
-  gatheringScene,
-  housePlacementScene,
-  meleeEngagementScene,
-  resourceFootprintsScene,
-  soundShowcaseScene,
-  stancesScene,
-  stressCrowdScene,
-  toolPanelScene,
-  unitOrdersScene,
-];
+export const SCENES: readonly SceneDefinition[] = [sandboxScene];
 
 /** Look up a scene by its `?scene=<id>` value, or `undefined` if no scene has that id. */
 export function getScene(id: string): SceneDefinition | undefined {
