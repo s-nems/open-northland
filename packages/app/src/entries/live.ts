@@ -3,23 +3,16 @@ import {
   CALIBRATED_HALF_W,
   type Camera,
   WorldRenderer,
-  buildHud,
   buildSpriteScene,
   createWindowPixiApp,
-  layoutHud,
   makeElevationField,
-  placeHud,
   setTilePitch,
 } from '@vinland/render';
-import { FixedTimestep, type SimEvent } from '@vinland/sim';
-import { createSoundDriver } from '../content/audio.js';
 import { loadIr } from '../content/ir.js';
 import { loadMapObjects } from '../content/objects.js';
-import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
-import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
-import { DEFAULT_UI_SCALE } from '../hud/tool-panel/layout.js';
+import { HUMAN_PLAYER } from '../game/rules.js';
 import {
   loadTerrainMap,
   runAuthoredSlice,
@@ -28,17 +21,8 @@ import {
   sliceTerrain,
 } from '../slice/vertical-slice.js';
 import { cameraCenteredOnTile, cameraFor, createCameraController } from '../view/camera.js';
-import {
-  applyGameSpeed,
-  menuEntriesFromContent,
-  mountGameToolPanel,
-  shiftHud,
-} from '../view/game-tool-panel.js';
-import { enableAudioOnGesture } from '../view/overlay.js';
-import { mountPerfOverlay } from '../view/perf-overlay.js';
-import { createUnitControls } from '../view/unit-controls.js';
-import { professionsFromContent } from '../view/unit-panel.js';
-import { floatParam, intParam } from './params.js';
+import { startGameView } from '../view/game-view.js';
+import { floatParam } from './params.js';
 
 /**
  * The default full tile-diamond width in px (`2 × CALIBRATED_HALF_W`) when `?pitch=` is absent — the
@@ -138,11 +122,6 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
   // `?zoom=N` magnifies + re-centres on the sprites (the same knob the shot uses) so a decoded bob is
   // big enough to inspect in the live view; absent, scale 1.
   const zoom = floatParam(params, 'zoom', 1);
-  // Playback control. `?speed=` seeds the initial wall-clock multiplier (default ×1; pass e.g.
-  // `?live&speed=0.5` for a calm, sub-1× pace the panel's discrete speed button can't reach). The tool
-  // panel's game-speed button (mounted below) then drives it live — cycling ×1 → ×2 → ×3 → pause — without
-  // clobbering this seed at mount.
-  const control = { paused: false, speed: floatParam(params, 'speed', 1) };
   // The slice sim, kept live and stepped one tick per fixed interval below. A map that carries
   // AUTHORED entities (map.cif StaticObjects) places those buildings/settlers at their authored
   // cells; else the demo slice — on a loaded map's walkable cells, or the synthetic strip. The
@@ -163,112 +142,20 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
     cameraFor(buildSpriteScene(sim.snapshot()), zoom, app.screen.width, app.screen.height);
   const cameraCtl = createCameraController(canvas, initialCamera);
 
-  // Original decoded sounds, played positionally: action SFX + terrain ambient viewport-culled +
-  // attenuated + panned by the camera, plus non-spatial life-event jingles (see @vinland/audio). Real
-  // sounds are default-on (like the atlases/textures); `?sound=off` opts out, and a checkout without
-  // `content/` (no sound bank) degrades to silence via createSoundDriver → null. Browser autoplay policy
-  // keeps audio suspended until a user gesture; the enable-sound prompt persists until the context is
-  // confirmed running, so the gesture can't be dropped while the slice is still loading.
-  const wantSound = params.get('sound') !== 'off';
-  const soundDriver = wantSound ? createSoundDriver(await loadIr(), { chopAtomicId: HARVEST_ATOMIC }) : null;
-  if (soundDriver !== null) enableAudioOnGesture(soundDriver);
-
-  // On-canvas FPS + entity/drawn/pooled readout (bottom-left) so a human can judge whether the map holds
-  // a frame rate and whether culling is biting (`drawn` ≪ `entities` zoomed in) — the same instrument the
-  // `?scene=` entry mounts. Real-GPU only: headless Chromium is software-GL, ~50× low (docs/AGENTS).
-  const perf = mountPerfOverlay();
-
-  // The original LEFT tool panel — the standard game HUD, mounted here in the live sandbox exactly as it is
-  // over every scene (via the shared helper). Its game-speed button drives `control`, the building menu
-  // enqueues `placeBuilding` on a map click, and it claims its own clicks so the HUD never falls through to
-  // world picking.
-  const toolPanel = await mountGameToolPanel({
+  // The shared in-game runtime (view/game-view.ts): the standard HUD mounts — tool panel, unit
+  // controls, perf overlay, positional sound — and the ONE fixed-timestep RAF loop, identical to the
+  // `?scene=` entry's.
+  await startGameView({
     app,
     canvas,
     params,
-    camera: () => cameraCtl.camera(),
-    enqueue: (command) => sim.enqueue(command),
+    renderer,
+    sim,
+    cameraCtl,
+    terrainGrid,
     mapSize: { width: terrainGrid.width, height: terrainGrid.height },
-    elevation, // a placement click on a lifted hill resolves to the tile drawn there
-    buildings: menuEntriesFromContent(sim.content),
-    tribe: HUD_TRIBE,
-    owner: HUMAN_PLAYER,
-    onSpeed: (spec) => applyGameSpeed(control, spec),
+    elevation, // a placement/order click on a lifted hill resolves to the tile drawn there
   });
-
-  // RTS unit control: left-click / drag-box to select the human's units, right-click to send them,
-  // Space to open the selected-unit panel (profession change). The professions the panel offers are the
-  // slice content's jobs (minus idle). Reads the camera + snapshot through closures, issues commands
-  // into the sim.
-  const controls = await createUnitControls({
-    app,
-    canvas,
-    uiscale: intParam(params, 'uiscale', DEFAULT_UI_SCALE, 1),
-    camera: () => cameraCtl.camera(),
-    snapshot: () => sim.snapshot(),
-    mapSize: { width: terrainGrid.width, height: terrainGrid.height },
-    elevation, // right-click on a lifted hill resolves to the tile drawn there
-    humanPlayer: HUMAN_PLAYER,
-    professions: professionsFromContent(sim.content),
-    enqueue: (command) => sim.enqueue(command),
-    boundsOf: (ref) => renderer.entityBounds(ref), // pixel-accurate picking against the real sprite
-    claimPointer: (x: number, y: number) => toolPanel.claimPointer(x, y),
-  });
-
-  const timestep = new FixedTimestep();
-  let lastMs = performance.now();
-  // The fixed-timestep interpolation fraction the renderer lerps entity anchors by — refreshed each
-  // un-paused frame from `advance` (a pause freezes it, so units hold their drawn spot mid-leg).
-  let renderAlpha = 1;
-
-  function frame(nowMs: number): void {
-    const elapsed = nowMs - lastMs;
-    lastMs = nowMs;
-    // Collect events from EVERY sim step this frame (not just the last tick): the fixed-timestep loop
-    // may advance several ticks between rendered frames, and each step clears the buffer — so an audio
-    // trigger on an intermediate tick would otherwise be lost.
-    const frameEvents: SimEvent[] = [];
-    if (!control.paused) {
-      renderAlpha = timestep.advance(elapsed * control.speed, () => {
-        sim.step();
-        frameEvents.push(...sim.events.current());
-      });
-    }
-    cameraCtl.update(elapsed);
-    const snap = sim.snapshot();
-    // Build the tribe HUD read-view ONCE and share it between the always-on stocks panel and the tool
-    // panel's statistics window (so the stats window adds no second O(entities) scan).
-    const hud = layoutHud(buildHud(snap, HUD_TRIBE));
-    // Re-place the tool panel's screen-space sprites BEFORE the renderer's render, and refresh an open stats window.
-    toolPanel.controller.update(hud);
-    // One retained update: reconcile the pooled sprites, draw the selection rings, refresh the pinned
-    // HUD (shifted right to clear the left strip), render once. `app.screen` tracks window resizes.
-    renderer.update(
-      snap,
-      cameraCtl.camera(),
-      snap.tick,
-      { placement: shiftHud(placeHud(hud, 'top-left', app.screen), toolPanel.hudShift) },
-      controls.selectedIds(),
-      renderAlpha,
-    );
-    controls.tick(snap); // reuse the frame's snapshot — don't rebuild a second one
-    // Sound is a pure consumer of the same snapshot + events render reads: fire this frame's one-shots
-    // and refresh the ambient beds under the (moving) camera. No-op until the gesture resumes audio.
-    if (soundDriver !== null) {
-      soundDriver.update({
-        events: frameEvents,
-        snapshot: snap,
-        camera: cameraCtl.camera(),
-        canvasW: app.screen.width,
-        canvasH: app.screen.height,
-        terrain: terrainGrid,
-        dtMs: elapsed,
-      });
-    }
-    perf.update(elapsed, { entities: snap.entities.length, ...renderer.stats() });
-    requestAnimationFrame(frame);
-  }
-  requestAnimationFrame(frame);
 
   console.log(
     'Vinland live slice up: LPM zaznacz / przeciągnij ramką, PPM wyślij, Spacja panel; middle-drag / arrows pan, wheel zoom.',
