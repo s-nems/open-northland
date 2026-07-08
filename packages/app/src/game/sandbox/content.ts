@@ -1,5 +1,13 @@
 import { type BuildingFootprint, type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import type { TerrainMap } from '@vinland/sim';
+import {
+  CLAY_HARVEST_ATOMIC,
+  GOLD_HARVEST_ATOMIC,
+  HARVEST_ATOMIC,
+  IRON_HARVEST_ATOMIC,
+  MUSHROOM_HARVEST_ATOMIC,
+  STONE_HARVEST_ATOMIC,
+} from '../../catalog/atomics.js';
 import { GRASS, HOME_KIND, VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import {
@@ -9,15 +17,7 @@ import {
   MINE_LEVELS,
   STONE_DEPOSIT_UNITS,
 } from '../../catalog/mining.js';
-import {
-  CLAY_HARVEST_ATOMIC,
-  GOLD_HARVEST_ATOMIC,
-  HARVEST_ATOMIC,
-  HARVEST_TICKS,
-  IRON_HARVEST_ATOMIC,
-  MUSHROOM_HARVEST_ATOMIC,
-  STONE_HARVEST_ATOMIC,
-} from '../../content/settler-gfx.js';
+import { HARVEST_TICKS } from '../../content/settler-gfx.js';
 import type { GoodRef } from '../../content/settler-gfx.js';
 import { PRIMARY_TRIBE } from '../rules.js';
 import {

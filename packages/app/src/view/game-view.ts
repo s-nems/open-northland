@@ -8,15 +8,15 @@ import {
 } from '@vinland/render';
 import { FixedTimestep, type SimEvent, type Simulation, type WorldSnapshot } from '@vinland/sim';
 import type { Application } from 'pixi.js';
+import { HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { createSoundDriver } from '../content/audio.js';
 import { loadIr } from '../content/ir.js';
-import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
-import { floatParam, intParam } from '../entries/params.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
 import { DEFAULT_UI_SCALE } from '../hud/tool-panel/layout.js';
 import type { CameraController } from './camera.js';
 import { applyGameSpeed, menuEntriesFromContent, mountGameToolPanel, shiftHud } from './game-tool-panel.js';
 import { enableAudioOnGesture } from './overlay.js';
+import { floatParam, intParam } from './params.js';
 import { mountPerfOverlay } from './perf-overlay.js';
 import { createUnitControls } from './unit-controls.js';
 import { professionsFromContent } from './unit-panel.js';

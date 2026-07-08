@@ -4,8 +4,8 @@ import { loadRealTerrain } from '../content/terrain.js';
 import { SCENES, createSceneSim, getScene } from '../scenes/index.js';
 import { cameraFor, createCameraController } from '../view/camera.js';
 import { startGameView } from '../view/game-view.js';
+import { floatParam } from '../view/params.js';
 import { mountSceneOverlay, mountUnknownSceneOverlay } from '../view/scene-overlay.js';
-import { floatParam } from './params.js';
 
 /**
  * The `?scene=<id>` entry: render a registered **acceptance scene** live, with the checklist overlay,

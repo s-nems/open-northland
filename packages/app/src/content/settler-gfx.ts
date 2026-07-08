@@ -10,6 +10,14 @@ import type {
   SpriteFrameRef,
   StockpileBinding,
 } from '@vinland/render';
+import {
+  CLAY_HARVEST_ATOMIC,
+  GOLD_HARVEST_ATOMIC,
+  HARVEST_ATOMIC,
+  IRON_HARVEST_ATOMIC,
+  MUSHROOM_HARVEST_ATOMIC,
+  STONE_HARVEST_ATOMIC,
+} from '../catalog/atomics.js';
 import { CIVILIST_JOB_HEADS } from '../catalog/roster.js';
 import { HOUSE_BOB, TREE_BOB, VIKING_HOUSE01_BOBS } from './building-gfx.js';
 import type { BobSeqRow } from './ir.js';
@@ -65,9 +73,12 @@ const FALLBACK_WALK: DirectionalAnim = { start: 1988, dirs: DIRS, stride: 12 };
 // and *ends* on the strike landing in the tree. Tick-locked cadence (one frame/tick) on the atomic's
 // `elapsed`, same speed as every other animation.
 const CHOP_PHASE_START = 9;
-/** Frames per facing in the woodcut swing (verified 5106/120 = 15 across the 8 dirs). The ONE source of
- *  truth for the swing length the render cycle plays — wood's duration in {@link HARVEST_TICKS} follows
- *  it, so a scene can't pick a chop duration that mismatches the animation the render plays. */
+/** Frames per facing in the woodcut swing (verified 5106/120 = 15 across the 8 dirs). Wood's duration in
+ *  {@link HARVEST_TICKS} (30 — the faithful `atomicanimations.ini` length, an independent pin) happens to
+ *  be exactly TWO full swings of this stride, so the chop clip never cuts off mid-swing. NOTE for a future
+ *  bare one-swing binding: the render clock is `elapsed - 1` and the completion tick removes the atomic
+ *  before its frame draws, so one clean swing needs `CHOP_STRIDE + 1` sim ticks — a shorter duration
+ *  replays only the windup (the visible restart glitch). */
 const CHOP_STRIDE = 15;
 const FALLBACK_CHOP: DirectionalAnim = {
   start: 5106,
@@ -82,22 +93,11 @@ const FALLBACK_WALK_WOOD: DirectionalAnim = { start: 4580, dirs: DIRS, stride: 1
 // (not a facing-sliced 1/8 excerpt) is what makes a standing settler breathe rather than freeze.
 const FALLBACK_WAIT: DirectionalAnim = { start: 1931, dirs: 1, stride: 57 };
 
-/** The chop atomic id (the original's `harvest`), mapped to the woodcutting swing. Exported as the
- *  ONE app-side declaration of this semantic id (the slice + scenes reuse it). */
-export const HARVEST_ATOMIC = 24;
-
-/**
- * The per-good harvest atomic ids — the original's `atomicForHarvesting` for each raw good (the collector
- * job runs ONE per good). Each binds to that good's OWN authored work clip in {@link CHARACTER_SPECS}
- * below (stone/iron/gold→the shared mining strike, clay→shovel-dig, mushroom→pluck), not the shared
- * woodcut swing — so a clay-digger visibly SHOVELS and a stone/iron/gold miner STRIKES, neither chops
- * (source basis). Exported so a scene/slice runs the same ids the render animates.
- * ({@link HARVEST_ATOMIC} = 24 is wood.) */
-export const STONE_HARVEST_ATOMIC = 25;
-export const CLAY_HARVEST_ATOMIC = 26;
-export const IRON_HARVEST_ATOMIC = 27;
-export const GOLD_HARVEST_ATOMIC = 28;
-export const MUSHROOM_HARVEST_ATOMIC = 32;
+// The per-good harvest atomic ids live in the committed catalog (`catalog/atomics.ts`) — the ONE
+// app-side declaration of these semantic ids; this module only binds each id to its authored work
+// clip in {@link CHARACTER_SPECS} below (stone/iron/gold→the shared mining strike, clay→shovel-dig,
+// mushroom→pluck), not the shared woodcut swing — so a clay-digger visibly SHOVELS and a miner
+// STRIKES, neither chops (source basis).
 
 /**
  * A MINED unit's dig duration (ticks) — an OBSERVED visual pace, not the faithful logic length. Each chip

@@ -34,7 +34,7 @@ const { Felling, MineDeposit, Resource, Stump } = components;
  *
  * The scene itself defines only placement: where buildings, resources, blue player units, and hostile units
  * start. It does not own content, build rules, animation bindings, sounds, speed, tool panel, or controls;
- * those are shared by `game/sandbox-content.ts`, `entries/scene.ts`, and `entries/live.ts`.
+ * those are shared by `game/sandbox/`, `entries/scene.ts`, and `entries/live.ts`.
  */
 
 const MAP_W = 96;

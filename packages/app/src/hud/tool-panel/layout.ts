@@ -8,8 +8,9 @@ import { type Rect, contains } from '../geometry.js';
  * button is created with an `SRectangle(left, top, width, height)` in the original's 640×480–1024×768
  * DESIGN space. We keep the hex→decimal literals in a named table (the constant *is* the geometry, so this
  * satisfies the no-magic-numbers rule) and anchor the strip top-left, scaling the whole thing by an INTEGER
- * `uiscale` (default 2×, `?uiscale=` override) so it reads on an arbitrary-size canvas. The panel's INTERNAL
- * layout stays pinned — only the uniform scale is ours (logged in source basis "Left tool panel").
+ * `uiscale` (default 1× — see {@link DEFAULT_UI_SCALE} — with a `?uiscale=` override) so it reads on an
+ * arbitrary-size canvas. The panel's INTERNAL layout stays pinned — only the uniform scale is ours
+ * (logged in source basis "Left tool panel").
  *
  * `gfx` is the original engine gfx id, which for `ls_gui_window` equals the atlas frame id (firstBobId=0,
  * see `content/gui-atlas-map.ts`), so the view resolves the sprite with `atlas.frames.get(spec.gfx)`.

@@ -18,6 +18,7 @@ import {
 import { MissingAtlasError, loadBodyClips, loadGalleryLayers, loadPlayerLut } from '../content/ir.js';
 import { MIN_ZOOM, createCameraController } from '../view/camera.js';
 import { mountMessage } from '../view/overlay.js';
+import { floatParam, intParam } from '../view/params.js';
 import {
   type GalleryView,
   type RosterLoad,
@@ -30,7 +31,6 @@ import {
   parseView,
 } from './anim-cells.js';
 import { mountGalleryOverlay } from './anim-overlay.js';
-import { floatParam, intParam } from './params.js';
 
 /**
  * The `?anim` entry — the character **animation gallery**, the animation twin of the sandbox/catalog

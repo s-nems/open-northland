@@ -39,7 +39,7 @@ Defined in `packages/app/src/scenes/<id>.ts` (the type is `scenes/types.ts`):
 - `checks` — `{ label, predicate(sim) }[]`; the mechanic the headless test enforces.
 
 Scenes do **not** define goods, jobs, buildings, weapons, animation bindings, controls, sound, speed, or
-build-menu contents. Those global sandbox rules live in `packages/app/src/game/sandbox-content.ts` and are
+build-menu contents. Those global sandbox rules live in `packages/app/src/game/sandbox/` and are
 shared by `?scene=...`, `?live`, and synthetic map fallbacks. A scene is only a deterministic map/setup.
 
 ## Add a scene (the loop)

@@ -1,7 +1,7 @@
 import type { TerrainMapFile } from '@vinland/data';
 import { type SceneTerrain, terrainMapToScene } from '@vinland/render';
 import { Simulation, type TerrainMap, components, fx } from '@vinland/sim';
-import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
+import { HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { PRIMARY_TRIBE } from '../game/rules.js';
 import {
   BUILDING_HEADQUARTERS,
