@@ -197,7 +197,8 @@ function elevationFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['
  * `lsiz`/`lmlt` (the sim grid is mandatory; {@link convertMapDatTree} catches per-file); a corrupt
  * OPTIONAL render lane is caught per layer here (warn + emit the grid without it), so a map whose nav
  * grid decodes fine never disappears over its enrichments. The `lmhe` height lane rides along as the
- * per-cell `elevation` layer ({@link elevationFromMapDat}) — carried through, not yet consumed. The
+ * per-cell `elevation` layer ({@link elevationFromMapDat}) — consumed render-side by the elevation
+ * lift (`packages/render/src/data/elevation.ts`). The
  * `emt3`/`emt4` overlay-pattern lanes (roads/house foundations) are still out of scope (deferred
  * render layers).
  */
