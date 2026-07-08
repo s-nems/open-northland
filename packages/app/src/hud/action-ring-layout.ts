@@ -20,7 +20,7 @@ import { type Rect, contains } from './geometry.js';
  * list WINDOW (a DOM panel, built in `view/settler-actions.ts`); every other button is an inert
  * {@link placeholder} (tooltip only) left for a future "implement the action" pass (warrior/scout menus
  * differ — a per-unit-type menu is the hook). This is pure geometry (no Pixi, no DOM), so the layout +
- * hit-test + icon assignment are unit-tested headlessly (the twin of `hud/tool-panel-layout.ts`).
+ * hit-test + icon assignment are unit-tested headlessly (the twin of `hud/tool-panel/layout.ts`).
  */
 
 /** The GUI-atlas frame NAME (see `content/gui-atlas-map.ts`) a button draws; the view resolves it to an index. */

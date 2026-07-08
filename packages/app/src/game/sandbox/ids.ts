@@ -1,18 +1,18 @@
 import {
-  CLAY_DEPOSIT_UNITS,
-  GOLD_DEPOSIT_UNITS,
-  IRON_DEPOSIT_UNITS,
-  MINE_LEVELS,
-  STONE_DEPOSIT_UNITS,
-} from '../../catalog/mining.js';
-import {
   CLAY_HARVEST_ATOMIC,
   GOLD_HARVEST_ATOMIC,
   HARVEST_ATOMIC,
   IRON_HARVEST_ATOMIC,
   MUSHROOM_HARVEST_ATOMIC,
   STONE_HARVEST_ATOMIC,
-} from '../../content/settler-gfx.js';
+} from '../../catalog/atomics.js';
+import {
+  CLAY_DEPOSIT_UNITS,
+  GOLD_DEPOSIT_UNITS,
+  IRON_DEPOSIT_UNITS,
+  MINE_LEVELS,
+  STONE_DEPOSIT_UNITS,
+} from '../../catalog/mining.js';
 
 /**
  * The sandbox content's semantic type ids — goods, jobs, buildings, weapons — plus the per-good

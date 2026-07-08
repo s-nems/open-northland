@@ -1,9 +1,10 @@
 import type { WorldSnapshot } from '@vinland/sim';
 
 /**
- * Typed read helpers over the frozen {@link WorldSnapshot} — the ONE place the view layer's knowledge
- * of snapshot component shapes lives, so the panels/controls stop re-inventing `as {...}` casts per
- * file. These read the snapshot (the allowed one-way flow), never live component stores; every read is
+ * Typed read helpers over the frozen {@link WorldSnapshot} — the shared owner/position/kind reads the
+ * controls and panels all need, so they stop re-inventing the same `as {...}` casts per file (display
+ * panels still cast their own presentation-only fields, e.g. `unit-panel.ts`'s needs/carry/stance).
+ * These read the snapshot (the allowed one-way flow), never live component stores; every read is
  * defensive (`undefined` on a missing component/field) because a snapshot entity carries only the
  * components it has.
  */

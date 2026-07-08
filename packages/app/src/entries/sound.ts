@@ -6,9 +6,9 @@ import {
   defaultBindings,
 } from '@vinland/audio';
 import type { SoundBank } from '@vinland/data';
+import { HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { hasSoundContent } from '../content/audio.js';
 import { loadIr } from '../content/ir.js';
-import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
 import { el, pageInnerStyle, pageRootStyle, pageSection } from '../view/overlay.js';
 
 /**
@@ -210,9 +210,6 @@ function clipButtons(clips: readonly string[]): HTMLElement {
   return wrap;
 }
 
-/** A titled section wrapping a set of rows (the shared page section). */
-const section = pageSection;
-
 /** A group row: its name + clip count on top, the play buttons below. */
 function groupRow(cl: ClipList): HTMLElement {
   const row = el('div', ROW_STYLE);
@@ -283,15 +280,15 @@ export async function renderSoundGallery(
     ),
   );
 
-  inner.append(section('Akcje → dźwięk (podpięte pod to, co się dzieje)', model.actions.map(actionRow)));
+  inner.append(pageSection('Akcje → dźwięk (podpięte pod to, co się dzieje)', model.actions.map(actionRow)));
   const voiceRows: HTMLElement[] = [];
   for (const v of model.voices) {
     voiceRows.push(el('div', 'font-weight:700;opacity:0.85;margin:10px 0 2px', v.label));
     for (const g of v.groups) voiceRows.push(groupRow(g));
   }
-  inner.append(section('Głosy osadników (gwar tłumu, wg płci/wieku)', voiceRows));
-  inner.append(section('Jingle (zdarzenia życia)', model.jingles.map(groupRow)));
-  inner.append(section('Ambient (tło terenu)', model.ambient.map(groupRow)));
+  inner.append(pageSection('Głosy osadników (gwar tłumu, wg płci/wieku)', voiceRows));
+  inner.append(pageSection('Jingle (zdarzenia życia)', model.jingles.map(groupRow)));
+  inner.append(pageSection('Ambient (tło terenu)', model.ambient.map(groupRow)));
 
   root.append(inner);
   document.body.append(root);

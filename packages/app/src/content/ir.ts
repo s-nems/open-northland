@@ -171,7 +171,12 @@ let contentIrPromise: Promise<ContentIr | null> | null = null;
  * memo lives for the page's lifetime (a reload starts clean; tests never call this).
  */
 export function loadIr(): Promise<ContentIr | null> {
-  contentIrPromise ??= fetchJsonOrNull<ContentIr>('/ir.json');
+  contentIrPromise ??= fetchJsonOrNull<ContentIr>('/ir.json').then((ir) => {
+    // Memoize only SUCCESS: a transient boot-time fetch failure must not pin every domain (terrain,
+    // objects, sprites, audio) to the fallback for the page's lifetime — the next consumer retries.
+    if (ir === null) contentIrPromise = null;
+    return ir;
+  });
   return contentIrPromise;
 }
 

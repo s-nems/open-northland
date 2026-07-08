@@ -57,7 +57,7 @@ export interface GameToolPanelHandle {
   claimPointer(clientX: number, clientY: number): boolean;
 }
 
-/** The mutable loop control both entries drive (a subset — `scene` also carries `stepOnce`). */
+/** The mutable loop control the shared game-view runtime drives (pause flag + tick-rate multiplier). */
 export interface LoopSpeedControl {
   paused: boolean;
   speed: number;
@@ -90,7 +90,7 @@ export function shiftHud(p: HudPlacement, dx: number): HudPlacement {
   return { ...p, panelX: p.panelX + dx, rows: p.rows.map((r) => ({ ...r, x: r.x + dx })) };
 }
 
-/** Mount the game tool panel for one entry, returning its controller + the derived HUD shift + start speed. */
+/** Mount the game tool panel for one entry, returning its controller + the derived HUD shift + claim. */
 export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameToolPanelHandle> {
   const { uiscale } = deps;
   const hudShift = buildToolPanelLayout(uiscale).width + HUD_GAP;

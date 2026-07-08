@@ -1,7 +1,7 @@
 import { type Simulation, components, fx, systems } from '@vinland/sim';
+import { HARVEST_ATOMIC } from '../../catalog/atomics.js';
 import { resolveVikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
-import { HARVEST_ATOMIC } from '../../content/settler-gfx.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../rules.js';
 import { GOOD_WOOD, type GathererSpec } from './ids.js';
 

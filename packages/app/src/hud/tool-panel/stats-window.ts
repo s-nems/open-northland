@@ -13,6 +13,8 @@ const STATS_GAP_X = WIN_PAD + STATS_WIDTH + 3 * WIN_PAD;
 const STATS_OFFSET_Y = 15;
 /** Title text inset (design px). */
 const TITLE_INSET_Y = 2;
+/** The index of `layoutHud`'s volatile `Tribe N · tick T` row — excluded from the change key. */
+const TICK_ROW = 0;
 
 export interface StatsWindowDeps {
   readonly ctx: PanelContext;
@@ -114,10 +116,12 @@ export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
       if (!open) return;
       // Change-detection key EXCLUDES the volatile tick line (`layoutHud` row 0 is `Tribe N · tick T`): the
       // tick advances every frame, so keying on it would defeat the guard and rebuild the ~hundreds of glyph
-      // meshes each frame. One string-building pass, no intermediate arrays (this runs every frame).
+      // meshes each frame. Keyed by ROW INDEX (0 IS the tick row), not a substring match, so a future tally
+      // row containing "tick" can't silently drop out of change detection. One string-building pass, no
+      // intermediate arrays (this runs every frame).
       let next = '';
-      for (const row of hud.rows) {
-        if (!row.text.includes('tick')) next += `${row.text}|`;
+      for (let i = TICK_ROW + 1; i < hud.rows.length; i++) {
+        next += `${hud.rows[i]?.text}|`;
       }
       if (next === key) return;
       key = next;

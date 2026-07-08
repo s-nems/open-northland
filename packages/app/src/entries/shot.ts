@@ -12,7 +12,7 @@ import { HUD_TRIBE } from '../game/rules.js';
 import { loadTerrainMap } from '../slice/map-loader.js';
 import { runSlice, sliceTerrain } from '../slice/vertical-slice.js';
 import { cameraFor } from '../view/camera.js';
-import { floatParam, intParam } from './params.js';
+import { floatParam, intParam } from '../view/params.js';
 
 /**
  * The deterministic, headless render entry the screenshot harness waits on (docs/TESTING.md

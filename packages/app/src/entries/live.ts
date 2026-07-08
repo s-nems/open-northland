@@ -18,7 +18,7 @@ import { loadTerrainMap } from '../slice/map-loader.js';
 import { runAuthoredSlice, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
 import { cameraCenteredOnTile, cameraFor, createCameraController } from '../view/camera.js';
 import { startGameView } from '../view/game-view.js';
-import { floatParam } from './params.js';
+import { floatParam } from '../view/params.js';
 
 /**
  * The default full tile-diamond width in px (`2 × CALIBRATED_HALF_W`) when `?pitch=` is absent — the

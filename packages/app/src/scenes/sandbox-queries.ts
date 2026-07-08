@@ -1,7 +1,7 @@
 import { type Component, type Simulation, components, fx } from '@vinland/sim';
 import { WOOD_YIELD_PER_NODE } from '../catalog/felling.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
-import { type GathererSpec, JOB_SOLDIER_SWORD } from '../game/sandbox/ids.js';
+import { type GathererSpec, JOB_SOLDIER_SWORD } from '../game/sandbox/index.js';
 
 const { Health, Owner, Position, Settler, Stockpile } = components;
 
