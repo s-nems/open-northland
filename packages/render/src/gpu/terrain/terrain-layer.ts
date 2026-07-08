@@ -1,7 +1,7 @@
-import { Container, Graphics, Mesh, MeshGeometry, Texture, type TextureSource } from 'pixi.js';
-import { type ElevationField, diamondCornerLifts, makeElevationField } from '../data/elevation.js';
-import { TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../data/iso.js';
-import type { SceneTerrain } from '../data/scene.js';
+import { Container, type Graphics, Mesh, Texture, type TextureSource } from 'pixi.js';
+import { type ElevationField, diamondCornerLifts, makeElevationField } from '../../data/elevation.js';
+import { TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../../data/iso.js';
+import type { SceneTerrain } from '../../data/scene/index.js';
 import {
   DIAMOND_INDICES,
   TRIANGLE_A_CORNERS,
@@ -10,20 +10,21 @@ import {
   rectUVs,
   triangleCorners,
   triangleUVs,
-} from '../data/terrain.js';
-import { type Viewport, aabbIntersects } from '../data/viewport.js';
-import type { GroundPattern, TerrainTextureSet } from './pixi-app.js';
+} from '../../data/terrain.js';
+import { type Viewport, aabbIntersects } from '../../data/viewport.js';
+import type { GroundPattern, TerrainTextureSet } from '../pixi-app.js';
+import { ChunkBatcher, type TerrainBatch, meshGeometry } from './chunk-batcher.js';
 
 /**
  * The retained terrain layer — the static ground, meshed ONCE per map and drawn per visible block.
  *
  * Terrain is static geometry, but a whole-map single mesh still rasterizes off-screen ground every
  * frame (a whole-map mesh once pinned software-GL at 1fps). So the grid is meshed in
- * {@link TERRAIN_CHUNK_TILES}-square blocks each with a world-space AABB, and {@link cull} toggles each
- * block's `.visible` against the viewport per frame: **render cost tracks the SCREEN, not the map** (the
- * RTS rule — OpenRA's `Viewport` visible-cell region, our `viewport.ts`), so a 1024² map draws the same
- * handful of blocks a 64² one does. The geometry + page textures are built here and RETAINED, so no
- * terrain work happens per frame beyond the cheap visibility toggle.
+ * {@link TERRAIN_CHUNK_TILES}-square blocks each with a world-space AABB, and {@link TerrainLayer.cull}
+ * toggles each block's `.visible` against the viewport per frame: **render cost tracks the SCREEN, not
+ * the map** (the RTS rule — OpenRA's `Viewport` visible-cell region, our `viewport.ts`), so a 1024² map
+ * draws the same handful of blocks a 64² one does. The geometry + page textures are built here and
+ * RETAINED, so no terrain work happens per frame beyond the cheap visibility toggle.
  */
 
 /** A flat colour per landscape typeId for the placeholder terrain (cycled if a typeId exceeds the table). */
@@ -39,7 +40,7 @@ const DEFAULT_TILE_COLOUR = 0x4a7c3a;
  * Terrain is meshed in square blocks of this many tiles a side, and each frame only the blocks whose
  * world-space box meets the viewport are drawn. 32 keeps the visible-block count (≈ draw calls) low
  * while still culling tightly at the screen edges. Exported because the decor/tall map-object blocks
- * ({@link import('./map-object-layer.js').MapObjectLayer}) deliberately partition world space at the
+ * ({@link import('../map-objects/index.js').MapObjectLayer}) deliberately partition world space at the
  * SAME scale, so the two layers cull in lockstep.
  */
 export const TERRAIN_CHUNK_TILES = 32;
@@ -59,69 +60,6 @@ interface TerrainChunk {
 
 /** A flat field (no lift) — the shared default for the elevation-free path (synthetic grids / no lane). */
 const FLAT_ELEVATION: ElevationField = makeElevationField(undefined, 0, 0);
-
-/** The batched geometry accumulated for one draw call (a colour, or a texture page) within a chunk. */
-interface TerrainBatch {
-  readonly positions: number[];
-  readonly uvs: number[];
-  readonly indices: number[];
-}
-
-/** Upload one accumulated terrain batch (positions/uvs/indices) as a {@link MeshGeometry}. */
-function meshGeometry(batch: TerrainBatch): MeshGeometry {
-  return new MeshGeometry({
-    positions: new Float32Array(batch.positions),
-    uvs: new Float32Array(batch.uvs),
-    indices: new Uint32Array(batch.indices),
-  });
-}
-
-/**
- * The per-texture-page batch accumulator for ONE chunk, shared by the two textured build paths
- * (per-typeId diamonds and per-triangle 1:1 ground): get-or-create a batch per page, trace unbound
- * cells into a shared fallback {@link Graphics}, then emit one {@link Mesh} per page (+ the fallback
- * when any cell used it) — so the draw-call count per block is ~one per touched page. SINGLE-USE per
- * chunk build: accumulate first, then call {@link children} exactly once (it hands ownership of the
- * accumulated display objects to the chunk).
- */
-class ChunkBatcher {
-  private readonly byPage = new Map<string, TerrainBatch & { source: TextureSource }>();
-  private readonly fallback = new Graphics();
-  private fallbackUsed = false;
-
-  /** The (created-on-first-use) batch every cell/triangle sampling `pageKey` accumulates into. */
-  batchFor(pageKey: string, source: TextureSource): TerrainBatch {
-    let batch = this.byPage.get(pageKey);
-    if (batch === undefined) {
-      batch = { positions: [], uvs: [], indices: [], source };
-      this.byPage.set(pageKey, batch);
-    }
-    return batch;
-  }
-
-  /** Trace one flat-colour ground diamond (the unbound-cell fallback). `lifts` (`[top, right, bottom,
-   *  left]`, world px) lifts each corner by terrain height, matching the meshed cells around it. */
-  drawFallback(sx: number, sy: number, colour: number, lifts?: readonly number[]): void {
-    this.fallback
-      .moveTo(sx, sy - TILE_HALF_H - (lifts?.[0] ?? 0))
-      .lineTo(sx + TILE_HALF_W, sy - (lifts?.[1] ?? 0))
-      .lineTo(sx, sy + TILE_HALF_H - (lifts?.[2] ?? 0))
-      .lineTo(sx - TILE_HALF_W, sy - (lifts?.[3] ?? 0))
-      .closePath()
-      .fill({ color: colour });
-    this.fallbackUsed = true;
-  }
-
-  /** The chunk's display children: the fallback (when used) + one mesh per accumulated page. */
-  children(): (Mesh | Graphics)[] {
-    const out: (Mesh | Graphics)[] = [];
-    if (this.fallbackUsed) out.push(this.fallback);
-    for (const batch of this.byPage.values()) {
-      out.push(new Mesh({ geometry: meshGeometry(batch), texture: new Texture({ source: batch.source }) }));
-    }
-    return out;
-  }
-}
 
 export class TerrainLayer {
   /** Static, built once by {@link set}; the renderer keeps it behind the sprite layer. */
@@ -154,9 +92,10 @@ export class TerrainLayer {
 
   /**
    * Free the current terrain: each chunk is a {@link Container} of {@link Mesh}es, and a `Mesh` does NOT
-   * own its {@link MeshGeometry} (so `destroy` never frees the vertex/uv/index GPU buffers) — release the
-   * geometry explicitly, then destroy the container + its children. The tile textures/`Texture.WHITE` are
-   * SHARED sources and are deliberately left alone. Used by {@link set} (a rebuild) and the renderer's dispose.
+   * own its {@link import('pixi.js').MeshGeometry} (so `destroy` never frees the vertex/uv/index GPU
+   * buffers) — release the geometry explicitly, then destroy the container + its children. The tile
+   * textures/`Texture.WHITE` are SHARED sources and are deliberately left alone. Used by {@link set}
+   * (a rebuild) and the renderer's dispose.
    */
   destroy(): void {
     for (const chunk of this.chunks) {

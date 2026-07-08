@@ -2,16 +2,16 @@ import type { WorldSnapshot } from '@vinland/sim';
 import { type Application, Container } from 'pixi.js';
 import { type ElevationField, makeElevationField } from '../data/elevation.js';
 import type { Camera } from '../data/iso.js';
-import type { SceneTerrain } from '../data/scene.js';
+import type { SceneTerrain } from '../data/scene/index.js';
 import { cameraViewport } from '../data/viewport.js';
 import { HudLayer } from './hud-layer.js';
 import type { HudFrame } from './hud-layer.js';
-import { MapObjectLayer } from './map-object-layer.js';
-import type { MapObjectSprite } from './map-object-layer.js';
+import { MapObjectLayer } from './map-objects/index.js';
+import type { MapObjectSprite } from './map-objects/index.js';
 import type { SpriteSheet, TerrainTextureSet } from './pixi-app.js';
 import { SelectionLayer } from './selection-layer.js';
-import { type EntityBounds, SpritePool } from './sprite-pool.js';
-import { TerrainLayer } from './terrain-layer.js';
+import { type EntityBounds, SpritePool } from './sprite-pool/index.js';
+import { TerrainLayer } from './terrain/index.js';
 import { TextureCache } from './texture-cache.js';
 
 /** Shared empty selection so the common no-selection `update` allocates nothing. */

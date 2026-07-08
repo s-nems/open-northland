@@ -1,17 +1,18 @@
-import { Container, Mesh, MeshGeometry, Sprite, Texture, type TextureSource } from 'pixi.js';
-import { TILE_HALF_W, depthKey } from '../data/iso.js';
-import type { AtlasFrame } from '../data/sprites.js';
-import { type Viewport, aabbIntersects, isVisible } from '../data/viewport.js';
-import { TERRAIN_CHUNK_TILES } from './terrain-layer.js';
-import type { TextureCache } from './texture-cache.js';
+import { Container, Mesh, Sprite } from 'pixi.js';
+import { TILE_HALF_W, depthKey } from '../../data/iso.js';
+import { type Viewport, aabbIntersects, isVisible } from '../../data/viewport.js';
+import { TERRAIN_CHUNK_TILES } from '../terrain/index.js';
+import type { TextureCache } from '../texture-cache.js';
+import { type DecorChunk, buildDecorChunk, writeObjectQuad } from './decor-batch.js';
+import { type MapObjectSprite, objectFrameAt } from './map-object-sprite.js';
 
 /**
  * The retained landscape-object layers — a decoded map's placed trees, stones, bushes, mine decals and
  * animated waves, split by whether they occlude a settler:
  *  - **decor** (flat ground decor: waves, grass, flowers, mine stains) batches into per-block meshes
- *    UNDER the entity sprites, one draw call per texture page per block, AABB-culled like terrain; an
- *    animated decor object's quad is rewritten in place only when the play-head advances (and only in
- *    visible blocks).
+ *    UNDER the entity sprites ({@link import('./decor-batch.js')}), one draw call per texture page per
+ *    block, AABB-culled like terrain; an animated decor object's quad is rewritten in place only when
+ *    the play-head advances (and only in visible blocks).
  *  - **tall** (trees, stones — anything that occludes a settler) become pooled sprites in the shared
  *    ENTITY layer, depth-sorted against settlers/buildings by their world-`y` feet anchor and
  *    viewport-culled each frame; a member's sprite is minted on FIRST visibility (a big map holds
@@ -21,37 +22,6 @@ import type { TextureCache } from './texture-cache.js';
  * `spriteLayer` so they interleave with entities in one painter order; the decor meshes live in this
  * layer's own container, which the renderer keeps above the terrain and below the sprites.
  */
-
-/**
- * One placed landscape object, fully resolved by the app (atlas source + frame list + position):
- * a tree, stone, bush, mine decal or animated wave from a decoded map's `objects` layer. `frames`
- * with more than one entry is a looping animation played from {@link phase} (the app sets phase 0
- * everywhere — the wave bobs tile seamlessly only when neighbours show the SAME frame). `decor`
- * objects are flat ground decor (waves, grass, flowers, mine stains): they batch into per-chunk
- * meshes UNDER the entity sprites; non-decor (tall) objects (trees, stones) depth-sort against
- * entities by their world-`y` feet anchor.
- */
-export interface MapObjectSprite {
-  /** World-space feet anchor (px), already projected by the app (`halfCellToScreen` of the `emla` half-cell). */
-  readonly x: number;
-  readonly y: number;
-  readonly source: TextureSource;
-  /** The object's frame list (1 = static; >1 = a loop played at the sim tick rate). */
-  readonly frames: readonly AtlasFrame[];
-  readonly scale: number;
-  readonly decor: boolean;
-  /** Starting frame offset into {@link frames} (kept for future per-object phase data). */
-  readonly phase: number;
-  /** Draw opacity (1 = opaque). Waves composite translucently over the water ground. */
-  readonly alpha: number;
-  /**
-   * Terrain-elevation lift (world px, ≥ 0) at this object's half-cell — SUBTRACTED from the drawn `y` so
-   * a tree/stone rides up the hill it stands on. The feet anchor {@link y} and its {@link depthKey} stay
-   * PRE-LIFT, so a lifted-up object still occludes by map row (a tree on a hill draws behind a settler on
-   * a nearer row). Omitted (0) on a flat map / when the app has no elevation lane. Set by the app loader.
-   */
-  readonly lift?: number;
-}
 
 /** One tall (non-decor) map object: its static draw data + a LAZILY-minted pooled sprite. */
 interface PooledObject {
@@ -77,115 +47,12 @@ interface TallBlock {
 }
 
 /**
- * One decor chunk: flat map objects batched by texture source into meshes (built once for static
- * objects; animated ones have their vertex/uv buffers rewritten in place when the play-head
- * advances — and only while the chunk is visible). AABB-culled like terrain chunks.
- */
-interface DecorChunk {
-  readonly container: Container;
-  readonly minX: number;
-  readonly minY: number;
-  readonly maxX: number;
-  readonly maxY: number;
-  /** Animated batches to rewrite on an anim-tick advance (empty for an all-static chunk). */
-  readonly animated: AnimatedDecorBatch[];
-  /** The tick the animated buffers were last written for — per chunk, so a chunk scrolling into
-   *  view while the sim is paused still gets caught up to the current tick's frame. */
-  lastWrittenTick: number;
-}
-
-/** One animated decor batch: its mesh buffers + the objects whose quads fill them, in quad order. */
-interface AnimatedDecorBatch {
-  readonly objects: MapObjectSprite[];
-  readonly positions: Float32Array;
-  readonly uvs: Float32Array;
-  readonly geometry: MeshGeometry;
-  readonly pageW: number;
-  readonly pageH: number;
-}
-
-/**
  * Decor chunks partition world space into square blocks of this many px — the SAME scale as the
  * terrain chunks ({@link TERRAIN_CHUNK_TILES}), so the two layers cull in lockstep. Read LIVE (not an
- * import-time const) so a runtime {@link import('../data/iso.js').setTilePitch} override (`?pitch=`)
+ * import-time const) so a runtime {@link import('../../data/iso.js').setTilePitch} override (`?pitch=`)
  * keeps the decor cull aligned with the terrain instead of the boot-time pitch.
  */
 const decorChunkPx = (): number => TERRAIN_CHUNK_TILES * TILE_HALF_W * 2;
-
-/** Write one object's current frame as a quad into flat position/uv buffers at `quadIndex`. */
-function writeObjectQuad(
-  positions: Float32Array | number[],
-  uvs: Float32Array | number[],
-  quadIndex: number,
-  obj: MapObjectSprite,
-  frame: AtlasFrame,
-  pageW: number,
-  pageH: number,
-): void {
-  const x0 = obj.x + frame.offsetX * obj.scale;
-  // Lift the drawn quad up the hill (the anchor + depth stay pre-lift; only the draw y moves).
-  const y0 = obj.y - (obj.lift ?? 0) + frame.offsetY * obj.scale;
-  const x1 = x0 + frame.width * obj.scale;
-  const y1 = y0 + frame.height * obj.scale;
-  const p = quadIndex * 8;
-  positions[p] = x0;
-  positions[p + 1] = y0;
-  positions[p + 2] = x1;
-  positions[p + 3] = y0;
-  positions[p + 4] = x1;
-  positions[p + 5] = y1;
-  positions[p + 6] = x0;
-  positions[p + 7] = y1;
-  const u0 = frame.x / pageW;
-  const v0 = frame.y / pageH;
-  const u1 = (frame.x + frame.width) / pageW;
-  const v1 = (frame.y + frame.height) / pageH;
-  uvs[p] = u0;
-  uvs[p + 1] = v0;
-  uvs[p + 2] = u1;
-  uvs[p + 3] = v0;
-  uvs[p + 4] = u1;
-  uvs[p + 5] = v1;
-  uvs[p + 6] = u0;
-  uvs[p + 7] = v1;
-}
-
-/** The frame an object shows at a given animation tick (static objects always show frame 0). */
-function objectFrameAt(obj: MapObjectSprite, tick: number): AtlasFrame | undefined {
-  if (obj.frames.length <= 1) return obj.frames[0];
-  return obj.frames[(tick + obj.phase) % obj.frames.length];
-}
-
-/** One built quad-batch mesh + the buffers behind it (the caller keeps the buffers only for an
- *  ANIMATED batch, whose quads are rewritten in place when the play-head advances). */
-interface QuadBatch {
-  readonly mesh: Mesh;
-  readonly positions: Float32Array;
-  readonly uvs: Float32Array;
-  readonly geometry: MeshGeometry;
-}
-
-/** Batch `objects` (all sharing `source` + `alpha`) into ONE mesh of quads, each written for its
- *  tick-0 frame — the shared build step for a decor group's static and animated halves. */
-function buildQuadBatch(
-  objects: readonly MapObjectSprite[],
-  source: TextureSource,
-  alpha: number,
-): QuadBatch {
-  const positions = new Float32Array(objects.length * 8);
-  const uvs = new Float32Array(objects.length * 8);
-  const indices = new Uint32Array(objects.length * 6);
-  for (let q = 0; q < objects.length; q++) {
-    const obj = objects[q] as MapObjectSprite;
-    const frame = objectFrameAt(obj, 0) as AtlasFrame;
-    writeObjectQuad(positions, uvs, q, obj, frame, source.width, source.height);
-    indices.set([q * 4, q * 4 + 1, q * 4 + 2, q * 4, q * 4 + 2, q * 4 + 3], q * 6);
-  }
-  const geometry = new MeshGeometry({ positions, uvs, indices });
-  const mesh = new Mesh({ geometry, texture: new Texture({ source }) });
-  mesh.alpha = alpha;
-  return { mesh, positions, uvs, geometry };
-}
 
 export class MapObjectLayer {
   /** Flat map-object decor (waves, grass, mine stains) — batched meshes above terrain, below sprites. */
@@ -228,7 +95,11 @@ export class MapObjectLayer {
       }
       block.push(obj);
     }
-    for (const block of byBlock.values()) this.decorChunks.push(this.buildDecorChunk(block));
+    for (const block of byBlock.values()) {
+      const chunk = buildDecorChunk(block);
+      this.decorContainer.addChild(chunk.container);
+      this.decorChunks.push(chunk);
+    }
     for (const block of tallByBlock.values()) {
       let minX = Number.POSITIVE_INFINITY;
       let minY = Number.POSITIVE_INFINITY;
@@ -350,64 +221,5 @@ export class MapObjectLayer {
     }
     this.tallBlocks = [];
     this.lastAnimTick = -1;
-  }
-
-  /** Batch one decor block: group its objects by texture source into a static and an animated mesh each. */
-  private buildDecorChunk(block: readonly MapObjectSprite[]): DecorChunk {
-    const container = new Container();
-    let minX = Number.POSITIVE_INFINITY;
-    let minY = Number.POSITIVE_INFINITY;
-    let maxX = Number.NEGATIVE_INFINITY;
-    let maxY = Number.NEGATIVE_INFINITY;
-    // Batch key = (source, alpha): quads in one mesh share a texture AND an opacity (mesh.alpha).
-    const bySource = new Map<
-      string,
-      { source: TextureSource; alpha: number; still: MapObjectSprite[]; moving: MapObjectSprite[] }
-    >();
-    let sourceId = 0;
-    const sourceIds = new Map<TextureSource, number>();
-    for (const obj of block) {
-      let id = sourceIds.get(obj.source);
-      if (id === undefined) {
-        id = sourceId++;
-        sourceIds.set(obj.source, id);
-      }
-      const key = `${id}:${obj.alpha}`;
-      let group = bySource.get(key);
-      if (group === undefined) {
-        group = { source: obj.source, alpha: obj.alpha, still: [], moving: [] };
-        bySource.set(key, group);
-      }
-      (obj.frames.length > 1 ? group.moving : group.still).push(obj);
-      // The AABB covers every frame the object can show (frames differ a little in size/offset).
-      for (const frame of obj.frames) {
-        minX = Math.min(minX, obj.x + frame.offsetX * obj.scale);
-        minY = Math.min(minY, obj.y + frame.offsetY * obj.scale);
-        maxX = Math.max(maxX, obj.x + (frame.offsetX + frame.width) * obj.scale);
-        maxY = Math.max(maxY, obj.y + (frame.offsetY + frame.height) * obj.scale);
-      }
-    }
-    const animated: AnimatedDecorBatch[] = [];
-    for (const group of bySource.values()) {
-      const source = group.source;
-      if (group.still.length > 0) {
-        container.addChild(buildQuadBatch(group.still, source, group.alpha).mesh);
-      }
-      if (group.moving.length > 0) {
-        const batch = buildQuadBatch(group.moving, source, group.alpha);
-        container.addChild(batch.mesh);
-        animated.push({
-          objects: group.moving,
-          positions: batch.positions,
-          uvs: batch.uvs,
-          geometry: batch.geometry,
-          pageW: source.width,
-          pageH: source.height,
-        });
-      }
-    }
-    this.decorContainer.addChild(container);
-    // Animated quads were written for tick 0 at build; the first update rewrites any other tick.
-    return { container, minX, minY, maxX, maxY, animated, lastWrittenTick: 0 };
   }
 }

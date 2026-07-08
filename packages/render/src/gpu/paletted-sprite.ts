@@ -1,5 +1,5 @@
 import { Mesh, MeshGeometry, Shader, type TextureSource } from 'pixi.js';
-import type { AtlasFrame } from '../data/sprites.js';
+import type { AtlasFrame } from '../data/sprites/index.js';
 
 /**
  * GUI transparent-key mode for a {@link PalettedSprite} (see {@link PalettedSprite.colorKey}). `'off'` draws
