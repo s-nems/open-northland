@@ -49,7 +49,11 @@ export async function renderSceneMode(
   const overlay = mountSceneOverlay(scene);
 
   // Interactive camera over the scene: `?zoom` is the starting frame, then the human pans (middle-mouse
-  // drag / arrow keys) and zooms (scroll wheel).
+  // drag / arrow keys) and zooms (scroll wheel). Frame on the FIRST TICK's snapshot, not the initial
+  // one: a scene's build() enqueues spawn COMMANDS that run on tick 1, so the tick-0 snapshot is empty
+  // and `cameraFor`'s settler-centroid framing fell back to the tile origin (an off-centre first frame
+  // on every scene). One step is imperceptible and deterministic — the headless twin runs the same sim.
+  sim.step();
   const cameraCtl = createCameraController(
     canvas,
     cameraFor(buildSpriteScene(sim.snapshot()), zoom, app.screen.width, app.screen.height),

@@ -255,6 +255,26 @@ describe('buildScene', () => {
     expect(scene.find((d) => d.kind === 'settler' && d.ref === 1)?.facing).toBe(1); // W from path, not E
   });
 
+  it('classifies an in-flight Projectile and aims its rotation at the target', () => {
+    // The shot at (1,1) homes on a target one column EAST (2,1): the screen heading is (+x, 0) → 0 rad.
+    const shot = entity(1, 1, 1, {
+      Projectile: { target: 2, source: 3, damage: 34, speed: 8, munitionType: 1 },
+    });
+    const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
+    const scene = buildScene(snapshotOf([shot, target]), FLAT_3x2);
+    const arrow = scene.find((d) => d.kind === 'projectile');
+    expect(arrow?.ref).toBe(1);
+    expect(arrow?.rotation).toBeCloseTo(0); // points screen-east, along the flight
+  });
+
+  it('a projectile whose target left the snapshot draws with no rotation (never a throw)', () => {
+    const shot = entity(1, 1, 1, {
+      Projectile: { target: 99, source: 3, damage: 34, speed: 8, munitionType: 1 },
+    });
+    const scene = buildScene(snapshotOf([shot]), FLAT_3x2);
+    expect(scene.find((d) => d.kind === 'projectile')?.rotation).toBeUndefined();
+  });
+
   it('marks a settler engaged when it carries the Engagement component', () => {
     const scene = buildScene(
       snapshotOf([

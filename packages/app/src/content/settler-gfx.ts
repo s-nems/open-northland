@@ -331,6 +331,34 @@ function singleDirAnim(row: BobSeqRow | undefined): DirectionalAnim | undefined 
 }
 
 /**
+ * `gfxanimframelistdir <dir>` index → the render FACING (the `CR_Hum_Body` strip-block order
+ * `0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N` — source basis "Settler facing"). The source's `<dir>`
+ * space is the engine's movement-direction ring: the staggered-lattice hex neighbours clockwise from
+ * screen-east (`0 E, 1 SE, 2 SW, 3 W, 4 NW, 5 NE`) plus the two row-crossing verticals (`6 N, 7 S`).
+ * DATA-PINNED, not guessed: across all 123 extracted HUMAN-body `[gfxanimatomic]` records whose body
+ * strip is a uniform ×8 block layout, every dir-`d` frame list indexes exclusively into strip block
+ * `GFX_DIR_TO_BLOCK[d]` (the one dissenter is the `animal_bear_fight` body with its own block order —
+ * irrelevant to these human bindings). Indexing frame lists by facing WITHOUT this remap draws the
+ * NW swing on an east-facing attacker.
+ */
+const GFX_DIR_TO_BLOCK = [4, 5, 0, 1, 2, 3, 7, 6] as const;
+
+/**
+ * Reorder a `[gfxanimatomic]` per-`<dir>` frame-list table into the render's per-FACING order (a
+ * {@link FrameListAnim}'s `frameLists` is indexed by facing). A single-list table is facing-locked and
+ * plays verbatim; a missing dir slot stays an empty list (`frameOf` then holds the pool's first frame
+ * for that facing rather than borrowing a neighbour's swing). Pure.
+ */
+function frameListsByFacing(dirLists: readonly (readonly number[])[]): readonly (readonly number[])[] {
+  if (dirLists.length < DIRS) return dirLists; // facing-locked single list — no direction table to remap
+  const byFacing: (readonly number[])[] = new Array(DIRS).fill([]);
+  GFX_DIR_TO_BLOCK.forEach((facing, dir) => {
+    byFacing[facing] = dirLists[dir] ?? [];
+  });
+  return byFacing;
+}
+
+/**
  * Build the per-`goodType` loaded-gait table for one body: for each content good, resolve its carry
  * sequence `<prefix><suffix>` (suffix = the slug, via {@link CARRY_SEQ_SUFFIX} when aliased) and bind
  * `moving` to the full ×8 cycle + `idle` to its first-frame hold (the still loaded pose a depositor
@@ -606,13 +634,14 @@ export function characterBinding(
 
   // The combat attack swing → a FrameListAnim on {@link ATTACK_ATOMIC}: the swing pool's `start` from the
   // `[bobseq]` row, its per-direction layout from the extracted viking `[gfxanimatomic]` frame lists
-  // (keyed by the same seq name). Bound only when BOTH resolve — a body/IR missing either just has no
+  // (keyed by the same seq name), REORDERED from the source's <dir> space into the render's facing order
+  // ({@link frameListsByFacing}). Bound only when BOTH resolve — a body/IR missing either just has no
   // attack animation (the unit stands its ready pose mid-swing), never a bogus uniform slice.
   if (spec.attack !== undefined) {
     const row = seqByName.get(spec.attack);
-    const frameLists = attackFrameLists?.get(spec.attack);
-    if (row !== undefined && row.length > 0 && frameLists !== undefined && frameLists.length > 0) {
-      const swing: FrameListAnim = { start: row.start, frameLists };
+    const dirLists = attackFrameLists?.get(spec.attack);
+    if (row !== undefined && row.length > 0 && dirLists !== undefined && dirLists.length > 0) {
+      const swing: FrameListAnim = { start: row.start, frameLists: frameListsByFacing(dirLists) };
       byAtomic[ATTACK_ATOMIC] = swing;
     }
   }

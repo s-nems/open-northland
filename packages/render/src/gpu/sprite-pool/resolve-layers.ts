@@ -63,6 +63,10 @@ export function resolveLayers(
   tick: number,
 ): ResolvedLayer[] | null {
   if (sheet === undefined) return null;
+  // A projectile has NO decoded arrow bob (only character bodies are extracted) — it always draws the
+  // pool's oriented-arrow marker, never a borrowed atlas frame. Named gap; plan step 6 hunts the
+  // effects bmds once.
+  if (item.kind === 'projectile') return null;
 
   // Per-job settler CHARACTER (the `[jobbasegraphics]` join): the job's own body + one stable head
   // pick + its own binding, resolved in that body's frame-id space. Falls through to the sheet-global

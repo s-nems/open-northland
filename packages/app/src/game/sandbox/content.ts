@@ -37,12 +37,17 @@ import {
   GOOD_WOOD,
   type GathererSpec,
   JOB_ARCHER,
+  JOB_ARCHER_LONG,
   JOB_CARRIER,
   JOB_GATHERER_WOOD,
   JOB_IDLE,
+  JOB_SOLDIER_BROADSWORD,
+  JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
+  WEAPON_BROADSWORD,
   WEAPON_LONG_BOW,
   WEAPON_SHORT_BOW,
+  WEAPON_SPEAR,
   WEAPON_SWORD,
 } from './ids.js';
 
@@ -54,7 +59,7 @@ import {
  * (`scenes/sandbox-queries.ts`); this module only assembles the validated content set.
  */
 
-/** The attack atomic (81) both soldier jobs bind: the swordsman's swing and the archer's bow draw. */
+/** The attack atomic (81) every soldier job binds: the melee swing / the archer's bow draw. */
 const ATTACK_ATOMIC = 81;
 /** Munition type 1 = arrow — what the bows fire. */
 const ARROW_MUNITION = 1;
@@ -62,15 +67,29 @@ const ARROW_MUNITION = 1;
 const RANGED_MAIN_TYPE = 6;
 /** The real short/long-bow projectile speed. */
 const BOW_SPEED = 8;
+/** ATTACK event type (25): the frame a melee blow lands / a bow draw looses its arrow. */
+const ATTACK_EVENT_TYPE = 25;
+// Swing lengths + hit/release frames, TRANSCRIBED from the extracted viking `atomicanimations.ini`
+// records (`viking_soldier_attack_*` — length + the `event <frame> 25`). The sim swing duration must
+// equal the decoded gfx frame-list length (`[gfxanimatomic]` per-direction counts: sword 12, spear 27,
+// broadsword 29, bows 12/28) or the DRAWN swing truncates mid-animation — the sandbox previously ran a
+// made-up 4-tick sword swing against the 12-frame decoded swing, playing only its wind-up.
+const SWORD_SWING_LENGTH = 12; // viking_soldier_attack_sword_short
+const SWORD_HIT_FRAME = 9;
+const SPEAR_SWING_LENGTH = 27; // viking_soldier_attack_spear_iron
+const SPEAR_HIT_FRAME = 17;
+const BROADSWORD_SWING_LENGTH = 29; // viking_soldier_attack_sword_long
+const BROADSWORD_HIT_FRAME = 16;
+const SHORT_BOW_DRAW_LENGTH = 12; // viking_soldier_attack_bow_short
+const SHORT_BOW_RELEASE_FRAME = 10;
+const LONG_BOW_DRAW_LENGTH = 28; // viking_soldier_attack_bow_long
+const LONG_BOW_RELEASE_FRAME = 22;
+// Damage on the sandbox's own synthetic scale (the real per-material tables live in the extracted
+// content; scene hitpoints are chosen so a duel takes several full swings — see the combat scene).
 const BOW_DAMAGE = 34;
 const SWORD_DAMAGE = 40;
-/** ATTACK event type (25): the frame a bow draw looses its arrow. */
-const ATTACK_EVENT_TYPE = 25;
-/** The sword swing plays over 4 frames and lands at completion (no mid-swing event). */
-const SWORD_SWING_LENGTH = 4;
-/** The bow draw plays over 12 frames; the arrow is loosed at the release frame (6), mid-draw, not at completion. */
-const BOW_DRAW_LENGTH = 12;
-const BOW_RELEASE_FRAME = 6;
+const SPEAR_DAMAGE = 45;
+const BROADSWORD_DAMAGE = 55;
 
 export interface SandboxContentExtras {
   readonly buildings?: readonly { typeId: number; id: string; kind?: string }[];
@@ -224,8 +243,11 @@ export function sandboxContent(map?: TerrainMap, extras: SandboxContentExtras = 
       allowedAtomics: [g.atomic],
     })),
     { typeId: JOB_CARRIER, id: 'carrier', name: 'Tragarz' },
+    { typeId: JOB_SOLDIER_SPEAR, id: 'soldier_spear', name: 'Wlocznik' },
     { typeId: JOB_SOLDIER_SWORD, id: 'soldier_sword', name: 'Miecznik' },
+    { typeId: JOB_SOLDIER_BROADSWORD, id: 'soldier_broadsword', name: 'Miecznik (dwureczny)' },
     { typeId: JOB_ARCHER, id: 'soldier_bow', name: 'Lucznik' },
+    { typeId: JOB_ARCHER_LONG, id: 'soldier_bow_long', name: 'Lucznik (dlugi luk)' },
   ]) {
     jobs.set(j.typeId, j);
   }
@@ -240,8 +262,11 @@ export function sandboxContent(map?: TerrainMap, extras: SandboxContentExtras = 
     id: 'viking',
     atomicBindings: [
       ...GATHERERS.map((g) => ({ jobType: g.job, atomicId: g.atomic, animation: g.animation })),
+      { jobType: JOB_SOLDIER_SPEAR, atomicId: ATTACK_ATOMIC, animation: 'viking_spear_attack' },
       { jobType: JOB_SOLDIER_SWORD, atomicId: ATTACK_ATOMIC, animation: 'viking_sword_attack' },
+      { jobType: JOB_SOLDIER_BROADSWORD, atomicId: ATTACK_ATOMIC, animation: 'viking_broadsword_attack' },
       { jobType: JOB_ARCHER, atomicId: ATTACK_ATOMIC, animation: 'viking_bow_attack' },
+      { jobType: JOB_ARCHER_LONG, atomicId: ATTACK_ATOMIC, animation: 'viking_bow_long_attack' },
     ],
     jobEnables: [{ jobType: JOB_IDLE, kind: 'good', targetId: GOOD_COIN }],
   });
@@ -330,6 +355,15 @@ export function sandboxContent(map?: TerrainMap, extras: SandboxContentExtras = 
     })),
     weapons: [
       {
+        typeId: WEAPON_SPEAR,
+        id: 'viking_spear',
+        tribeType: PRIMARY_TRIBE,
+        jobType: JOB_SOLDIER_SPEAR,
+        minRange: 1,
+        maxRange: 2, // a spear pokes one cell further than a sword (the original's long-melee band)
+        damage: { '0': SPEAR_DAMAGE },
+      },
+      {
         typeId: WEAPON_SWORD,
         id: 'viking_sword',
         tribeType: PRIMARY_TRIBE,
@@ -337,6 +371,15 @@ export function sandboxContent(map?: TerrainMap, extras: SandboxContentExtras = 
         minRange: 1,
         maxRange: 1,
         damage: { '0': SWORD_DAMAGE },
+      },
+      {
+        typeId: WEAPON_BROADSWORD,
+        id: 'viking_broadsword',
+        tribeType: PRIMARY_TRIBE,
+        jobType: JOB_SOLDIER_BROADSWORD,
+        minRange: 1,
+        maxRange: 2, // the original's long sword reaches 1–2
+        damage: { '0': BROADSWORD_DAMAGE },
       },
       {
         typeId: WEAPON_SHORT_BOW,
@@ -354,7 +397,7 @@ export function sandboxContent(map?: TerrainMap, extras: SandboxContentExtras = 
         typeId: WEAPON_LONG_BOW,
         id: 'viking_long_bow',
         tribeType: PRIMARY_TRIBE,
-        jobType: JOB_ARCHER,
+        jobType: JOB_ARCHER_LONG,
         mainType: RANGED_MAIN_TYPE,
         munitionType: ARROW_MUNITION,
         speed: BOW_SPEED,
@@ -370,12 +413,37 @@ export function sandboxContent(map?: TerrainMap, extras: SandboxContentExtras = 
         name: g.animation,
         length: HARVEST_TICKS[g.atomic] ?? 1,
       })),
-      { id: 'viking_sword_attack', name: 'viking_sword_attack', length: SWORD_SWING_LENGTH },
+      // Each swing carries its mid-animation ATTACK event (the blow lands / the arrow looses THERE,
+      // not at completion) — lengths + frames transcribed from the viking atomicanimations records.
+      {
+        id: 'viking_spear_attack',
+        name: 'viking_spear_attack',
+        length: SPEAR_SWING_LENGTH,
+        events: [{ at: SPEAR_HIT_FRAME, type: ATTACK_EVENT_TYPE }],
+      },
+      {
+        id: 'viking_sword_attack',
+        name: 'viking_sword_attack',
+        length: SWORD_SWING_LENGTH,
+        events: [{ at: SWORD_HIT_FRAME, type: ATTACK_EVENT_TYPE }],
+      },
+      {
+        id: 'viking_broadsword_attack',
+        name: 'viking_broadsword_attack',
+        length: BROADSWORD_SWING_LENGTH,
+        events: [{ at: BROADSWORD_HIT_FRAME, type: ATTACK_EVENT_TYPE }],
+      },
       {
         id: 'viking_bow_attack',
         name: 'viking_bow_attack',
-        length: BOW_DRAW_LENGTH,
-        events: [{ at: BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE }],
+        length: SHORT_BOW_DRAW_LENGTH,
+        events: [{ at: SHORT_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE }],
+      },
+      {
+        id: 'viking_bow_long_attack',
+        name: 'viking_bow_long_attack',
+        length: LONG_BOW_DRAW_LENGTH,
+        events: [{ at: LONG_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE }],
       },
     ],
   });

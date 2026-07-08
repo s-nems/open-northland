@@ -9,7 +9,7 @@ import { PalettedSprite } from '../paletted-sprite.js';
 import type { SpriteSheet } from '../pixi-app.js';
 import type { TextureCache } from '../texture-cache.js';
 import { trackMotion } from './motion.js';
-import { drawPlaceholder, placeholderBody } from './placeholder.js';
+import { PROJECTILE_FLIGHT_HEIGHT, drawPlaceholder, placeholderBody } from './placeholder.js';
 import { type EntityBounds, type PooledEntity, createPooled } from './pooled-entity.js';
 import { reconcileSprites } from './reconcile.js';
 import { type ResolvedLayer, resolveLayers } from './resolve-layers.js';
@@ -204,7 +204,7 @@ export class SpritePool {
         : item;
     const layers = resolveLayers(this.sheet, drawItem, frame.tick);
     if (layers === null) {
-      this.showPlaceholder(pe);
+      this.showPlaceholder(pe, item);
       return;
     }
     if (pe.placeholder !== undefined) pe.placeholder.visible = false;
@@ -212,14 +212,20 @@ export class SpritePool {
   }
 
   /** Show (lazily building) the placeholder marker — the unbound / no-sheet fallback — and stamp the
-   *  entity's bounds from the placeholder's fixed body box. Any atlas sprites are hidden. */
-  private showPlaceholder(pe: PooledEntity): void {
+   *  entity's bounds from the placeholder's fixed body box. Any atlas sprites are hidden. A PROJECTILE
+   *  always draws this path (no decoded arrow bob exists): its arrow flies at body height and rotates
+   *  to the item's flight heading each frame. */
+  private showPlaceholder(pe: PooledEntity, item: DrawItem): void {
     for (const s of pe.sprites) s.visible = false;
     if (pe.placeholder === undefined) {
       pe.placeholder = drawPlaceholder(new Graphics(), pe.kind);
+      if (pe.kind === 'projectile') pe.placeholder.position.y = -PROJECTILE_FLIGHT_HEIGHT;
       pe.container.addChild(pe.placeholder);
     }
     pe.placeholder.visible = true;
+    // Rotation applies about the graphic's own origin (the shaft centre), so the flight-height offset
+    // above is NOT rotated with it — the arrow stays level above its ground anchor and only aims.
+    if (pe.kind === 'projectile') pe.placeholder.rotation = item.rotation ?? 0;
     const { bodyW, bodyH } = placeholderBody(pe.kind);
     const halfW = Math.max(9, bodyW / 2);
     const drawX = pe.motion.drawX;

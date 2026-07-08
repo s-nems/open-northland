@@ -5,7 +5,7 @@ import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
 import {
   GATHERERS,
   GOOD_WOOD,
-  JOB_ARCHER,
+  JOB_ARCHER_LONG,
   JOB_GATHERER_WOOD,
   JOB_SOLDIER_SWORD,
   WEAPON_LONG_BOW,
@@ -113,7 +113,9 @@ function buildControllableUnits(sim: Simulation): void {
     });
   }
   for (const post of ARCHER_POSTS) {
-    spawnSandboxSettler(sim, JOB_ARCHER, post.x, post.y, HUMAN_PLAYER, {
+    // The long bow is job 41's weapon (the real viking job split) — job 40 would draw the short-bow
+    // body and truncate the 28-frame long-bow draw against job 40's 12-tick animation.
+    spawnSandboxSettler(sim, JOB_ARCHER_LONG, post.x, post.y, HUMAN_PLAYER, {
       hitpoints: BLUE_HP,
       weaponTypeId: WEAPON_LONG_BOW,
     });

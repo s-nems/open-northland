@@ -588,6 +588,26 @@ describe('characterBinding', () => {
     });
   });
 
+  it('reorders a full 8-dir frame-list table from the source <dir> space into facing order', () => {
+    const seqs = new Map([
+      ['wait', { name: 'wait', start: 1931, length: 57 }],
+      ['spear_attack', { name: 'spear_attack', start: 2255, length: 108 }],
+    ]);
+    const spec = { rosterId: 'warrior', waitSeq: 'wait', attack: 'spear_attack' } as const;
+    // Source <dir> order: 0 E, 1 SE, 2 SW, 3 W, 4 NW, 5 NE, 6 N, 7 S (each list tagged by its dir).
+    const dirLists = new Map<string, readonly (readonly number[])[]>([
+      ['spear_attack', [[0], [1], [2], [3], [4], [5], [6], [7]]],
+    ]);
+    const swing = characterBinding(spec, seqs, [], dirLists)?.byAtomic?.[81];
+    // Facing order is the strip-block compass (0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N): the
+    // east-facing swing (facing 4) must play the source dir-0 (E) list, and so on around the ring —
+    // GFX_DIR_TO_BLOCK = [4,5,0,1,2,3,7,6], data-pinned by the 123 human-body [gfxanimatomic] records.
+    expect(swing).toEqual({
+      start: 2255,
+      frameLists: [[2], [3], [4], [5], [0], [1], [7], [6]],
+    });
+  });
+
   it('omits the attack swing when the frame lists are absent (no gfxAtomics for the seq)', () => {
     const seqs = new Map([
       ['wait', { name: 'wait', start: 1931, length: 57 }],
