@@ -1,9 +1,9 @@
 import { Health, Position, Projectile } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { type PendingStagger, applyPendingStaggers, resolveCombatHit } from '../agents/atomic.js';
 import type { System, SystemContext } from '../context.js';
 import { canonicalById } from '../spatial.js';
-import { type PendingStagger, applyPendingStaggers, resolveCombatHit } from './atomic.js';
 
 /**
  * How many tiles a projectile advances **per tick per unit** of the weapon's extracted `WeaponType.speed`
