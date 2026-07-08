@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { LandscapeGfxRow, RenderIr } from '../src/content/ir.js';
+import type { ContentIr, LandscapeGfxRow } from '../src/content/ir.js';
 import {
   DEFAULT_RESOURCE_STEM,
   FLAG_EDIT_NAME,
@@ -86,7 +86,7 @@ const FLAG: LandscapeGfxRow = {
   frames: [{ state: 1, bobIds: [33] }],
 };
 
-const IR: RenderIr = {
+const IR: ContentIr = {
   landscapeGfx: [WOOD_NODE, STONE_NODE, WOOD_TRUNK, WOOD_PILE, STONE_PILE, FLAG],
   gatheringPipeline: [
     {

@@ -1,5 +1,6 @@
-import { type SpriteLayer, type TextureSource, loadAtlasSource } from '@vinland/render';
+import type { SpriteLayer, TextureSource } from '@vinland/render';
 import { loadLayer } from './ir.js';
+import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /**
  * GUI (in-game HUD) content bindings — the loadable seam for the pipeline's `gui` stage outputs, the GUI
@@ -78,11 +79,8 @@ export function loadGuiWindowIndexed(): Promise<SpriteLayer> {
  * per row) the indexed GUI atlases are coloured through — the GUI twin of `loadPlayerLut`. Returns
  * `undefined` when the pipeline hasn't produced it, so a caller degrades to the RGBA preview atlas.
  */
-export async function loadGuiPaletteLut(): Promise<TextureSource | undefined> {
-  const url = `/bobs/${GUI_PALETTE_LUT_STEM}.png`;
-  const res = await fetch(url, { method: 'HEAD' });
-  if (!res.ok) return undefined;
-  return loadAtlasSource(url);
+export function loadGuiPaletteLut(): Promise<TextureSource | undefined> {
+  return loadTextureIfPresent(`/bobs/${GUI_PALETTE_LUT_STEM}.png`);
 }
 
 /**
@@ -90,12 +88,6 @@ export async function loadGuiPaletteLut(): Promise<TextureSource | undefined> {
  * pipeline hasn't produced them (a checkout without `content/`), so a caller can fall back to placeholder
  * labels instead of crashing.
  */
-export async function loadGuiStrings(lang: string): Promise<GuiStrings | null> {
-  try {
-    const res = await fetch(`${GUI_ROOT}/strings/${lang}.json`);
-    if (!res.ok) return null;
-    return (await res.json()) as GuiStrings;
-  } catch {
-    return null;
-  }
+export function loadGuiStrings(lang: string): Promise<GuiStrings | null> {
+  return fetchJsonOrNull<GuiStrings>(`${GUI_ROOT}/strings/${lang}.json`);
 }

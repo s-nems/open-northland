@@ -12,11 +12,12 @@ import {
   setTilePitch,
 } from '@vinland/render';
 import { FixedTimestep, type SimEvent } from '@vinland/sim';
-import { createSoundDriver, fetchAudioIr } from '../content/audio.js';
+import { createSoundDriver } from '../content/audio.js';
+import { loadIr } from '../content/ir.js';
 import { loadMapObjects } from '../content/objects.js';
 import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
-import { fetchTerrainIr, loadRealTerrain } from '../content/terrain.js';
+import { loadRealTerrain } from '../content/terrain.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
 import { DEFAULT_UI_SCALE } from '../hud/tool-panel-layout.js';
 import {
@@ -102,17 +103,15 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
   const sheet = await resolveSpriteSheet(params, sandboxGoods());
   // Real ground textures + map objects are the DEFAULT (like the sprite atlases), each behind its
   // own opt-out (`?terrain=off` → flat tint, `?objects=off` → bare ground) and each degrading
-  // gracefully when content/ is absent — the shared multi-MB ir.json is fetched once for both.
+  // gracefully when content/ is absent — the shared multi-MB ir.json is fetched once for everything
+  // (the memoized loadIr; the sprite-sheet resolution above already paid it).
   let ir = null;
   const wantTerrain = params.get('terrain') !== 'off';
   const wantObjects = loaded?.objects !== undefined && params.get('objects') !== 'off';
   const wantEntities = loaded?.entities !== undefined;
   if (wantTerrain || wantObjects || wantEntities) {
-    try {
-      ir = await fetchTerrainIr();
-    } catch (err) {
-      console.warn(`content/ir.json unavailable, placeholder graphics fallback: ${String(err)}`);
-    }
+    ir = await loadIr();
+    if (ir === null) console.warn('content/ir.json unavailable, placeholder graphics fallback');
   }
   let terrain: Awaited<ReturnType<typeof loadRealTerrain>> | undefined;
   if (wantTerrain && ir !== null) {
@@ -171,9 +170,7 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
   // keeps audio suspended until a user gesture; the enable-sound prompt persists until the context is
   // confirmed running, so the gesture can't be dropped while the slice is still loading.
   const wantSound = params.get('sound') !== 'off';
-  const soundDriver = wantSound
-    ? createSoundDriver(await fetchAudioIr(), { chopAtomicId: HARVEST_ATOMIC })
-    : null;
+  const soundDriver = wantSound ? createSoundDriver(await loadIr(), { chopAtomicId: HARVEST_ATOMIC }) : null;
   if (soundDriver !== null) enableAudioOnGesture(soundDriver);
 
   // On-canvas FPS + entity/drawn/pooled readout (bottom-left) so a human can judge whether the map holds

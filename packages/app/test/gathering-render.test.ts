@@ -7,7 +7,7 @@ import {
   IRON_DEPOSIT_UNITS,
   STONE_DEPOSIT_UNITS,
 } from '../src/catalog/mining.js';
-import type { LandscapeGfxRow, RenderIr } from '../src/content/ir.js';
+import type { ContentIr, LandscapeGfxRow } from '../src/content/ir.js';
 import {
   buildResourceBinding,
   buildStockpileBinding,
@@ -99,7 +99,7 @@ describe('gathering scene — per-good + stump binding resolution (each draws it
     frames,
     ...(editName !== undefined ? { editName } : {}),
   });
-  const ir: RenderIr = {
+  const ir: ContentIr = {
     landscapeGfx: [
       rec(1, 4, 'tree_yew01', [{ state: 3, bobIds: [60] }], 'ls_trees'),
       rec(2, 15, 'rock03', [{ state: 4, bobIds: [10] }]),
@@ -171,7 +171,7 @@ describe('gathering scene — per-good + stump binding resolution (each draws it
     // A clay mine record with 5 fill states, authored highest-first (state 5 full → state 1 dregs) — the
     // real ls_ground mine shape. buildResourceBinding orders them empty→full, resolveResourceDraw indexes
     // by the node's shrink-by-level fill.
-    const mine: RenderIr = {
+    const mine: ContentIr = {
       landscapeGfx: [
         rec(
           10,

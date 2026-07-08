@@ -5,6 +5,7 @@ import {
   loadAtlasSource,
   patternSrcRect,
 } from '@vinland/render';
+import { type ContentIr, loadIr } from './ir.js';
 
 /**
  * The real-ground binding: draw the terrain from REAL decoded `text_*.pcx` textures instead of the
@@ -21,64 +22,7 @@ import {
  *    (`buildTerrainPatterns` — a recorded deviation, source basis).
  */
 
-/** One `TerrainPattern` row as it ships in `content/ir.json` (the fields the render binding needs). */
-interface TerrainPatternRow {
-  readonly typeId: number;
-  readonly texture: string;
-  readonly coordsA: number[];
-  readonly coordsB: number[];
-  readonly debugColor?: [number, number, number];
-}
-
-/** One `GfxPattern` row as it ships in `content/ir.json` (the 1:1 per-triangle join fields). */
-interface GfxPatternRow {
-  readonly editName?: string;
-  readonly texture?: string;
-  readonly coordsA?: number[];
-  readonly coordsB?: number[];
-}
-
-/** The slice of `content/ir.json` the terrain + map-object bindings read. The four trailing row
- *  views feed the authored-entity joins (`resolveAuthoredPlacements` — a `map.cif` building/human
- *  name resolves to its sim typeId through these), so a map with `entities` needs no second fetch. */
-export interface TerrainIr {
-  readonly terrainPatterns?: TerrainPatternRow[];
-  readonly gfxPatterns?: GfxPatternRow[];
-  readonly landscapeGfx?: LandscapeGfxRow[];
-  readonly buildingBobs?: { editName?: string; level?: number; typeId?: number; tribeId?: number }[];
-  readonly buildings?: { typeId?: number; id?: string; kind?: string }[];
-  readonly jobs?: { typeId?: number; id?: string; name?: string }[];
-  readonly tribes?: { typeId?: number; id?: string }[];
-}
-
-/** One `LandscapeGfx` row as it ships in `content/ir.json` (the map-object binding fields). */
-export interface LandscapeGfxRow {
-  readonly editName?: string;
-  readonly bmd?: string;
-  readonly paletteName?: string;
-  readonly frames?: { state: number; bobIds: number[] }[];
-  readonly isStatic?: boolean;
-  readonly loopAnimation?: boolean;
-  readonly dynamicBackground?: boolean;
-  readonly walkBlockAreas?: number[][];
-}
-
 type LoadedSource = Awaited<ReturnType<typeof loadAtlasSource>>;
-
-/**
- * Fetch the served `content/ir.json` once for the terrain + map-object bindings. Throws a pointed
- * error if the IR is missing (the pipeline hasn't been run) — an environment precondition the caller
- * turns into its graceful fallback.
- */
-export async function fetchTerrainIr(): Promise<TerrainIr> {
-  const res = await fetch('/ir.json');
-  if (!res.ok) {
-    throw new Error(
-      `terrain: content/ir.json not found (HTTP ${res.status}). Run \`npm run pipeline\` against an owned game copy to populate content/.`,
-    );
-  }
-  return (await res.json()) as TerrainIr;
-}
 
 /** Texture page key from a `data/.../text_NNN.pcx` path: the basename without its extension (`text_NNN`). */
 function pageKeyOf(texture: string): string {
@@ -96,11 +40,16 @@ function rgbToHex(rgb: readonly [number, number, number] | undefined): number | 
  * Load the real {@link TerrainTextureSet}: the approximated per-typeId {@link CellTexture} table
  * (from `terrainPatterns`) PLUS the 1:1 per-triangle pattern join (from the full `gfxPatterns`
  * table, keyed by `EditName`), then every referenced `text_NNN.png` page as a GPU source. Throws if
- * the IR is missing (an environment precondition, not a recoverable failure); pass a pre-fetched
- * `ir` to share the (multi-MB) fetch with the map-object loader.
+ * the IR is missing (an environment precondition, not a recoverable failure); the shared memoized
+ * {@link loadIr} means the (multi-MB) fetch is paid once per page regardless of who reads it first.
  */
-export async function loadRealTerrain(ir?: TerrainIr): Promise<TerrainTextureSet> {
-  const tables = ir ?? (await fetchTerrainIr());
+export async function loadRealTerrain(ir?: ContentIr): Promise<TerrainTextureSet> {
+  const tables = ir ?? (await loadIr());
+  if (tables === null) {
+    throw new Error(
+      'terrain: content/ir.json not found. Run `npm run pipeline` against an owned game copy to populate content/.',
+    );
+  }
   const rows = tables.terrainPatterns ?? [];
   const cellByType = new Map<number, CellTexture>();
   const pageKeys = new Set<string>();

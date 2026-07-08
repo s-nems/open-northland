@@ -1,12 +1,10 @@
 import {
-  type AtlasManifest,
   type ElevationField,
   type MapObjectSprite,
-  atlasFromManifest,
+  type SpriteLayer,
   halfCellToScreen,
-  loadAtlasSource,
 } from '@vinland/render';
-import type { LandscapeGfxRow, TerrainIr } from './terrain.js';
+import { type ContentIr, type LandscapeGfxRow, MissingAtlasError, loadLayer } from './ir.js';
 
 /**
  * The map-object binding: turn a decoded map's `objects` layer (the original's `emla` half-cell
@@ -48,12 +46,6 @@ export function stateIndexForLevel(level: number, stateCount: number): number {
   return level >= 1 && level <= stateCount ? stateCount - level : 0;
 }
 
-/** One loaded body atlas: frame geometry + GPU source, keyed by `<bmd stem>.<palette>`. */
-interface LoadedLayer {
-  readonly frames: ReturnType<typeof atlasFromManifest>['frames'];
-  readonly source: Awaited<ReturnType<typeof loadAtlasSource>>;
-}
-
 /** The `/bobs/` atlas key for a record: `<bmd basename minus .bmd>.<palette>` (the pipeline's naming). */
 function atlasKeyOf(record: LandscapeGfxRow): string | null {
   if (record.bmd === undefined || record.paletteName === undefined) return null;
@@ -61,15 +53,14 @@ function atlasKeyOf(record: LandscapeGfxRow): string | null {
   return `${stem}.${record.paletteName}`;
 }
 
-/** Fetch one decoded atlas (manifest + PNG). Returns null on a 404 (partial content/). */
-async function loadLayer(key: string): Promise<LoadedLayer | null> {
-  const res = await fetch(`/bobs/${key}.atlas.json`);
-  if (!res.ok) return null;
-  const manifest = (await res.json()) as AtlasManifest;
-  return {
-    frames: atlasFromManifest(manifest).frames,
-    source: await loadAtlasSource(`/bobs/${key}.png`),
-  };
+/** One decoded atlas via the shared {@link loadLayer}, with a 404 (partial `content/`) degraded to null. */
+async function loadLayerOrNull(key: string): Promise<SpriteLayer | null> {
+  try {
+    return await loadLayer(key);
+  } catch (err) {
+    if (err instanceof MissingAtlasError) return null;
+    throw err;
+  }
 }
 
 /**
@@ -96,7 +87,7 @@ async function loadLayer(key: string): Promise<LoadedLayer | null> {
  */
 export async function loadMapObjects(
   objects: MapObjectsData,
-  ir: TerrainIr,
+  ir: ContentIr,
   elevation?: ElevationField,
 ): Promise<MapObjectSprite[]> {
   const recordByName = new Map<string, LandscapeGfxRow>();
@@ -112,16 +103,16 @@ export async function loadMapObjects(
     const key = record !== undefined ? atlasKeyOf(record) : null;
     if (key !== null) layerKeys.add(key);
   }
-  const layers = new Map<string, LoadedLayer>();
+  const layers = new Map<string, SpriteLayer>();
   await Promise.all(
     [...layerKeys].map(async (key) => {
-      const layer = await loadLayer(key);
+      const layer = await loadLayerOrNull(key);
       if (layer !== null) layers.set(key, layer);
     }),
   );
 
   interface ResolvedType {
-    readonly source: LoadedLayer['source'];
+    readonly source: SpriteLayer['source'];
     readonly frames: MapObjectSprite['frames'];
     readonly decor: boolean;
     readonly alpha: number;
@@ -136,7 +127,7 @@ export async function loadMapObjects(
     if (layer === undefined) return [];
     return (record.frames ?? []).map((stateList) => {
       const frames = stateList.bobIds
-        .map((bobId) => layer.frames.get(bobId))
+        .map((bobId) => layer.atlas.frames.get(bobId))
         .filter((f): f is NonNullable<typeof f> => f !== undefined && f.width > 0 && f.height > 0);
       if (frames.length === 0) return null;
       const animated = record.loopAnimation === true && record.isStatic !== true && frames.length > 1;
