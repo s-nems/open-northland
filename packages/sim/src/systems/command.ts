@@ -15,7 +15,7 @@ import type { Entity, World } from '../ecs/world.js';
 import { attackUnit, moveUnit, setJob, setStance } from './conflict/orders.js';
 import { spawnAnimalHerd, spawnSettler } from './conflict/spawn.js';
 import type { System, SystemContext } from './context.js';
-import { canPlaceBuilding } from './footprint.js';
+import { canPlaceBuilding } from './footprint/index.js';
 import { buildingEnabled, tribeShipsUnlocked } from './progression.js';
 
 /**

@@ -4,7 +4,7 @@ import { HALF_COLUMN } from '../../nav/metric.js';
 import { findPath } from '../../nav/pathfinding.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System } from '../context.js';
-import { dynamicBlockedCells } from '../footprint.js';
+import { dynamicBlockedCells } from '../footprint/index.js';
 import { canonicalById, isValidCellId } from '../spatial.js';
 
 // pathfindingSystem lives in routing.ts (not pathfinding.ts) to avoid an eyeball collision with the
