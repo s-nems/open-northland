@@ -3,7 +3,7 @@ import { type Simulation, type TerrainMap, components } from '@vinland/sim';
 /**
  * The committed catalog of viking buildings — the SINGLE SOURCE OF TRUTH that maps a human name to the
  * one key the whole engine shares: `Building.buildingType` (the `typeId`, the original's `[GfxHouse]`
- * `LogicType`). That typeId is what {@link placeVikingBuilding} stamps on the sim entity AND what the
+ * `LogicType`). That typeId is what a `placeBuilding` command stamps on the sim entity AND what the
  * renderer keys its per-type bob lookup on (`content/building-gfx.ts` `buildingBobRefsByType`), so naming a
  * building here is enough to place it on the map AND draw its own graphic — no guessing, no reaching into
  * the gitignored `content/ir.json`.
@@ -116,22 +116,6 @@ export function resolveVikingBuilding(ref: number | string): VikingBuilding {
   const found = typeof ref === 'number' ? vikingBuildingByTypeId(ref) : vikingBuildingById(ref);
   if (found === undefined) throw new Error(`unknown viking building: ${JSON.stringify(ref)}`);
   return found;
-}
-
-/**
- * Place a viking building on the map by name — the game-ready ergonomic over the ONE mutation seam
- * (`placeBuilding`). `ref` is the building's `typeId` or its `id` (e.g. `'stock_02'`); it is placed
- * **fully built** for `tribe` {@link VIKING} at `(x, y)`. This is exactly what a build menu / a builder
- * finishing construction would call — the caller never handles a raw typeId.
- */
-export function placeVikingBuilding(sim: Simulation, ref: number | string, x: number, y: number): void {
-  sim.enqueue({
-    kind: 'placeBuilding',
-    buildingType: resolveVikingBuilding(ref).typeId,
-    x,
-    y,
-    tribe: VIKING,
-  });
 }
 
 /** An all-grass terrain grid of the given size (every cell walkable, buildable {@link GRASS}). */

@@ -81,6 +81,8 @@ const ARROW_PAN_SPEED = 600;
 const WHEEL_ZOOM_STEP = 1.1;
 /** The arrow keys the controller pans on (so it ignores every other key). */
 const ARROW_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
+/** Max wall-clock ms one held-key pan step integrates — a backgrounded tab resumes smoothly, not with a lurch. */
+const MAX_PAN_STEP_MS = 100;
 
 /** Pan the camera by a screen-pixel delta (mouse drag / arrow step). Pure; preserves `scale`. */
 export function panCamera(cam: Camera, dx: number, dy: number): Camera {
@@ -200,7 +202,7 @@ export function createCameraController(canvas: HTMLCanvasElement, initial: Camer
       if (held.size === 0) return;
       // Clamp the delta so a held key doesn't lurch the camera after the tab was backgrounded (RAF
       // pauses, then resumes with one huge elapsed) — the pan stays smooth, never a jump.
-      const step = (ARROW_PAN_SPEED * Math.min(dtMs, 100)) / 1000;
+      const step = (ARROW_PAN_SPEED * Math.min(dtMs, MAX_PAN_STEP_MS)) / 1000;
       let dx = 0;
       let dy = 0;
       // Camera-scroll convention: an arrow reveals the world in its direction (press right → look

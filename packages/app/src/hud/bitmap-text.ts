@@ -29,16 +29,6 @@ function glyphFor(font: BitmapFont, code: number): GlyphMetric | undefined {
   return font.metrics.glyphs[i];
 }
 
-/** Total pen advance of `text` in NATIVE font pixels (multiply by the draw scale for screen px). */
-export function measureBitmapText(font: BitmapFont, text: string): number {
-  let pen = 0;
-  for (let i = 0; i < text.length; i++) {
-    const g = glyphFor(font, text.charCodeAt(i));
-    pen += g?.advance ?? 0;
-  }
-  return pen;
-}
-
 /** One placed glyph sprite plus the native-pixel pen offset it sits at within the run. */
 interface RunGlyph {
   readonly sprite: PalettedSprite;
@@ -49,8 +39,6 @@ interface RunGlyph {
 export interface BitmapTextRun {
   /** Parent this under the panel's window/menu container for draw order (position is via {@link place}). */
   readonly container: Container;
-  /** The run's width in native font pixels. */
-  readonly width: number;
   /** Anchor the run's top-left at screen `(x, y)`, drawn at `scale` px per native pixel. */
   place(x: number, y: number, scale: number, resWidth: number, resHeight: number): void;
   destroy(): void;
@@ -82,7 +70,6 @@ export function createBitmapTextRun(font: BitmapFont, text: string, colorRow: nu
   }
   return {
     container,
-    width: pen,
     place(x, y, scale, resWidth, resHeight): void {
       for (const { sprite, penX } of glyphs) {
         sprite.place(x + penX * scale, y, scale, resWidth, resHeight);

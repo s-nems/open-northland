@@ -86,8 +86,6 @@ export interface UnitControls {
    * allocation and is not memoised, so re-snapshotting here every frame was a real per-frame cost.
    */
   tick(snapshot: WorldSnapshot): void;
-  /** Drop the selection (e.g. a scene restart mints new entity ids). */
-  clearSelection(): void;
   dispose(): void;
 }
 
@@ -244,7 +242,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
    *  otherwise a MOVE order at the clicked tile (move-order-onto-an-enemy = attack, the RTS idiom). */
   const issueRightClickOrder = (e: MouseEvent): void => {
     const w = toWorld(e.clientX, e.clientY);
-    const own = pickTopAt(targets('settler'), w.x, w.y);
+    // One O(entities) scan per click, shared by all three branches (each `targets` call rebuilds the scene).
+    const ownSettlers = targets('settler');
+    const own = pickTopAt(ownSettlers, w.x, w.y);
     if (own !== null) {
       setSelection([own], false); // right-click a unit selects just it …
       actions.open(); // … and brings up its action menu.
@@ -254,19 +254,19 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     const enemy = pickTopAt(enemyTargets(), w.x, w.y);
     if (enemy !== null) {
       // Only the selected units that can fight (settlers) get the attack order; buildings are dropped.
-      for (const t of targets('settler')) {
+      for (const t of ownSettlers) {
         if (selected.has(t.ref))
           opts.enqueue({ kind: 'attackUnit', entity: t.ref as Entity, target: enemy as Entity });
       }
       return;
     }
-    issueMoveOrder(e);
+    issueMoveOrder(e, ownSettlers);
   };
 
-  const issueMoveOrder = (e: MouseEvent): void => {
+  const issueMoveOrder = (e: MouseEvent, ownSettlers: readonly Pickable[]): void => {
     if (selected.size === 0) return;
     // The selected units that can actually move (settlers), with their world-px feet — buildings dropped.
-    const movers: FormationUnit[] = targets('settler').filter((t) => selected.has(t.ref));
+    const movers: FormationUnit[] = ownSettlers.filter((t) => selected.has(t.ref));
     if (movers.length === 0) return;
     const { width, height } = opts.mapSize;
     const w = toWorld(e.clientX, e.clientY);
@@ -321,7 +321,6 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       // closed / nothing is selected). Reuses the frame's snapshot + the live camera — no extra scan.
       actions.update(opts.camera(), snapshot, selected);
     },
-    clearSelection: () => setSelection([], false),
     dispose: () => {
       canvas.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);

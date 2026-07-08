@@ -66,8 +66,8 @@ const FALLBACK_WALK: DirectionalAnim = { start: 1988, dirs: DIRS, stride: 12 };
 // `elapsed`, same speed as every other animation.
 const CHOP_PHASE_START = 9;
 /** Frames per facing in the woodcut swing (verified 5106/120 = 15 across the 8 dirs). The ONE source of
- *  truth for the swing length — both the render cycle below and the sim-side {@link HARVEST_SWING_LENGTH}
- *  derive from it, so a scene can't pick a chop duration that mismatches the animation the render plays. */
+ *  truth for the swing length the render cycle plays — wood's duration in {@link HARVEST_TICKS} follows
+ *  it, so a scene can't pick a chop duration that mismatches the animation the render plays. */
 const CHOP_STRIDE = 15;
 const FALLBACK_CHOP: DirectionalAnim = {
   start: 5106,
@@ -87,19 +87,6 @@ const FALLBACK_WAIT: DirectionalAnim = { start: 1931, dirs: 1, stride: 57 };
 export const HARVEST_ATOMIC = 24;
 
 /**
- * The sim-side DURATION (in ticks) a WOODCUT atomic must run so the render plays exactly ONE full swing —
- * windup→impact — without cutting off and restarting. This is the chop-swing length specifically (the
- * vertical slice + any scene binding the bare one-swing chop); per-good harvest durations now live in
- * {@link HARVEST_TICKS}, which gives wood its faithful 30 and the mined goods their longer dig pace — so
- * this is no longer the universal harvest length, just the one-clean-swing value the chop clip needs.
- *
- * It is {@link CHOP_STRIDE} + 1: the swing is `CHOP_STRIDE` frames at one frame/tick, but the render
- * clock is `elapsed - 1` and the *completion* tick removes the atomic before that frame is drawn — so a
- * full swing (last drawn frame = the impact at tick `CHOP_STRIDE`) needs `CHOP_STRIDE + 1` sim ticks.
- * A shorter value (e.g. 6) replays only the windup frames and restarts every atomic — the visible glitch.
- */
-export const HARVEST_SWING_LENGTH = CHOP_STRIDE + 1;
-/**
  * The per-good harvest atomic ids — the original's `atomicForHarvesting` for each raw good (the collector
  * job runs ONE per good). Each binds to that good's OWN authored work clip in {@link CHARACTER_SPECS}
  * below (stone/iron/gold→the shared mining strike, clay→shovel-dig, mushroom→pluck), not the shared
@@ -118,7 +105,7 @@ export const MUSHROOM_HARVEST_ATOMIC = 32;
  * `atomicanimations.ini` length (23–29) plays only the OPENING of a long authored dig at our fixed
  * one-frame/tick cadence — the stonecrusher clip is 174 frames, the shovel 92 — so a unit came out after a
  * single half-strike ("raz i już niesie"). At ~15 ticks per authored strike (the chop-swing cadence,
- * {@link HARVEST_SWING_LENGTH}) this runs ~4 strikes per unit, so a deposit reads as WORKED. A deliberate
+ * {@link CHOP_STRIDE}) this runs ~4 strikes per unit, so a deposit reads as WORKED. A deliberate
  * divergence from the atomic's logic length (source basis "Chop swing length + felling pace"); wood +
  * mushroom keep their faithful lengths (their clips are short enough to read whole).
  */
