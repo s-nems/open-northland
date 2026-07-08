@@ -325,19 +325,53 @@ export interface PlacementProbe {
 }
 
 /**
+ * Per-world memo of the placement obstacle sets, keyed by the tick they were gathered at. Sim state
+ * mutates only at a tick boundary (the command seam), so within one tick the sets are constant — the
+ * overlay probes them every RAF frame (frames outrun ticks; a paused/hovering build never ticks), and
+ * without this each frame would re-scan every Resource + Building on the map (an O(entities) whole-map
+ * pass per frame — the perf/architecture review's finding). A pure read-path cache: it feeds only the
+ * app overlay, never a sim decision, so it is not hashed and needs no `verifyCaches` registration.
+ */
+interface BlockerMemo {
+  tick: number;
+  terrain: TerrainGraph;
+  blockers: PlacementBlockers;
+}
+const blockerMemo = new WeakMap<World, BlockerMemo>();
+
+function memoizedBlockers(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  tick: number,
+): PlacementBlockers {
+  const cached = blockerMemo.get(world);
+  if (cached !== undefined && cached.tick === tick && cached.terrain === terrain) return cached.blockers;
+  const blockers = collectPlacementBlockers(world, content, terrain);
+  blockerMemo.set(world, { tick, terrain, blockers });
+  return blockers;
+}
+
+/**
  * Build a {@link PlacementProbe} for `buildingType` — resolve its footprint and snapshot the world's
- * obstacle sets ONCE, so the app's build-mode overlay can probe every visible tile against the exact
- * same rule the `placeBuilding` command gates on ({@link canPlaceBuilding}), without rescanning the
- * world per cell. A footprint-less type always reports placeable (its command-time behavior).
+ * obstacle sets, so the app's build-mode overlay can probe every visible tile against the exact same
+ * rule the `placeBuilding` command gates on ({@link canPlaceBuilding}), without rescanning the world
+ * per cell. Passing `tick` (the current sim tick) memoizes the obstacle sets per tick, so the once-per-
+ * frame probe build doesn't re-scan every entity while the world is unchanged; omit it (tests) to
+ * always rebuild. A footprint-less type always reports placeable (its command-time behavior).
  */
 export function placementProbe(
   world: World,
   content: ContentSet,
   terrain: TerrainGraph,
   buildingType: number,
+  tick?: number,
 ): PlacementProbe {
   const footprint = buildingFootprintOf(content, buildingType);
   if (footprint === undefined) return { canPlace: () => true };
-  const blockers = collectPlacementBlockers(world, content, terrain);
+  const blockers =
+    tick === undefined
+      ? collectPlacementBlockers(world, content, terrain)
+      : memoizedBlockers(world, content, terrain, tick);
   return { canPlace: (x, y) => canPlaceAnchor(blockers, footprint, x, y) };
 }

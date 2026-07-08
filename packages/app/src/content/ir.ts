@@ -1,4 +1,4 @@
-import type { GfxPattern, SoundBank, TerrainPattern } from '@vinland/data';
+import type { BuildingFootprint, GfxPattern, SoundBank, TerrainPattern } from '@vinland/data';
 import {
   type AtlasManifest,
   type SpriteLayer,
@@ -129,8 +129,15 @@ export interface ContentIr {
   readonly terrainPatterns?: readonly TerrainPattern[];
   /** The full 927-record `[GfxPattern]` table — the 1:1 per-triangle ground join for decoded maps. */
   readonly gfxPatterns?: readonly GfxPattern[];
-  /** Type-table views the authored-entity joins read (`resolveAuthoredPlacements`). */
-  readonly buildings?: readonly { typeId?: number; id?: string; kind?: string }[];
+  /** Type-table views the authored-entity joins read (`resolveAuthoredPlacements`) + the extracted
+   *  ground `footprint` (collision body / build-exclusion zone / door) the live content attaches so the
+   *  real-content view actually enforces + shows placement collision ({@link buildingFootprints}). */
+  readonly buildings?: readonly {
+    typeId?: number;
+    id?: string;
+    kind?: string;
+    footprint?: BuildingFootprint;
+  }[];
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
   readonly tribes?: readonly { typeId?: number; id?: string }[];
   /** The decoded sound bank (`@vinland/audio` builds its index from it). */
@@ -186,6 +193,20 @@ export function loadIr(): Promise<ContentIr | null> {
     return ir;
   });
   return contentIrPromise;
+}
+
+/**
+ * The extracted building ground footprints from the served IR, by typeId — the collision/build-exclusion
+ * data the live content attaches so the real-content view (`?map=`) actually enforces and shows placement
+ * collision (a bare checkout / a scene test never calls this, so its content stays footprint-less and the
+ * pre-footprint free-placement behaviour holds there). Empty when the IR is absent or carries no footprints.
+ */
+export function buildingFootprints(ir: ContentIr | null): Map<number, BuildingFootprint> {
+  const out = new Map<number, BuildingFootprint>();
+  for (const b of ir?.buildings ?? []) {
+    if (b.typeId !== undefined && b.footprint !== undefined) out.set(b.typeId, b.footprint);
+  }
+  return out;
 }
 
 /** The `[bobseq]` rows of ONE imagelib in the served IR, indexed by verbatim sequence name. */

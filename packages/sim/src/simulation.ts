@@ -96,15 +96,16 @@ export class Simulation {
 
   /**
    * A buildability test for one building type at the current tick boundary — the read seam the app's
-   * build-mode overlay probes per visible tile to grey out where a click would be rejected. Reads
-   * the same rule the `placeBuilding` command gates on ({@link canPlaceBuilding}); snapshots the
-   * world's obstacle sets ONCE so probing a viewport stays O(visible tiles). Read-only, like
-   * {@link snapshot}; never mutates and so is determinism-irrelevant. Returns null for a mapless sim
-   * (no terrain graph → no placement rule), where the caller shows no overlay.
+   * build-mode overlay probes per visible tile to grey out where a click would be rejected. Reads the
+   * same rule the `placeBuilding` command gates on ({@link canPlaceBuilding}). The world's obstacle
+   * sets are memoized per tick (passed through here), so the once-per-frame probe build re-scans the
+   * world only when a tick has advanced, and probing a viewport is then O(visible tiles). Read-only,
+   * like {@link snapshot}; never mutates and so is determinism-irrelevant. Returns null for a mapless
+   * sim (no terrain graph → no placement rule), where the caller shows no overlay.
    */
   placementProbe(buildingType: number): PlacementProbe | null {
     if (this.terrain === undefined) return null;
-    return placementProbe(this.world, this.content, this.terrain, buildingType);
+    return placementProbe(this.world, this.content, this.terrain, buildingType, this.currentTick);
   }
 
   /** Run N ticks. */
