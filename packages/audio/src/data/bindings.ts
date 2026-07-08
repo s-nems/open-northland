@@ -39,7 +39,7 @@ export type VoiceClass = 'male' | 'female' | 'child';
  * settler the same way. The one canonical jobtypes id this layer needs, in the same status as the atomic
  * / MusicType ids already baked into this file.
  */
-const WOMAN_JOB = 5;
+export const WOMAN_JOB = 5;
 
 /**
  * Classify a settler's voice from the SAME facts the render layer picks its BODY from: a settler that

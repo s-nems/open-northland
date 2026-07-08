@@ -1,4 +1,4 @@
-import type { FetchBytes } from './platform.js';
+import type { FetchBytes } from '../platform.js';
 
 /**
  * The fetch+decode cache for wav samples: each file is loaded and decoded at most once, concurrent

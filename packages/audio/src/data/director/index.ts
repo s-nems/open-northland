@@ -1,6 +1,6 @@
+import type { AudioFrame, DirectorInput } from '../types.js';
 import { ambientBeds } from './ambient.js';
 import { eventOneShots } from './events.js';
-import type { AudioFrame, DirectorInput } from './types.js';
 
 /**
  * The PURE audio decision: turn one frame's sim events + world snapshot + camera into the sounds that
@@ -15,3 +15,13 @@ import type { AudioFrame, DirectorInput } from './types.js';
 export function directAudio(input: DirectorInput): AudioFrame {
   return { oneShots: eventOneShots(input), ambient: ambientBeds(input) };
 }
+
+// The director package's public surface — the sub-decisions and their documented tuning knobs.
+export {
+  MAX_AMBIENT_BEDS,
+  AMBIENT_MAX_GAIN,
+  AMBIENT_FULL_COVERAGE,
+  AMBIENT_MAX_SAMPLES,
+} from './ambient.js';
+export { JINGLE_GAIN, SFX_GAIN } from './events.js';
+export { type OnScreenSettler, onScreenSettlers } from './settlers.js';

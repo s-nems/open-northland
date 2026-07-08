@@ -1,6 +1,6 @@
 import type { SoundIndex } from '../data/bank.js';
 import { VIKING_VOICE_POOLS, type VoiceClass, vikingVoiceClass } from '../data/bindings.js';
-import type { OnScreenSettler } from '../data/settlers.js';
+import type { OnScreenSettler } from '../data/director/settlers.js';
 import type { OneShot } from '../data/types.js';
 import { type RandomFn, pickRandom } from './platform.js';
 
@@ -10,7 +10,7 @@ import { type RandomFn, pickRandom } from './platform.js';
  * draw a clip group from the pool matching THAT settler's sex/age — so the murmur reflects who is on
  * screen (a crowd of men stays male) instead of pulling every pool uniformly. This is the impure
  * "who speaks now" half; the pure "who could speak" candidate list is
- * {@link import('../data/settlers.js').onScreenSettlers}. Randomness is injected, so the whole
+ * {@link import('../data/director/settlers.js').onScreenSettlers}. Randomness is injected, so the whole
  * policy is unit-testable with a scripted {@link RandomFn}.
  */
 
@@ -62,19 +62,25 @@ export class ChatterEmitter {
 
   /**
    * Advance the emitter by `dtMs` and return the voice one-shots to fire this frame. `settlers` is a
-   * thunk so the O(entities) on-screen scan is skipped entirely on frames the emitter can't act on
-   * (`dtMs` absent or zero). An empty crowd accrues no budget — voices never burst when settlers
-   * scroll back into view. Purely additive: the caller appends the result to its frame.
+   * thunk invoked ONLY when the budget crosses a whole clip (~{@link VOICE_RATE_PER_SEC} Hz), so the
+   * O(entities) on-screen scan runs at the voice rate, never per frame. An empty screen zeroes the
+   * budget — a named approximation of the old "empty crowd accrues nothing": at most the one already
+   * crossed clip may fire promptly when settlers scroll back in, never a burst. Purely additive: the
+   * caller appends the result to its frame.
    */
   update(dtMs: number, settlers: () => readonly OnScreenSettler[]): OneShot[] {
     // Clamp so a refocus-after-background frame (huge `elapsed`) can't burst a cluster of voices at once.
     const dt = Math.min(dtMs, MAX_CHATTER_DT_MS);
     if (dt <= 0) return [];
     this.clockMs += dt;
-    const crowd = settlers();
-    if (crowd.length === 0) return [];
-    this.pruneCooldowns();
     this.budget += (dt / 1000) * VOICE_RATE_PER_SEC;
+    if (this.budget < 1) return []; // no clip due yet — skip the settler scan entirely this frame
+    const crowd = settlers();
+    if (crowd.length === 0) {
+      this.budget = 0; // an empty screen banks nothing — voices never burst when settlers scroll back in
+      return [];
+    }
+    this.pruneCooldowns();
     const shots: OneShot[] = [];
     while (this.budget >= 1) {
       this.budget -= 1;

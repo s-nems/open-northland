@@ -3,7 +3,7 @@ import type { SimEvent, SimEventKind, WorldSnapshot } from '@vinland/sim';
 import type { SoundIndex } from './bank.js';
 
 /**
- * The audio package's pure vocabulary — the data the {@link import('./director.js').directAudio}
+ * The audio package's pure vocabulary — the data the {@link import('./director/index.js').directAudio}
  * decision function consumes and produces, with no Web Audio / DOM in sight. The impure
  * {@link import('../web/sound-driver.js').SoundDriver} turns these plain requests into actual
  * `AudioContext` playback. Keeping the decision layer pure is what lets the "what should be
@@ -80,7 +80,7 @@ export interface AudioTerrain {
 }
 
 /**
- * Everything one {@link import('./director.js').directAudio} call needs. `terrain` is optional —
+ * Everything one {@link import('./director/index.js').directAudio} call needs. `terrain` is optional —
  * absent, no ambient plays.
  */
 export interface DirectorInput {

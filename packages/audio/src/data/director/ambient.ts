@@ -1,6 +1,6 @@
 import { aabbIntersects, cameraViewport, tileToScreen, visibleTileRange } from '@vinland/render/data';
-import { clamp } from './math.js';
-import type { AmbientLoop, DirectorInput } from './types.js';
+import { clamp } from '../math.js';
+import type { AmbientLoop, DirectorInput } from '../types.js';
 
 /**
  * On-screen terrain → ambient beds: sample the visible tile band (strided so a zoomed-out whole-map
