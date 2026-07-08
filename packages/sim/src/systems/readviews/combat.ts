@@ -5,7 +5,7 @@ import { armorMaterialOf } from './classes.js';
 // Pure, terminal **read views** for combat — the static weapon-vs-armor damage *lookup* table the
 // CombatSystem reads, plus the shared damage-column resolution both it and the per-hit CombatSystem
 // join through. No mechanic is added here (nothing is hit, no hitpoints change); see ./index.ts
-// for why read views are grouped out of systems/shared.ts.
+// for how read views relate to systems.
 
 /**
  * The **armor material tier** a weapon's `damagevalue <material> <value>` table is indexed by — the

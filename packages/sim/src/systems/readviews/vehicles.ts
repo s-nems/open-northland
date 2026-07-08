@@ -2,8 +2,7 @@ import type { ContentSet, VehicleType } from '@vinland/data';
 
 // Pure, terminal **read views** for vehicles — the data-defined ship/boat classification the upcoming
 // Sea/Northland slice (water travel, boats as mobile stores, embark/disembark) builds on. No mechanic
-// is added here (nothing embarks, no store moves); see ./index.ts for why read views are grouped out
-// of systems/shared.ts.
+// is added here (nothing embarks, no store moves); see ./index.ts for why read views are grouped here — see ./index.ts.
 
 /**
  * Whether a {@link VehicleType} is a **ship/boat** — a water-borne vehicle that ferries passengers,

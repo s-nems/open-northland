@@ -4,7 +4,7 @@ import type { World } from '../../ecs/world.js';
 
 // Pure, terminal **read views** for the HUD — derived projections of world state or `content` that
 // the HUD, the renderer, and tests consume but **no sim system mutates or feeds back into a
-// decision**. See ./index.ts for why read views are grouped here, out of systems/shared.ts.
+// decision**. See ./index.ts for how read views relate to systems.
 
 /**
  * The **per-job-type head-count** of a `tribe`'s settlers — the HUD's *jobs* read view (the third

@@ -3,7 +3,7 @@ import type { ContentSet, JobType } from '@vinland/data';
 // Pure, terminal **read views** for jobs — the data-defined sea-job classification the Sea/Northland
 // slice (`fisher_sea`/`trader_sea`, water travel, embark/disembark) builds on, the job-side analogue of
 // ./vehicles.ts's ship classification. No mechanic is added here (nobody fishes from a boat, nothing
-// embarks); see ./index.ts for why read views are grouped out of systems/shared.ts.
+// embarks); see ./index.ts for how read views relate to systems.
 
 /**
  * The id suffix the original `jobtypes` data uses to mark a **water-borne specialization** of a land

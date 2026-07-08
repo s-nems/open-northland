@@ -8,7 +8,7 @@ import type { ContentSet, LandscapeType } from '@vinland/data';
 // terrain graph reads only `walkable`/`maxValency`. The water-layer view is the placement-side seed the
 // Sea/Northland slice reads — distinct from water-VALENCY terrain (which cells are water), which lives in
 // the map tile grid, not this table (docs/plans/Phase 4). No mechanic is added here (nothing is placed
-// over water); see ./index.ts for why read views are grouped out of systems/shared.ts.
+// over water); see ./index.ts for how read views relate to systems.
 
 /**
  * Whether a {@link LandscapeType} may be placed on the **water layer** — its `allowedonwater` flag

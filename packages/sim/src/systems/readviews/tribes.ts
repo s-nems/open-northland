@@ -3,8 +3,7 @@ import { contentIndex } from '../../core/content-index.js';
 
 // Pure, terminal **read views** for tribe classification + animal behaviour — the data-defined
 // civ-vs-animal split (off each tribe's tech graph) and the `animaltypes.ini` behaviour flags the
-// CombatSystem's targeting drive reads. No mechanic is added here; see ./index.ts for why read views
-// are grouped out of systems/shared.ts.
+// CombatSystem's targeting drive reads. No mechanic is added here; see ./index.ts for how read views relate to systems.
 
 /**
  * The **playable (controllable) tribes** as a derived **read view** over `content` — the N civilizations
