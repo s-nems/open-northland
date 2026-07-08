@@ -33,7 +33,7 @@ import {
   fillBuildingRecipes,
   parseIniSections,
 } from '../decoders/ini.js';
-import { decodeMapTree } from './maps.js';
+import { decodeMapTree } from './maps/index.js';
 
 /**
  * Decodes a `.cif`-only table (no readable `.ini` twin — `pattern.cif`, `trianglepatterntypes.cif`)

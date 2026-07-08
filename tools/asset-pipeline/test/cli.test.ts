@@ -25,7 +25,7 @@ import {
   mapDatToTerrain,
   mapIdFromPath,
   minimapToPng,
-} from '../src/stages/maps.js';
+} from '../src/stages/maps/index.js';
 import { convertPcxTree, pcxToPng } from '../src/stages/pcx.js';
 
 /**
@@ -1020,22 +1020,16 @@ describe('mapDatToTerrain', () => {
 });
 
 describe('minimapToPng', () => {
-  /** rampPalette with entry 0 forced to the magenta colorkey (255,0,255) the shipped minimaps use. */
-  const keyedPalette = (): Uint8Array => {
-    const p = rampPalette();
-    p[0] = 0xff;
-    p[1] = 0x00;
-    p[2] = 0xff;
-    return p;
-  };
+  // The filler is keyed by palette INDEX 0 (its RGB varies across the corpus — magenta, blue, brown),
+  // so the fixtures only need index 0 as the frame; rampPalette's entry 0 = (0, 255, 0) stands in.
 
-  it('keys the magenta filler transparent and crops to the real map pixels', () => {
-    // A 4×2 canvas whose real pixels occupy the middle 2×1 (indices 1/2); the rest is colorkey.
+  it('keys the border-connected index-0 filler transparent and crops to the real map pixels', () => {
+    // A 4×2 canvas whose real pixels occupy the middle 2×1 (indices 1/2); the rest is index-0 filler.
     const pcx = encodePcx({
       width: 4,
       height: 2,
       pixels: Uint8Array.from([0, 0, 0, 0, 0, 1, 2, 0]),
-      palette: keyedPalette(),
+      palette: rampPalette(),
     });
     const png = decodePng(minimapToPng(pcx));
     expect({ width: png.width, height: png.height }).toEqual({ width: 2, height: 1 });
@@ -1043,17 +1037,48 @@ describe('minimapToPng', () => {
     expect(Array.from(png.rgba)).toEqual([1, 254, 7, 255, 2, 253, 14, 255]);
   });
 
-  it('keeps interior colorkey pixels transparent inside the cropped box', () => {
-    // Real pixels at both ends, colorkey in the middle — the crop keeps all 3, middle alpha 0.
+  it('keeps an ENCLOSED index-0 pixel opaque (map content, not filler)', () => {
+    // 5×5: an index-0 frame, a ring of real pixels, and an enclosed index-0 hole in the middle. The
+    // border flood fill keys only the frame; the hole mirrors the sparse index-0 speckles observed
+    // INSIDE the two full-bleed shipped minimaps — content, so it stays opaque.
     const pcx = encodePcx({
-      width: 3,
-      height: 1,
-      pixels: Uint8Array.from([1, 0, 2]),
-      palette: keyedPalette(),
+      width: 5,
+      height: 5,
+      // biome-ignore format: the grid reads as the picture
+      pixels: Uint8Array.from([
+        0, 0, 0, 0, 0,
+        0, 1, 1, 1, 0,
+        0, 1, 0, 1, 0,
+        0, 1, 1, 1, 0,
+        0, 0, 0, 0, 0,
+      ]),
+      palette: rampPalette(),
     });
     const png = decodePng(minimapToPng(pcx));
-    expect(png.width).toBe(3);
-    expect(png.rgba[7]).toBe(0); // the keyed middle pixel stays transparent
+    expect({ width: png.width, height: png.height }).toEqual({ width: 3, height: 3 });
+    const center = (1 * 3 + 1) * 4;
+    expect(png.rgba[center + 3]).toBe(255); // enclosed index-0 = content, kept opaque
+    expect(png.rgba[(0 * 3 + 0) * 4 + 3]).toBe(255); // the real ring survives
+  });
+
+  it('keys a ragged filler intrusion inside the crop box to alpha 0', () => {
+    // The filler bites into the picture's bounding box (BLEKINY_NURT-style ragged edge): (1,0) is
+    // index 0 connected to the frame, inside the crop — transparent, while the columns stay.
+    const pcx = encodePcx({
+      width: 4,
+      height: 3,
+      // biome-ignore format: the grid reads as the picture
+      pixels: Uint8Array.from([
+        0, 0, 0, 0,
+        0, 1, 0, 2,
+        0, 1, 2, 2,
+      ]),
+      palette: rampPalette(),
+    });
+    const png = decodePng(minimapToPng(pcx));
+    expect({ width: png.width, height: png.height }).toEqual({ width: 3, height: 2 });
+    expect(png.rgba[(0 * 3 + 1) * 4 + 3]).toBe(0); // the intruding filler pixel, transparent
+    expect(png.rgba[(1 * 3 + 1) * 4 + 3]).toBe(255); // the real pixel below it, opaque
   });
 
   it('throws on an all-filler picture (nothing to crop to)', () => {
@@ -1061,9 +1086,9 @@ describe('minimapToPng', () => {
       width: 2,
       height: 1,
       pixels: Uint8Array.from([0, 0]),
-      palette: keyedPalette(),
+      palette: rampPalette(),
     });
-    expect(() => minimapToPng(pcx)).toThrow(/colorkey/);
+    expect(() => minimapToPng(pcx)).toThrow(/filler/);
   });
 });
 
@@ -1195,6 +1220,63 @@ describe('convertMapDatTree', () => {
     await convertMapDatTree(game, out);
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
     expect(meta).toEqual({ name: 'Błękit', description: 'Opis' });
+  });
+
+  it('prefers the readable strings.ini over a sibling strings.cif (golden rule 4)', async () => {
+    const dir = join(game, 'CnModMaps', 'tutorial_002');
+    await mkdir(join(dir, 'text', 'pol'), { recursive: true });
+    await writeFile(join(dir, 'text', 'pol', 'strings.ini'), rawBytes('[text]\nstringn 0 "Readable"\n'));
+    await writeFile(
+      join(dir, 'text', 'pol', 'strings.cif'),
+      buildMapCif([
+        { level: 1, text: 'text' },
+        { level: 2, text: 'stringn 0 "Encrypted"' },
+      ]),
+    );
+    await convertMapDatTree(game, out);
+    const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
+    expect(meta).toEqual({ name: 'Readable' });
+  });
+
+  it('resolves the string ids from a readable misc.inc header before the encrypted map.cif', async () => {
+    const dir = join(game, 'CnModMaps', 'tutorial_002');
+    // misc.inc says 99/98 (the real corpus carries ~25 such headers); the map.cif disagrees — the
+    // readable header must win (golden rule 4).
+    await writeFile(
+      join(dir, 'misc.inc'),
+      rawBytes('[misc_mapname]\nmapnamestringid 99\nmapdescriptionstringid 98\n'),
+    );
+    await writeFile(
+      join(dir, 'map.cif'),
+      buildMapCif([
+        { level: 1, text: 'logiccontrol' },
+        { level: 2, text: 'mapsize 2 1' },
+        { level: 2, text: 'mapguid 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16' },
+        { level: 1, text: 'misc_mapname' },
+        { level: 2, text: 'mapnamestringid 0' },
+        { level: 2, text: 'mapdescriptionstringid 1' },
+      ]),
+    );
+    await mkdir(join(dir, 'text', 'pol'), { recursive: true });
+    await writeFile(
+      join(dir, 'text', 'pol', 'strings.ini'),
+      rawBytes('[text]\nstringn 0 "Zero"\nstringn 1 "Jeden"\nstringn 99 "Wlasciwa"\nstringn 98 "Opis99"\n'),
+    );
+    await convertMapDatTree(game, out);
+    const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
+    expect(meta).toEqual({ name: 'Wlasciwa', description: 'Opis99' });
+  });
+
+  it('removes a stale meta sidecar when a re-run no longer finds strings', async () => {
+    const dir = join(game, 'CnModMaps', 'tutorial_002');
+    await mkdir(join(dir, 'text', 'pol'), { recursive: true });
+    await writeFile(join(dir, 'text', 'pol', 'strings.ini'), rawBytes('[text]\nstringn 0 "Nazwa"\n'));
+    await convertMapDatTree(game, out);
+    await readFile(join(out, 'maps', 'tutorial_002.meta.json')); // emitted on the first run
+    await rm(join(dir, 'text'), { recursive: true, force: true });
+    const done = await convertMapDatTree(game, out);
+    expect(done.find((d) => d.id === 'tutorial_002')).toMatchObject({ meta: false });
+    await expect(readFile(join(out, 'maps', 'tutorial_002.meta.json'))).rejects.toThrow();
   });
 });
 

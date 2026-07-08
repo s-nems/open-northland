@@ -1,7 +1,8 @@
-import { createReadStream, existsSync, readFileSync, readdirSync } from 'node:fs';
-import { dirname, join, normalize, resolve, sep } from 'node:path';
+import { createReadStream, existsSync } from 'node:fs';
+import { dirname, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type Plugin, defineConfig } from 'vite';
+import { buildMapsIndexEntries } from './vite/maps-index.js';
 
 // Browser-first app shell. `npm run dev` serves this with HMR; cross-platform by construction.
 // Desktop (Mac/Win/Linux) packaging via Tauri comes later (Phase 5).
@@ -41,12 +42,11 @@ const irFile = resolve(here, '../../content/ir.json');
 const guiRoot = resolve(here, '../../content/gui');
 
 // The MENU (entries/menu.ts) lists the decoded maps as clickable cards; it reads them from this route —
-// one entry per `content/maps/<id>.json` grid (sorted), each joined with the pipeline's optional menu
-// sidecars: the `<id>.meta.json` display name/description and whether an `<id>.png` minimap exists
-// (both served by the `/maps` route above, with traversal rejected). Absent `content/` returns nothing
-// (the middleware falls through to Vite's 404), so the menu shows a "run the pipeline" hint instead of
-// map cards. A malformed/missing sidecar degrades that one entry to its bare id — the card renders like
-// a sidecar-less map, never breaks the list.
+// one entry per `content/maps/<id>.json` grid, joined with the pipeline's optional menu sidecars
+// (`buildMapsIndexEntries` — the `<id>.meta.json` display name/description and whether an `<id>.png`
+// minimap exists; both files served by the `/maps` route above, with traversal rejected). Absent
+// `content/` returns nothing (the middleware falls through to Vite's 404), so the menu shows a "run
+// the pipeline" hint instead of map cards.
 function serveMapsIndex(): Plugin {
   return {
     name: 'vinland-serve-maps-index',
@@ -56,26 +56,8 @@ function serveMapsIndex(): Plugin {
           next();
           return;
         }
-        const entries = readdirSync(mapsRoot)
-          .filter((f) => f.endsWith('.json') && !f.endsWith('.meta.json'))
-          .map((f) => f.slice(0, -'.json'.length))
-          .sort()
-          .map((id) => {
-            let meta: { name?: unknown; description?: unknown } = {};
-            try {
-              meta = JSON.parse(readFileSync(join(mapsRoot, `${id}.meta.json`), 'utf8')) as typeof meta;
-            } catch {
-              // no sidecar (or malformed) — the entry keeps its bare id
-            }
-            return {
-              id,
-              ...(typeof meta.name === 'string' ? { name: meta.name } : {}),
-              ...(typeof meta.description === 'string' ? { description: meta.description } : {}),
-              minimap: existsSync(join(mapsRoot, `${id}.png`)),
-            };
-          });
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify(entries));
+        res.end(JSON.stringify(buildMapsIndexEntries(mapsRoot)));
       });
     },
   };
