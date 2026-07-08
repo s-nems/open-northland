@@ -46,20 +46,20 @@ export function isMilitaryMode(mode: number): boolean {
  * non-combat explorer. Its default stance is {@link MILITARY_MODE.IGNORE} (it wanders without picking
  * fights), the pin style of `HUNTER_JOB`. Kept next to {@link defaultStanceForJob} that reads it.
  */
-export const SCOUT_JOB = 27;
+const SCOUT_JOB = 27;
 
 /** The **soldier** job-id band — `jobtypes.ini` soldiers 31..41 (unarmed / wooden+iron spear / short+long
  *  sword / short+long saber / small+big axe / short+long bow); every one defaults to
  *  {@link MILITARY_MODE.ATTACK}. A half-open-ish inclusive `[lo, hi]` band (the combat roster is a
  *  contiguous id range in the original data — the *Combat roster* fact in docs/plans/combat.md). */
-export const SOLDIER_JOB_MIN = 31;
-export const SOLDIER_JOB_MAX = 41;
+const SOLDIER_JOB_MIN = 31;
+const SOLDIER_JOB_MAX = 41;
 
 /** The **hero** job-id band — `jobtypes.ini` heroes 42..47; like soldiers they default to
  *  {@link MILITARY_MODE.ATTACK}. Kept separate from the soldier band (a distinct roster segment) though
  *  they share the default, so the table stays legible if the two ever diverge. */
-export const HERO_JOB_MIN = 42;
-export const HERO_JOB_MAX = 47;
+const HERO_JOB_MIN = 42;
+const HERO_JOB_MAX = 47;
 
 /**
  * The **default military stance** a settler of `jobType` starts in — stamped on every OWNED settler at

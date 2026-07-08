@@ -181,8 +181,6 @@ export type Command =
       readonly mode: number;
     };
 
-export type CommandKind = Command['kind'];
-
 /**
  * A command stamped with the tick it is applied on. This is the unit of the **command log** — the
  * append-only record that IS the save format (replay the log from seed 0 to reach any state) and the
@@ -312,5 +310,3 @@ export type AtomicEffect =
       readonly projectile?: { readonly munitionType: number; readonly speed: number };
     }
   | { readonly kind: 'idle' };
-
-export type AtomicEffectKind = AtomicEffect['kind'];

@@ -5,7 +5,7 @@ import { findPath } from '../../nav/pathfinding.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System } from '../context.js';
 import { dynamicBlockedCells } from '../footprint.js';
-import { isValidCellId } from '../spatial.js';
+import { canonicalById, isValidCellId } from '../spatial.js';
 
 // pathfindingSystem lives in routing.ts (not pathfinding.ts) to avoid an eyeball collision with the
 // A* core in ../pathfinding.ts, which this system consumes. The cross-system `isValidCellId` guard comes
@@ -41,16 +41,18 @@ export const pathfindingSystem: System = (world, ctx) => {
   if (terrain === undefined) return; // mapless sim: nothing to route over
 
   // Serve in ascending entity-id order so the per-tick budget cut is canonical (never insertion
-  // order). canonicalEntities() is the sorted id list; filter to those with a live request.
+  // order). Scan only the entities that HAVE a request (canonicalById over the query yields the same
+  // ascending-id subsequence a full canonicalEntities() filter did — store ⊆ alive), so a tick with
+  // no requests costs O(requests), not O(world).
   let served = 0;
   // The walk-block overlay (standing building bodies + resource footprints), built lazily ONCE per
   // routing tick — only a tick that actually routes pays for it. Building cells are derived live;
   // resource cells come from the ResourceFootprint generation cache.
   let blocked: ReadonlySet<CellId> | undefined;
-  for (const e of world.canonicalEntities()) {
+  for (const e of canonicalById(world.query(PathRequest))) {
     if (served >= PATHFINDING_BUDGET_PER_TICK) break;
-    const req = world.tryGet(e, PathRequest);
-    if (req === undefined || req.failed) continue; // already-failed requests aren't retried
+    const req = world.get(e, PathRequest);
+    if (req.failed) continue; // already-failed requests aren't retried
     served++;
 
     blocked ??= dynamicBlockedCells(world, ctx, terrain);

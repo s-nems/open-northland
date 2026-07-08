@@ -17,9 +17,7 @@ export type { Brand } from './core/brand.js';
 export { assertNever } from './core/brand.js';
 export {
   type Command,
-  type CommandKind,
   type AtomicEffect,
-  type AtomicEffectKind,
   type LoggedCommand,
   CommandQueue,
 } from './core/commands.js';
