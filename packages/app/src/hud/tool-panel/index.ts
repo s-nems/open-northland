@@ -70,6 +70,9 @@ export interface ToolPanelOptions {
 export interface ToolPanelController {
   /** True when a client point should be CLAIMED by the HUD (over the strip, an open window, or in placement). */
   claimsPointer(clientX: number, clientY: number): boolean;
+  /** The building typeId currently being placed, or null when not in build mode — the frame loop reads it
+   *  to drive the map's buildable/blocked overlay. */
+  placementType(): number | null;
   /**
    * Per-frame hook: re-place the screen-space sprites and refresh the open statistics window. Takes the
    * frame's ALREADY-BUILT HUD layout (the caller builds it once for the always-on HUD) so the panel does
@@ -300,6 +303,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
 
   return {
     claimsPointer,
+    placementType: () => placement.activeType(),
     update(hud): void {
       // The strip is a static baked texture now (a scene-graph sprite that batches + follows resizes for
       // free) — no per-frame re-placement. Only the pop-up windows + placement banner still re-place.

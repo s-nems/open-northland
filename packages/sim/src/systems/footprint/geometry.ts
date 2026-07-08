@@ -1,7 +1,6 @@
-import type { BuildingFootprint, FootprintCell } from '@vinland/data';
+import type { BuildingFootprint, ContentSet, FootprintCell } from '@vinland/data';
 import { contentIndex } from '../../core/content-index.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
-import type { SystemContext } from '../context.js';
 
 // The footprint GEOMETRY primitives — tile keys, cell distance, footprint-cell translation and the
 // nearest-cell picks. The leaf of the footprint/ package (and of systems/ as a whole).
@@ -24,9 +23,13 @@ export function manhattan(terrain: TerrainGraph, a: CellId, b: CellId): number {
   return Math.abs(ca.x - cb.x) + Math.abs(ca.y - cb.y);
 }
 
-/** The footprint of a building type, or undefined when the type is unknown or carries none. */
-export function buildingFootprintOf(ctx: SystemContext, buildingType: number): BuildingFootprint | undefined {
-  return contentIndex(ctx.content).buildings.get(buildingType)?.footprint;
+/** The footprint of a building type, or undefined when the type is unknown or carries none. Keyed by
+ *  content (not a full SystemContext) so the placement-overlay probe can resolve footprints without a tick. */
+export function buildingFootprintOf(
+  content: ContentSet,
+  buildingType: number,
+): BuildingFootprint | undefined {
+  return contentIndex(content).buildings.get(buildingType)?.footprint;
 }
 
 /** Translate a footprint cell list to a building anchor, dropping cells outside the terrain grid

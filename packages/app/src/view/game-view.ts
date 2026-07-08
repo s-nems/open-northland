@@ -1,10 +1,14 @@
 import {
+  type Camera,
   type ElevationField,
+  type PlacementOverlayCell,
   type SceneTerrain,
   type WorldRenderer,
   buildHud,
+  cameraViewport,
   layoutHud,
   placeHud,
+  visibleTileRange,
 } from '@vinland/render';
 import { FixedTimestep, type SimEvent, type Simulation, type WorldSnapshot } from '@vinland/sim';
 import type { Application } from 'pixi.js';
@@ -52,6 +56,33 @@ export interface GameViewDeps {
   readonly elevation?: ElevationField;
   /** Extra per-frame hook after the standard updates (e.g. the scene checklist overlay's tick). */
   readonly onFrame?: (snapshot: WorldSnapshot) => void;
+}
+
+/**
+ * The build-mode blocked-tile wash: while a building is held, the tiles in the visible band whose
+ * footprint the sim rejects — the SAME rule `placeBuilding` gates on (`Simulation.placementProbe`), so
+ * the dimmed cells are exactly where a click would be refused (blocked by terrain — trees/stones/ore/
+ * water — or by another building's margin). Screen-bounded per golden rule 7: only the visible tile
+ * range is probed, and only while placing. Returns null for a mapless sim (no placement rule → no wash).
+ */
+function blockedPlacementCells(
+  sim: Simulation,
+  buildingType: number,
+  camera: Camera,
+  screenW: number,
+  screenH: number,
+  mapSize: { readonly width: number; readonly height: number },
+): PlacementOverlayCell[] | null {
+  const probe = sim.placementProbe(buildingType);
+  if (probe === null) return null;
+  const range = visibleTileRange(cameraViewport(camera, screenW, screenH), mapSize.width, mapSize.height, 1);
+  const cells: PlacementOverlayCell[] = [];
+  for (let row = range.minRow; row <= range.maxRow; row++) {
+    for (let col = range.minCol; col <= range.maxCol; col++) {
+      if (!probe.canPlace(col, row)) cells.push({ col, row });
+    }
+  }
+  return cells;
 }
 
 /**
@@ -153,6 +184,22 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // Re-place the tool panel's screen-space sprites BEFORE the renderer's render (they carry the
     // canvas resolution in their shader), and refresh an open stats window from this frame's HUD.
     toolPanel.controller.update(hud);
+    // Build mode: dim the tiles the held building can't be placed on (null clears it once out of build
+    // mode). Computed here, in the app, from the sim's placement probe and handed to the renderer as
+    // plain cells — the renderer stays a pure projection and never calls back into the sim.
+    const placeType = toolPanel.controller.placementType();
+    renderer.updatePlacementOverlay(
+      placeType === null
+        ? null
+        : blockedPlacementCells(
+            sim,
+            placeType,
+            cameraCtl.camera(),
+            app.screen.width,
+            app.screen.height,
+            deps.mapSize,
+          ),
+    );
     // One retained update: reconcile the pooled sprites, draw the selection rings, refresh the pinned
     // HUD (shifted right to clear the left strip), render once. `app.screen` tracks window resizes.
     renderer.update(
