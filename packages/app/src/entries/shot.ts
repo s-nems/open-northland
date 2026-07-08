@@ -9,7 +9,8 @@ import {
 import { loadHumanSpriteSheet, syntheticSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { HUD_TRIBE } from '../game/rules.js';
-import { loadTerrainMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
+import { loadTerrainMap } from '../slice/map-loader.js';
+import { runSlice, sliceTerrain } from '../slice/vertical-slice.js';
 import { cameraFor } from '../view/camera.js';
 import { floatParam, intParam } from './params.js';
 
