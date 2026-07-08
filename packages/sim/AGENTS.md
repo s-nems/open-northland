@@ -84,17 +84,13 @@ ascending-id scan order or elided only provably-empty work, so the winner never 
 - **`TileBuckets`** (`systems/shared.ts`) — a per-tick spatial bucket of entities by integer tile; O(1)
   "what's on this tile?". `jobSystem`'s adopt-check (am I standing on a workplace I staff?) is now a
   same-tile lookup, not a building scan per settler.
+- **`TileBuckets.nearest`** — the grid ring search: expands Manhattan bands from the unit, **finishes
+  the whole minimum-distance band and picks canonically by (distance, id)** (never stops at the first
+  hit, so the winner is unchanged), and short-circuits past `maxDist`. First consumer: `combatSystem`'s
+  nearest-enemy query — 23× faster than a full scan at 400 combatants, ~O(seekers·sight²) not
+  quadratic; combat also has its own dormancy gate (no hostile pair ⇒ zero work). New nearest-X code
+  should consume this, not write another scan.
 
-**Still open (smaller now; deterministic, golden-guarded):**
-- **Full ring-search nearest-X — primitive landed, combat consumes it; economy consumers deferred.** The
-  grid ring search now exists as `TileBuckets.nearest` (`systems/shared.ts`): it expands Manhattan bands
-  from the unit, **finishes the whole minimum-distance band and picks canonically by (distance, id)** (never
-  stops at the first hit, so the winner is unchanged), and short-circuits past `maxDist`. Its **first consumer
-  is `combatSystem`'s nearest-enemy query** — 23× faster than a full scan at 400 combatants, scaling ~linearly
-  (O(seekers·sight²)) not quadratically; combat also has its own dormancy gate (no hostile pair ⇒ zero work).
-  **Still to migrate:** the ECONOMY nearest-X scans (nearest resource/store off-tile — `O(idle · candidates)`),
-  mitigated today by busy-unit skip + the dormancy gate + candidate lists. Point them at `TileBuckets.nearest`.
-- **Content-index:** replace `ctx.content.buildings.find(t => t.typeId === …)` (and friends) in hot loops
-  with a `Map` by typeId built at content load. Pure lookup, determinism-neutral.
-- **Sim in a Web Worker:** run the deterministic step off the render thread (snapshot is already
-  transferable — `test/inspect/snapshot-transferable.test.ts`). Doesn't speed the sim, but unblocks rendering.
+**Remaining follow-ups** (economy nearest-X onto `TileBuckets.nearest`, content typeId indexes for
+hot-loop lookups, sim in a Web Worker) are concrete plan steps in `docs/plans/sim-perf.md` — this
+file keeps the rules and the landed levers, not the roadmap.

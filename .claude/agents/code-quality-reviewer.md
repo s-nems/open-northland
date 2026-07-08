@@ -26,5 +26,8 @@ Hunt, in priority order:
 6. **Readability** — names that hide domain meaning, comments that restate code, comments missing where
    units/source-basis/invariants are non-obvious.
 
+Confirm each finding against the current source (open the cited file, not just the diff hunk)
+before reporting; drop anything you cannot pin to a real `file:line`.
+
 Return concise findings: `file:line — smell/risk — failure mode — suggested fix`, ranked blocker /
 should-fix / note. If the diff is clean under this lens, say exactly that.

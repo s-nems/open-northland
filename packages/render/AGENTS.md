@@ -50,8 +50,7 @@ Concretely, that means:
 ## What an agent can and cannot verify here
 
 Pixels + frame rate need a **human on a real GPU** (root `AGENTS.md` point 4/5). Headless Chromium is
-**SwiftShader (CPU) WebGL** — absolute FPS runs ~50× low and is NOT a real-GPU signal (see the memory
-`headless-render-fps-is-software-gl`). Use headless only for (a) no crash / no page errors and (b)
+**SwiftShader (CPU) WebGL** — absolute FPS runs ~50× low and is NOT a real-GPU signal. Use headless only for (a) no crash / no page errors and (b)
 culling bites (`drawn ≪ entities` in the perf overlay).
 
 **Before blaming the GPU, measure.** A slow scene is often not the renderer. Time `sim.step()` vs

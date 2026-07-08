@@ -15,14 +15,15 @@ facts against the sources (this doc is research output, not ground truth).
 Three conventions that keep the relay honest across fresh instances:
 - **The executing agent updates THIS file in its own branch**: tick your step's checkbox and append
   one line to the **Progress log** at the bottom (what landed, key measured values, any deviation
-  from the prompt) — the next step's agent starts by reading that log instead of re-deriving.
+  from the prompt) — the next step's agent starts by reading that log instead of re-deriving. Delete the merged
+  step's prompt block in the same commit (git history keeps it).
 - **Investigate-first steps (3, 7, 9) have two legitimate outcomes**: implement, or
   defer-with-evidence (survey numbers + a plan progress note/SOURCES note). "We measured it and it's not
   the engine's behaviour" counts as done; silent skips don't.
 - **Every step ends at the owner's eyes**: gates green is necessary, the side-by-side against the
   reference corpus is the actual exit. Delete this file when all steps land.
 
-- [ ] 1. Pipeline: emit the `lmhe` elevation lane
+- [x] 1. Pipeline: emit the `lmhe` elevation lane
 - [x] 2. Render: elevation lift across every projection consumer
 - [ ] 3. Pipeline+render: the `embr` brightness lane (slope shading + likely the map-edge fade)
 - [ ] 4. App: authored buildings draw their authored `EditName` variant (the HQ bob-44 fix)
@@ -58,97 +59,11 @@ gitignored.
   alpha mask eroded 2px, sprites cropped from the served atlases
   (`content/Data/engine2d/bin/bobs/<stem>.<palette>.{atlas.json,png}`). OpenCV via a scratchpad
   venv (`python3 -m venv … && pip install opencv-python numpy`).
-- Pipeline steps regenerate shared data: `content/` in a worktree is a **symlink to the primary
-  checkout's `content/`** — regenerating (`npm run pipeline -- --game "../Cultures 8th Wonder"
-  --mod DataCnmd --out content`) rewrites it for every session. That's fine (it's generated), but
-  say so in the report, and never commit any of it.
-
----
-[DONE]
-## Step 1 — pipeline: emit the `lmhe` elevation lane
-
-The single biggest missing ingredient: terrain height. Everything downstream (lift, shading,
-shoreline silhouettes) consumes it. Data-only step — no render change.
-
-### Prompt 1
-
-```text
-Add the map.dat `lmhe` elevation lane to the asset-pipeline map output, as a new optional
-`elevation` lane in `content/maps/<id>.json`.
-
-Context (re-verify against the sources; game root = "../Cultures 8th Wonder", read-only):
-- docs/SOURCES.md "map.dat" documents the container: `lmhe` is an RLE-packed X8el byte plane,
-  per-CELL (1 byte per cell, values 0..~240) — unlike the half-cell lanes. The decoder already
-  exists: `tools/asset-pipeline/src/decoders/mapdat.ts` (`unpackMapLayer`). Confirm the per-cell
-  resolution empirically: unpacked length must equal width·height (not 4·W·H) across several maps.
-- Assembly point: `tools/asset-pipeline/src/stages/maps.ts` (`mapDatToTerrain`) — follow the
-  existing `objects.levels` pattern (a lane that is simply carried through, omitted when absent).
-- Schema: `packages/data/src/schema.ts` `TerrainMapFile` — add `elevation` as an optional
-  `z.array(z.number().int().nonnegative())` with a `.refine` pinning length === width·height
-  (mirror the existing ground/levels refines). Document the lane semantics in the docstring:
-  per-cell terrain height, 0..~240; the render lift (≈1.24 native px/unit, measured — see
-  plan progress note "projection") lands in the NEXT step, so nothing consumes it yet.
-- Unit tests at the lowest level: extend the pipeline map-stage tests + the schema tests
-  (synthetic fixtures only, never real game bytes — see the existing lane tests for the pattern).
-
-Verification:
-1. npm test / npm run check / npm run build green.
-2. Regenerate content (npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd
-   --out content) and confirm content/maps/specjalna_mosty_na_rzece.json carries `elevation`
-   with length 250·200; report min/max/mean and the value at cell (col 124, row 23) (the bridge
-   deck) and around (col 160, rows 5..30) (the north-base hill, expect ~20..34).
-3. Update docs/SOURCES.md ("Remaining:" line) + docs/DATA-FORMAT.md if it lists the map JSON
-   lanes; Plan note: extend the projection row's deferred-elevation note to "lane emitted, lift
-   pending". Conventional Commit, no AI attribution. Stop before merge and report.
-```
-
----
-[DONE]
-## Step 2 — render: elevation lift across every projection consumer
-
-Applies the measured ≈**1.24 native px per elevation unit** upward lift. This is what makes hills
-read as hills, collapses the remaining vertical mismatches vs the corpus (buildings on the hill sat
-~25–40 img px off), and gives shorelines their silhouette.
-
-### Prompt 2
-
-```text
-Lift the rendered world by terrain elevation: screen_y = projected_y − LIFT·elev, with
-LIFT ≈ 1.24 px per unit (native art px; the calibration evidence and exact fitted numbers are in
-plan progress note "projection" — E = 1.547 img px/unit at 1.25× capture, y-rms 5.0→1.2 with the
-term). The `elevation` lane (per-cell, from step 1) is in content/maps/<id>.json.
-
-Design constraints (read packages/render/AGENTS.md first):
-- ONE sampling seam: a small pure elevation sampler (bilinear over cell centres, clamped at map
-  edges) lives in render's data layer; every consumer goes through it. Fractional positions
-  (walking settlers) sample bilinearly — no snapping.
-- Consumers to cover: (a) the terrain mesh — lift each diamond-corner vertex (corners sit between
-  cell centres; bilinear sample at the corner's world coordinate; bake into the mesh ONCE at
-  build, no per-frame work); (b) map objects (packages/app/src/content/objects.ts projects via
-  halfCellToScreen at load — add the lift there); (c) entity sprites (the tileToScreen consumers
-  in the scene/sprite path — lift at the projection call sites, sim NEVER sees it); (d) terrain
-  chunk AABBs + the viewport row band — pad by maxElev·LIFT so culling never clips a lifted
-  chunk/sprite (keep the pad map-wide-max, computed once); (e) picking (worldToTile) — invert
-  with a 2-pass: estimate the cell from the unlifted inverse, sample its elevation, re-solve;
-  add a round-trip property test incl. steep-slope cells.
-- DEPTH: the painter key must stay the PRE-LIFT feet y (row order) — a tree on a hill must still
-  occlude by map position, not by its lifted screen y. Add a test pinning that a lifted-up sprite
-  on a nearer row still draws in front.
-- Zero per-frame regressions: elevation sampling is O(1) per projected item; the mesh is baked.
-  Determinism untouched (render-only; sim never reads elevation yet).
-
-Verification:
-1. Unit tests for the sampler, the depth rule, the picking round-trip, the cull pad.
-2. Hands-on vs the corpus: render
-   http://localhost:5173/?map=specjalna_mosty_na_rzece&center=160,15&zoom=1.25 at 3172×1784 and
-   compose an aligned side-by-side against
-   ~/Projects/vikings/reference-shots/mosty-na-rzece-toprow/mosty-5.png (the pinned mapping incl.
-   the elevation term is in docs/plans/map-visual-fidelity.md "Shared verification kit"). The
-   buildings/trees on the hill should now sit at the original's heights (residuals ≲ a few px);
-   the rock hill on the right should visibly rise. Show the user, they judge.
-3. Plan note: move elevation from deferred to implemented in the projection row (lift value +
-   method pointer); plan: tick the lmhe sub-item. Stop before merge.
-```
+- Pipeline steps regenerate shared data: a worktree carries its own `content/` **copy** (`cp -Rc
+  ../vinland/content content` — never a symlink; the pipeline writes in place). Regenerating
+  (`npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content`) touches
+  only the worktree's copy; if outputs changed, regenerate the primary checkout's `content/`
+  after merge. Never commit any of it.
 
 ---
 
@@ -481,3 +396,5 @@ Format: `N. <date> — <what landed>; <key numbers/findings>; <deviations from t
   `lmlv` level counts up from the lowest state (`index = N − level`); elevation lift measured
   ≈1.24 native px/unit (unrendered); reference corpus + mosty-5 viewport fit pinned (see the
   verification kit above); known open gaps = exactly this plan's steps.
+- 1. ≤2026-07-05 — `lmhe` emitted as the optional per-cell `elevation` lane
+  (`stages/maps.ts` `elevationFromMapDat` + the `TerrainMapFile` schema refine); consumed by step 2's lift.

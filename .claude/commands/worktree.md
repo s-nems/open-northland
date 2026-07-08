@@ -57,26 +57,29 @@ Run the gates that match the change, and do not fake them:
 - Player-visible or visual path: start the dev server from the worktree on a non-5173 port, use the
   actual printed URL, exercise the relevant scene/page, and report the URL plus a short checklist for
   the user. Visual and audio correctness require the user's sign-off.
+- Before surfacing anything visual, look at a screenshot yourself (`npm run shot`, or a headless
+  capture of the scene URL) and fix gross breakage — blank canvas, missing sprites, console errors.
+  The user's eyes are for fidelity and feel, never for catching a broken page.
 
 ## 5. Commit and Review
 
 - Commit on the branch. Use Conventional Commits, imperative and capitalized, with no AI attribution.
   Stage only this task's files.
-- Run the review lenses that apply over `git diff main...HEAD`:
-  - `determinism-reviewer` for `packages/sim`, fixed-point math, command flow, or content schemas.
-  - `perf-reviewer` for per-tick sim systems or per-frame render/app paths.
-  - `fidelity-reviewer` for mechanics, extraction, or source-basis claims.
-  - `architecture-reviewer` for cross-package changes, new systems/seams, dependency changes, or
-    workflow/data-flow changes.
-  - `code-quality-reviewer` for non-trivial code changes, larger refactors, new systems, or risky
-    tests.
-  - Add a general correctness/edge-case review only when the named lenses do not cover the main risk.
-- Triage findings yourself, fix real in-scope issues, re-run affected gates, and commit fixes.
+- Run the review battery over `git diff main...HEAD`: spawn the applicable lenses **in parallel,
+  one message**, selected exactly as `.claude/commands/audit.md` step 2 defines them (determinism /
+  perf / fidelity / architecture / code-quality, plus a general correctness pass only when no named
+  lens covers the main risk). Pass each the exact range.
+- Triage the findings yourself: re-read the cited code before accepting or dismissing a finding —
+  reviewers are wrong in both directions. Fix real in-scope issues, re-run affected gates, and
+  commit the fixes.
 
 ## 6. Update the Plan Before Handoff
 
 If this task came from `docs/plans/*.md`, update that plan **in this branch before asking to merge**:
-- Tick the completed checkbox, or mark it blocked/deviated with a one-line reason.
+- Tick the completed checkbox, or mark it blocked/deviated with a one-line reason. The checkbox is
+  the ONLY status marker — no separate `[DONE]` tags.
+- Delete the executed step's prompt block in the same commit — the ticked checkbox and the progress
+  note carry the state; git history keeps the prompt.
 - Add or update a compact progress note with: date, branch, what landed, verification, source basis,
   and visual/audio sign-off status if relevant.
 - Keep the note short. Do not paste transcripts or long implementation narratives.

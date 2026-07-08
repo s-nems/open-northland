@@ -57,7 +57,9 @@ shared by `?scene=...`, `?live`, and synthetic map fallbacks. A scene is only a 
 4. **Hand it to the human:** end your turn with `npm run dev` → `http://localhost:5173/?scene=<id>` and
    the checklist, and ask whether it looks right. Add `&atlas=real&zoom=2` if decoded sprites are wanted
    (needs a populated `content/`); the default synthetic atlas animates as flat markers and needs nothing.
-   **Do not certify the visual yourself.**
+   **Do not certify the visual yourself.** Do sanity-check a screenshot first (`npm run shot` or a
+   headless capture) so the human never debugs a blank canvas — their sign-off is for fidelity, not
+   for catching a broken page.
 
 ## Watching a scene (controls)
 
