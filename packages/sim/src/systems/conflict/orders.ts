@@ -91,12 +91,15 @@ export function moveUnit(
   if (!world.isAlive(e) || !world.has(e, Settler) || !world.has(e, Position) || !world.has(e, Owner)) return;
 
   const goal = terrain.cellAtClamped(command.x, command.y);
-  // The order is authoritative — cancel the unit's current action + any in-flight route so it obeys
-  // now, then set the new goal. (A non-interruptible-atomic exception is a deferred refinement.)
+  // The order is authoritative — cancel the unit's current action + any pending route request so it
+  // obeys now, then set the new goal. (A non-interruptible-atomic exception is a deferred
+  // refinement.) A live PathFollow is deliberately KEPT: the navigation planner sees a route whose
+  // destination no longer matches the goal and re-routes the same tick, and the routing splice then
+  // replaces the path while carrying the walker's momentum through the turn (movement inertia) —
+  // dropping the path here made every redirect stop dead and re-accelerate from rest.
   world.remove(e, CurrentAtomic);
   world.remove(e, MoveGoal);
   world.remove(e, PathRequest);
-  world.remove(e, PathFollow);
   // A move order SUPERSEDES combat: drop any auto-engagement and attack focus so the unit walks off and
   // holds instead of re-acquiring its target and fighting. Without this a soldier that was engaged keeps
   // its Engagement, the CombatSystem re-chases the enemy, and the order only ever moves it one step (the

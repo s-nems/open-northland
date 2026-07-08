@@ -17,7 +17,13 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { ONE, Simulation, type TerrainMap, fx } from '../../src/index.js';
-import { MOVE_ORDER_HOLD_CIVILIAN, MOVE_ORDER_HOLD_SOLDIER } from '../../src/systems/index.js';
+import { worldDistance } from '../../src/nav/metric.js';
+import {
+  ACCEL_TICKS,
+  MOVE_ORDER_HOLD_CIVILIAN,
+  MOVE_ORDER_HOLD_SOLDIER,
+  MOVE_SPEED_PER_TICK,
+} from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -162,6 +168,42 @@ describe('moveUnit order', () => {
     expect(MOVE_ORDER_HOLD_SOLDIER).toBeGreaterThan(MOVE_ORDER_HOLD_CIVILIAN);
   });
 
+  it('carries momentum through a mid-walk redirect (no dead stop, no full-speed flip)', () => {
+    const s = sim();
+    const e = ownedWoodcutter(s, 0, 0);
+    s.enqueue({ kind: 'moveUnit', entity: e, x: 9, y: 0 });
+    s.run(20); // cruising east at full gait, mid-tile
+    expect(s.world.get(e, PathFollow).speed).toBe(MOVE_SPEED_PER_TICK);
+
+    // Redirect around a corner: the splice must keep PART of the pace (a turn sheds cos(angle),
+    // never all of it, and never keeps a reversal's full pace). Before the fix moveUnit dropped the
+    // PathFollow, so every redirect re-accelerated from rest.
+    s.enqueue({ kind: 'moveUnit', entity: e, x: 3, y: 3 });
+    s.step();
+    const spliced = s.world.get(e, PathFollow).speed;
+    const accelStep = fx.divCeil(MOVE_SPEED_PER_TICK, fx.fromInt(ACCEL_TICKS));
+    expect(spliced).toBeGreaterThan(accelStep); // more than a from-rest ramp tick — momentum survived
+    expect(spliced).toBeLessThanOrEqual(MOVE_SPEED_PER_TICK); // and never above the cruise gait
+  });
+
+  it('never moves faster than the cruise gait, even under rapid flip-flopping orders', () => {
+    // The reported floor slide: spam-clicking opposite directions rerouted the walker at FULL
+    // carried speed with no corner projection at the splice, so it flipped 180° without slowing.
+    // Speed must stay ≤ the walk gait every single tick; the only variation allowed is the light
+    // ease-in/out of the movement-inertia approximation (routing.ts / movement.ts).
+    const s = sim();
+    const e = ownedWoodcutter(s, 5, 0);
+    let prev = { ...s.world.get(e, Position) };
+    for (let t = 0; t < 80; t++) {
+      // A fresh contradictory order every 3 ticks, whipping the walker east/west.
+      if (t % 3 === 0) s.enqueue({ kind: 'moveUnit', entity: e, x: t % 2 === 0 ? 0 : 11, y: 0 });
+      s.step();
+      const cur = s.world.get(e, Position);
+      expect(worldDistance(prev.x, prev.y, cur.x, cur.y)).toBeLessThanOrEqual(MOVE_SPEED_PER_TICK);
+      prev = { ...cur };
+    }
+  });
+
   it('the economy AI leaves an ordered worker standing, then reclaims it after the hold', () => {
     const s = sim();
     const worker = ownedWoodcutter(s, 0, 0);
@@ -169,7 +211,9 @@ describe('moveUnit order', () => {
 
     // Order it AWAY from the resource. During the hold it must stand at the spot, not go harvest.
     s.enqueue({ kind: 'moveUnit', entity: worker, x: 9, y: 0 });
-    s.run(85); // arrived (9 tiles at ⅛/tick ≈ 72 ticks) and inside the 50-tick civilian hold
+    // 9 tiles ≈ 110 ticks with the gait ramp (13 accelerating + 7·12 cruise + 13 braking) + route
+    // latency; 140 is past arrival but still inside the 50-tick civilian hold that starts there.
+    s.run(140);
     const held = s.world.get(worker, Position);
     expect(held.x).toBe(fx.fromInt(9)); // stood at the ordered spot
     expect(s.world.has(worker, PlayerOrder)).toBe(true); // still under the order

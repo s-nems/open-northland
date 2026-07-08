@@ -59,10 +59,29 @@ export const HerdMember = defineComponent<{ leader: Entity }>('HerdMember');
  */
 export const MoveSpeed = defineComponent<{ perTick: Fixed; runPerTick: Fixed | null }>('MoveSpeed');
 
-/** A path the entity is following: fixed-point waypoints + current index. */
-export const PathFollow = defineComponent<{ waypoints: Array<{ x: Fixed; y: Fixed }>; index: number }>(
-  'PathFollow',
-);
+/**
+ * A path the entity is following: fixed-point waypoints + current index, plus the follower's live
+ * GAIT state — the movement-inertia fields the MovementSystem ramps each tick. Inertia is a NAMED
+ * APPROXIMATION that deliberately departs from the original (which walks at a constant
+ * ticks-per-step pace with no acceleration anywhere in OpenVikings or readable data — see the
+ * inertia note in `systems/movement/movement.ts`); it exists purely for movement feel.
+ *
+ * `speed` is the current per-tick world-metric pace: 0 at rest, ramped toward the entity's gait
+ * ({@link MoveSpeed} / the universal default), braked into the final waypoint. `hx`/`hy` are the
+ * current leg's unit world-metric heading, used to project momentum through corners — at waypoint
+ * turns AND at a reroute's splice (`routing.ts` carries both `speed` and heading over and turns
+ * them onto the new first leg, so a redirected walker keeps momentum straight ahead but sheds it
+ * through a forced turn like any corner); (0,0) is the sentinel "no established heading" (a path
+ * that has never moved). All three are Fixed sim state: minted via `fx.*`, hashed like every
+ * component.
+ */
+export const PathFollow = defineComponent<{
+  waypoints: Array<{ x: Fixed; y: Fixed }>;
+  index: number;
+  speed: Fixed;
+  hx: Fixed;
+  hy: Fixed;
+}>('PathFollow');
 
 /**
  * A navigation goal: the destination cell an entity wants to reach (a raw row-major cell id, like

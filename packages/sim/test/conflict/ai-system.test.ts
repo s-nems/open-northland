@@ -66,12 +66,77 @@ describe('aiSystem — navigation planner: MoveGoal -> PathRequest', () => {
     expect(sim.world.get(e, PathRequest).goal).toBe(1);
   });
 
-  it('does not issue a request while a path is being followed', () => {
+  it('does not issue a request while a route that ENDS AT THE GOAL is being followed', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = travellerAt(sim, 0, 0, sim.terrain?.cellAt(3, 0) as number);
-    sim.world.add(e, PathFollow, { waypoints: [{ x: fx.fromInt(0), y: fx.fromInt(0) }], index: 0 });
+    sim.world.add(e, PathFollow, {
+      waypoints: [
+        { x: fx.fromInt(1), y: fx.fromInt(0) },
+        { x: fx.fromInt(3), y: fx.fromInt(0) }, // destination === the goal centre
+      ],
+      index: 0,
+      speed: fx.fromInt(0),
+      hx: fx.fromInt(0),
+      hy: fx.fromInt(0),
+    });
     aiSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(e, PathRequest)).toBe(false);
+  });
+
+  it('re-routes IMMEDIATELY when the followed route no longer ends at the goal (a mid-walk redirect)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const e = travellerAt(sim, 0, 0, sim.terrain?.cellAt(3, 0) as number);
+    sim.world.add(e, PathFollow, {
+      waypoints: [{ x: fx.fromInt(1), y: fx.fromInt(0) }], // a stale route to somewhere else
+      index: 0,
+      speed: fx.fromInt(0),
+      hx: fx.fromInt(0),
+      hy: fx.fromInt(0),
+    });
+    aiSystem(sim.world, ctxOf(sim));
+    // A fresh request is issued right away; the stale path keeps the walker moving until the
+    // routing splice replaces it (carrying its momentum through the turn — movement inertia).
+    expect(sim.world.has(e, PathRequest)).toBe(true);
+    expect(sim.world.get(e, PathRequest).goal).toBe(sim.terrain?.cellAt(3, 0) as number);
+    expect(sim.world.has(e, PathFollow)).toBe(true);
+  });
+
+  it('routes from the NEAREST cell centre, not the truncated one, when the walker is mid-leg', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const e = travellerAt(sim, 0, 0, sim.terrain?.cellAt(0, 0) as number);
+    // Deep into cell 2's second half — the nearest centre is (3,0) AHEAD, truncation says (2,0)
+    // behind. Routing from behind made a redirected walker visibly backtrack through that centre.
+    sim.world.get(e, Position).x = fx.fromFloat(2.75);
+    aiSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, PathRequest).start).toBe(sim.terrain?.cellAt(3, 0) as number);
+  });
+
+  it('routes from a walkable bracket cell when the NEAREST centre is impassable (mid-seam redirect)', () => {
+    // A vertical two-row leg is legal with one impassable flank, so a walker past the seam midpoint
+    // sits nearest a WATER centre. findPath rejects an unwalkable start outright — routing from the
+    // rounded cell would fail the request and strand the walker mid-seam; the planner must skip to
+    // the nearest walkable bracket cell instead.
+    const WATER = 1;
+    const typeIds = new Array(9).fill(GRASS);
+    typeIds[1 * 3 + 1] = WATER; // cell (1,1) — the intermediate-row flank
+    const sim = new Simulation({ seed: 1, content: testContent(), map: { width: 3, height: 3, typeIds } });
+    const e = travellerAt(sim, 1, 0, sim.terrain?.cellAt(0, 0) as number);
+    sim.world.get(e, Position).y = fx.fromFloat(1.4); // nearest centre is the water cell (1,1)
+    aiSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, PathRequest).start).toBe(sim.terrain?.cellAt(1, 2) as number);
+    expect(sim.world.get(e, PathRequest).failed).toBe(false);
+  });
+
+  it('centres a walker parked off-centre inside the goal cell instead of satisfying the goal early', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const goal = sim.terrain?.cellAt(2, 0) as number;
+    const e = travellerAt(sim, 0, 0, goal);
+    sim.world.get(e, Position).x = fx.fromFloat(2.2); // in the goal cell, but off its centre
+    sim.step(); // plan (single-cell route) + resolve + walk toward the centre
+    expect(sim.world.has(e, MoveGoal)).toBe(true); // not yet satisfied — still centring
+    for (let t = 0; t < 20 && sim.world.has(e, MoveGoal); t++) sim.step();
+    expect(sim.world.has(e, MoveGoal)).toBe(false); // satisfied ON the centre
+    expect(pos(sim, e)).toEqual({ x: 2, y: 0 }); // parked exactly on the goal centre
   });
 
   it('removes a goal the entity already stands on (nothing to do)', () => {
@@ -108,11 +173,12 @@ describe('aiSystem — end-to-end: goal to arrival through the real schedule', (
     const goal = sim.terrain?.cellAt(3, 0) as number;
     const e = travellerAt(sim, 0, 0, goal);
 
-    // 3 tiles at 1/4 tile/tick = 12 move-steps; +1 to consume the start waypoint; +a little slack.
+    // 3 tiles ≈ 38 ticks with the gait ramp (13 accelerating + 12 cruise + 13 braking), +1 to
+    // consume the start waypoint, + the goal→request→path schedule latency; +a little slack.
     // The goal is removed only when the entity is path-less AND standing on the goal cell, so run
     // until that settles.
     let arrived = false;
-    for (let i = 0; i < 30 && !arrived; i++) {
+    for (let i = 0; i < 60 && !arrived; i++) {
       sim.step();
       arrived = !sim.world.has(e, MoveGoal);
     }
@@ -126,7 +192,7 @@ describe('aiSystem — end-to-end: goal to arrival through the real schedule', (
   it('re-issues a request after arriving at the goal cell only if a new goal is set', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = travellerAt(sim, 0, 0, sim.terrain?.cellAt(1, 0) as number);
-    for (let i = 0; i < 12; i++) sim.step();
+    for (let i = 0; i < 25; i++) sim.step(); // a one-cell trip is 15 ticks + schedule latency
     expect(sim.world.has(e, MoveGoal)).toBe(false); // first goal satisfied
     // A fresh goal sends it onward.
     sim.world.add(e, MoveGoal, { cell: sim.terrain?.cellAt(3, 0) as number });

@@ -171,106 +171,104 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   // (deposit into a store), 22 = pickup (lift out of a store / off a trunk). Entity 5 = woodcutter, 6 =
   // carrier (hauls planks to the HQ), 7 = carpenter (the mill's operator, self-servicing: it pickups the
   // HQ's stored wood into the mill and hauls finished planks back out). If this moves, a settler-economy
-  // mechanic changed — name it in the commit. Last move: FAITHFUL MULTI-HIT HARVEST + DROP-ON-GROUND
-  // (packages/sim/src/systems/agents/effects-goods.ts + ai.ts). A wood node is now FELLED — the woodcutter
-  // (entity 5) chops each tree down over `chopsToFell` (3) swings (24 at 21/24/27) that yield nothing,
-  // the tree drops a trunk holding its whole 4-wood yield, and the collector then picks the trunk up (22)
-  // and delivers it (23), a unit at a time (on-foot carry). So entity 5's old "one 24 per unit straight
-  // onto the back" became "3 chops then 22/23 trips per tree", moving the trace + hash. Goods stay
-  // conserved (10 stored + 8 felled → 18 planks, produced 18) and every core invariant holds every tick;
-  // the settled state hash shifts (a4fa8225 → 1260b766). (The prior move, a4fa8225, was the producer
-  // self-service drive.)
+  // mechanic changed — name it in the commit. Last move: WALK PACE + MOVEMENT INERTIA
+  // (packages/sim/src/systems/movement/movement.ts): the walk slowed from ⅛ to divCeil(ONE/12) per tick
+  // (the 12-frame walk-cycle anchor — one gait cycle per cell, 0.6 s at 20 Hz) and gained the gait ramp
+  // (accelerate from rest, shed speed through corners, brake into the final waypoint — PathFollow now
+  // carries `speed`/`hx`/`hy`). Every trip is longer, so the same 22/23/24 economy pattern spreads out
+  // (first chop 21 → 31) and the trace + hash move. Goods stay conserved (10 stored + 8 felled → 18
+  // planks, produced 18) and every core invariant holds every tick; the settled state hash shifts
+  // (1260b766 → e452b766). (The prior move, 1260b766, was the faithful multi-hit harvest +
+  // drop-on-ground.)
   const GOLDEN_TRACE: readonly string[] = [
-    '14:7:22',
-    '21:5:24',
-    '24:5:24',
-    '27:5:24',
-    '28:7:23',
-    '31:5:22',
-    '52:7:22',
-    '53:5:23',
-    '66:7:23',
-    '66:5:24',
-    '69:5:24',
-    '72:5:24',
-    '76:5:22',
-    '84:6:22',
-    '84:7:22',
-    '90:5:23',
-    '98:6:23',
-    '104:5:22',
-    '118:5:23',
-    '132:5:22',
-    '137:6:22',
-    '146:5:23',
-    '147:7:22',
-    '151:6:23',
-    '160:5:22',
-    '161:7:23',
-    '174:5:23',
-    '177:7:22',
-    '191:7:23',
-    '196:5:22',
-    '205:6:22',
-    '205:7:22',
-    '218:5:23',
-    '219:6:23',
-    '219:7:22',
-    '233:7:23',
-    '240:5:22',
-    '255:6:22',
-    '262:5:23',
-    '265:7:22',
-    '269:6:23',
-    '279:7:23',
-    '284:5:22',
-    '293:7:22',
-    '306:5:23',
-    '307:7:23',
-    '333:5:22',
-    '333:6:22',
-    '333:7:22',
-    '347:5:23',
-    '347:7:22',
-    '361:7:23',
-    '385:6:22',
-    '385:7:22',
-    '399:6:23',
-    '399:7:22',
-    '413:7:23',
-    '437:5:22',
-    '437:7:22',
-    '451:5:23',
-    '451:7:22',
-    '465:7:23',
-    '489:6:22',
-    '489:7:22',
-    '503:6:23',
-    '503:7:22',
-    '517:7:23',
-    '541:5:22',
-    '541:7:22',
-    '555:5:23',
-    '555:7:22',
-    '569:7:23',
-    '593:6:22',
-    '593:7:22',
-    '607:6:23',
-    '607:7:22',
-    '621:7:23',
-    '645:5:22',
-    '645:7:22',
-    '659:5:23',
-    '659:7:22',
-    '673:7:23',
-    '697:6:22',
-    '697:7:22',
-    '711:6:23',
-    '711:7:22',
-    '725:7:23',
-    '749:5:22',
-    '749:7:22',
-    '763:5:23',
+    '20:7:22',
+    '31:5:24',
+    '34:5:24',
+    '37:5:24',
+    '40:7:23',
+    '41:5:22',
+    '64:7:22',
+    '73:5:23',
+    '84:7:23',
+    '92:5:24',
+    '95:5:24',
+    '98:5:24',
+    '102:5:22',
+    '104:6:22',
+    '104:7:22',
+    '122:5:23',
+    '124:6:23',
+    '124:7:22',
+    '142:5:22',
+    '144:7:23',
+    '162:5:23',
+    '179:6:22',
+    '182:5:22',
+    '199:6:23',
+    '202:5:23',
+    '203:7:22',
+    '219:6:22',
+    '223:7:23',
+    '234:5:22',
+    '239:6:23',
+    '243:7:22',
+    '263:7:23',
+    '266:5:23',
+    '267:7:22',
+    '287:7:23',
+    '293:6:22',
+    '298:5:22',
+    '313:6:23',
+    '313:7:22',
+    '330:5:23',
+    '333:7:23',
+    '359:7:22',
+    '362:5:22',
+    '379:7:23',
+    '383:7:22',
+    '394:5:23',
+    '403:7:23',
+    '418:5:22',
+    '418:6:22',
+    '438:5:23',
+    '438:6:22',
+    '438:7:22',
+    '458:6:23',
+    '458:7:22',
+    '478:7:23',
+    '502:7:22',
+    '522:7:23',
+    '526:7:22',
+    '546:7:23',
+    '570:5:22',
+    '570:6:22',
+    '570:7:22',
+    '590:5:23',
+    '590:7:22',
+    '610:7:23',
+    '634:6:22',
+    '634:7:22',
+    '654:6:23',
+    '654:7:22',
+    '674:7:23',
+    '698:5:22',
+    '698:7:22',
+    '718:5:23',
+    '718:7:22',
+    '738:7:23',
+    '762:6:22',
+    '762:7:22',
+    '782:6:23',
+    '782:7:22',
+    '802:7:23',
+    '826:5:22',
+    '826:7:22',
+    '846:5:23',
+    '846:7:22',
+    '866:7:23',
+    '890:6:22',
+    '890:7:22',
+    '910:6:23',
   ];
 
   it('holds every core invariant on every tick', () => {
@@ -281,13 +279,12 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   it('matches the golden final state hash', () => {
     const run = runSlice(SEED, TICKS);
     // Intentional-change discipline: if this moves, a mechanic changed — name it in the commit.
-    // Moved by FAITHFUL MULTI-HIT HARVEST + DROP-ON-GROUND (packages/sim/src/systems/agents/effects-goods.ts
-    // + ai.ts): the woodcutter now FELLS each tree over several chops that yield nothing, the tree drops
-    // a ground trunk holding its whole yield, and the collector carries the trunk off — so the two trees
-    // leave 2 stumps + no standing nodes (vs the old 2 depleted `remaining:0` Resource nodes) and the run
-    // routes wood through trunk piles. Goods stay conserved (10 stored + 8 felled → 18 planks) and every
-    // core invariant holds every tick; the settled state hash shifts (a4fa8225 → 1260b766).
-    expect(run.hash).toBe('1260b766');
+    // Moved by WALK PACE + MOVEMENT INERTIA (packages/sim/src/systems/movement/movement.ts): the walk
+    // slowed to divCeil(ONE/12) per tick and PathFollow gained the gait-ramp state (`speed`/`hx`/`hy`
+    // — new hashed fields), so every position and path in the settled state differs. Goods stay
+    // conserved (10 stored + 8 felled → 18 planks) and every core invariant holds every tick; the
+    // settled state hash shifts (1260b766 → e452b766).
+    expect(run.hash).toBe('e452b766');
   });
 
   it('matches the golden atomic-action trace', () => {
