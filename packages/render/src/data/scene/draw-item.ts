@@ -6,7 +6,15 @@
  */
 
 /** Kinds of thing the scene draws, in their natural layer grouping. */
-export type DrawKind = 'tile' | 'building' | 'settler' | 'resource' | 'stockpile' | 'stump' | 'grounddrop';
+export type DrawKind =
+  | 'tile'
+  | 'building'
+  | 'settler'
+  | 'resource'
+  | 'stockpile'
+  | 'stump'
+  | 'grounddrop'
+  | 'projectile';
 
 /**
  * A sprite's coarse logical state, the join key onto a per-state animation binding (the original's
@@ -39,6 +47,7 @@ export const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
   grounddrop: 1,
   stockpile: 2,
   settler: 3,
+  projectile: 4, // an arrow in flight crosses OVER the fighters it flies between
 };
 
 /**
@@ -159,6 +168,13 @@ export interface DrawItem {
    * and for non-building kinds.
    */
   readonly builtPct?: number;
+  /**
+   * For a **projectile**: its flight heading in screen space (radians, 0 = screen-east, clockwise) —
+   * the pooled arrow graphic (authored pointing screen-east) rotates to it so the shaft points along
+   * the flight. Derived from the projectile's position toward its target's live position (the sim's
+   * homing step re-aims every tick, so the heading tracks the flight). Omitted for every other kind.
+   */
+  readonly rotation?: number;
   /**
    * The terrain-elevation lift (world px, ≥ 0) at this item's feet — subtracted from the DRAWN `y` so
    * the sprite sits on the lifted ground (a settler on a hill rides up with it). ORTHOGONAL to {@link

@@ -17,6 +17,7 @@ import {
   readJobType,
   readOwnerPlayer,
   readPosition,
+  readProjectileTarget,
   readResourceGood,
   readResourceLevel,
   readSpriteState,
@@ -129,21 +130,21 @@ export function collectSpriteScene(
 ): SpriteScene {
   const items: MutableDrawItem[] = [];
   const liveRefs = new Set<number>();
-  // A mid-swing attacker faces its target's LIVE position, which needs random access by id (a target may
-  // be off-screen / culled, and `WorldSnapshot` carries no id index). Build that index ONLY on a frame
-  // that has an attacker — a cheap early-exit scan decides — so economy / `?map` play (no combat) never
-  // pays for it. It stores the snapshot's own Position object (readPosition returns it, not a copy), so
-  // the fill is N Map.sets with NO per-entity allocation/divide; the `/ONE` to tile space is deferred to
-  // the rare attacker lookup below.
-  let hasAttacker = false;
+  // A mid-swing attacker faces — and an in-flight projectile points at — its target's LIVE position,
+  // which needs random access by id (a target may be off-screen / culled, and `WorldSnapshot` carries no
+  // id index). Build that index ONLY on a frame that has an attacker or a projectile — a cheap
+  // early-exit scan decides — so economy / `?map` play (no combat) never pays for it. It stores the
+  // snapshot's own Position object (readPosition returns it, not a copy), so the fill is N Map.sets with
+  // NO per-entity allocation/divide; the `/ONE` to tile space is deferred to the rare combat lookups below.
+  let needsPosIndex = false;
   for (const entity of snapshot.entities) {
-    if (readActingAtomic(entity.components) === ATTACK_ATOMIC_ID) {
-      hasAttacker = true;
+    if (readActingAtomic(entity.components) === ATTACK_ATOMIC_ID || 'Projectile' in entity.components) {
+      needsPosIndex = true;
       break;
     }
   }
   const posByRef = new Map<number, { x: number; y: number }>();
-  if (hasAttacker) {
+  if (needsPosIndex) {
     for (const entity of snapshot.entities) {
       const p = readPosition(entity.components);
       if (p !== null) posByRef.set(entity.id, p);
@@ -238,6 +239,17 @@ export function collectSpriteScene(
     } else if (kind === 'stump') {
       const goodType = readStumpGood(components);
       if (goodType !== undefined) item.goodType = goodType;
+    } else if (kind === 'projectile') {
+      // Point the drawn arrow along its flight: the screen-space heading from the projectile toward its
+      // target's LIVE position (the sim's homing step re-aims at the same target every tick). A shot
+      // whose target vanished this frame keeps rotation unset (the arrow draws east for the one tick the
+      // sim takes to expire it) — never a throw, never a stale index.
+      const targetRef = readProjectileTarget(components);
+      const to = targetRef !== null ? posByRef.get(targetRef) : undefined;
+      if (to !== undefined) {
+        const targetScreen = tileToScreen(to.x / ONE, to.y / ONE);
+        item.rotation = Math.atan2(targetScreen.y - screen.y, targetScreen.x - drawX);
+      }
     } else {
       // stockpile | grounddrop: both read their held good + fill from the stockpile — the trunk keys its
       // per-good pickup graphic off `goodType`, the flag/heap its per-fill frame off `goodType`+`fill`.

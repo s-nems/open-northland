@@ -157,8 +157,10 @@ gallery. **Human pixel sign-off still pending** — the swing/facing/feel is the
   filtering by the wrong tribe yields a plausible-but-wrong swing (`sprite-sheet.ts VIKING_ANIM_TRIBE`).
 - **Facing:** an attacker (atomic 81) faces its target's LIVE tile (`readAtomicTargetEntity` + a per-frame
   id→tile map in `sprite-scene.ts`), overriding a stale path — a stationary swing has no walk heading. The
-  per-seq direction ORDER is assumed to match the walk's block order (`HEADING_OCTANT_TO_BLOCK`); **flagged
-  for the montage sign-off**, not yet human-confirmed.
+  `gfxanimframelistdir <dir>` space is NOT the strip-block order (the first cut assumed it was — swings drew
+  rotated, human-caught): it is the engine's movement ring (0 E, 1 SE, 2 SW, 3 W, 4 NW, 5 NE, 6 N, 7 S),
+  DATA-PINNED by cross-checking all 123 human-body `[gfxanimatomic]` records against their ×8 strip blocks
+  (`GFX_DIR_TO_BLOCK = [4,5,0,1,2,3,7,6]` in `settler-gfx.ts`; the lone dissenter is the bear body).
 - **Aggressive gait:** `SettlerStateBinding.engaged` swaps the `_agressive` walk/wait while the sim
   `Engagement` marker is set (`readEngaged`). The unarmed body authors no aggressive variant → falls back
   to its relaxed gait (named).
@@ -169,12 +171,21 @@ gallery. **Human pixel sign-off still pending** — the swing/facing/feel is the
   a struck unit has NO dr, it just loses HP; honest data gap, recorded in the scene checklist. (c) Saber/axe
   jobs 36–39 have no viking gfx binding → they borrow their spec's sword/broadsword swing (named). (d) The
   unarmed body picks the `empty_punch` variant of four; the original randomises.
-- **`?scene=combat`** (`packages/app/src/scenes/combat.ts`): a small readable red-vs-blue clash (sword +
-  short/long bow) — the visual sign-off surface. Headless checks assert the deterministic outcome only.
-  Note: the scene camera frames on the initial-snapshot centroid, which is EMPTY before the spawn commands
-  run, so it falls back to the tile origin — units sit right-of-centre until the human pans (interactive
-  camera). Spear/broadsword/unarmed/woman swings are validated per-body in `?anim` until the battle scene
-  (step 7) / barracks (step 8) field those classes.
+- **`?scene=combat`** (`packages/app/src/scenes/combat.ts`): FIVE red-vs-blue duels — spear / short sword /
+  long sword / short bow / long bow — on deliberately different axes (E–W, N–S, diagonals) so every swing is
+  judged in many facings. Headless checks assert the deterministic outcome only. The scene entry now frames
+  the camera on the FIRST-tick snapshot (spawns run on tick 1; the empty tick-0 centroid used to drop the
+  frame to the tile origin).
+- **First human review (2026-07-08) caught + fixed:** (a) the direction remap above; (b) the sandbox
+  content's MADE-UP attack cadences (a 4-tick sword swing vs the 12-frame decoded swing → the drawn attack
+  truncated at its wind-up and repeated frantically) — sandbox `atomicAnimations` now carry the REAL viking
+  lengths + ATTACK-event frames (sword 12@9, spear 27@17, broadsword 29@16, bows 12@10 / 28@22) and the
+  long bow is its own job 41 (the real split — one archer job couldn't carry two draw lengths); (c) instant
+  kills — scene HP raised to ~7–10 swings per kill (`BLUE_HP 400 / RED_HP 280`, sandbox-scale approximation,
+  step-10 calibration pending); (d) an in-flight arrow now DRAWS (pulled forward from step 6): DrawKind
+  `projectile` + a minimal oriented-arrow marker rotated toward the homing target
+  (`gpu/sprite-pool/placeholder.ts`) — NO decoded arrow bob exists in the extracted `[bobseq]` lanes; step 6
+  still owes the effects-bmd hunt and can replace the marker.
 
 ---
 
@@ -214,10 +225,10 @@ Context (2026-07-03 — re-verify; re-read current seams):
   the id join exists end-to-end. Extract the weapon sound fields (if step 4 didn't), then bind:
   projectileHit/melee-hit events → impact sfx by (weapon, victim material), death → the
   GET_HIT/death sfx + the existing jingle. Follow packages/audio's event-binding pattern.
-- Projectile sprite: no readable arrow/rock asset was found in the research pass. Hunt the
-  decoded bobs once (arrow-like frames in the effects/temp bmds); if none, draw a minimal
-  oriented sprite/line and track the gap (docs/plans) — do NOT silently ship nothing: the
-  projectile must be visible.
+- Projectile sprite: a MINIMAL oriented-arrow marker already ships (pulled forward into step 5's
+  fix round — DrawKind `projectile`, `gpu/sprite-pool/placeholder.ts`, rotated toward the homing
+  target). Still owed here: hunt the decoded effects/temp bmds ONCE for a real arrow/rock frame
+  and replace the marker if one exists; keep the marker (tracked gap) if not.
 
 Deliverables:
 1. Owner → player-colour rendering end-to-end (two armies visibly red vs blue).

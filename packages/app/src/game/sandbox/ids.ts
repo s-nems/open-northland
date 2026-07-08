@@ -39,13 +39,20 @@ export const JOB_GATHERER_IRON = 23;
 export const JOB_GATHERER_GOLD = 24;
 export const JOB_GATHERER_MUSHROOM = 25;
 export const JOB_CARRIER = 36;
-export const JOB_SOLDIER_SWORD = 34;
-export const JOB_ARCHER = 40;
+// Soldier jobs ride the REAL viking `jobtypes.ini` ids (soldiers 31..41) so the render's job→body map
+// (`ADULT_CHARACTER_BY_JOB`) draws each class's own warrior body + weapon animation set.
+export const JOB_SOLDIER_SPEAR = 33; // soldier_spear_iron
+export const JOB_SOLDIER_SWORD = 34; // soldier_sword_short
+export const JOB_SOLDIER_BROADSWORD = 35; // soldier_sword_long
+export const JOB_ARCHER = 40; // soldier_bow_short
+export const JOB_ARCHER_LONG = 41; // soldier_bow_long
 
 export const BUILDING_HEADQUARTERS = 1;
 export const BUILDING_JOINERY = 23;
 
+export const WEAPON_SPEAR = 5;
 export const WEAPON_SWORD = 7;
+export const WEAPON_BROADSWORD = 8;
 export const WEAPON_SHORT_BOW = 20;
 export const WEAPON_LONG_BOW = 21;
 

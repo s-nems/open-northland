@@ -30,6 +30,9 @@ import { resolveSettlerBobId } from './settler.js';
  */
 export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tick = 0): number | null {
   if (item.kind === 'tile') return null; // tiles bind by typeId, not these per-kind bindings
+  // A projectile never binds an atlas frame (no decoded arrow bob exists) — the GPU pool draws its
+  // oriented-arrow marker instead (see gpu/sprite-pool/placeholder.ts).
+  if (item.kind === 'projectile') return null;
   // A ground drop (freshly-felled trunk) draws its per-good pickup-stage frame from the `trunk` binding via
   // the SAME per-good resolver a node uses; the DrawKind ('grounddrop', the entity) and binding key ('trunk',
   // the graphic) differ, so it is resolved explicitly rather than through the generic `bindings[kind]` lookup.

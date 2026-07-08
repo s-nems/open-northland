@@ -30,6 +30,9 @@ export function readPosition(components: Readonly<Record<string, unknown>>): Pos
 
 /** Classify a snapshot entity by which marker component it carries (terrain tiles are separate). */
 export function classify(components: Readonly<Record<string, unknown>>): DrawKind | null {
+  // An in-flight munition (a bare Projectile + Position entity, the ranged-combat shot) — drawn as the
+  // minimal oriented arrow (no decoded arrow bob exists in the extracted [bobseq] lanes; a named gap).
+  if ('Projectile' in components) return 'projectile';
   if ('Building' in components) return 'building';
   if ('Resource' in components) return 'resource';
   // A felled tree's leftover stump/debris — pure decor (a Position + Stump marker, no other drawable
@@ -172,6 +175,18 @@ export function readAtomicTargetEntity(components: Readonly<Record<string, unkno
   const a = components.CurrentAtomic as { targetEntity?: unknown } | undefined;
   if (a === undefined || typeof a.targetEntity !== 'number') return null;
   return a.targetEntity;
+}
+
+/**
+ * The entity id an in-flight projectile homes on (the sim `Projectile.target`), or `null` for a
+ * missing/malformed component. The scene aims the drawn arrow's {@link
+ * import('./draw-item.js').DrawItem.rotation} at this target's live position — the sim re-aims its
+ * homing step at the same target each tick, so the drawn heading tracks the true flight.
+ */
+export function readProjectileTarget(components: Readonly<Record<string, unknown>>): number | null {
+  const p = components.Projectile as { target?: unknown } | undefined;
+  if (p === undefined || typeof p.target !== 'number') return null;
+  return p.target;
 }
 
 /**

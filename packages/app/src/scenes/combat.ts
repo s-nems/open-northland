@@ -4,79 +4,144 @@ import { grassTerrain } from '../catalog/buildings.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
 import {
   JOB_ARCHER,
+  JOB_ARCHER_LONG,
+  JOB_SOLDIER_BROADSWORD,
+  JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
+  WEAPON_BROADSWORD,
   WEAPON_LONG_BOW,
   WEAPON_SHORT_BOW,
+  WEAPON_SPEAR,
   WEAPON_SWORD,
   spawnSandboxSettler,
 } from '../game/sandbox/index.js';
-import { blueLivingSoldiers, enemyLivingSettlers } from './sandbox-queries.js';
+import { enemyLivingSettlers } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
 /**
- * A small, READABLE combat-animation scene — the human sign-off surface for step 5 (warrior bodies +
- * combat animations). Unlike the busy 0.5-zoom sandbox, this frames two short facing lines close enough
- * to judge a single swing: blue swordsmen advance in the readied ("aggressive") gait and strike with a
- * sword swing FACING their target; two archers (long + short bow) draw and release an arrow at the hit
- * frame. It reuses ONLY the shared `game/sandbox/` content (sword + bow jobs/weapons) — spear/broadsword/
- * unarmed/woman swings are validated per-body in `?anim` until the battle scene (plan step 7) and the
- * barracks (step 8) give those classes a home. Owner-hostility auto-engages the two players, so no
- * explicit stance/attack command is scripted — the clash is emergent, like the sandbox.
+ * The combat-animation sign-off scene — EVERY weapon class, fighting on DIFFERENT axes, so a human can
+ * judge each decoded swing (spear / short sword / long sword / short bow / long bow) in many facings:
+ * the sword duel closes east–west, the broadswords north–south, the spears on a diagonal, and the two
+ * bow duels exchange visible arrows on a diagonal and a vertical. Duel groups are spaced so no group
+ * sees another (melee sight 8; bow search = the weapon's maxRange 15/23), keeping each duel readable.
  *
- * The headless half asserts only the deterministic OUTCOME (blue wins, red falls); the pixels — the swing
- * reading as a swing, the arrow release, the facing — are the human's to judge from the checklist.
+ * Owner-hostility auto-engages the two players — no scripted orders; hitpoints are chosen so a kill
+ * takes ~6–9 full swings (the sandbox damage scale), so the fight lasts long enough to watch whole
+ * animations. Both are named sandbox approximations — the original's human HP is unreadable
+ * (calibration-pending, plan step 10). The headless half asserts only the deterministic outcome; the
+ * pixels are the human's (see the checklist).
  */
 
-const MAP_W = 20;
-const MAP_H = 14;
+const MAP_W = 44;
+const MAP_H = 34;
 
-// Two lines ~6 tiles apart: inside the sight radius, so both sides SEE each other on tick 0 and close —
-// the human watches the aggressive approach, then the swing. Blue outnumbers + outguns (archers + more
-// HP) so the winner is deterministic and red is wiped, satisfying the mechanic check.
-//
-// Positions sit near the tile origin ON PURPOSE: the scene camera frames on the settler centroid of the
-// INITIAL snapshot, but the spawn commands run on the first tick — so at frame-0 the scene is empty and
-// the camera falls back to the tile origin. Keeping the clash near (0,0) lands it in that default frame;
-// {@link SceneDefinition.initialZoom} < 1 tightens it to a readable close-up (any value ≠ 1 also lets the
-// camera re-centre on the centroid once the human nudges it).
-const BLUE_SWORD_X = 4;
-const RED_SWORD_X = 10;
-const LINE_YS = [4, 6, 8] as const;
-const BLUE_ARCHER_X = 2;
-const ARCHER_YS = [3, 9] as const;
+/** Blue outlasts red (~10 vs ~7 swings to fall at sword damage): the winner is deterministic, red is
+ *  wiped, and every duel still shows several full swings from BOTH sides before it resolves. */
 const BLUE_HP = 400;
-const RED_HP = 150;
+const RED_HP = 280;
+
+/** One duellist to place: job + worn weapon + tile, per team. */
+interface DuelPost {
+  readonly job: number;
+  readonly weapon: number;
+  readonly blue: readonly { x: number; y: number }[];
+  readonly red: readonly { x: number; y: number }[];
+}
+
+// Each group's blue/red posts sit within melee sight (8 tiles Manhattan) of their OWN opposite line and
+// beyond every OTHER group's acquire radius, so duels stay pairwise. Axes vary on purpose — the point
+// of the scene is seeing the swing in many facings.
+const DUELS: readonly DuelPost[] = [
+  // Short swords, 2v2, closing WEST→EAST (facings E/W in the clash).
+  {
+    job: JOB_SOLDIER_SWORD,
+    weapon: WEAPON_SWORD,
+    blue: [
+      { x: 3, y: 4 },
+      { x: 3, y: 6 },
+    ],
+    red: [
+      { x: 9, y: 4 },
+      { x: 9, y: 6 },
+    ],
+  },
+  // Broadswords (long sword), 2v2, closing NORTH→SOUTH (facings S/N).
+  {
+    job: JOB_SOLDIER_BROADSWORD,
+    weapon: WEAPON_BROADSWORD,
+    blue: [
+      { x: 15, y: 2 },
+      { x: 17, y: 2 },
+    ],
+    red: [
+      { x: 15, y: 8 },
+      { x: 17, y: 8 },
+    ],
+  },
+  // Spears, 2v2, closing on a NW→SE diagonal (the in-between facings).
+  {
+    job: JOB_SOLDIER_SPEAR,
+    weapon: WEAPON_SPEAR,
+    blue: [
+      { x: 4, y: 13 },
+      { x: 6, y: 15 },
+    ],
+    red: [
+      { x: 8, y: 17 },
+      { x: 10, y: 19 },
+    ],
+  },
+  // Short bows, 1v1 at standing fire range (band 3–15), arrows flying on a shallow diagonal.
+  {
+    job: JOB_ARCHER,
+    weapon: WEAPON_SHORT_BOW,
+    blue: [{ x: 31, y: 6 }],
+    red: [{ x: 39, y: 10 }],
+  },
+  // Long bows, 1v1 (band 4–23), arrows flying on a steeper diagonal in the far corner.
+  {
+    job: JOB_ARCHER_LONG,
+    weapon: WEAPON_LONG_BOW,
+    blue: [{ x: 32, y: 24 }],
+    red: [{ x: 40, y: 30 }],
+  },
+];
 
 function build(sim: Simulation): void {
-  for (const y of LINE_YS) {
-    spawnSandboxSettler(sim, JOB_SOLDIER_SWORD, BLUE_SWORD_X, y, HUMAN_PLAYER, {
-      hitpoints: BLUE_HP,
-      weaponTypeId: WEAPON_SWORD,
-    });
-    spawnSandboxSettler(sim, JOB_SOLDIER_SWORD, RED_SWORD_X, y, ENEMY_PLAYER, {
-      hitpoints: RED_HP,
-      weaponTypeId: WEAPON_SWORD,
-    });
+  for (const duel of DUELS) {
+    for (const p of duel.blue) {
+      spawnSandboxSettler(sim, duel.job, p.x, p.y, HUMAN_PLAYER, {
+        hitpoints: BLUE_HP,
+        weaponTypeId: duel.weapon,
+      });
+    }
+    for (const p of duel.red) {
+      spawnSandboxSettler(sim, duel.job, p.x, p.y, ENEMY_PLAYER, {
+        hitpoints: RED_HP,
+        weaponTypeId: duel.weapon,
+      });
+    }
   }
-  // A long-bow and a short-bow archer behind the blue line — two distinct bow draws + release cadences.
-  spawnSandboxSettler(sim, JOB_ARCHER, BLUE_ARCHER_X, ARCHER_YS[0], HUMAN_PLAYER, {
-    hitpoints: BLUE_HP,
-    weaponTypeId: WEAPON_LONG_BOW,
-  });
-  spawnSandboxSettler(sim, JOB_ARCHER, BLUE_ARCHER_X, ARCHER_YS[1], HUMAN_PLAYER, {
-    hitpoints: BLUE_HP,
-    weaponTypeId: WEAPON_SHORT_BOW,
-  });
 }
 
 const { Owner, Position, Settler } = components;
 
+/** Living blue settlers of ANY soldier class (the scene fields five, not just the sword). */
+function blueLiving(sim: Simulation): number {
+  let count = 0;
+  for (const e of sim.world.query(Settler, Owner)) {
+    if (sim.world.get(e, Owner).player === HUMAN_PLAYER) count++;
+  }
+  return count;
+}
+
 /** A blue swordsman advanced past its start column (the aggressive approach happened, not a stand-off). */
 function blueAdvanced(sim: Simulation): boolean {
+  const swordStartX = DUELS[0]?.blue[0]?.x ?? 0;
   for (const e of sim.world.query(Settler, Owner, Position)) {
     if (sim.world.get(e, Owner).player !== HUMAN_PLAYER) continue;
     if (sim.world.get(e, Settler).jobType !== JOB_SOLDIER_SWORD) continue;
-    if (fx.toInt(sim.world.get(e, Position).x) > BLUE_SWORD_X) return true;
+    if (fx.toInt(sim.world.get(e, Position).x) > swordStartX) return true;
   }
   return false;
 }
@@ -85,20 +150,22 @@ export const combatScene: SceneDefinition = {
   id: 'combat',
   title: 'Walka — animacje ataku',
   summary:
-    'Mala czytelna scena do oceny animacji walki: niebiescy miecznicy podchodza bojowym chodem i zadaja ' +
-    'cios zwrocony w strone wroga, a lucznicy (dlugi i krotki luk) napinaja luk i wypuszczaja strzale. ' +
-    'Wrogosc wynika z gracza (kolor druzyny), wiec starcie jest emergentne — bez skryptowanego rozkazu.',
+    'Piec pojedynkow (wlocznia, krotki i dlugi miecz, krotki i dlugi luk) na roznych osiach natarcia — ' +
+    'do oceny kazdego zamachu w wielu kierunkach. Niebiescy podchodza bojowym chodem i wygrywaja; ' +
+    'lucznicy wymieniaja widoczne strzaly. Wrogosc wynika z gracza (kolor druzyny) — bez skryptow.',
   seed: 7,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
   runTicks: 2000,
-  initialZoom: 0.9,
+  initialZoom: 0.8,
   checklist: [
-    'Miecznicy podchodza „bojowym" chodem (bron gotowa, _agressive), nie zwyklym spacerem',
-    'Cios miecza czyta sie jako zamach i jest zwrocony TWARZA w strone celu (nie zawsze na SE)',
-    'Lucznicy napinaja luk i wypuszczaja strzale w klatce trafienia — strzala leci i trafia (dlugi vs krotki luk)',
-    'Zaatakowana jednostka NIE ma osobnej animacji drgniecia — po prostu traci HP (znana luka danych: brak _attacked bobseq u wikingow)',
-    'Druzyny sa rozroznialne kolorem; czerwony oddzial ginie, niebieski przewaza',
+    'Zamach kazdej broni gra sie W CALOSCI (bez uciecia w polowie) i jest zwrocony TWARZA w strone celu',
+    'Kierunki: miecze walcza wschod-zachod, dwureczne polnoc-poludnie, wlocznie po przekatnej — kazdy zamach idzie we wlasciwa strone',
+    'Miecznicy/wlocznicy podchodza „bojowym" chodem (bron gotowa, _agressive), nie zwyklym spacerem',
+    'Lucznicy napinaja luk (krotki 12 klatek, dlugi 28 — wyraznie dluzszy) i wypuszczaja strzale w klatce zwolnienia',
+    'Strzala jest WIDOCZNA w locie (minimalny grot — brak zdekodowanego spritu strzaly, znana luka) i trafia w cel',
+    'Walka trwa kilka pelnych zamachow (nie blyskawiczny zgon); trafiony NIE ma animacji drgniecia (brak _attacked bobseq — luka danych)',
+    'Druzyny rozroznialne kolorem; czerwoni gina, niebiescy przewazaja; przesun kamere by objac luczników po prawej',
   ],
   checks: [
     {
@@ -106,8 +173,8 @@ export const combatScene: SceneDefinition = {
       predicate: (sim) => enemyLivingSettlers(sim) === 0,
     },
     {
-      label: 'blue swordsmen survive the clash',
-      predicate: (sim) => blueLivingSoldiers(sim) > 0,
+      label: 'blue fighters survive the clash',
+      predicate: (sim) => blueLiving(sim) > 0,
     },
     {
       label: 'the blue swordsmen advanced from their start column into melee',
