@@ -18,7 +18,7 @@ import { type Application, Container, type Sprite } from 'pixi.js';
  */
 
 /** Oversample cap — the small disc icons are already crisp by here; the cap bounds texture memory. */
-const MAX_SUPERSAMPLE = 4;
+const MAX_SUPERSAMPLE = 6;
 /** Oversample floor — a smooth downscaled CIRCLE wants a bit more headroom than the strip's flat edges. */
 const MIN_SUPERSAMPLE = 3;
 
@@ -44,8 +44,8 @@ export function bakeRoundIcon(opts: {
 }): BakedIcon {
   const { app, sprite, frame, scale } = opts;
 
-  // Integer oversample so nearest sampling stays exact; sized for the DEVICE px the icon actually covers
-  // (see oversampleFor), floored so the hard-clipped disc rim always has smoothing headroom.
+  // Integer oversample so nearest sampling stays exact; sized at DOUBLE the DEVICE px the icon covers
+  // so the downscale anti-aliases (see oversampleFor), floored so the disc rim always has headroom.
   const ss = oversampleFor(scale, app.renderer.resolution, MIN_SUPERSAMPLE, MAX_SUPERSAMPLE);
   const texW = Math.ceil(frame.width * ss);
   const texH = Math.ceil(frame.height * ss);

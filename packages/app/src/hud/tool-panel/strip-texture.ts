@@ -26,12 +26,13 @@ import type { DesignRect } from './layout.js';
  */
 
 /**
- * Oversample cap for {@link oversampleFor} (which sizes the bake for `uiscale × renderer.resolution`
- * device px per design px — the 1.4× default at DPR 2 needs 2.8 → ss 3). The cap bounds the texture
- * memory a pathological `?uiscale=`/DPR combination could request (the strip is 433 design px tall;
- * ss 4 ≈ a 200×1772 texture). Flat panel edges need no quality floor (floor 1).
+ * Oversample cap for {@link oversampleFor} (which targets DOUBLE the `uiscale × renderer.resolution`
+ * device px per design px so the linear downscale anti-aliases — the 1.4× default at DPR 2 covers
+ * 2.8 → ss 5). The cap bounds the texture memory a pathological `?uiscale=`/DPR combination could
+ * request (the strip is 433 design px tall; ss 6 ≈ a 300×2598 texture, ~3 MB RGBA, baked once).
+ * Flat panel edges need no quality floor (floor 1).
  */
-const MAX_SUPERSAMPLE = 4;
+const MAX_SUPERSAMPLE = 6;
 const MIN_SUPERSAMPLE = 1;
 
 /** One panel mesh plus its DESIGN-space rect (pre-scale) — the strip background or a tool button. */
@@ -55,8 +56,8 @@ export function createSupersampledStrip(opts: {
 }): SupersampledStrip {
   const { app, bounds, scale, sprites } = opts;
 
-  // Integer oversample so nearest sampling stays exact; sized for the DEVICE px the display sprite
-  // actually covers (see oversampleFor). The shot canvas is resolution 1 → plain ceil(scale).
+  // Integer oversample so nearest sampling stays exact; sized at DOUBLE the DEVICE px the display
+  // sprite covers so the linear downscale anti-aliases the palette edges (see oversampleFor).
   const ss = oversampleFor(scale, app.renderer.resolution, MIN_SUPERSAMPLE, MAX_SUPERSAMPLE);
   const texW = Math.ceil(bounds.w * ss);
   const texH = Math.ceil(bounds.h * ss);
