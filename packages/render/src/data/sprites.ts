@@ -161,15 +161,16 @@ export interface CarryingBinding {
 }
 
 /**
- * A building type's bob reference: either a plain bob id drawn from the **default** building atlas layer
- * (the single shared `ls_houses_viking.house01` layer, {@link import('../gpu/pixi-app.js').SpriteSheet.kindLayers}'s
- * `building` entry), OR a **layer-qualified** `{ layer, bob }` naming WHICH family atlas the bob comes
- * from — the multi-`.bmd` case where a building type lives in its own `.bmd`/palette (e.g. the viking HQ
- * in `ls_houses_viking4.bmd`). A `layer` keys into {@link import('../gpu/pixi-app.js').SpriteSheet.families};
+ * A building type's bob reference — a {@link LayeredBobRef} by another (historical) name: either a plain
+ * bob id drawn from the **default** building atlas layer (the single shared `ls_houses_viking.house01`
+ * layer, {@link import('../gpu/pixi-app.js').SpriteSheet.kindLayers}'s `building` entry), OR a
+ * **layer-qualified** `{ layer, bob }` naming WHICH family atlas the bob comes from — the multi-`.bmd`
+ * case where a building type lives in its own `.bmd`/palette (e.g. the viking HQ in
+ * `ls_houses_viking4.bmd`). A `layer` keys into {@link import('../gpu/pixi-app.js').SpriteSheet.families};
  * the GPU blits the `bob` from that family's own source + frame-id space (and its per-family scale). A bare
  * number keeps the pre-multi-`.bmd` bindings valid unchanged.
  */
-export type BuildingBobRef = number | { readonly layer: string; readonly bob: number };
+export type BuildingBobRef = LayeredBobRef;
 
 /**
  * A resolved building draw ({@link resolveBuildingDraw}'s output): which `bob` id, and optionally which
@@ -218,9 +219,9 @@ export interface ConstructionLayerRef {
 }
 
 /**
- * A bob reference that names WHICH atlas it draws from — the shape {@link BuildingBobRef} already had,
- * generalized so the per-good resource + stockpile bindings reuse the exact same family-layer mechanism
- * the buildings do: a plain bob id draws from the kind's {@link import('../gpu/pixi-app.js').SpriteSheet.kindLayers}
+ * A bob reference that names WHICH atlas it draws from — the ONE shape every per-kind binding shares
+ * (buildings via the {@link BuildingBobRef} alias, per-good resources, stockpiles): a plain bob id draws
+ * from the kind's {@link import('../gpu/pixi-app.js').SpriteSheet.kindLayers}
  * layer (the default resource atlas — the tree), a `{ layer, bob }` draws from a named
  * {@link import('../gpu/pixi-app.js').SpriteSheet.families} atlas (the rock/mine/pile/flag `.bmd`s), each
  * with its OWN frame-id space. The GPU resolves it identically for every kind ({@link BuildingDraw}).
@@ -395,7 +396,7 @@ export function resolveSettlerBobId(
 export function resolveBuildingDraw(binding: number | BuildingTypeBinding, item: DrawItem): BuildingDraw {
   if (typeof binding === 'number') return { bob: binding };
   const ref = (item.typeId !== undefined ? binding.byType[item.typeId] : undefined) ?? binding.default;
-  return typeof ref === 'number' ? { bob: ref } : { bob: ref.bob, layer: ref.layer };
+  return unwrapBobRef(ref);
 }
 
 /**

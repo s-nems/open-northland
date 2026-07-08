@@ -76,22 +76,49 @@ function meshGeometry(batch: TerrainBatch): MeshGeometry {
   });
 }
 
-/** Trace one flat-colour ground diamond into a shared {@link Graphics} (the textured-terrain fallback).
- *  `lifts` (`[top, right, bottom, left]`, world px) lifts each corner by terrain height, matching the
- *  meshed cells around it; absent → flat. */
-function fallbackDiamond(
-  g: Graphics,
-  sx: number,
-  sy: number,
-  colour: number,
-  lifts?: readonly number[],
-): void {
-  g.moveTo(sx, sy - TILE_HALF_H - (lifts?.[0] ?? 0))
-    .lineTo(sx + TILE_HALF_W, sy - (lifts?.[1] ?? 0))
-    .lineTo(sx, sy + TILE_HALF_H - (lifts?.[2] ?? 0))
-    .lineTo(sx - TILE_HALF_W, sy - (lifts?.[3] ?? 0))
-    .closePath()
-    .fill({ color: colour });
+/**
+ * The per-texture-page batch accumulator for ONE chunk, shared by the two textured build paths
+ * (per-typeId diamonds and per-triangle 1:1 ground): get-or-create a batch per page, trace unbound
+ * cells into a shared fallback {@link Graphics}, then emit one {@link Mesh} per page (+ the fallback
+ * when any cell used it) — so the draw-call count per block is ~one per touched page.
+ */
+class ChunkBatcher {
+  private readonly byPage = new Map<string, TerrainBatch & { source: TextureSource }>();
+  private readonly fallback = new Graphics();
+  private fallbackUsed = false;
+
+  /** The (created-on-first-use) batch every cell/triangle sampling `pageKey` accumulates into. */
+  batchFor(pageKey: string, source: TextureSource): TerrainBatch {
+    let batch = this.byPage.get(pageKey);
+    if (batch === undefined) {
+      batch = { positions: [], uvs: [], indices: [], source };
+      this.byPage.set(pageKey, batch);
+    }
+    return batch;
+  }
+
+  /** Trace one flat-colour ground diamond (the unbound-cell fallback). `lifts` (`[top, right, bottom,
+   *  left]`, world px) lifts each corner by terrain height, matching the meshed cells around it. */
+  drawFallback(sx: number, sy: number, colour: number, lifts?: readonly number[]): void {
+    this.fallback
+      .moveTo(sx, sy - TILE_HALF_H - (lifts?.[0] ?? 0))
+      .lineTo(sx + TILE_HALF_W, sy - (lifts?.[1] ?? 0))
+      .lineTo(sx, sy + TILE_HALF_H - (lifts?.[2] ?? 0))
+      .lineTo(sx - TILE_HALF_W, sy - (lifts?.[3] ?? 0))
+      .closePath()
+      .fill({ color: colour });
+    this.fallbackUsed = true;
+  }
+
+  /** The chunk's display children: the fallback (when used) + one mesh per accumulated page. */
+  children(): (Mesh | Graphics)[] {
+    const out: (Mesh | Graphics)[] = [];
+    if (this.fallbackUsed) out.push(this.fallback);
+    for (const batch of this.byPage.values()) {
+      out.push(new Mesh({ geometry: meshGeometry(batch), texture: new Texture({ source: batch.source }) }));
+    }
+    return out;
+  }
 }
 
 export class TerrainLayer {
@@ -188,9 +215,7 @@ export class TerrainLayer {
     }
     const lifted = elevation.maxLift > 0;
     this.buildChunks(terrain, elevation.maxLift, (c0, r0, c1, r1) => {
-      const byPage = new Map<string, TerrainBatch & { source: TextureSource }>();
-      const fallback = new Graphics();
-      let fallbackUsed = false;
+      const batcher = new ChunkBatcher();
       for (let row = r0; row <= r1; row++) {
         for (let col = c0; col <= c1; col++) {
           const typeId = terrain.typeIds[row * terrain.width + col] ?? -1;
@@ -199,35 +224,17 @@ export class TerrainLayer {
           const cellTex = textures.cellFor(typeId);
           const source = cellTex !== undefined ? textures.pages.get(cellTex.pageKey) : undefined;
           if (cellTex === undefined || source === undefined) {
-            fallbackDiamond(
-              fallback,
-              screen.x,
-              screen.y,
-              cellTex?.fallbackColour ?? DEFAULT_TILE_COLOUR,
-              lifts,
-            );
-            fallbackUsed = true;
+            batcher.drawFallback(screen.x, screen.y, cellTex?.fallbackColour ?? DEFAULT_TILE_COLOUR, lifts);
             continue;
           }
-          let batch = byPage.get(cellTex.pageKey);
-          if (batch === undefined) {
-            batch = { positions: [], uvs: [], indices: [], source };
-            byPage.set(cellTex.pageKey, batch);
-          }
+          const batch = batcher.batchFor(cellTex.pageKey, source);
           const base = batch.positions.length / 2;
           batch.positions.push(...diamondCorners(screen.x, screen.y, lifts));
           batch.uvs.push(...rectUVs(cellTex.rect, source.width, source.height));
           for (const idx of DIAMOND_INDICES) batch.indices.push(base + idx);
         }
       }
-      const children: (Mesh | Graphics)[] = [];
-      if (fallbackUsed) children.push(fallback);
-      for (const batch of byPage.values()) {
-        children.push(
-          new Mesh({ geometry: meshGeometry(batch), texture: new Texture({ source: batch.source }) }),
-        );
-      }
-      return children;
+      return batcher.children();
     });
   }
 
@@ -255,9 +262,7 @@ export class TerrainLayer {
       });
     const lifted = elevation.maxLift > 0;
     this.buildChunks(terrain, elevation.maxLift, (c0, r0, c1, r1) => {
-      const byPage = new Map<string, TerrainBatch & { source: TextureSource }>();
-      const fallback = new Graphics();
-      let fallbackUsed = false;
+      const batcher = new ChunkBatcher();
       const pushTriangle = (
         entry: { source: TextureSource; pageKey: string; pattern: GroundPattern },
         corners: readonly number[],
@@ -266,11 +271,7 @@ export class TerrainLayer {
         sy: number,
         lifts: readonly number[] | undefined,
       ): void => {
-        let batch = byPage.get(entry.pageKey);
-        if (batch === undefined) {
-          batch = { positions: [], uvs: [], indices: [], source: entry.source };
-          byPage.set(entry.pageKey, batch);
-        }
+        const batch = batcher.batchFor(entry.pageKey, entry.source);
         const base = batch.positions.length / 2;
         batch.positions.push(...triangleCorners(sx, sy, corners, lifts));
         batch.uvs.push(...triangleUVs(coords, entry.source.width, entry.source.height));
@@ -288,28 +289,14 @@ export class TerrainLayer {
           if (a === null || b === null) {
             const typeId = terrain.typeIds[cell] ?? -1;
             const cellTex = textures.cellFor(typeId);
-            fallbackDiamond(
-              fallback,
-              screen.x,
-              screen.y,
-              cellTex?.fallbackColour ?? DEFAULT_TILE_COLOUR,
-              lifts,
-            );
-            fallbackUsed = true;
+            batcher.drawFallback(screen.x, screen.y, cellTex?.fallbackColour ?? DEFAULT_TILE_COLOUR, lifts);
             // Draw whichever half DID resolve on top of the fallback diamond.
           }
           if (a !== null) pushTriangle(a, TRIANGLE_A_CORNERS, a.pattern.coordsA, screen.x, screen.y, lifts);
           if (b !== null) pushTriangle(b, TRIANGLE_B_CORNERS, b.pattern.coordsB, screen.x, screen.y, lifts);
         }
       }
-      const children: (Mesh | Graphics)[] = [];
-      if (fallbackUsed) children.push(fallback);
-      for (const batch of byPage.values()) {
-        children.push(
-          new Mesh({ geometry: meshGeometry(batch), texture: new Texture({ source: batch.source }) }),
-        );
-      }
-      return children;
+      return batcher.children();
     });
   }
 

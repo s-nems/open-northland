@@ -1,6 +1,23 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import type { ElevationField } from './elevation.js';
 import { ONE, tileToScreen } from './iso.js';
+import {
+  classify,
+  readActingAtomic,
+  readAtomicElapsed,
+  readBuildingType,
+  readBuiltPct,
+  readCarrying,
+  readFacing,
+  readJobType,
+  readOwnerPlayer,
+  readPosition,
+  readResourceGood,
+  readResourceLevel,
+  readSpriteState,
+  readStockpile,
+  readStumpGood,
+} from './snapshot-readers.js';
 import { type Viewport, isVisible } from './viewport.js';
 
 /**
@@ -10,7 +27,9 @@ import { type Viewport, isVisible } from './viewport.js';
  * list of draw items in isometric screen space. No Pixi, no canvas, no GPU: this is plain data the
  * GPU layer (the un-self-verifiable pixel half, deferred to a human) walks in order. Keeping the
  * projection + depth-sort here means the load-bearing render logic — *which* item draws *where* and
- * *in what order* — is unit-testable without a screen (see test/scene.test.ts).
+ * *in what order* — is unit-testable without a screen (see test/scene.test.ts). The per-component
+ * snapshot reads live in {@link import('./snapshot-readers.js')}; this module owns the projection,
+ * the cull, and the depth order.
  *
  * Why floats are fine here: this is `render`, a pure consumer of sim state (docs/ARCHITECTURE.md).
  * The sim stays fixed-point; render reads the snapshot's `Fixed` position (a scaled integer) and
@@ -143,8 +162,9 @@ export interface DrawItem {
    * For a settler: its facing direction index (0..7) — the screen-space heading a directional
    * animation binding indexes by. The `CR_Hum_Body` bob layout is NOT a uniform rotation; its 8 blocks
    * face (read off the decoded frames, `source basis` "Settler facing"): `0 SW, 1 W, 2 NW, 3 NE,
-   * 4 E, 5 SE, 6 S, 7 N`. Derived from the live {@link readFacing} heading; omitted when the settler
-   * isn't moving (the binding then falls back to {@link DEFAULT_FACING}).
+   * 4 E, 5 SE, 6 S, 7 N`. Derived from the live {@link import('./snapshot-readers.js').readFacing}
+   * heading; omitted when the settler isn't moving (the binding then falls back to
+   * {@link import('./sprites.js').DEFAULT_FACING}).
    */
   readonly facing?: number;
   /**
@@ -199,6 +219,11 @@ export interface DrawItem {
    */
   readonly lift?: number;
 }
+
+/** The mutable twin of {@link DrawItem}, used only while one item is being assembled (the fields are
+ *  conditionally ASSIGNED instead of conditionally spread — a spread per optional field allocates a
+ *  throwaway object each, a real per-frame GC cost at thousands of sprites × 60 fps). */
+type MutableDrawItem = { -readonly [K in keyof DrawItem]: DrawItem[K] };
 
 /**
  * A decoded map's 1:1 per-triangle ground lanes (the `ground` layer of `content/maps/<id>.json`):
@@ -258,290 +283,6 @@ export function terrainMapToScene(map: {
 }
 
 /**
- * The snapshot's `Position` component value, as plain data (Fixed = a scaled integer). Mirrors the
- * sim component; redeclared here so `render` doesn't reach into sim internals for a 2-field shape.
- */
-interface PositionValue {
-  x: number;
-  y: number;
-}
-
-function readPosition(components: Readonly<Record<string, unknown>>): PositionValue | null {
-  const p = components.Position as PositionValue | undefined;
-  if (p === undefined || typeof p.x !== 'number' || typeof p.y !== 'number') return null;
-  return p;
-}
-
-/** Classify a snapshot entity by which marker component it carries (terrain tiles are separate). */
-function classify(components: Readonly<Record<string, unknown>>): DrawKind | null {
-  if ('Building' in components) return 'building';
-  if ('Resource' in components) return 'resource';
-  // A felled tree's leftover stump/debris — pure decor (a Position + Stump marker, no other drawable
-  // component), drawn by a per-good {@link import('./sprites.js').ResourceTypeBinding} like a resource
-  // node but from the dead-tree/debris atlas. Checked before Settler/Stockpile (a stump is neither).
-  if ('Stump' in components) return 'stump';
-  if ('Settler' in components) return 'settler';
-  // A freshly-felled trunk still on the ground (a Stockpile carrying the GroundDrop marker) draws its
-  // pickup-stage LOG graphic, distinct from a tidy delivery pile — the original shows a different object
-  // for uncollected harvest than for the stored heap. Checked before the plain Stockpile so a marked drop
-  // never falls through to the flag/heap path.
-  if ('GroundDrop' in components && 'Stockpile' in components) return 'grounddrop';
-  // A bare Stockpile with NO Building is a loose ground pile or a delivery flag (the gathering economy's
-  // dropped goods + collection points, spawned by ai-supply.ts). Checked AFTER Building so a warehouse/HQ
-  // store — which carries both Building and Stockpile — stays a `building`, matching the sim's own
-  // ground-pile rule (`nearestGroundPile`: Stockpile ∧ Position ∧ ¬Building).
-  if ('Stockpile' in components) return 'stockpile';
-  return null; // an entity with a Position but no drawable marker is skipped (e.g. a pure mover)
-}
-
-/**
- * The atomic id a snapshot entity is mid-execution on, or `null`. Reads only the `atomicId` field of
- * the (plain-cloned) `CurrentAtomic` component — the same numeric id the sim stores as the `setatomic`
- * animation join key. Total: a missing/malformed component reads as "not acting".
- */
-function readActingAtomic(components: Readonly<Record<string, unknown>>): number | null {
-  const a = components.CurrentAtomic as { atomicId?: unknown } | undefined;
-  if (a === undefined || typeof a.atomicId !== 'number') return null;
-  return a.atomicId;
-}
-
-/**
- * A building entity's type id — the `Building.buildingType` (the `[GfxHouse]` `LogicType` the placement
- * command stamped). Stamped onto the building draw item as {@link DrawItem.typeId} so a per-type
- * {@link import('./sprites.js').BuildingTypeBinding} can draw each building its own house bob. Returns
- * `undefined` for a missing/malformed component (the binding then falls back to its default house). Pure
- * read of plain snapshot data — never re-enters the sim.
- */
-function readBuildingType(components: Readonly<Record<string, unknown>>): number | undefined {
-  const b = components.Building as { buildingType?: unknown } | undefined;
-  return b !== undefined && typeof b.buildingType === 'number' ? b.buildingType : undefined;
-}
-
-/**
- * An UNDER-CONSTRUCTION building's progress as a whole percent (0..99), or `undefined` for a finished
- * building (`built >= ONE` — the normal body draw applies) or a missing/malformed component. The sim's
- * `Building.built` is a fixed-point fraction of ONE; the floor keeps a nearly-done site below 100 so
- * the construction stages stay up until the finish tick flips the draw to the completed body. Pure
- * read of plain snapshot data — never re-enters the sim.
- */
-function readBuiltPct(components: Readonly<Record<string, unknown>>): number | undefined {
-  const b = components.Building as { built?: unknown } | undefined;
-  if (b === undefined || typeof b.built !== 'number' || !Number.isFinite(b.built) || b.built >= ONE) {
-    return undefined; // finished (or malformed — NaN would poison every range test downstream)
-  }
-  return Math.max(0, Math.min(99, Math.floor((b.built * 100) / ONE)));
-}
-
-/**
- * The whole ticks the settler has executed in its current atomic — the sim's `CurrentAtomic.elapsed`
- * (a plain integer, no fixed-point rescale). The action's animation clock: a directional swing advances
- * at a fixed cadence over these ticks, so its speed never depends on the action's duration. Returns
- * `null` when not mid-atomic. Pure read of plain snapshot data (no sim re-entry).
- */
-function readAtomicElapsed(components: Readonly<Record<string, unknown>>): number | null {
-  const a = components.CurrentAtomic as { elapsed?: unknown } | undefined;
-  if (a === undefined || typeof a.elapsed !== 'number') return null;
-  return a.elapsed;
-}
-
-/**
- * The bob block index per SCREEN-heading octant, indexed by `round(angle / 45°) mod 8` with the angle
- * from `Math.atan2(dy, dx)` (screen +x right, +y down): octant 0 = E, 1 = SE, 2 = S, 3 = SW, 4 = W,
- * 5 = NW, 6 = N, 7 = NE. The `CR_Hum_Body` sheet's 8 direction blocks are NOT a uniform screen-angle
- * rotation — each was read off the decoded frames one by one (`source basis` "Settler facing";
- * blocks face `0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N`) — hence the lookup.
- */
-const HEADING_OCTANT_TO_BLOCK: readonly number[] = [4, 5, 6, 0, 1, 2, 7, 3];
-
-/**
- * The facing block whose sprite looks along the given SCREEN heading (px delta, +x right, +y down):
- * quantize the heading angle to the nearest of the 8 octants and look the block up. Facing must be
- * derived from the PROJECTED heading, not the grid delta's sign — under the staggered raster the
- * same grid step `(0,+1)` heads screen down-RIGHT from an even row but down-LEFT from an odd one
- * (the sign-pair table this replaced faced both as "south", one of the visible zigzag artifacts;
- * source basis "Settler facing"). Floats are fine — render-only, never re-enters the sim.
- */
-function facingFromScreenHeading(dx: number, dy: number): number {
-  const octant = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)); // -4..4, 0 = screen right
-  return HEADING_OCTANT_TO_BLOCK[((octant % 8) + 8) % 8] ?? DEFAULT_HEADING_BLOCK;
-}
-
-/** The S-facing block — the fallback for an (unreachable) out-of-table octant lookup. */
-const DEFAULT_HEADING_BLOCK = 6;
-
-/**
- * One {@link PathFollow} waypoint, as plain snapshot data (Fixed = scaled int). Redeclared here so
- * `render` doesn't import the sim component shape for a 2-field read.
- */
-interface WaypointValue {
-  x: number;
-  y: number;
-}
-
-/**
- * Derive a settler's facing direction index (0..7) from its live heading: the PROJECTED screen step
- * from its current position toward the {@link PathFollow} waypoint it is walking to, quantized to the
- * block whose sprite faces that heading ({@link facingFromScreenHeading}). Projecting through
- * `tileToScreen` (not reading the grid delta's sign) is what makes facing parity-correct under the
- * staggered raster: a lattice leg one row down faces SE from an even row and SW from an odd one.
- * Returns `undefined` when there is no movement to read a heading from (no path, or already on the
- * waypoint) — the binding then falls back to a default facing. Pure read of plain data.
- */
-function readFacing(components: Readonly<Record<string, unknown>>): number | undefined {
-  const pf = components.PathFollow as { waypoints?: unknown; index?: unknown } | undefined;
-  const pos = readPosition(components);
-  if (pf === undefined || pos === null || !Array.isArray(pf.waypoints)) return undefined;
-  const idx = typeof pf.index === 'number' ? pf.index : 0;
-  const wp = pf.waypoints[idx] as WaypointValue | undefined;
-  if (wp === undefined || typeof wp.x !== 'number' || typeof wp.y !== 'number') return undefined;
-  const from = tileToScreen(pos.x / ONE, pos.y / ONE);
-  const to = tileToScreen(wp.x / ONE, wp.y / ONE);
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  if (dx === 0 && dy === 0) return undefined; // already there — no heading
-  return facingFromScreenHeading(dx, dy);
-}
-
-/**
- * Derive a sprite's coarse {@link SpriteState} from its snapshot components, in priority order:
- * mid-atomic (`CurrentAtomic`) ⇒ `acting`, else IN TRANSIT (a live path OR a pending goal) ⇒ `moving`,
- * else `idle`. Acting wins over moving because a settler that started an atomic has stopped to act even
- * if a stale path lingers. Pure read of plain snapshot data — never re-enters the sim.
- *
- * "In transit" is more than a live {@link PathFollow}: a unit re-issuing its route drops the PathFollow
- * for a tick while it still holds a {@link MoveGoal} / a freshly-queued {@link PathRequest} — most
- * visibly a combat chaser, which re-paths toward a MOVING enemy every few ticks (systems/conflict
- * `REPATH_CADENCE`). Treating that gap as `idle` made the walk animation drop to the standing pose for a
- * frame each tile — the reported march "stutter". A **failed** PathRequest is the opposite case: the goal
- * is unreachable and the unit is genuinely stuck, so it stays `idle` rather than moonwalk in place.
- */
-function readSpriteState(components: Readonly<Record<string, unknown>>): SpriteState {
-  if (readActingAtomic(components) !== null) return 'acting';
-  if ('PathFollow' in components) return 'moving';
-  const req = components.PathRequest as { failed?: unknown } | undefined;
-  if (req !== undefined) return req.failed === true ? 'idle' : 'moving';
-  if ('MoveGoal' in components) return 'moving';
-  return 'idle';
-}
-
-/**
- * What a snapshot settler is hauling — the (plain-cloned) `Carrying` component's `goodType` (the sim
- * adds the component on harvest, removes it on deposit), or `null` when it carries nothing. Read as a
- * fact orthogonal to {@link readSpriteState} so a binding can pick the loaded gait (and the per-good
- * look) while the settler still reads as `moving`/`acting`. A present-but-malformed component still
- * reads as carrying (goodType `undefined` → the generic loaded look). Pure read of plain snapshot data.
- */
-function readCarrying(components: Readonly<Record<string, unknown>>): { goodType?: number } | null {
-  const c = components.Carrying as { goodType?: unknown } | undefined;
-  if (c === undefined) return null;
-  return typeof c.goodType === 'number' ? { goodType: c.goodType } : {};
-}
-
-/**
- * A settler's `Settler.jobType` — the per-character body/head join key ({@link DrawItem.jobType}) — or
- * `undefined` for a jobless (`null`) settler / malformed component (the binding then falls back to its
- * default look). Pure read of plain snapshot data — never re-enters the sim.
- */
-function readJobType(components: Readonly<Record<string, unknown>>): number | undefined {
-  const s = components.Settler as { jobType?: unknown } | undefined;
-  return s !== undefined && typeof s.jobType === 'number' ? s.jobType : undefined;
-}
-
-/**
- * A resource node's `Resource.goodType` — the per-good join key ({@link DrawItem.goodType}) a
- * {@link import('./sprites.js').ResourceTypeBinding} draws its species/deposit by (a tree for wood, a
- * mine for iron). `undefined` for a missing/malformed component (the binding then falls back to its
- * default node). Pure read of plain snapshot data — never re-enters the sim.
- */
-function readResourceGood(components: Readonly<Record<string, unknown>>): number | undefined {
-  const r = components.Resource as { goodType?: unknown } | undefined;
-  return r !== undefined && typeof r.goodType === 'number' ? r.goodType : undefined;
-}
-
-/**
- * The visual fill LEVEL of a mined deposit ({@link DrawItem.level}): a small integer in `[1, levels]`,
- * `levels` when full (`remaining === initial`) stepping down to `1` as it nears empty. Pure integer math
- * — the node twin of {@link readStockpile}'s pile `fill`, done here (in the snapshot read-view) off the
- * `Resource.remaining` + `MineDeposit.initial`/`levels` the sim exposes, never re-entering the sim.
- * `ceil(remaining · levels / initial)`: a partially-drained deposit reads as the next level UP, so it
- * looks full until the first unit is actually gone and only the last unit shows the dregs. Matches the
- * mine gfx `state` numbering directly (level `k` ⇒ `state k`), which is authored full at the highest state.
- */
-export function depositVisualLevel(remaining: number, initial: number, levels: number): number {
-  if (remaining <= 0 || initial <= 0 || levels <= 0) return 0;
-  return Math.min(levels, Math.max(1, Math.ceil((remaining * levels) / initial)));
-}
-
-/**
- * A mined resource node's visual fill level ({@link DrawItem.level}), or `undefined` for a plain node.
- * Reads the node's {@link import('@vinland/sim').MineDeposit} `initial`/`levels` (its deposit capacity)
- * against `Resource.remaining` and buckets them via {@link depositVisualLevel}. `undefined` when the node
- * carries no `MineDeposit` (a tree/mushroom/full showcase node) — the binding then draws its full-state
- * frame. Pure read of plain snapshot data — never re-enters the sim.
- */
-function readResourceLevel(components: Readonly<Record<string, unknown>>): number | undefined {
-  const deposit = components.MineDeposit as { initial?: unknown; levels?: unknown } | undefined;
-  const res = components.Resource as { remaining?: unknown } | undefined;
-  if (deposit === undefined || typeof deposit.initial !== 'number' || typeof deposit.levels !== 'number') {
-    return undefined;
-  }
-  if (res === undefined || typeof res.remaining !== 'number') return undefined;
-  return depositVisualLevel(res.remaining, deposit.initial, deposit.levels);
-}
-
-/**
- * A stump's `Stump.goodType` — the resource it is the remains of (a chopped tree → wood), the per-good
- * join key ({@link DrawItem.goodType}) a {@link import('./sprites.js').ResourceTypeBinding} draws its
- * debris frame by. `undefined` for a missing/malformed component (the binding falls back to its
- * default). Pure read of plain snapshot data — never re-enters the sim.
- */
-function readStumpGood(components: Readonly<Record<string, unknown>>): number | undefined {
-  const s = components.Stump as { goodType?: unknown } | undefined;
-  return s !== undefined && typeof s.goodType === 'number' ? s.goodType : undefined;
-}
-
-/**
- * What a bare {@link import('@vinland/sim').Stockpile} draw item represents: the good its ground pile
- * mainly holds + how many units (its per-fill heap frame), or `{}` when it holds nothing — an empty pile
- * is a bare **delivery flag**. The snapshot clones a `Stockpile.amounts` Map to an ascending-by-goodType
- * `[goodType, amount]` array (see `inspect/snapshot.ts`), so this reads that plain shape. The pile's good
- * is the one it holds MOST of (strict `>` keeps the FIRST max — i.e. the lowest goodType on a tie,
- * *because* the snapshot pre-sorts `amounts` ascending by goodType). That canonical order is what makes
- * the pick reproducible across runs. A pile in the gathering economy holds a single good, so this is
- * unambiguous there; the max rule just keeps a mixed heap deterministic. Pure.
- */
-function readStockpile(components: Readonly<Record<string, unknown>>): {
-  goodType?: number;
-  fill?: number;
-} {
-  const s = components.Stockpile as { amounts?: unknown } | undefined;
-  if (s === undefined || !Array.isArray(s.amounts)) return {};
-  let bestGood: number | undefined;
-  let bestAmount = 0;
-  for (const pair of s.amounts) {
-    if (!Array.isArray(pair)) continue;
-    const good = pair[0];
-    const amount = pair[1];
-    if (typeof good !== 'number' || typeof amount !== 'number' || amount <= 0) continue;
-    if (amount > bestAmount) {
-      bestAmount = amount;
-      bestGood = good;
-    }
-  }
-  return bestGood === undefined ? {} : { goodType: bestGood, fill: bestAmount };
-}
-
-/**
- * The owning player slot of a settler — the sim `Owner.player`, the render team-colour key ({@link
- * DrawItem.player}). `undefined` when the settler carries no `Owner` (wildlife / a neutral fixture), which
- * the renderer draws in the base palette. Pure read of plain snapshot data.
- */
-function readOwnerPlayer(components: Readonly<Record<string, unknown>>): number | undefined {
-  const o = components.Owner as { player?: unknown } | undefined;
-  return o !== undefined && typeof o.player === 'number' ? o.player : undefined;
-}
-
-/**
  * Build the depth-sorted isometric draw list for a frame.
  *
  * Ordering — the core correctness property a human eyeball would otherwise have to catch:
@@ -592,7 +333,7 @@ export function buildScene(
   }
 
   // Stable, total order: tiles (all negative depth) ahead of sprites, sprites by (y, x, id).
-  return [...tiles, ...collectSprites(snapshot, undefined, elevation)];
+  return [...tiles, ...collectSpriteScene(snapshot, undefined, elevation).items];
 }
 
 /**
@@ -609,7 +350,7 @@ export function buildSpriteScene(
   viewport?: Viewport,
   elevation?: ElevationField,
 ): DrawItem[] {
-  return collectSprites(snapshot, viewport, elevation);
+  return collectSpriteScene(snapshot, viewport, elevation).items;
 }
 
 /**
@@ -627,65 +368,47 @@ export function drawableEntityRefs(snapshot: WorldSnapshot): Set<number> {
   return refs;
 }
 
+/** One frame's sprite scene: the culled, depth-sorted draw list PLUS the pre-cull liveness set —
+ *  produced in a single pass over the snapshot (see {@link collectSpriteScene}). */
+export interface SpriteScene {
+  readonly items: DrawItem[];
+  /** Ids of ALL drawable entities (before the cull) — the set the retained pool reconciles against
+   *  (an id missing here has DIED; one present but not in {@link items} is merely off-screen). */
+  readonly liveRefs: ReadonlySet<number>;
+}
+
 /**
- * Build the depth-sorted sprite draw list from the snapshot's entities — the shared core of
- * {@link buildScene} and {@link buildSpriteScene}. Each drawable entity is projected to its feet anchor
- * and tagged with the render-side reads (state/facing/carrying/atomic/buildingType) a per-kind binding
- * needs; when a `viewport` is given, one whose drawn anchor falls outside the framed box is dropped.
- * Sorted by feet anchor `(y, x)` then entity id — a total, stable order (the same property the
- * pre-split list had), so culling only removes items without reshuffling the survivors. Pure.
+ * Build the depth-sorted sprite draw list AND the pre-cull liveness set in one pass over the
+ * snapshot's entities — the shared core of {@link buildScene}, {@link buildSpriteScene} and the
+ * retained pool's per-frame reconcile (which needs both and would otherwise classify every entity
+ * twice per frame). Each drawable entity is projected to its feet anchor and tagged with the
+ * render-side reads (state/facing/carrying/atomic/buildingType) a per-kind binding needs; when a
+ * `viewport` is given, one whose drawn anchor falls outside the framed box is dropped — the per-kind
+ * reads run only for the items that survive the cull. Sorted by feet anchor `(y, x)` then entity id —
+ * a total, stable order, so culling only removes items without reshuffling the survivors. Pure.
  */
-function collectSprites(
+export function collectSpriteScene(
   snapshot: WorldSnapshot,
   viewport?: Viewport,
   elevation?: ElevationField,
-): DrawItem[] {
-  const sprites: DrawItem[] = [];
+): SpriteScene {
+  const items: MutableDrawItem[] = [];
+  const liveRefs = new Set<number>();
   for (const entity of snapshot.entities) {
-    const kind = classify(entity.components);
+    const components = entity.components;
+    const kind = classify(components);
     if (kind === null) continue;
-    const pos = readPosition(entity.components);
+    const pos = readPosition(components);
     if (pos === null) continue;
+    liveRefs.add(entity.id);
     // Fixed (scaled int) -> float tile coordinate. Render-only; never re-enters the sim.
     const tileX = pos.x / ONE;
     const tileY = pos.y / ONE;
     const screen = tileToScreen(tileX, tileY);
-    // Terrain lift at the feet (bilinear over the elevation lane) — the DRAW offset, NOT the depth key.
-    // The anchor/`depth` below stay PRE-LIFT so occlusion sorts by map row, not by lifted screen y.
-    // A flat map (`maxLift === 0`) skips the sampler entirely — the elevation-free path stays free.
-    const lift = elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAt(tileX, tileY) : 0;
-    // Only settlers animate per-state in this slice; a building/resource is always idle. When acting,
-    // carry the atomic id so a per-state binding can pick the specific action's frame (the `setatomic`
-    // join key); otherwise it's omitted under exactOptionalPropertyTypes.
-    const state: SpriteState = kind === 'settler' ? readSpriteState(entity.components) : 'idle';
-    const actingAtomic = kind === 'settler' ? readActingAtomic(entity.components) : null;
-    const elapsed = kind === 'settler' ? readAtomicElapsed(entity.components) : null;
-    const facing = kind === 'settler' ? readFacing(entity.components) : undefined;
-    const carrying = kind === 'settler' ? readCarrying(entity.components) : null;
-    const jobType = kind === 'settler' ? readJobType(entity.components) : undefined;
-    const player = kind === 'settler' ? readOwnerPlayer(entity.components) : undefined;
-    // Only a born-young settler carries `Age` — the component-presence disambiguation of the age-class
-    // jobType ids (1..4) from colliding synthetic adult ids (AGENTS.md [dc3ef54]).
-    const young = kind === 'settler' && 'Age' in entity.components;
-    // A building carries its type id so a per-type binding draws its own house bob (the `[GfxHouse]`
-    // `LogicType` → `GfxBobId` join); other kinds key off no type, so it's omitted for them.
-    const buildingType = kind === 'building' ? readBuildingType(entity.components) : undefined;
-    // An under-construction building carries its progress percent so the construction-stage binding
-    // can pick the visible `[GfxHouse]` layers (grey foundation → stages → completed body).
-    const builtPct = kind === 'building' ? readBuiltPct(entity.components) : undefined;
-    // A resource node carries its `Resource.goodType` so a per-good binding draws its own species/deposit;
-    // a bare stockpile carries the good its pile holds most of (+ the fill amount), or nothing when it is a
-    // delivery flag. Both feed the per-good {@link ResourceTypeBinding}/{@link StockpileBinding}.
-    const resourceGood = kind === 'resource' ? readResourceGood(entity.components) : undefined;
-    // A MINED node also carries its shrink-by-level fill state so its deposit graphic steps down as it
-    // empties; a plain node (tree/mushroom/full deposit) reads `undefined` and draws its full-state frame.
-    const resourceLevel = kind === 'resource' ? readResourceLevel(entity.components) : undefined;
-    const stumpGood = kind === 'stump' ? readStumpGood(entity.components) : undefined;
-    // A plain flag/pile AND a loose GroundDrop trunk both read their held good + fill from the stockpile —
-    // the trunk keys its per-good pickup graphic off `goodType`, the flag its heap frame off `goodType`+fill.
-    const stockpile =
-      kind === 'stockpile' || kind === 'grounddrop' ? readStockpile(entity.components) : undefined;
-    const goodType = kind === 'resource' ? resourceGood : kind === 'stump' ? stumpGood : stockpile?.goodType;
+    // Only settlers animate per-state in this slice; a building/resource is always idle. State (and
+    // the chop atomic) must be read BEFORE the cull because the chop nudge moves the drawn anchor.
+    const state: SpriteState = kind === 'settler' ? readSpriteState(components) : 'idle';
+    const actingAtomic = kind === 'settler' ? readActingAtomic(components) : null;
     // A chopping settler shares its tree's cell; nudge its drawn sprite left so the right-swing axe
     // lands in the trunk at the cell centre (render-only — the depth sort below still uses the true tile).
     const chopNudgeX = state === 'acting' && actingAtomic === CHOP_ATOMIC_ID ? CHOP_NUDGE_X : 0;
@@ -693,7 +416,11 @@ function collectSprites(
     // Cull to the framed viewport (when culling). Uses the DRAWN anchor; the box is pre-inflated by the
     // renderer to cover a tall sprite's extent, so a building straddling the edge still draws.
     if (viewport !== undefined && !isVisible(viewport, drawX, screen.y)) continue;
-    sprites.push({
+    // Terrain lift at the feet (bilinear over the elevation lane) — the DRAW offset, NOT the depth key.
+    // The anchor/`depth` below stay PRE-LIFT so occlusion sorts by map row, not by lifted screen y.
+    // A flat map (`maxLift === 0`) skips the sampler entirely — the elevation-free path stays free.
+    const lift = elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAt(tileX, tileY) : 0;
+    const item: MutableDrawItem = {
       kind,
       ref: entity.id,
       x: drawX,
@@ -703,24 +430,58 @@ function collectSprites(
       // A total order, so the sort is deterministic regardless of snapshot iteration nuances.
       depth: tileY * ROW_STRIDE + tileX + SPRITE_PAINT_ORDER[kind] * PAINT_ORDER_EPS,
       state,
-      ...(actingAtomic !== null ? { atomicId: actingAtomic } : {}),
-      ...(elapsed !== null ? { elapsed } : {}),
-      ...(facing !== undefined ? { facing } : {}),
-      ...(carrying !== null ? { carrying: true } : {}),
-      ...(carrying?.goodType !== undefined ? { carryGood: carrying.goodType } : {}),
-      ...(jobType !== undefined ? { jobType } : {}),
-      ...(player !== undefined ? { player } : {}),
-      ...(young ? { young: true } : {}),
-      ...(buildingType !== undefined ? { typeId: buildingType } : {}),
-      ...(builtPct !== undefined ? { builtPct } : {}),
-      ...(goodType !== undefined ? { goodType } : {}),
-      ...(stockpile?.fill !== undefined ? { fill: stockpile.fill } : {}),
-      ...(resourceLevel !== undefined ? { level: resourceLevel } : {}),
-      ...(lift !== 0 ? { lift } : {}),
-    });
+    };
+    // Per-kind reads, ASSIGNED (not spread) so an absent fact stays an absent property under
+    // exactOptionalPropertyTypes without a throwaway spread object per field.
+    if (kind === 'settler') {
+      if (actingAtomic !== null) item.atomicId = actingAtomic;
+      const elapsed = readAtomicElapsed(components);
+      if (elapsed !== null) item.elapsed = elapsed;
+      const facing = readFacing(components);
+      if (facing !== undefined) item.facing = facing;
+      const carrying = readCarrying(components);
+      if (carrying !== null) {
+        item.carrying = true;
+        if (carrying.goodType !== undefined) item.carryGood = carrying.goodType;
+      }
+      const jobType = readJobType(components);
+      if (jobType !== undefined) item.jobType = jobType;
+      const player = readOwnerPlayer(components);
+      if (player !== undefined) item.player = player;
+      // Only a born-young settler carries `Age` — the component-presence disambiguation of the age-class
+      // jobType ids (1..4) from colliding synthetic adult ids (AGENTS.md [dc3ef54]).
+      if ('Age' in components) item.young = true;
+    } else if (kind === 'building') {
+      // A building carries its type id so a per-type binding draws its own house bob (the `[GfxHouse]`
+      // `LogicType` → `GfxBobId` join), and — while under construction — its progress percent so the
+      // construction-stage binding can pick the visible layers (grey foundation → stages → body).
+      const typeId = readBuildingType(components);
+      if (typeId !== undefined) item.typeId = typeId;
+      const builtPct = readBuiltPct(components);
+      if (builtPct !== undefined) item.builtPct = builtPct;
+    } else if (kind === 'resource') {
+      // A resource node carries its `Resource.goodType` so a per-good binding draws its own
+      // species/deposit; a MINED node also carries its shrink-by-level fill state so its deposit graphic
+      // steps down as it empties (a plain tree/mushroom/full deposit reads no level → full-state frame).
+      const goodType = readResourceGood(components);
+      if (goodType !== undefined) item.goodType = goodType;
+      const level = readResourceLevel(components);
+      if (level !== undefined) item.level = level;
+    } else if (kind === 'stump') {
+      const goodType = readStumpGood(components);
+      if (goodType !== undefined) item.goodType = goodType;
+    } else {
+      // stockpile | grounddrop: both read their held good + fill from the stockpile — the trunk keys its
+      // per-good pickup graphic off `goodType`, the flag/heap its per-fill frame off `goodType`+`fill`.
+      const { goodType, fill } = readStockpile(components);
+      if (goodType !== undefined) item.goodType = goodType;
+      if (fill !== undefined) item.fill = fill;
+    }
+    if (lift !== 0) item.lift = lift;
+    items.push(item);
   }
   // Stable, total order: sprites by (y, x, id). The entity-id tie-break makes two sprites on the exact
   // same tile order deterministically.
-  sprites.sort((a, b) => a.depth - b.depth || a.ref - b.ref);
-  return sprites;
+  items.sort((a, b) => a.depth - b.depth || a.ref - b.ref);
+  return { items, liveRefs };
 }

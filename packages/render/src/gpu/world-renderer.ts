@@ -139,16 +139,16 @@ export class WorldRenderer {
     // they can't ride the worldLayer transform); the plain-sprite path ignores them. The elevation field
     // lets it lift each entity's DRAWN feet without disturbing its pre-lift depth key; `alpha` lerps
     // each entity between its last two tick anchors.
-    this.pool.reconcile(
+    this.pool.reconcile({
       snapshot,
-      vp,
+      viewport: vp,
       tick,
       camera,
-      this.app.screen.width,
-      this.app.screen.height,
-      this.elevation,
+      screenW: this.app.screen.width,
+      screenH: this.app.screen.height,
+      elevation: this.elevation,
       alpha,
-    );
+    });
     // Selection rings read the pool's just-computed per-entity bounds + drawn (lerped, lifted) anchors,
     // so a building's marker sizes to its actual sprite footprint and a moving unit's ring glides with
     // the interpolated bob (reconcile ran first, so both are this frame's); the elevation field covers

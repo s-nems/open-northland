@@ -156,6 +156,37 @@ function objectFrameAt(obj: MapObjectSprite, tick: number): AtlasFrame | undefin
   return obj.frames[(tick + obj.phase) % obj.frames.length];
 }
 
+/** One built quad-batch mesh + the buffers behind it (the caller keeps the buffers only for an
+ *  ANIMATED batch, whose quads are rewritten in place when the play-head advances). */
+interface QuadBatch {
+  readonly mesh: Mesh;
+  readonly positions: Float32Array;
+  readonly uvs: Float32Array;
+  readonly geometry: MeshGeometry;
+}
+
+/** Batch `objects` (all sharing `source` + `alpha`) into ONE mesh of quads, each written for its
+ *  tick-0 frame — the shared build step for a decor group's static and animated halves. */
+function buildQuadBatch(
+  objects: readonly MapObjectSprite[],
+  source: TextureSource,
+  alpha: number,
+): QuadBatch {
+  const positions = new Float32Array(objects.length * 8);
+  const uvs = new Float32Array(objects.length * 8);
+  const indices = new Uint32Array(objects.length * 6);
+  for (let q = 0; q < objects.length; q++) {
+    const obj = objects[q] as MapObjectSprite;
+    const frame = objectFrameAt(obj, 0) as AtlasFrame;
+    writeObjectQuad(positions, uvs, q, obj, frame, source.width, source.height);
+    indices.set([q * 4, q * 4 + 1, q * 4 + 2, q * 4, q * 4 + 2, q * 4 + 3], q * 6);
+  }
+  const geometry = new MeshGeometry({ positions, uvs, indices });
+  const mesh = new Mesh({ geometry, texture: new Texture({ source }) });
+  mesh.alpha = alpha;
+  return { mesh, positions, uvs, geometry };
+}
+
 export class MapObjectLayer {
   /** Flat map-object decor (waves, grass, mine stains) — batched meshes above terrain, below sprites. */
   readonly decorContainer = new Container();
@@ -360,38 +391,16 @@ export class MapObjectLayer {
     for (const group of bySource.values()) {
       const source = group.source;
       if (group.still.length > 0) {
-        const positions = new Float32Array(group.still.length * 8);
-        const uvs = new Float32Array(group.still.length * 8);
-        const indices = new Uint32Array(group.still.length * 6);
-        for (let q = 0; q < group.still.length; q++) {
-          const obj = group.still[q] as MapObjectSprite;
-          writeObjectQuad(positions, uvs, q, obj, obj.frames[0] as AtlasFrame, source.width, source.height);
-          indices.set([q * 4, q * 4 + 1, q * 4 + 2, q * 4, q * 4 + 2, q * 4 + 3], q * 6);
-        }
-        const geometry = new MeshGeometry({ positions, uvs, indices });
-        const mesh = new Mesh({ geometry, texture: new Texture({ source }) });
-        mesh.alpha = group.alpha;
-        container.addChild(mesh);
+        container.addChild(buildQuadBatch(group.still, source, group.alpha).mesh);
       }
       if (group.moving.length > 0) {
-        const positions = new Float32Array(group.moving.length * 8);
-        const uvs = new Float32Array(group.moving.length * 8);
-        const indices = new Uint32Array(group.moving.length * 6);
-        for (let q = 0; q < group.moving.length; q++) {
-          const obj = group.moving[q] as MapObjectSprite;
-          const frame = objectFrameAt(obj, 0) as AtlasFrame;
-          writeObjectQuad(positions, uvs, q, obj, frame, source.width, source.height);
-          indices.set([q * 4, q * 4 + 1, q * 4 + 2, q * 4, q * 4 + 2, q * 4 + 3], q * 6);
-        }
-        const geometry = new MeshGeometry({ positions, uvs, indices });
-        const mesh = new Mesh({ geometry, texture: new Texture({ source }) });
-        mesh.alpha = group.alpha;
-        container.addChild(mesh);
+        const batch = buildQuadBatch(group.moving, source, group.alpha);
+        container.addChild(batch.mesh);
         animated.push({
           objects: group.moving,
-          positions,
-          uvs,
-          geometry,
+          positions: batch.positions,
+          uvs: batch.uvs,
+          geometry: batch.geometry,
           pageW: source.width,
           pageH: source.height,
         });

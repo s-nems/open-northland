@@ -1,5 +1,3 @@
-import type { Simulation } from '@vinland/sim';
-
 export {
   CALIBRATED_HALF_H,
   CALIBRATED_HALF_W,
@@ -14,7 +12,6 @@ export {
 export {
   buildScene,
   buildSpriteScene,
-  depositVisualLevel,
   drawableEntityRefs,
   terrainMapToScene,
   type DrawItem,
@@ -23,6 +20,7 @@ export {
   type SceneTerrain,
   type SpriteState,
 } from './data/scene.js';
+export { depositVisualLevel } from './data/snapshot-readers.js';
 export {
   atlasFromManifest,
   indexAtlasFrames,
@@ -139,26 +137,9 @@ export {
   SYNTHETIC_ATLAS_HEIGHT,
 } from './gpu/synthetic-atlas.js';
 
-/**
+/*
  * The renderer is a PURE CONSUMER of sim state (see docs/ARCHITECTURE.md). It reads a snapshot
- * and draws; it never mutates the sim and the sim never imports this package. It interpolates
- * between the previous and current tick using the `alpha` from the fixed-timestep driver so motion
- * is smooth regardless of the 20Hz sim rate.
- *
- * This is the Phase-2 interface stub. Implementation uses PixiJS:
- *  - isometric tile layer from the map's landscape grid
- *  - depth-sorted sprite layer (sort by world Y / feet anchor)
- *  - animation playback driven by each entity's logical state (state -> anim name in content)
- *  - camera (pan/zoom) and picking (screen -> tile) for input
+ * and draws; it never mutates the sim and the sim never imports this package. The live entry is
+ * the retained {@link WorldRenderer}: it interpolates between the previous and current tick using
+ * the `alpha` from the fixed-timestep driver so motion is smooth regardless of the 20Hz sim rate.
  */
-export interface Renderer {
-  /** Initialise GPU resources, load atlases referenced by the content set. */
-  init(canvas: HTMLCanvasElement): Promise<void>;
-  /** Draw one frame. `alpha` in [0,1) blends previous->current tick positions. */
-  draw(sim: Simulation, alpha: number): void;
-  /** Convert a screen coordinate to a world tile (for input/picking). */
-  screenToTile(sx: number, sy: number): { tileX: number; tileY: number };
-  dispose(): void;
-}
-
-// TODO(Phase 2): implement PixiRenderer satisfying Renderer. See docs/plans/.
