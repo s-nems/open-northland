@@ -23,7 +23,7 @@ import { dynamicBlockedCells } from '../footprint.js';
 import { carrierCarryCapacity } from '../progression.js';
 import { atomicDuration } from '../readviews/animations.js';
 import { MILITARY_MODE } from '../readviews/index.js';
-import { TileBuckets, canonicalById, isValidCellId, manhattan } from '../spatial.js';
+import { TileBuckets, canonicalById, isTravelling, isValidCellId, manhattan } from '../spatial.js';
 import { isFood, recipeOf } from '../stores.js';
 import {
   deliveryTargetFor,
@@ -117,7 +117,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // choosing the same free cell, `blockedLazy` memoises the building walk-block overlay for the rare tick
   // one is actually needed.
   const restingOwned = canonicalById(world.query(Settler, Position, Owner)).filter(
-    (e) => !world.has(e, MoveGoal) && !world.has(e, PathRequest) && !world.has(e, PathFollow),
+    (e) => !isTravelling(world, e),
   );
   const occupancy = new TileBuckets(world, restingOwned);
   const claimed = new Set<CellId>();
@@ -125,7 +125,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   for (const e of world.query(Settler, Position)) {
     // Busy: an atomic is running, or the settler is en route to a target. Leave it to play out.
     if (world.has(e, CurrentAtomic)) continue;
-    if (world.has(e, MoveGoal) || world.has(e, PathRequest) || world.has(e, PathFollow)) continue;
+    if (isTravelling(world, e)) continue;
 
     const settler = world.get(e, Settler);
     if (settler.jobType === null) continue; // an unemployed settler has no job atomics to run

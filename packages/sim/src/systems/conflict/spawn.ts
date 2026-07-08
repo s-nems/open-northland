@@ -15,6 +15,7 @@ import { ONE, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { animalHitpoints, herdParams, locomotionOf } from '../readviews/index.js';
+import { COMPASS_DIRECTIONS } from '../spatial.js';
 import { stampDefaultStance } from './orders.js';
 
 // The entity-SPAWNING command handlers, split out of command.ts (which keeps the dispatcher + the
@@ -203,18 +204,10 @@ export function spawnAnimalHerd(
  */
 function herdMemberOffset(i: number, range: number): { dx: number; dy: number } {
   if (i === 0 || range <= 0) return { dx: 0, dy: 0 }; // the first (leader) sits on the birth point
-  // 8 compass directions, in a fixed canonical order. Ring `r` (1-based) places up to 8 members at
-  // radius `min(r, range)`; member index within the ring picks the direction.
-  const DIRS: ReadonlyArray<readonly [number, number]> = [
-    [1, 0],
-    [-1, 0],
-    [0, 1],
-    [0, -1],
-    [1, 1],
-    [-1, -1],
-    [1, -1],
-    [-1, 1],
-  ];
+  // The shared 8-compass-direction ring (spatial.ts), in its fixed canonical order. Ring `r`
+  // (1-based) places up to 8 members at radius `min(r, range)`; member index within the ring picks
+  // the direction.
+  const DIRS = COMPASS_DIRECTIONS;
   const ring = Math.floor((i - 1) / DIRS.length) + 1; // 1, 2, 3, … as the rings fill
   const dir = DIRS[(i - 1) % DIRS.length] as readonly [number, number];
   const radius = Math.min(ring, range); // never past the birth-point range

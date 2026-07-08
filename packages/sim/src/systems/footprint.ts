@@ -321,7 +321,10 @@ export function dynamicBlockedCells(
   return blocked;
 }
 
-function cellDistance(terrain: TerrainGraph, a: CellId, b: CellId): number {
+/** Integer Manhattan distance between two cells — the cheap reach/nearness heuristic the AI planner,
+ *  combat range check, and herding leader-distance measure with (A* computes the real path cost).
+ *  Defined here (the leaf module, for its nearest-cell picks) and re-exported by ./spatial.ts. */
+export function manhattan(terrain: TerrainGraph, a: CellId, b: CellId): number {
   const ca = terrain.coordsOf(a);
   const cb = terrain.coordsOf(b);
   return Math.abs(ca.x - cb.x) + Math.abs(ca.y - cb.y);
@@ -335,7 +338,7 @@ function nearestCell(
   let best: CellId | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   for (const cell of candidates) {
-    const dist = from === undefined ? 0 : cellDistance(terrain, from, cell);
+    const dist = from === undefined ? 0 : manhattan(terrain, from, cell);
     if (best === null || dist < bestDist || (dist === bestDist && cell < best)) {
       best = cell;
       bestDist = dist;

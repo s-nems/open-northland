@@ -9,7 +9,6 @@ import {
   Health,
   MoveGoal,
   Owner,
-  PathFollow,
   PathRequest,
   PlayerOrder,
   Position,
@@ -38,7 +37,15 @@ import {
   mayHunt,
   weaponDamageVsMaterial,
 } from '../readviews/index.js';
-import { TileBuckets, canonicalById, entityCell, manhattan } from '../spatial.js';
+import {
+  COMPASS_DIRECTIONS,
+  TileBuckets,
+  canonicalById,
+  clearNavState,
+  entityCell,
+  isTravelling,
+  manhattan,
+} from '../spatial.js';
 
 /**
  * CombatSystem — the whole combat loop's **decision** stage: for each combatant, pick who to fight and
@@ -171,19 +178,11 @@ export const FLEE_COOLDOWN_TICKS = 40;
  */
 const NEED_COLLAPSE_THRESHOLD: Fixed = fx.div(fx.fromInt(19), fx.fromInt(20)); // 0.95·ONE
 
-/** The eight compass directions (canonical order) a fleeing unit considers running toward — the best
- *  (farthest-from-threat, walkable) one is chosen, so an obstacle in the straight-away direction diverts
- *  the run deterministically rather than freezing it. Mirrors the herd-scatter direction set. */
-const FLEE_DIRECTIONS: ReadonlyArray<readonly [number, number]> = [
-  [1, 0],
-  [-1, 0],
-  [0, 1],
-  [0, -1],
-  [1, 1],
-  [-1, -1],
-  [1, -1],
-  [-1, 1],
-];
+/** The compass directions (the shared canonical ring — spatial.ts) a fleeing unit considers running
+ *  toward — the best (farthest-from-threat, walkable) one is chosen, so an obstacle in the
+ *  straight-away direction diverts the run deterministically rather than freezing it. The same
+ *  tuple the herd-spawn scatter walks, so the two direction sets can never drift. */
+const FLEE_DIRECTIONS = COMPASS_DIRECTIONS;
 
 /**
  * The dormancy gate: whether any combat work is possible this tick — a cheap single pass over the
@@ -311,7 +310,7 @@ function engageCombatant(
   }
 
   const engaged = world.has(e, Engagement);
-  const travelling = world.has(e, MoveGoal) || world.has(e, PathRequest) || world.has(e, PathFollow);
+  const travelling = isTravelling(world, e);
   // A travelling unit that is not yet fighting is walking under another drive (an economy walk, or a DEFEND
   // unit heading back to its anchor) — don't yank it into combat. An engaged/ordered unit is re-checked
   // even while moving.
@@ -502,7 +501,7 @@ function fleeDrive(
   }
 
   const f = world.add(e, Fleeing, { repathAt: fleeing?.repathAt ?? ctx.tick, calmUntil: null });
-  const travelling = world.has(e, MoveGoal) || world.has(e, PathRequest) || world.has(e, PathFollow);
+  const travelling = isTravelling(world, e);
   if (world.tryGet(e, PathRequest)?.failed) {
     clearChase(world, e); // the last flee route was unreachable — re-aim now
   } else if (travelling && ctx.tick < f.repathAt) {
@@ -654,7 +653,7 @@ function chase(
     }
   }
 
-  const travelling = world.has(e, MoveGoal) || world.has(e, PathRequest) || world.has(e, PathFollow);
+  const travelling = isTravelling(world, e);
   if (travelling && ctx.tick < engagement.repathAt) return; // still closing on a live route — don't re-path
 
   const dest = approachCell(
@@ -736,9 +735,7 @@ function disengage(world: World, e: Entity): void {
 
 /** Remove the nav state a chase drove (goal + in-flight route) so combat can re-aim or hand the unit back. */
 function clearChase(world: World, e: Entity): void {
-  world.remove(e, MoveGoal);
-  world.remove(e, PathRequest);
-  world.remove(e, PathFollow);
+  clearNavState(world, e);
 }
 
 /** The armor **material tier** a target wears — the column a weapon's `damagevalue[material]` selects.
