@@ -1,5 +1,5 @@
 import { SCENES } from '../scenes/index.js';
-import { el } from '../view/overlay.js';
+import { el, pageInnerStyle, pageRootStyle, pageSection } from '../view/overlay.js';
 
 /**
  * The main MENU — the default landing when the app boots with no entry flag. It replaces "remember the
@@ -14,30 +14,9 @@ import { el } from '../view/overlay.js';
  * `content/maps/*.json` stems); absent `content/` simply shows a hint instead of map cards.
  */
 
-const ROOT_STYLE = [
-  'position:fixed',
-  'inset:0',
-  'overflow-y:auto',
-  'box-sizing:border-box',
-  'padding:40px 20px 64px',
-  'background:radial-gradient(120% 80% at 50% 0%,#241b12 0%,#160f0a 70%)',
-  'color:#e8dcc8',
-  'font:15px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace',
-  'z-index:100',
-].join(';');
-
-const INNER_STYLE = ['max-width:960px', 'margin:0 auto'].join(';');
-
-const SECTION_TITLE_STYLE = [
-  'font-weight:700',
-  'font-size:14px',
-  'letter-spacing:0.08em',
-  'text-transform:uppercase',
-  'opacity:0.7',
-  'margin:28px 0 12px',
-  'border-bottom:1px solid #5a4a36',
-  'padding-bottom:6px',
-].join(';');
+/** The menu's page-shell knobs (shared shell in view/overlay.ts). */
+const ROOT_STYLE = pageRootStyle(40, 15);
+const INNER_STYLE = pageInnerStyle(960);
 
 const GRID_STYLE = [
   'display:grid',
@@ -82,14 +61,11 @@ function card(title: string, subtitle: string, search: string): HTMLButtonElemen
   return b;
 }
 
-/** A titled section wrapping a grid of `cards`. */
+/** A titled section wrapping a grid of `cards` (the shared page section over a card grid). */
 function section(title: string, cards: readonly HTMLElement[]): HTMLElement {
-  const wrap = el('div', '');
-  wrap.append(el('div', SECTION_TITLE_STYLE, title));
   const grid = el('div', GRID_STYLE);
   for (const c of cards) grid.append(c);
-  wrap.append(grid);
-  return wrap;
+  return pageSection(title, [grid]);
 }
 
 /** The decoded-map stems the dev server exposes at `/maps-index` (gitignored `content/maps/*.json`). */
@@ -139,11 +115,8 @@ export async function renderMenu(_canvas: HTMLCanvasElement, _params: URLSearchP
   );
 
   // Decoded maps (gitignored content/) — filled async so a missing content/ shows a hint, not an empty grid.
-  const mapsWrap = el('div', '');
-  mapsWrap.append(el('div', SECTION_TITLE_STYLE, 'Mapy (import oryginalnych map)'));
   const mapsBody = el('div', '');
-  mapsWrap.append(mapsBody);
-  inner.append(mapsWrap);
+  inner.append(pageSection('Mapy (import oryginalnych map)', [mapsBody]));
 
   root.append(inner);
   document.body.append(root);

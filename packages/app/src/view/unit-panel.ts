@@ -1,6 +1,7 @@
 import type { ContentSet } from '@vinland/data';
 import { ONE, TICKS_PER_SECOND, type WorldSnapshot, systems } from '@vinland/sim';
 import { BUTTON_STYLE, el } from './overlay.js';
+import { entityById, isBuilding, isSettler, num, ownerPlayerOf } from './snapshot.js';
 
 /** The four military stances (`MILITARY_MODE`), with Polish labels — used to name the live "Postawa" line
  *  (the stance BUTTONS live in the action ring; see `view/settler-actions.ts`). */
@@ -86,14 +87,9 @@ const NEEDS: ReadonlyArray<{ key: string; label: string }> = [
   { key: 'enjoyment', label: 'Radość' },
 ];
 
+/** The untyped component bag of one snapshot entity — the display reads fields defensively via `num`. */
 interface Comp {
   readonly [k: string]: unknown;
-}
-function entity(snapshot: WorldSnapshot, id: number): { components: Comp } | undefined {
-  return snapshot.entities.find((e) => e.id === id);
-}
-function num(v: unknown): number | undefined {
-  return typeof v === 'number' ? v : undefined;
 }
 function pct(fixed: number | undefined): number {
   return fixed === undefined ? 0 : Math.max(0, Math.min(100, Math.round((fixed / ONE) * 100)));
@@ -139,9 +135,8 @@ export function mountUnitPanel(opts: UnitPanelOptions): UnitPanel {
 
   function renderSettler(snapshot: WorldSnapshot, id: number): void {
     liveSettlerId = id;
-    const ent = entity(snapshot, id);
+    const ent = entityById(snapshot, id);
     const s = (ent?.components.Settler ?? {}) as Comp;
-    const owner = (ent?.components.Owner ?? {}) as Comp;
     // The title is dynamic: `tick` refreshes it, so changing this unit's profession via the action menu
     // updates the card in place (no re-selection needed).
     const title = el(
@@ -151,7 +146,7 @@ export function mountUnitPanel(opts: UnitPanelOptions): UnitPanel {
     );
     dynamic.set('title', title);
     info.append(title);
-    info.append(infoRow('Gracz', `#${num(owner.player) ?? '—'}`));
+    info.append(infoRow('Gracz', `#${(ent !== undefined ? ownerPlayerOf(ent) : undefined) ?? '—'}`));
     info.append(infoRow('Plemię', `${num(s.tribe) ?? '—'}`));
     for (const n of NEEDS) info.append(needBar(n.label, n.key));
     info.append(infoRow('Niesie', '—', 'carry'));
@@ -162,9 +157,8 @@ export function mountUnitPanel(opts: UnitPanelOptions): UnitPanel {
 
   function renderBuilding(snapshot: WorldSnapshot, id: number): void {
     liveSettlerId = null;
-    const ent = entity(snapshot, id);
+    const ent = entityById(snapshot, id);
     const b = (ent?.components.Building ?? {}) as Comp;
-    const owner = (ent?.components.Owner ?? {}) as Comp;
     info.append(
       el(
         'div',
@@ -172,7 +166,7 @@ export function mountUnitPanel(opts: UnitPanelOptions): UnitPanel {
         `Budynek — typ ${num(b.buildingType) ?? '?'}`,
       ),
     );
-    info.append(infoRow('Gracz', `#${num(owner.player) ?? '—'}`));
+    info.append(infoRow('Gracz', `#${(ent !== undefined ? ownerPlayerOf(ent) : undefined) ?? '—'}`));
     info.append(infoRow('Plemię', `${num(b.tribe) ?? '—'}`));
     info.append(infoRow('Poziom', `${num(b.level) ?? 0}`));
     info.append(infoRow('Budowa', `${pct(num(b.built))}%`, 'built'));
@@ -197,8 +191,15 @@ export function mountUnitPanel(opts: UnitPanelOptions): UnitPanel {
     liveSettlerId = null;
 
     const ids = [...selected];
-    const settlerIds = ids.filter((id) => entity(snapshot, id)?.components.Settler !== undefined);
-    const buildingIds = ids.filter((id) => entity(snapshot, id)?.components.Building !== undefined);
+    const byId = (id: number): ReturnType<typeof entityById> => entityById(snapshot, id);
+    const settlerIds = ids.filter((id) => {
+      const e = byId(id);
+      return e !== undefined && isSettler(e);
+    });
+    const buildingIds = ids.filter((id) => {
+      const e = byId(id);
+      return e !== undefined && isBuilding(e);
+    });
 
     if (ids.length === 0) {
       info.style.display = 'none';
@@ -227,7 +228,7 @@ export function mountUnitPanel(opts: UnitPanelOptions): UnitPanel {
 
   function tick(snapshot: WorldSnapshot): void {
     if (liveSettlerId === null) return;
-    const ent = entity(snapshot, liveSettlerId);
+    const ent = entityById(snapshot, liveSettlerId);
     if (ent === undefined) return;
     const s = (ent.components.Settler ?? {}) as Comp;
     const titleEl = dynamic.get('title');

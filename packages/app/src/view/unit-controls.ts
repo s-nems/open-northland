@@ -14,6 +14,7 @@ import {
   worldToTile,
 } from './picking.js';
 import { type SettlerActions, mountSettlerActions } from './settler-actions.js';
+import { isBuilding, isSettler, ownerPlayerOf, positionOf } from './snapshot.js';
 import { type Profession, type UnitPanel, mountUnitPanel } from './unit-panel.js';
 
 /**
@@ -133,8 +134,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   const ownersOf = (snap: WorldSnapshot): Map<number, number> => {
     const ownerOf = new Map<number, number>();
     for (const e of snap.entities) {
-      const owner = e.components.Owner as { player?: unknown } | undefined;
-      if (owner !== undefined && typeof owner.player === 'number') ownerOf.set(e.id, owner.player);
+      const player = ownerPlayerOf(e);
+      if (player !== undefined) ownerOf.set(e.id, player);
     }
     return ownerOf;
   };
@@ -286,8 +287,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     const occ = new Set<string>();
     for (const ent of snap.entities) {
       if (exclude.has(ent.id)) continue;
-      if (ent.components.Settler === undefined && ent.components.Building === undefined) continue;
-      const pos = ent.components.Position as { x: number; y: number } | undefined;
+      if (!isSettler(ent) && !isBuilding(ent)) continue;
+      const pos = positionOf(ent);
       if (pos === undefined) continue;
       occ.add(`${Math.round(pos.x / ONE)},${Math.round(pos.y / ONE)}`);
     }

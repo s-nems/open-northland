@@ -122,6 +122,50 @@ export function enableAudioOnGesture(driver: Resumable): void {
   window.addEventListener('keydown', onGesture);
 }
 
+/**
+ * The full-page (scrollable) entry shell — the dark-parchment page behind the main menu and the sound
+ * gallery. Shared here so the full-page entries can't drift in look; each page passes only its own
+ * density knobs (top padding / body font / content width).
+ */
+export function pageRootStyle(paddingTopPx: number, fontPx: number): string {
+  return [
+    'position:fixed',
+    'inset:0',
+    'overflow-y:auto',
+    'box-sizing:border-box',
+    `padding:${paddingTopPx}px 20px 64px`,
+    'background:radial-gradient(120% 80% at 50% 0%,#241b12 0%,#160f0a 70%)',
+    'color:#e8dcc8',
+    `font:${fontPx}px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace`,
+    'z-index:100',
+  ].join(';');
+}
+
+/** The centred content column of a full-page entry. */
+export function pageInnerStyle(maxWidthPx: number): string {
+  return `max-width:${maxWidthPx}px;margin:0 auto`;
+}
+
+/** The uppercase, underlined section heading of a full-page entry. */
+export const PAGE_SECTION_TITLE_STYLE = [
+  'font-weight:700',
+  'font-size:14px',
+  'letter-spacing:0.08em',
+  'text-transform:uppercase',
+  'opacity:0.7',
+  'margin:28px 0 12px',
+  'border-bottom:1px solid #5a4a36',
+  'padding-bottom:6px',
+].join(';');
+
+/** A titled full-page section wrapping `children` (a card grid, a list of rows, …). */
+export function pageSection(title: string, children: readonly HTMLElement[]): HTMLElement {
+  const wrap = el('div', '');
+  wrap.append(el('div', PAGE_SECTION_TITLE_STYLE, title));
+  for (const c of children) wrap.append(c);
+  return wrap;
+}
+
 /** Mount a small message panel (missing `content/`, an empty filter, …) instead of a blank canvas. */
 export function mountMessage(title: string, detail: string): void {
   const panel = el('div', PANEL_STYLE);
