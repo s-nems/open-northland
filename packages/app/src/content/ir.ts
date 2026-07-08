@@ -1,4 +1,10 @@
-import type { BuildingFootprint, GfxPattern, SoundBank, TerrainPattern } from '@vinland/data';
+import type {
+  BuildingFootprint,
+  GfxPattern,
+  SoundBank,
+  TerrainPattern,
+  TrianglePatternType,
+} from '@vinland/data';
 import {
   type AtlasManifest,
   type SpriteLayer,
@@ -131,6 +137,9 @@ export interface ContentIr {
   readonly terrainPatterns?: readonly TerrainPattern[];
   /** The full 927-record `[GfxPattern]` table — the 1:1 per-triangle ground join for decoded maps. */
   readonly gfxPatterns?: readonly GfxPattern[];
+  /** The per-logicType ground classes (`trianglepatterntypes.cif`) — the walk/build flags the
+   *  map-collision join (`content/collision.ts`) classes real ground by. */
+  readonly trianglePatternTypes?: readonly TrianglePatternType[];
   /** Type-table views the authored-entity joins read (`resolveAuthoredPlacements`) + the extracted
    *  ground `footprint` (collision body / build-exclusion zone / door) the live content attaches so the
    *  real-content view actually enforces + shows placement collision ({@link buildingFootprints}). */

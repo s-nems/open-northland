@@ -1,3 +1,4 @@
+import { parseContentSet } from '@vinland/data';
 import { describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
 import type { Component, Entity } from '../../src/ecs/world.js';
@@ -40,8 +41,37 @@ const GRASS = 0;
 const VIKING = 1;
 /** A type id absent from every fixture table — the unknown-id skip path. */
 const INVALID_TYPE = 99;
-/** Building types: HQ / sawmill / temple / tech-gated smithy / unknown (fixtures/content.ts). */
-const BUILDING_TYPES = [1, 2, 3, 4, INVALID_TYPE] as const;
+/** A FOOTPRINTED building type added on top of the fixture tables (see {@link fuzzContent}), so the
+ *  stream exercises the ground-collision gate and `force`'s collision-skip — random anchors on the
+ *  small map often clip the reserved ring off the edge or overlap an earlier house. */
+const FOOTPRINTED_TYPE = 5;
+/** Building types: HQ / sawmill / temple / tech-gated smithy / footprinted hut / unknown. */
+const BUILDING_TYPES = [1, 2, 3, 4, FOOTPRINTED_TYPE, INVALID_TYPE] as const;
+
+/** The fixture content plus the footprinted hut — fuzz-local so the golden fixtures stay untouched
+ *  (a footprint on a shared type would re-gate the goldens' pinned placements). */
+function fuzzContent() {
+  const base = testContent();
+  return parseContentSet({
+    ...base,
+    buildings: [
+      ...base.buildings,
+      {
+        typeId: FOOTPRINTED_TYPE,
+        id: 'footprinted_hut',
+        kind: 'workplace',
+        footprint: {
+          blocked: [{ dx: 0, dy: 0 }],
+          familyBody: [
+            { dx: 0, dy: 0 },
+            { dx: 1, dy: 0 },
+          ],
+          reserved: [-1, 0, 1].flatMap((dy) => [-1, 0, 1, 2].map((dx) => ({ dx, dy }))),
+        },
+      },
+    ],
+  });
+}
 /** Job types: idle / woodcutter / carpenter / hunter / carrier / unknown. */
 const JOB_TYPES = [0, 1, 2, 15, 36, INVALID_TYPE] as const;
 /** Herd tribes: bear pack / bee / boar / cow / deer, plus two non-animals (viking, unknown) — skipped. */
@@ -183,7 +213,7 @@ interface FuzzRun {
 
 function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
   clearStores();
-  const sim = new Simulation({ seed: fuzzSeed, content: testContent(), map: grassMap(MAP_W, MAP_H) });
+  const sim = new Simulation({ seed: fuzzSeed, content: fuzzContent(), map: grassMap(MAP_W, MAP_H) });
   // An independent generator stream (any fixed derivation of the fuzz seed works — it only must
   // differ from the sim's seed so the two streams aren't trivially correlated).
   const gen = new Rng(fuzzSeed ^ 0x5eed);
@@ -219,7 +249,7 @@ describe('fuzz: randomized command streams stay deterministic, replayable, and i
       expect(live.log.length).toBeGreaterThan(0); // the stream actually exercised the command seam
       clearStores(); // replay() rebuilds in the shared stores — the live sim is superseded
       const replayed = replay({
-        content: testContent(),
+        content: fuzzContent(),
         seed,
         map: grassMap(MAP_W, MAP_H),
         log: live.log,

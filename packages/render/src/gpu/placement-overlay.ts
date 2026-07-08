@@ -24,6 +24,10 @@ import { TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../data/iso.js';
  * lift. RETAINED: the composite is rebuilt only when the frame (band + blocked set) changes — a still
  * camera re-renders nothing; a pan in build mode re-composites two half-resolution textures, a cost
  * bounded by the screen (golden rule 6).
+ *
+ * The alpha/softness constants below are TUNED BY EYE against the original's build-mode look
+ * (screenshot comparison) — the original exposes no measurable overlay parameters (source basis
+ * "observed original behavior"; a human signs off the final feel).
  */
 
 /** One tile of the probed band (integer col,row). */
@@ -34,7 +38,7 @@ export interface PlacementOverlayCell {
 
 /**
  * One build-mode frame of the overlay: the visible tile band the app probed, plus which of its cells
- * REJECTED the held building's anchor. The layer derives the buildable holes as the band's complement.
+ * REJECTED the held building's anchor. The buildable side is the band's complement of `blocked`.
  */
 export interface PlacementOverlayFrame {
   readonly minCol: number;
@@ -55,6 +59,8 @@ const COMPOSITE_RESOLUTION = 0.5;
  *  Must exceed 2 COMPOSITE pixels (= 2 / COMPOSITE_RESOLUTION world px): at half resolution a smaller
  *  pad is sub-pixel, and the AA edges of neighbouring diamonds leave a visible bright seam lattice. */
 const CELL_OVERLAP = 5;
+/** Composite-texture allocation step (texture px) — see {@link PlacementOverlayLayer.ensureTextures}. */
+const TEXTURE_QUANT = 128;
 
 /** The world-space box of a band's composite, padded for the stagger overhang + the terrain lift. */
 export interface OverlayBounds {
@@ -94,6 +100,9 @@ export class PlacementOverlayLayer {
   private readonly bright = new Sprite();
   private dimTexture: RenderTexture | null = null;
   private brightTexture: RenderTexture | null = null;
+  /** The two retained composite sources, cleared + refilled per recomposite (never re-allocated). */
+  private readonly blockedG = new Graphics();
+  private readonly buildableG = new Graphics();
   /** Signature of the frame last composited; skips the rebuild when nothing changed frame-to-frame. */
   private key = '';
 
@@ -123,12 +132,12 @@ export class PlacementOverlayLayer {
     }
     const key = signatureOf(frame);
     if (key === this.key) return;
-    this.key = key;
 
     const bounds = overlayBounds(frame, elevation.maxLift);
-    const texW = Math.max(1, Math.ceil(bounds.width * COMPOSITE_RESOLUTION));
-    const texH = Math.max(1, Math.ceil(bounds.height * COMPOSITE_RESOLUTION));
-    this.ensureTextures(texW, texH);
+    this.ensureTextures(
+      Math.max(1, Math.ceil(bounds.width * COMPOSITE_RESOLUTION)),
+      Math.max(1, Math.ceil(bounds.height * COMPOSITE_RESOLUTION)),
+    );
     const dimTexture = this.dimTexture;
     const brightTexture = this.brightTexture;
     if (dimTexture === null || brightTexture === null) return; // ensureTextures always sets them
@@ -139,8 +148,8 @@ export class PlacementOverlayLayer {
     const blocked = new Set<string>();
     for (const c of frame.blocked) blocked.add(`${c.col},${c.row}`);
     const lifted = elevation.maxLift > 0;
-    const blockedG = new Graphics();
-    const buildableG = new Graphics();
+    const blockedG = this.blockedG.clear();
+    const buildableG = this.buildableG.clear();
     const hw = (TILE_HALF_W + CELL_OVERLAP) * COMPOSITE_RESOLUTION;
     const hh = (TILE_HALF_H + CELL_OVERLAP) * COMPOSITE_RESOLUTION;
     for (let row = frame.minRow; row <= frame.maxRow; row++) {
@@ -155,11 +164,11 @@ export class PlacementOverlayLayer {
     blockedG.fill(0xffffff);
     buildableG.fill(0xffffff);
 
-    // One standard render per side; the scene-side sprites apply the tint/alpha/blend.
+    // One standard render per side; the scene-side sprites apply the tint/alpha/blend. The textures
+    // may be quantized LARGER than the band — clear:true blanks the margin, so the sprites just show
+    // transparent slack past the band's edge.
     this.renderer.render({ container: blockedG, target: dimTexture, clear: true });
     this.renderer.render({ container: buildableG, target: brightTexture, clear: true });
-    blockedG.destroy();
-    buildableG.destroy();
 
     for (const spr of [this.dim, this.bright]) {
       spr.position.set(bounds.x, bounds.y);
@@ -168,26 +177,36 @@ export class PlacementOverlayLayer {
     }
     this.dim.texture = dimTexture;
     this.bright.texture = brightTexture;
+    // Mark the frame composited only now — an exception above (lost GL context, a failed alloc)
+    // leaves the key unset, so the next frame retries instead of skipping on a stale signature.
+    this.key = key;
   }
 
   /**
-   * (Re)allocate the two composite textures when the band SIZE changes. A pan mostly moves the band's
-   * origin at a constant size (the sprites just reposition), so reallocation happens only when the
-   * visible col/row count actually changes (a zoom, a resize, the map edge) — not per pan frame.
+   * (Re)allocate the two composite textures — GROW-ONLY, in {@link TEXTURE_QUANT} steps. The visible
+   * col/row count flaps N↔N+1 as a smooth pan crosses tile phase (`visibleTileRange` floors/ceils),
+   * so exact-size allocation would destroy + recreate GPU textures every half tile of travel;
+   * quantized grow-only allocation makes a steady pan allocation-free after the first composite.
    */
   private ensureTextures(w: number, h: number): void {
+    const quantW = Math.ceil(w / TEXTURE_QUANT) * TEXTURE_QUANT;
+    const quantH = Math.ceil(h / TEXTURE_QUANT) * TEXTURE_QUANT;
     const current = this.dimTexture;
-    if (current !== null && current.width === w && current.height === h) return;
+    if (current !== null && current.width >= quantW && current.height >= quantH) return;
+    const newW = Math.max(quantW, current?.width ?? 0);
+    const newH = Math.max(quantH, current?.height ?? 0);
     this.dimTexture?.destroy(true);
     this.brightTexture?.destroy(true);
     // Linear (default) sampling upscales the half-res composite into the soft, grid-free edge.
-    this.dimTexture = RenderTexture.create({ width: w, height: h });
-    this.brightTexture = RenderTexture.create({ width: w, height: h });
+    this.dimTexture = RenderTexture.create({ width: newW, height: newH });
+    this.brightTexture = RenderTexture.create({ width: newW, height: newH });
   }
 
   destroy(): void {
     this.dimTexture?.destroy(true);
     this.brightTexture?.destroy(true);
+    this.blockedG.destroy();
+    this.buildableG.destroy();
     this.container.destroy({ children: true });
   }
 }

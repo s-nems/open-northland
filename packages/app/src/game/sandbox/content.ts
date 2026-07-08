@@ -8,7 +8,7 @@ import {
   MUSHROOM_HARVEST_ATOMIC,
   STONE_HARVEST_ATOMIC,
 } from '../../catalog/atomics.js';
-import { GRASS, HOME_KIND, VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
+import { HOME_KIND, VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import { approximateFootprint } from '../../catalog/footprints.js';
 import {
@@ -18,6 +18,7 @@ import {
   MINE_LEVELS,
   STONE_DEPOSIT_UNITS,
 } from '../../catalog/mining.js';
+import { TERRAIN_BLOCKED, TERRAIN_IMPASSABLE, TERRAIN_MARGIN, TERRAIN_OPEN } from '../../catalog/terrain.js';
 import { HARVEST_TICKS } from '../../content/settler-gfx.js';
 import type { GoodRef } from '../../content/settler-gfx.js';
 import { PRIMARY_TRIBE } from '../rules.js';
@@ -87,21 +88,12 @@ export interface SandboxContentExtras {
   readonly buildingFootprints?: ReadonlyMap<number, BuildingFootprint>;
 }
 
-/**
- * The SEMANTIC terrain classes every sim grid uses — scene grids are authored in them directly, and a
- * real decoded map is RESOLVED into them by `content/collision.ts` (its raw landscape-lane typeIds
- * joined against the extracted ground/object data) before it reaches the sim. Keeping the sim-side
- * vocabulary to these four ids is what makes the walk/build flags collision-free: a raw map typeId (1 =
- * the original's "void" plain ground) never lands on a synthetic row with different semantics.
- */
-export const TERRAIN_OPEN = GRASS; // plain ground: walk + build
-export const TERRAIN_WATER = 1; // water/void/border ground: neither walk nor build
-export const TERRAIN_BLOCKED = 2; // a landscape object's body (tree/rock/deposit): neither
-export const TERRAIN_MARGIN = 3; // an object's build-exclusion ring: walkable, NOT buildable
-
+// The semantic terrain-class rows (see catalog/terrain.ts — the shared vocabulary scene grids are
+// authored in and `content/collision.ts` resolves real maps into). Row ids keep the authored-scene
+// reading: sandbox typeId 1 IS water; a resolved real map lands other impassable ground there too.
 const BASE_LANDSCAPE = [
   { typeId: TERRAIN_OPEN, id: 'grass', walkable: true, buildable: true },
-  { typeId: TERRAIN_WATER, id: 'water', walkable: false, buildable: false },
+  { typeId: TERRAIN_IMPASSABLE, id: 'water', walkable: false, buildable: false },
   { typeId: TERRAIN_BLOCKED, id: 'landscape_body', walkable: false, buildable: false },
   { typeId: TERRAIN_MARGIN, id: 'landscape_margin', walkable: true, buildable: false },
 ] as const;
