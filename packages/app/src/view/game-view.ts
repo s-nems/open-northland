@@ -15,7 +15,7 @@ import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
 import { DEFAULT_UI_SCALE } from '../hud/tool-panel/layout.js';
 import type { CameraController } from './camera.js';
 import { applyGameSpeed, menuEntriesFromContent, mountGameToolPanel, shiftHud } from './game-tool-panel.js';
-import { enableAudioOnGesture } from './overlay.js';
+import { mountSoundToggle } from './overlay.js';
 import { floatParam } from './params.js';
 import { mountPerfOverlay } from './perf-overlay.js';
 import { createUnitControls } from './unit-controls.js';
@@ -71,12 +71,16 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
 
   // Original decoded sounds, played positionally: action SFX + terrain ambient (viewport-culled,
   // attenuated, panned) + non-spatial life-event jingles + settler voice chatter — a pure consumer of
-  // the same snapshot + events render reads. Default-on; `?sound=off` opts out; a checkout without
-  // `content/` (no sound bank) degrades to silence. Browser autoplay policy keeps audio suspended until
-  // a user gesture; the enable-sound prompt persists until the context is confirmed running.
+  // the same snapshot + events render reads. Default-MUTED: the driver is built (unless `?sound=off`
+  // skips it entirely) but starts disabled, so the game is silent until the user clicks the bottom
+  // sound toggle — that click both unmutes and satisfies the browser autoplay gesture. A checkout
+  // without `content/` (no sound bank) degrades to silence (no driver, no button).
   const wantSound = params.get('sound') !== 'off';
   const soundDriver = wantSound ? createSoundDriver(await loadIr(), { chopAtomicId: HARVEST_ATOMIC }) : null;
-  if (soundDriver !== null) enableAudioOnGesture(soundDriver);
+  if (soundDriver !== null) {
+    soundDriver.setEnabled(false);
+    mountSoundToggle(soundDriver);
+  }
 
   // On-canvas FPS + entity/drawn/pooled readout (bottom-left) so a human can judge whether the view
   // holds a frame rate and whether culling is biting. Real-GPU only: headless Chromium is software-GL.

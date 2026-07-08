@@ -96,13 +96,15 @@ gitignored bytes:
   the **indexed** atlas through the `256×16` player-colour LUT via `render`'s `PalettedSprite` (only the clothing
   band recolours). A per-tone **skin/hair variant** axis (distinct from team colour) is still a
   deferred pipeline follow-up; track it in a concrete plan before implementing.
-- `?sound=off` — mute the original decoded sounds (`@vinland/audio`), which are **default-on** in live +
-  scene modes: positional action SFX + terrain ambient (viewport-culled, attenuated, panned) + non-spatial
-  life-event jingles + **sex/age-matched settler voice chatter** (a settler sounds like the body it draws —
-  `vikingVoiceClass` off `Settler.jobType`+`Age`), driven by the same snapshot + events `render` reads.
-  Browser autoplay policy keeps audio suspended until the first click/key; a checkout without `content/`
-  (no sound bank) degrades to silence. The current scene for hearing action→sound is `?scene=sandbox`
-  (woodcutters and gatherers working on-screen).
+- `?sound=off` — skip building the audio pipeline (`@vinland/audio`) entirely. In live + scene modes the
+  decoded sounds are **default-MUTED**: the driver is built but starts disabled, and the game is silent
+  until the user clicks the bottom-centre **sound toggle** button — that click both unmutes and satisfies
+  the browser autoplay gesture (clicking again re-mutes). The audio layer is positional action SFX +
+  terrain ambient (viewport-culled, attenuated, panned) + non-spatial life-event jingles + **sex/age-matched
+  settler voice chatter** (a settler sounds like the body it draws — `vikingVoiceClass` off
+  `Settler.jobType`+`Age`), driven by the same snapshot + events `render` reads. A checkout without
+  `content/` (no sound bank) degrades to silence (no driver, no button). The current scene for hearing
+  action→sound is `?scene=sandbox` (woodcutters and gatherers working on-screen).
 - `?sounds` — the sound **verification gallery** (`entries/sound.ts`), the audio twin of `?anim`: click ▶ to
   audition every action→sound binding, the voice pools split by sex/age, the jingles and the ambient beds.
   The human-oracle seam for audio (an agent can't self-judge a sound). NOTE the key is `sounds` (plural) —
