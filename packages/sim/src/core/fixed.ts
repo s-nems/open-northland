@@ -24,6 +24,16 @@ export type Fixed = Brand<number, 'Fixed'>;
 
 const SHIFT = 16;
 export const ONE: Fixed = (1 << SHIFT) as Fixed; // 65536
+
+/** Fixed-point zero — the additive identity (a from-rest gait, a heading sentinel, the origin). */
+export const ZERO: Fixed = 0 as Fixed;
+
+/**
+ * The smallest positive Fixed — one scaled-integer ulp (1/65536 of a unit). The floor for per-tick
+ * quanta minted by division (`ONE/duration` truncates): a quantum truncated to 0 makes no progress
+ * ever, so a consumer that must terminate floors it here instead of stalling.
+ */
+export const ULP: Fixed = 1 as Fixed;
 const MAX_SAFE = Number.MAX_SAFE_INTEGER; // 2^53 - 1
 
 /** Dev-mode assertions on (overflow checks). Statically eliminated in production builds. */
@@ -81,6 +91,37 @@ export const fx = {
     const v = Math.trunc((a * ONE) / b);
     assertSafe(a * ONE, 'div');
     return v as Fixed;
+  },
+  /**
+   * Divide two Fixeds, rounding the quotient UP (toward +∞). For minting per-tick step quanta from
+   * a duration: `divCeil(ONE, ticks)` guarantees `ticks` steps cover the whole unit, where plain
+   * `div` truncates and leaves an ulp-scale remainder that costs a nearly-stationary extra step (a
+   * visible hitch when the quantum paces movement). Positive divisor only. Integer-exact: float-fast
+   * guess, then the same deterministic correction discipline as {@link fx.isqrt}.
+   */
+  divCeil(a: Fixed, b: Fixed): Fixed {
+    if (b <= 0) throw new Error('fixed-point divCeil requires a positive divisor');
+    const scaled = a * ONE;
+    assertSafe(scaled, 'divCeil');
+    let q = Math.trunc(scaled / b); // float guess; corrected to the exact ceiling below
+    while (q * b < scaled) q++;
+    while ((q - 1) * b >= scaled) q--;
+    return q as Fixed;
+  },
+  /**
+   * `a·b/c` with a SINGLE truncation (toward zero): the scales cancel, so no intermediate
+   * fixed-point rounding — `mul` then `div` truncates twice and can shave several ulps (enough to
+   * cost a movement step an extra near-stationary tick). For ratio scaling like "advance `a` by
+   * `b/c` of itself"; when `a === c` the result is exactly `b`. Intermediate `a*b` must stay
+   * < 2^53 (dev-asserted, like {@link fx.mul}).
+   */
+  mulDiv(a: Fixed, b: Fixed, c: Fixed): Fixed {
+    if (c === 0) throw new Error('fixed-point division by zero');
+    const p = a * b;
+    if (DEV && Math.abs(p) > MAX_SAFE) {
+      throw new Error(`fixed-point overflow in mulDiv: |${a} * ${b}| exceeds 2^53; reduce magnitudes`);
+    }
+    return Math.trunc(p / c) as Fixed;
   },
   abs(a: Fixed): Fixed {
     return (a < 0 ? -a : a) as Fixed;

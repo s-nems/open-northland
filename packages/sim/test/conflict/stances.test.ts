@@ -28,6 +28,7 @@ import {
   combatSystem,
 } from '../../src/systems/index.js';
 import {
+  ACCEL_TICKS,
   MOVE_SPEED_PER_TICK,
   RUN_SPEED_MULTIPLIER,
   movementSystem,
@@ -342,21 +343,40 @@ describe('FLEE — civilians run from danger', () => {
 });
 
 describe('FLEE run gait — the MovementSystem runs a Fleeing unit', () => {
-  it('a Fleeing path-follower advances RUN_SPEED_MULTIPLIER× the walk pace', () => {
+  it('a Fleeing path-follower cruises at RUN_SPEED_MULTIPLIER× the walk pace', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 1) });
     const walker = sim.world.create();
     sim.world.add(walker, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-    sim.world.add(walker, PathFollow, { waypoints: [{ x: fx.fromInt(5), y: fx.fromInt(0) }], index: 0 });
+    sim.world.add(walker, PathFollow, {
+      waypoints: [{ x: fx.fromInt(5), y: fx.fromInt(0) }],
+      index: 0,
+      speed: fx.fromInt(0),
+      hx: fx.fromInt(0),
+      hy: fx.fromInt(0),
+    });
     const runner = sim.world.create();
     sim.world.add(runner, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-    sim.world.add(runner, PathFollow, { waypoints: [{ x: fx.fromInt(5), y: fx.fromInt(0) }], index: 0 });
+    sim.world.add(runner, PathFollow, {
+      waypoints: [{ x: fx.fromInt(5), y: fx.fromInt(0) }],
+      index: 0,
+      speed: fx.fromInt(0),
+      hx: fx.fromInt(0),
+      hy: fx.fromInt(0),
+    });
     sim.world.add(runner, Fleeing, { repathAt: 0, calmUntil: null });
 
+    // Both start from rest and ramp up over ACCEL_TICKS (each toward its OWN gait — the runner's
+    // ramp is proportionally steeper, so it pulls ahead from the very first tick). Warm past the
+    // ramp, then compare one cruise tick: on an E/W leg the step is bit-exact the gait.
+    for (let i = 0; i <= ACCEL_TICKS; i++) movementSystem(sim.world, ctxOf(sim));
+    const walkerBefore = sim.world.get(walker, Position).x;
+    const runnerBefore = sim.world.get(runner, Position).x;
+    expect(runnerBefore).toBeGreaterThan(walkerBefore); // the runner led throughout the ramp too
     movementSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.get(walker, Position).x).toBe(MOVE_SPEED_PER_TICK);
+    expect(sim.world.get(walker, Position).x).toBe(fx.add(walkerBefore, MOVE_SPEED_PER_TICK));
     expect(sim.world.get(runner, Position).x).toBe(
-      fx.mul(MOVE_SPEED_PER_TICK, fx.fromInt(RUN_SPEED_MULTIPLIER)),
+      fx.add(runnerBefore, fx.mul(MOVE_SPEED_PER_TICK, fx.fromInt(RUN_SPEED_MULTIPLIER))),
     );
   });
 });

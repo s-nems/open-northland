@@ -1,11 +1,12 @@
 import { PathFollow, PathRequest, Position } from '../../components/index.js';
-import { type Fixed, fx } from '../../core/fixed.js';
+import { type Fixed, ZERO, fx } from '../../core/fixed.js';
 import { HALF_COLUMN } from '../../nav/metric.js';
 import { findPath } from '../../nav/pathfinding.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System } from '../context.js';
 import { dynamicBlockedCells } from '../footprint/index.js';
 import { canonicalById, isValidCellId } from '../spatial.js';
+import { turnOntoNextLeg } from './movement.js';
 
 // pathfindingSystem lives in routing.ts (not pathfinding.ts) to avoid an eyeball collision with the
 // A* core in ../pathfinding.ts, which this system consumes. The cross-system `isValidCellId` guard comes
@@ -27,9 +28,10 @@ export const PATHFINDING_BUDGET_PER_TICK = 8;
  * spread is history-independent), it runs A* on `ctx.terrain` from the request's `start` to `goal`
  * cell. On success it writes the cell sequence into the entity's {@link PathFollow} (cell centres in
  * fixed-point tile units, plus a seam waypoint inside each vertical step — {@link pathToWaypoints})
- * and removes the request; on failure it flags the request `failed` and
- * removes any stale path, leaving the request for the planner to inspect rather than silently
- * retrying the same dead query every tick. No-ops entirely when no terrain graph is present — a
+ * and removes the request; on failure it flags the request `failed` — keeping any live path, so a
+ * failed mid-walk reroute parks the walker on a cell centre instead of freezing it mid-leg — and
+ * leaves the request for the planner to inspect rather than silently retrying the same dead query
+ * every tick. No-ops entirely when no terrain graph is present — a
  * mapless sim (the determinism golden) has nothing to route over.
  *
  * Determinism: A* is pure and canonically tie-broken; requests are served in ascending entity-id
@@ -59,11 +61,21 @@ export const pathfindingSystem: System = (world, ctx) => {
     const path = resolvePath(terrain, req.start, req.goal, blocked);
     if (path === null) {
       req.failed = true; // signal the planner; keep the request so it isn't silently re-issued
-      world.remove(e, PathFollow); // drop any stale path so movement doesn't follow a dead route
+      // A failed MID-WALK reroute keeps the live path: the walker plays out its old route and parks
+      // on a cell centre. Dropping it froze the walker wherever it stood — possibly on a seam
+      // waypoint, off any centre — with a goal nothing services (the planner skips entities with a
+      // request, and failed requests are never retried). A request with no live path changes nothing.
       continue;
     }
 
-    // Success: hand the entity a fresh PathFollow of waypoints and clear the request.
+    // Success: hand the entity a fresh PathFollow of waypoints and clear the request. A REROUTE (an
+    // entity already walking a path) carries its gait `speed` AND heading over, then turns onto the
+    // new first leg through the SAME corner rule as a waypoint turn (`turnOntoNextLeg` below):
+    // straight-ahead re-orders keep full momentum (the responsive half of the movement-inertia
+    // approximation), a redirect sheds speed × cos(turn), and a reversal stops the gait dead.
+    // Without the projection a redirected walker kept full pace through any flip — the full-speed
+    // floor slide under rapid direction changes.
+    const prior = world.tryGet(e, PathFollow);
     const waypoints = pathToWaypoints(terrain, path);
     // If the entity is mid-tile when this route is issued — a RE-PATH while it was between cell centres
     // (e.g. a player move order interrupting a walk) — the first waypoint is the centre of the cell it is
@@ -81,7 +93,17 @@ export const pathfindingSystem: System = (world, ctx) => {
     ) {
       waypoints.shift();
     }
-    world.add(e, PathFollow, { waypoints, index: 0 });
+    const follow = {
+      waypoints,
+      index: 0,
+      speed: prior?.speed ?? ZERO,
+      hx: prior?.hx ?? ZERO,
+      hy: prior?.hy ?? ZERO,
+    };
+    // Turn the carried momentum onto the spliced first leg (a no-op from rest — the (0,0) sentinel
+    // of a fresh path just records the heading, exactly what movement's first tick did).
+    if (p !== undefined) turnOntoNextLeg(follow, p);
+    world.add(e, PathFollow, follow);
     world.remove(e, PathRequest);
   }
 };

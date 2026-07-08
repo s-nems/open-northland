@@ -3,6 +3,8 @@ import { PathFollow, PathRequest, Position } from '../../src/components/index.js
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation, type TerrainMap, fx } from '../../src/index.js';
 import {
+  ACCEL_TICKS,
+  MOVE_SPEED_PER_TICK,
   PATHFINDING_BUDGET_PER_TICK,
   type SystemContext,
   pathfindingSystem,
@@ -147,19 +149,28 @@ describe('pathfindingSystem — failure handling', () => {
     expect(sim.world.get(e2, PathRequest).failed).toBe(true);
   });
 
-  it('drops a stale PathFollow when a re-issued request fails', () => {
+  it('keeps the live PathFollow when a mid-walk reroute fails (the walker parks on a centre)', () => {
     const map: TerrainMap = { width: 3, height: 1, typeIds: [GRASS, WATER, GRASS] };
     const { sim } = mappedSim(map);
     const e = sim.world.create();
-    // Pre-seed a stale path, then issue an unreachable request on the same entity.
-    sim.world.add(e, PathFollow, { waypoints: [{ x: fx.fromInt(9), y: fx.fromInt(9) }], index: 0 });
+    // A walker mid-route whose redirected goal turns out unreachable: the request is flagged, but
+    // the OLD route must keep playing out — dropping it froze the walker wherever it stood
+    // (possibly on a seam waypoint, off any centre) with a goal nothing would ever service again.
+    sim.world.add(e, PathFollow, {
+      waypoints: [{ x: fx.fromInt(9), y: fx.fromInt(9) }],
+      index: 0,
+      speed: fx.fromInt(0),
+      hx: fx.fromInt(0),
+      hy: fx.fromInt(0),
+    });
     sim.world.add(e, PathRequest, {
       start: sim.terrain?.cellAt(0, 0) as number,
       goal: sim.terrain?.cellAt(2, 0) as number,
       failed: false,
     });
     sim.step();
-    expect(sim.world.has(e, PathFollow)).toBe(false); // stale path removed
+    expect(sim.world.get(e, PathRequest).failed).toBe(true); // the planner's signal
+    expect(sim.world.has(e, PathFollow)).toBe(true); // the old route survives the failed reroute
   });
 
   it('treats an out-of-range cell id as no route (no throw)', () => {
@@ -192,6 +203,62 @@ describe('pathfindingSystem — per-tick budget', () => {
     // The remainder drain on the next tick.
     sim.step();
     expect(entities.every((e) => !sim.world.has(e, PathRequest))).toBe(true);
+  });
+});
+
+describe('pathfindingSystem — reroute splice momentum (movement inertia)', () => {
+  /** Route a fresh walker at (0,0) toward (goalX,0) and run `ticks` — mid-tile at full gait after. */
+  function cruisingWalker(sim: Simulation, goalX: number, ticks: number): Entity {
+    const e = sim.world.create();
+    sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
+    sim.world.add(e, PathRequest, {
+      start: sim.terrain?.cellAt(0, 0) as number,
+      goal: sim.terrain?.cellAt(goalX, 0) as number,
+      failed: false,
+    });
+    for (let i = 0; i < ticks; i++) sim.step();
+    return e;
+  }
+
+  /** Re-request from the walker's CURRENT cell — a player redirect mid-walk. */
+  function reorder(sim: Simulation, e: Entity, goalX: number): void {
+    const p = sim.world.get(e, Position);
+    sim.world.add(e, PathRequest, {
+      start: sim.terrain?.cellAt(fx.toInt(p.x), fx.toInt(p.y)) as number,
+      goal: sim.terrain?.cellAt(goalX, 0) as number,
+      failed: false,
+    });
+  }
+
+  it('a same-direction re-order keeps full momentum (the responsive splice)', () => {
+    const { sim } = mappedSim(grassMap(10, 1));
+    const e = cruisingWalker(sim, 4, 8); // cruising east, mid-tile
+    expect(sim.world.get(e, PathFollow).speed).toBe(MOVE_SPEED_PER_TICK);
+
+    reorder(sim, e, 8); // further along the SAME heading
+    sim.step();
+    // The splice projected momentum onto a same-direction heading: nothing shed, no re-ramp. (The
+    // mid-tile heading can sit a few ulps over ONE — the isqrt under-read — so the dot lands at or
+    // just above ONE and the ramp clamp absorbs the inflation; the gait stays bit-exact.)
+    expect(sim.world.get(e, PathFollow).speed).toBe(MOVE_SPEED_PER_TICK);
+    expect(fx.toFloat(sim.world.get(e, PathFollow).hx)).toBeCloseTo(1, 3); // still due east
+  });
+
+  it('a reversal re-order stops the gait dead and re-accelerates — never a full-speed flip', () => {
+    const { sim } = mappedSim(grassMap(10, 1));
+    const e = cruisingWalker(sim, 8, 20); // cruising east at full gait, mid-tile past x=1
+    const before = sim.world.get(e, Position).x;
+    expect(sim.world.get(e, PathFollow).speed).toBe(MOVE_SPEED_PER_TICK);
+
+    reorder(sim, e, 0); // flip: back west
+    sim.step();
+    const pf = sim.world.get(e, PathFollow);
+    // The splice projected the eastward momentum onto the westward leg (dot = −1 → dead stop);
+    // the tick's movement then ramped one accel step from rest. Before the fix the walker kept
+    // the FULL cruise gait through the flip — the floor-slide under rapid direction changes.
+    expect(pf.speed).toBe(fx.divCeil(MOVE_SPEED_PER_TICK, fx.fromInt(ACCEL_TICKS)));
+    expect(fx.toFloat(pf.hx)).toBeCloseTo(-1, 3); // now due west
+    expect(sim.world.get(e, Position).x).toBeLessThan(before); // and it did move back
   });
 });
 
