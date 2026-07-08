@@ -20,8 +20,14 @@ Hunt, in priority order:
    convenience.
 4. **Shape that will not scale** — new abstractions that make future plan steps harder, global state
    without lifecycle, or a design that assumes one tribe/map/unit where the game model has many.
-5. **Unclear seams** — a new concept lacks an obvious owner, test seam, or extension point.
-6. **Plan fit** — if this was a plan step, the implementation solves adjacent future steps prematurely
+5. **Flat or illogical packaging** — new modules dumped into an already-wide flat directory instead of
+   a feature/concern subfolder with an `index.ts` barrel, files placed where nothing else about that
+   concern lives, or a split that groups by kind (`utils/`, `helpers/`) instead of by feature (see the
+   Code Organization section of `AGENTS.md`).
+6. **Unclear seams** — a new concept lacks an obvious owner, test seam, or extension point. Extension
+   should be possible by adding data/content or a new module behind an existing seam, not by editing
+   a growing switch in a god-file.
+7. **Plan fit** — if this was a plan step, the implementation solves adjacent future steps prematurely
    or leaves the current step without a clean integration path.
 
 Confirm each finding against the current source (open the cited file, not just the diff hunk)
