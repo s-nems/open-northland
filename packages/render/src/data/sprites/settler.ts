@@ -43,8 +43,8 @@ function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
   if ('frameLists' in ref) {
     const lists = ref.frameLists;
     if (lists.length === 0) return ref.start;
-    const list = lists[wrap(facing, lists.length)] ?? [];
-    if (list.length === 0) return ref.start;
+    const list = lists[wrap(facing, lists.length)];
+    if (list === undefined || list.length === 0) return ref.start;
     const idx = wrap((ref.phaseStart ?? 0) + step, list.length);
     return ref.start + (list[idx] ?? 0);
   }

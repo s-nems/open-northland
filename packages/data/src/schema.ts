@@ -1257,7 +1257,9 @@ export type BobSequenceSet = z.infer<typeof BobSequenceSet>;
  * a single non-directional `gfxanimframelist` yields ONE list ({@link dirFrames} length 1 = facing-locked).
  */
 export const GfxAnimAtomic = z.strictObject({
-  /** `logictribe` the record binds (viking 4, frank 2, …) — the same `(job, action)` recurs per tribe. */
+  /** `logictribe` the record binds — the `logicdefines.inc` `TRIBE_TYPE_*` id (viking 1, frank 2, …), NOT
+   *  the tribetypes `logicType`. The same `(job, action)` recurs per tribe with DIFFERENT frame lists, so
+   *  a consumer MUST filter by the right tribe (viking = 1) or it draws a plausible-but-wrong swing. */
   tribe: z.number().int().nonnegative(),
   /** `logicjob` — the soldier/settler jobType whose atomic this animates (soldiers 31..41, civilist 6, woman 5). */
   job: z.number().int().nonnegative(),
@@ -1265,8 +1267,9 @@ export const GfxAnimAtomic = z.strictObject({
   action: z.number().int().nonnegative(),
   /** The `gfxbobseqbody` `[bobseq]` name whose frame pool the {@link dirFrames} index into. */
   bodySeq: z.string(),
-  /** The `gfxbobseqhead` `[bobseq]` name, when the record overlays a separate head bob (else the head
-   *  atlas mirrors the body's resolved id). */
+  /** The `gfxbobseqhead` `[bobseq]` name, when the record overlays a separate head bob. Extracted ahead
+   *  of a consumer: the render currently draws the head at the body's resolved bob id (the head atlas
+   *  covers every body frame), so this is unread today — kept for a future separate-head attack overlay. */
   headSeq: z.string().optional(),
   /**
    * Per-direction frame-index lists — one array per facing (`gfxanimframelistdir <dir> <idx…>` placed at

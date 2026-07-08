@@ -17,3 +17,12 @@ export const CLAY_HARVEST_ATOMIC = 26;
 export const IRON_HARVEST_ATOMIC = 27;
 export const GOLD_HARVEST_ATOMIC = 28;
 export const MUSHROOM_HARVEST_ATOMIC = 32;
+
+/**
+ * The combat attack swing (`setatomic <job> 81 "..._attack"`; the sim's `ATTACK_ATOMIC_ID`,
+ * `packages/sim/src/systems/conflict/weapons.ts`). Shared vocabulary like the harvest ids: the settler
+ * binding uses it as a `byAtomic` key, and the sheet loader filters the `[gfxanimatomic]` table for this
+ * action — so it lives here, owned by neither. Its animation is the directional `FrameListAnim` layout,
+ * not a bobseq range (a melee pool is not `length / 8`); see `content/settler-gfx.ts`.
+ */
+export const ATTACK_ATOMIC = 81;

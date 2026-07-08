@@ -162,10 +162,10 @@ gallery. **Human pixel sign-off still pending** — the swing/facing/feel is the
 - **Aggressive gait:** `SettlerStateBinding.engaged` swaps the `_agressive` walk/wait while the sim
   `Engagement` marker is set (`readEngaged`). The unarmed body authors no aggressive variant → falls back
   to its relaxed gait (named).
-- **Approximations (calibration/sign-off pending):** (a) a few gfx frame-list lengths differ slightly from
-  the sim atomic duration (unarmed 17 vs 12, civilist 17 vs 16, woman 15 vs 16, `Sword_Attack_2` 22 vs 29)
-  → the swing loops tick-locked like the chop; **impact-frame alignment to the sim hit-frame is
-  montage-verify**. (b) **No `_attacked` stagger bobseq exists for vikings** (only a logic-timing record) —
+- **Approximations (calibration/sign-off pending):** (a) a few UNARMED/civilian gfx frame-list lengths
+  differ slightly from the sim atomic duration (unarmed 17 vs 12, civilist 17 vs 16, woman 15 vs 16) → the
+  swing loops tick-locked like the chop; **impact-frame alignment to the sim hit-frame is montage-verify**.
+  (The armed soldier swings match by construction: spear 27, short sword 12, long sword 29, bows 12/28.) (b) **No `_attacked` stagger bobseq exists for vikings** (only a logic-timing record) —
   a struck unit has NO dr, it just loses HP; honest data gap, recorded in the scene checklist. (c) Saber/axe
   jobs 36–39 have no viking gfx binding → they borrow their spec's sword/broadsword swing (named). (d) The
   unarmed body picks the `empty_punch` variant of four; the original randomises.
