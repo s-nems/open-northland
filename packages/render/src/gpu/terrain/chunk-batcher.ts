@@ -1,6 +1,7 @@
 import { Graphics, Mesh, MeshGeometry, type Shader, Texture, type TextureSource } from 'pixi.js';
+import { scaleColour } from '../../data/brightness.js';
 import { TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
-import { makeShadedTerrainShader } from './shaded-mesh.js';
+import { makeShadedTerrainShader } from '../shading.js';
 
 /** A chunk's display child: a per-page mesh (stock or brightness-shaded shader) or the fallback trace. */
 export type TerrainChild = Mesh<MeshGeometry, Shader> | Graphics;
@@ -105,15 +106,4 @@ export class ChunkBatcher {
     }
     return out;
   }
-}
-
-/** Scale an `0xRRGGBB` colour's channels by `factor` (clamped to white) — the fallback diamond's
- *  CPU-side stand-in for the shader's per-fragment multiply. */
-export function scaleColour(colour: number, factor: number): number {
-  if (factor === 1) return colour;
-  const ch = (shift: number): number => {
-    const scaled = Math.round(((colour >> shift) & 0xff) * factor);
-    return (scaled > 0xff ? 0xff : scaled) << shift;
-  };
-  return ch(16) | ch(8) | ch(0);
 }

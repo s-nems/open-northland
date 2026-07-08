@@ -1,7 +1,7 @@
 import { Container, Mesh, Sprite } from 'pixi.js';
+import { scaleColour } from '../../data/brightness.js';
 import { TILE_HALF_W, depthKey } from '../../data/iso.js';
 import { type Viewport, aabbIntersects, isVisible } from '../../data/viewport.js';
-import { scaleColour } from '../terrain/chunk-batcher.js';
 import { TERRAIN_CHUNK_TILES } from '../terrain/index.js';
 import type { TextureCache } from '../texture-cache.js';
 import { type DecorChunk, buildDecorChunk, writeObjectQuad } from './decor-batch.js';

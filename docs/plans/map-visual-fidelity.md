@@ -339,7 +339,7 @@ Format: `N. <date> — <what landed>; <key numbers/findings>; <deviations from t
 - 3. 2026-07-08 — `embr` landed end-to-end: pipeline emits it as the optional per-cell `brightness`
   lane (`stages/maps.ts` `brightnessFromMapDat`, all 125 emitted maps carry it; schema refine in
   `@vinland/data`), and the ground shades by it per FRAGMENT — the lane rides as an R8 texture the
-  shaded mesh shader samples at canonical-cell-coordinate UVs (`render/gpu/terrain/shaded-mesh.ts`;
+  shaded mesh shader samples at canonical-cell-coordinate UVs (`render/gpu/shading.ts`;
   rows padded to UNPACK_ALIGNMENT 4). Response curve MEASURED vs mosty-5: luminance × embr/127 (fit
   1/slope=127.3, intercept −0.06 over 50 aligned ground cells; border embr=0 is literally black in
   the corpus, values >127 brighten up to ≈2× so the multiplier is unclamped). The border fade IS the

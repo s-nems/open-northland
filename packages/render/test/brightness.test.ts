@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { scaleColour } from '../src/data/brightness.js';
 import { diamondCornerCoords } from '../src/data/cell-field.js';
-import { scaleColour } from '../src/gpu/terrain/chunk-batcher.js';
+import { padLaneRows } from '../src/gpu/shading.js';
 import { BRIGHTNESS_NEUTRAL, makeBrightnessField } from '../src/index.js';
 
 /**
@@ -91,5 +92,21 @@ describe('scaleColour — the flat-fallback CPU twin of the shader multiply', ()
     expect(scaleColour(0x804020, 0)).toBe(0x000000); // the border fade
     expect(scaleColour(0x804020, 0.5)).toBe(0x402010);
     expect(scaleColour(0x804020, 2)).toBe(0xff8040); // 0x80×2 clamps to 0xff
+  });
+});
+
+describe('padLaneRows — the R8 upload alignment padding', () => {
+  it('pads each row to the alignment by replicating the last column (clamp-preserving)', () => {
+    // 3-wide lane, alignment 4: each row gains one replica of its last value — an unpadded upload
+    // would shear under WebGL's default UNPACK_ALIGNMENT of 4 (the observed corruption).
+    const { data, paddedWidth } = padLaneRows([1, 2, 3, 4, 5, 6], 3, 2, 4);
+    expect(paddedWidth).toBe(4);
+    expect([...data]).toEqual([1, 2, 3, 3, 4, 5, 6, 6]);
+  });
+
+  it('is the identity layout for an already-aligned width', () => {
+    const { data, paddedWidth } = padLaneRows([9, 8, 7, 6], 4, 1, 4);
+    expect(paddedWidth).toBe(4);
+    expect([...data]).toEqual([9, 8, 7, 6]);
   });
 });

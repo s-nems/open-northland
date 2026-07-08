@@ -1,5 +1,5 @@
 import { BufferImageSource, Container, Mesh, Texture, type TextureSource } from 'pixi.js';
-import { type BrightnessField, makeBrightnessField } from '../../data/brightness.js';
+import { type BrightnessField, makeBrightnessField, scaleColour } from '../../data/brightness.js';
 import { type CellCoord, diamondCornerCoords } from '../../data/cell-field.js';
 import { type ElevationField, diamondCornerLifts, makeElevationField } from '../../data/elevation.js';
 import { TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../../data/iso.js';
@@ -20,13 +20,13 @@ import {
 } from '../../data/terrain.js';
 import { type Viewport, aabbIntersects } from '../../data/viewport.js';
 import type { GroundPattern, TerrainTextureSet } from '../pixi-app.js';
+import { padLaneRows } from '../shading.js';
 import {
   ChunkBatcher,
   type TerrainBatch,
   type TerrainChild,
   emptyBatch,
   meshGeometry,
-  scaleColour,
 } from './chunk-batcher.js';
 
 /**
@@ -75,8 +75,12 @@ interface TerrainChunk {
 /** A flat field (no lift) — the shared default for the elevation-free path (synthetic grids / no lane). */
 const FLAT_ELEVATION: ElevationField = makeElevationField(undefined, 0, 0);
 
-/** A neutral field (no shading) — the shared default for the brightness-free path. */
-const NEUTRAL_BRIGHTNESS: BrightnessField = makeBrightnessField(undefined, 0, 0);
+/**
+ * Quantization steps for the flat placeholder's CPU-side shading: its meshes batch by EXACT colour,
+ * so the multiplier snaps to this many levels per unit to keep the per-block mesh count bounded (a
+ * placeholder path — coarse banding is acceptable, hundreds of one-cell meshes are not).
+ */
+const FLAT_SHADE_STEPS = 8;
 
 /**
  * The brightness-lane texture UVs of a cell's four diamond corners, flat `[u0,v0, … u3,v3]` in
@@ -107,39 +111,34 @@ export class TerrainLayer {
    * `textures` it batches every cell into one {@link Mesh} per texture page (draw-call count ~one per
    * page, independent of map size); without them it draws the flat placeholder diamonds. Either way the
    * geometry + page textures are built here and RETAINED, so no terrain work happens per frame.
-   * `brightness` (the map's baked `embr` shading, neutral when absent) rides as an R8 lane texture
-   * the shaded meshes sample per FRAGMENT, at canonical-cell-coordinate UVs baked per vertex — the
-   * same watertight corner coordinates the `elevation` lift bakes geometry at (`cell-field.ts`).
+   * The map's baked `embr` shading (`terrain.brightness`, absent → unshaded) rides as an R8 lane
+   * texture the shaded meshes sample per FRAGMENT, at canonical-cell-coordinate UVs baked per
+   * vertex — the same watertight corner coordinates the `elevation` lift bakes geometry at
+   * (`cell-field.ts`).
    */
-  set(
-    terrain: SceneTerrain,
-    textures?: TerrainTextureSet,
-    elevation: ElevationField = FLAT_ELEVATION,
-    brightness: BrightnessField = NEUTRAL_BRIGHTNESS,
-  ): void {
+  set(terrain: SceneTerrain, textures?: TerrainTextureSet, elevation: ElevationField = FLAT_ELEVATION): void {
     this.destroy();
+    // ONE source for the shading: both the CPU field (fallback/flat tints) and the R8 lane texture
+    // are built HERE from `terrain.brightness`, so no caller can hand the mesh and the fallbacks
+    // disagreeing inputs (the elevation field stays injected — the renderer retains it per frame).
+    const brightness = makeBrightnessField(terrain.brightness, terrain.width, terrain.height);
     // The lane texture the shaded ground shader samples per fragment: the raw `embr` bytes as an R8
     // grid, linear-filtered + edge-clamped (the GPU twin of `makeCellSampler`'s bilinear + clamp).
-    // ~W×H bytes once per map; undefined on an unshaded map (the stock-shader path). Rows are PADDED
-    // to a multiple of 4 texels by replicating the last column: WebGL uploads with the default
-    // UNPACK_ALIGNMENT of 4 (Pixi never lowers it), so an unpadded odd-width R8 grid would shear —
-    // and the replica columns keep the right-edge clamp semantics identical to the CPU sampler.
-    if (brightness.shaded && terrain.brightness !== undefined) {
-      const { width, height } = terrain;
+    // ~W×H bytes once per map; undefined on an unshaded map (the stock-shader path) and on the flat
+    // placeholder path (which shades CPU-side). Rows are alignment-padded — see `padLaneRows`.
+    if (brightness.shaded && terrain.brightness !== undefined && textures !== undefined) {
       const ROW_ALIGN = 4; // WebGL's default UNPACK_ALIGNMENT, in bytes (1 byte per R8 texel)
-      const paddedW = Math.ceil(width / ROW_ALIGN) * ROW_ALIGN;
-      const lane = new Uint8Array(paddedW * height);
-      for (let r = 0; r < height; r++) {
-        for (let c = 0; c < paddedW; c++) {
-          lane[r * paddedW + c] = terrain.brightness[r * width + Math.min(c, width - 1)] ?? 0;
-        }
-      }
-      this.laneTexWidth = paddedW;
+      const lane = padLaneRows(terrain.brightness, terrain.width, terrain.height, ROW_ALIGN);
+      this.laneTexWidth = lane.paddedWidth;
       this.brightnessTex = new BufferImageSource({
-        resource: lane,
-        width: paddedW,
-        height,
+        resource: lane.data,
+        width: lane.paddedWidth,
+        height: terrain.height,
         format: 'r8unorm',
+        // The GPU twin of `makeCellSampler` (bilinear + edge clamp) is a CONTRACT, not an inherited
+        // default — pin it (this codebase flips other sources to 'nearest' for pixel art).
+        scaleMode: 'linear',
+        addressMode: 'clamp-to-edge',
       });
     }
     if (textures !== undefined) this.buildTextured(terrain, textures, elevation, brightness);
@@ -394,8 +393,10 @@ export class TerrainLayer {
    * stroke of every cell and does not batch, so at 65 536 cells it costs ~1 s/frame on any renderer (the
    * crash-adjacent path this replaces). The per-cell grid outline is dropped (the textured ground has
    * none either); a solid ground reads the same when zoomed out. A shaded map scales each cell's tint
-   * CPU-side (per-colour batches can't carry a gradient) — the flat tint is a placeholder, not the 1:1
-   * look, so the cell-centre approximation is fine.
+   * CPU-side, QUANTIZED to {@link FLAT_SHADE_STEPS} steps — the batches are keyed by exact colour, so
+   * an unquantized smooth gradient (the border fade alone spans ~127 distinct multipliers) would
+   * explode the per-block mesh count. The flat tint is a placeholder, not the 1:1 look, so the coarse
+   * cell-centre shading is fine.
    */
   private buildFlat(terrain: SceneTerrain, elevation: ElevationField, brightness: BrightnessField): void {
     const lifted = elevation.maxLift > 0;
@@ -408,7 +409,12 @@ export class TerrainLayer {
           const screen = tileToScreen(col, row);
           const lifts = lifted ? diamondCornerLifts(elevation, col, row) : undefined;
           const baseColour = TILE_COLOURS[typeId % TILE_COLOURS.length] ?? DEFAULT_TILE_COLOUR;
-          const colour = shaded ? scaleColour(baseColour, brightness.brightnessAt(col, row)) : baseColour;
+          const colour = shaded
+            ? scaleColour(
+                baseColour,
+                Math.round(brightness.brightnessAt(col, row) * FLAT_SHADE_STEPS) / FLAT_SHADE_STEPS,
+              )
+            : baseColour;
           let batch = byColour.get(colour);
           if (batch === undefined) {
             batch = emptyBatch();

@@ -195,10 +195,12 @@ export interface SceneTerrain {
   readonly elevation?: readonly number[];
   /**
    * The decoded map's per-cell `embr` baked shading (row-major, length `width*height`, u8 with 127 =
-   * neutral), when present. The renderer builds a {@link import('../brightness.js').BrightnessField}
-   * from it and bakes luminance × value/127 into the ground mesh per vertex — slope light/shadow plus
-   * the fade-to-black map border; absent → unshaded. Terrain only (objects/entities are NOT shaded —
-   * measured against the corpus). Render-only data — the sim never reads it.
+   * neutral), when present. The GROUND mesh consumes it per FRAGMENT (luminance × value/127 sampled
+   * from an R8 lane texture — slope light/shadow plus the fade-to-black map border); absent →
+   * unshaded. Landscape objects shade separately at their anchor cell via an app-built
+   * {@link import('../brightness.js').BrightnessField} (trees exempt — the measured split; see
+   * `data/brightness.ts`); buildings/settlers are unmeasured and unshaded. Render-only data — the
+   * sim never reads it.
    */
   readonly brightness?: readonly number[];
 }
