@@ -69,3 +69,17 @@ export function makeBrightnessField(
     brightnessAt: (col: number, row: number): number => sample(col, row) / BRIGHTNESS_NEUTRAL,
   };
 }
+
+/**
+ * Scale an `0xRRGGBB` colour's channels by `factor` (clamped to white) — the CPU twin of the shader
+ * multiply, for draws that can't carry the lane per fragment: the unbound-cell fallback diamond, the
+ * flat placeholder tint, and the tall map-object sprite tint.
+ */
+export function scaleColour(colour: number, factor: number): number {
+  if (factor === 1) return colour;
+  const ch = (shift: number): number => {
+    const scaled = Math.round(((colour >> shift) & 0xff) * factor);
+    return (scaled > 0xff ? 0xff : scaled) << shift;
+  };
+  return ch(16) | ch(8) | ch(0);
+}

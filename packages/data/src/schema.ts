@@ -1091,7 +1091,7 @@ export type TerrainEntities = z.infer<typeof TerrainEntities>;
  * The optional {@link ground} / {@link objects} layers carry the map's 1:1 visual data (per-triangle
  * ground patterns; placed landscape objects) — render-only consumers; the sim reads only the grid.
  * The optional {@link elevation} (`lmhe` terrain height) and {@link brightness} (`embr` baked
- * shading) lanes are per-cell render inputs: the projection lift and the terrain mesh's per-vertex
+ * shading) lanes are per-cell render inputs: the projection lift and the ground's per-fragment
  * shading respectively.
  */
 export const TerrainMapFile = z
@@ -1119,7 +1119,7 @@ export const TerrainMapFile = z
      * Per-cell baked brightness (`embr` lane), row-major, one value per cell (length = width*height),
      * raw byte values 0..255 with 127 = neutral. The engine's baked shading plane: slope light/shadow
      * plus the fade-to-black map border (the outermost 2–3 rows/columns hold 0). Present when the map
-     * ships the lane. Consumed by the terrain mesh's per-vertex shading (luminance × brightness/127,
+     * ships the lane. Consumed by the ground's per-fragment shading (luminance × brightness/127,
      * the response curve calibrated against the reference corpus —
      * `packages/render/src/data/brightness.ts`).
      */

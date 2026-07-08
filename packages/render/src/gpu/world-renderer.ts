@@ -1,6 +1,5 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { type Application, Container } from 'pixi.js';
-import { makeBrightnessField } from '../data/brightness.js';
 import { type ElevationField, makeElevationField } from '../data/elevation.js';
 import type { Camera } from '../data/iso.js';
 import type { SceneTerrain } from '../data/scene/index.js';
@@ -90,12 +89,11 @@ export class WorldRenderer {
   setTerrain(terrain: SceneTerrain, textures?: TerrainTextureSet): void {
     // Build the height field ONCE per map (from the `lmhe` lane, or flat when absent). The terrain mesh
     // bakes the lift now; the sprite pool + the cull pad read it each frame in {@link update}. The
-    // brightness field (`embr` lane, neutral when absent) is baked into the mesh here too and never
-    // read again — TERRAIN ONLY: objects/entities draw unshaded (measured against the corpus, see
-    // `data/brightness.ts`), so nothing else consumes it.
+    // `terrain.brightness` lane is consumed inside {@link TerrainLayer.set} (it shades the GROUND);
+    // landscape objects get their own anchor-cell multiplier upstream in the app loader (trees exempt
+    // — the measured split, `data/brightness.ts`), and buildings/settlers are unmeasured + unshaded.
     this.elevation = makeElevationField(terrain.elevation, terrain.width, terrain.height);
-    const brightness = makeBrightnessField(terrain.brightness, terrain.width, terrain.height);
-    this.terrain.set(terrain, textures, this.elevation, brightness);
+    this.terrain.set(terrain, textures, this.elevation);
   }
 
   /**

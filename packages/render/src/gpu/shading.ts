@@ -1,5 +1,5 @@
 import { GlProgram, Shader, type TextureSource } from 'pixi.js';
-import { BRIGHTNESS_NEUTRAL } from '../../data/brightness.js';
+import { BRIGHTNESS_NEUTRAL } from '../data/brightness.js';
 
 /**
  * The custom mesh shaders for the brightness-shaded ground and decor — the stock textured-mesh draw
@@ -14,7 +14,7 @@ import { BRIGHTNESS_NEUTRAL } from '../../data/brightness.js';
  *    Per-vertex values were not enough: linear interpolation over the diamond triangles draws a
  *    high-contrast lane step (the map-border fade, the rock hill) as a zigzag along triangle edges,
  *    where the original fades in smooth per-pixel bands. The canonical row coordinate is linear in
- *    screen y (`cell-field.ts` {@link import('../../data/cell-field.js').diamondCornerCoords}), so
+ *    screen y (`cell-field.ts` {@link import('../data/cell-field.js').diamondCornerCoords}), so
  *    the texture's own bilinear reproduces the original's smooth banding.
  *  - **per-vertex** ({@link makeShadedDecorShader}) — a DECOR quad batch carries one constant
  *    multiplier per quad (`aBrightness`, its anchor cell's value); a flat decal has no cell-space
@@ -113,7 +113,7 @@ let vertexProgram: GlProgram | undefined;
  * multiplier sampled from `brightnessTex` (the map's `embr` bytes as an R8 texture, linear-filtered +
  * edge-clamped — the GPU twin of `makeCellSampler`) at the geometry's `aBrightnessUV`. One per
  * mesh/page; the compiled program is shared. WebGL-only, like
- * {@link import('../paletted-sprite.js').PalettedSprite} — the renderer preference is `webgl`
+ * {@link import('./paletted-sprite.js').PalettedSprite} — the renderer preference is `webgl`
  * (`pixi-app.ts`).
  */
 export function makeShadedTerrainShader(source: TextureSource, brightnessTex: TextureSource): Shader {
@@ -135,4 +135,27 @@ export function makeShadedDecorShader(source: TextureSource): Shader {
     glProgram: vertexProgram,
     resources: { uTexture: source, uSampler: source.style },
   });
+}
+
+/**
+ * Pad a row-major per-cell byte lane so each row is a multiple of `alignment` texels, REPLICATING the
+ * last column into the padding. WebGL uploads with the default UNPACK_ALIGNMENT of 4 (Pixi never
+ * lowers it), so an unpadded odd-width R8 grid would shear row by row; the replica columns keep the
+ * right-edge clamp semantics identical to the CPU sampler (`data/cell-field.ts` `makeCellSampler`).
+ * Pure — exported so the shear regression stays headlessly testable.
+ */
+export function padLaneRows(
+  values: readonly number[],
+  width: number,
+  height: number,
+  alignment: number,
+): { readonly data: Uint8Array; readonly paddedWidth: number } {
+  const paddedWidth = Math.ceil(width / alignment) * alignment;
+  const data = new Uint8Array(paddedWidth * height);
+  for (let r = 0; r < height; r++) {
+    for (let c = 0; c < paddedWidth; c++) {
+      data[r * paddedWidth + c] = values[r * width + Math.min(c, width - 1)] ?? 0;
+    }
+  }
+  return { data, paddedWidth };
 }

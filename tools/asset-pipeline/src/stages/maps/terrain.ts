@@ -146,21 +146,12 @@ function objectsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['ob
  * 0..250 — a hard observed ceiling across the full corpus). Returns undefined when the map lacks the
  * lane (older/foreign saves); throws on a
  * dims/length mismatch (a wrong/corrupt layer — caught per LAYER by {@link mapDatToTerrain}, which
- * then emits the grid without it). Carried through verbatim, mirroring `objects.levels`: the render
- * lift (≈1.24 native px/unit — see source basis "projection") lands in a later step, so nothing
- * consumes this lane yet.
+ * then emits the grid without it). Carried through verbatim, mirroring `objects.levels`; consumed by
+ * the render's elevation lift (≈1.24 native px/unit, MEASURED — see source basis "projection";
+ * `packages/render/src/data/elevation.ts`).
  */
 function elevationFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['elevation'] {
-  const lmhe = findChunk(map, 'lmhe');
-  if (lmhe === undefined) return undefined;
-  const cells = unpackMapLayer(lmhe).cells;
-  const expected = size.width * size.height;
-  if (cells.length !== expected) {
-    throw new Error(
-      `mapdat: lmhe height lane has ${cells.length} cells, expected ${expected} (${size.width}×${size.height}, per-cell)`,
-    );
-  }
-  return Array.from(cells);
+  return perCellLaneFromMapDat(map, size, 'lmhe', 'height');
 }
 
 /**
@@ -176,13 +167,29 @@ function elevationFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['
  * dims/length mismatch (caught per LAYER by {@link mapDatToTerrain}).
  */
 function brightnessFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['brightness'] {
-  const embr = findChunk(map, 'embr');
-  if (embr === undefined) return undefined;
-  const cells = unpackMapLayer(embr).cells;
+  return perCellLaneFromMapDat(map, size, 'embr', 'brightness');
+}
+
+/**
+ * The shared per-cell byte-lane decode both wrappers above ride: unpack the tagged `X8el` chunk and
+ * carry it VERBATIM, enforcing the one structural invariant these lanes share — one byte PER CELL
+ * (row-major, unpacked length === width·height, NOT the `2W × 2H` half-cell resolution the
+ * landscape-object lanes use). Returns undefined when the map lacks the chunk (older/foreign saves);
+ * throws on a dims/length mismatch (caught per LAYER by {@link mapDatToTerrain}).
+ */
+function perCellLaneFromMapDat(
+  map: MapDat,
+  size: MapDatSize,
+  tag: string,
+  label: string,
+): number[] | undefined {
+  const chunk = findChunk(map, tag);
+  if (chunk === undefined) return undefined;
+  const cells = unpackMapLayer(chunk).cells;
   const expected = size.width * size.height;
   if (cells.length !== expected) {
     throw new Error(
-      `mapdat: embr brightness lane has ${cells.length} cells, expected ${expected} (${size.width}×${size.height}, per-cell)`,
+      `mapdat: ${tag} ${label} lane has ${cells.length} cells, expected ${expected} (${size.width}×${size.height}, per-cell)`,
     );
   }
   return Array.from(cells);
@@ -202,7 +209,7 @@ function brightnessFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile[
  * grid decodes fine never disappears over its enrichments. The `lmhe` height lane rides along as the
  * per-cell `elevation` layer ({@link elevationFromMapDat}) — consumed render-side by the elevation
  * lift (`packages/render/src/data/elevation.ts`) — and the `embr` baked-shading lane as the per-cell
- * `brightness` layer ({@link brightnessFromMapDat}) — consumed by the terrain mesh's per-vertex
+ * `brightness` layer ({@link brightnessFromMapDat}) — consumed by the ground's per-fragment
  * shading (`packages/render/src/data/brightness.ts`). The
  * `emt3`/`emt4` overlay-pattern lanes (roads/house foundations) are still out of scope (deferred
  * render layers).

@@ -1,20 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import {
   DIAMOND_FAN_INDICES,
+  TRIANGLE_A_SPLIT_INDICES,
+  TRIANGLE_B_SPLIT_INDICES,
+  rectCenterUV,
+  uvMidpoint,
+} from '../src/data/terrain.js';
+import {
   DIAMOND_INDICES,
   TILE_HALF_H,
   TILE_HALF_W,
   TRIANGLE_A_CORNERS,
-  TRIANGLE_A_SPLIT_INDICES,
   TRIANGLE_B_CORNERS,
-  TRIANGLE_B_SPLIT_INDICES,
   diamondCorners,
   patternSrcRect,
-  rectCenterUV,
   rectUVs,
   triangleCorners,
   triangleUVs,
-  uvMidpoint,
 } from '../src/index.js';
 
 /**

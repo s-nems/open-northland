@@ -1,6 +1,6 @@
 import { Container, Mesh, MeshGeometry, type Shader, Texture, type TextureSource } from 'pixi.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
-import { makeShadedDecorShader } from '../terrain/shaded-mesh.js';
+import { makeShadedDecorShader } from '../shading.js';
 import { type MapObjectSprite, objectFrameAt } from './map-object-sprite.js';
 
 /**

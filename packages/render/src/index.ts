@@ -100,15 +100,10 @@ export {
 } from './data/viewport.js';
 export {
   DIAMOND_INDICES,
-  DIAMOND_FAN_INDICES,
   TRIANGLE_A_CORNERS,
   TRIANGLE_B_CORNERS,
-  TRIANGLE_A_SPLIT_INDICES,
-  TRIANGLE_B_SPLIT_INDICES,
   diamondCorners,
   rectUVs,
-  rectCenterUV,
-  uvMidpoint,
   patternSrcRect,
   triangleCorners,
   triangleUVs,
