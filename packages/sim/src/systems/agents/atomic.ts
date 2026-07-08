@@ -18,7 +18,7 @@ import type { AtomicEffect } from '../../core/commands.js';
 import { type Fixed, ONE, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
-import { unstampResourceFootprint } from '../footprint.js';
+import { unstampResourceFootprint } from '../footprint/index.js';
 import { grantFightExperience, grantWorkExperience } from '../progression.js';
 import { atomicAnimationName, atomicDuration } from '../readviews/animations.js';
 import {

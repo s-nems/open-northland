@@ -4,7 +4,7 @@ import { contentIndex } from '../core/content-index.js';
 import { ONE, fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { SystemContext } from './context.js';
-import { interactionTile } from './footprint.js';
+import { interactionTile } from './footprint/index.js';
 import { vehicleMayCarry } from './readviews/vehicles.js';
 
 // The cross-system STORE/ECONOMY read-model: what a store can hold, what a workplace makes, who

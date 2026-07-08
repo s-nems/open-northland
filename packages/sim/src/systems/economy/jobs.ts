@@ -3,7 +3,7 @@ import { contentIndex } from '../../core/content-index.js';
 import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
-import { interactionTile } from '../footprint.js';
+import { interactionTile } from '../footprint/index.js';
 import { buildingEnabled, jobEnabled, settlerMeetsNeed } from '../progression.js';
 import { TileBuckets, canonicalById } from '../spatial.js';
 import { buildingWorkerJobs, recipeOf } from '../stores.js';

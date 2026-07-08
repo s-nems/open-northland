@@ -11,7 +11,7 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
-import { interactionTile, positionedInteractionCell, resourceWorkCell } from '../footprint.js';
+import { interactionTile, positionedInteractionCell, resourceWorkCell } from '../footprint/index.js';
 import { buildingEnabled, settlerMeetsNeed } from '../progression.js';
 import { canonicalById, manhattan } from '../spatial.js';
 import {

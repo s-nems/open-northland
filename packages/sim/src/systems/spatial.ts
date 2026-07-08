@@ -2,7 +2,7 @@ import { MoveGoal, PathFollow, PathRequest, Position } from '../components/index
 import { fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { CellId, TerrainGraph } from '../nav/terrain.js';
-import { manhattan, tileKey } from './footprint.js';
+import { manhattan, tileKey } from './footprint/index.js';
 
 // The cross-system SPATIAL primitives — canonical scan order, the per-tick tile bucket + ring
 // search, and the cell/distance helpers. A leaf module (only footprint.ts below it) so every

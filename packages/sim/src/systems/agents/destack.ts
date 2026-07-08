@@ -2,7 +2,7 @@ import { MoveGoal, Owner } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
-import { dynamicBlockedCells } from '../footprint.js';
+import { dynamicBlockedCells } from '../footprint/index.js';
 import type { TileBuckets } from '../spatial.js';
 
 // The IDLE-SPACING drive — the planner's last resort for a unit with nothing to do: step off a tile
