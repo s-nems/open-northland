@@ -14,7 +14,7 @@ import { SIGHT_RADIUS_TILES, isValidTarget } from './targeting.js';
  * and returns to the economy (the cool-down). Prevents a unit twitching in and out of flee as a threat
  * flickers at the sight edge. APPROXIMATED (source basis "Combat flee").
  */
-export const FLEE_COOLDOWN_TICKS = 40;
+const FLEE_COOLDOWN_TICKS = 40;
 
 /**
  * FLEE stance — how many tiles a fleeing unit runs **away** from the nearest threat each time it re-aims:

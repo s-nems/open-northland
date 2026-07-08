@@ -172,7 +172,7 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   // carrier (hauls planks to the HQ), 7 = carpenter (the mill's operator, self-servicing: it pickups the
   // HQ's stored wood into the mill and hauls finished planks back out). If this moves, a settler-economy
   // mechanic changed — name it in the commit. Last move: FAITHFUL MULTI-HIT HARVEST + DROP-ON-GROUND
-  // (packages/sim/src/systems/conflict/atomic.ts + ai.ts). A wood node is now FELLED — the woodcutter
+  // (packages/sim/src/systems/agents/effects-goods.ts + ai.ts). A wood node is now FELLED — the woodcutter
   // (entity 5) chops each tree down over `chopsToFell` (3) swings (24 at 21/24/27) that yield nothing,
   // the tree drops a trunk holding its whole 4-wood yield, and the collector then picks the trunk up (22)
   // and delivers it (23), a unit at a time (on-foot carry). So entity 5's old "one 24 per unit straight
@@ -281,7 +281,7 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   it('matches the golden final state hash', () => {
     const run = runSlice(SEED, TICKS);
     // Intentional-change discipline: if this moves, a mechanic changed — name it in the commit.
-    // Moved by FAITHFUL MULTI-HIT HARVEST + DROP-ON-GROUND (packages/sim/src/systems/conflict/atomic.ts
+    // Moved by FAITHFUL MULTI-HIT HARVEST + DROP-ON-GROUND (packages/sim/src/systems/agents/effects-goods.ts
     // + ai.ts): the woodcutter now FELLS each tree over several chops that yield nothing, the tree drops
     // a ground trunk holding its whole yield, and the collector carries the trunk off — so the two trees
     // leave 2 stumps + no standing nodes (vs the old 2 depleted `remaining:0` Resource nodes) and the run

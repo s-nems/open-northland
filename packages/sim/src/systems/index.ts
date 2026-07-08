@@ -20,8 +20,9 @@ import { progressionSystem, terrainSystem, timeSystem, transportSystem } from '.
 // The systems barrel: every per-system module re-exported wholesale (no hand-maintained name
 // lists — they drifted), plus SYSTEM_ORDER, which this barrel owns. `@vinland/sim`'s `systems`
 // namespace and the tests import through here so the whole surface has a single import site.
-// The planner internals (ai-targets/ai-supply/spawn) are deliberately NOT re-exported — they are
-// implementation detail of the AI/command systems, not surface.
+// Only the system ENTRY modules (and the cross-system helper leaves) are star-exported; a module a
+// system entry re-exports its public names from — planner internals like ai-targets/ai-supply, the
+// drive/effect/targeting submodules, spawn — stays private to its cluster.
 export type { System, SystemContext };
 export * from './agents/ai.js';
 export * from './agents/atomic.js';

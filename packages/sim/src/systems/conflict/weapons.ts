@@ -1,5 +1,6 @@
 import type { WeaponType } from '@vinland/data';
 import { Armor, CurrentAtomic } from '../../components/index.js';
+import { contentIndex } from '../../core/content-index.js';
 import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
@@ -52,11 +53,11 @@ import {
  *    job. Without this a spawned aggressive animal resolves no weapon and does no damage despite
  *    {@link mayAttack} engaging it.
  *
- * Determinism: a pure scan of `content.weapons` returning the FIRST match in source-array order (a
- * `(tribeType, jobType)` pair — and an animal tribe's weapon set — may have more than one row; source
- * order is the stable choice, the same determinism stance the extractor keeps and {@link combatDamage}
- * documents — no Map keyed on a non-unique identity). The worn-weapon path keys on `(tribe, typeId)`,
- * which can still recur across animal weapons, so it too takes the first source-order match.
+ * Determinism: resolved through the {@link contentIndex} weapon tables, which are built FIRST-wins
+ * per `(tribeType, typeId)` / `(tribeType, jobType)` / tribe — a `(tribeType, jobType)` pair (and an
+ * animal tribe's weapon set) may have more than one row, and first-in-source-order is the stable
+ * choice the old linear scans made (the same determinism stance the extractor keeps and
+ * {@link combatDamage} documents), so the pick is unchanged on duplicate rows.
  */
 export function attackerWeapon(
   ctx: SystemContext,
@@ -64,22 +65,26 @@ export function attackerWeapon(
   jobType: number | null,
   wornWeaponTypeId?: number,
 ): { minRange: number; maxRange: number; weapon: WeaponType } | null {
+  const index = contentIndex(ctx.content);
   // An equipped combatant wields its WORN weapon (its own tribe + that typeId), overriding the default
   // class weapon. A worn id with no matching record leaves it unarmed for the tick (the data-doesn't-define
   // -it → does-nothing stance) rather than falling through to the default.
   if (wornWeaponTypeId !== undefined) {
-    const worn = ctx.content.weapons.find((w) => w.tribeType === tribe && w.typeId === wornWeaponTypeId);
+    const worn = index.weaponsByTribeAndTypeId.get(tribe)?.get(wornWeaponTypeId);
     return worn === undefined ? null : withReach(worn);
   }
   // A JOBLESS combatant carries a weapon only if it is an animal tribe (whose weapon keys by tribe, not
-  // job — `spawnAnimalHerd` places jobless animals); a jobless civilian is unarmed. Resolved once, since
-  // it is invariant across the weapon scan below.
-  if (jobType === null && !isAnimalTribe(ctx.content, tribe)) return null;
-  // A settler with a job binds its weapon by (tribe, job); a jobless animal by tribe alone (its combat
-  // identity IS its tribe). First match in source-array order (the array-not-Map stance).
-  const weapon = ctx.content.weapons.find(
-    (w) => w.tribeType === tribe && (jobType === null || w.jobType === jobType),
-  );
+  // job — `spawnAnimalHerd` places jobless animals); a jobless civilian is unarmed.
+  if (jobType === null) {
+    if (!isAnimalTribe(ctx.content, tribe)) return null;
+    // A jobless animal binds its weapon by tribe alone (its combat identity IS its tribe): the tribe's
+    // FIRST source-order weapon row, the record the old linear scan returned.
+    const weapon = index.firstWeaponByTribe.get(tribe);
+    return weapon === undefined ? null : withReach(weapon);
+  }
+  // A settler with a job binds its weapon by (tribe, job) — first match in source order (the index
+  // tables are first-wins per pair, preserving the old array scan's pick on duplicate rows).
+  const weapon = index.weaponsByTribeAndJob.get(tribe)?.get(jobType);
   if (weapon === undefined) return null; // unarmed — no resolvable weapon for this combatant
   return withReach(weapon);
 }

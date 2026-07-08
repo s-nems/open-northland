@@ -133,9 +133,10 @@ export function recipeOf(world: World, ctx: SystemContext, building: Entity): Re
 export function buildingWorkerJobs(world: World, ctx: SystemContext, building: Entity): ReadonlySet<number> {
   const b = world.tryGet(building, Building);
   if (b === undefined) return EMPTY_JOBS;
-  const type = contentIndex(ctx.content).buildings.get(b.buildingType);
+  const index = contentIndex(ctx.content);
+  const type = index.buildings.get(b.buildingType);
   if (type === undefined) return EMPTY_JOBS;
-  return contentIndex(ctx.content).workerJobsByBuilding.get(type.typeId) ?? EMPTY_JOBS;
+  return index.workerJobsByBuilding.get(type.typeId) ?? EMPTY_JOBS;
 }
 
 const EMPTY_JOBS: ReadonlySet<number> = new Set<number>();

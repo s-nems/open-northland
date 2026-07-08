@@ -11,6 +11,7 @@ import type {
   LandscapeGfx,
   TribeType,
   VehicleType,
+  WeaponType,
 } from '@vinland/data';
 
 /**
@@ -20,14 +21,17 @@ import type {
  * packages/sim/AGENTS.md). Pure derived data over immutable content — never hashed, never mutated —
  * so it is determinism-neutral by construction.
  *
- * Every map is built **first-wins** (`registerFirst`): a duplicate key keeps the FIRST array entry,
- * which is exactly what the `.find` scans it replaces returned, so a lookup through the index is
- * provably the same record a linear scan would pick even on (unexpected) duplicate ids.
+ * Every table reproduces the duplicate-key semantics of the exact scan it replaced — mostly
+ * **first-wins** (`byKey`: a duplicate key keeps the FIRST array entry, what a `.find` returned);
+ * the two deliberate exceptions are documented on their fields (`atomicBindingsByTribe` is last-wins
+ * per binding, `landscapeGfxByIndex` is last-wins like the `new Map(pairs)` it replaced). So a
+ * lookup through the index is provably the same record the linear code picked, even on (unexpected)
+ * duplicate ids.
  *
- * NOT indexed on purpose: `content.weapons` — its combat lookups key on non-unique
- * `(tribeType, jobType)` / `(tribeType, typeId)` pairs with documented first-in-source-order
- * semantics (see `attackerWeapon` in systems/conflict/combat.ts); those scans are per-swing-start,
- * not per-entity-per-tick, and the array-not-Map stance there is deliberate.
+ * The weapon tables key the same way `attackerWeapon` (systems/conflict/weapons.ts) scanned the
+ * non-unique `content.weapons` rows: first-in-source-order per `(tribeType, typeId)` /
+ * `(tribeType, jobType)` / tribe alone — that scan runs per awake combatant per tick during a
+ * battle, so it is indexed with its first-match semantics preserved.
  */
 export interface ContentIndex {
   /** Building types by `typeId`. */
@@ -48,9 +52,18 @@ export interface ContentIndex {
   readonly animalsByTribe: ReadonlyMap<number, AnimalType>;
   /** Atomic animations by `name` (the `setatomic` join key). */
   readonly atomicAnimationsByName: ReadonlyMap<string, AtomicAnimation>;
-  /** Per building type: the set of job types its `workers` slots name (empty set omitted — a type
-   *  with no worker slots has no entry). Precomputed so the per-tick staffing gates don't allocate. */
+  /** Per building type: the set of job types its `workers` slots name (empty for a type with no
+   *  worker slots). Precomputed so the per-tick staffing gates don't allocate. */
   readonly workerJobsByBuilding: ReadonlyMap<number, ReadonlySet<number>>;
+  /** Weapons by `(tribeType, typeId)` — the worn-weapon override key; first-wins per pair, the
+   *  first-in-source-order record the old `.find` scan returned. */
+  readonly weaponsByTribeAndTypeId: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
+  /** Weapons by `(tribeType, jobType)` — how a jobbed combatant binds its class weapon; first-wins
+   *  per pair (source order). */
+  readonly weaponsByTribeAndJob: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
+  /** The FIRST weapon row of each tribe (source order) — a jobless animal's weapon (its combat
+   *  identity is its tribe alone). */
+  readonly firstWeaponByTribe: ReadonlyMap<number, WeaponType>;
   /**
    * Per tribe: the `setatomic` bindings resolved `jobType → atomicId → animation name`, built
    * **last-wins over the file-order bindings** — exactly the override semantics the linear walk it
@@ -60,7 +73,8 @@ export interface ContentIndex {
   readonly atomicBindingsByTribe: ReadonlyMap<number, ReadonlyMap<number, ReadonlyMap<number, string>>>;
   /** Per-good gathering pipelines by `goodType`. */
   readonly gatheringPipelinesByGood: ReadonlyMap<number, GatheringPipeline>;
-  /** Landscape gfx records by their `index` (the gathering pipeline's join key). */
+  /** Landscape gfx records by their `index` (the gathering pipeline's join key). LAST-wins on a
+   *  duplicate index — the semantics of the `new Map(records.map(...))` it replaced. */
   readonly landscapeGfxByIndex: ReadonlyMap<number, LandscapeGfx>;
   /**
    * Per job type: the set of atomic ids the job may run — `allowedAtomics` ∪ `baseAtomics` minus
@@ -97,9 +111,56 @@ function buildIndex(content: ContentSet): ContentIndex {
     workerJobsByBuilding: workerJobSets(content),
     atomicBindingsByTribe: atomicBindingTables(content),
     gatheringPipelinesByGood: byKey(content.gatheringPipeline, (p) => p.goodType),
-    landscapeGfxByIndex: byKey(content.landscapeGfx, (g) => g.index),
+    landscapeGfxByIndex: new Map(content.landscapeGfx.map((g) => [g.index, g])), // last-wins, as before
     atomicsByJob: jobAtomicSets(content),
+    // A weapon row's tribeType/jobType are optional in the schema; a row missing the key could never
+    // match the numeric comparison the old scans made, so it is simply absent from that table.
+    weaponsByTribeAndTypeId: byPairKey(
+      content.weapons,
+      (w) => w.tribeType,
+      (w) => w.typeId,
+    ),
+    weaponsByTribeAndJob: byPairKey(
+      content.weapons,
+      (w) => w.tribeType,
+      (w) => w.jobType,
+    ),
+    firstWeaponByTribe: byOptionalKey(content.weapons, (w) => w.tribeType),
   };
+}
+
+/** Map `items` by a two-level key, first-wins per pair — the first source-order record a compound
+ *  `.find((x) => a(x) === … && b(x) === …)` scan returned. An item whose key half is undefined is
+ *  skipped (it could never match a numeric comparison). */
+function byPairKey<T>(
+  items: readonly T[],
+  outer: (item: T) => number | undefined,
+  inner: (item: T) => number | undefined,
+): ReadonlyMap<number, ReadonlyMap<number, T>> {
+  const map = new Map<number, Map<number, T>>();
+  for (const item of items) {
+    const o = outer(item);
+    const i = inner(item);
+    if (o === undefined || i === undefined) continue;
+    let innerMap = map.get(o);
+    if (innerMap === undefined) {
+      innerMap = new Map<number, T>();
+      map.set(o, innerMap);
+    }
+    if (!innerMap.has(i)) innerMap.set(i, item);
+  }
+  return map;
+}
+
+/** {@link byKey} over an optional key — an item without the key is skipped (it could never match). */
+function byOptionalKey<T>(items: readonly T[], key: (item: T) => number | undefined): ReadonlyMap<number, T> {
+  const map = new Map<number, T>();
+  for (const item of items) {
+    const k = key(item);
+    if (k === undefined || map.has(k)) continue;
+    map.set(k, item);
+  }
+  return map;
 }
 
 /** The per-job allowed-atomic sets (first-wins per typeId, like every other table). */
@@ -137,11 +198,13 @@ function atomicBindingTables(
   return byTribe;
 }
 
-/** The per-building-type worker-job sets (first-wins per typeId, like every other table). */
+/** The per-building-type worker-job sets — first-wins per typeId UNCONDITIONALLY (a first record
+ *  with zero workers claims the key with an empty set, exactly as the `.find` it replaced resolved
+ *  the first record and read its empty `workers`), so a later duplicate can never shadow it. */
 function workerJobSets(content: ContentSet): ReadonlyMap<number, ReadonlySet<number>> {
   const map = new Map<number, ReadonlySet<number>>();
   for (const b of content.buildings) {
-    if (b.workers.length === 0 || map.has(b.typeId)) continue;
+    if (map.has(b.typeId)) continue;
     map.set(b.typeId, new Set(b.workers.map((w) => w.jobType)));
   }
   return map;

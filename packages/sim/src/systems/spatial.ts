@@ -2,10 +2,10 @@ import { MoveGoal, PathFollow, PathRequest, Position } from '../components/index
 import { fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { CellId, TerrainGraph } from '../nav/terrain.js';
-import { manhattan, tileKey } from './footprint/index.js';
+import { manhattan, tileKey } from './footprint/geometry.js';
 
 // The cross-system SPATIAL primitives — canonical scan order, the per-tick tile bucket + ring
-// search, and the cell/distance helpers. A leaf module (only footprint.ts below it) so every
+// search, and the cell/distance helpers. A leaf module (only footprint/geometry.ts below it) so every
 // per-system file imports these without creating cycles; the store/economy read-model lives in
 // ./stores.ts, the same split.
 
@@ -30,8 +30,8 @@ export function canonicalById(entities: Iterable<Entity>): Entity[] {
 /** The empty bucket returned for an unoccupied tile — shared + frozen so a miss allocates nothing. */
 const NO_ENTITIES: readonly Entity[] = Object.freeze([]);
 
-// tileKey lives in footprint.ts (the leaf below this one, which needs it first); re-exported here so
-// consumers keep a single spatial import site.
+// tileKey lives in footprint/geometry.ts (the leaf below this one, which needs it first);
+// re-exported here so consumers keep a single spatial import site.
 export { tileKey };
 
 /**
@@ -168,8 +168,8 @@ export function entityCell(world: World, terrain: TerrainGraph, e: Entity): Cell
   return terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
 }
 
-// manhattan lives in footprint.ts (the leaf, which needs it for its nearest-cell picks) and is
-// re-exported here with tileKey so consumers keep the single spatial import site.
+// manhattan lives in footprint/geometry.ts (the leaf, which needs it for its nearest-cell picks)
+// and is re-exported here with tileKey so consumers keep the single spatial import site.
 export { manhattan };
 
 /**

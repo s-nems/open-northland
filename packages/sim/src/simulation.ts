@@ -154,7 +154,7 @@ export class Simulation {
   }
 }
 
-/** Re-export so the golden test can build a trivially-correct fixture without content. */
+/** Minimal positioned-entity fixture helper (the determinism golden builds worlds with it). */
 export function spawnAt(world: World, x: number, y: number): Entity {
   const e = world.create();
   world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });

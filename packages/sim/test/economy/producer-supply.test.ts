@@ -19,7 +19,7 @@ import { type SystemContext, aiSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
- * The PRODUCER SELF-SERVICE + PORTER drives (packages/sim/src/systems/conflict/ai-supply.ts): a worker
+ * The PRODUCER SELF-SERVICE + PORTER drives (packages/sim/src/systems/agents/ai-supply.ts): a worker
  * bound to a recipe workshop fetches the inputs it lacks from a store that holds them and hauls its own
  * finished output out, and a porter bound to a store collects loose ground piles into it. Fixture: good
  * 1 = wood, good 2 = plank, job 1 = woodcutter (harvest 24), job 2 = carpenter (no atomics — the mill's

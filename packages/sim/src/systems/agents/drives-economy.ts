@@ -25,8 +25,10 @@ import {
 
 // The ECONOMY drives — the work rungs of the planner ladder, in the ladder's priority order:
 // deliver a carried load, run a bound producer's supply→produce→deliver loop, gather (chop/collect),
-// ferry as a bound porter, haul as the carrier fallback. Each returns `true` when it acted (the
-// settler is spoken for this tick) and `false` to let the next rung try.
+// ferry as a bound porter, haul as the carrier fallback. planGatherer/planPorter/planCarrierHaul
+// return `true` when they acted (the settler is spoken for this tick) and `false` to let the next
+// rung try; planDelivery and planProducer ALWAYS own their settler once entered (a loaded / bound
+// settler never falls through to a lower rung), so their result carries no information.
 
 /** The settler-shape the drives read: the trade + tribe an action is keyed by. `jobType` is
  *  non-null by construction — the planner ladder skips jobless settlers before any economy rung. */

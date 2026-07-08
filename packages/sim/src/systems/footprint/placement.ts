@@ -222,7 +222,7 @@ export function canPlaceBuilding(
   const footprint = buildingFootprintOf(ctx, buildingType);
   if (footprint === undefined) return true; // no collision model — places freely (synthetic content)
 
-  // Set keys are shared.ts's injective string tileKey — NOT a numeric `y*width+x` packing, which
+  // Set keys are geometry.ts's injective string tileKey — NOT a numeric `y*width+x` packing, which
   // would alias an off-map cell onto a real tile on the adjacent row (an existing footprint-less
   // building placed at a negative coordinate would then falsely reject a distant placement).
   // 1. The reserved zone must lie on the map and on walkable ground.

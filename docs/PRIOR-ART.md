@@ -16,7 +16,7 @@ lands, move its one-liner to Adopted and prune anything the codebase makes obsol
   anything, and a command's target can change between issue and apply — so handlers validate when
   the command APPLIES and skip bad input deterministically (still logged, so replay is faithful),
   never throw. (OpenRA drops stale orders silently in `UnitOrders.ProcessOrder`; OpenTTD runs every
-  command through an identical test-then-exec on all clients.) → `systems/conflict/command.ts`;
+  command through an identical test-then-exec on all clients.) → `systems/command.ts`;
   the skip paths are fuzzed as first-class inputs (`test/core/fuzz-determinism.test.ts`).
 - **Full-state canonical hash + human-readable behavior golden.** A state hash says *that* something
   changed; a diffable action transcript says *what*. (OpenTTD's regression suite diffs a scripted

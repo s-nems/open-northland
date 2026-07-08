@@ -60,7 +60,7 @@ export function isPlayableTribe(content: ContentSet, tribeType: number): boolean
  * `!isPlayableTribe` but is **not** an animal — we know nothing about it, so it must not be silently
  * reclassified as wildlife. So this returns `true` only for a tribe we have a record for AND that
  * record proves animal (empty tech graph); an absent record is `false` here just as it is in
- * {@link isPlayableTribe}. The combat targeting drive (`systems/combat.ts`) uses this to keep an
+ * {@link isPlayableTribe}. The combat targeting drive (`conflict/targeting.ts`) uses this to keep an
  * animal tribe out of the **player-vs-player** enemy predicate — civ-vs-animal aggression is a
  * separate, data-driven (`animaltypes.ini`) model, not the same-different-tribe rule.
  *
@@ -93,7 +93,7 @@ export function animalRecord(content: ContentSet, tribeType: number): AnimalType
 /**
  * Whether `tribeType` is an **aggressive** animal — a `[tribetype]` whose `animaltypes.ini` record sets
  * `aggressive` (it attacks civilizations **unprovoked**, the civ-vs-animal aggression driver). The sim's
- * combat targeting (`systems/combat.ts`) reads this so an aggressive animal (a bear, a wolf pack) runs
+ * combat targeting (`conflict/targeting.ts`) reads this so an aggressive animal (a bear, a wolf pack) runs
  * an attack drive against a nearby civilization, while a passive animal (a cow, a decorative bird) does
  * not. A tribe with no animal record (a civilization, an unknown tribe) is not aggressive.
  *
@@ -398,7 +398,7 @@ export function cadaverYieldOf(content: ContentSet, tribeType: number): number {
 
 /**
  * The **combat hostility relation** — may a combatant of `attackerTribe` swing at a combatant of
- * `targetTribe`? The single source of truth the CombatSystem's targeting drive (`systems/combat.ts`)
+ * `targetTribe`? The single source of truth the CombatSystem's targeting drive (`conflict/targeting.ts`)
  * consults for *both* the attacker-eligibility check and the per-candidate target check, so the two
  * directions of a fight stay consistent. The rules, in order:
  *
