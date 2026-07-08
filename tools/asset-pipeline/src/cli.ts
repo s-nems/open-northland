@@ -29,7 +29,7 @@ import { convertFontStage } from './stages/fonts.js';
 import { convertGuiStage } from './stages/gui.js';
 import { writeIr } from './stages/ir.js';
 import { unpackLibTree } from './stages/lib.js';
-import { convertMapDatTree } from './stages/maps.js';
+import { convertMapDatTree } from './stages/maps/index.js';
 import { convertPcxTree } from './stages/pcx.js';
 import { convertIndexedCharacterAtlases, convertPlayerColorLut } from './stages/player-colors.js';
 

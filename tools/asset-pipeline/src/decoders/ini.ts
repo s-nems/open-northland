@@ -50,7 +50,7 @@ import {
   VehicleType,
   WeaponType,
 } from '@vinland/data';
-import type { CifLine } from './cif.js';
+import { type CifLine, decodeCifStringArray } from './cif.js';
 
 /**
  * Decodes raw `.ini` bytes to text as **CP1250** (Windows-1250, Central-European) — NOT UTF-8.
@@ -209,6 +209,21 @@ export function extractStringTable(sections: readonly RuleSection[]): Record<num
 /** Re-decodes an oracle-faithful latin1 string (the `.cif` seam) as CP1250, its real display codepage. */
 export function latin1ToCp1250(latin1: string): string {
   return new TextDecoder('windows-1250').decode(Uint8Array.from(latin1, (c) => c.charCodeAt(0) & 0xff));
+}
+
+/**
+ * Decodes one encrypted `.cif` string table (a `CStringArray` of `[control]`/`[text]` lines) straight
+ * to display text: {@link decodeCifStringArray} → {@link cifLinesToSections} → {@link extractStringTable},
+ * with every value re-decoded through {@link latin1ToCp1250}. The `.cif` seam is oracle-faithful latin1,
+ * so a caller composing the steps by hand can silently ship mojibake by forgetting the re-decode — this
+ * helper keeps the codepage invariant in one place for both `.cif` string-table consumers (the
+ * `ingamegui*` UI tables and the map folders' `strings.cif`).
+ */
+export function decodeCifStringTable(bytes: Uint8Array): Record<number, string> {
+  const raw = extractStringTable(cifLinesToSections(decodeCifStringArray(bytes).lines));
+  const table: Record<number, string> = {};
+  for (const [id, display] of Object.entries(raw)) table[Number(id)] = latin1ToCp1250(display);
+  return table;
 }
 
 /** First property with this key, or undefined. Repeated keys (e.g. `transition`) keep file order. */

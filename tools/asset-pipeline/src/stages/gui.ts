@@ -2,9 +2,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { type BobAtlas, packBobAtlas, packIndexedBobAtlas } from '../decoders/atlas.js';
 import { decodeBmd } from '../decoders/bmd.js';
-import { decodeCifStringArray } from '../decoders/cif.js';
 import { decodeCursor } from '../decoders/cursor.js';
-import { cifLinesToSections, extractStringTable, latin1ToCp1250 } from '../decoders/ini.js';
+import { decodeCifStringTable } from '../decoders/ini.js';
 import { decodePcx } from '../decoders/pcx.js';
 import { buildPlayerLutImage } from '../decoders/player-palette.js';
 import { encodePng } from '../decoders/png.js';
@@ -233,22 +232,11 @@ export interface GuiStringsResult {
 }
 
 /**
- * Parses one decoded `ingamegui*.cif` `CStringArray` into `{ <stringId>: <displayText> }` — the display
- * id is NOT the container slot id but the running string id ({@link extractStringTable}, shared with the
- * map-folder string tables). We reuse {@link cifLinesToSections} (the type-table section parser) to split
- * the two-section config, then re-decode each display value as CP1250 (its real codepage — the `.cif`
- * seam yields oracle-faithful latin1).
- */
-function parseStringTable(bytes: Uint8Array): Record<string, string> {
-  const table = extractStringTable(cifLinesToSections(decodeCifStringArray(bytes).lines));
-  return Object.fromEntries(Object.entries(table).map(([id, display]) => [id, latin1ToCp1250(display)]));
-}
-
-/**
  * Decodes the nine `ingamegui*.cif` UI string tables for each language into one `content/gui/strings/<lang>.json`
- * of `{ <table>: { <stringId>: <displayText> } }` (CP1250-decoded, keyed by the in-game string id — see
- * {@link parseStringTable}). A missing table warns-and-skips (that table is simply absent from the language's
- * JSON); a language with no tables at all is skipped entirely.
+ * of `{ <table>: { <stringId>: <displayText> } }` — the display id is NOT the container slot id but the
+ * running string id, and the text is CP1250 display text ({@link decodeCifStringTable}, shared with the
+ * map folders' `strings.cif`). A missing table warns-and-skips (that table is simply absent from the
+ * language's JSON); a language with no tables at all is skipped entirely.
  */
 export async function convertGuiStrings(
   gameDir: string,
@@ -257,14 +245,14 @@ export async function convertGuiStrings(
 ): Promise<GuiStringsResult[]> {
   const done: GuiStringsResult[] = [];
   for (const lang of langs) {
-    const tables: Record<string, Record<string, string>> = {};
+    const tables: Record<string, Record<number, string>> = {};
     let tableCount = 0;
     let stringCount = 0;
     for (const table of STRING_TABLES) {
       const rel = join('Data', 'text', lang, 'strings', 'ingamegui', `ingamegui${table}.cif`);
-      let byId: Record<string, string>;
+      let byId: Record<number, string>;
       try {
-        byId = parseStringTable(await readGameFile(gameDir, rel));
+        byId = decodeCifStringTable(await readGameFile(gameDir, rel));
       } catch (err) {
         console.warn(`[pipeline] gui: skipped strings ${lang}/${table}: ${(err as Error).message}`);
         continue;
