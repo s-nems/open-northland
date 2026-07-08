@@ -12,7 +12,7 @@ import {
   layoutActionRing,
 } from '../hud/action-ring-layout.js';
 import { type BakedIcon, bakeRoundIcon, placeBakedIcon } from '../hud/icon-texture.js';
-import { backingScale } from './camera.js';
+import { screenScale } from './camera.js';
 import { el } from './overlay.js';
 import { isSettler, positionOf } from './snapshot.js';
 import type { Profession } from './unit-panel.js';
@@ -343,7 +343,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
 
   // --- Input (own listeners, mirroring the tool panel; registered before unit-controls' so a menu click wins) ---
   const toCanvas = (clientX: number, clientY: number): { x: number; y: number } => {
-    const { sx, sy, rect } = backingScale(canvas);
+    const { sx, sy, rect } = screenScale(canvas, app.renderer.resolution);
     return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
   };
 

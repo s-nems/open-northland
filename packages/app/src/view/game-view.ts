@@ -153,10 +153,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     buildings: menuEntriesFromContent(sim.content),
     tribe: HUD_TRIBE,
     owner: HUMAN_PLAYER,
-    onSpeed: (spec) => {
-      applyGameSpeed(control, spec);
-      renderer.setPaused(control.paused); // the sepia pause wash follows the sim pause
-    },
+    onSpeed: (spec, cause) => applyGameSpeed(control, spec, cause),
   });
 
   // The cursor position for the build-mode ghost (client coords; null when the pointer left the
@@ -218,6 +215,9 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
       renderAlpha = timestep.advance(elapsed * control.speed, collect);
     }
     cameraCtl.update(elapsed);
+    // The sepia pause wash mirrors the loop's pause flag EVERY frame (an idempotent visibility set), so
+    // any future pauser — auto-pause on blur, a modal — browns the map without knowing about the renderer.
+    renderer.setPaused(control.paused);
     const snap = sim.snapshot();
     // Build the tribe HUD read-view ONCE per frame (an O(entities) scan) and share it between the
     // always-on stocks panel and the tool panel's statistics window — no second scan.

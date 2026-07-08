@@ -3,17 +3,17 @@ import type { Command } from '@vinland/sim';
 import type { Application } from 'pixi.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
 import type { MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
-import type { GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
+import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
 import { type ToolPanelController, mountToolPanel } from '../hud/tool-panel/index.js';
 import { buildToolPanelLayout } from '../hud/tool-panel/layout.js';
-import { backingScale } from './camera.js';
+import { screenScale } from './camera.js';
 import { screenToWorld, worldToTile } from './picking.js';
 
 /**
  * The in-game LEFT tool panel is part of the standard game HUD, not a per-scene feature — so BOTH the map
  * viewer (`entries/map.ts`) and every acceptance scene (`entries/scene.ts`) mount it through this one
  * helper. It wraps {@link mountToolPanel} with the wiring both entries share: the
- * client-point → tile mapping (camera + backing-store scale, null off the map so a stray click never
+ * client-point → tile mapping (camera + client→screen scale, null off the map so a stray click never
  * clamp-places), and the HUD right-shift that clears the strip. The entry supplies only what differs — the
  * app, canvas, the live camera/sim/enqueue closures, its content's buildings, and how a speed change lands
  * on its loop control.
@@ -48,7 +48,7 @@ export interface GameToolPanelDeps {
   /** UI string language (`pol`/`eng`); defaults to Polish. */
   readonly lang?: string;
   /** Apply a game-speed change to the entry's loop control (drive the fixed-timestep multiplier / pause). */
-  readonly onSpeed: (spec: GameSpeedStateSpec) => void;
+  readonly onSpeed: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
 }
 
 export interface GameToolPanelHandle {
@@ -71,12 +71,18 @@ export interface LoopSpeedControl {
 
 /**
  * Apply the panel's game-speed spec to an entry's loop control (pause + tick multiplier). Shared so `map`
- * and `scene` wire the panel's `onSpeed` identically: a `paused` spec pauses the loop; any running spec sets
- * the multiplier (and un-pauses).
+ * and `scene` wire the panel's `onSpeed` identically. A `'cycle'` (button click) is an explicit speed
+ * pick: it sets the multiplier and un-pauses. A `'pause-toggle'` (the `P` key) only flips the pause flag —
+ * it must never write the multiplier, or resuming would replace a fractional `?speed=` seed with the
+ * button's discrete ×1/×2/×3 (see {@link GameSpeedChangeCause}).
  */
-export function applyGameSpeed(control: LoopSpeedControl, spec: GameSpeedStateSpec): void {
+export function applyGameSpeed(
+  control: LoopSpeedControl,
+  spec: GameSpeedStateSpec,
+  cause: GameSpeedChangeCause,
+): void {
   control.paused = spec.state === 'paused';
-  if (spec.state !== 'paused') control.speed = spec.tickMultiplier;
+  if (cause === 'cycle' && spec.state !== 'paused') control.speed = spec.tickMultiplier;
 }
 
 /** The buildings the menu lists: a content set's own building types, labelled via the viking catalog. */
@@ -102,7 +108,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
   const hudShift = buildToolPanelLayout(uiscale).width + HUD_GAP;
 
   const clientToTile = (clientX: number, clientY: number): { col: number; row: number } | null => {
-    const { sx, sy, rect } = backingScale(deps.canvas);
+    const { sx, sy, rect } = screenScale(deps.canvas, deps.app.renderer.resolution);
     const w = screenToWorld(deps.camera(), (clientX - rect.left) * sx, (clientY - rect.top) * sy);
     const t = worldToTile(w.x, w.y, deps.elevation);
     if (t.col < 0 || t.col >= deps.mapSize.width || t.row < 0 || t.row >= deps.mapSize.height) return null;
@@ -121,7 +127,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     screenToTile: clientToTile,
     canPlaceAt: deps.canPlaceAt,
     onSpeedChange: deps.onSpeed,
-    backingScale,
+    screenScale: (c) => screenScale(c, deps.app.renderer.resolution),
   });
 
   return {

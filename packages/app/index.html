@@ -7,8 +7,10 @@
     <title>Vinland</title>
     <style>
       html, body { margin: 0; height: 100%; background: #1a1410; overflow: hidden; }
-      /* Backing store tracks the window 1:1 in CSS px (createWindowPixiApp); pixelated keeps the
-         devicePixelRatio upscale crisp for the nearest-sampled pixel art. */
+      /* Interactive entries render at device resolution (createWindowPixiApp + autoDensity), so the
+         canvas maps 1:1 to device px and this pixelated hint is inert there. It still matters for the
+         fixed-size ?shot canvas, which IS CSS-stretched to the viewport: nearest keeps that stretched
+         preview crisp for the pixel art. */
       #game { display: block; width: 100vw; height: 100vh; image-rendering: pixelated; }
     </style>
   </head>

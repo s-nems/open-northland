@@ -193,7 +193,7 @@ async function startGallery(
   overlay: { readonly char: VikingCharacter | null; readonly view: GalleryView },
   palette?: { readonly source: TextureSource; readonly colours: number },
 ): Promise<void> {
-  // Window-sized 1:1 backing store: resizing the browser changes the visible field, never the scale.
+  // Window-tracking, device-resolution backing store: resizing changes the visible field, never the scale.
   const app = await createWindowPixiApp(canvas);
   const columns = intParam(params, 'cols', DEFAULT_COLUMNS, 1);
   const direction = parseDirection(params.get('dir'));
@@ -209,11 +209,11 @@ async function startGallery(
   const content = gallery.contentSize();
   const fitZoom = Math.max(MIN_ZOOM, Math.min(1, (app.screen.width - 2 * GRID_MARGIN) / content.width));
   const zoom = floatParam(params, 'zoom', fitZoom);
-  const cameraCtl = createCameraController(canvas, {
-    offsetX: GRID_MARGIN,
-    offsetY: GRID_MARGIN,
-    scale: zoom,
-  });
+  const cameraCtl = createCameraController(
+    canvas,
+    { offsetX: GRID_MARGIN, offsetY: GRID_MARGIN, scale: zoom },
+    app.renderer.resolution,
+  );
 
   // The overlay's direction buttons drive `gallery.setDirection` (live); the character / view buttons
   // navigate (they reload different atlases), so the panel isn't touched in the loop below.

@@ -1,7 +1,7 @@
 import { type Camera, type ElevationField, type EntityBounds, buildSpriteScene } from '@vinland/render';
 import { type Command, type Entity, ONE, type WorldSnapshot } from '@vinland/sim';
 import type { Application } from 'pixi.js';
-import { backingScale } from './camera.js';
+import { screenScale } from './camera.js';
 import { el } from './overlay.js';
 import {
   type FormationUnit,
@@ -170,9 +170,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     return out;
   };
 
-  /** Client (CSS) coords → WORLD px (through the backing-store scale + the camera inverse). */
+  /** Client (CSS) coords → WORLD px (through the client→screen scale + the camera inverse). */
   const toWorld = (clientX: number, clientY: number): { x: number; y: number } => {
-    const { sx, sy, rect } = backingScale(canvas);
+    const { sx, sy, rect } = screenScale(canvas, opts.app.renderer.resolution);
     return screenToWorld(opts.camera(), (clientX - rect.left) * sx, (clientY - rect.top) * sy);
   };
 
