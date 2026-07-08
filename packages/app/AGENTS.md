@@ -74,8 +74,12 @@ gitignored bytes:
   `view/game-tool-panel.ts` (NOT a per-scene flag — it is global). Its game-speed button drives the tick
   rate live (×1/×2/×3/pause); `?speed=` still seeds the initial rate (and reaches sub-1× the button can't).
   The scene overlay is the sign-off checklist only (no playback buttons).
-  `?uiscale=1|2|3` sets its integer UI scale (default 1×; the strip is 433 design px tall, so 1× already fills
-  ~half a modern window) — the panel's internal geometry stays pinned.
+  `?uiscale=` sets its UI scale (default 1.4×, fractional allowed; the strip is 433 design px tall, so 1×
+  already fills ~half a modern window). The nearest-sampled INDEXED art can't be linear-filtered, so a
+  fractional scale would double texel columns unevenly ("pixeloza"); to stay crisp the strip+buttons are
+  rasterized at an integer oversample into an off-screen texture and linear-downscaled to the display size
+  (`hud/tool-panel/strip-texture.ts`). The panel's internal geometry stays pinned; the scale is the single
+  knob a future in-game UI-size slider would drive.
 - `?anim[&char=<id>&view=anim|heads|colors&color=0..15&dir=full|0..7&cols=N&filter=<substr>&zoom&speed]` — the
   character **animation gallery** (`entries/anim.ts` + `catalog/roster.ts`), the extracted `[bobseq]` played from
   the atlas with a direction selector so a human can validate all animations in all 8 facings. **Bare `?anim` (no

@@ -10,7 +10,7 @@ import type { ToolPanelLayout } from './layout.js';
  */
 export interface PanelContext {
   readonly layout: ToolPanelLayout;
-  /** The integer uiscale (`layout.scale`), the multiplier for every design-px metric. */
+  /** The uiscale (`layout.scale`), the multiplier for every design-px metric. May be fractional. */
   readonly scale: number;
   /** Build a retained text run (see `makeTextRun`); the caller owns placement + destruction. */
   readonly makeText: (text: string, color: FontColorName) => TextRun;

@@ -47,7 +47,7 @@ export interface UnitControlsOptions {
   /** The Pixi app — the action ring adds a screen-space container to its stage. */
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
-  /** Integer UI scale (from `?uiscale=`, shared with the tool panel) for the action ring; default 1. */
+  /** UI scale (from `?uiscale=`, shared with the tool panel) for the action ring; default 1. May be fractional. */
   readonly uiscale?: number;
   /** Read the current camera transform (for the screen→world inverse AND anchoring the action ring). */
   readonly camera: () => Camera;

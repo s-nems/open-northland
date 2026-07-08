@@ -25,7 +25,7 @@ const HUD_GAP = 6;
 export interface GameToolPanelDeps {
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
-  /** Integer UI scale (the entry parses `?uiscale=` once and shares it with the unit controls). */
+  /** UI scale (the entry parses `?uiscale=` once and shares it with the unit controls). May be fractional. */
   readonly uiscale: number;
   /** The live camera (read each click to map a screen point to a world tile). */
   readonly camera: () => Camera;

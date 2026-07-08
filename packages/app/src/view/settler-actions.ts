@@ -106,7 +106,7 @@ type MenuMode = 'closed' | 'menu' | 'jobs';
 export interface SettlerActionsOptions {
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
-  /** Integer UI scale (from `?uiscale=`, shared with the tool panel); the menu geometry is multiplied by it. */
+  /** UI scale (from `?uiscale=`, shared with the tool panel); the menu geometry is multiplied by it. May be fractional. */
   readonly uiscale: number;
   /** The professions the picker offers as one-click job changes (content jobs minus idle). */
   readonly professions: readonly Profession[];
@@ -148,7 +148,7 @@ interface ButtonVisual {
  */
 export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<SettlerActions> {
   const { app, canvas } = opts;
-  const scale = Math.max(1, Math.floor(opts.uiscale));
+  const scale = Math.max(1, opts.uiscale);
 
   const art = await loadGuiArt();
 

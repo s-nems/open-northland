@@ -16,7 +16,7 @@ import { DEFAULT_UI_SCALE } from '../hud/tool-panel/layout.js';
 import type { CameraController } from './camera.js';
 import { applyGameSpeed, menuEntriesFromContent, mountGameToolPanel, shiftHud } from './game-tool-panel.js';
 import { enableAudioOnGesture } from './overlay.js';
-import { floatParam, intParam } from './params.js';
+import { floatParam } from './params.js';
 import { mountPerfOverlay } from './perf-overlay.js';
 import { createUnitControls } from './unit-controls.js';
 import { professionsFromContent } from './unit-panel.js';
@@ -61,8 +61,9 @@ export interface GameViewDeps {
 export async function startGameView(deps: GameViewDeps): Promise<void> {
   const { app, canvas, params, renderer, sim, cameraCtl } = deps;
 
-  // `?uiscale=` — parsed ONCE, shared by the tool panel and the action ring.
-  const uiscale = intParam(params, 'uiscale', DEFAULT_UI_SCALE, 1);
+  // `?uiscale=` — parsed ONCE, shared by the tool panel and the action ring. Fractional allowed (the
+  // default is 1.4×); the consumers clamp it to ≥1.
+  const uiscale = floatParam(params, 'uiscale', DEFAULT_UI_SCALE);
   // Playback control. `?speed=` seeds the initial wall-clock multiplier (default ×1; e.g. `&speed=0.5`
   // for a calm, sub-1× pace the panel's discrete speed button can't reach). The tool panel's game-speed
   // button then drives it live (×1 → ×2 → ×3 → pause) without clobbering this seed at mount.

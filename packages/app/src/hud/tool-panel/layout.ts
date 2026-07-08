@@ -10,7 +10,13 @@ import { type Rect, contains } from '../geometry.js';
  * satisfies the no-magic-numbers rule) and anchor the strip top-left, scaling the whole thing by an INTEGER
  * `uiscale` (default 1× — see {@link DEFAULT_UI_SCALE} — with a `?uiscale=` override) so it reads on an
  * arbitrary-size canvas. The panel's INTERNAL layout stays pinned — only the uniform scale is ours
- * (logged in source basis "Left tool panel").
+ * (logged in source basis "Left tool panel"). The scale MAY be fractional (the 1.4× default) — it is
+ * clamped to ≥1 but NOT floored. The GUI art is a nearest-sampled indexed bitmap (palette indices can't
+ * be linearly filtered), so drawing it straight at a fractional scale doubles some texel columns and not
+ * others ("pixeloza"). To keep a fractional scale crisp, the strip+buttons are rasterized at an INTEGER
+ * oversample into an off-screen texture and linear-downscaled to the display size (`strip-texture.ts`);
+ * {@link designBounds} sizes that texture. This scale knob is the single input a future in-game UI-size
+ * slider would drive.
  *
  * `gfx` is the original engine gfx id, which for `ls_gui_window` equals the atlas frame id (firstBobId=0,
  * see `content/gui-atlas-map.ts`), so the view resolves the sprite with `atlas.frames.get(spec.gfx)`.
@@ -83,7 +89,7 @@ export interface PlacedButton extends ToolButtonSpec {
 
 /** The whole panel resolved to screen space for one `uiscale`: the strip, the buttons, and the claim bounds. */
 export interface ToolPanelLayout {
-  /** The integer scale actually applied (`buildToolPanelLayout` floors + clamps to ≥1). */
+  /** The scale actually applied (`buildToolPanelLayout` clamps to ≥1; may be fractional). */
   readonly scale: number;
   readonly stripGfx: number;
   readonly strip: PlacedRect;
@@ -91,25 +97,45 @@ export interface ToolPanelLayout {
   /** Width of the strip in screen px — the amount the rest of the HUD is shifted right to clear the panel. */
   readonly width: number;
   readonly height: number;
+  /** The strip+buttons' bounding box in DESIGN space (pre-scale). It sizes the off-screen supersample
+   *  texture the crisp-scaling render pass rasterizes the panel into (see `strip-texture.ts`). */
+  readonly designBounds: DesignRect;
 }
 
 /**
- * The default integer UI scale. The pinned strip is 433 design px tall (nearly the original's whole
- * 480-line screen); at 1× that already fills roughly half a modern window, and 2× overflowed it — so 1×
- * is the readable default and `?uiscale=2|3` magnifies for a large display.
+ * The default UI scale. The pinned strip is 433 design px tall (nearly the original's whole 480-line
+ * screen); at 1× that already fills roughly half a modern window and 2× overflowed it, so 1.4× is the
+ * default — comfortably larger for readability while still fitting a typical window. The fractional scale
+ * stays crisp because the strip is supersampled (see the module note). `?uiscale=` overrides it (fractional
+ * allowed, e.g. `?uiscale=1.2` or `?uiscale=1`).
  */
-export const DEFAULT_UI_SCALE = 1;
+export const DEFAULT_UI_SCALE = 1.4;
 
 function scaleRect(r: DesignRect, s: number): PlacedRect {
   return { x: r.x * s, y: r.y * s, w: r.w * s, h: r.h * s };
 }
 
+/** The bounding box (design space) of a set of rects — the union that the supersample texture must cover. */
+function unionDesign(rects: readonly DesignRect[]): DesignRect {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const r of rects) {
+    minX = Math.min(minX, r.x);
+    minY = Math.min(minY, r.y);
+    maxX = Math.max(maxX, r.x + r.w);
+    maxY = Math.max(maxY, r.y + r.h);
+  }
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+}
+
 /**
- * Resolve the pinned design-space geometry to screen pixels at `uiscale` (floored to an integer ≥1),
- * anchored top-left. Pure — the view draws from this and the input layer hit-tests it.
+ * Resolve the pinned design-space geometry to screen pixels at `uiscale` (clamped to ≥1; may be
+ * fractional), anchored top-left. Pure — the view draws from this and the input layer hit-tests it.
  */
 export function buildToolPanelLayout(uiscale: number = DEFAULT_UI_SCALE): ToolPanelLayout {
-  const scale = Math.max(1, Math.floor(uiscale));
+  const scale = Math.max(1, uiscale);
   const strip = scaleRect(TOOL_PANEL_STRIP, scale);
   const buttons = TOOL_BUTTONS.map((spec) => ({ ...spec, placed: scaleRect(spec.rect, scale) }));
   return {
@@ -121,6 +147,7 @@ export function buildToolPanelLayout(uiscale: number = DEFAULT_UI_SCALE): ToolPa
     // so its right edge x = w*scale is the panel width the HUD clears).
     width: strip.x + strip.w,
     height: strip.y + strip.h,
+    designBounds: unionDesign([TOOL_PANEL_STRIP, ...TOOL_BUTTONS.map((b) => b.rect)]),
   };
 }
 
