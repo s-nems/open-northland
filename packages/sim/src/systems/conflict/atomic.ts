@@ -328,12 +328,18 @@ function dropGroundPile(world: World, x: Fixed, y: Fixed, goodType: number, amou
  * tree coming down. The node's `goodType`/`yield` are read BEFORE the destroy (the component object is
  * dropped from its store by `world.destroy`). Pure over entity state; no RNG/wall-clock.
  */
-function fellNode(world: World, ctx: SystemContext, node: Entity, goodType: number, yield_: number): void {
+function fellNode(
+  world: World,
+  ctx: SystemContext,
+  node: Entity,
+  goodType: number,
+  yieldAmount: number,
+): void {
   const pos = world.get(node, Position);
   const { x, y } = pos;
   // The felled wood: a ground trunk pile holding the whole yield, at the node's cell (the shared drop shape,
   // so the collector's own-trunk drive + the emptied-pile cleanup handle it — see reapEmptyGroundDrop).
-  const trunk = dropGroundPile(world, x, y, goodType, yield_);
+  const trunk = dropGroundPile(world, x, y, goodType, yieldAmount);
   // The stump / debris left where the tree stood — pure decor (non-blocking, not harvestable).
   const stump = world.create();
   world.add(stump, Position, { x, y });
@@ -347,7 +353,7 @@ function fellNode(world: World, ctx: SystemContext, node: Entity, goodType: numb
     trunk,
     stump,
     goodType,
-    amount: yield_,
+    amount: yieldAmount,
     at: { x: fx.toInt(x), y: fx.toInt(y) },
   });
 }
@@ -625,13 +631,13 @@ function harvestCadaver(world: World, ctx: SystemContext, attacker: Entity, targ
   if (hunter === undefined || hunter.jobType !== HUNTER_JOB) return; // only a hunter harvests a cadaver
   const prey = world.tryGet(target, Settler);
   if (prey === undefined || !isCatchableAnimal(ctx.content, prey.tribe)) return; // only catchable prey
-  const yield_ = cadaverYieldOf(ctx.content, prey.tribe);
-  if (yield_ <= 0) return; // no readable cadaver size — nothing to harvest
+  const cadaverYield = cadaverYieldOf(ctx.content, prey.tribe);
+  if (cadaverYield <= 0) return; // no readable cadaver size — nothing to harvest
   // If the hunter is somehow already carrying a DIFFERENT good, `addCarry` would throw (its harvester-bug
   // guard). A fighting hunter shouldn't be, but skip rather than crash the tick on that edge.
   const held = world.tryGet(attacker, Carrying);
   if (held !== undefined && held.goodType !== MEAT_GOOD) return;
-  addCarry(world, attacker, MEAT_GOOD, yield_);
+  addCarry(world, attacker, MEAT_GOOD, cadaverYield);
 }
 
 /**
@@ -723,8 +729,14 @@ function consumeFood(world: World, settler: Entity, from: Entity | null, goodTyp
   // No store: consume from the settler's own carried load.
   const load = world.tryGet(settler, Carrying);
   if (load === undefined || load.goodType !== goodType || load.amount <= 0) return;
-  if (load.amount > 1) load.amount -= 1;
-  else world.remove(settler, Carrying); // last unit eaten — no longer carrying anything
+  shrinkCarry(world, settler, load, 1); // last unit eaten ⇒ no longer carrying anything
+}
+
+/** Shrink a settler's carried load by `by` units, removing the {@link Carrying} entirely when that
+ *  empties it — the shared decrement-or-remove step of eating a carried unit and unloading a pile. */
+function shrinkCarry(world: World, settler: Entity, load: { amount: number }, by: number): void {
+  if (load.amount > by) load.amount -= by;
+  else world.remove(settler, Carrying);
 }
 
 /**
@@ -767,7 +779,5 @@ function pileupIntoStore(world: World, ctx: SystemContext, settler: Entity, stor
   if (moved <= 0) return; // store full for this good — keep carrying
 
   stock.amounts.set(load.goodType, have + moved);
-  const remaining = load.amount - moved;
-  if (remaining > 0) load.amount = remaining;
-  else world.remove(settler, Carrying); // fully unloaded
+  shrinkCarry(world, settler, load, moved); // fully unloaded ⇒ Carrying removed
 }

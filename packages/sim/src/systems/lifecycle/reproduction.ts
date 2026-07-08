@@ -3,6 +3,7 @@ import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, ONE, fx } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
+import { canonicalById } from '../spatial.js';
 import { housingCapacity, tribePopulation } from '../stores.js';
 import { NEWBORN_AGE_CLASS } from './ageclass.js';
 
@@ -100,9 +101,11 @@ function tribesWithHousing(world: World, ctx: SystemContext): number[] {
 /** The tile a `tribe` settler is born at: the lowest-id built `home` building's {@link Position}, or
  * null if none of its built homes has a position (a mapless fixture). Canonical (lowest-id) pick. */
 function homeAnchorFor(world: World, ctx: SystemContext, tribe: number): { x: Fixed; y: Fixed } | null {
-  for (const e of world.canonicalEntities()) {
-    const b = world.tryGet(e, Building);
-    if (b === undefined || b.tribe !== tribe || b.built < ONE) continue;
+  // canonicalById over the Building query = the same ascending-id pick the old full-world scan made
+  // (store ⊆ alive), at O(buildings) instead of O(world) per tribe.
+  for (const e of canonicalById(world.query(Building))) {
+    const b = world.get(e, Building);
+    if (b.tribe !== tribe || b.built < ONE) continue;
     const type = contentIndex(ctx.content).buildings.get(b.buildingType);
     if (type?.kind !== 'home') continue;
     const p = world.tryGet(e, Position);

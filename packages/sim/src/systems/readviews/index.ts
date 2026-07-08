@@ -1,20 +1,22 @@
-// Pure, terminal **read views** — derived projections of world state or `content` that the HUD,
-// the renderer, and tests consume but **no sim system mutates or feeds back into a decision**. They
-// are deliberately kept out of `systems/shared.ts` (the cross-system helper leaf the system files
-// import to break import cycles): a read view participates in no cycle — nothing in the per-tick
-// `SYSTEM_ORDER` imports one — so grouping them here keeps `shared.ts` to the genuine helpers and
-// makes "this is a projection, not a mechanic" legible at the module boundary. Each adds **no**
-// behavior (nothing produced/consumed/moved), so they carry "source-basis n/a". See docs/plans/.
+// Pure **read views** over `content` (plus, in hud.ts, world state) — derived classifications and
+// projections that add no behavior of their own (nothing produced/consumed/moved; "source-basis n/a").
+// Two species live here:
+//  - ./hud.ts is the one TERMINAL projection: HUD/renderer/test surface that no sim system reads.
+//  - the rest are content-derived RULE TABLES (weapon classes, animal behaviour, ship/job/layer
+//    classification, animation records) that systems DO consult for game decisions — that is fine
+//    (content is immutable input, so reading it can't feed state back), but they are projections,
+//    not mechanics: each is a pure function of content, memoizable and testable in isolation.
 //
-// Split by concern into six sibling modules (the views grew past one ~300-line file each):
+// Split by concern into sibling modules:
 //  - ./hud.ts      — the HUD/goods-graph projections over world state + content.
 //  - ./combat.ts   — the static weapon-vs-armor damage lookup table.
 //  - ./classes.ts  — the data-defined weapon/armor class taxonomy (predicates + accessors + groupings).
 //  - ./tribes.ts   — the data-defined civ-vs-animal split + `animaltypes.ini` behaviour + `mayAttack`.
 //  - ./vehicles.ts — the data-defined ship/boat classification (the Sea/Northland slice's seed).
 //  - ./jobs.ts     — the data-defined sea-job (`fisher_sea`/`trader_sea`) classification.
+//  - ./stances.ts  — the military-mode ids + the job→default-stance table.
 //  - ./landscape.ts — the data-defined placement-layer (`allowedon{land,water,everything}`) classification.
-//  - ./animations.ts — the atomic-animation name resolver + interruptible/start-direction accessors.
+//  - ./animations.ts — the atomic-animation name/duration resolvers + event accessors.
 // This barrel re-exports all of them so the `systems/` barrel (and tests) keep a single import site.
 
 export {
@@ -91,16 +93,7 @@ export {
 
 export { isSeaJob, seaJobs } from './jobs.js';
 
-export {
-  HERO_JOB_MAX,
-  HERO_JOB_MIN,
-  MILITARY_MODE,
-  SCOUT_JOB,
-  SOLDIER_JOB_MAX,
-  SOLDIER_JOB_MIN,
-  defaultStanceForJob,
-  isMilitaryMode,
-} from './stances.js';
+export { MILITARY_MODE, defaultStanceForJob, isMilitaryMode } from './stances.js';
 
 export {
   isLandLayerType,

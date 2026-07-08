@@ -152,7 +152,7 @@ export const DEFEND_LEASH_TILES = 6;
  * the flee destination is the walkable cell this far off in the best away-direction. APPROXIMATED — no
  * readable flee-distance (source basis "Combat flee").
  */
-export const FLEE_STEP_TILES = 6;
+const FLEE_STEP_TILES = 6;
 
 /**
  * FLEE stance — how many ticks a fleeing unit holds its current run route before re-aiming away from the
@@ -160,7 +160,7 @@ export const FLEE_STEP_TILES = 6;
  * RTS-scale regression golden rule 7 forbids; between re-aims the unit runs its last route (the run gait
  * keeps it ahead of a walking pursuer). OUR design (source basis "Combat flee").
  */
-export const FLEE_REPATH_CADENCE = 6;
+const FLEE_REPATH_CADENCE = 6;
 
 /**
  * FLEE stance — how many ticks a fleeing unit must go with **no threat in sight** before it stops running

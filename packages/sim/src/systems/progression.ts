@@ -83,8 +83,13 @@ export function grantWorkExperience(
   if (s === undefined || s.jobType === null) return; // gone, or no job to train a specialization
   const track = trackFor(ctx, s.jobType, goodType);
   if (track === undefined) return; // this (job, good) pairing trains no specialization
-  const current = s.experience.get(track.typeId) ?? 0;
-  s.experience.set(track.typeId, current + track.experienceFactor);
+  accrueExperience(s, track.typeId, track.experienceFactor);
+}
+
+/** Accrue `amount` XP into a settler's `trackId` specialization bucket — the shared tail of the
+ *  work- and fight-XP grants (and the single seam a future accrual cap/curve would land in). */
+function accrueExperience(s: { experience: Map<number, number> }, trackId: number, amount: number): void {
+  s.experience.set(trackId, (s.experience.get(trackId) ?? 0) + amount);
 }
 
 /**
@@ -133,7 +138,7 @@ const FIGHT_EXPERIENCE_TYPE_BY_WEAPON_MAIN_TYPE: ReadonlyMap<number, number> = n
  * fight track (saber, or a `mainType` outside {@link WEAPON_MAIN_TYPE}). A pure lookup over the
  * constant {@link FIGHT_EXPERIENCE_TYPE_BY_WEAPON_MAIN_TYPE} map (`.get`, not iteration — deterministic).
  */
-export function fightExperienceTypeFor(weaponMainType: number): number | undefined {
+function fightExperienceTypeFor(weaponMainType: number): number | undefined {
   return FIGHT_EXPERIENCE_TYPE_BY_WEAPON_MAIN_TYPE.get(weaponMainType);
 }
 
@@ -167,7 +172,7 @@ export function grantFightExperience(
   if (rate <= 0) return; // no `soldier general` track in content — nothing to accrue
   const s = world.tryGet(attacker, Settler);
   if (s === undefined) return; // attacker gone
-  s.experience.set(bucket, (s.experience.get(bucket) ?? 0) + rate);
+  accrueExperience(s, bucket, rate);
 }
 
 /** The per-swing fight-XP rate — the {@link SOLDIER_GENERAL_EXPERIENCE_TYPE} track's `experienceFactor`
@@ -297,8 +302,11 @@ function tribeUnlockEnabled(
  * membership query over live settlers (order-independent, like {@link tribeUnlockEnabled}); the max
  * is associative/commutative so the scan order can't change the result. No RNG, no wall-clock.
  */
+/** What a carrier hauls with no unlocked vehicle: one unit, carried on foot. */
+const ON_FOOT_CARRY_CAPACITY = 1;
+
 export function carrierCarryCapacity(world: World, ctx: SystemContext, tribe: number): number {
-  let best = 1; // on-foot single-unit carry — the floor when the tribe has unlocked no vehicle
+  let best = ON_FOOT_CARRY_CAPACITY; // the floor when the tribe has unlocked no vehicle
   for (const vehicle of ctx.content.vehicles) {
     if (vehicle.stockSlots <= best) continue; // can't beat the running best — skip the unlock check
     if (!tribeUnlockEnabled(world, ctx, tribe, 'vehicle', vehicle.typeId)) continue; // not unlocked yet

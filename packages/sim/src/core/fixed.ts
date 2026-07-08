@@ -22,7 +22,7 @@
 import type { Brand } from './brand.js';
 export type Fixed = Brand<number, 'Fixed'>;
 
-export const SHIFT = 16;
+const SHIFT = 16;
 export const ONE: Fixed = (1 << SHIFT) as Fixed; // 65536
 const MAX_SAFE = Number.MAX_SAFE_INTEGER; // 2^53 - 1
 

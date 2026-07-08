@@ -23,6 +23,16 @@ import {
   stockCapacity,
 } from '../stores.js';
 
+/**
+ * The shared nearest-pick tie-break: is a candidate at `(dist, cell)` strictly better than the
+ * running best? Minimum Manhattan distance first, then the lower interaction-CELL id — the one
+ * canonical (seeker-independent) comparison every nearest-X scan in this file applies, so the six
+ * scans can never drift apart. A pure boolean over four ints — it cannot change any winner.
+ */
+function closer(dist: number, cell: number, bestDist: number, bestCell: number): boolean {
+  return dist < bestDist || (dist === bestDist && cell < bestCell);
+}
+
 // The AI planner's TARGET-SCAN layer: build the per-tick candidate lists and answer every "nearest X"
 // / "may this settler staff that workplace" query the atomic planner asks. Split out of ai.ts (which
 // keeps the planner state-machine + drives + navigation) so each file is one job. Determinism: every
@@ -119,7 +129,7 @@ export function nearestHarvestableFor(
     if (!settlerMeetsNeed(ctx, settler.tribe, 'good', res.goodType, settler.experience)) continue;
     const cell = interactionCell(world, ctx, terrain, e, here);
     const dist = manhattan(terrain, here, cell);
-    if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
+    if (closer(dist, cell, bestDist, bestCell)) {
       best = e;
       bestDist = dist;
       bestCell = cell;
@@ -166,7 +176,7 @@ export function nearestCollectablePileFor(
     if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) continue; // not this job's trade
     const cell = interactionCell(world, ctx, terrain, e, here);
     const dist = manhattan(terrain, here, cell);
-    if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
+    if (closer(dist, cell, bestDist, bestCell)) {
       best = { pile: e, goodType: good };
       bestDist = dist;
       bestCell = cell;
@@ -210,7 +220,7 @@ export function nearestStoreFor(
     if (have >= stockCapacity(world, ctx, e, goodType)) continue; // full for this good — skip
     const cell = interactionCell(world, ctx, terrain, e, here);
     const dist = manhattan(terrain, here, cell);
-    if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
+    if (closer(dist, cell, bestDist, bestCell)) {
       best = e;
       bestDist = dist;
       bestCell = cell;
@@ -241,16 +251,21 @@ export function nearestFoodStore(
   for (const e of candidates) {
     if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
     const stock = world.get(e, Stockpile);
-    const cell = interactionCell(world, ctx, terrain, e, here);
-    const dist = manhattan(terrain, here, cell);
+    // Find the store's candidate food FIRST (its lowest-goodType stocked edible); only a store that
+    // holds food pays for the interaction-cell + distance work (pure elision — same winner).
+    let food: number | null = null;
     for (const [goodType, amount] of stockpileEntries(stock)) {
       if (amount <= 0 || !isFood(ctx, goodType)) continue;
-      if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
-        best = { store: e, goodType };
-        bestDist = dist;
-        bestCell = cell;
-      }
-      break; // this store's lowest-id food good is its candidate; move to the next store
+      food = goodType;
+      break; // this store's lowest-id food good is its candidate
+    }
+    if (food === null) continue;
+    const cell = interactionCell(world, ctx, terrain, e, here);
+    const dist = manhattan(terrain, here, cell);
+    if (closer(dist, cell, bestDist, bestCell)) {
+      best = { store: e, goodType: food };
+      bestDist = dist;
+      bestCell = cell;
     }
   }
   return best;
@@ -278,7 +293,7 @@ export function nearestTemple(
     if (!isTemple(world, ctx, e)) continue;
     const cell = interactionCell(world, ctx, terrain, e, here);
     const dist = manhattan(terrain, here, cell);
-    if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
+    if (closer(dist, cell, bestDist, bestCell)) {
       best = e;
       bestDist = dist;
       bestCell = cell;
@@ -344,7 +359,7 @@ export function nearestWorkplaceOutput(
       if (!recipe.outputs.some((o) => o.goodType === goodType)) continue; // only haul outputs
       // Deliverability check reuses the SAME stockpile candidates (a store is a Stockpile+Position too).
       if (nearestStoreFor(candidates, world, ctx, terrain, cell, goodType) === null) continue;
-      if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
+      if (closer(dist, cell, bestDist, bestCell)) {
         best = { workplace: e, goodType };
         bestDist = dist;
         bestCell = cell;
@@ -380,9 +395,7 @@ const EMPTY_ATOMICS: ReadonlySet<number> = new Set<number>();
  *  - the bound building is gone / not a producing workplace it staffs / not tech-enabled / not the
  *    same tribe — a stale or unusable binding, treated as "no station" so the settler isn't stranded.
  *
- * Determinism: a single binding lookup + pure predicate checks, no chosen-entity ordering. (`terrain`
- * and `here` are unused now the target is the bound building rather than a nearest-of search, but kept
- * for signature symmetry with the other drive targets; the navigation pass routes to it.)
+ * Determinism: a single binding lookup + pure predicate checks, no chosen-entity ordering.
  */
 export function boundWorkplaceTarget(
   world: World,
