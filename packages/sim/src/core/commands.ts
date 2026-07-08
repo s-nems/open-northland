@@ -31,6 +31,11 @@ export type Command =
        *  (or an out-of-range value) for a neutral/unowned building — the golden path, hash untouched.
        *  Orthogonal to `tribe` (the civilization). */
       readonly owner?: number;
+      /** Skip the tech + ground-collision gates and place as-is. For MAP-AUTHORED imports (a decoded
+       *  map's `sethouse` records) and pinned demo fixtures: the original loads a map's houses
+       *  verbatim, it never re-validates them against the interactive placement rule. A player-issued
+       *  placement must NOT set this — the UI goes through the gated path. */
+      readonly force?: boolean;
     }
   | {
       /**

@@ -10,6 +10,7 @@ import {
 } from '../../catalog/atomics.js';
 import { GRASS, HOME_KIND, VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
+import { approximateFootprint } from '../../catalog/footprints.js';
 import {
   CLAY_DEPOSIT_UNITS,
   GOLD_DEPOSIT_UNITS,
@@ -77,16 +78,32 @@ export interface SandboxContentExtras {
   /**
    * Extracted building ground footprints by typeId (from `content/ir.json` via
    * {@link import('../../content/ir.js').buildingFootprints}). When supplied — the live real-content
-   * entries do so — a building gains its collision body / build-exclusion zone, so `placeBuilding` is
-   * blocked where it doesn't fit and the build overlay greys those tiles. Omitted (tests, scenes, a bare
-   * checkout with no `content/`) leaves every building footprint-less: the pre-footprint free placement.
+   * entries do so — they REPLACE the clean-room approximations wholesale: a type present in the map
+   * gets its real collision body / build-exclusion zone, and a type absent from it is genuinely
+   * footprint-less (that is what the real data says — no approximation is mixed back in). Omitted
+   * (tests, scenes, a bare checkout with no `content/`), every catalog building carries its
+   * {@link approximateFootprint} instead, so placement collision + the build overlay work globally.
    */
   readonly buildingFootprints?: ReadonlyMap<number, BuildingFootprint>;
 }
 
+/**
+ * The SEMANTIC terrain classes every sim grid uses — scene grids are authored in them directly, and a
+ * real decoded map is RESOLVED into them by `content/collision.ts` (its raw landscape-lane typeIds
+ * joined against the extracted ground/object data) before it reaches the sim. Keeping the sim-side
+ * vocabulary to these four ids is what makes the walk/build flags collision-free: a raw map typeId (1 =
+ * the original's "void" plain ground) never lands on a synthetic row with different semantics.
+ */
+export const TERRAIN_OPEN = GRASS; // plain ground: walk + build
+export const TERRAIN_WATER = 1; // water/void/border ground: neither walk nor build
+export const TERRAIN_BLOCKED = 2; // a landscape object's body (tree/rock/deposit): neither
+export const TERRAIN_MARGIN = 3; // an object's build-exclusion ring: walkable, NOT buildable
+
 const BASE_LANDSCAPE = [
-  { typeId: GRASS, id: 'grass', walkable: true, buildable: true },
-  { typeId: 1, id: 'water', walkable: false, buildable: false },
+  { typeId: TERRAIN_OPEN, id: 'grass', walkable: true, buildable: true },
+  { typeId: TERRAIN_WATER, id: 'water', walkable: false, buildable: false },
+  { typeId: TERRAIN_BLOCKED, id: 'landscape_body', walkable: false, buildable: false },
+  { typeId: TERRAIN_MARGIN, id: 'landscape_margin', walkable: true, buildable: false },
 ] as const;
 
 const HOME_UPGRADE_PIN: readonly { goodType: number; amount: number }[] = [
@@ -187,20 +204,21 @@ export function sandboxGoods(): readonly GoodRef[] {
 }
 
 export function sandboxContent(map?: TerrainMap, extras: SandboxContentExtras = {}): ContentSet {
-  const footprintOf = (typeId: number): { footprint: BuildingFootprint } | Record<string, never> => {
-    const fp = extras.buildingFootprints?.get(typeId);
+  // Real extracted footprints (live content) replace the clean-room approximations WHOLESALE — see
+  // SandboxContentExtras.buildingFootprints. Without them every building approximates by class.
+  const footprintOf = (typeId: number, kind: string): { footprint?: BuildingFootprint } => {
+    const real = extras.buildingFootprints;
+    const fp = real !== undefined ? real.get(typeId) : approximateFootprint(kind);
     return fp !== undefined ? { footprint: fp } : {};
   };
   const buildings = new Map<number, SandboxBuildingRow>();
-  for (const b of VIKING_BUILDINGS) buildings.set(b.typeId, { ...buildingRow(b), ...footprintOf(b.typeId) });
+  for (const b of VIKING_BUILDINGS) {
+    buildings.set(b.typeId, { ...buildingRow(b), ...footprintOf(b.typeId, b.kind) });
+  }
   for (const b of extras.buildings ?? []) {
     if (!buildings.has(b.typeId)) {
-      buildings.set(b.typeId, {
-        typeId: b.typeId,
-        id: b.id,
-        kind: b.kind ?? 'workplace',
-        ...footprintOf(b.typeId),
-      });
+      const kind = b.kind ?? 'workplace';
+      buildings.set(b.typeId, { typeId: b.typeId, id: b.id, kind, ...footprintOf(b.typeId, kind) });
     }
   }
 

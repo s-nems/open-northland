@@ -1,7 +1,7 @@
 import {
   type Camera,
   type ElevationField,
-  type PlacementOverlayCell,
+  type PlacementOverlayFrame,
   type SceneTerrain,
   type WorldRenderer,
   buildHud,
@@ -58,32 +58,40 @@ export interface GameViewDeps {
   readonly onFrame?: (snapshot: WorldSnapshot) => void;
 }
 
+/** Tiles beyond the visible band the overlay also probes, so its edge never shows during a pan. */
+const OVERLAY_BAND_MARGIN = 2;
+
 /**
- * The build-mode blocked-tile wash: while a building is held, the tiles in the visible band whose
- * footprint the sim rejects — the SAME rule `placeBuilding` gates on (`Simulation.placementProbe`), so
- * the dimmed cells are exactly where a click would be refused (blocked by terrain — trees/stones/ore/
+ * The build-mode overlay frame: the visible tile band plus which of its cells REJECT the held
+ * building's anchor — the SAME rule `placeBuilding` gates on (`Simulation.placementProbe`), so the
+ * dimmed area is exactly where a click would be refused (blocked by terrain — trees/stones/ore/
  * water — or by another building's margin). Screen-bounded per golden rule 6 (per-frame cost scales
- * with the screen): only the visible tile range is probed, and only while placing. Returns null for a
+ * with the screen): only the visible band is probed, and only while placing. Returns null for a
  * mapless sim (no placement rule → no wash).
  */
-function blockedPlacementCells(
+function placementOverlayFrame(
   sim: Simulation,
   buildingType: number,
   camera: Camera,
   screenW: number,
   screenH: number,
   mapSize: { readonly width: number; readonly height: number },
-): PlacementOverlayCell[] | null {
+): PlacementOverlayFrame | null {
   const probe = sim.placementProbe(buildingType);
   if (probe === null) return null;
-  const range = visibleTileRange(cameraViewport(camera, screenW, screenH), mapSize.width, mapSize.height, 1);
-  const cells: PlacementOverlayCell[] = [];
+  const range = visibleTileRange(
+    cameraViewport(camera, screenW, screenH),
+    mapSize.width,
+    mapSize.height,
+    OVERLAY_BAND_MARGIN,
+  );
+  const blocked: { col: number; row: number }[] = [];
   for (let row = range.minRow; row <= range.maxRow; row++) {
     for (let col = range.minCol; col <= range.maxCol; col++) {
-      if (!probe.canPlace(col, row)) cells.push({ col, row });
+      if (!probe.canPlace(col, row)) blocked.push({ col, row });
     }
   }
-  return cells;
+  return { ...range, blocked };
 }
 
 /**
@@ -127,6 +135,9 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     uiscale,
     camera: () => cameraCtl.camera(),
     enqueue: (command) => sim.enqueue(command),
+    // The live placement rule the click + cursor ghost share; a mapless sim (no probe) places freely,
+    // matching the command gate's stance.
+    canPlaceAt: (typeId, col, row) => sim.placementProbe(typeId)?.canPlace(col, row) ?? true,
     mapSize: deps.mapSize,
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
     buildings: menuEntriesFromContent(sim.content),
@@ -134,6 +145,19 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     owner: HUMAN_PLAYER,
     onSpeed: (spec) => applyGameSpeed(control, spec),
   });
+
+  // The cursor position for the build-mode ghost (client coords; null when the pointer left the
+  // canvas). Tracked persistently — the ghost must follow the mouse between clicks, and reading it in
+  // the frame loop keeps ALL per-frame work in the one RAF (no per-mousemove sim probing).
+  let pointer: { clientX: number; clientY: number } | null = null;
+  const onPointerMove = (e: MouseEvent): void => {
+    pointer = { clientX: e.clientX, clientY: e.clientY };
+  };
+  const onPointerLeave = (): void => {
+    pointer = null;
+  };
+  canvas.addEventListener('mousemove', onPointerMove);
+  canvas.addEventListener('mouseleave', onPointerLeave);
 
   // RTS unit control: left-click / drag-box to select the human's units, right-click to send them,
   // Space for the action menu. Reads the camera + snapshot through closures, issues commands into the
@@ -185,14 +209,15 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // Re-place the tool panel's screen-space sprites BEFORE the renderer's render (they carry the
     // canvas resolution in their shader), and refresh an open stats window from this frame's HUD.
     toolPanel.controller.update(hud);
-    // Build mode: dim the tiles the held building can't be placed on (null clears it once out of build
-    // mode). Computed here, in the app, from the sim's placement probe and handed to the renderer as
-    // plain cells — the renderer stays a pure projection and never calls back into the sim.
+    // Build mode: dim the ground the held building can't anchor on and float its translucent ghost at
+    // the hovered tile (hidden over rejecting ground — the original's vanishing house cursor). Both
+    // are computed here, in the app, from the sim's placement probe and handed to the renderer as
+    // plain data — the renderer stays a pure projection and never calls back into the sim.
     const placeType = toolPanel.controller.placementType();
     renderer.updatePlacementOverlay(
       placeType === null
         ? null
-        : blockedPlacementCells(
+        : placementOverlayFrame(
             sim,
             placeType,
             cameraCtl.camera(),
@@ -200,6 +225,18 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
             app.screen.height,
             deps.mapSize,
           ),
+    );
+    // (No HUD-claim check: the HUD draws over the world layer, so the ghost can't cover it.)
+    const hovered =
+      placeType !== null && pointer !== null
+        ? toolPanel.clientToTile(pointer.clientX, pointer.clientY)
+        : null;
+    renderer.updatePlacementGhost(
+      placeType !== null &&
+        hovered !== null &&
+        (sim.placementProbe(placeType)?.canPlace(hovered.col, hovered.row) ?? true)
+        ? { col: hovered.col, row: hovered.row, buildingType: placeType }
+        : null,
     );
     // One retained update: reconcile the pooled sprites, draw the selection rings, refresh the pinned
     // HUD (shifted right to clear the left strip), render once. `app.screen` tracks window resizes.

@@ -255,8 +255,10 @@ function collectPlacementBlockers(
  * Valid iff:
  *
  *  1. every cell of the `reserved` zone (the build-exclusion area — the max-level body plus the
- *     source's margin ring) is on the map and on WALKABLE terrain (water/rock/void may not touch the
- *     zone), clear of resource walk-block bodies, and clear of every existing building's walls;
+ *     source's margin ring) is on the map and on BUILDABLE terrain (the landscape row's `buildable`
+ *     flag: water/rock/void may not touch the zone; a real map's tree/rock margin band is walkable
+ *     ground that still rejects here), clear of resource walk-block bodies, and clear of every
+ *     existing building's walls;
  *  2. the new building's `familyBody` (the largest body its level chain reaches — placing level 0
  *     reserves the top level's space) stays out of every resource build-zone and every existing
  *     building's reserved zone. The body-vs-zone test is symmetric, so each house keeps every other
@@ -276,12 +278,12 @@ function canPlaceAnchor(
   y: number,
 ): boolean {
   const { terrain } = blockers;
-  // 1. The reserved zone must lie on the map, on walkable ground, and clear of node/wall bodies.
+  // 1. The reserved zone must lie on the map, on buildable ground, and clear of node/wall bodies.
   for (const c of footprint.reserved) {
     const cx = x + c.dx;
     const cy = y + c.dy;
     if (!terrain.inBounds(cx, cy)) return false; // zone off the map edge
-    if (!terrain.isWalkable(terrain.cellAt(cx, cy))) return false; // blocking terrain too close
+    if (!terrain.isBuildable(terrain.cellAt(cx, cy))) return false; // blocking terrain too close
     const key = tileKey(cx, cy);
     if (blockers.resourceBodies.has(key)) return false; // a tree/stone/ore/water node's body
     if (blockers.buildingBodies.has(key)) return false; // another building's walls in my zone

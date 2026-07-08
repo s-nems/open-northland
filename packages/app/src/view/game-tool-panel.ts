@@ -31,6 +31,9 @@ export interface GameToolPanelDeps {
   readonly camera: () => Camera;
   /** Submit a command into the CURRENT sim (a closure, so it follows a scene restart). */
   readonly enqueue: (command: Command) => void;
+  /** The CURRENT sim's placement rule for a type at a tile (a closure over `Simulation.placementProbe`,
+   *  so it follows a scene restart) — gates the placement click. */
+  readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
   /** The map bounds — a placement click outside them is rejected (no clamp-to-border). */
   readonly mapSize: { readonly width: number; readonly height: number };
   /** The map's terrain-height field, so a placement click on a lifted hill resolves to the tile drawn
@@ -55,6 +58,9 @@ export interface GameToolPanelHandle {
   /** True when a client point is over the HUD (strip / open window / active placement) — the input router
    *  asks this BEFORE world picking so a HUD click never falls through to unit selection/orders. */
   claimPointer(clientX: number, clientY: number): boolean;
+  /** The panel's client-point → map-tile mapping (camera + backing scale + elevation), shared with the
+   *  frame loop's build-mode hover so the cursor ghost and the placement click resolve identically. */
+  clientToTile(clientX: number, clientY: number): { col: number; row: number } | null;
 }
 
 /** The mutable loop control the shared game-view runtime drives (pause flag + tick-rate multiplier). */
@@ -113,6 +119,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     owner: deps.owner,
     enqueue: deps.enqueue,
     screenToTile: clientToTile,
+    canPlaceAt: deps.canPlaceAt,
     onSpeedChange: deps.onSpeed,
     backingScale,
   });
@@ -121,5 +128,6 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     controller,
     hudShift,
     claimPointer: (x, y) => controller.claimsPointer(x, y),
+    clientToTile,
   };
 }

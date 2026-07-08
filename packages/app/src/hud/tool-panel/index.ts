@@ -61,6 +61,9 @@ export interface ToolPanelOptions {
   readonly enqueue: (command: Command) => void;
   /** Convert a client (CSS) point to a map tile, or `null` off the map — the placement target. */
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
+  /** The sim's live placement rule (`Simulation.placementProbe`) — gates the placement click, so a
+   *  click on rejecting ground is inert instead of enqueueing a command the sim would drop. */
+  readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
   /** Apply a game-speed change to the app loop (drives the fixed-timestep multiplier / pause). */
   readonly onSpeedChange: (spec: GameSpeedStateSpec) => void;
   /** Backing-store scale mapper (client px → canvas px) — shared with the unit controls. */
@@ -165,6 +168,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     labelByType,
     enqueue,
     screenToTile: opts.screenToTile,
+    canPlaceAt: opts.canPlaceAt,
     tribe: opts.tribe,
     owner: opts.owner,
   });
