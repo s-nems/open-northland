@@ -29,7 +29,7 @@ import { testContent } from '../fixtures/content.js';
  *    capacity (it may ride),
  *  - a good NOT on the allow-list gets capacity 0 (refused — never deposited into the hull).
  *
- * This is `stockCapacity` gaining a Vehicle branch (`systems/shared.ts`); the existing
+ * This is `stockCapacity` gaining a Vehicle branch (`systems/stores.ts`); the existing
  * `nearestStoreFor` store scan + `pileup` deposit route through it unchanged, so the whole load path
  * inherits the filter with no new system. Movement/embark and water valency stay map-decode-blocked.
  *

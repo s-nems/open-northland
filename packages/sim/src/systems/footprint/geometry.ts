@@ -9,8 +9,8 @@ import type { SystemContext } from '../context.js';
 /** Injective per-tile key for a spatial set/bucket (integer tile `x`,`y`). A string so a consumer with
  *  no terrain handle (hence no map width) can still key by tile — and so a negative/off-map coordinate
  *  can never alias onto a real tile the way a numeric `y*width+x` packing would. Re-exported by
- *  shared.ts (whose `TileBuckets` keys with it); defined here because shared.ts already imports from
- *  this module, keeping the leaf import graph acyclic. */
+ *  spatial.ts (whose `TileBuckets` keys with it); defined here because spatial.ts already imports from
+ *  this package, keeping the leaf import graph acyclic. */
 export function tileKey(x: number, y: number): string {
   return `${x},${y}`;
 }
