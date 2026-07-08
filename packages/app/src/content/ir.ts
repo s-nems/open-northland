@@ -1,3 +1,4 @@
+import type { GfxPattern, SoundBank, TerrainPattern } from '@vinland/data';
 import {
   type AtlasManifest,
   type SpriteLayer,
@@ -5,10 +6,11 @@ import {
   atlasFromManifest,
   loadAtlasSource,
 } from '@vinland/render';
+import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /**
- * The decoded-content I/O layer for the settler/building bindings: fetch the gitignored `content/`
- * (served at `/bobs/` + `/ir.json` by the dev/shot vite middleware) and hand back the raw atlas
+ * The decoded-content I/O layer for the served `content/ir.json` + `/bobs/` atlases: fetch the
+ * gitignored `content/` (served by the dev/shot vite middleware) and hand back the raw atlas
  * geometry + IR row lists the pure binding reducers ({@link import('./settler-gfx.js')} /
  * {@link import('./building-gfx.js')}) turn into render inputs. No copyrighted bytes enter the repo;
  * a checkout without `content/` degrades gracefully (a missing atlas throws {@link MissingAtlasError};
@@ -63,7 +65,9 @@ export interface LandscapeGfxFramesRow {
 }
 
 /** One `[GfxLandscape]` record as it ships in `content/ir.json`'s `landscapeGfx` — the placed decor/resource
- *  object's atlas binding, keyed to a `[landscapetype]` by {@link logicType} (the gathering-pipeline join). */
+ *  object's atlas binding, keyed to a `[landscapetype]` by {@link logicType} (the gathering-pipeline join)
+ *  and to a map placement by `editName` (the map-object join). The ONE app-side view of this lane — the
+ *  gathering bindings read the id/frames half, the map-object loader additionally reads the draw flags. */
 export interface LandscapeGfxRow {
   readonly index: number;
   readonly editName?: string;
@@ -71,6 +75,14 @@ export interface LandscapeGfxRow {
   readonly bmd?: string;
   readonly paletteName?: string;
   readonly frames?: readonly LandscapeGfxFramesRow[];
+  /** `GfxStatic` — a still object (no per-frame playback). */
+  readonly isStatic?: boolean;
+  /** `GfxLoopAnimation` — the state's frame list loops continuously (waves, fire, smoke). */
+  readonly loopAnimation?: boolean;
+  /** `GfxDynamicBackground` — composited translucently over the (water) ground (the 8 wave records). */
+  readonly dynamicBackground?: boolean;
+  /** Repeated `LogicWalkBlockArea` lines — a non-empty footprint marks a depth-sorted (non-decor) object. */
+  readonly walkBlockAreas?: readonly (readonly number[])[];
 }
 
 /** One resolved gathering-pipeline stage (a landscape type + the `landscapeGfx` records that place it). */
@@ -91,13 +103,30 @@ export interface GatheringPipelineRow {
   readonly store?: GatheringStageRow;
 }
 
-/** The render-binding lanes the real-graphics path reads from the served `content/ir.json`. */
-export interface RenderIr {
+/**
+ * The app's view of the served `content/ir.json` — every lane any domain (sprites, terrain, map
+ * objects, authored-entity joins, audio) reads, ALL optional: an `ir.json` generated before a lane
+ * existed still loads, and each consumer degrades per-lane. The pipeline writes the file through the
+ * `@vinland/data` zod schema, so casting the fetched JSON to this view at the I/O boundary is the
+ * boundary's stance (no re-validation of a multi-MB document per boot); the pattern/sound lanes use
+ * the schema types directly, the bob/landscape lanes keep the narrower row views above.
+ */
+export interface ContentIr {
   readonly bobSequences?: readonly { imagelib: string; sequences?: BobSeqRow[] }[];
   readonly buildingBobs?: readonly BuildingBobRow[];
   readonly constructionLayers?: readonly ConstructionLayerRow[];
   readonly gatheringPipeline?: readonly GatheringPipelineRow[];
   readonly landscapeGfx?: readonly LandscapeGfxRow[];
+  /** The approximated per-typeId ground binding (`buildTerrainPatterns`) the terrain renderer reads. */
+  readonly terrainPatterns?: readonly TerrainPattern[];
+  /** The full 927-record `[GfxPattern]` table — the 1:1 per-triangle ground join for decoded maps. */
+  readonly gfxPatterns?: readonly GfxPattern[];
+  /** Type-table views the authored-entity joins read (`resolveAuthoredPlacements`). */
+  readonly buildings?: readonly { typeId?: number; id?: string; kind?: string }[];
+  readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
+  readonly tribes?: readonly { typeId?: number; id?: string }[];
+  /** The decoded sound bank (`@vinland/audio` builds its index from it). */
+  readonly sounds?: SoundBank;
 }
 
 /** The `[bobseq]` imagelib whose sequences drive the settler — the body bob set the head atlas shares ids with. */
@@ -125,31 +154,29 @@ export async function loadLayer(stem: string): Promise<SpriteLayer> {
  * character atlases are read through. Returns `undefined` when the pipeline hasn't produced it (a checkout
  * without `content/`), so a caller degrades to the baked-palette gallery instead of crashing.
  */
-export async function loadPlayerLut(): Promise<TextureSource | undefined> {
-  const res = await fetch('/bobs/player-lut.png', { method: 'HEAD' });
-  if (!res.ok) return undefined;
-  return loadAtlasSource('/bobs/player-lut.png');
+export function loadPlayerLut(): Promise<TextureSource | undefined> {
+  return loadTextureIfPresent('/bobs/player-lut.png');
 }
 
+/** The one in-flight/settled `ir.json` fetch — every domain shares it (see {@link loadIr}). */
+let contentIrPromise: Promise<ContentIr | null> | null = null;
+
 /**
- * Fetch + parse the served `content/ir.json` ONCE (both the settler `[bobseq]` ranges and the building
- * `buildingBobs` join read from it). Returns `null` when it is absent or unparsable — unlike a missing
- * atlas (a hard precondition {@link loadLayer} throws on), a missing IR degrades gracefully: the settler
- * ranges fall back to the known-good `FALLBACK_*` and the house bobs to the transcribed constant, so the
- * real-graphics path still draws correctly on a checkout without `content/`.
+ * Fetch + parse the served `content/ir.json` ONCE PER PAGE — memoized, because the document is
+ * multi-MB and the sprite, terrain, map-object and audio domains all read their lanes from it (three
+ * independent fetch+parse passes per boot before this was shared). Returns `null` when it is absent
+ * or unparsable — unlike a missing atlas (a hard precondition {@link loadLayer} throws on), a missing
+ * IR degrades gracefully: the settler ranges fall back to the known-good `FALLBACK_*`, the house bobs
+ * to the transcribed constant, terrain to the flat tint and audio to silence. Browser-only state: the
+ * memo lives for the page's lifetime (a reload starts clean; tests never call this).
  */
-export async function loadIr(): Promise<RenderIr | null> {
-  try {
-    const res = await fetch('/ir.json');
-    if (!res.ok) return null;
-    return (await res.json()) as RenderIr;
-  } catch {
-    return null;
-  }
+export function loadIr(): Promise<ContentIr | null> {
+  contentIrPromise ??= fetchJsonOrNull<ContentIr>('/ir.json');
+  return contentIrPromise;
 }
 
 /** The `[bobseq]` rows of ONE imagelib in the served IR, indexed by verbatim sequence name. */
-export function sequencesFor(ir: RenderIr | null, imagelib: string): Map<string, BobSeqRow> {
+export function sequencesFor(ir: ContentIr | null, imagelib: string): Map<string, BobSeqRow> {
   const byName = new Map<string, BobSeqRow>();
   const set = (ir?.bobSequences ?? []).find((s) => s.imagelib === imagelib);
   for (const seq of set?.sequences ?? []) byName.set(seq.name, seq);

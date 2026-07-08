@@ -1,6 +1,6 @@
 import type { LayeredBobRef, ResourceTypeBinding, StockpileBinding } from '@vinland/render';
 import { TREE_ATLAS, TREE_BOB } from './building-gfx.js';
-import type { GatheringPipelineRow, GatheringStageRow, LandscapeGfxRow, RenderIr } from './ir.js';
+import type { ContentIr, GatheringPipelineRow, GatheringStageRow, LandscapeGfxRow } from './ir.js';
 import type { GoodRef } from './settler-gfx.js';
 
 /**
@@ -175,7 +175,7 @@ function representativeRecord(
  * once from the {@link FLAG_EDIT_NAME} record. Independent of which atlases actually load — the
  * loaded/default decision is {@link buildResourceBinding}/{@link buildStockpileBinding}'s. Pure.
  */
-export function resolveGatheringRefs(goods: readonly GoodRef[], ir: RenderIr | null): GatheringRefs {
+export function resolveGatheringRefs(goods: readonly GoodRef[], ir: ContentIr | null): GatheringRefs {
   const pipeline = ir?.gatheringPipeline ?? [];
   const gfx = ir?.landscapeGfx ?? [];
   const byIndex = new Map<number, LandscapeGfxRow>(gfx.map((g) => [g.index, g]));
@@ -256,7 +256,7 @@ export const STUMP_EDIT_NAME = 'tree debris medium';
  *  {@link STUMP_EDIT_NAME}, or `undefined` when the record/atlas is absent (a checkout without the
  *  dead-tree atlas, or an older `content/` — the stump then falls back to the placeholder). Mirrors the
  *  flag resolution in {@link resolveGatheringRefs}. Pure. */
-export function resolveStumpRef(ir: RenderIr | null): GatheringNodeRef | undefined {
+export function resolveStumpRef(ir: ContentIr | null): GatheringNodeRef | undefined {
   const record = (ir?.landscapeGfx ?? []).find((g) => g.editName === STUMP_EDIT_NAME);
   if (record === undefined) return undefined;
   const stem = servedStem(record);

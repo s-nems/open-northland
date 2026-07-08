@@ -8,7 +8,8 @@ import {
   terrainMapToScene,
 } from '@vinland/render';
 import { FixedTimestep, type SimEvent } from '@vinland/sim';
-import { createSoundDriver, fetchAudioIr } from '../content/audio.js';
+import { createSoundDriver } from '../content/audio.js';
+import { loadIr } from '../content/ir.js';
 import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
@@ -88,9 +89,7 @@ export async function renderSceneMode(
   // Suspended until a user gesture (autoplay policy); silent without `content/`. The prompt persists until
   // the context is confirmed running, so the gesture can't be missed while the scene loads. See @vinland/audio.
   const wantSound = params.get('sound') !== 'off';
-  const soundDriver = wantSound
-    ? createSoundDriver(await fetchAudioIr(), { chopAtomicId: HARVEST_ATOMIC })
-    : null;
+  const soundDriver = wantSound ? createSoundDriver(await loadIr(), { chopAtomicId: HARVEST_ATOMIC }) : null;
   if (soundDriver !== null) enableAudioOnGesture(soundDriver);
 
   // The original LEFT tool panel — part of the standard game HUD, mounted over EVERY scene (not a per-scene

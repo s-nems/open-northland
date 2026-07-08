@@ -6,7 +6,8 @@ import {
   defaultBindings,
 } from '@vinland/audio';
 import type { SoundBank } from '@vinland/data';
-import { fetchAudioIr, hasSoundContent } from '../content/audio.js';
+import { hasSoundContent } from '../content/audio.js';
+import { loadIr } from '../content/ir.js';
 import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
 import { el } from '../view/overlay.js';
 
@@ -280,7 +281,7 @@ export async function renderSoundGallery(
   _canvas: HTMLCanvasElement,
   _params: URLSearchParams,
 ): Promise<void> {
-  const ir = await fetchAudioIr();
+  const ir = await loadIr();
   const sounds = ir?.sounds;
   // Empty (or absent) bank ⇒ nothing to audition — the same emptiness the live driver treats as "run silent".
   if (!hasSoundContent(sounds)) {

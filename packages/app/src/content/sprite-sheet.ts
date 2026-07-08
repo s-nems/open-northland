@@ -27,8 +27,8 @@ import {
 } from './building-gfx.js';
 import {
   BODY_IMAGELIB,
+  type ContentIr,
   MissingAtlasError,
-  type RenderIr,
   loadGalleryLayers,
   loadIr,
   loadLayer,
@@ -79,7 +79,7 @@ const HUMAN_HEAD_ATLAS = 'cr_hum_head_00.test_human_00';
  * legacy path — when the IR carries no sequences or the CIVILIAN look (the required default) can't be built.
  */
 async function loadCharacters(
-  ir: RenderIr | null,
+  ir: ContentIr | null,
   goods: readonly GoodRef[],
   palette: string,
 ): Promise<SettlerCharacterSet | undefined> {

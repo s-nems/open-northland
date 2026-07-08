@@ -1,5 +1,6 @@
-import { type SpriteLayer, type TextureSource, loadAtlasSource } from '@vinland/render';
+import type { SpriteLayer, TextureSource } from '@vinland/render';
 import { loadLayer } from './ir.js';
+import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /**
  * Font (UI bitmap-font) content bindings — the loadable seam for the pipeline's `fonts` stage outputs, the
@@ -90,11 +91,8 @@ export function loadFontIndexed(key: string): Promise<SpriteLayer> {
  * palette per row) the indexed glyph atlases are coloured through — the font twin of `loadGuiPaletteLut`.
  * Returns `undefined` when the pipeline hasn't produced it, so a caller degrades to the RGBA preview atlas.
  */
-export async function loadFontColorLut(): Promise<TextureSource | undefined> {
-  const url = `/bobs/${FONT_COLOR_LUT_STEM}.png`;
-  const res = await fetch(url, { method: 'HEAD' });
-  if (!res.ok) return undefined;
-  return loadAtlasSource(url);
+export function loadFontColorLut(): Promise<TextureSource | undefined> {
+  return loadTextureIfPresent(`/bobs/${FONT_COLOR_LUT_STEM}.png`);
 }
 
 /**
@@ -102,12 +100,6 @@ export async function loadFontColorLut(): Promise<TextureSource | undefined> {
  * height/baseline the renderer lays text out with. Returns `null` when the pipeline hasn't produced them (a
  * checkout without `content/`), so a caller can fall back gracefully instead of crashing.
  */
-export async function loadFontMetrics(key: string): Promise<FontMetrics | null> {
-  try {
-    const res = await fetch(`${FONTS_ROOT}/${key}.metrics.json`);
-    if (!res.ok) return null;
-    return (await res.json()) as FontMetrics;
-  } catch {
-    return null;
-  }
+export function loadFontMetrics(key: string): Promise<FontMetrics | null> {
+  return fetchJsonOrNull<FontMetrics>(`${FONTS_ROOT}/${key}.metrics.json`);
 }
