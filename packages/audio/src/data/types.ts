@@ -1,4 +1,6 @@
-import type { SimEventKind } from '@vinland/sim';
+import type { Camera } from '@vinland/render/data';
+import type { SimEvent, SimEventKind, WorldSnapshot } from '@vinland/sim';
+import type { SoundIndex } from './bank.js';
 
 /**
  * The audio package's pure vocabulary — the data the {@link import('./director.js').directAudio}
@@ -68,4 +70,26 @@ export type EventSound =
 export interface SoundBindings {
   readonly byEvent: Partial<Record<SimEventKind, EventSound>>;
   readonly byAtomic: ReadonlyMap<number, EventSound>;
+}
+
+/** The row-major landscape grid the ambient layer samples (the terrain the snapshot is positioned over). */
+export interface AudioTerrain {
+  readonly width: number;
+  readonly height: number;
+  readonly typeIds: readonly number[];
+}
+
+/**
+ * Everything one {@link import('./director.js').directAudio} call needs. `terrain` is optional —
+ * absent, no ambient plays.
+ */
+export interface DirectorInput {
+  readonly events: readonly SimEvent[];
+  readonly snapshot: WorldSnapshot;
+  readonly camera: Camera;
+  readonly canvasW: number;
+  readonly canvasH: number;
+  readonly terrain?: AudioTerrain;
+  readonly index: SoundIndex;
+  readonly bindings: SoundBindings;
 }

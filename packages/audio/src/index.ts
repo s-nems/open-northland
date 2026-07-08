@@ -2,8 +2,9 @@
  * `@vinland/audio` — the browser audio layer for Vinland. It consumes the same read-only sim
  * snapshot + one-shot events `render` does (never reaching into sim state) and plays the decoded
  * original sounds positionally: on-screen action SFX + ambient terrain beds attenuated/panned by the
- * camera, plus non-spatial life-event jingles. Split like `render`: a PURE `data/` decision layer
- * (unit-testable headless) and an impure `web/` Web Audio sink.
+ * camera, plus non-spatial life-event jingles and sex/age-matched settler voice chatter. Split like
+ * `render`: a PURE `data/` decision layer (unit-testable headless) and an impure `web/` Web Audio
+ * sink whose platform seams (context, fetch, random) are injectable for tests.
  */
 
 // Pure decision layer (headless-testable; no Web Audio / DOM). The event→sound MusicType/group
@@ -16,19 +17,15 @@ export {
   vikingVoiceClass,
   type VoiceClass,
 } from './data/bindings.js';
+export { directAudio } from './data/director.js';
+export { JINGLE_GAIN, SFX_GAIN } from './data/events.js';
 export {
-  type AudioTerrain,
-  type DirectorInput,
-  type OnScreenSettler,
-  directAudio,
-  onScreenSettlers,
-  JINGLE_GAIN,
-  SFX_GAIN,
   MAX_AMBIENT_BEDS,
   AMBIENT_MAX_GAIN,
   AMBIENT_FULL_COVERAGE,
   AMBIENT_MAX_SAMPLES,
-} from './data/director.js';
+} from './data/ambient.js';
+export { type OnScreenSettler, onScreenSettlers } from './data/settlers.js';
 export {
   type Spatial,
   computeSpatial,
@@ -37,23 +34,33 @@ export {
   MAX_PAN,
   ZOOM_GAIN_FLOOR,
 } from './data/spatial.js';
-export type { AmbientLoop, AudioFrame, EventSound, OneShot, SoundBindings } from './data/types.js';
+export type {
+  AmbientLoop,
+  AudioFrame,
+  AudioTerrain,
+  DirectorInput,
+  EventSound,
+  OneShot,
+  SoundBindings,
+} from './data/types.js';
 
-// Impure Web Audio sink (browser-only). The engine's default-tuning constants stay exported as the
-// documented knobs behind `AudioEngineOptions`.
+// Impure Web Audio sink (browser-only). The default-tuning constants stay exported as the documented
+// knobs behind the options; the platform function types are the injectable test seams.
+export type { ContextFactory, FetchBytes, RandomFn } from './web/platform.js';
 export {
   type AudioEngineOptions,
   WebAudioEngine,
   DEFAULT_MASTER_GAIN,
+  DEFAULT_SOUNDS_BASE_URL,
   ONE_SHOT_COOLDOWN_S,
-  AMBIENT_FADE_S,
 } from './web/audio-engine.js';
+export { AMBIENT_FADE_S } from './web/ambient-mixer.js';
 export {
-  type SoundFrameInput,
-  type SoundDriverOptions,
-  SoundDriver,
+  type ChatterOptions,
+  ChatterEmitter,
   VOICE_GAIN,
   VOICE_RATE_PER_SEC,
   VOICE_COOLDOWN_MS,
   MAX_CHATTER_DT_MS,
-} from './web/sound-driver.js';
+} from './web/chatter.js';
+export { type SoundFrameInput, type SoundDriverOptions, SoundDriver } from './web/sound-driver.js';
