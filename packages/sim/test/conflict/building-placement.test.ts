@@ -14,7 +14,7 @@ import { Simulation, type TerrainMap, findPath, fx } from '../../src/index.js';
 import type { TerrainGraph } from '../../src/nav/terrain.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import { buildingBlockedCells, canPlaceBuilding, interactionTile } from '../../src/systems/index.js';
-import { workerPresentAt } from '../../src/systems/shared.js';
+import { workerPresentAt } from '../../src/systems/stores.js';
 import { testContent } from '../fixtures/content.js';
 
 /**

@@ -1,7 +1,7 @@
 import type { ContentSet } from '@vinland/data';
 import type { Command } from '../core/commands.js';
-import { Simulation } from '../index.js';
 import type { TerrainMap } from '../nav/terrain.js';
+import { Simulation } from '../simulation.js';
 import { CORE_INVARIANTS, type Invariant, checkInvariants } from './invariants.js';
 
 /**

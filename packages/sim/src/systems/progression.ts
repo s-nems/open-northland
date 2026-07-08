@@ -5,6 +5,7 @@ import type {
   VehicleType,
 } from '@vinland/data';
 import { Settler } from '../components/index.js';
+import { contentIndex } from '../core/content-index.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { SystemContext } from './context.js';
 import { WEAPON_MAIN_TYPE } from './readviews/combat.js';
@@ -172,7 +173,7 @@ export function grantFightExperience(
 /** The per-swing fight-XP rate — the {@link SOLDIER_GENERAL_EXPERIENCE_TYPE} track's `experienceFactor`
  *  (1 in the base data), or `0` when content carries no such track. A pure content read. */
 function fightExperienceRate(ctx: SystemContext): number {
-  const track = ctx.content.jobExperience.find((t) => t.typeId === SOLDIER_GENERAL_EXPERIENCE_TYPE);
+  const track = contentIndex(ctx.content).jobExperience.get(SOLDIER_GENERAL_EXPERIENCE_TYPE);
   return track?.experienceFactor ?? 0;
 }
 
@@ -253,7 +254,7 @@ function tribeUnlockEnabled(
   kind: 'house' | 'good' | 'job' | 'vehicle',
   targetId: number,
 ): boolean {
-  const tribeType = ctx.content.tribes.find((t) => t.typeId === tribe);
+  const tribeType = contentIndex(ctx.content).tribes.get(tribe);
   if (tribeType === undefined) return true; // no tech-graph for this tribe — nothing gates it
 
   // The jobs that unlock this target (a target may be gated by several different jobs).
@@ -389,7 +390,7 @@ export function settlerMeetsNeed(
   targetId: number,
   experience: ReadonlyMap<number, number>,
 ): boolean {
-  const tribeType = ctx.content.tribes.find((t) => t.typeId === tribe);
+  const tribeType = contentIndex(ctx.content).tribes.get(tribe);
   if (tribeType === undefined) return true; // no requirement table for this tribe — nothing thresholds it
   for (const req of tribeType.jobRequirements) {
     if (req.requirement !== 'need' || req.target !== target || req.targetId !== targetId) continue;

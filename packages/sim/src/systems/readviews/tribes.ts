@@ -1,4 +1,5 @@
 import type { AnimalType, ContentSet, TribeType } from '@vinland/data';
+import { contentIndex } from '../../core/content-index.js';
 
 // Pure, terminal **read views** for tribe classification + animal behaviour — the data-defined
 // civ-vs-animal split (off each tribe's tech graph) and the `animaltypes.ini` behaviour flags the
@@ -43,7 +44,7 @@ export function playableTribes(content: ContentSet): TribeType[] {
  * unknown `tribeType` (no matching record) is **not** playable. Pure over `content`, no RNG/wall-clock.
  */
 export function isPlayableTribe(content: ContentSet, tribeType: number): boolean {
-  const tribe = content.tribes.find((t) => t.typeId === tribeType);
+  const tribe = contentIndex(content).tribes.get(tribeType);
   return tribe !== undefined && tribe.jobEnables.length > 0;
 }
 
@@ -70,7 +71,7 @@ export function isPlayableTribe(content: ContentSet, tribeType: number): boolean
  * `content`, no RNG/wall-clock.
  */
 export function isAnimalTribe(content: ContentSet, tribeType: number): boolean {
-  const tribe = content.tribes.find((t) => t.typeId === tribeType);
+  const tribe = contentIndex(content).tribes.get(tribeType);
   return tribe !== undefined && tribe.jobEnables.length === 0;
 }
 
@@ -87,7 +88,7 @@ export function isAnimalTribe(content: ContentSet, tribeType: number): boolean {
  * pinned. Pure over `content`, no RNG/wall-clock.
  */
 export function animalRecord(content: ContentSet, tribeType: number): AnimalType | null {
-  return content.animals.find((a) => a.tribeType === tribeType) ?? null;
+  return contentIndex(content).animalsByTribe.get(tribeType) ?? null;
 }
 
 /**

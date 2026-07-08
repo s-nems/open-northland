@@ -9,7 +9,7 @@ import {
 } from '../../components/index.js';
 import type { System } from '../context.js';
 import { herdParams } from '../readviews/index.js';
-import { entityCell, manhattan } from '../shared.js';
+import { entityCell, manhattan } from '../spatial.js';
 
 /**
  * HerdingSystem — the **follow-the-leader** movement drive for a herding animal.

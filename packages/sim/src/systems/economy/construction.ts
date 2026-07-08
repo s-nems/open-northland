@@ -1,8 +1,9 @@
 import { Building, Stockpile } from '../../components/index.js';
+import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, ONE, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System } from '../context.js';
-import { homeNextTier } from '../shared.js';
+import { homeNextTier } from '../stores.js';
 
 /**
  * ConstructionSystem — an under-construction building becomes built once its material cost arrives,
@@ -49,7 +50,7 @@ import { homeNextTier } from '../shared.js';
 export const constructionSystem: System = (world, ctx) => {
   for (const e of world.query(Building, Stockpile)) {
     const building = world.get(e, Building);
-    const type = ctx.content.buildings.find((t) => t.typeId === building.buildingType);
+    const type = contentIndex(ctx.content).buildings.get(building.buildingType);
     if (type === undefined) continue; // unknown type — can't price the build (shouldn't happen)
 
     if (building.built < ONE) {

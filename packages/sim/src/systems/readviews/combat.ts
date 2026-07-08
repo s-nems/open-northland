@@ -1,4 +1,5 @@
 import type { ContentSet, WeaponType } from '@vinland/data';
+import { contentIndex } from '../../core/content-index.js';
 import { armorMaterialOf } from './classes.js';
 
 // Pure, terminal **read views** for combat — the static weapon-vs-armor damage *lookup* table the
@@ -104,7 +105,7 @@ export function damageVsBuilding(weapon: Pick<WeaponType, 'damage'>): number {
  * than crashing — the "armor the data doesn't define selects its own column" stance.
  */
 export function armorMaterialForClass(content: ContentSet, armorClass: number): number {
-  const armor = content.armor.find((a) => a.typeId === armorClass);
+  const armor = contentIndex(content).armor.get(armorClass);
   if (armor === undefined) return armorClass; // no record — the class value is its own column
   return armorMaterialOf(armor) ?? armor.typeId; // materialType (== typeId for the 4 base armors)
 }

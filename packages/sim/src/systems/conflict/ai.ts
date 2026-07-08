@@ -21,16 +21,10 @@ import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockedCells } from '../footprint.js';
 import { carrierCarryCapacity } from '../progression.js';
+import { atomicDuration } from '../readviews/animations.js';
 import { MILITARY_MODE } from '../readviews/index.js';
-import {
-  TileBuckets,
-  atomicDuration,
-  canonicalById,
-  inRange,
-  isFood,
-  manhattan,
-  recipeOf,
-} from '../shared.js';
+import { TileBuckets, canonicalById, isValidCellId, manhattan } from '../spatial.js';
+import { isFood, recipeOf } from '../stores.js';
 import {
   deliveryTargetFor,
   isPorterBoundToStore,
@@ -160,7 +154,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
           e,
           EAT_ATOMIC_ID,
           { kind: 'eat', goodType: load.goodType, from: null },
-          atomicDuration(ctx, settler, EAT_ATOMIC_ID),
+          atomicDuration(ctx.content, settler, EAT_ATOMIC_ID),
           e,
         );
         continue;
@@ -174,7 +168,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
             e,
             EAT_ATOMIC_ID,
             { kind: 'eat', goodType: food.goodType, from: food.store },
-            atomicDuration(ctx, settler, EAT_ATOMIC_ID),
+            atomicDuration(ctx.content, settler, EAT_ATOMIC_ID),
             food.store,
           );
         } else {
@@ -197,7 +191,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
         e,
         SLEEP_ATOMIC_ID,
         { kind: 'sleep' },
-        atomicDuration(ctx, settler, SLEEP_ATOMIC_ID),
+        atomicDuration(ctx.content, settler, SLEEP_ATOMIC_ID),
         e,
       );
       continue;
@@ -219,7 +213,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
             e,
             PRAY_ATOMIC_ID,
             { kind: 'pray' },
-            atomicDuration(ctx, settler, PRAY_ATOMIC_ID),
+            atomicDuration(ctx.content, settler, PRAY_ATOMIC_ID),
             temple,
           );
         } else {
@@ -287,7 +281,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
           e,
           PILEUP_ATOMIC_ID,
           { kind: 'pileup', store },
-          atomicDuration(ctx, settler, PILEUP_ATOMIC_ID),
+          atomicDuration(ctx.content, settler, PILEUP_ATOMIC_ID),
           store,
         );
       } else {
@@ -345,7 +339,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
           e,
           PICKUP_ATOMIC_ID,
           { kind: 'pickup', goodType: trunk.goodType, amount, from: trunk.pile },
-          atomicDuration(ctx, settler, PICKUP_ATOMIC_ID),
+          atomicDuration(ctx.content, settler, PICKUP_ATOMIC_ID),
           trunk.pile,
         );
       } else {
@@ -362,7 +356,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
           e,
           res.harvestAtomic,
           { kind: 'harvest', resource: node, goodType: res.goodType },
-          atomicDuration(ctx, settler, res.harvestAtomic),
+          atomicDuration(ctx.content, settler, res.harvestAtomic),
           node,
         );
       } else {
@@ -385,7 +379,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
             e,
             PICKUP_ATOMIC_ID,
             { kind: 'pickup', goodType: pile.goodType, amount, from: pile.pile },
-            atomicDuration(ctx, settler, PICKUP_ATOMIC_ID),
+            atomicDuration(ctx.content, settler, PICKUP_ATOMIC_ID),
             pile.pile,
           );
         } else {
@@ -418,7 +412,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
         e,
         PICKUP_ATOMIC_ID,
         { kind: 'pickup', goodType: haul.goodType, amount, from: haul.workplace },
-        atomicDuration(ctx, settler, PICKUP_ATOMIC_ID),
+        atomicDuration(ctx.content, settler, PICKUP_ATOMIC_ID),
         haul.workplace,
       );
     } else {
@@ -474,7 +468,7 @@ function planProducer(
         e,
         PICKUP_ATOMIC_ID,
         { kind: 'pickup', goodType: outGood, amount, from: workplace },
-        atomicDuration(ctx, settler, PICKUP_ATOMIC_ID),
+        atomicDuration(ctx.content, settler, PICKUP_ATOMIC_ID),
         workplace,
       );
     } else {
@@ -493,7 +487,7 @@ function planProducer(
         e,
         PICKUP_ATOMIC_ID,
         { kind: 'pickup', goodType: src.goodType, amount: src.amount, from: src.store },
-        atomicDuration(ctx, settler, PICKUP_ATOMIC_ID),
+        atomicDuration(ctx.content, settler, PICKUP_ATOMIC_ID),
         src.store,
       );
     } else {
@@ -696,7 +690,7 @@ function navigationPlanner(world: World, terrain: TerrainGraph): void {
     if (world.has(e, PathRequest) || world.has(e, PathFollow)) continue;
 
     const goalCell = world.get(e, MoveGoal).cell;
-    if (!inRange(terrain, goalCell)) {
+    if (!isValidCellId(terrain, goalCell)) {
       // An unreachable/off-map goal can never be satisfied; drop it rather than issue dead requests
       // every tick. (A planner that owns the goal can re-add a valid one.)
       world.remove(e, MoveGoal);

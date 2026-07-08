@@ -1,4 +1,5 @@
 import type { AtomicAnimation, ContentSet } from '@vinland/data';
+import { contentIndex } from '../../core/content-index.js';
 
 // Pure, terminal **read views** for atomic animations — the canonical name→record resolver over
 // `content.atomicAnimations` plus thin accessors for the animation scalars no sim system reads
@@ -59,11 +60,63 @@ export const ATOMIC_EVENT_TYPE_ATTACK = 25;
  *
  * source-basis n/a: a pure name-keyed lookup over the already-extracted animation IR — it adds no
  * mechanic and invents no data (the `name` join key is the original's own `setatomic` reference).
- * Determinism: a pure function of `content` (no world, no RNG, no wall-clock); `find` returns the
- * first match in `content.atomicAnimations` declaration order, byte-stable per content.
+ * Determinism: a pure function of `content` (no world, no RNG, no wall-clock); the {@link contentIndex}
+ * table is built first-wins over `content.atomicAnimations` declaration order — the identical record
+ * the old linear `find` returned, byte-stable per content.
  */
 export function atomicAnimationByName(content: ContentSet, name: string): AtomicAnimation | undefined {
-  return content.atomicAnimations.find((a) => a.name === name);
+  return contentIndex(content).atomicAnimationsByName.get(name);
+}
+
+/** Duration (ticks) used when an atomic's animation-length chain doesn't resolve — a non-zero default
+ *  so an unresolved atomic still takes visible time rather than completing instantly. */
+const DEFAULT_ATOMIC_DURATION = 4;
+
+/**
+ * Resolve an atomic's duration (animation length in ticks) through the data: the settler's tribe binds
+ * `(jobType, atomicId)` to an animation name (`setatomic`, last-wins) and `atomicAnimations` gives that
+ * name's `length`. Falls back to {@link DEFAULT_ATOMIC_DURATION} when the chain doesn't resolve (the
+ * readable mod set is a subset of the base animations, and test fixtures may bind neither) — a missing
+ * timing must not hang or zero-out the atomic. Shared by the AI planner (harvest/eat/sleep/pray/haul)
+ * and combat (the attack swing); both resolve durations the identical way.
+ */
+export function atomicDuration(
+  content: ContentSet,
+  settler: { tribe: number; jobType: number | null },
+  atomicId: number,
+): number {
+  return atomicDurationForName(content, atomicAnimationName(content, settler, atomicId));
+}
+
+/**
+ * The duration (ticks) of a named animation — its `atomicanimations.ini` `length`, or
+ * {@link DEFAULT_ATOMIC_DURATION} when the name is undefined / unresolved / zero-length. The
+ * name-keyed half of {@link atomicDuration}, split out so a caller that has already resolved the
+ * animation NAME (e.g. the combat swing-start, which reads the same animation's hit-frame too) can get
+ * the duration WITHOUT re-resolving the tribe's `setatomic` binding a second time.
+ */
+export function atomicDurationForName(content: ContentSet, animation: string | undefined): number {
+  if (animation === undefined) return DEFAULT_ATOMIC_DURATION;
+  const length = atomicAnimationByName(content, animation)?.length ?? 0;
+  return length > 0 ? length : DEFAULT_ATOMIC_DURATION;
+}
+
+/**
+ * Resolve the **animation name** a settler's tribe binds `(jobType, atomicId)` to — the `setatomic`
+ * join key, last-wins over the file-order bindings (matching the original's config-override
+ * semantics; the {@link contentIndex} binding table is built with exactly that override rule).
+ * Returns `undefined` when the settler has no job, its tribe isn't in content, or no binding matches
+ * (the readable mod set is a subset of the base animations). The shared name lookup behind
+ * {@link atomicDuration} (the animation's `length`) and the combat swing's hit-frame / need-drain
+ * reads (its `events`), so all three resolve the animation the identical way.
+ */
+export function atomicAnimationName(
+  content: ContentSet,
+  settler: { tribe: number; jobType: number | null },
+  atomicId: number,
+): string | undefined {
+  if (settler.jobType === null) return undefined;
+  return contentIndex(content).atomicBindingsByTribe.get(settler.tribe)?.get(settler.jobType)?.get(atomicId);
 }
 
 /**

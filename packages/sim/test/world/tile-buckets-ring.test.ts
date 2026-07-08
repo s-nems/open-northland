@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { Position } from '../../src/components/index.js';
 import { fx } from '../../src/core/fixed.js';
 import { type Entity, World } from '../../src/ecs/world.js';
-import { TileBuckets } from '../../src/systems/shared.js';
+import { TileBuckets } from '../../src/systems/spatial.js';
 
 /**
  * Unit tests for the {@link TileBuckets.nearest} grid RING SEARCH — the spatial primitive behind the

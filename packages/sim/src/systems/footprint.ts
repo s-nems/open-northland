@@ -16,6 +16,7 @@ import {
   Stockpile,
   stockpileEntries,
 } from '../components/index.js';
+import { contentIndex } from '../core/content-index.js';
 import { fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { CellId, TerrainGraph } from '../nav/terrain.js';
@@ -45,7 +46,7 @@ export function tileKey(x: number, y: number): string {
 
 /** The footprint of a building type, or undefined when the type is unknown or carries none. */
 function buildingFootprintOf(ctx: SystemContext, buildingType: number): BuildingFootprint | undefined {
-  return ctx.content.buildings.find((t) => t.typeId === buildingType)?.footprint;
+  return contentIndex(ctx.content).buildings.get(buildingType)?.footprint;
 }
 
 /** Collapse a `[GfxLandscape]` area table to the fresh/full object's cells. */
@@ -89,10 +90,10 @@ export function resourceFootprintForGood(
   goodType: number,
   gfxIndex?: number,
 ): ResourceFootprintData | null {
-  const pipeline = content.gatheringPipeline.find((p) => p.goodType === goodType);
+  const pipeline = contentIndex(content).gatheringPipelinesByGood.get(goodType);
   const stage = pipeline?.harvest ?? pipeline?.pickup;
   if (stage === undefined) return null;
-  const byIndex = new Map<number, LandscapeGfx>(content.landscapeGfx.map((g) => [g.index, g]));
+  const byIndex = contentIndex(content).landscapeGfxByIndex;
   if (gfxIndex !== undefined) {
     if (!stage.gfxIndices.includes(gfxIndex)) return null;
     const record = byIndex.get(gfxIndex);
