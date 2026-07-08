@@ -1,34 +1,11 @@
-import {
-  WorldRenderer,
-  buildHud,
-  buildSpriteScene,
-  createWindowPixiApp,
-  layoutHud,
-  placeHud,
-  terrainMapToScene,
-} from '@vinland/render';
-import { FixedTimestep, type SimEvent } from '@vinland/sim';
-import { createSoundDriver } from '../content/audio.js';
-import { loadIr } from '../content/ir.js';
-import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
+import { WorldRenderer, buildSpriteScene, createWindowPixiApp, terrainMapToScene } from '@vinland/render';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
-import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
-import { DEFAULT_UI_SCALE } from '../hud/tool-panel/layout.js';
 import { SCENES, createSceneSim, getScene } from '../scenes/index.js';
 import { cameraFor, createCameraController } from '../view/camera.js';
-import {
-  applyGameSpeed,
-  menuEntriesFromContent,
-  mountGameToolPanel,
-  shiftHud,
-} from '../view/game-tool-panel.js';
-import { enableAudioOnGesture } from '../view/overlay.js';
-import { mountPerfOverlay } from '../view/perf-overlay.js';
+import { startGameView } from '../view/game-view.js';
 import { mountSceneOverlay, mountUnknownSceneOverlay } from '../view/scene-overlay.js';
-import { createUnitControls } from '../view/unit-controls.js';
-import { professionsFromContent } from '../view/unit-panel.js';
-import { floatParam, intParam } from './params.js';
+import { floatParam } from './params.js';
 
 /**
  * The `?scene=<id>` entry: render a registered **acceptance scene** live, with the checklist overlay,
@@ -66,15 +43,9 @@ export async function renderSceneMode(
   // object churn), so a big scene renders + deep-zoom-outs without exhausting the GPU.
   const renderer = new WorldRenderer(app, { sheet });
   renderer.setTerrain(terrainGrid, terrain);
-  // FPS / entity / drawn / pooled readout (bottom-left) so a human can judge render performance at scale
-  // — the instrument the stress scene is watched with (and harmless on the small scenes).
-  const perf = mountPerfOverlay();
 
-  // Playback control the tool-panel speed button drives (the sole speed/pause GUI now — the old scene-overlay
-  // playback buttons were removed). `?speed=` seeds the initial multiplier (default ×1); the panel's speed
-  // button drives it live (×1 → ×2 → ×3 → pause) without clobbering the seed at mount.
-  const control = { paused: false, speed: floatParam(params, 'speed', 1) };
-  // The acceptance overlay is now purely the sign-off checklist + a debug tick (no playback controls).
+  // The acceptance overlay is purely the sign-off checklist + a debug tick (no playback controls — the
+  // tool panel's speed button is the sole speed/pause GUI).
   const overlay = mountSceneOverlay(scene);
 
   // Interactive camera over the scene: `?zoom` is the starting frame, then the human pans (middle-mouse
@@ -84,104 +55,20 @@ export async function renderSceneMode(
     cameraFor(buildSpriteScene(sim.snapshot()), zoom, app.screen.width, app.screen.height),
   );
 
-  // Original decoded sounds over the scene (default-on; `?sound=off` opts out): positional action SFX +
-  // terrain ambient + non-spatial jingles + on-screen settler voice chatter — so a crowd scene murmurs.
-  // Suspended until a user gesture (autoplay policy); silent without `content/`. The prompt persists until
-  // the context is confirmed running, so the gesture can't be missed while the scene loads. See @vinland/audio.
-  const wantSound = params.get('sound') !== 'off';
-  const soundDriver = wantSound ? createSoundDriver(await loadIr(), { chopAtomicId: HARVEST_ATOMIC }) : null;
-  if (soundDriver !== null) enableAudioOnGesture(soundDriver);
-
-  // The original LEFT tool panel — part of the standard game HUD, mounted over EVERY scene (not a per-scene
-  // opt-in) through the shared helper the live sandbox also uses. It claims its own clicks (`claimPointer`)
-  // so a press on the HUD never reaches world picking, drives the loop's speed through `onSpeed`, and
-  // enqueues `placeBuilding` for a menu selection dropped on a tile.
-  const toolPanel = await mountGameToolPanel({
+  // The shared in-game runtime (view/game-view.ts): the standard HUD mounts — tool panel, unit
+  // controls, perf overlay, positional sound — and the ONE fixed-timestep RAF loop, identical to the
+  // `?live` entry's; the checklist overlay's tick rides the per-frame hook.
+  await startGameView({
     app,
     canvas,
     params,
-    camera: () => cameraCtl.camera(),
-    enqueue: (command) => sim.enqueue(command),
+    renderer,
+    sim,
+    cameraCtl,
+    terrainGrid,
     mapSize: { width: scene.terrain.width, height: scene.terrain.height },
-    buildings: menuEntriesFromContent(sim.content),
-    tribe: HUD_TRIBE,
-    owner: HUMAN_PLAYER,
-    onSpeed: (spec) => applyGameSpeed(control, spec),
+    onFrame: (snap) => overlay.update(snap.tick),
   });
-
-  // RTS unit control over the scene: left-click / drag-box to select the human's units, right-click to
-  // send them, Space for the unit panel. Harmless on scenes with no owned units (nothing is pickable).
-  const controls = await createUnitControls({
-    app,
-    canvas,
-    uiscale: intParam(params, 'uiscale', DEFAULT_UI_SCALE, 1),
-    camera: () => cameraCtl.camera(),
-    snapshot: () => sim.snapshot(),
-    mapSize: { width: scene.terrain.width, height: scene.terrain.height },
-    humanPlayer: HUMAN_PLAYER,
-    professions: professionsFromContent(sim.content),
-    enqueue: (command) => sim.enqueue(command),
-    boundsOf: (ref) => renderer.entityBounds(ref), // pixel-accurate picking against the real sprite
-    claimPointer: (x: number, y: number) => toolPanel.claimPointer(x, y),
-  });
-
-  const timestep = new FixedTimestep();
-  let lastMs = performance.now();
-  // The fixed-timestep interpolation fraction the renderer lerps entity anchors by — refreshed each
-  // un-paused frame from `advance` (a pause freezes it, so units hold their drawn spot mid-leg).
-  let renderAlpha = 1;
-
-  function frame(nowMs: number): void {
-    const elapsed = nowMs - lastMs;
-    lastMs = nowMs;
-    // Time the CPU work (sim + snapshot + render-build/submit + audio) so the overlay can split the
-    // frame into CPU vs GPU/compositor — the split that tells whether a slow frame is our code or the GPU.
-    const cpu0 = performance.now();
-    // Accumulate events from every step this frame (each step clears the buffer) for the audio layer.
-    const frameEvents: SimEvent[] = [];
-    const collect = (): void => {
-      sim.step();
-      frameEvents.push(...sim.events.current());
-    };
-    if (!control.paused) {
-      renderAlpha = timestep.advance(elapsed * control.speed, collect);
-    }
-    cameraCtl.update(elapsed);
-    const snap = sim.snapshot();
-    // Build the tribe HUD read-view ONCE per frame (an O(entities) scan) and share it between the always-on
-    // stocks panel and the tool panel's statistics window — so the stats window adds no second scan.
-    const hud = layoutHud(buildHud(snap, HUD_TRIBE));
-    // Re-place the tool panel's screen-space sprites BEFORE the renderer's `app.render()` (they carry the
-    // canvas resolution in their shader), and refresh an open statistics window from this frame's HUD.
-    toolPanel.controller.update(hud);
-    // `app.screen` is the LIVE renderer size (it tracks window resizes), so the HUD stays pinned. The
-    // always-on stocks HUD is shifted right to clear the left strip.
-    renderer.update(
-      snap,
-      cameraCtl.camera(),
-      snap.tick,
-      { placement: shiftHud(placeHud(hud, 'top-left', app.screen), toolPanel.hudShift) },
-      controls.selectedIds(),
-      renderAlpha,
-    );
-    controls.tick(snap); // reuse the frame's snapshot — don't rebuild a second one
-    overlay.update(snap.tick);
-    if (soundDriver !== null) {
-      soundDriver.update({
-        events: frameEvents,
-        snapshot: snap,
-        camera: cameraCtl.camera(),
-        canvasW: app.screen.width,
-        canvasH: app.screen.height,
-        terrain: terrainGrid,
-        dtMs: elapsed,
-      });
-    }
-    const cpuMs = performance.now() - cpu0;
-    perf.update(elapsed, { entities: snap.entities.length, cpuMs, ...renderer.stats() });
-    requestAnimationFrame(frame);
-  }
-  requestAnimationFrame(frame);
 
   console.log(`Vinland scene "${scene.id}" up. Watch the overlay checklist, then say if it looks OK.`);
 }

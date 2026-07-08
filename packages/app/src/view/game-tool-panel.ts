@@ -2,18 +2,17 @@ import type { Camera, ElevationField, HudPlacement } from '@vinland/render';
 import type { Command } from '@vinland/sim';
 import type { Application } from 'pixi.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
-import { intParam } from '../entries/params.js';
 import type { MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
 import type { GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
 import { type ToolPanelController, mountToolPanel } from '../hud/tool-panel/index.js';
-import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel/layout.js';
+import { buildToolPanelLayout } from '../hud/tool-panel/layout.js';
 import { backingScale } from './camera.js';
 import { screenToWorld, worldToTile } from './picking.js';
 
 /**
  * The in-game LEFT tool panel is part of the standard game HUD, not a per-scene feature — so BOTH the live
  * sandbox (`entries/live.ts`) and every acceptance scene (`entries/scene.ts`) mount it through this one
- * helper. It wraps {@link mountToolPanel} with the wiring both entries share: the `?uiscale=` read, the
+ * helper. It wraps {@link mountToolPanel} with the wiring both entries share: the
  * client-point → tile mapping (camera + backing-store scale, null off the map so a stray click never
  * clamp-places), and the HUD right-shift that clears the strip. The entry supplies only what differs — the
  * app, canvas, the live camera/sim/enqueue closures, its content's buildings, and how a speed change lands
@@ -26,8 +25,8 @@ const HUD_GAP = 6;
 export interface GameToolPanelDeps {
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
-  /** URL params — read for `?uiscale=`. */
-  readonly params: URLSearchParams;
+  /** Integer UI scale (the entry parses `?uiscale=` once and shares it with the unit controls). */
+  readonly uiscale: number;
   /** The live camera (read each click to map a screen point to a world tile). */
   readonly camera: () => Camera;
   /** Submit a command into the CURRENT sim (a closure, so it follows a scene restart). */
@@ -93,7 +92,7 @@ export function shiftHud(p: HudPlacement, dx: number): HudPlacement {
 
 /** Mount the game tool panel for one entry, returning its controller + the derived HUD shift + start speed. */
 export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameToolPanelHandle> {
-  const uiscale = intParam(deps.params, 'uiscale', DEFAULT_UI_SCALE, 1);
+  const { uiscale } = deps;
   const hudShift = buildToolPanelLayout(uiscale).width + HUD_GAP;
 
   const clientToTile = (clientX: number, clientY: number): { col: number; row: number } | null => {
