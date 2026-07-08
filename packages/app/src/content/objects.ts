@@ -1,4 +1,5 @@
 import {
+  type BrightnessField,
   type ElevationField,
   type MapObjectSprite,
   type SpriteLayer,
@@ -29,6 +30,31 @@ export interface MapObjectsData {
  * (source basis).
  */
 const WAVE_ALPHA = 0.5;
+
+/**
+ * The `[landscapetype]` names whose objects the original draws FULL-BRIGHT, exempt from the baked
+ * `embr` shading: standing + felled trees. Measured on the bridge-map corpus (source basis
+ * "brightness"): tree canopies keep full luminance even anchored on embr=0 border cells (ratio ≈ 1.0
+ * across the lane, n=118), while mine decals, stones and grass track the lane (masked opaque-pixel
+ * ratio ×0.58 → ×1.58). The true engine rule is unknown (the OpenVikings blitter exposes shaded and
+ * unshaded `PrintBob` paths but not which records pick which) — this name-pinned exemption is the
+ * measured boundary, an APPROXIMATION beyond it.
+ */
+const UNSHADED_LANDSCAPE_TYPES: ReadonlySet<string> = new Set(['tree', 'tree falling']);
+
+/**
+ * The logicType ids whose objects stay full-bright ({@link UNSHADED_LANDSCAPE_TYPES}), resolved from
+ * the IR `[landscapetype]` table by NAME so no numeric id hardcodes. Pure; exported for unit tests.
+ */
+export function unshadedLogicTypeIds(landscape: ContentIr['landscape']): ReadonlySet<number> {
+  const ids = new Set<number>();
+  for (const t of landscape ?? []) {
+    if (t.typeId !== undefined && t.name !== undefined && UNSHADED_LANDSCAPE_TYPES.has(t.name)) {
+      ids.add(t.typeId);
+    }
+  }
+  return ids;
+}
 
 /**
  * Which `GfxFrames` state list a placement's 1-based `lmlv` LEVEL picks. The level counts what
@@ -89,6 +115,7 @@ export async function loadMapObjects(
   objects: MapObjectsData,
   ir: ContentIr,
   elevation?: ElevationField,
+  brightness?: BrightnessField,
 ): Promise<MapObjectSprite[]> {
   const recordByName = new Map<string, LandscapeGfxRow>();
   for (const row of ir.landscapeGfx ?? []) {
@@ -96,6 +123,8 @@ export async function loadMapObjects(
       recordByName.set(row.editName, row);
     }
   }
+  // The logicType ids whose objects stay full-bright (trees — the measured exemption).
+  const unshadedLogicTypes = unshadedLogicTypeIds(ir.landscape);
   // Resolve each used type once: its record, atlas layer, frame list and decor split.
   const layerKeys = new Set<string>();
   for (const type of objects.types) {
@@ -116,6 +145,8 @@ export async function loadMapObjects(
     readonly frames: MapObjectSprite['frames'];
     readonly decor: boolean;
     readonly alpha: number;
+    /** False for the tree logic types (the measured full-bright exemption — {@link UNSHADED_LANDSCAPE_TYPES}). */
+    readonly shaded: boolean;
   }
   // One ResolvedType per (type, state list) — index [typeIndex][stateIndex]; empty lists collapse
   // to null so a placement whose state resolves nothing falls back to state 0 below.
@@ -138,6 +169,7 @@ export async function loadMapObjects(
         // `GfxDynamicBackground` (exactly the wave records) = the engine's translucent blit over the
         // water ground; the 50% is our reading of that blend (source basis).
         alpha: record.dynamicBackground === true ? WAVE_ALPHA : 1,
+        shaded: record.logicType === undefined || !unshadedLogicTypes.has(record.logicType),
       };
     });
   });
@@ -160,6 +192,10 @@ export async function loadMapObjects(
     // The `emla` half-cell maps to cell coordinate (hx/2, hy/2) — the sampler input. The lift is the
     // DRAW offset only; `y` (the feet anchor + depth key) stays pre-lift so objects occlude by map row.
     const lift = elevation?.liftAt(hx / 2, hy / 2) ?? 0;
+    // The baked `embr` multiplier at the anchor cell — the original shades landscape-object pixels
+    // with the ground's plane (measured: mines/stones/grass track it; trees stay full-bright, so the
+    // tree logic types omit the field — source basis "brightness").
+    const shade = brightness?.shaded && type.shaded ? brightness : undefined;
     out.push({
       x: screen.x,
       y: screen.y,
@@ -177,6 +213,7 @@ export async function loadMapObjects(
       // looping bobs (waves, swaying trees/fire).
       phase: hx + hy,
       alpha: type.alpha,
+      ...(shade !== undefined ? { brightness: shade.brightnessAt(hx / 2, hy / 2) } : {}),
     });
   }
   if (skipped > 0) {

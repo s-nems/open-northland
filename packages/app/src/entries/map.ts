@@ -5,6 +5,7 @@ import {
   WorldRenderer,
   buildSpriteScene,
   createWindowPixiApp,
+  makeBrightnessField,
   makeElevationField,
   setTilePitch,
 } from '@vinland/render';
@@ -78,6 +79,10 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // builds its own from the terrain grid for the ground mesh + entity lift; this shared instance lifts
   // the map objects at load and drives elevation-aware picking (worldToTile) below.
   const elevation = makeElevationField(loaded?.elevation, loaded?.width ?? 0, loaded?.height ?? 0);
+  // The decoded map's baked `embr` shading field (neutral when the map lacks the lane). The renderer
+  // builds its own for the ground mesh; this shared instance shades the placed landscape objects at
+  // load (mines/stones/grass track the lane in the original; trees stay full-bright — see objects.ts).
+  const brightness = makeBrightnessField(loaded?.brightness, loaded?.width ?? 0, loaded?.height ?? 0);
   // Real decoded graphics are the DEFAULT (see resolveSpriteSheet): absent or `?atlas=real` draws the real
   // atlases (gitignored content over the /bobs server), degrading to synthetic markers when content/ is
   // missing. `?atlas=synthetic` forces the free markers; `?atlas=none` draws placeholder geometry. Shared
@@ -112,7 +117,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // The catch keeps a partial content/ (e.g. a missing atlas PNG) a degradation, not an app crash.
   if (wantObjects && loaded?.objects !== undefined && ir !== null) {
     try {
-      renderer.setMapObjects(await loadMapObjects(loaded.objects, ir, elevation));
+      renderer.setMapObjects(await loadMapObjects(loaded.objects, ir, elevation, brightness));
     } catch (err) {
       console.warn(`map objects unavailable, bare ground fallback: ${String(err)}`);
     }

@@ -7,7 +7,7 @@ import {
   buildingBobRefsByType,
   constructionRefsByType,
 } from '../src/content/building-gfx.js';
-import { stateIndexForLevel } from '../src/content/objects.js';
+import { stateIndexForLevel, unshadedLogicTypeIds } from '../src/content/objects.js';
 import {
   ADULT_CHARACTER_BY_JOB,
   CHARACTER_SPECS,
@@ -762,5 +762,23 @@ describe('stateIndexForLevel — the lmlv level → GfxFrames state-list index',
     expect(stateIndexForLevel(100, 5)).toBe(0);
     expect(stateIndexForLevel(0, 3)).toBe(0);
     expect(stateIndexForLevel(4, 3)).toBe(0);
+  });
+});
+
+describe('unshadedLogicTypeIds — the tree full-bright exemption resolves by NAME', () => {
+  it('collects exactly the tree logic-type ids from the IR landscape table', () => {
+    const ids = unshadedLogicTypeIds([
+      { typeId: 1, name: 'void' },
+      { typeId: 4, name: 'tree' },
+      { typeId: 5, name: 'tree falling' },
+      { typeId: 6, name: 'trunk' }, // a felled trunk lies ON the ground — shaded like stones
+      { typeId: 15, name: 'stones' },
+    ]);
+    expect([...ids].sort((a, b) => a - b)).toEqual([4, 5]);
+  });
+
+  it('is empty for an absent/nameless table (every object then shades — the safe default)', () => {
+    expect(unshadedLogicTypeIds(undefined).size).toBe(0);
+    expect(unshadedLogicTypeIds([{ typeId: 4 }]).size).toBe(0);
   });
 });

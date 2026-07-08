@@ -1,6 +1,7 @@
 import { Container, Mesh, Sprite } from 'pixi.js';
 import { TILE_HALF_W, depthKey } from '../../data/iso.js';
 import { type Viewport, aabbIntersects, isVisible } from '../../data/viewport.js';
+import { scaleColour } from '../terrain/chunk-batcher.js';
 import { TERRAIN_CHUNK_TILES } from '../terrain/index.js';
 import type { TextureCache } from '../texture-cache.js';
 import { type DecorChunk, buildDecorChunk, writeObjectQuad } from './decor-batch.js';
@@ -186,6 +187,10 @@ export class MapObjectLayer {
           po.sprite.alpha = obj.alpha;
           po.sprite.scale.set(obj.scale);
           po.sprite.zIndex = depthKey(obj.x, obj.y); // static — set once
+          // Baked-shading multiplier as a grey tint (stones on a dark slope darken with the ground).
+          // A batch tint cannot brighten, so the lane's >1 half clamps at ×1 — a named approximation
+          // (see MapObjectSprite.brightness); the app omits the field for the full-bright kinds (trees).
+          if (obj.brightness !== undefined) po.sprite.tint = scaleColour(0xffffff, obj.brightness);
         }
         if (!po.attached || (animAdvanced && obj.frames.length > 1)) {
           const frame = objectFrameAt(obj, tick);
@@ -211,7 +216,12 @@ export class MapObjectLayer {
   destroy(): void {
     for (const chunk of this.decorChunks) {
       for (const child of chunk.container.children) {
-        if (child instanceof Mesh) child.geometry.destroy();
+        if (child instanceof Mesh) {
+          child.geometry.destroy();
+          // A shaded decor mesh owns a per-mesh Shader (custom shaders aren't freed by Mesh.destroy;
+          // the compiled GL program is shared process-wide and deliberately kept).
+          child.shader?.destroy();
+        }
       }
       chunk.container.destroy({ children: true });
     }

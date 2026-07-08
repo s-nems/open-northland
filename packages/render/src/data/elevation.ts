@@ -1,7 +1,11 @@
+import { diamondCornerSamples, makeCellSampler } from './cell-field.js';
+
 /**
  * The ONE terrain-elevation seam: a pure, immutable height field with a single bilinear sampler every
  * render consumer goes through (the terrain mesh, map objects, entity sprites, the cull pad, picking).
- * No Pixi, no canvas — plain math, unit-tested headlessly like the rest of `render`'s data layer.
+ * The bilinear+clamp core and the watertight diamond-corner coordinates are shared with the brightness
+ * lane (`cell-field.ts`) so lift and shading sample identically. No Pixi, no canvas — plain math,
+ * unit-tested headlessly like the rest of `render`'s data layer.
  *
  * The map's `lmhe` lane is a per-CELL height (0..~250 observed corpus-wide, `content/maps/<id>.json` `elevation`). The
  * original lifts the projected world UP by a fixed factor per unit — screen_y = projected_y − LIFT·elev
@@ -68,57 +72,23 @@ export function makeElevationField(
   for (const e of elevation) if (e > maxElev) maxElev = e;
   const maxLift = maxElev * ELEVATION_LIFT;
 
-  // Clamp-to-edge integer lookup: a sample past an edge repeats the boundary cell (no wrap, no OOB).
-  const at = (col: number, row: number): number => {
-    const c = col < 0 ? 0 : col >= width ? width - 1 : col;
-    const r = row < 0 ? 0 : row >= height ? height - 1 : row;
-    return elevation[r * width + c] ?? 0;
-  };
-
+  const sample = makeCellSampler(elevation, width, height);
   return {
     maxLift,
-    liftAt(col: number, row: number): number {
-      const c0 = Math.floor(col);
-      const r0 = Math.floor(row);
-      const tx = col - c0;
-      const ty = row - r0;
-      const e00 = at(c0, r0);
-      const e10 = at(c0 + 1, r0);
-      const e01 = at(c0, r0 + 1);
-      const e11 = at(c0 + 1, r0 + 1);
-      const top = e00 + (e10 - e00) * tx;
-      const bot = e01 + (e11 - e01) * tx;
-      return (top + (bot - top) * ty) * ELEVATION_LIFT;
-    },
+    liftAt: (col: number, row: number): number => sample(col, row) * ELEVATION_LIFT,
   };
 }
 
 /**
  * The four diamond-corner lifts `[top, right, bottom, left]` (world px) for terrain cell `(col, row)`,
- * for baking into the ground mesh. Each corner sits BETWEEN cell centres and is SHARED by up to four
- * diamonds; the lift must be identical from every sharing cell or the mesh cracks. It is, because each
- * corner is sampled at a CANONICAL continuous cell coordinate that is a pure function of the corner's
- * position in the staggered raster, not of which cell references it:
- *
- *   a vertex at raster lattice `(X, Y)` (cell centres have `X = 2·col + (row&1)`, `Y = row`) maps to
- *   `(col, row) = ((X − (Y&1))/2, Y)` — so a shared corner resolves to the SAME `(col, row)` (hence the
- *   same bilinear sample) from either owner. Worked per corner of `(col, row)` with `s = row&1`:
- *     top    → ({@link liftAt} at col+s−0.5, row−1)   bottom → (col+s−0.5, row+1)
- *     right  → (col+0.5, row)                          left   → (col−0.5, row)
- *
- * At an integer row the bilinear degenerates to a linear blend of the two cells straddling the corner —
- * a smooth, watertight height field. Pure.
+ * for baking into the ground mesh — {@link diamondCornerSamples} over the lift sampler, so a corner
+ * SHARED by up to four diamonds lifts identically from every owner and the mesh stays crack-free (the
+ * canonical-coordinate argument lives with the shared corner math in `cell-field.ts`). Pure.
  */
 export function diamondCornerLifts(
   field: ElevationField,
   col: number,
   row: number,
 ): [number, number, number, number] {
-  const s = row & 1;
-  return [
-    field.liftAt(col + s - 0.5, row - 1), // top
-    field.liftAt(col + 0.5, row), // right
-    field.liftAt(col + s - 0.5, row + 1), // bottom
-    field.liftAt(col - 0.5, row), // left
-  ];
+  return diamondCornerSamples((c, r) => field.liftAt(c, r), col, row);
 }

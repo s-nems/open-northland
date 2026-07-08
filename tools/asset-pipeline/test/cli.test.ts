@@ -993,11 +993,39 @@ describe('mapDatToTerrain', () => {
     warn.mockRestore();
   });
 
-  it('omits ground/objects/elevation when the map lacks the lanes (an lmlt-only save)', () => {
+  it('emits the per-cell brightness lane from embr (baked shading, carried verbatim)', () => {
+    // Like lmhe, embr is PER CELL — exactly width·height values. 127 = neutral, 0 = the border
+    // fade-to-black, >127 = baked slope light; all carried through untouched (the response curve is
+    // render-side).
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 2, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0])) },
+      { tag: 'embr', version: 1, payload: packMapLayer(Uint8Array.from([0, 200])) },
+    ]);
+    const terrain = mapDatToTerrain(bytes);
+    expect(terrain.brightness).toEqual([0, 200]);
+  });
+
+  it('degrades a wrong-sized embr lane to a grid-only artifact (warn, keep the nav grid)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0])) },
+      { tag: 'embr', version: 1, payload: packMapLayer(Uint8Array.from([5, 5, 5, 5])) },
+    ]);
+    const terrain = mapDatToTerrain(bytes);
+    expect(terrain.typeIds).toEqual([1]); // the nav grid survives
+    expect(terrain.brightness).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/brightness lane unreadable.*expected 1/));
+    warn.mockRestore();
+  });
+
+  it('omits ground/objects/elevation/brightness when the map lacks the lanes (an lmlt-only save)', () => {
     const terrain = mapDatToTerrain(buildMapDat(1, 1, [2, 2, 2, 2]));
     expect(terrain.ground).toBeUndefined();
     expect(terrain.objects).toBeUndefined();
     expect(terrain.elevation).toBeUndefined();
+    expect(terrain.brightness).toBeUndefined();
   });
 
   it('degrades a corrupt render lane to a grid-only artifact (warn, keep the nav grid)', () => {

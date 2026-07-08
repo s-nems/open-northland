@@ -25,7 +25,7 @@ Three conventions that keep the relay honest across fresh instances:
 
 - [x] 1. Pipeline: emit the `lmhe` elevation lane
 - [x] 2. Render: elevation lift across every projection consumer
-- [ ] 3. Pipeline+render: the `embr` brightness lane (slope shading + likely the map-edge fade)
+- [x] 3. Pipeline+render: the `embr` brightness lane (slope shading + likely the map-edge fade)
 - [ ] 4. App: authored buildings draw their authored `EditName` variant (the HQ bob-44 fix)
 - [ ] 5. App: palisades/walls join into continuous runs
 - [ ] 6. Building animations (mill sails & friends)
@@ -64,51 +64,6 @@ gitignored.
   (`npm run pipeline -- --game "../Cultures 8th Wonder" --mod DataCnmd --out content`) touches
   only the worktree's copy; if outputs changed, regenerate the primary checkout's `content/`
   after merge. Never commit any of it.
-
----
-
-## Step 3 — pipeline+render: the `embr` brightness lane
-
-The original's slope/relief look is almost certainly the **`embr` map lane** (per-cell u8,
-~127-centred — a baked brightness/shading plane, docs/SOURCES.md). Strong secondary hypothesis:
-the smooth fade-to-black at the map border seen across all 7 corpus shots is ALSO baked into
-`embr` (falling values near the edge). If confirmed, one lane closes both the "rocky terrain reads
-flat/different" report and the ugly sawtooth map edge.
-
-### Prompt 3
-
-```text
-Decode and render the map.dat `embr` brightness lane: emit it from the pipeline as an optional
-`brightness` lane in content/maps/<id>.json (per-cell u8, ~127-centred; same carry-through
-pattern as `elevation` — see stages/maps.ts + the TerrainMapFile schema refines), and multiply it
-into the terrain render as per-vertex colour.
-
-Investigate FIRST, implement second:
-1. Dump `embr` for specjalna_mosty_na_rzece: overall histogram; values along the top edge (rows
-   0..4) and left/right edges — does it fall toward 0 at the border (the corpus shots all fade to
-   black over the last ~1–2 rows)? Values across the rocky hill (cols ~150..175, rows ~5..30) —
-   does the lit/shadow slope pattern appear?
-2. Pin the response curve against the corpus: the mosty-5 viewport mapping is in
-   docs/plans/map-visual-fidelity.md "Shared verification kit"; sample aligned pixel pairs
-   (original vs our flat render) over textured ground and regress luminance ratio vs embr —
-   expect something near ratio = embr/127, but MEASURE it (report the fit + residuals). Record
-   the pinned curve in plan progress note (calibration-by-observation) — the ground row.
-3. Check whether OBJECTS/buildings are shaded too: compare a tree standing on a dark slope vs one
-   on lit ground in the corpus. If objects are shaded, apply the same multiplier to map-object
-   sprites/batches (tint) and building/settler sprites at their anchor cell; if not, terrain only.
-   Either way record the finding.
-4. Implementation: per-vertex colour on the terrain mesh (corner = bilinear embr sample, like the
-   elevation lift from step 2 — share the sampler seam), baked at mesh build; Pixi mesh colour or
-   vertex-colour attribute — keep batching intact (packages/render/AGENTS.md; no per-sprite
-   filters). If the border fade is NOT in embr, measure the falloff (width in rows + curve) from
-   the corpus top edges and implement it as an explicit border multiplier — record it as
-   approximated (engine-side, not map data) in plan progress note.
-
-Verification: unit tests for the sampler/curve mapping; the mosty-5 side-by-side (rock hill
-shading + the top-edge fade should now match; the sawtooth silhouette should disappear into
-black); also eyeball mosty-1 (map corner) and mosty-7 (right edge). Show the user. Update
-SOURCES ("Remaining"), plan progress note, plan. Stop before merge.
-```
 
 ---
 
@@ -381,6 +336,25 @@ closing. Stop before merge.
 
 Format: `N. <date> — <what landed>; <key numbers/findings>; <deviations from the prompt, if any>.`
 
+- 3. 2026-07-08 — `embr` landed end-to-end: pipeline emits it as the optional per-cell `brightness`
+  lane (`stages/maps.ts` `brightnessFromMapDat`, all 125 emitted maps carry it; schema refine in
+  `@vinland/data`), and the ground shades by it per FRAGMENT — the lane rides as an R8 texture the
+  shaded mesh shader samples at canonical-cell-coordinate UVs (`render/gpu/terrain/shaded-mesh.ts`;
+  rows padded to UNPACK_ALIGNMENT 4). Response curve MEASURED vs mosty-5: luminance × embr/127 (fit
+  1/slope=127.3, intercept −0.06 over 50 aligned ground cells; border embr=0 is literally black in
+  the corpus, values >127 brighten up to ≈2× so the multiplier is unclamped). The border fade IS the
+  lane (outer 2–3 rows/cols = 0); canvas clear went 0x1a1410→black so the faded edge dissolves like
+  the original (sawtooth gone). Geometry: each ground triangle splits at the cell CENTRE (extra
+  vertex carrying the cell's own lift+coordinate — corner-only interpolation measurably flattened
+  per-cell shading, 0.84 vs expected 0.43 at embr 55). OBJECTS: measured mixed — mine decals, stones
+  and grass track the lane (masked opaque-pixel ratio ×0.58→×1.58) and now shade by their anchor
+  cell (decor quads per-vertex full-range; tall sprites via tint, which CLAMPS >1 — named
+  approximation), while TREES stay full-bright even on embr=0 cells (n=118 canopies) — tree logic
+  types exempt by name (`app/content/objects.ts`); buildings/settlers unmeasured (base ≈ neutral),
+  left unshaded. Deviation from the prompt: per-vertex colour was implemented, measured insufficient,
+  and replaced by the per-fragment lane texture. Verified: side-by-sides vs mosty-5 (edge fade +
+  rock-hill relief match; fade profile numerically matches the original within ~¼ row); gates green;
+  real pipeline run. Owner's pixel sign-off PENDING (this handoff).
 - 2. 2026-07-05 — elevation lift landed render-side: `screen_y = projected_y − LIFT·elev`,
   `LIFT = 1.547/1.25 = 1.2376` native px/unit (`render/data/elevation.ts` `ELEVATION_LIFT`). ONE
   bilinear sampler seam (`makeElevationField().liftAt`, edge-clamped) feeds every consumer: the ground
