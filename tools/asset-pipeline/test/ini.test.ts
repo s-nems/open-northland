@@ -30,11 +30,13 @@ import {
   extractPatterns,
   extractSounds,
   extractStaticObjects,
+  extractStringTable,
   extractTrianglePatternTypes,
   extractTribes,
   extractVehicles,
   extractWeapons,
   fillBuildingRecipes,
+  latin1ToCp1250,
   parseIniSections,
 } from '../src/decoders/ini.js';
 
@@ -3073,5 +3075,49 @@ describe('extractSounds (soundfx.cif)', () => {
       ambient: [],
       jingles: [],
     });
+  });
+});
+
+describe('extractStringTable', () => {
+  it('walks stringn (explicit id) and bare string (auto-increment) into { id: text }', () => {
+    const table = extractStringTable(
+      parseIniSections('[text]\nstringn 5 "Five"\nstring "Six"\nstringn 0 "Zero"\nstring "One"\n'),
+    );
+    expect(table).toEqual({ 5: 'Five', 6: 'Six', 0: 'Zero', 1: 'One' });
+  });
+
+  it('scales ids by the [control] stringidmultiplier', () => {
+    const table = extractStringTable(
+      parseIniSections('[control]\nstringidmultiplier 10\n[text]\nstringn 2 "Twenty"\n'),
+    );
+    expect(table).toEqual({ 20: 'Twenty' });
+  });
+
+  it('drops only a malformed stringn line, not the bare strings that follow it', () => {
+    // A non-numeric `stringn` id must NOT poison the running id — the following bare `string`
+    // still lands on the id set by the last VALID `stringn`.
+    const table = extractStringTable(
+      parseIniSections('[text]\nstringn 3 "Three"\nstringn zz "Bad"\nstring "Four"\n'),
+    );
+    expect(table).toEqual({ 3: 'Three', 4: 'Four' });
+  });
+
+  it('yields an empty table for sections without a [text] block', () => {
+    expect(extractStringTable(parseIniSections('[control]\nstringidmultiplier 1\n'))).toEqual({});
+    expect(extractStringTable([])).toEqual({});
+  });
+
+  it('keeps CP1250 text intact through the readable-.ini seam (decodeIni)', () => {
+    // "BŁĘKITNY" as CP1250 bytes (Ł=0xA3, Ę=0xCA) — the real map strings.ini codepage.
+    const bytes = Uint8Array.from('[text]\nstringn 0 "B\xa3\xcaKITNY"\n', (c) => c.charCodeAt(0) & 0xff);
+    const table = extractStringTable(parseIniSections(decodeIni(bytes)));
+    expect(table[0]).toBe('BŁĘKITNY');
+  });
+});
+
+describe('latin1ToCp1250', () => {
+  it('re-decodes an oracle-faithful latin1 string as CP1250 display text', () => {
+    // 0xB3 is ³ in latin1 but ł in CP1250 — the .cif seam decodes latin1, display needs CP1250.
+    expect(latin1ToCp1250('B\xb3\xeakitny')).toBe('Błękitny');
   });
 });

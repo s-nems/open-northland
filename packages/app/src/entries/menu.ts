@@ -10,8 +10,9 @@ import { el, pageInnerStyle, pageRootStyle, pageSection } from '../view/overlay.
  *
  * The scene list is the SCENES registry itself, so adding an acceptance scene automatically adds its
  * menu card (title + summary) — the same single-source-of-truth `?scene=<id>` links the scene test and
- * the browser share. The map list is fetched from the dev server's `/maps-index` route (the gitignored
- * `content/maps/*.json` stems); absent `content/` simply shows a hint instead of map cards.
+ * the browser share. The map list is fetched from the dev server's `/maps-index` route (one entry per
+ * gitignored `content/maps/<id>.json`, joined with the pipeline's optional name/description/minimap
+ * sidecars — see {@link MapIndexEntry}); absent `content/` simply shows a hint instead of map cards.
  */
 
 /** The menu's page-shell knobs (shared shell in view/overlay.ts). */
@@ -40,9 +41,30 @@ const CARD_STYLE = [
   'font:inherit',
 ].join(';');
 
+/**
+ * The map cards' minimap thumbnail. The decoded originals are cropped to the real map pixels (the
+ * pipeline keys out the 350×160 canvas' magenta filler), so aspect ratios vary per map — a fixed
+ * card-wide box with `contain` keeps the grid rows even and letterboxes on the card background.
+ */
+const THUMB_STYLE = [
+  'display:block',
+  'width:100%',
+  'aspect-ratio:350/160',
+  'object-fit:contain',
+  'border-radius:5px',
+  'background:#1c1610',
+].join(';');
+
 /** A clickable card that navigates the page to `search` (e.g. `?scene=sandbox`) on click. */
-function card(title: string, subtitle: string, search: string): HTMLButtonElement {
+function card(title: string, subtitle: string, search: string, thumbnail?: string): HTMLButtonElement {
   const b = el('button', CARD_STYLE);
+  if (thumbnail !== undefined) {
+    const img = el('img', THUMB_STYLE);
+    img.src = thumbnail;
+    img.alt = ''; // decorative — the card's title names the map
+    img.loading = 'lazy'; // dozens of maps; fetch thumbnails as they scroll in
+    b.append(img);
+  }
   b.append(
     el('span', 'font-weight:700;font-size:15px', title),
     el('span', 'opacity:0.78;font-size:13px;line-height:1.4', subtitle),
@@ -68,13 +90,47 @@ function section(title: string, cards: readonly HTMLElement[]): HTMLElement {
   return pageSection(title, [grid]);
 }
 
-/** The decoded-map stems the dev server exposes at `/maps-index` (gitignored `content/maps/*.json`). */
-async function loadMapList(): Promise<readonly string[]> {
+/**
+ * One `/maps-index` entry: a decoded map's stem id plus the pipeline's optional menu sidecars — the
+ * original's display name/description (the map folder's `text/<lang>/strings.*`) and whether a decoded
+ * minimap thumbnail is served at `/maps/<id>.png`. Fields degrade per map: a sidecar-less map is just
+ * its id (the card then shows the stem + a generic subtitle, like before the sidecars existed).
+ */
+export interface MapIndexEntry {
+  readonly id: string;
+  readonly name?: string;
+  readonly description?: string;
+  readonly minimap: boolean;
+}
+
+/**
+ * Narrows the `/maps-index` response (unknown JSON) to the entries the menu can render. Per-entry
+ * tolerant: anything without a string `id` is dropped; wrong-typed optional fields are ignored rather
+ * than dropping the map. Exported for the headless unit test.
+ */
+export function parseMapsIndex(data: unknown): readonly MapIndexEntry[] {
+  if (!Array.isArray(data)) return [];
+  const entries: MapIndexEntry[] = [];
+  for (const item of data) {
+    if (typeof item !== 'object' || item === null) continue;
+    const { id, name, description, minimap } = item as Record<string, unknown>;
+    if (typeof id !== 'string' || id === '') continue;
+    entries.push({
+      id,
+      ...(typeof name === 'string' ? { name } : {}),
+      ...(typeof description === 'string' ? { description } : {}),
+      minimap: minimap === true,
+    });
+  }
+  return entries;
+}
+
+/** The decoded-map list the dev server exposes at `/maps-index` (gitignored `content/maps/*`). */
+async function loadMapList(): Promise<readonly MapIndexEntry[]> {
   try {
     const res = await fetch('/maps-index');
     if (!res.ok) return [];
-    const data: unknown = await res.json();
-    return Array.isArray(data) ? data.filter((x): x is string => typeof x === 'string') : [];
+    return parseMapsIndex(await res.json());
   } catch {
     return [];
   }
@@ -128,12 +184,13 @@ export async function renderMenu(_canvas: HTMLCanvasElement, _params: URLSearchP
     return;
   }
   const grid = el('div', GRID_STYLE);
-  for (const stem of maps) {
+  for (const map of maps) {
     grid.append(
       card(
-        stem,
-        'Oryginalna mapa: teren 1:1 + obiekty (drzewa, kamienie, fale).',
-        `?map=${encodeURIComponent(stem)}`,
+        map.name ?? map.id,
+        map.description ?? 'Oryginalna mapa: teren 1:1 + obiekty (drzewa, kamienie, fale).',
+        `?map=${encodeURIComponent(map.id)}`,
+        map.minimap ? `/maps/${encodeURIComponent(map.id)}.png` : undefined,
       ),
     );
   }

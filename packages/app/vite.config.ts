@@ -1,5 +1,5 @@
-import { createReadStream, existsSync, readdirSync } from 'node:fs';
-import { dirname, normalize, resolve, sep } from 'node:path';
+import { createReadStream, existsSync, readFileSync, readdirSync } from 'node:fs';
+import { dirname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type Plugin, defineConfig } from 'vite';
 
@@ -9,9 +9,10 @@ import { type Plugin, defineConfig } from 'vite';
 const here = dirname(fileURLToPath(import.meta.url));
 // The decoded `content/maps/<id>.json` grids live at the repo root (gitignored; generated from an
 // owned game copy). They sit OUTSIDE the app's vite root, so a dev-server middleware bridges them in
-// at `/maps/<id>.json` for the browser `loadTerrainMap` fetch. Path traversal is rejected (the
-// resolved file must stay under `content/maps`), so `?map=` can only reach a real map grid, never an
-// arbitrary file. Both `npm run dev` and the shot harness boot this same root, so both can `?map=`.
+// at `/maps/<id>.json` for the browser `loadTerrainMap` fetch — and `/maps/<id>.png` for the menu's
+// minimap thumbnails. Path traversal is rejected (the resolved file must stay under `content/maps`),
+// so `?map=` can only reach a real map grid, never an arbitrary file. Both `npm run dev` and the shot
+// harness boot this same root, so both can `?map=`.
 const mapsRoot = resolve(here, '../../content/maps');
 // Decoded bob atlases (`<name>.png` + `<name>.atlas.json`) the `.bmd`→atlas pipeline emits. Like the
 // maps, they are gitignored (decoded from an owned game copy) and sit outside the app's vite root, so a
@@ -39,11 +40,13 @@ const irFile = resolve(here, '../../content/ir.json');
 // others: gitignored, outside the vite root, traversal rejected, and only `.json`/`.png`/`.cur` served.
 const guiRoot = resolve(here, '../../content/gui');
 
-// The MENU (entries/menu.ts) lists the decoded maps as clickable cards; it reads their stems from this
-// route — the `.json` filenames under `content/maps` (minus the extension), sorted. Absent `content/`
-// returns nothing (the middleware falls through to Vite's 404), so the menu shows a "run the pipeline"
-// hint instead of map cards. Only names a directory listing, never file bytes — the `/maps` route above
-// serves the grids themselves (with traversal rejected).
+// The MENU (entries/menu.ts) lists the decoded maps as clickable cards; it reads them from this route —
+// one entry per `content/maps/<id>.json` grid (sorted), each joined with the pipeline's optional menu
+// sidecars: the `<id>.meta.json` display name/description and whether an `<id>.png` minimap exists
+// (both served by the `/maps` route above, with traversal rejected). Absent `content/` returns nothing
+// (the middleware falls through to Vite's 404), so the menu shows a "run the pipeline" hint instead of
+// map cards. A malformed/missing sidecar degrades that one entry to its bare id — the card renders like
+// a sidecar-less map, never breaks the list.
 function serveMapsIndex(): Plugin {
   return {
     name: 'vinland-serve-maps-index',
@@ -53,12 +56,26 @@ function serveMapsIndex(): Plugin {
           next();
           return;
         }
-        const stems = readdirSync(mapsRoot)
-          .filter((f) => f.endsWith('.json'))
+        const entries = readdirSync(mapsRoot)
+          .filter((f) => f.endsWith('.json') && !f.endsWith('.meta.json'))
           .map((f) => f.slice(0, -'.json'.length))
-          .sort();
+          .sort()
+          .map((id) => {
+            let meta: { name?: unknown; description?: unknown } = {};
+            try {
+              meta = JSON.parse(readFileSync(join(mapsRoot, `${id}.meta.json`), 'utf8')) as typeof meta;
+            } catch {
+              // no sidecar (or malformed) — the entry keeps its bare id
+            }
+            return {
+              id,
+              ...(typeof meta.name === 'string' ? { name: meta.name } : {}),
+              ...(typeof meta.description === 'string' ? { description: meta.description } : {}),
+              minimap: existsSync(join(mapsRoot, `${id}.png`)),
+            };
+          });
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify(stems));
+        res.end(JSON.stringify(entries));
       });
     },
   };
@@ -71,11 +88,13 @@ function serveContentMaps(): Plugin {
       server.middlewares.use('/maps', (req, res, next) => {
         const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';
         const file = normalize(resolve(mapsRoot, rel));
-        if (!file.startsWith(mapsRoot + sep) || !file.endsWith('.json') || !existsSync(file)) {
+        const isJson = file.endsWith('.json');
+        const isPng = file.endsWith('.png'); // the pipeline's decoded minimap thumbnails
+        if (!file.startsWith(mapsRoot + sep) || (!isJson && !isPng) || !existsSync(file)) {
           next();
           return;
         }
-        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Type', isPng ? 'image/png' : 'application/json');
         createReadStream(file).pipe(res);
       });
     },
