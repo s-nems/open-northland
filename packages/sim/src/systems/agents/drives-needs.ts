@@ -1,0 +1,129 @@
+import { type Fixed, fx } from '../../core/fixed.js';
+import type { Entity, World } from '../../ecs/world.js';
+import type { CellId, TerrainGraph } from '../../nav/terrain.js';
+import type { SystemContext } from '../context.js';
+import { atomicDuration } from '../readviews/animations.js';
+import { isFood } from '../stores.js';
+import { EAT_ATOMIC_ID, PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, atOrWalk, startAtomic } from './actions.js';
+import { type TargetCandidates, interactionCell, nearestFoodStore, nearestTemple } from './ai-targets.js';
+
+// The NEEDS drives — the highest-priority rungs of the planner ladder (a starving operator leaves
+// its workplace to feed rather than work itself to death). Order inside planNeeds is part of the
+// design: eat > sleep > pray (survival outranks rest outranks devotion), and an unsatisfiable need
+// FALLS THROUGH to normal work (the need stays clamped at ONE) rather than freezing the settler.
+
+/**
+ * Hunger level (fixed-point, in [0, ONE]) at or above which a settler stops working to eat. Set to
+ * ¾ of a full bar: a settler works most of the way up the hunger bar, then seeks food before it
+ * pins at ONE. APPROXIMATED (see source basis): the original drives eating off the per-animation
+ * hunger events (`event 30 2 <delta>` against a ~10000-scale bar) with no single readable "go eat at
+ * X" threshold; this constant is the slice's deterministic eat trigger until that vocabulary is
+ * decoded and calibration-by-observation pins the real cadence.
+ */
+const HUNGER_EAT_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
+
+/**
+ * Fatigue level (fixed-point, in [0, ONE]) at or above which a settler stops working to sleep. Set to
+ * ¾ of a full bar, mirroring {@link HUNGER_EAT_THRESHOLD}: a settler works most of the way up the
+ * fatigue bar, then rests before it pins at ONE. APPROXIMATED (see source basis): like the eat
+ * trigger, the original drives sleeping off the per-animation rest events (`event <at> 1 <delta>`)
+ * with no single readable "sleep at X" threshold; this constant is the slice's deterministic sleep
+ * trigger until that vocabulary is decoded and calibration-by-observation pins the real cadence.
+ */
+const FATIGUE_SLEEP_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
+
+/**
+ * Piety level (fixed-point, in [0, ONE]) at or above which a settler stops working to pray, mirroring
+ * {@link HUNGER_EAT_THRESHOLD}/{@link FATIGUE_SLEEP_THRESHOLD} at ¾ of a full bar. APPROXIMATED (see
+ * source basis): like the eat/sleep triggers, the original drives praying off the per-animation
+ * devotion events with no single readable "pray at X" threshold; this constant is the slice's
+ * deterministic pray trigger until that vocabulary is decoded and calibration-by-observation lands.
+ */
+const PIETY_PRAY_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
+
+/**
+ * Run the needs ladder for one idle settler. Returns `true` when a drive acted (started an atomic or
+ * set a walk goal — the settler is spoken for this tick), `false` when every need is either below its
+ * threshold or unsatisfiable (no food anywhere, no temple) — the caller then falls through to combat
+ * gates and economy work, with the unsatisfied bar staying clamped at ONE.
+ *
+ *  - **EAT** (highest): eat a carried edible on the spot, else walk to / eat at the nearest store
+ *    holding food ({@link nearestFoodStore}).
+ *  - **SLEEP** (below eat — a starving settler eats before it can rest): sleep IN PLACE (the
+ *    housing/home sleep target is a later slice; see source basis).
+ *  - **PRAY** (below eat + sleep — survival outranks devotion): the first **target-bound** need —
+ *    walk to the nearest temple and pray on it ({@link nearestTemple}).
+ */
+export function planNeeds(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  settler: { tribe: number; jobType: number | null; hunger: Fixed; fatigue: Fixed; piety: Fixed },
+  here: CellId,
+  load: { goodType: number; amount: number } | undefined,
+  targets: TargetCandidates,
+): boolean {
+  if (settler.hunger >= HUNGER_EAT_THRESHOLD) {
+    if (load !== undefined && load.amount > 0 && isFood(ctx, load.goodType)) {
+      // Carrying food: eat a unit on the spot (consumed from the carried load).
+      startAtomic(
+        world,
+        e,
+        EAT_ATOMIC_ID,
+        { kind: 'eat', goodType: load.goodType, from: null },
+        atomicDuration(ctx.content, settler, EAT_ATOMIC_ID),
+        e,
+      );
+      return true;
+    }
+    const food = nearestFoodStore(targets.stockpiles, world, ctx, terrain, here);
+    if (food !== null) {
+      atOrWalk(world, e, here, interactionCell(world, ctx, terrain, food.store, here), () =>
+        startAtomic(
+          world,
+          e,
+          EAT_ATOMIC_ID,
+          { kind: 'eat', goodType: food.goodType, from: food.store },
+          atomicDuration(ctx.content, settler, EAT_ATOMIC_ID),
+          food.store,
+        ),
+      );
+      return true;
+    }
+    // Hungry but no food anywhere reachable: fall through to normal work (the needs loop keeps
+    // hunger clamped at ONE; a later slice handles starvation when food is truly absent).
+  }
+
+  if (settler.fatigue >= FATIGUE_SLEEP_THRESHOLD) {
+    startAtomic(
+      world,
+      e,
+      SLEEP_ATOMIC_ID,
+      { kind: 'sleep' },
+      atomicDuration(ctx.content, settler, SLEEP_ATOMIC_ID),
+      e,
+    );
+    return true;
+  }
+
+  if (settler.piety >= PIETY_PRAY_THRESHOLD) {
+    const temple = nearestTemple(targets.buildings, world, ctx, terrain, here);
+    if (temple !== null) {
+      atOrWalk(world, e, here, interactionCell(world, ctx, terrain, temple, here), () =>
+        startAtomic(
+          world,
+          e,
+          PRAY_ATOMIC_ID,
+          { kind: 'pray' },
+          atomicDuration(ctx.content, settler, PRAY_ATOMIC_ID),
+          temple,
+        ),
+      );
+      return true;
+    }
+    // Devout but no temple reachable: fall through to normal work (piety stays pinned at ONE).
+  }
+
+  return false;
+}
