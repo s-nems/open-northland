@@ -50,63 +50,16 @@ export function guiPaletteRow(name: GuiPaletteName): number {
 
 /** `loadLayer` stem of the whole-HUD bob sheet (tool panel, order buttons, window frames, bars). */
 export const GUI_WINDOW_STEM = 'ls_gui_window';
-/** `loadLayer` stem of the speech/thought-bubble bob sheet. */
-export const GUI_BUBBLES_STEM = 'ls_gui_bubbles';
 /** Path (relative to a `/bobs/` stem) of the recolourable indexed atlas: `<sheet>.indexed`. */
 export const INDEXED_GUI_SUFFIX = 'indexed';
 /** The `/bobs/` stem of the GUI palette LUT PNG. */
 export const GUI_PALETTE_LUT_STEM = 'gui-palettes-lut';
-
-/** One GUI bob atlas as the pipeline's `content/gui/manifest.json` records it. */
-export interface GuiAtlasEntry {
-  readonly stem: string;
-  /** `loadLayer` stem of the recolourable indexed atlas. */
-  readonly indexedStem: string;
-  /** `loadLayer` stem of the default-coloured RGBA preview. */
-  readonly previewStem: string;
-  readonly previewPalette: string;
-  readonly frames: number;
-}
-
-/** One decoded cursor as recorded in the manifest (paths are relative to `/gui/`). */
-export interface GuiCursorEntry {
-  readonly name: string;
-  readonly cur: string;
-  readonly png: string;
-  readonly hotspotX: number;
-  readonly hotspotY: number;
-  readonly width: number;
-  readonly height: number;
-}
-
-/** The pipeline's top-level GUI manifest (`content/gui/manifest.json`) — the app's index of every GUI output. */
-export interface GuiManifest {
-  readonly atlases: readonly GuiAtlasEntry[];
-  readonly paletteLut: { readonly stem: string; readonly names: readonly string[] };
-  readonly strings: { readonly languages: readonly string[]; readonly tables: readonly string[] };
-  readonly cursors: readonly GuiCursorEntry[];
-}
 
 /** One language's decoded UI strings: `{ <table>: { <id>: <text> } }` (CP1250-decoded by the pipeline). */
 export type GuiStrings = Record<string, Record<string, string>>;
 
 /** The served root for the GUI text/cursor assets (atlases + LUT ride `/bobs/`). */
 const GUI_ROOT = '/gui';
-
-/**
- * Load the top-level GUI manifest (`/gui/manifest.json`) — the single entry point that enumerates the
- * atlases, the palette LUT + its row names, the string languages/tables, and the cursors. Returns `null`
- * when the pipeline hasn't produced it (a checkout without `content/`), so a caller degrades gracefully.
- */
-export async function loadGuiManifest(): Promise<GuiManifest | null> {
-  try {
-    const res = await fetch(`${GUI_ROOT}/manifest.json`);
-    if (!res.ok) return null;
-    return (await res.json()) as GuiManifest;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * The recolourable INDEXED atlas of a GUI sheet (the whole-HUD window sheet / the speech-bubble sheet),
@@ -118,10 +71,6 @@ export async function loadGuiManifest(): Promise<GuiManifest | null> {
  */
 export function loadGuiWindowIndexed(): Promise<SpriteLayer> {
   return loadLayer(`${GUI_WINDOW_STEM}.${INDEXED_GUI_SUFFIX}`);
-}
-
-export function loadGuiBubblesIndexed(): Promise<SpriteLayer> {
-  return loadLayer(`${GUI_BUBBLES_STEM}.${INDEXED_GUI_SUFFIX}`);
 }
 
 /**

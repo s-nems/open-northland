@@ -3,7 +3,7 @@
  * ({@link import('./scene-overlay.js')}), the animation gallery panel
  * ({@link import('../entries/anim-overlay.js')}) and the main menu ({@link import('../entries/menu.js')}).
  * Plain DOM + floats, app-layer only (never in `sim`). Kept in ONE place so the panels can't drift in
- * look and an agent has an obvious home for panel helpers instead of re-declaring `el`/`button`/the
+ * look and an agent has an obvious home for panel helpers instead of re-declaring `el`/`navButton`/the
  * style strings per file.
  */
 
@@ -45,13 +45,6 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   node.style.cssText = style;
   if (text !== undefined) node.textContent = text;
   return node;
-}
-
-/** A parchment button wired to `onClick`. */
-export function button(label: string, onClick: () => void): HTMLButtonElement {
-  const b = el('button', BUTTON_STYLE, label);
-  b.addEventListener('click', onClick);
-  return b;
 }
 
 /**

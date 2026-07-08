@@ -20,8 +20,6 @@
 // provisional glyph-names (`order_*`); the exact command each maps to is still to be nailed down.
 import type { GuiPaletteName } from './gui-gfx.js';
 
-/** The GUI-window bob sheet these frames index (matches `GUI_WINDOW_STEM` in gui-gfx.ts). */
-export const GUI_ATLAS_STEM = 'ls_gui_window';
 /** Total bob count of `ls_gui_window.bmd` (decoded from the sheet; firstBobId=0 so ids are 0..192). */
 export const GUI_ATLAS_FRAME_COUNT = 193;
 

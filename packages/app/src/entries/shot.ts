@@ -8,6 +8,7 @@ import {
 } from '@vinland/render';
 import { loadHumanSpriteSheet, syntheticSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
+import { HUD_TRIBE } from '../game/rules.js';
 import { loadTerrainMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
 import { cameraFor } from '../view/camera.js';
 import { floatParam, intParam } from './params.js';
@@ -79,12 +80,12 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
   // the flat-tint ground drops the old per-cell grid outline (`buildFlatTerrain`), same as the textured path.
   const renderer = new WorldRenderer(app, { sheet });
   renderer.setTerrain(terrainGrid, terrain);
-  // Overlay the single-tribe (viking, tribe 1) HUD panel unless `?hud=0` (a clean sprite-inspection
+  // Overlay the single-tribe (viking) HUD panel unless `?hud=0` (a clean sprite-inspection
   // frame). Pass the sim's tick so the tick-driven animation draws the frame for this exact step.
   const hud =
     params.get('hud') !== '0'
       ? {
-          placement: placeHud(layoutHud(buildHud(snap, 1)), 'top-left', {
+          placement: placeHud(layoutHud(buildHud(snap, HUD_TRIBE)), 'top-left', {
             width: CANVAS_W,
             height: CANVAS_H,
           }),

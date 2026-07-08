@@ -71,55 +71,15 @@ export interface FontMetrics {
   readonly glyphs: readonly GlyphMetric[];
 }
 
-/** One converted font as the pipeline's `content/gui/fonts/manifest.json` records it. */
-export interface FontEntry {
-  readonly key: string;
-  readonly stem: string;
-  readonly variant: string;
-  /** `loadLayer` stem of the recolourable indexed glyph atlas. */
-  readonly indexedStem: string;
-  /** `loadLayer` stem of the default-coloured RGBA preview. */
-  readonly previewStem: string;
-  readonly previewColor: string;
-  /** Path (relative to `/gui/`) of the per-font metrics JSON. */
-  readonly metricsPath: string;
-  readonly glyphs: number;
-  readonly lineHeight: number;
-  readonly baseline: number;
-  readonly nominalSize: number;
-}
-
-/** The pipeline's top-level font manifest (`content/gui/fonts/manifest.json`) — the app's index of every font output. */
-export interface FontManifest {
-  readonly fonts: readonly FontEntry[];
-  readonly colorLut: { readonly stem: string; readonly names: readonly string[] };
-}
-
-/** The served root for the font metric/manifest assets (atlases + LUT ride `/bobs/`). */
+/** The served root for the font metric assets (atlases + LUT ride `/bobs/`). */
 const FONTS_ROOT = '/gui/fonts';
-
-/**
- * Load the top-level font manifest (`/gui/fonts/manifest.json`) — the single entry point that enumerates the
- * fonts (their atlas stems + metrics paths) and the colour LUT + its row names. Returns `null` when the
- * pipeline hasn't produced it (a checkout without `content/`), so a caller degrades gracefully.
- */
-export async function loadFontManifest(): Promise<FontManifest | null> {
-  try {
-    const res = await fetch(`${FONTS_ROOT}/manifest.json`);
-    if (!res.ok) return null;
-    return (await res.json()) as FontManifest;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * The recolourable INDEXED glyph atlas of a font, loaded by its `<key>.indexed` stem through the shared
  * {@link loadLayer} — so font atlases go through the exact same manifest→geometry + PNG→texture path as the
  * settler/GUI atlases; the renderer reads each glyph pixel's index through the font colour LUT at draw time.
  * Throws `MissingAtlasError` when the decoded files are absent (the pipeline hasn't run). The RGBA preview
- * atlases load the same way — `loadLayer(previewStem)` off a {@link FontEntry} — so no separate preview loader
- * is needed.
+ * atlases load the same way — `loadLayer('<key>.white')` — so no separate preview loader is needed.
  */
 export function loadFontIndexed(key: string): Promise<SpriteLayer> {
   return loadLayer(`${key}.${INDEXED_FONT_SUFFIX}`);
