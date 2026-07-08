@@ -23,7 +23,7 @@ import {
   GOOD_MUSHROOM,
   GOOD_STONE,
   GOOD_WOOD,
-} from '../src/game/sandbox-content.js';
+} from '../src/game/sandbox/index.js';
 import { createSceneSim } from '../src/scenes/index.js';
 import { sandboxScene } from '../src/scenes/sandbox.js';
 

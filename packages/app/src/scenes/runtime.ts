@@ -1,5 +1,5 @@
 import { type Component, Simulation, components } from '@vinland/sim';
-import { sandboxContent } from '../game/sandbox-content.js';
+import { sandboxContent } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**

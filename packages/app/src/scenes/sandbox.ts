@@ -3,31 +3,31 @@ import { components, fx } from '@vinland/sim';
 import { VIKING_BUILDINGS, grassTerrain, placedBuildingTypes } from '../catalog/buildings.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
 import {
-  Felling,
   GATHERERS,
   GOOD_WOOD,
   JOB_ARCHER,
   JOB_GATHERER_WOOD,
   JOB_SOLDIER_SWORD,
-  MineDeposit,
-  Resource,
-  Stump,
   WEAPON_LONG_BOW,
   WEAPON_SWORD,
-  blueLivingSoldiers,
-  blueOwnedSettlers,
-  countComponent,
-  enemyLivingSettlers,
-  expectedGatherYield,
-  flagGood,
   placeDeposit,
   placeFlag,
   placePickNode,
   placeSandboxBuilding,
   placeTree,
   spawnSandboxSettler,
-} from '../game/sandbox-content.js';
+} from '../game/sandbox/index.js';
+import {
+  blueLivingSoldiers,
+  blueOwnedSettlers,
+  countComponent,
+  enemyLivingSettlers,
+  expectedGatherYield,
+  flagGood,
+} from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
+
+const { Felling, MineDeposit, Resource, Stump } = components;
 
 /**
  * The current single sandbox scene: one large deterministic map used to inspect global gameplay systems.

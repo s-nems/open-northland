@@ -13,13 +13,9 @@ import { loadMapObjects } from '../content/objects.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
-import {
-  loadTerrainMap,
-  runAuthoredSlice,
-  runSlice,
-  sandboxGoods,
-  sliceTerrain,
-} from '../slice/vertical-slice.js';
+import { sandboxGoods } from '../game/sandbox/index.js';
+import { loadTerrainMap } from '../slice/map-loader.js';
+import { runAuthoredSlice, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
 import { cameraCenteredOnTile, cameraFor, createCameraController } from '../view/camera.js';
 import { startGameView } from '../view/game-view.js';
 import { floatParam } from './params.js';

@@ -1,20 +1,14 @@
 import { type BuildingFootprint, type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
-import { type Component, type Simulation, type TerrainMap, components, fx, systems } from '@vinland/sim';
-import {
-  GRASS,
-  HOME_KIND,
-  VIKING_BUILDINGS,
-  type VikingBuilding,
-  resolveVikingBuilding,
-} from '../catalog/buildings.js';
-import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../catalog/felling.js';
+import type { TerrainMap } from '@vinland/sim';
+import { GRASS, HOME_KIND, VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
+import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import {
   CLAY_DEPOSIT_UNITS,
   GOLD_DEPOSIT_UNITS,
   IRON_DEPOSIT_UNITS,
   MINE_LEVELS,
   STONE_DEPOSIT_UNITS,
-} from '../catalog/mining.js';
+} from '../../catalog/mining.js';
 import {
   CLAY_HARVEST_ATOMIC,
   GOLD_HARVEST_ATOMIC,
@@ -23,39 +17,40 @@ import {
   IRON_HARVEST_ATOMIC,
   MUSHROOM_HARVEST_ATOMIC,
   STONE_HARVEST_ATOMIC,
-} from '../content/settler-gfx.js';
-import type { GoodRef } from '../content/settler-gfx.js';
-import { HUMAN_PLAYER, PRIMARY_TRIBE } from './rules.js';
+} from '../../content/settler-gfx.js';
+import type { GoodRef } from '../../content/settler-gfx.js';
+import { PRIMARY_TRIBE } from '../rules.js';
+import {
+  BUILDING_HEADQUARTERS,
+  BUILDING_JOINERY,
+  GATHERERS,
+  GOOD_COIN,
+  GOOD_GOLD,
+  GOOD_IRON,
+  GOOD_MUD,
+  GOOD_MUSHROOM,
+  GOOD_NONE,
+  GOOD_PLANK,
+  GOOD_STONE,
+  GOOD_WOOD,
+  type GathererSpec,
+  JOB_ARCHER,
+  JOB_CARRIER,
+  JOB_GATHERER_WOOD,
+  JOB_IDLE,
+  JOB_SOLDIER_SWORD,
+  WEAPON_LONG_BOW,
+  WEAPON_SHORT_BOW,
+  WEAPON_SWORD,
+} from './ids.js';
 
-const { Felling, Health, MineDeposit, Owner, Position, Resource, Settler, Stockpile, Stump } = components;
-
-export const GOOD_NONE = 0;
-export const GOOD_WOOD = 1;
-export const GOOD_PLANK = 2;
-export const GOOD_COIN = 3;
-export const GOOD_STONE = 4;
-export const GOOD_MUD = 5;
-export const GOOD_IRON = 6;
-export const GOOD_GOLD = 7;
-export const GOOD_MUSHROOM = 8;
-
-export const JOB_IDLE = 0;
-export const JOB_GATHERER_WOOD = 20;
-export const JOB_GATHERER_STONE = 21;
-export const JOB_GATHERER_MUD = 22;
-export const JOB_GATHERER_IRON = 23;
-export const JOB_GATHERER_GOLD = 24;
-export const JOB_GATHERER_MUSHROOM = 25;
-export const JOB_CARRIER = 36;
-export const JOB_SOLDIER_SWORD = 34;
-export const JOB_ARCHER = 40;
-
-export const BUILDING_HEADQUARTERS = 1;
-export const BUILDING_JOINERY = 23;
-
-export const WEAPON_SWORD = 7;
-export const WEAPON_SHORT_BOW = 20;
-export const WEAPON_LONG_BOW = 21;
+/**
+ * The ONE global sandbox {@link ContentSet} — goods/jobs/buildings/weapons/animation bindings — every
+ * scene and the vertical slice consume (they never define their own content; packages/app/AGENTS.md).
+ * The package splits by concern: semantic ids + the {@link GATHERERS} table in `./ids.ts`,
+ * world-population helpers in `./place.ts`, scene-check queries beside the scenes
+ * (`scenes/sandbox-queries.ts`); this module only assembles the validated content set.
+ */
 
 /** The attack atomic (81) both soldier jobs bind: the swordsman's swing and the archer's bow draw. */
 const ATTACK_ATOMIC = 81;
@@ -74,92 +69,6 @@ const SWORD_SWING_LENGTH = 4;
 /** The bow draw plays over 12 frames; the arrow is loosed at the release frame (6), mid-draw, not at completion. */
 const BOW_DRAW_LENGTH = 12;
 const BOW_RELEASE_FRAME = 6;
-
-export type GatherMode = 'fell' | 'mine' | 'pick';
-
-export interface GathererSpec {
-  readonly good: number;
-  readonly id: string;
-  readonly job: number;
-  readonly label: string;
-  readonly atomic: number;
-  readonly animation: string;
-  readonly mode: GatherMode;
-  readonly nodes: number;
-  readonly depositUnits?: number;
-  readonly depositLevels?: number;
-}
-
-export const GATHERERS: readonly GathererSpec[] = [
-  {
-    good: GOOD_WOOD,
-    id: 'wood',
-    job: JOB_GATHERER_WOOD,
-    label: 'Zbieracz (Drewno)',
-    atomic: HARVEST_ATOMIC,
-    animation: 'viking_collector_harvest_tree',
-    mode: 'fell',
-    nodes: 2,
-  },
-  {
-    good: GOOD_STONE,
-    id: 'stone',
-    job: JOB_GATHERER_STONE,
-    label: 'Zbieracz (Kamien)',
-    atomic: STONE_HARVEST_ATOMIC,
-    animation: 'viking_collector_harvest_stone',
-    mode: 'mine',
-    nodes: 1,
-    depositUnits: STONE_DEPOSIT_UNITS,
-    depositLevels: MINE_LEVELS,
-  },
-  {
-    good: GOOD_MUD,
-    id: 'mud',
-    job: JOB_GATHERER_MUD,
-    label: 'Zbieracz (Glina)',
-    atomic: CLAY_HARVEST_ATOMIC,
-    animation: 'viking_collector_harvest_mud',
-    mode: 'mine',
-    nodes: 1,
-    depositUnits: CLAY_DEPOSIT_UNITS,
-    depositLevels: MINE_LEVELS,
-  },
-  {
-    good: GOOD_IRON,
-    id: 'iron',
-    job: JOB_GATHERER_IRON,
-    label: 'Zbieracz (Zelazo)',
-    atomic: IRON_HARVEST_ATOMIC,
-    animation: 'viking_collector_harvest_iron',
-    mode: 'mine',
-    nodes: 1,
-    depositUnits: IRON_DEPOSIT_UNITS,
-    depositLevels: MINE_LEVELS,
-  },
-  {
-    good: GOOD_GOLD,
-    id: 'gold',
-    job: JOB_GATHERER_GOLD,
-    label: 'Zbieracz (Zloto)',
-    atomic: GOLD_HARVEST_ATOMIC,
-    animation: 'viking_collector_harvest_gold',
-    mode: 'mine',
-    nodes: 1,
-    depositUnits: GOLD_DEPOSIT_UNITS,
-    depositLevels: MINE_LEVELS,
-  },
-  {
-    good: GOOD_MUSHROOM,
-    id: 'mushroom',
-    job: JOB_GATHERER_MUSHROOM,
-    label: 'Zbieracz (Grzyby)',
-    atomic: MUSHROOM_HARVEST_ATOMIC,
-    animation: 'viking_collector_harvest_mushroom',
-    mode: 'pick',
-    nodes: 3,
-  },
-] as const;
 
 export interface SandboxContentExtras {
   readonly buildings?: readonly { typeId: number; id: string; kind?: string }[];
@@ -270,7 +179,7 @@ export function sandboxGoods(): readonly GoodRef[] {
 }
 
 export function sandboxContent(map?: TerrainMap, extras: SandboxContentExtras = {}): ContentSet {
-  const buildings = new Map<number, ReturnType<typeof buildingRow>>();
+  const buildings = new Map<number, SandboxBuildingRow>();
   for (const b of VIKING_BUILDINGS) buildings.set(b.typeId, buildingRow(b));
   for (const b of extras.buildings ?? []) {
     if (!buildings.has(b.typeId)) {
@@ -449,7 +358,7 @@ export function sandboxContent(map?: TerrainMap, extras: SandboxContentExtras = 
   });
 }
 
-function buildingRow(b: VikingBuilding): {
+interface SandboxBuildingRow {
   typeId: number;
   id: string;
   kind: string;
@@ -462,158 +371,33 @@ function buildingRow(b: VikingBuilding): {
   };
   workers?: readonly { jobType: number; count: number }[];
   footprint?: BuildingFootprint;
-} {
+}
+
+/**
+ * Per-building sandbox behaviour overrides, keyed by typeId — a DATA table, so {@link buildingRow}
+ * stays a pure spread and a new special building means a new row here, not another branch. (The
+ * clean-room catalog stays pinned to ir.json; these stock/recipe pins are sandbox balance, not
+ * extracted data.)
+ */
+const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> = {
+  [BUILDING_HEADQUARTERS]: { stock: STORE_STOCK },
+  [BUILDING_JOINERY]: {
+    workers: [{ jobType: JOB_GATHERER_WOOD, count: 1 }],
+    stock: STORE_STOCK,
+    recipe: {
+      inputs: [{ goodType: GOOD_WOOD, amount: 1 }],
+      outputs: [{ goodType: GOOD_PLANK, amount: 1 }],
+      ticks: 20,
+    },
+  },
+};
+
+function buildingRow(b: VikingBuilding): SandboxBuildingRow {
   return {
     typeId: b.typeId,
     id: b.id,
     kind: b.kind,
-    ...(b.typeId === BUILDING_HEADQUARTERS ? { stock: STORE_STOCK } : {}),
-    ...(b.typeId === BUILDING_JOINERY
-      ? {
-          workers: [{ jobType: JOB_GATHERER_WOOD, count: 1 }],
-          stock: STORE_STOCK,
-          recipe: {
-            inputs: [{ goodType: GOOD_WOOD, amount: 1 }],
-            outputs: [{ goodType: GOOD_PLANK, amount: 1 }],
-            ticks: 20,
-          },
-        }
-      : {}),
     ...(b.kind === HOME_KIND ? { construction: HOME_UPGRADE_PIN } : {}),
+    ...BUILDING_OVERRIDES[b.typeId],
   };
 }
-
-export function placeSandboxBuilding(
-  sim: Simulation,
-  ref: number | string,
-  x: number,
-  y: number,
-  owner: number = HUMAN_PLAYER,
-): void {
-  sim.enqueue({
-    kind: 'placeBuilding',
-    buildingType: resolveVikingBuilding(ref).typeId,
-    x,
-    y,
-    tribe: PRIMARY_TRIBE,
-    owner,
-  });
-}
-
-export function spawnSandboxSettler(
-  sim: Simulation,
-  jobType: number,
-  x: number,
-  y: number,
-  owner: number = HUMAN_PLAYER,
-  opts: { readonly hitpoints?: number; readonly weaponTypeId?: number } = {},
-): void {
-  sim.enqueue({
-    kind: 'spawnSettler',
-    jobType,
-    x,
-    y,
-    tribe: PRIMARY_TRIBE,
-    owner,
-    ...(opts.hitpoints !== undefined ? { hitpoints: opts.hitpoints } : {}),
-    ...(opts.weaponTypeId !== undefined ? { weaponTypeId: opts.weaponTypeId } : {}),
-  });
-}
-
-export function placeTree(sim: Simulation, x: number, y: number): void {
-  const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Resource, {
-    goodType: GOOD_WOOD,
-    remaining: WOOD_YIELD_PER_NODE,
-    harvestAtomic: HARVEST_ATOMIC,
-  });
-  if (!systems.stampResourceFootprint(sim.world, sim.content, e, GOOD_WOOD)) {
-    throw new Error('placeTree: missing resource footprint for wood');
-  }
-  sim.world.add(e, Felling, { chopsLeft: WOOD_CHOPS_TO_FELL });
-}
-
-export function placeDeposit(sim: Simulation, g: GathererSpec, x: number, y: number): void {
-  const units = g.depositUnits ?? 0;
-  const levels = g.depositLevels ?? 0;
-  if (units <= 0) throw new Error(`placeDeposit: '${g.id}' needs positive depositUnits`);
-  const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Resource, { goodType: g.good, remaining: units, harvestAtomic: g.atomic });
-  if (!systems.stampResourceFootprint(sim.world, sim.content, e, g.good)) {
-    throw new Error(`placeDeposit: missing resource footprint for ${g.id}`);
-  }
-  sim.world.add(e, MineDeposit, { initial: units, levels });
-}
-
-export function placePickNode(sim: Simulation, g: GathererSpec, x: number, y: number): void {
-  const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Resource, { goodType: g.good, remaining: 1, harvestAtomic: g.atomic });
-  if (!systems.stampResourceFootprint(sim.world, sim.content, e, g.good)) {
-    throw new Error(`placePickNode: missing resource footprint for ${g.id}`);
-  }
-}
-
-export function placeFlag(sim: Simulation, x: number, y: number): void {
-  const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Stockpile, { amounts: new Map() });
-}
-
-export function expectedGatherYield(g: GathererSpec): number {
-  if (g.mode === 'fell') return g.nodes * WOOD_YIELD_PER_NODE;
-  if (g.mode === 'mine') return g.depositUnits ?? 0;
-  return g.nodes;
-}
-
-export function flagGood(sim: Simulation, at: { x: number; y: number }, good: number): number {
-  for (const e of sim.world.query(Stockpile)) {
-    const p = sim.world.get(e, Position);
-    if (fx.toInt(p.x) === at.x && fx.toInt(p.y) === at.y) {
-      return sim.world.get(e, Stockpile).amounts.get(good) ?? 0;
-    }
-  }
-  return 0;
-}
-
-export function countComponent<T>(sim: Simulation, component: Component<T>): number {
-  let n = 0;
-  for (const _ of sim.world.query(component)) n++;
-  return n;
-}
-
-export function blueOwnedSettlers(sim: Simulation): number {
-  let n = 0;
-  for (const e of sim.world.query(Settler, Owner)) {
-    if (sim.world.get(e, Owner).player === HUMAN_PLAYER) n++;
-  }
-  return n;
-}
-
-export function enemyLivingSettlers(sim: Simulation): number {
-  let n = 0;
-  for (const e of sim.world.query(Settler, Owner, Health)) {
-    const owner = sim.world.get(e, Owner).player;
-    if (owner !== HUMAN_PLAYER && sim.world.get(e, Health).hitpoints > 0) n++;
-  }
-  return n;
-}
-
-export function blueLivingSoldiers(sim: Simulation): number {
-  let n = 0;
-  for (const e of sim.world.query(Settler, Owner, Health)) {
-    const settler = sim.world.get(e, Settler);
-    if (
-      sim.world.get(e, Owner).player === HUMAN_PLAYER &&
-      settler.jobType === JOB_SOLDIER_SWORD &&
-      sim.world.get(e, Health).hitpoints > 0
-    ) {
-      n++;
-    }
-  }
-  return n;
-}
-
-export { Felling, MineDeposit, Resource, Stump };
