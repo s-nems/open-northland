@@ -20,8 +20,8 @@ that matches its role instead of piling another method onto a growing file:
 
 - **`main.ts`** — the thin URL dispatcher. Reads `window.location.search`, picks ONE entry, hands off. No
   wiring lives here; it only routes.
-- **`entries/`** — one module per URL entry (the "modes"): `menu.ts` (the default landing), `live.ts`
-  (`?live`/`?map=`), `scene.ts` (`?scene=`), `anim.ts` (+ `anim-cells.ts` pure builders + `anim-overlay.ts`
+- **`entries/`** — one module per URL entry (the "modes"): `menu.ts` (the default landing), `map.ts`
+  (`?map=`), `scene.ts` (`?scene=`), `anim.ts` (+ `anim-cells.ts` pure builders + `anim-overlay.ts`
   panel), `sound.ts` (`?sounds`), `shot.ts` (`?shot`). An entry assembles its world (terrain, sim, renderer,
   starting camera); the two playable entries then hand off to the shared `view/game-view.ts` runtime.
 - **`content/`** — the decoded-content → render binding (the gitignored-`content/` I/O boundary): `net.ts`
@@ -60,17 +60,19 @@ that matches its role instead of piling another method onto a growing file:
 
 The app dispatches on `window.location.search` (see `main.ts`, a thin router into `entries/`). **With no
 flag the default is the main menu** (`entries/menu.ts`) — a landing page of clickable cards (every
-acceptance scene, the live sandbox, the animation gallery, each decoded map from the dev server's
+acceptance scene, the animation gallery, each decoded map from the dev server's
 `/maps-index` route), so a human never has to remember a `?…` string. Each flag below is opt-in and
 degrades to a reproducible default so the committed build + the `npm run shot` PNG never depend on
 gitignored bytes:
 
-- `?live` (or `?map=<id>`) — the live **vertical-slice sandbox** (`entries/live.ts`): the fixed-timestep
-  loop drawn every frame. The menu's "Podgląd na żywo" card. Mounts the LEFT tool panel (below).
+- `?map=<id>` — the **decoded-map viewer** (`entries/map.ts`): draws a real `content/maps/<id>.json` grid
+  driven by the vertical-slice sim on the fixed-timestep loop, drawn every frame. The menu's "Mapy" section
+  links here per decoded map. Mounts the LEFT tool panel (below); falls back to the synthetic grass strip
+  when the map is absent (gitignored), so a bare checkout still boots.
 - `?shot[&seed&ticks&hud]` — headless deterministic screenshot entry (`entries/shot.ts`).
 - `?scene=<id>` — run a registered **acceptance scene** with its checklist overlay (`entries/scene.ts`).
 - **LEFT tool panel** — the original toolbar strip + tool buttons + game-speed button + building/stats windows
-  is part of the standard game HUD, mounted over BOTH `?live` and every `?scene=` via the shared
+  is part of the standard game HUD, mounted over BOTH `?map=` and every `?scene=` via the shared
   `view/game-tool-panel.ts` (NOT a per-scene flag — it is global). Its game-speed button drives the tick
   rate live (×1/×2/×3/pause); `?speed=` still seeds the initial rate (and reaches sub-1× the button can't).
   The scene overlay is the sign-off checklist only (no playback buttons).
@@ -104,11 +106,11 @@ gitignored bytes:
 - `?sounds` — the sound **verification gallery** (`entries/sound.ts`), the audio twin of `?anim`: click ▶ to
   audition every action→sound binding, the voice pools split by sex/age, the jingles and the ambient beds.
   The human-oracle seam for audio (an agent can't self-judge a sound). NOTE the key is `sounds` (plural) —
-  distinct from the `sound` (singular) MUTE modifier above, so `?live&sound=off` and `?sounds` don't collide.
+  distinct from the `sound` (singular) MUTE modifier above, so `?scene&sound=off` and `?sounds` don't collide.
 - `?map=<id>` · `?atlas` · `?terrain=off` · `?objects=off` · `?zoom=N` · `?speed=N` · `?center=x,y` ·
   `?pitch=N` — real decoded map / sprite atlas / ground-texture + map-object opt-outs / camera magnify /
   playback rate (seeds the INITIAL rate; the tool panel's game-speed button then drives it live in
-  `?live`/`?scene` — use `?speed=` for a sub-1× pace the discrete button can't reach) / centre the camera on
+  `?map=`/`?scene` — use `?speed=` for a sub-1× pace the discrete button can't reach) / centre the camera on
   tile `(x,y)` (an inspection knob for a decoded-map feature — a
   bridge, a coastline — the settler-centroid framing never reaches; malformed → default framing) / **set
   the cell-diamond width in px** (`?pitch`, the live master-scale knob — sprite-vs-terrain size; default the

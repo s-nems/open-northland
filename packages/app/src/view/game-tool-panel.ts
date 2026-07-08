@@ -10,8 +10,8 @@ import { backingScale } from './camera.js';
 import { screenToWorld, worldToTile } from './picking.js';
 
 /**
- * The in-game LEFT tool panel is part of the standard game HUD, not a per-scene feature — so BOTH the live
- * sandbox (`entries/live.ts`) and every acceptance scene (`entries/scene.ts`) mount it through this one
+ * The in-game LEFT tool panel is part of the standard game HUD, not a per-scene feature — so BOTH the map
+ * viewer (`entries/map.ts`) and every acceptance scene (`entries/scene.ts`) mount it through this one
  * helper. It wraps {@link mountToolPanel} with the wiring both entries share: the
  * client-point → tile mapping (camera + backing-store scale, null off the map so a stray click never
  * clamp-places), and the HUD right-shift that clears the strip. The entry supplies only what differs — the
@@ -64,7 +64,7 @@ export interface LoopSpeedControl {
 }
 
 /**
- * Apply the panel's game-speed spec to an entry's loop control (pause + tick multiplier). Shared so `live`
+ * Apply the panel's game-speed spec to an entry's loop control (pause + tick multiplier). Shared so `map`
  * and `scene` wire the panel's `onSpeed` identically: a `paused` spec pauses the loop; any running spec sets
  * the multiplier (and un-pauses).
  */

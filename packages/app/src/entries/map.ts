@@ -27,14 +27,16 @@ import { floatParam } from '../view/params.js';
 const DEFAULT_TILE_WIDTH = 2 * CALIBRATED_HALF_W;
 
 /**
- * The live sandbox entry (`?live`, and the target of `?map=<id>`): a deterministic vertical slice driven
- * by the fixed-timestep loop, drawn every frame so `npm run dev` is watchable. The default landing is the
- * MENU ({@link import('./menu.js')}); this is the "just show me the world moving" view it links to.
+ * The decoded-map viewer entry (`?map=<id>`): draws an actual decoded `content/maps/<id>.json` grid — the
+ * 1:1 per-triangle ground + placed landscape objects (trees/stones/mines + animated waves) — driven by the
+ * deterministic vertical-slice sim on the fixed-timestep loop, drawn every frame so `npm run dev` is
+ * watchable. The default landing is the MENU ({@link import('./menu.js')}), whose "Mapy" section links here
+ * per decoded map.
  *
  * The backing store tracks the window at 1:1 pixels (`createWindowPixiApp`), so resizing the browser
- * changes the visible field, never the scale — read live dimensions from `app.screen`. `?map=<id>` draws
- * an actual decoded `content/maps/<id>.json` grid as the terrain; absent or unloadable, it falls back to
- * the synthetic grass strip (the maps are gitignored).
+ * changes the visible field, never the scale — read live dimensions from `app.screen`. When the map is
+ * absent or unloadable (the maps are gitignored) it falls back to the synthetic grass strip so a bare
+ * checkout still boots.
  */
 
 /** The slice sim's deterministic seed. */
@@ -55,7 +57,7 @@ function centerTile(raw: string | null, zoom: number, width: number, height: num
   return cameraCenteredOnTile(tx, ty, zoom, width, height);
 }
 
-export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
+export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   const app = await createWindowPixiApp(canvas);
   // `?pitch=<fullTileWidth>` — the live verification knob for the master sprite-vs-terrain scale (the
   // whole look; a human dials it, an agent can't self-judge pixels — see `iso.ts`/source basis).
@@ -154,6 +156,6 @@ export async function renderLive(canvas: HTMLCanvasElement, params: URLSearchPar
   });
 
   console.log(
-    'Vinland live slice up: LPM zaznacz / przeciągnij ramką, PPM wyślij, Spacja panel; middle-drag / arrows pan, wheel zoom.',
+    'Vinland map view up: LPM zaznacz / przeciągnij ramką, PPM wyślij, Spacja panel; middle-drag / arrows pan, wheel zoom.',
   );
 }

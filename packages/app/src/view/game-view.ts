@@ -22,11 +22,11 @@ import { createUnitControls } from './unit-controls.js';
 import { professionsFromContent } from './unit-panel.js';
 
 /**
- * The SHARED in-game runtime both playable entries (`?live` and `?scene=`) run on top of: the standard
+ * The SHARED in-game runtime both playable entries (`?map=` and `?scene=`) run on top of: the standard
  * HUD mounts (LEFT tool panel, RTS unit controls, perf overlay, positional sound) and the ONE
  * fixed-timestep RAF loop. The entries only assemble their world (terrain, sim, renderer, starting
  * camera) and hand it here — so the loop, the input wiring and the flag semantics (`?speed`, `?sound`,
- * `?uiscale`) cannot drift between the live sandbox and the acceptance scenes (they did: only the scene
+ * `?uiscale`) cannot drift between the map view and the acceptance scenes (they did: only the scene
  * loop measured `cpuMs`, and the placement-banner inset differed per copy).
  *
  * Per-frame order matters and is pinned here: sim steps (collecting EVERY step's events for audio) →

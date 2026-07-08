@@ -34,7 +34,7 @@ const { Felling, MineDeposit, Resource, Stump } = components;
  *
  * The scene itself defines only placement: where buildings, resources, blue player units, and hostile units
  * start. It does not own content, build rules, animation bindings, sounds, speed, tool panel, or controls;
- * those are shared by `game/sandbox/`, `entries/scene.ts`, and `entries/live.ts`.
+ * those are shared by `game/sandbox/`, `entries/scene.ts`, and `entries/map.ts`.
  */
 
 const MAP_W = 96;
@@ -159,7 +159,7 @@ export const sandboxScene: SceneDefinition = {
   runTicks: RUN_TICKS,
   initialZoom: INITIAL_ZOOM,
   checklist: [
-    'Lewy panel, predkosc gry, dzwiek i kontrola jednostek dzialaja tutaj tak samo jak w trybie live',
+    'Lewy panel, predkosc gry, dzwiek i kontrola jednostek dzialaja tutaj tak samo jak w widoku mapy',
     'Menu budowy pokazuje globalna liste budynkow, a nie liste wymyslona przez scene',
     'Niebieskie jednostki daja sie zaznaczac i rozkazywac; czerwone jednostki sa wrogie i nie daja sie kontrolowac',
     'Wszystkie budynki stoja na jednej mapie i kazdy rysuje wlasny sprite',

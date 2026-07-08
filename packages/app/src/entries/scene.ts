@@ -57,7 +57,7 @@ export async function renderSceneMode(
 
   // The shared in-game runtime (view/game-view.ts): the standard HUD mounts — tool panel, unit
   // controls, perf overlay, positional sound — and the ONE fixed-timestep RAF loop, identical to the
-  // `?live` entry's; the checklist overlay's tick rides the per-frame hook.
+  // `?map=` entry's; the checklist overlay's tick rides the per-frame hook.
   await startGameView({
     app,
     canvas,
