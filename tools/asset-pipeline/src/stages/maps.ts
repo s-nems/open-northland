@@ -6,8 +6,12 @@ import {
   type MapStaticObjects,
   type SourceRef,
   cifLinesToSections,
+  decodeIni,
   extractMapInfo,
   extractStaticObjects,
+  extractStringTable,
+  latin1ToCp1250,
+  parseIniSections,
 } from '../decoders/ini.js';
 import {
   type MapDat,
@@ -21,6 +25,8 @@ import {
   unpackMapLayer,
   unpackX6elLayer,
 } from '../decoders/mapdat.js';
+import { decodePcx, expandToRgba } from '../decoders/pcx.js';
+import { encodePng } from '../decoders/png.js';
 import { walkFiles } from '../walk.js';
 
 /**
@@ -289,6 +295,122 @@ export async function decodeMapTree(gameDir: string): Promise<MapInfo[]> {
   return maps;
 }
 
+/**
+ * The emitted `maps/<id>.meta.json` sidecar: the map's menu-facing display strings, resolved to ONE
+ * language (see {@link MAP_TEXT_LANGS}). Written only when the map folder carries a string table.
+ */
+export interface MapMetaFile {
+  /** The map's display name (the string at the header's `mapnamestringid`). */
+  readonly name?: string;
+  /** The map's flavor/mission description (the string at `mapdescriptionstringid`). */
+  readonly description?: string;
+}
+
+/**
+ * Language preference for the emitted {@link MapMetaFile} (the menu shows ONE language): the
+ * culturesnation mod is Polish-authored, so `pol` first, `eng` as the fallback.
+ */
+const MAP_TEXT_LANGS = ['pol', 'eng'] as const;
+
+/**
+ * String-table ids of the map name/description when the sibling `map.cif` header is absent or carries
+ * no `misc_mapname`. Source basis: observed — every decoded shipped header keys the name at 0 and the
+ * description at 1 unless it says otherwise (the tutorial/military maps carry 99/98 in their `map.cif`).
+ */
+const DEFAULT_NAME_STRING_ID = 0;
+const DEFAULT_DESCRIPTION_STRING_ID = 1;
+
+/** True for a "file not found" error — the one failure the map-sidecar reads treat as normal absence. */
+function isFileMissing(err: unknown): boolean {
+  return (err as NodeJS.ErrnoException).code === 'ENOENT';
+}
+
+/**
+ * Loads one map folder's string table (`<mapDir>/text/<lang>/strings.*`) as `{ <stringId>: <text> }`,
+ * trying each {@link MAP_TEXT_LANGS} language in order. Per language the readable `strings.ini` is
+ * preferred (golden rule #4; {@link decodeIni} already yields CP1250 text) over the encrypted
+ * `strings.cif` twin (decoded latin1 by the oracle-faithful `.cif` seam, so display values are
+ * re-decoded via {@link latin1ToCp1250}) — e.g. the tutorial maps ship `.cif`-only. A missing file is
+ * normal absence (45 of the shipped 186 map folders have no text at all); an unreadable one warns and
+ * falls through, and an empty table falls through to the next language. Returns undefined when no
+ * language yields strings — the caller then emits no meta sidecar (the menu card degrades).
+ */
+async function loadMapStringTable(mapDir: string, rel: string): Promise<Record<number, string> | undefined> {
+  for (const lang of MAP_TEXT_LANGS) {
+    for (const form of ['strings.ini', 'strings.cif'] as const) {
+      let bytes: Uint8Array;
+      try {
+        bytes = await readFile(join(mapDir, 'text', lang, form));
+      } catch (err) {
+        if (!isFileMissing(err)) {
+          console.warn(`[pipeline] map ${rel}: text/${lang}/${form} unreadable: ${(err as Error).message}`);
+        }
+        continue;
+      }
+      let table: Record<number, string>;
+      try {
+        if (form === 'strings.ini') {
+          table = extractStringTable(parseIniSections(decodeIni(bytes)));
+        } else {
+          const raw = extractStringTable(cifLinesToSections(decodeCifStringArray(bytes).lines));
+          table = {};
+          for (const [id, display] of Object.entries(raw)) table[Number(id)] = latin1ToCp1250(display);
+        }
+      } catch (err) {
+        console.warn(`[pipeline] map ${rel}: text/${lang}/${form} undecodable: ${(err as Error).message}`);
+        continue;
+      }
+      if (Object.keys(table).length > 0) return table;
+    }
+  }
+  return undefined;
+}
+
+/** The shipped minimaps' colorkey filler (exact magenta, observed across the corpus). */
+const MINIMAP_COLORKEY = { r: 0xff, g: 0x00, b: 0xff } as const;
+
+/**
+ * Decodes a map folder's `minimap/minimap.pcx` into the emitted thumbnail PNG. The shipped minimaps
+ * are a fixed 350×160 canvas with the map rendered into a sub-rectangle and the rest filled with the
+ * magenta {@link MINIMAP_COLORKEY} (the original engine keys it out — observed: every sampled shipped
+ * minimap corner is exact 255,0,255). The colorkey becomes transparent and the image is cropped to the
+ * bounding box of real pixels, so the menu card shows the map, not the filler. Throws on a malformed
+ * `.pcx` or an all-filler picture — the caller warns-and-skips per map.
+ */
+export function minimapToPng(bytes: Uint8Array): Uint8Array {
+  const { width, height, rgba } = expandToRgba(decodePcx(bytes));
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const o = (y * width + x) * 4;
+      if (
+        rgba[o] === MINIMAP_COLORKEY.r &&
+        rgba[o + 1] === MINIMAP_COLORKEY.g &&
+        rgba[o + 2] === MINIMAP_COLORKEY.b
+      ) {
+        rgba[o + 3] = 0;
+        continue;
+      }
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  if (maxX < 0) throw new Error('pcx: minimap is entirely colorkey filler');
+  const w = maxX - minX + 1;
+  const h = maxY - minY + 1;
+  const cropped = new Uint8Array(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    const srcStart = ((y + minY) * width + minX) * 4;
+    cropped.set(rgba.subarray(srcStart, srcStart + w * 4), y * w * 4);
+  }
+  return encodePng({ width: w, height: h, rgba: cropped });
+}
+
 /** One emitted map terrain artifact: its slug id + the relative `maps/<id>.json` path under `outDir`. */
 export interface MapDatConversion {
   /** The map's slug id ({@link mapIdFromPath}) — the same key as its `map.cif` {@link MapInfo}. */
@@ -298,6 +420,10 @@ export interface MapDatConversion {
   readonly height: number;
   /** The terrain JSON's path relative to `outDir` (native separators). */
   readonly output: string;
+  /** Whether a `maps/<id>.meta.json` name/description sidecar was emitted (the folder carried strings). */
+  readonly meta: boolean;
+  /** Whether a `maps/<id>.png` minimap was emitted (the folder carried `minimap/minimap.pcx`). */
+  readonly minimap: boolean;
 }
 
 /**
@@ -307,6 +433,13 @@ export interface MapDatConversion {
  * map's grid instead of a synthetic scenario one. Each map's `id` comes from its containing folder
  * ({@link mapIdFromPath}), so the artifact joins onto the same-folder `map.cif`'s {@link MapInfo} `id`.
  * Maps are visited in a stable (path-sorted) order so a re-run is reproducible.
+ *
+ * Beside each grid, two OPTIONAL menu-facing sidecars are emitted when the map folder carries them:
+ * `maps/<id>.meta.json` (the display name/description — {@link MapMetaFile}, resolved through the
+ * folder's `text/<lang>/strings.*` table at the header's `mapnamestringid`/`mapdescriptionstringid`)
+ * and `maps/<id>.png` (the shipped `minimap/minimap.pcx` decoded to PNG — {@link minimapToPng}:
+ * colorkey keyed to transparent, cropped to the real map pixels).
+ * The dev server's `/maps-index` route joins them onto the map list for the main menu's cards.
  *
  * A `map.dat` that fails to read or decode (not a container, missing `lsiz`/`lmlt`, an `X6el`-only
  * grid, a dims/length mismatch, corrupt RLE) is logged and skipped — a batch over many maps must not
@@ -343,10 +476,22 @@ export async function convertMapDatTree(gameDir: string, outDir: string): Promis
     // The authored entity placements live in the SIBLING map.cif's `StaticObjects` section (the
     // map.dat carries only terrain + landscape lanes). Absent/undecodable cif → the terrain still
     // emits, just without the optional layer — the same per-layer degradation `ground`/`objects` get.
+    // The same header also names WHICH string-table ids carry the map's name/description
+    // (`misc_mapname`); a header-less map keeps the observed 0/1 defaults.
+    let nameStringId: number = DEFAULT_NAME_STRING_ID;
+    let descriptionStringId: number = DEFAULT_DESCRIPTION_STRING_ID;
     try {
       const cifBytes = await readFile(join(gameDir, dirname(rel), 'map.cif'));
-      const entities = extractStaticObjects(cifLinesToSections(decodeCifStringArray(cifBytes).lines));
+      const sections = cifLinesToSections(decodeCifStringArray(cifBytes).lines);
+      const entities = extractStaticObjects(sections);
       if (entities !== undefined) terrain = { ...terrain, entities };
+      try {
+        const info = extractMapInfo(sections, id, { file: rel, layer: 'base' });
+        nameStringId = info.nameStringId ?? nameStringId;
+        descriptionStringId = info.descriptionStringId ?? descriptionStringId;
+      } catch {
+        // not a full logic header (no mapsize/mapguid) — keep the default string ids
+      }
     } catch {
       // no sibling map.cif (or undecodable) — entity layer skipped
     }
@@ -356,7 +501,32 @@ export async function convertMapDatTree(gameDir: string, outDir: string): Promis
     // Compact JSON: the ground/object lanes are hundreds of thousands of numbers — pretty-printing
     // them one-per-line would blow the artifact up ~8×.
     await writeFile(outPath, `${JSON.stringify(terrain)}\n`);
-    done.push({ id, width: terrain.width, height: terrain.height, output });
+
+    // Menu-facing sidecars, both optional (the menu card degrades per missing piece): the display
+    // name/description from the folder's string table, and the shipped minimap as a PNG thumbnail.
+    const mapDir = join(gameDir, dirname(rel));
+    const strings = await loadMapStringTable(mapDir, rel);
+    const name = strings?.[nameStringId];
+    const description = strings?.[descriptionStringId];
+    const meta = name !== undefined || description !== undefined;
+    if (meta) {
+      const metaFile: MapMetaFile = {
+        ...(name !== undefined ? { name } : {}),
+        ...(description !== undefined ? { description } : {}),
+      };
+      await writeFile(join(outDir, 'maps', `${id}.meta.json`), `${JSON.stringify(metaFile)}\n`);
+    }
+    let minimap = false;
+    try {
+      const png = minimapToPng(await readFile(join(mapDir, 'minimap', 'minimap.pcx')));
+      await writeFile(join(outDir, 'maps', `${id}.png`), png);
+      minimap = true;
+    } catch (err) {
+      if (!isFileMissing(err)) {
+        console.warn(`[pipeline] map ${rel}: minimap undecodable: ${(err as Error).message}`);
+      }
+    }
+    done.push({ id, width: terrain.width, height: terrain.height, output, meta, minimap });
   }
   return done;
 }

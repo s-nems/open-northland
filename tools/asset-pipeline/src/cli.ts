@@ -136,9 +136,12 @@ async function run(args: Args): Promise<void> {
   // map.cif's MapInfo id.
   const terrains = await convertMapDatTree(args.game, args.out);
   const totalCells = terrains.reduce((sum, t) => sum + t.width * t.height, 0);
+  const metas = terrains.filter((t) => t.meta).length;
+  const minimaps = terrains.filter((t) => t.minimap).length;
   console.log(
     `[pipeline] map.dat -> terrain: ${terrains.length} map grid(s) ` +
-      `(${totalCells} cells total) into ${join(args.out, 'maps')}`,
+      `(${totalCells} cells total, ${metas} name/description sidecar(s), ${minimaps} minimap(s)) ` +
+      `into ${join(args.out, 'maps')}`,
   );
 }
 

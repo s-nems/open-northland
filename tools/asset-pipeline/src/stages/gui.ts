@@ -4,7 +4,7 @@ import { type BobAtlas, packBobAtlas, packIndexedBobAtlas } from '../decoders/at
 import { decodeBmd } from '../decoders/bmd.js';
 import { decodeCifStringArray } from '../decoders/cif.js';
 import { decodeCursor } from '../decoders/cursor.js';
-import { cifLinesToSections } from '../decoders/ini.js';
+import { cifLinesToSections, extractStringTable, latin1ToCp1250 } from '../decoders/ini.js';
 import { decodePcx } from '../decoders/pcx.js';
 import { buildPlayerLutImage } from '../decoders/player-palette.js';
 import { encodePng } from '../decoders/png.js';
@@ -120,9 +120,6 @@ const MOUSE_DIR = join('DataX', 'Mouse');
 /** Languages whose GUI strings are extracted (the deliverable's "at least eng and pol"). */
 const STRING_LANGS = ['eng', 'pol'] as const;
 
-/** CP1250 (Windows-1250) decoder — the display strings' real codepage (see `decoders/ini.ts`). */
-const CP1250 = new TextDecoder('windows-1250');
-
 /** One emitted GUI bob atlas: the app-side `loadLayer` stems for its indexed + preview forms, plus frame count. */
 export interface GuiAtlasResult {
   readonly stem: string;
@@ -235,48 +232,16 @@ export interface GuiStringsResult {
   readonly strings: number;
 }
 
-/** Re-decodes an oracle-faithful latin1 string as CP1250 (its real codepage) for display glyphs. */
-function toCp1250(latin1: string): string {
-  return CP1250.decode(Uint8Array.from(latin1, (c) => c.charCodeAt(0) & 0xff));
-}
-
 /**
- * Parses one decoded `ingamegui*.cif` `CStringArray` into `{ <stringId>: <displayText> }`. The table is a
- * two-section config (verified against the shipped `backup (errors)/*.ini`): a `[control]` section with
- * `stringidmultiplier <N>`, then a `[text]` section of `stringn <id> "<text>"` (sets the running id
- * explicitly) and `string "<text>"` (auto-increments it) entries — so the display id is NOT the container
- * slot id but the running string id. We reuse {@link cifLinesToSections} (the type-table section parser) to
- * split it, then walk the `[text]` props applying the id rule; the multiplier (1 in every shipped table)
- * scales the id, matching the engine's per-table id namespacing. Display text is CP1250-decoded.
+ * Parses one decoded `ingamegui*.cif` `CStringArray` into `{ <stringId>: <displayText> }` — the display
+ * id is NOT the container slot id but the running string id ({@link extractStringTable}, shared with the
+ * map-folder string tables). We reuse {@link cifLinesToSections} (the type-table section parser) to split
+ * the two-section config, then re-decode each display value as CP1250 (its real codepage — the `.cif`
+ * seam yields oracle-faithful latin1).
  */
 function parseStringTable(bytes: Uint8Array): Record<string, string> {
-  const sections = cifLinesToSections(decodeCifStringArray(bytes).lines);
-  const control = sections.find((s) => s.name === 'control');
-  const rawMult = control?.props.find((p) => p.key === 'stringidmultiplier')?.values[0];
-  const multiplier = rawMult !== undefined ? Number.parseInt(rawMult, 10) || 1 : 1;
-  const text = sections.find((s) => s.name === 'text');
-
-  const byId: Record<string, string> = {};
-  let next = 0; // the running id the next bare `string` takes
-  for (const prop of text?.props ?? []) {
-    let id: number;
-    let display: string | undefined;
-    if (prop.key === 'stringn') {
-      id = Number.parseInt(prop.values[0] ?? '', 10);
-      display = prop.values[1];
-      if (!Number.isNaN(id)) next = id + 1; // only advance the running id on a VALID explicit id, so one
-      // malformed `stringn` drops only its own line, not every following bare `string` (per-item resilience)
-    } else if (prop.key === 'string') {
-      id = next;
-      display = prop.values[0];
-      next += 1;
-    } else {
-      continue; // not a string entry
-    }
-    if (Number.isNaN(id) || display === undefined) continue;
-    byId[id * multiplier] = toCp1250(display);
-  }
-  return byId;
+  const table = extractStringTable(cifLinesToSections(decodeCifStringArray(bytes).lines));
+  return Object.fromEntries(Object.entries(table).map(([id, display]) => [id, latin1ToCp1250(display)]));
 }
 
 /**
