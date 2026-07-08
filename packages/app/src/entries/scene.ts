@@ -50,9 +50,10 @@ export async function renderSceneMode(
 
   // Interactive camera over the scene: `?zoom` is the starting frame, then the human pans (middle-mouse
   // drag / arrow keys) and zooms (scroll wheel). Frame on the FIRST TICK's snapshot, not the initial
-  // one: a scene's build() enqueues spawn COMMANDS that run on tick 1, so the tick-0 snapshot is empty
-  // and `cameraFor`'s settler-centroid framing fell back to the tile origin (an off-centre first frame
-  // on every scene). One step is imperceptible and deterministic — the headless twin runs the same sim.
+  // one: a scene's SETTLER spawns are commands that run on tick 1 (direct-placed resources/flags do
+  // exist at tick 0), so the tick-0 settler centroid is empty and `cameraFor` fell back to the tile
+  // origin (an off-centre first frame on every scene). The one extra step is deterministic; the browser
+  // view simply runs `runTicks + 1` sim ticks vs the headless twin — harmless, the checks run headless.
   sim.step();
   const cameraCtl = createCameraController(
     canvas,

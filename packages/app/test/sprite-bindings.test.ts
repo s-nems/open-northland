@@ -576,14 +576,14 @@ describe('characterBinding', () => {
         ],
       ],
     ]);
-    // The swing pool `start` comes from the [bobseq] row, its per-direction layout from the gfxAtomics map.
+    // The swing pool `start` comes from the [bobseq] row, its per-direction layout from the gfxAtomics
+    // map. A PARTIAL multi-list table is still a <dir>-space table: dir 0 (E) lands on facing 4, dir 1
+    // (SE) on facing 5, and the unauthored facings hold empty lists (frameOf pins the pool's first
+    // frame there) — never an unremapped pass-through.
     expect(characterBinding(spec, seqs, [], frameLists)?.byAtomic).toEqual({
       81: {
         start: 2255,
-        frameLists: [
-          [79, 79, 80],
-          [97, 97, 98],
-        ],
+        frameLists: [[], [], [], [], [79, 79, 80], [97, 97, 98], [], []],
       },
     });
   });

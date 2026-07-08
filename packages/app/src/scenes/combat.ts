@@ -15,7 +15,7 @@ import {
   WEAPON_SWORD,
   spawnSandboxSettler,
 } from '../game/sandbox/index.js';
-import { enemyLivingSettlers } from './sandbox-queries.js';
+import { blueOwnedSettlers, enemyLivingSettlers } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -26,10 +26,10 @@ import type { SceneDefinition } from './types.js';
  * sees another (melee sight 8; bow search = the weapon's maxRange 15/23), keeping each duel readable.
  *
  * Owner-hostility auto-engages the two players — no scripted orders; hitpoints are chosen so a kill
- * takes ~6–9 full swings (the sandbox damage scale), so the fight lasts long enough to watch whole
- * animations. Both are named sandbox approximations — the original's human HP is unreadable
- * (calibration-pending, plan step 10). The headless half asserts only the deterministic outcome; the
- * pixels are the human's (see the checklist).
+ * takes ~6–12 full swings depending on the weapon (the sandbox damage scale), so the fight lasts long
+ * enough to watch whole animations. Both are named sandbox approximations — the original's human HP is
+ * unreadable (calibration-pending, plan step 10). The headless half asserts only the deterministic
+ * outcome; the pixels are the human's (see the checklist).
  */
 
 const MAP_W = 44;
@@ -48,8 +48,12 @@ interface DuelPost {
   readonly red: readonly { x: number; y: number }[];
 }
 
-// Each group's blue/red posts sit within melee sight (8 tiles Manhattan) of their OWN opposite line and
-// beyond every OTHER group's acquire radius, so duels stay pairwise. Axes vary on purpose — the point
+// Each group's blue/red posts sit within melee sight (8 tiles Manhattan) of their OWN opposite line,
+// and every cross-group hostile pair is spaced STRICTLY beyond the farther side's acquire radius at
+// spawn (melee sight 8; a bow's search = max(maxRange, 8) → 15 short / 23 long; the sim's ring search
+// is INCLUSIVE, so 8 apart still sees). Nearest-first targeting is the second guarantee: even as lines
+// close, each unit's own duel partner stays the nearest hostile until its duel resolves — after that,
+// survivors MAY roam to the next group (fine: more facings to judge). Axes vary on purpose — the point
 // of the scene is seeing the swing in many facings.
 const DUELS: readonly DuelPost[] = [
   // Short swords, 2v2, closing WEST→EAST (facings E/W in the clash).
@@ -65,17 +69,18 @@ const DUELS: readonly DuelPost[] = [
       { x: 9, y: 6 },
     ],
   },
-  // Broadswords (long sword), 2v2, closing NORTH→SOUTH (facings S/N).
+  // Broadswords (long sword), 2v2, closing NORTH→SOUTH (facings S/N). x ≥ 16 keeps the blue line 9
+  // Manhattan from the red sword line (strictly beyond the inclusive sight 8).
   {
     job: JOB_SOLDIER_BROADSWORD,
     weapon: WEAPON_BROADSWORD,
     blue: [
-      { x: 15, y: 2 },
-      { x: 17, y: 2 },
+      { x: 16, y: 2 },
+      { x: 18, y: 2 },
     ],
     red: [
-      { x: 15, y: 8 },
-      { x: 17, y: 8 },
+      { x: 16, y: 8 },
+      { x: 18, y: 8 },
     ],
   },
   // Spears, 2v2, closing on a NW→SE diagonal (the in-between facings).
@@ -91,19 +96,21 @@ const DUELS: readonly DuelPost[] = [
       { x: 10, y: 19 },
     ],
   },
-  // Short bows, 1v1 at standing fire range (band 3–15), arrows flying on a shallow diagonal.
+  // Short bows, 1v1 at standing fire range (band 3–15), arrows flying on a shallow diagonal. x ≥ 32
+  // keeps the blue archer 16 Manhattan from the red broadsword line (strictly beyond its 15 search).
   {
     job: JOB_ARCHER,
     weapon: WEAPON_SHORT_BOW,
-    blue: [{ x: 31, y: 6 }],
-    red: [{ x: 39, y: 10 }],
+    blue: [{ x: 32, y: 6 }],
+    red: [{ x: 40, y: 10 }],
   },
-  // Long bows, 1v1 (band 4–23), arrows flying on a steeper diagonal in the far corner.
+  // Long bows, 1v1 (band 4–23), arrows on a steeper diagonal in the far corner — 24+ Manhattan from
+  // the short-bow duel so neither long bow can acquire across groups (23 is inclusive).
   {
     job: JOB_ARCHER_LONG,
     weapon: WEAPON_LONG_BOW,
-    blue: [{ x: 32, y: 24 }],
-    red: [{ x: 40, y: 30 }],
+    blue: [{ x: 34, y: 29 }],
+    red: [{ x: 42, y: 32 }],
   },
 ];
 
@@ -126,18 +133,13 @@ function build(sim: Simulation): void {
 
 const { Owner, Position, Settler } = components;
 
-/** Living blue settlers of ANY soldier class (the scene fields five, not just the sword). */
-function blueLiving(sim: Simulation): number {
-  let count = 0;
-  for (const e of sim.world.query(Settler, Owner)) {
-    if (sim.world.get(e, Owner).player === HUMAN_PLAYER) count++;
-  }
-  return count;
-}
-
 /** A blue swordsman advanced past its start column (the aggressive approach happened, not a stand-off). */
 function blueAdvanced(sim: Simulation): boolean {
-  const swordStartX = DUELS[0]?.blue[0]?.x ?? 0;
+  // Keyed by JOB, not array position, so reordering DUELS can't silently retarget the assertion; a
+  // missing sword duel fails the check loudly instead of passing vacuously.
+  const swordDuel = DUELS.find((d) => d.job === JOB_SOLDIER_SWORD);
+  const swordStartX = swordDuel?.blue[0]?.x;
+  if (swordStartX === undefined) return false;
   for (const e of sim.world.query(Settler, Owner, Position)) {
     if (sim.world.get(e, Owner).player !== HUMAN_PLAYER) continue;
     if (sim.world.get(e, Settler).jobType !== JOB_SOLDIER_SWORD) continue;
@@ -165,7 +167,7 @@ export const combatScene: SceneDefinition = {
     'Lucznicy napinaja luk (krotki 12 klatek, dlugi 28 — wyraznie dluzszy) i wypuszczaja strzale w klatce zwolnienia',
     'Strzala jest WIDOCZNA w locie (minimalny grot — brak zdekodowanego spritu strzaly, znana luka) i trafia w cel',
     'Walka trwa kilka pelnych zamachow (nie blyskawiczny zgon); trafiony NIE ma animacji drgniecia (brak _attacked bobseq — luka danych)',
-    'Druzyny rozroznialne kolorem; czerwoni gina, niebiescy przewazaja; przesun kamere by objac luczników po prawej',
+    'Druzyny rozroznialne kolorem; czerwoni gina, niebiescy przewazaja; przesun kamere by objac lucznikow po prawej',
   ],
   checks: [
     {
@@ -174,7 +176,9 @@ export const combatScene: SceneDefinition = {
     },
     {
       label: 'blue fighters survive the clash',
-      predicate: (sim) => blueLiving(sim) > 0,
+      // The shared owned-count query suffices: cleanupSystem reaps 0-HP settlers the same tick, so
+      // every counted blue is alive by the time a check runs.
+      predicate: (sim) => blueOwnedSettlers(sim) > 0,
     },
     {
       label: 'the blue swordsmen advanced from their start column into melee',

@@ -38,7 +38,11 @@ export const JOB_GATHERER_MUD = 22;
 export const JOB_GATHERER_IRON = 23;
 export const JOB_GATHERER_GOLD = 24;
 export const JOB_GATHERER_MUSHROOM = 25;
-export const JOB_CARRIER = 36;
+// SYNTHETIC, deliberately outside the real soldier band (31..41) so the job→body map draws the
+// civilian body — the previous 36 was the real `soldier_saber_short`, so the carrier drew an armoured
+// swordsman. The REAL carrier id (`jobtypes.ini` type 24) is taken by the synthetic gatherer band
+// (20..25) above; renumbering that band onto the real trade ids is its own cleanup.
+export const JOB_CARRIER = 26;
 // Soldier jobs ride the REAL viking `jobtypes.ini` ids (soldiers 31..41) so the render's job→body map
 // (`ADULT_CHARACTER_BY_JOB`) draws each class's own warrior body + weapon animation set.
 export const JOB_SOLDIER_SPEAR = 33; // soldier_spear_iron
@@ -50,11 +54,14 @@ export const JOB_ARCHER_LONG = 41; // soldier_bow_long
 export const BUILDING_HEADQUARTERS = 1;
 export const BUILDING_JOINERY = 23;
 
+// Weapon typeIds ride the REAL viking `weapons.ini` ids (iron_spear 5, short_sword 7, long_sword 8,
+// short_bow 16, long_bow 17) — the previous synthetic 20/21 bows collided with the real house_bow (20)
+// and catapult (21), a scoped-id trap for anyone joining these against extracted data.
 export const WEAPON_SPEAR = 5;
 export const WEAPON_SWORD = 7;
 export const WEAPON_BROADSWORD = 8;
-export const WEAPON_SHORT_BOW = 20;
-export const WEAPON_LONG_BOW = 21;
+export const WEAPON_SHORT_BOW = 16;
+export const WEAPON_LONG_BOW = 17;
 
 /** How a good leaves the landscape: chop a tree down, dig a finite deposit, or pluck a small node. */
 export type GatherMode = 'fell' | 'mine' | 'pick';
