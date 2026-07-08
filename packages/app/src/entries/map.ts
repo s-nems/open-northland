@@ -9,7 +9,7 @@ import {
   makeElevationField,
   setTilePitch,
 } from '@vinland/render';
-import { loadIr } from '../content/ir.js';
+import { buildingFootprints, loadIr } from '../content/ir.js';
 import { loadMapObjects } from '../content/objects.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
@@ -129,10 +129,13 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // AUTHORED entities (map.cif StaticObjects) places those buildings/settlers at their authored
   // cells; else the demo slice — on a loaded map's walkable cells, or the synthetic strip. The
   // demo's units are owned by the human player so they can be selected + ordered.
+  // Extracted building footprints from the served IR give buildings real collision, so `placeBuilding`
+  // is blocked where a house doesn't fit and the build overlay greys those tiles (empty without content/).
+  const footprints = buildingFootprints(ir);
   const sim =
     (wantEntities && loaded?.entities !== undefined && ir !== null
-      ? runAuthoredSlice(SLICE_SEED, 0, loaded, loaded.entities, ir)
-      : null) ?? runSlice(SLICE_SEED, 0, loaded ?? undefined, HUMAN_PLAYER);
+      ? runAuthoredSlice(SLICE_SEED, 0, loaded, loaded.entities, ir, footprints)
+      : null) ?? runSlice(SLICE_SEED, 0, loaded ?? undefined, HUMAN_PLAYER, footprints);
 
   // Interactive camera: `?zoom` (+ the settler-centroid framing) is the STARTING frame; from there a
   // human pans (middle-mouse drag / arrow keys) and zooms (scroll wheel). The HUD is drawn outside the

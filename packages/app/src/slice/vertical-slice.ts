@@ -1,4 +1,4 @@
-import type { TerrainMapFile } from '@vinland/data';
+import type { BuildingFootprint, TerrainMapFile } from '@vinland/data';
 import { type SceneTerrain, terrainMapToScene } from '@vinland/render';
 import { Simulation, type TerrainMap, components, fx } from '@vinland/sim';
 import { HARVEST_ATOMIC } from '../catalog/atomics.js';
@@ -124,13 +124,23 @@ function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlaceme
  * too few walkable cells (an all-water grid under the demo's base table) **falls back to the strip**
  * — the slice always runs (matching the file's graceful-degradation contract), never throwing.
  */
-export function runSlice(seed: number, ticks: number, map?: TerrainMap, owner?: number): Simulation {
+export function runSlice(
+  seed: number,
+  ticks: number,
+  map?: TerrainMap,
+  owner?: number,
+  footprints?: ReadonlyMap<number, BuildingFootprint>,
+): Simulation {
   // Resolve placement first: a usable map yields its first six walkable cells; no map (or a map with
   // too few walkable cells) falls back to the synthetic strip — content + terrain + cells all revert
   // together so the fallback sim is exactly the no-map slice.
   const mapCells = map ? walkableCells(map, sandboxWalkableTypeIds(map), PLACEMENT_CELL_COUNT) : null;
   const usable = map !== undefined && mapCells !== null;
-  const content = sandboxContent(usable ? map : undefined);
+  // `footprints` (the live real-content entry passes them, from ir.json) give the buildings collision, so
+  // the build overlay greys where a house won't fit. Omitted (shot / tests) → footprint-less free placement.
+  const content = sandboxContent(usable ? map : undefined, {
+    ...(footprints ? { buildingFootprints: footprints } : {}),
+  });
   const terrain = usable ? map : grassMap();
   const cells = mapCells ?? STRIP_CELLS;
   const sim = new Simulation({ seed, content, map: terrain });
@@ -179,6 +189,7 @@ export function runAuthoredSlice(
   map: TerrainMap,
   entities: NonNullable<TerrainMapFile['entities']>,
   rows: AuthoredJoinRows,
+  footprints?: ReadonlyMap<number, BuildingFootprint>,
 ): Simulation | null {
   const { placements, skipped } = resolveAuthoredPlacements(entities, rows, map);
   if (placements.length === 0) return null;
@@ -211,6 +222,8 @@ export function runAuthoredSlice(
       };
     }),
     tribes: usedTribes.map((typeId) => ({ typeId, id: `tribe_${typeId}` })),
+    // Live real-content footprints (from ir.json), so authored + interactively-placed buildings collide.
+    ...(footprints ? { buildingFootprints: footprints } : {}),
   });
 
   const sim = new Simulation({ seed, content, map });

@@ -74,6 +74,14 @@ export interface SandboxContentExtras {
   readonly buildings?: readonly { typeId: number; id: string; kind?: string }[];
   readonly jobs?: readonly { typeId: number; id: string }[];
   readonly tribes?: readonly { typeId: number; id: string }[];
+  /**
+   * Extracted building ground footprints by typeId (from `content/ir.json` via
+   * {@link import('../../content/ir.js').buildingFootprints}). When supplied — the live real-content
+   * entries do so — a building gains its collision body / build-exclusion zone, so `placeBuilding` is
+   * blocked where it doesn't fit and the build overlay greys those tiles. Omitted (tests, scenes, a bare
+   * checkout with no `content/`) leaves every building footprint-less: the pre-footprint free placement.
+   */
+  readonly buildingFootprints?: ReadonlyMap<number, BuildingFootprint>;
 }
 
 const BASE_LANDSCAPE = [
@@ -179,14 +187,19 @@ export function sandboxGoods(): readonly GoodRef[] {
 }
 
 export function sandboxContent(map?: TerrainMap, extras: SandboxContentExtras = {}): ContentSet {
+  const footprintOf = (typeId: number): { footprint: BuildingFootprint } | Record<string, never> => {
+    const fp = extras.buildingFootprints?.get(typeId);
+    return fp !== undefined ? { footprint: fp } : {};
+  };
   const buildings = new Map<number, SandboxBuildingRow>();
-  for (const b of VIKING_BUILDINGS) buildings.set(b.typeId, buildingRow(b));
+  for (const b of VIKING_BUILDINGS) buildings.set(b.typeId, { ...buildingRow(b), ...footprintOf(b.typeId) });
   for (const b of extras.buildings ?? []) {
     if (!buildings.has(b.typeId)) {
       buildings.set(b.typeId, {
         typeId: b.typeId,
         id: b.id,
         kind: b.kind ?? 'workplace',
+        ...footprintOf(b.typeId),
       });
     }
   }

@@ -62,8 +62,9 @@ export interface GameViewDeps {
  * The build-mode blocked-tile wash: while a building is held, the tiles in the visible band whose
  * footprint the sim rejects — the SAME rule `placeBuilding` gates on (`Simulation.placementProbe`), so
  * the dimmed cells are exactly where a click would be refused (blocked by terrain — trees/stones/ore/
- * water — or by another building's margin). Screen-bounded per golden rule 7: only the visible tile
- * range is probed, and only while placing. Returns null for a mapless sim (no placement rule → no wash).
+ * water — or by another building's margin). Screen-bounded per golden rule 6 (per-frame cost scales
+ * with the screen): only the visible tile range is probed, and only while placing. Returns null for a
+ * mapless sim (no placement rule → no wash).
  */
 function blockedPlacementCells(
   sim: Simulation,

@@ -84,7 +84,9 @@ export class PlacementOverlayLayer {
 }
 
 /** A cheap order-sensitive hash of the cell set (length + a rolling mix of each col/row) so an unchanged
- *  set skips the rebuild. The caller emits cells in a fixed tile-scan order, so equal sets hash equal. */
+ *  set skips the rebuild. The caller emits cells in a fixed tile-scan order, so equal sets hash equal;
+ *  a collision between two different same-length sets is tolerated (a stale cosmetic wash for one frame,
+ *  self-correcting on the next change) — this only gates a redraw, never correctness. */
 function signatureOf(cells: readonly PlacementOverlayCell[]): string {
   let h = cells.length | 0;
   for (const c of cells) h = (Math.imul(h, 31) + Math.imul(c.col, 73856093) + Math.imul(c.row, 19349663)) | 0;
