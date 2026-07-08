@@ -2,13 +2,7 @@ import type { WorldSnapshot } from '@vinland/sim';
 import { Container, Graphics, Sprite, type TextureSource } from 'pixi.js';
 import type { ElevationField } from '../data/elevation.js';
 import { type Camera, depthKey } from '../data/iso.js';
-import {
-  type DrawItem,
-  type DrawKind,
-  SPRITE_PAINT_ORDER,
-  buildSpriteScene,
-  drawableEntityRefs,
-} from '../data/scene.js';
+import { type DrawItem, SPRITE_PAINT_ORDER, collectSpriteScene } from '../data/scene.js';
 import {
   type AtlasFrame,
   type BuildingDraw,
@@ -23,7 +17,7 @@ import {
 } from '../data/sprites.js';
 import type { Viewport } from '../data/viewport.js';
 import { PalettedSprite } from './paletted-sprite.js';
-import type { SpriteLayer, SpriteSheet } from './pixi-app.js';
+import type { SettlerCharacterSet, SpriteLayer, SpriteSheet } from './pixi-app.js';
 import type { TextureCache } from './texture-cache.js';
 
 /**
@@ -44,7 +38,7 @@ import type { TextureCache } from './texture-cache.js';
 const SNAP_DISTANCE = 128;
 
 /** Placeholder body colour per drawable sprite kind (drawn when no atlas frame binds the entity). */
-const KIND_COLOURS: Record<Exclude<DrawKind, 'tile'>, number> = {
+const KIND_COLOURS: Record<SpriteKind, number> = {
   building: 0xc8a04a,
   settler: 0xe8e0d0,
   resource: 0x2f7d32,
@@ -103,7 +97,7 @@ interface MutableBounds {
  */
 interface PooledEntity {
   readonly container: Container;
-  readonly kind: Exclude<DrawKind, 'tile'>;
+  readonly kind: SpriteKind;
   /** This entity's atlas layers. A PALETTED settler (team colours on) draws {@link PalettedSprite} meshes;
    *  every other entity draws plain {@link Sprite}s. Homogeneous per entity — set by {@link PooledEntity.paletted}. */
   readonly sprites: (Sprite | PalettedSprite)[];
@@ -137,6 +131,30 @@ export interface MotionTrack {
   /** The anchor to DRAW at this frame — `prev` lerped toward `curr` by the frame alpha. */
   drawX: number;
   drawY: number;
+}
+
+/**
+ * Everything one {@link SpritePool.reconcile} pass needs beyond the pool's own state — built once per
+ * frame by the {@link import('./world-renderer.js').WorldRenderer} (one small object per frame, not per
+ * entity). Grouping the camera + canvas size + interpolation inputs keeps the per-frame plumbing in one
+ * named shape instead of a positional-parameter tail that reshuffles on every new input.
+ */
+export interface PoolFrame {
+  readonly snapshot: WorldSnapshot;
+  /** The (margin-inflated) world-space box the camera frames — the sprite cull rectangle. */
+  readonly viewport: Viewport;
+  /** The sim tick the snapshot belongs to — the animation clock for looping gaits. */
+  readonly tick: number;
+  /** The camera transform (needed to self-place screen-space {@link PalettedSprite} meshes). */
+  readonly camera: Camera;
+  /** Canvas size in pixels (the paletted mesh maps screen px → clip space itself). */
+  readonly screenW: number;
+  readonly screenH: number;
+  /** The map's terrain-height field; a flat field (maxLift 0) costs nothing. */
+  readonly elevation: ElevationField;
+  /** Fixed-timestep interpolation fraction [0,1]: draw each entity `alpha` of the way between its last
+   *  two tick anchors. `1` draws raw tick positions (the static `?shot` entry). */
+  readonly alpha: number;
 }
 
 /**
@@ -224,28 +242,21 @@ export class SpritePool {
    * this frame (culled or gone), and destroy the ones that LEFT the snapshot (died). No allocation in
    * the steady state — only a first-seen entity or a growing layer set mints a new object.
    */
-  reconcile(
-    snapshot: WorldSnapshot,
-    vp: Viewport,
-    tick: number,
-    camera: Camera,
-    resW: number,
-    resH: number,
-    elevation?: ElevationField,
-    alpha = 1,
-  ): void {
-    const items = buildSpriteScene(snapshot, vp, elevation);
+  reconcile(frame: PoolFrame): void {
+    // ONE pass over the snapshot yields both the culled draw list and the pre-cull liveness set the
+    // destroy step needs — classifying every entity a second time per frame would double the scan.
+    const scene = collectSpriteScene(frame.snapshot, frame.viewport, frame.elevation);
     this.frameId++;
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
+    for (let i = 0; i < scene.items.length; i++) {
+      const item = scene.items[i];
       if (item === undefined) continue;
       let pe = this.pool.get(item.ref);
       if (pe === undefined) {
-        const kind = item.kind as Exclude<DrawKind, 'tile'>;
+        const kind = item.kind as SpriteKind;
         pe = createPooled(kind, this.isPaletted(kind));
         this.pool.set(item.ref, pe);
       }
-      this.updatePooled(pe, item, tick, camera, resW, resH, alpha);
+      this.updatePooled(pe, item, frame);
       // Depth = the feet-anchor SCREEN y (+ a small deterministic x tiebreak), the same key the tall
       // map objects use, so a settler and the tree it walks behind sort into one painter order.
       // NOTE this deliberately diverges from the headless `buildScene` oracle's row-major
@@ -265,7 +276,7 @@ export class SpritePool {
       }
       pe.lastSeen = this.frameId;
     }
-    this.drawn = items.length;
+    this.drawn = scene.items.length;
 
     // Detach pooled entities not drawn this frame (culled or gone) so the layer's sort stays O(visible).
     for (const pe of this.pool.values()) {
@@ -276,8 +287,7 @@ export class SpritePool {
     }
 
     // Destroy sprites of entities that LEFT the snapshot (died) — not the ones merely culled off-screen.
-    const live = drawableEntityRefs(snapshot);
-    for (const ref of reconcileSprites(live, this.pool.keys()).toDestroy) {
+    for (const ref of reconcileSprites(scene.liveRefs, this.pool.keys()).toDestroy) {
       const pe = this.pool.get(ref);
       if (pe !== undefined) {
         pe.container.destroy({ children: true });
@@ -327,18 +337,10 @@ export class SpritePool {
 
   /**
    * Update one pooled entity for this frame: move its container to the feet anchor, then either bind its
-   * atlas layers (reusing/growing its child sprites) or show its placeholder geometry — reusing objects
-   * instead of re-creating them.
+   * atlas layers ({@link bindLayers}) or show its placeholder geometry ({@link showPlaceholder}) —
+   * reusing objects instead of re-creating them.
    */
-  private updatePooled(
-    pe: PooledEntity,
-    item: DrawItem,
-    tick: number,
-    camera: Camera,
-    resW: number,
-    resH: number,
-    alpha: number,
-  ): void {
+  private updatePooled(pe: PooledEntity, item: DrawItem, frame: PoolFrame): void {
     // Fixed-timestep interpolation over the LIFTED feet: the sim advances in 20 Hz ticks, so drawing
     // raw snapshot anchors steps a walking bob ~8 px every third frame (the visible judder). Track the
     // last two TICK anchors of the terrain-lifted feet (`item.y − lift`, riding the ground up a hill —
@@ -348,10 +350,8 @@ export class SpritePool {
     // {@link trackMotion} (the pure, unit-tested half). `item.lift` is 0 on a flat map; the depth key
     // in `reconcile` restores the PRE-LIFT y, so occlusion still sorts by map row. Bounds/paletted
     // origin below use the drawn anchor too, so the picker's hit box tracks the drawn graphic.
-    trackMotion(pe.motion, tick, item.x, item.y - (item.lift ?? 0), alpha);
-    const drawX = pe.motion.drawX;
-    const drawY = pe.motion.drawY;
-    pe.container.position.set(drawX, drawY);
+    trackMotion(pe.motion, frame.tick, item.x, item.y - (item.lift ?? 0), frame.alpha);
+    pe.container.position.set(pe.motion.drawX, pe.motion.drawY);
     // Sticky facing: a MOVING settler that dropped its PathFollow for a tick (the repath gap — state stays
     // `moving` via MoveGoal/PathRequest but there is no heading to read) reuses its last real heading so the
     // walk doesn't flip to DEFAULT_FACING for a frame each tile (the pool half of what `readSpriteState`
@@ -366,28 +366,47 @@ export class SpritePool {
       pe.lastFacing !== undefined
         ? { ...item, facing: pe.lastFacing }
         : item;
-    const layers = this.resolveLayers(drawItem, tick);
+    const layers = this.resolveLayers(drawItem, frame.tick);
     if (layers === null) {
-      // Unbound / no sheet → placeholder marker (footprint diamond + body box), hide any atlas sprites.
-      for (const s of pe.sprites) s.visible = false;
-      if (pe.placeholder === undefined) {
-        pe.placeholder = drawPlaceholder(new Graphics(), pe.kind);
-        pe.container.addChild(pe.placeholder);
-      }
-      pe.placeholder.visible = true;
-      const { bodyW, bodyH } = placeholderBody(pe.kind);
-      const halfW = Math.max(9, bodyW / 2);
-      this.stampBounds(pe, drawX - halfW, drawY - bodyH, drawX + halfW, drawY + 5);
+      this.showPlaceholder(pe);
       return;
     }
     if (pe.placeholder !== undefined) pe.placeholder.visible = false;
+    this.bindLayers(pe, item, layers, frame);
+  }
+
+  /** Show (lazily building) the placeholder marker — the unbound / no-sheet fallback — and stamp the
+   *  entity's bounds from the placeholder's fixed body box. Any atlas sprites are hidden. */
+  private showPlaceholder(pe: PooledEntity): void {
+    for (const s of pe.sprites) s.visible = false;
+    if (pe.placeholder === undefined) {
+      pe.placeholder = drawPlaceholder(new Graphics(), pe.kind);
+      pe.container.addChild(pe.placeholder);
+    }
+    pe.placeholder.visible = true;
+    const { bodyW, bodyH } = placeholderBody(pe.kind);
+    const halfW = Math.max(9, bodyW / 2);
+    const drawX = pe.motion.drawX;
+    const drawY = pe.motion.drawY;
+    this.stampBounds(pe, drawX - halfW, drawY - bodyH, drawX + halfW, drawY + 5);
+  }
+
+  /**
+   * Bind the entity's resolved atlas layers onto its pooled sprites (growing the sprite list only when a
+   * frame needs MORE layers than any before), and stamp the union of the drawn rects as the entity's
+   * world-space bounds. A PALETTED settler binds {@link PalettedSprite} meshes (screen-space,
+   * self-placed); every other entity binds plain cached sub-textures.
+   */
+  private bindLayers(pe: PooledEntity, item: DrawItem, layers: ResolvedLayer[], frame: PoolFrame): void {
+    const drawX = pe.motion.drawX;
+    const drawY = pe.motion.drawY;
     // A PALETTED settler draws team-coloured PalettedSprite meshes. A custom-shader mesh can't ride the
     // camera-transformed spriteLayer (Pixi leaves its transform UBO unbound), so it SELF-places in screen
     // space — mirror the camera the plain sprites inherit: screen feet-anchor = camera applied to this
     // entity's DRAWN (lerped) anchor. Cheap to compute once; unused on the plain-sprite path.
-    const camScale = camera.scale ?? 1;
-    const originX = camera.offsetX + camScale * drawX;
-    const originY = camera.offsetY + camScale * drawY;
+    const camScale = frame.camera.scale ?? 1;
+    const originX = frame.camera.offsetX + camScale * drawX;
+    const originY = frame.camera.offsetY + camScale * drawY;
     const playerRow = item.player ?? 0; // an unowned settler reads LUT row 0 (the base palette)
     // Accumulate the union of the drawn layers' rects (feet-local) → the entity's exact sprite bounds. The
     // bounds live in WORLD-screen space (item.x + feet-local offsets), the same for a mesh or a plain sprite,
@@ -419,7 +438,7 @@ export class SpritePool {
           layer.atlasW ?? layer.frame.width,
           layer.atlasH ?? layer.frame.height,
         );
-        spr.place(originX, originY, camScale * layer.scale, resW, resH);
+        spr.place(originX, originY, camScale * layer.scale, frame.screenW, frame.screenH);
         spr.player = playerRow;
         spr.visible = true;
       } else {
@@ -454,7 +473,7 @@ export class SpritePool {
    *  (real graphics + the pipeline's colour stage). Fixed for the pool's life — the sheet never changes — so
    *  a pooled entity's sprite CLASS is decided once at creation. Without the LUT this is false everywhere and
    *  every entity draws plain {@link Sprite}s exactly as before. */
-  private isPaletted(kind: Exclude<DrawKind, 'tile'>): boolean {
+  private isPaletted(kind: SpriteKind): boolean {
     return kind === 'settler' && this.sheet?.palette !== undefined && this.sheet.characters !== undefined;
   }
 
@@ -482,42 +501,7 @@ export class SpritePool {
     // pick + its own binding, resolved in that body's frame-id space. Falls through to the sheet-global
     // settler path only when the sheet carries no characters (the synthetic sheet — unchanged).
     if (item.kind === 'settler' && sheet.characters !== undefined) {
-      const char = pickByJob(sheet.characters, item.jobType, item.young === true);
-      const bob = resolveSettlerBobId(char.binding, item, tick);
-      const layers: ResolvedLayer[] = [];
-      const bodyFrame = char.body.atlas.frames.get(bob);
-      if (bodyFrame !== undefined && bodyFrame.width > 0 && bodyFrame.height > 0) {
-        // atlasW/H ride along for the paletted mesh path (it samples the indexed sheet by UV); the plain
-        // sprite path ignores them. See ResolvedLayer / updatePooled.
-        layers.push({
-          source: char.body.source,
-          frame: bodyFrame,
-          scale: 1,
-          atlasW: char.body.atlas.width,
-          atlasH: char.body.atlas.height,
-        });
-      }
-      // ONE head per individual, stable by entity id (ids are monotonic, never reused), so a crowd
-      // shows varied faces without per-frame flicker — the render-side analogue of the original's
-      // per-individual random head pick. The head may resolve through its OWN binding (the head-borrow
-      // case — a carry variant whose head bobs are empty plays the base walk's head instead).
-      const heads = char.heads;
-      if (heads !== undefined && heads.length > 0) {
-        const head = heads[item.ref % heads.length];
-        const headBob =
-          char.headBinding !== undefined ? resolveSettlerBobId(char.headBinding, item, tick) : bob;
-        const headFrame = head?.atlas.frames.get(headBob);
-        if (head !== undefined && headFrame !== undefined && headFrame.width > 0 && headFrame.height > 0) {
-          layers.push({
-            source: head.source,
-            frame: headFrame,
-            scale: 1,
-            atlasW: head.atlas.width,
-            atlasH: head.atlas.height,
-          });
-        }
-      }
-      return layers.length > 0 ? layers : null;
+      return resolveCharacterLayers(sheet.characters, item, tick);
     }
 
     let bobId: number | null;
@@ -571,25 +555,17 @@ export class SpritePool {
             : this.layeredLayerFor(sheet, 'stockpile', draw),
         ),
       );
-    } else if (item.kind === 'grounddrop') {
-      // A freshly-felled trunk on the ground draws its per-good pickup-stage LOG from a loaded named family
-      // (the `landscapeToPickup` atlas), reusing the resource resolver — the same no-wrong-borrow rule as
-      // the stump. A bare or unloaded-family ref draws the placeholder log, never a body-atlas frame.
-      const binding = sheet.bindings.trunk;
+    } else if (item.kind === 'grounddrop' || item.kind === 'stump') {
+      // A stump (`ls_trees_dead` debris) and a freshly-felled trunk on the ground (`landscapeToPickup`
+      // LOG) have no shared `kindLayers` layer either — each draws its per-good frame ONLY from a loaded
+      // named family, reusing the per-good resource resolver. A bare or unloaded-family ref draws the
+      // placeholder — never a wrong-bob borrow from the body atlas. Same rule, different binding key
+      // (the DrawKind names the entity, the binding key names the graphic: grounddrop → `trunk`).
+      const binding = item.kind === 'stump' ? sheet.bindings.stump : sheet.bindings.trunk;
       if (binding === undefined) return null;
       const draw = resolveResourceDraw(binding, item);
       if (draw.layer === undefined) return null; // no family → placeholder
-      const resolved = this.layeredLayerFor(sheet, 'grounddrop', draw);
-      return resolved === null ? null : [resolved];
-    } else if (item.kind === 'stump') {
-      // A stump has NO shared `kindLayers` layer of its own either — it draws its debris frame ONLY
-      // from a loaded named family (`ls_trees_dead`), reusing the per-good resource resolver. A bare or
-      // unloaded-family ref draws the placeholder — never falls through to the body atlas.
-      const binding = sheet.bindings.stump;
-      if (binding === undefined) return null;
-      const draw = resolveResourceDraw(binding, item);
-      if (draw.layer === undefined) return null; // no family → placeholder
-      const resolved = this.layeredLayerFor(sheet, 'stump', draw);
+      const resolved = this.layeredLayerFor(sheet, item.kind, draw);
       return resolved === null ? null : [resolved];
     } else {
       bobId = resolveSpriteBobId(item, sheet.bindings, tick);
@@ -644,8 +620,53 @@ export class SpritePool {
   }
 }
 
+/**
+ * Resolve a per-job settler CHARACTER's layers: the job's own body frame plus ONE stable head overlay
+ * per individual (picked by entity id — ids are monotonic, never reused — so a crowd shows varied faces
+ * without per-frame flicker, the render-side analogue of the original's per-individual random head).
+ * The head may resolve through its OWN binding (the head-borrow case — a carry variant whose head bobs
+ * are empty plays the base walk's head instead).
+ */
+function resolveCharacterLayers(
+  characters: SettlerCharacterSet,
+  item: DrawItem,
+  tick: number,
+): ResolvedLayer[] | null {
+  const char = pickByJob(characters, item.jobType, item.young === true);
+  const bob = resolveSettlerBobId(char.binding, item, tick);
+  const layers: ResolvedLayer[] = [];
+  const bodyFrame = char.body.atlas.frames.get(bob);
+  if (bodyFrame !== undefined && bodyFrame.width > 0 && bodyFrame.height > 0) {
+    // atlasW/H ride along for the paletted mesh path (it samples the indexed sheet by UV); the plain
+    // sprite path ignores them. See ResolvedLayer / bindLayers.
+    layers.push({
+      source: char.body.source,
+      frame: bodyFrame,
+      scale: 1,
+      atlasW: char.body.atlas.width,
+      atlasH: char.body.atlas.height,
+    });
+  }
+  const heads = char.heads;
+  if (heads !== undefined && heads.length > 0) {
+    const head = heads[item.ref % heads.length];
+    const headBob = char.headBinding !== undefined ? resolveSettlerBobId(char.headBinding, item, tick) : bob;
+    const headFrame = head?.atlas.frames.get(headBob);
+    if (head !== undefined && headFrame !== undefined && headFrame.width > 0 && headFrame.height > 0) {
+      layers.push({
+        source: head.source,
+        frame: headFrame,
+        scale: 1,
+        atlasW: head.atlas.width,
+        atlasH: head.atlas.height,
+      });
+    }
+  }
+  return layers.length > 0 ? layers : null;
+}
+
 /** A fresh, empty pooled entity (container + kind; sprites/placeholder grow lazily on first update). */
-function createPooled(kind: Exclude<DrawKind, 'tile'>, paletted: boolean): PooledEntity {
+function createPooled(kind: SpriteKind, paletted: boolean): PooledEntity {
   return {
     container: new Container(),
     kind,
@@ -659,20 +680,20 @@ function createPooled(kind: Exclude<DrawKind, 'tile'>, paletted: boolean): Poole
   };
 }
 
+/** The feet-local body dimensions the placeholder marker is drawn at, by kind (see {@link drawPlaceholder}). */
+function placeholderBody(kind: SpriteKind): { bodyW: number; bodyH: number } {
+  if (kind === 'building') return { bodyW: 28, bodyH: 40 };
+  if (kind === 'stockpile') return { bodyW: 20, bodyH: 12 }; // a low, wide heap/flag base
+  return { bodyW: 14, bodyH: 24 };
+}
+
 /**
  * Draw a feet-anchored sprite placeholder into `g`, relative to its container origin `(0,0)`: a small
  * footprint diamond on the ground + a body box rising from it, coloured by kind — so an unbound entity
  * (or the no-atlas default) still shows depth-sortable geometry. Built ONCE per entity (kind is stable);
  * only its visibility toggles per frame.
  */
-/** The feet-local body dimensions the placeholder marker is drawn at, by kind (see {@link drawPlaceholder}). */
-function placeholderBody(kind: Exclude<DrawKind, 'tile'>): { bodyW: number; bodyH: number } {
-  if (kind === 'building') return { bodyW: 28, bodyH: 40 };
-  if (kind === 'stockpile') return { bodyW: 20, bodyH: 12 }; // a low, wide heap/flag base
-  return { bodyW: 14, bodyH: 24 };
-}
-
-function drawPlaceholder(g: Graphics, kind: Exclude<DrawKind, 'tile'>): Graphics {
+function drawPlaceholder(g: Graphics, kind: SpriteKind): Graphics {
   const colour = KIND_COLOURS[kind];
   const { bodyW, bodyH } = placeholderBody(kind);
   g.moveTo(0, -5).lineTo(9, 0).lineTo(0, 5).lineTo(-9, 0).closePath().fill({ color: 0x000000, alpha: 0.3 });

@@ -1,0 +1,297 @@
+import { ONE, tileToScreen } from './iso.js';
+import type { DrawKind, SpriteState } from './scene.js';
+
+/**
+ * The PURE snapshot-component readers — every function here turns one plain-cloned snapshot
+ * component into the render-side fact a {@link import('./scene.js').DrawItem} carries (state, facing,
+ * carried good, build progress, …). Split out of `scene.ts` so the *reads* (total, defensive
+ * decoders of plain data) live apart from the *scene assembly* (projection + depth sort) that
+ * consumes them — each is unit-testable and changeable on its own.
+ *
+ * Shared contract: every reader is a pure, TOTAL function of a snapshot entity's `components`
+ * record. A missing or malformed component reads as its "absent" value (`null`/`undefined`/`{}`),
+ * never a throw — the scene must survive any snapshot shape. Nothing here re-enters the sim.
+ */
+
+/**
+ * The snapshot's `Position` component value, as plain data (Fixed = a scaled integer). Mirrors the
+ * sim component; redeclared here so `render` doesn't reach into sim internals for a 2-field shape.
+ */
+interface PositionValue {
+  x: number;
+  y: number;
+}
+
+export function readPosition(components: Readonly<Record<string, unknown>>): PositionValue | null {
+  const p = components.Position as PositionValue | undefined;
+  if (p === undefined || typeof p.x !== 'number' || typeof p.y !== 'number') return null;
+  return p;
+}
+
+/** Classify a snapshot entity by which marker component it carries (terrain tiles are separate). */
+export function classify(components: Readonly<Record<string, unknown>>): DrawKind | null {
+  if ('Building' in components) return 'building';
+  if ('Resource' in components) return 'resource';
+  // A felled tree's leftover stump/debris — pure decor (a Position + Stump marker, no other drawable
+  // component), drawn by a per-good {@link import('./sprites.js').ResourceTypeBinding} like a resource
+  // node but from the dead-tree/debris atlas. Checked before Settler/Stockpile (a stump is neither).
+  if ('Stump' in components) return 'stump';
+  if ('Settler' in components) return 'settler';
+  // A freshly-felled trunk still on the ground (a Stockpile carrying the GroundDrop marker) draws its
+  // pickup-stage LOG graphic, distinct from a tidy delivery pile — the original shows a different object
+  // for uncollected harvest than for the stored heap. Checked before the plain Stockpile so a marked drop
+  // never falls through to the flag/heap path.
+  if ('GroundDrop' in components && 'Stockpile' in components) return 'grounddrop';
+  // A bare Stockpile with NO Building is a loose ground pile or a delivery flag (the gathering economy's
+  // dropped goods + collection points, spawned by ai-supply.ts). Checked AFTER Building so a warehouse/HQ
+  // store — which carries both Building and Stockpile — stays a `building`, matching the sim's own
+  // ground-pile rule (`nearestGroundPile`: Stockpile ∧ Position ∧ ¬Building).
+  if ('Stockpile' in components) return 'stockpile';
+  return null; // an entity with a Position but no drawable marker is skipped (e.g. a pure mover)
+}
+
+/**
+ * The atomic id a snapshot entity is mid-execution on, or `null`. Reads only the `atomicId` field of
+ * the (plain-cloned) `CurrentAtomic` component — the same numeric id the sim stores as the `setatomic`
+ * animation join key.
+ */
+export function readActingAtomic(components: Readonly<Record<string, unknown>>): number | null {
+  const a = components.CurrentAtomic as { atomicId?: unknown } | undefined;
+  if (a === undefined || typeof a.atomicId !== 'number') return null;
+  return a.atomicId;
+}
+
+/**
+ * A building entity's type id — the `Building.buildingType` (the `[GfxHouse]` `LogicType` the placement
+ * command stamped). Stamped onto the building draw item as {@link import('./scene.js').DrawItem.typeId}
+ * so a per-type {@link import('./sprites.js').BuildingTypeBinding} can draw each building its own house
+ * bob. `undefined` for a missing/malformed component (the binding then falls back to its default house).
+ */
+export function readBuildingType(components: Readonly<Record<string, unknown>>): number | undefined {
+  const b = components.Building as { buildingType?: unknown } | undefined;
+  return b !== undefined && typeof b.buildingType === 'number' ? b.buildingType : undefined;
+}
+
+/**
+ * An UNDER-CONSTRUCTION building's progress as a whole percent (0..99), or `undefined` for a finished
+ * building (`built >= ONE` — the normal body draw applies) or a missing/malformed component. The sim's
+ * `Building.built` is a fixed-point fraction of ONE; the floor keeps a nearly-done site below 100 so
+ * the construction stages stay up until the finish tick flips the draw to the completed body.
+ */
+export function readBuiltPct(components: Readonly<Record<string, unknown>>): number | undefined {
+  const b = components.Building as { built?: unknown } | undefined;
+  if (b === undefined || typeof b.built !== 'number' || !Number.isFinite(b.built) || b.built >= ONE) {
+    return undefined; // finished (or malformed — NaN would poison every range test downstream)
+  }
+  return Math.max(0, Math.min(99, Math.floor((b.built * 100) / ONE)));
+}
+
+/**
+ * The whole ticks the settler has executed in its current atomic — the sim's `CurrentAtomic.elapsed`
+ * (a plain integer, no fixed-point rescale). The action's animation clock: a directional swing advances
+ * at a fixed cadence over these ticks, so its speed never depends on the action's duration. Returns
+ * `null` when not mid-atomic.
+ */
+export function readAtomicElapsed(components: Readonly<Record<string, unknown>>): number | null {
+  const a = components.CurrentAtomic as { elapsed?: unknown } | undefined;
+  if (a === undefined || typeof a.elapsed !== 'number') return null;
+  return a.elapsed;
+}
+
+/**
+ * The bob block index per SCREEN-heading octant, indexed by `round(angle / 45°) mod 8` with the angle
+ * from `Math.atan2(dy, dx)` (screen +x right, +y down): octant 0 = E, 1 = SE, 2 = S, 3 = SW, 4 = W,
+ * 5 = NW, 6 = N, 7 = NE. The `CR_Hum_Body` sheet's 8 direction blocks are NOT a uniform screen-angle
+ * rotation — each was read off the decoded frames one by one (`source basis` "Settler facing";
+ * blocks face `0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N`) — hence the lookup.
+ */
+const HEADING_OCTANT_TO_BLOCK: readonly number[] = [4, 5, 6, 0, 1, 2, 7, 3];
+
+/** The S-facing block — the fallback for an (unreachable) out-of-table octant lookup. */
+const DEFAULT_HEADING_BLOCK = 6;
+
+/**
+ * The facing block whose sprite looks along the given SCREEN heading (px delta, +x right, +y down):
+ * quantize the heading angle to the nearest of the 8 octants and look the block up. Facing must be
+ * derived from the PROJECTED heading, not the grid delta's sign — under the staggered raster the
+ * same grid step `(0,+1)` heads screen down-RIGHT from an even row but down-LEFT from an odd one
+ * (the sign-pair table this replaced faced both as "south", one of the visible zigzag artifacts;
+ * source basis "Settler facing"). Floats are fine — render-only, never re-enters the sim.
+ */
+function facingFromScreenHeading(dx: number, dy: number): number {
+  const octant = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)); // -4..4, 0 = screen right
+  return HEADING_OCTANT_TO_BLOCK[((octant % 8) + 8) % 8] ?? DEFAULT_HEADING_BLOCK;
+}
+
+/**
+ * One {@link PathFollow} waypoint, as plain snapshot data (Fixed = scaled int). Redeclared here so
+ * `render` doesn't import the sim component shape for a 2-field read.
+ */
+interface WaypointValue {
+  x: number;
+  y: number;
+}
+
+/**
+ * Derive a settler's facing direction index (0..7) from its live heading: the PROJECTED screen step
+ * from its current position toward the {@link PathFollow} waypoint it is walking to, quantized to the
+ * block whose sprite faces that heading ({@link facingFromScreenHeading}). Projecting through
+ * `tileToScreen` (not reading the grid delta's sign) is what makes facing parity-correct under the
+ * staggered raster: a lattice leg one row down faces SE from an even row and SW from an odd one.
+ * Returns `undefined` when there is no movement to read a heading from (no path, or already on the
+ * waypoint) — the binding then falls back to a default facing.
+ */
+export function readFacing(components: Readonly<Record<string, unknown>>): number | undefined {
+  const pf = components.PathFollow as { waypoints?: unknown; index?: unknown } | undefined;
+  const pos = readPosition(components);
+  if (pf === undefined || pos === null || !Array.isArray(pf.waypoints)) return undefined;
+  const idx = typeof pf.index === 'number' ? pf.index : 0;
+  const wp = pf.waypoints[idx] as WaypointValue | undefined;
+  if (wp === undefined || typeof wp.x !== 'number' || typeof wp.y !== 'number') return undefined;
+  const from = tileToScreen(pos.x / ONE, pos.y / ONE);
+  const to = tileToScreen(wp.x / ONE, wp.y / ONE);
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  if (dx === 0 && dy === 0) return undefined; // already there — no heading
+  return facingFromScreenHeading(dx, dy);
+}
+
+/**
+ * Derive a sprite's coarse {@link SpriteState} from its snapshot components, in priority order:
+ * mid-atomic (`CurrentAtomic`) ⇒ `acting`, else IN TRANSIT (a live path OR a pending goal) ⇒ `moving`,
+ * else `idle`. Acting wins over moving because a settler that started an atomic has stopped to act even
+ * if a stale path lingers.
+ *
+ * "In transit" is more than a live {@link PathFollow}: a unit re-issuing its route drops the PathFollow
+ * for a tick while it still holds a {@link MoveGoal} / a freshly-queued {@link PathRequest} — most
+ * visibly a combat chaser, which re-paths toward a MOVING enemy every few ticks (systems/conflict
+ * `REPATH_CADENCE`). Treating that gap as `idle` made the walk animation drop to the standing pose for a
+ * frame each tile — the reported march "stutter". A **failed** PathRequest is the opposite case: the goal
+ * is unreachable and the unit is genuinely stuck, so it stays `idle` rather than moonwalk in place.
+ */
+export function readSpriteState(components: Readonly<Record<string, unknown>>): SpriteState {
+  if (readActingAtomic(components) !== null) return 'acting';
+  if ('PathFollow' in components) return 'moving';
+  const req = components.PathRequest as { failed?: unknown } | undefined;
+  if (req !== undefined) return req.failed === true ? 'idle' : 'moving';
+  if ('MoveGoal' in components) return 'moving';
+  return 'idle';
+}
+
+/**
+ * What a snapshot settler is hauling — the (plain-cloned) `Carrying` component's `goodType` (the sim
+ * adds the component on harvest, removes it on deposit), or `null` when it carries nothing. Read as a
+ * fact orthogonal to {@link readSpriteState} so a binding can pick the loaded gait (and the per-good
+ * look) while the settler still reads as `moving`/`acting`. A present-but-malformed component still
+ * reads as carrying (goodType `undefined` → the generic loaded look).
+ */
+export function readCarrying(components: Readonly<Record<string, unknown>>): { goodType?: number } | null {
+  const c = components.Carrying as { goodType?: unknown } | undefined;
+  if (c === undefined) return null;
+  return typeof c.goodType === 'number' ? { goodType: c.goodType } : {};
+}
+
+/**
+ * A settler's `Settler.jobType` — the per-character body/head join key
+ * ({@link import('./scene.js').DrawItem.jobType}) — or `undefined` for a jobless (`null`) settler /
+ * malformed component (the binding then falls back to its default look).
+ */
+export function readJobType(components: Readonly<Record<string, unknown>>): number | undefined {
+  const s = components.Settler as { jobType?: unknown } | undefined;
+  return s !== undefined && typeof s.jobType === 'number' ? s.jobType : undefined;
+}
+
+/**
+ * A resource node's `Resource.goodType` — the per-good join key
+ * ({@link import('./scene.js').DrawItem.goodType}) a {@link import('./sprites.js').ResourceTypeBinding}
+ * draws its species/deposit by (a tree for wood, a mine for iron). `undefined` for a missing/malformed
+ * component (the binding then falls back to its default node).
+ */
+export function readResourceGood(components: Readonly<Record<string, unknown>>): number | undefined {
+  const r = components.Resource as { goodType?: unknown } | undefined;
+  return r !== undefined && typeof r.goodType === 'number' ? r.goodType : undefined;
+}
+
+/**
+ * The visual fill LEVEL of a mined deposit ({@link import('./scene.js').DrawItem.level}): a small integer
+ * in `[1, levels]`, `levels` when full (`remaining === initial`) stepping down to `1` as it nears empty.
+ * Pure integer math — the node twin of {@link readStockpile}'s pile `fill`, done here (in the snapshot
+ * read-view) off the `Resource.remaining` + `MineDeposit.initial`/`levels` the sim exposes, never
+ * re-entering the sim. `ceil(remaining · levels / initial)`: a partially-drained deposit reads as the
+ * next level UP, so it looks full until the first unit is actually gone and only the last unit shows the
+ * dregs. Matches the mine gfx `state` numbering directly (level `k` ⇒ `state k`), which is authored full
+ * at the highest state.
+ */
+export function depositVisualLevel(remaining: number, initial: number, levels: number): number {
+  if (remaining <= 0 || initial <= 0 || levels <= 0) return 0;
+  return Math.min(levels, Math.max(1, Math.ceil((remaining * levels) / initial)));
+}
+
+/**
+ * A mined resource node's visual fill level ({@link import('./scene.js').DrawItem.level}), or `undefined`
+ * for a plain node. Reads the node's {@link import('@vinland/sim').MineDeposit} `initial`/`levels` (its
+ * deposit capacity) against `Resource.remaining` and buckets them via {@link depositVisualLevel}.
+ * `undefined` when the node carries no `MineDeposit` (a tree/mushroom/full showcase node) — the binding
+ * then draws its full-state frame.
+ */
+export function readResourceLevel(components: Readonly<Record<string, unknown>>): number | undefined {
+  const deposit = components.MineDeposit as { initial?: unknown; levels?: unknown } | undefined;
+  const res = components.Resource as { remaining?: unknown } | undefined;
+  if (deposit === undefined || typeof deposit.initial !== 'number' || typeof deposit.levels !== 'number') {
+    return undefined;
+  }
+  if (res === undefined || typeof res.remaining !== 'number') return undefined;
+  return depositVisualLevel(res.remaining, deposit.initial, deposit.levels);
+}
+
+/**
+ * A stump's `Stump.goodType` — the resource it is the remains of (a chopped tree → wood), the per-good
+ * join key ({@link import('./scene.js').DrawItem.goodType}) a {@link import('./sprites.js').ResourceTypeBinding}
+ * draws its debris frame by. `undefined` for a missing/malformed component (the binding falls back to
+ * its default).
+ */
+export function readStumpGood(components: Readonly<Record<string, unknown>>): number | undefined {
+  const s = components.Stump as { goodType?: unknown } | undefined;
+  return s !== undefined && typeof s.goodType === 'number' ? s.goodType : undefined;
+}
+
+/**
+ * What a bare {@link import('@vinland/sim').Stockpile} draw item represents: the good its ground pile
+ * mainly holds + how many units (its per-fill heap frame), or `{}` when it holds nothing — an empty pile
+ * is a bare **delivery flag**. The snapshot clones a `Stockpile.amounts` Map to an ascending-by-goodType
+ * `[goodType, amount]` array (see `inspect/snapshot.ts`), so this reads that plain shape. The pile's good
+ * is the one it holds MOST of (strict `>` keeps the FIRST max — i.e. the lowest goodType on a tie,
+ * *because* the snapshot pre-sorts `amounts` ascending by goodType). That canonical order is what makes
+ * the pick reproducible across runs. A pile in the gathering economy holds a single good, so this is
+ * unambiguous there; the max rule just keeps a mixed heap deterministic.
+ */
+export function readStockpile(components: Readonly<Record<string, unknown>>): {
+  goodType?: number;
+  fill?: number;
+} {
+  const s = components.Stockpile as { amounts?: unknown } | undefined;
+  if (s === undefined || !Array.isArray(s.amounts)) return {};
+  let bestGood: number | undefined;
+  let bestAmount = 0;
+  for (const pair of s.amounts) {
+    if (!Array.isArray(pair)) continue;
+    const good = pair[0];
+    const amount = pair[1];
+    if (typeof good !== 'number' || typeof amount !== 'number' || amount <= 0) continue;
+    if (amount > bestAmount) {
+      bestAmount = amount;
+      bestGood = good;
+    }
+  }
+  return bestGood === undefined ? {} : { goodType: bestGood, fill: bestAmount };
+}
+
+/**
+ * The owning player slot of a settler — the sim `Owner.player`, the render team-colour key
+ * ({@link import('./scene.js').DrawItem.player}). `undefined` when the settler carries no `Owner`
+ * (wildlife / a neutral fixture), which the renderer draws in the base palette.
+ */
+export function readOwnerPlayer(components: Readonly<Record<string, unknown>>): number | undefined {
+  const o = components.Owner as { player?: unknown } | undefined;
+  return o !== undefined && typeof o.player === 'number' ? o.player : undefined;
+}
