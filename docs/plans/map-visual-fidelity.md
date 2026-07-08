@@ -52,8 +52,8 @@ gitignored.
   image px ÷ 1.25.
 - **Our matching frame**: `npm run dev` →
   `http://localhost:5173/?map=specjalna_mosty_na_rzece&center=160,15&zoom=1.25` at a 3172×1784
-  viewport ≈ the same frame as `mosty-5.png` (residual offset ≈ (−59, −15) px + per-area elevation
-  lift until step 2 lands). Compose an aligned side-by-side for the user — **the owner is the pixel
+  viewport ≈ the same frame as `mosty-5.png` (residual offset ≈ (−59, −15) px, measured before
+  the step-2 elevation lift landed). Compose an aligned side-by-side for the user — **the owner is the pixel
   oracle; never self-sign a visual**.
 - Template matching that works on this corpus: masked `TM_SQDIFF_NORMED` (invert to a score),
   alpha mask eroded 2px, sprites cropped from the served atlases

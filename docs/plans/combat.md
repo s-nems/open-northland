@@ -103,14 +103,31 @@ file when all steps land. Steps 8–9 are severable if the scope must shrink; st
 - [ ] 9. Sim+app: towers, defence mode, building damage
 - [ ] 10. Calibration against the original (interactive — the user is the oracle)
 
-Out of scope for this plan: the **catapult/siege vehicle** (blocked on vehicle graphics —
-historical plan render-breadth rung 4 — and vehicle-entity sim; its data facts are recorded above for
+Out of scope for this plan: the **catapult/siege vehicle** (blocked on vehicle graphics and vehicle-entity sim; its data facts are recorded above for
 when it lands), **heroes + potions/amulets** (jobs 42–47, goods 44–55 — every magnitude is
 unreadable, pure calibration; defer until step 10's machinery exists), **walls/gates as
 damageable landscape** (needs the landscape-transition machinery the gathering-economy plan
 builds), **diplomacy/alliances** (hostility stays binary per player), and **other-tribe render
 sets** (plan defers them behind the viking set — battles are viking vs viking, told apart by
 player colour).
+
+
+## Progress notes (steps 1–4 — the calibration/approximation state step 10 consumes)
+
+The full state is greppable in the code (`calibration` / `APPROXIMATED` / `SIGHT_RADIUS` in
+`packages/sim/src`); the compact index:
+
+- Damage model faithful to data: the victim's armor-material column IS the damage; `blockingValue`'s
+  engine role UNKNOWN — deliberately not applied (`systems/readviews/combat.ts`).
+- Hit resolves at the ATTACK event frame (completion fallback when an animation lacks the event);
+  swing cadence = animation length (`systems/conflict/atomic.ts`).
+- `SIGHT_RADIUS_TILES = 8` — calibration-by-observation pending, step 10 (`systems/conflict/combat.ts`).
+- Stance semantics (DEFEND radius/leash, FLEE run gait + cool-down) approximated,
+  calibration-pending (`systems/conflict/combat.ts`, `conflict/ai.ts`).
+- Projectiles: `speed` VALUE faithful; its unit + homing + always-hit approximated
+  (`systems/conflict/projectile.ts`).
+- Hostility is binary per player — no diplomacy/alliances (`systems/conflict/combat.ts`);
+  fight-bucket XP accrual trigger approximated (`systems/conflict/atomic.ts`).
 
 ---
 
@@ -119,9 +136,8 @@ player colour).
 ```text
 Put the decoded warrior body on screen: soldiers draw cr_hum_body_05 with per-weapon attack,
 aggressive walk/wait, and shoot sequences; civilians stagger and brawl with their fight sets.
-This is the fight/shoot slice of historical plan render rung 3.
 
-Context (2026-07-03 — re-verify; re-read current seams, and check whether rung 3's multi-body
+Context (2026-07-03 — re-verify; re-read current seams, and check whether multi-body render
 support landed on main first):
 - Bodies: the roster binds jobs to bodies/atlases. Soldier jobs 31–41 (+ heroes) draw
   `cr_hum_body_05` (57 seqs), civilians stay on the current man/woman bodies. If the plan's
@@ -260,9 +276,8 @@ Context (2026-07-03 — re-verify; re-read current seams):
 - Battle golden: add a sim-level golden (packages/sim/test pattern — state hash + a short
   atomic trace over N ticks of a small scripted battle) so future combat changes are
   intentional (the golden-update discipline: only update with the mechanic named).
-- Docs reconciliation: historical plan phase-4 CombatSystem line — check off what landed, restate what
-  remains (steps 8–10 + out-of-scope items); plan progress note gets a combat summary sweep (every row
-  this plan touched, statuses honest); README index still points here.
+- Docs reconciliation: restate what remains (steps 8–10 + out-of-scope items); sweep this plan's
+  progress notes honest (every calibration/approximation row); README index still points here.
 
 Deliverables:
 1. The `battle` + `battle-stress` scenes with headless checks + human checklists.
@@ -398,8 +413,8 @@ the battle/stances/archers scenes mirror each probe so original and rebuild are 
 for like.
 
 Process:
-1. Read plan progress note and collect every combat row marked approximated/calibration-pending
-   into a numbered probe list. For each, design the cheapest observation that pins it, e.g.:
+1. Read the "Progress notes" section above and grep `calibration` / `APPROXIMATED` in
+   packages/sim/src, collecting every combat item into a numbered probe list. For each, design the cheapest observation that pins it, e.g.:
    - Human HP: count hits-to-kill with a known weapon vs a known armor (iron spear = 3800 vs
      unarmored → HP ≈ n×3800; cross-check with a second weapon).
    - Sight radius: walk an enemy toward an idle ATTACK-stance soldier; count tiles at reaction.
