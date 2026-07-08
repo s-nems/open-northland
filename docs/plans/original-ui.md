@@ -29,8 +29,9 @@ Progress note — UI polish pass over landed steps 4+5 (2026-07-08, `feat/ui-pol
 not a numbered step): (a) the settler action ring draws at 75% of the shared uiscale
 (`ACTION_RING_UI_FACTOR`, deliberate deviation from the original's 1:1 size — it crowded the
 settler); (b) interactive entries render at device resolution (`createWindowPixiApp`
-resolution=devicePixelRatio; `?shot` stays at 1 for determinism) so the supersampled HUD is crisp
-on HiDPI; (c) the speed button cycles running speeds only (×1→×2→×3→×1), `P` toggles pause
+resolution=devicePixelRatio; `?shot` stays at 1 for determinism) and the HUD bakes oversample at
+DOUBLE the device coverage (`oversampleFor`, downscale ratio pinned to (1,2]) so palette edges
+resolve anti-aliased instead of nearest-hard on HiDPI; (c) the speed button cycles running speeds only (×1→×2→×3→×1), `P` toggles pause
 (remembers speed), and pausing washes the world with a multiply sepia quad — an eyeballed
 approximation of the original's brown paused map (observed behaviour). Verified: unit tests for the
 new speed control + ring scale, Playwright pass at DPR 2 (cycle glyphs, pause wash on/off, ring

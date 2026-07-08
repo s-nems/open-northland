@@ -16,15 +16,22 @@ import { type Container, RenderTexture, type Renderer, Sprite } from 'pixi.js';
  * fixed; a WebGPU switch would revisit it once, here.
  */
 /**
- * The integer oversample a supersampled bake needs: enough texels to cover every DEVICE pixel the
- * display sprite spans (`scale` screen px per design px × `resolution` device px per screen px), so the
- * linear downscale only ever shrinks. `floor` is the caller's quality floor (a hard-clipped disc rim
- * wants ≥3 for smoothing headroom; a flat strip is fine from 1); `cap` bounds the texture memory a
- * pathological `?uiscale=`/DPR combination could request. Lives beside the bake so the sizing policy
- * can't drift between callers.
+ * The integer oversample a supersampled bake needs. The display sprite spans `scale × resolution`
+ * DEVICE px per design px; merely covering that (`ceil`) is not enough — at a near-integer device
+ * scale (e.g. the 1.4× default on DPR 2 → 2.8 → ss 3) the downscale ratio lands ≈1 and the linear
+ * tap barely averages, leaving nearest-hard palette edges (jagged icon rims on Retina). So the bake
+ * targets DOUBLE the device coverage: `floor(2×)` pins the downscale ratio into (1, 2], where every
+ * device px is fully covered by the GPU's 2×2 linear tap (a ratio above 2 would undersample) and
+ * hard palette edges resolve anti-aliased. Integer device scales stay pixel-exact — each device px
+ * then averages a uniform block of one source texel. `floor` is the caller's quality floor (a
+ * hard-clipped disc rim wants ≥3 for smoothing headroom; a flat strip is fine from 1); `cap` bounds
+ * the texture memory a pathological `?uiscale=`/DPR combination could request. Lives beside the
+ * bake so the sizing policy can't drift between callers.
  */
 export function oversampleFor(scale: number, resolution: number, floor: number, cap: number): number {
-  return Math.max(floor, Math.min(cap, Math.ceil(scale * resolution)));
+  const devicePerDesign = scale * resolution;
+  const target = Math.max(Math.ceil(devicePerDesign), Math.floor(2 * devicePerDesign));
+  return Math.max(floor, Math.min(cap, target));
 }
 
 export interface SupersampledTexture {
