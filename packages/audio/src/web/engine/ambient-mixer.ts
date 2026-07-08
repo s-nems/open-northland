@@ -1,4 +1,4 @@
-import type { AmbientLoop } from '../data/types.js';
+import type { AmbientLoop } from '../../data/types.js';
 import type { SampleCache } from './sample-cache.js';
 
 /**
@@ -19,6 +19,8 @@ interface RunningLoop {
 export class AmbientMixer {
   /** ambient bed name → its running loop. */
   private readonly loops = new Map<string, RunningLoop>();
+  /** The most recent reconcile target — the load callback's "is this bed still wanted?" check. */
+  private lastTarget: ReadonlyMap<string, AmbientLoop> = new Map();
 
   constructor(
     private readonly ctx: AudioContext,
@@ -33,6 +35,7 @@ export class AmbientMixer {
   reconcile(target: readonly AmbientLoop[]): void {
     const wanted = new Map<string, AmbientLoop>();
     for (const loop of target) wanted.set(loop.name, loop);
+    this.lastTarget = wanted;
     // Stop beds that scrolled off screen (not in the target set).
     for (const [name, running] of this.loops) {
       if (!wanted.has(name)) this.stopLoop(name, running);
@@ -47,6 +50,7 @@ export class AmbientMixer {
 
   /** Fade out and stop every running loop (mute / teardown). */
   stopAll(): void {
+    this.lastTarget = new Map(); // in-flight loads must not start into a muted mixer
     for (const [name, running] of this.loops) this.stopLoop(name, running);
   }
 
@@ -62,10 +66,12 @@ export class AmbientMixer {
 
   private startLoop(loop: AmbientLoop): void {
     void this.samples.get(loop.file).then((buffer) => {
-      // Re-check the gate: a mute (setEnabled(false)) can land while this first load is in flight, and
-      // stopAll() only stops already-tracked loops — without this guard the bed would start audibly
-      // AND never be reconciled away (the engine skips frames while muted).
+      // Re-check the gates: a mute (setEnabled(false)) OR a reconcile that dropped this bed (terrain
+      // scrolled off before its first load landed) can arrive while the wav is in flight — an untracked
+      // loop that started anyway would play unwanted until the next reconcile catches it.
       if (buffer === null || !this.canPlay() || this.loops.has(loop.name)) return;
+      const current = this.lastTarget.get(loop.name);
+      if (current === undefined) return; // departed while loading
       const source = this.ctx.createBufferSource();
       source.buffer = buffer;
       source.loop = true;
@@ -73,7 +79,8 @@ export class AmbientMixer {
       gain.gain.value = 0;
       source.connect(gain).connect(this.out);
       source.start();
-      this.fadeTo(gain, loop.gain);
+      // Ramp to the CURRENT target gain, not the possibly stale one this load was requested with.
+      this.fadeTo(gain, current.gain);
       this.loops.set(loop.name, { source, gain });
     });
   }

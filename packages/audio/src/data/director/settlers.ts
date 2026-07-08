@@ -1,7 +1,7 @@
 import type { Camera } from '@vinland/render/data';
 import type { WorldSnapshot } from '@vinland/sim';
+import { computeSpatial } from '../spatial.js';
 import { entityTile } from './snapshot.js';
-import { computeSpatial } from './spatial.js';
 
 /**
  * One on-screen settler as a chatter candidate: its id, the spatialisation of a sound from it, and the
@@ -23,7 +23,7 @@ export interface OnScreenSettler {
  * The settlers currently on screen (a `Settler` component + an in-view `Position`), each with its
  * spatialisation — the PURE candidate list the voice-chatter layer picks from. Kept here (not in the
  * web layer) so the "who could speak" half stays headless-testable; the STOCHASTIC "who speaks now"
- * half lives in the impure {@link import('../web/chatter.js').ChatterEmitter} (it needs randomness + time).
+ * half lives in the impure {@link import('../../web/chatter.js').ChatterEmitter} (it needs randomness + time).
  */
 export function onScreenSettlers(
   snapshot: WorldSnapshot,

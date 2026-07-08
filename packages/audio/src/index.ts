@@ -17,15 +17,17 @@ export {
   vikingVoiceClass,
   type VoiceClass,
 } from './data/bindings.js';
-export { directAudio } from './data/director.js';
-export { JINGLE_GAIN, SFX_GAIN } from './data/events.js';
 export {
+  directAudio,
+  JINGLE_GAIN,
+  SFX_GAIN,
   MAX_AMBIENT_BEDS,
   AMBIENT_MAX_GAIN,
   AMBIENT_FULL_COVERAGE,
   AMBIENT_MAX_SAMPLES,
-} from './data/ambient.js';
-export { type OnScreenSettler, onScreenSettlers } from './data/settlers.js';
+  type OnScreenSettler,
+  onScreenSettlers,
+} from './data/director/index.js';
 export {
   type Spatial,
   computeSpatial,
@@ -53,8 +55,8 @@ export {
   DEFAULT_MASTER_GAIN,
   DEFAULT_SOUNDS_BASE_URL,
   ONE_SHOT_COOLDOWN_S,
-} from './web/audio-engine.js';
-export { AMBIENT_FADE_S } from './web/ambient-mixer.js';
+  AMBIENT_FADE_S,
+} from './web/engine/index.js';
 export {
   type ChatterOptions,
   ChatterEmitter,

@@ -1,5 +1,4 @@
-import type { AudioFrame, OneShot } from '../data/types.js';
-import { AmbientMixer } from './ambient-mixer.js';
+import type { AudioFrame, OneShot } from '../../data/types.js';
 import {
   type ContextFactory,
   type FetchBytes,
@@ -7,7 +6,8 @@ import {
   httpFetchBytes,
   pickRandom,
   webAudioContextFactory,
-} from './platform.js';
+} from '../platform.js';
+import { AmbientMixer } from './ambient-mixer.js';
 import { SampleCache } from './sample-cache.js';
 
 /**
@@ -70,6 +70,12 @@ export class WebAudioEngine {
   /** Whether the context has been started (a user gesture resumed it). */
   get started(): boolean {
     return this.ctx !== null && this.ctx.state === 'running';
+  }
+
+  /** Live and audible (started and not muted). While false, applied frames are dropped unheard —
+   *  callers can skip building them at all. */
+  get audible(): boolean {
+    return this.canPlay();
   }
 
   /**

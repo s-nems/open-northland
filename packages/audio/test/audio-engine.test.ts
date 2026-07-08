@@ -1,86 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { AMBIENT_FADE_S, ONE_SHOT_COOLDOWN_S, WebAudioEngine } from '../src/index.js';
+import { AMBIENT_FADE_S, DEFAULT_MASTER_GAIN, ONE_SHOT_COOLDOWN_S, WebAudioEngine } from '../src/index.js';
 import type { OneShot } from '../src/index.js';
+import { FakeContext, FakeGain, type FakePanner, type FakeSource, flush } from './helpers/fake-audio.js';
 
 /**
  * The Web Audio engine, exercised through its injected platform seams (a fake context + a stub
  * loader + a scripted random): the one-shot gain/pan graph, the cooldown debounce, the memoised
- * failed load, the ambient start/retune/stop reconciliation and the mute-during-load race — all
- * without a browser.
+ * failed load, the ambient start/retune/stop reconciliation and the in-flight-load races (mute,
+ * departed bed) — all without a browser.
  */
-
-class FakeParam {
-  value = 0;
-  /** Every linearRamp target scheduled on this param, in order. */
-  ramps: Array<{ value: number; time: number }> = [];
-  cancelScheduledValues(): void {}
-  setValueAtTime(value: number): void {
-    this.value = value;
-  }
-  linearRampToValueAtTime(value: number, time: number): void {
-    this.ramps.push({ value, time });
-    this.value = value;
-  }
-}
-
-class FakeNode {
-  readonly connectedTo: unknown[] = [];
-  connect<T>(node: T): T {
-    this.connectedTo.push(node);
-    return node;
-  }
-}
-
-class FakeGain extends FakeNode {
-  gain = new FakeParam();
-}
-
-class FakePanner extends FakeNode {
-  pan = new FakeParam();
-}
-
-class FakeSource extends FakeNode {
-  buffer: unknown = null;
-  loop = false;
-  started = false;
-  stoppedAt: number | null = null;
-  start(): void {
-    this.started = true;
-  }
-  stop(at: number): void {
-    this.stoppedAt = at;
-  }
-}
-
-class FakeContext {
-  currentTime = 0;
-  state: AudioContextState = 'suspended';
-  destination = new FakeNode();
-  readonly sources: FakeSource[] = [];
-  readonly gains: FakeGain[] = [];
-  createGain(): FakeGain {
-    const g = new FakeGain();
-    this.gains.push(g);
-    return g;
-  }
-  createBufferSource(): FakeSource {
-    const s = new FakeSource();
-    this.sources.push(s);
-    return s;
-  }
-  createStereoPanner(): FakePanner {
-    return new FakePanner();
-  }
-  async decodeAudioData(bytes: ArrayBuffer): Promise<AudioBuffer> {
-    return { length: bytes.byteLength } as unknown as AudioBuffer;
-  }
-  async resume(): Promise<void> {
-    this.state = 'running';
-  }
-}
-
-/** Let the load→decode→play promise chain settle. */
-const flush = () => new Promise((r) => setTimeout(r, 0));
 
 interface Harness {
   readonly engine: WebAudioEngine;
@@ -125,12 +53,13 @@ describe('WebAudioEngine one-shots', () => {
     expect(ctx.sources).toHaveLength(1);
     const source = ctx.sources[0] as FakeSource;
     expect(source.started).toBe(true);
-    // source → panner (pan applied) → gain (shot gain) → master (created first, at default volume).
+    // source → panner (pan applied) → gain (shot gain) → master (created first, at the default volume).
     const panner = source.connectedTo[0] as FakePanner;
     expect(panner.pan.value).toBeCloseTo(-0.3, 5);
     const gain = panner.connectedTo[0] as FakeGain;
     expect(gain.gain.value).toBeCloseTo(0.42, 5);
     expect(gain.connectedTo[0]).toBe(ctx.gains[0]); // the master gain
+    expect(ctx.gains[0]?.gain.value).toBeCloseTo(DEFAULT_MASTER_GAIN, 5);
     expect(ctx.gains[0]?.connectedTo[0]).toBe(ctx.destination);
   });
 
@@ -184,6 +113,7 @@ describe('WebAudioEngine one-shots', () => {
     expect(fetched).toHaveLength(0);
     expect(ctx.sources).toHaveLength(0);
     expect(engine.started).toBe(false);
+    expect(engine.audible).toBe(false);
   });
 });
 
@@ -215,6 +145,17 @@ describe('WebAudioEngine ambient reconciliation', () => {
     expect(gain.gain.ramps.at(-1)?.value).toBeCloseTo(0.2, 5);
   });
 
+  it('starts a still-loading bed at the CURRENT target gain, not the stale requested one', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.apply({ oneShots: [], ambient: [bed(0.4)] }); // load in flight
+    engine.apply({ oneShots: [], ambient: [bed(0.1)] }); // retuned before the wav arrived
+    await flush();
+    expect(ctx.sources).toHaveLength(1);
+    const gain = (ctx.sources[0] as FakeSource).connectedTo[0] as FakeGain;
+    expect(gain.gain.ramps.at(-1)?.value).toBeCloseTo(0.1, 5);
+  });
+
   it('fades out and stops a bed that left the target set', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
@@ -236,5 +177,14 @@ describe('WebAudioEngine ambient reconciliation', () => {
     engine.setEnabled(false); // mute lands before the wav arrives
     await flush();
     expect(ctx.sources).toHaveLength(0); // the loop must not start audibly under mute
+  });
+
+  it('never starts a bed that left the target set while its load was still in flight', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.apply({ oneShots: [], ambient: [bed(0.4)] }); // load kicked off, promise pending
+    engine.apply({ oneShots: [], ambient: [] }); // terrain scrolled off before the wav arrived
+    await flush();
+    expect(ctx.sources).toHaveLength(0); // the departed bed must not start and linger
   });
 });

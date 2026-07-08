@@ -1,7 +1,7 @@
 import type { SimEvent, WorldSnapshot } from '@vinland/sim';
+import { computeSpatial } from '../spatial.js';
+import type { DirectorInput, EventSound, OneShot, SoundBindings } from '../types.js';
 import { type TilePoint, entityTile } from './snapshot.js';
-import { computeSpatial } from './spatial.js';
-import type { DirectorInput, EventSound, OneShot, SoundBindings } from './types.js';
 
 /**
  * Sim events → one-shots: resolve each frame event through the {@link SoundBindings}, locate the
@@ -49,12 +49,27 @@ function resolveBinding(ev: SimEvent, bindings: SoundBindings): EventSound | und
   return bindings.byEvent[ev.kind];
 }
 
-/** Map of entity id → its tile position, read from the snapshot's `Position` (Fixed → tile). */
-function positionsById(snapshot: WorldSnapshot): Map<number, TilePoint> {
+/** A resolved spatial event waiting for its tile: the bound files plus where the sound comes from. */
+interface PendingSpatial {
+  readonly ev: SimEvent;
+  readonly files: readonly string[];
+  /** The explicit `at` tile, or null when the position must come from `entity`'s snapshot Position. */
+  readonly tile: TilePoint | null;
+  readonly entity: number | undefined;
+}
+
+/**
+ * The positions of exactly the `needed` entities, in one snapshot pass that allocates only for them
+ * (never an all-entities table — battle-scale frames carry a handful of emitters among thousands of
+ * entities) and stops as soon as every needed id is found.
+ */
+function positionsFor(snapshot: WorldSnapshot, needed: ReadonlySet<number>): Map<number, TilePoint> {
   const out = new Map<number, TilePoint>();
   for (const e of snapshot.entities) {
+    if (!needed.has(e.id)) continue;
     const tile = entityTile(e.components);
     if (tile !== null) out.set(e.id, tile);
+    if (out.size === needed.size) break;
   }
   return out;
 }
@@ -64,9 +79,10 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
   const { events, snapshot, camera, canvasW, canvasH, index, bindings } = input;
   const shots: OneShot[] = [];
   if (events.length === 0) return shots; // the common frame — no events, no snapshot work at all
-  // The O(entities) position scan is deferred until an entity-located bound event actually needs it,
-  // so frames whose events are all jingles / `at`-located / unbound never pay it.
-  let positions: Map<number, TilePoint> | null = null;
+  // Pass 1: resolve bindings, emit jingles, and collect which entity ids the spatial events actually
+  // need — so the snapshot scan below touches only those (O(events) ids, not an O(entities) table).
+  const pending: PendingSpatial[] = [];
+  const neededIds = new Set<number>();
   for (const ev of events) {
     const sound = resolveBinding(ev, bindings);
     if (sound === undefined) continue;
@@ -79,19 +95,23 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
     }
     const files = index.groupsByName.get(sound.group.toLowerCase());
     if (files === undefined || files.length === 0) continue;
-    let tile: TilePoint | null;
     if (isAtLocatedEvent(ev)) {
-      tile = { col: ev.at.x, row: ev.at.y };
+      pending.push({ ev, files, tile: { col: ev.at.x, row: ev.at.y }, entity: undefined });
     } else {
       const id = eventEntity(ev);
       if (id === undefined) continue;
-      positions ??= positionsById(snapshot);
-      tile = positions.get(id) ?? null;
+      neededIds.add(id);
+      pending.push({ ev, files, tile: null, entity: id });
     }
+  }
+  // Pass 2: locate + spatialise the pending spatial events (off-screen or position-less → silent).
+  const positions = neededIds.size > 0 ? positionsFor(snapshot, neededIds) : null;
+  for (const p of pending) {
+    const tile = p.tile ?? (p.entity !== undefined ? (positions?.get(p.entity) ?? null) : null);
     if (tile === null) continue;
     const spatial = computeSpatial(tile.col, tile.row, camera, canvasW, canvasH);
     if (spatial === null) continue; // off screen → silent
-    shots.push({ files, gain: spatial.gain * SFX_GAIN, pan: spatial.pan, key: eventKey(ev) });
+    shots.push({ files: p.files, gain: spatial.gain * SFX_GAIN, pan: spatial.pan, key: eventKey(p.ev) });
   }
   return shots;
 }
