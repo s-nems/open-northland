@@ -1,3 +1,5 @@
+import { type Rect, contains } from './geometry.js';
+
 /**
  * The settler ACTION MENU — the contextual command buttons that fan out around a selected settler, with
  * geometry transcribed from the original engine and the button→icon assignment approximated.
@@ -49,12 +51,7 @@ export interface ActionGroup {
 }
 
 /** A rect in screen (canvas) pixels. */
-export interface PlacedRect {
-  readonly x: number;
-  readonly y: number;
-  readonly w: number;
-  readonly h: number;
-}
+export type PlacedRect = Rect;
 
 /** A button resolved to its on-screen square. */
 export interface PlacedActionButton {
@@ -206,8 +203,7 @@ export function layoutActionRing(
 /** The button under a screen point, or `null`. Buttons never overlap, so the first containing square wins. */
 export function hitTestActionRing(layout: ActionRingLayout, x: number, y: number): ActionButton | null {
   for (const p of layout.buttons) {
-    const r = p.rect;
-    if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) return p.button;
+    if (contains(p.rect, x, y)) return p.button;
   }
   return null;
 }

@@ -1,19 +1,8 @@
-import {
-  type AtlasFrame,
-  type Camera,
-  PalettedSprite,
-  type SpriteLayer,
-  tileToScreen,
-} from '@vinland/render';
+import { type AtlasFrame, type Camera, type PalettedSprite, tileToScreen } from '@vinland/render';
 import { ONE, type WorldSnapshot } from '@vinland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
-import { GUI_FRAMES, guiFrameIndex } from '../content/gui-atlas-map.js';
-import {
-  type GuiPaletteName,
-  guiPaletteRow,
-  loadGuiPaletteLut,
-  loadGuiWindowIndexed,
-} from '../content/gui-gfx.js';
+import { type GuiSprite, loadGuiArt, makeGuiSprite } from '../content/gui-art.js';
+import { guiFrameIndex } from '../content/gui-atlas-map.js';
 import {
   type ActionButton,
   type ActionRingLayout,
@@ -152,8 +141,6 @@ interface ButtonVisual {
   readonly frame: AtlasFrame | null;
 }
 
-const paletteOfFrame = (gfx: number): GuiPaletteName => GUI_FRAMES[gfx]?.palette ?? 'context';
-
 /**
  * Mount the settler action menu. Async because it loads the (optional) decoded GUI art; everything degrades
  * gracefully so a checkout without `content/` still boots and the menu stays usable (flat discs + tooltips).
@@ -162,12 +149,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   const { app, canvas } = opts;
   const scale = Math.max(1, Math.floor(opts.uiscale));
 
-  const [guiLayer, guiLut] = await Promise.all([
-    loadGuiWindowIndexed().catch<SpriteLayer | null>(() => null),
-    loadGuiPaletteLut().then((t) => t ?? null),
-  ]);
-  const hasArt = guiLayer !== null && guiLut !== null;
-  const guiColours = guiLut?.pixelHeight ?? 1;
+  const art = await loadGuiArt();
 
   // The static default menu (built once from HUMAN_DEFAULT_MENU) — the only face drawn on the canvas. The
   // profession picker is now a DOM list window (below), so the canvas holds just the menu buttons.
@@ -184,22 +166,15 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   const tooltip = el('div', TOOLTIP_STYLE);
   document.body.append(tooltip);
 
-  // The order-icon sprite + its atlas frame for one button, or nulls when the art / frame is missing.
-  const iconSprite = (frameName: string): { sprite: PalettedSprite; frame: AtlasFrame } | null => {
-    if (!hasArt || guiLayer === null || guiLut === null) return null;
-    const gfx = guiFrameIndex(frameName);
-    const frame = guiLayer.atlas.frames.get(gfx);
-    if (frame === undefined) return null;
-    const sprite = new PalettedSprite(guiLut, guiColours);
-    sprite.setFrame(guiLayer.source, frame, guiLayer.atlas.width, guiLayer.atlas.height);
-    sprite.player = guiPaletteRow(paletteOfFrame(gfx));
-    // 'round' key: the wooden order buttons paint their bevel + engraved glyph in the near-black band, so a
-    // full near-black key (as the panel uses) would punch holes through the art. 'round' discards the near-black
-    // only in the frame's CORNERS — dropping the square backdrop so the button reads as a round disc (the
-    // original has no square behind it) while keeping the glyph intact. See PalettedSprite.colorKey.
-    sprite.colorKey = 'round';
-    return { sprite, frame };
-  };
+  // The order-icon sprite + its atlas frame for one button, or null when the art / frame is missing.
+  // 'round' key: the wooden order buttons paint their bevel + engraved glyph in the near-black band, so a
+  // full near-black key (as the panel uses) would punch holes through the art. 'round' discards the near-black
+  // only in the frame's CORNERS — dropping the square backdrop so the button reads as a round disc (the
+  // original has no square behind it) while keeping the glyph intact. See PalettedSprite.colorKey.
+  const iconSprite = (frameName: string): GuiSprite | null =>
+    art === null
+      ? null
+      : makeGuiSprite(art, guiFrameIndex(frameName), { defaultPalette: 'context', colorKey: 'round' });
 
   // Build every button's visual ONCE (retained graph — placed each frame, never re-created). Keyed by the
   // button object so `update` places by identity, robust to a face that shows only a subset of buttons.

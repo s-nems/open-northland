@@ -1,3 +1,5 @@
+import { type Rect, contains } from '../geometry.js';
+
 /**
  * The LEFT in-game tool panel — geometry, PINNED to the original.
  *
@@ -71,12 +73,7 @@ export const TOOL_BUTTONS: readonly ToolButtonSpec[] = [
 ];
 
 /** A rect placed in screen (canvas) pixels after top-left anchoring + integer scaling. */
-export interface PlacedRect {
-  readonly x: number;
-  readonly y: number;
-  readonly w: number;
-  readonly h: number;
-}
+export type PlacedRect = Rect;
 
 /** A button spec resolved to its on-screen rect. */
 export interface PlacedButton extends ToolButtonSpec {
@@ -126,14 +123,10 @@ export function buildToolPanelLayout(uiscale: number = DEFAULT_UI_SCALE): ToolPa
   };
 }
 
-function within(r: PlacedRect, x: number, y: number): boolean {
-  return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
-}
-
 /** The button under the cursor (screen px), or `null`. Buttons sit inside the strip, so test them directly. */
 export function hitTestToolPanel(layout: ToolPanelLayout, x: number, y: number): ToolButtonId | null {
   for (const b of layout.buttons) {
-    if (within(b.placed, x, y)) return b.id;
+    if (contains(b.placed, x, y)) return b.id;
   }
   return null;
 }
@@ -143,5 +136,5 @@ export function hitTestToolPanel(layout: ToolPanelLayout, x: number, y: number):
  * BEFORE world picking, so a click over the HUD never falls through to unit selection/orders.
  */
 export function pointOverToolPanel(layout: ToolPanelLayout, x: number, y: number): boolean {
-  return within(layout.strip, x, y);
+  return contains(layout.strip, x, y);
 }

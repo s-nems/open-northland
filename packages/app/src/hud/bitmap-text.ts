@@ -1,6 +1,14 @@
 import { PalettedSprite, type SpriteLayer, type TextureSource } from '@vinland/render';
-import { Container } from 'pixi.js';
-import type { FontMetrics, GlyphMetric } from '../content/font-gfx.js';
+import { Container, Text } from 'pixi.js';
+import {
+  type FontColorName,
+  type FontMetrics,
+  type GlyphMetric,
+  fontColorRow,
+  loadFontColorLut,
+  loadFontIndexed,
+  loadFontMetrics,
+} from '../content/font-gfx.js';
 
 /**
  * A glyph-run drawer for the decoded `.fnt` bitmap fonts — the first runtime consumer of the pipeline's
@@ -23,6 +31,33 @@ export interface BitmapFont {
   readonly colours: number;
 }
 
+/** The UI bitmap font the HUD draws text with (font10 is the standard in-game body font). */
+export const DEFAULT_FONT_KEY = 'font10';
+/** Fallback (no-`.fnt`) text size in design px, scaled by uiscale — kept legible inside the scaled row rects. */
+const FALLBACK_TEXT_PX = 9;
+/** Pixi-`Text` fallback colours mirroring the four font-LUT rows. */
+const FALLBACK_COLORS: Readonly<Record<FontColorName, string>> = {
+  white: '#f2ead6',
+  dark: '#2a2118',
+  dimmed: '#9a8f78',
+  red: '#c8503c',
+};
+
+/** Load a UI bitmap font (indexed atlas + colour LUT + metrics), or `null` if the pipeline hasn't run. */
+export async function loadBitmapFont(key: string = DEFAULT_FONT_KEY): Promise<BitmapFont | null> {
+  try {
+    const [layer, lut, metrics] = await Promise.all([
+      loadFontIndexed(key).catch(() => null),
+      loadFontColorLut(),
+      loadFontMetrics(key),
+    ]);
+    if (layer === null || lut === undefined || metrics === null) return null;
+    return { layer, metrics, lut, colours: lut.pixelHeight };
+  } catch {
+    return null;
+  }
+}
+
 function glyphFor(font: BitmapFont, code: number): GlyphMetric | undefined {
   const i = code - font.metrics.firstChar;
   if (i < 0 || i >= font.metrics.glyphs.length) return undefined;
@@ -35,8 +70,8 @@ interface RunGlyph {
   readonly penX: number;
 }
 
-/** A retained, re-placeable line of bitmap text. */
-export interface BitmapTextRun {
+/** A retained, re-placeable line of HUD text — bitmap glyphs when the `.fnt` is loaded, else a Pixi `Text`. */
+export interface TextRun {
   /** Parent this under the panel's window/menu container for draw order (position is via {@link place}). */
   readonly container: Container;
   /** Anchor the run's top-left at screen `(x, y)`, drawn at `scale` px per native pixel. */
@@ -46,9 +81,9 @@ export interface BitmapTextRun {
 
 /**
  * Build a retained run of bitmap glyphs for `text` in the given colour row. Empty glyphs advance the pen but
- * draw nothing (the original's space quirk sidestepped). The run starts unplaced — call {@link BitmapTextRun.place}.
+ * draw nothing (the original's space quirk sidestepped). The run starts unplaced — call {@link TextRun.place}.
  */
-export function createBitmapTextRun(font: BitmapFont, text: string, colorRow: number): BitmapTextRun {
+export function createBitmapTextRun(font: BitmapFont, text: string, colorRow: number): TextRun {
   const container = new Container();
   const { source, atlas } = font.layer;
   const glyphs: RunGlyph[] = [];
@@ -78,5 +113,29 @@ export function createBitmapTextRun(font: BitmapFont, text: string, colorRow: nu
     destroy(): void {
       container.destroy({ children: true });
     },
+  };
+}
+
+/**
+ * The HUD's ONE text factory: a bitmap-font run when the decoded `.fnt` is present, else a Pixi `Text`
+ * at the same {@link TextRun} surface (so callers place/destroy runs identically in both modes).
+ */
+export function makeTextRun(
+  font: BitmapFont | null,
+  text: string,
+  color: FontColorName,
+  scale: number,
+): TextRun {
+  if (font !== null) return createBitmapTextRun(font, text, fontColorRow(color));
+  const t = new Text({
+    text,
+    style: { fill: FALLBACK_COLORS[color], fontSize: FALLBACK_TEXT_PX * scale, fontFamily: 'sans-serif' },
+  });
+  const container = new Container();
+  container.addChild(t);
+  return {
+    container,
+    place: (x, y) => container.position.set(x, y),
+    destroy: () => container.destroy({ children: true }),
   };
 }

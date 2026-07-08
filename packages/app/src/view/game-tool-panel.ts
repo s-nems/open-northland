@@ -3,10 +3,10 @@ import type { Command } from '@vinland/sim';
 import type { Application } from 'pixi.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
 import { intParam } from '../entries/params.js';
-import type { MenuBuildingEntry } from '../hud/building-menu.js';
-import type { GameSpeedStateSpec } from '../hud/game-speed.js';
-import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel-layout.js';
-import { type ToolPanelController, mountToolPanel } from '../hud/tool-panel.js';
+import type { MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
+import type { GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
+import { type ToolPanelController, mountToolPanel } from '../hud/tool-panel/index.js';
+import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel/layout.js';
 import { backingScale } from './camera.js';
 import { screenToWorld, worldToTile } from './picking.js';
 

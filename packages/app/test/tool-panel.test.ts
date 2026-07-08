@@ -6,20 +6,20 @@ import {
   categoryOfKind,
   hitTestBuildingMenu,
   layoutBuildingMenu,
-} from '../src/hud/building-menu.js';
+} from '../src/hud/tool-panel/building-menu.js';
 import {
   DEFAULT_GAME_SPEED_STATE,
   GAME_SPEED_STATES,
   gameSpeedSpec,
   nextGameSpeedState,
-} from '../src/hud/game-speed.js';
+} from '../src/hud/tool-panel/game-speed.js';
 import {
   DEFAULT_UI_SCALE,
   TOOL_BUTTONS,
   buildToolPanelLayout,
   hitTestToolPanel,
   pointOverToolPanel,
-} from '../src/hud/tool-panel-layout.js';
+} from '../src/hud/tool-panel/layout.js';
 
 /**
  * Headless tests for the LEFT tool panel's pure logic — the geometry hit-test, the speed state machine,

@@ -1,3 +1,5 @@
+import { type Rect, contains } from '../geometry.js';
+
 /**
  * The building-menu model — categories, filtering, layout and hit-test (pure, no Pixi/DOM).
  *
@@ -74,13 +76,6 @@ const MENU_ROW_H = 15;
 const MENU_CLOSE = 13;
 /** Menu window width holds the five tabs side by side plus padding. */
 const MENU_WIDTH = BUILDING_CATEGORIES.length * MENU_TAB_W + 2 * MENU_PAD;
-
-export interface Rect {
-  readonly x: number;
-  readonly y: number;
-  readonly w: number;
-  readonly h: number;
-}
 
 export interface MenuTab {
   readonly category: BuildingCategory;
@@ -170,19 +165,15 @@ export type MenuHit =
   | { readonly kind: 'window' } // over the window chrome/background but not an interactive element
   | null;
 
-function within(r: Rect, x: number, y: number): boolean {
-  return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
-}
-
 /** Resolve a screen point against an open menu (close > tab > building > window background > miss). */
 export function hitTestBuildingMenu(layout: BuildingMenuLayout, x: number, y: number): MenuHit {
-  if (within(layout.closeRect, x, y)) return { kind: 'close' };
+  if (contains(layout.closeRect, x, y)) return { kind: 'close' };
   for (const t of layout.tabs) {
-    if (within(t.rect, x, y)) return { kind: 'tab', category: t.category };
+    if (contains(t.rect, x, y)) return { kind: 'tab', category: t.category };
   }
   for (const r of layout.rows) {
-    if (within(r.rect, x, y)) return { kind: 'building', typeId: r.typeId };
+    if (contains(r.rect, x, y)) return { kind: 'building', typeId: r.typeId };
   }
-  if (within(layout.window, x, y)) return { kind: 'window' };
+  if (contains(layout.window, x, y)) return { kind: 'window' };
   return null;
 }
