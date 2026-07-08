@@ -16,6 +16,7 @@ import {
   extractBuildings,
   extractConstructionCosts,
   extractConstructionLayers,
+  extractGfxAnimAtomics,
   extractGoods,
   extractGraphicsBindings,
   extractJobBaseGraphics,
@@ -2501,6 +2502,83 @@ describe('extractBobSequences', () => {
         source: { file: 'animations.ini', block: 'bobseq', layer: 'mod' },
       },
     ]);
+  });
+});
+
+describe('extractGfxAnimAtomics', () => {
+  // Mirrors the real mapmoveableanimations/animations.ini [gfxanimatomic] grammar: a (tribe, job, action)
+  // → body bobseq with EITHER per-direction frame lists (`gfxanimframelistdir <dir> <idx…>`, placed at
+  // its dir slot) OR one non-directional `gfxanimframelist` list. A record's frame indices are LOCAL to
+  // the bobseq pool and author holds inline (frame 79 repeated). A record missing its tribe/job/action or
+  // carrying no frame list is dropped.
+  const src = { file: 'animations.ini', layer: 'mod' as const };
+  const sections = parseIniSections(
+    [
+      '[gfxanimatomic]',
+      'logictribe 1',
+      'logicjob 33',
+      'logicatomicaction 81',
+      'gfxbobseqbody "human_man_Warrior_spear_attack"',
+      // Out of dir order + a hold (79 repeated) — placed at the correct dir slot regardless of file order.
+      'gfxanimframelistdir 1 97 97 98',
+      'gfxanimframelistdir 0 79 79 80',
+      '[gfxanimatomic]',
+      'logictribe 1',
+      'logicjob 4',
+      'logicatomicaction 8',
+      'gfxbobseqbody "human_child_boy_generic_sleep"',
+      'gfxanimframelist 0 1 2 3 2 1', // non-directional -> one facing-locked list
+      '[gfxanimatomic]', // no tribe/job/action -> dropped
+      'gfxbobseqbody "orphan"',
+      'gfxanimframelist 0 1',
+      '[gfxanimatomic]', // has ids but no frame list -> dropped
+      'logictribe 1',
+      'logicjob 9',
+      'logicatomicaction 81',
+      'gfxbobseqbody "human_man_no_frames"',
+    ].join('\n'),
+  );
+
+  it('places each gfxanimframelistdir at its dir slot and keeps the local indices (holds included)', () => {
+    expect(extractGfxAnimAtomics(sections, src)).toEqual([
+      {
+        tribe: 1,
+        job: 33,
+        action: 81,
+        bodySeq: 'human_man_Warrior_spear_attack',
+        dirFrames: [
+          [79, 79, 80], // dir 0 (the hold survives)
+          [97, 97, 98], // dir 1
+        ],
+        source: { file: 'animations.ini', block: 'gfxanimatomic', layer: 'mod' },
+      },
+      {
+        tribe: 1,
+        job: 4,
+        action: 8,
+        bodySeq: 'human_child_boy_generic_sleep',
+        dirFrames: [[0, 1, 2, 3, 2, 1]], // one facing-locked list
+        source: { file: 'animations.ini', block: 'gfxanimatomic', layer: 'mod' },
+      },
+    ]);
+  });
+
+  it('captures the optional head bobseq when the record overlays a separate head', () => {
+    const [rec] = extractGfxAnimAtomics(
+      parseIniSections(
+        [
+          '[gfxanimatomic]',
+          'logictribe 1',
+          'logicjob 35',
+          'logicatomicaction 81',
+          'gfxbobseqbody "human_man_Warrior_Broadsword_attack"',
+          'gfxbobseqhead "human_man_Warrior_Sword_Attack"',
+          'gfxanimframelistdir 0 5 6 7',
+        ].join('\n'),
+      ),
+      src,
+    );
+    expect(rec?.headSeq).toBe('human_man_Warrior_Sword_Attack');
   });
 });
 

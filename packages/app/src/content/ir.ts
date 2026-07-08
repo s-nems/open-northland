@@ -38,6 +38,20 @@ export interface BobSeqRow {
   readonly length: number;
 }
 
+/** One `[gfxanimatomic]` row as it ships in `content/ir.json`'s `gfxAtomics` — an atomic action's
+ *  directional body-animation layout: `(tribe, job, action)` → the `bodySeq` bobseq + the per-facing
+ *  {@link dirFrames} frame-index lists (the layout a bare bobseq range can't encode). See
+ *  {@link gfxAtomicFrameLists}. */
+export interface GfxAnimAtomicRow {
+  readonly tribe: number;
+  readonly job: number;
+  readonly action: number;
+  readonly bodySeq: string;
+  readonly headSeq?: string;
+  /** Per-facing ordered lists of LOCAL frame indices into the `bodySeq` pool (outer length = directions). */
+  readonly dirFrames: readonly (readonly number[])[];
+}
+
 /** One `[GfxHouse]` `LogicType`→`GfxBobId` row as it ships in `content/ir.json`'s `buildingBobs`. */
 export interface BuildingBobRow {
   readonly tribeId: number;
@@ -127,6 +141,7 @@ export interface LandscapeTypeRow {
  */
 export interface ContentIr {
   readonly bobSequences?: readonly { imagelib: string; sequences?: BobSeqRow[] }[];
+  readonly gfxAtomics?: readonly GfxAnimAtomicRow[];
   readonly buildingBobs?: readonly BuildingBobRow[];
   readonly constructionLayers?: readonly ConstructionLayerRow[];
   readonly gatheringPipeline?: readonly GatheringPipelineRow[];
@@ -225,6 +240,29 @@ export function sequencesFor(ir: ContentIr | null, imagelib: string): Map<string
   const byName = new Map<string, BobSeqRow>();
   const set = (ir?.bobSequences ?? []).find((s) => s.imagelib === imagelib);
   for (const seq of set?.sequences ?? []) byName.set(seq.name, seq);
+  return byName;
+}
+
+/**
+ * The `[gfxanimatomic]` per-direction frame lists for ONE `(tribe, action)`, indexed by body bobseq NAME
+ * — the directional action layout a bare bobseq range can't encode ({@link GfxAnimAtomicRow.dirFrames}).
+ * The settler binding turns each into a render `FrameListAnim` on the atomic's key. First record wins per
+ * seq (a job/action may list several variant seqs — the unarmed soldier's four punches; the caller names
+ * the one it wants). Filtering by `tribe` matters: the same body bobseq name recurs across the human
+ * tribes with DIFFERENT frame lists (each tribe's own swing layout), so passing the wrong tribe yields a
+ * plausible-but-wrong animation. `tribe` is the `[gfxanimatomic]` `logictribe` (= the `logicdefines.inc`
+ * `TRIBE_TYPE_*`; viking 1).
+ */
+export function gfxAtomicFrameLists(
+  ir: ContentIr | null,
+  tribe: number,
+  action: number,
+): Map<string, readonly (readonly number[])[]> {
+  const byName = new Map<string, readonly (readonly number[])[]>();
+  for (const row of ir?.gfxAtomics ?? []) {
+    if (row.tribe !== tribe || row.action !== action) continue;
+    if (!byName.has(row.bodySeq)) byName.set(row.bodySeq, row.dirFrames);
+  }
   return byName;
 }
 

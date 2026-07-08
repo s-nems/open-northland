@@ -56,8 +56,33 @@ export interface DirectionalAnim {
   readonly phaseStart?: number;
 }
 
-/** A frame reference in a settler binding: a fixed bob id, or a {@link DirectionalAnim} sequence. */
-export type SpriteFrameRef = number | DirectionalAnim;
+/**
+ * A directional animation laid out as **explicit per-facing frame-index lists** — the original's
+ * `[gfxanimatomic]` `gfxanimframelistdir` binding (extracted as
+ * {@link import('@vinland/data').GfxAnimAtomic}), for an ACTION whose frames are NOT a uniform
+ * `start + facing*stride` strip. Each {@link frameLists} entry is one facing's ordered list of LOCAL
+ * frame indices into a bobseq pool starting at {@link start} (drawn bob id = `start + frameLists[dir][i]`).
+ * The lists differ per facing and author holds/repeats inline (a spear windup repeats its first frame),
+ * so playback replays a list verbatim — the reason a melee swing (pool 102/108/150, not divisible by 8)
+ * cannot ride {@link DirectionalAnim}. The facing index selects the list ({@link frameLists} length =
+ * directions; a length-1 list is facing-locked). Advances one entry every {@link ticksPerFrame} ticks on
+ * the driving clock (an action's `elapsed`), wrapping — the same tick-locked cadence
+ * {@link DirectionalAnim} uses; {@link phaseStart} rotates where playback begins.
+ */
+export interface FrameListAnim {
+  /** Bob id of the pool's frame 0 — the bobseq `start` the LOCAL {@link frameLists} indices add to. */
+  readonly start: number;
+  /** Per-facing ordered lists of local frame indices into the pool; outer length = facing directions. */
+  readonly frameLists: readonly (readonly number[])[];
+  /** Sim ticks per animation frame — the fixed cadence (default `1`), like {@link DirectionalAnim.ticksPerFrame}. */
+  readonly ticksPerFrame?: number;
+  /** Index within the chosen facing's list to START on (default `0`), wrapped — rotates the playback phase. */
+  readonly phaseStart?: number;
+}
+
+/** A frame reference in a settler binding: a fixed bob id, a uniform {@link DirectionalAnim}, or an
+ *  explicit per-facing {@link FrameListAnim} (the `[gfxanimatomic]` directional action layout). */
+export type SpriteFrameRef = number | DirectionalAnim | FrameListAnim;
 
 /**
  * A settler's per-state frames — which atlas bob to draw for each coarse
@@ -95,6 +120,20 @@ export interface SettlerStateBinding {
    * harvesting empty-handed.
    */
   readonly carrying?: CarryingBinding;
+  /**
+   * **Combat-engaged** gait override — the original's `..._walk_agressive` / `..._wait_agressive`
+   * bobseqs a soldier plays while advancing on or standing off against an enemy (its weapon readied),
+   * distinct from the relaxed economy walk/wait. In effect only while the draw item is
+   * {@link import('../scene/index.js').DrawItem.engaged} (the sim `Engagement` marker): `moving` swaps the
+   * approach walk, `idle` the ready stance. Each slot falls back to its un-engaged counterpart when absent
+   * (the unarmed body authors no aggressive variant), so a spec that omits it is unchanged. A bound
+   * atomic (the attack swing in {@link byAtomic}) still wins while the unit is mid-swing — engagement only
+   * colours the walk/stand around the blow.
+   */
+  readonly engaged?: {
+    readonly idle?: SpriteFrameRef;
+    readonly moving?: SpriteFrameRef;
+  };
 }
 
 /**

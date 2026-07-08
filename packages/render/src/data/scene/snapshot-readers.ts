@@ -133,6 +133,48 @@ interface WaypointValue {
 }
 
 /**
+ * The facing block whose sprite looks from one TILE toward another — the combat-facing seam: an attacker
+ * mid-swing has no {@link PathFollow} heading (it stopped to strike), so it faces its target by the
+ * PROJECTED screen step between the two tiles (the same parity-correct projection {@link readFacing}
+ * uses). Both coordinates are FLOAT tile coordinates (the snapshot's Fixed position already divided by
+ * ONE). `undefined` when the two project to the same point (no heading — coincident/adjacent-rounded).
+ */
+export function facingTowardTile(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+): number | undefined {
+  const f = tileToScreen(from.x, from.y);
+  const t = tileToScreen(to.x, to.y);
+  const dx = t.x - f.x;
+  const dy = t.y - f.y;
+  if (dx === 0 && dy === 0) return undefined;
+  return facingFromScreenHeading(dx, dy);
+}
+
+/**
+ * A settler's combat-**engagement** flag — whether the sim stamped the `Engagement` marker on it (it is
+ * advancing on or fighting an enemy). A render fact orthogonal to {@link readSpriteState}: a binding reads
+ * it to pick the readied `..._agressive` gait ({@link import('../draw-item.js').DrawItem.engaged}). Presence
+ * is the whole signal — the marker's `repathAt` field is sim-internal, never read here.
+ */
+export function readEngaged(components: Readonly<Record<string, unknown>>): boolean {
+  return 'Engagement' in components;
+}
+
+/**
+ * The entity a settler's current atomic acts ON — the `CurrentAtomic.targetEntity` (the enemy it swings
+ * at, the resource it harvests). Used to FACE an attacker at its target during a stationary swing: the
+ * target's LIVE position is looked up in the scene builder (a target moves, so its id — not a snapshot
+ * of its tile — is the stable handle). `null` when the settler runs no atomic or its atomic has no entity
+ * target. (`CurrentAtomic.targetTile` stays sim-internal and is never populated today, so it is not read.)
+ */
+export function readAtomicTargetEntity(components: Readonly<Record<string, unknown>>): number | null {
+  const a = components.CurrentAtomic as { targetEntity?: unknown } | undefined;
+  if (a === undefined || typeof a.targetEntity !== 'number') return null;
+  return a.targetEntity;
+}
+
+/**
  * Derive a settler's facing direction index (0..7) from its live heading: the PROJECTED screen step
  * from its current position toward the {@link PathFollow} waypoint it is walking to, quantized to the
  * block whose sprite faces that heading ({@link facingFromScreenHeading}). Projecting through

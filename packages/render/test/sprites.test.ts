@@ -6,6 +6,7 @@ import {
   type ByJobTable,
   DEFAULT_FACING,
   type DirectionalAnim,
+  type FrameListAnim,
   type SettlerStateBinding,
   type SpriteAtlas,
   type SpriteBindings,
@@ -401,6 +402,112 @@ describe('resolveSpriteBobId — directional animated binding', () => {
   it('a plain-number frame ref still ignores facing + tick (back-compat)', () => {
     const flat: SpriteBindings = { settler: { idle: 1931 }, building: 20, resource: 30 };
     expect(resolveSpriteBobId(settler('idle', 5), flat, 42)).toBe(1931);
+  });
+});
+
+describe('resolveSpriteBobId — FrameListAnim (explicit per-direction attack layout)', () => {
+  function settler(state: SpriteState, facing?: number, atomicId?: number, elapsed?: number): DrawItem {
+    return {
+      kind: 'settler',
+      ref: 1,
+      x: 0,
+      y: 0,
+      depth: 0,
+      state,
+      ...(facing !== undefined ? { facing } : {}),
+      ...(atomicId !== undefined ? { atomicId } : {}),
+      ...(elapsed !== undefined ? { elapsed } : {}),
+    };
+  }
+  const ATTACK = 81;
+  const STAND: DirectionalAnim = { start: 100, dirs: 8, stride: 4, frames: 1 };
+  // A swing pool at bob 2000 with DISTINCT per-facing lists (so facing must select the right list), and
+  // an authored hold/repeat in dir 1 (frame 5 held) — the layout a uniform stride can't encode.
+  const SWING: FrameListAnim = {
+    start: 2000,
+    frameLists: [
+      [0, 2, 4, 6], // dir 0
+      [5, 5, 7], // dir 1 — holds frame 5, then a 3-frame list (shorter than dir 0)
+    ],
+  };
+  const ANIM: SettlerStateBinding = { idle: STAND, byAtomic: { [ATTACK]: SWING } };
+  const bindings: SpriteBindings = { settler: ANIM, building: 20, resource: 30 };
+
+  it('draws start + frameLists[facing][elapsed-1] — the facing selects the list, elapsed indexes it', () => {
+    const at = (facing: number, elapsed: number): number | null =>
+      resolveSpriteBobId(settler('acting', facing, ATTACK, elapsed), bindings, 999);
+    expect(at(0, 1)).toBe(2000 + 0); // dir 0, frame 0 -> local 0
+    expect(at(0, 3)).toBe(2000 + 4); // dir 0, frame 2 -> local 4
+    expect(at(1, 1)).toBe(2000 + 5); // dir 1, frame 0 -> local 5 (the held windup)
+    expect(at(1, 2)).toBe(2000 + 5); // dir 1, frame 1 -> local 5 again (the authored hold)
+    expect(at(1, 3)).toBe(2000 + 7); // dir 1, frame 2 -> local 7
+  });
+
+  it('wraps by the CHOSEN list length (dir 1 is 3 long, so elapsed 4 loops to its frame 0)', () => {
+    expect(resolveSpriteBobId(settler('acting', 1, ATTACK, 4), bindings, 0)).toBe(2000 + 5); // (4-1)%3==0
+  });
+
+  it('runs on the atomic elapsed clock, not the free tick (a swing is duration-independent)', () => {
+    expect(resolveSpriteBobId(settler('acting', 0, ATTACK, 2), bindings, 12345)).toBe(2000 + 2); // frame 1
+  });
+
+  it('wraps a facing beyond the list count into the available directions', () => {
+    // Only 2 lists here; facing 3 wraps 3 % 2 == 1 -> dir 1's list.
+    expect(resolveSpriteBobId(settler('acting', 3, ATTACK, 1), bindings, 0)).toBe(2000 + 5);
+  });
+
+  it('an empty facing list holds the pool start (never a crash / bogus id)', () => {
+    const GAPPY: FrameListAnim = { start: 3000, frameLists: [[], [1, 2]] };
+    const b: SpriteBindings = {
+      settler: { idle: STAND, byAtomic: { [ATTACK]: GAPPY } },
+      building: 0,
+      resource: 0,
+    };
+    expect(resolveSpriteBobId(settler('acting', 0, ATTACK, 5), b, 0)).toBe(3000); // dir 0 is empty -> start
+  });
+});
+
+describe('resolveSpriteBobId — engaged (aggressive) gait override', () => {
+  function settler(state: SpriteState, engaged: boolean, facing = 0): DrawItem {
+    return {
+      kind: 'settler',
+      ref: 1,
+      x: 0,
+      y: 0,
+      depth: 0,
+      state,
+      facing,
+      ...(engaged ? { engaged: true } : {}),
+    };
+  }
+  const WALK: DirectionalAnim = { start: 1000, dirs: 8, stride: 12 };
+  const STAND: DirectionalAnim = { start: 1000, dirs: 8, stride: 12, frames: 1 };
+  const AGGR_WALK: DirectionalAnim = { start: 2000, dirs: 8, stride: 12 };
+  const AGGR_WAIT: DirectionalAnim = { start: 3000, dirs: 1, stride: 20 };
+  const ANIM: SettlerStateBinding = {
+    idle: STAND,
+    moving: WALK,
+    engaged: { moving: AGGR_WALK, idle: AGGR_WAIT },
+  };
+  const bindings: SpriteBindings = { settler: ANIM, building: 20, resource: 30 };
+
+  it('engaged moving plays the aggressive walk instead of the relaxed one', () => {
+    expect(resolveSpriteBobId(settler('moving', true), bindings, 3)).toBe(2000 + 3); // AGGR_WALK
+    expect(resolveSpriteBobId(settler('moving', false), bindings, 3)).toBe(1000 + 3); // relaxed WALK
+  });
+
+  it('engaged idle plays the aggressive ready stance (facing-locked strip)', () => {
+    expect(resolveSpriteBobId(settler('idle', true), bindings, 5)).toBe(3000 + 5); // AGGR_WAIT (dirs 1)
+    expect(resolveSpriteBobId(settler('idle', false), bindings, 5)).toBe(1000); // STAND (frames:1)
+  });
+
+  it('falls back to the relaxed gait when an engaged slot is unbound', () => {
+    const partial: SpriteBindings = {
+      settler: { idle: STAND, moving: WALK, engaged: { moving: AGGR_WALK } }, // no engaged idle
+      building: 0,
+      resource: 0,
+    };
+    expect(resolveSpriteBobId(settler('idle', true), partial, 5)).toBe(1000); // falls back to STAND
   });
 });
 

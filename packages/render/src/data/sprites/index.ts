@@ -24,6 +24,7 @@ export type {
   CarryingBinding,
   ConstructionLayerRef,
   DirectionalAnim,
+  FrameListAnim,
   LayeredBobRef,
   ResourceTypeBinding,
   SettlerStateBinding,

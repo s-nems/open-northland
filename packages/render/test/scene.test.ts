@@ -230,6 +230,43 @@ describe('buildScene', () => {
     expect(scene.find((d) => d.ref === 2)?.facing).toBeUndefined();
   });
 
+  it('an attacker (atomic 81) faces its target LIVE tile, overriding any stale path heading', () => {
+    // The attacker at odd row (1,1) swings at entity 2 one column EAST (2,1) → block 4 (E). Its lingering
+    // path points the other way (west, block 1); combat facing must win so it never swings at empty air.
+    const attacker = entity(1, 1, 1, {
+      Settler: { tribe: 0 },
+      CurrentAtomic: { atomicId: 81, elapsed: 3, targetEntity: 2, targetTile: null },
+      PathFollow: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }], index: 0 },
+    });
+    const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
+    const scene = buildScene(snapshotOf([attacker, target]), FLAT_3x2);
+    expect(scene.find((d) => d.kind === 'settler' && d.ref === 1)?.facing).toBe(4); // faces E, not W
+  });
+
+  it('a harvest atomic keeps its movement facing (combat facing is attack-only)', () => {
+    // atomic 24 (chop) is not the attack atomic, so a target lookup does not apply — the path heading wins.
+    const chopper = entity(1, 1, 1, {
+      Settler: { tribe: 0 },
+      CurrentAtomic: { atomicId: 24, elapsed: 3, targetEntity: 2, targetTile: null },
+      PathFollow: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }], index: 0 }, // west → block 1
+    });
+    const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
+    const scene = buildScene(snapshotOf([chopper, target]), FLAT_3x2);
+    expect(scene.find((d) => d.kind === 'settler' && d.ref === 1)?.facing).toBe(1); // W from path, not E
+  });
+
+  it('marks a settler engaged when it carries the Engagement component', () => {
+    const scene = buildScene(
+      snapshotOf([
+        entity(1, 1, 1, { Settler: { tribe: 0 }, Engagement: { repathAt: 0 } }),
+        entity(2, 1, 1, { Settler: { tribe: 0 } }),
+      ]),
+      FLAT_3x2,
+    );
+    expect(scene.find((d) => d.kind === 'settler' && d.ref === 1)?.engaged).toBe(true);
+    expect(scene.find((d) => d.kind === 'settler' && d.ref === 2)?.engaged).toBeUndefined();
+  });
+
   it('derives a settler state from its components: acting > moving > idle', () => {
     const scene = buildScene(
       snapshotOf([

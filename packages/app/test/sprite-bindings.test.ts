@@ -557,6 +557,64 @@ describe('characterBinding', () => {
     });
   });
 
+  it('binds the attack swing as a FrameListAnim from the gfxAtomics frame lists (start from the bobseq)', () => {
+    const seqs = new Map([
+      ['wait', { name: 'wait', start: 1931, length: 57 }],
+      ['spear_attack', { name: 'spear_attack', start: 2255, length: 108 }],
+    ]);
+    const spec = {
+      rosterId: 'warrior',
+      waitSeq: 'wait',
+      attack: 'spear_attack',
+    } as const;
+    const frameLists = new Map<string, readonly (readonly number[])[]>([
+      [
+        'spear_attack',
+        [
+          [79, 79, 80],
+          [97, 97, 98],
+        ],
+      ],
+    ]);
+    // The swing pool `start` comes from the [bobseq] row, its per-direction layout from the gfxAtomics map.
+    expect(characterBinding(spec, seqs, [], frameLists)?.byAtomic).toEqual({
+      81: {
+        start: 2255,
+        frameLists: [
+          [79, 79, 80],
+          [97, 97, 98],
+        ],
+      },
+    });
+  });
+
+  it('omits the attack swing when the frame lists are absent (no gfxAtomics for the seq)', () => {
+    const seqs = new Map([
+      ['wait', { name: 'wait', start: 1931, length: 57 }],
+      ['spear_attack', { name: 'spear_attack', start: 2255, length: 108 }],
+    ]);
+    const spec = { rosterId: 'warrior', waitSeq: 'wait', attack: 'spear_attack' } as const;
+    // No map passed → no attack animation bound (never a bogus uniform 108/8 slice).
+    expect(characterBinding(spec, seqs, [])?.byAtomic).toBeUndefined();
+  });
+
+  it('binds the engaged gait: aggressive ×8 walk + facing-locked aggressive wait', () => {
+    const seqs = new Map([
+      ['wait', { name: 'wait', start: 1931, length: 57 }],
+      ['aggr_walk', { name: 'aggr_walk', start: 536, length: 96 }],
+      ['aggr_wait', { name: 'aggr_wait', start: 418, length: 22 }],
+    ]);
+    const spec = {
+      rosterId: 'warrior',
+      waitSeq: 'wait',
+      engaged: { moving: 'aggr_walk', idle: 'aggr_wait' },
+    } as const;
+    expect(characterBinding(spec, seqs, [])?.engaged).toEqual({
+      moving: { start: 536, dirs: 8, stride: 12 },
+      idle: { start: 418, dirs: 1, stride: 22 },
+    });
+  });
+
   it('binds the per-good carry table + the wood generic fallback off the carryPrefix', () => {
     const seqs = new Map([
       ['w_wait', { name: 'w_wait', start: 10, length: 30 }],

@@ -19,6 +19,7 @@ import {
   extractBuildings,
   extractConstructionCosts,
   extractConstructionLayers,
+  extractGfxAnimAtomics,
   extractGoods,
   extractJobExperience,
   extractJobs,
@@ -133,6 +134,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   const animals = [];
   const vehicles = [];
   const bobSequences = [];
+  const gfxAtomics = [];
   // The `[GfxHouse]` building-type -> house-bob join (the data-pinned twin of the renderer's
   // transcribed per-type table) — render-binding data the sim ignores. See `extractBuildingBobs`.
   const buildingBobs = [];
@@ -159,6 +161,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     animals.push(...extractAnimals(sections, src));
     vehicles.push(...extractVehicles(sections, src));
     bobSequences.push(...extractBobSequences(sections, src));
+    gfxAtomics.push(...extractGfxAnimAtomics(sections, src));
     buildingBobs.push(...extractBuildingBobs(sections, src));
     constructionLayers.push(...extractConstructionLayers(sections, src));
     for (const [typeId, cost] of extractConstructionCosts(sections)) {
@@ -248,6 +251,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     // map-collision join reads — emitted verbatim so ground blocking is data, not a hardcoded split.
     trianglePatternTypes: triangleTypes,
     bobSequences,
+    gfxAtomics,
     buildingBobs,
     constructionLayers,
     tribes,
