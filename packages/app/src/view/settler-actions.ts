@@ -12,6 +12,7 @@ import {
 } from '../hud/action-ring-layout.js';
 import { backingScale } from './camera.js';
 import { el } from './overlay.js';
+import { isSettler, positionOf } from './snapshot.js';
 import type { Profession } from './unit-panel.js';
 
 /**
@@ -249,8 +250,8 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     let wy = 0;
     const ids: number[] = [];
     for (const e of snapshot.entities) {
-      if (!selection.has(e.id) || e.components.Settler === undefined) continue;
-      const pos = e.components.Position as { x: number; y: number } | undefined;
+      if (!selection.has(e.id) || !isSettler(e)) continue;
+      const pos = positionOf(e);
       if (pos === undefined) continue;
       const s = tileToScreen(pos.x / ONE, pos.y / ONE); // the drawn feet anchor (world px)
       wx += s.x;

@@ -9,7 +9,7 @@ import type { SoundBank } from '@vinland/data';
 import { hasSoundContent } from '../content/audio.js';
 import { loadIr } from '../content/ir.js';
 import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
-import { el } from '../view/overlay.js';
+import { el, pageInnerStyle, pageRootStyle, pageSection } from '../view/overlay.js';
 
 /**
  * The `?sounds` VERIFICATION GALLERY — the audio twin of the `?anim` character gallery. An agent can't
@@ -148,30 +148,9 @@ export function buildSoundGalleryModel(
 /** Cap on individual per-clip play buttons a group shows — the rest are reachable via "▶ losowy". */
 const MAX_CLIP_BUTTONS = 16;
 
-const ROOT_STYLE = [
-  'position:fixed',
-  'inset:0',
-  'overflow-y:auto',
-  'box-sizing:border-box',
-  'padding:32px 20px 64px',
-  'background:radial-gradient(120% 80% at 50% 0%,#241b12 0%,#160f0a 70%)',
-  'color:#e8dcc8',
-  'font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace',
-  'z-index:100',
-].join(';');
-
-const INNER_STYLE = ['max-width:1040px', 'margin:0 auto'].join(';');
-
-const SECTION_TITLE_STYLE = [
-  'font-weight:700',
-  'font-size:14px',
-  'letter-spacing:0.08em',
-  'text-transform:uppercase',
-  'opacity:0.7',
-  'margin:28px 0 10px',
-  'border-bottom:1px solid #5a4a36',
-  'padding-bottom:6px',
-].join(';');
+/** The gallery's page-shell knobs (shared shell in view/overlay.ts) — denser than the menu. */
+const ROOT_STYLE = pageRootStyle(32, 14);
+const INNER_STYLE = pageInnerStyle(1040);
 
 const CLIP_BTN_STYLE = [
   'cursor:pointer',
@@ -231,13 +210,8 @@ function clipButtons(clips: readonly string[]): HTMLElement {
   return wrap;
 }
 
-/** A titled section wrapping a set of rows. */
-function section(title: string, rows: readonly HTMLElement[]): HTMLElement {
-  const wrap = el('div', '');
-  wrap.append(el('div', SECTION_TITLE_STYLE, title));
-  for (const r of rows) wrap.append(r);
-  return wrap;
-}
+/** A titled section wrapping a set of rows (the shared page section). */
+const section = pageSection;
 
 /** A group row: its name + clip count on top, the play buttons below. */
 function groupRow(cl: ClipList): HTMLElement {
