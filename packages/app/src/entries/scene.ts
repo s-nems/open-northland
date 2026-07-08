@@ -14,7 +14,7 @@ import { HARVEST_ATOMIC } from '../content/settler-gfx.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
-import { DEFAULT_UI_SCALE } from '../hud/tool-panel-layout.js';
+import { DEFAULT_UI_SCALE } from '../hud/tool-panel/layout.js';
 import { SCENES, createSceneSim, getScene } from '../scenes/index.js';
 import { cameraFor, createCameraController } from '../view/camera.js';
 import {
