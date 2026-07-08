@@ -23,6 +23,7 @@ import {
   hitTestToolPanel,
   pointOverToolPanel,
 } from '../src/hud/tool-panel/layout.js';
+import { type LoopSpeedControl, applyGameSpeed } from '../src/view/game-tool-panel.js';
 
 /**
  * Headless tests for the LEFT tool panel's pure logic — the geometry hit-test, the speed state machine,
@@ -127,6 +128,18 @@ describe('game-speed', () => {
   it('a click while paused resumes at the remembered speed instead of advancing the cycle', () => {
     const paused = toggleGameSpeedPause({ running: 'faster', paused: false });
     expect(cycleGameSpeed(paused)).toEqual({ running: 'faster', paused: false });
+  });
+
+  it('a pause toggle never overwrites the loop multiplier — a fractional ?speed= seed survives P/P', () => {
+    // Boot with ?speed=0.5, pause with P, resume with P: still 0.5 (a pause toggle only flips the flag).
+    const control: LoopSpeedControl = { paused: false, speed: 0.5 };
+    applyGameSpeed(control, gameSpeedSpec('paused'), 'pause-toggle');
+    expect(control).toEqual({ paused: true, speed: 0.5 });
+    applyGameSpeed(control, gameSpeedSpec('normal'), 'pause-toggle');
+    expect(control).toEqual({ paused: false, speed: 0.5 });
+    // A button CLICK is an explicit speed pick: it writes the discrete multiplier (and un-pauses).
+    applyGameSpeed(control, gameSpeedSpec('fast'), 'cycle');
+    expect(control).toEqual({ paused: false, speed: 2 });
   });
 
   it('maps each state to the pinned gfx family and a tick multiplier == factor', () => {

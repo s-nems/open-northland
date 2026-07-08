@@ -30,7 +30,7 @@ export async function renderSceneMode(
     return;
   }
 
-  // Window-sized 1:1 backing store: resizing the browser changes the visible field, never the scale.
+  // Window-tracking, device-resolution backing store: resizing changes the visible field, never the scale.
   const app = await createWindowPixiApp(canvas);
   const terrainGrid = terrainMapToScene(scene.terrain);
   const sim = createSceneSim(scene);
@@ -53,6 +53,7 @@ export async function renderSceneMode(
   const cameraCtl = createCameraController(
     canvas,
     cameraFor(buildSpriteScene(sim.snapshot()), zoom, app.screen.width, app.screen.height),
+    app.renderer.resolution,
   );
 
   // The shared in-game runtime (view/game-view.ts): the standard HUD mounts — tool panel, unit

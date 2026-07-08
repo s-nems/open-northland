@@ -35,8 +35,9 @@ const DEFAULT_TILE_WIDTH = 2 * CALIBRATED_HALF_W;
  * watchable. The default landing is the MENU ({@link import('./menu.js')}), whose "Mapy" section links here
  * per decoded map.
  *
- * The backing store tracks the window at 1:1 pixels (`createWindowPixiApp`), so resizing the browser
- * changes the visible field, never the scale — read live dimensions from `app.screen`. When the map is
+ * The backing store tracks the window at device resolution (`createWindowPixiApp`; `app.screen` stays in
+ * CSS px), so resizing the browser changes the visible field, never the scale — read live dimensions
+ * from `app.screen`. When the map is
  * absent or unloadable (the maps are gitignored) it falls back to the synthetic grass strip so a bare
  * checkout still boots.
  */
@@ -153,7 +154,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   const initialCamera =
     centerTile(params.get('center'), zoom, app.screen.width, app.screen.height) ??
     cameraFor(buildSpriteScene(sim.snapshot()), zoom, app.screen.width, app.screen.height);
-  const cameraCtl = createCameraController(canvas, initialCamera);
+  const cameraCtl = createCameraController(canvas, initialCamera, app.renderer.resolution);
 
   // The shared in-game runtime (view/game-view.ts): the standard HUD mounts — tool panel, unit
   // controls, perf overlay, positional sound — and the ONE fixed-timestep RAF loop, identical to the

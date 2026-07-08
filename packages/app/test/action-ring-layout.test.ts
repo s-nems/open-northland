@@ -84,11 +84,10 @@ describe('action-ring-layout — arm footprint (transcribed from BuildHumanActio
   });
 
   it('actionRingScale shrinks the shared uiscale by the ring factor after clamping it to ≥ 1', () => {
-    // The 1.4× default HUD scale draws the ring ~25% smaller than the pre-shrink 1.4 (user-requested).
-    expect(actionRingScale(1.4)).toBeCloseTo(1.4 * ACTION_RING_UI_FACTOR);
+    // The 1.4× default HUD scale draws the ring 25% smaller (user-requested): 1.4 × 0.75 = 1.05.
+    expect(actionRingScale(1.4)).toBeCloseTo(1.05);
     // The uiscale clamp still applies BEFORE the shrink (sub-1 uiscale → the shrunk floor, not less).
     expect(actionRingScale(0.2)).toBeCloseTo(ACTION_RING_UI_FACTOR);
-    expect(ACTION_RING_UI_FACTOR).toBe(0.75);
   });
 
   it('clamps the whole menu on-screen when it would spill past an edge', () => {

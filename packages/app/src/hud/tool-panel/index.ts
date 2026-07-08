@@ -9,6 +9,7 @@ import type { MenuBuildingEntry } from './building-menu.js';
 import type { PanelContext } from './context.js';
 import {
   DEFAULT_GAME_SPEED_CONTROL,
+  type GameSpeedChangeCause,
   type GameSpeedControl,
   type GameSpeedStateSpec,
   cycleGameSpeed,
@@ -65,10 +66,11 @@ export interface ToolPanelOptions {
   /** The sim's live placement rule (`Simulation.placementProbe`) — gates the placement click, so a
    *  click on rejecting ground is inert instead of enqueueing a command the sim would drop. */
   readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
-  /** Apply a game-speed change to the app loop (drives the fixed-timestep multiplier / pause). */
-  readonly onSpeedChange: (spec: GameSpeedStateSpec) => void;
-  /** Backing-store scale mapper (client px → canvas px) — shared with the unit controls. */
-  readonly backingScale: (canvas: HTMLCanvasElement) => { sx: number; sy: number; rect: DOMRect };
+  /** Apply a game-speed change to the app loop; `cause` says whether it was a speed pick or a pause
+   *  toggle (a pause toggle must not overwrite the loop's wall-clock multiplier — see the type). */
+  readonly onSpeedChange: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
+  /** Client (CSS px) → Pixi screen px mapper — shared with the unit controls. */
+  readonly screenScale: (canvas: HTMLCanvasElement) => { sx: number; sy: number; rect: DOMRect };
 }
 
 export interface ToolPanelController {
@@ -93,6 +95,13 @@ const FALLBACK_BUTTON_BORDER = 0x8a744a;
 /** Fallback speed-glyph nudges inside the button rect (design px). */
 const SPEED_LABEL_INSET_X = 4;
 const SPEED_LABEL_RAISE_Y = 3;
+
+/** True when a keydown originated in a text-entry element — a game hotkey must not fire while typing.
+ *  (No text field exists in the app today; this guards the first one that appears.) */
+const isTypingTarget = (target: EventTarget | null): boolean =>
+  target instanceof HTMLInputElement ||
+  target instanceof HTMLTextAreaElement ||
+  (target instanceof HTMLElement && target.isContentEditable);
 
 /**
  * Mount the tool panel onto the app stage. Async because it loads the (optional) decoded GUI art + font;
@@ -187,7 +196,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   let speedRun: TextRun | null = null; // fallback glyph (the flat mode has no distinct per-state sprite)
   const speedBtnRect = layout.buttons.find((b) => b.id === 'speed')?.placed;
 
-  const applySpeed = (pushToLoop: boolean): void => {
+  // `cause` null = mount-time init (refresh the glyph only, never push to the loop — see the call below).
+  const applySpeed = (cause: GameSpeedChangeCause | null): void => {
     const spec = effectiveGameSpeedSpec(speedControl);
     if (speedSprite !== null && art !== null) {
       const frame = art.layer.atlas.frames.get(spec.gfx);
@@ -209,9 +219,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         app.screen.height,
       );
     }
-    // Push to the loop only on an actual speed change (a button click), NOT at mount — the entry seeds its
+    // Push to the loop only on an actual change (a click / the P key), NOT at mount — the entry seeds its
     // own initial loop speed (default / `?speed=`), and the panel must not clobber it with ×1 before frame 0.
-    if (pushToLoop) opts.onSpeedChange(spec);
+    if (cause !== null) opts.onSpeedChange(spec, cause);
   };
 
   // --- Button actions -------------------------------------------------------------------------------
@@ -219,7 +229,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     switch (id) {
       case 'speed':
         speedControl = cycleGameSpeed(speedControl);
-        applySpeed(true);
+        applySpeed('cycle');
         break;
       case 'buildings':
         placement.cancel();
@@ -237,7 +247,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
 
   // --- Input --------------------------------------------------------------------------------------
   const toCanvas = (clientX: number, clientY: number): { x: number; y: number } => {
-    const { sx, sy, rect } = opts.backingScale(canvas);
+    const { sx, sy, rect } = opts.screenScale(canvas);
     return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
   };
 
@@ -298,11 +308,19 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
 
   const onKeyDown = (e: KeyboardEvent): void => {
     if (e.code === 'Escape' && placement.isActive()) placement.cancel();
-    // `P` toggles pause (remembering the running speed for the resume). Plain key only — a modifier
-    // combo (Cmd/Ctrl+P print, etc.) stays the browser's.
-    if (e.code === 'KeyP' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    // `P` toggles pause (remembering the running speed for the resume). Plain, non-repeated key only —
+    // a modifier combo (Cmd/Ctrl+P print, etc.) stays the browser's, a held key must not flicker the
+    // pause (each toggle re-rasterizes the strip), and typing "p" into a text field must not pause.
+    if (
+      e.code === 'KeyP' &&
+      !e.repeat &&
+      !e.metaKey &&
+      !e.ctrlKey &&
+      !e.altKey &&
+      !isTypingTarget(e.target)
+    ) {
       speedControl = toggleGameSpeedPause(speedControl);
-      applySpeed(true);
+      applySpeed('pause-toggle');
     }
   };
 
@@ -310,7 +328,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   canvas.addEventListener('mousemove', onMouseMove);
   window.addEventListener('keydown', onKeyDown);
 
-  applySpeed(false); // initialise the speed button graphic only — the loop keeps the entry's seeded speed
+  applySpeed(null); // initialise the speed button graphic only — the loop keeps the entry's seeded speed
 
   return {
     claimsPointer,

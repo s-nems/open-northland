@@ -83,6 +83,15 @@ export function toggleGameSpeedPause(control: GameSpeedControl): GameSpeedContro
   return { running: control.running, paused: !control.paused };
 }
 
+/**
+ * WHY a speed change happened — the loop applies them differently. A `'cycle'` (button click) is an
+ * explicit speed pick, so it overwrites the loop's wall-clock multiplier (including a fractional
+ * `?speed=` seed — the button can only express the discrete speeds). A `'pause-toggle'` (the `P` key)
+ * must only flip the pause flag: writing the multiplier there would silently replace a seeded
+ * `?speed=0.5` with ×1 on resume, breaking the "restores exactly the pace" promise above.
+ */
+export type GameSpeedChangeCause = 'cycle' | 'pause-toggle';
+
 /** The spec the button draws + the loop applies for a control: the pause glyph wins while paused. */
 export function effectiveGameSpeedSpec(control: GameSpeedControl): GameSpeedStateSpec {
   return gameSpeedSpec(control.paused ? 'paused' : control.running);

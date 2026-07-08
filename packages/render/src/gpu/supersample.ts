@@ -15,6 +15,18 @@ import { type Container, RenderTexture, type Renderer, Sprite } from 'pixi.js';
  * box BOTTOM. The app forces a WebGL backend (`gpu/pixi-app.ts` `preference: 'webgl'`), so this inversion is
  * fixed; a WebGPU switch would revisit it once, here.
  */
+/**
+ * The integer oversample a supersampled bake needs: enough texels to cover every DEVICE pixel the
+ * display sprite spans (`scale` screen px per design px × `resolution` device px per screen px), so the
+ * linear downscale only ever shrinks. `floor` is the caller's quality floor (a hard-clipped disc rim
+ * wants ≥3 for smoothing headroom; a flat strip is fine from 1); `cap` bounds the texture memory a
+ * pathological `?uiscale=`/DPR combination could request. Lives beside the bake so the sizing policy
+ * can't drift between callers.
+ */
+export function oversampleFor(scale: number, resolution: number, floor: number, cap: number): number {
+  return Math.max(floor, Math.min(cap, Math.ceil(scale * resolution)));
+}
+
 export interface SupersampledTexture {
   /** The baked, linear-downscaled, Y-flipped display sprite — the caller adds it to the scene + positions it. */
   readonly display: Sprite;

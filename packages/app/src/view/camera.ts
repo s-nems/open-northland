@@ -1,4 +1,4 @@
-import { type Camera, type DrawItem, canvasResolution, tileToScreen } from '@vinland/render';
+import { type Camera, type DrawItem, tileToScreen } from '@vinland/render';
 
 /**
  * Camera helpers shared by the map (`entries/map.ts`) and shot (`entries/shot.ts`) entries. The geometry half is
@@ -127,26 +127,35 @@ export interface CameraController {
 /**
  * The CSS-px → Pixi-SCREEN-px scale for a canvas (+ its client `rect`). Client (CSS-px) mouse coords
  * must land in the screen px the camera + picking + HUD layouts work in — the backing store divided by
- * the renderer resolution (`canvasResolution`; the HiDPI window canvas holds devicePixelRatio backing
- * px per screen px). The live entries keep CSS and screen px 1:1 (`createWindowPixiApp` + `autoDensity`
- * CSS-size the canvas to the logical size), so this is normally identity — but it stays exact for any
- * embedding where they diverge (a fixed-size canvas, a resize not yet flushed), else a drag pans faster
- * than the cursor, a wheel zoom anchors off the cursor, and a click picks the wrong tile. The `rect` is
- * returned so a handler can subtract the canvas origin in CSS px *before* scaling. Guards a zero-size
+ * `resolution`, the renderer's device-px-per-screen-px (`app.renderer.resolution`: devicePixelRatio for
+ * the HiDPI window canvas, 1 for the deterministic `?shot` canvas — every caller passes its app's live
+ * value). The live entries keep CSS and screen px 1:1 (`createWindowPixiApp` + `autoDensity` CSS-size
+ * the canvas to the logical size), so this is normally identity — but it stays exact for any embedding
+ * where they diverge (a fixed-size canvas, a resize not yet flushed), else a drag pans faster than the
+ * cursor, a wheel zoom anchors off the cursor, and a click picks the wrong tile. The `rect` is returned
+ * so a handler can subtract the canvas origin in CSS px *before* scaling. Guards a zero-size
  * (unlaid-out) canvas. Shared by the camera controller and the selection controller
  * (`view/unit-controls.ts`).
  */
-export function backingScale(canvas: HTMLCanvasElement): { sx: number; sy: number; rect: DOMRect } {
+export function screenScale(
+  canvas: HTMLCanvasElement,
+  resolution: number,
+): { sx: number; sy: number; rect: DOMRect } {
   const rect = canvas.getBoundingClientRect();
-  const res = canvasResolution(canvas);
   return {
-    sx: rect.width === 0 ? 1 : canvas.width / res / rect.width,
-    sy: rect.height === 0 ? 1 : canvas.height / res / rect.height,
+    sx: rect.width === 0 ? 1 : canvas.width / resolution / rect.width,
+    sy: rect.height === 0 ? 1 : canvas.height / resolution / rect.height,
     rect,
   };
 }
 
-export function createCameraController(canvas: HTMLCanvasElement, initial: Camera): CameraController {
+/** `resolution` is the owning renderer's device-px-per-screen-px (`app.renderer.resolution`) — needed to
+ *  map mouse deltas into screen px on the HiDPI window canvas (see {@link screenScale}). */
+export function createCameraController(
+  canvas: HTMLCanvasElement,
+  initial: Camera,
+  resolution: number,
+): CameraController {
   let cam: Camera = initial;
   const held = new Set<string>();
   let dragging = false;
@@ -162,7 +171,7 @@ export function createCameraController(canvas: HTMLCanvasElement, initial: Camer
   };
   const onMouseMove = (e: MouseEvent): void => {
     if (!dragging) return;
-    const { sx, sy } = backingScale(canvas);
+    const { sx, sy } = screenScale(canvas, resolution);
     cam = panCamera(cam, (e.clientX - lastX) * sx, (e.clientY - lastY) * sy);
     lastX = e.clientX;
     lastY = e.clientY;
@@ -172,7 +181,7 @@ export function createCameraController(canvas: HTMLCanvasElement, initial: Camer
   };
   const onWheel = (e: WheelEvent): void => {
     e.preventDefault(); // don't scroll the page
-    const { sx, sy, rect } = backingScale(canvas);
+    const { sx, sy, rect } = screenScale(canvas, resolution);
     const factor = e.deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP;
     cam = zoomCameraAt(cam, factor, (e.clientX - rect.left) * sx, (e.clientY - rect.top) * sy);
   };

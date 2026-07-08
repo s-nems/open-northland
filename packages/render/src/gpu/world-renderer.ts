@@ -53,9 +53,11 @@ const SPRITE_CULL_MARGIN = 512;
 
 /**
  * The paused-game wash: one screen-sized multiply quad over the WORLD (not the HUD), so a paused map
- * reads dimmed-sepia at a glance. The original browns the map while paused (observed behaviour); the
- * exact grade isn't recoverable, so this multiply colour is an eyeballed approximation (source basis).
- * One plain sprite = one batched draw — no filter, no per-sprite work (render AGENTS.md batching rule).
+ * reads dimmed-sepia at a glance. The original browns the MAP while paused (observed behaviour); the
+ * exact grade isn't recoverable, and whether its HUD tints too isn't part of that observation — the
+ * world-only scope is our reading (source basis: eyeballed multiply approximation). One plain sprite:
+ * its distinct blend mode flushes the batcher, but it sits at the world→HUD layer boundary which
+ * flushes anyway, so the cost is one extra draw call, only while paused — no filter, no per-sprite work.
  */
 const PAUSE_WASH_TINT = 0xc9a87c;
 

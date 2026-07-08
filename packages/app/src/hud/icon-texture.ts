@@ -1,4 +1,4 @@
-import { type AtlasFrame, type PalettedSprite, bakeToFlippedSprite } from '@vinland/render';
+import { type AtlasFrame, type PalettedSprite, bakeToFlippedSprite, oversampleFor } from '@vinland/render';
 import { type Application, Container, type Sprite } from 'pixi.js';
 
 /**
@@ -45,9 +45,8 @@ export function bakeRoundIcon(opts: {
   const { app, sprite, frame, scale } = opts;
 
   // Integer oversample so nearest sampling stays exact; sized for the DEVICE px the icon actually covers
-  // (scale × renderer resolution — the interactive canvas renders at device resolution), floored so the
-  // hard-clipped disc rim always has smoothing headroom, capped to bound texture memory.
-  const ss = Math.max(MIN_SUPERSAMPLE, Math.min(MAX_SUPERSAMPLE, Math.ceil(scale * app.renderer.resolution)));
+  // (see oversampleFor), floored so the hard-clipped disc rim always has smoothing headroom.
+  const ss = oversampleFor(scale, app.renderer.resolution, MIN_SUPERSAMPLE, MAX_SUPERSAMPLE);
   const texW = Math.ceil(frame.width * ss);
   const texH = Math.ceil(frame.height * ss);
 
