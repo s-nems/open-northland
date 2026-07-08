@@ -248,7 +248,8 @@ export function collectSpriteScene(
       const to = targetRef !== null ? posByRef.get(targetRef) : undefined;
       if (to !== undefined) {
         const targetScreen = tileToScreen(to.x / ONE, to.y / ONE);
-        item.rotation = Math.atan2(targetScreen.y - screen.y, targetScreen.x - drawX);
+        // Anchored on the projected position (the chop nudge is settler-only, so screen.x IS drawX here).
+        item.rotation = Math.atan2(targetScreen.y - screen.y, targetScreen.x - screen.x);
       }
     } else {
       // stockpile | grounddrop: both read their held good + fill from the stockpile — the trunk keys its

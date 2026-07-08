@@ -335,22 +335,26 @@ function singleDirAnim(row: BobSeqRow | undefined): DirectionalAnim | undefined 
  * `0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N` — source basis "Settler facing"). The source's `<dir>`
  * space is the engine's movement-direction ring: the staggered-lattice hex neighbours clockwise from
  * screen-east (`0 E, 1 SE, 2 SW, 3 W, 4 NW, 5 NE`) plus the two row-crossing verticals (`6 N, 7 S`).
- * DATA-PINNED, not guessed: across all 123 extracted HUMAN-body `[gfxanimatomic]` records whose body
- * strip is a uniform ×8 block layout, every dir-`d` frame list indexes exclusively into strip block
- * `GFX_DIR_TO_BLOCK[d]` (the one dissenter is the `animal_bear_fight` body with its own block order —
- * irrelevant to these human bindings). Indexing frame lists by facing WITHOUT this remap draws the
- * NW swing on an east-facing attacker.
+ * DATA-PINNED, not guessed: across the 123 extracted CHARACTER-body-lib `[gfxanimatomic]` records
+ * whose body strip is a uniform ×8 block layout (46 human `cr_hum_body_*` + 77 animal
+ * `cr_ani_body_00`), every dir-`d` frame list indexes exclusively into strip block
+ * `GFX_DIR_TO_BLOCK[d]`. The lone character-lib dissenter is the `animal_bear_fight` body with its own
+ * block order; the vehicle lib (`cr_veh_body_00`, bullcart/catapult) also differs — both irrelevant to
+ * these human bindings. Indexing frame lists by facing WITHOUT this remap draws the NW swing on an
+ * east-facing attacker.
  */
 const GFX_DIR_TO_BLOCK = [4, 5, 0, 1, 2, 3, 7, 6] as const;
 
 /**
  * Reorder a `[gfxanimatomic]` per-`<dir>` frame-list table into the render's per-FACING order (a
- * {@link FrameListAnim}'s `frameLists` is indexed by facing). A single-list table is facing-locked and
- * plays verbatim; a missing dir slot stays an empty list (`frameOf` then holds the pool's first frame
- * for that facing rather than borrowing a neighbour's swing). Pure.
+ * {@link FrameListAnim}'s `frameLists` is indexed by facing). A single-list table is facing-locked
+ * (a bare `gfxanimframelist`) and plays verbatim on every facing. ANY multi-list table lives in the
+ * `<dir>` space and is remapped — including a partial one (dirs authored sparsely): each authored dir
+ * lands on its facing, and an unauthored slot stays an empty list (`frameOf` then holds the pool's
+ * first frame for that facing rather than borrowing a neighbour's — or worse, an unremapped — swing). Pure.
  */
 function frameListsByFacing(dirLists: readonly (readonly number[])[]): readonly (readonly number[])[] {
-  if (dirLists.length < DIRS) return dirLists; // facing-locked single list — no direction table to remap
+  if (dirLists.length === 1) return dirLists; // facing-locked single list — no direction table to remap
   const byFacing: (readonly number[])[] = new Array(DIRS).fill([]);
   GFX_DIR_TO_BLOCK.forEach((facing, dir) => {
     byFacing[facing] = dirLists[dir] ?? [];
