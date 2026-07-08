@@ -112,7 +112,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
   const uiscale = floatParam(params, 'uiscale', DEFAULT_UI_SCALE);
   // Playback control. `?speed=` seeds the initial wall-clock multiplier (default ×1; e.g. `&speed=0.5`
   // for a calm, sub-1× pace the panel's discrete speed button can't reach). The tool panel's game-speed
-  // button then drives it live (×1 → ×2 → ×3 → pause) without clobbering this seed at mount.
+  // button then drives it live (×1 → ×2 → ×3 → ×1; `P` toggles pause) without clobbering this seed at mount.
   const control = { paused: false, speed: floatParam(params, 'speed', 1) };
 
   // Original decoded sounds, played positionally: action SFX + terrain ambient (viewport-culled,
@@ -153,7 +153,10 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     buildings: menuEntriesFromContent(sim.content),
     tribe: HUD_TRIBE,
     owner: HUMAN_PLAYER,
-    onSpeed: (spec) => applyGameSpeed(control, spec),
+    onSpeed: (spec) => {
+      applyGameSpeed(control, spec);
+      renderer.setPaused(control.paused); // the sepia pause wash follows the sim pause
+    },
   });
 
   // The cursor position for the build-mode ghost (client coords; null when the pointer left the

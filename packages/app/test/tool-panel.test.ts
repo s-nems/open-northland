@@ -9,10 +9,12 @@ import {
   layoutBuildingMenu,
 } from '../src/hud/tool-panel/building-menu.js';
 import {
-  DEFAULT_GAME_SPEED_STATE,
+  DEFAULT_GAME_SPEED_CONTROL,
   GAME_SPEED_STATES,
+  cycleGameSpeed,
+  effectiveGameSpeedSpec,
   gameSpeedSpec,
-  nextGameSpeedState,
+  toggleGameSpeedPause,
 } from '../src/hud/tool-panel/game-speed.js';
 import {
   DEFAULT_UI_SCALE,
@@ -100,17 +102,31 @@ describe('baked-icon placement', () => {
 });
 
 describe('game-speed', () => {
-  it('cycles normal → fast → faster → paused → normal', () => {
-    expect(DEFAULT_GAME_SPEED_STATE).toBe('normal');
-    let s = DEFAULT_GAME_SPEED_STATE;
-    s = nextGameSpeedState(s);
-    expect(s).toBe('fast');
-    s = nextGameSpeedState(s);
-    expect(s).toBe('faster');
-    s = nextGameSpeedState(s);
-    expect(s).toBe('paused');
-    s = nextGameSpeedState(s);
-    expect(s).toBe('normal');
+  it('clicks cycle the RUNNING speeds only: normal → fast → faster → normal (never into pause)', () => {
+    expect(DEFAULT_GAME_SPEED_CONTROL).toEqual({ running: 'normal', paused: false });
+    let c = DEFAULT_GAME_SPEED_CONTROL;
+    c = cycleGameSpeed(c);
+    expect(c.running).toBe('fast');
+    c = cycleGameSpeed(c);
+    expect(c.running).toBe('faster');
+    c = cycleGameSpeed(c);
+    expect(c).toEqual({ running: 'normal', paused: false });
+  });
+
+  it('P toggles pause, remembering the running speed and restoring it on unpause', () => {
+    const fast = cycleGameSpeed(DEFAULT_GAME_SPEED_CONTROL); // ×2
+    const paused = toggleGameSpeedPause(fast);
+    expect(paused).toEqual({ running: 'fast', paused: true });
+    expect(effectiveGameSpeedSpec(paused).tickMultiplier).toBe(0); // the loop stops
+    expect(effectiveGameSpeedSpec(paused).gfx).toBe(0x36); // the button shows the pause glyph
+    const resumed = toggleGameSpeedPause(paused);
+    expect(resumed).toEqual({ running: 'fast', paused: false });
+    expect(effectiveGameSpeedSpec(resumed).tickMultiplier).toBe(2); // back at the pre-pause speed
+  });
+
+  it('a click while paused resumes at the remembered speed instead of advancing the cycle', () => {
+    const paused = toggleGameSpeedPause({ running: 'faster', paused: false });
+    expect(cycleGameSpeed(paused)).toEqual({ running: 'faster', paused: false });
   });
 
   it('maps each state to the pinned gfx family and a tick multiplier == factor', () => {

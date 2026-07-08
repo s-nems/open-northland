@@ -44,9 +44,10 @@ export function bakeRoundIcon(opts: {
 }): BakedIcon {
   const { app, sprite, frame, scale } = opts;
 
-  // Integer oversample so nearest sampling stays exact; the canvas is resolution 1, so this is CSS space (a
-  // HiDPI display integer-upscales the whole #game canvas, keeping the smooth downscaled disc crisp).
-  const ss = Math.max(MIN_SUPERSAMPLE, Math.min(MAX_SUPERSAMPLE, Math.ceil(scale)));
+  // Integer oversample so nearest sampling stays exact; sized for the DEVICE px the icon actually covers
+  // (scale × renderer resolution — the interactive canvas renders at device resolution), floored so the
+  // hard-clipped disc rim always has smoothing headroom, capped to bound texture memory.
+  const ss = Math.max(MIN_SUPERSAMPLE, Math.min(MAX_SUPERSAMPLE, Math.ceil(scale * app.renderer.resolution)));
   const texW = Math.ceil(frame.width * ss);
   const texH = Math.ceil(frame.height * ss);
 

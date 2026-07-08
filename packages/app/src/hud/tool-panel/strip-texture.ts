@@ -21,11 +21,11 @@ import type { DesignRect } from './layout.js';
  */
 
 /**
- * Oversample cap. The canvas renders at `resolution: 1` (`render/gpu/pixi-app.ts`), so `ss = ceil(scale)`
- * oversamples in CSS space; a HiDPI display then integer-upscales the whole `#game` canvas (its
- * `image-rendering: pixelated`), which keeps the already-smooth downscaled strip crisp. `ss` needs at most
- * this for any sane `uiscale` (≤ ~2×, since the strip is 433 design px tall); the cap only bounds the
- * texture memory a pathological `?uiscale=` could request.
+ * Oversample cap. The interactive canvas renders at DEVICE resolution (`createWindowPixiApp`), so the
+ * oversample must cover `uiscale × renderer.resolution` device px per design px or the linear downscale
+ * has too little detail to stay crisp on HiDPI (the 1.4× default at DPR 2 needs 2.8 → ss 3). The cap
+ * bounds the texture memory a pathological `?uiscale=`/DPR combination could request (the strip is 433
+ * design px tall; ss 4 ≈ a 200×1772 texture).
  */
 const MAX_SUPERSAMPLE = 4;
 
@@ -50,8 +50,9 @@ export function createSupersampledStrip(opts: {
 }): SupersampledStrip {
   const { app, bounds, scale, sprites } = opts;
 
-  // Integer oversample so nearest sampling stays exact; capped. (In CSS space — the canvas is resolution 1.)
-  const ss = Math.max(1, Math.min(MAX_SUPERSAMPLE, Math.ceil(scale)));
+  // Integer oversample so nearest sampling stays exact; sized for the DEVICE px the display sprite
+  // actually covers (scale × renderer resolution), capped. (The shot canvas is resolution 1 → ceil(scale).)
+  const ss = Math.max(1, Math.min(MAX_SUPERSAMPLE, Math.ceil(scale * app.renderer.resolution)));
   const texW = Math.ceil(bounds.w * ss);
   const texH = Math.ceil(bounds.h * ss);
 
