@@ -1,8 +1,8 @@
-import { Position } from '../components/index.js';
+import { MoveGoal, PathFollow, PathRequest, Position } from '../components/index.js';
 import { fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
 import type { CellId, TerrainGraph } from '../nav/terrain.js';
-import { tileKey } from './footprint.js';
+import { manhattan, tileKey } from './footprint.js';
 
 // The cross-system SPATIAL primitives — canonical scan order, the per-tick tile bucket + ring
 // search, and the cell/distance helpers. A leaf module (only footprint.ts below it) so every
@@ -168,10 +168,38 @@ export function entityCell(world: World, terrain: TerrainGraph, e: Entity): Cell
   return terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
 }
 
-/** Integer Manhattan distance between two cells — the cheap reach/nearness heuristic the AI planner,
- *  combat range check, and herding leader-distance measure with (A* computes the real path cost). */
-export function manhattan(terrain: TerrainGraph, a: CellId, b: CellId): number {
-  const ca = terrain.coordsOf(a);
-  const cb = terrain.coordsOf(b);
-  return Math.abs(ca.x - cb.x) + Math.abs(ca.y - cb.y);
+// manhattan lives in footprint.ts (the leaf, which needs it for its nearest-cell picks) and is
+// re-exported here with tileKey so consumers keep the single spatial import site.
+export { manhattan };
+
+/**
+ * The 8 compass step offsets (E, W, S, N, then the four diagonals) in the fixed canonical order the
+ * sim's direction-indexed picks share: the herd-spawn scatter ring walks it by member index and the
+ * combat flee drive scores destinations along it. One shared tuple so the two can never drift —
+ * the ORDER is part of the goldens (an index into this array is a deterministic pick).
+ */
+export const COMPASS_DIRECTIONS: ReadonlyArray<readonly [number, number]> = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [1, 1],
+  [-1, -1],
+  [1, -1],
+  [-1, 1],
+];
+
+/** Whether `e` is mid-journey: it has a navigation goal, a pending path request, or a path it is
+ *  walking. The shared "is it travelling?" predicate the combat gates and the AI planner's idle
+ *  checks apply identically. */
+export function isTravelling(world: World, e: Entity): boolean {
+  return world.has(e, MoveGoal) || world.has(e, PathRequest) || world.has(e, PathFollow);
+}
+
+/** Drop `e`'s whole navigation state (goal + pending request + followed path) — the counterpart of
+ *  {@link isTravelling}, used when an authoritative drive (a chase ending, an order) cancels travel. */
+export function clearNavState(world: World, e: Entity): void {
+  world.remove(e, MoveGoal);
+  world.remove(e, PathRequest);
+  world.remove(e, PathFollow);
 }
