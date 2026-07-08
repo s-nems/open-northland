@@ -18,7 +18,7 @@ this file when all steps land.
 
 ```text
 Point the economy's nearest-X scans at the landed ring-search primitive. Today the nearest
-resource / store off-tile picks (packages/sim/src/systems/ai/ai-targets.ts, ai-supply.ts —
+resource / store off-tile picks (packages/sim/src/systems/conflict/ai-targets.ts, ai-supply.ts —
 research-time refs, re-verify) are O(idle · candidates) candidate-list scans, mitigated by the
 busy-unit skip + dormancy gate + per-tick candidate lists. `TileBuckets.nearest` (systems/shared.ts)
 already does the canonical (distance, id) band search — combatSystem consumes it. Migrate the

@@ -9,8 +9,8 @@ import { type Entity, defineComponent } from '../ecs/world.js';
  *
  * `hitpoints`/`max` are **whole integers**, not fixed-point 0..ONE bars: hitpoints are a large
  * integer scale in the original (`animaltypes.ini` `hitpoints_adult` runs 200..20000, e.g. wolf
- * 1000, bear 7000, mammoth 20000) and net damage is the integer `combatDamage` join (the per-class
- * `weapontypes` damage minus the armor `blockingValue`), so the whole pool stays integer arithmetic —
+ * 1000, bear 7000, mammoth 20000) and net damage is the integer `combatDamage` join (the victim's
+ * armor-material column of the `weapontypes` damage table), so the whole pool stays integer arithmetic —
  * no truncation, exact `hitpoints <= 0` death test. It is a **separate optional component** (like
  * {@link JobAssignment}/{@link Age}): only a combatant carries one, so a non-combat settler/the
  * golden slice has none and the hash is untouched. Determinism: drained by a fixed integer
@@ -21,10 +21,11 @@ export const Health = defineComponent<{ hitpoints: number; max: number }>('Healt
 /**
  * A combatant's worn **armor class** — the `[armortype]` tier (`ArmorType.typeId`, 1..4 in the base
  * data) the hit-resolution loop joins against to mitigate incoming damage. A target carrying an
- * `Armor{armorClass}` takes the attacker's weapon `damage[armorClass]` **minus** that armor's
- * `blockingValue` (the verbatim `weapontypes`×`armortypes` join {@link combatDamage} tabulates),
- * instead of the unarmored class-0 damage every target took before. A higher class is heavier mail:
- * class 3/4 chain/plate blocks more than class 1 woolen.
+ * `Armor{armorClass}` takes the attacker's weapon damage **column selected by that armor's
+ * materialType** (the verbatim `weapontypes`×`armortypes` join {@link combatDamage} tabulates; the
+ * uniform `blockingValue 5` has an unknown engine role and is deliberately NOT subtracted), instead
+ * of the unarmored class-0 damage every target took before. Which armor protects best depends on the
+ * weapon — the table is deliberate rock-paper-scissors (spears pierce plate, swords beat chain).
  *
  * It is a **separate optional component** (like {@link JobAssignment}/{@link Age}/{@link Health}):
  * only an armored combatant carries one, so a bare target — every animal, every golden/slice settler,
@@ -34,7 +35,7 @@ export const Health = defineComponent<{ hitpoints: number; max: number }>('Healt
  *
  * `armorClass` is a whole integer (a class id, not a fixed-point bar), so it hashes deterministically
  * like every other component. A class with **no `[armortype]` record** (the out-of-table 6/7, or a bad
- * value) resolves as unarmored (`blockingValue 0`) the same way {@link combatDamage} treats it — armor
+ * value) resolves as unarmored the same way {@link combatDamage} treats it — armor
  * the data doesn't define mitigates nothing rather than crashing. Determinism: read by a pure content
  * join in the CombatSystem, no RNG/wall-clock.
  */
