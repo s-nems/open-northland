@@ -1,4 +1,4 @@
-import { type AtlasFrame, type Camera, type PalettedSprite, tileToScreen } from '@vinland/render';
+import { type Camera, tileToScreen } from '@vinland/render';
 import { ONE, type WorldSnapshot } from '@vinland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
 import { type GuiSprite, loadGuiArt, makeGuiSprite } from '../content/gui-art.js';
@@ -10,6 +10,7 @@ import {
   hitTestActionRing,
   layoutActionRing,
 } from '../hud/action-ring-layout.js';
+import { type BakedIcon, bakeRoundIcon, placeBakedIcon } from '../hud/icon-texture.js';
 import { backingScale } from './camera.js';
 import { el } from './overlay.js';
 import { isSettler, positionOf } from './snapshot.js';
@@ -133,13 +134,12 @@ export interface SettlerActions {
   dispose(): void;
 }
 
-/** One built button: its spec + the sprite (real art) or the fallback disc + the (invariant) atlas frame. */
+/** One built button: its spec + the supersampled baked icon (real art) or the flat fallback disc. */
 interface ButtonVisual {
   readonly button: ActionButton;
-  readonly sprite: PalettedSprite | null;
+  /** The crisp, supersampled order-icon (real-art path) — baked ONCE, re-placed each frame. */
+  readonly icon: BakedIcon | null;
   readonly fallback: Graphics | null;
-  /** The resolved atlas frame (real-art path) — captured once at build so `placeVisual` never re-resolves it. */
-  readonly frame: AtlasFrame | null;
 }
 
 /**
@@ -183,14 +183,18 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   const visualByButton = new Map<ActionButton, ButtonVisual>();
   for (const button of allButtons) {
     const art = iconSprite(button.icon);
+    let icon: BakedIcon | null = null;
     let fallback: Graphics | null = null;
     if (art === null) {
       fallback = new Graphics();
       buttonContainer.addChild(fallback);
     } else {
-      buttonContainer.addChild(art.sprite);
+      // Supersample the round order-icon into a texture (crisp at the fractional UI scale — see
+      // hud/icon-texture.ts); the display sprite is what the scene graph draws + re-places each frame.
+      icon = bakeRoundIcon({ app, sprite: art.sprite, frame: art.frame, scale });
+      buttonContainer.addChild(icon.display);
     }
-    const v: ButtonVisual = { button, sprite: art?.sprite ?? null, fallback, frame: art?.frame ?? null };
+    const v: ButtonVisual = { button, icon, fallback };
     visuals.push(v);
     visualByButton.set(button, v);
   }
@@ -268,19 +272,13 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   };
 
   /**
-   * Place one button's visual centred in its layout rect (the original's `SetCenterGraphicsFlag`), SNAPPED to
-   * whole pixels. The centroid anchor is a float, so an un-snapped origin lands the small icon between screen
-   * pixels — nearest-sampled, that drops/doubles texel columns (the "chipped + blurry" look). Rounding the
-   * final screen origin to integers keeps the 1:1 texel mapping crisp.
+   * Place one button's visual centred in its layout rect (the original's `SetCenterGraphicsFlag`). The baked
+   * icon is a scene-graph sprite, centred + pixel-snapped by {@link placeBakedIcon}; the flat fallback draws
+   * a disc at the same centre.
    */
   const placeVisual = (v: ButtonVisual, rect: { x: number; y: number; w: number; h: number }): void => {
-    const rw = app.screen.width;
-    const rh = app.screen.height;
-    if (v.sprite !== null && v.frame !== null) {
-      // Centre the frame's WxH box in the rect: drawn-box centre = origin + scale·(offset + size/2).
-      const originX = Math.round(rect.x + rect.w / 2 - (v.frame.offsetX + v.frame.width / 2) * scale);
-      const originY = Math.round(rect.y + rect.h / 2 - (v.frame.offsetY + v.frame.height / 2) * scale);
-      v.sprite.place(originX, originY, scale, rw, rh);
+    if (v.icon !== null) {
+      placeBakedIcon(v.icon, rect);
     } else if (v.fallback !== null) {
       const r = Math.min(rect.w, rect.h) / 2;
       v.fallback
@@ -295,7 +293,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
 
   const hideAll = (): void => {
     for (const v of visuals) {
-      if (v.sprite !== null) v.sprite.visible = false;
+      if (v.icon !== null) v.icon.display.visible = false;
       if (v.fallback !== null) v.fallback.visible = false;
     }
   };
@@ -333,7 +331,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     for (const placed of layout.buttons) {
       const v = visualByButton.get(placed.button);
       if (v === undefined) continue;
-      if (v.sprite !== null) v.sprite.visible = true;
+      if (v.icon !== null) v.icon.display.visible = true;
       if (v.fallback !== null) v.fallback.visible = true;
       placeVisual(v, placed.rect);
     }
@@ -453,6 +451,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       tooltip.remove();
       jobWindow.remove();
       jobBackdrop.remove();
+      for (const v of visuals) v.icon?.dispose(); // free each baked icon's off-screen texture
       root.destroy({ children: true });
     },
   };

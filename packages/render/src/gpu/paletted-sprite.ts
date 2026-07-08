@@ -80,7 +80,8 @@ uniform vec4 uFrameUV;      // the current frame's atlas-UV box (min.xy, max.zw)
 const float KEY_MAGENTA_HI = 0.9;  // r AND b above this …
 const float KEY_MAGENTA_LO = 0.1;  // … with g below this → the magenta sentinel (index 0)
 const float KEY_NEAR_BLACK = 0.11; // max channel below this (≈28/255) → the near-black background band
-const float KEY_ROUND_R = 0.9;     // 'round' mode: discard near-black only past this normalized radius (corners)
+const float KEY_ROUND_CLIP = 1.0;  // 'round' mode: fade out past this normalized radius (the disc fills the
+                                   // frame, touching its edges at rad 1.0; corners run to ~1.41) → clean disc
 
 void main(void) {
   // textureLod(..., 0.0): sample the BASE level only. An index/LUT read must never hit a blended mip — an
@@ -96,18 +97,20 @@ void main(void) {
     if (magenta) discard;
   }
   if (uColorKey.y > 0.5) {
-    bool nearBlack = max(max(rgb.r, rgb.g), rgb.b) < KEY_NEAR_BLACK;
-    if (nearBlack) {
-      if (uColorKey.y < 1.5) {
-        discard; // 'full': the whole near-black band is removable panel/window backdrop
-      } else {
-        // 'round': the round order button paints its glyph in near-black too, so discard it only in the
-        // CORNERS (outside the inscribed disc), leaving a clean round button with its engraving intact.
-        vec2 span = max(uFrameUV.zw - uFrameUV.xy, vec2(1e-6));
-        vec2 local = (vUV - uFrameUV.xy) / span; // 0..1 within the frame box
-        float rad = length(local - vec2(0.5)) * 2.0; // 0 centre, 1 edge-midpoint, ~1.41 corner
-        if (rad > KEY_ROUND_R) discard;
-      }
+    if (uColorKey.y < 1.5) {
+      // 'full': the whole near-black band is removable panel/window backdrop
+      if (max(max(rgb.r, rgb.g), rgb.b) < KEY_NEAR_BLACK) discard;
+    } else {
+      // 'round': HARD-clip everything outside the inscribed disc so the square frame's corners — including
+      // the light bevel pixels a near-black-only key leaves behind — drop away and the button is a clean
+      // round disc, glyph intact. Only the settler action-ring order buttons use 'round', and they are
+      // SUPERSAMPLED (baked at an integer oversample, then linear-downscaled — hud/icon-texture.ts), so the
+      // downscale anti-aliases this hard edge uniformly and DPR-INDEPENDENTLY. (An in-shader fwidth feather
+      // instead varied with the device pixel ratio and left partial-alpha specks in the disc's corners.)
+      vec2 span = max(uFrameUV.zw - uFrameUV.xy, vec2(1e-6));
+      vec2 local = (vUV - uFrameUV.xy) / span; // 0..1 within the frame box
+      float rad = length(local - vec2(0.5)) * 2.0; // 0 centre, 1 edge-midpoint, ~1.41 corner
+      if (rad > KEY_ROUND_CLIP) discard;
     }
   }
   finalColor = vec4(rgb, 1.0);
@@ -196,9 +199,9 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
    * The **GUI transparent key** mode for this sprite (default `'off'`; the world/character sprites never touch
    * these colours, so it stays off for them):
    * - `'off'`    — draw the LUT colours straight (fully opaque).
-   * - `'magenta'`— discard only the magenta sentinel (palette index 0). For the round wooden ORDER buttons,
-   *   which are opaque by design and paint their bevel + engraving in the near-black band — keying that band
-   *   would punch holes through the glyph.
+   * - `'magenta'`— discard only the magenta sentinel (palette index 0).
+   * - `'round'`  — discard everything outside the inscribed disc (the square frame's corners), so a round
+   *   wooden ORDER button reads as a clean disc with its engraved glyph intact (magenta is keyed too).
    * - `'full'`   — discard magenta AND the near-black background band. For large panel/window elements whose
    *   near-black backdrop must not paint a dark rectangle over the world.
    */
