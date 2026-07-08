@@ -297,7 +297,7 @@ export function syntheticSpriteSheet(): SpriteSheet {
 }
 
 /**
- * Resolve the sprite sheet for the `?atlas` flag — the single answer shared by the live (`entries/live.ts`)
+ * Resolve the sprite sheet for the `?atlas` flag — the single answer shared by the map (`entries/map.ts`)
  * and scene (`entries/scene.ts`) entries so both honour it identically. **Real decoded graphics are the
  * DEFAULT** (we always want to see the real thing): absent OR `?atlas=real` → the decoded atlases, degrading
  * to the synthetic marker atlas when `content/` is missing (a checkout without decoded bytes must still

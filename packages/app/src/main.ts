@@ -1,5 +1,5 @@
 import { renderAnimationGallery } from './entries/anim.js';
-import { renderLive } from './entries/live.js';
+import { renderMap } from './entries/map.js';
 import { renderMenu } from './entries/menu.js';
 import { renderSceneMode } from './entries/scene.js';
 import { renderShot } from './entries/shot.js';
@@ -16,7 +16,7 @@ import { renderSoundGallery } from './entries/sound.js';
  *  - `?anim`            → the character animation gallery (`entries/anim.ts`).
  *  - `?sounds`          → the sound VERIFICATION gallery (`entries/sound.ts`) — click ▶ to audition every
  *                         wired clip. Distinct from the `?sound=off` MUTE modifier on live/scene (key `sound`).
- *  - `?live` / `?map=`  → the live vertical-slice sandbox (`entries/live.ts`).
+ *  - `?map=<id>`        → the decoded-map viewer (`entries/map.ts`) — a real `content/maps/<id>.json` grid.
  *  - otherwise          → the MAIN MENU to pick any of the above (`entries/menu.ts`) — the default landing,
  *                         so a human never has to remember a `?…` string.
  */
@@ -30,7 +30,7 @@ async function main(): Promise<void> {
   if (sceneId !== null) return renderSceneMode(canvas, sceneId, params);
   if (params.has('anim')) return renderAnimationGallery(canvas, params);
   if (params.has('sounds')) return renderSoundGallery(canvas, params);
-  if (params.has('live') || params.has('map')) return renderLive(canvas, params);
+  if (params.has('map')) return renderMap(canvas, params);
   return renderMenu(canvas, params);
 }
 

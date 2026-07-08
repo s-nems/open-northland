@@ -3,8 +3,8 @@ import { el, pageInnerStyle, pageRootStyle, pageSection } from '../view/overlay.
 
 /**
  * The main MENU — the default landing when the app boots with no entry flag. It replaces "remember the
- * right `?scene=` / `?anim` / `?map=` string" with clickable cards: pick an acceptance scene, the live
- * sandbox, the animation gallery, or a decoded map, and the menu navigates the page into that entry
+ * right `?scene=` / `?anim` / `?map=` string" with clickable cards: pick an acceptance scene, the
+ * animation gallery, or a decoded map, and the menu navigates the page into that entry
  * (`window.location.search = …`, which re-dispatches through `main.ts`). Plain DOM, app-layer only —
  * no Pixi, no sim; it draws a full-viewport panel OVER the (empty) canvas.
  *
@@ -104,7 +104,6 @@ export async function renderMenu(_canvas: HTMLCanvasElement, _params: URLSearchP
   // Standing preview modes.
   inner.append(
     section('Tryby podglądu', [
-      card('Podgląd na żywo', 'Pionowy przekrój napędzany pętlą symulacji — świat w ruchu.', '?live'),
       card('Animacje postaci', 'Galeria wikingów: każdy look chodzi, wybór kierunku i postaci.', '?anim'),
       card(
         'Podgląd dźwięków',

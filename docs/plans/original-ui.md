@@ -20,7 +20,7 @@ file when all steps land.
   (`packages/app/src/content/gui-atlas-map.ts`: OpenVikings-pinned ids + montage guesses);
   STILL OPEN: the human confirmation pass over the `unknown_NNN`/order-icon frames.
 - [x] 4. App: left tool panel with original art — landed: `view/game-tool-panel.ts`, mounted
-  globally over `?live` + every `?scene=` (strip, tool buttons, game-speed, building/stats
+  globally over `?map=` + every `?scene=` (strip, tool buttons, game-speed, building/stats
   windows, `?uiscale=`). See packages/app/AGENTS.md.
 - [x] 5. App: settler order UI with original art — landed: `hud/action-ring-layout.ts` (arm footprint transcribed from OpenVikings `BuildHumanActionButtons`) + `view/settler-actions.ts` (Pixi menu of `order_*` buttons, `context` palette, pixel-snapped) replacing the DOM actions card. Renders the **whole default human menu** (four arms) in original art, opened by **Space or right-click on the unit**; on this slice only "change profession" is wired (opens a simple profession picker → `setJob`, info card reflects it live), the rest are inert placeholders for a future "implement the action" pass (warrior/scout variants noted). See plan progress note "Settler action menu".
 - [ ] 6. App: bottom-right details panel with original art

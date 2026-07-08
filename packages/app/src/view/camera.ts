@@ -1,11 +1,11 @@
 import { type Camera, type DrawItem, tileToScreen } from '@vinland/render';
 
 /**
- * Camera helpers shared by the live (`entries/live.ts`) and shot (`entries/shot.ts`) entries. The geometry half is
+ * Camera helpers shared by the map (`entries/map.ts`) and shot (`entries/shot.ts`) entries. The geometry half is
  * pure — no Pixi, no sim. The `?zoom=` knob exists so a human can actually judge a decoded bob's
  * pixels: a ~30px sprite is lost on a 960px canvas, so a verification frame magnifies and re-centres.
  *
- * The live entries additionally wrap an interactive {@link CameraController} around the static
+ * The interactive entries additionally wrap a {@link CameraController} around the static
  * {@link cameraFor} starting frame, so a human can pan (middle-mouse drag / arrow keys) and zoom
  * (scroll wheel) the view. That's app-layer I/O (DOM + floats — fine here, never in `sim`); the pan/
  * zoom *math* is the pure {@link panCamera}/{@link zoomCameraAt} reducers, unit-tested headless. The
@@ -31,7 +31,7 @@ export function cameraFor(scene: readonly DrawItem[], zoom: number, width: numbe
 /**
  * The camera that puts tile `(tileX, tileY)` at the viewport centre at `zoom` — the inverse of the iso
  * projection the renderer applies (`screen = world*scale + offset`, like {@link cameraFor}). Backs the
- * `?center=x,y` inspection knob (`entries/live.ts`): a decoded map's feature — a bridge, a coastline —
+ * `?center=x,y` inspection knob (`entries/map.ts`): a decoded map's feature — a bridge, a coastline —
  * that the settler-centroid framing would never land on. Pure.
  */
 export function cameraCenteredOnTile(

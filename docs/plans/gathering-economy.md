@@ -48,7 +48,7 @@ not ground truth):
   hardcoded tree bob (`packages/app/src/content/settler-gfx.ts` ~181); buildings already have
   footprint walk-block + build-exclusion + door cells (`packages/sim/src/systems/footprint.ts`)
   and `canPlaceBuilding` already refuses to build over Resource nodes; **map objects are
-  render-only decor** (`packages/app/src/entries/live.ts` ~102–111) — they never become sim
+  render-only decor** (`packages/app/src/entries/map.ts` ~102–111) — they never become sim
   entities.
 
 **How to use:** run each prompt below, in order, in a fresh session (`/worktree`). Merge before
@@ -109,7 +109,7 @@ real sim Resource entities (harvestable, colliding), instead of render-only deco
 
 Context (re-verify; research 2026-07-03):
 - Today `?map=<id>` loads `content/maps/<id>.json` and hands the `objects` layer straight to the
-  renderer (`packages/app/src/entries/live.ts` ~102–111 → `renderer.setMapObjects`,
+  renderer (`packages/app/src/entries/map.ts` ~102–111 → `renderer.setMapObjects`,
   `packages/app/src/content/objects.ts` joins placements to `[GfxLandscape]` records by
   editName; placements are half-cell coords). NOTHING reaches the sim — there is no
   spawn-resource command.
