@@ -2,7 +2,7 @@ import { Health, Position, Projectile } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
-import { canonicalById } from '../shared.js';
+import { canonicalById } from '../spatial.js';
 import { type PendingStagger, applyPendingStaggers, resolveCombatHit } from './atomic.js';
 
 /**

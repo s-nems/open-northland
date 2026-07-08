@@ -5,7 +5,8 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
 import { canStartCycle } from '../economy/production.js';
-import { lowestStockedGood, manhattan, recipeOf, stockCapacity } from '../shared.js';
+import { manhattan } from '../spatial.js';
+import { lowestStockedGood, recipeOf, stockCapacity } from '../stores.js';
 import { boundWorkplaceTarget, interactionCell, nearestStoreFor } from './ai-targets.js';
 
 // The AI planner's SUPPLY layer: the scans behind a *producer worker running its own supply→produce→

@@ -1,7 +1,7 @@
 import type { ContentSet } from '@vinland/data';
 import type { LoggedCommand } from '../core/commands.js';
-import { Simulation } from '../index.js';
 import type { TerrainMap } from '../nav/terrain.js';
+import { Simulation } from '../simulation.js';
 
 /**
  * Deterministic replay — the headless core of the "time-travel / replay inspector" DX win.

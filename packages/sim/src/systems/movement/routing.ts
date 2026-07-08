@@ -5,10 +5,10 @@ import { findPath } from '../../nav/pathfinding.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System } from '../context.js';
 import { dynamicBlockedCells } from '../footprint.js';
-import { inRange } from '../shared.js';
+import { isValidCellId } from '../spatial.js';
 
 // pathfindingSystem lives in routing.ts (not pathfinding.ts) to avoid an eyeball collision with the
-// A* core in ../pathfinding.ts, which this system consumes. The cross-system `inRange` guard comes
+// A* core in ../pathfinding.ts, which this system consumes. The cross-system `isValidCellId` guard comes
 // from the shared leaf. See docs/plans/.
 
 /**
@@ -127,6 +127,6 @@ function resolvePath(
   goal: number,
   blocked: ReadonlySet<CellId>,
 ): CellId[] | null {
-  if (!inRange(terrain, start) || !inRange(terrain, goal)) return null;
+  if (!isValidCellId(terrain, start) || !isValidCellId(terrain, goal)) return null;
   return findPath(terrain, start as CellId, goal as CellId, blocked);
 }

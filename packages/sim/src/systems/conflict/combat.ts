@@ -21,6 +21,7 @@ import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
+import { atomicAnimationName, atomicDurationForName } from '../readviews/animations.js';
 import {
   ARMOR_MATERIAL,
   ATOMIC_EVENT_TYPE_ATTACK,
@@ -37,14 +38,7 @@ import {
   mayHunt,
   weaponDamageVsMaterial,
 } from '../readviews/index.js';
-import {
-  TileBuckets,
-  atomicAnimationName,
-  atomicDurationForName,
-  canonicalById,
-  entityCell,
-  manhattan,
-} from '../shared.js';
+import { TileBuckets, canonicalById, entityCell, manhattan } from '../spatial.js';
 
 /**
  * CombatSystem — the whole combat loop's **decision** stage: for each combatant, pick who to fight and
@@ -925,7 +919,7 @@ function startAttack(
   // Resolve the attack animation NAME once (the tribe's `setatomic 81` walk), then read BOTH its
   // duration and its ATTACK-event hit-frame off that single resolution — the swing-start is per-swing,
   // not per-tick, but re-walking the bindings twice for the same animation is a needless hot-loop cost.
-  const animation = atomicAnimationName(ctx, attacker, ATTACK_ATOMIC_ID);
+  const animation = atomicAnimationName(ctx.content, attacker, ATTACK_ATOMIC_ID);
   const hitAt =
     animation === undefined ? undefined : atomicEventFrame(ctx.content, animation, ATOMIC_EVENT_TYPE_ATTACK);
   // A RANGED weapon (a bow/catapult — `munitiontype` present) with a positive travel `speed` fires a
@@ -943,7 +937,7 @@ function startAttack(
     atomicId: ATTACK_ATOMIC_ID,
     elapsed: 0,
     progress: fx.fromInt(0),
-    duration: atomicDurationForName(ctx, animation),
+    duration: atomicDurationForName(ctx.content, animation),
     effect: {
       kind: 'attack',
       target,

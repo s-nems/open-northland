@@ -20,6 +20,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { unstampResourceFootprint } from '../footprint.js';
 import { grantFightExperience, grantWorkExperience } from '../progression.js';
+import { atomicAnimationName, atomicDuration } from '../readviews/animations.js';
 import {
   ATOMIC_EVENT_CHANNEL,
   HUNTER_JOB,
@@ -32,7 +33,7 @@ import {
   isInterruptibleAtomic,
   isProvokableAnimal,
 } from '../readviews/index.js';
-import { atomicAnimationName, atomicDuration, stockCapacity } from '../shared.js';
+import { stockCapacity } from '../stores.js';
 
 /**
  * The numeric atomic id a struck combatant runs to **flinch** — the original's `setatomic <job> 82
@@ -545,17 +546,17 @@ function collectStagger(
 ): void {
   const victim = world.tryGet(target, Settler);
   if (victim === undefined) return; // not a settler/animal — nothing to stagger
-  const staggerAnim = atomicAnimationName(ctx, victim, ATTACKED_ATOMIC_ID);
+  const staggerAnim = atomicAnimationName(ctx.content, victim, ATTACKED_ATOMIC_ID);
   if (staggerAnim === undefined) return; // this class has no `82` binding — it doesn't flinch (data-driven)
   // Don't cut short an uninterruptible action (the victim's own attack swing, or an in-progress flinch).
   const current = world.tryGet(target, CurrentAtomic);
   if (current !== undefined) {
-    const currentAnim = atomicAnimationName(ctx, victim, current.atomicId);
+    const currentAnim = atomicAnimationName(ctx.content, victim, current.atomicId);
     // An unresolved current animation is treated as non-interruptible (the `isInterruptibleAtomic`
     // safe default) — don't preempt an action with no timing record.
     if (currentAnim === undefined || !isInterruptibleAtomic(ctx.content, currentAnim)) return;
   }
-  pendingStaggers.push({ victim: target, duration: atomicDuration(ctx, victim, ATTACKED_ATOMIC_ID) });
+  pendingStaggers.push({ victim: target, duration: atomicDuration(ctx.content, victim, ATTACKED_ATOMIC_ID) });
 }
 
 /**
@@ -576,7 +577,7 @@ function collectStagger(
 function paySwingNeedCost(world: World, ctx: SystemContext, attacker: Entity, atomicId: number): void {
   const s = world.tryGet(attacker, Settler);
   if (s === undefined) return; // attacker gone
-  const animation = atomicAnimationName(ctx, s, atomicId);
+  const animation = atomicAnimationName(ctx.content, s, atomicId);
   if (animation === undefined) return; // no attack animation to read a drain from
   const restDelta = atomicEventChannelDelta(ctx.content, animation, ATOMIC_EVENT_CHANNEL.REST);
   const hungerDelta = atomicEventChannelDelta(ctx.content, animation, ATOMIC_EVENT_CHANNEL.HUNGER);

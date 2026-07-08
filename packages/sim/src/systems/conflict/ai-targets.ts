@@ -7,21 +7,21 @@ import {
   Stockpile,
   stockpileEntries,
 } from '../../components/index.js';
+import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
 import { interactionTile, positionedInteractionCell, resourceWorkCell } from '../footprint.js';
 import { buildingEnabled, settlerMeetsNeed } from '../progression.js';
+import { canonicalById, manhattan } from '../spatial.js';
 import {
   buildingWorkerJobs,
-  canonicalById,
   isFood,
   isTemple,
   lowestStockedGood,
-  manhattan,
   recipeOf,
   stockCapacity,
-} from '../shared.js';
+} from '../stores.js';
 
 // The AI planner's TARGET-SCAN layer: build the per-tick candidate lists and answer every "nearest X"
 // / "may this settler staff that workplace" query the atomic planner asks. Split out of ai.ts (which
@@ -363,12 +363,7 @@ export function nearestWorkplaceOutput(
  * a hardcoded per-job list.
  */
 function jobAtomics(ctx: SystemContext, jobType: number): ReadonlySet<number> {
-  const job = ctx.content.jobs.find((j) => j.typeId === jobType);
-  if (job === undefined) return EMPTY_ATOMICS;
-  const set = new Set<number>(job.allowedAtomics);
-  for (const a of job.baseAtomics) set.add(a);
-  for (const a of job.forbiddenAtomics) set.delete(a);
-  return set;
+  return contentIndex(ctx.content).atomicsByJob.get(jobType) ?? EMPTY_ATOMICS;
 }
 
 const EMPTY_ATOMICS: ReadonlySet<number> = new Set<number>();

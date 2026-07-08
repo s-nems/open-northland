@@ -1,8 +1,9 @@
 import { Age, Building, Position, Settler } from '../../components/index.js';
+import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, ONE, fx } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
-import { housingCapacity, tribePopulation } from '../shared.js';
+import { housingCapacity, tribePopulation } from '../stores.js';
 import { NEWBORN_AGE_CLASS } from './ageclass.js';
 
 /**
@@ -90,7 +91,7 @@ function tribesWithHousing(world: World, ctx: SystemContext): number[] {
   for (const e of world.query(Building)) {
     const b = world.get(e, Building);
     if (b.built < ONE) continue; // a home still under construction houses no one yet
-    const type = ctx.content.buildings.find((t) => t.typeId === b.buildingType);
+    const type = contentIndex(ctx.content).buildings.get(b.buildingType);
     if (type?.kind === 'home') tribes.add(b.tribe);
   }
   return [...tribes].sort((a, b) => a - b);
@@ -102,7 +103,7 @@ function homeAnchorFor(world: World, ctx: SystemContext, tribe: number): { x: Fi
   for (const e of world.canonicalEntities()) {
     const b = world.tryGet(e, Building);
     if (b === undefined || b.tribe !== tribe || b.built < ONE) continue;
-    const type = ctx.content.buildings.find((t) => t.typeId === b.buildingType);
+    const type = contentIndex(ctx.content).buildings.get(b.buildingType);
     if (type?.kind !== 'home') continue;
     const p = world.tryGet(e, Position);
     if (p !== undefined) return { x: p.x, y: p.y };

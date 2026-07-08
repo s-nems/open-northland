@@ -1,10 +1,12 @@
 import { Building, JobAssignment, Position, Settler } from '../../components/index.js';
+import { contentIndex } from '../../core/content-index.js';
 import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { interactionTile } from '../footprint.js';
 import { buildingEnabled, jobEnabled, settlerMeetsNeed } from '../progression.js';
-import { TileBuckets, buildingWorkerJobs, canonicalById, recipeOf } from '../shared.js';
+import { TileBuckets, canonicalById } from '../spatial.js';
+import { buildingWorkerJobs, recipeOf } from '../stores.js';
 
 /**
  * JobSystem (assignment half) — give an **idle** settler the job of an understaffed workplace it
@@ -108,7 +110,7 @@ function openJobAt(
  */
 function jobUnderstaffed(world: World, ctx: SystemContext, building: Entity, jobType: number): boolean {
   const b = world.get(building, Building);
-  const type = ctx.content.buildings.find((t) => t.typeId === b.buildingType);
+  const type = contentIndex(ctx.content).buildings.get(b.buildingType);
   const slot = type?.workers.find((w) => w.jobType === jobType);
   if (slot === undefined) return false; // not a worker job here
   let held = 0;
