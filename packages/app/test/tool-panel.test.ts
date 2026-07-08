@@ -28,7 +28,7 @@ import {
  */
 
 describe('tool-panel-layout', () => {
-  it('scales the pinned design rects by an integer uiscale, anchored top-left', () => {
+  it('scales the pinned design rects by the uiscale, anchored top-left', () => {
     const l1 = buildToolPanelLayout(1);
     const l2 = buildToolPanelLayout(2);
     // Strip is design (0,10,50,433): at 1× the right edge is 50, at 2× it is 100.
@@ -41,11 +41,21 @@ describe('tool-panel-layout', () => {
     expect(b1?.placed).toEqual({ x: 0, y: 41, w: 40, h: 35 });
   });
 
-  it('floors and clamps a non-integer / sub-1 uiscale to an integer ≥ 1', () => {
-    expect(buildToolPanelLayout(2.9).scale).toBe(2);
+  it('keeps a fractional uiscale and clamps a sub-1 one to ≥ 1', () => {
+    // Fractional scales pass through (the strip grows by the exact factor) …
+    expect(buildToolPanelLayout(1.2).scale).toBe(1.2);
+    expect(buildToolPanelLayout(1.2).width).toBeCloseTo(60);
+    // … while sub-1 / negative values clamp up to 1.
     expect(buildToolPanelLayout(0).scale).toBe(1);
     expect(buildToolPanelLayout(-3).scale).toBe(1);
-    expect(DEFAULT_UI_SCALE).toBe(1);
+    expect(DEFAULT_UI_SCALE).toBe(1.4);
+  });
+
+  it('reports the design-space bounds the supersample texture must cover', () => {
+    // The union of the strip (0,10,50,433) and every button (all inside it) is the strip rect itself —
+    // scale-independent (pre-scale design space), so the off-screen texture is sized once from this.
+    expect(buildToolPanelLayout(1).designBounds).toEqual({ x: 0, y: 10, w: 50, h: 433 });
+    expect(buildToolPanelLayout(1.2).designBounds).toEqual({ x: 0, y: 10, w: 50, h: 433 });
   });
 
   it('hit-tests the button under a point and returns null off the buttons', () => {

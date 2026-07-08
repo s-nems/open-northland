@@ -15,7 +15,7 @@ import {
   nextGameSpeedState,
 } from './game-speed.js';
 import {
-  type PlacedRect,
+  TOOL_PANEL_STRIP,
   type ToolButtonId,
   buildToolPanelLayout,
   hitTestToolPanel,
@@ -24,6 +24,7 @@ import {
 import { createMenuWindow } from './menu-window.js';
 import { createPlacementController } from './placement.js';
 import { createStatsWindow } from './stats-window.js';
+import { type StripSpriteSpec, type SupersampledStrip, createSupersampledStrip } from './strip-texture.js';
 
 /**
  * The LEFT in-game tool panel — the retained screen-space HUD that draws the original toolbar strip, the
@@ -46,7 +47,7 @@ import { createStatsWindow } from './stats-window.js';
 export interface ToolPanelOptions {
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
-  /** Integer UI scale (from `?uiscale=`); the pinned internal geometry is multiplied by this. */
+  /** UI scale (from `?uiscale=`); the pinned internal geometry is multiplied by this. May be fractional. */
   readonly uiscale: number;
   /** The buildings the menu lists (typeId + label + kind) — e.g. derived from the viking catalog. */
   readonly buildings: readonly MenuBuildingEntry[];
@@ -113,7 +114,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   hoverContainer.addChild(hoverG);
 
   // --- The strip + buttons (real sprites, or a flat-Graphics fallback) ------------------------------
-  const panelSprites: { readonly spr: PalettedSprite; readonly rect: PlacedRect }[] = [];
+  // The real art path rasterizes the strip+buttons into an off-screen texture at an integer oversample and
+  // draws it linear-downscaled to the fractional `uiscale` (crisp — no pixeloza; see `strip-texture.ts`).
+  let supersampled: SupersampledStrip | null = null;
   let speedSprite: PalettedSprite | null = null;
 
   if (art !== null) {
@@ -122,18 +125,17 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     // and the original hid its opaque panel by rendering gameplay in a dedicated area). We render the world
     // full-screen, so this is a DELIBERATE deviation: key those colours transparent so the floating HUD shows
     // only the ornament + glyphs and never paints a dark rectangle over the terrain (source basis).
+    const specs: StripSpriteSpec[] = [];
     const strip = makeGuiSprite(art, layout.stripGfx, { defaultPalette: 'iconsleft', colorKey: 'full' });
-    if (strip !== null) {
-      stripContainer.addChild(strip.sprite);
-      panelSprites.push({ spr: strip.sprite, rect: layout.strip });
-    }
+    if (strip !== null) specs.push({ spr: strip.sprite, design: TOOL_PANEL_STRIP });
     for (const b of layout.buttons) {
       const gs = makeGuiSprite(art, b.gfx, { defaultPalette: 'iconsleft', colorKey: 'full' });
       if (gs === null) continue;
-      stripContainer.addChild(gs.sprite);
-      panelSprites.push({ spr: gs.sprite, rect: b.placed });
+      specs.push({ spr: gs.sprite, design: b.rect });
       if (b.id === 'speed') speedSprite = gs.sprite;
     }
+    supersampled = createSupersampledStrip({ app, bounds: layout.designBounds, scale, sprites: specs });
+    stripContainer.addChild(supersampled.display);
   } else {
     const g = new Graphics();
     g.rect(layout.strip.x, layout.strip.y, layout.strip.w, layout.strip.h).fill(FALLBACK_STRIP);
@@ -181,8 +183,11 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     const spec = gameSpeedSpec(speedState);
     if (speedSprite !== null && art !== null) {
       const frame = art.layer.atlas.frames.get(spec.gfx);
-      if (frame !== undefined)
+      if (frame !== undefined) {
         speedSprite.setFrame(art.layer.source, frame, art.layer.atlas.width, art.layer.atlas.height);
+        // The strip is baked into a texture, so re-rasterize it with the new speed glyph (rare — a click).
+        supersampled?.redraw();
+      }
     }
     if (art === null && speedBtnRect !== undefined) {
       speedRun?.destroy();
@@ -296,9 +301,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   return {
     claimsPointer,
     update(hud): void {
-      const rw = app.screen.width;
-      const rh = app.screen.height;
-      for (const p of panelSprites) p.spr.place(p.rect.x, p.rect.y, scale, rw, rh);
+      // The strip is a static baked texture now (a scene-graph sprite that batches + follows resizes for
+      // free) — no per-frame re-placement. Only the pop-up windows + placement banner still re-place.
       if (menu.isOpen()) menu.place();
       stats.refresh(hud);
       placement.placeBanner();
@@ -308,6 +312,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       canvas.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('keydown', onKeyDown);
       root.destroy({ children: true });
+      supersampled?.dispose();
     },
   };
 }
