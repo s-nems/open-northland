@@ -110,6 +110,10 @@ const VERTICAL_LATTICE_STEPS: readonly [even: readonly VerticalStep[], odd: read
 /** Resolved, sim-ready properties of one landscape type (derived once from the IR at build time). */
 interface CellTypeProps {
   readonly walkable: boolean;
+  /** Whether a building's reserved zone may cover a cell of this type. Distinct from `walkable`: a
+   *  real map's margin band around a tree/rock is walkable ground you may not BUILD on, while water
+   *  is neither. The build-placement rule reads this; navigation never does. */
+  readonly buildable: boolean;
   /** Cost to step ONTO a cell of this type, in fixed-point. Walkable cells cost one unit. */
   readonly walkCost: Fixed;
   /** Per-cell capacity — how many units may cluster on a cell of this type (0 = unset/blocking). */
@@ -117,11 +121,12 @@ interface CellTypeProps {
 }
 
 /** Default props for a landscape typeId not present in the content table (treated as blocking). */
-const UNKNOWN_TYPE: CellTypeProps = { walkable: false, walkCost: ONE, maxValency: 0 };
+const UNKNOWN_TYPE: CellTypeProps = { walkable: false, buildable: false, walkCost: ONE, maxValency: 0 };
 
 function resolveTypeProps(t: LandscapeType): CellTypeProps {
   return {
     walkable: t.walkable,
+    buildable: t.buildable,
     // Walk cost is a uniform unit per walkable step — and that is FAITHFUL, not a placeholder:
     // `landscapetypes.ini` carries NO per-type movement weight (its only per-type numbers are
     // `maximumValency` = a per-cell capacity cap, and the `allowedon{land,water,everything}`
@@ -209,6 +214,13 @@ export class TerrainGraph {
   /** True if a unit may stand on / walk through this cell. */
   isWalkable(cell: CellId): boolean {
     return this.propsOf(cell).walkable;
+  }
+
+  /** True if a building's reserved zone may cover this cell (the landscape row's `buildable` flag —
+   *  water/rock/void are neither walkable nor buildable; a real map's object margin is walkable but
+   *  not buildable). Placement-only; navigation reads {@link isWalkable}. */
+  isBuildable(cell: CellId): boolean {
+    return this.propsOf(cell).buildable;
   }
 
   /** Fixed-point cost to step onto this cell. */

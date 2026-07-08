@@ -97,17 +97,48 @@ function walkableCells(
 /**
  * Enqueue resolved placements in order — the ONE spot the `placeBuilding`/`spawnSettler` command
  * shapes are written, shared by the demo strip and the authored import (list order = enqueue order,
- * so determinism follows the placement list).
+ * so determinism follows the placement list). Buildings are FORCED: both callers place fixture state
+ * (a decoded map's authored houses, the pinned demo world) which loads as-is, exactly as the original
+ * loads a scenario map — the tech/collision gates govern the player's interactive placements.
  */
 function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlacement[]): void {
   for (const p of placements) {
     const own = p.owner !== undefined ? { owner: p.owner } : {};
     if (p.kind === 'building') {
-      sim.enqueue({ kind: 'placeBuilding', buildingType: p.typeId, x: p.x, y: p.y, tribe: p.tribe, ...own });
+      sim.enqueue({
+        kind: 'placeBuilding',
+        buildingType: p.typeId,
+        x: p.x,
+        y: p.y,
+        tribe: p.tribe,
+        force: true,
+        ...own,
+      });
     } else {
       sim.enqueue({ kind: 'spawnSettler', jobType: p.jobType, x: p.x, y: p.y, tribe: p.tribe, ...own });
     }
   }
+}
+
+/**
+ * The first anchor (row-major scan) where `typeId`'s footprint FITS against the sim's live placement
+ * rule (`Simulation.placementProbe` — the exact gate an interactive click goes through), or `null`
+ * when nothing on the map fits (a dense map degrades to the walkable-cell fallback). Deterministic:
+ * a fixed scan order over the current world state.
+ */
+function firstPlaceableCell(
+  sim: Simulation,
+  typeId: number,
+  map: TerrainMap,
+): { x: number; y: number } | null {
+  const probe = sim.placementProbe(typeId);
+  if (probe === null) return null;
+  for (let y = 0; y < map.height; y++) {
+    for (let x = 0; x < map.width; x++) {
+      if (probe.canPlace(x, y)) return { x, y };
+    }
+  }
+  return null;
 }
 
 /**
@@ -116,13 +147,13 @@ function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlaceme
  * no wall-clock: this is the "render scenario X at seed S, step N ticks" entry the harness needs.
  *
  * Without a `map` the slice runs on the synthetic 6×1 grass strip (the reproducible default the shot
- * PNG depends on). With a loaded `content/maps/<id>.json` grid, the SAME six entities (HQ, joinery,
- * wood gatherer, carrier, two wood nodes) are placed on the first walkable cells of the real grid instead
- * of the hardcoded strip — so the sim actually navigates the decoded map, not a stand-in. The grid's
- * landscape typeIds are folded into the global sandbox content so its cell-graph
- * builds; placement uses {@link walkableCells} so nothing lands on a blocking cell. A loaded map with
- * too few walkable cells (an all-water grid under the demo's base table) **falls back to the strip**
- * — the slice always runs (matching the file's graceful-degradation contract), never throwing.
+ * PNG depends on). With a loaded grid (the `?map=` entry passes the COLLISION-resolved terrain — see
+ * `content/collision.ts`), the SAME six entities (HQ, joinery, wood gatherer, carrier, two wood
+ * nodes) land on the real grid instead of the hardcoded strip: the two buildings on the first anchors
+ * their footprints actually FIT ({@link firstPlaceableCell}, stepping one tick between them so the
+ * second sees the first), settlers + trees on the first walkable cells. A loaded map with too few
+ * walkable cells **falls back to the strip** — the slice always runs (matching the file's
+ * graceful-degradation contract), never throwing.
  */
 export function runSlice(
   seed: number,
@@ -136,8 +167,8 @@ export function runSlice(
   // together so the fallback sim is exactly the no-map slice.
   const mapCells = map ? walkableCells(map, sandboxWalkableTypeIds(map), PLACEMENT_CELL_COUNT) : null;
   const usable = map !== undefined && mapCells !== null;
-  // `footprints` (the live real-content entry passes them, from ir.json) give the buildings collision, so
-  // the build overlay greys where a house won't fit. Omitted (shot / tests) → footprint-less free placement.
+  // `footprints` (the live real-content entry passes them, from ir.json) replace the catalog's
+  // clean-room approximations with the buildings' real collision bodies (see SandboxContentExtras).
   const content = sandboxContent(usable ? map : undefined, {
     ...(footprints ? { buildingFootprints: footprints } : {}),
   });
@@ -155,12 +186,35 @@ export function runSlice(
   // `owner` (optional) tags the slice's buildings + settlers to a player so they're selectable/orderable
   // in the interactive live entry. Omitted (the shot/default path) leaves them neutral — hash untouched.
   const own = owner !== undefined ? { owner } : {};
-  enqueuePlacements(sim, [
-    { kind: 'building', typeId: BUILDING_HEADQUARTERS, tribe: PRIMARY_TRIBE, ...cellAt(0), ...own },
-    { kind: 'building', typeId: BUILDING_JOINERY, tribe: PRIMARY_TRIBE, ...cellAt(1), ...own },
-    { kind: 'human', jobType: JOB_GATHERER_WOOD, tribe: PRIMARY_TRIBE, ...cellAt(2), ...own },
-    { kind: 'human', jobType: JOB_CARRIER, tribe: PRIMARY_TRIBE, ...cellAt(3), ...own },
-  ]);
+
+  // Building cells: on a real map, prefer anchors where the footprint actually FITS (clear ground, off
+  // the water/forest — the probe applies the same rule the player's clicks go through), stepping one
+  // tick between the two so the second probe sees the first house. The walkable-cell fallback (a dense
+  // map where nothing fits, or the synthetic strip whose 6×1 grid can't host any footprint) force-places
+  // like every fixture. The strip path takes the else-branch untouched — its pinned shot stays identical.
+  if (usable) {
+    const hq = firstPlaceableCell(sim, BUILDING_HEADQUARTERS, terrain) ?? cellAt(0);
+    enqueuePlacements(sim, [
+      { kind: 'building', typeId: BUILDING_HEADQUARTERS, tribe: PRIMARY_TRIBE, ...hq, ...own },
+    ]);
+    sim.run(1);
+    const joinery = firstPlaceableCell(sim, BUILDING_JOINERY, terrain) ?? cellAt(1);
+    enqueuePlacements(sim, [
+      { kind: 'building', typeId: BUILDING_JOINERY, tribe: PRIMARY_TRIBE, ...joinery, ...own },
+    ]);
+    sim.run(1);
+    enqueuePlacements(sim, [
+      { kind: 'human', jobType: JOB_GATHERER_WOOD, tribe: PRIMARY_TRIBE, ...cellAt(2), ...own },
+      { kind: 'human', jobType: JOB_CARRIER, tribe: PRIMARY_TRIBE, ...cellAt(3), ...own },
+    ]);
+  } else {
+    enqueuePlacements(sim, [
+      { kind: 'building', typeId: BUILDING_HEADQUARTERS, tribe: PRIMARY_TRIBE, ...cellAt(0), ...own },
+      { kind: 'building', typeId: BUILDING_JOINERY, tribe: PRIMARY_TRIBE, ...cellAt(1), ...own },
+      { kind: 'human', jobType: JOB_GATHERER_WOOD, tribe: PRIMARY_TRIBE, ...cellAt(2), ...own },
+      { kind: 'human', jobType: JOB_CARRIER, tribe: PRIMARY_TRIBE, ...cellAt(3), ...own },
+    ]);
+  }
   // The strip's two demo wood nodes: bare 4-unit resources with NO felling counter/footprint (the
   // committed shot PNG + the render integration test pin this minimal shape — `placeTree` would add both).
   for (const cell of [cellAt(4), cellAt(5)]) {

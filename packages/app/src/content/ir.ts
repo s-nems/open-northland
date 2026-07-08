@@ -83,6 +83,8 @@ export interface LandscapeGfxRow {
   readonly dynamicBackground?: boolean;
   /** Repeated `LogicWalkBlockArea` lines — a non-empty footprint marks a depth-sorted (non-decor) object. */
   readonly walkBlockAreas?: readonly (readonly number[])[];
+  /** Repeated `LogicBuildBlockArea` lines — the object's build-exclusion ring (the collision mask reads it). */
+  readonly buildBlockAreas?: readonly (readonly number[])[];
 }
 
 /** One resolved gathering-pipeline stage (a landscape type + the `landscapeGfx` records that place it). */

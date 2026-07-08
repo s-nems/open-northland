@@ -160,7 +160,10 @@ describe('stats window controller', () => {
 });
 
 describe('placement controller', () => {
-  function mount(screenToTile: (x: number, y: number) => { col: number; row: number } | null) {
+  function mount(
+    screenToTile: (x: number, y: number) => { col: number; row: number } | null,
+    canPlaceAt: (typeId: number, col: number, row: number) => boolean = () => true,
+  ) {
     const { ctx } = stubContext();
     const commands: Command[] = [];
     const placement = createPlacementController({
@@ -169,13 +172,14 @@ describe('placement controller', () => {
       labelByType: new Map([[23, 'Joinery']]),
       enqueue: (c) => commands.push(c),
       screenToTile,
+      canPlaceAt,
       tribe: 1,
       owner: 0,
     });
     return { placement, commands };
   }
 
-  it('drops a building at the clicked tile and stays in placement for repeats', () => {
+  it('places at an accepted tile and EXITS build mode (one click = one building)', () => {
     const { placement, commands } = mount(() => ({ col: 4, row: 2 }));
     expect(placement.handleClick(10, 10)).toBe(false); // not active yet → not consumed
 
@@ -183,7 +187,18 @@ describe('placement controller', () => {
     expect(placement.isActive()).toBe(true);
     expect(placement.handleClick(10, 10)).toBe(true);
     expect(commands).toEqual([{ kind: 'placeBuilding', buildingType: 23, x: 4, y: 2, tribe: 1, owner: 0 }]);
-    expect(placement.isActive()).toBe(true); // repeats until cancelled
+    expect(placement.isActive()).toBe(false); // landed → build mode over (the original's flow)
+  });
+
+  it('a click on ground the placement rule rejects is consumed but inert (mode survives)', () => {
+    const { placement, commands } = mount(
+      () => ({ col: 4, row: 2 }),
+      () => false, // the probe says the anchor doesn't fit here
+    );
+    placement.enter(23);
+    expect(placement.handleClick(10, 10)).toBe(true); // claimed — never falls through to picking
+    expect(commands).toHaveLength(0); // nothing enqueued: the sim would drop it anyway
+    expect(placement.isActive()).toBe(true); // a mis-click on the dim wash doesn't end the mode
   });
 
   it('consumes an off-map click without enqueuing, and cancel exits the mode', () => {

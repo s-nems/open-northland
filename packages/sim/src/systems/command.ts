@@ -152,21 +152,27 @@ function placeBuilding(
   const type = indexById(ctx.content.buildings).get(command.buildingType);
   if (type === undefined) return; // unknown building type — skip (recoverable bad input)
 
-  // Tech-graph gate: a house may be locked until a settler of an enabling job exists in the tribe
-  // (`jobEnablesHouse`). A gated-out placement is a recoverable boundary failure (a stale/illegal UI
-  // command), so it is skipped here but still recorded by commandSystem — replay stays faithful.
-  if (!buildingEnabled(world, ctx, command.tribe, command.buildingType)) return;
+  // `force` (map-authored imports + pinned demo fixtures) skips BOTH gates below: the original loads
+  // a decoded map's houses verbatim — it never re-validates authored state against the interactive
+  // placement rule (source basis: observed original behavior — scenario maps open with houses that
+  // the free-placement rule would reject, e.g. packed villages).
+  if (command.force !== true) {
+    // Tech-graph gate: a house may be locked until a settler of an enabling job exists in the tribe
+    // (`jobEnablesHouse`). A gated-out placement is a recoverable boundary failure (a stale/illegal UI
+    // command), so it is skipped here but still recorded by commandSystem — replay stays faithful.
+    if (!buildingEnabled(world, ctx, command.tribe, command.buildingType)) return;
 
-  // Ground-collision gate — the original's FREE placement rule: the type's footprint must fit here
-  // (its reserved zone on walkable ground, clear of resource nodes, its walls and every existing
-  // building's walls outside each other's zones — see {@link canPlaceBuilding}). A placement that
-  // doesn't fit is the same recoverable boundary failure as a tech-gated one: skipped, still logged.
-  // A mapless sim (no terrain) or a footprint-less type (synthetic content) validates trivially.
-  if (
-    ctx.terrain !== undefined &&
-    !canPlaceBuilding(world, ctx, ctx.terrain, command.buildingType, command.x, command.y)
-  ) {
-    return;
+    // Ground-collision gate — the original's FREE placement rule: the type's footprint must fit here
+    // (its reserved zone on buildable ground, clear of resource nodes, its walls and every existing
+    // building's walls outside each other's zones — see {@link canPlaceBuilding}). A placement that
+    // doesn't fit is the same recoverable boundary failure as a tech-gated one: skipped, still logged.
+    // A mapless sim (no terrain) or a footprint-less type (synthetic content) validates trivially.
+    if (
+      ctx.terrain !== undefined &&
+      !canPlaceBuilding(world, ctx, ctx.terrain, command.buildingType, command.x, command.y)
+    ) {
+      return;
+    }
   }
 
   const e = world.create();

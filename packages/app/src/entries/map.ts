@@ -9,6 +9,7 @@ import {
   makeElevationField,
   setTilePitch,
 } from '@vinland/render';
+import { buildCollisionTerrain } from '../content/collision.js';
 import { buildingFootprints, loadIr } from '../content/ir.js';
 import { loadMapObjects } from '../content/objects.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
@@ -132,10 +133,16 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // Extracted building footprints from the served IR give buildings real collision, so `placeBuilding`
   // is blocked where a house doesn't fit and the build overlay greys those tiles (empty without content/).
   const footprints = buildingFootprints(ir);
+  // The SIM navigates + validates placement against the COLLISION grid — the map's raw landscape lane
+  // resolved into the semantic walk/build classes from the real ground + object data (water, trees,
+  // stones, ore deposits block; see content/collision.ts). The RENDER layers keep reading `loaded`
+  // (raw typeIds drive the flat-tint fallback + the ambience beds). Without the IR the grid degrades
+  // to all-open ground rather than mis-classing the raw lane against the synthetic table.
+  const simMap = loaded !== null && ir !== null ? buildCollisionTerrain(loaded, ir) : loaded;
   const sim =
-    (wantEntities && loaded?.entities !== undefined && ir !== null
-      ? runAuthoredSlice(SLICE_SEED, 0, loaded, loaded.entities, ir, footprints)
-      : null) ?? runSlice(SLICE_SEED, 0, loaded ?? undefined, HUMAN_PLAYER, footprints);
+    (wantEntities && loaded?.entities !== undefined && ir !== null && simMap !== null
+      ? runAuthoredSlice(SLICE_SEED, 0, simMap, loaded.entities, ir, footprints)
+      : null) ?? runSlice(SLICE_SEED, 0, simMap ?? undefined, HUMAN_PLAYER, footprints);
 
   // Interactive camera: `?zoom` (+ the settler-centroid framing) is the STARTING frame; from there a
   // human pans (middle-mouse drag / arrow keys) and zooms (scroll wheel). The HUD is drawn outside the

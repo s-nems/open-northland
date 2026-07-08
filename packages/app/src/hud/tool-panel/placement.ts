@@ -20,12 +20,17 @@ export interface PlacementDeps {
   readonly enqueue: (command: Command) => void;
   /** Convert a client (CSS) point to a map tile, or `null` off the map — the placement target. */
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
+  /** The sim's live placement rule for the held type at a tile (`Simulation.placementProbe`) — a click
+   *  on a rejecting tile does NOTHING (the original: the cursor house is hidden there and the click is
+   *  inert), so build mode only ends on a placement that actually lands. */
+  readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
   /** The tribe + player a placed building belongs to. */
   readonly tribe: number;
   readonly owner: number;
 }
 
-/** Placement mode: pick a building in the menu, then every left-click drops one until Esc/right-click. */
+/** Placement mode: pick a building in the menu, then ONE left-click on buildable ground places and
+ *  exits the mode (the original's flow; Esc/right-click abandons). */
 export interface PlacementController {
   isActive(): boolean;
   /** The building typeId currently being placed, or null when not in placement — drives the map's
@@ -34,8 +39,10 @@ export interface PlacementController {
   enter(typeId: number): void;
   cancel(): void;
   /**
-   * Route a left-click while placing: enqueue `placeBuilding` at the clicked tile (a click off the map
-   * is still consumed — placement claims the canvas until cancelled). Returns true when consumed.
+   * Route a left-click while placing: on a tile the placement rule ACCEPTS, enqueue `placeBuilding`
+   * and exit build mode (one click = one building — the future construction-site flow extends here);
+   * on a rejecting or off-map tile the click is consumed but inert (placement claims the canvas until
+   * placed or cancelled). Returns true when consumed.
    */
   handleClick(clientX: number, clientY: number): boolean;
   /** Per-frame: re-place the banner text against the live canvas size. */
@@ -53,6 +60,14 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
   let bannerRun: TextRun | null = null;
 
   const bannerX = (): number => ctx.layout.width + WIN_PAD * scale;
+
+  /** Leave build mode: clear the flag + banner (shared by cancel and a landed placement). */
+  const exitPlacement = (): void => {
+    placementType = null;
+    graphics.clear();
+    bannerRun?.destroy();
+    bannerRun = null;
+  };
 
   return {
     isActive: () => placementType !== null,
@@ -74,16 +89,14 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       const { width: rw, height: rh } = ctx.screen();
       bannerRun.place(rect.x + WIN_PAD * scale, rect.y + BANNER_TEXT_INSET_Y * scale, scale, rw, rh);
     },
-    cancel: (): void => {
-      placementType = null;
-      graphics.clear();
-      bannerRun?.destroy();
-      bannerRun = null;
-    },
+    cancel: exitPlacement,
     handleClick: (clientX, clientY): boolean => {
       if (placementType === null) return false;
       const tile = deps.screenToTile(clientX, clientY);
-      if (tile !== null) {
+      // Placement claims every click; only one on ACCEPTED ground places — and then exits build mode
+      // (the original's flow: pick → place once → the build UI is gone). A rejected tile is inert, so
+      // the mode survives a mis-click on the dimmed wash (Esc / right-click still abandon).
+      if (tile !== null && deps.canPlaceAt(placementType, tile.col, tile.row)) {
         deps.enqueue({
           kind: 'placeBuilding',
           buildingType: placementType,
@@ -92,9 +105,8 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
           tribe: deps.tribe,
           owner: deps.owner,
         });
+        exitPlacement();
       }
-      // Placement claims the click whether or not the tile is on-map; stay in placement for repeats
-      // (Esc / right-click / the Buildings button exit).
       return true;
     },
     // NOTE the old code inset the text by WIN_PAD on enter but dropped the inset in its per-frame

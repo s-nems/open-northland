@@ -9,7 +9,8 @@ import type { HudFrame } from './hud-layer.js';
 import { MapObjectLayer } from './map-objects/index.js';
 import type { MapObjectSprite } from './map-objects/index.js';
 import type { SpriteSheet, TerrainTextureSet } from './pixi-app.js';
-import { type PlacementOverlayCell, PlacementOverlayLayer } from './placement-overlay.js';
+import { type PlacementGhost, PlacementGhostLayer } from './placement-ghost.js';
+import { type PlacementOverlayFrame, PlacementOverlayLayer } from './placement-overlay.js';
 import { SelectionLayer } from './selection-layer.js';
 import { type EntityBounds, SpritePool } from './sprite-pool/index.js';
 import { TerrainLayer } from './terrain/index.js';
@@ -61,7 +62,9 @@ export class WorldRenderer {
   private readonly mapObjects: MapObjectLayer;
   private readonly pool: SpritePool;
   /** The build-mode dim wash over non-buildable tiles (world-space, BELOW the sprites). */
-  private readonly placementOverlay = new PlacementOverlayLayer();
+  private readonly placementOverlay: PlacementOverlayLayer;
+  /** The build-mode cursor ghost (the held building's translucent sprite, inside the sprite layer). */
+  private readonly placementGhost: PlacementGhostLayer;
   /** Feet rings under the currently-selected entities (world-space, BELOW the sprites). */
   private readonly selectionLayer = new SelectionLayer();
   private readonly hud = new HudLayer();
@@ -74,6 +77,10 @@ export class WorldRenderer {
     this.spriteLayer.sortableChildren = true;
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
     this.pool = new SpritePool(this.spriteLayer, this.textureCache, opts?.sheet);
+    this.placementOverlay = new PlacementOverlayLayer(app.renderer);
+    // The ghost joins the DEPTH-SORTED sprite layer so it occludes like the real house would.
+    this.placementGhost = new PlacementGhostLayer(opts?.sheet, this.textureCache);
+    this.spriteLayer.addChild(this.placementGhost.container);
     // Z-order within the world layer: terrain (back) → flat decor → build-placement wash → selection
     // rings → sprites + tall objects (front). The wash + rings sit under the sprites so a house/tree/unit
     // in front draws over them (the wash dims the ground, not the sprites standing on it).
@@ -173,13 +180,23 @@ export class WorldRenderer {
   }
 
   /**
-   * Set (or clear) the BUILD-PLACEMENT dim wash — the tiles a held building can't be placed on, decided
-   * by the sim's placement probe and passed in as plain data. Called each frame while build mode is
-   * active (with the visible blocked cells) and once with `null` when it ends; the layer skips the
-   * rebuild when the set is unchanged. Takes effect on the next {@link update}'s single `render`.
+   * Set (or clear) the BUILD-PLACEMENT dim wash — the visible tile band with the cells a held building
+   * can't anchor on, decided by the sim's placement probe and passed in as plain data. Called each
+   * frame while build mode is active and once with `null` when it ends; the layer skips the composite
+   * when the frame is unchanged. Takes effect on the next {@link update}'s single `render`.
    */
-  updatePlacementOverlay(cells: readonly PlacementOverlayCell[] | null): void {
-    this.placementOverlay.set(cells, this.elevation);
+  updatePlacementOverlay(frame: PlacementOverlayFrame | null): void {
+    this.placementOverlay.set(frame, this.elevation);
+  }
+
+  /**
+   * Set (or clear) the BUILD-PLACEMENT cursor ghost — the held building's translucent sprite at the
+   * hovered tile. The app passes `null` when not in build mode, when the cursor is off the map/HUD, or
+   * when the hovered anchor is REJECTED by the placement probe (the original hides the house cursor
+   * over blocked ground).
+   */
+  updatePlacementGhost(ghost: PlacementGhost | null): void {
+    this.placementGhost.set(ghost, this.elevation);
   }
 
   /** Entities drawn last frame + sprites currently pooled — for the perf overlay's on-screen readout. */
@@ -202,6 +219,7 @@ export class WorldRenderer {
     this.mapObjects.destroy();
     this.pool.destroy(); // destroys detached (culled) entities the scene-graph walk can't reach
     this.placementOverlay.destroy();
+    this.placementGhost.destroy();
     this.worldLayer.destroy({ children: true });
     this.hud.destroy();
     this.textureCache.clear();

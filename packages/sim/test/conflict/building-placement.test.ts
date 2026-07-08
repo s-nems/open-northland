@@ -243,6 +243,50 @@ describe('placementProbe — the build-overlay seam agrees with canPlaceBuilding
   });
 });
 
+describe('buildable terrain channel — walkable ground that rejects building', () => {
+  /** A margin landscape class: walkable for navigation, NOT buildable (a real map's exclusion ring
+   *  around a tree/rock — content/collision.ts's TERRAIN_MARGIN resolves to exactly these flags). */
+  const MARGIN = 2;
+
+  function marginContent(): ContentSet {
+    const base = placementContent();
+    return parseContentSet({
+      ...base,
+      landscape: [...base.landscape, { typeId: MARGIN, id: 'margin', walkable: true, buildable: false }],
+    });
+  }
+
+  it('rejects a footprint whose reserved zone touches a walkable-but-unbuildable cell', () => {
+    const map = grassMap(16, 16);
+    // One margin cell inside the hut's reserved ring at anchor (5,5) (ring spans x∈[4..7], y∈[4..7]).
+    map.typeIds[5 * 16 + 7] = MARGIN;
+    const sim = new Simulation({ seed: 1, content: marginContent(), map });
+    const terrain = terrainOf(sim);
+    expect(terrain.isWalkable(terrain.cellAt(7, 5))).toBe(true); // nav still crosses it
+    expect(terrain.isBuildable(terrain.cellAt(7, 5))).toBe(false); // building may not
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 5, 5)).toBe(false);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 11, 11)).toBe(true); // clear ground
+  });
+});
+
+describe('forced placement — authored map imports load as-is', () => {
+  it('places a rejected footprint when force is set (the original loads scenario houses verbatim)', () => {
+    // Water under the reserved ring → the interactive rule rejects this anchor.
+    const map = grassMap(16, 16);
+    map.typeIds[5 * 16 + 5] = WATER;
+    const wetSim = new Simulation({ seed: 1, content: placementContent(), map });
+    expect(canPlaceBuilding(wetSim.world, ctxOf(wetSim), terrainOf(wetSim), HUT, 5, 5)).toBe(false);
+
+    wetSim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
+    wetSim.step();
+    expect(buildingsPlaced(wetSim)).toBe(0); // gated command: dropped
+
+    wetSim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING, force: true });
+    wetSim.step();
+    expect(buildingsPlaced(wetSim)).toBe(1); // authored import: placed as-is
+  });
+});
+
 describe('building walk-block — houses have collision', () => {
   it('walk-blocks the body cells from the foundation tick and routes paths around them', () => {
     const sim = mappedSim(grassMap(8, 5));

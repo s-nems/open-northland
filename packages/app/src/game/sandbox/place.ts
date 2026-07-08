@@ -15,7 +15,12 @@ const { Felling, MineDeposit, Position, Resource, Stockpile } = components;
  * glue (packages/app/AGENTS.md, one-way flow).
  */
 
-/** Place a viking building (by typeId or catalog id), fully built, via the `placeBuilding` command. */
+/**
+ * Place a viking building (by typeId or catalog id), fully built, via the `placeBuilding` command.
+ * FORCED: scene setup is authored fixture state (like a decoded map's `sethouse` records), so it
+ * loads as-is — the tech/collision gates govern the PLAYER's interactive placements, not the fixture
+ * a scene is defined to start from (a scene author placing two huts adjacently means it).
+ */
 export function placeSandboxBuilding(
   sim: Simulation,
   ref: number | string,
@@ -30,6 +35,7 @@ export function placeSandboxBuilding(
     y,
     tribe: PRIMARY_TRIBE,
     owner,
+    force: true,
   });
 }
 
