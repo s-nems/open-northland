@@ -9,6 +9,6 @@
  */
 export { type MotionTrack, trackMotion } from './motion.js';
 export type { EntityBounds } from './pooled-entity.js';
-export { compactResolvedStockpileLayers, reconcileSprites } from './reconcile.js';
-export type { ResolvedLayer } from './resolve-layers.js';
+export { reconcileSprites } from './reconcile.js';
+export { compactResolvedStockpileLayers } from './resolve-layers.js';
 export { type PoolFrame, SpritePool } from './sprite-pool.js';

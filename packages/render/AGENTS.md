@@ -57,4 +57,4 @@ culling bites (`drawn ≪ entities` in the perf overlay).
 `sim.snapshot()` vs `renderer.update()` separately (the stress scene once read `render=1.2ms` while
 `step=2400ms` — the bottleneck was the sim's O(n²) target-finding, not the draw). The load-bearing
 render DATA decisions ARE agent-checkable and unit-tested: `viewport.ts`, `buildSpriteScene`,
-`reconcileSprites`, the frame selection in `sprites.ts`.
+`reconcileSprites`, the frame selection in `data/sprites/`.

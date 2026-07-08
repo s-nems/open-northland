@@ -7,8 +7,8 @@ import type { AtlasFrame } from '../data/sprites/index.js';
  * frame object is 1:1 — the same frame always yields the same reused `Texture`, so the retained draw
  * path never re-mints a texture in the steady state (near-zero per-frame allocation). Shared by the
  * {@link import('./sprite-pool/index.js').SpritePool}, the tall map objects
- * ({@link import('./map-object-layer.js').MapObjectLayer}), and the
- * {@link import('./animation-gallery.js').AnimationGallery} — every retained Pixi view needs the exact
+ * ({@link import('./map-objects/index.js').MapObjectLayer}), and the
+ * {@link import('./gallery/index.js').AnimationGallery} — every retained Pixi view needs the exact
  * same frame→texture memoization.
  */
 export class TextureCache {

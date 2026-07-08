@@ -2,7 +2,7 @@ import { TILE_HALF_H, TILE_HALF_W } from './iso.js';
 
 /**
  * The PURE geometry half of textured terrain — the self-verifiable twin of the GPU mesh build in
- * `gpu/terrain-layer.ts` (docs/plans/Phase 2, step 4). It turns the approximated typeId→pattern table
+ * `gpu/terrain/terrain-layer.ts` (docs/plans/Phase 2, step 4). It turns the approximated typeId→pattern table
  * (`TerrainPattern` IR) into per-cell diamond vertices + UVs, with **no Pixi import**, so the
  * vertex/UV math is unit-tested headlessly while only the rasterised pixels stay human-gated.
  *
