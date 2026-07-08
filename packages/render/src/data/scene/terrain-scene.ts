@@ -1,7 +1,7 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import type { ElevationField } from '../elevation.js';
 import { tileToScreen } from '../iso.js';
-import type { DrawItem, SceneTerrain } from './draw-item.js';
+import type { DrawItem, SceneGround, SceneTerrain } from './draw-item.js';
 import { collectSpriteScene } from './sprite-scene.js';
 
 /**
@@ -32,7 +32,7 @@ export function terrainMapToScene(map: {
   readonly width: number;
   readonly height: number;
   readonly typeIds: readonly number[];
-  readonly ground?: SceneTerrain['ground'];
+  readonly ground?: SceneGround;
   readonly elevation?: readonly number[];
 }): SceneTerrain {
   return {

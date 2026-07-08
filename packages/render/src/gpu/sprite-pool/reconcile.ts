@@ -17,20 +17,3 @@ export function reconcileSprites(
   }
   return { toDestroy };
 }
-
-/**
- * Compact a resolved stockpile layer stack. The first draw is required: for an empty delivery marker it is
- * the flag, and for a filled marker it is the heap. Later layers are optional overlays, so a missing flag
- * can degrade to a heap, but a missing heap must fall back to placeholder instead of rendering a full pile
- * as a bare flag.
- */
-export function compactResolvedStockpileLayers<T>(layers: readonly (T | null)[]): T[] | null {
-  const primary = layers[0];
-  if (primary === undefined || primary === null) return null;
-  const out: T[] = [primary];
-  for (let i = 1; i < layers.length; i++) {
-    const layer = layers[i];
-    if (layer !== undefined && layer !== null) out.push(layer);
-  }
-  return out;
-}
