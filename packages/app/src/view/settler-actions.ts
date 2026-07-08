@@ -168,10 +168,10 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   document.body.append(tooltip);
 
   // The order-icon sprite + its atlas frame for one button, or null when the art / frame is missing.
-  // 'round' key: the wooden order buttons paint their bevel + engraved glyph in the near-black band, so a
-  // full near-black key (as the panel uses) would punch holes through the art. 'round' discards the near-black
-  // only in the frame's CORNERS — dropping the square backdrop so the button reads as a round disc (the
-  // original has no square behind it) while keeping the glyph intact. See PalettedSprite.colorKey.
+  // 'round' key: hard-clip everything outside the inscribed disc, dropping the square frame + corners so the
+  // button reads as a round wooden disc (the original has no square behind it) while keeping the engraved
+  // glyph intact. The hard clip aliases unless supersampled, so every icon goes through `bakeRoundIcon`
+  // below (bake + downscale). See PalettedSprite.colorKey / GuiColorKey.
   const iconSprite = (frameName: string): GuiSprite | null =>
     art === null
       ? null

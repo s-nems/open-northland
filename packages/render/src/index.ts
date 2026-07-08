@@ -87,6 +87,7 @@ export {
   type GalleryCellBox,
 } from './gpu/gallery/index.js';
 export { type GuiColorKey, PalettedSprite } from './gpu/paletted-sprite.js';
+export { type SupersampledTexture, bakeToFlippedSprite } from './gpu/supersample.js';
 export type { TextureSource } from 'pixi.js';
 export {
   cameraViewport,

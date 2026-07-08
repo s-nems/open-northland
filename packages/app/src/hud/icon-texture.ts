@@ -1,17 +1,17 @@
-import type { AtlasFrame, PalettedSprite } from '@vinland/render';
-import { type Application, Container, RenderTexture, Sprite } from 'pixi.js';
+import { type AtlasFrame, type PalettedSprite, bakeToFlippedSprite } from '@vinland/render';
+import { type Application, Container, type Sprite } from 'pixi.js';
 
 /**
  * Crisp fractional scaling for a single round HUD icon (the settler action-ring order buttons) — the
- * per-icon twin of the tool panel's {@link import('./tool-panel/strip-texture.js')}.
+ * per-icon twin of the tool panel's {@link import('./tool-panel/strip-texture.js')}, over the same
+ * render-layer supersample ({@link bakeToFlippedSprite}).
  *
- * The order buttons are {@link PalettedSprite} meshes over an INDEXED atlas, drawn with the `'round'`
- * colour key (hard-clipped to the inscribed disc in the shader). At a fractional UI scale the nearest
- * sampling stair-steps the disc rim and the hard clip aliases the circle. Fix it by supersampling: bake the
- * icon at an INTEGER oversample into an off-screen texture (nearest is exact at an integer zoom, the clip is
- * a clean high-res circle), then draw that RESOLVED-RGBA texture as one ordinary `Sprite` LINEAR-downscaled
- * to the display size — the downscale anti-aliases the disc edge uniformly and DPR-independently (an
- * in-shader screen-space feather instead varied with the device pixel ratio and left corner specks).
+ * The order buttons are {@link PalettedSprite} meshes over an INDEXED atlas, drawn with the `'round'` colour
+ * key (hard-clipped to the inscribed disc in the shader). At a fractional UI scale the nearest sampling
+ * stair-steps the disc rim and the hard clip aliases the circle. Fix it by supersampling: bake the icon at
+ * an INTEGER oversample into a texture (nearest is exact at an integer zoom, the clip is a clean high-res
+ * circle), then draw it linear-downscaled — the downscale anti-aliases the disc edge uniformly. This module
+ * owns the layout (oversample choice, centering); the render helper owns the texture + the WebGL Y-flip.
  *
  * Unlike the static strip, the ring is dynamic: the icon art is baked ONCE here, and the caller repositions
  * the returned display sprite on the settlers' centroid every frame.
@@ -33,8 +33,8 @@ export interface BakedIcon {
 
 /**
  * Bake one round order-icon into a supersampled texture and return a linear-downscaled display sprite. The
- * sprite's Y is flipped (a WebGL render-texture is stored bottom-up and PalettedSprite hand-rolls its own
- * screen→clip projection — see its class note), so {@link placeBakedIcon} anchors it at the box bottom.
+ * sprite's Y is flipped by {@link bakeToFlippedSprite} (a WebGL render-texture is bottom-up), so
+ * {@link placeBakedIcon} anchors it at the box bottom.
  */
 export function bakeRoundIcon(opts: {
   readonly app: Application;
@@ -44,34 +44,39 @@ export function bakeRoundIcon(opts: {
 }): BakedIcon {
   const { app, sprite, frame, scale } = opts;
 
-  const dpr = app.renderer.resolution;
-  const ss = Math.max(MIN_SUPERSAMPLE, Math.min(MAX_SUPERSAMPLE, Math.ceil(scale * dpr)));
+  // Integer oversample so nearest sampling stays exact; the canvas is resolution 1, so this is CSS space (a
+  // HiDPI display integer-upscales the whole #game canvas, keeping the smooth downscaled disc crisp).
+  const ss = Math.max(MIN_SUPERSAMPLE, Math.min(MAX_SUPERSAMPLE, Math.ceil(scale)));
   const texW = Math.ceil(frame.width * ss);
   const texH = Math.ceil(frame.height * ss);
 
-  const texture = RenderTexture.create({ width: texW, height: texH, resolution: 1, antialias: false });
-  texture.source.scaleMode = 'linear';
-
   // Place the mesh so the frame's content box fills the texture: origin cancels the frame's draw offset,
   // zoom = ss, resolution = the texture size (a PalettedSprite maps native px → target px itself via its own
-  // uResolution — it doesn't ride the scene-graph transform, so it renders into the off-screen target the
-  // same way it would the canvas). The detached container keeps it off the main stage render.
+  // uResolution — it doesn't ride the scene-graph transform). The detached container is owned by dispose.
   sprite.place(-frame.offsetX * ss, -frame.offsetY * ss, ss, texW, texH);
   const offscreen = new Container();
   offscreen.addChild(sprite);
-  app.renderer.render({ container: offscreen, target: texture, clear: true });
 
-  const display = new Sprite(texture);
-  display.scale.set(scale / ss, -(scale / ss));
-
+  const baked = bakeToFlippedSprite(app.renderer, offscreen, texW, texH, scale / ss);
   return {
-    display,
+    display: baked.display,
     width: frame.width * scale,
     height: frame.height * scale,
-    dispose(): void {
-      offscreen.destroy({ children: true });
-      texture.destroy(true);
-    },
+    dispose: baked.dispose,
+  };
+}
+
+/** The bottom-anchored top-left origin (screen px) that centres a `width × height` baked icon in `rect`. */
+export function bakedIconOrigin(
+  rect: { readonly x: number; readonly y: number; readonly w: number; readonly h: number },
+  width: number,
+  height: number,
+): { readonly x: number; readonly y: number } {
+  return {
+    // Centre horizontally; the Y-flip draws the sprite UPWARD from its origin, so anchor at the box BOTTOM
+    // (centre + height/2) — a sign error here silently renders every icon vertically off-centre.
+    x: Math.round(rect.x + rect.w / 2 - width / 2),
+    y: Math.round(rect.y + rect.h / 2 + height / 2),
   };
 }
 
@@ -80,8 +85,6 @@ export function placeBakedIcon(
   icon: BakedIcon,
   rect: { readonly x: number; readonly y: number; readonly w: number; readonly h: number },
 ): void {
-  icon.display.position.set(
-    Math.round(rect.x + rect.w / 2 - icon.width / 2),
-    Math.round(rect.y + rect.h / 2 + icon.height / 2),
-  );
+  const { x, y } = bakedIconOrigin(rect, icon.width, icon.height);
+  icon.display.position.set(x, y);
 }

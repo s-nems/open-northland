@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { bakedIconOrigin } from '../src/hud/icon-texture.js';
 import {
   BUILDING_CATEGORIES,
   type MenuBuildingEntry,
@@ -83,6 +84,18 @@ describe('tool-panel-layout', () => {
     expect(byId.get('buildings')).toBe(0x2a);
     expect(byId.get('statistics')).toBe(0x32);
     expect(byId.get('speed')).toBe(0x31);
+  });
+});
+
+describe('baked-icon placement', () => {
+  it('centres horizontally and BOTTOM-anchors vertically (the Y-flip compensation)', () => {
+    // A 40×40 icon in a 60×60 rect at (100,200): centred x = 100 + 30 − 20 = 110; the Y-flip draws the
+    // sprite upward from its origin, so y anchors at the box BOTTOM = 200 + 30 + 20 = 250 (centre + h/2).
+    expect(bakedIconOrigin({ x: 100, y: 200, w: 60, h: 60 }, 40, 40)).toEqual({ x: 110, y: 250 });
+    // A different width/height still centres in x and bottom-anchors in y.
+    expect(bakedIconOrigin({ x: 0, y: 0, w: 50, h: 50 }, 30, 20)).toEqual({ x: 10, y: 35 });
+    // Fractional midpoints are pixel-snapped (round), so the icon lands on whole screen pixels.
+    expect(bakedIconOrigin({ x: 0, y: 0, w: 55, h: 55 }, 40, 40)).toEqual({ x: 8, y: 48 });
   });
 });
 

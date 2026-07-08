@@ -4,8 +4,10 @@ import type { AtlasFrame } from '../data/sprites/index.js';
 /**
  * GUI transparent-key mode for a {@link PalettedSprite} (see {@link PalettedSprite.colorKey}). `'off'` draws
  * straight; `'magenta'` keys only the index-0 sentinel; `'full'` also keys the whole near-black background
- * band (panel/window backdrops); `'round'` keys magenta + the near-black band ONLY in the frame's corners
- * (outside the inscribed disc), so a round order button loses its square backdrop but keeps its engraved glyph.
+ * band (panel/window backdrops); `'round'` keys magenta and HARD-clips everything outside the inscribed disc
+ * (regardless of colour), so a round order button drops its square frame + corners and reads as a clean disc
+ * with its engraved glyph intact. PRECONDITION: a `'round'` sprite must be SUPERSAMPLED (baked at an integer
+ * oversample, then downscaled) — the hard clip aliases the disc edge if drawn straight to screen.
  */
 export type GuiColorKey = 'off' | 'magenta' | 'full' | 'round';
 
@@ -70,13 +72,13 @@ uniform vec4 uFrameUV;      // the current frame's atlas-UV box (min.xy, max.zw)
 // straight would carry an opaque dark rectangle over the world — which the original hid by rendering gameplay
 // in a dedicated area, but we render full-screen.
 //
-// The two classes are keyed INDEPENDENTLY (uColorKey.x = magenta, uColorKey.y = near-black), because they are
-// NOT both "background" for every element. Large panel/window elements (iconsleft) use the near-black band as a
-// removable backdrop → key both. But the round wooden ORDER buttons (context palette) paint their OWN bevel rim
-// AND their engraved glyph in that same near-black — keying it there punches holes THROUGH the art (the
-// "chipped/holey" look). Those buttons are fully opaque by design, so they key magenta only (near-black off) and
-// render as solid buttons. Character LUTs produce neither class and leave both flags 0, so this is inert for
-// the world sprites.
+// The two classes are keyed INDEPENDENTLY (uColorKey.x = magenta, uColorKey.y = near-black band OR round-disc
+// clip), because they are NOT both "background" for every element. Large panel/window elements (iconsleft) use
+// the near-black band as a removable backdrop → 'full' keys both. But the round wooden ORDER buttons (context
+// palette) paint their OWN bevel rim AND their engraved glyph in that same near-black — keying it there punches
+// holes THROUGH the art (the "chipped/holey" look). So 'round' instead keeps the near-black inside the disc and
+// GEOMETRICALLY clips everything outside the inscribed disc, dropping the square frame + corners for a clean
+// round button. Character LUTs produce neither class and leave both flags 0, so this is inert for world sprites.
 const float KEY_MAGENTA_HI = 0.9;  // r AND b above this …
 const float KEY_MAGENTA_LO = 0.1;  // … with g below this → the magenta sentinel (index 0)
 const float KEY_NEAR_BLACK = 0.11; // max channel below this (≈28/255) → the near-black background band
@@ -201,14 +203,16 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
    * - `'off'`    — draw the LUT colours straight (fully opaque).
    * - `'magenta'`— discard only the magenta sentinel (palette index 0).
    * - `'round'`  — discard everything outside the inscribed disc (the square frame's corners), so a round
-   *   wooden ORDER button reads as a clean disc with its engraved glyph intact (magenta is keyed too).
+   *   wooden ORDER button reads as a clean disc with its engraved glyph intact (magenta is keyed too). The
+   *   hard clip must be SUPERSAMPLED by the caller (bake + downscale) or the disc edge aliases — see the
+   *   {@link GuiColorKey} precondition.
    * - `'full'`   — discard magenta AND the near-black background band. For large panel/window elements whose
    *   near-black backdrop must not paint a dark rectangle over the world.
    */
   set colorKey(mode: GuiColorKey) {
     const u = this.vars.uniforms.uColorKey;
     u[0] = mode === 'off' ? 0 : 1; // magenta key: on for 'magenta' + 'full' + 'round'
-    u[1] = mode === 'full' ? 1 : mode === 'round' ? 2 : 0; // near-black mode: 0 off, 1 full band, 2 round corners
+    u[1] = mode === 'full' ? 1 : mode === 'round' ? 2 : 0; // near-black mode: 0 off, 1 full band, 2 round disc-clip
     this.vars.update();
   }
   get colorKey(): GuiColorKey {
