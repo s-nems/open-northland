@@ -136,16 +136,18 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   let speedSprite: PalettedSprite | null = null;
 
   if (art !== null) {
-    // Key EVERY panel sprite (strip + buttons). The GUI palettes reserve index 0 (magenta) + a near-black
-    // band as each element's background, but a bob writes them OPAQUE (the engine blitter has no colour key,
-    // and the original hid its opaque panel by rendering gameplay in a dedicated area). We render the world
-    // full-screen, so this is a DELIBERATE deviation: key those colours transparent so the floating HUD shows
-    // only the ornament + glyphs and never paints a dark rectangle over the terrain (source basis).
+    // Colour-key the STRIP only. Its near-black band is removable backdrop outside the carved silhouette —
+    // the original hid that opaque rectangle by rendering gameplay in a dedicated area, but we render the
+    // world full-screen, so keying it transparent is a DELIBERATE deviation (the map shows past the ornament).
+    // The BUTTONS draw straight ('off'): they are opaque type-4 bobs the original engine blits WHOLE onto the
+    // strip, and their near-black is the button's recessed dark socket — the contrast plate behind the knob +
+    // glyph. Keying it (the old 'full') bled the strip's mottled stone through and made thin glyphs (the ×1
+    // digit) read frayed against it (source basis: atlas frames 0x2a–0x38 decode `opaque`, offset 0).
     const specs: StripSpriteSpec[] = [];
     const strip = makeGuiSprite(art, layout.stripGfx, { defaultPalette: 'iconsleft', colorKey: 'full' });
     if (strip !== null) specs.push({ spr: strip.sprite, design: TOOL_PANEL_STRIP });
     for (const b of layout.buttons) {
-      const gs = makeGuiSprite(art, b.gfx, { defaultPalette: 'iconsleft', colorKey: 'full' });
+      const gs = makeGuiSprite(art, b.gfx, { defaultPalette: 'iconsleft', colorKey: 'off' });
       if (gs === null) continue;
       specs.push({ spr: gs.sprite, design: b.rect });
       if (b.id === 'speed') speedSprite = gs.sprite;
