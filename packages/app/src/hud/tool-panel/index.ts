@@ -8,11 +8,12 @@ import { HOVER_ALPHA, HOVER_TINT } from '../chrome.js';
 import type { MenuBuildingEntry } from './building-menu.js';
 import type { PanelContext } from './context.js';
 import {
-  DEFAULT_GAME_SPEED_STATE,
-  type GameSpeedState,
+  DEFAULT_GAME_SPEED_CONTROL,
+  type GameSpeedControl,
   type GameSpeedStateSpec,
-  gameSpeedSpec,
-  nextGameSpeedState,
+  cycleGameSpeed,
+  effectiveGameSpeedSpec,
+  toggleGameSpeedPause,
 } from './game-speed.js';
 import {
   TOOL_PANEL_STRIP,
@@ -182,12 +183,12 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const stats = createStatsWindow({ ctx, container: windowContainer });
 
   // --- The game-speed button ---------------------------------------------------------------------------
-  let speedState: GameSpeedState = DEFAULT_GAME_SPEED_STATE;
+  let speedControl: GameSpeedControl = DEFAULT_GAME_SPEED_CONTROL;
   let speedRun: TextRun | null = null; // fallback glyph (the flat mode has no distinct per-state sprite)
   const speedBtnRect = layout.buttons.find((b) => b.id === 'speed')?.placed;
 
   const applySpeed = (pushToLoop: boolean): void => {
-    const spec = gameSpeedSpec(speedState);
+    const spec = effectiveGameSpeedSpec(speedControl);
     if (speedSprite !== null && art !== null) {
       const frame = art.layer.atlas.frames.get(spec.gfx);
       if (frame !== undefined) {
@@ -217,7 +218,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const activateButton = (id: ToolButtonId): void => {
     switch (id) {
       case 'speed':
-        speedState = nextGameSpeedState(speedState);
+        speedControl = cycleGameSpeed(speedControl);
         applySpeed(true);
         break;
       case 'buildings':
@@ -297,6 +298,12 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
 
   const onKeyDown = (e: KeyboardEvent): void => {
     if (e.code === 'Escape' && placement.isActive()) placement.cancel();
+    // `P` toggles pause (remembering the running speed for the resume). Plain key only — a modifier
+    // combo (Cmd/Ctrl+P print, etc.) stays the browser's.
+    if (e.code === 'KeyP' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      speedControl = toggleGameSpeedPause(speedControl);
+      applySpeed(true);
+    }
   };
 
   canvas.addEventListener('mousedown', onMouseDown);

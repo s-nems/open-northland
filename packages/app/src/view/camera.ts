@@ -1,4 +1,4 @@
-import { type Camera, type DrawItem, tileToScreen } from '@vinland/render';
+import { type Camera, type DrawItem, canvasResolution, tileToScreen } from '@vinland/render';
 
 /**
  * Camera helpers shared by the map (`entries/map.ts`) and shot (`entries/shot.ts`) entries. The geometry half is
@@ -125,20 +125,23 @@ export interface CameraController {
  * `window` so a drag continues when the cursor leaves the canvas.
  */
 /**
- * The CSS-px → backing-store-px scale for a canvas (+ its client `rect`). Client (CSS-px) mouse coords
- * must land in the backing-store px the camera + picking work in. The live entries keep the two 1:1
- * (`createWindowPixiApp` sizes the backing store to the window, `index.html` CSS-sizes `#game` the
- * same), so this is normally identity — but it stays exact for any embedding where they diverge (a
- * fixed-size canvas, a resize not yet flushed), else a drag pans faster than the cursor, a wheel zoom
- * anchors off the cursor, and a click picks the wrong tile. The `rect` is returned so a handler can
- * subtract the canvas origin in CSS px *before* scaling. Guards a zero-size (unlaid-out) canvas. Shared
- * by the camera controller and the selection controller (`view/unit-controls.ts`).
+ * The CSS-px → Pixi-SCREEN-px scale for a canvas (+ its client `rect`). Client (CSS-px) mouse coords
+ * must land in the screen px the camera + picking + HUD layouts work in — the backing store divided by
+ * the renderer resolution (`canvasResolution`; the HiDPI window canvas holds devicePixelRatio backing
+ * px per screen px). The live entries keep CSS and screen px 1:1 (`createWindowPixiApp` + `autoDensity`
+ * CSS-size the canvas to the logical size), so this is normally identity — but it stays exact for any
+ * embedding where they diverge (a fixed-size canvas, a resize not yet flushed), else a drag pans faster
+ * than the cursor, a wheel zoom anchors off the cursor, and a click picks the wrong tile. The `rect` is
+ * returned so a handler can subtract the canvas origin in CSS px *before* scaling. Guards a zero-size
+ * (unlaid-out) canvas. Shared by the camera controller and the selection controller
+ * (`view/unit-controls.ts`).
  */
 export function backingScale(canvas: HTMLCanvasElement): { sx: number; sy: number; rect: DOMRect } {
   const rect = canvas.getBoundingClientRect();
+  const res = canvasResolution(canvas);
   return {
-    sx: rect.width === 0 ? 1 : canvas.width / rect.width,
-    sy: rect.height === 0 ? 1 : canvas.height / rect.height,
+    sx: rect.width === 0 ? 1 : canvas.width / res / rect.width,
+    sy: rect.height === 0 ? 1 : canvas.height / res / rect.height,
     rect,
   };
 }

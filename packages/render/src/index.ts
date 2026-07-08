@@ -53,6 +53,7 @@ export {
   type StockpileBinding,
 } from './data/sprites/index.js';
 export {
+  canvasResolution,
   createPixiApp,
   createWindowPixiApp,
   loadAtlasSource,

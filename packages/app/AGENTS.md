@@ -75,7 +75,9 @@ gitignored bytes:
 - **LEFT tool panel** — the original toolbar strip + tool buttons + game-speed button + building/stats windows
   is part of the standard game HUD, mounted over BOTH `?map=` and every `?scene=` via the shared
   `view/game-tool-panel.ts` (NOT a per-scene flag — it is global). Its game-speed button drives the tick
-  rate live (×1/×2/×3/pause); `?speed=` still seeds the initial rate (and reaches sub-1× the button can't).
+  rate live (clicks cycle ×1 → ×2 → ×3 → ×1; the `P` key toggles pause, remembering the running speed and
+  washing the world sepia while paused); `?speed=` still seeds the initial rate (and reaches sub-1× the
+  button can't).
   The scene overlay is the sign-off checklist only (no playback buttons).
   `?uiscale=` sets its UI scale (default 1.4×, fractional allowed; the strip is 433 design px tall, so 1×
   already fills ~half a modern window). The nearest-sampled INDEXED art can't be linear-filtered, so a

@@ -176,9 +176,10 @@ export interface GroundPattern {
  * The shared one-time GPU options. WebGL preference + antialias-off are deliberate: they cut the
  * cross-machine pixel variance that would otherwise make even an eyeball-the-PNG comparison noisy
  * (golden-image diffs stay out of scope — see docs/TESTING.md). `resolution: 1` + `autoDensity: false`
- * keep the backing store in CSS pixels, so one world pixel is one CSS pixel at camera scale 1 (on a
- * HiDPI display the browser upscales by devicePixelRatio; `#game`'s `image-rendering: pixelated`
- * keeps that upscale crisp for the pixel art).
+ * keep the backing store in CSS pixels, so one world pixel is one CSS pixel at camera scale 1 — the
+ * DETERMINISTIC default the fixed-size `?shot` capture depends on (its PNG bytes can't vary with the
+ * machine's devicePixelRatio). The interactive window variant overrides these to render at DEVICE
+ * resolution — see {@link createWindowPixiApp}.
  */
 const APP_OPTIONS = {
   // Pure black, like the original's void beyond the map edge: the `embr` border fade runs the ground
@@ -190,6 +191,16 @@ const APP_OPTIONS = {
   autoDensity: false,
   resolution: 1,
 } as const;
+
+/**
+ * The renderer resolution (device px per CSS px) a canvas was initialised with — 1 unless
+ * {@link createWindowPixiApp} stamped its device resolution. Input handlers use it to map the canvas's
+ * backing-store size back to Pixi SCREEN pixels (the space `app.screen`, the camera, and every HUD
+ * layout work in), which stopped equalling the backing size once the window canvas went HiDPI.
+ */
+export function canvasResolution(canvas: HTMLCanvasElement): number {
+  return Number(canvas.dataset.pixiResolution ?? '1') || 1;
+}
 
 /**
  * Initialise a Pixi {@link Application} bound to an existing canvas at a FIXED backing-store size.
@@ -209,15 +220,24 @@ export async function createPixiApp(
 }
 
 /**
- * Initialise a Pixi {@link Application} whose backing store TRACKS the window at a fixed 1:1
- * CSS-pixel scale. Pixi's resize plugin (`resizeTo: window`) re-sizes the renderer on every window
- * resize, so with the canvas CSS-sized to the viewport the world never stretches — resizing the
- * window only grows/shrinks the visible field, exactly like an RTS at native resolution. Interactive
- * entries (live slice, scenes, gallery) boot through this; read the live size from `app.screen` per
- * frame, never from a captured constant.
+ * Initialise a Pixi {@link Application} whose backing store TRACKS the window. Pixi's resize plugin
+ * (`resizeTo: window`) re-sizes the renderer on every window resize, so with the canvas CSS-sized to
+ * the viewport the world never stretches — resizing the window only grows/shrinks the visible field,
+ * exactly like an RTS at native resolution. Interactive entries (live slice, scenes, gallery) boot
+ * through this; read the live size from `app.screen` per frame, never from a captured constant.
+ *
+ * Renders at DEVICE resolution (`resolution: devicePixelRatio` + `autoDensity`): `app.screen`, the
+ * camera, and every layout stay in CSS px, but the backing store holds one texel per device pixel, so
+ * screen-space UI (the supersampled tool panel, text, rings) rasterizes crisp on HiDPI instead of
+ * being nearest-upscaled by the browser. The nearest-sampled world pixel art is unaffected at integer
+ * zooms (the same duplication moves from the browser's canvas upscale into GPU sampling). The
+ * deterministic `?shot` capture keeps {@link createPixiApp}'s fixed `resolution: 1`, so its PNG never
+ * varies with the machine's DPR. The DPR is read once at boot — a mid-session monitor/zoom change
+ * keeps working, just at the boot density.
  */
 export async function createWindowPixiApp(canvas: HTMLCanvasElement): Promise<Application> {
   const app = new Application();
+  const resolution = window.devicePixelRatio || 1;
   await app.init({
     canvas,
     // The plugin's `resizeTo` setter already sizes the renderer to the window during init; the
@@ -226,7 +246,10 @@ export async function createWindowPixiApp(canvas: HTMLCanvasElement): Promise<Ap
     height: window.innerHeight,
     resizeTo: window,
     ...APP_OPTIONS,
+    resolution,
+    autoDensity: true, // CSS-size the canvas to the logical size, so client px stay 1:1 with screen px
   });
+  canvas.dataset.pixiResolution = String(resolution); // input mapping reads this back (canvasResolution)
   return app;
 }
 

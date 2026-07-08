@@ -83,6 +83,23 @@ export const ACTION_INNER_ARM_PX = 0x44;
 /** First/last-in-group corner nudge (the decompile's `±5` `cornerBias`). */
 export const ACTION_EDGE_NUDGE_PX = 5;
 
+/**
+ * The action menu draws SMALLER than the shared HUD uiscale: at the 1.4× default the full-size ring
+ * crowded the selected settler, so the whole footprint (buttons + arms + steps) runs at 75% of the HUD
+ * scale — a user-requested ~25% shrink, a deliberate deviation from the original's 1:1 size (source
+ * basis); the pinned arm PROPORTIONS are untouched (everything scales by the one factor).
+ */
+export const ACTION_RING_UI_FACTOR = 0.75;
+
+/**
+ * The ring's effective scale for the shared `?uiscale=`: clamped ≥1 like every HUD consumer, then shrunk
+ * by {@link ACTION_RING_UI_FACTOR}. The ONE place ring clamping lives — both the icon bake and
+ * {@link layoutActionRing} must consume this same value or the drawn icon and its hit-rect drift apart.
+ */
+export function actionRingScale(uiscale: number): number {
+  return Math.max(1, uiscale) * ACTION_RING_UI_FACTOR;
+}
+
 /** Group-type constants (indices into {@link ARMS}) — which arm a command family sits on. */
 export const BOTTOM_ARM = 0;
 export const TOP_ARM = 1;
@@ -181,10 +198,11 @@ function clampOnScreen(placed: PlacedActionButton[], screenW: number, screenH: n
 
 /**
  * Lay the default menu's groups out around a screen-space centre. Each group fills its arm with the
- * original's centring + step footprint (scaled by `scale`, the uiscale), then the WHOLE menu is nudged to
- * stay inside `[0,screenW]×[0,screenH]` (the original clamps its 232px box with `rect.PlaceInside`; we clamp
- * the actual button bounds, which also covers a long arm overflowing the nominal box). Pure — the view draws
- * from this and the input layer hit-tests it.
+ * original's centring + step footprint (scaled by `scale` — the ring's EFFECTIVE scale, see
+ * {@link actionRingScale}; sub-1 values are legal, the shrunk ring at uiscale 1 is 0.75), then the WHOLE
+ * menu is nudged to stay inside `[0,screenW]×[0,screenH]` (the original clamps its 232px box with
+ * `rect.PlaceInside`; we clamp the actual button bounds, which also covers a long arm overflowing the
+ * nominal box). Pure — the view draws from this and the input layer hit-tests it.
  */
 export function layoutActionRing(
   groups: readonly ActionGroup[],
@@ -194,9 +212,8 @@ export function layoutActionRing(
   screenW: number,
   screenH: number,
 ): ActionRingLayout {
-  const s = Math.max(1, scale);
   const placed: PlacedActionButton[] = [];
-  for (const g of groups) placed.push(...placeArm(g, centreX, centreY, s));
+  for (const g of groups) placed.push(...placeArm(g, centreX, centreY, scale));
   return clampOnScreen(placed, screenW, screenH);
 }
 

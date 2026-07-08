@@ -1,5 +1,5 @@
 import type { WorldSnapshot } from '@vinland/sim';
-import { type Application, Container } from 'pixi.js';
+import { type Application, Container, Sprite, Texture } from 'pixi.js';
 import { type ElevationField, makeElevationField } from '../data/elevation.js';
 import type { Camera } from '../data/iso.js';
 import type { SceneTerrain } from '../data/scene/index.js';
@@ -51,6 +51,14 @@ const NO_SELECTION: ReadonlySet<number> = new Set();
  */
 const SPRITE_CULL_MARGIN = 512;
 
+/**
+ * The paused-game wash: one screen-sized multiply quad over the WORLD (not the HUD), so a paused map
+ * reads dimmed-sepia at a glance. The original browns the map while paused (observed behaviour); the
+ * exact grade isn't recoverable, so this multiply colour is an eyeballed approximation (source basis).
+ * One plain sprite = one batched draw — no filter, no per-sprite work (render AGENTS.md batching rule).
+ */
+const PAUSE_WASH_TINT = 0xc9a87c;
+
 export class WorldRenderer {
   private readonly app: Application;
   /** Camera transform lives here; terrain + decor + sprites are its children so one transform pans/zooms all. */
@@ -68,6 +76,8 @@ export class WorldRenderer {
   /** Feet rings under the currently-selected entities (world-space, BELOW the sprites). */
   private readonly selectionLayer = new SelectionLayer();
   private readonly hud = new HudLayer();
+  /** The paused-game sepia wash (screen-space, over the world, under the HUD). See {@link setPaused}. */
+  private readonly pauseWash = new Sprite(Texture.WHITE);
   /** The current map's terrain-height field — lifts the ground mesh + every projected item, and its
    *  `maxLift` is the cull pad. Flat (zero lift) until {@link setTerrain} loads a map carrying `elevation`. */
   private elevation: ElevationField = makeElevationField(undefined, 0, 0);
@@ -90,8 +100,19 @@ export class WorldRenderer {
     this.worldLayer.addChild(this.selectionLayer.container);
     this.worldLayer.addChild(this.spriteLayer);
     app.stage.addChild(this.worldLayer);
+    // The pause wash sits ABOVE the world and BELOW the HUD (stage order), so pausing browns the map
+    // but never the always-on HUD or the tool panel (both are later stage children).
+    this.pauseWash.tint = PAUSE_WASH_TINT;
+    this.pauseWash.blendMode = 'multiply';
+    this.pauseWash.visible = false;
+    app.stage.addChild(this.pauseWash);
     // The HUD is pinned (NOT under the camera), so it's a direct child of the stage.
     app.stage.addChild(this.hud.container);
+  }
+
+  /** Show/hide the paused-game wash — the app's loop control drives this alongside the sim pause. */
+  setPaused(paused: boolean): void {
+    this.pauseWash.visible = paused;
   }
 
   /**
@@ -175,6 +196,10 @@ export class WorldRenderer {
       this.elevation,
       (ref) => this.pool.anchorOf(ref),
     );
+    if (this.pauseWash.visible) {
+      this.pauseWash.width = this.app.screen.width;
+      this.pauseWash.height = this.app.screen.height;
+    }
     this.hud.draw(hud);
     this.app.render();
   }
@@ -221,6 +246,7 @@ export class WorldRenderer {
     this.placementOverlay.destroy();
     this.placementGhost.destroy();
     this.worldLayer.destroy({ children: true });
+    this.pauseWash.destroy(); // the shared Texture.WHITE itself is left alone
     this.hud.destroy();
     this.textureCache.clear();
   }

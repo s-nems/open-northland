@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { guiFrameIndex } from '../src/content/gui-atlas-map.js';
 import {
   ACTION_ARM_PX,
+  ACTION_RING_UI_FACTOR,
   type ActionButton,
   type ActionGroup,
   BOTTOM_ARM,
   HUMAN_DEFAULT_MENU,
   type PlacedActionButton,
   TOP_ARM,
+  actionRingScale,
   hitTestActionRing,
   layoutActionRing,
 } from '../src/hud/action-ring-layout.js';
@@ -66,16 +68,27 @@ describe('action-ring-layout — arm footprint (transcribed from BuildHumanActio
     expect(Math.max(yOf('c'), yOf('d'))).toBeLessThan(400); // top
   });
 
-  it('scales the whole menu by the uiscale', () => {
+  it('scales the whole menu by the given scale (sub-1 values included — the ring runs shrunk)', () => {
     const group: ActionGroup = { group: BOTTOM_ARM, buttons: [ph('a'), ph('b'), ph('c')] };
     const l1 = layoutActionRing([group], 500, 400, 1, 4000, 4000);
     const l2 = layoutActionRing([group], 500, 400, 2, 4000, 4000);
-    // The middle button is 100 px below at 1×, 200 px below at 2× (arm distance scales).
+    const l075 = layoutActionRing([group], 500, 400, 0.75, 4000, 4000);
+    // The middle button is 100 px below at 1×, 200 px below at 2×, 75 px below at 0.75× (arm scales).
     expect(centre(nth(l1.buttons, 1)).y - 400).toBe(ACTION_ARM_PX);
     expect(centre(nth(l2.buttons, 1)).y - 400).toBe(ACTION_ARM_PX * 2);
-    // Button squares are 32 px at 1×, 64 px at 2×.
+    expect(centre(nth(l075.buttons, 1)).y - 400).toBe(ACTION_ARM_PX * 0.75);
+    // Button squares are 32 px at 1×, 64 px at 2×, 24 px at 0.75×.
     expect(nth(l1.buttons, 1).rect.w).toBe(32);
     expect(nth(l2.buttons, 1).rect.w).toBe(64);
+    expect(nth(l075.buttons, 1).rect.w).toBe(24);
+  });
+
+  it('actionRingScale shrinks the shared uiscale by the ring factor after clamping it to ≥ 1', () => {
+    // The 1.4× default HUD scale draws the ring ~25% smaller than the pre-shrink 1.4 (user-requested).
+    expect(actionRingScale(1.4)).toBeCloseTo(1.4 * ACTION_RING_UI_FACTOR);
+    // The uiscale clamp still applies BEFORE the shrink (sub-1 uiscale → the shrunk floor, not less).
+    expect(actionRingScale(0.2)).toBeCloseTo(ACTION_RING_UI_FACTOR);
+    expect(ACTION_RING_UI_FACTOR).toBe(0.75);
   });
 
   it('clamps the whole menu on-screen when it would spill past an edge', () => {

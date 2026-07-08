@@ -7,6 +7,7 @@ import {
   type ActionButton,
   type ActionRingLayout,
   HUMAN_DEFAULT_MENU,
+  actionRingScale,
   hitTestActionRing,
   layoutActionRing,
 } from '../hud/action-ring-layout.js';
@@ -148,7 +149,9 @@ interface ButtonVisual {
  */
 export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<SettlerActions> {
   const { app, canvas } = opts;
-  const scale = Math.max(1, opts.uiscale);
+  // The ring's effective scale: the shared uiscale, shrunk by the ring's own factor (see actionRingScale) —
+  // the SAME value feeds the icon bake and layoutActionRing, so the drawn icon always fills its hit-rect.
+  const scale = actionRingScale(opts.uiscale);
 
   const art = await loadGuiArt();
 
