@@ -5,9 +5,12 @@ import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
 import { GOOD_STONE, GOOD_WOOD, JOB_IDLE, JOB_SOLDIER_SWORD, WEAPON_SWORD } from '../src/game/sandbox/ids.js';
 import { resourceCommand } from '../src/game/sandbox/place.js';
 import {
+  ADMIN_DROP_AMOUNT,
   CIVILIAN_PRESETS,
+  GOODS_ENTRIES,
   RESOURCE_ENTRIES,
   WARRIOR_PRESETS,
+  goodDropCommand,
   unitSpawnCommand,
 } from '../src/view/admin-debug/spawn-catalog.js';
 
@@ -59,6 +62,20 @@ describe('admin spawn command mapping', () => {
     expect(goods.has(GOOD_WOOD)).toBe(true);
     expect(goods.has(GOOD_STONE)).toBe(true);
     expect(RESOURCE_ENTRIES.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('the palette offers EVERY good as a droppable ground pile (core + the whole extended catalog)', () => {
+    const goods = new Set(GOODS_ENTRIES.map((g) => g.good));
+    expect(goods.has(GOOD_WOOD)).toBe(true);
+    // A spread across the extended catalog families (their sandbox typeIds are 100 + the ir typeId).
+    expect(GOODS_ENTRIES.some((g) => g.label === 'Bread')).toBe(true);
+    expect(GOODS_ENTRIES.some((g) => g.label === 'Plate Armor')).toBe(true);
+    expect(GOODS_ENTRIES.length).toBeGreaterThanOrEqual(60);
+  });
+
+  it('a good drops as a loose ground pile via dropGood', () => {
+    const cmd = goodDropCommand(GOOD_STONE, 4, 5);
+    expect(cmd).toEqual({ kind: 'dropGood', good: GOOD_STONE, x: 4, y: 5, amount: ADMIN_DROP_AMOUNT });
   });
 
   it('a wood resource resolves to a felled tree node', () => {

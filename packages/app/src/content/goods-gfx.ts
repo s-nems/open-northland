@@ -73,6 +73,35 @@ export function loadGoodsArt(): Promise<GoodsArt | null> {
   return goodsArtOnce;
 }
 
+/** The good STRING id → icon binding map, as the manifest ships it (no textures — just the frame/palette
+ *  data the in-world pile binding needs). */
+export type GoodIconMap = ReadonlyMap<string, GoodIcon>;
+
+/**
+ * The neutral generic icon for a good with no `ls_goods` art (the synthetic plank, and the
+ * potions/amulets/fruit that share the original's type-1 "no distinct pile") — the state-1 heap bob (0)
+ * recoloured through the neutral `goods01` palette. A NAMED APPROXIMATION shared by the HUD Magazyn icon and
+ * the in-world dropped-pile graphic, so an iconless good reads the same "generic sack" in both places rather
+ * than showing nothing / the bare placeholder flag. `goods01` is always a valid LUT/atlas row.
+ */
+export const GENERIC_GOOD_ICON: GoodIcon = { frame: 0, palette: 'goods01' };
+
+let goodsIconManifestOnce: Promise<GoodIconMap | null> | null = null;
+
+/**
+ * Load just the good→icon bindings from `content/goods/manifest.json` — the lightweight twin of
+ * {@link loadGoodsArt} (no atlas/LUT textures), for the in-world pile binding that resolves each good's
+ * `ls_goods` recoloured atlas by palette name. `null` when the goods pipeline stage hasn't run. Memoized.
+ */
+export function loadGoodsIconManifest(): Promise<GoodIconMap | null> {
+  goodsIconManifestOnce ??= (async () => {
+    const manifest = await fetchJsonOrNull<GoodsManifest>(GOODS_MANIFEST_URL);
+    if (manifest === null) return null;
+    return new Map(Object.entries(manifest.icons));
+  })();
+  return goodsIconManifestOnce;
+}
+
 /** One built good-icon sprite plus its atlas frame (callers centre/size by the frame's geometry). */
 export interface GoodSprite {
   readonly sprite: PalettedSprite;

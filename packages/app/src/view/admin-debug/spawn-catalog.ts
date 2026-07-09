@@ -1,8 +1,17 @@
 import type { Command } from '@vinland/sim';
+import { EXTENDED_GOODS } from '../../catalog/goods.js';
 import { PLAYER_COLOR_NAMES } from '../../catalog/roster.js';
 import { PRIMARY_TRIBE } from '../../game/rules.js';
 import {
   GATHERERS,
+  GOOD_COIN,
+  GOOD_GOLD,
+  GOOD_IRON,
+  GOOD_MUD,
+  GOOD_MUSHROOM,
+  GOOD_PLANK,
+  GOOD_STONE,
+  GOOD_WOOD,
   JOB_ARCHER,
   JOB_ARCHER_LONG,
   JOB_CARRIER,
@@ -105,6 +114,40 @@ export const RESOURCE_ENTRIES: readonly ResourceEntry[] = GATHERERS.map((g) => (
   good: g.good,
   label: materialLabel(g.label),
 }));
+
+/** One droppable good: its `dropGood` goodType + a short label. */
+export interface GoodEntry {
+  readonly good: number;
+  readonly label: string;
+}
+
+/** The core economy goods' Polish labels (the gathered set + plank + coin), paired with their sandbox
+ *  typeIds — the extended catalog carries its own English `name`. */
+const CORE_GOOD_ENTRIES: readonly GoodEntry[] = [
+  { good: GOOD_WOOD, label: 'Drewno' },
+  { good: GOOD_PLANK, label: 'Deska' },
+  { good: GOOD_COIN, label: 'Moneta' },
+  { good: GOOD_STONE, label: 'Kamień' },
+  { good: GOOD_MUD, label: 'Glina' },
+  { good: GOOD_IRON, label: 'Żelazo' },
+  { good: GOOD_GOLD, label: 'Złoto' },
+  { good: GOOD_MUSHROOM, label: 'Grzyby' },
+];
+
+/** Every good the catalog defines — the core economy goods followed by the whole extended catalog — each
+ *  droppable on the ground as a loose pile via {@link goodDropCommand} (the admin "spawn any good" list). */
+export const GOODS_ENTRIES: readonly GoodEntry[] = [
+  ...CORE_GOOD_ENTRIES,
+  ...EXTENDED_GOODS.map((g) => ({ good: g.typeId, label: g.name })),
+];
+
+/** Units dropped per admin click — a small round pile, like the in-game goods tool. */
+export const ADMIN_DROP_AMOUNT = 10;
+
+/** Build the `dropGood` command for a good at a tile — the pure command the admin palette enqueues. */
+export function goodDropCommand(good: number, x: number, y: number): Command {
+  return { kind: 'dropGood', good, x, y, amount: ADMIN_DROP_AMOUNT };
+}
 
 /** The armour tiers the palette applies to a spawned unit — 0 (unarmoured) plus the `[armortype]`
  *  classes 1..4 that `spawnSettler` mitigates an incoming hit by. */

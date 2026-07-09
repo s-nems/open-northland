@@ -1,7 +1,13 @@
 import type { LayeredBobRef, ResourceTypeBinding, StockpileBinding } from '@vinland/render';
 import { TREE_ATLAS, TREE_BOB } from './building-gfx.js';
+import { GENERIC_GOOD_ICON, type GoodIconMap } from './goods-gfx.js';
 import type { ContentIr, GatheringPipelineRow, GatheringStageRow, LandscapeGfxRow } from './ir.js';
 import type { GoodRef } from './settler-gfx.js';
+
+/** The `ls_goods.bmd` served-atlas stem prefix — a good's recoloured pile atlas is `ls_goods.<palette>`
+ *  (the pipeline's per-palette variant), so the goods-manifest `{frame, palette}` maps straight to a
+ *  {@link GatheringPileRef} whose stem is `${GOODS_PILE_BMD_STEM}.${palette}`. */
+const GOODS_PILE_BMD_STEM = 'ls_goods';
 
 /**
  * The gathering-economy render binding: reduce the Step-1 `gatheringPipeline` join (good → its
@@ -175,7 +181,11 @@ function representativeRecord(
  * once from the {@link FLAG_EDIT_NAME} record. Independent of which atlases actually load — the
  * loaded/default decision is {@link buildResourceBinding}/{@link buildStockpileBinding}'s. Pure.
  */
-export function resolveGatheringRefs(goods: readonly GoodRef[], ir: ContentIr | null): GatheringRefs {
+export function resolveGatheringRefs(
+  goods: readonly GoodRef[],
+  ir: ContentIr | null,
+  goodIcons?: GoodIconMap | null,
+): GatheringRefs {
   const pipeline = ir?.gatheringPipeline ?? [];
   const gfx = ir?.landscapeGfx ?? [];
   const byIndex = new Map<number, LandscapeGfxRow>(gfx.map((g) => [g.index, g]));
@@ -207,6 +217,24 @@ export function resolveGatheringRefs(goods: readonly GoodRef[], ir: ContentIr | 
       const stem = servedStem(pileRecord);
       const fillBobs = pileFillBobs(pileRecord);
       if (stem !== undefined && fillBobs !== undefined) pilesByGood[good.typeId] = { stem, fillBobs };
+    }
+  }
+
+  // Every OTHER good (not gathered, so absent from the pipeline) gets its on-the-ground graphic from the
+  // goods-icon manifest — its recoloured `ls_goods` heap by (frame, palette). This is why a dropped brick,
+  // sword, or loaf draws its own pile on the ground and not the bare placeholder marker; a good with no
+  // manifest icon (potions/amulets/fruit — no `ls_goods` art in the original) keeps the placeholder heap.
+  // Both shapes bind: the TRUNK (what a loose `GroundDrop` from `dropGood`/felling draws) AND the PILE (what
+  // a deposited/delivered bare stockpile draws), so the good reads the same however it reached the ground.
+  // A single frame (the manifest carries the state-1 heap), drawn at any amount.
+  if (goodIcons != null) {
+    for (const good of goods) {
+      // A good with its own `ls_goods` art uses it; one without (plank/potions/amulets/fruit) falls back to
+      // the neutral generic heap, so NO dropped good is left the bare placeholder flag.
+      const icon = goodIcons.get(good.id) ?? GENERIC_GOOD_ICON;
+      const stem = `${GOODS_PILE_BMD_STEM}.${icon.palette}`;
+      if (pilesByGood[good.typeId] === undefined) pilesByGood[good.typeId] = { stem, fillBobs: [icon.frame] };
+      if (trunksByGood[good.typeId] === undefined) trunksByGood[good.typeId] = { stem, bob: icon.frame };
     }
   }
 
