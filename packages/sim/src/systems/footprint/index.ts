@@ -26,6 +26,7 @@ export {
   canPlaceBuilding,
   dynamicBlockedCells,
   interactionTile,
+  placementBlockerVersion,
   placementProbe,
   type PlacementProbe,
   positionedInteractionCell,

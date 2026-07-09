@@ -73,10 +73,13 @@ const PERF_STRIP_GAP = 8;
  * ore/water — or by another building's margin). The camera cull yields a CELL band
  * (`visibleTileRange`); the probe walks its 2× node band, since anchors live on the half-cell
  * lattice. Screen-bounded per golden rule 6 (per-frame cost scales with the screen): only the
- * visible band is probed, and only while placing — and the band probe is MEMOIZED on (type, sim
- * tick, band), because sim state mutates only at tick boundaries: a still camera over a paused/idle
- * sim reuses last frame's result instead of re-probing thousands of nodes per RAF. Returns null for
- * a mapless sim (no placement rule → no wash).
+ * visible band is probed, and only while placing — and the band probe is MEMOIZED on (type,
+ * placement-blocker version, band). The version (`Simulation.placementBlockerVersion`) moves only
+ * when a building/resource is added or removed, NOT every tick — so a still camera over a RUNNING sim
+ * reuses last frame's blocked set instead of re-probing the whole node band per RAF (the regression:
+ * the old key held `sim.tick`, which advances 20×/s and, once the frame rate collapsed, every frame —
+ * so the O(4×visible×footprint) loop never got to skip while the game played). Returns null for a
+ * mapless sim (no placement rule → no wash).
  */
 function makeOverlayFrameSource(
   sim: Simulation,
@@ -85,8 +88,6 @@ function makeOverlayFrameSource(
   let key = '';
   let frame: PlacementOverlayFrame | null = null;
   return (buildingType, camera, screenW, screenH) => {
-    const probe = sim.placementProbe(buildingType);
-    if (probe === null) return null;
     const cells = visibleTileRange(
       cameraViewport(camera, screenW, screenH),
       mapSize.width,
@@ -95,8 +96,12 @@ function makeOverlayFrameSource(
     );
     // The node band covering the visible cells.
     const range = nodeBandOfCells(cells);
-    const nextKey = `${buildingType}:${sim.tick}:${range.minCol},${range.maxCol},${range.minRow},${range.maxRow}`;
+    const nextKey = `${buildingType}:${sim.placementBlockerVersion()}:${range.minCol},${range.maxCol},${range.minRow},${range.maxRow}`;
+    // Nothing that moves the blocked set changed (same type, same blockers, same camera band): reuse
+    // last frame's result and skip both the probe build and the whole-band re-probe.
     if (nextKey === key && frame !== null) return frame;
+    const probe = sim.placementProbe(buildingType);
+    if (probe === null) return null;
     const blocked: { col: number; row: number }[] = [];
     for (let row = range.minRow; row <= range.maxRow; row++) {
       for (let col = range.minCol; col <= range.maxCol; col++) {

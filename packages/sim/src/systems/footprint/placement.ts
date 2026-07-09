@@ -327,47 +327,58 @@ export interface PlacementProbe {
 }
 
 /**
- * Per-world memo of the placement obstacle sets, keyed by the tick they were gathered at. Sim state
- * mutates only at a tick boundary (the command seam), so within one tick the sets are constant — the
- * overlay probes them every RAF frame (frames outrun ticks; a paused/hovering build never ticks), and
- * without this each frame would re-scan every Resource + Building on the map (an O(entities) whole-map
- * pass per frame — the perf/architecture review's finding). A pure read-path cache: it feeds only the
- * app overlay, never a sim decision, so it is not hashed and needs no `verifyCaches` registration.
+ * Stride the Building store generation is shifted by before the Resource generation is folded in, so
+ * one number carries both (`≈67M` head-room per axis, exact in a double until either axis passes it).
+ * A fold collision would only make the read-path memo below reuse a stale wash for one frame — never
+ * a placement decision (the command gate always re-scans) — so an astronomically rare overflow is
+ * cosmetic and self-correcting, the same tolerance {@link signatureOf}'s render-side hash accepts.
+ */
+const BLOCKER_VERSION_STRIDE = 2 ** 26;
+
+/**
+ * A per-world version of the placement-blocker INPUTS: it changes only when a Building or Resource is
+ * added or removed. Buildings and resources never move once placed, and `familyBody`/`reserved` are
+ * the union across a type's whole level chain (schema.ts) — so a level-up (an in-place `buildingType`
+ * swap) leaves the set unchanged. That makes the two component generations an EXACT signal for the
+ * obstacle sets: the overlay and {@link memoizedBlockers} both reuse their last result until this
+ * value moves, instead of re-deriving every tick. Read-only + deterministic (component generations
+ * are a pure function of the mutation history); never hashed, never a sim decision.
+ */
+export function placementBlockerVersion(world: World): number {
+  return world.componentGeneration(Building) * BLOCKER_VERSION_STRIDE + world.componentGeneration(Resource);
+}
+
+/**
+ * Per-world memo of the placement obstacle sets, keyed by the {@link placementBlockerVersion} they were
+ * gathered at. The overlay probes them every RAF frame (frames outrun ticks; a paused/hovering build
+ * never ticks) — without this each frame would re-scan every Resource + Building on the map (an
+ * O(entities) whole-map pass per frame — the perf/architecture review's finding). Keying on the
+ * blocker version (not the tick) means a running sim whose buildings/resources are unchanged reuses the
+ * sets across ticks too, and a DIRECT `world.add`/`remove` (the fixture idiom) invalidates them the
+ * moment it bumps a generation. A pure read-path cache: it feeds only the app overlay, never a sim
+ * decision, so it is not hashed and needs no `verifyCaches` registration.
  */
 interface BlockerMemo {
-  tick: number;
+  version: number;
   content: ContentSet;
   terrain: TerrainGraph;
   blockers: PlacementBlockers;
 }
 const blockerMemo = new WeakMap<World, BlockerMemo>();
 
-/**
- * KNOWN FRAGILITY (named, currently safe by call order): the "constant within one tick" premise can
- * be violated by DIRECT `world.add`/`remove` between steps — the fixture idiom (a harness stamping
- * Resources without ticking). Today every such mutation happens either before the first probe of its
- * tick or after the last one, and the COMMAND gate never reads this memo (`canPlaceBuilding` always
- * collects fresh), so a stale set can only mis-tint the overlay for a frame. If a same-tick
- * probe→mutate→probe sequence ever appears, key this on the Building/Resource store generations
- * instead of the tick.
- */
-function memoizedBlockers(
-  world: World,
-  content: ContentSet,
-  terrain: TerrainGraph,
-  tick: number,
-): PlacementBlockers {
+function memoizedBlockers(world: World, content: ContentSet, terrain: TerrainGraph): PlacementBlockers {
+  const version = placementBlockerVersion(world);
   const cached = blockerMemo.get(world);
   if (
     cached !== undefined &&
-    cached.tick === tick &&
+    cached.version === version &&
     cached.content === content &&
     cached.terrain === terrain
   ) {
     return cached.blockers;
   }
   const blockers = collectPlacementBlockers(world, content, terrain);
-  blockerMemo.set(world, { tick, content, terrain, blockers });
+  blockerMemo.set(world, { version, content, terrain, blockers });
   return blockers;
 }
 
@@ -375,22 +386,19 @@ function memoizedBlockers(
  * Build a {@link PlacementProbe} for `buildingType` — resolve its footprint and snapshot the world's
  * obstacle sets, so the app's build-mode overlay can probe every visible tile against the exact same
  * rule the `placeBuilding` command gates on ({@link canPlaceBuilding}), without rescanning the world
- * per cell. Passing `tick` (the current sim tick) memoizes the obstacle sets per tick, so the once-per-
- * frame probe build doesn't re-scan every entity while the world is unchanged; omit it (tests) to
- * always rebuild. A footprint-less type always reports placeable (its command-time behavior).
+ * per cell. The obstacle sets are memoized per {@link placementBlockerVersion}, so the once-per-frame
+ * probe build re-scans every entity only when a building/resource actually appears or disappears —
+ * not every tick, and not every frame while the world is unchanged. A footprint-less type always
+ * reports placeable (its command-time behavior).
  */
 export function placementProbe(
   world: World,
   content: ContentSet,
   terrain: TerrainGraph,
   buildingType: number,
-  tick?: number,
 ): PlacementProbe {
   const footprint = buildingFootprintOf(content, buildingType);
   if (footprint === undefined) return { canPlace: () => true };
-  const blockers =
-    tick === undefined
-      ? collectPlacementBlockers(world, content, terrain)
-      : memoizedBlockers(world, content, terrain, tick);
+  const blockers = memoizedBlockers(world, content, terrain);
   return { canPlace: (x, y) => canPlaceAnchor(blockers, footprint, x, y) };
 }

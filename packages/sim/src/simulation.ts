@@ -8,7 +8,7 @@ import { type Entity, World } from './ecs/world.js';
 import { type Invariant as _Invariant, checkInvariants as _checkInvariants } from './harness/invariants.js';
 import { type WorldSnapshot, takeSnapshot } from './inspect/snapshot.js';
 import { type TerrainGraph, type TerrainMap, buildTerrainGraph } from './nav/terrain.js';
-import { type PlacementProbe, placementProbe } from './systems/footprint/index.js';
+import { type PlacementProbe, placementBlockerVersion, placementProbe } from './systems/footprint/index.js';
 import { SYSTEM_ORDER, type SystemContext } from './systems/index.js';
 
 export interface SimOptions {
@@ -95,17 +95,28 @@ export class Simulation {
   }
 
   /**
-   * A buildability test for one building type at the current tick boundary — the read seam the app's
-   * build-mode overlay probes per visible tile to grey out where a click would be rejected. Reads the
-   * same rule the `placeBuilding` command gates on ({@link canPlaceBuilding}). The world's obstacle
-   * sets are memoized per tick (passed through here), so the once-per-frame probe build re-scans the
-   * world only when a tick has advanced, and probing a viewport is then O(visible tiles). Read-only,
-   * like {@link snapshot}; never mutates and so is determinism-irrelevant. Returns null for a mapless
-   * sim (no terrain graph → no placement rule), where the caller shows no overlay.
+   * A buildability test for one building type — the read seam the app's build-mode overlay probes per
+   * visible tile to grey out where a click would be rejected. Reads the same rule the `placeBuilding`
+   * command gates on ({@link canPlaceBuilding}). The world's obstacle sets are memoized per
+   * {@link placementBlockerVersion}, so the once-per-frame probe build re-scans the world only when a
+   * building/resource actually appears or disappears (not every tick), and probing a viewport is then
+   * O(visible tiles). Read-only, like {@link snapshot}; never mutates and so is determinism-irrelevant.
+   * Returns null for a mapless sim (no terrain graph → no placement rule), where the caller shows no
+   * overlay.
    */
   placementProbe(buildingType: number): PlacementProbe | null {
     if (this.terrain === undefined) return null;
-    return placementProbe(this.world, this.content, this.terrain, buildingType, this.currentTick);
+    return placementProbe(this.world, this.content, this.terrain, buildingType);
+  }
+
+  /**
+   * The version of the placement-blocker inputs — bumps only when a building or resource is added or
+   * removed (see {@link placementBlockerVersion}). The build-mode overlay keys its memoized band probe
+   * on this instead of the tick, so a still camera over a running sim reuses last frame's blocked set
+   * instead of re-probing the whole visible node band every RAF.
+   */
+  placementBlockerVersion(): number {
+    return placementBlockerVersion(this.world);
   }
 
   /** Run N ticks. */
