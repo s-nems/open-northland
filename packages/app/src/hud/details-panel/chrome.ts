@@ -9,7 +9,7 @@ import {
   TilingSprite,
 } from 'pixi.js';
 import type { FontColorName } from '../../content/font-gfx.js';
-import { makeGoodSprite } from '../../content/goods-gfx.js';
+import { GENERIC_GOOD_ICON, makeGoodSprite } from '../../content/goods-gfx.js';
 import { makeGuiSprite } from '../../content/gui-art.js';
 import { GUI_FRAME } from '../../content/gui-atlas-map.js';
 import { type GuiPaletteName, guiPaletteRow } from '../../content/gui-gfx.js';
@@ -228,8 +228,9 @@ export function createChrome(
 
   const goodIcon = (goodId: string, r: Rect): void => {
     if (assets.goods === null) return;
-    const icon = assets.goods.icon(goodId);
-    if (icon === undefined) return;
+    // A good with no `ls_goods` art (potions/amulets/fruit) falls back to the neutral generic icon, so the
+    // Magazyn never shows a blank slot — the same fallback the in-world dropped pile uses (goods-gfx).
+    const icon = assets.goods.icon(goodId) ?? GENERIC_GOOD_ICON;
     const made = makeGoodSprite(assets.goods, icon);
     if (made === null) return;
     made.sprite.flipY = flipY;

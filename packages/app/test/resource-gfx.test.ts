@@ -162,6 +162,33 @@ describe('resolveGatheringRefs — the good→landscape→gfx join, matched by i
   });
 });
 
+describe('resolveGatheringRefs — the goods-manifest pile/trunk binding (every good draws its own heap)', () => {
+  const ICONS = new Map([['bread', { frame: 85, palette: 'goods_bread' }]]);
+
+  it('binds a non-gathered good to its ls_goods pile AND trunk from the manifest icon', () => {
+    const refs = resolveGatheringRefs([{ typeId: 20, id: 'bread' }], IR, ICONS);
+    expect(refs.pilesByGood[20]).toEqual({ stem: 'ls_goods.goods_bread', fillBobs: [85] });
+    expect(refs.trunksByGood[20]).toEqual({ stem: 'ls_goods.goods_bread', bob: 85 });
+  });
+
+  it('falls back to the neutral generic heap (goods01, bob 0) for a good with no manifest icon', () => {
+    const refs = resolveGatheringRefs([{ typeId: 21, id: 'potion_heal_big' }], IR, ICONS);
+    expect(refs.pilesByGood[21]).toEqual({ stem: 'ls_goods.goods01', fillBobs: [0] });
+    expect(refs.trunksByGood[21]).toEqual({ stem: 'ls_goods.goods01', bob: 0 });
+  });
+
+  it("does NOT override a gathered good's richer pipeline pile with the single manifest frame", () => {
+    const refs = resolveGatheringRefs(GOODS, IR, new Map([['wood', { frame: 99, palette: 'goodsX' }]]));
+    expect(refs.pilesByGood[1]).toEqual({ stem: 'ls_goods.goods_wood', fillBobs: [0, 1, 2, 3, 4] });
+  });
+
+  it('adds nothing when no manifest is provided (back-compat with the pipeline-only path)', () => {
+    const refs = resolveGatheringRefs([{ typeId: 20, id: 'bread' }], IR);
+    expect(refs.pilesByGood[20]).toBeUndefined();
+    expect(refs.trunksByGood[20]).toBeUndefined();
+  });
+});
+
 describe('gatheringAtlasStems — the families to load', () => {
   it('lists every non-default node stem, pile stem, and the flag stem (default excluded)', () => {
     const stems = gatheringAtlasStems(resolveGatheringRefs(GOODS, IR));
