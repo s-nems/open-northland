@@ -8,11 +8,13 @@ import { encodeCursor } from '../src/decoders/cursor.js';
 import { encodePcx } from '../src/decoders/pcx.js';
 import { decodePng } from '../src/decoders/png.js';
 import {
+  BODY_SHADOW_MIN_LUMA,
   convertCursors,
   convertGuiAtlases,
   convertGuiPaletteLut,
   convertGuiStage,
   convertGuiStrings,
+  liftPaletteShadows,
 } from '../src/stages/gui.js';
 
 /**
@@ -300,5 +302,38 @@ describe('gui stage', () => {
     expect(atlases.map((a) => a.stem)).toEqual(['ls_gui_window']); // the good one still converts
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped ls_gui_bubbles/));
     warn.mockRestore();
+  });
+});
+
+/**
+ * `liftPaletteShadows` arithmetic invariant (the window-body "cracked black" fix). This pins the pure
+ * math — every entry ends at or above the near-black floor, entries already above the floor are untouched,
+ * and hue is preserved on a mid entry — so the sampled-percentile intent can't silently regress; the actual
+ * fidelity (does the wood match the original) stays a human visual call per plan step 3.
+ */
+describe('liftPaletteShadows', () => {
+  const lumaOf = (p: Uint8Array, i: number): number => (p[i * 3] + p[i * 3 + 1] + p[i * 3 + 2]) / 3;
+
+  it('lifts pure black to the near-black floor and leaves bright entries untouched', () => {
+    const p = new Uint8Array(768); // entry 0 = black; entry 1 = a bright entry above the floor
+    p[3] = 200;
+    p[4] = 180;
+    p[5] = 160;
+    const lifted = liftPaletteShadows(p);
+    expect(lumaOf(lifted, 0)).toBeCloseTo(BODY_SHADOW_MIN_LUMA, 0);
+    expect([lifted[3], lifted[4], lifted[5]]).toEqual([200, 180, 160]); // above the floor: unchanged
+  });
+
+  it('lifts every near-black entry to at least the floor while keeping its own hue', () => {
+    const p = new Uint8Array(768);
+    // A dark brown entry (luma 8) below the floor but above the hue-noise threshold.
+    p[0] = 12;
+    p[1] = 8;
+    p[2] = 4;
+    const lifted = liftPaletteShadows(p);
+    expect(lumaOf(lifted, 0)).toBeGreaterThanOrEqual(BODY_SHADOW_MIN_LUMA - 0.5);
+    // Hue preserved: R > G > B ordering of the source is kept.
+    expect(lifted[0]).toBeGreaterThan(lifted[1] as number);
+    expect(lifted[1]).toBeGreaterThan(lifted[2] as number);
   });
 });
