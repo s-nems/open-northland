@@ -84,8 +84,11 @@ export function harvestFromNode(
  * both take, so the pickup/porter/delivery machinery (and `reapEmptyGroundDrop`) handle either unchanged —
  * defining it once keeps the two drop sites ({@link fellNode}, {@link dropMinedOre}) from drifting apart.
  * Returns the new entity so a caller can announce it. Pure over entity state; no RNG/wall-clock.
+ *
+ * Also the assembly the `dropGood` command routes through (via `command.ts`), so a harvest-dropped pile and
+ * a player-dropped pile are byte-identical entities.
  */
-function dropGroundPile(world: World, x: Fixed, y: Fixed, goodType: number, amount: number): Entity {
+export function dropGroundPile(world: World, x: Fixed, y: Fixed, goodType: number, amount: number): Entity {
   const pile = world.create();
   world.add(pile, Position, { x, y });
   world.add(pile, Stockpile, { amounts: new Map([[goodType, amount]]) });

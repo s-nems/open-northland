@@ -163,7 +163,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  const roll = rng.int(11);
+  const roll = rng.int(12);
   switch (roll) {
     case 0:
       return {
@@ -254,6 +254,17 @@ function nextCommand(rng: Rng): Command {
         ...(life === 1 ? { deposit: { levels: rng.int(4) + 1 } } : {}),
       };
     }
+    case 10:
+      // A loose good pile dropped at a random tile: good 1 (wood — in the catalog, so the CREATE path runs:
+      // the bare Stockpile+GroundDrop the pickup/porter machinery then hauls) and an unknown good / a
+      // zero amount (the skip path, still logged). Exercises `dropGood` under the fuzzed stream.
+      return {
+        kind: 'dropGood',
+        good: pick(rng, [RESOURCE_GOOD, INVALID_TYPE]),
+        x,
+        y,
+        amount: rng.int(4), // 0..3 — 0 hits the non-positive-amount skip
+      };
     default:
       // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.
       return {

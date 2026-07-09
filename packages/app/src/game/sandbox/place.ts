@@ -144,6 +144,17 @@ export function resourceCommand(good: number, x: number, y: number): Command | n
   return { kind: 'placeResource', ...resourceSpecFor(g, x, y) };
 }
 
+/**
+ * Drop a loose good pile on the ground via the `dropGood` command (the runtime mutation seam, so a
+ * scene-authored drop and a player-tool drop are the same replay-faithful path). Scenes author in whole
+ * TILES; the command speaks half-cell nodes. The pile is the felled-trunk shape (Stockpile + GroundDrop),
+ * so with no carriers on the map it simply sits where it lands.
+ */
+export function dropSandboxGood(sim: Simulation, good: number, x: number, y: number, amount: number): void {
+  const node = cellAnchorNode(x, y);
+  sim.enqueue({ kind: 'dropGood', good, x: node.hx, y: node.hy, amount });
+}
+
 /** A drop-off flag: an empty stockpile at the given tile. */
 export function placeFlag(sim: Simulation, x: number, y: number): void {
   const e = sim.world.create();

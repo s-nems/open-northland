@@ -156,6 +156,22 @@ export type Command =
        *  `initial` = `remaining`). Mutually exclusive with `felling`. */
       readonly deposit?: { readonly levels: number };
     }
+  | {
+      /**
+       * Drop a loose good pile on the ground at (x,y) — the "put this good here" order. It creates the
+       * SAME on-the-ground shape a felled trunk / chipped ore takes (a bare {@link Stockpile} + Position
+       * + {@link GroundDrop} of `amount` × `good`), so the existing pickup / porter / delivery machinery
+       * hauls it off unchanged. Distinct from `placeResource`, which plants a standing harvestable NODE;
+       * this drops the finished good itself. Skipped (id-neutral, still logged for faithful replay) for a
+       * `good` absent from the content catalog or an `amount <= 0`. Coordinates are half-cell NODE coords
+       * like every command; the caller (a HUD tool) gates them to sensible ground.
+       */
+      readonly kind: 'dropGood';
+      readonly good: number;
+      readonly x: number;
+      readonly y: number;
+      readonly amount: number;
+    }
   | { readonly kind: 'setProduction'; readonly building: Entity; readonly goodType: number }
   | { readonly kind: 'demolish'; readonly building: Entity }
   | {

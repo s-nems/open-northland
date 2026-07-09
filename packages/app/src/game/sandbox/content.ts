@@ -11,6 +11,7 @@ import {
 import { HOME_KIND, VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import { approximateFootprint } from '../../catalog/footprints.js';
+import { EXTENDED_GOODS, STORABLE_EXTENDED_GOODS } from '../../catalog/goods.js';
 import {
   CLAY_DEPOSIT_UNITS,
   GOLD_DEPOSIT_UNITS,
@@ -131,15 +132,33 @@ const HOME_UPGRADE_PIN: readonly { goodType: number; amount: number }[] = [
 const RESOURCE_LANDSCAPE_BASE = 1000;
 const RESOURCE_GFX_BASE = 2000;
 
-const STORE_STOCK = [
-  { goodType: GOOD_WOOD, capacity: 1_000_000, initial: 0 },
-  { goodType: GOOD_PLANK, capacity: 1_000_000, initial: 0 },
-  { goodType: GOOD_STONE, capacity: 1_000_000, initial: 0 },
-  { goodType: GOOD_MUD, capacity: 1_000_000, initial: 0 },
-  { goodType: GOOD_IRON, capacity: 1_000_000, initial: 0 },
-  { goodType: GOOD_GOLD, capacity: 1_000_000, initial: 0 },
-  { goodType: GOOD_MUSHROOM, capacity: 1_000_000, initial: 0 },
-] as const;
+/** The per-good sandbox stock capacity — a huge balance pin (not extracted data) so a store never fills. */
+const STORE_CAPACITY = 1_000_000;
+
+/** A store slot: how much of one good a general-goods building may hold, and its starting amount. */
+interface StockSlot {
+  readonly goodType: number;
+  readonly capacity: number;
+  readonly initial: number;
+}
+
+/**
+ * The general-goods store stock — the core economy goods (the gathered set + plank + coin) followed by every
+ * storable extended ware from {@link STORABLE_EXTENDED_GOODS}, so the HQ and warehouses advertise a slot for
+ * the WHOLE catalog and the Magazyn panel lists each good (with its icon) across its category tab. The stock
+ * SET (which goods a store holds) and the flat capacity are a sandbox balance pin, not extracted data.
+ */
+const STORE_STOCK: readonly StockSlot[] = [
+  GOOD_WOOD,
+  GOOD_PLANK,
+  GOOD_COIN,
+  GOOD_STONE,
+  GOOD_MUD,
+  GOOD_IRON,
+  GOOD_GOLD,
+  GOOD_MUSHROOM,
+  ...STORABLE_EXTENDED_GOODS.map((g) => g.typeId),
+].map((goodType) => ({ goodType, capacity: STORE_CAPACITY, initial: 0 }));
 
 function resourceLandscapeType(good: number): number {
   return RESOURCE_LANDSCAPE_BASE + good;
@@ -340,6 +359,11 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
         atomics: { harvest: MUSHROOM_HARVEST_ATOMIC },
         gathering: { bioLandscape: true },
       },
+      // The rest of the original catalog — food, drink, building materials, tools, crafted wares, weapons,
+      // armor, potions, amulets, and the animal/vehicle/special tokens (see catalog/goods.ts). They carry no
+      // bespoke gathering/production yet; they exist so the whole catalog is globally available with a name,
+      // a stock slot (the storable ones) and its `ls_goods` icon, and can be dropped on the ground.
+      ...EXTENDED_GOODS.map((g) => ({ typeId: g.typeId, id: g.id, name: g.name, weight: 1 })),
     ],
     jobs: [...jobs.values()],
     buildings: [...buildings.values()].sort((a, b) => a.typeId - b.typeId),
