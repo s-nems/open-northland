@@ -1,7 +1,9 @@
 import type { ContentSet } from '@vinland/data';
 import { ONE, TICKS_PER_SECOND, type WorldSnapshot, systems } from '@vinland/sim';
 import { vikingBuildingByTypeId } from '../../catalog/buildings.js';
+import { professionDefForJob } from '../../catalog/professions.js';
 import { entityById, isBuilding, isSettler, num, ownerPlayerOf } from '../../game/snapshot.js';
+import { professionLabel } from '../../i18n/index.js';
 import { goodCategoryTab } from './stock-tabs.js';
 
 /**
@@ -26,25 +28,10 @@ function stanceLabel(mode: number | undefined): string {
   return STANCES.find((s) => s.mode === mode)?.label ?? '-';
 }
 
-/** A selectable profession the action ring offers: the job's typeId + a human label. */
-export interface Profession {
-  readonly jobType: number;
-  readonly label: string;
-}
-
-/**
- * The professions offered as one-click job changes, derived from content jobs. Shared by the info panel and
- * the action ring so the "which jobs are offered" rule lives in one place.
- */
-export function professionsFromContent(content: ContentSet): Profession[] {
-  return content.jobs.filter((j) => j.typeId !== 0).map((j) => ({ jobType: j.typeId, label: j.id }));
-}
-
 type BuildingDef = ContentSet['buildings'][number];
 type GoodDef = ContentSet['goods'][number];
 
 export interface UnitPanelModelContext {
-  readonly professions: readonly Profession[];
   readonly buildings: readonly BuildingDef[];
   readonly goods: readonly GoodDef[];
 }
@@ -152,11 +139,15 @@ function pctRatio(elapsed: number | undefined, duration: number | undefined): nu
   return Math.max(0, Math.min(100, Math.round((elapsed / duration) * 100)));
 }
 
-function jobLabelOf(professions: readonly Profession[], jobType: number | undefined): string {
-  return (
-    professions.find((p) => p.jobType === jobType)?.label ??
-    (jobType === undefined ? 'bezrobotny' : `zawod ${jobType}`)
-  );
+/**
+ * A settler's profession name for the panel — resolved through the shared profession catalog + i18n
+ * (`catalog/professions.ts` + `i18n/`), so a settler's label always matches the picker's. Any soldier-band
+ * job reads "Żołnierz"; idle/unknown falls back to the localized "Bezrobotny".
+ */
+function jobLabel(jobType: number | undefined): string {
+  const def = professionDefForJob(jobType);
+  if (def !== undefined) return professionLabel(def.key);
+  return professionLabel('idle');
 }
 
 function buildingDef(ctx: UnitPanelModelContext, typeId: number | undefined): BuildingDef | undefined {
@@ -231,7 +222,7 @@ function stockRows(ctx: UnitPanelModelContext, def: BuildingDef | undefined, sto
   return rows.map(({ index: _index, ...row }) => row);
 }
 
-function workersFor(ctx: UnitPanelModelContext, snapshot: WorldSnapshot, buildingId: number): WorkerRow[] {
+function workersFor(snapshot: WorldSnapshot, buildingId: number): WorkerRow[] {
   const rows: WorkerRow[] = [];
   for (const e of snapshot.entities) {
     if (!isSettler(e)) continue;
@@ -241,7 +232,7 @@ function workersFor(ctx: UnitPanelModelContext, snapshot: WorldSnapshot, buildin
     const atomic = e.components.CurrentAtomic as { targetEntity?: unknown } | undefined;
     rows.push({
       id: e.id,
-      label: jobLabelOf(ctx.professions, num(settler.jobType)),
+      label: jobLabel(num(settler.jobType)),
       active: num(atomic?.targetEntity) === buildingId,
     });
   }
@@ -322,7 +313,7 @@ export function buildUnitPanelModel(
       level: num(b.level) ?? 0,
       builtPct: pct(num(b.built)),
       stock: stockRows(ctx, def, ent.components.Stockpile),
-      workers: workersFor(ctx, snapshot, entityId),
+      workers: workersFor(snapshot, entityId),
       showDefense: catalog?.id === HEADQUARTERS_ID || category === 'tower',
       // Pinned approximation until a defence-mode component exists; the original state/toggle strings
       // live at `housewindow` 140–143 ("Rozpocznij/Zatrzymaj Tryb Obrony", "Obrona rozpoczęta/zakończona.").
@@ -341,7 +332,7 @@ export function buildUnitPanelModel(
     return {
       kind: 'settler',
       entityId,
-      title: jobLabelOf(ctx.professions, num(s.jobType)),
+      title: jobLabel(num(s.jobType)),
       owner: `#${ownerPlayerOf(ent) ?? '-'}`,
       tribe: `${num(s.tribe) ?? '-'}`,
       needs: NEEDS.map((n) => ({ key: n.key, label: n.label, pct: pct(num(s[n.key])) })),

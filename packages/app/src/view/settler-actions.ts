@@ -1,8 +1,10 @@
 import { type Camera, tileToScreen } from '@vinland/render';
 import { ONE, type WorldSnapshot } from '@vinland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
+import type { PickerEntry } from '../catalog/professions.js';
 import { type GuiSprite, loadGuiArt, makeGuiSprite } from '../content/gui-art.js';
 import { guiFrameIndex } from '../content/gui-atlas-map.js';
+import { loadUiFont } from '../content/ui-font.js';
 import { isSettler, positionOf } from '../game/snapshot.js';
 import {
   type ActionButton,
@@ -12,8 +14,8 @@ import {
   hitTestActionRing,
   layoutActionRing,
 } from '../hud/action-ring-layout.js';
-import type { Profession } from '../hud/details-panel/index.js';
 import { type BakedIcon, bakeRoundIcon, placeBakedIcon } from '../hud/icon-texture.js';
+import { uiLabel } from '../i18n/index.js';
 import { screenScale } from './camera.js';
 import { el } from './overlay.js';
 
@@ -27,9 +29,12 @@ import { el } from './overlay.js';
  * I/O, one-way flow).
  *
  * We draw the WHOLE default human menu (every arm of the original), but only the "change profession" button
- * (`open-jobs`) is wired on this slice: clicking it opens a scrollable profession-list WINDOW (a plain DOM
- * panel — the "simple form" the user asked for, graphics to be polished later); picking a row issues `setJob`
- * and returns to the menu. Every other button is an inert placeholder (drawn + tooltipped, does nothing) — the
+ * (`open-jobs`) is wired on this slice: clicking it opens the scrollable profession-picker WINDOW — a DOM
+ * panel styled to EVOKE the original's parchment/rope selection windows (warm-wood fill, double rope-tan
+ * frame, engraved headline + close box, the shared serif face), kept DOM so the grouped profession set
+ * scrolls with no Pixi masking; picking a row issues `setJob` and returns to the menu. The offered
+ * professions + their labels come from the shared `catalog/professions.ts` roster + `i18n/` (Polish now),
+ * so the picker and the details-panel label can't drift. Every other button is an inert placeholder — the
  * future "implement the action" pass wires them (and the warrior/scout menu variants). Three modes: `closed`
  * → `menu` (the default arms) → `jobs` (the list window over the hidden ring).
  *
@@ -64,43 +69,137 @@ const TOOLTIP_STYLE = [
   'display:none',
 ].join(';');
 
-// --- The "change profession" list window (a plain DOM panel — the "simple form" the user asked for) --------
-/** Full-screen click-catcher behind the window: a click anywhere off the window closes it (modal dismiss). */
-const JOB_BACKDROP_STYLE = ['position:fixed', 'inset:0', 'z-index:80', 'display:none'].join(';');
-/** The centred parchment window that holds the title + the scrollable profession list. */
+// --- The "Zmiana zawodu" profession picker: a DOM window styled to EVOKE the original's parchment/rope --
+// selection windows (the details panel is the true original-art panel; this is a deliberately lighter DOM
+// approximation — a warm wood fill, a double rope-tan frame, an engraved headline bar with a close box, and
+// the same serif UI face — kept a DOM panel so the long profession set scrolls with no Pixi masking work).
+// Palette sampled to match the HUD's warm-wood windows (cf. hud/chrome.ts's flat parchment fill/border).
+const WOOD_DARK = '#211812';
+const WOOD = '#2c2015';
+const WOOD_LIGHT = '#3a2c1b';
+const ROPE = '#8a6f3f';
+const ROPE_DARK = '#4a3a22';
+const TEXT = '#e8dcc8';
+const TEXT_DIM = '#b8a684';
+const ROW_HILITE = '#5a4a30';
+/** The bundled UI serif family (loaded at mount); this stack is the fallback until it resolves. */
+const SERIF_FALLBACK = "'Times New Roman', Georgia, serif";
+
+/** Full-screen click-catcher + subtle dim behind the window: a click off the window closes it (modal). */
+const JOB_BACKDROP_STYLE = [
+  'position:fixed',
+  'inset:0',
+  'background:rgba(0,0,0,0.35)',
+  'z-index:80',
+  'display:none',
+].join(';');
+/** The centred wood window: title bar + scrollable profession list, framed by a double rope-tan border. */
 const JOB_WINDOW_STYLE = [
   'position:fixed',
   'top:50%',
   'left:50%',
   'transform:translate(-50%,-50%)',
-  'min-width:200px',
+  'min-width:210px',
   'max-width:280px',
   'box-sizing:border-box',
-  'padding:10px 12px',
-  'background:rgba(20,16,12,0.97)',
-  'color:#e8dcc8',
-  'font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace',
-  'border:1px solid #6b5840',
-  'border-radius:8px',
-  'box-shadow:0 8px 28px rgba(0,0,0,0.5)',
+  `background:linear-gradient(${WOOD_LIGHT},${WOOD} 55%,${WOOD_DARK})`,
+  `color:${TEXT}`,
+  // Double frame: a raised rope-tan ridge outside, a dark bevel line inside (the rope-and-knot look, flat).
+  `border:2px solid ${ROPE}`,
+  `box-shadow:inset 0 0 0 1px ${ROPE_DARK},inset 0 0 22px rgba(0,0,0,0.55),0 10px 30px rgba(0,0,0,0.6)`,
+  'border-radius:4px',
   'z-index:81',
   'display:none',
+  'overflow:hidden',
 ].join(';');
-const JOB_TITLE_STYLE = 'font-weight:700;font-size:14px;margin-bottom:8px';
+/** The engraved headline bar (the original's `bg_headline`): centred title + a close box on the right. */
+const JOB_HEADER_STYLE = [
+  'display:flex',
+  'align-items:center',
+  'justify-content:center',
+  'position:relative',
+  'padding:7px 30px',
+  `background:linear-gradient(${WOOD_DARK},${WOOD})`,
+  `border-bottom:1px solid ${ROPE_DARK}`,
+  'box-shadow:inset 0 -1px 0 rgba(0,0,0,0.4)',
+].join(';');
+const JOB_TITLE_STYLE = [
+  'font-weight:700',
+  'font-size:15px',
+  'letter-spacing:0.06em',
+  `color:${TEXT}`,
+  'text-shadow:0 1px 2px rgba(0,0,0,0.7)',
+].join(';');
+/** The top-right close box (an X), the original window-close affordance. */
+const JOB_CLOSE_STYLE = [
+  'position:absolute',
+  'top:50%',
+  'right:8px',
+  'transform:translateY(-50%)',
+  'width:18px',
+  'height:18px',
+  'line-height:16px',
+  'text-align:center',
+  'cursor:pointer',
+  'font-size:14px',
+  `color:${TEXT_DIM}`,
+  `background:${WOOD_DARK}`,
+  `border:1px solid ${ROPE_DARK}`,
+  'border-radius:3px',
+].join(';');
 /** The scrollable list: caps its height so a long profession set scrolls instead of overflowing the screen. */
-const JOB_LIST_STYLE = 'display:flex;flex-direction:column;gap:4px;max-height:44vh;overflow-y:auto';
+const JOB_LIST_STYLE = [
+  'display:flex',
+  'flex-direction:column',
+  'gap:3px',
+  'padding:8px',
+  'max-height:52vh',
+  'overflow-y:auto',
+].join(';');
+/** A category separator row (the picker's group headers) — small, dim, letter-spaced, with a hairline rule. */
+const JOB_GROUP_STYLE = [
+  'margin:6px 2px 1px',
+  'padding-bottom:3px',
+  'font-size:10px',
+  'font-weight:700',
+  'letter-spacing:0.14em',
+  'text-transform:uppercase',
+  `color:${TEXT_DIM}`,
+  `border-bottom:1px solid ${ROPE_DARK}`,
+].join(';');
 const JOB_ROW_STYLE = [
   'cursor:pointer',
   'text-align:left',
-  'background:#3a2f22',
-  'color:#e8dcc8',
-  'border:1px solid #6b5840',
-  'border-radius:5px',
-  'padding:6px 10px',
-  'font:13px ui-monospace,monospace',
+  `background:linear-gradient(${WOOD_LIGHT},${WOOD})`,
+  `color:${TEXT}`,
+  `border:1px solid ${ROPE_DARK}`,
+  'border-radius:3px',
+  'padding:6px 11px',
+  'font-size:13.5px',
+  'box-shadow:inset 0 1px 0 rgba(255,240,210,0.06)',
 ].join(';');
-const JOB_ROW_HOVER = '#5a4a30';
-const JOB_ROW_BG = '#3a2f22';
+const JOB_ROW_HOVER = `linear-gradient(${ROW_HILITE},${WOOD_LIGHT})`;
+const JOB_ROW_BG = `linear-gradient(${WOOD_LIGHT},${WOOD})`;
+/** One-shot stylesheet id for the picker's scrollbar skin (rules that inline cssText can't express). */
+const JOB_STYLE_ID = 'vinland-job-picker-style';
+
+/**
+ * Inject the profession list's scrollbar skin ONCE (a wood track + rope-tan thumb, matching the window),
+ * guarded by {@link JOB_STYLE_ID} so remounts don't stack duplicate sheets. Scrollbar pseudo-elements can't
+ * be set through inline `style`, so this is the one rule set that needs a real stylesheet.
+ */
+function installJobPickerScrollbarStyle(): void {
+  if (document.getElementById(JOB_STYLE_ID) !== null) return;
+  const style = document.createElement('style');
+  style.id = JOB_STYLE_ID;
+  style.textContent = `
+.vinland-job-list{scrollbar-width:thin;scrollbar-color:${ROPE_DARK} ${WOOD_DARK};}
+.vinland-job-list::-webkit-scrollbar{width:10px;}
+.vinland-job-list::-webkit-scrollbar-track{background:${WOOD_DARK};}
+.vinland-job-list::-webkit-scrollbar-thumb{background:${ROPE_DARK};border-radius:5px;border:2px solid ${WOOD_DARK};}
+.vinland-job-list::-webkit-scrollbar-thumb:hover{background:${ROPE};}`;
+  document.head.append(style);
+}
 
 /** Which face the menu is showing: nothing, the default arms, or the profession picker. */
 type MenuMode = 'closed' | 'menu' | 'jobs';
@@ -110,8 +209,8 @@ export interface SettlerActionsOptions {
   readonly canvas: HTMLCanvasElement;
   /** UI scale (from `?uiscale=`, shared with the tool panel); the menu geometry is multiplied by it. May be fractional. */
   readonly uiscale: number;
-  /** The professions the picker offers as one-click job changes (content jobs minus idle). */
-  readonly professions: readonly Profession[];
+  /** The grouped profession menu the picker offers (group headers + one-click profession rows). */
+  readonly professions: readonly PickerEntry[];
   /** Issue a `setJob` on every selected settler (the one-way command seam). */
   readonly onSetJob: (ids: readonly number[], jobType: number) => void;
 }
@@ -208,13 +307,32 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
   /** The settler ids a click's command applies to (the selected SETTLERS, filtered in `update`). */
   let actionTargets: number[] = [];
 
-  // --- The "Zmiana zawodu" (change-profession) list window: a DOM panel, built once from the professions ----
+  // --- The "Zmiana zawodu" profession picker window: a parchment DOM panel, built once from the menu ----
+  // The serif UI face (shared with the details panel) — falls back to a serif stack until/if it resolves.
+  const uiFont = await loadUiFont();
+  installJobPickerScrollbarStyle();
+
   const jobBackdrop = el('div', JOB_BACKDROP_STYLE);
   const jobWindow = el('div', JOB_WINDOW_STYLE);
-  jobWindow.append(el('div', JOB_TITLE_STYLE, 'Zmiana zawodu'));
+  jobWindow.style.fontFamily = `${uiFont.family}, ${SERIF_FALLBACK}`;
+
+  const jobHeader = el('div', JOB_HEADER_STYLE);
+  jobHeader.append(el('div', JOB_TITLE_STYLE, uiLabel('changeProfession')));
+  const jobClose = el('div', JOB_CLOSE_STYLE, '✕'); // ✕
+  jobClose.addEventListener('click', () => closeJobWindow());
+  jobHeader.append(jobClose);
+  jobWindow.append(jobHeader);
+
   const jobList = el('div', JOB_LIST_STYLE);
-  for (const p of opts.professions) {
-    const row = el('button', JOB_ROW_STYLE, p.label);
+  jobList.className = 'vinland-job-list';
+  // Render the grouped menu top to bottom: a dim separator per category, then its clickable profession rows.
+  for (const entry of opts.professions) {
+    if (entry.kind === 'header') {
+      jobList.append(el('div', JOB_GROUP_STYLE, entry.label));
+      continue;
+    }
+    const row = el('button', JOB_ROW_STYLE, entry.label);
+    row.style.fontFamily = `${uiFont.family}, ${SERIF_FALLBACK}`;
     row.addEventListener('mouseenter', () => {
       row.style.background = JOB_ROW_HOVER;
     });
@@ -223,7 +341,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     });
     row.addEventListener('click', () => {
       // Apply to whoever is selected right now (actionTargets is refreshed each frame in `update`).
-      if (actionTargets.length > 0) opts.onSetJob(actionTargets, p.jobType);
+      if (actionTargets.length > 0) opts.onSetJob(actionTargets, entry.jobType);
       closeJobWindow();
     });
     jobList.append(row);

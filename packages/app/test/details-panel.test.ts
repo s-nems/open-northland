@@ -12,7 +12,6 @@ import {
   type UnitPanelModel,
   type UnitPanelModelContext,
   buildUnitPanelModel,
-  professionsFromContent,
 } from '../src/hud/details-panel/index.js';
 import { defaultStockTab } from '../src/hud/details-panel/panel.js';
 import { createSceneSim } from '../src/scenes/index.js';
@@ -21,7 +20,6 @@ import { sandboxScene } from '../src/scenes/sandbox.js';
 function ctxFromScene(): UnitPanelModelContext {
   const sim = createSceneSim(sandboxScene);
   return {
-    professions: professionsFromContent(sim.content),
     buildings: sim.content.buildings,
     goods: sim.content.goods,
   };
@@ -43,7 +41,6 @@ describe('selection details panel model', () => {
     if (hq === undefined) throw new Error('sandbox scene did not place the headquarters');
 
     const model = buildUnitPanelModel(snapshot, new Set([hq.id]), {
-      professions: professionsFromContent(sim.content),
       buildings: sim.content.buildings,
       goods: sim.content.goods,
     });
@@ -121,6 +118,9 @@ describe('selection details panel model', () => {
     expect(model.stock.some((r) => r.amount === 0)).toBe(true);
     // The held good sorts ahead of the empty ones.
     expect(model.stock[0]?.amount).toBe(3);
-    expect(model.workers).toEqual([expect.objectContaining({ id: 2, active: true, label: 'gatherer_wood' })]);
+    // The worker's profession label comes from the shared catalog + i18n (Polish), not the raw job id.
+    expect(model.workers).toEqual([
+      expect.objectContaining({ id: 2, active: true, label: 'Zbieracz drewna' }),
+    ]);
   });
 });
