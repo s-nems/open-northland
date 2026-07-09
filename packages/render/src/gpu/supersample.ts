@@ -11,9 +11,15 @@ import { type Container, RenderTexture, type Renderer, Sprite } from 'pixi.js';
  * The knowledge that lives HERE (not in the app callers): a WebGL render-texture is stored bottom-up, and a
  * {@link PalettedSprite} hand-rolls its own screen→clip projection assuming the on-screen Y convention (it
  * can't ride the scene-graph transform — see its class note), so rendering it into a texture lands it
- * upside-down. The returned sprite's Y is therefore FLIPPED (negative y-scale); the caller anchors it at the
- * box BOTTOM. The app forces a WebGL backend (`gpu/pixi-app.ts` `preference: 'webgl'`), so this inversion is
- * fixed; a WebGPU switch would revisit it once, here.
+ * upside-down. Two ways out, one per caller shape:
+ * - {@link bakeToFlippedSprite}: Y-flip the whole baked sprite (negative y-scale, caller BOTTOM-anchors).
+ *   Correct only when EVERY element is a PalettedSprite (the tool-panel strip).
+ * - {@link bakeToSprite}: the source already renders upright — Pixi-native content (Graphics, Sprites) plus
+ *   PalettedSprites with `flipY = true` — so the display is NOT flipped (caller TOP-anchors). Use this when
+ *   the source MIXES PalettedSprites with Pixi-native primitives (the details panel).
+ *
+ * The app forces a WebGL backend (`gpu/pixi-app.ts` `preference: 'webgl'`), so this inversion is fixed; a
+ * WebGPU switch would revisit it once, here.
  */
 /**
  * The integer oversample a supersampled bake needs. The display sprite spans `scale × resolution`
@@ -37,7 +43,8 @@ export function oversampleFor(scale: number, resolution: number, floor: number, 
 }
 
 export interface SupersampledTexture {
-  /** The baked, linear-downscaled, Y-flipped display sprite — the caller adds it to the scene + positions it. */
+  /** The baked, linear-downscaled display sprite — the caller adds it to the scene + positions it. Y-flipped
+   *  by {@link bakeToFlippedSprite} (bottom-anchor), upright by {@link bakeToSprite} (top-anchor). */
   readonly display: Sprite;
   /** Re-rasterize `source` into the texture (call after a mesh in it changes frame). */
   redraw(): void;
@@ -45,17 +52,19 @@ export interface SupersampledTexture {
 }
 
 /**
- * Rasterize `source` — a detached container of {@link PalettedSprite}s already placed at an integer
- * oversample into a `texW × texH` box — into an off-screen texture, and return it as ONE `Sprite`
- * linear-downscaled by `invScale` (= displayScale ÷ oversample) with its Y flipped (see the module note; the
- * caller bottom-anchors it). Owns the texture + `source` lifetime via {@link SupersampledTexture.dispose}.
+ * Rasterize `source` — a detached container already placed at an integer oversample into a `texW × texH`
+ * box — into an off-screen texture and return it as ONE `Sprite` LINEAR-downscaled by `invScale`
+ * (= displayScale ÷ oversample). `flipDisplay` negates the sprite's y-scale (see the module note): the
+ * all-PalettedSprite path bakes upside-down and flips here (bottom-anchor); the mixed / `flipY`-per-mesh
+ * path bakes upright and does not (top-anchor). Owns the texture + `source` lifetime via `dispose`.
  */
-export function bakeToFlippedSprite(
+function bake(
   renderer: Renderer,
   source: Container,
   texW: number,
   texH: number,
   invScale: number,
+  flipDisplay: boolean,
 ): SupersampledTexture {
   const texture = RenderTexture.create({ width: texW, height: texH, resolution: 1, antialias: false });
   texture.source.scaleMode = 'linear'; // linear so the fractional downscale to screen is smooth
@@ -65,7 +74,7 @@ export function bakeToFlippedSprite(
   redraw();
 
   const display = new Sprite(texture);
-  display.scale.set(invScale, -invScale);
+  display.scale.set(invScale, flipDisplay ? -invScale : invScale);
 
   return {
     display,
@@ -75,4 +84,28 @@ export function bakeToFlippedSprite(
       texture.destroy(true);
     },
   };
+}
+
+/** Bake an all-{@link PalettedSprite} source (renders upside-down into the texture); display Y-flipped,
+ *  caller BOTTOM-anchors. See the module note. */
+export function bakeToFlippedSprite(
+  renderer: Renderer,
+  source: Container,
+  texW: number,
+  texH: number,
+  invScale: number,
+): SupersampledTexture {
+  return bake(renderer, source, texW, texH, invScale, true);
+}
+
+/** Bake an upright source (Pixi-native content + `flipY` PalettedSprites); display NOT flipped, caller
+ *  TOP-anchors. Use when the source mixes PalettedSprites with Pixi-native primitives. See the module note. */
+export function bakeToSprite(
+  renderer: Renderer,
+  source: Container,
+  texW: number,
+  texH: number,
+  invScale: number,
+): SupersampledTexture {
+  return bake(renderer, source, texW, texH, invScale, false);
 }
