@@ -48,13 +48,15 @@ interface DuelPost {
   readonly red: readonly { x: number; y: number }[];
 }
 
-// Each group's blue/red posts sit within melee sight (8 tiles Manhattan) of their OWN opposite line,
-// and every cross-group hostile pair is spaced STRICTLY beyond the farther side's acquire radius at
-// spawn (melee sight 8; a bow's search = max(maxRange, 8) → 15 short / 23 long; the sim's ring search
-// is INCLUSIVE, so 8 apart still sees). Nearest-first targeting is the second guarantee: even as lines
-// close, each unit's own duel partner stays the nearest hostile until its duel resolves — after that,
-// survivors MAY roam to the next group (fine: more facings to judge). Axes vary on purpose — the point
-// of the scene is seeing the swing in many facings.
+// Distances below are authored in CELLS but the sim measures HALF-CELL NODES (a cell step ≈ 2 nodes):
+// each group's blue/red posts sit within acquire range of their OWN opposite line, and every
+// cross-group hostile pair is spaced STRICTLY beyond the farther side's acquire radius at spawn
+// (melee sight 16 nodes ≈ 8 cells; a bow's search = max(maxRange, 16) → 16 short / 23 long NODES,
+// since weapon ranges are node bands — half their old cell reach; the sim's ring search is
+// INCLUSIVE). Nearest-first targeting is the second guarantee: even as lines close, each unit's own
+// duel partner stays the nearest hostile until its duel resolves — after that, survivors MAY roam to
+// the next group (fine: more facings to judge). Axes vary on purpose — the point of the scene is
+// seeing the swing in many facings.
 const DUELS: readonly DuelPost[] = [
   // Short swords, 2v2, closing WEST→EAST (facings E/W in the clash).
   {
@@ -96,16 +98,17 @@ const DUELS: readonly DuelPost[] = [
       { x: 10, y: 19 },
     ],
   },
-  // Short bows, 1v1 at standing fire range (band 3–15), arrows flying on a shallow diagonal. x ≥ 32
-  // keeps the blue archer 16 Manhattan from the red broadsword line (strictly beyond its 15 search).
+  // Short bows, 1v1 at standing fire range (node band 3–15; the posts are 14 nodes apart), arrows
+  // flying on a shallow diagonal. x ≥ 32 keeps the blue archer 28+ nodes from the red broadsword
+  // line (strictly beyond every melee sight 16).
   {
     job: JOB_ARCHER,
     weapon: WEAPON_SHORT_BOW,
     blue: [{ x: 32, y: 6 }],
-    red: [{ x: 40, y: 10 }],
+    red: [{ x: 37, y: 8 }],
   },
-  // Long bows, 1v1 (band 4–23), arrows on a steeper diagonal in the far corner — 24+ Manhattan from
-  // the short-bow duel so neither long bow can acquire across groups (23 is inclusive).
+  // Long bows, 1v1 (node band 4–23; the posts are 21 nodes apart), arrows on a steeper diagonal in
+  // the far corner — 40+ nodes from the short-bow duel so neither bow can acquire across groups.
   {
     job: JOB_ARCHER_LONG,
     weapon: WEAPON_LONG_BOW,
