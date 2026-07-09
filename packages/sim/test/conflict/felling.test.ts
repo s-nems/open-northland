@@ -77,7 +77,7 @@ function ctxOf(sim: Simulation): SystemContext {
 }
 
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
 }
 
 /** A proper woodcutter settler at integer tile (x,y): needs at 0, empty experience. */

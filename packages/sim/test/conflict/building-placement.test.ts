@@ -10,7 +10,15 @@ import {
   Settler,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, type TerrainMap, findPath, fx } from '../../src/index.js';
+import {
+  Simulation,
+  type TerrainMap,
+  findPath,
+  fx,
+  halfCellMapFromCells,
+  nodeOfPosition,
+  positionOfNode,
+} from '../../src/index.js';
 import type { TerrainGraph } from '../../src/nav/terrain.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import {
@@ -31,6 +39,10 @@ import { testContent } from '../fixtures/content.js';
  *  - settlers interact with a footprinted house at its DOOR cell, not its anchor tile.
  * The footprint fixture mirrors the extracted `[GfxHouse]` shape (blocked ⊂ familyBody ⊂ reserved,
  * door outside the walls); synthetic footprint-less types keep the old behavior — also pinned here.
+ *
+ * ALL integer grid coordinates here (anchors, command payloads, footprint offsets) are HALF-CELL
+ * NODE coords on the 2W×2H lattice — the original's logic grid, which the extracted
+ * LogicWalkBlockArea/LogicBuildBlockArea offsets always addressed.
  */
 
 const GRASS = 0;
@@ -40,7 +52,7 @@ const WOODCUTTER = 1;
 const HQ = 1; // testContent headquarters — footprint-less
 const HUT = 10; // the footprinted fixture type added below
 
-// A 2-cell body at level 0 that grows to 3 cells at the family max, with a one-cell margin ring
+// A 2-node body at level 0 that grows to 3 nodes at the family max, with a one-node margin ring
 // around the max body (the reserved zone) and a door on the west side, outside the walls.
 const HUT_FOOTPRINT = {
   blocked: [
@@ -52,7 +64,7 @@ const HUT_FOOTPRINT = {
     { dx: 1, dy: 0 },
     { dx: 1, dy: 1 }, // the max level's growth — reserved from level 0
   ],
-  // familyBody + a 1-cell margin: rows y=-1..2, x=-1..2 (16 cells).
+  // familyBody + a 1-node margin: rows y=-1..2, x=-1..2 (16 nodes).
   reserved: [-1, 0, 1, 2].flatMap((dy) => [-1, 0, 1, 2].map((dx) => ({ dx, dy }))),
   door: { dx: -1, dy: 0 },
 };
@@ -79,8 +91,14 @@ function placementContent(): ContentSet {
   });
 }
 
-/** A flat all-grass map. */
+/** A flat all-grass map (cell-dims signature; the sim's graph is the upsampled 2W×2H lattice). */
 function grassMap(width: number, height: number): TerrainMap {
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
+}
+
+/** A W×H cell-resolution grass grid whose cells a test can overwrite before upsampling — each cell
+ *  stamps its 2×2 half-cell block, so one water/margin CELL blocks four NODES. */
+function grassCells(width: number, height: number): { width: number; height: number; typeIds: number[] } {
   return { width, height, typeIds: new Array(width * height).fill(GRASS) };
 }
 
@@ -140,13 +158,13 @@ describe('canPlaceBuilding — the free-placement collision rule', () => {
     const sim = mappedSim();
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
     sim.step();
-    // Anchor (3,5): the new hut's body cell (4,5) falls inside the first hut's reserved ring
+    // Anchor (3,5): the new hut's body node (4,5) falls inside the first hut's reserved ring
     // (x∈[4..7] × y∈[4..7]) — rejected even though the WALLS themselves wouldn't touch.
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 3, y: 5, tribe: VIKING });
     sim.step();
     expect(buildingsPlaced(sim)).toBe(1);
     // The zones may OVERLAP as long as both bodies stay out of them: anchor (9,5) puts the new
-    // body at x∈[9..10], clear of the first's zone (≤7), while the two margin rings share cells.
+    // body at x∈[9..10], clear of the first's zone (≤7), while the two margin rings share nodes.
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 9, y: 5, tribe: VIKING });
     sim.step();
     expect(buildingsPlaced(sim)).toBe(2);
@@ -156,19 +174,20 @@ describe('canPlaceBuilding — the free-placement collision rule', () => {
     const sim = mappedSim();
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
     sim.step();
-    // (6,6) is the level-max growth cell — blocked for OTHERS via the family zone even though the
+    // (6,6) is the level-max growth node — blocked for OTHERS via the family zone even though the
     // level-0 walls don't cover it: a placement whose body would take it is rejected.
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 5, 6)).toBe(false);
   });
 
   it('keeps the reserved zone clear of blocking terrain (minimum distance from water)', () => {
-    const map = grassMap(16, 16);
-    // A water cell at (8,5): the hut's reserved ring at anchor (7,5) covers x∈[6..9] — too close.
-    map.typeIds[5 * 16 + 8] = WATER;
-    const sim = new Simulation({ seed: 1, content: placementContent(), map });
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 7, 5)).toBe(false);
-    // One cell further west the ring (x∈[4..7]) misses the water — accepted.
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 5, 5)).toBe(true);
+    const cells = grassCells(16, 16);
+    // A water CELL at (8,5) — nodes (16..17, 10..11): the hut's reserved ring at anchor (15,9)
+    // covers x∈[14..17] × y∈[8..11] — too close.
+    cells.typeIds[5 * 16 + 8] = WATER;
+    const sim = new Simulation({ seed: 1, content: placementContent(), map: halfCellMapFromCells(cells) });
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 15, 9)).toBe(false);
+    // Two nodes (one full cell) further west the ring (x∈[12..15]) misses the water — accepted.
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 13, 9)).toBe(true);
     // And a zone hanging off the map edge is rejected, not clamped.
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 0, 5)).toBe(false);
   });
@@ -176,9 +195,9 @@ describe('canPlaceBuilding — the free-placement collision rule', () => {
   it('keeps the reserved zone clear of resource nodes (minimum distance from a tree)', () => {
     const sim = mappedSim();
     const tree = sim.world.create();
-    sim.world.add(tree, Position, { x: fx.fromInt(7), y: fx.fromInt(5) });
+    sim.world.add(tree, Position, positionOfNode(7, 5)); // footprint-less: occupies its anchor node
     sim.world.add(tree, Resource, { goodType: 1, remaining: 5, harvestAtomic: 24 });
-    // Anchor (6,5): reserved ring x∈[5..8] covers the tree at (7,5) — rejected.
+    // Anchor (6,5): reserved ring x∈[5..8] covers the tree at node (7,5) — rejected.
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 6, 5)).toBe(false);
     // Anchor (4,5): ring x∈[3..6] misses it — accepted.
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 4, 5)).toBe(true);
@@ -188,7 +207,7 @@ describe('canPlaceBuilding — the free-placement collision rule', () => {
     const sim = mappedSim();
     sim.enqueue({ kind: 'placeBuilding', buildingType: HQ, x: 6, y: 6, tribe: VIKING });
     sim.step();
-    // The HQ (no footprint) occupies its anchor (6,6); a hut at (5,5) would reserve that cell.
+    // The HQ (no footprint) occupies its anchor node (6,6); a hut at (5,5) would reserve that node.
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 5, 5)).toBe(false);
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 9, 9)).toBe(true);
   });
@@ -196,7 +215,7 @@ describe('canPlaceBuilding — the free-placement collision rule', () => {
   it('places a footprint-less type freely (synthetic content keeps the pre-footprint behavior)', () => {
     const sim = mappedSim();
     sim.enqueue({ kind: 'placeBuilding', buildingType: HQ, x: 5, y: 5, tribe: VIKING });
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HQ, x: 5, y: 5, tribe: VIKING }); // same tile!
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HQ, x: 5, y: 5, tribe: VIKING }); // same node!
     sim.step();
     expect(buildingsPlaced(sim)).toBe(2); // no collision model — both land, like before footprints
   });
@@ -206,21 +225,22 @@ describe('placementProbe — the build-overlay seam agrees with canPlaceBuilding
   // The overlay greys tiles the probe rejects, so it must match the command-time rule cell-for-cell —
   // both now share one precomputed-blockers check. Prove agreement over a whole grid with real obstacles.
   it('matches canPlaceBuilding at every anchor with a tree, water, and a building on the map', () => {
-    const map = grassMap(16, 16);
-    map.typeIds[5 * 16 + 8] = WATER; // blocking terrain
-    const sim = new Simulation({ seed: 1, content: placementContent(), map });
+    const cells = grassCells(16, 16);
+    cells.typeIds[5 * 16 + 8] = WATER; // blocking terrain — cell (8,5), nodes (16..17, 10..11)
+    const sim = new Simulation({ seed: 1, content: placementContent(), map: halfCellMapFromCells(cells) });
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 11, y: 11, tribe: VIKING });
     sim.step();
     const tree = sim.world.create();
-    sim.world.add(tree, Position, { x: fx.fromInt(3), y: fx.fromInt(3) });
+    sim.world.add(tree, Position, positionOfNode(3, 3));
     sim.world.add(tree, Resource, { goodType: 1, remaining: 5, harvestAtomic: 24 });
 
-    const probe = placementProbe(sim.world, sim.content, terrainOf(sim), HUT);
+    const terrain = terrainOf(sim);
+    const probe = placementProbe(sim.world, sim.content, terrain, HUT);
     let blocked = 0;
     let free = 0;
-    for (let y = 0; y < 16; y++) {
-      for (let x = 0; x < 16; x++) {
-        const expected = canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, x, y);
+    for (let y = 0; y < terrain.height; y++) {
+      for (let x = 0; x < terrain.width; x++) {
+        const expected = canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, x, y);
         expect(probe.canPlace(x, y)).toBe(expected);
         expected ? free++ : blocked++;
       }
@@ -257,31 +277,37 @@ describe('buildable terrain channel — walkable ground that rejects building', 
   }
 
   it('rejects a footprint whose reserved zone touches a walkable-but-unbuildable cell', () => {
-    const map = grassMap(16, 16);
-    // One margin cell inside the hut's reserved ring at anchor (5,5) (ring spans x∈[4..7], y∈[4..7]).
-    map.typeIds[5 * 16 + 7] = MARGIN;
-    const sim = new Simulation({ seed: 1, content: marginContent(), map });
+    const cells = grassCells(16, 16);
+    // One margin CELL at (7,5) — nodes (14..15, 10..11) — inside the hut's reserved ring at
+    // anchor (13,9) (ring spans x∈[12..15], y∈[8..11]).
+    cells.typeIds[5 * 16 + 7] = MARGIN;
+    const sim = new Simulation({ seed: 1, content: marginContent(), map: halfCellMapFromCells(cells) });
     const terrain = terrainOf(sim);
-    expect(terrain.isWalkable(terrain.cellAt(7, 5))).toBe(true); // nav still crosses it
-    expect(terrain.isBuildable(terrain.cellAt(7, 5))).toBe(false); // building may not
-    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 5, 5)).toBe(false);
+    expect(terrain.isWalkable(terrain.cellAt(14, 10))).toBe(true); // nav still crosses it
+    expect(terrain.isBuildable(terrain.cellAt(14, 10))).toBe(false); // building may not
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 13, 9)).toBe(false);
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 11, 11)).toBe(true); // clear ground
   });
 });
 
 describe('forced placement — authored map imports load as-is', () => {
   it('places a rejected footprint when force is set (the original loads scenario houses verbatim)', () => {
-    // Water under the reserved ring → the interactive rule rejects this anchor.
-    const map = grassMap(16, 16);
-    map.typeIds[5 * 16 + 5] = WATER;
-    const wetSim = new Simulation({ seed: 1, content: placementContent(), map });
-    expect(canPlaceBuilding(wetSim.world, ctxOf(wetSim), terrainOf(wetSim), HUT, 5, 5)).toBe(false);
+    // Water under the reserved ring → the interactive rule rejects this anchor: the water CELL at
+    // (5,5) covers nodes (10..11, 10..11), inside the ring of anchor (9,9) (x∈[8..11], y∈[8..11]).
+    const cells = grassCells(16, 16);
+    cells.typeIds[5 * 16 + 5] = WATER;
+    const wetSim = new Simulation({
+      seed: 1,
+      content: placementContent(),
+      map: halfCellMapFromCells(cells),
+    });
+    expect(canPlaceBuilding(wetSim.world, ctxOf(wetSim), terrainOf(wetSim), HUT, 9, 9)).toBe(false);
 
-    wetSim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
+    wetSim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 9, y: 9, tribe: VIKING });
     wetSim.step();
     expect(buildingsPlaced(wetSim)).toBe(0); // gated command: dropped
 
-    wetSim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING, force: true });
+    wetSim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 9, y: 9, tribe: VIKING, force: true });
     wetSim.step();
     expect(buildingsPlaced(wetSim)).toBe(1); // authored import: placed as-is
   });
@@ -290,8 +316,8 @@ describe('forced placement — authored map imports load as-is', () => {
 describe('building walk-block — houses have collision', () => {
   it('walk-blocks the body cells from the foundation tick and routes paths around them', () => {
     const sim = mappedSim(grassMap(8, 5));
-    // A hut whose body occupies (3,1)-(4,1): the straight west→east line along y=1 is blocked.
-    // (5 rows so the reserved ring y∈[0..3] fits the map — a ring off the edge rejects placement.)
+    // A hut whose body occupies nodes (3,1)-(4,1): the straight west→east walk along node row 1 is
+    // blocked. (The 8×5-cell map upsamples to 16×10 nodes, so the reserved ring y∈[0..3] fits.)
     sim.enqueue({
       kind: 'placeBuilding',
       buildingType: HUT,
@@ -304,17 +330,22 @@ describe('building walk-block — houses have collision', () => {
     const blocked = buildingBlockedCells(sim.world, ctxOf(sim), terrainOf(sim));
     expect(blocked.has(terrainOf(sim).cellAt(3, 1))).toBe(true); // a grey foundation already occupies
     expect(blocked.has(terrainOf(sim).cellAt(4, 1))).toBe(true);
-    expect(blocked.has(terrainOf(sim).cellAt(2, 1))).toBe(false); // the door cell stays walkable
+    expect(blocked.has(terrainOf(sim).cellAt(2, 1))).toBe(false); // the door node stays walkable
 
     const walker = sim.world.create();
-    sim.world.add(walker, Position, { x: fx.fromInt(0), y: fx.fromInt(1) });
+    sim.world.add(walker, Position, positionOfNode(0, 1));
     sim.world.add(walker, PathRequest, {
       start: terrainOf(sim).cellAt(0, 1),
       goal: terrainOf(sim).cellAt(7, 1),
       failed: false,
     });
     sim.step();
-    const path = sim.world.get(walker, PathFollow).waypoints.map((w) => `${fx.toInt(w.x)},${fx.toInt(w.y)}`);
+    // Waypoints back to node coords. A diagonal leg's mid-edge SEAM waypoint sits on an integer row
+    // (even hy), so it can never alias the odd-row wall nodes checked below.
+    const path = sim.world.get(walker, PathFollow).waypoints.map((w) => {
+      const n = nodeOfPosition(w.x, w.y);
+      return `${n.hx},${n.hy}`;
+    });
     expect(path).not.toContain('3,1');
     expect(path).not.toContain('4,1');
     expect(path[path.length - 1]).toBe('7,1'); // still reaches the far side, routed around the walls
@@ -325,10 +356,10 @@ describe('building walk-block — houses have collision', () => {
     sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 3, y: 1, tribe: VIKING });
     sim.step();
     const walker = sim.world.create();
-    sim.world.add(walker, Position, { x: fx.fromInt(0), y: fx.fromInt(1) });
+    sim.world.add(walker, Position, positionOfNode(0, 1));
     sim.world.add(walker, PathRequest, {
       start: terrainOf(sim).cellAt(0, 1),
-      goal: terrainOf(sim).cellAt(3, 1), // the wall cell itself
+      goal: terrainOf(sim).cellAt(3, 1), // the wall node itself
       failed: false,
     });
     sim.step();
@@ -364,9 +395,9 @@ describe('door cell — settlers interact with a house at its entry point', () =
       enjoyment: fx.fromInt(0),
       experience: new Map<number, number>(),
     });
-    sim.world.add(worker, Position, { x: fx.fromInt(5), y: fx.fromInt(5) }); // ON the walls — not at work
+    sim.world.add(worker, Position, positionOfNode(5, 5)); // ON the walls (the anchor node) — not at work
     expect(workerPresentAt(sim.world, ctxOf(sim), hut)).toBe(false);
-    sim.world.get(worker, Position).x = fx.fromInt(4); // at the door (4,5)
+    Object.assign(sim.world.get(worker, Position), positionOfNode(4, 5)); // at the door node (4,5)
     expect(workerPresentAt(sim.world, ctxOf(sim), hut)).toBe(true);
   });
 });
@@ -430,7 +461,7 @@ describe('wall gate — a door listed inside the walls stays walkable', () => {
     // A path to the gate cell itself (the interaction tile) succeeds instead of wedging.
     expect(interactionTile(sim.world, ctxOf(sim), placedBuilding(sim))).toEqual({ x: 4, y: 3 });
     const walker = sim.world.create();
-    sim.world.add(walker, Position, { x: fx.fromInt(0), y: fx.fromInt(3) });
+    sim.world.add(walker, Position, positionOfNode(0, 3));
     sim.world.add(walker, PathRequest, {
       start: terrain.cellAt(0, 3),
       goal: terrain.cellAt(4, 3),

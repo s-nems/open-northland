@@ -6,6 +6,7 @@ import {
   layoutHud,
   placeHud,
 } from '@vinland/render';
+import { halfCellMapFromCells } from '@vinland/sim';
 import { loadHumanSpriteSheet, syntheticSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { HUD_TRIBE } from '../game/rules.js';
@@ -52,7 +53,7 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
   const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
 
-  const sim = runSlice(seed, ticks, loaded ?? undefined);
+  const sim = runSlice(seed, ticks, loaded !== null ? halfCellMapFromCells(loaded) : undefined);
   const snap = sim.snapshot();
   const terrainGrid = sliceTerrain(loaded ?? undefined);
 

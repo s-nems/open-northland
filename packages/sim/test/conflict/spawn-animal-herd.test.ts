@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Age, Health, HerdMember, MoveSpeed, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { ONE, Simulation, fx } from '../../src/index.js';
+import { ONE, Simulation, cellAnchorNode, fx, nodeOfPosition } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -37,6 +37,12 @@ function fresh(seed = 1): Simulation {
   return new Simulation({ seed, content: testContent() });
 }
 
+/** Enqueue a herd spawn at visual tile (x, y) — command coords are half-cell nodes, so anchor-convert. */
+function spawnHerdAt(sim: Simulation, tribe: number, x: number, y: number): void {
+  const n = cellAnchorNode(x, y);
+  sim.enqueue({ kind: 'spawnAnimalHerd', tribe, x: n.hx, y: n.hy });
+}
+
 /** Every spawned creature, in canonical (ascending-id) order. */
 function creatures(sim: Simulation): Entity[] {
   return [...sim.world.query(Settler, Health, Position)].sort((a, b) => a - b);
@@ -45,7 +51,7 @@ function creatures(sim: Simulation): Entity[] {
 describe('spawnAnimalHerd command', () => {
   it('places a herd of maximumGroupSize creatures of the animal tribe, each with a Health pool', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'spawnAnimalHerd', tribe: BEAR, x: 5, y: 5 });
+    spawnHerdAt(sim, BEAR, 5, 5);
     sim.step();
 
     const herd = creatures(sim);
@@ -64,27 +70,28 @@ describe('spawnAnimalHerd command', () => {
 
   it('scatters the herd within maximumDistanceToBirthPoint (no two stacked, all in range)', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'spawnAnimalHerd', tribe: BEAR, x: 5, y: 5 });
+    spawnHerdAt(sim, BEAR, 5, 5); // birth node (11,10) — cell (5,5)'s anchor
     sim.step();
 
     const herd = creatures(sim);
-    const tiles = herd.map((e) => {
+    const nodes = herd.map((e) => {
       const p = sim.world.get(e, Position);
-      return `${fx.toInt(p.x)},${fx.toInt(p.y)}`;
+      return nodeOfPosition(p.x, p.y);
     });
-    expect(new Set(tiles).size).toBe(herd.length); // no two creatures share a tile
-    // The leader sits ON the birth point; every member is within the range-2 birth-point radius.
-    expect(tiles).toContain('5,5');
-    for (const e of herd) {
-      const p = sim.world.get(e, Position);
-      expect(Math.abs(fx.toInt(p.x) - 5)).toBeLessThanOrEqual(2);
-      expect(Math.abs(fx.toInt(p.y) - 5)).toBeLessThanOrEqual(2);
+    const keys = nodes.map((n) => `${n.hx},${n.hy}`);
+    expect(new Set(keys).size).toBe(herd.length); // no two creatures share a node
+    // The leader sits ON the birth node; every member is within the range-2 birth-point radius —
+    // herd ranges are consumed as half-cell NODE distances (the scatter offsets apply in node space).
+    expect(keys).toContain('11,10');
+    for (const n of nodes) {
+      expect(Math.abs(n.hx - 11)).toBeLessThanOrEqual(2);
+      expect(Math.abs(n.hy - 10)).toBeLessThanOrEqual(2);
     }
   });
 
   it('designates a leader for a searchForLeader animal: the lowest-id member, recorded on every member', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'spawnAnimalHerd', tribe: BEAR, x: 5, y: 5 });
+    spawnHerdAt(sim, BEAR, 5, 5);
     sim.step();
 
     const herd = creatures(sim);
@@ -100,7 +107,7 @@ describe('spawnAnimalHerd command', () => {
 
   it('stamps each creature a MoveSpeed from movespeed/runspeed (the bear walks ONE/8, runs ONE/4)', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'spawnAnimalHerd', tribe: BEAR, x: 5, y: 5 });
+    spawnHerdAt(sim, BEAR, 5, 5);
     sim.step();
 
     const herd = creatures(sim);
@@ -116,7 +123,7 @@ describe('spawnAnimalHerd command', () => {
 
   it('stamps runPerTick null for an animal with a movespeed but no runspeed (the boar)', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'spawnAnimalHerd', tribe: BOAR, x: 4, y: 4 });
+    spawnHerdAt(sim, BOAR, 4, 4);
     sim.step();
 
     const herd = creatures(sim);
@@ -130,7 +137,7 @@ describe('spawnAnimalHerd command', () => {
 
   it('a solitary animal (searchForLeader false) spawns one creature with NO HerdMember', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'spawnAnimalHerd', tribe: BEE, x: 2, y: 3 });
+    spawnHerdAt(sim, BEE, 2, 3);
     sim.step();
 
     const herd = creatures(sim);
@@ -141,7 +148,7 @@ describe('spawnAnimalHerd command', () => {
     expect(sim.world.has(bee, HerdMember)).toBe(false); // solitary — no leader to follow
     expect(sim.world.has(bee, MoveSpeed)).toBe(false); // no movespeed in its record -> walks the default
     const p = sim.world.get(bee, Position);
-    expect([fx.toInt(p.x), fx.toInt(p.y)]).toEqual([2, 3]); // sits on the birth point
+    expect([fx.toInt(p.x), fx.toInt(p.y)]).toEqual([2, 3]); // sits on the birth node (tile (2,3)'s anchor)
   });
 
   it('skips a non-animal tribe (a civilization — no animaltypes record), still logging the command', () => {
@@ -157,7 +164,7 @@ describe('spawnAnimalHerd command', () => {
     const run = (): string => {
       clearStores();
       const sim = fresh(7);
-      sim.enqueue({ kind: 'spawnAnimalHerd', tribe: BEAR, x: 4, y: 6 });
+      spawnHerdAt(sim, BEAR, 4, 6);
       sim.step();
       return sim.hashState();
     };

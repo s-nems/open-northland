@@ -1,6 +1,6 @@
 import { Container, Graphics, RenderTexture, type Renderer, Sprite } from 'pixi.js';
 import type { ElevationField } from '../data/elevation.js';
-import { TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../data/iso.js';
+import { TILE_HALF_H, TILE_HALF_W, halfCellToScreen } from '../data/iso.js';
 
 /**
  * The BUILD-PLACEMENT overlay — the original's build-mode read of the ground: a translucent dark wash
@@ -30,14 +30,14 @@ import { TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../data/iso.js';
  * "observed original behavior"; a human signs off the final feel).
  */
 
-/** One tile of the probed band (integer col,row). */
+/** One HALF-CELL node of the probed band (integer col,row on the `2W×2H` lattice). */
 export interface PlacementOverlayCell {
   readonly col: number;
   readonly row: number;
 }
 
 /**
- * One build-mode frame of the overlay: the visible tile band the app probed, plus which of its cells
+ * One build-mode frame of the overlay: the visible NODE band the app probed, plus which of its nodes
  * REJECTED the held building's anchor. The buildable side is the band's complement of `blocked`.
  */
 export interface PlacementOverlayFrame {
@@ -71,16 +71,16 @@ export interface OverlayBounds {
 }
 
 /**
- * The world-space bounds of a band's composite: the tile centres' extent grown by one half-tile on
- * every side (odd rows overhang by half a cell; diamonds extend half extents beyond their centres)
+ * The world-space bounds of a band's composite: the node centres' extent grown by a full tile's
+ * half-extents on every side (node diamonds overlap their neighbours by construction — see `set`)
  * and by the map's max terrain lift upward. Pure — unit-testable without a GL context.
  */
 export function overlayBounds(
   frame: Pick<PlacementOverlayFrame, 'minCol' | 'maxCol' | 'minRow' | 'maxRow'>,
   maxLift: number,
 ): OverlayBounds {
-  const topLeft = tileToScreen(frame.minCol, frame.minRow);
-  const bottomRight = tileToScreen(frame.maxCol, frame.maxRow);
+  const topLeft = halfCellToScreen(frame.minCol, frame.minRow);
+  const bottomRight = halfCellToScreen(frame.maxCol, frame.maxRow);
   const x = topLeft.x - 2 * TILE_HALF_W;
   const y = topLeft.y - TILE_HALF_H - maxLift;
   return {
@@ -150,13 +150,19 @@ export class PlacementOverlayLayer {
     const lifted = elevation.maxLift > 0;
     const blockedG = this.blockedG.clear();
     const buildableG = this.buildableG.clear();
+    // Per-NODE diamonds: the node lattice is a (HALF_W, HALF_H/2)-pitch rectangle, and a diamond of
+    // half-extents (HALF_W, HALF_H/2) centred on every node covers the plane with overlap (the worst
+    // gap point between four nodes lands exactly on four diamond edges) — overlap saturates in the
+    // opaque composite, so same-side neighbours still fuse seamlessly.
     const hw = (TILE_HALF_W + CELL_OVERLAP) * COMPOSITE_RESOLUTION;
-    const hh = (TILE_HALF_H + CELL_OVERLAP) * COMPOSITE_RESOLUTION;
+    const hh = (TILE_HALF_H / 2 + CELL_OVERLAP) * COMPOSITE_RESOLUTION;
     for (let row = frame.minRow; row <= frame.maxRow; row++) {
       for (let col = frame.minCol; col <= frame.maxCol; col++) {
-        const p = tileToScreen(col, row);
+        const p = halfCellToScreen(col, row);
+        // The elevation field samples CELL coordinates — a node sits at (col/2, row/2).
+        const cy =
+          (p.y - (lifted ? elevation.liftAt(col / 2, row / 2) : 0) - bounds.y) * COMPOSITE_RESOLUTION;
         const cx = (p.x - bounds.x) * COMPOSITE_RESOLUTION;
-        const cy = (p.y - (lifted ? elevation.liftAt(col, row) : 0) - bounds.y) * COMPOSITE_RESOLUTION;
         const g = blocked.has(`${col},${row}`) ? blockedG : buildableG;
         g.poly([cx, cy - hh, cx + hw, cy, cx, cy + hh, cx - hw, cy]);
       }

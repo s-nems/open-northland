@@ -313,7 +313,9 @@ export interface HerdParams {
   readonly maxGroupSize: number;
   /** `searchforleader` — a member follows a herd leader vs roams solo. */
   readonly searchForLeader: boolean;
-  /** `maximumleaderdistance` — how far a follower may roam from its leader before it heads back. */
+  /** `maximumleaderdistance` — how far (half-cell nodes) a follower may roam from its leader before it
+   *  heads back. All three distances below are likewise consumed VERBATIM as node Manhattan distances —
+   *  the half-cell reading of the original's logic-grid params (same basis note as weapon reach). */
   readonly leaderDistance: number;
   /** `maximumdistancetobirthpoint` — how far the herd ranges from its spawn point. */
   readonly birthPointRange: number;

@@ -252,7 +252,9 @@ export const Recipe = z.strictObject({
 });
 export type Recipe = z.infer<typeof Recipe>;
 
-/** One cell offset of a building footprint, relative to the building's placed anchor tile. */
+/** One HALF-CELL offset of a building footprint, relative to the building's placed anchor node —
+ *  the original's `2W×2H` logic lattice, the same grid `map.cif` placements address. Extracted
+ *  verbatim from the source's `<x> <y>` values. */
 export const FootprintCell = z.strictObject({
   dx: z.number().int(),
   dy: z.number().int(),
@@ -262,8 +264,9 @@ export type FootprintCell = z.infer<typeof FootprintCell>;
 /**
  * A building type's ground footprint, extracted from the graphics table's `[GfxHouse]` record (the
  * readable `DataCnmd/budynki12/houses/houses.ini`) — the collision/placement model the original
- * carries per house. All cells are offsets from the building's anchor tile (its `Position`), each
- * source line `<x> <y> <run>` expanding to `run` cells starting at `(x, y)` and extending along +x.
+ * carries per house. All cells are HALF-CELL offsets from the building's anchor node, each
+ * source line `<x> <y> <run>` expanding to `run` half-cells starting at `(x, y)` and extending
+ * along +x (the `2W×2H` lattice every map lane addresses).
  *
  *  - `blocked` — `LogicWalkBlockArea <sizeIdx> <x> <y> <run>` for THIS type's size level: the cells
  *    the standing building makes unwalkable (its physical body — settlers cannot path through them).
@@ -682,8 +685,9 @@ export type TerrainPattern = z.infer<typeof TerrainPattern>;
 
 /**
  * One footprint entry of a `[GfxLandscape]` record's repeated `LogicWalkBlockArea` /
- * `LogicBuildBlockArea` / `LogicWorkArea` lines: `<valency> <dx> <dy> <tileMask>` — a cell offset
- * relative to the object's anchor plus the valency/mask the engine applies there. Extracted verbatim
+ * `LogicBuildBlockArea` / `LogicWorkArea` lines: `<valency> <dx> <dy> <tileMask>` — a HALF-CELL
+ * offset relative to the object's anchor node (the `emla`/`lmlt` lanes' own `2W×2H` grid) plus the
+ * valency/mask the engine applies there. Extracted verbatim
  * (the mask semantics are not yet consumed); this is the data a future collision/footprint system
  * reads, so it is captured with the record rather than re-decoding the `.cif` later.
  */

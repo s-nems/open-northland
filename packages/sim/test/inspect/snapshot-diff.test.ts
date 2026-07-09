@@ -32,7 +32,7 @@ function clearStores(): void {
 }
 
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
 }
 
 /** Build a minimal snapshot value with the given entities (already ascending by id). */

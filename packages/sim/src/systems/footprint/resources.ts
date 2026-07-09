@@ -11,8 +11,8 @@ import {
   type ResourceFootprintData,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import { translatedCells } from './geometry.js';
 
@@ -99,9 +99,8 @@ function resourceBlockedCellsFor(world: World, terrain: TerrainGraph, resource: 
   const footprint = world.tryGet(resource, ResourceFootprint);
   const p = world.tryGet(resource, Position);
   if (footprint === undefined || p === undefined) return null;
-  const ax = fx.toInt(p.x);
-  const ay = fx.toInt(p.y);
-  return translatedCells(terrain, footprint.walk, ax, ay);
+  const n = nodeOfPosition(p.x, p.y);
+  return translatedCells(terrain, footprint.walk, n.hx, n.hy);
 }
 
 function addResourceBlockedCacheEntry(

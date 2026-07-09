@@ -12,7 +12,14 @@ import {
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, type TerrainMap, findPath, fx } from '../../src/index.js';
+import {
+  Simulation,
+  type TerrainMap,
+  findPath,
+  fx,
+  halfCellMapFromCells,
+  positionOfNode,
+} from '../../src/index.js';
 import type { CellId, TerrainGraph } from '../../src/nav/terrain.js';
 import {
   type SystemContext,
@@ -223,7 +230,10 @@ function clearStores(): void {
 beforeEach(clearStores);
 
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  // Cell-dims signature; the sim's graph is the upsampled 2W×2H half-cell lattice. All scenario
+  // coordinates below are NODE coords on that lattice (the LandscapeGfx area offsets always were —
+  // the source's LogicWalkBlockArea/LogicBuildBlockArea address the original's 2W×2H grid).
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
 }
 
 function mappedSim(map: TerrainMap = grassMap(10, 5)): Simulation {
@@ -246,6 +256,7 @@ function ctxOf(sim: Simulation): SystemContext {
   };
 }
 
+/** A stamped resource node anchored at half-cell NODE (x,y). */
 function placeResource(
   sim: Simulation,
   goodType: number,
@@ -254,15 +265,16 @@ function placeResource(
   y: number,
 ): Entity {
   const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Position, positionOfNode(x, y));
   sim.world.add(e, Resource, { goodType, remaining: 3, harvestAtomic });
   expect(stampResourceFootprint(sim.world, sim.content, e, goodType)).toBe(true);
   return e;
 }
 
+/** A settler standing exactly on half-cell NODE (x,y). */
 function placeSettler(sim: Simulation, jobType: number, x: number, y: number): Entity {
   const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Position, positionOfNode(x, y));
   sim.world.add(e, Settler, {
     tribe: VIKING,
     jobType,
@@ -279,9 +291,10 @@ function placeWoodcutter(sim: Simulation, x: number, y: number): Entity {
   return placeSettler(sim, WOODCUTTER, x, y);
 }
 
+/** A loose ground drop lying on half-cell NODE (x,y). */
 function placeGroundDrop(sim: Simulation, goodType: number, amount: number, x: number, y: number): Entity {
   const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Position, positionOfNode(x, y));
   sim.world.add(e, Stockpile, { amounts: new Map([[goodType, amount]]) });
   sim.world.add(e, GroundDrop, { goodType });
   return e;
@@ -324,7 +337,7 @@ describe('resource footprints', () => {
     const sim = mappedSim(grassMap(7, 3));
     const terrain = terrainOf(sim);
     const e = sim.world.create();
-    sim.world.add(e, Position, { x: fx.fromInt(2), y: fx.fromInt(1) });
+    sim.world.add(e, Position, positionOfNode(2, 1)); // anchored at node (2,1)
     sim.world.add(e, Resource, { goodType: STONE, remaining: 3, harvestAtomic: STONE_ATOMIC });
 
     expect(stampResourceFootprint(sim.world, sim.content, e, STONE, STONE_VARIANT_GFX)).toBe(true);
@@ -411,7 +424,7 @@ describe('resource footprints', () => {
 
     sim.world.remove(worker, MoveGoal);
     sim.world.remove(worker, PathRequest);
-    sim.world.get(worker, Position).x = fx.fromInt(1);
+    Object.assign(sim.world.get(worker, Position), positionOfNode(1, 1)); // standing on the work node
     aiSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(worker, MoveGoal)).toBe(false);

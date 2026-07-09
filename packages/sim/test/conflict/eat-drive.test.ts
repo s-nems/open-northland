@@ -13,7 +13,15 @@ import {
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { type Fixed, ONE, Simulation, type TerrainMap, fx } from '../../src/index.js';
+import {
+  type Fixed,
+  ONE,
+  Simulation,
+  type TerrainMap,
+  cellAnchorNode,
+  fx,
+  halfCellMapFromCells,
+} from '../../src/index.js';
 import { type SystemContext, aiSystem, atomicSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
@@ -59,8 +67,15 @@ beforeEach(() => {
   }
 });
 
+/** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
+}
+
+/** The node id of visual tile (x, y) — walk goals address the doubled half-cell lattice. */
+function cellOf(sim: Simulation, x: number, y: number): number | undefined {
+  const n = cellAnchorNode(x, y);
+  return sim.terrain?.cellAt(n.hx, n.hy);
 }
 
 function settlerAt(sim: Simulation, x: number, y: number, hunger: Fixed): Entity {
@@ -123,7 +138,7 @@ describe('eatDrive — the planner choosing to eat', () => {
     aiSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
-    expect(sim.world.get(settler, MoveGoal).cell).toBe(sim.terrain?.cellAt(2, 0));
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 2, 0));
   });
 
   it('eats its own carried food in place (no walk) ahead of seeking a store', () => {
@@ -152,7 +167,7 @@ describe('eatDrive — the planner choosing to eat', () => {
     aiSystem(sim.world, ctxOf(sim));
 
     // Headed for the wood, not the larder — the eat drive did not fire.
-    expect(sim.world.get(settler, MoveGoal).cell).toBe(sim.terrain?.cellAt(3, 0));
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
   });
 
   it('falls through to work when hungry but no food is reachable', () => {
@@ -165,7 +180,7 @@ describe('eatDrive — the planner choosing to eat', () => {
 
     aiSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.get(settler, MoveGoal).cell).toBe(sim.terrain?.cellAt(3, 0));
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
   });
 });
 

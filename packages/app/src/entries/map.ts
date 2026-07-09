@@ -9,6 +9,7 @@ import {
   makeElevationField,
   setTilePitch,
 } from '@vinland/render';
+import { halfCellMapFromCells } from '@vinland/sim';
 import { buildCollisionTerrain } from '../content/collision.js';
 import { buildingFootprints, loadIr } from '../content/ir.js';
 import { loadMapObjects } from '../content/objects.js';
@@ -139,7 +140,12 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // stones, ore deposits block; see content/collision.ts). The RENDER layers keep reading `loaded`
   // (raw typeIds drive the flat-tint fallback + the ambience beds). Without the IR the grid degrades
   // to all-open ground rather than mis-classing the raw lane against the synthetic table.
-  const simMap = loaded !== null && ir !== null ? buildCollisionTerrain(loaded, ir) : loaded;
+  const simMap =
+    loaded !== null && ir !== null
+      ? buildCollisionTerrain(loaded, ir)
+      : loaded !== null
+        ? halfCellMapFromCells(loaded)
+        : null;
   const sim =
     (wantEntities && loaded?.entities !== undefined && ir !== null && simMap !== null
       ? runAuthoredSlice(SLICE_SEED, 0, simMap, loaded.entities, ir, footprints)

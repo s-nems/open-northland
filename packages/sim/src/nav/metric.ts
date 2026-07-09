@@ -19,8 +19,18 @@
  */
 import { type Fixed, ONE, fx } from '../core/fixed.js';
 
-/** Half a column step — the sideways shift one row step carries under the stagger. */
+/** Half a column step — the sideways shift one row step carries under the stagger, and the E/W
+ *  pitch of the half-cell navigation lattice (34 px): one E/W nav step covers exactly this. */
 export const HALF_COLUMN: Fixed = fx.div(ONE, fx.fromInt(2));
+
+/**
+ * Half a ROW step — the N/S pitch of the half-cell navigation lattice (19 px over the 68 px column
+ * step, 19/68 exactly). Minted as its own primitive (NOT `ROW_STEP/2`, whose truncation would leave
+ * `2·HALF_ROW ≠ ROW_STEP` by one ulp): the N/S nav edge costs exactly this, and the pathfinding
+ * heuristic composes its per-half-row term from the SAME integer, so the exactness argument in
+ * `cellLatticeDistance` holds by construction.
+ */
+export const HALF_ROW: Fixed = fx.div(fx.fromInt(19), fx.fromInt(68));
 
 /**
  * The vertical world extent of ONE ROW STEP, in column units: the measured 38 px row step over the
@@ -38,15 +48,6 @@ export const ROW_STEP: Fixed = fx.div(fx.fromInt(19), fx.fromInt(34));
 export const DIAGONAL_STEP: Fixed = fx.isqrt(
   fx.add(fx.mul(HALF_COLUMN, HALF_COLUMN), fx.mul(ROW_STEP, ROW_STEP)),
 );
-
-/**
- * The world LENGTH of a VERTICAL lattice step (N/S — straight down/up TWO rows, passing through the
- * gap between the two flanking cells of the intermediate row): exactly 2·{@link ROW_STEP} ≈
- * 1.1176·ONE, the measured 76 px over the 68 px column step. Defined as the exact double of the
- * (truncated) ROW_STEP so the pathfinder's edge cost and the heuristic's per-row term compose to the
- * identical integer — the admissibility proof in `cellLatticeDistance` relies on that.
- */
-export const VERTICAL_STEP: Fixed = fx.add(ROW_STEP, ROW_STEP);
 
 /** Fixed-point 2 — the stagger's row period (kept local; only the wave math needs it). */
 const TWO: Fixed = fx.fromInt(2);

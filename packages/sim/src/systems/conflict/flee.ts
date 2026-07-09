@@ -17,11 +17,12 @@ import { SIGHT_RADIUS_TILES, isValidTarget } from './targeting.js';
 const FLEE_COOLDOWN_TICKS = 40;
 
 /**
- * FLEE stance — how many tiles a fleeing unit runs **away** from the nearest threat each time it re-aims:
- * the flee destination is the walkable cell this far off in the best away-direction. APPROXIMATED — no
- * readable flee-distance (source basis "Combat flee").
+ * FLEE stance — how many half-cell nodes a fleeing unit runs **away** from the nearest threat each time
+ * it re-aims: the flee destination is the walkable node this far off in the best away-direction.
+ * APPROXIMATED — no readable flee-distance (source basis "Combat flee"); doubled with the half-cell
+ * migration (same on-screen run distance as the old 6-cell value).
  */
-const FLEE_STEP_TILES = 6;
+const FLEE_STEP_TILES = 12;
 
 /**
  * FLEE stance — how many ticks a fleeing unit holds its current run route before re-aiming away from the

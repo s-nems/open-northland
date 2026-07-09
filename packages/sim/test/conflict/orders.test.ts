@@ -16,7 +16,14 @@ import {
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { ONE, Simulation, type TerrainMap, fx } from '../../src/index.js';
+import {
+  ONE,
+  Simulation,
+  type TerrainMap,
+  cellAnchorNode,
+  fx,
+  halfCellMapFromCells,
+} from '../../src/index.js';
 import { worldDistance } from '../../src/nav/metric.js';
 import {
   ACCEL_TICKS,
@@ -60,12 +67,19 @@ beforeEach(() => {
   PlayerOrder.store.clear();
 });
 
+/** An all-grass CELL-resolution strip, upsampled to the 2W×2H half-cell navigation lattice. */
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
 }
 
 function sim(): Simulation {
   return new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 4) });
+}
+
+/** Order `entity` to visual tile (x, y) — moveUnit coords are half-cell nodes, so anchor-convert. */
+function orderMove(s: Simulation, entity: Entity, x: number, y: number): void {
+  const n = cellAnchorNode(x, y);
+  s.enqueue({ kind: 'moveUnit', entity, x: n.hx, y: n.hy });
 }
 
 /** An OWNED viking woodcutter (the player's to command) placed directly on the world. */
@@ -96,8 +110,8 @@ describe('moveUnit order', () => {
   it('walks an owned settler to the target cell and holds it there', () => {
     const s = sim();
     const e = ownedWoodcutter(s, 0, 0);
-    s.enqueue({ kind: 'moveUnit', entity: e, x: 5, y: 0 });
-    s.run(70); // 5 tiles at ⅛ tile/tick ≈ 40 ticks to arrive, then it stands (hold not yet expired)
+    orderMove(s, e, 5, 0);
+    s.run(70); // 5 tiles at 12 ticks/tile ≈ 64 ticks to arrive, then it stands (hold not yet expired)
 
     const p = s.world.get(e, Position);
     expect([p.x, p.y]).toEqual([fx.fromInt(5), fx.fromInt(0)]); // arrived at the ordered spot
@@ -107,14 +121,14 @@ describe('moveUnit order', () => {
   it('keeps advancing when re-ordered MID-STEP — no snap back to the tile centre', () => {
     const s = sim();
     const e = ownedWoodcutter(s, 0, 0);
-    s.enqueue({ kind: 'moveUnit', entity: e, x: 6, y: 0 });
-    s.run(6); // walking — now genuinely between cell centres
+    orderMove(s, e, 6, 0);
+    s.run(6); // walking — now genuinely between node centres
     const before = s.world.get(e, Position).x;
     expect(before).toBeGreaterThan(fx.fromInt(0));
     expect(before).toBeLessThan(fx.fromInt(1)); // mid-tile, the case that used to back up
 
     // Re-issue the order mid-step: the fresh route must head straight on, not reverse toward x=0 first.
-    s.enqueue({ kind: 'moveUnit', entity: e, x: 6, y: 0 });
+    orderMove(s, e, 6, 0);
     s.run(2);
     expect(s.world.get(e, Position).x).toBeGreaterThan(before); // advanced, never snapped back
   });
@@ -132,7 +146,7 @@ describe('moveUnit order', () => {
       enjoyment: fx.fromInt(0),
       experience: new Map(),
     });
-    s.enqueue({ kind: 'moveUnit', entity: e, x: 5, y: 0 });
+    orderMove(s, e, 5, 0);
     s.step();
     expect(s.world.has(e, PlayerOrder)).toBe(false);
     expect(s.world.has(e, MoveGoal)).toBe(false);
@@ -146,8 +160,8 @@ describe('moveUnit order', () => {
     s.world.add(building, Building, { buildingType: HEADQUARTERS, tribe: VIKING, built: ONE, level: 0 });
     s.world.add(building, Owner, { player: HUMAN_PLAYER });
 
-    s.enqueue({ kind: 'moveUnit', entity: building, x: 5, y: 0 }); // a building can't walk
-    s.enqueue({ kind: 'moveUnit', entity: 9999 as Entity, x: 5, y: 0 }); // never created
+    orderMove(s, building, 5, 0); // a building can't walk
+    orderMove(s, 9999 as Entity, 5, 0); // never created
     expect(() => s.step()).not.toThrow();
     expect(s.world.has(building, PlayerOrder)).toBe(false);
     expect(s.commands.log).toHaveLength(2); // still logged for faithful replay
@@ -159,8 +173,8 @@ describe('moveUnit order', () => {
     const warrior = ownedWoodcutter(s, 0, 1);
     s.world.add(warrior, Health, { hitpoints: 100, max: 100 }); // a combatant
 
-    s.enqueue({ kind: 'moveUnit', entity: civ, x: 2, y: 0 });
-    s.enqueue({ kind: 'moveUnit', entity: warrior, x: 2, y: 1 });
+    orderMove(s, civ, 2, 0);
+    orderMove(s, warrior, 2, 1);
     s.step();
 
     expect(s.world.get(civ, PlayerOrder).holdTicks).toBe(MOVE_ORDER_HOLD_CIVILIAN);
@@ -171,14 +185,14 @@ describe('moveUnit order', () => {
   it('carries momentum through a mid-walk redirect (no dead stop, no full-speed flip)', () => {
     const s = sim();
     const e = ownedWoodcutter(s, 0, 0);
-    s.enqueue({ kind: 'moveUnit', entity: e, x: 9, y: 0 });
+    orderMove(s, e, 9, 0);
     s.run(20); // cruising east at full gait, mid-tile
     expect(s.world.get(e, PathFollow).speed).toBe(MOVE_SPEED_PER_TICK);
 
     // Redirect around a corner: the splice must keep PART of the pace (a turn sheds cos(angle),
     // never all of it, and never keeps a reversal's full pace). Before the fix moveUnit dropped the
     // PathFollow, so every redirect re-accelerated from rest.
-    s.enqueue({ kind: 'moveUnit', entity: e, x: 3, y: 3 });
+    orderMove(s, e, 3, 3);
     s.step();
     const spliced = s.world.get(e, PathFollow).speed;
     const accelStep = fx.divCeil(MOVE_SPEED_PER_TICK, fx.fromInt(ACCEL_TICKS));
@@ -196,7 +210,7 @@ describe('moveUnit order', () => {
     let prev = { ...s.world.get(e, Position) };
     for (let t = 0; t < 80; t++) {
       // A fresh contradictory order every 3 ticks, whipping the walker east/west.
-      if (t % 3 === 0) s.enqueue({ kind: 'moveUnit', entity: e, x: t % 2 === 0 ? 0 : 11, y: 0 });
+      if (t % 3 === 0) orderMove(s, e, t % 2 === 0 ? 0 : 11, 0);
       s.step();
       const cur = s.world.get(e, Position);
       expect(worldDistance(prev.x, prev.y, cur.x, cur.y)).toBeLessThanOrEqual(MOVE_SPEED_PER_TICK);
@@ -210,7 +224,7 @@ describe('moveUnit order', () => {
     woodAt(s, 2, 0); // without an order the woodcutter would walk here to harvest
 
     // Order it AWAY from the resource. During the hold it must stand at the spot, not go harvest.
-    s.enqueue({ kind: 'moveUnit', entity: worker, x: 9, y: 0 });
+    orderMove(s, worker, 9, 0);
     // 9 tiles ≈ 110 ticks with the gait ramp (13 accelerating + 7·12 cruise + 13 braking) + route
     // latency; 140 is past arrival but still inside the 50-tick civilian hold that starts there.
     s.run(140);
@@ -232,7 +246,7 @@ describe('setJob order', () => {
     const e = ownedWoodcutter(s, 0, 0);
     // Simulate a working, bound, ordered unit, then change its job.
     s.world.add(e, JobAssignment, { workplace: 999 as Entity });
-    s.enqueue({ kind: 'moveUnit', entity: e, x: 3, y: 0 });
+    orderMove(s, e, 3, 0);
     s.step();
     expect(s.world.has(e, PlayerOrder)).toBe(true);
 

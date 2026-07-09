@@ -42,7 +42,7 @@ const FX_ZERO = fx.fromInt(0);
 const ACCEL_STEP = fx.divCeil(MOVE_SPEED_PER_TICK, fx.fromInt(ACCEL_TICKS));
 
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
 }
 
 /** Build a mapped sim and place an entity at (x,y) with a straight-line PathFollow to the waypoints.

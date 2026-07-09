@@ -36,7 +36,9 @@ export type AuthoredPlacement =
  * against the IR rows (a building's `EditName`+`level` → `buildingBobs` typeId+tribe; a human's
  * `role` → `jobs` typeId, its `tribe` string → `tribes` typeId), half-cells halve to cells, and the
  * two player columns land on 0-based sim owners (`sethouse` is 1-based, `sethuman` 0-based — schema
- * notes). Unresolvable or out-of-bounds records are dropped and counted; `setanimal` records are not
+ * notes). Half-cells pass through VERBATIM — the sim's grid IS the `2W×2H` lattice the records
+ * address, so an authored building keeps its exact anchor (the old ÷2 cell collapse is gone).
+ * Unresolvable or out-of-bounds records are dropped and counted; `setanimal` records are not
  * placed yet (herd-vs-individual semantics, source basis).
  */
 export function resolveAuthoredPlacements(
@@ -61,9 +63,9 @@ export function resolveAuthoredPlacements(
     if (t.id !== undefined && t.typeId !== undefined && !tribeByName.has(t.id))
       tribeByName.set(t.id, t.typeId);
   }
-  const half = (h: number): number => Math.floor(h / 2);
+  // `map` is the sim's half-cell grid (2W×2H) — authored half-cells bound-check directly against it.
   const inBounds = (hx: number, hy: number): boolean =>
-    hx >= 0 && hy >= 0 && half(hx) < map.width && half(hy) < map.height;
+    hx >= 0 && hy >= 0 && hx < map.width && hy < map.height;
 
   const placements: AuthoredPlacement[] = [];
   let skipped = 0;
@@ -78,8 +80,8 @@ export function resolveAuthoredPlacements(
       kind: 'building',
       typeId: hit.typeId,
       tribe: hit.tribeId,
-      x: half(b.hx),
-      y: half(b.hy),
+      x: b.hx,
+      y: b.hy,
       ...(components.isValidPlayer(own) ? { owner: own } : {}),
     });
   }
@@ -94,8 +96,8 @@ export function resolveAuthoredPlacements(
       kind: 'human',
       jobType,
       tribe,
-      x: half(h.hx),
-      y: half(h.hy),
+      x: h.hx,
+      y: h.hy,
       ...(components.isValidPlayer(h.player) ? { owner: h.player } : {}),
     });
   }

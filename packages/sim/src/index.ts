@@ -39,16 +39,23 @@ export {
 export {
   TerrainGraph,
   buildTerrainGraph,
-  cellManhattanDistance,
   cellLatticeDistance,
+  halfCellMapFromCells,
   type CellId,
+  type CellTerrainMap,
   type TerrainMap,
 } from './nav/terrain.js';
 export {
+  cellAnchorNode,
+  nodeOfPosition,
+  positionOfNode,
+  type HalfCellNode,
+} from './nav/halfcell.js';
+export {
   DIAGONAL_STEP,
   HALF_COLUMN,
+  HALF_ROW,
   ROW_STEP,
-  VERTICAL_STEP,
   staggerShift,
   worldDistance,
   worldX,

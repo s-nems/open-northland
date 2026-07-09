@@ -127,6 +127,11 @@ hygiene test rejects nondeterministic globals in `packages/sim`.
   terrain transition algorithm for imported maps.
 - The current map projection is observed from the original: staggered raster, 68 px cell width, 38 px
   row step, elevation lift about 1.24 native px/unit, and pre-lift depth sorting.
+- The sim's logic grid is the original's HALF-CELL lattice (`2W×2H`; cell `(c,r)` = node
+  `(2c+(r&1), 2r)`). Every integer grid coordinate in sim commands, footprints, and nav is a
+  half-cell node; fixed-point Positions stay fractional visual-tile coords (`nav/halfcell.ts` is the
+  one conversion seam). Cell-resolution grids must pass through `halfCellMapFromCells` before
+  reaching a `TerrainGraph`.
 - The original game has no automatic sim oracle in OpenVikings. When behavior is not data-pinned,
   prefer a small named approximation over a hidden magic constant.
 

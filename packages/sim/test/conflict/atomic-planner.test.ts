@@ -14,7 +14,14 @@ import {
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { ONE, Simulation, type TerrainMap, fx } from '../../src/index.js';
+import {
+  ONE,
+  Simulation,
+  type TerrainMap,
+  cellAnchorNode,
+  fx,
+  halfCellMapFromCells,
+} from '../../src/index.js';
 import { type SystemContext, aiSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
@@ -55,8 +62,15 @@ beforeEach(() => {
   JobAssignment.store.clear();
 });
 
+/** An all-grass CELL-resolution strip, upsampled to the 2W×2H half-cell navigation lattice. */
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
+}
+
+/** The cell id of visual tile (x, y)'s ANCHOR NODE — sim grid coords are half-cell nodes. */
+function anchorCell(sim: Simulation, x: number, y: number): number {
+  const n = cellAnchorNode(x, y);
+  return sim.terrain?.cellAt(n.hx, n.hy) as number;
 }
 
 function woodcutterAt(sim: Simulation, x: number, y: number): Entity {
@@ -108,7 +122,7 @@ describe('atomicPlanner — choosing the next atomic', () => {
     aiSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(cutter, MoveGoal)).toBe(true);
-    expect(sim.world.get(cutter, MoveGoal).cell).toBe(sim.terrain?.cellAt(3, 0));
+    expect(sim.world.get(cutter, MoveGoal).cell).toBe(anchorCell(sim, 3, 0));
     expect(sim.world.has(cutter, CurrentAtomic)).toBe(false);
   });
 
@@ -129,10 +143,10 @@ describe('atomicPlanner — choosing the next atomic', () => {
   it('picks the NEAREST harvestable resource (Manhattan), tie-broken by cell id', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const cutter = woodcutterAt(sim, 0, 0);
-    woodAt(sim, 4, 0); // distance 4
-    woodAt(sim, 2, 0); // distance 2 — should win
+    woodAt(sim, 4, 0); // node distance 8
+    woodAt(sim, 2, 0); // node distance 4 — should win
     aiSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(cutter, MoveGoal).cell).toBe(sim.terrain?.cellAt(2, 0));
+    expect(sim.world.get(cutter, MoveGoal).cell).toBe(anchorCell(sim, 2, 0));
   });
 
   it('does not harvest a resource its job is not allowed to (data-driven gate)', () => {
@@ -161,7 +175,7 @@ describe('atomicPlanner — choosing the next atomic', () => {
     sim.world.add(cutter, Carrying, { goodType: WOOD, amount: 1 });
     storeAt(sim, 4, 0);
     aiSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(cutter, MoveGoal).cell).toBe(sim.terrain?.cellAt(4, 0));
+    expect(sim.world.get(cutter, MoveGoal).cell).toBe(anchorCell(sim, 4, 0));
   });
 
   it('starts a pileup atomic when carrying and standing on a store', () => {
@@ -250,7 +264,7 @@ describe('atomicPlanner — walk-to-workplace drive (a BOUND operator reaches IT
     aiSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(carp, MoveGoal)).toBe(true);
-    expect(sim.world.get(carp, MoveGoal).cell).toBe(sim.terrain?.cellAt(3, 0));
+    expect(sim.world.get(carp, MoveGoal).cell).toBe(anchorCell(sim, 3, 0));
     expect(sim.world.has(carp, CurrentAtomic)).toBe(false); // it walks, it doesn't start an atomic yet
   });
 
@@ -279,15 +293,15 @@ describe('atomicPlanner — walk-to-workplace drive (a BOUND operator reaches IT
 
   it('heads for ITS bound mill even when a nearer same-type mill exists', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(7, 1) });
-    sawmillAt(sim, 2, 0); // nearer (distance 2) — but NOT this carpenter's binding
-    const mine = sawmillAt(sim, 5, 0); // farther (distance 5) — this is the bound station
+    sawmillAt(sim, 2, 0); // nearer (node distance 4) — but NOT this carpenter's binding
+    const mine = sawmillAt(sim, 5, 0); // farther (node distance 10) — this is the bound station
     const carp = carpenterAt(sim, 0, 0, mine);
 
     aiSystem(sim.world, ctxOf(sim));
 
     // Latched to its own mill: it walks to cell 5, not the nearer mill at 2 — two same-type workplaces
     // staff independently because each operator follows its binding, not proximity.
-    expect(sim.world.get(carp, MoveGoal).cell).toBe(sim.terrain?.cellAt(5, 0));
+    expect(sim.world.get(carp, MoveGoal).cell).toBe(anchorCell(sim, 5, 0));
   });
 
   it('a woodcutter still prefers harvesting over walking to a workplace that does not employ it', () => {
@@ -300,7 +314,7 @@ describe('atomicPlanner — walk-to-workplace drive (a BOUND operator reaches IT
 
     aiSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.get(cutter, MoveGoal).cell).toBe(sim.terrain?.cellAt(2, 0)); // the tree, not the mill
+    expect(sim.world.get(cutter, MoveGoal).cell).toBe(anchorCell(sim, 2, 0)); // the tree, not the mill
   });
 });
 

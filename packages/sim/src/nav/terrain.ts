@@ -1,44 +1,51 @@
 /**
- * The terrain CELL-ADJACENCY GRAPH — the sim's navigation model (docs/ECS.md, Phase 2).
+ * The terrain HALF-CELL ADJACENCY GRAPH — the sim's navigation model (docs/ECS.md, Phase 2).
  *
  * This is NOT the triangle render tessellation: navigation, pathfinding, and placement all operate
- * on a graph of cells. Each cell carries a landscape `typeId` (from the IR's {@link LandscapeType}
- * table) which resolves to walkability, a fixed-point walk cost, and a per-cell valency (capacity).
+ * on a graph of HALF-CELLS — the original's `2W×2H` logic lattice. That resolution is pinned by the
+ * data, not invented: the decoded map's object lanes (`lmlt`/`emla`/`lmlv`), `map.cif` StaticObjects
+ * placements, and the `LogicWalkBlockArea`/`LogicBuildBlockArea` footprint offsets all address a
+ * `2W×2H` grid (source basis: mapdat lane layout, OpenVikings format oracle). Each node carries a
+ * landscape `typeId` (from the IR's {@link LandscapeType} table) which resolves to walkability, a
+ * fixed-point walk cost, and a per-node valency (capacity).
  *
- * DETERMINISM: the graph is a plain-data world resource (not entities). Cells are addressed by a
- * monotonic row-major id (`y * width + x`), and neighbours are emitted in a fixed canonical order
+ * GEOMETRY: in half-cell coordinates the staggered raster becomes a PLAIN RECTANGULAR lattice —
+ * node `(hx, hy)` sits at world `(hx·½ column, hy·½ row)` = (34 px, 19 px) pitch under the measured
+ * 68×38 px projection, with the visual stagger arising from which nodes the cell centres occupy
+ * (cell `(c, r)` = node `(2c + (r&1), 2r)`). So the old parity-dependent offset tables vanish: every
+ * node has the SAME neighbour offsets.
+ *
+ * MOVEMENT keeps the original's 8 directions (`THexagonDirection`: E/SE/SW/W/NW/NE plus NORTH = 6,
+ * SOUTH = 7 — source basis "A* pathfinding" row), now one half-cell fine ({@link TerrainGraph.steps}):
+ *  - E/W = `(±1, 0)`, a 34 px half-column step, cost {@link HALF_COLUMN};
+ *  - NE/SE/SW/NW = `(±1, ±2)`, the SAME 51 px lattice edge the full-cell graph priced (half a column
+ *    sideways, one full row up/down), cost {@link DIAGONAL_STEP};
+ *  - N/S = `(0, ±1)`, a 19 px half-row step, cost {@link HALF_ROW} — the straight vertical the old
+ *    graph needed a two-row flanked seam for.
+ * That the original WALKS this lattice (rather than only blocking on it) is a NAMED APPROXIMATION —
+ * no movement code survives readable — but the direction set, the edge geometry, and the half-cell
+ * collision resolution are all data-pinned, and the observed unit packing density matches it.
+ * A diagonal edge passes between the two nodes flanking its midpoint; it stays passable while at
+ * least ONE flank is (both blocked = a wall joint, not a gap — the same seam rule the old vertical
+ * step carried). E/W and N/S steps connect directly adjacent nodes: walkability is a property of the
+ * DESTINATION node, the original's vertex-graph movement model.
+ *
+ * DETERMINISM: the graph is a plain-data world resource (not entities). Nodes are addressed by a
+ * monotonic row-major id (`hy * width + hx`), and neighbours are emitted in a fixed canonical order
  * so traversal is byte-identical across runs — the precondition for A* with canonical tie-breaking
  * and lockstep replay. All costs are `Fixed`; no floats touch state.
- *
- * MOVEMENT has 8 DIRECTIONS ({@link TerrainGraph.steps}) — the original's STAGGERED-RASTER lattice
- * (source basis "projection": odd rows shifted half a cell right, 68×38 px pitch), where a cell's
- * true neighbours are E/W plus the four half-shifted cells one row up/down, PLUS a straight VERTICAL
- * step (N/S: two rows up/down, through the gap between the two flanking cells of the intermediate
- * row). The direction COUNT is PINNED, not inferred: the original's own source includes name the
- * movement direction type `THexagonDirection` with E/SE/SW/W/NW/NE = 0..5 **and NORTH = 6, SOUTH =
- * 7** (source basis "A* pathfinding" row) — and the walk animations carry all eight facing
- * blocks, N/S included, which only a vertical locomotion step would ever play. The vertical step's
- * exact SEMANTICS (two rows, flanked-gap passability) are approximated — no offset table survives in
- * the readable sources. WHICH grid offsets the row-crossers are depends on the row's parity (see
- * {@link LATTICE_ROW_STEPS}); a square-grid 8-neighbour reading would invent two "long diagonal"
- * edges per cell that the lattice doesn't have (the old zigzag routes) and mis-price the four real
- * ones. Edge costs are the edges' real world lengths in the lattice metric (`nav/metric.ts`): E/W =
- * ONE (a 68 px column step), row-crossing = {@link DIAGONAL_STEP} ≈ ¾·ONE (a 51 px lattice edge),
- * vertical = {@link VERTICAL_STEP} ≈ 1.118·ONE (a 76 px two-row drop) — so A* minimises true
- * on-screen distance, and a straight-vertical order routes straight instead of weaving NE/NW between
- * columns (the reported zigzag-going-up). The 4-connected {@link TerrainGraph.neighbours}/
- * {@link TerrainGraph.walkableNeighbours} remain for placement/valency adjacency, which is not a
- * movement question.
  */
 import type { ContentSet, LandscapeType } from '@vinland/data';
 import type { Brand } from '../core/brand.js';
-import { type Fixed, ONE, fx } from '../core/fixed.js';
-import { DIAGONAL_STEP, HALF_COLUMN, ROW_STEP, VERTICAL_STEP } from './metric.js';
+import { type Fixed, ONE, ZERO, fx } from '../core/fixed.js';
+import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from './metric.js';
 
-/** A cell address: the row-major index `y * width + x`. Branded so a raw number can't stand in. */
+/** A half-cell node address: the row-major index `hy * width + hx`. Branded so a raw number can't
+ *  stand in. (Named CellId for continuity — a nav "cell" IS a half-cell of the visual tile.) */
 export type CellId = Brand<number, 'CellId'>;
 
-/** Canonical orthogonal neighbour offsets in N, E, S, W order — the fixed traversal order for determinism. */
+/** Canonical orthogonal neighbour offsets in N, E, S, W order — the fixed traversal order for
+ *  determinism. On the half-cell lattice these are a 19 px half-row and a 34 px half-column. */
 const NEIGHBOUR_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
   [0, -1], // N
   [1, 0], // E
@@ -46,77 +53,42 @@ const NEIGHBOUR_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
   [-1, 0], // W
 ] as const;
 
-/** The two COLUMN-STEP lattice edges (pure horizontal, one full cell width), canonical E then W. */
+/** The two E/W half-column edges (34 px), canonical E then W. */
 const COLUMN_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
   [1, 0], // E
   [-1, 0], // W
 ] as const;
 
-/** One lattice-step grid offset. */
-type GridStep = readonly [dx: number, dy: number];
-
 /**
- * The four ROW-CROSSING lattice edges per row parity, in canonical NE, SE, SW, NW screen-heading
- * order. Under the stagger (odd rows shifted half a cell right) the grid offset of "the cell half a
- * step up-right of me" depends on which row I stand on: from an EVEN row it is `(0,−1)` (the odd row
- * above is already shifted right), from an ODD row `(+1,−1)` — and mirrored for the other three. The
- * fixed order (after E/W) keeps expansion history-independent. Typed as exact 4-tuples so the
- * vertical-step flank lookup in {@link TerrainGraph.steps} can destructure them without an
- * undefined-check.
+ * The four DIAGONAL lattice edges in canonical NE, SE, SW, NW screen-heading order — `(±1, ±2)` in
+ * half-cells is exactly the old full-cell row-crossing edge (half a column sideways, one full row
+ * up/down, 51 px). Parity-independent: the half-cell lattice is rectangular, so every node shares
+ * this one table. The fixed order (after E/W) keeps A* expansion history-independent.
  */
-const LATTICE_ROW_STEPS: readonly [
-  even: readonly [ne: GridStep, se: GridStep, sw: GridStep, nw: GridStep],
-  odd: readonly [ne: GridStep, se: GridStep, sw: GridStep, nw: GridStep],
-] = [
-  [
-    [0, -1], // NE
-    [0, 1], // SE
-    [-1, 1], // SW
-    [-1, -1], // NW
-  ],
-  [
-    [1, -1], // NE
-    [1, 1], // SE
-    [0, 1], // SW
-    [0, -1], // NW
-  ],
+const DIAGONAL_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
+  [1, -2], // NE
+  [1, 2], // SE
+  [-1, 2], // SW
+  [-1, -2], // NW
 ] as const;
 
-/** One vertical lattice step: two rows up/down (`dy` = ∓2) gated on its two flank cells' seam. */
-type VerticalStep = readonly [dy: number, flankA: GridStep, flankB: GridStep];
-
-/** Derive a parity's vertical steps from its row steps — the flanks of the N (S) seam are exactly
- *  the NE/NW (SE/SW) step targets, so the two tables can never drift apart. */
-function verticalStepsOf(
-  rowSteps: readonly [ne: GridStep, se: GridStep, sw: GridStep, nw: GridStep],
-): readonly VerticalStep[] {
-  const [ne, se, sw, nw] = rowSteps;
-  return [
-    [-2, nw, ne], // N — the gap between the NW and NE flank cells
-    [2, sw, se], // S — the gap between the SW and SE flank cells
-  ];
-}
-
-/**
- * The two VERTICAL lattice steps per row parity, canonical N then S (the `THexagonDirection` tail
- * order). Hoisted to a module table (like {@link LATTICE_ROW_STEPS}) so the hot A* expansion
- * allocates nothing to look them up.
- */
-const VERTICAL_LATTICE_STEPS: readonly [even: readonly VerticalStep[], odd: readonly VerticalStep[]] = [
-  verticalStepsOf(LATTICE_ROW_STEPS[0]),
-  verticalStepsOf(LATTICE_ROW_STEPS[1]),
-];
+/** The two straight VERTICAL edges (19 px half-row), canonical N then S — the `THexagonDirection`
+ *  enum tail (NORTH = 6, SOUTH = 7). */
+const VERTICAL_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
+  [0, -1], // N
+  [0, 1], // S
+] as const;
 
 /** Resolved, sim-ready properties of one landscape type (derived once from the IR at build time). */
 interface CellTypeProps {
   readonly walkable: boolean;
-  /** Whether a building's reserved zone may cover a cell of this type. Distinct from `walkable`: a
+  /** Whether a building's reserved zone may cover a node of this type. Distinct from `walkable`: a
    *  real map's margin band around a tree/rock is walkable ground you may not BUILD on, while water
    *  is neither. The build-placement rule reads this; navigation never does. */
   readonly buildable: boolean;
-  /** Cost to step ONTO a cell of this type, in fixed-point. Walkable cells cost one unit. */
+  /** Cost to step ONTO a node of this type, in fixed-point. Walkable nodes cost one unit. */
   readonly walkCost: Fixed;
-  /** Per-cell capacity — how many units may cluster on a cell of this type (0 = unset/blocking). */
+  /** Per-node capacity — how many units may cluster on a node of this type (0 = unset/blocking). */
   readonly maxValency: number;
 }
 
@@ -141,13 +113,14 @@ function resolveTypeProps(t: LandscapeType): CellTypeProps {
 }
 
 /**
- * The terrain navigation graph: a width×height grid of cells, each tagged with a landscape typeId,
- * plus the resolved per-type properties. Construct via {@link buildTerrainGraph}.
+ * The terrain navigation graph: a width×height grid of HALF-CELL nodes (`2W×2H` for a `W×H`-cell
+ * map), each tagged with a landscape typeId, plus the resolved per-type properties. Construct via
+ * {@link buildTerrainGraph}.
  */
 export class TerrainGraph {
   readonly width: number;
   readonly height: number;
-  /** Row-major landscape typeId per cell (length === width*height). */
+  /** Row-major landscape typeId per node (length === width*height). */
   private readonly typeIds: Int32Array;
   /** typeId -> resolved sim props, frozen at build time. */
   private readonly props: ReadonlyMap<number, CellTypeProps>;
@@ -165,7 +138,7 @@ export class TerrainGraph {
     this.props = props;
   }
 
-  /** Total cell count. */
+  /** Total node count. */
   get cellCount(): number {
     return this.width * this.height;
   }
@@ -175,25 +148,23 @@ export class TerrainGraph {
     return x >= 0 && y >= 0 && x < this.width && y < this.height;
   }
 
-  /** The cell id at (x, y). Throws if out of bounds — an out-of-range lookup is a programmer error. */
+  /** The node id at (x, y). Throws if out of bounds — an out-of-range lookup is a programmer error. */
   cellAt(x: number, y: number): CellId {
     if (!this.inBounds(x, y))
       throw new Error(`cell (${x}, ${y}) out of bounds (${this.width}x${this.height})`);
     return (y * this.width + x) as CellId;
   }
 
-  /** The (x, y) coordinates of a cell id. */
+  /** The (x, y) coordinates of a node id. */
   coordsOf(cell: CellId): { x: number; y: number } {
     return { x: cell % this.width, y: Math.floor(cell / this.width) };
   }
 
   /**
-   * The cell containing integer tile coordinates (`x`, `y`), clamped into the grid. Unlike
-   * {@link cellAt} this never throws — it is the navigation planner's seam from a settler's tile
-   * position (already snapped to an integer cell centre by the MovementSystem) to a cell id, so an
-   * out-of-range coordinate clamps to the nearest border cell rather than crashing a tick. Pass
-   * integer tile coords (round a fixed-point Position with `fx.toInt` first); a fractional value is
-   * truncated toward zero by the cell layout.
+   * The node at integer half-cell coordinates (`x`, `y`), clamped into the grid. Unlike
+   * {@link cellAt} this never throws — it is the navigation planner's seam from an entity's node
+   * address (`nodeOfPosition`) to a node id, so an out-of-range coordinate clamps to the nearest
+   * border node rather than crashing a tick.
    */
   cellAtClamped(x: number, y: number): CellId {
     const cx = x < 0 ? 0 : x >= this.width ? this.width - 1 : x;
@@ -201,7 +172,7 @@ export class TerrainGraph {
     return (cy * this.width + cx) as CellId;
   }
 
-  /** The landscape typeId tagged on a cell. Throws on an id outside the grid (programmer error). */
+  /** The landscape typeId tagged on a node. Throws on an id outside the grid (programmer error). */
   typeAt(cell: CellId): number {
     const id = this.typeIds[cell];
     if (id === undefined) throw new Error(`cell id ${cell} out of range (0..${this.cellCount - 1})`);
@@ -212,30 +183,30 @@ export class TerrainGraph {
     return this.props.get(this.typeAt(cell)) ?? UNKNOWN_TYPE;
   }
 
-  /** True if a unit may stand on / walk through this cell. */
+  /** True if a unit may stand on / walk through this node. */
   isWalkable(cell: CellId): boolean {
     return this.propsOf(cell).walkable;
   }
 
-  /** True if a building's reserved zone may cover this cell (the landscape row's `buildable` flag —
+  /** True if a building's reserved zone may cover this node (the landscape row's `buildable` flag —
    *  water/rock/void are neither walkable nor buildable; a real map's object margin is walkable but
    *  not buildable). Placement-only; navigation reads {@link isWalkable}. */
   isBuildable(cell: CellId): boolean {
     return this.propsOf(cell).buildable;
   }
 
-  /** Fixed-point cost to step onto this cell. */
+  /** Fixed-point cost to step onto this node. */
   walkCost(cell: CellId): Fixed {
     return this.propsOf(cell).walkCost;
   }
 
-  /** Per-cell capacity (how many units may cluster here). */
+  /** Per-node capacity (how many units may cluster here). */
   maxValency(cell: CellId): number {
     return this.propsOf(cell).maxValency;
   }
 
   /**
-   * The in-bounds 4-connected neighbours of a cell, in canonical N, E, S, W order. Border cells
+   * The in-bounds 4-connected neighbours of a node, in canonical N, E, S, W order. Border nodes
    * simply yield fewer neighbours. Deterministic: the order never depends on map history.
    */
   neighbours(cell: CellId): CellId[] {
@@ -259,21 +230,19 @@ export class TerrainGraph {
   }
 
   /**
-   * The pathfinder's 8-direction edge set from `cell` — the staggered lattice's real neighbourhood:
-   * the E/W column steps, then the four row-crossing edges in canonical NE, SE, SW, NW screen-heading
-   * order (their grid offsets depend on the row's parity — {@link LATTICE_ROW_STEPS}), then the two
-   * straight VERTICAL steps N, S (two rows up/down, same world column — the enum tail of the
-   * original's `THexagonDirection`, NORTH = 6, SOUTH = 7). Each step is paired with its fixed-point
-   * cost: the destination cell's {@link walkCost} × the edge's world length (E/W = ONE, row-crossing
-   * = {@link DIAGONAL_STEP} ≈ ¾, vertical = {@link VERTICAL_STEP} ≈ 1.118) — so A* minimises TRUE
-   * on-screen distance. `blocked` is the dynamic walk-block overlay (cells standing buildings
-   * occupy); a step onto a blocked or unwalkable cell is omitted. No corner-cut rule is needed on the
-   * six short edges: the four row-crossing edges cross a full shared diamond edge (nothing to clip
-   * through), and an E/W step passes a shared vertex between the two row-neighbours — walkability is
-   * a property of the DESTINATION cell, the original's vertex-graph movement model. A VERTICAL step,
-   * though, walks the seam BETWEEN the two intermediate-row cells that flank the line (exactly the
-   * SE/SW — or NE/NW — step targets), so it additionally requires at least ONE of those flanks
-   * passable: with both flanks blocked the seam is a wall joint, not a gap.
+   * The pathfinder's 8-direction edge set from `cell` on the half-cell lattice: the E/W half-column
+   * steps, then the four diagonal edges in canonical NE, SE, SW, NW screen-heading order, then the
+   * two straight vertical half-row steps N, S (the enum tail of the original's `THexagonDirection`,
+   * NORTH = 6, SOUTH = 7). Each step is paired with its fixed-point cost: the destination node's
+   * {@link walkCost} × the edge's world length (E/W = {@link HALF_COLUMN}, diagonal =
+   * {@link DIAGONAL_STEP} ≈ ¾, vertical = {@link HALF_ROW}) — so A* minimises TRUE on-screen
+   * distance. `blocked` is the dynamic walk-block overlay (nodes standing buildings occupy); a step
+   * onto a blocked or unwalkable node is omitted. E/W and N/S steps connect directly adjacent nodes,
+   * so walkability is a property of the DESTINATION node (the original's vertex-graph movement
+   * model). A DIAGONAL edge passes exactly between the two nodes flanking its midpoint (offsets
+   * `(0, dy/2)` and `(dx, dy/2)`), so it additionally requires at least ONE of those flanks
+   * passable: with both flanks blocked the seam is a wall joint, not a gap (the same rule the old
+   * two-row vertical step carried — a named approximation, no readable movement source).
    *
    * Determinism: fixed emission order + fixed per-step costs, all `Fixed`; the returned list drives
    * the A* relaxation, so its order is part of the canonical path choice (pinned by the pathfinding
@@ -287,41 +256,56 @@ export class TerrainGraph {
       const c = (ny * this.width + nx) as CellId;
       return this.isWalkable(c) && !(blocked?.has(c) ?? false);
     };
-    // Column steps first, canonical E then W — cost is the destination's walk cost (edge length ONE).
+    // Half-column steps first, canonical E then W.
     for (const [dx, dy] of COLUMN_STEP_OFFSETS) {
       const nx = x + dx;
       const ny = y + dy;
       if (!passable(nx, ny)) continue;
       const c = (ny * this.width + nx) as CellId;
-      out.push({ cell: c, cost: this.walkCost(c) });
+      out.push({ cell: c, cost: fx.mul(this.walkCost(c), HALF_COLUMN) });
     }
-    // Row-crossing steps, canonical NE,SE,SW,NW — the parity-matched grid offsets; the step costs
-    // the destination's walk cost × the lattice edge length (≈ ¾ of a column step).
-    const rowSteps = (y & 1) === 1 ? LATTICE_ROW_STEPS[1] : LATTICE_ROW_STEPS[0];
-    for (const [dx, dy] of rowSteps) {
+    // Diagonal steps, canonical NE,SE,SW,NW — gated on the flanked midpoint seam.
+    for (const [dx, dy] of DIAGONAL_STEP_OFFSETS) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (!passable(nx, ny)) continue;
+      // The seam between two blocked flanks is a wall joint, not a walkable gap.
+      const fy = y + dy / 2;
+      if (!passable(x, fy) && !passable(nx, fy)) continue;
+      const c = (ny * this.width + nx) as CellId;
+      out.push({ cell: c, cost: fx.mul(this.walkCost(c), DIAGONAL_STEP) });
+    }
+    // Vertical half-row steps last, canonical N then S (the THexagonDirection tail order).
+    for (const [dx, dy] of VERTICAL_STEP_OFFSETS) {
       const nx = x + dx;
       const ny = y + dy;
       if (!passable(nx, ny)) continue;
       const c = (ny * this.width + nx) as CellId;
-      out.push({ cell: c, cost: fx.mul(this.walkCost(c), DIAGONAL_STEP) });
-    }
-    // Vertical steps last, canonical N then S (the THexagonDirection tail order): two rows straight
-    // up/down through the flanked gap ({@link VERTICAL_LATTICE_STEPS}).
-    const verticals = (y & 1) === 1 ? VERTICAL_LATTICE_STEPS[1] : VERTICAL_LATTICE_STEPS[0];
-    for (const [dy, flankA, flankB] of verticals) {
-      const ny = y + dy;
-      if (!passable(x, ny)) continue;
-      // The seam between two blocked flanks is a wall joint, not a walkable gap.
-      if (!passable(x + flankA[0], y + flankA[1]) && !passable(x + flankB[0], y + flankB[1])) continue;
-      const c = (ny * this.width + x) as CellId;
-      out.push({ cell: c, cost: fx.mul(this.walkCost(c), VERTICAL_STEP) });
+      out.push({ cell: c, cost: fx.mul(this.walkCost(c), HALF_ROW) });
     }
     return out;
   }
 }
 
-/** A raw terrain map: dimensions + a row-major landscape-typeId grid (the cell-graph input). */
+/**
+ * A terrain map at HALF-CELL resolution: dimensions + a row-major landscape-typeId grid — the
+ * graph input. `resolution` is a compile-time discriminant so a cell-resolution grid (a scene's
+ * authored `W×H` strip, a decoded map's baked per-cell lane) can never reach the graph unscaled —
+ * route those through {@link halfCellMapFromCells}.
+ */
 export interface TerrainMap {
+  readonly resolution: 'half-cell';
+  /** Half-cell grid width — 2× the map's cell columns. */
+  readonly width: number;
+  /** Half-cell grid height — 2× the map's cell rows. */
+  readonly height: number;
+  /** Row-major landscape typeId per half-cell; length must equal width*height. */
+  readonly typeIds: ReadonlyArray<number>;
+}
+
+/** A terrain grid authored at VISUAL-CELL resolution (`W×H`) — scenes and the decoded map's baked
+ *  per-cell lane. Upsample via {@link halfCellMapFromCells} before building a graph. */
+export interface CellTerrainMap {
   readonly width: number;
   readonly height: number;
   /** Row-major landscape typeId per cell; length must equal width*height. */
@@ -329,8 +313,37 @@ export interface TerrainMap {
 }
 
 /**
- * Build the cell-adjacency graph from the content's {@link LandscapeType} table and a terrain map.
- * The per-type props are resolved once here so per-cell lookups during a tick are pure array reads.
+ * Upsample a cell-resolution grid to the half-cell lattice: cell `(x, y)` stamps its typeId onto
+ * the 2×2 half-cell block `(2x..2x+1, 2y..2y+1)` — the SAME block convention the original's
+ * half-cell lanes use (source basis: mapdat lane layout — cell (x,y) owns exactly that block).
+ */
+export function halfCellMapFromCells(map: CellTerrainMap): TerrainMap {
+  if (map.typeIds.length !== map.width * map.height) {
+    throw new Error(
+      `cell grid has ${map.typeIds.length} cells, expected ${map.width * map.height} (${map.width}x${map.height})`,
+    );
+  }
+  const width = map.width * 2;
+  const height = map.height * 2;
+  const typeIds = new Array<number>(width * height);
+  for (let cy = 0; cy < map.height; cy++) {
+    for (let cx = 0; cx < map.width; cx++) {
+      const t = map.typeIds[cy * map.width + cx];
+      if (t === undefined) throw new Error(`cell grid missing typeId at (${cx}, ${cy})`); // length-checked above
+      const base = cy * 2 * width + cx * 2;
+      typeIds[base] = t;
+      typeIds[base + 1] = t;
+      typeIds[base + width] = t;
+      typeIds[base + width + 1] = t;
+    }
+  }
+  return { resolution: 'half-cell', width, height, typeIds };
+}
+
+/**
+ * Build the half-cell adjacency graph from the content's {@link LandscapeType} table and a
+ * half-cell terrain map. The per-type props are resolved once here so per-node lookups during a
+ * tick are pure array reads.
  */
 export function buildTerrainGraph(content: ContentSet, map: TerrainMap): TerrainGraph {
   const props = new Map<number, CellTypeProps>();
@@ -345,57 +358,39 @@ export function buildTerrainGraph(content: ContentSet, map: TerrainMap): Terrain
   return new TerrainGraph(map.width, map.height, typeIds, props);
 }
 
-/** A fixed-point Manhattan-style step distance between two cells (4-connected metric). */
-export function cellManhattanDistance(g: TerrainGraph, a: CellId, b: CellId): Fixed {
-  const ca = g.coordsOf(a);
-  const cb = g.coordsOf(b);
-  return fx.fromInt(Math.abs(ca.x - cb.x) + Math.abs(ca.y - cb.y));
-}
-
 /**
- * The extra cost of covering one HALF-COLUMN of sideways travel with a diagonal step instead of a
- * (half a) vertical one — {@link DIAGONAL_STEP} − {@link ROW_STEP}, the marginal price the
- * vertical-heavy branch of {@link cellLatticeDistance} pays per half-column of offset.
- */
-const DIAGONAL_OVER_HALF_VERTICAL: Fixed = fx.sub(DIAGONAL_STEP, ROW_STEP);
-
-/**
- * The fixed-point STAGGERED-LATTICE step distance between two cells — the admissible, consistent A*
- * heuristic for the 8-direction graph ({@link TerrainGraph.steps}: E/W cost ONE, row-crossing cost
- * {@link DIAGONAL_STEP}, vertical two-row cost {@link VERTICAL_STEP}). It is the EXACT minimum cost
- * across open terrain, split by which need dominates (`whx` = the world-x offset in half-columns,
- * `rows` = the row offset; the two always share parity, since a cell's half-column x has its row's
- * parity):
+ * The fixed-point HALF-CELL LATTICE step distance between two nodes — the admissible, consistent A*
+ * heuristic for the 8-direction graph ({@link TerrainGraph.steps}: E/W cost {@link HALF_COLUMN},
+ * diagonal cost {@link DIAGONAL_STEP}, vertical cost {@link HALF_ROW}). It is the EXACT minimum
+ * cost across open terrain. With `ax = |Δhx|` (half-columns) and `ay = |Δhy|` (half-rows): a
+ * diagonal covers `(1, 2)` and is cheaper than its straight substitute `E + 2·N`
+ * (DIAGONAL_STEP < HALF_COLUMN + 2·HALF_ROW), so use as many diagonals as either axis allows —
+ * `d = min(ax, ⌊ay/2⌋)` — and cover the remainder with straight steps:
  *
- *  - `whx ≥ rows` (sideways dominates): every row-crossing is a diagonal sliding toward the goal
- *    (each absorbs one half-column), the remaining offset is E/W column steps —
- *    `rows·DIAGONAL_STEP + (whx − rows)·HALF_COLUMN`.
- *  - `whx < rows` (vertical dominates): `whx` diagonals cover the whole offset, the remaining
- *    `rows − whx` rows pair up into straight vertical steps —
- *    `whx·DIAGONAL_STEP + (rows − whx)·ROW_STEP`, computed as
- *    `rows·ROW_STEP + whx·(DIAGONAL_STEP − ROW_STEP)` (shared parity makes `rows − whx` even, so the
- *    verticals pair exactly).
+ *  - `2·ax ≤ ay` (vertical dominates): `ax·DIAGONAL_STEP + (ay − 2ax)·HALF_ROW`;
+ *  - otherwise (sideways dominates): `⌊ay/2⌋·DIAGONAL_STEP + (ax − ⌊ay/2⌋)·HALF_COLUMN +
+ *    (ay mod 2)·HALF_ROW`.
  *
- * Both branches compose the very integers the edge costs are built from ({@link VERTICAL_STEP} is
- * defined as ROW_STEP doubled), so on unit-cost terrain the heuristic EQUALS the true open-terrain
- * graph distance — admissible and consistent by construction; obstacles only raise the true cost, so
- * A* stays optimal. Substituting E/W steps or opposing-diagonal pairs for sideways travel is never
- * cheaper (ONE > 2·(DIAGONAL_STEP − ROW_STEP) per column, and an opposing pair wastes its rows), so
- * no third case exists.
+ * No wasteful composition beats it: a zigzag diagonal pair covering one column costs
+ * 2·DIAGONAL_STEP > 2·HALF_COLUMN, an opposing pair covering four rows costs 2·DIAGONAL_STEP >
+ * 4·HALF_ROW, and a diagonal-plus-backtrack substitute for one E step costs DIAGONAL_STEP +
+ * 2·HALF_ROW > HALF_COLUMN. Every term composes the very integers the edge costs are built from,
+ * so on unit-cost terrain the heuristic EQUALS the true open-terrain graph distance — admissible
+ * and consistent by construction; obstacles only raise the true cost, so A* stays optimal.
  */
 export function cellLatticeDistance(g: TerrainGraph, a: CellId, b: CellId): Fixed {
   const ca = g.coordsOf(a);
   const cb = g.coordsOf(b);
-  const rows = Math.abs(ca.y - cb.y);
-  // World-x offset between the cell centres in integer HALF-COLUMNS: twice the column delta plus the
-  // 0/1 stagger of each row's parity — exact plain integers, the same encoding the pathfinder's
-  // line-deviation tie-break uses.
-  const whx = Math.abs(2 * (cb.x - ca.x) + (cb.y & 1) - (ca.y & 1));
-  if (whx >= rows) {
-    // Sideways dominates: all rows cross diagonally, the leftover offset is full column steps.
-    const columns = fx.mul(fx.fromInt(whx - rows), HALF_COLUMN);
-    return fx.add(fx.mul(fx.fromInt(rows), DIAGONAL_STEP), columns);
+  const ax = Math.abs(cb.x - ca.x);
+  const ay = Math.abs(cb.y - ca.y);
+  if (2 * ax <= ay) {
+    // Vertical dominates: every half-column crosses diagonally, the leftover rows are half-row steps.
+    return fx.add(fx.mul(fx.fromInt(ax), DIAGONAL_STEP), fx.mul(fx.fromInt(ay - 2 * ax), HALF_ROW));
   }
-  // Vertical dominates: whx diagonals absorb the offset, the leftover rows pair into vertical steps.
-  return fx.add(fx.mul(fx.fromInt(rows), ROW_STEP), fx.mul(fx.fromInt(whx), DIAGONAL_OVER_HALF_VERTICAL));
+  // Sideways dominates: ⌊ay/2⌋ diagonals absorb the rows (one half-row may remain when ay is odd),
+  // the leftover offset is half-column steps.
+  const d = ay >> 1;
+  const straight = fx.mul(fx.fromInt(ax - d), HALF_COLUMN);
+  const oddRow = (ay & 1) === 1 ? HALF_ROW : ZERO;
+  return fx.add(fx.add(fx.mul(fx.fromInt(d), DIAGONAL_STEP), straight), oddRow);
 }

@@ -1,6 +1,6 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
 import type { ElevationField } from '../data/elevation.js';
-import { TILE_HALF_H, TILE_HALF_W, depthKey, tileToScreen } from '../data/iso.js';
+import { TILE_HALF_H, TILE_HALF_W, depthKey, halfCellToScreen } from '../data/iso.js';
 import type { DrawItem } from '../data/scene/index.js';
 import type { SpriteSheet } from './pixi-app.js';
 import { resolveLayers } from './sprite-pool/index.js';
@@ -8,9 +8,10 @@ import type { TextureCache } from './texture-cache.js';
 
 /**
  * The BUILD-PLACEMENT cursor ghost — the held building's own sprite, translucent, snapped to the
- * hovered tile, exactly the original's build-mode cursor. The app decides WHERE (the hovered tile)
- * and WHETHER (it hides the ghost over ground the placement probe rejects — in the original the house
- * icon vanishes over blocked ground); this layer only projects that decision.
+ * hovered HALF-CELL node (the anchor grid buildings actually place on), exactly the original's
+ * build-mode cursor. The app decides WHERE (the hovered node) and WHETHER (it hides the ghost over
+ * ground the placement probe rejects — in the original the house icon vanishes over blocked ground);
+ * this layer only projects that decision.
  *
  * Lives INSIDE the depth-sorted sprite layer with a feet-anchor depth key, so the ghost occludes and
  * is occluded like the real house would be — sliding it behind a standing tree reads correctly.
@@ -20,7 +21,8 @@ import type { TextureCache } from './texture-cache.js';
  * (or an unbound type) it degrades to a translucent placeholder diamond at the same anchor.
  */
 
-/** What the app hands the layer each frame while a building is held over a placeable tile. */
+/** What the app hands the layer each frame while a building is held over a placeable node —
+ *  `col`/`row` are half-cell coordinates on the `2W×2H` lattice. */
 export interface PlacementGhost {
   readonly col: number;
   readonly row: number;
@@ -54,8 +56,9 @@ export class PlacementGhostLayer {
       this.builtForType = ghost.buildingType;
       this.rebuild(ghost.buildingType);
     }
-    const p = tileToScreen(ghost.col, ghost.row);
-    const lift = elevation.maxLift > 0 ? elevation.liftAt(ghost.col, ghost.row) : 0;
+    const p = halfCellToScreen(ghost.col, ghost.row);
+    // The elevation field samples CELL coordinates — a node sits at (col/2, row/2) in cell space.
+    const lift = elevation.maxLift > 0 ? elevation.liftAt(ghost.col / 2, ghost.row / 2) : 0;
     this.container.position.set(p.x, p.y - lift);
     // Depth by the PRE-LIFT feet anchor, like every pooled sprite — the ghost interleaves correctly.
     this.container.zIndex = depthKey(p.x, p.y);

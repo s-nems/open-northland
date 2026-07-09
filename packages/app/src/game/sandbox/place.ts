@@ -1,4 +1,4 @@
-import { type Simulation, components, fx, systems } from '@vinland/sim';
+import { type Simulation, cellAnchorNode, components, fx, systems } from '@vinland/sim';
 import { HARVEST_ATOMIC } from '../../catalog/atomics.js';
 import { resolveVikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
@@ -28,11 +28,13 @@ export function placeSandboxBuilding(
   y: number,
   owner: number = HUMAN_PLAYER,
 ): void {
+  // Scenes author in whole tiles; the command seam speaks half-cell nodes.
+  const node = cellAnchorNode(x, y);
   sim.enqueue({
     kind: 'placeBuilding',
     buildingType: resolveVikingBuilding(ref).typeId,
-    x,
-    y,
+    x: node.hx,
+    y: node.hy,
     tribe: PRIMARY_TRIBE,
     owner,
     force: true,
@@ -48,11 +50,12 @@ export function spawnSandboxSettler(
   owner: number = HUMAN_PLAYER,
   opts: { readonly hitpoints?: number; readonly weaponTypeId?: number } = {},
 ): void {
+  const node = cellAnchorNode(x, y);
   sim.enqueue({
     kind: 'spawnSettler',
     jobType,
-    x,
-    y,
+    x: node.hx,
+    y: node.hy,
     tribe: PRIMARY_TRIBE,
     owner,
     ...(opts.hitpoints !== undefined ? { hitpoints: opts.hitpoints } : {}),

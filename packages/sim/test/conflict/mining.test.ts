@@ -13,7 +13,15 @@ import {
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { CORE_INVARIANTS, Simulation, type TerrainMap, checkInvariants, fx } from '../../src/index.js';
+import {
+  CORE_INVARIANTS,
+  Simulation,
+  type TerrainMap,
+  cellAnchorNode,
+  checkInvariants,
+  fx,
+  halfCellMapFromCells,
+} from '../../src/index.js';
 import { type SystemContext, atomicSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
@@ -76,8 +84,9 @@ function ctxOf(sim: Simulation): SystemContext {
   };
 }
 
+/** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
 }
 
 /** A miner settler at integer tile (x,y): needs at 0, empty experience. */
@@ -196,14 +205,15 @@ describe('mining — chipping a deposit', () => {
     // Exactly the deposit's size lies as ore piles, conserved (no dupes/losses across the whole drain).
     expect(oreDrops(sim)).toHaveLength(DEPOSIT_SIZE);
     expect(totalStone(sim)).toBe(DEPOSIT_SIZE);
-    // The exhausting chip announced the removal at the deposit's cell.
+    // The exhausting chip announced the removal at the deposit's node (half-cell coords).
+    const depositNode = cellAnchorNode(2, 0);
     const depleted = sim.events.current().filter((ev) => ev.kind === 'resourceDepleted');
     expect(depleted).toHaveLength(1);
     expect(depleted[0]).toMatchObject({
       kind: 'resourceDepleted',
       node: deposit,
       goodType: STONE,
-      at: { x: 2, y: 0 },
+      at: { x: depositNode.hx, y: depositNode.hy },
     });
   });
 

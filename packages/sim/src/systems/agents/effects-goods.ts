@@ -10,6 +10,7 @@ import {
 } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { unstampResourceFootprint } from '../footprint/index.js';
 import { stockCapacity } from '../stores.js';
@@ -156,7 +157,8 @@ function dropMinedOre(world: World, node: Entity, goodType: number, amount: numb
  */
 function depleteNode(world: World, ctx: SystemContext, node: Entity, goodType: number): void {
   const pos = world.get(node, Position);
-  const at = { x: fx.toInt(pos.x), y: fx.toInt(pos.y) };
+  const n = nodeOfPosition(pos.x, pos.y);
+  const at = { x: n.hx, y: n.hy };
   unstampResourceFootprint(world, node);
   world.destroy(node);
   ctx.events.emit({ kind: 'resourceDepleted', node, goodType, at });

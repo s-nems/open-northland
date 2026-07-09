@@ -1,39 +1,45 @@
 import { MoveGoal, PathFollow, PathRequest, Position } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
-import { worldDistance } from '../../nav/metric.js';
+import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
+import { worldDistance, worldX } from '../../nav/metric.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import { isValidCellId } from '../spatial.js';
 
-/** Half a cell in fixed-point — the rounding offset that picks the NEAREST cell centre. */
-const HALF_CELL: Fixed = fx.fromFloat(0.5);
+const TWO: Fixed = fx.fromInt(2);
 
 /** The integer FLOOR of a Fixed. `fx.toInt` truncates toward zero, which is one too high for a
- *  negative fraction — reachable here: a west-border seam leg legally swings to grid x = −0.5
- *  (`routing.ts` pathToWaypoints), and the bracket below must be the true floor/ceil pair. */
+ *  negative fraction — reachable here: a west-border seam transient can sit a quarter-column left
+ *  of world x = 0 (`routing.ts` pathToWaypoints), and the bracket below must be the true
+ *  floor/ceil pair. */
 function floorInt(v: Fixed): number {
   const t = fx.toInt(v);
   return v < fx.fromInt(t) ? t - 1 : t;
 }
 
 /**
- * The route-start cell for a walker standing at fixed-point position `(x,y)`: the nearest WALKABLE
- * cell among the (up to four) cells whose centres bracket the position, by world-metric distance
- * (ties by ascending cell id — deterministic; a bracket cell clamped onto the map at a border can
- * duplicate another, which is harmless — identical distance and id). Mid-leg a walker sits between
- * two walkable waypoints, so the bracket always contains a walkable centre — but the NEAREST
- * bracket cell alone can be unwalkable: a vertical two-row leg is legal with one impassable flank
- * (see `terrain.ts` steps), and a walker past the seam rounds to that flank. `findPath` rejects an
- * unwalkable start outright, which would fail the request and strand the walker mid-seam; skipping
- * to the nearest WALKABLE bracket cell keeps every mid-walk re-route servable. Falls back to
- * nearest-centre rounding if no bracket cell is walkable — the request then fails exactly as an
- * off-network start always has.
+ * The route-start node for a walker standing at fixed-point position `(x,y)`: the nearest WALKABLE
+ * node among the (up to four) nodes that bracket the position on the rectangular half-cell lattice
+ * (floor/ceil of its world coordinates in half-cell units), by world-metric distance (ties by
+ * ascending cell id — deterministic; a bracket node clamped onto the map at a border can duplicate
+ * another, which is harmless — identical distance and id). Mid-leg a walker sits between two
+ * walkable waypoints, so the bracket always contains a walkable node — but the NEAREST bracket node
+ * alone can be unwalkable: a diagonal leg is legal with one impassable flank (see `terrain.ts`
+ * steps), and a walker past the seam truncates onto that flank. `findPath` rejects an unwalkable
+ * start outright, which would fail the request and strand the walker mid-seam; skipping to the
+ * nearest WALKABLE bracket node keeps every mid-walk re-route servable. Falls back to the
+ * truncated node if no bracket node is walkable — the request then fails exactly as an off-network
+ * start always has.
  */
 function routeStartCell(terrain: TerrainGraph, x: Fixed, y: Fixed): CellId {
-  const lowX = floorInt(x);
-  const lowY = floorInt(y);
-  const cols = x === fx.fromInt(lowX) ? [lowX] : [lowX, lowX + 1];
-  const rows = y === fx.fromInt(lowY) ? [lowY] : [lowY, lowY + 1];
+  // World coordinates in half-cell units — the lattice is rectangular in world space, so the
+  // nearest node is one of the four floor/ceil corners of (2·worldX, 2·row).
+  const wx = fx.mul(worldX(x, y), TWO);
+  const wy = fx.mul(y, TWO);
+  const lowX = floorInt(wx);
+  const lowY = floorInt(wy);
+  const cols = wx === fx.fromInt(lowX) ? [lowX] : [lowX, lowX + 1];
+  const rows = wy === fx.fromInt(lowY) ? [lowY] : [lowY, lowY + 1];
   let best: CellId | undefined;
   let bestD: Fixed | undefined;
   for (const col of cols) {
@@ -41,14 +47,17 @@ function routeStartCell(terrain: TerrainGraph, x: Fixed, y: Fixed): CellId {
       const cell = terrain.cellAtClamped(col, row);
       if (!terrain.isWalkable(cell)) continue;
       const c = terrain.coordsOf(cell);
-      const d = worldDistance(x, y, fx.fromInt(c.x), fx.fromInt(c.y));
+      const centre = positionOfNode(c.x, c.y);
+      const d = worldDistance(x, y, centre.x, centre.y);
       if (bestD === undefined || d < bestD || (d === bestD && best !== undefined && cell < best)) {
         best = cell;
         bestD = d;
       }
     }
   }
-  return best ?? terrain.cellAtClamped(fx.toInt(fx.add(x, HALF_CELL)), fx.toInt(fx.add(y, HALF_CELL)));
+  if (best !== undefined) return best;
+  const n = nodeOfPosition(x, y);
+  return terrain.cellAtClamped(n.hx, n.hy);
 }
 
 /**
@@ -85,18 +94,22 @@ export function navigationPlanner(world: World, terrain: TerrainGraph): void {
     const pf = world.tryGet(e, PathFollow);
     if (pf !== undefined) {
       // The steady-state majority (already walking the right route) exits HERE every tick — keep it
-      // allocation-free: a route's LAST waypoint is always an exact cell centre (`routing.ts`), so
-      // comparing its cell is bit-equivalent to comparing centre coordinates.
+      // allocation-free: a route's LAST waypoint is always an exact node centre (`routing.ts`), so
+      // comparing its node is bit-equivalent to comparing centre coordinates.
       const last = pf.waypoints[pf.waypoints.length - 1];
-      if (last !== undefined && terrain.cellAtClamped(fx.toInt(last.x), fx.toInt(last.y)) === goalCell) {
-        continue; // route serves the goal
+      if (last !== undefined) {
+        const n = nodeOfPosition(last.x, last.y);
+        if (terrain.cellAtClamped(n.hx, n.hy) === goalCell) {
+          continue; // route serves the goal
+        }
       }
       // The route ends somewhere else — the goal changed mid-walk. Fall through and re-route from
       // where the walker stands: the splice replaces the stale path this tick, momentum carried.
     } else {
       const g = terrain.coordsOf(goalCell as CellId); // validated just above
-      if (p.x === fx.fromInt(g.x) && p.y === fx.fromInt(g.y)) {
-        world.remove(e, MoveGoal); // standing exactly on the goal centre: satisfied
+      const centre = positionOfNode(g.x, g.y);
+      if (p.x === centre.x && p.y === centre.y) {
+        world.remove(e, MoveGoal); // standing exactly on the goal node: satisfied
         continue;
       }
     }

@@ -27,12 +27,12 @@ const WATER = 1; // non-walkable landscape typeId
 function mapOf(rows: number[][]): TerrainMap {
   const height = rows.length;
   const width = rows[0]?.length ?? 0;
-  return { width, height, typeIds: rows.flat() };
+  return { resolution: 'half-cell', width, height, typeIds: rows.flat() };
 }
 
 /** An all-grass (fully walkable) w×h map. */
 function grass(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
 }
 
 function clearStores(): void {
@@ -109,7 +109,7 @@ describe('seedAnimalHerds (map populator)', () => {
 
   it('seeds nothing on a map with no walkable cells', () => {
     const content = testContent();
-    const allWater = { width: 3, height: 1, typeIds: [WATER, WATER, WATER] };
+    const allWater = { resolution: 'half-cell', width: 3, height: 1, typeIds: [WATER, WATER, WATER] };
     expect(seedAnimalHerds(content, allWater)).toHaveLength(0);
   });
 

@@ -1,7 +1,8 @@
-import { type Camera, makeElevationField, tileToScreen } from '@vinland/render';
+import { type Camera, halfCellToScreen, makeElevationField, tileToScreen } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
 import {
   type FormationUnit,
+  type Tile,
   assignFormation,
   clampTile,
   formationTiles,
@@ -14,10 +15,10 @@ import {
 const NONE = (): boolean => false;
 
 /**
- * Headless tests for the pure PICKING math (screen→world→tile + the point/box hit-tests). This is the
+ * Headless tests for the pure PICKING math (screen→world→node + the point/box hit-tests). This is the
  * agent-verifiable half of selection — the DOM/mouse controller that calls it is human-judged in the
- * browser. The load-bearing property is the round-trip: `worldToTile(tileToScreen(t)) === t`, so a
- * click lands on the tile a human aimed at.
+ * browser. A picked Tile is a HALF-CELL node on the `2W×2H` lattice; the load-bearing property is the
+ * round-trip: `worldToTile(halfCellToScreen(t)) === t`, so a click lands on the node a human aimed at.
  */
 
 describe('screenToWorld', () => {
@@ -32,7 +33,7 @@ describe('screenToWorld', () => {
 });
 
 describe('worldToTile', () => {
-  it('is the exact inverse of tileToScreen for a range of tiles', () => {
+  it('is the exact inverse of halfCellToScreen for a range of nodes', () => {
     for (const [col, row] of [
       [0, 0],
       [3, 1],
@@ -41,40 +42,48 @@ describe('worldToTile', () => {
       [0, 9],
       [5, 5],
     ] as const) {
-      const s = tileToScreen(col, row);
+      const s = halfCellToScreen(col, row);
       expect(worldToTile(s.x, s.y)).toEqual({ col, row });
     }
   });
 
-  it('rounds a point inside a diamond to that diamond cell', () => {
-    const centre = tileToScreen(4, 2);
-    // A few px off-centre (well within the cell diamond's half-extents) still resolves to (4,2).
-    expect(worldToTile(centre.x + 6, centre.y - 3)).toEqual({ col: 4, row: 2 });
+  it('resolves a cell centre to its ANCHOR node (2c + (r&1), 2r)', () => {
+    // A click on a visual tile's centre lands on the node the sim anchors that cell on.
+    const s = tileToScreen(3, 1);
+    expect(worldToTile(s.x, s.y)).toEqual({ col: 7, row: 2 });
+  });
+
+  it('rounds a point inside a node catchment to that node', () => {
+    const centre = halfCellToScreen(9, 5);
+    // A few px off-centre (within the node's 34×19 px per-axis rounding catchment) still resolves to (9,5).
+    expect(worldToTile(centre.x + 6, centre.y - 3)).toEqual({ col: 9, row: 5 });
   });
 });
 
 describe('worldToTile — elevation-aware inverse', () => {
+  // Elevation lives on the CELL grid (W×H); node coordinates run 0..2W-1 / 0..2H-1 and sample the
+  // field at (col/2, row/2) — the same cell-space point the renderer lifts a node by.
   const W = 20;
   const H = 20;
 
-  /** The screen point the renderer draws cell (col,row)'s ground centre at: projected feet lifted up by
-   *  the cell's own elevation. `worldToTile` of this must recover (col,row). */
+  /** The screen point the renderer draws node (col,row)'s ground centre at: projected feet lifted up
+   *  by the elevation at its cell-space point. `worldToTile` of this must recover (col,row). */
   const liftedCentre = (
     field: ReturnType<typeof makeElevationField>,
     col: number,
     row: number,
   ): { x: number; y: number } => {
-    const s = tileToScreen(col, row);
-    return { x: s.x, y: s.y - field.liftAt(col, row) };
+    const s = halfCellToScreen(col, row);
+    return { x: s.x, y: s.y - field.liftAt(col / 2, row / 2) };
   };
 
-  it('round-trips every cell on a STEEP east-rising ramp (lift up to ~7 rows)', () => {
-    // elevation = col·12 → the east edge lifts ~228·1.24 ≈ 282 px ≈ 7.4 rows above the flat inverse.
+  it('round-trips every node on a STEEP east-rising ramp (lift up to ~15 node rows)', () => {
+    // elevation = col·12 → the east edge lifts ~228·1.24 ≈ 282 px ≈ 14.9 node rows above the flat inverse.
     const elev: number[] = [];
     for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) elev.push(c * 12);
     const field = makeElevationField(elev, W, H);
-    for (let row = 1; row < H - 1; row += 3) {
-      for (let col = 1; col < W - 1; col += 3) {
+    for (let row = 1; row < 2 * H - 1; row += 5) {
+      for (let col = 1; col < 2 * W - 1; col += 5) {
         const p = liftedCentre(field, col, row);
         expect(worldToTile(p.x, p.y, field)).toEqual({ col, row });
       }
@@ -86,11 +95,11 @@ describe('worldToTile — elevation-aware inverse', () => {
     for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) elev.push(c * 6 + r * 5);
     const field = makeElevationField(elev, W, H);
     for (const [col, row] of [
-      [3, 3],
-      [10, 8],
-      [15, 15],
-      [18, 2],
-      [1, 18],
+      [6, 6],
+      [20, 17],
+      [31, 30],
+      [36, 5],
+      [3, 36],
     ] as const) {
       const p = liftedCentre(field, col, row);
       expect(worldToTile(p.x, p.y, field)).toEqual({ col, row });
@@ -101,10 +110,10 @@ describe('worldToTile — elevation-aware inverse', () => {
     const flat = makeElevationField(undefined, W, H);
     for (const [col, row] of [
       [0, 0],
-      [7, 4],
-      [12, 9],
+      [14, 8],
+      [25, 19],
     ] as const) {
-      const s = tileToScreen(col, row);
+      const s = halfCellToScreen(col, row);
       expect(worldToTile(s.x, s.y, flat)).toEqual(worldToTile(s.x, s.y));
       expect(worldToTile(s.x, s.y, flat)).toEqual({ col, row });
     }
@@ -249,10 +258,13 @@ describe('assignFormation', () => {
     }));
     const orders = assignFormation(units, { col: 10, row: 5 }, 20, 20, NONE);
     expect(orders).toHaveLength(3);
-    const slotX = new Map(orders.map((o) => [o.ref, tileToScreen(o.tile.col, o.tile.row).x]));
-    // ref 1 stood leftmost, ref 3 rightmost — their destinations keep that left-to-right order.
-    expect(slotX.get(1)).toBeLessThan(slotX.get(2) as number);
-    expect(slotX.get(2)).toBeLessThan(slotX.get(3) as number);
+    const slotX = new Map(orders.map((o) => [o.ref, halfCellToScreen(o.tile.col, o.tile.row).x]));
+    // Two of the three nearest node slots share a screen column (ring 0 plus the ring-1 node above
+    // it), so the order is non-strict — but never inverted, and the extremes stay strictly apart:
+    // ref 1 stood leftmost, ref 3 rightmost, and their destinations keep that left-to-right order.
+    expect(slotX.get(1)).toBeLessThanOrEqual(slotX.get(2) as number);
+    expect(slotX.get(2)).toBeLessThanOrEqual(slotX.get(3) as number);
+    expect(slotX.get(1)).toBeLessThan(slotX.get(3) as number);
   });
 
   it('keeps a column marching right in order — the top unit takes the top slot', () => {
@@ -263,7 +275,7 @@ describe('assignFormation', () => {
     }));
     const orders = assignFormation(units, { col: 12, row: 4 }, 20, 20, NONE);
     expect(orders).toHaveLength(3);
-    const slotY = new Map(orders.map((o) => [o.ref, tileToScreen(o.tile.col, o.tile.row).y]));
+    const slotY = new Map(orders.map((o) => [o.ref, halfCellToScreen(o.tile.col, o.tile.row).y]));
     // Two of the three slots share a screen row, so the order is non-strict — but never inverted,
     // and the extremes stay strictly apart: the top unit ends strictly above the bottom one.
     expect(slotY.get(1)).toBeLessThanOrEqual(slotY.get(2) as number);
@@ -281,7 +293,7 @@ describe('assignFormation', () => {
     }));
     const orders = assignFormation(units, { col: 5, row: 10 }, 20, 20, NONE);
     expect(orders).toHaveLength(3);
-    const slotY = new Map(orders.map((o) => [o.ref, tileToScreen(o.tile.col, o.tile.row).y]));
+    const slotY = new Map(orders.map((o) => [o.ref, halfCellToScreen(o.tile.col, o.tile.row).y]));
     // ref 3 started at the bottom (the march front); it ends strictly deepest.
     expect(slotY.get(3)).toBeGreaterThan(slotY.get(1) as number);
     expect(slotY.get(3)).toBeGreaterThan(slotY.get(2) as number);
@@ -315,7 +327,8 @@ describe('assignFormation', () => {
     ];
     const target = { col: 6, row: 5 };
     const cost = (u: FormationUnit, s: Tile): number => {
-      const p = tileToScreen(s.col, s.row);
+      // Slots are node coords — project them exactly as the assigner does.
+      const p = halfCellToScreen(s.col, s.row);
       return (u.x - p.x) ** 2 + (u.y - p.y) ** 2;
     };
     const permutations = <T>(items: readonly T[]): T[][] =>

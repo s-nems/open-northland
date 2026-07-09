@@ -49,7 +49,8 @@ export interface GameViewDeps {
   readonly cameraCtl: CameraController;
   /** The terrain grid the sound driver's ambient beds sample. */
   readonly terrainGrid: SceneTerrain;
-  /** Map bounds for placement/order clicks (a click outside is rejected, never clamped). */
+  /** Map bounds in CELLS for placement/order clicks (a click outside is rejected, never clamped);
+   *  grid-logic consumers derive the 2× node bounds from it. */
   readonly mapSize: { readonly width: number; readonly height: number };
   /** The map's terrain-height field so clicks on lifted hills resolve to the tile drawn there. */
   readonly elevation?: ElevationField;
@@ -64,14 +65,16 @@ const OVERLAY_BAND_MARGIN = 2;
 const PERF_STRIP_GAP = 8;
 
 /**
- * The build-mode overlay-frame builder: the visible tile band plus which of its cells REJECT the
- * held building's anchor — the SAME rule `placeBuilding` gates on (`Simulation.placementProbe`), so
- * the dimmed area is exactly where a click would be refused (blocked by terrain — trees/stones/ore/
- * water — or by another building's margin). Screen-bounded per golden rule 6 (per-frame cost scales
- * with the screen): only the visible band is probed, and only while placing — and the band probe is
- * MEMOIZED on (type, sim tick, band), because sim state mutates only at tick boundaries: a still
- * camera over a paused/idle sim reuses last frame's result instead of re-probing thousands of tiles
- * per RAF. Returns null for a mapless sim (no placement rule → no wash).
+ * The build-mode overlay-frame builder: the visible band plus which of its HALF-CELL NODES reject
+ * the held building's anchor — the SAME rule `placeBuilding` gates on (`Simulation.placementProbe`),
+ * so the dimmed area is exactly where a click would be refused (blocked by terrain — trees/stones/
+ * ore/water — or by another building's margin). The camera cull yields a CELL band
+ * (`visibleTileRange`); the probe walks its 2× node band, since anchors live on the half-cell
+ * lattice. Screen-bounded per golden rule 6 (per-frame cost scales with the screen): only the
+ * visible band is probed, and only while placing — and the band probe is MEMOIZED on (type, sim
+ * tick, band), because sim state mutates only at tick boundaries: a still camera over a paused/idle
+ * sim reuses last frame's result instead of re-probing thousands of nodes per RAF. Returns null for
+ * a mapless sim (no placement rule → no wash).
  */
 function makeOverlayFrameSource(
   sim: Simulation,
@@ -82,12 +85,19 @@ function makeOverlayFrameSource(
   return (buildingType, camera, screenW, screenH) => {
     const probe = sim.placementProbe(buildingType);
     if (probe === null) return null;
-    const range = visibleTileRange(
+    const cells = visibleTileRange(
       cameraViewport(camera, screenW, screenH),
       mapSize.width,
       mapSize.height,
       OVERLAY_BAND_MARGIN,
     );
+    // The node band covering the visible cells — cell (c,r) owns nodes (2c..2c+1, 2r..2r+1).
+    const range = {
+      minCol: cells.minCol * 2,
+      maxCol: cells.maxCol * 2 + 1,
+      minRow: cells.minRow * 2,
+      maxRow: cells.maxRow * 2 + 1,
+    };
     const nextKey = `${buildingType}:${sim.tick}:${range.minCol},${range.maxCol},${range.minRow},${range.maxRow}`;
     if (nextKey === key && frame !== null) return frame;
     const blocked: { col: number; row: number }[] = [];

@@ -21,8 +21,10 @@ export interface IdleSpacing {
   blockedCells?: ReadonlySet<CellId>;
 }
 
-/** Max cells a de-stack ring search visits before giving up — a boxed-in unit simply stays put. */
-const SPACING_SEARCH_CAP = 48;
+/** Max nodes a de-stack ring search visits before giving up — a boxed-in unit simply stays put.
+ *  Quadrupled with the half-cell migration: nodes are 4× denser per world area, so this cap covers
+ *  the same on-screen search radius the old 48-cell cap did. */
+const SPACING_SEARCH_CAP = 192;
 
 /**
  * The idle-spacing drive: if `e` — a resting, owned, otherwise-idle settler on tile (tileX,tileY) —

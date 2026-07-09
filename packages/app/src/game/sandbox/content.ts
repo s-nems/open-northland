@@ -1,5 +1,11 @@
 import { type BuildingFootprint, type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
-import type { TerrainMap } from '@vinland/sim';
+
+/** The one thing the sandbox landscape derivation reads off a terrain grid — its typeId lane.
+ *  Structural, so both the authored CELL grids and the sim's half-cell maps satisfy it. */
+export interface TerrainTypeIds {
+  readonly typeIds: ReadonlyArray<number>;
+}
+
 import {
   ATTACK_ATOMIC,
   CLAY_HARVEST_ATOMIC,
@@ -181,7 +187,7 @@ function workAreas(g: GathererSpec): number[][] {
 }
 
 function sandboxLandscape(
-  map?: TerrainMap,
+  map?: TerrainTypeIds,
 ): Array<{ typeId: number; id: string; walkable: boolean; buildable: boolean }> {
   const base = [
     ...BASE_LANDSCAPE,
@@ -201,7 +207,7 @@ function sandboxLandscape(
   ];
 }
 
-export function sandboxWalkableTypeIds(map?: TerrainMap): ReadonlySet<number> {
+export function sandboxWalkableTypeIds(map?: TerrainTypeIds): ReadonlySet<number> {
   return new Set(
     sandboxLandscape(map)
       .filter((t) => t.walkable)
@@ -213,7 +219,7 @@ export function sandboxGoods(): readonly GoodRef[] {
   return sandboxContent().goods.map((g) => ({ typeId: g.typeId, id: g.id }));
 }
 
-export function sandboxContent(map?: TerrainMap, extras: SandboxContentExtras = {}): ContentSet {
+export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtras = {}): ContentSet {
   // Real extracted footprints (live content) replace the clean-room approximations WHOLESALE — see
   // SandboxContentExtras.buildingFootprints. Without them every building approximates by class.
   const footprintOf = (typeId: number, kind: string): { footprint?: BuildingFootprint } => {

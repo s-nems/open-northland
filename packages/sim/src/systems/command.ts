@@ -12,6 +12,7 @@ import { assertNever } from '../core/brand.js';
 import type { Command } from '../core/commands.js';
 import { ONE, fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
+import { positionOfNode } from '../nav/halfcell.js';
 import { attackUnit, moveUnit, setJob, setStance } from './conflict/orders.js';
 import { spawnAnimalHerd, spawnSettler } from './conflict/spawn.js';
 import type { System, SystemContext } from './context.js';
@@ -176,7 +177,9 @@ function placeBuilding(
   }
 
   const e = world.create();
-  world.add(e, Position, { x: fx.fromInt(command.x), y: fx.fromInt(command.y) });
+  // The anchor is a half-cell node; its Position is the node's fractional tile coords (the render
+  // projects Positions, so the building draws exactly on its authored half-cell).
+  world.add(e, Position, positionOfNode(command.x, command.y));
   // `underConstruction` starts the building at built=0 — the ConstructionSystem advances it to ONE once
   // its `construction` material cost is delivered into its stockpile. Omitted (the default) places it
   // already built (the slice / golden path). An under-construction site begins with an EMPTY hold (it
@@ -226,7 +229,7 @@ function placeBoat(world: World, ctx: SystemContext, command: Extract<Command, {
   if (!unlocked.some((v) => v.typeId === command.vehicleType)) return;
 
   const e = world.create();
-  world.add(e, Position, { x: fx.fromInt(command.x), y: fx.fromInt(command.y) });
+  world.add(e, Position, positionOfNode(command.x, command.y));
   world.add(e, Vehicle, { vehicleType: command.vehicleType, tribe: command.tribe });
   // A hull placed for a specific PLAYER carries an `Owner` (the separate-optional stamp). Omitted /
   // out-of-range leaves it neutral (golden path).

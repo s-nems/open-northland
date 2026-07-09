@@ -14,7 +14,14 @@ import {
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { ONE, Simulation, type TerrainMap, fx } from '../../src/index.js';
+import {
+  ONE,
+  Simulation,
+  type TerrainMap,
+  cellAnchorNode,
+  fx,
+  halfCellMapFromCells,
+} from '../../src/index.js';
 import { type SystemContext, aiSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
@@ -58,8 +65,9 @@ beforeEach(() => {
   }
 });
 
+/** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
 }
 
 function ctxOf(sim: Simulation): SystemContext {
@@ -111,8 +119,10 @@ function pileAt(sim: Simulation, x: number, y: number, goods: Array<[number, num
   return e;
 }
 
+/** The node id of visual tile (x, y) — walk goals address the doubled half-cell lattice. */
 function cell(sim: Simulation, x: number, y: number): number {
-  return sim.terrain?.cellAt(x, y) as number;
+  const n = cellAnchorNode(x, y);
+  return sim.terrain?.cellAt(n.hx, n.hy) as number;
 }
 
 describe('producer self-service — fetching a missing recipe input', () => {

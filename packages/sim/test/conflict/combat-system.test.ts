@@ -12,7 +12,14 @@ import {
   Weapon,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, type TerrainMap, fx } from '../../src/index.js';
+import {
+  type Fixed,
+  Simulation,
+  type TerrainMap,
+  fx,
+  halfCellMapFromCells,
+  positionOfNode,
+} from '../../src/index.js';
 import { type SystemContext, atomicSystem, combatSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
@@ -51,10 +58,10 @@ beforeEach(() => {
 });
 
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(0) };
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(0) });
 }
 
-/** A combatant: a settler with a Health pool. `tribe`/`jobType` decide its weapon. */
+/** A combatant: a settler with a Health pool at visual cell (x,y). `tribe`/`jobType` decide its weapon. */
 function fighterAt(
   sim: Simulation,
   x: number,
@@ -63,8 +70,31 @@ function fighterAt(
   jobType: number | null,
   hitpoints = 1000,
 ): Entity {
+  return fighterAtPosition(sim, { x: fx.fromInt(x), y: fx.fromInt(y) }, tribe, jobType, hitpoints);
+}
+
+/** A combatant standing exactly on half-cell node (hx, hy) — reach geometry a whole cell (2 nodes on a
+ *  row) cannot express, e.g. an ODD node distance from a cell-anchored fighter. */
+function fighterAtNode(
+  sim: Simulation,
+  hx: number,
+  hy: number,
+  tribe: number,
+  jobType: number | null,
+  hitpoints = 1000,
+): Entity {
+  return fighterAtPosition(sim, positionOfNode(hx, hy), tribe, jobType, hitpoints);
+}
+
+function fighterAtPosition(
+  sim: Simulation,
+  position: { x: Fixed; y: Fixed },
+  tribe: number,
+  jobType: number | null,
+  hitpoints: number,
+): Entity {
   const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Position, { x: position.x, y: position.y });
   sim.world.add(e, Settler, {
     tribe,
     jobType,
@@ -92,7 +122,7 @@ describe('combatSystem — target selection + issuing the attack atomic', () => 
   it('an idle combatant swings at the nearest enemy in range, with the resolved net damage', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
-    const enemy = fighterAt(sim, 2, 0, FRANK, WOODCUTTER); // 2 cells away — within maxRange 2
+    const enemy = fighterAt(sim, 1, 0, FRANK, WOODCUTTER); // 2 nodes away — at the axe's maxRange 2
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -116,7 +146,7 @@ describe('combatSystem — target selection + issuing the attack atomic', () => 
   it('does NOT swing at an enemy out of weapon range', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
-    fighterAt(sim, 5, 0, FRANK, WOODCUTTER); // 5 cells away — beyond maxRange 2
+    fighterAt(sim, 5, 0, FRANK, WOODCUTTER); // 10 nodes away — beyond maxRange 2
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -125,9 +155,9 @@ describe('combatSystem — target selection + issuing the attack atomic', () => 
 
   it('picks the NEAREST enemy when several are in range, tie-broken by ascending entity id', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    const attacker = fighterAt(sim, 2, 0, VIKING, WOODCUTTER);
-    const far = fighterAt(sim, 4, 0, FRANK, WOODCUTTER); // 2 away
-    const near = fighterAt(sim, 1, 0, FRANK, WOODCUTTER); // 1 away — nearest
+    const attacker = fighterAt(sim, 1, 0, VIKING, WOODCUTTER); // node (2, 0)
+    const far = fighterAt(sim, 2, 0, FRANK, WOODCUTTER); // 2 nodes away — in range
+    const near = fighterAtNode(sim, 3, 0, FRANK, WOODCUTTER); // 1 node away — nearest
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -312,7 +342,7 @@ describe('combatSystem — hunter strike on catchable prey (animaltypes.ini catc
   it('a HUNTER strikes catchable prey (a cow) in its bow band, with the hunter weapon damage', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER); // a viking hunter (job 15) — bow minRange 3
-    const cow = fighterAt(sim, 3, 0, COW, null); // catchable prey, 3 cells away (inside the bow band 3..17)
+    const cow = fighterAt(sim, 3, 0, COW, null); // catchable prey, 6 nodes away (inside the bow band 3..17)
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -325,7 +355,7 @@ describe('combatSystem — hunter strike on catchable prey (animaltypes.ini catc
   it('a hunter CANNOT fire its bow on prey closer than minRange (an adjacent cow is too near)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER); // bow minRange 3
-    fighterAt(sim, 1, 0, COW, null); // catchable prey, but only 1 cell away — INSIDE the bow's near reach
+    fighterAtNode(sim, 1, 0, COW, null); // catchable prey, but only 1 node away — INSIDE the bow's near reach
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -333,10 +363,10 @@ describe('combatSystem — hunter strike on catchable prey (animaltypes.ini catc
     expect(sim.world.has(hunter, CurrentAtomic)).toBe(false);
   });
 
-  it('minRange is exclusive at the boundary: prey at minRange-1 (2 cells) is still too near', () => {
+  it('minRange is exclusive at the boundary: prey at minRange-1 (2 nodes) is still too near', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER); // bow band 3..17
-    fighterAt(sim, 2, 0, COW, null); // 2 cells away — one inside the near reach (minRange 3)
+    fighterAt(sim, 1, 0, COW, null); // 2 nodes away — one inside the near reach (minRange 3)
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -505,9 +535,9 @@ describe('combatSystem — provoked anger (getAngry/angryGameTime)', () => {
     // target, atomicSystem lands the hit + stamps Anger, and the deer fights back.
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const hunter = fighterAt(sim, 0, 0, VIKING, HUNTER, 1000);
-    // 3 cells away — inside the bow band (minRange 3) AND inside the deer's antler reach (maxRange 3),
+    // 3 nodes away — inside the bow band (minRange 3) AND inside the deer's antler reach (maxRange 3),
     // so the hunter can fire and the provoked deer can strike back at this distance.
-    const deer = fighterAt(sim, 3, 0, DEER, null, 1000); // catchable + getAngry, passive until struck
+    const deer = fighterAtNode(sim, 3, 0, DEER, null, 1000); // catchable + getAngry, passive until struck
 
     // combatSystem runs after atomicSystem, so the hunter's swing (started tick 1) completes on tick 5
     // — the provoking hit (drains HP, stamps Anger). Run 5 ticks for it to land.
@@ -627,7 +657,7 @@ describe('combatSystem — worn-weapon override (the equip seed)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
     sim.world.add(attacker, Weapon, { weaponTypeId: 11 }); // test_spear (tribe 1): damage 70, minRange 3
-    const enemy = fighterAt(sim, 4, 0, FRANK, WOODCUTTER); // 4 cells: in the spear's 3..17 band, beyond axe's 2
+    const enemy = fighterAt(sim, 4, 0, FRANK, WOODCUTTER); // 8 nodes: in the spear's 3..17 band, beyond axe's 2
 
     combatSystem(sim.world, ctxOf(sim));
 

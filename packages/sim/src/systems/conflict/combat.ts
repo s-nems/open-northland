@@ -118,20 +118,21 @@ export const combatSystem: System = (world, ctx) => {
 export const REPATH_CADENCE = 8;
 
 /**
- * DEFEND stance — how far (Manhattan tiles) from its **anchor** a defender auto-acquires an enemy: it
- * engages only threats inside this radius of the tile the DEFEND stance was set on, ignoring anything
- * beyond (it holds its post rather than roaming). APPROXIMATED — the original's exact defend radius is
- * unreadable (source basis "Combat stances"); calibration-by-observation pending.
+ * DEFEND stance — how far (Manhattan half-cell nodes) from its **anchor** a defender auto-acquires an
+ * enemy: it engages only threats inside this radius of the node the DEFEND stance was set on, ignoring
+ * anything beyond (it holds its post rather than roaming). APPROXIMATED — the original's exact defend
+ * radius is unreadable (source basis "Combat stances"); calibration-by-observation pending. Doubled
+ * with the half-cell migration (same on-screen radius as the old 4-cell value).
  */
-export const DEFEND_RADIUS_TILES = 4;
+export const DEFEND_RADIUS_TILES = 8;
 
 /**
- * DEFEND stance — the **leash**: the farthest (Manhattan tiles) from its anchor a defender will step to
+ * DEFEND stance — the **leash**: the farthest (Manhattan nodes) from its anchor a defender will step to
  * strike an in-radius enemy. Kept a little above {@link DEFEND_RADIUS_TILES} so a melee defender can walk
  * up to a threat at the radius edge, but never chases far — a target reachable only by breaking the leash
  * is left alone and the defender returns to its anchor. APPROXIMATED (source basis).
  */
-export const DEFEND_LEASH_TILES = 6;
+export const DEFEND_LEASH_TILES = 12;
 
 /**
  * The dormancy gate: whether any combat work is possible this tick — a cheap single pass over the

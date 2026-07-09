@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CurrentAtomic, Health, HerdMember, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, type TerrainMap, fx, seedAnimalHerds } from '../../src/index.js';
+import { Simulation, type TerrainMap, fx, halfCellMapFromCells, seedAnimalHerds } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -40,9 +40,9 @@ beforeEach(() => {
   CurrentAtomic.store.clear();
 });
 
-/** An all-grass (fully walkable) w×h terrain map. */
+/** An all-grass (fully walkable) w×h CELL map, upsampled to the 2W×2H half-cell lattice. */
 function grass(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
 }
 
 /** Place a civilization combatant (a settler with a Health pool) directly at (x,y). */
@@ -76,7 +76,7 @@ describe('populated-map combat scenario (civ vs seeded wildlife, end-to-end)', (
   it('seeds a real bear herd that the commandSystem actually places via step()', () => {
     const content = testContent();
     const map = grass(9, 1);
-    // One BEAR herd at the first walkable cell (x=0): leader on the birth point, two scattered at x±1.
+    // One BEAR herd at the first walkable NODE (0,0): leader on the birth node, two scattered at hx±1.
     const cmds = seedAnimalHerds(content, map, { tribes: [BEAR], maxHerds: 1 });
     expect(cmds).toHaveLength(1);
     expect(cmds[0]).toMatchObject({ kind: 'spawnAnimalHerd', tribe: BEAR, x: 0, y: 0 });
@@ -99,11 +99,13 @@ describe('populated-map combat scenario (civ vs seeded wildlife, end-to-end)', (
     const content = testContent();
     const map = grass(9, 1);
     const sim = new Simulation({ seed: 1, content, map });
-    // Seed the bear herd at x=0: leader on the birth point (x=0), the two pack members scattered to
-    // x=+1 and the off-map raw x=-1 (clamped to the grid edge, x=0, on combat's cellAtClamped read).
+    // Seed the bear herd at node (0,0): leader on the birth node, the two pack members scattered to
+    // node hx=+1 and the off-map raw hx=-1 (clamped to the grid edge, node 0, on combat's
+    // cellAtClamped read).
     for (const c of seedAnimalHerds(content, map, { tribes: [BEAR], maxHerds: 1 })) sim.enqueue(c);
-    // A viking combatant 2 cells from the bear leader's birth point — within both weapons' range 2.
-    const viking = vikingFighterAt(sim, 2, 0, 1_000_000);
+    // A viking combatant on tile (1,0) = node (2,0), node-Manhattan 2 from the bear leader's birth
+    // node (and 1 from the hx=+1 member) — within both weapons' range 2 (ranges are node distances).
+    const viking = vikingFighterAt(sim, 1, 0, 1_000_000);
 
     sim.step(); // commandSystem places the herd this tick; combatSystem then picks targets
 

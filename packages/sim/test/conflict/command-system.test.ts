@@ -20,7 +20,7 @@ import {
   Weapon,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { type Command, Simulation, fx } from '../../src/index.js';
+import { type Command, Simulation, cellAnchorNode, fx } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -81,7 +81,15 @@ function nthEntity(sim: Simulation, n: number): Entity {
 describe('CommandSystem', () => {
   it('placeBuilding creates a built building with a seeded stockpile and emits buildingPlaced', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 3, y: 4, tribe: VIKING });
+    // Command coords are half-cell nodes; cell (3,4)'s anchor node (6,8) sits exactly on tile (3,4).
+    const anchor = cellAnchorNode(3, 4);
+    sim.enqueue({
+      kind: 'placeBuilding',
+      buildingType: HEADQUARTERS,
+      x: anchor.hx,
+      y: anchor.hy,
+      tribe: VIKING,
+    });
     expect(sim.commands.pendingCount).toBe(1);
 
     sim.step();
@@ -100,7 +108,7 @@ describe('CommandSystem', () => {
     expect([pos.x, pos.y]).toEqual([3 * 65536, 4 * 65536]);
     const placed = sim.events.current().filter((ev) => ev.kind === 'buildingPlaced');
     expect(placed).toHaveLength(1);
-    expect(placed[0]).toMatchObject({ at: { x: 3, y: 4 } });
+    expect(placed[0]).toMatchObject({ at: { x: anchor.hx, y: anchor.hy } }); // events echo node coords
   });
 
   it('spawnSettler creates a settler with the given job and emits settlerBorn', () => {

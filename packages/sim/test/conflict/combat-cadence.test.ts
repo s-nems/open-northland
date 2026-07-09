@@ -3,7 +3,14 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { Armor, CurrentAtomic, Health, Position, Settler } from '../../src/components/index.js';
 import type { AtomicEffect } from '../../src/core/commands.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, type TerrainMap, fx } from '../../src/index.js';
+import {
+  type Fixed,
+  Simulation,
+  type TerrainMap,
+  fx,
+  halfCellMapFromCells,
+  positionOfNode,
+} from '../../src/index.js';
 import {
   FIGHT_EXPERIENCE_TYPE,
   type SystemContext,
@@ -235,7 +242,7 @@ function combatCadenceContent(): ContentSet {
 }
 
 function grass(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(0) };
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(0) });
 }
 
 function ctxOf(sim: Simulation): SystemContext {
@@ -248,7 +255,7 @@ function ctxOf(sim: Simulation): SystemContext {
   };
 }
 
-/** A combatant of `tribe`/`jobType` at (x,y), optionally armored. */
+/** A combatant of `tribe`/`jobType` at visual cell (x,y), optionally armored. */
 function fighterAt(
   sim: Simulation,
   x: number,
@@ -257,8 +264,31 @@ function fighterAt(
   jobType: number | null,
   opts: { hitpoints?: number; armorClass?: number } = {},
 ): Entity {
+  return fighterAtPosition(sim, { x: fx.fromInt(x), y: fx.fromInt(y) }, tribe, jobType, opts);
+}
+
+/** A combatant standing exactly on half-cell node (hx, hy) — reach geometry a whole cell (2 nodes on a
+ *  row) cannot express, e.g. a maxRange-1 weapon needs an ADJACENT node. */
+function fighterAtNode(
+  sim: Simulation,
+  hx: number,
+  hy: number,
+  tribe: number,
+  jobType: number | null,
+  opts: { hitpoints?: number; armorClass?: number } = {},
+): Entity {
+  return fighterAtPosition(sim, positionOfNode(hx, hy), tribe, jobType, opts);
+}
+
+function fighterAtPosition(
+  sim: Simulation,
+  position: { x: Fixed; y: Fixed },
+  tribe: number,
+  jobType: number | null,
+  opts: { hitpoints?: number; armorClass?: number } = {},
+): Entity {
   const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Position, { x: position.x, y: position.y });
   sim.world.add(e, Settler, {
     tribe,
     jobType,
@@ -313,7 +343,7 @@ describe('combat damage — armor material column (the AP asymmetry)', () => {
     it(`${desc} → ${expected} damage (the material column, no blockingValue subtracted)`, () => {
       const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
       const attacker = fighterAt(sim, 0, 0, VIKING, job);
-      fighterAt(sim, 1, 0, OTHER, null, { armorClass: armor }); // an armored enemy, one cell away
+      fighterAt(sim, 1, 0, OTHER, null, { armorClass: armor }); // an armored enemy, 2 nodes away (in band [1,2])
 
       combatSystem(sim.world, ctxOf(sim));
 
@@ -350,7 +380,7 @@ describe('combatSystem — the swing carries the ATTACK-event hit-frame + the we
   it('omits hitAt when the attack animation carries no ATTACK event (falls back to completion)', () => {
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const saberer = fighterAt(sim, 0, 0, VIKING, SOLDIER_SABER); // saber animation has no `event <f> 25`
-    fighterAt(sim, 1, 0, OTHER, null);
+    fighterAtNode(sim, 1, 0, OTHER, null); // 1 node away — the saber's whole reach band is [1, 1]
     combatSystem(sim.world, ctxOf(sim));
     const effect = sim.world.get(saberer, CurrentAtomic).effect;
     expect('hitAt' in effect).toBe(false); // no ATTACK event -> no hitAt -> executor uses completion
@@ -537,7 +567,8 @@ describe('atomicSystem — a damaging swing accrues fight XP into the weapon-cla
 
 describe('two squads exchange blows at the data cadence (extended headless scenario)', () => {
   function seedSquads(sim: Simulation): { vikings: Entity[]; saxons: Entity[] } {
-    // Two spear squads, interleaved within reach, on a small line — each viking has a saxon in range and back.
+    // Two spear squads, interleaved within reach, on a small line — adjacent cells are 2 nodes apart
+    // (inside the spear band [1,2]), so each viking has a saxon in range and back.
     const vikings = [
       fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR, { hitpoints: 20_000 }),
       fighterAt(sim, 2, 0, VIKING, SOLDIER_SPEAR, { hitpoints: 20_000 }),

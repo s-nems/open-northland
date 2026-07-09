@@ -89,14 +89,18 @@ function worseGroundClass(a: number, b: number): number {
 }
 
 /**
- * Resolve a decoded map's collision grid: the same `{width, height, typeIds}` shape, with every cell
- * classed as `TERRAIN_OPEN` / `TERRAIN_IMPASSABLE` / `TERRAIN_BLOCKED` / `TERRAIN_MARGIN`. Feed THIS
- * to the sim (nav + placement); the raw map keeps driving the render layers (ground mesh, decor,
- * ambience).
+ * Resolve a decoded map's collision grid at HALF-CELL resolution (the sim's `2W×2H` navigation
+ * lattice): every node classed as `TERRAIN_OPEN` / `TERRAIN_IMPASSABLE` / `TERRAIN_BLOCKED` /
+ * `TERRAIN_MARGIN`. Ground classes are per-cell in the source (`empa`/`empb` triangles) and stamp
+ * their 2×2 node block; object block areas are stamped at their native half-cell anchors and
+ * offsets (the `emla`/`lmlt` lanes' own resolution). Feed THIS to the sim (nav + placement); the
+ * raw map keeps driving the render layers (ground mesh, decor, ambience).
  */
 export function buildCollisionTerrain(map: TerrainMapFile, ir: CollisionIrView): TerrainMap {
   const { width, height } = map;
-  const typeIds = new Array<number>(width * height).fill(TERRAIN_OPEN);
+  const nodeW = width * 2;
+  const nodeH = height * 2;
+  const typeIds = new Array<number>(nodeW * nodeH).fill(TERRAIN_OPEN);
 
   // --- ground: class each cell by its two triangles' extracted walk/build flags -------------------
   if (map.ground !== undefined && ir.gfxPatterns !== undefined) {
@@ -113,8 +117,19 @@ export function buildCollisionTerrain(map: TerrainMapFile, ir: CollisionIrView):
       if (logicType === undefined) return TERRAIN_OPEN;
       return classTable.get(logicType) ?? TERRAIN_OPEN;
     };
-    for (let i = 0; i < typeIds.length; i++) {
-      typeIds[i] = worseGroundClass(classOf(map.ground.a[i]), classOf(map.ground.b[i]));
+    for (let cy = 0; cy < height; cy++) {
+      for (let cx = 0; cx < width; cx++) {
+        const i = cy * width + cx;
+        const cls = worseGroundClass(classOf(map.ground.a[i]), classOf(map.ground.b[i]));
+        if (cls === TERRAIN_OPEN) continue; // the grid default — skip the stamp
+        // The cell's class covers its 2×2 node block — the same block convention the original's
+        // half-cell lanes use. (A per-triangle split below cell resolution has no pinned mapping.)
+        const base = cy * 2 * nodeW + cx * 2;
+        typeIds[base] = cls;
+        typeIds[base + 1] = cls;
+        typeIds[base + nodeW] = cls;
+        typeIds[base + nodeW + 1] = cls;
+      }
     }
   }
 
@@ -133,8 +148,8 @@ export function buildCollisionTerrain(map: TerrainMapFile, ir: CollisionIrView):
       });
     }
     const stamp = (cx: number, cy: number, cls: number): void => {
-      if (cx < 0 || cy < 0 || cx >= width || cy >= height) return;
-      const i = cy * width + cx;
+      if (cx < 0 || cy < 0 || cx >= nodeW || cy >= nodeH) return;
+      const i = cy * nodeW + cx;
       const current = typeIds[i];
       // Severity order: body > impassable ground > margin > open. A margin never downgrades a cell.
       if (cls === TERRAIN_BLOCKED) typeIds[i] = TERRAIN_BLOCKED;
@@ -149,17 +164,13 @@ export function buildCollisionTerrain(map: TerrainMapFile, ir: CollisionIrView):
       const name = types[typeIndex];
       const gfx = name !== undefined ? gfxByName.get(name) : undefined;
       if (gfx === undefined) continue;
-      // Anchor the object's cell-relative area offsets on cell (hx>>1, hy>>1). APPROXIMATED: the
-      // `emla` lane places at half-cell precision (render keeps it — `content/objects.ts` draws at
-      // the exact half-cell) and nothing in OpenVikings pins which cell a half-cell placement's
-      // block areas are relative to; flooring to the containing cell is our choice, at most half a
-      // cell of skew (source basis "Map collision").
-      const ax = hx >> 1;
-      const ay = hy >> 1;
-      for (const [dx, dy] of gfx.walk) stamp(ax + dx, ay + dy, TERRAIN_BLOCKED);
-      for (const [dx, dy] of gfx.margin) stamp(ax + dx, ay + dy, TERRAIN_MARGIN);
+      // Anchor the object's block-area offsets on its half-cell VERBATIM: the `emla` placement,
+      // the `lmlt` blocking lane, and the `LogicWalkBlockArea` offsets all live on the same 2W×2H
+      // grid (source basis: mapdat lane layout), so no flooring — the old cell-floor skew is gone.
+      for (const [dx, dy] of gfx.walk) stamp(hx + dx, hy + dy, TERRAIN_BLOCKED);
+      for (const [dx, dy] of gfx.margin) stamp(hx + dx, hy + dy, TERRAIN_MARGIN);
     }
   }
 
-  return { width, height, typeIds };
+  return { resolution: 'half-cell', width: nodeW, height: nodeH, typeIds };
 }

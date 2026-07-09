@@ -1,4 +1,4 @@
-import type { Simulation, TerrainMap } from '@vinland/sim';
+import type { CellTerrainMap, Simulation } from '@vinland/sim';
 
 /** A single machine-checkable assertion about a scene's run — the mechanic the headless test enforces. */
 export interface SceneCheck {
@@ -26,8 +26,9 @@ export interface SceneDefinition {
   readonly summary: string;
   /** Seed for the deterministic RNG. */
   readonly seed: number;
-  /** Terrain grid the sim navigates and the renderer projects. The global content/rules are not scene-owned. */
-  readonly terrain: TerrainMap;
+  /** Terrain grid authored in CELLS — the renderer projects it as-is; `createSceneSim` upsamples it
+   *  to the sim's half-cell lattice. The global content/rules are not scene-owned. */
+  readonly terrain: CellTerrainMap;
   /** Populate the fresh sim (enqueue commands, create resource nodes). Runs once before any tick. */
   readonly build: (sim: Simulation) => void;
   /** Ticks the headless acceptance test advances before checking {@link checks}. */

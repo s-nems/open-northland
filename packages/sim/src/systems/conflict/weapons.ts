@@ -90,9 +90,13 @@ export function attackerWeapon(
 }
 
 /** Resolve a {@link WeaponType}'s reach band, clamped sane (`1 ≤ minRange ≤ maxRange`): `maxRange` floored
- *  at 1 (a weapon always reaches at least its own cell), `minRange` floored at 1 and never exceeding the
+ *  at 1 (a weapon always reaches at least its own node), `minRange` floored at 1 and never exceeding the
  *  far reach, so a malformed band can't read as "can never hit". A ranged weapon (the hunter's bow) keeps
- *  its `minRange > 1` near floor — it can't fire on an adjacent target. */
+ *  its `minRange > 1` near floor — it can't fire on an adjacent target. The extracted range values are
+ *  consumed VERBATIM as half-cell (node) Manhattan distances — the same reading as the footprint offsets:
+ *  the original's logic grid IS the half-cell lattice, so its distance params live in that space (source
+ *  basis: the 2W×2H lane/placement layout; no combat-code oracle — if live-original observation later
+ *  contradicts this, scale here). */
 function withReach(weapon: WeaponType): { minRange: number; maxRange: number; weapon: WeaponType } {
   const maxRange = Math.max(1, weapon.maxRange);
   const minRange = Math.min(Math.max(1, weapon.minRange), maxRange);
