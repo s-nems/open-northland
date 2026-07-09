@@ -23,17 +23,24 @@ export interface GuiSprite {
   readonly frame: AtlasFrame;
 }
 
+let guiArtOnce: Promise<GuiArt | null> | null = null;
+
 /**
  * Load the indexed GUI window sheet + palette LUT, or `null` when either half is missing (the GUI
  * pipeline stage hasn't run) — the consumer then renders its flat fallback at the same geometry.
+ * Memoized per page (like `loadIr`): the tool panel, the action ring, and the details panel all
+ * mount it and must share one sheet texture instead of fetching three.
  */
-export async function loadGuiArt(): Promise<GuiArt | null> {
-  const [layer, lut] = await Promise.all([
-    loadGuiWindowIndexed().catch<SpriteLayer | null>(() => null),
-    loadGuiPaletteLut().then((t) => t ?? null),
-  ]);
-  if (layer === null || lut === null) return null;
-  return { layer, lut, colours: lut.pixelHeight };
+export function loadGuiArt(): Promise<GuiArt | null> {
+  guiArtOnce ??= (async () => {
+    const [layer, lut] = await Promise.all([
+      loadGuiWindowIndexed().catch<SpriteLayer | null>(() => null),
+      loadGuiPaletteLut().then((t) => t ?? null),
+    ]);
+    if (layer === null || lut === null) return null;
+    return { layer, lut, colours: lut.pixelHeight };
+  })();
+  return guiArtOnce;
 }
 
 /**
@@ -45,13 +52,17 @@ export async function loadGuiArt(): Promise<GuiArt | null> {
 export function makeGuiSprite(
   art: GuiArt,
   gfx: number,
-  opts: { readonly defaultPalette: GuiPaletteName; readonly colorKey: PalettedSprite['colorKey'] },
+  opts: {
+    readonly defaultPalette: GuiPaletteName;
+    readonly colorKey: PalettedSprite['colorKey'];
+    readonly palette?: GuiPaletteName;
+  },
 ): GuiSprite | null {
   const frame = art.layer.atlas.frames.get(gfx);
   if (frame === undefined) return null;
   const sprite = new PalettedSprite(art.lut, art.colours);
   sprite.setFrame(art.layer.source, frame, art.layer.atlas.width, art.layer.atlas.height);
-  sprite.player = guiPaletteRow(GUI_FRAMES[gfx]?.palette ?? opts.defaultPalette);
+  sprite.player = guiPaletteRow(opts.palette ?? GUI_FRAMES[gfx]?.palette ?? opts.defaultPalette);
   sprite.colorKey = opts.colorKey;
   return { sprite, frame };
 }

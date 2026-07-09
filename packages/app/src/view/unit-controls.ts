@@ -1,6 +1,9 @@
+import type { ContentSet } from '@vinland/data';
 import { type Camera, type ElevationField, type EntityBounds, buildSpriteScene } from '@vinland/render';
 import { type Command, type Entity, type WorldSnapshot, nodeOfPosition } from '@vinland/sim';
 import type { Application } from 'pixi.js';
+import { isBuilding, isSettler, ownerPlayerOf, positionOf } from '../game/snapshot.js';
+import { type Profession, type UnitPanel, mountUnitPanel } from '../hud/details-panel/index.js';
 import { screenScale } from './camera.js';
 import { el } from './overlay.js';
 import {
@@ -15,13 +18,11 @@ import {
   worldToTile,
 } from './picking.js';
 import { type SettlerActions, mountSettlerActions } from './settler-actions.js';
-import { isBuilding, isSettler, ownerPlayerOf, positionOf } from './snapshot.js';
-import { type Profession, type UnitPanel, mountUnitPanel } from './unit-panel.js';
 
 /**
  * The interactive UNIT-CONTROL layer — the RTS "select and command" input the human drives, wired on
  * top of the pure picking math ({@link import('./picking.js')}) and the info panel
- * ({@link import('./unit-panel.js')}). It is app-layer I/O (DOM + floats), reading the mouse/keyboard
+ * ({@link import('../hud/details-panel/index.js')}). It is app-layer I/O (DOM + floats), reading the mouse/keyboard
  * and issuing sim **commands** through the one-way seam; it never touches sim state directly.
  *
  * Bindings (standard RTS, chosen to not clash with the camera's middle-drag/wheel/arrows):
@@ -63,6 +64,8 @@ export interface UnitControlsOptions {
   readonly humanPlayer: number;
   /** Professions the panel offers as one-click job changes. */
   readonly professions: readonly Profession[];
+  /** Global content, used by the details panel for building/goods labels and per-building sections. */
+  readonly content: ContentSet;
   /** Submit a command into the sim (the one-way seam). */
   readonly enqueue: (command: Command) => void;
   /**
@@ -113,8 +116,16 @@ const MARQUEE_STYLE = [
 export async function createUnitControls(opts: UnitControlsOptions): Promise<UnitControls> {
   const { canvas } = opts;
   const selected = new Set<number>();
-  const panel: UnitPanel = mountUnitPanel({
+  const panel: UnitPanel = await mountUnitPanel({
+    app: opts.app,
+    canvas,
+    uiscale: opts.uiscale ?? 1,
+    // Adapt main's `screenScale(canvas, resolution)` to the panel's `backingScale(canvas)` option by
+    // binding the renderer resolution (camera dropped the old zero-arg `backingScale`).
+    backingScale: (c: HTMLCanvasElement) => screenScale(c, opts.app.renderer.resolution),
     professions: opts.professions,
+    buildings: opts.content.buildings,
+    goods: opts.content.goods,
     onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),
   });
   // The contextual ACTION MENU (full original-art default menu; only "change profession" is wired on this
@@ -203,6 +214,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     // ring claim covers the RIGHT button too (its own listener only consumes left clicks), so right-clicking
     // a ring button doesn't fall through to a world move/attack order.
     if (opts.claimPointer?.(e.clientX, e.clientY) === true) return;
+    // The details panel routes its own button clicks through the same claim (one mechanism, no
+    // panel-owned mousedown listener racing this one).
+    if (panel.handleMouseDown(e.clientX, e.clientY, e.button)) return;
     if (actions.claimsPointer(e.clientX, e.clientY)) return;
     if (e.button === 2) {
       // Right button: attack an enemy under the cursor, else move to the clicked tile.

@@ -53,6 +53,10 @@ export const JOB_ARCHER = 40; // soldier_bow_short
 export const JOB_ARCHER_LONG = 41; // soldier_bow_long
 
 export const BUILDING_HEADQUARTERS = 1;
+/** The three warehouse levels (`stock_00`/`stock_01`/`stock_02`) — general-goods stores like the HQ. */
+export const BUILDING_WAREHOUSE_00 = 7;
+export const BUILDING_WAREHOUSE_01 = 8;
+export const BUILDING_WAREHOUSE_02 = 9;
 export const BUILDING_JOINERY = 23;
 
 // Weapon typeIds ride the REAL viking `weapons.ini` ids (iron_spear 5, short_sword 7, long_sword 8,

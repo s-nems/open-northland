@@ -15,6 +15,7 @@ import { HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { createSoundDriver } from '../content/audio.js';
 import { loadIr } from '../content/ir.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
+import { professionsFromContent } from '../hud/details-panel/index.js';
 import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel/layout.js';
 import { mountAdminDebug } from './admin-debug/index.js';
 import type { CameraController } from './camera.js';
@@ -24,7 +25,6 @@ import { floatParam } from './params.js';
 import { mountPerfOverlay } from './perf-overlay.js';
 import { nodeBandOfCells } from './picking.js';
 import { createUnitControls } from './unit-controls.js';
-import { professionsFromContent } from './unit-panel.js';
 
 /**
  * The SHARED in-game runtime both playable entries (`?map=` and `?scene=`) run on top of: the standard
@@ -194,6 +194,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
     humanPlayer: HUMAN_PLAYER,
     professions: professionsFromContent(sim.content),
+    content: sim.content,
     enqueue: (command) => sim.enqueue(command),
     boundsOf: (ref) => renderer.entityBounds(ref), // pixel-accurate picking against the real sprite
     claimPointer: (x: number, y: number) => toolPanel.claimPointer(x, y),

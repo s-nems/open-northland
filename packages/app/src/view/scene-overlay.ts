@@ -14,9 +14,29 @@ export interface SceneOverlayHandle {
   update(tick: number): void;
 }
 
-/** Mount the acceptance overlay for a scene. Returns a live handle for the per-frame tick readout. */
+/** The collapsed-state toggle chip (top-right corner) that expands the checklist on demand. */
+const TOGGLE_STYLE = [
+  'position:fixed',
+  'top:12px',
+  'right:12px',
+  'box-sizing:border-box',
+  'padding:4px 10px',
+  'background:rgba(20, 16, 12, 0.9)',
+  'color:#e8dcc8',
+  'border:1px solid #5a4a36',
+  'border-radius:4px',
+  'font:12px/1.4 ui-monospace, monospace',
+  'cursor:pointer',
+  'z-index:40',
+].join(';');
+
+/**
+ * Mount the acceptance overlay for a scene — COLLAPSED by default to a small top-right chip, so the
+ * checklist never covers the in-game HUD (the details panel lives in the same corner region). Clicking
+ * the chip toggles the full panel. Returns a live handle for the per-frame tick readout.
+ */
 export function mountSceneOverlay(scene: SceneDefinition): SceneOverlayHandle {
-  const panel = el('div', PANEL_STYLE);
+  const panel = el('div', `${PANEL_STYLE};display:none`);
 
   panel.append(
     el('div', 'font-weight:700;font-size:14px;margin-bottom:2px', scene.title),
@@ -36,7 +56,21 @@ export function mountSceneOverlay(scene: SceneDefinition): SceneOverlayHandle {
     ),
   );
 
-  document.body.append(panel);
+  const toggle = el('button', TOGGLE_STYLE, `ℹ ${scene.title}`);
+  let open = false;
+  toggle.addEventListener('click', () => {
+    open = !open;
+    panel.style.display = open ? 'block' : 'none';
+    toggle.style.display = open ? 'none' : 'block';
+  });
+  // Clicking anywhere on the expanded panel collapses it back to the chip.
+  panel.addEventListener('click', () => {
+    open = false;
+    panel.style.display = 'none';
+    toggle.style.display = 'block';
+  });
+
+  document.body.append(panel, toggle);
   return {
     update(tick: number): void {
       tickLine.textContent = `tick: ${tick}`;
