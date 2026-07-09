@@ -1,3 +1,4 @@
+import type { Fixed } from '../core/fixed.js';
 import { type Entity, defineComponent } from '../ecs/world.js';
 
 /**
@@ -205,13 +206,19 @@ export const AttackOrder = defineComponent<{ target: Entity }>('AttackOrder');
  *  - `speed` — the weapon's extracted `WeaponType.speed` (a **faithful** param); the `projectileSystem`
  *    maps this onto a per-tick tile step via a named calibration constant (the unit is unreadable —
  *    source basis "Combat ranged projectiles"). Stored raw (the extracted value) so the component stays the
- *    faithful data and the approximated mapping lives in one place (the system).
+ *    faithful data and the approximated mapping lives in one place (the system);
+ *  - `originX`/`originY` — the shooter's {@link import('./movement.js').Position} at the release frame
+ *    (fixed-point, frozen at launch). The flight itself never reads it — the homing step re-aims at the
+ *    target — but the render needs the chord's start to place the shot on its ballistic ARC (the drawn
+ *    lob height + tangent are a pure function of how far along origin→target the shot is; the original
+ *    visibly lobs arrows — observed original behaviour, height approximated).
  *
  * A **separate optional component** on a **bare** entity (only a Position beside it) — no existing system
  * scans it (combat/AI/movement all key on `Settler`/`Health`/`PathFollow`, which a projectile lacks), so
  * it is inert on the goldens (they launch no ranged shot) and adds no per-tick cost when none are in
- * flight. Every field is a whole integer / entity id (no fixed-point), so it hashes deterministically like
- * every other component. Determinism: created + advanced from pure integer/fixed-point math, no RNG/wall-clock.
+ * flight. Every field is a whole integer (ids, raw extracted values, fixed-point scaled ints), so it hashes
+ * deterministically like every other component. Determinism: created + advanced from pure integer/fixed-point
+ * math, no RNG/wall-clock.
  */
 export const Projectile = defineComponent<{
   source: Entity;
@@ -220,4 +227,6 @@ export const Projectile = defineComponent<{
   weaponMainType: number | null;
   munitionType: number;
   speed: number;
+  originX: Fixed;
+  originY: Fixed;
 }>('Projectile');

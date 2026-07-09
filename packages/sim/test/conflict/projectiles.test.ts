@@ -170,6 +170,11 @@ describe('projectiles — homing flight + on-contact damage', () => {
     const before = sim.world.get(shot, Position);
     const x0 = before.x;
     const y0 = before.y;
+    // The launch point is frozen on the payload (the render's ballistic-arc chord start) — the ARCHER's
+    // cell (0,0), not the observed in-flight position (the projectileSystem already advanced the shot
+    // within the launch tick).
+    expect(sim.world.get(shot, Projectile).originX).toBe(fx.fromInt(0));
+    expect(sim.world.get(shot, Projectile).originY).toBe(fx.fromInt(0));
     expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP); // in flight, not yet landed
 
     sim.step();
@@ -178,6 +183,7 @@ describe('projectiles — homing flight + on-contact damage', () => {
     expect(after.x).toBe(fx.add(x0, fx.fromInt(BOW_STEP_TILES)));
     expect(after.y).toBe(y0);
     expect(after.y).toBe(sim.world.get(target, Position).y);
+    expect(sim.world.get(shot, Projectile).originX).toBe(fx.fromInt(0)); // origin stays frozen mid-flight
   });
 
   it('deals damage only AFTER a multi-tick flight (no instant hit), then the projectile is spent', () => {
