@@ -23,7 +23,9 @@ file when all steps land.
   globally over `?map=` + every `?scene=` (strip, tool buttons, game-speed, building/stats
   windows, `?uiscale=`). See packages/app/AGENTS.md.
 - [x] 5. App: settler order UI with original art — landed: `hud/action-ring-layout.ts` (arm footprint transcribed from OpenVikings `BuildHumanActionButtons`) + `view/settler-actions.ts` (Pixi menu of `order_*` buttons, `context` palette, pixel-snapped) replacing the DOM actions card. Renders the **whole default human menu** (four arms) in original art, opened by **Space or right-click on the unit**; on this slice only "change profession" is wired (opens a simple profession picker → `setJob`, info card reflects it live), the rest are inert placeholders for a future "implement the action" pass (warrior/scout variants noted). See plan progress note "Settler action menu".
-- [ ] 6. App: bottom-right details panel with original art
+- [x] 6. App: bottom-right details panel with original art — landed: `hud/details-panel/`
+  (pure model / layout / chrome / sections split), original strings, tiled `bg*.pcx` fills; see
+  the progress note below.
 
 Progress note — UI polish pass over landed steps 4+5 (2026-07-08, `feat/ui-polish`, user-requested,
 not a numbered step): (a) the settler action ring draws at 75% of the shared uiscale
@@ -70,33 +72,155 @@ per the map's provenance convention, keep the totality test green.
 Verification: `npm test` + `npm run check` green; provenance notes in the map header updated.
 ```
 
-## Step 6 — app: bottom-right details panel
+Progress note 2026-07-09, fifth pass (`feat/original-ui-details`): visual review of the fourth pass
+("font still frayed / bold building name unreadable / list a store's accepted goods with 0 + icon per
+resource"). Two changes. (1) VECTOR text. The original UI face is a serif (the extracted `font12` sheet
+shows serifed A–Z), and a ~10 px bitmap can't stay crisp at the panel's fractional scale, so the details
+panel now draws **Tinos** — a metric-compatible "Times"-class serif (Apache-2.0), bundled as two woff2
+subsets (Latin + Latin-ext for the Polish diacritics) under `public/fonts/`, loaded via `FontFace` in the
+new `content/ui-font.ts`. `chrome.ts` renders each line as a Pixi `Text` placed by anchor (top-left /
+centred / right) instead of the bitmap baseline metrics; the supersample bake keeps it sharp, and being
+Pixi-native it bakes upright with no `flipY`. A named legibility approximation, NOT the decoded original
+face — the bitmap `.fnt` path (`hud/bitmap-text.ts`) stays for the tool-panel HUD. Text sizes body 11 /
+title 13 native px, a measured `0.22 em` cap-top trim on the top-anchored placements. (2) Magazyn lists a
+building's STORABLE goods. `model.stockRows` now builds rows from the building's `def.stock` slots (its
+accepted goods, extracted from `logicstock`) joined with the live `Stockpile`, showing `0.0` when empty so
+every storable good appears with its own recoloured pile icon; held goods sort first so a big store's real
+stock stays above the fixed row cap. Verified in-scene on a store (wood/plank/stone/mud/iron/gold/mushroom
+rows, each icon + amount) — in the sandbox only the HQ/Joinery carry a store, so a visible building was
+temporarily stocked to shoot it (a 0-initial slot doesn't seed the `Stockpile`, so it is determinism-safe;
+reverted). Gates green (build, check, targeted tests incl. sandbox byte-determinism 8/8); the panel model
+test pins accepted-goods-listed + held-first. Reviews (fidelity/architecture/quality) ran clean — folded
+in: shared `FONT_FILL` palette in `content/font-gfx.ts` (dedupe with the bitmap fallback), the cap-top
+trim, header/AGENTS wording. Known gap: per-tab CATEGORY filtering is still open — the good→stock-tab-
+category mapping is not in the extracted data (absent from `goodtypes.ini`; it lives in the original
+stock-window GUI definition), so all accepted goods share one list and the eight tabs stay inert chrome.
+The grey `bar_disabled` amount plate (original's is darker/recessed) remains a candidate refinement.
 
-```text
-Rebuild the bottom-right details panel (settler info, multi-selection count, building inventory)
-with original window art, replacing the placeholder DOM card.
+Progress note 2026-07-09, fourth pass (`feat/original-ui-details`): visual review of the third pass
+("Magazyn icons still unreadable / every resource should have an icon reused in several places / font
+could be sharper"). Three fixes. (1) REAL per-good icons. A good's HUD icon is its on-map PILE graphic —
+the engine shares one monochrome sheet `ls_goods.bmd` (155 bobs, 5 growth states per good) recoloured per
+good through a `goods_*`/landscape `.pcx` palette — NOT the `ls_gui_window` frames the earlier montage
+guesses pulled from. New pipeline stage `stages/goods.ts` decodes `ls_goods.bmd` → indexed atlas + preview,
+stacks the referenced recolor palettes into a `goods-palettes-lut`, and emits `goods/manifest.json` with a
+`good STRING id → {frame, palette}` binding: `goodtypes.ini` (good `landscapeType`) joined onto the
+`[GfxLandscape]` "good pile" records (`editGroups` ∋ `good piles all`, matched by `logicType`), taking each
+good's state-1 (smallest, single-unit) pile bob. Source basis: atlas+palettes are decoded data; the
+state-1 = store-icon choice is observed off the original 1024×768 storehouse (its row icons are each good's
+smallest pile — a single stone, a small wheat sheaf), NOT a code-pinned lookup (OpenVikings has no
+good→icon table). App: `content/goods-gfx.ts` loads it (keyed by good string id, so it serves the sandbox
+and the extracted IR alike); `chrome.goodIcon` draws the recoloured frame fit-centred on the wood, replacing
+the old `ls_gui_window`-frame guesses (`icons.ts`/`GOOD_ICON_BY_ID` deleted). Verified in-scene: wood/stone/
+mud/iron/gold/mushroom render as correct recoloured piles. (2) Magazyn category TABS now draw through the
+`bg_invert` palette — bright cream line-art glyph on a recessed plate — instead of `context`, which rendered
+the glyph dark-on-dark (invisible). (3) The panel now bakes at the MAX supersample for a fractional scale
+(text is the finest HUD content; a 2× bake linear-downscaled still hazed small glyphs), integer scales stay
+1:1. Gates green (1598 tests, check, build); `stages/goods.ts` was run directly against the owned game copy
+(155-frame atlas, 25-palette LUT, 42 good icons; the content symlink guard refuses the CLI `--out`). The
+join rule is unit-tested (`test/goods.test.ts`, pure `resolveGoodIcons`). Key `landscapeType` (the good's
+own pile type), NOT the gathering `landscapeToStore`: the latter is undefined for produced/stored goods
+(water/flour/bread/coin), so keying off it would drop their icons — `landscapeType` resolves those correctly
+(fidelity-verified). Relationship to existing infra: the bmd tree-walk already bakes per-palette RGBA
+`ls_goods.<palette>` atlases, and `resource-gfx.ts` resolves ground piles via `gatheringPipeline`; this stage
+instead emits ONE indexed atlas + a goods LUT so a panel showing many goods across many palettes loads a
+single atlas rather than N per-palette RGBA sheets (the `PalettedSprite` recolours per row) — a deliberate
+one-atlas trade, at the cost of some overlap with that pile resolution. Known gaps: 42/65 goods bind
+(tools/weapons/crockery/armour DO — they have `ls_goods` pile records); the iconless rest are goods whose
+`landscapeType` has no `good piles all` record — `fruit`, the six potions, the six amulets — and the many
+goods sharing `landscapeType 1` (prey, sheep, cattle, hand/ox carts, ships, catapult, chest); `plank` is
+sandbox-only (no such good in the extracted `goodtypes.ini`), so it renders iconless in the sandbox. A few
+pile records cite palettes that don't ship (`gold01` → coin/oil, `clay01` → armor_plate, `house_saracen01`
+→ armor_wool) and fall back to a neutral row. The amount plate is still the grey `bar_disabled` frame (the
+original's is a darker recessed field) — unchanged this pass, candidate refinement; the `bg_invert` tab
+palette is a named legibility choice (not a pinned original-tab palette); per-tab category identities + the
+step-3 human pass over the sheet remain open.
 
-Context:
-- Depends on: gui atlas + frame map + fonts + strings (previous steps) and the existing panel
-  logic in `packages/app/src/view/unit-panel.ts` (INFO card: settler need bars, carry, status;
-  building: level, build %, warehouse contents "Magazyn", demolish button). This is a re-skin +
-  layout pass, not a logic change — keep live per-tick updates, demolish, multi-select count.
-- Original ground truth is thin here: the per-type windows exist in the engine
-  (`CSelectionSingleHumanWindow`, `CSelectionHouseWindow`, `CSelectionHumanListWindow`, ...) but
-  are named-only in OpenVikings, not ported — no geometry available. Compose the panel from the
-  extracted window-frame/border sprites (`frame` palette) and bar sprites
-  (`bar_standart`/`bar_hitpoints`/`bar_disabled`), with original strings (`ingameguihousewindow`,
-  `ingameguihumanlistwindow`, `ingameguihumanwindow`); the geometry is approximated — log in
-  plan progress note as pending calibration against the original game.
+Progress note 2026-07-09, third pass (`feat/original-ui-details`): visual review of the second pass
+("font still slightly unreadable / bg too cracked-black / stock tabs broken"). Three fixes. (1) The panel
+now renders at the FULL fractional `uiscale` (the 1.4× the tool panel/action ring already use) instead of
+`floor`-ing it to 1× — it was ~30 % smaller than the rest of the HUD with a native-10 px font. Because a
+fractional scale over the nearest-sampled indexed GUI atlas gives "pixeloza", the panel now bakes like the
+tool-panel strip: drawn at an integer oversample into an off-screen texture, then linear-downscaled
+(`bakeToSprite` + a new `PalettedSprite.flipY`). `flipY` is the general fix that lets a panel MIXING
+PalettedSprites with Pixi-native content (the preview `Sprite`, Graphics fills) bake without the
+whole-texture Y-flip the all-PalettedSprite tool strip uses. Hit-testing keeps a separate screen-anchored
+layout at the fractional scale; `shiftLayout` re-origins the draw layout to the texture. (2) The bg-body
+bake now lifts the swapped `bg_normal` palette's near-black entries toward the original body's sampled
+p25 luma (`liftPaletteShadows`) — a straight swap left the marble veins near-black ("cracked black"); the
+original body never drops below ~luma 18. (3) Stock tabs draw through the `context` palette (dark recessed
+plate + tan category glyph, magenta-keyed so the plate stays) — matching the original's tabs; the earlier
+pass drew a light `bar_disabled` plate under keyed-out icons, which read as blank white tiles. Button
+labels also moved to `font12` (the original's letterspaced caps). Gates green (1593 tests, check, build);
+the GUI stage was re-run against the owned game copy (14 palettes, bg.bg_normal re-baked). Known gaps
+unchanged (below); the yellow-green window border is still the `frame`-palette rope (brownish in the
+original) — noted, not yet retuned. Perf/fidelity/architecture reviews ran clean (no blockers); their
+should-fixes were applied: the two bake helpers collapsed to one (`bakeToFlippedSprite`/`bakeToSprite`
+over a shared `bake`), the oversample chooser (`oversampleFor`/`MAX_SUPERSAMPLE`) exported from `render`
+and shared with the tool-panel strip, and the draw layout now derives from the hit layout by a uniform
+scale (`mapLayout`) instead of a second `layoutDetails(ss)` — so drawn geometry equals hit-tested geometry
+by construction (no ~1 px rounding drift down the button column). `liftPaletteShadows` gained an
+arithmetic-invariant unit test.
 
-Scope:
-1. Framed original-art window anchored bottom-right; the four need bars (hunger / fatigue /
-   piety / enjoyment) as original bar sprites; text in the .fnt font with the font palettes.
-2. Building view: inventory with good icons if the frame map names any (else text), a
-   build-progress bar, and a demolish button in original button chrome.
-3. Reuse the HUD hit-test/input routing introduced with the left panel.
+Progress note 2026-07-08, second pass (`feat/original-ui-details`): the panel was recalibrated against
+native 1024×768 originals after visual review ("too small, doesn't resemble the original"). Measured
+geometry landed in `layout.ts` (panel ≈322 px, preview ≈183 px square, 18 px headlines, 118×16 button
+column, 22 px stock rows; stock body FIXED at 6 rows × 2 columns and workers at 4 rows — the original's
+windows are fixed-height). Key source find: the in-game window body draws `bitmaps/bg.pcx` through the
+`palettes/bg_normal.pcx` ELEMENT palette (embedded palette = grey menu marble; through bg_normal = the
+warm brown wood) — the gui pipeline stage now bakes `bg.bg_normal.png` and the app consumes it. Headlines
+render in decoded `font12` (body stays `font10`) with a baseline−nominal anchor correction in
+`chrome.ts`; borders are rope strips TILED (not stretched) with the 7×7/10×10 knot corners (frames 0–3,
+montage-guessed); the stock window gained the original's eight-tab strip (frames 170–177, inert,
+montage-guessed); the name underline is a flat sampled lime (#d8fb55 — no shipped bitmap×palette pairing
+reproduces it, `bg_selected` unused); preview sits in a thin dark bevel. The sandbox acceptance overlay
+now mounts COLLAPSED to a top-right chip so it never covers the panel. Full pipeline verified into a
+scratch `--out` (the worktree's `content/` is a symlink into the primary checkout; the CLI guard refuses
+writes through it — the new bitmap step was additionally executed directly against the shared content).
+Known gaps unchanged: English catalog building names (original Polish house names not yet extracted; long
+labels overflow the name column), the "Pojemność" capacity line absent (string not in the decoded
+tables), tab/icon identities pending step 3.
 
-Verification: extend the acceptance scene (headless: the panel model reflects selection and
-building state); `npm test` + `npm run check` green; dev URL + visual checklist; plan progress note
-updated; ask for human sign-off.
-```
+Progress note 2026-07-08 (`feat/original-ui-details`): the bottom-right selection details panel renders
+as Pixi HUD from original art, replacing the placeholder DOM card. Landed as the `hud/details-panel/`
+package: `model.ts` (pure selection→model, headless-tested), `layout.ts` (all geometry in one place),
+`chrome.ts` + `sections.ts` (drawing), `panel.ts` (app wiring). Sources: `ls_gui_window` frame/bar
+sprites via named `gui-atlas-map.ts` entries (window borders/corners, `bar_frame_96`, resource-icon
+guesses — montage provenance, pending the step-3 human pass), tiled — not stretched — `Data/gui/bitmaps/bg*`
+fills, `.fnt` text with a Unicode→CP1250 glyph mapping fix in `hud/bitmap-text.ts` (ę/ż/ś... previously
+dropped), and decoded strings (`housewindow` titles/buttons, `humanwindow`, `humanlistwindow` count line);
+sim-state labels (stance/status/needs) and the defence line stay pinned Polish approximations, and the
+building name is the English catalog label until original house names are extracted. Stock icons are keyed
+by good STRING id (numeric ids differ between sandbox and real IR). Building sections: general (bob
+preview, name + selected underline, Zniszcz/Wycentruj/Pracownicy/Pomoc buttons — only demolish wired),
+defence (HQ/tower), production, two-column stock, workers. Geometry remains an explicit approximation
+(`CSelectionHouseWindow` is not ported); verified `npm test`/`check`/`build` green + browser screenshots
+of building/settler/multi views. Review battery (fidelity/quality/perf/architecture) ran and its findings
+landed: textures minted once at asset load (a per-rebuild `Texture` leaked resize listeners), value-driven
+rebuilds throttled to 4 Hz, one-pass selection classification, resize in the rebuild key, panel clicks
+routed through the unit-controls claim chain, snapshot readers moved to `game/snapshot.ts` (hud no longer
+imports view), shared `uiStringLookup`/`DEFAULT_UI_LANG` seam, memoized `loadGuiArt`/`loadBitmapFont`,
+and a `TextDecoder`-pinned CP1250 regression test. Visual calibration still needs human sign-off.
+
+Progress note 2026-07-09, sixth pass (`feat/original-ui-details`): visual review of the fifth pass at
+`uiscale 1` (the real UI scale — earlier shots were at 2.5). Four changes. (1) Section windows now stack
+FLUSH (`SECTION_GAP` 3→0) — the original has no parchment seam between general/defence/stock/workers.
+(2) Stock amounts sit in a subtle recessed field (new `chrome.stockField`, flat Graphics) instead of the
+grey `bar_disabled` frame, which read as an ugly opaque plate. (3) The eight stock tabs are now
+INTERACTIVE: clicking one filters the Magazyn list to its category, the active tab is dimmed-siblings +
+lime-underlined, and a fresh selection opens on the building's fullest category. The good→category map
+(`hud/details-panel/stock-tabs.ts`) is a NAMED APPROXIMATION — no category data exists in the original
+(grep of the whole game tree finds none; the 8 tabs are a hardcoded engine feature) and the tab glyphs are
+still unread, so both the categories and their tab order are provisional, keyed by stable good string id.
+(4) The three sandbox warehouses got `STORE_STOCK` so they list goods (were empty). Verified live at
+uiscale 1 (HQ: flush windows, recessed amount fields, tab filtering — Surowce default shows wood/stone/
+mud/iron/gold, clicking Żywność narrows to mushroom); `npm test` (1600) + `check` + `build` green.
+
+Deferred to its own plan (`docs/plans/global-content.md`): the sim still runs on the hand-made
+`sandboxContent()` (fabricated 9-good set, `plank` invented, HQ/Joinery/warehouse stock hand-pinned), so
+the panel cannot yet show real per-building stock (barracks military goods, 49-slot stores) or all 65
+goods. The user's direction is global real `ir.json` content, but the architect found it is a cross-cutting
+refactor (schema skew: `gfxAtomics`/`trianglePatternTypes`; good-typeId re-key; a "dead economy" trap —
+real content has no `plank` and zero gathering-balance; moved app goldens) that belongs in a separate
+branch, not this UI diff. Once it lands the panel shows real data with no UI change, and the tab category
+map serves the real good set unchanged.

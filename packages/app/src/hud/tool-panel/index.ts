@@ -2,7 +2,7 @@ import type { HudLayout, PalettedSprite } from '@vinland/render';
 import type { Command } from '@vinland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
 import { loadGuiArt, makeGuiSprite } from '../../content/gui-art.js';
-import { type GuiStrings, loadGuiStrings } from '../../content/gui-gfx.js';
+import { loadGuiStrings, uiStringLookup } from '../../content/gui-gfx.js';
 import { type TextRun, loadBitmapFont, makeTextRun } from '../bitmap-text.js';
 import { HOVER_ALPHA, HOVER_TINT } from '../chrome.js';
 import type { MenuBuildingEntry } from './building-menu.js';
@@ -166,7 +166,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     layout,
     scale,
     makeText: (text, color) => makeTextRun(font, text, color, scale),
-    uiString: (table, id, fallback) => (strings as GuiStrings | null)?.[table]?.[String(id)] ?? fallback,
+    uiString: uiStringLookup(strings),
     screen: () => app.screen,
   };
 

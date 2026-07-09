@@ -34,6 +34,21 @@ export function fontColorRow(name: FontColorName): number {
   return FONT_COLORS.indexOf(name);
 }
 
+/**
+ * CSS fill strings approximating the four font-colour LUT rows, for text drawn WITHOUT the indexed LUT —
+ * the vector UI font ({@link import('./ui-font.js')}) and the bitmap font's Pixi-`Text` fallback both use
+ * these since a CSS `fill` can't sample the indexed palette. A warm cream for normal text, near-black for
+ * dark, a muted tan for dimmed, a rust for alerts — sampled to sit on the wood/parchment chrome the same
+ * way the original's `font_*` palettes do (a named colour choice, not decoded palette bytes; these can
+ * drift from the decoded LUT if the font palette changes). One shared table so the two callers can't diverge.
+ */
+export const FONT_FILL: Readonly<Record<FontColorName, string>> = {
+  white: '#f2ead6',
+  dark: '#2a2118',
+  dimmed: '#9a8f78',
+  red: '#c8503c',
+};
+
 /** Path (relative to a `/bobs/` stem) of the recolourable indexed glyph atlas: `<key>.indexed`. */
 export const INDEXED_FONT_SUFFIX = 'indexed';
 /** The `/bobs/` stem of the font colour LUT PNG. */

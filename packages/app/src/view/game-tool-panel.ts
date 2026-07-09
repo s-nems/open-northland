@@ -2,6 +2,7 @@ import type { Camera, ElevationField } from '@vinland/render';
 import type { Command } from '@vinland/sim';
 import type { Application } from 'pixi.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
+import { DEFAULT_UI_LANG } from '../content/gui-gfx.js';
 import type { MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
 import { type ToolPanelController, mountToolPanel } from '../hud/tool-panel/index.js';
@@ -108,7 +109,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     canvas: deps.canvas,
     uiscale,
     buildings: deps.buildings,
-    lang: deps.lang ?? 'pol',
+    lang: deps.lang ?? DEFAULT_UI_LANG,
     tribe: deps.tribe,
     owner: deps.owner,
     enqueue: deps.enqueue,

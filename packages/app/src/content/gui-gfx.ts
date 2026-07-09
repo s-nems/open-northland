@@ -59,8 +59,21 @@ export const GUI_PALETTE_LUT_STEM = 'gui-palettes-lut';
 /** One language's decoded UI strings: `{ <table>: { <id>: <text> } }` (CP1250-decoded by the pipeline). */
 export type GuiStrings = Record<string, Record<string, string>>;
 
+/** The one default UI-string language — every HUD surface that isn't told otherwise uses this. */
+export const DEFAULT_UI_LANG = 'pol';
+
+/** Look up the decoded UI string for `(table, id)`, else the pinned fallback label. */
+export type UiString = (table: string, id: number, fallback: string) => string;
+
+/** The shared `(table, id, fallback)` lookup over one loaded string set (or none — always the fallback). */
+export function uiStringLookup(strings: GuiStrings | null): UiString {
+  return (table, id, fallback) => strings?.[table]?.[String(id)] ?? fallback;
+}
+
 /** The served root for the GUI text/cursor assets (atlases + LUT ride `/bobs/`). */
 const GUI_ROOT = '/gui';
+/** The served root for original GUI bitmap fills (`content/Data/gui/bitmaps/*.png`). */
+const GUI_BITMAP_ROOT = '/gui-bitmaps';
 
 /**
  * The recolourable INDEXED atlas of a GUI sheet (the whole-HUD window sheet / the speech-bubble sheet),
@@ -81,6 +94,27 @@ export function loadGuiWindowIndexed(): Promise<SpriteLayer> {
  */
 export function loadGuiPaletteLut(): Promise<TextureSource | undefined> {
   return loadTextureIfPresent(`/bobs/${GUI_PALETTE_LUT_STEM}.png`);
+}
+
+/** Original GUI bitmap fills copied/converted from `Data/gui/bitmaps/*.pcx` by the pipeline. */
+export type GuiBitmapName = 'bg' | 'bg_button' | 'bg_button_hilite' | 'bg_headline' | 'bg_selected';
+
+/**
+ * The served file per bitmap. `bg` uses the pipeline-baked `bg.bg_normal.png` — the in-game window body
+ * draws `bg.pcx` through the `bg_normal` element palette (warm brown); its embedded palette is the grey
+ * menu look. The other four match the original through their embedded palettes.
+ */
+const GUI_BITMAP_FILES: Readonly<Record<GuiBitmapName, string>> = {
+  bg: 'bg.bg_normal.png',
+  bg_button: 'bg_button.png',
+  bg_button_hilite: 'bg_button_hilite.png',
+  bg_headline: 'bg_headline.png',
+  bg_selected: 'bg_selected.png',
+};
+
+/** Load one optional GUI bitmap fill. Missing `content/` degrades to `undefined`. */
+export function loadGuiBitmap(name: GuiBitmapName): Promise<TextureSource | undefined> {
+  return loadTextureIfPresent(`${GUI_BITMAP_ROOT}/${GUI_BITMAP_FILES[name]}`);
 }
 
 /**

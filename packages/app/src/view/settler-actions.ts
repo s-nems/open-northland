@@ -3,6 +3,7 @@ import { ONE, type WorldSnapshot } from '@vinland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
 import { type GuiSprite, loadGuiArt, makeGuiSprite } from '../content/gui-art.js';
 import { guiFrameIndex } from '../content/gui-atlas-map.js';
+import { isSettler, positionOf } from '../game/snapshot.js';
 import {
   type ActionButton,
   type ActionRingLayout,
@@ -11,11 +12,10 @@ import {
   hitTestActionRing,
   layoutActionRing,
 } from '../hud/action-ring-layout.js';
+import type { Profession } from '../hud/details-panel/index.js';
 import { type BakedIcon, bakeRoundIcon, placeBakedIcon } from '../hud/icon-texture.js';
 import { screenScale } from './camera.js';
 import { el } from './overlay.js';
-import { isSettler, positionOf } from './snapshot.js';
-import type { Profession } from './unit-panel.js';
 
 /**
  * The settler ACTION MENU — the contextual command buttons that fan out around the selected settler(s), in

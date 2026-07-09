@@ -1,0 +1,257 @@
+import { type SupersampledTexture, bakeToSprite } from '@vinland/render';
+import type { WorldSnapshot } from '@vinland/sim';
+import { type Application, Container, Graphics } from 'pixi.js';
+import { DEFAULT_UI_LANG, uiStringLookup } from '../../content/gui-gfx.js';
+import { contains } from '../geometry.js';
+import { loadDetailsPanelAssets } from './assets.js';
+import { type PanelLayers, createChrome } from './chrome.js';
+import { type ButtonHit, type DetailsLayout, layoutDetails, mapLayout } from './layout.js';
+import { type UnitPanelModel, type UnitPanelModelContext, buildUnitPanelModel } from './model.js';
+import { drawBuilding, drawCompact, drawSettler } from './sections.js';
+
+/**
+ * The bottom-right selection details panel (the original's per-selection window stack: general/defence/
+ * production/stock/workers for a building, the info card for a settler), drawn as Pixi HUD from the
+ * extracted original art. `model.ts` decides WHAT is shown, `layout.ts` WHERE, `sections.ts`+`chrome.ts`
+ * HOW — this module wires them to the app: loading, selection/tick updates, pointer claims, and clicks.
+ */
+
+/** Above the world and the left tool panel, below nothing (the panel is the outermost HUD layer). */
+const PANEL_Z = 1002;
+
+/**
+ * Minimum wall-clock gap between value-driven rebuilds. Live values (production %, need bars, status
+ * countdowns) change nearly every sim tick; rebuilding the retained tree 20×/s is pure churn, and 4 Hz
+ * is indistinguishable on a ~100-px bar. Selection changes rebuild immediately.
+ */
+const VALUE_REBUILD_MIN_MS = 250;
+
+export interface UnitPanelOptions extends UnitPanelModelContext {
+  readonly app: Application;
+  readonly canvas: HTMLCanvasElement;
+  /** Integer UI scale (from `?uiscale=`), shared with the left tool panel and action ring. */
+  readonly uiscale?: number;
+  /** Client→canvas coordinate mapping, injected like the tool panel's (the hud layer stays view-free). */
+  readonly backingScale: (canvas: HTMLCanvasElement) => { sx: number; sy: number; rect: DOMRect };
+  readonly onDemolish: (entityId: number) => void;
+}
+
+export interface UnitPanel {
+  /** Rebuild the details panel for a new selection. */
+  render(snapshot: WorldSnapshot, selected: ReadonlySet<number>): void;
+  /** Refresh the details panel from the current snapshot. */
+  tick(snapshot: WorldSnapshot): void;
+  /** True when a client point is over the details panel. */
+  claimsPointer(clientX: number, clientY: number): boolean;
+  /**
+   * Route a mousedown: true when the point is over the panel (the caller must not world-pick it);
+   * a left press on an enabled button performs its action. Part of the unit-controls claim chain.
+   */
+  handleMouseDown(clientX: number, clientY: number, button: number): boolean;
+  dispose(): void;
+}
+
+/** The stock category tab a freshly-selected building opens on: the one holding the most of its goods. */
+export function defaultStockTab(model: UnitPanelModel): number {
+  if (model.kind !== 'building' || model.stock.length === 0) return 0;
+  const counts = new Map<number, number>();
+  for (const row of model.stock) counts.set(row.category, (counts.get(row.category) ?? 0) + 1);
+  let best = 0;
+  let bestCount = -1;
+  for (const [tab, count] of counts) {
+    if (count > bestCount || (count === bestCount && tab < best)) {
+      best = tab;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
+export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel> {
+  const { app, canvas } = opts;
+  // Fractional display scale (shared with the tool panel / action ring); the panel's PalettedSprite chrome
+  // (indexed atlas, nearest-sampled) can't be linearly filtered, so a fractional scale would double texel
+  // columns unevenly ("pixeloza") — instead it bakes at an integer oversample and linear-downscales to this.
+  const scale = Math.max(1, opts.uiscale ?? 1);
+  // The panel carries the FINEST text in the HUD (a native-11px body font at a fractional scale). Unlike
+  // the tool-panel strip (icons — a device-aware `oversampleFor` is enough), a 2× bake linear-downscaled to
+  // a fractional scale still hazes small glyph edges, so text legibility wins: at a fractional scale bake at
+  // the MAX oversample (crispest downscale). An INTEGER scale needs no supersample at all — nearest is
+  // already exact, so keep it 1:1 rather than needlessly softening a pixel-perfect render. (This panel's
+  // policy differs from the shared `oversampleFor` — which always targets ≥2× for AA — so it decides here.)
+  const PANEL_MAX_SUPERSAMPLE = 4;
+  const ss = Number.isInteger(scale) && scale <= PANEL_MAX_SUPERSAMPLE ? scale : PANEL_MAX_SUPERSAMPLE;
+  const assets = await loadDetailsPanelAssets(DEFAULT_UI_LANG);
+  const uiString = uiStringLookup(assets.strings);
+
+  let root = new Container();
+  root.zIndex = PANEL_Z;
+  root.visible = false;
+  app.stage.addChild(root);
+  /** The current rebuild's baked panel texture; disposed and replaced on the next rebuild. */
+  let baked: SupersampledTexture | null = null;
+
+  const ctx: UnitPanelModelContext = {
+    professions: opts.professions,
+    buildings: opts.buildings,
+    goods: opts.goods,
+  };
+
+  let selectedIds: ReadonlySet<number> = new Set();
+  let lastModelKey = '';
+  let lastStructureKey = '';
+  let lastRebuildAt = Number.NEGATIVE_INFINITY;
+  let lastModel: UnitPanelModel = { kind: 'empty' };
+  let layout: DetailsLayout | null = null;
+  let hoverAction: ButtonHit['action'] | null = null;
+  /** The selected stock category tab (0–7); reset to the fullest category (`defaultStockTab`) on each new selection. */
+  let activeStockTab = 0;
+
+  /** Fresh draw-order layers over an off-screen container (baked to a texture): fills, graphics, frames, glyphs. */
+  const makeLayers = (into: Container): PanelLayers => {
+    const g = new Graphics();
+    const back = new Container();
+    const front = new Container();
+    const text = new Container();
+    into.addChild(back, g, front, text);
+    return { g, back, front, text };
+  };
+
+  const rebuild = (model: UnitPanelModel): void => {
+    baked?.dispose();
+    baked = null;
+    root.destroy({ children: true });
+    root = new Container();
+    root.zIndex = PANEL_Z;
+    app.stage.addChild(root);
+    lastModel = model;
+    lastRebuildAt = performance.now();
+    // Hit layout: the real screen-anchored geometry at the fractional display scale (pointer claims, buttons).
+    layout = layoutDetails(model, app.screen, scale);
+    if (layout === null) {
+      root.visible = false;
+      return;
+    }
+    root.visible = true;
+
+    // Draw layout: the hit layout scaled by the oversample/display ratio and re-origined to (0,0), so it
+    // fills a tight off-screen texture drawn at `ss`. Deriving it from the hit layout (rather than a second
+    // `layoutDetails` at `ss`) keeps the drawn geometry EQUAL to the hit-tested geometry — two independent
+    // roundings at different scales would drift ~1 px and accumulate down the button column.
+    const k = ss / scale;
+    const origin = layout.panel;
+    const draw = mapLayout(layout, (r) => ({
+      x: (r.x - origin.x) * k,
+      y: (r.y - origin.y) * k,
+      w: r.w * k,
+      h: r.h * k,
+    }));
+    const texW = Math.max(1, Math.round(draw.panel.w));
+    const texH = Math.max(1, Math.round(draw.panel.h));
+
+    const offscreen = new Container();
+    const chrome = createChrome(assets, app, ss, makeLayers(offscreen), { w: texW, h: texH });
+    if (draw.kind === 'building' && model.kind === 'building') {
+      drawBuilding(chrome, draw, model, uiString, hoverAction, activeStockTab, ss);
+    } else if (draw.kind === 'settler' && model.kind === 'settler') {
+      drawSettler(chrome, draw, model, uiString, ss);
+    } else if (draw.kind === 'compact' && (model.kind === 'multi-settler' || model.kind === 'generic')) {
+      drawCompact(chrome, draw, model, uiString, ss);
+    }
+
+    // Mixed source (Pixi-native fills/preview + flipY PalettedSprites), so it bakes UPRIGHT — display
+    // unflipped, anchored at the panel's screen TOP-left.
+    const texture = bakeToSprite(app.renderer, offscreen, texW, texH, scale / ss);
+    texture.display.position.set(layout.panel.x, layout.panel.y);
+    root.addChild(texture.display);
+    baked = texture;
+  };
+
+  const updateModel = (snapshot: WorldSnapshot, force = false): void => {
+    const model = buildUnitPanelModel(snapshot, selectedIds, ctx);
+    // A whole-model value key (plus the screen size, so a resize re-anchors the panel): the panel is
+    // small, so stringify-compare beats hand-written dirty flags.
+    const key = `${JSON.stringify(model)}|${app.screen.width}x${app.screen.height}`;
+    if (!force && key === lastModelKey) return;
+    // WHAT is selected changed → rebuild now; only live VALUES drifted → rebuild at most 4 Hz.
+    const structureKey =
+      model.kind === 'building' || model.kind === 'settler' ? `${model.kind}:${model.entityId}` : model.kind;
+    const structural = force || structureKey !== lastStructureKey;
+    if (!structural && performance.now() - lastRebuildAt < VALUE_REBUILD_MIN_MS) return;
+    // A new selection opens the stock view on its fullest category, so the panel never lands on an empty
+    // tab (with a store's goods spread across tabs, tab 0 may hold none of THIS building's stock).
+    if (structural) activeStockTab = defaultStockTab(model);
+    lastModelKey = key;
+    lastStructureKey = structureKey;
+    rebuild(model);
+  };
+
+  const toCanvas = (clientX: number, clientY: number): { x: number; y: number } => {
+    const { sx, sy, rect } = opts.backingScale(canvas);
+    return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
+  };
+
+  const buttons = (): readonly ButtonHit[] => (layout?.kind === 'building' ? layout.buttons : []);
+
+  const hitButton = (x: number, y: number): ButtonHit | null =>
+    buttons().find((b) => contains(b.rect, x, y)) ?? null;
+
+  /** The stock category tab under a canvas point, or null — only building layouts carry a tab strip. */
+  const hitStockTab = (x: number, y: number): number | null => {
+    if (layout?.kind !== 'building') return null;
+    const i = layout.stockTabHits.findIndex((r) => contains(r, x, y));
+    return i >= 0 ? i : null;
+  };
+
+  const claimsPointer = (clientX: number, clientY: number): boolean => {
+    if (layout === null || lastModel.kind === 'empty') return false;
+    const { x, y } = toCanvas(clientX, clientY);
+    return contains(layout.panel, x, y);
+  };
+
+  const handleMouseDown = (clientX: number, clientY: number, button: number): boolean => {
+    if (!claimsPointer(clientX, clientY)) return false;
+    if (button !== 0) return true; // over the panel — swallow, but only the left button acts
+    const { x, y } = toCanvas(clientX, clientY);
+    const tab = hitStockTab(x, y);
+    if (tab !== null) {
+      if (tab !== activeStockTab && lastModel.kind !== 'empty') {
+        activeStockTab = tab;
+        rebuild(lastModel);
+      }
+      return true;
+    }
+    const hit = hitButton(x, y);
+    if (hit?.action === 'demolish' && hit.enabled && lastModel.kind === 'building') {
+      opts.onDemolish(lastModel.entityId);
+    }
+    return true;
+  };
+
+  const onMouseMove = (e: MouseEvent): void => {
+    const { x, y } = toCanvas(e.clientX, e.clientY);
+    const next = hitButton(x, y)?.action ?? null;
+    if (next === hoverAction) return;
+    hoverAction = next;
+    if (lastModel.kind !== 'empty') rebuild(lastModel);
+  };
+
+  canvas.addEventListener('mousemove', onMouseMove);
+
+  return {
+    render(snapshot, selected): void {
+      selectedIds = new Set(selected);
+      updateModel(snapshot, true);
+    },
+    tick(snapshot): void {
+      updateModel(snapshot);
+    },
+    claimsPointer,
+    handleMouseDown,
+    dispose(): void {
+      canvas.removeEventListener('mousemove', onMouseMove);
+      baked?.dispose();
+      root.destroy({ children: true });
+    },
+  };
+}

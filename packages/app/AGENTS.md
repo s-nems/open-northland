@@ -35,22 +35,28 @@ that matches its role instead of piling another method onto a growing file:
   `buildings.ts` (the 41 viking buildings), `roster.ts` (the character roster), `atomics.ts` (the harvest
   atomic ids), `felling.ts`/`mining.ts` (gathering pins).
 - **`game/`** — the GLOBAL game content + rules shared by every mode: `rules.ts` (player/tribe constants
-  — `HUMAN_PLAYER`, `ENEMY_PLAYER`, `PRIMARY_TRIBE`, `HUD_TRIBE`) and the `sandbox/` package — `ids.ts`
+  — `HUMAN_PLAYER`, `ENEMY_PLAYER`, `PRIMARY_TRIBE`, `HUD_TRIBE`), `snapshot.ts` (typed snapshot readers
+  shared by the view controls and the HUD panels), and the `sandbox/` package — `ids.ts`
   (semantic type ids + the `GATHERERS` table), `content.ts` (the one `sandboxContent()` `ContentSet` —
   goods/jobs/buildings/weapons/animation bindings), `place.ts` (the place/spawn helpers), `index.ts`
   (the barrel). Scenes and the vertical slice consume this; they do NOT define their own content.
 - **`hud/`** — the bitmap-native in-game HUD: `geometry.ts` (the shared `Rect`/`contains`), `chrome.ts`
   (parchment window chrome + highlight theme), `bitmap-text.ts` (the `.fnt` glyph runs + the `makeTextRun`
-  factory), `action-ring-layout.ts` (the settler action-menu geometry), and the `tool-panel/` package —
+  factory), `action-ring-layout.ts` (the settler action-menu geometry), the `tool-panel/` package —
   pure models (`layout.ts`, `building-menu.ts`, `game-speed.ts`, headlessly unit-tested) + window
   controllers (`menu-window.ts`, `stats-window.ts`, `placement.ts` over the shared `context.ts`) +
-  `index.ts` (the mount + input routing).
+  `index.ts` (the mount + input routing) — and the `details-panel/` package (the bottom-right selection
+  panel in original art: pure `model.ts` + `layout.ts`, `chrome.ts`/`sections.ts` drawing, `panel.ts`
+  mount). Text: the tool-panel HUD draws the decoded `.fnt` bitmap face (`bitmap-text.ts`); the
+  details-panel draws a bundled vector serif (`content/ui-font.ts`) — an intentional, named legibility
+  approximation of that same serif face, not the decoded original. The hud layer never imports `view/` —
+  view glue (e.g. `backingScale`) is injected via options.
 - **`view/`** — browser-view helpers: `game-view.ts` (the SHARED in-game runtime — HUD mounts + the one
   fixed-timestep RAF loop both playable entries run on), `camera.ts` (pure pan/zoom math + the DOM
-  controller), `params.ts` (URL-param parsing), `picking.ts`, `snapshot.ts` (typed snapshot readers),
+  controller), `params.ts` (URL-param parsing), `picking.ts`,
   `overlay.ts` (shared panel + full-page chrome — `el`/`navButton`/`pageSection`/styles),
-  `game-tool-panel.ts`, `unit-controls.ts` + `unit-panel.ts` + `settler-actions.ts` (RTS unit control),
-  `scene-overlay.ts`, `perf-overlay.ts`.
+  `game-tool-panel.ts`, `unit-controls.ts` + `settler-actions.ts` (RTS unit control; the selection
+  details panel itself lives in `hud/details-panel/`), `scene-overlay.ts`, `perf-overlay.ts`.
 - **`slice/`** — the demo scenario the live + shot entries share: `vertical-slice.ts` (`runSlice` /
   `runAuthoredSlice` over the global `game/` content), `map-loader.ts` (the decoded-map fetch),
   `authored-placements.ts` (the pure authored-entity join).

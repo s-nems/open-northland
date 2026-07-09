@@ -40,6 +40,14 @@ const irFile = resolve(here, '../../content/ir.json');
 // above (they are bob atlases); only these text/cursor assets need their own root. Same stance as the
 // others: gitignored, outside the vite root, traversal rejected, and only `.json`/`.png`/`.cur` served.
 const guiRoot = resolve(here, '../../content/gui');
+// Original GUI bitmap fills (`Data/gui/bitmaps/bg*.png`) converted by the loose `.pcx` pass. These are
+// gitignored original-derived bytes, served only from a local pipeline output and used by the in-game HUD
+// chrome as tiled/stretched fills beside the bob-atlas frame pieces.
+const guiBitmapsRoot = resolve(here, '../../content/Data/gui/bitmaps');
+// The goods-icon binding manifest (`content/goods/manifest.json`) — good string id → (ls_goods frame,
+// recolor palette) plus the atlas/LUT stems. The goods *atlas* + palette LUT ride `/bobs/` (they are bob
+// atlases); only the manifest needs this root. Same stance as the others: gitignored, traversal rejected.
+const goodsRoot = resolve(here, '../../content/goods');
 
 // The MENU (entries/menu.ts) lists the decoded maps as clickable cards; it reads them from this route —
 // one entry per `content/maps/<id>.json` grid, joined with the pipeline's optional menu sidecars
@@ -176,6 +184,42 @@ function serveContentGui(): Plugin {
   };
 }
 
+function serveContentGuiBitmaps(): Plugin {
+  return {
+    name: 'vinland-serve-content-gui-bitmaps',
+    configureServer(server) {
+      server.middlewares.use('/gui-bitmaps', (req, res, next) => {
+        const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';
+        const file = normalize(resolve(guiBitmapsRoot, rel));
+        if (!file.startsWith(guiBitmapsRoot + sep) || !file.endsWith('.png') || !existsSync(file)) {
+          next();
+          return;
+        }
+        res.setHeader('Content-Type', 'image/png');
+        createReadStream(file).pipe(res);
+      });
+    },
+  };
+}
+
+function serveContentGoods(): Plugin {
+  return {
+    name: 'vinland-serve-content-goods',
+    configureServer(server) {
+      server.middlewares.use('/goods', (req, res, next) => {
+        const rel = (req.url ?? '').split('?')[0]?.replace(/^\/+/, '') ?? '';
+        const file = normalize(resolve(goodsRoot, rel));
+        if (!file.startsWith(goodsRoot + sep) || !file.endsWith('.json') || !existsSync(file)) {
+          next();
+          return;
+        }
+        res.setHeader('Content-Type', 'application/json');
+        createReadStream(file).pipe(res);
+      });
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
     serveMapsIndex(),
@@ -185,6 +229,8 @@ export default defineConfig({
     serveContentSounds(),
     serveContentIr(),
     serveContentGui(),
+    serveContentGuiBitmaps(),
+    serveContentGoods(),
   ],
   server: { port: 5173, open: false },
   build: { target: 'es2022', outDir: 'dist' },

@@ -4,8 +4,9 @@ import type { Rect } from './geometry.js';
 /**
  * The shared parchment look of the HUD's pop-up windows (building menu, statistics, placement banner)
  * plus the hover/selection highlight theme — ONE home so the chrome can't drift per window. The pop-up
- * chrome is a flat `Graphics` panel in both render modes (a sprite 9-slice is a follow-up, see
- * docs/plans/); the sprites-vs-fallback split only affects the strip/buttons, never this chrome.
+ * chrome here is still a flat `Graphics` panel in both render modes; the details panel
+ * (`details-panel/chrome.ts`) already draws the original-art rope-and-knot borders + tiled fills — when
+ * the tool-panel windows adopt that look, lift those helpers up here rather than forking them.
  */
 
 /** Design-space window metrics (scaled by uiscale, like the strip): padding, title row, text line. */

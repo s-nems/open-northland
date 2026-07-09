@@ -25,6 +25,9 @@ import { PRIMARY_TRIBE } from '../rules.js';
 import {
   BUILDING_HEADQUARTERS,
   BUILDING_JOINERY,
+  BUILDING_WAREHOUSE_00,
+  BUILDING_WAREHOUSE_01,
+  BUILDING_WAREHOUSE_02,
   GATHERERS,
   GOOD_COIN,
   GOOD_GOLD,
@@ -477,6 +480,11 @@ interface SandboxBuildingRow {
  */
 const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> = {
   [BUILDING_HEADQUARTERS]: { stock: STORE_STOCK },
+  // The three warehouses accept the same general-goods set as the HQ (sandbox balance pin, not extracted
+  // data) so the Magazyn section shows their storable goods instead of reading empty.
+  [BUILDING_WAREHOUSE_00]: { stock: STORE_STOCK },
+  [BUILDING_WAREHOUSE_01]: { stock: STORE_STOCK },
+  [BUILDING_WAREHOUSE_02]: { stock: STORE_STOCK },
   [BUILDING_JOINERY]: {
     workers: [{ jobType: JOB_GATHERER_WOOD, count: 1 }],
     stock: STORE_STOCK,

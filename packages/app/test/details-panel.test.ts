@@ -1,0 +1,126 @@
+import { ONE, type WorldSnapshot } from '@vinland/sim';
+import { describe, expect, it } from 'vitest';
+import { STOCK_TAB_COUNT } from '../src/content/gui-atlas-map.js';
+import {
+  BUILDING_HEADQUARTERS,
+  BUILDING_JOINERY,
+  GOOD_WOOD,
+  JOB_GATHERER_WOOD,
+} from '../src/game/sandbox/ids.js';
+import {
+  type StockRow,
+  type UnitPanelModel,
+  type UnitPanelModelContext,
+  buildUnitPanelModel,
+  professionsFromContent,
+} from '../src/hud/details-panel/index.js';
+import { defaultStockTab } from '../src/hud/details-panel/panel.js';
+import { createSceneSim } from '../src/scenes/index.js';
+import { sandboxScene } from '../src/scenes/sandbox.js';
+
+function ctxFromScene(): UnitPanelModelContext {
+  const sim = createSceneSim(sandboxScene);
+  return {
+    professions: professionsFromContent(sim.content),
+    buildings: sim.content.buildings,
+    goods: sim.content.goods,
+  };
+}
+
+function num(v: unknown): number | undefined {
+  return typeof v === 'number' ? v : undefined;
+}
+
+describe('selection details panel model', () => {
+  it('reflects a selected headquarters from the sandbox acceptance scene', () => {
+    const sim = createSceneSim(sandboxScene);
+    sim.step();
+    const snapshot = sim.snapshot();
+    const hq = snapshot.entities.find((e) => {
+      const b = e.components.Building as { buildingType?: unknown } | undefined;
+      return num(b?.buildingType) === BUILDING_HEADQUARTERS;
+    });
+    if (hq === undefined) throw new Error('sandbox scene did not place the headquarters');
+
+    const model = buildUnitPanelModel(snapshot, new Set([hq.id]), {
+      professions: professionsFromContent(sim.content),
+      buildings: sim.content.buildings,
+      goods: sim.content.goods,
+    });
+
+    expect(model.kind).toBe('building');
+    if (model.kind !== 'building') return;
+    expect(model.typeId).toBe(BUILDING_HEADQUARTERS);
+    expect(model.title).toBe('Headquarters');
+    expect(model.showDefense).toBe(true);
+    // The stock list is the HQ's ACCEPTED goods (its `stock` slots), each shown even at 0 — so every
+    // accepted good appears; a freshly-placed HQ holds nothing, so every row is 0.
+    const hqDef = sim.content.buildings.find((b) => b.typeId === BUILDING_HEADQUARTERS);
+    const accepted = new Set((hqDef?.stock ?? []).map((s) => s.goodType));
+    expect(accepted.size).toBeGreaterThan(0);
+    expect(new Set(model.stock.map((r) => r.goodType))).toEqual(accepted);
+    expect(model.stock.every((r) => r.amount === 0)).toBe(true);
+    // Every row carries the stock category tab it belongs to (0–7), so the render can filter by tab.
+    expect(model.stock.every((r) => r.category >= 0 && r.category < STOCK_TAB_COUNT)).toBe(true);
+  });
+
+  it('opens a building on its fullest stock category, and the lowest tab on a tie', () => {
+    const row = (category: number): StockRow => ({ goodType: category, label: 'g', amount: 0, category });
+    const building = (stock: StockRow[]): UnitPanelModel =>
+      ({ kind: 'building', stock }) as unknown as UnitPanelModel;
+    // Tab 2 holds three of the four goods → the panel opens there.
+    expect(defaultStockTab(building([row(2), row(2), row(2), row(5)]))).toBe(2);
+    // Tabs 5 and 0 tie at one good each → the lowest tab index wins.
+    expect(defaultStockTab(building([row(5), row(0)]))).toBe(0);
+    // No stock → tab 0.
+    expect(defaultStockTab(building([]))).toBe(0);
+  });
+
+  it('shows a producing building stock, production progress, and assigned workers', () => {
+    const snapshot: WorldSnapshot = {
+      tick: 10,
+      events: [],
+      entities: [
+        {
+          id: 1,
+          components: {
+            Building: { buildingType: BUILDING_JOINERY, tribe: 1, built: ONE, level: 0 },
+            Owner: { player: 0 },
+            Stockpile: { amounts: [[GOOD_WOOD, 3]] },
+            Production: { elapsed: 5, duration: 20 },
+          },
+        },
+        {
+          id: 2,
+          components: {
+            Settler: {
+              tribe: 1,
+              jobType: JOB_GATHERER_WOOD,
+              hunger: 0,
+              fatigue: 0,
+              piety: 0,
+              enjoyment: 0,
+              experience: [],
+            },
+            JobAssignment: { workplace: 1 },
+            CurrentAtomic: { targetEntity: 1 },
+          },
+        },
+      ],
+    };
+
+    const model = buildUnitPanelModel(snapshot, new Set([1]), ctxFromScene());
+    expect(model.kind).toBe('building');
+    if (model.kind !== 'building') return;
+    expect(model.production?.pct).toBe(25);
+    expect(model.production?.label).toContain('plank x1');
+    expect(model.stock).toEqual(
+      expect.arrayContaining([expect.objectContaining({ goodType: GOOD_WOOD, amount: 3 })]),
+    );
+    // The joinery also lists its other accepted goods at 0 (its stock slots beyond the held wood).
+    expect(model.stock.some((r) => r.amount === 0)).toBe(true);
+    // The held good sorts ahead of the empty ones.
+    expect(model.stock[0]?.amount).toBe(3);
+    expect(model.workers).toEqual([expect.objectContaining({ id: 2, active: true, label: 'gatherer_wood' })]);
+  });
+});
