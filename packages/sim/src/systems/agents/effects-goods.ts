@@ -8,9 +8,9 @@ import {
   Stockpile,
   Stump,
 } from '../../components/index.js';
-import { type Fixed, fx } from '../../core/fixed.js';
+import { eventAt } from '../../core/events.js';
+import type { Fixed } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { unstampResourceFootprint } from '../footprint/index.js';
 import { stockCapacity } from '../stores.js';
@@ -129,7 +129,7 @@ function fellNode(
     stump,
     goodType,
     amount: yieldAmount,
-    at: { x: fx.toInt(x), y: fx.toInt(y) },
+    at: eventAt(x, y),
   });
 }
 
@@ -157,8 +157,7 @@ function dropMinedOre(world: World, node: Entity, goodType: number, amount: numb
  */
 function depleteNode(world: World, ctx: SystemContext, node: Entity, goodType: number): void {
   const pos = world.get(node, Position);
-  const n = nodeOfPosition(pos.x, pos.y);
-  const at = { x: n.hx, y: n.hy };
+  const at = eventAt(pos.x, pos.y);
   unstampResourceFootprint(world, node);
   world.destroy(node);
   ctx.events.emit({ kind: 'resourceDepleted', node, goodType, at });

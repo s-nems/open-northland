@@ -1,14 +1,15 @@
-import { type Camera, tileToScreen } from '@vinland/render/data';
+import { type Camera, halfCellToScreen, tileToScreen } from '@vinland/render/data';
 import { clamp } from './math.js';
 
 /**
- * The PURE spatial-audio math: project a world tile to the screen through the SAME camera transform
- * the renderer draws with ({@link tileToScreen} + `screen = world*scale + offset`), then decide
- * whether the emitter is on screen and, if so, how loud and how far left/right it should sound. This
- * is the "only what's on screen makes sound" contract for positioned one-shots — an emitter outside
- * the framed viewport returns `null` (silent), one near a screen edge attenuates and pans toward that
- * edge. No Web Audio here: a `(tile, camera, canvas)` in, a `{ gain, pan }` (or `null`) out, so it is
- * unit-testable without an `AudioContext`. Floats are fine — this is a render-side concern.
+ * The PURE spatial-audio math: project a world position to the screen through the SAME projections
+ * the renderer draws with ({@link tileToScreen} for fractional tile positions, {@link halfCellToScreen}
+ * for half-cell node addresses, + `screen = world*scale + offset`), then decide whether the emitter is
+ * on screen and, if so, how loud and how far left/right it should sound. This is the "only what's on
+ * screen makes sound" contract for positioned one-shots — an emitter outside the framed viewport
+ * returns `null` (silent), one near a screen edge attenuates and pans toward that edge. No Web Audio
+ * here: a `(position, camera, canvas)` in, a `{ gain, pan }` (or `null`) out, so it is unit-testable
+ * without an `AudioContext`. Floats are fine — this is a render-side concern.
  */
 
 /** Emitter falls silent this many screen px beyond the canvas edge (slack so a straddling sprite still sounds). */
@@ -50,8 +51,32 @@ export function computeSpatial(
   canvasW: number,
   canvasH: number,
 ): Spatial | null {
+  return spatialiseScreenPoint(tileToScreen(col, row), camera, canvasW, canvasH);
+}
+
+/**
+ * {@link computeSpatial} for a HALF-CELL NODE address `(hx, hy)` — the space every `SimEvent.at`
+ * carries (the same grid as command payloads). Projects through the renderer's own
+ * {@link halfCellToScreen}, so the node→screen stagger math has exactly one owner.
+ */
+export function computeSpatialAtNode(
+  hx: number,
+  hy: number,
+  camera: Camera,
+  canvasW: number,
+  canvasH: number,
+): Spatial | null {
+  return spatialiseScreenPoint(halfCellToScreen(hx, hy), camera, canvasW, canvasH);
+}
+
+/** The shared cull/attenuate/pan half: a pre-camera screen point in, `Spatial` (or `null`) out. */
+function spatialiseScreenPoint(
+  s: { x: number; y: number },
+  camera: Camera,
+  canvasW: number,
+  canvasH: number,
+): Spatial | null {
   const scale = camera.scale ?? 1;
-  const s = tileToScreen(col, row);
   const sx = s.x * scale + camera.offsetX;
   const sy = s.y * scale + camera.offsetY;
   if (

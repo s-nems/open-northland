@@ -1,4 +1,5 @@
 import { Health, Position, Projectile } from '../../components/index.js';
+import { eventAt } from '../../core/events.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type PendingStagger, applyPendingStaggers, resolveCombatHit } from '../agents/atomic.js';
@@ -92,7 +93,7 @@ function advanceProjectile(
       shooter: proj.source,
       target: proj.target,
       munitionType: proj.munitionType,
-      at: { x: fx.toInt(targetPos.x), y: fx.toInt(targetPos.y) },
+      at: eventAt(targetPos.x, targetPos.y),
     });
     world.destroy(p);
     return;
