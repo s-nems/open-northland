@@ -7,7 +7,6 @@ import {
   buildHud,
   cameraViewport,
   layoutHud,
-  placeHud,
   visibleTileRange,
 } from '@vinland/render';
 import { FixedTimestep, type SimEvent, type Simulation, type WorldSnapshot } from '@vinland/sim';
@@ -16,9 +15,9 @@ import { HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { createSoundDriver } from '../content/audio.js';
 import { loadIr } from '../content/ir.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
-import { DEFAULT_UI_SCALE } from '../hud/tool-panel/layout.js';
+import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel/layout.js';
 import type { CameraController } from './camera.js';
-import { applyGameSpeed, menuEntriesFromContent, mountGameToolPanel, shiftHud } from './game-tool-panel.js';
+import { applyGameSpeed, menuEntriesFromContent, mountGameToolPanel } from './game-tool-panel.js';
 import { mountSoundToggle } from './overlay.js';
 import { floatParam } from './params.js';
 import { mountPerfOverlay } from './perf-overlay.js';
@@ -34,7 +33,7 @@ import { professionsFromContent } from './unit-panel.js';
  * loop measured `cpuMs`, and the placement-banner inset differed per copy).
  *
  * Per-frame order matters and is pinned here: sim steps (collecting EVERY step's events for audio) →
- * camera glide → ONE snapshot + ONE `buildHud` scan shared by the stocks HUD and the stats window →
+ * camera glide → ONE snapshot + ONE `buildHud` scan feeding the tool panel's stats window →
  * tool-panel re-place BEFORE the renderer's render (screen-space meshes carry the canvas resolution) →
  * the retained `renderer.update` → unit-controls tick reusing the same snapshot → sound → perf readout.
  */
@@ -60,6 +59,9 @@ export interface GameViewDeps {
 
 /** Tiles beyond the visible band the overlay also probes, so its edge never shows during a pan. */
 const OVERLAY_BAND_MARGIN = 2;
+
+/** px gap between the tool-panel strip's right edge and the debug overlay's left edge. */
+const PERF_STRIP_GAP = 8;
 
 /**
  * The build-mode overlay-frame builder: the visible tile band plus which of its cells REJECT the
@@ -128,9 +130,12 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     mountSoundToggle(soundDriver);
   }
 
-  // On-canvas FPS + entity/drawn/pooled readout (bottom-left) so a human can judge whether the view
-  // holds a frame rate and whether culling is biting. Real-GPU only: headless Chromium is software-GL.
-  const perf = mountPerfOverlay();
+  // On-canvas debug readout (top-left, just clear of the tool-panel strip): tick / speed / steps /
+  // entity counts + the FPS and the sim/snap/draw CPU split, so a human can judge whether the view holds
+  // a frame rate, whether culling is biting, and whether a slow frame is the sim or the draw. Real-GPU
+  // only: headless Chromium is software-GL. The left inset is the strip's right edge + a small gap, so the
+  // bar sits beside the strip at any `?uiscale=` instead of overlapping its top icons.
+  const perf = mountPerfOverlay(buildToolPanelLayout(uiscale).width + PERF_STRIP_GAP);
 
   // The original LEFT tool panel — the standard game HUD. Its game-speed button drives `control`, the
   // building menu enqueues `placeBuilding` on a map click, and it claims its own clicks so the HUD
@@ -211,16 +216,29 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // frame into CPU vs GPU/compositor — the split that tells whether a slow frame is our code or the GPU.
     const cpu0 = performance.now();
     frameEvents.length = 0;
+    // Count the sim steps this frame — the fixed-timestep loop may run several to catch wall-clock up
+    // (or zero when paused/idle); a persistently high count is the sim falling behind, the overlay shows it.
+    let steps = 0;
     if (!control.paused) {
-      renderAlpha = timestep.advance(elapsed * control.speed, collect);
+      renderAlpha = timestep.advance(elapsed * control.speed, () => {
+        collect();
+        steps++;
+      });
     }
+    // CPU split #1: the sim step(s). The overlay breaks the frame's CPU into sim/snap/draw so a slow
+    // scene can be blamed on the right layer (render/AGENTS.md: measure before blaming the GPU).
+    const simMs = performance.now() - cpu0;
     cameraCtl.update(elapsed);
     // The sepia pause wash mirrors the loop's pause flag EVERY frame (an idempotent visibility set), so
     // any future pauser — auto-pause on blur, a modal — browns the map without knowing about the renderer.
     renderer.setPaused(control.paused);
+    const snap0 = performance.now();
     const snap = sim.snapshot();
-    // Build the tribe HUD read-view ONCE per frame (an O(entities) scan) and share it between the
-    // always-on stocks panel and the tool panel's statistics window — no second scan.
+    // CPU split #2: the snapshot clone (the plain-cloned world the renderer + HUD read).
+    const snapMs = performance.now() - snap0;
+    // Build the tribe HUD read-view once per frame (an O(entities) scan) for the tool panel's statistics
+    // window (the on-demand population/jobs/stocks panel). The old ALWAYS-ON stocks panel that also read
+    // this was removed — that data now shows only when the player opens the stats window.
     const hud = layoutHud(buildHud(snap, HUD_TRIBE));
     // Re-place the tool panel's screen-space sprites BEFORE the renderer's render (they carry the
     // canvas resolution in their shader), and refresh an open stats window from this frame's HUD.
@@ -245,16 +263,10 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
         ? { col: hovered.col, row: hovered.row, buildingType: placeType }
         : null,
     );
-    // One retained update: reconcile the pooled sprites, draw the selection rings, refresh the pinned
-    // HUD (shifted right to clear the left strip), render once. `app.screen` tracks window resizes.
-    renderer.update(
-      snap,
-      cameraCtl.camera(),
-      snap.tick,
-      { placement: shiftHud(placeHud(hud, 'top-left', app.screen), toolPanel.hudShift) },
-      controls.selectedIds(),
-      renderAlpha,
-    );
+    // One retained update: reconcile the pooled sprites, draw the selection rings, render once.
+    // `app.screen` tracks window resizes. No HUD frame is passed — the always-on stocks panel is gone;
+    // the debug tick lives in the top overlay and the population/jobs/stocks in the stats window.
+    renderer.update(snap, cameraCtl.camera(), snap.tick, undefined, controls.selectedIds(), renderAlpha);
     controls.tick(snap); // reuse the frame's snapshot — don't rebuild a second one
     deps.onFrame?.(snap);
     if (soundDriver !== null) {
@@ -269,7 +281,21 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
       });
     }
     const cpuMs = performance.now() - cpu0;
-    perf.update(elapsed, { entities: snap.entities.length, cpuMs, ...renderer.stats() });
+    // CPU split #3: the render build + submit and the rest of the frame's app work (camera, controls,
+    // sound) — the remainder after sim + snapshot, so the three sum to cpuMs.
+    const drawMs = cpuMs - simMs - snapMs;
+    perf.update(elapsed, {
+      tick: snap.tick,
+      steps,
+      speed: control.speed,
+      paused: control.paused,
+      entities: snap.entities.length,
+      cpuMs,
+      simMs,
+      snapMs,
+      drawMs,
+      ...renderer.stats(),
+    });
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
