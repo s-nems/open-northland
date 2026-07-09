@@ -187,6 +187,19 @@ gallery. **Human pixel sign-off still pending** — the swing/facing/feel is the
   `projectile` + a minimal oriented-arrow marker rotated toward the homing target
   (`gpu/sprite-pool/placeholder.ts`) — NO decoded arrow bob exists in the extracted `[bobseq]` lanes; step 6
   still owes the effects-bmd hunt and can replace the marker.
+- **Second human review (2026-07-09) caught + fixed:** (a) melee "hits air" — the sim reach bands were
+  already faithful (weapons.ini: short sword 1, spear/long sword 2 cells) but the drawn sprite stood the
+  whole 1–2 cells (38–136 px) from its target; a mid-swing MELEE attacker now LUNGES its drawn anchor 30%
+  of the screen gap toward the target (render-only, like the chop nudge; the depth key and sim position are
+  untouched, so occlusion/determinism hold; a fraction keeps the spear visibly striking from farther).
+  Ranged attackers never lunge — separated by a "target within 2 tiles" heuristic (weapons.ini basis, scoped:
+  byzantine wooden spear 3 / house_bow min 0 / weresnake chicken 10 are named accepted misclassifications);
+  (b) the arrow flew a straight line — `Projectile` now freezes its launch cell (`originX/originY`, never
+  read by sim systems; goldens inert) and the render lobs the drawn shot on a parabola over the
+  origin→target chord (peak 12% of the chord, capped 56 px; rotation follows the arc tangent — nose up
+  climbing, down falling; height rides the lift channel so the depth key never moves). Both tunables are
+  named approximations (observed original behaviour), exported so tests pin the formulas. Verified:
+  1615 tests + check + build green, goldens unmoved, headless combat scene resolves with no console errors.
 
 ---
 
