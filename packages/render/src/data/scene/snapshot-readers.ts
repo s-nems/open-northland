@@ -190,6 +190,18 @@ export function readProjectileTarget(components: Readonly<Record<string, unknown
 }
 
 /**
+ * The point a projectile was LOOSED from (the sim `Projectile.originX/originY`, fixed-point), or `null`
+ * for a missing/malformed component. With the live target position it fixes the flight chord, and the
+ * fraction flown along it is the scene builder's ballistic-arc parameter (lob height + tangent). A shot
+ * with no readable origin simply draws flat along the straight line — never a throw.
+ */
+export function readProjectileOrigin(components: Readonly<Record<string, unknown>>): PositionValue | null {
+  const p = components.Projectile as { originX?: unknown; originY?: unknown } | undefined;
+  if (p === undefined || typeof p.originX !== 'number' || typeof p.originY !== 'number') return null;
+  return { x: p.originX, y: p.originY };
+}
+
+/**
  * Derive a settler's facing direction index (0..7) from its live heading: the PROJECTED screen step
  * from its current position toward the {@link PathFollow} waypoint it is walking to, quantized to the
  * block whose sprite faces that heading ({@link facingFromScreenHeading}). Projecting through

@@ -275,6 +275,86 @@ describe('buildScene', () => {
     expect(scene.find((d) => d.kind === 'projectile')?.rotation).toBeUndefined();
   });
 
+  it('lobs a projectile with a readable origin: peak lift at mid-chord, level tangent, depth untouched', () => {
+    // Origin (0,1) → target (2,1) on one row: chord = 2 cells = 136 px. The shot sits exactly halfway
+    // (1,1) → p = 0.5: lift = the parabola's peak (chord × the peak fraction), tangent slope 0 → the
+    // rotation is the flat straight-line heading (east). Depth stays the feet row (lift is draw-only).
+    const shot = entity(1, 1, 1, {
+      Projectile: {
+        target: 2,
+        source: 3,
+        damage: 34,
+        speed: 8,
+        munitionType: 1,
+        originX: 0 * ONE,
+        originY: 1 * ONE,
+      },
+    });
+    const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
+    const scene = buildScene(snapshotOf([shot, target]), FLAT_3x2);
+    const arrow = scene.find((d) => d.kind === 'projectile');
+    const chord = tileToScreen(2, 1).x - tileToScreen(0, 1).x;
+    expect(arrow?.lift).toBeCloseTo(chord * 0.12); // 4·peak·½·½ = peak at mid-flight
+    expect(arrow?.rotation).toBeCloseTo(0); // level at the apex — still the straight heading
+  });
+
+  it('tilts a descending projectile nose-DOWN along the arc tangent past mid-flight', () => {
+    // Same chord, shot ¾ of the way (1.5, 1): the parabola is falling, so the drawn heading tilts
+    // screen-down (positive rotation toward an eastbound target) instead of the flat 0.
+    const shot = {
+      id: 1,
+      components: {
+        Position: { x: 1.5 * ONE, y: 1 * ONE },
+        Projectile: {
+          target: 2,
+          source: 3,
+          damage: 34,
+          speed: 8,
+          munitionType: 1,
+          originX: 0 * ONE,
+          originY: 1 * ONE,
+        },
+      },
+    };
+    const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
+    const scene = buildScene(snapshotOf([shot, target]), FLAT_3x2);
+    const arrow = scene.find((d) => d.kind === 'projectile');
+    expect(arrow?.rotation ?? 0).toBeGreaterThan(0);
+    expect(arrow?.lift ?? 0).toBeGreaterThan(0); // still airborne
+  });
+
+  it('a mid-swing MELEE attacker lunges its drawn anchor toward its target (30% of the screen gap)', () => {
+    // Attacker (1,1) swings (atomic 81) at a target one column EAST (2,1) — inside the melee band
+    // (weapons.ini melee maxRange ≤ 2), so the drawn sprite advances 0.3 of the 68 px gap. Render-only:
+    // the depth key stays the true feet row.
+    const attacker = entity(1, 1, 1, {
+      Settler: { tribe: 0 },
+      CurrentAtomic: { atomicId: 81, elapsed: 3, targetEntity: 2, targetTile: null },
+    });
+    const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
+    const scene = buildScene(snapshotOf([attacker, target]), FLAT_3x2);
+    const drawn = scene.find((d) => d.kind === 'settler' && d.ref === 1);
+    const base = tileToScreen(1, 1);
+    const gapX = tileToScreen(2, 1).x - base.x;
+    expect(drawn?.x).toBeCloseTo(base.x + gapX * 0.3);
+    expect(drawn?.y).toBeCloseTo(base.y); // same row — no vertical component
+  });
+
+  it('a RANGED attacker (target beyond the melee band) faces its target but never lunges', () => {
+    // The archer at (1,1) draws on a target 5 columns east — far past the 2-cell melee band (a bow's
+    // minRange is ≥ 3), so its drawn anchor stays put; the arrow crosses the gap, not the archer.
+    const archer = entity(1, 1, 1, {
+      Settler: { tribe: 0 },
+      CurrentAtomic: { atomicId: 81, elapsed: 3, targetEntity: 2, targetTile: null },
+    });
+    const target = entity(2, 6, 1, { Settler: { tribe: 0 } });
+    const scene = buildScene(snapshotOf([archer, target]), FLAT_3x2);
+    const drawn = scene.find((d) => d.kind === 'settler' && d.ref === 1);
+    const base = tileToScreen(1, 1);
+    expect(drawn?.x).toBeCloseTo(base.x);
+    expect(drawn?.facing).toBe(4); // still faces its mark (E)
+  });
+
   it('marks a settler engaged when it carries the Engagement component', () => {
     const scene = buildScene(
       snapshotOf([

@@ -17,6 +17,7 @@ import {
   readJobType,
   readOwnerPlayer,
   readPosition,
+  readProjectileOrigin,
   readProjectileTarget,
   readResourceGood,
   readResourceLevel,
@@ -74,6 +75,34 @@ const CHOP_NUDGE_X = -24;
  * {@link CHOP_ATOMIC_ID}) rather than imported — render reads the snapshot's plain ids, never sim code.
  */
 const ATTACK_ATOMIC_ID = 81;
+
+/**
+ * The far reach (tiles, Manhattan) of every MELEE weapon — extracted `weapons.ini`: each spear/sword/
+ * saber/axe carries `maxRange` 1–2 while every bow's `minRange` is ≥ 3, so "target within 2" cleanly
+ * separates a melee swing (which lunges, below) from a ranged draw (which must NOT — an archer stands
+ * its ground and the arrow crosses the gap).
+ */
+const MELEE_BAND_MAX_TILES = 2;
+/**
+ * How far a mid-swing melee attacker's DRAWN sprite advances toward its target, as a fraction of the
+ * attacker→target screen gap. Combatants halt a whole 1–2 cells apart (the sim's faithful reach band,
+ * 38–136 px on screen), so an un-nudged swing lands in empty air between them ("bicie w powietrze").
+ * A fraction — not a fixed standoff — keeps a long weapon visibly striking from farther than a short
+ * sword, and two mutual duellists (each ≤ half the gap) can never cross. Render-only, like
+ * {@link CHOP_NUDGE_X}: the sim position and the depth sort are untouched. Tunable by eye.
+ */
+const MELEE_LUNGE_FRACTION = 0.3;
+
+/**
+ * Ballistic-arc shape of a drawn projectile: the lob's PEAK height is this fraction of the shot's total
+ * origin→target screen distance, capped at {@link PROJECTILE_ARC_PEAK_MAX_PX} so a max-range longbow
+ * shot (23 tiles, ~900 px) doesn't leave the screen. The sim flight is a straight homing step (its own
+ * named approximation); the arc is render-only — height `4·peak·p·(1−p)` over the fraction flown `p`,
+ * zero at both the bow and the impact. Observed original behaviour (arrows visibly lob); tunable by eye.
+ */
+const PROJECTILE_ARC_PEAK_FRACTION = 0.12;
+/** Cap on the lob's peak height (screen px) — see {@link PROJECTILE_ARC_PEAK_FRACTION}. */
+const PROJECTILE_ARC_PEAK_MAX_PX = 56;
 
 /** One frame's sprite scene: the culled, depth-sorted draw list PLUS the pre-cull liveness set —
  *  produced in a single pass over the snapshot (see {@link collectSpriteScene}). */
@@ -168,19 +197,45 @@ export function collectSpriteScene(
     // A chopping settler shares its tree's cell; nudge its drawn sprite left so the right-swing axe
     // lands in the trunk at the cell centre (render-only — the depth sort below still uses the true tile).
     const chopNudgeX = state === 'acting' && actingAtomic === CHOP_ATOMIC_ID ? CHOP_NUDGE_X : 0;
-    const drawX = screen.x + chopNudgeX;
+    // A mid-swing MELEE attacker (atomic 81, target within the melee band) both FACES its target and
+    // LUNGES its drawn sprite toward it — the fighters halt a faithful 1–2 cells apart, so without the
+    // lunge every swing cuts empty air between them. Resolved BEFORE the cull (it moves the drawn
+    // anchor), reused below for the facing. A ranged attacker (target beyond the band) keeps facing
+    // but never lunges — the arrow crosses the gap, not the archer.
+    let lungeX = 0;
+    let lungeY = 0;
+    let attackFacing: number | undefined;
+    if (kind === 'settler' && actingAtomic === ATTACK_ATOMIC_ID) {
+      const targetRef = readAtomicTargetEntity(components);
+      const to = targetRef !== null ? posByRef.get(targetRef) : undefined;
+      if (to !== undefined) {
+        const toTile = { x: to.x / ONE, y: to.y / ONE };
+        attackFacing = facingTowardTile({ x: tileX, y: tileY }, toTile);
+        const band = Math.abs(Math.round(toTile.x - tileX)) + Math.abs(Math.round(toTile.y - tileY));
+        if (band <= MELEE_BAND_MAX_TILES) {
+          const targetScreen = tileToScreen(toTile.x, toTile.y);
+          lungeX = (targetScreen.x - screen.x) * MELEE_LUNGE_FRACTION;
+          lungeY = (targetScreen.y - screen.y) * MELEE_LUNGE_FRACTION;
+        }
+      }
+    }
+    const drawX = screen.x + chopNudgeX + lungeX;
+    const drawY = screen.y + lungeY;
     // Cull to the framed viewport (when culling). Uses the DRAWN anchor; the box is pre-inflated by the
     // renderer to cover a tall sprite's extent, so a building straddling the edge still draws.
-    if (viewport !== undefined && !isVisible(viewport, drawX, screen.y)) continue;
+    if (viewport !== undefined && !isVisible(viewport, drawX, drawY)) continue;
     // Terrain lift at the feet (bilinear over the elevation lane) — the DRAW offset, NOT the depth key.
     // The anchor/`depth` below stay PRE-LIFT so occlusion sorts by map row, not by lifted screen y.
     // A flat map (`maxLift === 0`) skips the sampler entirely — the elevation-free path stays free.
     const lift = elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAt(tileX, tileY) : 0;
+    // A projectile's ballistic height (set in its branch below) rides the SAME lift channel as terrain:
+    // a pure draw offset the depth key never sees, so the lob can't reshuffle occlusion mid-flight.
+    let arcLift = 0;
     const item: MutableDrawItem = {
       kind,
       ref: entity.id,
       x: drawX,
-      y: screen.y,
+      y: drawY,
       // Feet-anchor depth: lower (greater y), then further-right (greater x), then a per-kind sub-cell
       // bias (a settler in front of the node it stands on, a flag in front of its ground drops), then id.
       // A total order, so the sort is deterministic regardless of snapshot iteration nuances.
@@ -196,17 +251,9 @@ export function collectSpriteScene(
       // A combat-engaged unit reads the readied `..._agressive` gait (the sim `Engagement` marker).
       if (readEngaged(components)) item.engaged = true;
       // Facing: a mid-attack swing (atomic 81) has no walking heading, so it faces its target's LIVE
-      // tile (looked up by id); otherwise the movement heading. Combat facing WINS when it resolves, so
-      // a stale path can't leave an attacker swinging at empty air.
-      let facing: number | undefined;
-      if (actingAtomic === ATTACK_ATOMIC_ID) {
-        const targetRef = readAtomicTargetEntity(components);
-        const to = targetRef !== null ? posByRef.get(targetRef) : undefined;
-        // Divide to tile space only here (the rare swing), not for every entity in the pre-pass.
-        if (to !== undefined)
-          facing = facingTowardTile({ x: tileX, y: tileY }, { x: to.x / ONE, y: to.y / ONE });
-      }
-      facing ??= readFacing(components);
+      // tile (resolved with the lunge, above); otherwise the movement heading. Combat facing WINS when
+      // it resolves, so a stale path can't leave an attacker swinging at empty air.
+      const facing = attackFacing ?? readFacing(components);
       if (facing !== undefined) item.facing = facing;
       const carrying = readCarrying(components);
       if (carrying !== null) {
@@ -240,16 +287,36 @@ export function collectSpriteScene(
       const goodType = readStumpGood(components);
       if (goodType !== undefined) item.goodType = goodType;
     } else if (kind === 'projectile') {
-      // Point the drawn arrow along its flight: the screen-space heading from the projectile toward its
-      // target's LIVE position (the sim's homing step re-aims at the same target every tick). A shot
-      // whose target vanished this frame keeps rotation unset (the arrow draws east for the one tick the
-      // sim takes to expire it) — never a throw, never a stale index.
+      // Point the drawn arrow along its flight, and LOB it: the sim advances the shot on a straight
+      // homing line, so the drawn arc is pure presentation — the fraction flown `p` along the
+      // origin→target chord sets a parabolic height `4·peak·p·(1−p)` (rides `arcLift`, a draw offset
+      // like terrain lift, never the depth key) and tilts the rotation along the arc's TANGENT (nose up
+      // while climbing, down while falling). A shot whose target vanished this frame keeps rotation
+      // unset and flies flat for the one tick the sim takes to expire it — never a throw.
       const targetRef = readProjectileTarget(components);
       const to = targetRef !== null ? posByRef.get(targetRef) : undefined;
       if (to !== undefined) {
         const targetScreen = tileToScreen(to.x / ONE, to.y / ONE);
-        // Anchored on the projected position (the chop nudge is settler-only, so screen.x IS drawX here).
-        item.rotation = Math.atan2(targetScreen.y - screen.y, targetScreen.x - screen.x);
+        // Anchored on the projected position (the lunge/chop nudges are settler-only, so screen IS draw here).
+        const dx = targetScreen.x - screen.x;
+        const dy = targetScreen.y - screen.y;
+        let rotation = Math.atan2(dy, dx);
+        const origin = readProjectileOrigin(components);
+        if (origin !== null) {
+          const originScreen = tileToScreen(origin.x / ONE, origin.y / ONE);
+          const chord = Math.hypot(targetScreen.x - originScreen.x, targetScreen.y - originScreen.y);
+          const remaining = Math.hypot(dx, dy);
+          if (chord > 0 && remaining > 0) {
+            // Homing can stretch the path past the launch chord (the target moves), so clamp p to [0,1].
+            const p = Math.min(1, Math.max(0, 1 - remaining / chord));
+            const peak = Math.min(chord * PROJECTILE_ARC_PEAK_FRACTION, PROJECTILE_ARC_PEAK_MAX_PX);
+            arcLift = 4 * peak * p * (1 - p);
+            // Tangent: the straight-line unit heading, sheared by the arc's slope dh/ds (screen-up is -y).
+            const slope = (4 * peak * (1 - 2 * p)) / chord;
+            rotation = Math.atan2(dy / remaining - slope, dx / remaining);
+          }
+        }
+        item.rotation = rotation;
       }
     } else {
       // stockpile | grounddrop: both read their held good + fill from the stockpile — the trunk keys its
@@ -258,7 +325,8 @@ export function collectSpriteScene(
       if (goodType !== undefined) item.goodType = goodType;
       if (fill !== undefined) item.fill = fill;
     }
-    if (lift !== 0) item.lift = lift;
+    const drawLift = lift + arcLift;
+    if (drawLift !== 0) item.lift = drawLift;
     items.push(item);
   }
   // Stable, total order: sprites by (y, x, id). The entity-id tie-break makes two sprites on the exact

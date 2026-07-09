@@ -212,6 +212,9 @@ export function launchProjectile(
     weaponMainType: effect.weaponMainType ?? null,
     munitionType: effect.projectile.munitionType,
     speed: effect.projectile.speed,
+    // The chord's start, frozen at release — the render's ballistic-arc parameter (never read in flight).
+    originX: from.x,
+    originY: from.y,
   });
   ctx.events.emit({
     kind: 'projectileLaunched',

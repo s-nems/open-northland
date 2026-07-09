@@ -162,10 +162,11 @@ export const combatScene: SceneDefinition = {
   initialZoom: 0.8,
   checklist: [
     'Zamach kazdej broni gra sie W CALOSCI (bez uciecia w polowie) i jest zwrocony TWARZA w strone celu',
+    'Zwarcie: atakujacy DOSKAKUJE do celu na czas zamachu (cios laduje w ciele, nie w powietrzu), a wlocznia/dlugi miecz siega wyraznie dalej niz krotki miecz (zasiegi 2 vs 1 pola z weapons.ini)',
     'Kierunki: miecze walcza wschod-zachod, dwureczne polnoc-poludnie, wlocznie po przekatnej — kazdy zamach idzie we wlasciwa strone',
     'Miecznicy/wlocznicy podchodza „bojowym" chodem (bron gotowa, _agressive), nie zwyklym spacerem',
     'Lucznicy napinaja luk (krotki 12 klatek, dlugi 28 — wyraznie dluzszy) i wypuszczaja strzale w klatce zwolnienia',
-    'Strzala jest WIDOCZNA w locie (minimalny grot — brak zdekodowanego spritu strzaly, znana luka) i trafia w cel',
+    'Strzala jest WIDOCZNA w locie, leci LOBEM (luk balistyczny: wznosi sie, opada nosem w dol) i trafia w cel (minimalny grot — brak zdekodowanego spritu strzaly, znana luka)',
     'Walka trwa kilka pelnych zamachow (nie blyskawiczny zgon); trafiony NIE ma animacji drgniecia (brak _attacked bobseq — luka danych)',
     'Druzyny rozroznialne kolorem; czerwoni gina, niebiescy przewazaja; przesun kamere by objac lucznikow po prawej',
   ],

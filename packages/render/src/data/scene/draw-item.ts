@@ -172,15 +172,17 @@ export interface DrawItem {
    * For a **projectile**: its flight heading in screen space (radians, 0 = screen-east, clockwise) —
    * the pooled arrow graphic (authored pointing screen-east) rotates to it so the shaft points along
    * the flight. Derived from the projectile's position toward its target's live position (the sim's
-   * homing step re-aims every tick, so the heading tracks the flight). Omitted for every other kind.
+   * homing step re-aims every tick, so the heading tracks the flight), tilted along the drawn ballistic
+   * arc's tangent when the shot's launch origin is readable. Omitted for every other kind.
    */
   readonly rotation?: number;
   /**
-   * The terrain-elevation lift (world px, ≥ 0) at this item's feet — subtracted from the DRAWN `y` so
-   * the sprite sits on the lifted ground (a settler on a hill rides up with it). ORTHOGONAL to {@link
+   * The draw-height lift (world px, ≥ 0) at this item's feet — terrain elevation, plus a projectile's
+   * ballistic-arc height while mid-lob — subtracted from the DRAWN `y` so the sprite sits on the lifted
+   * ground (a settler on a hill rides up with it; an arrow arcs over the field). ORTHOGONAL to {@link
    * x}/{@link y}: the anchor and its {@link depth} stay PRE-LIFT (the painter key must remain the feet
    * row, so a lifted-up sprite on a nearer row still occludes one behind it — the renderer draws at
-   * `y − lift` but sorts by `y`). Omitted (treated as 0) on a flat map / synthetic content.
+   * `y − lift` but sorts by `y`). Omitted (treated as 0) on a flat map with nothing in flight.
    */
   readonly lift?: number;
 }
