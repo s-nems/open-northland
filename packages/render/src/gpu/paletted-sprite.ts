@@ -43,11 +43,16 @@ out vec2 vUV;
 
 uniform vec4 uPlacement;  // xy = feet-anchor screen px, z = pixels-per-native-pixel (zoom), w = player row
 uniform vec2 uResolution; // canvas size in pixels
+uniform vec2 uFlip;       // .x > 0.5: negate clip Y (render upright into a bottom-up render texture)
 
 void main(void) {
   vec2 screen = uPlacement.xy + uPlacement.z * aPosition;
   // Screen pixels → clip space (Y points down in screen space, up in clip space).
-  gl_Position = vec4(screen.x / uResolution.x * 2.0 - 1.0, 1.0 - screen.y / uResolution.y * 2.0, 0.0, 1.0);
+  float clipY = 1.0 - screen.y / uResolution.y * 2.0;
+  // A WebGL render texture is stored bottom-up, so a straight draw lands upside-down; uFlip negates clip Y
+  // to render upright into a texture WITHOUT the whole-sprite Y-flip that mixed (Pixi-native) content can't
+  // share. See gpu/supersample.ts.
+  gl_Position = vec4(screen.x / uResolution.x * 2.0 - 1.0, uFlip.x > 0.5 ? -clipY : clipY, 0.0, 1.0);
   vUV = aUV;
 }`;
 
@@ -140,6 +145,9 @@ interface PalettedUniforms {
     /** [keyMagenta, nearBlackMode] — a `Float32Array` (NOT a scalar `f32`, which a shared program won't
      *  re-upload per-mesh; see the class note) so each sprite carries its own GUI-key flags. */
     uColorKey: Float32Array;
+    /** [flipY, _] — `.x > 0.5` renders upright into a bottom-up render texture (a `Float32Array` for the
+     *  same per-mesh re-upload reason as `uColorKey`). */
+    uFlip: Float32Array;
     /** [uMin, vMin, uMax, vMax] — the current frame's atlas-UV box, for the 'round' corner key. */
     uFrameUV: Float32Array;
     /** [r, g, b, on] — the flat silhouette override colour (normalized), on > 0.5 enables it. */
@@ -177,6 +185,7 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
       uResolution: { value: new Float32Array([1, 1]), type: 'vec2<f32>' as const },
       uLutSize: { value: new Float32Array([LUT_WIDTH, colours]), type: 'vec2<f32>' as const },
       uColorKey: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
+      uFlip: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
       uFrameUV: { value: new Float32Array([0, 0, 1, 1]), type: 'vec4<f32>' as const },
       uSilhouette: { value: new Float32Array([0, 0, 0, 0]), type: 'vec4<f32>' as const },
     };
@@ -252,6 +261,22 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
   }
 
   /**
+   * Render UPRIGHT into a bottom-up WebGL render texture (default `false` = straight-to-canvas). A
+   * PalettedSprite hand-rolls its screen→clip projection for the on-canvas Y convention, so drawn into a
+   * render texture it lands upside-down; the tool panel corrects that by Y-flipping the whole baked sprite,
+   * but that only works when EVERY element is a PalettedSprite. Setting this instead flips each mesh at the
+   * source, so a panel that mixes PalettedSprites with Pixi-native content (Graphics, plain Sprites) can bake
+   * WITHOUT a whole-texture flip. See `hud/details-panel/panel.ts`.
+   */
+  set flipY(on: boolean) {
+    this.vars.uniforms.uFlip[0] = on ? 1 : 0;
+    this.vars.update();
+  }
+  get flipY(): boolean {
+    return (this.vars.uniforms.uFlip[0] ?? 0) > 0.5;
+  }
+
+  /**
    * Point the sprite at one atlas frame: bind the (indexed) atlas source and rewrite the quad to the frame's
    * native pixel size at its draw offset, with UVs into the `atlasWidth × atlasHeight` sheet. Screen
    * placement (feet anchor + zoom) is applied separately by {@link place}.
@@ -323,5 +348,59 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
     u.uResolution[0] = resWidth;
     u.uResolution[1] = resHeight;
     this.vars.update();
+  }
+
+  /**
+   * Stretch the current frame to a screen-space rectangle, ignoring its original bob draw offset. Used
+   * for GUI chrome pieces we stretch into arbitrary window edges/bars (our composition choice — the
+   * original's draw sites for these frames aren't decompiled in OpenVikings); ordinary world sprites
+   * should keep using {@link place}.
+   */
+  stretchToRect(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    resWidth: number,
+    resHeight: number,
+  ): void {
+    // The quad no longer matches the frame's native geometry — bust the setFrame memo so a later
+    // setFrame with the same frame rebuilds the positions instead of keeping the stretched quad.
+    this.lastAtlasW = -1;
+    this.lastAtlasH = -1;
+    const p = this.positions;
+    p[0] = 0;
+    p[1] = 0;
+    p[2] = width;
+    p[3] = 0;
+    p[4] = width;
+    p[5] = height;
+    p[6] = 0;
+    p[7] = height;
+    const geo = this.geometry;
+    geo.positions.set(this.positions);
+    geo.getBuffer('aPosition').update();
+
+    const u = this.vars.uniforms;
+    u.uPlacement[0] = x;
+    u.uPlacement[1] = y;
+    u.uPlacement[2] = 1;
+    u.uResolution[0] = resWidth;
+    u.uResolution[1] = resHeight;
+    this.vars.update();
+  }
+
+  /**
+   * Pixi's `Mesh.destroy` only NULLS `_geometry`/`_shader`; the uploaded GPU buffers then wait for the
+   * renderer's GC sweep (60 s unused-time). HUD panels churn PalettedSprites per rebuild (chrome pieces,
+   * glyph runs), so release the per-sprite geometry buffers and the Shader (its uniform groups) with the
+   * sprite. The GL *program* is Shader.from-cached and shared — `Shader.destroy()` leaves it alive.
+   */
+  override destroy(options?: Parameters<Mesh['destroy']>[0]): void {
+    const geometry = this.geometry;
+    const shader = this.paletteShader;
+    super.destroy(options);
+    geometry.destroy(true);
+    shader.destroy();
   }
 }
