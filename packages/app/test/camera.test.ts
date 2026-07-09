@@ -1,12 +1,44 @@
 import { type Camera, tileToScreen } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
-import { MAX_ZOOM, MIN_ZOOM, cameraCenteredOnTile, panCamera, zoomCameraAt } from '../src/view/camera.js';
+import {
+  MAX_ZOOM,
+  MIN_ZOOM,
+  cameraCenteredOnTile,
+  panCamera,
+  screenScale,
+  zoomCameraAt,
+} from '../src/view/camera.js';
 
 /**
- * The headless half of the interactive camera: the pan/zoom *math* is pure, so it's unit-tested here.
+ * The headless half of the interactive camera: the pan/zoom *math* is pure, so it's unit-tested here
+ * (including `screenScale`, the CSS-px → Pixi-screen-px mapping every drag/pick/hit-test rides on).
  * The DOM wiring (`createCameraController`'s mouse/wheel/key listeners) and the *feel* of the result are
  * human-gated — see the `npm run dev` check in the iteration closeout.
  */
+
+/** A canvas stub with a `width×height` device-px backing store shown in a `cssW×cssH` CSS box. */
+const fakeCanvas = (width: number, height: number, cssW: number, cssH: number): HTMLCanvasElement =>
+  ({
+    width,
+    height,
+    getBoundingClientRect: () => ({ width: cssW, height: cssH, left: 0, top: 0 }) as DOMRect,
+  }) as unknown as HTMLCanvasElement;
+
+describe('screenScale', () => {
+  it('maps CSS px to Pixi SCREEN px through the renderer resolution (not raw backing-store px)', () => {
+    // A DPR-2 window canvas: 2560×1600 device px at resolution 2 = a 1280×800 SCREEN, in a 1280×800 CSS
+    // box → 1 screen px per CSS px. Dividing by resolution is the point — raw device px would give 2.
+    expect(screenScale(fakeCanvas(2560, 1600, 1280, 800), 2)).toMatchObject({ sx: 1, sy: 1 });
+    // The ?shot-style canvas: a fixed resolution-1 backing store CSS-stretched to a smaller box.
+    const s = screenScale(fakeCanvas(1280, 800, 1000, 625), 1);
+    expect(s.sx).toBeCloseTo(1.28);
+    expect(s.sy).toBeCloseTo(1.28);
+  });
+
+  it('guards a zero-size CSS box (hidden canvas) with a neutral 1:1 scale', () => {
+    expect(screenScale(fakeCanvas(2560, 1600, 0, 0), 2)).toMatchObject({ sx: 1, sy: 1 });
+  });
+});
 
 describe('panCamera', () => {
   it('shifts the offset by the delta and preserves scale', () => {

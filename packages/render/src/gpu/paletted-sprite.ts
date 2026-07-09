@@ -250,12 +250,6 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
     }
     this.vars.update();
   }
-  get silhouette(): number | null {
-    const u = this.vars.uniforms.uSilhouette;
-    if ((u[3] ?? 0) < 0.5) return null;
-    const ch = (i: number): number => Math.round((u[i] ?? 0) * 255);
-    return (ch(0) << 16) | (ch(1) << 8) | ch(2);
-  }
 
   /**
    * Point the sprite at one atlas frame: bind the (indexed) atlas source and rewrite the quad to the frame's

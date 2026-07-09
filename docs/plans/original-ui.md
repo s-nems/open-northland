@@ -30,14 +30,17 @@ not a numbered step): (a) the settler action ring draws at 75% of the shared uis
 (`ACTION_RING_UI_FACTOR`, deliberate deviation from the original's 1:1 size — it crowded the
 settler); (b) interactive entries render at device resolution (`createWindowPixiApp`
 resolution=devicePixelRatio; `?shot` stays at 1 for determinism) and the HUD bakes oversample at
-DOUBLE the device coverage (`oversampleFor`, downscale ratio pinned to (1,2]) so palette edges
+DOUBLE the device coverage (`oversampleFor`, downscale ratio pinned to (1,2] before the caller's
+quality floor / memory cap) so palette edges
 resolve anti-aliased instead of nearest-hard on HiDPI, and the strip button glyphs get a
 1-design-px silhouette outline in the original socket backdrop colour (`PalettedSprite.silhouette`)
 — a named deviation: the original blits opaque dark sockets, which over our full-screen world read
 as a black slab (user-rejected), so the backdrop stays keyed and the outline restores the
 glyph/backdrop contrast; (c) the speed button cycles running speeds only (×1→×2→×3→×1), `P` toggles pause
-(remembers speed), and pausing washes the world with a multiply sepia quad — an eyeballed
-approximation of the original's brown paused map (observed behaviour). Verified: unit tests for the
+(remembers speed), and pausing washes the world with a multiply sepia quad — a deliberate WARM
+deviation from the pinned original (OpenVikings `CWorldDisplayElement` + `CBitmap.Tool_Darken`:
+neutral 50% channel halve, world display element only; the user asked for a brown tint and signed
+it off). Verified: unit tests for the
 new speed control + ring scale, Playwright pass at DPR 2 (cycle glyphs, pause wash on/off, ring
 size, selection/picking). Visual sign-off: user.
 

@@ -14,6 +14,7 @@ import {
   type GameSpeedStateSpec,
   cycleGameSpeed,
   effectiveGameSpeedSpec,
+  gameSpeedClickCause,
   toggleGameSpeedPause,
 } from './game-speed.js';
 import {
@@ -26,6 +27,7 @@ import {
 import { createMenuWindow } from './menu-window.js';
 import { createPlacementController } from './placement.js';
 import { createStatsWindow } from './stats-window.js';
+import { buildOutlinedButtonSpecs } from './strip-outline.js';
 import { type StripSpriteSpec, type SupersampledStrip, createSupersampledStrip } from './strip-texture.js';
 
 /**
@@ -96,23 +98,6 @@ const FALLBACK_BUTTON_BORDER = 0x8a744a;
 const SPEED_LABEL_INSET_X = 4;
 const SPEED_LABEL_RAISE_Y = 3;
 
-/**
- * The button-glyph contrast outline: silhouette copies of each glyph stamped 1 design px out in all eight
- * directions, in the sampled backdrop colour of the original button sockets (`ls_gui_window` frame 0x31 at
- * (2,2) → rgb(0,8,0)). See the sprite-creation comment in {@link mountToolPanel} for why (named deviation).
- */
-const BUTTON_OUTLINE_COLOR = 0x000800;
-const BUTTON_OUTLINE_OFFSETS: readonly (readonly [number, number])[] = [
-  [-1, -1],
-  [0, -1],
-  [1, -1],
-  [-1, 0],
-  [1, 0],
-  [-1, 1],
-  [0, 1],
-  [1, 1],
-];
-
 /** True when a keydown originated in a text-entry element — a game hotkey must not fire while typing.
  *  (No text field exists in the app today; this guards the first one that appears.) */
 const isTypingTarget = (target: EventTarget | null): boolean =>
@@ -154,36 +139,15 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const speedSprites: PalettedSprite[] = [];
 
   if (art !== null) {
-    // Key EVERY panel sprite (strip + buttons) and OUTLINE the button glyphs. The GUI palettes reserve
-    // index 0 (magenta) + a near-black band as each element's backdrop, and a bob writes them opaque — the
-    // original engine blits the buttons WHOLE, dark socket backdrop included, hiding gameplay in a separate
-    // area. Over our full-screen world that opaque socket column read as a heavy black slab (user-rejected),
-    // so this is a DELIBERATE deviation: the backdrop is keyed transparent (the carved strip shows through)
-    // and each glyph instead gets a 1-design-px rim in the socket's own colour — eight offset silhouette
-    // stamps behind the real sprite — keeping the original's glyph/backdrop contrast (thin glyphs like the
-    // ×1 speed digit frayed against bare stone) without its full socket. All outlines land BEFORE all
-    // glyphs, so a button's rim can never stamp over a touching neighbour's art.
+    // The strip keys its near-black backdrop away (the world shows past the carved silhouette — our
+    // floating-HUD deviation); the buttons draw keyed too but get a contrast outline instead of the
+    // original's opaque dark sockets — the policy + the why live in `strip-outline.ts`.
     const specs: StripSpriteSpec[] = [];
     const strip = makeGuiSprite(art, layout.stripGfx, { defaultPalette: 'iconsleft', colorKey: 'full' });
     if (strip !== null) specs.push({ spr: strip.sprite, design: TOOL_PANEL_STRIP });
-    for (const b of layout.buttons) {
-      for (const [dx, dy] of BUTTON_OUTLINE_OFFSETS) {
-        const os = makeGuiSprite(art, b.gfx, { defaultPalette: 'iconsleft', colorKey: 'full' });
-        if (os === null) continue;
-        os.sprite.silhouette = BUTTON_OUTLINE_COLOR;
-        specs.push({
-          spr: os.sprite,
-          design: { x: b.rect.x + dx, y: b.rect.y + dy, w: b.rect.w, h: b.rect.h },
-        });
-        if (b.id === 'speed') speedSprites.push(os.sprite);
-      }
-    }
-    for (const b of layout.buttons) {
-      const gs = makeGuiSprite(art, b.gfx, { defaultPalette: 'iconsleft', colorKey: 'full' });
-      if (gs === null) continue;
-      specs.push({ spr: gs.sprite, design: b.rect });
-      if (b.id === 'speed') speedSprites.push(gs.sprite);
-    }
+    const outlined = buildOutlinedButtonSpecs(art, layout.buttons);
+    specs.push(...outlined.specs);
+    speedSprites.push(...outlined.speedSprites);
     supersampled = createSupersampledStrip({ app, bounds: layout.designBounds, scale, sprites: specs });
     stripContainer.addChild(supersampled.display);
   } else {
@@ -264,10 +228,14 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   // --- Button actions -------------------------------------------------------------------------------
   const activateButton = (id: ToolButtonId): void => {
     switch (id) {
-      case 'speed':
+      case 'speed': {
+        // Cause from the PRE-click state: a click while paused is an un-pause, not a speed pick (a
+        // 'cycle' cause there would clobber a fractional `?speed=` seed — see gameSpeedClickCause).
+        const cause = gameSpeedClickCause(speedControl);
         speedControl = cycleGameSpeed(speedControl);
-        applySpeed('cycle');
+        applySpeed(cause);
         break;
+      }
       case 'buildings':
         placement.cancel();
         menu.toggle();

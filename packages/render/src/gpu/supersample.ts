@@ -23,7 +23,9 @@ import { type Container, RenderTexture, type Renderer, Sprite } from 'pixi.js';
  * targets DOUBLE the device coverage: `floor(2×)` pins the downscale ratio into (1, 2], where every
  * device px is fully covered by the GPU's 2×2 linear tap (a ratio above 2 would undersample) and
  * hard palette edges resolve anti-aliased. Integer device scales stay pixel-exact — each device px
- * then averages a uniform block of one source texel. `floor` is the caller's quality floor (a
+ * then averages a uniform block of one source texel. The `ceil` term only bites below 0.5 device px
+ * per design px, where `floor(2×)` alone would UPSCALE (there the (1, 2] guarantee yields to "never
+ * upscale") — do not "simplify" the max away. `floor` is the caller's quality floor (a
  * hard-clipped disc rim wants ≥3 for smoothing headroom; a flat strip is fine from 1); `cap` bounds
  * the texture memory a pathological `?uiscale=`/DPR combination could request. Lives beside the
  * bake so the sizing policy can't drift between callers.

@@ -52,12 +52,15 @@ const NO_SELECTION: ReadonlySet<number> = new Set();
 const SPRITE_CULL_MARGIN = 512;
 
 /**
- * The paused-game wash: one screen-sized multiply quad over the WORLD (not the HUD), so a paused map
- * reads dimmed-sepia at a glance. The original browns the MAP while paused (observed behaviour); the
- * exact grade isn't recoverable, and whether its HUD tints too isn't part of that observation — the
- * world-only scope is our reading (source basis: eyeballed multiply approximation). One plain sprite:
- * its distinct blend mode flushes the batcher, but it sits at the world→HUD layer boundary which
- * flushes anyway, so the cost is one extra draw call, only while paused — no filter, no per-sprite work.
+ * The paused-game wash: one screen-sized multiply quad over the WORLD (not the HUD). The original's
+ * effect IS pinned (OpenVikings `CWorldDisplayElement.XGui_BE_Element_Draw` + `CBitmap.Tool_Darken`):
+ * while the speed global reads 0 (paused), the WORLD DISPLAY ELEMENT's clip rect gets every channel
+ * halved (`value >> 1 & 0x7F7F7F`) — a neutral 50% darken, world element only (the HUD is a separate
+ * element, untinted; a faithful multiply would be `0x808080`). This warmer, lighter tint is a
+ * DELIBERATE deviation from that pinned grade — the user asked for a slightly BROWN paused map and
+ * signed it off. One plain sprite: its distinct blend mode flushes the batcher, but it sits at the
+ * world→HUD layer boundary which flushes anyway, so the cost is one extra draw call, only while
+ * paused — no filter, no per-sprite work.
  */
 const PAUSE_WASH_TINT = 0xc9a87c;
 

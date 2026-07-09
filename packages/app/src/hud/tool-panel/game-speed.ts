@@ -92,6 +92,16 @@ export function toggleGameSpeedPause(control: GameSpeedControl): GameSpeedContro
  */
 export type GameSpeedChangeCause = 'cycle' | 'pause-toggle';
 
+/**
+ * The cause a speed-button CLICK reports, from the pre-click control: a click while paused is an
+ * un-pause ({@link cycleGameSpeed} resumes, it does not advance), so it must carry `'pause-toggle'` —
+ * reporting `'cycle'` there would overwrite a fractional `?speed=` seed on resume (see the type above),
+ * making the two resume gestures (click vs `P`) behave differently.
+ */
+export function gameSpeedClickCause(control: GameSpeedControl): GameSpeedChangeCause {
+  return control.paused ? 'pause-toggle' : 'cycle';
+}
+
 /** The spec the button draws + the loop applies for a control: the pause glyph wins while paused. */
 export function effectiveGameSpeedSpec(control: GameSpeedControl): GameSpeedStateSpec {
   return gameSpeedSpec(control.paused ? 'paused' : control.running);
