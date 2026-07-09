@@ -1,18 +1,28 @@
-import { type Simulation, cellAnchorNode, components, fx, systems } from '@vinland/sim';
-import { HARVEST_ATOMIC } from '../../catalog/atomics.js';
+import {
+  type Command,
+  type ResourceNodeSpec,
+  type Simulation,
+  cellAnchorNode,
+  components,
+  fx,
+  systems,
+} from '@vinland/sim';
 import { resolveVikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../rules.js';
-import { GOOD_WOOD, type GathererSpec } from './ids.js';
+import { GATHERERS, type GathererSpec } from './ids.js';
 
-const { Felling, MineDeposit, Position, Resource, Stockpile } = components;
+const { Position, Stockpile } = components;
 
 /**
- * The sandbox world-population helpers scenes and the vertical slice share. Buildings + settlers go
- * through the ONE command seam (`placeBuilding`/`spawnSettler`); resource nodes and flags are the
- * sanctioned direct-`sim.world` exception — no `placeResource` command exists yet, and content setup
- * runs before tick 0, so determinism is unaffected. Do not copy this direct-store pattern into render
- * glue (packages/app/AGENTS.md, one-way flow).
+ * The sandbox world-population helpers scenes and the vertical slice share. Buildings, settlers and
+ * resource nodes all go through the ONE command seam at RUNTIME (`placeBuilding` / `spawnSettler` /
+ * `placeResource`) — the admin/debug palette and a future scenario editor spawn through them so a mid-run
+ * placement stays replay-faithful. The `place*` helpers below instead build a node DIRECTLY (the
+ * sanctioned `sim.world` exception): they run as scene SETUP, before tick 0, where the command log is
+ * empty and determinism is unaffected — the same "authored fixture state" stance as a decoded map's
+ * `sethouse`/landscape records. Do not copy the direct-store pattern into render glue or a mid-run path
+ * (packages/app/AGENTS.md, one-way flow) — use {@link resourceCommand} there instead.
  */
 
 /**
@@ -63,43 +73,75 @@ export function spawnSandboxSettler(
   });
 }
 
-/** A fellable tree: a wood resource node with the felling counter (chops-to-fell pin). */
-export function placeTree(sim: Simulation, x: number, y: number): void {
-  const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Resource, {
-    goodType: GOOD_WOOD,
-    remaining: WOOD_YIELD_PER_NODE,
-    harvestAtomic: HARVEST_ATOMIC,
-  });
-  if (!systems.stampResourceFootprint(sim.world, sim.content, e, GOOD_WOOD)) {
-    throw new Error('placeTree: missing resource footprint for wood');
+/**
+ * Resolve a gatherer's resource-node {@link ResourceNodeSpec} at a HALF-CELL NODE (`x`/`y` are node
+ * coords, like every sim command) — the ONE place the app's felling/deposit balance constants become a
+ * node's starting yield + harvest lifecycle marker. Shared by the pre-tick-0 direct helper (which
+ * converts its scene tile to a node first) and the runtime {@link resourceCommand} (whose caller already
+ * holds node coords), so a scene-placed tree and a debug-spawned tree are the same node. A `fell` good is
+ * a chop-it-down tree, a `mine` good a finite deposit, a `pick` good a pluck-whole node.
+ */
+function resourceSpecFor(g: GathererSpec, x: number, y: number): ResourceNodeSpec {
+  switch (g.mode) {
+    case 'fell':
+      // Wood is the only felled good; its per-node yield + chops-to-fell are catalog constants (not
+      // carried on the GathererSpec), so the fell branch reads them directly.
+      return {
+        good: g.good,
+        x,
+        y,
+        remaining: WOOD_YIELD_PER_NODE,
+        harvestAtomic: g.atomic,
+        felling: { chopsLeft: WOOD_CHOPS_TO_FELL },
+      };
+    case 'mine': {
+      const units = g.depositUnits ?? 0;
+      if (units <= 0) throw new Error(`resourceSpecFor: '${g.id}' needs positive depositUnits`);
+      return {
+        good: g.good,
+        x,
+        y,
+        remaining: units,
+        harvestAtomic: g.atomic,
+        deposit: { levels: g.depositLevels ?? 0 },
+      };
+    }
+    case 'pick':
+      return { good: g.good, x, y, remaining: 1, harvestAtomic: g.atomic };
   }
-  sim.world.add(e, Felling, { chopsLeft: WOOD_CHOPS_TO_FELL });
 }
 
-/** A finite mined deposit (stone/clay/iron/gold) with its level ladder. */
-export function placeDeposit(sim: Simulation, g: GathererSpec, x: number, y: number): void {
-  const units = g.depositUnits ?? 0;
-  const levels = g.depositLevels ?? 0;
-  if (units <= 0) throw new Error(`placeDeposit: '${g.id}' needs positive depositUnits`);
-  const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Resource, { goodType: g.good, remaining: units, harvestAtomic: g.atomic });
-  if (!systems.stampResourceFootprint(sim.world, sim.content, e, g.good)) {
-    throw new Error(`placeDeposit: missing resource footprint for ${g.id}`);
+/** Create a resource node DIRECTLY (scene setup, pre-tick-0). Throws on a good with no footprint —
+ *  a scene setup bug, not recoverable — unlike the runtime command which skips it. */
+function placeResourceDirect(sim: Simulation, spec: ResourceNodeSpec, what: string): void {
+  if (systems.createResourceNode(sim.world, sim.content, spec) === null) {
+    throw new Error(`${what}: missing resource footprint for good ${spec.good}`);
   }
-  sim.world.add(e, MineDeposit, { initial: units, levels });
 }
 
-/** A single-unit pluckable node (mushrooms). */
-export function placePickNode(sim: Simulation, g: GathererSpec, x: number, y: number): void {
-  const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Resource, { goodType: g.good, remaining: 1, harvestAtomic: g.atomic });
-  if (!systems.stampResourceFootprint(sim.world, sim.content, e, g.good)) {
-    throw new Error(`placePickNode: missing resource footprint for ${g.id}`);
-  }
+/**
+ * Place a gatherer's resource node DIRECTLY (scene setup, pre-tick-0) — a felled tree, a mined deposit,
+ * or a pluck-whole node, chosen from the gatherer's own {@link GathererSpec.mode} by `resourceSpecFor`
+ * (so the caller doesn't re-dispatch on the mode). Scenes author in whole TILES (`x`/`y`), so the tile is
+ * converted to its anchor node before assembly — the same tile→node seam `spawnSandboxSettler` uses.
+ * Throws on a good with no footprint (a scene-setup bug), unlike the runtime {@link resourceCommand}.
+ */
+export function placeResourceNode(sim: Simulation, g: GathererSpec, x: number, y: number): void {
+  const node = cellAnchorNode(x, y);
+  placeResourceDirect(sim, resourceSpecFor(g, node.hx, node.hy), `placeResourceNode(${g.id})`);
+}
+
+/**
+ * Build a `placeResource` command for a good at a HALF-CELL NODE — the RUNTIME spawn path (the
+ * admin/debug palette, a future scenario editor): the node is created through the mutation seam on the
+ * next tick, so a mid-run placement stays replay-faithful (unlike the direct helper, sound only before
+ * tick 0). `x`/`y` are node coords, the space the UI's `clientToTile` already resolves to. Returns null
+ * for a good with no gatherer spec (not a spawnable resource).
+ */
+export function resourceCommand(good: number, x: number, y: number): Command | null {
+  const g = GATHERERS.find((gg) => gg.good === good);
+  if (g === undefined) return null;
+  return { kind: 'placeResource', ...resourceSpecFor(g, x, y) };
 }
 
 /** A drop-off flag: an empty stockpile at the given tile. */

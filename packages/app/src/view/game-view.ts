@@ -16,6 +16,7 @@ import { createSoundDriver } from '../content/audio.js';
 import { loadIr } from '../content/ir.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
 import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel/layout.js';
+import { mountAdminDebug } from './admin-debug/index.js';
 import type { CameraController } from './camera.js';
 import { applyGameSpeed, menuEntriesFromContent, mountGameToolPanel } from './game-tool-panel.js';
 import { mountSoundToggle } from './overlay.js';
@@ -196,6 +197,18 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     enqueue: (command) => sim.enqueue(command),
     boundsOf: (ref) => renderer.entityBounds(ref), // pixel-accurate picking against the real sprite
     claimPointer: (x: number, y: number) => toolPanel.claimPointer(x, y),
+  });
+
+  // The admin/debug spawn palette (a hidden panel behind a top toggle button): click-to-spawn any unit
+  // or resource for any player through the sim command seam, for hands-on combat/economy testing. Its
+  // spawn clicks resolve tiles + defer to the SAME composed HUD claim the unit controls use (tool-panel
+  // strip/windows PLUS the settler action ring), and it runs BEFORE the RTS controls (a window-capture
+  // press) so arming never also selects a unit.
+  mountAdminDebug({
+    canvas,
+    enqueue: (command) => sim.enqueue(command),
+    clientToTile: (x, y) => toolPanel.clientToTile(x, y),
+    claimPointer: (x, y) => controls.claimsPointer(x, y),
   });
 
   // The memoized build-mode band probe (see makeOverlayFrameSource) — one instance per view.

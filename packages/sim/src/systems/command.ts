@@ -16,7 +16,7 @@ import { positionOfNode } from '../nav/halfcell.js';
 import { attackUnit, moveUnit, setJob, setStance } from './conflict/orders.js';
 import { spawnAnimalHerd, spawnSettler } from './conflict/spawn.js';
 import type { System, SystemContext } from './context.js';
-import { canPlaceBuilding } from './footprint/index.js';
+import { canPlaceBuilding, createResourceNode } from './footprint/index.js';
 import { buildingEnabled, tribeShipsUnlocked } from './progression.js';
 
 /**
@@ -49,6 +49,10 @@ import { buildingEnabled, tribeShipsUnlocked } from './progression.js';
  *    an empty {@link Stockpile} (the "boats as mobile stores" entity). Emits `boatPlaced`. Gated by the
  *    tribe's ship-unlock tech graph ({@link tribeShipsUnlocked}): a cart/catapult/unknown/not-yet-unlocked
  *    type is skipped (still logged), the same stance as a tech-gated `placeBuilding` (see {@link placeBoat}).
+ *  - `placeResource` — create a standing {@link Resource} node (a tree / mined deposit / plucked node)
+ *    of a good at (x,y) through the shared {@link createResourceNode} assembly — the runtime analogue of
+ *    the scene-setup `place*` helpers, for a map/scenario editor or the debug spawn palette. Skipped
+ *    (still logged) for a good with no resource footprint record (bad input).
  *  - `setProduction` — point a workplace's production at a good (currently a no-op marker until the
  *    recipe-selection slice; recorded in the log so replay stays faithful).
  *  - `demolish` — destroy a building entity (ids are never recycled), **first unbinding every
@@ -88,6 +92,20 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'placeBoat':
       placeBoat(world, ctx, command);
+      return;
+    case 'placeResource':
+      // Build a standing resource node through the shared assembly. A `good` with no footprint record
+      // is bad input — createResourceNode returns null (world untouched); the command is skipped (still
+      // logged for faithful replay), the same stance as an unknown building/job id.
+      createResourceNode(world, ctx.content, {
+        good: command.good,
+        x: command.x,
+        y: command.y,
+        remaining: command.remaining,
+        harvestAtomic: command.harvestAtomic,
+        ...(command.felling !== undefined ? { felling: command.felling } : {}),
+        ...(command.deposit !== undefined ? { deposit: command.deposit } : {}),
+      });
       return;
     case 'setProduction':
       // No state change yet: recipe/output selection is a later slice. The command is still logged

@@ -49,8 +49,19 @@ const FOOTPRINTED_TYPE = 5;
 /** Building types: HQ / sawmill / temple / tech-gated smithy / footprinted hut / unknown. */
 const BUILDING_TYPES = [1, 2, 3, 4, FOOTPRINTED_TYPE, INVALID_TYPE] as const;
 
-/** The fixture content plus the footprinted hut — fuzz-local so the golden fixtures stay untouched
- *  (a footprint on a shared type would re-gate the goldens' pinned placements). */
+/** A footprinted RESOURCE good the stream drops at runtime via `placeResource` — reuses the fixture's
+ *  wood good (typeId 1, whose felling lifecycle is already modelled), joined to a landscape logic type +
+ *  a gfx record carrying a 1-cell walk/build/work footprint. With this, a `placeResource{good:1}` runs
+ *  the CREATE path (footprint stamp + the incremental blocked-cell cache) under the fuzzed stream, not
+ *  just the skip path; other goods stay footprint-less and skip. Fuzz-local (the golden fixtures stay
+ *  untouched — a footprint on a shared good would re-gate their pinned resource placements). */
+const RESOURCE_GOOD = 1;
+const RESOURCE_LANDSCAPE_TYPE = 20;
+const RESOURCE_GFX_INDEX = 200;
+
+/** The fixture content plus the footprinted hut + the footprinted wood resource — fuzz-local so the
+ *  golden fixtures stay untouched (a footprint on a shared type would re-gate the goldens' pinned
+ *  placements). */
 function fuzzContent() {
   const base = testContent();
   return parseContentSet({
@@ -69,6 +80,34 @@ function fuzzContent() {
           ],
           reserved: [-1, 0, 1].flatMap((dy) => [-1, 0, 1, 2].map((dx) => ({ dx, dy }))),
         },
+      },
+    ],
+    landscape: [
+      ...base.landscape,
+      { typeId: RESOURCE_LANDSCAPE_TYPE, id: 'wood_node', walkable: true, buildable: true },
+    ],
+    landscapeGfx: [
+      ...base.landscapeGfx,
+      {
+        index: RESOURCE_GFX_INDEX,
+        editName: 'fuzz wood node',
+        logicType: RESOURCE_LANDSCAPE_TYPE,
+        maxValency: 3,
+        isWorkable: true,
+        // [state, x, y, run] — one blocked cell at the node's own tile (the full-state footprint).
+        walkBlockAreas: [[1, 0, 0, 1]],
+        buildBlockAreas: [[1, 0, 0, 1]],
+        workAreas: [[1, 0, 0, 1]],
+      },
+    ],
+    gatheringPipeline: [
+      ...base.gatheringPipeline,
+      {
+        goodType: RESOURCE_GOOD,
+        goodId: 'wood',
+        harvestAtomic: 24,
+        bioLandscape: true,
+        harvest: { landscapeType: RESOURCE_LANDSCAPE_TYPE, gfxIndices: [RESOURCE_GFX_INDEX] },
       },
     ],
   });
@@ -124,7 +163,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  const roll = rng.int(10);
+  const roll = rng.int(11);
   switch (roll) {
     case 0:
       return {
@@ -198,6 +237,23 @@ function nextCommand(rng: Rng): Command {
         entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         mode: pick(rng, STANCE_MODES),
       };
+    case 9: {
+      // A resource node dropped at a random tile: good 1 (wood — FOOTPRINTED, so the create path runs:
+      // footprint stamp + the incremental blocked-cell cache, including overlap counts when nodes stack)
+      // and good 4 / unknown (no footprint → the skip path, still logged). One lifecycle marker per node
+      // (tree / deposit / pluck-whole) — mutually exclusive, per the command contract.
+      const life = rng.int(3);
+      return {
+        kind: 'placeResource',
+        good: pick(rng, [RESOURCE_GOOD, 4, INVALID_TYPE]),
+        x,
+        y,
+        remaining: rng.int(6) + 1,
+        harvestAtomic: 24,
+        ...(life === 0 ? { felling: { chopsLeft: rng.int(4) + 1 } } : {}),
+        ...(life === 1 ? { deposit: { levels: rng.int(4) + 1 } } : {}),
+      };
+    }
     default:
       // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.
       return {

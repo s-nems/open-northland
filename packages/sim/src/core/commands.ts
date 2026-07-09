@@ -127,6 +127,35 @@ export type Command =
        *  Orthogonal to `tribe` (the civilization). */
       readonly owner?: number;
     }
+  | {
+      /**
+       * Place a **resource node** of `good` at (x,y) — the runtime analogue of the scene-setup
+       * `place*` helpers (a tree / a mined deposit / a plucked node), through the ONE mutation seam so
+       * a node dropped WHILE the sim runs (a map/scenario editor, the debug spawn palette) stays
+       * replay-faithful and lockstep-safe, unlike the direct-`world` setup path that is only sound
+       * before tick 0. The node's balance is caller-RESOLVED (the app owns the felling/deposit
+       * constants): `remaining` is its starting yield and `harvestAtomic` the atomic a gatherer runs on
+       * it, exactly as `spawnSettler` carries a resolved `hitpoints`. `felling` makes it a chop-it-down
+       * tree ({@link Felling}); `deposit` makes it a mined finite deposit ({@link MineDeposit}, its
+       * `initial` = `remaining`); neither makes it a pluck-whole node (a mushroom). The sim stamps the
+       * content-derived footprint from `good`: a `good` with no resource footprint record is bad input —
+       * skipped (still logged for faithful replay), the same stance as an unknown building/job id.
+       */
+      readonly kind: 'placeResource';
+      readonly good: number;
+      readonly x: number;
+      readonly y: number;
+      /** The node's starting yield (its {@link Resource.remaining}). */
+      readonly remaining: number;
+      /** The atomic a gatherer runs to harvest this node ({@link Resource.harvestAtomic}). */
+      readonly harvestAtomic: number;
+      /** A FELLED node (a tree): its chops-to-fell counter (stamps {@link Felling}). Mutually
+       *  exclusive with `deposit`; omit both for a pluck-whole node (a mushroom). */
+      readonly felling?: { readonly chopsLeft: number };
+      /** A MINED finite deposit (stone/clay/iron/gold): its level ladder (stamps {@link MineDeposit},
+       *  `initial` = `remaining`). Mutually exclusive with `felling`. */
+      readonly deposit?: { readonly levels: number };
+    }
   | { readonly kind: 'setProduction'; readonly building: Entity; readonly goodType: number }
   | { readonly kind: 'demolish'; readonly building: Entity }
   | {

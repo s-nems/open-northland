@@ -5,14 +5,17 @@ import {
   fullStateBlockAreaCells,
 } from '@vinland/data';
 import {
+  Felling,
+  MineDeposit,
   Position,
+  Resource,
   ResourceFootprint,
   type ResourceFootprintCell,
   type ResourceFootprintData,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
+import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import { translatedCells } from './geometry.js';
 
@@ -83,6 +86,64 @@ export function unstampResourceFootprint(world: World, resource: Entity): void {
   world.remove(resource, ResourceFootprint);
   removeResourceBlockedCacheEntry(world, resource);
   syncResourceBlockedCacheGeneration(world);
+}
+
+/**
+ * The caller-resolved shape of a resource node to place: its good, half-cell NODE, starting yield and
+ * harvest atomic, plus which harvest LIFECYCLE it runs (a felled tree, a mined deposit, or — neither — a
+ * pluck-whole node). The felling/deposit balance constants live in the app catalog, so the caller
+ * resolves them and hands the sim a ready spec (the same "app resolves content, sim applies" split as
+ * the `attack` effect's pre-resolved damage). Consumed by {@link createResourceNode}.
+ */
+export interface ResourceNodeSpec {
+  readonly good: number;
+  /** The node's half-cell lattice coords (like every sim command; → a visual-tile Position). */
+  readonly x: number;
+  readonly y: number;
+  readonly remaining: number;
+  readonly harvestAtomic: number;
+  /** A felled node (a tree): its chops-to-fell counter. Mutually exclusive with `deposit`. */
+  readonly felling?: { readonly chopsLeft: number };
+  /** A mined finite deposit (stone/clay/iron/gold): its level ladder (`initial` = `remaining`). */
+  readonly deposit?: { readonly levels: number };
+}
+
+/**
+ * Assemble a standing resource node from a resolved {@link ResourceNodeSpec}: a {@link Position} +
+ * {@link Resource} carrying its yield/atomic, its content-derived footprint (from `good`), and the
+ * {@link Felling}/{@link MineDeposit} lifecycle marker the spec asks for. This is the ONE place a
+ * resource node is built — the scene-setup helpers (pre-tick-0, direct) and the `placeResource`
+ * command handler (runtime, through the mutation seam) both route here, so a hand-placed tree and a
+ * command-placed tree are byte-identical entities.
+ *
+ * Returns `null` — creating NOTHING, so no entity id is burned — when `good` has no resource footprint
+ * record: a scene-setup caller treats that as a hard bug and throws; the command handler treats it as
+ * recoverable bad input and skips. The footprint is resolved BEFORE `create()` for exactly that reason —
+ * an id-neutral skip like the `placeBuilding`/`placeBoat` gates, rather than a create-then-destroy that
+ * would make the id sequence depend on how many rejected commands were issued. Determinism: a single
+ * `create()` plus pure content reads (the footprint stamp maintains its own blocked-cell cache) — no
+ * RNG, no wall-clock.
+ */
+export function createResourceNode(world: World, content: ContentSet, spec: ResourceNodeSpec): Entity | null {
+  // Resolve the footprint FIRST (a memoized content read) so an unknown good is an id-neutral skip
+  // before any `create()`. The `stampResourceFootprint` below re-resolves the same memoized record and
+  // so cannot fail here — it does the ResourceFootprint stamp + the incremental blocked-cell cache entry.
+  if (resourceFootprintForGood(content, spec.good) === null) return null;
+  const e = world.create();
+  // `spec.x`/`y` are HALF-CELL NODE coords (like every sim command); the Position is the node's
+  // visual-tile coord, exactly as `spawnSettler` maps its command node → Position.
+  world.add(e, Position, positionOfNode(spec.x, spec.y));
+  world.add(e, Resource, {
+    goodType: spec.good,
+    remaining: spec.remaining,
+    harvestAtomic: spec.harvestAtomic,
+  });
+  stampResourceFootprint(world, content, e, spec.good);
+  if (spec.felling !== undefined) world.add(e, Felling, { chopsLeft: spec.felling.chopsLeft });
+  if (spec.deposit !== undefined) {
+    world.add(e, MineDeposit, { initial: spec.remaining, levels: spec.deposit.levels });
+  }
+  return e;
 }
 
 interface ResourceBlockedCache {
