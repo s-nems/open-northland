@@ -14,7 +14,7 @@ const KIND_COLOURS: Record<SpriteKind, number> = {
   stockpile: 0xb08040, // a sandy heap/flag marker, distinct from the green resource node
   stump: 0x6b4a2a, // a brown stump/debris marker (the felled-tree remnant), distinct from both
   grounddrop: 0x8a5a2a, // a log-brown marker for a freshly-felled trunk lying on the ground
-  projectile: 0xe8dcc0, // a pale wooden arrow shaft (unused by the box path — the arrow draws its own shape)
+  projectile: 0xe8dcc0, // the pale wooden arrow shaft — read by drawArrow (not the generic box path)
 };
 
 /** The arrow's shaft length / head size / stroke width (px at world scale) — sized to read as a
