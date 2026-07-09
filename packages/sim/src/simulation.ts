@@ -110,12 +110,13 @@ export class Simulation {
   }
 
   /**
-   * The version of the placement-blocker inputs — bumps only when a building or resource is added or
-   * removed (see {@link placementBlockerVersion}). The build-mode overlay keys its memoized band probe
-   * on this instead of the tick, so a still camera over a running sim reuses last frame's blocked set
-   * instead of re-probing the whole visible node band every RAF.
+   * The version of the placement-blocker inputs — an opaque token that changes only when a building or
+   * resource (or its footprint) is added or removed (see {@link placementBlockerVersion}). The
+   * build-mode overlay keys its memoized band probe on this instead of the tick, so a still camera over
+   * a running sim reuses last frame's blocked set instead of re-probing the whole visible node band
+   * every RAF.
    */
-  placementBlockerVersion(): number {
+  placementBlockerVersion(): string {
     return placementBlockerVersion(this.world);
   }
 

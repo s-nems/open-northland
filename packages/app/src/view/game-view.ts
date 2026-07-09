@@ -76,10 +76,9 @@ const PERF_STRIP_GAP = 8;
  * visible band is probed, and only while placing — and the band probe is MEMOIZED on (type,
  * placement-blocker version, band). The version (`Simulation.placementBlockerVersion`) moves only
  * when a building/resource is added or removed, NOT every tick — so a still camera over a RUNNING sim
- * reuses last frame's blocked set instead of re-probing the whole node band per RAF (the regression:
- * the old key held `sim.tick`, which advances 20×/s and, once the frame rate collapsed, every frame —
- * so the O(4×visible×footprint) loop never got to skip while the game played). Returns null for a
- * mapless sim (no placement rule → no wash).
+ * reuses last frame's blocked set instead of re-probing the whole node band per RAF (keying on the
+ * tick instead makes the O(4×visible×footprint) loop re-run 20×/s while the game plays). Returns null
+ * for a mapless sim (no placement rule → no wash).
  */
 function makeOverlayFrameSource(
   sim: Simulation,

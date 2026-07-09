@@ -336,25 +336,24 @@ export interface PlacementProbe {
 }
 
 /**
- * Stride the Building store generation is shifted by before the Resource generation is folded in, so
- * one number carries both (`≈67M` head-room per axis, exact in a double until either axis passes it).
- * A fold collision would only make the read-path memo below reuse a stale wash for one frame — never
- * a placement decision (the command gate always re-scans) — so an astronomically rare overflow is
- * cosmetic and self-correcting, the same tolerance {@link signatureOf}'s render-side hash accepts.
+ * A per-world version of the placement-blocker INPUTS — the exact component stores {@link eachBlockerCell}
+ * reads: whether each `Building`, `Resource`, and `ResourceFootprint` exists. Their generations bump only
+ * on add/remove ({@link World.componentGeneration}), so this moves precisely when the obstacle set can
+ * change — NOT every tick — and the overlay and {@link memoizedPlacementGrid} reuse their last result
+ * until it does. Exactness rests on three standing invariants (all hold today):
+ *   - buildings and resources never MOVE once placed (only settlers/vehicles/projectiles mutate Position),
+ *     so a stored entity's cells are fixed;
+ *   - `familyBody`/`reserved` are the union across a type's whole level chain (the extractor stamps the
+ *     same arrays on every level's typeId — schema.ts), so an in-place level-up leaves the set unchanged;
+ *   - a `ResourceFootprint` stamp/unstamp is always bundled in the same step with the `Resource` add/destroy
+ *     that also moves this version — folding its generation in is belt-and-suspenders for any future path
+ *     that decouples them (a miss would leave a stale overlay wash for a frame, never a placement decision:
+ *     the command gate always re-scans fresh).
+ * A string (not a packed number) so three monotonic counters compose with no overflow/aliasing reasoning.
+ * Read-only + deterministic (a pure function of the mutation history); never hashed, never a sim decision.
  */
-const BLOCKER_VERSION_STRIDE = 2 ** 26;
-
-/**
- * A per-world version of the placement-blocker INPUTS: it changes only when a Building or Resource is
- * added or removed. Buildings and resources never move once placed, and `familyBody`/`reserved` are
- * the union across a type's whole level chain (schema.ts) — so a level-up (an in-place `buildingType`
- * swap) leaves the set unchanged. That makes the two component generations an EXACT signal for the
- * obstacle sets: the overlay and {@link memoizedPlacementGrid} both reuse their last result until this
- * value moves, instead of re-deriving every tick. Read-only + deterministic (component generations
- * are a pure function of the mutation history); never hashed, never a sim decision.
- */
-export function placementBlockerVersion(world: World): number {
-  return world.componentGeneration(Building) * BLOCKER_VERSION_STRIDE + world.componentGeneration(Resource);
+export function placementBlockerVersion(world: World): string {
+  return `${world.componentGeneration(Building)}.${world.componentGeneration(Resource)}.${world.componentGeneration(ResourceFootprint)}`;
 }
 
 /**
@@ -362,11 +361,11 @@ export function placementBlockerVersion(world: World): number {
  * row-major `y*width+x` — the same index `TerrainGraph.cellAt` mints), `1` iff that node is an
  * OBSTACLE / EXCLUSION cell. Stamped from the same {@link eachBlockerCell} pass the command gate keys
  * as strings, but read back as an O(1) typed-array index in the hot loop instead of a `tileKey`
- * string allocation + `Set<string>` probe. THAT is the fix for the build-wash freeze: re-probing a
- * whole visible band for a barracks-scale footprint drops from ~90 ms to ~10 ms (measured), so opening
- * the wash and panning while placing no longer stutter. Off-map blocker cells are simply not stamped —
- * a candidate whose reserved cell is off-map is rejected by the bounds check first, so they can never
- * be queried. Terrain buildability stays a live `isBuildable()` call (static, already a grid). */
+ * string allocation + `Set<string>` probe — the difference that lets the overlay re-probe a whole
+ * visible band (screen × footprint) without stalling a frame, even for a many-hundred-cell footprint.
+ * Off-map blocker cells are simply not stamped — a candidate whose reserved cell is off-map is rejected
+ * by the bounds check first, so they can never be queried. Terrain buildability stays a live
+ * `isBuildable()` call (static, already a grid). */
 interface PlacementGrid {
   readonly terrain: TerrainGraph;
   readonly obstacle: Uint8Array;
@@ -410,7 +409,7 @@ function canPlaceOnGrid(grid: PlacementGrid, footprint: BuildingFootprint, x: nu
  * no `verifyCaches` registration. Built lazily on the first probe, so it costs nothing outside build mode.
  */
 interface GridMemo {
-  version: number;
+  version: string;
   content: ContentSet;
   terrain: TerrainGraph;
   grid: PlacementGrid;
@@ -457,6 +456,11 @@ function memoizedPlacementGrid(world: World, content: ContentSet, terrain: Terra
  * {@link placementBlockerVersion}, so it is re-stamped only when a building/resource actually appears
  * or disappears — not every tick, and not every frame while the world is unchanged. A footprint-less
  * type always reports placeable (its command-time behavior).
+ *
+ * The returned probe reads the memo's SHARED mask arrays, which are re-stamped IN PLACE on the next
+ * blocker change — so drain a probe's band before the world can change again. The frame loop probes one
+ * type synchronously each frame, so it never holds two probes across a rebuild; a second concurrent
+ * consumer would need its own grid.
  */
 export function placementProbe(
   world: World,
