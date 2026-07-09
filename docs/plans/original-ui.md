@@ -31,10 +31,11 @@ not a numbered step): (a) the settler action ring draws at 75% of the shared uis
 settler); (b) interactive entries render at device resolution (`createWindowPixiApp`
 resolution=devicePixelRatio; `?shot` stays at 1 for determinism) and the HUD bakes oversample at
 DOUBLE the device coverage (`oversampleFor`, downscale ratio pinned to (1,2]) so palette edges
-resolve anti-aliased instead of nearest-hard on HiDPI, and the strip BUTTONS draw opaque
-(`colorKey 'off'`) so their baked recessed dark sockets survive — the old near-black key bled the
-stone through and frayed thin glyphs (frames 0x2a–0x38 decode `opaque`; verified against a raw
-frame-on-strip composite); (c) the speed button cycles running speeds only (×1→×2→×3→×1), `P` toggles pause
+resolve anti-aliased instead of nearest-hard on HiDPI, and the strip button glyphs get a
+1-design-px silhouette outline in the original socket backdrop colour (`PalettedSprite.silhouette`)
+— a named deviation: the original blits opaque dark sockets, which over our full-screen world read
+as a black slab (user-rejected), so the backdrop stays keyed and the outline restores the
+glyph/backdrop contrast; (c) the speed button cycles running speeds only (×1→×2→×3→×1), `P` toggles pause
 (remembers speed), and pausing washes the world with a multiply sepia quad — an eyeballed
 approximation of the original's brown paused map (observed behaviour). Verified: unit tests for the
 new speed control + ring scale, Playwright pass at DPR 2 (cycle glyphs, pause wash on/off, ring

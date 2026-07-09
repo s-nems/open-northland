@@ -64,6 +64,7 @@ uniform vec2 uLutSize;      // (256, N)
 uniform vec4 uPlacement;    // .w = player-colour row to read (0 .. N-1)
 uniform vec2 uColorKey;     // .x > 0.5: key magenta; .y: near-black mode (0 off / 1 full band / 2 round corners)
 uniform vec4 uFrameUV;      // the current frame's atlas-UV box (min.xy, max.zw) — for the 'round' corner key
+uniform vec4 uSilhouette;   // .rgb: flat override colour, .w > 0.5: silhouette mode on (see the setter)
 
 // GUI transparent key — OUR floating-HUD deviation, NOT an original mechanism (the engine blitter has no
 // colour key; see source basis "Left tool panel"). The in-game GUI palettes (iconsleft/context/…) reserve
@@ -115,6 +116,11 @@ void main(void) {
       if (rad > KEY_ROUND_CLIP) discard;
     }
   }
+  // Silhouette mode: every pixel that SURVIVED the colour key draws one flat colour — the discards above
+  // already carved the glyph's shape, so this is exactly its keyed silhouette (used for outline stamps).
+  if (uSilhouette.w > 0.5) {
+    rgb = uSilhouette.rgb;
+  }
   finalColor = vec4(rgb, 1.0);
 }`;
 
@@ -136,6 +142,8 @@ interface PalettedUniforms {
     uColorKey: Float32Array;
     /** [uMin, vMin, uMax, vMax] — the current frame's atlas-UV box, for the 'round' corner key. */
     uFrameUV: Float32Array;
+    /** [r, g, b, on] — the flat silhouette override colour (normalized), on > 0.5 enables it. */
+    uSilhouette: Float32Array;
   };
   /** Bump the group's dirty id so Pixi re-uploads the changed contents. */
   update(): void;
@@ -170,6 +178,7 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
       uLutSize: { value: new Float32Array([LUT_WIDTH, colours]), type: 'vec2<f32>' as const },
       uColorKey: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
       uFrameUV: { value: new Float32Array([0, 0, 1, 1]), type: 'vec4<f32>' as const },
+      uSilhouette: { value: new Float32Array([0, 0, 0, 0]), type: 'vec4<f32>' as const },
     };
     const shader = Shader.from({
       gl: { vertex: VERTEX, fragment: FRAGMENT },
@@ -221,6 +230,31 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
     if (nb >= 1.5) return 'round';
     if (nb >= 0.5) return 'full';
     return (u[0] ?? 0) > 0.5 ? 'magenta' : 'off';
+  }
+
+  /**
+   * Silhouette override (`0xRRGGBB`, or `null` = off): every pixel that survives the colour key draws this
+   * flat colour instead of its LUT colour — the sprite becomes its own keyed silhouette. The tool panel
+   * stamps offset silhouette copies BEHIND a button glyph to give it a contrast outline against the strip;
+   * the colour-keyed shape is identical to the real sprite's, so the rim hugs the glyph exactly.
+   */
+  set silhouette(color: number | null) {
+    const u = this.vars.uniforms.uSilhouette;
+    if (color === null) {
+      u[3] = 0;
+    } else {
+      u[0] = ((color >> 16) & 0xff) / 255;
+      u[1] = ((color >> 8) & 0xff) / 255;
+      u[2] = (color & 0xff) / 255;
+      u[3] = 1;
+    }
+    this.vars.update();
+  }
+  get silhouette(): number | null {
+    const u = this.vars.uniforms.uSilhouette;
+    if ((u[3] ?? 0) < 0.5) return null;
+    const ch = (i: number): number => Math.round((u[i] ?? 0) * 255);
+    return (ch(0) << 16) | (ch(1) << 8) | ch(2);
   }
 
   /**
