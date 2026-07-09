@@ -8,6 +8,7 @@ import {
   Settler,
 } from '../../components/index.js';
 import type { AtomicEffect } from '../../core/commands.js';
+import { eventAt } from '../../core/events.js';
 import { type Fixed, ONE, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
@@ -222,7 +223,7 @@ export function launchProjectile(
     shooter: attacker,
     target: effect.target,
     munitionType: effect.projectile.munitionType,
-    at: { x: fx.toInt(from.x), y: fx.toInt(from.y) },
+    at: eventAt(from.x, from.y),
   });
 }
 

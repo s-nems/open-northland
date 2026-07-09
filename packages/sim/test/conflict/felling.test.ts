@@ -207,7 +207,7 @@ describe('felling — chopping a tree down', () => {
       node: tree,
       goodType: WOOD,
       amount: TREE_WOOD_YIELD,
-      at: { x: 2, y: 0 },
+      at: { x: 4, y: 0 }, // half-cell node of tile (2,0) — every event `at` is a node
     });
   });
 });

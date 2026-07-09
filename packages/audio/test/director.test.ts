@@ -81,13 +81,14 @@ function direct(events: readonly SimEvent[], terrain?: AudioTerrain) {
 
 describe('directAudio one-shots', () => {
   it('fires a positioned action SFX for an on-screen building placement', () => {
-    const frame = direct([{ kind: 'buildingPlaced', entity: 7, at: { x: 5, y: 5 } }]);
+    // `at` is a HALF-CELL NODE: cell (5,5) anchors at node (11,10) — the same screen point as tile (5,5).
+    const frame = direct([{ kind: 'buildingPlaced', entity: 7, at: { x: 11, y: 10 } }]);
     expect(frame.oneShots).toHaveLength(1);
     const shot = frame.oneShots[0];
     expect(shot?.files).toEqual(['static/hammer01.wav']);
     expect(shot?.gain).toBeGreaterThan(0);
     expect(shot?.pan).toBeCloseTo(0, 5); // centred emitter
-    expect(shot?.key).toBe('buildingPlaced:5,5');
+    expect(shot?.key).toBe('buildingPlaced:11,10');
   });
 
   it('fires a non-spatial jingle for a building finishing', () => {
@@ -107,7 +108,7 @@ describe('directAudio one-shots', () => {
   });
 
   it('stays silent for an off-screen emitter', () => {
-    const frame = direct([{ kind: 'buildingPlaced', entity: 7, at: { x: 100, y: 100 } }]);
+    const frame = direct([{ kind: 'buildingPlaced', entity: 7, at: { x: 200, y: 200 } }]);
     expect(frame.oneShots).toHaveLength(0);
   });
 

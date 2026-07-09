@@ -1,4 +1,6 @@
 import type { Entity } from '../ecs/world.js';
+import { nodeOfPosition } from '../nav/halfcell.js';
+import type { Fixed } from './fixed.js';
 
 /**
  * One-shot things that happened during a tick (a building appeared, a settler died, an atomic
@@ -6,6 +8,11 @@ import type { Entity } from '../ecs/world.js';
  * component stores. Events are PRODUCED into an append-only per-tick buffer and exposed READ-ONLY
  * on the snapshot — never delivered via callbacks (a callback could mutate sim state and break
  * determinism). This is the decoupling seam that keeps render a pure consumer.
+ *
+ * COORDINATES: every positioned event's `at` is a HALF-CELL NODE `(hx, hy)` — the sim's one grid
+ * vocabulary, the same space command payloads use (`core/commands.ts`, `nav/halfcell.ts`).
+ * Emitters mint it via {@link eventAt} (or pass a command's node through verbatim); consumers
+ * project it through the node lattice (render's `halfCellToScreen`), never as a tile coordinate.
  *
  * Deterministic: the buffer is cleared at the start of each tick and sealed at the end, so the
  * event list for tick N is a pure function of the sim — reproducible, replayable, hashable.
@@ -89,6 +96,13 @@ export type SimEvent =
     };
 
 export type SimEventKind = SimEvent['kind'];
+
+/** Mint a positioned event's `at` from a fixed-point Position: the HALF-CELL NODE the position
+ *  truncates to — the one coordinate space every `at` carries (see the header note). */
+export function eventAt(x: Fixed, y: Fixed): { x: number; y: number } {
+  const n = nodeOfPosition(x, y);
+  return { x: n.hx, y: n.hy };
+}
 
 /** A simple deterministic per-tick event buffer. Cleared each tick, read-only via `drain`. */
 export class EventBuffer {
