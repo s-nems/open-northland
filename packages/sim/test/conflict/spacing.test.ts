@@ -16,15 +16,23 @@ import {
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, type TerrainMap, fx } from '../../src/index.js';
+import {
+  Simulation,
+  type TerrainMap,
+  fx,
+  halfCellMapFromCells,
+  nodeOfPosition,
+  positionOfNode,
+} from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
  * Tests for the IDLE-SPACING (de-stack) drive: owned settlers don't HARD-collide (a walker passes freely
- * through any tile) but they won't come to REST stacked on top of one another — a unit that has arrived
- * with nothing to do and shares its tile with a lower-id resting owned unit steps off to the nearest free
- * cell. Faithful in spirit to the original's per-cell valency (source basis). Gated on Owner, so the
- * unowned golden/economy fixtures never de-stack (their planner output stays byte-identical).
+ * through any half-cell node) but they won't come to REST stacked on top of one another — a unit that has
+ * arrived with nothing to do and shares its node with a lower-id resting owned unit steps off to the
+ * nearest free NODE (half a cell — a 34 or 19 px hop). Faithful in spirit to the original's per-cell
+ * valency (source basis). Gated on Owner, so the unowned golden/economy fixtures never de-stack (their
+ * planner output stays byte-identical). All scenario coordinates here are node coords.
  */
 
 const GRASS = 0;
@@ -54,17 +62,19 @@ beforeEach(() => {
 });
 
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  // Cell-dims signature; the sim's graph is the upsampled 2W×2H half-cell lattice.
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
 }
 
 function sim(): Simulation {
   return new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 6) });
 }
 
-/** An idle OWNED viking woodcutter (no job binding, so with no resources nearby it has nothing to do). */
+/** An idle OWNED viking woodcutter at half-cell NODE (x,y) (no job binding, so with no resources
+ *  nearby it has nothing to do). */
 function idleWoodcutter(s: Simulation, x: number, y: number, owner: number | null = HUMAN_PLAYER): Entity {
   const e = s.world.create();
-  s.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  s.world.add(e, Position, positionOfNode(x, y));
   s.world.add(e, Settler, {
     tribe: VIKING,
     jobType: WOODCUTTER,
@@ -78,23 +88,24 @@ function idleWoodcutter(s: Simulation, x: number, y: number, owner: number | nul
   return e;
 }
 
-/** The integer tile an entity stands on. */
+/** The half-cell node an entity stands on. */
 function tileOf(s: Simulation, e: Entity): { x: number; y: number } {
   const p = s.world.get(e, Position);
-  return { x: fx.toInt(p.x), y: fx.toInt(p.y) };
+  const n = nodeOfPosition(p.x, p.y);
+  return { x: n.hx, y: n.hy };
 }
 
 describe('idle-spacing (de-stack) drive', () => {
-  it('spreads two stacked idle owned settlers so they end on different tiles (lowest id keeps the tile)', () => {
+  it('spreads two stacked idle owned settlers so they end on different nodes (lowest id keeps the node)', () => {
     const s = sim();
-    const keeper = idleWoodcutter(s, 4, 3); // lower id — holds the tile
+    const keeper = idleWoodcutter(s, 4, 3); // lower id — holds the node
     const mover = idleWoodcutter(s, 4, 3); // higher id — steps aside
-    s.run(15); // one de-stack step (~8 ticks to walk the single tile) plus slack
+    s.run(15); // one de-stack step (a half-cell node hop, a few move ticks) plus slack
 
     expect(tileOf(s, keeper)).toEqual({ x: 4, y: 3 }); // the keeper never moved
     const m = tileOf(s, mover);
-    expect(m.x === 4 && m.y === 3).toBe(false); // the mover left the shared tile
-    expect(Math.abs(m.x - 4) + Math.abs(m.y - 3)).toBe(1); // to an adjacent cell
+    expect(m.x === 4 && m.y === 3).toBe(false); // the mover left the shared node
+    expect(Math.abs(m.x - 4) + Math.abs(m.y - 3)).toBe(1); // to an adjacent free node (half a cell away)
   });
 
   it('settles to a stable, non-stacked configuration (no endless churn)', () => {
@@ -106,7 +117,7 @@ describe('idle-spacing (de-stack) drive', () => {
 
     const tiles = [a, b, c].map((e) => tileOf(s, e));
     const keys = new Set(tiles.map((t) => `${t.x},${t.y}`));
-    expect(keys.size).toBe(3); // all three on distinct tiles
+    expect(keys.size).toBe(3); // all three on distinct nodes
     for (const e of [a, b, c]) {
       expect(s.world.has(e, MoveGoal)).toBe(false); // arrived — no lingering order
       expect(s.world.has(e, PathFollow)).toBe(false); // and not still walking (churn would show here)

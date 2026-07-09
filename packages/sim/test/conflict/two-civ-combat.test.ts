@@ -2,7 +2,14 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CurrentAtomic, Health, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, type TerrainMap, fx } from '../../src/index.js';
+import {
+  type Fixed,
+  Simulation,
+  type TerrainMap,
+  fx,
+  halfCellMapFromCells,
+  positionOfNode,
+} from '../../src/index.js';
 import { isPlayableTribe, mayAttack } from '../../src/systems/index.js';
 
 /**
@@ -106,15 +113,30 @@ function twoCivContent(): ContentSet {
   });
 }
 
-/** An all-grass (fully walkable) w×h terrain map. */
+/** An all-grass (fully walkable) w×h-cell terrain map, upsampled to the half-cell lattice. */
 function grass(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(0) };
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(0) });
 }
 
-/** Place a civilization combatant (a settler with a Health pool) of `tribe` at (x,y). */
+/** Place a civilization combatant (a settler with a Health pool) of `tribe` at visual cell (x,y). */
 function fighterAt(sim: Simulation, x: number, y: number, tribe: number, hitpoints: number): Entity {
+  return fighterAtPosition(sim, { x: fx.fromInt(x), y: fx.fromInt(y) }, tribe, hitpoints);
+}
+
+/** A combatant standing exactly on half-cell node (hx, hy) — reach geometry a whole cell (2 nodes on a
+ *  row) cannot express, e.g. an ODD node distance from a cell-anchored fighter. */
+function fighterAtNode(sim: Simulation, hx: number, hy: number, tribe: number, hitpoints: number): Entity {
+  return fighterAtPosition(sim, positionOfNode(hx, hy), tribe, hitpoints);
+}
+
+function fighterAtPosition(
+  sim: Simulation,
+  position: { x: Fixed; y: Fixed },
+  tribe: number,
+  hitpoints: number,
+): Entity {
   const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Position, { x: position.x, y: position.y });
   sim.world.add(e, Settler, {
     tribe,
     jobType: SOLDIER,
@@ -150,7 +172,7 @@ describe('two-civ combat scenario (two playable tribes, asymmetric bindings, end
     const content = twoCivContent();
     const sim = new Simulation({ seed: 1, content, map: grass(5, 1) });
     const viking = fighterAt(sim, 0, 0, VIKING, 1_000_000);
-    const saxon = fighterAt(sim, 2, 0, SAXON, 1_000_000); // 2 cells away — within both weapons' reach
+    const saxon = fighterAt(sim, 1, 0, SAXON, 1_000_000); // 2 nodes away — within both weapons' reach
 
     sim.step(); // the full schedule: combatSystem picks targets, atomicSystem starts the swings
 
@@ -172,12 +194,12 @@ describe('two-civ combat scenario (two playable tribes, asymmetric bindings, end
   });
 
   it("the saxon's longer reach lets it strike a viking the viking cannot yet hit back", () => {
-    // The saxon sword reaches 3 cells; the viking mace only 2. Placed 3 apart, only the saxon has a
+    // The saxon sword reaches 3 nodes; the viking mace only 2. Placed 3 nodes apart, only the saxon has a
     // valid target this tick — the asymmetric reach band is a real, data-driven combat difference.
     const content = twoCivContent();
     const sim = new Simulation({ seed: 1, content, map: grass(6, 1) });
     const viking = fighterAt(sim, 0, 0, VIKING, 1_000_000);
-    const saxon = fighterAt(sim, 3, 0, SAXON, 1_000_000); // 3 cells — saxon reach 3, viking reach 2
+    const saxon = fighterAtNode(sim, 3, 0, SAXON, 1_000_000); // 3 nodes — saxon reach 3, viking reach 2
 
     sim.step();
 
@@ -212,7 +234,7 @@ describe('two-civ combat scenario (two playable tribes, asymmetric bindings, end
       const content = twoCivContent();
       const sim = new Simulation({ seed: 7, content, map: grass(5, 1) });
       fighterAt(sim, 0, 0, VIKING, 500);
-      fighterAt(sim, 2, 0, SAXON, 500);
+      fighterAt(sim, 1, 0, SAXON, 500); // 2 nodes — inside both reach bands, so the skirmish really runs
       for (let i = 0; i < 60; i++) sim.step();
       return sim.hashState();
     };

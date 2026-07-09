@@ -266,7 +266,7 @@ describe('placeBuilding underConstruction (CommandSystem)', () => {
  * normal stock-slot capacity, so a finished site stops attracting materials.)
  */
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
 }
 
 /** An under-construction site placed at a given tile (empty hold — accumulates deliveries). */

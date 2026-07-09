@@ -13,7 +13,15 @@ import {
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { type Fixed, ONE, Simulation, type TerrainMap, fx } from '../../src/index.js';
+import {
+  type Fixed,
+  ONE,
+  Simulation,
+  type TerrainMap,
+  cellAnchorNode,
+  fx,
+  halfCellMapFromCells,
+} from '../../src/index.js';
 import { type SystemContext, aiSystem, atomicSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
@@ -55,8 +63,9 @@ beforeEach(() => {
   }
 });
 
+/** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
 }
 
 function settlerAt(sim: Simulation, x: number, y: number, fatigue: Fixed, hunger = fx.fromInt(0)): Entity {
@@ -116,7 +125,8 @@ describe('sleepDrive — the planner choosing to sleep', () => {
 
     // Headed for the wood, not resting — the sleep drive did not fire.
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
-    expect(sim.world.get(settler, MoveGoal).cell).toBe(sim.terrain?.cellAt(3, 0));
+    const treeNode = cellAnchorNode(3, 0); // the tree's anchor node on the half-cell lattice
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(sim.terrain?.cellAt(treeNode.hx, treeNode.hy));
   });
 
   it('eats before sleeping when both needs are over the threshold (eat has priority)', () => {

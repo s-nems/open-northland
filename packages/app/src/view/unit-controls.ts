@@ -1,5 +1,5 @@
 import { type Camera, type ElevationField, type EntityBounds, buildSpriteScene } from '@vinland/render';
-import { type Command, type Entity, ONE, type WorldSnapshot } from '@vinland/sim';
+import { type Command, type Entity, type Fixed, type WorldSnapshot, nodeOfPosition } from '@vinland/sim';
 import type { Application } from 'pixi.js';
 import { screenScale } from './camera.js';
 import { el } from './overlay.js';
@@ -54,6 +54,7 @@ export interface UnitControlsOptions {
   /** Read the current frozen snapshot (rebuilt every frame; the controller pulls it on demand). */
   readonly snapshot: () => WorldSnapshot;
   /** Map dimensions, to clamp a move target to a legal cell. */
+  /** Map bounds in CELLS; order targeting derives the 2× half-cell node grid from it. */
   readonly mapSize: { readonly width: number; readonly height: number };
   /** The map's terrain-height field, so a right-click on a lifted hill resolves to the tile drawn there
    *  (elevation-aware inverse). Optional: absent / flat → the plain unlifted inverse. */
@@ -269,11 +270,13 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     // The selected units that can actually move (settlers), with their world-px feet — buildings dropped.
     const movers: FormationUnit[] = ownSettlers.filter((t) => selected.has(t.ref));
     if (movers.length === 0) return;
-    const { width, height } = opts.mapSize;
+    // Orders live on the half-cell node lattice — 2× the map's cell bounds in each axis.
+    const width = opts.mapSize.width * 2;
+    const height = opts.mapSize.height * 2;
     const w = toWorld(e.clientX, e.clientY);
     const target = clampTile(worldToTile(w.x, w.y, opts.elevation), width, height);
-    // A group fans out over tiles AROUND the click (a formation cluster); a single unit goes exactly
-    // there. Slots avoid tiles already held by OTHER units so the group seats onto free ground; the sim's
+    // A group fans out over nodes AROUND the click (a formation cluster); a single unit goes exactly
+    // there. Slots avoid nodes already held by OTHER units so the group seats onto free ground; the sim's
     // idle de-stack is the final safety net if two still coincide.
     const blocked = occupiedTiles(selected);
     for (const o of assignFormation(movers, target, width, height, blocked)) {
@@ -281,7 +284,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     }
   };
 
-  /** A predicate marking tiles held by a settler/building NOT in `exclude` — the formation avoids them. */
+  /** A predicate marking NODES held by a settler/building NOT in `exclude` — the formation avoids them. */
   const occupiedTiles = (exclude: ReadonlySet<number>): ((col: number, row: number) => boolean) => {
     const snap = opts.snapshot();
     const occ = new Set<string>();
@@ -290,7 +293,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       if (!isSettler(ent) && !isBuilding(ent)) continue;
       const pos = positionOf(ent);
       if (pos === undefined) continue;
-      occ.add(`${Math.round(pos.x / ONE)},${Math.round(pos.y / ONE)}`);
+      // Snapshot positions are raw fixed-point values round-tripped as plain numbers.
+      const n = nodeOfPosition(pos.x as Fixed, pos.y as Fixed);
+      occ.add(`${n.hx},${n.hy}`);
     }
     return (col, row) => occ.has(`${col},${row}`);
   };

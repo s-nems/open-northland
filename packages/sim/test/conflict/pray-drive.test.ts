@@ -13,7 +13,15 @@ import {
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { type Fixed, ONE, Simulation, type TerrainMap, fx } from '../../src/index.js';
+import {
+  type Fixed,
+  ONE,
+  Simulation,
+  type TerrainMap,
+  cellAnchorNode,
+  fx,
+  halfCellMapFromCells,
+} from '../../src/index.js';
 import { type SystemContext, aiSystem, atomicSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
@@ -58,8 +66,15 @@ beforeEach(() => {
   }
 });
 
+/** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
+}
+
+/** The node id of visual tile (x, y) — walk goals address the doubled half-cell lattice. */
+function cellOf(sim: Simulation, x: number, y: number): number | undefined {
+  const n = cellAnchorNode(x, y);
+  return sim.terrain?.cellAt(n.hx, n.hy);
 }
 
 function settlerAt(
@@ -120,10 +135,10 @@ describe('prayDrive — the planner choosing to pray (target-bound: walk to a te
 
     // Not on the temple yet: a MoveGoal to it, no atomic started.
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
-    expect(sim.world.get(settler, MoveGoal).cell).toBe(sim.terrain?.cellAt(4, 0));
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 4, 0));
     // Temple is at (4,0); confirm the goal is the temple's cell, not the tree's.
     expect(sim.world.get(settler, MoveGoal).cell).toBe(
-      sim.terrain?.cellAt(fx.toInt(sim.world.get(temple, Position).x), 0),
+      cellOf(sim, fx.toInt(sim.world.get(temple, Position).x), 0),
     );
   });
 
@@ -151,7 +166,7 @@ describe('prayDrive — the planner choosing to pray (target-bound: walk to a te
 
     // Headed for the wood, not the temple — the pray drive did not fire.
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
-    expect(sim.world.get(settler, MoveGoal).cell).toBe(sim.terrain?.cellAt(3, 0));
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
   });
 
   it('falls through to work when devout but no temple exists (piety has no satisfier)', () => {
@@ -163,7 +178,7 @@ describe('prayDrive — the planner choosing to pray (target-bound: walk to a te
 
     // No temple to pray at: the settler works (heads for the tree) instead of stalling.
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
-    expect(sim.world.get(settler, MoveGoal).cell).toBe(sim.terrain?.cellAt(3, 0));
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
   });
 
   it('sleeps before praying when both needs are over the threshold (sleep outranks pray)', () => {

@@ -8,13 +8,15 @@ import { isAggressiveAnimal, isAnimalTribe, mayAttack, mayHunt } from '../readvi
 // combat.ts all consult these; nothing here reaches back into them.
 
 /**
- * How far (Manhattan tiles) an OWNED combatant can **spot** an enemy to advance on it — the aggro/advance
- * radius the walk-into-melee drive searches within. APPROXIMATED (source basis "Combat sight radius"):
- * humans carry NO readable sight/aggro field in the data (only animals have leash radii), so this is a
- * calibration-by-observation constant pending a look at the running original, not a pinned param. The
- * weapon's extracted `[minRange, maxRange]` band (where a swing lands) is separate and faithful.
+ * How far (Manhattan half-cell nodes) an OWNED combatant can **spot** an enemy to advance on it — the
+ * aggro/advance radius the walk-into-melee drive searches within. APPROXIMATED (source basis "Combat
+ * sight radius"): humans carry NO readable sight/aggro field in the data (only animals have leash
+ * radii), so this is a calibration-by-observation constant pending a look at the running original,
+ * not a pinned param — doubled with the half-cell migration so it covers the same on-screen radius
+ * the old 8-cell value did. The weapon's extracted `[minRange, maxRange]` band (where a swing lands)
+ * is separate and faithful.
  */
-export const SIGHT_RADIUS_TILES = 8;
+export const SIGHT_RADIUS_TILES = 16;
 
 /** Whether `t` is a live combatant this attacker may swing at — a positioned, `Health`-bearing settler
  *  (not the attacker itself, `hitpoints > 0`) for which the {@link mayTarget} hostility relation holds.

@@ -1,7 +1,7 @@
 import { Building, JobAssignment, Position, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
 import { interactionTile } from '../footprint/index.js';
 import { buildingEnabled, jobEnabled, settlerMeetsNeed } from '../progression.js';
@@ -147,7 +147,8 @@ function workplaceStaffedHereBy(
   if (sp === undefined) return null;
   // Only the buildings whose interaction tile is the settler's own tile can be adopted — the bucket
   // already restricts to them (in ascending-id order), so the loop just applies the type gates.
-  for (const b of buildingsByTile.at(fx.toInt(sp.x), fx.toInt(sp.y))) {
+  const spNode = nodeOfPosition(sp.x, sp.y);
+  for (const b of buildingsByTile.at(spNode.hx, spNode.hy)) {
     const building = world.get(b, Building); // present: the bucket is built from the Building query
     if (building.tribe !== tribe) continue;
     if (recipeOf(world, ctx, b) === undefined) continue; // only a producing workplace pins its worker

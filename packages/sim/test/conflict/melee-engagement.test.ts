@@ -18,7 +18,7 @@ import {
   Weapon,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, type TerrainMap, fx } from '../../src/index.js';
+import { Simulation, type TerrainMap, cellAnchorNode, fx, halfCellMapFromCells } from '../../src/index.js';
 import { attackUnit, moveUnit } from '../../src/systems/conflict/orders.js';
 import { SIGHT_RADIUS_TILES, type SystemContext, aiSystem, combatSystem } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
@@ -66,7 +66,7 @@ beforeEach(() => {
 });
 
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
 }
 
 function ctxOf(sim: Simulation): SystemContext {
@@ -175,16 +175,16 @@ describe('walk-into-melee — an OWNED combatant advances on a spotted enemy', (
   it('chases an enemy beyond weapon reach but within sight (a MoveGoal + Engagement, no swing yet)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 1) });
     const a = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
-    fighterAt(sim, 5, 0, VIKING, WOODCUTTER, { owner: P1 }); // 5 away — beyond axe band [1,2], inside sight
+    fighterAt(sim, 5, 0, VIKING, WOODCUTTER, { owner: P1 }); // 10 nodes away — beyond axe band [1,2], inside sight
 
     combatSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(a, CurrentAtomic)).toBe(false); // out of reach — no swing this tick
     expect(sim.world.has(a, Engagement)).toBe(true); // it is engaged (advancing)
     expect(sim.world.has(a, MoveGoal)).toBe(true);
-    // The chase aims at an approach cell in the enemy's reach band closest to the unit — one cell short of
-    // the enemy (distance 2 from it), so the unit stops adjacent-ish rather than walking onto it.
-    expect(sim.terrain?.coordsOf(sim.world.get(a, MoveGoal).cell)).toEqual({ x: 3, y: 0 });
+    // The chase aims at an approach node in the enemy's reach band closest to the unit — 2 nodes short of
+    // the enemy at node (10, 0), so the unit stops adjacent-ish rather than walking onto it.
+    expect(sim.terrain?.coordsOf(sim.world.get(a, MoveGoal).cell)).toEqual({ x: 8, y: 0 });
   });
 
   it('an UNOWNED combatant does NOT advance (swing-in-place only — unchanged behaviour)', () => {
@@ -213,7 +213,7 @@ describe('walk-into-melee — an OWNED combatant advances on a spotted enemy', (
   });
 
   it('does NOT engage an enemy beyond the sight radius', () => {
-    const far = SIGHT_RADIUS_TILES + 3;
+    const far = SIGHT_RADIUS_TILES / 2 + 1; // cells — a same-row cell is 2 nodes, so node distance SIGHT+2
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(far + 2, 1) });
     const a = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
     fighterAt(sim, far, 0, VIKING, WOODCUTTER, { owner: P1 }); // beyond sight
@@ -228,7 +228,7 @@ describe('walk-into-melee — an OWNED combatant advances on a spotted enemy', (
   it('advances into contact and lands blows through the real step() schedule', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const a = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0, hitpoints: 1_000_000 });
-    const b = fighterAt(sim, 6, 0, VIKING, WOODCUTTER, { owner: P1, hitpoints: 1_000_000 }); // 6 apart
+    const b = fighterAt(sim, 6, 0, VIKING, WOODCUTTER, { owner: P1, hitpoints: 1_000_000 }); // 12 nodes apart
 
     for (let i = 0; i < 200; i++) sim.step();
 
@@ -241,7 +241,7 @@ describe('walk-into-melee — an OWNED combatant advances on a spotted enemy', (
 
 describe('attackUnit — the explicit attack order', () => {
   it('stamps an AttackOrder + Engagement and chases the target REGARDLESS of sight radius', () => {
-    const far = SIGHT_RADIUS_TILES + 5;
+    const far = SIGHT_RADIUS_TILES / 2 + 3; // cells — node distance SIGHT+6, beyond auto-engage sight
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(far + 2, 1) });
     const a = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
     const enemy = fighterAt(sim, far, 0, VIKING, WOODCUTTER, { owner: P1 }); // beyond auto-engage sight
@@ -300,17 +300,23 @@ describe('attackUnit — the explicit attack order', () => {
   });
 
   it('gives up (disengages, drops the order) when the target cannot be approached into range', () => {
-    // A 3×3 map whose ONLY walkable cell is the centre (1,1); every neighbour is water. An attacker
+    // A 3×3-cell map hand-authored at HALF-CELL resolution whose ONLY walkable node is (3, 2) — the
+    // anchor node of cell (1,1); every other node is water. (A cell-resolution map cannot express this:
+    // upsampling stamps a walkable 2×2 block, which always leaves an adjacent approach node.) An attacker
     // stacked on its ordered target (distance 0, below melee minRange 1) can never step into the weapon
-    // band — approachCell finds no walkable band cell. The chase must give up, not loop engaged-forever.
+    // band — approachCell finds no walkable band node. The chase must give up, not loop engaged-forever.
+    const boxedWidth = 6;
+    const boxedTypeIds = new Array<number>(6 * boxedWidth).fill(1); // water everywhere...
+    boxedTypeIds[2 * boxedWidth + 3] = 0; // ...except grass on node (3, 2)
     const boxed: TerrainMap = {
-      width: 3,
-      height: 3,
-      typeIds: [1, 1, 1, 1, 0, 1, 1, 1, 1], // grass (0) only at centre; water (1) around it
+      resolution: 'half-cell',
+      width: boxedWidth,
+      height: 6,
+      typeIds: boxedTypeIds,
     };
     const sim = new Simulation({ seed: 1, content: testContent(), map: boxed });
     const a = fighterAt(sim, 1, 1, VIKING, WOODCUTTER, { owner: P0 });
-    const enemy = fighterAt(sim, 1, 1, VIKING, WOODCUTTER, { owner: P1 }); // same cell — dist 0
+    const enemy = fighterAt(sim, 1, 1, VIKING, WOODCUTTER, { owner: P1 }); // same node (3, 2) — dist 0
 
     attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: a, target: enemy });
     expect(sim.world.has(a, AttackOrder)).toBe(true); // the order was accepted
@@ -374,12 +380,14 @@ describe('a player order is authoritative — it overrides the autonomous drives
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(a, Engagement)).toBe(true); // it is fighting (advancing on the enemy)
 
-    // The player orders it to walk AWAY — the order clears the combat state and stamps the move + hold.
-    moveUnit(sim.world, ctxOf(sim), { kind: 'moveUnit', entity: a, x: 9, y: 0 });
+    // The player orders it to walk AWAY (the far cell's anchor node — command coords are half-cell
+    // nodes) — the order clears the combat state and stamps the move + hold.
+    const away = cellAnchorNode(9, 0);
+    moveUnit(sim.world, ctxOf(sim), { kind: 'moveUnit', entity: a, x: away.hx, y: away.hy });
     expect(sim.world.has(a, Engagement)).toBe(false); // the fight is dropped
     expect(sim.world.has(a, AttackOrder)).toBe(false);
     expect(sim.world.has(a, PlayerOrder)).toBe(true); // now under the move order
-    expect(sim.world.get(a, MoveGoal).cell).toBe(sim.terrain?.cellAtClamped(9, 0));
+    expect(sim.world.get(a, MoveGoal).cell).toBe(sim.terrain?.cellAtClamped(away.hx, away.hy));
   });
 
   it('the CombatSystem does not re-engage a unit under a move order, even with an enemy IN REACH', () => {
@@ -387,7 +395,8 @@ describe('a player order is authoritative — it overrides the autonomous drives
     const a = fighterAt(sim, 1, 0, VIKING, WOODCUTTER, { owner: P0 });
     fighterAt(sim, 2, 0, VIKING, WOODCUTTER, { owner: P1 }); // adjacent — would auto-attack without the order
 
-    moveUnit(sim.world, ctxOf(sim), { kind: 'moveUnit', entity: a, x: 9, y: 0 });
+    const away = cellAnchorNode(9, 0); // command coords are half-cell nodes
+    moveUnit(sim.world, ctxOf(sim), { kind: 'moveUnit', entity: a, x: away.hx, y: away.hy });
     combatSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(a, CurrentAtomic)).toBe(false); // no swing — the order wins over the adjacent enemy

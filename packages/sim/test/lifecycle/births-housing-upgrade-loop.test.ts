@@ -78,7 +78,7 @@ function loopContent(): ContentSet {
 }
 
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
 }
 
 // Clear EVERY component store — the module-level singleton stores are shared across Simulation

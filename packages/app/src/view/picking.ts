@@ -4,19 +4,21 @@ import {
   type EntityBounds,
   TILE_HALF_H,
   TILE_HALF_W,
-  tileToScreen,
+  halfCellToScreen,
 } from '@vinland/render';
 
 /**
- * Pure PICKING math — the screen→world→tile inverse of the render projection, plus the point/box
+ * Pure PICKING math — the screen→world→node inverse of the render projection, plus the point/box
  * hit-tests the selection controller runs over the on-screen units. No DOM, no Pixi, no sim: plain
  * geometry, so it is unit-tested headless (see `packages/app/test/picking.test.ts`) exactly like the
  * render-side `viewport.ts` cull math. The controller (`view/unit-controls.ts`) is the impure half that
  * reads the mouse and calls these.
  *
  * Three coordinate spaces (mirroring `render`): screen/canvas px → WORLD px (pre-camera, what
- * `tileToScreen` and a `DrawItem.x/y` live in) → TILE (col,row). The camera transform is
- * `screen = world*scale + offset`, so its inverse is `world = (screen - offset)/scale`.
+ * `tileToScreen` and a `DrawItem.x/y` live in) → HALF-CELL NODE (col,row on the sim's `2W×2H`
+ * lattice — `halfCellToScreen` is its projection, a plain rectangular grid, so the inverse is a
+ * per-axis rounding). The camera transform is `screen = world*scale + offset`, so its inverse is
+ * `world = (screen - offset)/scale`.
  */
 
 /** A pickable on-screen target: an entity id + its WORLD-space feet anchor (a `DrawItem.x/y`). */
@@ -34,7 +36,7 @@ export interface Pickable {
   readonly box?: EntityBounds | undefined;
 }
 
-/** A tile coordinate (integer col,row), the target of a move order. */
+/** A half-cell NODE coordinate (integer col,row on the `2W×2H` lattice), the target of a move order. */
 export interface Tile {
   readonly col: number;
   readonly row: number;
@@ -50,29 +52,13 @@ export function screenToWorld(camera: Camera, sx: number, sy: number): { x: numb
 }
 
 /**
- * Invert the FLAT staggered-raster projection (no elevation): a WORLD-px point → the tile (col,row)
- * whose interlocking diamond contains it. `tileToScreen(col,row) = ((2·col + (row&1))·HALF_W,
- * row·HALF_H)`; rows overlap (a diamond spans ±HALF_H, a full row step each way), so the point's row
- * band admits three candidate rows — for each, the nearest column on that row's parity is scored by the
- * diamond norm `|dx|/HALF_W + |dy|/HALF_H` (≤ 1 inside a diamond) and the closest wins. Deterministic:
- * strict `<` keeps the lowest candidate row on the knife-edge of a shared diamond edge.
+ * Invert the FLAT half-cell projection (no elevation): a WORLD-px point → the nearest node.
+ * `halfCellToScreen(col,row) = (col·HALF_W, row·HALF_H/2)` is a plain rectangular lattice, so the
+ * inverse is an independent per-axis rounding — no candidate scoring. Deterministic (`Math.round`
+ * half-up on both axes).
  */
 function worldToTileFlat(wx: number, wy: number): Tile {
-  const rowGuess = Math.round(wy / TILE_HALF_H);
-  let best: Tile = { col: 0, row: 0 };
-  let bestD = Number.POSITIVE_INFINITY;
-  for (const row of [rowGuess - 1, rowGuess, rowGuess + 1]) {
-    const parity = row & 1;
-    const col = Math.round((wx / TILE_HALF_W - parity) / 2);
-    const dx = Math.abs(wx - (2 * col + parity) * TILE_HALF_W) / TILE_HALF_W;
-    const dy = Math.abs(wy - row * TILE_HALF_H) / TILE_HALF_H;
-    const d = dx + dy;
-    if (d < bestD) {
-      best = { col, row };
-      bestD = d;
-    }
-  }
-  return best;
+  return { col: Math.round(wx / TILE_HALF_W), row: Math.round(wy / (TILE_HALF_H / 2)) };
 }
 
 /**
@@ -96,9 +82,9 @@ export function worldToTile(wx: number, wy: number, elevation?: ElevationField):
   if (elevation === undefined || elevation.maxLift === 0) return worldToTileFlat(wx, wy);
   let guess = worldToTileFlat(wx, wy);
   for (let pass = 0; pass < PICK_ELEVATION_PASSES; pass++) {
-    // At the integer cell the bilinear sampler returns that cell's own lift exactly (edge-clamped for an
-    // out-of-bounds guess), so this re-solve targets the ground the renderer actually lifted.
-    const lift = elevation.liftAt(guess.col, guess.row);
+    // The elevation field samples CELL coordinates — a node sits at (col/2, row/2) in cell space
+    // (fractional halves hit the bilinear sampler exactly like the map-object renderer does).
+    const lift = elevation.liftAt(guess.col / 2, guess.row / 2);
     const next = worldToTileFlat(wx, wy + lift);
     if (next.col === guess.col && next.row === guess.row) return next;
     guess = next;
@@ -181,14 +167,15 @@ export interface FormationUnit {
 }
 
 /**
- * `count` distinct tiles clustered around `target`, spiralling outward by square (Chebyshev) ring so a
+ * `count` distinct NODES clustered around `target`, spiralling outward by square (Chebyshev) ring so a
  * group sent to one point spreads into the VICINITY of it instead of all stacking on the single clicked
- * cell. Tiles are collected nearest-first (ring 0 = the target itself, then the 8 cells of ring 1, then
- * ring 2's 16, …), each kept only if it is in `[0,width)×[0,height)` and `blocked(col,row)` is false (an
- * occupied/unwalkable
- * cell is skipped). A single-unit order (`count === 1`) returns just the target tile when it is free, so
- * one unit still goes EXACTLY where clicked. Deterministic + pure (no DOM/sim) — unit-tested like the
- * rest of the picking math; the ring order is fixed, so the same click always yields the same slots.
+ * node. On the half-cell lattice a ring-1 slot is 34/19 px away — units pack at the original's density.
+ * Slots are collected nearest-first (ring 0 = the target itself, then the 8 nodes of ring 1, then
+ * ring 2's 16, …), each kept only if it is in `[0,width)×[0,height)` (NODE dims) and `blocked(col,row)`
+ * is false (an occupied/unwalkable node is skipped). A single-unit order (`count === 1`) returns just
+ * the target node when it is free, so one unit still goes EXACTLY where clicked. Deterministic + pure
+ * (no DOM/sim) — unit-tested like the rest of the picking math; the ring order is fixed, so the same
+ * click always yields the same slots.
  */
 export function formationTiles(
   target: Tile,
@@ -320,7 +307,7 @@ export function assignFormation(
   const slots = formationTiles(target, units.length, width, height, blocked);
   if (slots.length === 0) return [];
 
-  const t = tileToScreen(target.col, target.row);
+  const t = halfCellToScreen(target.col, target.row);
   const d2 = (u: FormationUnit): number => (u.x - t.x) ** 2 + (u.y - t.y) ** 2;
 
   // Too boxed-in to seat everyone: the units nearest the target take the slots, the rest stay put.
@@ -345,7 +332,7 @@ export function assignFormation(
   }
 
   // The n×n cost matrix ONCE (n² cells) — the pairing search reads it O(n³) times.
-  const slotPts = slots.map((slot) => tileToScreen(slot.col, slot.row));
+  const slotPts = slots.map((slot) => halfCellToScreen(slot.col, slot.row));
   const cost = movers.map((u) => slotPts.map((s) => (u.x - s.x) ** 2 + (u.y - s.y) ** 2));
   const slotOf = minTotalCostPairing(cost);
   const orders: FormationOrder[] = [];

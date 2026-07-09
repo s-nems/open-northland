@@ -18,8 +18,8 @@ import {
   Weapon,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands.js';
-import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
 import { MILITARY_MODE, defaultStanceForJob, isMilitaryMode } from '../readviews/index.js';
 
@@ -193,7 +193,8 @@ export function setStance(
   let anchorCell: number | null = null;
   if (command.mode === MILITARY_MODE.DEFEND && ctx.terrain !== undefined && world.has(e, Position)) {
     const p = world.get(e, Position);
-    anchorCell = ctx.terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
+    const n = nodeOfPosition(p.x, p.y);
+    anchorCell = ctx.terrain.cellAtClamped(n.hx, n.hy);
   }
   world.add(e, Stance, { mode: command.mode, anchorCell });
 }

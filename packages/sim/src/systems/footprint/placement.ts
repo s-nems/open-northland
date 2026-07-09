@@ -8,8 +8,8 @@ import {
   Stockpile,
   stockpileEntries,
 } from '../../components/index.js';
-import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
 import {
@@ -48,8 +48,7 @@ export function interactionTile(
   const b = world.tryGet(building, Building);
   const p = world.tryGet(building, Position);
   if (b === undefined || p === undefined) return null;
-  const ax = fx.toInt(p.x);
-  const ay = fx.toInt(p.y);
+  const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
   const door = buildingFootprintOf(ctx.content, b.buildingType)?.door;
   if (door === undefined) return { x: ax, y: ay };
   const at = { x: ax + door.dx, y: ay + door.dy };
@@ -60,7 +59,8 @@ export function interactionTile(
 function resourceAtTile(world: World, x: number, y: number, goodType: number): Entity | null {
   for (const resource of world.query(Resource, Position)) {
     const pos = world.get(resource, Position);
-    if (fx.toInt(pos.x) !== x || fx.toInt(pos.y) !== y) continue;
+    const n = nodeOfPosition(pos.x, pos.y);
+    if (n.hx !== x || n.hy !== y) continue;
     if (world.get(resource, Resource).goodType !== goodType) continue;
     return resource;
   }
@@ -88,8 +88,7 @@ export function resourceWorkCell(
   from?: CellId,
 ): CellId {
   const p = world.get(resource, Position);
-  const ax = fx.toInt(p.x);
-  const ay = fx.toInt(p.y);
+  const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
   const anchor = terrain.cellAtClamped(ax, ay);
   const footprint = world.tryGet(resource, ResourceFootprint);
   if (footprint === undefined) return anchor;
@@ -118,8 +117,7 @@ export function positionedInteractionCell(
   from?: CellId,
 ): CellId {
   const p = world.get(entity, Position);
-  const x = fx.toInt(p.x);
-  const y = fx.toInt(p.y);
+  const { hx: x, hy: y } = nodeOfPosition(p.x, p.y);
   const anchor = terrain.cellAtClamped(x, y);
   const drop = world.tryGet(entity, GroundDrop);
   if (drop !== undefined) {
@@ -161,8 +159,7 @@ export function buildingBlockedCells(world: World, ctx: SystemContext, terrain: 
     const footprint = buildingFootprintOf(ctx.content, b.buildingType);
     if (footprint === undefined || footprint.blocked.length === 0) continue;
     const p = world.get(e, Position);
-    const ax = fx.toInt(p.x);
-    const ay = fx.toInt(p.y);
+    const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
     for (const cell of translatedCells(terrain, footprint.blocked, ax, ay)) {
       blocked.add(cell);
     }
@@ -221,8 +218,7 @@ function collectPlacementBlockers(
   const resourceZones = new Set<string>();
   for (const e of world.query(Resource, Position)) {
     const p = world.get(e, Position);
-    const rx = fx.toInt(p.x);
-    const ry = fx.toInt(p.y);
+    const { hx: rx, hy: ry } = nodeOfPosition(p.x, p.y);
     const fp = world.tryGet(e, ResourceFootprint);
     if (fp === undefined) {
       resourceBodies.add(tileKey(rx, ry)); // legacy anchor-only resource keeps the old same-tile rule
@@ -236,8 +232,7 @@ function collectPlacementBlockers(
   for (const e of world.query(Building, Position)) {
     const b = world.get(e, Building);
     const p = world.get(e, Position);
-    const ox = fx.toInt(p.x);
-    const oy = fx.toInt(p.y);
+    const { hx: ox, hy: oy } = nodeOfPosition(p.x, p.y);
     const fp = buildingFootprintOf(content, b.buildingType);
     // A footprint-less building is a 1-cell body/zone on its anchor.
     const body = fp?.familyBody.length ? fp.familyBody : ANCHOR_ONLY;

@@ -2,7 +2,7 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CurrentAtomic, Health, Position, Projectile, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, type TerrainMap, fx } from '../../src/index.js';
+import { Simulation, type TerrainMap, fx, halfCellMapFromCells } from '../../src/index.js';
 import { PROJECTILE_TILES_PER_SPEED_UNIT } from '../../src/systems/index.js';
 
 /**
@@ -94,7 +94,7 @@ function content(): ContentSet {
 }
 
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(0) };
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(0) });
 }
 
 /** A combatant: a settler with a Health pool at (x,y). `tribe`/`jobType` decide its weapon. */
@@ -142,7 +142,7 @@ describe('projectiles — launch at the release frame, no instant hit', () => {
   it('launches a projectile only AT the release frame — none before, and no instant damage', () => {
     const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
     const archer = fighterAt(sim, 0, 0, VIKING, ARCHER);
-    const target = fighterAt(sim, 15, 0, FRANK, IDLE); // dist 15 — inside the 3..20 band, so the archer fires
+    const target = fighterAt(sim, 8, 0, FRANK, IDLE); // 16 nodes away — inside the 3..20 band, so the archer fires
 
     // The swing is added on tick 1 (combatSystem) and advances from tick 2; the ATTACK event is frame 6,
     // so the arrow looses on tick 7. Through frame 5 (6 steps) there is no projectile and no damage.
@@ -152,7 +152,7 @@ describe('projectiles — launch at the release frame, no instant hit', () => {
     expect(sim.world.has(archer, CurrentAtomic)).toBe(true); // the archer is mid-draw
 
     // One more step crosses the release frame: the arrow is now in flight — but it has NOT landed (it was
-    // just loosed at the archer's cell, 15 tiles away), so the target is still at full health. No instant hit.
+    // just loosed at the archer's cell, 8 tiles away), so the target is still at full health. No instant hit.
     sim.step();
     expect(projectiles(sim)).toHaveLength(1);
     expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP);
@@ -163,7 +163,7 @@ describe('projectiles — homing flight + on-contact damage', () => {
   it('travels straight toward the target at the mapped speed (fixed-point, exact on a same-row shot)', () => {
     const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
     fighterAt(sim, 0, 0, VIKING, ARCHER);
-    const target = fighterAt(sim, 15, 0, FRANK, IDLE);
+    const target = fighterAt(sim, 8, 0, FRANK, IDLE); // 16 nodes — in band
 
     stepToLaunch(sim);
     const shot = projectiles(sim)[0] as Entity;
@@ -189,7 +189,7 @@ describe('projectiles — homing flight + on-contact damage', () => {
   it('deals damage only AFTER a multi-tick flight (no instant hit), then the projectile is spent', () => {
     const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
     fighterAt(sim, 0, 0, VIKING, ARCHER);
-    const target = fighterAt(sim, 15, 0, FRANK, IDLE);
+    const target = fighterAt(sim, 8, 0, FRANK, IDLE); // 16 nodes — in band
 
     stepToLaunch(sim);
     const launchTick = sim.tick;
@@ -215,7 +215,7 @@ describe('projectiles — expiry + dead zone', () => {
   it('expires (no hit, no re-target) when its target dies mid-flight', () => {
     const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
     fighterAt(sim, 0, 0, VIKING, ARCHER);
-    const target = fighterAt(sim, 15, 0, FRANK, IDLE);
+    const target = fighterAt(sim, 8, 0, FRANK, IDLE); // 16 nodes — in band
 
     stepToLaunch(sim);
     expect(projectiles(sim)).toHaveLength(1);
@@ -236,7 +236,7 @@ describe('projectiles — expiry + dead zone', () => {
   it('does not shoot an enemy inside the bow dead zone (closer than minRange)', () => {
     const sim = new Simulation({ seed: 1, content: content(), map: grassMap(12, 1) });
     const archer = fighterAt(sim, 0, 0, VIKING, ARCHER);
-    const target = fighterAt(sim, 2, 0, FRANK, IDLE); // dist 2 < minRange 3 — in the dead zone
+    const target = fighterAt(sim, 1, 0, FRANK, IDLE); // 2 nodes < minRange 3 — in the dead zone
 
     for (let i = 0; i < 20; i++) sim.step();
 
@@ -256,7 +256,7 @@ describe('projectiles — determinism', () => {
       Projectile.store.clear();
       const sim = new Simulation({ seed: 9, content: content(), map: grassMap(24, 1) });
       fighterAt(sim, 0, 0, VIKING, ARCHER);
-      fighterAt(sim, 15, 0, FRANK, IDLE, 90); // frail — dies under the volley, exercising the death path too
+      fighterAt(sim, 8, 0, FRANK, IDLE, 90); // frail, in band — dies under the volley, exercising the death path too
       let sawProjectile = false;
       for (let i = 0; i < 60; i++) {
         sim.step();

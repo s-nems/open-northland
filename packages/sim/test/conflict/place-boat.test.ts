@@ -16,7 +16,7 @@ import {
   Vehicle,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation } from '../../src/index.js';
+import { Simulation, cellAnchorNode } from '../../src/index.js';
 
 /**
  * `placeBoat` — the **boats as mobile stores** entity slice the plan Phase-4 Sea/Northland item
@@ -97,8 +97,10 @@ function nthEntity(sim: Simulation, n: number): Entity {
 describe('placeBoat', () => {
   it('places an ungated ship as a Vehicle hull with an empty mobile store and emits boatPlaced', () => {
     const sim = fresh();
-    // The big ship is ungated, so it places even with no shipwright present.
-    sim.enqueue({ kind: 'placeBoat', vehicleType: SHIP_BIG, x: 7, y: 8, tribe: VIKING });
+    // The big ship is ungated, so it places even with no shipwright present. Command coords are
+    // half-cell nodes; cell (7,8)'s anchor node (14,16) sits exactly on tile (7,8).
+    const anchor = cellAnchorNode(7, 8);
+    sim.enqueue({ kind: 'placeBoat', vehicleType: SHIP_BIG, x: anchor.hx, y: anchor.hy, tribe: VIKING });
     sim.step();
 
     expect(sim.world.canonicalEntities()).toHaveLength(1);
@@ -115,7 +117,7 @@ describe('placeBoat', () => {
 
     const placed = sim.events.current().filter((ev) => ev.kind === 'boatPlaced');
     expect(placed).toHaveLength(1);
-    expect(placed[0]).toMatchObject({ at: { x: 7, y: 8 } });
+    expect(placed[0]).toMatchObject({ at: { x: anchor.hx, y: anchor.hy } }); // events echo node coords
   });
 
   it('gates a tech-locked ship: skipped (still logged) until its enabling job exists', () => {

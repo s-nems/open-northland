@@ -1,8 +1,9 @@
 import type { BuildingType, Recipe } from '@vinland/data';
 import { Building, Position, Settler, Vehicle, stockpileEntries } from '../components/index.js';
 import { contentIndex } from '../core/content-index.js';
-import { ONE, fx } from '../core/fixed.js';
+import { ONE } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
+import { nodeOfPosition } from '../nav/halfcell.js';
 import type { SystemContext } from './context.js';
 import { interactionTile } from './footprint/index.js';
 import { vehicleMayCarry } from './readviews/vehicles.js';
@@ -169,7 +170,8 @@ export function workerPresentAt(world: World, ctx: SystemContext, building: Enti
     const settler = world.get(e, Settler);
     if (settler.jobType === null || !jobs.has(settler.jobType)) continue;
     const p = world.get(e, Position);
-    if (fx.toInt(p.x) === bx && fx.toInt(p.y) === by) return true;
+    const n = nodeOfPosition(p.x, p.y);
+    if (n.hx === bx && n.hy === by) return true;
   }
   return false;
 }

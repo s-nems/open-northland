@@ -1,6 +1,6 @@
 import { buildScene, terrainMapToScene } from '@vinland/render';
 import type { Component, TerrainMap, WorldSnapshot } from '@vinland/sim';
-import { components } from '@vinland/sim';
+import { components, halfCellMapFromCells } from '@vinland/sim';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type AuthoredJoinRows, resolveAuthoredPlacements } from '../src/slice/authored-placements.js';
 import { loadTerrainMap } from '../src/slice/map-loader.js';
@@ -108,10 +108,16 @@ describe('sliceTerrain', () => {
 describe('runSlice on a loaded map', () => {
   beforeEach(clearStores);
 
-  // A small grid with typeIds the synthetic strip never declares (5, 16, 22, …) — folding them into
-  // the demo content is exactly what lets the sim's cell-graph build over a real decoded map.
+  // A small HALF-CELL grid (runSlice takes the sim's node-resolution map) with typeIds the synthetic
+  // strip never declares (5, 16, 22, …) — folding them into the demo content is exactly what lets the
+  // sim's node-graph build over a real decoded map.
   function gridMap(): TerrainMap {
-    return { width: 4, height: 3, typeIds: [5, 16, 22, 5, 5, 16, 22, 5, 5, 16, 22, 5] };
+    return {
+      resolution: 'half-cell',
+      width: 4,
+      height: 3,
+      typeIds: [5, 16, 22, 5, 5, 16, 22, 5, 5, 16, 22, 5],
+    };
   }
 
   it('builds + steps the sim over the real grid without a content gap', () => {
@@ -130,11 +136,12 @@ describe('runSlice on a loaded map', () => {
     const sim = runSlice(7, 1, gridMap());
 
     // Six entities placed: HQ + sawmill (Building), woodcutter + carrier (Settler), two wood nodes
-    // (Resource). On a 4×3 grid whose every cell is walkable, the first six cells are (0,0)..(1,1) —
-    // so at least one entity must sit on a row below the synthetic strip's single y=0 row.
+    // (Resource). On a 4×3 node grid whose every node is walkable, the first six nodes are
+    // (0,0)..(1,1) — so at least one entity must sit below the synthetic strip's single row-0 node
+    // line (node row 1 = position y 0.5, so a strictly positive fixed-point y).
     const positioned = [...sim.world.query(Position)].map((e) => sim.world.get(e, Position));
     expect(positioned).toHaveLength(6);
-    const onRealRows = positioned.some((p) => Math.trunc(p.y / 65536) > 0);
+    const onRealRows = positioned.some((p) => p.y > 0);
     expect(onRealRows).toBe(true);
     // Each kind is present.
     expect([...sim.world.query(Building)]).toHaveLength(2);
@@ -152,7 +159,12 @@ describe('runSlice on a loaded map', () => {
   it('falls back to the synthetic strip when a loaded map has too few walkable cells', () => {
     // typeId 1 is the demo's non-walkable water; an all-water grid has 0 walkable cells, so placement
     // can't fit the slice — runSlice must degrade to the 6×1 strip (HQ@5 etc.) rather than throw.
-    const allWater: TerrainMap = { width: 3, height: 3, typeIds: new Array(9).fill(1) };
+    const allWater: TerrainMap = {
+      resolution: 'half-cell',
+      width: 3,
+      height: 3,
+      typeIds: new Array(9).fill(1),
+    };
     expect(() => runSlice(7, 1, allWater)).not.toThrow();
     clearStores();
     const fallback = runSlice(7, 1, allWater).hashState();
@@ -169,9 +181,10 @@ describe('authored placements (map.cif StaticObjects → sim commands)', () => {
     vi.restoreAllMocks();
   });
 
-  /** 6×6 all-grass grid (demo typeId 5, walkable) — half-cell coords run 0..11 on each axis. */
+  /** 6×6 all-grass CELL grid (demo typeId 5, walkable), upsampled to the sim's 12×12 node lattice —
+   *  authored half-cell coords run 0..11 on each axis and bounds-check against those node dims. */
   function authoredMap(): TerrainMap {
-    return { width: 6, height: 6, typeIds: new Array(36).fill(5) };
+    return halfCellMapFromCells({ width: 6, height: 6, typeIds: new Array(36).fill(5) });
   }
 
   // The narrow IR rows the joins read: two barracks levels, one job, one tribe — the same by-name
@@ -191,32 +204,32 @@ describe('authored placements (map.cif StaticObjects → sim commands)', () => {
 
   const entities = {
     buildings: [
-      // Resolves: editName+level → typeId 30; half-cells (8,4) → cell (4,2); 1-based player 1 → owner 0.
+      // Resolves: editName+level → typeId 30; half-cell (8,4) passes VERBATIM; 1-based player 1 → owner 0.
       { name: 'viking barracks', level: 0, player: 1, hx: 8, hy: 4, rot: 0 },
       // 1-based player 0 = "no player": owner must be omitted, not -1.
       { name: 'viking barracks', level: 1, player: 0, hx: 0, hy: 0 },
       { name: 'unknown house', level: 0, player: 1, hx: 2, hy: 2 }, // no buildingBobs row → skipped
-      { name: 'viking barracks', level: 0, player: 1, hx: 99, hy: 0 }, // cell 49 ≥ width 6 → skipped
+      { name: 'viking barracks', level: 0, player: 1, hx: 99, hy: 0 }, // hx 99 ≥ node width 12 → skipped
     ],
     humans: [
-      // Resolves: role → job typeId 7, tribe → typeId 1; (3,5) → cell (1,2); 0-based player 0 stays 0.
+      // Resolves: role → job typeId 7, tribe → typeId 1; node (3,5) verbatim; 0-based player 0 stays 0.
       { tribe: 'viking', role: 'builder', player: 0, hx: 3, hy: 5 },
       { tribe: 'viking', role: 'mystery_role', player: 0, hx: 3, hy: 5 }, // unknown role → skipped
     ],
     animals: [{ species: 'deer', hx: 1, hy: 1 }], // deferred (herd semantics) — never a placement
   };
 
-  it('joins by name, halves half-cells, and normalizes the two player bases', () => {
+  it('joins by name, passes half-cells verbatim, and normalizes the two player bases', () => {
     const { placements, skipped } = resolveAuthoredPlacements(entities, rows, authoredMap());
     expect(placements).toEqual([
-      { kind: 'building', typeId: 30, tribe: 1, x: 4, y: 2, owner: 0 },
+      { kind: 'building', typeId: 30, tribe: 1, x: 8, y: 4, owner: 0 },
       { kind: 'building', typeId: 31, tribe: 1, x: 0, y: 0 }, // no owner: sethouse player 0
-      { kind: 'human', jobType: 7, tribe: 1, x: 1, y: 2, owner: 0 },
+      { kind: 'human', jobType: 7, tribe: 1, x: 3, y: 5, owner: 0 },
     ]);
     expect(skipped).toBe(3);
   });
 
-  it('runAuthoredSlice places the resolved buildings + settlers at their authored cells', () => {
+  it('runAuthoredSlice places the resolved buildings + settlers at their authored nodes', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {}); // skipped-rows warning is expected here
     const { Position, Building, Settler } = components;
     // ticks=1: placeBuilding/spawnSettler commands apply on the first step.
@@ -224,6 +237,8 @@ describe('authored placements (map.cif StaticObjects → sim commands)', () => {
     expect(sim).not.toBeNull();
     if (sim === null) throw new Error('expected an authored sim');
 
+    // Positions truncated to whole CELLS: node (8,4) is cell (4,2)'s row-2 line, node (3,5) sits at
+    // fractional (1.25, 2.5) → cell (1,2) — the authored anchors, on the map, at half-cell precision.
     const cellsOf = (comp: typeof Building | typeof Settler): string[] =>
       [...sim.world.query(comp)]
         .map((e) => sim.world.get(e, Position))

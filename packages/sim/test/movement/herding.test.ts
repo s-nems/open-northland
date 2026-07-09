@@ -11,20 +11,29 @@ import {
   Velocity,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, type TerrainMap, fx } from '../../src/index.js';
+import {
+  Simulation,
+  type TerrainMap,
+  fx,
+  halfCellMapFromCells,
+  nodeOfPosition,
+  positionOfNode,
+} from '../../src/index.js';
 import { type SystemContext, herdingSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
  * Tests for the HerdingSystem — the follow-the-leader movement drive. A herding animal carries a
  * `HerdMember` pointing at its pack's leader (set at spawn by `spawnAnimalHerd`); a strayed follower
- * (farther than `maximumleaderdistance` from its leader) is sent back via a `MoveGoal` toward the
- * leader's cell. The leader itself (leader === self) and a solitary animal (no `HerdMember`) run no
+ * (farther than `maximumleaderdistance` from its leader — a HALF-CELL NODE Manhattan distance, the
+ * data range consumed verbatim on the node lattice) is sent back via a `MoveGoal` toward the
+ * leader's node. The leader itself (leader === self) and a solitary animal (no `HerdMember`) run no
  * drive. The fixture's BEAR (tribe 10) has `maximumLeaderDistance` 3 (see fixtures/content.ts).
+ * All scenario coordinates here are node coords (Positions minted via `positionOfNode`).
  */
 
 const BEAR = 10; // herd animal: searchForLeader, maximumLeaderDistance 3
-const LEADER_DISTANCE = 3; // the fixture bear's maximumLeaderDistance
+const LEADER_DISTANCE = 3; // the fixture bear's maximumLeaderDistance, in half-cell nodes
 
 beforeEach(() => {
   Position.store.clear();
@@ -39,7 +48,8 @@ beforeEach(() => {
 });
 
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(0) };
+  // Cell-dims signature; the sim's graph is the upsampled 2W×2H half-cell lattice.
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(0) });
 }
 
 function ctxOf(sim: Simulation): SystemContext {
@@ -52,10 +62,10 @@ function ctxOf(sim: Simulation): SystemContext {
   };
 }
 
-/** A herd animal at (x,y) following `leader` (or itself, the leader marker). */
+/** A herd animal at half-cell NODE (x,y) following `leader` (or itself, the leader marker). */
 function herderAt(sim: Simulation, x: number, y: number, leader: Entity | 'self'): Entity {
   const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Position, positionOfNode(x, y));
   sim.world.add(e, Settler, {
     tribe: BEAR,
     jobType: null,
@@ -73,13 +83,13 @@ describe('herdingSystem — follow-the-leader cohesion', () => {
   it('sends a strayed follower back toward the leader cell with a MoveGoal', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const leader = herderAt(sim, 0, 0, 'self');
-    const follower = herderAt(sim, 8, 0, leader); // 8 cells away — beyond maximumLeaderDistance 3
+    const follower = herderAt(sim, 8, 0, leader); // 8 nodes away — beyond maximumLeaderDistance 3
 
     herdingSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(follower, MoveGoal)).toBe(true);
     const goalCell = sim.world.get(follower, MoveGoal).cell;
-    expect(goalCell).toBe(sim.terrain?.cellAt(0, 0)); // heading to the leader's cell
+    expect(goalCell).toBe(sim.terrain?.cellAt(0, 0)); // heading to the leader's node
     expect(sim.world.has(leader, MoveGoal)).toBe(false); // the leader follows no one
   });
 
@@ -140,14 +150,16 @@ describe('herdingSystem — follow-the-leader cohesion', () => {
     const leader = herderAt(sim, 0, 0, 'self');
     const follower = herderAt(sim, 10, 0, leader); // far out
 
-    const startX = fx.toInt(sim.world.get(follower, Position).x);
-    // ~7 tiles back into the radius at the ⅛ tile/tick pace = ~56 move ticks + plan/path latency.
+    const startPos = sim.world.get(follower, Position);
+    const startHx = nodeOfPosition(startPos.x, startPos.y).hx;
+    // 10 half-column nodes = 5 columns at the 12-ticks-per-column walk ≈ 60 move ticks + plan/path latency.
     for (let i = 0; i < 80; i++) sim.step(); // herding -> navigation -> pathfinding -> movement
-    const endX = fx.toInt(sim.world.get(follower, Position).x);
+    const endPos = sim.world.get(follower, Position);
+    const endHx = nodeOfPosition(endPos.x, endPos.y).hx;
 
-    expect(endX).toBeLessThan(startX); // moved back toward the leader at (0,0)
-    // It comes to rest within the cohesion radius and stops (no perpetual jitter).
-    expect(endX).toBeLessThanOrEqual(LEADER_DISTANCE);
+    expect(endHx).toBeLessThan(startHx); // moved back toward the leader at node (0,0)
+    // It comes to rest within the cohesion radius (node Manhattan) and stops (no perpetual jitter).
+    expect(endHx).toBeLessThanOrEqual(LEADER_DISTANCE);
   });
 
   it('two same-seed runs herd identically (deterministic — no RNG)', () => {

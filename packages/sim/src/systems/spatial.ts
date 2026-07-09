@@ -1,6 +1,6 @@
 import { MoveGoal, PathFollow, PathRequest, Position } from '../components/index.js';
-import { fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
+import { nodeOfPosition } from '../nav/halfcell.js';
 import type { CellId, TerrainGraph } from '../nav/terrain.js';
 import { manhattan, tileKey } from './footprint/geometry.js';
 
@@ -40,7 +40,8 @@ export { tileKey };
  * shortcut ({@link TileBuckets.nearest}) is only canonical because buckets hold ascending ids; a raw
  * `world.query` iterable would silently change ring-search winners. Answers "what is on tile
  * (x,y)?" in O(1) via {@link TileBuckets.at}, replacing a full-world scan for on-tile checks (am I
- * standing on a workplace?). By default an entity buckets by its raw {@link Position} tile; an optional
+ * standing on a workplace?). A "tile" here is a half-cell NODE (`nodeOfPosition`) — the sim's one
+ * integer grid. By default an entity buckets by its {@link Position}'s node; an optional
  * `tileOf` resolver overrides that per entity (the JobSystem buckets buildings by their door-aware
  * {@link interactionTile}) — an entity the resolver maps to `null` (and a Position-less one) is dropped.
  * Determinism: a first-match pick over a bucket lands on the same entity a canonical full scan would,
@@ -59,7 +60,12 @@ export class TileBuckets {
       let tile: { x: number; y: number } | null;
       if (tileOf === undefined) {
         const p = world.tryGet(e, Position);
-        tile = p === undefined ? null : { x: fx.toInt(p.x), y: fx.toInt(p.y) };
+        if (p === undefined) {
+          tile = null;
+        } else {
+          const n = nodeOfPosition(p.x, p.y);
+          tile = { x: n.hx, y: n.hy };
+        }
       } else {
         tile = tileOf(e);
       }
@@ -157,15 +163,16 @@ export function isValidCellId(terrain: TerrainGraph, cell: number): boolean {
 }
 
 /**
- * The cell an entity occupies — its {@link Position} snapped to the terrain grid. The plain positional
- * resolver for units/creatures/fixtures (a settler, a herd animal, a resource node), where the entity's
- * own tile IS the cell to measure from. Building targets a settler must reach *through a door* use the
- * AI planner's interaction-aware resolver instead (walls are walk-blocked); this is the common case,
- * shared by combat targeting and the herding follow-drive.
+ * The half-cell node an entity occupies — its {@link Position} snapped to the navigation lattice.
+ * The plain positional resolver for units/creatures/fixtures (a settler, a herd animal, a resource
+ * node), where the entity's own node IS the cell to measure from. Building targets a settler must
+ * reach *through a door* use the AI planner's interaction-aware resolver instead (walls are
+ * walk-blocked); this is the common case, shared by combat targeting and the herding follow-drive.
  */
 export function entityCell(world: World, terrain: TerrainGraph, e: Entity): CellId {
   const p = world.get(e, Position);
-  return terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
+  const n = nodeOfPosition(p.x, p.y);
+  return terrain.cellAtClamped(n.hx, n.hy);
 }
 
 // manhattan lives in footprint/geometry.ts (the leaf, which needs it for its nearest-cell picks)

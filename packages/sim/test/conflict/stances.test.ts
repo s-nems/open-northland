@@ -16,9 +16,15 @@ import {
   Settler,
   Stance,
 } from '../../src/components/index.js';
-import { ONE, fx } from '../../src/core/fixed.js';
+import { type Fixed, ONE, fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, type TerrainMap } from '../../src/index.js';
+import {
+  Simulation,
+  type TerrainMap,
+  cellAnchorNode,
+  halfCellMapFromCells,
+  positionOfNode,
+} from '../../src/index.js';
 import { attackUnit, setJob, setStance } from '../../src/systems/conflict/orders.js';
 import { spawnSettler } from '../../src/systems/conflict/spawn.js';
 import {
@@ -79,7 +85,7 @@ const WOOD = 1; // the fixture's wood good (harvest atomic 24), what a woodcutte
 const HARVEST_ATOMIC = 24;
 
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
 }
 
 function ctxOf(sim: Simulation): SystemContext {
@@ -92,7 +98,8 @@ function ctxOf(sim: Simulation): SystemContext {
   };
 }
 
-/** An owned combatant with an explicit stance (a direct spawn — full control over the mode). */
+/** An owned combatant with an explicit stance at visual cell (x,y) (a direct spawn — full control over
+ *  the mode). */
 function combatant(
   sim: Simulation,
   x: number,
@@ -101,8 +108,31 @@ function combatant(
   mode: number,
   opts: { hitpoints?: number; jobType?: number } = {},
 ): Entity {
+  return combatantAtPosition(sim, { x: fx.fromInt(x), y: fx.fromInt(y) }, owner, mode, opts);
+}
+
+/** An owned combatant standing exactly on half-cell node (hx, hy) — reach geometry a whole cell
+ *  (2 nodes on a row) cannot express, e.g. an ODD node distance from a cell-anchored unit. */
+function combatantAtNode(
+  sim: Simulation,
+  hx: number,
+  hy: number,
+  owner: number,
+  mode: number,
+  opts: { hitpoints?: number; jobType?: number } = {},
+): Entity {
+  return combatantAtPosition(sim, positionOfNode(hx, hy), owner, mode, opts);
+}
+
+function combatantAtPosition(
+  sim: Simulation,
+  position: { x: Fixed; y: Fixed },
+  owner: number,
+  mode: number,
+  opts: { hitpoints?: number; jobType?: number } = {},
+): Entity {
   const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Position, { x: position.x, y: position.y });
   sim.world.add(e, Settler, {
     tribe: VIKING,
     jobType: opts.jobType ?? WOODCUTTER,
@@ -118,10 +148,13 @@ function combatant(
   return e;
 }
 
+/** The nav node id of visual cell (x,y)'s ANCHOR node — where a unit minted at integer cell coords
+ *  stands on the half-cell lattice. */
 function cell(sim: Simulation, x: number, y: number): number {
   const t = sim.terrain;
   if (t === undefined) throw new Error('no terrain');
-  return t.cellAtClamped(x, y);
+  const n = cellAnchorNode(x, y);
+  return t.cellAtClamped(n.hx, n.hy);
 }
 
 function tileOf(sim: Simulation, e: Entity): { x: number; y: number } {
@@ -232,8 +265,8 @@ describe('IGNORE — never auto-engage, but an explicit order still fights', () 
   it('when the ordered target dies, an IGNORE unit reverts to ignoring — it does NOT auto-engage a bystander', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const scout = combatant(sim, 0, 0, P0, MILITARY_MODE.IGNORE);
-    const focus = combatant(sim, 1, 0, P1, MILITARY_MODE.IGNORE); // the ordered target
-    combatant(sim, 2, 0, P1, MILITARY_MODE.IGNORE); // a bystander enemy, in reach, the scout must NOT hit
+    const focus = combatant(sim, 1, 0, P1, MILITARY_MODE.IGNORE); // the ordered target (2 nodes away)
+    combatantAtNode(sim, 1, 0, P1, MILITARY_MODE.IGNORE); // a bystander enemy 1 node away, in reach, the scout must NOT hit
     attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: scout, target: focus });
     sim.world.get(focus, Health).hitpoints = 0; // the ordered target dies
 
@@ -249,7 +282,7 @@ describe('stance change mid-chase', () => {
   it('switching ATTACK → IGNORE stops a chase (drops Engagement + the chase route)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const chaser = combatant(sim, 0, 0, P0, MILITARY_MODE.ATTACK);
-    combatant(sim, 6, 0, P1, MILITARY_MODE.IGNORE); // spotted (sight 8) but beyond reach (2) → chase
+    combatant(sim, 6, 0, P1, MILITARY_MODE.IGNORE); // 12 nodes — spotted (sight 16) but beyond reach (2) → chase
 
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(chaser, Engagement)).toBe(true); // it is chasing
@@ -264,7 +297,7 @@ describe('stance change mid-chase', () => {
   it('switching ATTACK → FLEE mid-chase sheds the stale Engagement (no permanent bench)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
     const unit = combatant(sim, 10, 0, P0, MILITARY_MODE.ATTACK);
-    const enemy = combatant(sim, 16, 0, P1, MILITARY_MODE.IGNORE); // spotted, beyond reach → chase
+    const enemy = combatant(sim, 16, 0, P1, MILITARY_MODE.IGNORE); // 12 nodes — spotted, beyond reach → chase
 
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(unit, Engagement)).toBe(true); // chasing
@@ -293,7 +326,7 @@ describe('FLEE — civilians run from danger', () => {
     expect(sim.world.has(civ, Fleeing)).toBe(true);
     const goal = sim.world.get(civ, MoveGoal).cell;
     const goalX = sim.terrain?.coordsOf(goal).x ?? Number.NaN;
-    expect(goalX).toBeLessThan(20); // running LEFT, away from the threat at x=25
+    expect(goalX).toBeLessThan(cellAnchorNode(20, 0).hx); // running LEFT, away from the threat at node x=50
   });
 
   it('the fleeing gait outruns a walking pursuer — distance to the threat grows', () => {
@@ -386,7 +419,8 @@ describe('DEFEND — hold an anchor, don’t chase past the leash', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(30, 1) });
     const guard = combatant(sim, 10, 0, P0, MILITARY_MODE.DEFEND);
     sim.world.get(guard, Stance).anchorCell = cell(sim, 10, 0);
-    combatant(sim, 10 + DEFEND_RADIUS_TILES + 1, 0, P1, MILITARY_MODE.IGNORE); // just outside the radius
+    // 1 node outside the radius: the anchor is node (20, 0), the enemy DEFEND_RADIUS_TILES+1 nodes east.
+    combatantAtNode(sim, 20 + DEFEND_RADIUS_TILES + 1, 0, P1, MILITARY_MODE.IGNORE);
 
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(guard, CurrentAtomic)).toBe(false); // did not engage
@@ -399,7 +433,7 @@ describe('DEFEND — hold an anchor, don’t chase past the leash', () => {
     const guard = combatant(sim, 10, 0, P0, MILITARY_MODE.DEFEND);
     const anchor = cell(sim, 10, 0);
     sim.world.get(guard, Stance).anchorCell = anchor;
-    // A DEFEND-radius-3 enemy: inside the radius (4), beyond reach (2) → chase, but leashed.
+    // An enemy 6 nodes out: inside the radius (8), beyond reach (2) → chase, but leashed.
     const enemy = combatant(sim, 13, 0, P1, MILITARY_MODE.IGNORE);
 
     combatSystem(sim.world, ctxOf(sim));
@@ -423,7 +457,8 @@ describe('DEFEND — hold an anchor, don’t chase past the leash', () => {
 
     sim.run(120);
     const gx = tileOf(sim, guard).x;
-    expect(Math.abs(gx - anchorX)).toBeLessThanOrEqual(DEFEND_LEASH_TILES);
+    // The leash is a NODE Manhattan bound; a same-row cell offset is 2 nodes, so double the cell delta.
+    expect(Math.abs(gx - anchorX) * 2).toBeLessThanOrEqual(DEFEND_LEASH_TILES);
   });
 
   it('holds its post against the economy — a militia-job guard does not wander off to work', () => {

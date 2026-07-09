@@ -10,8 +10,8 @@ import {
   Settler,
   Stance,
 } from '../../components/index.js';
-import { fx } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
+import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
 import { MILITARY_MODE } from '../readviews/index.js';
@@ -103,7 +103,8 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     if (world.has(e, Age)) continue;
 
     const p = world.get(e, Position);
-    const here = terrain.cellAtClamped(fx.toInt(p.x), fx.toInt(p.y));
+    const hereNode = nodeOfPosition(p.x, p.y);
+    const here = terrain.cellAtClamped(hereNode.hx, hereNode.hy);
     const load = world.tryGet(e, Carrying);
 
     // NEEDS (highest priority): eat > sleep > pray. An unsatisfiable need falls through to work.
@@ -156,7 +157,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // 5. CARRIER FALLBACK — haul a finished workplace output to a store; else genuinely idle:
     // de-stack off a shared tile so an idle crowd spreads out (see ./destack.ts).
     if (!planCarrierHaul(world, ctx, terrain, e, worker, here, targets, anyHaulable)) {
-      deStackIdle(world, ctx, terrain, e, fx.toInt(p.x), fx.toInt(p.y), spacing);
+      deStackIdle(world, ctx, terrain, e, hereNode.hx, hereNode.hy, spacing);
     }
   }
 }

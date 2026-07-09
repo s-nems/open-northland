@@ -13,6 +13,7 @@ import {
 import type { Command } from '../../core/commands.js';
 import { ONE, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { animalHitpoints, herdParams, locomotionOf } from '../readviews/index.js';
 import { COMPASS_DIRECTIONS } from '../spatial.js';
@@ -32,7 +33,7 @@ export function spawnSettler(
   if (indexById(ctx.content.jobs).get(command.jobType) === undefined) return;
 
   const e = world.create();
-  world.add(e, Position, { x: fx.fromInt(command.x), y: fx.fromInt(command.y) });
+  world.add(e, Position, positionOfNode(command.x, command.y));
   world.add(e, Settler, {
     tribe: command.tribe,
     jobType: command.jobType,
@@ -162,7 +163,7 @@ export function spawnAnimalHerd(
   for (let i = 0; i < count; i++) {
     const off = herdMemberOffset(i, range);
     const e = world.create();
-    world.add(e, Position, { x: fx.fromInt(command.x + off.dx), y: fx.fromInt(command.y + off.dy) });
+    world.add(e, Position, positionOfNode(command.x + off.dx, command.y + off.dy));
     world.add(e, Settler, {
       tribe: command.tribe,
       jobType: null, // an animal isn't born into a trade (no weapon binding yet — see fidelity note)

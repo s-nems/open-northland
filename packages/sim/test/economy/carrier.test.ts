@@ -13,7 +13,14 @@ import {
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { ONE, Simulation, type TerrainMap, fx } from '../../src/index.js';
+import {
+  ONE,
+  Simulation,
+  type TerrainMap,
+  cellAnchorNode,
+  fx,
+  halfCellMapFromCells,
+} from '../../src/index.js';
 import { type SystemContext, aiSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
@@ -48,8 +55,9 @@ beforeEach(() => {
   Production.store.clear();
 });
 
+/** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
 }
 
 function carrierAt(sim: Simulation, x: number, y: number): Entity {
@@ -104,7 +112,8 @@ describe('carrier — choosing what to haul', () => {
     aiSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(carrier, MoveGoal)).toBe(true);
-    expect(sim.world.get(carrier, MoveGoal).cell).toBe(sim.terrain?.cellAt(3, 0));
+    const millNode = cellAnchorNode(3, 0); // the mill's anchor node on the half-cell lattice
+    expect(sim.world.get(carrier, MoveGoal).cell).toBe(sim.terrain?.cellAt(millNode.hx, millNode.hy));
     void mill;
   });
 

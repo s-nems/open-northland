@@ -1,6 +1,7 @@
 import { PathFollow, PathRequest, Position } from '../../components/index.js';
 import { type Fixed, ZERO, fx } from '../../core/fixed.js';
-import { HALF_COLUMN } from '../../nav/metric.js';
+import { positionOfNode } from '../../nav/halfcell.js';
+import { staggerShift } from '../../nav/metric.js';
 import { findPath } from '../../nav/pathfinding.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System } from '../context.js';
@@ -26,10 +27,11 @@ export const PATHFINDING_BUDGET_PER_TICK = 8;
  *
  * For up to {@link PATHFINDING_BUDGET_PER_TICK} requests per tick (lowest entity ids first, so the
  * spread is history-independent), it runs A* on `ctx.terrain` from the request's `start` to `goal`
- * cell. On success it writes the cell sequence into the entity's {@link PathFollow} (cell centres in
- * fixed-point tile units, plus a seam waypoint inside each vertical step — {@link pathToWaypoints})
+ * cell. On success it writes the node sequence into the entity's {@link PathFollow} (half-cell node
+ * positions in fixed-point tile units, plus a seam waypoint inside each odd-row diagonal leg —
+ * {@link pathToWaypoints})
  * and removes the request; on failure it flags the request `failed` — keeping any live path, so a
- * failed mid-walk reroute parks the walker on a cell centre instead of freezing it mid-leg — and
+ * failed mid-walk reroute parks the walker on a node centre instead of freezing it mid-leg — and
  * leaves the request for the planner to inspect rather than silently retrying the same dead query
  * every tick. No-ops entirely when no terrain graph is present — a
  * mapless sim (the determinism golden) has nothing to route over.
@@ -109,32 +111,31 @@ export const pathfindingSystem: System = (world, ctx) => {
 };
 
 /**
- * Turn a cell path into the {@link PathFollow} waypoint list — cell centres in fixed-point tile
- * units, with one extra SEAM waypoint spliced into every VERTICAL step (the two-row N/S lattice
- * edge). The seam is where the straight world-vertical line crosses the intermediate row: half a
- * column LEFT of the cells' shared world column when leaving an even row, half a column RIGHT when
- * leaving an odd one (the stagger's shift at the odd row). Without it the mover would interpolate
- * the grid delta linearly and the stagger's triangle wave would swing it half a column sideways at
- * the intermediate row — the very zigzag the vertical edge exists to remove; with it each sub-leg
- * stays inside one row interval, where linear grid motion IS straight on screen. Pure fixed-point.
+ * Turn a node path into the {@link PathFollow} waypoint list — half-cell node positions in
+ * fixed-point tile units (`positionOfNode`), with one extra SEAM waypoint spliced into every
+ * DIAGONAL leg that LEAVES AN ODD HALF-ROW. Such a leg spans rows `r±½ → r∓½` and crosses the
+ * integer row mid-leg — exactly where the stagger's triangle wave kinks — so interpolating the grid
+ * delta linearly would swing the mover a quarter-column sideways at the crossing. The seam is the
+ * world-straight midpoint of the edge (`(hx₁+hx₂)/4` columns) expressed at the integer row it
+ * crosses; with it each sub-leg stays inside one row interval, where linear grid motion IS straight
+ * on screen. Every other edge needs no seam: E/W stays on one row, a half-row vertical and an
+ * even-row diagonal stay inside a single row interval. Pure fixed-point.
  */
 function pathToWaypoints(terrain: TerrainGraph, path: ReadonlyArray<CellId>): Array<{ x: Fixed; y: Fixed }> {
   const waypoints: Array<{ x: Fixed; y: Fixed }> = [];
   let prev: { x: number; y: number } | undefined;
   for (const cell of path) {
     const c = terrain.coordsOf(cell);
-    if (prev !== undefined && Math.abs(c.y - prev.y) === 2) {
-      // A vertical step (only the N/S edge spans two rows, and it never changes the column) — splice
-      // the seam crossing so both sub-legs are world-straight. At the map's west border this seam can
-      // sit at grid x = −0.5 (column 0, even row — the world-vertical line hugs the border cells'
-      // outer edge): a legal transient position — every consumer clamps/truncates back into the grid.
-      const midX =
-        (prev.y & 1) === 0
-          ? fx.sub(fx.fromInt(prev.x), HALF_COLUMN)
-          : fx.add(fx.fromInt(prev.x), HALF_COLUMN);
-      waypoints.push({ x: midX, y: fx.fromInt((prev.y + c.y) / 2) });
+    if (prev !== undefined && Math.abs(c.y - prev.y) === 2 && (prev.y & 1) === 1) {
+      // hy₁ odd and hy₂ = hy₁±2 make (hy₁+hy₂)/4 the integer row the leg crosses; the edge midpoint's
+      // world x is (hx₁+hx₂)/4 columns (a quarter — exact in fixed point), converted to grid x by
+      // removing that row's stagger shift.
+      const rowY = fx.fromInt((prev.y + c.y) / 4);
+      const midWorldX = fx.div(fx.fromInt(prev.x + c.x), fx.fromInt(4));
+      waypoints.push({ x: fx.sub(midWorldX, staggerShift(rowY)), y: rowY });
     }
-    waypoints.push({ x: fx.fromInt(c.x), y: fx.fromInt(c.y) });
+    const p = positionOfNode(c.x, c.y);
+    waypoints.push({ x: p.x, y: p.y });
     prev = c;
   }
   return waypoints;

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Position } from '../../src/components/index.js';
-import { fx } from '../../src/core/fixed.js';
 import { type Entity, World } from '../../src/ecs/world.js';
+import { positionOfNode } from '../../src/index.js';
 import { TileBuckets } from '../../src/systems/spatial.js';
 
 /**
@@ -10,16 +10,19 @@ import { TileBuckets } from '../../src/systems/spatial.js';
  * contract these pin: the winner is the canonical (min-distance, then min-id) one a full scan would
  * pick, found by completing the whole minimum-distance ring; the `[minDist, maxDist]` band is honored
  * on both ends; and the search short-circuits past its radius (an empty query never scans forever).
+ * All coordinates and distances here are HALF-CELL NODE coords — the one integer grid the buckets
+ * key on (`nodeOfPosition`) and the ring metric measures over.
  */
 
-/** Build a World with a Position-only entity at each coordinate, returning the entities in creation
- *  (ascending-id) order so a test can name them by index. */
+/** Build a World with a Position-only entity at each half-cell NODE coordinate (minted exactly on
+ *  the lattice via `positionOfNode`), returning the entities in creation (ascending-id) order so a
+ *  test can name them by index. */
 function place(coords: ReadonlyArray<{ x: number; y: number }>): { world: World; ids: Entity[] } {
   const world = new World();
   const ids: Entity[] = [];
   for (const c of coords) {
     const e = world.create();
-    world.add(e, Position, { x: fx.fromInt(c.x), y: fx.fromInt(c.y) });
+    world.add(e, Position, positionOfNode(c.x, c.y));
     ids.push(e);
   }
   return { world, ids };

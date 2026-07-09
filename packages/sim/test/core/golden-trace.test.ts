@@ -17,7 +17,14 @@ import {
   Stockpile,
   Stump,
 } from '../../src/components/index.js';
-import { CORE_INVARIANTS, Simulation, type TerrainMap, checkInvariants, fx } from '../../src/index.js';
+import {
+  CORE_INVARIANTS,
+  Simulation,
+  type TerrainMap,
+  checkInvariants,
+  fx,
+  halfCellMapFromCells,
+} from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -99,7 +106,7 @@ function clearStores(): void {
 beforeEach(clearStores);
 
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
 }
 
 interface GoldenRun {
@@ -120,14 +127,15 @@ function runSlice(seed: number, ticks: number): GoldenRun {
   const sim = new Simulation({ seed, content: testContent(), map: grassMap(6, 1) });
 
   // Placement via the command log (CommandSystem applies these on tick 1) — the seam the UI uses.
-  sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 5, y: 0, tribe: VIKING });
-  sim.enqueue({ kind: 'placeBuilding', buildingType: SAWMILL, x: 4, y: 0, tribe: VIKING });
+  // Command coords are half-cell nodes: cell x on row 0 sits at node (2x, 0).
+  sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 10, y: 0, tribe: VIKING });
+  sim.enqueue({ kind: 'placeBuilding', buildingType: SAWMILL, x: 8, y: 0, tribe: VIKING });
   sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
-  sim.enqueue({ kind: 'spawnSettler', jobType: CARRIER, x: 1, y: 0, tribe: VIKING });
-  // The sawmill's operator (carpenter) is spawned standing ON the sawmill (x=4): the worker-presence
+  sim.enqueue({ kind: 'spawnSettler', jobType: CARRIER, x: 2, y: 0, tribe: VIKING });
+  // The sawmill's operator (carpenter) is spawned standing ON the sawmill (node 8): the worker-presence
   // gate runs the mill only while it is staffed, and the planner pins a settler on a workplace it
   // staffs so the carpenter stays put.
-  sim.enqueue({ kind: 'spawnSettler', jobType: CARPENTER, x: 4, y: 0, tribe: VIKING });
+  sim.enqueue({ kind: 'spawnSettler', jobType: CARPENTER, x: 8, y: 0, tribe: VIKING });
 
   // Finite FELLABLE wood nodes (no resource command exists yet — placed directly, like the lower
   // goldens). The wood good declares the felling lifecycle (chops + whole yield), so each tree is
@@ -171,15 +179,14 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   // (deposit into a store), 22 = pickup (lift out of a store / off a trunk). Entity 5 = woodcutter, 6 =
   // carrier (hauls planks to the HQ), 7 = carpenter (the mill's operator, self-servicing: it pickups the
   // HQ's stored wood into the mill and hauls finished planks back out). If this moves, a settler-economy
-  // mechanic changed — name it in the commit. Last move: WALK PACE + MOVEMENT INERTIA
-  // (packages/sim/src/systems/movement/movement.ts): the walk slowed from ⅛ to divCeil(ONE/12) per tick
-  // (the 12-frame walk-cycle anchor — one gait cycle per cell, 0.6 s at 20 Hz) and gained the gait ramp
-  // (accelerate from rest, shed speed through corners, brake into the final waypoint — PathFollow now
-  // carries `speed`/`hx`/`hy`). Every trip is longer, so the same 22/23/24 economy pattern spreads out
-  // (first chop 21 → 31) and the trace + hash move. Goods stay conserved (10 stored + 8 felled → 18
-  // planks, produced 18) and every core invariant holds every tick; the settled state hash shifts
-  // (1260b766 → e452b766). (The prior move, 1260b766, was the faithful multi-hit harvest +
-  // drop-on-ground.)
+  // mechanic changed — name it in the commit. Last move: HALF-CELL NAVIGATION (nav/terrain.ts): the
+  // grid doubled to the original's 2W×2H half-cell lattice, so every route runs finer legs (E/W ½
+  // column, N/S ½ row, the 51 px diagonal) and the de-stack/adopt geometry works in nodes — trip
+  // timings shift from the first carrier pickup on (104 → 117) while the on-screen pace is unchanged.
+  // Goods stay conserved (10 stored + 8 felled → 18 planks, produced 18), every core invariant holds
+  // every tick, and the SETTLED STATE HASH IS UNCHANGED (e452b766) — everything parks on the same
+  // cell-anchored positions with the same stocks. (The prior move, 1260b766 → e452b766, was walk pace
+  // + movement inertia.)
   const GOLDEN_TRACE: readonly string[] = [
     '20:7:22',
     '31:5:24',
@@ -194,81 +201,82 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     '95:5:24',
     '98:5:24',
     '102:5:22',
-    '104:6:22',
-    '104:7:22',
+    '117:6:22',
+    '117:7:22',
     '122:5:23',
-    '124:6:23',
-    '124:7:22',
+    '137:6:23',
     '142:5:22',
-    '144:7:23',
     '162:5:23',
-    '179:6:22',
     '182:5:22',
-    '199:6:23',
+    '188:6:22',
+    '192:7:22',
     '202:5:23',
-    '203:7:22',
-    '219:6:22',
-    '223:7:23',
-    '234:5:22',
-    '239:6:23',
-    '243:7:22',
-    '263:7:23',
-    '266:5:23',
-    '267:7:22',
-    '287:7:23',
-    '293:6:22',
-    '298:5:22',
-    '313:6:23',
-    '313:7:22',
-    '330:5:23',
-    '333:7:23',
-    '359:7:22',
-    '362:5:22',
-    '379:7:23',
-    '383:7:22',
-    '394:5:23',
-    '403:7:23',
-    '418:5:22',
-    '418:6:22',
-    '438:5:23',
-    '438:6:22',
-    '438:7:22',
-    '458:6:23',
-    '458:7:22',
-    '478:7:23',
-    '502:7:22',
-    '522:7:23',
-    '526:7:22',
-    '546:7:23',
-    '570:5:22',
-    '570:6:22',
-    '570:7:22',
-    '590:5:23',
-    '590:7:22',
-    '610:7:23',
-    '634:6:22',
-    '634:7:22',
-    '654:6:23',
-    '654:7:22',
-    '674:7:23',
-    '698:5:22',
-    '698:7:22',
-    '718:5:23',
-    '718:7:22',
-    '738:7:23',
-    '762:6:22',
-    '762:7:22',
-    '782:6:23',
-    '782:7:22',
-    '802:7:23',
-    '826:5:22',
-    '826:7:22',
-    '846:5:23',
-    '846:7:22',
-    '866:7:23',
-    '890:6:22',
-    '890:7:22',
-    '910:6:23',
+    '208:6:23',
+    '212:7:23',
+    '222:5:22',
+    '242:5:23',
+    '245:7:22',
+    '265:7:23',
+    '274:5:22',
+    '287:6:22',
+    '287:7:22',
+    '306:5:23',
+    '307:6:23',
+    '307:7:22',
+    '327:7:23',
+    '338:5:22',
+    '356:6:22',
+    '360:7:22',
+    '370:5:23',
+    '376:6:23',
+    '380:7:23',
+    '402:5:22',
+    '413:7:22',
+    '433:7:23',
+    '434:5:23',
+    '437:7:22',
+    '457:7:23',
+    '470:5:22',
+    '470:6:22',
+    '490:5:23',
+    '490:6:22',
+    '490:7:22',
+    '510:6:23',
+    '510:7:22',
+    '530:7:23',
+    '554:7:22',
+    '574:7:23',
+    '578:7:22',
+    '598:7:23',
+    '622:5:22',
+    '622:6:22',
+    '622:7:22',
+    '642:5:23',
+    '642:7:22',
+    '662:7:23',
+    '686:6:22',
+    '686:7:22',
+    '706:6:23',
+    '706:7:22',
+    '726:7:23',
+    '750:5:22',
+    '750:7:22',
+    '770:5:23',
+    '770:7:22',
+    '790:7:23',
+    '814:6:22',
+    '814:7:22',
+    '834:6:23',
+    '834:7:22',
+    '854:7:23',
+    '878:5:22',
+    '878:7:22',
+    '898:5:23',
+    '898:7:22',
+    '918:7:23',
+    '942:6:22',
+    '942:7:22',
+    '962:6:23',
   ];
 
   it('holds every core invariant on every tick', () => {
@@ -279,11 +287,9 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   it('matches the golden final state hash', () => {
     const run = runSlice(SEED, TICKS);
     // Intentional-change discipline: if this moves, a mechanic changed — name it in the commit.
-    // Moved by WALK PACE + MOVEMENT INERTIA (packages/sim/src/systems/movement/movement.ts): the walk
-    // slowed to divCeil(ONE/12) per tick and PathFollow gained the gait-ramp state (`speed`/`hx`/`hy`
-    // — new hashed fields), so every position and path in the settled state differs. Goods stay
-    // conserved (10 stored + 8 felled → 18 planks) and every core invariant holds every tick; the
-    // settled state hash shifts (1260b766 → e452b766).
+    // The HALF-CELL NAVIGATION migration left this hash UNCHANGED: routes and trip timings moved (see
+    // the trace note) but after ~1000 ticks the slice settles to the byte-identical end state — same
+    // cell-anchored rest positions, same stocks (18 planks in the HQ), same stumps.
     expect(run.hash).toBe('e452b766');
   });
 

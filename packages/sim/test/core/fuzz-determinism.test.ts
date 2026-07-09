@@ -10,6 +10,7 @@ import {
   Simulation,
   type TerrainMap,
   checkInvariants,
+  halfCellMapFromCells,
   replay,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -91,13 +92,17 @@ const COMMAND_EVERY = 4;
 /** Hash checkpoint cadence — a run-twice divergence is localized to a 50-tick window. */
 const CHECKPOINT_EVERY = 50;
 
+// A 12×12-CELL map — the graph is its 24×24 half-cell lattice, and command coords draw from the
+// full NODE range so the fuzz exercises off-centre anchors (buildings/spawns on any half-cell).
 const MAP_W = 12;
 const MAP_H = 12;
+const NODE_W = MAP_W * 2;
+const NODE_H = MAP_H * 2;
 const FUZZ_SEEDS = [11, 29, 47] as const;
 const TICKS = 300;
 
 function grassMap(width: number, height: number): TerrainMap {
-  return { width, height, typeIds: new Array(width * height).fill(GRASS) };
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
 }
 
 /** Clear every component store (module-level singletons) so runs can't leak into each other. */
@@ -117,8 +122,8 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 
 /** One random command — a pure function of `rng` alone (NEVER world state; see the module doc). */
 function nextCommand(rng: Rng): Command {
-  const x = rng.int(MAP_W);
-  const y = rng.int(MAP_H);
+  const x = rng.int(NODE_W);
+  const y = rng.int(NODE_H);
   const roll = rng.int(10);
   switch (roll) {
     case 0:

@@ -1,6 +1,13 @@
 import type { BuildingFootprint, TerrainMapFile } from '@vinland/data';
 import { type SceneTerrain, terrainMapToScene } from '@vinland/render';
-import { Simulation, type TerrainMap, components, fx } from '@vinland/sim';
+import {
+  type CellTerrainMap,
+  Simulation,
+  type TerrainMap,
+  components,
+  halfCellMapFromCells,
+  positionOfNode,
+} from '@vinland/sim';
 import { HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { PRIMARY_TRIBE } from '../game/rules.js';
 import {
@@ -38,18 +45,25 @@ const { Position, Resource } = components;
 const WIDTH = 6;
 const HEIGHT = 1;
 
-/** The fixed placement cells on the synthetic 6×1 strip: [HQ, joinery, wood gatherer, carrier, tree, tree]. */
+/** The fixed placement NODES on the synthetic 6×1 strip — the old cells' anchor nodes (row 0: node
+ *  (2x, 0)), so every Position lands exactly where it always did: [HQ, joinery, wood gatherer,
+ *  carrier, tree, tree]. */
 const STRIP_CELLS: ReadonlyArray<{ x: number; y: number }> = [
-  { x: 5, y: 0 },
-  { x: 4, y: 0 },
+  { x: 10, y: 0 },
+  { x: 8, y: 0 },
   { x: 0, y: 0 },
-  { x: 1, y: 0 },
   { x: 2, y: 0 },
-  { x: 3, y: 0 },
+  { x: 4, y: 0 },
+  { x: 6, y: 0 },
 ];
 
-function grassMap(): TerrainMap {
+/** The synthetic strip in its authored CELL shape (the render fallback projects this directly). */
+function grassCells(): CellTerrainMap {
   return { width: WIDTH, height: HEIGHT, typeIds: new Array(WIDTH * HEIGHT).fill(GRASS) };
+}
+
+function grassMap(): TerrainMap {
+  return halfCellMapFromCells(grassCells());
 }
 
 /**
@@ -61,16 +75,16 @@ function grassMap(): TerrainMap {
  * carry through; otherwise the synthetic grass strip is projected — the reproducible default for
  * `npm run shot` + the unit tests, which must not depend on the gitignored `content/`.
  */
-export function sliceTerrain(map?: TerrainMap | TerrainMapFile): SceneTerrain {
-  return terrainMapToScene(map ?? grassMap());
+export function sliceTerrain(map?: CellTerrainMap | TerrainMapFile): SceneTerrain {
+  return terrainMapToScene(map ?? grassCells());
 }
 
 /** The six placement slots the slice needs: HQ, joinery, wood gatherer, carrier, and two wood nodes. */
 const PLACEMENT_CELL_COUNT = 6;
 
 /**
- * The first `count` walkable cells of `map`, in canonical row-major id order, as integer `(x, y)`
- * tile coords — or `null` if the map has fewer than `count` walkable cells. "Walkable" is resolved
+ * The first `count` walkable half-cell NODES of `map`, in canonical row-major id order, as integer
+ * `(x, y)` node coords — or `null` if the map has fewer than `count` walkable nodes. "Walkable" is resolved
  * from the global sandbox landscape table (the same `walkable` flag `buildTerrainGraph` reads), so
  * the slice's entities land only on cells the sim can stand on — placing a building on water would
  * make the gatherer's path unreachable. Deterministic: a fixed scan order, no RNG.
@@ -221,7 +235,7 @@ export function runSlice(
   // committed shot PNG + the render integration test pin this minimal shape — `placeTree` would add both).
   for (const cell of [cellAt(4), cellAt(5)]) {
     const tree = sim.world.create();
-    sim.world.add(tree, Position, { x: fx.fromInt(cell.x), y: fx.fromInt(cell.y) });
+    sim.world.add(tree, Position, positionOfNode(cell.x, cell.y));
     sim.world.add(tree, Resource, { goodType: GOOD_WOOD, remaining: 4, harvestAtomic: HARVEST_ATOMIC });
   }
   sim.run(ticks);

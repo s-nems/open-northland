@@ -97,7 +97,9 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     const { sx, sy, rect } = screenScale(deps.canvas, deps.app.renderer.resolution);
     const w = screenToWorld(deps.camera(), (clientX - rect.left) * sx, (clientY - rect.top) * sy);
     const t = worldToTile(w.x, w.y, deps.elevation);
-    if (t.col < 0 || t.col >= deps.mapSize.width || t.row < 0 || t.row >= deps.mapSize.height) return null;
+    // worldToTile yields half-cell NODES — bound against the 2× node grid.
+    if (t.col < 0 || t.col >= deps.mapSize.width * 2 || t.row < 0 || t.row >= deps.mapSize.height * 2)
+      return null;
     return { col: t.col, row: t.row };
   };
 

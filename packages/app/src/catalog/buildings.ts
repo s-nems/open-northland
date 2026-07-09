@@ -1,4 +1,4 @@
-import { type Simulation, type TerrainMap, components } from '@vinland/sim';
+import { type CellTerrainMap, type Simulation, components } from '@vinland/sim';
 
 /**
  * The committed catalog of viking buildings — the SINGLE SOURCE OF TRUTH that maps a human name to the
@@ -118,8 +118,9 @@ export function resolveVikingBuilding(ref: number | string): VikingBuilding {
   return found;
 }
 
-/** An all-grass terrain grid of the given size (every cell walkable, buildable {@link GRASS}). */
-export function grassTerrain(width: number, height: number): TerrainMap {
+/** An all-grass CELL grid of the given size (every cell walkable, buildable {@link GRASS}) — the
+ *  scene-authoring shape; the sim seam upsamples it to half-cells. */
+export function grassTerrain(width: number, height: number): CellTerrainMap {
   return { width, height, typeIds: new Array(width * height).fill(GRASS) };
 }
 

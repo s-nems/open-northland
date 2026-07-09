@@ -1,4 +1,4 @@
-import { type Component, Simulation, components } from '@vinland/sim';
+import { type Component, Simulation, components, halfCellMapFromCells } from '@vinland/sim';
 import { sandboxContent } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
@@ -30,7 +30,8 @@ export function createSceneSim(scene: SceneDefinition): Simulation {
   const sim = new Simulation({
     seed: scene.seed,
     content: sandboxContent(scene.terrain),
-    map: scene.terrain,
+    // Scenes author cell grids; the sim navigates their half-cell lattice.
+    map: halfCellMapFromCells(scene.terrain),
   });
   scene.build(sim);
   return sim;
