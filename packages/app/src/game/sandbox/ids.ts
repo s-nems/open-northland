@@ -46,6 +46,10 @@ export const JOB_GATHERER_MUSHROOM = 25;
 export const JOB_CARRIER = 26;
 // Soldier jobs ride the REAL viking `jobtypes.ini` ids (soldiers 31..41) so the render's job→body map
 // (`ADULT_CHARACTER_BY_JOB`) draws each class's own warrior body + weapon animation set.
+// `JOB_SOLDIER` is the base, UNARMED soldier (`jobtypes.ini` type 31 `soldier_unarmed`): the single
+// profession the picker offers. A soldier's weapon (a later step) specializes it into a spear/sword/bow
+// class — only a soldier carries a weapon, so the base soldier stands unarmed until armed.
+export const JOB_SOLDIER = 31; // soldier_unarmed — the one player-selectable soldier profession
 export const JOB_SOLDIER_SPEAR = 33; // soldier_spear_iron
 export const JOB_SOLDIER_SWORD = 34; // soldier_sword_short
 export const JOB_SOLDIER_BROADSWORD = 35; // soldier_sword_long

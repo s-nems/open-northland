@@ -92,7 +92,6 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   let baked: SupersampledTexture | null = null;
 
   const ctx: UnitPanelModelContext = {
-    professions: opts.professions,
     buildings: opts.buildings,
     goods: opts.goods,
   };

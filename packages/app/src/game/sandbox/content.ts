@@ -18,6 +18,7 @@ import {
   MINE_LEVELS,
   STONE_DEPOSIT_UNITS,
 } from '../../catalog/mining.js';
+import { PROFESSIONS } from '../../catalog/professions.js';
 import { TERRAIN_BLOCKED, TERRAIN_IMPASSABLE, TERRAIN_MARGIN, TERRAIN_OPEN } from '../../catalog/terrain.js';
 import { HARVEST_TICKS } from '../../content/settler-gfx.js';
 import type { GoodRef } from '../../content/settler-gfx.js';
@@ -259,6 +260,13 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
   ]) {
     jobs.set(j.typeId, j);
   }
+  // The full player-assignable profession roster (`catalog/professions.ts`, transcribed from
+  // `jobtypes.ini`) so the profession picker's `setJob` LANDS for every offered profession — the sim
+  // silently no-ops an unknown jobType (`packages/sim` `setJob`). The gatherers/carrier/scene-soldiers
+  // above already define the functional jobs; this adds the base soldier + the production trades (they
+  // draw the civilian body and, lacking a workhouse in the sandbox, stand idle until the economy lands).
+  for (const p of PROFESSIONS)
+    if (!jobs.has(p.jobType)) jobs.set(p.jobType, { typeId: p.jobType, id: p.key });
   for (const j of extras.jobs ?? []) if (!jobs.has(j.typeId)) jobs.set(j.typeId, j);
 
   const tribes = new Map<

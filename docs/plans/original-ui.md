@@ -46,6 +46,27 @@ it off). Verified: unit tests for the
 new speed control + ring scale, Playwright pass at DPR 2 (cycle glyphs, pause wash on/off, ring
 size, selection/picking). Visual sign-off: user.
 
+Progress note — profession picker polish (2026-07-09, `feat/profession-select-ui`, user-requested, not
+a numbered step): the "Zmiana zawodu" picker (landed with step 5 as a plain DOM box) is reworked on four
+axes. (a) COMPLETE roster: a new clean-room `catalog/professions.ts` transcribes the assignable
+professions from `Data/logic/jobtypes.ini` (six gatherers + carrier + all production trades + one
+soldier), replacing the ~12-entry content-derived list; every offered profession is added to sandbox
+`content.jobs` so `setJob` actually lands (an unknown jobType is a silent sim no-op) — `test/professions.test.ts`
+guards against dead rows. (b) ONE soldier: the picker offers a single "Żołnierz" (unarmed base,
+`jobtypes.ini` type 31); the whole soldier band 31..41 resolves to it (a weapon specializes a soldier —
+only a soldier carries one, a civilian never does; weapons already resolve by `(tribe, jobType)`). (c)
+i18n: player strings move to a small `i18n/` message catalog (Polish `pol` only for now, shape ready for
+more languages); the details-panel profession label reads the SAME catalog so picker and panel can't
+drift. (d) STYLING: the DOM window now evokes the original parchment/rope selection windows — warm-wood
+fill, double rope-tan frame, engraved headline + close box, the shared serif UI face, category group
+headers — still a scrollable list. jobType numbering is a documented placeholder (four food trades whose
+real ids the synthetic gatherer band 20..25 shadows sit in a placeholder band) pending the global-content
+re-key (`docs/plans/global-content.md`); the fidelity anchor is each row's jobtypes.ini `source`. Added
+trades have no workhouse in the sandbox yet, so an assigned smith/baker stands idle until that economy
+lands (as the original gates a trade on its workshop). Verified: build + check + 1722 tests green; browser
+self-check (picker styled, 28 Polish rows in 5 groups; a scene soldier reads "Poddany — Żołnierz" in the
+details panel; no console errors). Visual/feel sign-off: pending user.
+
 Out of scope for this plan: the minimap (separate task) and the main menu. The frame-id map and
 geometry constants are our own metadata (committable); decoded original bytes are not (`content/`
 stays gitignored).

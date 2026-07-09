@@ -12,10 +12,10 @@ import {
 import { FixedTimestep, type SimEvent, type Simulation, type WorldSnapshot } from '@vinland/sim';
 import type { Application } from 'pixi.js';
 import { HARVEST_ATOMIC } from '../catalog/atomics.js';
+import { pickerEntries } from '../catalog/professions.js';
 import { createSoundDriver } from '../content/audio.js';
 import { loadIr } from '../content/ir.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
-import { professionsFromContent } from '../hud/details-panel/index.js';
 import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel/layout.js';
 import { mountAdminDebug } from './admin-debug/index.js';
 import type { CameraController } from './camera.js';
@@ -197,7 +197,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     mapSize: deps.mapSize,
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
     humanPlayer: HUMAN_PLAYER,
-    professions: professionsFromContent(sim.content),
+    professions: pickerEntries(),
     content: sim.content,
     enqueue: (command) => sim.enqueue(command),
     boundsOf: (ref) => renderer.entityBounds(ref), // pixel-accurate picking against the real sprite

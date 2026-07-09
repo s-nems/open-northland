@@ -2,8 +2,9 @@ import type { ContentSet } from '@vinland/data';
 import { type Camera, type ElevationField, type EntityBounds, buildSpriteScene } from '@vinland/render';
 import { type Command, type Entity, type WorldSnapshot, nodeOfPosition } from '@vinland/sim';
 import type { Application } from 'pixi.js';
+import type { PickerEntry } from '../catalog/professions.js';
 import { isBuilding, isSettler, ownerPlayerOf, positionOf } from '../game/snapshot.js';
-import { type Profession, type UnitPanel, mountUnitPanel } from '../hud/details-panel/index.js';
+import { type UnitPanel, mountUnitPanel } from '../hud/details-panel/index.js';
 import { screenScale } from './camera.js';
 import { el } from './overlay.js';
 import {
@@ -62,8 +63,8 @@ export interface UnitControlsOptions {
   readonly elevation?: ElevationField;
   /** The human player whose units are selectable/orderable. */
   readonly humanPlayer: number;
-  /** Professions the panel offers as one-click job changes. */
-  readonly professions: readonly Profession[];
+  /** The grouped profession-picker menu the action ring offers as one-click job changes. */
+  readonly professions: readonly PickerEntry[];
   /** Global content, used by the details panel for building/goods labels and per-building sections. */
   readonly content: ContentSet;
   /** Submit a command into the sim (the one-way seam). */
@@ -123,7 +124,6 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     // Adapt main's `screenScale(canvas, resolution)` to the panel's `backingScale(canvas)` option by
     // binding the renderer resolution (camera dropped the old zero-arg `backingScale`).
     backingScale: (c: HTMLCanvasElement) => screenScale(c, opts.app.renderer.resolution),
-    professions: opts.professions,
     buildings: opts.content.buildings,
     goods: opts.content.goods,
     onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),
