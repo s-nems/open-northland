@@ -18,7 +18,6 @@ import {
   nearestCell,
   nearestFreeNeighbour,
   tileKey,
-  translatedCellKeys,
   translatedCells,
 } from './geometry.js';
 import { resourceBlockedCells } from './resources.js';
@@ -189,63 +188,77 @@ export function dynamicBlockedCells(
 }
 
 /**
- * The precomputed obstacle sets a placement check reads — the resource + building bodies/zones the
- * new building's footprint must avoid, gathered ONCE from `world`+`content` and then reused across
- * every candidate anchor. A single `canPlaceBuilding` builds one throwaway; the placement-overlay
- * {@link placementProbe} builds one and probes the whole visible viewport against it (so the overlay
- * stays O(visible cells), not O(cells × entities)).
- *
- * All keys are geometry.ts's injective string {@link tileKey} — NOT a numeric `y*width+x` packing,
- * which would alias an off-map cell onto a real tile on the adjacent row (a footprint-less building
- * at a negative coordinate would then falsely reject a distant placement).
+ * The two ways a standing resource/building blocks a new placement — merged across entity KIND because
+ * {@link canPlaceAnchor} treats resource and building the same within each:
+ *  - OBSTACLE cells (resource WALK bodies + existing building FAMILY bodies) reject a candidate's
+ *    RESERVED zone — the "minimum distance from a node/wall";
+ *  - EXCLUSION cells (resource BUILD zones + existing building RESERVED zones) reject its FAMILY BODY.
+ */
+const OBSTACLE = 0;
+const EXCLUSION = 1;
+type BlockerChannel = typeof OBSTACLE | typeof EXCLUSION;
+
+/**
+ * Enumerate every (cell, channel) the world's standing resources and buildings contribute — the SINGLE
+ * definition of "what blocks placement where". Both the command gate's string sets
+ * ({@link collectPlacementBlockers}) and the overlay's dense masks ({@link memoizedPlacementGrid}) are
+ * stamped from THIS one pass, so the two representations can never disagree about which cells block.
+ * A footprint-less resource/building contributes its 1-cell anchor (the pre-footprint same-tile rule).
+ * Determinism: a pure enumeration over `world.query`; both consumers only take set UNIONS / mask writes
+ * (membership, no pick), so store-iteration order cannot change any later answer.
+ */
+function eachBlockerCell(
+  world: World,
+  content: ContentSet,
+  visit: (x: number, y: number, channel: BlockerChannel) => void,
+): void {
+  for (const e of world.query(Resource, Position)) {
+    const p = world.get(e, Position);
+    const { hx, hy } = nodeOfPosition(p.x, p.y);
+    const fp = world.tryGet(e, ResourceFootprint);
+    if (fp === undefined) {
+      visit(hx, hy, OBSTACLE); // legacy anchor-only resource keeps the old same-tile rule
+      continue;
+    }
+    for (const c of fp.walk) visit(hx + c.dx, hy + c.dy, OBSTACLE);
+    for (const c of fp.build) visit(hx + c.dx, hy + c.dy, EXCLUSION);
+  }
+  for (const e of world.query(Building, Position)) {
+    const b = world.get(e, Building);
+    const p = world.get(e, Position);
+    const { hx, hy } = nodeOfPosition(p.x, p.y);
+    const fp = buildingFootprintOf(content, b.buildingType);
+    const body = fp?.familyBody.length ? fp.familyBody : ANCHOR_ONLY;
+    const zone = fp?.reserved.length ? fp.reserved : ANCHOR_ONLY;
+    for (const c of body) visit(hx + c.dx, hy + c.dy, OBSTACLE);
+    for (const c of zone) visit(hx + c.dx, hy + c.dy, EXCLUSION);
+  }
+}
+
+/**
+ * The command-gate obstacle sets — one throwaway per {@link canPlaceBuilding} check (which probes a
+ * SINGLE anchor). Injective string {@link tileKey}s, NOT a numeric `y*width+x` packing (which would
+ * alias an off-map cell onto a real tile a row over — a footprint-less building at a negative
+ * coordinate would then falsely reject a distant placement). The overlay probes thousands of anchors
+ * per frame, so it uses the dense-mask twin ({@link PlacementGrid}) instead.
  */
 interface PlacementBlockers {
   readonly terrain: TerrainGraph;
-  /** Cells a resource WALK body (or a footprint-less resource's anchor) occupies — a building's
-   *  reserved zone may not touch these (the "minimum distance from a node"). */
-  readonly resourceBodies: Set<string>;
-  /** Cells a resource BUILD-exclusion zone covers — a building's family body may not touch these. */
-  readonly resourceZones: Set<string>;
-  /** Union of every existing building's family body (a footprint-less building: its 1-cell anchor). */
-  readonly buildingBodies: Set<string>;
-  /** Union of every existing building's reserved zone (a footprint-less building: its 1-cell anchor). */
-  readonly buildingZones: Set<string>;
+  readonly obstacles: Set<string>;
+  readonly exclusions: Set<string>;
 }
 
-/** Gather the resource + building obstacle sets from the world once. Determinism: set UNIONS over
- *  `world.query` (membership only, no pick), so store-iteration order cannot change any later answer. */
 function collectPlacementBlockers(
   world: World,
   content: ContentSet,
   terrain: TerrainGraph,
 ): PlacementBlockers {
-  const resourceBodies = new Set<string>();
-  const resourceZones = new Set<string>();
-  for (const e of world.query(Resource, Position)) {
-    const p = world.get(e, Position);
-    const { hx: rx, hy: ry } = nodeOfPosition(p.x, p.y);
-    const fp = world.tryGet(e, ResourceFootprint);
-    if (fp === undefined) {
-      resourceBodies.add(tileKey(rx, ry)); // legacy anchor-only resource keeps the old same-tile rule
-      continue;
-    }
-    for (const key of translatedCellKeys(fp.walk, rx, ry)) resourceBodies.add(key);
-    for (const key of translatedCellKeys(fp.build, rx, ry)) resourceZones.add(key);
-  }
-  const buildingBodies = new Set<string>();
-  const buildingZones = new Set<string>();
-  for (const e of world.query(Building, Position)) {
-    const b = world.get(e, Building);
-    const p = world.get(e, Position);
-    const { hx: ox, hy: oy } = nodeOfPosition(p.x, p.y);
-    const fp = buildingFootprintOf(content, b.buildingType);
-    // A footprint-less building is a 1-cell body/zone on its anchor.
-    const body = fp?.familyBody.length ? fp.familyBody : ANCHOR_ONLY;
-    const zone = fp?.reserved.length ? fp.reserved : ANCHOR_ONLY;
-    for (const c of body) buildingBodies.add(tileKey(ox + c.dx, oy + c.dy));
-    for (const c of zone) buildingZones.add(tileKey(ox + c.dx, oy + c.dy));
-  }
-  return { terrain, resourceBodies, resourceZones, buildingBodies, buildingZones };
+  const obstacles = new Set<string>();
+  const exclusions = new Set<string>();
+  eachBlockerCell(world, content, (x, y, channel) => {
+    (channel === OBSTACLE ? obstacles : exclusions).add(tileKey(x, y));
+  });
+  return { terrain, obstacles, exclusions };
 }
 
 /**
@@ -278,21 +291,17 @@ function canPlaceAnchor(
   y: number,
 ): boolean {
   const { terrain } = blockers;
-  // 1. The reserved zone must lie on the map, on buildable ground, and clear of node/wall bodies.
+  // 1. The reserved zone must lie on the map, on buildable ground, and clear of node/wall OBSTACLES.
   for (const c of footprint.reserved) {
     const cx = x + c.dx;
     const cy = y + c.dy;
     if (!terrain.inBounds(cx, cy)) return false; // zone off the map edge
     if (!terrain.isBuildable(terrain.cellAt(cx, cy))) return false; // blocking terrain too close
-    const key = tileKey(cx, cy);
-    if (blockers.resourceBodies.has(key)) return false; // a tree/stone/ore/water node's body
-    if (blockers.buildingBodies.has(key)) return false; // another building's walls in my zone
+    if (blockers.obstacles.has(tileKey(cx, cy))) return false; // a resource body or a building's walls
   }
-  // 2. My family body must stay clear of resource + building exclusion zones (the symmetric margin).
+  // 2. My family body must stay clear of resource + building EXCLUSION zones (the symmetric margin).
   for (const c of footprint.familyBody) {
-    const key = tileKey(x + c.dx, y + c.dy);
-    if (blockers.resourceZones.has(key)) return false;
-    if (blockers.buildingZones.has(key)) return false; // my walls in another building's zone
+    if (blockers.exclusions.has(tileKey(x + c.dx, y + c.dy))) return false;
   }
   return true;
 }
@@ -340,7 +349,7 @@ const BLOCKER_VERSION_STRIDE = 2 ** 26;
  * added or removed. Buildings and resources never move once placed, and `familyBody`/`reserved` are
  * the union across a type's whole level chain (schema.ts) — so a level-up (an in-place `buildingType`
  * swap) leaves the set unchanged. That makes the two component generations an EXACT signal for the
- * obstacle sets: the overlay and {@link memoizedBlockers} both reuse their last result until this
+ * obstacle sets: the overlay and {@link memoizedPlacementGrid} both reuse their last result until this
  * value moves, instead of re-deriving every tick. Read-only + deterministic (component generations
  * are a pure function of the mutation history); never hashed, never a sim decision.
  */
@@ -349,47 +358,105 @@ export function placementBlockerVersion(world: World): number {
 }
 
 /**
- * Per-world memo of the placement obstacle sets, keyed by the {@link placementBlockerVersion} they were
- * gathered at. The overlay probes them every RAF frame (frames outrun ticks; a paused/hovering build
- * never ticks) — without this each frame would re-scan every Resource + Building on the map (an
- * O(entities) whole-map pass per frame — the perf/architecture review's finding). Keying on the
- * blocker version (not the tick) means a running sim whose buildings/resources are unchanged reuses the
- * sets across ticks too, and a DIRECT `world.add`/`remove` (the fixture idiom) invalidates them the
- * moment it bumps a generation. A pure read-path cache: it feeds only the app overlay, never a sim
- * decision, so it is not hashed and needs no `verifyCaches` registration.
+ * The overlay's DENSE obstacle representation: one byte per half-cell node (`terrain.width×height`,
+ * row-major `y*width+x` — the same index `TerrainGraph.cellAt` mints), `1` iff that node is an
+ * OBSTACLE / EXCLUSION cell. Stamped from the same {@link eachBlockerCell} pass the command gate keys
+ * as strings, but read back as an O(1) typed-array index in the hot loop instead of a `tileKey`
+ * string allocation + `Set<string>` probe. THAT is the fix for the build-wash freeze: re-probing a
+ * whole visible band for a barracks-scale footprint drops from ~90 ms to ~10 ms (measured), so opening
+ * the wash and panning while placing no longer stutter. Off-map blocker cells are simply not stamped —
+ * a candidate whose reserved cell is off-map is rejected by the bounds check first, so they can never
+ * be queried. Terrain buildability stays a live `isBuildable()` call (static, already a grid). */
+interface PlacementGrid {
+  readonly terrain: TerrainGraph;
+  readonly obstacle: Uint8Array;
+  readonly exclusion: Uint8Array;
+}
+
+/** The dense twin of {@link canPlaceAnchor} — same rule, read from the mask grid. Kept in lockstep
+ *  with the sparse version by the `placementProbe matches canPlaceBuilding at every anchor` test. */
+function canPlaceOnGrid(grid: PlacementGrid, footprint: BuildingFootprint, x: number, y: number): boolean {
+  const { terrain, obstacle, exclusion } = grid;
+  const w = terrain.width;
+  const h = terrain.height;
+  // 1. Reserved zone: on the map, on buildable ground, clear of OBSTACLE nodes.
+  for (const c of footprint.reserved) {
+    const cx = x + c.dx;
+    const cy = y + c.dy;
+    if (cx < 0 || cy < 0 || cx >= w || cy >= h) return false; // zone off the map edge
+    if (!terrain.isBuildable(terrain.cellAt(cx, cy))) return false; // blocking terrain too close
+    if (obstacle[cy * w + cx] === 1) return false; // a resource body or a building's walls
+  }
+  // 2. Family body: clear of EXCLUSION zones. familyBody ⊆ reserved, so every cell here is already
+  //    proven in-bounds by loop 1 — the guard only shields a hand-authored footprint that breaks that.
+  for (const c of footprint.familyBody) {
+    const cx = x + c.dx;
+    const cy = y + c.dy;
+    if (cx >= 0 && cy >= 0 && cx < w && cy < h && exclusion[cy * w + cx] === 1) return false;
+  }
+  return true;
+}
+
+/**
+ * Per-world memo of the overlay's dense placement grid, keyed by the {@link placementBlockerVersion} it
+ * was stamped at. The overlay probes it every RAF frame (frames outrun ticks; a paused/hovering build
+ * never ticks) — without the memo each frame would re-scan every Resource + Building on the map (an
+ * O(entities) whole-map pass per frame — the perf/architecture review's finding). Keying on the blocker
+ * version (not the tick) means a running sim whose buildings/resources are unchanged reuses the grid
+ * across ticks too, and a DIRECT `world.add`/`remove` (the fixture idiom) invalidates it the moment it
+ * bumps a generation. The mask arrays are REUSED across rebuilds (same world+terrain) — a resource
+ * depleting mid-placement clears + re-stamps rather than churning a map-sized allocation. A pure
+ * read-path cache: it feeds only the app overlay, never a sim decision, so it is not hashed and needs
+ * no `verifyCaches` registration. Built lazily on the first probe, so it costs nothing outside build mode.
  */
-interface BlockerMemo {
+interface GridMemo {
   version: number;
   content: ContentSet;
   terrain: TerrainGraph;
-  blockers: PlacementBlockers;
+  grid: PlacementGrid;
 }
-const blockerMemo = new WeakMap<World, BlockerMemo>();
+const gridMemo = new WeakMap<World, GridMemo>();
 
-function memoizedBlockers(world: World, content: ContentSet, terrain: TerrainGraph): PlacementBlockers {
+function memoizedPlacementGrid(world: World, content: ContentSet, terrain: TerrainGraph): PlacementGrid {
   const version = placementBlockerVersion(world);
-  const cached = blockerMemo.get(world);
+  const cached = gridMemo.get(world);
   if (
     cached !== undefined &&
     cached.version === version &&
     cached.content === content &&
     cached.terrain === terrain
   ) {
-    return cached.blockers;
+    return cached.grid;
   }
-  const blockers = collectPlacementBlockers(world, content, terrain);
-  blockerMemo.set(world, { version, content, terrain, blockers });
-  return blockers;
+  const size = terrain.width * terrain.height;
+  let grid: PlacementGrid;
+  if (cached?.grid.terrain === terrain && cached.grid.obstacle.length === size) {
+    // Reuse last grid's arrays (terrain never changes per world), so a rebuild is a clear + re-stamp,
+    // not a fresh map-sized allocation churned every time a resource depletes mid-placement.
+    cached.grid.obstacle.fill(0);
+    cached.grid.exclusion.fill(0);
+    grid = cached.grid;
+  } else {
+    grid = { terrain, obstacle: new Uint8Array(size), exclusion: new Uint8Array(size) };
+  }
+  const w = terrain.width;
+  const h = terrain.height;
+  eachBlockerCell(world, content, (x, y, channel) => {
+    if (x < 0 || y < 0 || x >= w || y >= h) return; // off-map cells are never queried (see canPlaceOnGrid)
+    (channel === OBSTACLE ? grid.obstacle : grid.exclusion)[y * w + x] = 1;
+  });
+  gridMemo.set(world, { version, content, terrain, grid });
+  return grid;
 }
 
 /**
  * Build a {@link PlacementProbe} for `buildingType` — resolve its footprint and snapshot the world's
- * obstacle sets, so the app's build-mode overlay can probe every visible tile against the exact same
- * rule the `placeBuilding` command gates on ({@link canPlaceBuilding}), without rescanning the world
- * per cell. The obstacle sets are memoized per {@link placementBlockerVersion}, so the once-per-frame
- * probe build re-scans every entity only when a building/resource actually appears or disappears —
- * not every tick, and not every frame while the world is unchanged. A footprint-less type always
- * reports placeable (its command-time behavior).
+ * obstacle cells into a dense mask grid, so the app's build-mode overlay can probe every visible tile
+ * against the exact same rule the `placeBuilding` command gates on ({@link canPlaceBuilding}), reading
+ * O(1) typed-array masks instead of re-scanning the world per cell. The grid is memoized per
+ * {@link placementBlockerVersion}, so it is re-stamped only when a building/resource actually appears
+ * or disappears — not every tick, and not every frame while the world is unchanged. A footprint-less
+ * type always reports placeable (its command-time behavior).
  */
 export function placementProbe(
   world: World,
@@ -399,6 +466,6 @@ export function placementProbe(
 ): PlacementProbe {
   const footprint = buildingFootprintOf(content, buildingType);
   if (footprint === undefined) return { canPlace: () => true };
-  const blockers = memoizedBlockers(world, content, terrain);
-  return { canPlace: (x, y) => canPlaceAnchor(blockers, footprint, x, y) };
+  const grid = memoizedPlacementGrid(world, content, terrain);
+  return { canPlace: (x, y) => canPlaceOnGrid(grid, footprint, x, y) };
 }

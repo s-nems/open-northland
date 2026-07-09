@@ -49,16 +49,6 @@ export function translatedCells(
   return out;
 }
 
-export function translatedCellKeys(
-  cells: readonly FootprintCell[],
-  anchorX: number,
-  anchorY: number,
-): Set<string> {
-  const out = new Set<string>();
-  for (const c of cells) out.add(tileKey(anchorX + c.dx, anchorY + c.dy));
-  return out;
-}
-
 export function nearestCell(
   terrain: TerrainGraph,
   candidates: readonly CellId[],
