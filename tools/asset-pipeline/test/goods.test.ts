@@ -4,7 +4,8 @@ import { resolveGoodIcons } from '../src/stages/goods.js';
 /**
  * The good→icon join rule ({@link resolveGoodIcons}): a good's store icon is the state-1 (smallest) bob of
  * the `[GfxLandscape]` "good pile" record whose `logicType` equals the good's `landscapeType`, recoloured
- * through that record's palette. Exercised on hand-built fixtures so the join is pinned without the game data.
+ * through that record's palette; its `fillFrames` are that record's per-state bobs ordered fewest→most (the
+ * on-map heap grows through them). Exercised on hand-built fixtures so the join is pinned without game data.
  */
 describe('resolveGoodIcons', () => {
   const pile = (
@@ -20,9 +21,10 @@ describe('resolveGoodIcons', () => {
     frames: states.map(([state, bob]) => ({ state, bobIds: [bob] })),
   });
 
-  it('binds a good to its state-1 pile bob + palette by landscapeType↔logicType', () => {
+  it('binds a good to its state-1 icon + all growth-state fillFrames (fewest→most) by landscapeType↔logicType', () => {
     const goods = [{ id: 'wood', landscapeType: 7 }];
-    // States out of order + a larger pile first: the join must pick state 1, not the file-first frame.
+    // States out of order + a larger pile first: the join must pick state 1 for the icon, and order the
+    // fillFrames by ASCENDING state (fewest→most units), not by the file-first frame.
     const gfx = [
       pile(7, 'goods_wood', [
         [5, 84],
@@ -30,7 +32,9 @@ describe('resolveGoodIcons', () => {
         [3, 82],
       ]),
     ];
-    expect(resolveGoodIcons(goods, gfx)).toEqual({ wood: { frame: 40, palette: 'goods_wood' } });
+    expect(resolveGoodIcons(goods, gfx)).toEqual({
+      wood: { frame: 40, palette: 'goods_wood', fillFrames: [40, 82, 84] },
+    });
   });
 
   it('omits goods with no landscapeType, no matching pile, or a non-ls_goods record', () => {
@@ -50,6 +54,8 @@ describe('resolveGoodIcons', () => {
       pile(17, 'goods_stone', [[1, 15]]), // the real good pile — wins
       pile(17, 'goods_stone_alt', [[1, 99]]), // same logicType, later — must NOT override
     ];
-    expect(resolveGoodIcons(goods, gfx)).toEqual({ stone: { frame: 15, palette: 'goods_stone' } });
+    expect(resolveGoodIcons(goods, gfx)).toEqual({
+      stone: { frame: 15, palette: 'goods_stone', fillFrames: [15] },
+    });
   });
 });

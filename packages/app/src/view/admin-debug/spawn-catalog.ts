@@ -141,8 +141,9 @@ export const GOODS_ENTRIES: readonly GoodEntry[] = [
   ...EXTENDED_GOODS.map((g) => ({ good: g.typeId, label: g.name })),
 ];
 
-/** Units dropped per admin click — a small round pile, like the in-game goods tool. */
-export const ADMIN_DROP_AMOUNT = 10;
+/** Units dropped per admin click — ONE, like the in-game goods tool: each click adds a single unit and the
+ *  sim stacks repeat clicks on the same tile up to its ground-stack cap, so the pile grows one at a time. */
+export const ADMIN_DROP_AMOUNT = 1;
 
 /** Build the `dropGood` command for a good at a tile — the pure command the admin palette enqueues. */
 export function goodDropCommand(good: number, x: number, y: number): Command {

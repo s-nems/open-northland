@@ -9,8 +9,9 @@ const BANNER_WIDTH = 260;
 const BANNER_OFFSET_Y = 2;
 const BANNER_TEXT_INSET_Y = 3;
 
-/** Units dropped per click. A creative tool, so a small round pile — nothing depends on the exact value. */
-const DROP_AMOUNT = 5;
+/** Units dropped per click — ONE, so each click adds a single unit to the pile on that tile (the sim stacks
+ *  repeat clicks up to its ground-stack cap). Click the same tile again to grow the heap. */
+const DROP_AMOUNT = 1;
 
 export interface GoodsDropDeps {
   readonly ctx: PanelContext;

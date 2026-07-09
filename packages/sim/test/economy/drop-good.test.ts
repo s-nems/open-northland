@@ -1,16 +1,18 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
-import { GroundDrop, Position, Stockpile } from '../../src/components/index.js';
+import { Building, GroundDrop, Position, Stockpile } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation, cellAnchorNode } from '../../src/index.js';
+import { MAX_GROUND_STACK } from '../../src/systems/agents/effects-goods.js';
 
 /**
- * `dropGood` — the "place this good on the ground" order. It drops a loose good pile (a bare
- * {@link Stockpile} + {@link Position} + {@link GroundDrop}) at a tile, the SAME on-the-ground shape a
- * felled trunk / chipped ore takes, so the existing pickup/porter/delivery machinery hauls it off
- * unchanged. Bad input (an unknown good, a non-positive amount) is an id-neutral skip, still logged for
- * faithful replay — the same stance as an unknown building/resource id.
+ * `dropGood` — the "place this good on the ground" order. It drops a loose good pile as a bare
+ * {@link Stockpile} + {@link Position} (NO {@link GroundDrop}/{@link Building} marker), so the pile draws as
+ * a per-fill heap that GROWS with its contents and rests in place (not a felled-trunk pickup source). A
+ * repeat drop of the same good on the same tile STACKS onto the existing pile, capped at
+ * {@link MAX_GROUND_STACK}, so one-unit clicks pile up rather than littering an entity per click. Bad input
+ * (an unknown good, a non-positive amount) is an id-neutral skip, still logged for faithful replay.
  */
 
 const WOOD = 5;
@@ -48,22 +50,66 @@ function fresh(seed = 1): Simulation {
   return new Simulation({ seed, content: dropContent() });
 }
 
+/** The single loose ground pile (a bare Stockpile+Position with no building/trunk marker) in the world. */
+function onlyPile(sim: Simulation): Entity {
+  const piles = [...sim.world.query(Stockpile, Position)].filter(
+    (e) => !sim.world.has(e, Building) && !sim.world.has(e, GroundDrop),
+  );
+  expect(piles).toHaveLength(1);
+  return piles[0] as Entity;
+}
+
 describe('dropGood', () => {
-  it('drops a loose good pile: a Stockpile + GroundDrop + Position at the target tile', () => {
+  it('drops a loose bare-stockpile pile (no GroundDrop/Building) at the target tile', () => {
     const sim = fresh();
     // Command coords are half-cell nodes; cell (6,7)'s anchor node sits exactly on tile (6,7).
     const anchor = cellAnchorNode(6, 7);
     sim.enqueue({ kind: 'dropGood', good: WOOD, x: anchor.hx, y: anchor.hy, amount: 4 });
     sim.step();
 
-    const piles = [...sim.world.query(GroundDrop)];
-    expect(piles).toHaveLength(1);
-    const pile = piles[0] as Entity;
-    expect(sim.world.get(pile, GroundDrop).goodType).toBe(WOOD);
+    const pile = onlyPile(sim);
+    // A loose pile: no felled-trunk marker (draws as a growing heap, rests in place), no building.
+    expect(sim.world.has(pile, GroundDrop)).toBe(false);
+    expect(sim.world.has(pile, Building)).toBe(false);
     // The pile holds exactly the dropped amount of the dropped good — nothing conjured, nothing lost.
     expect(sim.world.get(pile, Stockpile).amounts.get(WOOD)).toBe(4);
     const pos = sim.world.get(pile, Position);
     expect([pos.x, pos.y]).toEqual([6 * PIXELS_PER_TILE, 7 * PIXELS_PER_TILE]);
+  });
+
+  it('stacks a repeat drop of the same good on the same tile into ONE pile (one-unit clicks pile up)', () => {
+    const sim = fresh();
+    const anchor = cellAnchorNode(5, 5);
+    for (let i = 0; i < 3; i++) {
+      sim.enqueue({ kind: 'dropGood', good: WOOD, x: anchor.hx, y: anchor.hy, amount: 1 });
+    }
+    sim.step();
+
+    const pile = onlyPile(sim); // one entity, not three
+    expect(sim.world.get(pile, Stockpile).amounts.get(WOOD)).toBe(3);
+  });
+
+  it('caps a stacked pile at MAX_GROUND_STACK (extra drops are absorbed, not overflowed)', () => {
+    const sim = fresh();
+    const anchor = cellAnchorNode(2, 2);
+    for (let i = 0; i < MAX_GROUND_STACK + 3; i++) {
+      sim.enqueue({ kind: 'dropGood', good: WOOD, x: anchor.hx, y: anchor.hy, amount: 1 });
+    }
+    sim.step();
+
+    const pile = onlyPile(sim);
+    expect(sim.world.get(pile, Stockpile).amounts.get(WOOD)).toBe(MAX_GROUND_STACK);
+  });
+
+  it('does NOT merge a different good onto an existing pile (each good keeps its own heap)', () => {
+    const sim = fresh();
+    const anchor = cellAnchorNode(3, 3);
+    sim.enqueue({ kind: 'dropGood', good: WOOD, x: anchor.hx, y: anchor.hy, amount: 2 });
+    sim.enqueue({ kind: 'dropGood', good: STONE, x: anchor.hx, y: anchor.hy, amount: 2 });
+    sim.step();
+
+    const piles = [...sim.world.query(Stockpile, Position)].filter((e) => !sim.world.has(e, Building));
+    expect(piles).toHaveLength(2); // two separate heaps on the same tile — neither overwritten
   });
 
   it('skips a non-positive amount (id-neutral, still logged for faithful replay)', () => {

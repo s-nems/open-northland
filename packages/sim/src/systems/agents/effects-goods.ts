@@ -1,4 +1,5 @@
 import {
+  Building,
   Carrying,
   Felling,
   GroundDrop,
@@ -93,6 +94,46 @@ export function dropGroundPile(world: World, x: Fixed, y: Fixed, goodType: numbe
   world.add(pile, Position, { x, y });
   world.add(pile, Stockpile, { amounts: new Map([[goodType, amount]]) });
   world.add(pile, GroundDrop, { goodType });
+  return pile;
+}
+
+/**
+ * The most units a loose PLAYER-dropped ground pile can hold. The `ls_goods` heap has this many growth
+ * states (a single-unit heap at fill 1, a full one at {@link MAX_GROUND_STACK}), so a hand-placed pile can't
+ * grow past what its graphic can show — the drop caps here and further drops on the same tile are no-ops.
+ * Source basis: `ls_goods.bmd` carries 5 fill states per good pile (the pipeline's goods stage).
+ */
+export const MAX_GROUND_STACK = 5;
+
+/**
+ * Drop `amount` of `goodType` as a loose ground pile at (x,y), STACKING onto an existing loose pile of the
+ * same good already on that tile (up to {@link MAX_GROUND_STACK}) instead of littering a fresh entity per
+ * drop — the assembly the `dropGood` command routes through (a player/admin placing goods by hand, one unit
+ * per click). A loose pile is a bare {@link Stockpile}+{@link Position} with NO {@link GroundDrop}/
+ * {@link Building} marker: it draws as a per-fill heap that GROWS with its contents and just rests there
+ * (neither a felled-trunk pickup source nor a building delivery sink), so placed goods stay put and visibly
+ * pile up — distinct from {@link dropGroundPile}'s haulable felled-trunk shape.
+ *
+ * Determinism: the pile to stack onto is the first match in canonical id order ({@link World.canonicalEntities}),
+ * a which-entity-wins pick that MUST be canonical (AGENTS.md). Only a pile holding this good (or nothing) is
+ * merged — a heap of a different good on the same tile is left alone, so no good is ever overwritten. Returns
+ * the stacked/created pile. Pure over entity state; no RNG/wall-clock.
+ */
+export function dropOrStackGood(world: World, x: Fixed, y: Fixed, goodType: number, amount: number): Entity {
+  for (const e of world.canonicalEntities()) {
+    if (world.has(e, GroundDrop) || world.has(e, Building)) continue; // a trunk / a building store — not ours
+    const stock = world.tryGet(e, Stockpile);
+    const pos = world.tryGet(e, Position);
+    if (stock === undefined || pos === undefined) continue;
+    if (pos.x !== x || pos.y !== y) continue; // a different tile
+    const have = stock.amounts.get(goodType) ?? 0;
+    if (have <= 0 && stock.amounts.size > 0) continue; // holds a DIFFERENT good — never overwrite it
+    stock.amounts.set(goodType, Math.min(MAX_GROUND_STACK, have + amount));
+    return e;
+  }
+  const pile = world.create();
+  world.add(pile, Position, { x, y });
+  world.add(pile, Stockpile, { amounts: new Map([[goodType, Math.min(MAX_GROUND_STACK, amount)]]) });
   return pile;
 }
 

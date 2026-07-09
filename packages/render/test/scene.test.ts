@@ -103,10 +103,10 @@ describe('buildScene', () => {
     expect(order).toEqual(['resource', 'settler']); // node behind, settler in front
   });
 
-  it('paints a delivery flag IN FRONT of the ground drops on its cell, overriding id order', () => {
-    // The flag (bare Stockpile, id 3) sits on the same cell as a loose ore/log drop (Stockpile+GroundDrop,
-    // id 4). The flag has the LOWER id, so id order would draw it behind the drop; the paint bias lifts the
-    // flag in front (a stockpile outranks a grounddrop).
+  it('paints a bare stockpile pile IN FRONT of the ground drops on its cell, overriding id order', () => {
+    // The bare pile (Stockpile, id 3) sits on the same cell as a loose ore/log drop (Stockpile+GroundDrop,
+    // id 4). The pile has the LOWER id, so id order would draw it behind the drop; the paint bias lifts the
+    // stockpile in front (a stockpile outranks a grounddrop).
     const scene = buildScene(
       snapshotOf([
         entity(3, 1, 1, { Stockpile: { amounts: [[1, 2]] } }),

@@ -836,9 +836,14 @@ describe('resolveStockpileDraw — per-good ground piles + delivery flag', () =>
     expect(resolveStockpileDraw(binding, pile(999, 3))).toEqual({ bob: 0 });
   });
 
-  it('orders a filled delivery flag as heap first, flag second so the marker stays visible', () => {
+  it('draws a filled loose pile as its heap ALONE — no flag planted through the goods', () => {
     expect(resolveStockpileLayerDraws(binding, pile(5, 3))).toEqual([
       { bob: 2, layer: 'ls_goods.goods_wood' },
+    ]);
+  });
+
+  it('draws an EMPTY pile as the flag marker alone (a designated collection point with nothing in it)', () => {
+    expect(resolveStockpileLayerDraws(binding, pile())).toEqual([
       { bob: 33, layer: 'ls_temp.human_player01' },
     ]);
   });
