@@ -1,5 +1,4 @@
 import type { Simulation } from '@vinland/sim';
-import { components } from '@vinland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { STORABLE_EXTENDED_GOODS } from '../catalog/goods.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
@@ -16,10 +15,8 @@ import {
   dropSandboxGood,
   placeSandboxBuilding,
 } from '../game/sandbox/index.js';
-import { countComponent } from './sandbox-queries.js';
+import { countGroundPiles } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
-
-const { GroundDrop } = components;
 
 /**
  * The GLOBAL goods-catalog scene: proves the whole original goods catalog is available in every scene —
@@ -61,7 +58,8 @@ const DROP_GOODS: readonly number[] = [
 const GRID_ORIGIN = { x: 4, y: 12 };
 const GRID_COLUMNS = 8;
 const GRID_STEP = 3;
-/** A varied per-pile amount so adjacent stacks differ (1..5) — nothing depends on the exact value. */
+/** A varied per-pile amount (1..5) so adjacent heaps stand at different heights — the pile graphic grows
+ *  with its fill, so this shows the full range of growth states across the grid. */
 const AMOUNT_CYCLE = 5;
 
 function dropTile(index: number): { x: number; y: number } {
@@ -101,7 +99,7 @@ export const goodsCatalogScene: SceneDefinition = {
   checklist: [
     'Kliknij magazyn (u góry) — panel „Magazyn" pokazuje surowce z ikonkami.',
     'Zakładki kategorii (Żywność / Napoje / Surowce / Budulec / Narzędzia / Wyroby / Wojsko / Inne) przełączają widoczne surowce; każda ma swoje towary.',
-    'Na ziemi leży siatka stosów RÓŻNYCH surowców (drewno, kamień, żelazo, skóra, chleb, miecze, zbroje…), każdy z własną grafiką stosu.',
+    'Na ziemi leży siatka stosów RÓŻNYCH surowców (drewno, kamień, żelazo, skóra, chleb, miecze, zbroje…), każdy z własną grafiką stosu, o różnej wysokości (stos rośnie z ilością).',
     'Stosy leżą nieruchomo (brak tragarzy na mapie) — to statyczna wystawa całego katalogu.',
   ],
   checks: [
@@ -113,8 +111,8 @@ export const goodsCatalogScene: SceneDefinition = {
       },
     },
     {
-      label: 'every storable good rests on the ground as its own dropped pile',
-      predicate: (sim) => countComponent(sim, GroundDrop) === DROP_GOODS.length,
+      label: 'every storable good rests on the ground as its own loose pile',
+      predicate: (sim) => countGroundPiles(sim) === DROP_GOODS.length,
     },
     {
       label: 'the warehouse advertises a stock slot for every dropped (storable) good',

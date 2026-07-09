@@ -16,10 +16,13 @@ import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /** One good's icon binding as it ships in `content/goods/manifest.json`. */
 export interface GoodIcon {
-  /** `ls_goods` atlas frame index (bob id) — the good's state-1 pile graphic. */
+  /** `ls_goods` atlas frame index (bob id) — the good's state-1 pile graphic (the compact store icon). */
   readonly frame: number;
   /** The recolor palette name (a goods-LUT row, resolved via the manifest order). */
   readonly palette: string;
+  /** The pile's growth-state bobs ordered fewest→most units (state 1 → N; up to 5). The on-map dropped
+   *  heap indexes these by its fill so it grows with its contents; `frame` is `fillFrames[0]` (state 1). */
+  readonly fillFrames: readonly number[];
 }
 
 /** The emitted `goods/manifest.json` shape (mirrors the pipeline's `GoodsManifest`). */
@@ -84,7 +87,7 @@ export type GoodIconMap = ReadonlyMap<string, GoodIcon>;
  * the in-world dropped-pile graphic, so an iconless good reads the same "generic sack" in both places rather
  * than showing nothing / the bare placeholder flag. `goods01` is always a valid LUT/atlas row.
  */
-export const GENERIC_GOOD_ICON: GoodIcon = { frame: 0, palette: 'goods01' };
+export const GENERIC_GOOD_ICON: GoodIcon = { frame: 0, palette: 'goods01', fillFrames: [0] };
 
 let goodsIconManifestOnce: Promise<GoodIconMap | null> | null = null;
 

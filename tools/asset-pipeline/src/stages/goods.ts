@@ -31,9 +31,10 @@ import { BOBS_DIR, identityPalette, readGameFile, writeBobAtlas } from './game-f
  *    one `256 × N` LUT PNG ({@link buildPlayerLutImage}, as the player/GUI LUTs). Row order is emitted in the
  *    manifest (`palettes`), so the app resolves palette-name → row from data rather than a hardcoded mirror.
  *  - **Binding.** `goodtypes.ini` (good `landscapeType`) joined onto the `[GfxLandscape]` "good pile" records
- *    (`editGroups` ∋ `"good piles all"`, matched by `logicType`) yields, per good, the state-1 (smallest,
- *    single-unit) pile bob id + its palette — emitted as `icons: { goodStringId → {frame, palette} }`, keyed
- *    by the good's STRING id (stable across the sandbox and the extracted IR, which number goods differently).
+ *    (`editGroups` ∋ `"good piles all"`, matched by `logicType`) yields, per good, the state-1 store-icon bob
+ *    (`frame`) + ALL growth-state bobs fewest→most (`fillFrames`, the on-map heap grows through them) + its
+ *    palette — emitted as `icons: { goodStringId → {frame, palette, fillFrames} }`, keyed by the good's STRING
+ *    id (stable across the sandbox and the extracted IR, which number goods differently).
  *
  * Source basis: the atlas + palettes are decoded original data; the state-1-pile-frame = store-icon choice
  * is observed from the original 1024×768 storehouse (its row icons are each good's smallest pile — a single
@@ -88,10 +89,16 @@ const PREVIEW_PALETTE = 'goods_wood';
 
 /** One good's icon binding: an `ls_goods` frame + the recolor palette (a goods-LUT row) it draws through. */
 export interface GoodIcon {
-  /** `ls_goods` atlas frame index (bob id) — the good's state-1 pile graphic. */
+  /** `ls_goods` atlas frame index (bob id) — the good's state-1 pile graphic (the compact store icon). */
   readonly frame: number;
   /** The recolor palette name (a {@link GoodsManifest.palettes} row). */
   readonly palette: string;
+  /**
+   * The pile's growth-state bobs ordered FEWEST→MOST units (state 1 → N; an `ls_goods` pile carries up to
+   * 5 states). The on-map dropped heap indexes these by its fill amount so the pile visibly grows with its
+   * contents; `frame` is `fillFrames[0]` (state 1), the smallest single-unit heap the storehouse row uses.
+   */
+  readonly fillFrames: readonly number[];
 }
 
 /** The emitted `goods/manifest.json`: the app's contract for loading + binding good icons. */
@@ -165,7 +172,13 @@ export function resolveGoodIcons(
       [...rec.frames].sort((a, b) => a.state - b.state)[0];
     const bobId = stateFrame?.bobIds[0];
     if (bobId === undefined) continue;
-    icons[good.id] = { frame: bobId, palette: rec.paletteName };
+    // Every growth state's first bob, ordered fewest→most units — the on-map heap indexes these by fill so
+    // the pile grows with its contents (a single stone at state 1, a full heap at the record's max state).
+    const fillFrames = [...rec.frames]
+      .filter((f) => f.bobIds[0] !== undefined)
+      .sort((a, b) => a.state - b.state)
+      .map((f) => f.bobIds[0] as number);
+    icons[good.id] = { frame: bobId, palette: rec.paletteName, fillFrames };
   }
   return icons;
 }
