@@ -47,6 +47,37 @@ describe('resolveGoodIcons', () => {
     expect(resolveGoodIcons(goods, gfx)).toEqual({});
   });
 
+  it('falls back to a `goods all` item record for a good with no `good piles all` pile (potions/amulets)', () => {
+    // A potion has only a `goods all` bottle record (no dedicated pile) — the fallback must recover it.
+    const goods = [{ id: 'potion_heal_small', landscapeType: 71 }];
+    const gfx = [
+      pile(
+        71,
+        'goods_leather',
+        [
+          [1, 125],
+          [3, 127],
+          [5, 129],
+        ],
+        { editGroups: ['goods all'] },
+      ),
+    ];
+    expect(resolveGoodIcons(goods, gfx)).toEqual({
+      potion_heal_small: { frame: 125, palette: 'goods_leather', fillFrames: [125, 127, 129] },
+    });
+  });
+
+  it('prefers a `good piles all` pile over a `goods all` item at the same logicType (bound goods unmoved)', () => {
+    const goods = [{ id: 'wood', landscapeType: 7 }];
+    const gfx = [
+      pile(7, 'goods_item', [[1, 200]], { editGroups: ['goods all'] }), // the broader item record
+      pile(7, 'goods_wood', [[1, 40]], { editGroups: ['goods all', 'good piles all'] }), // the pile — wins
+    ];
+    expect(resolveGoodIcons(goods, gfx)).toEqual({
+      wood: { frame: 40, palette: 'goods_wood', fillFrames: [40] },
+    });
+  });
+
   it('ignores non-good-pile GfxLandscape records (editGroups gate) and keeps first-wins per logicType', () => {
     const goods = [{ id: 'stone', landscapeType: 17 }];
     const gfx = [

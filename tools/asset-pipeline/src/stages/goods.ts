@@ -38,12 +38,13 @@ import { BOBS_DIR, identityPalette, readGameFile, writeBobAtlas } from './game-f
  *
  * Source basis: the atlas + palettes are decoded original data; the state-1-pile-frame = store-icon choice
  * is observed from the original 1024×768 storehouse (its row icons are each good's smallest pile — a single
- * stone, a small wheat sheaf), not a code-pinned lookup (OpenVikings has no good→icon table). 42 of the 65
- * goods bind (including tools/weapons/crockery/armour — they DO have `ls_goods` pile records). The rest get
- * no binding and render their row iconless: goods whose `landscapeType` has no `good piles all` record —
- * `fruit`, the six potions, the six amulets — and the many goods that share `landscapeType 1` (prey, sheep,
- * cattle, hand/ox carts, ships, catapult, chest), whose one shared type has no pile record. Filling those is
- * a later montage/human pass over `ls_goods`.
+ * stone, a small wheat sheaf), not a code-pinned lookup (OpenVikings has no good→icon table). A good binds to
+ * its dedicated `good piles all` pile record when it has one (tools/weapons/crockery/armour/food all do),
+ * else falls back to its broader `goods all` item record ({@link GOOD_ITEM_GROUP}) — `fruit`, the six potions
+ * (bottles), and the six amulets (rings) have only that, so the fallback recovers their real bottle/ring/fruit
+ * graphic (recoloured per potion type / amulet) instead of leaving them iconless. Only the goods sharing
+ * `landscapeType 1` with no record at all (prey, sheep, cattle, hand/ox carts, ships, catapult, chest) stay
+ * unbound and render iconless.
  *
  * Boundary failures are warned-and-skipped, never fatal (matching the other stages). No copyrighted bytes
  * enter the repo — everything lands under the gitignored `content/`.
@@ -82,6 +83,14 @@ export const GOODS_PALETTE_LUT_STEM = 'goods-palettes-lut';
 const GOODS_CONTENT_DIR = 'goods';
 /** The `editGroups` membership marking a `[GfxLandscape]` record as a good's on-map pile graphic. */
 const GOOD_PILE_GROUP = 'good piles all';
+/**
+ * The broader `editGroups` membership marking ANY good's `ls_goods` graphic — the fallback icon source for a
+ * good with no `good piles all` pile record. The potions (bottles, frames 125–129/145–149), amulets (rings,
+ * 150–154) and fruit have only a `goods all` record — their own real `ls_goods` graphic + palette — never a
+ * dedicated pile, so keying on it recovers a faithful bottle/ring/fruit icon instead of the neutral wood
+ * fallback. A good WITH a pile record keeps it (piles preferred), so the 42 already-bound goods don't move.
+ */
+const GOOD_ITEM_GROUP = 'goods all';
 /** The pile growth state whose frame the storehouse row uses as the compact good icon (smallest unit). */
 const ICON_PILE_STATE = 1;
 /** The palette the human-readable RGBA preview atlas is coloured through (any real goods palette). */
@@ -153,19 +162,27 @@ export function resolveGoodIcons(
   goods: readonly GoodLike[],
   landscapeGfx: readonly PileGfxLike[],
 ): Record<string, GoodIcon> {
-  // Good-pile records indexed by `logicType` (the good's `landscapeType`). First-wins is deterministic —
-  // `extractLandscapeGfx` preserves file order, and a landscape type has one canonical good-pile record.
+  // `ls_goods` records indexed by `logicType` (the good's `landscapeType`), split by group: the dedicated
+  // PILE record (`good piles all`) is preferred, the broader ITEM record (`goods all`) is the fallback for a
+  // good with no pile (potions/amulets/fruit). First-wins is deterministic — `extractLandscapeGfx` preserves
+  // file order, and a landscape type has one canonical record per group. A pile record is usually ALSO in
+  // `goods all`, so both maps may hold it; preferring the pile map keeps the already-bound goods unchanged.
   const pileByLogic = new Map<number, PileGfxLike>();
+  const itemByLogic = new Map<number, PileGfxLike>();
   for (const rec of landscapeGfx) {
-    if (!rec.editGroups.includes(GOOD_PILE_GROUP)) continue;
     if (!rec.bmd?.toLowerCase().includes(GOODS_ATLAS_STEM)) continue;
-    if (!pileByLogic.has(rec.logicType)) pileByLogic.set(rec.logicType, rec);
+    if (rec.editGroups.includes(GOOD_PILE_GROUP) && !pileByLogic.has(rec.logicType)) {
+      pileByLogic.set(rec.logicType, rec);
+    }
+    if (rec.editGroups.includes(GOOD_ITEM_GROUP) && !itemByLogic.has(rec.logicType)) {
+      itemByLogic.set(rec.logicType, rec);
+    }
   }
 
   const icons: Record<string, GoodIcon> = {};
   for (const good of goods) {
     if (good.landscapeType === undefined) continue;
-    const rec = pileByLogic.get(good.landscapeType);
+    const rec = pileByLogic.get(good.landscapeType) ?? itemByLogic.get(good.landscapeType);
     if (rec === undefined || rec.paletteName === undefined) continue;
     const stateFrame =
       rec.frames.find((f) => f.state === ICON_PILE_STATE) ??
