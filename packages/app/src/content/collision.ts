@@ -1,5 +1,5 @@
 import { type TerrainMapFile, fullStateBlockAreaCells } from '@vinland/data';
-import type { TerrainMap } from '@vinland/sim';
+import { type TerrainMap, halfCellMapFromCells } from '@vinland/sim';
 import { TERRAIN_BLOCKED, TERRAIN_IMPASSABLE, TERRAIN_MARGIN, TERRAIN_OPEN } from '../catalog/terrain.js';
 
 /**
@@ -98,11 +98,11 @@ function worseGroundClass(a: number, b: number): number {
  */
 export function buildCollisionTerrain(map: TerrainMapFile, ir: CollisionIrView): TerrainMap {
   const { width, height } = map;
-  const nodeW = width * 2;
-  const nodeH = height * 2;
-  const typeIds = new Array<number>(nodeW * nodeH).fill(TERRAIN_OPEN);
 
-  // --- ground: class each cell by its two triangles' extracted walk/build flags -------------------
+  // --- ground: class each CELL by its two triangles' extracted walk/build flags, then upsample ----
+  // (A per-triangle split below cell resolution has no pinned mapping, so ground classes are
+  // per-cell; `halfCellMapFromCells` owns the cell → 2×2-node-block convention.)
+  const cellClasses = new Array<number>(width * height).fill(TERRAIN_OPEN);
   if (map.ground !== undefined && ir.gfxPatterns !== undefined) {
     const classTable = groundClassTable(ir);
     const logicTypeByName = new Map<string, number>();
@@ -117,21 +117,14 @@ export function buildCollisionTerrain(map: TerrainMapFile, ir: CollisionIrView):
       if (logicType === undefined) return TERRAIN_OPEN;
       return classTable.get(logicType) ?? TERRAIN_OPEN;
     };
-    for (let cy = 0; cy < height; cy++) {
-      for (let cx = 0; cx < width; cx++) {
-        const i = cy * width + cx;
-        const cls = worseGroundClass(classOf(map.ground.a[i]), classOf(map.ground.b[i]));
-        if (cls === TERRAIN_OPEN) continue; // the grid default — skip the stamp
-        // The cell's class covers its 2×2 node block — the same block convention the original's
-        // half-cell lanes use. (A per-triangle split below cell resolution has no pinned mapping.)
-        const base = cy * 2 * nodeW + cx * 2;
-        typeIds[base] = cls;
-        typeIds[base + 1] = cls;
-        typeIds[base + nodeW] = cls;
-        typeIds[base + nodeW + 1] = cls;
-      }
+    for (let i = 0; i < width * height; i++) {
+      cellClasses[i] = worseGroundClass(classOf(map.ground.a[i]), classOf(map.ground.b[i]));
     }
   }
+  const upsampled = halfCellMapFromCells({ width, height, typeIds: cellClasses });
+  const nodeW = upsampled.width;
+  const nodeH = upsampled.height;
+  const typeIds = upsampled.typeIds.slice(); // a mutable copy the object stamps write into
 
   // --- objects: each placement's walk-block body + build-block margin -------------------------------
   if (map.objects !== undefined && ir.landscapeGfx !== undefined) {

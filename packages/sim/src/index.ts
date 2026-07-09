@@ -51,15 +51,7 @@ export {
   positionOfNode,
   type HalfCellNode,
 } from './nav/halfcell.js';
-export {
-  DIAGONAL_STEP,
-  HALF_COLUMN,
-  HALF_ROW,
-  ROW_STEP,
-  staggerShift,
-  worldDistance,
-  worldX,
-} from './nav/metric.js';
+export { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW, worldDistance } from './nav/metric.js';
 export { findPath } from './nav/pathfinding.js';
 export { replay, type ReplayOptions } from './replay/replay.js';
 export {

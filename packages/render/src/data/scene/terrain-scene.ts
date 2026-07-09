@@ -18,23 +18,26 @@ const TILE_DEPTH_BASE = -1_000_000;
 
 /**
  * Project a loaded terrain map (the `{ width, height, typeIds }` shape `parseTerrainMap` validates a
- * `content/maps/<id>.json` into, structurally a sim `TerrainMap`) onto the {@link SceneTerrain} the
- * scene layer draws. This is the typed seam from a **real decoded map** to the renderer: the app/shot
- * entry loads a map file, validates it through `@vinland/data`, and feeds the result here — so the
- * same render line that draws the synthetic grass strip draws an actual decoded grid.
+ * `content/maps/<id>.json` into — a CELL-resolution grid, the sim-side `CellTerrainMap` shape, NOT
+ * the half-cell `TerrainMap` the nav graph consumes) onto the {@link SceneTerrain} the scene layer
+ * draws. This is the typed seam from a **real decoded map** to the renderer: the app/shot entry
+ * loads a map file, validates it through `@vinland/data`, and feeds the result here — so the same
+ * render line that draws the synthetic grass strip draws an actual decoded grid.
  *
  * Pure + total: it only re-views the (read-only) grid as the render shape, asserting nothing the
  * loader already enforced (the data-package zod schema pins `typeIds.length === width*height`). The
  * map's landscape typeIds carry straight through — the GPU layer tints each tile by typeId — so a
- * real multi-terrain map renders its varied ground, not a uniform fill.
+ * real multi-terrain map renders its varied ground, not a uniform fill. The optional lanes accept
+ * an explicit `undefined` (zod's `.optional()` infers `T | undefined`) — the body spreads them
+ * conditionally either way.
  */
 export function terrainMapToScene(map: {
   readonly width: number;
   readonly height: number;
   readonly typeIds: readonly number[];
-  readonly ground?: SceneGround;
-  readonly elevation?: readonly number[];
-  readonly brightness?: readonly number[];
+  readonly ground?: SceneGround | undefined;
+  readonly elevation?: readonly number[] | undefined;
+  readonly brightness?: readonly number[] | undefined;
 }): SceneTerrain {
   return {
     width: map.width,

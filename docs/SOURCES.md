@@ -143,6 +143,13 @@ group** (`emmm` → `embr`,`empa/empb`,`emt1..4`,`emla`,… → `xend`) then `te
     `landscapetypes.ini` typeId of the object standing there (`[GfxLandscape].LogicType` — clay-mine
     decals hold 12 = `mud_mine`, palms 4 = `tree`, wave fx 1 = `void`), raw **0 = no object**.
     `lmltToTerrainMap` reduces each cell's 2×2 half-cell block to the dominant value (0 → `void`).
+  - **Half-cell VERBATIM anchoring** (what the sim's collision join relies on): stamping each `emla`
+    placement's `LogicWalkBlockArea` offsets verbatim at its half-cell anchor aligns with the map's
+    own `lmlt` lane best — measured on `oasis_o_plenty` + `WICHRY_ZIMY`: ~55 % of stamped nodes hit
+    an lmlt-marked node at matching total magnitude (≈46k stamped vs ≈53k marked), the old ÷2 cell
+    collapse over-stamps ~2× at 33–42 % precision, and every ±1 anchor shift scores strictly worse
+    than zero shift. Best-available ALIGNMENT evidence, not a byte-exact proof (the residual sits in
+    unconsumed per-half-cell flags like `lmlv`).
   - **`empa`/`empb`** (u16, per CELL) — the **1:1 ground pattern per triangle** (A/B): an index into
     the map's own `eapd` pattern-name dictionary → a `pattern.cif` `[GfxPattern]`. **The editor bakes
     its pattern algorithm's OUTPUT into the save** — no algorithm needs reversing for 1:1 ground.

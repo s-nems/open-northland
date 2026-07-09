@@ -20,18 +20,19 @@ import {
 
 /**
  * The weapon an attacker of `tribe`/`jobType` fights with, resolved from content. Returns its reach as
- * a `[minRange, maxRange]` band (Manhattan cells) and the resolved {@link WeaponType} itself, so the
- * caller can select the damage **column for the picked target's armor material**
- * ({@link weaponDamageVsMaterial}) and read the weapon's class for fight XP. Null when no weapon
- * resolves (an unarmed combatant — it does no damage, the approximated stance).
+ * a `[minRange, maxRange]` band (Manhattan HALF-CELL NODES — the verbatim reading `withReach` below
+ * pins) and the resolved {@link WeaponType} itself, so the caller can select the damage **column for
+ * the picked target's armor material** ({@link weaponDamageVsMaterial}) and read the weapon's class
+ * for fight XP. Null when no weapon resolves (an unarmed combatant — it does no damage, the
+ * approximated stance).
  *
  * **The reach is a band, not just a ceiling.** `maxRange` is the far reach (floored at 1, so even a
- * `maxRange 0` weapon still reaches an adjacent cell). `minRange` is the *near* reach a **ranged**
+ * `maxRange 0` weapon still reaches an adjacent node). `minRange` is the *near* reach a **ranged**
  * weapon can't fire below — the original's `hunter_bow` is `minimumrange 3, maximumrange 17` (verified
  * in the mod's `DataCnmd/types/weapons.ini`), so a bow can't hit an adjacent target; a melee weapon is
- * `minRange 1` (the common case — it hits from one cell away). Both ends are floored at 1, so a target
- * sharing the attacker's own cell (Manhattan distance 0) is below every weapon's near reach and is not
- * hit — only a real concern when the herd scatter stacks entities (entities share tiles freely). The
+ * `minRange 1` (the common case — it hits from one node away). Both ends are floored at 1, so a target
+ * sharing the attacker's own node (Manhattan distance 0) is below every weapon's near reach and is not
+ * hit — only a real concern when the herd scatter stacks entities (entities share nodes freely). The
  * band is clamped sane (`1 ≤ minRange ≤ maxRange`) so a malformed weapon never reads as never-able-to-hit.
  *
  * Three resolution paths, mirroring how the original keys a weapon (the worn override takes precedence):

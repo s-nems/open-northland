@@ -35,12 +35,12 @@ import {
   manhattan,
 } from '../spatial.js';
 import { fleeDrive } from './flee.js';
-import { SIGHT_RADIUS_TILES, hostileAnimalNow, isHuntTarget, isValidTarget } from './targeting.js';
+import { SIGHT_RADIUS_NODES, hostileAnimalNow, isHuntTarget, isValidTarget } from './targeting.js';
 import { attackerWeapon, startAttack, targetMaterial } from './weapons.js';
 
 // Re-exported so the public surface (the systems barrel + tests) keeps its single combat import
 // site after the conflict/ split (targeting.ts and flee.ts stay internal).
-export { SIGHT_RADIUS_TILES } from './targeting.js';
+export { SIGHT_RADIUS_NODES } from './targeting.js';
 
 /**
  * CombatSystem — the whole combat loop's **decision** stage: for each combatant, pick who to fight and
@@ -61,8 +61,8 @@ export { SIGHT_RADIUS_TILES } from './targeting.js';
  *  3. **Per combatant** ({@link engageCombatant}) — act on the unit's {@link Stance} military mode (owned
  *     units; the original's `MILITARY_MODE`): **ATTACK** auto-acquires the nearest enemy in sight and
  *     swings (in the weapon reach band) or chases (beyond it, throttled to {@link REPATH_CADENCE});
- *     **DEFEND** engages only within {@link DEFEND_RADIUS_TILES} of an anchor and never chases past
- *     {@link DEFEND_LEASH_TILES}, returning to post when clear; **IGNORE** never auto-engages (a hunter
+ *     **DEFEND** engages only within {@link DEFEND_RADIUS_NODES} of an anchor and never chases past
+ *     {@link DEFEND_LEASH_NODES}, returning to post when clear; **IGNORE** never auto-engages (a hunter
  *     still hunts prey); **FLEE** runs from the nearest threat at the run gait ({@link fleeDrive}). An
  *     explicit {@link AttackOrder} overrides the mode (fight THAT one). Unowned combatants carry no Stance
  *     and keep the legacy swing-in-place behaviour.
@@ -77,7 +77,7 @@ export { SIGHT_RADIUS_TILES } from './targeting.js';
  *    struck `getAngry` animal fighting back. Unchanged for unowned combatants.
  *
  * **Two reach radii.** The weapon's extracted `[minRange, maxRange]` band is where a swing LANDS; an
- * approximated {@link SIGHT_RADIUS_TILES} is how far an owned combatant SPOTS an enemy to advance on. An
+ * approximated {@link SIGHT_RADIUS_NODES} is how far an owned combatant SPOTS an enemy to advance on. An
  * unowned combatant has no advance drive (its search radius is just `maxRange`), so its behaviour is
  * byte-identical to before — it swings an in-range enemy and otherwise does nothing.
  *
@@ -124,15 +124,15 @@ export const REPATH_CADENCE = 8;
  * radius is unreadable (source basis "Combat stances"); calibration-by-observation pending. Doubled
  * with the half-cell migration (same on-screen radius as the old 4-cell value).
  */
-export const DEFEND_RADIUS_TILES = 8;
+export const DEFEND_RADIUS_NODES = 8;
 
 /**
  * DEFEND stance — the **leash**: the farthest (Manhattan nodes) from its anchor a defender will step to
- * strike an in-radius enemy. Kept a little above {@link DEFEND_RADIUS_TILES} so a melee defender can walk
+ * strike an in-radius enemy. Kept a little above {@link DEFEND_RADIUS_NODES} so a melee defender can walk
  * up to a threat at the radius edge, but never chases far — a target reachable only by breaking the leash
  * is left alone and the defender returns to its anchor. APPROXIMATED (source basis).
  */
-export const DEFEND_LEASH_TILES = 12;
+export const DEFEND_LEASH_NODES = 12;
 
 /**
  * The dormancy gate: whether any combat work is possible this tick — a cheap single pass over the
@@ -335,12 +335,12 @@ function stanceMode(world: World, e: Entity, jobType: number | null): number {
 /**
  * How a combatant acquires a target this tick, resolved from its stance — the ring-search `accept` filter,
  * the near/far reach band (`minDist`/`searchRadius`), and (DEFEND only) the anchor leash the chase respects.
- *  - **DEFEND** (auto, not ordered) → accept only hostile targets within {@link DEFEND_RADIUS_TILES} of the
+ *  - **DEFEND** (auto, not ordered) → accept only hostile targets within {@link DEFEND_RADIUS_NODES} of the
  *    anchor, spot within `radius + leash`, and carry the anchor+leash so {@link chase} never pursues past it.
  *  - **IGNORE hunter** → accept only catchable **prey** ({@link isHuntTarget}) — the predation that survives
  *    the IGNORE gate — spotted within the sight radius.
  *  - **ATTACK / ordered / unowned** → general hostility ({@link isValidTarget}); an owned unit spots within
- *    its {@link SIGHT_RADIUS_TILES} (it advances), an unowned one only within weapon reach (swing-in-place).
+ *    its {@link SIGHT_RADIUS_NODES} (it advances), an unowned one only within weapon reach (swing-in-place).
  * The `minDist` is the weapon's near reach (a ranged weapon's dead zone) in every case.
  */
 function engageSpec(
@@ -356,17 +356,17 @@ function engageSpec(
 ): EngageSpec {
   const generalAccept = (t: Entity): boolean => isValidTarget(world, ctx, e, attacker, t);
   const minDist = weapon.minRange;
-  const sight = Math.max(weapon.maxRange, SIGHT_RADIUS_TILES);
+  const sight = Math.max(weapon.maxRange, SIGHT_RADIUS_NODES);
 
   if (owned && !ordered && stance === MILITARY_MODE.DEFEND) {
     const anchor = defendAnchor(world, terrain, e);
     const accept = (t: Entity): boolean =>
-      generalAccept(t) && manhattan(terrain, anchor, entityCell(world, terrain, t)) <= DEFEND_RADIUS_TILES;
+      generalAccept(t) && manhattan(terrain, anchor, entityCell(world, terrain, t)) <= DEFEND_RADIUS_NODES;
     return {
       accept,
       minDist,
-      searchRadius: DEFEND_RADIUS_TILES + DEFEND_LEASH_TILES,
-      defend: { anchorCell: anchor, leash: DEFEND_LEASH_TILES },
+      searchRadius: DEFEND_RADIUS_NODES + DEFEND_LEASH_NODES,
+      defend: { anchorCell: anchor, leash: DEFEND_LEASH_NODES },
     };
   }
 

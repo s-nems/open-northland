@@ -1,11 +1,4 @@
 import { type BuildingFootprint, type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
-
-/** The one thing the sandbox landscape derivation reads off a terrain grid — its typeId lane.
- *  Structural, so both the authored CELL grids and the sim's half-cell maps satisfy it. */
-export interface TerrainTypeIds {
-  readonly typeIds: ReadonlyArray<number>;
-}
-
 import {
   ATTACK_ATOMIC,
   CLAY_HARVEST_ATOMIC,
@@ -65,6 +58,12 @@ import {
  * world-population helpers in `./place.ts`, scene-check queries beside the scenes
  * (`scenes/sandbox-queries.ts`); this module only assembles the validated content set.
  */
+
+/** The one thing the sandbox landscape derivation reads off a terrain grid — its typeId lane.
+ *  Structural, so both the authored CELL grids and the sim's half-cell maps satisfy it. */
+export interface TerrainTypeIds {
+  readonly typeIds: ReadonlyArray<number>;
+}
 
 /** Munition type 1 = arrow — what the bows fire. */
 const ARROW_MUNITION = 1;
@@ -154,6 +153,11 @@ function landscapeState(g: GathererSpec): number {
   return Math.max(1, g.depositLevels ?? BIO_LANDSCAPE_STATES);
 }
 
+// The invented resource areas below are HALF-CELL node offsets (`[state, dx, dy, run]`, the real
+// block-area grammar) — their extents are DOUBLED versus the old cell-unit values, the same
+// world-extent-preserving ×2 every invented extent got in the half-cell migration, so a sandbox
+// tree keeps its one-CELL build ring and its harvesters keep their one-CELL stand distance.
+
 function walkBlockAreas(g: GathererSpec): number[][] {
   const state = landscapeState(g);
   if (g.good === GOOD_MUD || g.mode === 'pick') return [];
@@ -163,11 +167,7 @@ function walkBlockAreas(g: GathererSpec): number[][] {
 function buildBlockAreas(g: GathererSpec): number[][] {
   const state = landscapeState(g);
   if (g.good === GOOD_MUD || g.mode === 'pick') return [];
-  return [
-    [state, -1, 0, 1],
-    [state, 0, 0, 1],
-    [state, 1, 0, 1],
-  ];
+  return [[state, -2, 0, 5]]; // dx −2..+2 — the one-cell no-build ring, as a single 5-node run
 }
 
 function workAreas(g: GathererSpec): number[][] {
@@ -175,14 +175,14 @@ function workAreas(g: GathererSpec): number[][] {
   if (g.mode === 'pick') return [[1, 0, 0, 1]];
   if (g.good === GOOD_MUD) {
     return [
-      [state, -1, 0, 1],
+      [state, -2, 0, 1],
       [state, 0, 0, 1],
-      [state, 1, 0, 1],
+      [state, 2, 0, 1],
     ];
   }
   return [
-    [state, -1, 0, 1],
-    [state, 1, 0, 1],
+    [state, -2, 0, 1],
+    [state, 2, 0, 1],
   ];
 }
 

@@ -20,7 +20,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation, type TerrainMap, cellAnchorNode, fx, halfCellMapFromCells } from '../../src/index.js';
 import { attackUnit, moveUnit } from '../../src/systems/conflict/orders.js';
-import { SIGHT_RADIUS_TILES, type SystemContext, aiSystem, combatSystem } from '../../src/systems/index.js';
+import { SIGHT_RADIUS_NODES, type SystemContext, aiSystem, combatSystem } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
 
@@ -213,7 +213,7 @@ describe('walk-into-melee — an OWNED combatant advances on a spotted enemy', (
   });
 
   it('does NOT engage an enemy beyond the sight radius', () => {
-    const far = SIGHT_RADIUS_TILES / 2 + 1; // cells — a same-row cell is 2 nodes, so node distance SIGHT+2
+    const far = SIGHT_RADIUS_NODES / 2 + 1; // cells — a same-row cell is 2 nodes, so node distance SIGHT+2
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(far + 2, 1) });
     const a = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
     fighterAt(sim, far, 0, VIKING, WOODCUTTER, { owner: P1 }); // beyond sight
@@ -241,7 +241,7 @@ describe('walk-into-melee — an OWNED combatant advances on a spotted enemy', (
 
 describe('attackUnit — the explicit attack order', () => {
   it('stamps an AttackOrder + Engagement and chases the target REGARDLESS of sight radius', () => {
-    const far = SIGHT_RADIUS_TILES / 2 + 3; // cells — node distance SIGHT+6, beyond auto-engage sight
+    const far = SIGHT_RADIUS_NODES / 2 + 3; // cells — node distance SIGHT+6, beyond auto-engage sight
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(far + 2, 1) });
     const a = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
     const enemy = fighterAt(sim, far, 0, VIKING, WOODCUTTER, { owner: P1 }); // beyond auto-engage sight

@@ -102,12 +102,13 @@ export class TileBuckets {
    * `maxDist` (an empty query never scans past its radius).
    *
    * `minDist` skips entities nearer than a floor (a ranged weapon's near reach, or excluding the
-   * seeker itself at distance 0). The metric is integer tile Manhattan — the exact metric
-   * {@link manhattan} measures over cells and the one an entity's bucket tile
-   * (`fx.toInt(Position)`) is keyed on — so a ring at distance `d` holds precisely the entities a full
-   * scan would score at distance `d`. Determinism: no RNG/wall-clock; a pure ring walk with a min-id
-   * tie-break. Reads no world state beyond the pre-bucketed entities — `accept` is the caller's pure
-   * per-candidate relation (a hostility test), evaluated at most once per candidate in the band.
+   * seeker itself at distance 0). The metric is integer HALF-CELL-NODE Manhattan — the exact metric
+   * {@link manhattan} measures over node coords and the one an entity's bucket key
+   * (`nodeOfPosition`) is derived from — so a ring at distance `d` holds precisely the entities a
+   * full scan would score at distance `d`. Determinism: no RNG/wall-clock; a pure ring walk with a
+   * min-id tie-break. Reads no world state beyond the pre-bucketed entities — `accept` is the
+   * caller's pure per-candidate relation (a hostility test), evaluated at most once per candidate
+   * in the band.
    */
   nearest(
     fromX: number,

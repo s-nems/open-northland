@@ -21,6 +21,7 @@ import { applyGameSpeed, menuEntriesFromContent, mountGameToolPanel } from './ga
 import { mountSoundToggle } from './overlay.js';
 import { floatParam } from './params.js';
 import { mountPerfOverlay } from './perf-overlay.js';
+import { nodeBandOfCells } from './picking.js';
 import { createUnitControls } from './unit-controls.js';
 import { professionsFromContent } from './unit-panel.js';
 
@@ -91,13 +92,8 @@ function makeOverlayFrameSource(
       mapSize.height,
       OVERLAY_BAND_MARGIN,
     );
-    // The node band covering the visible cells — cell (c,r) owns nodes (2c..2c+1, 2r..2r+1).
-    const range = {
-      minCol: cells.minCol * 2,
-      maxCol: cells.maxCol * 2 + 1,
-      minRow: cells.minRow * 2,
-      maxRow: cells.maxRow * 2 + 1,
-    };
+    // The node band covering the visible cells.
+    const range = nodeBandOfCells(cells);
     const nextKey = `${buildingType}:${sim.tick}:${range.minCol},${range.maxCol},${range.minRow},${range.maxRow}`;
     if (nextKey === key && frame !== null) return frame;
     const blocked: { col: number; row: number }[] = [];

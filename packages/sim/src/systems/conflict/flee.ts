@@ -4,7 +4,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
 import { COMPASS_DIRECTIONS, type TileBuckets, clearNavState, entityCell, isTravelling } from '../spatial.js';
-import { SIGHT_RADIUS_TILES, isValidTarget } from './targeting.js';
+import { SIGHT_RADIUS_NODES, isValidTarget } from './targeting.js';
 
 // The FLEE drive — the civilian raid reaction (the FLEE stance's active behaviour): run from the
 // nearest threat at the run gait, wind a cool-down down once clear, and yield to a collapsing need.
@@ -22,7 +22,7 @@ const FLEE_COOLDOWN_TICKS = 40;
  * APPROXIMATED — no readable flee-distance (source basis "Combat flee"); doubled with the half-cell
  * migration (same on-screen run distance as the old 6-cell value).
  */
-const FLEE_STEP_TILES = 12;
+const FLEE_STEP_NODES = 12;
 
 /**
  * FLEE stance — how many ticks a fleeing unit holds its current run route before re-aiming away from the
@@ -49,7 +49,7 @@ const FLEE_DIRECTIONS = COMPASS_DIRECTIONS;
 
 /**
  * The FLEE drive — run a unit away from the nearest threat (the civilian raid reaction). Reuses the combat
- * ring-search index (no new scan, golden rule 7): the nearest hostile within {@link SIGHT_RADIUS_TILES} is
+ * ring-search index (no new scan, golden rule 7): the nearest hostile within {@link SIGHT_RADIUS_NODES} is
  * the threat. Then, in order:
  *  - **no threat in sight** → wind the cool-down down: start it on the first clear tick, and after
  *    {@link FLEE_COOLDOWN_TICKS} clear with none, shed {@link Fleeing} + the run route so the economy
@@ -60,7 +60,7 @@ const FLEE_DIRECTIONS = COMPASS_DIRECTIONS;
  *    drive owns the unit; once yielded, leave that need-walk untouched (don't cancel it each tick).
  *  - **flee** → stamp/refresh {@link Fleeing} (calmUntil null = in danger), and — throttled to
  *    {@link FLEE_REPATH_CADENCE}, or immediately on a failed route — re-aim to a walkable cell
- *    {@link FLEE_STEP_TILES} away in the best direction AWAY from the threat ({@link fleeDestination}). The
+ *    {@link FLEE_STEP_NODES} away in the best direction AWAY from the threat ({@link fleeDestination}). The
  *    MovementSystem walks a Fleeing unit at the faster run gait, so it outpaces a walking pursuer.
  */
 export function fleeDrive(
@@ -89,7 +89,7 @@ export function fleeDrive(
   const accept = (t: Entity): boolean => isValidTarget(world, ctx, e, attacker, t);
   // Near bound 0 (not the weapon-reach floor of 1): fear has no dead zone — a fleeing unit reacts to a
   // hostile on its very tile too (entities share tiles freely), not just one a step away.
-  const threat = index.nearest(x, y, 0, SIGHT_RADIUS_TILES, accept);
+  const threat = index.nearest(x, y, 0, SIGHT_RADIUS_NODES, accept);
   const fleeing = world.tryGet(e, Fleeing);
 
   if (threat === null) {
@@ -116,7 +116,7 @@ export function fleeDrive(
   f.repathAt = ctx.tick + FLEE_REPATH_CADENCE;
 }
 
-/** The cell a fleeing unit should run to: the walkable cell {@link FLEE_STEP_TILES} away (of the eight
+/** The cell a fleeing unit should run to: the walkable cell {@link FLEE_STEP_NODES} away (of the eight
  *  compass directions) that is FARTHEST from the threat, tie-broken by min cell id. It must strictly
  *  increase the distance from the threat over staying put, so a boxed-in unit (no away-cell walkable /
  *  in-bounds) returns its own cell (`here`) and stays rather than running toward the threat. A bounded
@@ -127,8 +127,8 @@ function fleeDestination(terrain: TerrainGraph, here: CellId, threatCell: CellId
   let best: CellId = here;
   let bestScore = Math.abs(h.x - t.x) + Math.abs(h.y - t.y); // a candidate must beat staying put
   for (const [dx, dy] of FLEE_DIRECTIONS) {
-    const x = h.x + dx * FLEE_STEP_TILES;
-    const y = h.y + dy * FLEE_STEP_TILES;
+    const x = h.x + dx * FLEE_STEP_NODES;
+    const y = h.y + dy * FLEE_STEP_NODES;
     if (!terrain.inBounds(x, y)) continue;
     const cell = terrain.cellAt(x, y);
     if (!terrain.isWalkable(cell)) continue;

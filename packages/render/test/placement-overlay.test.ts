@@ -21,14 +21,15 @@ describe('overlayBounds', () => {
     const frame = { minCol: 2, maxCol: 6, minRow: 3, maxRow: 9 };
     const b = overlayBounds(frame, 0);
     // Frame cells are HALF-CELL nodes; each node diamond has half-extents (TILE_HALF_W, TILE_HALF_H/2)
-    // grown by a few-px fusing pad — so the box must clear every border node's centre by at least a
-    // diamond half-extent with room for the pad (TILE_HALF_W / TILE_HALF_H margins, generous on y).
+    // grown by a few-px fusing pad — so the box must STRICTLY clear every border node's centre by a
+    // diamond half-extent (the strictness is the pad's room; no more slack is required — the node
+    // lattice is rectangular, there is no stagger overhang to cover).
     const topLeft = halfCellToScreen(frame.minCol, frame.minRow);
     const bottomRight = halfCellToScreen(frame.maxCol, frame.maxRow);
-    expect(b.x).toBeLessThanOrEqual(topLeft.x - TILE_HALF_W);
-    expect(b.x + b.width).toBeGreaterThanOrEqual(bottomRight.x + TILE_HALF_W + TILE_HALF_W);
-    expect(b.y).toBeLessThanOrEqual(topLeft.y - TILE_HALF_H);
-    expect(b.y + b.height).toBeGreaterThanOrEqual(bottomRight.y + TILE_HALF_H);
+    expect(b.x).toBeLessThan(topLeft.x - TILE_HALF_W);
+    expect(b.x + b.width).toBeGreaterThan(bottomRight.x + TILE_HALF_W);
+    expect(b.y).toBeLessThan(topLeft.y - TILE_HALF_H / 2);
+    expect(b.y + b.height).toBeGreaterThan(bottomRight.y + TILE_HALF_H / 2);
   });
 
   it('grows upward by the max terrain lift so a hilltop diamond stays inside the composite', () => {

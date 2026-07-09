@@ -16,7 +16,7 @@ import { isAggressiveAnimal, isAnimalTribe, mayAttack, mayHunt } from '../readvi
  * the old 8-cell value did. The weapon's extracted `[minRange, maxRange]` band (where a swing lands)
  * is separate and faithful.
  */
-export const SIGHT_RADIUS_TILES = 16;
+export const SIGHT_RADIUS_NODES = 16;
 
 /** Whether `t` is a live combatant this attacker may swing at — a positioned, `Health`-bearing settler
  *  (not the attacker itself, `hitpoints > 0`) for which the {@link mayTarget} hostility relation holds.
