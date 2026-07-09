@@ -5,9 +5,11 @@
  * on a graph of HALF-CELLS — the original's `2W×2H` logic lattice. That resolution is pinned by the
  * data, not invented: the decoded map's object lanes (`lmlt`/`emla`/`lmlv`), `map.cif` StaticObjects
  * placements, and the `LogicWalkBlockArea`/`LogicBuildBlockArea` footprint offsets all address a
- * `2W×2H` grid (source basis: mapdat lane layout, OpenVikings format oracle). Each node carries a
- * landscape `typeId` (from the IR's {@link LandscapeType} table) which resolves to walkability, a
- * fixed-point walk cost, and a per-node valency (capacity).
+ * `2W×2H` grid (source basis: mapdat lane layout, OpenVikings format oracle; the verbatim half-cell
+ * anchoring is additionally the best-aligned reading of the real maps' own `lmlt` blocking lane —
+ * the measurement lives in docs/SOURCES.md). Each node carries a landscape `typeId` (from the IR's
+ * {@link LandscapeType} table) which resolves to walkability, a fixed-point walk cost, and a
+ * per-node valency (capacity).
  *
  * GEOMETRY: in half-cell coordinates the staggered raster becomes a PLAIN RECTANGULAR lattice —
  * node `(hx, hy)` sits at world `(hx·½ column, hy·½ row)` = (34 px, 19 px) pitch under the measured
@@ -16,7 +18,8 @@
  * node has the SAME neighbour offsets.
  *
  * MOVEMENT keeps the original's 8 directions (`THexagonDirection`: E/SE/SW/W/NW/NE plus NORTH = 6,
- * SOUTH = 7 — source basis "A* pathfinding" row), now one half-cell fine ({@link TerrainGraph.steps}):
+ * SOUTH = 7 — readable in the original's shipped `Data/GameSourceIncludes/logicdefines.inc`, the
+ * "Logic directions" block), now one half-cell fine ({@link TerrainGraph.steps}):
  *  - E/W = `(±1, 0)`, a 34 px half-column step, cost {@link HALF_COLUMN};
  *  - NE/SE/SW/NW = `(±1, ±2)`, the SAME 51 px lattice edge the full-cell graph priced (half a column
  *    sideways, one full row up/down), cost {@link DIAGONAL_STEP};
@@ -124,6 +127,9 @@ export class TerrainGraph {
   private readonly typeIds: Int32Array;
   /** typeId -> resolved sim props, frozen at build time. */
   private readonly props: ReadonlyMap<number, CellTypeProps>;
+  /** Static-connectivity label per node (-1 = unwalkable), from a build-time flood fill over
+   *  {@link steps}. See {@link componentOf}. */
+  private readonly components: Int32Array;
 
   constructor(width: number, height: number, typeIds: Int32Array, props: ReadonlyMap<number, CellTypeProps>) {
     if (width <= 0 || height <= 0) throw new Error(`terrain dimensions must be positive: ${width}x${height}`);
@@ -136,6 +142,7 @@ export class TerrainGraph {
     this.height = height;
     this.typeIds = typeIds;
     this.props = props;
+    this.components = this.computeComponents();
   }
 
   /** Total node count. */
@@ -285,6 +292,51 @@ export class TerrainGraph {
     }
     return out;
   }
+
+  /**
+   * The STATIC-connectivity label of a node: nodes reachable from each other over static terrain
+   * share a label; unwalkable nodes are -1. The dynamic walk-block overlay only ever REMOVES edges,
+   * so two nodes with different labels are provably unreachable under ANY overlay — the pathfinder
+   * uses this to answer "no route" without flooding the whole component (an island right-click used
+   * to cost a full-map Dijkstra). Labels are assigned by ascending seed id at build time, so they
+   * are a pure function of the terrain — lockstep-safe.
+   */
+  componentOf(cell: CellId): number {
+    const label = this.components[cell];
+    if (label === undefined) throw new Error(`cell id ${cell} out of range (0..${this.cellCount - 1})`);
+    return label;
+  }
+
+  /** Flood-fill the static components over the pathfinder's own edge set ({@link steps} with no
+   *  overlay), so the diagonal flank-seam rule has exactly one owner. Edges are symmetric within
+   *  the walkable set (destination-walkability + the shared flank pair), so a BFS labelling is
+   *  well-defined. One-time O(nodes) build cost. */
+  private computeComponents(): Int32Array {
+    const components = new Int32Array(this.cellCount).fill(-1);
+    const queue: number[] = [];
+    let nextLabel = 0;
+    for (let seed = 0; seed < this.cellCount; seed++) {
+      if (components[seed] !== -1 || !this.isWalkable(seed as CellId)) continue;
+      const label = nextLabel;
+      nextLabel += 1;
+      components[seed] = label;
+      queue.length = 0;
+      queue.push(seed);
+      let head = 0;
+      while (head < queue.length) {
+        const cur = queue[head];
+        head += 1;
+        if (cur === undefined) break; // head < length ⇒ present; guard for the checked access
+        for (const { cell } of this.steps(cur as CellId)) {
+          if (components[cell] === -1) {
+            components[cell] = label;
+            queue.push(cell);
+          }
+        }
+      }
+    }
+    return components;
+  }
 }
 
 /**
@@ -306,6 +358,10 @@ export interface TerrainMap {
 /** A terrain grid authored at VISUAL-CELL resolution (`W×H`) — scenes and the decoded map's baked
  *  per-cell lane. Upsample via {@link halfCellMapFromCells} before building a graph. */
 export interface CellTerrainMap {
+  /** Never present — the inverse discriminant. A half-cell {@link TerrainMap} is otherwise a
+   *  structural SUPERSET of this shape, so without it `halfCellMapFromCells(someHalfCellMap)`
+   *  would compile and silently double-upsample to 4W×4H. */
+  readonly resolution?: never;
   readonly width: number;
   readonly height: number;
   /** Row-major landscape typeId per cell; length must equal width*height. */
@@ -318,6 +374,11 @@ export interface CellTerrainMap {
  * half-cell lanes use (source basis: mapdat lane layout — cell (x,y) owns exactly that block).
  */
 export function halfCellMapFromCells(map: CellTerrainMap): TerrainMap {
+  // The runtime twin of the `resolution?: never` discriminant, for callers that reach here past
+  // the type system — double-upsampling a half-cell grid would silently misplace every node.
+  if ((map as { resolution?: unknown }).resolution !== undefined) {
+    throw new Error('halfCellMapFromCells expects a CELL-resolution grid, got a half-cell TerrainMap');
+  }
   if (map.typeIds.length !== map.width * map.height) {
     throw new Error(
       `cell grid has ${map.typeIds.length} cells, expected ${map.width * map.height} (${map.width}x${map.height})`,
