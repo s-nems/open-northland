@@ -263,6 +263,54 @@ describe('placementProbe — the build-overlay seam agrees with canPlaceBuilding
   });
 });
 
+describe('placementBlockerVersion — the overlay memo key that decouples the wash from the tick', () => {
+  // The build-mode overlay re-probes the whole visible node band only when this value moves; keying it
+  // on the tick (the old regression) re-probed every RAF while the game played. So the version MUST
+  // hold steady across ticks yet move the instant a building/resource enters or leaves the world.
+  it('holds steady across ticks while buildings and resources are unchanged', () => {
+    const sim = mappedSim();
+    const v0 = sim.placementBlockerVersion();
+    sim.run(10); // ten empty ticks — no building/resource churn
+    expect(sim.placementBlockerVersion()).toBe(v0);
+  });
+
+  it('moves when a building is placed and when a resource is added or removed', () => {
+    const sim = mappedSim();
+    const v0 = sim.placementBlockerVersion();
+
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 11, y: 11, tribe: VIKING });
+    sim.step();
+    const v1 = sim.placementBlockerVersion();
+    expect(v1).not.toBe(v0); // a new building moved the obstacle set
+
+    const tree = sim.world.create();
+    sim.world.add(tree, Position, positionOfNode(3, 3));
+    sim.world.add(tree, Resource, { goodType: 1, remaining: 5, harvestAtomic: 24 });
+    const v2 = sim.placementBlockerVersion();
+    expect(v2).not.toBe(v1); // a new resource too
+
+    sim.world.destroy(tree);
+    expect(sim.placementBlockerVersion()).not.toBe(v2); // and its removal
+  });
+
+  it('keeps the memoized probe fresh after ticks and after a building appears mid-play', () => {
+    const sim = mappedSim();
+    const terrain = terrainOf(sim);
+
+    // Prime the memo on the empty map, then tick: a version-keyed memo must survive idle ticks…
+    expect(placementProbe(sim.world, sim.content, terrain, HUT).canPlace(11, 11)).toBe(true);
+    sim.run(5);
+
+    // …but re-derive the instant a hut lands, so the overlay can never keep tinting a taken spot green.
+    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 11, y: 11, tribe: VIKING });
+    sim.step();
+
+    const probe = placementProbe(sim.world, sim.content, terrain, HUT);
+    expect(probe.canPlace(11, 11)).toBe(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 11, 11));
+    expect(probe.canPlace(11, 11)).toBe(false); // now sits on the just-placed hut's zone
+  });
+});
+
 describe('buildable terrain channel — walkable ground that rejects building', () => {
   /** A margin landscape class: walkable for navigation, NOT buildable (a real map's exclusion ring
    *  around a tree/rock — content/collision.ts's TERRAIN_MARGIN resolves to exactly these flags). */
