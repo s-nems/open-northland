@@ -249,4 +249,67 @@ describe('building-menu', () => {
     const layout = layoutBuildingMenu(entries, { originX: 0, originY: 0, scale: 1, selected: 'military' });
     expect(layout.rows.map((r) => r.typeId)).toEqual([39, 40]);
   });
+
+  // A longer list so the viewport overflows and the scroll model engages.
+  const manyEntries: readonly MenuBuildingEntry[] = Array.from({ length: 10 }, (_, i) => ({
+    typeId: 100 + i,
+    label: `B${i}`,
+    kind: 'workplace',
+  }));
+
+  it('bounds the list to a viewport, exposes a clamped scroll + a scrollbar on overflow', () => {
+    const base = { originX: 0, originY: 0, scale: 1, selected: 'all' as const, maxListRows: 4 };
+    const top = layoutBuildingMenu(manyEntries, base);
+    // Only the viewport's worth of rows are materialised (the visible slice), from the top.
+    expect(top.rows.map((r) => r.typeId)).toEqual([100, 101, 102, 103]);
+    expect(top.scroll).toEqual({ top: 0, max: 6, total: 10, visible: 4 });
+    expect(top.scrollbar).toBeDefined();
+
+    // Scrolling down slides the window; the slice tracks `scrollTop`.
+    const mid = layoutBuildingMenu(manyEntries, { ...base, scrollTop: 2 });
+    expect(mid.rows.map((r) => r.typeId)).toEqual([102, 103, 104, 105]);
+    expect(mid.scroll.top).toBe(2);
+
+    // An over-scroll is clamped to the last full page.
+    const clamped = layoutBuildingMenu(manyEntries, { ...base, scrollTop: 99 });
+    expect(clamped.scroll.top).toBe(6);
+    expect(clamped.rows.map((r) => r.typeId)).toEqual([106, 107, 108, 109]);
+  });
+
+  it('omits the scrollbar when the category fits the viewport', () => {
+    const layout = layoutBuildingMenu(manyEntries, {
+      originX: 0,
+      originY: 0,
+      scale: 1,
+      selected: 'all',
+      maxListRows: 20,
+    });
+    expect(layout.rows).toHaveLength(10);
+    expect(layout.scrollbar).toBeUndefined();
+    expect(layout.scroll.max).toBe(0);
+  });
+
+  it('hit-tests the scrollbar track as a page-scroll toward the click', () => {
+    const layout = layoutBuildingMenu(manyEntries, {
+      originX: 0,
+      originY: 0,
+      scale: 1,
+      selected: 'all',
+      maxListRows: 4,
+      scrollTop: 3,
+    });
+    const bar = layout.scrollbar;
+    if (bar === undefined) throw new Error('expected a scrollbar');
+    // Above the thumb → page up; below → page down.
+    expect(hitTestBuildingMenu(layout, bar.track.x + 1, bar.thumb.y - 1)).toEqual({
+      kind: 'scroll',
+      dir: -1,
+    });
+    expect(hitTestBuildingMenu(layout, bar.track.x + 1, bar.thumb.y + bar.thumb.h + 1)).toEqual({
+      kind: 'scroll',
+      dir: 1,
+    });
+    // On the thumb itself → consumed as window (no-op), never a fall-through.
+    expect(hitTestBuildingMenu(layout, bar.thumb.x + 1, bar.thumb.y + 1)).toEqual({ kind: 'window' });
+  });
 });
