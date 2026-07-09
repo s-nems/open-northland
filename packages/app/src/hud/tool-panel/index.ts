@@ -96,6 +96,23 @@ const FALLBACK_BUTTON_BORDER = 0x8a744a;
 const SPEED_LABEL_INSET_X = 4;
 const SPEED_LABEL_RAISE_Y = 3;
 
+/**
+ * The button-glyph contrast outline: silhouette copies of each glyph stamped 1 design px out in all eight
+ * directions, in the sampled backdrop colour of the original button sockets (`ls_gui_window` frame 0x31 at
+ * (2,2) → rgb(0,8,0)). See the sprite-creation comment in {@link mountToolPanel} for why (named deviation).
+ */
+const BUTTON_OUTLINE_COLOR = 0x000800;
+const BUTTON_OUTLINE_OFFSETS: readonly (readonly [number, number])[] = [
+  [-1, -1],
+  [0, -1],
+  [1, -1],
+  [-1, 0],
+  [1, 0],
+  [-1, 1],
+  [0, 1],
+  [1, 1],
+];
+
 /** True when a keydown originated in a text-entry element — a game hotkey must not fire while typing.
  *  (No text field exists in the app today; this guards the first one that appears.) */
 const isTypingTarget = (target: EventTarget | null): boolean =>
@@ -133,24 +150,39 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   // The real art path rasterizes the strip+buttons into an off-screen texture at an integer oversample and
   // draws it linear-downscaled to the fractional `uiscale` (crisp — no pixeloza; see `strip-texture.ts`).
   let supersampled: SupersampledStrip | null = null;
-  let speedSprite: PalettedSprite | null = null;
+  /** The speed button's outline stamps + real glyph — a speed change re-frames ALL of them (one shape). */
+  const speedSprites: PalettedSprite[] = [];
 
   if (art !== null) {
-    // Colour-key the STRIP only. Its near-black band is removable backdrop outside the carved silhouette —
-    // the original hid that opaque rectangle by rendering gameplay in a dedicated area, but we render the
-    // world full-screen, so keying it transparent is a DELIBERATE deviation (the map shows past the ornament).
-    // The BUTTONS draw straight ('off'): they are opaque type-4 bobs the original engine blits WHOLE onto the
-    // strip, and their near-black is the button's recessed dark socket — the contrast plate behind the knob +
-    // glyph. Keying it (the old 'full') bled the strip's mottled stone through and made thin glyphs (the ×1
-    // digit) read frayed against it (source basis: atlas frames 0x2a–0x38 decode `opaque`, offset 0).
+    // Key EVERY panel sprite (strip + buttons) and OUTLINE the button glyphs. The GUI palettes reserve
+    // index 0 (magenta) + a near-black band as each element's backdrop, and a bob writes them opaque — the
+    // original engine blits the buttons WHOLE, dark socket backdrop included, hiding gameplay in a separate
+    // area. Over our full-screen world that opaque socket column read as a heavy black slab (user-rejected),
+    // so this is a DELIBERATE deviation: the backdrop is keyed transparent (the carved strip shows through)
+    // and each glyph instead gets a 1-design-px rim in the socket's own colour — eight offset silhouette
+    // stamps behind the real sprite — keeping the original's glyph/backdrop contrast (thin glyphs like the
+    // ×1 speed digit frayed against bare stone) without its full socket. All outlines land BEFORE all
+    // glyphs, so a button's rim can never stamp over a touching neighbour's art.
     const specs: StripSpriteSpec[] = [];
     const strip = makeGuiSprite(art, layout.stripGfx, { defaultPalette: 'iconsleft', colorKey: 'full' });
     if (strip !== null) specs.push({ spr: strip.sprite, design: TOOL_PANEL_STRIP });
     for (const b of layout.buttons) {
-      const gs = makeGuiSprite(art, b.gfx, { defaultPalette: 'iconsleft', colorKey: 'off' });
+      for (const [dx, dy] of BUTTON_OUTLINE_OFFSETS) {
+        const os = makeGuiSprite(art, b.gfx, { defaultPalette: 'iconsleft', colorKey: 'full' });
+        if (os === null) continue;
+        os.sprite.silhouette = BUTTON_OUTLINE_COLOR;
+        specs.push({
+          spr: os.sprite,
+          design: { x: b.rect.x + dx, y: b.rect.y + dy, w: b.rect.w, h: b.rect.h },
+        });
+        if (b.id === 'speed') speedSprites.push(os.sprite);
+      }
+    }
+    for (const b of layout.buttons) {
+      const gs = makeGuiSprite(art, b.gfx, { defaultPalette: 'iconsleft', colorKey: 'full' });
       if (gs === null) continue;
       specs.push({ spr: gs.sprite, design: b.rect });
-      if (b.id === 'speed') speedSprite = gs.sprite;
+      if (b.id === 'speed') speedSprites.push(gs.sprite);
     }
     supersampled = createSupersampledStrip({ app, bounds: layout.designBounds, scale, sprites: specs });
     stripContainer.addChild(supersampled.display);
@@ -201,10 +233,13 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   // `cause` null = mount-time init (refresh the glyph only, never push to the loop — see the call below).
   const applySpeed = (cause: GameSpeedChangeCause | null): void => {
     const spec = effectiveGameSpeedSpec(speedControl);
-    if (speedSprite !== null && art !== null) {
+    if (speedSprites.length > 0 && art !== null) {
       const frame = art.layer.atlas.frames.get(spec.gfx);
       if (frame !== undefined) {
-        speedSprite.setFrame(art.layer.source, frame, art.layer.atlas.width, art.layer.atlas.height);
+        // Outline stamps + real glyph share the frame (the rim must follow the new glyph's shape).
+        for (const s of speedSprites) {
+          s.setFrame(art.layer.source, frame, art.layer.atlas.width, art.layer.atlas.height);
+        }
         // The strip is baked into a texture, so re-rasterize it with the new speed glyph (rare — a click).
         supersampled?.redraw();
       }
