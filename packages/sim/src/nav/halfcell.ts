@@ -40,7 +40,17 @@ export function nodeOfPosition(x: Fixed, y: Fixed): HalfCellNode {
  */
 export function positionOfNode(hx: number, hy: number): { x: Fixed; y: Fixed } {
   const y = fx.div(fx.fromInt(hy), TWO);
-  return { x: fx.sub(fx.div(fx.fromInt(hx), TWO), staggerShift(y)), y };
+  return { x: positionXOfWorld(fx.div(fx.fromInt(hx), TWO), y), y };
+}
+
+/**
+ * The Position `x` of a WORLD column coordinate at row `y` — the stagger shift removed (the
+ * projection re-adds it). The off-lattice twin of {@link positionOfNode} for points BETWEEN nodes
+ * (e.g. a diagonal leg's seam waypoint at an edge midpoint), so the stagger-removal convention has
+ * exactly one owner.
+ */
+export function positionXOfWorld(wx: Fixed, y: Fixed): Fixed {
+  return fx.sub(wx, staggerShift(y));
 }
 
 /**

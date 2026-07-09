@@ -57,8 +57,7 @@ export class PlacementGhostLayer {
       this.rebuild(ghost.buildingType);
     }
     const p = halfCellToScreen(ghost.col, ghost.row);
-    // The elevation field samples CELL coordinates — a node sits at (col/2, row/2) in cell space.
-    const lift = elevation.maxLift > 0 ? elevation.liftAt(ghost.col / 2, ghost.row / 2) : 0;
+    const lift = elevation.maxLift > 0 ? elevation.liftAtNode(ghost.col, ghost.row) : 0;
     this.container.position.set(p.x, p.y - lift);
     // Depth by the PRE-LIFT feet anchor, like every pooled sprite — the ghost interleaves correctly.
     this.container.zIndex = depthKey(p.x, p.y);

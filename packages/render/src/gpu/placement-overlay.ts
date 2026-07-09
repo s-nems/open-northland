@@ -62,7 +62,7 @@ const CELL_OVERLAP = 5;
 /** Composite-texture allocation step (texture px) — see {@link PlacementOverlayLayer.ensureTextures}. */
 const TEXTURE_QUANT = 128;
 
-/** The world-space box of a band's composite, padded for the stagger overhang + the terrain lift. */
+/** The world-space box of a band's composite, padded for the border diamonds + the terrain lift. */
 export interface OverlayBounds {
   readonly x: number;
   readonly y: number;
@@ -71,8 +71,9 @@ export interface OverlayBounds {
 }
 
 /**
- * The world-space bounds of a band's composite: the node centres' extent grown by a full tile's
- * half-extents on every side (node diamonds overlap their neighbours by construction — see `set`)
+ * The world-space bounds of a band's composite: the node centres' extent grown on every side by a
+ * border node diamond's half-extents (`TILE_HALF_W` × `TILE_HALF_H/2` — the rectangular node
+ * lattice has no stagger overhang) plus the {@link CELL_OVERLAP} fusing pad each diamond grows by,
  * and by the map's max terrain lift upward. Pure — unit-testable without a GL context.
  */
 export function overlayBounds(
@@ -81,13 +82,13 @@ export function overlayBounds(
 ): OverlayBounds {
   const topLeft = halfCellToScreen(frame.minCol, frame.minRow);
   const bottomRight = halfCellToScreen(frame.maxCol, frame.maxRow);
-  const x = topLeft.x - 2 * TILE_HALF_W;
-  const y = topLeft.y - TILE_HALF_H - maxLift;
+  const padX = TILE_HALF_W + CELL_OVERLAP;
+  const padY = TILE_HALF_H / 2 + CELL_OVERLAP;
   return {
-    x,
-    y,
-    width: bottomRight.x - topLeft.x + 4 * TILE_HALF_W,
-    height: bottomRight.y - topLeft.y + 2 * TILE_HALF_H + maxLift,
+    x: topLeft.x - padX,
+    y: topLeft.y - padY - maxLift,
+    width: bottomRight.x - topLeft.x + 2 * padX,
+    height: bottomRight.y - topLeft.y + 2 * padY + maxLift,
   };
 }
 
@@ -159,9 +160,7 @@ export class PlacementOverlayLayer {
     for (let row = frame.minRow; row <= frame.maxRow; row++) {
       for (let col = frame.minCol; col <= frame.maxCol; col++) {
         const p = halfCellToScreen(col, row);
-        // The elevation field samples CELL coordinates — a node sits at (col/2, row/2).
-        const cy =
-          (p.y - (lifted ? elevation.liftAt(col / 2, row / 2) : 0) - bounds.y) * COMPOSITE_RESOLUTION;
+        const cy = (p.y - (lifted ? elevation.liftAtNode(col, row) : 0) - bounds.y) * COMPOSITE_RESOLUTION;
         const cx = (p.x - bounds.x) * COMPOSITE_RESOLUTION;
         const g = blocked.has(`${col},${row}`) ? blockedG : buildableG;
         g.poly([cx, cy - hh, cx + hw, cy, cx, cy + hh, cx - hw, cy]);

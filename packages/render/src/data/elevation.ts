@@ -51,10 +51,16 @@ export interface ElevationField {
    * value to SUBTRACT from the projected `y`.
    */
   liftAt(col: number, row: number): number;
+  /**
+   * {@link liftAt} for a HALF-CELL NODE address `(hx, hy)`: the elevation lane is per-CELL, and a
+   * node sits at `(hx/2, hy/2)` in continuous cell space — this owns that ÷2 convention so node
+   * consumers (placement overlay/ghost, picking) can't drift apart on it.
+   */
+  liftAtNode(hx: number, hy: number): number;
 }
 
 /** A flat field — no elevation lane. Shared so a `content/`-less / synthetic map allocates nothing. */
-const FLAT_FIELD: ElevationField = { maxLift: 0, liftAt: () => 0 };
+const FLAT_FIELD: ElevationField = { maxLift: 0, liftAt: () => 0, liftAtNode: () => 0 };
 
 /**
  * Build an {@link ElevationField} from a decoded map's `elevation` lane (row-major, length
@@ -76,6 +82,7 @@ export function makeElevationField(
   return {
     maxLift,
     liftAt: (col: number, row: number): number => sample(col, row) * ELEVATION_LIFT,
+    liftAtNode: (hx: number, hy: number): number => sample(hx / 2, hy / 2) * ELEVATION_LIFT,
   };
 }
 

@@ -34,10 +34,10 @@ export type AuthoredPlacement =
  * Resolve a map's authored `entities` (names + half-cells, verbatim from `map.cif` `StaticObjects`)
  * into sim placements — the pure, unit-testable middle of the placement import. Joins are by NAME
  * against the IR rows (a building's `EditName`+`level` → `buildingBobs` typeId+tribe; a human's
- * `role` → `jobs` typeId, its `tribe` string → `tribes` typeId), half-cells halve to cells, and the
- * two player columns land on 0-based sim owners (`sethouse` is 1-based, `sethuman` 0-based — schema
- * notes). Half-cells pass through VERBATIM — the sim's grid IS the `2W×2H` lattice the records
- * address, so an authored building keeps its exact anchor (the old ÷2 cell collapse is gone).
+ * `role` → `jobs` typeId, its `tribe` string → `tribes` typeId), and the two player columns land on
+ * 0-based sim owners (`sethouse` is 1-based, `sethuman` 0-based — schema notes). Half-cells pass
+ * through VERBATIM — the sim's grid IS the `2W×2H` lattice the records address, so an authored
+ * building keeps its exact anchor (the old ÷2 cell collapse is gone).
  * Unresolvable or out-of-bounds records are dropped and counted; `setanimal` records are not
  * placed yet (herd-vs-individual semantics, source basis).
  */

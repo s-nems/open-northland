@@ -1,7 +1,6 @@
 import { PathFollow, PathRequest, Position } from '../../components/index.js';
 import { type Fixed, ZERO, fx } from '../../core/fixed.js';
-import { positionOfNode } from '../../nav/halfcell.js';
-import { staggerShift } from '../../nav/metric.js';
+import { positionOfNode, positionXOfWorld } from '../../nav/halfcell.js';
 import { findPath } from '../../nav/pathfinding.js';
 import type { CellId, TerrainGraph } from '../../nav/terrain.js';
 import type { System } from '../context.js';
@@ -128,11 +127,11 @@ function pathToWaypoints(terrain: TerrainGraph, path: ReadonlyArray<CellId>): Ar
     const c = terrain.coordsOf(cell);
     if (prev !== undefined && Math.abs(c.y - prev.y) === 2 && (prev.y & 1) === 1) {
       // hy₁ odd and hy₂ = hy₁±2 make (hy₁+hy₂)/4 the integer row the leg crosses; the edge midpoint's
-      // world x is (hx₁+hx₂)/4 columns (a quarter — exact in fixed point), converted to grid x by
-      // removing that row's stagger shift.
+      // world x is (hx₁+hx₂)/4 columns (a quarter — exact in fixed point), converted to Position x
+      // by the one stagger-removal seam.
       const rowY = fx.fromInt((prev.y + c.y) / 4);
       const midWorldX = fx.div(fx.fromInt(prev.x + c.x), fx.fromInt(4));
-      waypoints.push({ x: fx.sub(midWorldX, staggerShift(rowY)), y: rowY });
+      waypoints.push({ x: positionXOfWorld(midWorldX, rowY), y: rowY });
     }
     const p = positionOfNode(c.x, c.y);
     waypoints.push({ x: p.x, y: p.y });

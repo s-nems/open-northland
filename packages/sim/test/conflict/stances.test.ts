@@ -28,8 +28,8 @@ import {
 import { attackUnit, setJob, setStance } from '../../src/systems/conflict/orders.js';
 import { spawnSettler } from '../../src/systems/conflict/spawn.js';
 import {
-  DEFEND_LEASH_TILES,
-  DEFEND_RADIUS_TILES,
+  DEFEND_LEASH_NODES,
+  DEFEND_RADIUS_NODES,
   type SystemContext,
   combatSystem,
 } from '../../src/systems/index.js';
@@ -419,8 +419,8 @@ describe('DEFEND — hold an anchor, don’t chase past the leash', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(30, 1) });
     const guard = combatant(sim, 10, 0, P0, MILITARY_MODE.DEFEND);
     sim.world.get(guard, Stance).anchorCell = cell(sim, 10, 0);
-    // 1 node outside the radius: the anchor is node (20, 0), the enemy DEFEND_RADIUS_TILES+1 nodes east.
-    combatantAtNode(sim, 20 + DEFEND_RADIUS_TILES + 1, 0, P1, MILITARY_MODE.IGNORE);
+    // 1 node outside the radius: the anchor is node (20, 0), the enemy DEFEND_RADIUS_NODES+1 nodes east.
+    combatantAtNode(sim, 20 + DEFEND_RADIUS_NODES + 1, 0, P1, MILITARY_MODE.IGNORE);
 
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(guard, CurrentAtomic)).toBe(false); // did not engage
@@ -442,7 +442,7 @@ describe('DEFEND — hold an anchor, don’t chase past the leash', () => {
     const g = sim.terrain?.coordsOf(goal);
     const a = sim.terrain?.coordsOf(anchor);
     const distToAnchor = Math.abs((g?.x ?? 0) - (a?.x ?? 0)) + Math.abs((g?.y ?? 0) - (a?.y ?? 0));
-    expect(distToAnchor).toBeLessThanOrEqual(DEFEND_LEASH_TILES); // the chase stayed within the leash
+    expect(distToAnchor).toBeLessThanOrEqual(DEFEND_LEASH_NODES); // the chase stayed within the leash
     expect(enemy).toBeDefined();
   });
 
@@ -458,7 +458,7 @@ describe('DEFEND — hold an anchor, don’t chase past the leash', () => {
     sim.run(120);
     const gx = tileOf(sim, guard).x;
     // The leash is a NODE Manhattan bound; a same-row cell offset is 2 nodes, so double the cell delta.
-    expect(Math.abs(gx - anchorX) * 2).toBeLessThanOrEqual(DEFEND_LEASH_TILES);
+    expect(Math.abs(gx - anchorX) * 2).toBeLessThanOrEqual(DEFEND_LEASH_NODES);
   });
 
   it('holds its post against the economy — a militia-job guard does not wander off to work', () => {

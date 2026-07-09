@@ -6,7 +6,7 @@ import type { MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
 import { type ToolPanelController, mountToolPanel } from '../hud/tool-panel/index.js';
 import { screenScale } from './camera.js';
-import { screenToWorld, worldToTile } from './picking.js';
+import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
 
 /**
  * The in-game LEFT tool panel is part of the standard game HUD, not a per-scene feature — so BOTH the map
@@ -97,9 +97,9 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     const { sx, sy, rect } = screenScale(deps.canvas, deps.app.renderer.resolution);
     const w = screenToWorld(deps.camera(), (clientX - rect.left) * sx, (clientY - rect.top) * sy);
     const t = worldToTile(w.x, w.y, deps.elevation);
-    // worldToTile yields half-cell NODES — bound against the 2× node grid.
-    if (t.col < 0 || t.col >= deps.mapSize.width * 2 || t.row < 0 || t.row >= deps.mapSize.height * 2)
-      return null;
+    // worldToTile yields half-cell NODES — bound against the node grid.
+    const bounds = nodeBounds(deps.mapSize);
+    if (t.col < 0 || t.col >= bounds.width || t.row < 0 || t.row >= bounds.height) return null;
     return { col: t.col, row: t.row };
   };
 

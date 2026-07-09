@@ -125,8 +125,9 @@ Context (re-verify; research 2026-07-03):
 Scope:
 1. A deterministic spawn path (a sim command or a world-construction step — mirror how the app
    currently seeds entities) that turns qualifying placements into Resource nodes: goodType +
-   the Step-3/4 content constants (chops/yield/deposit size) + cell position (half-cell → cell
-   snap; document rounding). The Step-5 collision set is built once from them at load.
+   the Step-3/4 content constants (chops/yield/deposit size) + the placement's half-cell coords
+   VERBATIM (the sim grid IS the 2W×2H lattice since the half-cell migration — no ÷2 cell snap;
+   `positionOfNode` is the anchor seam). The Step-5 collision set is built once from them at load.
 2. De-duplicate drawing: spawned nodes draw through the sim path (Step 2); REMOVE them from the
    decor layer passed to setMapObjects (never double-draw the same tree).
 3. Scale proof (golden rule 7): load the biggest decoded map with real graphics; measure

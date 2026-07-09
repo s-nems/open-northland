@@ -82,9 +82,7 @@ export function worldToTile(wx: number, wy: number, elevation?: ElevationField):
   if (elevation === undefined || elevation.maxLift === 0) return worldToTileFlat(wx, wy);
   let guess = worldToTileFlat(wx, wy);
   for (let pass = 0; pass < PICK_ELEVATION_PASSES; pass++) {
-    // The elevation field samples CELL coordinates — a node sits at (col/2, row/2) in cell space
-    // (fractional halves hit the bilinear sampler exactly like the map-object renderer does).
-    const lift = elevation.liftAt(guess.col / 2, guess.row / 2);
+    const lift = elevation.liftAtNode(guess.col, guess.row);
     const next = worldToTileFlat(wx, wy + lift);
     if (next.col === guess.col && next.row === guess.row) return next;
     guess = next;
@@ -97,6 +95,35 @@ export function clampTile(tile: Tile, width: number, height: number): Tile {
   return {
     col: Math.max(0, Math.min(width - 1, tile.col)),
     row: Math.max(0, Math.min(height - 1, tile.row)),
+  };
+}
+
+/**
+ * The half-cell NODE bounds of a `width×height`-CELL map — cell `(c, r)` owns the 2×2 node block
+ * `(2c..2c+1, 2r..2r+1)`, so the node grid spans `[0, 2·cells)` on each axis. The ONE app-side owner
+ * of the cell→node bounds convention (order targeting, tile hit-bounds, overlay bands all derive
+ * from it — a caller hand-rolling the ×2 is the bug this helper exists to prevent).
+ */
+export function nodeBounds(mapSize: { readonly width: number; readonly height: number }): {
+  width: number;
+  height: number;
+} {
+  return { width: mapSize.width * 2, height: mapSize.height * 2 };
+}
+
+/** The node band covering an inclusive CELL range — each cell contributes its whole 2×2 node block
+ *  (see {@link nodeBounds} for the convention). */
+export function nodeBandOfCells(cells: {
+  readonly minCol: number;
+  readonly maxCol: number;
+  readonly minRow: number;
+  readonly maxRow: number;
+}): { minCol: number; maxCol: number; minRow: number; maxRow: number } {
+  return {
+    minCol: cells.minCol * 2,
+    maxCol: cells.maxCol * 2 + 1,
+    minRow: cells.minRow * 2,
+    maxRow: cells.maxRow * 2 + 1,
   };
 }
 
@@ -169,7 +196,8 @@ export interface FormationUnit {
 /**
  * `count` distinct NODES clustered around `target`, spiralling outward by square (Chebyshev) ring so a
  * group sent to one point spreads into the VICINITY of it instead of all stacking on the single clicked
- * node. On the half-cell lattice a ring-1 slot is 34/19 px away — units pack at the original's density.
+ * node. On the half-cell lattice a ring-1 slot is 34/19 px away — matching the OBSERVED packing
+ * density of the original (no readable formation code; the lattice pitch is the data-pinned part).
  * Slots are collected nearest-first (ring 0 = the target itself, then the 8 nodes of ring 1, then
  * ring 2's 16, …), each kept only if it is in `[0,width)×[0,height)` (NODE dims) and `blocked(col,row)`
  * is false (an occupied/unwalkable node is skipped). A single-unit order (`count === 1`) returns just

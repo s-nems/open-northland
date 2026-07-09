@@ -23,22 +23,22 @@ import {
 } from './geometry.js';
 import { resourceBlockedCells } from './resources.js';
 
-// INTERACTION + PLACEMENT — where a unit stands to use a building/resource (door cells, work
-// cells), the walk-block overlays routing consumes, and the can-this-building-go-here check.
+// INTERACTION + PLACEMENT — where a unit stands to use a building/resource (door nodes, work
+// nodes), the walk-block overlays routing consumes, and the can-this-building-go-here check.
 
 /**
- * The integer tile a settler must stand on to INTERACT with a building — its door cell
- * (`anchor + footprint.door`) when the type has one, else the anchor tile itself (the pre-footprint
- * same-tile model, which synthetic content keeps). This is the single seam every "walk to the
- * building / are we at the building" consumer resolves through (the AI walk targets + arrival
- * checks, the JobSystem adopt bucket, the production worker-presence gate), so the walk goal and
- * the presence test can never disagree about where "at the building" is — with the walls now
- * blocking, the anchor tile itself is typically unreachable, and the door is where the original's
- * settlers enter. A door tile OFF the map (impossible for a gate-placed footprinted building — the
- * placement rule forces the whole reserved zone, door included, in-bounds — but reachable through
- * hand-authored content) falls back to the anchor tile, so every consumer stays consistent instead
- * of a clamped walk goal disagreeing with the raw-tile presence checks. Returns null for an entity
- * without a Building or Position.
+ * The integer HALF-CELL NODE a settler must stand on to INTERACT with a building — its door node
+ * (`anchor + footprint.door`, both half-cell offsets) when the type has one, else the anchor node
+ * itself (the pre-footprint same-node model, which synthetic content keeps). This is the single
+ * seam every "walk to the building / are we at the building" consumer resolves through (the AI
+ * walk targets + arrival checks, the JobSystem adopt bucket, the production worker-presence gate),
+ * so the walk goal and the presence test can never disagree about where "at the building" is —
+ * with the walls now blocking, the anchor node itself is typically unreachable, and the door is
+ * where the original's settlers enter. A door node OFF the map (impossible for a gate-placed
+ * footprinted building — the placement rule forces the whole reserved zone, door included,
+ * in-bounds — but reachable through hand-authored content) falls back to the anchor node, so every
+ * consumer stays consistent instead of a clamped walk goal disagreeing with the raw-node presence
+ * checks. Returns null for an entity without a Building or Position.
  */
 export function interactionTile(
   world: World,
@@ -57,14 +57,19 @@ export function interactionTile(
 }
 
 function resourceAtTile(world: World, x: number, y: number, goodType: number): Entity | null {
+  // A PICK, so the winner must be canonical: keep the LOWEST id among matches rather than the first
+  // in query order (store insertion order is history-dependent — two same-good resources sharing a
+  // node would otherwise resolve differently after a snapshot rebuild).
+  let best: Entity | null = null;
   for (const resource of world.query(Resource, Position)) {
+    if (best !== null && resource >= best) continue;
     const pos = world.get(resource, Position);
     const n = nodeOfPosition(pos.x, pos.y);
     if (n.hx !== x || n.hy !== y) continue;
     if (world.get(resource, Resource).goodType !== goodType) continue;
-    return resource;
+    best = resource;
   }
-  return null;
+  return best;
 }
 
 function stockedGoodAt(world: World, entity: Entity): number | null {

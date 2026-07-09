@@ -685,11 +685,11 @@ export type TerrainPattern = z.infer<typeof TerrainPattern>;
 
 /**
  * One footprint entry of a `[GfxLandscape]` record's repeated `LogicWalkBlockArea` /
- * `LogicBuildBlockArea` / `LogicWorkArea` lines: `<valency> <dx> <dy> <tileMask>` — a HALF-CELL
- * offset relative to the object's anchor node (the `emla`/`lmlt` lanes' own `2W×2H` grid) plus the
- * valency/mask the engine applies there. Extracted verbatim
- * (the mask semantics are not yet consumed); this is the data a future collision/footprint system
- * reads, so it is captured with the record rather than re-decoding the `.cif` later.
+ * `LogicBuildBlockArea` / `LogicWorkArea` lines: `<state> <dx> <dy> <run>` — for the object's fill
+ * state `state`, a horizontal RUN of `run` HALF-CELL offsets starting at `(dx, dy)` relative to the
+ * object's anchor node (the `emla`/`lmlt` lanes' own `2W×2H` grid). Extracted verbatim; consumed by
+ * `fullStateBlockAreaCells` (the shared full-state reading the sim's resource footprints and the
+ * app's map-collision join both class by).
  */
 export const LandscapeBlockArea = z.tuple([
   z.number().int(),

@@ -27,15 +27,17 @@ export interface IdleSpacing {
 const SPACING_SEARCH_CAP = 192;
 
 /**
- * The idle-spacing drive: if `e` — a resting, owned, otherwise-idle settler on tile (tileX,tileY) —
- * shares that tile with a LOWER-id resting owned settler, send it (a {@link MoveGoal}) to the nearest
- * free cell so the two don't stand stacked. The lowest-id occupant on the tile is the keeper (it stays);
- * every other occupant steps aside. A unit boxed in (no free cell within the search cap) just stays.
+ * The idle-spacing drive: if `e` — a resting, owned, otherwise-idle settler on half-cell node
+ * (tileX,tileY) — shares that node with a LOWER-id resting owned settler, send it (a
+ * {@link MoveGoal}) to the nearest free node so the two don't stand stacked. The lowest-id occupant
+ * on the node is the keeper (it stays); every other occupant steps aside. A unit boxed in (no free
+ * node within the search cap) just stays.
  *
- * This is the sim half of the "no hard collision, but units won't come to rest on an occupied tile"
- * behaviour: transit is never blocked (a walker passes through freely), only a unit that has ARRIVED with
- * nothing to do relocates off a shared tile. Determinism: the keeper test is a canonical id compare; the
- * target is a canonical breadth-first search; `claimed` keeps two de-stackers off the same new cell.
+ * This is the sim half of the "no hard collision, but units won't come to rest on an occupied node"
+ * behaviour: transit is never blocked (a walker passes through freely), only a unit that has ARRIVED
+ * with nothing to do relocates off a shared node. Determinism: the keeper test is a canonical id
+ * compare; the target is a canonical breadth-first search; `claimed` keeps two de-stackers off the
+ * same new node.
  */
 export function deStackIdle(
   world: World,

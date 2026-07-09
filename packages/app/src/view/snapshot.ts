@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@vinland/sim';
+import type { Fixed, WorldSnapshot } from '@vinland/sim';
 
 /**
  * Typed read helpers over the frozen {@link WorldSnapshot} — the shared owner/position/kind reads the
@@ -28,12 +28,15 @@ export function ownerPlayerOf(e: SnapshotEntity): number | undefined {
   return num(owner?.player);
 }
 
-/** The entity's fixed-point `Position`, or undefined. */
-export function positionOf(e: SnapshotEntity): { x: number; y: number } | undefined {
+/** The entity's fixed-point `Position`, or undefined. The snapshot serializes the sim's branded
+ *  `Fixed` values as plain numbers; this reader is the ONE place the brand is restored (by the
+ *  sim's own invariant a snapshot Position IS fixed-point), so consumers can feed grid seams like
+ *  `nodeOfPosition` without minting the brand themselves. */
+export function positionOf(e: SnapshotEntity): { x: Fixed; y: Fixed } | undefined {
   const pos = e.components.Position as { x?: unknown; y?: unknown } | undefined;
   const x = num(pos?.x);
   const y = num(pos?.y);
-  return x !== undefined && y !== undefined ? { x, y } : undefined;
+  return x !== undefined && y !== undefined ? { x: x as Fixed, y: y as Fixed } : undefined;
 }
 
 /** True when the entity is a settler / a building (carries the marker component). */
