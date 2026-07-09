@@ -1,11 +1,10 @@
-import type { Camera, ElevationField, HudPlacement } from '@vinland/render';
+import type { Camera, ElevationField } from '@vinland/render';
 import type { Command } from '@vinland/sim';
 import type { Application } from 'pixi.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
 import type { MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
 import { type ToolPanelController, mountToolPanel } from '../hud/tool-panel/index.js';
-import { buildToolPanelLayout } from '../hud/tool-panel/layout.js';
 import { screenScale } from './camera.js';
 import { screenToWorld, worldToTile } from './picking.js';
 
@@ -14,13 +13,9 @@ import { screenToWorld, worldToTile } from './picking.js';
  * viewer (`entries/map.ts`) and every acceptance scene (`entries/scene.ts`) mount it through this one
  * helper. It wraps {@link mountToolPanel} with the wiring both entries share: the
  * client-point → tile mapping (camera + client→screen scale, null off the map so a stray click never
- * clamp-places), and the HUD right-shift that clears the strip. The entry supplies only what differs — the
- * app, canvas, the live camera/sim/enqueue closures, its content's buildings, and how a speed change lands
- * on its loop control.
+ * clamp-places). The entry supplies only what differs — the app, canvas, the live camera/sim/enqueue
+ * closures, its content's buildings, and how a speed change lands on its loop control.
  */
-
-/** How far (px) to gap the always-on stocks HUD from the strip's right edge when shifting it clear. */
-const HUD_GAP = 6;
 
 export interface GameToolPanelDeps {
   readonly app: Application;
@@ -53,8 +48,6 @@ export interface GameToolPanelDeps {
 
 export interface GameToolPanelHandle {
   readonly controller: ToolPanelController;
-  /** px to shift the always-on stocks HUD right so it sits beside the strip instead of under it. */
-  readonly hudShift: number;
   /** True when a client point is over the HUD (strip / open window / active placement) — the input router
    *  asks this BEFORE world picking so a HUD click never falls through to unit selection/orders. */
   claimPointer(clientX: number, clientY: number): boolean;
@@ -96,16 +89,9 @@ export function menuEntriesFromContent(content: {
   }));
 }
 
-/** Shift a HUD placement right by `dx` px (0 is a no-op) — used to clear the left tool-panel strip. */
-export function shiftHud(p: HudPlacement, dx: number): HudPlacement {
-  if (dx === 0) return p;
-  return { ...p, panelX: p.panelX + dx, rows: p.rows.map((r) => ({ ...r, x: r.x + dx })) };
-}
-
-/** Mount the game tool panel for one entry, returning its controller + the derived HUD shift + claim. */
+/** Mount the game tool panel for one entry, returning its controller + the client→tile map + claim. */
 export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameToolPanelHandle> {
   const { uiscale } = deps;
-  const hudShift = buildToolPanelLayout(uiscale).width + HUD_GAP;
 
   const clientToTile = (clientX: number, clientY: number): { col: number; row: number } | null => {
     const { sx, sy, rect } = screenScale(deps.canvas, deps.app.renderer.resolution);
@@ -132,7 +118,6 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
 
   return {
     controller,
-    hudShift,
     claimPointer: (x, y) => controller.claimsPointer(x, y),
     clientToTile,
   };
