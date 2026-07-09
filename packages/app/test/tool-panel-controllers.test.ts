@@ -29,7 +29,7 @@ function stubContext(): { ctx: PanelContext; made: string[] } {
     scale: layout.scale,
     makeText: (text): TextRun => {
       made.push(text);
-      return { container: new Container(), place: () => undefined, destroy: () => undefined };
+      return { container: new Container(), width: 0, place: () => undefined, destroy: () => undefined };
     },
     uiString: (_table, _id, fallback) => fallback,
     screen: () => SCREEN,
@@ -63,7 +63,6 @@ describe('menu window controller', () => {
     const menu = createMenuWindow({
       ctx,
       buildings: BUILDINGS,
-      labelByType: new Map(BUILDINGS.map((b) => [b.typeId, b.label])),
       container: new Container(),
       onPick: () => undefined,
     });
@@ -88,7 +87,6 @@ describe('menu window controller', () => {
     const menu = createMenuWindow({
       ctx,
       buildings: BUILDINGS,
-      labelByType: new Map(BUILDINGS.map((b) => [b.typeId, b.label])),
       container: new Container(),
       onPick: (typeId) => picks.push({ typeId, menuOpenAtPick: menu.isOpen() }),
     });
@@ -104,7 +102,6 @@ describe('menu window controller', () => {
     const menu = createMenuWindow({
       ctx,
       buildings: BUILDINGS,
-      labelByType: new Map(),
       container: new Container(),
       onPick: () => undefined,
     });

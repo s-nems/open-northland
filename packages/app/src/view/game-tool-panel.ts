@@ -1,6 +1,7 @@
 import type { Camera, ElevationField } from '@vinland/render';
 import type { Command } from '@vinland/sim';
 import type { Application } from 'pixi.js';
+import { localizedBuildingName } from '../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
 import { DEFAULT_UI_LANG } from '../content/gui-gfx.js';
 import type { MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
@@ -79,15 +80,24 @@ export function applyGameSpeed(
   if (cause === 'cycle' && spec.state !== 'paused') control.speed = spec.tickMultiplier;
 }
 
-/** The buildings the menu lists: a content set's own building types, labelled via the viking catalog. */
-export function menuEntriesFromContent(content: {
-  buildings: readonly { typeId: number; id: string; kind: string }[];
-}): MenuBuildingEntry[] {
-  return content.buildings.map((b) => ({
-    typeId: b.typeId,
-    label: vikingBuildingByTypeId(b.typeId)?.label ?? b.id,
-    kind: b.kind,
-  }));
+/**
+ * The buildings the menu lists: a content set's own building types, labelled via the viking catalog and
+ * localized to `lang` (defaults to the UI default). The English catalog label is the fallback when a
+ * language has no authored name (see `catalog/building-i18n.ts`).
+ */
+export function menuEntriesFromContent(
+  content: { buildings: readonly { typeId: number; id: string; kind: string }[] },
+  lang: string = DEFAULT_UI_LANG,
+): MenuBuildingEntry[] {
+  return content.buildings.map((b) => {
+    const catalog = vikingBuildingByTypeId(b.typeId);
+    const english = catalog?.label ?? b.id;
+    return {
+      typeId: b.typeId,
+      label: localizedBuildingName(catalog?.id ?? b.id, english, lang),
+      kind: b.kind,
+    };
+  });
 }
 
 /** Mount the game tool panel for one entry, returning its controller + the client→tile map + claim. */

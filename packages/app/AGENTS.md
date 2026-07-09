@@ -128,7 +128,7 @@ gitignored bytes:
   MEASURED 68, row step following the measured 38/68 ratio; `?pitchy=<cellDiamondHeight>` — the full
   diamond height, 2× the row step, measured 76 — overrides the height separately; `setTilePitch` in
   `iso.ts`). These compose with
-  `?scene=`. The live view also mounts the top-left debug overlay (tick / speed / steps / entity counts +
+  `?scene=`. The live view also mounts the bottom-left debug overlay (tick / speed / steps / entity counts +
   the FPS and sim/snap/draw CPU split), like `?scene=`.
   Real graphics are the **default** for live + scene (`resolveSpriteSheet` degrades to synthetic
   markers when `content/` is absent, so a bare checkout still boots); `?atlas=synthetic` forces markers,

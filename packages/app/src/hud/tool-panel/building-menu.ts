@@ -10,8 +10,10 @@ import { type Rect, contains } from '../geometry.js';
  * below is DATA-PINNED, not a guess. Only the fold of maintypes 4 (training) + 5 (tower) into the one
  * "Wojsko" tab is our reconstruction (the original's tab→maintype binding isn't decoded); see source basis.
  *
- * The layout is parameterised by a screen origin + integer scale (design px, scaled like the tool panel),
- * so the view draws from it and the input layer hit-tests it — both without touching Pixi.
+ * The layout is a titled parchment window: a headline band, the five category tabs, then a SCROLLABLE,
+ * row-quantized list of the selected category's buildings (a fixed viewport of `maxListRows`, a scrollbar
+ * when the category overflows it). It is parameterised by a screen origin + scale (design px, scaled like
+ * the tool panel), so the view draws from it and the input layer hit-tests it — both without touching Pixi.
  */
 
 /** A building as the menu needs it: the shared typeId (→ `placeBuilding`), a display label, its class. */
@@ -67,13 +69,20 @@ export function buildingsInCategory(
 // --- Layout (design px, scaled by uiscale like the tool panel) ------------------------------------
 
 const MENU_PAD = 6;
-const MENU_TITLE_H = 16;
+/** The rust title band across the top of the window. */
+const MENU_HEADLINE_H = 18;
 // Wide enough for the longest category label ("Wszystko" = 55 native px in font10) plus padding, so the
 // tabs never overlap when drawn side by side.
 const MENU_TAB_W = 62;
-const MENU_TAB_H = 16;
-const MENU_ROW_H = 15;
+const MENU_TAB_H = 18;
+const MENU_ROW_H = 16;
+/** A small gap between the tab row and the list, so the tabs read as a header for it. */
+const MENU_LIST_GAP = 3;
 const MENU_CLOSE = 13;
+/** The scrollbar gutter width — reserved on the right only when the category overflows the viewport. */
+const MENU_SCROLLBAR_W = 8;
+/** Minimum scrollbar-thumb length so a long list's thumb stays grabbable. */
+const MENU_THUMB_MIN = 12;
 /** Menu window width holds the five tabs side by side plus padding. */
 const MENU_WIDTH = BUILDING_CATEGORIES.length * MENU_TAB_W + 2 * MENU_PAD;
 
@@ -89,15 +98,42 @@ export interface MenuRow {
   readonly typeId: number;
   readonly label: string;
   readonly rect: Rect;
+  /** The row's index within the FULL filtered list (not the visible slice) — drives the ledger stripe. */
+  readonly index: number;
+}
+
+/** The scroll state of the list: which rows are visible and how far it can travel. */
+export interface MenuScroll {
+  /** Index of the first visible row within the filtered list. */
+  readonly top: number;
+  /** The largest valid `top` (0 when the whole category fits). */
+  readonly max: number;
+  /** Total rows in the selected category. */
+  readonly total: number;
+  /** Rows visible at once (the viewport height in rows). */
+  readonly visible: number;
+}
+
+/** The scrollbar geometry (present only when the list overflows the viewport). */
+export interface MenuScrollbar {
+  readonly track: Rect;
+  readonly thumb: Rect;
 }
 
 export interface BuildingMenuLayout {
   readonly scale: number;
   readonly window: Rect;
+  /** The headline (title-band) rect. */
   readonly titleRect: Rect;
   readonly closeRect: Rect;
   readonly tabs: readonly MenuTab[];
+  /** The clipped list area the visible rows sit in. */
+  readonly viewport: Rect;
+  /** Only the rows currently visible in the viewport (a slice of the filtered list). */
   readonly rows: readonly MenuRow[];
+  readonly scroll: MenuScroll;
+  /** Absent when the whole category fits (no scrollbar drawn). */
+  readonly scrollbar?: MenuScrollbar;
 }
 
 export interface MenuLayoutOptions {
@@ -105,55 +141,97 @@ export interface MenuLayoutOptions {
   readonly originY: number;
   readonly scale: number;
   readonly selected: BuildingCategory;
+  /** First visible row (clamped into range); defaults to 0. */
+  readonly scrollTop?: number;
+  /** Viewport height in rows; omit for an unbounded list (show every row, no scrollbar). */
+  readonly maxListRows?: number;
 }
 
 /**
- * Resolve the menu to screen rects: a titled window with the five tabs and a single-column list of the
- * buildings in the selected category. Purely geometric — text is drawn to fit each rect at render time.
+ * Resolve the menu to screen rects: a titled window with the five tabs and a scrollable single-column list
+ * of the buildings in the selected category. Purely geometric — text is drawn to fit each rect at render
+ * time. The list is row-quantized: it scrolls by whole rows, so no partial row ever straddles the viewport
+ * edge and the view needs no Pixi mask.
  */
 export function layoutBuildingMenu(
   entries: readonly MenuBuildingEntry[],
   opts: MenuLayoutOptions,
 ): BuildingMenuLayout {
-  const s = Math.max(1, Math.floor(opts.scale));
+  const s = Math.max(1, opts.scale);
   const { originX, originY, selected } = opts;
+  const px = (v: number): number => Math.round(v * s);
   const shown = buildingsInCategory(entries, selected);
+  const total = shown.length;
 
-  const width = MENU_WIDTH * s;
-  const titleH = MENU_TITLE_H * s;
-  const tabH = MENU_TAB_H * s;
-  const rowH = MENU_ROW_H * s;
-  const pad = MENU_PAD * s;
-  const listTop = originY + titleH + tabH;
-  const height = titleH + tabH + shown.length * rowH + pad;
+  const width = px(MENU_WIDTH);
+  const headlineH = px(MENU_HEADLINE_H);
+  const tabH = px(MENU_TAB_H);
+  const rowH = px(MENU_ROW_H);
+  const pad = px(MENU_PAD);
+  const listGap = px(MENU_LIST_GAP);
+
+  // The visible-row count: capped to `maxListRows` (else the whole category), never below one row.
+  const visible = opts.maxListRows === undefined ? total : Math.min(Math.max(1, opts.maxListRows), total);
+  const maxScroll = Math.max(0, total - visible);
+  const top = Math.max(0, Math.min(opts.scrollTop ?? 0, maxScroll));
+  const overflow = total > visible;
+  const gutter = overflow ? px(MENU_SCROLLBAR_W) : 0;
+
+  const listTop = originY + headlineH + tabH + listGap;
+  const listH = visible * rowH;
+  const height = headlineH + tabH + listGap + listH + pad;
+  const rowW = width - 2 * pad - gutter;
 
   const tabs: MenuTab[] = BUILDING_CATEGORIES.map((c, i) => ({
     category: c.id,
     label: c.label,
     stringId: c.stringId,
     selected: c.id === selected,
-    rect: { x: originX + pad + i * MENU_TAB_W * s, y: originY + titleH, w: MENU_TAB_W * s, h: tabH },
+    rect: { x: originX + pad + i * px(MENU_TAB_W), y: originY + headlineH, w: px(MENU_TAB_W), h: tabH },
   }));
 
-  const rows: MenuRow[] = shown.map((e, i) => ({
-    typeId: e.typeId,
-    label: e.label,
-    rect: { x: originX + pad, y: listTop + i * rowH, w: width - 2 * pad, h: rowH },
-  }));
+  const rows: MenuRow[] = [];
+  for (let i = 0; i < visible; i++) {
+    const entry = shown[top + i];
+    if (entry === undefined) break;
+    rows.push({
+      typeId: entry.typeId,
+      label: entry.label,
+      index: top + i,
+      rect: { x: originX + pad, y: listTop + i * rowH, w: rowW, h: rowH },
+    });
+  }
 
-  const closeSize = MENU_CLOSE * s;
-  return {
+  const viewport: Rect = { x: originX + pad, y: listTop, w: width - 2 * pad, h: listH };
+
+  const closeSize = px(MENU_CLOSE);
+  const layout: BuildingMenuLayout = {
     scale: s,
     window: { x: originX, y: originY, w: width, h: height },
-    titleRect: { x: originX + pad, y: originY, w: width - 2 * pad, h: titleH },
+    titleRect: { x: originX + pad, y: originY, w: width - 2 * pad, h: headlineH },
     closeRect: {
       x: originX + width - closeSize - pad,
-      y: originY + (titleH - closeSize) / 2,
+      y: originY + (headlineH - closeSize) / 2,
       w: closeSize,
       h: closeSize,
     },
     tabs,
+    viewport,
     rows,
+    scroll: { top, max: maxScroll, total, visible },
+  };
+
+  if (!overflow) return layout;
+
+  const trackX = originX + width - pad - gutter;
+  const thumbH = Math.max(px(MENU_THUMB_MIN), Math.round((listH * visible) / total));
+  const thumbY = maxScroll === 0 ? listTop : listTop + Math.round(((listH - thumbH) * top) / maxScroll);
+  return {
+    ...layout,
+    scrollbar: {
+      track: { x: trackX, y: listTop, w: gutter, h: listH },
+      thumb: { x: trackX, y: thumbY, w: gutter, h: thumbH },
+    },
   };
 }
 
@@ -162,14 +240,24 @@ export type MenuHit =
   | { readonly kind: 'tab'; readonly category: BuildingCategory }
   | { readonly kind: 'building'; readonly typeId: number }
   | { readonly kind: 'close' }
+  // A page-scroll click on the track above (-1) or below (+1) the thumb.
+  | { readonly kind: 'scroll'; readonly dir: -1 | 1 }
   | { readonly kind: 'window' } // over the window chrome/background but not an interactive element
   | null;
 
-/** Resolve a screen point against an open menu (close > tab > building > window background > miss). */
+/**
+ * Resolve a screen point against an open menu (close > tab > scrollbar > building > window background >
+ * miss). A click on the scrollbar track pages the list toward the click; a click on the thumb itself is
+ * consumed as `window` (no-op) so it never falls through.
+ */
 export function hitTestBuildingMenu(layout: BuildingMenuLayout, x: number, y: number): MenuHit {
   if (contains(layout.closeRect, x, y)) return { kind: 'close' };
   for (const t of layout.tabs) {
     if (contains(t.rect, x, y)) return { kind: 'tab', category: t.category };
+  }
+  if (layout.scrollbar !== undefined && contains(layout.scrollbar.track, x, y)) {
+    if (contains(layout.scrollbar.thumb, x, y)) return { kind: 'window' };
+    return { kind: 'scroll', dir: y < layout.scrollbar.thumb.y ? -1 : 1 };
   }
   for (const r of layout.rows) {
     if (contains(r.rect, x, y)) return { kind: 'building', typeId: r.typeId };

@@ -183,7 +183,6 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const menu = createMenuWindow({
     ctx,
     buildings: opts.buildings,
-    labelByType,
     container: windowContainer,
     onPick: (typeId) => placement.enter(typeId),
   });
@@ -300,6 +299,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   let hover: ToolButtonId | null = null;
   const onMouseMove = (e: MouseEvent): void => {
     const { x, y } = toCanvas(e.clientX, e.clientY);
+    menu.handleHover(x, y); // the open menu tracks its own row-hover highlight
     const next = hitTestToolPanel(layout, x, y);
     if (next === hover) return;
     hover = next;
@@ -309,6 +309,12 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       if (rect !== undefined)
         hoverG.rect(rect.x, rect.y, rect.w, rect.h).fill({ color: HOVER_TINT, alpha: HOVER_ALPHA });
     }
+  };
+
+  // Wheel scrolls the open building menu's list; consumed events stop the page from also scrolling.
+  const onWheel = (e: WheelEvent): void => {
+    const { x, y } = toCanvas(e.clientX, e.clientY);
+    if (menu.handleWheel(x, y, e.deltaY)) e.preventDefault();
   };
 
   const onKeyDown = (e: KeyboardEvent): void => {
@@ -331,6 +337,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
 
   canvas.addEventListener('mousedown', onMouseDown);
   canvas.addEventListener('mousemove', onMouseMove);
+  canvas.addEventListener('wheel', onWheel, { passive: false });
   window.addEventListener('keydown', onKeyDown);
 
   applySpeed(null); // initialise the speed button graphic only — the loop keeps the entry's seeded speed
@@ -348,6 +355,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     dispose(): void {
       canvas.removeEventListener('mousedown', onMouseDown);
       canvas.removeEventListener('mousemove', onMouseMove);
+      canvas.removeEventListener('wheel', onWheel);
       window.removeEventListener('keydown', onKeyDown);
       root.destroy({ children: true });
       supersampled?.dispose();
