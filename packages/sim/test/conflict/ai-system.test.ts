@@ -32,7 +32,7 @@ function grassMap(width: number, height: number): TerrainMap {
 /** The cell id of visual tile (x, y)'s ANCHOR NODE — sim grid coords are half-cell nodes. */
 function anchorCell(sim: Simulation, x: number, y: number): number {
   const n = cellAnchorNode(x, y);
-  return sim.terrain?.cellAt(n.hx, n.hy) as number;
+  return sim.terrain?.nodeAt(n.hx, n.hy) as number;
 }
 
 /** Place an entity at integer tile (x,y) with a navigation goal to the given cell id. */
@@ -134,13 +134,13 @@ describe('aiSystem — navigation planner: MoveGoal -> PathRequest', () => {
       content: testContent(),
       map: { resolution: 'half-cell', width: 4, height: 4, typeIds },
     });
-    const e = travellerAt(sim, 0, 0, sim.terrain?.cellAt(0, 0) as number);
+    const e = travellerAt(sim, 0, 0, sim.terrain?.nodeAt(0, 0) as number);
     // Part-way along the diagonal leg (1,0) -> (2,2): world (0.85, 0.7) — nearest bracket node is
     // the water flank (2,1); the walkable (2,2) must win instead.
     sim.world.get(e, Position).x = fx.fromFloat(0.5);
     sim.world.get(e, Position).y = fx.fromFloat(0.7);
     aiSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(e, PathRequest).start).toBe(sim.terrain?.cellAt(2, 2) as number);
+    expect(sim.world.get(e, PathRequest).start).toBe(sim.terrain?.nodeAt(2, 2) as number);
     expect(sim.world.get(e, PathRequest).failed).toBe(false);
   });
 

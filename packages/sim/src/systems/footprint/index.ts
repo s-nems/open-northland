@@ -9,7 +9,7 @@
 // keeps the pre-footprint behavior everywhere: it places without collision checks, blocks no cell,
 // and is interacted with on its anchor tile.
 
-// manhattan/tileKey are published through systems/spatial.ts (their single public export
+// manhattan/nodeKey are published through systems/spatial.ts (their single public export
 // site — two star-export paths to one name would silently drop it from the systems barrel on a
 // future collision); package siblings import them from ./geometry.js directly.
 export {
@@ -25,7 +25,7 @@ export {
   buildingBlockedCells,
   canPlaceBuilding,
   dynamicBlockedCells,
-  interactionTile,
+  interactionNode,
   placementBlockerVersion,
   placementProbe,
   type PlacementProbe,

@@ -2,7 +2,7 @@ import { CurrentAtomic, MoveGoal } from '../../components/index.js';
 import type { AtomicEffect } from '../../core/commands.js';
 import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { CellId } from '../../nav/terrain.js';
+import type { NodeId } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
 import { atomicDuration } from '../readviews/animations.js';
 
@@ -75,7 +75,7 @@ export function startAtomic(
  * `start` (issue the atomic); otherwise walk there (a {@link MoveGoal} the navigation planner turns
  * into a route). One helper for the nine walk-or-act sites the drives used to spell out by hand.
  */
-export function atOrWalk(world: World, e: Entity, here: CellId, cell: CellId, start: () => void): void {
+export function atOrWalk(world: World, e: Entity, here: NodeId, cell: NodeId, start: () => void): void {
   if (cell === here) start();
   else world.add(e, MoveGoal, { cell });
 }

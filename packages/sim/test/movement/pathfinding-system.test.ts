@@ -54,8 +54,8 @@ function mappedSim(map: TerrainMap): { sim: Simulation; request: (start: number,
 describe('pathfindingSystem — request to PathFollow handoff', () => {
   it('resolves a request into node-position waypoints and clears the request', () => {
     const { sim, request } = mappedSim(grassMap(4, 1));
-    const start = sim.terrain?.cellAt(0, 0) as number;
-    const goal = sim.terrain?.cellAt(3, 0) as number;
+    const start = sim.terrain?.nodeAt(0, 0) as number;
+    const goal = sim.terrain?.nodeAt(3, 0) as number;
     const e = request(start, goal);
 
     sim.step();
@@ -74,7 +74,7 @@ describe('pathfindingSystem — request to PathFollow handoff', () => {
 
   it('a start===goal request yields a single-node path at the node position', () => {
     const { sim, request } = mappedSim(grassMap(3, 3));
-    const c = sim.terrain?.cellAt(1, 1) as number;
+    const c = sim.terrain?.nodeAt(1, 1) as number;
     const e = request(c, c);
     sim.step();
     // Node (1,1): row ½ (stagger ¼) → grid x = ½ − ¼ = ¼.
@@ -86,7 +86,7 @@ describe('pathfindingSystem — request to PathFollow handoff', () => {
     // mid-leg, where the stagger wave kinks. The seam sits at the edge midpoint's world x
     // ((2+3)/4 = 1¼ columns) expressed at row 1 (stagger ½): grid x = 1¼ − ½ = ¾.
     const { sim, request } = mappedSim(grassMap(5, 5));
-    const e = request(sim.terrain?.cellAt(2, 1) as number, sim.terrain?.cellAt(3, 3) as number);
+    const e = request(sim.terrain?.nodeAt(2, 1) as number, sim.terrain?.nodeAt(3, 3) as number);
     sim.step();
     expect(sim.world.get(e, PathFollow).waypoints).toEqual([
       { x: Q(3), y: Q(2) }, // node (2,1): 1 − ¼
@@ -98,7 +98,7 @@ describe('pathfindingSystem — request to PathFollow handoff', () => {
   it('splices NO seam into a diagonal leg between even rows (no kink inside the leg)', () => {
     // (2,0) -> (3,2): rows 0 → 1, the stagger is linear across the whole interval — two waypoints.
     const { sim, request } = mappedSim(grassMap(5, 5));
-    const e = request(sim.terrain?.cellAt(2, 0) as number, sim.terrain?.cellAt(3, 2) as number);
+    const e = request(sim.terrain?.nodeAt(2, 0) as number, sim.terrain?.nodeAt(3, 2) as number);
     sim.step();
     expect(sim.world.get(e, PathFollow).waypoints).toEqual([
       { x: Q(4), y: Q(0) }, // node (2,0)
@@ -112,7 +112,7 @@ describe('pathfindingSystem — failure handling', () => {
     // 3x1 strip walled by a centre water node isolates the two grass ends.
     const map: TerrainMap = { resolution: 'half-cell', width: 3, height: 1, typeIds: [GRASS, WATER, GRASS] };
     const { sim, request } = mappedSim(map);
-    const e = request(sim.terrain?.cellAt(0, 0) as number, sim.terrain?.cellAt(2, 0) as number);
+    const e = request(sim.terrain?.nodeAt(0, 0) as number, sim.terrain?.nodeAt(2, 0) as number);
 
     sim.step();
 
@@ -124,10 +124,10 @@ describe('pathfindingSystem — failure handling', () => {
   it('does not retry an already-failed request on later ticks', () => {
     const map: TerrainMap = { resolution: 'half-cell', width: 3, height: 1, typeIds: [GRASS, WATER, GRASS] };
     const { sim, request } = mappedSim(map);
-    const e = request(sim.terrain?.cellAt(0, 0) as number, sim.terrain?.cellAt(2, 0) as number);
+    const e = request(sim.terrain?.nodeAt(0, 0) as number, sim.terrain?.nodeAt(2, 0) as number);
     sim.step();
     // The request is already flagged failed — the system must not re-run it.
-    const e2 = request(sim.terrain?.cellAt(0, 0) as number, sim.terrain?.cellAt(2, 0) as number);
+    const e2 = request(sim.terrain?.nodeAt(0, 0) as number, sim.terrain?.nodeAt(2, 0) as number);
     sim.step();
     expect(sim.world.get(e, PathRequest).failed).toBe(true);
     expect(sim.world.has(e, PathFollow)).toBe(false);
@@ -151,8 +151,8 @@ describe('pathfindingSystem — failure handling', () => {
       hy: fx.fromInt(0),
     });
     sim.world.add(e, PathRequest, {
-      start: sim.terrain?.cellAt(0, 0) as number,
-      goal: sim.terrain?.cellAt(2, 0) as number,
+      start: sim.terrain?.nodeAt(0, 0) as number,
+      goal: sim.terrain?.nodeAt(2, 0) as number,
       failed: false,
     });
     sim.step();
@@ -172,8 +172,8 @@ describe('pathfindingSystem — failure handling', () => {
 describe('pathfindingSystem — per-tick budget', () => {
   it('resolves at most PATHFINDING_BUDGET_PER_TICK requests per tick, lowest ids first', () => {
     const { sim, request } = mappedSim(grassMap(2, 1));
-    const start = sim.terrain?.cellAt(0, 0) as number;
-    const goal = sim.terrain?.cellAt(1, 0) as number;
+    const start = sim.terrain?.nodeAt(0, 0) as number;
+    const goal = sim.terrain?.nodeAt(1, 0) as number;
     const n = PATHFINDING_BUDGET_PER_TICK + 3;
     const entities: Entity[] = [];
     for (let i = 0; i < n; i++) entities.push(request(start, goal));
@@ -199,8 +199,8 @@ describe('pathfindingSystem — reroute splice momentum (movement inertia)', () 
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.world.add(e, PathRequest, {
-      start: sim.terrain?.cellAt(0, 0) as number,
-      goal: sim.terrain?.cellAt(goalHx, 0) as number,
+      start: sim.terrain?.nodeAt(0, 0) as number,
+      goal: sim.terrain?.nodeAt(goalHx, 0) as number,
       failed: false,
     });
     for (let i = 0; i < ticks; i++) sim.step();
@@ -212,8 +212,8 @@ describe('pathfindingSystem — reroute splice momentum (movement inertia)', () 
     const p = sim.world.get(e, Position);
     const n = nodeOfPosition(p.x, p.y);
     sim.world.add(e, PathRequest, {
-      start: sim.terrain?.cellAtClamped(n.hx, n.hy) as number,
-      goal: sim.terrain?.cellAt(goalHx, 0) as number,
+      start: sim.terrain?.nodeAtClamped(n.hx, n.hy) as number,
+      goal: sim.terrain?.nodeAt(goalHx, 0) as number,
       failed: false,
     });
   }
@@ -283,7 +283,7 @@ describe('pathfindingSystem — mapless no-op', () => {
 describe('pathfindingSystem — runs inside the real schedule before movement', () => {
   it('a pos-bearing entity gets its PathFollow populated by a normal step()', () => {
     const { sim, request } = mappedSim(grassMap(3, 1));
-    const e = request(sim.terrain?.cellAt(0, 0) as number, sim.terrain?.cellAt(2, 0) as number);
+    const e = request(sim.terrain?.nodeAt(0, 0) as number, sim.terrain?.nodeAt(2, 0) as number);
     sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.step();
     expect(sim.world.has(e, PathFollow)).toBe(true);

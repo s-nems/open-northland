@@ -5,7 +5,7 @@ import { ONE } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
 import { nodeOfPosition } from '../nav/halfcell.js';
 import type { SystemContext } from './context.js';
-import { interactionTile } from './footprint/index.js';
+import { interactionNode } from './footprint/index.js';
 import { vehicleMayCarry } from './readviews/vehicles.js';
 
 // The cross-system STORE/ECONOMY read-model: what a store can hold, what a workplace makes, who
@@ -152,7 +152,7 @@ const EMPTY_JOBS: ReadonlySet<number> = new Set<number>();
  * present (passive stores / fixtures without workers keep working) — the gate constrains only a
  * workplace that actually names a worker. Presence is integer-tile coincidence with the building's
  * **interaction tile** (its door cell when the type's footprint names one, else its anchor tile —
- * {@link interactionTile}; the walls themselves are walk-blocked, so an operator works AT the door,
+ * {@link interactionNode}; the walls themselves are walk-blocked, so an operator works AT the door,
  * exactly where the AI walk-to-station drive delivers it), so it needs no terrain graph and works on
  * a mapless fixture too. The match is canonical-order-independent (a boolean any-match, not a chosen
  * entity), so no determinism concern.
@@ -162,7 +162,7 @@ const EMPTY_JOBS: ReadonlySet<number> = new Set<number>();
 export function workerPresentAt(world: World, ctx: SystemContext, building: Entity): boolean {
   const jobs = buildingWorkerJobs(world, ctx, building);
   if (jobs.size === 0) return true; // unstaffed-by-design: no worker requirement to satisfy
-  const at = interactionTile(world, ctx, building);
+  const at = interactionNode(world, ctx, building);
   if (at === null) return false; // a placed-but-position-less workplace can't be stood on
   const bx = at.x;
   const by = at.y;

@@ -75,7 +75,7 @@ function grassMap(width: number, height: number): TerrainMap {
 /** The node id of visual tile (x, y) — walk goals address the doubled half-cell lattice. */
 function cellOf(sim: Simulation, x: number, y: number): number | undefined {
   const n = cellAnchorNode(x, y);
-  return sim.terrain?.cellAt(n.hx, n.hy);
+  return sim.terrain?.nodeAt(n.hx, n.hy);
 }
 
 function settlerAt(sim: Simulation, x: number, y: number, hunger: Fixed): Entity {

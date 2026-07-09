@@ -2,14 +2,14 @@ import { PathFollow, PathRequest, Position } from '../../components/index.js';
 import { type Fixed, ZERO, fx } from '../../core/fixed.js';
 import { positionOfNode, positionXOfWorld } from '../../nav/halfcell.js';
 import { findPath } from '../../nav/pathfinding.js';
-import type { CellId, TerrainGraph } from '../../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { System } from '../context.js';
 import { dynamicBlockedCells } from '../footprint/index.js';
-import { canonicalById, isValidCellId } from '../spatial.js';
+import { canonicalById, isValidNodeId } from '../spatial.js';
 import { turnOntoNextLeg } from './movement.js';
 
 // pathfindingSystem lives in routing.ts (not pathfinding.ts) to avoid an eyeball collision with the
-// A* core in ../pathfinding.ts, which this system consumes. The cross-system `isValidCellId` guard comes
+// A* core in ../pathfinding.ts, which this system consumes. The cross-system `isValidNodeId` guard comes
 // from the shared leaf. See docs/plans/.
 
 /**
@@ -51,7 +51,7 @@ export const pathfindingSystem: System = (world, ctx) => {
   // The walk-block overlay (standing building bodies + resource footprints), built lazily ONCE per
   // routing tick — only a tick that actually routes pays for it. Building cells are derived live;
   // resource cells come from the ResourceFootprint generation cache.
-  let blocked: ReadonlySet<CellId> | undefined;
+  let blocked: ReadonlySet<NodeId> | undefined;
   for (const e of canonicalById(world.query(PathRequest))) {
     if (served >= PATHFINDING_BUDGET_PER_TICK) break;
     const req = world.get(e, PathRequest);
@@ -120,7 +120,7 @@ export const pathfindingSystem: System = (world, ctx) => {
  * on screen. Every other edge needs no seam: E/W stays on one row, a half-row vertical and an
  * even-row diagonal stay inside a single row interval. Pure fixed-point.
  */
-function pathToWaypoints(terrain: TerrainGraph, path: ReadonlyArray<CellId>): Array<{ x: Fixed; y: Fixed }> {
+function pathToWaypoints(terrain: TerrainGraph, path: ReadonlyArray<NodeId>): Array<{ x: Fixed; y: Fixed }> {
   const waypoints: Array<{ x: Fixed; y: Fixed }> = [];
   let prev: { x: number; y: number } | undefined;
   for (const cell of path) {
@@ -142,15 +142,15 @@ function pathToWaypoints(terrain: TerrainGraph, path: ReadonlyArray<CellId>): Ar
 
 /**
  * Run A* for a request, guarding the raw cell ids against the graph bounds first. An id outside
- * `0..cellCount-1` is a bad request (e.g. a goal off a smaller map) — treat it as "no route"
+ * `0..nodeCount-1` is a bad request (e.g. a goal off a smaller map) — treat it as "no route"
  * (null) rather than letting it throw inside the heuristic, since a request is boundary input.
  */
 function resolvePath(
   terrain: TerrainGraph,
   start: number,
   goal: number,
-  blocked: ReadonlySet<CellId>,
-): CellId[] | null {
-  if (!isValidCellId(terrain, start) || !isValidCellId(terrain, goal)) return null;
-  return findPath(terrain, start as CellId, goal as CellId, blocked);
+  blocked: ReadonlySet<NodeId>,
+): NodeId[] | null {
+  if (!isValidNodeId(terrain, start) || !isValidNodeId(terrain, goal)) return null;
+  return findPath(terrain, start as NodeId, goal as NodeId, blocked);
 }

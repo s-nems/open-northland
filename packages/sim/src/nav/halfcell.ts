@@ -8,7 +8,7 @@
  * `(hx·½ column, hy·½ row)` — no stagger of its own; the visual stagger arises from WHICH nodes the
  * cell centres occupy (cell `(c, r)` sits at node `(2c + (r&1), 2r)`, the render's
  * `halfCellToScreen` twin). Every integer grid coordinate inside the sim (commands, footprints,
- * TileBuckets keys, `CellId`s) is a half-cell coordinate; these helpers are how a fractional
+ * NodeBuckets keys, `NodeId`s) is a half-cell coordinate; these helpers are how a fractional
  * Position enters and leaves that grid. Pure fixed-point — quarters of ONE are exact.
  */
 import { type Fixed, fx } from '../core/fixed.js';
@@ -26,7 +26,7 @@ export interface HalfCellNode {
  * The half-cell node a fixed-point position occupies — its world coordinates scaled to half-cell
  * units and truncated (the same floor-until-arrival semantics `fx.toInt` gave the old full-cell
  * snap; a position standing exactly on a node maps to it exactly, quarters being exact in fixed
- * point). Callers clamp into the grid via `TerrainGraph.cellAtClamped`, so a border-seam transient
+ * point). Callers clamp into the grid via `TerrainGraph.nodeAtClamped`, so a border-seam transient
  * (world x briefly < 0 on a west-border leg) truncates to 0 harmlessly.
  */
 export function nodeOfPosition(x: Fixed, y: Fixed): HalfCellNode {

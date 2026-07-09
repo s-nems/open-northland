@@ -70,7 +70,7 @@ function grassMap(width: number, height: number): TerrainMap {
 /** The cell id of visual tile (x, y)'s ANCHOR NODE — sim grid coords are half-cell nodes. */
 function anchorCell(sim: Simulation, x: number, y: number): number {
   const n = cellAnchorNode(x, y);
-  return sim.terrain?.cellAt(n.hx, n.hy) as number;
+  return sim.terrain?.nodeAt(n.hx, n.hy) as number;
 }
 
 function woodcutterAt(sim: Simulation, x: number, y: number): Entity {

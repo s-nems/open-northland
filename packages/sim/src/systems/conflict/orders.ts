@@ -90,7 +90,7 @@ export function moveUnit(
   const e = command.entity;
   if (!world.isAlive(e) || !world.has(e, Settler) || !world.has(e, Position) || !world.has(e, Owner)) return;
 
-  const goal = terrain.cellAtClamped(command.x, command.y);
+  const goal = terrain.nodeAtClamped(command.x, command.y);
   // The order is authoritative — cancel the unit's current action + any pending route request so it
   // obeys now, then set the new goal. (A non-interruptible-atomic exception is a deferred
   // refinement.) A live PathFollow is deliberately KEPT: the navigation planner sees a route whose
@@ -194,7 +194,7 @@ export function setStance(
   if (command.mode === MILITARY_MODE.DEFEND && ctx.terrain !== undefined && world.has(e, Position)) {
     const p = world.get(e, Position);
     const n = nodeOfPosition(p.x, p.y);
-    anchorCell = ctx.terrain.cellAtClamped(n.hx, n.hy);
+    anchorCell = ctx.terrain.nodeAtClamped(n.hx, n.hy);
   }
   world.add(e, Stance, { mode: command.mode, anchorCell });
 }
