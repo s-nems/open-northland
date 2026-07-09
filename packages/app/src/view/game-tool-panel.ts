@@ -5,6 +5,7 @@ import { vikingBuildingByTypeId } from '../catalog/buildings.js';
 import { DEFAULT_UI_LANG } from '../content/gui-gfx.js';
 import type { MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
+import type { MenuGoodEntry } from '../hud/tool-panel/goods-menu.js';
 import { type ToolPanelController, mountToolPanel } from '../hud/tool-panel/index.js';
 import { screenScale } from './camera.js';
 import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
@@ -37,6 +38,8 @@ export interface GameToolPanelDeps {
   readonly elevation?: ElevationField;
   /** The buildings the menu lists (typeId + label + kind). */
   readonly buildings: readonly MenuBuildingEntry[];
+  /** The goods the drop palette lists (goodType + id + label) — the whole content catalog. */
+  readonly goods: readonly MenuGoodEntry[];
   /** The tribe whose stats the statistics window shows. */
   readonly tribe: number;
   /** The player a placed building is owned by. */
@@ -90,6 +93,16 @@ export function menuEntriesFromContent(content: {
   }));
 }
 
+/** The goods the drop palette lists: a content set's own goods (its English `name`, else the id), minus the
+ *  `none` sentinel (not a droppable ware). Ordered by the content's own good order. */
+export function menuGoodsFromContent(content: {
+  goods: readonly { typeId: number; id: string; name?: string | undefined }[];
+}): MenuGoodEntry[] {
+  return content.goods
+    .filter((g) => g.id !== 'none')
+    .map((g) => ({ goodType: g.typeId, id: g.id, label: g.name ?? g.id }));
+}
+
 /** Mount the game tool panel for one entry, returning its controller + the client→tile map + claim. */
 export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameToolPanelHandle> {
   const { uiscale } = deps;
@@ -109,6 +122,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     canvas: deps.canvas,
     uiscale,
     buildings: deps.buildings,
+    goods: deps.goods,
     lang: deps.lang ?? DEFAULT_UI_LANG,
     tribe: deps.tribe,
     owner: deps.owner,

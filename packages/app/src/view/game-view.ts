@@ -19,7 +19,12 @@ import { professionsFromContent } from '../hud/details-panel/index.js';
 import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel/layout.js';
 import { mountAdminDebug } from './admin-debug/index.js';
 import type { CameraController } from './camera.js';
-import { applyGameSpeed, menuEntriesFromContent, mountGameToolPanel } from './game-tool-panel.js';
+import {
+  applyGameSpeed,
+  menuEntriesFromContent,
+  menuGoodsFromContent,
+  mountGameToolPanel,
+} from './game-tool-panel.js';
 import { mountSoundToggle } from './overlay.js';
 import { floatParam } from './params.js';
 import { mountPerfOverlay } from './perf-overlay.js';
@@ -167,6 +172,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     mapSize: deps.mapSize,
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
     buildings: menuEntriesFromContent(sim.content),
+    goods: menuGoodsFromContent(sim.content),
     tribe: HUD_TRIBE,
     owner: HUMAN_PLAYER,
     onSpeed: (spec, cause) => applyGameSpeed(control, spec, cause),
