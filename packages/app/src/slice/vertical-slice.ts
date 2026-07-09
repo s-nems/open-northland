@@ -232,7 +232,8 @@ export function runSlice(
     ]);
   }
   // The strip's two demo wood nodes: bare 4-unit resources with NO felling counter/footprint (the
-  // committed shot PNG + the render integration test pin this minimal shape — `placeTree` would add both).
+  // committed shot PNG + the render integration test pin this minimal shape — `placeResourceNode` would
+  // add both).
   for (const cell of [cellAt(4), cellAt(5)]) {
     const tree = sim.world.create();
     sim.world.add(tree, Position, positionOfNode(cell.x, cell.y));

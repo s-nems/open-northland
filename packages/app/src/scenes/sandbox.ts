@@ -10,11 +10,9 @@ import {
   JOB_SOLDIER_SWORD,
   WEAPON_LONG_BOW,
   WEAPON_SWORD,
-  placeDeposit,
   placeFlag,
-  placePickNode,
+  placeResourceNode,
   placeSandboxBuilding,
-  placeTree,
   spawnSandboxSettler,
 } from '../game/sandbox/index.js';
 import {
@@ -95,10 +93,7 @@ function buildGatheringLanes(sim: Simulation): void {
     const y = GATHER_Y0 + i * GATHER_STEP;
     spawnSandboxSettler(sim, g.job, GATHER_WORKER_X, y, HUMAN_PLAYER);
     for (let n = 0; n < g.nodes; n++) {
-      const x = GATHER_NODE_X + n;
-      if (g.mode === 'fell') placeTree(sim, x, y);
-      else if (g.mode === 'mine') placeDeposit(sim, g, x, y);
-      else placePickNode(sim, g, x, y);
+      placeResourceNode(sim, g, GATHER_NODE_X + n, y);
     }
     placeFlag(sim, GATHER_FLAG_X, y);
   });

@@ -13,6 +13,8 @@
 // site — two star-export paths to one name would silently drop it from the systems barrel on a
 // future collision); package siblings import them from ./geometry.js directly.
 export {
+  createResourceNode,
+  type ResourceNodeSpec,
   resourceBlockedCells,
   resourceFootprintForGood,
   resourceFootprintFromLandscapeGfx,

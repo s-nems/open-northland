@@ -88,6 +88,13 @@ export interface UnitControls {
    * allocation and is not memoised, so re-snapshotting here every frame was a real per-frame cost.
    */
   tick(snapshot: WorldSnapshot): void;
+  /**
+   * True when a client point is over the HUD this controller defers to before world picking — the
+   * tool-panel/window claim it was handed PLUS its own settler action ring (drawn on the canvas, so a
+   * `target === canvas` test alone misses it). Another input consumer (the admin spawn palette) asks
+   * this so its map clicks defer to the SAME chrome this controller does, not a partial copy of it.
+   */
+  claimsPointer(clientX: number, clientY: number): boolean;
   dispose(): void;
 }
 
@@ -319,6 +326,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
 
   return {
     selectedIds: () => selected,
+    claimsPointer: (x, y) => opts.claimPointer?.(x, y) === true || actions.claimsPointer(x, y),
     tick: (snapshot) => {
       panel.tick(snapshot);
       // Re-anchor the action ring on the current selection's on-screen centroid (a no-op while it is

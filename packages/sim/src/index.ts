@@ -6,7 +6,7 @@ export { fx, ONE, type Fixed } from './core/fixed.js';
 export { FixedTimestep, TICKS_PER_SECOND, MS_PER_TICK } from './core/loop.js';
 export * as components from './components/index.js';
 export * as systems from './systems/index.js';
-export type { PlacementProbe } from './systems/footprint/index.js';
+export type { PlacementProbe, ResourceNodeSpec } from './systems/footprint/index.js';
 export {
   scenario,
   Scenario,
