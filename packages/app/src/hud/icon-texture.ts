@@ -19,7 +19,9 @@ import { type Application, Container, type Sprite } from 'pixi.js';
 
 /** Oversample cap — the small disc icons are already crisp by here; the cap bounds texture memory. */
 const MAX_SUPERSAMPLE = 6;
-/** Oversample floor — a smooth downscaled CIRCLE wants a bit more headroom than the strip's flat edges. */
+/** Oversample floor — a smooth downscaled CIRCLE wants a bit more headroom than the strip's flat edges.
+ *  At small effective scales this floor deliberately EXITS oversampleFor's (1, 2] downscale window (e.g.
+ *  uiscale 1 at DPR 1 → ratio ~2.9): the slight linear-tap undersample is accepted for the rim smoothing. */
 const MIN_SUPERSAMPLE = 3;
 
 export interface BakedIcon {

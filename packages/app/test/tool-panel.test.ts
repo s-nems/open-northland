@@ -13,6 +13,7 @@ import {
   GAME_SPEED_STATES,
   cycleGameSpeed,
   effectiveGameSpeedSpec,
+  gameSpeedClickCause,
   gameSpeedSpec,
   toggleGameSpeedPause,
 } from '../src/hud/tool-panel/game-speed.js';
@@ -128,6 +129,23 @@ describe('game-speed', () => {
   it('a click while paused resumes at the remembered speed instead of advancing the cycle', () => {
     const paused = toggleGameSpeedPause({ running: 'faster', paused: false });
     expect(cycleGameSpeed(paused)).toEqual({ running: 'faster', paused: false });
+  });
+
+  it('a click-resume reports pause-toggle, so a fractional seed survives it exactly like P', () => {
+    // Boot ?speed=0.5, pause with P, then resume by CLICKING the pause glyph. The click's cause comes
+    // from the PRE-click state (gameSpeedClickCause) — reporting 'cycle' there would clobber the seed
+    // to the discrete ×1, making the two resume gestures (click vs P) diverge.
+    const control: LoopSpeedControl = { paused: false, speed: 0.5 };
+    let c = toggleGameSpeedPause(DEFAULT_GAME_SPEED_CONTROL);
+    applyGameSpeed(control, effectiveGameSpeedSpec(c), 'pause-toggle');
+    expect(control).toEqual({ paused: true, speed: 0.5 });
+    const cause = gameSpeedClickCause(c);
+    expect(cause).toBe('pause-toggle'); // a click while paused = un-pause, not a speed pick
+    c = cycleGameSpeed(c);
+    applyGameSpeed(control, effectiveGameSpeedSpec(c), cause);
+    expect(control).toEqual({ paused: false, speed: 0.5 });
+    // While running, a click IS an explicit speed pick.
+    expect(gameSpeedClickCause(c)).toBe('cycle');
   });
 
   it('a pause toggle never overwrites the loop multiplier — a fractional ?speed= seed survives P/P', () => {
