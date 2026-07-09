@@ -1,6 +1,6 @@
 import type { ContentSet } from '@vinland/data';
 import type { Command } from '../core/commands.js';
-import { type CellId, TerrainGraph, type TerrainMap, buildTerrainGraph } from '../nav/terrain.js';
+import { type NodeId, TerrainGraph, type TerrainMap, buildTerrainGraph } from '../nav/terrain.js';
 import { animalRecord } from '../systems/readviews/index.js';
 
 /**
@@ -20,11 +20,11 @@ import { animalRecord } from '../systems/readviews/index.js';
  * `animaltypes.ini` record), in canonical ascending-`tribeType` order — never a hardcoded list. A
  * civilization (no animal record) is never seeded as wildlife.
  *
- * Where: birth points are chosen by striding through the terrain's **walkable** cells in row-major
+ * Where: birth points are chosen by striding through the terrain's **walkable** nodes in row-major
  * (canonical) order and taking every `cellStride`-th one, round-robin-assigning successive birth
  * points to successive animal tribes. So herds spread across the map's land instead of clustering, the
  * choice is a pure function of `(content, terrain, options)` — no RNG, no wall-clock — and a map with
- * no walkable cells (all water/blocking) simply seeds nothing.
+ * no walkable nodes (all water/blocking) simply seeds nothing.
  *
  * source-basis: the **set of animal tribes** (every recorded `[animaltype]`) is faithful, and each herd's
  * size / HP / range / leader come from the verbatim `animaltypes.ini` params (via `spawnAnimalHerd`).
@@ -41,7 +41,7 @@ export interface SeedAnimalsOptions {
    */
   readonly tribes?: readonly number[];
   /**
-   * Stride between chosen birth-point cells when walking the walkable cells in row-major order
+   * Stride between chosen birth-point nodes when walking the walkable nodes in row-major order
    * (default 1 = a birth point at every walkable cell, capped by `maxHerds`). A larger stride spreads
    * herds farther apart. Clamped to at least 1.
    */
@@ -59,7 +59,7 @@ export interface SeedAnimalsOptions {
  * {@link TerrainGraph} or a raw {@link TerrainMap} (which it builds against `content`).
  *
  * Deterministic: a pure function of `(content, terrain, options)` — it walks the terrain's walkable
- * cells in canonical row-major order, assigns birth points round-robin to the canonical-ordered animal
+ * nodes in canonical row-major order, assigns birth points round-robin to the canonical-ordered animal
  * tribes, and returns the commands in that order. No RNG, no wall-clock, no world mutation (it touches
  * no entity — the caller enqueues the returned commands, which the CommandSystem applies).
  */
@@ -87,12 +87,12 @@ export function seedAnimalHerds(
   if (maxHerds === 0) return [];
 
   const commands: Command[] = [];
-  let chosen = 0; // how many walkable cells we have stepped past (drives the stride)
-  // Row-major (canonical) walk of every cell; pick every `stride`-th WALKABLE one as a birth point.
-  for (let cell = 0 as CellId; cell < graph.cellCount; cell = (cell + 1) as CellId) {
-    if (!graph.isWalkable(cell)) continue;
+  let chosen = 0; // how many walkable nodes we have stepped past (drives the stride)
+  // Row-major (canonical) walk of every node; pick every `stride`-th WALKABLE one as a birth point.
+  for (let node = 0 as NodeId; node < graph.nodeCount; node = (node + 1) as NodeId) {
+    if (!graph.isWalkable(node)) continue;
     if (chosen % stride === 0) {
-      const { x, y } = graph.coordsOf(cell);
+      const { x, y } = graph.coordsOf(node);
       // Round-robin successive birth points across the animal tribes, so a multi-tribe map gets a
       // mix instead of all of tribe 0 then all of tribe 1. `commands.length` is the birth-point index.
       const tribe = tribes[commands.length % tribes.length] as number;

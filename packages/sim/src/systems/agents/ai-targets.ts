@@ -9,9 +9,9 @@ import {
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { CellId, TerrainGraph } from '../../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
-import { interactionTile, positionedInteractionCell, resourceWorkCell } from '../footprint/index.js';
+import { interactionNode, positionedInteractionCell, resourceWorkCell } from '../footprint/index.js';
 import { buildingEnabled, settlerMeetsNeed } from '../progression.js';
 import { canonicalById, manhattan } from '../spatial.js';
 import {
@@ -113,7 +113,7 @@ export function nearestHarvestableFor(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  here: CellId,
+  here: NodeId,
   settler: { jobType: number; tribe: number; experience: ReadonlyMap<number, number> },
 ): Entity | null {
   const allowed = jobAtomics(ctx, settler.jobType);
@@ -160,7 +160,7 @@ export function nearestCollectablePileFor(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  here: CellId,
+  here: NodeId,
   jobType: number,
 ): { pile: Entity; goodType: number; dist: number } | null {
   const allowed = jobAtomics(ctx, jobType);
@@ -201,7 +201,7 @@ export function nearestStoreFor(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  here: CellId,
+  here: NodeId,
   goodType: number,
 ): Entity | null {
   let best: Entity | null = null;
@@ -243,7 +243,7 @@ export function nearestFoodStore(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  here: CellId,
+  here: NodeId,
 ): { store: Entity; goodType: number } | null {
   let best: { store: Entity; goodType: number } | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
@@ -283,7 +283,7 @@ export function nearestTemple(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  here: CellId,
+  here: NodeId,
 ): Entity | null {
   let best: Entity | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
@@ -341,7 +341,7 @@ export function nearestWorkplaceOutput(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  here: CellId,
+  here: NodeId,
 ): { workplace: Entity; goodType: number } | null {
   let best: { workplace: Entity; goodType: number } | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
@@ -418,24 +418,25 @@ export function boundWorkplaceTarget(
 
 /**
  * The cell a walk-to / are-we-there target resolves to. For a {@link Building} this is its
- * **interaction tile** — the door cell when the type's footprint names one ({@link interactionTile}),
+ * **interaction tile** — the door cell when the type's footprint names one ({@link interactionNode}),
  * since the walls themselves are now walk-blocked and the original's settlers enter through the door.
  * A footprinted {@link Resource} resolves to its data-driven work cell, while an unfootprinted one
  * keeps the old anchor-tile fixture behavior. Everything else (a bare store fixture, a boat hull, a
  * loose ground drop) resolves to its {@link Position} tile unless that tile is under a resource walk
  * block, in which case the nearest free neighbour is used. Distances, walk goals, and the
  * `cell === here` arrival checks all resolve through here, so the goal a settler walks to and the
- * tile that counts as "at the target" can never disagree.
+ * tile that counts as "at the target" can never disagree. Returns the interaction **node id** —
+ * clamping the raw `{x,y}` that {@link interactionNode} resolves.
  */
 export function interactionCell(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   e: Entity,
-  from?: CellId,
-): CellId {
-  const at = interactionTile(world, ctx, e);
-  if (at !== null) return terrain.cellAtClamped(at.x, at.y);
+  from?: NodeId,
+): NodeId {
+  const at = interactionNode(world, ctx, e);
+  if (at !== null) return terrain.nodeAtClamped(at.x, at.y);
   if (world.has(e, Resource)) return resourceWorkCell(world, terrain, e, from);
   return positionedInteractionCell(world, terrain, e, from);
 }

@@ -1,9 +1,9 @@
 import { Fleeing, MoveGoal, PathRequest, Settler } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { CellId, TerrainGraph } from '../../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
-import { COMPASS_DIRECTIONS, type TileBuckets, clearNavState, entityCell, isTravelling } from '../spatial.js';
+import { COMPASS_DIRECTIONS, type NodeBuckets, clearNavState, entityNode, isTravelling } from '../spatial.js';
 import { SIGHT_RADIUS_NODES, isValidTarget } from './targeting.js';
 
 // The FLEE drive — the civilian raid reaction (the FLEE stance's active behaviour): run from the
@@ -67,7 +67,7 @@ export function fleeDrive(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  index: TileBuckets,
+  index: NodeBuckets,
   e: Entity,
   attacker: { tribe: number; jobType: number | null },
 ): void {
@@ -84,7 +84,7 @@ export function fleeDrive(
     return;
   }
 
-  const here = entityCell(world, terrain, e);
+  const here = entityNode(world, terrain, e);
   const { x, y } = terrain.coordsOf(here);
   const accept = (t: Entity): boolean => isValidTarget(world, ctx, e, attacker, t);
   // Near bound 0 (not the weapon-reach floor of 1): fear has no dead zone — a fleeing unit reacts to a
@@ -110,7 +110,7 @@ export function fleeDrive(
     return; // still running a live route — re-aim only on the throttle
   }
 
-  const dest = fleeDestination(terrain, here, entityCell(world, terrain, threat.entity));
+  const dest = fleeDestination(terrain, here, entityNode(world, terrain, threat.entity));
   clearNavState(world, e);
   if (dest !== here) world.add(e, MoveGoal, { cell: dest }); // dest === here ⇒ boxed in, stand and hope
   f.repathAt = ctx.tick + FLEE_REPATH_CADENCE;
@@ -121,16 +121,16 @@ export function fleeDrive(
  *  increase the distance from the threat over staying put, so a boxed-in unit (no away-cell walkable /
  *  in-bounds) returns its own cell (`here`) and stays rather than running toward the threat. A bounded
  *  8-way scan — deterministic (fixed direction order + min-id tie-break), no RNG. */
-function fleeDestination(terrain: TerrainGraph, here: CellId, threatCell: CellId): CellId {
+function fleeDestination(terrain: TerrainGraph, here: NodeId, threatCell: NodeId): NodeId {
   const h = terrain.coordsOf(here);
   const t = terrain.coordsOf(threatCell);
-  let best: CellId = here;
+  let best: NodeId = here;
   let bestScore = Math.abs(h.x - t.x) + Math.abs(h.y - t.y); // a candidate must beat staying put
   for (const [dx, dy] of FLEE_DIRECTIONS) {
     const x = h.x + dx * FLEE_STEP_NODES;
     const y = h.y + dy * FLEE_STEP_NODES;
     if (!terrain.inBounds(x, y)) continue;
-    const cell = terrain.cellAt(x, y);
+    const cell = terrain.nodeAt(x, y);
     if (!terrain.isWalkable(cell)) continue;
     const score = Math.abs(x - t.x) + Math.abs(y - t.y);
     if (score > bestScore || (score === bestScore && best !== here && cell < best)) {

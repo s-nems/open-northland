@@ -134,9 +134,9 @@ describe('a loaded map drives the sim in place of the synthetic grass grid', () 
     const map = parseTerrainMap(JSON.parse(mapFileJson()));
     const sim = scenario(testContent(), { seed: 7, map }).run(0).sim;
     // The graph was built from the loaded grid: 25 cells, the centre column blocked, the gap open.
-    expect(sim.terrain?.cellCount).toBe(25);
-    expect(sim.terrain?.isWalkable(sim.terrain.cellAt(2, 0))).toBe(false); // water wall
-    expect(sim.terrain?.isWalkable(sim.terrain.cellAt(2, 4))).toBe(true); // the gap
+    expect(sim.terrain?.nodeCount).toBe(25);
+    expect(sim.terrain?.isWalkable(sim.terrain.nodeAt(2, 0))).toBe(false); // water wall
+    expect(sim.terrain?.isWalkable(sim.terrain.nodeAt(2, 4))).toBe(true); // the gap
   });
 
   it('a settler navigates the loaded map (detours around the water wall) deterministically', () => {
@@ -149,7 +149,7 @@ describe('a loaded map drives the sim in place of the synthetic grass grid', () 
       const sim = new Simulation({ seed: 7, content: testContent(), map });
       // A lone mover at (0,0) given only a MoveGoal to (4,0): the navigation planner must issue a
       // PathRequest, A* must route around the water wall through the y=4 gap, MovementSystem walks it.
-      const goal = sim.terrain?.cellAt(4, 0) ?? 0;
+      const goal = sim.terrain?.nodeAt(4, 0) ?? 0;
       const e = sim.world.create();
       sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
       sim.world.add(e, MoveGoal, { cell: goal });

@@ -91,7 +91,7 @@ file when all steps land. Steps 8–9 are severable if the scope must shrink; st
 - [x] 1. Sim: true damage model — **landed:** material-column damage (readviews/combat.ts — no
       `blockingValue` subtraction, `damageVsWood`/`damageVsBuilding` read views), ATTACK-event-frame
       hit resolution, swing cadence = animation length.
-- [x] 2. Sim: engagement — **landed:** owner-keyed hostility, `TileBuckets.nearest` ring search
+- [x] 2. Sim: engagement — **landed:** owner-keyed hostility, `NodeBuckets.nearest` ring search
       (systems/shared.ts), walk-into-melee advance, `attackUnit` command (core/commands.ts).
 - [x] 3. Sim: stances — attack / defend / ignore / flee
 - [x] 4. Sim: ranged combat — **landed:** `Projectile` entities launched at the release frame,
@@ -334,7 +334,7 @@ Context (2026-07-03 — re-verify; re-read current seams):
 - Recruitment (the equip drive — the plan's named oracle-blocked item; the flow below is
   observed-approximation, log it): the player sets a civilian's job to a soldier class (the
   existing setJob command + the barracks UI panel or scene script). The recruit walks to the
-  barracks door (interactionTile), consumes ONE matching weapon good from the barracks stock →
+  barracks door (interactionNode), consumes ONE matching weapon good from the barracks stock →
   Weapon component + the job flips to the weapon's jobtype; if an armor good is in stock,
   consume the best available → Armor (which armor a class gets is unreadable —
   best-available, plan progress note). No weapon in stock ⇒ the order fails visibly (the typed-result

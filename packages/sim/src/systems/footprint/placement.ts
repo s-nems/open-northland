@@ -10,14 +10,14 @@ import {
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
-import type { CellId, TerrainGraph } from '../../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
 import {
   ANCHOR_ONLY,
   buildingFootprintOf,
   nearestCell,
   nearestFreeNeighbour,
-  tileKey,
+  nodeKey,
   translatedCells,
 } from './geometry.js';
 import { resourceBlockedCells } from './resources.js';
@@ -39,7 +39,7 @@ import { resourceBlockedCells } from './resources.js';
  * consumer stays consistent instead of a clamped walk goal disagreeing with the raw-node presence
  * checks. Returns null for an entity without a Building or Position.
  */
-export function interactionTile(
+export function interactionNode(
   world: World,
   ctx: SystemContext,
   building: Entity,
@@ -89,11 +89,11 @@ export function resourceWorkCell(
   world: World,
   terrain: TerrainGraph,
   resource: Entity,
-  from?: CellId,
-): CellId {
+  from?: NodeId,
+): NodeId {
   const p = world.get(resource, Position);
   const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
-  const anchor = terrain.cellAtClamped(ax, ay);
+  const anchor = terrain.nodeAtClamped(ax, ay);
   const footprint = world.tryGet(resource, ResourceFootprint);
   if (footprint === undefined) return anchor;
 
@@ -118,11 +118,11 @@ export function positionedInteractionCell(
   world: World,
   terrain: TerrainGraph,
   entity: Entity,
-  from?: CellId,
-): CellId {
+  from?: NodeId,
+): NodeId {
   const p = world.get(entity, Position);
   const { hx: x, hy: y } = nodeOfPosition(p.x, p.y);
-  const anchor = terrain.cellAtClamped(x, y);
+  const anchor = terrain.nodeAtClamped(x, y);
   const drop = world.tryGet(entity, GroundDrop);
   if (drop !== undefined) {
     const resource = resourceAtTile(world, x, y, stockedGoodAt(world, entity) ?? drop.goodType);
@@ -148,16 +148,16 @@ export function positionedInteractionCell(
  *
  * DERIVED state, rebuilt per tick by its consumer (the PathfindingSystem) — never hashed, never
  * stored, so it cannot drift from the Building components it is computed from (the same stance as
- * `TileBuckets`). Determinism: a set UNION over `world.query` — order-independent (membership only,
+ * `NodeBuckets`). Determinism: a set UNION over `world.query` — order-independent (membership only,
  * no pick; the door carve-out is per-building, keyed to its own cells), so store-order iteration is
  * fine.
  */
-export function buildingBlockedCells(world: World, ctx: SystemContext, terrain: TerrainGraph): Set<CellId> {
-  const blocked = new Set<CellId>();
+export function buildingBlockedCells(world: World, ctx: SystemContext, terrain: TerrainGraph): Set<NodeId> {
+  const blocked = new Set<NodeId>();
   // Door cells collected separately and removed at the end: two buildings can overlap only via the
   // door-in-reserved margin, and a door must stay passable regardless of which building contributed
   // the wall cell (union first, subtract after — order-independent either way).
-  const doors = new Set<CellId>();
+  const doors = new Set<NodeId>();
   for (const e of world.query(Building, Position)) {
     const b = world.get(e, Building);
     const footprint = buildingFootprintOf(ctx.content, b.buildingType);
@@ -169,7 +169,7 @@ export function buildingBlockedCells(world: World, ctx: SystemContext, terrain: 
     }
     const door = footprint.door;
     if (door !== undefined && terrain.inBounds(ax + door.dx, ay + door.dy)) {
-      doors.add(terrain.cellAt(ax + door.dx, ay + door.dy));
+      doors.add(terrain.nodeAt(ax + door.dx, ay + door.dy));
     }
   }
   for (const cell of doors) blocked.delete(cell);
@@ -181,7 +181,7 @@ export function dynamicBlockedCells(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-): ReadonlySet<CellId> {
+): ReadonlySet<NodeId> {
   const blocked = buildingBlockedCells(world, ctx, terrain);
   for (const cell of resourceBlockedCells(world, terrain)) blocked.add(cell);
   return blocked;
@@ -237,7 +237,7 @@ function eachBlockerCell(
 
 /**
  * The command-gate obstacle sets — one throwaway per {@link canPlaceBuilding} check (which probes a
- * SINGLE anchor). Injective string {@link tileKey}s, NOT a numeric `y*width+x` packing (which would
+ * SINGLE anchor). Injective string {@link nodeKey}s, NOT a numeric `y*width+x` packing (which would
  * alias an off-map cell onto a real tile a row over — a footprint-less building at a negative
  * coordinate would then falsely reject a distant placement). The overlay probes thousands of anchors
  * per frame, so it uses the dense-mask twin ({@link PlacementGrid}) instead.
@@ -256,7 +256,7 @@ function collectPlacementBlockers(
   const obstacles = new Set<string>();
   const exclusions = new Set<string>();
   eachBlockerCell(world, content, (x, y, channel) => {
-    (channel === OBSTACLE ? obstacles : exclusions).add(tileKey(x, y));
+    (channel === OBSTACLE ? obstacles : exclusions).add(nodeKey(x, y));
   });
   return { terrain, obstacles, exclusions };
 }
@@ -296,12 +296,12 @@ function canPlaceAnchor(
     const cx = x + c.dx;
     const cy = y + c.dy;
     if (!terrain.inBounds(cx, cy)) return false; // zone off the map edge
-    if (!terrain.isBuildable(terrain.cellAt(cx, cy))) return false; // blocking terrain too close
-    if (blockers.obstacles.has(tileKey(cx, cy))) return false; // a resource body or a building's walls
+    if (!terrain.isBuildable(terrain.nodeAt(cx, cy))) return false; // blocking terrain too close
+    if (blockers.obstacles.has(nodeKey(cx, cy))) return false; // a resource body or a building's walls
   }
   // 2. My family body must stay clear of resource + building EXCLUSION zones (the symmetric margin).
   for (const c of footprint.familyBody) {
-    if (blockers.exclusions.has(tileKey(x + c.dx, y + c.dy))) return false;
+    if (blockers.exclusions.has(nodeKey(x + c.dx, y + c.dy))) return false;
   }
   return true;
 }
@@ -358,9 +358,9 @@ export function placementBlockerVersion(world: World): string {
 
 /**
  * The overlay's DENSE obstacle representation: one byte per half-cell node (`terrain.width×height`,
- * row-major `y*width+x` — the same index `TerrainGraph.cellAt` mints), `1` iff that node is an
+ * row-major `y*width+x` — the same index `TerrainGraph.nodeAt` mints), `1` iff that node is an
  * OBSTACLE / EXCLUSION cell. Stamped from the same {@link eachBlockerCell} pass the command gate keys
- * as strings, but read back as an O(1) typed-array index in the hot loop instead of a `tileKey`
+ * as strings, but read back as an O(1) typed-array index in the hot loop instead of a `nodeKey`
  * string allocation + `Set<string>` probe — the difference that lets the overlay re-probe a whole
  * visible band (screen × footprint) without stalling a frame, even for a many-hundred-cell footprint.
  * Off-map blocker cells are simply not stamped — a candidate whose reserved cell is off-map is rejected
@@ -383,7 +383,7 @@ function canPlaceOnGrid(grid: PlacementGrid, footprint: BuildingFootprint, x: nu
     const cx = x + c.dx;
     const cy = y + c.dy;
     if (cx < 0 || cy < 0 || cx >= w || cy >= h) return false; // zone off the map edge
-    if (!terrain.isBuildable(terrain.cellAt(cx, cy))) return false; // blocking terrain too close
+    if (!terrain.isBuildable(terrain.nodeAt(cx, cy))) return false; // blocking terrain too close
     if (obstacle[cy * w + cx] === 1) return false; // a resource body or a building's walls
   }
   // 2. Family body: clear of EXCLUSION zones. familyBody ⊆ reserved, so every cell here is already

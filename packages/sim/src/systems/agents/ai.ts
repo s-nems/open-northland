@@ -15,7 +15,7 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
 import { MILITARY_MODE } from '../readviews/index.js';
-import { TileBuckets, canonicalById, isTravelling } from '../spatial.js';
+import { NodeBuckets, canonicalById, isTravelling } from '../spatial.js';
 import { boundWorkplaceTarget, collectTargets, hasHaulableOutput } from './ai-targets.js';
 import { type IdleSpacing, deStackIdle } from './destack.js';
 import { planCarrierHaul, planDelivery, planGatherer, planPorter, planProducer } from './drives-economy.js';
@@ -84,7 +84,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   const restingOwned = canonicalById(world.query(Settler, Position, Owner)).filter(
     (e) => !isTravelling(world, e),
   );
-  const spacing: IdleSpacing = { occupancy: new TileBuckets(world, restingOwned), claimed: new Set() };
+  const spacing: IdleSpacing = { occupancy: new NodeBuckets(world, restingOwned), claimed: new Set() };
 
   for (const e of world.query(Settler, Position)) {
     // Busy: an atomic is running, or the settler is en route to a target. Leave it to play out.
@@ -104,7 +104,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
 
     const p = world.get(e, Position);
     const hereNode = nodeOfPosition(p.x, p.y);
-    const here = terrain.cellAtClamped(hereNode.hx, hereNode.hy);
+    const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
     const load = world.tryGet(e, Carrying);
 
     // NEEDS (highest priority): eat > sleep > pray. An unsatisfiable need falls through to work.

@@ -24,7 +24,7 @@ import type { SystemContext } from '../../src/systems/index.js';
 import {
   buildingBlockedCells,
   canPlaceBuilding,
-  interactionTile,
+  interactionNode,
   placementProbe,
   workerPresentAt,
 } from '../../src/systems/index.js';
@@ -331,8 +331,8 @@ describe('buildable terrain channel — walkable ground that rejects building', 
     cells.typeIds[5 * 16 + 7] = MARGIN;
     const sim = new Simulation({ seed: 1, content: marginContent(), map: halfCellMapFromCells(cells) });
     const terrain = terrainOf(sim);
-    expect(terrain.isWalkable(terrain.cellAt(14, 10))).toBe(true); // nav still crosses it
-    expect(terrain.isBuildable(terrain.cellAt(14, 10))).toBe(false); // building may not
+    expect(terrain.isWalkable(terrain.nodeAt(14, 10))).toBe(true); // nav still crosses it
+    expect(terrain.isBuildable(terrain.nodeAt(14, 10))).toBe(false); // building may not
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 13, 9)).toBe(false);
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 11, 11)).toBe(true); // clear ground
   });
@@ -376,15 +376,15 @@ describe('building walk-block — houses have collision', () => {
     });
     sim.step();
     const blocked = buildingBlockedCells(sim.world, ctxOf(sim), terrainOf(sim));
-    expect(blocked.has(terrainOf(sim).cellAt(3, 1))).toBe(true); // a grey foundation already occupies
-    expect(blocked.has(terrainOf(sim).cellAt(4, 1))).toBe(true);
-    expect(blocked.has(terrainOf(sim).cellAt(2, 1))).toBe(false); // the door node stays walkable
+    expect(blocked.has(terrainOf(sim).nodeAt(3, 1))).toBe(true); // a grey foundation already occupies
+    expect(blocked.has(terrainOf(sim).nodeAt(4, 1))).toBe(true);
+    expect(blocked.has(terrainOf(sim).nodeAt(2, 1))).toBe(false); // the door node stays walkable
 
     const walker = sim.world.create();
     sim.world.add(walker, Position, positionOfNode(0, 1));
     sim.world.add(walker, PathRequest, {
-      start: terrainOf(sim).cellAt(0, 1),
-      goal: terrainOf(sim).cellAt(7, 1),
+      start: terrainOf(sim).nodeAt(0, 1),
+      goal: terrainOf(sim).nodeAt(7, 1),
       failed: false,
     });
     sim.step();
@@ -406,8 +406,8 @@ describe('building walk-block — houses have collision', () => {
     const walker = sim.world.create();
     sim.world.add(walker, Position, positionOfNode(0, 1));
     sim.world.add(walker, PathRequest, {
-      start: terrainOf(sim).cellAt(0, 1),
-      goal: terrainOf(sim).cellAt(3, 1), // the wall node itself
+      start: terrainOf(sim).nodeAt(0, 1),
+      goal: terrainOf(sim).nodeAt(3, 1), // the wall node itself
       failed: false,
     });
     sim.step();
@@ -424,8 +424,8 @@ describe('door cell — settlers interact with a house at its entry point', () =
     sim.step();
     const hut = placedBuilding(sim, 0);
     const hq = placedBuilding(sim, 1);
-    expect(interactionTile(sim.world, ctxOf(sim), hut)).toEqual({ x: 4, y: 5 }); // anchor + door(-1,0)
-    expect(interactionTile(sim.world, ctxOf(sim), hq)).toEqual({ x: 9, y: 9 }); // anchor itself
+    expect(interactionNode(sim.world, ctxOf(sim), hut)).toEqual({ x: 4, y: 5 }); // anchor + door(-1,0)
+    expect(interactionNode(sim.world, ctxOf(sim), hq)).toEqual({ x: 9, y: 9 }); // anchor itself
   });
 
   it('counts a worker standing at the DOOR as present (and one on the anchor as absent)', () => {
@@ -503,16 +503,16 @@ describe('wall gate — a door listed inside the walls stays walkable', () => {
     sim.step();
     const terrain = terrainOf(sim);
     const blocked = buildingBlockedCells(sim.world, ctxOf(sim), terrain);
-    expect(blocked.has(terrain.cellAt(3, 3))).toBe(true); // wall segment
-    expect(blocked.has(terrain.cellAt(5, 3))).toBe(true); // wall segment
-    expect(blocked.has(terrain.cellAt(4, 3))).toBe(false); // the gate/door — carved out, passable
+    expect(blocked.has(terrain.nodeAt(3, 3))).toBe(true); // wall segment
+    expect(blocked.has(terrain.nodeAt(5, 3))).toBe(true); // wall segment
+    expect(blocked.has(terrain.nodeAt(4, 3))).toBe(false); // the gate/door — carved out, passable
     // A path to the gate cell itself (the interaction tile) succeeds instead of wedging.
-    expect(interactionTile(sim.world, ctxOf(sim), placedBuilding(sim))).toEqual({ x: 4, y: 3 });
+    expect(interactionNode(sim.world, ctxOf(sim), placedBuilding(sim))).toEqual({ x: 4, y: 3 });
     const walker = sim.world.create();
     sim.world.add(walker, Position, positionOfNode(0, 3));
     sim.world.add(walker, PathRequest, {
-      start: terrain.cellAt(0, 3),
-      goal: terrain.cellAt(4, 3),
+      start: terrain.nodeAt(0, 3),
+      goal: terrain.nodeAt(4, 3),
       failed: false,
     });
     sim.step();
@@ -527,7 +527,7 @@ describe('findPath — the blocked-start/goal exemptions', () => {
     sim.step();
     const terrain = terrainOf(sim);
     const blocked = buildingBlockedCells(sim.world, ctxOf(sim), terrain);
-    const wall = terrain.cellAt(3, 1);
+    const wall = terrain.nodeAt(3, 1);
     expect(blocked.has(wall)).toBe(true);
     expect(findPath(terrain, wall, wall, blocked)).toEqual([wall]); // standing on it — not "unreachable"
   });

@@ -3,9 +3,9 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
-import { interactionTile } from '../footprint/index.js';
+import { interactionNode } from '../footprint/index.js';
 import { buildingEnabled, jobEnabled, settlerMeetsNeed } from '../progression.js';
-import { TileBuckets, canonicalById } from '../spatial.js';
+import { NodeBuckets, canonicalById } from '../spatial.js';
 import { buildingWorkerJobs, recipeOf } from '../stores.js';
 
 /**
@@ -46,20 +46,20 @@ export const jobSystem: System = (world, ctx) => {
   // per settler): every worker binding is a Building, so this is the only entity set either pass scans.
   // Turns the assignment from O(settlers · entities · log n) into O(buildings + settlers · buildings).
   const buildings = canonicalById(world.query(Building));
-  // Spatial bucket of buildings by their INTERACTION tile (the door cell for a footprint type, the
-  // anchor tile otherwise — {@link interactionTile}, passed as the bucket's tile resolver): "adopt"
+  // Spatial bucket of buildings by their INTERACTION node (the door node for a footprint type, the
+  // anchor node otherwise — {@link interactionNode}, passed as the bucket's node resolver): "adopt"
   // binds the workplace a settler is standing AT (the AI walk-to-station drive delivers an operator to
   // the door, not onto the now-walk-blocked walls), and the O(1) per-settler lookup replaces a full
   // building scan (the jobSystem stress cost — most settlers stand at no door, so most lookups hit the
   // shared empty bucket and do zero work).
-  const buildingsByTile = new TileBuckets(world, buildings, (b) => interactionTile(world, ctx, b));
+  const buildingsByNode = new NodeBuckets(world, buildings, (b) => interactionNode(world, ctx, b));
   for (const e of world.canonicalEntities()) {
     const settler = world.tryGet(e, Settler);
     if (settler === undefined || world.has(e, JobAssignment)) continue; // already bound: nothing to do
 
     if (settler.jobType !== null) {
       // Pass 1 — adopt a pre-employed, unbound settler standing on a workplace it staffs.
-      const here = workplaceStaffedHereBy(buildingsByTile, world, ctx, e, settler.tribe, settler.jobType);
+      const here = workplaceStaffedHereBy(buildingsByNode, world, ctx, e, settler.tribe, settler.jobType);
       if (here !== null) world.add(e, JobAssignment, { workplace: here });
       continue; // an employed settler is never re-assigned
     }
@@ -136,7 +136,7 @@ function jobUnderstaffed(world: World, ctx: SystemContext, building: Entity, job
  * never depends on store order.
  */
 function workplaceStaffedHereBy(
-  buildingsByTile: TileBuckets,
+  buildingsByNode: NodeBuckets,
   world: World,
   ctx: SystemContext,
   settler: Entity,
@@ -148,7 +148,7 @@ function workplaceStaffedHereBy(
   // Only the buildings whose interaction tile is the settler's own tile can be adopted — the bucket
   // already restricts to them (in ascending-id order), so the loop just applies the type gates.
   const spNode = nodeOfPosition(sp.x, sp.y);
-  for (const b of buildingsByTile.at(spNode.hx, spNode.hy)) {
+  for (const b of buildingsByNode.at(spNode.hx, spNode.hy)) {
     const building = world.get(b, Building); // present: the bucket is built from the Building query
     if (building.tribe !== tribe) continue;
     if (recipeOf(world, ctx, b) === undefined) continue; // only a producing workplace pins its worker
