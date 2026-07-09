@@ -1,6 +1,7 @@
 import { type BuildingFootprint, type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import type { TerrainMap } from '@vinland/sim';
 import {
+  ATTACK_ATOMIC,
   CLAY_HARVEST_ATOMIC,
   GOLD_HARVEST_ATOMIC,
   HARVEST_ATOMIC,
@@ -59,8 +60,6 @@ import {
  * (`scenes/sandbox-queries.ts`); this module only assembles the validated content set.
  */
 
-/** The attack atomic (81) every soldier job binds: the melee swing / the archer's bow draw. */
-const ATTACK_ATOMIC = 81;
 /** Munition type 1 = arrow — what the bows fire. */
 const ARROW_MUNITION = 1;
 /** The ranged weapon main-type (projectile weapons). */

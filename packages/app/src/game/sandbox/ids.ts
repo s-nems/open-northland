@@ -38,10 +38,11 @@ export const JOB_GATHERER_MUD = 22;
 export const JOB_GATHERER_IRON = 23;
 export const JOB_GATHERER_GOLD = 24;
 export const JOB_GATHERER_MUSHROOM = 25;
-// SYNTHETIC, deliberately outside the real soldier band (31..41) so the job→body map draws the
-// civilian body — the previous 36 was the real `soldier_saber_short`, so the carrier drew an armoured
-// swordsman. The REAL carrier id (`jobtypes.ini` type 24) is taken by the synthetic gatherer band
-// (20..25) above; renumbering that band onto the real trade ids is its own cleanup.
+// Deliberately OUTSIDE the real soldier band (31..41) so the job→body map draws the civilian body — the
+// previous 36 was the real `soldier_saber_short`, so the carrier drew an armoured swordsman. 26 is the
+// real `jobtypes.ini` `trader_sea`, borrowed here only because it isn't in `ADULT_CHARACTER_BY_JOB` (so
+// it falls to the civilian body); the REAL carrier id (type 24) is taken by the synthetic gatherer band
+// (20..25) above. Renumbering the sandbox id space onto the real trade/carrier ids is its own cleanup.
 export const JOB_CARRIER = 26;
 // Soldier jobs ride the REAL viking `jobtypes.ini` ids (soldiers 31..41) so the render's job→body map
 // (`ADULT_CHARACTER_BY_JOB`) draws each class's own warrior body + weapon animation set.

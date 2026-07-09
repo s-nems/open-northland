@@ -335,13 +335,13 @@ function singleDirAnim(row: BobSeqRow | undefined): DirectionalAnim | undefined 
  * `0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N` — source basis "Settler facing"). The source's `<dir>`
  * space is the engine's movement-direction ring: the staggered-lattice hex neighbours clockwise from
  * screen-east (`0 E, 1 SE, 2 SW, 3 W, 4 NW, 5 NE`) plus the two row-crossing verticals (`6 N, 7 S`).
- * DATA-PINNED, not guessed: across the 123 extracted CHARACTER-body-lib `[gfxanimatomic]` records
- * whose body strip is a uniform ×8 block layout (46 human `cr_hum_body_*` + 77 animal
- * `cr_ani_body_00`), every dir-`d` frame list indexes exclusively into strip block
- * `GFX_DIR_TO_BLOCK[d]`. The lone character-lib dissenter is the `animal_bear_fight` body with its own
- * block order; the vehicle lib (`cr_veh_body_00`, bullcart/catapult) also differs — both irrelevant to
- * these human bindings. Indexing frame lists by facing WITHOUT this remap draws the NW swing on an
- * east-facing attacker.
+ * DATA-PINNED, not guessed: across every extracted HUMAN character-body `[gfxanimatomic]` record whose
+ * strip is a uniform ×8 block layout (`human_*`, the bodies these warrior bindings actually draw), each
+ * dir-`d` frame list indexes exclusively into strip block `GFX_DIR_TO_BLOCK[d]` — ZERO dissent among the
+ * human bodies. The animal and vehicle libs carry their own block orders (e.g. `animal_bear_fight`,
+ * `animal_bull_wait`, `vehicles_bullcart_wait` each differ) — irrelevant here, since the remap is applied
+ * only to human warrior bodies. Indexing frame lists by facing WITHOUT this remap draws the NW swing on
+ * an east-facing attacker.
  */
 const GFX_DIR_TO_BLOCK = [4, 5, 0, 1, 2, 3, 7, 6] as const;
 

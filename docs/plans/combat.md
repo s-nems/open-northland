@@ -159,9 +159,10 @@ gallery. **Human pixel sign-off still pending** — the swing/facing/feel is the
   id→tile map in `sprite-scene.ts`), overriding a stale path — a stationary swing has no walk heading. The
   `gfxanimframelistdir <dir>` space is NOT the strip-block order (the first cut assumed it was — swings drew
   rotated, human-caught): it is the engine's movement ring (0 E, 1 SE, 2 SW, 3 W, 4 NW, 5 NE, 6 N, 7 S),
-  DATA-PINNED by cross-checking the 123 character-body-lib `[gfxanimatomic]` records (46 human + 77
-  animal) against their ×8 strip blocks (`GFX_DIR_TO_BLOCK = [4,5,0,1,2,3,7,6]` in `settler-gfx.ts`;
-  the lone character-lib dissenter is the bear body, and the vehicle lib differs — both unbound here).
+  DATA-PINNED by cross-checking every uniform-×8 HUMAN character-body `[gfxanimatomic]` record against its
+  strip blocks (`GFX_DIR_TO_BLOCK = [4,5,0,1,2,3,7,6]` in `settler-gfx.ts`; ZERO dissent among the human
+  bodies these bindings draw). The animal/vehicle libs carry their own block orders (bear, bull, bullcart
+  differ) — unbound here, so irrelevant.
 - **Aggressive gait:** `SettlerStateBinding.engaged` swaps the `_agressive` walk/wait while the sim
   `Engagement` marker is set (`readEngaged`). The unarmed body authors no aggressive variant → falls back
   to its relaxed gait (named).
@@ -200,6 +201,10 @@ gallery. **Human pixel sign-off still pending** — the swing/facing/feel is the
   climbing, down falling; height rides the lift channel so the depth key never moves). Both tunables are
   named approximations (observed original behaviour), exported so tests pin the formulas. Verified:
   1615 tests + check + build green, goldens unmoved, headless combat scene resolves with no console errors.
+  **Known future seam:** the melee-vs-ranged lunge decision is a render-side distance heuristic because the
+  `DrawItem` carries no weapon class; the sim already owns the true `min/maxRange`. When a later step needs
+  exact per-weapon reach visuals, thread an `isRanged`/weapon-class field from the snapshot onto `DrawItem`
+  and drop the `MELEE_BAND_MAX_TILES` heuristic (retires the three named misclassifications).
 
 ---
 
