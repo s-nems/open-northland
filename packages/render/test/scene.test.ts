@@ -2,7 +2,10 @@ import type { WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import { collectSpriteScene } from '../src/data/scene/index.js';
 import {
+  MELEE_LUNGE_FRACTION,
   ONE,
+  PROJECTILE_ARC_PEAK_FRACTION,
+  PROJECTILE_ARC_PEAK_MAX_PX,
   type SceneTerrain,
   buildScene,
   depositVisualLevel,
@@ -20,7 +23,7 @@ import {
  * than spinning up a Simulation — this stays a render-package unit, not an integration test.
  */
 
-/** Hand-build a snapshot entity with a Position (Fixed = whole tiles) + a marker component. */
+/** Hand-build a snapshot entity with a Position (Fixed tiles — fractional is exact too) + a marker. */
 function entity(
   id: number,
   tileX: number,
@@ -275,47 +278,56 @@ describe('buildScene', () => {
     expect(scene.find((d) => d.kind === 'projectile')?.rotation).toBeUndefined();
   });
 
-  it('lobs a projectile with a readable origin: peak lift at mid-chord, level tangent, depth untouched', () => {
-    // Origin (0,1) → target (2,1) on one row: chord = 2 cells = 136 px. The shot sits exactly halfway
-    // (1,1) → p = 0.5: lift = the parabola's peak (chord × the peak fraction), tangent slope 0 → the
-    // rotation is the flat straight-line heading (east). Depth stays the feet row (lift is draw-only).
-    const shot = entity(1, 1, 1, {
+  /** A Projectile payload homing on `target`, loosed from origin tile (ox, oy). */
+  function projectileFrom(target: number, ox: number, oy: number): Record<string, unknown> {
+    return {
       Projectile: {
-        target: 2,
+        target,
         source: 3,
         damage: 34,
         speed: 8,
         munitionType: 1,
-        originX: 0 * ONE,
-        originY: 1 * ONE,
+        originX: ox * ONE,
+        originY: oy * ONE,
       },
-    });
+    };
+  }
+
+  it('lobs a projectile with a readable origin: peak lift at mid-chord, level tangent, depth untouched', () => {
+    // Origin (0,1) → target (2,1) on one row: chord = 2 cells = 136 px. The shot sits exactly halfway
+    // (1,1) → p = 0.5: lift = the parabola's peak (chord × the peak fraction), tangent slope 0 → the
+    // rotation is the flat straight-line heading (east).
+    const shot = entity(1, 1, 1, projectileFrom(2, 0, 1));
     const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
-    const scene = buildScene(snapshotOf([shot, target]), FLAT_3x2);
-    const arrow = scene.find((d) => d.kind === 'projectile');
+    // A flat control shot (no readable origin → no arc) on the SAME cell: the arc must ride the LIFT
+    // channel only, never the depth key, so mid-lob occlusion order can't reshuffle.
+    const flatShot = entity(4, 1, 1, {
+      Projectile: { target: 2, source: 3, damage: 34, speed: 8, munitionType: 1 },
+    });
+    const scene = buildScene(snapshotOf([shot, target, flatShot]), FLAT_3x2);
+    const arrow = scene.find((d) => d.kind === 'projectile' && d.ref === 1);
     const chord = tileToScreen(2, 1).x - tileToScreen(0, 1).x;
-    expect(arrow?.lift).toBeCloseTo(chord * 0.12); // 4·peak·½·½ = peak at mid-flight
+    expect(arrow?.lift).toBeCloseTo(chord * PROJECTILE_ARC_PEAK_FRACTION); // 4·peak·½·½ = peak at mid-flight
     expect(arrow?.rotation).toBeCloseTo(0); // level at the apex — still the straight heading
+    const flat = scene.find((d) => d.kind === 'projectile' && d.ref === 4);
+    expect(arrow?.depth).toBe(flat?.depth); // arc never moves the depth key
+  });
+
+  it('caps the lob peak on a long chord (a max-range shot must not leave the screen)', () => {
+    // Origin (0,1) → target (12,1): chord = 12 cells = 816 px, whose fractional peak (~98 px) exceeds
+    // the cap — the drawn peak clamps to PROJECTILE_ARC_PEAK_MAX_PX exactly at mid-flight (6,1).
+    const shot = entity(1, 6, 1, projectileFrom(2, 0, 1));
+    const target = entity(2, 12, 1, { Settler: { tribe: 0 } });
+    const scene = buildScene(snapshotOf([shot, target]), FLAT_3x2);
+    const chord = tileToScreen(12, 1).x - tileToScreen(0, 1).x;
+    expect(chord * PROJECTILE_ARC_PEAK_FRACTION).toBeGreaterThan(PROJECTILE_ARC_PEAK_MAX_PX); // the cap really binds
+    expect(scene.find((d) => d.kind === 'projectile')?.lift).toBeCloseTo(PROJECTILE_ARC_PEAK_MAX_PX);
   });
 
   it('tilts a descending projectile nose-DOWN along the arc tangent past mid-flight', () => {
-    // Same chord, shot ¾ of the way (1.5, 1): the parabola is falling, so the drawn heading tilts
-    // screen-down (positive rotation toward an eastbound target) instead of the flat 0.
-    const shot = {
-      id: 1,
-      components: {
-        Position: { x: 1.5 * ONE, y: 1 * ONE },
-        Projectile: {
-          target: 2,
-          source: 3,
-          damage: 34,
-          speed: 8,
-          munitionType: 1,
-          originX: 0 * ONE,
-          originY: 1 * ONE,
-        },
-      },
-    };
+    // Same 2-cell chord, shot ¾ of the way (1.5, 1): the parabola is falling, so the drawn heading
+    // tilts screen-down (positive rotation toward an eastbound target) instead of the flat 0.
+    const shot = entity(1, 1.5, 1, projectileFrom(2, 0, 1));
     const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
     const scene = buildScene(snapshotOf([shot, target]), FLAT_3x2);
     const arrow = scene.find((d) => d.kind === 'projectile');
@@ -323,26 +335,30 @@ describe('buildScene', () => {
     expect(arrow?.lift ?? 0).toBeGreaterThan(0); // still airborne
   });
 
-  it('a mid-swing MELEE attacker lunges its drawn anchor toward its target (30% of the screen gap)', () => {
-    // Attacker (1,1) swings (atomic 81) at a target one column EAST (2,1) — inside the melee band
-    // (weapons.ini melee maxRange ≤ 2), so the drawn sprite advances 0.3 of the 68 px gap. Render-only:
-    // the depth key stays the true feet row.
+  it('a mid-swing MELEE attacker lunges its drawn anchor toward its target, depth key untouched', () => {
+    // Attacker (1,1) swings (atomic 81) at a target one column EAST (2,1) — inside the melee band (the
+    // scenes' weapons: melee maxRange ≤ 2), so the drawn sprite advances the lunge fraction of the
+    // 68 px gap. Render-only: the depth key stays the true feet row, pinned against an idle twin on
+    // the attacker's own cell.
     const attacker = entity(1, 1, 1, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId: 81, elapsed: 3, targetEntity: 2, targetTile: null },
     });
     const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
-    const scene = buildScene(snapshotOf([attacker, target]), FLAT_3x2);
+    const idleTwin = entity(4, 1, 1, { Settler: { tribe: 0 } });
+    const scene = buildScene(snapshotOf([attacker, target, idleTwin]), FLAT_3x2);
     const drawn = scene.find((d) => d.kind === 'settler' && d.ref === 1);
     const base = tileToScreen(1, 1);
     const gapX = tileToScreen(2, 1).x - base.x;
-    expect(drawn?.x).toBeCloseTo(base.x + gapX * 0.3);
+    expect(drawn?.x).toBeCloseTo(base.x + gapX * MELEE_LUNGE_FRACTION);
     expect(drawn?.y).toBeCloseTo(base.y); // same row — no vertical component
+    expect(drawn?.depth).toBe(scene.find((d) => d.kind === 'settler' && d.ref === 4)?.depth); // lunge never moves the key
   });
 
   it('a RANGED attacker (target beyond the melee band) faces its target but never lunges', () => {
-    // The archer at (1,1) draws on a target 5 columns east — far past the 2-cell melee band (a bow's
-    // minRange is ≥ 3), so its drawn anchor stays put; the arrow crosses the gap, not the archer.
+    // The archer at (1,1) draws on a target 5 columns east — far past the 2-cell melee band (the
+    // scenes' bows: minRange ≥ 3), so its drawn anchor stays put; the arrow crosses the gap, not the
+    // archer.
     const archer = entity(1, 1, 1, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId: 81, elapsed: 3, targetEntity: 2, targetTile: null },

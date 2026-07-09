@@ -77,10 +77,14 @@ const CHOP_NUDGE_X = -24;
 const ATTACK_ATOMIC_ID = 81;
 
 /**
- * The far reach (tiles, Manhattan) of every MELEE weapon — extracted `weapons.ini`: each spear/sword/
- * saber/axe carries `maxRange` 1–2 while every bow's `minRange` is ≥ 3, so "target within 2" cleanly
- * separates a melee swing (which lunges, below) from a ranged draw (which must NOT — an archer stands
- * its ground and the arrow crosses the gap).
+ * The distance heuristic separating a melee swing (which lunges, below) from a ranged draw (which must
+ * NOT — an archer stands its ground and the arrow crosses the gap): the render can't see the weapon, so
+ * "target within 2 tiles Manhattan" stands in for it. Extracted `weapons.ini` basis, scoped honestly:
+ * every weapon the current scenes/tribes wield complies (playable-civ melee `maxRange` 1–2, settler bows
+ * `minRange` 3–4), but the full data has three exceptions this heuristic would misclassify — the
+ * byzantine wooden spear (melee, `maxRange` 3 → would not lunge), the building-mounted `house_bow`
+ * (`minRange` 0, never on a settler today), and the weresnake `chicken` (melee-class, `maxRange` 10).
+ * Accepted misclassifications until a weapon class rides the DrawItem.
  */
 const MELEE_BAND_MAX_TILES = 2;
 /**
@@ -89,20 +93,23 @@ const MELEE_BAND_MAX_TILES = 2;
  * 38–136 px on screen), so an un-nudged swing lands in empty air between them ("bicie w powietrze").
  * A fraction — not a fixed standoff — keeps a long weapon visibly striking from farther than a short
  * sword, and two mutual duellists (each ≤ half the gap) can never cross. Render-only, like
- * {@link CHOP_NUDGE_X}: the sim position and the depth sort are untouched. Tunable by eye.
+ * {@link CHOP_NUDGE_X}: the sim position and the depth sort are untouched. Tunable by eye (exported so
+ * the tests pin the formula, not a copy of today's tuning).
  */
-const MELEE_LUNGE_FRACTION = 0.3;
+export const MELEE_LUNGE_FRACTION = 0.3;
 
 /**
  * Ballistic-arc shape of a drawn projectile: the lob's PEAK height is this fraction of the shot's total
  * origin→target screen distance, capped at {@link PROJECTILE_ARC_PEAK_MAX_PX} so a max-range longbow
- * shot (23 tiles, ~900 px) doesn't leave the screen. The sim flight is a straight homing step (its own
- * named approximation); the arc is render-only — height `4·peak·p·(1−p)` over the fraction flown `p`,
- * zero at both the bow and the impact. Observed original behaviour (arrows visibly lob); tunable by eye.
+ * shot (23 tiles — up to ~1560 px on an east–west chord at 68 px/cell) doesn't leave the screen. The sim
+ * flight is a straight homing step (its own named approximation); the arc is render-only — height
+ * `4·peak·p·(1−p)` over the fraction flown `p`, zero at both the bow and the impact. Observed original
+ * behaviour (arrows visibly lob); tunable by eye (both exported so the tests pin the formula, not a copy
+ * of today's tuning).
  */
-const PROJECTILE_ARC_PEAK_FRACTION = 0.12;
+export const PROJECTILE_ARC_PEAK_FRACTION = 0.12;
 /** Cap on the lob's peak height (screen px) — see {@link PROJECTILE_ARC_PEAK_FRACTION}. */
-const PROJECTILE_ARC_PEAK_MAX_PX = 56;
+export const PROJECTILE_ARC_PEAK_MAX_PX = 56;
 
 /** One frame's sprite scene: the culled, depth-sorted draw list PLUS the pre-cull liveness set —
  *  produced in a single pass over the snapshot (see {@link collectSpriteScene}). */
