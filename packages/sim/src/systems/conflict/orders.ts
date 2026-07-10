@@ -4,6 +4,8 @@ import {
   AttackOrder,
   Building,
   CurrentAtomic,
+  DEFAULT_WORK_FLAG_RADIUS,
+  DeliveryFlag,
   Engagement,
   Fleeing,
   Health,
@@ -16,11 +18,14 @@ import {
   Position,
   Settler,
   Stance,
+  Stockpile,
   Weapon,
+  WorkFlag,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands.js';
+import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
+import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
 import { openWorkerJobFromList } from '../economy/jobs.js';
 import { MILITARY_MODE, defaultStanceForJob, isMilitaryMode } from '../readviews/index.js';
@@ -252,6 +257,67 @@ export function setStance(
     anchorCell = ctx.terrain.nodeAtClamped(n.hx, n.hy);
   }
   world.add(e, Stance, { mode: command.mode, anchorCell });
+}
+
+/**
+ * Place / move one OWNED gatherer's **work flag** to node (x,y) — the player's "work here" order (the
+ * gathering twin of {@link moveUnit}, mapped from Ctrl+Right-Click). If the gatherer already carries a
+ * {@link WorkFlag} whose flag entity still exists, that flag is **relocated** to (x,y) (its banked goods
+ * ride along); otherwise a fresh flag — a bare uncapped {@link Stockpile} marked {@link DeliveryFlag} — is
+ * created there and bound with the {@link DEFAULT_WORK_FLAG_RADIUS}. From then on the gatherer harvests
+ * only within that flag's radius, carries only what it dug, and banks its harvest there ({@link planGatherer}).
+ *
+ * Recoverable bad input (skipped, still logged for faithful replay): a mapless sim (no cells); a dead/stale
+ * target, a non-settler, a NEUTRAL (unowned) entity, or a settler whose **job cannot harvest** — only a
+ * gatherer carries a work flag, so Ctrl+Right-Click on a soldier is a no-op, never a stray flag. Carries no
+ * issuing-player yet; the per-player authority check lands with lockstep.
+ */
+export function setWorkFlag(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'setWorkFlag' }>,
+): void {
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return; // mapless: no cells to plant a flag on
+  const e = command.entity;
+  if (!world.isAlive(e) || !world.has(e, Settler) || !world.has(e, Owner)) return;
+  const jobType = world.get(e, Settler).jobType;
+  if (jobType === null || !jobCanHarvest(ctx, jobType)) return; // only a gatherer carries a work flag
+
+  // Snap to a valid node (an off-map click lands on the nearest cell, like moveUnit) and take its tile Position.
+  const c = terrain.coordsOf(terrain.nodeAtClamped(command.x, command.y));
+  const pos = positionOfNode(c.x, c.y);
+
+  const wf = world.tryGet(e, WorkFlag);
+  if (wf !== undefined && world.has(wf.flag, Position)) {
+    // Relocate the gatherer's existing flag (Position is mutated in place, as the MovementSystem does).
+    const p = world.get(wf.flag, Position);
+    p.x = pos.x;
+    p.y = pos.y;
+    return;
+  }
+  // No live flag yet (fresh gatherer, or its flag was removed) — create one and bind / re-point.
+  const flag = world.create();
+  world.add(flag, Position, { x: pos.x, y: pos.y });
+  world.add(flag, Stockpile, { amounts: new Map<number, number>() });
+  world.add(flag, DeliveryFlag, {});
+  if (wf !== undefined)
+    wf.flag = flag; // stale binding — re-point it, keeping the gatherer's radius
+  else world.add(e, WorkFlag, { flag, radius: DEFAULT_WORK_FLAG_RADIUS });
+}
+
+/**
+ * Whether a job may harvest any good — i.e. its allowed atomics include some good's harvest atomic. The
+ * gate for {@link setWorkFlag}: only a gatherer carries a work flag. Mirrors the harvest-atomic knowledge
+ * the AI target scan uses (`atomicsByJob` ∩ the goods' harvest atomics), read once per command (rare path).
+ */
+function jobCanHarvest(ctx: SystemContext, jobType: number): boolean {
+  const allowed = contentIndex(ctx.content).atomicsByJob.get(jobType);
+  if (allowed === undefined) return false;
+  for (const g of ctx.content.goods) {
+    if (g.atomics.harvest !== undefined && allowed.has(g.atomics.harvest)) return true;
+  }
+  return false;
 }
 
 /**

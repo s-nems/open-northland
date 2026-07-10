@@ -335,6 +335,8 @@ export function collectSpriteScene(
       const { goodType, fill } = readStockpile(components);
       if (goodType !== undefined) item.goodType = goodType;
       if (fill !== undefined) item.fill = fill;
+      // A designated delivery flag keeps its flag drawn above the heap (vs a loose pile's heap alone).
+      if ('DeliveryFlag' in components) item.isFlag = true;
     }
     const drawLift = lift + arcLift;
     if (drawLift !== 0) item.lift = drawLift;

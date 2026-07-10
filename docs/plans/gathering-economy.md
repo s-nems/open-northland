@@ -105,10 +105,18 @@ only nodes within `radius` of its flag, (2) carries off only the trunk/ore IT du
 each drop's harvester), leaving loose piles alone, (3) banks its harvest at that flag, and (4) stands
 idle beside the flag when nothing is in reach. Both components are opt-in — a flagless gatherer keeps
 the roam-and-haul behaviour, so the golden slice is byte-identical. Sandbox lanes bind each gatherer to
-its flag via the new `createSettler` helper. The radius is a named approximation (`GATHERER_WORK_RADIUS`
+its flag via the new `createSettler` helper. The radius is a named approximation (`DEFAULT_WORK_FLAG_RADIUS`
 — the original's collector work-area size is not decoded). **Relevant to Step 6:** map-spawned gatherers
 will need the same flag binding (place a flag + bind, or an auto-assign step) to inherit this behaviour;
 a map-placed collector with no WorkFlag falls back to roaming.
+
+**Interactive flag control (same branch):** a `setWorkFlag` command (Ctrl+Right-Click on a selected
+gatherer) places/relocates that gatherer's flag on the clicked node — a fresh flag is created + bound, or
+the existing one is moved. Flags now carry a `DeliveryFlag` marker so render draws the flag graphic ABOVE
+its goods heap (a collection point never buries its own marker; a loose pile still draws its heap alone),
+and the selected gatherer's flag is highlighted with an amber ring (distinct from the green selection ring).
+The selectable sandbox cluster are gatherers too, so each is bound to a flag at its spawn (they idle by it
+instead of roaming); the player sends them to work with Ctrl+Right-Click.
 
 ---
 

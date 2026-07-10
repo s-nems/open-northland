@@ -14,16 +14,15 @@ import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.j
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../rules.js';
 import { GATHERERS, type GathererSpec, weaponEquipmentFor } from './ids.js';
 
-const { Position, Stockpile, WorkFlag } = components;
+const { DeliveryFlag, Position, Stockpile, WorkFlag } = components;
 
 /**
- * A gatherer's reasonable work radius around its flag, in integer node-distance (the half-cell lattice the
- * planner measures on — a lane's own nodes sit ~10 nodes from its flag). The original's collector work-area
- * size is not decoded, so this is an OBSERVED/tunable approximation carried as {@link WorkFlag} data (not a
- * magic constant buried in the planner): it comfortably covers a lane's nodes, and since each gatherable
- * good is unique per lane the job-atomic gate keeps a radius overlap from ever crossing trades.
+ * A gatherer's reasonable work radius around its flag (integer node-distance). Sourced from the sim's
+ * {@link components.DEFAULT_WORK_FLAG_RADIUS} so a scene-bound flag and a `setWorkFlag`-placed flag share
+ * one value — a named approximation (the original's collector work-area size is not decoded), and since each
+ * gatherable good is unique per lane the job-atomic gate keeps a radius overlap from ever crossing trades.
  */
-export const GATHERER_WORK_RADIUS = 16;
+export const GATHERER_WORK_RADIUS = components.DEFAULT_WORK_FLAG_RADIUS;
 
 /**
  * The sandbox world-population helpers scenes and the vertical slice share. Buildings, settlers and
@@ -180,6 +179,7 @@ export function placeFlag(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Stockpile, { amounts: new Map() });
+  sim.world.add(e, DeliveryFlag, {}); // a designated collection point → render keeps its flag above the heap
   return e;
 }
 

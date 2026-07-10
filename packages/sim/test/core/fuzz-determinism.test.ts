@@ -168,7 +168,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  const roll = rng.int(13);
+  const roll = rng.int(14);
   switch (roll) {
     case 0:
       return {
@@ -292,6 +292,12 @@ function nextCommand(rng: Rng): Command {
         y,
         amount: rng.int(4), // 0..3 — 0 hits the non-positive-amount skip
       };
+    case 12:
+      // A work-flag order at a random id + tile: hits owned gatherers (a flag is created, then relocated on
+      // a repeat), non-gatherer / unowned / dead ids (skipped). Exercises setWorkFlag's create/move/skip
+      // paths — including a WorkFlag/DeliveryFlag entity conjured mid-stream, whose delivery then spreads a
+      // yard heap the drop/reap machinery must handle.
+      return { kind: 'setWorkFlag', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity, x, y };
     default:
       // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.
       return {

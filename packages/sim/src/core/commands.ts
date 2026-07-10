@@ -293,6 +293,25 @@ export type Command =
       readonly building: Entity;
       /** Ordered candidate worker jobs to try (highest preference first); the first open one wins. */
       readonly jobPriority: readonly number[];
+    }
+  | {
+      /**
+       * Place / move one OWNED gatherer's **work flag** to node (x,y) — the player's "work here" order
+       * (the gathering twin of `moveUnit`). If the gatherer already carries a
+       * {@link import('../components/index.js').WorkFlag} its flag entity is relocated to (x,y); otherwise
+       * a fresh flag (a bare uncapped {@link import('../components/index.js').Stockpile}) is created there
+       * and bound with the default radius. From then on the gatherer harvests only within that flag's
+       * radius, carries only what it dug, and banks its harvest at the flag (see `planGatherer`).
+       *
+       * Recoverable bad input (skipped, still logged for faithful replay): a dead/stale target, a
+       * non-settler, a NEUTRAL (unowned) entity, or a settler whose job cannot harvest (a soldier has no
+       * work flag). Carries no issuing-player yet (the per-player authority check lands with lockstep).
+       * The app maps Ctrl+Right-Click with a gatherer selected to this. See `setWorkFlag`.
+       */
+      readonly kind: 'setWorkFlag';
+      readonly entity: Entity;
+      readonly x: number;
+      readonly y: number;
     };
 
 /**

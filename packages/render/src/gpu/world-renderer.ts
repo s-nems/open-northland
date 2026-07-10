@@ -214,6 +214,7 @@ export class WorldRenderer {
     selection: ReadonlySet<number> = NO_SELECTION,
     alpha = 1,
     doorBadges: readonly DoorBadge[] = NO_BADGES,
+    flagged: ReadonlySet<number> = NO_SELECTION,
   ): void {
     // Camera: the world layer's own transform (screen = world*scale + offset).
     this.lastCamera = camera;
@@ -255,6 +256,7 @@ export class WorldRenderer {
       (ref) => this.pool.boundsOf(ref),
       this.elevation,
       (ref) => this.pool.anchorOf(ref),
+      flagged,
     );
     // Door badges float over the buildings: the app tallies each building's bound workers + projects its
     // door node, this layer stacks one placeholder square per worker (craftsman / carrier / gatherer,
