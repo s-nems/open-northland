@@ -332,10 +332,12 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     }
   };
 
-  // Wheel scrolls the open building menu's list; consumed events stop the page from also scrolling.
+  // Wheel scrolls the open building menu's list. Suppress the browser's default wheel action over ANY open
+  // pop-up (the menu scrolls; the stats window has no scroll yet but must not page the document behind the
+  // canvas either) — the camera's pointer-guard already skips zoom over these same windows.
   const onWheel = (e: WheelEvent): void => {
     const { x, y } = toCanvas(e.clientX, e.clientY);
-    if (menu.handleWheel(x, y, e.deltaY)) e.preventDefault();
+    if (menu.handleWheel(x, y, e.deltaY) || stats.claims(x, y)) e.preventDefault();
   };
 
   const onKeyDown = (e: KeyboardEvent): void => {
@@ -374,8 +376,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     placementType: () => placement.activeType(),
     update(hud): void {
       // The strip is a static baked texture now (a scene-graph sprite that batches + follows resizes for
-      // free) — no per-frame re-placement. Only the pop-up windows + placement banner still re-place.
-      if (menu.isOpen()) menu.place();
+      // free) — no per-frame re-placement. The menu's vector runs stay put too, so refresh() only reflows
+      // on a resize; the stats window + placement banner still re-place.
+      menu.refresh();
       stats.refresh(hud);
       placement.placeBanner();
     },

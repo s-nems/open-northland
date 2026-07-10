@@ -114,7 +114,9 @@ export interface CameraController {
   /**
    * Install a predicate that claims a client point for the HUD; while it returns true for the cursor, the
    * wheel does NOT zoom (an open window scrolls instead). Pass `null` to clear. The game view wires the
-   * tool panel's `claimPointer` here so scrolling a pop-up list never also zooms the world behind it.
+   * tool panel's `claimsWheel` here (an OPEN pop-up window only — NOT the broad `claimsPointer`, which also
+   * covers the strip and active placement, where the wheel should still zoom) so scrolling a pop-up list
+   * never also zooms the world behind it.
    */
   setPointerGuard(guard: ((clientX: number, clientY: number) => boolean) | null): void;
   /** Remove every installed DOM listener. */

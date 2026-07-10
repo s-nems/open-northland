@@ -75,10 +75,15 @@ const MENU_HEADLINE_H = 18;
 // tabs never overlap when drawn side by side.
 const MENU_TAB_W = 62;
 const MENU_TAB_H = 18;
-/** Each building sits on its own button-card, so the row slot is taller than a plain text line. */
-const MENU_ROW_H = 20;
+/** Each building sits on its own button-card, so the row slot is taller than a plain text line. The
+ *  controller (`menu-window.ts`) reads this to fit the viewport to the screen — exported so the two can't
+ *  drift. */
+export const MENU_ROW_H = 20;
 /** A small gap between the tab row and the list, so the tabs read as a header for it. */
 const MENU_LIST_GAP = 3;
+/** Design-px chrome above the list (headline band + tab row + the gap before it) — the controller reads
+ *  it to size how many rows fit the screen. Exported here, the layout's single source of truth. */
+export const MENU_CHROME_ABOVE_LIST = MENU_HEADLINE_H + MENU_TAB_H + MENU_LIST_GAP;
 const MENU_CLOSE = 13;
 /** The scrollbar gutter width — reserved on the right only when the category overflows the viewport. */
 const MENU_SCROLLBAR_W = 8;
@@ -99,8 +104,6 @@ export interface MenuRow {
   readonly typeId: number;
   readonly label: string;
   readonly rect: Rect;
-  /** The row's index within the FULL filtered list (not the visible slice) — drives the ledger stripe. */
-  readonly index: number;
 }
 
 /** The scroll state of the list: which rows are visible and how far it can travel. */
@@ -198,7 +201,6 @@ export function layoutBuildingMenu(
     rows.push({
       typeId: entry.typeId,
       label: entry.label,
-      index: top + i,
       rect: { x: originX + pad, y: listTop + i * rowH, w: rowW, h: rowH },
     });
   }

@@ -2,6 +2,7 @@ import { Container, Graphics } from 'pixi.js';
 import type { TextRun } from '../bitmap-text.js';
 import {
   HEADLINE_FILL,
+  WIN_PAD,
   WOOD_FILL,
   drawBevel,
   drawCloseX,
@@ -16,6 +17,8 @@ import { type Rect, contains } from '../geometry.js';
 import {
   type BuildingCategory,
   type BuildingMenuLayout,
+  MENU_CHROME_ABOVE_LIST,
+  MENU_ROW_H,
   type MenuBuildingEntry,
   type MenuRow,
   hitTestBuildingMenu,
@@ -43,8 +46,6 @@ const CARD_INSET_Y = 2;
 const HEADLINE_INSET = 2;
 /** How many rows one mouse-wheel event scrolls the list. */
 const WHEEL_ROWS = 1;
-/** Window left offset from the strip's right edge (design px), matching {@link WIN_PAD}. */
-const MENU_GAP = 6;
 /**
  * Bottom margin (design px) the list keeps clear of the screen foot. Combined with {@link MAX_LIST_ROWS} it
  * keeps the window a compact panel.
@@ -54,10 +55,6 @@ const LIST_BOTTOM_MARGIN = 24;
 const MAX_LIST_ROWS = 13;
 /** Floor on visible rows so a short screen still shows a usable list. */
 const MIN_LIST_ROWS = 3;
-/** Design-px chrome above the list (headline + tab row + gap) — mirrors `building-menu.ts` metrics. */
-const CHROME_ABOVE_LIST = 18 + 18 + 3;
-/** Building row-slot height (design px) — mirrors `building-menu.ts` `MENU_ROW_H`. */
-const ROW_H = 20;
 
 export interface MenuWindowDeps {
   readonly ctx: PanelContext;
@@ -69,7 +66,7 @@ export interface MenuWindowDeps {
   readonly onPick: (typeId: number) => void;
 }
 
-/** The pop-up building-menu window ("Zbuduj Okno"): open/close, category tabs, scroll, and the pick→place hand-off. */
+/** The pop-up building-menu window ("Budowa"): open/close, category tabs, scroll, and the pick→place hand-off. */
 export interface MenuWindow {
   isOpen(): boolean;
   toggle(): void;
@@ -82,16 +79,18 @@ export interface MenuWindow {
   handleWheel(x: number, y: number, deltaY: number): boolean;
   /** Update the row-hover highlight from a canvas-space point (no-op when closed). */
   handleHover(x: number, y: number): void;
-  /** Per-frame while open: re-place the text runs against the live canvas size. */
-  place(): void;
+  /** Per-frame hook: reflow the list only when a canvas resize changes how many rows fit (cheap no-op
+   *  otherwise — the vector text runs stay put, so there is nothing to re-place every frame). */
+  refresh(): void;
 }
 
 /** The window origin: to the right of the strip, dropping from the buildings button (so it clears the
- *  top-left debug overlay instead of colliding with it). */
+ *  top-left debug overlay instead of colliding with it). Fixed for the controller's life (the strip
+ *  geometry is pinned), so it is computed once. */
 function menuOrigin(ctx: PanelContext): { x: number; y: number } {
   const buildingsBtn = ctx.layout.buttons.find((b) => b.id === 'buildings');
   return {
-    x: ctx.layout.width + MENU_GAP * ctx.scale,
+    x: ctx.layout.width + WIN_PAD * ctx.scale,
     y: buildingsBtn?.placed.y ?? ctx.layout.strip.y,
   };
 }
@@ -100,19 +99,25 @@ function menuOrigin(ctx: PanelContext): { x: number; y: number } {
  * Build the building-menu window controller over the pure {@link layoutBuildingMenu} geometry. Owns a
  * `back` container (the tiled wood/rust/button bitmap fills), a `Graphics` (frame + bevels + scrollbar), a
  * separate hover `Graphics`, and vector text runs inside `deps.container`. The chrome is rebuilt on open,
- * tab change and scroll; the hover layer redraws on its own (cheap); the runs are placed each frame while
- * open (cheap — placement only moves retained runs). Every bitmap fill degrades to flat Graphics when the
+ * tab change and scroll; the hover layer redraws on its own (cheap); a per-frame {@link MenuWindow.refresh}
+ * only reflows when a resize changes the row count. Every bitmap fill degrades to flat Graphics when the
  * decoded art is absent.
  */
 export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
   const { ctx } = deps;
   const { scale } = ctx;
+  const origin = menuOrigin(ctx); // fixed for the controller's life (pinned strip geometry)
 
   let open = false;
   let category: BuildingCategory = 'all';
   let scrollTop = 0;
   let menuLayout: BuildingMenuLayout | null = null;
   let hoveredType: number | null = null;
+  // The last canvas cursor point, so a scroll/tab/resize can re-resolve which card the (stationary) cursor
+  // is over — otherwise the highlight would stick to a typeId that scrolled away from under the pointer.
+  let lastPointer: { x: number; y: number } | null = null;
+  // The viewport row count the current layout was built for — a resize that changes it triggers a reflow.
+  let builtRows = 0;
   const runs: TextRun[] = [];
   const back = new Container();
   const graphics = new Graphics();
@@ -122,10 +127,17 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
   /** The viewport height in rows, from the live screen height (bounded to a tidy compact panel). */
   const listRows = (): number => {
     const { height } = ctx.screen();
-    const rowH = ROW_H * scale;
-    const avail = height - menuOrigin(ctx).y - (CHROME_ABOVE_LIST + LIST_BOTTOM_MARGIN) * scale;
+    const rowH = MENU_ROW_H * scale;
+    const avail = height - origin.y - (MENU_CHROME_ABOVE_LIST + LIST_BOTTOM_MARGIN) * scale;
     const fit = Math.floor(avail / rowH);
     return Math.max(MIN_LIST_ROWS, Math.min(MAX_LIST_ROWS, fit));
+  };
+
+  /** The building typeId under a canvas point (null when it's not over a row). */
+  const hoverAt = (x: number, y: number): number | null => {
+    if (menuLayout === null) return null;
+    const hit = hitTestBuildingMenu(menuLayout, x, y);
+    return hit !== null && hit.kind === 'building' ? hit.typeId : null;
   };
 
   const clear = (): void => {
@@ -152,16 +164,19 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
 
   const rebuild = (): void => {
     clear();
-    const { x: originX, y: originY } = menuOrigin(ctx);
+    builtRows = listRows();
     menuLayout = layoutBuildingMenu(deps.buildings, {
-      originX,
-      originY,
+      originX: origin.x,
+      originY: origin.y,
       scale,
       selected: category,
       scrollTop,
-      maxListRows: listRows(),
+      maxListRows: builtRows,
     });
     scrollTop = menuLayout.scroll.top; // clamp back (a category change can shrink the range)
+    // Re-resolve which card the (possibly stationary) cursor is now over, so the highlight tracks the
+    // content after a scroll / tab change instead of clinging to a typeId that moved.
+    hoveredType = lastPointer === null ? null : hoverAt(lastPointer.x, lastPointer.y);
 
     // Window body: tiled wood, framed in gilt (flat warm fill when the bitmap is absent).
     if (!tileBitmap(back, ctx.bitmaps.bg, menuLayout.window, scale)) {
@@ -255,6 +270,7 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
   const close = (): void => {
     open = false;
     hoveredType = null;
+    lastPointer = null;
     clear();
     hoverG.clear();
     menuLayout = null;
@@ -300,12 +316,20 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
     },
     handleHover: (x, y): void => {
       if (!open || menuLayout === null) return;
-      const hit = hitTestBuildingMenu(menuLayout, x, y);
-      const next = hit !== null && hit.kind === 'building' ? hit.typeId : null;
+      lastPointer = { x, y };
+      const next = hoverAt(x, y);
       if (next === hoveredType) return;
       hoveredType = next;
       drawHover();
     },
-    place,
+    refresh: (): void => {
+      // The vector runs don't move between rebuilds, so the only per-frame work is reflowing the list
+      // when a canvas resize changes how many rows fit.
+      if (!open || menuLayout === null) return;
+      if (listRows() !== builtRows) {
+        rebuild();
+        place();
+      }
+    },
   };
 }

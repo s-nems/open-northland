@@ -112,6 +112,56 @@ describe('menu window controller', () => {
     expect(menu.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
     expect(menu.isOpen()).toBe(true);
   });
+
+  // A category longer than the viewport (stub screen fits MAX_LIST_ROWS = 13), so the scroll path engages.
+  const MANY: readonly MenuBuildingEntry[] = Array.from({ length: 20 }, (_, i) => ({
+    typeId: 200 + i,
+    id: `b${i}`,
+    label: `B${i}`,
+    kind: 'workplace',
+  }));
+  /** A canvas point inside the first list row (past the headline + tab band). */
+  function firstRowPoint(ctx: PanelContext): { x: number; y: number } {
+    const buildingsY = ctx.layout.buttons.find((b) => b.id === 'buildings')?.placed.y ?? 0;
+    return { x: ctx.layout.width + WIN_PAD * ctx.scale + 20, y: buildingsY + 45 * ctx.scale };
+  }
+
+  it('consumes the wheel over the open window and ignores it outside', () => {
+    const { ctx } = stubContext();
+    const menu = createMenuWindow({
+      ctx,
+      buildings: MANY,
+      container: new Container(),
+      onPick: () => undefined,
+    });
+    menu.toggle();
+    const p = firstRowPoint(ctx);
+    expect(menu.handleWheel(p.x, p.y, 120)).toBe(true); // over the window → scrolls, consumed
+    expect(menu.handleWheel(5000, 5000, 120)).toBe(false); // off the window → not consumed
+  });
+
+  it('wheel-scrolls the overflowing list so a fixed point clicks the scrolled-in building', () => {
+    const { ctx } = stubContext();
+    const picks: number[] = [];
+    const menu = createMenuWindow({
+      ctx,
+      buildings: MANY,
+      container: new Container(),
+      onPick: (t) => picks.push(t),
+    });
+    const p = firstRowPoint(ctx);
+
+    // Baseline: at rest the top row is the first building.
+    menu.toggle();
+    menu.handleClick(p.x, p.y); // a building pick closes the menu
+    const top = picks.at(-1) ?? -1;
+
+    // Scroll five rows; the SAME screen point now lands five buildings later (the list moved under it).
+    menu.toggle();
+    for (let i = 0; i < 5; i++) menu.handleWheel(p.x, p.y, 120);
+    menu.handleClick(p.x, p.y);
+    expect(picks.at(-1)).toBe(top + 5);
+  });
 });
 
 describe('stats window controller', () => {

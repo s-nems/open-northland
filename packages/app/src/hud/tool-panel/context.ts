@@ -16,8 +16,8 @@ export interface PanelBitmaps {
 /**
  * What every tool-panel window controller (building menu / statistics / placement) needs from the
  * mounted panel: the resolved strip layout + scale, the shared vector-font text factory, the decoded-UI
- * bitmap fills, the decoded-UI-string lookup, and the live canvas size (windows re-place against it every
- * frame, since screen-space meshes carry the resolution).
+ * bitmap fills, the decoded-UI-string lookup, and the live canvas size (read when a controller lays out,
+ * so it tracks window resizes).
  */
 export interface PanelContext {
   readonly layout: ToolPanelLayout;
