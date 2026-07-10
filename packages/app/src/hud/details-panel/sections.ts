@@ -22,7 +22,6 @@ import type {
   MultiSettlerPanelModel,
   SettlerPanelModel,
 } from './model.js';
-import { STOCK_TAB_ICON_GOODS } from './stock-tabs.js';
 
 /**
  * The decoded `housewindow` string ids the building sections consume (see `content/gui/strings/<lang>.json`,
@@ -60,8 +59,6 @@ const STOCK_ICON_W = 18;
 const STOCK_AMOUNT_INSET = 6;
 /** The active stock tab's lime underline height in design px (kept ≥2 screen px so it reads at uiscale 1). */
 const STOCK_TAB_UNDERLINE_H = 2;
-/** Inset (design px) of a tab's good icon inside its plate, so the icon doesn't touch the plate edges. */
-const STOCK_TAB_ICON_PAD = 2;
 /** Design width of the settler need-bar block (label column before it, pct column after). */
 const NEED_LABEL_W = 84;
 const NEED_PCT_W = 30;
@@ -222,21 +219,30 @@ export function drawBuilding(
  * and `panel.ts`). The active tab carries a lime underline (the same selected-strip look as the name row)
  * so the current category reads at a glance.
  */
+/**
+ * The original tab-plate glyph (frame 170–177) drawn on each category tab, index = tab — REORDERED from the
+ * sheet's raw order so each category gets the fitting glyph (identified by eye: cutlery→food, house→building,
+ * hammer→tools, boots→crafted, weapon→military…). The glyph semantics aren't decoded, so this pairing is a
+ * named approximation; the hover tooltip carries the authoritative category name either way.
+ */
+const STOCK_TAB_GLYPH: readonly number[] = [
+  GUI_FRAME.stock_tab_0 + 2, // 0 Żywność — cutlery
+  GUI_FRAME.stock_tab_0 + 3, // 1 Napoje — bottle/teat
+  GUI_FRAME.stock_tab_0 + 4, // 2 Surowce — (unread)
+  GUI_FRAME.stock_tab_0 + 1, // 3 Budulec — house
+  GUI_FRAME.stock_tab_0 + 0, // 4 Narzędzia — hammer
+  GUI_FRAME.stock_tab_0 + 5, // 5 Wyroby — boots
+  GUI_FRAME.stock_tab_0 + 6, // 6 Wojsko — weapon
+  GUI_FRAME.stock_tab_0 + 7, // 7 Inne — (spare)
+];
+
 function drawStockTabs(chrome: Chrome, rects: readonly Rect[], activeTab: number, s: number): void {
-  const iconPad = Math.round(STOCK_TAB_ICON_PAD * s);
   rects.forEach((r, i) => {
-    // A wooden tab plate (active brighter, inactive dimmed) with the category's representative good icon on
-    // it — replacing the original's cryptic unread glyph so a tab shows a real good from its own category.
+    // The original cream line-art glyph, reordered onto the fitting category tab, over a wooden plate (active
+    // brighter, inactive dimmed) instead of the flat grey recessed rectangle.
     chrome.tabButton(r, i === activeTab);
-    const goodId = STOCK_TAB_ICON_GOODS[i];
-    if (goodId !== undefined) {
-      chrome.goodIcon(goodId, {
-        x: r.x + iconPad,
-        y: r.y + iconPad,
-        w: r.w - iconPad * 2,
-        h: r.h - iconPad * 2,
-      });
-    }
+    const glyph = STOCK_TAB_GLYPH[i];
+    if (glyph !== undefined) chrome.guiCentered(glyph, r, 'magenta', 'bg_invert');
   });
   const active = rects[activeTab];
   if (active !== undefined) {

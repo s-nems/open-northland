@@ -37,22 +37,6 @@ export const STOCK_TAB_LABELS: readonly string[] = [
   'Inne', // 7 — currency, potions, amulets, animals, vehicles, special
 ];
 
-/**
- * A representative good STRING id per tab (index = tab), whose recoloured `ls_goods` icon is drawn ON the tab
- * plate instead of the original's cryptic unread glyph — so a tab shows a real good from its own category
- * (bread for food, a sword for military…) and reads at a glance. Each id has a distinct manifest icon.
- */
-export const STOCK_TAB_ICON_GOODS: readonly string[] = [
-  'bread', // 0 — Żywność
-  'water', // 1 — Napoje
-  'wood', // 2 — Surowce
-  'brick', // 3 — Budulec
-  'tool_iron', // 4 — Narzędzia
-  'crockery', // 5 — Wyroby
-  'sword_long', // 6 — Wojsko
-  'coin', // 7 — Inne
-];
-
 /** Good STRING id → tab index (0–7). Provisional grouping — see the file header. */
 const CATEGORY_BY_GOOD: Readonly<Record<string, number>> = {
   // 0 — Żywność (food)
