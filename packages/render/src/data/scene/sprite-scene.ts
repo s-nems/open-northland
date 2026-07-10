@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@vinland/sim';
+import { type Fixed, type WorldSnapshot, nodeOfPosition } from '@vinland/sim';
 import type { ElevationField } from '../elevation.js';
 import { ONE, tileToScreen } from '../iso.js';
 import { type Viewport, isVisible } from '../viewport.js';
@@ -13,6 +13,7 @@ import {
   classify,
   facingTowardTile,
   readActingAtomic,
+  readAtomicDuration,
   readAtomicElapsed,
   readAtomicTargetEntity,
   readBuildingType,
@@ -86,14 +87,23 @@ const ATTACK_ATOMIC_ID = 81;
 /**
  * The distance heuristic separating a melee swing (which lunges, below) from a ranged draw (which must
  * NOT — an archer stands its ground and the arrow crosses the gap): the render can't see the weapon, so
- * "target within 2 tiles Manhattan" stands in for it. Extracted `weapons.ini` basis, scoped honestly:
- * every weapon the current scenes/tribes wield complies (playable-civ melee `maxRange` 1–2, settler bows
- * `minRange` 3–4), but the full data has three exceptions this heuristic would misclassify — the
- * byzantine wooden spear (melee, `maxRange` 3 → would not lunge), the building-mounted `house_bow`
+ * "target within 2 half-cell NODES Manhattan" stands in for it — the SAME unit the sim's weapon reach
+ * bands use (extracted `weapons.ini` consumed as node distances), so the split is exact: playable-civ
+ * melee `maxRange` is 1–2 nodes, settler bows' `minRange` is 3+ nodes. The earlier TILE-Manhattan
+ * version of this check admitted a bow firing at its 3–4-node near edge (1.5–2 tiles rounds to ≤ 2),
+ * so archers visibly dashed at their targets on every shot. Remaining honest misclassifications: the
+ * byzantine wooden spear (melee, `maxRange` 3 → does not lunge), the building-mounted `house_bow`
  * (`minRange` 0, never on a settler today), and the weresnake `chicken` (melee-class, `maxRange` 10).
- * Accepted misclassifications until a weapon class rides the DrawItem.
  */
-const MELEE_BAND_MAX_TILES = 2;
+const MELEE_BAND_MAX_NODES = 2;
+/**
+ * Ticks the melee lunge takes to step IN at the swing's start and back OUT before its end — the
+ * envelope that turns the drawn advance into a step-strike-recover instead of a flat offset held for
+ * the atomic's whole duration (which read as the attacker TELEPORTING forward at every swing and
+ * snapping back after it — the reported jump). The attack animations are ~12 ticks, so a 3-tick ramp
+ * is a 150 ms step each way, and the plateau still covers the mid-animation hit frame.
+ */
+const LUNGE_RAMP_TICKS = 3;
 /**
  * How far a mid-swing melee attacker's DRAWN sprite advances toward its target, as a fraction of the
  * attacker→target screen gap. Combatants halt a whole 1–2 cells apart (the sim's faithful reach band,
@@ -104,6 +114,20 @@ const MELEE_BAND_MAX_TILES = 2;
  * the tests pin the formula, not a copy of today's tuning).
  */
 export const MELEE_LUNGE_FRACTION = 0.3;
+
+/**
+ * The lunge's amplitude over the swing's life, in [0, 1]: ramp in over {@link LUNGE_RAMP_TICKS},
+ * plateau through the middle (where the animation's hit frame lands), ramp back OUT so the last tick
+ * stands on the true anchor again — a clean handoff to the between-swings wait pose. Runs on the same
+ * 0-based clock the animation frames use (`elapsed − 1`); an absent duration (a malformed atomic)
+ * keeps the plateau rather than guessing an end.
+ */
+function lungeEnvelope(elapsed: number | null, duration: number | null): number {
+  const clock = Math.max(0, (elapsed ?? 1) - 1);
+  const rampIn = (clock + 1) / LUNGE_RAMP_TICKS;
+  const rampOut = duration === null ? Number.POSITIVE_INFINITY : (duration - 1 - clock) / LUNGE_RAMP_TICKS;
+  return Math.max(0, Math.min(1, rampIn, rampOut));
+}
 
 /**
  * Ballistic-arc shape of a drawn projectile: the lob's PEAK height is this fraction of the shot's total
@@ -228,11 +252,14 @@ export function collectSpriteScene(
       if (to !== undefined) {
         const toTile = { x: to.x / ONE, y: to.y / ONE };
         attackFacing = facingTowardTile({ x: tileX, y: tileY }, toTile);
-        const band = Math.abs(Math.round(toTile.x - tileX)) + Math.abs(Math.round(toTile.y - tileY));
-        if (band <= MELEE_BAND_MAX_TILES) {
+        // Node-Manhattan band, through the sim's one tile→node seam — see MELEE_BAND_MAX_NODES.
+        const an = nodeOfPosition(pos.x as Fixed, pos.y as Fixed);
+        const tn = nodeOfPosition(to.x as Fixed, to.y as Fixed);
+        if (Math.abs(an.hx - tn.hx) + Math.abs(an.hy - tn.hy) <= MELEE_BAND_MAX_NODES) {
           const targetScreen = tileToScreen(toTile.x, toTile.y);
-          lungeX = (targetScreen.x - screen.x) * MELEE_LUNGE_FRACTION;
-          lungeY = (targetScreen.y - screen.y) * MELEE_LUNGE_FRACTION;
+          const envelope = lungeEnvelope(readAtomicElapsed(components), readAtomicDuration(components));
+          lungeX = (targetScreen.x - screen.x) * MELEE_LUNGE_FRACTION * envelope;
+          lungeY = (targetScreen.y - screen.y) * MELEE_LUNGE_FRACTION * envelope;
         }
       }
     }

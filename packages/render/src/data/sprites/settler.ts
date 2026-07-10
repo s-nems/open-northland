@@ -74,6 +74,10 @@ export function resolveSettlerBobId(
   binding: number | SettlerStateBinding,
   item: DrawItem,
   tick: number,
+  // The MOVING-state clock: the pool passes its motion-scaled walk-cycle phase (feet track ground
+  // covered, not wall ticks — gpu/sprite-pool/motion.ts `gaitPhase`); defaults to the free tick so
+  // every other caller (ghost previews, the synthetic sheet, tests) keeps the fixed cadence.
+  gaitClock: number = tick,
 ): number {
   if (typeof binding === 'number') return binding;
   const facing = item.facing ?? DEFAULT_FACING;
@@ -109,7 +113,10 @@ export function resolveSettlerBobId(
     return frameOf(engaged?.idle ?? carry?.idle ?? binding.acting ?? binding.idle, facing, clock);
   }
   if (state === 'moving') {
-    return frameOf(engaged?.moving ?? carry?.moving ?? binding.moving ?? binding.idle, facing, tick);
+    // The walk cycle runs on the gait clock — motion-scaled by the pool — so a braking, accelerating
+    // or body-pressed walker's legs slow with its actual advance instead of jogging in place. The
+    // idle 'wait' loop below stays on the free tick (a standing unit keeps breathing).
+    return frameOf(engaged?.moving ?? carry?.moving ?? binding.moving ?? binding.idle, facing, gaitClock);
   }
   return frameOf(engaged?.idle ?? carry?.idle ?? binding.idle, facing, tick);
 }

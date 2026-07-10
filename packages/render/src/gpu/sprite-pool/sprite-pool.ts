@@ -279,7 +279,10 @@ export class SpritePool {
       pe.lastFacing !== undefined
         ? { ...item, facing: pe.lastFacing }
         : item;
-    const layers = resolveLayers(this.sheet, drawItem, frame.tick);
+    // The moving-state walk cycle runs on the motion-scaled gait clock (feet track ground covered —
+    // a body-pressed or braking walker's legs slow instead of jogging in place); everything else
+    // (idle loops, action clocks) stays on the free tick.
+    const layers = resolveLayers(this.sheet, drawItem, frame.tick, Math.floor(pe.motion.gaitPhase));
     if (layers === null) {
       this.showPlaceholder(pe, item);
       return;

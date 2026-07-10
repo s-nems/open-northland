@@ -11,6 +11,23 @@
  */
 const SNAP_DISTANCE = 128;
 
+/**
+ * World px a FULL walking gait covers per sim tick — one 68 px cell over the sim's 12-tick walk cycle
+ * (`WALK_TICKS_PER_CELL`; the sim's world metric makes every heading cover the same on-screen length
+ * per tick). The {@link MotionTrack.gaitPhase} denominator: an anchor that advanced this much in a
+ * tick plays its walk cycle at the authored one-frame-per-tick cadence and the feet grip the ground
+ * exactly as before; anything slower (braking, acceleration, being body-pressed in a crowd) advances
+ * the cycle proportionally less, so feet never skate in place (the reported treadmill look).
+ */
+const FULL_GAIT_PX_PER_TICK = 68 / 12;
+
+/**
+ * Cap on the gait-cycle rate in cycles-per-tick — covers the legit fast case (the flee RUN is 2× the
+ * walk gait, whose feet should double-time) with headroom, while a mistracked jump below the snap
+ * threshold can't spin the legs cartoonishly.
+ */
+const MAX_GAIT_RATE = 2.5;
+
 /** An entity's inter-tick motion track: the current and previous TICK anchors (world px), plus the
  *  DRAWN anchor the last {@link trackMotion} computed from them. */
 export interface MotionTrack {
@@ -23,15 +40,25 @@ export interface MotionTrack {
   /** The anchor to DRAW at this frame — `prev` lerped toward `curr` by the frame alpha. */
   drawX: number;
   drawY: number;
+  /**
+   * The accumulated WALK-CYCLE clock, in tick units: advanced per sim tick by the fraction of a full
+   * gait the anchor ACTUALLY covered ({@link FULL_GAIT_PX_PER_TICK}), so the walk animation's frame
+   * (`floor(gaitPhase)`, consumed by the pool's moving-state resolve) tracks ground covered, not wall
+   * ticks. At full cruise it advances exactly 1/tick — the authored feet-per-cell sync is untouched —
+   * and a body-pressed or braking walker's legs slow with it instead of jogging in place.
+   */
+  gaitPhase: number;
 }
 
 /**
  * Advance a {@link MotionTrack} to this frame's (tick, anchor) and stamp the DRAWN position onto it
  * IN PLACE (`drawX`/`drawY`): the previous tick anchor lerped toward the current one by `alpha` (the
- * fixed-timestep fraction, clamped to [0,1]). A new tick rolls current→previous; a first sighting or
+ * fixed-timestep fraction, clamped to [0,1]). A new tick rolls current→previous and advances the
+ * {@link MotionTrack.gaitPhase} walk-cycle clock by the distance actually covered; a first sighting or
  * a jump past {@link SNAP_DISTANCE} (a spawn/teleport, not a walk) snaps both anchors so nothing
- * glides across the map. Writes into the caller's track instead of returning a fresh point so the
- * per-frame reconcile stays allocation-free in the steady state (the retained-pool contract).
+ * glides across the map (and leaves the gait clock alone — a teleport is not strides). Writes into the
+ * caller's track instead of returning a fresh point so the per-frame reconcile stays allocation-free
+ * in the steady state (the retained-pool contract).
  */
 export function trackMotion(m: MotionTrack, tick: number, x: number, y: number, alpha: number): void {
   if (m.tick === -1 || Math.abs(x - m.x) > SNAP_DISTANCE || Math.abs(y - m.y) > SNAP_DISTANCE) {
@@ -41,6 +68,10 @@ export function trackMotion(m: MotionTrack, tick: number, x: number, y: number, 
     m.prevX = x;
     m.prevY = y;
   } else if (m.tick !== tick) {
+    const dt = tick - m.tick;
+    const dist = Math.hypot(x - m.x, y - m.y);
+    const rate = Math.min(MAX_GAIT_RATE, dist / (FULL_GAIT_PX_PER_TICK * dt));
+    m.gaitPhase += rate * dt;
     m.prevX = m.x;
     m.prevY = m.y;
     m.x = x;
