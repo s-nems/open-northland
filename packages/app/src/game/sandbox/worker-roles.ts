@@ -1,4 +1,4 @@
-import { GATHERERS, JOB_CARRIER } from './ids.js';
+import { EXTRACTED_GATHERER_TRADES, GATHERERS, JOB_CARRIER, rebaseSlotJob } from './ids.js';
 
 /**
  * The three worker ROLES the badge colours and the right-click assignment priority distinguish — a
@@ -12,9 +12,14 @@ import { GATHERERS, JOB_CARRIER } from './ids.js';
  */
 export type WorkerRole = 'gatherer' | 'carrier' | 'craftsman';
 
-/** The gatherer job ids (the {@link GATHERERS} table's jobs) — a settler of one of these harvests a raw
- *  good on the map. Excluded from right-click building assignment. */
-export const GATHERER_JOB_TYPES: ReadonlySet<number> = new Set(GATHERERS.map((g) => g.job));
+/** The gatherer job ids — the sandbox's own {@link GATHERERS} table PLUS the extracted outdoor-gatherer
+ *  trades ({@link EXTRACTED_GATHERER_TRADES}: collector/hunter/fisher, in their rebased slot ids). A
+ *  settler of one of these harvests a raw good on the map, so it's excluded from right-click building
+ *  assignment and draws the gatherer badge colour. */
+export const GATHERER_JOB_TYPES: ReadonlySet<number> = new Set([
+  ...GATHERERS.map((g) => g.job),
+  ...[...EXTRACTED_GATHERER_TRADES].map(rebaseSlotJob),
+]);
 
 /** Classify a worker job into its {@link WorkerRole}: a gatherer (in {@link GATHERER_JOB_TYPES}), the
  *  carrier ({@link JOB_CARRIER}), or otherwise a craftsman (every rebased in-workshop trade). */

@@ -56,6 +56,31 @@ export const JOB_SOLDIER_BROADSWORD = 35; // soldier_sword_long
 export const JOB_ARCHER = 40; // soldier_bow_short
 export const JOB_ARCHER_LONG = 41; // soldier_bow_long
 
+/**
+ * Base offset the extracted building worker-slot job ids are lifted by so they clear the sandbox's own
+ * job band (idle 0, gatherers 20..25, carrier 26, soldiers 31..41, the picker professions — all < 1000).
+ * A rebased slot job is `BASE + originalId`; the carrier keeps its own {@link JOB_CARRIER} id. See
+ * `content.ts` {@link import('./content.js')} BUILDING_WORKER_SLOTS for why the rebase is needed (the
+ * original `logicworker` ids overlap the bands above).
+ */
+export const WORKER_SLOT_JOB_BASE = 1000;
+
+/**
+ * The extracted worker-slot trades that are OUTDOOR RESOURCE GATHERERS (`jobtypes.ini`: 8 collector,
+ * 15 hunter, 22 fisher, 23 fisher_sea), keyed by their ORIGINAL id. A gatherer roams the map collecting
+ * a raw good and drops it at a flag — so, like the sandbox's own gatherers, it is NEVER hand-assigned to
+ * a building by right-click and draws the gatherer badge colour (it happens to sit in a storehouse's or
+ * workshop's `logicworker` pool, but that is the economy's to fill, not the player's). Source basis:
+ * the `jobtypes` roles in `content/ir.json`.
+ */
+export const EXTRACTED_GATHERER_TRADES: ReadonlySet<number> = new Set([8, 15, 22, 23]);
+
+/** Rebase one extracted slot job clear of the sandbox band ({@link WORKER_SLOT_JOB_BASE}) — the carrier
+ *  keeps its own {@link JOB_CARRIER} id (the hauler the badge/assignment UI single out). */
+export function rebaseSlotJob(jobType: number): number {
+  return jobType === JOB_CARRIER ? JOB_CARRIER : WORKER_SLOT_JOB_BASE + jobType;
+}
+
 export const BUILDING_HEADQUARTERS = 1;
 /** The three warehouse levels (`stock_00`/`stock_01`/`stock_02`) — general-goods stores like the HQ. */
 export const BUILDING_WAREHOUSE_00 = 7;

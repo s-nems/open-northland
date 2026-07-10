@@ -53,6 +53,7 @@ import {
   WEAPON_SHORT_BOW,
   WEAPON_SPEAR,
   WEAPON_SWORD,
+  rebaseSlotJob,
 } from './ids.js';
 
 /**
@@ -512,19 +513,6 @@ interface SandboxBuildingRow {
  * (homes) employ nobody; they carry no row. Kept as sandbox data (not the clean-room catalog) because
  * the rebase lives in the sandbox job space.
  */
-/**
- * Base offset the extracted craftsman slot ids are lifted by so they clear the sandbox's own job band
- * (idle 0, gatherers 20..25, carrier 26, soldiers 31..41, and the picker professions — all below 1000).
- * A generic craftsman id is `BASE + originalId`; the carrier keeps its own {@link JOB_CARRIER} id.
- */
-const WORKER_SLOT_JOB_BASE = 1000;
-
-/** Rebase one extracted slot job clear of the sandbox band — the carrier stays {@link JOB_CARRIER} (the
- *  hauler the badge/assignment UI single out); every other trade becomes a distinct high craftsman id. */
-function rebaseSlotJob(jobType: number): number {
-  return jobType === JOB_CARRIER ? JOB_CARRIER : WORKER_SLOT_JOB_BASE + jobType;
-}
-
 /** A building's worker slots with their job ids rebased ({@link rebaseSlotJob}), or undefined for a
  *  building type that employs nobody (homes). */
 function workerSlotsFor(typeId: number): readonly { jobType: number; count: number }[] | undefined {
