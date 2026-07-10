@@ -1,5 +1,6 @@
 import {
   type Command,
+  type Entity,
   type ResourceNodeSpec,
   type SettlerEquipment,
   type Simulation,
@@ -13,7 +14,16 @@ import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.j
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../rules.js';
 import { GATHERERS, type GathererSpec, weaponEquipmentFor } from './ids.js';
 
-const { Position, Stockpile } = components;
+const { Position, Stockpile, WorkFlag } = components;
+
+/**
+ * A gatherer's reasonable work radius around its flag, in integer node-distance (the half-cell lattice the
+ * planner measures on — a lane's own nodes sit ~10 nodes from its flag). The original's collector work-area
+ * size is not decoded, so this is an OBSERVED/tunable approximation carried as {@link WorkFlag} data (not a
+ * magic constant buried in the planner): it comfortably covers a lane's nodes, and since each gatherable
+ * good is unique per lane the job-atomic gate keeps a radius overlap from ever crossing trades.
+ */
+export const GATHERER_WORK_RADIUS = 16;
 
 /**
  * The sandbox world-population helpers scenes and the vertical slice share. Buildings, settlers and
@@ -164,9 +174,41 @@ export function dropSandboxGood(sim: Simulation, good: number, x: number, y: num
   sim.enqueue({ kind: 'dropGood', good, x: node.hx, y: node.hy, amount });
 }
 
-/** A drop-off flag: an empty stockpile at the given tile. */
-export function placeFlag(sim: Simulation, x: number, y: number): void {
+/** A drop-off flag: an empty (uncapped) stockpile at the given tile. Returns the flag entity so a gatherer
+ *  can be bound to it ({@link spawnBoundGatherer}). */
+export function placeFlag(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Stockpile, { amounts: new Map() });
+  return e;
+}
+
+/**
+ * Spawn a gatherer bound to its own `flag` DIRECTLY (scene setup, pre-tick-0) and return it. A bound
+ * gatherer must be assembled directly — via {@link systems.createSettler}, the settler twin of the
+ * `placeResourceNode` helper — rather than through the `spawnSettler` command, because its {@link WorkFlag}
+ * has to reference the flag entity, and a command-spawned settler's id is not known until the command runs.
+ * With the binding it harvests only within `radius` of the flag, carries only what it dug, and banks it at
+ * the flag. Throws on an unknown job (a scene-setup bug, like {@link placeResourceNode}).
+ */
+export function spawnBoundGatherer(
+  sim: Simulation,
+  jobType: number,
+  x: number,
+  y: number,
+  flag: Entity,
+  radius: number = GATHERER_WORK_RADIUS,
+  owner: number = HUMAN_PLAYER,
+): Entity {
+  const node = cellAnchorNode(x, y);
+  const e = systems.createSettler(sim.world, sim.content, {
+    jobType,
+    x: node.hx,
+    y: node.hy,
+    tribe: PRIMARY_TRIBE,
+    owner,
+  });
+  if (e === null) throw new Error(`spawnBoundGatherer: unknown job ${jobType}`);
+  sim.world.add(e, WorkFlag, { flag, radius });
+  return e;
 }

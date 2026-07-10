@@ -1,5 +1,12 @@
 import type { Recipe } from '@vinland/data';
-import { Building, JobAssignment, Position, Production, Stockpile } from '../../components/index.js';
+import {
+  Building,
+  JobAssignment,
+  Position,
+  Production,
+  Stockpile,
+  WorkFlag,
+} from '../../components/index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
@@ -125,11 +132,14 @@ export function workplaceOutputToHaul(
  *     INPUTS with room to spare → deliver to the workplace. This is the producer bringing a fetched input
  *     home (the smith carrying iron to the forge), so a picked-up input never gets re-deposited into the
  *     warehouse it came from.
- *  2. Else, if the settler is bound (via {@link JobAssignment}) to a **storage** fixture — a positioned
+ *  2. Else, if the settler is a **flag-bound gatherer** (carries a {@link WorkFlag}) → deliver to ITS flag.
+ *     This is the "each gatherer carries the good to its own flag" rule: a flag-bound collector banks its
+ *     harvest at its own flag, never merely the nearest store (a warehouse that happens to sit closer).
+ *  3. Else, if the settler is bound (via {@link JobAssignment}) to a **storage** fixture — a positioned
  *     {@link Stockpile} with no recipe (a warehouse, or a bare flag/ground pile) that can still take the
- *     good → deliver there. This is the gatherer/porter delivering to *its* store (or flag), not merely
- *     the nearest one, so a porter never dumps a load straight back onto the pile it just cleared.
- *  3. Else → the nearest store that can stock the good ({@link nearestStoreFor}) — the unchanged default
+ *     good → deliver there. This is the porter delivering to *its* store, so it never dumps a load straight
+ *     back onto the pile it just cleared.
+ *  4. Else → the nearest store that can stock the good ({@link nearestStoreFor}) — the unchanged default
  *     for an unbound hauler (so the vertical-slice woodcutter/carrier route exactly as before).
  */
 export function deliveryTargetFor(
@@ -151,13 +161,22 @@ export function deliveryTargetFor(
       return workplace;
     }
   }
-  // 2. A harvested/collected good goes to the settler's bound storage (a warehouse, or a flag pile).
+  // 2. A flag-bound gatherer banks its harvest at its OWN flag.
+  const flag = world.tryGet(settler, WorkFlag);
+  if (
+    flag !== undefined &&
+    isStorageSink(world, ctx, flag.flag) &&
+    hasRoom(world, ctx, flag.flag, goodType)
+  ) {
+    return flag.flag;
+  }
+  // 3. A porter's collected good goes to the storage it is bound to (a warehouse, or a flag pile).
   const binding = world.tryGet(settler, JobAssignment);
   if (binding !== undefined) {
     const home = binding.workplace;
     if (isStorageSink(world, ctx, home) && hasRoom(world, ctx, home, goodType)) return home;
   }
-  // 3. Otherwise the nearest capable store — the unchanged default (unbound haulers, the golden slice).
+  // 4. Otherwise the nearest capable store — the unchanged default (unbound haulers, the golden slice).
   return nearestStoreFor(candidates, world, ctx, terrain, here, goodType);
 }
 

@@ -13,6 +13,7 @@ import {
   placeFlag,
   placeResourceNode,
   placeSandboxBuilding,
+  spawnBoundGatherer,
   spawnSandboxSettler,
 } from '../game/sandbox/index.js';
 import {
@@ -91,11 +92,13 @@ function buildBuildings(sim: Simulation): void {
 function buildGatheringLanes(sim: Simulation): void {
   GATHERERS.forEach((g, i) => {
     const y = GATHER_Y0 + i * GATHER_STEP;
-    spawnSandboxSettler(sim, g.job, GATHER_WORKER_X, y, HUMAN_PLAYER);
+    // The flag is created first so the gatherer can be BOUND to it: each gatherer works only the nodes near
+    // its own flag, carries only what it dug, and banks its harvest at that flag (see spawnBoundGatherer).
+    const flag = placeFlag(sim, GATHER_FLAG_X, y);
     for (let n = 0; n < g.nodes; n++) {
       placeResourceNode(sim, g, GATHER_NODE_X + n, y);
     }
-    placeFlag(sim, GATHER_FLAG_X, y);
+    spawnBoundGatherer(sim, g.job, GATHER_WORKER_X, y, flag);
   });
 }
 

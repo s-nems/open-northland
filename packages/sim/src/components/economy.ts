@@ -1,5 +1,5 @@
 import type { Fixed } from '../core/fixed.js';
-import { defineComponent } from '../ecs/world.js';
+import { type Entity, defineComponent } from '../ecs/world.js';
 
 /** A building instance placed in the world. */
 export const Building = defineComponent<{
@@ -146,6 +146,41 @@ export const Stump = defineComponent<{ goodType: number }>('Stump');
  * felled tree. A pure marker (`goodType` for legibility/debug); its presence is what the sim keys on.
  */
 export const GroundDrop = defineComponent<{ goodType: number }>('GroundDrop');
+
+/**
+ * Marks a {@link GroundDrop} pile with the settler that HARVESTED it into being — a felled trunk's or a
+ * mined ore unit's owner. It is stamped only when the harvester is a **flag-bound gatherer** (carries a
+ * {@link WorkFlag}), and it is what makes a gatherer carry off **only what it dug itself**: the gatherer's
+ * collect drive reclaims a drop only when `by` is its own entity, so a loose pile it did not make (another
+ * settler's trunk, a player-dropped heap, a map-seeded pile) is left in peace. A pure cross-reference id
+ * (entity ids are monotonic and never reused, so a dead owner's id can never re-alias a live settler).
+ *
+ * The **separate-optional-component pattern** ({@link Vehicle}/`Health`/{@link WorkFlag}): a drop made by a
+ * flagless collector (the golden slice / vertical-slice woodcutter) carries none, hashing and collecting
+ * exactly as before — the ownership rule is inert wherever no flag-bound gatherer harvests.
+ */
+export const HarvestedBy = defineComponent<{ by: Entity }>('HarvestedBy');
+
+/**
+ * Binds a **gatherer to its own flag** — the collection point it carries every harvested good to, and the
+ * centre of the bounded area it looks for work in. The whole of the user-specified gatherer behaviour keys
+ * on it (the AI planner's harvest/collect drive, `planGatherer`):
+ *
+ *  - a bound gatherer HARVESTS only nodes within `radius` (integer node-distance) of `flag`; nothing in
+ *    range → it walks to and stands idle beside its flag rather than roaming the map;
+ *  - it collects ONLY its own harvested drops ({@link HarvestedBy} keyed to it), leaving loose piles alone;
+ *  - it DELIVERS its load to `flag` (`deliveryTargetFor`), not merely the nearest store.
+ *
+ * `flag` references a positioned bare {@link Stockpile} (no {@link Building}/{@link GroundDrop} — a
+ * designated delivery flag); `radius` is a named work-area size (the original's collector work radius is
+ * not decoded, so it is an OBSERVED/tunable approximation carried as data, not a magic constant in code).
+ *
+ * The **separate-optional-component pattern**: a gatherer WITHOUT it falls back to the prior roam-and-haul
+ * behaviour (nearest node anywhere, nearest trunk of its trade, nearest store), so every existing scene,
+ * test, and golden — none of which stamp a WorkFlag — is byte-identical. Only an explicitly flag-bound
+ * gatherer opts into the new behaviour.
+ */
+export const WorkFlag = defineComponent<{ flag: Entity; radius: number }>('WorkFlag');
 
 /**
  * An in-progress production cycle on a workplace (a {@link Building} whose building type carries a
