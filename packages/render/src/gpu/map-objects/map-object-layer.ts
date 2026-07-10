@@ -184,7 +184,6 @@ export class MapObjectLayer {
         }
         if (po.sprite === null) {
           po.sprite = new Sprite();
-          po.sprite.alpha = obj.alpha;
           po.sprite.scale.set(obj.scale);
           po.sprite.zIndex = depthKey(obj.x, obj.y); // static — set once
           // Baked-shading multiplier as a grey tint (stones on a dark slope darken with the ground).

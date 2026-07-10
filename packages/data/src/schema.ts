@@ -808,9 +808,10 @@ export const LandscapeGfx = z.object({
   /** `GfxLoopAnimation` — 1 = the state's frame list loops continuously (waves, fire, smoke). */
   loopAnimation: z.boolean().default(false),
   /**
-   * `GfxDynamicBackground` — set on exactly the 8 wave records in the real data: the object is
-   * composited translucently over the (water) ground rather than drawn opaque (the engine's
-   * transparency blit — `PrintBob_UsingTransparency` in the oracle).
+   * `GfxDynamicBackground` — set on exactly the 8 wave records in the real data. Carried for
+   * provenance; the renderer no longer branches on it: the waves' watery translucency is their
+   * Double8Bit bobs' PER-PIXEL alpha, baked into the atlas by the pipeline (see the asset-pipeline's
+   * `AtlasAlphaMode`), not a flat per-record blend.
    */
   dynamicBackground: z.boolean().default(false),
   source: Provenance.optional(),

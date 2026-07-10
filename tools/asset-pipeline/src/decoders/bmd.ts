@@ -59,10 +59,14 @@ export const BOB_TYPE_1BIT = 2;
 export const BOB_TYPE_TIMEMASK = 3;
 /**
  * Double-byte bob: each raw-run pixel is two bytes `[index, alpha]` (`TBobType.Double8Bit`). The second
- * byte is the pixel's 8-bit opacity — CBobManager `PrintBob_UsingShadedAlpha` blends
+ * byte is the pixel's 8-bit opacity — CBobManager `PrintBob_UsingShadedAlpha` (OpenVikings' explicitly
+ * best-effort reconstruction, corroborated by the measured alpha distributions below) blends
  * `a = alphaByte·(256−shade)/256` src-over the destination, so at shade 0 the alpha byte IS the pixel's
- * straight alpha. (The engine's plain `PrintPackedLine_DoubleByte` path skips the byte and blits opaque;
- * the soft landscape decals — ferns, smoke, wave foam — are drawn through the alpha path.)
+ * straight alpha; `a ≤ 0` pixels are skipped. The engine's plain `PrintPackedLine_DoubleByte` path skips
+ * the byte and blits opaque. WHICH records route through which path is NOT in the oracle (it has no call
+ * sites) — it is inferred per consumer class from the alpha-byte distributions + the original's look:
+ * soft decals (ferns median 172, smoke 77, waves ~35) draw through the alpha path; houses (mean ≈100
+ * over solid walls — not coverage) through the plain one (`AtlasAlphaMode` in atlas.ts).
  */
 export const BOB_TYPE_DOUBLE8BIT = 4;
 
@@ -465,11 +469,12 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number): BobFrame {
           }
           const value = packed[pos] as number;
           // Double8Bit: the pair's second byte is the pixel's alpha (see BOB_TYPE_DOUBLE8BIT). An
-          // alpha of 0 leaves the pixel transparent, exactly like the engine's `a <= 0 → continue`.
+          // alpha of 0 skips the write entirely — the engine's `a <= 0 → continue` — so the pixel
+          // stays genuinely unwritten (`index 0, mask 0`), keeping the frame invariant.
           const coverage = isDouble ? (packed[pos + 1] as number) : BOB_ALPHA_OPAQUE;
           pos += bytesPerPixel;
           const col = absX + i;
-          if (col >= 0 && col < width) {
+          if (col >= 0 && col < width && coverage !== 0) {
             if (isMask) {
               if (value !== 0) {
                 pixels[rowBase + col] = BOB_MASK_INDEX;

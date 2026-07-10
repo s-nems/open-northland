@@ -204,9 +204,10 @@ export async function loadMapObjects(
       // looping bobs (waves, swaying trees/fire).
       phase: hx + hy,
       // Translucency (the waves' watery blend, the ferns' feathered edges) is the Double8Bit bobs'
-      // PER-PIXEL alpha, baked into the atlas by the pipeline (CBobManager PrintBob_UsingShadedAlpha —
-      // source basis); no flat per-object opacity remains.
-      alpha: 1,
+      // PER-PIXEL alpha, baked into the atlas by the pipeline — no flat per-object opacity remains.
+      // Named approximation: the engine's alpha blit folds the shade into the pixel ALPHA
+      // (a = alphaByte·(256−shade)/256), while we shade via the `brightness` COLOUR multiplier below
+      // with the baked alpha unchanged — identical at neutral shade, divergent on embr-shaded cells.
       ...(shade !== undefined ? { brightness: shade.brightnessAt(hx / 2, hy / 2) } : {}),
     });
   }

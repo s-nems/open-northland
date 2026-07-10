@@ -9,6 +9,7 @@ import {
 } from '../src/decoders/atlas.js';
 import {
   BOB_TYPE_8BIT,
+  BOB_TYPE_DOUBLE8BIT,
   BOB_TYPE_EMPTY,
   type Bmd,
   type BobFrame,
@@ -185,7 +186,7 @@ describe('packBobAtlas', () => {
     const b = { type: BOB_TYPE_8BIT, width: 3, height: 1, packed: [0x03, 4, 5, 6, 0x00], lines: [0] };
     const bmd = makeBmd([a, b]);
     // maxWidth = 5: first frame at x=1 spans cols 1..3 (next cursor 5); second (+gutter+3) overflows -> wraps.
-    const { manifest } = packBobAtlas(bmd, rampPalette(), 5);
+    const { manifest } = packBobAtlas(bmd, rampPalette(), { maxWidth: 5 });
 
     const f0 = frameOf(manifest, 10);
     const f1 = frameOf(manifest, 11);
@@ -259,6 +260,27 @@ describe('expandBobFrameIndexed', () => {
 });
 
 describe('packIndexedBobAtlas', () => {
+  it('flattens Double8Bit coverage to opaque (the LUT shader draws binary alpha)', () => {
+    // One type-4 bob, raw run of 2 [index, alpha] pairs with a graded alpha byte 0x40.
+    const bmd = makeBmd([
+      {
+        type: BOB_TYPE_DOUBLE8BIT,
+        width: 2,
+        height: 1,
+        packed: [0x02, 7, 0x40, 8, 0xff, 0x00],
+        lines: [{ offset: 0, xMin: 0 }],
+      },
+    ]);
+    const indexed = packIndexedBobAtlas(bmd);
+    const px = (x: number): number[] => {
+      const o = (ATLAS_GUTTER * indexed.image.width + ATLAS_GUTTER + x) * 4;
+      return [...indexed.image.rgba.subarray(o, o + 4)];
+    };
+    // The RGB path would bake 0x40; the indexed path flattens every written pixel to 255.
+    expect(px(0)).toEqual([7, 0, 0, 255]);
+    expect(px(1)).toEqual([8, 0, 0, 255]);
+  });
+
   it('shares placement/manifest with the RGB atlas but stores indices, not colours', () => {
     const bmd = makeBmd([
       {
