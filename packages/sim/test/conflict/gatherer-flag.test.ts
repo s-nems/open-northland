@@ -21,7 +21,14 @@ import {
 } from '../../src/components/index.js';
 import type { Command } from '../../src/core/commands.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { CORE_INVARIANTS, Simulation, type TerrainMap, checkInvariants, fx } from '../../src/index.js';
+import {
+  CORE_INVARIANTS,
+  Simulation,
+  type TerrainMap,
+  checkInvariants,
+  fx,
+  nodeOfPosition,
+} from '../../src/index.js';
 import { MAX_GROUND_STACK } from '../../src/systems/agents/effects-goods.js';
 import { type SystemContext, aiSystem, atomicSystem, setWorkFlag } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -385,16 +392,16 @@ describe('flag-bound gatherer — goods pile on the GROUND, capped and pinned (n
   const PLAYER = 0;
   const nodeOfTile = (t: number): { x: number; y: number } => ({ x: 2 * t, y: 0 });
 
-  it('spreads a delivery over CAPPED heaps, spilling to the next tile past MAX_GROUND_STACK', () => {
-    // Two trees in radius (2·yield = 8 wood > the 5-per-tile cap): the flag ends up centred in more than one
-    // heap, each ≤ MAX_GROUND_STACK, summing to the whole yield.
+  it('spills a full tile onto the ADJACENT half-cell, capped and tile-to-tile (no gaps, no teleport)', () => {
+    // Two trees in radius (2·yield = 8 wood > the 5-per-tile cap): the flag tile fills to 5, the spill lands
+    // on the NEXT half-cell node over — capped heaps packed side by side, not scattered a full tile apart.
     const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(20, 1) });
     const gatherer = makeWoodcutter(sim, 0, 0);
     bindToFlag(sim, gatherer, 5, 0, WIDE_RADIUS);
     placeFellableTree(sim, 1, 0);
     placeFellableTree(sim, 2, 0);
 
-    const violations = runTicks(sim, 1500);
+    const violations = runTicks(sim, 2000);
 
     const heaps = groundHeaps(sim);
     const total = 2 * TREE_WOOD_YIELD;
@@ -403,6 +410,14 @@ describe('flag-bound gatherer — goods pile on the GROUND, capped and pinned (n
     for (const h of heaps) {
       expect(sim.world.get(h, Stockpile).amounts.get(WOOD) ?? 0).toBeLessThanOrEqual(MAX_GROUND_STACK);
     }
+    // The two heaps sit on ADJACENT half-cell nodes (node distance 1) — packed tile-to-tile on the lattice,
+    // not a full cell (distance 2) apart with a settler-sized gap between them.
+    const nodes = heaps.map((h) => {
+      const p = sim.world.get(h, Position);
+      return nodeOfPosition(p.x, p.y);
+    });
+    const [a, b] = nodes as [{ hx: number; hy: number }, { hx: number; hy: number }];
+    expect(Math.abs(a.hx - b.hx) + Math.abs(a.hy - b.hy)).toBe(1);
     expect(violations).toEqual([]);
   });
 
