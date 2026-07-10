@@ -2,6 +2,7 @@ import { createReadStream, existsSync } from 'node:fs';
 import { dirname, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type Plugin, defineConfig } from 'vite';
+import { buildBobsIndexEntries } from './vite/bobs-index.js';
 import { buildMapsIndexEntries } from './vite/maps-index.js';
 
 // Browser-first app shell. `npm run dev` serves this with HMR; cross-platform by construction.
@@ -66,6 +67,25 @@ function serveMapsIndex(): Plugin {
         }
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify(buildMapsIndexEntries(mapsRoot)));
+      });
+    },
+  };
+}
+
+// The `/bobs-index` list the in-app icon gallery (`?icons`) browses: every viewable RGBA bob atlas the
+// pipeline emitted (see `vite/bobs-index.ts`). Absent `content/` falls through to Vite's 404, so the
+// gallery shows a "run the pipeline" hint instead of an empty grid (mirrors `/maps-index`).
+function serveBobsIndex(): Plugin {
+  return {
+    name: 'vinland-serve-bobs-index',
+    configureServer(server) {
+      server.middlewares.use('/bobs-index', (_req, res, next) => {
+        if (!existsSync(bobsRoot)) {
+          next();
+          return;
+        }
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(buildBobsIndexEntries(bobsRoot)));
       });
     },
   };
@@ -223,6 +243,7 @@ function serveContentGoods(): Plugin {
 export default defineConfig({
   plugins: [
     serveMapsIndex(),
+    serveBobsIndex(),
     serveContentMaps(),
     serveContentBobs(),
     serveContentTextures(),

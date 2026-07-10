@@ -1,4 +1,5 @@
 import { renderAnimationGallery } from './entries/anim.js';
+import { renderIconGallery } from './entries/icons.js';
 import { renderMap } from './entries/map.js';
 import { renderMenu } from './entries/menu.js';
 import { renderSceneMode } from './entries/scene.js';
@@ -14,6 +15,8 @@ import { renderSoundGallery } from './entries/sound.js';
  *                         on `window.__vinlandShotReady`; no menu, no RAF loop.
  *  - `?scene=<id>`      → a registered acceptance scene with its checklist overlay (`entries/scene.ts`).
  *  - `?anim`            → the character animation gallery (`entries/anim.ts`).
+ *  - `?icons[&atlas=]`  → the ICON gallery (`entries/icons.ts`) — browse every decoded bob-atlas frame by
+ *                         index, to find a sprite for a feature. Dev-only (needs decoded `content/`).
  *  - `?sounds`          → the sound VERIFICATION gallery (`entries/sound.ts`) — click ▶ to audition every
  *                         wired clip. Distinct from the `?sound=off` MUTE modifier on live/scene (key `sound`).
  *  - `?map=<id>`        → the decoded-map viewer (`entries/map.ts`) — a real `content/maps/<id>.json` grid.
@@ -29,6 +32,7 @@ async function main(): Promise<void> {
   const sceneId = params.get('scene');
   if (sceneId !== null) return renderSceneMode(canvas, sceneId, params);
   if (params.has('anim')) return renderAnimationGallery(canvas, params);
+  if (params.has('icons')) return renderIconGallery(canvas, params);
   if (params.has('sounds')) return renderSoundGallery(canvas, params);
   if (params.has('map')) return renderMap(canvas, params);
   return renderMenu(canvas, params);

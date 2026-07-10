@@ -166,6 +166,11 @@ export async function renderMenu(_canvas: HTMLCanvasElement, _params: URLSearchP
         'Odsłuchaj każdy dźwięk: akcje (rąbanie, budowa), głosy (M/K/dzieci), jingle, ambient.',
         '?sounds',
       ),
+      card(
+        'Galeria ikon',
+        'Przeglądaj każdą klatkę zdekodowanych atlasów (GUI, dobra, obiekty, domy), etykietowaną numerem klatki.',
+        '?icons',
+      ),
     ]),
   );
 
