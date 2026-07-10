@@ -341,8 +341,9 @@ export function readStumpGood(components: Readonly<Record<string, unknown>>): nu
 
 /**
  * What a bare {@link import('@vinland/sim').Stockpile} draw item represents: the good its ground pile
- * mainly holds + how many units (its per-fill heap frame), or `{}` when it holds nothing — an empty pile
- * is a bare **delivery flag**. The snapshot clones a `Stockpile.amounts` Map to an ascending-by-goodType
+ * mainly holds + how many units (its per-fill heap frame), or `{}` when it holds nothing. A stockpile-kind
+ * item with no good draws the flag graphic — that is a genuine **delivery flag** (`isFlag`, a marker with no
+ * Stockpile at all, so it always reads `{}`). The snapshot clones a `Stockpile.amounts` Map to an ascending-by-goodType
  * `[goodType, amount]` array (see `inspect/snapshot.ts`), so this reads that plain shape. The pile's good
  * is the one it holds MOST of (strict `>` keeps the FIRST max — i.e. the lowest goodType on a tie,
  * *because* the snapshot pre-sorts `amounts` ascending by goodType). That canonical order is what makes

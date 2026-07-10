@@ -1,9 +1,9 @@
-import { type Component, type Simulation, components } from '@vinland/sim';
+import { type Component, type Simulation, components, systems } from '@vinland/sim';
 import { WOOD_YIELD_PER_NODE } from '../catalog/felling.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import { type GathererSpec, JOB_SOLDIER_SWORD } from '../game/sandbox/index.js';
 
-const { Building, DeliveryFlag, GroundDrop, Health, Owner, Position, Settler, Stockpile } = components;
+const { Building, GroundDrop, Health, Owner, Position, Settler, Stockpile } = components;
 
 /**
  * Read-only world queries the sandbox scene's machine checks assert on. These read a SCENE-OWNED sim
@@ -24,14 +24,12 @@ export function expectedGatherYield(g: GathererSpec): number {
  * gatherer no longer stores its harvest ON the flag (a pure marker now); it spreads the load onto separate
  * ground heaps around the flag, capped per tile, so a good's yield lives across several pinned heaps. Each
  * gatherable good is unique to its lane, so summing all heaps of `good` gives that lane's banked total. A
- * heap is a bare {@link Stockpile}+{@link Position} with no {@link Building} (a warehouse), {@link GroundDrop}
- * (an uncollected trunk) or {@link DeliveryFlag} (the marker itself).
+ * heap is a bare loose pile ({@link systems.isYardHeap}) — the ONE shared "settled ground heap" predicate.
  */
 export function yardGood(sim: Simulation, good: number): number {
   let total = 0;
   for (const e of sim.world.query(Stockpile, Position)) {
-    if (sim.world.has(e, Building) || sim.world.has(e, GroundDrop) || sim.world.has(e, DeliveryFlag))
-      continue;
+    if (!systems.isYardHeap(sim.world, e)) continue;
     total += sim.world.get(e, Stockpile).amounts.get(good) ?? 0;
   }
   return total;

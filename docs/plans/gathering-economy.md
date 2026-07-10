@@ -126,9 +126,11 @@ drops onto that tile via `dropCarryAtOwnTile`, capped at `MAX_GROUND_STACK` (5, 
 snapped to the settler's half-cell node so drops stack and heaps pack tile-to-tile. Any spill past the cap
 stays on its back and the next delivery walks it to the next tile — nothing teleports. Each heap is a bare
 `Stockpile+Position` pinned to its half-cell — so relocating the flag moves ONLY the marker; the goods stay
-put (both reported bugs). Heaps are the loose piles porters (`nearestGroundPile`) haul to warehouses. Golden
-untouched (no flags in the golden slice); the yard extent/cap/spacing are named approximations (undecoded).
-Perf: `nearestFreeYardNode` is an `O(candidates)`-index economy scan like the others here — the shared
+put (both reported bugs). An emptied loose heap is reaped (`reapEmptyLoosePile`), and the "settled ground
+heap" test is the one shared `isYardHeap` predicate. Heaps are the loose piles porters (`nearestGroundPile`)
+haul to warehouses. Golden untouched (no flags in the golden slice); the per-heap cap follows the decoded
+`ls_goods` fill states, while the yard extent/spacing are named approximations (undecoded). Perf:
+`nearestFreeYardNode` is an `O(candidates)`-index economy scan like the others here — the shared
 `NodeBuckets` follow-up in `sim-perf.md` covers it.
 
 ---

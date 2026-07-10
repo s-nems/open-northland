@@ -1,6 +1,5 @@
 import {
   Building,
-  DeliveryFlag,
   GroundDrop,
   HarvestedBy,
   JobAssignment,
@@ -21,6 +20,7 @@ import {
   buildingWorkerJobs,
   isFood,
   isTemple,
+  isYardHeap,
   lowestStockedGood,
   recipeOf,
   stockCapacity,
@@ -301,9 +301,11 @@ const GOODS_YARD_MAX_RADIUS = 32;
  * within the bound (the load then simply waits — better than teleporting).
  *
  * Determinism: `occupied` is BUILT from the canonical candidate list and only `.get`-queried (never iterated
- * for a decision), and the ring pick is canonical. `candidates` is the per-tick stockpile list. O(candidates)
- * to index + O(rings) to search — the same economy nearest-X shape as the other scans here (a `NodeBuckets`
- * index is the shared follow-up in docs/plans/sim-perf.md).
+ * for a decision), and the ring pick is canonical. `candidates` is the per-tick stockpile list. Cost is
+ * O(candidates) to index + a BOUNDED ring walk (up to {@link GOODS_YARD_MAX_RADIUS}², a constant, returning
+ * at the first ring with a free node) — the same O(carriers·stockpiles) economy nearest-X shape as the other
+ * scans here (a `NodeBuckets` index that would make both terms local is the shared follow-up in
+ * docs/plans/sim-perf.md).
  */
 export function nearestFreeYardNode(
   candidates: readonly Entity[],
@@ -320,10 +322,9 @@ export function nearestFreeYardNode(
   // full stack of `good`; an empty/absent heap leaves it free.
   const occupied = new Map<NodeId, { good: number; fill: number }>();
   for (const e of candidates) {
-    if (world.has(e, Building) || world.has(e, GroundDrop) || world.has(e, DeliveryFlag)) continue;
-    const stock = world.tryGet(e, Stockpile);
-    const pos = world.tryGet(e, Position);
-    if (stock === undefined || pos === undefined) continue;
+    if (!isYardHeap(world, e)) continue;
+    const stock = world.get(e, Stockpile);
+    const pos = world.get(e, Position);
     const g = lowestStockedGood(stock);
     if (g === null) continue; // an empty heap leaves the tile free
     const n = nodeOfPosition(pos.x, pos.y);

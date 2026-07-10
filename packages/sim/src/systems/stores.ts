@@ -1,5 +1,14 @@
 import type { BuildingType, Recipe } from '@vinland/data';
-import { Building, Position, Settler, Vehicle, stockpileEntries } from '../components/index.js';
+import {
+  Building,
+  DeliveryFlag,
+  GroundDrop,
+  Position,
+  Settler,
+  Stockpile,
+  Vehicle,
+  stockpileEntries,
+} from '../components/index.js';
 import { contentIndex } from '../core/content-index.js';
 import { ONE } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
@@ -108,6 +117,25 @@ function buildingStockCapacity(
 export function lowestStockedGood(stock: { amounts: Map<number, number> }): number | null {
   for (const [goodType, amount] of stockpileEntries(stock)) if (amount > 0) return goodType;
   return null;
+}
+
+/**
+ * Whether `e` is a **loose gatherer-yard heap** — a bare {@link Stockpile}+{@link Position} that is NONE of
+ * a persistent store ({@link Building} warehouse / {@link Vehicle} hull), an uncollected {@link GroundDrop}
+ * trunk, or a {@link DeliveryFlag} marker. This is the ONE definition of "a settled goods heap resting on
+ * the ground" the gathering economy shares: the tile a flag-bound gatherer stacks onto (`stackOntoTile`),
+ * a candidate the yard search considers (`nearestFreeYardNode`), and what a scene check sums (`yardGood`).
+ * Keeping it in one place stops those call sites from drifting when a future marker must also be excluded.
+ */
+export function isYardHeap(world: World, e: Entity): boolean {
+  return (
+    world.has(e, Stockpile) &&
+    world.has(e, Position) &&
+    !world.has(e, Building) &&
+    !world.has(e, Vehicle) &&
+    !world.has(e, GroundDrop) &&
+    !world.has(e, DeliveryFlag)
+  );
 }
 
 /**
