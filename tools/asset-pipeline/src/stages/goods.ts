@@ -9,6 +9,8 @@ import {
   extractGoods,
   extractLandscapeGfx,
   extractPaletteIndex,
+  extractStringnById,
+  latin1ToCp1250,
   parseIniSections,
 } from '../decoders/ini.js';
 import { decodePcx } from '../decoders/pcx.js';
@@ -123,6 +125,14 @@ export interface GoodsManifest {
   readonly palettes: string[];
   /** good STRING id → its icon binding. */
   readonly icons: Record<string, GoodIcon>;
+  /**
+   * Localized DISPLAY names: locale code → (good STRING id → name), extracted from the game's own
+   * `text/<lang>/strings/gameobjects/goods.{ini,cif}` string tables (see {@link GOOD_NAME_LOCALES}). The
+   * app resolves a good's shown name through this with a locale fallback chain, so the whole catalog reads
+   * in the player's language and adding a language is a data edit, not code. A locale whose string file is
+   * missing is simply absent (the app falls back to the next locale, then the machine id).
+   */
+  readonly names: Record<string, Record<string, string>>;
 }
 
 export interface GoodsStageSummary {
@@ -242,14 +252,85 @@ export function resolveGoodIcons(
 
 /** Read `goodtypes.ini` + `landscapes.cif` and resolve the good→icon bindings ({@link resolveGoodIcons}). */
 async function buildGoodIcons(gameDir: string): Promise<Record<string, GoodIcon>> {
-  const goodSections = parseIniSections(decodeIni(await readGameFile(gameDir, GOODTYPES_INI)));
-  const goods = extractGoods(goodSections, { file: GOODTYPES_INI, layer: 'base' });
   const { lines } = decodeCifStringArray(await readGameFile(gameDir, LANDSCAPES_CIF));
   const landscapeGfx = extractLandscapeGfx(cifLinesToSections(lines), {
     file: LANDSCAPES_CIF,
     layer: 'base',
   });
-  return resolveGoodIcons(goods, landscapeGfx);
+  return resolveGoodIcons(await loadGoods(gameDir), landscapeGfx);
+}
+
+/** Parse `goodtypes.ini` into the goods list (the id/typeId/landscapeType the icon + name joins key off). */
+async function loadGoods(gameDir: string): Promise<readonly (GoodLike & { readonly typeId: number })[]> {
+  const sections = parseIniSections(decodeIni(await readGameFile(gameDir, GOODTYPES_INI)));
+  return extractGoods(sections, { file: GOODTYPES_INI, layer: 'base' });
+}
+
+/**
+ * The languages whose localized good-name table we extract, most-preferred first. Each good-name string
+ * file lives at `text/<dir>/strings/gameobjects/goods.{ini,cif}`; the mod ships Polish as a plaintext `.ini`
+ * (CP1250, decoded directly) and English/German as encrypted `.cif` (latin1 through the oracle seam, then
+ * re-decoded to CP1250 for display). Russian ships too but in CP1251, a distinct codepage this seam doesn't
+ * yet handle, so it is intentionally omitted rather than shipped as mojibake.
+ */
+const GOOD_NAME_LOCALES = [
+  { code: 'pl', dir: 'pol', encrypted: false },
+  { code: 'en', dir: 'eng', encrypted: true },
+  { code: 'de', dir: 'ger', encrypted: true },
+] as const;
+
+/** Path of a locale's good-name string table (plaintext `.ini` when not encrypted, else the `.cif`). */
+function goodNamesPath(dir: string, encrypted: boolean): string {
+  return join('Data', 'text', dir, 'strings', 'gameobjects', encrypted ? 'goods.cif' : 'goods.ini');
+}
+
+/**
+ * Join the localized good-name string tables (good `type` → display name, per locale) onto the goods by
+ * `typeId`, producing `locale → (good STRING id → name)`. Pure (no I/O) so the join is unit-tested. A good
+ * absent from a locale's table (or a locale with no table) simply gets no entry there; the app's fallback
+ * chain covers it. The `type`-keyed singular is the faithful display name (see {@link extractStringnById}).
+ */
+export function resolveGoodNames(
+  goods: readonly (GoodLike & { readonly typeId: number })[],
+  tablesByLocale: Readonly<Record<string, Record<number, string>>>,
+): Record<string, Record<string, string>> {
+  const names: Record<string, Record<string, string>> = {};
+  for (const [locale, table] of Object.entries(tablesByLocale)) {
+    const byId: Record<string, string> = {};
+    for (const good of goods) {
+      const name = table[good.typeId];
+      if (name !== undefined) byId[good.id] = name;
+    }
+    if (Object.keys(byId).length > 0) names[locale] = byId;
+  }
+  return names;
+}
+
+/** Read every {@link GOOD_NAME_LOCALES} good-name table (missing files skipped) and join onto the goods. */
+async function loadGoodNames(
+  gameDir: string,
+  goods: readonly (GoodLike & { readonly typeId: number })[],
+): Promise<Record<string, Record<string, string>>> {
+  const tables: Record<string, Record<number, string>> = {};
+  for (const { code, dir, encrypted } of GOOD_NAME_LOCALES) {
+    let bytes: Uint8Array;
+    try {
+      bytes = await readGameFile(gameDir, goodNamesPath(dir, encrypted));
+    } catch {
+      console.warn(`[pipeline] goods: name table for "${code}" missing; skipping that locale`);
+      continue;
+    }
+    if (encrypted) {
+      const sections = cifLinesToSections(decodeCifStringArray(bytes).lines);
+      const raw = extractStringnById(sections);
+      tables[code] = Object.fromEntries(
+        Object.entries(raw).map(([id, text]) => [Number(id), latin1ToCp1250(text)]),
+      );
+    } else {
+      tables[code] = extractStringnById(parseIniSections(decodeIni(bytes)));
+    }
+  }
+  return resolveGoodNames(goods, tables);
 }
 
 /**
@@ -259,11 +340,14 @@ async function buildGoodIcons(gameDir: string): Promise<Record<string, GoodIcon>
  */
 export async function convertGoodsStage(gameDir: string, outDir: string): Promise<GoodsStageSummary> {
   let icons: Record<string, GoodIcon>;
+  let names: Record<string, Record<string, string>>;
   try {
     icons = await buildGoodIcons(gameDir);
+    names = await loadGoodNames(gameDir, await loadGoods(gameDir));
   } catch (err) {
     console.warn(`[pipeline] goods: skipped (good tables unreadable): ${(err as Error).message}`);
     icons = {};
+    names = {};
   }
 
   // The name→.pcx alias graph (palettes.ini), so a palette editname resolves to its real file — the same
@@ -309,6 +393,7 @@ export async function convertGoodsStage(gameDir: string, outDir: string): Promis
     paletteLutStem: GOODS_PALETTE_LUT_STEM,
     palettes: paletteNames,
     icons,
+    names,
   };
   await mkdir(join(outDir, GOODS_CONTENT_DIR), { recursive: true });
   await writeFile(join(outDir, GOODS_CONTENT_DIR, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);

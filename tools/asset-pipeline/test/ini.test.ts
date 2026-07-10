@@ -32,6 +32,7 @@ import {
   extractSounds,
   extractStaticObjects,
   extractStringTable,
+  extractStringnById,
   extractTrianglePatternTypes,
   extractTribes,
   extractVehicles,
@@ -3190,6 +3191,33 @@ describe('extractStringTable', () => {
     const bytes = Uint8Array.from('[text]\nstringn 0 "B\xa3\xcaKITNY"\n', (c) => c.charCodeAt(0) & 0xff);
     const table = extractStringTable(parseIniSections(decodeIni(bytes)));
     expect(table[0]).toBe('BŁĘKITNY');
+  });
+});
+
+describe('extractStringnById (singular-only, multiplier-free)', () => {
+  it('keys each explicit stringn line by its own id and ignores the bare string plurals', () => {
+    const table = extractStringnById(
+      parseIniSections('[text]\nstringn 5 "Wood"\nstring "Woods"\nstringn 22 "Fish"\nstring "Fishes"\n'),
+    );
+    expect(table).toEqual({ 5: 'Wood', 22: 'Fish' });
+  });
+
+  it('does not collide when a gapped stringn shares a multiplier-2 plural slot (the mead case)', () => {
+    // The real goods name table (stringidmultiplier 2) lists mead's `stringn 43` BEFORE the 42-sword block,
+    // so under extractStringTable the sword's plural auto-increment (id 43 → slot 86) clobbers mead's own
+    // singular (also slot 86). Reading singulars only keeps mead by its own `stringn` id.
+    const src =
+      '[control]\nstringidmultiplier 2\n[text]\nstringn 43 "Mead"\nstring "Meads"\nstringn 42 "Longsword"\nstring "Longswords"\n';
+    expect(extractStringnById(parseIniSections(src))).toEqual({ 43: 'Mead', 42: 'Longsword' });
+    // The shared table loses mead: 43*2 = slot 86, overwritten by Longsword's plural auto-increment.
+    expect(extractStringTable(parseIniSections(src))[86]).toBe('Longswords');
+  });
+
+  it('drops malformed ids and yields empty without a [text] block', () => {
+    expect(extractStringnById(parseIniSections('[text]\nstringn zz "Bad"\nstringn 1 "One"\n'))).toEqual({
+      1: 'One',
+    });
+    expect(extractStringnById([])).toEqual({});
   });
 });
 

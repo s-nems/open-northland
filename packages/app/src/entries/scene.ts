@@ -1,4 +1,5 @@
 import { WorldRenderer, buildSpriteScene, createWindowPixiApp, terrainMapToScene } from '@vinland/render';
+import { goodLocaleParam, loadGoodNameMap } from '../content/good-names.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { SCENES, createSceneSim, getScene } from '../scenes/index.js';
@@ -33,7 +34,10 @@ export async function renderSceneMode(
   // Window-tracking, device-resolution backing store: resizing changes the visible field, never the scale.
   const app = await createWindowPixiApp(canvas);
   const terrainGrid = terrainMapToScene(scene.terrain);
-  const sim = createSceneSim(scene);
+  // Localized good names (default Polish; `?locale=en|de` switches) so the HUD reads in-language from the
+  // one content source — the shared sim content. Empty on a bare checkout (goods keep their English labels).
+  const goodNames = await loadGoodNameMap(goodLocaleParam(params));
+  const sim = createSceneSim(scene, { goodNames });
   // Goods are global sandbox content now, not scene-local data.
   const sheet = await resolveSpriteSheet(params, sim.content.goods);
   const terrain = params.has('terrain') ? await loadRealTerrain() : undefined;

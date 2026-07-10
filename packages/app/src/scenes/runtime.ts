@@ -1,5 +1,5 @@
 import { type Component, Simulation, components, halfCellMapFromCells } from '@vinland/sim';
-import { sandboxContent } from '../game/sandbox/index.js';
+import { type SandboxContentExtras, sandboxContent } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -24,12 +24,15 @@ export function resetComponentStores(): void {
  * construct the sim over the global sandbox content + scene terrain, then run the scene's setup. The
  * headless test advances it and asserts; the app keeps it live and renders each frame. Same inputs →
  * byte-identical run, so the test's proof and the human's view are the same world.
+ *
+ * `extras` (e.g. the browser entry's localized `goodNames`) is display-only content the headless tests omit
+ * — the run stays byte-identical, so this never moves a golden.
  */
-export function createSceneSim(scene: SceneDefinition): Simulation {
+export function createSceneSim(scene: SceneDefinition, extras?: SandboxContentExtras): Simulation {
   resetComponentStores();
   const sim = new Simulation({
     seed: scene.seed,
-    content: sandboxContent(scene.terrain),
+    content: sandboxContent(scene.terrain, extras),
     // Scenes author cell grids; the sim navigates their half-cell lattice.
     map: halfCellMapFromCells(scene.terrain),
   });
