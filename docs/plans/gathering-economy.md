@@ -133,6 +133,19 @@ haul to warehouses. Golden untouched (no flags in the golden slice); the per-hea
 `nearestFreeYardNode` is an `O(candidates)`-index economy scan like the others here — the shared
 `NodeBuckets` follow-up in `sim-perf.md` covers it.
 
+**Flag ↔ profession lifecycle + click-to-select (2026-07-10, `fix/gatherer-flag-lifecycle`):** the flag
+now exists exactly while its settler is a gatherer. Changing a profession INTO a gathering trade plants a
+bound `DeliveryFlag` at the settler's feet (the profession-change twin of the first Ctrl+Right-Click);
+changing OUT of one (or the gatherer dying) destroys the flag and drops the `WorkFlag`, so a former
+gatherer never strands an owner-less flag (the user's "flaga powinna zniknąć"). The sync lives in the one
+shared `reidleAsJob` (so `setJob` and `assignWorker` can't drift) via `syncWorkFlagToJob`; the death path
+reaps the flag in `cleanupSystem`; flag creation is the one shared `bindFreshFlag`, reused by
+`setWorkFlag`. Left-clicking a flag selects its gatherer — `gathererByFlag` (app `game/snapshot.ts`)
+inverts the `WorkFlag` edge (a flag stores no back-reference), consulted as a fallback after
+settlers/buildings miss. Golden untouched (it plants no flags); the create/destroy paths ride the fuzz
+determinism stream. Verified: `npm test`/`check`/`build`; flag-click→select confirmed on `?scene=sandbox`
+(the profession-picker plant/drop flow is the user's browser sign-off).
+
 ---
 
 ## Step 6 — app: imported maps spawn real resource nodes
