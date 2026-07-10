@@ -5,7 +5,14 @@ import { DEFAULT_UI_LANG, uiStringLookup } from '../../content/gui-gfx.js';
 import { contains } from '../geometry.js';
 import { loadDetailsPanelAssets } from './assets.js';
 import { type PanelLayers, createChrome } from './chrome.js';
-import { type ButtonHit, type DetailsLayout, layoutDetails, mapLayout } from './layout.js';
+import {
+  type ButtonHit,
+  type DetailsLayout,
+  MAX_STOCK_ROWS,
+  layoutDetails,
+  mapLayout,
+  stockSlotRects,
+} from './layout.js';
 import { type UnitPanelModel, type UnitPanelModelContext, buildUnitPanelModel } from './model.js';
 import { drawBuilding, drawCompact, drawSettler } from './sections.js';
 
@@ -34,6 +41,12 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
   /** Client→canvas coordinate mapping, injected like the tool panel's (the hud layer stays view-free). */
   readonly backingScale: (canvas: HTMLCanvasElement) => { sx: number; sy: number; rect: DOMRect };
   readonly onDemolish: (entityId: number) => void;
+  /** A cursor tooltip to NAME the hovered Magazyn stock row — injected (structural shape) like
+   *  `backingScale`, so the hud layer never imports the view-layer element. Absent → no stock-row tooltip. */
+  readonly tooltip?: {
+    show(clientX: number, clientY: number, text: string): void;
+    hide(): void;
+  };
 }
 
 export interface UnitPanel {
@@ -220,15 +233,39 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return true;
   };
 
+  /** The good NAME under a canvas point in the stock grid, or null — the tooltip's text for a hovered row.
+   *  Probes the SAME slot rects the rows draw into ({@link stockSlotRects}), then maps the slot index to the
+   *  active tab's good (column-major, capped at the drawn count), so a hovered slot names exactly the drawn good. */
+  const hitStockGood = (x: number, y: number): string | null => {
+    if (layout?.kind !== 'building' || lastModel.kind !== 'building') return null;
+    const slot = stockSlotRects(layout.stock.body, scale).findIndex((r) => contains(r, x, y));
+    if (slot < 0) return null;
+    const rows = lastModel.stock
+      .filter((row) => row.category === activeStockTab)
+      .slice(0, MAX_STOCK_ROWS * 2);
+    return rows[slot]?.label ?? null;
+  };
+
   const onMouseMove = (e: MouseEvent): void => {
     const { x, y } = toCanvas(e.clientX, e.clientY);
+    // Name-on-hover for a Magazyn stock row (independent of the button-hover repaint below, so it updates
+    // even when the hovered BUTTON hasn't changed).
+    if (opts.tooltip !== undefined) {
+      const name = hitStockGood(x, y);
+      if (name === null) opts.tooltip.hide();
+      else opts.tooltip.show(e.clientX, e.clientY, name);
+    }
     const next = hitButton(x, y)?.action ?? null;
     if (next === hoverAction) return;
     hoverAction = next;
     if (lastModel.kind !== 'empty') rebuild(lastModel);
   };
 
+  // Leaving the canvas can't fire a final over-empty mousemove, so the row tooltip would linger — hide it.
+  const onMouseLeave = (): void => opts.tooltip?.hide();
+
   canvas.addEventListener('mousemove', onMouseMove);
+  canvas.addEventListener('mouseleave', onMouseLeave);
 
   return {
     render(snapshot, selected): void {
@@ -242,6 +279,8 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     handleMouseDown,
     dispose(): void {
       canvas.removeEventListener('mousemove', onMouseMove);
+      canvas.removeEventListener('mouseleave', onMouseLeave);
+      opts.tooltip?.hide();
       baked?.dispose();
       root.destroy({ children: true });
     },

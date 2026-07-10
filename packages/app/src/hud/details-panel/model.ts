@@ -220,7 +220,9 @@ function stockRows(ctx: UnitPanelModelContext, def: BuildingDef | undefined, sto
     const goodId = goodDef(ctx, goodType)?.id;
     return {
       goodType,
-      label: goodLabel(ctx, goodType),
+      // The stock row's display name (its English catalog name, else the id) — shown by the hover tooltip;
+      // the row itself draws only the icon + amount, so a nicer name here doesn't change the drawn row.
+      label: goodDef(ctx, goodType)?.name ?? goodLabel(ctx, goodType),
       amount: live.get(goodType) ?? 0,
       category: goodCategoryTab(goodId),
       index,

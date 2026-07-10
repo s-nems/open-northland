@@ -80,6 +80,12 @@ export interface UnitControlsOptions {
    * routed to world selection / orders (the explicit HUD-before-world hit-test). Optional: no HUD → no claim.
    */
   readonly claimPointer?: (clientX: number, clientY: number) => boolean;
+  /** A cursor tooltip the details panel uses to name a hovered Magazyn stock row (passed straight through
+   *  to {@link mountUnitPanel}). Absent → no stock-row tooltip. */
+  readonly tooltip?: {
+    show(clientX: number, clientY: number, text: string): void;
+    hide(): void;
+  };
 }
 
 export interface UnitControls {
@@ -127,6 +133,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     buildings: opts.content.buildings,
     goods: opts.content.goods,
     onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),
+    ...(opts.tooltip !== undefined ? { tooltip: opts.tooltip } : {}),
   });
   // The contextual ACTION MENU (full original-art default menu; only "change profession" is wired on this
   // slice — it opens the profession picker), anchored on the selected settler. Mounted BEFORE this
@@ -340,7 +347,12 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
 
   return {
     selectedIds: () => selected,
-    claimsPointer: (x, y) => opts.claimPointer?.(x, y) === true || actions.claimsPointer(x, y),
+    // The HUD this controller defers to before world picking: the tool panel/windows (handed in), the
+    // bottom-right details panel, and its own settler action ring. Including the details panel means a
+    // consumer that gates on this — the admin spawn palette, the world hover tooltip — treats a point over
+    // the panel as HUD, not world (so a spawn click / a pile tooltip never fires under the open panel).
+    claimsPointer: (x, y) =>
+      opts.claimPointer?.(x, y) === true || panel.claimsPointer(x, y) || actions.claimsPointer(x, y),
     tick: (snapshot) => {
       panel.tick(snapshot);
       // Re-anchor the action ring on the current selection's on-screen centroid (a no-op while it is
