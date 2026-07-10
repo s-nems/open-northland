@@ -173,16 +173,12 @@ export function drawBuilding(
       // The good's recoloured pile icon sits on the wood, LEFT of the amount plate (drawn after the plate
       // so a slightly oversized pile overlaps its edge rather than being clipped) — the original's row look.
       if (row.goodId !== undefined) chrome.goodIcon(row.goodId, icon);
-      // The amount, left-inset in the plate and vertically centred in it (a sub-rect from the inset to the
-      // plate's right edge), so the number sits on the plate's centre line rather than riding high.
-      chrome.textCentered(
+      // The amount sits left-inset next to the icon, vertically centred on the plate's centre line (not
+      // top-anchored, which rode high) — leaving the number left-aligned as in the original row.
+      chrome.textLeftMiddle(
         stockAmount(row.amount),
-        {
-          x: plate.x + Math.round(STOCK_AMOUNT_INSET * s),
-          y: plate.y,
-          w: plate.w - Math.round(STOCK_AMOUNT_INSET * s),
-          h: plate.h,
-        },
+        plate.x + Math.round(STOCK_AMOUNT_INSET * s),
+        plate.y + plate.h / 2,
         'white',
       );
     });
