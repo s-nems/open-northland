@@ -72,10 +72,15 @@ export interface StockRow {
   readonly category: number;
 }
 
-export interface WorkerRow {
-  readonly id: number;
+/** One worker SLOT of a building, as a filled/capacity line — e.g. "Cieśla 1/3", "Tragarz 1/1",
+ *  "Zbieracz 0/1". One per declared `workers` slot, so each trade shows its own limit, not one aggregate. */
+export interface WorkerSlotRow {
+  readonly jobType: number;
   readonly label: string;
-  readonly active: boolean;
+  /** Settlers currently bound to this building for this job. */
+  readonly filled: number;
+  /** The slot's `count` — how many of this job the building employs. */
+  readonly capacity: number;
 }
 
 export interface ProductionModel {
@@ -94,10 +99,9 @@ export interface BuildingPanelModel {
   readonly level: number;
   readonly builtPct: number;
   readonly stock: readonly StockRow[];
-  readonly workers: readonly WorkerRow[];
-  /** Total worker+carrier slots this building type employs (sum of its `workers` slot counts) — how many
-   *  settlers can be assigned here, shown against the filled count. 0 for a building that employs nobody. */
-  readonly capacity: number;
+  /** One row per worker slot (trade), each with its filled/capacity — the per-trade limits the panel
+   *  lists ("Cieśla 1/3 · Tragarz 1/1 · Zbieracz 0/1"). Empty for a building that employs nobody. */
+  readonly workerSlots: readonly WorkerSlotRow[];
   readonly showDefense: boolean;
   /** Approximation until a real building-defense mode component exists. */
   readonly defenseLabel: string;
@@ -229,29 +233,49 @@ function stockRows(ctx: UnitPanelModelContext, def: BuildingDef | undefined, sto
   return rows.map(({ index: _index, ...row }) => row);
 }
 
-function workersFor(ctx: UnitPanelModelContext, snapshot: WorldSnapshot, buildingId: number): WorkerRow[] {
-  const rows: WorkerRow[] = [];
+/**
+ * A worker-slot job's display name — the shared profession catalog + i18n names a known job (a gatherer →
+ * "Zbieracz drewna", carrier → "Tragarz"); a worker-slot trade the catalog doesn't carry (a rebased
+ * building slot like "Cieśla"/"Druid") falls back to its content job name, then to the localized idle label.
+ */
+function slotLabel(ctx: UnitPanelModelContext, jobType: number): string {
+  return professionDefForJob(jobType) !== undefined
+    ? jobLabel(jobType)
+    : (ctx.jobs.find((j) => j.typeId === jobType)?.name ?? jobLabel(jobType));
+}
+
+/** How many settlers are currently BOUND to `buildingId`, per job — the per-slot "filled" count. */
+function boundCountsByJob(snapshot: WorldSnapshot, buildingId: number): Map<number, number> {
+  const counts = new Map<number, number>();
   for (const e of snapshot.entities) {
     if (!isSettler(e)) continue;
     const assignment = e.components.JobAssignment as { workplace?: unknown } | undefined;
     if (num(assignment?.workplace) !== buildingId) continue;
-    const settler = (e.components.Settler ?? {}) as Comp;
-    const atomic = e.components.CurrentAtomic as { targetEntity?: unknown } | undefined;
-    const jobType = num(settler.jobType);
-    // The shared profession catalog + i18n names a known job (a gatherer → "Zbieracz drewna", carrier →
-    // "Tragarz"); a worker-slot job the catalog doesn't carry (a backfilled generic worker) falls back to
-    // its content job name ("Pracownik"), then to the localized idle label.
-    const label =
-      professionDefForJob(jobType) !== undefined
-        ? jobLabel(jobType)
-        : (ctx.jobs.find((j) => j.typeId === jobType)?.name ?? jobLabel(jobType));
-    rows.push({
-      id: e.id,
-      label,
-      active: num(atomic?.targetEntity) === buildingId,
-    });
+    const jobType = num((e.components.Settler as Comp | undefined)?.jobType);
+    if (jobType === undefined) continue;
+    counts.set(jobType, (counts.get(jobType) ?? 0) + 1);
   }
-  return rows;
+  return counts;
+}
+
+/**
+ * The per-trade worker rows: one per declared `workers` slot (in declared order), each with its
+ * filled/capacity — so the panel lists "Cieśla 1/3 · Tragarz 1/1 · Zbieracz 0/1" instead of one aggregate
+ * "Pracownicy 4/5". A building that employs nobody (a home) yields no rows.
+ */
+function workerSlotsFor(
+  ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
+  def: BuildingDef | undefined,
+  buildingId: number,
+): WorkerSlotRow[] {
+  const counts = boundCountsByJob(snapshot, buildingId);
+  return (def?.workers ?? []).map((slot) => ({
+    jobType: slot.jobType,
+    label: slotLabel(ctx, slot.jobType),
+    filled: counts.get(slot.jobType) ?? 0,
+    capacity: slot.count,
+  }));
 }
 
 function productionModel(
@@ -328,8 +352,7 @@ export function buildUnitPanelModel(
       level: num(b.level) ?? 0,
       builtPct: pct(num(b.built)),
       stock: stockRows(ctx, def, ent.components.Stockpile),
-      workers: workersFor(ctx, snapshot, entityId),
-      capacity: def?.workers?.reduce((sum, w) => sum + w.count, 0) ?? 0,
+      workerSlots: workerSlotsFor(ctx, snapshot, def, entityId),
       showDefense: catalog?.id === HEADQUARTERS_ID || category === 'tower',
       // Pinned approximation until a defence-mode component exists; the original state/toggle strings
       // live at `housewindow` 140–143 ("Rozpocznij/Zatrzymaj Tryb Obrony", "Obrona rozpoczęta/zakończona.").

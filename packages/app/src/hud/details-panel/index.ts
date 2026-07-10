@@ -13,7 +13,7 @@ export type {
   StockRow,
   UnitPanelModel,
   UnitPanelModelContext,
-  WorkerRow,
+  WorkerSlotRow,
 } from './model.js';
 export { mountUnitPanel } from './panel.js';
 export type { UnitPanel, UnitPanelOptions } from './panel.js';
