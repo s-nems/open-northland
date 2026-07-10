@@ -9,12 +9,20 @@ import { ONE, makeElevationField, tileToScreen } from '../src/index.js';
  * count and world-space position are agent-checkable here.
  */
 
-const badge = (id: number, tileX: number, tileY: number, workers: number, carriers: number): DoorBadge => ({
+const badge = (
+  id: number,
+  tileX: number,
+  tileY: number,
+  craftsmen: number,
+  carriers: number,
+  gatherers = 0,
+): DoorBadge => ({
   id,
   x: tileX * ONE,
   y: tileY * ONE,
-  workers,
+  craftsmen,
   carriers,
+  gatherers,
 });
 
 /** The stack sits BESIDE the door and a touch above it (badge-layer's OFFSET_X / DOOR_LIFT). */
@@ -22,12 +30,12 @@ const OFFSET_X = 10;
 const DOOR_LIFT = 6;
 
 describe('BadgeLayer', () => {
-  it('stacks one square per bound worker (carriers + workers) at the door node', () => {
+  it('stacks one square per bound worker (craftsmen + carriers + gatherers) at the door node', () => {
     const layer = new BadgeLayer();
-    layer.draw([badge(1, 3, 5, 2, 1)]);
+    layer.draw([badge(1, 3, 5, 2, 1, 1)]);
     const stack = layer.container.children[0];
     expect(layer.container.children).toHaveLength(1); // one stack for the one building
-    expect(stack?.children).toHaveLength(3); // 2 workers + 1 carrier = 3 squares
+    expect(stack?.children).toHaveLength(4); // 2 craftsmen + 1 carrier + 1 gatherer = 4 squares
     const door = tileToScreen(3, 5);
     expect(stack?.position.x).toBe(door.x + OFFSET_X);
     expect(stack?.position.y).toBe(door.y - DOOR_LIFT);

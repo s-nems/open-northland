@@ -262,6 +262,9 @@ function nextCommand(rng: Rng): Command {
         kind: 'assignWorker',
         entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         building: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        // A fuzzed preference list (0..2 job ids, valid + unknown) — exercises the priority walk, the
+        // building-doesn't-offer skip, and the empty-list no-op path.
+        jobPriority: Array.from({ length: rng.int(3) }, () => pick(rng, JOB_TYPES)),
       };
     default:
       // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.

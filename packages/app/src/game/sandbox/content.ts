@@ -267,15 +267,18 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
   // draw the civilian body and, lacking a workhouse in the sandbox, stand idle until the economy lands).
   for (const p of PROFESSIONS)
     if (!jobs.has(p.jobType)) jobs.set(p.jobType, { typeId: p.jobType, id: p.key });
-  // Every worker-slot jobType ({@link BUILDING_WORKER_SLOTS}, extracted from ir.json) must resolve as a
-  // job or the content cross-reference check rejects the set. The sandbox's remapped id space doesn't
-  // carry the original's every distinct trade id, so backfill any still-missing slot job as a generic
-  // "Pracownik": it binds + badges + reads in the panel; only its distinct-trade identity is dropped
-  // (the deferred global-content id unification). The carrier slot resolves to the real 'Tragarz' above.
+  // Every worker-slot jobType ({@link BUILDING_WORKER_SLOTS}, extracted from ir.json, REBASED clear of
+  // the sandbox job band — see {@link rebaseSlotJob}) must resolve as a job or the content cross-reference
+  // check rejects the set. The sandbox's remapped id space doesn't carry the original's every distinct
+  // trade id, so backfill any still-missing slot job as a generic "Pracownik": it binds + badges + reads
+  // in the panel; only its distinct-trade identity is dropped (the deferred global-content id
+  // unification). The carrier slot resolves to the real 'Tragarz' above.
   for (const slots of Object.values(BUILDING_WORKER_SLOTS))
-    for (const w of slots)
-      if (!jobs.has(w.jobType))
-        jobs.set(w.jobType, { typeId: w.jobType, id: `worker_${w.jobType}`, name: 'Pracownik' });
+    for (const w of slots) {
+      const jobType = rebaseSlotJob(w.jobType);
+      if (!jobs.has(jobType))
+        jobs.set(jobType, { typeId: jobType, id: `worker_${jobType}`, name: 'Pracownik' });
+    }
   for (const j of extras.jobs ?? []) if (!jobs.has(j.typeId)) jobs.set(j.typeId, j);
 
   const tribes = new Map<
@@ -493,14 +496,38 @@ interface SandboxBuildingRow {
  * Per-building WORKER + CARRIER capacity, by typeId — how many settlers of each job a building employs,
  * so `assignWorker` (and the JobSystem) can staff it and the door-badge shows one marker per worker.
  * Source basis: EXTRACTED from `ir.json`'s `workers` (the `[GfxHouse] logicworker` counts) verbatim —
- * the counts and the worker/carrier split are the original's. The only remap is the CARRIER job: the
- * original's carrier is jobtype 24, which the sandbox id space reuses for a gatherer, so carrier slots
- * are rebased to {@link JOB_CARRIER} (the one job the badge + UI distinguish); the other `jobType` ids
- * are the source's own `jobtypes.ini` ids (a data cross-reference — the sandbox may render an unmatched
- * one with a fallback body, but the COUNT and the carrier split — what the player assigns — are exact).
- * Residences (homes) employ nobody; they carry no row. Kept as sandbox data (not the clean-room
- * catalog) because the carrier rebase lives in the sandbox job space.
+ * the counts and the worker/carrier split are the original's. The `jobType`s here are the source's own
+ * `jobtypes.ini` ids and are REBASED clear of the sandbox's own job band on the way in ({@link
+ * rebaseSlotJob}): the original ids overlap the synthetic gatherer band (20..25), the carrier (26), and
+ * the soldier band (31..41), so e.g. original job 22 would otherwise be read as the sandbox's MUD
+ * GATHERER and original 40/41 as ARCHERS — the bug that let a "carpenter" slot fill with wood gatherers.
+ * The CARRIER job is the one exception: the original's carrier (jobtype 24) is rebased to
+ * {@link JOB_CARRIER} (the one job the badge + assignment UI single out as a hauler). Everything else
+ * becomes a distinct generic craftsman id (its trade identity is dropped — the deferred global-content
+ * id unification); the COUNT and the carrier split — what the player assigns — stay exact. Residences
+ * (homes) employ nobody; they carry no row. Kept as sandbox data (not the clean-room catalog) because
+ * the rebase lives in the sandbox job space.
  */
+/**
+ * Base offset the extracted craftsman slot ids are lifted by so they clear the sandbox's own job band
+ * (idle 0, gatherers 20..25, carrier 26, soldiers 31..41, and the picker professions — all below 1000).
+ * A generic craftsman id is `BASE + originalId`; the carrier keeps its own {@link JOB_CARRIER} id.
+ */
+const WORKER_SLOT_JOB_BASE = 1000;
+
+/** Rebase one extracted slot job clear of the sandbox band — the carrier stays {@link JOB_CARRIER} (the
+ *  hauler the badge/assignment UI single out); every other trade becomes a distinct high craftsman id. */
+function rebaseSlotJob(jobType: number): number {
+  return jobType === JOB_CARRIER ? JOB_CARRIER : WORKER_SLOT_JOB_BASE + jobType;
+}
+
+/** A building's worker slots with their job ids rebased ({@link rebaseSlotJob}), or undefined for a
+ *  building type that employs nobody (homes). */
+function workerSlotsFor(typeId: number): readonly { jobType: number; count: number }[] | undefined {
+  const slots = BUILDING_WORKER_SLOTS[typeId];
+  return slots?.map((w) => ({ jobType: rebaseSlotJob(w.jobType), count: w.count }));
+}
+
 const BUILDING_WORKER_SLOTS: Readonly<Record<number, readonly { jobType: number; count: number }[]>> = {
   1: [
     { jobType: JOB_CARRIER, count: 3 },
@@ -678,7 +705,7 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
 };
 
 function buildingRow(b: VikingBuilding): SandboxBuildingRow {
-  const slots = BUILDING_WORKER_SLOTS[b.typeId];
+  const slots = workerSlotsFor(b.typeId);
   return {
     typeId: b.typeId,
     id: b.id,

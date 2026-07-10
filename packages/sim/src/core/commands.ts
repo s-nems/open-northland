@@ -227,16 +227,24 @@ export type Command =
        * rather than the first open one the economy finds. The bound settler then walks to and staffs
        * that building through the normal AI planner.
        *
-       * The building's open worker job is resolved sim-side (the same per-building openness gate the
-       * JobSystem applies — a same-tribe, tech-enabled building with an understaffed slot the settler
-       * qualifies for), so the command carries only the two entity ids. Recoverable bad input (skipped,
-       * still logged for faithful replay): a dead/stale/non-settler/neutral issuer, a still-growing
-       * child, a dead/stale/non-building target, or a building with no open worker job for this settler
-       * (full, wrong tribe, not a workplace, or gated). See `assignWorker`.
+       * `jobPriority` is the caller's ORDERED preference over which of the building's worker jobs to fill
+       * — the sim walks it and binds the settler to the FIRST job that is genuinely open for it (the same
+       * per-building openness gate the JobSystem applies — an understaffed slot at a same-tribe,
+       * tech-enabled building whose job the settler qualifies for). This is how the app expresses the RTS
+       * assignment intent (in *Cultures* a right-click makes a colonist a tradesman first, a hauler only
+       * if the trade is full or the settler lacks its skill, and never a raw gatherer) WITHOUT letting the
+       * UI bypass legality: the list only reorders/filters candidates — every entry still passes the sim's
+       * gate, so a hand assignment can never reach a state the economy wouldn't. A job the building doesn't
+       * offer (or that's full/gated) is skipped; an empty list, or one whose every entry is closed, is a
+       * no-op. Recoverable bad input (skipped, still logged for faithful replay): a dead/stale/non-settler/
+       * neutral issuer, a still-growing child, a dead/stale/non-building target, or no open job for this
+       * settler (full, wrong tribe, not a workplace, or gated). See `assignWorker`.
        */
       readonly kind: 'assignWorker';
       readonly entity: Entity;
       readonly building: Entity;
+      /** Ordered candidate worker jobs to try (highest preference first); the first open one wins. */
+      readonly jobPriority: readonly number[];
     };
 
 /**

@@ -60,7 +60,15 @@ function settler(sim: Simulation, owner: number | null = HUMAN): Entity {
   return e;
 }
 
-const assign = (entity: Entity, building: Entity): Command => ({ kind: 'assignWorker', entity, building });
+// The sawmill offers only CARPENTER; the priority list carries it (plus the HQ's woodcutter, which the
+// sawmill doesn't offer — proving the building-doesn't-offer entry is skipped, not bound).
+const WOODCUTTER = 1;
+const assign = (entity: Entity, building: Entity): Command => ({
+  kind: 'assignWorker',
+  entity,
+  building,
+  jobPriority: [WOODCUTTER, CARPENTER],
+});
 
 describe('assignWorker — bind an owned settler to a chosen building', () => {
   it('sets the building’s worker job and binds the settler to THAT building', () => {
@@ -120,6 +128,45 @@ describe('assignWorker — bind an owned settler to a chosen building', () => {
 
     expect(sim.world.get(neutral, Settler).jobType).toBeNull();
     expect(sim.world.has(neutral, JobAssignment)).toBe(false);
+  });
+
+  it('binds the FIRST job in the priority list that the building actually offers', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const hq = placeBuilding(sim, 1, 5, 5); // the HQ offers WOODCUTTER (job 1), not CARPENTER (job 2)
+    const worker = settler(sim);
+
+    // Priority prefers CARPENTER, but the HQ doesn't offer it — so the walk skips to WOODCUTTER.
+    assignWorker(sim.world, ctxOf(sim), {
+      kind: 'assignWorker',
+      entity: worker,
+      building: hq,
+      jobPriority: [CARPENTER, WOODCUTTER],
+    });
+
+    expect(sim.world.get(worker, Settler).jobType).toBe(WOODCUTTER);
+    expect(sim.world.get(worker, JobAssignment).workplace).toBe(hq);
+  });
+
+  it('is a no-op when the priority list offers no job the building employs (or is empty)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const mill = placeBuilding(sim, SAWMILL, 5, 5); // offers CARPENTER only
+    const a = settler(sim);
+    const b = settler(sim);
+
+    // A list that names only jobs the sawmill doesn't offer → no bind.
+    assignWorker(sim.world, ctxOf(sim), {
+      kind: 'assignWorker',
+      entity: a,
+      building: mill,
+      jobPriority: [WOODCUTTER],
+    });
+    // An empty preference list → no bind.
+    assignWorker(sim.world, ctxOf(sim), { kind: 'assignWorker', entity: b, building: mill, jobPriority: [] });
+
+    for (const s of [a, b]) {
+      expect(sim.world.get(s, Settler).jobType).toBeNull();
+      expect(sim.world.has(s, JobAssignment)).toBe(false);
+    }
   });
 
   it('skips a non-building target (a stale/hostile command)', () => {
