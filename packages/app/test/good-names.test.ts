@@ -28,14 +28,14 @@ describe('resolveGoodNameMap (locale fallback)', () => {
   });
 
   it('names the synthetic plank (no game string table) in-language', () => {
-    expect(resolveGoodNameMap(tables, 'pl').get('plank')).toBe('Deska');
-    expect(resolveGoodNameMap(tables, 'de').get('plank')).toBe('Brett');
+    expect(resolveGoodNameMap(tables, 'pl').get('plank')).toBe('Kłoda');
+    expect(resolveGoodNameMap(tables, 'de').get('plank')).toBe('Baumstamm');
   });
 
   it('is empty for no shipped tables (bare checkout) apart from the synthetic overlay', () => {
     const map = resolveGoodNameMap({}, 'pl');
     expect(map.get('wood')).toBeUndefined();
-    expect(map.get('plank')).toBe('Deska');
+    expect(map.get('plank')).toBe('Kłoda');
   });
 });
 

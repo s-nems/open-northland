@@ -30,7 +30,8 @@ export function goodLocaleParam(params: URLSearchParams): GoodLocale {
  * source — a NAMED APPROXIMATION so the synthetic good reads in-language too. `plank` = sawn `wood`.
  */
 const SYNTHETIC_GOOD_NAMES: Record<string, Record<GoodLocale, string>> = {
-  plank: { pl: 'Deska', en: 'Plank', de: 'Brett' },
+  // The joinery slice's output, drawn as a felled LOG (see resource-gfx) — named "log" to match its graphic.
+  plank: { pl: 'Kłoda', en: 'Log', de: 'Baumstamm' },
 };
 
 const GOODS_MANIFEST_URL = '/goods/manifest.json';
