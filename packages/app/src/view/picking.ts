@@ -34,6 +34,14 @@ export interface Pickable {
    * getting a big box and a small one a small box. Absent (off-screen / no renderer) → the kind fallback.
    */
   readonly box?: EntityBounds | undefined;
+  /**
+   * PIXEL-accurate refinement of the box hit (the renderer's `entityPixelHit`): `true`/`false` = the
+   * point does / does not land on a solid texel of the drawn sprite; `undefined` = no exact answer
+   * (off-screen, unreadable atlas), so the box verdict stands. Wired for BUILDINGS — their box swallows
+   * a lot of transparent corner, so a click just NEXT to the house must not select it. Settlers keep
+   * the deliberately generous box (a small sprite needs the slack to stay clickable).
+   */
+  readonly pixelHit?: ((wx: number, wy: number) => boolean | undefined) | undefined;
 }
 
 /** A half-cell NODE coordinate (integer col,row on the `2W×2H` lattice), the target of a move order. */
@@ -142,11 +150,20 @@ const PICK_BOX = {
 } as const;
 
 /** Whether a WORLD-px point falls within a target's clickable area: its exact sprite {@link Pickable.box}
- *  when known, else its feet-anchored kind fallback box ({@link PICK_BOX}). */
+ *  when known (refined to solid pixels by {@link Pickable.pixelHit} when one is wired), else its
+ *  feet-anchored kind fallback box ({@link PICK_BOX}). */
 function hits(t: Pickable, wx: number, wy: number): boolean {
-  if (t.box !== undefined) {
-    return wx >= t.box.minX && wx <= t.box.maxX && wy >= t.box.minY && wy <= t.box.maxY;
-  }
+  const inBox =
+    t.box !== undefined
+      ? wx >= t.box.minX && wx <= t.box.maxX && wy >= t.box.minY && wy <= t.box.maxY
+      : boxFallbackHit(t, wx, wy);
+  if (!inBox) return false;
+  // Inside the box: ask the pixel test for the exact verdict; no answer (`undefined`) keeps the box hit.
+  return t.pixelHit?.(wx, wy) ?? true;
+}
+
+/** The feet-anchored per-kind fallback box test — used when the exact sprite bounds aren't known. */
+function boxFallbackHit(t: Pickable, wx: number, wy: number): boolean {
   const box = PICK_BOX[t.kind === 'building' ? 'building' : 'settler'];
   return Math.abs(wx - t.x) <= box.halfW && wy >= t.y - box.up && wy <= t.y + box.down;
 }

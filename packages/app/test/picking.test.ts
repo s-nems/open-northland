@@ -175,6 +175,33 @@ describe('pickTopAt', () => {
     const settler = { ref: 2, x: 100, y: 150, kind: 'settler' as const }; // lower on screen = in front
     expect(pickTopAt([building, settler], 100, 150)).toBe(2); // the frontmost wins the overlap
   });
+
+  it('refines a box hit to SOLID pixels when the target carries a pixelHit', () => {
+    // A building whose sprite fills only the LEFT half of its box (the right half is transparent air).
+    const t = {
+      ref: 7,
+      x: 100,
+      y: 100,
+      kind: 'building' as const,
+      box: { minX: 40, minY: 20, maxX: 160, maxY: 130 },
+      pixelHit: (wx: number, _wy: number): boolean | undefined => wx < 100,
+    };
+    expect(pickTopAt([t], 60, 60)).toBe(7); // on the graphic
+    expect(pickTopAt([t], 140, 60)).toBeNull(); // inside the box but on transparent pixels
+    expect(pickTopAt([t], 200, 60)).toBeNull(); // outside the box: pixelHit is never consulted
+  });
+
+  it('keeps the box verdict when pixelHit has no exact answer (undefined)', () => {
+    const t = {
+      ref: 8,
+      x: 100,
+      y: 100,
+      kind: 'building' as const,
+      box: { minX: 40, minY: 20, maxX: 160, maxY: 130 },
+      pixelHit: (): boolean | undefined => undefined, // unreadable atlas / not drawn this frame
+    };
+    expect(pickTopAt([t], 140, 60)).toBe(8); // the pre-mask behaviour stands
+  });
 });
 
 describe('pickInRect', () => {

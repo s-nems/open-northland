@@ -6,6 +6,7 @@ import type { SceneTerrain } from '../data/scene/index.js';
 import { cameraViewport } from '../data/viewport.js';
 import { BadgeLayer, type DoorBadge } from './badge-layer.js';
 import { type ConstructionPlotFrame, ConstructionPlotLayer } from './construction-plot.js';
+import { type GeometryDebugItem, GeometryDebugLayer } from './geometry-debug.js';
 import { HudLayer } from './hud-layer.js';
 import type { HudFrame } from './hud-layer.js';
 import { MapObjectLayer } from './map-objects/index.js';
@@ -117,6 +118,8 @@ export class WorldRenderer {
   private readonly selectionLayer = new SelectionLayer();
   /** Stacked worker badges beside each staffed building's door (world-space, ABOVE the sprites). */
   private readonly badgeLayer = new BadgeLayer();
+  /** The `?debug=geometry` footprint overlay (world-space, ABOVE the sprites — it annotates them). */
+  private readonly geometryDebug = new GeometryDebugLayer();
   private readonly hud = new HudLayer();
   /** The paused-game sepia wash (screen-space, over the world, under the HUD). See {@link setPaused}. */
   private readonly pauseWash = new Sprite(Texture.WHITE);
@@ -157,6 +160,7 @@ export class WorldRenderer {
     this.worldLayer.addChild(this.selectionLayer.container);
     this.worldLayer.addChild(this.spriteLayer);
     this.worldLayer.addChild(this.badgeLayer.container);
+    this.worldLayer.addChild(this.geometryDebug.container);
     app.stage.addChild(this.worldLayer);
     // The pause wash sits ABOVE the world and BELOW the HUD (stage order), so pausing browns the map
     // but never the always-on HUD or the tool panel (both are later stage children).
@@ -426,6 +430,24 @@ export class WorldRenderer {
     return this.pool.boundsOf(ref);
   }
 
+  /**
+   * Pixel-accurate refinement of {@link entityBounds}: whether the WORLD-px point lands on a SOLID
+   * texel of the entity's drawn sprite, `undefined` when no exact answer exists (not drawn, paletted
+   * mesh, unreadable atlas) — the caller then keeps the box verdict. See `SpritePool.pixelHit`.
+   */
+  entityPixelHit(ref: number, wx: number, wy: number): boolean | undefined {
+    return this.pool.pixelHit(ref, wx, wy);
+  }
+
+  /**
+   * Set (or clear) the `?debug=geometry` overlay — every placed building's logic geometry (collision
+   * cells, build-exclusion zone, door node, worker-icon anchor) drawn over the world as plain data
+   * the app computed from sim content. Rebuilt only when the building set changes, never per frame.
+   */
+  setGeometryDebug(items: readonly GeometryDebugItem[] | null): void {
+    this.geometryDebug.set(items, this.elevation);
+  }
+
   /** Tear down the whole retained graph + caches. */
   dispose(): void {
     this.terrain.destroy(); // frees mesh geometry the layer.destroy below would otherwise orphan
@@ -434,6 +456,7 @@ export class WorldRenderer {
     this.placementOverlay.destroy();
     this.constructionPlots.destroy();
     this.placementGhost.destroy();
+    this.geometryDebug.destroy();
     this.worldLayer.destroy({ children: true });
     this.pauseWash.destroy(); // the shared Texture.WHITE itself is left alone
     this.hud.destroy();

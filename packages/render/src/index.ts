@@ -74,6 +74,7 @@ export {
 export { WorldRenderer, SPRITE_CULL_MARGIN } from './gpu/world-renderer.js';
 export type { PortraitInsetFrame } from './gpu/world-renderer.js';
 export type { DoorBadge } from './gpu/badge-layer.js';
+export type { GeometryDebugCell, GeometryDebugItem } from './gpu/geometry-debug.js';
 export type { PlacementOverlayCell, PlacementOverlayFrame } from './gpu/placement-overlay.js';
 export type { PlacementGhost } from './gpu/placement-ghost.js';
 export {
