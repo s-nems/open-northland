@@ -48,6 +48,19 @@ import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from './metric.js';
  *  so a node is finer than (and distinct from) a full visual cell `(c, r)` = node `(2c + (r&1), 2r)`. */
 export type NodeId = Brand<number, 'NodeId'>;
 
+/**
+ * A walk-block overlay as the navigation layer consumes it: node MEMBERSHIP plus a non-empty
+ * signal. Any `ReadonlySet<NodeId>` satisfies it; routing also passes layered/wrapped views (a
+ * per-player composition of several block sets, the probe's start-exemption) that answer `has`
+ * without materializing a union — so `size`'s only contract is "0 means empty" (a layered view may
+ * over-count shared nodes). Purely a read interface: answers must be pure functions of the query
+ * for the searches consuming it to stay deterministic.
+ */
+export interface BlockOverlay {
+  has(node: NodeId): boolean;
+  readonly size: number;
+}
+
 /** Canonical orthogonal neighbour offsets in N, E, S, W order — the fixed traversal order for
  *  determinism. On the half-cell lattice these are a 19 px half-row and a 34 px half-column. */
 const NEIGHBOUR_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
@@ -256,7 +269,7 @@ export class TerrainGraph {
    * the A* relaxation, so its order is part of the canonical path choice (pinned by the pathfinding
    * goldens).
    */
-  steps(node: NodeId, blocked?: ReadonlySet<NodeId>): Array<{ node: NodeId; cost: Fixed }> {
+  steps(node: NodeId, blocked?: BlockOverlay): Array<{ node: NodeId; cost: Fixed }> {
     const { x, y } = this.coordsOf(node);
     const out: Array<{ node: NodeId; cost: Fixed }> = [];
     const passable = (nx: number, ny: number): boolean => {

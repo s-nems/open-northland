@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   type NodeId,
-  POCKET_PROBE_MAX_EXPLORED,
   type TerrainGraph,
   type TerrainMap,
   buildTerrainGraph,
   findPath,
 } from '../../src/index.js';
+import { POCKET_PROBE_MAX_EXPLORED } from '../../src/nav/pathfinding.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -210,45 +210,55 @@ describe('findPath — deterministic tie-breaking', () => {
     expect(findPath(ga, a, b)).toEqual(findPath(gb, a, b));
   });
 
-  it('goal sealed by the overlay fails at pocket cost, not a map flood (the probe elision)', () => {
-    // An 80×80 open node grid (6400 nodes) with the goal sealed inside a walk-block ANNULUS —
-    // nodes at Chebyshev distance 3..4 from the goal. Thickness 2 in y seals the ±2 diagonal/step
-    // reach (any escape from max ≤ 2 lands at max ≤ 4 — inside the ring). Proving "no route"
-    // forward means flooding the whole grid; the goal-side probe must exhaust the ~25-node pocket
-    // instead. The explored bound is the test's teeth: without the probe it lands in the thousands.
-    const g = open(80, 80);
-    const goal = { x: 40, y: 40 };
-    const blocked = new Set<NodeId>();
-    for (let dx = -4; dx <= 4; dx++) {
-      for (let dy = -4; dy <= 4; dy++) {
-        if (Math.max(Math.abs(dx), Math.abs(dy)) >= 3) {
-          blocked.add(g.nodeAt(goal.x + dx, goal.y + dy));
-        }
-      }
-    }
-    const stats = { explored: 0 };
-    expect(findPath(g, g.nodeAt(2, 2), g.nodeAt(goal.x, goal.y), blocked, stats)).toBeNull();
-    expect(stats.explored).toBeLessThan(POCKET_PROBE_MAX_EXPLORED + 1);
-  });
-
-  it('routes normally when start and goal share the sealed pocket', () => {
-    const g = open(80, 80);
+  /** A walk-block ANNULUS sealing node (40,40) on an 80×80 grid: nodes at Chebyshev distance 3..4
+   *  from it. Thickness 2 in y seals the ±2 diagonal/step reach (any escape from max ≤ 2 lands at
+   *  max ≤ 4 — inside the ring), leaving a ~25-node pocket around the centre. */
+  function sealedAnnulus(g: TerrainGraph): Set<NodeId> {
     const blocked = new Set<NodeId>();
     for (let dx = -4; dx <= 4; dx++) {
       for (let dy = -4; dy <= 4; dy++) {
         if (Math.max(Math.abs(dx), Math.abs(dy)) >= 3) blocked.add(g.nodeAt(40 + dx, 40 + dy));
       }
     }
-    // Both endpoints inside the ring: the probe meets the start within the pocket and the full
-    // search routes as if the ring were the map edge.
-    expect(findPath(g, g.nodeAt(39, 40), g.nodeAt(41, 40), blocked)).not.toBeNull();
+    return blocked;
+  }
+
+  it('goal sealed by the overlay fails at pocket cost, not a map flood (the probe elision)', () => {
+    // Proving "no route" forward means flooding the whole 6400-node grid; the goal-side probe must
+    // exhaust the ~25-node pocket instead. The explored bound is the test's teeth: without the
+    // probe it lands in the thousands.
+    const g = open(80, 80);
+    const blocked = sealedAnnulus(g);
+    const stats = { explored: 0 };
+    expect(findPath(g, g.nodeAt(2, 2), g.nodeAt(40, 40), blocked, stats)).toBeNull();
+    expect(stats.explored).toBeLessThanOrEqual(POCKET_PROBE_MAX_EXPLORED);
   });
 
-  it('keeps the blocked-START step-off exemption with an overlay in play (probe skipped)', () => {
+  it('routes normally when start and goal share the sealed pocket', () => {
+    const g = open(80, 80);
+    // Both endpoints inside the ring: the probe meets the start within the pocket and the full
+    // search routes as if the ring were the map edge.
+    expect(findPath(g, g.nodeAt(39, 40), g.nodeAt(41, 40), sealedAnnulus(g))).not.toBeNull();
+  });
+
+  it('keeps the blocked-START step-off exemption with an overlay in play', () => {
     const g = open(10, 10);
     const start = g.nodeAt(5, 5);
     const blocked = new Set<NodeId>([start]);
     expect(findPath(g, start, g.nodeAt(8, 5), blocked)).not.toBeNull();
+  });
+
+  it('fails a sealed goal cheaply even when the START itself is walk-blocked', () => {
+    // A walker standing on an overlay node (a fresh foundation, an enemy town stamp) whose goal is
+    // sealed: the probe must still run — its reverse view re-admits the start as the target exactly
+    // as the forward search exempts it — or this request would flood the whole grid.
+    const g = open(80, 80);
+    const blocked = sealedAnnulus(g);
+    const start = g.nodeAt(2, 2);
+    blocked.add(start);
+    const stats = { explored: 0 };
+    expect(findPath(g, start, g.nodeAt(40, 40), blocked, stats)).toBeNull();
+    expect(stats.explored).toBeLessThanOrEqual(POCKET_PROBE_MAX_EXPLORED);
   });
 
   it('finds a route longer than the probe cap when the overlay does not seal it', () => {

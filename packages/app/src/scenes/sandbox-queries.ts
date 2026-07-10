@@ -61,6 +61,16 @@ export function blueOwnedSettlers(sim: Simulation): number {
   return n;
 }
 
+/** Living settlers owned by the human (blue) player — the symmetric twin of
+ *  {@link enemyLivingSettlers} for both-sides casualty checks. */
+export function blueLivingSettlers(sim: Simulation): number {
+  let n = 0;
+  for (const e of sim.world.query(Settler, Owner, Health)) {
+    if (sim.world.get(e, Owner).player === HUMAN_PLAYER && sim.world.get(e, Health).hitpoints > 0) n++;
+  }
+  return n;
+}
+
 /** Living settlers owned by any OTHER player (the scene's hostiles). */
 export function enemyLivingSettlers(sim: Simulation): number {
   let n = 0;

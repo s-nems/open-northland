@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import * as components from '../../src/components/index.js';
 import {
   Building,
   MoveGoal,
@@ -20,6 +19,7 @@ import {
   positionOfNode,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
+import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
  * Tests for UNIT BODY COLLISION (`systems/movement/separation.ts` + the routing stamp) — a NAMED
@@ -43,12 +43,7 @@ const ANY_BUILDING_TYPE = 999; // no footprint in the fixture content — a pure
 const P0 = 0;
 const P1 = 1;
 
-beforeEach(() => {
-  // The whole component namespace, not a hand-picked subset (the multi-sim store trap — AGENTS.md).
-  for (const c of Object.values(components)) {
-    if (typeof c === 'object' && c !== null && 'store' in c && c.store instanceof Map) c.store.clear();
-  }
-});
+beforeEach(clearComponentStores);
 
 function grassMap(width: number, height: number): TerrainMap {
   return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
@@ -76,8 +71,9 @@ function settlerAt(s: Simulation, x: number, y: number, jobType: number, owner: 
 }
 
 function orderTo(s: Simulation, e: Entity, x: number, y: number): void {
-  const cell = s.terrain?.nodeAt(x, y) as number;
-  s.world.add(e, MoveGoal, { cell });
+  const terrain = s.terrain;
+  if (terrain === undefined) throw new Error('orderTo needs a mapped sim');
+  s.world.add(e, MoveGoal, { cell: terrain.nodeAt(x, y) });
 }
 
 /** A hand-built straight path to node (x,y) — bypasses routing, so it can aim THROUGH a wall to
@@ -256,6 +252,39 @@ describe('unit body collision (separation + routing stamp)', () => {
     expect(s.world.has(worker, Obstructed)).toBe(false);
   });
 
+  it('a ROUTED civilian is never detoured by standing bodies — routing skips the unit overlay', () => {
+    // Same wall, but the worker goes through the real planner→routing pipeline (a MoveGoal, not a
+    // hand-built path). The wall seals every row, so a detour is impossible: arriving at all proves
+    // routing never composed the standing-unit overlay for a non-collider. The physical-layer twin
+    // above bypasses routing on purpose; this is the ROUTING half of the civilian pass-through.
+    const s = sim();
+    wallAt(s, 10, P1);
+    const worker = settlerAt(s, 4, 6, WOODCUTTER, P0);
+    orderTo(s, worker, 16, 6);
+    s.run(150);
+
+    expect(nodeOf(s, worker)).toEqual({ x: 16, y: 6 });
+    expect(s.world.has(worker, PathRequest)).toBe(false); // never flagged failed either
+  });
+
+  it("a civilian's goal on a fighter-occupied node is never re-aimed — economy targets stay exact", () => {
+    // A standing enemy soldier occupies the worker's exact destination. The surround rule re-aims a
+    // COLLIDER's goal to a free stand-in; a civilian's goal must survive verbatim (the economy's
+    // node-coincidence checks depend on arriving exactly where the goal was set). Asserted at the
+    // ARRIVAL tick — the idle-spacing drive legitimately nudges a settler off a shared node later.
+    const s = sim();
+    settlerAt(s, 16, 6, SOLDIER, P1); // a post exactly on the goal node
+    const worker = settlerAt(s, 4, 6, WOODCUTTER, P0);
+    orderTo(s, worker, 16, 6);
+    let arrived = false;
+    for (let t = 0; t < 150 && !arrived; t++) {
+      s.run(1);
+      arrived = !s.world.has(worker, MoveGoal); // the goal is shed exactly on arrival
+    }
+    expect(arrived).toBe(true);
+    expect(nodeOf(s, worker)).toEqual({ x: 16, y: 6 }); // arrived ON the occupied node, not beside it
+  });
+
   it('unowned fighters never collide — neutral fixtures stay byte-identical to the pre-collision sim', () => {
     const s = sim();
     for (let hy = 0; hy < 12; hy++) settlerAt(s, 10, hy, SOLDIER, null); // an UNOWNED line
@@ -278,9 +307,7 @@ describe('unit body collision (separation + routing stamp)', () => {
       return s.hashState();
     };
     const first = play();
-    for (const c of Object.values(components)) {
-      if (typeof c === 'object' && c !== null && 'store' in c && c.store instanceof Map) c.store.clear();
-    }
+    clearComponentStores();
     expect(play()).toBe(first);
   });
 });

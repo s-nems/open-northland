@@ -1,55 +1,14 @@
-import {
-  Building,
-  Obstructed,
-  Owner,
-  PathFollow,
-  PathRequest,
-  Position,
-  Settler,
-} from '../../components/index.js';
-import { type Fixed, ZERO, fx } from '../../core/fixed.js';
-import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition, positionXOfWorld } from '../../nav/halfcell.js';
-import { ROW_STEP, worldDistance, worldX } from '../../nav/metric.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
-import type { System } from '../context.js';
-import { dynamicBlockedCells } from '../footprint/index.js';
-import { isFighterJob } from '../readviews/index.js';
-import { NodeBuckets, canonicalById, clearNavState } from '../spatial.js';
-import { MOVE_SPEED_PER_TICK } from './movement.js';
-
-/**
- * UNIT BODY COLLISION — a NAMED DEVIATION from the original, which has none (walkers pass through
- * each other freely; OpenVikings carries no unit-vs-unit collision state and none is observable in
- * play). Added deliberately for RTS depth, on the user's design decision: a standing line of
- * fighters must physically hold a chokepoint, a charge must fan out around its target instead of
- * stacking a tile, and the economy must keep the original's frictionless flow. The model is the
- * modern-RTS split (StarCraft 2's): collision is LOCAL resolution only — pathfinding never waits on
- * a moving body — with standing units alone entering the walk overlay.
- *
- * Three-role model, decided per entity per tick:
- *  - **Movers** (a collider currently walking a {@link PathFollow}) are the only bodies ever
- *    displaced. Mover-vs-mover overlap resolves softly (half the overlap each, capped at
- *    {@link SEPARATION_PUSH_CAP}); mover-vs-post resolves fully (the mover is placed back on the
- *    post's radius), so a post is impenetrable but never jitters.
- *  - **Posts** (a collider standing still) are immovable, and the routing layer stamps their nodes
- *    into the walk-block overlay (`unitWalkBlocks`) so fresh routes go AROUND a standing line
- *    instead of grinding on it. A walker that still ends up pushing against bodies (a stale route,
- *    a sealed wall) counts {@link Obstructed} ticks and drops its path at the re-route threshold, so
- *    its goal immediately re-plans around the blockers (or fails fast where no way exists).
- *  - **Ghosts** — everyone else. Only OWNED FIGHTERS collide ({@link isFighterJob}): civilians keep
- *    the original's pass-through everywhere, so economy flows that legally converge on one node (a
- *    shared work cell, a store door) can never jam; unowned entities keep every fixture and golden
- *    byte-identical (the same Owner gate the idle-spacing drive uses). A mover inside its own
- *    player's {@link calmZone} is also a ghost — fighters queueing at their own stores/houses never
- *    wedge on each other in a dense town.
- *
- * Determinism: movers are processed in ascending entity id; mover-vs-mover pushes read the tick's
- * pre-separation position snapshot (order-independent by construction); mover-vs-post resolutions
- * apply in ascending post id; every quantity is fixed-point via `fx.*`. Scale: per-tick cost is
- * O(colliders) to bucket plus O(movers × local crowd) to resolve — a sim with no walking fighter
- * pays only the bucket scan, and a mapless sim (the determinism golden) exits immediately.
- */
+import { Obstructed, Owner, PathFollow, Position, Settler } from '../../../components/index.js';
+import { type Fixed, ZERO, fx } from '../../../core/fixed.js';
+import type { Entity } from '../../../ecs/world.js';
+import { nodeOfPosition, positionXOfWorld } from '../../../nav/halfcell.js';
+import { ROW_STEP, worldDistance, worldX } from '../../../nav/metric.js';
+import type { NodeId } from '../../../nav/terrain.js';
+import type { System } from '../../context.js';
+import { dynamicBlockedCells } from '../../footprint/index.js';
+import { NodeBuckets, canonicalById, clearNavState } from '../../spatial.js';
+import { MOVE_SPEED_PER_TICK } from '../movement.js';
+import { calmZonesByPlayer, hasBodyCollision, isStanding } from './bodies.js';
 
 /**
  * A collider's body radius, in world-metric column units. The bounds are the half-cell lattice's own
@@ -60,9 +19,9 @@ import { MOVE_SPEED_PER_TICK } from './movement.js';
  *    so any free node stays exactly reachable (arrival is an exact position match) and a melee
  *    attacker on an adjacent node stands clear of its target's body.
  * Impassability holds because a mover advances at most its gait + {@link SEPARATION_PUSH_CAP}
- * (≈ 0.19 at the fleeing run pace) per tick — always less than this radius, so it can never step
- * from outside a post's radius past the post's centre in one tick, and the full resolve returns it
- * to the near side every time.
+ * (= 0.2 at the fleeing run pace: gait 1/6 + cap 1/30) per tick — always less than this radius, so
+ * it can never step from outside a post's radius past the post's centre in one tick, and the full
+ * resolve returns it to the near side every time.
  */
 export const UNIT_SEPARATION_RADIUS: Fixed = fx.div(fx.fromInt(13), fx.fromInt(50));
 
@@ -76,24 +35,15 @@ export const UNIT_SEPARATION_RADIUS: Fixed = fx.div(fx.fromInt(13), fx.fromInt(5
 export const SEPARATION_PUSH_CAP: Fixed = fx.div(fx.mul(MOVE_SPEED_PER_TICK, fx.fromInt(2)), fx.fromInt(5));
 
 /**
- * The Manhattan node radius of a player's CALM ZONE around each of its buildings — the user's
- * "collision off near the settlement" rule. Inside its own player's zone a mover is a ghost (it
- * neither pushes nor is pushed) and a post is not stamped into that player's own walk overlay, so a
- * player's town traffic keeps the original's frictionless flow; enemies get no exemption from
- * someone else's town. Sized to cover a building's footprint plus its door approaches (~4 columns).
- * A feel-tuning constant — no original counterpart (the original has no collision at all).
- */
-export const CALM_ZONE_RADIUS_NODES = 8;
-
-/**
- * Consecutive {@link Obstructed} ticks (bodies resolved AGAINST the walker's heading) before the
- * walker DROPS ITS PATH and lets its goal re-route — 0.2 s at 20 Hz: long enough to shoulder
- * through a brush-past, short enough that a walker never reads as marching in place against the
- * first rank's backs (the reported treadmill). Only the PathFollow is dropped — the MoveGoal
- * stays — so the navigation planner re-issues immediately against the CURRENT standing-body
- * overlay: the fresh route flows AROUND the blockers (the flanking behaviour), and where no way
- * around exists the request FAILS and the walker stands down at once (the failed-request rules in
- * orders/combat), so a sealed wall reads as "blocked, stops" within a fraction of a second.
+ * Consecutive {@link Obstructed} ticks (a grind window with bodies in the walker's immediate
+ * neighbourhood and no real progress — see the component doc) before the walker DROPS ITS PATH and
+ * lets its goal re-route — 0.2 s at 20 Hz: long enough to shoulder through a brush-past, short
+ * enough that a walker never reads as marching in place against the first rank's backs (the
+ * reported treadmill). Only the PathFollow is dropped — the MoveGoal stays — so the navigation
+ * planner re-issues immediately against the CURRENT standing-body overlay: the fresh route flows
+ * AROUND the blockers (the flanking behaviour), and where no way around exists the request FAILS
+ * and the walker stands down at once (the failed-request rules in orders/combat), so a sealed wall
+ * reads as "blocked, stops" within a fraction of a second.
  */
 export const OBSTRUCTED_REROUTE_TICKS = 4;
 
@@ -117,120 +67,6 @@ export const OBSTRUCTED_MAX_REROUTES = 4;
  */
 export const OBSTRUCTED_PROGRESS_FLOOR: Fixed = fx.div(MOVE_SPEED_PER_TICK, fx.fromInt(3));
 
-/** How far (in nodes) the walk-overlay goal fallback searches for a free stand-in node around a
- *  unit-occupied goal — enough to ring several bodies deep around a crowded target before giving up. */
-export const GOAL_FALLBACK_SEARCH_CAP = 64;
-
-/**
- * Whether `e` takes part in body collision at all: an OWNED FIGHTER (see the file header — civilians
- * and unowned entities keep the original's pass-through). Shared with the routing layer, which
- * applies the standing-body walk overlay only to a requester that itself collides: a ghost walks
- * straight through bodies, so detouring it (or re-aiming its goal off an occupied node — an economy
- * walk's target must stay EXACT for the node-coincidence checks) would be wrong both ways.
- */
-export function hasBodyCollision(world: World, e: Entity): boolean {
-  if (!world.has(e, Owner)) return false;
-  const settler = world.tryGet(e, Settler);
-  return settler !== undefined && isFighterJob(settler.jobType);
-}
-
-/** Whether `e` is STANDING for collision purposes: not walking a path and not waiting on a live
- *  route (a pending request means it is about to move — treating it as a body would stamp a node it
- *  is leaving). A FAILED request is standing: nothing will move it until its goal's owner reacts. */
-function isStanding(world: World, e: Entity): boolean {
-  if (world.has(e, PathFollow)) return false;
-  const req = world.tryGet(e, PathRequest);
-  return req === undefined || req.failed;
-}
-
-/**
- * Every player's calm-zone node set: a Manhattan diamond of {@link CALM_ZONE_RADIUS_NODES} around
- * each of its buildings' anchor nodes. Derived per tick, membership-only (set unions — iteration
- * order can't change any answer), never hashed.
- */
-export function calmZonesByPlayer(world: World, terrain: TerrainGraph): Map<number, Set<NodeId>> {
-  const zones = new Map<number, Set<NodeId>>();
-  for (const b of world.query(Building, Position)) {
-    const owner = world.tryGet(b, Owner);
-    if (owner === undefined) continue;
-    let zone = zones.get(owner.player);
-    if (zone === undefined) {
-      zone = new Set();
-      zones.set(owner.player, zone);
-    }
-    const p = world.get(b, Position);
-    const { hx, hy } = nodeOfPosition(p.x, p.y);
-    for (let dx = -CALM_ZONE_RADIUS_NODES; dx <= CALM_ZONE_RADIUS_NODES; dx++) {
-      const rem = CALM_ZONE_RADIUS_NODES - Math.abs(dx);
-      for (let dy = -rem; dy <= rem; dy++) {
-        if (terrain.inBounds(hx + dx, hy + dy)) zone.add(terrain.nodeAt(hx + dx, hy + dy));
-      }
-    }
-  }
-  return zones;
-}
-
-/**
- * The nodes standing colliders (posts) block for ROUTING, split by who is asking:
- *  - `field` — posts outside their own player's calm zone: blocked for EVERY requester (a wall in
- *    the field detours friend and foe alike — routing matches the physics, which is firm for both);
- *  - `townByPlayer` — player → nodes of that player's posts INSIDE its own calm zone: blocked only
- *    for OTHER players' requesters. The owner's own traffic routes straight through its town (its
- *    movers there are ghosts anyway), while an enemy is steered around the garrison instead of
- *    grinding on it.
- * Derived per routing tick, membership-only, never hashed (the `NodeBuckets` stance).
- */
-export interface UnitWalkBlocks {
-  readonly field: ReadonlySet<NodeId>;
-  readonly townByPlayer: ReadonlyMap<number, ReadonlySet<NodeId>>;
-}
-
-/** Visit every standing collider (post) with its clamped node and owning player — the one scan both
- *  walk-overlay stampers and the combat slot filter derive their standing-body sets from. */
-function eachStandingFighter(
-  world: World,
-  terrain: TerrainGraph,
-  visit: (e: Entity, node: NodeId, player: number) => void,
-): void {
-  for (const e of world.query(Settler, Position)) {
-    if (!hasBodyCollision(world, e) || !isStanding(world, e)) continue;
-    const p = world.get(e, Position);
-    const n = nodeOfPosition(p.x, p.y);
-    if (!terrain.inBounds(n.hx, n.hy)) continue;
-    visit(e, terrain.nodeAt(n.hx, n.hy), world.get(e, Owner).player);
-  }
-}
-
-/**
- * The nodes standing colliders occupy, regardless of calm zones — the CombatSystem's melee-slot
- * filter (an approach cell someone already stands on is a taken slot even inside a town garrison).
- * Derived per tick, membership-only, never hashed.
- */
-export function standingFighterNodes(world: World, terrain: TerrainGraph): ReadonlySet<NodeId> {
-  const nodes = new Set<NodeId>();
-  eachStandingFighter(world, terrain, (_e, node) => nodes.add(node));
-  return nodes;
-}
-
-export function unitWalkBlocks(world: World, terrain: TerrainGraph): UnitWalkBlocks {
-  const zones = calmZonesByPlayer(world, terrain);
-  const field = new Set<NodeId>();
-  const townByPlayer = new Map<number, Set<NodeId>>();
-  eachStandingFighter(world, terrain, (_e, node, player) => {
-    if (zones.get(player)?.has(node)) {
-      let town = townByPlayer.get(player);
-      if (town === undefined) {
-        town = new Set();
-        townByPlayer.set(player, town);
-      }
-      town.add(node);
-    } else {
-      field.add(node);
-    }
-  });
-  return { field, townByPlayer };
-}
-
 /** A point in the lattice's WORLD axes (columns across, rows·ROW_STEP down — the `worldDistance`
  *  frame), where separation geometry is computed so every direction is priced by on-screen length. */
 interface WorldPoint {
@@ -251,9 +87,20 @@ function toGrid(w: WorldPoint): { x: Fixed; y: Fixed } {
 
 /**
  * SeparationSystem — runs right after the MovementSystem and resolves this tick's body overlaps
- * among colliders (see the file header for the model and its source basis). Displaces MOVERS only;
- * a displaced position must land on walkable, unblocked ground or the offending axis (then the whole
- * displacement) is discarded, so collision can never push a body into water or through a wall.
+ * among colliders (see `bodies.ts` for the model and its source basis). Displaces MOVERS only:
+ * mover-vs-mover overlap resolves softly (half the overlap each, capped at
+ * {@link SEPARATION_PUSH_CAP}), mover-vs-post resolves fully (the mover is placed back on the
+ * post's radius), so a post is impenetrable but never jitters. A displaced position must land on
+ * walkable, unblocked ground or the offending axis (then the whole displacement) is discarded, so
+ * collision can never push a body into water or through a wall.
+ *
+ * Determinism: movers are processed in ascending entity id; mover-vs-mover pushes read the tick's
+ * pre-separation position snapshot (order-independent by construction); mover-vs-post resolutions
+ * apply in the 3×3 bucket-scan order around the mover's node (ascending post id within each bucket)
+ * — a fixed, history-independent order, since the buckets are keyed by integer node over a
+ * canonical id-sorted list; every quantity is fixed-point via `fx.*`. Scale: per-tick cost is
+ * O(colliders) to bucket plus O(movers × local crowd) to resolve — a sim with no walking fighter
+ * pays only the bucket scan, and a mapless sim (the determinism golden) exits immediately.
  */
 export const separationSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
@@ -293,7 +140,7 @@ export const separationSystem: System = (world, ctx) => {
   const isGhostMover = (e: Entity): boolean => {
     let ghost = ghostMemo.get(e);
     if (ghost === undefined) {
-      zones ??= calmZonesByPlayer(world, terrain);
+      zones ??= calmZonesByPlayer(world, terrain, ctx.tick);
       const p = world.get(e, Position);
       const n = nodeOfPosition(p.x, p.y);
       ghost =
@@ -391,8 +238,9 @@ export const separationSystem: System = (world, ctx) => {
       cand = toGrid({ x: fx.add(candW.x, pushX), y: fx.add(candW.y, pushY) });
     }
 
-    // HARD half: place the mover back on each overlapped post's radius, ascending post id. A post
-    // resolved AGAINST the walker's heading is a body in the way — that is what feeds the re-route
+    // HARD half: place the mover back on each overlapped post's radius, in the bucket-scan order
+    // (see the system doc — deterministic; each resolve rewrites `cand`, so the LAST overlapped
+    // post in that order wins a conflict between two posts' radii).
     for (const s of nearPosts) {
       const sp = world.get(s, Position);
       const dist = worldDistance(cand.x, cand.y, sp.x, sp.y);
@@ -435,7 +283,7 @@ export const separationSystem: System = (world, ctx) => {
     // not converging (a fully contested destination). Measured over a WINDOW (not per tick) because
     // this system runs after the MovementSystem and can't see one tick's walk step in isolation —
     // and a window is also what catches the near-static tangential grind against a crowded ring,
-    // which a per-tick against-heading test never reads as blocked (stragglers orbited a contested
+    // which a per-tick push-direction test never reads as blocked (stragglers orbited a contested
     // goal forever). The window's lifetime is the walk: arrival/stand-down sheds the component (the
     // sweep above), and a genuinely clear stretch re-anchors it ({@link clearGrind}).
     const s =

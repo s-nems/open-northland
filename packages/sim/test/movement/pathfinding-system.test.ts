@@ -10,6 +10,7 @@ import {
   pathfindingSystem,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
  * Unit + integration tests for the PathfindingSystem glue — the seam that drains {@link PathRequest}
@@ -26,14 +27,7 @@ const WATER = 1;
 /** Exact quarter-tile fixed-point values — node positions land on quarters (ONE % 4 === 0). */
 const Q = (n: number): number => (n * ONE) / 4;
 
-// Component stores are module-level singletons, so PathFollow/PathRequest entries from one test's
-// (now-discarded) World survive into the next, where a fresh World re-mints the same entity ids.
-// Clear the stores this suite touches before each case so membership assertions test only this case.
-beforeEach(() => {
-  PathFollow.store.clear();
-  PathRequest.store.clear();
-  Position.store.clear();
-});
+beforeEach(clearComponentStores);
 
 /** A flat all-grass NODE grid of the given dimensions. */
 function grassMap(width: number, height: number): TerrainMap {

@@ -17,7 +17,7 @@ import {
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
-import { standingFighterNodes } from '../movement/separation.js';
+import { standingFighterNodes } from '../movement/collision/index.js';
 import {
   HUNTER_JOB,
   MILITARY_MODE,
@@ -321,8 +321,9 @@ function engageCombatant(
   const { target, dist } = found;
   if (dist >= weapon.minRange && dist <= weapon.maxRange && !travelling) {
     // In the reach band AND standing: swing. The standstill gate matters for the FEEL of the swing —
-    // node distances round to the nearest node, so a walker enters the band MID-STRIDE (half an edge
-    // out); starting the swing there froze it off any node centre and the wind-up read as a glide/
+    // node positions TRUNCATE to the lattice (`nodeOfPosition`), so a walker can read as in-band
+    // MID-STRIDE (up to half an edge short of a centre); starting the swing there froze it off any
+    // node centre and the wind-up read as a glide/
     // teleport. Gated, the walker finishes its (braked) last leg onto the slot's centre and swings
     // from a standstill; an unowned unit never travels into combat, so its swing-in-place behaviour
     // is untouched. The clearChase is then just stale-goal hygiene for the owned arrival.
