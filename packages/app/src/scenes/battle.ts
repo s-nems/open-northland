@@ -50,10 +50,11 @@ const RED_RANKS: readonly { job: number; weapon: number; x: number }[] = [
   { job: JOB_ARCHER, weapon: WEAPON_SHORT_BOW, x: 23 },
 ];
 
-/** One shared HP pool (the sandbox damage scale): ~15 sword swings per kill. Deliberately tankier
- *  than the duel scene — with melee slots a victim takes several attackers at once, and at 320 HP
- *  the whole 150-man melee resolved in ~27 s, too fast to judge the crowd feel it exists to show. */
-const FIGHTER_HP = 600;
+/** One shared HP pool (the sandbox damage scale): ~25 sword swings per kill. Deliberately much
+ *  tankier than the duel scene — with melee slots a front-liner takes swords, second-rank spears
+ *  AND arrows at once, so at duel-scale HP the whole 150-man melee resolved in ~20 s, too fast to
+ *  judge the crowd feel this scene exists to show. Sized for roughly a minute of front-line churn. */
+const FIGHTER_HP = 1000;
 
 /** The mechanic checks below: how many fighters (of 200) must have fallen for "the battle really
  *  happened at scale", and the most living fighters ever tolerated on ONE node at the end (transient

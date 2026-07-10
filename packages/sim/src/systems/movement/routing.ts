@@ -1,9 +1,10 @@
 import { MoveGoal, Owner, PathFollow, PathRequest, Position } from '../../components/index.js';
 import { type Fixed, ZERO, fx } from '../../core/fixed.js';
+import type { World } from '../../ecs/world.js';
 import { positionOfNode, positionXOfWorld } from '../../nav/halfcell.js';
-import { findPath } from '../../nav/pathfinding.js';
+import { type SearchStats, findPath } from '../../nav/pathfinding.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
-import type { System } from '../context.js';
+import type { System, SystemContext } from '../context.js';
 import { dynamicBlockedCells } from '../footprint/index.js';
 import { canonicalById, isValidNodeId } from '../spatial.js';
 import { turnOntoNextLeg } from './movement.js';
@@ -14,22 +15,30 @@ import { GOAL_FALLBACK_SEARCH_CAP, type UnitWalkBlocks, unitWalkBlocks } from '.
 // from the shared leaf. See docs/plans/.
 
 /**
- * The maximum number of {@link PathRequest}s the pathfinder will resolve in a single tick. A*
- * is the heaviest per-call work in the schedule, so spreading many requests over several ticks
- * keeps the tick cost bounded — the budget is the determinism-safe spread (we always serve the
- * lowest entity ids first, never a wall-clock cutoff). Tune as crowds grow; one is plenty for
- * the single-settler slice.
+ * The pathfinder's per-tick work budget, in A*-SETTLED NODES ({@link SearchStats.explored}) — the
+ * unit search time is actually proportional to. Budgeting the COST (not a request count) is what
+ * lets crowd orders start together: a battle-scale chase settles ~30–150 nodes, so a couple of
+ * hundred fighters route in ONE tick, while a single cross-map route settling thousands still
+ * spreads over ticks — the old fixed count of 8 made a hundred-strong front start walking in a
+ * visible half-second top-to-bottom wave (spawn rows = id order), which read as a bug, yet allowed
+ * eight map-long floods in one tick. The budget is a soft ceiling checked BEFORE each request (the
+ * one that overshoots still completes, so every tick makes progress); serving stays lowest-entity-
+ * id-first, never a wall-clock cutoff, and explored counts are themselves deterministic — the
+ * spread is lockstep-safe. The magnitude is a tick-time guard (~a few ms of search on a modern
+ * core), not data-pinned: tune against profiles as maps and armies grow.
  */
-export const PATHFINDING_BUDGET_PER_TICK = 8;
+export const PATHFINDING_NODE_BUDGET_PER_TICK = 16384;
 
 /**
  * PathfindingSystem — drains pending {@link PathRequest}s and turns each into a followable path.
  *
- * For up to {@link PATHFINDING_BUDGET_PER_TICK} requests per tick (lowest entity ids first, so the
- * spread is history-independent), it runs A* on `ctx.terrain` from the request's `start` to `goal`
- * cell. On success it writes the node sequence into the entity's {@link PathFollow} (half-cell node
- * positions in fixed-point tile units, plus a seam waypoint inside each odd-row diagonal leg —
- * {@link pathToWaypoints})
+ * Requests are served lowest entity id first until the tick's search-work budget
+ * ({@link PATHFINDING_NODE_BUDGET_PER_TICK}, in A*-settled nodes) is spent — a cost cut, not a
+ * request count, so a whole formation's cheap local routes land in one tick while expensive long
+ * routes still spread (see the constant). For each served request it runs A* on `ctx.terrain` from
+ * the request's `start` to `goal` cell. On success it writes the node sequence into the entity's
+ * {@link PathFollow} (half-cell node positions in fixed-point tile units, plus a seam waypoint
+ * inside each odd-row diagonal leg — {@link pathToWaypoints})
  * and removes the request; on failure it flags the request `failed` — keeping any live path, so a
  * failed mid-walk reroute parks the walker on a node centre instead of freezing it mid-leg — and
  * leaves the request for the planner to inspect rather than silently retrying the same dead query
@@ -37,18 +46,33 @@ export const PATHFINDING_BUDGET_PER_TICK = 8;
  * mapless sim (the determinism golden) has nothing to route over.
  *
  * Determinism: A* is pure and canonically tie-broken; requests are served in ascending entity-id
- * order (a canonical sort, not Map insertion order); cell ids are validated against the graph so an
- * out-of-range request fails gracefully instead of throwing inside the search.
+ * order (a canonical sort, not Map insertion order) with a deterministic cost cut (explored counts
+ * are pure functions of the query); cell ids are validated against the graph so an out-of-range
+ * request fails gracefully instead of throwing inside the search.
  */
 export const pathfindingSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
   if (terrain === undefined) return; // mapless sim: nothing to route over
+  drainPathRequests(world, ctx, terrain, PATHFINDING_NODE_BUDGET_PER_TICK);
+};
 
+/**
+ * The system's whole request-serving pass with an explicit `nodeBudget` — split out so tests can
+ * exercise the budget cut with a tiny budget (the production constant is far above anything a
+ * fixture map can settle). The budget is checked BEFORE each request and the overshooting request
+ * still completes, so a tick always serves at least one pending request (progress is total).
+ */
+export function drainPathRequests(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  nodeBudget: number,
+): void {
   // Serve in ascending entity-id order so the per-tick budget cut is canonical (never insertion
   // order). Scan only the entities that HAVE a request (canonicalById over the query yields the same
   // ascending-id subsequence a full canonicalEntities() filter did — store ⊆ alive), so a tick with
   // no requests costs O(requests), not O(world).
-  let served = 0;
+  const spent: SearchStats = { explored: 0 };
   // The walk-block overlays, built lazily ONCE per routing tick — only a tick that actually routes
   // pays for them. `dynamic` is the standing building bodies + resource footprints; `units` is the
   // standing-collider stamp (see `unitWalkBlocks` — the SC2-model split: routing sees standing
@@ -79,13 +103,12 @@ export const pathfindingSystem: System = (world, ctx) => {
   };
 
   for (const e of canonicalById(world.query(PathRequest))) {
-    if (served >= PATHFINDING_BUDGET_PER_TICK) break;
+    if (spent.explored >= nodeBudget) break;
     const req = world.get(e, PathRequest);
     if (req.failed) continue; // already-failed requests aren't retried
-    served++;
 
     const blocked = blockedFor(world.tryGet(e, Owner)?.player ?? -1);
-    let path = resolvePath(terrain, req.start, req.goal, blocked);
+    let path = resolvePath(terrain, req.start, req.goal, blocked, spent);
     if (path === null && isValidNodeId(terrain, req.goal)) {
       // A goal occupied by a STANDING UNIT (in the unit stamp but not a wall/resource) is a live,
       // recoverable situation — someone is simply standing there. Re-aim at the nearest free node
@@ -95,7 +118,7 @@ export const pathfindingSystem: System = (world, ctx) => {
       if (blocked.has(goal) && !(dynamic?.has(goal) ?? false)) {
         const standIn = nearestUnblockedNode(terrain, goal, blocked, claimedStandIns);
         if (standIn !== null) {
-          path = resolvePath(terrain, req.start, standIn, blocked);
+          path = resolvePath(terrain, req.start, standIn, blocked, spent);
           if (path !== null) {
             claimedStandIns.add(standIn);
             // Keep the intent in step with the delivered route, or the planner would re-route back
@@ -153,7 +176,7 @@ export const pathfindingSystem: System = (world, ctx) => {
     world.add(e, PathFollow, follow);
     world.remove(e, PathRequest);
   }
-};
+}
 
 /**
  * Turn a node path into the {@link PathFollow} waypoint list — half-cell node positions in
@@ -229,7 +252,8 @@ function resolvePath(
   start: number,
   goal: number,
   blocked: ReadonlySet<NodeId>,
+  stats: SearchStats,
 ): NodeId[] | null {
   if (!isValidNodeId(terrain, start) || !isValidNodeId(terrain, goal)) return null;
-  return findPath(terrain, start as NodeId, goal as NodeId, blocked);
+  return findPath(terrain, start as NodeId, goal as NodeId, blocked, stats);
 }

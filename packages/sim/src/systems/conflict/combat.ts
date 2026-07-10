@@ -122,8 +122,8 @@ interface MeleeSlots {
 /**
  * How many ticks a chaser follows its current path toward an enemy before re-issuing a fresh one — the
  * chase repath throttle. A chaser tracks a MOVING enemy by re-pathing periodically, not every tick; a
- * per-tick full re-path of every chaser would be the RTS-scale regression golden rule 7 forbids (and the
- * pathfinding budget is only {@link PATHFINDING_BUDGET_PER_TICK}/tick anyway). Between repaths the unit
+ * per-tick full re-path of every chaser would be the RTS-scale regression golden rule 7 forbids (and
+ * would eat the pathfinder's per-tick node budget — `routing.ts`). Between repaths the unit
  * keeps walking its last route toward the enemy, and the swing check is distance-based (independent of the
  * path goal), so a slightly-stale route still delivers it into reach. OUR design (no oracle) —
  * source basis "Combat chase / repath cadence".
