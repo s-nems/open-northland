@@ -14,8 +14,8 @@ import {
   stockSlotRects,
 } from './layout.js';
 import { type UnitPanelModel, type UnitPanelModelContext, buildUnitPanelModel } from './model.js';
-import { STOCK_TAB_LABELS } from './stock-tabs.js';
 import { drawBuilding, drawCompact, drawSettler } from './sections.js';
+import { STOCK_TAB_LABELS } from './stock-tabs.js';
 
 /**
  * The bottom-right selection details panel (the original's per-selection window stack: general/defence/

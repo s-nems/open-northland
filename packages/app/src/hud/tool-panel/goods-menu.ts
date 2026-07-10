@@ -1,4 +1,4 @@
-import { goodCategoryTab } from '../details-panel/stock-tabs.js';
+import { STOCK_TAB_LABELS, goodCategoryTab } from '../details-panel/stock-tabs.js';
 import { type Rect, contains } from '../geometry.js';
 
 /**
@@ -29,16 +29,12 @@ export interface GoodsCategoryTab {
   readonly label: string;
 }
 
-export const GOODS_CATEGORIES: readonly GoodsCategoryTab[] = [
-  { index: 0, label: 'Żywność' },
-  { index: 1, label: 'Napoje' },
-  { index: 2, label: 'Surowce' },
-  { index: 3, label: 'Budulec' },
-  { index: 4, label: 'Narzędzia' },
-  { index: 5, label: 'Wyroby' },
-  { index: 6, label: 'Wojsko' },
-  { index: 7, label: 'Inne' },
-];
+// Derived from the ONE category-label source ({@link STOCK_TAB_LABELS}) so the drop palette's tabs can't
+// drift from the Magazyn's — index === the {@link goodCategoryTab} value === array position.
+export const GOODS_CATEGORIES: readonly GoodsCategoryTab[] = STOCK_TAB_LABELS.map((label, index) => ({
+  index,
+  label,
+}));
 
 /** The goods shown under `category` (its stock-tab index), preserving input order. */
 export function goodsInCategory(

@@ -44,8 +44,9 @@ import { BOBS_DIR, identityPalette, readGameFile, writeBobAtlas } from './game-f
  * stone, a small wheat sheaf), not a code-pinned lookup (OpenVikings has no good→icon table). A good binds to
  * its dedicated `good piles all` pile record when it has one (tools/weapons/crockery/armour/food all do),
  * else falls back to its broader `goods all` item record ({@link GOOD_ITEM_GROUP}) — `fruit`, the six potions
- * (bottles), and the six amulets (rings) have only that, so the fallback recovers their real bottle/ring/fruit
- * graphic (recoloured per potion type / amulet) instead of leaving them iconless. Only the goods sharing
+ * (bottles), and the six amulets (rings) have only that, so the fallback binds them instead of leaving them
+ * iconless: the potions/amulets recover their own dedicated bottle/ring graphic (recoloured per type), while
+ * `fruit`'s `goods all` record reuses BREAD's frames in the source (no distinct fruit art exists). Only the goods sharing
  * `landscapeType 1` with no record at all (prey, sheep, cattle, hand/ox carts, ships, catapult, chest) stay
  * unbound and render iconless.
  *
@@ -101,6 +102,9 @@ const GOOD_ITEM_GROUP = 'goods all';
 const ICON_PILE_STATE = 1;
 /** The palette the human-readable RGBA preview atlas is coloured through (any real goods palette). */
 const PREVIEW_PALETTE = 'goods_wood';
+/** The neutral palette the app's GENERIC_GOOD_ICON fallback recolours through — pinned into the LUT so an
+ *  iconless good always has a valid row, even if no bound good happens to reference it. */
+const GENERIC_ICON_PALETTE = 'goods01';
 
 /** One good's icon binding: an `ls_goods` frame + the recolor palette (a goods-LUT row) it draws through. */
 export interface GoodIcon {
@@ -356,7 +360,9 @@ export async function convertGoodsStage(gameDir: string, outDir: string): Promis
 
   // The distinct recolor palettes the icons reference, in a deterministic (sorted) LUT row order. Include
   // the preview palette so the same LUT can colour the preview atlas if a consumer ever wants it.
-  const paletteNames = [...new Set([...Object.values(icons).map((i) => i.palette), PREVIEW_PALETTE])].sort();
+  const paletteNames = [
+    ...new Set([...Object.values(icons).map((i) => i.palette), PREVIEW_PALETTE, GENERIC_ICON_PALETTE]),
+  ].sort();
   const paletteByName = new Map<string, Uint8Array>();
   const ordered: Uint8Array[] = [];
   for (const name of paletteNames) {

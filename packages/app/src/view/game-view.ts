@@ -2,6 +2,7 @@ import {
   type Camera,
   type ElevationField,
   type PlacementOverlayFrame,
+  SPRITE_CULL_MARGIN,
   type SceneTerrain,
   type WorldRenderer,
   buildHud,
@@ -243,19 +244,28 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     const { sx, sy, rect } = screenScale(canvas, app.renderer.resolution);
     return screenToWorld(cameraCtl.camera(), (clientX - rect.left) * sx, (clientY - rect.top) * sy);
   };
-  // Pile hit-targets rebuilt only when the sim tick moves (a pile's fill/existence can only change on a
-  // step): the boxes are WORLD-space (camera-independent), so a still cursor over a running sim re-picks
-  // against the cached set each frame rather than re-scanning the scene — the same screen-not-map budget the
-  // rest of the loop keeps (golden rule 6). Empty flags (no dominant good) carry nothing to name and are skipped.
-  let hoverTick = -1;
+  // Pile hit-targets, rebuilt only when the sim tick OR the camera moves. buildSpriteScene is culled to the
+  // camera viewport (same margin the renderer draws with), so this is a SCREEN-bounded pass, not a whole-map
+  // one — the tooltip only names piles under the cursor, which are on-screen (golden rule 6). The set is
+  // camera-dependent now (culled), so the cache keys on the camera too; a still cursor over a still frame
+  // re-picks the cached set. Empty flags (no dominant good) carry nothing to name and are skipped.
+  let hoverKey = '';
   let hoverTargets: Pickable[] = [];
   const hoverInfo = new Map<number, { goodType: number; amount: number }>();
   const pileTargets = (snap: WorldSnapshot): Pickable[] => {
-    if (snap.tick === hoverTick) return hoverTargets;
-    hoverTick = snap.tick;
+    const cam = cameraCtl.camera();
+    const key = `${snap.tick}:${cam.offsetX}:${cam.offsetY}:${cam.scale ?? 1}`;
+    if (key === hoverKey) return hoverTargets;
+    hoverKey = key;
     hoverTargets = [];
     hoverInfo.clear();
-    for (const it of buildSpriteScene(snap)) {
+    const vp = cameraViewport(
+      cam,
+      app.screen.width,
+      app.screen.height,
+      SPRITE_CULL_MARGIN + (deps.elevation?.maxLift ?? 0),
+    );
+    for (const it of buildSpriteScene(snap, vp, deps.elevation)) {
       if (it.kind !== 'stockpile' && it.kind !== 'grounddrop') continue;
       if (it.goodType === undefined) continue; // an empty delivery flag — nothing to name
       hoverTargets.push({ ref: it.ref, x: it.x, y: it.y, box: renderer.entityBounds(it.ref) });

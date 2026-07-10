@@ -236,8 +236,9 @@ export function resolveGatheringRefs(
   // Every OTHER good (not gathered, so absent from the pipeline) gets its on-the-ground graphic from the
   // goods-icon manifest — its recoloured `ls_goods` heap by (palette, growth states). This is why a dropped
   // brick, sword, or loaf draws its own pile on the ground and grows with its contents, not the bare
-  // placeholder marker; a good with no manifest icon (potions/amulets/fruit — no `ls_goods` art in the
-  // original) falls back to the neutral generic heap. The PILE binds the manifest's full `fillFrames`
+  // placeholder marker. Only the goods with no manifest icon at all — the animal/vehicle/special tokens that
+  // share `landscapeType 1` (prey, sheep, cattle, the carts/ships, catapult, chest, anything) — fall back to
+  // the neutral generic heap; the potions/amulets/fruit DO bind (via the `goods all` record). The PILE binds the manifest's full `fillFrames`
   // (fewest→most) so a player-dropped bare stockpile grows through the 5 pile states; the TRUNK keeps a
   // single frame (the state-1 icon) for the felled-log shape a `GroundDrop` draws.
   if (goodIcons != null) {
