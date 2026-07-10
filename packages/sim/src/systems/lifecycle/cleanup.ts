@@ -1,5 +1,6 @@
 import { Health } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { removeWorkFlag } from '../conflict/orders.js';
 import type { System, SystemContext } from '../context.js';
 
 /**
@@ -50,6 +51,7 @@ export const cleanupSystem: System = (world, ctx) => {
  *  entity at emit time; render only reads the id, never the live components. */
 function reap(world: World, ctx: SystemContext, e: Entity): void {
   ctx.events.emit({ kind: 'settlerDied', entity: e, cause: DEATH_CAUSE_DAMAGE });
+  removeWorkFlag(world, e); // a flag-bound gatherer's flag has no owner once it's gone — reap it too
   world.destroy(e);
 }
 

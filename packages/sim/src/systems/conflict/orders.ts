@@ -23,6 +23,7 @@ import {
 } from '../../components/index.js';
 import type { Command } from '../../core/commands.js';
 import { contentIndex } from '../../core/content-index.js';
+import type { Fixed } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
@@ -142,20 +143,22 @@ export function setJob(
   if (indexById(ctx.content.jobs).get(command.jobType) === undefined) return; // unknown job — skip
 
   world.remove(e, JobAssignment); // re-employed at a building of the NEW job by the JobSystem
-  reidleAsJob(world, e, command.jobType);
+  reidleAsJob(world, ctx, e, command.jobType);
 }
 
 /**
  * Reset an OWNED settler to a fresh idle worker of `jobType`: set its `Settler.jobType`, cancel any
- * current action/route/hold, drop auto-combat state, and stamp the new job's DEFAULT military stance (a
+ * current action/route/hold, drop auto-combat state, stamp the new job's DEFAULT military stance (a
  * soldier→civilian flip stops auto-engaging and starts fleeing; the reverse engages — the player can
- * override afterwards with `setStance`). It does NOT touch {@link JobAssignment}: the caller owns the
- * binding — {@link setJob} DROPS it (the JobSystem re-employs at the first open building of the new
- * job), while {@link assignWorker} SETS it (bind to the player-chosen building). The one place the
- * "re-idle to a new trade" reset lives, so the two employment orders can't drift apart. Owned-only: the
- * callers guard `e` is owned, so the stance stamp keeps the "Stance is owned-only" invariant.
+ * override afterwards with `setStance`), and SYNC the gatherer work flag to the new trade
+ * ({@link syncWorkFlagToJob} — a gatherer trade gets a flag, leaving one drops it). It does NOT touch
+ * {@link JobAssignment}: the caller owns the binding — {@link setJob} DROPS it (the JobSystem re-employs
+ * at the first open building of the new job), while {@link assignWorker} SETS it (bind to the
+ * player-chosen building). The one place the "re-idle to a new trade" reset lives, so the two employment
+ * orders can't drift apart. Owned-only: the callers guard `e` is owned, so the stance stamp keeps the
+ * "Stance is owned-only" invariant.
  */
-function reidleAsJob(world: World, e: Entity, jobType: number): void {
+function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
   world.get(e, Settler).jobType = jobType;
   world.remove(e, CurrentAtomic); // cancel whatever it was doing under the old job
   world.remove(e, PlayerOrder); // an employment change returns the unit to the economy
@@ -166,6 +169,7 @@ function reidleAsJob(world: World, e: Entity, jobType: number): void {
   world.remove(e, AttackOrder);
   world.remove(e, Fleeing);
   stampDefaultStance(world, e, jobType);
+  syncWorkFlagToJob(world, ctx, e, jobType); // a gatherer trade carries a work flag; other trades don't
 }
 
 /**
@@ -207,7 +211,7 @@ export function assignWorker(
   if (jobType === null) return; // building full / wrong tribe / not a workplace / gated — no-op
 
   world.remove(e, JobAssignment); // drop any prior binding before re-binding to the chosen building
-  reidleAsJob(world, e, jobType);
+  reidleAsJob(world, ctx, e, jobType);
   world.add(e, JobAssignment, { workplace: b });
 }
 
@@ -299,14 +303,74 @@ export function setWorkFlag(
     p.y = pos.y;
     return;
   }
-  // No live flag yet (fresh gatherer, or its flag was removed) — create a pure marker (Position +
-  // DeliveryFlag; it holds NO goods, the harvest piles on the ground around it) and bind / re-point.
+  // No live flag yet (fresh gatherer, or its flag was removed) — mint one here and bind / re-point.
+  bindFreshFlag(world, e, pos);
+}
+
+/**
+ * Mint a fresh {@link DeliveryFlag} marker at `pos` and bind gatherer `e` to it — the ONE place a work
+ * flag is created, shared by {@link setWorkFlag} (the player planting it with Ctrl+Right-Click) and the
+ * profession-change auto-plant ({@link plantWorkFlagAt}). The flag is a pure `Position + DeliveryFlag`
+ * marker (it stores NO goods — the harvest piles on the ground around it). Re-points a stale
+ * {@link WorkFlag} (keeping the gatherer's radius) or adds a new one at the {@link DEFAULT_WORK_FLAG_RADIUS}.
+ */
+function bindFreshFlag(world: World, e: Entity, pos: { x: Fixed; y: Fixed }): void {
   const flag = world.create();
   world.add(flag, Position, { x: pos.x, y: pos.y });
   world.add(flag, DeliveryFlag, {});
+  const wf = world.tryGet(e, WorkFlag);
   if (wf !== undefined)
     wf.flag = flag; // stale binding — re-point it, keeping the gatherer's radius
   else world.add(e, WorkFlag, { flag, radius: DEFAULT_WORK_FLAG_RADIUS });
+}
+
+/**
+ * Sync a settler's work flag to its (new) `jobType` — the flag half of a profession change, run inside
+ * {@link reidleAsJob} so every employment order (`setJob`, `assignWorker`) applies it identically. A job
+ * that CAN harvest is a gatherer: it keeps a live flag, or gets a fresh one planted at its feet
+ * ({@link plantWorkFlagAt}) — so switching a settler INTO a gatherer trade immediately gives it a movable
+ * drop-off flag, the profession-change twin of the player's first Ctrl+Right-Click. A job that CANNOT
+ * harvest (a builder, a soldier, idle) DROPS the flag ({@link removeWorkFlag}): the marker is destroyed
+ * and the {@link WorkFlag} removed, so a former gatherer never strands an owner-less flag on the map.
+ */
+function syncWorkFlagToJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
+  if (jobCanHarvest(ctx, jobType)) {
+    const wf = world.tryGet(e, WorkFlag);
+    if (wf !== undefined && world.has(wf.flag, Position)) return; // already carries a live flag — keep it
+    plantWorkFlagAt(world, ctx, e); // becoming a gatherer with no live flag — plant one at its feet
+  } else {
+    removeWorkFlag(world, e); // leaving the gatherer trade — the flag has no gatherer, so it goes
+  }
+}
+
+/**
+ * Plant a fresh work flag at the OWNED gatherer's CURRENT tile and bind it — the auto-plant a settler
+ * gets the instant its profession becomes a gatherer. The flag snaps to the settler's half-cell node (so
+ * it lands on a tile the player can then relocate with Ctrl+Right-Click), exactly as {@link setWorkFlag}
+ * snaps a clicked point. No-op when mapless (no cells to plant on) or the settler carries no Position.
+ */
+function plantWorkFlagAt(world: World, ctx: SystemContext, e: Entity): void {
+  const terrain = ctx.terrain;
+  if (terrain === undefined || !world.has(e, Position)) return; // mapless / positionless — no flag
+  const p = world.get(e, Position);
+  const n = nodeOfPosition(p.x, p.y);
+  const c = terrain.coordsOf(terrain.nodeAtClamped(n.hx, n.hy));
+  bindFreshFlag(world, e, positionOfNode(c.x, c.y));
+}
+
+/**
+ * Drop a settler's work flag: destroy the flag marker entity (if still alive) and remove the
+ * {@link WorkFlag} binding. The single un-bind point, shared by the profession-change path (a settler
+ * leaving the gatherer trade — {@link syncWorkFlagToJob}) and the death reap (`cleanupSystem`), so the
+ * "a flag exists only for a live gatherer" invariant holds through both. The goods already piled on the
+ * ground are SEPARATE `Stockpile+Position` heaps pinned to their own tiles — they stay put. No-op if the
+ * settler carries no WorkFlag.
+ */
+export function removeWorkFlag(world: World, e: Entity): void {
+  const wf = world.tryGet(e, WorkFlag);
+  if (wf === undefined) return;
+  if (world.isAlive(wf.flag)) world.destroy(wf.flag); // reap the marker; a dead id is already gone
+  world.remove(e, WorkFlag);
 }
 
 /**
