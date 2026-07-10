@@ -21,6 +21,22 @@ const STOCK_TAB_W = 32;
 /** The misc/"Inne" tab a good with no explicit category falls into. */
 const DEFAULT_TAB = 7;
 
+/**
+ * The eight category tabs' display names (index = tab), shown as a hover tooltip — the tab-plate GLYPHS are
+ * unread original art (montage guesses, see the file header), so the cryptic icon alone doesn't say what a
+ * tab holds; the tooltip names it. Polish (the default UI language); a future locale pass can localize these.
+ */
+export const STOCK_TAB_LABELS: readonly string[] = [
+  'Żywność', // 0 — food
+  'Napoje', // 1 — drink / consumable liquids
+  'Surowce', // 2 — raw materials
+  'Budulec', // 3 — building materials
+  'Narzędzia', // 4 — tools
+  'Wyroby', // 5 — crafted household goods
+  'Wojsko', // 6 — weapons + armor
+  'Inne', // 7 — currency, potions, amulets, animals, vehicles, special
+];
+
 /** Good STRING id → tab index (0–7). Provisional grouping — see the file header. */
 const CATEGORY_BY_GOOD: Readonly<Record<string, number>> = {
   // 0 — Żywność (food)
@@ -28,10 +44,7 @@ const CATEGORY_BY_GOOD: Readonly<Record<string, number>> = {
   food_extra: 0,
   bread: 0,
   meat: 0,
-  fish: 0,
-  sausage: 0,
   candy: 0,
-  fruit: 0,
   mushroom: 0,
   wheat: 0,
   honey: 0,

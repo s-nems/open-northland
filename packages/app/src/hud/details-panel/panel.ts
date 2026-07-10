@@ -14,6 +14,7 @@ import {
   stockSlotRects,
 } from './layout.js';
 import { type UnitPanelModel, type UnitPanelModelContext, buildUnitPanelModel } from './model.js';
+import { STOCK_TAB_LABELS } from './stock-tabs.js';
 import { drawBuilding, drawCompact, drawSettler } from './sections.js';
 
 /**
@@ -248,12 +249,15 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
 
   const onMouseMove = (e: MouseEvent): void => {
     const { x, y } = toCanvas(e.clientX, e.clientY);
-    // Name-on-hover for a Magazyn stock row (independent of the button-hover repaint below, so it updates
-    // even when the hovered BUTTON hasn't changed).
+    // Name-on-hover (independent of the button-hover repaint below, so it updates even when the hovered
+    // BUTTON hasn't changed): a Magazyn stock row's good name, else a category TAB's name — the tab glyphs are
+    // cryptic unread art, so the tooltip is what tells the player which category a tab holds.
     if (opts.tooltip !== undefined) {
-      const name = hitStockGood(x, y);
-      if (name === null) opts.tooltip.hide();
-      else opts.tooltip.show(e.clientX, e.clientY, name);
+      const rowName = hitStockGood(x, y);
+      const tab = rowName === null ? hitStockTab(x, y) : null;
+      const text = rowName ?? (tab !== null ? (STOCK_TAB_LABELS[tab] ?? null) : null);
+      if (text === null) opts.tooltip.hide();
+      else opts.tooltip.show(e.clientX, e.clientY, text);
     }
     const next = hitButton(x, y)?.action ?? null;
     if (next === hoverAction) return;
