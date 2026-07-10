@@ -22,6 +22,7 @@ function ctxFromScene(): UnitPanelModelContext {
   return {
     buildings: sim.content.buildings,
     goods: sim.content.goods,
+    jobs: sim.content.jobs,
   };
 }
 
@@ -43,6 +44,7 @@ describe('selection details panel model', () => {
     const model = buildUnitPanelModel(snapshot, new Set([hq.id]), {
       buildings: sim.content.buildings,
       goods: sim.content.goods,
+      jobs: sim.content.jobs,
     });
 
     expect(model.kind).toBe('building');
