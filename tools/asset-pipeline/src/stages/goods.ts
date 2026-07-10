@@ -8,6 +8,7 @@ import {
   decodeIni,
   extractGoods,
   extractLandscapeGfx,
+  extractPaletteIndex,
   parseIniSections,
 } from '../decoders/ini.js';
 import { decodePcx } from '../decoders/pcx.js';
@@ -68,7 +69,10 @@ const GOODS_BMD = join(BOBS_DIR, 'ls_goods.bmd');
 const GOODTYPES_INI = join('Data', 'logic', 'goodtypes.ini');
 /** The `[GfxLandscape]` object table that binds `ls_goods.bmd` frames to goods by `logicType`. */
 const LANDSCAPES_CIF = join('Data', 'engine2d', 'inis', 'landscapes', 'landscapes.cif');
-/** Where a `goods_*`/landscape recolor palette `.pcx` may live (searched in order). */
+/** The palette ALIAS table: `[GfxPalette256]` records mapping a palette editname (`gold01`) to its real
+ *  `.pcx` — a name rarely names a `<name>.pcx` file directly (`gold01` → `landscapes/gold.pcx`). */
+const PALETTES_INI = join('Data', 'engine2d', 'inis', 'palettes', 'palettes.ini');
+/** Fallback dirs a `goods_*` recolor palette `.pcx` may live in when the alias table has no entry. */
 const PALETTE_DIRS = [
   join('Data', 'engine2d', 'bin', 'palettes', 'goods'),
   join('Data', 'engine2d', 'bin', 'palettes', 'landscapes'),
@@ -127,8 +131,44 @@ export interface GoodsStageSummary {
   readonly icons: number;
 }
 
-/** Resolve a recolor palette by name across {@link PALETTE_DIRS}, or `undefined` if absent everywhere. */
-async function loadGoodsPalette(gameDir: string, name: string): Promise<Uint8Array | undefined> {
+/** A palette editname (lower-cased) → its real `.pcx` path, from {@link PALETTES_INI}. Built once per run. */
+type PaletteAliasMap = ReadonlyMap<string, string>;
+
+/** Read {@link PALETTES_INI} into a name→`.pcx` alias map (the same graph the bmd stage uses). Empty (and
+ *  warned) when the file is unreadable, so palette resolution degrades to the {@link PALETTE_DIRS} search. */
+async function loadPaletteAliases(gameDir: string): Promise<PaletteAliasMap> {
+  const map = new Map<string, string>();
+  try {
+    const sections = parseIniSections(decodeIni(await readGameFile(gameDir, PALETTES_INI)));
+    for (const alias of extractPaletteIndex(sections)) {
+      if (!map.has(alias.name)) map.set(alias.name, alias.gfxFile);
+    }
+  } catch (err) {
+    console.warn(`[pipeline] goods: palettes.ini unreadable (${(err as Error).message}); resolving by path`);
+  }
+  return map;
+}
+
+/**
+ * Resolve a recolor palette by name to its 256-colour table. FIRST via the {@link PALETTES_INI} alias graph
+ * (`gold01` → `landscapes/gold.pcx`) — a palette name rarely matches a `<name>.pcx` file directly, so without
+ * this the aliased landscape palettes (`gold01`/`clay01`/`house_saracen01`/`human_colors`) fall to a neutral
+ * row and their goods render washed-out white in the HUD (the coin, the plate/wool armour). Falls back to the
+ * direct {@link PALETTE_DIRS} search for a name with no alias entry; `undefined` if unresolved everywhere.
+ */
+async function loadGoodsPalette(
+  gameDir: string,
+  name: string,
+  aliases: PaletteAliasMap,
+): Promise<Uint8Array | undefined> {
+  const aliased = aliases.get(name.toLowerCase());
+  if (aliased !== undefined) {
+    try {
+      return decodePcx(await readGameFile(gameDir, aliased)).palette;
+    } catch {
+      // aliased file unreadable — fall through to the by-path search
+    }
+  }
   for (const dir of PALETTE_DIRS) {
     try {
       return decodePcx(await readGameFile(gameDir, join(dir, `${name}.pcx`))).palette;
@@ -226,13 +266,17 @@ export async function convertGoodsStage(gameDir: string, outDir: string): Promis
     icons = {};
   }
 
+  // The name→.pcx alias graph (palettes.ini), so a palette editname resolves to its real file — the same
+  // resolution the bmd stage uses, without which the aliased landscape palettes render white in the HUD.
+  const paletteAliases = await loadPaletteAliases(gameDir);
+
   // The distinct recolor palettes the icons reference, in a deterministic (sorted) LUT row order. Include
   // the preview palette so the same LUT can colour the preview atlas if a consumer ever wants it.
   const paletteNames = [...new Set([...Object.values(icons).map((i) => i.palette), PREVIEW_PALETTE])].sort();
   const paletteByName = new Map<string, Uint8Array>();
   const ordered: Uint8Array[] = [];
   for (const name of paletteNames) {
-    let palette = await loadGoodsPalette(gameDir, name);
+    let palette = await loadGoodsPalette(gameDir, name, paletteAliases);
     if (palette === undefined) {
       console.warn(`[pipeline] goods: palette "${name}" unavailable; using neutral row`);
       palette = identityPalette();
