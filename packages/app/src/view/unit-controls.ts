@@ -1,5 +1,11 @@
 import { type ContentSet, indexById } from '@vinland/data';
-import { type Camera, type ElevationField, type EntityBounds, buildSpriteScene } from '@vinland/render';
+import {
+  type Camera,
+  type ElevationField,
+  type EntityBounds,
+  type SpriteSheet,
+  buildSpriteScene,
+} from '@vinland/render';
 import { type Command, type Entity, type WorldSnapshot, nodeOfPosition } from '@vinland/sim';
 import type { Application } from 'pixi.js';
 import type { PickerEntry } from '../catalog/professions.js';
@@ -75,6 +81,9 @@ export interface UnitControlsOptions {
   readonly professions: readonly PickerEntry[];
   /** Global content, used by the details panel for building/goods labels and per-building sections. */
   readonly content: ContentSet;
+  /** The loaded sprite sheet, forwarded to the details panel so its workers field can draw animated
+   *  on-map worker sprites. Optional: absent → the field stays empty. */
+  readonly sheet?: SpriteSheet;
   /** Submit a command into the sim (the one-way seam). */
   readonly enqueue: (command: Command) => void;
   /**
@@ -138,6 +147,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     buildings: opts.content.buildings,
     goods: opts.content.goods,
     jobs: opts.content.jobs,
+    ...(opts.sheet !== undefined ? { sheet: opts.sheet } : {}),
     onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),
   });
   // The contextual ACTION MENU (full original-art default menu; only "change profession" is wired on this

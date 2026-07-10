@@ -170,6 +170,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     canvas,
     params,
     renderer,
+    ...(sheet !== undefined ? { sheet } : {}),
     sim,
     cameraCtl,
     terrainGrid,

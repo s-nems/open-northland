@@ -1,13 +1,14 @@
-import { type SupersampledTexture, bakeToSprite } from '@vinland/render';
+import { type SpriteSheet, type SupersampledTexture, bakeToSprite } from '@vinland/render';
 import type { WorldSnapshot } from '@vinland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
 import { DEFAULT_UI_LANG, uiStringLookup } from '../../content/gui-gfx.js';
-import { contains } from '../geometry.js';
+import { type Rect, contains } from '../geometry.js';
 import { loadDetailsPanelAssets } from './assets.js';
 import { type PanelLayers, createChrome } from './chrome.js';
-import { type ButtonHit, type DetailsLayout, layoutDetails, mapLayout } from './layout.js';
+import { type ButtonHit, type DetailsLayout, ROW_H, layoutDetails, mapLayout } from './layout.js';
 import { type UnitPanelModel, type UnitPanelModelContext, buildUnitPanelModel } from './model.js';
 import { drawBuilding, drawCompact, drawSettler } from './sections.js';
+import { WorkerSpriteOverlay } from './worker-sprites.js';
 
 /**
  * The bottom-right selection details panel (the original's per-selection window stack: general/defence/
@@ -34,6 +35,9 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
   /** Client→canvas coordinate mapping, injected like the tool panel's (the hud layer stays view-free). */
   readonly backingScale: (canvas: HTMLCanvasElement) => { sx: number; sy: number; rect: DOMRect };
   readonly onDemolish: (entityId: number) => void;
+  /** The loaded sprite sheet, so the workers field can draw its bound workers as animated on-map sprites.
+   *  Absent (a bare checkout / headless test) → the field just stays empty. */
+  readonly sheet?: SpriteSheet;
 }
 
 export interface UnitPanel {
@@ -90,6 +94,9 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   app.stage.addChild(root);
   /** The current rebuild's baked panel texture; disposed and replaced on the next rebuild. */
   let baked: SupersampledTexture | null = null;
+  // The animated worker sprites drawn LIVE over the baked panel's Pracownicy field (one z above it), so
+  // they advance every frame while the panel itself re-bakes at most 4 Hz.
+  const workerOverlay = new WorkerSpriteOverlay(app, opts.sheet, PANEL_Z + 1);
 
   const ctx: UnitPanelModelContext = {
     buildings: opts.buildings,
@@ -238,18 +245,34 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
 
   canvas.addEventListener('mousemove', onMouseMove);
 
+  /** Redraw the animated worker sprites into the (live) Pracownicy field, or clear them when the current
+   *  selection isn't a building. The field is the workers body minus the top row the limits strip occupies. */
+  const refreshWorkers = (snapshot: WorldSnapshot): void => {
+    if (lastModel.kind !== 'building' || layout?.kind !== 'building') {
+      workerOverlay.update(snapshot, null, null);
+      return;
+    }
+    const b = layout.workers.body;
+    const inset = Math.round(ROW_H * scale); // the compact limits line sits in the first row
+    const field: Rect = { x: b.x, y: b.y + inset, w: b.w, h: Math.max(0, b.h - inset) };
+    workerOverlay.update(snapshot, lastModel.entityId, field);
+  };
+
   return {
     render(snapshot, selected): void {
       selectedIds = new Set(selected);
       updateModel(snapshot, true);
+      refreshWorkers(snapshot);
     },
     tick(snapshot): void {
       updateModel(snapshot);
+      refreshWorkers(snapshot);
     },
     claimsPointer,
     handleMouseDown,
     dispose(): void {
       canvas.removeEventListener('mousemove', onMouseMove);
+      workerOverlay.dispose();
       baked?.dispose();
       root.destroy({ children: true });
     },

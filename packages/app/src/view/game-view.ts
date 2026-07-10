@@ -4,6 +4,7 @@ import {
   type ElevationField,
   type PlacementOverlayFrame,
   type SceneTerrain,
+  type SpriteSheet,
   type WorldRenderer,
   buildHud,
   cameraViewport,
@@ -48,6 +49,9 @@ export interface GameViewDeps {
   readonly params: URLSearchParams;
   /** The retained world renderer, terrain already set. */
   readonly renderer: WorldRenderer;
+  /** The loaded sprite sheet (the renderer's own), forwarded to the details panel's animated workers
+   *  field. Optional: a bare checkout has none and the field stays empty. */
+  readonly sheet?: SpriteSheet;
   /** The live sim this view steps and draws. */
   readonly sim: Simulation;
   /** The interactive camera (the entry picks the starting frame). */
@@ -202,6 +206,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     humanPlayer: HUMAN_PLAYER,
     professions: pickerEntries(),
     content: sim.content,
+    ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
     enqueue: (command) => sim.enqueue(command),
     boundsOf: (ref) => renderer.entityBounds(ref), // pixel-accurate picking against the real sprite
     claimPointer: (x: number, y: number) => toolPanel.claimPointer(x, y),

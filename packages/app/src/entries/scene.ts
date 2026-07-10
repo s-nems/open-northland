@@ -69,6 +69,7 @@ export async function renderSceneMode(
     canvas,
     params,
     renderer,
+    ...(sheet !== undefined ? { sheet } : {}),
     sim,
     cameraCtl,
     terrainGrid,
