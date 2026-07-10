@@ -652,6 +652,35 @@ export const GfxPattern = z.strictObject({
 export type GfxPattern = z.infer<typeof GfxPattern>;
 
 /**
+ * One `[transition]` from `Data/engine2d/inis/patterntransitions/transitions.cif` — a **ground
+ * transition overlay** (38 records): a translucent 256×256 texture blended over the base pattern
+ * where two ground families meet. A record names an RGB texture and a separate alpha-mask picture
+ * ({@link texture}/{@link textureAlpha} — the pipeline composes them into one RGBA page), plus SIX
+ * `GfxCoordsA`/`GfxCoordsB` triangle-UV pairs (file order = the pair index a map lane's `value % 6`
+ * selects; `⌊value / 6⌋` picks the record through the map's `eatd` name dictionary). The UV point
+ * convention matches {@link GfxPattern}: `coordsA` = (TL, BR, BL), `coordsB` = (TL, TR, BR) of a
+ * 64×64 tile square.
+ */
+export const GfxPatternTransition = z.strictObject({
+  /** The 0-based position in the `transition` list (provenance; maps join by {@link editName}). */
+  index: z.number().int().nonnegative(),
+  /** `name` — the join key a decoded map's `transitions.types` dictionary entries reference. */
+  editName: z.string().optional(),
+  /** `pointtype` — the editor's transition-point class (e.g. `meadow`, `sand`); editor metadata. */
+  pointType: z.string().optional(),
+  /** `GfxTexture` — the normalized RGB `tran_*.pcx` path (decoded to a PNG by the pcx stage). */
+  texture: z.string().optional(),
+  /** `GfxTextureAlpha` — the normalized alpha-mask `tran_*_a.pcx` path (raw palette index = alpha). */
+  textureAlpha: z.string().optional(),
+  /** The six pair variants' first-triangle UVs, in file order (index = map lane `value % 6`). */
+  coordsA: z.array(GfxCoords).default([]),
+  /** The six pair variants' second-triangle UVs, in file order (parallel to {@link coordsA}). */
+  coordsB: z.array(GfxCoords).default([]),
+  source: Provenance.optional(),
+});
+export type GfxPatternTransition = z.infer<typeof GfxPatternTransition>;
+
+/**
  * The **approximated** per-landscape-typeId ground binding — the typeId→pattern map the terrain renderer
  * consumes (historical plan phase 2, step 2). Every map cell carries a {@link LandscapeType.typeId} (1-based, the
  * `lmlt` per-cell value), but those types are mostly OBJECTS (void/tree/rock/iron/wheat…), not ground
@@ -1003,6 +1032,29 @@ export const TerrainGround = z.object({
 export type TerrainGround = z.infer<typeof TerrainGround>;
 
 /**
+ * The transition-overlay layer of a decoded map: the original's `emt1..emt4` per-cell u8 lanes,
+ * each a per-TRIANGLE overlay pick — `emt1`/`emt2` are layer 1 (drawn last, on top) for triangles
+ * A/B, `emt3`/`emt4` layer 2 (under layer 1) for A/B. A lane value `v < 255` selects transition
+ * `⌊v/6⌋` from the map's `eatd` dictionary ({@link types}, kept VERBATIM so the positional join
+ * survives) and pair variant `v % 6` of its six `GfxCoords` pairs; `255` = no overlay. A name
+ * joins onto the extracted {@link GfxPatternTransition} table (`editName`), mirroring how
+ * {@link TerrainGround} joins patterns.
+ */
+export const TerrainTransitions = z.object({
+  /** The map's `eatd` transition-name dictionary, VERBATIM (lane `⌊v/6⌋` indexes it positionally). */
+  types: z.array(z.string()),
+  /** Row-major per-cell `emt1` lane — layer 1 (topmost), triangle A. Raw u8; 255 = none. */
+  a1: z.array(z.number().int().nonnegative()),
+  /** Row-major per-cell `emt2` lane — layer 1 (topmost), triangle B. Raw u8; 255 = none. */
+  b1: z.array(z.number().int().nonnegative()),
+  /** Row-major per-cell `emt3` lane — layer 2 (under layer 1), triangle A. Raw u8; 255 = none. */
+  a2: z.array(z.number().int().nonnegative()),
+  /** Row-major per-cell `emt4` lane — layer 2 (under layer 1), triangle B. Raw u8; 255 = none. */
+  b2: z.array(z.number().int().nonnegative()),
+});
+export type TerrainTransitions = z.infer<typeof TerrainTransitions>;
+
+/**
  * The placed landscape objects of a decoded map: the original's `emla` lane is a **half-cell**
  * (2·width × 2·height) grid of indices into the map's `eald` object-name dictionary — every tree,
  * stone, bush, mine decal and animated wave the map ships. {@link types} is that dictionary compacted
@@ -1112,6 +1164,8 @@ export const TerrainMapFile = z
     typeIds: z.array(TypeId),
     /** The 1:1 per-triangle ground patterns (`empa`/`empb` + `eapd`), when the map carries them. */
     ground: TerrainGround.optional(),
+    /** The per-triangle transition overlays (`emt1..emt4` + `eatd`), when the map carries them. */
+    transitions: TerrainTransitions.optional(),
     /** The placed landscape objects (`emla` + `eald`), when the map carries them. */
     objects: TerrainObjects.optional(),
     /**
@@ -1160,6 +1214,32 @@ export const TerrainMapFile = z
     () => ({
       message: 'terrain map ground lane indexes outside its patterns list',
       path: ['ground'],
+    }),
+  )
+  .refine(
+    (m) => {
+      if (m.transitions === undefined) return true;
+      const cells = m.width * m.height;
+      const t = m.transitions;
+      return [t.a1, t.b1, t.a2, t.b2].every((lane) => lane.length === cells);
+    },
+    (m) => ({
+      message: `terrain map transition lanes must be width*height (${m.width * m.height}) cells`,
+      path: ['transitions'],
+    }),
+  )
+  .refine(
+    (m) => {
+      if (m.transitions === undefined) return true;
+      const t = m.transitions;
+      const NONE = 255;
+      return [t.a1, t.b1, t.a2, t.b2].every((lane) =>
+        lane.every((v) => v === NONE || Math.floor(v / 6) < t.types.length),
+      );
+    },
+    () => ({
+      message: 'terrain map transition lane values outside its types dictionary',
+      path: ['transitions'],
     }),
   )
   .refine(
@@ -1474,6 +1554,9 @@ export const ContentSet = z.strictObject({
   /** Resolved per-good gathering pipelines (good→landscape→gfx join), one per map-gathered good. */
   gatheringPipeline: z.array(GatheringPipeline).default([]),
   gfxPatterns: z.array(GfxPattern).default([]),
+  /** The `[transition]` overlay table (`transitions.cif`) a decoded map's `transitions.types`
+   *  names join onto — the texture + six UV pairs per record (render-binding data). */
+  gfxPatternTransitions: z.array(GfxPatternTransition).default([]),
   terrainPatterns: z.array(TerrainPattern).default([]),
   /** The per-logicType ground classes (`trianglepatterntypes.cif`) a {@link GfxPattern.logicType}
    *  references — the walk/build/water flags the map-collision join classes real ground by. */

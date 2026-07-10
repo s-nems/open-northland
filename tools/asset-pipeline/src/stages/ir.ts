@@ -25,6 +25,7 @@ import {
   extractJobs,
   extractLandscape,
   extractLandscapeGfx,
+  extractPatternTransitions,
   extractPatterns,
   extractSounds,
   extractTrianglePatternTypes,
@@ -189,6 +190,13 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     file: patternFile,
     layer: 'base',
   });
+  // The `[transition]` ground-overlay table (`.cif`-only) — a decoded map's `transitions.types`
+  // names join onto it (`editName`) for the overlay texture + the six per-pair UV triangles.
+  const transitionFile = join('Data', 'engine2d', 'inis', 'patterntransitions', 'transitions.cif');
+  const transitionSections = await loadCifSections(join(args.game, transitionFile));
+  const gfxPatternTransitions = transitionSections
+    ? extractPatternTransitions(transitionSections, { file: transitionFile, layer: 'base' })
+    : [];
   // The full `[GfxLandscape]` object table (`.cif`-only) — the table a decoded map's `objects`
   // placements join onto by `EditName` (trees/stones/bushes/mine decals/waves; visual frames +
   // logic footprints). Distinct from the `(bmd, palette)` atlas work list the bmd stage derives.
@@ -246,6 +254,8 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     // The full positional pattern table — a decoded map's `ground.patterns` names join onto it
     // (`GfxPattern.editName`) for the texture page + per-triangle UVs.
     gfxPatterns,
+    // The transition-overlay table — a decoded map's `transitions.types` names join onto it.
+    gfxPatternTransitions,
     terrainPatterns,
     // The per-logicType ground classes (`humancanwalkon`/`housecanbebuildon`/`iswater`) the
     // map-collision join reads — emitted verbatim so ground blocking is data, not a hardcoded split.

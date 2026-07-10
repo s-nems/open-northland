@@ -31,7 +31,7 @@ import { convertGuiStage } from './stages/gui.js';
 import { writeIr } from './stages/ir.js';
 import { unpackLibTree } from './stages/lib.js';
 import { convertMapDatTree } from './stages/maps/index.js';
-import { convertPcxTree } from './stages/pcx.js';
+import { composeMaskedTransitionPages, convertPcxTree } from './stages/pcx.js';
 import { convertIndexedCharacterAtlases, convertPlayerColorLut } from './stages/player-colors.js';
 
 async function run(args: Args): Promise<void> {
@@ -138,6 +138,21 @@ async function run(args: Args): Promise<void> {
       `${ir.tribes.length} tribes, ${ir.atomicAnimations.length} atomic animations, ${ir.bobSequences.length} bob-sequence sets, ${ir.buildingBobs.length} building bobs, ${ir.maps.length} maps, ` +
       `${ir.gatheringPipeline.length} gathering pipelines ` +
       `-> ${join(args.out, 'ir.json')}`,
+  );
+
+  // Compose each ground-transition overlay's RGB texture + alpha-mask .pcx pair into one RGBA
+  // `<stem>.masked.png` — the plain per-file pcx pass above can't carry the separate mask, and the
+  // renderer alpha-blends these pages over the base ground triangles. Needs the extracted
+  // `[transition]` table, hence after writeIr.
+  const maskedPairs = ir.gfxPatternTransitions.flatMap((t) =>
+    t.texture !== undefined && t.textureAlpha !== undefined
+      ? [{ texture: t.texture, textureAlpha: t.textureAlpha }]
+      : [],
+  );
+  const masked = await composeMaskedTransitionPages(args.game, args.out, maskedPairs);
+  console.log(
+    `[pipeline] transitions: ${ir.gfxPatternTransitions.length} record(s) -> ` +
+      `${masked.length} masked overlay page(s) into ${args.out}`,
   );
 
   // Decode each map's binary terrain grid (map.dat hoix container -> lmlt landscape-type layer -> one

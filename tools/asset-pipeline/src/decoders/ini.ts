@@ -27,6 +27,7 @@ import {
   GatheringPipeline,
   GfxAnimAtomic,
   GfxPattern,
+  GfxPatternTransition,
   type GoodAtomics,
   type GoodClassification,
   type GoodGathering,
@@ -543,6 +544,45 @@ export function extractPatterns(sections: readonly RuleSection[], src: SourceRef
     );
   }
   return patterns;
+}
+
+/**
+ * Extracts the `[transition]` ground-overlay records from `transitions.cif` into validated
+ * {@link GfxPatternTransition} IR (38 records in the real data). Each record carries its RGB
+ * texture + separate alpha-mask picture and SIX repeated `GfxCoordsA`/`GfxCoordsB` triangle-UV
+ * lines — kept in FILE ORDER because a map lane's `value % 6` selects the pair positionally.
+ * The sibling `[pointtype]` sections (editor grouping metadata) are not extracted. Like
+ * {@link extractPatterns}, every matched record keeps its positional {@link GfxPatternTransition.index}
+ * and reads visual fields defensively (a wrong-arity coord line is dropped, not fatal).
+ */
+export function extractPatternTransitions(
+  sections: readonly RuleSection[],
+  src: SourceRef,
+): GfxPatternTransition[] {
+  const records: GfxPatternTransition[] = [];
+  let index = 0;
+  const coordLines = (sec: RuleSection, key: string): number[][] =>
+    findProps(sec, key)
+      .map((p) => p.values.map((v) => Number.parseInt(v, 10)))
+      .filter((vals) => vals.length === 6 && vals.every((n) => !Number.isNaN(n)));
+  for (const sec of sections) {
+    if (sec.name !== 'transition') continue;
+    const texture = getStr(sec, 'GfxTexture');
+    const textureAlpha = getStr(sec, 'GfxTextureAlpha');
+    records.push(
+      GfxPatternTransition.parse({
+        index: index++,
+        editName: getStr(sec, 'name'),
+        pointType: getStr(sec, 'pointtype'),
+        texture: texture !== undefined ? normalizeAssetPath(texture) : undefined,
+        textureAlpha: textureAlpha !== undefined ? normalizeAssetPath(textureAlpha) : undefined,
+        coordsA: coordLines(sec, 'GfxCoordsA'),
+        coordsB: coordLines(sec, 'GfxCoordsB'),
+        source: { file: src.file, block: 'transition', layer: src.layer ?? 'base' },
+      }),
+    );
+  }
+  return records;
 }
 
 /** The three coarse ground families a landscape typeId is approximated into, each pinned to a logic type + a representative pattern's preferred editName prefix. */

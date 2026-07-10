@@ -26,7 +26,7 @@ import {
   mapIdFromPath,
   minimapToPng,
 } from '../src/stages/maps/index.js';
-import { convertPcxTree, pcxToPng } from '../src/stages/pcx.js';
+import { composeMaskedTransitionPages, convertPcxTree, pcxToPng } from '../src/stages/pcx.js';
 
 /**
  * CLI wiring tests. No copyrighted fixtures: we synthesize `.pcx` bytes with the faithful `encodePcx`,
@@ -397,6 +397,68 @@ describe('convertPcxTree', () => {
 
   it('throws when the game dir does not exist (a real argument error, not per-file)', async () => {
     await expect(convertPcxTree(join(game, 'nope'), out)).rejects.toThrow();
+  });
+
+  it('composes a transition texture + alpha-mask pair into one RGBA .masked.png (raw index = alpha)', async () => {
+    // The colour picture expands through its palette; the MASK picture's raw palette-index bytes
+    // become the alpha channel directly (the engine convention — no palette expansion for the mask).
+    const width = 2;
+    const height = 2;
+    const colour = encodePcx({
+      width,
+      height,
+      pixels: Uint8Array.from([1, 2, 3, 4]),
+      palette: rampPalette(),
+    });
+    const mask = encodePcx({
+      width,
+      height,
+      pixels: Uint8Array.from([0, 128, 200, 255]),
+      palette: rampPalette(),
+    });
+    await mkdir(join(game, 'textures'), { recursive: true });
+    await writeFile(join(game, 'textures', 'tran_meadow.pcx'), colour);
+    await writeFile(join(game, 'textures', 'tran_meadow_a.pcx'), mask);
+
+    const done = await composeMaskedTransitionPages(game, out, [
+      { texture: 'textures/tran_meadow.pcx', textureAlpha: 'textures/tran_meadow_a.pcx' },
+      // A duplicate pair (two [transition] records sharing one page) must compose only once.
+      { texture: 'textures/tran_meadow.pcx', textureAlpha: 'textures/tran_meadow_a.pcx' },
+    ]);
+
+    expect(done.map((c) => c.output)).toEqual(['textures/tran_meadow.masked.png']);
+    const decoded = decodePng(await readFile(join(out, 'textures', 'tran_meadow.masked.png')));
+    const expectedRgb = expandToRgba(decodePcx(colour)).rgba;
+    for (let i = 0; i < width * height; i++) {
+      expect(decoded.rgba[4 * i]).toBe(expectedRgb[4 * i]);
+      expect(decoded.rgba[4 * i + 1]).toBe(expectedRgb[4 * i + 1]);
+      expect(decoded.rgba[4 * i + 2]).toBe(expectedRgb[4 * i + 2]);
+    }
+    expect([decoded.rgba[3], decoded.rgba[7], decoded.rgba[11], decoded.rgba[15]]).toEqual([
+      0, 128, 200, 255,
+    ]);
+  });
+
+  it('skips a masked pair whose mask dimensions mismatch, with a warning (per-file boundary)', async () => {
+    const colour = encodePcx({
+      width: 2,
+      height: 2,
+      pixels: Uint8Array.from([1, 2, 3, 4]),
+      palette: rampPalette(),
+    });
+    const mask = encodePcx({ width: 1, height: 1, pixels: Uint8Array.from([9]), palette: rampPalette() });
+    await mkdir(join(game, 'textures'), { recursive: true });
+    await writeFile(join(game, 'textures', 'tran_bad.pcx'), colour);
+    await writeFile(join(game, 'textures', 'tran_bad_a.pcx'), mask);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const done = await composeMaskedTransitionPages(game, out, [
+      { texture: 'textures/tran_bad.pcx', textureAlpha: 'textures/tran_bad_a.pcx' },
+    ]);
+
+    expect(done).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped masked page textures\/tran_bad/));
+    warn.mockRestore();
   });
 });
 
@@ -925,6 +987,58 @@ describe('mapDatToTerrain', () => {
       a: [0, 1],
       b: [1, 1],
     });
+  });
+
+  it('emits the transitions layer from emt1..emt4 + the eatd dictionary VERBATIM (no compaction)', () => {
+    // 2×1 grid: four per-cell u8 lanes (255 = none; v<255 → transition ⌊v/6⌋ + pair v%6). The
+    // dictionary and the lane values pass through untouched — the ⌊v/6⌋ join is positional.
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 2, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0])) },
+      { tag: 'emt1', version: 1, payload: packMapLayer(Uint8Array.from([0, 255])) },
+      { tag: 'emt2', version: 1, payload: packMapLayer(Uint8Array.from([7, 255])) },
+      { tag: 'emt3', version: 1, payload: packMapLayer(Uint8Array.from([255, 11])) },
+      { tag: 'emt4', version: 1, payload: packMapLayer(Uint8Array.from([255, 255])) },
+      { tag: 'eatd', version: 1, payload: stringList(['meadow 1', 'meadow 2']) },
+    ]);
+    const terrain = mapDatToTerrain(bytes);
+    expect(terrain.transitions).toEqual({
+      types: ['meadow 1', 'meadow 2'],
+      a1: [0, 255],
+      b1: [7, 255],
+      a2: [255, 11],
+      b2: [255, 255],
+    });
+  });
+
+  it('degrades an out-of-dictionary transition value to a grid without the layer (warn, keep the grid)', () => {
+    // Value 12 → transition index 2, but the dictionary has 2 entries — a corrupt lane drops only
+    // the optional transitions layer, never the nav grid.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0])) },
+      { tag: 'emt1', version: 1, payload: packMapLayer(Uint8Array.from([12])) },
+      { tag: 'emt2', version: 1, payload: packMapLayer(Uint8Array.from([255])) },
+      { tag: 'emt3', version: 1, payload: packMapLayer(Uint8Array.from([255])) },
+      { tag: 'emt4', version: 1, payload: packMapLayer(Uint8Array.from([255])) },
+      { tag: 'eatd', version: 1, payload: stringList(['meadow 1', 'meadow 2']) },
+    ]);
+    const terrain = mapDatToTerrain(bytes);
+    expect(terrain.typeIds).toEqual([1]); // the nav grid survives
+    expect(terrain.transitions).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/transition lanes unreadable.*outside/));
+    warn.mockRestore();
+  });
+
+  it('omits the transitions layer when any of the five chunks is missing (older/foreign saves)', () => {
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0])) },
+      { tag: 'emt1', version: 1, payload: packMapLayer(Uint8Array.from([255])) },
+      { tag: 'eatd', version: 1, payload: stringList(['meadow 1']) },
+    ]);
+    expect(mapDatToTerrain(bytes).transitions).toBeUndefined();
   });
 
   it('emits the objects layer from emla + the eald name dictionary as sparse half-cell triples', () => {
