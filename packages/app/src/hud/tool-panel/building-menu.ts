@@ -75,7 +75,8 @@ const MENU_HEADLINE_H = 18;
 // tabs never overlap when drawn side by side.
 const MENU_TAB_W = 62;
 const MENU_TAB_H = 18;
-const MENU_ROW_H = 16;
+/** Each building sits on its own button-card, so the row slot is taller than a plain text line. */
+const MENU_ROW_H = 20;
 /** A small gap between the tab row and the list, so the tabs read as a header for it. */
 const MENU_LIST_GAP = 3;
 const MENU_CLOSE = 13;
