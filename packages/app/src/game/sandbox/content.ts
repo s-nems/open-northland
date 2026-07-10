@@ -269,15 +269,19 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
     if (!jobs.has(p.jobType)) jobs.set(p.jobType, { typeId: p.jobType, id: p.key });
   // Every worker-slot jobType ({@link BUILDING_WORKER_SLOTS}, extracted from ir.json, REBASED clear of
   // the sandbox job band — see {@link rebaseSlotJob}) must resolve as a job or the content cross-reference
-  // check rejects the set. The sandbox's remapped id space doesn't carry the original's every distinct
-  // trade id, so backfill any still-missing slot job as a generic "Pracownik": it binds + badges + reads
-  // in the panel; only its distinct-trade identity is dropped (the deferred global-content id
-  // unification). The carrier slot resolves to the real 'Tragarz' above.
+  // check rejects the set. Backfill each still-missing slot job under its REAL trade name
+  // ({@link WORKER_SLOT_JOB_NAMES}, keyed by the original id — "Cieśla", "Druid", …) so the building
+  // panel names the worker by its trade; only its distinct-trade *behaviour* is dropped (the deferred
+  // global-content id unification). The carrier slot resolves to the real 'Tragarz' above.
   for (const slots of Object.values(BUILDING_WORKER_SLOTS))
     for (const w of slots) {
       const jobType = rebaseSlotJob(w.jobType);
       if (!jobs.has(jobType))
-        jobs.set(jobType, { typeId: jobType, id: `worker_${jobType}`, name: 'Pracownik' });
+        jobs.set(jobType, {
+          typeId: jobType,
+          id: `worker_${jobType}`,
+          name: WORKER_SLOT_JOB_NAMES[w.jobType] ?? 'Pracownik',
+        });
     }
   for (const j of extras.jobs ?? []) if (!jobs.has(j.typeId)) jobs.set(j.typeId, j);
 
@@ -527,6 +531,35 @@ function workerSlotsFor(typeId: number): readonly { jobType: number; count: numb
   const slots = BUILDING_WORKER_SLOTS[typeId];
   return slots?.map((w) => ({ jobType: rebaseSlotJob(w.jobType), count: w.count }));
 }
+
+/**
+ * Polish trade names for the extracted worker-slot jobs, keyed by their ORIGINAL `jobtypes.ini` id (the
+ * pre-rebase id used in {@link BUILDING_WORKER_SLOTS}). Source basis: the `jobtypes` names in the
+ * extracted `content/ir.json` (`collector` 8 … `druid` 30, `soldier_bow_*` 40/41), translated — so the
+ * building panel names each worker by its real trade ("Cieśla", "Druid") instead of a generic label.
+ * The carrier (24 → {@link JOB_CARRIER}) is named 'Tragarz' where it's defined above, not here.
+ */
+const WORKER_SLOT_JOB_NAMES: Readonly<Record<number, string>> = {
+  8: 'Zbieracz', // collector
+  9: 'Cieśla', // joiner
+  10: 'Płatnerz', // armorer
+  11: 'Garncarz', // potter
+  12: 'Murarz', // mason
+  13: 'Kowal', // smith
+  14: 'Mincerz', // coin maker
+  15: 'Myśliwy', // hunter
+  16: 'Hodowca', // breeder
+  17: 'Krawiec', // sewer
+  18: 'Rolnik', // farmer
+  19: 'Młynarz', // miller
+  20: 'Piekarz', // baker
+  21: 'Piwowar', // brewer
+  22: 'Rybak', // fisher
+  29: 'Zielarz', // herb & mush guy
+  30: 'Druid', // druid
+  40: 'Łucznik', // soldier_bow_short
+  41: 'Łucznik (długi łuk)', // soldier_bow_long
+};
 
 const BUILDING_WORKER_SLOTS: Readonly<Record<number, readonly { jobType: number; count: number }[]>> = {
   1: [
