@@ -14,9 +14,12 @@ import type { BuildingFootprint, FootprintCell } from '@vinland/data';
  * preserving ×2 the invented combat radii got — or a bare-checkout scene would pack buildings twice
  * as densely as the rule it stands in for.
  *
- * Deliberately `blocked: []` and no door: the approximations gate PLACEMENT only. Walk-blocking walls
- * and door-cell interaction come exclusively from the real extracted footprints, so synthetic scenes'
- * routing, job arrival and pinned goldens are untouched by the approximation.
+ * Deliberately `blocked: []` (no walk-blocking walls — those come only from the real extracted
+ * footprints, so synthetic scenes' routing and pinned goldens are untouched). It DOES carry an
+ * approximate `door` though: a front-of-body entry cell so a settler walks to a real doorway to staff /
+ * enter a building (the sim's {@link interactionNode}) and the door-badge anchors beside it, instead of
+ * both falling back to the building's centre. Approximated, source basis "Building placement" — the RULE
+ * (settlers enter at a front door) at a plausible per-class spot, not the extracted `LogicDoorPoint`.
  */
 
 /** Body half-extent per building class, in half-cell nodes: the body spans `(2n+1)²` nodes centred
@@ -47,5 +50,9 @@ export function approximateFootprint(kind: string): BuildingFootprint {
     blocked: [], // placement-only approximation — never walk-blocks (see the module doc)
     familyBody: square(body),
     reserved: square(body + MARGIN),
+    // A front-of-body door: the front-centre node of the body edge (`+dy` is toward the viewer in the
+    // staggered projection), where a settler stands to enter. Just the interaction/badge anchor — with
+    // no walls it isn't a passable gate, only "where the door is".
+    door: { dx: 0, dy: body },
   };
 }

@@ -25,9 +25,9 @@ const badge = (
   gatherers,
 });
 
-/** The stack sits BESIDE the door and a touch above it (badge-layer's OFFSET_X / DOOR_LIFT). */
-const OFFSET_X = 10;
-const DOOR_LIFT = 6;
+/** The stack sits to the RIGHT of the door and starts LOW (badge-layer's OFFSET_X / DOOR_LIFT). */
+const OFFSET_X = 14;
+const DOOR_LIFT = -6;
 
 describe('BadgeLayer', () => {
   it('stacks one square per bound worker (craftsmen + carriers + gatherers) at the door node', () => {
