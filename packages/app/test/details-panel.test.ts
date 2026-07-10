@@ -156,5 +156,13 @@ describe('selection details panel model', () => {
       'Tragarz 0/1',
       'Zbieracz 0/1',
     ]);
+
+    // Selecting that bound settler must name its trade, not fall back to "Bezrobotny": its `jobType` is the
+    // rebased building-slot id, which the profession catalog doesn't carry — so the title resolves through
+    // the content job names, exactly like the worker-slot rows above.
+    const settlerModel = buildUnitPanelModel(snapshot, new Set([2]), ctxFromScene());
+    expect(settlerModel.kind).toBe('settler');
+    if (settlerModel.kind !== 'settler') return;
+    expect(settlerModel.title).toBe('Druid');
   });
 });

@@ -234,11 +234,14 @@ function stockRows(ctx: UnitPanelModelContext, def: BuildingDef | undefined, sto
 }
 
 /**
- * A worker-slot job's display name — the shared profession catalog + i18n names a known job (a gatherer →
- * "Zbieracz drewna", carrier → "Tragarz"); a worker-slot trade the catalog doesn't carry (a rebased
- * building slot like "Cieśla"/"Druid") falls back to its content job name, then to the localized idle label.
+ * A job's display name — shared by a building's worker-slot rows AND a settler's own profession title, so
+ * the two never drift. The shared profession catalog + i18n names a known job (a gatherer → "Zbieracz
+ * drewna", carrier → "Tragarz"); a trade the catalog doesn't carry (a rebased building slot like
+ * "Cieśla"/"Druid" — a bound settler's `jobType` is that same rebased id) falls back to its content job
+ * name, then to the localized idle label. `undefined` (an unbound settler) resolves to the idle label.
  */
-function slotLabel(ctx: UnitPanelModelContext, jobType: number): string {
+function jobDisplayName(ctx: UnitPanelModelContext, jobType: number | undefined): string {
+  if (jobType === undefined) return jobLabel(undefined);
   return professionDefForJob(jobType) !== undefined
     ? jobLabel(jobType)
     : (ctx.jobs.find((j) => j.typeId === jobType)?.name ?? jobLabel(jobType));
@@ -272,7 +275,7 @@ function workerSlotsFor(
   const counts = boundCountsByJob(snapshot, buildingId);
   return (def?.workers ?? []).map((slot) => ({
     jobType: slot.jobType,
-    label: slotLabel(ctx, slot.jobType),
+    label: jobDisplayName(ctx, slot.jobType),
     filled: counts.get(slot.jobType) ?? 0,
     capacity: slot.count,
   }));
@@ -371,7 +374,7 @@ export function buildUnitPanelModel(
     return {
       kind: 'settler',
       entityId,
-      title: jobLabel(num(s.jobType)),
+      title: jobDisplayName(ctx, num(s.jobType)),
       owner: `#${ownerPlayerOf(ent) ?? '-'}`,
       tribe: `${num(s.tribe) ?? '-'}`,
       needs: NEEDS.map((n) => ({ key: n.key, label: n.label, pct: pct(num(s[n.key])) })),
