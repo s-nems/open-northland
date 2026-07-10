@@ -14,8 +14,10 @@ import type { SceneDefinition } from './types.js';
  * match its graphic. With real `content/` the footprints are the extracted `LogicWalkBlockArea` /
  * `LogicBuildBlockArea` / `LogicDoorPoint` data; without it the clean-room approximations show.
  *
- * The headless half proves the mechanic only (every catalog building places and stands); judging
- * whether the geometry matches the pixels is exactly the human's job here.
+ * The headless half proves the mechanic only — and does so against the clean-room APPROXIMATED
+ * footprints (headless scene sims never load ir.json; the browser entry alone feeds the real,
+ * door-shifted footprints in). Judging whether the real geometry matches the pixels is exactly the
+ * human's job here.
  */
 
 /**
@@ -25,8 +27,10 @@ import type { SceneDefinition } from './types.js';
  */
 const GALLERY_BUILDINGS = VIKING_BUILDINGS.filter((b) => b.id !== 'work_pottery_02');
 
-/** Grid pitch in TILES — wide enough that the largest reserved zone (~4 cells half-width) never
- *  overlaps a neighbour's, so each building's overlay reads on its own. */
+/** Grid pitch in TILES (16 half-cell nodes). Neighbouring RESERVED zones may overlap at this pitch
+ *  (the extracted extents reach up to 12 nodes — barracks dy −12..+6, animal farm dx −6..+8, source
+ *  ir.json); placement still succeeds because the sim's rule is zone-vs-BODY, and no gallery body
+ *  intrudes into a neighbour's zone at this step. Widen the step if a new roster entry breaks that. */
 const GRID_STEP = 8;
 const GRID_COLUMNS = 7;
 const GRID_ORIGIN = { x: 5, y: 5 };
@@ -67,7 +71,7 @@ export const buildingGeometryScene: SceneDefinition = {
   checklist: [
     'Dodaj &debug=geometry do adresu — na każdym budynku pojawia się nakładka geometrii.',
     'ZIELONY romb (drzwi) leży na grafice drzwi budynku — tam gdzie osadnik ma wchodzić.',
-    'NIEBIESKA kropka (kotwica ikon pracowników) leży tuż na prawo od drzwi.',
+    'NIEBIESKA kropka (kotwica ikon pracowników) leży tuż na prawo od drzwi (HQ i koszary mają celowo inne przesunięcie — patrz catalog/building-tweaks.ts).',
     'CZERWONE romby (kolizja) pokrywają podstawę grafiki — nic nie wystaje daleko poza budynek i żaden kawałek budynku nie stoi poza nimi; wysoka wieża blokuje tylko fundament.',
     'ŻÓŁTY obrys (strefa zakazu budowy) otacza kolizję z zapasem na przejście.',
     'Kliknięcie w grafikę budynku zaznacza go; kliknięcie TUŻ OBOK (w przezroczysty róg) — nie.',

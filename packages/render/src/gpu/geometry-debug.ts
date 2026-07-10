@@ -9,7 +9,8 @@ import { TILE_HALF_H, TILE_HALF_W, halfCellToScreen } from '../data/iso.js';
  *  - RESERVED cells (build-exclusion zone, `footprint.reserved`) — amber outline diamonds;
  *  - BLOCKED cells (walk collision, `footprint.blocked`) — red filled diamonds;
  *  - the DOOR node (`footprint.door`) — green filled diamond (the settler entry cell);
- *  - the WORKER-ICON anchor (door + one node right) — blue dot;
+ *  - the WORKER-ICON anchor (door + the building's worker-icon offset: default one node right,
+ *    per-building overrides in the app's `catalog/building-tweaks.ts`) — blue dot;
  *  - the ANCHOR node — white cross (the building's own placement node);
  *  - an optional LABEL under the anchor.
  *
@@ -36,7 +37,7 @@ export interface GeometryDebugItem {
   readonly reserved: readonly GeometryDebugCell[];
   /** The settler entry cell (`footprint.door`). */
   readonly door?: GeometryDebugCell | undefined;
-  /** The worker-icon stack anchor (derived: door + one node right). */
+  /** The worker-icon stack anchor (door + the building's worker-icon offset — the app resolves it). */
   readonly iconAnchor?: GeometryDebugCell | undefined;
   readonly label?: string | undefined;
 }

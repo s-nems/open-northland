@@ -148,6 +148,11 @@ An agent **cannot self-judge pixels** (root `AGENTS.md` "How to verify your work
 - **headless** (`test/scenes.test.ts`) proves the *mechanic* (the agent self-validates with `npm test`),
 - **browser** (`?scene=<id>`) renders the SAME run with a checklist overlay so a *human* judges the pixels.
 
+One NAMED divergence: the browser entry feeds the real extracted building footprints (sim-affecting —
+collision, placement, doors) while the headless twin keeps the clean-room approximations (copyrighted
+`content/` never enters tests). Keep scene placements comfortably legal under both; see
+`scenes/runtime.ts` (`createSceneSim` doc) for the full contract.
+
 To add one (full guide in [`docs/SCENES.md`](../../docs/SCENES.md)):
 
 1. Write `src/scenes/<id>.ts` exporting a `SceneDefinition` — a `terrain` grid, a `build(sim)` that places

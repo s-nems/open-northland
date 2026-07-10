@@ -23,10 +23,17 @@ export function resetComponentStores(): void {
  * Build a fresh, deterministic {@link Simulation} for a scene at tick 0: reset the singleton stores,
  * construct the sim over the global sandbox content + scene terrain, then run the scene's setup. The
  * headless test advances it and asserts; the app keeps it live and renders each frame. Same inputs →
- * byte-identical run, so the test's proof and the human's view are the same world.
+ * byte-identical run, so the test's proof and the human's view are the same world — with ONE named
+ * exception below.
  *
- * `extras` (e.g. the browser entry's localized `goodNames`) is display-only content the headless tests omit
- * — the run stays byte-identical, so this never moves a golden.
+ * `extras` is mostly display-only content the headless tests omit (e.g. the browser entry's localized
+ * `goodNames` — the run stays byte-identical). The exception is `buildingFootprints`: the browser
+ * entry feeds the REAL extracted (door-shifted) footprints, which ARE sim-affecting (collision,
+ * placement legality, walk-to-door targets), while the headless twin keeps the clean-room
+ * approximations — copyrighted `content/` can never enter the tests. So a scene's mechanic proof
+ * holds on approximated geometry and the human additionally judges the real-geometry run; a scene
+ * whose setup is placement-sensitive must keep its placements comfortably legal under BOTH (the
+ * gallery's grid-pitch comment shows the pattern).
  */
 export function createSceneSim(scene: SceneDefinition, extras?: SandboxContentExtras): Simulation {
   resetComponentStores();

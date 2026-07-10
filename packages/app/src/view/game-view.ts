@@ -1,8 +1,7 @@
-import { type BuildingFootprint, indexById } from '@vinland/data';
+import { indexById } from '@vinland/data';
 import {
   type Camera,
   type ElevationField,
-  type GeometryDebugItem,
   type PlacementOverlayFrame,
   SPRITE_CULL_MARGIN,
   type SceneTerrain,
@@ -14,17 +13,9 @@ import {
   layoutHud,
   visibleTileRange,
 } from '@vinland/render';
-import {
-  type Fixed,
-  FixedTimestep,
-  type SimEvent,
-  type Simulation,
-  type WorldSnapshot,
-  nodeOfPosition,
-} from '@vinland/sim';
+import { FixedTimestep, type SimEvent, type Simulation, type WorldSnapshot } from '@vinland/sim';
 import type { Application } from 'pixi.js';
 import { BUILD_HOUSE_ATOMIC, HARVEST_ATOMIC } from '../catalog/atomics.js';
-import { workerIconOffset } from '../catalog/building-tweaks.js';
 import { pickerEntries } from '../catalog/professions.js';
 import { createSoundDriver } from '../content/audio.js';
 import { DEFAULT_UI_LANG } from '../content/gui-gfx.js';
@@ -42,6 +33,7 @@ import {
   menuGoodsFromContent,
   mountGameToolPanel,
 } from './game-tool-panel.js';
+import { buildingSetFingerprint, computeGeometryDebugItems } from './geometry-debug-items.js';
 import { mountSoundToggle } from './overlay.js';
 import { floatParam } from './params.js';
 import { mountPerfOverlay } from './perf-overlay.js';
@@ -334,40 +326,19 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
 
   // `?debug=geometry` — the building-geometry verification overlay: every placed building's extracted
   // logic geometry (walk-block cells, build-exclusion zone, door node, worker-icon anchor) drawn over
-  // the world so a human can check the data against the drawn art. Rebuilt only when the building set
-  // changes (`placementBlockerVersion` moves on add/remove), never per frame.
+  // the world so a human can check the data against the drawn art. The projection is the pure
+  // `computeGeometryDebugItems` (sharing the door-badge table above, so both read one index); it
+  // rebuilds only when the BUILDING set changes — `buildingSetFingerprint` also catches an in-place
+  // home level-up, which the placement-blocker version misses, and ignores the resource churn that
+  // version over-fires on. Never per frame.
   const geometryDebugOn = params.get('debug') === 'geometry';
-  const footprintByType = new Map<number, BuildingFootprint>();
-  for (const b of sim.content.buildings) {
-    if (b.footprint !== undefined) footprintByType.set(b.typeId, b.footprint);
-  }
-  const buildingIdByType = new Map<number, string>(sim.content.buildings.map((b) => [b.typeId, b.id]));
-  let geometryVersion: string | null = null;
+  let geometryFingerprint: number | null = null;
   const updateGeometryDebug = (snap: WorldSnapshot): void => {
     if (!geometryDebugOn) return;
-    const version = sim.placementBlockerVersion();
-    if (version === geometryVersion) return;
-    geometryVersion = version;
-    const items: GeometryDebugItem[] = [];
-    for (const ent of snap.entities) {
-      const b = ent.components.Building as { buildingType: number } | undefined;
-      const pos = ent.components.Position as { x: Fixed; y: Fixed } | undefined;
-      if (b === undefined || pos === undefined) continue;
-      const fp = footprintByType.get(b.buildingType);
-      const door = fp?.door;
-      const id = buildingIdByType.get(b.buildingType);
-      const iconOffset = workerIconOffset(id);
-      items.push({
-        anchor: nodeOfPosition(pos.x, pos.y),
-        blocked: fp?.blocked ?? [],
-        reserved: fp?.reserved ?? [],
-        door,
-        iconAnchor:
-          door === undefined ? undefined : { dx: door.dx + iconOffset.dx, dy: door.dy + iconOffset.dy },
-        label: id ?? `#${b.buildingType}`,
-      });
-    }
-    renderer.setGeometryDebug(items);
+    const fingerprint = buildingSetFingerprint(snap, buildingDoors);
+    if (fingerprint === geometryFingerprint) return;
+    geometryFingerprint = fingerprint;
+    renderer.setGeometryDebug(computeGeometryDebugItems(snap, buildingDoors));
   };
 
   const timestep = new FixedTimestep();

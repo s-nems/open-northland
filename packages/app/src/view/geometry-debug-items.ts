@@ -1,0 +1,74 @@
+import type { BuildingFootprint } from '@vinland/data';
+import type { GeometryDebugItem } from '@vinland/render';
+import { type WorldSnapshot, nodeOfPosition } from '@vinland/sim';
+import { buildingTypeOf, isBuilding, positionOf } from '../game/snapshot.js';
+import { workerIconNode } from './building-points.js';
+
+/**
+ * The `?debug=geometry` PROJECTION — turn the frozen snapshot into the per-building
+ * {@link GeometryDebugItem} list the render overlay draws (the `computeDoorBadges` pattern: pure over
+ * the snapshot + the building-type table, unit-tested headless; the app calls it only when the
+ * building set changed). The worker-icon anchor comes from the SAME {@link workerIconNode} helper the
+ * door badges use — including its doorless fallback (beside the building's anchor node) — so the blue
+ * diagram dot and the live badge stack can never disagree.
+ */
+
+/** The slice of a building TYPE the projection needs: the FULL footprint (the overlay draws every
+ *  channel, where the door-badge path needs only the door) plus the stable `id` — the worker-icon
+ *  override key and the diagram label. game-view passes the one `indexById(sim.content.buildings)`
+ *  map to this and the badge projection alike. */
+export interface GeometryBuildingInfo {
+  readonly id?: string | undefined;
+  readonly footprint?: BuildingFootprint | undefined;
+}
+
+export function computeGeometryDebugItems(
+  snapshot: WorldSnapshot,
+  buildingsByType: ReadonlyMap<number, GeometryBuildingInfo>,
+): GeometryDebugItem[] {
+  const items: GeometryDebugItem[] = [];
+  for (const e of snapshot.entities) {
+    if (!isBuilding(e)) continue;
+    const pos = positionOf(e);
+    if (pos === undefined) continue;
+    const anchor = nodeOfPosition(pos.x, pos.y);
+    const typeId = buildingTypeOf(e);
+    const info = typeId !== undefined ? buildingsByType.get(typeId) : undefined;
+    const fp = info?.footprint;
+    const icon = workerIconNode(fp, anchor, info?.id);
+    items.push({
+      anchor,
+      blocked: fp?.blocked ?? [],
+      reserved: fp?.reserved ?? [],
+      door: fp?.door,
+      iconAnchor: { dx: icon.hx - anchor.hx, dy: icon.hy - anchor.hy },
+      label: info?.id ?? (typeId !== undefined ? `#${typeId}` : undefined),
+    });
+  }
+  return items;
+}
+
+/**
+ * A change-detection fingerprint over the snapshot's BUILDINGS — their ids, types, and positions — so
+ * the overlay rebuilds exactly when a building appears, disappears, MOVES, or upgrades in place (a
+ * home level-up mutates `buildingType` without an add/remove, which the placement-blocker version
+ * deliberately ignores) and NOT when unrelated blockers churn (every felled tree bumps that version,
+ * which on a live map re-rasterized one label texture per building map-wide per harvest). An order-
+ * sensitive 32-bit accumulate is enough for a view memo — snapshot entity order is stable between
+ * identical building sets, and a stale-on-collision frame heals on the next real change.
+ */
+export function buildingSetFingerprint(
+  snapshot: WorldSnapshot,
+  buildingsByType: ReadonlyMap<number, GeometryBuildingInfo>,
+): number {
+  // Fold the table identity in via its size so a content swap (new footprints) also invalidates.
+  let h = buildingsByType.size | 0;
+  for (const e of snapshot.entities) {
+    if (!isBuilding(e)) continue;
+    const pos = positionOf(e);
+    h = (Math.imul(h, 31) + e.id) | 0;
+    h = (Math.imul(h, 31) + (buildingTypeOf(e) ?? -1)) | 0;
+    h = (Math.imul(h, 31) + (pos !== undefined ? pos.x + pos.y : -1)) | 0;
+  }
+  return h;
+}

@@ -25,7 +25,7 @@ import { type DoorFootprint, workerIconNode } from './building-points.js';
  *  anchor; absent → the stack anchors beside the building's anchor node) and its stable `id`, the
  *  per-building worker-icon override key. */
 export interface BuildingDoorInfo {
-  readonly id?: string;
+  readonly id?: string | undefined;
   readonly footprint?: DoorFootprint | undefined;
 }
 
