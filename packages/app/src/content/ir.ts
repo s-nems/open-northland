@@ -13,6 +13,7 @@ import {
   atlasFromManifest,
   loadAtlasSource,
 } from '@vinland/render';
+import { DOOR_SHIFTS } from '../catalog/building-tweaks.js';
 import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /**
@@ -227,11 +228,22 @@ export function loadIr(): Promise<ContentIr | null> {
  * data the live content attaches so the real-content view (`?map=`) actually enforces and shows placement
  * collision (a bare checkout / a scene test never calls this, so its content stays footprint-less and the
  * pre-footprint free-placement behaviour holds there). Empty when the IR is absent or carries no footprints.
+ * Door cells get the committed per-building {@link DOOR_SHIFTS} applied HERE — the one seam extracted
+ * footprints pass through into live content — so the sim's walk-to-door target and the `?debug=geometry`
+ * overlay read the same corrected door.
  */
 export function buildingFootprints(ir: ContentIr | null): Map<number, BuildingFootprint> {
   const out = new Map<number, BuildingFootprint>();
   for (const b of ir?.buildings ?? []) {
-    if (b.typeId !== undefined && b.footprint !== undefined) out.set(b.typeId, b.footprint);
+    if (b.typeId === undefined || b.footprint === undefined) continue;
+    const shift = b.id !== undefined ? DOOR_SHIFTS.get(b.id) : undefined;
+    const door = b.footprint.door;
+    out.set(
+      b.typeId,
+      shift !== undefined && door !== undefined
+        ? { ...b.footprint, door: { dx: door.dx + shift.dx, dy: door.dy + shift.dy } }
+        : b.footprint,
+    );
   }
   return out;
 }
