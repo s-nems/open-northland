@@ -57,8 +57,10 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
   { typeId: 119, id: 'bread', name: 'Bread', storable: true },
   { typeId: 120, id: 'candy', name: 'Candy', storable: true },
   { typeId: 121, id: 'meat', name: 'Meat', storable: true },
-  { typeId: 122, id: 'fish', name: 'Fish', storable: true },
-  { typeId: 123, id: 'sausage', name: 'Sausage', storable: true },
+  // fish (122) + sausage (123) are dropped from the catalog on purpose: they are house-made food goods with
+  // NO distinct `ls_goods` art (the original's `landscapes.cif` binds both to gold's bar frames), so they only
+  // ever read as gold bars. `meat` already covers "produced food"; keeping the catalog to goods with a
+  // meaningful, distinguishable icon. They still exist in the extracted IR — this is an app-catalog curation.
   { typeId: 124, id: 'brick', name: 'Brick', storable: true },
   { typeId: 125, id: 'tile', name: 'Roof Tile', storable: true },
   { typeId: 126, id: 'pillar', name: 'Pillar', storable: true },

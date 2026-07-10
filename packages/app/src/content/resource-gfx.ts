@@ -220,6 +220,19 @@ export function resolveGatheringRefs(
     }
   }
 
+  // The synthetic `plank` (the joinery slice's output — no gathering pipeline, no `ls_goods` art of its own)
+  // draws as the felled LOG: `wood`'s pickup-stage trunk (the `test_piles` "tree trunk" bob), so a dropped
+  // plank reads as sawn timber lying on the ground, visually distinct from the wood PILE rather than the
+  // neutral heap it would otherwise share with wood. Mirrors settler-gfx's `plank: 'wood'` carry alias.
+  // Applied BEFORE the goodIcons fallback so the log wins over the generic heap; its atlas is already loaded
+  // because wood references the same trunk stem.
+  const woodTrunk = trunksByGood[goods.find((g) => g.id === 'wood')?.typeId ?? -1];
+  const plankType = goods.find((g) => g.id === 'plank')?.typeId;
+  if (woodTrunk !== undefined && plankType !== undefined) {
+    trunksByGood[plankType] = woodTrunk;
+    pilesByGood[plankType] = { stem: woodTrunk.stem, fillBobs: [woodTrunk.bob] };
+  }
+
   // Every OTHER good (not gathered, so absent from the pipeline) gets its on-the-ground graphic from the
   // goods-icon manifest — its recoloured `ls_goods` heap by (palette, growth states). This is why a dropped
   // brick, sword, or loaf draws its own pile on the ground and grows with its contents, not the bare
