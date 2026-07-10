@@ -92,8 +92,8 @@ export function createSettler(world: World, content: ContentSet, spec: SettlerSp
   // equipment-less and the hash untouched. Independent of the combat `Weapon`/`Armor` above. `!= null`
   // (not `!== undefined`) because a command is the serialize/replay/lockstep wire format, where an
   // explicit `null` can stand in for "no equipment" — both skip the stamp rather than dereferencing it.
-  if (command.equipment != null) {
-    world.add(e, Equipment, equipmentFromCommand(command.equipment));
+  if (spec.equipment != null) {
+    world.add(e, Equipment, equipmentFromCommand(spec.equipment));
   }
   // A settler given an explicit walk pace carries a `MoveSpeed` (the same separate-optional stamp as the
   // animal `movespeed`): `perTick = ONE/moveSpeed` (ticks-per-tile, larger = slower), read identically to
