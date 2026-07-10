@@ -87,6 +87,9 @@ export interface Chrome {
   textAt(text: string, x: number, y: number, color: FontColorName, variant?: FontVariant): void;
   /** Center a line of text in `r` (both axes). */
   textCentered(text: string, r: Rect, color: FontColorName, variant?: FontVariant): void;
+  /** Left-anchor a line of text at `x`, vertically centred on `centerY` — a left-aligned value that must
+   *  still sit on a field's centre line (the stock amount in its plate). */
+  textLeftMiddle(text: string, x: number, centerY: number, color: FontColorName, variant?: FontVariant): void;
   /** Right-align a line of text's end at `rightX` (top at `y`). */
   textRight(text: string, rightX: number, y: number, color: FontColorName, variant?: FontVariant): void;
   /** Tile a `bg*.pcx` bitmap over `r`; false when the bitmap is missing (caller draws a flat fill). */
@@ -179,6 +182,18 @@ export function createChrome(
     const t = makeText(text, color, variant);
     t.anchor.set(0.5, 0.5);
     t.position.set(Math.round(r.x + r.w / 2), Math.round(r.y + r.h / 2 + CENTER_BIAS * scale));
+  };
+
+  const textLeftMiddle = (
+    text: string,
+    x: number,
+    centerY: number,
+    color: FontColorName,
+    variant: FontVariant = 'body',
+  ): void => {
+    const t = makeText(text, color, variant);
+    t.anchor.set(0, 0.5);
+    t.position.set(Math.round(x), Math.round(centerY + CENTER_BIAS * scale));
   };
 
   const textRight = (
@@ -468,6 +483,7 @@ export function createChrome(
   return {
     textAt,
     textCentered,
+    textLeftMiddle,
     textRight,
     tile,
     guiCentered,
