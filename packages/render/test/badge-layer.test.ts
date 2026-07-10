@@ -25,20 +25,20 @@ const badge = (
   gatherers,
 });
 
-/** The stack sits to the RIGHT of the door and starts LOW (badge-layer's OFFSET_X / DOOR_LIFT). */
-const OFFSET_X = 14;
+/** The stack starts LOW, just below its anchor (badge-layer's DOOR_LIFT). Horizontal placement is the
+ *  anchor's own — the app resolves the worker-icon node beside the door, this layer adds no x offset. */
 const DOOR_LIFT = -6;
 
 describe('BadgeLayer', () => {
-  it('stacks one square per bound worker (craftsmen + carriers + gatherers) at the door node', () => {
+  it('stacks one square per bound worker (craftsmen + carriers + gatherers) at its anchor node', () => {
     const layer = new BadgeLayer();
     layer.draw([badge(1, 3, 5, 2, 1, 1)]);
     const stack = layer.container.children[0];
     expect(layer.container.children).toHaveLength(1); // one stack for the one building
     expect(stack?.children).toHaveLength(4); // 2 craftsmen + 1 carrier + 1 gatherer = 4 squares
-    const door = tileToScreen(3, 5);
-    expect(stack?.position.x).toBe(door.x + OFFSET_X);
-    expect(stack?.position.y).toBe(door.y - DOOR_LIFT);
+    const anchor = tileToScreen(3, 5);
+    expect(stack?.position.x).toBe(anchor.x);
+    expect(stack?.position.y).toBe(anchor.y - DOOR_LIFT);
   });
 
   it('rebuilds a stack when its counts change and retires it when the building leaves the list', () => {

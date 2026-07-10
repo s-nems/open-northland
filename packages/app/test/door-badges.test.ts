@@ -1,12 +1,13 @@
 import { type WorldSnapshot, fx, nodeOfPosition, positionOfNode } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
+import { workerIconOffset } from '../src/catalog/building-tweaks.js';
 import { type BuildingDoorInfo, computeDoorBadges } from '../src/view/door-badges.js';
 
 /**
  * computeDoorBadges — the pure snapshot→door-badge projection the render layer draws. It reads the sim's
  * {@link JobAssignment} binding, so a badge appears for every worker bound to a building (auto-assigned
  * or player-assigned), split by worker role (craftsman / carrier / gatherer via `roleOf`), anchored on
- * the building's door node.
+ * the building's WORKER-ICON node (the door node shifted beside the doorway — `workerIconNode`).
  */
 
 const CARRIER = 26; // a carrier job id
@@ -64,11 +65,12 @@ describe('computeDoorBadges', () => {
     expect(badge?.craftsmen).toBe(2);
     expect(badge?.carriers).toBe(1);
     expect(badge?.gatherers).toBe(1);
-    // Anchored on the door node = the building's anchor node plus the type's door offset.
+    // Anchored on the worker-icon node = anchor + the type's door offset + the icon offset beside it.
     const anchor = nodeOfPosition(fx.fromInt(4), fx.fromInt(4));
-    const doorPos = positionOfNode(anchor.hx + 0, anchor.hy + 2);
-    expect(badge?.x).toBe(doorPos.x);
-    expect(badge?.y).toBe(doorPos.y);
+    const icon = workerIconOffset(undefined);
+    const iconPos = positionOfNode(anchor.hx + 0 + icon.dx, anchor.hy + 2 + icon.dy);
+    expect(badge?.x).toBe(iconPos.x);
+    expect(badge?.y).toBe(iconPos.y);
   });
 
   it('emits no badge for an unstaffed building, and ignores an unbound settler', () => {
@@ -80,13 +82,28 @@ describe('computeDoorBadges', () => {
     expect(computeDoorBadges(snap, new Map(), roleOf)).toEqual([]);
   });
 
-  it('falls back to the anchor node when the building type declares no door', () => {
+  it('falls back to beside the anchor node when the building type declares no door', () => {
     const snap = snapshotOf([building(1, 7, 4, 4), settler(2, CRAFTSMAN, 1)]);
 
     const badge = computeDoorBadges(snap, new Map(), roleOf)[0]; // type 7 absent → no door offset
     const anchor = nodeOfPosition(fx.fromInt(4), fx.fromInt(4));
-    const anchorPos = positionOfNode(anchor.hx, anchor.hy);
-    expect(badge?.x).toBe(anchorPos.x);
-    expect(badge?.y).toBe(anchorPos.y);
+    const icon = workerIconOffset(undefined);
+    const iconPos = positionOfNode(anchor.hx + icon.dx, anchor.hy + icon.dy);
+    expect(badge?.x).toBe(iconPos.x);
+    expect(badge?.y).toBe(iconPos.y);
+  });
+
+  it('honours a per-building worker-icon override (the HQ stack sits a node further out)', () => {
+    const types = new Map<number, BuildingDoorInfo>([
+      [7, { id: 'headquarters', footprint: { door: { dx: 0, dy: 2 } } }],
+    ]);
+    const snap = snapshotOf([building(1, 7, 4, 4), settler(2, CRAFTSMAN, 1)]);
+
+    const badge = computeDoorBadges(snap, types, roleOf)[0];
+    const anchor = nodeOfPosition(fx.fromInt(4), fx.fromInt(4));
+    const icon = workerIconOffset('headquarters');
+    const iconPos = positionOfNode(anchor.hx + 0 + icon.dx, anchor.hy + 2 + icon.dy);
+    expect(badge?.x).toBe(iconPos.x);
+    expect(badge?.y).toBe(iconPos.y);
   });
 });
