@@ -377,6 +377,10 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
         ? { col: hovered.col, row: hovered.row, buildingType: placeType }
         : null,
     );
+    // Feed the details panel's live "observation window" — a world cutout centred on the selected entity,
+    // rendered into the portrait box INSIDE renderer.update (a second world render, before the main stage
+    // render). Null when the selection has no portrait; the inset fits the entity's bounds to the box.
+    renderer.setPortraitInset(controls.portrait());
     // One retained update: reconcile the pooled sprites, draw the selection rings, render once.
     // `app.screen` tracks window resizes. No HUD frame is passed — the always-on stocks panel is gone;
     // the debug tick lives in the top overlay and the population/jobs/stocks in the stats window.

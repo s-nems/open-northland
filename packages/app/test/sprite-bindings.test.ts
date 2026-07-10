@@ -11,6 +11,7 @@ import { stateIndexForLevel, unshadedLogicTypeIds } from '../src/content/objects
 import {
   ADULT_CHARACTER_BY_JOB,
   CHARACTER_SPECS,
+  WARRIOR_SPEC_BY_WEAPON_GOOD,
   YOUNG_CHARACTER_BY_JOB,
   buildHumanBindings,
   carryAnimsByGood,
@@ -18,6 +19,7 @@ import {
   characterBinding,
   directionalAnimFromSeq,
 } from '../src/content/settler-gfx.js';
+import { WEAPON_GOOD_BY_JOB } from '../src/game/sandbox/ids.js';
 
 /**
  * The seq→frame-range math behind `?atlas=real` — the self-verifiable half of consuming the decoded
@@ -689,6 +691,20 @@ describe('the job → character tables (the [jobbasegraphics] transcription)', (
       expect(specId !== undefined && CHARACTER_SPECS[specId].rosterId).toBe('warrior');
     }
     expect(ADULT_CHARACTER_BY_JOB[5]).toBe('woman');
+  });
+
+  it('arming a warrior draws the same body its job does (the three weapon tables agree)', () => {
+    // `pickByJob` prefers the equipped-weapon body (`WARRIOR_SPEC_BY_WEAPON_GOOD`) over the job body
+    // (`ADULT_CHARACTER_BY_JOB`), so for every soldier job that spawns with a weapon good
+    // (`WEAPON_GOOD_BY_JOB`), the armed look MUST equal the job's own look — otherwise arming a warrior
+    // would silently reskin it. This locks the composite the render relies on across all three tables.
+    for (const [jobStr, good] of Object.entries(WEAPON_GOOD_BY_JOB)) {
+      const job = Number(jobStr);
+      const armed = WARRIOR_SPEC_BY_WEAPON_GOOD[good];
+      const byJob = ADULT_CHARACTER_BY_JOB[job];
+      expect(armed, `weapon good ${good} (job ${job})`).toBeDefined();
+      expect(armed, `job ${job}: armed body must match its job body`).toBe(byJob);
+    }
   });
 
   it('maps the age classes (1..4, Age-gated) onto the baby/child bodies', () => {

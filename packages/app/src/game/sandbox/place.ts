@@ -1,6 +1,7 @@
 import {
   type Command,
   type ResourceNodeSpec,
+  type SettlerEquipment,
   type Simulation,
   cellAnchorNode,
   components,
@@ -10,7 +11,7 @@ import {
 import { resolveVikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../rules.js';
-import { GATHERERS, type GathererSpec } from './ids.js';
+import { GATHERERS, type GathererSpec, weaponEquipmentFor } from './ids.js';
 
 const { Position, Stockpile } = components;
 
@@ -58,9 +59,16 @@ export function spawnSandboxSettler(
   x: number,
   y: number,
   owner: number = HUMAN_PLAYER,
-  opts: { readonly hitpoints?: number; readonly weaponTypeId?: number } = {},
+  opts: {
+    readonly hitpoints?: number;
+    readonly weaponTypeId?: number;
+    readonly equipment?: SettlerEquipment;
+  } = {},
 ): void {
   const node = cellAnchorNode(x, y);
+  // A warrior with no explicit loadout still gets its class weapon in the equipment slot (so its Broń
+  // row + drawn weapon match), derived from the job; an explicit `equipment` wins untouched.
+  const equipment = opts.equipment ?? weaponEquipmentFor(jobType);
   sim.enqueue({
     kind: 'spawnSettler',
     jobType,
@@ -70,6 +78,7 @@ export function spawnSandboxSettler(
     owner,
     ...(opts.hitpoints !== undefined ? { hitpoints: opts.hitpoints } : {}),
     ...(opts.weaponTypeId !== undefined ? { weaponTypeId: opts.weaponTypeId } : {}),
+    ...(equipment !== undefined ? { equipment } : {}),
   });
 }
 

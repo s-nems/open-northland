@@ -1,4 +1,10 @@
-import { type BuildingFootprint, type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
+import {
+  type BuildingFootprint,
+  type ContentSet,
+  type EquipCategory,
+  IR_VERSION,
+  parseContentSet,
+} from '@vinland/data';
 import {
   ATTACK_ATOMIC,
   CLAY_HARVEST_ATOMIC,
@@ -29,6 +35,7 @@ import {
   BUILDING_WAREHOUSE_00,
   BUILDING_WAREHOUSE_01,
   BUILDING_WAREHOUSE_02,
+  EQUIP_GOODS,
   GATHERERS,
   GOOD_COIN,
   GOOD_GOLD,
@@ -48,7 +55,9 @@ import {
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
+  JOB_SOLDIER_UNARMED,
   WEAPON_BROADSWORD,
+  WEAPON_FISTS,
   WEAPON_LONG_BOW,
   WEAPON_SHORT_BOW,
   WEAPON_SPEAR,
@@ -82,6 +91,8 @@ const ATTACK_EVENT_TYPE = 25;
 // equal the decoded gfx frame-list length (`[gfxanimatomic]` per-direction counts: sword 12, spear 27,
 // broadsword 29, bows 12/28) or the DRAWN swing truncates mid-animation — the sandbox previously ran a
 // made-up 4-tick sword swing against the 12-frame decoded swing, playing only its wind-up.
+const FIST_SWING_LENGTH = 12; // viking_soldier_attack_unarmed
+const FIST_HIT_FRAME = 6;
 const SWORD_SWING_LENGTH = 12; // viking_soldier_attack_sword_short
 const SWORD_HIT_FRAME = 9;
 const SPEAR_SWING_LENGTH = 27; // viking_soldier_attack_spear_iron
@@ -98,6 +109,15 @@ const BOW_DAMAGE = 34;
 const SWORD_DAMAGE = 40;
 const SPEAR_DAMAGE = 45;
 const BROADSWORD_DAMAGE = 55;
+// The fist is the weakest strike — a quarter of the short sword's, matching weapons.ini's fist
+// damagevalue 0 (400) vs the short sword's (1600). Keeps the unarmed warrior a real but feeble brawler.
+const FIST_DAMAGE = 10;
+
+/** The equip classification (slot + wear) per good typeId, so `sandboxContent()` can merge it onto the
+ *  global catalog good of the same typeId (an equippable good is declared ONCE, in `EXTENDED_GOODS`). */
+const EQUIP_CLASS_BY_TYPE: ReadonlyMap<number, { category: EquipCategory; wears: boolean }> = new Map(
+  EQUIP_GOODS.map((g) => [g.typeId, { category: g.category, wears: g.wears }]),
+);
 
 export interface SandboxContentExtras {
   readonly buildings?: readonly { typeId: number; id: string; kind?: string }[];
@@ -279,6 +299,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       allowedAtomics: [g.atomic],
     })),
     { typeId: JOB_CARRIER, id: 'carrier', name: 'Tragarz' },
+    { typeId: JOB_SOLDIER_UNARMED, id: 'soldier_unarmed', name: 'Wojownik (bez broni)' },
     { typeId: JOB_SOLDIER_SPEAR, id: 'soldier_spear', name: 'Wlocznik' },
     { typeId: JOB_SOLDIER_SWORD, id: 'soldier_sword', name: 'Miecznik' },
     { typeId: JOB_SOLDIER_BROADSWORD, id: 'soldier_broadsword', name: 'Miecznik (dwureczny)' },
@@ -298,6 +319,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
     id: 'viking',
     atomicBindings: [
       ...GATHERERS.map((g) => ({ jobType: g.job, atomicId: g.atomic, animation: g.animation })),
+      { jobType: JOB_SOLDIER_UNARMED, atomicId: ATTACK_ATOMIC, animation: 'viking_fist_attack' },
       { jobType: JOB_SOLDIER_SPEAR, atomicId: ATTACK_ATOMIC, animation: 'viking_spear_attack' },
       { jobType: JOB_SOLDIER_SWORD, atomicId: ATTACK_ATOMIC, animation: 'viking_sword_attack' },
       { jobType: JOB_SOLDIER_BROADSWORD, atomicId: ATTACK_ATOMIC, animation: 'viking_broadsword_attack' },
@@ -385,13 +407,19 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       // armor, potions, amulets, and the animal/vehicle/special tokens (see catalog/goods.ts). They carry no
       // bespoke gathering/production yet; they exist so the whole catalog is globally available with a name,
       // a stock slot (the storable ones) and its `ls_goods` icon, and can be dropped on the ground. The
-      // localized name (when supplied) overrides the built-in English catalog `name`.
-      ...EXTENDED_GOODS.map((g) => ({
-        typeId: g.typeId,
-        id: g.id,
-        name: extras.goodNames?.get(g.id) ?? g.name,
-        weight: 1,
-      })),
+      // equippable ones (130–155) additionally carry their equip classification (slot + wear, from
+      // EQUIP_GOODS, merged by typeId) so the selection panel can label/classify a worn item. The localized
+      // name (when supplied) overrides the built-in English catalog `name`.
+      ...EXTENDED_GOODS.map((g) => {
+        const equip = EQUIP_CLASS_BY_TYPE.get(g.typeId);
+        return {
+          typeId: g.typeId,
+          id: g.id,
+          name: extras.goodNames?.get(g.id) ?? g.name,
+          weight: 1,
+          ...(equip !== undefined ? { equip } : {}),
+        };
+      }),
     ],
     jobs: [...jobs.values()],
     buildings: [...buildings.values()].sort((a, b) => a.typeId - b.typeId),
@@ -414,6 +442,15 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       harvest: { landscapeType: resourceLandscapeType(g.good), gfxIndices: [resourceGfxIndex(g.good)] },
     })),
     weapons: [
+      {
+        typeId: WEAPON_FISTS,
+        id: 'viking_fist',
+        tribeType: PRIMARY_TRIBE,
+        jobType: JOB_SOLDIER_UNARMED,
+        minRange: 1,
+        maxRange: 1,
+        damage: { '0': FIST_DAMAGE },
+      },
       {
         typeId: WEAPON_SPEAR,
         id: 'viking_spear',
@@ -475,6 +512,12 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       })),
       // Each swing carries its mid-animation ATTACK event (the blow lands / the arrow looses THERE,
       // not at completion) — lengths + frames transcribed from the viking atomicanimations records.
+      {
+        id: 'viking_fist_attack',
+        name: 'viking_fist_attack',
+        length: FIST_SWING_LENGTH,
+        events: [{ at: FIST_HIT_FRAME, type: ATTACK_EVENT_TYPE }],
+      },
       {
         id: 'viking_spear_attack',
         name: 'viking_spear_attack',

@@ -3,7 +3,12 @@ import { type Camera, type ElevationField, type EntityBounds, buildSpriteScene }
 import { type Command, type Entity, type WorldSnapshot, nodeOfPosition } from '@vinland/sim';
 import type { Application } from 'pixi.js';
 import { isBuilding, isSettler, ownerPlayerOf, positionOf } from '../game/snapshot.js';
-import { type Profession, type UnitPanel, mountUnitPanel } from '../hud/details-panel/index.js';
+import {
+  type PortraitBox,
+  type Profession,
+  type UnitPanel,
+  mountUnitPanel,
+} from '../hud/details-panel/index.js';
 import { screenScale } from './camera.js';
 import { el } from './overlay.js';
 import {
@@ -91,6 +96,9 @@ export interface UnitControlsOptions {
 export interface UnitControls {
   /** The currently selected entity ids — fed to `renderer.update(..., selection)` for the feet rings. */
   selectedIds(): ReadonlySet<number>;
+  /** The details panel's live-portrait box (the world observation window's rect + entity), or null when the
+   *  selection has no portrait. The view feeds it to `renderer.setPortraitInset` each frame. */
+  portrait(): PortraitBox | null;
   /**
    * Per-frame hook: refresh the panel's live values (needs bars, order status). Takes the frame's
    * already-built snapshot so it does NOT rebuild a second one — `sim.snapshot()` is an O(entities)
@@ -347,6 +355,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
 
   return {
     selectedIds: () => selected,
+    portrait: () => panel.portrait(),
     // The HUD this controller defers to before world picking: the tool panel/windows (handed in), the
     // bottom-right details panel, and its own settler action ring. Including the details panel means a
     // consumer that gates on this — the admin spawn palette, the world hover tooltip — treats a point over

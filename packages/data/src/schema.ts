@@ -80,6 +80,35 @@ export const GoodClassification = z.strictObject({
 export type GoodClassification = z.infer<typeof GoodClassification>;
 
 /**
+ * A character-equipment category — the slot kind a good occupies when a Viking carries it. The
+ * original's equippable goods are `goodtypes.ini` ids 30–55 (confirmed by each tribe's `allowequip`
+ * list in `tribetypes.ini`, and the manual's Equipment section: "You can equip your Vikings with
+ * shoes, tools, mead, potions and amulets" + soldiers additionally with weapons and armour). Weapons
+ * and armour are soldier-only; shoes/tools/consumables anyone. This is the SLOT category; the sim's
+ * `Equipment` component groups worn goods by it.
+ */
+export const EQUIP_CATEGORIES = ['boots', 'tool', 'weapon', 'armor', 'misc'] as const;
+export const EquipCategory = z.enum(EQUIP_CATEGORIES);
+export type EquipCategory = z.infer<typeof EquipCategory>;
+
+/**
+ * A good's equipment classification — present only on the equippable goods (the original's ids 30–55).
+ * `category` names the slot kind; `wears` marks whether the item is used up in use. The wear split is
+ * source-pinned to the manual: potions, shoes and tools are "slowly used up" ("Partly used items
+ * (potions, shoes, ...) you drop are lost"), while "unused items such as weapons, armour and amulets
+ * can be used again" (amulets: "their power is never diminished"). The per-use consumption MAGNITUDE
+ * is engine-hardcoded (no numeric field exists in any readable `.ini` — verified), so no rate lives
+ * here; a wearing item just carries a "degree of use" the UI shows as a percentage.
+ */
+export const EquipClass = z.strictObject({
+  category: EquipCategory,
+  /** True when the item is consumed with use (potions/shoes/tools); false for permanent gear
+   *  (weapons/armour/amulets). Source basis: manual Equipment section (see {@link EquipClass}). */
+  wears: z.boolean().default(false),
+});
+export type EquipClass = z.infer<typeof EquipClass>;
+
+/**
  * A raw good's three-stage gathering pipeline, from the `[goodtype]` `landscapeTo*` fields. The
  * original models gathering as a chain of {@link LandscapeType} states a cell passes through: a
  * settler HARVESTS the source object ({@link harvest} — a `tree`/`rock`/`mine`), it becomes a
@@ -179,6 +208,13 @@ export const GoodType = z.strictObject({
    * {@link GoodClassification} and historical plan phase 3.
    */
   classification: GoodClassification.default({}),
+  /**
+   * The good's character-equipment classification — its slot category + whether it wears out. Present
+   * only on the equippable goods (the original's ids 30–55: shoes, tools, armour, weapons, mead,
+   * potions, amulets); omitted for every economy good. Consumed by the sim's `Equipment` component and
+   * the selection UI's equipment-slots row. See {@link EquipClass}.
+   */
+  equip: EquipClass.optional(),
   source: Provenance.optional(),
 });
 export type GoodType = z.infer<typeof GoodType>;

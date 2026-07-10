@@ -46,6 +46,107 @@ it off). Verified: unit tests for the
 new speed control + ring scale, Playwright pass at DPR 2 (cycle glyphs, pause wash on/off, ring
 size, selection/picking). Visual sign-off: user.
 
+Progress note — equipment slots + settler panel redesign (2026-07-10, `feat/equipment-slots`,
+user-requested, not a numbered step): the settler details panel was rebuilt from a single flat card
+into the original human window's **four stacked sections**, styled like the building panel — Ogólne
+(portrait box + profession name + owner/tribe/stance meta + stat bars), Praca (workplace + product),
+Doświadczenie (highest specialization), Ekwipunek (labeled equipment rows). Every section title and
+label resolves from the **decoded `humanwindow` string table** (`HUMANWINDOW` id map): section titles
+1/3/5/4, stat labels Zdrowie/Energia/Wytrzymałość/Motywacja Społeczna/Religia (11–15), slot labels
+Broń/Zbroja/Buty/Narzędzia/Ekwipunek (60/63/66/69/72). The equipment section shows one labeled row per
+slot group — Buty, Narzędzia, then Broń + Zbroja for a soldier (a unit with a combat `Weapon` or an
+equipped weapon/armour slot), then the four misc consumable sockets — so which slot holds what reads at
+a glance (the user's complaint about the old strip). Sockets are round recessed wells; an occupied
+socket draws the good's `ls_goods` icon, a wearing good (potions/shoes/tools) shows its "degree of use"
+percent beside the socket, permanent gear (weapons/armour/amulets) none.
+
+Sim side (unchanged from the first pass, goldens byte-identical): the `Equipment` component
+(separate-optional, stamped via `spawnSettler{equipment}`, fuzz generator updated), `equip`
+classification on goods (`data/schema.ts`), the sandbox equip good set (ids 30–55), and the
+`?scene=equipment` scene. The redesign is UI-layer only (`hud/details-panel/` model/layout/chrome/
+sections) — no sim touch. Source basis: equip categories pinned to `goodtypes.ini` 30–55 +
+`tribetypes.ini` `allowequip` + the manual's Equipment section; the wear split is the manual's
+("potions/shoes/tools used up" vs weapons/armour/amulets "can be used again"). The stat bars show the
+original's SATISFACTION level (`100 − need`, full = content) with a named approximation for the
+stat→need map (Energia←hunger, Wytrzymałość←fatigue, Motywacja Społeczna←enjoyment, Religia←piety —
+the original's five human stats don't map 1:1 to the sim's four needs); health leads for a unit with a
+`Health` component. Fidelity note: mead restores HUNGER only — `CHANGE_ENERGY` (bucket 2) IS the
+food/hunger bar; only sleep writes the tiredness bar (bucket 1), so "mead also restores sleep" is a
+conflation with the internal `ENERGY` naming. Field labels draw in the cream `white` fill (the dim tan
+read poorly on the wood). Named approximations: the Praca key labels "Miejsce"/"Produkt" are pinned (the
+original shows an inline icon), and Doświadczenie reads empty today (the sim awards no experience yet —
+the data path is wired to `Settler.experience`).
+
+The portrait box is now a **live world "observation window"** (the original's per-selection preview),
+shared by the settler and building panels: each frame `WorldRenderer` renders its `worldLayer` a second
+time re-aimed at the selected entity into a per-panel `RenderTexture` shown over the box, so you see the
+unit/building in its surroundings. The inset never zooms out past the game camera (stays a subset of the
+main cull); the screen-space team-colour character meshes are re-placed for the inset camera around that
+render (`SpritePool.placePalettedFor`, O(drawn)) since they can't ride the re-aimed layer. The panel
+exposes its box via `UnitPanel.portrait()`; the view feeds it to `renderer.setPortraitInset`. Falls back
+to the baked person-glyph placeholder when the entity is off-screen or `content/` is absent. Perf note:
+the second world render is one extra pass of the ON-SCREEN scene while a single unit is selected — bounded,
+but a tight PiP-only cull is a future optimization if battle-scale selection cost shows up.
+
+Verified: `npm test` (1721) + check + build green; hands-on in `?scene=equipment` — building portrait
+shows a live ship cutout, soldier panel shows 5 bars (incl. Zdrowie) + Broń/Zbroja rows + Buty 70% /
+Ekwipunek 60% filled sockets, civilian shows 3 rows all empty, and the observation window renders the
+character standing in its world; no console errors. Deferred: the consume/drink drive (would decrement
+uses — potions 2/5), the extractor populating `equip` on the real `ir.json`, potion/amulet icons (no
+`ls_goods` pile), and the per-specialization experience icon strip. Visual sign-off: pending user.
+
+Follow-up fixes (2026-07-10, same branch): (a) the observation window jittered side-to-side because it
+framed a settler by fitting its DRAWN bounds, which breathe as the idle look-around animation sways the
+sprite. Now a settler is framed off its stable feet ANCHOR at a fixed nominal body height (`world-renderer`
+`portraitFraming` branches on a `settler`/`building` kind carried on `PortraitInsetFrame`); buildings keep
+fitting their static bounds. The cutout holds still and only pans when the unit's feet move. (b) Added the
+bare-handed warrior — the one soldier class the admin palette/sandbox never offered. New `soldier_unarmed`
+(job 31) + its fists weapontype (real `weapons.ini` type 1, jobtype 31, range 1, damagevalue[0] 400 ≈ ¼
+of the short sword) + punch swing (`viking_soldier_attack_unarmed`: length 12, hit frame 6) + a 'Wojownik
+(bez broni)' preset. Draws the empty-hand body and brawls with fists. `npm test` 1722 green, sandbox
+goldens byte-identical (no existing entity resolves job 31). Verified hands-on: spawns unarmed, panel reads
+`soldier_unarmed` with Atak, red-vs-blue unarmed warriors close to melee and trade fist hits.
+
+(c) The warrior's DRAWN weapon now follows its **equipment weapon slot**, not its job ("the weapon in
+hand decides the look"). The render carries `Equipment.weapon.goodType` onto the `DrawItem`
+(`readEquipmentWeaponGood`) and a new `ByJobTable.byWeaponGood` maps it to a warrior body
+(`WARRIOR_SPEC_BY_WEAPON_GOOD`, weapon goods 37–42 → the shortbow/longbow/spear/sword/broadsword bodies);
+`pickByJob` takes the weapon good FIRST for adults and falls through to the job pick when the slot is
+empty/unmapped (a bare warrior keeps its job body, a civilian its civilian body). The admin warrior presets
+now also stamp the weapon into the equipment slot, so a spawned archer both draws its bow AND fills the
+panel's Broń row (empty before). Render + app-layer only; sandbox goldens byte-identical (its soldiers set no
+equipment weapon → unchanged job pick). `npm test` 1723 green. Verified hands-on: an admin Łucznik reads
+`soldier_bow`, draws a bow, and its Broń equipment slot now shows the bow. Deferred: an in-game equip action
+that changes the slot live (would then re-skin the warrior on the fly), and wiring the equipment weapon to
+the combat `Weapon` (still a separate axis).
+
+(d) Existing (not just newly-spawned) warriors now carry that equipment weapon too. Before, only the admin
+palette stamped it, so a soldier already standing on a scene (sandbox/combat) or an imported map read an empty
+Broń row while its sprite held a weapon. All three spawn paths — the scene placer (`spawnSandboxSettler`),
+the authored/imported-map spawn (`vertical-slice`) and the admin palette (`unitSpawnCommand`) — now derive the
+equipment weapon from ONE shared `jobType → weapon good` map (`WEAPON_GOOD_BY_JOB` / `weaponEquipmentFor` in
+`sandbox/ids.ts`); the admin presets dropped their now-redundant explicit `weaponGood`. The bare-handed warrior
+stays weaponless. Sandbox goldens byte-identical (equipment weapon is a display axis, separate from the combat
+`Weapon`, so combat outcomes are unchanged). `npm test` 1725 green (added a `weaponEquipmentFor` unit test over
+every class). Note: hands-on selection of a MOVING combat-scene warrior was too flaky to screenshot, so this
+was locked by the shared-helper tests + the identical-to-admin rendering already signed off in (c).
+
+Merge reconciliation (2026-07-10): the review battery (determinism/perf/fidelity/architecture/quality +
+a correctness pass) ran over the branch — no blockers; fidelity verified every weapon/atomic constant
+against the real `.ini` line-by-line. Findings addressed: three dead `humanwindow` string ids + a
+misleading "decoded" comment removed, `PortraitBox` collapsed onto render's exported `PortraitInsetFrame`,
+`EquipGoodSpec.category` reuses `@vinland/data`'s `EquipCategory`, a guard test that the three warrior
+tables agree, `spawn` equipment guard hardened to `!= null`. Deferred (noted, not blockers): the
+observation window re-renders the whole `worldLayer` reusing the main-camera cull (screen-bounded, not a
+rule-7 violation) and the panel model's per-frame `entityById` scans — both follow-ups. The **global
+goods** work landed on `main` in parallel and made the whole `goodtypes.ini` catalog global at
+sandbox-scoped ids (`EXTENDED_GOOD_TYPE_OFFSET` +100 → equippables at 130–155). Reconciled onto it: the
+equip goods are declared ONCE by `catalog/goods.ts` `EXTENDED_GOODS`; `EQUIP_GOODS` now carries only the
+slot/wear classification, merged onto the catalog by typeId in `sandboxContent()`; the equipment axis
+(`GOOD_*`, `WARRIOR_SPEC_BY_WEAPON_GOOD`) moved to the +100 ids so an equipped good IS the catalog good
+(one id, one icon, one name). Internal renumber only — no visual/golden change. Landed as one squashed
+reconciliation commit onto main; `npm test` 1787 + `check` + `build` green.
+
 Out of scope for this plan: the minimap (separate task) and the main menu. The frame-id map and
 geometry constants are our own metadata (committable); decoded original bytes are not (`content/`
 stays gitignored).

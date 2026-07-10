@@ -736,6 +736,23 @@ describe('pickByJob — the per-job character pick', () => {
     const bare: ByJobTable<string> = { byJob: { 5: 'woman' }, default: 'civilian' };
     expect(pickByJob(bare, 1, true)).toBe('civilian');
   });
+
+  it('an equipped weapon good drives the ADULT look over the job; an empty/unmapped slot falls through', () => {
+    const armed: ByJobTable<string> = {
+      byJob: { 31: 'warrior', 40: 'warrior-shortbow' },
+      byWeaponGood: { 41: 'warrior-sword', 37: 'warrior-shortbow' },
+      default: 'civilian',
+    };
+    // A bare warrior (job 31, no weapon) keeps its job body; equip a sword good and it draws the sword body.
+    expect(pickByJob(armed, 31, false)).toBe('warrior');
+    expect(pickByJob(armed, 31, false, 41)).toBe('warrior-sword');
+    // The weapon wins over a conflicting job — a job-40 archer holding a short-bow good still draws the bow.
+    expect(pickByJob(armed, 40, false, 37)).toBe('warrior-shortbow');
+    // An unmapped weapon good falls through to the job pick, not the default.
+    expect(pickByJob(armed, 31, false, 999)).toBe('warrior');
+    // A child never keys the weapon table even if a good is (spuriously) present.
+    expect(pickByJob(armed, 3, true, 41)).toBe('civilian');
+  });
 });
 
 describe('resolveResourceDraw — per-good resource node binding', () => {

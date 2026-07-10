@@ -51,6 +51,7 @@ import {
   ADULT_CHARACTER_BY_JOB,
   CHARACTER_SPEC_ENTRIES,
   type GoodRef,
+  WARRIOR_SPEC_BY_WEAPON_GOOD,
   YOUNG_CHARACTER_BY_JOB,
   buildHumanBindings,
   carryHeadAnims,
@@ -177,7 +178,13 @@ async function loadCharacters(
     const char = bySpec.get(specId);
     if (char !== undefined) youngByJob[Number(job)] = char;
   }
-  return { byJob, youngByJob, default: fallback };
+  // The equipped-weapon look table: a warrior draws the body of the weapon in its Equipment.weapon slot.
+  const byWeaponGood: Record<number, SettlerCharacter> = {};
+  for (const [good, specId] of Object.entries(WARRIOR_SPEC_BY_WEAPON_GOOD)) {
+    const char = bySpec.get(specId);
+    if (char !== undefined) byWeaponGood[Number(good)] = char;
+  }
+  return { byJob, youngByJob, byWeaponGood, default: fallback };
 }
 
 /**
