@@ -38,6 +38,9 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
   /** The loaded sprite sheet, so the workers field can draw its bound workers as animated on-map sprites.
    *  Absent (a bare checkout / headless test) → the field just stays empty. */
   readonly sheet?: SpriteSheet;
+  /** Select this entity — invoked when the player clicks a worker sprite in the Pracownicy field, so it
+   *  selects that settler (dropping the building), exactly like clicking the worker on the map. */
+  readonly onSelectEntity?: (entityId: number) => void;
 }
 
 export interface UnitPanel {
@@ -220,6 +223,12 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     if (!claimsPointer(clientX, clientY)) return false;
     if (button !== 0) return true; // over the panel — swallow, but only the left button acts
     const { x, y } = toCanvas(clientX, clientY);
+    // A click on a worker sprite selects that settler (like clicking it on the map) — before tabs/buttons.
+    const worker = workerOverlay.hitTest(x, y);
+    if (worker !== null) {
+      opts.onSelectEntity?.(worker);
+      return true;
+    }
     const tab = hitStockTab(x, y);
     if (tab !== null) {
       if (tab !== activeStockTab && lastModel.kind !== 'empty') {
