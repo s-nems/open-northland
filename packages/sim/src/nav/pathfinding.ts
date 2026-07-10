@@ -137,6 +137,16 @@ function scratchFor(graph: TerrainGraph): SearchScratch {
 const MAX_QUERY_GENERATION = 2 ** 31 - 1;
 
 /**
+ * A search's COST report, for callers that budget pathfinding work: `explored` is incremented once
+ * per node SETTLED (popped from the open set and expanded) — the unit the search's running time is
+ * proportional to. A pure out-parameter: it never influences the search, and the count is itself a
+ * deterministic function of the query (lockstep-safe to budget on).
+ */
+export interface SearchStats {
+  explored: number;
+}
+
+/**
  * Find the lowest-cost walkable path from `start` to `goal` on the half-cell graph, inclusive of
  * both endpoints. Returns `null` when no route exists or either endpoint is unwalkable.
  * `start === goal` yields the single-node path `[start]` (when walkable).
@@ -146,12 +156,16 @@ const MAX_QUERY_GENERATION = 2 ** 31 - 1;
  * node is never entered (goal included), but a blocked START is deliberately exempt — an entity
  * standing where a foundation just appeared must be able to step OFF the footprint (its first move
  * leaves the blocked node; it can never move back in).
+ *
+ * `stats`, when given, accumulates the search's {@link SearchStats.explored} node count (the
+ * early-out answers — bad endpoint, blocked goal, cross-component — settle nothing and cost 0).
  */
 export function findPath(
   graph: TerrainGraph,
   start: NodeId,
   goal: NodeId,
   blocked?: ReadonlySet<NodeId>,
+  stats?: SearchStats,
 ): NodeId[] | null {
   if (!graph.isWalkable(start) || !graph.isWalkable(goal)) return null;
   // Already-there wins over the overlay: consistent with the blocked-START exemption, an entity
@@ -212,6 +226,7 @@ export function findPath(
     const current = heap[0];
     if (current === undefined) return null; // open set exhausted — unreachable
 
+    if (stats !== undefined) stats.explored += 1; // one settle = one unit of search work
     if (current.node === goal) return reconstruct(recordAt, current);
 
     // Close it — admissible heuristic means it is now settled. Standard root removal: move the

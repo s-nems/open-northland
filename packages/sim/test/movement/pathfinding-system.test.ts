@@ -5,8 +5,8 @@ import { ONE, Simulation, type TerrainMap, fx, nodeOfPosition } from '../../src/
 import {
   ACCEL_TICKS,
   MOVE_SPEED_PER_TICK,
-  PATHFINDING_BUDGET_PER_TICK,
   type SystemContext,
+  drainPathRequests,
   pathfindingSystem,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -169,26 +169,50 @@ describe('pathfindingSystem — failure handling', () => {
   });
 });
 
-describe('pathfindingSystem — per-tick budget', () => {
-  it('resolves at most PATHFINDING_BUDGET_PER_TICK requests per tick, lowest ids first', () => {
+describe('pathfindingSystem — per-tick search budget', () => {
+  it('a formation of cheap local requests drains in ONE tick (the budget is search cost, not a request count)', () => {
+    // The crowd case the node budget exists for: forty short routes settle a handful of nodes each,
+    // far under the tick budget, so the whole formation starts together instead of in an id-order
+    // wave (the old fixed request count spread exactly this over five ticks).
     const { sim, request } = mappedSim(grassMap(2, 1));
     const start = sim.terrain?.nodeAt(0, 0) as number;
     const goal = sim.terrain?.nodeAt(1, 0) as number;
-    const n = PATHFINDING_BUDGET_PER_TICK + 3;
     const entities: Entity[] = [];
-    for (let i = 0; i < n; i++) entities.push(request(start, goal));
+    for (let i = 0; i < 40; i++) entities.push(request(start, goal));
 
     sim.step();
+    expect(entities.every((e) => !sim.world.has(e, PathRequest))).toBe(true);
+  });
 
-    // Exactly the budget got served (PathRequest cleared) this tick.
+  it('cuts on the node budget lowest ids first, and the overshooting request still completes', () => {
+    const { sim, request } = mappedSim(grassMap(2, 1));
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim must have terrain');
+    const start = terrain.nodeAt(0, 0) as number;
+    const goal = terrain.nodeAt(1, 0) as number;
+    const entities: Entity[] = [];
+    for (let i = 0; i < 3; i++) entities.push(request(start, goal));
+    const ctx: SystemContext = {
+      content: testContent(),
+      rng: sim.rng,
+      tick: 1,
+      events: sim.events,
+      commands: sim.commands,
+      terrain,
+    };
+
+    // A 1-node budget is overshot by the very FIRST search — it must still complete (every tick
+    // makes progress), and everything after it waits for the next pass.
+    drainPathRequests(sim.world, ctx, terrain, 1);
     const served = entities.filter((e) => !sim.world.has(e, PathRequest));
-    expect(served.length).toBe(PATHFINDING_BUDGET_PER_TICK);
-    // ...and they are the lowest entity ids (canonical order), not an arbitrary subset.
-    const sorted = [...entities].sort((a, b) => a - b);
-    expect(served.sort((a, b) => a - b)).toEqual(sorted.slice(0, PATHFINDING_BUDGET_PER_TICK));
+    expect(served).toEqual([entities[0]]); // exactly the lowest id
 
-    // The remainder drain on the next tick.
-    sim.step();
+    drainPathRequests(sim.world, ctx, terrain, 1);
+    const servedAfterSecond = entities.filter((e) => !sim.world.has(e, PathRequest));
+    expect(servedAfterSecond).toEqual([entities[0], entities[1]]); // the next lowest follows
+
+    // A budget comfortably above the remaining work drains the rest in one pass.
+    drainPathRequests(sim.world, ctx, terrain, 1024);
     expect(entities.every((e) => !sim.world.has(e, PathRequest))).toBe(true);
   });
 });
