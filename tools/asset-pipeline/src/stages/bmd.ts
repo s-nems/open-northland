@@ -30,9 +30,11 @@ import { walkFiles } from '../walk.js';
  * container or a wrong-sized palette — the batch tree-walk (a later step) catches it per-file. The
  * **palette source** for a given `.bmd` (which `palettes.ini` entry / `.pcx` trailer pairs with it) is
  * the open question that gates the full tree-walk, so this seam takes the palette as a parameter today.
+ * `flattenAlpha` replays the engine's plain (opaque) blit instead of the per-pixel-alpha one — see
+ * {@link packBobAtlas}; the house atlases need it.
  */
-export function bmdToAtlas(bmdBytes: Uint8Array, palette: Uint8Array): BobAtlas {
-  return packBobAtlas(decodeBmd(bmdBytes), palette);
+export function bmdToAtlas(bmdBytes: Uint8Array, palette: Uint8Array, flattenAlpha = false): BobAtlas {
+  return packBobAtlas(decodeBmd(bmdBytes), palette, undefined, flattenAlpha);
 }
 
 /**
@@ -72,6 +74,11 @@ export interface BmdConversion {
  */
 function paletteSlug(name: string): string {
   return name.replace(/[^a-z0-9_]+/g, '_');
+}
+
+/** The `(bmd, palette)` identity of a binding — the unit an atlas file is emitted (and deduped) per. */
+function bindingKey(binding: Pick<BmdPaletteBinding, 'bmd' | 'paletteName'>): string {
+  return `${binding.bmd} ${binding.paletteName}`;
 }
 
 /**
@@ -132,11 +139,18 @@ export function jobBaseGraphicsToBindings(records: readonly JobBaseGraphicsBindi
  * (last-palette-wins). The palette name is the only per-creature differentiator, so it goes in the
  * filename — `(bmd, palette)` now names a distinct atlas. The shadow `.bmd` is left for a later step
  * (shadows use a separate, single-colour palette path).
+ *
+ * `opaqueAlphaKeys` (the `(bmd, palette)` keys claimed by a `[GfxHouse]` record — see
+ * {@link resolveGraphicsBindings}) bake with the plain opaque blit instead of the Double8Bit
+ * per-pixel alpha: a house bob's alpha bytes are not coverage, and the engine's house path ignores
+ * them. Keyed on `(bmd, palette)` — not the binding's origin — so an atlas shared by a landscape
+ * record (the residence houses / wonders placed as map decor) stays opaque for both consumers.
  */
 export async function convertBmdTree(
   bindings: readonly BmdPaletteBinding[],
   palettes: readonly PaletteAlias[],
   outDir: string,
+  opaqueAlphaKeys: ReadonlySet<string> = new Set(),
 ): Promise<BmdConversion[]> {
   const done: BmdConversion[] = [];
   const paletteByName = new Map<string, string>();
@@ -165,7 +179,8 @@ export async function convertBmdTree(
         console.warn(`[pipeline] skipped ${binding.bmd}: palette ${pcxRel} has no trailer`);
         continue;
       }
-      atlas = bmdToAtlas(await readFile(join(outDir, bmdOnDisk)), palette);
+      const flattenAlpha = opaqueAlphaKeys.has(bindingKey(binding));
+      atlas = bmdToAtlas(await readFile(join(outDir, bmdOnDisk)), palette, flattenAlpha);
     } catch (err) {
       console.warn(`[pipeline] skipped ${binding.bmd}: ${(err as Error).message}`);
       continue;
@@ -236,7 +251,7 @@ export async function convertBmdTree(
 export async function resolveGraphicsBindings(
   gameDir: string,
   mod: string | undefined,
-): Promise<{ bindings: BmdPaletteBinding[]; palettes: PaletteAlias[] }> {
+): Promise<{ bindings: BmdPaletteBinding[]; palettes: PaletteAlias[]; opaqueAlphaKeys: Set<string> }> {
   const readIni = async (rel: string): Promise<RuleSection[] | undefined> => {
     const path = join(gameDir, rel);
     try {
@@ -279,12 +294,19 @@ export async function resolveGraphicsBindings(
     // landscape additions so the human/animal/vehicle bindings array stays byte-identical to before.
     const seen = new Set<string>();
     for (const b of extractLandscapeGraphics(landscapesCif)) {
-      const key = `${b.bmd} ${b.paletteName}`;
+      const key = bindingKey(b);
       if (seen.has(key)) continue;
       seen.add(key);
       bindings.push(b);
     }
   }
+  // The (bmd, palette) atlases claimed by a [GfxHouse] record bake OPAQUE (`convertBmdTree`'s
+  // `opaqueAlphaKeys`): a house bob's Double8Bit alpha bytes are NOT coverage (mean ≈100 across solid
+  // walls/roofs — used as alpha, the original's solid buildings would draw as 40% ghosts), so the house
+  // atlases replay the engine's plain PrintBob blit, which skips that byte (CBobManager; the corpus
+  // shows solid buildings). Keyed on (bmd, palette), so the shared atlases (residence houses/wonders
+  // also placed as [GfxLandscape] map decor) stay opaque for both consumers.
+  const opaqueAlphaKeys = new Set<string>();
   if (mod !== undefined) {
     const humanGraphics = await readIni(join(mod, 'types', 'humanstype', 'jobgraphics.ini'));
     if (humanGraphics) {
@@ -311,7 +333,8 @@ export async function resolveGraphicsBindings(
     if (buildingGraphics) {
       const seen = new Set<string>();
       for (const b of extractBuildingGraphics(buildingGraphics)) {
-        const key = `${b.bmd} ${b.paletteName}`;
+        const key = bindingKey(b);
+        opaqueAlphaKeys.add(key);
         if (seen.has(key)) continue;
         seen.add(key);
         bindings.push(b);
@@ -321,5 +344,6 @@ export async function resolveGraphicsBindings(
   return {
     bindings,
     palettes: palettesIni ? extractPaletteIndex(palettesIni) : [],
+    opaqueAlphaKeys,
   };
 }

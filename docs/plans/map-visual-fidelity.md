@@ -278,8 +278,10 @@ the strip, ask the owner for one coastal screenshot instead of guessing.
 3. Shore bands: compare the shallow-water/shore transition vs the original (the lmms ring lanes
    are decoded but unconsumed — check whether the baked empa/empb patterns already carry the
    whole shore look, i.e. nothing to do).
-4. While in the water code: verify the wave alpha (our 0.5 reading of GfxDynamicBackground) against
-   an aligned corpus patch — measure, don't eyeball; update the constant + plan progress note if off.
+4. While in the water code: the wave translucency is now the Double8Bit bobs' PER-PIXEL alpha baked
+   into the atlas (mean ≈35/255; the old flat 0.5 approximation is deleted — progress log
+   "soft decals"). Verify the resulting water against an aligned corpus patch — measure, don't
+   eyeball; if the composite is off, the suspect is blending/phase, not a flat constant.
 
 Tests for any behavioural change (phase selection is pure). Side-by-side of a river patch
 (mosty-3/4) for the user. Stop before merge.
@@ -325,7 +327,19 @@ closing. Stop before merge.
 
 Format: `N. <date> — <what landed>; <key numbers/findings>; <deviations from the prompt, if any>.`
 
-- (out of band) 2026-07-10 — terrain-mesh rebuild (`feat/terrain-mesh-rebuild`, user-authored /worktree
+- (out of band) 2026-07-10 — soft decals (`fix/grass-patch-blend`, user-reported "dark-green placki
+  on grass"): the harsh dark blobs were TYPE-4 (Double8Bit) bobs drawn opaque — the pipeline's
+  `decodeBobFrame` skipped each pixel pair's SECOND byte, which is the pixel's 8-bit alpha
+  (CBobManager `PrintBob_UsingShadedAlpha`: `[index, alpha]`, `a=alphaByte·(256−shade)/256`,
+  src-over — format oracle). Now `BobFrame.mask` carries 0–255 coverage and every atlas bakes it
+  (ferns median α 172, grass tufts 192, smoke 77, waves 29 — soft decals; trees/stones/goods/GUI
+  median 255 so solid art stays solid). EXCEPTION pinned by measurement: `[GfxHouse]` bobs' alpha
+  bytes are NOT coverage (mean ≈100 over solid walls → 40% ghost buildings), so atlases claimed by a
+  [GfxHouse] binding bake OPAQUE (`opaqueAlphaKeys`, keyed on (bmd, palette) — covers the
+  residence-house/wonder landscape twins; engine's house path = the plain `PrintBob` blit that skips
+  the byte). The waves' flat `WAVE_ALPHA=0.5` approximation is DELETED — their translucency is the
+  per-pixel data (step 9 item 4 updated). Gates green + real pipeline run; owner's pixel sign-off
+  PENDING. (`feat/terrain-mesh-rebuild`, user-authored /worktree
   task): the ground mesh moved off diamond-per-cell onto the ORIGINAL tessellation — triangles
   BETWEEN cell-centre nodes (A=[own,SE,SW], B=[own,E,SE]; source basis: the cultures2-gl/-wasm
   oracle, MIT — docs/SOURCES.md "terrain tessellation"); `emt1..emt4` pinned as per-triangle

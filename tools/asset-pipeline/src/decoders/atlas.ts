@@ -47,7 +47,7 @@ export interface AtlasFrame {
    */
   readonly offsetX: number;
   readonly offsetY: number;
-  /** True if the frame wrote at least one opaque pixel (an all-transparent or empty frame is `false`). */
+  /** True if the frame wrote at least one visible pixel (an all-transparent or empty frame is `false`). */
   readonly opaque: boolean;
 }
 
@@ -66,9 +66,11 @@ export interface BobAtlas {
 
 /**
  * Colours one decoded {@link BobFrame} into straight RGBA using a 256-entry palette (768 RGB bytes,
- * `[R,G,B] × 256`, the shared currency from `pcx`/`palette`). Alpha is the frame's `mask`: a written
- * pixel is opaque, an unwritten one fully transparent (RGB 0 too). Throws (with an `atlas:` prefix) if
- * the palette isn't exactly 768 bytes — a programmer error, since decoded palettes always are.
+ * `[R,G,B] × 256`, the shared currency from `pcx`/`palette`). Alpha is the frame's `mask` value: an
+ * unwritten pixel is fully transparent (RGB 0 too); a written one carries its 0–255 coverage — 255 for
+ * the single-byte bob types, the per-pixel alpha byte for Double8Bit decals (ferns, smoke, wave foam;
+ * see `BOB_TYPE_DOUBLE8BIT`). Throws (with an `atlas:` prefix) if the palette isn't exactly 768 bytes —
+ * a programmer error, since decoded palettes always are.
  */
 export function expandBobFrame(frame: BobFrame, palette: Uint8Array): RgbaImage {
   if (palette.length !== 768) {
@@ -83,7 +85,7 @@ export function expandBobFrame(frame: BobFrame, palette: Uint8Array): RgbaImage 
     rgba[o] = palette[p] ?? 0;
     rgba[o + 1] = palette[p + 1] ?? 0;
     rgba[o + 2] = palette[p + 2] ?? 0;
-    rgba[o + 3] = 0xff;
+    rgba[o + 3] = mask[i] as number;
   }
   return { width, height, rgba };
 }
@@ -93,9 +95,10 @@ export function expandBobFrame(frame: BobFrame, palette: Uint8Array): RgbaImage 
  * channel, `mask` in alpha, green/blue left 0. No palette is applied — the colour is deferred to the
  * renderer, which reads each index through a per-player palette LUT (see `player-palette.ts`). This is
  * the alternative to {@link expandBobFrame} for the character bodies, whose clothing band must be
- * recoloured per player at draw time. A written pixel is opaque (alpha 255) and carries its real index
- * (index 0 is a valid colour for bobs); an unwritten pixel is fully transparent (all-zero), so the index
- * is only read where alpha is set.
+ * recoloured per player at draw time. A written pixel carries its real index (index 0 is a valid colour
+ * for bobs) with the frame's 0–255 coverage as alpha (255 for the single-byte bob types, the per-pixel
+ * alpha byte for Double8Bit); an unwritten pixel is fully transparent (all-zero), so the index is only
+ * read where alpha is set.
  */
 export function expandBobFrameIndexed(frame: BobFrame): RgbaImage {
   const { width, height, pixels, mask } = frame;
@@ -104,7 +107,7 @@ export function expandBobFrameIndexed(frame: BobFrame): RgbaImage {
     if (mask[i] === 0) continue; // transparent: leave RGBA all-zero
     const o = i * 4;
     rgba[o] = pixels[i] ?? 0; // palette index → red channel (G/B stay 0)
-    rgba[o + 3] = 0xff;
+    rgba[o + 3] = mask[i] as number;
   }
   return { width, height, rgba };
 }
@@ -142,9 +145,29 @@ interface PreparedFrame {
  * bounding box of the placed frames (plus the gutter), or a 1×1 transparent pixel when nothing has
  * pixels (a valid PNG can't be 0×0). Throws (`atlas:` prefix) only on a malformed palette via
  * {@link expandBobFrame}; a structurally odd bob is tolerated by {@link decodeBobFrame} upstream.
+ *
+ * `flattenAlpha` bakes every written pixel fully opaque, discarding the Double8Bit per-pixel alpha
+ * bytes — the engine's plain `PrintBob` path, which the HOUSE renderer uses: a `[GfxHouse]` bob's
+ * second byte is NOT coverage (≈100 mean across solid walls/roofs — drawn through the alpha path the
+ * original's solid buildings would be 40% ghosts), so house atlases must replay the opaque blit.
  */
-export function packBobAtlas(bmd: Bmd, palette: Uint8Array, maxWidth = DEFAULT_ATLAS_MAX_WIDTH): BobAtlas {
-  return packBobAtlasWith(bmd, (frame) => expandBobFrame(frame, palette), maxWidth);
+export function packBobAtlas(
+  bmd: Bmd,
+  palette: Uint8Array,
+  maxWidth = DEFAULT_ATLAS_MAX_WIDTH,
+  flattenAlpha = false,
+): BobAtlas {
+  const expand = flattenAlpha
+    ? (frame: BobFrame): RgbaImage => expandBobFrame(flattenFrameAlpha(frame), palette)
+    : (frame: BobFrame): RgbaImage => expandBobFrame(frame, palette);
+  return packBobAtlasWith(bmd, expand, maxWidth);
+}
+
+/** Every written (`mask≠0`) pixel forced fully opaque — the plain-blit twin of a decoded frame. */
+function flattenFrameAlpha(frame: BobFrame): BobFrame {
+  const mask = new Uint8Array(frame.mask.length);
+  for (let i = 0; i < mask.length; i++) mask[i] = frame.mask[i] !== 0 ? 0xff : 0;
+  return { ...frame, mask };
 }
 
 /**

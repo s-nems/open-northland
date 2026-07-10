@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BOB_ALPHA_OPAQUE,
   BOB_MASK_INDEX,
   BOB_TYPE_1BIT,
   BOB_TYPE_8BIT,
@@ -283,7 +284,7 @@ describe('decodeBobFrame', () => {
     expect(frame.width).toBe(3);
     expect(frame.height).toBe(1);
     expect([...frame.pixels]).toEqual([0x05, 0x07, 0x09]);
-    expect([...frame.mask]).toEqual([1, 1, 1]);
+    expect([...frame.mask]).toEqual([BOB_ALPHA_OPAQUE, BOB_ALPHA_OPAQUE, BOB_ALPHA_OPAQUE]);
   });
 
   it('honours xMin and skip runs (transparent gaps stay mask 0)', () => {
@@ -293,7 +294,7 @@ describe('decodeBobFrame', () => {
     const bmd = frameBmd(BOB_TYPE_8BIT, 6, 1, packed, [{ offset: 0, xMin: 1 }]);
     const frame = decodeBobFrame(bmd, 0);
     expect([...frame.pixels]).toEqual([0x00, 0x11, 0x22, 0x00, 0x33, 0x00]);
-    expect([...frame.mask]).toEqual([0, 1, 1, 0, 1, 0]);
+    expect([...frame.mask]).toEqual([0, BOB_ALPHA_OPAQUE, BOB_ALPHA_OPAQUE, 0, BOB_ALPHA_OPAQUE, 0]);
   });
 
   it('treats a 0xFFFFFFFF control word as a fully transparent row', () => {
@@ -302,7 +303,7 @@ describe('decodeBobFrame', () => {
     const bmd = frameBmd(BOB_TYPE_8BIT, 2, 2, packed, [PACKED_EMPTY, 0]);
     const frame = decodeBobFrame(bmd, 0);
     expect([...frame.pixels]).toEqual([0x00, 0x00, 0xaa, 0xbb]);
-    expect([...frame.mask]).toEqual([0, 0, 1, 1]);
+    expect([...frame.mask]).toEqual([0, 0, BOB_ALPHA_OPAQUE, BOB_ALPHA_OPAQUE]);
   });
 
   it('decodes a 1-bit mask: set bits become index 0xFF, clear bits stay transparent', () => {
@@ -311,23 +312,31 @@ describe('decodeBobFrame', () => {
     const bmd = frameBmd(BOB_TYPE_1BIT, 3, 1, packed, [0]);
     const frame = decodeBobFrame(bmd, 0);
     expect([...frame.pixels]).toEqual([BOB_MASK_INDEX, 0x00, BOB_MASK_INDEX]);
-    expect([...frame.mask]).toEqual([1, 0, 1]);
+    expect([...frame.mask]).toEqual([BOB_ALPHA_OPAQUE, 0, BOB_ALPHA_OPAQUE]);
   });
 
-  it('decodes a double-byte bob: first byte is the index, the second is skipped', () => {
-    // Raw run of 2 double-pixels: [idx=0x40, skip=0x99][idx=0x50, skip=0x88], then terminator.
+  it('decodes a double-byte bob: first byte is the index, the second its per-pixel alpha', () => {
+    // Raw run of 2 double-pixels: [idx=0x40, a=0x99][idx=0x50, a=0x88], then terminator (CBobManager
+    // PrintBob_UsingShadedAlpha: the pair is [indexByte, alphaByte]).
     const packed = [0x02, 0x40, 0x99, 0x50, 0x88, 0x00];
     const bmd = frameBmd(BOB_TYPE_DOUBLE8BIT, 2, 1, packed, [0]);
     const frame = decodeBobFrame(bmd, 0);
     expect([...frame.pixels]).toEqual([0x40, 0x50]);
-    expect([...frame.mask]).toEqual([1, 1]);
+    expect([...frame.mask]).toEqual([0x99, 0x88]);
+  });
+
+  it('keeps a double-byte pixel with alpha 0 transparent (the engine skips a <= 0 pixels)', () => {
+    const packed = [0x02, 0x40, 0x00, 0x50, 0xff, 0x00];
+    const bmd = frameBmd(BOB_TYPE_DOUBLE8BIT, 2, 1, packed, [0]);
+    const frame = decodeBobFrame(bmd, 0);
+    expect([...frame.mask]).toEqual([0, 0xff]);
   });
 
   it('decodes a TimeMask bob like 8-bit (raw indices)', () => {
     const bmd = frameBmd(BOB_TYPE_TIMEMASK, 2, 1, [0x02, 0x12, 0x34, 0x00], [0]);
     const frame = decodeBobFrame(bmd, 0);
     expect([...frame.pixels]).toEqual([0x12, 0x34]);
-    expect([...frame.mask]).toEqual([1, 1]);
+    expect([...frame.mask]).toEqual([BOB_ALPHA_OPAQUE, BOB_ALPHA_OPAQUE]);
   });
 
   it('yields an all-transparent frame for an empty (type 0) bob', () => {
@@ -346,7 +355,7 @@ describe('decodeBobFrame', () => {
     const bmd = frameBmd(BOB_TYPE_8BIT, 2, 1, packed, [{ offset: 0, xMin: 0 }], 2);
     const frame = decodeBobFrame(bmd, 0);
     expect([...frame.pixels]).toEqual([0xa0, 0xb0]);
-    expect([...frame.mask]).toEqual([1, 1]);
+    expect([...frame.mask]).toEqual([BOB_ALPHA_OPAQUE, BOB_ALPHA_OPAQUE]);
   });
 
   it('tolerates a truncated raw run without throwing (stops like the clipped original)', () => {
@@ -355,7 +364,7 @@ describe('decodeBobFrame', () => {
     const bmd = frameBmd(BOB_TYPE_8BIT, 4, 1, packed, [0]);
     const frame = decodeBobFrame(bmd, 0);
     expect([...frame.pixels]).toEqual([0x01, 0x02, 0x00, 0x00]);
-    expect([...frame.mask]).toEqual([1, 1, 0, 0]);
+    expect([...frame.mask]).toEqual([BOB_ALPHA_OPAQUE, BOB_ALPHA_OPAQUE, 0, 0]);
   });
 
   it('throws on an out-of-range bob index', () => {

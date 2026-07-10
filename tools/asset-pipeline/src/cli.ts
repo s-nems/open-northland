@@ -71,8 +71,8 @@ async function run(args: Args): Promise<void> {
   // human body/head bobs. Each binding
   // names its palette by editname; palettes.ini resolves it to a .pcx, whose trailer palette colours
   // the bobs. Both the .bmd and the .pcx are read from the just-unpacked <out> tree.
-  const { bindings, palettes } = await resolveGraphicsBindings(args.game, args.mod);
-  const atlases = await convertBmdTree(bindings, palettes, args.out);
+  const { bindings, palettes, opaqueAlphaKeys } = await resolveGraphicsBindings(args.game, args.mod);
+  const atlases = await convertBmdTree(bindings, palettes, args.out, opaqueAlphaKeys);
   // Atlases are now named per (bmd, palette), so each per-creature recolour is its own file rather than
   // collapsing onto one body bob last-palette-wins. Report both the distinct atlas files and the distinct
   // body .bmd geometries behind them — the gap is the per-creature recolour fan-out.
