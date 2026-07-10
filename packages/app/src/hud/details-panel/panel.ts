@@ -51,20 +51,12 @@ export interface UnitPanel {
   dispose(): void;
 }
 
-/** The stock category tab a freshly-selected building opens on: the one holding the most of its goods. */
+/** The stock category tab a freshly-selected building opens on: the FIRST (lowest-index) category that
+ *  holds any of its goods, so the panel lands on the leading tab (Żywność for a general store) rather than
+ *  on whichever category happens to be fullest. */
 export function defaultStockTab(model: UnitPanelModel): number {
   if (model.kind !== 'building' || model.stock.length === 0) return 0;
-  const counts = new Map<number, number>();
-  for (const row of model.stock) counts.set(row.category, (counts.get(row.category) ?? 0) + 1);
-  let best = 0;
-  let bestCount = -1;
-  for (const [tab, count] of counts) {
-    if (count > bestCount || (count === bestCount && tab < best)) {
-      best = tab;
-      bestCount = count;
-    }
-  }
-  return best;
+  return Math.min(...model.stock.map((row) => row.category));
 }
 
 export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel> {
