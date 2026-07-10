@@ -40,6 +40,9 @@ const FIELD_PAD = 4;
 const CHAR_FILL = 0.82;
 const SLOT_W_FRAC = 0.72;
 
+/** A snapshot entity, as `buildSpriteScene` consumes it — the narrowed scene reuses these objects. */
+type WorkerEntity = WorldSnapshot['entities'][number];
+
 /** One drawn worker's clickable box (screen px) → its entity, so a click on the sprite selects it. */
 interface WorkerHit {
   readonly id: number;
@@ -82,17 +85,23 @@ export class WorkerSpriteOverlay {
       this.container.visible = false;
       return;
     }
-    const workers = this.boundWorkers(snapshot, buildingId);
-    if (workers.length === 0) {
+    const workerEntities = this.boundWorkers(snapshot, buildingId);
+    if (workerEntities.length === 0) {
       this.hideRest();
       this.container.visible = false;
       return;
     }
+    const workers = workerEntities.map((e) => e.id);
 
-    // Index the frame's draw items by entity so each worker resolves the SAME frame — and the SAME facing —
-    // it shows on the map (forcing a fixed facing made them animate walking the wrong way).
+    // Resolve each worker's draw item the SAME way the map does — same frame, same facing (forcing a fixed
+    // facing once made them animate walking the wrong way) — but project ONLY these ≤8 bound settlers, not
+    // the whole map: this overlay runs every frame while a building panel is open, so a full
+    // `buildSpriteScene(snapshot)` (an O(entities) project + sort, per render/AGENTS) just to look up 8 ids
+    // would duplicate the renderer's own scene build for the entire map every frame. Feeding the builder a
+    // snapshot narrowed to the bound workers keeps the identical projection while the cost tracks the panel.
     const items = new Map<number, DrawItem>();
-    for (const it of buildSpriteScene(snapshot)) if (it.kind === 'settler') items.set(it.ref, it);
+    const workerScene: WorldSnapshot = { ...snapshot, entities: workerEntities };
+    for (const it of buildSpriteScene(workerScene)) if (it.kind === 'settler') items.set(it.ref, it);
 
     const inner: Rect = {
       x: field.x + FIELD_PAD,
@@ -143,14 +152,15 @@ export class WorkerSpriteOverlay {
     this.plainTextures.clear();
   }
 
-  /** The (id-ordered, capped) settlers bound to `buildingId` — a view read, so snapshot order is fine. */
-  private boundWorkers(snapshot: WorldSnapshot, buildingId: number): number[] {
-    const out: number[] = [];
+  /** The (snapshot-ordered, capped) settler ENTITIES bound to `buildingId` — one O(entities) scan, whose
+   *  result also narrows the sprite-scene build above. A view read, so snapshot order is fine. */
+  private boundWorkers(snapshot: WorldSnapshot, buildingId: number): WorkerEntity[] {
+    const out: WorkerEntity[] = [];
     for (const e of snapshot.entities) {
       if (out.length >= MAX_WORKERS) break;
       if (!isSettler(e)) continue;
       const assignment = e.components.JobAssignment as { workplace?: unknown } | undefined;
-      if (num(assignment?.workplace) === buildingId) out.push(e.id);
+      if (num(assignment?.workplace) === buildingId) out.push(e);
     }
     return out;
   }

@@ -210,8 +210,10 @@ export class WorldRenderer {
       (ref) => this.pool.anchorOf(ref),
     );
     // Door badges float over the buildings: the app tallies each building's bound workers + projects its
-    // door node, this layer stacks one placeholder square per worker (carrier vs other) above the door.
-    this.badgeLayer.draw(doorBadges, this.elevation);
+    // door node, this layer stacks one placeholder square per worker (craftsman / carrier / gatherer,
+    // colour-coded) above the door. Culled to the same viewport as the sprites so the per-frame cost of a
+    // map full of staffed buildings tracks the screen.
+    this.badgeLayer.draw(doorBadges, this.elevation, vp);
     if (this.pauseWash.visible) {
       this.pauseWash.width = this.app.screen.width;
       this.pauseWash.height = this.app.screen.height;

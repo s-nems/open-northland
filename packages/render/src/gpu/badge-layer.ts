@@ -1,6 +1,7 @@
 import { Container, Graphics } from 'pixi.js';
 import type { ElevationField } from '../data/elevation.js';
 import { ONE, tileToScreen } from '../data/iso.js';
+import { type Viewport, isVisible } from '../data/viewport.js';
 
 /**
  * The DOOR-BADGE layer — a small stacked marker beside each staffed building's door showing how many
@@ -68,18 +69,30 @@ export class BadgeLayer {
   /**
    * Reconcile the badge stacks to `badges`: get-or-(re)build a stack per building whose counts changed,
    * move it to the building's door node (projected + terrain-lifted), then destroy stacks for buildings
-   * no longer in the list. An empty list retires every stack.
+   * no longer in the list. An empty list retires every stack. A `viewport` bounds the per-frame work to
+   * the screen: a staffed building outside the framed box keeps its pooled stack (it scrolls back) but is
+   * hidden and neither repositioned nor rebuilt, so cost tracks the screen, not the map's building count.
    */
-  draw(badges: readonly DoorBadge[], elevation?: ElevationField): void {
+  draw(badges: readonly DoorBadge[], elevation?: ElevationField, viewport?: Viewport): void {
     this.drawn.clear();
     for (const badge of badges) {
       if (badge.craftsmen + badge.carriers + badge.gatherers <= 0) continue;
       const tileX = badge.x / ONE;
       const tileY = badge.y / ONE;
       const p = tileToScreen(tileX, tileY);
-      const lift = elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAt(tileX, tileY) : 0;
 
       let stack = this.stacks.get(badge.id);
+      // Off-screen: retain the pooled stack (hidden) so it isn't retired, but skip the reposition/rebuild;
+      // a not-yet-built off-screen building simply waits to be built until it scrolls into view.
+      if (viewport !== undefined && !isVisible(viewport, p.x, p.y)) {
+        if (stack !== undefined) {
+          stack.node.visible = false;
+          this.drawn.add(badge.id);
+        }
+        continue;
+      }
+      const lift = elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAt(tileX, tileY) : 0;
+
       if (
         stack === undefined ||
         stack.craftsmen !== badge.craftsmen ||
@@ -92,6 +105,7 @@ export class BadgeLayer {
         stack = { node, craftsmen: badge.craftsmen, carriers: badge.carriers, gatherers: badge.gatherers };
         this.stacks.set(badge.id, stack);
       }
+      stack.node.visible = true;
       stack.node.position.set(p.x + OFFSET_X, p.y - lift - DOOR_LIFT);
       this.drawn.add(badge.id);
     }

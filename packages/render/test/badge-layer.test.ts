@@ -58,6 +58,28 @@ describe('BadgeLayer', () => {
     expect(layer.container.children).toHaveLength(0);
   });
 
+  it('culls off-screen badges: keeps the pooled stack (hidden), skips reposition, re-shows on scroll-in', () => {
+    const layer = new BadgeLayer();
+    // A viewport framing a small world box; the badge at tile (3,5) projects inside it.
+    const onScreen = tileToScreen(3, 5);
+    const vp = { minX: onScreen.x - 50, minY: onScreen.y - 50, maxX: onScreen.x + 50, maxY: onScreen.y + 50 };
+    layer.draw([badge(1, 3, 5, 1, 0)], undefined, vp);
+    const stack = layer.container.children[0];
+    expect(stack?.visible).toBe(true); // in view → drawn
+    const shownX = stack?.position.x;
+
+    // Same building, now far outside the framed box: the stack stays POOLED but hidden and unmoved
+    // (cost tracks the screen, not the map), and it is NOT retired the way an unstaffed building is.
+    layer.draw([badge(1, 900, 900, 1, 0)], undefined, vp);
+    expect(layer.container.children).toHaveLength(1); // still pooled, not destroyed
+    expect(layer.container.children[0]?.visible).toBe(false); // hidden while off-screen
+    expect(layer.container.children[0]?.position.x).toBe(shownX); // not repositioned off-screen
+
+    // Scrolls back into view → shown and repositioned again.
+    layer.draw([badge(1, 3, 5, 1, 0)], undefined, vp);
+    expect(layer.container.children[0]?.visible).toBe(true);
+  });
+
   it('lifts the stack by the terrain height at the door', () => {
     const W = 4;
     const H = 8;
