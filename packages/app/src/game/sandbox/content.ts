@@ -22,6 +22,8 @@ import { PROFESSIONS } from '../../catalog/professions.js';
 import { TERRAIN_BLOCKED, TERRAIN_IMPASSABLE, TERRAIN_MARGIN, TERRAIN_OPEN } from '../../catalog/terrain.js';
 import { HARVEST_TICKS } from '../../content/settler-gfx.js';
 import type { GoodRef } from '../../content/settler-gfx.js';
+import { professionLabel } from '../../i18n/index.js';
+import type { Messages } from '../../i18n/pl.js';
 import { PRIMARY_TRIBE } from '../rules.js';
 import {
   BUILDING_HEADQUARTERS,
@@ -271,18 +273,14 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
   // Every worker-slot jobType ({@link BUILDING_WORKER_SLOTS}, extracted from ir.json, REBASED clear of
   // the sandbox job band — see {@link rebaseSlotJob}) must resolve as a job or the content cross-reference
   // check rejects the set. Backfill each still-missing slot job under its REAL trade name
-  // ({@link WORKER_SLOT_JOB_NAMES}, keyed by the original id — "Cieśla", "Druid", …) so the building
-  // panel names the worker by its trade; only its distinct-trade *behaviour* is dropped (the deferred
-  // global-content id unification). The carrier slot resolves to the real 'Tragarz' above.
+  // ({@link workerSlotName} — the shared profession label, so the panel names the worker by the SAME word
+  // the picker uses); only its distinct-trade *behaviour* is dropped (the deferred global-content id
+  // unification). The carrier slot resolves to the real 'Tragarz' above.
   for (const slots of Object.values(BUILDING_WORKER_SLOTS))
     for (const w of slots) {
       const jobType = rebaseSlotJob(w.jobType);
       if (!jobs.has(jobType))
-        jobs.set(jobType, {
-          typeId: jobType,
-          id: `worker_${jobType}`,
-          name: WORKER_SLOT_JOB_NAMES[w.jobType] ?? 'Pracownik',
-        });
+        jobs.set(jobType, { typeId: jobType, id: `worker_${jobType}`, name: workerSlotName(w.jobType) });
     }
   for (const j of extras.jobs ?? []) if (!jobs.has(j.typeId)) jobs.set(j.typeId, j);
 
@@ -497,22 +495,6 @@ interface SandboxBuildingRow {
   footprint?: BuildingFootprint;
 }
 
-/**
- * Per-building WORKER + CARRIER capacity, by typeId — how many settlers of each job a building employs,
- * so `assignWorker` (and the JobSystem) can staff it and the door-badge shows one marker per worker.
- * Source basis: EXTRACTED from `ir.json`'s `workers` (the `[GfxHouse] logicworker` counts) verbatim —
- * the counts and the worker/carrier split are the original's. The `jobType`s here are the source's own
- * `jobtypes.ini` ids and are REBASED clear of the sandbox's own job band on the way in ({@link
- * rebaseSlotJob}): the original ids overlap the synthetic gatherer band (20..25), the carrier (26), and
- * the soldier band (31..41), so e.g. original job 22 would otherwise be read as the sandbox's MUD
- * GATHERER and original 40/41 as ARCHERS — the bug that let a "carpenter" slot fill with wood gatherers.
- * The CARRIER job is the one exception: the original's carrier (jobtype 24) is rebased to
- * {@link JOB_CARRIER} (the one job the badge + assignment UI single out as a hauler). Everything else
- * becomes a distinct generic craftsman id (its trade identity is dropped — the deferred global-content
- * id unification); the COUNT and the carrier split — what the player assigns — stay exact. Residences
- * (homes) employ nobody; they carry no row. Kept as sandbox data (not the clean-room catalog) because
- * the rebase lives in the sandbox job space.
- */
 /** A building's worker slots with their job ids rebased ({@link rebaseSlotJob}), or undefined for a
  *  building type that employs nobody (homes). */
 function workerSlotsFor(typeId: number): readonly { jobType: number; count: number }[] | undefined {
@@ -521,34 +503,64 @@ function workerSlotsFor(typeId: number): readonly { jobType: number; count: numb
 }
 
 /**
- * Polish trade names for the extracted worker-slot jobs, keyed by their ORIGINAL `jobtypes.ini` id (the
- * pre-rebase id used in {@link BUILDING_WORKER_SLOTS}). Source basis: the `jobtypes` names in the
- * extracted `content/ir.json` (`collector` 8 … `druid` 30, `soldier_bow_*` 40/41), translated — so the
- * building panel names each worker by its real trade ("Cieśla", "Druid") instead of a generic label.
- * The carrier (24 → {@link JOB_CARRIER}) is named 'Tragarz' where it's defined above, not here.
+ * Extracted worker-slot trades that map to a picker PROFESSION, keyed by their ORIGINAL `jobtypes.ini` id
+ * (the pre-rebase id used in {@link BUILDING_WORKER_SLOTS}) → the shared profession `key`. The building
+ * panel names each such worker via {@link professionLabel}, so a slot trade and the picker read the SAME
+ * word — they used to be transcribed twice and drifted (joiner was "Cieśla" in the slot table but
+ * "Stolarz" in the picker). Trades with no picker counterpart keep a slot-local name below.
  */
-const WORKER_SLOT_JOB_NAMES: Readonly<Record<number, string>> = {
+const WORKER_SLOT_PROFESSION_KEYS: Readonly<Record<number, keyof Messages['profession']>> = {
+  9: 'joiner',
+  10: 'armorer',
+  11: 'potter',
+  12: 'mason',
+  13: 'smith',
+  14: 'coin_maker',
+  15: 'hunter',
+  16: 'breeder',
+  17: 'tailor', // jobtypes.ini "sewer"
+  18: 'farmer',
+  19: 'miller',
+  20: 'baker',
+  21: 'brewer',
+  22: 'fisher',
+  29: 'herbalist', // jobtypes.ini "herb & mush guy"
+  30: 'druid',
+};
+/**
+ * Slot-local Polish names for the worker-slot trades with NO picker profession: the generic `collector`
+ * (8) the roster instead realizes as the concrete resource gatherers, and the two archer weapon classes
+ * (40/41) the one-soldier picker folds into "Żołnierz" but a tower slot still lists by weapon.
+ */
+const WORKER_SLOT_LOCAL_NAMES: Readonly<Record<number, string>> = {
   8: 'Zbieracz', // collector
-  9: 'Cieśla', // joiner
-  10: 'Płatnerz', // armorer
-  11: 'Garncarz', // potter
-  12: 'Murarz', // mason
-  13: 'Kowal', // smith
-  14: 'Mincerz', // coin maker
-  15: 'Myśliwy', // hunter
-  16: 'Hodowca', // breeder
-  17: 'Krawiec', // sewer
-  18: 'Rolnik', // farmer
-  19: 'Młynarz', // miller
-  20: 'Piekarz', // baker
-  21: 'Piwowar', // brewer
-  22: 'Rybak', // fisher
-  29: 'Zielarz', // herb & mush guy
-  30: 'Druid', // druid
   40: 'Łucznik', // soldier_bow_short
   41: 'Łucznik (długi łuk)', // soldier_bow_long
 };
+/** The display name of an extracted worker-slot job, by its ORIGINAL id: the shared profession label
+ *  where the trade has one (so it never drifts from the picker), else its slot-local name. The carrier
+ *  (24 → {@link JOB_CARRIER}) is named 'Tragarz' where the job is defined, not here. */
+function workerSlotName(originalJobType: number): string {
+  const key = WORKER_SLOT_PROFESSION_KEYS[originalJobType];
+  return key !== undefined ? professionLabel(key) : (WORKER_SLOT_LOCAL_NAMES[originalJobType] ?? 'Pracownik');
+}
 
+/**
+ * Per-building WORKER + CARRIER capacity, by typeId — how many settlers of each job a building employs,
+ * so `assignWorker` (and the JobSystem) can staff it and the door-badge shows one marker per worker.
+ * Source basis: EXTRACTED from `ir.json`'s `workers`, i.e. the `logicworker` keys of each
+ * `[logichousetype]` block in `DataCnmd/types/houses.ini`, verbatim — the counts and the worker/carrier
+ * split are the original's. The `jobType`s here are the source's own `jobtypes.ini` ids and are REBASED
+ * clear of the sandbox's own job band on the way in ({@link rebaseSlotJob}): the original ids overlap the
+ * synthetic gatherer band (20..25), the carrier (26), and the soldier band (31..41), so e.g. original job
+ * 22 would otherwise be read as the sandbox's MUD GATHERER and original 40/41 as ARCHERS — the bug that
+ * let a "carpenter" slot fill with wood gatherers. The CARRIER job is the one exception: the original's
+ * carrier (jobtype 24) is rebased to {@link JOB_CARRIER} (the one job the badge + assignment UI single out
+ * as a hauler). Everything else becomes a distinct generic craftsman id (its trade identity is dropped —
+ * the deferred global-content id unification); the COUNT and the carrier split — what the player assigns —
+ * stay exact. Residences (homes) employ nobody; they carry no row. Kept as sandbox data (not the
+ * clean-room catalog) because the rebase lives in the sandbox job space.
+ */
 const BUILDING_WORKER_SLOTS: Readonly<Record<number, readonly { jobType: number; count: number }[]>> = {
   1: [
     { jobType: JOB_CARRIER, count: 3 },

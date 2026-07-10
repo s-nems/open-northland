@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BUILDING_JOINERY, JOB_CARRIER, WORKER_SLOT_JOB_BASE } from '../src/game/sandbox/ids.js';
 import { assignmentPriority, sandboxContent, workerRoleOf } from '../src/game/sandbox/index.js';
+import { professionLabel } from '../src/i18n/index.js';
 
 /**
  * The sandbox buildings must carry their worker + carrier capacity (extracted from ir.json's
@@ -60,13 +61,17 @@ describe('sandbox building worker slots', () => {
     expect(joinery?.workers.some((w) => workerRoleOf(w.jobType) === 'gatherer')).toBe(true);
   });
 
-  it('names each extracted craftsman by its real trade (Kowal, Druid), not a generic label', () => {
+  it('names each extracted craftsman by its real trade, from the SAME i18n label the picker uses', () => {
     const firstCraftName = (typeId: number): string | undefined => {
       const slot = byType.get(typeId)?.workers.find((w) => workerRoleOf(w.jobType) === 'craftsman');
       return content.jobs.find((j) => j.typeId === slot?.jobType)?.name;
     };
     expect(firstCraftName(31)).toBe('Kowal'); // smithy → smith (original job 13)
     expect(firstCraftName(35)).toBe('Druid'); // druid hut → druid (original job 30)
+    // Drift guard: the slot label must be the SAME word the profession picker shows (they were once
+    // transcribed twice and diverged — a joiner read "Cieśla" as a slot but "Stolarz" in the picker).
+    expect(firstCraftName(31)).toBe(professionLabel('smith'));
+    expect(firstCraftName(24)).toBe(professionLabel('joiner')); // work_joinery_01 → joiner (original job 9)
   });
 
   it('offers the Druid first on a right-click of the druid hut, and never the collector-gatherer', () => {

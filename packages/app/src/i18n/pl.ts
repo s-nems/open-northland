@@ -20,7 +20,7 @@ export const pl = {
     gatherer_mushroom: 'Zbieracz grzybów',
     carrier: 'Tragarz',
     builder: 'Budowniczy',
-    joiner: 'Stolarz',
+    joiner: 'Cieśla',
     armorer: 'Płatnerz',
     potter: 'Garncarz',
     mason: 'Murarz',

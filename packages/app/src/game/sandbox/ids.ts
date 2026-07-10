@@ -67,13 +67,18 @@ export const WORKER_SLOT_JOB_BASE = 1000;
 
 /**
  * The extracted worker-slot trades that are OUTDOOR RESOURCE GATHERERS (`jobtypes.ini`: 8 collector,
- * 15 hunter, 22 fisher, 23 fisher_sea), keyed by their ORIGINAL id. A gatherer roams the map collecting
- * a raw good and drops it at a flag — so, like the sandbox's own gatherers, it is NEVER hand-assigned to
- * a building by right-click and draws the gatherer badge colour (it happens to sit in a storehouse's or
- * workshop's `logicworker` pool, but that is the economy's to fill, not the player's). Source basis:
- * the `jobtypes` roles in `content/ir.json`.
+ * 15 hunter, 22 fisher), keyed by their ORIGINAL id. A gatherer roams the map collecting a raw good and
+ * drops it at a flag — so, like the sandbox's own gatherers, it is NEVER hand-assigned to a building by
+ * right-click and draws the gatherer badge colour (it happens to sit in a storehouse's or workshop's
+ * `logicworker` pool, but that is the economy's to fill, not the player's).
+ *
+ * Source basis: hand-classified from the `jobtypes.ini` roaming semantics (an approximation — `ir.json`
+ * carries no role field to pin to). It agrees with the one real signal `jobtypes.ini` does carry,
+ * `UserShouldAttachWorkPlaceAfterJobChangeFlag`, which is absent/0 for these three. The sea fisher
+ * (`fisher_sea` 23) is deliberately EXCLUDED: it sets that flag to 1 (the game DOES want it attached to a
+ * workplace), and it staffs no sandbox building anyway.
  */
-export const EXTRACTED_GATHERER_TRADES: ReadonlySet<number> = new Set([8, 15, 22, 23]);
+export const EXTRACTED_GATHERER_TRADES: ReadonlySet<number> = new Set([8, 15, 22]);
 
 /** Rebase one extracted slot job clear of the sandbox band ({@link WORKER_SLOT_JOB_BASE}) — the carrier
  *  keeps its own {@link JOB_CARRIER} id (the hauler the badge/assignment UI single out). */
