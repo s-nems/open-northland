@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { parseTerrainMap } from '@vinland/data';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { assertOutStaysInCheckout, parseArgs, resolveArgs } from '../src/args.js';
 import { BOB_TYPE_8BIT, type Bmd, PACKED_X_SHIFT, encodeBmd } from '../src/decoders/bmd.js';
@@ -16,6 +17,7 @@ import {
   jobBaseGraphicsToBindings,
   resolveGraphicsBindings,
 } from '../src/stages/bmd.js';
+import { TEXTURES_DIR } from '../src/stages/game-file.js';
 import { buildIr, resolveIniSources } from '../src/stages/ir.js';
 import { libMemberRelPath, unpackLibTree } from '../src/stages/lib.js';
 import {
@@ -402,6 +404,8 @@ describe('convertPcxTree', () => {
   it('composes a transition texture + alpha-mask pair into one RGBA .masked.png (raw index = alpha)', async () => {
     // The colour picture expands through its palette; the MASK picture's raw palette-index bytes
     // become the alpha channel directly (the engine convention — no palette expansion for the mask).
+    // The IR hands the LOWERCASED normalized paths; the stage must still resolve the real-cased
+    // Data/engine2d/bin/textures tree and write back into it (the /textures serving contract).
     const width = 2;
     const height = 2;
     const colour = encodePcx({
@@ -416,18 +420,24 @@ describe('convertPcxTree', () => {
       pixels: Uint8Array.from([0, 128, 200, 255]),
       palette: rampPalette(),
     });
-    await mkdir(join(game, 'textures'), { recursive: true });
-    await writeFile(join(game, 'textures', 'tran_meadow.pcx'), colour);
-    await writeFile(join(game, 'textures', 'tran_meadow_a.pcx'), mask);
+    await mkdir(join(game, TEXTURES_DIR), { recursive: true });
+    await writeFile(join(game, TEXTURES_DIR, 'tran_meadow.pcx'), colour);
+    await writeFile(join(game, TEXTURES_DIR, 'tran_meadow_a.pcx'), mask);
 
     const done = await composeMaskedTransitionPages(game, out, [
-      { texture: 'textures/tran_meadow.pcx', textureAlpha: 'textures/tran_meadow_a.pcx' },
+      {
+        texture: 'data/engine2d/bin/textures/tran_meadow.pcx',
+        textureAlpha: 'data/engine2d/bin/textures/tran_meadow_a.pcx',
+      },
       // A duplicate pair (two [transition] records sharing one page) must compose only once.
-      { texture: 'textures/tran_meadow.pcx', textureAlpha: 'textures/tran_meadow_a.pcx' },
+      {
+        texture: 'data/engine2d/bin/textures/tran_meadow.pcx',
+        textureAlpha: 'data/engine2d/bin/textures/tran_meadow_a.pcx',
+      },
     ]);
 
-    expect(done.map((c) => c.output)).toEqual(['textures/tran_meadow.masked.png']);
-    const decoded = decodePng(await readFile(join(out, 'textures', 'tran_meadow.masked.png')));
+    expect(done.map((c) => c.output)).toEqual([join(TEXTURES_DIR, 'tran_meadow.masked.png')]);
+    const decoded = decodePng(await readFile(join(out, TEXTURES_DIR, 'tran_meadow.masked.png')));
     const expectedRgb = expandToRgba(decodePcx(colour)).rgba;
     for (let i = 0; i < width * height; i++) {
       expect(decoded.rgba[4 * i]).toBe(expectedRgb[4 * i]);
@@ -447,17 +457,20 @@ describe('convertPcxTree', () => {
       palette: rampPalette(),
     });
     const mask = encodePcx({ width: 1, height: 1, pixels: Uint8Array.from([9]), palette: rampPalette() });
-    await mkdir(join(game, 'textures'), { recursive: true });
-    await writeFile(join(game, 'textures', 'tran_bad.pcx'), colour);
-    await writeFile(join(game, 'textures', 'tran_bad_a.pcx'), mask);
+    await mkdir(join(game, TEXTURES_DIR), { recursive: true });
+    await writeFile(join(game, TEXTURES_DIR, 'tran_bad.pcx'), colour);
+    await writeFile(join(game, TEXTURES_DIR, 'tran_bad_a.pcx'), mask);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const done = await composeMaskedTransitionPages(game, out, [
-      { texture: 'textures/tran_bad.pcx', textureAlpha: 'textures/tran_bad_a.pcx' },
+      {
+        texture: 'data/engine2d/bin/textures/tran_bad.pcx',
+        textureAlpha: 'data/engine2d/bin/textures/tran_bad_a.pcx',
+      },
     ]);
 
     expect(done).toEqual([]);
-    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped masked page textures\/tran_bad/));
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped masked page .*tran_bad/));
     warn.mockRestore();
   });
 });
@@ -1039,6 +1052,31 @@ describe('mapDatToTerrain', () => {
       { tag: 'eatd', version: 1, payload: stringList(['meadow 1']) },
     ]);
     expect(mapDatToTerrain(bytes).transitions).toBeUndefined();
+  });
+
+  it('emits a transitions layer the loader schema accepts, and the schema rejects corrupt lanes', () => {
+    // Close the emit→load loop: what mapDatToTerrain writes must pass parseTerrainMap's refines,
+    // and the refines must actually bite (wrong lane length; out-of-dictionary value) — the
+    // pipeline's own throws run pre-emission, so only the schema guards a hand-edited/stale file.
+    const good = {
+      width: 2,
+      height: 1,
+      typeIds: [1, 1],
+      transitions: {
+        types: ['meadow 1', 'meadow 2'],
+        a1: [0, 255],
+        b1: [7, 255],
+        a2: [255, 11],
+        b2: [255, 255],
+      },
+    };
+    expect(parseTerrainMap(good).transitions).toEqual(good.transitions);
+    expect(() => parseTerrainMap({ ...good, transitions: { ...good.transitions, a1: [0] } })).toThrow(
+      /transition lanes must be width\*height/,
+    );
+    expect(() => parseTerrainMap({ ...good, transitions: { ...good.transitions, b2: [12, 255] } })).toThrow(
+      /outside its types dictionary/,
+    );
   });
 
   it('emits the objects layer from emla + the eald name dictionary as sparse half-cell triples', () => {

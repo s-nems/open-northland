@@ -11,11 +11,13 @@ import { TILE_HALF_H } from './iso.js';
  * The map's `lmhe` lane is a per-CELL height (0..~250 observed corpus-wide, `content/maps/<id>.json`
  * `elevation`). The original lifts each mesh node UP by **elevation/16 half-row-steps** — the engine
  * tessellation's exact divisor (source basis, docs/SOURCES.md "terrain tessellation"), i.e.
- * `TILE_HALF_H/32` px per elevation unit (1.1875 px at the measured 38 px row step; the earlier
- * photogrammetric fit of ≈1.24 was this value within its error). The ground mesh samples nodes
+ * `TILE_HALF_H/32` px per elevation unit (1.1875 px at the measured 38 px row step; supersedes the
+ * earlier photogrammetric fit of ≈1.24, which ran ≈4% higher). The ground mesh samples nodes
  * exactly (`terrain.ts` `nodeLift`); sprites/objects at fractional positions ride the bilinear
- * sampler here — a named approximation of the mesh's piecewise-triangle surface, exact at every
- * cell centre.
+ * sampler here — a named approximation of the mesh's piecewise-triangle surface: {@link
+ * ElevationField.liftAt} is exact at integer CELL coordinates, {@link ElevationField.liftAtNode}
+ * exact at every same-row node (centres and mid-edge points), and only between-row nodes / interior
+ * fractional positions blend bilinearly where the mesh is triangle-planar.
  *
  * Determinism note: this is render-only. The sim never reads elevation — the lift lives entirely in the
  * projection, so two runs from one seed stay byte-identical (the golden tests don't see it).
@@ -56,9 +58,13 @@ export interface ElevationField {
    */
   liftAt(col: number, row: number): number;
   /**
-   * {@link liftAt} for a HALF-CELL NODE address `(hx, hy)`: the elevation lane is per-CELL, and a
-   * node sits at `(hx/2, hy/2)` in continuous cell space — this owns that ÷2 convention so node
-   * consumers (placement overlay/ghost, picking) can't drift apart on it.
+   * {@link liftAt} for a HALF-CELL NODE address `(hx, hy)` — this owns the node→cell-space
+   * convention so node consumers (placement overlay/ghost, picking, map objects) can't drift apart
+   * on it. On a CELL row (even `hy`) the column is parity-corrected (`(hx − (row&1))/2`), so a
+   * cell-centre node returns exactly its cell's lift — the same value the ground mesh bakes at
+   * that vertex — and a mid-edge node the exact two-cell blend of the mesh edge. Between rows
+   * (odd `hy`, inside the mesh triangles) the plain `(hx/2, hy/2)` bilinear stands in — a named
+   * approximation of the triangle plane.
    */
   liftAtNode(hx: number, hy: number): number;
 }
@@ -87,6 +93,15 @@ export function makeElevationField(
   return {
     maxLift,
     liftAt: (col: number, row: number): number => sample(col, row) * liftPerUnit,
-    liftAtNode: (hx: number, hy: number): number => sample(hx / 2, hy / 2) * liftPerUnit,
+    liftAtNode: (hx: number, hy: number): number => {
+      const row = hy / 2;
+      if (Number.isInteger(row)) {
+        // On a cell row the staggered lattice puts cell centres at hx = 2·col + (row&1): undo the
+        // parity so a centre node samples ITS OWN cell (matching the mesh vertex) and a mid-edge
+        // node the exact straddling blend.
+        return sample((hx - (row & 1)) / 2, row) * liftPerUnit;
+      }
+      return sample(hx / 2, row) * liftPerUnit;
+    },
   };
 }

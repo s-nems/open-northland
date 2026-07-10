@@ -334,9 +334,10 @@ Format: `N. <date> — <what landed>; <key numbers/findings>; <deviations from t
   RGBA masked overlays (pipeline composes `tran_*.pcx` + `tran_*_a.pcx` → `<stem>.masked.png`,
   alpha = raw mask index) composited base → layer2 → layer1; ground pages now LINEAR-filtered;
   elevation lift re-pinned to the engine's `elev/16` half-row-steps (`TILE_HALF_H/32` = 1.1875
-  px/unit, replacing the 1.2376 fit — within its error) with border nodes clamped to 0; the old
-  centre-split/diamond machinery deleted. Bridge-map lanes: 8181/8184/267/267 non-empty overlay
-  cells (emt1..4), 38-name eatd. Gates green + real pipeline run; owner's pixel sign-off PENDING
+  px/unit, superseding the 1.2376 fit, which ran ≈4% higher) with border nodes clamped to 0 (a
+  named watertight adaptation of the oracle's per-cell zeroing; border-ring elevation is 0 on all
+  125 decoded maps); the old centre-split/diamond machinery deleted. Bridge-map lanes:
+  8181/8184/267/269 non-empty overlay cells (emt1..4), 38-name eatd. Gates green + real pipeline run; owner's pixel sign-off PENDING
   (sand-grass seam must show organic transitions, no lattice edges).
 - 3. 2026-07-08 — `embr` landed end-to-end: pipeline emits it as the optional per-cell `brightness`
   lane (`stages/maps.ts` `brightnessFromMapDat`, all 125 emitted maps carry it; schema refine in

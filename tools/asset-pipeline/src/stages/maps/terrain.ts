@@ -1,3 +1,4 @@
+import { TRANSITION_NONE, TRANSITION_PAIRS } from '@vinland/data';
 import type { MapStaticObjects } from '../../decoders/ini.js';
 import {
   type MapDat,
@@ -91,9 +92,6 @@ function groundFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['gro
   return { patterns, a, b };
 }
 
-/** A transition lane's "no overlay here" sentinel (u8 max). */
-const TRANSITION_NONE = 255;
-
 /**
  * Decodes the `emt1..emt4` per-cell transition-overlay lanes + the `eatd` transition-name
  * dictionary into the emitted `transitions` layer. Each lane is one u8 PER CELL (row-major,
@@ -101,9 +99,9 @@ const TRANSITION_NONE = 255;
  * `255` = no overlay, `v < 255` selects transition `⌊v/6⌋` from the dictionary and pair variant
  * `v % 6` of its six UV pairs. The lanes and the dictionary are carried VERBATIM (no compaction —
  * the ⌊v/6⌋ join is positional, and re-encoding packed values would risk colliding with the 255
- * sentinel). Lane semantics from the cultures2-gl renderer (docs/SOURCES.md). Returns undefined
- * when the map lacks any of the five chunks; throws on a length mismatch or an out-of-dictionary
- * value (a corrupt lane — caught per LAYER by {@link mapDatToTerrain}).
+ * sentinel). Lane semantics: source basis in docs/SOURCES.md "terrain tessellation". Returns
+ * undefined when the map lacks any of the five chunks; throws on a length mismatch or an
+ * out-of-dictionary value (a corrupt lane — caught per LAYER by {@link mapDatToTerrain}).
  */
 function transitionsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['transitions'] {
   const eatd = findChunk(map, 'eatd');
@@ -120,9 +118,9 @@ function transitionsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile
       throw new Error(`mapdat: ${tag} lane has ${lane.length} cells, expected ${cells}`);
     }
     for (const v of lane) {
-      if (v !== TRANSITION_NONE && Math.floor(v / 6) >= types.length) {
+      if (v !== TRANSITION_NONE && Math.floor(v / TRANSITION_PAIRS) >= types.length) {
         throw new Error(
-          `mapdat: ${tag} value ${v} references transition ${Math.floor(v / 6)} outside the ${types.length}-entry eatd dictionary`,
+          `mapdat: ${tag} value ${v} references transition ${Math.floor(v / TRANSITION_PAIRS)} outside the ${types.length}-entry eatd dictionary`,
         );
       }
     }

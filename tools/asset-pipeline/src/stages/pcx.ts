@@ -1,8 +1,9 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, join, relative } from 'node:path';
+import { basename, dirname, join, relative } from 'node:path';
 import { decodePcx, expandToRgba } from '../decoders/pcx.js';
 import { encodePng } from '../decoders/png.js';
 import { walkFiles } from '../walk.js';
+import { TEXTURES_DIR, readGameFile } from './game-file.js';
 
 /** A transition overlay's two source pictures: the RGB texture + its separate alpha-mask `.pcx`. */
 export interface MaskedTexturePair {
@@ -30,13 +31,17 @@ export interface PcxConversion {
 
 /**
  * Composes each transition overlay's RGB texture + alpha-mask `.pcx` pair into ONE RGBA
- * `<stem>.masked.png` beside the plain conversion under `outDir`. The mask's RAW palette-index
- * bytes become the alpha channel directly (the engine's convention — the mask picture's index IS
- * the coverage value; format oracle in docs/SOURCES.md), which the plain palette-expanding
- * conversion cannot represent. Pairs are deduped by texture path (several `[transition]` records
- * share one page); a missing/undecodable picture is logged and skipped like {@link convertPcxTree}'s
- * per-file boundary. Sources resolve against `gameDir` first (loose files), then `outDir` (pictures
- * the lib unpack extracted).
+ * `<stem>.masked.png` under {@link TEXTURES_DIR} (the `/textures/` serving contract). The mask's
+ * RAW palette-index bytes become the alpha channel directly (the engine's convention — the mask
+ * picture's index IS the coverage value; format oracle in docs/SOURCES.md), which the plain
+ * palette-expanding conversion cannot represent.
+ *
+ * Sources resolve by BASENAME under the real-cased {@link TEXTURES_DIR} — the IR's normalized
+ * paths are lowercased, so joining them verbatim would miss on a case-sensitive filesystem; every
+ * real `[transition]` record lives in that one directory, and a record pointing elsewhere degrades
+ * to the warn-and-skip below. `gameDir` is tried first (loose files), then `outDir` (pictures the
+ * lib unpack extracted). Pairs are deduped by texture path (several records share one page); a
+ * missing/undecodable picture is logged and skipped like {@link convertPcxTree}'s per-file boundary.
  */
 export async function composeMaskedTransitionPages(
   gameDir: string,
@@ -45,27 +50,29 @@ export async function composeMaskedTransitionPages(
 ): Promise<PcxConversion[]> {
   const done: PcxConversion[] = [];
   const seen = new Set<string>();
-  const readPcx = async (rel: string): Promise<Uint8Array> => {
+  const readTexturePcx = async (normalizedPath: string): Promise<Uint8Array> => {
+    const rel = join(TEXTURES_DIR, basename(normalizedPath));
     try {
-      return await readFile(join(gameDir, rel));
+      return await readGameFile(gameDir, rel);
     } catch {
-      return await readFile(join(outDir, rel));
+      return await readGameFile(outDir, rel);
     }
   };
   for (const pair of pairs) {
     if (seen.has(pair.texture)) continue;
     seen.add(pair.texture);
-    const output = pair.texture.replace(/\.pcx$/i, '.masked.png');
+    const outputName = basename(pair.texture).replace(/\.pcx$/i, '.masked.png');
+    const output = join(TEXTURES_DIR, outputName);
     try {
-      const colour = expandToRgba(decodePcx(await readPcx(pair.texture)));
-      const mask = decodePcx(await readPcx(pair.textureAlpha));
+      const colour = expandToRgba(decodePcx(await readTexturePcx(pair.texture)));
+      const mask = decodePcx(await readTexturePcx(pair.textureAlpha));
       if (mask.width !== colour.width || mask.height !== colour.height) {
         throw new Error(
           `mask ${pair.textureAlpha} is ${mask.width}×${mask.height}, texture is ${colour.width}×${colour.height}`,
         );
       }
       for (let i = 0; i < mask.pixels.length; i++) {
-        colour.rgba[4 * i + 3] = mask.pixels[i] as number;
+        colour.rgba[4 * i + 3] = mask.pixels[i] ?? 0;
       }
       const outPath = join(outDir, output);
       await mkdir(dirname(outPath), { recursive: true });

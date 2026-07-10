@@ -199,9 +199,11 @@ export type MutableDrawItem = { -readonly [K in keyof DrawItem]: DrawItem[K] };
  */
 export interface SceneGround {
   readonly patterns: readonly string[];
-  /** Row-major per-cell index into {@link patterns} for triangle A (left half of the diamond). */
+  /** Row-major per-cell index into {@link patterns} for triangle A (△ from the cell's centre node
+   *  down to the SW/SE-below centres — `../terrain.js` `triangleANodes`). */
   readonly a: readonly number[];
-  /** Row-major per-cell index into {@link patterns} for triangle B (right half of the diamond). */
+  /** Row-major per-cell index into {@link patterns} for triangle B (▽ across to the E centre —
+   *  `../terrain.js` `triangleBNodes`). */
   readonly b: readonly number[];
 }
 

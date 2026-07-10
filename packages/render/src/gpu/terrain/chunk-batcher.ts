@@ -83,7 +83,7 @@ export class ChunkBatcher {
   /** Trace one flat-colour ground triangle (the unbound-cell fallback): `positions` is the
    *  `[x0,y0, x1,y1, x2,y2]` vertex buffer (already lifted); `brightness` (a cell-centre multiplier,
    *  default 1) darkens/brightens the flat fill CPU-side — a solid fill can't gradient, so the
-   *  apex cell's value stands in for the whole triangle. */
+   *  owning cell's own value stands in for the whole triangle. */
   drawFallbackTriangle(positions: readonly number[], colour: number, brightness = 1): void {
     this.fallback
       .moveTo(positions[0] ?? 0, positions[1] ?? 0)

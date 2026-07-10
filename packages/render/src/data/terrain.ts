@@ -46,7 +46,11 @@ export interface CellTexture {
 /** A half-cell node address `[hx, hy]` — the sim lattice's integer coordinates (`nav/halfcell.ts`). */
 export type NodeXY = readonly [number, number];
 
-/** Cell `(col, row)`'s centre node: `(2·col + (row&1), 2·row)` — the staggered raster's lattice address. */
+/**
+ * Cell `(col, row)`'s centre node: `(2·col + (row&1), 2·row)` — the staggered raster's lattice
+ * address. The tuple-returning render twin of the sim's `nav/halfcell.ts` `cellAnchorNode` (the one
+ * conversion seam); the two must stay the same formula or mesh vertices drift off nav anchors.
+ */
 export function cellNode(col: number, row: number): NodeXY {
   return [2 * col + (row & 1), 2 * row];
 }
@@ -93,10 +97,12 @@ export function nodeCell(hx: number, hy: number): readonly [number, number] {
 
 /**
  * A node's elevation lift (world px, ≥ 0, to SUBTRACT from the projected `y`): the node's OWN
- * cell's lift, with nodes on the map-border ring (or beyond it) clamped to 0 — the engine
- * tessellation zeroes border elevation (source basis, docs/SOURCES.md "terrain tessellation"),
- * which also pins the mesh edge to the flat map frame. `liftAt` is the one bilinear seam
- * (`elevation.ts`); at the integer cell coordinate it returns exactly the cell's own lift.
+ * cell's lift, with nodes on the map-border ring (or beyond it) clamped to 0. The per-NODE clamp is
+ * a named watertight ADAPTATION of the engine's per-emitting-cell border zeroing — equivalent on
+ * the real data because border-ring elevation is 0 across the decoded corpus (source basis,
+ * docs/SOURCES.md "terrain tessellation") — and it pins the mesh edge to the flat map frame.
+ * `liftAt` is the one bilinear seam (`elevation.ts`); at the integer cell coordinate it returns
+ * exactly the cell's own lift.
  */
 export function nodeLift(
   liftAt: (col: number, row: number) => number,
@@ -131,6 +137,11 @@ export function nodeLaneUV(
 }
 
 // ─── transition overlays (the map's `emt1..emt4` lanes) ───────────────────────────────────────────
+
+// These two constants are the render-local twin of `@vinland/data`'s `TRANSITION_NONE` /
+// `TRANSITION_PAIRS` (which the map schema + pipeline validate with) — duplicated deliberately
+// because this module stays import-decoupled from `@vinland/data`; a change to the encoding must
+// touch both sites.
 
 /** A transition lane's "no overlay here" sentinel (u8 max). */
 export const TRANSITION_NONE = 255;

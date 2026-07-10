@@ -4,6 +4,7 @@ import {
   ONE,
   TILE_HALF_H,
   buildSpriteScene,
+  cellNode,
   elevationLiftPerUnit,
   makeElevationField,
   tileToScreen,
@@ -64,6 +65,36 @@ describe('makeElevationField.liftAt', () => {
     // An empty lane, or a zero-size map, is flat too.
     expect(makeElevationField([], 3, 2).maxLift).toBe(0);
     expect(makeElevationField([5, 5], 0, 0).maxLift).toBe(0);
+  });
+});
+
+describe('makeElevationField.liftAtNode — parity-aware on cell rows', () => {
+  // 4×4 grid, elevation(col,row) = col·10 + row — every cell distinct so a parity slip is visible.
+  const W = 4;
+  const H = 4;
+  const elev: number[] = [];
+  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) elev.push(c * 10 + r);
+  const field = makeElevationField(elev, W, H);
+
+  it("a cell-centre node lifts by its OWN cell's value on BOTH row parities (the mesh-vertex match)", () => {
+    for (const [col, row] of [
+      [2, 2],
+      [1, 3], // odd row — the staggered hx = 2·col+1 must not blend into the east neighbour
+      [2, 1],
+    ] as const) {
+      const [hx, hy] = cellNode(col, row);
+      expect(field.liftAtNode(hx, hy)).toBeCloseTo((col * 10 + row) * LIFT, 6);
+    }
+  });
+
+  it('a mid-edge node on a cell row blends the two straddling cells exactly (the mesh edge midpoint)', () => {
+    // Between centres (1,3) and (2,3): centres at hx 3 and 5 → the node at hx 4, hy 6.
+    expect(field.liftAtNode(4, 6)).toBeCloseTo(((13 + 23) / 2) * LIFT, 6);
+  });
+
+  it('a between-row node keeps the plain bilinear stand-in (the named approximation)', () => {
+    // hy = 5 lies between rows 2 and 3 — inside the mesh triangles, sampled at (hx/2, 2.5).
+    expect(field.liftAtNode(4, 5)).toBeCloseTo((20 + 2.5) * LIFT, 6);
   });
 });
 

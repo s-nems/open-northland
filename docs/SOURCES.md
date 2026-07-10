@@ -256,20 +256,25 @@ and `map.ts` section table pin everything below). This retro-explains the failed
 orientation/stencil heuristic fitted to it was an epicycle.
 
 - **Mesh vertices are CELL-CENTRE NODES** (cell `(c,r)` ↔ node `(2c+(r&1), 2r)` on the half-cell
-  lattice; screen `x = hx·34`, `y = hy·19` native px). Per cell, TWO triangles span BETWEEN
-  neighbouring centres: **A = △ [own, SE-below, SW-below]**, **B = ▽ [own, E, SE-below]** (cell
-  indices `[i, i+w+(r%2), i+w+(r%2)−1]` and `[i, i+1, i+w+(r%2)]`).
+  lattice). Per cell, TWO triangles span BETWEEN neighbouring centres: **A = △ [own, SE-below,
+  SW-below]**, **B = ▽ [own, E, SE-below]** (cell indices `[i, i+w+(r%2), i+w+(r%2)−1]` and
+  `[i, i+1, i+w+(r%2)]`). The oracle pins the LATTICE + divisor rules only; the pixel scale is OUR
+  measured projection (`x = hx·34`, `y = hy·19` native px from the 68×38 cell pitch, source basis
+  "projection" — the reference renderer itself draws at its own 34×19.5 unit scale).
 - **Every per-cell ground lane is per-TRIANGLE data on this mesh**: `empa`/`empb` → base pattern of
   A/B; `emt1..emt4` → transition overlays (A,layer1), (B,layer1), (A,layer2), (B,layer2).
 - **UVs verbatim**: page pixel coords ÷ page size (256), plain **LINEAR** filtering; `coordsA`'s
   (TL, BR, BL) points map onto A's [apex, SE, SW], `coordsB`'s (TL, TR, BR) onto B's [own, E, SE],
   in point order. Compositing per fragment: base pattern, then layer 2 alpha-mix, then layer 1
   alpha-mix on top. No stencil cutoffs, no texel-centre tricks, no orientation solving.
-- **Elevation**: each node lifts UP by `elevation/16` half-row-steps (= `rowStep/2/16` ≈ 1.19 px per
-  unit at the measured 38 px row step — the earlier photogrammetric ≈1.24 fit was this value within
-  its error); border nodes clamp to 0. Per-node lighting (`lighting[node] − 0x7F)/256 + 1` in the
-  oracle) interpolates across triangles — our `embr` per-fragment lane sampling at node cell-centres
-  is the same model.
+- **Elevation**: each node lifts UP by `elevation/16` half-row-steps (= `rowStep/2/16` = 1.1875 px
+  per unit at the measured 38 px row step; supersedes the earlier photogrammetric ≈1.24 fit, which
+  ran ≈4% higher). Border handling is a named ADAPTATION: the oracle zeroes elevation per emitting
+  border CELL (an interior cell's triangles still read a border-ring node's true value — cracks if
+  it were non-zero), while we clamp per NODE (watertight by construction); the two agree on the real
+  data because border-ring elevation is 0 on all 125 decoded maps (verified corpus-wide). Per-node
+  lighting (`(lighting[node] − 0x7F)/256 + 1` in the oracle) interpolates across triangles — our
+  `embr` per-fragment lane sampling at node cell-centres is the same model.
 
 Implemented in `packages/render/src/data/terrain.ts` (pure lattice/UV math, unit-tested) +
 `gpu/terrain/terrain-layer.ts` (chunked meshes; overlays as translucent per-page meshes composited

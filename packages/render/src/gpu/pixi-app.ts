@@ -146,10 +146,10 @@ export interface SpriteSheet {
  * The loaded textured-terrain inputs (the GPU twin of the pure `terrain.ts` geometry): the decoded
  * ground-texture pages keyed by {@link CellTexture.pageKey}, plus the approximated typeId→{@link
  * CellTexture} lookup the app built from the `TerrainPattern` IR. Optional input to the renderer: when
- * present, terrain cells draw as textured diamonds sampling their page; a cell whose typeId has no
- * {@link CellTexture}, or whose page failed to load, falls back to a flat diamond (the
- * {@link CellTexture.fallbackColour} debug colour, else the default). When absent, every tile draws the
- * legacy flat diamond — the reproducible default the committed shot depends on.
+ * present, each cell's two mesh triangles sample their page; a triangle whose typeId has no
+ * {@link CellTexture}, or whose page failed to load, falls back to a flat-colour triangle (the
+ * {@link CellTexture.fallbackColour} debug colour, else the default). When absent, every cell draws the
+ * legacy flat tint — the reproducible default the committed shot depends on.
  */
 export interface TerrainTextureSet {
   /** Decoded `text_NNN` ground pages as GPU sources, keyed by {@link CellTexture.pageKey}. */
