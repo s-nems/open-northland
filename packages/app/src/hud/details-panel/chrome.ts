@@ -119,6 +119,9 @@ export interface Chrome {
   scrim(r: Rect, alpha: number): void;
   /** A general-section button (tiled button fill, hover/disabled states, centered label). */
   button(hit: ButtonHit, label: string, hovered: boolean): void;
+  /** A category-tab plate: the tiled wooden button fill + light edge, brighter when `active` and dimmed
+   *  otherwise — the frame a stock-tab's representative good icon is drawn onto (no label). */
+  tabButton(r: Rect, active: boolean): void;
   /** A progress/need bar: the original bar frame under `bar_disabled`, filled under `bar_standart`. */
   bar(r: Rect, pct: number): void;
   /** A stock amount's recessed numeric field: a subtle dark inset on the wood (NOT the grey bar frame). */
@@ -424,6 +427,15 @@ export function createChrome(
     }
   };
 
+  const tabButton = (r: Rect, active: boolean): void => {
+    const fill = active ? bitmaps.buttonHilite : bitmaps.button;
+    if (!tile(fill, r)) g.rect(r.x, r.y, r.w, r.h).fill(active ? 0x5a3826 : 0x3a2b1d);
+    g.rect(r.x, r.y, r.w, r.h).stroke({ color: INNER_BOX_LIGHT, width: Math.max(1, scale) });
+    // Recede an inactive tab so the current category reads at a glance (the drawer adds the green underline
+    // on the active one).
+    if (!active) g.rect(r.x, r.y, r.w, r.h).fill({ color: 0x000000, alpha: 0.32 });
+  };
+
   const bar = (r: Rect, pct: number): void => {
     const clamped = Math.max(0, Math.min(100, pct));
     if (art === null) {
@@ -495,6 +507,7 @@ export function createChrome(
     selectedUnderline,
     scrim,
     button,
+    tabButton,
     bar,
     stockField,
     buildingPreview,
