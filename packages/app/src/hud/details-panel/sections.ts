@@ -22,6 +22,7 @@ import type {
   MultiSettlerPanelModel,
   SettlerPanelModel,
 } from './model.js';
+import { STOCK_TAB_ICON_GOODS } from './stock-tabs.js';
 
 /**
  * The decoded `housewindow` string ids the building sections consume (see `content/gui/strings/<lang>.json`,
@@ -57,10 +58,10 @@ const ROW_TEXT_PAD = 2;
 const STOCK_ICON_W = 18;
 /** Left inset of the amount text inside its plate (eyeballed off the 1024×768 screenshots). */
 const STOCK_AMOUNT_INSET = 6;
-/** How strongly an inactive stock tab is dimmed (translucent dark scrim alpha) vs. the active one. */
-const STOCK_TAB_DIM_ALPHA = 0.5;
 /** The active stock tab's lime underline height in design px (kept ≥2 screen px so it reads at uiscale 1). */
 const STOCK_TAB_UNDERLINE_H = 2;
+/** Inset (design px) of a tab's good icon inside its plate, so the icon doesn't touch the plate edges. */
+const STOCK_TAB_ICON_PAD = 2;
 /** Design width of the settler need-bar block (label column before it, pct column after). */
 const NEED_LABEL_W = 84;
 const NEED_PCT_W = 30;
@@ -222,11 +223,20 @@ export function drawBuilding(
  * so the current category reads at a glance.
  */
 function drawStockTabs(chrome: Chrome, rects: readonly Rect[], activeTab: number, s: number): void {
+  const iconPad = Math.round(STOCK_TAB_ICON_PAD * s);
   rects.forEach((r, i) => {
-    chrome.guiCentered(GUI_FRAME.stock_tab_0 + i, r, 'magenta', 'bg_invert');
-    // Recede every tab but the active one so the current category reads at a glance even at uiscale 1,
-    // where a thin underline alone would be a single pixel.
-    if (i !== activeTab) chrome.scrim(r, STOCK_TAB_DIM_ALPHA);
+    // A wooden tab plate (active brighter, inactive dimmed) with the category's representative good icon on
+    // it — replacing the original's cryptic unread glyph so a tab shows a real good from its own category.
+    chrome.tabButton(r, i === activeTab);
+    const goodId = STOCK_TAB_ICON_GOODS[i];
+    if (goodId !== undefined) {
+      chrome.goodIcon(goodId, {
+        x: r.x + iconPad,
+        y: r.y + iconPad,
+        w: r.w - iconPad * 2,
+        h: r.h - iconPad * 2,
+      });
+    }
   });
   const active = rects[activeTab];
   if (active !== undefined) {
