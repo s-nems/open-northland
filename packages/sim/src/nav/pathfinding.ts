@@ -147,18 +147,33 @@ export interface SearchStats {
 }
 
 /**
+ * The settle cap of the GOAL-SIDE POCKET PROBE — the bounded reverse search {@link findPath} runs
+ * before the real one whenever a walk-block overlay is in play. The overlay can seal the goal
+ * inside a POCKET (a ring of standing unit bodies around a contested melee slot is the hot case);
+ * the forward search then proves "no route" only by flooding the walker's ENTIRE reachable region
+ * (tens of thousands of settles on a battle map), and a crowd re-planning against a sealed goal
+ * saturated the whole per-tick pathfinding budget every tick. A probe FROM the goal exhausts such a
+ * pocket within its size — cheap and EXACT (edges are symmetric, so "the goal's region does not
+ * contain the start" is "no route") — while an open goal beelines to the start (≈ the path length)
+ * or hits this cap and hands over to the full search. Sized comfortably above any melee ring's free
+ * band, far under a map flood; a pocket larger than the cap falls back to the old full-flood cost.
+ */
+export const POCKET_PROBE_MAX_EXPLORED = 128;
+
+/**
  * Find the lowest-cost walkable path from `start` to `goal` on the half-cell graph, inclusive of
  * both endpoints. Returns `null` when no route exists or either endpoint is unwalkable.
  * `start === goal` yields the single-node path `[start]` (when walkable).
  *
- * `blocked` is the DYNAMIC walk-block overlay (standing building bodies and resource footprints —
- * see `dynamicBlockedCells`), applied on top of the graph's static terrain walkability: a blocked
- * node is never entered (goal included), but a blocked START is deliberately exempt — an entity
- * standing where a foundation just appeared must be able to step OFF the footprint (its first move
- * leaves the blocked node; it can never move back in).
+ * `blocked` is the DYNAMIC walk-block overlay (standing building bodies, resource footprints and
+ * standing unit bodies — see `dynamicBlockedCells`/`unitWalkBlocks`), applied on top of the graph's
+ * static terrain walkability: a blocked node is never entered (goal included), but a blocked START
+ * is deliberately exempt — an entity standing where a foundation just appeared must be able to step
+ * OFF the footprint (its first move leaves the blocked node; it can never move back in).
  *
  * `stats`, when given, accumulates the search's {@link SearchStats.explored} node count (the
- * early-out answers — bad endpoint, blocked goal, cross-component — settle nothing and cost 0).
+ * early-out answers — bad endpoint, blocked goal, cross-component — settle nothing and cost 0; the
+ * pocket probe's settles ARE counted — they are real search work the budget must see).
  */
 export function findPath(
   graph: TerrainGraph,
@@ -177,7 +192,33 @@ export function findPath(
   // reachable component (an island right-click used to cost a full-map Dijkstra). Same component
   // proves nothing (the overlay may still wall the goal off), so the search below runs unchanged.
   if (graph.componentOf(start) !== graph.componentOf(goal)) return null;
+  // Sealed-goal elision ({@link POCKET_PROBE_MAX_EXPLORED}): with an overlay in play, a bounded
+  // probe FROM the goal either exhausts the goal's pocket without meeting the start (exact "no
+  // route", at pocket cost instead of a map flood), confirms reachability early, or gives up at the
+  // cap and lets the full search decide. Skipped when the start itself is blocked — the probe's
+  // target must be enterable, and the forward search's blocked-START exemption has no reverse twin.
+  if (blocked !== undefined && blocked.size > 0 && !blocked.has(start)) {
+    const probe = runSearch(graph, goal, start, blocked, stats, POCKET_PROBE_MAX_EXPLORED);
+    if (probe === 'unreachable') return null;
+  }
+  const result = runSearch(graph, start, goal, blocked, stats, Number.POSITIVE_INFINITY);
+  return typeof result === 'string' ? null : result;
+}
 
+/**
+ * The A* core over the shared per-graph scratch: settle nodes from `start` toward `goal` until the
+ * goal is reached (the path), the open set exhausts (`'unreachable'` — an exact answer), or
+ * `maxExplored` settles have been spent (`'aborted'` — no answer; only the pocket probe passes a
+ * finite cap). Endpoint validity is the caller's contract ({@link findPath}'s early-outs).
+ */
+function runSearch(
+  graph: TerrainGraph,
+  start: NodeId,
+  goal: NodeId,
+  blocked: ReadonlySet<NodeId> | undefined,
+  stats: SearchStats | undefined,
+  maxExplored: number,
+): NodeId[] | 'unreachable' | 'aborted' {
   const scratch = scratchFor(graph);
   if (scratch.query >= MAX_QUERY_GENERATION) {
     scratch.stamps.fill(0);
@@ -221,11 +262,14 @@ export function findPath(
   stamps[start] = query;
   heap.push(startRec);
 
+  let settled = 0;
   for (;;) {
     // Pop the canonical minimum from the open set: the heap root — unique under the total order.
     const current = heap[0];
-    if (current === undefined) return null; // open set exhausted — unreachable
+    if (current === undefined) return 'unreachable'; // open set exhausted
+    if (settled >= maxExplored) return 'aborted'; // probe cap hit — the full search decides
 
+    settled += 1;
     if (stats !== undefined) stats.explored += 1; // one settle = one unit of search work
     if (current.node === goal) return reconstruct(recordAt, current);
 

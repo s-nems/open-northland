@@ -54,7 +54,7 @@ export {
   type HalfCellNode,
 } from './nav/halfcell.js';
 export { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW, worldDistance } from './nav/metric.js';
-export { findPath } from './nav/pathfinding.js';
+export { POCKET_PROBE_MAX_EXPLORED, type SearchStats, findPath } from './nav/pathfinding.js';
 export { replay, type ReplayOptions } from './replay/replay.js';
 export {
   HashTrace,
