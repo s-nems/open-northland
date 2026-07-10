@@ -13,6 +13,7 @@ import { assignmentPriority } from '../game/sandbox/index.js';
 import {
   buildingTypeOf,
   entityById,
+  gathererByFlag,
   isBuilding,
   isSettler,
   ownerPlayerOf,
@@ -248,6 +249,25 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     return out;
   };
 
+  /** Pickables for the human's gatherers' drop-off FLAGS, each mapped to its OWNING gatherer so a
+   *  left-click on a flag SELECTS that gatherer — the flag→unit inverse of {@link flaggedFlagIds}'s
+   *  unit→flag highlight (a flag stores no owner id, so `gathererByFlag` recovers the edge). Only the
+   *  human's flags; a flag whose owner isn't the human is skipped. The click handler consults this AFTER
+   *  settlers/buildings miss, so a gatherer standing on its own flag still selects AS a unit. */
+  const flagTargets = (): Pickable[] => {
+    const snap = opts.snapshot();
+    const ownerOf = gathererByFlag(snap, opts.humanPlayer);
+    if (ownerOf.size === 0) return [];
+    const out: Pickable[] = [];
+    for (const it of buildSpriteScene(snap)) {
+      if (it.isFlag !== true) continue;
+      const gatherer = ownerOf.get(it.ref);
+      if (gatherer === undefined) continue; // an unbound / non-human flag — not a selection proxy
+      out.push({ ref: gatherer, x: it.x, y: it.y, kind: 'settler' });
+    }
+    return out;
+  };
+
   /** Client (CSS) coords → WORLD px (through the client→screen scale + the camera inverse). */
   const toWorld = (clientX: number, clientY: number): { x: number; y: number } => {
     const { sx, sy, rect } = screenScale(canvas, opts.app.renderer.resolution);
@@ -318,7 +338,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       setSelection(pickInRect(targets(), a.x, a.y, b.x, b.y), e.shiftKey);
     } else {
       const w = toWorld(e.clientX, e.clientY);
-      const hit = pickTopAt(targets(), w.x, w.y);
+      // A settler/building under the cursor wins; failing that, a gatherer's FLAG selects its gatherer.
+      const hit = pickTopAt(targets(), w.x, w.y) ?? pickTopAt(flagTargets(), w.x, w.y);
       if (hit !== null) setSelection([hit], e.shiftKey);
       else if (!e.shiftKey) setSelection([], false); // click on empty ground clears
     }

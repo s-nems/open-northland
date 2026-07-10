@@ -2,10 +2,13 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   Building,
   CurrentAtomic,
+  DEFAULT_WORK_FLAG_RADIUS,
+  DeliveryFlag,
   Health,
   JobAssignment,
   Position,
   Settler,
+  WorkFlag,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { ONE, Simulation, fx } from '../../src/index.js';
@@ -26,6 +29,8 @@ beforeEach(() => {
   Building.store.clear();
   JobAssignment.store.clear();
   CurrentAtomic.store.clear();
+  WorkFlag.store.clear();
+  DeliveryFlag.store.clear();
 });
 
 function ctxOf(sim: Simulation): SystemContext {
@@ -105,6 +110,23 @@ describe('cleanupSystem — reaping 0-HP combatants', () => {
     expect(sim.world.has(dead, JobAssignment)).toBe(false);
     expect(sim.world.has(dead, Health)).toBe(false);
     expect(sim.world.isAlive(workplace)).toBe(true); // the referenced building is untouched
+  });
+
+  it("reaps a dead flag-bound gatherer's drop-off flag along with it (no orphan marker)", () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    // A gatherer's flag is a SEPARATE entity it points at (WorkFlag.flag), unlike the settler-owned
+    // cross-references above — so reaping the gatherer must also reap the flag, or it orphans on the map.
+    const flag = sim.world.create();
+    sim.world.add(flag, Position, { x: fx.fromInt(1), y: fx.fromInt(1) });
+    sim.world.add(flag, DeliveryFlag, {});
+    const gatherer = sim.world.create();
+    sim.world.add(gatherer, Health, { hitpoints: 0, max: 1000 });
+    sim.world.add(gatherer, WorkFlag, { flag, radius: DEFAULT_WORK_FLAG_RADIUS });
+
+    cleanupSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.isAlive(gatherer)).toBe(false); // the gatherer reaped …
+    expect(sim.world.isAlive(flag)).toBe(false); // … and its now-ownerless flag reaped with it
   });
 
   it('reaps multiple dead entities in one pass without throwing (mutate-while-scan safety)', () => {

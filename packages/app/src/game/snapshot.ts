@@ -51,3 +51,25 @@ export function buildingTypeOf(e: SnapshotEntity): number | undefined {
   const b = e.components.Building as { buildingType?: unknown } | undefined;
   return num(b?.buildingType);
 }
+
+/** The drop-off FLAG entity a gatherer carries (its `WorkFlag.flag`), or undefined for a non-gatherer. */
+export function workFlagOf(e: SnapshotEntity): number | undefined {
+  const wf = e.components.WorkFlag as { flag?: unknown } | undefined;
+  return num(wf?.flag);
+}
+
+/**
+ * Map each gatherer's drop-off FLAG entity → its owning gatherer, for the human `player` only — the
+ * INVERSE of the gatherer→flag {@link workFlagOf} edge (a flag stores no back-reference, so resolving
+ * "which gatherer owns this flag" needs this scan). Lets a click on a flag resolve to the gatherer to
+ * select. A gatherer binds to exactly one flag, so the map is 1:1.
+ */
+export function gathererByFlag(snapshot: WorldSnapshot, player: number): Map<number, number> {
+  const out = new Map<number, number>();
+  for (const e of snapshot.entities) {
+    if (ownerPlayerOf(e) !== player) continue;
+    const flag = workFlagOf(e);
+    if (flag !== undefined) out.set(flag, e.id);
+  }
+  return out;
+}
