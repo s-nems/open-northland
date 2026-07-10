@@ -146,11 +146,11 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     mountSoundToggle(soundDriver);
   }
 
-  // On-canvas debug readout (bottom-left, just clear of the tool-panel strip): tick / speed / steps /
+  // On-canvas debug readout (top-left, just clear of the tool-panel strip): tick / speed / steps /
   // entity counts + the FPS and the sim/snap/draw CPU split, so a human can judge whether the view holds
   // a frame rate, whether culling is biting, and whether a slow frame is the sim or the draw. Real-GPU
-  // only: headless Chromium is software-GL. The left inset is the strip's right edge + a small gap, and it
-  // is bottom-anchored so the build menu (which drops from the strip's TOP) never covers its tabs.
+  // only: headless Chromium is software-GL. The left inset is the strip's right edge + a small gap; the
+  // build menu drops BELOW it (from the buildings button), so the two never overlap.
   const perf = mountPerfOverlay(buildToolPanelLayout(uiscale).width + PERF_STRIP_GAP);
 
   // The original LEFT tool panel — the standard game HUD. Its game-speed button drives `control`, the

@@ -1,14 +1,14 @@
-import type { Graphics } from 'pixi.js';
+import { type Container, type Graphics, type Texture, TilingSprite } from 'pixi.js';
 import type { Rect } from './geometry.js';
 
 /**
- * The shared parchment look of the HUD's pop-up windows (building menu, statistics, placement banner)
- * plus the hover/selection highlight theme — ONE home so the chrome can't drift per window. The pop-up
- * chrome here is a flat `Graphics` panel (no decoded art), but it is styled to READ like the original's
- * wood window: a warm-brown body inside a two-tone bevel, a rust headline band, raised/pressed buttons,
- * and a recessed scrollbar. The details panel (`details-panel/chrome.ts`) draws the higher-fidelity
- * original-art rope-and-knot borders + tiled `bg*.pcx` fills; when the tool-panel windows adopt THAT look,
- * lift those helpers up here rather than forking them.
+ * The shared chrome of the HUD's pop-up windows (building menu, statistics, placement banner) plus the
+ * hover highlight theme — ONE home so the look can't drift per window. It offers two tiers over the same
+ * geometry: {@link tileBitmap} lays the decoded `bg*.pcx` wood/rust/button fills (the in-game look), and
+ * the `draw*` Graphics helpers (gilt frame, bevels, tab plates, scrollbar) both frame those tiles AND
+ * stand in as the flat fallback when `content/` is absent. The details panel (`details-panel/chrome.ts`)
+ * draws the higher-fidelity rope-and-knot borders over the same bitmap fills; its rope-frame helpers are
+ * the remaining thing to lift up here (rather than fork) when these windows want that border too.
  */
 
 /** Design-space window metrics (scaled by uiscale, like the strip): padding, title row, text line. */
@@ -19,17 +19,20 @@ export const WIN_LINE_H = 12;
 /** Parchment window fill/border. */
 export const WINDOW_FILL = 0x241d12;
 export const WINDOW_BORDER = 0x6b5836;
+/** Warmer wood fill used when the decoded `bg` bitmap is absent — closer to the in-game window than the
+ *  near-black {@link WINDOW_FILL}, so the flat-Graphics fallback still reads as wood. */
+export const WOOD_FILL = 0x3a2c1a;
+/** The gold window frame (a bright bead between two dark lines) echoing the original's gilt border. */
+const FRAME_GOLD = 0xb79860;
+const FRAME_DARK = 0x120d07;
 /** The two-tone bevel: a warm highlight on the light edge, near-black on the shadow edge. */
 const BEVEL_LIGHT = 0x8a744a;
 const BEVEL_DARK = 0x120d07;
-/** Rust headline band (the title bar) + the dark line that separates it from the body. */
-const HEADLINE_FILL = 0x3a2a18;
-const HEADLINE_EDGE = 0x120d07;
+/** Rust headline band (the title bar) fill — the fallback when the decoded headline bitmap is absent. */
+export const HEADLINE_FILL = 0x3a2a18;
 /** Tab faces: a slightly lit body for the selected (pressed-in) tab, a duller one for the rest. */
 const TAB_FILL = 0x2c2114;
 const TAB_SELECTED_FILL = 0x4a3720;
-/** Alternating list-row tint (every other row) for a quiet ledger stripe on the wood. */
-export const ROW_STRIPE = 0x2b2216;
 /** Scrollbar: a recessed track and a raised thumb. */
 const SCROLL_TRACK = 0x161009;
 const SCROLL_THUMB = 0x6b5836;
@@ -41,8 +44,6 @@ const CLOSE_BOX_ALPHA = 0.3;
 /** Hover highlight tint + strength over a flat button/row (the strip buttons, menu tabs, list rows). */
 export const HOVER_TINT = 0xffffff;
 export const HOVER_ALPHA = 0.16;
-/** Selected-tab highlight strength (slightly quieter than hover so the two read differently). */
-export const SELECT_ALPHA = 0.14;
 
 /** One scaled bevel line width (design px → screen px, floored to a visible minimum). */
 const bevelLine = (scale: number): number => Math.max(1, Math.round(scale));
@@ -72,15 +73,45 @@ export function drawWindowPanel(g: Graphics, r: Rect, scale: number): void {
   drawBevel(g, r, scale, 'raised');
 }
 
-/** Draw the rust headline band across `r`, with a dark separator line under it (title text drawn by the caller). */
-export function drawHeadlineBar(g: Graphics, r: Rect, scale: number): void {
-  g.rect(r.x, r.y, r.w, r.h).fill(HEADLINE_FILL);
-  g.rect(r.x, r.y + r.h - bevelLine(scale), r.w, bevelLine(scale)).fill(HEADLINE_EDGE);
+/**
+ * Tile `texture` over `r` into `target` at the panel scale (the original bitmap fills are 300×300 wood/rust
+ * tiles). Returns false when the texture is absent so the caller draws a flat-Graphics fallback. Mirrors the
+ * details panel's `tile` — the shared way both pop-up families reuse the decoded `bg*.pcx` fills.
+ */
+export function tileBitmap(target: Container, texture: Texture | undefined, r: Rect, scale: number): boolean {
+  if (texture === undefined) return false;
+  const sprite = new TilingSprite({
+    texture,
+    width: Math.max(1, Math.round(r.w)),
+    height: Math.max(1, Math.round(r.h)),
+  });
+  sprite.position.set(Math.round(r.x), Math.round(r.y));
+  sprite.tileScale.set(scale);
+  target.addChild(sprite);
+  return true;
+}
+
+/** Draw the gilt window frame around `r`: a bright gold bead between two dark lines (a flat evocation of the
+ *  original's gilded rope border — the higher-fidelity rope art stays in the details panel). */
+export function drawWindowFrame(g: Graphics, r: Rect, scale: number): void {
+  const w = bevelLine(scale);
+  g.rect(r.x, r.y, r.w, r.h).stroke({ color: FRAME_DARK, width: w, alignment: 0 });
+  g.rect(r.x + w, r.y + w, r.w - 2 * w, r.h - 2 * w).stroke({ color: FRAME_GOLD, width: w, alignment: 0 });
+  g.rect(r.x + 2 * w, r.y + 2 * w, r.w - 4 * w, r.h - 4 * w).stroke({
+    color: FRAME_DARK,
+    width: w,
+    alignment: 0,
+  });
+}
+
+/** A thin gold outline around a button/tab plate (the original's pale button edging). */
+export function drawPlateOutline(g: Graphics, r: Rect, scale: number): void {
+  g.rect(r.x, r.y, r.w, r.h).stroke({ color: FRAME_GOLD, width: bevelLine(scale), alignment: 0 });
 }
 
 /**
- * Draw a category-tab button: a pressed (lit, inset) face for the selected tab, a raised (dull) face for
- * the rest — the original's tabs read as one pushed-in and the others standing proud.
+ * Draw a category-tab button (the flat fallback when the decoded button bitmap is absent): a pressed (lit,
+ * inset) face for the selected tab, a raised (dull) face for the rest.
  */
 export function drawTabButton(g: Graphics, r: Rect, scale: number, selected: boolean): void {
   g.rect(r.x, r.y, r.w, r.h).fill(selected ? TAB_SELECTED_FILL : TAB_FILL);
@@ -93,11 +124,6 @@ export function drawScrollbar(g: Graphics, track: Rect, thumb: Rect, scale: numb
   drawBevel(g, track, scale, 'pressed');
   g.rect(thumb.x, thumb.y, thumb.w, thumb.h).fill(SCROLL_THUMB);
   drawBevel(g, thumb, scale, 'raised');
-}
-
-/** Fill `r` with the alternating list-row stripe (used on every other row). */
-export function drawRowStripe(g: Graphics, r: Rect): void {
-  g.rect(r.x, r.y, r.w, r.h).fill(ROW_STRIPE);
 }
 
 /** Fill `r` with the hover highlight (a light wash over a button/row/tab under the cursor). */
