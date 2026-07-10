@@ -31,6 +31,7 @@ function stubContext(): { ctx: PanelContext; made: string[] } {
       made.push(text);
       return { container: new Container(), width: 0, place: () => undefined, destroy: () => undefined };
     },
+    bitmaps: { bg: undefined, button: undefined, buttonHilite: undefined, headline: undefined },
     uiString: (_table, _id, fallback) => fallback,
     screen: () => SCREEN,
   };
@@ -48,11 +49,13 @@ function centreOf(r: { x: number; y: number; w: number; h: number }): { x: numbe
 }
 
 describe('menu window controller', () => {
-  /** The same layout the controller computes internally (same origin formula + inputs). */
+  /** The same layout the controller computes internally (same origin formula + inputs): to the right of
+   *  the strip, dropping from the buildings button so it clears the top-left debug overlay. */
   function expectedLayout(ctx: PanelContext) {
+    const buildingsY = ctx.layout.buttons.find((b) => b.id === 'buildings')?.placed.y ?? ctx.layout.strip.y;
     return layoutBuildingMenu(BUILDINGS, {
       originX: ctx.layout.width + WIN_PAD * ctx.scale,
-      originY: ctx.layout.strip.y,
+      originY: buildingsY,
       scale: ctx.scale,
       selected: 'all',
     });

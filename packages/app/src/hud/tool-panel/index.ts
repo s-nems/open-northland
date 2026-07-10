@@ -1,12 +1,14 @@
 import type { HudLayout, PalettedSprite } from '@vinland/render';
 import type { Command } from '@vinland/sim';
-import { type Application, Container, Graphics } from 'pixi.js';
+import { type Application, Container, Graphics, Texture } from 'pixi.js';
 import { loadGuiArt, makeGuiSprite } from '../../content/gui-art.js';
-import { loadGuiStrings, uiStringLookup } from '../../content/gui-gfx.js';
-import { type TextRun, loadBitmapFont, makeTextRun } from '../bitmap-text.js';
+import { type GuiBitmapName, loadGuiBitmap, loadGuiStrings, uiStringLookup } from '../../content/gui-gfx.js';
+import { loadUiFont } from '../../content/ui-font.js';
+import type { TextRun } from '../bitmap-text.js';
 import { HOVER_ALPHA, HOVER_TINT } from '../chrome.js';
+import { makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
-import type { PanelContext } from './context.js';
+import type { PanelBitmaps, PanelContext } from './context.js';
 import {
   DEFAULT_GAME_SPEED_CONTROL,
   type GameSpeedChangeCause,
@@ -39,8 +41,9 @@ import { type StripSpriteSpec, type SupersampledStrip, createSupersampledStrip }
  * coloured through the GUI palette LUT (the same mechanism as player colours) — bitmap-native, no DOM. When
  * the decoded GUI art is absent (a checkout that hasn't run the GUI pipeline stage) the panel DEGRADES to
  * flat `Graphics` blocks at the exact same pinned geometry, staying visible and fully interactive; the
- * pop-up window chrome is a parchment `Graphics` panel in both modes (`hud/chrome.ts`). Text is the decoded
- * `.fnt` bitmap font when present, else a Pixi `Text` fallback (`makeTextRun`).
+ * pop-up windows tile the original wood/rust bitmap fills over a `Graphics` frame (degrading to flat
+ * parchment when `content/` is absent). Text is the bundled vector serif (`hud/ui-text.ts`) — the crisp
+ * shared HUD default, not the decoded `.fnt` bitmap face.
  *
  * The package splits by concern: the pure geometry / speed-state / menu models (`layout.ts`,
  * `game-speed.ts`, `building-menu.ts` — headlessly unit-tested) from the window controllers
@@ -114,7 +117,20 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const layout = buildToolPanelLayout(opts.uiscale);
   const scale = layout.scale;
 
-  const [art, strings, font] = await Promise.all([loadGuiArt(), loadGuiStrings(opts.lang), loadBitmapFont()]);
+  const loadBitmap = async (name: GuiBitmapName): Promise<Texture | undefined> => {
+    const source = await loadGuiBitmap(name);
+    return source === undefined ? undefined : new Texture({ source });
+  };
+  const [art, strings, uiFont, bg, button, buttonHilite, headline] = await Promise.all([
+    loadGuiArt(),
+    loadGuiStrings(opts.lang),
+    loadUiFont(),
+    loadBitmap('bg'),
+    loadBitmap('bg_button'),
+    loadBitmap('bg_button_hilite'),
+    loadBitmap('bg_headline'),
+  ]);
+  const bitmaps: PanelBitmaps = { bg, button, buttonHilite, headline };
 
   const labelByType = new Map(opts.buildings.map((b) => [b.typeId, b.label]));
 
@@ -165,7 +181,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const ctx: PanelContext = {
     layout,
     scale,
-    makeText: (text, color) => makeTextRun(font, text, color, scale),
+    makeText: (text, color, px) => makeUiTextRun(uiFont.family, text, color, scale, px),
+    bitmaps,
     uiString: uiStringLookup(strings),
     screen: () => app.screen,
   };

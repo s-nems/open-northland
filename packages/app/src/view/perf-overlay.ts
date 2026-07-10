@@ -1,8 +1,8 @@
 /**
  * The on-canvas debug readout — the human-facing instrument for the render-scale + sim work. Pinned to
- * the bottom-LEFT of the screen (beside the tool-panel strip's foot, clear of the build menu that drops
- * down from the strip's TOP and of the bottom-right selection panel), lightly translucent so the strip
- * reads through it, it stacks two lines:
+ * the top-LEFT of the screen (beside the tool-panel strip's top; the build menu drops BELOW it, from the
+ * buildings button, so the two never collide), lightly translucent so the strip reads through it, it
+ * stacks two lines:
  *
  *  - **sim state:** the `tick` (the one field worth keeping from the removed always-on stocks HUD), the
  *    game-speed multiplier (or `paused`), how many sim `steps` the fixed-timestep loop advanced THIS
@@ -54,8 +54,7 @@ export interface PerfOverlayHandle {
 
 const PANEL_STYLE = [
   'position:fixed',
-  // Bottom-anchored so the build menu (which drops from the strip's top) never lands on top of it.
-  'bottom:12px',
+  'top:12px',
   'box-sizing:border-box',
   'padding:6px 12px',
   // Lightly translucent so the tool-panel strip / map read through the debug bar underneath it.
@@ -92,7 +91,7 @@ function heapMb(): number | null {
 }
 
 /**
- * Mount the debug readout, pinned bottom-left with its left edge at `leftPx` (the caller passes the
+ * Mount the debug readout, pinned top-left with its left edge at `leftPx` (the caller passes the
  * tool-panel strip's right edge so the bar clears the strip). Returns a live handle to refresh each frame.
  */
 export function mountPerfOverlay(leftPx = 12): PerfOverlayHandle {

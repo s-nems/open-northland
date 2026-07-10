@@ -1,13 +1,16 @@
-import { type Container, Graphics } from 'pixi.js';
+import { Container, Graphics } from 'pixi.js';
 import type { TextRun } from '../bitmap-text.js';
 import {
+  HEADLINE_FILL,
+  WOOD_FILL,
+  drawBevel,
   drawCloseX,
-  drawHeadlineBar,
   drawHoverHighlight,
-  drawRowStripe,
+  drawPlateOutline,
   drawScrollbar,
   drawTabButton,
-  drawWindowPanel,
+  drawWindowFrame,
+  tileBitmap,
 } from '../chrome.js';
 import { type Rect, contains } from '../geometry.js';
 import {
@@ -19,15 +22,23 @@ import {
 } from './building-menu.js';
 import type { PanelContext } from './context.js';
 
-/** Approx. font10 cap height (design px) — used to vertically centre a text run in a chrome rect. */
+/** Text sizes (design px) — a larger title/tab heading over the body-size building rows. */
+const TITLE_PX = 13;
+const TAB_PX = 11;
+const ROW_PX = 11;
+/** Approx. cap height (design px) of the body text — used to vertically centre a run in a chrome rect. */
 const TEXT_CAP_H = 10;
 /** Left inset (design px) for the left-aligned building rows. */
-const ROW_INSET_X = 5;
+const ROW_INSET_X = 6;
+/** Design-px inset of the headline strip inside the window frame (so the frame reads around it). */
+const HEADLINE_INSET = 2;
 /** How many rows one mouse-wheel event scrolls the list. */
 const WHEEL_ROWS = 1;
+/** Window left offset from the strip's right edge (design px), matching {@link WIN_PAD}. */
+const MENU_GAP = 6;
 /**
- * Bottom margin (design px) the list keeps clear of the screen foot, so the window never reaches the
- * bottom-left perf overlay. Combined with {@link MAX_LIST_ROWS} it keeps the window a compact panel.
+ * Bottom margin (design px) the list keeps clear of the screen foot. Combined with {@link MAX_LIST_ROWS} it
+ * keeps the window a compact panel.
  */
 const LIST_BOTTOM_MARGIN = 24;
 /** Hard cap on visible rows so the window stays a tidy panel even on a very tall screen (the rest scroll). */
@@ -36,6 +47,8 @@ const MAX_LIST_ROWS = 13;
 const MIN_LIST_ROWS = 3;
 /** Design-px chrome above the list (headline + tab row + gap) — mirrors `building-menu.ts` metrics. */
 const CHROME_ABOVE_LIST = 18 + 18 + 3;
+/** Building row height (design px) — mirrors `building-menu.ts` `MENU_ROW_H`. */
+const ROW_H = 16;
 
 export interface MenuWindowDeps {
   readonly ctx: PanelContext;
@@ -64,11 +77,23 @@ export interface MenuWindow {
   place(): void;
 }
 
+/** The window origin: to the right of the strip, dropping from the buildings button (so it clears the
+ *  top-left debug overlay instead of colliding with it). */
+function menuOrigin(ctx: PanelContext): { x: number; y: number } {
+  const buildingsBtn = ctx.layout.buttons.find((b) => b.id === 'buildings');
+  return {
+    x: ctx.layout.width + MENU_GAP * ctx.scale,
+    y: buildingsBtn?.placed.y ?? ctx.layout.strip.y,
+  };
+}
+
 /**
- * Build the building-menu window controller over the pure {@link layoutBuildingMenu} geometry. Owns its
- * own `Graphics` (chrome) + a separate hover `Graphics` + text runs inside `deps.container`; the chrome is
- * rebuilt on open, tab change and scroll, the hover layer redraws on its own (cheap), and the runs are
- * placed each frame while open (cheap — placement only moves retained runs).
+ * Build the building-menu window controller over the pure {@link layoutBuildingMenu} geometry. Owns a
+ * `back` container (the tiled wood/rust/button bitmap fills), a `Graphics` (frame + bevels + scrollbar), a
+ * separate hover `Graphics`, and vector text runs inside `deps.container`. The chrome is rebuilt on open,
+ * tab change and scroll; the hover layer redraws on its own (cheap); the runs are placed each frame while
+ * open (cheap — placement only moves retained runs). Every bitmap fill degrades to flat Graphics when the
+ * decoded art is absent.
  */
 export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
   const { ctx } = deps;
@@ -80,16 +105,16 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
   let menuLayout: BuildingMenuLayout | null = null;
   let hoveredType: number | null = null;
   const runs: TextRun[] = [];
+  const back = new Container();
   const graphics = new Graphics();
   const hoverG = new Graphics();
-  deps.container.addChild(graphics, hoverG);
+  deps.container.addChild(back, graphics, hoverG);
 
   /** The viewport height in rows, from the live screen height (bounded to a tidy compact panel). */
   const listRows = (): number => {
     const { height } = ctx.screen();
-    const originY = ctx.layout.strip.y;
-    const rowH = 16 * scale; // MENU_ROW_H
-    const avail = height - originY - (CHROME_ABOVE_LIST + LIST_BOTTOM_MARGIN) * scale;
+    const rowH = ROW_H * scale;
+    const avail = height - menuOrigin(ctx).y - (CHROME_ABOVE_LIST + LIST_BOTTOM_MARGIN) * scale;
     const fit = Math.floor(avail / rowH);
     return Math.max(MIN_LIST_ROWS, Math.min(MAX_LIST_ROWS, fit));
   };
@@ -98,6 +123,7 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
     for (const r of runs) r.destroy();
     runs.length = 0;
     graphics.clear();
+    for (const child of back.removeChildren()) child.destroy();
   };
 
   /** Centre a run horizontally in `rect` (uses its native-px width) and vertically by the cap height. */
@@ -109,8 +135,7 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
 
   const rebuild = (): void => {
     clear();
-    const originX = ctx.layout.width + 6 * scale; // WIN_PAD
-    const originY = ctx.layout.strip.y;
+    const { x: originX, y: originY } = menuOrigin(ctx);
     menuLayout = layoutBuildingMenu(deps.buildings, {
       originX,
       originY,
@@ -119,28 +144,51 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
       scrollTop,
       maxListRows: listRows(),
     });
-    scrollTop = menuLayout.scroll.top; // clamp back (category change can shrink the range)
+    scrollTop = menuLayout.scroll.top; // clamp back (a category change can shrink the range)
 
-    drawWindowPanel(graphics, menuLayout.window, scale);
-    drawHeadlineBar(graphics, menuLayout.titleRect, scale);
+    // Window body: tiled wood, framed in gilt (flat warm fill when the bitmap is absent).
+    if (!tileBitmap(back, ctx.bitmaps.bg, menuLayout.window, scale)) {
+      graphics
+        .rect(menuLayout.window.x, menuLayout.window.y, menuLayout.window.w, menuLayout.window.h)
+        .fill(WOOD_FILL);
+    }
+    drawWindowFrame(graphics, menuLayout.window, scale);
+
+    // Headline band: tiled rust (flat fill fallback), inset so the frame reads around it.
+    const inset = Math.round(HEADLINE_INSET * scale);
+    const band: Rect = {
+      x: menuLayout.titleRect.x + inset,
+      y: menuLayout.titleRect.y + inset,
+      w: menuLayout.titleRect.w - 2 * inset,
+      h: menuLayout.titleRect.h - inset,
+    };
+    if (!tileBitmap(back, ctx.bitmaps.headline, band, scale)) {
+      graphics.rect(band.x, band.y, band.w, band.h).fill(HEADLINE_FILL);
+    }
     drawCloseX(graphics, menuLayout.closeRect, scale);
 
-    const title = ctx.makeText(ctx.uiString('miscwindow', 0, 'Zbuduj Okno'), 'white');
+    const title = ctx.makeText(ctx.uiString('miscwindow', 0, 'Zbuduj Okno'), 'white', TITLE_PX);
     deps.container.addChild(title.container);
     runs.push(title);
 
     for (const tab of menuLayout.tabs) {
-      drawTabButton(graphics, tab.rect, scale, tab.selected);
+      const tex = tab.selected ? ctx.bitmaps.buttonHilite : ctx.bitmaps.button;
+      if (tileBitmap(back, tex, tab.rect, scale)) {
+        drawPlateOutline(graphics, tab.rect, scale);
+        if (!tab.selected) drawBevel(graphics, tab.rect, scale, 'pressed'); // recede the inactive tabs
+      } else {
+        drawTabButton(graphics, tab.rect, scale, tab.selected);
+      }
       const run = ctx.makeText(
         ctx.uiString('miscwindow', tab.stringId, tab.label),
         tab.selected ? 'white' : 'dimmed',
+        TAB_PX,
       );
       deps.container.addChild(run.container);
       runs.push(run);
     }
     for (const row of menuLayout.rows) {
-      if (row.index % 2 === 1) drawRowStripe(graphics, row.rect);
-      const run = ctx.makeText(row.label, 'white');
+      const run = ctx.makeText(row.label, 'white', ROW_PX);
       deps.container.addChild(run.container);
       runs.push(run);
     }
