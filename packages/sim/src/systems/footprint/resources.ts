@@ -16,7 +16,7 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
-import type { CellId, TerrainGraph } from '../../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import { translatedCells } from './geometry.js';
 
 // RESOURCE footprints — the `[GfxLandscape]` walk/build/work areas a stamped resource occupies, and
@@ -149,14 +149,14 @@ export function createResourceNode(world: World, content: ContentSet, spec: Reso
 interface ResourceBlockedCache {
   generation: number;
   readonly terrain: TerrainGraph;
-  readonly cells: Set<CellId>;
-  readonly counts: Map<CellId, number>;
-  readonly entries: Map<Entity, readonly CellId[]>;
+  readonly cells: Set<NodeId>;
+  readonly counts: Map<NodeId, number>;
+  readonly entries: Map<Entity, readonly NodeId[]>;
 }
 
 const resourceBlockedCache = new WeakMap<World, ResourceBlockedCache>();
 
-function resourceBlockedCellsFor(world: World, terrain: TerrainGraph, resource: Entity): CellId[] | null {
+function resourceBlockedCellsFor(world: World, terrain: TerrainGraph, resource: Entity): NodeId[] | null {
   const footprint = world.tryGet(resource, ResourceFootprint);
   const p = world.tryGet(resource, Position);
   if (footprint === undefined || p === undefined) return null;
@@ -167,7 +167,7 @@ function resourceBlockedCellsFor(world: World, terrain: TerrainGraph, resource: 
 function addResourceBlockedCacheEntry(
   cache: ResourceBlockedCache,
   resource: Entity,
-  cells: readonly CellId[],
+  cells: readonly NodeId[],
 ): void {
   removeResourceBlockedCacheEntryFrom(cache, resource);
   cache.entries.set(resource, cells);
@@ -220,9 +220,9 @@ function deriveResourceBlockedCache(world: World, terrain: TerrainGraph): Resour
   const cache: ResourceBlockedCache = {
     generation: world.componentGeneration(ResourceFootprint),
     terrain,
-    cells: new Set<CellId>(),
-    counts: new Map<CellId, number>(),
-    entries: new Map<Entity, readonly CellId[]>(),
+    cells: new Set<NodeId>(),
+    counts: new Map<NodeId, number>(),
+    entries: new Map<Entity, readonly NodeId[]>(),
   };
   for (const e of world.query(ResourceFootprint, Position)) {
     const cells = resourceBlockedCellsFor(world, terrain, e);
@@ -231,11 +231,11 @@ function deriveResourceBlockedCache(world: World, terrain: TerrainGraph): Resour
   return cache;
 }
 
-function deriveResourceBlockedCells(world: World, terrain: TerrainGraph): Set<CellId> {
+function deriveResourceBlockedCells(world: World, terrain: TerrainGraph): Set<NodeId> {
   return deriveResourceBlockedCache(world, terrain).cells;
 }
 
-function sameCells(a: ReadonlySet<CellId>, b: ReadonlySet<CellId>): boolean {
+function sameCells(a: ReadonlySet<NodeId>, b: ReadonlySet<NodeId>): boolean {
   if (a.size !== b.size) return false;
   for (const cell of a) if (!b.has(cell)) return false;
   return true;
@@ -259,7 +259,7 @@ function verifyResourceBlockedCache(world: World, terrain: TerrainGraph): string
  * a forest mutates just the affected node's cells instead of scanning every resource on the next route.
  * A direct ResourceFootprint store mutation still falls back to a full rebuild for correctness.
  */
-export function resourceBlockedCells(world: World, terrain: TerrainGraph): ReadonlySet<CellId> {
+export function resourceBlockedCells(world: World, terrain: TerrainGraph): ReadonlySet<NodeId> {
   const generation = world.componentGeneration(ResourceFootprint);
   const cached = resourceBlockedCache.get(world);
   if (cached !== undefined && cached.terrain === terrain && cached.generation === generation) {

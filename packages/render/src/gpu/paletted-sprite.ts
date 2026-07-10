@@ -28,7 +28,7 @@ export type GuiColorKey = 'off' | 'magenta' | 'full' | 'round';
  * **Positioning is manual (screen space).** Pixi does NOT wire its transform uniform blocks into a custom
  * `Shader.from` program (the global-uniform UBO is left unbound), so a custom-shader mesh can't ride the
  * scene-graph transform — the caller supplies a feet-anchor screen position + scale via {@link place}, and
- * the vertex shader maps screen pixels straight to clip space with `uResolution`.
+ * the vertex shader maps screen pixels straight to clip space with `uScreen`.
  *
  * **All per-mesh varying values live in ONE `vec4` (`uPlacement`) mutated IN PLACE.** These meshes share a
  * single compiled GL program, and on a shared program Pixi re-uploads a loose uniform only when its backing
@@ -42,17 +42,23 @@ in vec2 aUV;
 out vec2 vUV;
 
 uniform vec4 uPlacement;  // xy = feet-anchor screen px, z = pixels-per-native-pixel (zoom), w = player row
-uniform vec2 uResolution; // canvas size in pixels
+// LOGICAL canvas size in px (the same CSS-px space uPlacement lives in). Deliberately NOT named
+// "uResolution": Pixi's GlobalUniformSystem publishes a global uniform of that exact name (the render
+// target's DEVICE-pixel size) and syncs it onto any mesh shader declaring it — on a HiDPI canvas
+// (resolution > 1) that overwrote this with 2× values AFTER our group's value-cache said "unchanged,
+// skip", so the FIRST paletted mesh drawn each frame landed at half position/size (the "body stands
+// beside the head" bug). A non-reserved name keeps this uniform ours alone.
+uniform vec2 uScreen;
 uniform vec2 uFlip;       // .x > 0.5: negate clip Y (render upright into a bottom-up render texture)
 
 void main(void) {
   vec2 screen = uPlacement.xy + uPlacement.z * aPosition;
   // Screen pixels → clip space (Y points down in screen space, up in clip space).
-  float clipY = 1.0 - screen.y / uResolution.y * 2.0;
+  float clipY = 1.0 - screen.y / uScreen.y * 2.0;
   // A WebGL render texture is stored bottom-up, so a straight draw lands upside-down; uFlip negates clip Y
   // to render upright into a texture WITHOUT the whole-sprite Y-flip that mixed (Pixi-native) content can't
   // share. See gpu/supersample.ts.
-  gl_Position = vec4(screen.x / uResolution.x * 2.0 - 1.0, uFlip.x > 0.5 ? -clipY : clipY, 0.0, 1.0);
+  gl_Position = vec4(screen.x / uScreen.x * 2.0 - 1.0, uFlip.x > 0.5 ? -clipY : clipY, 0.0, 1.0);
   vUV = aUV;
 }`;
 
@@ -140,7 +146,8 @@ interface PalettedUniforms {
   uniforms: {
     /** [feetX, feetY, scale, playerRow] — mutated in place so a shared program re-uploads it. */
     uPlacement: Float32Array;
-    uResolution: Float32Array;
+    /** [width, height] — the logical canvas size (see the vertex-shader note on why not `uResolution`). */
+    uScreen: Float32Array;
     uLutSize: Float32Array;
     /** [keyMagenta, nearBlackMode] — a `Float32Array` (NOT a scalar `f32`, which a shared program won't
      *  re-upload per-mesh; see the class note) so each sprite carries its own GUI-key flags. */
@@ -182,7 +189,7 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
     });
     const vars = {
       uPlacement: { value: new Float32Array([0, 0, 1, 0]), type: 'vec4<f32>' as const },
-      uResolution: { value: new Float32Array([1, 1]), type: 'vec2<f32>' as const },
+      uScreen: { value: new Float32Array([1, 1]), type: 'vec2<f32>' as const },
       uLutSize: { value: new Float32Array([LUT_WIDTH, colours]), type: 'vec2<f32>' as const },
       uColorKey: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
       uFlip: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
@@ -345,8 +352,8 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
     u.uPlacement[0] = originX;
     u.uPlacement[1] = originY;
     u.uPlacement[2] = scale;
-    u.uResolution[0] = resWidth;
-    u.uResolution[1] = resHeight;
+    u.uScreen[0] = resWidth;
+    u.uScreen[1] = resHeight;
     this.vars.update();
   }
 
@@ -385,8 +392,8 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
     u.uPlacement[0] = x;
     u.uPlacement[1] = y;
     u.uPlacement[2] = 1;
-    u.uResolution[0] = resWidth;
-    u.uResolution[1] = resHeight;
+    u.uScreen[0] = resWidth;
+    u.uScreen[1] = resHeight;
     this.vars.update();
   }
 

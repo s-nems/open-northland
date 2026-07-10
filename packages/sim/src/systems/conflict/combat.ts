@@ -15,7 +15,7 @@ import {
   Weapon,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { CellId, TerrainGraph } from '../../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
 import {
   HUNTER_JOB,
@@ -27,10 +27,10 @@ import {
   weaponDamageVsMaterial,
 } from '../readviews/index.js';
 import {
-  TileBuckets,
+  NodeBuckets,
   canonicalById,
   clearNavState,
-  entityCell,
+  entityNode,
   isTravelling,
   manhattan,
 } from '../spatial.js';
@@ -55,8 +55,8 @@ export { SIGHT_RADIUS_NODES } from './targeting.js';
  *     lingering combat state to clean up) exists. If not, the system does **zero** further work: a map of
  *     peaceful settlers, or an all-one-player field, costs nothing (golden rule 7 — no full-world scan on
  *     an idle tick).
- *  2. **Spatial index** — all combatants are bucketed by tile ONCE ({@link TileBuckets}), so a seeker's
- *     "nearest enemy" query is a bounded grid RING SEARCH ({@link TileBuckets.nearest}) instead of an
+ *  2. **Spatial index** — all combatants are bucketed by tile ONCE ({@link NodeBuckets}), so a seeker's
+ *     "nearest enemy" query is a bounded grid RING SEARCH ({@link NodeBuckets.nearest}) instead of an
  *     O(entities) full scan per seeker (the historical plan tier-3 ring-search consumer).
  *  3. **Per combatant** ({@link engageCombatant}) — act on the unit's {@link Stance} military mode (owned
  *     units; the original's `MILITARY_MODE`): **ATTACK** auto-acquires the nearest enemy in sight and
@@ -99,7 +99,7 @@ export const combatSystem: System = (world, ctx) => {
   // order and the ring-search index are both built from it, so a distance/first-match tie-break lands on
   // the same winner every run — and the per-tick spatial bucket for the ring-search enemy query.
   const combatants = canonicalById(world.query(Settler, Health, Position));
-  const index = new TileBuckets(world, combatants);
+  const index = new NodeBuckets(world, combatants);
 
   for (const e of combatants) {
     engageCombatant(world, ctx, terrain, index, e);
@@ -204,7 +204,7 @@ function engageCombatant(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  index: TileBuckets,
+  index: NodeBuckets,
   e: Entity,
 ): void {
   if (world.has(e, CurrentAtomic)) return; // mid-swing / mid-need: play it out
@@ -282,7 +282,7 @@ function engageCombatant(
     return;
   }
 
-  const here = entityCell(world, terrain, e);
+  const here = entityNode(world, terrain, e);
   const spec = engageSpec(world, ctx, terrain, e, owned, ordered, stance, attacker, weapon);
   const found = resolveTarget(world, ctx, terrain, index, e, here, attacker, spec);
   if (found === null) {
@@ -361,7 +361,7 @@ function engageSpec(
   if (owned && !ordered && stance === MILITARY_MODE.DEFEND) {
     const anchor = defendAnchor(world, terrain, e);
     const accept = (t: Entity): boolean =>
-      generalAccept(t) && manhattan(terrain, anchor, entityCell(world, terrain, t)) <= DEFEND_RADIUS_NODES;
+      generalAccept(t) && manhattan(terrain, anchor, entityNode(world, terrain, t)) <= DEFEND_RADIUS_NODES;
     return {
       accept,
       minDist,
@@ -387,21 +387,21 @@ interface EngageSpec {
   /** Far reach — how far the unit spots a target to swing at / advance on. */
   readonly searchRadius: number;
   /** DEFEND leash: the chase never walks past `leash` of `anchorCell`; null for every non-DEFEND mode. */
-  readonly defend: { readonly anchorCell: CellId; readonly leash: number } | null;
+  readonly defend: { readonly anchorCell: NodeId; readonly leash: number } | null;
 }
 
 /** The DEFEND anchor cell — the {@link Stance}'s captured `anchorCell` (the tile the stance was set on),
  *  falling back to the unit's own cell if it somehow carries none (a DEFEND stamped before it had a tile). */
-function defendAnchor(world: World, terrain: TerrainGraph, e: Entity): CellId {
+function defendAnchor(world: World, terrain: TerrainGraph, e: Entity): NodeId {
   const anchor = world.tryGet(e, Stance)?.anchorCell;
-  return (anchor ?? entityCell(world, terrain, e)) as CellId;
+  return (anchor ?? entityNode(world, terrain, e)) as NodeId;
 }
 
 /** Send a DEFEND unit back to its anchor when no enemy is in its defend radius: drop the {@link Engagement}
  *  (it is no longer fighting) and either hold in place (already home — clear any stale route) or walk home
  *  (a fresh {@link MoveGoal} to the anchor). Combined with the leash in {@link chase}, this is the "engage
  *  in a radius, don't chase far, return to post" behaviour of the DEFEND mode. */
-function returnToAnchor(world: World, e: Entity, here: CellId, anchorCell: CellId): void {
+function returnToAnchor(world: World, e: Entity, here: NodeId, anchorCell: NodeId): void {
   world.remove(e, Engagement);
   clearChase(world, e);
   if (here !== anchorCell) world.add(e, MoveGoal, { cell: anchorCell });
@@ -421,9 +421,9 @@ function resolveTarget(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  index: TileBuckets,
+  index: NodeBuckets,
   self: Entity,
-  here: CellId,
+  here: NodeId,
   attacker: { tribe: number; jobType: number | null },
   spec: EngageSpec,
 ): { target: Entity; dist: number } | null {
@@ -432,7 +432,7 @@ function resolveTarget(
     // An ordered target is chased regardless of sight, so measure its real distance (the ring search's
     // `searchRadius` cap does not apply); the swing/chase decision is on this distance.
     if (isValidTarget(world, ctx, self, attacker, focus)) {
-      return { target: focus, dist: manhattan(terrain, here, entityCell(world, terrain, focus)) };
+      return { target: focus, dist: manhattan(terrain, here, entityNode(world, terrain, focus)) };
     }
     world.remove(self, AttackOrder); // target gone / no longer hostile — abandon the order, auto-engage
   }
@@ -455,11 +455,11 @@ function chase(
   ctx: SystemContext,
   terrain: TerrainGraph,
   e: Entity,
-  here: CellId,
+  here: NodeId,
   target: Entity,
   weapon: { minRange: number; maxRange: number },
   ordered: boolean,
-  defend: { anchorCell: CellId; leash: number } | null,
+  defend: { anchorCell: NodeId; leash: number } | null,
 ): void {
   const engagement = world.add(e, Engagement, {
     repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick, // repath now on first engagement
@@ -482,7 +482,7 @@ function chase(
   const dest = approachCell(
     terrain,
     here,
-    entityCell(world, terrain, target),
+    entityNode(world, terrain, target),
     weapon.minRange,
     weapon.maxRange,
   );
@@ -517,14 +517,14 @@ function chase(
  *  around the target — O((2·maxRange+1)²), tiny for melee — deterministic (fixed order + min-id tie-break). */
 function approachCell(
   terrain: TerrainGraph,
-  from: CellId,
-  targetCell: CellId,
+  from: NodeId,
+  targetCell: NodeId,
   minRange: number,
   maxRange: number,
-): CellId {
+): NodeId {
   const t = terrain.coordsOf(targetCell);
   const f = terrain.coordsOf(from);
-  let best: CellId | null = null;
+  let best: NodeId | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   for (let dy = -maxRange; dy <= maxRange; dy++) {
     for (let dx = -maxRange; dx <= maxRange; dx++) {
@@ -533,7 +533,7 @@ function approachCell(
       const x = t.x + dx;
       const y = t.y + dy;
       if (!terrain.inBounds(x, y)) continue;
-      const cell = terrain.cellAt(x, y);
+      const cell = terrain.nodeAt(x, y);
       if (!terrain.isWalkable(cell)) continue;
       const d = Math.abs(x - f.x) + Math.abs(y - f.y); // distance from the unit to this candidate cell
       if (d < bestDist || (d === bestDist && (best === null || cell < best))) {

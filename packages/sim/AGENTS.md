@@ -81,11 +81,11 @@ ascending-id scan order or elided only provably-empty work, so the winner never 
   a unit with no reachable work does not re-scan every tick. Safe because a false means every scan returns
   null anyway (it's the same predicate the scan applies, minus the deliverability check, so it only ever
   elides a provably-null scan).
-- **`TileBuckets`** (`systems/spatial.ts`) — a per-tick spatial bucket of entities by integer tile; O(1)
-  "what's on this tile?". `jobSystem`'s adopt-check (am I standing on a workplace I staff?) is now a
-  same-tile lookup, not a building scan per settler. Feed it a `canonicalById` list — the ring
+- **`NodeBuckets`** (`systems/spatial.ts`) — a per-tick spatial bucket of entities by integer node; O(1)
+  "what's on this node?". `jobSystem`'s adopt-check (am I standing on a workplace I staff?) is now a
+  same-node lookup, not a building scan per settler. Feed it a `canonicalById` list — the ring
   search's min-id pick is only canonical over ascending-id buckets.
-- **`TileBuckets.nearest`** — the grid ring search: expands Manhattan bands from the unit, **finishes
+- **`NodeBuckets.nearest`** — the grid ring search: expands Manhattan bands from the unit, **finishes
   the whole minimum-distance band and picks canonically by (distance, id)** (never stops at the first
   hit, so the winner is unchanged), and short-circuits past `maxDist`. First consumer: `combatSystem`'s
   nearest-enemy query — 23× faster than a full scan at 400 combatants, ~O(seekers·sight²) not
@@ -96,6 +96,6 @@ ascending-id scan order or elided only provably-empty work, so the winner never 
   = what `.find` returned; the `setatomic` binding tables are last-wins, the source's override rule).
   Replaced every hot linear content scan, including the per-combatant weapon lookups.
 
-**Remaining follow-ups** (economy nearest-X onto `TileBuckets.nearest`, sim in a Web Worker) are
+**Remaining follow-ups** (economy nearest-X onto `NodeBuckets.nearest`, sim in a Web Worker) are
 concrete plan steps in `docs/plans/sim-perf.md` — this file keeps the rules and the landed levers,
 not the roadmap.

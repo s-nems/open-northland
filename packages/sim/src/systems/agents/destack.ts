@@ -1,9 +1,9 @@
 import { MoveGoal, Owner } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { CellId, TerrainGraph } from '../../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockedCells } from '../footprint/index.js';
-import type { TileBuckets } from '../spatial.js';
+import type { NodeBuckets } from '../spatial.js';
 
 // The IDLE-SPACING drive — the planner's last resort for a unit with nothing to do: step off a tile
 // shared with another resting unit so an idle crowd spreads out instead of stacking.
@@ -16,9 +16,9 @@ import type { TileBuckets } from '../spatial.js';
  * no crowded idle unit never builds it.
  */
 export interface IdleSpacing {
-  readonly occupancy: TileBuckets;
-  readonly claimed: Set<CellId>;
-  blockedCells?: ReadonlySet<CellId>;
+  readonly occupancy: NodeBuckets;
+  readonly claimed: Set<NodeId>;
+  blockedCells?: ReadonlySet<NodeId>;
 }
 
 /** Max nodes a de-stack ring search visits before giving up — a boxed-in unit simply stays put.
@@ -60,7 +60,7 @@ export function deStackIdle(
   // a blocked goal, and a MoveGoal whose route can't resolve would freeze the unit (nothing clears a
   // failed non-player request), so we never aim at one.
   spacing.blockedCells ??= dynamicBlockedCells(world, ctx, terrain);
-  const from = terrain.cellAtClamped(tileX, tileY);
+  const from = terrain.nodeAtClamped(tileX, tileY);
   const free = nearestFreeCell(terrain, from, spacing.occupancy, spacing.claimed, spacing.blockedCells);
   if (free === null) return; // boxed in — nothing better than staying
   spacing.claimed.add(free);
@@ -76,16 +76,16 @@ export function deStackIdle(
  */
 function nearestFreeCell(
   terrain: TerrainGraph,
-  from: CellId,
-  occupancy: TileBuckets,
-  claimed: ReadonlySet<CellId>,
-  blocked: ReadonlySet<CellId>,
-): CellId | null {
-  const seen = new Set<CellId>([from]);
-  let frontier: CellId[] = [from];
+  from: NodeId,
+  occupancy: NodeBuckets,
+  claimed: ReadonlySet<NodeId>,
+  blocked: ReadonlySet<NodeId>,
+): NodeId | null {
+  const seen = new Set<NodeId>([from]);
+  let frontier: NodeId[] = [from];
   let visited = 0;
   while (frontier.length > 0 && visited < SPACING_SEARCH_CAP) {
-    const next: CellId[] = [];
+    const next: NodeId[] = [];
     for (const cell of frontier) {
       for (const n of terrain.walkableNeighbours(cell)) {
         if (seen.has(n) || blocked.has(n)) continue;

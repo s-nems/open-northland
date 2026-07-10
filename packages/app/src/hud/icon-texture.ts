@@ -54,7 +54,7 @@ export function bakeRoundIcon(opts: {
 
   // Place the mesh so the frame's content box fills the texture: origin cancels the frame's draw offset,
   // zoom = ss, resolution = the texture size (a PalettedSprite maps native px → target px itself via its own
-  // uResolution — it doesn't ride the scene-graph transform). The detached container is owned by dispose.
+  // uScreen — it doesn't ride the scene-graph transform). The detached container is owned by dispose.
   sprite.place(-frame.offsetX * ss, -frame.offsetY * ss, ss, texW, texH);
   const offscreen = new Container();
   offscreen.addChild(sprite);

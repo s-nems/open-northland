@@ -15,6 +15,7 @@ import { FixedTimestep, type SimEvent, type Simulation, type WorldSnapshot } fro
 import type { Application } from 'pixi.js';
 import { HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { createSoundDriver } from '../content/audio.js';
+import { DEFAULT_UI_LANG } from '../content/gui-gfx.js';
 import { loadIr } from '../content/ir.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
 import { professionsFromContent } from '../hud/details-panel/index.js';
@@ -132,6 +133,10 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
   // `?uiscale=` — parsed ONCE, shared by the tool panel and the action ring. Fractional allowed (the
   // default is 1.4×); the consumers clamp it to ≥1.
   const uiscale = floatParam(params, 'uiscale', DEFAULT_UI_SCALE);
+
+  // `?lang=` — the UI-string + building-name language (defaults to Polish). Shared by the building menu's
+  // localized names and the tool panel's decoded UI strings so the two can't drift.
+  const lang = params.get('lang') ?? DEFAULT_UI_LANG;
   // Playback control. `?speed=` seeds the initial wall-clock multiplier (default ×1; e.g. `&speed=0.5`
   // for a calm, sub-1× pace the panel's discrete speed button can't reach). The tool panel's game-speed
   // button then drives it live (×1 → ×2 → ×3 → ×1; `P` toggles pause) without clobbering this seed at mount.
@@ -153,8 +158,8 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
   // On-canvas debug readout (top-left, just clear of the tool-panel strip): tick / speed / steps /
   // entity counts + the FPS and the sim/snap/draw CPU split, so a human can judge whether the view holds
   // a frame rate, whether culling is biting, and whether a slow frame is the sim or the draw. Real-GPU
-  // only: headless Chromium is software-GL. The left inset is the strip's right edge + a small gap, so the
-  // bar sits beside the strip at any `?uiscale=` instead of overlapping its top icons.
+  // only: headless Chromium is software-GL. The left inset is the strip's right edge + a small gap; the
+  // build menu drops BELOW it (from the buildings button), so the two never overlap.
   const perf = mountPerfOverlay(buildToolPanelLayout(uiscale).width + PERF_STRIP_GAP);
 
   // The original LEFT tool panel — the standard game HUD. Its game-speed button drives `control`, the
@@ -175,12 +180,17 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     canPlaceAt,
     mapSize: deps.mapSize,
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
-    buildings: menuEntriesFromContent(sim.content),
+    buildings: menuEntriesFromContent(sim.content, lang),
     goods: menuGoodsFromContent(sim.content),
+    lang,
     tribe: HUD_TRIBE,
     owner: HUMAN_PLAYER,
     onSpeed: (spec, cause) => applyGameSpeed(control, spec, cause),
   });
+
+  // Scrolling an open HUD window (the build menu / stats list) must NOT also zoom the world behind it —
+  // the camera skips the wheel while the pointer is over such a window.
+  cameraCtl.setPointerGuard((clientX, clientY) => toolPanel.claimsWheel(clientX, clientY));
 
   // The cursor position for the build-mode ghost (client coords; null when the pointer left the
   // canvas). Tracked persistently — the ghost must follow the mouse between clicks, and reading it in

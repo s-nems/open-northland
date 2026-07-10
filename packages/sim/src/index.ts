@@ -39,9 +39,9 @@ export {
 export {
   TerrainGraph,
   buildTerrainGraph,
-  cellLatticeDistance,
+  nodeLatticeDistance,
   halfCellMapFromCells,
-  type CellId,
+  type NodeId,
   type CellTerrainMap,
   type TerrainMap,
 } from './nav/terrain.js';

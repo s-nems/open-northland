@@ -1,20 +1,12 @@
 import { type GuiColorKey, PalettedSprite } from '@vinland/render';
-import {
-  type Application,
-  type Container,
-  type Graphics,
-  Sprite,
-  Text,
-  type Texture,
-  TilingSprite,
-} from 'pixi.js';
+import { type Application, type Container, type Graphics, Sprite, Text, type Texture } from 'pixi.js';
 import type { FontColorName } from '../../content/font-gfx.js';
 import { GENERIC_GOOD_ICON, makeGoodSprite } from '../../content/goods-gfx.js';
 import { makeGuiSprite } from '../../content/gui-art.js';
 import { GUI_FRAME } from '../../content/gui-atlas-map.js';
 import { type GuiPaletteName, guiPaletteRow } from '../../content/gui-gfx.js';
 import { UI_TEXT_FILL } from '../../content/ui-font.js';
-import { HOVER_ALPHA, HOVER_TINT, WINDOW_BORDER, WINDOW_FILL } from '../chrome.js';
+import { HOVER_ALPHA, HOVER_TINT, WINDOW_BORDER, WINDOW_FILL, tileBitmap } from '../chrome.js';
 import type { Rect } from '../geometry.js';
 import type { DetailsPanelAssets } from './assets.js';
 import type { ButtonHit } from './layout.js';
@@ -211,18 +203,8 @@ export function createChrome(
     t.position.set(Math.round(rightX), Math.round(y - CAP_TOP_RATIO * FONT_PX[variant] * scale));
   };
 
-  const tile = (texture: Texture | undefined, r: Rect, target: Container = layers.back): boolean => {
-    if (texture === undefined) return false;
-    const sprite = new TilingSprite({
-      texture,
-      width: Math.max(1, Math.round(r.w)),
-      height: Math.max(1, Math.round(r.h)),
-    });
-    sprite.position.set(Math.round(r.x), Math.round(r.y));
-    sprite.tileScale.set(scale);
-    target.addChild(sprite);
-    return true;
-  };
+  const tile = (texture: Texture | undefined, r: Rect, target: Container = layers.back): boolean =>
+    tileBitmap(target, texture, r, scale);
 
   const guiCentered = (
     gfx: number,

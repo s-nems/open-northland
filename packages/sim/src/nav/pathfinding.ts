@@ -3,7 +3,7 @@
  *
  * This is the pure search the PathfindingSystem drives. It walks {@link TerrainGraph.steps} (the
  * canonical 8-direction half-cell edge set: E,W then NE,SE,SW,NW then the vertical N,S), using
- * {@link cellLatticeDistance} as the admissible heuristic and each step's own cost (its real world
+ * {@link nodeLatticeDistance} as the admissible heuristic and each step's own cost (its real world
  * length: half-column ½, diagonal ≈ ¾, half-row ≈ 0.28) as the edge cost. The result is the
  * lowest-cost node sequence from `start` to `goal`, inclusive of both, or `null` when no walkable
  * route exists — minimising TRUE on-screen distance, so a route reads straight under the staggered
@@ -12,7 +12,7 @@
  * DETERMINISM: every tie is broken by a fixed, history-independent rule so two runs (or two clients in
  * lockstep) pick byte-identical paths. The open set is a binary min-heap ordered by the TOTAL
  * canonical order (lowest f, then lowest h, then lowest deviation from the start→goal line, then
- * lowest cell id) — with a total order the minimum is UNIQUE, so the root is the canonical pick no
+ * lowest node id) — with a total order the minimum is UNIQUE, so the root is the canonical pick no
  * matter how the heap's internal layout evolved; a relaxation decreases a record's key in place and
  * sifts it up. Neighbours are expanded in the graph's canonical order. The LINE-DEVIATION key only
  * ever separates routes that already tie on cost, so optimality is untouched — its job is visual:
@@ -29,11 +29,11 @@
  * matches the current query, so stale contents are never read; reuse is invisible to the result.
  */
 import { type Fixed, fx } from '../core/fixed.js';
-import { type CellId, type TerrainGraph, cellLatticeDistance } from './terrain.js';
+import { type NodeId, type TerrainGraph, nodeLatticeDistance } from './terrain.js';
 
 /** A* per-node bookkeeping. `g` = best known cost from start; `f` = g + heuristic; `h` = heuristic. */
-interface CellRecord {
-  readonly cell: CellId;
+interface NodeRecord {
+  readonly node: NodeId;
   g: Fixed;
   f: Fixed;
   h: Fixed;
@@ -44,7 +44,7 @@ interface CellRecord {
    *  even on huge maps — no Fixed mul overflow. */
   readonly dev: number;
   /** Predecessor node on the best known path, or null for the start node. */
-  cameFrom: CellId | null;
+  cameFrom: NodeId | null;
   /** False once popped from the open set (closed) — a settled node is never re-expanded. */
   open: boolean;
   /** Position in the open heap while `open` — maintained by the sift ops so a relaxation can
@@ -52,17 +52,17 @@ interface CellRecord {
   heapIdx: number;
 }
 
-/** The canonical open-set order: (f, h, dev, cell id), all ascending — a TOTAL order (the id last),
+/** The canonical open-set order: (f, h, dev, node id), all ascending — a TOTAL order (the id last),
  *  so the heap's minimum is unique and the pick is independent of the heap's internal layout. */
-function betterRecord(a: CellRecord, b: CellRecord): boolean {
+function betterRecord(a: NodeRecord, b: NodeRecord): boolean {
   if (a.f !== b.f) return a.f < b.f;
   if (a.h !== b.h) return a.h < b.h;
   if (a.dev !== b.dev) return a.dev < b.dev;
-  return a.cell < b.cell;
+  return a.node < b.node;
 }
 
 /** Move `heap[i]` toward the root until its parent is no worse. Maintains `heapIdx`. */
-function siftUp(heap: CellRecord[], start: number): void {
+function siftUp(heap: NodeRecord[], start: number): void {
   const rec = heap[start];
   if (rec === undefined) return; // callers index within bounds; guard for the checked access
   let i = start;
@@ -79,7 +79,7 @@ function siftUp(heap: CellRecord[], start: number): void {
 }
 
 /** Move `heap[i]` toward the leaves until no child beats it. Maintains `heapIdx`. */
-function siftDown(heap: CellRecord[], start: number): void {
+function siftDown(heap: NodeRecord[], start: number): void {
   const rec = heap[start];
   if (rec === undefined) return; // callers index within bounds; guard for the checked access
   const n = heap.length;
@@ -104,14 +104,14 @@ function siftDown(heap: CellRecord[], start: number): void {
 }
 
 /**
- * Reusable per-graph search storage. `records[cell]`/`stamps[cell]` are valid only when the stamp
+ * Reusable per-graph search storage. `records[node]`/`stamps[node]` are valid only when the stamp
  * equals the current query's generation — everything else is stale garbage from an earlier query
  * and is treated as undiscovered, so reuse can never leak state between queries.
  */
 interface SearchScratch {
-  readonly records: Array<CellRecord | undefined>;
+  readonly records: Array<NodeRecord | undefined>;
   readonly stamps: Int32Array;
-  readonly heap: CellRecord[];
+  readonly heap: NodeRecord[];
   /** Generation counter — incremented per query; wraps by refilling `stamps` (see below). */
   query: number;
 }
@@ -122,8 +122,8 @@ function scratchFor(graph: TerrainGraph): SearchScratch {
   let scratch = scratchByGraph.get(graph);
   if (scratch === undefined) {
     scratch = {
-      records: new Array(graph.cellCount),
-      stamps: new Int32Array(graph.cellCount),
+      records: new Array(graph.nodeCount),
+      stamps: new Int32Array(graph.nodeCount),
       heap: [],
       query: 0,
     };
@@ -149,10 +149,10 @@ const MAX_QUERY_GENERATION = 2 ** 31 - 1;
  */
 export function findPath(
   graph: TerrainGraph,
-  start: CellId,
-  goal: CellId,
-  blocked?: ReadonlySet<CellId>,
-): CellId[] | null {
+  start: NodeId,
+  goal: NodeId,
+  blocked?: ReadonlySet<NodeId>,
+): NodeId[] | null {
   if (!graph.isWalkable(start) || !graph.isWalkable(goal)) return null;
   // Already-there wins over the overlay: consistent with the blocked-START exemption, an entity
   // standing on its own (even occupied) goal node trivially succeeds rather than reading "unreachable".
@@ -172,8 +172,8 @@ export function findPath(
   scratch.query += 1;
   const { records, stamps, heap, query } = scratch;
   heap.length = 0;
-  const recordAt = (cell: CellId): CellRecord | undefined =>
-    stamps[cell] === query ? records[cell] : undefined;
+  const recordAt = (node: NodeId): NodeRecord | undefined =>
+    stamps[node] === query ? records[node] : undefined;
 
   // The start→goal line for the line-deviation tie-break: a node's deviation is the (unnormalised)
   // cross product |Δnode × Δline| — zero on the line, growing with sideways drift. Computed in PLAIN
@@ -186,15 +186,15 @@ export function findPath(
   const cg = graph.coordsOf(goal);
   const lineHX = cg.x - cs.x;
   const lineHY = cg.y - cs.y;
-  const deviation = (cell: CellId): number => {
-    const c = graph.coordsOf(cell);
+  const deviation = (node: NodeId): number => {
+    const c = graph.coordsOf(node);
     return Math.abs((c.x - cs.x) * lineHY - (c.y - cs.y) * lineHX);
   };
 
   // At the start node g is 0, so f === h; compute the heuristic once.
-  const startH = cellLatticeDistance(graph, start, goal);
-  const startRec: CellRecord = {
-    cell: start,
+  const startH = nodeLatticeDistance(graph, start, goal);
+  const startRec: NodeRecord = {
+    node: start,
     g: fx.fromInt(0),
     h: startH,
     f: startH,
@@ -212,7 +212,7 @@ export function findPath(
     const current = heap[0];
     if (current === undefined) return null; // open set exhausted — unreachable
 
-    if (current.cell === goal) return reconstruct(recordAt, current);
+    if (current.node === goal) return reconstruct(recordAt, current);
 
     // Close it — admissible heuristic means it is now settled. Standard root removal: move the
     // last element to the root and sift it down.
@@ -225,18 +225,18 @@ export function findPath(
 
     // Lattice steps carry their own cost and already exclude blocked/unwalkable nodes, so the
     // search body just relaxes each.
-    for (const { cell: next, cost } of graph.steps(current.cell, blocked)) {
+    for (const { node: next, cost } of graph.steps(current.node, blocked)) {
       const tentativeG = fx.add(current.g, cost);
       const existing = recordAt(next);
       if (existing === undefined) {
-        const h = cellLatticeDistance(graph, next, goal);
-        const rec: CellRecord = {
-          cell: next,
+        const h = nodeLatticeDistance(graph, next, goal);
+        const rec: NodeRecord = {
+          node: next,
           g: tentativeG,
           h,
           f: fx.add(tentativeG, h),
           dev: deviation(next),
-          cameFrom: current.cell,
+          cameFrom: current.node,
           open: true,
           heapIdx: heap.length,
         };
@@ -250,7 +250,7 @@ export function findPath(
         // never relaxed: with an admissible, consistent heuristic their g is already optimal.)
         existing.g = tentativeG;
         existing.f = fx.add(tentativeG, existing.h);
-        existing.cameFrom = current.cell;
+        existing.cameFrom = current.node;
         siftUp(heap, existing.heapIdx);
       }
     }
@@ -258,16 +258,16 @@ export function findPath(
 }
 
 /** Walk `cameFrom` back from the goal record to the start, returning the path in start→goal order. */
-function reconstruct(recordAt: (cell: CellId) => CellRecord | undefined, goalRec: CellRecord): CellId[] {
-  const path: CellId[] = [goalRec.cell];
-  let cell: CellId | null = goalRec.cameFrom;
-  while (cell !== null) {
-    path.push(cell);
-    const rec = recordAt(cell);
+function reconstruct(recordAt: (node: NodeId) => NodeRecord | undefined, goalRec: NodeRecord): NodeId[] {
+  const path: NodeId[] = [goalRec.node];
+  let node: NodeId | null = goalRec.cameFrom;
+  while (node !== null) {
+    path.push(node);
+    const rec = recordAt(node);
     // The chain is built only from cells we discovered, so a record must exist; a missing one would
     // be a programmer error in the search above, not a recoverable boundary failure.
-    if (rec === undefined) throw new Error(`path reconstruction hit an undiscovered cell ${cell}`);
-    cell = rec.cameFrom;
+    if (rec === undefined) throw new Error(`path reconstruction hit an undiscovered node ${node}`);
+    node = rec.cameFrom;
   }
   path.reverse();
   return path;

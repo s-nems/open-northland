@@ -28,6 +28,7 @@ import {
   extractLandscapeGraphics,
   extractMapInfo,
   extractPaletteIndex,
+  extractPatternTransitions,
   extractPatterns,
   extractSounds,
   extractStaticObjects,
@@ -1976,6 +1977,70 @@ describe('extractPatterns', () => {
       coordsB: undefined,
       source: { file: 'f.cif', block: 'GfxPattern', layer: 'base' },
     });
+  });
+});
+
+describe('extractPatternTransitions', () => {
+  // Mirrors Data/engine2d/inis/patterntransitions/transitions.cif as cifLinesToSections yields it:
+  // level-1 lowercase `transition` headers, level-2 props, SIX repeated GfxCoordsA/GfxCoordsB lines
+  // (file order = the pair index a map lane's `value % 6` selects). Two of the six pairs suffice to
+  // prove the order is kept; the sibling `pointtype` sections must be ignored.
+  const lines: CifLine[] = [
+    { level: 1, text: 'pointtype' },
+    { level: 2, text: 'name "meadow"' },
+    { level: 2, text: 'patterngroup "meadow green"' },
+    { level: 1, text: 'transition' },
+    { level: 2, text: 'name "meadow 1"' },
+    { level: 2, text: 'pointtype "meadow"' },
+    { level: 2, text: 'GfxTexture "data\\engine2d\\bin\\textures\\tran_meadow.pcx"' },
+    { level: 2, text: 'GfxTextureAlpha "data\\engine2d\\bin\\textures\\tran_meadow_a.pcx"' },
+    { level: 2, text: 'GfxCoordsA 0 0 63 63 0 63' },
+    { level: 2, text: 'GfxCoordsB 0 0 63 0 63 63' },
+    { level: 2, text: 'GfxCoordsA 64 0 127 63 64 63' },
+    { level: 2, text: 'GfxCoordsB 64 0 127 0 127 63' },
+    { level: 1, text: 'transition' },
+    { level: 2, text: 'name "degenerate"' },
+    { level: 2, text: 'GfxCoordsA 1 2 3 4 5' }, // wrong arity -> the LINE is dropped, the record stays
+  ];
+
+  it('maps [transition] to validated IR: positional index, name join key, both pictures, ordered pairs', () => {
+    const records = extractPatternTransitions(cifLinesToSections(lines), {
+      file: 'Data/engine2d/inis/patterntransitions/transitions.cif',
+      layer: 'base',
+    });
+    const src = {
+      file: 'Data/engine2d/inis/patterntransitions/transitions.cif',
+      block: 'transition',
+      layer: 'base',
+    };
+    expect(records).toEqual([
+      {
+        index: 0,
+        editName: 'meadow 1',
+        pointType: 'meadow',
+        texture: 'data/engine2d/bin/textures/tran_meadow.pcx',
+        textureAlpha: 'data/engine2d/bin/textures/tran_meadow_a.pcx',
+        coordsA: [
+          [0, 0, 63, 63, 0, 63],
+          [64, 0, 127, 63, 64, 63],
+        ],
+        coordsB: [
+          [0, 0, 63, 0, 63, 63],
+          [64, 0, 127, 0, 127, 63],
+        ],
+        source: src,
+      },
+      {
+        index: 1,
+        editName: 'degenerate',
+        pointType: undefined,
+        texture: undefined,
+        textureAlpha: undefined,
+        coordsA: [],
+        coordsB: [],
+        source: src,
+      },
+    ]);
   });
 });
 

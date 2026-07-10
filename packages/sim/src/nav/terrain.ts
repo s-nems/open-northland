@@ -43,9 +43,10 @@ import type { Brand } from '../core/brand.js';
 import { type Fixed, ONE, ZERO, fx } from '../core/fixed.js';
 import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from './metric.js';
 
-/** A half-cell node address: the row-major index `hy * width + hx`. Branded so a raw number can't
- *  stand in. (Named CellId for continuity — a nav "cell" IS a half-cell of the visual tile.) */
-export type CellId = Brand<number, 'CellId'>;
+/** A navigation-graph node address: the row-major index `hy * width + hx`. Branded so a raw number
+ *  can't stand in. One node is a HALF-CELL of a visual tile — the sim's logic lattice is `2W×2H`,
+ *  so a node is finer than (and distinct from) a full visual cell `(c, r)` = node `(2c + (r&1), 2r)`. */
+export type NodeId = Brand<number, 'NodeId'>;
 
 /** Canonical orthogonal neighbour offsets in N, E, S, W order — the fixed traversal order for
  *  determinism. On the half-cell lattice these are a 19 px half-row and a 34 px half-column. */
@@ -83,7 +84,7 @@ const VERTICAL_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = 
 ] as const;
 
 /** Resolved, sim-ready properties of one landscape type (derived once from the IR at build time). */
-interface CellTypeProps {
+interface NodeTypeProps {
   readonly walkable: boolean;
   /** Whether a building's reserved zone may cover a node of this type. Distinct from `walkable`: a
    *  real map's margin band around a tree/rock is walkable ground you may not BUILD on, while water
@@ -96,9 +97,9 @@ interface CellTypeProps {
 }
 
 /** Default props for a landscape typeId not present in the content table (treated as blocking). */
-const UNKNOWN_TYPE: CellTypeProps = { walkable: false, buildable: false, walkCost: ONE, maxValency: 0 };
+const UNKNOWN_TYPE: NodeTypeProps = { walkable: false, buildable: false, walkCost: ONE, maxValency: 0 };
 
-function resolveTypeProps(t: LandscapeType): CellTypeProps {
+function resolveTypeProps(t: LandscapeType): NodeTypeProps {
   return {
     walkable: t.walkable,
     buildable: t.buildable,
@@ -109,7 +110,7 @@ function resolveTypeProps(t: LandscapeType): CellTypeProps {
     // GROUND class, though: `trianglepatterntypes.cif` carries per-logicType `moveresistance`
     // (land 2, sand 3, mountain 4, snow 5 — now emitted as the IR's `trianglePatternTypes`); a
     // ground-class walk-cost is a future step, not this landscape-object table's field. Stays Fixed
-    // so the pathfinder never converts; blocking cells keep this cost but are never traversed.
+    // so the pathfinder never converts; blocking nodes keep this cost but are never traversed.
     walkCost: ONE,
     maxValency: t.maxValency,
   };
@@ -126,16 +127,16 @@ export class TerrainGraph {
   /** Row-major landscape typeId per node (length === width*height). */
   private readonly typeIds: Int32Array;
   /** typeId -> resolved sim props, frozen at build time. */
-  private readonly props: ReadonlyMap<number, CellTypeProps>;
+  private readonly props: ReadonlyMap<number, NodeTypeProps>;
   /** Static-connectivity label per node (-1 = unwalkable), from a build-time flood fill over
    *  {@link steps}. See {@link componentOf}. */
   private readonly components: Int32Array;
 
-  constructor(width: number, height: number, typeIds: Int32Array, props: ReadonlyMap<number, CellTypeProps>) {
+  constructor(width: number, height: number, typeIds: Int32Array, props: ReadonlyMap<number, NodeTypeProps>) {
     if (width <= 0 || height <= 0) throw new Error(`terrain dimensions must be positive: ${width}x${height}`);
     if (typeIds.length !== width * height) {
       throw new Error(
-        `terrain grid has ${typeIds.length} cells, expected ${width * height} (${width}x${height})`,
+        `terrain grid has ${typeIds.length} nodes, expected ${width * height} (${width}x${height})`,
       );
     }
     this.width = width;
@@ -146,7 +147,7 @@ export class TerrainGraph {
   }
 
   /** Total node count. */
-  get cellCount(): number {
+  get nodeCount(): number {
     return this.width * this.height;
   }
 
@@ -156,73 +157,73 @@ export class TerrainGraph {
   }
 
   /** The node id at (x, y). Throws if out of bounds — an out-of-range lookup is a programmer error. */
-  cellAt(x: number, y: number): CellId {
+  nodeAt(x: number, y: number): NodeId {
     if (!this.inBounds(x, y))
-      throw new Error(`cell (${x}, ${y}) out of bounds (${this.width}x${this.height})`);
-    return (y * this.width + x) as CellId;
+      throw new Error(`node (${x}, ${y}) out of bounds (${this.width}x${this.height})`);
+    return (y * this.width + x) as NodeId;
   }
 
   /** The (x, y) coordinates of a node id. */
-  coordsOf(cell: CellId): { x: number; y: number } {
-    return { x: cell % this.width, y: Math.floor(cell / this.width) };
+  coordsOf(node: NodeId): { x: number; y: number } {
+    return { x: node % this.width, y: Math.floor(node / this.width) };
   }
 
   /**
    * The node at integer half-cell coordinates (`x`, `y`), clamped into the grid. Unlike
-   * {@link cellAt} this never throws — it is the navigation planner's seam from an entity's node
+   * {@link nodeAt} this never throws — it is the navigation planner's seam from an entity's node
    * address (`nodeOfPosition`) to a node id, so an out-of-range coordinate clamps to the nearest
    * border node rather than crashing a tick.
    */
-  cellAtClamped(x: number, y: number): CellId {
+  nodeAtClamped(x: number, y: number): NodeId {
     const cx = x < 0 ? 0 : x >= this.width ? this.width - 1 : x;
     const cy = y < 0 ? 0 : y >= this.height ? this.height - 1 : y;
-    return (cy * this.width + cx) as CellId;
+    return (cy * this.width + cx) as NodeId;
   }
 
   /** The landscape typeId tagged on a node. Throws on an id outside the grid (programmer error). */
-  typeAt(cell: CellId): number {
-    const id = this.typeIds[cell];
-    if (id === undefined) throw new Error(`cell id ${cell} out of range (0..${this.cellCount - 1})`);
+  typeAt(node: NodeId): number {
+    const id = this.typeIds[node];
+    if (id === undefined) throw new Error(`node id ${node} out of range (0..${this.nodeCount - 1})`);
     return id;
   }
 
-  private propsOf(cell: CellId): CellTypeProps {
-    return this.props.get(this.typeAt(cell)) ?? UNKNOWN_TYPE;
+  private propsOf(node: NodeId): NodeTypeProps {
+    return this.props.get(this.typeAt(node)) ?? UNKNOWN_TYPE;
   }
 
   /** True if a unit may stand on / walk through this node. */
-  isWalkable(cell: CellId): boolean {
-    return this.propsOf(cell).walkable;
+  isWalkable(node: NodeId): boolean {
+    return this.propsOf(node).walkable;
   }
 
   /** True if a building's reserved zone may cover this node (the landscape row's `buildable` flag —
    *  water/rock/void are neither walkable nor buildable; a real map's object margin is walkable but
    *  not buildable). Placement-only; navigation reads {@link isWalkable}. */
-  isBuildable(cell: CellId): boolean {
-    return this.propsOf(cell).buildable;
+  isBuildable(node: NodeId): boolean {
+    return this.propsOf(node).buildable;
   }
 
   /** Fixed-point cost to step onto this node. */
-  walkCost(cell: CellId): Fixed {
-    return this.propsOf(cell).walkCost;
+  walkCost(node: NodeId): Fixed {
+    return this.propsOf(node).walkCost;
   }
 
   /** Per-node capacity (how many units may cluster here). */
-  maxValency(cell: CellId): number {
-    return this.propsOf(cell).maxValency;
+  maxValency(node: NodeId): number {
+    return this.propsOf(node).maxValency;
   }
 
   /**
    * The in-bounds 4-connected neighbours of a node, in canonical N, E, S, W order. Border nodes
    * simply yield fewer neighbours. Deterministic: the order never depends on map history.
    */
-  neighbours(cell: CellId): CellId[] {
-    const { x, y } = this.coordsOf(cell);
-    const out: CellId[] = [];
+  neighbours(node: NodeId): NodeId[] {
+    const { x, y } = this.coordsOf(node);
+    const out: NodeId[] = [];
     for (const [dx, dy] of NEIGHBOUR_OFFSETS) {
       const nx = x + dx;
       const ny = y + dy;
-      if (this.inBounds(nx, ny)) out.push((ny * this.width + nx) as CellId);
+      if (this.inBounds(nx, ny)) out.push((ny * this.width + nx) as NodeId);
     }
     return out;
   }
@@ -232,12 +233,12 @@ export class TerrainGraph {
    * ADJACENCY relation for placement/valency, NOT the pathfinder's edge set — movement is
    * 8-connected via {@link steps}.
    */
-  walkableNeighbours(cell: CellId): CellId[] {
-    return this.neighbours(cell).filter((n) => this.isWalkable(n));
+  walkableNeighbours(node: NodeId): NodeId[] {
+    return this.neighbours(node).filter((n) => this.isWalkable(n));
   }
 
   /**
-   * The pathfinder's 8-direction edge set from `cell` on the half-cell lattice: the E/W half-column
+   * The pathfinder's 8-direction edge set from `node` on the half-cell lattice: the E/W half-column
    * steps, then the four diagonal edges in canonical NE, SE, SW, NW screen-heading order, then the
    * two straight vertical half-row steps N, S (the enum tail of the original's `THexagonDirection`,
    * NORTH = 6, SOUTH = 7). Each step is paired with its fixed-point cost: the destination node's
@@ -255,12 +256,12 @@ export class TerrainGraph {
    * the A* relaxation, so its order is part of the canonical path choice (pinned by the pathfinding
    * goldens).
    */
-  steps(cell: CellId, blocked?: ReadonlySet<CellId>): Array<{ cell: CellId; cost: Fixed }> {
-    const { x, y } = this.coordsOf(cell);
-    const out: Array<{ cell: CellId; cost: Fixed }> = [];
+  steps(node: NodeId, blocked?: ReadonlySet<NodeId>): Array<{ node: NodeId; cost: Fixed }> {
+    const { x, y } = this.coordsOf(node);
+    const out: Array<{ node: NodeId; cost: Fixed }> = [];
     const passable = (nx: number, ny: number): boolean => {
       if (!this.inBounds(nx, ny)) return false;
-      const c = (ny * this.width + nx) as CellId;
+      const c = (ny * this.width + nx) as NodeId;
       return this.isWalkable(c) && !(blocked?.has(c) ?? false);
     };
     // Half-column steps first, canonical E then W.
@@ -268,8 +269,8 @@ export class TerrainGraph {
       const nx = x + dx;
       const ny = y + dy;
       if (!passable(nx, ny)) continue;
-      const c = (ny * this.width + nx) as CellId;
-      out.push({ cell: c, cost: fx.mul(this.walkCost(c), HALF_COLUMN) });
+      const c = (ny * this.width + nx) as NodeId;
+      out.push({ node: c, cost: fx.mul(this.walkCost(c), HALF_COLUMN) });
     }
     // Diagonal steps, canonical NE,SE,SW,NW — gated on the flanked midpoint seam.
     for (const [dx, dy] of DIAGONAL_STEP_OFFSETS) {
@@ -279,16 +280,16 @@ export class TerrainGraph {
       // The seam between two blocked flanks is a wall joint, not a walkable gap.
       const fy = y + dy / 2;
       if (!passable(x, fy) && !passable(nx, fy)) continue;
-      const c = (ny * this.width + nx) as CellId;
-      out.push({ cell: c, cost: fx.mul(this.walkCost(c), DIAGONAL_STEP) });
+      const c = (ny * this.width + nx) as NodeId;
+      out.push({ node: c, cost: fx.mul(this.walkCost(c), DIAGONAL_STEP) });
     }
     // Vertical half-row steps last, canonical N then S (the THexagonDirection tail order).
     for (const [dx, dy] of VERTICAL_STEP_OFFSETS) {
       const nx = x + dx;
       const ny = y + dy;
       if (!passable(nx, ny)) continue;
-      const c = (ny * this.width + nx) as CellId;
-      out.push({ cell: c, cost: fx.mul(this.walkCost(c), HALF_ROW) });
+      const c = (ny * this.width + nx) as NodeId;
+      out.push({ node: c, cost: fx.mul(this.walkCost(c), HALF_ROW) });
     }
     return out;
   }
@@ -301,9 +302,9 @@ export class TerrainGraph {
    * to cost a full-map Dijkstra). Labels are assigned by ascending seed id at build time, so they
    * are a pure function of the terrain — lockstep-safe.
    */
-  componentOf(cell: CellId): number {
-    const label = this.components[cell];
-    if (label === undefined) throw new Error(`cell id ${cell} out of range (0..${this.cellCount - 1})`);
+  componentOf(node: NodeId): number {
+    const label = this.components[node];
+    if (label === undefined) throw new Error(`node id ${node} out of range (0..${this.nodeCount - 1})`);
     return label;
   }
 
@@ -312,11 +313,11 @@ export class TerrainGraph {
    *  the walkable set (destination-walkability + the shared flank pair), so a BFS labelling is
    *  well-defined. One-time O(nodes) build cost. */
   private computeComponents(): Int32Array {
-    const components = new Int32Array(this.cellCount).fill(-1);
+    const components = new Int32Array(this.nodeCount).fill(-1);
     const queue: number[] = [];
     let nextLabel = 0;
-    for (let seed = 0; seed < this.cellCount; seed++) {
-      if (components[seed] !== -1 || !this.isWalkable(seed as CellId)) continue;
+    for (let seed = 0; seed < this.nodeCount; seed++) {
+      if (components[seed] !== -1 || !this.isWalkable(seed as NodeId)) continue;
       const label = nextLabel;
       nextLabel += 1;
       components[seed] = label;
@@ -327,10 +328,10 @@ export class TerrainGraph {
         const cur = queue[head];
         head += 1;
         if (cur === undefined) break; // head < length ⇒ present; guard for the checked access
-        for (const { cell } of this.steps(cur as CellId)) {
-          if (components[cell] === -1) {
-            components[cell] = label;
-            queue.push(cell);
+        for (const { node } of this.steps(cur as NodeId)) {
+          if (components[node] === -1) {
+            components[node] = label;
+            queue.push(node);
           }
         }
       }
@@ -407,7 +408,7 @@ export function halfCellMapFromCells(map: CellTerrainMap): TerrainMap {
  * tick are pure array reads.
  */
 export function buildTerrainGraph(content: ContentSet, map: TerrainMap): TerrainGraph {
-  const props = new Map<number, CellTypeProps>();
+  const props = new Map<number, NodeTypeProps>();
   for (const t of content.landscape) props.set(t.typeId, resolveTypeProps(t));
 
   const typeIds = Int32Array.from(map.typeIds);
@@ -439,7 +440,7 @@ export function buildTerrainGraph(content: ContentSet, map: TerrainMap): Terrain
  * so on unit-cost terrain the heuristic EQUALS the true open-terrain graph distance — admissible
  * and consistent by construction; obstacles only raise the true cost, so A* stays optimal.
  */
-export function cellLatticeDistance(g: TerrainGraph, a: CellId, b: CellId): Fixed {
+export function nodeLatticeDistance(g: TerrainGraph, a: NodeId, b: NodeId): Fixed {
   const ca = g.coordsOf(a);
   const cb = g.coordsOf(b);
   const ax = Math.abs(cb.x - ca.x);

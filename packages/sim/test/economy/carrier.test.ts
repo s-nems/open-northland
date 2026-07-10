@@ -113,7 +113,7 @@ describe('carrier — choosing what to haul', () => {
 
     expect(sim.world.has(carrier, MoveGoal)).toBe(true);
     const millNode = cellAnchorNode(3, 0); // the mill's anchor node on the half-cell lattice
-    expect(sim.world.get(carrier, MoveGoal).cell).toBe(sim.terrain?.cellAt(millNode.hx, millNode.hy));
+    expect(sim.world.get(carrier, MoveGoal).cell).toBe(sim.terrain?.nodeAt(millNode.hx, millNode.hy));
     void mill;
   });
 

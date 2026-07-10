@@ -20,7 +20,7 @@ import {
   halfCellMapFromCells,
   positionOfNode,
 } from '../../src/index.js';
-import type { CellId, TerrainGraph } from '../../src/nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../src/nav/terrain.js';
 import {
   type SystemContext,
   aiSystem,
@@ -300,7 +300,7 @@ function placeGroundDrop(sim: Simulation, goodType: number, amount: number, x: n
   return e;
 }
 
-function coords(terrain: TerrainGraph, path: readonly CellId[] | null): Array<{ x: number; y: number }> {
+function coords(terrain: TerrainGraph, path: readonly NodeId[] | null): Array<{ x: number; y: number }> {
   if (path === null) return [];
   return path.map((cell) => terrain.coordsOf(cell));
 }
@@ -344,8 +344,8 @@ describe('resource footprints', () => {
 
     expect(sim.world.get(e, components.ResourceFootprint).sourceGfxIndex).toBe(STONE_VARIANT_GFX);
     const blocked = resourceBlockedCells(sim.world, terrain);
-    expect(blocked.has(terrain.cellAt(4, 1))).toBe(true);
-    expect(blocked.has(terrain.cellAt(1, 1))).toBe(false);
+    expect(blocked.has(terrain.nodeAt(4, 1))).toBe(true);
+    expect(blocked.has(terrain.nodeAt(1, 1))).toBe(false);
   });
 
   it('walk-blocks stamped resource bodies and updates the overlay incrementally after add/remove', () => {
@@ -354,20 +354,20 @@ describe('resource footprints', () => {
     const tree = placeResource(sim, WOOD, WOOD_ATOMIC, 3, 1);
 
     const blocked = resourceBlockedCells(sim.world, terrain);
-    expect(blocked.has(terrain.cellAt(3, 1))).toBe(true);
+    expect(blocked.has(terrain.nodeAt(3, 1))).toBe(true);
     expect(sim.world.verifyCaches()).toEqual([]);
 
     placeResource(sim, WOOD, WOOD_ATOMIC, 5, 1);
     expect(resourceBlockedCells(sim.world, terrain)).toBe(blocked);
-    expect(blocked.has(terrain.cellAt(5, 1))).toBe(true);
+    expect(blocked.has(terrain.nodeAt(5, 1))).toBe(true);
     expect(sim.world.verifyCaches()).toEqual([]);
 
     unstampResourceFootprint(sim.world, tree);
     sim.world.destroy(tree);
     expect(sim.world.verifyCaches()).toEqual([]);
     expect(resourceBlockedCells(sim.world, terrain)).toBe(blocked);
-    expect(blocked.has(terrain.cellAt(3, 1))).toBe(false);
-    expect(blocked.has(terrain.cellAt(5, 1))).toBe(true);
+    expect(blocked.has(terrain.nodeAt(3, 1))).toBe(false);
+    expect(blocked.has(terrain.nodeAt(5, 1))).toBe(true);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 
@@ -378,8 +378,8 @@ describe('resource footprints', () => {
 
     const path = findPath(
       terrain,
-      terrain.cellAt(0, 1),
-      terrain.cellAt(4, 1),
+      terrain.nodeAt(0, 1),
+      terrain.nodeAt(4, 1),
       dynamicBlockedCells(sim.world, ctxOf(sim), terrain),
     );
 
@@ -394,8 +394,8 @@ describe('resource footprints', () => {
 
     const blocked = dynamicBlockedCells(sim.world, ctxOf(sim), terrain);
 
-    expect(blocked.has(terrain.cellAt(2, 1))).toBe(false);
-    expect(resourceWorkCell(sim.world, terrain, mushroom, terrain.cellAt(0, 1))).toBe(terrain.cellAt(2, 1));
+    expect(blocked.has(terrain.nodeAt(2, 1))).toBe(false);
+    expect(resourceWorkCell(sim.world, terrain, mushroom, terrain.nodeAt(0, 1))).toBe(terrain.nodeAt(2, 1));
   });
 
   it('keeps building bodies out of a resource build zone while allowing footprint-empty patches', () => {
@@ -420,7 +420,7 @@ describe('resource footprints', () => {
     aiSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(worker, CurrentAtomic)).toBe(false);
-    expect(sim.world.get(worker, MoveGoal).cell).toBe(terrain.cellAt(1, 1));
+    expect(sim.world.get(worker, MoveGoal).cell).toBe(terrain.nodeAt(1, 1));
 
     sim.world.remove(worker, MoveGoal);
     sim.world.remove(worker, PathRequest);
@@ -437,8 +437,8 @@ describe('resource footprints', () => {
     const node = placeResource(sim, CLAY, CLAY_ATOMIC, 2, 1);
     const drop = placeGroundDrop(sim, CLAY, 1, 2, 1);
 
-    expect(resourceWorkCell(sim.world, terrainOf(sim), node, terrainOf(sim).cellAt(1, 1))).toBe(
-      terrainOf(sim).cellAt(1, 1),
+    expect(resourceWorkCell(sim.world, terrainOf(sim), node, terrainOf(sim).nodeAt(1, 1))).toBe(
+      terrainOf(sim).nodeAt(1, 1),
     );
 
     aiSystem(sim.world, ctxOf(sim));
@@ -456,8 +456,8 @@ describe('resource footprints', () => {
     const drop = placeGroundDrop(sim, CLAY, 1, 2, 1);
     sim.world.get(drop, GroundDrop).goodType = STONE;
 
-    expect(resourceWorkCell(sim.world, terrainOf(sim), node, terrainOf(sim).cellAt(1, 1))).toBe(
-      terrainOf(sim).cellAt(1, 1),
+    expect(resourceWorkCell(sim.world, terrainOf(sim), node, terrainOf(sim).nodeAt(1, 1))).toBe(
+      terrainOf(sim).nodeAt(1, 1),
     );
 
     aiSystem(sim.world, ctxOf(sim));

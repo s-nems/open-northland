@@ -9,7 +9,7 @@ import {
 } from '../../components/index.js';
 import type { System } from '../context.js';
 import { herdParams } from '../readviews/index.js';
-import { entityCell, manhattan } from '../spatial.js';
+import { entityNode, manhattan } from '../spatial.js';
 
 /**
  * HerdingSystem — the **follow-the-leader** movement drive for a herding animal.
@@ -61,8 +61,8 @@ export const herdingSystem: System = (world, ctx) => {
     if (!world.has(leader, Position)) continue;
 
     const range = herdParams(ctx.content, world.get(e, Settler).tribe)?.leaderDistance ?? 0;
-    const here = entityCell(world, terrain, e);
-    const leaderCell = entityCell(world, terrain, leader);
+    const here = entityNode(world, terrain, e);
+    const leaderCell = entityNode(world, terrain, leader);
     if (manhattan(terrain, here, leaderCell) <= range) continue; // close enough — stay put
 
     world.add(e, MoveGoal, { cell: leaderCell }); // strayed too far — head back to the leader

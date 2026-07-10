@@ -1,6 +1,7 @@
 import type { Camera, ElevationField } from '@vinland/render';
 import type { Command } from '@vinland/sim';
 import type { Application } from 'pixi.js';
+import { localizedBuildingName } from '../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
 import { DEFAULT_UI_LANG } from '../content/gui-gfx.js';
 import type { MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
@@ -55,6 +56,9 @@ export interface GameToolPanelHandle {
   /** True when a client point is over the HUD (strip / open window / active placement) — the input router
    *  asks this BEFORE world picking so a HUD click never falls through to unit selection/orders. */
   claimPointer(clientX: number, clientY: number): boolean;
+  /** True when a client point is over an OPEN pop-up window (menu / stats) — wired into the camera so
+   *  scrolling that window's list never also zooms the world behind it. */
+  claimsWheel(clientX: number, clientY: number): boolean;
   /** The panel's client-point → map-tile mapping (camera + backing scale + elevation), shared with the
    *  frame loop's build-mode hover so the cursor ghost and the placement click resolve identically. */
   clientToTile(clientX: number, clientY: number): { col: number; row: number } | null;
@@ -82,15 +86,24 @@ export function applyGameSpeed(
   if (cause === 'cycle' && spec.state !== 'paused') control.speed = spec.tickMultiplier;
 }
 
-/** The buildings the menu lists: a content set's own building types, labelled via the viking catalog. */
-export function menuEntriesFromContent(content: {
-  buildings: readonly { typeId: number; id: string; kind: string }[];
-}): MenuBuildingEntry[] {
-  return content.buildings.map((b) => ({
-    typeId: b.typeId,
-    label: vikingBuildingByTypeId(b.typeId)?.label ?? b.id,
-    kind: b.kind,
-  }));
+/**
+ * The buildings the menu lists: a content set's own building types, labelled via the viking catalog and
+ * localized to `lang` (defaults to the UI default). The English catalog label is the fallback when a
+ * language has no authored name (see `catalog/building-i18n.ts`).
+ */
+export function menuEntriesFromContent(
+  content: { buildings: readonly { typeId: number; id: string; kind: string }[] },
+  lang: string = DEFAULT_UI_LANG,
+): MenuBuildingEntry[] {
+  return content.buildings.map((b) => {
+    const catalog = vikingBuildingByTypeId(b.typeId);
+    const english = catalog?.label ?? b.id;
+    return {
+      typeId: b.typeId,
+      label: localizedBuildingName(catalog?.id ?? b.id, english, lang),
+      kind: b.kind,
+    };
+  });
 }
 
 /** The goods the drop palette lists: a content set's own goods (its English `name`, else the id), minus the
@@ -136,6 +149,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
   return {
     controller,
     claimPointer: (x, y) => controller.claimsPointer(x, y),
+    claimsWheel: (x, y) => controller.claimsWheel(x, y),
     clientToTile,
   };
 }

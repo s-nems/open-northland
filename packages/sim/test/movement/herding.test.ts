@@ -89,7 +89,7 @@ describe('herdingSystem — follow-the-leader cohesion', () => {
 
     expect(sim.world.has(follower, MoveGoal)).toBe(true);
     const goalCell = sim.world.get(follower, MoveGoal).cell;
-    expect(goalCell).toBe(sim.terrain?.cellAt(0, 0)); // heading to the leader's node
+    expect(goalCell).toBe(sim.terrain?.nodeAt(0, 0)); // heading to the leader's node
     expect(sim.world.has(leader, MoveGoal)).toBe(false); // the leader follows no one
   });
 
@@ -126,13 +126,13 @@ describe('herdingSystem — follow-the-leader cohesion', () => {
       targetTile: null,
     });
     const travelling = herderAt(sim, 9, 0, leader);
-    sim.world.add(travelling, MoveGoal, { cell: sim.terrain?.cellAt(2, 0) ?? 0 }); // already headed elsewhere
+    sim.world.add(travelling, MoveGoal, { cell: sim.terrain?.nodeAt(2, 0) ?? 0 }); // already headed elsewhere
 
     herdingSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(busy, CurrentAtomic)).toBe(true); // swing not interrupted
     // The pre-existing goal is untouched (not re-pointed at the leader).
-    expect(sim.world.get(travelling, MoveGoal).cell).toBe(sim.terrain?.cellAt(2, 0));
+    expect(sim.world.get(travelling, MoveGoal).cell).toBe(sim.terrain?.nodeAt(2, 0));
   });
 
   it('does nothing if the leader has been reaped (no Position to return to)', () => {

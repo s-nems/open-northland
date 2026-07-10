@@ -10,12 +10,11 @@ import { BRIGHTNESS_NEUTRAL } from '../data/brightness.js';
  *
  * Two variants share one idea, two sampling grains:
  *  - **field** ({@link makeShadedTerrainShader}) — the GROUND mesh samples the whole lane per
- *    FRAGMENT from an R8 texture at interpolated canonical cell coordinates (`aBrightnessUV`).
- *    Per-vertex values were not enough: linear interpolation over the diamond triangles draws a
- *    high-contrast lane step (the map-border fade, the rock hill) as a zigzag along triangle edges,
- *    where the original fades in smooth per-pixel bands. The canonical row coordinate is linear in
- *    screen y (`cell-field.ts` {@link import('../data/cell-field.js').diamondCornerCoords}), so
- *    the texture's own bilinear reproduces the original's smooth banding.
+ *    FRAGMENT from an R8 texture at each vertex's own cell-centre coordinate
+ *    (`data/terrain.ts` {@link import('../data/terrain.js').nodeLaneUV}, interpolated across the
+ *    triangle). The texture's own bilinear between those texel centres reproduces the original's
+ *    smooth per-pixel banding (the map-border fade, the rock hill) instead of a per-vertex zigzag
+ *    along triangle edges.
  *  - **per-vertex** ({@link makeShadedDecorShader}) — a DECOR quad batch carries one constant
  *    multiplier per quad (`aBrightness`, its anchor cell's value); a flat decal has no cell-space
  *    UV lattice to interpolate, and the anchor-constant is the recorded approximation.

@@ -122,7 +122,7 @@ function pileAt(sim: Simulation, x: number, y: number, goods: Array<[number, num
 /** The node id of visual tile (x, y) — walk goals address the doubled half-cell lattice. */
 function cell(sim: Simulation, x: number, y: number): number {
   const n = cellAnchorNode(x, y);
-  return sim.terrain?.cellAt(n.hx, n.hy) as number;
+  return sim.terrain?.nodeAt(n.hx, n.hy) as number;
 }
 
 describe('producer self-service — fetching a missing recipe input', () => {

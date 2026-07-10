@@ -28,7 +28,7 @@ export const HALF_COLUMN: Fixed = fx.div(ONE, fx.fromInt(2));
  * step, 19/68 exactly). Minted as its own primitive (NOT `ROW_STEP/2`, whose truncation would leave
  * `2·HALF_ROW ≠ ROW_STEP` by one ulp): the N/S nav edge costs exactly this, and the pathfinding
  * heuristic composes its per-half-row term from the SAME integer, so the exactness argument in
- * `cellLatticeDistance` holds by construction.
+ * `nodeLatticeDistance` holds by construction.
  */
 export const HALF_ROW: Fixed = fx.div(fx.fromInt(19), fx.fromInt(68));
 
