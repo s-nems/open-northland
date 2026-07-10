@@ -33,7 +33,6 @@ const HOUSEWINDOW = {
   defence: 2, // 'Obrona'
   stock: 5, // 'Magazyn'
   workers: 7, // 'Pracownicy'
-  worksHere: 81, // 'pracuje tutaj'
   demolish: 114, // 'Zniszcz'
   center: 116, // 'Wycentruj'
   workersButton: 118, // 'Pracownicy'
@@ -190,26 +189,15 @@ export function drawBuilding(
   }
 
   chrome.window(layout.workers.frame);
-  // Headline shows filled / total slots ("Pracownicy 2/13") so the player sees how many this building
-  // still employs; the worker vs carrier split reads off the door-badge colour.
-  const workersLabel = ui('housewindow', HOUSEWINDOW.workers, 'Pracownicy');
-  chrome.headline(
-    layout.workers.title,
-    model.capacity > 0 ? `${workersLabel} ${model.workers.length}/${model.capacity}` : workersLabel,
-  );
-  if (model.workers.length > 0) {
-    const body = layout.workers.body;
-    model.workers.slice(0, MAX_WORKER_ROWS).forEach((row, i) => {
-      const y = body.y + i * Math.round(ROW_H * s) + ROW_TEXT_PAD * s;
-      chrome.textAt(row.label, body.x, y, row.active ? 'white' : 'dimmed');
-      chrome.textRight(
-        row.active ? ui('housewindow', HOUSEWINDOW.worksHere, 'pracuje tutaj') : 'przypisany',
-        body.x + body.w,
-        y,
-        'dimmed',
-      );
-    });
-  }
+  // One line PER TRADE with its filled/capacity ("Cieśla 1/3 · Tragarz 1/1 · Zbieracz 0/1"), so the
+  // player sees each slot's own limit — not one aggregate; the trade's role reads off the door-badge colour.
+  chrome.headline(layout.workers.title, ui('housewindow', HOUSEWINDOW.workers, 'Pracownicy'));
+  const body = layout.workers.body;
+  model.workerSlots.slice(0, MAX_WORKER_ROWS).forEach((row, i) => {
+    const y = body.y + i * Math.round(ROW_H * s) + ROW_TEXT_PAD * s;
+    chrome.textAt(row.label, body.x, y, row.filled > 0 ? 'white' : 'dimmed');
+    chrome.textRight(`${row.filled}/${row.capacity}`, body.x + body.w, y, 'dimmed');
+  });
 }
 
 /**

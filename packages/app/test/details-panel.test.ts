@@ -120,9 +120,41 @@ describe('selection details panel model', () => {
     expect(model.stock.some((r) => r.amount === 0)).toBe(true);
     // The held good sorts ahead of the empty ones.
     expect(model.stock[0]?.amount).toBe(3);
-    // The worker's profession label comes from the shared catalog + i18n (Polish), not the raw job id.
-    expect(model.workers).toEqual([
-      expect.objectContaining({ id: 2, active: true, label: 'Zbieracz drewna' }),
+    // The worker section is a per-trade filled/capacity line: the joinery's one gatherer slot, now filled
+    // (the bound settler), named from the shared catalog + i18n (Polish), not the raw job id.
+    expect(model.workerSlots).toEqual([
+      expect.objectContaining({ label: 'Zbieracz drewna', filled: 1, capacity: 1 }),
+    ]);
+  });
+
+  it('lists each worker trade with its own filled/capacity (Druid 1/1 · Tragarz 0/1 · Zbieracz 0/1)', () => {
+    const DRUID_HUT = 35;
+    const sim = createSceneSim(sandboxScene);
+    const druidSlot = sim.content.buildings.find((b) => b.typeId === DRUID_HUT)?.workers[0]; // Druid, declared first
+    if (druidSlot === undefined) throw new Error('druid hut has no worker slots');
+    const snapshot: WorldSnapshot = {
+      tick: 0,
+      events: [],
+      entities: [
+        {
+          id: 1,
+          components: {
+            Building: { buildingType: DRUID_HUT, tribe: 1, built: ONE, level: 0 },
+            Owner: { player: 0 },
+          },
+        },
+        // One settler bound here as the Druid trade — that slot is filled, the carrier/gatherer slots empty.
+        { id: 2, components: { Settler: { jobType: druidSlot.jobType }, JobAssignment: { workplace: 1 } } },
+      ],
+    };
+
+    const model = buildUnitPanelModel(snapshot, new Set([1]), ctxFromScene());
+    expect(model.kind).toBe('building');
+    if (model.kind !== 'building') return;
+    expect(model.workerSlots.map((r) => `${r.label} ${r.filled}/${r.capacity}`)).toEqual([
+      'Druid 1/1',
+      'Tragarz 0/1',
+      'Zbieracz 0/1',
     ]);
   });
 });
