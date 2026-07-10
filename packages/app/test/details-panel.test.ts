@@ -64,14 +64,14 @@ describe('selection details panel model', () => {
     expect(model.stock.every((r) => r.category >= 0 && r.category < STOCK_TAB_COUNT)).toBe(true);
   });
 
-  it('opens a building on its fullest stock category, and the lowest tab on a tie', () => {
+  it('opens a building on the FIRST (lowest-index) category that holds any of its goods', () => {
     const row = (category: number): StockRow => ({ goodType: category, label: 'g', amount: 0, category });
     const building = (stock: StockRow[]): UnitPanelModel =>
       ({ kind: 'building', stock }) as unknown as UnitPanelModel;
-    // Tab 2 holds three of the four goods → the panel opens there.
+    // The panel opens on the lowest tab that has goods, regardless of which category is fullest.
     expect(defaultStockTab(building([row(2), row(2), row(2), row(5)]))).toBe(2);
-    // Tabs 5 and 0 tie at one good each → the lowest tab index wins.
-    expect(defaultStockTab(building([row(5), row(0)]))).toBe(0);
+    // A general store holding goods across many tabs opens on the leading one (tab 0).
+    expect(defaultStockTab(building([row(5), row(0), row(7), row(7), row(7)]))).toBe(0);
     // No stock → tab 0.
     expect(defaultStockTab(building([]))).toBe(0);
   });
