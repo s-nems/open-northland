@@ -163,7 +163,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  const roll = rng.int(11);
+  const roll = rng.int(12);
   switch (roll) {
     case 0:
       return {
@@ -254,6 +254,15 @@ function nextCommand(rng: Rng): Command {
         ...(life === 1 ? { deposit: { levels: rng.int(4) + 1 } } : {}),
       };
     }
+    case 10:
+      // A worker assignment at two random ids: owned settlers bound to live buildings (obeyed when the
+      // building has an open slot), plus non-settler/unowned/dead issuers and non-building/full/dead
+      // targets. Exercises the assignWorker skip paths + the JobAssignment binding under a fuzzed stream.
+      return {
+        kind: 'assignWorker',
+        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        building: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+      };
     default:
       // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.
       return {

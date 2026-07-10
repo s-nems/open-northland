@@ -2,6 +2,7 @@ import { indexById } from '@vinland/data';
 import {
   Age,
   AttackOrder,
+  Building,
   CurrentAtomic,
   Engagement,
   Fleeing,
@@ -21,6 +22,7 @@ import type { Command } from '../../core/commands.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
+import { openWorkerJobAt } from '../economy/jobs.js';
 import { MILITARY_MODE, defaultStanceForJob, isMilitaryMode } from '../readviews/index.js';
 
 /**
@@ -135,21 +137,65 @@ export function setJob(
   if (world.has(e, Age)) return; // a growing child's job class is GrowthSystem's, not the player's
   if (indexById(ctx.content.jobs).get(command.jobType) === undefined) return; // unknown job — skip
 
-  world.get(e, Settler).jobType = command.jobType;
   world.remove(e, JobAssignment); // re-employed at a building of the NEW job by the JobSystem
+  reidleAsJob(world, e, command.jobType);
+}
+
+/**
+ * Reset an OWNED settler to a fresh idle worker of `jobType`: set its `Settler.jobType`, cancel any
+ * current action/route/hold, drop auto-combat state, and stamp the new job's DEFAULT military stance (a
+ * soldier→civilian flip stops auto-engaging and starts fleeing; the reverse engages — the player can
+ * override afterwards with `setStance`). It does NOT touch {@link JobAssignment}: the caller owns the
+ * binding — {@link setJob} DROPS it (the JobSystem re-employs at the first open building of the new
+ * job), while {@link assignWorker} SETS it (bind to the player-chosen building). The one place the
+ * "re-idle to a new trade" reset lives, so the two employment orders can't drift apart. Owned-only: the
+ * callers guard `e` is owned, so the stance stamp keeps the "Stance is owned-only" invariant.
+ */
+function reidleAsJob(world: World, e: Entity, jobType: number): void {
+  world.get(e, Settler).jobType = jobType;
   world.remove(e, CurrentAtomic); // cancel whatever it was doing under the old job
-  world.remove(e, PlayerOrder); // a profession change returns the unit to the economy
+  world.remove(e, PlayerOrder); // an employment change returns the unit to the economy
   world.remove(e, MoveGoal);
   world.remove(e, PathRequest);
   world.remove(e, PathFollow);
   world.remove(e, Engagement); // drop any auto-combat state — the new trade re-decides its stance
   world.remove(e, AttackOrder);
   world.remove(e, Fleeing);
-  // A profession change re-idles the unit AND resets its military stance to the new job's default (a
-  // soldier→civilian flip should stop auto-engaging and start fleeing; the reverse should engage). The
-  // player can override afterwards with `setStance`. Owned-only: `e` is guaranteed owned by the guard
-  // above, so the stamp keeps the "Stance is an owned-only component" invariant (goldens untouched).
-  stampDefaultStance(world, e, command.jobType);
+  stampDefaultStance(world, e, jobType);
+}
+
+/**
+ * Assign one OWNED settler to work at a SPECIFIC `building` (the `assignWorker` command — the
+ * player-directed twin of the JobSystem's automatic assignment): resolve the building's open worker
+ * job with the SAME per-building openness gate the JobSystem applies ({@link openWorkerJobAt} — a
+ * same-tribe, tech-enabled workplace with an understaffed slot the settler qualifies for), re-idle the
+ * settler as that job, and bind it to the chosen building ({@link JobAssignment}). The bound settler
+ * then walks to and staffs that building through the normal AI planner, exactly like an
+ * auto-assigned worker — a hand assignment can never reach a state the JobSystem wouldn't.
+ *
+ * Recoverable bad input (skipped, still logged for faithful replay): a dead/stale target, a non-settler
+ * or NEUTRAL (unowned) issuer, a still-growing child (an {@link Age} unit — the GrowthSystem owns its
+ * job class), a dead/stale/non-building target, or a building that offers this settler no open worker
+ * job right now (full, wrong tribe, not a workplace, or gated).
+ */
+export function assignWorker(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'assignWorker' }>,
+): void {
+  const e = command.entity;
+  if (!world.isAlive(e) || !world.has(e, Settler) || !world.has(e, Owner)) return;
+  if (world.has(e, Age)) return; // a growing child's job class is GrowthSystem's, not the player's
+  const b = command.building;
+  if (!world.isAlive(b) || !world.has(b, Building)) return;
+
+  const settler = world.get(e, Settler);
+  const jobType = openWorkerJobAt(world, ctx, b, settler.tribe, settler.experience);
+  if (jobType === null) return; // building full / wrong tribe / not a workplace / gated — no-op
+
+  world.remove(e, JobAssignment); // drop any prior binding before re-binding to the chosen building
+  reidleAsJob(world, e, jobType);
+  world.add(e, JobAssignment, { workplace: b });
 }
 
 /**

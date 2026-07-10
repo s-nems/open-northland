@@ -86,15 +86,37 @@ function openJobAt(
   experience: ReadonlyMap<number, number>,
 ): { building: Entity; jobType: number } | null {
   for (const b of buildings) {
-    const building = world.tryGet(b, Building);
-    if (building === undefined || building.tribe !== tribe) continue;
-    if (!buildingEnabled(world, ctx, tribe, building.buildingType)) continue; // not tech-enabled yet
-    for (const jobType of canonicalJobs(buildingWorkerJobs(world, ctx, b))) {
-      if (!jobUnderstaffed(world, ctx, b, jobType)) continue;
-      if (!jobEnabled(world, ctx, tribe, jobType)) continue; // tech gate (jobEnablesJob): job unlocked?
-      if (!settlerMeetsNeed(ctx, tribe, 'job', jobType, experience)) continue; // XP gate (needforjob)
-      return { building: b, jobType }; // first open, qualified job wins
-    }
+    const jobType = openWorkerJobAt(world, ctx, b, tribe, experience);
+    if (jobType !== null) return { building: b, jobType }; // first open, qualified building wins
+  }
+  return null;
+}
+
+/**
+ * The open worker job a `tribe` settler with the given accrued `experience` could take at ONE specific
+ * `building`, or `null` if that building offers it none right now. A building offers a job when it is a
+ * same-tribe, tech-enabled workplace with a `workers` slot that is **understaffed at this building**,
+ * whose job is tech-enabled, and whose `needforjob` XP threshold the settler clears (the four openness
+ * conditions of {@link jobSystem}, per-building). The lowest job id among open slots wins
+ * ({@link canonicalJobs}). Shared by the automatic {@link openJobAt} scan and the player-directed
+ * `assignWorker` command, so a hand assignment can never bind a settler to a job the JobSystem itself
+ * wouldn't (the invariant the badge/employment display and the goldens both rely on).
+ */
+export function openWorkerJobAt(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  tribe: number,
+  experience: ReadonlyMap<number, number>,
+): number | null {
+  const b = world.tryGet(building, Building);
+  if (b === undefined || b.tribe !== tribe) return null;
+  if (!buildingEnabled(world, ctx, tribe, b.buildingType)) return null; // not tech-enabled yet
+  for (const jobType of canonicalJobs(buildingWorkerJobs(world, ctx, building))) {
+    if (!jobUnderstaffed(world, ctx, building, jobType)) continue;
+    if (!jobEnabled(world, ctx, tribe, jobType)) continue; // tech gate (jobEnablesJob): job unlocked?
+    if (!settlerMeetsNeed(ctx, tribe, 'job', jobType, experience)) continue; // XP gate (needforjob)
+    return jobType;
   }
   return null;
 }

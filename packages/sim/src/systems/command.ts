@@ -13,7 +13,7 @@ import type { Command } from '../core/commands.js';
 import { ONE, fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
 import { positionOfNode } from '../nav/halfcell.js';
-import { attackUnit, moveUnit, setJob, setStance } from './conflict/orders.js';
+import { assignWorker, attackUnit, moveUnit, setJob, setStance } from './conflict/orders.js';
 import { spawnAnimalHerd, spawnSettler } from './conflict/spawn.js';
 import type { System, SystemContext } from './context.js';
 import { canPlaceBuilding, createResourceNode } from './footprint/index.js';
@@ -67,6 +67,10 @@ import { buildingEnabled, tribeShipsUnlocked } from './progression.js';
  *    target regardless of sight), `setStance` writes the unit's `Stance` military mode (auto-engage /
  *    defend / ignore / flee). All live in ./orders.ts ({@link moveUnit}/{@link setJob}/{@link attackUnit}/
  *    {@link setStance}) and skip a dead/non-settler/neutral (and, for attack, non-combatant) target (still logged).
+ *  - `assignWorker` — bind an EXISTING owned settler to a SPECIFIC building as a worker (the
+ *    player-directed twin of the JobSystem's auto-assignment): set its `jobType` to the building's open
+ *    worker slot and stamp its `JobAssignment` binding, through the same per-building openness gate the
+ *    JobSystem applies (see {@link assignWorker}). Skipped for a full/wrong-tribe/non-workplace target.
  *
  * A command that references an unknown type id or a dead entity is a recoverable boundary failure
  * (bad UI input / a stale command), not a programmer bug: it is skipped (the log still records it,
@@ -132,6 +136,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'setStance':
       setStance(world, ctx, command);
+      return;
+    case 'assignWorker':
+      assignWorker(world, ctx, command);
       return;
     default:
       assertNever(command);
