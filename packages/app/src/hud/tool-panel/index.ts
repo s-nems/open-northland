@@ -81,6 +81,10 @@ export interface ToolPanelOptions {
 export interface ToolPanelController {
   /** True when a client point should be CLAIMED by the HUD (over the strip, an open window, or in placement). */
   claimsPointer(clientX: number, clientY: number): boolean;
+  /** True when a client point is over an OPEN pop-up window (menu / stats) — the surface that owns the
+   *  wheel, so the camera must not also zoom there. Narrower than {@link claimsPointer}: it excludes the
+   *  strip and active placement, so the wheel still zooms the world in those. */
+  claimsWheel(clientX: number, clientY: number): boolean;
   /** The building typeId currently being placed, or null when not in build mode — the frame loop reads it
    *  to drive the map's buildable/blocked overlay. */
   placementType(): number | null;
@@ -359,8 +363,14 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
 
   applySpeed(null); // initialise the speed button graphic only — the loop keeps the entry's seeded speed
 
+  const claimsWheel = (clientX: number, clientY: number): boolean => {
+    const { x, y } = toCanvas(clientX, clientY);
+    return menu.claims(x, y) || stats.claims(x, y);
+  };
+
   return {
     claimsPointer,
+    claimsWheel,
     placementType: () => placement.activeType(),
     update(hud): void {
       // The strip is a static baked texture now (a scene-graph sprite that batches + follows resizes for
