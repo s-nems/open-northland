@@ -160,7 +160,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   };
 
   /** Owned, pickable targets (settlers + buildings) with their world-px feet anchors, from the snapshot. */
-  const targets = (kind?: 'settler'): Pickable[] => {
+  const targets = (kind?: 'settler' | 'building'): Pickable[] => {
     const snap = opts.snapshot();
     const ownerOf = ownersOf(snap);
     const out: Pickable[] = [];
@@ -261,11 +261,13 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
 
   /** Right-click resolves to: OPEN THE ACTION MENU when one of your OWN settlers is under the cursor (select
    *  it, then show its menu — the original's "right-click a unit = its commands" idiom, alongside Space); an
-   *  ATTACK order when an ENEMY unit is under the cursor (the selected combatants chase + strike it);
-   *  otherwise a MOVE order at the clicked tile (move-order-onto-an-enemy = attack, the RTS idiom). */
+   *  ATTACK order when an ENEMY unit is under the cursor (the selected combatants chase + strike it); an
+   *  ASSIGN-WORKER order when one of your OWN BUILDINGS is under the cursor and settlers are selected (employ
+   *  them there — the badge appears by its door); otherwise a MOVE order at the clicked tile
+   *  (move-order-onto-an-enemy = attack, the RTS idiom). */
   const issueRightClickOrder = (e: MouseEvent): void => {
     const w = toWorld(e.clientX, e.clientY);
-    // One O(entities) scan per click, shared by all three branches (each `targets` call rebuilds the scene).
+    // One O(entities) scan per click, shared by all branches (each `targets` call rebuilds the scene).
     const ownSettlers = targets('settler');
     const own = pickTopAt(ownSettlers, w.x, w.y);
     if (own !== null) {
@@ -280,6 +282,17 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       for (const t of ownSettlers) {
         if (selected.has(t.ref))
           opts.enqueue({ kind: 'attackUnit', entity: t.ref as Entity, target: enemy as Entity });
+      }
+      return;
+    }
+    // Right-click on one of your OWN buildings with settlers selected = employ them there (the sim resolves
+    // the building's open worker slot; a full/wrong-tribe building is a no-op). Only the SELECTED settlers
+    // are assigned; a selected building can't be a worker and is dropped.
+    const building = pickTopAt(targets('building'), w.x, w.y);
+    if (building !== null) {
+      for (const t of ownSettlers) {
+        if (selected.has(t.ref))
+          opts.enqueue({ kind: 'assignWorker', entity: t.ref as Entity, building: building as Entity });
       }
       return;
     }

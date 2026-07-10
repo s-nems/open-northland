@@ -4,6 +4,7 @@ import { type ElevationField, makeElevationField } from '../data/elevation.js';
 import type { Camera } from '../data/iso.js';
 import type { SceneTerrain } from '../data/scene/index.js';
 import { cameraViewport } from '../data/viewport.js';
+import { BadgeLayer, type DoorBadge } from './badge-layer.js';
 import { HudLayer } from './hud-layer.js';
 import type { HudFrame } from './hud-layer.js';
 import { MapObjectLayer } from './map-objects/index.js';
@@ -18,6 +19,7 @@ import { TextureCache } from './texture-cache.js';
 
 /** Shared empty selection so the common no-selection `update` allocates nothing. */
 const NO_SELECTION: ReadonlySet<number> = new Set();
+const NO_BADGES: readonly DoorBadge[] = [];
 
 /**
  * The RETAINED-mode world renderer — the scalable replacement for the old immediate-mode `renderScene`,
@@ -80,6 +82,8 @@ export class WorldRenderer {
   private readonly placementGhost: PlacementGhostLayer;
   /** Feet rings under the currently-selected entities (world-space, BELOW the sprites). */
   private readonly selectionLayer = new SelectionLayer();
+  /** Stacked worker badges beside each staffed building's door (world-space, ABOVE the sprites). */
+  private readonly badgeLayer = new BadgeLayer();
   private readonly hud = new HudLayer();
   /** The paused-game sepia wash (screen-space, over the world, under the HUD). See {@link setPaused}. */
   private readonly pauseWash = new Sprite(Texture.WHITE);
@@ -97,13 +101,16 @@ export class WorldRenderer {
     this.placementGhost = new PlacementGhostLayer(opts?.sheet, this.textureCache);
     this.spriteLayer.addChild(this.placementGhost.container);
     // Z-order within the world layer: terrain (back) → flat decor → build-placement wash → selection
-    // rings → sprites + tall objects (front). The wash + rings sit under the sprites so a house/tree/unit
-    // in front draws over them (the wash dims the ground, not the sprites standing on it).
+    // rings → sprites + tall objects → door badges (front). The wash + rings sit under the sprites so a
+    // house/tree/unit in front draws over them (the wash dims the ground, not the sprites on it); the
+    // door badges sit OVER the sprites so a worker marker floats above its building instead of hiding
+    // behind it.
     this.worldLayer.addChild(this.terrain.container);
     this.worldLayer.addChild(this.mapObjects.decorContainer);
     this.worldLayer.addChild(this.placementOverlay.container);
     this.worldLayer.addChild(this.selectionLayer.container);
     this.worldLayer.addChild(this.spriteLayer);
+    this.worldLayer.addChild(this.badgeLayer.container);
     app.stage.addChild(this.worldLayer);
     // The pause wash sits ABOVE the world and BELOW the HUD (stage order), so pausing browns the map
     // but never the always-on HUD or the tool panel (both are later stage children).
@@ -160,6 +167,7 @@ export class WorldRenderer {
     hud?: HudFrame,
     selection: ReadonlySet<number> = NO_SELECTION,
     alpha = 1,
+    doorBadges: readonly DoorBadge[] = NO_BADGES,
   ): void {
     // Camera: the world layer's own transform (screen = world*scale + offset).
     this.worldLayer.scale.set(camera.scale ?? 1);
@@ -201,6 +209,9 @@ export class WorldRenderer {
       this.elevation,
       (ref) => this.pool.anchorOf(ref),
     );
+    // Door badges float over the buildings: the app tallies each building's bound workers + projects its
+    // door node, this layer stacks one placeholder square per worker (carrier vs other) above the door.
+    this.badgeLayer.draw(doorBadges, this.elevation);
     if (this.pauseWash.visible) {
       this.pauseWash.width = this.app.screen.width;
       this.pauseWash.height = this.app.screen.height;

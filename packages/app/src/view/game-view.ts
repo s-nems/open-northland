@@ -1,3 +1,4 @@
+import { indexById } from '@vinland/data';
 import {
   type Camera,
   type ElevationField,
@@ -16,9 +17,11 @@ import { pickerEntries } from '../catalog/professions.js';
 import { createSoundDriver } from '../content/audio.js';
 import { loadIr } from '../content/ir.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
+import { JOB_CARRIER } from '../game/sandbox/ids.js';
 import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel/layout.js';
 import { mountAdminDebug } from './admin-debug/index.js';
 import type { CameraController } from './camera.js';
+import { computeDoorBadges } from './door-badges.js';
 import { applyGameSpeed, menuEntriesFromContent, mountGameToolPanel } from './game-tool-panel.js';
 import { mountSoundToggle } from './overlay.js';
 import { floatParam } from './params.js';
@@ -218,6 +221,9 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
 
   // The memoized build-mode band probe (see makeOverlayFrameSource) — one instance per view.
   const overlayFrame = makeOverlayFrameSource(sim, deps.mapSize);
+  // Building types keyed by typeId, for the per-frame door-badge projection (its door offset). Built
+  // once — the content is fixed for a view's lifetime.
+  const buildingDoors = indexById(sim.content.buildings);
 
   const timestep = new FixedTimestep();
   let lastMs = performance.now();
@@ -287,10 +293,19 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
         ? { col: hovered.col, row: hovered.row, buildingType: placeType }
         : null,
     );
-    // One retained update: reconcile the pooled sprites, draw the selection rings, render once.
-    // `app.screen` tracks window resizes. No HUD frame is passed — the always-on stocks panel is gone;
-    // the debug tick lives in the top overlay and the population/jobs/stocks in the stats window.
-    renderer.update(snap, cameraCtl.camera(), snap.tick, undefined, controls.selectedIds(), renderAlpha);
+    // One retained update: reconcile the pooled sprites, draw the selection rings + door badges, render
+    // once. `app.screen` tracks window resizes. No HUD frame is passed — the always-on stocks panel is
+    // gone; the debug tick lives in the top overlay and the population/jobs/stocks in the stats window.
+    const doorBadges = computeDoorBadges(snap, buildingDoors, JOB_CARRIER);
+    renderer.update(
+      snap,
+      cameraCtl.camera(),
+      snap.tick,
+      undefined,
+      controls.selectedIds(),
+      renderAlpha,
+      doorBadges,
+    );
     controls.tick(snap); // reuse the frame's snapshot — don't rebuild a second one
     deps.onFrame?.(snap);
     if (soundDriver !== null) {

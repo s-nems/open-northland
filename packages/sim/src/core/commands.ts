@@ -217,6 +217,26 @@ export type Command =
       readonly entity: Entity;
       /** The target {@link import('../systems/readviews/stances.js').MILITARY_MODE} id (0..4). */
       readonly mode: number;
+    }
+  | {
+      /**
+       * Assign one OWNED settler to work at a SPECIFIC `building` (the player-directed "employ this
+       * colonist here", the counterpart to the JobSystem's automatic assignment): bind it to that
+       * workplace ({@link JobAssignment}) and set its `jobType` to the building's open worker slot, the
+       * same re-idle-to-a-fresh-worker reset as {@link setJob} but pinned to a building the player chose
+       * rather than the first open one the economy finds. The bound settler then walks to and staffs
+       * that building through the normal AI planner.
+       *
+       * The building's open worker job is resolved sim-side (the same per-building openness gate the
+       * JobSystem applies — a same-tribe, tech-enabled building with an understaffed slot the settler
+       * qualifies for), so the command carries only the two entity ids. Recoverable bad input (skipped,
+       * still logged for faithful replay): a dead/stale/non-settler/neutral issuer, a still-growing
+       * child, a dead/stale/non-building target, or a building with no open worker job for this settler
+       * (full, wrong tribe, not a workplace, or gated). See `assignWorker`.
+       */
+      readonly kind: 'assignWorker';
+      readonly entity: Entity;
+      readonly building: Entity;
     };
 
 /**
