@@ -57,8 +57,17 @@ export const BOB_TYPE_8BIT = 1;
 export const BOB_TYPE_1BIT = 2;
 /** TimeMask bob: same packed layout as 8-bit; print modes reinterpret it (`TBobType.TimeMask`). */
 export const BOB_TYPE_TIMEMASK = 3;
-/** Double-byte bob: each raw-run pixel is two bytes [index][skip] (`TBobType.Double8Bit`). */
+/**
+ * Double-byte bob: each raw-run pixel is two bytes `[index, alpha]` (`TBobType.Double8Bit`). The second
+ * byte is the pixel's 8-bit opacity — CBobManager `PrintBob_UsingShadedAlpha` blends
+ * `a = alphaByte·(256−shade)/256` src-over the destination, so at shade 0 the alpha byte IS the pixel's
+ * straight alpha. (The engine's plain `PrintPackedLine_DoubleByte` path skips the byte and blits opaque;
+ * the soft landscape decals — ferns, smoke, wave foam — are drawn through the alpha path.)
+ */
 export const BOB_TYPE_DOUBLE8BIT = 4;
+
+/** Coverage of a written pixel of a single-byte bob type (8-bit / 1-bit mask / TimeMask): fully opaque. */
+export const BOB_ALPHA_OPAQUE = 0xff;
 
 /** Index written for a set pixel of a 1-bit mask bob (CBobManager draws masks as palette entry 0xFF). */
 export const BOB_MASK_INDEX = 0xff;
@@ -360,7 +369,8 @@ const LINE_CONTROL_EMPTY = 0xffffffff;
  * One decoded bob frame: indexed pixels plus a parallel opacity mask. Index 0 is a real palette colour
  * here (transparency is per-pixel via the codec's skip runs, not a reserved index), so a renderer needs
  * {@link mask} to know which pixels were actually written; unwritten pixels keep `index 0`, `mask 0`.
- * Convert to RGBA by sampling a palette at each `mask=1` pixel (the bob's palette lives outside the `.bmd`).
+ * Convert to RGBA by sampling a palette at each `mask≠0` pixel (the bob's palette lives outside the `.bmd`),
+ * carrying the mask value as the pixel's alpha.
  */
 export interface BobFrame {
   /** Frame width in pixels (the bob's `area.width`). */
@@ -369,7 +379,11 @@ export interface BobFrame {
   readonly height: number;
   /** Row-major (top→bottom) palette indices, length `width * height`. Unwritten pixels are 0. */
   readonly pixels: Uint8Array;
-  /** Row-major opacity: 1 where the codec wrote a pixel, 0 where it skipped (transparent). */
+  /**
+   * Row-major opacity, 0–255: 0 where the codec skipped (transparent); a written pixel of a single-byte
+   * type is {@link BOB_ALPHA_OPAQUE}; a {@link BOB_TYPE_DOUBLE8BIT} pixel carries its per-pixel alpha
+   * byte (the soft decals — ferns, smoke, wave foam — encode their feathered translucency there).
+   */
   readonly mask: Uint8Array;
 }
 
@@ -389,7 +403,8 @@ export interface BobFrame {
  * the draw offset and is NOT applied here.
  *
  * Per-type pixel width within a raw run: 8-bit/TimeMask store one index byte each; Double8Bit stores two
- * bytes each (index then a skipped byte); 1-bit masks store one 0/1 byte each, drawn as {@link BOB_MASK_INDEX}.
+ * bytes each (index, then the pixel's alpha byte — see {@link BOB_TYPE_DOUBLE8BIT}); 1-bit masks store one
+ * 0/1 byte each, drawn as {@link BOB_MASK_INDEX}.
  * An empty bob (`type 0`) or non-positive size yields a frame sized to the (clamped) area with an all-transparent mask.
  *
  * Throws a `bmd:`-prefixed error on an out-of-range `bobIndex` (a programmer error). A structurally
@@ -449,17 +464,20 @@ export function decodeBobFrame(bmd: Bmd, bobIndex: number): BobFrame {
             return { width, height, pixels, mask }; // truncated stream: stop, like the clipped original
           }
           const value = packed[pos] as number;
-          pos += bytesPerPixel; // double-byte consumes the trailing skip byte too
+          // Double8Bit: the pair's second byte is the pixel's alpha (see BOB_TYPE_DOUBLE8BIT). An
+          // alpha of 0 leaves the pixel transparent, exactly like the engine's `a <= 0 → continue`.
+          const coverage = isDouble ? (packed[pos + 1] as number) : BOB_ALPHA_OPAQUE;
+          pos += bytesPerPixel;
           const col = absX + i;
           if (col >= 0 && col < width) {
             if (isMask) {
               if (value !== 0) {
                 pixels[rowBase + col] = BOB_MASK_INDEX;
-                mask[rowBase + col] = 1;
+                mask[rowBase + col] = BOB_ALPHA_OPAQUE;
               }
             } else {
               pixels[rowBase + col] = value;
-              mask[rowBase + col] = 1;
+              mask[rowBase + col] = coverage;
             }
           }
         }

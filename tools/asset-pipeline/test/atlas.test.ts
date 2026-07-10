@@ -111,26 +111,36 @@ describe('expandBobFrame', () => {
       width: 2,
       height: 1,
       pixels: Uint8Array.from([5, 9]),
-      mask: Uint8Array.from([1, 0]),
+      mask: Uint8Array.from([255, 0]),
     };
     const rgba = expandBobFrame(frame, rampPalette()).rgba;
     // Pixel 0 (index 5) -> (5,6,7,255); pixel 1 masked off -> (0,0,0,0).
     expect([...rgba]).toEqual([5, 6, 7, 255, 0, 0, 0, 0]);
   });
 
-  it('treats index 0 as a real colour when its mask bit is set', () => {
+  it('carries a graded mask value (a Double8Bit alpha byte) into the pixel alpha', () => {
+    const frame: BobFrame = {
+      width: 1,
+      height: 1,
+      pixels: Uint8Array.from([5]),
+      mask: Uint8Array.from([0x80]),
+    };
+    expect([...expandBobFrame(frame, rampPalette()).rgba]).toEqual([5, 6, 7, 0x80]);
+  });
+
+  it('treats index 0 as a real colour when its mask is set', () => {
     const frame: BobFrame = {
       width: 1,
       height: 1,
       pixels: Uint8Array.from([0]),
-      mask: Uint8Array.from([1]),
+      mask: Uint8Array.from([255]),
     };
     const rgba = expandBobFrame(frame, rampPalette()).rgba;
     expect([...rgba]).toEqual([0, 1, 2, 255]);
   });
 
   it('throws on a palette that is not 768 bytes', () => {
-    const frame: BobFrame = { width: 1, height: 1, pixels: Uint8Array.of(0), mask: Uint8Array.of(1) };
+    const frame: BobFrame = { width: 1, height: 1, pixels: Uint8Array.of(0), mask: Uint8Array.of(255) };
     expect(() => expandBobFrame(frame, new Uint8Array(767))).toThrow(/768 bytes/);
   });
 });
@@ -235,15 +245,15 @@ describe('expandBobFrameIndexed', () => {
       width: 3,
       height: 1,
       pixels: Uint8Array.from([5, 200, 9]),
-      mask: Uint8Array.from([1, 1, 0]),
+      mask: Uint8Array.from([255, 128, 0]),
     };
     const rgba = expandBobFrameIndexed(frame).rgba;
-    // idx 5 -> (5,0,0,255); idx 200 -> (200,0,0,255); masked-off -> (0,0,0,0).
-    expect([...rgba]).toEqual([5, 0, 0, 255, 200, 0, 0, 255, 0, 0, 0, 0]);
+    // idx 5 -> (5,0,0,255); idx 200 with graded coverage -> (200,0,0,128); masked-off -> (0,0,0,0).
+    expect([...rgba]).toEqual([5, 0, 0, 255, 200, 0, 0, 128, 0, 0, 0, 0]);
   });
 
-  it('keeps index 0 as a real (opaque) index when its mask bit is set', () => {
-    const frame: BobFrame = { width: 1, height: 1, pixels: Uint8Array.of(0), mask: Uint8Array.of(1) };
+  it('keeps index 0 as a real (opaque) index when its mask is set', () => {
+    const frame: BobFrame = { width: 1, height: 1, pixels: Uint8Array.of(0), mask: Uint8Array.of(255) };
     expect([...expandBobFrameIndexed(frame).rgba]).toEqual([0, 0, 0, 255]);
   });
 });

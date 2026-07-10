@@ -21,7 +21,10 @@ export interface MapObjectSprite {
   readonly decor: boolean;
   /** Starting frame offset into {@link frames} (kept for future per-object phase data). */
   readonly phase: number;
-  /** Draw opacity (1 = opaque). Waves composite translucently over the water ground. */
+  /**
+   * Flat draw opacity (1 = opaque). Per-pixel translucency (waves, ferns, smoke) rides in the atlas
+   * alpha channel itself (the Double8Bit bobs' alpha bytes), so the app passes 1 for every map object.
+   */
   readonly alpha: number;
   /**
    * Terrain-elevation lift (world px, ≥ 0) at this object's half-cell — SUBTRACTED from the drawn `y` so

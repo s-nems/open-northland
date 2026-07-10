@@ -25,13 +25,6 @@ export interface MapObjectsData {
 }
 
 /**
- * The opacity a `GfxDynamicBackground` object (the 8 wave records) composites over the water ground
- * with — our reading of the engine's translucent blit; the exact original factor is unpinned
- * (source basis).
- */
-const WAVE_ALPHA = 0.5;
-
-/**
  * The `[landscapetype]` names whose objects the original draws FULL-BRIGHT, exempt from the baked
  * `embr` shading: standing + felled trees. Measured on the bridge-map corpus (source basis
  * "brightness"): tree canopies keep full luminance even anchored on embr=0 border cells (ratio ≈ 1.0
@@ -145,7 +138,6 @@ export async function loadMapObjects(
     readonly source: SpriteLayer['source'];
     readonly frames: MapObjectSprite['frames'];
     readonly decor: boolean;
-    readonly alpha: number;
     /** False for the tree logic types (the measured full-bright exemption — {@link UNSHADED_LANDSCAPE_TYPES}). */
     readonly shaded: boolean;
   }
@@ -167,9 +159,6 @@ export async function loadMapObjects(
         source: layer.source,
         frames: animated ? frames : frames.slice(0, 1),
         decor: (record.walkBlockAreas ?? []).length === 0,
-        // `GfxDynamicBackground` (exactly the wave records) = the engine's translucent blit over the
-        // water ground; the 50% is our reading of that blend (source basis).
-        alpha: record.dynamicBackground === true ? WAVE_ALPHA : 1,
         shaded: record.logicType === undefined || !unshadedLogicTypes.has(record.logicType),
       };
     });
@@ -214,7 +203,10 @@ export async function loadMapObjects(
       // (source basis). Static objects (`frames.length <= 1`) ignore phase, so this only staggers the
       // looping bobs (waves, swaying trees/fire).
       phase: hx + hy,
-      alpha: type.alpha,
+      // Translucency (the waves' watery blend, the ferns' feathered edges) is the Double8Bit bobs'
+      // PER-PIXEL alpha, baked into the atlas by the pipeline (CBobManager PrintBob_UsingShadedAlpha —
+      // source basis); no flat per-object opacity remains.
+      alpha: 1,
       ...(shade !== undefined ? { brightness: shade.brightnessAt(hx / 2, hy / 2) } : {}),
     });
   }

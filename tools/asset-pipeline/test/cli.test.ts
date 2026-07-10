@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { parseTerrainMap } from '@vinland/data';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { assertOutStaysInCheckout, parseArgs, resolveArgs } from '../src/args.js';
-import { BOB_TYPE_8BIT, type Bmd, PACKED_X_SHIFT, encodeBmd } from '../src/decoders/bmd.js';
+import { BOB_TYPE_8BIT, BOB_TYPE_DOUBLE8BIT, type Bmd, PACKED_X_SHIFT, encodeBmd } from '../src/decoders/bmd.js';
 import { StorableId, encryptMode1 } from '../src/decoders/cif.js';
 import type { BmdPaletteBinding, PaletteAlias } from '../src/decoders/ini.js';
 import { encodeLib } from '../src/decoders/lib.js';
@@ -239,6 +239,31 @@ describe('bmdToAtlas', () => {
 
   it('propagates an atlas error for a wrong-sized palette', () => {
     expect(() => bmdToAtlas(sampleBmdBytes(), new Uint8Array(100))).toThrow(/^atlas:/);
+  });
+
+  it('bakes Double8Bit per-pixel alpha, or flattens it opaque for the house (plain-blit) path', () => {
+    // One type-4 bob, a 2x1 raw run of [index, alpha] pairs: [4, 0x60], [8, 0xff].
+    const bmd: Bmd = {
+      version: 0,
+      firstBobId: 10,
+      bobCount: 1,
+      generatedNonEmptyLines: 0,
+      generatedEmptyLines: 0,
+      generatedPackedLines: 0,
+      bobs: [{ type: BOB_TYPE_DOUBLE8BIT, area: { x: 0, y: 0, width: 2, height: 1 }, misc: 0 }],
+      packedLineData: Uint8Array.from([0x02, 4, 0x60, 8, 0xff, 0x00]),
+      lineControl: Uint32Array.from([(0 << PACKED_X_SHIFT) | 0]),
+    };
+    const bytes = encodeBmd(bmd);
+    const graded = bmdToAtlas(bytes, rampPalette());
+    const rect = graded.manifest.frames[0]?.rect;
+    const alphaAt = (atlas: typeof graded, x: number): number =>
+      atlas.image.rgba[((rect?.y ?? 0) * atlas.image.width + (rect?.x ?? 0) + x) * 4 + 3] ?? -1;
+    expect(alphaAt(graded, 0)).toBe(0x60); // the alpha byte rides into the sheet
+    expect(alphaAt(graded, 1)).toBe(0xff);
+    const flattened = bmdToAtlas(bytes, rampPalette(), true);
+    expect(alphaAt(flattened, 0)).toBe(0xff); // house atlases replay the opaque blit
+    expect(alphaAt(flattened, 1)).toBe(0xff);
   });
 });
 
