@@ -24,6 +24,7 @@ import {
 } from '@vinland/sim';
 import type { Application } from 'pixi.js';
 import { BUILD_HOUSE_ATOMIC, HARVEST_ATOMIC } from '../catalog/atomics.js';
+import { workerIconOffset } from '../catalog/building-tweaks.js';
 import { pickerEntries } from '../catalog/professions.js';
 import { createSoundDriver } from '../content/audio.js';
 import { DEFAULT_UI_LANG } from '../content/gui-gfx.js';
@@ -32,7 +33,6 @@ import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
 import { workerRoleOf } from '../game/sandbox/index.js';
 import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel/layout.js';
 import { mountAdminDebug } from './admin-debug/index.js';
-import { WORKER_ICON_DOOR_OFFSET } from './building-points.js';
 import type { CameraController } from './camera.js';
 import { screenScale } from './camera.js';
 import { computeDoorBadges } from './door-badges.js';
@@ -355,16 +355,16 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
       if (b === undefined || pos === undefined) continue;
       const fp = footprintByType.get(b.buildingType);
       const door = fp?.door;
+      const id = buildingIdByType.get(b.buildingType);
+      const iconOffset = workerIconOffset(id);
       items.push({
         anchor: nodeOfPosition(pos.x, pos.y),
         blocked: fp?.blocked ?? [],
         reserved: fp?.reserved ?? [],
         door,
         iconAnchor:
-          door === undefined
-            ? undefined
-            : { dx: door.dx + WORKER_ICON_DOOR_OFFSET.dx, dy: door.dy + WORKER_ICON_DOOR_OFFSET.dy },
-        label: buildingIdByType.get(b.buildingType) ?? `#${b.buildingType}`,
+          door === undefined ? undefined : { dx: door.dx + iconOffset.dx, dy: door.dy + iconOffset.dy },
+        label: id ?? `#${b.buildingType}`,
       });
     }
     renderer.setGeometryDebug(items);

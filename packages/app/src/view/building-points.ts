@@ -1,5 +1,6 @@
-import type { BuildingFootprint, FootprintCell } from '@vinland/data';
+import type { BuildingFootprint } from '@vinland/data';
 import type { HalfCellNode } from '@vinland/sim';
+import { workerIconOffset } from '../catalog/building-tweaks.js';
 
 /**
  * Per-building UI anchor points derived from the extracted footprint — the door node and the
@@ -7,15 +8,12 @@ import type { HalfCellNode } from '@vinland/sim';
  * a consumer projects the node to world px with `halfCellToScreen` like any other lattice point.
  *
  * Source basis: the door is the extracted `LogicDoorPoint` (the cell a settler stands on entering —
- * `footprint.door`, the same offset the sim's `interactionNode` walks to). The worker-icon anchor has
- * NO original counterpart — the original draws worker icons in the HUD, not at the building — so its
- * placement is our own approximation: one node right of the door (icons stack upward from there),
- * adjustable in one place via {@link WORKER_ICON_DOOR_OFFSET}.
+ * `footprint.door`, the same offset the sim's `interactionNode` walks to; the committed per-building
+ * door corrections are already applied upstream in `content/ir.ts`). The worker-icon anchor has NO
+ * original counterpart — the original draws worker icons in the HUD, not at the building — so its
+ * placement is our own approximation: one node right of the door by default, with per-building
+ * overrides from the gallery review (`catalog/building-tweaks.ts`).
  */
-
-/** Half-cell offset from the DOOR node to the worker-icon stack's bottom anchor: one node right
- *  (+1 hx = half a cell, ~34 px), same row — beside the door, clear of the entrance itself. */
-export const WORKER_ICON_DOOR_OFFSET: FootprintCell = { dx: 1, dy: 0 };
 
 /**
  * The node settlers enter a building at: `anchor + footprint.door`, or the anchor itself when the
@@ -28,8 +26,14 @@ export function doorNode(footprint: BuildingFootprint | undefined, anchor: HalfC
   return { hx: anchor.hx + door.dx, hy: anchor.hy + door.dy };
 }
 
-/** The bottom anchor of the worker-icon stack: the door node shifted {@link WORKER_ICON_DOOR_OFFSET}. */
-export function workerIconNode(footprint: BuildingFootprint | undefined, anchor: HalfCellNode): HalfCellNode {
+/** The bottom anchor of the worker-icon stack: the door node shifted by the building's
+ *  {@link workerIconOffset} (the default one-node-right, or its per-id override). */
+export function workerIconNode(
+  footprint: BuildingFootprint | undefined,
+  anchor: HalfCellNode,
+  buildingId?: string,
+): HalfCellNode {
   const door = doorNode(footprint, anchor);
-  return { hx: door.hx + WORKER_ICON_DOOR_OFFSET.dx, hy: door.hy + WORKER_ICON_DOOR_OFFSET.dy };
+  const offset = workerIconOffset(buildingId);
+  return { hx: door.hx + offset.dx, hy: door.hy + offset.dy };
 }

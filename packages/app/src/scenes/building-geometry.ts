@@ -18,13 +18,20 @@ import type { SceneDefinition } from './types.js';
  * whether the geometry matches the pixels is exactly the human's job here.
  */
 
+/**
+ * The gallery roster: every catalog building EXCEPT `work_pottery_02` (typeId 22, the "Defence wall"
+ * slot) — the culturesnation mod carries no real building there (its bob binding draws a stray house
+ * graphic), so per the user's review it is ignored entirely; the mod is the source of truth.
+ */
+const GALLERY_BUILDINGS = VIKING_BUILDINGS.filter((b) => b.id !== 'work_pottery_02');
+
 /** Grid pitch in TILES — wide enough that the largest reserved zone (~4 cells half-width) never
  *  overlaps a neighbour's, so each building's overlay reads on its own. */
 const GRID_STEP = 8;
 const GRID_COLUMNS = 7;
 const GRID_ORIGIN = { x: 5, y: 5 };
 
-const GRID_ROWS = Math.ceil(VIKING_BUILDINGS.length / GRID_COLUMNS);
+const GRID_ROWS = Math.ceil(GALLERY_BUILDINGS.length / GRID_COLUMNS);
 const MAP_W = GRID_ORIGIN.x * 2 + (GRID_COLUMNS - 1) * GRID_STEP + GRID_STEP;
 const MAP_H = GRID_ORIGIN.y * 2 + (GRID_ROWS - 1) * GRID_STEP + GRID_STEP;
 
@@ -41,7 +48,7 @@ function buildingTile(index: number): { x: number; y: number } {
 }
 
 function build(sim: Simulation): void {
-  VIKING_BUILDINGS.forEach((building, index) => {
+  GALLERY_BUILDINGS.forEach((building, index) => {
     const { x, y } = buildingTile(index);
     placeSandboxBuilding(sim, building.typeId, x, y, HUMAN_PLAYER);
   });
@@ -67,8 +74,8 @@ export const buildingGeometryScene: SceneDefinition = {
   ],
   checks: [
     {
-      label: 'every catalog viking building stands placed on the grid',
-      predicate: (sim) => countComponent(sim, components.Building) === VIKING_BUILDINGS.length,
+      label: 'every gallery viking building stands placed on the grid',
+      predicate: (sim) => countComponent(sim, components.Building) === GALLERY_BUILDINGS.length,
     },
   ],
 };
