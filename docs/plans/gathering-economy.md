@@ -112,11 +112,20 @@ a map-placed collector with no WorkFlag falls back to roaming.
 
 **Interactive flag control (same branch):** a `setWorkFlag` command (Ctrl+Right-Click on a selected
 gatherer) places/relocates that gatherer's flag on the clicked node — a fresh flag is created + bound, or
-the existing one is moved. Flags now carry a `DeliveryFlag` marker so render draws the flag graphic ABOVE
-its goods heap (a collection point never buries its own marker; a loose pile still draws its heap alone),
-and the selected gatherer's flag is highlighted with an amber ring (distinct from the green selection ring).
-The selectable sandbox cluster are gatherers too, so each is bound to a flag at its spawn (they idle by it
-instead of roaming); the player sends them to work with Ctrl+Right-Click.
+the existing one is moved. Flags carry a `DeliveryFlag` marker; render draws the flag graphic and paints it
+just ABOVE any co-located goods heap (`FLAG_PAINT_STEP`, applied in both the headless oracle sort and the
+live painter's zIndex). The selected gatherer's flag is highlighted with an amber ring (distinct from the
+green selection ring). The selectable sandbox cluster are gatherers too, so each is bound to a flag at its
+spawn (they idle by it instead of roaming); the player sends them to work with Ctrl+Right-Click.
+
+**Goods pile on the GROUND, not on the flag (storage physics, same branch):** a `DeliveryFlag` is now a
+PURE marker (`Position + DeliveryFlag`, no `Stockpile`). On delivery, `pileupIntoStore` spreads the load
+onto separate loose ground heaps AROUND the flag (`spreadCarryAroundFlag`): the nearest tile fills first up
+to `MAX_GROUND_STACK` (5, the `ls_goods` heap's fill states), spilling to the next-nearest tile in a square
+spiral, so the flag ends up centred in a field of capped heaps. Each heap is a bare `Stockpile+Position`
+pinned to its tile — so relocating the flag moves ONLY the marker; the goods never teleport (both were
+reported bugs). The heaps are the loose piles porters (`nearestGroundPile`) haul to warehouses. Golden
+untouched (no flags in the golden slice); the goods-yard extent/cap are named approximations (undecoded).
 
 ---
 

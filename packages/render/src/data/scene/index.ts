@@ -9,6 +9,7 @@
 export {
   type DrawItem,
   type DrawKind,
+  FLAG_PAINT_STEP,
   type SceneGround,
   type SceneTerrain,
   type SceneTransitions,

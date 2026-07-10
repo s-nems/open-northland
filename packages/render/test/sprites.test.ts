@@ -865,15 +865,9 @@ describe('resolveStockpileDraw — per-good ground piles + delivery flag', () =>
     ]);
   });
 
-  it('draws a filled DELIVERY FLAG as heap-then-flag, so the flag stays visible ABOVE the goods', () => {
-    // A designated flag (isFlag) that holds goods: heap first (index 0, behind), flag second (on top).
-    expect(resolveStockpileLayerDraws(binding, { ...pile(5, 3), isFlag: true })).toEqual([
-      { bob: 2, layer: 'ls_goods.goods_wood' }, // the heap, drawn behind
-      { bob: 33, layer: 'ls_temp.human_player01' }, // the flag, drawn on top
-    ]);
-  });
-
-  it('draws an EMPTY delivery flag as the flag alone (no heap to sit over yet)', () => {
+  it('draws a delivery flag as the flag marker alone (it holds no goods — its heaps are separate entities)', () => {
+    // A flag is a pure marker (no goodType): it resolves to the flag graphic. The goods it collects are
+    // SEPARATE loose piles the scene depth-sorts a hair behind it (FLAG_PAINT_STEP), never layers of one draw.
     expect(resolveStockpileLayerDraws(binding, { ...pile(), isFlag: true })).toEqual([
       { bob: 33, layer: 'ls_temp.human_player01' },
     ]);

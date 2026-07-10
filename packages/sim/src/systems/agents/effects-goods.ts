@@ -1,6 +1,7 @@
 import {
   Building,
   Carrying,
+  DeliveryFlag,
   Felling,
   GroundDrop,
   HarvestedBy,
@@ -12,7 +13,7 @@ import {
   WorkFlag,
 } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
-import type { Fixed } from '../../core/fixed.js';
+import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { unstampResourceFootprint } from '../footprint/index.js';
@@ -319,11 +320,27 @@ export function addCarry(world: World, settler: Entity, goodType: number, amount
 }
 
 /**
- * Deposit a settler's carried load into a store's {@link Stockpile}, capped at the building type's
- * per-good capacity. Any overflow stays on the settler's back (goods are conserved — never dropped).
- * No-op if the settler carries nothing or the store has no stockpile.
+ * The greatest ring radius (in whole tiles) the goods-yard spread searches outward from a flag before it
+ * gives up and leaves the remainder on the carrier's back. The square (Chebyshev) ring at radius `r` holds
+ * `(2r+1)²` tiles, so radius 8 already offers 289 tiles × {@link MAX_GROUND_STACK} — vastly more than any
+ * single gatherer ever produces — the bound only stops a pathological unbounded search. Named
+ * approximation: the original's goods-yard extent is not decoded.
+ */
+const GOODS_YARD_MAX_RADIUS = 8;
+
+/**
+ * Deposit a settler's carried load. A **delivery flag** ({@link DeliveryFlag}) is a MARKER, not a store:
+ * the load spreads onto loose ground heaps AROUND the flag ({@link spreadCarryAroundFlag}), each heap
+ * pinned to its own tile — so relocating the flag never moves the goods (the "resources are stuck to their
+ * tile, they never teleport" rule). Any other store takes the load into its own {@link Stockpile}, capped
+ * at the building type's per-good capacity, overflow staying on the settler's back (goods conserved). No-op
+ * if the settler carries nothing or the (non-flag) store has no stockpile.
  */
 export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entity, store: Entity): void {
+  if (world.has(store, DeliveryFlag)) {
+    spreadCarryAroundFlag(world, settler, store);
+    return;
+  }
   const load = world.tryGet(settler, Carrying);
   if (load === undefined || load.amount <= 0) return;
   const stock = world.tryGet(store, Stockpile);
@@ -337,4 +354,77 @@ export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entit
 
   stock.amounts.set(load.goodType, have + moved);
   shrinkCarry(world, settler, load, moved); // fully unloaded ⇒ Carrying removed
+}
+
+/**
+ * Spread a flag-bound gatherer's carried load onto LOOSE GROUND HEAPS around its flag — the faithful
+ * "collector stacks its harvest on the ground by the work flag". The flag is a marker, not a store, so the
+ * heaps are separate entities PINNED to their tiles: relocating the flag moves nothing already dropped.
+ * Fills the nearest tile first up to {@link MAX_GROUND_STACK}, spilling to the next-nearest free tile in a
+ * square (Chebyshev) spiral out from the flag tile — `(0,0)`, then radius 1, 2, … — so the flag ends up
+ * centred in a growing field of capped heaps (the user's "the flag in the middle of many 5-unit piles").
+ *
+ * Deterministic: the ring order is fixed (ascending `dy`, then `dx`) and each per-tile stack is a canonical
+ * scan ({@link stackOntoTile}). Any remainder that doesn't fit within {@link GOODS_YARD_MAX_RADIUS} stays
+ * on the settler's back (goods conserved — the next delivery retries). No-op if it carries nothing. Pure
+ * over entity state; no RNG/wall-clock.
+ */
+function spreadCarryAroundFlag(world: World, settler: Entity, flag: Entity): void {
+  const load = world.tryGet(settler, Carrying);
+  if (load === undefined || load.amount <= 0) return;
+  const origin = world.tryGet(flag, Position);
+  if (origin === undefined) return; // a marker with no position — nowhere to pile (shouldn't happen)
+  const good = load.goodType;
+  let remaining = load.amount;
+  for (let r = 0; r <= GOODS_YARD_MAX_RADIUS && remaining > 0; r++) {
+    for (let dy = -r; dy <= r && remaining > 0; dy++) {
+      const edgeRow = dy === -r || dy === r;
+      for (let dx = -r; dx <= r && remaining > 0; dx++) {
+        // Only the ring at exactly radius r: an interior cell was already offered by a smaller r.
+        if (!edgeRow && dx !== -r && dx !== r) continue;
+        const x = fx.add(origin.x, fx.fromInt(dx)); // whole-tile offsets in Position space
+        const y = fx.add(origin.y, fx.fromInt(dy));
+        remaining -= stackOntoTile(world, x, y, good, remaining);
+      }
+    }
+  }
+  const deposited = load.amount - remaining;
+  if (deposited > 0) shrinkCarry(world, settler, load, deposited); // fully placed ⇒ Carrying removed
+}
+
+/**
+ * Stack up to `want` units of `good` onto the loose ground HEAP at exactly `(x, y)`, capped at
+ * {@link MAX_GROUND_STACK}; create the heap when none is there yet. Returns how many units were actually
+ * placed — `0` when the tile is full OR already holds a DIFFERENT good (never overwritten; the spread then
+ * skips to the next tile). A loose heap is a bare {@link Stockpile}+{@link Position} with no
+ * {@link GroundDrop}/{@link Building}/{@link DeliveryFlag} marker — the yard tile a gatherer stacks onto,
+ * distinct from an uncollected trunk, a building store, and the flag marker itself (all excluded).
+ *
+ * Determinism: the heap to stack onto is the first match in canonical id order
+ * ({@link World.canonicalEntities}), a which-entity-wins pick that MUST be canonical (AGENTS.md). The
+ * felled-trunk-free twin of {@link dropOrStackGood} — the difference is the overflow policy: this REPORTS
+ * the placed count so the caller can carry the remainder to the next tile, where `dropOrStackGood`
+ * (a hand-placed pile) silently drops it.
+ */
+function stackOntoTile(world: World, x: Fixed, y: Fixed, good: number, want: number): number {
+  if (want <= 0) return 0;
+  for (const e of world.canonicalEntities()) {
+    if (world.has(e, GroundDrop) || world.has(e, Building) || world.has(e, DeliveryFlag)) continue;
+    const stock = world.tryGet(e, Stockpile);
+    const pos = world.tryGet(e, Position);
+    if (stock === undefined || pos === undefined) continue;
+    if (pos.x !== x || pos.y !== y) continue; // a different tile
+    const have = stock.amounts.get(good) ?? 0;
+    if (have <= 0 && stock.amounts.size > 0) return 0; // holds a DIFFERENT good — leave this tile alone
+    const placed = Math.min(MAX_GROUND_STACK - have, want);
+    if (placed <= 0) return 0; // this tile is full for the good
+    stock.amounts.set(good, have + placed);
+    return placed;
+  }
+  // No heap on this tile yet — start one with up to a full stack.
+  const placed = Math.min(MAX_GROUND_STACK, want);
+  const pile = world.create();
+  world.add(pile, Position, { x, y });
+  world.add(pile, Stockpile, { amounts: new Map([[good, placed]]) });
+  return placed;
 }

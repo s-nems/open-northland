@@ -2,7 +2,12 @@ import type { WorldSnapshot } from '@vinland/sim';
 import { type Container, Graphics, Sprite } from 'pixi.js';
 import type { ElevationField } from '../../data/elevation.js';
 import { type Camera, depthKey } from '../../data/iso.js';
-import { type DrawItem, SPRITE_PAINT_ORDER, collectSpriteScene } from '../../data/scene/index.js';
+import {
+  type DrawItem,
+  FLAG_PAINT_STEP,
+  SPRITE_PAINT_ORDER,
+  collectSpriteScene,
+} from '../../data/scene/index.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
 import type { Viewport } from '../../data/viewport.js';
 import { PalettedSprite } from '../paletted-sprite.js';
@@ -99,13 +104,14 @@ export class SpritePool {
       // (tileY, tileX) list order: the feet-anchor screen y (∝ row under the staggered raster) is
       // the iso-correct occlusion key once static objects interleave with entities.
       // The per-kind bias (a settler in front of the node it stands on, a flag in front of its ground
-      // drops) is a sub-pixel epsilon — far below one row's screen-y gap — so it only breaks ties at a
-      // shared feet anchor, never reordering sprites a real row apart. See SPRITE_PAINT_ORDER.
+      // drops — plus a half-step so a flag out-sorts a co-located heap of its own kind) is a sub-pixel
+      // epsilon — far below one row's screen-y gap — so it only breaks ties at a shared feet anchor, never
+      // reordering sprites a real row apart. See SPRITE_PAINT_ORDER / FLAG_PAINT_STEP.
       // Depth reads the DRAWN (lerped) anchor restored to its PRE-LIFT y (`+ item.lift`), so occlusion
       // still sorts by map row while the sprite itself rides the hill.
       pe.container.zIndex =
         depthKey(pe.motion.drawX, pe.motion.drawY + (item.lift ?? 0)) +
-        SPRITE_PAINT_ORDER[item.kind] * SCREEN_PAINT_EPS;
+        (SPRITE_PAINT_ORDER[item.kind] + (item.isFlag === true ? FLAG_PAINT_STEP : 0)) * SCREEN_PAINT_EPS;
       if (!pe.attached) {
         this.spriteLayer.addChild(pe.container);
         pe.attached = true;

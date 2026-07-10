@@ -169,11 +169,13 @@ export const HarvestedBy = defineComponent<{ by: Entity }>('HarvestedBy');
  *  - a bound gatherer HARVESTS only nodes within `radius` (integer node-distance) of `flag`; nothing in
  *    range → it walks to and stands idle beside its flag rather than roaming the map;
  *  - it collects ONLY its own harvested drops ({@link HarvestedBy} keyed to it), leaving loose piles alone;
- *  - it DELIVERS its load to `flag` (`deliveryTargetFor`), not merely the nearest store.
+ *  - it DELIVERS its load to `flag` (`deliveryTargetFor`), spreading it onto loose ground heaps AROUND the
+ *    flag (the flag is a marker, not a store), not merely into the nearest store.
  *
- * `flag` references a positioned bare {@link Stockpile} (no {@link Building}/{@link GroundDrop} — a
- * designated delivery flag); `radius` is a named work-area size (the original's collector work radius is
- * not decoded, so it is an OBSERVED/tunable approximation carried as data, not a magic constant in code).
+ * `flag` references a positioned {@link DeliveryFlag} MARKER (no {@link Stockpile} — it stores nothing; the
+ * harvest piles on the GROUND around it as separate loose heaps, so moving the flag never moves the goods);
+ * `radius` is a named work-area size (the original's collector work radius is not decoded, so it is an
+ * OBSERVED/tunable approximation carried as data, not a magic constant in code).
  *
  * The **separate-optional-component pattern**: a gatherer WITHOUT it falls back to the prior roam-and-haul
  * behaviour (nearest node anywhere, nearest trunk of its trade, nearest store), so every existing scene,
@@ -183,12 +185,14 @@ export const HarvestedBy = defineComponent<{ by: Entity }>('HarvestedBy');
 export const WorkFlag = defineComponent<{ flag: Entity; radius: number }>('WorkFlag');
 
 /**
- * Marks a bare {@link Stockpile} that is a **designated delivery flag** (a gatherer's collection point),
- * distinguishing it from a loose player-dropped pile — both are otherwise an identical bare
- * `Stockpile+Position`. It carries no data (a pure marker); its presence is what render keys on to keep the
- * flag graphic drawn **on top of** the accumulated goods heap (a loose pile draws its heap alone). Stamped
- * on every flag the scene/command creates ({@link WorkFlag} targets, `setWorkFlag`). Inert on the golden
- * slice (which has no flags), so the hash is untouched — the separate-optional-component pattern.
+ * Marks a positioned entity as a **designated delivery flag** — a gatherer's collection point. A flag is a
+ * pure MARKER: `Position + DeliveryFlag` and NOTHING else (no {@link Stockpile}), because it stores no
+ * goods — the harvest a gatherer delivers piles on the GROUND around it as separate loose `Stockpile+Position`
+ * heaps, each pinned to its own tile. That separation is the whole point: relocating the flag ({@link
+ * setWorkFlag}) moves only the marker, never the goods already dropped (they "never teleport"). Its presence
+ * is also what render keys on to draw the flag graphic ON TOP of any co-located goods heap. Stamped on every
+ * flag the scene/command creates ({@link WorkFlag} targets, `setWorkFlag`). Inert on the golden slice (which
+ * has no flags), so the hash is untouched — the separate-optional-component pattern.
  */
 export const DeliveryFlag = defineComponent<Record<string, never>>('DeliveryFlag');
 

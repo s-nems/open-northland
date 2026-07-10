@@ -37,7 +37,8 @@ export type SpriteState = 'idle' | 'moving' | 'acting';
  * of the loose `grounddrop` ore/logs. Applied as a sub-cell epsilon (`PAINT_ORDER_EPS` in the scene
  * builder; `SCREEN_PAINT_EPS` in the live painter) — orders of magnitude below one row's depth
  * separation — so it ONLY breaks ties at a shared anchor and never reorders sprites that are a genuine
- * row apart. `tile` is 0 (tiles carry their own sub-zero depth band).
+ * row apart. `tile` is 0 (tiles carry their own sub-zero depth band). A delivery FLAG gets a further
+ * fractional bump over a co-located heap of the same `stockpile` kind — see {@link FLAG_PAINT_STEP}.
  */
 export const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
   tile: 0,
@@ -49,6 +50,17 @@ export const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
   settler: 3,
   projectile: 4, // an arrow in flight crosses OVER the fighters it flies between
 };
+
+/**
+ * Extra fractional paint-order step a **delivery flag** ({@link DrawItem.isFlag}) gets ABOVE a plain
+ * `stockpile` heap on the SAME tile. A flag and the goods heaps it collects are BOTH `stockpile` kind
+ * (same {@link SPRITE_PAINT_ORDER}), so the kind bias alone ties them — and since the flag is created
+ * first (lowest id) the id tiebreak would bury it under the later heap. Half a paint step lifts the flag
+ * just past a co-located heap (`2 + 0.5` sits below `settler`'s `3`, so a worker on the tile still draws
+ * in front), in BOTH the headless oracle sort and the live painter's zIndex — the ONE knob for "the flag
+ * stays visible above its own goods".
+ */
+export const FLAG_PAINT_STEP = 0.5;
 
 /**
  * One item to draw, already projected to isometric screen space (before the camera transform). The
@@ -75,9 +87,9 @@ export interface DrawItem {
    * For a **resource** node its `Resource.goodType`, and for a **stockpile** the good its ground pile
    * mainly holds — the key a per-good {@link import('../sprites/index.js').ResourceTypeBinding} /
    * {@link import('../sprites/index.js').StockpileBinding} draws each good's own object by (a tree for wood, a
-   * rock for stone, a wood pile vs a stone pile). OMITTED for a stockpile that holds nothing — an empty
-   * bare `Stockpile` is a bare **delivery flag** (a designated collection point), drawn as the flag
-   * sprite rather than a pile. Never set for tiles/buildings/settlers (they key off other fields).
+   * rock for stone, a wood pile vs a stone pile). OMITTED for a **delivery flag** ({@link isFlag}, which
+   * holds no goods) and an empty pile — both drawn as the flag sprite rather than a heap. Never set for
+   * tiles/buildings/settlers (they key off other fields).
    */
   readonly goodType?: number;
   /**
@@ -89,9 +101,10 @@ export interface DrawItem {
   readonly fill?: number;
   /**
    * For a **stockpile**: whether it is a designated **delivery flag** (a
-   * {@link import('@vinland/sim').DeliveryFlag} collection point) rather than a loose ground pile. A flag
-   * keeps its flag graphic drawn ABOVE its accumulated goods heap (so a growing pile never buries the
-   * flag), while a loose pile draws its heap alone. Omitted (falsy) for a loose pile and every non-stockpile.
+   * {@link import('@vinland/sim').DeliveryFlag} collection point) rather than a loose ground pile. A flag is
+   * a marker that holds no goods (no `goodType`/`fill`) — it draws the flag graphic and is painted a hair
+   * ABOVE any co-located goods heap ({@link FLAG_PAINT_STEP}), so a pile piling up on the flag's tile never
+   * buries it. Omitted (falsy) for a loose pile and every non-stockpile.
    */
   readonly isFlag?: boolean;
   /**
