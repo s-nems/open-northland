@@ -28,10 +28,12 @@ import {
   extractLandscapeGraphics,
   extractMapInfo,
   extractPaletteIndex,
+  extractPatternTransitions,
   extractPatterns,
   extractSounds,
   extractStaticObjects,
   extractStringTable,
+  extractStringnById,
   extractTrianglePatternTypes,
   extractTribes,
   extractVehicles,
@@ -1978,6 +1980,70 @@ describe('extractPatterns', () => {
   });
 });
 
+describe('extractPatternTransitions', () => {
+  // Mirrors Data/engine2d/inis/patterntransitions/transitions.cif as cifLinesToSections yields it:
+  // level-1 lowercase `transition` headers, level-2 props, SIX repeated GfxCoordsA/GfxCoordsB lines
+  // (file order = the pair index a map lane's `value % 6` selects). Two of the six pairs suffice to
+  // prove the order is kept; the sibling `pointtype` sections must be ignored.
+  const lines: CifLine[] = [
+    { level: 1, text: 'pointtype' },
+    { level: 2, text: 'name "meadow"' },
+    { level: 2, text: 'patterngroup "meadow green"' },
+    { level: 1, text: 'transition' },
+    { level: 2, text: 'name "meadow 1"' },
+    { level: 2, text: 'pointtype "meadow"' },
+    { level: 2, text: 'GfxTexture "data\\engine2d\\bin\\textures\\tran_meadow.pcx"' },
+    { level: 2, text: 'GfxTextureAlpha "data\\engine2d\\bin\\textures\\tran_meadow_a.pcx"' },
+    { level: 2, text: 'GfxCoordsA 0 0 63 63 0 63' },
+    { level: 2, text: 'GfxCoordsB 0 0 63 0 63 63' },
+    { level: 2, text: 'GfxCoordsA 64 0 127 63 64 63' },
+    { level: 2, text: 'GfxCoordsB 64 0 127 0 127 63' },
+    { level: 1, text: 'transition' },
+    { level: 2, text: 'name "degenerate"' },
+    { level: 2, text: 'GfxCoordsA 1 2 3 4 5' }, // wrong arity -> the LINE is dropped, the record stays
+  ];
+
+  it('maps [transition] to validated IR: positional index, name join key, both pictures, ordered pairs', () => {
+    const records = extractPatternTransitions(cifLinesToSections(lines), {
+      file: 'Data/engine2d/inis/patterntransitions/transitions.cif',
+      layer: 'base',
+    });
+    const src = {
+      file: 'Data/engine2d/inis/patterntransitions/transitions.cif',
+      block: 'transition',
+      layer: 'base',
+    };
+    expect(records).toEqual([
+      {
+        index: 0,
+        editName: 'meadow 1',
+        pointType: 'meadow',
+        texture: 'data/engine2d/bin/textures/tran_meadow.pcx',
+        textureAlpha: 'data/engine2d/bin/textures/tran_meadow_a.pcx',
+        coordsA: [
+          [0, 0, 63, 63, 0, 63],
+          [64, 0, 127, 63, 64, 63],
+        ],
+        coordsB: [
+          [0, 0, 63, 0, 63, 63],
+          [64, 0, 127, 0, 127, 63],
+        ],
+        source: src,
+      },
+      {
+        index: 1,
+        editName: 'degenerate',
+        pointType: undefined,
+        texture: undefined,
+        textureAlpha: undefined,
+        coordsA: [],
+        coordsB: [],
+        source: src,
+      },
+    ]);
+  });
+});
+
 describe('buildTerrainPatterns (approximated typeId→ground-pattern map)', () => {
   // Three landscape types spanning the three families: void (land), water (water), rock (mountain).
   const landscape = extractLandscape(
@@ -3190,6 +3256,33 @@ describe('extractStringTable', () => {
     const bytes = Uint8Array.from('[text]\nstringn 0 "B\xa3\xcaKITNY"\n', (c) => c.charCodeAt(0) & 0xff);
     const table = extractStringTable(parseIniSections(decodeIni(bytes)));
     expect(table[0]).toBe('BŁĘKITNY');
+  });
+});
+
+describe('extractStringnById (singular-only, multiplier-free)', () => {
+  it('keys each explicit stringn line by its own id and ignores the bare string plurals', () => {
+    const table = extractStringnById(
+      parseIniSections('[text]\nstringn 5 "Wood"\nstring "Woods"\nstringn 22 "Fish"\nstring "Fishes"\n'),
+    );
+    expect(table).toEqual({ 5: 'Wood', 22: 'Fish' });
+  });
+
+  it('does not collide when a gapped stringn shares a multiplier-2 plural slot (the mead case)', () => {
+    // The real goods name table (stringidmultiplier 2) lists mead's `stringn 43` BEFORE the 42-sword block,
+    // so under extractStringTable the sword's plural auto-increment (id 43 → slot 86) clobbers mead's own
+    // singular (also slot 86). Reading singulars only keeps mead by its own `stringn` id.
+    const src =
+      '[control]\nstringidmultiplier 2\n[text]\nstringn 43 "Mead"\nstring "Meads"\nstringn 42 "Longsword"\nstring "Longswords"\n';
+    expect(extractStringnById(parseIniSections(src))).toEqual({ 43: 'Mead', 42: 'Longsword' });
+    // The shared table loses mead: 43*2 = slot 86, overwritten by Longsword's plural auto-increment.
+    expect(extractStringTable(parseIniSections(src))[86]).toBe('Longswords');
+  });
+
+  it('drops malformed ids and yields empty without a [text] block', () => {
+    expect(extractStringnById(parseIniSections('[text]\nstringn zz "Bad"\nstringn 1 "One"\n'))).toEqual({
+      1: 'One',
+    });
+    expect(extractStringnById([])).toEqual({});
   });
 });
 

@@ -1,20 +1,12 @@
 import { type GuiColorKey, PalettedSprite } from '@vinland/render';
-import {
-  type Application,
-  type Container,
-  type Graphics,
-  Sprite,
-  Text,
-  type Texture,
-  TilingSprite,
-} from 'pixi.js';
+import { type Application, type Container, type Graphics, Sprite, Text, type Texture } from 'pixi.js';
 import type { FontColorName } from '../../content/font-gfx.js';
-import { makeGoodSprite } from '../../content/goods-gfx.js';
+import { GENERIC_GOOD_ICON, makeGoodSprite } from '../../content/goods-gfx.js';
 import { makeGuiSprite } from '../../content/gui-art.js';
 import { GUI_FRAME } from '../../content/gui-atlas-map.js';
 import { type GuiPaletteName, guiPaletteRow } from '../../content/gui-gfx.js';
 import { UI_TEXT_FILL } from '../../content/ui-font.js';
-import { HOVER_ALPHA, HOVER_TINT, WINDOW_BORDER, WINDOW_FILL } from '../chrome.js';
+import { HOVER_ALPHA, HOVER_TINT, WINDOW_BORDER, WINDOW_FILL, tileBitmap } from '../chrome.js';
 import type { Rect } from '../geometry.js';
 import type { DetailsPanelAssets } from './assets.js';
 import type { ButtonHit } from './layout.js';
@@ -73,6 +65,8 @@ const SELECTED_LIME = 0xd8fb55;
 /** Inner content-box bevel lines — eyeballed against the original's preview framing, not sampled. */
 const INNER_BOX_DARK = 0x1c130b;
 const INNER_BOX_LIGHT = 0x7a6244;
+/** Warm wood tint of an occupied equipment slot (eyeballed, not sampled). */
+const SLOT_FILL = 0x4a2b1d;
 
 /** Draw order inside the panel: flat fills, bitmap fills, frame sprites/icons, then text. */
 export interface PanelLayers {
@@ -87,6 +81,9 @@ export interface Chrome {
   textAt(text: string, x: number, y: number, color: FontColorName, variant?: FontVariant): void;
   /** Center a line of text in `r` (both axes). */
   textCentered(text: string, r: Rect, color: FontColorName, variant?: FontVariant): void;
+  /** Left-anchor a line of text at `x`, vertically centred on `centerY` — a left-aligned value that must
+   *  still sit on a field's centre line (the stock amount in its plate). */
+  textLeftMiddle(text: string, x: number, centerY: number, color: FontColorName, variant?: FontVariant): void;
   /** Right-align a line of text's end at `rightX` (top at `y`). */
   textRight(text: string, rightX: number, y: number, color: FontColorName, variant?: FontVariant): void;
   /** Tile a `bg*.pcx` bitmap over `r`; false when the bitmap is missing (caller draws a flat fill). */
@@ -108,6 +105,9 @@ export interface Chrome {
   window(r: Rect): void;
   /** An inner content box (the preview): thin dark bevel frame, no rope — the original's inner framing. */
   innerBox(r: Rect): void;
+  /** A round equipment-slot socket (the original's equip wells): a recessed rimmed circle, warm-tinted
+   *  when `filled` (so an occupied slot reads even for a good with no bound icon), dark when empty. */
+  slotSocket(r: Rect, filled: boolean): void;
   /** The rust headline strip with centered light title-size text. */
   headline(r: Rect, title: string): void;
   /** The yellow-green selected-strip under the building name line. */
@@ -116,6 +116,9 @@ export interface Chrome {
   scrim(r: Rect, alpha: number): void;
   /** A general-section button (tiled button fill, hover/disabled states, centered label). */
   button(hit: ButtonHit, label: string, hovered: boolean): void;
+  /** A category-tab plate: the tiled wooden button fill + light edge, brighter when `active` and dimmed
+   *  otherwise — the frame a stock-tab's representative good icon is drawn onto (no label). */
+  tabButton(r: Rect, active: boolean): void;
   /** A progress/need bar: the original bar frame under `bar_disabled`, filled under `bar_standart`. */
   bar(r: Rect, pct: number): void;
   /** A stock amount's recessed numeric field: a subtle dark inset on the wood (NOT the grey bar frame). */
@@ -181,6 +184,18 @@ export function createChrome(
     t.position.set(Math.round(r.x + r.w / 2), Math.round(r.y + r.h / 2 + CENTER_BIAS * scale));
   };
 
+  const textLeftMiddle = (
+    text: string,
+    x: number,
+    centerY: number,
+    color: FontColorName,
+    variant: FontVariant = 'body',
+  ): void => {
+    const t = makeText(text, color, variant);
+    t.anchor.set(0, 0.5);
+    t.position.set(Math.round(x), Math.round(centerY + CENTER_BIAS * scale));
+  };
+
   const textRight = (
     text: string,
     rightX: number,
@@ -193,18 +208,8 @@ export function createChrome(
     t.position.set(Math.round(rightX), Math.round(y - CAP_TOP_RATIO * FONT_PX[variant] * scale));
   };
 
-  const tile = (texture: Texture | undefined, r: Rect, target: Container = layers.back): boolean => {
-    if (texture === undefined) return false;
-    const sprite = new TilingSprite({
-      texture,
-      width: Math.max(1, Math.round(r.w)),
-      height: Math.max(1, Math.round(r.h)),
-    });
-    sprite.position.set(Math.round(r.x), Math.round(r.y));
-    sprite.tileScale.set(scale);
-    target.addChild(sprite);
-    return true;
-  };
+  const tile = (texture: Texture | undefined, r: Rect, target: Container = layers.back): boolean =>
+    tileBitmap(target, texture, r, scale);
 
   const guiCentered = (
     gfx: number,
@@ -228,8 +233,9 @@ export function createChrome(
 
   const goodIcon = (goodId: string, r: Rect): void => {
     if (assets.goods === null) return;
-    const icon = assets.goods.icon(goodId);
-    if (icon === undefined) return;
+    // A good with no `ls_goods` art (potions/amulets/fruit) falls back to the neutral generic icon, so the
+    // Magazyn never shows a blank slot — the same fallback the in-world dropped pile uses (goods-gfx).
+    const icon = assets.goods.icon(goodId) ?? GENERIC_GOOD_ICON;
     const made = makeGoodSprite(assets.goods, icon);
     if (made === null) return;
     made.sprite.flipY = flipY;
@@ -365,6 +371,21 @@ export function createChrome(
     });
   };
 
+  const slotSocket = (r: Rect, filled: boolean): void => {
+    // A round recessed well like the original's equip sockets: a warm wood tint marks an occupied slot
+    // (so it reads even when the good has no bound icon), a dark inset an empty one, rimmed with the same
+    // dark/light bevel the inner box uses.
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h / 2;
+    const rad = Math.min(r.w, r.h) / 2;
+    const line = Math.max(1, Math.round(scale));
+    g.circle(cx, cy, rad).fill(
+      filled ? { color: SLOT_FILL, alpha: 0.85 } : { color: INNER_BOX_DARK, alpha: 0.55 },
+    );
+    g.circle(cx, cy, rad).stroke({ color: INNER_BOX_DARK, width: line });
+    g.circle(cx, cy, Math.max(1, rad - line)).stroke({ color: INNER_BOX_LIGHT, width: line, alpha: 0.7 });
+  };
+
   const headline = (r: Rect, title: string): void => {
     const inset = Math.max(1, Math.round(scale));
     const strip: Rect = { x: r.x + inset, y: r.y + inset, w: r.w - 2 * inset, h: r.h - inset };
@@ -406,6 +427,20 @@ export function createChrome(
     if (hovered && hit.enabled && !onBitmap) {
       g.rect(r.x, r.y, r.w, r.h).fill({ color: HOVER_TINT, alpha: HOVER_ALPHA });
     }
+  };
+
+  const tabButton = (r: Rect, active: boolean): void => {
+    // The same wooden tile the section buttons use — brighter (hilite) when active — so a tab reads as a
+    // raised button, not a flat grey plate. A thin top-left highlight + bottom-right shadow give it a small
+    // bevel; the active tab also gets the drawer's green underline, so no heavy dark scrim is needed.
+    const fill = active ? bitmaps.buttonHilite : bitmaps.button;
+    if (!tile(fill, r)) g.rect(r.x, r.y, r.w, r.h).fill(active ? 0x6b4426 : 0x4a3320);
+    const line = Math.max(1, Math.round(scale));
+    g.rect(r.x, r.y, r.w - line, line).fill({ color: INNER_BOX_LIGHT, alpha: 0.9 }); // top bevel
+    g.rect(r.x, r.y, line, r.h - line).fill({ color: INNER_BOX_LIGHT, alpha: 0.9 }); // left bevel
+    g.rect(r.x, r.y + r.h - line, r.w, line).fill({ color: 0x000000, alpha: 0.4 }); // bottom shadow
+    g.rect(r.x + r.w - line, r.y, line, r.h).fill({ color: 0x000000, alpha: 0.4 }); // right shadow
+    if (!active) g.rect(r.x, r.y, r.w, r.h).fill({ color: 0x000000, alpha: 0.12 });
   };
 
   const bar = (r: Rect, pct: number): void => {
@@ -467,6 +502,7 @@ export function createChrome(
   return {
     textAt,
     textCentered,
+    textLeftMiddle,
     textRight,
     tile,
     guiCentered,
@@ -474,10 +510,12 @@ export function createChrome(
     guiStretched,
     window: windowBox,
     innerBox,
+    slotSocket,
     headline,
     selectedUnderline,
     scrim,
     button,
+    tabButton,
     bar,
     stockField,
     buildingPreview,

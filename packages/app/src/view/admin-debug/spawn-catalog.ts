@@ -1,8 +1,17 @@
 import type { Command } from '@vinland/sim';
+import { EXTENDED_GOODS } from '../../catalog/goods.js';
 import { PLAYER_COLOR_NAMES } from '../../catalog/roster.js';
 import { PRIMARY_TRIBE } from '../../game/rules.js';
 import {
   GATHERERS,
+  GOOD_COIN,
+  GOOD_GOLD,
+  GOOD_IRON,
+  GOOD_MUD,
+  GOOD_MUSHROOM,
+  GOOD_PLANK,
+  GOOD_STONE,
+  GOOD_WOOD,
   JOB_ARCHER,
   JOB_ARCHER_LONG,
   JOB_CARRIER,
@@ -10,11 +19,14 @@ import {
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
+  JOB_SOLDIER_UNARMED,
   WEAPON_BROADSWORD,
+  WEAPON_FISTS,
   WEAPON_LONG_BOW,
   WEAPON_SHORT_BOW,
   WEAPON_SPEAR,
   WEAPON_SWORD,
+  weaponEquipmentFor,
 } from '../../game/sandbox/ids.js';
 
 /**
@@ -29,7 +41,9 @@ export interface UnitPreset {
   readonly id: string;
   readonly label: string;
   readonly jobType: number;
-  /** A combatant's wielded weapon (a warrior); omitted for a civilian (no weapon). */
+  /** A combatant's wielded weapon (a warrior); omitted for a civilian (no weapon). The matching
+   *  equipment-slot weapon good (which drives the drawn look + the Broń row) is derived from `jobType`
+   *  via {@link weaponEquipmentFor}, so it can't drift from the scene/map spawns. */
   readonly weaponTypeId?: number;
 }
 
@@ -52,6 +66,10 @@ export interface UnitSpawnOptions {
  * simply omitted, so a civilian spawns as the plain non-combatant it is.
  */
 export function unitSpawnCommand(preset: UnitPreset, opts: UnitSpawnOptions): Command {
+  // The class weapon also goes in the equipment slot (derived from the job, shared with the scene/map
+  // spawns), which DRIVES the drawn look + fills the Broń row. The bare-handed warrior gets none → empty
+  // slot → unarmed body.
+  const equipment = weaponEquipmentFor(preset.jobType);
   return {
     kind: 'spawnSettler',
     jobType: preset.jobType,
@@ -62,12 +80,15 @@ export function unitSpawnCommand(preset: UnitPreset, opts: UnitSpawnOptions): Co
     ...(opts.hitpoints > 0 ? { hitpoints: opts.hitpoints } : {}),
     ...(preset.weaponTypeId !== undefined ? { weaponTypeId: preset.weaponTypeId } : {}),
     ...(opts.armorClass > 0 ? { armorClass: opts.armorClass } : {}),
+    ...(equipment !== undefined ? { equipment } : {}),
   };
 }
 
-/** The five soldier classes, each paired with its own weapon so the drawn body + attack animation
- *  match the weapon (the same job↔weapon pairing the combat scene uses). */
+/** The soldier classes, each paired with its own weapon so the drawn body + attack animation match the
+ *  weapon (the same job↔weapon pairing the combat scene uses). A warrior is ONE profession — the weapon
+ *  in hand decides its look — so the bare-handed warrior (fists) leads, then each armed variant. */
 export const WARRIOR_PRESETS: readonly UnitPreset[] = [
+  { id: 'unarmed', label: 'Wojownik (bez broni)', jobType: JOB_SOLDIER_UNARMED, weaponTypeId: WEAPON_FISTS },
   { id: 'spear', label: 'Włócznik', jobType: JOB_SOLDIER_SPEAR, weaponTypeId: WEAPON_SPEAR },
   { id: 'sword', label: 'Miecznik', jobType: JOB_SOLDIER_SWORD, weaponTypeId: WEAPON_SWORD },
   {
@@ -105,6 +126,41 @@ export const RESOURCE_ENTRIES: readonly ResourceEntry[] = GATHERERS.map((g) => (
   good: g.good,
   label: materialLabel(g.label),
 }));
+
+/** One droppable good: its `dropGood` goodType + a short label. */
+export interface GoodEntry {
+  readonly good: number;
+  readonly label: string;
+}
+
+/** The core economy goods' Polish labels (the gathered set + plank + coin), paired with their sandbox
+ *  typeIds — the extended catalog carries its own English `name`. */
+const CORE_GOOD_ENTRIES: readonly GoodEntry[] = [
+  { good: GOOD_WOOD, label: 'Drewno' },
+  { good: GOOD_PLANK, label: 'Deska' },
+  { good: GOOD_COIN, label: 'Moneta' },
+  { good: GOOD_STONE, label: 'Kamień' },
+  { good: GOOD_MUD, label: 'Glina' },
+  { good: GOOD_IRON, label: 'Żelazo' },
+  { good: GOOD_GOLD, label: 'Złoto' },
+  { good: GOOD_MUSHROOM, label: 'Grzyby' },
+];
+
+/** Every good the catalog defines — the core economy goods followed by the whole extended catalog — each
+ *  droppable on the ground as a loose pile via {@link goodDropCommand} (the admin "spawn any good" list). */
+export const GOODS_ENTRIES: readonly GoodEntry[] = [
+  ...CORE_GOOD_ENTRIES,
+  ...EXTENDED_GOODS.map((g) => ({ good: g.typeId, label: g.name })),
+];
+
+/** Units dropped per admin click — ONE, like the in-game goods tool: each click adds a single unit and the
+ *  sim stacks repeat clicks on the same tile up to its ground-stack cap, so the pile grows one at a time. */
+export const ADMIN_DROP_AMOUNT = 1;
+
+/** Build the `dropGood` command for a good at a tile — the pure command the admin palette enqueues. */
+export function goodDropCommand(good: number, x: number, y: number): Command {
+  return { kind: 'dropGood', good, x, y, amount: ADMIN_DROP_AMOUNT };
+}
 
 /** The armour tiers the palette applies to a spawned unit — 0 (unarmoured) plus the `[armortype]`
  *  classes 1..4 that `spawnSettler` mitigates an incoming hit by. */

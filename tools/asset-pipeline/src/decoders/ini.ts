@@ -27,6 +27,7 @@ import {
   GatheringPipeline,
   GfxAnimAtomic,
   GfxPattern,
+  GfxPatternTransition,
   type GoodAtomics,
   type GoodClassification,
   type GoodGathering,
@@ -203,6 +204,31 @@ export function extractStringTable(sections: readonly RuleSection[]): Record<num
     }
     if (Number.isNaN(id) || display === undefined) continue;
     byId[id * multiplier] = display;
+  }
+  return byId;
+}
+
+/**
+ * Reads ONLY the explicit `stringn <id> "<text>"` lines of a `[text]` string table into `{ <id>: <text> }`,
+ * ignoring the bare `string` (auto-incrementing) lines. Unlike {@link extractStringTable} it applies no
+ * `stringidmultiplier` and no running id, so an entry's id is exactly its `stringn` number.
+ *
+ * This is the reader for the localized good-NAME tables (`text/<lang>/strings/gameobjects/goods.{ini,cif}`):
+ * there each `stringn <goodType> "<singular>"` is the display name and the following bare `string` is the
+ * plural. That table declares `stringidmultiplier 2` AND leaves gaps in the `stringn` sequence (mead's
+ * `stringn 43` sits amid the 24..42 block), so {@link extractStringTable}'s running-id + multiplier scaling
+ * lands a neighbour's plural on mead's slot and drops it — this singular-only read keys straight off the
+ * good `type` and can't collide. Codepage is the caller's seam (same as {@link extractStringTable}).
+ */
+export function extractStringnById(sections: readonly RuleSection[]): Record<number, string> {
+  const text = sections.find((s) => s.name === 'text');
+  const byId: Record<number, string> = {};
+  for (const prop of text?.props ?? []) {
+    if (prop.key !== 'stringn') continue;
+    const id = Number.parseInt(prop.values[0] ?? '', 10);
+    const display = prop.values[1];
+    if (Number.isNaN(id) || display === undefined) continue;
+    byId[id] = display;
   }
   return byId;
 }
@@ -543,6 +569,45 @@ export function extractPatterns(sections: readonly RuleSection[], src: SourceRef
     );
   }
   return patterns;
+}
+
+/**
+ * Extracts the `[transition]` ground-overlay records from `transitions.cif` into validated
+ * {@link GfxPatternTransition} IR (38 records in the real data). Each record carries its RGB
+ * texture + separate alpha-mask picture and SIX repeated `GfxCoordsA`/`GfxCoordsB` triangle-UV
+ * lines — kept in FILE ORDER because a map lane's `value % 6` selects the pair positionally.
+ * The sibling `[pointtype]` sections (editor grouping metadata) are not extracted. Like
+ * {@link extractPatterns}, every matched record keeps its positional {@link GfxPatternTransition.index}
+ * and reads visual fields defensively (a wrong-arity coord line is dropped, not fatal).
+ */
+export function extractPatternTransitions(
+  sections: readonly RuleSection[],
+  src: SourceRef,
+): GfxPatternTransition[] {
+  const records: GfxPatternTransition[] = [];
+  let index = 0;
+  const coordLines = (sec: RuleSection, key: string): number[][] =>
+    findProps(sec, key)
+      .map((p) => p.values.map((v) => Number.parseInt(v, 10)))
+      .filter((vals) => vals.length === 6 && vals.every((n) => !Number.isNaN(n)));
+  for (const sec of sections) {
+    if (sec.name !== 'transition') continue;
+    const texture = getStr(sec, 'GfxTexture');
+    const textureAlpha = getStr(sec, 'GfxTextureAlpha');
+    records.push(
+      GfxPatternTransition.parse({
+        index: index++,
+        editName: getStr(sec, 'name'),
+        pointType: getStr(sec, 'pointtype'),
+        texture: texture !== undefined ? normalizeAssetPath(texture) : undefined,
+        textureAlpha: textureAlpha !== undefined ? normalizeAssetPath(textureAlpha) : undefined,
+        coordsA: coordLines(sec, 'GfxCoordsA'),
+        coordsB: coordLines(sec, 'GfxCoordsB'),
+        source: { file: src.file, block: 'transition', layer: src.layer ?? 'base' },
+      }),
+    );
+  }
+  return records;
 }
 
 /** The three coarse ground families a landscape typeId is approximated into, each pinned to a logic type + a representative pattern's preferred editName prefix. */

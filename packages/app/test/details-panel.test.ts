@@ -4,16 +4,21 @@ import { STOCK_TAB_COUNT } from '../src/content/gui-atlas-map.js';
 import {
   BUILDING_HEADQUARTERS,
   BUILDING_JOINERY,
+  GOOD_SHOES,
   GOOD_WOOD,
   JOB_GATHERER_WOOD,
 } from '../src/game/sandbox/ids.js';
 import {
+  HUMANWINDOW,
+  type SettlerPanelModel,
   type StockRow,
   type UnitPanelModel,
   type UnitPanelModelContext,
   buildUnitPanelModel,
 } from '../src/hud/details-panel/index.js';
+import { MAX_STOCK_ROWS, stockSlotRects } from '../src/hud/details-panel/layout.js';
 import { defaultStockTab } from '../src/hud/details-panel/panel.js';
+import { equipmentScene } from '../src/scenes/equipment.js';
 import { createSceneSim } from '../src/scenes/index.js';
 import { sandboxScene } from '../src/scenes/sandbox.js';
 
@@ -63,14 +68,31 @@ describe('selection details panel model', () => {
     expect(model.stock.every((r) => r.category >= 0 && r.category < STOCK_TAB_COUNT)).toBe(true);
   });
 
-  it('opens a building on its fullest stock category, and the lowest tab on a tie', () => {
+  it('lays the stock grid as MAX_STOCK_ROWS×2 column-major cells inside the body (draw == hit geometry)', () => {
+    const body = { x: 10, y: 100, w: 200, h: 132 };
+    const slots = stockSlotRects(body, 1);
+    expect(slots).toHaveLength(MAX_STOCK_ROWS * 2);
+    // Column-major: the first MAX_STOCK_ROWS fill the left column (shared x), the rest the right column.
+    expect(slots[0]?.x).toBe(body.x);
+    expect(slots[MAX_STOCK_ROWS - 1]?.x).toBe(body.x);
+    expect(slots[MAX_STOCK_ROWS]?.x).toBeGreaterThan(body.x); // right column starts further right
+    // Rows descend within a column, and every cell stays inside the body.
+    expect(slots[1]?.y).toBeGreaterThan(slots[0]?.y ?? 0);
+    for (const s of slots) {
+      expect(s.x).toBeGreaterThanOrEqual(body.x);
+      expect(s.x + s.w).toBeLessThanOrEqual(body.x + body.w + 1); // +1 for integer rounding
+      expect(s.y + s.h).toBeLessThanOrEqual(body.y + body.h + 1);
+    }
+  });
+
+  it('opens a building on the FIRST (lowest-index) category that holds any of its goods', () => {
     const row = (category: number): StockRow => ({ goodType: category, label: 'g', amount: 0, category });
     const building = (stock: StockRow[]): UnitPanelModel =>
       ({ kind: 'building', stock }) as unknown as UnitPanelModel;
-    // Tab 2 holds three of the four goods → the panel opens there.
+    // The panel opens on the lowest tab that has goods, regardless of which category is fullest.
     expect(defaultStockTab(building([row(2), row(2), row(2), row(5)]))).toBe(2);
-    // Tabs 5 and 0 tie at one good each → the lowest tab index wins.
-    expect(defaultStockTab(building([row(5), row(0)]))).toBe(0);
+    // A general store holding goods across many tabs opens on the leading one (tab 0).
+    expect(defaultStockTab(building([row(5), row(0), row(7), row(7), row(7)]))).toBe(0);
     // No stock → tab 0.
     expect(defaultStockTab(building([]))).toBe(0);
   });
@@ -163,6 +185,85 @@ describe('selection details panel model', () => {
     const settlerModel = buildUnitPanelModel(snapshot, new Set([2]), ctxFromScene());
     expect(settlerModel.kind).toBe('settler');
     if (settlerModel.kind !== 'settler') return;
-    expect(settlerModel.title).toBe('Druid');
+    expect(settlerModel.profession).toBe('Druid');
+  });
+
+  it('shows a settler equipment section with labeled rows, worn goods, use percentages and empty slots', () => {
+    const sim = createSceneSim(equipmentScene);
+    sim.step();
+    const snapshot = sim.snapshot();
+    const ctx: UnitPanelModelContext = {
+      buildings: sim.content.buildings,
+      goods: sim.content.goods,
+      jobs: sim.content.jobs,
+    };
+    const bootsGood = (e: (typeof snapshot.entities)[number]): number | undefined =>
+      num((e.components.Equipment as { boots?: { goodType?: unknown } } | undefined)?.boots?.goodType);
+    const hasWeaponSlot = (e: (typeof snapshot.entities)[number]): boolean =>
+      (e.components.Equipment as { weapon?: unknown } | undefined)?.weapon != null;
+    const rowOf = (m: SettlerPanelModel, titleId: number) =>
+      m.equipmentRows.find((r) => r.titleId === titleId);
+
+    // The equipped civilian: boots = shoes, no weapon slot → Buty / Narzędzia / Ekwipunek rows only.
+    const civ = snapshot.entities.find((e) => bootsGood(e) === GOOD_SHOES && !hasWeaponSlot(e));
+    if (civ === undefined) throw new Error('equipment scene did not place the equipped civilian');
+    const civModel = buildUnitPanelModel(snapshot, new Set([civ.id]), ctx);
+    if (civModel.kind !== 'settler') throw new Error('expected a settler model');
+    expect(civModel.equipmentRows.map((r) => r.titleId)).toEqual([
+      HUMANWINDOW.boots,
+      HUMANWINDOW.tools,
+      HUMANWINDOW.misc,
+    ]);
+    expect(rowOf(civModel, HUMANWINDOW.boots)?.slots[0]).toMatchObject({ goodId: 'shoes', usePct: 70 });
+    // The misc row holds the four consumable slots: a worn mead carries a use percent, a permanent amulet
+    // does not, and one slot stays empty.
+    const misc = rowOf(civModel, HUMANWINDOW.misc)?.slots ?? [];
+    expect(misc).toHaveLength(4);
+    expect(misc.some((sl) => sl.goodId === 'mead' && sl.usePct === 50)).toBe(true);
+    expect(misc.some((sl) => sl.goodId === 'amulet_strength' && sl.usePct === null)).toBe(true);
+    expect(misc.filter((sl) => sl.goodId === undefined)).toHaveLength(1);
+
+    // The soldier additionally carries the Broń + Zbroja rows.
+    const soldier = snapshot.entities.find(hasWeaponSlot);
+    if (soldier === undefined) throw new Error('equipment scene did not place the equipped soldier');
+    const solModel = buildUnitPanelModel(snapshot, new Set([soldier.id]), ctx);
+    if (solModel.kind !== 'settler') throw new Error('expected a settler model');
+    expect(solModel.equipmentRows.map((r) => r.titleId)).toEqual([
+      HUMANWINDOW.boots,
+      HUMANWINDOW.tools,
+      HUMANWINDOW.weapon,
+      HUMANWINDOW.armor,
+      HUMANWINDOW.misc,
+    ]);
+    expect(rowOf(solModel, HUMANWINDOW.weapon)?.slots[0]?.goodId).toBe('sword_shord');
+    expect(rowOf(solModel, HUMANWINDOW.armor)?.slots[0]?.goodId).toBe('armor_chain');
+  });
+
+  it('shows empty equipment rows for a settler with no Equipment component', () => {
+    const sim = createSceneSim(equipmentScene);
+    sim.step();
+    const snapshot = sim.snapshot();
+    const ctx: UnitPanelModelContext = {
+      buildings: sim.content.buildings,
+      goods: sim.content.goods,
+      jobs: sim.content.jobs,
+    };
+    const bare = snapshot.entities.find(
+      (e) => e.components.Settler !== undefined && e.components.Equipment === undefined,
+    );
+    if (bare === undefined) throw new Error('equipment scene did not place an unequipped settler');
+    const model = buildUnitPanelModel(snapshot, new Set([bare.id]), ctx);
+    if (model.kind !== 'settler') throw new Error('expected a settler model');
+    // The base rows still show (Buty, Narzędzia, Ekwipunek), all empty; no weapon/armour row.
+    expect(model.equipmentRows.map((r) => r.titleId)).toEqual([
+      HUMANWINDOW.boots,
+      HUMANWINDOW.tools,
+      HUMANWINDOW.misc,
+    ]);
+    expect(
+      model.equipmentRows
+        .flatMap((r) => r.slots)
+        .every((sl) => sl.goodId === undefined && sl.usePct === null),
+    ).toBe(true);
   });
 });

@@ -2,12 +2,34 @@ import { describe, expect, it } from 'vitest';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import { STONE_DEPOSIT_UNITS } from '../src/catalog/mining.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../src/game/rules.js';
-import { GOOD_STONE, GOOD_WOOD, JOB_IDLE, JOB_SOLDIER_SWORD, WEAPON_SWORD } from '../src/game/sandbox/ids.js';
+import {
+  GOOD_BOW_LONG,
+  GOOD_BOW_SHORT,
+  GOOD_SPEAR_IRON,
+  GOOD_STONE,
+  GOOD_SWORD_LONG,
+  GOOD_SWORD_SHORT,
+  GOOD_WOOD,
+  JOB_ARCHER,
+  JOB_ARCHER_LONG,
+  JOB_GATHERER_WOOD,
+  JOB_IDLE,
+  JOB_SOLDIER_BROADSWORD,
+  JOB_SOLDIER_SPEAR,
+  JOB_SOLDIER_SWORD,
+  JOB_SOLDIER_UNARMED,
+  WEAPON_FISTS,
+  WEAPON_SWORD,
+  weaponEquipmentFor,
+} from '../src/game/sandbox/ids.js';
 import { resourceCommand } from '../src/game/sandbox/place.js';
 import {
+  ADMIN_DROP_AMOUNT,
   CIVILIAN_PRESETS,
+  GOODS_ENTRIES,
   RESOURCE_ENTRIES,
   WARRIOR_PRESETS,
+  goodDropCommand,
   unitSpawnCommand,
 } from '../src/view/admin-debug/spawn-catalog.js';
 
@@ -22,7 +44,7 @@ describe('admin spawn command mapping', () => {
   const sword = WARRIOR_PRESETS.find((p) => p.id === 'sword');
   const civilian = CIVILIAN_PRESETS.find((p) => p.id === 'civilian');
 
-  it('a warrior spawns with its class weapon, chosen owner, HP and armor', () => {
+  it('a warrior spawns with its class weapon (combat + equipment slot), chosen owner, HP and armor', () => {
     if (sword === undefined) throw new Error('missing sword preset');
     const cmd = unitSpawnCommand(sword, { player: 1, hitpoints: 250, armorClass: 2, x: 7, y: 9 });
     expect(cmd).toEqual({
@@ -35,6 +57,24 @@ describe('admin spawn command mapping', () => {
       hitpoints: 250,
       weaponTypeId: WEAPON_SWORD,
       armorClass: 2,
+      // The weapon good in the equipment slot drives the drawn look + the panel's Broń row.
+      equipment: { weapon: { goodType: GOOD_SWORD_SHORT } },
+    });
+  });
+
+  it('the bare-handed warrior spawns as job soldier_unarmed wielding fists', () => {
+    const unarmed = WARRIOR_PRESETS.find((p) => p.id === 'unarmed');
+    if (unarmed === undefined) throw new Error('missing unarmed preset');
+    const cmd = unitSpawnCommand(unarmed, { player: 0, hitpoints: 300, armorClass: 0, x: 4, y: 6 });
+    expect(cmd).toEqual({
+      kind: 'spawnSettler',
+      jobType: JOB_SOLDIER_UNARMED,
+      x: 4,
+      y: 6,
+      tribe: PRIMARY_TRIBE,
+      owner: 0,
+      hitpoints: 300,
+      weaponTypeId: WEAPON_FISTS,
     });
   });
 
@@ -61,6 +101,20 @@ describe('admin spawn command mapping', () => {
     expect(RESOURCE_ENTRIES.length).toBeGreaterThanOrEqual(6);
   });
 
+  it('the palette offers EVERY good as a droppable ground pile (core + the whole extended catalog)', () => {
+    const goods = new Set(GOODS_ENTRIES.map((g) => g.good));
+    expect(goods.has(GOOD_WOOD)).toBe(true);
+    // A spread across the extended catalog families (their sandbox typeIds are 100 + the ir typeId).
+    expect(GOODS_ENTRIES.some((g) => g.label === 'Bread')).toBe(true);
+    expect(GOODS_ENTRIES.some((g) => g.label === 'Plate Armor')).toBe(true);
+    expect(GOODS_ENTRIES.length).toBeGreaterThanOrEqual(60);
+  });
+
+  it('a good drops as a loose ground pile via dropGood', () => {
+    const cmd = goodDropCommand(GOOD_STONE, 4, 5);
+    expect(cmd).toEqual({ kind: 'dropGood', good: GOOD_STONE, x: 4, y: 5, amount: ADMIN_DROP_AMOUNT });
+  });
+
   it('a wood resource resolves to a felled tree node', () => {
     const cmd = resourceCommand(GOOD_WOOD, 4, 5);
     expect(cmd).toEqual({
@@ -85,5 +139,23 @@ describe('admin spawn command mapping', () => {
 
   it('an unknown good is not spawnable (null command)', () => {
     expect(resourceCommand(9999, 0, 0)).toBeNull();
+  });
+});
+
+describe('weaponEquipmentFor — the one job→equipment-weapon map every spawn path shares', () => {
+  it('each soldier class carries its matching weapon good (so its Broń row + drawn weapon match)', () => {
+    // The seam the scene placer, the imported-map spawn AND the admin palette all derive from, so a
+    // pre-placed warrior fills the same equipment weapon slot a freshly-spawned one does.
+    expect(weaponEquipmentFor(JOB_SOLDIER_SPEAR)).toEqual({ weapon: { goodType: GOOD_SPEAR_IRON } });
+    expect(weaponEquipmentFor(JOB_SOLDIER_SWORD)).toEqual({ weapon: { goodType: GOOD_SWORD_SHORT } });
+    expect(weaponEquipmentFor(JOB_SOLDIER_BROADSWORD)).toEqual({ weapon: { goodType: GOOD_SWORD_LONG } });
+    expect(weaponEquipmentFor(JOB_ARCHER)).toEqual({ weapon: { goodType: GOOD_BOW_SHORT } });
+    expect(weaponEquipmentFor(JOB_ARCHER_LONG)).toEqual({ weapon: { goodType: GOOD_BOW_LONG } });
+  });
+
+  it('the bare-handed warrior and a civilian get no equipment weapon (empty slot → their own body)', () => {
+    expect(weaponEquipmentFor(JOB_SOLDIER_UNARMED)).toBeUndefined();
+    expect(weaponEquipmentFor(JOB_GATHERER_WOOD)).toBeUndefined();
+    expect(weaponEquipmentFor(JOB_IDLE)).toBeUndefined();
   });
 });

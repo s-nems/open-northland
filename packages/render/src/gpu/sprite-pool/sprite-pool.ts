@@ -162,6 +162,32 @@ export class SpritePool {
   }
 
   /**
+   * Re-place every currently-drawn PALETTED settler's meshes for an ALTERNATE camera + target size. The
+   * details-panel portrait "observation window" renders the world re-aimed at one unit; plain sprites +
+   * terrain ride the re-aimed `worldLayer` transform, but the team-colour meshes self-place in SCREEN space
+   * (they can't ride it), so they must be re-placed for the inset camera before that render and restored to
+   * the main camera after. Mirrors {@link bindLayers}' placement exactly (same drawn anchor + art scale).
+   * `flipY` renders the mesh upright into a bottom-up render texture (true for the inset, false to restore
+   * the on-screen render). Scans the pool (O(pooled)) but only PLACES the drawn paletted meshes (skips
+   * culled/non-paletted) — no re-cull, no re-lerp, and the placement work is O(on-screen paletted), so the
+   * per-frame cost stays screen-bounded (rule 7); only runs while a portrait is open.
+   */
+  placePalettedFor(camera: Camera, resWidth: number, resHeight: number, flipY: boolean): void {
+    const camScale = camera.scale ?? 1;
+    for (const pe of this.pool.values()) {
+      if (!pe.paletted || pe.lastSeen !== this.frameId) continue;
+      const originX = camera.offsetX + camScale * pe.motion.drawX;
+      const originY = camera.offsetY + camScale * pe.motion.drawY;
+      for (const s of pe.sprites) {
+        const spr = s as PalettedSprite;
+        if (!spr.visible) continue;
+        spr.place(originX, originY, camScale * spr.artScale, resWidth, resHeight);
+        spr.flipY = flipY;
+      }
+    }
+  }
+
+  /**
    * Destroy EVERY pooled entity — including ones currently detached (culled off-screen), which a
    * scene-graph walk from the sprite layer can't reach because they were removed from it. Called on the
    * renderer's dispose.
@@ -281,6 +307,7 @@ export class SpritePool {
           layer.atlasH ?? layer.frame.height,
         );
         spr.place(originX, originY, camScale * layer.scale, frame.screenW, frame.screenH);
+        spr.artScale = layer.scale; // retained so {@link placePalettedFor} can re-place for the portrait inset
         spr.player = playerRow;
         spr.visible = true;
       } else {

@@ -21,6 +21,7 @@ export {
   type DrawKind,
   type SceneGround,
   type SceneTerrain,
+  type SceneTransitions,
   type SpriteState,
 } from './data/scene/index.js';
 export { depositVisualLevel } from './data/scene/index.js';
@@ -66,8 +67,10 @@ export {
   type SpriteSheet,
   type SpriteLayer,
   type TerrainTextureSet,
+  type TransitionPattern,
 } from './gpu/pixi-app.js';
-export { WorldRenderer } from './gpu/world-renderer.js';
+export { WorldRenderer, SPRITE_CULL_MARGIN } from './gpu/world-renderer.js';
+export type { PortraitInsetFrame } from './gpu/world-renderer.js';
 export type { DoorBadge } from './gpu/badge-layer.js';
 export type { PlacementOverlayCell, PlacementOverlayFrame } from './gpu/placement-overlay.js';
 export type { PlacementGhost } from './gpu/placement-ghost.js';
@@ -113,21 +116,24 @@ export {
   type TileRange,
 } from './data/viewport.js';
 export {
-  DIAMOND_INDICES,
-  TRIANGLE_A_CORNERS,
-  TRIANGLE_B_CORNERS,
-  diamondCorners,
-  rectUVs,
+  TRANSITION_NONE,
+  cellNode,
+  nodeCell,
+  nodeLaneUV,
+  nodeLift,
   patternSrcRect,
-  triangleCorners,
+  rectTriangleUVs,
+  transitionRef,
+  triangleANodes,
+  triangleBNodes,
   triangleUVs,
+  type NodeXY,
   type SrcRect,
   type CellTexture,
 } from './data/terrain.js';
 export {
-  ELEVATION_LIFT,
+  elevationLiftPerUnit,
   makeElevationField,
-  diamondCornerLifts,
   type ElevationField,
 } from './data/elevation.js';
 export {

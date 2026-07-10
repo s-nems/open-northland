@@ -1,12 +1,14 @@
 import type { HudLayout, PalettedSprite } from '@vinland/render';
 import type { Command } from '@vinland/sim';
-import { type Application, Container, Graphics } from 'pixi.js';
+import { type Application, Container, Graphics, Texture } from 'pixi.js';
 import { loadGuiArt, makeGuiSprite } from '../../content/gui-art.js';
-import { loadGuiStrings, uiStringLookup } from '../../content/gui-gfx.js';
-import { type TextRun, loadBitmapFont, makeTextRun } from '../bitmap-text.js';
+import { type GuiBitmapName, loadGuiBitmap, loadGuiStrings, uiStringLookup } from '../../content/gui-gfx.js';
+import { loadUiFont } from '../../content/ui-font.js';
+import type { TextRun } from '../bitmap-text.js';
 import { HOVER_ALPHA, HOVER_TINT } from '../chrome.js';
+import { makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
-import type { PanelContext } from './context.js';
+import type { PanelBitmaps, PanelContext } from './context.js';
 import {
   DEFAULT_GAME_SPEED_CONTROL,
   type GameSpeedChangeCause,
@@ -17,6 +19,9 @@ import {
   gameSpeedClickCause,
   toggleGameSpeedPause,
 } from './game-speed.js';
+import { createGoodsDropController } from './goods-drop.js';
+import type { MenuGoodEntry } from './goods-menu.js';
+import { createGoodsWindow } from './goods-window.js';
 import {
   TOOL_PANEL_STRIP,
   type ToolButtonId,
@@ -39,8 +44,9 @@ import { type StripSpriteSpec, type SupersampledStrip, createSupersampledStrip }
  * coloured through the GUI palette LUT (the same mechanism as player colours) — bitmap-native, no DOM. When
  * the decoded GUI art is absent (a checkout that hasn't run the GUI pipeline stage) the panel DEGRADES to
  * flat `Graphics` blocks at the exact same pinned geometry, staying visible and fully interactive; the
- * pop-up window chrome is a parchment `Graphics` panel in both modes (`hud/chrome.ts`). Text is the decoded
- * `.fnt` bitmap font when present, else a Pixi `Text` fallback (`makeTextRun`).
+ * pop-up windows tile the original wood/rust bitmap fills over a `Graphics` frame (degrading to flat
+ * parchment when `content/` is absent). Text is the bundled vector serif (`hud/ui-text.ts`) — the crisp
+ * shared HUD default, not the decoded `.fnt` bitmap face.
  *
  * The package splits by concern: the pure geometry / speed-state / menu models (`layout.ts`,
  * `game-speed.ts`, `building-menu.ts` — headlessly unit-tested) from the window controllers
@@ -55,6 +61,8 @@ export interface ToolPanelOptions {
   readonly uiscale: number;
   /** The buildings the menu lists (typeId + label + kind) — e.g. derived from the viking catalog. */
   readonly buildings: readonly MenuBuildingEntry[];
+  /** The goods the drop palette lists (goodType + id + label) — the whole content catalog. */
+  readonly goods: readonly MenuGoodEntry[];
   /** Language for the decoded UI strings (`pol`/`eng`); falls back to the pinned Polish labels when absent. */
   readonly lang: string;
   /** The tribe whose read-view stats the statistics window shows. */
@@ -78,6 +86,10 @@ export interface ToolPanelOptions {
 export interface ToolPanelController {
   /** True when a client point should be CLAIMED by the HUD (over the strip, an open window, or in placement). */
   claimsPointer(clientX: number, clientY: number): boolean;
+  /** True when a client point is over an OPEN pop-up window (menu / stats) — the surface that owns the
+   *  wheel, so the camera must not also zoom there. Narrower than {@link claimsPointer}: it excludes the
+   *  strip and active placement, so the wheel still zooms the world in those. */
+  claimsWheel(clientX: number, clientY: number): boolean;
   /** The building typeId currently being placed, or null when not in build mode — the frame loop reads it
    *  to drive the map's buildable/blocked overlay. */
   placementType(): number | null;
@@ -114,7 +126,20 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const layout = buildToolPanelLayout(opts.uiscale);
   const scale = layout.scale;
 
-  const [art, strings, font] = await Promise.all([loadGuiArt(), loadGuiStrings(opts.lang), loadBitmapFont()]);
+  const loadBitmap = async (name: GuiBitmapName): Promise<Texture | undefined> => {
+    const source = await loadGuiBitmap(name);
+    return source === undefined ? undefined : new Texture({ source });
+  };
+  const [art, strings, uiFont, bg, button, buttonHilite, headline] = await Promise.all([
+    loadGuiArt(),
+    loadGuiStrings(opts.lang),
+    loadUiFont(),
+    loadBitmap('bg'),
+    loadBitmap('bg_button'),
+    loadBitmap('bg_button_hilite'),
+    loadBitmap('bg_headline'),
+  ]);
+  const bitmaps: PanelBitmaps = { bg, button, buttonHilite, headline };
 
   const labelByType = new Map(opts.buildings.map((b) => [b.typeId, b.label]));
 
@@ -165,7 +190,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const ctx: PanelContext = {
     layout,
     scale,
-    makeText: (text, color) => makeTextRun(font, text, color, scale),
+    makeText: (text, color, px) => makeUiTextRun(uiFont.family, text, color, scale, px),
+    bitmaps,
     uiString: uiStringLookup(strings),
     screen: () => app.screen,
   };
@@ -183,9 +209,21 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const menu = createMenuWindow({
     ctx,
     buildings: opts.buildings,
-    labelByType,
     container: windowContainer,
     onPick: (typeId) => placement.enter(typeId),
+  });
+  const goodsDrop = createGoodsDropController({
+    ctx,
+    container: bannerContainer,
+    labelByGood: new Map(opts.goods.map((g) => [g.goodType, g.label])),
+    enqueue,
+    screenToTile: opts.screenToTile,
+  });
+  const goodsWindow = createGoodsWindow({
+    ctx,
+    goods: opts.goods,
+    container: windowContainer,
+    onPick: (goodType) => goodsDrop.enter(goodType),
   });
   const stats = createStatsWindow({ ctx, container: windowContainer });
 
@@ -238,14 +276,24 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       }
       case 'buildings':
         placement.cancel();
+        goodsDrop.cancel();
+        goodsWindow.close();
         menu.toggle();
+        break;
+      case 'extras':
+        // The goods drop palette — "put a good on the ground" (`dropGood`). Mutually exclusive with the
+        // build menu / building placement (one held thing at a time).
+        placement.cancel();
+        goodsDrop.cancel();
+        menu.close();
+        goodsWindow.toggle();
         break;
       case 'statistics':
       case 'help': // PLACEHOLDER alias: Help has no window yet, so it toggles Statistics for now.
         stats.toggle();
         break;
       default:
-        // extras / mission / diplomacy / population / tech_tree / options — not wired in v1 (see plan).
+        // mission / diplomacy / population / tech_tree / options — not wired in v1 (see plan).
         break;
     }
   };
@@ -260,23 +308,27 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     const { x, y } = toCanvas(clientX, clientY);
     if (pointOverToolPanel(layout, x, y)) return true;
     if (menu.claims(x, y)) return true;
+    if (goodsWindow.claims(x, y)) return true;
     if (stats.claims(x, y)) return true;
-    if (placement.isActive()) return true; // placement claims the whole canvas until placed/cancelled
+    // Placement / good-drop claim the whole canvas until placed/cancelled.
+    if (placement.isActive() || goodsDrop.isActive()) return true;
     return false;
   };
 
   const onMouseDown = (e: MouseEvent): void => {
     const { x, y } = toCanvas(e.clientX, e.clientY);
 
-    // Right button cancels an active placement; otherwise it's a world order (left to the unit controls).
+    // Right button cancels an active placement / good-drop; otherwise it's a world order (left to the
+    // unit controls).
     if (e.button === 2) {
-      if (placement.isActive()) {
+      if (placement.isActive() || goodsDrop.isActive()) {
         e.preventDefault();
         // Stop the SAME event reaching unit-controls' mousedown (it re-checks claimPointer AFTER this
         // handler runs — cancel clears the claim, so without this the right-click would ALSO issue a
         // world move order). We register first (mounted before unit-controls), so this wins.
         e.stopImmediatePropagation();
         placement.cancel();
+        goodsDrop.cancel();
       }
       return;
     }
@@ -292,14 +344,17 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     } else {
       consumed = menu.handleClick(x, y);
     }
+    if (!consumed) consumed = goodsWindow.handleClick(x, y);
     if (!consumed) consumed = stats.handleClick(x, y);
     if (!consumed) consumed = placement.handleClick(e.clientX, e.clientY);
+    if (!consumed) consumed = goodsDrop.handleClick(e.clientX, e.clientY);
     if (consumed) e.stopImmediatePropagation();
   };
 
   let hover: ToolButtonId | null = null;
   const onMouseMove = (e: MouseEvent): void => {
     const { x, y } = toCanvas(e.clientX, e.clientY);
+    menu.handleHover(x, y); // the open menu tracks its own row-hover highlight
     const next = hitTestToolPanel(layout, x, y);
     if (next === hover) return;
     hover = next;
@@ -311,8 +366,19 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     }
   };
 
+  // Wheel scrolls the open building menu's list. Suppress the browser's default wheel action over ANY open
+  // pop-up (the menu scrolls; the stats window has no scroll yet but must not page the document behind the
+  // canvas either) — the camera's pointer-guard already skips zoom over these same windows.
+  const onWheel = (e: WheelEvent): void => {
+    const { x, y } = toCanvas(e.clientX, e.clientY);
+    if (menu.handleWheel(x, y, e.deltaY) || stats.claims(x, y)) e.preventDefault();
+  };
+
   const onKeyDown = (e: KeyboardEvent): void => {
-    if (e.code === 'Escape' && placement.isActive()) placement.cancel();
+    if (e.code === 'Escape') {
+      if (placement.isActive()) placement.cancel();
+      if (goodsDrop.isActive()) goodsDrop.cancel();
+    }
     // `P` toggles pause (remembering the running speed for the resume). Plain, non-repeated key only —
     // a modifier combo (Cmd/Ctrl+P print, etc.) stays the browser's, a held key must not flicker the
     // pause (each toggle re-rasterizes the strip), and typing "p" into a text field must not pause.
@@ -331,23 +397,34 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
 
   canvas.addEventListener('mousedown', onMouseDown);
   canvas.addEventListener('mousemove', onMouseMove);
+  canvas.addEventListener('wheel', onWheel, { passive: false });
   window.addEventListener('keydown', onKeyDown);
 
   applySpeed(null); // initialise the speed button graphic only — the loop keeps the entry's seeded speed
 
+  const claimsWheel = (clientX: number, clientY: number): boolean => {
+    const { x, y } = toCanvas(clientX, clientY);
+    return menu.claims(x, y) || stats.claims(x, y);
+  };
+
   return {
     claimsPointer,
+    claimsWheel,
     placementType: () => placement.activeType(),
     update(hud): void {
       // The strip is a static baked texture now (a scene-graph sprite that batches + follows resizes for
-      // free) — no per-frame re-placement. Only the pop-up windows + placement banner still re-place.
-      if (menu.isOpen()) menu.place();
+      // free) — no per-frame re-placement. The build menu's vector runs stay put too, so refresh() only
+      // reflows on a resize; the goods window (its own factory), stats window + placement banner re-place.
+      menu.refresh();
+      if (goodsWindow.isOpen()) goodsWindow.place();
       stats.refresh(hud);
       placement.placeBanner();
+      goodsDrop.placeBanner();
     },
     dispose(): void {
       canvas.removeEventListener('mousedown', onMouseDown);
       canvas.removeEventListener('mousemove', onMouseMove);
+      canvas.removeEventListener('wheel', onWheel);
       window.removeEventListener('keydown', onKeyDown);
       root.destroy({ children: true });
       supersampled?.dispose();

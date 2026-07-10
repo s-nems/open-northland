@@ -1,13 +1,27 @@
-import { type SpriteSheet, type SupersampledTexture, bakeToSprite } from '@vinland/render';
+import {
+  type PortraitInsetFrame,
+  type SpriteSheet,
+  type SupersampledTexture,
+  bakeToSprite,
+} from '@vinland/render';
 import type { WorldSnapshot } from '@vinland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
 import { DEFAULT_UI_LANG, uiStringLookup } from '../../content/gui-gfx.js';
 import { type Rect, contains } from '../geometry.js';
 import { loadDetailsPanelAssets } from './assets.js';
 import { type PanelLayers, createChrome } from './chrome.js';
-import { type ButtonHit, type DetailsLayout, ROW_H, layoutDetails, mapLayout } from './layout.js';
+import {
+  type ButtonHit,
+  type DetailsLayout,
+  MAX_STOCK_ROWS,
+  ROW_H,
+  layoutDetails,
+  mapLayout,
+  stockSlotRects,
+} from './layout.js';
 import { type UnitPanelModel, type UnitPanelModelContext, buildUnitPanelModel } from './model.js';
 import { drawBuilding, drawCompact, drawSettler } from './sections.js';
+import { STOCK_TAB_LABELS } from './stock-tabs.js';
 import { WorkerSpriteOverlay } from './worker-sprites.js';
 
 /**
@@ -19,6 +33,16 @@ import { WorkerSpriteOverlay } from './worker-sprites.js';
 
 /** Above the world and the left tool panel, below nothing (the panel is the outermost HUD layer). */
 const PANEL_Z = 1002;
+
+/**
+ * The portrait box the live world "observation window" fills — the panel's preview rect, in on-screen px,
+ * shrunk by the bevel so the cutout sits INSIDE the inner-box frame rather than over it. Both the settler
+ * (Ogólne) and building (Ogólny) layouts expose a `preview`; the view renders the world into this rect and
+ * centres it on {@link PortraitBox.entityRef}. Null when the current selection has no portrait.
+ */
+export type PortraitBox = PortraitInsetFrame;
+/** Bevel inset (design px) so the observation window sits inside the portrait box's frame, not over it. */
+const PORTRAIT_BEVEL_INSET = 3;
 
 /**
  * Minimum wall-clock gap between value-driven rebuilds. Live values (production %, need bars, status
@@ -41,6 +65,12 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
   /** Select this entity — invoked when the player clicks a worker sprite in the Pracownicy field, so it
    *  selects that settler (dropping the building), exactly like clicking the worker on the map. */
   readonly onSelectEntity?: (entityId: number) => void;
+  /** A cursor tooltip to NAME the hovered Magazyn stock row — injected (structural shape) like
+   *  `backingScale`, so the hud layer never imports the view-layer element. Absent → no stock-row tooltip. */
+  readonly tooltip?: {
+    show(clientX: number, clientY: number, text: string): void;
+    hide(): void;
+  };
 }
 
 export interface UnitPanel {
@@ -50,6 +80,9 @@ export interface UnitPanel {
   tick(snapshot: WorldSnapshot): void;
   /** True when a client point is over the details panel. */
   claimsPointer(clientX: number, clientY: number): boolean;
+  /** The portrait box the live world observation window fills (rect + entity to centre on), or null when
+   *  the current selection has no portrait (multi-select, empty). Read each frame by the view. */
+  portrait(): PortraitBox | null;
   /**
    * Route a mousedown: true when the point is over the panel (the caller must not world-pick it);
    * a left press on an enabled button performs its action. Part of the unit-controls claim chain.
@@ -58,20 +91,12 @@ export interface UnitPanel {
   dispose(): void;
 }
 
-/** The stock category tab a freshly-selected building opens on: the one holding the most of its goods. */
+/** The stock category tab a freshly-selected building opens on: the FIRST (lowest-index) category that
+ *  holds any of its goods, so the panel lands on the leading tab (Żywność for a general store) rather than
+ *  on whichever category happens to be fullest. */
 export function defaultStockTab(model: UnitPanelModel): number {
   if (model.kind !== 'building' || model.stock.length === 0) return 0;
-  const counts = new Map<number, number>();
-  for (const row of model.stock) counts.set(row.category, (counts.get(row.category) ?? 0) + 1);
-  let best = 0;
-  let bestCount = -1;
-  for (const [tab, count] of counts) {
-    if (count > bestCount || (count === bestCount && tab < best)) {
-      best = tab;
-      bestCount = count;
-    }
-  }
-  return best;
+  return Math.min(...model.stock.map((row) => row.category));
 }
 
 export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel> {
@@ -244,15 +269,58 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return true;
   };
 
+  /** The good NAME under a canvas point in the stock grid, or null — the tooltip's text for a hovered row.
+   *  Probes the SAME slot rects the rows draw into ({@link stockSlotRects}), then maps the slot index to the
+   *  active tab's good (column-major, capped at the drawn count), so a hovered slot names exactly the drawn good. */
+  const hitStockGood = (x: number, y: number): string | null => {
+    if (layout?.kind !== 'building' || lastModel.kind !== 'building') return null;
+    const slot = stockSlotRects(layout.stock.body, scale).findIndex((r) => contains(r, x, y));
+    if (slot < 0) return null;
+    const rows = lastModel.stock
+      .filter((row) => row.category === activeStockTab)
+      .slice(0, MAX_STOCK_ROWS * 2);
+    return rows[slot]?.label ?? null;
+  };
+
   const onMouseMove = (e: MouseEvent): void => {
     const { x, y } = toCanvas(e.clientX, e.clientY);
+    // Name-on-hover (independent of the button-hover repaint below, so it updates even when the hovered
+    // BUTTON hasn't changed): a Magazyn stock row's good name, else a category TAB's name — the tab glyphs are
+    // cryptic unread art, so the tooltip is what tells the player which category a tab holds.
+    if (opts.tooltip !== undefined) {
+      const rowName = hitStockGood(x, y);
+      const tab = rowName === null ? hitStockTab(x, y) : null;
+      const text = rowName ?? (tab !== null ? (STOCK_TAB_LABELS[tab] ?? null) : null);
+      if (text === null) opts.tooltip.hide();
+      else opts.tooltip.show(e.clientX, e.clientY, text);
+    }
     const next = hitButton(x, y)?.action ?? null;
     if (next === hoverAction) return;
     hoverAction = next;
     if (lastModel.kind !== 'empty') rebuild(lastModel);
   };
 
+  // Leaving the canvas can't fire a final over-empty mousemove, so the row tooltip would linger — hide it.
+  const onMouseLeave = (): void => opts.tooltip?.hide();
+
   canvas.addEventListener('mousemove', onMouseMove);
+  canvas.addEventListener('mouseleave', onMouseLeave);
+
+  /** The current portrait box (preview rect, bevel-inset) + its entity, for the live observation window. */
+  const portrait = (): PortraitBox | null => {
+    if (layout === null) return null;
+    // Both the settler (Ogólne) and building (Ogólny) layouts expose a `preview`; any other kind has none.
+    const box: Rect | undefined =
+      layout.kind === 'settler' || layout.kind === 'building' ? layout.preview : undefined;
+    if (box === undefined || (lastModel.kind !== 'settler' && lastModel.kind !== 'building')) return null;
+    const entityRef = lastModel.entityId;
+    const inset = Math.round(PORTRAIT_BEVEL_INSET * scale);
+    return {
+      entityRef,
+      kind: lastModel.kind,
+      rect: { x: box.x + inset, y: box.y + inset, w: box.w - 2 * inset, h: box.h - 2 * inset },
+    };
+  };
 
   /** Redraw the animated worker sprites into the (live) Pracownicy field, or clear them when the current
    *  selection isn't a building. The field is the workers body minus the top row the limits strip occupies. */
@@ -279,9 +347,12 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     },
     claimsPointer,
     handleMouseDown,
+    portrait,
     dispose(): void {
       canvas.removeEventListener('mousemove', onMouseMove);
       workerOverlay.dispose();
+      canvas.removeEventListener('mouseleave', onMouseLeave);
+      opts.tooltip?.hide();
       baked?.dispose();
       root.destroy({ children: true });
     },

@@ -26,6 +26,7 @@ import {
   buildingBobRefsByType,
   constructionRefsByType,
 } from './building-gfx.js';
+import { loadGoodsIconManifest } from './goods-gfx.js';
 import {
   BODY_IMAGELIB,
   type ContentIr,
@@ -50,6 +51,7 @@ import {
   ADULT_CHARACTER_BY_JOB,
   CHARACTER_SPEC_ENTRIES,
   type GoodRef,
+  WARRIOR_SPEC_BY_WEAPON_GOOD,
   YOUNG_CHARACTER_BY_JOB,
   buildHumanBindings,
   carryHeadAnims,
@@ -176,7 +178,13 @@ async function loadCharacters(
     const char = bySpec.get(specId);
     if (char !== undefined) youngByJob[Number(job)] = char;
   }
-  return { byJob, youngByJob, default: fallback };
+  // The equipped-weapon look table: a warrior draws the body of the weapon in its Equipment.weapon slot.
+  const byWeaponGood: Record<number, SettlerCharacter> = {};
+  for (const [good, specId] of Object.entries(WARRIOR_SPEC_BY_WEAPON_GOOD)) {
+    const char = bySpec.get(specId);
+    if (char !== undefined) byWeaponGood[Number(good)] = char;
+  }
+  return { byJob, youngByJob, byWeaponGood, default: fallback };
 }
 
 /**
@@ -256,7 +264,10 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   // flag) as families, and build the per-good bindings against exactly the families that loaded — the same
   // load-then-drop-unloaded contract the building families use. The default yew node stays the
   // `kindLayers.resource` layer, so it is excluded from the loaded families.
-  const gatheringRefs = resolveGatheringRefs(goods, ir);
+  // The goods-icon manifest gives EVERY good (not just the gathered ones) its `ls_goods` pile graphic by
+  // (frame, palette), so a dropped brick / sword / loaf draws its own heap instead of the placeholder marker.
+  const goodIcons = await loadGoodsIconManifest();
+  const gatheringRefs = resolveGatheringRefs(goods, ir, goodIcons);
   // The felled-tree stump/debris draws from `ls_trees_dead` — resolve its ref and load its atlas
   // ALONGSIDE the node/pile/flag families (same load-then-drop-unloaded contract).
   const stumpRef = resolveStumpRef(ir);

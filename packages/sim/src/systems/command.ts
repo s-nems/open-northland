@@ -10,9 +10,11 @@ import {
 } from '../components/index.js';
 import { assertNever } from '../core/brand.js';
 import type { Command } from '../core/commands.js';
+import { contentIndex } from '../core/content-index.js';
 import { ONE, fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
 import { positionOfNode } from '../nav/halfcell.js';
+import { dropOrStackGood } from './agents/effects-goods.js';
 import { assignWorker, attackUnit, moveUnit, setJob, setStance } from './conflict/orders.js';
 import { spawnAnimalHerd, spawnSettler } from './conflict/spawn.js';
 import type { System, SystemContext } from './context.js';
@@ -53,6 +55,11 @@ import { buildingEnabled, tribeShipsUnlocked } from './progression.js';
  *    of a good at (x,y) through the shared {@link createResourceNode} assembly — the runtime analogue of
  *    the scene-setup `place*` helpers, for a map/scenario editor or the debug spawn palette. Skipped
  *    (still logged) for a good with no resource footprint record (bad input).
+ *  - `dropGood` — drop a loose good pile on the ground at (x,y) through the shared {@link dropOrStackGood}
+ *    assembly (a bare {@link Stockpile} that draws as a per-fill heap and rests in place), STACKING onto an
+ *    existing same-good pile on the tile up to `MAX_GROUND_STACK` so repeated one-unit clicks pile up. The
+ *    "place this good on the ground" order behind the HUD goods tool + the admin spawn palette. Skipped
+ *    (still logged) for an unknown good or a non-positive amount (bad input).
  *  - `setProduction` — point a workplace's production at a good (currently a no-op marker until the
  *    recipe-selection slice; recorded in the log so replay stays faithful).
  *  - `demolish` — destroy a building entity (ids are never recycled), **first unbinding every
@@ -111,6 +118,17 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
         ...(command.deposit !== undefined ? { deposit: command.deposit } : {}),
       });
       return;
+    case 'dropGood': {
+      // Drop a loose good pile, STACKING onto an existing pile of the same good on the tile (capped at
+      // MAX_GROUND_STACK) so repeated one-unit clicks pile up rather than littering entities. An
+      // `amount <= 0` or a good absent from the catalog is bad input — an id-neutral skip (no `create()`,
+      // still logged for faithful replay), the same stance as an unknown building/job/resource id.
+      if (command.amount <= 0) return;
+      if (!contentIndex(ctx.content).goods.has(command.good)) return;
+      const pos = positionOfNode(command.x, command.y);
+      dropOrStackGood(world, pos.x, pos.y, command.good, command.amount);
+      return;
+    }
     case 'setProduction':
       // No state change yet: recipe/output selection is a later slice. The command is still logged
       // by the caller so a replay reaches the same state once this is implemented.

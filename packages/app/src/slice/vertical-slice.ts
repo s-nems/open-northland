@@ -18,6 +18,7 @@ import {
   JOB_GATHERER_WOOD,
   sandboxContent,
   sandboxWalkableTypeIds,
+  weaponEquipmentFor,
 } from '../game/sandbox/index.js';
 import {
   type AuthoredJoinRows,
@@ -129,7 +130,18 @@ function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlaceme
         ...own,
       });
     } else {
-      sim.enqueue({ kind: 'spawnSettler', jobType: p.jobType, x: p.x, y: p.y, tribe: p.tribe, ...own });
+      // A warrior placement (scene author or imported-map `sethuman`) carries its class weapon in the
+      // equipment slot, so an existing soldier's Broń row + drawn weapon match — like an admin spawn.
+      const equipment = weaponEquipmentFor(p.jobType);
+      sim.enqueue({
+        kind: 'spawnSettler',
+        jobType: p.jobType,
+        x: p.x,
+        y: p.y,
+        tribe: p.tribe,
+        ...own,
+        ...(equipment !== undefined ? { equipment } : {}),
+      });
     }
   }
 }

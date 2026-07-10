@@ -80,6 +80,35 @@ export const GoodClassification = z.strictObject({
 export type GoodClassification = z.infer<typeof GoodClassification>;
 
 /**
+ * A character-equipment category — the slot kind a good occupies when a Viking carries it. The
+ * original's equippable goods are `goodtypes.ini` ids 30–55 (confirmed by each tribe's `allowequip`
+ * list in `tribetypes.ini`, and the manual's Equipment section: "You can equip your Vikings with
+ * shoes, tools, mead, potions and amulets" + soldiers additionally with weapons and armour). Weapons
+ * and armour are soldier-only; shoes/tools/consumables anyone. This is the SLOT category; the sim's
+ * `Equipment` component groups worn goods by it.
+ */
+export const EQUIP_CATEGORIES = ['boots', 'tool', 'weapon', 'armor', 'misc'] as const;
+export const EquipCategory = z.enum(EQUIP_CATEGORIES);
+export type EquipCategory = z.infer<typeof EquipCategory>;
+
+/**
+ * A good's equipment classification — present only on the equippable goods (the original's ids 30–55).
+ * `category` names the slot kind; `wears` marks whether the item is used up in use. The wear split is
+ * source-pinned to the manual: potions, shoes and tools are "slowly used up" ("Partly used items
+ * (potions, shoes, ...) you drop are lost"), while "unused items such as weapons, armour and amulets
+ * can be used again" (amulets: "their power is never diminished"). The per-use consumption MAGNITUDE
+ * is engine-hardcoded (no numeric field exists in any readable `.ini` — verified), so no rate lives
+ * here; a wearing item just carries a "degree of use" the UI shows as a percentage.
+ */
+export const EquipClass = z.strictObject({
+  category: EquipCategory,
+  /** True when the item is consumed with use (potions/shoes/tools); false for permanent gear
+   *  (weapons/armour/amulets). Source basis: manual Equipment section (see {@link EquipClass}). */
+  wears: z.boolean().default(false),
+});
+export type EquipClass = z.infer<typeof EquipClass>;
+
+/**
  * A raw good's three-stage gathering pipeline, from the `[goodtype]` `landscapeTo*` fields. The
  * original models gathering as a chain of {@link LandscapeType} states a cell passes through: a
  * settler HARVESTS the source object ({@link harvest} — a `tree`/`rock`/`mine`), it becomes a
@@ -179,6 +208,13 @@ export const GoodType = z.strictObject({
    * {@link GoodClassification} and historical plan phase 3.
    */
   classification: GoodClassification.default({}),
+  /**
+   * The good's character-equipment classification — its slot category + whether it wears out. Present
+   * only on the equippable goods (the original's ids 30–55: shoes, tools, armour, weapons, mead,
+   * potions, amulets); omitted for every economy good. Consumed by the sim's `Equipment` component and
+   * the selection UI's equipment-slots row. See {@link EquipClass}.
+   */
+  equip: EquipClass.optional(),
   source: Provenance.optional(),
 });
 export type GoodType = z.infer<typeof GoodType>;
@@ -652,6 +688,50 @@ export const GfxPattern = z.strictObject({
 export type GfxPattern = z.infer<typeof GfxPattern>;
 
 /**
+ * A transition lane's "no overlay here" sentinel (u8 max) — the shared half of the `emt1..emt4`
+ * encoding contract between the pipeline's lane validation, this schema's refine, and the render's
+ * decode (`packages/render/src/data/terrain.ts` keeps a documented local twin — that package stays
+ * import-decoupled from `@vinland/data` by design).
+ */
+export const TRANSITION_NONE = 255;
+
+/**
+ * The pair variants each `[transition]` record carries (six `GfxCoordsA`/`GfxCoordsB` lines) — the
+ * divisor of the `emt` lane encoding: `⌊value / 6⌋` picks the record, `value % 6` the pair. Shared
+ * like {@link TRANSITION_NONE}.
+ */
+export const TRANSITION_PAIRS = 6;
+
+/**
+ * One `[transition]` from `Data/engine2d/inis/patterntransitions/transitions.cif` — a **ground
+ * transition overlay** (38 records): a translucent 256×256 texture blended over the base pattern
+ * where two ground families meet. A record names an RGB texture and a separate alpha-mask picture
+ * ({@link texture}/{@link textureAlpha} — the pipeline composes them into one RGBA page), plus SIX
+ * `GfxCoordsA`/`GfxCoordsB` triangle-UV pairs (file order = the pair index a map lane's `value % 6`
+ * selects; `⌊value / 6⌋` picks the record through the map's `eatd` name dictionary). The UV point
+ * convention matches {@link GfxPattern}: `coordsA` = (TL, BR, BL), `coordsB` = (TL, TR, BR) of a
+ * 64×64 tile square.
+ */
+export const GfxPatternTransition = z.strictObject({
+  /** The 0-based position in the `transition` list (provenance; maps join by {@link editName}). */
+  index: z.number().int().nonnegative(),
+  /** `name` — the join key a decoded map's `transitions.types` dictionary entries reference. */
+  editName: z.string().optional(),
+  /** `pointtype` — the editor's transition-point class (e.g. `meadow`, `sand`); editor metadata. */
+  pointType: z.string().optional(),
+  /** `GfxTexture` — the normalized RGB `tran_*.pcx` path (decoded to a PNG by the pcx stage). */
+  texture: z.string().optional(),
+  /** `GfxTextureAlpha` — the normalized alpha-mask `tran_*_a.pcx` path (raw palette index = alpha). */
+  textureAlpha: z.string().optional(),
+  /** The six pair variants' first-triangle UVs, in file order (index = map lane `value % 6`). */
+  coordsA: z.array(GfxCoords).default([]),
+  /** The six pair variants' second-triangle UVs, in file order (parallel to {@link coordsA}). */
+  coordsB: z.array(GfxCoords).default([]),
+  source: Provenance.optional(),
+});
+export type GfxPatternTransition = z.infer<typeof GfxPatternTransition>;
+
+/**
  * The **approximated** per-landscape-typeId ground binding — the typeId→pattern map the terrain renderer
  * consumes (historical plan phase 2, step 2). Every map cell carries a {@link LandscapeType.typeId} (1-based, the
  * `lmlt` per-cell value), but those types are mostly OBJECTS (void/tree/rock/iron/wheat…), not ground
@@ -764,9 +844,10 @@ export const LandscapeGfx = z.object({
   /** `GfxLoopAnimation` — 1 = the state's frame list loops continuously (waves, fire, smoke). */
   loopAnimation: z.boolean().default(false),
   /**
-   * `GfxDynamicBackground` — set on exactly the 8 wave records in the real data: the object is
-   * composited translucently over the (water) ground rather than drawn opaque (the engine's
-   * transparency blit — `PrintBob_UsingTransparency` in the oracle).
+   * `GfxDynamicBackground` — set on exactly the 8 wave records in the real data. Carried for
+   * provenance; the renderer no longer branches on it: the waves' watery translucency is their
+   * Double8Bit bobs' PER-PIXEL alpha, baked into the atlas by the pipeline (see the asset-pipeline's
+   * `AtlasAlphaMode`), not a flat per-record blend.
    */
   dynamicBackground: z.boolean().default(false),
   source: Provenance.optional(),
@@ -1003,6 +1084,29 @@ export const TerrainGround = z.object({
 export type TerrainGround = z.infer<typeof TerrainGround>;
 
 /**
+ * The transition-overlay layer of a decoded map: the original's `emt1..emt4` per-cell u8 lanes,
+ * each a per-TRIANGLE overlay pick — `emt1`/`emt2` are layer 1 (drawn last, on top) for triangles
+ * A/B, `emt3`/`emt4` layer 2 (under layer 1) for A/B. A lane value `v < 255` selects transition
+ * `⌊v/6⌋` from the map's `eatd` dictionary ({@link types}, kept VERBATIM so the positional join
+ * survives) and pair variant `v % 6` of its six `GfxCoords` pairs; `255` = no overlay. A name
+ * joins onto the extracted {@link GfxPatternTransition} table (`editName`), mirroring how
+ * {@link TerrainGround} joins patterns.
+ */
+export const TerrainTransitions = z.object({
+  /** The map's `eatd` transition-name dictionary, VERBATIM (lane `⌊v/6⌋` indexes it positionally). */
+  types: z.array(z.string()),
+  /** Row-major per-cell `emt1` lane — layer 1 (topmost), triangle A. Raw u8; 255 = none. */
+  a1: z.array(z.number().int().nonnegative()),
+  /** Row-major per-cell `emt2` lane — layer 1 (topmost), triangle B. Raw u8; 255 = none. */
+  b1: z.array(z.number().int().nonnegative()),
+  /** Row-major per-cell `emt3` lane — layer 2 (under layer 1), triangle A. Raw u8; 255 = none. */
+  a2: z.array(z.number().int().nonnegative()),
+  /** Row-major per-cell `emt4` lane — layer 2 (under layer 1), triangle B. Raw u8; 255 = none. */
+  b2: z.array(z.number().int().nonnegative()),
+});
+export type TerrainTransitions = z.infer<typeof TerrainTransitions>;
+
+/**
  * The placed landscape objects of a decoded map: the original's `emla` lane is a **half-cell**
  * (2·width × 2·height) grid of indices into the map's `eald` object-name dictionary — every tree,
  * stone, bush, mine decal and animated wave the map ships. {@link types} is that dictionary compacted
@@ -1112,6 +1216,8 @@ export const TerrainMapFile = z
     typeIds: z.array(TypeId),
     /** The 1:1 per-triangle ground patterns (`empa`/`empb` + `eapd`), when the map carries them. */
     ground: TerrainGround.optional(),
+    /** The per-triangle transition overlays (`emt1..emt4` + `eatd`), when the map carries them. */
+    transitions: TerrainTransitions.optional(),
     /** The placed landscape objects (`emla` + `eald`), when the map carries them. */
     objects: TerrainObjects.optional(),
     /**
@@ -1160,6 +1266,31 @@ export const TerrainMapFile = z
     () => ({
       message: 'terrain map ground lane indexes outside its patterns list',
       path: ['ground'],
+    }),
+  )
+  .refine(
+    (m) => {
+      if (m.transitions === undefined) return true;
+      const cells = m.width * m.height;
+      const t = m.transitions;
+      return [t.a1, t.b1, t.a2, t.b2].every((lane) => lane.length === cells);
+    },
+    (m) => ({
+      message: `terrain map transition lanes must be width*height (${m.width * m.height}) cells`,
+      path: ['transitions'],
+    }),
+  )
+  .refine(
+    (m) => {
+      if (m.transitions === undefined) return true;
+      const t = m.transitions;
+      return [t.a1, t.b1, t.a2, t.b2].every((lane) =>
+        lane.every((v) => v === TRANSITION_NONE || Math.floor(v / TRANSITION_PAIRS) < t.types.length),
+      );
+    },
+    () => ({
+      message: 'terrain map transition lane values outside its types dictionary',
+      path: ['transitions'],
     }),
   )
   .refine(
@@ -1474,6 +1605,9 @@ export const ContentSet = z.strictObject({
   /** Resolved per-good gathering pipelines (good→landscape→gfx join), one per map-gathered good. */
   gatheringPipeline: z.array(GatheringPipeline).default([]),
   gfxPatterns: z.array(GfxPattern).default([]),
+  /** The `[transition]` overlay table (`transitions.cif`) a decoded map's `transitions.types`
+   *  names join onto — the texture + six UV pairs per record (render-binding data). */
+  gfxPatternTransitions: z.array(GfxPatternTransition).default([]),
   terrainPatterns: z.array(TerrainPattern).default([]),
   /** The per-logicType ground classes (`trianglepatterntypes.cif`) a {@link GfxPattern.logicType}
    *  references — the walk/build/water flags the map-collision join classes real ground by. */

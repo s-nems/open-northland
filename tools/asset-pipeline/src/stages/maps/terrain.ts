@@ -1,3 +1,4 @@
+import { TRANSITION_NONE, TRANSITION_PAIRS } from '@vinland/data';
 import type { MapStaticObjects } from '../../decoders/ini.js';
 import {
   type MapDat,
@@ -19,6 +20,14 @@ export interface MapDatTerrainFile extends MapDatTerrainMap {
     readonly patterns: string[];
     readonly a: number[];
     readonly b: number[];
+  };
+  /** Per-triangle transition overlays (`emt1..emt4` lanes + the `eatd` name dictionary, verbatim). */
+  readonly transitions?: {
+    readonly types: string[];
+    readonly a1: number[];
+    readonly b1: number[];
+    readonly a2: number[];
+    readonly b2: number[];
   };
   /** Placed landscape objects (`emla` half-cell lane joined through the `eald` name dictionary). */
   readonly objects?: {
@@ -81,6 +90,44 @@ function groundFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['gro
     b[i] = compactIndex.get(laneB[i] as number) as number;
   }
   return { patterns, a, b };
+}
+
+/**
+ * Decodes the `emt1..emt4` per-cell transition-overlay lanes + the `eatd` transition-name
+ * dictionary into the emitted `transitions` layer. Each lane is one u8 PER CELL (row-major,
+ * length === width·height — same resolution as `empa`/`empb`, confirmed on the real maps);
+ * `255` = no overlay, `v < 255` selects transition `⌊v/6⌋` from the dictionary and pair variant
+ * `v % 6` of its six UV pairs. The lanes and the dictionary are carried VERBATIM (no compaction —
+ * the ⌊v/6⌋ join is positional, and re-encoding packed values would risk colliding with the 255
+ * sentinel). Lane semantics: source basis in docs/SOURCES.md "terrain tessellation". Returns
+ * undefined when the map lacks any of the five chunks; throws on a length mismatch or an
+ * out-of-dictionary value (a corrupt lane — caught per LAYER by {@link mapDatToTerrain}).
+ */
+function transitionsFromMapDat(map: MapDat, size: MapDatSize): MapDatTerrainFile['transitions'] {
+  const eatd = findChunk(map, 'eatd');
+  if (eatd === undefined) return undefined;
+  const laneTags = ['emt1', 'emt2', 'emt3', 'emt4'] as const;
+  const lanes: number[][] = [];
+  const cells = size.width * size.height;
+  const types = decodeStringListChunk(eatd);
+  for (const tag of laneTags) {
+    const chunk = findChunk(map, tag);
+    if (chunk === undefined) return undefined;
+    const lane = unpackMapLayer(chunk).cells;
+    if (lane.length !== cells) {
+      throw new Error(`mapdat: ${tag} lane has ${lane.length} cells, expected ${cells}`);
+    }
+    for (const v of lane) {
+      if (v !== TRANSITION_NONE && Math.floor(v / TRANSITION_PAIRS) >= types.length) {
+        throw new Error(
+          `mapdat: ${tag} value ${v} references transition ${Math.floor(v / TRANSITION_PAIRS)} outside the ${types.length}-entry eatd dictionary`,
+        );
+      }
+    }
+    lanes.push(Array.from(lane));
+  }
+  const [a1, b1, a2, b2] = lanes as [number[], number[], number[], number[]];
+  return { types, a1, b1, a2, b2 };
 }
 
 /**
@@ -210,9 +257,9 @@ function perCellLaneFromMapDat(
  * per-cell `elevation` layer ({@link elevationFromMapDat}) — consumed render-side by the elevation
  * lift (`packages/render/src/data/elevation.ts`) — and the `embr` baked-shading lane as the per-cell
  * `brightness` layer ({@link brightnessFromMapDat}) — consumed by the ground's per-fragment
- * shading (`packages/render/src/data/brightness.ts`). The
- * `emt3`/`emt4` overlay-pattern lanes (roads/house foundations) are still out of scope (deferred
- * render layers).
+ * shading (`packages/render/src/data/brightness.ts`). The `emt1..emt4` transition-overlay lanes
+ * ride as the `transitions` layer ({@link transitionsFromMapDat}) — consumed by the render's
+ * per-triangle transition compositing.
  */
 export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
   const map = decodeMapDat(bytes);
@@ -231,6 +278,14 @@ export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
   } catch (err) {
     console.warn(
       `[pipeline] map ground lanes unreadable, emitting grid without them: ${(err as Error).message}`,
+    );
+  }
+  let transitions: MapDatTerrainFile['transitions'];
+  try {
+    transitions = transitionsFromMapDat(map, size);
+  } catch (err) {
+    console.warn(
+      `[pipeline] map transition lanes unreadable, emitting grid without them: ${(err as Error).message}`,
     );
   }
   let objects: MapDatTerrainFile['objects'];
@@ -260,6 +315,7 @@ export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
   return {
     ...terrain,
     ...(ground !== undefined ? { ground } : {}),
+    ...(transitions !== undefined ? { transitions } : {}),
     ...(objects !== undefined ? { objects } : {}),
     ...(elevation !== undefined ? { elevation } : {}),
     ...(brightness !== undefined ? { brightness } : {}),

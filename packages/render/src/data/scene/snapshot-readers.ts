@@ -271,6 +271,17 @@ export function readJobType(components: Readonly<Record<string, unknown>>): numb
 }
 
 /**
+ * The `typeId` of the good in a settler's `Equipment.weapon` slot ({@link import('./draw-item.js').DrawItem.weaponGood}),
+ * so the drawn warrior weapon follows the equipment slot. `undefined` when the settler has no `Equipment`
+ * component or its weapon slot is empty/malformed (the binding then falls back to the `jobType` look).
+ */
+export function readEquipmentWeaponGood(components: Readonly<Record<string, unknown>>): number | undefined {
+  const eq = components.Equipment as { weapon?: { goodType?: unknown } | null } | undefined;
+  const goodType = eq?.weapon?.goodType;
+  return typeof goodType === 'number' ? goodType : undefined;
+}
+
+/**
  * A resource node's `Resource.goodType` — the per-good join key
  * ({@link import('./draw-item.js').DrawItem.goodType}) a {@link import('../sprites/index.js').ResourceTypeBinding}
  * draws its species/deposit by (a tree for wood, a mine for iron). `undefined` for a missing/malformed

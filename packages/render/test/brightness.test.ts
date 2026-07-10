@@ -1,16 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { scaleColour } from '../src/data/brightness.js';
-import { diamondCornerCoords } from '../src/data/cell-field.js';
 import { padLaneRows } from '../src/gpu/shading.js';
 import { BRIGHTNESS_NEUTRAL, makeBrightnessField } from '../src/index.js';
 
 /**
  * Headless tests for the terrain-brightness seam (`data/brightness.ts`) — the decoded `embr` lane as
- * the ground mesh's per-vertex multiplier. Pixels are human-gated; what is agent-checkable is the
- * measured response curve's mapping (value/127, UNCLAMPED above 1 — the lane brightens as well as
- * darkens), the neutral no-lane path (multiplier 1, `shaded` false — the byte-identical unshaded
- * mesh), and the WATERTIGHT shared corners (brightness rides the same canonical corner coordinates
- * as the elevation lift, or shading would seam where geometry doesn't).
+ * the ground's shading multiplier. Pixels are human-gated; what is agent-checkable is the measured
+ * response curve's mapping (value/127, UNCLAMPED above 1 — the lane brightens as well as darkens)
+ * and the neutral no-lane path (multiplier 1, `shaded` false — the byte-identical unshaded mesh).
+ * The mesh-vertex lane coordinates live with the tessellation (`terrain.test.ts` `nodeLaneUV`).
  */
 
 describe('makeBrightnessField.brightnessAt', () => {
@@ -45,44 +43,6 @@ describe('makeBrightnessField.brightnessAt', () => {
       expect(neutral.shaded).toBe(false);
       expect(neutral.brightnessAt(1.5, 0.5)).toBe(1);
     }
-  });
-});
-
-describe('diamondCornerCoords — the canonical corner coordinates the lane UVs bake', () => {
-  // Corner order is [top, right, bottom, left]; a corner SHARED by adjacent diamonds must resolve to
-  // the SAME coordinate from every owner or the per-fragment lane sampling would seam.
-  const [TOP, RIGHT, , LEFT] = [0, 1, 2, 3];
-
-  it("a cell's RIGHT corner == its east neighbour's LEFT corner (no horizontal seam)", () => {
-    for (const [col, row] of [
-      [2, 2],
-      [3, 3],
-      [1, 4],
-    ] as const) {
-      expect(diamondCornerCoords(col, row)[RIGHT]).toEqual(diamondCornerCoords(col + 1, row)[LEFT]);
-    }
-  });
-
-  it("a cell's TOP corner == the diagonal neighbour's LEFT corner (no diagonal seam)", () => {
-    for (const [col, row] of [
-      [2, 3],
-      [3, 4],
-      [2, 2],
-    ] as const) {
-      const s = row & 1;
-      expect(diamondCornerCoords(col, row)[TOP]).toEqual(diamondCornerCoords(col + s, row - 1)[LEFT]);
-    }
-  });
-
-  it('the canonical row coordinate is exactly screen_y / rowStep at every corner', () => {
-    // Cell (col,row) sits at screen y = row·rowStep; its top/bottom corners one row step up/down.
-    // Linear-in-screen-y row coordinates are what make a row-graded lane (the border fade) shade in
-    // smooth horizontal bands under per-fragment sampling, like the original.
-    const [top, right, bottom, left] = diamondCornerCoords(3, 5);
-    expect(top[1]).toBe(4);
-    expect(bottom[1]).toBe(6);
-    expect(right[1]).toBe(5);
-    expect(left[1]).toBe(5);
   });
 });
 

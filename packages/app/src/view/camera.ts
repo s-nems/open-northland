@@ -111,6 +111,14 @@ export interface CameraController {
   camera(): Camera;
   /** Apply held-arrow-key panning for a wall-clock delta in ms — call once per frame. */
   update(dtMs: number): void;
+  /**
+   * Install a predicate that claims a client point for the HUD; while it returns true for the cursor, the
+   * wheel does NOT zoom (an open window scrolls instead). Pass `null` to clear. The game view wires the
+   * tool panel's `claimsWheel` here (an OPEN pop-up window only — NOT the broad `claimsPointer`, which also
+   * covers the strip and active placement, where the wheel should still zoom) so scrolling a pop-up list
+   * never also zooms the world behind it.
+   */
+  setPointerGuard(guard: ((clientX: number, clientY: number) => boolean) | null): void;
   /** Remove every installed DOM listener. */
   dispose(): void;
 }
@@ -161,6 +169,8 @@ export function createCameraController(
   let dragging = false;
   let lastX = 0;
   let lastY = 0;
+  // While this claims the cursor (an open HUD window), the wheel scrolls that window, not the camera.
+  let pointerGuard: ((clientX: number, clientY: number) => boolean) | null = null;
 
   const onMouseDown = (e: MouseEvent): void => {
     if (e.button !== 1) return; // middle button only
@@ -180,6 +190,9 @@ export function createCameraController(
     if (e.button === 1) dragging = false;
   };
   const onWheel = (e: WheelEvent): void => {
+    // Over an open HUD window the wheel belongs to that window's list, not the camera — leave the event
+    // for the panel's own handler (which scrolls + preventDefaults) and don't zoom the world behind it.
+    if (pointerGuard?.(e.clientX, e.clientY)) return;
     e.preventDefault(); // don't scroll the page
     const { sx, sy, rect } = screenScale(canvas, resolution);
     const factor = e.deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP;
@@ -210,6 +223,9 @@ export function createCameraController(
 
   return {
     camera: () => cam,
+    setPointerGuard: (guard) => {
+      pointerGuard = guard;
+    },
     update: (dtMs) => {
       if (held.size === 0) return;
       // Clamp the delta so a held key doesn't lurch the camera after the tab was backgrounded (RAF

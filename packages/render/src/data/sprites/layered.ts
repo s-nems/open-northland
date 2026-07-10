@@ -104,16 +104,21 @@ export function resolveStockpileDraw(binding: number | StockpileBinding, item: D
 }
 
 /**
- * Resolve the ordered layer refs for a stockpile. A filled delivery flag draws its heap first and the
- * flag second, so the flag stays visible on top of the gathered goods. The GPU layer binds these refs to
- * real atlas layers; this pure helper pins the draw order without needing Pixi in tests.
+ * Resolve the ordered layer refs for a stockpile. A pile draws exactly its own graphic: a FILLED loose pile
+ * draws its per-fill heap alone (the heap grows with its contents — a hand-dropped or gathered pile of goods
+ * resting on the ground), while an EMPTY pile draws the flag marker (a designated collection point with
+ * nothing in it yet). The GPU layer binds these refs to real atlas layers; this pure helper pins the draw
+ * order without needing Pixi in tests.
+ *
+ * NOTE: a future "designated collection point keeps its flag visible ABOVE accumulated goods" needs its own
+ * marker component to re-add the flag layer — today the only filled bare stockpiles are loose good piles,
+ * which must read as their heap alone (no flag planted through them), so the flag is the empty-point marker.
  */
 export function resolveStockpileLayerDraws(
   binding: number | StockpileBinding,
   item: DrawItem,
 ): BuildingDraw[] {
   if (typeof binding === 'number') return [{ bob: binding }];
-  const primary = resolveStockpileDraw(binding, item);
-  if (item.goodType === undefined) return [primary];
-  return [primary, unwrapBobRef(binding.flag)];
+  // resolveStockpileDraw already returns the heap for a held good and the flag for an empty pile.
+  return [resolveStockpileDraw(binding, item)];
 }

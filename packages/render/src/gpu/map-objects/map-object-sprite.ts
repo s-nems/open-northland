@@ -21,8 +21,6 @@ export interface MapObjectSprite {
   readonly decor: boolean;
   /** Starting frame offset into {@link frames} (kept for future per-object phase data). */
   readonly phase: number;
-  /** Draw opacity (1 = opaque). Waves composite translucently over the water ground. */
-  readonly alpha: number;
   /**
    * Terrain-elevation lift (world px, ≥ 0) at this object's half-cell — SUBTRACTED from the drawn `y` so
    * a tree/stone rides up the hill it stands on. The feet anchor {@link y} and its depth key stay
