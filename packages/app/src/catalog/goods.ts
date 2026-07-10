@@ -53,7 +53,8 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
   { typeId: 115, id: 'holy_oil', name: 'Holy Oil', storable: true },
   { typeId: 116, id: 'food_simple', name: 'Simple Food', storable: true },
   { typeId: 117, id: 'food_extra', name: 'Fine Food', storable: true },
-  { typeId: 118, id: 'fruit', name: 'Fruit', storable: true },
+  // fruit (118) dropped from the catalog with fish/sausage: an unused food good with no distinct art. Still
+  // in the extracted IR — an app-catalog curation, not a data change.
   { typeId: 119, id: 'bread', name: 'Bread', storable: true },
   { typeId: 120, id: 'candy', name: 'Candy', storable: true },
   { typeId: 121, id: 'meat', name: 'Meat', storable: true },
