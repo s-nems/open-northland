@@ -1,6 +1,7 @@
 import {
   Building,
   GroundDrop,
+  HarvestedBy,
   JobAssignment,
   Position,
   Resource,
@@ -107,6 +108,12 @@ export function collectTargets(world: World, ctx: SystemContext): TargetCandidat
  * Returns the resource entity, or null if none qualifies. Scanned in canonical entity-id order so the
  * result never depends on store insertion history. Determinism: both gates are pure reads over content
  * + the settler's components (no RNG/wall-clock).
+ *
+ * `area` bounds the scan to a **gatherer's flag work-area** ({@link WorkFlag}): only nodes whose work cell
+ * is within `radius` (integer node-distance) of `center` qualify, and the winner is the one NEAREST THE
+ * FLAG (so a bound gatherer works outward from its flag, not wherever it happens to stand). Omitted — the
+ * default for an unbound roaming collector — measures from `here` with no radius, the prior behaviour
+ * byte-for-byte (so the golden slice is untouched).
  */
 export function nearestHarvestableFor(
   candidates: readonly Entity[],
@@ -115,8 +122,13 @@ export function nearestHarvestableFor(
   terrain: TerrainGraph,
   here: NodeId,
   settler: { jobType: number; tribe: number; experience: ReadonlyMap<number, number> },
+  area?: { center: NodeId; radius: number },
 ): Entity | null {
   const allowed = jobAtomics(ctx, settler.jobType);
+  // Rank + range from the flag when bound; from the settler when roaming (the unbound default is identical
+  // to the prior nearest-to-`here` scan — same origin, no radius filter).
+  const origin = area?.center ?? here;
+  const radius = area?.radius ?? Number.POSITIVE_INFINITY;
   let best: Entity | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
@@ -127,8 +139,9 @@ export function nearestHarvestableFor(
     if (!allowed.has(res.harvestAtomic)) continue; // data-driven gate: job must permit this atomic
     // XP gate: this settler must have cleared the harvested good's `needforgood` thresholds.
     if (!settlerMeetsNeed(ctx, settler.tribe, 'good', res.goodType, settler.experience)) continue;
-    const cell = interactionCell(world, ctx, terrain, e, here);
-    const dist = manhattan(terrain, here, cell);
+    const cell = interactionCell(world, ctx, terrain, e, here); // work cell the settler walks to (from here)
+    const dist = manhattan(terrain, origin, cell); // distance from the flag (bound) or the settler (roaming)
+    if (dist > radius) continue; // outside the flag's work radius — a bound gatherer leaves it be
     if (closer(dist, cell, bestDist, bestCell)) {
       best = e;
       bestDist = dist;
@@ -174,6 +187,43 @@ export function nearestCollectablePileFor(
     if (good === null) continue; // an emptied drop (about to be reaped) — nothing to collect
     const harvestAtomic = harvestAtomicByGood.get(good);
     if (harvestAtomic === undefined || !allowed.has(harvestAtomic)) continue; // not this job's trade
+    const cell = interactionCell(world, ctx, terrain, e, here);
+    const dist = manhattan(terrain, here, cell);
+    if (closer(dist, cell, bestDist, bestCell)) {
+      best = { pile: e, goodType: good };
+      bestDist = dist;
+      bestCell = cell;
+    }
+  }
+  return best === null ? null : { ...best, dist: bestDist };
+}
+
+/**
+ * The nearest ground drop THIS gatherer harvested into being — a {@link GroundDrop} whose {@link HarvestedBy}
+ * owner is `owner` — with its Manhattan distance from `here`, or null if it holds none. This is the
+ * flag-bound gatherer's collect drive: it reclaims the trunk/ore IT felled or mined and delivers it to its
+ * flag, and — unlike {@link nearestCollectablePileFor}'s trade-wide scan — it ignores every pile it did not
+ * make (another gatherer's trunk, a player-dropped heap), the "carry only what you dug" rule. Nearest by
+ * Manhattan + ascending-cell-id (canonical scan); the pile's good is its lowest-id stocked good. A
+ * fully-collected drop empties and is reaped, so it drops out of the scan naturally. Determinism: pure reads
+ * over components, no RNG; a stored owner id is stable (entity ids are monotonic, never reused).
+ */
+export function nearestOwnDropFor(
+  candidates: readonly Entity[],
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  here: NodeId,
+  owner: Entity,
+): { pile: Entity; goodType: number; dist: number } | null {
+  let best: { pile: Entity; goodType: number } | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  let bestCell = Number.POSITIVE_INFINITY;
+  for (const e of candidates) {
+    const mark = world.tryGet(e, HarvestedBy);
+    if (mark === undefined || mark.by !== owner) continue; // not this gatherer's own drop — leave it be
+    const good = lowestStockedGood(world.get(e, Stockpile));
+    if (good === null) continue; // an emptied drop (about to be reaped) — nothing to collect
     const cell = interactionCell(world, ctx, terrain, e, here);
     const dist = manhattan(terrain, here, cell);
     if (closer(dist, cell, bestDist, bestCell)) {

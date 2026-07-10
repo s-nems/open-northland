@@ -24,6 +24,10 @@ import { progressionSystem, terrainSystem, timeSystem, transportSystem } from '.
 // system entry re-exports its public names from — planner internals like ai-targets/ai-supply, the
 // drive/effect/targeting submodules, spawn — stays private to its cluster.
 export type { System, SystemContext };
+// `spawn` otherwise stays private (its `spawnSettler`/`spawnAnimalHerd` are the command handler's), but
+// `createSettler` is the scene-facing entity constructor — the settler twin of `createResourceNode` — so
+// pre-tick-0 scene setup can place a settler directly and stamp its bindings (a gatherer's WorkFlag).
+export { type SettlerSpec, createSettler } from './conflict/spawn.js';
 export * from './agents/ai.js';
 export * from './agents/atomic.js';
 export * from './conflict/combat.js';

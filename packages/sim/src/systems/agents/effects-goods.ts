@@ -3,11 +3,13 @@ import {
   Carrying,
   Felling,
   GroundDrop,
+  HarvestedBy,
   MineDeposit,
   Position,
   Resource,
   Stockpile,
   Stump,
+  WorkFlag,
 } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
 import type { Fixed } from '../../core/fixed.js';
@@ -60,7 +62,7 @@ export function harvestFromNode(
   const felling = world.tryGet(node, Felling);
   if (felling !== undefined) {
     felling.chopsLeft -= 1;
-    if (felling.chopsLeft <= 0) fellNode(world, ctx, node, res.goodType, res.remaining);
+    if (felling.chopsLeft <= 0) fellNode(world, ctx, settler, node, res.goodType, res.remaining);
     return;
   }
   // A node emptied since the planner chose it (a competing collector took its last unit): nothing left
@@ -68,7 +70,7 @@ export function harvestFromNode(
   if (res.remaining <= 0) return;
   const took = Math.min(HARVEST_YIELD, res.remaining);
   if (world.has(node, MineDeposit)) {
-    dropMinedOre(world, node, res.goodType, took); // an ore pile at the deposit's cell, carried off later
+    dropMinedOre(world, settler, node, res.goodType, took); // an ore pile at the deposit's cell, carried off later
   } else {
     addCarry(world, settler, goodType, took); // a mushroom — straight onto the back (direct pickup)
   }
@@ -150,6 +152,7 @@ export function dropOrStackGood(world: World, x: Fixed, y: Fixed, goodType: numb
 function fellNode(
   world: World,
   ctx: SystemContext,
+  feller: Entity,
   node: Entity,
   goodType: number,
   yieldAmount: number,
@@ -159,6 +162,7 @@ function fellNode(
   // The felled wood: a ground trunk pile holding the whole yield, at the node's cell (the shared drop shape,
   // so the collector's own-trunk drive + the emptied-pile cleanup handle it — see reapEmptyGroundDrop).
   const trunk = dropGroundPile(world, x, y, goodType, yieldAmount);
+  stampDropOwner(world, trunk, feller); // a flag-bound feller owns its trunk; a flagless one leaves it unmarked
   // The stump / debris left where the tree stood — pure decor (non-blocking, not harvestable).
   const stump = world.create();
   world.add(stump, Position, { x, y });
@@ -186,9 +190,21 @@ function fellNode(
  * ({@link depleteNode}). Goods are conserved — the pile holds exactly the unit drained off the deposit,
  * nothing conjured. Pure over entity state; no RNG/wall-clock.
  */
-function dropMinedOre(world: World, node: Entity, goodType: number, amount: number): void {
+function dropMinedOre(world: World, miner: Entity, node: Entity, goodType: number, amount: number): void {
   const { x, y } = world.get(node, Position);
-  dropGroundPile(world, x, y, goodType, amount); // the shared felled-trunk shape, one unit's worth
+  const pile = dropGroundPile(world, x, y, goodType, amount); // the shared felled-trunk shape, one unit's worth
+  stampDropOwner(world, pile, miner); // a flag-bound miner owns its ore pile; a flagless one leaves it unmarked
+}
+
+/**
+ * Record who HARVESTED a fresh ground drop, but ONLY when that harvester is a **flag-bound gatherer** (it
+ * carries a {@link WorkFlag}). The mark ({@link HarvestedBy}) is what lets that gatherer later reclaim
+ * *only its own* trunk/ore and leave every other loose pile alone. A flagless collector (the golden slice's
+ * woodcutter) stamps nothing, so its drop hashes and is collected exactly as before — the ownership rule is
+ * inert wherever no flag-bound gatherer works (the separate-optional-component pattern).
+ */
+function stampDropOwner(world: World, drop: Entity, harvester: Entity): void {
+  if (world.has(harvester, WorkFlag)) world.add(drop, HarvestedBy, { by: harvester });
 }
 
 /**

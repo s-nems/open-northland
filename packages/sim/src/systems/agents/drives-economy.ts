@@ -1,4 +1,4 @@
-import { Resource } from '../../components/index.js';
+import { Position, Resource, WorkFlag } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
@@ -20,6 +20,7 @@ import {
   interactionCell,
   nearestCollectablePileFor,
   nearestHarvestableFor,
+  nearestOwnDropFor,
   nearestWorkplaceOutput,
 } from './ai-targets.js';
 
@@ -153,14 +154,20 @@ function walkToOrHold(world: World, e: Entity, here: NodeId, target: NodeId): vo
 }
 
 /**
- * 3. HARVEST / COLLECT — a gatherer either CHOPS the nearest standing resource its job may harvest,
- * or CARRIES OFF the nearest loose trunk of that trade (a felled tree's dropped wood), whichever is
- * nearer. Standing on its own fresh trunk (distance 0) it picks the wood up before walking to the
- * next tree — the original's fell-then-carry collector cadence; on a return trip it takes whichever
- * of {next tree, remaining trunk} is closer. Harvesting is gated by the job's atomic permissions AND
- * the good's `needforgood` XP threshold; collecting an already-dropped good is hauling, not
- * harvesting, so only the job-trade filter applies. Ordered before the porter/carrier drives so a
- * gatherer works its own resources+trunks before ferrying others'. `jobType` is non-null here.
+ * 3. HARVEST / COLLECT — the gatherer drive, in two shapes:
+ *
+ *  - **Flag-bound** (carries a {@link WorkFlag}): the user-specified collector — it works ONLY the nodes
+ *    within its flag's radius, carries off ONLY the trunks/ore it dug itself, delivers to its own flag, and
+ *    stands idle beside the flag when nothing is in reach ({@link planFlagGatherer}). It always owns the
+ *    tick (returns true), so it never ferries other settlers' goods or de-stacks off its post.
+ *  - **Unbound roaming** (no WorkFlag — the golden slice's woodcutter, unchanged): CHOPS the nearest
+ *    standing resource its job may harvest OR carries off the nearest loose trunk of that trade, whichever
+ *    is nearer, delivering to the nearest capable store. Returns false when nothing is reachable, falling
+ *    through to the porter/carrier drives.
+ *
+ * Harvesting is gated by the job's atomic permissions AND the good's `needforgood` XP threshold; collecting
+ * an already-dropped good is hauling, not harvesting. Ordered before the porter/carrier drives so a gatherer
+ * works its own resources+trunks before ferrying others'. `jobType` is non-null here.
  */
 export function planGatherer(
   world: World,
@@ -171,6 +178,13 @@ export function planGatherer(
   here: NodeId,
   targets: TargetCandidates,
 ): boolean {
+  const flag = world.tryGet(e, WorkFlag);
+  // A live flag binding switches on the bounded collector behaviour; a stale binding (the flag was removed)
+  // falls back to roaming so the gatherer is never stranded pointing at a gone flag.
+  if (flag !== undefined && world.has(flag.flag, Position)) {
+    return planFlagGatherer(world, ctx, terrain, e, settler, here, flag, targets);
+  }
+
   const node = nearestHarvestableFor(targets.resources, world, ctx, terrain, here, settler);
   const trunk = nearestCollectablePileFor(
     targets.groundDrops,
@@ -215,6 +229,76 @@ export function planGatherer(
     return true;
   }
   return false;
+}
+
+/**
+ * The FLAG-BOUND gatherer's decision, in priority order (the user-specified behaviour):
+ *
+ *  1. **Finish your own drop** — if THIS gatherer has a trunk/ore pile it dug ({@link nearestOwnDropFor},
+ *     keyed by {@link HarvestedBy}), carry it off before starting anything new. Clearing its own drop first
+ *     keeps it from scattering half-emptied trunks, and it leaves every OTHER loose pile untouched.
+ *  2. **Harvest within the flag radius** — else chop/mine the nearest node inside the flag's work area
+ *     ({@link nearestHarvestableFor} with the flag as centre); a felled trunk / mined pile becomes an
+ *     owned drop that branch 1 then carries home.
+ *  3. **Idle by the flag** — nothing in reach: walk to and hold beside the flag (the "stoi bezczynnie obok
+ *     flagi" case), rather than roaming or ferrying.
+ *
+ * Always returns true: a flag-bound gatherer is spoken for every tick (the flag guarantees a fallback
+ * target), so it never falls through to the porter / carrier / de-stack rungs. The delivery of a carried
+ * load to the flag is the carrying rung's job ({@link deliveryTargetFor} routes a WorkFlag load to its flag).
+ */
+function planFlagGatherer(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  settler: Worker & { jobType: number; experience: Map<number, number> },
+  here: NodeId,
+  flag: { flag: Entity; radius: number },
+  targets: TargetCandidates,
+): boolean {
+  const flagCell = interactionCell(world, ctx, terrain, flag.flag, here);
+
+  // 1. Carry off a trunk/ore this gatherer dug (only its own — foreign piles are left in peace).
+  const own = nearestOwnDropFor(targets.groundDrops, world, ctx, terrain, here, e);
+  if (own !== null) {
+    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, own.pile, here), () =>
+      startPickup(
+        world,
+        ctx,
+        e,
+        settler,
+        own.pile,
+        own.goodType,
+        carrierCarryCapacity(world, ctx, settler.tribe),
+      ),
+    );
+    return true;
+  }
+
+  // 2. Chop / mine the nearest node within the flag's work radius (nothing beyond it).
+  const node = nearestHarvestableFor(targets.resources, world, ctx, terrain, here, settler, {
+    center: flagCell,
+    radius: flag.radius,
+  });
+  if (node !== null) {
+    const res = world.get(node, Resource);
+    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, node, here), () =>
+      startAtomic(
+        world,
+        e,
+        res.harvestAtomic,
+        { kind: 'harvest', resource: node, goodType: res.goodType },
+        atomicDuration(ctx.content, settler, res.harvestAtomic),
+        node,
+      ),
+    );
+    return true;
+  }
+
+  // 3. Nothing to dig and nothing of its own to carry — stand idle beside the flag.
+  atOrWalk(world, e, here, flagCell, () => {});
+  return true;
 }
 
 /**

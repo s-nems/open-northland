@@ -1,4 +1,4 @@
-import { indexById } from '@vinland/data';
+import { type ContentSet, indexById } from '@vinland/data';
 import {
   Armor,
   Equipment,
@@ -27,19 +27,35 @@ import { stampDefaultStance } from './orders.js';
 // a herd of an animal tribe (animals reuse the settler entity/AI model). Determinism: no RNG, no
 // wall-clock; the herd scatter is a fixed function of the member index (see herdMemberOffset).
 
-export function spawnSettler(
-  world: World,
-  ctx: SystemContext,
-  command: Extract<Command, { kind: 'spawnSettler' }>,
-): void {
+/**
+ * The DATA of a settler to create — the {@link Command} `spawnSettler` payload minus its `kind`, so a
+ * scene's direct pre-tick-0 placement and the runtime command share the one entity-assembly path (the
+ * settler analogue of {@link createResourceNode}'s {@link ResourceNodeSpec}). `x`/`y` are half-cell node
+ * coords, like every sim command.
+ */
+export type SettlerSpec = Omit<Extract<Command, { kind: 'spawnSettler' }>, 'kind'>;
+
+/**
+ * Assemble a settler entity from a {@link SettlerSpec} and return it (or null for an unknown job id — bad
+ * input, no entity created). This is the pure entity-construction core shared by the `spawnSettler` COMMAND
+ * handler (which then announces `settlerBorn`) and the sanctioned pre-tick-0 scene helpers (which create
+ * authored fixture state directly, like {@link createResourceNode}, and stamp their own bindings on the
+ * returned entity — e.g. a gatherer's {@link WorkFlag}). It emits NO event and takes `content` (not a full
+ * `SystemContext`), matching {@link createResourceNode}: the birth event belongs to the runtime seam only.
+ *
+ * The component-stamp set + ORDER is identical to the prior inline handler, so a command-spawned settler
+ * hashes byte-for-byte as before (the golden slice is untouched). Each optional stamp is the
+ * separate-optional-component pattern: absent input leaves the component off and the hash untouched.
+ */
+export function createSettler(world: World, content: ContentSet, spec: SettlerSpec): Entity | null {
   // jobType 0 ("idle"/unemployed) is allowed; only an id absent from the job table is bad input.
-  if (indexById(ctx.content.jobs).get(command.jobType) === undefined) return;
+  if (indexById(content.jobs).get(spec.jobType) === undefined) return null;
 
   const e = world.create();
-  world.add(e, Position, positionOfNode(command.x, command.y));
+  world.add(e, Position, positionOfNode(spec.x, spec.y));
   world.add(e, Settler, {
-    tribe: command.tribe,
-    jobType: command.jobType,
+    tribe: spec.tribe,
+    jobType: spec.jobType,
     hunger: fx.fromInt(0),
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
@@ -53,22 +69,22 @@ export function spawnSettler(
   // settler `Health`-less and the hash untouched, the separate-optional-component pattern. The MAGNITUDE
   // is caller-supplied and *approximated* — a human's hitpoints are below the readable `.ini`
   // (source basis "Combat hit resolution").
-  if (command.hitpoints !== undefined && command.hitpoints > 0) {
-    world.add(e, Health, { hitpoints: command.hitpoints, max: command.hitpoints });
+  if (spec.hitpoints !== undefined && spec.hitpoints > 0) {
+    world.add(e, Health, { hitpoints: spec.hitpoints, max: spec.hitpoints });
   }
   // A combatant wearing armor carries an `Armor` class (the settler analogue of the `Health` stamp): an
   // incoming hit is mitigated by that tier's `blockingValue` rather than landing on the unarmored class 0.
   // Only a positive class is stamped; absent / non-positive `armorClass` (the default) leaves the settler
   // unarmored, the separate-optional-component pattern that keeps the golden hash untouched.
-  if (command.armorClass !== undefined && command.armorClass > 0) {
-    world.add(e, Armor, { armorClass: command.armorClass });
+  if (spec.armorClass !== undefined && spec.armorClass > 0) {
+    world.add(e, Armor, { armorClass: spec.armorClass });
   }
   // A combatant equipped with a specific weapon carries a `Weapon{weaponTypeId}` (the same separate-optional
   // stamp): the CombatSystem then resolves its attack through THAT weapon (vs the settler's own tribe)
   // instead of the default `(tribe, jobType)` first-match. Only a positive id is stamped; absent / non-positive
   // `weaponTypeId` (the default) leaves the settler with its class's default weapon and the hash untouched.
-  if (command.weaponTypeId !== undefined && command.weaponTypeId > 0) {
-    world.add(e, Weapon, { weaponTypeId: command.weaponTypeId });
+  if (spec.weaponTypeId !== undefined && spec.weaponTypeId > 0) {
+    world.add(e, Weapon, { weaponTypeId: spec.weaponTypeId });
   }
   // A settler wearing equipment carries an `Equipment` component (the same separate-optional stamp): the
   // player-facing inventory (boots/tool/consumables + a soldier's weapon/armour) the selection panel
@@ -85,22 +101,36 @@ export function spawnSettler(
   // value is stamped; absent / non-positive (the default — the golden / vertical-slice path) leaves the
   // settler `MoveSpeed`-less, walking at MOVE_SPEED_PER_TICK, the hash untouched. `runPerTick` is null — a
   // settler has no decoded run gait, and the MovementSystem reads only `perTick`.
-  if (command.moveSpeed !== undefined && command.moveSpeed > 0) {
+  if (spec.moveSpeed !== undefined && spec.moveSpeed > 0) {
     world.add(e, MoveSpeed, {
-      perTick: fx.div(ONE, fx.fromInt(command.moveSpeed)),
+      perTick: fx.div(ONE, fx.fromInt(spec.moveSpeed)),
       runPerTick: null,
     });
   }
   // A settler spawned for a specific PLAYER carries an `Owner` (the same separate-optional stamp): it
   // is the human player's to select and order. Omitted / out-of-range owner leaves it neutral (the
   // golden / vertical-slice path), hash untouched.
-  stampOwner(world, e, command.owner);
+  stampOwner(world, e, spec.owner);
   // An OWNED settler also gets its job's default military stance (soldiers→ATTACK, scout/hunter→IGNORE,
   // every other civilian→FLEE — the `defaultStanceForJob` table); the player overrides it with
   // `setStance` later. Owned-ONLY (gated on the stamped Owner): a neutral/wildlife/golden settler carries
   // NO Stance, so the military-mode feature leaves every unowned entity — and every golden hash — untouched.
-  if (world.has(e, Owner)) stampDefaultStance(world, e, command.jobType);
-  ctx.events.emit({ kind: 'settlerBorn', entity: e });
+  if (world.has(e, Owner)) stampDefaultStance(world, e, spec.jobType);
+  return e;
+}
+
+/**
+ * The `spawnSettler` COMMAND handler: create a {@link Settler} from the command payload
+ * ({@link createSettler}) and, when one was made, announce `settlerBorn` for render/audio. An unknown job
+ * id is bad input — no entity, no event (still logged by commandSystem, so replay stays faithful).
+ */
+export function spawnSettler(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'spawnSettler' }>,
+): void {
+  const e = createSettler(world, ctx.content, command);
+  if (e !== null) ctx.events.emit({ kind: 'settlerBorn', entity: e });
 }
 
 /** One command equipment slot → the component's {@link EquipmentSlot} (or null for an empty slot). The

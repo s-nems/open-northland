@@ -99,6 +99,17 @@ transitions — `isBioLandscapeFlag`, `atomicForPlanting`), bush/fruit growth st
 fishing/hunting jobs, vehicle logistics, and the minimap. Calibration constants (chop count,
 yields, deposit sizes) are data + plan progress notes, refined later by observing the original.
 
+**Landed beyond the numbered steps — flag-bound gatherer AI (2026-07-10, `feat/gatherer-flags`):**
+the user-specified collector model. A gatherer now carries a `WorkFlag{flag,radius}` and (1) harvests
+only nodes within `radius` of its flag, (2) carries off only the trunk/ore IT dug (`HarvestedBy` marks
+each drop's harvester), leaving loose piles alone, (3) banks its harvest at that flag, and (4) stands
+idle beside the flag when nothing is in reach. Both components are opt-in — a flagless gatherer keeps
+the roam-and-haul behaviour, so the golden slice is byte-identical. Sandbox lanes bind each gatherer to
+its flag via the new `createSettler` helper. The radius is a named approximation (`GATHERER_WORK_RADIUS`
+— the original's collector work-area size is not decoded). **Relevant to Step 6:** map-spawned gatherers
+will need the same flag binding (place a flag + bind, or an auto-assign step) to inherit this behaviour;
+a map-placed collector with no WorkFlag falls back to roaming.
+
 ---
 
 ## Step 6 — app: imported maps spawn real resource nodes
