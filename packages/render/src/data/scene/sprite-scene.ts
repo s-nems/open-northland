@@ -1,4 +1,4 @@
-import { type Fixed, type WorldSnapshot, nodeOfPosition } from '@vinland/sim';
+import type { WorldSnapshot } from '@vinland/sim';
 import type { ElevationField } from '../elevation.js';
 import { ONE, tileToScreen } from '../iso.js';
 import { type Viewport, isVisible } from '../viewport.js';
@@ -13,7 +13,6 @@ import {
   classify,
   facingTowardTile,
   readActingAtomic,
-  readAtomicDuration,
   readAtomicElapsed,
   readAtomicTargetEntity,
   readBuildingType,
@@ -83,51 +82,6 @@ const CHOP_NUDGE_X = -24;
  * {@link CHOP_ATOMIC_ID}) rather than imported — render reads the snapshot's plain ids, never sim code.
  */
 const ATTACK_ATOMIC_ID = 81;
-
-/**
- * The distance heuristic separating a melee swing (which lunges, below) from a ranged draw (which must
- * NOT — an archer stands its ground and the arrow crosses the gap): the render can't see the weapon, so
- * "target within 2 half-cell NODES Manhattan" stands in for it — the SAME unit the sim's weapon reach
- * bands use (extracted `weapons.ini` consumed as node distances), so the split is exact: playable-civ
- * melee `maxRange` is 1–2 nodes, settler bows' `minRange` is 3+ nodes. The earlier TILE-Manhattan
- * version of this check admitted a bow firing at its 3–4-node near edge (1.5–2 tiles rounds to ≤ 2),
- * so archers visibly dashed at their targets on every shot. Remaining honest misclassifications: the
- * byzantine wooden spear (melee, `maxRange` 3 → does not lunge), the building-mounted `house_bow`
- * (`minRange` 0, never on a settler today), and the weresnake `chicken` (melee-class, `maxRange` 10).
- */
-const MELEE_BAND_MAX_NODES = 2;
-/**
- * Ticks the melee lunge takes to step IN at the swing's start and back OUT before its end — the
- * envelope that turns the drawn advance into a step-strike-recover instead of a flat offset held for
- * the atomic's whole duration (which read as the attacker TELEPORTING forward at every swing and
- * snapping back after it — the reported jump). The attack animations are ~12 ticks, so a 3-tick ramp
- * is a 150 ms step each way, and the plateau still covers the mid-animation hit frame.
- */
-const LUNGE_RAMP_TICKS = 3;
-/**
- * How far a mid-swing melee attacker's DRAWN sprite advances toward its target, as a fraction of the
- * attacker→target screen gap. Combatants halt a whole 1–2 cells apart (the sim's faithful reach band,
- * 38–136 px on screen), so an un-nudged swing lands in empty air between them ("bicie w powietrze").
- * A fraction — not a fixed standoff — keeps a long weapon visibly striking from farther than a short
- * sword, and two mutual duellists (each ≤ half the gap) can never cross. Render-only, like
- * {@link CHOP_NUDGE_X}: the sim position and the depth sort are untouched. Tunable by eye (exported so
- * the tests pin the formula, not a copy of today's tuning).
- */
-export const MELEE_LUNGE_FRACTION = 0.3;
-
-/**
- * The lunge's amplitude over the swing's life, in [0, 1]: ramp in over {@link LUNGE_RAMP_TICKS},
- * plateau through the middle (where the animation's hit frame lands), ramp back OUT so the last tick
- * stands on the true anchor again — a clean handoff to the between-swings wait pose. Runs on the same
- * 0-based clock the animation frames use (`elapsed − 1`); an absent duration (a malformed atomic)
- * keeps the plateau rather than guessing an end.
- */
-function lungeEnvelope(elapsed: number | null, duration: number | null): number {
-  const clock = Math.max(0, (elapsed ?? 1) - 1);
-  const rampIn = (clock + 1) / LUNGE_RAMP_TICKS;
-  const rampOut = duration === null ? Number.POSITIVE_INFINITY : (duration - 1 - clock) / LUNGE_RAMP_TICKS;
-  return Math.max(0, Math.min(1, rampIn, rampOut));
-}
 
 /**
  * Ballistic-arc shape of a drawn projectile: the lob's PEAK height is this fraction of the shot's total
@@ -238,33 +192,21 @@ export function collectSpriteScene(
     // A chopping settler shares its tree's cell; nudge its drawn sprite left so the right-swing axe
     // lands in the trunk at the cell centre (render-only — the depth sort below still uses the true tile).
     const chopNudgeX = state === 'acting' && actingAtomic === CHOP_ATOMIC_ID ? CHOP_NUDGE_X : 0;
-    // A mid-swing MELEE attacker (atomic 81, target within the melee band) both FACES its target and
-    // LUNGES its drawn sprite toward it — the fighters halt a faithful 1–2 cells apart, so without the
-    // lunge every swing cuts empty air between them. Resolved BEFORE the cull (it moves the drawn
-    // anchor), reused below for the facing. A ranged attacker (target beyond the band) keeps facing
-    // but never lunges — the arrow crosses the gap, not the archer.
-    let lungeX = 0;
-    let lungeY = 0;
+    // A mid-swing attacker (atomic 81) FACES its target but plays the swing IN PLACE — the drawn
+    // anchor never moves toward the enemy. The attack frames carry their own authored advance in
+    // the per-frame foot offsets (the attacker leans and strikes within the sprite), so an extra
+    // positional nudge DOUBLED that motion and read as the body sliding over the ground at every
+    // swing (the reported przód-tył glide). The arrow/blade reach across the gap is the art's job.
     let attackFacing: number | undefined;
     if (kind === 'settler' && actingAtomic === ATTACK_ATOMIC_ID) {
       const targetRef = readAtomicTargetEntity(components);
       const to = targetRef !== null ? posByRef.get(targetRef) : undefined;
       if (to !== undefined) {
-        const toTile = { x: to.x / ONE, y: to.y / ONE };
-        attackFacing = facingTowardTile({ x: tileX, y: tileY }, toTile);
-        // Node-Manhattan band, through the sim's one tile→node seam — see MELEE_BAND_MAX_NODES.
-        const an = nodeOfPosition(pos.x as Fixed, pos.y as Fixed);
-        const tn = nodeOfPosition(to.x as Fixed, to.y as Fixed);
-        if (Math.abs(an.hx - tn.hx) + Math.abs(an.hy - tn.hy) <= MELEE_BAND_MAX_NODES) {
-          const targetScreen = tileToScreen(toTile.x, toTile.y);
-          const envelope = lungeEnvelope(readAtomicElapsed(components), readAtomicDuration(components));
-          lungeX = (targetScreen.x - screen.x) * MELEE_LUNGE_FRACTION * envelope;
-          lungeY = (targetScreen.y - screen.y) * MELEE_LUNGE_FRACTION * envelope;
-        }
+        attackFacing = facingTowardTile({ x: tileX, y: tileY }, { x: to.x / ONE, y: to.y / ONE });
       }
     }
-    const drawX = screen.x + chopNudgeX + lungeX;
-    const drawY = screen.y + lungeY;
+    const drawX = screen.x + chopNudgeX;
+    const drawY = screen.y;
     // Cull to the framed viewport (when culling). Uses the DRAWN anchor; the box is pre-inflated by the
     // renderer to cover a tall sprite's extent, so a building straddling the edge still draws.
     if (viewport !== undefined && !isVisible(viewport, drawX, drawY)) continue;
@@ -299,8 +241,8 @@ export function collectSpriteScene(
       // A combat-engaged unit reads the readied `..._agressive` gait (the sim `Engagement` marker).
       if (readEngaged(components)) item.engaged = true;
       // Facing: a mid-attack swing (atomic 81) has no walking heading, so it faces its target's LIVE
-      // tile (resolved with the lunge, above); otherwise the movement heading. Combat facing WINS when
-      // it resolves, so a stale path can't leave an attacker swinging at empty air.
+      // tile (resolved above); otherwise the movement heading. Combat facing WINS when it resolves,
+      // so a stale path can't leave an attacker swinging at empty air.
       const facing = attackFacing ?? readFacing(components);
       if (facing !== undefined) item.facing = facing;
       const carrying = readCarrying(components);
@@ -348,7 +290,7 @@ export function collectSpriteScene(
       const to = targetRef !== null ? posByRef.get(targetRef) : undefined;
       if (to !== undefined) {
         const targetScreen = tileToScreen(to.x / ONE, to.y / ONE);
-        // Anchored on the projected position (the lunge/chop nudges are settler-only, so screen IS draw here).
+        // Anchored on the projected position (the chop nudge is settler-only, so screen IS draw here).
         const dx = targetScreen.x - screen.x;
         const dy = targetScreen.y - screen.y;
         let rotation = Math.atan2(dy, dx);

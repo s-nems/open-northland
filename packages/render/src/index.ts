@@ -13,7 +13,6 @@ export {
   buildScene,
   buildSpriteScene,
   drawableEntityRefs,
-  MELEE_LUNGE_FRACTION,
   PROJECTILE_ARC_PEAK_FRACTION,
   PROJECTILE_ARC_PEAK_MAX_PX,
   terrainMapToScene,
