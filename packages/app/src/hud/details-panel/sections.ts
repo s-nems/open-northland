@@ -1,4 +1,4 @@
-import { GUI_FRAME } from '../../content/gui-atlas-map.js';
+import { GUI_FRAME, guiFrameIndex } from '../../content/gui-atlas-map.js';
 import type { UiString } from '../../content/gui-gfx.js';
 import type { Rect } from '../geometry.js';
 import type { Chrome } from './chrome.js';
@@ -227,7 +227,7 @@ export function drawBuilding(
  */
 const STOCK_TAB_GLYPH: readonly number[] = [
   GUI_FRAME.stock_tab_0 + 2, // 0 Żywność — cutlery
-  GUI_FRAME.stock_tab_0 + 3, // 1 Napoje — bottle/teat
+  guiFrameIndex('resource_icon_water_drop'), // 1 Napoje — water drop (the tab set has no drink glyph)
   GUI_FRAME.stock_tab_0 + 4, // 2 Surowce — (unread)
   GUI_FRAME.stock_tab_0 + 1, // 3 Budulec — house
   GUI_FRAME.stock_tab_0 + 0, // 4 Narzędzia — hammer

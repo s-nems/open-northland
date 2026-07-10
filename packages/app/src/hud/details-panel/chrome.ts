@@ -428,12 +428,17 @@ export function createChrome(
   };
 
   const tabButton = (r: Rect, active: boolean): void => {
+    // The same wooden tile the section buttons use — brighter (hilite) when active — so a tab reads as a
+    // raised button, not a flat grey plate. A thin top-left highlight + bottom-right shadow give it a small
+    // bevel; the active tab also gets the drawer's green underline, so no heavy dark scrim is needed.
     const fill = active ? bitmaps.buttonHilite : bitmaps.button;
-    if (!tile(fill, r)) g.rect(r.x, r.y, r.w, r.h).fill(active ? 0x5a3826 : 0x3a2b1d);
-    g.rect(r.x, r.y, r.w, r.h).stroke({ color: INNER_BOX_LIGHT, width: Math.max(1, scale) });
-    // Recede an inactive tab so the current category reads at a glance (the drawer adds the green underline
-    // on the active one).
-    if (!active) g.rect(r.x, r.y, r.w, r.h).fill({ color: 0x000000, alpha: 0.32 });
+    if (!tile(fill, r)) g.rect(r.x, r.y, r.w, r.h).fill(active ? 0x6b4426 : 0x4a3320);
+    const line = Math.max(1, Math.round(scale));
+    g.rect(r.x, r.y, r.w - line, line).fill({ color: INNER_BOX_LIGHT, alpha: 0.9 }); // top bevel
+    g.rect(r.x, r.y, line, r.h - line).fill({ color: INNER_BOX_LIGHT, alpha: 0.9 }); // left bevel
+    g.rect(r.x, r.y + r.h - line, r.w, line).fill({ color: 0x000000, alpha: 0.4 }); // bottom shadow
+    g.rect(r.x + r.w - line, r.y, line, r.h).fill({ color: 0x000000, alpha: 0.4 }); // right shadow
+    if (!active) g.rect(r.x, r.y, r.w, r.h).fill({ color: 0x000000, alpha: 0.12 });
   };
 
   const bar = (r: Rect, pct: number): void => {
