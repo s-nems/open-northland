@@ -22,11 +22,6 @@ export interface MapObjectSprite {
   /** Starting frame offset into {@link frames} (kept for future per-object phase data). */
   readonly phase: number;
   /**
-   * Flat draw opacity (1 = opaque). Per-pixel translucency (waves, ferns, smoke) rides in the atlas
-   * alpha channel itself (the Double8Bit bobs' alpha bytes), so the app passes 1 for every map object.
-   */
-  readonly alpha: number;
-  /**
    * Terrain-elevation lift (world px, ≥ 0) at this object's half-cell — SUBTRACTED from the drawn `y` so
    * a tree/stone rides up the hill it stands on. The feet anchor {@link y} and its depth key stay
    * PRE-LIFT, so a lifted-up object still occludes by map row (a tree on a hill draws behind a settler on

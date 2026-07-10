@@ -4,7 +4,13 @@ import { join } from 'node:path';
 import { parseTerrainMap } from '@vinland/data';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { assertOutStaysInCheckout, parseArgs, resolveArgs } from '../src/args.js';
-import { BOB_TYPE_8BIT, BOB_TYPE_DOUBLE8BIT, type Bmd, PACKED_X_SHIFT, encodeBmd } from '../src/decoders/bmd.js';
+import {
+  BOB_TYPE_8BIT,
+  BOB_TYPE_DOUBLE8BIT,
+  type Bmd,
+  PACKED_X_SHIFT,
+  encodeBmd,
+} from '../src/decoders/bmd.js';
 import { StorableId, encryptMode1 } from '../src/decoders/cif.js';
 import type { BmdPaletteBinding, PaletteAlias } from '../src/decoders/ini.js';
 import { encodeLib } from '../src/decoders/lib.js';
@@ -261,7 +267,7 @@ describe('bmdToAtlas', () => {
       atlas.image.rgba[((rect?.y ?? 0) * atlas.image.width + (rect?.x ?? 0) + x) * 4 + 3] ?? -1;
     expect(alphaAt(graded, 0)).toBe(0x60); // the alpha byte rides into the sheet
     expect(alphaAt(graded, 1)).toBe(0xff);
-    const flattened = bmdToAtlas(bytes, rampPalette(), true);
+    const flattened = bmdToAtlas(bytes, rampPalette(), 'opaque');
     expect(alphaAt(flattened, 0)).toBe(0xff); // house atlases replay the opaque blit
     expect(alphaAt(flattened, 1)).toBe(0xff);
   });
@@ -531,7 +537,7 @@ describe('convertBmdTree', () => {
     await layDownAssets();
     const { bindings, palettes } = sampleBinding();
 
-    const done = await convertBmdTree(bindings, palettes, out);
+    const done = await convertBmdTree(bindings, palettes, out, new Set());
 
     expect(done).toHaveLength(1);
     // The case-insensitive resolution maps the normalized refs onto the real mixed-case on-disk paths,
@@ -564,7 +570,7 @@ describe('convertBmdTree', () => {
       { name: 'wolf01', gfxFile: 'data/pal/wolf01.pcx' },
     ];
 
-    const done = await convertBmdTree(bindings, palettes, out);
+    const done = await convertBmdTree(bindings, palettes, out, new Set());
 
     expect(done).toHaveLength(2);
     // Two distinct atlas files from one shared .bmd — the palette name is the differentiator.
@@ -583,7 +589,7 @@ describe('convertBmdTree', () => {
     const { bindings } = sampleBinding();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const done = await convertBmdTree(bindings, [], out); // empty palette index
+    const done = await convertBmdTree(bindings, [], out, new Set()); // empty palette index
 
     expect(done).toEqual([]);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/unknown palette "bear01"/));
@@ -597,7 +603,7 @@ describe('convertBmdTree', () => {
     const { bindings, palettes } = sampleBinding();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const done = await convertBmdTree(bindings, palettes, out);
+    const done = await convertBmdTree(bindings, palettes, out, new Set());
 
     expect(done).toEqual([]);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/bmd data\/bobs\/body\.bmd not found/));
@@ -612,11 +618,82 @@ describe('convertBmdTree', () => {
     const { bindings, palettes } = sampleBinding();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const done = await convertBmdTree(bindings, palettes, out);
+    const done = await convertBmdTree(bindings, palettes, out, new Set());
 
     expect(done).toEqual([]);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped data\/bobs\/body\.bmd:/));
     warn.mockRestore();
+  });
+});
+
+describe('convertBmdTree opaque-alpha bake', () => {
+  let out: string;
+
+  beforeEach(async () => {
+    out = await mkdtemp(join(tmpdir(), 'vinland-bmd-'));
+  });
+
+  afterEach(async () => {
+    await rm(out, { recursive: true, force: true });
+  });
+
+  it('bakes a claimed .bmd opaque for EVERY palette; an unclaimed one keeps per-pixel alpha', async () => {
+    // A Double8Bit bob with a graded alpha byte (0x40) — the observable the modes differ on.
+    const doubleBmd: Bmd = {
+      version: 0,
+      firstBobId: 10,
+      bobCount: 1,
+      generatedNonEmptyLines: 0,
+      generatedEmptyLines: 0,
+      generatedPackedLines: 0,
+      bobs: [{ type: BOB_TYPE_DOUBLE8BIT, area: { x: 0, y: 0, width: 1, height: 1 }, misc: 0 }],
+      packedLineData: Uint8Array.from([0x01, 4, 0x40, 0x00]),
+      lineControl: Uint32Array.from([(0 << PACKED_X_SHIFT) | 0]),
+    };
+    await mkdir(join(out, 'Data', 'Pal'), { recursive: true });
+    await mkdir(join(out, 'Data', 'Bobs'), { recursive: true });
+    await writeFile(join(out, 'Data', 'Pal', 'House01.pcx'), samplePcx().bytes);
+    await writeFile(join(out, 'Data', 'Pal', 'Ruins01.pcx'), samplePcx().bytes);
+    await writeFile(join(out, 'Data', 'Bobs', 'House.bmd'), encodeBmd(doubleBmd));
+    await writeFile(join(out, 'Data', 'Bobs', 'Fern.bmd'), encodeBmd(doubleBmd));
+    const bindings: BmdPaletteBinding[] = [
+      // A [GfxHouse]-claimed bmd under TWO palettes (the landscape-twin case) + an unclaimed decal.
+      {
+        bmd: 'data/bobs/house.bmd',
+        shadowBmd: undefined,
+        paletteName: 'house01',
+        tribeId: undefined,
+        jobId: undefined,
+      },
+      {
+        bmd: 'data/bobs/house.bmd',
+        shadowBmd: undefined,
+        paletteName: 'ruins01',
+        tribeId: undefined,
+        jobId: undefined,
+      },
+      {
+        bmd: 'data/bobs/fern.bmd',
+        shadowBmd: undefined,
+        paletteName: 'house01',
+        tribeId: undefined,
+        jobId: undefined,
+      },
+    ];
+    const palettes: PaletteAlias[] = [
+      { name: 'house01', gfxFile: 'data/pal/house01.pcx' },
+      { name: 'ruins01', gfxFile: 'data/pal/ruins01.pcx' },
+    ];
+
+    await convertBmdTree(bindings, palettes, out, new Set(['data/bobs/house.bmd']));
+
+    const alphaOf = async (png: string): Promise<number> => {
+      const img = decodePng(await readFile(join(out, 'Data', 'Bobs', png)));
+      return img.rgba[(1 * img.width + 1) * 4 + 3] ?? -1; // the 1x1 frame sits at the gutter origin
+    };
+    expect(await alphaOf('House.house01.png')).toBe(255); // claimed → opaque
+    expect(await alphaOf('House.ruins01.png')).toBe(255); // ...for every recolour of that bmd
+    expect(await alphaOf('Fern.house01.png')).toBe(0x40); // unclaimed → per-pixel alpha survives
   });
 });
 
@@ -801,6 +878,26 @@ describe('resolveGraphicsBindings', () => {
     expect(bindings[3]?.tribeId).toBe(3);
     expect(bindings[3]?.shadowBmd).toBe('data/bobs/ship_s.bmd');
     expect(bindings[3]?.jobId).toBeUndefined();
+  });
+
+  it('claims [GfxHouse] .bmds for the opaque-alpha bake (mod houses.ini leg)', async () => {
+    await mkdir(join(game, 'DataCnmd', 'budynki12', 'houses'), { recursive: true });
+    await writeFile(
+      join(game, 'DataCnmd', 'budynki12', 'houses', 'houses.ini'),
+      '[GfxHouse]\nEditName "viking home"\n' +
+        'GfxBobLibs "Data\\Bobs\\ls_houses_viking.bmd" "Data\\Bobs\\ls_houses_viking_s.bmd"\n' +
+        'GfxPalette "house01" "house02"\n',
+    );
+
+    const { bindings, opaqueAlphaBmds } = await resolveGraphicsBindings(game, 'DataCnmd');
+
+    // Every palette recolour becomes a binding, and the CLAIM is on the .bmd path alone, so the
+    // landscape twins of the same geometry bake opaque too (convertBmdTree keys on the bmd).
+    expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([
+      ['data/bobs/ls_houses_viking.bmd', 'house01'],
+      ['data/bobs/ls_houses_viking.bmd', 'house02'],
+    ]);
+    expect([...opaqueAlphaBmds]).toEqual(['data/bobs/ls_houses_viking.bmd']);
   });
 
   it('returns empty lists with a warning when a binding source is missing', async () => {

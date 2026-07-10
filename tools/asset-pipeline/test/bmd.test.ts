@@ -325,10 +325,12 @@ describe('decodeBobFrame', () => {
     expect([...frame.mask]).toEqual([0x99, 0x88]);
   });
 
-  it('keeps a double-byte pixel with alpha 0 transparent (the engine skips a <= 0 pixels)', () => {
+  it('keeps a double-byte pixel with alpha 0 fully unwritten (the engine skips a <= 0 pixels)', () => {
     const packed = [0x02, 0x40, 0x00, 0x50, 0xff, 0x00];
     const bmd = frameBmd(BOB_TYPE_DOUBLE8BIT, 2, 1, packed, [0]);
     const frame = decodeBobFrame(bmd, 0);
+    // Neither the mask NOR the index is written — the frame invariant (unwritten = index 0, mask 0) holds.
+    expect([...frame.pixels]).toEqual([0x00, 0x50]);
     expect([...frame.mask]).toEqual([0, 0xff]);
   });
 

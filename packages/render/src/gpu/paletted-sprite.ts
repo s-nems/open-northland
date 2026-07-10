@@ -80,9 +80,10 @@ uniform vec4 uSilhouette;   // .rgb: flat override colour, .w > 0.5: silhouette 
 // GUI transparent key — OUR floating-HUD deviation, NOT an original mechanism (the engine blitter has no
 // colour key; see source basis "Left tool panel"). The in-game GUI palettes (iconsleft/context/…) reserve
 // palette index 0 as a MAGENTA sentinel (255,0,255) and a band of near-black entries (max channel ≲ 28/255)
-// as each element's background. A bob writes them opaque (transparency is skip-runs), so an element drawn
-// straight would carry an opaque dark rectangle over the world — which the original hid by rendering gameplay
-// in a dedicated area, but we render full-screen.
+// as each element's background. The indexed atlases bake every written pixel opaque (the pipeline flattens
+// Double8Bit coverage for this LUT path — see packIndexedBobAtlas), so an element drawn straight would carry
+// an opaque dark rectangle over the world — which the original hid by rendering gameplay in a dedicated
+// area, but we render full-screen.
 //
 // The two classes are keyed INDEPENDENTLY (uColorKey.x = magenta, uColorKey.y = near-black band OR round-disc
 // clip), because they are NOT both "background" for every element. Large panel/window elements (iconsleft) use

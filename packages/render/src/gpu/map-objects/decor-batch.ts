@@ -5,9 +5,10 @@ import { type MapObjectSprite, objectFrameAt } from './map-object-sprite.js';
 
 /**
  * The DECOR half of the map-object feature: flat ground decor (waves, grass, flowers, mine stains)
- * batched into per-block quad meshes UNDER the entity sprites — one draw call per (texture page,
- * alpha) per block, built once; an animated batch's vertex/uv buffers are rewritten in place when the
- * play-head advances (and only while the block is visible).
+ * batched into per-block quad meshes UNDER the entity sprites — one draw call per texture page per
+ * block, built once; an animated batch's vertex/uv buffers are rewritten in place when the play-head
+ * advances (and only while the block is visible). Translucency (waves, fern edges) rides in the atlas
+ * texture's own alpha channel — there is no per-object opacity.
  *
  * On a brightness-shaded map ({@link MapObjectSprite.brightness}) each quad carries its anchor
  * cell's multiplier as a constant per-vertex `aBrightness` (the ground's shaded-mesh shader — same
@@ -62,15 +63,11 @@ interface QuadBatch {
   readonly geometry: MeshGeometry;
 }
 
-/** Batch `objects` (all sharing `source` + `alpha`) into ONE mesh of quads, each written for its
+/** Batch `objects` (all sharing `source`) into ONE mesh of quads, each written for its
  *  tick-0 frame — the shared build step for a decor group's static and animated halves. A batch with
  *  any per-object brightness draws through the shaded ground shader, each quad's four vertices
  *  carrying its anchor cell's multiplier (constant per quad, so an animated rewrite never touches it). */
-function buildQuadBatch(
-  objects: readonly MapObjectSprite[],
-  source: TextureSource,
-  alpha: number,
-): QuadBatch {
+function buildQuadBatch(objects: readonly MapObjectSprite[], source: TextureSource): QuadBatch {
   const positions = new Float32Array(objects.length * 8);
   const uvs = new Float32Array(objects.length * 8);
   const indices = new Uint32Array(objects.length * 6);
@@ -89,7 +86,6 @@ function buildQuadBatch(
     brightness !== null
       ? new Mesh({ geometry, texture: new Texture({ source }), shader: makeShadedDecorShader(source) })
       : new Mesh({ geometry, texture: new Texture({ source }) });
-  mesh.alpha = alpha;
   return { mesh, positions, uvs, geometry };
 }
 
@@ -129,24 +125,13 @@ export function buildDecorChunk(block: readonly MapObjectSprite[]): DecorChunk {
   let minY = Number.POSITIVE_INFINITY;
   let maxX = Number.NEGATIVE_INFINITY;
   let maxY = Number.NEGATIVE_INFINITY;
-  // Batch key = (source, alpha): quads in one mesh share a texture AND an opacity (mesh.alpha).
-  const bySource = new Map<
-    string,
-    { source: TextureSource; alpha: number; still: MapObjectSprite[]; moving: MapObjectSprite[] }
-  >();
-  let sourceId = 0;
-  const sourceIds = new Map<TextureSource, number>();
+  // Batch key = the texture source: quads in one mesh share a page (opacity is per pixel, in the page).
+  const bySource = new Map<TextureSource, { still: MapObjectSprite[]; moving: MapObjectSprite[] }>();
   for (const obj of block) {
-    let id = sourceIds.get(obj.source);
-    if (id === undefined) {
-      id = sourceId++;
-      sourceIds.set(obj.source, id);
-    }
-    const key = `${id}:${obj.alpha}`;
-    let group = bySource.get(key);
+    let group = bySource.get(obj.source);
     if (group === undefined) {
-      group = { source: obj.source, alpha: obj.alpha, still: [], moving: [] };
-      bySource.set(key, group);
+      group = { still: [], moving: [] };
+      bySource.set(obj.source, group);
     }
     (obj.frames.length > 1 ? group.moving : group.still).push(obj);
     // The AABB covers every frame the object can show (frames differ a little in size/offset).
@@ -158,13 +143,12 @@ export function buildDecorChunk(block: readonly MapObjectSprite[]): DecorChunk {
     }
   }
   const animated: AnimatedDecorBatch[] = [];
-  for (const group of bySource.values()) {
-    const source = group.source;
+  for (const [source, group] of bySource) {
     if (group.still.length > 0) {
-      container.addChild(buildQuadBatch(group.still, source, group.alpha).mesh);
+      container.addChild(buildQuadBatch(group.still, source).mesh);
     }
     if (group.moving.length > 0) {
-      const batch = buildQuadBatch(group.moving, source, group.alpha);
+      const batch = buildQuadBatch(group.moving, source);
       container.addChild(batch.mesh);
       animated.push({
         objects: group.moving,
