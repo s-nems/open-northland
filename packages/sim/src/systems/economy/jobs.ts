@@ -98,9 +98,11 @@ function openJobAt(
  * same-tribe, tech-enabled workplace with a `workers` slot that is **understaffed at this building**,
  * whose job is tech-enabled, and whose `needforjob` XP threshold the settler clears (the four openness
  * conditions of {@link jobSystem}, per-building). The lowest job id among open slots wins
- * ({@link canonicalJobs}). Shared by the automatic {@link openJobAt} scan and the player-directed
- * `assignWorker` command, so a hand assignment can never bind a settler to a job the JobSystem itself
- * wouldn't (the invariant the badge/employment display and the goldens both rely on).
+ * ({@link canonicalJobs}). This is the automatic {@link openJobAt} scan's per-building probe; the
+ * player-directed `assignWorker` command resolves the same slots through {@link openWorkerJobFromList}
+ * (its own preference order over the identical per-slot gate), so a hand assignment can never bind a
+ * settler to a job the JobSystem itself wouldn't (the invariant the badge/employment display and the
+ * goldens both rely on).
  */
 export function openWorkerJobAt(
   world: World,
@@ -109,10 +111,64 @@ export function openWorkerJobAt(
   tribe: number,
   experience: ReadonlyMap<number, number>,
 ): number | null {
+  // The automatic economy scan takes the building's slots in canonical (lowest job id) order.
+  return resolveOpenWorkerJob(
+    world,
+    ctx,
+    building,
+    tribe,
+    experience,
+    canonicalJobs(buildingWorkerJobs(world, ctx, building)),
+  );
+}
+
+/**
+ * The open worker job at `building` chosen by the caller's ORDERED `jobPriority` preference rather than
+ * canonical job order (the player-directed twin of {@link openWorkerJobAt}): the first job in the list
+ * that the building actually offers AND that is open for this settler (same four openness gates). The
+ * list is filtered to the building's real slots, so a job the building doesn't employ is skipped, and the
+ * per-slot gate still runs on every entry — the priority only reorders/excludes candidates, it can never
+ * open a slot the JobSystem would keep shut. Used by the `assignWorker` command so a right-click can
+ * prefer a tradesman over a hauler (and never pick a gatherer) without bypassing legality.
+ */
+export function openWorkerJobFromList(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  tribe: number,
+  experience: ReadonlyMap<number, number>,
+  jobPriority: readonly number[],
+): number | null {
+  const offered = buildingWorkerJobs(world, ctx, building);
+  return resolveOpenWorkerJob(
+    world,
+    ctx,
+    building,
+    tribe,
+    experience,
+    jobPriority.filter((jobType) => offered.has(jobType)),
+  );
+}
+
+/**
+ * Walk `orderedJobs` (already a subset of the building's slots) and return the first one open for a
+ * `tribe` settler with the given `experience` — understaffed at this building, tech-enabled, XP-cleared —
+ * or `null`. The shared core of {@link openWorkerJobAt} (canonical order) and {@link openWorkerJobFromList}
+ * (priority order): both apply the SAME per-slot gate, differing only in the order they try slots in, so a
+ * player assignment can never bind a settler to a job the automatic economy wouldn't.
+ */
+function resolveOpenWorkerJob(
+  world: World,
+  ctx: SystemContext,
+  building: Entity,
+  tribe: number,
+  experience: ReadonlyMap<number, number>,
+  orderedJobs: readonly number[],
+): number | null {
   const b = world.tryGet(building, Building);
   if (b === undefined || b.tribe !== tribe) return null;
   if (!buildingEnabled(world, ctx, tribe, b.buildingType)) return null; // not tech-enabled yet
-  for (const jobType of canonicalJobs(buildingWorkerJobs(world, ctx, building))) {
+  for (const jobType of orderedJobs) {
     if (!jobUnderstaffed(world, ctx, building, jobType)) continue;
     if (!jobEnabled(world, ctx, tribe, jobType)) continue; // tech gate (jobEnablesJob): job unlocked?
     if (!settlerMeetsNeed(ctx, tribe, 'job', jobType, experience)) continue; // XP gate (needforjob)

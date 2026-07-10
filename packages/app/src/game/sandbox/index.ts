@@ -6,3 +6,4 @@
 export * from './ids.js';
 export * from './content.js';
 export * from './place.js';
+export * from './worker-roles.js';

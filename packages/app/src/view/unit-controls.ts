@@ -1,9 +1,17 @@
-import type { ContentSet } from '@vinland/data';
+import { type ContentSet, indexById } from '@vinland/data';
 import { type Camera, type ElevationField, type EntityBounds, buildSpriteScene } from '@vinland/render';
 import { type Command, type Entity, type WorldSnapshot, nodeOfPosition } from '@vinland/sim';
 import type { Application } from 'pixi.js';
 import type { PickerEntry } from '../catalog/professions.js';
-import { isBuilding, isSettler, ownerPlayerOf, positionOf } from '../game/snapshot.js';
+import { assignmentPriority } from '../game/sandbox/index.js';
+import {
+  buildingTypeOf,
+  entityById,
+  isBuilding,
+  isSettler,
+  ownerPlayerOf,
+  positionOf,
+} from '../game/snapshot.js';
 import { type UnitPanel, mountUnitPanel } from '../hud/details-panel/index.js';
 import { screenScale } from './camera.js';
 import { el } from './overlay.js';
@@ -117,6 +125,9 @@ const MARQUEE_STYLE = [
 export async function createUnitControls(opts: UnitControlsOptions): Promise<UnitControls> {
   const { canvas } = opts;
   const selected = new Set<number>();
+  // Building types keyed by typeId — the source of a building's worker slots, used to build the
+  // right-click assignment priority (craftsmen first, carrier fallback, gatherers never).
+  const buildingsByType = indexById(opts.content.buildings);
   const panel: UnitPanel = await mountUnitPanel({
     app: opts.app,
     canvas,
@@ -286,16 +297,30 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       }
       return;
     }
-    // Right-click on one of your OWN buildings with settlers selected = employ them there (the sim resolves
-    // the building's open worker slot; a full/wrong-tribe building is a no-op). Only the SELECTED settlers
-    // are assigned; a selected building can't be a worker and is dropped.
+    // Right-click on one of your OWN buildings with settlers selected = employ them there. The assignment
+    // PRIORITY (craftsman first, carrier as the fallback, gatherer never) is built from the building's
+    // worker slots and handed to the sim, which binds each settler to the first open, qualified job in
+    // that order (a full/wrong-tribe/home building resolves to nothing → a no-op). Only the SELECTED
+    // settlers are assigned; a selected building can't be a worker and is dropped.
     const building = pickTopAt(targets('building'), w.x, w.y);
     if (building !== null) {
-      for (const t of ownSettlers) {
-        if (selected.has(t.ref))
-          opts.enqueue({ kind: 'assignWorker', entity: t.ref as Entity, building: building as Entity });
+      const ent = entityById(opts.snapshot(), building);
+      const type = ent !== undefined ? buildingTypeOf(ent) : undefined;
+      const jobPriority = assignmentPriority(
+        type !== undefined ? buildingsByType.get(type)?.workers : undefined,
+      );
+      if (jobPriority.length > 0) {
+        for (const t of ownSettlers) {
+          if (selected.has(t.ref))
+            opts.enqueue({
+              kind: 'assignWorker',
+              entity: t.ref as Entity,
+              building: building as Entity,
+              jobPriority,
+            });
+        }
       }
-      return;
+      return; // right-clicking your own building never falls through to a move order
     }
     issueMoveOrder(e, ownSettlers);
   };

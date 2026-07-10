@@ -22,7 +22,7 @@ import type { Command } from '../../core/commands.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
-import { openWorkerJobAt } from '../economy/jobs.js';
+import { openWorkerJobFromList } from '../economy/jobs.js';
 import { MILITARY_MODE, defaultStanceForJob, isMilitaryMode } from '../readviews/index.js';
 
 /**
@@ -167,10 +167,12 @@ function reidleAsJob(world: World, e: Entity, jobType: number): void {
 /**
  * Assign one OWNED settler to work at a SPECIFIC `building` (the `assignWorker` command — the
  * player-directed twin of the JobSystem's automatic assignment): resolve the building's open worker
- * job with the SAME per-building openness gate the JobSystem applies ({@link openWorkerJobAt} — a
- * same-tribe, tech-enabled workplace with an understaffed slot the settler qualifies for), re-idle the
- * settler as that job, and bind it to the chosen building ({@link JobAssignment}). The bound settler
- * then walks to and staffs that building through the normal AI planner, exactly like an
+ * job in the command's `jobPriority` preference order, through the SAME per-building openness gate the
+ * JobSystem applies ({@link openWorkerJobFromList} — a same-tribe, tech-enabled workplace with an
+ * understaffed slot the settler qualifies for), re-idle the settler as that job, and bind it to the
+ * chosen building ({@link JobAssignment}). The priority is how the app expresses the RTS intent (a
+ * tradesman first, a hauler as fallback, never a gatherer) but every candidate still clears the gate,
+ * so the bound settler walks to and staffs that building through the normal AI planner, exactly like an
  * auto-assigned worker — a hand assignment can never reach a state the JobSystem wouldn't.
  *
  * Recoverable bad input (skipped, still logged for faithful replay): a dead/stale target, a non-settler
@@ -190,7 +192,14 @@ export function assignWorker(
   if (!world.isAlive(b) || !world.has(b, Building)) return;
 
   const settler = world.get(e, Settler);
-  const jobType = openWorkerJobAt(world, ctx, b, settler.tribe, settler.experience);
+  const jobType = openWorkerJobFromList(
+    world,
+    ctx,
+    b,
+    settler.tribe,
+    settler.experience,
+    command.jobPriority,
+  );
   if (jobType === null) return; // building full / wrong tribe / not a workplace / gated — no-op
 
   world.remove(e, JobAssignment); // drop any prior binding before re-binding to the chosen building

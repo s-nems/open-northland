@@ -17,7 +17,7 @@ import { pickerEntries } from '../catalog/professions.js';
 import { createSoundDriver } from '../content/audio.js';
 import { loadIr } from '../content/ir.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
-import { JOB_CARRIER } from '../game/sandbox/ids.js';
+import { workerRoleOf } from '../game/sandbox/index.js';
 import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel/layout.js';
 import { mountAdminDebug } from './admin-debug/index.js';
 import type { CameraController } from './camera.js';
@@ -296,7 +296,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // One retained update: reconcile the pooled sprites, draw the selection rings + door badges, render
     // once. `app.screen` tracks window resizes. No HUD frame is passed — the always-on stocks panel is
     // gone; the debug tick lives in the top overlay and the population/jobs/stocks in the stats window.
-    const doorBadges = computeDoorBadges(snap, buildingDoors, JOB_CARRIER);
+    const doorBadges = computeDoorBadges(snap, buildingDoors, workerRoleOf);
     renderer.update(
       snap,
       cameraCtl.camera(),
