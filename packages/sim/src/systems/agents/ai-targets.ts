@@ -6,6 +6,7 @@ import {
   Position,
   Resource,
   Stockpile,
+  UnderConstruction,
   stockpileEntries,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
@@ -57,6 +58,13 @@ export interface TargetCandidates {
   /** Building-keyed targets (temples): entities with {@link Building} + {@link Position}. */
   readonly buildings: readonly Entity[];
   /**
+   * Construction sites — entities with {@link UnderConstruction} + {@link Building} + {@link Position}, the
+   * **tiny subset** the builder drive (hammer / self-supply) and the delivery router scan, so they never
+   * walk the whole {@link buildings} / {@link stockpiles} lists to find the rare foundation: with nothing
+   * under construction the scan is O(0), the dormancy a big idle building count needs to stay cheap.
+   */
+  readonly constructionSites: readonly Entity[];
+  /**
    * Felled trunks / dropped-good piles — entities with {@link GroundDrop} + {@link Stockpile} +
    * {@link Position}. The **tiny subset** a collector's own-trunk drive scans, so it never walks the
    * whole {@link stockpiles} list (which includes every building store + delivery flag): with no drops
@@ -89,6 +97,7 @@ export function collectTargets(world: World, ctx: SystemContext): TargetCandidat
     resources: canonicalById(world.query(Resource, Position)),
     stockpiles: canonicalById(world.query(Stockpile, Position)),
     buildings: canonicalById(world.query(Building, Position)),
+    constructionSites: canonicalById(world.query(UnderConstruction, Building, Position)),
     groundDrops: canonicalById(world.query(GroundDrop, Stockpile, Position)),
     harvestAtomicByGood,
   };
@@ -350,6 +359,41 @@ export function nearestFreeYardNode(
 }
 
 /**
+ * The nearest store (a {@link Stockpile} on a positioned entity) that HOLDS at least one unit of
+ * `goodType` — a SOURCE to fetch from, by Manhattan distance from `here`, ascending-cell-id tie-break,
+ * scanned in canonical entity-id order. A construction site is **excluded** (it is a delivery sink, not a
+ * source — a builder never strips the material it just delivered), but a warehouse or a loose ground pile
+ * that holds the good is fair game. Returns the source store or null if none holds the good. The counter
+ * to {@link nearestStoreFor} (which finds a store that can TAKE a good); the builder drive uses it to fetch
+ * a construction material its site is short on.
+ */
+export function nearestStoreHolding(
+  candidates: readonly Entity[],
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  here: NodeId,
+  goodType: number,
+): Entity | null {
+  let best: Entity | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  let bestCell = Number.POSITIVE_INFINITY;
+  for (const e of candidates) {
+    if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
+    if (world.has(e, UnderConstruction)) continue; // a site is a sink, never a source to strip
+    if ((world.get(e, Stockpile).amounts.get(goodType) ?? 0) <= 0) continue; // doesn't hold the good
+    const cell = interactionCell(world, ctx, terrain, e, here);
+    const dist = manhattan(terrain, here, cell);
+    if (closer(dist, cell, bestDist, bestCell)) {
+      best = e;
+      bestDist = dist;
+      bestCell = cell;
+    }
+  }
+  return best;
+}
+
+/**
  * The nearest store (a {@link Stockpile} on a positioned entity) that holds at least one unit of an
  * edible good ({@link isFood}), by Manhattan distance from `here`, ascending-cell-id tie-break,
  * scanned in canonical entity-id order. Returns the store and the specific food good to eat, or null
@@ -411,6 +455,42 @@ export function nearestTemple(
   for (const e of candidates) {
     if (!world.has(e, Building) || !world.has(e, Position)) continue;
     if (!isTemple(world, ctx, e)) continue;
+    const cell = interactionCell(world, ctx, terrain, e, here);
+    const dist = manhattan(terrain, here, cell);
+    if (closer(dist, cell, bestDist, bestCell)) {
+      best = e;
+      bestDist = dist;
+      bestCell = cell;
+    }
+  }
+  return best;
+}
+
+/**
+ * The nearest **construction site** a builder of `tribe` should raise — a {@link Building} still marked
+ * {@link UnderConstruction} (a placed foundation being built up), by Manhattan distance from `here` with
+ * an ascending-cell-id tie-break, scanned in canonical entity-id order (so the winner never depends on
+ * store insertion history). Returns the site entity or null if the tribe has no site under construction.
+ * The builder drive walks here to hammer it, or — when the site has no material left to install — fetches
+ * a missing construction good for it. Scans the {@link TargetCandidates.constructionSites} list — only the
+ * sites still under construction — so with no foundations in progress the scan is O(0) however many
+ * finished buildings stand, and a builder cohort never walks the whole building list to find nothing.
+ */
+export function nearestConstructionSite(
+  candidates: readonly Entity[],
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  here: NodeId,
+  tribe: number,
+): Entity | null {
+  let best: Entity | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  let bestCell = Number.POSITIVE_INFINITY;
+  // `candidates` is the construction-site list (UnderConstruction + Building + Position guaranteed by
+  // collectTargets), so only the tribe filter remains — no per-entity marker re-check.
+  for (const e of candidates) {
+    if (world.get(e, Building).tribe !== tribe) continue; // another tribe's site
     const cell = interactionCell(world, ctx, terrain, e, here);
     const dist = manhattan(terrain, here, cell);
     if (closer(dist, cell, bestDist, bestCell)) {
@@ -497,7 +577,7 @@ export function nearestWorkplaceOutput(
  * data-driven permission gate from `jobtypes` — the planner picks atomics the job is allowed, never
  * a hardcoded per-job list.
  */
-function jobAtomics(ctx: SystemContext, jobType: number): ReadonlySet<number> {
+export function jobAtomics(ctx: SystemContext, jobType: number): ReadonlySet<number> {
   return contentIndex(ctx.content).atomicsByJob.get(jobType) ?? EMPTY_ATOMICS;
 }
 

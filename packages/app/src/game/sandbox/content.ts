@@ -34,10 +34,12 @@ import type { Messages } from '../../i18n/pl.js';
 import { PRIMARY_TRIBE } from '../rules.js';
 import {
   BUILDING_HEADQUARTERS,
+  BUILDING_HOME_00,
   BUILDING_JOINERY,
   BUILDING_WAREHOUSE_00,
   BUILDING_WAREHOUSE_01,
   BUILDING_WAREHOUSE_02,
+  BUILD_HOUSE_ATOMIC,
   EQUIP_GOODS,
   GATHERERS,
   GOOD_COIN,
@@ -52,6 +54,7 @@ import {
   type GathererSpec,
   JOB_ARCHER,
   JOB_ARCHER_LONG,
+  JOB_BUILDER,
   JOB_CARRIER,
   JOB_GATHERER_WOOD,
   JOB_IDLE,
@@ -107,6 +110,13 @@ const SHORT_BOW_DRAW_LENGTH = 12; // viking_soldier_attack_bow_short
 const SHORT_BOW_RELEASE_FRAME = 10;
 const LONG_BOW_DRAW_LENGTH = 28; // viking_soldier_attack_bow_long
 const LONG_BOW_RELEASE_FRAME = 22;
+// The builder's hammer swing length — TRANSCRIBED from the extracted viking `viking_builder_build_house`
+// atomicanimation (`length 15`, content/ir.json). Binding it (below) makes each construct swing take 15
+// ticks instead of the 4-tick default, so the builder visibly hammers and the foundation rises over a
+// watchable span rather than snapping done. The animation name is the logic-timing join key; the render
+// plays the builder's own `human_man_constructionworker_Work_Hammer` body clip (see content/settler-gfx.ts).
+const BUILD_HOUSE_SWING_LENGTH = 15;
+const BUILD_HOUSE_ANIMATION = 'viking_builder_build_house';
 // Damage on the sandbox's own synthetic scale (the real per-material tables live in the extracted
 // content; scene hitpoints are chosen so a duel takes several full swings — see the combat scene).
 const BOW_DAMAGE = 34;
@@ -161,6 +171,18 @@ const BASE_LANDSCAPE = [
 const HOME_UPGRADE_PIN: readonly { goodType: number; amount: number }[] = [
   { goodType: GOOD_NONE, amount: 1 },
 ];
+
+/**
+ * The build-material cost + max HP the construction scene raises `home_level_00` from — a small
+ * DELIVERABLE cost (wood + stone) so builders visibly haul + hammer it up over a handful of swings, and a
+ * life pool for the Health ramp. A sandbox balance pin (not extracted data), and inert for every other
+ * scene: they place the home already-built, so its construction branch (and Health) never fire.
+ */
+const HOME_BUILD_PIN: readonly { goodType: number; amount: number }[] = [
+  { goodType: GOOD_WOOD, amount: 4 },
+  { goodType: GOOD_STONE, amount: 2 },
+];
+const HOME_BUILD_HITPOINTS = 30000;
 
 const RESOURCE_LANDSCAPE_BASE = 1000;
 const RESOURCE_GFX_BASE = 2000;
@@ -304,6 +326,9 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
     })),
     { typeId: JOB_CARRIER, id: 'carrier', name: 'Tragarz' },
     { typeId: JOB_SOLDIER_UNARMED, id: 'soldier_unarmed', name: 'Wojownik (bez broni)' },
+    // The builder trade — permitted to run the build-house atomic, which is the data-driven signal the
+    // planner's builder drive reads to put this settler on a foundation (the construction scene).
+    { typeId: JOB_BUILDER, id: 'builder', name: 'Budowniczy', allowedAtomics: [BUILD_HOUSE_ATOMIC] },
     { typeId: JOB_SOLDIER_SPEAR, id: 'soldier_spear', name: 'Wlocznik' },
     { typeId: JOB_SOLDIER_SWORD, id: 'soldier_sword', name: 'Miecznik' },
     { typeId: JOB_SOLDIER_BROADSWORD, id: 'soldier_broadsword', name: 'Miecznik (dwureczny)' },
@@ -343,6 +368,8 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
     atomicBindings: [
       ...GATHERERS.map((g) => ({ jobType: g.job, atomicId: g.atomic, animation: g.animation })),
       { jobType: JOB_SOLDIER_UNARMED, atomicId: ATTACK_ATOMIC, animation: 'viking_fist_attack' },
+      // The builder → build-house swing (so atomicDuration resolves the 15-tick length below, not the default).
+      { jobType: JOB_BUILDER, atomicId: BUILD_HOUSE_ATOMIC, animation: BUILD_HOUSE_ANIMATION },
       { jobType: JOB_SOLDIER_SPEAR, atomicId: ATTACK_ATOMIC, animation: 'viking_spear_attack' },
       { jobType: JOB_SOLDIER_SWORD, atomicId: ATTACK_ATOMIC, animation: 'viking_sword_attack' },
       { jobType: JOB_SOLDIER_BROADSWORD, atomicId: ATTACK_ATOMIC, animation: 'viking_broadsword_attack' },
@@ -571,6 +598,8 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
         length: LONG_BOW_DRAW_LENGTH,
         events: [{ at: LONG_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE }],
       },
+      // The builder's hammer swing — its length is what paces each construct swing (see above).
+      { id: BUILD_HOUSE_ANIMATION, name: BUILD_HOUSE_ANIMATION, length: BUILD_HOUSE_SWING_LENGTH },
     ],
   });
 }
@@ -580,7 +609,8 @@ interface SandboxBuildingRow {
   id: string;
   kind: string;
   stock?: typeof STORE_STOCK;
-  construction?: typeof HOME_UPGRADE_PIN;
+  construction?: readonly { goodType: number; amount: number }[];
+  hitpoints?: number;
   recipe?: {
     inputs: readonly { goodType: number; amount: number }[];
     outputs: readonly { goodType: number; amount: number }[];
@@ -816,6 +846,9 @@ const BUILDING_WORKER_SLOTS: Readonly<Record<number, readonly { jobType: number;
  */
 const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> = {
   [BUILDING_HEADQUARTERS]: { stock: STORE_STOCK },
+  // The base-tier home the construction scene builds: a real deliverable cost + a life pool, overriding
+  // the trivial home-upgrade pin for this one typeId (inert elsewhere — other scenes place it built).
+  [BUILDING_HOME_00]: { construction: HOME_BUILD_PIN, hitpoints: HOME_BUILD_HITPOINTS },
   // The three warehouses accept the same general-goods set as the HQ (sandbox balance pin, not extracted
   // data) so the Magazyn section shows their storable goods instead of reading empty.
   [BUILDING_WAREHOUSE_00]: { stock: STORE_STOCK },

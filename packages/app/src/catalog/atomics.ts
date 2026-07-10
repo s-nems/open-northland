@@ -26,3 +26,12 @@ export const MUSHROOM_HARVEST_ATOMIC = 32;
  * not a bobseq range (a melee pool is not `length / 8`); see `content/settler-gfx.ts`.
  */
 export const ATTACK_ATOMIC = 81;
+
+/**
+ * The build-house swing (`setatomic <job> 39 "..._builder_build_house"`; the sim's `BUILD_HOUSE_ATOMIC_ID`,
+ * `packages/sim/src/systems/agents/actions.ts`). Shared vocabulary like the harvest ids: the render binds it
+ * to the builder's hammer clip (`byAtomic`) and the audio binds it to the hammer SFX per swing — so it lives
+ * here, owned by neither. Transcribed from `tribetypes.ini` (`setatomic 7 39`); the viking swing animation
+ * (`viking_builder_build_house`) is 15 frames long (`atomicanimations.ini`, extracted).
+ */
+export const BUILD_HOUSE_ATOMIC = 39;

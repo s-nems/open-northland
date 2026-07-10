@@ -1,17 +1,26 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
-import { Building, Carrying, Position, Settler, Stockpile } from '../../src/components/index.js';
+import {
+  Building,
+  Carrying,
+  Health,
+  Position,
+  Settler,
+  Stockpile,
+  UnderConstruction,
+} from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { ONE, type SimEvent, Simulation, type TerrainMap, fx } from '../../src/index.js';
+import { ONE, type SimEvent, Simulation, type TerrainMap, fx, nodeOfPosition } from '../../src/index.js';
 import { type SystemContext, constructionSystem, housingCapacity } from '../../src/systems/index.js';
 
 /**
- * Unit + integration tests for the ConstructionSystem — an under-construction building (`built < ONE`)
- * whose own stockpile holds its full `construction` material cost consumes the materials and flips to
- * `built = ONE`, emitting `buildingFinished`. A building type with an empty cost (the headquarters)
- * finishes on the first construction tick. WHO delivers the materials is the (deferred) transport path;
- * this proves the build-completion half.
+ * Unit + integration tests for the ConstructionSystem — a construction site (`UnderConstruction`) rises to
+ * `built = min(builder-work, delivered-material)`, ramping its `Health` with it, and FINISHES (consumes
+ * the cost, removes the marker, fills Health, emits `buildingFinished`) the tick its builder work is
+ * complete AND every material is present. A free (empty-cost) type finishes at once. A built `home`
+ * levels up as its next tier's materials arrive. WHO hammers/delivers is the AI planner (exercised in the
+ * builder end-to-end block below); the unit tests drive `labor` by hand to isolate the system.
  *
  * Content is built with `parseContentSet` (not the shared fixture) so the `construction` cost is explicit
  * and the golden slice — whose buildings carry no cost and are placed already-built — is untouched.
@@ -20,10 +29,13 @@ import { type SystemContext, constructionSystem, housingCapacity } from '../../s
 const VIKING = 1;
 const STONE = 1;
 const WOOD = 2;
-const HOUSE = 2; // a residence needing 2× stone + 1× wood to build
+const HOUSE = 2; // a residence needing 2× stone + 1× wood to build (3 units → 3·STRIKES_PER_UNIT swings)
 const HEADQUARTERS = 1; // free — empty construction cost
 const GRASS = 0;
 const CARRIER = 36; // a job with no harvest atomics — it can only haul a load it already carries
+const BUILDER = 7; // the builder trade (jobtypes.ini type 7); permitted to run the build-house atomic
+const BUILD_HOUSE_ATOMIC = 39; // setatomic 7 39 "..._builder_build_house" (tribetypes.ini)
+const HOUSE_MAX_HP = 100; // the HOUSE fixture's `hitpoints` — small so the ramp is exact-integer to read
 
 // The home level chain — consecutive typeIds, each a larger `home` with its own per-tier upgrade cost.
 const HOME_L0 = 2; // home level 00, homeSize 1, upgrades by paying L1's cost
@@ -41,6 +53,10 @@ function constructionContent(): ContentSet {
     jobs: [
       { typeId: 0, id: 'idle' },
       { typeId: CARRIER, id: 'carrier' },
+      // The builder trade: permitted to run the build-house atomic (the data-driven "who constructs"
+      // gate the planner reads). No atomic animation is bound, so a build swing takes the default
+      // duration — enough to drive the labor loop in the end-to-end test.
+      { typeId: BUILDER, id: 'builder', allowedAtomics: [BUILD_HOUSE_ATOMIC] },
     ],
     landscape: [{ typeId: GRASS, id: 'grass', walkable: true, buildable: true }],
     buildings: [
@@ -55,6 +71,16 @@ function constructionContent(): ContentSet {
           { goodType: STONE, amount: 2 },
           { goodType: WOOD, amount: 1 },
         ],
+        hitpoints: HOUSE_MAX_HP, // the life pool the ConstructionSystem ramps up as it rises
+        // A 2-cell body (anchor + one cell east) — the footprint the render's construction-plot decal
+        // washes grey. Inert for the placement/build tests here (they bypass collision); read only by
+        // constructionPlots below.
+        footprint: {
+          blocked: [
+            { dx: 0, dy: 0 },
+            { dx: 2, dy: 0 },
+          ],
+        },
       },
     ],
   });
@@ -139,15 +165,22 @@ function ctxOf(sim: Simulation): SystemContext {
   return { content: sim.content, rng: sim.rng, tick: sim.tick, events: sim.events };
 }
 
-/** Place an under-construction building (`built = 0`) holding the given starting materials. */
+/** Place an under-construction building (`built = 0`, labor 0) holding the given starting materials. */
 function placeSite(sim: Simulation, buildingType: number, stock: Record<number, number> = {}): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
   sim.world.add(e, Building, { buildingType, tribe: VIKING, built: fx.fromInt(0), level: 0 });
+  sim.world.add(e, UnderConstruction, { labor: fx.fromInt(0) });
   sim.world.add(e, Stockpile, {
     amounts: new Map<number, number>(Object.entries(stock).map(([g, n]) => [Number(g), n])),
   });
   return e;
+}
+
+/** Fully hammer a site — the by-hand stand-in for the build swings a real builder runs, so a unit test
+ *  can isolate the ConstructionSystem's completion logic from the planner. */
+function fullyHammer(sim: Simulation, site: Entity): void {
+  sim.world.get(site, UnderConstruction).labor = ONE;
 }
 
 function finishedEvents(sim: Simulation): readonly SimEvent[] {
@@ -155,25 +188,38 @@ function finishedEvents(sim: Simulation): readonly SimEvent[] {
 }
 
 describe('constructionSystem', () => {
-  it('does NOT finish a site missing some of its materials — built tracks the delivered fraction', () => {
+  it('caps built at the delivered-material fraction however much a builder has hammered', () => {
     const sim = new Simulation({ seed: 1, content: constructionContent() });
-    const e = placeSite(sim, HOUSE, { [STONE]: 1 }); // needs 2 stone + 1 wood, has only 1 stone
+    const e = placeSite(sim, HOUSE, { [STONE]: 1 }); // needs 2 stone + 1 wood, has only 1 of 3 units
+    fullyHammer(sim, e); // the builder has done all the work it can — material is the limit now
     constructionSystem(sim.world, ctxOf(sim));
-    // Still under construction, but the site's progress now EXPOSES the delivered fraction (1 of 3
-    // total units) so the render can stage the construction graphics — strictly below ONE until the
-    // full cost is present (the production/housing `built >= ONE` gates stay unreached).
+    // built = min(labor=ONE, delivered=1/3) = 1/3 — the site can't rise past what material backs it.
     expect(sim.world.get(e, Building).built).toBe(fx.div(ONE, fx.fromInt(3)));
     expect(finishedEvents(sim)).toHaveLength(0);
     // The partial materials are NOT consumed — the site keeps waiting on the rest.
     expect(sim.world.get(e, Stockpile).amounts.get(STONE)).toBe(1);
+    expect(sim.world.has(e, UnderConstruction)).toBe(true); // still a site
   });
 
-  it('finishes a site once its full material cost is present, consuming the materials', () => {
+  it('does NOT finish a fully-stocked site with no builder work — labor is required', () => {
+    const sim = new Simulation({ seed: 1, content: constructionContent() });
+    const e = placeSite(sim, HOUSE, { [STONE]: 2, [WOOD]: 1 }); // every material present, labor still 0
+    constructionSystem(sim.world, ctxOf(sim));
+    // built = min(labor=0, delivered=ONE) = 0 — material alone never raises a building; a builder must
+    // hammer it. This is the behaviour the whole feature adds.
+    expect(sim.world.get(e, Building).built).toBe(fx.fromInt(0));
+    expect(finishedEvents(sim)).toHaveLength(0);
+    expect(sim.world.get(e, Stockpile).amounts.get(STONE)).toBe(2); // untouched — not consumed
+  });
+
+  it('finishes a site once fully hammered AND every material is present, consuming the materials', () => {
     const sim = new Simulation({ seed: 1, content: constructionContent() });
     const e = placeSite(sim, HOUSE, { [STONE]: 2, [WOOD]: 1 });
+    fullyHammer(sim, e);
     constructionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, Building).built).toBe(ONE); // built
     expect(finishedEvents(sim)).toEqual([{ kind: 'buildingFinished', entity: e }]);
+    expect(sim.world.has(e, UnderConstruction)).toBe(false); // a finished building is a plain Building
     // The materials are spent into the structure.
     expect(sim.world.get(e, Stockpile).amounts.get(STONE)).toBe(0);
     expect(sim.world.get(e, Stockpile).amounts.get(WOOD)).toBe(0);
@@ -182,18 +228,35 @@ describe('constructionSystem', () => {
   it('leaves any surplus material beyond the cost in the stockpile', () => {
     const sim = new Simulation({ seed: 1, content: constructionContent() });
     const e = placeSite(sim, HOUSE, { [STONE]: 5, [WOOD]: 3 }); // cost 2 stone + 1 wood
+    fullyHammer(sim, e);
     constructionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, Building).built).toBe(ONE);
     expect(sim.world.get(e, Stockpile).amounts.get(STONE)).toBe(3); // 5 - 2
     expect(sim.world.get(e, Stockpile).amounts.get(WOOD)).toBe(2); // 3 - 1
   });
 
-  it('finishes a free (empty-cost) building immediately', () => {
+  it('ramps the site Health up with built, then fills it at completion', () => {
     const sim = new Simulation({ seed: 1, content: constructionContent() });
-    const e = placeSite(sim, HEADQUARTERS); // construction cost []
+    const e = placeSite(sim, HOUSE, { [STONE]: 2, [WOOD]: 1 }); // fully stocked (delivered = ONE)
+    sim.world.add(e, Health, { hitpoints: 1, max: HOUSE_MAX_HP });
+    sim.world.get(e, UnderConstruction).labor = fx.div(ONE, fx.fromInt(2)); // hammered halfway
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, Building).built).toBe(fx.div(ONE, fx.fromInt(2))); // min(0.5, ONE)
+    expect(sim.world.get(e, Health).hitpoints).toBe(HOUSE_MAX_HP / 2); // 50 of 100 — ramped with built
+    // Finish it: Health fills to max.
+    fullyHammer(sim, e);
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(e, Building).built).toBe(ONE);
+    expect(sim.world.get(e, Health).hitpoints).toBe(HOUSE_MAX_HP);
+  });
+
+  it('finishes a free (empty-cost) building immediately — no labor needed', () => {
+    const sim = new Simulation({ seed: 1, content: constructionContent() });
+    const e = placeSite(sim, HEADQUARTERS); // construction cost [] — nothing to hammer in
     constructionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, Building).built).toBe(ONE);
     expect(finishedEvents(sim)).toEqual([{ kind: 'buildingFinished', entity: e }]);
+    expect(sim.world.has(e, UnderConstruction)).toBe(false);
   });
 
   it('never revisits an already-built building', () => {
@@ -215,7 +278,8 @@ describe('constructionSystem', () => {
   it('is deterministic — two runs from the same seed reach the same finished state', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 7, content: constructionContent() });
-      placeSite(sim, HOUSE, { [STONE]: 2, [WOOD]: 1 });
+      const e = placeSite(sim, HOUSE, { [STONE]: 2, [WOOD]: 1 });
+      fullyHammer(sim, e);
       constructionSystem(sim.world, ctxOf(sim));
       return sim.hashState();
     };
@@ -224,7 +288,7 @@ describe('constructionSystem', () => {
 });
 
 describe('placeBuilding underConstruction (CommandSystem)', () => {
-  it('starts a building at built=0 with an empty hold, then the constructionSystem builds it once stocked', () => {
+  it('starts a building at built=0 with an empty hold + a foundation Health + marker, then builds once hammered', () => {
     const sim = new Simulation({ seed: 1, content: constructionContent() });
     sim.enqueue({
       kind: 'placeBuilding',
@@ -237,23 +301,33 @@ describe('placeBuilding underConstruction (CommandSystem)', () => {
     sim.step(); // commandSystem places the under-construction site
     const e = [...sim.world.query(Building)][0];
     expect(sim.world.get(e, Building).built).toBe(fx.fromInt(0)); // under construction
+    expect(sim.world.has(e, UnderConstruction)).toBe(true); // the builder-work marker
     expect(sim.world.get(e, Stockpile).amounts.size).toBe(0); // empty hold — accumulates deliveries
+    // The foundation carries a Health pool floored at 1 (never a 0-HP corpse the CleanupSystem reaps).
+    expect(sim.world.get(e, Health)).toEqual({ hitpoints: 1, max: HOUSE_MAX_HP });
 
-    // Stock the site with its materials (the deferred carrier-delivery, done by hand here) and step:
-    // the constructionSystem finishes it.
+    // Stock the site (the carrier-delivery, done by hand here) and hammer it (the builder work, likewise),
+    // then step: the constructionSystem finishes it. Material alone is not enough — labor is required.
     const stock = sim.world.get(e, Stockpile).amounts;
     stock.set(STONE, 2);
     stock.set(WOOD, 1);
     sim.step();
+    expect(sim.world.get(e, Building).built).toBe(fx.fromInt(0)); // stocked but un-hammered — still 0
+    fullyHammer(sim, e);
+    sim.step();
     expect(sim.world.get(e, Building).built).toBe(ONE);
+    expect(sim.world.has(e, UnderConstruction)).toBe(false); // finished — marker gone
+    expect(sim.world.get(e, Health).hitpoints).toBe(HOUSE_MAX_HP); // full life
   });
 
-  it('places an already-built building (default) seeded from its stock initials', () => {
+  it('places an already-built building (default) seeded from its stock initials, with no site marker', () => {
     const sim = new Simulation({ seed: 1, content: constructionContent() });
     sim.enqueue({ kind: 'placeBuilding', buildingType: HOUSE, x: 0, y: 0, tribe: VIKING }); // no flag
     sim.step();
     const e = [...sim.world.query(Building)][0];
     expect(sim.world.get(e, Building).built).toBe(ONE); // immediately built — the slice path
+    expect(sim.world.has(e, UnderConstruction)).toBe(false); // not a site
+    expect(sim.world.has(e, Health)).toBe(false); // a plain built placement carries no life pool (golden path)
   });
 });
 
@@ -274,7 +348,25 @@ function siteAt(sim: Simulation, buildingType: number, x: number, y: number): En
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Building, { buildingType, tribe: VIKING, built: fx.fromInt(0), level: 0 });
+  sim.world.add(e, UnderConstruction, { labor: fx.fromInt(0) });
   sim.world.add(e, Stockpile, { amounts: new Map<number, number>() });
+  return e;
+}
+
+/** A builder settler placed at a tile — a job permitted to run the build-house atomic, so the planner's
+ *  builder drive hammers the nearest site (and self-supplies it when it runs dry). */
+function builderAt(sim: Simulation, x: number, y: number): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  sim.world.add(e, Settler, {
+    tribe: VIKING,
+    jobType: BUILDER,
+    hunger: fx.fromInt(0),
+    fatigue: fx.fromInt(0),
+    piety: fx.fromInt(0),
+    enjoyment: fx.fromInt(0),
+    experience: new Map(),
+  });
   return e;
 }
 
@@ -313,30 +405,64 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
     expect(sim.world.has(carrier, Carrying)).toBe(false); // unloaded
   });
 
-  it('end-to-end: carriers haul the full cost to a site, which then builds and stops attracting goods', () => {
+  it('end-to-end: carriers haul the full cost while a builder hammers, then the site builds and consumes it', () => {
     const sim = new Simulation({ seed: 2, content: constructionContent(), map: grassMap(6, 1) });
     const site = siteAt(sim, HOUSE, 3, 0); // needs 2 stone + 1 wood
-    // Three carriers each holding one of the three needed units (2 stone + 1 wood).
+    // Three carriers each holding one of the three needed units (2 stone + 1 wood)…
     loadedCarrierAt(sim, 0, 0, STONE, 1);
     loadedCarrierAt(sim, 1, 0, STONE, 1);
     loadedCarrierAt(sim, 5, 0, WOOD, 1);
+    // …and a builder that hammers the site as the material lands (parallel supply + work).
+    builderAt(sim, 4, 0);
 
     let built = false;
-    for (let i = 0; i < 120 && !built; i++) {
+    for (let i = 0; i < 200 && !built; i++) {
       sim.step();
       built = sim.world.get(site, Building).built >= ONE;
     }
-    expect(built).toBe(true); // the delivered materials triggered the build-completion
+    expect(built).toBe(true); // delivered material + builder work together completed the build
     // The cost was consumed into the structure — the materials don't linger as stock.
     expect(sim.world.get(site, Stockpile).amounts.get(STONE) ?? 0).toBe(0);
     expect(sim.world.get(site, Stockpile).amounts.get(WOOD) ?? 0).toBe(0);
-    // No carrier is left holding an undeliverable load (all three units landed).
-    for (const e of sim.world.query(Settler)) {
-      expect(sim.world.has(e, Carrying)).toBe(false);
+    expect(sim.world.has(site, UnderConstruction)).toBe(false); // finished — a plain Building now
+    // No construction material is left IN FLIGHT — every unit the carriers held reached the site (the
+    // cost above is 0 because it was delivered THEN consumed, so this is the "nothing stuck en route" half).
+    let materialInFlight = 0;
+    for (const e of sim.world.query(Carrying)) {
+      const load = sim.world.get(e, Carrying);
+      if (load.goodType === STONE || load.goodType === WOOD) materialInFlight += load.amount;
     }
+    expect(materialInFlight).toBe(0);
   });
 
-  it('is deterministic — two same-seed delivery runs reach the same finished state hash', () => {
+  it('a builder self-supplies: fetches material from a warehouse to its own site, then builds it', () => {
+    const sim = new Simulation({ seed: 4, content: constructionContent(), map: grassMap(8, 1) });
+    const site = siteAt(sim, HOUSE, 4, 0); // needs 2 stone + 1 wood, empty hold
+    // A warehouse holding the full cost — the builder must carry it over itself (no carriers). It is a
+    // BUILDING store (not a bare Stockpile), so the gatherer-yard reaper never mistakes it for a loose
+    // ground heap and removes it once the builder drains it (isYardHeap excludes Building stores).
+    const warehouse = sim.world.create();
+    sim.world.add(warehouse, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
+    sim.world.add(warehouse, Building, { buildingType: HEADQUARTERS, tribe: VIKING, built: ONE, level: 0 });
+    sim.world.add(warehouse, Stockpile, {
+      amounts: new Map<number, number>([
+        [STONE, 2],
+        [WOOD, 1],
+      ]),
+    });
+    builderAt(sim, 6, 0);
+
+    let built = false;
+    for (let i = 0; i < 400 && !built; i++) {
+      sim.step();
+      built = sim.world.get(site, Building).built >= ONE;
+    }
+    expect(built).toBe(true); // the builder hauled every material itself and hammered the site up
+    expect(sim.world.get(warehouse, Stockpile).amounts.get(STONE) ?? 0).toBe(0); // drawn from the warehouse
+    expect(sim.world.get(site, Stockpile).amounts.get(STONE) ?? 0).toBe(0); // and spent into the build
+  });
+
+  it('is deterministic — two same-seed delivery+build runs reach the same finished state hash', () => {
     const run = (): string => {
       clearStores();
       const sim = new Simulation({ seed: 9, content: constructionContent(), map: grassMap(6, 1) });
@@ -344,7 +470,8 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
       loadedCarrierAt(sim, 0, 0, STONE, 1);
       loadedCarrierAt(sim, 1, 0, STONE, 1);
       loadedCarrierAt(sim, 5, 0, WOOD, 1);
-      for (let i = 0; i < 80; i++) sim.step();
+      builderAt(sim, 4, 0);
+      for (let i = 0; i < 120; i++) sim.step();
       return sim.hashState();
     };
     expect(run()).toBe(run());
@@ -533,5 +660,32 @@ describe('constructionSystem — upgrade-material DELIVERY dispatch (carrier pat
       return sim.hashState();
     };
     expect(run()).toBe(run());
+  });
+});
+
+describe('constructionPlots — the render decal cells for under-construction sites', () => {
+  it("returns each site's footprint body cells (anchor + offsets), for a plot matching the building", () => {
+    const sim = new Simulation({ seed: 1, content: constructionContent() });
+    placeSite(sim, HOUSE); // Position (0,0); HOUSE footprint blocked = anchor + one cell east
+    const { hx, hy } = nodeOfPosition(fx.fromInt(0), fx.fromInt(0));
+    expect(sim.constructionPlots()).toEqual([
+      {
+        cells: [
+          { col: hx, row: hy },
+          { col: hx + 2, row: hy },
+        ],
+      },
+    ]);
+  });
+
+  it('falls back to the anchor cell for a footprint-less type, and drops a site once it finishes', () => {
+    const sim = new Simulation({ seed: 1, content: constructionContent() });
+    const hq = placeSite(sim, HEADQUARTERS); // empty cost + no footprint
+    const { hx, hy } = nodeOfPosition(fx.fromInt(0), fx.fromInt(0));
+    expect(sim.constructionPlots()).toEqual([{ cells: [{ col: hx, row: hy }] }]);
+    // A free (empty-cost) building finishes on the first construction tick → no longer a plot.
+    constructionSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(hq, UnderConstruction)).toBe(false);
+    expect(sim.constructionPlots()).toEqual([]);
   });
 });

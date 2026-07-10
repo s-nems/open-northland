@@ -21,6 +21,7 @@ import {
   extractConstructionLayers,
   extractGfxAnimAtomics,
   extractGoods,
+  extractHouseHitpoints,
   extractJobExperience,
   extractJobs,
   extractLandscape,
@@ -142,6 +143,9 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   // typeId -> build-material cost, overlaid from the graphics table's `[GfxHouse]` records onto the
   // logic-table buildings below (the logic table carries no construction cost — see `resolveIniSources`).
   const constructionCosts = new Map<number, { goodType: number; amount: number }[]>();
+  // typeId -> max hitpoints, the graphics-table `logichitpoints` overlay onto the logic buildings —
+  // the building's full life pool the ConstructionSystem ramps up as it rises (see `extractHouseHitpoints`).
+  const hitpoints = new Map<number, number>();
   // typeId -> ground footprint (collision body / build-exclusion zone / door), the second graphics-table
   // overlay onto the logic buildings (see `extractBuildingFootprints`).
   const footprints = new Map<number, BuildingFootprint>();
@@ -167,6 +171,9 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     constructionLayers.push(...extractConstructionLayers(sections, src));
     for (const [typeId, cost] of extractConstructionCosts(sections)) {
       constructionCosts.set(typeId, cost);
+    }
+    for (const [typeId, hp] of extractHouseHitpoints(sections)) {
+      hitpoints.set(typeId, hp);
     }
     for (const [typeId, footprint] of extractBuildingFootprints(sections)) {
       footprints.set(typeId, footprint);
@@ -223,10 +230,12 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   // footprint (it places with no collision — the pre-footprint behavior).
   const buildingsWithCosts = buildings.map((b) => {
     const cost = constructionCosts.get(b.typeId);
+    const hp = hitpoints.get(b.typeId);
     const footprint = footprints.get(b.typeId);
     return {
       ...b,
       ...(cost ? { construction: cost } : {}),
+      ...(hp !== undefined ? { hitpoints: hp } : {}),
       ...(footprint ? { footprint } : {}),
     };
   });

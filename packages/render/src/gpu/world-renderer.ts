@@ -5,6 +5,7 @@ import type { Camera } from '../data/iso.js';
 import type { SceneTerrain } from '../data/scene/index.js';
 import { cameraViewport } from '../data/viewport.js';
 import { BadgeLayer, type DoorBadge } from './badge-layer.js';
+import { type ConstructionPlotFrame, ConstructionPlotLayer } from './construction-plot.js';
 import { HudLayer } from './hud-layer.js';
 import type { HudFrame } from './hud-layer.js';
 import { MapObjectLayer } from './map-objects/index.js';
@@ -108,6 +109,8 @@ export class WorldRenderer {
   private readonly pool: SpritePool;
   /** The build-mode dim wash over non-buildable tiles (world-space, BELOW the sprites). */
   private readonly placementOverlay: PlacementOverlayLayer;
+  /** Grey ground plots under placed construction sites (world-space, BELOW the sprites). */
+  private readonly constructionPlots = new ConstructionPlotLayer();
   /** The build-mode cursor ghost (the held building's translucent sprite, inside the sprite layer). */
   private readonly placementGhost: PlacementGhostLayer;
   /** Feet rings under the currently-selected entities (world-space, BELOW the sprites). */
@@ -149,6 +152,7 @@ export class WorldRenderer {
     // behind it.
     this.worldLayer.addChild(this.terrain.container);
     this.worldLayer.addChild(this.mapObjects.decorContainer);
+    this.worldLayer.addChild(this.constructionPlots.container);
     this.worldLayer.addChild(this.placementOverlay.container);
     this.worldLayer.addChild(this.selectionLayer.container);
     this.worldLayer.addChild(this.spriteLayer);
@@ -389,6 +393,16 @@ export class WorldRenderer {
   }
 
   /**
+   * Set the grey ground plots under placed construction sites (the "plac budowy" decal) — the app passes
+   * every under-construction building's footprint cells (`Simulation.constructionPlots`) each frame; an
+   * empty list clears them. The layer skips the redraw when the plot set is unchanged. Takes effect on the
+   * next {@link update}'s single `render`.
+   */
+  updateConstructionPlots(plots: readonly ConstructionPlotFrame[]): void {
+    this.constructionPlots.set(plots, this.elevation);
+  }
+
+  /**
    * Set (or clear) the BUILD-PLACEMENT cursor ghost — the held building's translucent sprite at the
    * hovered tile. The app passes `null` when not in build mode, when the cursor is off the map/HUD, or
    * when the hovered anchor is REJECTED by the placement probe (the original hides the house cursor
@@ -418,6 +432,7 @@ export class WorldRenderer {
     this.mapObjects.destroy();
     this.pool.destroy(); // destroys detached (culled) entities the scene-graph walk can't reach
     this.placementOverlay.destroy();
+    this.constructionPlots.destroy();
     this.placementGhost.destroy();
     this.worldLayer.destroy({ children: true });
     this.pauseWash.destroy(); // the shared Texture.WHITE itself is left alone

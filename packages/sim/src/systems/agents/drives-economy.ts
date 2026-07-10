@@ -1,12 +1,12 @@
-import { DeliveryFlag, Position, Resource, WorkFlag } from '../../components/index.js';
+import { DeliveryFlag, Position, Resource, UnderConstruction, WorkFlag } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
 import { carrierCarryCapacity } from '../progression.js';
 import { atomicDuration } from '../readviews/animations.js';
 import { manhattan } from '../spatial.js';
-import { recipeOf } from '../stores.js';
-import { PILEUP_ATOMIC_ID, atOrWalk, startAtomic, startPickup } from './actions.js';
+import { deliveredConstructionFraction, nextNeededConstructionGood, recipeOf } from '../stores.js';
+import { BUILD_HOUSE_ATOMIC_ID, PILEUP_ATOMIC_ID, atOrWalk, startAtomic, startPickup } from './actions.js';
 import {
   deliveryTargetFor,
   isPorterBoundToStore,
@@ -18,10 +18,13 @@ import {
 import {
   type TargetCandidates,
   interactionCell,
+  jobAtomics,
   nearestCollectablePileFor,
+  nearestConstructionSite,
   nearestFreeYardNode,
   nearestHarvestableFor,
   nearestOwnDropFor,
+  nearestStoreHolding,
   nearestWorkplaceOutput,
 } from './ai-targets.js';
 
@@ -60,6 +63,7 @@ export function planDelivery(
 ): boolean {
   const store = deliveryTargetFor(
     targets.stockpiles,
+    targets.constructionSites,
     world,
     ctx,
     terrain,
@@ -158,6 +162,73 @@ export function planProducer(
 /** Set a `MoveGoal` to `target` unless the settler is already on it (then it stays put). */
 function walkToOrHold(world: World, e: Entity, here: NodeId, target: NodeId): void {
   atOrWalk(world, e, here, target, () => {});
+}
+
+/**
+ * 2b. BUILD — a **builder** raises the nearest construction site of its tribe, faithful to the original's
+ * "settlers search for a foundation, get put on it, and hammer it up carrying material" flow. A builder is
+ * any job the data permits to run the build-house atomic ({@link BUILD_HOUSE_ATOMIC_ID}) — the data-driven
+ * "who constructs" test, not a hardcoded jobType id — so a non-builder returns false at once and falls
+ * through to the gather/porter/carrier rungs. In priority:
+ *
+ *  a. **Hammer** — while the site has material on hand to install (its builder-work `labor` still trails
+ *     the delivered-material fraction), walk to the site and run a `construct` swing (each swing installs
+ *     one delivered unit — the ConstructionSystem reflects it into `built`/`Health`).
+ *  b. **Self-supply** — the site has run dry (labor caught up to delivered material): fetch a still-needed
+ *     construction good from a store that holds it. The delivery drive then routes the load to the site
+ *     (which advertises the demand) — "budowniczy sam zanosi surowce", while an assigned hauler tops the
+ *     same site up through the identical path.
+ *  c. **Wait** — nothing to install and nothing to fetch (no source holds a needed good): hold at the site
+ *     until a hauler delivers. A builder is committed to its site — it does not fall through to haul
+ *     someone else's goods while a foundation of its own stands unraised.
+ *
+ * Sits below the bound-producer loop (a builder is not bound to a recipe workshop, so that rung passes it)
+ * and above gather/porter/carrier, so a builder builds before it ferries. `jobType` is non-null here.
+ */
+export function planBuilder(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+  settler: Worker,
+  here: NodeId,
+  targets: TargetCandidates,
+): boolean {
+  if (!jobAtomics(ctx, settler.jobType).has(BUILD_HOUSE_ATOMIC_ID)) return false; // not a builder
+  const site = nearestConstructionSite(targets.constructionSites, world, ctx, terrain, here, settler.tribe);
+  if (site === null) return false; // nothing under construction — fall through to hauling
+
+  // a. Material on hand to install? Hammer only while builder work trails delivered material.
+  if (world.get(site, UnderConstruction).labor < deliveredConstructionFraction(world, ctx, site)) {
+    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, site, here), () =>
+      startAtomic(
+        world,
+        e,
+        BUILD_HOUSE_ATOMIC_ID,
+        { kind: 'construct', site },
+        atomicDuration(ctx.content, settler, BUILD_HOUSE_ATOMIC_ID),
+        site,
+      ),
+    );
+    return true;
+  }
+
+  // b. Out of material — fetch a still-needed construction good from a store that holds it (the delivery
+  // drive routes the load back to the site next tick). Lift a batch bounded by the tribe's carry
+  // capacity (one unit on foot), capped again by `pickupFromStore` to what the source actually holds.
+  const need = nextNeededConstructionGood(world, ctx, site);
+  const src = need && nearestStoreHolding(targets.stockpiles, world, ctx, terrain, here, need.goodType);
+  if (need !== null && src != null) {
+    const batch = Math.min(need.amount, carrierCarryCapacity(world, ctx, settler.tribe));
+    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, src, here), () =>
+      startPickup(world, ctx, e, settler, src, need.goodType, batch),
+    );
+    return true;
+  }
+
+  // c. Can't hammer, nothing to fetch — hold at the site and wait for a delivery.
+  walkToOrHold(world, e, here, interactionCell(world, ctx, terrain, site, here));
+  return true;
 }
 
 /**

@@ -58,6 +58,11 @@ export interface PooledEntity {
    *  unit shows, so its walk doesn't flip to the default facing for a frame each tile (see
    *  {@link import('./sprite-pool.js').SpritePool}). */
   lastFacing?: number;
+  /** The DISPLAYED bottom-up reveal fraction (0..1) of an under-construction building, eased toward the
+   *  layer's target each frame so the rise glides between the sim's per-swing `built` steps. `undefined`
+   *  until the entity first draws a reveal layer, and reset to `undefined` once it finishes (no reveal
+   *  layer). Always present (not optional) so the pooled entity keeps a stable, monomorphic shape. */
+  reveal: number | undefined;
   /** The entity's inter-tick motion track — the last two TICK anchors plus the lerped DRAWN anchor
    *  ({@link import('./motion.js').trackMotion}); 20 Hz sim steps draw as continuous frame-rate motion.
    *  `tick` −1 = fresh. */
@@ -75,6 +80,7 @@ export function createPooled(kind: SpriteKind, paletted: boolean): PooledEntity 
     lastSeen: 0,
     bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
     boundsFrame: -1,
+    reveal: undefined,
     motion: { tick: -1, x: 0, y: 0, prevX: 0, prevY: 0, drawX: 0, drawY: 0 },
   };
 }

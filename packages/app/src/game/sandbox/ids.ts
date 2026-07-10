@@ -160,7 +160,17 @@ export function rebaseSlotJob(jobType: number): number {
   return jobType === JOB_CARRIER ? JOB_CARRIER : WORKER_SLOT_JOB_BASE + jobType;
 }
 
+// The builder trade — the REAL viking `jobtypes.ini` id 7 (below the soldier band, so the job→body map
+// draws a civilian body). Permitted to run the build-house atomic; the planner's builder drive puts a
+// settler of this job on a foundation. Used by the construction scene.
+export const JOB_BUILDER = 7;
+// The build-house atomic (`setatomic 7 39`) lives in the shared atomics catalog beside the harvest/attack
+// ids — re-exported here so the sandbox id space stays the ONE place these constants are named for scenes.
+export { BUILD_HOUSE_ATOMIC } from '../../catalog/atomics.js';
+
 export const BUILDING_HEADQUARTERS = 1;
+/** The base-tier residence (`home_level_00`) — the "house" the construction scene raises from a foundation. */
+export const BUILDING_HOME_00 = 2;
 /** The three warehouse levels (`stock_00`/`stock_01`/`stock_02`) — general-goods stores like the HQ. */
 export const BUILDING_WAREHOUSE_00 = 7;
 export const BUILDING_WAREHOUSE_01 = 8;

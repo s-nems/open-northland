@@ -19,6 +19,32 @@ export function unwrapBobRef(ref: LayeredBobRef): BuildingDraw {
   return typeof ref === 'number' ? { bob: ref } : { bob: ref.bob, layer: ref.layer };
 }
 
+/** A stable identity for a resolved building draw — its bob id plus its family layer (or the default layer). */
+export function bobKey(draw: BuildingDraw): string {
+  return `${draw.bob}:${draw.layer ?? ''}`;
+}
+
+const finishedKeyCache = new WeakMap<BuildingTypeBinding, ReadonlySet<string>>();
+
+/**
+ * The set of every FINISHED building sprite a binding can draw ({@link bobKey} of every type's completed
+ * bob + the default) — the sprites that are a BUILDING, not construction scaffolding. The under-construction
+ * rise keeps only the stages NOT in this set, so a construction stage that reuses another tier's
+ * finished-home bob is treated as the building (shown only at completion), and only the construction-only
+ * scaffold stages grow. Memoized per binding (immutable for the sheet's life) — built once, not per frame.
+ */
+export function finishedBuildingBobKeys(binding: BuildingTypeBinding): ReadonlySet<string> {
+  let keys = finishedKeyCache.get(binding);
+  if (keys === undefined) {
+    const set = new Set<string>();
+    for (const ref of Object.values(binding.byType)) set.add(bobKey(unwrapBobRef(ref)));
+    set.add(bobKey(unwrapBobRef(binding.default)));
+    keys = set;
+    finishedKeyCache.set(binding, keys);
+  }
+  return keys;
+}
+
 /**
  * Resolve which bob id — and from which named atlas-layer family — a building draw item draws, from its
  * (number | per-type table) binding. A plain-number binding is the same bob for every building, drawn

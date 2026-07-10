@@ -24,6 +24,8 @@ export {
 export {
   buildingBlockedCells,
   canPlaceBuilding,
+  type ConstructionPlot,
+  constructionSitePlots,
   dynamicBlockedCells,
   interactionNode,
   placementBlockerVersion,

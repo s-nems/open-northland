@@ -6,6 +6,7 @@ import {
   Resource,
   ResourceFootprint,
   Stockpile,
+  UnderConstruction,
   stockpileEntries,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -174,6 +175,36 @@ export function buildingBlockedCells(world: World, ctx: SystemContext, terrain: 
   }
   for (const cell of doors) blocked.delete(cell);
   return blocked;
+}
+
+/** One under-construction building's ground plot — the half-cell body cells it occupies, for the render's
+ *  grey "construction site" decal. Cells are `(col,row)` on the `2W×2H` half-cell lattice (anchor +
+ *  footprint offset), the same coords `halfCellToScreen` projects. */
+export interface ConstructionPlot {
+  readonly cells: readonly { readonly col: number; readonly row: number }[];
+}
+
+/**
+ * The ground plots of every UNDER-CONSTRUCTION building — its footprint body cells (`blocked`, this size
+ * level's walk-block body) translated to world half-cell nodes, so the render can wash a grey "plac budowy"
+ * over exactly the cells the finished building will stand on. A footprint-less type (synthetic content, the
+ * one graphics-less real type) falls back to its single anchor cell so a site always marks its ground.
+ *
+ * Read-only render support like {@link import('../../simulation.js').Simulation.placementProbe} — never
+ * mutates, so it is determinism-irrelevant; it reads only positions + content, no RNG, no wall-clock, and
+ * iterates the small {@link UnderConstruction} store (membership, no pick — order-independent).
+ */
+export function constructionSitePlots(world: World, content: ContentSet): ConstructionPlot[] {
+  const plots: ConstructionPlot[] = [];
+  for (const e of world.query(UnderConstruction, Building, Position)) {
+    const b = world.get(e, Building);
+    const footprint = buildingFootprintOf(content, b.buildingType);
+    const p = world.get(e, Position);
+    const { hx, hy } = nodeOfPosition(p.x, p.y);
+    const body = footprint !== undefined && footprint.blocked.length > 0 ? footprint.blocked : ANCHOR_ONLY;
+    plots.push({ cells: body.map((c) => ({ col: hx + c.dx, row: hy + c.dy })) });
+  }
+  return plots;
 }
 
 /** Building walk-blocks plus the cached resource walk-block overlay. */

@@ -4,6 +4,8 @@ import {
   type AtlasFrame,
   type BuildingDraw,
   type SpriteKind,
+  bobKey,
+  finishedBuildingBobKeys,
   pickByJob,
   resolveBuildingDraw,
   resolveConstructionDraws,
@@ -32,6 +34,19 @@ export interface ResolvedLayer {
   readonly scale: number;
   readonly atlasW?: number;
   readonly atlasH?: number;
+  /**
+   * Bottom-up REVEAL fraction (0..1) — draw only the bottom `reveal` of the layer's height, cropped from
+   * the top, so a growing thing rises out of the ground pixel by pixel. Present ONLY on the stage stack of
+   * an under-construction building (keyed off {@link DrawItem.builtPct}); absent everywhere else (the layer
+   * draws whole). The pool eases the displayed reveal toward this target so the rise is continuous between
+   * the sim's per-swing `built` steps. `1` (or absent) draws the full sprite.
+   *
+   * source basis: a VISUAL APPROXIMATION, not the original's model. The `[GfxHouse]` `GfxBobConstructionLayer`
+   * records swap WHOLE scaffold-stage bobs at `[fromPct,toPct]` thresholds (no crop field exists in the
+   * format); this continuous bottom-up crop of those same stage bobs is our embellishment — tuned by eye —
+   * so the frame grows smoothly instead of popping between discrete stages.
+   */
+  readonly reveal?: number;
 }
 
 /**
@@ -83,11 +98,23 @@ export function resolveLayers(
     // whose frame is missing/empty is skipped; if none resolves, fall through to the body draw
     // (a partial atlas degrades to the finished look rather than drawing nothing).
     const stack = resolveConstructionDraws(sheet.bindings.building, item);
-    if (stack !== null) {
+    if (stack !== null && typeof sheet.bindings.building !== 'number') {
+      // Under construction only the SCAFFOLDING rises: each scaffold stage is cropped to the bottom
+      // `builtPct` of its height, so the timber frame grows upward as the build progresses. Any stage that
+      // is a FINISHED building sprite (this or another tier's completed home bob — the stages reuse them) is
+      // excluded from the rise; the real house appears only when the site completes (`builtPct` gone → the
+      // normal body draw below), so it snaps in at 100% rather than a half-built cottage creeping up.
+      // `builtPct` is present whenever the stack is (resolveConstructionDraws requires it); the pool eases
+      // the displayed reveal so it glides between the sim's per-swing steps. At 0% the scaffold is fully
+      // hidden — a fresh site shows just its grey ground plot (the ConstructionPlotLayer), and the scaffold
+      // then rises from nothing as the first swings land.
+      const finishedKeys = finishedBuildingBobKeys(sheet.bindings.building);
+      const reveal = Math.max(0, Math.min(1, (item.builtPct ?? 0) / 100));
       const layers: ResolvedLayer[] = [];
       for (const draw of stack) {
+        if (finishedKeys.has(bobKey(draw))) continue; // a finished building sprite — only at 100%
         const resolved = layeredLayerFor(sheet, 'building', draw);
-        if (resolved !== null) layers.push(resolved);
+        if (resolved !== null) layers.push({ ...resolved, reveal });
       }
       if (layers.length > 0) return layers;
     }
