@@ -41,9 +41,10 @@ export interface DoorBadge {
 /** Placeholder square edge + vertical gap between stacked badges (world px). */
 const SIZE = 9;
 const GAP = 3;
-/** Sit the stack BESIDE the door (not centred on it) and a touch ABOVE the door node. */
-const OFFSET_X = 10;
-const DOOR_LIFT = 6;
+/** Sit the stack to the RIGHT of the door (clear of the doorway characters walk through to enter) and
+ *  start it LOW — just below the door node — so the squares stack UP the wall from the door sill. */
+const OFFSET_X = 14;
+const DOOR_LIFT = -6;
 /** Placeholder colours: one per worker role, with a dark outline so each reads on any ground. */
 const CRAFTSMAN_COLOR = 0x5ab6ff; // blue — a workshop tradesman
 const CARRIER_COLOR = 0xffbb33; // amber — a hauler (tragarz)
