@@ -155,9 +155,11 @@ export function drawBuilding(
     shown.forEach((row, i) => {
       const slot = slots[i];
       if (slot === undefined) return;
+      // Icon, plate and amount all share the row's vertical centre so a row reads on one level: the icon box
+      // is inset symmetrically (top+bottom) instead of top-anchored, and the amount centres in the plate.
       const icon: Rect = {
         x: slot.x,
-        y: slot.y,
+        y: slot.y + Math.round(s),
         w: Math.round(STOCK_ICON_W * s),
         h: cellH - Math.round(2 * s),
       };
@@ -171,10 +173,16 @@ export function drawBuilding(
       // The good's recoloured pile icon sits on the wood, LEFT of the amount plate (drawn after the plate
       // so a slightly oversized pile overlaps its edge rather than being clipped) — the original's row look.
       if (row.goodId !== undefined) chrome.goodIcon(row.goodId, icon);
-      chrome.textAt(
+      // The amount, left-inset in the plate and vertically centred in it (a sub-rect from the inset to the
+      // plate's right edge), so the number sits on the plate's centre line rather than riding high.
+      chrome.textCentered(
         stockAmount(row.amount),
-        plate.x + Math.round(STOCK_AMOUNT_INSET * s),
-        slot.y + ROW_TEXT_PAD * s,
+        {
+          x: plate.x + Math.round(STOCK_AMOUNT_INSET * s),
+          y: plate.y,
+          w: plate.w - Math.round(STOCK_AMOUNT_INSET * s),
+          h: plate.h,
+        },
         'white',
       );
     });
