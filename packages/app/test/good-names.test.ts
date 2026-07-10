@@ -44,19 +44,19 @@ describe('sandboxContent goodNames override', () => {
     const goodNames = new Map<string, string>([
       ['wood', 'Drewno'],
       ['gold', 'Złoto'],
-      ['fish', 'Ryba'],
+      ['meat', 'Mięso'],
     ]);
     const content = sandboxContent(undefined, { goodNames });
     const nameOf = (typeId: number) => content.goods.find((g) => g.typeId === typeId)?.name;
     expect(nameOf(GOOD_WOOD)).toBe('Drewno'); // a core good — name-less by default, now localized
     expect(nameOf(GOOD_GOLD)).toBe('Złoto');
     // An extended good resolves by its string id too.
-    expect(content.goods.find((g) => g.id === 'fish')?.name).toBe('Ryba');
+    expect(content.goods.find((g) => g.id === 'meat')?.name).toBe('Mięso');
   });
 
   it('leaves core goods name-less and extended goods English when no map is supplied (golden-safe)', () => {
     const content = sandboxContent();
     expect(content.goods.find((g) => g.typeId === GOOD_WOOD)?.name).toBeUndefined();
-    expect(content.goods.find((g) => g.id === 'fish')?.name).toBe('Fish');
+    expect(content.goods.find((g) => g.id === 'meat')?.name).toBe('Meat');
   });
 });
