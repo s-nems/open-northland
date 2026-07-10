@@ -198,8 +198,10 @@ function combatPossible(world: World, ctx: SystemContext, combatants: Iterable<E
  * target and swing / chase / defend / flee / disengage per its {@link Stance} military mode. The gates:
  *  - **busy** (a {@link CurrentAtomic} running) or **dead** (`hitpoints <= 0`) → leave it (a mid-swing unit
  *    plays out; a felled-but-unreaped one gets no swing from beyond the grave);
- *  - **live player MOVE order** (a {@link PlayerOrder}, not an {@link AttackOrder}) → leave it (the human's
- *    "go there and hold" suppresses ALL auto-behavior — engage AND flee — until the hold lapses);
+ *  - **live player MOVE order** (a {@link PlayerOrder}, not an {@link AttackOrder}) → EN ROUTE it suppresses
+ *    ALL auto-behavior (engage AND flee — the reposition is authoritative); once ARRIVED, the timed hold
+ *    keeps gating only a PASSIVE (IGNORE/FLEE) unit — an ATTACK/DEFEND fighter keeps its combat drive and
+ *    engaging hands the unit from the order to combat (it never stands waiting a timer out under attack);
  *  - **FLEE** ({@link Stance} `FLEE`, no attack order) → run from the nearest threat ({@link fleeDrive}),
  *    re-evaluated even while travelling (to track a moving threat / wind the cool-down down);
  *  - **IGNORE** (or the passive `NONE`) → never auto-engage; a HUNTER is the exception (its catchable-prey
@@ -226,13 +228,22 @@ function engageCombatant(
 
   const owned = world.has(e, Owner);
   let ordered = world.has(e, AttackOrder);
-  // A live PLAYER MOVE order (a {@link PlayerOrder}, and NOT an explicit {@link AttackOrder}) is the human's
-  // authoritative "go there and HOLD" command — it SUPPRESSES auto-behavior (auto-engage AND flee) so the
-  // unit carries the order out. `moveUnit` clears any prior Engagement/AttackOrder/Fleeing, so an ordered
-  // unit holds cleanly; an explicit AttackOrder is the OPPOSITE intent (fight THAT one) and still engages.
-  if (world.has(e, PlayerOrder) && !ordered) return;
-
   const attacker = world.get(e, Settler);
+  // A live PLAYER MOVE order (a {@link PlayerOrder}, and NOT an explicit {@link AttackOrder}) is the human's
+  // authoritative "go there" command. EN ROUTE (the hold hasn't begun) it suppresses ALL auto-behavior —
+  // engage AND flee — so the reposition is carried out (ordering units PAST an enemy line routes around it,
+  // never into a fight). Once ARRIVED, the hold gates only a PASSIVE unit: a fighter holding on
+  // ATTACK/DEFEND keeps its combat drive — an enemy walks up and beats a timer-waiting unit to death
+  // otherwise — and when it does engage, the chase/swing state it creates ends the order through
+  // {@link playerOrderSystem}'s own rules (a clean handoff). `moveUnit` clears any prior
+  // Engagement/AttackOrder/Fleeing, so an ordered unit starts its walk cleanly; an explicit AttackOrder is
+  // the OPPOSITE intent (fight THAT one) and always engages.
+  const moveOrder = world.tryGet(e, PlayerOrder);
+  if (moveOrder !== undefined && !ordered) {
+    if (moveOrder.expiresAt === null) return; // still walking the order out — the reposition is authoritative
+    const mode = stanceMode(world, e, attacker.jobType);
+    if (mode !== MILITARY_MODE.ATTACK && mode !== MILITARY_MODE.DEFEND) return; // passive: hold the spot blindly
+  }
   // An explicit attack order that has OUTLIVED its target (dead / no longer a valid hostile) is dropped
   // HERE, before the stance dispatch, so the unit re-decides by its STANCE this tick — an IGNORE scout goes
   // back to ignoring, a FLEE civilian to fleeing, a DEFEND guard to its post — instead of the order's
@@ -308,9 +319,13 @@ function engageCombatant(
   }
 
   const { target, dist } = found;
-  if (dist >= weapon.minRange && dist <= weapon.maxRange) {
-    // In the reach band: stop advancing and swing. Clearing the chase movement is a no-op for an unowned
-    // unit (it never travels into combat) and drops the chase route for an owned one that just arrived.
+  if (dist >= weapon.minRange && dist <= weapon.maxRange && !travelling) {
+    // In the reach band AND standing: swing. The standstill gate matters for the FEEL of the swing —
+    // node distances round to the nearest node, so a walker enters the band MID-STRIDE (half an edge
+    // out); starting the swing there froze it off any node centre and the wind-up read as a glide/
+    // teleport. Gated, the walker finishes its (braked) last leg onto the slot's centre and swings
+    // from a standstill; an unowned unit never travels into combat, so its swing-in-place behaviour
+    // is untouched. The clearChase is then just stale-goal hygiene for the owned arrival.
     clearChase(world, e);
     // The Engagement marker (economy-skip + chase throttle) is OWNED-only — an unowned combatant swings
     // in place with no advance drive, so stamping it there would give it a spurious economy-skip AND
@@ -521,19 +536,30 @@ function chase(
     returnToAnchor(world, e, here, defend.anchorCell);
     return;
   }
-  if (dest === here) {
-    // No walkable cell in the target's weapon band is reachable, and the unit is out of range (else it
-    // would have swung, not chased) — the target can't be closed on (boxed into an unwalkable pocket, or
-    // the two are stacked on one cell with no free approach). Give up rather than loop engaged-but-frozen:
-    // `disengage` drops the Engagement + chase state AND any AttackOrder (an unreachable ordered target).
-    // Next tick the unit re-acquires another enemy, or the economy relocates it (which also breaks a
-    // shared-tile stall) — so it never stays stuck. Only reachable on obstructed terrain: an all-walkable
-    // map always yields a band cell, so combat on open ground is unaffected.
+  if (dest === here && !travelling) {
+    // STANDING on its own best approach cell yet out of range (else it would have swung, not chased) —
+    // the target can't be closed on (boxed into an unwalkable pocket, or the two are stacked on one
+    // cell with no free approach). Give up rather than loop engaged-but-frozen: `disengage` drops the
+    // Engagement + chase state AND any AttackOrder (an unreachable ordered target). Next tick the unit
+    // re-acquires another enemy, or the economy relocates it (which also breaks a shared-tile stall) —
+    // so it never stays stuck. Only reachable on obstructed terrain when standing: an all-walkable map
+    // always yields a band cell. A TRAVELLING unit whose truncated node already reads as a free band
+    // cell (mid-stride onto it) is NOT boxed in — it falls through and aims its live route there, so
+    // it finishes the step, stops on the centre, and swings next pass (the standstill-swing rule).
     disengage(world, e);
     return;
   }
-  clearChase(world, e);
-  world.add(e, MoveGoal, { cell: dest });
+  // Re-aim the LIVE route instead of dropping it — the moveUnit redirect pattern: keep any PathFollow
+  // (the walker keeps full stride this tick), drop only a stale in-flight request, and swap the goal;
+  // the navigation planner re-routes from where the walker stands and the routing splice carries the
+  // gait + heading through the turn (movement inertia). Clearing the nav state here instead reset the
+  // gait to zero every {@link REPATH_CADENCE} ticks, so a chaser lurched cell-by-cell — accelerate,
+  // brake, stall — rather than running its target down (the reported chase stutter). An unchanged
+  // goal is left entirely alone so a same-dest request keeps its place in the routing queue.
+  if (world.tryGet(e, MoveGoal)?.cell !== dest) {
+    world.remove(e, PathRequest);
+    world.add(e, MoveGoal, { cell: dest });
+  }
   slots.claimed.add(dest); // this slot is dealt — the tick's later chasers aim at the next free cell
   engagement.repathAt = ctx.tick + REPATH_CADENCE;
 }

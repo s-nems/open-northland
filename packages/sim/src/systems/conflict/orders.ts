@@ -112,6 +112,12 @@ export function moveUnit(
   world.remove(e, AttackOrder);
   world.remove(e, Fleeing); // a move order supersedes the flee drive too (and its run gait)
   world.add(e, MoveGoal, { cell: goal });
+  // A move order RELOCATES a DEFEND unit's post: the guard defends the spot it was sent to, not the
+  // tile the stance was set on. Without the re-anchor, the arrived-hold combat pass (which lets an
+  // ATTACK/DEFEND fighter keep its combat drive while holding) would march the guard straight back
+  // to its OLD anchor the moment it found no enemy there.
+  const stance = world.tryGet(e, Stance);
+  if (stance !== undefined && stance.mode === MILITARY_MODE.DEFEND) stance.anchorCell = goal;
   const holdTicks = isCombatantUnit(world, e) ? MOVE_ORDER_HOLD_SOLDIER : MOVE_ORDER_HOLD_CIVILIAN;
   // expiresAt null = the hold hasn't started; playerOrderSystem begins it on arrival.
   world.add(e, PlayerOrder, { holdTicks, expiresAt: null });
