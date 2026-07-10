@@ -10,6 +10,7 @@ import {
   Resource,
   Stockpile,
   Stump,
+  Vehicle,
   WorkFlag,
 } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
@@ -18,7 +19,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { unstampResourceFootprint } from '../footprint/index.js';
-import { stockCapacity } from '../stores.js';
+import { isYardHeap, lowestStockedGood, stockCapacity } from '../stores.js';
 
 // The GOODS effects of the atomic executor — harvest/fell/deplete a resource node, drop and reap
 // ground piles, pick up / consume / deposit a carried load. Every mutation conserves goods (nothing
@@ -102,10 +103,12 @@ export function dropGroundPile(world: World, x: Fixed, y: Fixed, goodType: numbe
 }
 
 /**
- * The most units a loose PLAYER-dropped ground pile can hold. The `ls_goods` heap has this many growth
- * states (a single-unit heap at fill 1, a full one at {@link MAX_GROUND_STACK}), so a hand-placed pile can't
- * grow past what its graphic can show — the drop caps here and further drops on the same tile are no-ops.
- * Source basis: `ls_goods.bmd` carries 5 fill states per good pile (the pipeline's goods stage).
+ * The most units a loose ground pile can hold on one tile — the per-tile cap for BOTH a player-dropped heap
+ * ({@link dropOrStackGood}) and a gatherer's yard heap ({@link stackOntoTile} / `nearestFreeYardNode`). The
+ * `ls_goods` heap has this many growth states (a single-unit heap at fill 1, a full one at
+ * {@link MAX_GROUND_STACK}), so a pile can't grow past what its graphic can show — a drop caps here and
+ * spills to the next tile (yard) or is dropped (hand-placed). Source basis: `ls_goods.bmd` carries 5 fill
+ * states per good pile (the pipeline's goods stage).
  */
 export const MAX_GROUND_STACK = 5;
 
@@ -251,18 +254,22 @@ export function pickupFromStore(
   if (moved <= 0) return; // source emptied since the planner chose it — nothing to carry
   stock.amounts.set(goodType, have - moved);
   addCarry(world, settler, goodType, moved);
-  reapEmptyGroundDrop(world, from); // a fully-collected felled trunk vanishes (a designated flag stays)
+  reapEmptyLoosePile(world, from); // a fully-collected trunk / yard heap vanishes (a warehouse/hull stays)
 }
 
 /**
- * Reap a bare {@link GroundDrop} pile (a felled trunk / dropped-good heap) once a pickup has emptied it,
- * so a long game doesn't accrete an empty pile per felled tree. Only a `GroundDrop` is auto-removed — a
- * *designated* delivery flag (an equally-bare `Stockpile` with no marker) persists as a collection
- * point. The emptiness test reads the `amounts` for a pure "holds nothing" predicate (not an
- * order-dependent choice), so raw Map iteration is fine here. No-op for a non-drop / still-stocked pile.
+ * Reap a LOOSE ground pile once a pickup has emptied it, so a long game doesn't accrete a dead heap per
+ * felled tree or delivered load. A loose pile is any positioned {@link Stockpile} that is NOT a persistent
+ * store — a {@link Building} warehouse and a {@link Vehicle} hull both keep their empty stock and are left
+ * alone. This covers a felled/dropped {@link GroundDrop} trunk AND a bare gatherer-yard / player-dropped
+ * heap (which carries no marker): an emptied yard tile vanishes instead of lingering as a zero heap that
+ * would mis-render as a flag and read as "free but unfillable" to the yard scan. The emptiness test reads
+ * `amounts` for a pure "holds nothing" predicate (not an order-dependent choice), so raw Map iteration is
+ * fine. No-op for a persistent store / a still-stocked pile. (A delivery flag has no `Stockpile`, so it
+ * never reaches here.)
  */
-function reapEmptyGroundDrop(world: World, pile: Entity): void {
-  if (!world.has(pile, GroundDrop)) return; // a designated flag / building store — never auto-reaped
+function reapEmptyLoosePile(world: World, pile: Entity): void {
+  if (world.has(pile, Building) || world.has(pile, Vehicle)) return; // a persistent store — keep it empty
   const stock = world.tryGet(pile, Stockpile);
   if (stock === undefined) return;
   for (const amount of stock.amounts.values()) if (amount > 0) return; // still holds something
@@ -351,7 +358,7 @@ export function pileupIntoStore(world: World, ctx: SystemContext, settler: Entit
 
 /**
  * Drop a flag-bound gatherer's carried load onto a loose ground heap on the tile it STANDS on — the
- * faithful "collector sets its harvest down where its feet are". The planner walked it to a free yard tile
+ * observed "collector sets its harvest down where its feet are". The planner walked it to a free yard tile
  * (`nearestFreeYardNode`), so this just banks up to {@link MAX_GROUND_STACK} onto that tile; any remainder
  * stays on its back and the next delivery walks it to the next free tile (it PHYSICALLY carries the spill —
  * nothing teleports). The heap is snapped to the settler's half-cell NODE ({@link positionOfNode}), NOT its
@@ -387,13 +394,16 @@ function dropCarryAtOwnTile(world: World, settler: Entity): void {
 function stackOntoTile(world: World, x: Fixed, y: Fixed, good: number, want: number): number {
   if (want <= 0) return 0;
   for (const e of world.canonicalEntities()) {
-    if (world.has(e, GroundDrop) || world.has(e, Building) || world.has(e, DeliveryFlag)) continue;
-    const stock = world.tryGet(e, Stockpile);
-    const pos = world.tryGet(e, Position);
-    if (stock === undefined || pos === undefined) continue;
+    if (!isYardHeap(world, e)) continue;
+    const stock = world.get(e, Stockpile);
+    const pos = world.get(e, Position);
     if (pos.x !== x || pos.y !== y) continue; // a different tile
+    // Skip a tile occupied by a DIFFERENT good; a heap of OUR good (even one drained to 0 by a porter and
+    // not yet reaped) is stackable — testing the stocked good, not `size`, is what keeps a re-fill from
+    // livelocking against a stale zero entry.
+    const other = lowestStockedGood(stock);
+    if (other !== null && other !== good) return 0;
     const have = stock.amounts.get(good) ?? 0;
-    if (have <= 0 && stock.amounts.size > 0) return 0; // holds a DIFFERENT good — leave this tile alone
     const placed = Math.min(MAX_GROUND_STACK - have, want);
     if (placed <= 0) return 0; // this tile is full for the good
     stock.amounts.set(good, have + placed);

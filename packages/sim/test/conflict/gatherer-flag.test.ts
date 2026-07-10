@@ -30,7 +30,13 @@ import {
   nodeOfPosition,
 } from '../../src/index.js';
 import { MAX_GROUND_STACK } from '../../src/systems/agents/effects-goods.js';
-import { type SystemContext, aiSystem, atomicSystem, setWorkFlag } from '../../src/systems/index.js';
+import {
+  type SystemContext,
+  aiSystem,
+  atomicSystem,
+  isYardHeap,
+  setWorkFlag,
+} from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -133,13 +139,10 @@ function bindToFlag(
   return flag;
 }
 
-/** The loose ground HEAPS a flag-bound gatherer stacks its harvest onto — bare `Stockpile+Position` piles
- *  with NO {@link GroundDrop} (a felled/foreign trunk), {@link DeliveryFlag} (the marker) or {@link Building}
- *  (a warehouse). This is the goods yard the delivery spreads onto around the flag. */
+/** The loose ground HEAPS a flag-bound gatherer stacks its harvest onto (the goods yard around the flag) —
+ *  the shared {@link isYardHeap} predicate, the same one the sim + scene checks use. */
 function groundHeaps(sim: Simulation): Entity[] {
-  return [...sim.world.query(Stockpile)].filter(
-    (e) => !sim.world.has(e, GroundDrop) && !sim.world.has(e, DeliveryFlag) && !sim.world.has(e, Building),
-  );
+  return [...sim.world.query(Stockpile)].filter((e) => isYardHeap(sim.world, e));
 }
 
 /** Total WOOD across the goods-yard heaps (see {@link groundHeaps}). */
@@ -418,6 +421,28 @@ describe('flag-bound gatherer — goods pile on the GROUND, capped and pinned (n
     });
     const [a, b] = nodes as [{ hx: number; hy: number }, { hx: number; hy: number }];
     expect(Math.abs(a.hx - b.hx) + Math.abs(a.hy - b.hy)).toBe(1);
+    expect(violations).toEqual([]);
+  });
+
+  it('re-fills a drained (0-unit) yard heap instead of stalling on it (no livelock)', () => {
+    // A porter can empty a yard heap to {WOOD:0} (a bare pile, so nothing auto-removed it in this fixture).
+    // The gatherer must be able to top that same tile back up — not read it as "a different good" and freeze
+    // carrying its load forever. Pre-seed the drained heap on the flag's own yard tile, then harvest+deliver.
+    const sim = new Simulation({ seed: 8, content: testContent(), map: grassMap(20, 1) });
+    const gatherer = makeWoodcutter(sim, 0, 0);
+    bindToFlag(sim, gatherer, 5, 0, WIDE_RADIUS);
+    const drained = sim.world.create();
+    sim.world.add(drained, Position, { x: fx.fromInt(5), y: fx.fromInt(0) }); // the flag tile's yard node
+    sim.world.add(drained, Stockpile, { amounts: new Map([[WOOD, 0]]) });
+    placeFellableTree(sim, 1, 0);
+
+    const violations = runTicks(sim, 800);
+
+    const heaps = groundHeaps(sim);
+    expect(heaps).toHaveLength(1); // topped up the SAME drained heap, not littered a second
+    expect(heaps[0]).toBe(drained);
+    expect(groundHeapWood(sim)).toBe(TREE_WOOD_YIELD); // the load was actually banked, not stuck on its back
+    expect(sim.world.has(gatherer, Carrying)).toBe(false); // hands free — no livelock
     expect(violations).toEqual([]);
   });
 

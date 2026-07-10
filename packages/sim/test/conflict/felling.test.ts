@@ -236,26 +236,51 @@ describe('felling — ground drop cleanup', () => {
     expect(sim.world.get(cutter, Carrying).amount).toBe(1); // the unit moved onto the collector
   });
 
-  it('a designated flag (a bare Stockpile with NO GroundDrop) is NOT reaped when emptied', () => {
+  it('a bare loose HEAP (no GroundDrop marker) is ALSO reaped once emptied — no zombie zero-heap', () => {
+    // A gatherer-yard / player-dropped heap carries no marker; when a pickup drains it, it must vanish like a
+    // trunk does (a lingering {WOOD:0} heap would mis-render as a flag and read as "free but unfillable").
     const sim = new Simulation({ seed: 1, content: testContent() });
-    const flag = sim.world.create();
-    sim.world.add(flag, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-    sim.world.add(flag, Stockpile, { amounts: new Map([[WOOD, 1]]) }); // a collection point, no GroundDrop
+    const heap = sim.world.create();
+    sim.world.add(heap, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
+    sim.world.add(heap, Stockpile, { amounts: new Map([[WOOD, 1]]) }); // a loose yard heap, no marker
     const cutter = makeWoodcutter(sim, 0, 0);
     sim.world.add(cutter, CurrentAtomic, {
       atomicId: 22,
       elapsed: 0,
       progress: fx.fromInt(0),
       duration: 1,
-      effect: { kind: 'pickup', goodType: WOOD, amount: 1, from: flag },
-      targetEntity: flag,
+      effect: { kind: 'pickup', goodType: WOOD, amount: 1, from: heap },
+      targetEntity: heap,
       targetTile: null,
     });
 
     atomicSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.has(flag, Stockpile)).toBe(true); // the flag persists as a collection point
-    expect(sim.world.get(flag, Stockpile).amounts.get(WOOD) ?? 0).toBe(0);
+    expect(sim.world.has(heap, Stockpile)).toBe(false); // emptied loose heap vanished
+    expect(sim.world.get(cutter, Carrying).amount).toBe(1);
+  });
+
+  it('a persistent STORE (a Building warehouse) is NOT reaped when emptied — it stays open for deposits', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const store = sim.world.create();
+    sim.world.add(store, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
+    sim.world.add(store, Building, { buildingType: 1, tribe: VIKING, built: fx.fromInt(1), level: 0 });
+    sim.world.add(store, Stockpile, { amounts: new Map([[WOOD, 1]]) });
+    const cutter = makeWoodcutter(sim, 0, 0);
+    sim.world.add(cutter, CurrentAtomic, {
+      atomicId: 22,
+      elapsed: 0,
+      progress: fx.fromInt(0),
+      duration: 1,
+      effect: { kind: 'pickup', goodType: WOOD, amount: 1, from: store },
+      targetEntity: store,
+      targetTile: null,
+    });
+
+    atomicSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(store, Stockpile)).toBe(true); // the warehouse persists as a collection point
+    expect(sim.world.get(store, Stockpile).amounts.get(WOOD) ?? 0).toBe(0);
   });
 });
 
