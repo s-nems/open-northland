@@ -238,6 +238,11 @@ export function buildingFootprints(ir: ContentIr | null): Map<number, BuildingFo
     if (b.typeId === undefined || b.footprint === undefined) continue;
     const shift = b.id !== undefined ? DOOR_SHIFTS.get(b.id) : undefined;
     const door = b.footprint.door;
+    if (shift !== undefined && door === undefined) {
+      // A committed correction with nothing to correct — a re-extraction dropped the door. Loud, so
+      // the review-signed shift isn't silently lost (the type still gets its verbatim footprint).
+      console.warn(`buildingFootprints: DOOR_SHIFTS['${b.id}'] has no extracted door to shift`);
+    }
     out.set(
       b.typeId,
       shift !== undefined && door !== undefined

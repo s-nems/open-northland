@@ -44,10 +44,10 @@ export interface DoorBadge {
 /** Placeholder square edge + vertical gap between stacked badges (world px). */
 const SIZE = 9;
 const GAP = 3;
-/** Start the stack LOW — just below its anchor node — so the squares stack UP the wall from ground
+/** px the stack's base sits BELOW its anchor node, so the squares stack UP the wall from ground
  *  level. The HORIZONTAL placement is the anchor's own: the app resolves the worker-icon node beside
  *  the door (with per-building overrides), so this layer adds no x offset. */
-const DOOR_LIFT = -6;
+const STACK_BASE_DROP = 6;
 /** Placeholder colours: one per worker role, with a dark outline so each reads on any ground. */
 const CRAFTSMAN_COLOR = 0x5ab6ff; // blue — a workshop tradesman
 const CARRIER_COLOR = 0xffbb33; // amber — a hauler (tragarz)
@@ -108,7 +108,7 @@ export class BadgeLayer {
         this.stacks.set(badge.id, stack);
       }
       stack.node.visible = true;
-      stack.node.position.set(p.x, p.y - lift - DOOR_LIFT);
+      stack.node.position.set(p.x, p.y - lift + STACK_BASE_DROP);
       this.drawn.add(badge.id);
     }
     // Retire stacks not drawn this frame (building demolished, unstaffed, or left the snapshot).

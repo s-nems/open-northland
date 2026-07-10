@@ -101,8 +101,9 @@ describe('computeDoorBadges', () => {
 
     const badge = computeDoorBadges(snap, types, roleOf)[0];
     const anchor = nodeOfPosition(fx.fromInt(4), fx.fromInt(4));
-    const icon = workerIconOffset('headquarters');
-    const iconPos = positionOfNode(anchor.hx + 0 + icon.dx, anchor.hy + 2 + icon.dy);
+    // The literal committed override (two nodes right of the door), NOT read back through the table —
+    // deleting the table entry must fail this test, not silently fall back to the default.
+    const iconPos = positionOfNode(anchor.hx + 0 + 2, anchor.hy + 2 + 0);
     expect(badge?.x).toBe(iconPos.x);
     expect(badge?.y).toBe(iconPos.y);
   });
