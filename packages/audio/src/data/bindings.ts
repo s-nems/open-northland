@@ -69,14 +69,22 @@ export const VIKING_VOICE_POOLS: Readonly<Record<VoiceClass, readonly string[]>>
 };
 
 /**
- * Build the default {@link SoundBindings}. `chopAtomicId`, when given, binds `atomicCompleted` for
- * that content-specific atomic to the woodcutter axe group (the app knows its content's chop atomic id;
- * the audio package cannot). Omit it and `atomicCompleted` simply produces no sound.
+ * Build the default {@link SoundBindings}. `chopAtomicId`/`buildAtomicId`, when given, bind
+ * `atomicCompleted` for those content-specific atomics to the woodcutter axe / construction hammer groups
+ * (the app knows its content's atomic ids; the audio package cannot). The build binding makes EACH builder
+ * swing knock the hammer — the per-swing twin of the one-shot `buildingPlaced` hammer below. Omit an id and
+ * that atomic simply produces no sound.
  */
-export function defaultBindings(opts?: { readonly chopAtomicId?: number }): SoundBindings {
+export function defaultBindings(opts?: {
+  readonly chopAtomicId?: number;
+  readonly buildAtomicId?: number;
+}): SoundBindings {
   const byAtomic = new Map<number, EventSound>();
   if (opts?.chopAtomicId !== undefined) {
     byAtomic.set(opts.chopAtomicId, { kind: 'spatial', group: GROUP_WOODCUTTER_AXE });
+  }
+  if (opts?.buildAtomicId !== undefined) {
+    byAtomic.set(opts.buildAtomicId, { kind: 'spatial', group: GROUP_HAMMER_WOOD });
   }
   return {
     byEvent: {

@@ -13,6 +13,7 @@ import type {
 } from '@vinland/render';
 import {
   ATTACK_ATOMIC,
+  BUILD_HOUSE_ATOMIC,
   CLAY_HARVEST_ATOMIC,
   GOLD_HARVEST_ATOMIC,
   HARVEST_ATOMIC,
@@ -57,6 +58,12 @@ const SHOVEL_SEQ = 'human_man_clayworker_work_shovel'; // clay/mud — the shove
 // `stonecrushing`; there is no authored miner/pickaxe sequence on the man body). So the three hard
 // minerals dig alike, exactly as the base game wires them (source basis "Gathering work animations").
 const STONECRUSH_SEQ = 'human_man_stonecrusher_work_stonecrushing'; // stone + iron + gold (the mining strike)
+// The builder's HAMMER swing on the generic man body (`cr_hum_body_00`) — the `constructionworker` trade's
+// authored work clip (the render twin of the logic `viking_builder_build_house` atomic). Bound to
+// BUILD_HOUSE_ATOMIC so a settler raising a foundation visibly swings a hammer, exactly as the woodcutter
+// swings the axe for the chop (source basis "Gathering/construction work animations"). Not a clean ×8 strip,
+// so {@link characterBinding} plays it facing-locked (the builder faces the wall it hammers).
+const HAMMER_SEQ = 'human_man_constructionworker_Work_Hammer';
 const PICKUP_SEQ = 'human_man_generic_pick_up'; // the bend-and-pick; mushroom's pluck + the carry pickup/deposit
 // The LOADED gait — the settler walking while hauling a log. Same directional layout as the empty walk;
 // the frames simply carry the wood. Bound to the settler's `carrying` override so a woodcutter walking
@@ -454,6 +461,7 @@ export const CHARACTER_SPECS = {
       [IRON_HARVEST_ATOMIC]: { seq: STONECRUSH_SEQ }, // iron — the shared mining strike (faithful job→clip map)
       [GOLD_HARVEST_ATOMIC]: { seq: STONECRUSH_SEQ }, // gold — the shared mining strike (faithful job→clip map)
       [MUSHROOM_HARVEST_ATOMIC]: { seq: PICKUP_SEQ }, // mushroom — a bend-and-pluck (observed)
+      [BUILD_HOUSE_ATOMIC]: { seq: HAMMER_SEQ }, // builder — the construction hammer swing
       [EAT_ATOMIC]: { seq: 'human_man_generic_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_man_generic_sleep' },
       [PRAY_ATOMIC]: { seq: 'human_man_generic_pray' },

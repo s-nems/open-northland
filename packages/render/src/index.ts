@@ -27,6 +27,8 @@ export {
 export { depositVisualLevel } from './data/scene/index.js';
 export {
   atlasFromManifest,
+  bobKey,
+  finishedBuildingBobKeys,
   indexAtlasFrames,
   pickByJob,
   resolveBuildingDraw,

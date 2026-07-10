@@ -4,6 +4,7 @@ import type { AtomicEffect } from '../../core/commands.js';
 import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
+import { advanceConstructionLabor } from '../economy/construction.js';
 import { grantWorkExperience } from '../progression.js';
 import {
   type PendingStagger,
@@ -164,6 +165,13 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
     case 'produce':
       // Owned by ProductionSystem (a later slice). Completing the atomic + emitting the event is
       // enough for now; the heavy mutation lands when that system exists.
+      return;
+    case 'construct':
+      // A builder's completed build swing is one hammer STRIKE — advance the site's construction `labor` a
+      // small step (several strikes per unit, scaled to size); the ConstructionSystem reflects it into
+      // `built`/`Health` and finishes the build once labor + material are both complete. No goods move here
+      // (materials are consumed into the structure at completion).
+      advanceConstructionLabor(world, ctx, effect.site);
       return;
     default:
       assertNever(effect); // a new AtomicEffect variant is a compile error until handled above

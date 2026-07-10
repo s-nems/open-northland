@@ -36,10 +36,16 @@ describe('VIKING_VOICE_POOLS', () => {
 });
 
 describe('defaultBindings', () => {
-  it('binds the chop atomic to a spatial group only when a chop atomic id is given', () => {
+  it('binds the chop / build atomics to spatial groups only when their ids are given', () => {
     expect(defaultBindings().byAtomic.size).toBe(0);
     const chop = defaultBindings({ chopAtomicId: 24 }).byAtomic.get(24);
     expect(chop).toEqual({ kind: 'spatial', group: 'Woodcutter Axe' });
+    // The builder's swing knocks the hammer per stroke (the per-swing twin of the buildingPlaced hammer).
+    const build = defaultBindings({ buildAtomicId: 39 }).byAtomic.get(39);
+    expect(build).toEqual({ kind: 'spatial', group: 'Hammer Wood' });
+    // Both ids together bind both atomics, independently.
+    const both = defaultBindings({ chopAtomicId: 24, buildAtomicId: 39 }).byAtomic;
+    expect(both.size).toBe(2);
   });
 
   it('binds life events to jingles and placement/production to spatial groups', () => {

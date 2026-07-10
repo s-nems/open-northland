@@ -34,6 +34,8 @@ export type {
   StockpileBinding,
 } from './bindings.js';
 export {
+  bobKey,
+  finishedBuildingBobKeys,
   resolveBuildingDraw,
   resolveConstructionDraws,
   resolveResourceDraw,

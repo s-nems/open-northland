@@ -47,6 +47,7 @@ export function placeSandboxBuilding(
   x: number,
   y: number,
   owner: number = HUMAN_PLAYER,
+  opts: { readonly underConstruction?: boolean } = {},
 ): void {
   // Scenes author in whole tiles; the command seam speaks half-cell nodes.
   const node = cellAnchorNode(x, y);
@@ -58,6 +59,8 @@ export function placeSandboxBuilding(
     tribe: PRIMARY_TRIBE,
     owner,
     force: true,
+    // A construction site starts as a grey foundation a builder raises (default: fully built).
+    ...(opts.underConstruction ? { underConstruction: true } : {}),
   });
 }
 

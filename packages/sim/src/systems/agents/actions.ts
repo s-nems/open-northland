@@ -39,6 +39,16 @@ export const PRAY_ATOMIC_ID = 12;
  *  only a content cross-reference / animation join key — the typed `pickup` effect is the behavior). */
 export const PICKUP_ATOMIC_ID = 22;
 
+/**
+ * The numeric atomic id a builder runs to raise a house (the original's `setatomic 7 39
+ * "..._builder_build_house"` — id 39 is the build-house slot bound for the builder job across every
+ * tribe; see source basis `DataCnmd/tribetypes12/tribetypes.ini`, and the builder's `allowatomic 39`
+ * in `jobtypes.ini`). Like the other ids it is the content cross-reference / animation join key (the
+ * viking binding's animation runs 15 ticks); the typed `construct` effect is the behavior (advance the
+ * site's builder-work `labor`). A job is a **builder** iff it may run this atomic — the planner's
+ * data-driven "who constructs" test, not a hardcoded jobType id. */
+export const BUILD_HOUSE_ATOMIC_ID = 39;
+
 /** The numeric atomic id used for depositing a carried load into a store. The READABLE data binds
  *  no per-good "pileup" atomic (harvest/produce are good-keyed; pickup=22/pileup are generic), and
  *  the id is only a content cross-reference / animation join key — the *effect* (typed `pileup`) is

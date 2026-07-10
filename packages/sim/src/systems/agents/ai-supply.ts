@@ -141,11 +141,14 @@ export function workplaceOutputToHaul(
  *     {@link Stockpile} with no recipe (a warehouse, or a bare flag/ground pile) that can still take the
  *     good → deliver there. This is the porter delivering to *its* store, so it never dumps a load straight
  *     back onto the pile it just cleared.
- *  4. Else → the nearest store that can stock the good ({@link nearestStoreFor}) — the unchanged default
+ *  4. Else, if a **construction site** of the tribe still needs the good, deliver it there — a builder
+ *     self-supplying its own foundation (or a hauler topping it up) reaches the site, not a warehouse.
+ *  5. Else → the nearest store that can stock the good ({@link nearestStoreFor}) — the unchanged default
  *     for an unbound hauler (so the vertical-slice woodcutter/carrier route exactly as before).
  */
 export function deliveryTargetFor(
   candidates: readonly Entity[],
+  sites: readonly Entity[],
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -177,8 +180,51 @@ export function deliveryTargetFor(
     const home = binding.workplace;
     if (isStorageSink(world, ctx, home) && hasRoom(world, ctx, home, goodType)) return home;
   }
-  // 4. Otherwise the nearest capable store — the unchanged default (unbound haulers, the golden slice).
+  // 4. A construction material flows to a construction site of the tribe that still needs it, so a builder
+  //    self-supplying its own foundation (and any hauler topping it up) reaches the site instead of shuttling
+  //    the material back into a warehouse. Scans the tiny `sites` list (each advertises its outstanding cost
+  //    via `stockCapacity`); this only prioritises the pick — nearest needing site — leaving every
+  //    non-construction good to the default below.
+  const site = nearestConstructionSiteNeeding(sites, world, ctx, terrain, here, tribe, goodType);
+  if (site !== null) return site;
+  // 5. Otherwise the nearest capable store — the unchanged default (unbound haulers, the golden slice).
   return nearestStoreFor(candidates, world, ctx, terrain, here, goodType);
+}
+
+/**
+ * The nearest **construction site** of `tribe` that still has room for `goodType` in its `construction`
+ * cost — a {@link Building} + {@link UnderConstruction} whose delivered amount of the good is below the
+ * site's advertised {@link stockCapacity} for it (its outstanding demand). Scans the tiny
+ * {@link import('./ai-targets.js').TargetCandidates.constructionSites} list (UnderConstruction + Building +
+ * Position guaranteed) in canonical order with the standard Manhattan + ascending-cell-id tie-break.
+ * Returns the site or null when no site needs the good — the routing preference behind a builder
+ * self-supplying its own site and an assigned hauler topping it up.
+ */
+function nearestConstructionSiteNeeding(
+  sites: readonly Entity[],
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  here: NodeId,
+  tribe: number,
+  goodType: number,
+): Entity | null {
+  let best: Entity | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  let bestCell = Number.POSITIVE_INFINITY;
+  for (const e of sites) {
+    if (world.get(e, Building).tribe !== tribe) continue;
+    const have = world.get(e, Stockpile).amounts.get(goodType) ?? 0;
+    if (have >= stockCapacity(world, ctx, e, goodType)) continue; // full for this material (or not a cost good)
+    const cell = interactionCell(world, ctx, terrain, e, here);
+    const dist = manhattan(terrain, here, cell);
+    if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
+      best = e;
+      bestDist = dist;
+      bestCell = cell;
+    }
+  }
+  return best;
 }
 
 /**

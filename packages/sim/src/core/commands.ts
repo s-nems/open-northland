@@ -444,4 +444,13 @@ export type AtomicEffect =
       readonly weaponMainType?: number;
       readonly projectile?: { readonly munitionType: number; readonly speed: number };
     }
+  /** A builder's **construction swing** at a {@link import('../components/economy.js').UnderConstruction}
+   *  site: on completion it advances the site's builder-work `labor` by one hammer STRIKE's quantum
+   *  (`+ONE / (totalConstructionUnits · strikesPerUnit)` — a small step, so a site rises over many
+   *  strikes scaled to its size), clamped at ONE. No goods
+   *  move here (the delivered materials sit in the site's stockpile until the ConstructionSystem consumes
+   *  the whole cost at completion); the visible `Building.built` is derived by that system from
+   *  `min(labor, deliveredFraction)`. A `site` that is no longer under construction (finished this tick,
+   *  or demolished) is a no-op — the swing struck a building that no longer needs raising. */
+  | { readonly kind: 'construct'; readonly site: Entity }
   | { readonly kind: 'idle' };

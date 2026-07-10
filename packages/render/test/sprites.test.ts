@@ -11,6 +11,8 @@ import {
   type SpriteAtlas,
   type SpriteBindings,
   atlasFromManifest,
+  bobKey,
+  finishedBuildingBobKeys,
   indexAtlasFrames,
   pickByJob,
   resolveBuildingDraw,
@@ -310,6 +312,38 @@ describe('resolveConstructionDraws — construction-stage stack for an under-con
       constructionByType: { 2: [{ bob: 102, fromPct: 10, toPct: 50 }] },
     };
     expect(resolveConstructionDraws(gappy, site(2, 0))).toEqual([{ bob: 102 }]); // below every range
+  });
+});
+
+describe('finishedBuildingBobKeys — the finished-sprite set excluded from the construction rise', () => {
+  it('keys every type bob + the default (bare and layer-qualified), so only scaffold stages survive', () => {
+    // Two finished homes (a bare default + a layer-qualified tier) plus construction-only scaffold bobs.
+    const binding: BuildingTypeBinding = {
+      byType: { 2: 1, 3: { layer: 'viking4', bob: 11 } },
+      default: 99,
+      constructionByType: {
+        2: [{ bob: 2 }, { bob: 3 }, { bob: 1 }].map((l) => ({ ...l, fromPct: 0, toPct: 100 })),
+      },
+    };
+    const finished = finishedBuildingBobKeys(binding);
+    // Every FINISHED bob is present (the type-2 body, the layer-qualified type-3 body, the default).
+    expect(finished.has(bobKey({ bob: 1 }))).toBe(true);
+    expect(finished.has(bobKey({ bob: 11, layer: 'viking4' }))).toBe(true);
+    expect(finished.has(bobKey({ bob: 99 }))).toBe(true);
+    // The construction-only scaffold bobs are NOT finished sprites — they rise.
+    expect(finished.has(bobKey({ bob: 2 }))).toBe(false);
+    expect(finished.has(bobKey({ bob: 3 }))).toBe(false);
+    // Filtering the stage stack by this set drops the finished body (bob 1), keeps the scaffold (2, 3).
+    const midBuild: DrawItem = { kind: 'building', ref: 1, x: 0, y: 0, depth: 0, typeId: 2, builtPct: 40 };
+    const scaffold = (resolveConstructionDraws(binding, midBuild) ?? []).filter(
+      (d) => !finished.has(bobKey(d)),
+    );
+    expect(scaffold).toEqual([{ bob: 2 }, { bob: 3 }]);
+  });
+
+  it('memoizes per binding — the same set instance is returned across calls', () => {
+    const binding: BuildingTypeBinding = { byType: { 2: 1 }, default: 11 };
+    expect(finishedBuildingBobKeys(binding)).toBe(finishedBuildingBobKeys(binding));
   });
 });
 

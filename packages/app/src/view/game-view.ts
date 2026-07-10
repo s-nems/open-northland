@@ -15,7 +15,7 @@ import {
 } from '@vinland/render';
 import { FixedTimestep, type SimEvent, type Simulation, type WorldSnapshot } from '@vinland/sim';
 import type { Application } from 'pixi.js';
-import { HARVEST_ATOMIC } from '../catalog/atomics.js';
+import { BUILD_HOUSE_ATOMIC, HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { pickerEntries } from '../catalog/professions.js';
 import { createSoundDriver } from '../content/audio.js';
 import { DEFAULT_UI_LANG } from '../content/gui-gfx.js';
@@ -156,7 +156,9 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
   // sound toggle — that click both unmutes and satisfies the browser autoplay gesture. A checkout
   // without `content/` (no sound bank) degrades to silence (no driver, no button).
   const wantSound = params.get('sound') !== 'off';
-  const soundDriver = wantSound ? createSoundDriver(await loadIr(), { chopAtomicId: HARVEST_ATOMIC }) : null;
+  const soundDriver = wantSound
+    ? createSoundDriver(await loadIr(), { chopAtomicId: HARVEST_ATOMIC, buildAtomicId: BUILD_HOUSE_ATOMIC })
+    : null;
   if (soundDriver !== null) {
     soundDriver.setEnabled(false);
     mountSoundToggle(soundDriver);
@@ -392,6 +394,11 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // rendered into the portrait box INSIDE renderer.update (a second world render, before the main stage
     // render). Null when the selection has no portrait; the inset fits the entity's bounds to the box.
     renderer.setPortraitInset(controls.portrait());
+    // Grey construction-site plots: every placed foundation's footprint cells, washed on the ground so a
+    // fresh site reads as a marked-out plac budowy before the scaffold rises. Computed sim-side (footprint
+    // + positions) and handed over as plain cells — the renderer stays a pure projection. Cheap: the sim
+    // scans only the small under-construction set, and the layer skips the redraw when the set is unchanged.
+    renderer.updateConstructionPlots(sim.constructionPlots());
     // One retained update: reconcile the pooled sprites, draw the selection rings + door badges + the
     // selected gatherers' work-flag highlight, render once. `app.screen` tracks window resizes. No HUD frame
     // is passed — the always-on stocks panel is gone; the debug tick lives in the top overlay and the

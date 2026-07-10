@@ -8,7 +8,13 @@ import { type Entity, World } from './ecs/world.js';
 import { type Invariant as _Invariant, checkInvariants as _checkInvariants } from './harness/invariants.js';
 import { type WorldSnapshot, takeSnapshot } from './inspect/snapshot.js';
 import { type TerrainGraph, type TerrainMap, buildTerrainGraph } from './nav/terrain.js';
-import { type PlacementProbe, placementBlockerVersion, placementProbe } from './systems/footprint/index.js';
+import {
+  type ConstructionPlot,
+  type PlacementProbe,
+  constructionSitePlots,
+  placementBlockerVersion,
+  placementProbe,
+} from './systems/footprint/index.js';
 import { SYSTEM_ORDER, type SystemContext } from './systems/index.js';
 
 export interface SimOptions {
@@ -118,6 +124,15 @@ export class Simulation {
    */
   placementBlockerVersion(): string {
     return placementBlockerVersion(this.world);
+  }
+
+  /**
+   * The ground plots of every under-construction building — its footprint body cells, for the render's
+   * grey "construction site" decal (see {@link constructionSitePlots}). Read-only render support like
+   * {@link placementProbe}: never mutates, determinism-irrelevant. Empty when nothing is under construction.
+   */
+  constructionPlots(): ConstructionPlot[] {
+    return constructionSitePlots(this.world, this.content);
   }
 
   /** Run N ticks. */

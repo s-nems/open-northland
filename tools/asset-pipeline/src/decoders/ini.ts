@@ -1298,6 +1298,50 @@ export function extractConstructionCosts(
 }
 
 /**
+ * Extracts each building type's **max hitpoints** from the graphics table's `[GfxHouse]` records
+ * (`DataCnmd/budynki12/houses/houses.ini`), keyed by `typeId` for the same overlay as
+ * {@link extractConstructionCosts}. Each record carries a `logichitpoints <sizeIdx> <value>` line per
+ * size level, joined to a `typeId` through the record's `LogicType <sizeIdx> <typeId>` table
+ * ({@link logicTypeByLevel}) — so a home's level chain (typeIds 2..6) resolves each tier's own HP
+ * (30000 / 40000 / 60000 / 70000 / 80000), a wall 100000, a small workplace ~25000. Collisions resolve
+ * DETERMINISTICALLY exactly like the construction cost: the **lowest `LogicTribeType`** record wins
+ * (the reference-tribe convention), and within a record the **lowest `sizeIdx`** wins. A level with a
+ * `LogicType` but no `logichitpoints` is absent — that type carries no HP. Returns an empty map for a
+ * source with no `[GfxHouse]` records.
+ *
+ * source-basis: the readable `logichitpoints` param (`houses.ini` `[GfxHouse]`) — faithful per-tier
+ * HP; the single-value collapse across (tribe, sizeIdx) is the same named approximation the cost
+ * overlay records.
+ */
+export function extractHouseHitpoints(sections: readonly RuleSection[]): Map<number, number> {
+  // typeId -> the winning record, ranked by (tribeType asc, sizeIdx asc) so the choice is independent
+  // of file/parse order (mirrors extractConstructionCosts' collision resolution).
+  const winner = new Map<number, { tribeType: number; sizeIdx: number; hitpoints: number }>();
+  for (const sec of sections) {
+    if (sec.name !== 'GfxHouse') continue;
+    const tribeType = getInt(sec, 'LogicTribeType') ?? Number.POSITIVE_INFINITY;
+    const typeByLevel = logicTypeByLevel(sec);
+    for (const p of findProps(sec, 'logichitpoints')) {
+      const sizeIdx = Number.parseInt(p.values[0] ?? '', 10);
+      const hitpoints = Number.parseInt(p.values[1] ?? '', 10);
+      if (Number.isNaN(sizeIdx) || Number.isNaN(hitpoints) || hitpoints <= 0) continue;
+      const typeId = typeByLevel.get(sizeIdx);
+      if (typeId === undefined) continue;
+      const existing = winner.get(typeId);
+      // Lower tribeType wins; for the same tribe, lower sizeIdx wins (the base build stage).
+      if (
+        existing !== undefined &&
+        (existing.tribeType < tribeType || (existing.tribeType === tribeType && existing.sizeIdx <= sizeIdx))
+      ) {
+        continue;
+      }
+      winner.set(typeId, { tribeType, sizeIdx, hitpoints });
+    }
+  }
+  return new Map([...winner].map(([typeId, { hitpoints }]) => [typeId, hitpoints]));
+}
+
+/**
  * Expands one footprint-area source line (`<x> <y> <run>` after any leading level index) into its
  * cells: `run` cells starting at `(x, y)`, extending along +x — the row encoding every
  * `Logic*BlockArea` key uses. Non-numeric / non-positive runs yield no cells (malformed line).

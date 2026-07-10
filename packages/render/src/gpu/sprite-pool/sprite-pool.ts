@@ -37,6 +37,14 @@ import { type ResolvedLayer, resolveLayers } from './resolve-layers.js';
 const SCREEN_PAINT_EPS = 0.25;
 
 /**
+ * Per-frame easing factor for the construction bottom-up reveal — the displayed reveal moves this fraction
+ * of the remaining distance toward the layer's target each frame. Tuned so the rise glides continuously
+ * across the sim's per-swing `built` steps (~15 ticks / swing) without a visible catch-up snap; a
+ * newly-seen site initialises to its target instead of easing up from zero (see {@link SpritePool.bindLayers}).
+ */
+const CONSTRUCTION_REVEAL_EASE = 0.06;
+
+/**
  * Everything one {@link SpritePool.reconcile} pass needs beyond the pool's own state — built once per
  * frame by the {@link import('../world-renderer.js').WorldRenderer} (one small object per frame, not per
  * entity). Grouping the camera + canvas size + interpolation inputs keeps the per-frame plumbing in one
@@ -289,12 +297,34 @@ export class SpritePool {
     let minY = Number.POSITIVE_INFINITY;
     let maxX = Number.NEGATIVE_INFINITY;
     let maxY = Number.NEGATIVE_INFINITY;
+    // Ease the DISPLAYED construction reveal toward the layers' target (they share one, keyed off the
+    // building's `builtPct`) so a rising building glides between the sim's per-swing steps. A first-seen
+    // site initialises straight to its target (no spurious grow-from-zero when a mid-build house scrolls in).
+    const revealTarget = layers.find((l) => l?.reveal !== undefined)?.reveal;
+    if (revealTarget === undefined) {
+      pe.reveal = undefined;
+    } else {
+      pe.reveal =
+        pe.reveal === undefined
+          ? revealTarget
+          : pe.reveal + (revealTarget - pe.reveal) * CONSTRUCTION_REVEAL_EASE;
+    }
+    const displayReveal = pe.reveal;
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
       if (layer === undefined) continue;
       // Feet-anchored: the frame's authored draw offset, scaled about the anchor (the container origin).
       const ox = layer.frame.offsetX * layer.scale;
       const oy = layer.frame.offsetY * layer.scale;
+      // A reveal layer draws only its bottom `displayReveal` (cropped from the top, shifted down so its
+      // base stays put) — the building rising out of the ground. Buildings never take the paletted path.
+      const hiddenTop =
+        layer.reveal !== undefined && displayReveal !== undefined
+          ? Math.round((1 - displayReveal) * layer.frame.height)
+          : 0;
+      // The layer's drawn top/height in feet-local space — cropped for a reveal layer, full otherwise.
+      const drawnOy = oy + hiddenTop * layer.scale;
+      const drawnH = (layer.frame.height - hiddenTop) * layer.scale;
       if (pe.paletted && this.sheet?.palette !== undefined) {
         const lut = this.sheet.palette;
         let spr = pe.sprites[i] as PalettedSprite | undefined; // pe.paletted ⇒ every layer is a PalettedSprite
@@ -323,15 +353,23 @@ export class SpritePool {
           pe.sprites[i] = spr;
           pe.container.addChild(spr);
         }
-        spr.texture = this.textures.get(layer.source, layer.frame);
-        spr.position.set(ox, oy);
+        if (hiddenTop >= layer.frame.height) {
+          // Nothing revealed yet (a foundation at 0%): draw nothing this frame, contribute no bounds.
+          spr.visible = false;
+          continue;
+        }
+        spr.texture =
+          hiddenTop > 0
+            ? this.textures.cropped(layer.source, layer.frame, hiddenTop)
+            : this.textures.get(layer.source, layer.frame);
+        spr.position.set(ox, drawnOy);
         spr.scale.set(layer.scale);
         spr.visible = true;
       }
       if (ox < minX) minX = ox;
-      if (oy < minY) minY = oy;
+      if (drawnOy < minY) minY = drawnOy;
       if (ox + layer.frame.width * layer.scale > maxX) maxX = ox + layer.frame.width * layer.scale;
-      if (oy + layer.frame.height * layer.scale > maxY) maxY = oy + layer.frame.height * layer.scale;
+      if (drawnOy + drawnH > maxY) maxY = drawnOy + drawnH;
     }
     // Hide any leftover sprites from a frame that needed more layers than this one.
     for (let i = layers.length; i < pe.sprites.length; i++) {

@@ -1,10 +1,12 @@
 import { indexById } from '@vinland/data';
 import {
   Building,
+  Health,
   JobAssignment,
   Position,
   Settler,
   Stockpile,
+  UnderConstruction,
   Vehicle,
   stampOwner,
 } from '../components/index.js';
@@ -234,7 +236,16 @@ function placeBuilding(
   const built = command.underConstruction ? fx.fromInt(0) : ONE;
   world.add(e, Building, { buildingType: command.buildingType, tribe: command.tribe, built, level: 0 });
   const amounts = new Map<number, number>();
-  if (!command.underConstruction) {
+  if (command.underConstruction) {
+    // A construction site: the builder-work marker (starts at 0 labor — a bare grey foundation) plus,
+    // when the type has a hitpoints pool, a Health pool the ConstructionSystem ramps up as it rises
+    // (stamped at 1 so the foundation is never a 0-HP corpse the CleanupSystem reaps). A type with no
+    // extracted `hitpoints` (synthetic content) carries no Health — it still builds, just without a life
+    // pool. Only an under-construction placement gets these; an already-built placement (the golden /
+    // vertical-slice path) is a plain Building, hash untouched.
+    world.add(e, UnderConstruction, { labor: fx.fromInt(0) });
+    if (type.hitpoints !== undefined) world.add(e, Health, { hitpoints: 1, max: type.hitpoints });
+  } else {
     for (const slot of type.stock) {
       if (slot.initial > 0) amounts.set(slot.goodType, slot.initial);
     }
