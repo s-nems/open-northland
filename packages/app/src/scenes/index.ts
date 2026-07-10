@@ -1,4 +1,5 @@
 import { buildingGeometryScene } from './building-geometry.js';
+import { collisionScene } from './collision.js';
 import { combatScene } from './combat.js';
 import { constructionScene } from './construction.js';
 import { equipmentScene } from './equipment.js';
@@ -17,6 +18,7 @@ export { createSceneSim, resetComponentStores } from './runtime.js';
 export const SCENES: readonly SceneDefinition[] = [
   sandboxScene,
   combatScene,
+  collisionScene,
   goodsCatalogScene,
   equipmentScene,
   constructionScene,

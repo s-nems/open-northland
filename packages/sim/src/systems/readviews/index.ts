@@ -93,7 +93,7 @@ export {
 
 export { isSeaJob, seaJobs } from './jobs.js';
 
-export { MILITARY_MODE, defaultStanceForJob, isMilitaryMode } from './stances.js';
+export { MILITARY_MODE, defaultStanceForJob, isFighterJob, isMilitaryMode } from './stances.js';
 
 export {
   isLandLayerType,

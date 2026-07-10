@@ -1,4 +1,4 @@
-import { PathFollow, PathRequest, Position } from '../../components/index.js';
+import { MoveGoal, Owner, PathFollow, PathRequest, Position } from '../../components/index.js';
 import { type Fixed, ZERO, fx } from '../../core/fixed.js';
 import { positionOfNode, positionXOfWorld } from '../../nav/halfcell.js';
 import { findPath } from '../../nav/pathfinding.js';
@@ -7,6 +7,7 @@ import type { System } from '../context.js';
 import { dynamicBlockedCells } from '../footprint/index.js';
 import { canonicalById, isValidNodeId } from '../spatial.js';
 import { turnOntoNextLeg } from './movement.js';
+import { GOAL_FALLBACK_SEARCH_CAP, type UnitWalkBlocks, unitWalkBlocks } from './separation.js';
 
 // pathfindingSystem lives in routing.ts (not pathfinding.ts) to avoid an eyeball collision with the
 // A* core in ../pathfinding.ts, which this system consumes. The cross-system `isValidNodeId` guard comes
@@ -48,18 +49,63 @@ export const pathfindingSystem: System = (world, ctx) => {
   // ascending-id subsequence a full canonicalEntities() filter did — store ⊆ alive), so a tick with
   // no requests costs O(requests), not O(world).
   let served = 0;
-  // The walk-block overlay (standing building bodies + resource footprints), built lazily ONCE per
-  // routing tick — only a tick that actually routes pays for it. Building cells are derived live;
-  // resource cells come from the ResourceFootprint generation cache.
-  let blocked: ReadonlySet<NodeId> | undefined;
+  // The walk-block overlays, built lazily ONCE per routing tick — only a tick that actually routes
+  // pays for them. `dynamic` is the standing building bodies + resource footprints; `units` is the
+  // standing-collider stamp (see `unitWalkBlocks` — the SC2-model split: routing sees standing
+  // bodies, never moving ones). The two compose per REQUESTER player — another player's town posts
+  // block me, its own never block it — so the combined set is memoized per player id seen this tick
+  // (-1 = an unowned requester, which no player's town exempts).
+  let dynamic: ReadonlySet<NodeId> | undefined;
+  let units: UnitWalkBlocks | undefined;
+  const combinedByPlayer = new Map<number, ReadonlySet<NodeId>>();
+  // Goal stand-ins already handed out this tick, so two walkers aimed at one crowded node fan out
+  // to DIFFERENT free nodes (the surround rule) instead of both claiming the same one.
+  const claimedStandIns = new Set<NodeId>();
+  const blockedFor = (player: number): ReadonlySet<NodeId> => {
+    let set = combinedByPlayer.get(player);
+    if (set === undefined) {
+      dynamic ??= dynamicBlockedCells(world, ctx, terrain);
+      units ??= unitWalkBlocks(world, terrain);
+      const composed = new Set(dynamic);
+      for (const n of units.field) composed.add(n);
+      for (const [p, town] of units.townByPlayer) {
+        if (p === player) continue; // a player's own town garrison never blocks its own routing
+        for (const n of town) composed.add(n);
+      }
+      combinedByPlayer.set(player, composed);
+      set = composed;
+    }
+    return set;
+  };
+
   for (const e of canonicalById(world.query(PathRequest))) {
     if (served >= PATHFINDING_BUDGET_PER_TICK) break;
     const req = world.get(e, PathRequest);
     if (req.failed) continue; // already-failed requests aren't retried
     served++;
 
-    blocked ??= dynamicBlockedCells(world, ctx, terrain);
-    const path = resolvePath(terrain, req.start, req.goal, blocked);
+    const blocked = blockedFor(world.tryGet(e, Owner)?.player ?? -1);
+    let path = resolvePath(terrain, req.start, req.goal, blocked);
+    if (path === null && isValidNodeId(terrain, req.goal)) {
+      // A goal occupied by a STANDING UNIT (in the unit stamp but not a wall/resource) is a live,
+      // recoverable situation — someone is simply standing there. Re-aim at the nearest free node
+      // instead of failing: this is the rule that fans a charge out AROUND a crowded target (each
+      // arrival stands, occupies its node, and the next walker is dealt the next free one).
+      const goal = req.goal as NodeId;
+      if (blocked.has(goal) && !(dynamic?.has(goal) ?? false)) {
+        const standIn = nearestUnblockedNode(terrain, goal, blocked, claimedStandIns);
+        if (standIn !== null) {
+          path = resolvePath(terrain, req.start, standIn, blocked);
+          if (path !== null) {
+            claimedStandIns.add(standIn);
+            // Keep the intent in step with the delivered route, or the planner would re-route back
+            // at the occupied original every tick.
+            const goalIntent = world.tryGet(e, MoveGoal);
+            if (goalIntent !== undefined) goalIntent.cell = standIn;
+          }
+        }
+      }
+    }
     if (path === null) {
       req.failed = true; // signal the planner; keep the request so it isn't silently re-issued
       // A failed MID-WALK reroute keeps the live path: the walker plays out its old route and parks
@@ -138,6 +184,39 @@ function pathToWaypoints(terrain: TerrainGraph, path: ReadonlyArray<NodeId>): Ar
     prev = c;
   }
   return waypoints;
+}
+
+/**
+ * The nearest node to `from` that is neither walk-blocked nor already claimed as a stand-in this
+ * tick — a breadth-first ring search over the graph's canonical walkable neighbours (first hit at
+ * the minimum depth is history-independent), bounded by {@link GOAL_FALLBACK_SEARCH_CAP}. Unlike
+ * the idle-spacing search this TRAVERSES blocked nodes (the free node behind a rank of bodies is a
+ * fine stand-in — whether it is actually reachable is the follow-up A*'s job); `claimed` nodes are
+ * traversed but never returned.
+ */
+function nearestUnblockedNode(
+  terrain: TerrainGraph,
+  from: NodeId,
+  blocked: ReadonlySet<NodeId>,
+  claimed: ReadonlySet<NodeId>,
+): NodeId | null {
+  const seen = new Set<NodeId>([from]);
+  let frontier: NodeId[] = [from];
+  let visited = 0;
+  while (frontier.length > 0 && visited < GOAL_FALLBACK_SEARCH_CAP) {
+    const next: NodeId[] = [];
+    for (const cell of frontier) {
+      for (const n of terrain.walkableNeighbours(cell)) {
+        if (seen.has(n)) continue;
+        seen.add(n);
+        visited++;
+        if (!blocked.has(n) && !claimed.has(n)) return n;
+        next.push(n);
+      }
+    }
+    frontier = next;
+  }
+  return null;
 }
 
 /**
