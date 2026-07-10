@@ -12,7 +12,7 @@ import type { SceneDefinition } from './types.js';
 
 /**
  * The UNIT-COLLISION sign-off scene — the three player-facing promises of the body-collision
- * deviation (see `sim`'s `systems/movement/separation.ts` for the model), each as its own vignette
+ * deviation (see `sim`'s `systems/movement/collision` for the model), each as its own vignette
  * on one map:
  *
  *  1. **The wall** — a red spear line standing across the middle. A blue sword squad ordered PAST it

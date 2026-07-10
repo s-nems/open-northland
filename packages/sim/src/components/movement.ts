@@ -91,6 +91,11 @@ export const PathFollow = defineComponent<{
  * The goal is removed once the entity arrives, so an entity carrying a `MoveGoal` is "still
  * travelling". Kept separate from PathRequest/PathFollow (the transient mechanism) so the planner
  * can re-issue a request if a route is lost without forgetting where the entity was headed.
+ *
+ * One sanctioned outside write: for a COLLIDER whose goal node is occupied by a standing unit,
+ * routing re-aims `cell` at the nearest free stand-in (the surround rule — see `drainPathRequests`),
+ * so a goal's owner must not assume the exact cell it set survives the walk. A non-collider's goal
+ * is never re-aimed — the economy's node-coincidence checks rely on it arriving verbatim.
  */
 export const MoveGoal = defineComponent<{ cell: number }>('MoveGoal');
 
@@ -105,9 +110,9 @@ export const MoveGoal = defineComponent<{ cell: number }>('MoveGoal');
 export const PathRequest = defineComponent<{ start: number; goal: number; failed: boolean }>('PathRequest');
 
 /**
- * A walker's consecutive-ticks counter of being PHYSICALLY BLOCKED by standing units — the
- * SeparationSystem stamps it on a path-follower whose collision resolution pushed it *against* its
- * own heading (a body in the way, not a brush-past). `x`/`y` anchor the current GRIND WINDOW — the
+ * A walker's grind-window state among unit bodies — the SeparationSystem stamps it on a
+ * path-follower with colliders in its immediate (3×3 bucket) neighbourhood and judges blockage by
+ * PROGRESS, not push direction. `x`/`y` anchor the current GRIND WINDOW — the
  * walker's position when it began — and `ticks` counts the window's length: any tick whose total
  * movement since the anchor reaches a per-tick progress floor RESTARTS the window (real progress —
  * a slide around a lone post, a slow shove through a brush-past), while a window that reaches the

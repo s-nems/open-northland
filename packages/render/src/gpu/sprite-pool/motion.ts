@@ -3,6 +3,8 @@
  * motion. Pure mutation of plain data + testable without a GPU — the interpolation decision split out
  * from the Pixi mutation, like {@link import('./reconcile.js').reconcileSprites}.
  */
+import { WALK_TICKS_PER_CELL } from '@vinland/sim';
+import { TILE_HALF_W } from '../../data/iso.js';
 
 /**
  * World-px jump between two consecutive tick anchors past which the motion track SNAPS instead of
@@ -12,14 +14,17 @@
 const SNAP_DISTANCE = 128;
 
 /**
- * World px a FULL walking gait covers per sim tick — one 68 px cell over the sim's 12-tick walk cycle
- * (`WALK_TICKS_PER_CELL`; the sim's world metric makes every heading cover the same on-screen length
- * per tick). The {@link MotionTrack.gaitPhase} denominator: an anchor that advanced this much in a
- * tick plays its walk cycle at the authored one-frame-per-tick cadence and the feet grip the ground
- * exactly as before; anything slower (braking, acceleration, being body-pressed in a crowd) advances
- * the cycle proportionally less, so feet never skate in place (the reported treadmill look).
+ * World px a FULL walking gait covers per sim tick — one cell (`2·TILE_HALF_W`, read at call time:
+ * the pitch is a live `?pitch=` knob) over the sim's {@link WALK_TICKS_PER_CELL}-tick walk cycle
+ * (the sim's world metric makes every heading cover the same on-screen length per tick). The
+ * {@link MotionTrack.gaitPhase} denominator: an anchor that advanced this much in a tick plays its
+ * walk cycle at the authored one-frame-per-tick cadence and the feet grip the ground exactly as
+ * before; anything slower (braking, acceleration, being body-pressed in a crowd) advances the cycle
+ * proportionally less, so feet never skate in place (the reported treadmill look).
  */
-const FULL_GAIT_PX_PER_TICK = 68 / 12;
+function fullGaitPxPerTick(): number {
+  return (2 * TILE_HALF_W) / WALK_TICKS_PER_CELL;
+}
 
 /**
  * Cap on the gait-cycle rate in cycles-per-tick — covers the legit fast case (the flee RUN is 2× the
@@ -42,7 +47,7 @@ export interface MotionTrack {
   drawY: number;
   /**
    * The accumulated WALK-CYCLE clock, in tick units: advanced per sim tick by the fraction of a full
-   * gait the anchor ACTUALLY covered ({@link FULL_GAIT_PX_PER_TICK}), so the walk animation's frame
+   * gait the anchor ACTUALLY covered ({@link fullGaitPxPerTick}), so the walk animation's frame
    * (`floor(gaitPhase)`, consumed by the pool's moving-state resolve) tracks ground covered, not wall
    * ticks. At full cruise it advances exactly 1/tick — the authored feet-per-cell sync is untouched —
    * and a body-pressed or braking walker's legs slow with it instead of jogging in place.
@@ -70,7 +75,7 @@ export function trackMotion(m: MotionTrack, tick: number, x: number, y: number, 
   } else if (m.tick !== tick) {
     const dt = tick - m.tick;
     const dist = Math.hypot(x - m.x, y - m.y);
-    const rate = Math.min(MAX_GAIT_RATE, dist / (FULL_GAIT_PX_PER_TICK * dt));
+    const rate = Math.min(MAX_GAIT_RATE, dist / (fullGaitPxPerTick() * dt));
     m.gaitPhase += rate * dt;
     m.prevX = m.x;
     m.prevY = m.y;

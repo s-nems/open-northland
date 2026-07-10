@@ -1,13 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  AttackOrder,
   CurrentAtomic,
   Engagement,
   Health,
-  MoveGoal,
   Owner,
   PathFollow,
-  PathRequest,
   PlayerOrder,
   Position,
   Settler,
@@ -20,6 +17,7 @@ import { moveUnit } from '../../src/systems/conflict/orders.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
+import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
  * The combat MOVEMENT-FEEL contracts (the reported large-battle artifacts, each pinned here):
@@ -28,9 +26,9 @@ import { testContent } from '../fixtures/content.js';
  *     moveUnit redirect pattern: goal swap + routing splice) instead of dropping it; clearing the
  *     nav state reset the gait to zero every 8 ticks, so a charging unit lurched cell-by-cell
  *     (accelerate → brake → stall) while a player-ordered walk glided — the chase stutter.
- *  2. **Swing from a standstill** — node distances round mid-stride into the reach band; swinging
- *     there froze the walker off any node centre (the wind-up glide/teleport). A swing may only
- *     start once the walker has finished its braked last leg onto a node centre.
+ *  2. **Swing from a standstill** — node positions truncate, so a walker reads as in-band
+ *     mid-stride; swinging there froze the walker off any node centre (the wind-up glide/teleport).
+ *     A swing may only start once the walker has finished its braked last leg onto a node centre.
  *  3. **The arrived hold does not suppress a fighter's combat drive** — a unit holding at an
  *     ordered spot on ATTACK/DEFEND engages an enemy per its stance instead of standing through
  *     the timed hold while being beaten to death; passive stances (IGNORE/FLEE) still hold blindly,
@@ -48,24 +46,7 @@ const WOODCUTTER = 1;
 const P0 = 0;
 const P1 = 1;
 
-beforeEach(() => {
-  for (const c of [
-    Position,
-    Settler,
-    Health,
-    Owner,
-    Engagement,
-    AttackOrder,
-    CurrentAtomic,
-    MoveGoal,
-    PathFollow,
-    PathRequest,
-    PlayerOrder,
-    Stance,
-  ]) {
-    c.store.clear();
-  }
-});
+beforeEach(clearComponentStores);
 
 function grassMap(width: number, height: number): TerrainMap {
   return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });

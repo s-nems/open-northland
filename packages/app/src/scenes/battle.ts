@@ -13,7 +13,7 @@ import {
   WEAPON_SWORD,
   spawnSandboxSettler,
 } from '../game/sandbox/index.js';
-import { blueOwnedSettlers, enemyLivingSettlers } from './sandbox-queries.js';
+import { blueLivingSettlers, enemyLivingSettlers } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -62,6 +62,9 @@ const FIGHTER_HP = 1000;
 const MIN_CASUALTIES = 60;
 const MAX_FIGHTERS_PER_NODE = 2;
 
+/** One army's muster, derived from the rank layout (both sides field the same count). */
+const SPAWNED_PER_SIDE = (RANK_ROWS_LAST - RANK_ROWS_FIRST + 1) * BLUE_RANKS.length;
+
 const { Owner, Position, Settler } = components;
 
 function build(sim: Simulation): void {
@@ -82,8 +85,7 @@ function build(sim: Simulation): void {
 }
 
 function casualties(sim: Simulation): number {
-  const spawned = (RANK_ROWS_LAST - RANK_ROWS_FIRST + 1) * (BLUE_RANKS.length + RED_RANKS.length);
-  return spawned - blueOwnedSettlers(sim) - enemyLivingSettlers(sim);
+  return 2 * SPAWNED_PER_SIDE - blueLivingSettlers(sim) - enemyLivingSettlers(sim);
 }
 
 /** No node holds a stack of living fighters — the crowd stays bodies, not a pile of sprites. */
@@ -132,7 +134,8 @@ export const battleScene: SceneDefinition = {
     },
     {
       label: 'both armies engaged (casualties are not one-sided spawn losses)',
-      predicate: (sim) => blueOwnedSettlers(sim) < 100 && enemyLivingSettlers(sim) < 100,
+      predicate: (sim) =>
+        blueLivingSettlers(sim) < SPAWNED_PER_SIDE && enemyLivingSettlers(sim) < SPAWNED_PER_SIDE,
     },
   ],
 };

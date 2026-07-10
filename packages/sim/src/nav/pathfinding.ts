@@ -29,7 +29,7 @@
  * matches the current query, so stale contents are never read; reuse is invisible to the result.
  */
 import { type Fixed, fx } from '../core/fixed.js';
-import { type NodeId, type TerrainGraph, nodeLatticeDistance } from './terrain.js';
+import { type BlockOverlay, type NodeId, type TerrainGraph, nodeLatticeDistance } from './terrain.js';
 
 /** A* per-node bookkeeping. `g` = best known cost from start; `f` = g + heuristic; `h` = heuristic. */
 interface NodeRecord {
@@ -179,7 +179,7 @@ export function findPath(
   graph: TerrainGraph,
   start: NodeId,
   goal: NodeId,
-  blocked?: ReadonlySet<NodeId>,
+  blocked?: BlockOverlay,
   stats?: SearchStats,
 ): NodeId[] | null {
   if (!graph.isWalkable(start) || !graph.isWalkable(goal)) return null;
@@ -195,10 +195,16 @@ export function findPath(
   // Sealed-goal elision ({@link POCKET_PROBE_MAX_EXPLORED}): with an overlay in play, a bounded
   // probe FROM the goal either exhausts the goal's pocket without meeting the start (exact "no
   // route", at pocket cost instead of a map flood), confirms reachability early, or gives up at the
-  // cap and lets the full search decide. Skipped when the start itself is blocked — the probe's
-  // target must be enterable, and the forward search's blocked-START exemption has no reverse twin.
-  if (blocked !== undefined && blocked.size > 0 && !blocked.has(start)) {
-    const probe = runSearch(graph, goal, start, blocked, stats, POCKET_PROBE_MAX_EXPLORED);
+  // cap and lets the full search decide. A blocked START is exempt in reverse exactly as the
+  // forward search exempts it (the wrapper below re-admits it as the probe's target): forward, the
+  // walker may LEAVE its blocked node but never re-enter it — in reverse that is precisely "the
+  // node may be ENTERED as the final step and nothing else", so the two searches see the same edge
+  // set and the probe's "unreachable" stays exact.
+  if (blocked !== undefined && blocked.size > 0) {
+    const probeBlocked: BlockOverlay = blocked.has(start)
+      ? { has: (n) => n !== start && blocked.has(n), size: blocked.size }
+      : blocked;
+    const probe = runSearch(graph, goal, start, probeBlocked, stats, POCKET_PROBE_MAX_EXPLORED);
     if (probe === 'unreachable') return null;
   }
   const result = runSearch(graph, start, goal, blocked, stats, Number.POSITIVE_INFINITY);
@@ -215,7 +221,7 @@ function runSearch(
   graph: TerrainGraph,
   start: NodeId,
   goal: NodeId,
-  blocked: ReadonlySet<NodeId> | undefined,
+  blocked: BlockOverlay | undefined,
   stats: SearchStats | undefined,
   maxExplored: number,
 ): NodeId[] | 'unreachable' | 'aborted' {

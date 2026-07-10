@@ -3,12 +3,17 @@ import { type Fixed, ZERO, fx } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
 import { positionOfNode, positionXOfWorld } from '../../nav/halfcell.js';
 import { type SearchStats, findPath } from '../../nav/pathfinding.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
+import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockedCells } from '../footprint/index.js';
 import { canonicalById, isValidNodeId } from '../spatial.js';
+import { type UnitWalkBlocks, hasBodyCollision, unitWalkBlocks } from './collision/index.js';
 import { turnOntoNextLeg } from './movement.js';
-import { GOAL_FALLBACK_SEARCH_CAP, type UnitWalkBlocks, unitWalkBlocks } from './separation.js';
+
+/** How far (in nodes) the walk-overlay goal fallback ({@link nearestUnblockedNode}) searches for a
+ *  free stand-in node around a unit-occupied goal — enough to ring several bodies deep around a
+ *  crowded target before giving up. */
+export const GOAL_FALLBACK_SEARCH_CAP = 64;
 
 // pathfindingSystem lives in routing.ts (not pathfinding.ts) to avoid an eyeball collision with the
 // A* core in ../pathfinding.ts, which this system consumes. The cross-system `isValidNodeId` guard comes
@@ -74,32 +79,39 @@ export function drainPathRequests(
   // no requests costs O(requests), not O(world).
   const spent: SearchStats = { explored: 0 };
   // The walk-block overlays, built lazily ONCE per routing tick — only a tick that actually routes
-  // pays for them. `dynamic` is the standing building bodies + resource footprints; `units` is the
-  // standing-collider stamp (see `unitWalkBlocks` — the SC2-model split: routing sees standing
-  // bodies, never moving ones). The two compose per REQUESTER player — another player's town posts
-  // block me, its own never block it — so the combined set is memoized per player id seen this tick
-  // (-1 = an unowned requester, which no player's town exempts).
+  // pays for them. `dynamic` is the standing building bodies + resource footprints — every
+  // requester sees it. `units` is the standing-collider stamp (see `unitWalkBlocks` — routing sees
+  // standing bodies, never moving ones), and it applies ONLY to a requester that itself collides
+  // (`hasBodyCollision`): a ghost walks straight through bodies, so detouring it — or re-aiming its
+  // goal off an occupied node — would break the economy's exact node-coincidence walks (the shared
+  // policy on `hasBodyCollision`). For a collider the two compose per REQUESTER player — another
+  // player's town posts block me, its own never block it — as a LAYERED membership view (the
+  // per-player union used to copy the whole `dynamic` set every tick), memoized per player id seen
+  // this tick (-1 = an unowned collider, which no player's town exempts).
   let dynamic: ReadonlySet<NodeId> | undefined;
   let units: UnitWalkBlocks | undefined;
-  const combinedByPlayer = new Map<number, ReadonlySet<NodeId>>();
+  const combinedByPlayer = new Map<number, BlockOverlay>();
   // Goal stand-ins already handed out this tick, so two walkers aimed at one crowded node fan out
   // to DIFFERENT free nodes (the surround rule) instead of both claiming the same one.
   const claimedStandIns = new Set<NodeId>();
-  const blockedFor = (player: number): ReadonlySet<NodeId> => {
-    let set = combinedByPlayer.get(player);
-    if (set === undefined) {
-      dynamic ??= dynamicBlockedCells(world, ctx, terrain);
-      units ??= unitWalkBlocks(world, terrain);
-      const composed = new Set(dynamic);
-      for (const n of units.field) composed.add(n);
+  const dynamicOnly = (): ReadonlySet<NodeId> => {
+    dynamic ??= dynamicBlockedCells(world, ctx, terrain);
+    return dynamic;
+  };
+  const blockedFor = (player: number): BlockOverlay => {
+    let view = combinedByPlayer.get(player);
+    if (view === undefined) {
+      const base = dynamicOnly();
+      units ??= unitWalkBlocks(world, terrain, ctx.tick);
+      const layers: Array<ReadonlySet<NodeId>> = [base, units.field];
       for (const [p, town] of units.townByPlayer) {
         if (p === player) continue; // a player's own town garrison never blocks its own routing
-        for (const n of town) composed.add(n);
+        layers.push(town);
       }
-      combinedByPlayer.set(player, composed);
-      set = composed;
+      view = new LayeredBlocks(layers);
+      combinedByPlayer.set(player, view);
     }
-    return set;
+    return view;
   };
 
   for (const e of canonicalById(world.query(PathRequest))) {
@@ -107,13 +119,15 @@ export function drainPathRequests(
     const req = world.get(e, PathRequest);
     if (req.failed) continue; // already-failed requests aren't retried
 
-    const blocked = blockedFor(world.tryGet(e, Owner)?.player ?? -1);
+    const collides = hasBodyCollision(world, e);
+    const blocked = collides ? blockedFor(world.tryGet(e, Owner)?.player ?? -1) : dynamicOnly();
     let path = resolvePath(terrain, req.start, req.goal, blocked, spent);
-    if (path === null && isValidNodeId(terrain, req.goal)) {
+    if (path === null && collides && isValidNodeId(terrain, req.goal)) {
       // A goal occupied by a STANDING UNIT (in the unit stamp but not a wall/resource) is a live,
       // recoverable situation — someone is simply standing there. Re-aim at the nearest free node
       // instead of failing: this is the rule that fans a charge out AROUND a crowded target (each
       // arrival stands, occupies its node, and the next walker is dealt the next free one).
+      // Collider-only, like the overlay itself: a ghost's goal must stay EXACT.
       const goal = req.goal as NodeId;
       if (blocked.has(goal) && !(dynamic?.has(goal) ?? false)) {
         const standIn = nearestUnblockedNode(terrain, goal, blocked, claimedStandIns);
@@ -210,6 +224,31 @@ function pathToWaypoints(terrain: TerrainGraph, path: ReadonlyArray<NodeId>): Ar
 }
 
 /**
+ * A layered walk-block view over several node sets — the {@link BlockOverlay} routing hands A* for
+ * a COLLIDER requester (dynamic blocks + field posts + other players' town garrisons) without
+ * materializing their union: the union copy cost O(|dynamic|) Set inserts per player per tick,
+ * which on a build-heavy map dwarfed the searches it guarded. `size` honours only the interface's
+ * "0 means empty" contract (layers may share nodes).
+ */
+class LayeredBlocks implements BlockOverlay {
+  private readonly layers: ReadonlyArray<ReadonlySet<NodeId>>;
+  constructor(layers: ReadonlyArray<ReadonlySet<NodeId>>) {
+    this.layers = layers;
+  }
+  has(node: NodeId): boolean {
+    for (const layer of this.layers) {
+      if (layer.has(node)) return true;
+    }
+    return false;
+  }
+  get size(): number {
+    let total = 0;
+    for (const layer of this.layers) total += layer.size;
+    return total;
+  }
+}
+
+/**
  * The nearest node to `from` that is neither walk-blocked nor already claimed as a stand-in this
  * tick — a breadth-first ring search over the graph's canonical walkable neighbours (first hit at
  * the minimum depth is history-independent), bounded by {@link GOAL_FALLBACK_SEARCH_CAP}. Unlike
@@ -220,7 +259,7 @@ function pathToWaypoints(terrain: TerrainGraph, path: ReadonlyArray<NodeId>): Ar
 function nearestUnblockedNode(
   terrain: TerrainGraph,
   from: NodeId,
-  blocked: ReadonlySet<NodeId>,
+  blocked: BlockOverlay,
   claimed: ReadonlySet<NodeId>,
 ): NodeId | null {
   const seen = new Set<NodeId>([from]);
@@ -251,7 +290,7 @@ function resolvePath(
   terrain: TerrainGraph,
   start: number,
   goal: number,
-  blocked: ReadonlySet<NodeId>,
+  blocked: BlockOverlay,
   stats: SearchStats,
 ): NodeId[] | null {
   if (!isValidNodeId(terrain, start) || !isValidNodeId(terrain, goal)) return null;
