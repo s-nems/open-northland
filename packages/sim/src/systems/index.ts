@@ -38,6 +38,7 @@ export * from './command.js';
 export * from './conflict/orders.js';
 export * from './conflict/projectile.js';
 export * from './economy/construction.js';
+export * from './economy/flags.js';
 export * from './economy/jobs.js';
 export * from './economy/production.js';
 export * from './footprint/index.js';

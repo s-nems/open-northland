@@ -18,6 +18,7 @@ import {
   isSettler,
   ownerPlayerOf,
   positionOf,
+  workFlagOf,
 } from '../game/snapshot.js';
 import { type PortraitBox, type UnitPanel, mountUnitPanel } from '../hud/details-panel/index.js';
 import { screenScale } from './camera.js';
@@ -256,12 +257,12 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
    *  settlers/buildings miss, so a gatherer standing on its own flag still selects AS a unit. */
   const flagTargets = (): Pickable[] => {
     const snap = opts.snapshot();
-    const ownerOf = gathererByFlag(snap, opts.humanPlayer);
-    if (ownerOf.size === 0) return [];
+    const gathererOf = gathererByFlag(snap, opts.humanPlayer); // flag-id → owning gatherer-id (not a player id)
+    if (gathererOf.size === 0) return [];
     const out: Pickable[] = [];
     for (const it of buildSpriteScene(snap)) {
       if (it.isFlag !== true) continue;
-      const gatherer = ownerOf.get(it.ref);
+      const gatherer = gathererOf.get(it.ref);
       if (gatherer === undefined) continue; // an unbound / non-human flag — not a selection proxy
       out.push({ ref: gatherer, x: it.x, y: it.y, kind: 'settler' });
     }
@@ -438,8 +439,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     const out = new Set<number>();
     for (const ent of opts.snapshot().entities) {
       if (!selected.has(ent.id)) continue;
-      const wf = ent.components.WorkFlag as { flag?: unknown } | undefined;
-      if (wf !== undefined && typeof wf.flag === 'number') out.add(wf.flag);
+      const flag = workFlagOf(ent);
+      if (flag !== undefined) out.add(flag);
     }
     return out;
   };

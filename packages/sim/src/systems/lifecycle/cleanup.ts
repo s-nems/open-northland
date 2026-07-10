@@ -1,7 +1,7 @@
 import { Health } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { removeWorkFlag } from '../conflict/orders.js';
 import type { System, SystemContext } from '../context.js';
+import { removeWorkFlag } from '../economy/flags.js';
 
 /**
  * CleanupSystem (the death/cleanup half of the combat loop) — destroy every entity whose
