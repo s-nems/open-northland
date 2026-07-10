@@ -137,6 +137,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   // Building types keyed by typeId — the source of a building's worker slots, used to build the
   // right-click assignment priority (craftsmen first, carrier fallback, gatherers never).
   const buildingsByType = indexById(opts.content.buildings);
+  // Late-bound: the panel's "clicked a worker sprite" callback needs `setSelection`, which is defined
+  // below (it closes over `panel`). Assigned once everything exists; a click can only fire afterwards.
+  let selectFromPanel: (id: number) => void = () => {};
   const panel: UnitPanel = await mountUnitPanel({
     app: opts.app,
     canvas,
@@ -149,6 +152,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     jobs: opts.content.jobs,
     ...(opts.sheet !== undefined ? { sheet: opts.sheet } : {}),
     onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),
+    onSelectEntity: (id) => selectFromPanel(id),
   });
   // The contextual ACTION MENU (full original-art default menu; only "change profession" is wired on this
   // slice — it opens the profession picker), anchored on the selected settler. Mounted BEFORE this
@@ -229,6 +233,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     // (Space is the toggle; an empty selection resets it), and Esc backs fully out of both.
     if (selected.size === 0) actions.close();
   };
+
+  // Clicking a worker sprite in the details panel selects just that settler (dropping the building) —
+  // the same result as clicking it on the map, so the panel flips to the settler's info card.
+  selectFromPanel = (id) => setSelection([id], false);
 
   const onMouseDown = (e: MouseEvent): void => {
     // The HUD claims its own clicks BEFORE any world picking — a press over the tool panel / an open window /

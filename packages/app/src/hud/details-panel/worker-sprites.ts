@@ -1,5 +1,4 @@
 import {
-  DEFAULT_FACING,
   type DrawItem,
   PalettedSprite,
   type ResolvedLayer,
@@ -35,9 +34,20 @@ import type { Rect } from '../geometry.js';
 
 /** At most this many worker sprites in the field (a store dispatches up to ~12; keep the row readable). */
 const MAX_WORKERS = 8;
-/** Inset from the field edges, and the fraction of the field height a character fills (screen px). */
+/** Inset from the field edges (screen px), the fraction of the field height a character fills, and one
+ *  worker's cell width as a fraction of the field height (they pack LEFT-to-right by this width). */
 const FIELD_PAD = 4;
 const CHAR_FILL = 0.82;
+const SLOT_W_FRAC = 0.72;
+
+/** One drawn worker's clickable box (screen px) → its entity, so a click on the sprite selects it. */
+interface WorkerHit {
+  readonly id: number;
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+}
 
 export class WorkerSpriteOverlay {
   private readonly container: PixiContainer = new Container();
@@ -47,6 +57,8 @@ export class WorkerSpriteOverlay {
    *  doesn't mint a Texture every frame. */
   private readonly plainTextures = new Map<object, Texture>();
   private readonly drawn = new Set<string>();
+  /** This frame's clickable worker boxes, rebuilt each update — the seam {@link hitTest} reads. */
+  private hits: WorkerHit[] = [];
 
   constructor(
     private readonly app: Application,
@@ -64,6 +76,7 @@ export class WorkerSpriteOverlay {
    */
   update(snapshot: WorldSnapshot, buildingId: number | null, field: Rect | null): void {
     this.drawn.clear();
+    this.hits = [];
     if (this.sheet === undefined || buildingId === null || field === null) {
       this.hideRest();
       this.container.visible = false;
@@ -76,7 +89,8 @@ export class WorkerSpriteOverlay {
       return;
     }
 
-    // Index the frame's draw items by entity so each worker resolves the SAME frame it shows on the map.
+    // Index the frame's draw items by entity so each worker resolves the SAME frame — and the SAME facing —
+    // it shows on the map (forcing a fixed facing made them animate walking the wrong way).
     const items = new Map<number, DrawItem>();
     for (const it of buildSpriteScene(snapshot)) if (it.kind === 'settler') items.set(it.ref, it);
 
@@ -86,29 +100,41 @@ export class WorkerSpriteOverlay {
       w: Math.max(1, field.w - 2 * FIELD_PAD),
       h: Math.max(1, field.h - 2 * FIELD_PAD),
     };
-    const step = inner.w / workers.length;
+    // Pack LEFT-to-right by a fixed cell width (not spread across the whole field), so two workers sit at
+    // the left rather than centred; cells past the field's right edge are simply not drawn.
+    const slotW = inner.h * SLOT_W_FRAC;
     const feetY = inner.y + inner.h;
 
     workers.forEach((id, i) => {
-      const base = items.get(id);
-      if (base === undefined) return;
-      // Face the viewer (a portrait pose), but keep the real state/clock so the action animates as on the map.
-      const item: DrawItem = { ...base, facing: DEFAULT_FACING };
+      const cellX = inner.x + slotW * i;
+      if (cellX + slotW > inner.x + inner.w + 1) return; // no room — overflow past the field's right edge
+      const item = items.get(id);
+      if (item === undefined) return;
       const layers = resolveLayers(this.sheet, item, snapshot.tick);
       if (layers === null || layers.length === 0) return;
       const body = layers[0];
       if (body === undefined) return;
       // Zoom so the body layer fills CHAR_FILL of the field height; every layer shares this zoom.
       const zoom = (inner.h * CHAR_FILL) / Math.max(1, body.frame.height * body.scale);
-      const feetX = inner.x + step * (i + 0.5);
+      const feetX = cellX + slotW / 2;
       for (let li = 0; li < layers.length; li++) {
         const layer = layers[li];
         if (layer !== undefined) this.drawLayer(`${id}:${li}`, layer, feetX, feetY, zoom, item.player ?? 0);
       }
+      this.hits.push({ id, x: cellX, y: inner.y, w: slotW, h: inner.h });
     });
 
     this.hideRest();
     this.container.visible = true;
+  }
+
+  /** The entity whose sprite covers screen point (x, y), or null — so a click in the field selects that
+   *  worker (the panel routes it, deselecting the building), exactly like clicking the settler on the map. */
+  hitTest(x: number, y: number): number | null {
+    for (const h of this.hits) {
+      if (x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h) return h.id;
+    }
+    return null;
   }
 
   dispose(): void {
