@@ -176,6 +176,10 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
   private lastFrame?: AtlasFrame;
   private lastAtlasW = -1;
   private lastAtlasH = -1;
+  /** The layer's ART scale (native px → design px) last placed with — stored so the mesh can be RE-placed
+   *  for an alternate camera (the details-panel portrait inset) without re-resolving its layer, by combining
+   *  it with the inset camera's zoom. Set by the pool right after {@link place}. */
+  artScale = 1;
 
   /**
    * @param lut the `256 × colours` palette LUT {@link TextureSource} (nearest-sampled). Shared across every

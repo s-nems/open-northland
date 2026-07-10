@@ -1,8 +1,8 @@
-import { type SupersampledTexture, bakeToSprite } from '@vinland/render';
+import { type PortraitInsetFrame, type SupersampledTexture, bakeToSprite } from '@vinland/render';
 import type { WorldSnapshot } from '@vinland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
 import { DEFAULT_UI_LANG, uiStringLookup } from '../../content/gui-gfx.js';
-import { contains } from '../geometry.js';
+import { type Rect, contains } from '../geometry.js';
 import { loadDetailsPanelAssets } from './assets.js';
 import { type PanelLayers, createChrome } from './chrome.js';
 import {
@@ -26,6 +26,16 @@ import { STOCK_TAB_LABELS } from './stock-tabs.js';
 
 /** Above the world and the left tool panel, below nothing (the panel is the outermost HUD layer). */
 const PANEL_Z = 1002;
+
+/**
+ * The portrait box the live world "observation window" fills — the panel's preview rect, in on-screen px,
+ * shrunk by the bevel so the cutout sits INSIDE the inner-box frame rather than over it. Both the settler
+ * (Ogólne) and building (Ogólny) layouts expose a `preview`; the view renders the world into this rect and
+ * centres it on {@link PortraitBox.entityRef}. Null when the current selection has no portrait.
+ */
+export type PortraitBox = PortraitInsetFrame;
+/** Bevel inset (design px) so the observation window sits inside the portrait box's frame, not over it. */
+const PORTRAIT_BEVEL_INSET = 3;
 
 /**
  * Minimum wall-clock gap between value-driven rebuilds. Live values (production %, need bars, status
@@ -57,6 +67,9 @@ export interface UnitPanel {
   tick(snapshot: WorldSnapshot): void;
   /** True when a client point is over the details panel. */
   claimsPointer(clientX: number, clientY: number): boolean;
+  /** The portrait box the live world observation window fills (rect + entity to centre on), or null when
+   *  the current selection has no portrait (multi-select, empty). Read each frame by the view. */
+  portrait(): PortraitBox | null;
   /**
    * Route a mousedown: true when the point is over the panel (the caller must not world-pick it);
    * a left press on an enabled button performs its action. Part of the unit-controls claim chain.
@@ -271,6 +284,22 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   canvas.addEventListener('mousemove', onMouseMove);
   canvas.addEventListener('mouseleave', onMouseLeave);
 
+  /** The current portrait box (preview rect, bevel-inset) + its entity, for the live observation window. */
+  const portrait = (): PortraitBox | null => {
+    if (layout === null) return null;
+    // Both the settler (Ogólne) and building (Ogólny) layouts expose a `preview`; any other kind has none.
+    const box: Rect | undefined =
+      layout.kind === 'settler' || layout.kind === 'building' ? layout.preview : undefined;
+    if (box === undefined || (lastModel.kind !== 'settler' && lastModel.kind !== 'building')) return null;
+    const entityRef = lastModel.entityId;
+    const inset = Math.round(PORTRAIT_BEVEL_INSET * scale);
+    return {
+      entityRef,
+      kind: lastModel.kind,
+      rect: { x: box.x + inset, y: box.y + inset, w: box.w - 2 * inset, h: box.h - 2 * inset },
+    };
+  };
+
   return {
     render(snapshot, selected): void {
       selectedIds = new Set(selected);
@@ -281,6 +310,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     },
     claimsPointer,
     handleMouseDown,
+    portrait,
     dispose(): void {
       canvas.removeEventListener('mousemove', onMouseMove);
       canvas.removeEventListener('mouseleave', onMouseLeave);

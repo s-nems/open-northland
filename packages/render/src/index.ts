@@ -70,6 +70,7 @@ export {
   type TransitionPattern,
 } from './gpu/pixi-app.js';
 export { WorldRenderer, SPRITE_CULL_MARGIN } from './gpu/world-renderer.js';
+export type { PortraitInsetFrame } from './gpu/world-renderer.js';
 export type { PlacementOverlayCell, PlacementOverlayFrame } from './gpu/placement-overlay.js';
 export type { PlacementGhost } from './gpu/placement-ghost.js';
 export {

@@ -19,11 +19,14 @@ import {
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
+  JOB_SOLDIER_UNARMED,
   WEAPON_BROADSWORD,
+  WEAPON_FISTS,
   WEAPON_LONG_BOW,
   WEAPON_SHORT_BOW,
   WEAPON_SPEAR,
   WEAPON_SWORD,
+  weaponEquipmentFor,
 } from '../../game/sandbox/ids.js';
 
 /**
@@ -38,7 +41,9 @@ export interface UnitPreset {
   readonly id: string;
   readonly label: string;
   readonly jobType: number;
-  /** A combatant's wielded weapon (a warrior); omitted for a civilian (no weapon). */
+  /** A combatant's wielded weapon (a warrior); omitted for a civilian (no weapon). The matching
+   *  equipment-slot weapon good (which drives the drawn look + the Broń row) is derived from `jobType`
+   *  via {@link weaponEquipmentFor}, so it can't drift from the scene/map spawns. */
   readonly weaponTypeId?: number;
 }
 
@@ -61,6 +66,10 @@ export interface UnitSpawnOptions {
  * simply omitted, so a civilian spawns as the plain non-combatant it is.
  */
 export function unitSpawnCommand(preset: UnitPreset, opts: UnitSpawnOptions): Command {
+  // The class weapon also goes in the equipment slot (derived from the job, shared with the scene/map
+  // spawns), which DRIVES the drawn look + fills the Broń row. The bare-handed warrior gets none → empty
+  // slot → unarmed body.
+  const equipment = weaponEquipmentFor(preset.jobType);
   return {
     kind: 'spawnSettler',
     jobType: preset.jobType,
@@ -71,12 +80,15 @@ export function unitSpawnCommand(preset: UnitPreset, opts: UnitSpawnOptions): Co
     ...(opts.hitpoints > 0 ? { hitpoints: opts.hitpoints } : {}),
     ...(preset.weaponTypeId !== undefined ? { weaponTypeId: preset.weaponTypeId } : {}),
     ...(opts.armorClass > 0 ? { armorClass: opts.armorClass } : {}),
+    ...(equipment !== undefined ? { equipment } : {}),
   };
 }
 
-/** The five soldier classes, each paired with its own weapon so the drawn body + attack animation
- *  match the weapon (the same job↔weapon pairing the combat scene uses). */
+/** The soldier classes, each paired with its own weapon so the drawn body + attack animation match the
+ *  weapon (the same job↔weapon pairing the combat scene uses). A warrior is ONE profession — the weapon
+ *  in hand decides its look — so the bare-handed warrior (fists) leads, then each armed variant. */
 export const WARRIOR_PRESETS: readonly UnitPreset[] = [
+  { id: 'unarmed', label: 'Wojownik (bez broni)', jobType: JOB_SOLDIER_UNARMED, weaponTypeId: WEAPON_FISTS },
   { id: 'spear', label: 'Włócznik', jobType: JOB_SOLDIER_SPEAR, weaponTypeId: WEAPON_SPEAR },
   { id: 'sword', label: 'Miecznik', jobType: JOB_SOLDIER_SWORD, weaponTypeId: WEAPON_SWORD },
   {

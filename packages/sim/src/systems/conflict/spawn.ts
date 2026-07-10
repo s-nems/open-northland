@@ -1,8 +1,11 @@
 import { indexById } from '@vinland/data';
 import {
   Armor,
+  Equipment,
+  type EquipmentSlot,
   Health,
   HerdMember,
+  MISC_EQUIP_SLOTS,
   MoveSpeed,
   Owner,
   Position,
@@ -10,7 +13,7 @@ import {
   Weapon,
   stampOwner,
 } from '../../components/index.js';
-import type { Command } from '../../core/commands.js';
+import type { Command, SettlerEquipment, SettlerEquipmentSlot } from '../../core/commands.js';
 import { ONE, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
@@ -67,6 +70,15 @@ export function spawnSettler(
   if (command.weaponTypeId !== undefined && command.weaponTypeId > 0) {
     world.add(e, Weapon, { weaponTypeId: command.weaponTypeId });
   }
+  // A settler wearing equipment carries an `Equipment` component (the same separate-optional stamp): the
+  // player-facing inventory (boots/tool/consumables + a soldier's weapon/armour) the selection panel
+  // shows. Only stamped when the command supplies it; absent (the default) leaves the settler
+  // equipment-less and the hash untouched. Independent of the combat `Weapon`/`Armor` above. `!= null`
+  // (not `!== undefined`) because a command is the serialize/replay/lockstep wire format, where an
+  // explicit `null` can stand in for "no equipment" — both skip the stamp rather than dereferencing it.
+  if (command.equipment != null) {
+    world.add(e, Equipment, equipmentFromCommand(command.equipment));
+  }
   // A settler given an explicit walk pace carries a `MoveSpeed` (the same separate-optional stamp as the
   // animal `movespeed`): `perTick = ONE/moveSpeed` (ticks-per-tile, larger = slower), read identically to
   // the universal default by the drift-free arrival-snap so two runs stay byte-identical. Only a positive
@@ -89,6 +101,35 @@ export function spawnSettler(
   // NO Stance, so the military-mode feature leaves every unowned entity — and every golden hash — untouched.
   if (world.has(e, Owner)) stampDefaultStance(world, e, command.jobType);
   ctx.events.emit({ kind: 'settlerBorn', entity: e });
+}
+
+/** One command equipment slot → the component's {@link EquipmentSlot} (or null for an empty slot). The
+ *  raw `degreeOfUsePct` (0..100) becomes the `Fixed` fraction `degreeOfUse` — the same raw-int→`Fixed`
+ *  conversion `moveSpeed` uses, deterministic (integer arithmetic, no RNG/wall-clock). */
+function toEquipmentSlot(input: SettlerEquipmentSlot | null | undefined): EquipmentSlot | null {
+  if (input === null || input === undefined) return null;
+  const pct = Math.max(0, Math.min(100, Math.trunc(input.degreeOfUsePct ?? 0)));
+  return { goodType: input.goodType, degreeOfUse: fx.div(fx.fromInt(pct), fx.fromInt(100)) };
+}
+
+/** Build the {@link Equipment} component value from a command payload — the `misc` list is normalised to
+ *  the fixed {@link MISC_EQUIP_SLOTS} length (excess dropped, short padded with empty slots). */
+function equipmentFromCommand(equipment: SettlerEquipment): {
+  boots: EquipmentSlot | null;
+  tool: EquipmentSlot | null;
+  weapon: EquipmentSlot | null;
+  armor: EquipmentSlot | null;
+  misc: ReadonlyArray<EquipmentSlot | null>;
+} {
+  const misc: (EquipmentSlot | null)[] = [];
+  for (let i = 0; i < MISC_EQUIP_SLOTS; i++) misc.push(toEquipmentSlot(equipment.misc?.[i]));
+  return {
+    boots: toEquipmentSlot(equipment.boots),
+    tool: toEquipmentSlot(equipment.tool),
+    weapon: toEquipmentSlot(equipment.weapon),
+    armor: toEquipmentSlot(equipment.armor),
+    misc,
+  };
 }
 
 /**

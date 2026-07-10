@@ -120,6 +120,11 @@ const HERD_TRIBES = [10, 11, 12, 13, 14, VIKING, INVALID_TYPE] as const;
 const AXE = 7;
 const LEATHER = 1;
 const COMBATANT_HITPOINTS = 500;
+// Equip good typeIds (the original's equip set) — the Equipment component stores them verbatim (no
+// content validation), so the fuzz exercises the spawn `equipment` stamp + the pct→Fixed conversion.
+const SHOES_GOOD = 30;
+const MEAD_GOOD = 43;
+const MAX_USE_PCT = 100;
 /** Owner slots: two valid players + one out-of-range (skipped → neutral) — exercises `stampOwner`. */
 const OWNERS = [0, 1, 99] as const;
 /** Military-mode ids: the five valid `MILITARY_MODE`s + one out-of-range (skipped) — exercises `setStance`. */
@@ -189,6 +194,16 @@ function nextCommand(rng: Rng): Command {
         tribe: VIKING,
         ...(combatant
           ? { hitpoints: COMBATANT_HITPOINTS, armorClass: LEATHER, weaponTypeId: AXE, moveSpeed: 4 }
+          : {}),
+        // Occasionally the settler also wears equipment (an `Equipment` stamp) — the used-up percent
+        // varies with the rng so the pct→Fixed conversion is fuzzed for run-twice + replay equality.
+        ...(rng.int(3) === 0
+          ? {
+              equipment: {
+                boots: { goodType: SHOES_GOOD, degreeOfUsePct: rng.int(MAX_USE_PCT + 1) },
+                misc: [{ goodType: MEAD_GOOD, degreeOfUsePct: rng.int(MAX_USE_PCT + 1) }, null],
+              },
+            }
           : {}),
         ...(rng.int(2) === 0 ? { owner: pick(rng, OWNERS) } : {}),
       };

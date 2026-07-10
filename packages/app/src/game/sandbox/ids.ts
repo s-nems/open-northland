@@ -1,3 +1,4 @@
+import type { EquipCategory } from '@vinland/data';
 import {
   CLAY_HARVEST_ATOMIC,
   GOLD_HARVEST_ATOMIC,
@@ -31,6 +32,78 @@ export const GOOD_IRON = 6;
 export const GOOD_GOLD = 7;
 export const GOOD_MUSHROOM = 8;
 
+// The equippable goods ride the SANDBOX-SCOPED catalog ids — `EXTENDED_GOOD_TYPE_OFFSET` (100) + the raw
+// `goodtypes.ini` id (30–55) = 130–155 — the SAME ids the global goods catalog (`catalog/goods.ts`
+// `EXTENDED_GOODS`) declares them at. So an EQUIPPED good is the same good as the one dropped on the ground
+// or stored in a warehouse: one id, one `ls_goods` icon, one name. The demo equipment scene stamps these;
+// EQUIP_GOODS below adds only the equip CLASSIFICATION (slot + wear), merged onto the catalog by good id.
+export const GOOD_SHOES = 130;
+export const GOOD_TOOL_IRON = 132;
+export const GOOD_ARMOR_CHAIN = 135;
+// Weapon goods — the equippable side of the weapons. A settler carrying one in its `Equipment.weapon`
+// slot draws that weapon's warrior body (WARRIOR_SPEC_BY_WEAPON_GOOD).
+export const GOOD_BOW_SHORT = 137;
+export const GOOD_BOW_LONG = 138;
+export const GOOD_SPEAR_WOODEN = 139;
+export const GOOD_SPEAR_IRON = 140;
+export const GOOD_SWORD_SHORT = 141;
+export const GOOD_SWORD_LONG = 142;
+export const GOOD_MEAD = 143;
+export const GOOD_POTION_FOOD_SMALL = 144;
+export const GOOD_POTION_STAMINA_SMALL = 146;
+export const GOOD_AMULET_STRENGTH = 152;
+
+/** One equippable good's equip axis: its slot category ({@link EquipCategory}, the shared data-package
+ *  vocabulary) + whether it wears out. The good ITSELF (name, icon) lives once in the global catalog
+ *  (`catalog/goods.ts`); this is only the classification, keyed to it by `typeId`. */
+export interface EquipGoodSpec {
+  readonly typeId: number;
+  readonly id: string;
+  readonly category: EquipCategory;
+  readonly wears: boolean;
+}
+
+/**
+ * The equip CLASSIFICATION for the original's equippable goods (`goodtypes.ini` ids 30–55, carried by the
+ * global catalog at the sandbox-scoped 130–155). The GOODS themselves — id, name, icon — live once in
+ * `catalog/goods.ts` (`EXTENDED_GOODS`); `sandboxContent()` merges this slot/wear axis onto them by
+ * `typeId`, so a good is declared once. Set MEMBERSHIP is source-pinned to `tribetypes.ini` `allowequip`;
+ * the per-good SLOT CATEGORY is derived from the `goodtypes.ini` good names + the manual's Equipment
+ * section (shoes/tools/mead/potions/amulets for anyone, weapons/armour for soldiers). `wears` is pinned to
+ * the manual's two-axis split: potions, shoes and tools are "slowly used up" while "unused items such as
+ * weapons, armour and amulets can be used again" (amulets "never wear out"). No per-good numeric
+ * consumption rate exists in any readable `.ini` (engine-hardcoded), so none is modelled here — a wearing
+ * item just carries a "degree of use".
+ */
+export const EQUIP_GOODS: readonly EquipGoodSpec[] = [
+  { typeId: GOOD_SHOES, id: 'shoes', category: 'boots', wears: true },
+  { typeId: 131, id: 'tool_wooden', category: 'tool', wears: true },
+  { typeId: GOOD_TOOL_IRON, id: 'tool_iron', category: 'tool', wears: true },
+  { typeId: 133, id: 'armor_wool', category: 'armor', wears: false },
+  { typeId: 134, id: 'armor_leather', category: 'armor', wears: false },
+  { typeId: GOOD_ARMOR_CHAIN, id: 'armor_chain', category: 'armor', wears: false },
+  { typeId: 136, id: 'armor_plate', category: 'armor', wears: false },
+  { typeId: GOOD_BOW_SHORT, id: 'bow_short', category: 'weapon', wears: false },
+  { typeId: GOOD_BOW_LONG, id: 'bow_long', category: 'weapon', wears: false },
+  { typeId: GOOD_SPEAR_WOODEN, id: 'spear_wooden', category: 'weapon', wears: false },
+  { typeId: GOOD_SPEAR_IRON, id: 'spear_iron', category: 'weapon', wears: false },
+  { typeId: GOOD_SWORD_SHORT, id: 'sword_shord', category: 'weapon', wears: false },
+  { typeId: GOOD_SWORD_LONG, id: 'sword_long', category: 'weapon', wears: false },
+  { typeId: GOOD_MEAD, id: 'mead', category: 'misc', wears: true },
+  { typeId: GOOD_POTION_FOOD_SMALL, id: 'potion_food_small', category: 'misc', wears: true },
+  { typeId: 145, id: 'potion_food_big', category: 'misc', wears: true },
+  { typeId: GOOD_POTION_STAMINA_SMALL, id: 'potion_stamina_small', category: 'misc', wears: true },
+  { typeId: 147, id: 'potion_stamina_big', category: 'misc', wears: true },
+  { typeId: 148, id: 'potion_heal_small', category: 'misc', wears: true },
+  { typeId: 149, id: 'potion_heal_big', category: 'misc', wears: true },
+  { typeId: 150, id: 'amulet_food', category: 'misc', wears: false },
+  { typeId: 151, id: 'amulet_stamina', category: 'misc', wears: false },
+  { typeId: GOOD_AMULET_STRENGTH, id: 'amulet_strength', category: 'misc', wears: false },
+  { typeId: 153, id: 'amulet_defense', category: 'misc', wears: false },
+  { typeId: 154, id: 'amulet_crithit', category: 'misc', wears: false },
+  { typeId: 155, id: 'amulet_speed', category: 'misc', wears: false },
+];
+
 export const JOB_IDLE = 0;
 export const JOB_GATHERER_WOOD = 20;
 export const JOB_GATHERER_STONE = 21;
@@ -46,6 +119,7 @@ export const JOB_GATHERER_MUSHROOM = 25;
 export const JOB_CARRIER = 26;
 // Soldier jobs ride the REAL viking `jobtypes.ini` ids (soldiers 31..41) so the render's job→body map
 // (`ADULT_CHARACTER_BY_JOB`) draws each class's own warrior body + weapon animation set.
+export const JOB_SOLDIER_UNARMED = 31; // soldier_unarmed — the fists warrior (empty-hand body, brawls)
 export const JOB_SOLDIER_SPEAR = 33; // soldier_spear_iron
 export const JOB_SOLDIER_SWORD = 34; // soldier_sword_short
 export const JOB_SOLDIER_BROADSWORD = 35; // soldier_sword_long
@@ -59,14 +133,41 @@ export const BUILDING_WAREHOUSE_01 = 8;
 export const BUILDING_WAREHOUSE_02 = 9;
 export const BUILDING_JOINERY = 23;
 
-// Weapon typeIds ride the REAL viking `weapons.ini` ids (iron_spear 5, short_sword 7, long_sword 8,
-// short_bow 16, long_bow 17) — the previous synthetic 20/21 bows collided with the real house_bow (20)
-// and catapult (21), a scoped-id trap for anyone joining these against extracted data.
+// Weapon typeIds ride the REAL viking `weapons.ini` ids (fist 1, iron_spear 5, short_sword 7,
+// long_sword 8, short_bow 16, long_bow 17) — the previous synthetic 20/21 bows collided with the real
+// house_bow (20) and catapult (21), a scoped-id trap for anyone joining these against extracted data.
+export const WEAPON_FISTS = 1; // "fist" (weapons.ini type 1, jobtype 31) — the unarmed warrior's melee
 export const WEAPON_SPEAR = 5;
 export const WEAPON_SWORD = 7;
 export const WEAPON_BROADSWORD = 8;
 export const WEAPON_SHORT_BOW = 16;
 export const WEAPON_LONG_BOW = 17;
+
+/**
+ * Soldier `jobType` → the weapon GOOD it carries in its `Equipment.weapon` slot. So EVERY warrior — a
+ * scene-placed one, an imported-map `sethuman`, or an admin spawn — fills its Broń slot and draws the
+ * weapon that matches its class (the slot DRIVES the look, `WARRIOR_SPEC_BY_WEAPON_GOOD`). The bare-handed
+ * job (`JOB_SOLDIER_UNARMED`, 31) is deliberately absent → an empty slot → the fists body.
+ */
+export const WEAPON_GOOD_BY_JOB: Readonly<Record<number, number>> = {
+  [JOB_SOLDIER_SPEAR]: GOOD_SPEAR_IRON,
+  [JOB_SOLDIER_SWORD]: GOOD_SWORD_SHORT,
+  [JOB_SOLDIER_BROADSWORD]: GOOD_SWORD_LONG,
+  [JOB_ARCHER]: GOOD_BOW_SHORT,
+  [JOB_ARCHER_LONG]: GOOD_BOW_LONG,
+};
+
+/**
+ * The `spawnSettler` `equipment` payload a soldier job spawns with — just its weapon in the equipment
+ * slot — or `undefined` for a job with no weapon good (civilians, the bare-handed warrior). The one place
+ * every spawn path derives a warrior's equipment weapon, so they can't drift.
+ */
+export function weaponEquipmentFor(
+  jobType: number,
+): { readonly weapon: { readonly goodType: number } } | undefined {
+  const goodType = WEAPON_GOOD_BY_JOB[jobType];
+  return goodType !== undefined ? { weapon: { goodType } } : undefined;
+}
 
 /** How a good leaves the landscape: chop a tree down, dig a finite deposit, or pluck a small node. */
 export type GatherMode = 'fell' | 'mine' | 'pick';

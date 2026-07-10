@@ -588,6 +588,24 @@ export const ADULT_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> =
 };
 
 /**
+ * EQUIPPED weapon good → warrior character spec — the "a warrior is one profession; the weapon in hand
+ * decides the look" join. A settler carrying one of these in its `Equipment.weapon` slot draws that
+ * weapon's warrior body regardless of its jobType; a bare warrior (no weapon good) falls through to
+ * {@link ADULT_CHARACTER_BY_JOB} (the unarmed body for `soldier_unarmed`). Each weapon class maps to the
+ * same body variant its soldier job does (bows → the bow bodies, the two spears → the spear body, the long
+ * sword → the two-handed broadsword body). Keys are the SANDBOX-SCOPED good ids (`goodtypes.ini` weapon
+ * ids 37–42, carried by the global catalog at +100 → 137–142) so they match the `Equipment.weapon.goodType`.
+ */
+export const WARRIOR_SPEC_BY_WEAPON_GOOD: Readonly<Record<number, CharacterSpecId>> = {
+  137: 'warrior-shortbow', // short bow
+  138: 'warrior-longbow', // long bow
+  139: 'warrior-spear', // wooden spear
+  140: 'warrior-spear', // iron spear
+  141: 'warrior-sword', // short sword
+  142: 'warrior-broadsword', // long sword (the two-hander)
+};
+
+/**
  * Age-class `jobType` (1..4, a settler that CARRIES `Age`) → character spec id — the baby/child bodies
  * from the same `[jobbasegraphics]` table. Keyed only for young settlers so a synthetic fixture's adult
  * job id 1/2 can never draw a baby (the [dc3ef54] collision, disambiguated by the `Age` component).

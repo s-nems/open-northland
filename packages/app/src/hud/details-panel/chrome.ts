@@ -65,6 +65,8 @@ const SELECTED_LIME = 0xd8fb55;
 /** Inner content-box bevel lines — eyeballed against the original's preview framing, not sampled. */
 const INNER_BOX_DARK = 0x1c130b;
 const INNER_BOX_LIGHT = 0x7a6244;
+/** Warm wood tint of an occupied equipment slot (eyeballed, not sampled). */
+const SLOT_FILL = 0x4a2b1d;
 
 /** Draw order inside the panel: flat fills, bitmap fills, frame sprites/icons, then text. */
 export interface PanelLayers {
@@ -103,6 +105,9 @@ export interface Chrome {
   window(r: Rect): void;
   /** An inner content box (the preview): thin dark bevel frame, no rope — the original's inner framing. */
   innerBox(r: Rect): void;
+  /** A round equipment-slot socket (the original's equip wells): a recessed rimmed circle, warm-tinted
+   *  when `filled` (so an occupied slot reads even for a good with no bound icon), dark when empty. */
+  slotSocket(r: Rect, filled: boolean): void;
   /** The rust headline strip with centered light title-size text. */
   headline(r: Rect, title: string): void;
   /** The yellow-green selected-strip under the building name line. */
@@ -366,6 +371,21 @@ export function createChrome(
     });
   };
 
+  const slotSocket = (r: Rect, filled: boolean): void => {
+    // A round recessed well like the original's equip sockets: a warm wood tint marks an occupied slot
+    // (so it reads even when the good has no bound icon), a dark inset an empty one, rimmed with the same
+    // dark/light bevel the inner box uses.
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h / 2;
+    const rad = Math.min(r.w, r.h) / 2;
+    const line = Math.max(1, Math.round(scale));
+    g.circle(cx, cy, rad).fill(
+      filled ? { color: SLOT_FILL, alpha: 0.85 } : { color: INNER_BOX_DARK, alpha: 0.55 },
+    );
+    g.circle(cx, cy, rad).stroke({ color: INNER_BOX_DARK, width: line });
+    g.circle(cx, cy, Math.max(1, rad - line)).stroke({ color: INNER_BOX_LIGHT, width: line, alpha: 0.7 });
+  };
+
   const headline = (r: Rect, title: string): void => {
     const inset = Math.max(1, Math.round(scale));
     const strip: Rect = { x: r.x + inset, y: r.y + inset, w: r.w - 2 * inset, h: r.h - inset };
@@ -490,6 +510,7 @@ export function createChrome(
     guiStretched,
     window: windowBox,
     innerBox,
+    slotSocket,
     headline,
     selectedUnderline,
     scrim,

@@ -147,6 +147,13 @@ export interface DrawItem {
    */
   readonly jobType?: number;
   /**
+   * For a settler: the `typeId` of the good in its `Equipment.weapon` slot, when it carries one. The
+   * per-character binding maps it to a warrior look ({@link import('../sprites/index.js').ByJobTable.byWeaponGood})
+   * so the DRAWN weapon follows the equipment slot rather than the job — equip a bow and the warrior
+   * draws the bow body. Omitted when the settler has no weapon equipped (falls back to the `jobType` look).
+   */
+  readonly weaponGood?: number;
+  /**
    * For a settler: the owning player slot (the sim `Owner.player`), so the renderer can paint the unit in
    * that player's TEAM COLOUR — the render `PalettedSprite` reads its clothing-band indices through the
    * player's row of the `256×N` colour LUT. Omitted for an UNOWNED settler (wildlife / a neutral fixture),
