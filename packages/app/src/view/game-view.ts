@@ -1,7 +1,8 @@
-import { indexById } from '@vinland/data';
+import { type BuildingFootprint, indexById } from '@vinland/data';
 import {
   type Camera,
   type ElevationField,
+  type GeometryDebugItem,
   type PlacementOverlayFrame,
   SPRITE_CULL_MARGIN,
   type SceneTerrain,
@@ -13,7 +14,14 @@ import {
   layoutHud,
   visibleTileRange,
 } from '@vinland/render';
-import { FixedTimestep, type SimEvent, type Simulation, type WorldSnapshot } from '@vinland/sim';
+import {
+  type Fixed,
+  FixedTimestep,
+  type SimEvent,
+  type Simulation,
+  type WorldSnapshot,
+  nodeOfPosition,
+} from '@vinland/sim';
 import type { Application } from 'pixi.js';
 import { BUILD_HOUSE_ATOMIC, HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { pickerEntries } from '../catalog/professions.js';
@@ -24,6 +32,7 @@ import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
 import { workerRoleOf } from '../game/sandbox/index.js';
 import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel/layout.js';
 import { mountAdminDebug } from './admin-debug/index.js';
+import { WORKER_ICON_DOOR_OFFSET } from './building-points.js';
 import type { CameraController } from './camera.js';
 import { screenScale } from './camera.js';
 import { computeDoorBadges } from './door-badges.js';
@@ -230,7 +239,8 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     content: sim.content,
     ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
     enqueue: (command) => sim.enqueue(command),
-    boundsOf: (ref) => renderer.entityBounds(ref), // pixel-accurate picking against the real sprite
+    boundsOf: (ref) => renderer.entityBounds(ref), // exact sprite-box picking against the real sprite
+    pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy), // buildings: solid pixels only
     claimPointer: (x: number, y: number) => toolPanel.claimPointer(x, y),
     // The Magazyn stock-row name tooltip. Its OWN instance (not the ground one below): the two hover
     // surfaces are mutually exclusive by cursor, and a shared element would fight — the frame loop hides the
@@ -322,6 +332,44 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
   // once — the content is fixed for a view's lifetime.
   const buildingDoors = indexById(sim.content.buildings);
 
+  // `?debug=geometry` — the building-geometry verification overlay: every placed building's extracted
+  // logic geometry (walk-block cells, build-exclusion zone, door node, worker-icon anchor) drawn over
+  // the world so a human can check the data against the drawn art. Rebuilt only when the building set
+  // changes (`placementBlockerVersion` moves on add/remove), never per frame.
+  const geometryDebugOn = params.get('debug') === 'geometry';
+  const footprintByType = new Map<number, BuildingFootprint>();
+  for (const b of sim.content.buildings) {
+    if (b.footprint !== undefined) footprintByType.set(b.typeId, b.footprint);
+  }
+  const buildingIdByType = new Map<number, string>(sim.content.buildings.map((b) => [b.typeId, b.id]));
+  let geometryVersion: string | null = null;
+  const updateGeometryDebug = (snap: WorldSnapshot): void => {
+    if (!geometryDebugOn) return;
+    const version = sim.placementBlockerVersion();
+    if (version === geometryVersion) return;
+    geometryVersion = version;
+    const items: GeometryDebugItem[] = [];
+    for (const ent of snap.entities) {
+      const b = ent.components.Building as { buildingType: number } | undefined;
+      const pos = ent.components.Position as { x: Fixed; y: Fixed } | undefined;
+      if (b === undefined || pos === undefined) continue;
+      const fp = footprintByType.get(b.buildingType);
+      const door = fp?.door;
+      items.push({
+        anchor: nodeOfPosition(pos.x, pos.y),
+        blocked: fp?.blocked ?? [],
+        reserved: fp?.reserved ?? [],
+        door,
+        iconAnchor:
+          door === undefined
+            ? undefined
+            : { dx: door.dx + WORKER_ICON_DOOR_OFFSET.dx, dy: door.dy + WORKER_ICON_DOOR_OFFSET.dy },
+        label: buildingIdByType.get(b.buildingType) ?? `#${b.buildingType}`,
+      });
+    }
+    renderer.setGeometryDebug(items);
+  };
+
   const timestep = new FixedTimestep();
   let lastMs = performance.now();
   // The fixed-timestep interpolation fraction the renderer lerps entity anchors by — refreshed each
@@ -399,6 +447,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // + positions) and handed over as plain cells — the renderer stays a pure projection. Cheap: the sim
     // scans only the small under-construction set, and the layer skips the redraw when the set is unchanged.
     renderer.updateConstructionPlots(sim.constructionPlots());
+    updateGeometryDebug(snap);
     // One retained update: reconcile the pooled sprites, draw the selection rings + door badges + the
     // selected gatherers' work-flag highlight, render once. `app.screen` tracks window resizes. No HUD frame
     // is passed — the always-on stocks panel is gone; the debug tick lives in the top overlay and the

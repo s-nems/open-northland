@@ -93,6 +93,12 @@ export interface UnitControlsOptions {
    */
   readonly boundsOf?: (ref: number) => EntityBounds | undefined;
   /**
+   * PIXEL-accurate refinement of {@link boundsOf} — {@link WorldRenderer.entityPixelHit}. Wired onto
+   * BUILDING targets so a click inside the box but on transparent atlas pixels (just next to the house)
+   * does NOT select; `undefined` answers keep the box verdict. Settlers stay box-picked on purpose.
+   */
+  readonly pixelHitOf?: (ref: number, wx: number, wy: number) => boolean | undefined;
+  /**
    * The HUD's pointer claim — returns true when a client point is over an on-screen HUD element (the tool
    * panel, an open window, or a placement in progress). When it does, the press is the HUD's and is NOT
    * routed to world selection / orders (the explicit HUD-before-world hit-test). Optional: no HUD → no claim.
@@ -210,7 +216,18 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       if (it.kind !== 'settler' && it.kind !== 'building') continue;
       if (kind !== undefined && it.kind !== kind) continue;
       if (ownerOf.get(it.ref) !== opts.humanPlayer) continue;
-      out.push({ ref: it.ref, x: it.x, y: it.y, kind: it.kind, box: opts.boundsOf?.(it.ref) });
+      const pixelHitOf = opts.pixelHitOf;
+      out.push({
+        ref: it.ref,
+        x: it.x,
+        y: it.y,
+        kind: it.kind,
+        box: opts.boundsOf?.(it.ref),
+        // Buildings refine to solid pixels (see UnitControlsOptions.pixelHitOf); settlers keep the box.
+        ...(it.kind === 'building' && pixelHitOf !== undefined
+          ? { pixelHit: (wx: number, wy: number) => pixelHitOf(it.ref, wx, wy) }
+          : {}),
+      });
     }
     return out;
   };
