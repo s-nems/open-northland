@@ -1,4 +1,4 @@
-import { Position, Resource, WorkFlag } from '../../components/index.js';
+import { DeliveryFlag, Position, Resource, WorkFlag } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
@@ -19,6 +19,7 @@ import {
   type TargetCandidates,
   interactionCell,
   nearestCollectablePileFor,
+  nearestFreeYardNode,
   nearestHarvestableFor,
   nearestOwnDropFor,
   nearestWorkplaceOutput,
@@ -69,7 +70,13 @@ export function planDelivery(
     load.goodType,
   );
   if (store === null) return true; // nowhere to deposit — idle this tick, hands stay full
-  atOrWalk(world, e, here, interactionCell(world, ctx, terrain, store, here), () =>
+  // A delivery FLAG is a marker, not a sink: walk to the nearest free YARD tile around it and set the load
+  // down THERE (so the goods land where the gatherer stands — it physically carries any spill to the next
+  // free tile, nothing teleports). Every other store is deposited into from its interaction cell as before.
+  const cell = world.has(store, DeliveryFlag)
+    ? nearestFreeYardNode(targets.stockpiles, world, terrain, store, load.goodType)
+    : interactionCell(world, ctx, terrain, store, here);
+  atOrWalk(world, e, here, cell, () =>
     startAtomic(
       world,
       e,

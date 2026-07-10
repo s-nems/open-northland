@@ -119,13 +119,17 @@ green selection ring). The selectable sandbox cluster are gatherers too, so each
 spawn (they idle by it instead of roaming); the player sends them to work with Ctrl+Right-Click.
 
 **Goods pile on the GROUND, not on the flag (storage physics, same branch):** a `DeliveryFlag` is now a
-PURE marker (`Position + DeliveryFlag`, no `Stockpile`). On delivery, `pileupIntoStore` spreads the load
-onto separate loose ground heaps AROUND the flag (`spreadCarryAroundFlag`): the nearest tile fills first up
-to `MAX_GROUND_STACK` (5, the `ls_goods` heap's fill states), spilling to the next-nearest tile in a square
-spiral, so the flag ends up centred in a field of capped heaps. Each heap is a bare `Stockpile+Position`
-pinned to its tile — so relocating the flag moves ONLY the marker; the goods never teleport (both were
-reported bugs). The heaps are the loose piles porters (`nearestGroundPile`) haul to warehouses. Golden
-untouched (no flags in the golden slice); the goods-yard extent/cap are named approximations (undecoded).
+PURE marker (`Position + DeliveryFlag`, no `Stockpile`). The gatherer PHYSICALLY carries each load to a free
+yard tile and sets it down where it stands — the planner picks the target tile (`nearestFreeYardNode`:
+nearest HALF-CELL node around the flag with room, spiralling out) and walks there; `pileupIntoStore` then
+drops onto that tile via `dropCarryAtOwnTile`, capped at `MAX_GROUND_STACK` (5, the `ls_goods` fill states),
+snapped to the settler's half-cell node so drops stack and heaps pack tile-to-tile. Any spill past the cap
+stays on its back and the next delivery walks it to the next tile — nothing teleports. Each heap is a bare
+`Stockpile+Position` pinned to its half-cell — so relocating the flag moves ONLY the marker; the goods stay
+put (both reported bugs). Heaps are the loose piles porters (`nearestGroundPile`) haul to warehouses. Golden
+untouched (no flags in the golden slice); the yard extent/cap/spacing are named approximations (undecoded).
+Perf: `nearestFreeYardNode` is an `O(candidates)`-index economy scan like the others here — the shared
+`NodeBuckets` follow-up in `sim-perf.md` covers it.
 
 ---
 
