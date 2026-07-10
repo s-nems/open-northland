@@ -15,6 +15,7 @@ import { reproductionSystem } from './lifecycle/reproduction.js';
 import { herdingSystem } from './movement/herding.js';
 import { movementSystem } from './movement/movement.js';
 import { pathfindingSystem } from './movement/routing.js';
+import { separationSystem } from './movement/separation.js';
 import { progressionSystem, terrainSystem, timeSystem, transportSystem } from './stubs.js';
 
 // The systems barrel: every per-system module re-exported wholesale (no hand-maintained name
@@ -49,6 +50,7 @@ export * from './lifecycle/reproduction.js';
 export * from './movement/herding.js';
 export * from './movement/movement.js';
 export * from './movement/routing.js';
+export * from './movement/separation.js';
 export * from './progression.js';
 export * from './readviews/index.js';
 export * from './spatial.js';
@@ -72,6 +74,7 @@ export const SYSTEM_ORDER: readonly System[] = [
   aiSystem,
   pathfindingSystem,
   movementSystem,
+  separationSystem,
   atomicSystem,
   productionSystem,
   transportSystem,

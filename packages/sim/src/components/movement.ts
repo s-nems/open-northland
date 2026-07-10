@@ -103,3 +103,19 @@ export const MoveGoal = defineComponent<{ cell: number }>('MoveGoal');
  * (`y*width + x`) — plain numbers here so this component stays serializable like every other.
  */
 export const PathRequest = defineComponent<{ start: number; goal: number; failed: boolean }>('PathRequest');
+
+/**
+ * A walker's consecutive-ticks counter of being PHYSICALLY BLOCKED by standing units — the
+ * SeparationSystem stamps it on a path-follower whose collision resolution pushed it *against* its
+ * own heading (a body in the way, not a brush-past), and removes it the first tick that stops being
+ * true. When `ticks` reaches the give-up threshold the walker abandons its route (`clearNavState`),
+ * standing down where it is — the backstop that turns "grinding forever against a shield wall" into
+ * "walks up, pushes for a moment, stops". Whoever owns the goal (the combat chase, a player order,
+ * an AI drive) re-issues it on its own cadence, and the re-route then sees the blockers stamped into
+ * the walk overlay and paths around or fails cleanly.
+ *
+ * A separate optional component (the {@link MoveSpeed}/{@link HerdMember} pattern): only a blocked
+ * collider carries one, so sims without unit collision (every unowned fixture, the goldens) never
+ * hash it. Plain integer ticks — deterministic like every component.
+ */
+export const Obstructed = defineComponent<{ ticks: number }>('Obstructed');

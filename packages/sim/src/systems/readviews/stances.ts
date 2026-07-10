@@ -62,6 +62,23 @@ const HERO_JOB_MIN = 42;
 const HERO_JOB_MAX = 47;
 
 /**
+ * Whether `jobType` is a **fighter** — a soldier ({@link SOLDIER_JOB_MIN}..{@link SOLDIER_JOB_MAX}) or
+ * hero ({@link HERO_JOB_MIN}..{@link HERO_JOB_MAX}) trade, the units whose whole role is combat. The
+ * shared classification behind two consumers: the default-stance table below (fighters auto-engage)
+ * and the SeparationSystem's collision roster (only fighters have body collision — workers keep the
+ * original's pass-through, so economy flows that legally converge on one node — a shared work cell, a
+ * store door — can never jam). Scouts and hunters are NOT fighters: they carry weapons, but their
+ * role is exploration/predation and body collision would only obstruct their wandering.
+ */
+export function isFighterJob(jobType: number | null): boolean {
+  if (jobType === null) return false;
+  return (
+    (jobType >= SOLDIER_JOB_MIN && jobType <= SOLDIER_JOB_MAX) ||
+    (jobType >= HERO_JOB_MIN && jobType <= HERO_JOB_MAX)
+  );
+}
+
+/**
  * The **default military stance** a settler of `jobType` starts in — stamped on every OWNED settler at
  * spawn and re-stamped on a profession change (the `setStance` command overrides it afterwards). A
  * **data-shaped lookup** (a classification of the job id, not a chain of bespoke per-unit branches),
@@ -84,8 +101,7 @@ const HERO_JOB_MAX = 47;
  */
 export function defaultStanceForJob(jobType: number | null): number {
   if (jobType === null) return MILITARY_MODE.FLEE; // a jobless settler / child is a civilian → flee
-  if (jobType >= SOLDIER_JOB_MIN && jobType <= SOLDIER_JOB_MAX) return MILITARY_MODE.ATTACK; // soldiers
-  if (jobType >= HERO_JOB_MIN && jobType <= HERO_JOB_MAX) return MILITARY_MODE.ATTACK; // heroes
+  if (isFighterJob(jobType)) return MILITARY_MODE.ATTACK; // soldiers + heroes engage on sight
   if (jobType === SCOUT_JOB) return MILITARY_MODE.IGNORE; // the scout explores, never picks fights
   if (jobType === HUNTER_JOB) return MILITARY_MODE.IGNORE; // ignores humans; its animal hunt drive stays
   return MILITARY_MODE.FLEE; // every other civilian job runs from danger
