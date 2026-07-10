@@ -17,19 +17,28 @@ import {
   type BuildingCategory,
   type BuildingMenuLayout,
   type MenuBuildingEntry,
+  type MenuRow,
   hitTestBuildingMenu,
   layoutBuildingMenu,
 } from './building-menu.js';
 import type { PanelContext } from './context.js';
 
+/**
+ * The window title. The decoded `miscwindow` id 0 is the original's clunky internal name "Zbuduj Okno"
+ * (literally "Build Window"), so we show a clean Polish title instead — the build/construction menu. A
+ * future full i18n pass moves this into the string tables; for now it mirrors the in-code building names.
+ */
+const MENU_TITLE = 'Budowa';
 /** Text sizes (design px) — a larger title/tab heading over the body-size building rows. */
 const TITLE_PX = 13;
 const TAB_PX = 11;
 const ROW_PX = 11;
 /** Approx. cap height (design px) of the body text — used to vertically centre a run in a chrome rect. */
 const TEXT_CAP_H = 10;
-/** Left inset (design px) for the left-aligned building rows. */
-const ROW_INSET_X = 6;
+/** Left inset (design px) of a row label inside its button-card. */
+const ROW_INSET_X = 8;
+/** Vertical inset (design px) of a building card inside its row slot — the gap that separates the cards. */
+const CARD_INSET_Y = 2;
 /** Design-px inset of the headline strip inside the window frame (so the frame reads around it). */
 const HEADLINE_INSET = 2;
 /** How many rows one mouse-wheel event scrolls the list. */
@@ -47,8 +56,8 @@ const MAX_LIST_ROWS = 13;
 const MIN_LIST_ROWS = 3;
 /** Design-px chrome above the list (headline + tab row + gap) — mirrors `building-menu.ts` metrics. */
 const CHROME_ABOVE_LIST = 18 + 18 + 3;
-/** Building row height (design px) — mirrors `building-menu.ts` `MENU_ROW_H`. */
-const ROW_H = 16;
+/** Building row-slot height (design px) — mirrors `building-menu.ts` `MENU_ROW_H`. */
+const ROW_H = 20;
 
 export interface MenuWindowDeps {
   readonly ctx: PanelContext;
@@ -126,6 +135,14 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
     for (const child of back.removeChildren()) child.destroy();
   };
 
+  /** The building card inside a row slot — inset vertically so consecutive cards read as separate plates. */
+  const cardRect = (row: MenuRow): Rect => ({
+    x: row.rect.x,
+    y: Math.round(row.rect.y + CARD_INSET_Y * scale),
+    w: row.rect.w,
+    h: Math.round(row.rect.h - 2 * CARD_INSET_Y * scale),
+  });
+
   /** Centre a run horizontally in `rect` (uses its native-px width) and vertically by the cap height. */
   const centre = (run: TextRun, rect: Rect, rw: number, rh: number): void => {
     const x = rect.x + Math.max(0, (rect.w - run.width * scale) / 2);
@@ -167,7 +184,7 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
     }
     drawCloseX(graphics, menuLayout.closeRect, scale);
 
-    const title = ctx.makeText(ctx.uiString('miscwindow', 0, 'Zbuduj Okno'), 'white', TITLE_PX);
+    const title = ctx.makeText(MENU_TITLE, 'white', TITLE_PX);
     deps.container.addChild(title.container);
     runs.push(title);
 
@@ -188,6 +205,10 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
       runs.push(run);
     }
     for (const row of menuLayout.rows) {
+      // Each building sits on its own raised button-card (wood shows through the gaps between them).
+      const card = cardRect(row);
+      if (!tileBitmap(back, ctx.bitmaps.button, card, scale)) drawTabButton(graphics, card, scale, false);
+      drawPlateOutline(graphics, card, scale);
       const run = ctx.makeText(row.label, 'white', ROW_PX);
       deps.container.addChild(run.container);
       runs.push(run);
@@ -203,7 +224,7 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
     hoverG.clear();
     if (menuLayout === null || hoveredType === null) return;
     const row = menuLayout.rows.find((r) => r.typeId === hoveredType);
-    if (row !== undefined) drawHoverHighlight(hoverG, row.rect);
+    if (row !== undefined) drawHoverHighlight(hoverG, cardRect(row));
   };
 
   const place = (): void => {
@@ -220,8 +241,9 @@ export function createMenuWindow(deps: MenuWindowDeps): MenuWindow {
     for (const row of menuLayout.rows) {
       const run = runs[i++];
       if (run === undefined) continue;
-      const y = row.rect.y + (row.rect.h - TEXT_CAP_H * scale) / 2;
-      run.place(Math.round(row.rect.x + ROW_INSET_X * scale), Math.round(y), scale, rw, rh);
+      const card = cardRect(row);
+      const y = card.y + (card.h - TEXT_CAP_H * scale) / 2;
+      run.place(Math.round(card.x + ROW_INSET_X * scale), Math.round(y), scale, rw, rh);
     }
   };
 
