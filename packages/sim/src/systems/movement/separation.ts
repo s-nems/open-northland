@@ -69,8 +69,10 @@ export const UNIT_SEPARATION_RADIUS: Fixed = fx.div(fx.fromInt(13), fx.fromInt(5
  * The per-tick cap on the SOFT mover-vs-mover push, deliberately below the arrival brake floor
  * (`gait / ARRIVAL_SPEED_DIV`, see `movement.ts`): a walker being brushed by passing traffic still
  * makes net progress every tick, so soft separation can delay an arrival but never prevent one.
+ * Tuned to ⅖ of the gait (just under the ½ floor): the first ¼ cut let a charging mass overlap
+ * deeply mid-march — a converging army read as one pile of sprites (the feel note that raised it).
  */
-export const SEPARATION_PUSH_CAP: Fixed = fx.div(MOVE_SPEED_PER_TICK, fx.fromInt(4));
+export const SEPARATION_PUSH_CAP: Fixed = fx.div(fx.mul(MOVE_SPEED_PER_TICK, fx.fromInt(2)), fx.fromInt(5));
 
 /**
  * The Manhattan node radius of a player's CALM ZONE around each of its buildings — the user's
@@ -159,17 +161,38 @@ export interface UnitWalkBlocks {
   readonly townByPlayer: ReadonlyMap<number, ReadonlySet<NodeId>>;
 }
 
-export function unitWalkBlocks(world: World, terrain: TerrainGraph): UnitWalkBlocks {
-  const zones = calmZonesByPlayer(world, terrain);
-  const field = new Set<NodeId>();
-  const townByPlayer = new Map<number, Set<NodeId>>();
+/** Visit every standing collider (post) with its clamped node and owning player — the one scan both
+ *  walk-overlay stampers and the combat slot filter derive their standing-body sets from. */
+function eachStandingFighter(
+  world: World,
+  terrain: TerrainGraph,
+  visit: (e: Entity, node: NodeId, player: number) => void,
+): void {
   for (const e of world.query(Settler, Position)) {
     if (!hasBodyCollision(world, e) || !isStanding(world, e)) continue;
     const p = world.get(e, Position);
     const n = nodeOfPosition(p.x, p.y);
     if (!terrain.inBounds(n.hx, n.hy)) continue;
-    const node = terrain.nodeAt(n.hx, n.hy);
-    const player = world.get(e, Owner).player;
+    visit(e, terrain.nodeAt(n.hx, n.hy), world.get(e, Owner).player);
+  }
+}
+
+/**
+ * The nodes standing colliders occupy, regardless of calm zones — the CombatSystem's melee-slot
+ * filter (an approach cell someone already stands on is a taken slot even inside a town garrison).
+ * Derived per tick, membership-only, never hashed.
+ */
+export function standingFighterNodes(world: World, terrain: TerrainGraph): ReadonlySet<NodeId> {
+  const nodes = new Set<NodeId>();
+  eachStandingFighter(world, terrain, (_e, node) => nodes.add(node));
+  return nodes;
+}
+
+export function unitWalkBlocks(world: World, terrain: TerrainGraph): UnitWalkBlocks {
+  const zones = calmZonesByPlayer(world, terrain);
+  const field = new Set<NodeId>();
+  const townByPlayer = new Map<number, Set<NodeId>>();
+  eachStandingFighter(world, terrain, (_e, node, player) => {
     if (zones.get(player)?.has(node)) {
       let town = townByPlayer.get(player);
       if (town === undefined) {
@@ -180,7 +203,7 @@ export function unitWalkBlocks(world: World, terrain: TerrainGraph): UnitWalkBlo
     } else {
       field.add(node);
     }
-  }
+  });
   return { field, townByPlayer };
 }
 
