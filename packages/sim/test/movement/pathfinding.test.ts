@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   type NodeId,
+  POCKET_PROBE_MAX_EXPLORED,
   type TerrainGraph,
   type TerrainMap,
   buildTerrainGraph,
@@ -207,6 +208,58 @@ describe('findPath — deterministic tie-breaking', () => {
     const b = 35 as NodeId;
     // Cell ids are identical across the two graphs (same dims), so the paths must be id-for-id equal.
     expect(findPath(ga, a, b)).toEqual(findPath(gb, a, b));
+  });
+
+  it('goal sealed by the overlay fails at pocket cost, not a map flood (the probe elision)', () => {
+    // An 80×80 open node grid (6400 nodes) with the goal sealed inside a walk-block ANNULUS —
+    // nodes at Chebyshev distance 3..4 from the goal. Thickness 2 in y seals the ±2 diagonal/step
+    // reach (any escape from max ≤ 2 lands at max ≤ 4 — inside the ring). Proving "no route"
+    // forward means flooding the whole grid; the goal-side probe must exhaust the ~25-node pocket
+    // instead. The explored bound is the test's teeth: without the probe it lands in the thousands.
+    const g = open(80, 80);
+    const goal = { x: 40, y: 40 };
+    const blocked = new Set<NodeId>();
+    for (let dx = -4; dx <= 4; dx++) {
+      for (let dy = -4; dy <= 4; dy++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) >= 3) {
+          blocked.add(g.nodeAt(goal.x + dx, goal.y + dy));
+        }
+      }
+    }
+    const stats = { explored: 0 };
+    expect(findPath(g, g.nodeAt(2, 2), g.nodeAt(goal.x, goal.y), blocked, stats)).toBeNull();
+    expect(stats.explored).toBeLessThan(POCKET_PROBE_MAX_EXPLORED + 1);
+  });
+
+  it('routes normally when start and goal share the sealed pocket', () => {
+    const g = open(80, 80);
+    const blocked = new Set<NodeId>();
+    for (let dx = -4; dx <= 4; dx++) {
+      for (let dy = -4; dy <= 4; dy++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) >= 3) blocked.add(g.nodeAt(40 + dx, 40 + dy));
+      }
+    }
+    // Both endpoints inside the ring: the probe meets the start within the pocket and the full
+    // search routes as if the ring were the map edge.
+    expect(findPath(g, g.nodeAt(39, 40), g.nodeAt(41, 40), blocked)).not.toBeNull();
+  });
+
+  it('keeps the blocked-START step-off exemption with an overlay in play (probe skipped)', () => {
+    const g = open(10, 10);
+    const start = g.nodeAt(5, 5);
+    const blocked = new Set<NodeId>([start]);
+    expect(findPath(g, start, g.nodeAt(8, 5), blocked)).not.toBeNull();
+  });
+
+  it('finds a route longer than the probe cap when the overlay does not seal it', () => {
+    // Distant corners on a big grid with one stray blocked node: the probe hits its cap
+    // inconclusively and the full search must still deliver the route.
+    const g = open(80, 80);
+    const blocked = new Set<NodeId>([g.nodeAt(10, 10)]);
+    const stats = { explored: 0 };
+    const path = findPath(g, g.nodeAt(0, 0), g.nodeAt(79, 79), blocked, stats);
+    expect(path).not.toBeNull();
+    expect(stats.explored).toBeGreaterThan(POCKET_PROBE_MAX_EXPLORED); // the cap-abort ran, then the real search
   });
 
   it('breaks a cost-tie between equal lattice routes canonically (a pinned pick)', () => {
