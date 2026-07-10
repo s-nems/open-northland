@@ -4,18 +4,21 @@ import { VIKING_BUILDINGS } from './buildings.js';
  * Localized building display names — the i18n seam for the build picker (and any HUD surface that names a
  * building). Keyed by the catalog's stable `id`, so it can't drift from a typeId renumber.
  *
- * Source basis: OWN CLEAN-ROOM naming. The original per-building name strings are NOT in the decoded data
- * — `content/gui/strings/<lang>.json` carries only window/section labels (`housewindow`, `miscwindow`, …),
- * not a per-`[GfxHouse]` name table — so these are our own translations mirroring the English `label` in
- * `catalog/buildings.ts` (which is itself clean-room English naming). They are display strings, never a
- * lookup key. When a per-building name table is one day extracted from the original, prefer it over this.
+ * Source basis: our own POLISH translations. No localized, player-facing building-name table exists in the
+ * decoded data — `content/gui/strings/<lang>.json` carries only window/section labels (`housewindow`,
+ * `miscwindow`, …), not per-building names — so the Polish names below are ours. They mirror the English
+ * `label` in `catalog/buildings.ts`, which is itself source-derived: each `[GfxHouse]` in the readable mod
+ * source `DataCnmd/budynki12/houses/houses.ini` carries an English `EditName` ("viking bakery", "viking
+ * mill", …) matching the catalog 1:1 — a dev-facing editor name, not carried into the decoded content.
+ * These are display strings, never a lookup key. If a localized name table is ever extracted, prefer it.
  *
  * i18n shape: one map per language. Today only Polish is authored; every other language falls back to the
  * English catalog `label` (the `eng` "table" is that label, so it needs no duplicate map here). A new
  * language is a new entry in {@link BUILDING_NAMES} — no call-site change.
  */
 
-/** UI languages the game can localize to (mirrors the content-set `locale` enum). Only `pol` adds names. */
+/** UI languages the game can localize to (the original's four locales). Only `pol` adds names here; if a
+ *  canonical locale union is ever introduced elsewhere, derive this from it rather than restating it. */
 export type UiLang = 'pol' | 'eng' | 'ger' | 'rus';
 
 /**
