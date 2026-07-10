@@ -5,6 +5,7 @@ import {
   type SceneTerrain,
   type WorldRenderer,
   buildHud,
+  buildSpriteScene,
   cameraViewport,
   layoutHud,
   visibleTileRange,
@@ -19,6 +20,7 @@ import { professionsFromContent } from '../hud/details-panel/index.js';
 import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel/layout.js';
 import { mountAdminDebug } from './admin-debug/index.js';
 import type { CameraController } from './camera.js';
+import { screenScale } from './camera.js';
 import {
   applyGameSpeed,
   menuEntriesFromContent,
@@ -28,7 +30,8 @@ import {
 import { mountSoundToggle } from './overlay.js';
 import { floatParam } from './params.js';
 import { mountPerfOverlay } from './perf-overlay.js';
-import { nodeBandOfCells } from './picking.js';
+import { type Pickable, nodeBandOfCells, pickTopAt, screenToWorld } from './picking.js';
+import { createTooltip } from './tooltip.js';
 import { createUnitControls } from './unit-controls.js';
 
 /**
@@ -208,6 +211,10 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     enqueue: (command) => sim.enqueue(command),
     boundsOf: (ref) => renderer.entityBounds(ref), // pixel-accurate picking against the real sprite
     claimPointer: (x: number, y: number) => toolPanel.claimPointer(x, y),
+    // The Magazyn stock-row name tooltip. Its OWN instance (not the ground one below): the two hover
+    // surfaces are mutually exclusive by cursor, and a shared element would fight — the frame loop hides the
+    // ground tooltip whenever the pointer is over the HUD, which is exactly when this one must stay shown.
+    tooltip: createTooltip(),
   });
 
   // The admin/debug spawn palette (a hidden panel behind a top toggle button): click-to-spawn any unit
@@ -221,6 +228,59 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     clientToTile: (x, y) => toolPanel.clientToTile(x, y),
     claimPointer: (x, y) => controls.claimsPointer(x, y),
   });
+
+  // Name-on-hover: a cursor tooltip naming the loose good pile (with its count) under the pointer, so a
+  // dropped heap the eye can't always tell apart — one bottle from another, one ring from another — reads its
+  // good + how many units. The good's display label is its English catalog name (else its id), the same label
+  // the drop palette shows; keyed by the sim goodType the pile's DrawItem carries.
+  const goodLabelByType = new Map<number, string>(sim.content.goods.map((g) => [g.typeId, g.name ?? g.id]));
+  const tooltip = createTooltip();
+  const toWorld = (clientX: number, clientY: number): { x: number; y: number } => {
+    const { sx, sy, rect } = screenScale(canvas, app.renderer.resolution);
+    return screenToWorld(cameraCtl.camera(), (clientX - rect.left) * sx, (clientY - rect.top) * sy);
+  };
+  // Pile hit-targets rebuilt only when the sim tick moves (a pile's fill/existence can only change on a
+  // step): the boxes are WORLD-space (camera-independent), so a still cursor over a running sim re-picks
+  // against the cached set each frame rather than re-scanning the scene — the same screen-not-map budget the
+  // rest of the loop keeps (golden rule 6). Empty flags (no dominant good) carry nothing to name and are skipped.
+  let hoverTick = -1;
+  let hoverTargets: Pickable[] = [];
+  const hoverInfo = new Map<number, { goodType: number; amount: number }>();
+  const pileTargets = (snap: WorldSnapshot): Pickable[] => {
+    if (snap.tick === hoverTick) return hoverTargets;
+    hoverTick = snap.tick;
+    hoverTargets = [];
+    hoverInfo.clear();
+    for (const it of buildSpriteScene(snap)) {
+      if (it.kind !== 'stockpile' && it.kind !== 'grounddrop') continue;
+      if (it.goodType === undefined) continue; // an empty delivery flag — nothing to name
+      hoverTargets.push({ ref: it.ref, x: it.x, y: it.y, box: renderer.entityBounds(it.ref) });
+      hoverInfo.set(it.ref, { goodType: it.goodType, amount: it.fill ?? 0 });
+    }
+    return hoverTargets;
+  };
+  const updateHoverTooltip = (snap: WorldSnapshot): void => {
+    // Suppress while placing a building and whenever the HUD owns the pointer (a tool-panel window, the
+    // details panel) — the tooltip names WORLD piles, not HUD chrome.
+    if (
+      pointer === null ||
+      toolPanel.controller.placementType() !== null ||
+      toolPanel.claimPointer(pointer.clientX, pointer.clientY) ||
+      controls.claimsPointer(pointer.clientX, pointer.clientY)
+    ) {
+      tooltip.hide();
+      return;
+    }
+    const w = toWorld(pointer.clientX, pointer.clientY);
+    const ref = pickTopAt(pileTargets(snap), w.x, w.y);
+    const info = ref === null ? undefined : hoverInfo.get(ref);
+    if (info === undefined) {
+      tooltip.hide();
+      return;
+    }
+    const label = goodLabelByType.get(info.goodType) ?? `#${info.goodType}`;
+    tooltip.show(pointer.clientX, pointer.clientY, info.amount > 1 ? `${label} ×${info.amount}` : label);
+  };
 
   // The memoized build-mode band probe (see makeOverlayFrameSource) — one instance per view.
   const overlayFrame = makeOverlayFrameSource(sim, deps.mapSize);
@@ -298,6 +358,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // the debug tick lives in the top overlay and the population/jobs/stocks in the stats window.
     renderer.update(snap, cameraCtl.camera(), snap.tick, undefined, controls.selectedIds(), renderAlpha);
     controls.tick(snap); // reuse the frame's snapshot — don't rebuild a second one
+    updateHoverTooltip(snap); // name-on-hover for the good pile under the cursor (after controls: claim state is current)
     deps.onFrame?.(snap);
     if (soundDriver !== null) {
       soundDriver.update({

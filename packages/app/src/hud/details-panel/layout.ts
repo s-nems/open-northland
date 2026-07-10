@@ -66,6 +66,34 @@ export const STOCK_PLATE_H = 11;
 export const MAX_STOCK_ROWS = 6;
 /** Worker rows the fixed-height workers body always reserves (the original's bottom window ≈4 rows). */
 export const MAX_WORKER_ROWS = 4;
+/** Horizontal gap between the stock window's two columns (a window pad). */
+export const STOCK_COL_GAP = WIN_PAD;
+
+/**
+ * The stock body's cell rects (icon + amount plate together), COLUMN-MAJOR: the left column top→bottom,
+ * then the right — the ONE geometry the stock rows draw into AND the hover hit-test probes, so a hovered
+ * slot is exactly a drawn slot by construction. Always `MAX_STOCK_ROWS * 2` slots (the fixed-height body);
+ * a slot past the current tab's good count is simply empty. `s` is the caller's scale (the draw oversample
+ * `ss`, or the hit scale), so the same fixed metrics resolve into either space.
+ */
+export function stockSlotRects(body: Rect, s: number): Rect[] {
+  const colGap = Math.round(STOCK_COL_GAP * s);
+  const colW = Math.round((body.w - colGap) / 2);
+  const cellH = Math.round(STOCK_ROW_H * s);
+  // Rows fill the body bottom-up; whatever the tab strip leaves over becomes the gap under it.
+  const rowsTop = body.y + body.h - MAX_STOCK_ROWS * cellH;
+  const slots: Rect[] = [];
+  for (let i = 0; i < MAX_STOCK_ROWS * 2; i++) {
+    const col = Math.floor(i / MAX_STOCK_ROWS);
+    slots.push({
+      x: body.x + col * (colW + colGap),
+      y: rowsTop + (i % MAX_STOCK_ROWS) * cellH,
+      w: colW,
+      h: cellH,
+    });
+  }
+  return slots;
+}
 
 export type ButtonAction = 'demolish' | 'center' | 'workers' | 'help';
 

@@ -14,6 +14,7 @@ import {
   buildUnitPanelModel,
   professionsFromContent,
 } from '../src/hud/details-panel/index.js';
+import { MAX_STOCK_ROWS, stockSlotRects } from '../src/hud/details-panel/layout.js';
 import { defaultStockTab } from '../src/hud/details-panel/panel.js';
 import { createSceneSim } from '../src/scenes/index.js';
 import { sandboxScene } from '../src/scenes/sandbox.js';
@@ -62,6 +63,23 @@ describe('selection details panel model', () => {
     expect(model.stock.every((r) => r.amount === 0)).toBe(true);
     // Every row carries the stock category tab it belongs to (0–7), so the render can filter by tab.
     expect(model.stock.every((r) => r.category >= 0 && r.category < STOCK_TAB_COUNT)).toBe(true);
+  });
+
+  it('lays the stock grid as MAX_STOCK_ROWS×2 column-major cells inside the body (draw == hit geometry)', () => {
+    const body = { x: 10, y: 100, w: 200, h: 132 };
+    const slots = stockSlotRects(body, 1);
+    expect(slots).toHaveLength(MAX_STOCK_ROWS * 2);
+    // Column-major: the first MAX_STOCK_ROWS fill the left column (shared x), the rest the right column.
+    expect(slots[0]?.x).toBe(body.x);
+    expect(slots[MAX_STOCK_ROWS - 1]?.x).toBe(body.x);
+    expect(slots[MAX_STOCK_ROWS]?.x).toBeGreaterThan(body.x); // right column starts further right
+    // Rows descend within a column, and every cell stays inside the body.
+    expect(slots[1]?.y).toBeGreaterThan(slots[0]?.y ?? 0);
+    for (const s of slots) {
+      expect(s.x).toBeGreaterThanOrEqual(body.x);
+      expect(s.x + s.w).toBeLessThanOrEqual(body.x + body.w + 1); // +1 for integer rounding
+      expect(s.y + s.h).toBeLessThanOrEqual(body.y + body.h + 1);
+    }
   });
 
   it('opens a building on the FIRST (lowest-index) category that holds any of its goods', () => {

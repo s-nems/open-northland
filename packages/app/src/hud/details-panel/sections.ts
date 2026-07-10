@@ -1,6 +1,5 @@
 import { GUI_FRAME } from '../../content/gui-atlas-map.js';
 import type { UiString } from '../../content/gui-gfx.js';
-import { WIN_PAD } from '../chrome.js';
 import type { Rect } from '../geometry.js';
 import type { Chrome } from './chrome.js';
 import {
@@ -15,6 +14,7 @@ import {
   STOCK_PLATE_H,
   STOCK_ROW_H,
   type SimpleLayout,
+  stockSlotRects,
 } from './layout.js';
 import type {
   BuildingPanelModel,
@@ -55,8 +55,6 @@ const BUTTON_STRING: Readonly<Record<ButtonAction, { id: number; fallback: strin
 const ROW_TEXT_PAD = 2;
 /** Stock cell: icon slot width before the amount plate (≈15 px icon + a small gap in the original). */
 const STOCK_ICON_W = 18;
-/** Gap between the two stock columns. */
-const STOCK_COL_GAP = WIN_PAD;
 /** Left inset of the amount text inside its plate (eyeballed off the 1024×768 screenshots). */
 const STOCK_AMOUNT_INSET = 6;
 /** How strongly an inactive stock tab is dimmed (translucent dark scrim alpha) vs. the active one. */
@@ -148,24 +146,25 @@ export function drawBuilding(
   drawStockTabs(chrome, layout.stockTabHits, activeTab, s);
   {
     const body = layout.stock.body;
-    const colGap = Math.round(STOCK_COL_GAP * s);
-    const colW = Math.round((body.w - colGap) / 2);
+    // The fixed cell grid both the drawing and the hover hit-test share (column-major, two columns).
+    const slots = stockSlotRects(body, s);
     const cellH = Math.round(STOCK_ROW_H * s);
-    // Rows fill the fixed body bottom-up; whatever the tab strip leaves over becomes the gap under it.
-    const rowsTop = body.y + body.h - MAX_STOCK_ROWS * cellH;
     // Only the active category tab's goods are listed (the original filters the store by tab).
     const rows = model.stock.filter((row) => row.category === activeTab);
     const shown = rows.slice(0, MAX_STOCK_ROWS * 2);
     shown.forEach((row, i) => {
-      // Column-major like the original's two stock columns: fill the left column, then the right.
-      const col = Math.floor(i / MAX_STOCK_ROWS);
-      const x = body.x + col * (colW + colGap);
-      const y = rowsTop + (i % MAX_STOCK_ROWS) * cellH;
-      const icon: Rect = { x, y, w: Math.round(STOCK_ICON_W * s), h: cellH - Math.round(2 * s) };
+      const slot = slots[i];
+      if (slot === undefined) return;
+      const icon: Rect = {
+        x: slot.x,
+        y: slot.y,
+        w: Math.round(STOCK_ICON_W * s),
+        h: cellH - Math.round(2 * s),
+      };
       const plate: Rect = {
-        x: x + icon.w,
-        y: y + Math.round((STOCK_ROW_H - STOCK_PLATE_H) * s) / 2,
-        w: colW - icon.w,
+        x: slot.x + icon.w,
+        y: slot.y + Math.round((STOCK_ROW_H - STOCK_PLATE_H) * s) / 2,
+        w: slot.w - icon.w,
         h: Math.round(STOCK_PLATE_H * s),
       };
       chrome.stockField(plate);
@@ -175,7 +174,7 @@ export function drawBuilding(
       chrome.textAt(
         stockAmount(row.amount),
         plate.x + Math.round(STOCK_AMOUNT_INSET * s),
-        y + ROW_TEXT_PAD * s,
+        slot.y + ROW_TEXT_PAD * s,
         'white',
       );
     });
