@@ -2,6 +2,7 @@ import {
   type CellTexture,
   type GroundPattern,
   type TerrainTextureSet,
+  type TransitionPattern,
   loadAtlasSource,
   patternSrcRect,
 } from '@vinland/render';
@@ -15,11 +16,16 @@ import { type ContentIr, loadIr } from './ir.js';
  *  - **1:1 per-triangle** (a decoded original map): the map's `ground` lanes carry the exact
  *    `GfxPattern` choice per cell triangle (the editor bakes its pattern algorithm's output into
  *    `map.dat`); {@link TerrainTextureSet.groundFor} joins each pattern `EditName` onto the full
- *    927-record `gfxPatterns` IR table for its page + UV triangles. Coastlines/transition blocks
- *    join up exactly like the original.
+ *    927-record `gfxPatterns` IR table for its page + UV triangles, and
+ *    {@link TerrainTextureSet.transitionFor} joins the map's `transitions.types` names onto the
+ *    `gfxPatternTransitions` table (the composed `<stem>.masked.png` RGBA overlay pages).
  *  - **approximated per-typeId** (synthetic grids / maps without ground lanes): the
  *    `terrainPatterns` table binds each landscape typeId to one representative pattern
  *    (`buildTerrainPatterns` — a recorded deviation, source basis).
+ *
+ * All ground pages load LINEAR-filtered — the original samples its terrain pages bilinearly
+ * (docs/SOURCES.md "terrain tessellation"), which melts pattern joins and transition masks into
+ * smooth seams; the sprite atlases stay `nearest` (pixel art).
  */
 
 type LoadedSource = Awaited<ReturnType<typeof loadAtlasSource>>;
@@ -80,17 +86,34 @@ export async function loadRealTerrain(ir?: ContentIr): Promise<TerrainTextureSet
     pageKeys.add(pageKey);
     patternByName.set(row.editName, { pageKey, coordsA: row.coordsA, coordsB: row.coordsB });
   }
-  // Load the distinct pages either table references (~56 on the real data), in parallel like
-  // loadHumanSpriteSheet's layers.
+  // The transition-overlay join: every well-formed `[transition]` record by name. The page is the
+  // pipeline's composed RGBA `<texture stem>.masked.png` (RGB page + alpha mask in one picture) —
+  // the plain `<stem>.png` twin lacks the mask, so it is never referenced here.
+  const transitionByName = new Map<string, TransitionPattern>();
+  for (const row of tables.gfxPatternTransitions ?? []) {
+    if (row.editName === undefined || row.texture === undefined || row.coordsA.length === 0) continue;
+    const pageKey = `${pageKeyOf(row.texture)}.masked`;
+    pageKeys.add(pageKey);
+    transitionByName.set(row.editName, { pageKey, coordsA: row.coordsA, coordsB: row.coordsB });
+  }
+  // Load the distinct pages any table references (~56 + ~19 overlays on the real data), in parallel
+  // like loadHumanSpriteSheet's layers. LINEAR-filtered (see the module doc). A page that fails to
+  // load is skipped (warn once): the renderer falls back per triangle / skips that overlay — e.g. a
+  // `content/` generated before the masked-overlay stage existed still draws its base ground.
   const pages = new Map<string, LoadedSource>();
   await Promise.all(
     [...pageKeys].map(async (key) => {
-      pages.set(key, await loadAtlasSource(`/textures/${key}.png`));
+      try {
+        pages.set(key, await loadAtlasSource(`/textures/${key}.png`, 'linear'));
+      } catch {
+        console.warn(`terrain: page ${key}.png failed to load; its triangles fall back`);
+      }
     }),
   );
   return {
     pages,
     cellFor: (typeId) => cellByType.get(typeId),
     groundFor: (name) => patternByName.get(name),
+    transitionFor: (name) => transitionByName.get(name),
   };
 }

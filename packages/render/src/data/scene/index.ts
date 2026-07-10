@@ -11,6 +11,7 @@ export {
   type DrawKind,
   type SceneGround,
   type SceneTerrain,
+  type SceneTransitions,
   SPRITE_PAINT_ORDER,
   type SpriteState,
 } from './draw-item.js';

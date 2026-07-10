@@ -1,10 +1,10 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import {
-  ELEVATION_LIFT,
   ONE,
+  TILE_HALF_H,
   buildSpriteScene,
-  diamondCornerLifts,
+  elevationLiftPerUnit,
   makeElevationField,
   tileToScreen,
 } from '../src/index.js';
@@ -12,40 +12,49 @@ import {
 /**
  * Headless tests for the terrain-elevation seam (`data/elevation.ts`) — the one bilinear sampler every
  * projection consumer lifts through. Pixels are still human-gated, but the load-bearing DATA decisions
- * are agent-checkable: the sampler's bilinear+clamp, the WATERTIGHT per-corner lift (a shared diamond
- * corner must lift identically from every cell that meets it, or the mesh cracks), the cull pad, and the
- * DEPTH rule (a lifted-up sprite on a nearer row still occludes one behind it — the painter key stays
- * the PRE-LIFT feet row, not the lifted screen y).
+ * are agent-checkable: the engine's lift-per-unit (elevation/16 half-row-steps — source basis,
+ * docs/SOURCES.md "terrain tessellation"), the sampler's bilinear+clamp, the cull pad, and the DEPTH
+ * rule (a lifted-up sprite on a nearer row still occludes one behind it — the painter key stays the
+ * PRE-LIFT feet row, not the lifted screen y).
  */
+
+const LIFT = elevationLiftPerUnit();
+
+describe('elevationLiftPerUnit — the engine tessellation divisor', () => {
+  it('is one 16th of a half row step (1.1875 px at the measured 38 px row step)', () => {
+    expect(LIFT).toBeCloseTo(TILE_HALF_H / 2 / 16, 9);
+    expect(LIFT).toBeCloseTo(1.1875, 9);
+  });
+});
 
 describe('makeElevationField.liftAt', () => {
   // 3×2 grid, row-major: row0 = [0,10,20], row1 = [30,40,50].
   const field = makeElevationField([0, 10, 20, 30, 40, 50], 3, 2);
 
-  it('returns the cell height × LIFT at integer coordinates', () => {
+  it('returns the cell height × lift-per-unit at integer coordinates (the mesh-node value)', () => {
     expect(field.liftAt(0, 0)).toBe(0);
-    expect(field.liftAt(1, 0)).toBeCloseTo(10 * ELEVATION_LIFT, 6);
-    expect(field.liftAt(2, 1)).toBeCloseTo(50 * ELEVATION_LIFT, 6);
+    expect(field.liftAt(1, 0)).toBeCloseTo(10 * LIFT, 6);
+    expect(field.liftAt(2, 1)).toBeCloseTo(50 * LIFT, 6);
   });
 
-  it('bilinearly interpolates fractional positions (a walking settler, a diamond corner)', () => {
+  it('bilinearly interpolates fractional positions (a walking settler between cell centres)', () => {
     // Along a row: halfway between col 0 (0) and col 1 (10) → 5.
-    expect(field.liftAt(0.5, 0)).toBeCloseTo(5 * ELEVATION_LIFT, 6);
+    expect(field.liftAt(0.5, 0)).toBeCloseTo(5 * LIFT, 6);
     // Down a column: halfway between row0 col0 (0) and row1 col0 (30) → 15.
-    expect(field.liftAt(0, 0.5)).toBeCloseTo(15 * ELEVATION_LIFT, 6);
-    // Cell centre of the 2×2 block {0,10,30,40} → mean 20.
-    expect(field.liftAt(0.5, 0.5)).toBeCloseTo(20 * ELEVATION_LIFT, 6);
+    expect(field.liftAt(0, 0.5)).toBeCloseTo(15 * LIFT, 6);
+    // Centre of the 2×2 block {0,10,30,40} → mean 20.
+    expect(field.liftAt(0.5, 0.5)).toBeCloseTo(20 * LIFT, 6);
   });
 
   it('clamps to the map edge (a sample past an edge repeats the boundary cell, never wraps/OOBs)', () => {
     expect(field.liftAt(-1, 0)).toBe(field.liftAt(0, 0)); // left of the west edge
-    expect(field.liftAt(5, 0)).toBeCloseTo(20 * ELEVATION_LIFT, 6); // right of the east edge → col 2
-    expect(field.liftAt(0, 5)).toBeCloseTo(30 * ELEVATION_LIFT, 6); // below the south edge → row 1
+    expect(field.liftAt(5, 0)).toBeCloseTo(20 * LIFT, 6); // right of the east edge → col 2
+    expect(field.liftAt(0, 5)).toBeCloseTo(30 * LIFT, 6); // below the south edge → row 1
     expect(field.liftAt(-3, -3)).toBe(0); // past the NW corner → cell (0,0)
   });
 
-  it('exposes maxLift = max(elevation) × LIFT — the map-wide-max cull pad, computed once', () => {
-    expect(field.maxLift).toBeCloseTo(50 * ELEVATION_LIFT, 6);
+  it('exposes maxLift = max(elevation) × lift-per-unit — the map-wide-max cull pad, computed once', () => {
+    expect(field.maxLift).toBeCloseTo(50 * LIFT, 6);
   });
 
   it('is FLAT (zero lift everywhere) when there is no elevation lane — the byte-identical path', () => {
@@ -55,58 +64,6 @@ describe('makeElevationField.liftAt', () => {
     // An empty lane, or a zero-size map, is flat too.
     expect(makeElevationField([], 3, 2).maxLift).toBe(0);
     expect(makeElevationField([5, 5], 0, 0).maxLift).toBe(0);
-  });
-});
-
-describe('diamondCornerLifts — watertight shared corners', () => {
-  // A field that varies in BOTH axes so every corner has a distinct lift (a constant field would pass
-  // trivially). elevation(col,row) = col*10 + row.
-  const W = 6;
-  const H = 6;
-  const elev: number[] = [];
-  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) elev.push(c * 10 + r);
-  const field = makeElevationField(elev, W, H);
-  // Corner order is [top, right, bottom, left].
-  const [TOP, RIGHT, BOTTOM, LEFT] = [0, 1, 2, 3];
-
-  it("a cell's RIGHT corner == its east neighbour's LEFT corner (no horizontal crack)", () => {
-    for (const [col, row] of [
-      [2, 2],
-      [3, 3],
-      [1, 4],
-    ] as const) {
-      expect(diamondCornerLifts(field, col, row)[RIGHT]).toBe(diamondCornerLifts(field, col + 1, row)[LEFT]);
-    }
-  });
-
-  it("a cell's TOP corner == the cell two rows up's BOTTOM corner (no vertical crack)", () => {
-    for (const [col, row] of [
-      [2, 3],
-      [3, 4],
-      [4, 5],
-    ] as const) {
-      expect(diamondCornerLifts(field, col, row)[TOP]).toBe(diamondCornerLifts(field, col, row - 2)[BOTTOM]);
-    }
-  });
-
-  it("a cell's TOP corner == the diagonal neighbour's LEFT corner (no diagonal crack)", () => {
-    // Top corner of (col,row) is the LEFT corner of cell (col + (row&1), row-1) — the fourth cell that
-    // meets at that vertex. Both must sample identically for the mesh to be a single height field.
-    for (const [col, row] of [
-      [2, 3],
-      [3, 4],
-      [2, 2],
-    ] as const) {
-      const s = row & 1;
-      expect(diamondCornerLifts(field, col, row)[TOP]).toBe(
-        diamondCornerLifts(field, col + s, row - 1)[LEFT],
-      );
-    }
-  });
-
-  it('lifts a corner to the mean of the cells straddling it (a linear blend at an integer row)', () => {
-    // RIGHT corner of (2,2) sits between cells (2,2)=22 and (3,2)=32 → mean 27.
-    expect(diamondCornerLifts(field, 2, 2)[RIGHT]).toBeCloseTo(27 * ELEVATION_LIFT, 6);
   });
 });
 
@@ -134,7 +91,7 @@ describe('elevation lift on sprites — draw up, but sort by PRE-LIFT row', () =
     const items = buildSpriteScene(snapshotOf([far, near]), undefined, field);
     const nearItem = items.find((d) => d.ref === 2);
     const farItem = items.find((d) => d.ref === 1);
-    expect(nearItem?.lift).toBeCloseTo(200 * ELEVATION_LIFT, 6);
+    expect(nearItem?.lift).toBeCloseTo(200 * LIFT, 6);
     expect(farItem?.lift).toBeUndefined(); // sea level → omitted (byte-identical to the flat path)
   });
 

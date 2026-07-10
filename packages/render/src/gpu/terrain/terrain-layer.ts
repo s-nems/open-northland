@@ -1,22 +1,18 @@
 import { BufferImageSource, Container, Mesh, Texture, type TextureSource } from 'pixi.js';
 import { type BrightnessField, makeBrightnessField, scaleColour } from '../../data/brightness.js';
-import { type CellCoord, diamondCornerCoords } from '../../data/cell-field.js';
-import { type ElevationField, diamondCornerLifts, makeElevationField } from '../../data/elevation.js';
-import { TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../../data/iso.js';
+import { type ElevationField, makeElevationField } from '../../data/elevation.js';
+import { TILE_HALF_H, TILE_HALF_W, halfCellToScreen } from '../../data/iso.js';
 import type { SceneTerrain } from '../../data/scene/index.js';
 import {
-  DIAMOND_FAN_INDICES,
-  DIAMOND_INDICES,
-  TRIANGLE_A_CORNERS,
-  TRIANGLE_A_SPLIT_INDICES,
-  TRIANGLE_B_CORNERS,
-  TRIANGLE_B_SPLIT_INDICES,
-  diamondCorners,
-  rectCenterUV,
-  rectUVs,
-  triangleCorners,
+  type NodeXY,
+  TRANSITION_NONE,
+  nodeLaneUV,
+  nodeLift,
+  rectTriangleUVs,
+  transitionRef,
+  triangleANodes,
+  triangleBNodes,
   triangleUVs,
-  uvMidpoint,
 } from '../../data/terrain.js';
 import { type Viewport, aabbIntersects } from '../../data/viewport.js';
 import type { GroundPattern, TerrainTextureSet } from '../pixi-app.js';
@@ -25,12 +21,21 @@ import {
   ChunkBatcher,
   type TerrainBatch,
   type TerrainChild,
+  type TerrainLayerKind,
   emptyBatch,
   meshGeometry,
 } from './chunk-batcher.js';
 
 /**
  * The retained terrain layer — the static ground, meshed ONCE per map and drawn per visible block.
+ *
+ * THE MESH is the original's tessellation (`data/terrain.ts`): vertices are cell-centre NODES and
+ * each cell contributes two triangles spanning BETWEEN neighbouring centres (△ A down to the
+ * SW/SE-below cells, ▽ B across to the E cell) — so per-triangle pattern picks and transition
+ * overlays blend organically across cells instead of along per-cell diamond seams. Per-node
+ * elevation lift (`elevation/16` half-row-steps, border clamped to 0) warps the whole ground
+ * continuously; the map's `emt1..emt4` transition lanes draw as translucent RGBA overlay meshes
+ * composited base → layer 2 → layer 1 by child order.
  *
  * Terrain is static geometry, but a whole-map single mesh still rasterizes off-screen ground every
  * frame (a whole-map mesh once pinned software-GL at 1fps). So the grid is meshed in
@@ -82,18 +87,18 @@ const FLAT_ELEVATION: ElevationField = makeElevationField(undefined, 0, 0);
  */
 const FLAT_SHADE_STEPS = 8;
 
-/**
- * The brightness-lane texture UVs of a cell's four diamond corners, flat `[u0,v0, … u3,v3]` in
- * `[top, right, bottom, left]` order: the canonical corner coordinates ({@link diamondCornerCoords})
- * mapped to texel CENTRES (`(coord + 0.5) / size`), so the texture's bilinear + edge-clamp reproduces
- * `makeCellSampler` exactly at every vertex and smoothly in between.
- */
-function cornerLaneUVs(col: number, row: number, width: number, height: number): number[] {
-  const out: number[] = [];
-  for (const [c, r] of diamondCornerCoords(col, row) as readonly CellCoord[]) {
-    out.push((c + 0.5) / width, (r + 0.5) / height);
-  }
-  return out;
+/** A node's upward lift in world px — 0 on a flat map, per-node elevation otherwise. */
+type NodeLiftFn = (hx: number, hy: number) => number;
+
+/** No lift — the flat map's shared {@link NodeLiftFn}. */
+const NO_LIFT: NodeLiftFn = () => 0;
+
+/** One resolved transition record ready to draw: its RGBA page + the six per-pair UV tuples. */
+interface ResolvedTransition {
+  readonly pageKey: string;
+  readonly source: TextureSource;
+  readonly coordsA: readonly (readonly number[])[];
+  readonly coordsB: readonly (readonly number[])[];
 }
 
 export class TerrainLayer {
@@ -108,13 +113,13 @@ export class TerrainLayer {
 
   /**
    * (Re)build the cached terrain from a grid — call ONCE per map (a terrain edit re-invalidates). With
-   * `textures` it batches every cell into one {@link Mesh} per texture page (draw-call count ~one per
-   * page, independent of map size); without them it draws the flat placeholder diamonds. Either way the
-   * geometry + page textures are built here and RETAINED, so no terrain work happens per frame.
-   * The map's baked `embr` shading (`terrain.brightness`, absent → unshaded) rides as an R8 lane
-   * texture the shaded meshes sample per FRAGMENT, at canonical-cell-coordinate UVs baked per
-   * vertex — the same watertight corner coordinates the `elevation` lift bakes geometry at
-   * (`cell-field.ts`).
+   * `textures` it batches every cell's two triangles into one {@link Mesh} per texture page per draw
+   * layer (draw-call count ~one per page per layer, independent of map size); without them it draws
+   * the flat placeholder triangles. Either way the geometry + page textures are built here and
+   * RETAINED, so no terrain work happens per frame. The map's baked `embr` shading
+   * (`terrain.brightness`, absent → unshaded) rides as an R8 lane texture the shaded meshes sample
+   * per FRAGMENT, at each vertex's own cell-centre coordinate — the engine model (one value per
+   * node, blended across the triangle).
    */
   set(terrain: SceneTerrain, textures?: TerrainTextureSet, elevation: ElevationField = FLAT_ELEVATION): void {
     this.destroy();
@@ -180,14 +185,31 @@ export class TerrainLayer {
     this.laneTexWidth = 0;
   }
 
+  /** The per-node lift for this map: 0 everywhere on a flat field, else the node's own cell's lift
+   *  with the map-border ring clamped to 0 (`data/terrain.ts` `nodeLift`). */
+  private static liftFn(terrain: SceneTerrain, elevation: ElevationField): NodeLiftFn {
+    if (elevation.maxLift <= 0) return NO_LIFT;
+    return (hx, hy) => nodeLift(elevation.liftAt, hx, hy, terrain.width, terrain.height);
+  }
+
+  /** One triangle's 3 lifted vertex positions (flat `[x0,y0, …]`, world px) from its lattice nodes. */
+  private static positions(nodes: readonly [NodeXY, NodeXY, NodeXY], lift: NodeLiftFn): number[] {
+    const out: number[] = [];
+    for (const [hx, hy] of nodes) {
+      const p = halfCellToScreen(hx, hy);
+      out.push(p.x, p.y - lift(hx, hy));
+    }
+    return out;
+  }
+
   /**
    * Drive the chunked build: split the grid into {@link TERRAIN_CHUNK_TILES}-square blocks, hand each
    * block's inclusive tile range to `meshBlock`, wrap the display objects it returns in ONE {@link
    * Container} (kept at the world origin, so children stay in absolute world coords), record the block's
    * AABB, and add it to the terrain layer. Empty blocks are skipped. The box is computed analytically
-   * from the block's corner tiles — the staggered raster `x = (2·col + parity)·halfW`, `y = row·halfH`,
-   * each diamond reaching ±halfW/±halfH — so no per-cell scan is needed to know where a block lives
-   * on screen.
+   * from the block's corner cells' triangle extents — a cell's triangles span nodes from `hx−1` to
+   * `hx+2` and rows `hy..hy+2` (`x ∈ [(2c−1)·halfW, (2c+3)·halfW]`, `y ∈ [r·rowStep, (r+1)·rowStep]`)
+   * — so no per-cell scan is needed to know where a block lives on screen.
    */
   private buildChunks(
     terrain: SceneTerrain,
@@ -205,23 +227,24 @@ export class TerrainLayer {
         this.container.addChild(container);
         this.chunks.push({
           container,
-          minX: 2 * c0 * TILE_HALF_W - TILE_HALF_W,
-          maxX: (2 * c1 + 1) * TILE_HALF_W + TILE_HALF_W,
+          minX: (2 * c0 - 1) * TILE_HALF_W,
+          maxX: (2 * c1 + 3) * TILE_HALF_W,
           // The lift only ever raises a vertex (−y), so extend the box's TOP by the map-wide-max lift so
           // culling never clips a chunk whose meshed ground was baked up a hill (the analytic AABB can't
           // see the baked lift). `maxLift` is 0 for a flat field → the box is unchanged.
-          minY: r0 * TILE_HALF_H - TILE_HALF_H - maxLift,
-          maxY: r1 * TILE_HALF_H + TILE_HALF_H,
+          minY: r0 * TILE_HALF_H - maxLift,
+          maxY: (r1 + 1) * TILE_HALF_H,
         });
       }
     }
   }
 
-  /** One batched {@link Mesh} per texture page + a fallback {@link Graphics} for unbound cells, **per
-   *  block** — the GPU twin of the pure `terrain.ts` geometry, built ONCE from the grid (no per-frame
-   *  re-batch); the per-block split is what lets {@link cull} skip off-screen ground. A decoded map
-   *  carrying its 1:1 `ground` lanes (and a texture set exposing the pattern join) takes the
-   *  per-triangle path instead; the approximated per-typeId path stays for synthetic grids. */
+  /** One batched {@link Mesh} per texture page per draw layer + a fallback {@link Graphics} for
+   *  unbound triangles, **per block** — the GPU twin of the pure `terrain.ts` geometry, built ONCE
+   *  from the grid (no per-frame re-batch); the per-block split is what lets {@link cull} skip
+   *  off-screen ground. A decoded map carrying its 1:1 `ground` lanes (and a texture set exposing
+   *  the pattern join) takes the per-triangle path; the approximated per-typeId path stays for
+   *  synthetic grids. */
   private buildTextured(
     terrain: SceneTerrain,
     textures: TerrainTextureSet,
@@ -232,46 +255,36 @@ export class TerrainLayer {
       this.buildGround(terrain, terrain.ground, textures, elevation, brightness);
       return;
     }
-    const lifted = elevation.maxLift > 0;
+    const lift = TerrainLayer.liftFn(terrain, elevation);
     const shaded = this.brightnessTex !== undefined;
     this.buildChunks(terrain, elevation.maxLift, (c0, r0, c1, r1) => {
       const batcher = new ChunkBatcher(this.brightnessTex);
       for (let row = r0; row <= r1; row++) {
         for (let col = c0; col <= c1; col++) {
           const typeId = terrain.typeIds[row * terrain.width + col] ?? -1;
-          const screen = tileToScreen(col, row);
-          const lifts = lifted ? diamondCornerLifts(elevation, col, row) : undefined;
-          const laneUV = shaded ? cornerLaneUVs(col, row, this.laneTexWidth, terrain.height) : undefined;
           const cellTex = textures.cellFor(typeId);
           const source = cellTex !== undefined ? textures.pages.get(cellTex.pageKey) : undefined;
+          const triangles = [triangleANodes(col, row), triangleBNodes(col, row)] as const;
           if (cellTex === undefined || source === undefined) {
-            batcher.drawFallback(
-              screen.x,
-              screen.y,
-              cellTex?.fallbackColour ?? DEFAULT_TILE_COLOUR,
-              lifts,
-              shaded ? brightness.brightnessAt(col, row) : 1,
-            );
+            for (const nodes of triangles) {
+              batcher.drawFallbackTriangle(
+                TerrainLayer.positions(nodes, lift),
+                cellTex?.fallbackColour ?? DEFAULT_TILE_COLOUR,
+                shaded ? brightness.brightnessAt(col, row) : 1,
+              );
+            }
             continue;
           }
           const batch = batcher.batchFor(cellTex.pageKey, source);
-          const base = batch.positions.length / 2;
-          batch.positions.push(...diamondCorners(screen.x, screen.y, lifts));
-          batch.uvs.push(...rectUVs(cellTex.rect, source.width, source.height));
-          if (laneUV === undefined) {
-            for (const idx of DIAMOND_INDICES) batch.indices.push(base + idx);
-          } else {
-            // Shaded: a centre-fan so the CENTRE vertex carries the cell's OWN canonical coordinate —
-            // corner UVs are between-cell coordinates and alone would flatten per-cell shading
-            // (data/terrain.ts).
-            batch.positions.push(screen.x, screen.y - (lifted ? elevation.liftAt(col, row) : 0));
-            batch.uvs.push(...rectCenterUV(cellTex.rect, source.width, source.height));
-            batch.brightnessUVs.push(
-              ...laneUV,
-              (col + 0.5) / this.laneTexWidth,
-              (row + 0.5) / terrain.height,
+          for (const [t, nodes] of triangles.entries()) {
+            this.pushTriangle(
+              batch,
+              nodes,
+              rectTriangleUVs(cellTex.rect, t === 0 ? 'a' : 'b', source.width, source.height),
+              lift,
+              shaded,
+              terrain,
             );
-            for (const idx of DIAMOND_FAN_INDICES) batch.indices.push(base + idx);
           }
         }
       }
@@ -279,12 +292,34 @@ export class TerrainLayer {
     });
   }
 
+  /** Append one triangle (positions + UVs + optional per-node brightness-lane UVs) to a batch. */
+  private pushTriangle(
+    batch: TerrainBatch,
+    nodes: readonly [NodeXY, NodeXY, NodeXY],
+    uvs: readonly number[],
+    lift: NodeLiftFn,
+    shaded: boolean,
+    terrain: SceneTerrain,
+  ): void {
+    const base = batch.positions.length / 2;
+    batch.positions.push(...TerrainLayer.positions(nodes, lift));
+    batch.uvs.push(...uvs);
+    if (shaded) {
+      for (const [hx, hy] of nodes) {
+        batch.brightnessUVs.push(...nodeLaneUV(hx, hy, terrain.width, terrain.height, this.laneTexWidth));
+      }
+    }
+    batch.indices.push(base, base + 1, base + 2);
+  }
+
   /**
    * The 1:1 per-triangle ground: each cell's two triangles draw the exact {@link GroundPattern} the
-   * decoded map baked into its `empa`/`empb` lanes (triangle A = the diamond's left half, B = the
-   * right — see `terrain.ts`), batched per texture page per block like the per-typeId path. The
-   * per-map pattern names are resolved through {@link TerrainTextureSet.groundFor} ONCE into an
-   * index-aligned table; a cell whose pattern (or page) is unresolved falls back to a flat diamond.
+   * decoded map baked into its `empa`/`empb` lanes (A = △ down-left, B = ▽ to the east — see
+   * `data/terrain.ts`), plus the `emt1..emt4` transition overlays as translucent RGBA triangles on
+   * the two overlay layers, all batched per texture page per layer per block. The per-map pattern
+   * and transition names are resolved through {@link TerrainTextureSet.groundFor} /
+   * {@link TerrainTextureSet.transitionFor} ONCE into index-aligned tables; a triangle whose
+   * pattern (or page) is unresolved falls back to a flat triangle, an unresolved overlay is skipped.
    */
   private buildGround(
     terrain: SceneTerrain,
@@ -293,7 +328,7 @@ export class TerrainLayer {
     elevation: ElevationField,
     brightness: BrightnessField,
   ): void {
-    // Resolve the map's compact pattern list once (index-aligned); nulls fall back per cell.
+    // Resolve the map's compact pattern list once (index-aligned); nulls fall back per triangle.
     const resolved: ({ source: TextureSource; pageKey: string; pattern: GroundPattern } | null)[] =
       ground.patterns.map((name) => {
         const pattern = textures.groundFor?.(name);
@@ -302,83 +337,83 @@ export class TerrainLayer {
         if (source === undefined) return null;
         return { source, pageKey: pattern.pageKey, pattern };
       });
-    const lifted = elevation.maxLift > 0;
+    // Resolve the map's transition dictionary once (index-aligned; `⌊lane/6⌋` indexes it). A name
+    // the IR lacks (or a page that failed to load) resolves null — that overlay is skipped.
+    const transitions = terrain.transitions;
+    const resolvedTransitions: (ResolvedTransition | null)[] = (transitions?.types ?? []).map((name) => {
+      const t = textures.transitionFor?.(name);
+      if (t === undefined) return null;
+      const source = textures.pages.get(t.pageKey);
+      if (source === undefined) return null;
+      return { pageKey: t.pageKey, source, coordsA: t.coordsA, coordsB: t.coordsB };
+    });
+    const lift = TerrainLayer.liftFn(terrain, elevation);
     const shaded = this.brightnessTex !== undefined;
     this.buildChunks(terrain, elevation.maxLift, (c0, r0, c1, r1) => {
       const batcher = new ChunkBatcher(this.brightnessTex);
-      const pushTriangle = (
-        entry: { source: TextureSource; pageKey: string; pattern: GroundPattern },
-        corners: readonly number[],
-        coords: readonly number[],
-        sx: number,
-        sy: number,
-        lifts: readonly number[] | undefined,
-        laneUV: readonly number[] | undefined,
-        centre: { readonly lift: number; readonly u: number; readonly v: number } | undefined,
+      // One transition overlay onto one triangle: lane value → record ⌊v/6⌋ + pair v%6 → that
+      // pair's A or B UV tuple, batched on the overlay's draw layer.
+      const pushOverlay = (
+        laneValue: number,
+        nodes: readonly [NodeXY, NodeXY, NodeXY],
+        which: 'a' | 'b',
+        layer: TerrainLayerKind,
       ): void => {
-        const batch = batcher.batchFor(entry.pageKey, entry.source);
-        const base = batch.positions.length / 2;
-        batch.positions.push(...triangleCorners(sx, sy, corners, lifts));
-        const uvs = triangleUVs(coords, entry.source.width, entry.source.height);
-        batch.uvs.push(...uvs);
-        if (laneUV === undefined || centre === undefined) {
-          batch.indices.push(base, base + 1, base + 2);
-          return;
-        }
-        // Shaded: split the triangle at the diamond CENTRE (the midpoint of its top↔bottom split
-        // edge) so the centre vertex carries the cell's OWN canonical coordinate — the corner
-        // coordinates are between-cell blends and alone would flatten per-cell shading (see
-        // data/terrain.ts). The triangle's corner vertices ARE diamond corners, so shared vertices
-        // still shade (and lift) identically across the cell's two triangles and its neighbours.
-        const isA = corners === TRIANGLE_A_CORNERS;
-        // Split-edge POINT indices in the pattern's point order: A = (top, bottom) at points (0, 1);
-        // B = (top, bottom) at points (0, 2).
-        const [mu, mv] = uvMidpoint(uvs, 0, isA ? 1 : 2);
-        batch.positions.push(sx, sy - centre.lift);
-        batch.uvs.push(mu, mv);
-        for (const c of corners) {
-          batch.brightnessUVs.push(laneUV[c * 2] ?? 0, laneUV[c * 2 + 1] ?? 0);
-        }
-        batch.brightnessUVs.push(centre.u, centre.v);
-        for (const idx of isA ? TRIANGLE_A_SPLIT_INDICES : TRIANGLE_B_SPLIT_INDICES) {
-          batch.indices.push(base + idx);
-        }
+        const ref = transitionRef(laneValue);
+        if (ref === undefined) return;
+        const t = resolvedTransitions[ref.transition] ?? null;
+        if (t === null) return;
+        const coords = (which === 'a' ? t.coordsA : t.coordsB)[ref.pair];
+        if (coords === undefined) return;
+        this.pushTriangle(
+          batcher.batchFor(t.pageKey, t.source, layer),
+          nodes,
+          triangleUVs(coords, t.source.width, t.source.height),
+          lift,
+          shaded,
+          terrain,
+        );
       };
       for (let row = r0; row <= r1; row++) {
         for (let col = c0; col <= c1; col++) {
           const cell = row * terrain.width + col;
-          const screen = tileToScreen(col, row);
-          // Corner lifts are SHARED between the cell's two triangles (and its neighbours), so the
-          // per-triangle ground stays a single crack-free height field. Computed once per cell; the
-          // brightness corners ride the same canonical coordinates (cell-field.ts).
-          const lifts = lifted ? diamondCornerLifts(elevation, col, row) : undefined;
-          const laneUV = shaded ? cornerLaneUVs(col, row, this.laneTexWidth, terrain.height) : undefined;
-          const centre = shaded
-            ? {
-                lift: lifted ? elevation.liftAt(col, row) : 0,
-                u: (col + 0.5) / this.laneTexWidth,
-                v: (row + 0.5) / terrain.height,
-              }
-            : undefined;
+          const nodesA = triangleANodes(col, row);
+          const nodesB = triangleBNodes(col, row);
           const a = resolved[ground.a[cell] ?? -1] ?? null;
           const b = resolved[ground.b[cell] ?? -1] ?? null;
-          if (a === null || b === null) {
-            const typeId = terrain.typeIds[cell] ?? -1;
-            const cellTex = textures.cellFor(typeId);
-            batcher.drawFallback(
-              screen.x,
-              screen.y,
-              cellTex?.fallbackColour ?? DEFAULT_TILE_COLOUR,
-              lifts,
-              shaded ? brightness.brightnessAt(col, row) : 1,
+          for (const [entry, nodes, which] of [
+            [a, nodesA, 'a'],
+            [b, nodesB, 'b'],
+          ] as const) {
+            if (entry === null) {
+              const typeId = terrain.typeIds[cell] ?? -1;
+              batcher.drawFallbackTriangle(
+                TerrainLayer.positions(nodes, lift),
+                textures.cellFor(typeId)?.fallbackColour ?? DEFAULT_TILE_COLOUR,
+                shaded ? brightness.brightnessAt(col, row) : 1,
+              );
+              continue;
+            }
+            this.pushTriangle(
+              batcher.batchFor(entry.pageKey, entry.source),
+              nodes,
+              triangleUVs(
+                which === 'a' ? entry.pattern.coordsA : entry.pattern.coordsB,
+                entry.source.width,
+                entry.source.height,
+              ),
+              lift,
+              shaded,
+              terrain,
             );
-            // Draw whichever half DID resolve on top of the fallback diamond.
           }
-          if (a !== null) {
-            pushTriangle(a, TRIANGLE_A_CORNERS, a.pattern.coordsA, screen.x, screen.y, lifts, laneUV, centre);
-          }
-          if (b !== null) {
-            pushTriangle(b, TRIANGLE_B_CORNERS, b.pattern.coordsB, screen.x, screen.y, lifts, laneUV, centre);
+          if (transitions !== undefined) {
+            // Layer 1 (`emt1`/`emt2`) composites ON TOP of layer 2 (`emt3`/`emt4`) — paint order
+            // lives in the batcher's layer buckets, so push order here is immaterial.
+            pushOverlay(transitions.a1[cell] ?? TRANSITION_NONE, nodesA, 'a', 'overlay1');
+            pushOverlay(transitions.b1[cell] ?? TRANSITION_NONE, nodesB, 'b', 'overlay1');
+            pushOverlay(transitions.a2[cell] ?? TRANSITION_NONE, nodesA, 'a', 'overlay2');
+            pushOverlay(transitions.b2[cell] ?? TRANSITION_NONE, nodesB, 'b', 'overlay2');
           }
         }
       }
@@ -387,27 +422,23 @@ export class TerrainLayer {
   }
 
   /**
-   * The flat-tint placeholder ground: each block's cells batched into ONE {@link Mesh} **per distinct
-   * tile colour** (a white texel tinted by the colour), built once. A grass-only block is a single
-   * draw call regardless of tile count. NOT one `Graphics` of N stroked diamonds: that tessellates the
-   * stroke of every cell and does not batch, so at 65 536 cells it costs ~1 s/frame on any renderer (the
-   * crash-adjacent path this replaces). The per-cell grid outline is dropped (the textured ground has
-   * none either); a solid ground reads the same when zoomed out. A shaded map scales each cell's tint
-   * CPU-side, QUANTIZED to {@link FLAT_SHADE_STEPS} steps — the batches are keyed by exact colour, so
-   * an unquantized smooth gradient (the border fade alone spans ~127 distinct multipliers) would
-   * explode the per-block mesh count. The flat tint is a placeholder, not the 1:1 look, so the coarse
-   * cell-centre shading is fine.
+   * The flat-tint placeholder ground: each block's cell triangles batched into ONE {@link Mesh}
+   * **per distinct tile colour** (a white texel tinted by the colour), built once. A grass-only
+   * block is a single draw call regardless of tile count. NOT one `Graphics` of N stroked cells:
+   * that tessellates the stroke of every cell and does not batch, so at 65 536 cells it costs
+   * ~1 s/frame on any renderer (the crash-adjacent path this replaces). A shaded map scales each
+   * cell's tint CPU-side, QUANTIZED to {@link FLAT_SHADE_STEPS} steps — the batches are keyed by
+   * exact colour, so an unquantized smooth gradient would explode the per-block mesh count. The
+   * flat tint is a placeholder, not the 1:1 look, so the coarse cell-centre shading is fine.
    */
   private buildFlat(terrain: SceneTerrain, elevation: ElevationField, brightness: BrightnessField): void {
-    const lifted = elevation.maxLift > 0;
+    const lift = TerrainLayer.liftFn(terrain, elevation);
     const shaded = brightness.shaded;
     this.buildChunks(terrain, elevation.maxLift, (c0, r0, c1, r1) => {
       const byColour = new Map<number, TerrainBatch>();
       for (let row = r0; row <= r1; row++) {
         for (let col = c0; col <= c1; col++) {
           const typeId = terrain.typeIds[row * terrain.width + col] ?? 0;
-          const screen = tileToScreen(col, row);
-          const lifts = lifted ? diamondCornerLifts(elevation, col, row) : undefined;
           const baseColour = TILE_COLOURS[typeId % TILE_COLOURS.length] ?? DEFAULT_TILE_COLOUR;
           const colour = shaded
             ? scaleColour(
@@ -420,11 +451,12 @@ export class TerrainLayer {
             batch = emptyBatch();
             byColour.set(colour, batch);
           }
-          const base = batch.positions.length / 2;
-          const corners = diamondCorners(screen.x, screen.y, lifts);
-          batch.positions.push(...corners);
-          for (let v = 0; v < corners.length / 2; v++) batch.uvs.push(0, 0); // every vertex samples the 1×1 white texel
-          for (const idx of DIAMOND_INDICES) batch.indices.push(base + idx);
+          for (const nodes of [triangleANodes(col, row), triangleBNodes(col, row)]) {
+            const base = batch.positions.length / 2;
+            batch.positions.push(...TerrainLayer.positions(nodes, lift));
+            for (let v = 0; v < 3; v++) batch.uvs.push(0, 0); // every vertex samples the 1×1 white texel
+            batch.indices.push(base, base + 1, base + 2);
+          }
         }
       }
       const children: Mesh[] = [];

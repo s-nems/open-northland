@@ -1,6 +1,7 @@
 import type {
   BuildingFootprint,
   GfxPattern,
+  GfxPatternTransition,
   SoundBank,
   TerrainPattern,
   TrianglePatternType,
@@ -152,6 +153,8 @@ export interface ContentIr {
   readonly terrainPatterns?: readonly TerrainPattern[];
   /** The full 927-record `[GfxPattern]` table — the 1:1 per-triangle ground join for decoded maps. */
   readonly gfxPatterns?: readonly GfxPattern[];
+  /** The `[transition]` ground-overlay table — a decoded map's `transitions.types` names join onto it. */
+  readonly gfxPatternTransitions?: readonly GfxPatternTransition[];
   /** The per-logicType ground classes (`trianglepatterntypes.cif`) — the walk/build flags the
    *  map-collision join (`content/collision.ts`) classes real ground by. */
   readonly trianglePatternTypes?: readonly TrianglePatternType[];

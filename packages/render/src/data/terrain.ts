@@ -1,15 +1,24 @@
-import { TILE_HALF_H, TILE_HALF_W } from './iso.js';
-
 /**
  * The PURE geometry half of textured terrain — the self-verifiable twin of the GPU mesh build in
- * `gpu/terrain/terrain-layer.ts` (docs/plans/Phase 2, step 4). It turns the approximated typeId→pattern table
- * (`TerrainPattern` IR) into per-cell diamond vertices + UVs, with **no Pixi import**, so the
- * vertex/UV math is unit-tested headlessly while only the rasterised pixels stay human-gated.
+ * `gpu/terrain/terrain-layer.ts`, with **no Pixi import**, so the vertex/UV math is unit-tested
+ * headlessly while only the rasterised pixels stay human-gated.
  *
- * The original tiles each isometric cell from a `text_NNN` ground texture via two UV triangles; this
- * slice **approximates** that (a recorded deviation, source basis): every cell of a landscape
- * family draws the SAME representative tile, mapped as one square sub-rect onto the diamond. The exact
- * per-cell pattern algorithm is oracle-blocked (no terrain render in OpenVikings).
+ * THE TESSELLATION (source basis: the original engine's ground mesh, pinned via a working
+ * reimplementation — docs/SOURCES.md "terrain tessellation"): mesh vertices are the CELL-CENTRE
+ * NODES of the half-cell lattice — cell `(col, row)`'s centre is node `(2·col + (row&1), 2·row)`,
+ * the same lattice the sim's nav grid addresses. Each map cell contributes TWO triangles spanning
+ * BETWEEN neighbouring cell centres:
+ *
+ *   A = △ [its own node (apex), the SE-below cell's node, the SW-below cell's node]
+ *   B = ▽ [its own node (left), the E cell's node, the SE-below cell's node]
+ *
+ * so every triangle edge connects two cell centres and the ground lanes' per-triangle pattern
+ * picks (`empa`/`empb` → A/B) blend organically across cells — NOT the diamond-per-cell mesh this
+ * replaces, whose per-cell seams drew straight lattice edges through every biome transition.
+ *
+ * UV convention (verified across all 927 pattern records + 38 transition records): `coordsA` lists
+ * the tile square's (TL, BR, BL) and maps onto A's [apex, SE, SW]; `coordsB` lists (TL, TR, BR)
+ * and maps onto B's [left, E, SE] — both in point order, divided by the page size verbatim.
  */
 
 /** A source sub-rectangle in texture PIXELS — the pattern's tile region within its `text_NNN` page. */
@@ -34,163 +43,112 @@ export interface CellTexture {
   readonly fallbackColour?: number;
 }
 
-/**
- * The two-triangle index list for a 4-corner diamond cell whose corners are `[top, right, bottom, left]`:
- * `(top, right, bottom)` + `(top, bottom, left)`. Shared by every cell (offset by the cell's vertex base
- * when batched into one mesh).
- */
-export const DIAMOND_INDICES: readonly number[] = [0, 1, 2, 0, 2, 3];
+/** A half-cell node address `[hx, hy]` — the sim lattice's integer coordinates (`nav/halfcell.ts`). */
+export type NodeXY = readonly [number, number];
 
-/** No terrain lift — the shared default so the elevation-free path builds byte-identical vertices. */
-const NO_CORNER_LIFTS: readonly number[] = [0, 0, 0, 0];
+/** Cell `(col, row)`'s centre node: `(2·col + (row&1), 2·row)` — the staggered raster's lattice address. */
+export function cellNode(col: number, row: number): NodeXY {
+  return [2 * col + (row & 1), 2 * row];
+}
 
 /**
- * The 4 diamond-corner positions (in projected world space, before the camera transform) for a cell
- * centred at `(sx, sy)`, in `[top, right, bottom, left]` order — the same diamond the flat-tint
- * `tileGraphic` traces (`center ± TILE_HALF`), returned as a flat `[x0,y0, x1,y1, …]` vertex buffer.
- *
- * `lifts` (world px, `[top, right, bottom, left]`, from `elevation.ts` `diamondCornerLifts`) is
- * SUBTRACTED from each corner's `y` to lift the terrain by height — baked ONCE at mesh build. Shared
- * corners get identical lifts (the sampler's watertight canonical coordinate), so the mesh stays
- * crack-free. Absent → flat (default), so a synthetic/elevation-free grid is unchanged.
+ * Triangle A (△) of cell `(col, row)`: its 3 vertex nodes `[apex, bottom-right, bottom-left]` =
+ * [own centre, SE-below cell's centre, SW-below cell's centre] — the vertex order `coordsA`'s
+ * (TL, BR, BL) UV points map onto.
  */
-export function diamondCorners(
-  sx: number,
-  sy: number,
-  lifts: readonly number[] = NO_CORNER_LIFTS,
-): readonly number[] {
+export function triangleANodes(col: number, row: number): readonly [NodeXY, NodeXY, NodeXY] {
+  const [hx, hy] = cellNode(col, row);
   return [
-    sx,
-    sy - TILE_HALF_H - (lifts[0] ?? 0), // top
-    sx + TILE_HALF_W,
-    sy - (lifts[1] ?? 0), // right
-    sx,
-    sy + TILE_HALF_H - (lifts[2] ?? 0), // bottom
-    sx - TILE_HALF_W,
-    sy - (lifts[3] ?? 0), // left
+    [hx, hy],
+    [hx + 1, hy + 2],
+    [hx - 1, hy + 2],
   ];
 }
 
 /**
- * Normalised UVs (0..1) mapping a page sub-rect's 4 corners onto the diamond corners
- * `[top, right, bottom, left]` → `[TL, TR, BR, BL]`, returned as a flat `[u0,v0, …]` buffer. The square
- * tile is laid 45° onto the diamond; since the representative ground tiles are near-uniform, the
- * rotation is visually immaterial. `pageW`/`pageH` are the texture page's pixel dimensions.
+ * Triangle B (▽) of cell `(col, row)`: its 3 vertex nodes `[left, right, bottom-apex]` =
+ * [own centre, E cell's centre, SE-below cell's centre] — the vertex order `coordsB`'s
+ * (TL, TR, BR) UV points map onto.
  */
-export function rectUVs(rect: SrcRect, pageW: number, pageH: number): readonly number[] {
-  const u0 = rect.x / pageW;
-  const v0 = rect.y / pageH;
-  const u1 = (rect.x + rect.w) / pageW;
-  const v1 = (rect.y + rect.h) / pageH;
-  return [u0, v0, u1, v0, u1, v1, u0, v1];
-}
-
-/**
- * The source sub-rect (in texture pixels) a `TerrainPattern`'s two UV triangles span: the bounding box
- * of `coordsA ∪ coordsB` (each a `[x0,y0, x1,y1, x2,y2]` triple). For a representative full-tile pattern
- * this is the tile's 64×64 square within its page; mapping that square onto the diamond is the
- * approximation. Pure, so the app can derive a {@link CellTexture} rect without a Pixi dependency.
- */
-export function patternSrcRect(coordsA: readonly number[], coordsB: readonly number[]): SrcRect {
-  const xs = [coordsA[0], coordsA[2], coordsA[4], coordsB[0], coordsB[2], coordsB[4]];
-  const ys = [coordsA[1], coordsA[3], coordsA[5], coordsB[1], coordsB[3], coordsB[5]];
-  const finite = (vs: (number | undefined)[]): number[] => vs.filter((v): v is number => v !== undefined);
-  const fxs = finite(xs);
-  const fys = finite(ys);
-  const minX = Math.min(...fxs);
-  const minY = Math.min(...fys);
-  return { x: minX, y: minY, w: Math.max(...fxs) - minX, h: Math.max(...fys) - minY };
-}
-
-// ─── per-triangle 1:1 ground (the decoded map's `empa`/`empb` pattern choice) ──────────────────────
-//
-// A `GfxPattern` textures a cell with TWO triangles, and every real pattern lists its UV points in one
-// fixed convention (verified across all 927 records): `coordsA` = the tile square's (TL, BR, BL),
-// `coordsB` = its (TL, TR, BR) — the square split along its TL→BR diagonal. Under the 45° iso
-// projection the square's TL/TR/BR/BL corners land on the diamond's top/right/bottom/left, so:
-//
-//   triangle A: UV points (TL, BR, BL) → diamond corners (top, bottom, left)   — the LEFT half
-//   triangle B: UV points (TL, TR, BR) → diamond corners (top, right, bottom)  — the RIGHT half
-//
-// Rendering each triangle with its own pattern (the map's baked per-triangle choice) is what makes
-// coastlines/transition blocks join up 1:1 like the original.
-
-/** Triangle A's diamond-corner indices (into the `[top, right, bottom, left]` corner order), matching its UV point order. */
-export const TRIANGLE_A_CORNERS: readonly number[] = [0, 2, 3];
-
-/** Triangle B's diamond-corner indices (into the `[top, right, bottom, left]` corner order), matching its UV point order. */
-export const TRIANGLE_B_CORNERS: readonly number[] = [0, 1, 2];
-
-// ─── the CENTRE-vertex split (per-cell lane detail the corner vertices cannot carry) ───────────────
-//
-// The two ground triangles share the diamond's top↔bottom diagonal, whose midpoint is the cell
-// CENTRE. A corner-only mesh interpolates the per-cell lanes (elevation/brightness) purely from
-// corner samples — and every corner is a between-cell blend, so a cell's OWN lane value never
-// reaches any pixel: one-cell shading detail flattens toward its neighbours (measured on the bridge
-// map: a 55-embr cell among ~127 neighbours rendered ×0.84 instead of the corpus-pinned ×0.43 —
-// corner interpolation predicts exactly the flattened value). Splitting each triangle at the centre
-// adds ONE vertex per cell carrying the cell's own bilinear samples (at the canonical coordinate
-// `(col, row)` the corner samples share — `cell-field.ts`), which restores the measured per-cell
-// response while leaving the diamond's OUTER edges untouched, so the mesh stays watertight with its
-// neighbours. Used only on the shaded (brightness-lane) path; the unshaded mesh stays byte-identical.
-
-/**
- * Index triples for triangle A split at the centre, into the vertex order
- * `[top, bottom, left, centre]` its split builder pushes: `(top, centre, left)` + `(centre, bottom, left)`.
- */
-export const TRIANGLE_A_SPLIT_INDICES: readonly number[] = [0, 3, 2, 3, 1, 2];
-
-/**
- * Index triples for triangle B split at the centre, into the vertex order
- * `[top, right, bottom, centre]` its split builder pushes: `(top, right, centre)` + `(centre, right, bottom)`.
- */
-export const TRIANGLE_B_SPLIT_INDICES: readonly number[] = [0, 1, 3, 3, 1, 2];
-
-/**
- * The midpoint of two UV points of a pattern triangle's `[u0,v0, u1,v1, u2,v2]` buffer — the centre
- * vertex's UV. The centre bisects the top↔bottom split edge, and UVs vary linearly over a triangle,
- * so the midpoint UV reproduces the exact same texture mapping across both halves. `ia`/`ib` are the
- * POINT indices (0..2) of the split edge's endpoints in the buffer's point order.
- */
-export function uvMidpoint(uvs: readonly number[], ia: number, ib: number): [number, number] {
+export function triangleBNodes(col: number, row: number): readonly [NodeXY, NodeXY, NodeXY] {
+  const [hx, hy] = cellNode(col, row);
   return [
-    ((uvs[ia * 2] ?? 0) + (uvs[ib * 2] ?? 0)) / 2,
-    ((uvs[ia * 2 + 1] ?? 0) + (uvs[ib * 2 + 1] ?? 0)) / 2,
+    [hx, hy],
+    [hx + 2, hy],
+    [hx + 1, hy + 2],
   ];
 }
 
 /**
- * The 4-triangle centre-fan index list for a diamond whose vertex buffer is the 4 corners
- * (`[top, right, bottom, left]`, {@link diamondCorners}) followed by the centre vertex (index 4) —
- * the shaded twin of {@link DIAMOND_INDICES} for the per-typeId path.
+ * The cell whose CENTRE a triangle-vertex node is: the inverse of {@link cellNode}. Every node the
+ * two triangle builders emit sits on a cell centre (even `hy`, and `hx` sharing the row's parity),
+ * so the division is exact — the node's own per-cell lane values (elevation, brightness) live at
+ * this cell. May land OUTSIDE the grid for a border cell's triangles (e.g. the last row's SE node);
+ * callers clamp per their lane's rule.
  */
-export const DIAMOND_FAN_INDICES: readonly number[] = [0, 1, 4, 1, 2, 4, 2, 3, 4, 3, 0, 4];
-
-/** The centre of a page sub-rect in normalised UV — the {@link DIAMOND_FAN_INDICES} centre vertex's UV. */
-export function rectCenterUV(rect: SrcRect, pageW: number, pageH: number): [number, number] {
-  return [(rect.x + rect.w / 2) / pageW, (rect.y + rect.h / 2) / pageH];
+export function nodeCell(hx: number, hy: number): readonly [number, number] {
+  const row = hy / 2;
+  return [(hx - (row & 1)) / 2, row];
 }
 
 /**
- * One triangle's 3 vertex positions for a cell centred at `(sx, sy)`: the diamond corners named by
- * `cornerIndices` (one of {@link TRIANGLE_A_CORNERS} / {@link TRIANGLE_B_CORNERS}), as a flat
- * `[x0,y0, x1,y1, x2,y2]` buffer in UV-point order. `lifts` (see {@link diamondCorners}) lifts the
- * shared diamond by terrain height before the triangle's corners are picked, so the two triangles of a
- * cell — and the cells around it — join at identical lifted vertices.
+ * A node's elevation lift (world px, ≥ 0, to SUBTRACT from the projected `y`): the node's OWN
+ * cell's lift, with nodes on the map-border ring (or beyond it) clamped to 0 — the engine
+ * tessellation zeroes border elevation (source basis, docs/SOURCES.md "terrain tessellation"),
+ * which also pins the mesh edge to the flat map frame. `liftAt` is the one bilinear seam
+ * (`elevation.ts`); at the integer cell coordinate it returns exactly the cell's own lift.
  */
-export function triangleCorners(
-  sx: number,
-  sy: number,
-  cornerIndices: readonly number[],
-  lifts: readonly number[] = NO_CORNER_LIFTS,
-): number[] {
-  const diamond = diamondCorners(sx, sy, lifts);
-  const out: number[] = [];
-  for (const c of cornerIndices) {
-    out.push(diamond[c * 2] as number, diamond[c * 2 + 1] as number);
-  }
-  return out;
+export function nodeLift(
+  liftAt: (col: number, row: number) => number,
+  hx: number,
+  hy: number,
+  width: number,
+  height: number,
+): number {
+  const [col, row] = nodeCell(hx, hy);
+  if (col <= 0 || row <= 0 || col >= width - 1 || row >= height - 1) return 0;
+  return liftAt(col, row);
 }
+
+/**
+ * A node vertex's brightness-lane texture UV: the node's own cell centre mapped to the lane
+ * texel's CENTRE (`(coord + 0.5) / size`), clamped into the grid, so the per-fragment bilinear
+ * blends each triangle's shading between its three cell-centre samples — the engine model (one
+ * lighting value per node, interpolated across the triangle). `paddedWidth` is the lane texture's
+ * alignment-padded width (`shading.ts` `padLaneRows`); the clamp uses the UNPADDED grid.
+ */
+export function nodeLaneUV(
+  hx: number,
+  hy: number,
+  width: number,
+  height: number,
+  paddedWidth: number,
+): readonly [number, number] {
+  const [col, row] = nodeCell(hx, hy);
+  const c = col < 0 ? 0 : col >= width ? width - 1 : col;
+  const r = row < 0 ? 0 : row >= height ? height - 1 : row;
+  return [(c + 0.5) / paddedWidth, (r + 0.5) / height];
+}
+
+// ─── transition overlays (the map's `emt1..emt4` lanes) ───────────────────────────────────────────
+
+/** A transition lane's "no overlay here" sentinel (u8 max). */
+export const TRANSITION_NONE = 255;
+
+/** The pair variants each `[transition]` record carries (six `GfxCoordsA`/`GfxCoordsB` lines). */
+export const TRANSITION_PAIRS = 6;
+
+/**
+ * Decode one transition-lane value: `v < 255` selects transition `⌊v/6⌋` (an index into the map's
+ * `transitions.types` dictionary) and pair variant `v % 6` (an index into the record's six UV
+ * pairs); `255` = no overlay on this triangle.
+ */
+export function transitionRef(v: number): { readonly transition: number; readonly pair: number } | undefined {
+  if (v === TRANSITION_NONE) return undefined;
+  return { transition: Math.floor(v / TRANSITION_PAIRS), pair: v % TRANSITION_PAIRS };
+}
+
+// ─── UV helpers ────────────────────────────────────────────────────────────────────────────────────
 
 /**
  * One pattern triangle's 3 normalised UVs from its 6-int pixel-coord tuple (`coordsA`/`coordsB`),
@@ -206,4 +164,35 @@ export function triangleUVs(coords: readonly number[], pageW: number, pageH: num
     out.push(x / pageW, y / pageH);
   }
   return out;
+}
+
+/**
+ * The per-typeId path's UV fold: a page sub-rect's corners onto one cell triangle, following the
+ * pattern-record convention — triangle `a` gets the rect's (TL, BR, BL), `b` its (TL, TR, BR) —
+ * as a flat normalised buffer in vertex order. The approximated representative-tile path shares
+ * the 1:1 path's tessellation this way; only WHICH sub-rect differs.
+ */
+export function rectTriangleUVs(rect: SrcRect, triangle: 'a' | 'b', pageW: number, pageH: number): number[] {
+  const x0 = rect.x / pageW;
+  const y0 = rect.y / pageH;
+  const x1 = (rect.x + rect.w) / pageW;
+  const y1 = (rect.y + rect.h) / pageH;
+  return triangle === 'a' ? [x0, y0, x1, y1, x0, y1] : [x0, y0, x1, y0, x1, y1];
+}
+
+/**
+ * The source sub-rect (in texture pixels) a `TerrainPattern`'s two UV triangles span: the bounding box
+ * of `coordsA ∪ coordsB` (each a `[x0,y0, x1,y1, x2,y2]` triple). For a representative full-tile pattern
+ * this is the tile's 64×64 square within its page. Pure, so the app can derive a {@link CellTexture}
+ * rect without a Pixi dependency.
+ */
+export function patternSrcRect(coordsA: readonly number[], coordsB: readonly number[]): SrcRect {
+  const xs = [coordsA[0], coordsA[2], coordsA[4], coordsB[0], coordsB[2], coordsB[4]];
+  const ys = [coordsA[1], coordsA[3], coordsA[5], coordsB[1], coordsB[3], coordsB[5]];
+  const finite = (vs: (number | undefined)[]): number[] => vs.filter((v): v is number => v !== undefined);
+  const fxs = finite(xs);
+  const fys = finite(ys);
+  const minX = Math.min(...fxs);
+  const minY = Math.min(...fys);
+  return { x: minX, y: minY, w: Math.max(...fxs) - minX, h: Math.max(...fys) - minY };
 }
