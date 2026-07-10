@@ -32,6 +32,8 @@ interface GoodsManifest {
   readonly paletteLutStem: string;
   readonly palettes: readonly string[];
   readonly icons: Readonly<Record<string, GoodIcon>>;
+  /** Localized display names (locale → good id → name); consumed via {@link import('./good-names.js')}. */
+  readonly names: Readonly<Record<string, Readonly<Record<string, string>>>>;
 }
 
 /** The loaded goods-icon bundle: the indexed `ls_goods` atlas + its palette LUT + the good→icon bindings. */

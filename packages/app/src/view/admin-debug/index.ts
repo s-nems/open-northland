@@ -42,6 +42,9 @@ export interface AdminDebugDeps {
   /** True when a client point is over the HUD (the tool-panel strip / an open window) — a spawn click
    *  there is the HUD's, not a map spawn. */
   readonly claimPointer: (clientX: number, clientY: number) => boolean;
+  /** The localized display name for a good typeId (from the shared sim content), or `undefined` to keep the
+   *  catalog's built-in label. Localizes the goods/resource palette from the ONE name source the HUD uses. */
+  readonly goodLabel?: (typeId: number) => string | undefined;
 }
 
 /** What the next map click will place. */
@@ -104,6 +107,10 @@ function setButtonActive(button: HTMLButtonElement, active: boolean): void {
 export function mountAdminDebug(deps: AdminDebugDeps): void {
   const { canvas } = deps;
 
+  // Resolve a good's palette label through the shared localized name source, keeping the catalog's built-in
+  // label as the fallback (a bare checkout with no name tables, or a good the source doesn't name).
+  const goodLabelOf = (good: number, fallback: string): string => deps.goodLabel?.(good) ?? fallback;
+
   // ---- spawn state ---------------------------------------------------------
   let armed: Armed | null = null;
   let player = HUMAN_PLAYER; // the human/blue player by default
@@ -127,12 +134,12 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     if (armed === null) return 'Nic nie wybrano — kliknij jednostkę / surowiec / towar powyżej.';
     if (armed.kind === 'resource') {
       const good = armed.good;
-      const label = RESOURCE_ENTRIES.find((r) => r.good === good)?.label ?? 'surowiec';
+      const label = goodLabelOf(good, RESOURCE_ENTRIES.find((r) => r.good === good)?.label ?? 'surowiec');
       return `Uzbrojono: złoże „${label}" — klikaj na mapie (PPM/Esc = anuluj).`;
     }
     if (armed.kind === 'good') {
       const good = armed.good;
-      const label = GOODS_ENTRIES.find((g) => g.good === good)?.label ?? 'towar';
+      const label = goodLabelOf(good, GOODS_ENTRIES.find((g) => g.good === good)?.label ?? 'towar');
       return `Uzbrojono: towar „${label}" (stos na ziemi) — klikaj na mapie (PPM/Esc = anuluj).`;
     }
     const who = PLAYER_SWATCHES.find((s) => s.player === player);
@@ -216,13 +223,23 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   );
   panel.append(el('div', SECTION_TITLE_STYLE, 'Złoża (do wydobycia)'));
   panel.append(
-    spawnRow(RESOURCE_ENTRIES.map((r) => ({ label: r.label, armed: { kind: 'resource', good: r.good } }))),
+    spawnRow(
+      RESOURCE_ENTRIES.map((r) => ({
+        label: goodLabelOf(r.good, r.label),
+        armed: { kind: 'resource', good: r.good },
+      })),
+    ),
   );
   // Every good in the catalog, dropped as a loose ground pile (the `dropGood` command) — the admin "spawn
   // any good" list the in-game goods tool mirrors.
   panel.append(el('div', SECTION_TITLE_STYLE, 'Towary (stos na ziemi)'));
   panel.append(
-    spawnRow(GOODS_ENTRIES.map((g) => ({ label: g.label, armed: { kind: 'good', good: g.good } }))),
+    spawnRow(
+      GOODS_ENTRIES.map((g) => ({
+        label: goodLabelOf(g.good, g.label),
+        armed: { kind: 'good', good: g.good },
+      })),
+    ),
   );
 
   panel.append(status);

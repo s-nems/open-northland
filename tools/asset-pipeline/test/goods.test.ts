@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveGoodIcons } from '../src/stages/goods.js';
+import { resolveGoodIcons, resolveGoodNames } from '../src/stages/goods.js';
 
 /**
  * The good→icon join rule ({@link resolveGoodIcons}): a good's store icon is the state-1 (smallest) bob of
@@ -88,5 +88,37 @@ describe('resolveGoodIcons', () => {
     expect(resolveGoodIcons(goods, gfx)).toEqual({
       stone: { frame: 15, palette: 'goods_stone', fillFrames: [15] },
     });
+  });
+});
+
+/**
+ * The localized good-name join ({@link resolveGoodNames}): per locale, a good's display name is its
+ * `type`-keyed string-table entry, re-keyed onto the good's STRING id. A good absent from a locale's table
+ * (or a locale with no table) simply gets no entry there — the app's fallback chain covers it.
+ */
+describe('resolveGoodNames', () => {
+  const goods = [
+    { id: 'wood', typeId: 5 },
+    { id: 'fish', typeId: 22 },
+    { id: 'sausage', typeId: 23 },
+  ];
+
+  it('re-keys each locale table from good `type` onto the good STRING id', () => {
+    const names = resolveGoodNames(goods, {
+      pl: { 5: 'Drewno', 22: 'Ryba', 23: 'Kiełbasa' },
+      en: { 5: 'Wood', 22: 'Fish', 23: 'Sausage' },
+    });
+    expect(names).toEqual({
+      pl: { wood: 'Drewno', fish: 'Ryba', sausage: 'Kiełbasa' },
+      en: { wood: 'Wood', fish: 'Fish', sausage: 'Sausage' },
+    });
+  });
+
+  it('omits a good the locale table lacks, and drops a locale that resolves to nothing', () => {
+    const names = resolveGoodNames(goods, {
+      pl: { 5: 'Drewno' }, // only wood
+      de: { 999: 'Nichts' }, // no good has type 999 → the whole `de` locale is dropped
+    });
+    expect(names).toEqual({ pl: { wood: 'Drewno' } });
   });
 });

@@ -113,6 +113,15 @@ export interface SandboxContentExtras {
    * {@link approximateFootprint} instead, so placement collision + the build overlay work globally.
    */
   readonly buildingFootprints?: ReadonlyMap<number, BuildingFootprint>;
+  /**
+   * Localized good DISPLAY names by good STRING id (from the pipeline's per-locale name tables via
+   * {@link import('../../content/good-names.js').loadGoodNameMap}). When supplied — the browser entries do,
+   * after picking the `?locale=` language — each good's `name` is set from it, so the HUD (warehouse rows,
+   * ground-pile tooltip, spawn palette, production labels) reads in-language from ONE source. Omitted (tests,
+   * headless scenes, a bare checkout), the core goods stay name-less and the extended goods keep their
+   * built-in English catalog name, so golden runs and the no-`content/` boot are unchanged.
+   */
+  readonly goodNames?: ReadonlyMap<string, string>;
 }
 
 // The semantic terrain-class rows (see catalog/terrain.ts — the shared vocabulary scene grids are
@@ -307,6 +316,13 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
     }
   }
 
+  // The localized display name for a good STRING id, as an optional-`name` spread — present only when the
+  // caller supplied a name map AND it has that id, so a headless/golden build (no map) is byte-unchanged.
+  const localName = (id: string): { name?: string } => {
+    const n = extras.goodNames?.get(id);
+    return n !== undefined ? { name: n } : {};
+  };
+
   return parseContentSet({
     manifest: { version: IR_VERSION, generatedFrom: { game: 'vinland-global-sandbox' }, locale: 'eng' },
     goods: [
@@ -314,6 +330,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       {
         typeId: GOOD_WOOD,
         id: 'wood',
+        ...localName('wood'),
         weight: 1,
         atomics: { harvest: HARVEST_ATOMIC },
         gathering: {
@@ -322,11 +339,12 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
           yieldPerNode: WOOD_YIELD_PER_NODE,
         },
       },
-      { typeId: GOOD_PLANK, id: 'plank', weight: 1 },
-      { typeId: GOOD_COIN, id: 'coin' },
+      { typeId: GOOD_PLANK, id: 'plank', ...localName('plank'), weight: 1 },
+      { typeId: GOOD_COIN, id: 'coin', ...localName('coin') },
       {
         typeId: GOOD_STONE,
         id: 'stone',
+        ...localName('stone'),
         weight: 1,
         atomics: { harvest: STONE_HARVEST_ATOMIC },
         gathering: { bioLandscape: false, depositSize: STONE_DEPOSIT_UNITS, depositLevels: MINE_LEVELS },
@@ -334,6 +352,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       {
         typeId: GOOD_MUD,
         id: 'mud',
+        ...localName('mud'),
         weight: 1,
         atomics: { harvest: CLAY_HARVEST_ATOMIC },
         gathering: { bioLandscape: false, depositSize: CLAY_DEPOSIT_UNITS, depositLevels: MINE_LEVELS },
@@ -341,6 +360,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       {
         typeId: GOOD_IRON,
         id: 'iron',
+        ...localName('iron'),
         weight: 1,
         atomics: { harvest: IRON_HARVEST_ATOMIC },
         gathering: { bioLandscape: false, depositSize: IRON_DEPOSIT_UNITS, depositLevels: MINE_LEVELS },
@@ -348,6 +368,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       {
         typeId: GOOD_GOLD,
         id: 'gold',
+        ...localName('gold'),
         weight: 1,
         atomics: { harvest: GOLD_HARVEST_ATOMIC },
         gathering: { bioLandscape: false, depositSize: GOLD_DEPOSIT_UNITS, depositLevels: MINE_LEVELS },
@@ -355,6 +376,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       {
         typeId: GOOD_MUSHROOM,
         id: 'mushroom',
+        ...localName('mushroom'),
         weight: 1,
         atomics: { harvest: MUSHROOM_HARVEST_ATOMIC },
         gathering: { bioLandscape: true },
@@ -362,8 +384,14 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       // The rest of the original catalog — food, drink, building materials, tools, crafted wares, weapons,
       // armor, potions, amulets, and the animal/vehicle/special tokens (see catalog/goods.ts). They carry no
       // bespoke gathering/production yet; they exist so the whole catalog is globally available with a name,
-      // a stock slot (the storable ones) and its `ls_goods` icon, and can be dropped on the ground.
-      ...EXTENDED_GOODS.map((g) => ({ typeId: g.typeId, id: g.id, name: g.name, weight: 1 })),
+      // a stock slot (the storable ones) and its `ls_goods` icon, and can be dropped on the ground. The
+      // localized name (when supplied) overrides the built-in English catalog `name`.
+      ...EXTENDED_GOODS.map((g) => ({
+        typeId: g.typeId,
+        id: g.id,
+        name: extras.goodNames?.get(g.id) ?? g.name,
+        weight: 1,
+      })),
     ],
     jobs: [...jobs.values()],
     buildings: [...buildings.values()].sort((a, b) => a.typeId - b.typeId),

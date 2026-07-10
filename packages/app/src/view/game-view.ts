@@ -217,6 +217,11 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     tooltip: createTooltip(),
   });
 
+  // The good display label by sim goodType — the ONE localized name source (the scene entry seeded
+  // `sim.content.goods` names from the `?locale` language). Shared by the ground-pile tooltip below and the
+  // admin spawn palette, so both read in the player's language; falls back to the good's id.
+  const goodLabelByType = new Map<number, string>(sim.content.goods.map((g) => [g.typeId, g.name ?? g.id]));
+
   // The admin/debug spawn palette (a hidden panel behind a top toggle button): click-to-spawn any unit
   // or resource for any player through the sim command seam, for hands-on combat/economy testing. Its
   // spawn clicks resolve tiles + defer to the SAME composed HUD claim the unit controls use (tool-panel
@@ -227,13 +232,12 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     enqueue: (command) => sim.enqueue(command),
     clientToTile: (x, y) => toolPanel.clientToTile(x, y),
     claimPointer: (x, y) => controls.claimsPointer(x, y),
+    goodLabel: (typeId) => goodLabelByType.get(typeId),
   });
 
   // Name-on-hover: a cursor tooltip naming the loose good pile (with its count) under the pointer, so a
   // dropped heap the eye can't always tell apart — one bottle from another, one ring from another — reads its
-  // good + how many units. The good's display label is its English catalog name (else its id), the same label
-  // the drop palette shows; keyed by the sim goodType the pile's DrawItem carries.
-  const goodLabelByType = new Map<number, string>(sim.content.goods.map((g) => [g.typeId, g.name ?? g.id]));
+  // good + how many units. Keyed by the sim goodType the pile's DrawItem carries.
   const tooltip = createTooltip();
   const toWorld = (clientX: number, clientY: number): { x: number; y: number } => {
     const { sx, sy, rect } = screenScale(canvas, app.renderer.resolution);
