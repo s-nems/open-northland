@@ -57,4 +57,13 @@ describe('sandbox building worker slots', () => {
     const joinery = byType.get(BUILDING_JOINERY);
     expect(joinery?.workers.some((w) => workerRoleOf(w.jobType) === 'gatherer')).toBe(true);
   });
+
+  it('names each extracted craftsman by its real trade (Kowal, Druid), not a generic label', () => {
+    const firstCraftName = (typeId: number): string | undefined => {
+      const slot = byType.get(typeId)?.workers.find((w) => workerRoleOf(w.jobType) === 'craftsman');
+      return content.jobs.find((j) => j.typeId === slot?.jobType)?.name;
+    };
+    expect(firstCraftName(31)).toBe('Kowal'); // smithy → smith (original job 13)
+    expect(firstCraftName(35)).toBe('Druid'); // druid hut → druid (original job 30)
+  });
 });
