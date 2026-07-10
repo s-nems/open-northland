@@ -67,6 +67,39 @@ lands (as the original gates a trade on its workshop). Verified: build + check +
 self-check (picker styled, 28 Polish rows in 5 groups; a scene soldier reads "Poddany — Żołnierz" in the
 details panel; no console errors). Visual/feel sign-off: pending user.
 
+Progress note — worker assignment + panel workers (2026-07-10, `feat/profession-select-ui`,
+user-requested, not a numbered step; extends the picker-polish note above). Right-click now STAFFS a
+building: the `assignWorker` sim command carries an app-authored `jobPriority` list (craftsman first,
+then carrier, never a gatherer — gatherers deliver to flags, not buildings), which the sim validates
+through the same per-slot openness gate the JobSystem uses (priority only reorders/filters candidates,
+it can't open a shut slot). Root fixes along the way: extracted `logicworker` job ids collided with the
+sandbox's own bands (a "carpenter" slot filled with 13 wood gatherers) — every slot job is now REBASED
+by `WORKER_SLOT_JOB_BASE` (`game/sandbox/ids.ts`); the collector/hunter/fisher trades classify as
+gatherers (`worker-roles.ts`), excluded from right-click. Buildings gained a front `door` node
+(`catalog/footprints.ts`) that both the badge anchor and the sim's `interactionNode` use. UI:
+door-side badges stack one colour-coded square per worker by role (craftsman/carrier/gatherer,
+`render/gpu/badge-layer.ts` + `view/door-badges.ts`); the details panel lists per-trade filled/capacity
+lines under the "Pracownicy" header and draws the building's bound settlers as their real animated
+on-map sprites (no terrain) via a live `PalettedSprite` overlay (`hud/details-panel/worker-sprites.ts`),
+clicking one selects that settler. A bound settler's panel title and the slot label both resolve through
+one job-name path so a rebased-slot druid reads "Druid", not "Bezrobotny". Review battery
+(determinism/perf/fidelity/architecture/code-quality) run over `main...HEAD` and triaged: fixed the
+per-frame whole-map scene build behind the panel overlay and the un-culled door-badge reposition (both
+now screen-bounded), single-sourced the slot trade names through the i18n picker labels (a joiner had
+read "Cieśla" as a slot but "Stolarz" in the picker), and corrected the extraction source-basis comments
+(`[logichousetype] logicworker` in `houses.ini`; `EXTRACTED_GATHERER_TRADES` is a hand-classification of
+`jobtypes.ini` roaming semantics, not an `ir.json` role). Verified: build + check + 1750 tests green.
+Visual/feel sign-off: user confirmed the panel worker sprites (left-packed, correct facing, click-to-
+select) and the "Bezrobotny" fix live.
+
+Deferred follow-ups (structural, in the `game/sandbox` job-id space the global-content re-key owns —
+tracked in `docs/plans/global-content.md`, not blocking this merge): move `catalog/professions.ts` into
+`game/sandbox/` (it couples to sandbox job ids + i18n, so it isn't a clean-room catalog leaf — a layering
+inversion today, non-cyclic); split the extracted worker-slot tables out of `game/sandbox/content.ts`
+(now ~760 lines) into a sibling module; and reconcile the one-soldier picker vs the per-weapon slot
+labels + the production-vs-gatherer role split for hunter/fisher when the real content replaces the
+sandbox id bands.
+
 Out of scope for this plan: the minimap (separate task) and the main menu. The frame-id map and
 geometry constants are our own metadata (committable); decoded original bytes are not (`content/`
 stays gitignored).
