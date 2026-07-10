@@ -163,6 +163,22 @@ describe('unit body collision (separation + routing stamp)', () => {
     expect(s.world.has(runner, PathFollow)).toBe(false);
   });
 
+  it('a line raised MID-WALK is flowed around: the obstructed walker re-routes instead of treadmilling', () => {
+    const s = sim();
+    const runner = settlerAt(s, 4, 6, SOLDIER, P0);
+    orderTo(s, runner, 16, 6);
+    s.run(30); // en route on the straight line, planned before any wall existed
+    // A SHORT enemy line drops across the stale route (standing spawns) — rows 4..8 of column 10,
+    // leaving both flanks open. The stale path aims straight into it; the walker must grind only
+    // {@link OBSTRUCTED_REROUTE_TICKS}, drop the path, and re-plan around a flank. The old give-up
+    // (24 ticks of marching in place, then standing down with the goal dropped) never arrived.
+    for (let hy = 4; hy <= 8; hy++) settlerAt(s, 10, hy, SOLDIER, P1);
+    s.run(250);
+
+    expect(nodeOf(s, runner)).toEqual({ x: 16, y: 6 }); // arrived — flowed around the flank
+    expect(s.world.has(runner, Obstructed)).toBe(false);
+  });
+
   it('a goal occupied by a standing body is re-aimed at the nearest free node (the surround rule)', () => {
     const s = sim();
     const post = settlerAt(s, 12, 6, SOLDIER, P0);

@@ -15,7 +15,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { System } from '../context.js';
 import { dynamicBlockedCells } from '../footprint/index.js';
 import { isFighterJob } from '../readviews/index.js';
-import { NodeBuckets, canonicalById, clearNavState } from '../spatial.js';
+import { NodeBuckets, canonicalById } from '../spatial.js';
 import { MOVE_SPEED_PER_TICK } from './movement.js';
 
 /**
@@ -35,7 +35,8 @@ import { MOVE_SPEED_PER_TICK } from './movement.js';
  *  - **Posts** (a collider standing still) are immovable, and the routing layer stamps their nodes
  *    into the walk-block overlay (`unitWalkBlocks`) so fresh routes go AROUND a standing line
  *    instead of grinding on it. A walker that still ends up pushing against bodies (a stale route,
- *    a sealed wall) counts {@link Obstructed} ticks and abandons its route at the give-up threshold.
+ *    a sealed wall) counts {@link Obstructed} ticks and drops its path at the re-route threshold, so
+ *    its goal immediately re-plans around the blockers (or fails fast where no way exists).
  *  - **Ghosts** — everyone else. Only OWNED FIGHTERS collide ({@link isFighterJob}): civilians keep
  *    the original's pass-through everywhere, so economy flows that legally converge on one node (a
  *    shared work cell, a store door) can never jam; unowned entities keep every fixture and golden
@@ -86,12 +87,15 @@ export const CALM_ZONE_RADIUS_NODES = 8;
 
 /**
  * Consecutive {@link Obstructed} ticks (bodies resolved AGAINST the walker's heading) before the
- * walker abandons its route — ~1.2 s at 20 Hz: long enough to shoulder through a brush-past, short
- * enough that grinding on a shield wall reads as "blocked, stops" rather than a stuck unit. The
- * goal's owner (combat chase, player order, AI drive) re-issues on its own cadence and the re-route
- * sees the blockers in the walk overlay.
+ * walker DROPS ITS PATH and lets its goal re-route — 0.2 s at 20 Hz: long enough to shoulder
+ * through a brush-past, short enough that a walker never reads as marching in place against the
+ * first rank's backs (the reported treadmill). Only the PathFollow is dropped — the MoveGoal
+ * stays — so the navigation planner re-issues immediately against the CURRENT standing-body
+ * overlay: the fresh route flows AROUND the blockers (the flanking behaviour), and where no way
+ * around exists the request FAILS and the walker stands down at once (the failed-request rules in
+ * orders/combat), so a sealed wall reads as "blocked, stops" within a fraction of a second.
  */
-export const OBSTRUCTED_GIVE_UP_TICKS = 24;
+export const OBSTRUCTED_REROUTE_TICKS = 4;
 
 /** How far (in nodes) the walk-overlay goal fallback searches for a free stand-in node around a
  *  unit-occupied goal — enough to ring several bodies deep around a crowded target before giving up. */
@@ -240,7 +244,7 @@ export const separationSystem: System = (world, ctx) => {
   for (const e of world.query(PathFollow, Position)) {
     if (hasBodyCollision(world, e)) movers.push(e);
   }
-  // An Obstructed counter survives only on a walker: arrival/give-up/re-tasking ends the grind.
+  // An Obstructed counter survives only on a walker: arrival/re-route/re-tasking ends the grind.
   for (const e of canonicalById(world.query(Obstructed))) {
     if (!world.has(e, PathFollow)) world.remove(e, Obstructed);
   }
@@ -352,7 +356,7 @@ export const separationSystem: System = (world, ctx) => {
     }
 
     // HARD half: place the mover back on each overlapped post's radius, ascending post id. A post
-    // resolved AGAINST the walker's heading is a body in the way — that is what feeds the give-up
+    // resolved AGAINST the walker's heading is a body in the way — that is what feeds the re-route
     // counter (a sideways brush while sliding around a lone post does not).
     let opposed = false;
     const pf = world.get(e, PathFollow);
@@ -397,11 +401,13 @@ export const separationSystem: System = (world, ctx) => {
       }
     }
 
-    // Give-up bookkeeping: only a push AGAINST the heading counts; any clear tick resets.
+    // Obstruction bookkeeping: only a push AGAINST the heading counts; any clear tick resets. At the
+    // threshold the walker drops its PATH (keeping its goal) so the planner re-routes it around the
+    // blockers this tick — see {@link OBSTRUCTED_REROUTE_TICKS}.
     if (opposed) {
       const ticks = (world.tryGet(e, Obstructed)?.ticks ?? 0) + 1;
-      if (ticks >= OBSTRUCTED_GIVE_UP_TICKS) {
-        clearNavState(world, e); // stand down where it is; the goal's owner re-issues on its cadence
+      if (ticks >= OBSTRUCTED_REROUTE_TICKS) {
+        world.remove(e, PathFollow);
         world.remove(e, Obstructed);
       } else {
         world.add(e, Obstructed, { ticks });
