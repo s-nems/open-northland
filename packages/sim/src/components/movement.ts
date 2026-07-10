@@ -107,15 +107,22 @@ export const PathRequest = defineComponent<{ start: number; goal: number; failed
 /**
  * A walker's consecutive-ticks counter of being PHYSICALLY BLOCKED by standing units — the
  * SeparationSystem stamps it on a path-follower whose collision resolution pushed it *against* its
- * own heading (a body in the way, not a brush-past), and removes it the first tick that stops being
- * true. When `ticks` reaches the give-up threshold the walker abandons its route (`clearNavState`),
- * standing down where it is — the backstop that turns "grinding forever against a shield wall" into
- * "walks up, pushes for a moment, stops". Whoever owns the goal (the combat chase, a player order,
- * an AI drive) re-issues it on its own cadence, and the re-route then sees the blockers stamped into
- * the walk overlay and paths around or fails cleanly.
+ * own heading (a body in the way, not a brush-past). `x`/`y` anchor the current GRIND WINDOW — the
+ * walker's position when it began — and `ticks` counts the window's length: any tick whose total
+ * movement since the anchor reaches a per-tick progress floor RESTARTS the window (real progress —
+ * a slide around a lone post, a slow shove through a brush-past), while a window that reaches the
+ * re-route threshold with the walker still essentially where it started drops just its path — the
+ * planner immediately re-plans around the blockers (the flanking behaviour) — and `reroutes`
+ * tallies how many times this walk has done that. A walk that re-routes `OBSTRUCTED_MAX_REROUTES`
+ * times without ever arriving stands down entirely (`clearNavState`) — the terminal backstop for a
+ * fully contested destination (e.g. the last stragglers of a squad converging on one node, whose
+ * every stand-in keeps being taken). Whoever owns the goal (the combat chase, a player order, an AI
+ * drive) re-decides from where the unit stopped.
  *
  * A separate optional component (the {@link MoveSpeed}/{@link HerdMember} pattern): only a blocked
  * collider carries one, so sims without unit collision (every unowned fixture, the goldens) never
- * hash it. Plain integer ticks — deterministic like every component.
+ * hash it. Integer counters + fixed-point anchor — deterministic like every component.
  */
-export const Obstructed = defineComponent<{ ticks: number }>('Obstructed');
+export const Obstructed = defineComponent<{ ticks: number; reroutes: number; x: Fixed; y: Fixed }>(
+  'Obstructed',
+);

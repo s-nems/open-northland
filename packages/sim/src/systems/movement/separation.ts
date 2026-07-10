@@ -15,7 +15,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { System } from '../context.js';
 import { dynamicBlockedCells } from '../footprint/index.js';
 import { isFighterJob } from '../readviews/index.js';
-import { NodeBuckets, canonicalById } from '../spatial.js';
+import { NodeBuckets, canonicalById, clearNavState } from '../spatial.js';
 import { MOVE_SPEED_PER_TICK } from './movement.js';
 
 /**
@@ -96,6 +96,26 @@ export const CALM_ZONE_RADIUS_NODES = 8;
  * orders/combat), so a sealed wall reads as "blocked, stops" within a fraction of a second.
  */
 export const OBSTRUCTED_REROUTE_TICKS = 4;
+
+/**
+ * How many re-routes a walker attempts WITHOUT REACHING ITS GOAL before it stands down entirely
+ * (the whole nav state dropped, exactly the old hard give-up) — the terminal backstop for a
+ * contested destination that flanking can never resolve: e.g. a squad converging on one node,
+ * where the last walkers' every stand-in keeps being taken by a fellow arrival and two stragglers
+ * would otherwise orbit the ring re-planning forever. The goal's owner (a player-order hold, the
+ * economy, a combat chase at its cadence) re-decides from wherever the unit stopped.
+ */
+export const OBSTRUCTED_MAX_REROUTES = 4;
+
+/**
+ * The GRIND-WINDOW progress floor, in world units PER TICK of window length — a third of the walk
+ * gait. A contested mover whose total movement since its window anchor stays under `floor × ticks`
+ * is going essentially nowhere (a head-on wedge, or the near-static tangential grind against a
+ * crowded ring); the legitimate slow cases clear it: the acceleration ramp's slowest (first) tick
+ * advances exactly gait/3, the arrival brake's ease-out is floored at gait/2 (`movement.ts`), and
+ * sliding AROUND a lone post covers most of a step every tick.
+ */
+export const OBSTRUCTED_PROGRESS_FLOOR: Fixed = fx.div(MOVE_SPEED_PER_TICK, fx.fromInt(3));
 
 /** How far (in nodes) the walk-overlay goal fallback searches for a free stand-in node around a
  *  unit-occupied goal — enough to ring several bodies deep around a crowded target before giving up. */
@@ -293,6 +313,22 @@ export const separationSystem: System = (world, ctx) => {
     return !blockedOverlay.has(node);
   };
 
+  // A CLEAR tick (no body anywhere near) ends the current grind window but keeps the walk's
+  // re-route tally — wiping it on every free stretch made the max-reroutes backstop unreachable
+  // (each flanking detour zeroed the memory, so a fully contested destination was orbited forever).
+  const clearGrind = (e: Entity): void => {
+    const s = world.tryGet(e, Obstructed);
+    if (s === undefined) return;
+    if (s.reroutes === 0) {
+      world.remove(e, Obstructed);
+      return;
+    }
+    const p = world.get(e, Position);
+    s.ticks = 0;
+    s.x = p.x;
+    s.y = p.y;
+  };
+
   for (const e of movers) {
     const start = before.get(e);
     if (start === undefined) continue; // movers ⊆ before by construction; guard for the checked access
@@ -311,11 +347,11 @@ export const separationSystem: System = (world, ctx) => {
       }
     }
     if (nearMovers.length === 0 && nearPosts.length === 0) {
-      world.remove(e, Obstructed);
+      clearGrind(e);
       continue;
     }
     if (isGhostMover(e)) {
-      world.remove(e, Obstructed);
+      clearGrind(e);
       continue; // in its own town: full pass-through, both ways
     }
 
@@ -357,10 +393,6 @@ export const separationSystem: System = (world, ctx) => {
 
     // HARD half: place the mover back on each overlapped post's radius, ascending post id. A post
     // resolved AGAINST the walker's heading is a body in the way — that is what feeds the re-route
-    // counter (a sideways brush while sliding around a lone post does not).
-    let opposed = false;
-    const pf = world.get(e, PathFollow);
-    const waypoint = pf.waypoints[pf.index];
     for (const s of nearPosts) {
       const sp = world.get(s, Position);
       const dist = worldDistance(cand.x, cand.y, sp.x, sp.y);
@@ -377,15 +409,7 @@ export const separationSystem: System = (world, ctx) => {
         outX = fx.mulDiv(fx.sub(candW.x, postW.x), UNIT_SEPARATION_RADIUS, dist);
         outY = fx.mulDiv(fx.sub(candW.y, postW.y), UNIT_SEPARATION_RADIUS, dist);
       }
-      const resolvedW = { x: fx.add(postW.x, outX), y: fx.add(postW.y, outY) };
-      if (waypoint !== undefined) {
-        const headX = fx.sub(worldX(waypoint.x, waypoint.y), candW.x);
-        const headY = fx.sub(fx.mul(waypoint.y, ROW_STEP), candW.y);
-        const moveX = fx.sub(resolvedW.x, candW.x);
-        const moveY = fx.sub(resolvedW.y, candW.y);
-        if (fx.add(fx.mul(moveX, headX), fx.mul(moveY, headY)) < ZERO) opposed = true;
-      }
-      cand = toGrid(resolvedW);
+      cand = toGrid({ x: fx.add(postW.x, outX), y: fx.add(postW.y, outY) });
     }
 
     // Landing safety: never displace onto unwalkable/blocked ground — drop the offending axis, then
@@ -401,19 +425,38 @@ export const separationSystem: System = (world, ctx) => {
       }
     }
 
-    // Obstruction bookkeeping: only a push AGAINST the heading counts; any clear tick resets. At the
-    // threshold the walker drops its PATH (keeping its goal) so the planner re-routes it around the
-    // blockers this tick — see {@link OBSTRUCTED_REROUTE_TICKS}.
-    if (opposed) {
-      const ticks = (world.tryGet(e, Obstructed)?.ticks ?? 0) + 1;
-      if (ticks >= OBSTRUCTED_REROUTE_TICKS) {
-        world.remove(e, PathFollow);
+    // GRIND-WINDOW bookkeeping (the Obstructed component doc): while bodies are near, measure the
+    // walker's TOTAL movement since the window's anchor. Any tick that reaches the per-tick progress
+    // floor × window length restarts the window — real progress, however indirect (a slide around a
+    // lone post, a slow shove past a brush) — while a window that reaches the re-route threshold
+    // with the walker still essentially at its anchor drops just its PATH (keeping its goal), so the
+    // planner re-plans around the blockers ({@link OBSTRUCTED_REROUTE_TICKS}); after {@link
+    // OBSTRUCTED_MAX_REROUTES} of those without ever arriving it stands down entirely — flanking is
+    // not converging (a fully contested destination). Measured over a WINDOW (not per tick) because
+    // this system runs after the MovementSystem and can't see one tick's walk step in isolation —
+    // and a window is also what catches the near-static tangential grind against a crowded ring,
+    // which a per-tick against-heading test never reads as blocked (stragglers orbited a contested
+    // goal forever). The window's lifetime is the walk: arrival/stand-down sheds the component (the
+    // sweep above), and a genuinely clear stretch re-anchors it ({@link clearGrind}).
+    const s =
+      world.tryGet(e, Obstructed) ?? world.add(e, Obstructed, { ticks: 0, reroutes: 0, x: p.x, y: p.y });
+    s.ticks += 1;
+    const sinceAnchor = worldDistance(s.x, s.y, p.x, p.y);
+    if (sinceAnchor >= fx.mul(OBSTRUCTED_PROGRESS_FLOOR, fx.fromInt(s.ticks))) {
+      s.ticks = 0; // real progress — restart the window here (the re-route tally stays)
+      s.x = p.x;
+      s.y = p.y;
+    } else if (s.ticks >= OBSTRUCTED_REROUTE_TICKS) {
+      if (s.reroutes >= OBSTRUCTED_MAX_REROUTES) {
+        clearNavState(world, e); // stand down where it is; the goal's owner re-decides
         world.remove(e, Obstructed);
       } else {
-        world.add(e, Obstructed, { ticks });
+        world.remove(e, PathFollow);
+        s.ticks = 0;
+        s.x = p.x;
+        s.y = p.y;
+        s.reroutes += 1;
       }
-    } else {
-      world.remove(e, Obstructed);
     }
   }
 };
