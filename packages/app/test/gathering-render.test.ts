@@ -66,9 +66,10 @@ describe('gathering scene — render classification after all six gathering cycl
   });
 
   it('each good piles WHOLE at its own gatherer flag (one stockpile heap per good, by good)', () => {
-    // Once every trunk + ore pile is collected, the only stockpiles left are the six delivery flags.
-    const piles = draws.filter((d) => d.kind === 'stockpile');
-    expect(piles).toHaveLength(6); // one flag per good
+    // Once every trunk + ore pile is collected, the only FILLED stockpiles are the six lane delivery flags
+    // (the selectable cluster's gatherers each carry an EMPTY flag — no good in radius — so those are skipped).
+    const piles = draws.filter((d) => d.kind === 'stockpile' && d.goodType !== undefined);
+    expect(piles).toHaveLength(6); // one HELD flag per good
     const byGood = new Map(piles.map((p) => [p.goodType, p.fill]));
     expect(byGood.get(GOODS.wood)).toBe(WOOD_TREES * TREE_WOOD_YIELD);
     expect(byGood.get(GOODS.stone)).toBe(STONE_DEPOSIT_UNITS);

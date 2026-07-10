@@ -392,9 +392,10 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // rendered into the portrait box INSIDE renderer.update (a second world render, before the main stage
     // render). Null when the selection has no portrait; the inset fits the entity's bounds to the box.
     renderer.setPortraitInset(controls.portrait());
-    // One retained update: reconcile the pooled sprites, draw the selection rings + door badges, render
-    // once. `app.screen` tracks window resizes. No HUD frame is passed — the always-on stocks panel is
-    // gone; the debug tick lives in the top overlay and the population/jobs/stocks in the stats window.
+    // One retained update: reconcile the pooled sprites, draw the selection rings + door badges + the
+    // selected gatherers' work-flag highlight, render once. `app.screen` tracks window resizes. No HUD frame
+    // is passed — the always-on stocks panel is gone; the debug tick lives in the top overlay and the
+    // population/jobs/stocks in the stats window.
     const doorBadges = computeDoorBadges(snap, buildingDoors, workerRoleOf);
     renderer.update(
       snap,
@@ -404,6 +405,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
       controls.selectedIds(),
       renderAlpha,
       doorBadges,
+      controls.flaggedFlagIds(),
     );
     controls.tick(snap); // reuse the frame's snapshot — don't rebuild a second one
     updateHoverTooltip(snap); // name-on-hover for the good pile under the cursor (after controls: claim state is current)

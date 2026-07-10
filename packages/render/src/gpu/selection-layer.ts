@@ -41,6 +41,12 @@ function isoRatio(): number {
 /** The selection ring colour (a bright green, the RTS "this is yours and selected" cue) + line weight. */
 const RING_COLOR = 0x66ff66;
 const RING_WIDTH = 2;
+/** The work-FLAG highlight colour (a bright amber) — the flag of a currently-selected gatherer, distinct
+ *  from the green unit-selection ring, drawn a touch heavier so it reads under the flag's own sprite. */
+const FLAG_RING_COLOR = 0xffc020;
+const FLAG_RING_WIDTH = 3;
+
+const NO_IDS: ReadonlySet<number> = new Set();
 
 /** One ring's resolved geometry: half-extents + a horizontal centre offset (a sprite not centred on feet). */
 interface RingSpec {
@@ -51,16 +57,20 @@ interface RingSpec {
 
 export class SelectionLayer {
   readonly container = new Container();
-  /** One persistent ring Graphics per selected entity id; geometry drawn once, only repositioned after. */
+  /** One persistent ring Graphics per SELECTED entity id (green); geometry drawn once, repositioned after. */
   private readonly rings = new Map<number, Graphics>();
-  /** Reused per-frame scratch of ids drawn this frame (avoids a per-frame allocation). */
+  /** One persistent ring per selected gatherer's FLAG entity id (amber) — the same pooling, a second cue. */
+  private readonly flagRings = new Map<number, Graphics>();
+  /** Reused per-frame scratch of ids drawn this frame (one per pool; avoids a per-frame allocation). */
   private readonly drawn = new Set<number>();
+  private readonly drawnFlags = new Set<number>();
 
   /**
-   * Reconcile the rings to `selected` from the frozen snapshot's positions: get-or-create a ring per
-   * selected entity (sized from its {@link EntityBounds} via `boundsOf` for buildings) and move it to the
-   * entity's feet, then destroy rings for ids no longer selected (or whose entity left the snapshot). An
-   * emptied selection retires every ring and returns early — no scan.
+   * Reconcile both marker pools from the frozen snapshot's positions: a green ring under every `selected`
+   * entity, and an amber ring under every `flagged` id (the work flags of the selected gatherers). Each
+   * pool get-or-creates a ring per id (sized from {@link EntityBounds} via `boundsOf` for buildings) and
+   * moves it to the entity's feet, then retires rings for ids no longer present. An emptied set retires its
+   * pool and does no scan.
    */
   draw(
     snapshot: WorldSnapshot,
@@ -68,17 +78,53 @@ export class SelectionLayer {
     boundsOf?: (ref: number) => EntityBounds | undefined,
     elevation?: ElevationField,
     anchorOf?: (ref: number) => { x: number; y: number } | undefined,
+    flagged: ReadonlySet<number> = NO_IDS,
   ): void {
-    this.drawn.clear();
-    if (selected.size > 0) {
+    this.reconcile(
+      this.rings,
+      this.drawn,
+      snapshot,
+      selected,
+      RING_COLOR,
+      RING_WIDTH,
+      boundsOf,
+      elevation,
+      anchorOf,
+    );
+    this.reconcile(
+      this.flagRings,
+      this.drawnFlags,
+      snapshot,
+      flagged,
+      FLAG_RING_COLOR,
+      FLAG_RING_WIDTH,
+      boundsOf,
+      elevation,
+      anchorOf,
+    );
+  }
+
+  /** Reconcile ONE ring pool to `ids` in `color`: place/move a ring under each present entity, retire the rest. */
+  private reconcile(
+    pool: Map<number, Graphics>,
+    drawn: Set<number>,
+    snapshot: WorldSnapshot,
+    ids: ReadonlySet<number>,
+    color: number,
+    width: number,
+    boundsOf?: (ref: number) => EntityBounds | undefined,
+    elevation?: ElevationField,
+    anchorOf?: (ref: number) => { x: number; y: number } | undefined,
+  ): void {
+    drawn.clear();
+    if (ids.size > 0) {
       for (const ent of snapshot.entities) {
-        if (!selected.has(ent.id)) continue;
+        if (!ids.has(ent.id)) continue;
         const pos = ent.components.Position as { x: number; y: number } | undefined;
         if (pos === undefined) continue;
-        // The pool's DRAWN anchor (inter-tick lerped AND terrain-lifted) when the entity was drawn
-        // this frame, so the ring glides with the interpolated bob and rides the hill under it. When
-        // it wasn't drawn (culled off-screen — the ring is off-view anyway, but stays consistently
-        // placed), fall back to the raw snapshot projection plus the same lift the pool would apply.
+        // The pool's DRAWN anchor (inter-tick lerped AND terrain-lifted) when the entity was drawn this
+        // frame, so the ring glides with the interpolated bob and rides the hill under it. When it wasn't
+        // drawn (culled off-screen), fall back to the raw snapshot projection plus the same lift.
         let s = anchorOf?.(ent.id);
         if (s === undefined) {
           const tileX = pos.x / ONE;
@@ -87,24 +133,28 @@ export class SelectionLayer {
           const lift = elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAt(tileX, tileY) : 0;
           s = { x: p.x, y: p.y - lift };
         }
-        let ring = this.rings.get(ent.id);
+        let ring = pool.get(ent.id);
         if (ring === undefined) {
-          // Kind + size are fixed for the current selection, so the ring geometry is authored once here.
+          // Kind + size are fixed while present, so the ring geometry is authored once here.
           const isBuilding = ent.components.Building !== undefined;
-          ring = makeRing(ringSpec(isBuilding, isBuilding ? boundsOf?.(ent.id) : undefined, s.x));
+          ring = makeRing(
+            ringSpec(isBuilding, isBuilding ? boundsOf?.(ent.id) : undefined, s.x),
+            color,
+            width,
+          );
           this.container.addChild(ring);
-          this.rings.set(ent.id, ring);
+          pool.set(ent.id, ring);
         }
         ring.position.set(s.x, s.y);
-        this.drawn.add(ent.id);
+        drawn.add(ent.id);
       }
     }
     // Retire rings not drawn this frame (deselected, or the entity died / left the snapshot).
-    if (this.rings.size > this.drawn.size) {
-      for (const [id, ring] of this.rings) {
-        if (this.drawn.has(id)) continue;
+    if (pool.size > drawn.size) {
+      for (const [id, ring] of pool) {
+        if (drawn.has(id)) continue;
         ring.destroy();
-        this.rings.delete(id);
+        pool.delete(id);
       }
     }
   }
@@ -112,6 +162,7 @@ export class SelectionLayer {
   destroy(): void {
     this.container.destroy({ children: true });
     this.rings.clear();
+    this.flagRings.clear();
   }
 }
 
@@ -130,11 +181,9 @@ function ringSpec(isBuilding: boolean, bounds: EntityBounds | undefined, feetX: 
   return { rx: BUILDING_RING.rx, ry: BUILDING_RING.ry, cx: 0 };
 }
 
-/** A single selection ring, its ellipse geometry authored once at the (feet-relative) centre `spec.cx`. */
-function makeRing(spec: RingSpec): Graphics {
+/** A single marker ring in `color`, its ellipse geometry authored once at the (feet-relative) centre `spec.cx`. */
+function makeRing(spec: RingSpec, color: number, width: number): Graphics {
   const g = new Graphics();
-  g.ellipse(spec.cx, 0, spec.rx, spec.ry)
-    .fill({ color: RING_COLOR, alpha: 0.12 })
-    .stroke({ width: RING_WIDTH, color: RING_COLOR, alpha: 0.9 });
+  g.ellipse(spec.cx, 0, spec.rx, spec.ry).fill({ color, alpha: 0.12 }).stroke({ width, color, alpha: 0.9 });
   return g;
 }

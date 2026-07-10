@@ -110,15 +110,21 @@ export function resolveStockpileDraw(binding: number | StockpileBinding, item: D
  * nothing in it yet). The GPU layer binds these refs to real atlas layers; this pure helper pins the draw
  * order without needing Pixi in tests.
  *
- * NOTE: a future "designated collection point keeps its flag visible ABOVE accumulated goods" needs its own
- * marker component to re-add the flag layer — today the only filled bare stockpiles are loose good piles,
- * which must read as their heap alone (no flag planted through them), so the flag is the empty-point marker.
+ * A designated **delivery flag** ({@link DrawItem.isFlag}) that HOLDS goods is the exception: it draws its
+ * heap FIRST and its flag graphic SECOND, so the flag stays visible ABOVE the accumulated pile (a collection
+ * point never buries its own marker) — layer 0 paints behind, later layers in front (the GPU binds them in
+ * order). An empty flag, and every loose pile, keep the single-layer behaviour above.
  */
 export function resolveStockpileLayerDraws(
   binding: number | StockpileBinding,
   item: DrawItem,
 ): BuildingDraw[] {
   if (typeof binding === 'number') return [{ bob: binding }];
+  // A held delivery flag: heap behind, flag marker on top. `binding.flag` is the flag graphic; the heap is
+  // the same per-fill frame a loose pile would draw.
+  if (item.isFlag === true && item.goodType !== undefined) {
+    return [resolveStockpileDraw(binding, item), unwrapBobRef(binding.flag)];
+  }
   // resolveStockpileDraw already returns the heap for a held good and the flag for an empty pile.
   return [resolveStockpileDraw(binding, item)];
 }

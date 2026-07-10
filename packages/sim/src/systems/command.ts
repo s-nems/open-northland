@@ -15,7 +15,7 @@ import { ONE, fx } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
 import { positionOfNode } from '../nav/halfcell.js';
 import { dropOrStackGood } from './agents/effects-goods.js';
-import { assignWorker, attackUnit, moveUnit, setJob, setStance } from './conflict/orders.js';
+import { assignWorker, attackUnit, moveUnit, setJob, setStance, setWorkFlag } from './conflict/orders.js';
 import { spawnAnimalHerd, spawnSettler } from './conflict/spawn.js';
 import type { System, SystemContext } from './context.js';
 import { canPlaceBuilding, createResourceNode } from './footprint/index.js';
@@ -157,6 +157,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'assignWorker':
       assignWorker(world, ctx, command);
+      return;
+    case 'setWorkFlag':
+      setWorkFlag(world, ctx, command);
       return;
     default:
       assertNever(command);

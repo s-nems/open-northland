@@ -103,7 +103,13 @@ function buildGatheringLanes(sim: Simulation): void {
 }
 
 function buildControllableUnits(sim: Simulation): void {
-  for (const u of PLAYER_CLUSTER) spawnSandboxSettler(sim, u.job, u.x, u.y, HUMAN_PLAYER);
+  // The selectable cluster are gatherers too, so each gets its own flag at its spawn tile — without one an
+  // unbound gatherer roams the map for the nearest wood. With no resource in its flag radius it simply
+  // stands idle by its flag; the player moves that flag onto work with Ctrl+Right-Click (setWorkFlag).
+  for (const u of PLAYER_CLUSTER) {
+    const flag = placeFlag(sim, u.x, u.y);
+    spawnBoundGatherer(sim, u.job, u.x, u.y, flag);
+  }
   for (const y of BLUE_SOLDIER_ROWS) {
     spawnSandboxSettler(sim, JOB_SOLDIER_SWORD, BLUE_SOLDIER_X, y, HUMAN_PLAYER, {
       hitpoints: BLUE_HP,

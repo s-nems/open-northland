@@ -112,6 +112,9 @@ export interface UnitControls {
   /** The details panel's live-portrait box (the world observation window's rect + entity), or null when the
    *  selection has no portrait. The view feeds it to `renderer.setPortraitInset` each frame. */
   portrait(): PortraitBox | null;
+  /** The work-flag entity ids of the selected gatherers — fed to `renderer.update(..., flagged)` so each
+   *  selected gatherer's own flag is highlighted (the amber ring). Empty when nothing selected has a flag. */
+  flaggedFlagIds(): ReadonlySet<number>;
   /**
    * Per-frame hook: refresh the panel's live values (needs bars, order status). Takes the frame's
    * already-built snapshot so it does NOT rebuild a second one — `sim.snapshot()` is an O(entities)
@@ -130,6 +133,9 @@ export interface UnitControls {
 
 /** Drag distance (client px) beyond which a press is a marquee, not a click. */
 const DRAG_THRESHOLD = 5;
+
+/** Shared empty id set (no per-call allocation when nothing is selected). */
+const EMPTY_IDS: ReadonlySet<number> = new Set();
 
 const MARQUEE_STYLE = [
   'position:fixed',
@@ -259,8 +265,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     if (panel.handleMouseDown(e.clientX, e.clientY, e.button)) return;
     if (actions.claimsPointer(e.clientX, e.clientY)) return;
     if (e.button === 2) {
-      // Right button: attack an enemy under the cursor, else move to the clicked tile.
-      issueRightClickOrder(e);
+      // Ctrl+Right (⌘ on macOS): plant/move the selected gatherer(s)' work flag on the clicked tile —
+      // "work here". Plain Right: attack an enemy under the cursor, else move to the clicked tile.
+      if (e.ctrlKey || e.metaKey) issueSetWorkFlag(e);
+      else issueRightClickOrder(e);
       return;
     }
     if (e.button !== 0) return; // middle = camera pan (handled by the camera controller)
@@ -371,6 +379,33 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     }
   };
 
+  /** Ctrl+Right-Click: plant / move the selected gatherer(s)' work flag onto the clicked node. Issued for
+   *  every selected own settler; the sim skips any whose job cannot harvest (a soldier gets no flag). */
+  const issueSetWorkFlag = (e: MouseEvent): void => {
+    if (selected.size === 0) return;
+    const movers = targets('settler').filter((t) => selected.has(t.ref));
+    if (movers.length === 0) return;
+    const { width, height } = nodeBounds(opts.mapSize);
+    const w = toWorld(e.clientX, e.clientY);
+    const target = clampTile(worldToTile(w.x, w.y, opts.elevation), width, height);
+    for (const m of movers) {
+      opts.enqueue({ kind: 'setWorkFlag', entity: m.ref as Entity, x: target.col, y: target.row });
+    }
+  };
+
+  /** The flag entity ids of the currently-selected gatherers (their {@link WorkFlag}.flag), so the renderer
+   *  can highlight each selected gatherer's own flag. A per-frame scan gated on a non-empty selection. */
+  const flaggedFlagIds = (): ReadonlySet<number> => {
+    if (selected.size === 0) return EMPTY_IDS;
+    const out = new Set<number>();
+    for (const ent of opts.snapshot().entities) {
+      if (!selected.has(ent.id)) continue;
+      const wf = ent.components.WorkFlag as { flag?: unknown } | undefined;
+      if (wf !== undefined && typeof wf.flag === 'number') out.add(wf.flag);
+    }
+    return out;
+  };
+
   /** A predicate marking NODES held by a settler/building NOT in `exclude` — the formation avoids them. */
   const occupiedTiles = (exclude: ReadonlySet<number>): ((col: number, row: number) => boolean) => {
     const snap = opts.snapshot();
@@ -408,6 +443,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   return {
     selectedIds: () => selected,
     portrait: () => panel.portrait(),
+    flaggedFlagIds,
     // The HUD this controller defers to before world picking: the tool panel/windows (handed in), the
     // bottom-right details panel, and its own settler action ring. Including the details panel means a
     // consumer that gates on this — the admin spawn palette, the world hover tooltip — treats a point over

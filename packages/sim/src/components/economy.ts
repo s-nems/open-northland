@@ -183,6 +183,23 @@ export const HarvestedBy = defineComponent<{ by: Entity }>('HarvestedBy');
 export const WorkFlag = defineComponent<{ flag: Entity; radius: number }>('WorkFlag');
 
 /**
+ * Marks a bare {@link Stockpile} that is a **designated delivery flag** (a gatherer's collection point),
+ * distinguishing it from a loose player-dropped pile — both are otherwise an identical bare
+ * `Stockpile+Position`. It carries no data (a pure marker); its presence is what render keys on to keep the
+ * flag graphic drawn **on top of** the accumulated goods heap (a loose pile draws its heap alone). Stamped
+ * on every flag the scene/command creates ({@link WorkFlag} targets, `setWorkFlag`). Inert on the golden
+ * slice (which has no flags), so the hash is untouched — the separate-optional-component pattern.
+ */
+export const DeliveryFlag = defineComponent<Record<string, never>>('DeliveryFlag');
+
+/**
+ * The default work radius (integer node-distance on the half-cell lattice) a newly placed gatherer flag
+ * gets — used by the `setWorkFlag` command and the sandbox scene binding. A named approximation, not a
+ * source-pinned value: the original's collector work-area size is not decoded, so this is observed/tunable.
+ */
+export const DEFAULT_WORK_FLAG_RADIUS = 16;
+
+/**
  * An in-progress production cycle on a workplace (a {@link Building} whose building type carries a
  * `recipe`). The ProductionSystem consumes the recipe's input goods from the building's own
  * {@link Stockpile} when a cycle starts, advances the integer `elapsed` tick counter, and on the
