@@ -256,7 +256,7 @@ function nextCommand(rng: Rng): Command {
     }
     case 10:
       // A loose good pile dropped at a random tile: good 1 (wood — in the catalog, so the CREATE path runs:
-      // the bare Stockpile+GroundDrop the pickup/porter machinery then hauls) and an unknown good / a
+      // a bare Stockpile+Position loose pile, NO GroundDrop, that rests in place) and an unknown good / a
       // zero amount (the skip path, still logged). Exercises `dropGood` under the fuzzed stream.
       return {
         kind: 'dropGood',

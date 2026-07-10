@@ -49,7 +49,7 @@ const NO_SELECTION: ReadonlySet<number> = new Set();
  * enough to cover the tallest scaled building or map object (trees/palisades share this box); small
  * next to a real map (≈8 tiles), so culling still bites. Tunable.
  */
-const SPRITE_CULL_MARGIN = 512;
+export const SPRITE_CULL_MARGIN = 512;
 
 /**
  * The paused-game wash: one screen-sized multiply quad over the WORLD (not the HUD). The original's
