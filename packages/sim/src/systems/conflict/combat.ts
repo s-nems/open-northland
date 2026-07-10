@@ -17,6 +17,7 @@ import {
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
+import { standingFighterNodes } from '../movement/separation.js';
 import {
   HUNTER_JOB,
   MILITARY_MODE,
@@ -101,10 +102,22 @@ export const combatSystem: System = (world, ctx) => {
   const combatants = canonicalById(world.query(Settler, Health, Position));
   const index = new NodeBuckets(world, combatants);
 
+  // The tick's MELEE-SLOT state (see {@link approachCell}): `standing` is the standing-collider node
+  // set (built lazily — a tick with no chaser pays nothing), `claimed` the approach cells already
+  // dealt out this tick. Chasers are served in the canonical combatant order, so slot assignment is
+  // deterministic; the sets are per-tick derived state, never hashed.
+  const slots: MeleeSlots = { claimed: new Set() };
   for (const e of combatants) {
-    engageCombatant(world, ctx, terrain, index, e);
+    engageCombatant(world, ctx, terrain, index, slots, e);
   }
 };
+
+/** Per-combat-tick melee-slot state: the lazily-built standing-body node set plus this tick's
+ *  already-claimed approach cells. */
+interface MeleeSlots {
+  standing?: ReadonlySet<NodeId>;
+  readonly claimed: Set<NodeId>;
+}
 
 /**
  * How many ticks a chaser follows its current path toward an enemy before re-issuing a fresh one — the
@@ -205,6 +218,7 @@ function engageCombatant(
   ctx: SystemContext,
   terrain: TerrainGraph,
   index: NodeBuckets,
+  slots: MeleeSlots,
   e: Entity,
 ): void {
   if (world.has(e, CurrentAtomic)) return; // mid-swing / mid-need: play it out
@@ -317,7 +331,7 @@ function engageCombatant(
     disengage(world, e);
     return;
   }
-  chase(world, ctx, terrain, e, here, target, weapon, ordered, spec.defend);
+  chase(world, ctx, terrain, slots, e, here, target, weapon, ordered, spec.defend);
 }
 
 /**
@@ -454,6 +468,7 @@ function chase(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
+  slots: MeleeSlots,
   e: Entity,
   here: NodeId,
   target: Entity,
@@ -485,7 +500,21 @@ function chase(
     entityNode(world, terrain, target),
     weapon.minRange,
     weapon.maxRange,
+    (cell) => {
+      slots.standing ??= standingFighterNodes(world, terrain);
+      return slots.standing.has(cell) || slots.claimed.has(cell);
+    },
   );
+  if (dest === null) {
+    // Every walkable cell of the target's reach band is a TAKEN SLOT (a standing body, or dealt to
+    // an earlier chaser this tick): SECOND RANK. Stand fast behind the fight — a stationary body,
+    // not a walker grinding into the first rank's backs — and re-ask at the chase cadence; the slot
+    // check naturally admits it the moment a front-liner falls or steps off. This (with the id-order
+    // slot deal above) is what turns a converging mass into ranks instead of a pile.
+    clearChase(world, e);
+    engagement.repathAt = ctx.tick + REPATH_CADENCE;
+    return;
+  }
   // DEFEND leash: never step past `leash` tiles from the anchor to reach an enemy — a target hittable only
   // by breaking the leash is left alone, and the defender walks back to its post instead of pursuing.
   if (defend !== null && manhattan(terrain, defend.anchorCell, dest) > defend.leash) {
@@ -505,27 +534,35 @@ function chase(
   }
   clearChase(world, e);
   world.add(e, MoveGoal, { cell: dest });
+  slots.claimed.add(dest); // this slot is dealt — the tick's later chasers aim at the next free cell
   engagement.repathAt = ctx.tick + REPATH_CADENCE;
 }
 
-/** The cell a chaser should walk to in order to bring `target` into its weapon band: the walkable cell
- *  whose Manhattan distance to the target is in `[minRange, maxRange]` and which is CLOSEST to the unit
- *  (`from`), canonical (min distance, then min cell id). So a melee unit stops one cell short of the enemy
- *  (distance in-band, hittable) instead of walking onto it (distance 0, below every weapon's near reach —
- *  which would deadlock). Falls back to the target's own cell when no in-band cell is walkable (a boxed-in
- *  target; the chase then closes and the swing/disengage logic re-decides). A bounded scan of the band box
- *  around the target — O((2·maxRange+1)²), tiny for melee — deterministic (fixed order + min-id tie-break). */
+/** The cell a chaser should walk to in order to bring `target` into its weapon band: the FREE walkable
+ *  cell (not a taken melee slot — `isTaken`: a standing body, or already dealt to an earlier chaser this
+ *  tick) whose Manhattan distance to the target is in `[minRange, maxRange]` and which is CLOSEST to the
+ *  unit (`from`), canonical (min distance, then min cell id). So a melee unit stops one cell short of the
+ *  enemy (distance in-band, hittable) instead of walking onto it (distance 0, below every weapon's near
+ *  reach — which would deadlock), and a MASS of chasers is dealt DISTINCT contact cells around the target
+ *  instead of all converging on the same one — the melee-slot rule that spreads a large fight along the
+ *  whole band. Returns `null` when the band has walkable cells but every one is taken (a full front —
+ *  the chaser should hold as a second rank); falls back to the target's own cell when NO in-band cell is
+ *  walkable at all (a boxed-in target; the chase then closes and the swing/disengage logic re-decides).
+ *  A bounded scan of the band box around the target — O((2·maxRange+1)²), tiny for melee — deterministic
+ *  (fixed order + min-id tie-break). */
 function approachCell(
   terrain: TerrainGraph,
   from: NodeId,
   targetCell: NodeId,
   minRange: number,
   maxRange: number,
-): NodeId {
+  isTaken: (cell: NodeId) => boolean,
+): NodeId | null {
   const t = terrain.coordsOf(targetCell);
   const f = terrain.coordsOf(from);
   let best: NodeId | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
+  let anyWalkable = false;
   for (let dy = -maxRange; dy <= maxRange; dy++) {
     for (let dx = -maxRange; dx <= maxRange; dx++) {
       const band = Math.abs(dx) + Math.abs(dy);
@@ -535,6 +572,8 @@ function approachCell(
       if (!terrain.inBounds(x, y)) continue;
       const cell = terrain.nodeAt(x, y);
       if (!terrain.isWalkable(cell)) continue;
+      anyWalkable = true;
+      if (isTaken(cell)) continue; // an occupied melee slot — someone already fights (or was dealt) here
       const d = Math.abs(x - f.x) + Math.abs(y - f.y); // distance from the unit to this candidate cell
       if (d < bestDist || (d === bestDist && (best === null || cell < best))) {
         best = cell;
@@ -542,7 +581,8 @@ function approachCell(
       }
     }
   }
-  return best ?? targetCell;
+  if (best !== null) return best;
+  return anyWalkable ? null : targetCell;
 }
 
 /** Drop the combatant's engagement, returning it to the economy: remove the {@link Engagement} marker and
