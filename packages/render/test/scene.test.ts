@@ -118,6 +118,27 @@ describe('buildScene', () => {
     expect(order).toEqual(['grounddrop', 'stockpile']); // drop behind, flag in front
   });
 
+  it('paints a delivery FLAG in front of a co-located goods heap of its own kind (FLAG_PAINT_STEP)', () => {
+    // A flag (DeliveryFlag marker, id 3) shares a tile with a goods heap (bare Stockpile, id 5) piling up on
+    // it. Both classify as `stockpile`, so the kind bias ties and the id tiebreak would bury the earlier
+    // flag under the later heap; the half-step flag bump lifts the flag in front. (Both drawn as `stockpile`
+    // kind — the flag is `isFlag`, the heap carries a good.)
+    const scene = buildScene(
+      snapshotOf([
+        entity(3, 1, 1, { DeliveryFlag: {} }),
+        entity(5, 1, 1, { Stockpile: { amounts: [[1, 3]] } }),
+      ]),
+      FLAT_3x2,
+    );
+    const stock = scene.filter((d) => d.kind === 'stockpile');
+    expect(stock.map((d) => d.ref)).toEqual([5, 3]); // heap (id 5) behind, flag (id 3) in front
+    const flag = stock.find((d) => d.ref === 3);
+    const heap = stock.find((d) => d.ref === 5);
+    expect(flag?.isFlag).toBe(true);
+    expect(flag?.goodType).toBeUndefined(); // a flag holds no goods
+    expect((flag?.depth ?? 0) > (heap?.depth ?? 0)).toBe(true); // strictly in front
+  });
+
   it('breaks an equal-feet tie by x then by entity id (a total, stable order)', () => {
     // Two on the same row (y=1): the one further right (greater x) draws in front.
     // Two on the exact same tile: lower entity id draws first.

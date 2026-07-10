@@ -1,6 +1,7 @@
 import type { Recipe } from '@vinland/data';
 import {
   Building,
+  DeliveryFlag,
   JobAssignment,
   Position,
   Production,
@@ -134,7 +135,8 @@ export function workplaceOutputToHaul(
  *     warehouse it came from.
  *  2. Else, if the settler is a **flag-bound gatherer** (carries a {@link WorkFlag}) → deliver to ITS flag.
  *     This is the "each gatherer carries the good to its own flag" rule: a flag-bound collector banks its
- *     harvest at its own flag, never merely the nearest store (a warehouse that happens to sit closer).
+ *     harvest at its own flag, never merely the nearest store (a warehouse that happens to sit closer). The
+ *     flag is only a MARKER — the pileup spreads the load onto loose ground heaps around it, not into it.
  *  3. Else, if the settler is bound (via {@link JobAssignment}) to a **storage** fixture — a positioned
  *     {@link Stockpile} with no recipe (a warehouse, or a bare flag/ground pile) that can still take the
  *     good → deliver there. This is the porter delivering to *its* store, so it never dumps a load straight
@@ -161,13 +163,12 @@ export function deliveryTargetFor(
       return workplace;
     }
   }
-  // 2. A flag-bound gatherer banks its harvest at its OWN flag.
+  // 2. A flag-bound gatherer banks its harvest at its OWN flag. The flag is a MARKER, not a store (it
+  //    carries no Stockpile) — the pileup spreads the load onto loose ground heaps AROUND the flag, each
+  //    pinned to its tile, so nothing already dropped teleports when the flag is relocated. Route to the
+  //    flag whenever it still exists; the ground always has room, so there is no capacity gate here.
   const flag = world.tryGet(settler, WorkFlag);
-  if (
-    flag !== undefined &&
-    isStorageSink(world, ctx, flag.flag) &&
-    hasRoom(world, ctx, flag.flag, goodType)
-  ) {
+  if (flag !== undefined && world.has(flag.flag, DeliveryFlag) && world.has(flag.flag, Position)) {
     return flag.flag;
   }
   // 3. A porter's collected good goes to the storage it is bound to (a warehouse, or a flag pile).

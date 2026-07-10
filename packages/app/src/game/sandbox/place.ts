@@ -14,7 +14,7 @@ import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.j
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../rules.js';
 import { GATHERERS, type GathererSpec, weaponEquipmentFor } from './ids.js';
 
-const { DeliveryFlag, Position, Stockpile, WorkFlag } = components;
+const { DeliveryFlag, Position, WorkFlag } = components;
 
 /**
  * A gatherer's reasonable work radius around its flag (integer node-distance). Sourced from the sim's
@@ -173,13 +173,13 @@ export function dropSandboxGood(sim: Simulation, good: number, x: number, y: num
   sim.enqueue({ kind: 'dropGood', good, x: node.hx, y: node.hy, amount });
 }
 
-/** A drop-off flag: an empty (uncapped) stockpile at the given tile. Returns the flag entity so a gatherer
- *  can be bound to it ({@link spawnBoundGatherer}). */
+/** A drop-off flag: a pure {@link DeliveryFlag} marker at the given tile (it stores nothing — the harvest
+ *  piles on the GROUND around it as separate heaps, so moving the flag never moves the goods). Returns the
+ *  flag entity so a gatherer can be bound to it ({@link spawnBoundGatherer}). */
 export function placeFlag(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Stockpile, { amounts: new Map() });
-  sim.world.add(e, DeliveryFlag, {}); // a designated collection point → render keeps its flag above the heap
+  sim.world.add(e, DeliveryFlag, {}); // a designated collection point → render draws its flag above the heaps
   return e;
 }
 

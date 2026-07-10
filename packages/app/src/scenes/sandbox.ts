@@ -22,7 +22,7 @@ import {
   countComponent,
   enemyLivingSettlers,
   expectedGatherYield,
-  flagGood,
+  yardGood,
 } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
@@ -76,10 +76,6 @@ function buildingTile(index: number): { x: number; y: number } {
     x: BUILDING_ORIGIN.x + (index % BUILDING_COLUMNS) * BUILDING_STEP,
     y: BUILDING_ORIGIN.y + Math.floor(index / BUILDING_COLUMNS) * BUILDING_STEP,
   };
-}
-
-export function gatherFlagCell(index: number): { x: number; y: number } {
-  return { x: GATHER_FLAG_X, y: GATHER_Y0 + index * GATHER_STEP };
 }
 
 function buildBuildings(sim: Simulation): void {
@@ -198,9 +194,8 @@ export const sandboxScene: SceneDefinition = {
       predicate: (sim) => countComponent(sim, Felling) === 0 && countComponent(sim, MineDeposit) === 0,
     },
     {
-      label: 'each gathered good reaches its own flag whole',
-      predicate: (sim) =>
-        GATHERERS.every((g, i) => flagGood(sim, gatherFlagCell(i), g.good) === expectedGatherYield(g)),
+      label: 'each gathered good piles WHOLE onto the ground heaps by its flag',
+      predicate: (sim) => GATHERERS.every((g) => yardGood(sim, g.good) === expectedGatherYield(g)),
     },
     {
       label: 'the blue soldiers advanced from their start column into combat',

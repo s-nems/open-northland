@@ -18,7 +18,6 @@ import {
   Position,
   Settler,
   Stance,
-  Stockpile,
   Weapon,
   WorkFlag,
 } from '../../components/index.js';
@@ -262,10 +261,12 @@ export function setStance(
 /**
  * Place / move one OWNED gatherer's **work flag** to node (x,y) — the player's "work here" order (the
  * gathering twin of {@link moveUnit}, mapped from Ctrl+Right-Click). If the gatherer already carries a
- * {@link WorkFlag} whose flag entity still exists, that flag is **relocated** to (x,y) (its banked goods
- * ride along); otherwise a fresh flag — a bare uncapped {@link Stockpile} marked {@link DeliveryFlag} — is
- * created there and bound with the {@link DEFAULT_WORK_FLAG_RADIUS}. From then on the gatherer harvests
- * only within that flag's radius, carries only what it dug, and banks its harvest there ({@link planGatherer}).
+ * {@link WorkFlag} whose flag entity still exists, that flag is **relocated** to (x,y) — only the marker
+ * moves; the goods already dropped stay pinned to their tiles (a flag stores nothing). Otherwise a fresh
+ * flag — a pure {@link DeliveryFlag} marker (no {@link Stockpile}: the harvest piles on the GROUND around
+ * it, not into it) — is created there and bound with the {@link DEFAULT_WORK_FLAG_RADIUS}. From then on the
+ * gatherer harvests only within that flag's radius, carries only what it dug, and banks it there
+ * ({@link planGatherer}).
  *
  * Recoverable bad input (skipped, still logged for faithful replay): a mapless sim (no cells); a dead/stale
  * target, a non-settler, a NEUTRAL (unowned) entity, or a settler whose **job cannot harvest** — only a
@@ -290,16 +291,18 @@ export function setWorkFlag(
 
   const wf = world.tryGet(e, WorkFlag);
   if (wf !== undefined && world.has(wf.flag, Position)) {
-    // Relocate the gatherer's existing flag (Position is mutated in place, as the MovementSystem does).
+    // Relocate the gatherer's existing flag — only the marker moves (Position mutated in place, as the
+    // MovementSystem does). The goods already dropped are separate ground heaps pinned to their own tiles,
+    // so they stay put; the gatherer just starts piling FRESH harvest around the flag's new spot.
     const p = world.get(wf.flag, Position);
     p.x = pos.x;
     p.y = pos.y;
     return;
   }
-  // No live flag yet (fresh gatherer, or its flag was removed) — create one and bind / re-point.
+  // No live flag yet (fresh gatherer, or its flag was removed) — create a pure marker (Position +
+  // DeliveryFlag; it holds NO goods, the harvest piles on the ground around it) and bind / re-point.
   const flag = world.create();
   world.add(flag, Position, { x: pos.x, y: pos.y });
-  world.add(flag, Stockpile, { amounts: new Map<number, number>() });
   world.add(flag, DeliveryFlag, {});
   if (wf !== undefined)
     wf.flag = flag; // stale binding — re-point it, keeping the gatherer's radius

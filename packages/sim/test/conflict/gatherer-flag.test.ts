@@ -22,6 +22,7 @@ import {
 import type { Command } from '../../src/core/commands.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { CORE_INVARIANTS, Simulation, type TerrainMap, checkInvariants, fx } from '../../src/index.js';
+import { MAX_GROUND_STACK } from '../../src/systems/agents/effects-goods.js';
 import { type SystemContext, aiSystem, atomicSystem, setWorkFlag } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
@@ -109,7 +110,8 @@ function makeWoodcutter(sim: Simulation, x: number, y: number): Entity {
   return e;
 }
 
-/** Bind `gatherer` to a fresh flag (a bare uncapped stockpile) at tile (fx,fy); returns the flag entity. */
+/** Bind `gatherer` to a fresh flag — a pure {@link DeliveryFlag} marker (NO Stockpile; the harvest piles on
+ *  the ground around it) at tile (fx,fy). Returns the flag entity. */
 function bindToFlag(
   sim: Simulation,
   gatherer: Entity,
@@ -119,9 +121,23 @@ function bindToFlag(
 ): Entity {
   const flag = sim.world.create();
   sim.world.add(flag, Position, { x: fx.fromInt(fxTile), y: fx.fromInt(fyTile) });
-  sim.world.add(flag, Stockpile, { amounts: new Map<number, number>() });
+  sim.world.add(flag, DeliveryFlag, {});
   sim.world.add(gatherer, WorkFlag, { flag, radius });
   return flag;
+}
+
+/** The loose ground HEAPS a flag-bound gatherer stacks its harvest onto — bare `Stockpile+Position` piles
+ *  with NO {@link GroundDrop} (a felled/foreign trunk), {@link DeliveryFlag} (the marker) or {@link Building}
+ *  (a warehouse). This is the goods yard the delivery spreads onto around the flag. */
+function groundHeaps(sim: Simulation): Entity[] {
+  return [...sim.world.query(Stockpile)].filter(
+    (e) => !sim.world.has(e, GroundDrop) && !sim.world.has(e, DeliveryFlag) && !sim.world.has(e, Building),
+  );
+}
+
+/** Total WOOD across the goods-yard heaps (see {@link groundHeaps}). */
+function groundHeapWood(sim: Simulation): number {
+  return groundHeaps(sim).reduce((sum, e) => sum + (sim.world.get(e, Stockpile).amounts.get(WOOD) ?? 0), 0);
 }
 
 /** A bare uncapped store (a warehouse) at tile (x,y). */
@@ -171,7 +187,7 @@ function runTicks(sim: Simulation, ticks: number): string[] {
 }
 
 describe('flag-bound gatherer — banks its harvest at its own flag (req 1)', () => {
-  it('delivers its felled wood to its bound flag, not the nearer warehouse', () => {
+  it('delivers its felled wood to a heap by its bound flag, not the nearer warehouse', () => {
     // gatherer@0, tree@1 (in radius), a warehouse@2 (nearer), the bound flag@4 (farther).
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(8, 1) });
     const gatherer = makeWoodcutter(sim, 0, 0);
@@ -181,10 +197,12 @@ describe('flag-bound gatherer — banks its harvest at its own flag (req 1)', ()
 
     const violations = runTicks(sim, 600);
 
-    // The whole yield reached the bound flag; the nearer warehouse never received a unit.
-    expect(storeWood(sim, flag)).toBe(TREE_WOOD_YIELD);
+    // The whole yield landed as a ground heap by the flag; the nearer warehouse never received a unit; the
+    // flag itself stores NOTHING (a pure marker — the goods sit on the ground beside it).
+    expect(groundHeapWood(sim)).toBe(TREE_WOOD_YIELD);
     expect(storeWood(sim, warehouse)).toBe(0);
-    // The tree is felled and its trunk fully carried off.
+    expect(sim.world.has(flag, Stockpile)).toBe(false);
+    // The tree is felled and its trunk fully carried off (the yard heap is not a GroundDrop).
     expect([...sim.world.query(Resource)]).toHaveLength(0);
     expect([...sim.world.query(GroundDrop)]).toHaveLength(0);
     expect(violations).toEqual([]);
@@ -238,15 +256,15 @@ describe('flag-bound gatherer — carries only what it dug (req 2)', () => {
   it('never touches a foreign loose pile over a full run — only its own tree reaches the flag', () => {
     const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(12, 1) });
     const gatherer = makeWoodcutter(sim, 0, 0);
-    const flag = bindToFlag(sim, gatherer, 5, 0, WIDE_RADIUS);
+    bindToFlag(sim, gatherer, 5, 0, WIDE_RADIUS);
     placeFellableTree(sim, 1, 0); // its own work, in radius
     const loose = makeLooseTrunk(sim, 8, 0, TREE_WOOD_YIELD); // in radius, but not its own — must be ignored
 
     const violations = runTicks(sim, 600);
 
-    expect(storeWood(sim, flag)).toBe(TREE_WOOD_YIELD); // exactly its own tree's yield, no more
+    expect(groundHeapWood(sim)).toBe(TREE_WOOD_YIELD); // exactly its own tree's yield piled by the flag, no more
     expect(storeWood(sim, loose)).toBe(TREE_WOOD_YIELD); // the foreign pile is left in peace
-    expect(sim.world.has(loose, Stockpile)).toBe(true); // never collected / reaped
+    expect(sim.world.has(loose, GroundDrop)).toBe(true); // still an untouched, uncollected trunk
     expect(violations).toEqual([]);
   });
 });
@@ -269,7 +287,7 @@ describe('flag-bound gatherer — works only within its flag radius (req 3)', ()
     // flag@1, radius 4; the only tree is @20 (dist 38 ≫ radius). The gatherer must never roam out to it.
     const sim = new Simulation({ seed: 2, content: testContent(), map: grassMap(24, 1) });
     const gatherer = makeWoodcutter(sim, 1, 0);
-    const flag = bindToFlag(sim, gatherer, 1, 0, NARROW_RADIUS);
+    bindToFlag(sim, gatherer, 1, 0, NARROW_RADIUS);
     placeFellableTree(sim, 20, 0);
 
     const violations = runTicks(sim, 200);
@@ -277,7 +295,7 @@ describe('flag-bound gatherer — works only within its flag radius (req 3)', ()
     // The out-of-range tree is never chopped, nothing is banked, and the gatherer stayed home by its flag.
     expect([...sim.world.query(Resource)]).toHaveLength(1);
     expect(sim.world.get([...sim.world.query(Felling)][0] as Entity, Felling).chopsLeft).toBe(CHOPS_TO_FELL);
-    expect(storeWood(sim, flag)).toBe(0);
+    expect(groundHeapWood(sim)).toBe(0); // no harvest ⇒ no goods heaps by the flag
     expect(fx.toInt(sim.world.get(gatherer, Position).x)).toBeLessThanOrEqual(NARROW_RADIUS);
     expect(violations).toEqual([]);
   });
@@ -309,7 +327,7 @@ describe('setWorkFlag command — place / move a gatherer flag (Ctrl+Right-Click
     expect(sim.world.has(g, WorkFlag)).toBe(true);
     const wf = sim.world.get(g, WorkFlag);
     expect(sim.world.has(wf.flag, DeliveryFlag)).toBe(true); // marked so render draws the flag above goods
-    expect(sim.world.has(wf.flag, Stockpile)).toBe(true);
+    expect(sim.world.has(wf.flag, Stockpile)).toBe(false); // a PURE marker — it stores nothing
     expect(fx.toInt(sim.world.get(wf.flag, Position).x)).toBe(6);
     expect(wf.radius).toBeGreaterThan(0);
   });
@@ -360,6 +378,56 @@ describe('setWorkFlag command — place / move a gatherer flag (Ctrl+Right-Click
     sim.step();
     expect(sim.world.has(g, WorkFlag)).toBe(true);
     expect(fx.toInt(sim.world.get(sim.world.get(g, WorkFlag).flag, Position).x)).toBe(6);
+  });
+});
+
+describe('flag-bound gatherer — goods pile on the GROUND, capped and pinned (not on the flag)', () => {
+  const PLAYER = 0;
+  const nodeOfTile = (t: number): { x: number; y: number } => ({ x: 2 * t, y: 0 });
+
+  it('spreads a delivery over CAPPED heaps, spilling to the next tile past MAX_GROUND_STACK', () => {
+    // Two trees in radius (2·yield = 8 wood > the 5-per-tile cap): the flag ends up centred in more than one
+    // heap, each ≤ MAX_GROUND_STACK, summing to the whole yield.
+    const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(20, 1) });
+    const gatherer = makeWoodcutter(sim, 0, 0);
+    bindToFlag(sim, gatherer, 5, 0, WIDE_RADIUS);
+    placeFellableTree(sim, 1, 0);
+    placeFellableTree(sim, 2, 0);
+
+    const violations = runTicks(sim, 1500);
+
+    const heaps = groundHeaps(sim);
+    const total = 2 * TREE_WOOD_YIELD;
+    expect(groundHeapWood(sim)).toBe(total); // every unit banked on the ground
+    expect(heaps.length).toBe(Math.ceil(total / MAX_GROUND_STACK)); // spilled into the fewest capped heaps
+    for (const h of heaps) {
+      expect(sim.world.get(h, Stockpile).amounts.get(WOOD) ?? 0).toBeLessThanOrEqual(MAX_GROUND_STACK);
+    }
+    expect(violations).toEqual([]);
+  });
+
+  it('does NOT move already-dropped goods when the flag is relocated (they never teleport)', () => {
+    const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(40, 1) });
+    const gatherer = makeWoodcutter(sim, 0, 0);
+    sim.world.add(gatherer, Owner, { player: PLAYER });
+    const flag = bindToFlag(sim, gatherer, 5, 0, WIDE_RADIUS);
+    placeFellableTree(sim, 1, 0);
+
+    runTicks(sim, 600); // fell + carry + deliver: a heap forms at the flag tile (5,0)
+    const heaps = groundHeaps(sim);
+    expect(heaps).toHaveLength(1);
+    const heap = heaps[0] as Entity;
+    const heapX = fx.toInt(sim.world.get(heap, Position).x);
+    const heapFill = sim.world.get(heap, Stockpile).amounts.get(WOOD) ?? 0;
+    expect(heapX).toBe(5); // dropped by the flag's original spot
+    expect(heapFill).toBe(TREE_WOOD_YIELD);
+
+    // Relocate the flag far away — only the MARKER moves; the goods stay pinned to their tile.
+    setWorkFlag(sim.world, ctxOf(sim), { kind: 'setWorkFlag', entity: gatherer, ...nodeOfTile(15) });
+
+    expect(fx.toInt(sim.world.get(flag, Position).x)).toBe(15); // the flag moved…
+    expect(fx.toInt(sim.world.get(heap, Position).x)).toBe(heapX); // …but the heap did NOT follow it
+    expect(sim.world.get(heap, Stockpile).amounts.get(WOOD) ?? 0).toBe(heapFill);
   });
 });
 

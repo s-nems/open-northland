@@ -40,15 +40,19 @@ export function classify(components: Readonly<Record<string, unknown>>): DrawKin
   // node but from the dead-tree/debris atlas. Checked before Settler/Stockpile (a stump is neither).
   if ('Stump' in components) return 'stump';
   if ('Settler' in components) return 'settler';
+  // A designated delivery flag — a PURE MARKER (Position + DeliveryFlag, no Stockpile: it holds no goods,
+  // the harvest piles as separate loose heaps around it). Drawn as the flag graphic and painted ON TOP of
+  // any co-located heap. Checked before the Stockpile paths since a flag carries no Stockpile of its own.
+  if ('DeliveryFlag' in components) return 'stockpile';
   // A freshly-felled trunk still on the ground (a Stockpile carrying the GroundDrop marker) draws its
   // pickup-stage LOG graphic, distinct from a tidy delivery pile — the original shows a different object
   // for uncollected harvest than for the stored heap. Checked before the plain Stockpile so a marked drop
   // never falls through to the flag/heap path.
   if ('GroundDrop' in components && 'Stockpile' in components) return 'grounddrop';
-  // A bare Stockpile with NO Building is a loose ground pile or a delivery flag (the gathering economy's
-  // dropped goods + collection points, spawned by ai-supply.ts). Checked AFTER Building so a warehouse/HQ
-  // store — which carries both Building and Stockpile — stays a `building`, matching the sim's own
-  // ground-pile rule (`nearestGroundPile`: Stockpile ∧ Position ∧ ¬Building).
+  // A bare Stockpile with NO Building is a loose ground pile (the gathering economy's dropped goods heaps,
+  // the yard a flag-bound gatherer stacks around its flag). Checked AFTER Building so a warehouse/HQ store —
+  // which carries both Building and Stockpile — stays a `building`, matching the sim's own ground-pile rule
+  // (`nearestGroundPile`: Stockpile ∧ Position ∧ ¬Building).
   if ('Stockpile' in components) return 'stockpile';
   return null; // an entity with a Position but no drawable marker is skipped (e.g. a pure mover)
 }

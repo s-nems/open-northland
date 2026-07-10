@@ -104,27 +104,20 @@ export function resolveStockpileDraw(binding: number | StockpileBinding, item: D
 }
 
 /**
- * Resolve the ordered layer refs for a stockpile. A pile draws exactly its own graphic: a FILLED loose pile
- * draws its per-fill heap alone (the heap grows with its contents — a hand-dropped or gathered pile of goods
- * resting on the ground), while an EMPTY pile draws the flag marker (a designated collection point with
- * nothing in it yet). The GPU layer binds these refs to real atlas layers; this pure helper pins the draw
- * order without needing Pixi in tests.
- *
- * A designated **delivery flag** ({@link DrawItem.isFlag}) that HOLDS goods is the exception: it draws its
- * heap FIRST and its flag graphic SECOND, so the flag stays visible ABOVE the accumulated pile (a collection
- * point never buries its own marker) — layer 0 paints behind, later layers in front (the GPU binds them in
- * order). An empty flag, and every loose pile, keep the single-layer behaviour above.
+ * Resolve the ordered layer refs for a stockpile-kind draw item — a single graphic each. A FILLED loose
+ * pile draws its per-fill heap (the heap grows with its contents — a hand-dropped or gathered pile of goods
+ * resting on the ground); a **delivery flag** ({@link DrawItem.isFlag}) — a marker that holds no goods —
+ * and an empty pile both draw the flag marker (a designated collection point). The flag never buries under
+ * its own goods because its heaps are SEPARATE entities the scene depth-sorts a hair behind it (a flag and
+ * its heaps are the same `stockpile` kind, split by {@link import('../scene/index.js').FLAG_PAINT_STEP}),
+ * not layers of one draw. The GPU layer binds the returned ref to a real atlas layer; this pure helper
+ * keeps the resolve testable without Pixi.
  */
 export function resolveStockpileLayerDraws(
   binding: number | StockpileBinding,
   item: DrawItem,
 ): BuildingDraw[] {
   if (typeof binding === 'number') return [{ bob: binding }];
-  // A held delivery flag: heap behind, flag marker on top. `binding.flag` is the flag graphic; the heap is
-  // the same per-fill frame a loose pile would draw.
-  if (item.isFlag === true && item.goodType !== undefined) {
-    return [resolveStockpileDraw(binding, item), unwrapBobRef(binding.flag)];
-  }
-  // resolveStockpileDraw already returns the heap for a held good and the flag for an empty pile.
+  // resolveStockpileDraw already returns the heap for a held good and the flag for an empty pile / marker.
   return [resolveStockpileDraw(binding, item)];
 }

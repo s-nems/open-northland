@@ -2,7 +2,13 @@ import type { WorldSnapshot } from '@vinland/sim';
 import type { ElevationField } from '../elevation.js';
 import { ONE, tileToScreen } from '../iso.js';
 import { type Viewport, isVisible } from '../viewport.js';
-import { type DrawItem, type MutableDrawItem, SPRITE_PAINT_ORDER, type SpriteState } from './draw-item.js';
+import {
+  type DrawItem,
+  FLAG_PAINT_STEP,
+  type MutableDrawItem,
+  SPRITE_PAINT_ORDER,
+  type SpriteState,
+} from './draw-item.js';
 import {
   classify,
   facingTowardTile,
@@ -193,6 +199,9 @@ export function collectSpriteScene(
     if (kind === null) continue;
     const pos = readPosition(components);
     if (pos === null) continue;
+    // A delivery flag is a `stockpile`-kind marker that must paint just ABOVE a co-located goods heap of
+    // the same kind (both resolve to the same feet anchor). Known here so it folds into the depth key.
+    const isFlag = 'DeliveryFlag' in components;
     liveRefs.add(entity.id);
     // Fixed (scaled int) -> float tile coordinate. Render-only; never re-enters the sim.
     const tileX = pos.x / ONE;
@@ -245,9 +254,13 @@ export function collectSpriteScene(
       x: drawX,
       y: drawY,
       // Feet-anchor depth: lower (greater y), then further-right (greater x), then a per-kind sub-cell
-      // bias (a settler in front of the node it stands on, a flag in front of its ground drops), then id.
-      // A total order, so the sort is deterministic regardless of snapshot iteration nuances.
-      depth: tileY * ROW_STRIDE + tileX + SPRITE_PAINT_ORDER[kind] * PAINT_ORDER_EPS,
+      // bias (a settler in front of the node it stands on, a flag in front of its ground drops — plus a
+      // half-step so a flag out-sorts a co-located heap of its own kind), then id. A total order, so the
+      // sort is deterministic regardless of snapshot iteration nuances.
+      depth:
+        tileY * ROW_STRIDE +
+        tileX +
+        (SPRITE_PAINT_ORDER[kind] + (isFlag ? FLAG_PAINT_STEP : 0)) * PAINT_ORDER_EPS,
       state,
     };
     // Per-kind reads, ASSIGNED (not spread) so an absent fact stays an absent property under
@@ -335,8 +348,9 @@ export function collectSpriteScene(
       const { goodType, fill } = readStockpile(components);
       if (goodType !== undefined) item.goodType = goodType;
       if (fill !== undefined) item.fill = fill;
-      // A designated delivery flag keeps its flag drawn above the heap (vs a loose pile's heap alone).
-      if ('DeliveryFlag' in components) item.isFlag = true;
+      // A designated delivery flag draws the flag graphic and is painted above a co-located heap (the
+      // depth key already carries the FLAG_PAINT_STEP bump; this just tags the item for the resolver).
+      if (isFlag) item.isFlag = true;
     }
     const drawLift = lift + arcLift;
     if (drawLift !== 0) item.lift = drawLift;

@@ -1,4 +1,5 @@
 import { buildSpriteScene, resolveResourceDraw, resolveStockpileDraw } from '@vinland/render';
+import { systems } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import { WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import {
@@ -30,9 +31,10 @@ import { sandboxScene } from '../src/scenes/sandbox.js';
 /**
  * The headless half of the `?scene=sandbox` acceptance scene (the browser half is the human's pixel
  * sign-off). The global sandbox gathers EVERY raw good — one trade per good — so after the run every source node is
- * consumed (no `resource` draws), each felled tree left a `stump` (carrying wood), and each good piles WHOLE
- * at its own delivery flag (one `stockpile` heap per good). Plus that the per-good + stump bindings RESOLVE
- * each good/stump to its OWN object (and a mined deposit steps its node frame down by level).
+ * consumed (no `resource` draws), each felled tree left a `stump` (carrying wood), and each good piles onto the
+ * GROUND around its delivery flag as capped `stockpile` heaps (≤ MAX_GROUND_STACK per tile, so a good with more
+ * than a stack spills into several heaps). Plus that the per-good + stump bindings RESOLVE each good/stump to its
+ * OWN object (and a mined deposit steps its node frame down by level).
  */
 
 const scene = sandboxScene;
@@ -65,18 +67,22 @@ describe('gathering scene — render classification after all six gathering cycl
     expect(stumps.every((s) => s.goodType === GOODS.wood)).toBe(true);
   });
 
-  it('each good piles WHOLE at its own gatherer flag (one stockpile heap per good, by good)', () => {
-    // Once every trunk + ore pile is collected, the only FILLED stockpiles are the six lane delivery flags
-    // (the selectable cluster's gatherers each carry an EMPTY flag — no good in radius — so those are skipped).
-    const piles = draws.filter((d) => d.kind === 'stockpile' && d.goodType !== undefined);
-    expect(piles).toHaveLength(6); // one HELD flag per good
-    const byGood = new Map(piles.map((p) => [p.goodType, p.fill]));
-    expect(byGood.get(GOODS.wood)).toBe(WOOD_TREES * TREE_WOOD_YIELD);
-    expect(byGood.get(GOODS.stone)).toBe(STONE_DEPOSIT_UNITS);
-    expect(byGood.get(GOODS.mud)).toBe(CLAY_DEPOSIT_UNITS);
-    expect(byGood.get(GOODS.iron)).toBe(IRON_DEPOSIT_UNITS);
-    expect(byGood.get(GOODS.gold)).toBe(GOLD_DEPOSIT_UNITS);
-    expect(byGood.get(GOODS.mushroom)).toBe(MUSHROOM_NODES);
+  it('each good piles onto CAPPED ground heaps around its gatherer flag (summing to the whole yield)', () => {
+    // The flag itself is an empty MARKER (no goodType — excluded here); each good's harvest spreads onto loose
+    // ground heaps beside it, each ≤ MAX_GROUND_STACK, so a good with more than a stack shows several heaps.
+    const heaps = draws.filter((d) => d.kind === 'stockpile' && d.goodType !== undefined);
+    const banked = new Map<number, number>();
+    for (const h of heaps) {
+      expect(h.fill ?? 0).toBeLessThanOrEqual(systems.MAX_GROUND_STACK); // every tile stays under the cap
+      banked.set(h.goodType as number, (banked.get(h.goodType as number) ?? 0) + (h.fill ?? 0));
+    }
+    // Per good, the heaps SUM to the whole yield (goods conserved — the flag holds none of it).
+    expect(banked.get(GOODS.wood)).toBe(WOOD_TREES * TREE_WOOD_YIELD);
+    expect(banked.get(GOODS.stone)).toBe(STONE_DEPOSIT_UNITS);
+    expect(banked.get(GOODS.mud)).toBe(CLAY_DEPOSIT_UNITS);
+    expect(banked.get(GOODS.iron)).toBe(IRON_DEPOSIT_UNITS);
+    expect(banked.get(GOODS.gold)).toBe(GOLD_DEPOSIT_UNITS);
+    expect(banked.get(GOODS.mushroom)).toBe(MUSHROOM_NODES);
   });
 });
 
