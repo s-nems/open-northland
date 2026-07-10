@@ -21,7 +21,6 @@ export {
   buildSpriteScene,
   collectSpriteScene,
   drawableEntityRefs,
-  MELEE_LUNGE_FRACTION,
   PROJECTILE_ARC_PEAK_FRACTION,
   PROJECTILE_ARC_PEAK_MAX_PX,
   type SpriteScene,

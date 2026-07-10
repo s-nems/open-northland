@@ -2,7 +2,6 @@ import type { WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import { collectSpriteScene } from '../src/data/scene/index.js';
 import {
-  MELEE_LUNGE_FRACTION,
   ONE,
   PROJECTILE_ARC_PEAK_FRACTION,
   PROJECTILE_ARC_PEAK_MAX_PX,
@@ -356,11 +355,12 @@ describe('buildScene', () => {
     expect(arrow?.lift ?? 0).toBeGreaterThan(0); // still airborne
   });
 
-  it('a mid-swing MELEE attacker lunges its drawn anchor toward its target, depth key untouched', () => {
-    // Attacker (1,1) swings (atomic 81) at a target one column EAST (2,1) — inside the melee band (the
-    // scenes' weapons: melee maxRange ≤ 2), so the drawn sprite advances the lunge fraction of the
-    // 68 px gap. Render-only: the depth key stays the true feet row, pinned against an idle twin on
-    // the attacker's own cell.
+  it('a mid-swing attacker plays the swing IN PLACE: anchor untouched, facing its target', () => {
+    // Attacker (1,1) swings (atomic 81) at a target one column EAST (2,1). The drawn anchor must
+    // stay exactly on the attacker's own feet — the attack frames carry their authored advance in
+    // per-frame foot offsets, and an extra positional nudge doubled it into a ground slide (the
+    // rejected melee "lunge"). Facing still resolves toward the live target; the depth key is pinned
+    // against an idle twin on the attacker's own cell.
     const attacker = entity(1, 1, 1, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId: 81, elapsed: 6, duration: 12, targetEntity: 2, targetTile: null },
@@ -370,53 +370,15 @@ describe('buildScene', () => {
     const scene = buildScene(snapshotOf([attacker, target, idleTwin]), FLAT_3x2);
     const drawn = scene.find((d) => d.kind === 'settler' && d.ref === 1);
     const base = tileToScreen(1, 1);
-    const gapX = tileToScreen(2, 1).x - base.x;
-    // Mid-swing (elapsed 6 of 12) sits on the envelope's plateau — the full lunge fraction.
-    expect(drawn?.x).toBeCloseTo(base.x + gapX * MELEE_LUNGE_FRACTION);
-    expect(drawn?.y).toBeCloseTo(base.y); // same row — no vertical component
-    expect(drawn?.depth).toBe(scene.find((d) => d.kind === 'settler' && d.ref === 4)?.depth); // lunge never moves the key
+    expect(drawn?.x).toBeCloseTo(base.x); // swings where it stands
+    expect(drawn?.y).toBeCloseTo(base.y);
+    expect(drawn?.facing).toBe(4); // faces its mark (E)
+    expect(drawn?.depth).toBe(scene.find((d) => d.kind === 'settler' && d.ref === 4)?.depth);
   });
 
-  it('the lunge is ENVELOPED over the swing: a step in at the start, back on the anchor at the end', () => {
-    // Same duel as above at the swing's FIRST tick (elapsed 1 → 1/3 of the ramp) and LAST tick
-    // (elapsed 12 of 12 → fully recovered). A flat full-fraction offset held for the whole atomic read
-    // as the attacker TELEPORTING forward at every swing and snapping back after it.
-    const base = tileToScreen(1, 1);
-    const gapX = tileToScreen(2, 1).x - base.x;
-    const atTick = (elapsed: number): number | undefined => {
-      const attacker = entity(1, 1, 1, {
-        Settler: { tribe: 0 },
-        CurrentAtomic: { atomicId: 81, elapsed, duration: 12, targetEntity: 2, targetTile: null },
-      });
-      const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
-      return buildScene(snapshotOf([attacker, target]), FLAT_3x2).find(
-        (d) => d.kind === 'settler' && d.ref === 1,
-      )?.x;
-    };
-    expect(atTick(1)).toBeCloseTo(base.x + (gapX * MELEE_LUNGE_FRACTION) / 3); // ramping in
-    expect(atTick(12)).toBeCloseTo(base.x); // last tick — back on the true anchor
-  });
-
-  it('a bow firing at its NEAR edge (3 nodes) never lunges — the band is node-, not tile-Manhattan', () => {
-    // A short bow's minRange is 3 half-cell NODES = 1.5 tiles, which the old tile-rounded band
-    // admitted (round(1.5) = 2 ≤ 2) — archers visibly dashed at their targets on every shot. In node
-    // units the split is exact: 3 nodes is outside the ≤ 2-node melee band.
-    const archer = entity(1, 1, 1, {
-      Settler: { tribe: 0 },
-      CurrentAtomic: { atomicId: 81, elapsed: 6, duration: 12, targetEntity: 2, targetTile: null },
-    });
-    const target = entity(2, 2.5, 1, { Settler: { tribe: 0 } }); // 1.5 tiles east = 3 nodes
-    const scene = buildScene(snapshotOf([archer, target]), FLAT_3x2);
-    const drawn = scene.find((d) => d.kind === 'settler' && d.ref === 1);
-    const base = tileToScreen(1, 1);
-    expect(drawn?.x).toBeCloseTo(base.x); // stands its ground
-    expect(drawn?.facing).toBe(4); // still faces its mark (E)
-  });
-
-  it('a RANGED attacker (target beyond the melee band) faces its target but never lunges', () => {
-    // The archer at (1,1) draws on a target 5 columns east — far past the 2-cell melee band (the
-    // scenes' bows: minRange ≥ 3), so its drawn anchor stays put; the arrow crosses the gap, not the
-    // archer.
+  it('a RANGED attacker likewise stands its ground and faces its target', () => {
+    // The archer at (1,1) draws on a target 5 columns east: anchor in place, the arrow crosses the
+    // gap, not the archer.
     const archer = entity(1, 1, 1, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId: 81, elapsed: 3, targetEntity: 2, targetTile: null },
