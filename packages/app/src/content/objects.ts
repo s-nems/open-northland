@@ -190,9 +190,10 @@ export async function loadMapObjects(
       continue;
     }
     const screen = halfCellToScreen(hx, hy);
-    // The `emla` half-cell maps to cell coordinate (hx/2, hy/2) — the sampler input. The lift is the
-    // DRAW offset only; `y` (the feet anchor + depth key) stays pre-lift so objects occlude by map row.
-    const lift = elevation?.liftAt(hx / 2, hy / 2) ?? 0;
+    // The node sampler owns the half-cell→cell convention (a cell-centre node lifts exactly like
+    // its ground-mesh vertex, so trees sit ON the warped ground). The lift is the DRAW offset only;
+    // `y` (the feet anchor + depth key) stays pre-lift so objects occlude by map row.
+    const lift = elevation?.liftAtNode(hx, hy) ?? 0;
     // The baked `embr` multiplier at the anchor cell — the original shades landscape-object pixels
     // with the ground's plane (measured: mines/stones/grass track it; trees stay full-bright, so the
     // tree logic types omit the field — source basis "brightness").

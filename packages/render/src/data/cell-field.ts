@@ -11,7 +11,7 @@ export type CellSampler = (col: number, row: number) => number;
 
 /**
  * Build the bilinear, edge-clamped sampler over a row-major per-cell lane. Fractional inputs (a
- * walking settler, a diamond corner between cell centres) interpolate; a sample past an edge repeats
+ * walking settler, a position between cell centres) interpolate; a sample past an edge repeats
  * the boundary cell (no wrap, no OOB). The sampler closes over the array by reference (never
  * mutated). Callers guarantee a non-empty lane and positive dims (their absent-lane paths return
  * shared flat/neutral fields instead).

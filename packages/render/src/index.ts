@@ -113,7 +113,6 @@ export {
 } from './data/viewport.js';
 export {
   TRANSITION_NONE,
-  TRANSITION_PAIRS,
   cellNode,
   nodeCell,
   nodeLaneUV,

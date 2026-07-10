@@ -652,6 +652,21 @@ export const GfxPattern = z.strictObject({
 export type GfxPattern = z.infer<typeof GfxPattern>;
 
 /**
+ * A transition lane's "no overlay here" sentinel (u8 max) — the shared half of the `emt1..emt4`
+ * encoding contract between the pipeline's lane validation, this schema's refine, and the render's
+ * decode (`packages/render/src/data/terrain.ts` keeps a documented local twin — that package stays
+ * import-decoupled from `@vinland/data` by design).
+ */
+export const TRANSITION_NONE = 255;
+
+/**
+ * The pair variants each `[transition]` record carries (six `GfxCoordsA`/`GfxCoordsB` lines) — the
+ * divisor of the `emt` lane encoding: `⌊value / 6⌋` picks the record, `value % 6` the pair. Shared
+ * like {@link TRANSITION_NONE}.
+ */
+export const TRANSITION_PAIRS = 6;
+
+/**
  * One `[transition]` from `Data/engine2d/inis/patterntransitions/transitions.cif` — a **ground
  * transition overlay** (38 records): a translucent 256×256 texture blended over the base pattern
  * where two ground families meet. A record names an RGB texture and a separate alpha-mask picture
@@ -1232,9 +1247,8 @@ export const TerrainMapFile = z
     (m) => {
       if (m.transitions === undefined) return true;
       const t = m.transitions;
-      const NONE = 255;
       return [t.a1, t.b1, t.a2, t.b2].every((lane) =>
-        lane.every((v) => v === NONE || Math.floor(v / 6) < t.types.length),
+        lane.every((v) => v === TRANSITION_NONE || Math.floor(v / TRANSITION_PAIRS) < t.types.length),
       );
     },
     () => ({
