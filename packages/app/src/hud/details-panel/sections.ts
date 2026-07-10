@@ -190,7 +190,13 @@ export function drawBuilding(
   }
 
   chrome.window(layout.workers.frame);
-  chrome.headline(layout.workers.title, ui('housewindow', HOUSEWINDOW.workers, 'Pracownicy'));
+  // Headline shows filled / total slots ("Pracownicy 2/13") so the player sees how many this building
+  // still employs; the worker vs carrier split reads off the door-badge colour.
+  const workersLabel = ui('housewindow', HOUSEWINDOW.workers, 'Pracownicy');
+  chrome.headline(
+    layout.workers.title,
+    model.capacity > 0 ? `${workersLabel} ${model.workers.length}/${model.capacity}` : workersLabel,
+  );
   if (model.workers.length > 0) {
     const body = layout.workers.body;
     model.workers.slice(0, MAX_WORKER_ROWS).forEach((row, i) => {

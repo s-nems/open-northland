@@ -30,10 +30,14 @@ function stanceLabel(mode: number | undefined): string {
 
 type BuildingDef = ContentSet['buildings'][number];
 type GoodDef = ContentSet['goods'][number];
+type JobDef = ContentSet['jobs'][number];
 
 export interface UnitPanelModelContext {
   readonly buildings: readonly BuildingDef[];
   readonly goods: readonly GoodDef[];
+  /** The content jobs — the worker-row labels resolve a bound settler's job name from here (a building's
+   *  worker vs carrier slots), so the panel names them even when they're not in the profession catalog. */
+  readonly jobs: readonly JobDef[];
 }
 
 /**
@@ -91,6 +95,9 @@ export interface BuildingPanelModel {
   readonly builtPct: number;
   readonly stock: readonly StockRow[];
   readonly workers: readonly WorkerRow[];
+  /** Total worker+carrier slots this building type employs (sum of its `workers` slot counts) — how many
+   *  settlers can be assigned here, shown against the filled count. 0 for a building that employs nobody. */
+  readonly capacity: number;
   readonly showDefense: boolean;
   /** Approximation until a real building-defense mode component exists. */
   readonly defenseLabel: string;
@@ -222,7 +229,7 @@ function stockRows(ctx: UnitPanelModelContext, def: BuildingDef | undefined, sto
   return rows.map(({ index: _index, ...row }) => row);
 }
 
-function workersFor(snapshot: WorldSnapshot, buildingId: number): WorkerRow[] {
+function workersFor(ctx: UnitPanelModelContext, snapshot: WorldSnapshot, buildingId: number): WorkerRow[] {
   const rows: WorkerRow[] = [];
   for (const e of snapshot.entities) {
     if (!isSettler(e)) continue;
@@ -230,9 +237,17 @@ function workersFor(snapshot: WorldSnapshot, buildingId: number): WorkerRow[] {
     if (num(assignment?.workplace) !== buildingId) continue;
     const settler = (e.components.Settler ?? {}) as Comp;
     const atomic = e.components.CurrentAtomic as { targetEntity?: unknown } | undefined;
+    const jobType = num(settler.jobType);
+    // The shared profession catalog + i18n names a known job (a gatherer → "Zbieracz drewna", carrier →
+    // "Tragarz"); a worker-slot job the catalog doesn't carry (a backfilled generic worker) falls back to
+    // its content job name ("Pracownik"), then to the localized idle label.
+    const label =
+      professionDefForJob(jobType) !== undefined
+        ? jobLabel(jobType)
+        : (ctx.jobs.find((j) => j.typeId === jobType)?.name ?? jobLabel(jobType));
     rows.push({
       id: e.id,
-      label: jobLabel(num(settler.jobType)),
+      label,
       active: num(atomic?.targetEntity) === buildingId,
     });
   }
@@ -313,7 +328,8 @@ export function buildUnitPanelModel(
       level: num(b.level) ?? 0,
       builtPct: pct(num(b.built)),
       stock: stockRows(ctx, def, ent.components.Stockpile),
-      workers: workersFor(snapshot, entityId),
+      workers: workersFor(ctx, snapshot, entityId),
+      capacity: def?.workers?.reduce((sum, w) => sum + w.count, 0) ?? 0,
       showDefense: catalog?.id === HEADQUARTERS_ID || category === 'tower',
       // Pinned approximation until a defence-mode component exists; the original state/toggle strings
       // live at `housewindow` 140–143 ("Rozpocznij/Zatrzymaj Tryb Obrony", "Obrona rozpoczęta/zakończona.").

@@ -126,6 +126,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     backingScale: (c: HTMLCanvasElement) => screenScale(c, opts.app.renderer.resolution),
     buildings: opts.content.buildings,
     goods: opts.content.goods,
+    jobs: opts.content.jobs,
     onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),
   });
   // The contextual ACTION MENU (full original-art default menu; only "change profession" is wired on this

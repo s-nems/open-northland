@@ -94,6 +94,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   const ctx: UnitPanelModelContext = {
     buildings: opts.buildings,
     goods: opts.goods,
+    jobs: opts.jobs,
   };
 
   let selectedIds: ReadonlySet<number> = new Set();

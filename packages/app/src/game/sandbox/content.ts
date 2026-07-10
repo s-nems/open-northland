@@ -267,6 +267,15 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
   // draw the civilian body and, lacking a workhouse in the sandbox, stand idle until the economy lands).
   for (const p of PROFESSIONS)
     if (!jobs.has(p.jobType)) jobs.set(p.jobType, { typeId: p.jobType, id: p.key });
+  // Every worker-slot jobType ({@link BUILDING_WORKER_SLOTS}, extracted from ir.json) must resolve as a
+  // job or the content cross-reference check rejects the set. The sandbox's remapped id space doesn't
+  // carry the original's every distinct trade id, so backfill any still-missing slot job as a generic
+  // "Pracownik": it binds + badges + reads in the panel; only its distinct-trade identity is dropped
+  // (the deferred global-content id unification). The carrier slot resolves to the real 'Tragarz' above.
+  for (const slots of Object.values(BUILDING_WORKER_SLOTS))
+    for (const w of slots)
+      if (!jobs.has(w.jobType))
+        jobs.set(w.jobType, { typeId: w.jobType, id: `worker_${w.jobType}`, name: 'Pracownik' });
   for (const j of extras.jobs ?? []) if (!jobs.has(j.typeId)) jobs.set(j.typeId, j);
 
   const tribes = new Map<
@@ -481,10 +490,174 @@ interface SandboxBuildingRow {
 }
 
 /**
+ * Per-building WORKER + CARRIER capacity, by typeId — how many settlers of each job a building employs,
+ * so `assignWorker` (and the JobSystem) can staff it and the door-badge shows one marker per worker.
+ * Source basis: EXTRACTED from `ir.json`'s `workers` (the `[GfxHouse] logicworker` counts) verbatim —
+ * the counts and the worker/carrier split are the original's. The only remap is the CARRIER job: the
+ * original's carrier is jobtype 24, which the sandbox id space reuses for a gatherer, so carrier slots
+ * are rebased to {@link JOB_CARRIER} (the one job the badge + UI distinguish); the other `jobType` ids
+ * are the source's own `jobtypes.ini` ids (a data cross-reference — the sandbox may render an unmatched
+ * one with a fallback body, but the COUNT and the carrier split — what the player assigns — are exact).
+ * Residences (homes) employ nobody; they carry no row. Kept as sandbox data (not the clean-room
+ * catalog) because the carrier rebase lives in the sandbox job space.
+ */
+const BUILDING_WORKER_SLOTS: Readonly<Record<number, readonly { jobType: number; count: number }[]>> = {
+  1: [
+    { jobType: JOB_CARRIER, count: 3 },
+    { jobType: 8, count: 3 },
+    { jobType: 22, count: 3 },
+    { jobType: 15, count: 3 },
+  ], // headquarters
+  7: [
+    { jobType: JOB_CARRIER, count: 3 },
+    { jobType: 8, count: 3 },
+    { jobType: 22, count: 3 },
+    { jobType: 15, count: 3 },
+  ], // stock_00
+  8: [
+    { jobType: JOB_CARRIER, count: 3 },
+    { jobType: 8, count: 3 },
+    { jobType: 22, count: 3 },
+    { jobType: 15, count: 3 },
+  ], // stock_01
+  9: [
+    { jobType: JOB_CARRIER, count: 3 },
+    { jobType: 8, count: 3 },
+    { jobType: 22, count: 3 },
+    { jobType: 15, count: 3 },
+  ], // stock_02
+  10: [{ jobType: JOB_CARRIER, count: 1 }], // work_well_00
+  11: [{ jobType: JOB_CARRIER, count: 1 }], // work_hive_00
+  12: [
+    { jobType: 18, count: 4 },
+    { jobType: JOB_CARRIER, count: 1 },
+  ], // work_farm_00
+  13: [
+    { jobType: 19, count: 2 },
+    { jobType: JOB_CARRIER, count: 1 },
+  ], // work_mill_00
+  14: [
+    { jobType: 20, count: 1 },
+    { jobType: JOB_CARRIER, count: 1 },
+  ], // work_bakery_00
+  15: [
+    { jobType: 20, count: 2 },
+    { jobType: JOB_CARRIER, count: 1 },
+  ], // work_bakery_01
+  16: [
+    { jobType: 21, count: 2 },
+    { jobType: JOB_CARRIER, count: 1 },
+  ], // work_brewery
+  17: [
+    { jobType: 16, count: 2 },
+    { jobType: JOB_CARRIER, count: 1 },
+  ], // work_animal_farm
+  18: [
+    { jobType: 17, count: 1 },
+    { jobType: JOB_CARRIER, count: 1 },
+  ], // work_sewery_00
+  19: [
+    { jobType: 17, count: 2 },
+    { jobType: JOB_CARRIER, count: 1 },
+  ], // work_sewery_01
+  20: [
+    { jobType: 11, count: 1 },
+    { jobType: JOB_CARRIER, count: 1 },
+    { jobType: 8, count: 1 },
+  ], // work_pottery_00
+  21: [
+    { jobType: 11, count: 2 },
+    { jobType: JOB_CARRIER, count: 1 },
+    { jobType: 8, count: 2 },
+  ], // work_pottery_01
+  23: [
+    { jobType: 9, count: 1 },
+    { jobType: JOB_CARRIER, count: 1 },
+    { jobType: 8, count: 1 },
+  ], // work_joinery_00
+  24: [
+    { jobType: 9, count: 2 },
+    { jobType: JOB_CARRIER, count: 1 },
+    { jobType: 8, count: 1 },
+  ], // work_joinery_01
+  25: [
+    { jobType: 9, count: 3 },
+    { jobType: JOB_CARRIER, count: 1 },
+    { jobType: 8, count: 1 },
+  ], // work_joinery_02
+  26: [
+    { jobType: 9, count: 3 },
+    { jobType: JOB_CARRIER, count: 1 },
+    { jobType: 8, count: 1 },
+  ], // work_joinery_03
+  27: [
+    { jobType: 10, count: 1 },
+    { jobType: JOB_CARRIER, count: 1 },
+    { jobType: 8, count: 1 },
+  ], // work_armory_00
+  28: [
+    { jobType: 10, count: 2 },
+    { jobType: JOB_CARRIER, count: 1 },
+    { jobType: 8, count: 2 },
+  ], // work_armory_01
+  29: [
+    { jobType: 12, count: 1 },
+    { jobType: JOB_CARRIER, count: 1 },
+    { jobType: 8, count: 1 },
+  ], // work_mason_hut_00
+  30: [
+    { jobType: 12, count: 2 },
+    { jobType: JOB_CARRIER, count: 1 },
+    { jobType: 8, count: 1 },
+  ], // work_mason_hut_01
+  31: [
+    { jobType: 13, count: 1 },
+    { jobType: JOB_CARRIER, count: 1 },
+    { jobType: 8, count: 2 },
+  ], // work_smithy_00
+  32: [
+    { jobType: 13, count: 2 },
+    { jobType: JOB_CARRIER, count: 1 },
+    { jobType: 8, count: 2 },
+  ], // work_smithy_01
+  33: [
+    { jobType: 14, count: 2 },
+    { jobType: JOB_CARRIER, count: 1 },
+    { jobType: 8, count: 2 },
+  ], // work_coin_mint
+  34: [
+    { jobType: 29, count: 3 },
+    { jobType: JOB_CARRIER, count: 1 },
+  ], // work_herb_hut
+  35: [
+    { jobType: 30, count: 1 },
+    { jobType: JOB_CARRIER, count: 1 },
+    { jobType: 8, count: 1 },
+  ], // work_druid_00
+  36: [
+    { jobType: 30, count: 2 },
+    { jobType: JOB_CARRIER, count: 1 },
+    { jobType: 8, count: 2 },
+  ], // work_druid_01
+  39: [{ jobType: JOB_CARRIER, count: 4 }], // barracks
+  40: [
+    { jobType: 40, count: 3 },
+    { jobType: 41, count: 3 },
+    { jobType: JOB_CARRIER, count: 3 },
+  ], // tower_00
+  41: [
+    { jobType: 40, count: 4 },
+    { jobType: 41, count: 4 },
+    { jobType: JOB_CARRIER, count: 4 },
+  ], // tower_01
+};
+
+/**
  * Per-building sandbox behaviour overrides, keyed by typeId — a DATA table, so {@link buildingRow}
  * stays a pure spread and a new special building means a new row here, not another branch. (The
  * clean-room catalog stays pinned to ir.json; these stock/recipe pins are sandbox balance, not
- * extracted data.)
+ * extracted data.) A `workers` here REPLACES the extracted {@link BUILDING_WORKER_SLOTS} default (the
+ * joinery pins its own gatherer-fed plank producer for the production demo).
  */
 const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> = {
   [BUILDING_HEADQUARTERS]: { stock: STORE_STOCK },
@@ -505,11 +678,13 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
 };
 
 function buildingRow(b: VikingBuilding): SandboxBuildingRow {
+  const slots = BUILDING_WORKER_SLOTS[b.typeId];
   return {
     typeId: b.typeId,
     id: b.id,
     kind: b.kind,
     ...(b.kind === HOME_KIND ? { construction: HOME_UPGRADE_PIN } : {}),
-    ...BUILDING_OVERRIDES[b.typeId],
+    ...(slots !== undefined ? { workers: slots } : {}),
+    ...BUILDING_OVERRIDES[b.typeId], // an override's `workers` (the joinery's demo) wins over the default
   };
 }
