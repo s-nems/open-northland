@@ -1,7 +1,7 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import type { ElevationField } from '../elevation.js';
 import { tileToScreen } from '../iso.js';
-import type { DrawItem, SceneGround, SceneTerrain } from './draw-item.js';
+import type { DrawItem, SceneGround, SceneTerrain, SceneTransitions } from './draw-item.js';
 import { collectSpriteScene } from './sprite-scene.js';
 
 /**
@@ -36,6 +36,7 @@ export function terrainMapToScene(map: {
   readonly height: number;
   readonly typeIds: readonly number[];
   readonly ground?: SceneGround | undefined;
+  readonly transitions?: SceneTransitions | undefined;
   readonly elevation?: readonly number[] | undefined;
   readonly brightness?: readonly number[] | undefined;
 }): SceneTerrain {
@@ -44,6 +45,7 @@ export function terrainMapToScene(map: {
     height: map.height,
     typeIds: map.typeIds,
     ...(map.ground !== undefined ? { ground: map.ground } : {}),
+    ...(map.transitions !== undefined ? { transitions: map.transitions } : {}),
     ...(map.elevation !== undefined ? { elevation: map.elevation } : {}),
     ...(map.brightness !== undefined ? { brightness: map.brightness } : {}),
   };

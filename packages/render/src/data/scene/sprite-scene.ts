@@ -13,6 +13,7 @@ import {
   readBuiltPct,
   readCarrying,
   readEngaged,
+  readEquipmentWeaponGood,
   readFacing,
   readJobType,
   readOwnerPlayer,
@@ -269,6 +270,9 @@ export function collectSpriteScene(
       }
       const jobType = readJobType(components);
       if (jobType !== undefined) item.jobType = jobType;
+      // The equipped weapon good drives the drawn warrior look (bow slot → bow body) over the jobType.
+      const weaponGood = readEquipmentWeaponGood(components);
+      if (weaponGood !== undefined) item.weaponGood = weaponGood;
       const player = readOwnerPlayer(components);
       if (player !== undefined) item.player = player;
       // Only a born-young settler carries `Age` — the component-presence disambiguation of the age-class

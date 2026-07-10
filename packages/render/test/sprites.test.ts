@@ -736,6 +736,23 @@ describe('pickByJob — the per-job character pick', () => {
     const bare: ByJobTable<string> = { byJob: { 5: 'woman' }, default: 'civilian' };
     expect(pickByJob(bare, 1, true)).toBe('civilian');
   });
+
+  it('an equipped weapon good drives the ADULT look over the job; an empty/unmapped slot falls through', () => {
+    const armed: ByJobTable<string> = {
+      byJob: { 31: 'warrior', 40: 'warrior-shortbow' },
+      byWeaponGood: { 41: 'warrior-sword', 37: 'warrior-shortbow' },
+      default: 'civilian',
+    };
+    // A bare warrior (job 31, no weapon) keeps its job body; equip a sword good and it draws the sword body.
+    expect(pickByJob(armed, 31, false)).toBe('warrior');
+    expect(pickByJob(armed, 31, false, 41)).toBe('warrior-sword');
+    // The weapon wins over a conflicting job — a job-40 archer holding a short-bow good still draws the bow.
+    expect(pickByJob(armed, 40, false, 37)).toBe('warrior-shortbow');
+    // An unmapped weapon good falls through to the job pick, not the default.
+    expect(pickByJob(armed, 31, false, 999)).toBe('warrior');
+    // A child never keys the weapon table even if a good is (spuriously) present.
+    expect(pickByJob(armed, 3, true, 41)).toBe('civilian');
+  });
 });
 
 describe('resolveResourceDraw — per-good resource node binding', () => {
@@ -836,9 +853,14 @@ describe('resolveStockpileDraw — per-good ground piles + delivery flag', () =>
     expect(resolveStockpileDraw(binding, pile(999, 3))).toEqual({ bob: 0 });
   });
 
-  it('orders a filled delivery flag as heap first, flag second so the marker stays visible', () => {
+  it('draws a filled loose pile as its heap ALONE — no flag planted through the goods', () => {
     expect(resolveStockpileLayerDraws(binding, pile(5, 3))).toEqual([
       { bob: 2, layer: 'ls_goods.goods_wood' },
+    ]);
+  });
+
+  it('draws an EMPTY pile as the flag marker alone (a designated collection point with nothing in it)', () => {
+    expect(resolveStockpileLayerDraws(binding, pile())).toEqual([
       { bob: 33, layer: 'ls_temp.human_player01' },
     ]);
   });

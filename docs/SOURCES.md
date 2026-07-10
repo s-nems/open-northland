@@ -162,11 +162,16 @@ group** (`emmm` → `embr`,`empa/empb`,`emt1..4`,`emla`,… → `xend`) then `te
   - **`lmms`** — water-depth/shore gradient bands (rings 1..6 around land, 7 = open sea);
     **`lmtw`** — coastline transition codes (63 = not-coast); **`lmco`** — island/region ids
     (connected components); **`lmlv`**/`lmwb`/`lmbb`/`lmsb`/`lmpr` — further per-half-cell flags
-    (unconsumed). **`emt1..emt4`** (u8, per cell, 255 = none) — sparse pattern overrides/overlays
-    (u8-ranged pattern-dictionary indices; superseded by `empa`/`empb` for ground, still unconsumed).
+    (unconsumed). **`emt1..emt4`** (u8, per cell, 255 = none) — the per-TRIANGLE **transition
+    overlays** (see "terrain tessellation" below): `emt1`/`emt2` = layer 1 (topmost) for triangles
+    A/B, `emt3`/`emt4` = layer 2; a value `v < 255` selects transition `⌊v/6⌋` from the map's
+    `eatd` dictionary and pair variant `v % 6` of the record's six UV pairs. The earlier
+    "superseded roads/foundations overlays" reading was wrong — these lanes ARE the organic
+    biome-seam look.
 - The record-list chunks are **name dictionaries + object tables**: `eapd` = the `[GfxPattern]`
   EditName list (927, positional — how a map references patterns version-robustly BY NAME), `eald` =
-  the `[GfxLandscape]` EditName list (866), `eatd` = the editor's ground-group names (38);
+  the `[GfxLandscape]` EditName list (866), `eatd` = the `transitions.cif` `[transition]` name list
+  (38 — the `emt*` lanes' `⌊v/6⌋` join target);
   `laco`/`lasw`/`lafm` are binary record lists (coords + ids — unconsumed). Grammar: `[u32 count]`
   then `[u8 len][bytes][0x00]` per entry (`decodeStringListChunk`).
 
@@ -179,8 +184,10 @@ along too (`elevationFromMapDat`) and is consumed by the render elevation lift
 (`packages/render/src/data/elevation.ts`), and the per-cell `brightness` lane (baked shading, from
 `embr` — 1 byte/cell, 127 = neutral, border rows 0) is consumed by the ground's per-fragment shading
 + the landscape-object anchor multiplier, response curve luminance × embr/127 measured against the
-reference corpus (`packages/render/src/data/brightness.ts`). **Remaining:** the `emt3`/`emt4` overlay lanes
-(roads/house foundations), `lmpa`/`lmpb` → sim water/walkability, `laco`/`lasw`/`lafm`. (No decoded
+reference corpus (`packages/render/src/data/brightness.ts`); and the `transitions` layer
+(`emt1..emt4` + `eatd`, verbatim — `transitionsFromMapDat`) is consumed by the ground's
+per-triangle transition compositing (see "terrain tessellation" below). **Remaining:**
+`lmpa`/`lmpb` → sim water/walkability, `laco`/`lasw`/`lafm`. (No decoded
 bytes are committed — `map.dat` is copyrighted input, like every other game file.)
 - **Atomic actions are the behavior vocabulary** (see docs/ECS.md) and are partly free in readable
   data: `tribetypes.ini` `setatomic` (atomic→animation per tribe), `jobtypes.ini` `allowatomic`,
@@ -226,13 +233,56 @@ Two graphics families sit beside the map grid; **both decode with existing decod
   beach/desertstone/moor/snow/plaster, each with `iswater`/`humancanwalkon`/`debugcolor` — "82" is the file's
   decoded *string* count (10 headers + 72 property lines), not the record count), `GfxTexture "…text_NNN.pcx"`, `GfxCoordsA`/`GfxCoordsB` = the two triangles' UVs (3 pixel-coord
   points each, into the texture). Every real record lists its UV points in ONE convention — `coordsA` = the tile
-  square's (TL, BR, BL), `coordsB` = (TL, TR, BR) — so triangle A/B map onto the iso diamond's left/right halves
-  (`packages/render/src/terrain.ts`). `landscapetypes.ini` also carries a `debugcolor R G B` per type (the
-  flat-tint fallback).
+  square's (TL, BR, BL), `coordsB` = (TL, TR, BR) — mapped onto the two per-cell mesh triangles in point order
+  (see "terrain tessellation" below; `packages/render/src/data/terrain.ts`). `landscapetypes.ini` also carries a
+  `debugcolor R G B` per type (the flat-tint fallback).
+- **Ground TRANSITIONS** (the organic biome seams) — `Data/engine2d/inis/patterntransitions/transitions.cif`,
+  a `.cif`-only list of 19 `[pointtype]` (editor grouping, unextracted) + 38 `[transition]` records:
+  `name "meadow 1"` (the `eatd` join key), `pointtype`, `GfxTexture "…tran_*.pcx"` (RGB) +
+  `GfxTextureAlpha "…tran_*_a.pcx"` (the mask picture — its RAW palette-index byte IS the alpha
+  value, no palette expansion), and SIX repeated `GfxCoordsA`/`GfxCoordsB` pairs in file order (the
+  pair index a map lane's `v % 6` selects; same TL/BR/BL // TL/TR/BR point convention as patterns).
+  Extracted to IR `gfxPatternTransitions` (`extractPatternTransitions`); the pipeline composes each
+  texture+mask pair into one RGBA `<stem>.masked.png` (`composeMaskedTransitionPages`) that the
+  renderer alpha-blends over the base ground triangles.
+
+### Terrain tessellation (the original ground mesh — render REBUILT on it)
+
+Source basis: **martianboy/cultures2-gl + cultures2-wasm** (MIT) — a working WebGL renderer of
+Cultures 2 maps whose output matches the original; read as a format/geometry oracle (its
+`tessellate.rs` vertex builder, `texture.ts` lane→triangle/UV mapping, `ground/*.glsl` compositing,
+and `map.ts` section table pin everything below). This retro-explains the failed
+`fix/terrain-transitions` branch: the old diamond-per-cell mesh was the wrong geometry, so every
+orientation/stencil heuristic fitted to it was an epicycle.
+
+- **Mesh vertices are CELL-CENTRE NODES** (cell `(c,r)` ↔ node `(2c+(r&1), 2r)` on the half-cell
+  lattice). Per cell, TWO triangles span BETWEEN neighbouring centres: **A = △ [own, SE-below,
+  SW-below]**, **B = ▽ [own, E, SE-below]** (cell indices `[i, i+w+(r%2), i+w+(r%2)−1]` and
+  `[i, i+1, i+w+(r%2)]`). The oracle pins the LATTICE + divisor rules only; the pixel scale is OUR
+  measured projection (`x = hx·34`, `y = hy·19` native px from the 68×38 cell pitch, source basis
+  "projection" — the reference renderer itself draws at its own 34×19.5 unit scale).
+- **Every per-cell ground lane is per-TRIANGLE data on this mesh**: `empa`/`empb` → base pattern of
+  A/B; `emt1..emt4` → transition overlays (A,layer1), (B,layer1), (A,layer2), (B,layer2).
+- **UVs verbatim**: page pixel coords ÷ page size (256), plain **LINEAR** filtering; `coordsA`'s
+  (TL, BR, BL) points map onto A's [apex, SE, SW], `coordsB`'s (TL, TR, BR) onto B's [own, E, SE],
+  in point order. Compositing per fragment: base pattern, then layer 2 alpha-mix, then layer 1
+  alpha-mix on top. No stencil cutoffs, no texel-centre tricks, no orientation solving.
+- **Elevation**: each node lifts UP by `elevation/16` half-row-steps (= `rowStep/2/16` = 1.1875 px
+  per unit at the measured 38 px row step; supersedes the earlier photogrammetric ≈1.24 fit, which
+  ran ≈4% higher). Border handling is a named ADAPTATION: the oracle zeroes elevation per emitting
+  border CELL (an interior cell's triangles still read a border-ring node's true value — cracks if
+  it were non-zero), while we clamp per NODE (watertight by construction); the two agree on the real
+  data because border-ring elevation is 0 on all 125 decoded maps (verified corpus-wide). Per-node
+  lighting (`(lighting[node] − 0x7F)/256 + 1` in the oracle) interpolates across triangles — our
+  `embr` per-fragment lane sampling at node cell-centres is the same model.
+
+Implemented in `packages/render/src/data/terrain.ts` (pure lattice/UV math, unit-tested) +
+`gpu/terrain/terrain-layer.ts` (chunked meshes; overlays as translucent per-page meshes composited
+by child order).
 - **The 1:1 pattern choice is NOT algorithm-blocked — it is stored in the map.** The earlier "oracle-blocked
   pattern algorithm" reading was wrong: the `empa`/`empb` lanes hold the final per-triangle `GfxPattern` pick
   (via the `eapd` name dictionary), i.e. the editor runs its placement algorithm at AUTHOR time and bakes the
-  result into `map.dat`. The renderer replays it verbatim (`WorldRenderer.buildGroundTerrain`), so decoded maps
+  result into `map.dat`. The renderer replays it verbatim (`TerrainLayer.buildGround`), so decoded maps
   draw coastlines/transition blocks exactly; only a SYNTHETIC grid still uses the approximated per-typeId
   representative ground (`buildTerrainPatterns`). Reversing the *generator* would only matter for a future
   in-app map editor.

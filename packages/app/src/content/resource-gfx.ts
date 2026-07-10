@@ -1,7 +1,13 @@
 import type { LayeredBobRef, ResourceTypeBinding, StockpileBinding } from '@vinland/render';
 import { TREE_ATLAS, TREE_BOB } from './building-gfx.js';
+import { GENERIC_GOOD_ICON, type GoodIconMap } from './goods-gfx.js';
 import type { ContentIr, GatheringPipelineRow, GatheringStageRow, LandscapeGfxRow } from './ir.js';
 import type { GoodRef } from './settler-gfx.js';
+
+/** The `ls_goods.bmd` served-atlas stem prefix — a good's recoloured pile atlas is `ls_goods.<palette>`
+ *  (the pipeline's per-palette variant), so the goods-manifest `{frame, palette}` maps straight to a
+ *  {@link GatheringPileRef} whose stem is `${GOODS_PILE_BMD_STEM}.${palette}`. */
+const GOODS_PILE_BMD_STEM = 'ls_goods';
 
 /**
  * The gathering-economy render binding: reduce the Step-1 `gatheringPipeline` join (good → its
@@ -175,7 +181,11 @@ function representativeRecord(
  * once from the {@link FLAG_EDIT_NAME} record. Independent of which atlases actually load — the
  * loaded/default decision is {@link buildResourceBinding}/{@link buildStockpileBinding}'s. Pure.
  */
-export function resolveGatheringRefs(goods: readonly GoodRef[], ir: ContentIr | null): GatheringRefs {
+export function resolveGatheringRefs(
+  goods: readonly GoodRef[],
+  ir: ContentIr | null,
+  goodIcons?: GoodIconMap | null,
+): GatheringRefs {
   const pipeline = ir?.gatheringPipeline ?? [];
   const gfx = ir?.landscapeGfx ?? [];
   const byIndex = new Map<number, LandscapeGfxRow>(gfx.map((g) => [g.index, g]));
@@ -207,6 +217,37 @@ export function resolveGatheringRefs(goods: readonly GoodRef[], ir: ContentIr | 
       const stem = servedStem(pileRecord);
       const fillBobs = pileFillBobs(pileRecord);
       if (stem !== undefined && fillBobs !== undefined) pilesByGood[good.typeId] = { stem, fillBobs };
+    }
+  }
+
+  // The synthetic `plank` (the joinery slice's output — no gathering pipeline, no `ls_goods` art of its own)
+  // draws as the felled LOG: `wood`'s pickup-stage trunk (the `test_piles` "tree trunk" bob), so a dropped
+  // plank reads as sawn timber lying on the ground, visually distinct from the wood PILE rather than the
+  // neutral heap it would otherwise share with wood. Mirrors settler-gfx's `plank: 'wood'` carry alias.
+  // Applied BEFORE the goodIcons fallback so the log wins over the generic heap; its atlas is already loaded
+  // because wood references the same trunk stem.
+  const woodTrunk = trunksByGood[goods.find((g) => g.id === 'wood')?.typeId ?? -1];
+  const plankType = goods.find((g) => g.id === 'plank')?.typeId;
+  if (woodTrunk !== undefined && plankType !== undefined) {
+    trunksByGood[plankType] = woodTrunk;
+    pilesByGood[plankType] = { stem: woodTrunk.stem, fillBobs: [woodTrunk.bob] };
+  }
+
+  // Every OTHER good (not gathered, so absent from the pipeline) gets its on-the-ground graphic from the
+  // goods-icon manifest — its recoloured `ls_goods` heap by (palette, growth states). This is why a dropped
+  // brick, sword, or loaf draws its own pile on the ground and grows with its contents, not the bare
+  // placeholder marker. Only the goods with no manifest icon at all — the animal/vehicle/special tokens that
+  // share `landscapeType 1` (prey, sheep, cattle, the carts/ships, catapult, chest, anything) — fall back to
+  // the neutral generic heap; the potions/amulets/fruit DO bind (via the `goods all` record). The PILE binds the manifest's full `fillFrames`
+  // (fewest→most) so a player-dropped bare stockpile grows through the 5 pile states; the TRUNK keeps a
+  // single frame (the state-1 icon) for the felled-log shape a `GroundDrop` draws.
+  if (goodIcons != null) {
+    for (const good of goods) {
+      const icon = goodIcons.get(good.id) ?? GENERIC_GOOD_ICON;
+      const stem = `${GOODS_PILE_BMD_STEM}.${icon.palette}`;
+      const fillBobs = icon.fillFrames.length > 0 ? icon.fillFrames : [icon.frame];
+      if (pilesByGood[good.typeId] === undefined) pilesByGood[good.typeId] = { stem, fillBobs };
+      if (trunksByGood[good.typeId] === undefined) trunksByGood[good.typeId] = { stem, bob: icon.frame };
     }
   }
 

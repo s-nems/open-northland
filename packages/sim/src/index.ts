@@ -20,6 +20,8 @@ export {
   type Command,
   type AtomicEffect,
   type LoggedCommand,
+  type SettlerEquipment,
+  type SettlerEquipmentSlot,
   CommandQueue,
 } from './core/commands.js';
 export { EventBuffer, type SimEvent, type SimEventKind } from './core/events.js';

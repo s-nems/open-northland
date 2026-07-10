@@ -1,6 +1,7 @@
 import type {
   BuildingFootprint,
   GfxPattern,
+  GfxPatternTransition,
   SoundBank,
   TerrainPattern,
   TrianglePatternType,
@@ -99,8 +100,6 @@ export interface LandscapeGfxRow {
   readonly isStatic?: boolean;
   /** `GfxLoopAnimation` — the state's frame list loops continuously (waves, fire, smoke). */
   readonly loopAnimation?: boolean;
-  /** `GfxDynamicBackground` — composited translucently over the (water) ground (the 8 wave records). */
-  readonly dynamicBackground?: boolean;
   /** Repeated `LogicWalkBlockArea` lines — a non-empty footprint marks a depth-sorted (non-decor) object. */
   readonly walkBlockAreas?: readonly (readonly number[])[];
   /** Repeated `LogicBuildBlockArea` lines — the object's build-exclusion ring (the collision mask reads it). */
@@ -152,6 +151,8 @@ export interface ContentIr {
   readonly terrainPatterns?: readonly TerrainPattern[];
   /** The full 927-record `[GfxPattern]` table — the 1:1 per-triangle ground join for decoded maps. */
   readonly gfxPatterns?: readonly GfxPattern[];
+  /** The `[transition]` ground-overlay table — a decoded map's `transitions.types` names join onto it. */
+  readonly gfxPatternTransitions?: readonly GfxPatternTransition[];
   /** The per-logicType ground classes (`trianglepatterntypes.cif`) — the walk/build flags the
    *  map-collision join (`content/collision.ts`) classes real ground by. */
   readonly trianglePatternTypes?: readonly TrianglePatternType[];

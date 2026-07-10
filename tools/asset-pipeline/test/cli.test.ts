@@ -1,9 +1,16 @@
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { parseTerrainMap } from '@vinland/data';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { assertOutStaysInCheckout, parseArgs, resolveArgs } from '../src/args.js';
-import { BOB_TYPE_8BIT, type Bmd, PACKED_X_SHIFT, encodeBmd } from '../src/decoders/bmd.js';
+import {
+  BOB_TYPE_8BIT,
+  BOB_TYPE_DOUBLE8BIT,
+  type Bmd,
+  PACKED_X_SHIFT,
+  encodeBmd,
+} from '../src/decoders/bmd.js';
 import { StorableId, encryptMode1 } from '../src/decoders/cif.js';
 import type { BmdPaletteBinding, PaletteAlias } from '../src/decoders/ini.js';
 import { encodeLib } from '../src/decoders/lib.js';
@@ -16,6 +23,7 @@ import {
   jobBaseGraphicsToBindings,
   resolveGraphicsBindings,
 } from '../src/stages/bmd.js';
+import { TEXTURES_DIR } from '../src/stages/game-file.js';
 import { buildIr, resolveIniSources } from '../src/stages/ir.js';
 import { libMemberRelPath, unpackLibTree } from '../src/stages/lib.js';
 import {
@@ -26,7 +34,7 @@ import {
   mapIdFromPath,
   minimapToPng,
 } from '../src/stages/maps/index.js';
-import { convertPcxTree, pcxToPng } from '../src/stages/pcx.js';
+import { composeMaskedTransitionPages, convertPcxTree, pcxToPng } from '../src/stages/pcx.js';
 
 /**
  * CLI wiring tests. No copyrighted fixtures: we synthesize `.pcx` bytes with the faithful `encodePcx`,
@@ -238,6 +246,31 @@ describe('bmdToAtlas', () => {
   it('propagates an atlas error for a wrong-sized palette', () => {
     expect(() => bmdToAtlas(sampleBmdBytes(), new Uint8Array(100))).toThrow(/^atlas:/);
   });
+
+  it('bakes Double8Bit per-pixel alpha, or flattens it opaque for the house (plain-blit) path', () => {
+    // One type-4 bob, a 2x1 raw run of [index, alpha] pairs: [4, 0x60], [8, 0xff].
+    const bmd: Bmd = {
+      version: 0,
+      firstBobId: 10,
+      bobCount: 1,
+      generatedNonEmptyLines: 0,
+      generatedEmptyLines: 0,
+      generatedPackedLines: 0,
+      bobs: [{ type: BOB_TYPE_DOUBLE8BIT, area: { x: 0, y: 0, width: 2, height: 1 }, misc: 0 }],
+      packedLineData: Uint8Array.from([0x02, 4, 0x60, 8, 0xff, 0x00]),
+      lineControl: Uint32Array.from([(0 << PACKED_X_SHIFT) | 0]),
+    };
+    const bytes = encodeBmd(bmd);
+    const graded = bmdToAtlas(bytes, rampPalette());
+    const rect = graded.manifest.frames[0]?.rect;
+    const alphaAt = (atlas: typeof graded, x: number): number =>
+      atlas.image.rgba[((rect?.y ?? 0) * atlas.image.width + (rect?.x ?? 0) + x) * 4 + 3] ?? -1;
+    expect(alphaAt(graded, 0)).toBe(0x60); // the alpha byte rides into the sheet
+    expect(alphaAt(graded, 1)).toBe(0xff);
+    const flattened = bmdToAtlas(bytes, rampPalette(), 'opaque');
+    expect(alphaAt(flattened, 0)).toBe(0xff); // house atlases replay the opaque blit
+    expect(alphaAt(flattened, 1)).toBe(0xff);
+  });
 });
 
 describe('libMemberRelPath', () => {
@@ -398,6 +431,79 @@ describe('convertPcxTree', () => {
   it('throws when the game dir does not exist (a real argument error, not per-file)', async () => {
     await expect(convertPcxTree(join(game, 'nope'), out)).rejects.toThrow();
   });
+
+  it('composes a transition texture + alpha-mask pair into one RGBA .masked.png (raw index = alpha)', async () => {
+    // The colour picture expands through its palette; the MASK picture's raw palette-index bytes
+    // become the alpha channel directly (the engine convention — no palette expansion for the mask).
+    // The IR hands the LOWERCASED normalized paths; the stage must still resolve the real-cased
+    // Data/engine2d/bin/textures tree and write back into it (the /textures serving contract).
+    const width = 2;
+    const height = 2;
+    const colour = encodePcx({
+      width,
+      height,
+      pixels: Uint8Array.from([1, 2, 3, 4]),
+      palette: rampPalette(),
+    });
+    const mask = encodePcx({
+      width,
+      height,
+      pixels: Uint8Array.from([0, 128, 200, 255]),
+      palette: rampPalette(),
+    });
+    await mkdir(join(game, TEXTURES_DIR), { recursive: true });
+    await writeFile(join(game, TEXTURES_DIR, 'tran_meadow.pcx'), colour);
+    await writeFile(join(game, TEXTURES_DIR, 'tran_meadow_a.pcx'), mask);
+
+    const done = await composeMaskedTransitionPages(game, out, [
+      {
+        texture: 'data/engine2d/bin/textures/tran_meadow.pcx',
+        textureAlpha: 'data/engine2d/bin/textures/tran_meadow_a.pcx',
+      },
+      // A duplicate pair (two [transition] records sharing one page) must compose only once.
+      {
+        texture: 'data/engine2d/bin/textures/tran_meadow.pcx',
+        textureAlpha: 'data/engine2d/bin/textures/tran_meadow_a.pcx',
+      },
+    ]);
+
+    expect(done.map((c) => c.output)).toEqual([join(TEXTURES_DIR, 'tran_meadow.masked.png')]);
+    const decoded = decodePng(await readFile(join(out, TEXTURES_DIR, 'tran_meadow.masked.png')));
+    const expectedRgb = expandToRgba(decodePcx(colour)).rgba;
+    for (let i = 0; i < width * height; i++) {
+      expect(decoded.rgba[4 * i]).toBe(expectedRgb[4 * i]);
+      expect(decoded.rgba[4 * i + 1]).toBe(expectedRgb[4 * i + 1]);
+      expect(decoded.rgba[4 * i + 2]).toBe(expectedRgb[4 * i + 2]);
+    }
+    expect([decoded.rgba[3], decoded.rgba[7], decoded.rgba[11], decoded.rgba[15]]).toEqual([
+      0, 128, 200, 255,
+    ]);
+  });
+
+  it('skips a masked pair whose mask dimensions mismatch, with a warning (per-file boundary)', async () => {
+    const colour = encodePcx({
+      width: 2,
+      height: 2,
+      pixels: Uint8Array.from([1, 2, 3, 4]),
+      palette: rampPalette(),
+    });
+    const mask = encodePcx({ width: 1, height: 1, pixels: Uint8Array.from([9]), palette: rampPalette() });
+    await mkdir(join(game, TEXTURES_DIR), { recursive: true });
+    await writeFile(join(game, TEXTURES_DIR, 'tran_bad.pcx'), colour);
+    await writeFile(join(game, TEXTURES_DIR, 'tran_bad_a.pcx'), mask);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const done = await composeMaskedTransitionPages(game, out, [
+      {
+        texture: 'data/engine2d/bin/textures/tran_bad.pcx',
+        textureAlpha: 'data/engine2d/bin/textures/tran_bad_a.pcx',
+      },
+    ]);
+
+    expect(done).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped masked page .*tran_bad/));
+    warn.mockRestore();
+  });
 });
 
 describe('convertBmdTree', () => {
@@ -431,7 +537,7 @@ describe('convertBmdTree', () => {
     await layDownAssets();
     const { bindings, palettes } = sampleBinding();
 
-    const done = await convertBmdTree(bindings, palettes, out);
+    const done = await convertBmdTree(bindings, palettes, out, new Set());
 
     expect(done).toHaveLength(1);
     // The case-insensitive resolution maps the normalized refs onto the real mixed-case on-disk paths,
@@ -464,7 +570,7 @@ describe('convertBmdTree', () => {
       { name: 'wolf01', gfxFile: 'data/pal/wolf01.pcx' },
     ];
 
-    const done = await convertBmdTree(bindings, palettes, out);
+    const done = await convertBmdTree(bindings, palettes, out, new Set());
 
     expect(done).toHaveLength(2);
     // Two distinct atlas files from one shared .bmd — the palette name is the differentiator.
@@ -483,7 +589,7 @@ describe('convertBmdTree', () => {
     const { bindings } = sampleBinding();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const done = await convertBmdTree(bindings, [], out); // empty palette index
+    const done = await convertBmdTree(bindings, [], out, new Set()); // empty palette index
 
     expect(done).toEqual([]);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/unknown palette "bear01"/));
@@ -497,7 +603,7 @@ describe('convertBmdTree', () => {
     const { bindings, palettes } = sampleBinding();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const done = await convertBmdTree(bindings, palettes, out);
+    const done = await convertBmdTree(bindings, palettes, out, new Set());
 
     expect(done).toEqual([]);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/bmd data\/bobs\/body\.bmd not found/));
@@ -512,11 +618,82 @@ describe('convertBmdTree', () => {
     const { bindings, palettes } = sampleBinding();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const done = await convertBmdTree(bindings, palettes, out);
+    const done = await convertBmdTree(bindings, palettes, out, new Set());
 
     expect(done).toEqual([]);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped data\/bobs\/body\.bmd:/));
     warn.mockRestore();
+  });
+});
+
+describe('convertBmdTree opaque-alpha bake', () => {
+  let out: string;
+
+  beforeEach(async () => {
+    out = await mkdtemp(join(tmpdir(), 'vinland-bmd-'));
+  });
+
+  afterEach(async () => {
+    await rm(out, { recursive: true, force: true });
+  });
+
+  it('bakes a claimed .bmd opaque for EVERY palette; an unclaimed one keeps per-pixel alpha', async () => {
+    // A Double8Bit bob with a graded alpha byte (0x40) — the observable the modes differ on.
+    const doubleBmd: Bmd = {
+      version: 0,
+      firstBobId: 10,
+      bobCount: 1,
+      generatedNonEmptyLines: 0,
+      generatedEmptyLines: 0,
+      generatedPackedLines: 0,
+      bobs: [{ type: BOB_TYPE_DOUBLE8BIT, area: { x: 0, y: 0, width: 1, height: 1 }, misc: 0 }],
+      packedLineData: Uint8Array.from([0x01, 4, 0x40, 0x00]),
+      lineControl: Uint32Array.from([(0 << PACKED_X_SHIFT) | 0]),
+    };
+    await mkdir(join(out, 'Data', 'Pal'), { recursive: true });
+    await mkdir(join(out, 'Data', 'Bobs'), { recursive: true });
+    await writeFile(join(out, 'Data', 'Pal', 'House01.pcx'), samplePcx().bytes);
+    await writeFile(join(out, 'Data', 'Pal', 'Ruins01.pcx'), samplePcx().bytes);
+    await writeFile(join(out, 'Data', 'Bobs', 'House.bmd'), encodeBmd(doubleBmd));
+    await writeFile(join(out, 'Data', 'Bobs', 'Fern.bmd'), encodeBmd(doubleBmd));
+    const bindings: BmdPaletteBinding[] = [
+      // A [GfxHouse]-claimed bmd under TWO palettes (the landscape-twin case) + an unclaimed decal.
+      {
+        bmd: 'data/bobs/house.bmd',
+        shadowBmd: undefined,
+        paletteName: 'house01',
+        tribeId: undefined,
+        jobId: undefined,
+      },
+      {
+        bmd: 'data/bobs/house.bmd',
+        shadowBmd: undefined,
+        paletteName: 'ruins01',
+        tribeId: undefined,
+        jobId: undefined,
+      },
+      {
+        bmd: 'data/bobs/fern.bmd',
+        shadowBmd: undefined,
+        paletteName: 'house01',
+        tribeId: undefined,
+        jobId: undefined,
+      },
+    ];
+    const palettes: PaletteAlias[] = [
+      { name: 'house01', gfxFile: 'data/pal/house01.pcx' },
+      { name: 'ruins01', gfxFile: 'data/pal/ruins01.pcx' },
+    ];
+
+    await convertBmdTree(bindings, palettes, out, new Set(['data/bobs/house.bmd']));
+
+    const alphaOf = async (png: string): Promise<number> => {
+      const img = decodePng(await readFile(join(out, 'Data', 'Bobs', png)));
+      return img.rgba[(1 * img.width + 1) * 4 + 3] ?? -1; // the 1x1 frame sits at the gutter origin
+    };
+    expect(await alphaOf('House.house01.png')).toBe(255); // claimed → opaque
+    expect(await alphaOf('House.ruins01.png')).toBe(255); // ...for every recolour of that bmd
+    expect(await alphaOf('Fern.house01.png')).toBe(0x40); // unclaimed → per-pixel alpha survives
   });
 });
 
@@ -701,6 +878,26 @@ describe('resolveGraphicsBindings', () => {
     expect(bindings[3]?.tribeId).toBe(3);
     expect(bindings[3]?.shadowBmd).toBe('data/bobs/ship_s.bmd');
     expect(bindings[3]?.jobId).toBeUndefined();
+  });
+
+  it('claims [GfxHouse] .bmds for the opaque-alpha bake (mod houses.ini leg)', async () => {
+    await mkdir(join(game, 'DataCnmd', 'budynki12', 'houses'), { recursive: true });
+    await writeFile(
+      join(game, 'DataCnmd', 'budynki12', 'houses', 'houses.ini'),
+      '[GfxHouse]\nEditName "viking home"\n' +
+        'GfxBobLibs "Data\\Bobs\\ls_houses_viking.bmd" "Data\\Bobs\\ls_houses_viking_s.bmd"\n' +
+        'GfxPalette "house01" "house02"\n',
+    );
+
+    const { bindings, opaqueAlphaBmds } = await resolveGraphicsBindings(game, 'DataCnmd');
+
+    // Every palette recolour becomes a binding, and the CLAIM is on the .bmd path alone, so the
+    // landscape twins of the same geometry bake opaque too (convertBmdTree keys on the bmd).
+    expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([
+      ['data/bobs/ls_houses_viking.bmd', 'house01'],
+      ['data/bobs/ls_houses_viking.bmd', 'house02'],
+    ]);
+    expect([...opaqueAlphaBmds]).toEqual(['data/bobs/ls_houses_viking.bmd']);
   });
 
   it('returns empty lists with a warning when a binding source is missing', async () => {
@@ -925,6 +1122,83 @@ describe('mapDatToTerrain', () => {
       a: [0, 1],
       b: [1, 1],
     });
+  });
+
+  it('emits the transitions layer from emt1..emt4 + the eatd dictionary VERBATIM (no compaction)', () => {
+    // 2×1 grid: four per-cell u8 lanes (255 = none; v<255 → transition ⌊v/6⌋ + pair v%6). The
+    // dictionary and the lane values pass through untouched — the ⌊v/6⌋ join is positional.
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 2, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0, 0, 0, 0, 0])) },
+      { tag: 'emt1', version: 1, payload: packMapLayer(Uint8Array.from([0, 255])) },
+      { tag: 'emt2', version: 1, payload: packMapLayer(Uint8Array.from([7, 255])) },
+      { tag: 'emt3', version: 1, payload: packMapLayer(Uint8Array.from([255, 11])) },
+      { tag: 'emt4', version: 1, payload: packMapLayer(Uint8Array.from([255, 255])) },
+      { tag: 'eatd', version: 1, payload: stringList(['meadow 1', 'meadow 2']) },
+    ]);
+    const terrain = mapDatToTerrain(bytes);
+    expect(terrain.transitions).toEqual({
+      types: ['meadow 1', 'meadow 2'],
+      a1: [0, 255],
+      b1: [7, 255],
+      a2: [255, 11],
+      b2: [255, 255],
+    });
+  });
+
+  it('degrades an out-of-dictionary transition value to a grid without the layer (warn, keep the grid)', () => {
+    // Value 12 → transition index 2, but the dictionary has 2 entries — a corrupt lane drops only
+    // the optional transitions layer, never the nav grid.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0])) },
+      { tag: 'emt1', version: 1, payload: packMapLayer(Uint8Array.from([12])) },
+      { tag: 'emt2', version: 1, payload: packMapLayer(Uint8Array.from([255])) },
+      { tag: 'emt3', version: 1, payload: packMapLayer(Uint8Array.from([255])) },
+      { tag: 'emt4', version: 1, payload: packMapLayer(Uint8Array.from([255])) },
+      { tag: 'eatd', version: 1, payload: stringList(['meadow 1', 'meadow 2']) },
+    ]);
+    const terrain = mapDatToTerrain(bytes);
+    expect(terrain.typeIds).toEqual([1]); // the nav grid survives
+    expect(terrain.transitions).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/transition lanes unreadable.*outside/));
+    warn.mockRestore();
+  });
+
+  it('omits the transitions layer when any of the five chunks is missing (older/foreign saves)', () => {
+    const bytes = encodeMapDat([
+      { tag: 'lsiz', version: 1, payload: encodeMapSize({ width: 1, height: 1 }) },
+      { tag: 'lmlt', version: 1, payload: packMapLayer(Uint8Array.from([0, 0, 0, 0])) },
+      { tag: 'emt1', version: 1, payload: packMapLayer(Uint8Array.from([255])) },
+      { tag: 'eatd', version: 1, payload: stringList(['meadow 1']) },
+    ]);
+    expect(mapDatToTerrain(bytes).transitions).toBeUndefined();
+  });
+
+  it('emits a transitions layer the loader schema accepts, and the schema rejects corrupt lanes', () => {
+    // Close the emit→load loop: what mapDatToTerrain writes must pass parseTerrainMap's refines,
+    // and the refines must actually bite (wrong lane length; out-of-dictionary value) — the
+    // pipeline's own throws run pre-emission, so only the schema guards a hand-edited/stale file.
+    const good = {
+      width: 2,
+      height: 1,
+      typeIds: [1, 1],
+      transitions: {
+        types: ['meadow 1', 'meadow 2'],
+        a1: [0, 255],
+        b1: [7, 255],
+        a2: [255, 11],
+        b2: [255, 255],
+      },
+    };
+    expect(parseTerrainMap(good).transitions).toEqual(good.transitions);
+    expect(() => parseTerrainMap({ ...good, transitions: { ...good.transitions, a1: [0] } })).toThrow(
+      /transition lanes must be width\*height/,
+    );
+    expect(() => parseTerrainMap({ ...good, transitions: { ...good.transitions, b2: [12, 255] } })).toThrow(
+      /outside its types dictionary/,
+    );
   });
 
   it('emits the objects layer from emla + the eald name dictionary as sparse half-cell triples', () => {

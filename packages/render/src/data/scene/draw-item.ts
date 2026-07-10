@@ -147,6 +147,13 @@ export interface DrawItem {
    */
   readonly jobType?: number;
   /**
+   * For a settler: the `typeId` of the good in its `Equipment.weapon` slot, when it carries one. The
+   * per-character binding maps it to a warrior look ({@link import('../sprites/index.js').ByJobTable.byWeaponGood})
+   * so the DRAWN weapon follows the equipment slot rather than the job — equip a bow and the warrior
+   * draws the bow body. Omitted when the settler has no weapon equipped (falls back to the `jobType` look).
+   */
+  readonly weaponGood?: number;
+  /**
    * For a settler: the owning player slot (the sim `Owner.player`), so the renderer can paint the unit in
    * that player's TEAM COLOUR — the render `PalettedSprite` reads its clothing-band indices through the
    * player's row of the `256×N` colour LUT. Omitted for an UNOWNED settler (wildlife / a neutral fixture),
@@ -199,10 +206,28 @@ export type MutableDrawItem = { -readonly [K in keyof DrawItem]: DrawItem[K] };
  */
 export interface SceneGround {
   readonly patterns: readonly string[];
-  /** Row-major per-cell index into {@link patterns} for triangle A (left half of the diamond). */
+  /** Row-major per-cell index into {@link patterns} for triangle A (△ from the cell's centre node
+   *  down to the SW/SE-below centres — `../terrain.js` `triangleANodes`). */
   readonly a: readonly number[];
-  /** Row-major per-cell index into {@link patterns} for triangle B (right half of the diamond). */
+  /** Row-major per-cell index into {@link patterns} for triangle B (▽ across to the E centre —
+   *  `../terrain.js` `triangleBNodes`). */
   readonly b: readonly number[];
+}
+
+/**
+ * A decoded map's per-triangle transition overlays (the `transitions` layer of
+ * `content/maps/<id>.json`): the map's `eatd` name dictionary VERBATIM plus the four `emt1..emt4`
+ * per-cell u8 lanes — `a1`/`b1` are layer 1 (topmost) for triangles A/B, `a2`/`b2` layer 2. A lane
+ * value `v < 255` selects transition `⌊v/6⌋` from {@link types} and pair variant `v % 6`
+ * (`../terrain.js` `transitionRef`); the renderer joins a name through
+ * {@link import('../../gpu/pixi-app.js').TerrainTextureSet.transitionFor}.
+ */
+export interface SceneTransitions {
+  readonly types: readonly string[];
+  readonly a1: readonly number[];
+  readonly b1: readonly number[];
+  readonly a2: readonly number[];
+  readonly b2: readonly number[];
 }
 
 /** The terrain grid the snapshot is positioned over (dimensions + row-major landscape typeIds). */
@@ -213,6 +238,8 @@ export interface SceneTerrain {
   readonly typeIds: readonly number[];
   /** The 1:1 per-triangle ground patterns, when the map carries them (a decoded original map). */
   readonly ground?: SceneGround;
+  /** The per-triangle transition overlays (`emt1..emt4` + `eatd`), when the map carries them. */
+  readonly transitions?: SceneTransitions;
   /**
    * The decoded map's per-cell `lmhe` terrain height (row-major, length `width*height`, 0..~250), when
    * present. The renderer builds an {@link import('../elevation.js').ElevationField} from it to lift the

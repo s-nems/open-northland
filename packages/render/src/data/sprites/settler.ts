@@ -115,10 +115,22 @@ export function resolveSettlerBobId(
 }
 
 /**
- * Pick from a {@link ByJobTable} for a draw item's `jobType` + young flag: young → {@link ByJobTable.youngByJob},
- * adult → {@link ByJobTable.byJob}, any miss → {@link ByJobTable.default}. Pure + total.
+ * Pick from a {@link ByJobTable} for a draw item's `jobType`, `young` flag and EQUIPPED `weaponGood`.
+ * An adult carrying a mapped weapon good takes {@link ByJobTable.byWeaponGood} FIRST — the drawn weapon
+ * follows the equipment slot, not the job. Otherwise: young → {@link ByJobTable.youngByJob}, adult →
+ * {@link ByJobTable.byJob}, any miss → {@link ByJobTable.default}. Pure + total.
  */
-export function pickByJob<T>(table: ByJobTable<T>, jobType: number | undefined, young: boolean): T {
+export function pickByJob<T>(
+  table: ByJobTable<T>,
+  jobType: number | undefined,
+  young: boolean,
+  weaponGood?: number,
+): T {
+  // The equipped weapon decides an adult warrior's look; children never carry a weapon slot.
+  if (!young && weaponGood !== undefined) {
+    const armed = table.byWeaponGood?.[weaponGood];
+    if (armed !== undefined) return armed;
+  }
   if (jobType === undefined) return table.default;
   const hit = young ? table.youngByJob?.[jobType] : table.byJob[jobType];
   return hit ?? table.default;

@@ -202,7 +202,7 @@ function resolveCharacterLayers(
   item: DrawItem,
   tick: number,
 ): ResolvedLayer[] | null {
-  const char = pickByJob(characters, item.jobType, item.young === true);
+  const char = pickByJob(characters, item.jobType, item.young === true, item.weaponGood);
   const bob = resolveSettlerBobId(char.binding, item, tick);
   const layers: ResolvedLayer[] = [];
   const bodyFrame = char.body.atlas.frames.get(bob);

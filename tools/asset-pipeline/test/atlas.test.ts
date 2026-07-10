@@ -9,6 +9,7 @@ import {
 } from '../src/decoders/atlas.js';
 import {
   BOB_TYPE_8BIT,
+  BOB_TYPE_DOUBLE8BIT,
   BOB_TYPE_EMPTY,
   type Bmd,
   type BobFrame,
@@ -111,26 +112,36 @@ describe('expandBobFrame', () => {
       width: 2,
       height: 1,
       pixels: Uint8Array.from([5, 9]),
-      mask: Uint8Array.from([1, 0]),
+      mask: Uint8Array.from([255, 0]),
     };
     const rgba = expandBobFrame(frame, rampPalette()).rgba;
     // Pixel 0 (index 5) -> (5,6,7,255); pixel 1 masked off -> (0,0,0,0).
     expect([...rgba]).toEqual([5, 6, 7, 255, 0, 0, 0, 0]);
   });
 
-  it('treats index 0 as a real colour when its mask bit is set', () => {
+  it('carries a graded mask value (a Double8Bit alpha byte) into the pixel alpha', () => {
+    const frame: BobFrame = {
+      width: 1,
+      height: 1,
+      pixels: Uint8Array.from([5]),
+      mask: Uint8Array.from([0x80]),
+    };
+    expect([...expandBobFrame(frame, rampPalette()).rgba]).toEqual([5, 6, 7, 0x80]);
+  });
+
+  it('treats index 0 as a real colour when its mask is set', () => {
     const frame: BobFrame = {
       width: 1,
       height: 1,
       pixels: Uint8Array.from([0]),
-      mask: Uint8Array.from([1]),
+      mask: Uint8Array.from([255]),
     };
     const rgba = expandBobFrame(frame, rampPalette()).rgba;
     expect([...rgba]).toEqual([0, 1, 2, 255]);
   });
 
   it('throws on a palette that is not 768 bytes', () => {
-    const frame: BobFrame = { width: 1, height: 1, pixels: Uint8Array.of(0), mask: Uint8Array.of(1) };
+    const frame: BobFrame = { width: 1, height: 1, pixels: Uint8Array.of(0), mask: Uint8Array.of(255) };
     expect(() => expandBobFrame(frame, new Uint8Array(767))).toThrow(/768 bytes/);
   });
 });
@@ -175,7 +186,7 @@ describe('packBobAtlas', () => {
     const b = { type: BOB_TYPE_8BIT, width: 3, height: 1, packed: [0x03, 4, 5, 6, 0x00], lines: [0] };
     const bmd = makeBmd([a, b]);
     // maxWidth = 5: first frame at x=1 spans cols 1..3 (next cursor 5); second (+gutter+3) overflows -> wraps.
-    const { manifest } = packBobAtlas(bmd, rampPalette(), 5);
+    const { manifest } = packBobAtlas(bmd, rampPalette(), { maxWidth: 5 });
 
     const f0 = frameOf(manifest, 10);
     const f1 = frameOf(manifest, 11);
@@ -235,20 +246,41 @@ describe('expandBobFrameIndexed', () => {
       width: 3,
       height: 1,
       pixels: Uint8Array.from([5, 200, 9]),
-      mask: Uint8Array.from([1, 1, 0]),
+      mask: Uint8Array.from([255, 128, 0]),
     };
     const rgba = expandBobFrameIndexed(frame).rgba;
-    // idx 5 -> (5,0,0,255); idx 200 -> (200,0,0,255); masked-off -> (0,0,0,0).
-    expect([...rgba]).toEqual([5, 0, 0, 255, 200, 0, 0, 255, 0, 0, 0, 0]);
+    // idx 5 -> (5,0,0,255); idx 200 with graded coverage -> (200,0,0,128); masked-off -> (0,0,0,0).
+    expect([...rgba]).toEqual([5, 0, 0, 255, 200, 0, 0, 128, 0, 0, 0, 0]);
   });
 
-  it('keeps index 0 as a real (opaque) index when its mask bit is set', () => {
-    const frame: BobFrame = { width: 1, height: 1, pixels: Uint8Array.of(0), mask: Uint8Array.of(1) };
+  it('keeps index 0 as a real (opaque) index when its mask is set', () => {
+    const frame: BobFrame = { width: 1, height: 1, pixels: Uint8Array.of(0), mask: Uint8Array.of(255) };
     expect([...expandBobFrameIndexed(frame).rgba]).toEqual([0, 0, 0, 255]);
   });
 });
 
 describe('packIndexedBobAtlas', () => {
+  it('flattens Double8Bit coverage to opaque (the LUT shader draws binary alpha)', () => {
+    // One type-4 bob, raw run of 2 [index, alpha] pairs with a graded alpha byte 0x40.
+    const bmd = makeBmd([
+      {
+        type: BOB_TYPE_DOUBLE8BIT,
+        width: 2,
+        height: 1,
+        packed: [0x02, 7, 0x40, 8, 0xff, 0x00],
+        lines: [{ offset: 0, xMin: 0 }],
+      },
+    ]);
+    const indexed = packIndexedBobAtlas(bmd);
+    const px = (x: number): number[] => {
+      const o = (ATLAS_GUTTER * indexed.image.width + ATLAS_GUTTER + x) * 4;
+      return [...indexed.image.rgba.subarray(o, o + 4)];
+    };
+    // The RGB path would bake 0x40; the indexed path flattens every written pixel to 255.
+    expect(px(0)).toEqual([7, 0, 0, 255]);
+    expect(px(1)).toEqual([8, 0, 0, 255]);
+  });
+
   it('shares placement/manifest with the RGB atlas but stores indices, not colours', () => {
     const bmd = makeBmd([
       {

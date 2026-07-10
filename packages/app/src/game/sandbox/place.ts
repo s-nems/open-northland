@@ -1,6 +1,7 @@
 import {
   type Command,
   type ResourceNodeSpec,
+  type SettlerEquipment,
   type Simulation,
   cellAnchorNode,
   components,
@@ -10,7 +11,7 @@ import {
 import { resolveVikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../rules.js';
-import { GATHERERS, type GathererSpec } from './ids.js';
+import { GATHERERS, type GathererSpec, weaponEquipmentFor } from './ids.js';
 
 const { Position, Stockpile } = components;
 
@@ -58,9 +59,16 @@ export function spawnSandboxSettler(
   x: number,
   y: number,
   owner: number = HUMAN_PLAYER,
-  opts: { readonly hitpoints?: number; readonly weaponTypeId?: number } = {},
+  opts: {
+    readonly hitpoints?: number;
+    readonly weaponTypeId?: number;
+    readonly equipment?: SettlerEquipment;
+  } = {},
 ): void {
   const node = cellAnchorNode(x, y);
+  // A warrior with no explicit loadout still gets its class weapon in the equipment slot (so its Broń
+  // row + drawn weapon match), derived from the job; an explicit `equipment` wins untouched.
+  const equipment = opts.equipment ?? weaponEquipmentFor(jobType);
   sim.enqueue({
     kind: 'spawnSettler',
     jobType,
@@ -70,6 +78,7 @@ export function spawnSandboxSettler(
     owner,
     ...(opts.hitpoints !== undefined ? { hitpoints: opts.hitpoints } : {}),
     ...(opts.weaponTypeId !== undefined ? { weaponTypeId: opts.weaponTypeId } : {}),
+    ...(equipment !== undefined ? { equipment } : {}),
   });
 }
 
@@ -142,6 +151,17 @@ export function resourceCommand(good: number, x: number, y: number): Command | n
   const g = GATHERERS.find((gg) => gg.good === good);
   if (g === undefined) return null;
   return { kind: 'placeResource', ...resourceSpecFor(g, x, y) };
+}
+
+/**
+ * Drop a loose good pile on the ground via the `dropGood` command (the runtime mutation seam, so a
+ * scene-authored drop and a player-tool drop are the same replay-faithful path). Scenes author in whole
+ * TILES; the command speaks half-cell nodes. The pile is the felled-trunk shape (Stockpile + GroundDrop),
+ * so with no carriers on the map it simply sits where it lands.
+ */
+export function dropSandboxGood(sim: Simulation, good: number, x: number, y: number, amount: number): void {
+  const node = cellAnchorNode(x, y);
+  sim.enqueue({ kind: 'dropGood', good, x: node.hx, y: node.hy, amount });
 }
 
 /** A drop-off flag: an empty stockpile at the given tile. */

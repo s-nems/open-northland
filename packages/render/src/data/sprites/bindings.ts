@@ -317,6 +317,13 @@ export interface ByJobTable<T> {
   readonly byJob: Readonly<Record<number, T>>;
   /** Looks for an `Age`-carrying (born-young) settler, keyed by its age-class `jobType` (1..4). */
   readonly youngByJob?: Readonly<Record<number, T>>;
+  /**
+   * A warrior's look by its EQUIPPED weapon good — so the drawn weapon follows the equipment weapon
+   * slot, not the job ("a warrior is one profession; the weapon in hand decides the look"). Wins over
+   * the job pick when the settler carries a mapped weapon good; an empty/unmapped slot falls through to
+   * {@link byJob} (so a bare warrior draws its job body, a civilian its civilian body).
+   */
+  readonly byWeaponGood?: Readonly<Record<number, T>>;
   /** The total fallback — the generic look every unmapped job resolves to. */
   readonly default: T;
 }

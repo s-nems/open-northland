@@ -3,7 +3,7 @@ import { WOOD_YIELD_PER_NODE } from '../catalog/felling.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import { type GathererSpec, JOB_SOLDIER_SWORD } from '../game/sandbox/index.js';
 
-const { Health, Owner, Position, Settler, Stockpile } = components;
+const { Building, GroundDrop, Health, Owner, Position, Settler, Stockpile } = components;
 
 /**
  * Read-only world queries the sandbox scene's machine checks assert on. These read a SCENE-OWNED sim
@@ -34,6 +34,16 @@ export function flagGood(sim: Simulation, at: { x: number; y: number }, good: nu
 export function countComponent<T>(sim: Simulation, component: Component<T>): number {
   let n = 0;
   for (const _ of sim.world.query(component)) n++;
+  return n;
+}
+
+/** Loose player-dropped ground piles: a bare {@link Stockpile}+{@link Position} with no building store or
+ *  felled-trunk marker — the entity `dropGood` creates, a growing heap that rests in place. */
+export function countGroundPiles(sim: Simulation): number {
+  let n = 0;
+  for (const e of sim.world.query(Stockpile, Position)) {
+    if (!sim.world.has(e, Building) && !sim.world.has(e, GroundDrop)) n++;
+  }
   return n;
 }
 

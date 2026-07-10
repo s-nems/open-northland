@@ -324,11 +324,11 @@ export const GUI_FRAMES: readonly GuiFrameMeta[] = [
     note: 'bell / anvil',
   },
   /* 037 0x25 */ {
-    name: 'unknown_037',
+    name: 'resource_icon_water_drop',
     role: 'resource_icon',
     palette: 'context',
     source: 'montage',
-    note: 'water drop',
+    note: 'water drop — used as the Magazyn "Napoje" (drinks) category-tab glyph',
   },
   /* 038 0x26 */ {
     name: 'unknown_038',

@@ -1,4 +1,10 @@
-import { type BuildingFootprint, type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
+import {
+  type BuildingFootprint,
+  type ContentSet,
+  type EquipCategory,
+  IR_VERSION,
+  parseContentSet,
+} from '@vinland/data';
 import {
   ATTACK_ATOMIC,
   CLAY_HARVEST_ATOMIC,
@@ -11,6 +17,7 @@ import {
 import { HOME_KIND, VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import { approximateFootprint } from '../../catalog/footprints.js';
+import { EXTENDED_GOODS, STORABLE_EXTENDED_GOODS } from '../../catalog/goods.js';
 import {
   CLAY_DEPOSIT_UNITS,
   GOLD_DEPOSIT_UNITS,
@@ -31,6 +38,7 @@ import {
   BUILDING_WAREHOUSE_00,
   BUILDING_WAREHOUSE_01,
   BUILDING_WAREHOUSE_02,
+  EQUIP_GOODS,
   GATHERERS,
   GOOD_COIN,
   GOOD_GOLD,
@@ -50,7 +58,9 @@ import {
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
+  JOB_SOLDIER_UNARMED,
   WEAPON_BROADSWORD,
+  WEAPON_FISTS,
   WEAPON_LONG_BOW,
   WEAPON_SHORT_BOW,
   WEAPON_SPEAR,
@@ -85,6 +95,8 @@ const ATTACK_EVENT_TYPE = 25;
 // equal the decoded gfx frame-list length (`[gfxanimatomic]` per-direction counts: sword 12, spear 27,
 // broadsword 29, bows 12/28) or the DRAWN swing truncates mid-animation — the sandbox previously ran a
 // made-up 4-tick sword swing against the 12-frame decoded swing, playing only its wind-up.
+const FIST_SWING_LENGTH = 12; // viking_soldier_attack_unarmed
+const FIST_HIT_FRAME = 6;
 const SWORD_SWING_LENGTH = 12; // viking_soldier_attack_sword_short
 const SWORD_HIT_FRAME = 9;
 const SPEAR_SWING_LENGTH = 27; // viking_soldier_attack_spear_iron
@@ -101,6 +113,15 @@ const BOW_DAMAGE = 34;
 const SWORD_DAMAGE = 40;
 const SPEAR_DAMAGE = 45;
 const BROADSWORD_DAMAGE = 55;
+// The fist is the weakest strike — a quarter of the short sword's, matching weapons.ini's fist
+// damagevalue 0 (400) vs the short sword's (1600). Keeps the unarmed warrior a real but feeble brawler.
+const FIST_DAMAGE = 10;
+
+/** The equip classification (slot + wear) per good typeId, so `sandboxContent()` can merge it onto the
+ *  global catalog good of the same typeId (an equippable good is declared ONCE, in `EXTENDED_GOODS`). */
+const EQUIP_CLASS_BY_TYPE: ReadonlyMap<number, { category: EquipCategory; wears: boolean }> = new Map(
+  EQUIP_GOODS.map((g) => [g.typeId, { category: g.category, wears: g.wears }]),
+);
 
 export interface SandboxContentExtras {
   readonly buildings?: readonly { typeId: number; id: string; kind?: string }[];
@@ -116,6 +137,15 @@ export interface SandboxContentExtras {
    * {@link approximateFootprint} instead, so placement collision + the build overlay work globally.
    */
   readonly buildingFootprints?: ReadonlyMap<number, BuildingFootprint>;
+  /**
+   * Localized good DISPLAY names by good STRING id (from the pipeline's per-locale name tables via
+   * {@link import('../../content/good-names.js').loadGoodNameMap}). When supplied — the browser entries do,
+   * after picking the `?locale=` language — each good's `name` is set from it, so the HUD (warehouse rows,
+   * ground-pile tooltip, spawn palette, production labels) reads in-language from ONE source. Omitted (tests,
+   * headless scenes, a bare checkout), the core goods stay name-less and the extended goods keep their
+   * built-in English catalog name, so golden runs and the no-`content/` boot are unchanged.
+   */
+  readonly goodNames?: ReadonlyMap<string, string>;
 }
 
 // The semantic terrain-class rows (see catalog/terrain.ts — the shared vocabulary scene grids are
@@ -135,15 +165,33 @@ const HOME_UPGRADE_PIN: readonly { goodType: number; amount: number }[] = [
 const RESOURCE_LANDSCAPE_BASE = 1000;
 const RESOURCE_GFX_BASE = 2000;
 
-const STORE_STOCK = [
-  { goodType: GOOD_WOOD, capacity: 1_000_000, initial: 0 },
-  { goodType: GOOD_PLANK, capacity: 1_000_000, initial: 0 },
-  { goodType: GOOD_STONE, capacity: 1_000_000, initial: 0 },
-  { goodType: GOOD_MUD, capacity: 1_000_000, initial: 0 },
-  { goodType: GOOD_IRON, capacity: 1_000_000, initial: 0 },
-  { goodType: GOOD_GOLD, capacity: 1_000_000, initial: 0 },
-  { goodType: GOOD_MUSHROOM, capacity: 1_000_000, initial: 0 },
-] as const;
+/** The per-good sandbox stock capacity — a huge balance pin (not extracted data) so a store never fills. */
+const STORE_CAPACITY = 1_000_000;
+
+/** A store slot: how much of one good a general-goods building may hold, and its starting amount. */
+interface StockSlot {
+  readonly goodType: number;
+  readonly capacity: number;
+  readonly initial: number;
+}
+
+/**
+ * The general-goods store stock — the core economy goods (the gathered set + plank + coin) followed by every
+ * storable extended ware from {@link STORABLE_EXTENDED_GOODS}, so the HQ and warehouses advertise a slot for
+ * the WHOLE catalog and the Magazyn panel lists each good (with its icon) across its category tab. The stock
+ * SET (which goods a store holds) and the flat capacity are a sandbox balance pin, not extracted data.
+ */
+const STORE_STOCK: readonly StockSlot[] = [
+  GOOD_WOOD,
+  GOOD_PLANK,
+  GOOD_COIN,
+  GOOD_STONE,
+  GOOD_MUD,
+  GOOD_IRON,
+  GOOD_GOLD,
+  GOOD_MUSHROOM,
+  ...STORABLE_EXTENDED_GOODS.map((g) => g.typeId),
+].map((goodType) => ({ goodType, capacity: STORE_CAPACITY, initial: 0 }));
 
 function resourceLandscapeType(good: number): number {
   return RESOURCE_LANDSCAPE_BASE + good;
@@ -255,6 +303,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       allowedAtomics: [g.atomic],
     })),
     { typeId: JOB_CARRIER, id: 'carrier', name: 'Tragarz' },
+    { typeId: JOB_SOLDIER_UNARMED, id: 'soldier_unarmed', name: 'Wojownik (bez broni)' },
     { typeId: JOB_SOLDIER_SPEAR, id: 'soldier_spear', name: 'Wlocznik' },
     { typeId: JOB_SOLDIER_SWORD, id: 'soldier_sword', name: 'Miecznik' },
     { typeId: JOB_SOLDIER_BROADSWORD, id: 'soldier_broadsword', name: 'Miecznik (dwureczny)' },
@@ -293,6 +342,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
     id: 'viking',
     atomicBindings: [
       ...GATHERERS.map((g) => ({ jobType: g.job, atomicId: g.atomic, animation: g.animation })),
+      { jobType: JOB_SOLDIER_UNARMED, atomicId: ATTACK_ATOMIC, animation: 'viking_fist_attack' },
       { jobType: JOB_SOLDIER_SPEAR, atomicId: ATTACK_ATOMIC, animation: 'viking_spear_attack' },
       { jobType: JOB_SOLDIER_SWORD, atomicId: ATTACK_ATOMIC, animation: 'viking_sword_attack' },
       { jobType: JOB_SOLDIER_BROADSWORD, atomicId: ATTACK_ATOMIC, animation: 'viking_broadsword_attack' },
@@ -311,6 +361,13 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
     }
   }
 
+  // The localized display name for a good STRING id, as an optional-`name` spread — present only when the
+  // caller supplied a name map AND it has that id, so a headless/golden build (no map) is byte-unchanged.
+  const localName = (id: string): { name?: string } => {
+    const n = extras.goodNames?.get(id);
+    return n !== undefined ? { name: n } : {};
+  };
+
   return parseContentSet({
     manifest: { version: IR_VERSION, generatedFrom: { game: 'vinland-global-sandbox' }, locale: 'eng' },
     goods: [
@@ -318,6 +375,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       {
         typeId: GOOD_WOOD,
         id: 'wood',
+        ...localName('wood'),
         weight: 1,
         atomics: { harvest: HARVEST_ATOMIC },
         gathering: {
@@ -326,11 +384,12 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
           yieldPerNode: WOOD_YIELD_PER_NODE,
         },
       },
-      { typeId: GOOD_PLANK, id: 'plank', weight: 1 },
-      { typeId: GOOD_COIN, id: 'coin' },
+      { typeId: GOOD_PLANK, id: 'plank', ...localName('plank'), weight: 1 },
+      { typeId: GOOD_COIN, id: 'coin', ...localName('coin') },
       {
         typeId: GOOD_STONE,
         id: 'stone',
+        ...localName('stone'),
         weight: 1,
         atomics: { harvest: STONE_HARVEST_ATOMIC },
         gathering: { bioLandscape: false, depositSize: STONE_DEPOSIT_UNITS, depositLevels: MINE_LEVELS },
@@ -338,6 +397,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       {
         typeId: GOOD_MUD,
         id: 'mud',
+        ...localName('mud'),
         weight: 1,
         atomics: { harvest: CLAY_HARVEST_ATOMIC },
         gathering: { bioLandscape: false, depositSize: CLAY_DEPOSIT_UNITS, depositLevels: MINE_LEVELS },
@@ -345,6 +405,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       {
         typeId: GOOD_IRON,
         id: 'iron',
+        ...localName('iron'),
         weight: 1,
         atomics: { harvest: IRON_HARVEST_ATOMIC },
         gathering: { bioLandscape: false, depositSize: IRON_DEPOSIT_UNITS, depositLevels: MINE_LEVELS },
@@ -352,6 +413,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       {
         typeId: GOOD_GOLD,
         id: 'gold',
+        ...localName('gold'),
         weight: 1,
         atomics: { harvest: GOLD_HARVEST_ATOMIC },
         gathering: { bioLandscape: false, depositSize: GOLD_DEPOSIT_UNITS, depositLevels: MINE_LEVELS },
@@ -359,10 +421,28 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       {
         typeId: GOOD_MUSHROOM,
         id: 'mushroom',
+        ...localName('mushroom'),
         weight: 1,
         atomics: { harvest: MUSHROOM_HARVEST_ATOMIC },
         gathering: { bioLandscape: true },
       },
+      // The rest of the original catalog — food, drink, building materials, tools, crafted wares, weapons,
+      // armor, potions, amulets, and the animal/vehicle/special tokens (see catalog/goods.ts). They carry no
+      // bespoke gathering/production yet; they exist so the whole catalog is globally available with a name,
+      // a stock slot (the storable ones) and its `ls_goods` icon, and can be dropped on the ground. The
+      // equippable ones (130–155) additionally carry their equip classification (slot + wear, from
+      // EQUIP_GOODS, merged by typeId) so the selection panel can label/classify a worn item. The localized
+      // name (when supplied) overrides the built-in English catalog `name`.
+      ...EXTENDED_GOODS.map((g) => {
+        const equip = EQUIP_CLASS_BY_TYPE.get(g.typeId);
+        return {
+          typeId: g.typeId,
+          id: g.id,
+          name: extras.goodNames?.get(g.id) ?? g.name,
+          weight: 1,
+          ...(equip !== undefined ? { equip } : {}),
+        };
+      }),
     ],
     jobs: [...jobs.values()],
     buildings: [...buildings.values()].sort((a, b) => a.typeId - b.typeId),
@@ -385,6 +465,15 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       harvest: { landscapeType: resourceLandscapeType(g.good), gfxIndices: [resourceGfxIndex(g.good)] },
     })),
     weapons: [
+      {
+        typeId: WEAPON_FISTS,
+        id: 'viking_fist',
+        tribeType: PRIMARY_TRIBE,
+        jobType: JOB_SOLDIER_UNARMED,
+        minRange: 1,
+        maxRange: 1,
+        damage: { '0': FIST_DAMAGE },
+      },
       {
         typeId: WEAPON_SPEAR,
         id: 'viking_spear',
@@ -446,6 +535,12 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       })),
       // Each swing carries its mid-animation ATTACK event (the blow lands / the arrow looses THERE,
       // not at completion) — lengths + frames transcribed from the viking atomicanimations records.
+      {
+        id: 'viking_fist_attack',
+        name: 'viking_fist_attack',
+        length: FIST_SWING_LENGTH,
+        events: [{ at: FIST_HIT_FRAME, type: ATTACK_EVENT_TYPE }],
+      },
       {
         id: 'viking_spear_attack',
         name: 'viking_spear_attack',
