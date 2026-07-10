@@ -39,10 +39,12 @@ export interface PlacementController {
   enter(typeId: number): void;
   cancel(): void;
   /**
-   * Route a left-click while placing: on a tile the placement rule ACCEPTS, enqueue `placeBuilding`
-   * and exit build mode (one click = one building — the future construction-site flow extends here);
-   * on a rejecting or off-map tile the click is consumed but inert (placement claims the canvas until
-   * placed or cancelled). Returns true when consumed.
+   * Route a left-click while placing: on a tile the placement rule ACCEPTS, enqueue `placeBuilding` as a
+   * CONSTRUCTION SITE (`underConstruction`) and exit build mode (one click = one foundation); on a rejecting
+   * or off-map tile the click is consumed but inert (placement claims the canvas until placed or cancelled).
+   * Every player-placed building is raised the original way — a grey foundation that builders deliver
+   * materials to and hammer up (the ConstructionSystem) — so construction is GLOBAL across every scene and
+   * map, not a per-scene demo. Returns true when consumed.
    */
   handleClick(clientX: number, clientY: number): boolean;
   /** Per-frame: re-place the banner text against the live canvas size. */
@@ -104,6 +106,9 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
           y: tile.row,
           tribe: deps.tribe,
           owner: deps.owner,
+          // Place a construction site, not a finished building: the foundation stands at 0% and builders
+          // raise it (deliver + hammer). The type's `construction` cost + `hitpoints` (global content) drive it.
+          underConstruction: true,
         });
         exitPlacement();
       }

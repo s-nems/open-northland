@@ -168,21 +168,68 @@ const BASE_LANDSCAPE = [
   { typeId: TERRAIN_MARGIN, id: 'landscape_margin', walkable: true, buildable: false },
 ] as const;
 
-const HOME_UPGRADE_PIN: readonly { goodType: number; amount: number }[] = [
-  { goodType: GOOD_NONE, amount: 1 },
-];
-
 /**
- * The build-material cost + max HP the construction scene raises `home_level_00` from — a small
- * DELIVERABLE cost (wood + stone) so builders visibly haul + hammer it up over a handful of swings, and a
- * life pool for the Health ramp. A sandbox balance pin (not extracted data), and inert for every other
- * scene: they place the home already-built, so its construction branch (and Health) never fire.
+ * GLOBAL construction data — every building is raised the original way: the player places a foundation
+ * (the tool panel enqueues `placeBuilding` `underConstruction`), carriers/builders deliver its materials,
+ * and a builder hammers it up (the ConstructionSystem). This is not a per-scene demo: the SAME cost + life
+ * pool apply in EVERY scene and on every map. A building with no cost would instead pop up instantly and a
+ * `GOOD_NONE` cost would stall (good 0 is undeliverable), so each carries a real, deliverable bill.
+ *
+ * Named approximation (source basis: our design — the engine's build loop has no oracle, AGENTS.md). The
+ * real per-type material bill (`[GfxHouse] LogicConstructionGoods`) and `logichitpoints` ARE extracted, but
+ * the bill is keyed by the ORIGINAL game's good ids, not yet unified into the sandbox good space (the
+ * deferred global-content id unification). So the COST is approximated in sandbox goods — a wood+stone
+ * parcel scaled by building class (a warehouse/hall costs more units → more builder strikes than a hut) —
+ * and HITPOINTS is a per-class default. Homes keep their level chain, each tier a parcel up (the cost
+ * doubles as the next tier's upgrade bill — {@link import('@vinland/sim').homeNextTier}). Tune freely; the
+ * global mechanic, not these balance numbers, is the point.
  */
-const HOME_BUILD_PIN: readonly { goodType: number; amount: number }[] = [
-  { goodType: GOOD_WOOD, amount: 4 },
-  { goodType: GOOD_STONE, amount: 2 },
+function buildParcel(wood: number, stone: number): readonly { goodType: number; amount: number }[] {
+  return [
+    { goodType: GOOD_WOOD, amount: wood },
+    { goodType: GOOD_STONE, amount: stone },
+  ];
+}
+/** Per home tier (`home_level_00..04` = typeIds {@link BUILDING_HOME_00}+0..4): a rising wood+stone bill.
+ *  Level 0 keeps the base cost the construction scene has always raised the starter home from. */
+const HOME_BUILD_COST_BY_LEVEL: readonly (readonly { goodType: number; amount: number }[])[] = [
+  buildParcel(4, 2),
+  buildParcel(4, 3),
+  buildParcel(5, 3),
+  buildParcel(5, 4),
+  buildParcel(6, 4),
 ];
-const HOME_BUILD_HITPOINTS = 30000;
+/** Non-home build cost by building `kind`; unmapped kinds fall back to {@link DEFAULT_BUILD_COST}. */
+const BUILD_COST_BY_KIND: Readonly<Record<string, readonly { goodType: number; amount: number }[]>> = {
+  storage: buildParcel(6, 4), // warehouses + the HQ — the largest common bodies
+  training: buildParcel(5, 4), // barracks / school halls
+  tower: buildParcel(3, 5), // walls / watchtowers — stone-heavy
+  workplace: buildParcel(3, 2), // a workshop
+};
+const DEFAULT_BUILD_COST = buildParcel(3, 2);
+/** Per-class max HP (the Health pool the ConstructionSystem ramps 0→max as the site rises). */
+const BUILD_HITPOINTS_BY_KIND: Readonly<Record<string, number>> = {
+  storage: 100000,
+  home: 30000,
+  training: 60000,
+  tower: 60000,
+  workplace: 40000,
+};
+const DEFAULT_BUILD_HITPOINTS = 40000;
+
+/** The build-material cost for a catalog building: its home-tier parcel for a home, else its class cost. */
+function buildingConstructionCost(b: VikingBuilding): readonly { goodType: number; amount: number }[] {
+  if (b.kind === HOME_KIND) {
+    const level = b.typeId - BUILDING_HOME_00;
+    const clamped = Math.min(Math.max(level, 0), HOME_BUILD_COST_BY_LEVEL.length - 1);
+    return HOME_BUILD_COST_BY_LEVEL[clamped] ?? DEFAULT_BUILD_COST;
+  }
+  return BUILD_COST_BY_KIND[b.kind] ?? DEFAULT_BUILD_COST;
+}
+/** The max-HP pool for a catalog building's `kind`. */
+function buildingHitpoints(kind: string): number {
+  return BUILD_HITPOINTS_BY_KIND[kind] ?? DEFAULT_BUILD_HITPOINTS;
+}
 
 const RESOURCE_LANDSCAPE_BASE = 1000;
 const RESOURCE_GFX_BASE = 2000;
@@ -846,9 +893,6 @@ const BUILDING_WORKER_SLOTS: Readonly<Record<number, readonly { jobType: number;
  */
 const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> = {
   [BUILDING_HEADQUARTERS]: { stock: STORE_STOCK },
-  // The base-tier home the construction scene builds: a real deliverable cost + a life pool, overriding
-  // the trivial home-upgrade pin for this one typeId (inert elsewhere — other scenes place it built).
-  [BUILDING_HOME_00]: { construction: HOME_BUILD_PIN, hitpoints: HOME_BUILD_HITPOINTS },
   // The three warehouses accept the same general-goods set as the HQ (sandbox balance pin, not extracted
   // data) so the Magazyn section shows their storable goods instead of reading empty.
   [BUILDING_WAREHOUSE_00]: { stock: STORE_STOCK },
@@ -871,7 +915,8 @@ function buildingRow(b: VikingBuilding): SandboxBuildingRow {
     typeId: b.typeId,
     id: b.id,
     kind: b.kind,
-    ...(b.kind === HOME_KIND ? { construction: HOME_UPGRADE_PIN } : {}),
+    construction: buildingConstructionCost(b), // a deliverable bill so it raises as a construction site
+    hitpoints: buildingHitpoints(b.kind), // the Health pool the ramp fills as it rises
     ...(slots !== undefined ? { workers: slots } : {}),
     ...BUILDING_OVERRIDES[b.typeId], // an override's `workers` (the joinery's demo) wins over the default
   };

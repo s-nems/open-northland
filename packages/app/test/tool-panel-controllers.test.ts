@@ -229,14 +229,17 @@ describe('placement controller', () => {
     return { placement, commands };
   }
 
-  it('places at an accepted tile and EXITS build mode (one click = one building)', () => {
+  it('places a construction site at an accepted tile and EXITS build mode (one click = one foundation)', () => {
     const { placement, commands } = mount(() => ({ col: 4, row: 2 }));
     expect(placement.handleClick(10, 10)).toBe(false); // not active yet → not consumed
 
     placement.enter(23);
     expect(placement.isActive()).toBe(true);
     expect(placement.handleClick(10, 10)).toBe(true);
-    expect(commands).toEqual([{ kind: 'placeBuilding', buildingType: 23, x: 4, y: 2, tribe: 1, owner: 0 }]);
+    // Player placement is always a construction site (`underConstruction`) — builders raise it globally.
+    expect(commands).toEqual([
+      { kind: 'placeBuilding', buildingType: 23, x: 4, y: 2, tribe: 1, owner: 0, underConstruction: true },
+    ]);
     expect(placement.isActive()).toBe(false); // landed → build mode over (the original's flow)
   });
 
