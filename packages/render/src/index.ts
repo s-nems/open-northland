@@ -74,10 +74,12 @@ export type { PlacementGhost } from './gpu/placement-ghost.js';
 export {
   compactResolvedStockpileLayers,
   reconcileSprites,
+  resolveLayers,
   trackMotion,
   type EntityBounds,
   type MotionTrack,
 } from './gpu/sprite-pool/index.js';
+export type { ResolvedLayer } from './gpu/sprite-pool/resolve-layers.js';
 export { DEFAULT_HUD_STYLE, type HudStyle, type HudFrame } from './gpu/hud-layer.js';
 export type { MapObjectSprite } from './gpu/map-objects/index.js';
 export {
