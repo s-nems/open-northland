@@ -53,6 +53,9 @@ export interface GameToolPanelHandle {
   /** True when a client point is over the HUD (strip / open window / active placement) — the input router
    *  asks this BEFORE world picking so a HUD click never falls through to unit selection/orders. */
   claimPointer(clientX: number, clientY: number): boolean;
+  /** True when a client point is over an OPEN pop-up window (menu / stats) — wired into the camera so
+   *  scrolling that window's list never also zooms the world behind it. */
+  claimsWheel(clientX: number, clientY: number): boolean;
   /** The panel's client-point → map-tile mapping (camera + backing scale + elevation), shared with the
    *  frame loop's build-mode hover so the cursor ghost and the placement click resolve identically. */
   clientToTile(clientX: number, clientY: number): { col: number; row: number } | null;
@@ -132,6 +135,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
   return {
     controller,
     claimPointer: (x, y) => controller.claimsPointer(x, y),
+    claimsWheel: (x, y) => controller.claimsWheel(x, y),
     clientToTile,
   };
 }

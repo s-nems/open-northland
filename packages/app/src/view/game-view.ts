@@ -178,6 +178,10 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     onSpeed: (spec, cause) => applyGameSpeed(control, spec, cause),
   });
 
+  // Scrolling an open HUD window (the build menu / stats list) must NOT also zoom the world behind it —
+  // the camera skips the wheel while the pointer is over such a window.
+  cameraCtl.setPointerGuard((clientX, clientY) => toolPanel.claimsWheel(clientX, clientY));
+
   // The cursor position for the build-mode ghost (client coords; null when the pointer left the
   // canvas). Tracked persistently — the ghost must follow the mouse between clicks, and reading it in
   // the frame loop keeps ALL per-frame work in the one RAF (no per-mousemove sim probing).
