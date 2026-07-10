@@ -106,6 +106,17 @@ export function readAtomicElapsed(components: Readonly<Record<string, unknown>>)
 }
 
 /**
+ * The atomic's total DURATION in ticks (the sim's `CurrentAtomic.duration`), or `null` when not
+ * mid-atomic / the field is absent — the denominator the melee-lunge envelope shapes its ramp-out
+ * against (a swing steps back onto its true anchor as the animation ends).
+ */
+export function readAtomicDuration(components: Readonly<Record<string, unknown>>): number | null {
+  const a = components.CurrentAtomic as { duration?: unknown } | undefined;
+  if (a === undefined || typeof a.duration !== 'number') return null;
+  return a.duration;
+}
+
+/**
  * The bob block index per SCREEN-heading octant, indexed by `round(angle / 45°) mod 8` with the angle
  * from `Math.atan2(dy, dx)` (screen +x right, +y down): octant 0 = E, 1 = SE, 2 = S, 3 = SW, 4 = W,
  * 5 = NW, 6 = N, 7 = NE. The `CR_Hum_Body` sheet's 8 direction blocks are NOT a uniform screen-angle

@@ -76,6 +76,9 @@ export function resolveLayers(
   sheet: SpriteSheet | undefined,
   item: DrawItem,
   tick: number,
+  // The MOVING-state walk-cycle clock (the pool's motion-scaled gait phase); defaults to the free
+  // tick for callers without a motion track (ghost previews, tests).
+  gaitClock: number = tick,
 ): ResolvedLayer[] | null {
   if (sheet === undefined) return null;
   // A projectile has NO decoded arrow bob (only character bodies are extracted) — it always draws the
@@ -87,7 +90,7 @@ export function resolveLayers(
   // pick + its own binding, resolved in that body's frame-id space. Falls through to the sheet-global
   // settler path only when the sheet carries no characters (the synthetic sheet — unchanged).
   if (item.kind === 'settler' && sheet.characters !== undefined) {
-    return resolveCharacterLayers(sheet.characters, item, tick);
+    return resolveCharacterLayers(sheet.characters, item, tick, gaitClock);
   }
 
   let bobId: number | null;
@@ -228,9 +231,10 @@ function resolveCharacterLayers(
   characters: SettlerCharacterSet,
   item: DrawItem,
   tick: number,
+  gaitClock: number,
 ): ResolvedLayer[] | null {
   const char = pickByJob(characters, item.jobType, item.young === true, item.weaponGood);
-  const bob = resolveSettlerBobId(char.binding, item, tick);
+  const bob = resolveSettlerBobId(char.binding, item, tick, gaitClock);
   const layers: ResolvedLayer[] = [];
   const bodyFrame = char.body.atlas.frames.get(bob);
   if (bodyFrame !== undefined && bodyFrame.width > 0 && bodyFrame.height > 0) {
@@ -247,7 +251,8 @@ function resolveCharacterLayers(
   const heads = char.heads;
   if (heads !== undefined && heads.length > 0) {
     const head = heads[item.ref % heads.length];
-    const headBob = char.headBinding !== undefined ? resolveSettlerBobId(char.headBinding, item, tick) : bob;
+    const headBob =
+      char.headBinding !== undefined ? resolveSettlerBobId(char.headBinding, item, tick, gaitClock) : bob;
     const headFrame = head?.atlas.frames.get(headBob);
     if (head !== undefined && headFrame !== undefined && headFrame.width > 0 && headFrame.height > 0) {
       layers.push({
