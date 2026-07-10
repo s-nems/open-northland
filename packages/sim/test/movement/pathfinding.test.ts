@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  type CellId,
+  type NodeId,
   type TerrainGraph,
   type TerrainMap,
   buildTerrainGraph,
@@ -31,39 +31,39 @@ function open(width: number, height: number): TerrainGraph {
 }
 
 /** Map a path to (x,y) pairs for readable assertions. */
-function coords(g: TerrainGraph, path: CellId[] | null): Array<{ x: number; y: number }> | null {
+function coords(g: TerrainGraph, path: NodeId[] | null): Array<{ x: number; y: number }> | null {
   return path === null ? null : path.map((c) => g.coordsOf(c));
 }
 
 describe('findPath — endpoints and degenerate cases', () => {
   it('start === goal yields a single-node path', () => {
     const g = open(3, 3);
-    const start = g.cellAt(1, 1);
+    const start = g.nodeAt(1, 1);
     expect(findPath(g, start, start)).toEqual([start]);
   });
 
   it('returns null when the start node is unwalkable', () => {
     const g = grid(3, 1, [WATER, GRASS, GRASS]);
-    expect(findPath(g, g.cellAt(0, 0), g.cellAt(2, 0))).toBeNull();
+    expect(findPath(g, g.nodeAt(0, 0), g.nodeAt(2, 0))).toBeNull();
   });
 
   it('returns null when the goal node is unwalkable', () => {
     const g = grid(3, 1, [GRASS, GRASS, WATER]);
-    expect(findPath(g, g.cellAt(0, 0), g.cellAt(2, 0))).toBeNull();
+    expect(findPath(g, g.nodeAt(0, 0), g.nodeAt(2, 0))).toBeNull();
   });
 
   it('returns null when the goal is walkable but unreachable (walled off)', () => {
     // A 3x1 strip with a water node in the middle isolates the two grass ends (a 1-node-tall strip
     // has no diagonal or vertical edges to slip past it).
     const g = grid(3, 1, [GRASS, WATER, GRASS]);
-    expect(findPath(g, g.cellAt(0, 0), g.cellAt(2, 0))).toBeNull();
+    expect(findPath(g, g.nodeAt(0, 0), g.nodeAt(2, 0))).toBeNull();
   });
 });
 
 describe('findPath — shortest route on an open grid', () => {
   it('finds a minimal-length path across an all-grass row', () => {
     const g = open(4, 1);
-    const path = findPath(g, g.cellAt(0, 0), g.cellAt(3, 0));
+    const path = findPath(g, g.nodeAt(0, 0), g.nodeAt(3, 0));
     expect(coords(g, path)).toEqual([
       { x: 0, y: 0 },
       { x: 1, y: 0 },
@@ -74,8 +74,8 @@ describe('findPath — shortest route on an open grid', () => {
 
   it('takes ⌊Δhy/2⌋ diagonals plus the un-absorbed half-columns and half-rows', () => {
     const g = open(10, 8);
-    const a = g.cellAt(0, 0);
-    const b = g.cellAt(5, 3);
+    const a = g.nodeAt(0, 0);
+    const b = g.nodeAt(5, 3);
     const path = findPath(g, a, b);
     expect(path).not.toBeNull();
     // ax=5, ay=3: one diagonal (absorbing two half-rows and one half-column), four E steps, one
@@ -89,7 +89,7 @@ describe('findPath — shortest route on an open grid', () => {
     // (0,0) -> (2,4) lies exactly down-right on screen: two SE lattice edges. Strictly cheaper than
     // any straight-step substitute (2·DIAGONAL_STEP ≈ 1.50 vs e.g. 2 E + 4 N ≈ 2.12), so tie-free.
     const g = open(5, 5);
-    const path = findPath(g, g.cellAt(0, 0), g.cellAt(2, 4));
+    const path = findPath(g, g.nodeAt(0, 0), g.nodeAt(2, 4));
     expect(coords(g, path)).toEqual([
       { x: 0, y: 0 },
       { x: 1, y: 2 },
@@ -101,7 +101,7 @@ describe('findPath — shortest route on an open grid', () => {
     // (2,0) -> (2,4): four N/S half-row steps (4·HALF_ROW ≈ 1.12) strictly beat any diagonal pair
     // (2·DIAGONAL_STEP ≈ 1.50), so the pick is tie-free — the walker holds its world column exactly.
     const g = open(5, 5);
-    const path = findPath(g, g.cellAt(2, 0), g.cellAt(2, 4));
+    const path = findPath(g, g.nodeAt(2, 0), g.nodeAt(2, 4));
     expect(coords(g, path)).toEqual([
       { x: 2, y: 0 },
       { x: 2, y: 1 },
@@ -119,7 +119,7 @@ describe('findPath — shortest route on an open grid', () => {
     const typeIds = new Array(25).fill(GRASS);
     typeIds[2 * 5 + 2] = WATER;
     const g = grid(5, 5, typeIds);
-    const path = findPath(g, g.cellAt(2, 0), g.cellAt(2, 4));
+    const path = findPath(g, g.nodeAt(2, 0), g.nodeAt(2, 4));
     expect(coords(g, path)).toEqual([
       { x: 2, y: 0 },
       { x: 1, y: 2 },
@@ -129,13 +129,13 @@ describe('findPath — shortest route on an open grid', () => {
 
   it('every step in a returned path is a walkable lattice neighbour of the previous', () => {
     const g = open(6, 6);
-    const path = findPath(g, g.cellAt(0, 0), g.cellAt(5, 5));
+    const path = findPath(g, g.nodeAt(0, 0), g.nodeAt(5, 5));
     expect(path).not.toBeNull();
     for (let i = 1; i < (path?.length ?? 0); i++) {
-      const prev = path?.[i - 1] as CellId;
-      const cur = path?.[i] as CellId;
+      const prev = path?.[i - 1] as NodeId;
+      const cur = path?.[i] as NodeId;
       // steps() is the pathfinder's 8-direction half-cell edge set.
-      expect(g.steps(prev).map((s) => s.cell)).toContain(cur);
+      expect(g.steps(prev).map((s) => s.node)).toContain(cur);
     }
   });
 });
@@ -147,11 +147,11 @@ describe('findPath — routes around obstacles', () => {
     const typeIds = new Array(36).fill(GRASS);
     for (let hy = 0; hy <= 3; hy++) typeIds[hy * 6 + 3] = WATER;
     const g = grid(6, 6, typeIds);
-    const path = findPath(g, g.cellAt(0, 2), g.cellAt(5, 2));
+    const path = findPath(g, g.nodeAt(0, 2), g.nodeAt(5, 2));
     expect(path).not.toBeNull();
     const cells = coords(g, path) ?? [];
     for (const c of cells) {
-      expect(g.isWalkable(g.cellAt(c.x, c.y))).toBe(true);
+      expect(g.isWalkable(g.nodeAt(c.x, c.y))).toBe(true);
       // The wall column is only ever crossed below the wall.
       if (c.x === 3) expect(c.y).toBeGreaterThanOrEqual(4);
     }
@@ -172,7 +172,7 @@ describe('findPath — routes around obstacles', () => {
         return t;
       })(),
     );
-    expect(findPath(oneFlank, oneFlank.cellAt(1, 1), oneFlank.cellAt(2, 3))?.length).toBe(2); // the single SE edge — one flank is enough
+    expect(findPath(oneFlank, oneFlank.nodeAt(1, 1), oneFlank.nodeAt(2, 3))?.length).toBe(2); // the single SE edge — one flank is enough
 
     const sealed = grid(
       4,
@@ -187,15 +187,15 @@ describe('findPath — routes around obstacles', () => {
       })(),
     );
     // With row 2 sealed, no diagonal seam stays open and no half-row step survives — unreachable.
-    expect(findPath(sealed, sealed.cellAt(1, 1), sealed.cellAt(2, 3))).toBeNull();
+    expect(findPath(sealed, sealed.nodeAt(1, 1), sealed.nodeAt(2, 3))).toBeNull();
   });
 });
 
 describe('findPath — deterministic tie-breaking', () => {
   it('picks the same path across repeated calls (history-independent)', () => {
     const g = open(6, 6);
-    const a = g.cellAt(0, 0);
-    const b = g.cellAt(5, 5);
+    const a = g.nodeAt(0, 0);
+    const b = g.nodeAt(5, 5);
     const first = findPath(g, a, b);
     for (let i = 0; i < 5; i++) expect(findPath(g, a, b)).toEqual(first);
   });
@@ -203,8 +203,8 @@ describe('findPath — deterministic tie-breaking', () => {
   it('picks the same path across independently-built identical graphs (lockstep-equal)', () => {
     const ga = open(6, 6);
     const gb = open(6, 6);
-    const a = 0 as CellId;
-    const b = 35 as CellId;
+    const a = 0 as NodeId;
+    const b = 35 as NodeId;
     // Cell ids are identical across the two graphs (same dims), so the paths must be id-for-id equal.
     expect(findPath(ga, a, b)).toEqual(findPath(gb, a, b));
   });
@@ -217,7 +217,7 @@ describe('findPath — deterministic tie-breaking', () => {
     // pick — a moved expectation here means the lockstep path choice changed, which is a
     // replay-compatibility event, not a style nit.
     const g = open(6, 6);
-    const path = findPath(g, g.cellAt(1, 1), g.cellAt(3, 3));
+    const path = findPath(g, g.nodeAt(1, 1), g.nodeAt(3, 3));
     expect(coords(g, path)).toEqual([
       { x: 1, y: 1 },
       { x: 2, y: 3 },

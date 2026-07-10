@@ -10,7 +10,7 @@ golden means behavior changed — stop and reassess).
 profiling evidence, not order. When a step merges, tick its box and delete its prompt block. Delete
 this file when all steps land.
 
-- [ ] 1. Economy nearest-X scans → `TileBuckets.nearest`
+- [ ] 1. Economy nearest-X scans → `NodeBuckets.nearest`
 - [x] 2. Content typeId indexes for hot-loop lookups
 - [ ] 3. Run the sim in a Web Worker
 
@@ -28,13 +28,13 @@ architecture review lenses. Source basis n/a (pure lookup swap).
 Point the economy's nearest-X scans at the landed ring-search primitive. Today the nearest
 resource / store off-tile picks (packages/sim/src/systems/agents/ai-targets.ts, ai-supply.ts) are
 O(idle · candidates) candidate-list scans, mitigated by the busy-unit skip + dormancy gate +
-per-tick candidate lists. `TileBuckets.nearest` (systems/spatial.ts) already does the canonical
+per-tick candidate lists. `NodeBuckets.nearest` (systems/spatial.ts) already does the canonical
 (distance, entity-id) band search — combatSystem consumes it.
 
 CORRECTED RESEARCH FACT (2026-07-08, refactor/sim-rework analysis): a PLAIN migration moves
 goldens. The economy scans measure to each candidate's INTERACTION cell (a building's door, a
 resource's work cell) and tie-break by CELL id — not the candidate's own tile and entity id that
-TileBuckets.nearest uses — and resourceWorkCell / the blocked-anchor pile fallback are
+NodeBuckets.nearest uses — and resourceWorkCell / the blocked-anchor pile fallback are
 SEEKER-dependent (the effective cell differs per seeker), so those candidates cannot be
 pre-bucketed at all. A golden-safe migration needs an interaction-tile-bucketed ring variant with
 a (distance, cellId, entityId) pick for the seeker-independent scans (nearestTemple, the

@@ -122,7 +122,7 @@ export class WorldRenderer {
 
   /**
    * (Re)build the cached terrain from a grid — call ONCE per map (a terrain edit re-invalidates). With
-   * `textures` it draws textured diamonds; without them the flat placeholder ground. See {@link TerrainLayer}.
+   * `textures` it draws the textured ground mesh; without them the flat placeholder ground. See {@link TerrainLayer}.
    */
   setTerrain(terrain: SceneTerrain, textures?: TerrainTextureSet): void {
     // Build the height field ONCE per map (from the `lmhe` lane, or flat when absent). The terrain mesh

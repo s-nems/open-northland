@@ -387,7 +387,7 @@ describe('a player order is authoritative — it overrides the autonomous drives
     expect(sim.world.has(a, Engagement)).toBe(false); // the fight is dropped
     expect(sim.world.has(a, AttackOrder)).toBe(false);
     expect(sim.world.has(a, PlayerOrder)).toBe(true); // now under the move order
-    expect(sim.world.get(a, MoveGoal).cell).toBe(sim.terrain?.cellAtClamped(away.hx, away.hy));
+    expect(sim.world.get(a, MoveGoal).cell).toBe(sim.terrain?.nodeAtClamped(away.hx, away.hy));
   });
 
   it('the CombatSystem does not re-engage a unit under a move order, even with an enemy IN REACH', () => {

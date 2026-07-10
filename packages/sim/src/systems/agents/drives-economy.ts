@@ -1,6 +1,6 @@
 import { Resource } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { CellId, TerrainGraph } from '../../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
 import { carrierCarryCapacity } from '../progression.js';
 import { atomicDuration } from '../readviews/animations.js';
@@ -52,7 +52,7 @@ export function planDelivery(
   terrain: TerrainGraph,
   e: Entity,
   settler: Worker,
-  here: CellId,
+  here: NodeId,
   load: { goodType: number; amount: number },
   targets: TargetCandidates,
 ): boolean {
@@ -104,7 +104,7 @@ export function planProducer(
   terrain: TerrainGraph,
   e: Entity,
   settler: Worker,
-  here: CellId,
+  here: NodeId,
   workplace: Entity,
   stockpiles: readonly Entity[],
 ): void {
@@ -148,7 +148,7 @@ export function planProducer(
 }
 
 /** Set a `MoveGoal` to `target` unless the settler is already on it (then it stays put). */
-function walkToOrHold(world: World, e: Entity, here: CellId, target: CellId): void {
+function walkToOrHold(world: World, e: Entity, here: NodeId, target: NodeId): void {
   atOrWalk(world, e, here, target, () => {});
 }
 
@@ -168,7 +168,7 @@ export function planGatherer(
   terrain: TerrainGraph,
   e: Entity,
   settler: Worker & { jobType: number; experience: Map<number, number> },
-  here: CellId,
+  here: NodeId,
   targets: TargetCandidates,
 ): boolean {
   const node = nearestHarvestableFor(targets.resources, world, ctx, terrain, here, settler);
@@ -228,7 +228,7 @@ export function planPorter(
   terrain: TerrainGraph,
   e: Entity,
   settler: Worker,
-  here: CellId,
+  here: NodeId,
   targets: TargetCandidates,
 ): boolean {
   if (!isPorterBoundToStore(world, ctx, e)) return false;
@@ -262,7 +262,7 @@ export function planCarrierHaul(
   terrain: TerrainGraph,
   e: Entity,
   settler: Worker,
-  here: CellId,
+  here: NodeId,
   targets: TargetCandidates,
   anyHaulable: boolean,
 ): boolean {

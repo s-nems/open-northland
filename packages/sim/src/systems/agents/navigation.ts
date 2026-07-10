@@ -3,8 +3,8 @@ import { type Fixed, fx } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import { worldDistance, worldX } from '../../nav/metric.js';
-import type { CellId, TerrainGraph } from '../../nav/terrain.js';
-import { isValidCellId } from '../spatial.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
+import { isValidNodeId } from '../spatial.js';
 
 const TWO: Fixed = fx.fromInt(2);
 
@@ -31,7 +31,7 @@ function floorInt(v: Fixed): number {
  * truncated node if no bracket node is walkable — the request then fails exactly as an off-network
  * start always has.
  */
-function routeStartCell(terrain: TerrainGraph, x: Fixed, y: Fixed): CellId {
+function routeStartCell(terrain: TerrainGraph, x: Fixed, y: Fixed): NodeId {
   // World coordinates in half-cell units — the lattice is rectangular in world space, so the
   // nearest node is one of the four floor/ceil corners of (2·worldX, 2·row).
   const wx = fx.mul(worldX(x, y), TWO);
@@ -40,11 +40,11 @@ function routeStartCell(terrain: TerrainGraph, x: Fixed, y: Fixed): CellId {
   const lowY = floorInt(wy);
   const cols = wx === fx.fromInt(lowX) ? [lowX] : [lowX, lowX + 1];
   const rows = wy === fx.fromInt(lowY) ? [lowY] : [lowY, lowY + 1];
-  let best: CellId | undefined;
+  let best: NodeId | undefined;
   let bestD: Fixed | undefined;
   for (const col of cols) {
     for (const row of rows) {
-      const cell = terrain.cellAtClamped(col, row);
+      const cell = terrain.nodeAtClamped(col, row);
       if (!terrain.isWalkable(cell)) continue;
       const c = terrain.coordsOf(cell);
       const centre = positionOfNode(c.x, c.y);
@@ -57,7 +57,7 @@ function routeStartCell(terrain: TerrainGraph, x: Fixed, y: Fixed): CellId {
   }
   if (best !== undefined) return best;
   const n = nodeOfPosition(x, y);
-  return terrain.cellAtClamped(n.hx, n.hy);
+  return terrain.nodeAtClamped(n.hx, n.hy);
 }
 
 /**
@@ -82,8 +82,8 @@ export function navigationPlanner(world: World, terrain: TerrainGraph): void {
     // A route is already being resolved — let it land (or fail) before deciding anything.
     if (world.has(e, PathRequest)) continue;
 
-    const goalCell = world.get(e, MoveGoal).cell;
-    if (!isValidCellId(terrain, goalCell)) {
+    const goalNode = world.get(e, MoveGoal).cell;
+    if (!isValidNodeId(terrain, goalNode)) {
       // An unreachable/off-map goal can never be satisfied; drop it rather than issue dead requests
       // every tick. (A planner that owns the goal can re-add a valid one.)
       world.remove(e, MoveGoal);
@@ -99,14 +99,14 @@ export function navigationPlanner(world: World, terrain: TerrainGraph): void {
       const last = pf.waypoints[pf.waypoints.length - 1];
       if (last !== undefined) {
         const n = nodeOfPosition(last.x, last.y);
-        if (terrain.cellAtClamped(n.hx, n.hy) === goalCell) {
+        if (terrain.nodeAtClamped(n.hx, n.hy) === goalNode) {
           continue; // route serves the goal
         }
       }
       // The route ends somewhere else — the goal changed mid-walk. Fall through and re-route from
       // where the walker stands: the splice replaces the stale path this tick, momentum carried.
     } else {
-      const g = terrain.coordsOf(goalCell as CellId); // validated just above
+      const g = terrain.coordsOf(goalNode as NodeId); // validated just above
       const centre = positionOfNode(g.x, g.y);
       if (p.x === centre.x && p.y === centre.y) {
         world.remove(e, MoveGoal); // standing exactly on the goal node: satisfied
@@ -119,6 +119,6 @@ export function navigationPlanner(world: World, terrain: TerrainGraph): void {
     // routed from that stale centre and visibly backtracked through it; the nearest centre keeps the
     // spliced first leg short and forward. (A start === goal request yields the single-cell path
     // that centres the walker.)
-    world.add(e, PathRequest, { start: routeStartCell(terrain, p.x, p.y), goal: goalCell, failed: false });
+    world.add(e, PathRequest, { start: routeStartCell(terrain, p.x, p.y), goal: goalNode, failed: false });
   }
 }

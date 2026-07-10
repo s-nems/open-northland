@@ -126,7 +126,7 @@ describe('runSlice on a loaded map', () => {
     const sim = runSlice(7, 30, gridMap());
     expect(sim.terrain?.width).toBe(4);
     expect(sim.terrain?.height).toBe(3);
-    expect(sim.terrain?.cellCount).toBe(12);
+    expect(sim.terrain?.nodeCount).toBe(12);
   });
 
   it('places the slice entities on the first walkable cells of the grid, not the strip', () => {

@@ -126,7 +126,7 @@ describe('sleepDrive — the planner choosing to sleep', () => {
     // Headed for the wood, not resting — the sleep drive did not fire.
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false);
     const treeNode = cellAnchorNode(3, 0); // the tree's anchor node on the half-cell lattice
-    expect(sim.world.get(settler, MoveGoal).cell).toBe(sim.terrain?.cellAt(treeNode.hx, treeNode.hy));
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(sim.terrain?.nodeAt(treeNode.hx, treeNode.hy));
   });
 
   it('eats before sleeping when both needs are over the threshold (eat has priority)', () => {

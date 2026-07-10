@@ -29,7 +29,7 @@ Three conventions that keep the relay honest across fresh instances:
 - [ ] 4. App: authored buildings draw their authored `EditName` variant (the HQ bob-44 fix)
 - [ ] 5. App: palisades/walls join into continuous runs
 - [ ] 6. Building animations (mill sails & friends)
-- [ ] 7. Survey: `emt3`/`emt4` overlay lanes (+ the rocky-ground layout question)
+- [ ] 7. Survey: rocky-ground layout re-compare (the `emt*` half landed with the mesh rebuild)
 - [ ] 8. App/sim: place `setanimal` herds
 - [ ] 9. Water & waves audit (phase, `fx wave*`, shore bands)
 - [ ] 10. Final audit + full-strip panorama sign-off
@@ -189,39 +189,28 @@ pinned: frames/layout; what approximated: cadence). Stop before merge.
 
 ---
 
-## Step 7 — survey: `emt3`/`emt4` overlay lanes (+ the rocky-ground layout question)
+## Step 7 — survey: rocky-ground layout re-compare
 
-`emt1..emt4` (u8 per cell, 255 = none) are sparse pattern overlays (roads / house foundations —
-docs/SOURCES.md), currently unconsumed. Separately, the owner reported the rocky area's LAYOUT
-reads different from the original — steps 2+3 (elevation + embr) may fully explain that; this step
-settles what remains.
+The original Part B of this step (the `emt3`/`emt4` lanes) is DONE out of band: the 2026-07-10
+terrain-mesh rebuild pinned `emt1..emt4` as the per-triangle TRANSITION overlays (not
+roads/foundations — the SOURCES hypothesis was wrong; see docs/SOURCES.md "terrain tessellation")
+and consumes all four end-to-end. What remains is Part A — the owner-reported rocky-area layout
+difference, which the mesh rebuild + transitions + the corrected elevation divisor may now fully
+explain.
 
 ### Prompt 7
 
 ```text
-Two-part investigation step (implementation only if the evidence demands it):
-
-Part A — rocky-ground layout: after the elevation lift + embr shading landed, re-compare the
-rocky hill area (right side of
-~/Projects/vikings/reference-shots/mosty-na-rzece-toprow/mosty-5.png, cols ~150..178) against our
-render of the same frame (?map=specjalna_mosty_na_rzece&center=160,15&zoom=1.25, 3172×1784;
-mapping in docs/plans/map-visual-fidelity.md). Diff structurally: same pattern names per triangle
-(that part is verbatim data), so any remaining difference must be shading/overlay/object-level —
-identify WHICH (aligned crops + difference heatmap). Report; fix only if the cause is one of the
-lanes below.
-
-Part B — emt3/emt4: decode the lanes (u8 per cell, 255=none; unpackMapLayer) across ALL decoded
-maps and survey: how many maps carry non-255 values, how many cells, which pattern-dictionary
-indices they reference (they are u8-ranged indices into the map's eapd pattern list — re-verify).
-Visualize 2–3 carriers (draw the lane over our ground render). Decide with evidence: do they
-change the LOOK (roads/foundations the ground lanes don't already carry)? If yes, emit them from
-the pipeline (same optional-lane pattern as elevation/brightness) and draw as an overlay triangle
-pass over the ground (same UV machinery as empa/empb — packages/render/src/data/terrain.ts).
-If they are editor leftovers that the baked empa/empb already superseded (the SOURCES hypothesis),
-document that with the survey numbers in docs/SOURCES.md + plan progress note and DEFER.
-
-Either way: tests for whatever lands, gates green, side-by-side for any visual change, and an
-honest plan progress note. Stop before merge.
+Rocky-ground layout re-compare (implementation only if the evidence demands it): after the terrain
+mesh rebuild (node tessellation + emt transitions + elevation/16 lift), re-compare the rocky hill
+area (right side of ~/Projects/vikings/reference-shots/mosty-na-rzece-toprow/mosty-5.png, cols
+~150..178) against our render of the same frame
+(?map=specjalna_mosty_na_rzece&center=160,15&zoom=1.25, 3172×1784; mapping in
+docs/plans/map-visual-fidelity.md). Diff structurally: same pattern names per triangle (verbatim
+data), so any remaining difference must be shading/overlay/object-level — identify WHICH (aligned
+crops + difference heatmap). Report with numbers; fix only what the evidence pins. Tests for
+whatever lands, gates green, side-by-side for any visual change, honest plan progress note. Stop
+before merge.
 ```
 
 ---
@@ -336,6 +325,20 @@ closing. Stop before merge.
 
 Format: `N. <date> — <what landed>; <key numbers/findings>; <deviations from the prompt, if any>.`
 
+- (out of band) 2026-07-10 — terrain-mesh rebuild (`feat/terrain-mesh-rebuild`, user-authored /worktree
+  task): the ground mesh moved off diamond-per-cell onto the ORIGINAL tessellation — triangles
+  BETWEEN cell-centre nodes (A=[own,SE,SW], B=[own,E,SE]; source basis: the cultures2-gl/-wasm
+  oracle, MIT — docs/SOURCES.md "terrain tessellation"); `emt1..emt4` pinned as per-triangle
+  TRANSITION overlays (⌊v/6⌋ → `eatd` name → `transitions.cif` record, v%6 → one of 6 UV pairs;
+  NOT roads/foundations — step 7's Part B closed, its prompt narrowed to Part A) and drawn as
+  RGBA masked overlays (pipeline composes `tran_*.pcx` + `tran_*_a.pcx` → `<stem>.masked.png`,
+  alpha = raw mask index) composited base → layer2 → layer1; ground pages now LINEAR-filtered;
+  elevation lift re-pinned to the engine's `elev/16` half-row-steps (`TILE_HALF_H/32` = 1.1875
+  px/unit, superseding the 1.2376 fit, which ran ≈4% higher) with border nodes clamped to 0 (a
+  named watertight adaptation of the oracle's per-cell zeroing; border-ring elevation is 0 on all
+  125 decoded maps); the old centre-split/diamond machinery deleted. Bridge-map lanes:
+  8181/8184/267/269 non-empty overlay cells (emt1..4), 38-name eatd. Gates green + real pipeline run; owner's pixel sign-off PENDING
+  (sand-grass seam must show organic transitions, no lattice edges).
 - 3. 2026-07-08 — `embr` landed end-to-end: pipeline emits it as the optional per-cell `brightness`
   lane (`stages/maps.ts` `brightnessFromMapDat`, all 125 emitted maps carry it; schema refine in
   `@vinland/data`), and the ground shades by it per FRAGMENT — the lane rides as an R8 texture the

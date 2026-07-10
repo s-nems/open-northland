@@ -146,10 +146,10 @@ export interface SpriteSheet {
  * The loaded textured-terrain inputs (the GPU twin of the pure `terrain.ts` geometry): the decoded
  * ground-texture pages keyed by {@link CellTexture.pageKey}, plus the approximated typeId→{@link
  * CellTexture} lookup the app built from the `TerrainPattern` IR. Optional input to the renderer: when
- * present, terrain cells draw as textured diamonds sampling their page; a cell whose typeId has no
- * {@link CellTexture}, or whose page failed to load, falls back to a flat diamond (the
- * {@link CellTexture.fallbackColour} debug colour, else the default). When absent, every tile draws the
- * legacy flat diamond — the reproducible default the committed shot depends on.
+ * present, each cell's two mesh triangles sample their page; a triangle whose typeId has no
+ * {@link CellTexture}, or whose page failed to load, falls back to a flat-colour triangle (the
+ * {@link CellTexture.fallbackColour} debug colour, else the default). When absent, every cell draws the
+ * legacy flat tint — the reproducible default the committed shot depends on.
  */
 export interface TerrainTextureSet {
   /** Decoded `text_NNN` ground pages as GPU sources, keyed by {@link CellTexture.pageKey}. */
@@ -163,6 +163,13 @@ export interface TerrainTextureSet {
    * to the approximated {@link cellFor} path.
    */
   groundFor?(name: string): GroundPattern | undefined;
+  /**
+   * The transition overlay by name — the join a decoded map's `transitions.types` names resolve
+   * through (the `GfxPatternTransition` IR row's masked RGBA page + its six per-pair UV tuples).
+   * Optional: a set built without the transition table (or a map without transition lanes) simply
+   * draws no overlays.
+   */
+  transitionFor?(name: string): TransitionPattern | undefined;
 }
 
 /** One resolved 1:1 ground pattern: its texture page + the two triangles' 6-int UV pixel tuples. */
@@ -170,6 +177,17 @@ export interface GroundPattern {
   readonly pageKey: string;
   readonly coordsA: readonly number[];
   readonly coordsB: readonly number[];
+}
+
+/**
+ * One resolved ground-transition overlay: its composed RGBA page (RGB texture + alpha mask — the
+ * pipeline's `<stem>.masked.png`) + the six pair variants' 6-int UV pixel tuples per triangle
+ * (a map lane's `value % 6` picks the pair, `data/terrain.ts` `transitionRef`).
+ */
+export interface TransitionPattern {
+  readonly pageKey: string;
+  readonly coordsA: readonly (readonly number[])[];
+  readonly coordsB: readonly (readonly number[])[];
 }
 
 /**
@@ -246,14 +264,20 @@ export async function createWindowPixiApp(canvas: HTMLCanvasElement): Promise<Ap
  * Load a decoded atlas PNG (a `<name>.png` the `.bmd`→atlas build emits) as a Pixi {@link TextureSource}
  * ready to bind as a {@link SpriteSheet.source}. The GPU/pixel twin of the pure
  * {@link import('../data/sprites/index.js').atlasFromManifest} — together they turn a decoded `<name>.{png,atlas.json}`
- * pair into a {@link SpriteSheet}. `nearest` scaling keeps the pixel-art bobs crisp and cuts the
- * cross-machine sampling variance (matching {@link createPixiApp}'s antialias-off), so an eyeball-the-PNG
- * check stays meaningful. Real bob atlases are decoded from a copyrighted game copy and gitignored (see
- * AGENTS.md "Legal guardrails"); this only takes a URL, so the *bytes* never live in the repo — the app
- * serves them from the gitignored `content/` over the dev/shot server, exactly as `?map=` serves grids.
+ * pair into a {@link SpriteSheet}. The default `nearest` scaling keeps the pixel-art bobs crisp and cuts
+ * the cross-machine sampling variance (matching {@link createPixiApp}'s antialias-off), so an
+ * eyeball-the-PNG check stays meaningful; the GROUND texture pages pass `linear` instead — the original
+ * samples its terrain pages bilinearly (source basis, docs/SOURCES.md "terrain tessellation"), which is
+ * what melts the transition masks into smooth seams. Real bob atlases are decoded from a copyrighted
+ * game copy and gitignored (see AGENTS.md "Legal guardrails"); this only takes a URL, so the *bytes*
+ * never live in the repo — the app serves them from the gitignored `content/` over the dev/shot server,
+ * exactly as `?map=` serves grids.
  */
-export async function loadAtlasSource(url: string): Promise<TextureSource> {
+export async function loadAtlasSource(
+  url: string,
+  scaleMode: 'nearest' | 'linear' = 'nearest',
+): Promise<TextureSource> {
   const texture = (await Assets.load(url)) as Texture;
-  texture.source.scaleMode = 'nearest';
+  texture.source.scaleMode = scaleMode;
   return texture.source;
 }

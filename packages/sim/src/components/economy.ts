@@ -45,8 +45,8 @@ export const Vehicle = defineComponent<{ vehicleType: number; tribe: number }>('
  * left — each completed harvest decrements it (AtomicSystem's harvest effect), so a finite node
  * empties and the planner's `remaining <= 0` gate then skips it. `harvestAtomic` is the
  * numeric atomic id to run (the good's `atomicForHarvesting`), kept so the planner stays data-driven
- * — it picks the atomic from content, never hardcodes one. A node sits on the cell under its
- * {@link Position} (snapped to a cell by `cellAtClamped`).
+ * — it picks the atomic from content, never hardcodes one. The resource occupies the nav node under
+ * its {@link Position} (via `nodeAtClamped`).
  */
 export const Resource = defineComponent<{
   goodType: number;

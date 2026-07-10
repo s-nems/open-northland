@@ -1,35 +1,40 @@
-import { diamondCornerSamples, makeCellSampler } from './cell-field.js';
+import { makeCellSampler } from './cell-field.js';
+import { TILE_HALF_H } from './iso.js';
 
 /**
  * The ONE terrain-elevation seam: a pure, immutable height field with a single bilinear sampler every
  * render consumer goes through (the terrain mesh, map objects, entity sprites, the cull pad, picking).
- * The bilinear+clamp core and the watertight diamond-corner coordinates are shared with the brightness
- * lane (`cell-field.ts`) so lift and shading sample identically. No Pixi, no canvas — plain math,
- * unit-tested headlessly like the rest of `render`'s data layer.
+ * The bilinear+clamp core is shared with the brightness lane (`cell-field.ts`) so lift and shading
+ * sample identically. No Pixi, no canvas — plain math, unit-tested headlessly like the rest of
+ * `render`'s data layer.
  *
- * The map's `lmhe` lane is a per-CELL height (0..~250 observed corpus-wide, `content/maps/<id>.json` `elevation`). The
- * original lifts the projected world UP by a fixed factor per unit — screen_y = projected_y − LIFT·elev
- * — which is what makes hills read as hills and collapses the vertical mismatch vs the corpus (buildings
- * on the hill sat ~25–40 px off). The factor is MEASURED (source basis "projection"): the building
- * lattice fit resolves the elevation term at E = 1.547 IMAGE px/unit at the corpus's 1.25× capture scale
- * (y-rms 5.0→1.2 with the term), i.e. {@link ELEVATION_LIFT} native art px/unit.
+ * The map's `lmhe` lane is a per-CELL height (0..~250 observed corpus-wide, `content/maps/<id>.json`
+ * `elevation`). The original lifts each mesh node UP by **elevation/16 half-row-steps** — the engine
+ * tessellation's exact divisor (source basis, docs/SOURCES.md "terrain tessellation"), i.e.
+ * `TILE_HALF_H/32` px per elevation unit (1.1875 px at the measured 38 px row step; supersedes the
+ * earlier photogrammetric fit of ≈1.24, which ran ≈4% higher). The ground mesh samples nodes
+ * exactly (`terrain.ts` `nodeLift`); sprites/objects at fractional positions ride the bilinear
+ * sampler here — a named approximation of the mesh's piecewise-triangle surface: {@link
+ * ElevationField.liftAt} is exact at integer CELL coordinates, {@link ElevationField.liftAtNode}
+ * exact at every same-row node (centres and mid-edge points), and only between-row nodes / interior
+ * fractional positions blend bilinearly where the mesh is triangle-planar.
  *
  * Determinism note: this is render-only. The sim never reads elevation — the lift lives entirely in the
  * projection, so two runs from one seed stay byte-identical (the golden tests don't see it).
  */
 
-/** The fitted vertical lift in IMAGE px per elevation unit, at the corpus's capture scale (source basis "projection"). */
-const FITTED_LIFT_IMG_PX = 1.547;
-/** The corpus capture scale the fit was measured at (five independent building templates peak at 1.25×). */
-const CORPUS_CAPTURE_SCALE = 1.25;
+/** Elevation units per HALF row step of lift — the engine tessellation's divisor (source basis above). */
+const ELEVATION_UNITS_PER_HALF_ROW_STEP = 16;
 
 /**
- * Native art px of UPWARD lift per elevation unit — the fitted image lift ÷ the capture scale (≈1.24).
- * In the same native-pixel space as the cell pitch ({@link import('./iso.js').TILE_HALF_W}), so at the
- * verification zoom 1.25× it renders back as the fitted 1.547 image px. A positive value is SUBTRACTED
- * from a projected `y` (screen up is −y).
+ * World px of UPWARD lift per elevation unit — `TILE_HALF_H/2` px per half-row-step ÷ the engine's
+ * 16 units per step. Reads the LIVE row step ({@link TILE_HALF_H} is `?pitchy`-tunable), so it must
+ * be read at field-build time, after `setTilePitch`. A positive value is SUBTRACTED from a
+ * projected `y` (screen up is −y).
  */
-export const ELEVATION_LIFT = FITTED_LIFT_IMG_PX / CORPUS_CAPTURE_SCALE;
+export function elevationLiftPerUnit(): number {
+  return TILE_HALF_H / 2 / ELEVATION_UNITS_PER_HALF_ROW_STEP;
+}
 
 /**
  * An immutable terrain height field over a `width×height` per-cell `elevation` grid, exposing the ONE
@@ -39,22 +44,27 @@ export const ELEVATION_LIFT = FITTED_LIFT_IMG_PX / CORPUS_CAPTURE_SCALE;
  */
 export interface ElevationField {
   /**
-   * The map-wide maximum lift in world px (`max(elevation)·LIFT`), computed once. The cull pad: chunk
-   * AABBs + the viewport are grown by this so a lifted-up chunk/sprite is never clipped by culling. 0
-   * for a flat field.
+   * The map-wide maximum lift in world px (`max(elevation)·liftPerUnit`), computed once. The cull pad:
+   * chunk AABBs + the viewport are grown by this so a lifted-up chunk/sprite is never clipped by
+   * culling. 0 for a flat field.
    */
   readonly maxLift: number;
   /**
    * The upward lift (world px, ≥ 0) at a CONTINUOUS cell coordinate `(col, row)` — bilinear over the
    * per-cell grid, clamped at the map edges (a sample past an edge repeats the edge cell). Fractional
-   * inputs (a walking settler, a diamond corner between cell centres) interpolate — no snapping. The
-   * value to SUBTRACT from the projected `y`.
+   * inputs (a walking settler, a position between cell centres) interpolate — no snapping. At an
+   * INTEGER cell coordinate this is exactly the cell's own lift, so it agrees with the ground mesh's
+   * node vertices. The value to SUBTRACT from the projected `y`.
    */
   liftAt(col: number, row: number): number;
   /**
-   * {@link liftAt} for a HALF-CELL NODE address `(hx, hy)`: the elevation lane is per-CELL, and a
-   * node sits at `(hx/2, hy/2)` in continuous cell space — this owns that ÷2 convention so node
-   * consumers (placement overlay/ghost, picking) can't drift apart on it.
+   * {@link liftAt} for a HALF-CELL NODE address `(hx, hy)` — this owns the node→cell-space
+   * convention so node consumers (placement overlay/ghost, picking, map objects) can't drift apart
+   * on it. On a CELL row (even `hy`) the column is parity-corrected (`(hx − (row&1))/2`), so a
+   * cell-centre node returns exactly its cell's lift — the same value the ground mesh bakes at
+   * that vertex — and a mid-edge node the exact two-cell blend of the mesh edge. Between rows
+   * (odd `hy`, inside the mesh triangles) the plain `(hx/2, hy/2)` bilinear stands in — a named
+   * approximation of the triangle plane.
    */
   liftAtNode(hx: number, hy: number): number;
 }
@@ -76,26 +86,22 @@ export function makeElevationField(
 
   let maxElev = 0;
   for (const e of elevation) if (e > maxElev) maxElev = e;
-  const maxLift = maxElev * ELEVATION_LIFT;
+  const liftPerUnit = elevationLiftPerUnit();
+  const maxLift = maxElev * liftPerUnit;
 
   const sample = makeCellSampler(elevation, width, height);
   return {
     maxLift,
-    liftAt: (col: number, row: number): number => sample(col, row) * ELEVATION_LIFT,
-    liftAtNode: (hx: number, hy: number): number => sample(hx / 2, hy / 2) * ELEVATION_LIFT,
+    liftAt: (col: number, row: number): number => sample(col, row) * liftPerUnit,
+    liftAtNode: (hx: number, hy: number): number => {
+      const row = hy / 2;
+      if (Number.isInteger(row)) {
+        // On a cell row the staggered lattice puts cell centres at hx = 2·col + (row&1): undo the
+        // parity so a centre node samples ITS OWN cell (matching the mesh vertex) and a mid-edge
+        // node the exact straddling blend.
+        return sample((hx - (row & 1)) / 2, row) * liftPerUnit;
+      }
+      return sample(hx / 2, row) * liftPerUnit;
+    },
   };
-}
-
-/**
- * The four diamond-corner lifts `[top, right, bottom, left]` (world px) for terrain cell `(col, row)`,
- * for baking into the ground mesh — {@link diamondCornerSamples} over the lift sampler, so a corner
- * SHARED by up to four diamonds lifts identically from every owner and the mesh stays crack-free (the
- * canonical-coordinate argument lives with the shared corner math in `cell-field.ts`). Pure.
- */
-export function diamondCornerLifts(
-  field: ElevationField,
-  col: number,
-  row: number,
-): [number, number, number, number] {
-  return diamondCornerSamples((c, r) => field.liftAt(c, r), col, row);
 }

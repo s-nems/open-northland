@@ -154,7 +154,7 @@ function cell(sim: Simulation, x: number, y: number): number {
   const t = sim.terrain;
   if (t === undefined) throw new Error('no terrain');
   const n = cellAnchorNode(x, y);
-  return t.cellAtClamped(n.hx, n.hy);
+  return t.nodeAtClamped(n.hx, n.hy);
 }
 
 function tileOf(sim: Simulation, e: Entity): { x: number; y: number } {

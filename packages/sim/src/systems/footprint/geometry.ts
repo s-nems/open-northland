@@ -1,23 +1,23 @@
 import type { BuildingFootprint, ContentSet, FootprintCell } from '@vinland/data';
 import { contentIndex } from '../../core/content-index.js';
-import type { CellId, TerrainGraph } from '../../nav/terrain.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 
-// The footprint GEOMETRY primitives — tile keys, cell distance, footprint-cell translation and the
+// The footprint GEOMETRY primitives — node keys, node distance, footprint-cell translation and the
 // nearest-cell picks. The leaf of the footprint/ package (and of systems/ as a whole).
 
-/** Injective per-tile key for a spatial set/bucket (integer tile `x`,`y`). A string so a consumer with
- *  no terrain handle (hence no map width) can still key by tile — and so a negative/off-map coordinate
- *  can never alias onto a real tile the way a numeric `y*width+x` packing would. Re-exported by
- *  spatial.ts (whose `TileBuckets` keys with it); defined here because spatial.ts already imports from
+/** Injective per-node key for a spatial set/bucket (integer node `x`,`y`). A string so a consumer with
+ *  no terrain handle (hence no map width) can still key by node — and so a negative/off-map coordinate
+ *  can never alias onto a real node the way a numeric `y*width+x` packing would. Re-exported by
+ *  spatial.ts (whose `NodeBuckets` keys with it); defined here because spatial.ts already imports from
  *  this package, keeping the leaf import graph acyclic. */
-export function tileKey(x: number, y: number): string {
+export function nodeKey(x: number, y: number): string {
   return `${x},${y}`;
 }
 
-/** Integer Manhattan distance between two cells — the cheap reach/nearness heuristic the AI planner,
+/** Integer Manhattan distance between two nodes — the cheap reach/nearness heuristic the AI planner,
  *  combat range check, and herding leader-distance measure with (A* computes the real path cost).
  *  Defined here (the leaf module, for its nearest-cell picks) and re-exported by ./spatial.ts. */
-export function manhattan(terrain: TerrainGraph, a: CellId, b: CellId): number {
+export function manhattan(terrain: TerrainGraph, a: NodeId, b: NodeId): number {
   const ca = terrain.coordsOf(a);
   const cb = terrain.coordsOf(b);
   return Math.abs(ca.x - cb.x) + Math.abs(ca.y - cb.y);
@@ -39,22 +39,22 @@ export function translatedCells(
   cells: readonly FootprintCell[],
   anchorX: number,
   anchorY: number,
-): CellId[] {
-  const out: CellId[] = [];
+): NodeId[] {
+  const out: NodeId[] = [];
   for (const c of cells) {
     const x = anchorX + c.dx;
     const y = anchorY + c.dy;
-    if (terrain.inBounds(x, y)) out.push(terrain.cellAt(x, y));
+    if (terrain.inBounds(x, y)) out.push(terrain.nodeAt(x, y));
   }
   return out;
 }
 
 export function nearestCell(
   terrain: TerrainGraph,
-  candidates: readonly CellId[],
-  from: CellId | undefined,
-): CellId | null {
-  let best: CellId | null = null;
+  candidates: readonly NodeId[],
+  from: NodeId | undefined,
+): NodeId | null {
+  let best: NodeId | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   for (const cell of candidates) {
     const dist = from === undefined ? 0 : manhattan(terrain, from, cell);
@@ -68,10 +68,10 @@ export function nearestCell(
 
 export function nearestFreeNeighbour(
   terrain: TerrainGraph,
-  anchor: CellId,
-  blocked: ReadonlySet<CellId>,
-  from: CellId | undefined,
-): CellId | null {
+  anchor: NodeId,
+  blocked: ReadonlySet<NodeId>,
+  from: NodeId | undefined,
+): NodeId | null {
   return nearestCell(
     terrain,
     terrain.walkableNeighbours(anchor).filter((cell) => !blocked.has(cell)),

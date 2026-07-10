@@ -1,6 +1,6 @@
 import { type Container, Graphics } from 'pixi.js';
 import type { TextRun } from '../bitmap-text.js';
-import { HOVER_TINT, SELECT_ALPHA, WIN_PAD, drawCloseX, drawWindowPanel } from '../chrome.js';
+import { HOVER_ALPHA, HOVER_TINT, WIN_PAD, drawCloseX, drawWindowPanel } from '../chrome.js';
 import { contains } from '../geometry.js';
 import type { PanelContext } from './context.js';
 import { type GoodsMenuLayout, type MenuGoodEntry, hitTestGoodsMenu, layoutGoodsMenu } from './goods-menu.js';
@@ -76,7 +76,7 @@ export function createGoodsWindow(deps: GoodsWindowDeps): GoodsWindow {
       if (tab.selected) {
         graphics
           .rect(tab.rect.x, tab.rect.y, tab.rect.w, tab.rect.h)
-          .fill({ color: HOVER_TINT, alpha: SELECT_ALPHA });
+          .fill({ color: HOVER_TINT, alpha: HOVER_ALPHA });
       }
       const run = ctx.makeText(tab.label, tab.selected ? 'white' : 'dimmed');
       deps.container.addChild(run.container);

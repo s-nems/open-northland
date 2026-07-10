@@ -101,7 +101,7 @@ describe('populated-map combat scenario (civ vs seeded wildlife, end-to-end)', (
     const sim = new Simulation({ seed: 1, content, map });
     // Seed the bear herd at node (0,0): leader on the birth node, the two pack members scattered to
     // node hx=+1 and the off-map raw hx=-1 (clamped to the grid edge, node 0, on combat's
-    // cellAtClamped read).
+    // nodeAtClamped read).
     for (const c of seedAnimalHerds(content, map, { tribes: [BEAR], maxHerds: 1 })) sim.enqueue(c);
     // A viking combatant on tile (1,0) = node (2,0), node-Manhattan 2 from the bear leader's birth
     // node (and 1 from the hx=+1 member) — within both weapons' range 2 (ranges are node distances).

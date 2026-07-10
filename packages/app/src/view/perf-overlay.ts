@@ -1,7 +1,8 @@
 /**
  * The on-canvas debug readout — the human-facing instrument for the render-scale + sim work. Pinned to
- * the top-LEFT of the screen, lightly translucent so the tool-panel strip reads through it, it stacks
- * two lines:
+ * the top-LEFT of the screen (beside the tool-panel strip's top; the build menu drops BELOW it, from the
+ * buildings button, so the two never collide), lightly translucent so the strip reads through it, it
+ * stacks two lines:
  *
  *  - **sim state:** the `tick` (the one field worth keeping from the removed always-on stocks HUD), the
  *    game-speed multiplier (or `paused`), how many sim `steps` the fixed-timestep loop advanced THIS
