@@ -7,8 +7,10 @@ pipeline that converts your own copy of the original game's data into a modern, 
 not a binary-faithful clone. Where the original is buggy or unbalanced, Vinland is free to fix it.
 
 > **You need to own the original game.** Vinland ships **no game assets**. To play, you point the
-> asset pipeline at your own legally-owned copy of *Cultures – 8th Wonder of the World*. This is the
-> same model used by [OpenMW](https://openmw.org/), [OpenRA](https://www.openra.net/) and
+> asset pipeline at your own legally-owned copy of *Cultures – 8th Wonder of the World* — still sold
+> on [Steam](https://store.steampowered.com/app/351870/Cultures__8th_Wonder_of_the_World/) and
+> [GOG](https://www.gog.com/en/game/cultures_34). This is the same model used by
+> [OpenMW](https://openmw.org/), [OpenRA](https://www.openra.net/) and
 > [devilutionX](https://github.com/diasurgical/devilutionX). See [Legal](#legal).
 
 > **Working title.** "Vinland" is the Norse name for the lands settled westward — a nod to
@@ -37,8 +39,8 @@ tracked in [`docs/plans/`](docs/plans/).
 ## Getting started
 
 **Requirements:** [Node.js](https://nodejs.org/) ≥ 20, and — to actually generate content or play —
-your own legally-owned copy of *Cultures – 8th Wonder of the World* (the readable
-`culturesnation` mod data is preferred where available; see
+your own legally-owned copy of *Cultures – 8th Wonder of the World* (the readable data of the
+free [culturesnation](https://culturesnation.pl/) fan mod is preferred where available; see
 [`docs/DATA-FORMAT.md`](docs/DATA-FORMAT.md)).
 
 ```bash
@@ -68,8 +70,11 @@ single-direction animations (eat/sleep/wait, attacks) play their full loop. Need
 
 `--game` is the path to your game-install folder; the example assumes you placed it **next to this
 repo** (`../Cultures 8th Wonder`), but any absolute or relative path works. `--mod DataCnmd` selects
-the readable `culturesnation` mod data that ships with the game — it's preferred because its rules
-are plain `.ini` rather than encrypted `.cif` (see [`docs/DATA-FORMAT.md`](docs/DATA-FORMAT.md)).
+the data of the [culturesnation](https://culturesnation.pl/) fan mod — a free community mod
+installed into the game folder (it does **not** ship with the retail game) — preferred because its
+rules are plain `.ini` rather than encrypted `.cif` (see
+[`docs/DATA-FORMAT.md`](docs/DATA-FORMAT.md)). `--mod` is optional, but the mod is the
+well-tested path.
 
 Desktop builds (macOS / Windows / Linux) come later via Tauri; the app is browser-first so it is
 cross-platform from day one.
