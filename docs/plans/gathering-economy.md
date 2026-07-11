@@ -228,6 +228,19 @@ sim 8 → 2.2 ms at ×3, 120 fps; species variety intact. Tests:
 `sim/test/systems/resource-region-index.test.ts`, scene-test staticRefs skip/release, map-resources
 placement-join assertions.
 
+**Fell→pickup stall — static collision double-blocking (2026-07-11, same branch):** on the real map a
+collector felled its tree, the trunk dropped on the tree's cell, and the collector froze (live trace:
+`PathRequest {failed: true}` re-issued forever beside the drop). Root cause: `buildCollisionTerrain`
+baked EVERY object's walk-block into the STATIC grid while the same tree also blocked via its dynamic
+`ResourceFootprint` — the dynamic half unstamps on fell, the static bake never cleared, so the trunk's
+cell stayed walled off. Fix: the harvestable placements (`simResourceObjectNames`, the same join
+`spawnMapResources` uses) are SKIPPED from the static bake — their blocking is the dynamic footprint
+alone (standing = blocked, felled/depleted = walkable); their collision shape is then the sim-content
+own-node footprint, a named approximation of the IR area. Regression net:
+`app/test/map-gatherer-cycle.test.ts` runs the full fell→pickup→bank loop over `sandboxContent`, incl.
+over the REAL collision join (fails without the skip). Verified live (entity count keeps growing with
+stumps/heaps; before, every gatherer froze after its first fell).
+
 **No free gatherers — spawn-time flag binding (2026-07-11, same branch):** a gatherer spawned through the
 command path (imported-map settlers, the admin palette) got no work flag, so it searched the WHOLE map for
 the nearest resource. Rule: a gatherer is never free — it searches around its flag, or the building it
