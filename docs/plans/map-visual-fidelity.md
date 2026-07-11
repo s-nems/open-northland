@@ -72,7 +72,7 @@ gitignored.
 Small, high-visibility fix: the bridge map authors `"viking headquarters house"` (bob 44 — the
 longhouse with the glowing door, confirmed by template match at 0.966 in the corpus), but the
 import collapses placements to typeId and the canonical binding draws `"viking headquarters"`
-(bob 34, the crane-roofed variant). Both names occur across the 13 entity-bearing maps (29 vs 6),
+(bob 34, the crane-roofed variant). Both names occur across the 122 entity-bearing maps (131 vs 60),
 so the authored NAME must survive to the renderer — flipping the canonical would just break the
 other maps.
 
@@ -89,7 +89,7 @@ basis and any remaining approximation in this plan's progress note.
 Hard constraint: gfx must NOT enter the sim (packages/sim/AGENTS.md — no render data in
 components). Design a seam on the app side, e.g.: resolveAuthoredPlacements already knows the
 buildingBobs row (bmd/palette/bobId) per placement — carry that ref alongside the placement,
-and after runAuthoredSlice's sim.run(0) build an entityId→BuildingBobRef override map by matching
+and after runAuthoredSlice's placement tick build an entityId→BuildingBobRef override map by matching
 the sim's building entities to placements (deterministic: match by cell + typeId; placement is
 file-ordered and cells are unique per building). Pass the override map into the renderer through
 the same channel the SpriteSheet bindings travel; the sprite pool consults it before the per-type

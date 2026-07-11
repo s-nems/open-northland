@@ -1206,9 +1206,12 @@ export type TerrainObjects = z.infer<typeof TerrainObjects>;
 export const TerrainEntities = z.object({
   /**
    * `sethouse` placements: `[GfxHouse]` EditName + level pick the building type. `player` is read as
-   * 1-based — an ASSUMPTION, not a pin: the column is the constant `1` across all 13 entity-bearing
-   * maps (untestable from data; the other player-carrying map sections are 0-based), so verify by
-   * observing ownership in the running original (source basis "Authored entity placements").
+   * 1-based — an ASSUMPTION, not a pin. Across the 122 entity-bearing maps the column carries 0 AND 1
+   * (the 13 packed `map.cif` maps used only 1; the unpacked `staticobjects.inc` maps also use 0), so
+   * under the 1-based read a `player 1` house owns to sim player 0 while a `player 0` house lands
+   * NEUTRAL (owner −1, dropped by `isValidPlayer`). Whether player 0 means neutral or the column is
+   * really 0-based is still untestable from data — verify by observing ownership in the running
+   * original (source basis "Authored entity placements").
    * `rot` is decoded verbatim with no consumer yet — the rotation→facing slice is deferred
    * (docs/plans/entity-import item).
    */
