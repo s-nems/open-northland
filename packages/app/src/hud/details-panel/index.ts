@@ -2,8 +2,9 @@
  * The bottom-right selection details panel: pure model (`model.ts`), geometry (`layout.ts`),
  * original-art drawing (`chrome.ts` + `sections.ts`), and the app wiring (`panel.ts`).
  */
-export { HUMANWINDOW, buildUnitPanelModel } from './model.js';
+export { HUMANWINDOW, barTone, buildUnitPanelModel } from './model.js';
 export type {
+  BarTone,
   BuildingPanelModel,
   EquipRow,
   EquipSlotModel,

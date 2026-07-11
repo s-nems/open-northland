@@ -14,6 +14,7 @@ import {
   type StockRow,
   type UnitPanelModel,
   type UnitPanelModelContext,
+  barTone,
   buildUnitPanelModel,
 } from '../src/hud/details-panel/index.js';
 import { MAX_STOCK_ROWS, stockSlotRects } from '../src/hud/details-panel/layout.js';
@@ -186,6 +187,51 @@ describe('selection details panel model', () => {
     expect(settlerModel.kind).toBe('settler');
     if (settlerModel.kind !== 'settler') return;
     expect(settlerModel.profession).toBe('Druid');
+  });
+
+  it('shows the Ogólne bars in order with pinned labels, satisfaction levels and hover values', () => {
+    // Needs are rising fixed-point DEFICITS; the bars must show the satisfaction LEVEL (100 − need).
+    const snapshot: WorldSnapshot = {
+      tick: 0,
+      events: [],
+      entities: [
+        {
+          id: 1,
+          components: {
+            Settler: { tribe: 1, hunger: ONE / 4, fatigue: ONE / 2, enjoyment: 0, piety: (ONE * 9) / 10 },
+            Health: { hitpoints: 300, max: 1000 },
+          },
+        },
+        // The same needs without a Health component — the Zdrowie bar must be omitted, not zeroed.
+        { id: 2, components: { Settler: { tribe: 1, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 } } },
+      ],
+    };
+
+    const model = buildUnitPanelModel(snapshot, new Set([1]), ctxFromScene());
+    if (model.kind !== 'settler') throw new Error('expected a settler model');
+    // Pinned labels (deliberately diverging from the decoded humanwindow 12–14 stat names), in the
+    // fixed Zdrowie → Głód → Sen → Towarzystwo → Religia order.
+    expect(model.bars.map((b) => b.label)).toEqual(['Zdrowie', 'Głód', 'Sen', 'Towarzystwo', 'Religia']);
+    // Health: gauge = hp/max percent, hover = the raw points.
+    expect(model.bars[0]).toMatchObject({ pct: 30, hover: '300/1000' });
+    // Needs: gauge = satisfaction level, hover = the same level as a percent.
+    expect(model.bars[1]).toMatchObject({ pct: 75, hover: '75%' }); // hunger 25% → 75% sated
+    expect(model.bars[2]).toMatchObject({ pct: 50, hover: '50%' });
+    expect(model.bars[3]).toMatchObject({ pct: 100, hover: '100%' });
+    expect(model.bars[4]).toMatchObject({ pct: 10, hover: '10%' });
+
+    const bare = buildUnitPanelModel(snapshot, new Set([2]), ctxFromScene());
+    if (bare.kind !== 'settler') throw new Error('expected a settler model');
+    expect(bare.bars.map((b) => b.label)).toEqual(['Głód', 'Sen', 'Towarzystwo', 'Religia']);
+  });
+
+  it('bands a bar level into green/orange/red tones at the named thresholds', () => {
+    expect(barTone(100)).toBe('ok');
+    expect(barTone(50)).toBe('ok'); // ≥50 stays green
+    expect(barTone(49)).toBe('warn');
+    expect(barTone(25)).toBe('warn'); // ≥25 stays orange
+    expect(barTone(24)).toBe('critical');
+    expect(barTone(0)).toBe('critical');
   });
 
   it('shows a settler equipment section with labeled rows, worn goods, use percentages and empty slots', () => {

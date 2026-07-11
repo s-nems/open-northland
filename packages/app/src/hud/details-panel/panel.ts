@@ -282,15 +282,25 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return rows[slot]?.label ?? null;
   };
 
+  /** The hovered Ogólne stat bar's VALUE ("300/1000" health points, "75%" need satisfaction), or null.
+   *  Probes the whole label+gauge row (layout.bars, same order as model.bars) — more forgiving than the
+   *  64-px gauge alone, and the label row is unambiguous. */
+  const hitBarValue = (x: number, y: number): string | null => {
+    if (layout?.kind !== 'settler' || lastModel.kind !== 'settler') return null;
+    const i = layout.bars.findIndex((r) => contains(r, x, y));
+    return i < 0 ? null : (lastModel.bars[i]?.hover ?? null);
+  };
+
   const onMouseMove = (e: MouseEvent): void => {
     const { x, y } = toCanvas(e.clientX, e.clientY);
-    // Name-on-hover (independent of the button-hover repaint below, so it updates even when the hovered
-    // BUTTON hasn't changed): a Magazyn stock row's good name, else a category TAB's name — the tab glyphs are
-    // cryptic unread art, so the tooltip is what tells the player which category a tab holds.
+    // Value/name-on-hover (independent of the button-hover repaint below, so it updates even when the
+    // hovered BUTTON hasn't changed): a Magazyn stock row's good name or a category TAB's name for a
+    // building (the tab glyphs are cryptic unread art, so the tooltip is what names a category), a stat
+    // bar's value for a settler. The probes are layout-kind-exclusive, so at most one can hit.
     if (opts.tooltip !== undefined) {
       const rowName = hitStockGood(x, y);
       const tab = rowName === null ? hitStockTab(x, y) : null;
-      const text = rowName ?? (tab !== null ? (STOCK_TAB_LABELS[tab] ?? null) : null);
+      const text = rowName ?? (tab !== null ? (STOCK_TAB_LABELS[tab] ?? null) : null) ?? hitBarValue(x, y);
       if (text === null) opts.tooltip.hide();
       else opts.tooltip.show(e.clientX, e.clientY, text);
     }
