@@ -93,6 +93,57 @@ export function mapResourceSpawns(
 }
 
 /**
+ * The `[GfxLandscape].logicType` of a fruited bush (`bush with fruits`, `landscapetypes.ini` type 11) —
+ * the source-pinned marker that a placed bush object currently HOLDS FRUIT, so it becomes a forageable
+ * {@link import('@vinland/sim').BerryBush}. Bare/flowering/barren bush states (types 8/9/10) stay decor.
+ * Exported as the single home for this constant — the render-side bush binding ({@link
+ * import('./resource-gfx.js').resolveBerryBushRefs}) keys off the same value.
+ */
+export const BUSH_WITH_FRUITS_LOGIC_TYPE = 11;
+
+/** One berry bush a decoded map defines: its render-variant `gfxIndex` (the fruited-bush record index) at
+ *  a HALF-CELL anchor `(hx, hy)`, and the placement ORDINAL (the static-layer handover join key). */
+export interface MapBerryBushSpawn {
+  readonly gfxIndex: number;
+  readonly hx: number;
+  readonly hy: number;
+  readonly placement: number;
+}
+
+/** The fruited-bush object `EditName`s the map defines — every `landscapeGfx` record whose `logicType` is
+ *  {@link BUSH_WITH_FRUITS_LOGIC_TYPE} (e.g. "bush 01 fruits", "bush snow 02 fruits"), keyed to its record
+ *  index (the render-variant `gfxIndex`). Degrades to empty on an older `ir.json` with no `landscapeGfx`. */
+function fruitedBushRecordByName(ir: ContentIr): ReadonlyMap<string, number> {
+  const out = new Map<string, number>();
+  for (const g of ir.landscapeGfx ?? []) {
+    if (g.editName !== undefined && g.logicType === BUSH_WITH_FRUITS_LOGIC_TYPE) out.set(g.editName, g.index);
+  }
+  return out;
+}
+
+/**
+ * The forageable berry bushes a decoded map's placed objects define — each placement of a fruited-bush
+ * object (`landscapeGfx.logicType === bush with fruits`). Pure and deterministic: one pass over
+ * `map.objects.placements` in native row-major order, so the caller mints entity ids in a fixed order.
+ * Bare/flowering bush placements are left out (they stay static decor rather than spawning ripe food).
+ */
+export function mapBerryBushSpawns(objects: TerrainObjects, ir: ContentIr): MapBerryBushSpawn[] {
+  const byName = fruitedBushRecordByName(ir);
+  const { types, placements } = objects;
+  const out: MapBerryBushSpawn[] = [];
+  for (let i = 0; i + 2 < placements.length; i += 3) {
+    const hx = placements[i];
+    const hy = placements[i + 1];
+    const typeIndex = placements[i + 2];
+    if (hx === undefined || hy === undefined || typeIndex === undefined) break;
+    const name = types[typeIndex];
+    const gfxIndex = name !== undefined ? byName.get(name) : undefined;
+    if (gfxIndex !== undefined) out.push({ gfxIndex, hx, hy, placement: i / 3 });
+  }
+  return out;
+}
+
+/**
  * The object `EditName`s whose placements BECOME sim `Resource` entities (their good has a gatherer
  * trade) — exactly the set {@link mapResourceSpawns} spawns. The STATIC collision join must skip these
  * (`buildCollisionTerrain skipObjectNames`): their blocking lives in the sim's dynamic

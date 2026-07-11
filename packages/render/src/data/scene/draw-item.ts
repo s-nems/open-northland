@@ -11,6 +11,7 @@ export type DrawKind =
   | 'building'
   | 'settler'
   | 'resource'
+  | 'berrybush'
   | 'stockpile'
   | 'stump'
   | 'grounddrop'
@@ -43,6 +44,7 @@ export type SpriteState = 'idle' | 'moving' | 'acting';
 export const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {
   tile: 0,
   resource: 0,
+  berrybush: 0, // a bush sits behind the settler foraging it, like a resource node
   stump: 0,
   building: 1,
   grounddrop: 1,

@@ -1,4 +1,4 @@
-import { Resource, Stump } from '../components/economy.js';
+import { BerryBush, Resource, Stump } from '../components/economy.js';
 import type { SimEvent } from '../core/events.js';
 import type { Entity, World } from '../ecs/world.js';
 
@@ -104,7 +104,10 @@ export function takeSnapshot(world: World, tick: number, events: readonly SimEve
     }
     const snap = cloneEntity(world, id);
     entities.push(snap);
-    if (Resource.store.has(id) || Stump.store.has(id)) cache.set(id, snap);
+    // BerryBush joins Resource/Stump as cached scenery: a ripe bush sits unchanged for its whole regrow
+    // cycle, so it is re-cloned only at the two `touch`ed moments it flips (foraged, regrown) — not every
+    // frame like a moving settler. `ripeAtTick` is an absolute schedule, so a regrowing bush doesn't churn.
+    if (Resource.store.has(id) || Stump.store.has(id) || BerryBush.store.has(id)) cache.set(id, snap);
   }
   return { tick, entities, events: events.map(clonePlain) as readonly SimEvent[] };
 }

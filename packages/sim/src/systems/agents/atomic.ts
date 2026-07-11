@@ -13,7 +13,13 @@ import {
   paySwingNeedCost,
   resolveAttackHit,
 } from './effects-combat.js';
-import { consumeFood, harvestFromNode, pickupFromStore, pileupIntoStore } from './effects-goods.js';
+import {
+  consumeFood,
+  forageBerry,
+  harvestFromNode,
+  pickupFromStore,
+  pileupIntoStore,
+} from './effects-goods.js';
 
 // Re-exported so the projectile system (and the systems barrel) keep their single import site for
 // the shared combat-hit contract after the effects split.
@@ -124,6 +130,14 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       // conjured: if the source has nothing left (it emptied between the planner choosing it and the
       // swing completing) no unit is removed, but hunger still resets (the bite was taken).
       consumeFood(world, settler, effect.from, effect.goodType);
+      if (world.has(settler, Settler)) world.get(settler, Settler).hunger = fx.fromInt(0);
+      return;
+    case 'forage':
+      // Foraging a wild berry bush: eat its ripe fruit (the bush flips ripe→bare + schedules its regrow,
+      // and emits `berryForaged` for the render handover) and zero hunger — the wild-food twin of `eat`,
+      // but no stored/carried good is consumed and no job/tool is needed. A bush bare/gone since the
+      // planner chose it grants no food but still resets hunger (the bite was taken), like `eat`.
+      forageBerry(world, ctx, effect.bush);
       if (world.has(settler, Settler)) world.get(settler, Settler).hunger = fx.fromInt(0);
       return;
     case 'sleep':

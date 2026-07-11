@@ -35,6 +35,10 @@ export function classify(components: Readonly<Record<string, unknown>>): DrawKin
   if ('Projectile' in components) return 'projectile';
   if ('Building' in components) return 'building';
   if ('Resource' in components) return 'resource';
+  // A wild berry bush (Position + BerryBush marker) — drawn per-species from the bush atlas, ripe or bare
+  // by its forage/regrow state. Checked before Settler/Stockpile (a bush is neither); it carries no
+  // Resource, so it never collides with the resource path above.
+  if ('BerryBush' in components) return 'berrybush';
   // A felled tree's leftover stump/debris — pure decor (a Position + Stump marker, no other drawable
   // component), drawn by a per-good {@link import('../sprites/index.js').ResourceTypeBinding} like a resource
   // node but from the dead-tree/debris atlas. Checked before Settler/Stockpile (a stump is neither).
@@ -375,6 +379,30 @@ export function readResourceLevel(components: Readonly<Record<string, unknown>>)
 export function readStumpGood(components: Readonly<Record<string, unknown>>): number | undefined {
   const s = components.Stump as { goodType?: unknown } | undefined;
   return s !== undefined && typeof s.goodType === 'number' ? s.goodType : undefined;
+}
+
+/**
+ * A berry bush's ripe/bare draw LEVEL ({@link import('./draw-item.js').DrawItem.level}): 2 when the bush
+ * holds fruit (`BerryBush.ripe`), 1 when bare (foraged, regrowing). A per-bush
+ * {@link import('../sprites/index.js').ResourceTypeBinding.byGfxIndex} two-frame list (bare, ripe) indexes
+ * by it, so the drawn bush tracks its state as the sim forages/regrows it — the bush twin of a mined
+ * node's shrink-by-level. `undefined` for a malformed component (the binding then draws its default frame).
+ */
+export function readBerryBushLevel(components: Readonly<Record<string, unknown>>): number | undefined {
+  const b = components.BerryBush as { ripe?: unknown } | undefined;
+  if (b === undefined || typeof b.ripe !== 'boolean') return undefined;
+  return b.ripe ? 2 : 1;
+}
+
+/**
+ * A berry bush's render-variant `gfxIndex` ({@link import('./draw-item.js').DrawItem.gfxIndex}) — the
+ * decoded map's fruited-bush `[GfxLandscape]` record index the bush was spawned from (`BerryBush.gfxIndex`),
+ * so a per-variant binding draws the exact bush species. `undefined` for a scene/synthetic bush with no
+ * variant tag (the binding then draws its default bush).
+ */
+export function readBerryBushGfxIndex(components: Readonly<Record<string, unknown>>): number | undefined {
+  const b = components.BerryBush as { gfxIndex?: unknown } | undefined;
+  return b !== undefined && typeof b.gfxIndex === 'number' ? b.gfxIndex : undefined;
 }
 
 /**

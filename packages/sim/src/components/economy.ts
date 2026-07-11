@@ -316,6 +316,44 @@ export const DeliveryFlag = defineComponent<Record<string, never>>('DeliveryFlag
 export const DEFAULT_WORK_FLAG_RADIUS = 24;
 
 /**
+ * A **wild berry bush** — a natural food source anyone can graze, distinct from the job-gated
+ * {@link Resource} gathering economy: a hungry settler forages a RIPE bush directly (the `forage`
+ * atomic) to feed itself, no job or tool needed, and the bush regrows its fruit over time. It is NOT a
+ * {@link Resource} on purpose — it carries no harvest atomic and never enters a gatherer's harvest
+ * scans, so bushes stay out of the wood/stone/ore economy and are only ever eaten off.
+ *
+ * source-basis: the original's `landscapetypes.ini` bush cycle — `bush with fruits` (type 11) on the
+ * PICK trigger (`transition 3 <bush naked> 2 0 18`) yields good 18 `fruit` and becomes `bush naked`
+ * (type 9), which regrows `naked → flowering (10) → with fruits (11)` on the periodic GROWTH trigger
+ * (`transition 7 …`). The single `transition 3` sends `with fruits` STRAIGHT to `naked` (skipping
+ * flowering), so one forage empties it — a bush holds exactly ONE serving.
+ *
+ * NAMED DIVERGENCE from the source: that pick transition *produces* good 18 `fruit` INTO the economy,
+ * but good 18 has no extracted `gatheringPipeline` (no fruit-gatherer trade to hook into), so this model
+ * discards the good and feeds the eater DIRECTLY — wild grazing, not a gather-a-good step. The regrow
+ * DURATION and the two-step flowering stage are likewise NAMED APPROXIMATIONS: the trigger-7 period is
+ * not decoded, so {@link BerryBush} collapses naked→flowering→fruits into one ripe/bare state timed by
+ * `ripeAtTick` (see systems/economy/berries.ts).
+ *
+ * `ripe` is whether the bush currently holds fruit (forageable). `ripeAtTick` is the absolute tick the
+ * BerryGrowthSystem flips a bare bush back to ripe (an exact integer compare, like {@link CurrentAtomic}'s
+ * `elapsed` — no accumulated fixed-point fraction, and no per-tick component churn, so the snapshot
+ * scenery cache only re-clones a bush at the two moments it actually changes: foraged, and regrown);
+ * unused (0) while ripe. `gfxIndex` is the OPAQUE render-variant tag ({@link Resource.gfxIndex}'s twin —
+ * the decoded map's fruited-bush `[GfxLandscape]` index, e.g. "bush 01 fruits") the render keys its
+ * exact bush species off; the sim never reads it, and it is absent on a scene/synthetic spawn.
+ *
+ * The **separate-optional-component pattern** ({@link Vehicle}/{@link Crop}): no golden/vertical-slice
+ * places a bush, so every existing hash holds. Determinism: plain boolean + integers, mutated only by
+ * the `forage` effect (AtomicSystem) and the BerryGrowthSystem in deterministic store order.
+ */
+export const BerryBush = defineComponent<{
+  ripe: boolean;
+  ripeAtTick: number;
+  gfxIndex?: number;
+}>('BerryBush');
+
+/**
  * An in-progress production cycle on a workplace (a {@link Building} whose building type carries a
  * `recipe`). The ProductionSystem consumes the recipe's input goods from the building's own
  * {@link Stockpile} when a cycle starts, advances the integer `elapsed` tick counter, and on the

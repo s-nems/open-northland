@@ -22,7 +22,12 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../src/index.js';
-import { aiSystem, atomicSystem, type SystemContext } from '../../src/systems/index.js';
+import {
+  aiSystem,
+  atomicSystem,
+  EAT_ANIMATION_REPEATS,
+  type SystemContext,
+} from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -125,7 +130,9 @@ describe('eatDrive — the planner choosing to eat', () => {
     expect(sim.world.has(settler, MoveGoal)).toBe(false);
     const atomic = sim.world.get(settler, CurrentAtomic);
     expect(atomic.atomicId).toBe(EAT_ATOMIC);
-    expect(atomic.duration).toBe(5); // viking setatomic 10 -> "viking_eat" length 5
+    // The eat clip ("viking_eat", length 5) repeated EAT_ANIMATION_REPEATS times — a visible meal, not a
+    // quarter-second flicker (see actions.ts). 5 × 8 = 40 ticks.
+    expect(atomic.duration).toBe(5 * EAT_ANIMATION_REPEATS);
     expect(atomic.effect).toEqual({ kind: 'eat', goodType: FOOD, from: store });
   });
 

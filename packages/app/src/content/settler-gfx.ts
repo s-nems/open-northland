@@ -210,6 +210,7 @@ export function buildHumanBindings(
   stockpileBinding?: StockpileBinding,
   stumpBinding?: ResourceTypeBinding,
   trunkBinding?: ResourceTypeBinding,
+  berryBushBinding?: ResourceTypeBinding,
 ): SpriteBindings {
   const walk = directionalAnimFromSeq(seqByName, WALK_SEQ, {}, FALLBACK_WALK);
   // Idle is the WAIT animation played as ONE direction (its length isn't a clean ×8, so it isn't a
@@ -270,6 +271,9 @@ export function buildHumanBindings(
     // A freshly-felled trunk on the ground (a GroundDrop) draws its good's `landscapeToPickup` log —
     // distinct from the tidy delivered heap. Omitted (no join) → the drop draws the placeholder.
     ...(trunkBinding !== undefined ? { trunk: trunkBinding } : {}),
+    // A wild berry bush draws its fruited/bare frame (the `bush with fruits`/`bush naked` records) by
+    // `DrawItem.level` (2 = ripe, 1 = bare). Omitted (no join) → the bush draws the placeholder.
+    ...(berryBushBinding !== undefined ? { berrybush: berryBushBinding } : {}),
   };
 }
 

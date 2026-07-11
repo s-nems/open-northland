@@ -11,6 +11,7 @@ const KIND_COLOURS: Record<SpriteKind, number> = {
   building: 0xc8a04a,
   settler: 0xe8e0d0,
   resource: 0x2f7d32,
+  berrybush: 0xb03050, // a red-berry marker (a fruited bush), distinct from the green resource node
   stockpile: 0xb08040, // a sandy heap/flag marker, distinct from the green resource node
   stump: 0x6b4a2a, // a brown stump/debris marker (the felled-tree remnant), distinct from both
   grounddrop: 0x8a5a2a, // a log-brown marker for a freshly-felled trunk lying on the ground

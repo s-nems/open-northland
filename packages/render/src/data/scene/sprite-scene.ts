@@ -15,6 +15,8 @@ import {
   readActingAtomic,
   readAtomicElapsed,
   readAtomicTargetEntity,
+  readBerryBushGfxIndex,
+  readBerryBushLevel,
   readBuildingType,
   readBuiltPct,
   readCarrying,
@@ -355,6 +357,14 @@ export function collectSpriteScene(
     } else if (kind === 'stump') {
       const goodType = readStumpGood(components);
       if (goodType !== undefined) item.goodType = goodType;
+    } else if (kind === 'berrybush') {
+      // A berry bush carries its render-variant `gfxIndex` (the fruited-bush record — its species) and a
+      // ripe/bare LEVEL (2 = fruited, 1 = bare), so its per-variant two-frame binding draws the state the
+      // sim last set (foraged → bare, regrown → ripe).
+      const gfxIndex = readBerryBushGfxIndex(components);
+      if (gfxIndex !== undefined) item.gfxIndex = gfxIndex;
+      const level = readBerryBushLevel(components);
+      if (level !== undefined) item.level = level;
     } else if (kind === 'projectile') {
       // Point the drawn arrow along its flight, and LOB it: the sim advances the shot on a straight
       // homing line, so the drawn arc is pure presentation — the fraction flown `p` along the

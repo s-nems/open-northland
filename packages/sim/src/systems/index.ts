@@ -5,6 +5,7 @@ import { combatSystem } from './conflict/combat.js';
 import { playerOrderSystem } from './conflict/orders.js';
 import { projectileSystem } from './conflict/projectile.js';
 import type { System, SystemContext } from './context.js';
+import { berryGrowthSystem } from './economy/berries.js';
 import { constructionSystem } from './economy/construction.js';
 import { cropGrowthSystem } from './economy/farming.js';
 import { jobSystem } from './economy/jobs.js';
@@ -19,6 +20,9 @@ import { movementSystem } from './movement/movement.js';
 import { pathfindingSystem } from './movement/routing.js';
 import { progressionSystem, terrainSystem, timeSystem, transportSystem } from './stubs.js';
 
+// The meal-length knob (the eat/forage atomic duration): exposed so tests + tuning can reference the
+// repeat count without reaching into the internal action vocabulary wholesale.
+export { EAT_ANIMATION_REPEATS, eatDuration } from './agents/actions.js';
 export * from './agents/ai.js';
 export * from './agents/atomic.js';
 // The per-tile ground-heap cap (the `ls_goods` heap's 5 fill states) — the ceiling a flag-bound gatherer's
@@ -32,6 +36,7 @@ export * from './conflict/projectile.js';
 // `createSettler` is the scene-facing entity constructor — the settler twin of `createResourceNode` — so
 // pre-tick-0 scene setup can place a settler directly and stamp its bindings (a gatherer's WorkFlag).
 export { createSettler, DEFAULT_SETTLER_HITPOINTS, type SettlerSpec } from './conflict/spawn.js';
+export * from './economy/berries.js';
 export * from './economy/construction.js';
 export * from './economy/farming.js';
 export * from './economy/flags.js';
@@ -80,6 +85,7 @@ export const SYSTEM_ORDER: readonly System[] = [
   atomicSystem,
   productionSystem,
   cropGrowthSystem,
+  berryGrowthSystem,
   transportSystem,
   constructionSystem,
   combatSystem,

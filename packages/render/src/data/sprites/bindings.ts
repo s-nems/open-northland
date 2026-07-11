@@ -309,6 +309,11 @@ export type SpriteBindings = Readonly<{
    *  freshly-felled trunk lying on the ground (the `landscapeToPickup` stage) BEFORE a collector carries
    *  it off. Drawn per-good like the node; absent keeps old sheets valid (the drop draws the placeholder). */
   trunk?: number | ResourceTypeBinding;
+  /** A wild berry bush binding — the {@link ResourceTypeBinding} twin for a `BerryBush` entity, drawn per
+   *  fruited-record variant (`byGfxIndex`) with a two-frame level list (1 = bare, 2 = ripe) so the drawn
+   *  bush tracks its forage/regrow state. Reuses the resource resolver ({@link import('./layered.js').resolveResourceDraw});
+   *  absent keeps old sheets valid (a bush draws the placeholder). */
+  berrybush?: number | ResourceTypeBinding;
 }>;
 
 /**

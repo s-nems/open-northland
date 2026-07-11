@@ -52,6 +52,10 @@ export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tic
   // its species, just from the dead-tree atlas its binding names.
   if (item.kind === 'stump')
     return resolveResourceDraw(binding as number | ResourceTypeBinding, item)?.bob ?? null;
+  // A berry bush likewise reuses the resource resolver — its per-variant binding picks the ripe/bare frame
+  // by `DrawItem.level` from the bush atlas the binding names.
+  if (item.kind === 'berrybush')
+    return resolveResourceDraw(binding as number | ResourceTypeBinding, item)?.bob ?? null;
   return resolveStockpileDraw(binding as number | StockpileBinding, item).bob; // stockpile
 }
 

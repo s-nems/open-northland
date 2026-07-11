@@ -4,8 +4,15 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
 import { atomicDuration } from '../readviews/animations.js';
 import { isFood } from '../stores.js';
-import { atOrWalk, EAT_ATOMIC_ID, PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, startAtomic } from './actions.js';
-import { interactionCell, nearestFoodStore, nearestTemple, type TargetCandidates } from './ai-targets.js';
+import {
+  atOrWalk,
+  EAT_ATOMIC_ID,
+  eatDuration,
+  PRAY_ATOMIC_ID,
+  SLEEP_ATOMIC_ID,
+  startAtomic,
+} from './actions.js';
+import { interactionCell, nearestFood, nearestTemple, type TargetCandidates } from './ai-targets.js';
 
 // The NEEDS drives — the highest-priority rungs of the planner ladder (a starving operator leaves
 // its workplace to feed rather than work itself to death). Order inside planNeeds is part of the
@@ -47,8 +54,9 @@ const PIETY_PRAY_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾�
  * threshold or unsatisfiable (no food anywhere, no temple) — the caller then falls through to combat
  * gates and economy work, with the unsatisfied bar staying clamped at ONE.
  *
- *  - **EAT** (highest): eat a carried edible on the spot, else walk to / eat at the nearest store
- *    holding food ({@link nearestFoodStore}).
+ *  - **EAT** (highest): eat a carried edible on the spot, else walk to the NEAREST food of any kind
+ *    ({@link nearestFood}) — a store holding food, or a ripe wild berry bush (the fallback) — and eat/
+ *    forage it there.
  *  - **SLEEP** (below eat — a starving settler eats before it can rest): sleep IN PLACE (the
  *    housing/home sleep target is a later slice; see source basis).
  *  - **PRAY** (below eat + sleep — survival outranks devotion): the first **target-bound** need —
@@ -72,22 +80,23 @@ export function planNeeds(
         e,
         EAT_ATOMIC_ID,
         { kind: 'eat', goodType: load.goodType, from: null },
-        atomicDuration(ctx.content, settler, EAT_ATOMIC_ID),
+        eatDuration(ctx, settler),
         e,
       );
       return true;
     }
-    const food = nearestFoodStore(targets.stockpiles, world, ctx, terrain, here);
+    // Find the NEAREST food of any kind — a stocked/produced larder or a wild berry bush (the fallback
+    // when no larder is near). The eat animation (id 10) is shared; only the completion EFFECT differs
+    // (consume a stored unit vs forage a bush), so the walk-or-act tail is identical for both.
+    const food = nearestFood(targets, world, ctx, terrain, here);
     if (food !== null) {
-      atOrWalk(world, e, here, interactionCell(world, ctx, terrain, food.store, here), () =>
-        startAtomic(
-          world,
-          e,
-          EAT_ATOMIC_ID,
-          { kind: 'eat', goodType: food.goodType, from: food.store },
-          atomicDuration(ctx.content, settler, EAT_ATOMIC_ID),
-          food.store,
-        ),
+      const target = food.kind === 'store' ? food.store : food.bush;
+      const effect =
+        food.kind === 'store'
+          ? ({ kind: 'eat', goodType: food.goodType, from: food.store } as const)
+          : ({ kind: 'forage', bush: food.bush } as const);
+      atOrWalk(world, e, here, interactionCell(world, ctx, terrain, target, here), () =>
+        startAtomic(world, e, EAT_ATOMIC_ID, effect, eatDuration(ctx, settler), target),
       );
       return true;
     }
