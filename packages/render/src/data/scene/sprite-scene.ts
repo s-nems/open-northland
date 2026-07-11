@@ -27,6 +27,7 @@ import {
   readJobType,
   readOwnerPlayer,
   readPosition,
+  readProducing,
   readProjectileOrigin,
   readProjectileTarget,
   readResourceGfxIndex,
@@ -372,6 +373,8 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
       if (typeId !== undefined) item.typeId = typeId;
       const builtPct = readBuiltPct(components);
       if (builtPct !== undefined) item.builtPct = builtPct;
+      // Mid production cycle — the switch a type's animated state overlay flips on (the mill's rotor).
+      if (readProducing(components)) item.working = true;
     } else if (kind === 'resource') {
       // A resource node carries its `Resource.goodType` so a per-good binding draws its own
       // species/deposit; a MINED node also carries its shrink-by-level fill state so its deposit graphic

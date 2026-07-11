@@ -7,6 +7,7 @@ import {
   finishedBuildingBobKeys,
   pickByJob,
   resolveBuildingDraw,
+  resolveBuildingOverlayDraw,
   resolveConstructionDraws,
   resolveResourceDraw,
   resolveSettlerBobId,
@@ -94,6 +95,10 @@ export function resolveLayers(
   }
 
   let bobId: number | null;
+  // A finished building's animated state overlay (the mill's rotor) — resolved once here, appended to
+  // whichever body path resolves below (a named-family body returns early; a default-layer body falls
+  // through to the kind-layer block). Null for every non-building kind and every overlay-less type.
+  let buildingOverlay: ResolvedLayer | null = null;
   if (item.kind === 'building') {
     // An under-construction building draws its ACTIVE construction-stage stack (grey foundation →
     // stages → body, several sprites in stacking order) when the binding carries the layers; each
@@ -122,12 +127,15 @@ export function resolveLayers(
       if (layers.length > 0) return layers;
     }
     const draw = resolveBuildingDraw(sheet.bindings.building, item);
+    const overlayDraw = resolveBuildingOverlayDraw(sheet.bindings.building, item, tick);
+    if (overlayDraw !== null) buildingOverlay = layeredLayerFor(sheet, 'building', overlayDraw);
     // A LOADED named family resolves through the shared helper (missing/empty frame → placeholder);
     // an UNLOADED one falls through to the default building layer below (a deliberate difference
     // from the construction path, which drops the stage instead).
     if (draw.layer !== undefined && sheet.families?.[draw.layer] !== undefined) {
       const resolved = layeredLayerFor(sheet, 'building', draw);
-      return resolved === null ? null : [resolved];
+      if (resolved === null) return null; // a broken body never draws a floating overlay
+      return buildingOverlay === null ? [resolved] : [resolved, buildingOverlay];
     }
     bobId = draw.bob;
   } else if (item.kind === 'resource') {
@@ -188,7 +196,8 @@ export function resolveLayers(
     const frame = kindLayer.atlas.frames.get(bobId);
     if (frame === undefined || frame.width === 0 || frame.height === 0) return null;
     const scale = sheet.kindScales?.[item.kind as SpriteKind] ?? 1;
-    return [{ source: kindLayer.source, frame, scale }];
+    const body = { source: kindLayer.source, frame, scale };
+    return buildingOverlay === null ? [body] : [body, buildingOverlay];
   }
 
   // Shared body atlas + overlay (head) layers, all indexed by the same resolved bob id.

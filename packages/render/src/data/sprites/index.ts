@@ -19,6 +19,7 @@ export {
 export type {
   BuildingBobRef,
   BuildingDraw,
+  BuildingOverlayRef,
   BuildingTypeBinding,
   ByJobTable,
   CarryingBinding,
@@ -37,6 +38,7 @@ export {
   bobKey,
   finishedBuildingBobKeys,
   resolveBuildingDraw,
+  resolveBuildingOverlayDraw,
   resolveConstructionDraws,
   resolveResourceDraw,
   resolveStockpileDraw,

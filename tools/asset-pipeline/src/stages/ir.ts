@@ -14,6 +14,7 @@ import {
   extractBobSequences,
   extractBuildingBobs,
   extractBuildingFootprints,
+  extractBuildingOverlays,
   extractBuildings,
   extractConstructionCosts,
   extractConstructionLayers,
@@ -151,6 +152,8 @@ export async function buildIr(args: Args): Promise<ContentSet> {
   const footprints = new Map<number, BuildingFootprint>();
   // `[GfxHouse]` construction-stage layers (render-binding data, like buildingBobs).
   const constructionLayers = [];
+  // `[GfxHouse]` type-4 animated state overlays — the mill rotor (render-binding data, like buildingBobs).
+  const buildingOverlays = [];
   for (const { path, file, layer } of sources) {
     const sections = parseIniSections(decodeIni(await readFile(path)));
     const src: SourceRef = { file, layer };
@@ -169,6 +172,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     gfxAtomics.push(...extractGfxAnimAtomics(sections, src));
     buildingBobs.push(...extractBuildingBobs(sections, src));
     constructionLayers.push(...extractConstructionLayers(sections, src));
+    buildingOverlays.push(...extractBuildingOverlays(sections, src));
     for (const [typeId, cost] of extractConstructionCosts(sections)) {
       constructionCosts.set(typeId, cost);
     }
@@ -273,6 +277,7 @@ export async function buildIr(args: Args): Promise<ContentSet> {
     gfxAtomics,
     buildingBobs,
     constructionLayers,
+    buildingOverlays,
     tribes,
     atomicAnimations,
     maps,

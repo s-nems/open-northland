@@ -90,6 +90,35 @@ export function resolveConstructionDraws(
 }
 
 /**
+ * Resolve a FINISHED building's animated state overlay — the extra sprite drawn ON TOP of the body
+ * (the `[GfxHouse]` type-4 `GfxOverlay` join: the mill's rotor) — or `null` when none applies: a
+ * plain-number binding, a type with no {@link BuildingTypeBinding.overlayByType} entry, or an
+ * under-construction item (`builtPct` present — the original lists overlays only for the finished
+ * body). A {@link DrawItem.working} building plays the `working` spin cycle on the free `tick`
+ * clock (an endless tick-locked loop, one frame per {@link
+ * import('./bindings.js').BuildingOverlayRef.ticksPerFrame} ticks — the same fixed-cadence rule
+ * every animation follows); otherwise the still `idle` blade frame draws. A state whose frames are
+ * absent draws no overlay at all (never a borrowed frame).
+ */
+export function resolveBuildingOverlayDraw(
+  binding: number | BuildingTypeBinding,
+  item: DrawItem,
+  tick: number,
+): BuildingDraw | null {
+  if (typeof binding === 'number' || item.typeId === undefined || item.builtPct !== undefined) return null;
+  const overlay = binding.overlayByType?.[item.typeId];
+  if (overlay === undefined) return null;
+  const spin = item.working === true ? overlay.working : undefined;
+  if (spin !== undefined && spin.length > 0) {
+    const ticksPerFrame = Math.max(1, overlay.ticksPerFrame ?? 1);
+    const bob = spin[Math.floor(tick / ticksPerFrame) % spin.length] as number;
+    return overlay.layer === undefined ? { bob } : { bob, layer: overlay.layer };
+  }
+  if (overlay.idle === undefined) return null;
+  return overlay.layer === undefined ? { bob: overlay.idle } : { bob: overlay.idle, layer: overlay.layer };
+}
+
+/**
  * Resolve which bob id — and from which named atlas-layer family — a RESOURCE draw item draws, from its
  * (number | per-good table) binding. The {@link ResourceTypeBinding} twin of {@link resolveBuildingDraw}:
  * a plain-number binding is the same node bob for every good (drawn from the default resource layer); a

@@ -212,6 +212,35 @@ export interface BuildingTypeBinding {
    * every progress.
    */
   readonly constructionByType?: Readonly<Record<number, readonly ConstructionLayerRef[]>>;
+  /**
+   * Animated state overlays per building typeId — the `[GfxHouse]` type-4 `GfxOverlay` table (the
+   * MILL's rotor: the body bob has no blades; the rotor is this extra sprite drawn on top). A
+   * FINISHED building whose type is here draws its overlay above the body: the {@link
+   * BuildingOverlayRef.working} spin cycle while the building runs a production cycle
+   * ({@link import('../scene/index.js').DrawItem.working}), else the still
+   * {@link BuildingOverlayRef.idle} blade frame. An under-construction building draws no overlay
+   * (the original lists overlays only for the finished body).
+   */
+  readonly overlayByType?: Readonly<Record<number, BuildingOverlayRef>>;
+}
+
+/**
+ * One building type's animated state overlay (the `[GfxHouse]` `GfxOverlay` type-4 join): the extra
+ * sprite drawn ON TOP of the finished body — the mill's rotor. `idle` is the single standing-still
+ * frame (source state 0); `working` the spin-cycle frame list (source state 1), advanced one frame
+ * every {@link ticksPerFrame} sim ticks on the free tick clock (an endless loop, like a gait) while
+ * the building is producing. Either state may be absent (that state then draws no overlay). Bobs
+ * resolve in the named {@link import('../../gpu/pixi-app.js').SpriteSheet.families} atlas `layer`, or
+ * the default building layer when absent — the same rule every {@link BuildingBobRef} follows.
+ */
+export interface BuildingOverlayRef {
+  readonly layer?: string;
+  /** The still blade frame drawn while NOT producing (source state 0). */
+  readonly idle?: number;
+  /** The spin-cycle frames drawn while producing (source state 1), in source order. */
+  readonly working?: readonly number[];
+  /** Sim ticks per spin frame (default 1) — the tick-locked cadence, like {@link DirectionalAnim.ticksPerFrame}. */
+  readonly ticksPerFrame?: number;
 }
 
 /**

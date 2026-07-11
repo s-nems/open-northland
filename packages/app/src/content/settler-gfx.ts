@@ -1,5 +1,6 @@
 import type {
   BuildingBobRef,
+  BuildingOverlayRef,
   CarryingBinding,
   ConstructionLayerRef,
   DirectionalAnim,
@@ -227,6 +228,7 @@ export function buildHumanBindings(
   stumpBinding?: ResourceTypeBinding,
   trunkBinding?: ResourceTypeBinding,
   berryBushBinding?: ResourceTypeBinding,
+  overlayByType?: Readonly<Record<number, BuildingOverlayRef>>,
 ): SpriteBindings {
   const walk = directionalAnimFromSeq(seqByName, WALK_SEQ, {}, FALLBACK_WALK);
   // Idle is the WAIT animation played as ONE direction (its length isn't a clean ×8, so it isn't a
@@ -272,6 +274,10 @@ export function buildHumanBindings(
       ...(constructionByType !== undefined && Object.keys(constructionByType).length > 0
         ? { constructionByType }
         : {}),
+      // Animated state overlays per type (the type-4 `GfxOverlay` join) — the mill's rotor drawn on
+      // top of its bladeless body: still while idle, spinning while the mill produces. Absent/empty
+      // when the IR predates the `buildingOverlays` lane (no overlay — the body draws as before).
+      ...(overlayByType !== undefined && Object.keys(overlayByType).length > 0 ? { overlayByType } : {}),
     },
     // Each gathered good draws its own standing node (the `landscapeToHarvest` join, built from the
     // Step-1 gathering pipeline — a tree for wood, a rock for stone, a mine for iron/gold/clay, a

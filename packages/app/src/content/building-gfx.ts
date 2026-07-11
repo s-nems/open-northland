@@ -1,5 +1,5 @@
-import type { BuildingBobRef, ConstructionLayerRef } from '@vinland/render';
-import type { BuildingBobRow, ConstructionLayerRow } from './ir.js';
+import type { BuildingBobRef, BuildingOverlayRef, ConstructionLayerRef } from '@vinland/render';
+import type { BuildingBobRow, BuildingOverlayRow, ConstructionLayerRow } from './ir.js';
 
 /**
  * The building/resource render binding: reduce the decoded `[GfxHouse]` IR joins (`buildingBobs` +
@@ -269,6 +269,65 @@ function familyLayerFor(
   if (base === defaultFamily.bmdBasename && paletteName === defaultFamily.paletteName) return {};
   const family = families.find((f) => f.bmdBasename === base && f.paletteName === paletteName);
   return family === undefined ? null : { layer: family.layer };
+}
+
+/** The source's overlay-state discriminators (`GfxOverlay <sizeIdx> 4 <state> …`). */
+const OVERLAY_STATE_IDLE = 0;
+const OVERLAY_STATE_WORKING = 1;
+
+/**
+ * Sim ticks per spin frame for a WORKING building overlay (the mill's rotor). The source's `step`
+ * field is `1` on every type-4 row and its unit is undecoded, so the pace is a NAMED APPROXIMATION
+ * tuned by eye against the original (13 spin frames × 2 ticks ≈ a 1.3 s revolution at ×1 speed) —
+ * a human validates it in the mill scene; swap the constant to taste (source basis "observed").
+ */
+export const OVERLAY_TICKS_PER_FRAME = 2;
+
+/**
+ * Reduce the decoded `buildingOverlays` IR (the `extractBuildingOverlays` leg — the `[GfxHouse]`
+ * type-4 `GfxOverlay` rows) to the render's per-type animated-state-overlay binding for ONE tribe:
+ * the mill's bladeless body gets its rotor — the state-0 row's single frame as the still `idle`
+ * blade, the state-1 row's frame list as the `working` spin cycle. Shares
+ * {@link buildingBobRefsByType}'s family rules (palette preference, the no-wrong-bob-borrow drop of
+ * an unloaded family) and {@link constructionRefsByType}'s one-source-record stance (lowest `level`
+ * group, deterministic). A type with neither state row is simply absent (no overlay drawn).
+ */
+export function buildingOverlayRefsByType(
+  rows: readonly BuildingOverlayRow[],
+  tribeId: number,
+  defaultFamily: { readonly bmdBasename: string; readonly paletteName: string },
+  families: readonly BuildingFamily[],
+): Record<number, BuildingOverlayRef> {
+  const byType = new Map<number, BuildingOverlayRow[]>();
+  for (const r of rows) {
+    if (r.tribeId !== tribeId) continue;
+    const list = byType.get(r.typeId);
+    if (list === undefined) byType.set(r.typeId, [r]);
+    else list.push(r);
+  }
+  const out: Record<number, BuildingOverlayRef> = {};
+  for (const [typeId, list] of byType) {
+    const inPreferred = list.filter((r) => r.paletteName === defaultFamily.paletteName);
+    const pool = inPreferred.length > 0 ? inPreferred : list;
+    const lowestLevel = pool.reduce((lo, r) => Math.min(lo, r.level), Number.POSITIVE_INFINITY);
+    const group = pool.filter((r) => r.level === lowestLevel);
+    const idleRow = group.find((r) => r.state === OVERLAY_STATE_IDLE);
+    const workingRow = group.find((r) => r.state === OVERLAY_STATE_WORKING);
+    const anchor = idleRow ?? workingRow;
+    if (anchor === undefined) continue;
+    const layer = familyLayerFor(anchor.bmd, anchor.paletteName, defaultFamily, families);
+    if (layer === null) continue; // family not loaded → no overlay (never a wrong-bob borrow)
+    const idle = idleRow?.frames[0];
+    const working = workingRow !== undefined && workingRow.frames.length > 0 ? workingRow.frames : undefined;
+    if (idle === undefined && working === undefined) continue;
+    out[typeId] = {
+      ...(layer.layer !== undefined ? { layer: layer.layer } : {}),
+      ...(idle !== undefined ? { idle } : {}),
+      ...(working !== undefined ? { working } : {}),
+      ticksPerFrame: OVERLAY_TICKS_PER_FRAME,
+    };
+  }
+  return out;
 }
 
 /**

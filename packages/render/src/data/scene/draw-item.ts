@@ -215,6 +215,15 @@ export interface DrawItem {
    */
   readonly builtPct?: number;
   /**
+   * For a FINISHED **building**: whether it is mid production cycle (the sim `Production` component
+   * is present) — the key an animated state overlay switches on (the mill's rotor spins while the
+   * mill produces, {@link import('../sprites/index.js').BuildingTypeBinding.overlayByType}). A NAMED
+   * APPROXIMATION of the original's overlay state 1: `Production` persists through a brief
+   * worker-away pause (the cycle holds, the drawn rotor keeps spinning); the original's exact
+   * pause behaviour is unobserved. Omitted for an idle workplace and every non-building kind.
+   */
+  readonly working?: boolean;
+  /**
    * For a **projectile**: its flight heading in screen space (radians, 0 = screen-east, clockwise) —
    * the pooled arrow graphic (authored pointing screen-east) rotates to it so the shaft points along
    * the flight. Derived from the projectile's position toward its target's live position (the sim's

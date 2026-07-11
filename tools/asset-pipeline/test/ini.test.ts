@@ -13,6 +13,7 @@ import {
   extractBuildingBobs,
   extractBuildingFootprints,
   extractBuildingGraphics,
+  extractBuildingOverlays,
   extractBuildings,
   extractConstructionCosts,
   extractConstructionLayers,
@@ -1207,6 +1208,49 @@ describe('extractConstructionLayers', () => {
 
   it('returns an empty array for sources with no [GfxHouse] records', () => {
     expect(extractConstructionLayers(parseIniSections(HOUSES_INI), src)).toEqual([]);
+  });
+});
+
+// Mirrors the real mill record's overlay grammar: a type-4 `GfxOverlay <sizeIdx> 4 <state> <x> <y>
+// <step> <bobId…>` pair (state 0 = the still blade frame, state 1 = the spin cycle) beside a type-3
+// row (a different, undecoded shape) that must be skipped, joined to typeIds via `LogicType`.
+const GFXHOUSE_OVERLAYS_INI = `[GfxHouse]
+EditName "viking mill"
+LogicTribeType 1
+LogicType 0 13
+GfxBobLibs "data\\engine2d\\bin\\bobs\\ls_houses_viking.bmd"
+GfxPalette "houseMiller01"
+GfxBobId 0 70
+GfxOverlay 0 4 0 0 0 1 76
+GfxOverlay 0 4 1 0 0 1 85 84 83 82 81
+GfxOverlay 0 3 1 3 -103 0
+`;
+
+describe('extractBuildingOverlays', () => {
+  const src = { file: 'budynki12/houses/houses.ini', layer: 'mod' as const };
+
+  it('extracts the two type-4 state rows, skipping the undecoded type-3 row', () => {
+    const overlays = extractBuildingOverlays(parseIniSections(GFXHOUSE_OVERLAYS_INI), src);
+    expect(overlays).toHaveLength(2);
+    const idle = overlays.find((o) => o.state === 0);
+    const working = overlays.find((o) => o.state === 1);
+    expect(idle).toMatchObject({
+      tribeId: 1,
+      typeId: 13,
+      level: 0,
+      x: 0,
+      y: 0,
+      step: 1,
+      frames: [76],
+      bmd: 'data/engine2d/bin/bobs/ls_houses_viking.bmd',
+      paletteName: 'housemiller01',
+      editName: 'viking mill',
+    });
+    expect(working?.frames).toEqual([85, 84, 83, 82, 81]);
+  });
+
+  it('returns an empty array for sources with no [GfxHouse] records', () => {
+    expect(extractBuildingOverlays(parseIniSections(HOUSES_INI), src)).toEqual([]);
   });
 });
 

@@ -22,6 +22,7 @@ import {
   BuildingBob,
   BuildingConstructionLayer,
   type BuildingFootprint,
+  BuildingOverlay,
   BuildingType,
   type FootprintCell,
   GatheringPipeline,
@@ -1520,6 +1521,77 @@ export function extractConstructionLayers(
     }
   }
   return layers;
+}
+
+/** The `GfxOverlay` type discriminator (2nd int) of the two-state ANIMATED overlays we decode — the
+ *  mill rotor. The type-`3` rows have a different, not-yet-decoded field shape (6 fields, no frame
+ *  list — static decal offsets) and are skipped rather than guessed. */
+const ANIMATED_OVERLAY_TYPE = 4;
+/** Leading ints of a type-4 `GfxOverlay` line before its frame list: `<sizeIdx> <type> <state> <x> <y> <step>`. */
+const OVERLAY_HEADER_FIELDS = 6;
+
+/**
+ * Extracts the `[GfxHouse]` **animated state overlays** (`GfxOverlay <sizeIdx> 4 <state> <x> <y>
+ * <step> <bobId…>`) — the extra sprite a building draws ON TOP of its finished body, per state
+ * ({@link BuildingOverlay} documents the field pinning and the one known user, the mill rotor). The
+ * `(sizeIdx → typeId)` join, the `(bmd, palette)` atlas keying and the per-palette row fan-out all
+ * mirror {@link extractConstructionLayers}. Only `ANIMATED_OVERLAY_TYPE` (4) rows are consumed; a
+ * malformed or frame-less line is skipped, never thrown.
+ */
+export function extractBuildingOverlays(sections: readonly RuleSection[], src: SourceRef): BuildingOverlay[] {
+  const overlays: BuildingOverlay[] = [];
+  for (const sec of sections) {
+    if (sec.name !== 'GfxHouse') continue;
+    for (const rec of splitGfxHouseRecords(sec)) {
+      const tribeId = getInt(rec, 'LogicTribeType');
+      if (tribeId === undefined) continue;
+      const bmd = findProp(rec, 'GfxBobLibs')?.values[0];
+      if (bmd === undefined || bmd.trim() === '') continue;
+      const palettes = (findProp(rec, 'GfxPalette')?.values ?? []).filter((v) => v.trim() !== '');
+      if (palettes.length === 0) continue;
+      const editName = getStr(rec, 'EditName');
+      const typeByLevel = logicTypeByLevel(rec);
+      const normalizedBmd = normalizeAssetPath(bmd);
+      for (const p of findProps(rec, 'GfxOverlay')) {
+        const ints = p.values.map((v) => Number.parseInt(v, 10));
+        const [level, overlayType, state, x, y, step] = ints;
+        if (
+          level === undefined ||
+          overlayType !== ANIMATED_OVERLAY_TYPE ||
+          state === undefined ||
+          x === undefined ||
+          y === undefined ||
+          step === undefined ||
+          ints.slice(0, OVERLAY_HEADER_FIELDS).some((n) => Number.isNaN(n))
+        ) {
+          continue;
+        }
+        const frames = ints.slice(OVERLAY_HEADER_FIELDS);
+        if (frames.length === 0 || frames.some((n) => Number.isNaN(n) || n < 0)) continue;
+        const typeId = typeByLevel.get(level);
+        if (typeId === undefined) continue;
+        for (const paletteName of palettes) {
+          overlays.push(
+            BuildingOverlay.parse({
+              tribeId,
+              typeId,
+              level,
+              state,
+              x,
+              y,
+              step,
+              frames,
+              bmd: normalizedBmd,
+              paletteName: normalizePaletteName(paletteName),
+              editName,
+              source: { file: src.file, block: 'GfxHouse', layer: src.layer ?? 'base' },
+            }),
+          );
+        }
+      }
+    }
+  }
+  return overlays;
 }
 
 /** Ticks for one production cycle when no produce-atomic animation length resolves (unpinned). */

@@ -13,6 +13,7 @@ import {
   indexAtlasFrames,
   pickByJob,
   resolveBuildingDraw,
+  resolveBuildingOverlayDraw,
   resolveConstructionDraws,
   resolveResourceDraw,
   resolveSpriteBobId,
@@ -312,6 +313,58 @@ describe('resolveConstructionDraws — construction-stage stack for an under-con
       constructionByType: { 2: [{ bob: 102, fromPct: 10, toPct: 50 }] },
     };
     expect(resolveConstructionDraws(gappy, site(2, 0))).toEqual([{ bob: 102 }]); // below every range
+  });
+});
+
+describe('resolveBuildingOverlayDraw — the animated state overlay (the mill rotor)', () => {
+  /** A mill draw item: finished by default; `working` = mid production cycle. */
+  function mill(opts: { working?: boolean; builtPct?: number; typeId?: number } = {}): DrawItem {
+    return {
+      kind: 'building',
+      ref: 1,
+      x: 0,
+      y: 0,
+      depth: 0,
+      typeId: opts.typeId ?? 13,
+      ...(opts.working !== undefined ? { working: opts.working } : {}),
+      ...(opts.builtPct !== undefined ? { builtPct: opts.builtPct } : {}),
+    };
+  }
+  // The viking mill shape: bladeless body 70, still blade 76, a 3-frame spin cycle at 2 ticks/frame,
+  // all in the `miller` family layer.
+  const binding: BuildingTypeBinding = {
+    byType: { 13: { layer: 'miller', bob: 70 } },
+    default: 11,
+    overlayByType: { 13: { layer: 'miller', idle: 76, working: [85, 84, 83], ticksPerFrame: 2 } },
+  };
+
+  it('draws the still idle blade while the mill is not producing (any tick)', () => {
+    expect(resolveBuildingOverlayDraw(binding, mill(), 0)).toEqual({ bob: 76, layer: 'miller' });
+    expect(resolveBuildingOverlayDraw(binding, mill(), 999)).toEqual({ bob: 76, layer: 'miller' });
+  });
+
+  it('cycles the spin frames on the free tick clock while producing, at ticksPerFrame cadence', () => {
+    const at = (tick: number): number | undefined =>
+      resolveBuildingOverlayDraw(binding, mill({ working: true }), tick)?.bob;
+    // 2 ticks per frame: 85 85 84 84 83 83, then wrap.
+    expect([at(0), at(1), at(2), at(3), at(4), at(5), at(6)]).toEqual([85, 85, 84, 84, 83, 83, 85]);
+  });
+
+  it('draws no overlay under construction, for an overlay-less type, and for a plain binding', () => {
+    expect(resolveBuildingOverlayDraw(binding, mill({ builtPct: 50 }), 0)).toBeNull();
+    expect(resolveBuildingOverlayDraw(binding, mill({ typeId: 2 }), 0)).toBeNull();
+    expect(resolveBuildingOverlayDraw(20, mill(), 0)).toBeNull();
+  });
+
+  it('falls back per state: a working mill with no spin frames holds the idle blade; a stateless entry draws nothing', () => {
+    const idleOnly: BuildingTypeBinding = {
+      byType: {},
+      default: 11,
+      overlayByType: { 13: { idle: 76 } },
+    };
+    expect(resolveBuildingOverlayDraw(idleOnly, mill({ working: true }), 5)).toEqual({ bob: 76 });
+    const empty: BuildingTypeBinding = { byType: {}, default: 11, overlayByType: { 13: {} } };
+    expect(resolveBuildingOverlayDraw(empty, mill(), 0)).toBeNull();
   });
 });
 

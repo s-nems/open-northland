@@ -8,6 +8,7 @@ import { equipmentScene } from './equipment.js';
 import { farmScene } from './farm.js';
 import { fogScene } from './fog.js';
 import { goodsCatalogScene } from './goods-catalog.js';
+import { millScene } from './mill.js';
 import { sandboxScene } from './sandbox.js';
 import type { SceneDefinition } from './types.js';
 import { warehouseScene } from './warehouse.js';
@@ -31,6 +32,7 @@ export const SCENES: readonly SceneDefinition[] = [
   farmScene,
   berriesScene,
   fogScene,
+  millScene,
   buildingGeometryScene,
   warehouseScene,
 ];
