@@ -113,7 +113,7 @@ export class WorkerSpriteOverlay {
     const withIndoor = new Map<number, DrawItem>();
     const workerScene: WorldSnapshot = { ...snapshot, entities: workerEntities };
     for (const it of buildSpriteScene(workerScene)) if (it.kind === 'settler') active.set(it.ref, it);
-    for (const it of buildSpriteScene(workerScene, undefined, undefined, undefined, {
+    for (const it of buildSpriteScene(workerScene, undefined, undefined, undefined, undefined, {
       keepIndoorSettlers: true,
     }))
       if (it.kind === 'settler') withIndoor.set(it.ref, it);

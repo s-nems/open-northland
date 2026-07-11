@@ -1,9 +1,10 @@
-import { Fleeing, MoveGoal, PathRequest, Settler } from '../../components/index.js';
+import { Fleeing, MoveGoal, Owner, PathRequest, Settler } from '../../components/index.js';
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
 import { COMPASS_DIRECTIONS, clearNavState, entityNode, isTravelling, type NodeBuckets } from '../spatial.js';
+import { playerSeesEntity } from '../vision.js';
 import { isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 
 // The FLEE drive — the civilian raid reaction (the FLEE stance's active behaviour): run from the
@@ -86,7 +87,13 @@ export function fleeDrive(
 
   const here = entityNode(world, terrain, e);
   const { x, y } = terrain.coordsOf(here);
-  const accept = (t: Entity): boolean => isValidTarget(world, ctx, e, attacker, t);
+  // FOG GATE: a fleer reacts only to threats its PLAYER currently sees (full sim enforcement — the
+  // combat auto-acquire's twin). Any of the player's eyes counts: a watchtower spotting the raider
+  // warns the civilian even when the civilian's own short sight doesn't reach it.
+  const viewer = world.tryGet(e, Owner);
+  const accept = (t: Entity): boolean =>
+    isValidTarget(world, ctx, e, attacker, t) &&
+    (viewer === undefined || playerSeesEntity(world, ctx.fog, viewer.player, t));
   // Near bound 0 (not the weapon-reach floor of 1): fear has no dead zone — a fleeing unit reacts to a
   // hostile on its very tile too (entities share tiles freely), not just one a step away.
   const threat = index.nearest(x, y, 0, SIGHT_RADIUS_NODES, accept);

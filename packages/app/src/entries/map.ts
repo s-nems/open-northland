@@ -16,6 +16,7 @@ import { loadMinimapCellColours } from '../content/minimap-ground.js';
 import { loadMapObjects } from '../content/objects.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
+import { fogModeParam } from '../game/fog.js';
 import { mapStartFocus } from '../game/map-start.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import {
@@ -182,6 +183,10 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     (simMap !== null
       ? runBareMap(SLICE_SEED, simMap, footprints)
       : runSlice(SLICE_SEED, 1, undefined, HUMAN_PLAYER, footprints));
+
+  // `?fog=reveal|recon|full` opts the map view into fog of war (default: none — the pre-fog view).
+  const fogOverride = fogModeParam(params);
+  if (fogOverride !== null) sim.enqueue({ kind: 'setFogMode', mode: fogOverride });
 
   // Spawn the map's own trees/ore/stone as real harvestable `Resource` sim nodes (plan step 6), so a
   // gatherer can actually work them — before this they were render-only decor and every gatherer idled.

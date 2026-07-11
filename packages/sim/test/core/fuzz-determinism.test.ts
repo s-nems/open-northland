@@ -129,6 +129,9 @@ const MAX_USE_PCT = 100;
 const OWNERS = [0, 1, 99] as const;
 /** Military-mode ids: the five valid `MILITARY_MODE`s + one out-of-range (skipped) — exercises `setStance`. */
 const STANCE_MODES = [0, 1, 2, 3, 4, 7] as const;
+/** Fog modes: the four valid `FOG_MODE`s + one out-of-range (skipped) — exercises `setFogMode`, the
+ *  VisionSystem's rebuild/downgrade/reset paths, and the fog-mask bytes `hashState` mixes in. */
+const FOG_MODES = [0, 1, 2, 3, 9] as const;
 /** Entity-targeting commands draw ids from [1, TARGET_ID_RANGE] — live, dead, and never-created. */
 const TARGET_ID_RANGE = 80;
 /** ~1 command every this-many ticks keeps the stream busy without swamping the map. */
@@ -168,7 +171,7 @@ function pick<T>(rng: Rng, options: readonly T[]): T {
 function nextCommand(rng: Rng): Command {
   const x = rng.int(NODE_W);
   const y = rng.int(NODE_H);
-  const roll = rng.int(19);
+  const roll = rng.int(20);
   switch (roll) {
     case 0:
       return {
@@ -327,6 +330,11 @@ function nextCommand(rng: Rng): Command {
       // Debug complete-construction at a random id: hits construction sites (forced to built + event) +
       // built/non-building/dead ids (skipped — no UnderConstruction marker). Exercises the force-finish.
       return { kind: 'debugCompleteConstruction', target: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
+    case 18:
+      // The fog-of-war mode: flips the FogRules singleton mid-stream across all four modes (plus an
+      // invalid one — the skip path). Exercises the VisionSystem's rebuild/downgrade (RECON/FULL),
+      // sticky REVEAL, the OFF reset, the combat/flee fog gates, and the mask bytes in hashState.
+      return { kind: 'setFogMode', mode: pick(rng, FOG_MODES) };
     default:
       // A profession change at a random id: valid + unknown jobs, owned/unowned/dead targets.
       return {

@@ -3,6 +3,7 @@ import { goodLocaleParam, loadGoodNameMap } from '../content/good-names.js';
 import { buildingFootprints, loadIr } from '../content/ir.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
+import { fogModeParam } from '../game/fog.js';
 import { createSceneSim, getScene, SCENES } from '../scenes/index.js';
 import { cameraFor, createCameraController } from '../view/camera.js';
 import { startGameView } from '../view/game-view.js';
@@ -46,6 +47,11 @@ export async function renderSceneMode(
     goodNames,
     ...(footprints.size > 0 ? { buildingFootprints: footprints } : {}),
   });
+  // `?fog=off|reveal|recon|full` overrides the scene's own fog mode (enqueued AFTER the scene's
+  // setFogMode — FIFO, later write wins). A named divergence from the headless twin, like `?speed=`:
+  // the human explicitly asked to watch the mechanic under a different fog rule.
+  const fogOverride = fogModeParam(params);
+  if (fogOverride !== null) sim.enqueue({ kind: 'setFogMode', mode: fogOverride });
   // Goods are global sandbox content now, not scene-local data.
   const sheet = await resolveSpriteSheet(params, sim.content.goods);
   const terrain = params.has('terrain') ? await loadRealTerrain() : undefined;

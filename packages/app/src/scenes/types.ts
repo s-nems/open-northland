@@ -1,4 +1,5 @@
 import type { CellTerrainMap, Simulation } from '@vinland/sim';
+import type { FogModeName } from '../game/fog.js';
 
 /** A single machine-checkable assertion about a scene's run — the mechanic the headless test enforces. */
 export interface SceneCheck {
@@ -35,6 +36,9 @@ export interface SceneDefinition {
    *  default to needs OFF (a checklist unit must not starve mid-inspection — see `createSceneSim`);
    *  a scene that exercises needs/starvation sets this true. */
   readonly needs?: boolean;
+  /** The scene's fog-of-war mode (`setFogMode` enqueued at build; see `game/fog.ts`). Omit for no
+   *  fog (the sim default); the browser `?fog=` flag overrides either way. */
+  readonly fog?: FogModeName;
   /** Ticks the headless acceptance test advances before checking {@link checks}. */
   readonly runTicks: number;
   /**

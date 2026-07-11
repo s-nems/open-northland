@@ -2,11 +2,12 @@ import {
   type Camera,
   cameraViewport,
   flatTileColour,
+  fogTileVisible,
   ONE,
   type SceneTerrain,
   tileToScreen,
 } from '@vinland/render';
-import type { WorldSnapshot } from '@vinland/sim';
+import { FOG_STATE, type FogView, type WorldSnapshot } from '@vinland/sim';
 import { type Application, BufferImageSource, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
 import { MINIMAP_CELL_UNRESOLVED } from '../../content/minimap-ground.js';
@@ -25,11 +26,11 @@ import {
 
 /**
  * The bottom-left minimap in the original's braided overview frame: the whole map's ground (built
- * once — terrain is static), the units/buildings as player-coloured dots (refreshed per sim tick)
- * and the camera's view rectangle (refreshed per frame). No fog of war yet — the sim has none, so
- * the full map shows; when visibility lands, this is the one surface to mask. Left-click (or drag)
- * in the map hole jumps the camera to the pointed world spot; the whole framed window claims its
- * clicks so they never fall through to unit selection or world orders.
+ * once — terrain is static), the units/buildings as player-coloured dots (refreshed per sim tick),
+ * the fog-of-war mask over both (a per-cell alpha raster refreshed only when the fog generation
+ * moves; dots draw only on currently-VISIBLE ground) and the camera's view rectangle (refreshed per
+ * frame). Left-click (or drag) in the map hole jumps the camera to the pointed world spot; the whole
+ * framed window claims its clicks so they never fall through to unit selection or world orders.
  *
  * The mount half (this file) owns Pixi + DOM; the geometry/projection/raster math is the pure
  * `model.ts` twin. Per the hud contract, view glue (client→screen px) is injected via options.
@@ -48,6 +49,10 @@ const BUILDING_DOT_PX = 3;
 /** The camera view rectangle's stroke. */
 const VIEW_RECT_COLOUR = 0xffffff;
 const VIEW_RECT_ALPHA = 0.9;
+/** Fog mask alphas per cell state (black texels): unexplored hides the ground entirely, explored
+ *  dims it to "known terrain", visible shows through. Matches the world wash's grading by eye. */
+const FOG_UNEXPLORED_ALPHA = 255;
+const FOG_EXPLORED_ALPHA = 150;
 /** Dot colour for a player outside the swatch table — unreachable today (the index is taken modulo
  *  the table length); a named value so retuning the view rect never silently retunes stray dots. */
 const UNKNOWN_PLAYER_DOT_COLOUR = 0xffffff;
@@ -85,8 +90,9 @@ export interface MinimapOptions {
 export interface MinimapHandle {
   /** True when the client point is over the framed window — for the HUD pointer-claim chain. */
   claimsPointer(clientX: number, clientY: number): boolean;
-  /** Per-frame refresh: re-place from the live screen size, redraw the view rect + (per tick) dots. */
-  update(snapshot: WorldSnapshot): void;
+  /** Per-frame refresh: re-place from the live screen size, redraw the view rect + (per tick) dots +
+   *  (per fog generation) the fog mask. `fog` is the viewer's fog view, or null when fog is off. */
+  update(snapshot: WorldSnapshot, fog?: FogView | null): void;
   dispose(): void;
 }
 
@@ -174,6 +180,51 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   ground.height = mapL.h;
   container.addChild(ground);
 
+  // The fog-of-war mask over the ground: one CELL-resolution alpha raster (black texels, alpha by
+  // state) stretched over the map picture with linear filtering — the same soft edge the world wash
+  // shows. Rebuilt only when the fog GENERATION moves (the VisionSystem's cadence), never per frame.
+  // NAMED APPROXIMATION: the stretch ignores the odd-row half-cell stagger the ground raster samples
+  // (a half-cell skew on a soft mask, invisible at minimap scale).
+  const fogSprite = new Sprite();
+  fogSprite.visible = false;
+  container.addChild(fogSprite);
+  let fogTexture: Texture | null = null;
+  let fogGeneration = -1; // generation last rasterized; -1 = no mask drawn
+  const drawFog = (fog: FogView | null): void => {
+    if (fog === null) {
+      if (fogSprite.visible) {
+        fogSprite.visible = false;
+        fogGeneration = -1;
+      }
+      return;
+    }
+    if (fog.generation === fogGeneration) return;
+    fogGeneration = fog.generation;
+    const w = fog.cellsWide;
+    const h = fog.cellsHigh;
+    const rgba = new Uint8Array(w * h * 4); // rgb stay 0 (black); only the alpha lane is written
+    for (let r = 0; r < h; r++) {
+      for (let c = 0; c < w; c++) {
+        const state = fog.stateAt(c, r);
+        rgba[(r * w + c) * 4 + 3] =
+          state === FOG_STATE.VISIBLE
+            ? 0
+            : state === FOG_STATE.EXPLORED
+              ? FOG_EXPLORED_ALPHA
+              : FOG_UNEXPLORED_ALPHA;
+      }
+    }
+    fogTexture?.destroy(true);
+    fogTexture = new Texture({
+      source: new BufferImageSource({ resource: rgba, width: w, height: h, scaleMode: 'linear' }),
+    });
+    fogSprite.texture = fogTexture;
+    fogSprite.position.set(mapL.x, mapL.y);
+    fogSprite.width = mapL.w;
+    fogSprite.height = mapL.h;
+    fogSprite.visible = true;
+  };
+
   // Dots above ground, the view rectangle on top.
   const dots = new Graphics();
   const viewRect = new Graphics();
@@ -217,7 +268,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   // ── Per-frame refresh ─────────────────────────────────────────────────────────────────────────────
   let lastDotsTick = -1;
   let lastHeight = -1;
-  const drawDots = (snapshot: WorldSnapshot): void => {
+  const drawDots = (snapshot: WorldSnapshot, fog: FogView | null): void => {
     dots.clear();
     for (const e of snapshot.entities) {
       const player = ownerPlayerOf(e);
@@ -226,6 +277,9 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       if (!settler && !isBuilding(e)) continue;
       const pos = positionOf(e);
       if (pos === undefined) continue;
+      // Fog: a dot only on currently-VISIBLE ground (the viewer's own forces always are — they see
+      // their own cell; an enemy in unexplored/grey ground stays off the minimap).
+      if (fog !== null && !fogTileVisible(fog, pos.x / ONE, pos.y / ONE)) continue;
       const s = tileToScreen(pos.x / ONE, pos.y / ONE);
       const mx = layout.map.x - layout.panel.x + (s.x - bounds.minX) * layout.scale;
       const my = layout.map.y - layout.panel.y + (s.y - bounds.minY) * layout.scale;
@@ -241,7 +295,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       const p = opts.toScreenPx(clientX, clientY);
       return pointOverMinimap(layout, p.x, p.y);
     },
-    update: (snapshot) => {
+    update: (snapshot, fog = null) => {
       const h = app.screen.height;
       layout = minimapLayout(bounds, h, opts.uiscale);
       if (!container.visible) {
@@ -252,9 +306,10 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
         container.visible = true;
       }
       container.position.set(layout.panel.x, layout.panel.y);
+      drawFog(fog); // generation-keyed — a no-op while the fog masks are unchanged
       if (snapshot.tick !== lastDotsTick) {
         lastDotsTick = snapshot.tick;
-        drawDots(snapshot);
+        drawDots(snapshot, fog);
       }
       viewRect.clear();
       const vp = viewportRectOnMinimap(
@@ -277,6 +332,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       container.destroy({ children: true });
       frame?.dispose();
       groundTex.destroy(true);
+      fogTexture?.destroy(true);
     },
   };
 }

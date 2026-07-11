@@ -1,6 +1,7 @@
-import type { SimEvent, WorldSnapshot } from '@vinland/sim';
+import { FOG_STATE, type FogView, type SimEvent, type WorldSnapshot } from '@vinland/sim';
 import { type Application, Container, RenderTexture, Sprite, Texture, type TextureSource } from 'pixi.js';
 import { type ElevationField, makeElevationField } from '../data/elevation.js';
+import { fogTileVisible } from '../data/fog.js';
 import type { Camera } from '../data/iso.js';
 import type { SceneTerrain } from '../data/scene/index.js';
 import type { AtlasFrame } from '../data/sprites/index.js';
@@ -8,6 +9,7 @@ import { cameraViewport } from '../data/viewport.js';
 import { BadgeLayer, type DoorBadge } from './badge-layer.js';
 import { type ConstructionPlotFrame, ConstructionPlotLayer } from './construction-plot.js';
 import { CombatEffectsLayer } from './effects-layer.js';
+import { FogLayer } from './fog-layer.js';
 import { type GeometryDebugItem, GeometryDebugLayer } from './geometry-debug.js';
 import type { HudFrame } from './hud-layer.js';
 import { HudLayer } from './hud-layer.js';
@@ -114,6 +116,10 @@ export class WorldRenderer {
   /** Entities the static map-object layer draws instead of the pool (see {@link setStaticallyDrawnRefs}). */
   private staticDrawnRefs?: ReadonlySet<number>;
   private readonly pool: SpritePool;
+  /** The fog-of-war wash (world-space, over terrain + flat decor, BELOW the sprites) + the viewer's
+   *  fog view it composites from ({@link updateFog}; null = fog off, the wash clears). */
+  private readonly fog: FogLayer;
+  private fogView: FogView | null = null;
   /** The build-mode dim wash over non-buildable tiles (world-space, BELOW the sprites). */
   private readonly placementOverlay: PlacementOverlayLayer;
   /** Grey ground plots under placed construction sites (world-space, BELOW the sprites). */
@@ -153,6 +159,7 @@ export class WorldRenderer {
     this.spriteLayer.sortableChildren = true;
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
     this.pool = new SpritePool(this.spriteLayer, this.textureCache, opts?.sheet);
+    this.fog = new FogLayer();
     this.placementOverlay = new PlacementOverlayLayer(app.renderer);
     // The ghost joins the DEPTH-SORTED sprite layer so it occludes like the real house would.
     this.placementGhost = new PlacementGhostLayer(opts?.sheet, this.textureCache);
@@ -164,6 +171,10 @@ export class WorldRenderer {
     // so a hit spurt shows on the struck body and a worker marker floats above its building.
     this.worldLayer.addChild(this.terrain.container);
     this.worldLayer.addChild(this.mapObjects.decorContainer);
+    // The fog wash covers the ground + flat decor and sits UNDER everything gameplay-drawn: entities
+    // on fogged ground are individually fog-culled (pool + tall objects), so nothing legitimate draws
+    // above the wash inside the fog.
+    this.worldLayer.addChild(this.fog.container);
     this.worldLayer.addChild(this.constructionPlots.container);
     this.worldLayer.addChild(this.placementOverlay.container);
     this.worldLayer.addChild(this.selectionLayer.container);
@@ -192,6 +203,18 @@ export class WorldRenderer {
   /** Show/hide the paused-game wash — the app's loop control drives this alongside the sim pause. */
   setPaused(paused: boolean): void {
     this.pauseWash.visible = paused;
+  }
+
+  /**
+   * Set (or clear) the fog-of-war view for THIS frame — the viewer player's per-cell visibility mask
+   * (`Simulation.fogView`, plain data + one pure accessor). Drives three things inside the next
+   * {@link update}: the fog wash over the ground ({@link FogLayer}), the sprite pool's fog cull
+   * (entities on non-visible ground don't draw), and the tall map-object gate (trees/stones in fog
+   * vanish). `null` = fog off — every layer reverts to its pre-fog behaviour. Call each frame like
+   * {@link updatePlacementOverlay}; the wash itself re-composites only when band/generation move.
+   */
+  updateFog(view: FogView | null): void {
+    this.fogView = view;
   }
 
   /**
@@ -301,7 +324,16 @@ export class WorldRenderer {
       SPRITE_CULL_MARGIN + this.elevation.maxLift,
     );
     this.terrain.cull(vp);
-    this.mapObjects.update(vp, tick);
+    // Fog-of-war: recomposite the wash (band/generation-keyed — usually a no-op) and build this
+    // frame's cull predicates for the tall objects + the sprite pool below. Both close over the same
+    // FogView, so the wash, the trees and the entities can never disagree about a cell.
+    const fogView = this.fogView;
+    this.fog.update(fogView, vp);
+    this.mapObjects.update(
+      vp,
+      tick,
+      fogView === null ? undefined : (cellX, cellY) => fogView.stateAt(cellX, cellY) === FOG_STATE.VISIBLE,
+    );
     // The pool needs the camera + canvas size to place team-colour PalettedSprite meshes (screen-space,
     // they can't ride the worldLayer transform); the plain-sprite path ignores them. The elevation field
     // lets it lift each entity's DRAWN feet without disturbing its pre-lift depth key; `alpha` lerps
@@ -316,6 +348,9 @@ export class WorldRenderer {
       elevation: this.elevation,
       alpha,
       ...(this.staticDrawnRefs !== undefined ? { staticRefs: this.staticDrawnRefs } : {}),
+      ...(fogView !== null
+        ? { fogVisible: (tx: number, ty: number) => fogTileVisible(fogView, tx, ty) }
+        : {}),
     });
     // Selection rings read the pool's just-computed per-entity bounds + drawn (lerped, lifted) anchors,
     // so a building's marker sizes to its actual sprite footprint and a moving unit's ring glides with
@@ -521,6 +556,7 @@ export class WorldRenderer {
     this.terrain.destroy(); // frees mesh geometry the layer.destroy below would otherwise orphan
     this.mapObjects.destroy();
     this.pool.destroy(); // destroys detached (culled) entities the scene-graph walk can't reach
+    this.fog.destroy();
     this.placementOverlay.destroy();
     this.constructionPlots.destroy();
     this.placementGhost.destroy();

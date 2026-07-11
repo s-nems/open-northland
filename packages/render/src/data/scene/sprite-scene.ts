@@ -146,9 +146,10 @@ export function buildSpriteScene(
   viewport?: Viewport,
   elevation?: ElevationField,
   staticRefs?: ReadonlySet<number>,
+  fogVisible?: (tileX: number, tileY: number) => boolean,
   options?: SpriteSceneOptions,
 ): DrawItem[] {
-  return collectSpriteScene(snapshot, viewport, elevation, staticRefs, options).items;
+  return collectSpriteScene(snapshot, viewport, elevation, staticRefs, fogVisible, options).items;
 }
 
 /**
@@ -202,12 +203,18 @@ function enterableStoresOf(snapshot: WorldSnapshot): ReadonlySet<number> {
  * virgin resource nodes — see the `?map=` entry's handover): they are skipped entirely — no draw item,
  * not in the liveness set — so the pool never runs per-frame work for scenery that has its own
  * built-once quad (golden rule: per-frame cost tracks the screen's ACTIVE entities, not the forest).
+ *
+ * `fogVisible` is the fog-of-war cull (`data/fog.ts` over the viewer's `FogView`): an entity whose
+ * tile it rejects is treated exactly like a viewport-culled one — kept in the liveness set (still
+ * alive, its pooled sprite is retained for when the fog lifts) but emits no draw item, so a unit,
+ * building, resource or pile in unexplored/grey ground simply does not draw.
  */
 export function collectSpriteScene(
   snapshot: WorldSnapshot,
   viewport?: Viewport,
   elevation?: ElevationField,
   staticRefs?: ReadonlySet<number>,
+  fogVisible?: (tileX: number, tileY: number) => boolean,
   options?: SpriteSceneOptions,
 ): SpriteScene {
   const items: MutableDrawItem[] = [];
@@ -263,6 +270,9 @@ export function collectSpriteScene(
     // Fixed (scaled int) -> float tile coordinate. Render-only; never re-enters the sim.
     const tileX = pos.x / ONE;
     const tileY = pos.y / ONE;
+    // Fog-of-war cull: an entity on ground the viewer does not currently SEE stays pooled (live) but
+    // draws nothing — the same contract as the viewport cull below, decided before the per-kind reads.
+    if (fogVisible !== undefined && !fogVisible(tileX, tileY)) continue;
     const screen = tileToScreen(tileX, tileY);
     // Only settlers animate per-state in this slice; a building/resource is always idle.
     // An indoor settler (kept only for the panel) stands idle — force it, so a lingering path/atomic
