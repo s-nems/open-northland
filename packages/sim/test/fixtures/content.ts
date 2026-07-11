@@ -55,7 +55,7 @@ export function testContent(): ContentSet {
         id: 'wheat',
         weight: 1,
         atomics: { harvest: 29, cultivate: 35, plant: 34 },
-        farming: { stages: 5, ticksPerStage: 10, yieldPerField: 1, fieldRadius: 8, maxFields: 4 },
+        farming: { stages: 5, ticksPerStage: 10, yieldPerField: 1, fieldRadius: 8, fieldsPerFarmer: 4 },
       },
     ],
     jobs: [

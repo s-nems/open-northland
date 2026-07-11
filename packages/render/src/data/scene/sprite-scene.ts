@@ -199,8 +199,14 @@ export function collectSpriteScene(
     if (kind === null) continue;
     const pos = readPosition(components);
     if (pos === null) continue;
-    // A settler mid-exchange INSIDE a completed building store: live (pooled) but not drawn.
+    // A settler mid-exchange INSIDE a completed building store — or WAITING INSIDE its workplace
+    // between chores (the sim `Resting` marker): live (pooled) but not drawn. The original's off-duty
+    // workers wait in the house, not lined up at the door.
     if (kind === 'settler') {
+      if ('Resting' in components) {
+        liveRefs.add(entity.id);
+        continue;
+      }
       const store = readStoreExchangeRef(components);
       if (store !== null && enterableStores.has(store)) {
         liveRefs.add(entity.id);

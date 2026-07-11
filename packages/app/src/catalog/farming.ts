@@ -25,5 +25,6 @@ export const WHEAT_YIELD_PER_FIELD = 1;
 /** How far from the farm's anchor its farmers sow, in half-cell NODES (16 nodes ≈ 8 tiles). */
 export const FARM_FIELD_RADIUS = 16;
 
-/** Most fields one farm keeps sown at once. */
-export const FARM_MAX_FIELDS = 8;
+/** Fields ONE farmer keeps sown at once — the farm's live cap is `× bound field-farmers` (1 farmer
+ *  works 5 fields, a pair 10…), so the plot size scales with the crew (user-directed calibration). */
+export const FARM_FIELDS_PER_FARMER = 5;

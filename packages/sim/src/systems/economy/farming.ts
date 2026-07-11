@@ -12,13 +12,15 @@ import type { System, SystemContext } from '../context.js';
 // `landscapetypes.ini` wheat lanes 27/28/29 with `maximumValency 5`); its timings/areas are the content
 // `farming` block's OBSERVED calibration constants (no readable growth timing or field radius exists).
 
-// WATERING IS THE GROWTH GATE: a sown field does not grow at all until a farmer CULTIVATES it (the
-// original's watering-can atomic, id 35) — then it grows one tick per tick to ripeness. A named,
-// user-directed approximation: the cultivate atomic exists in the readable data but its engine-side
-// effect is not decoded; gating growth on it (rather than merely speeding it up) is what makes the
-// watering step a real part of the loop instead of decoration. An unwatered field simply stands at
-// stage 1 (bare ground) until tended — an untended field never ripens, it doesn't deadlock anything
-// (the farm keeps working its other fields, and any farmer can water it later).
+// WATERING IS THE GROWTH FUEL: a field grows only while `watered`, and EVERY STAGE STEP consumes its
+// watering — the field turns thirsty again and stands until a farmer comes back with the can. So a
+// field needs one sowing plus one watering PER STAGE to ripen, and the farm's throughput is literally
+// its farmers' labor (a lone farmer cycles fewer fields per hour than a full crew — the
+// user-requested "praca spięta z wydajnością produkcji", no idle-while-it-grows dead time). A named,
+// user-directed approximation: the cultivate atomic exists in the readable data (id 35, the
+// watering-can animation) but its engine-side effect is not decoded. An untended field simply stands
+// at its stage — it never ripens by itself, and it deadlocks nothing (the farm keeps working its
+// other fields; any farmer can pick it back up later).
 
 /** A field-farmed good's resolved loop parameters: its content `farming` block + the three atomic ids
  *  the loop's actions run (`atomicForPlanting`/`atomicForCultivating`/`atomicForHarvesting`). */
@@ -119,8 +121,8 @@ export function applySow(
 }
 
 /**
- * Apply a completed `water` (cultivate) swing: mark the field `watered` — which OPENS its growth (an
- * unwatered field stands still; see the module note). A field already ripe, already watered, or gone
+ * Apply a completed `water` (cultivate) swing: mark the field `watered` — fueling ONE stage of growth
+ * (each stage step consumes it; see the module note). A field already ripe, already watered, or gone
  * (reaped mid-swing) is a no-op — the water hit stubble.
  */
 export function applyWater(world: World, crop: Entity): void {
@@ -130,11 +132,12 @@ export function applyWater(world: World, crop: Entity): void {
 }
 
 /**
- * CropGrowthSystem — advance every WATERED field's integer growth counter and step its stage; an
- * unwatered field stands still (watering is the growth gate — see the module note above). At the
- * final stage the field is RIPE: its {@link Resource.remaining} becomes the sown `yieldUnits`, which is
- * what makes it harvestable (the reap swing drops exactly that as the ground sheaf). Cost is O(fields)
- * per tick — active work, never entities² (golden rule 7); a world with no fields does nothing.
+ * CropGrowthSystem — advance every WATERED field's integer growth counter and step its stage; each
+ * stage step CONSUMES the watering (the field turns thirsty and stands until a farmer re-waters it —
+ * growth is farmer-fueled, see the module note above). At the final stage the field is RIPE: its
+ * {@link Resource.remaining} becomes the sown `yieldUnits`, which is what makes it harvestable (the
+ * reap swing drops exactly that as the ground sheaf). Cost is O(fields) per tick — active work, never
+ * entities² (golden rule 7); a world with no fields does nothing.
  *
  * Determinism: per-field independent integer mutation (no cross-entity pick), so store-order iteration
  * is fine; the stage step is the exact integer compare `growth >= ticksPerStage` (never an accumulated
@@ -144,11 +147,12 @@ export const cropGrowthSystem: System = (world) => {
   for (const e of world.query(Crop)) {
     const crop = world.get(e, Crop);
     if (crop.stage >= crop.stages) continue; // ripe — waiting for the scythe
-    if (!crop.watered) continue; // untended — bare ground until a farmer waters it
+    if (!crop.watered) continue; // thirsty — stands until a farmer comes with the can
     crop.growth += 1;
     if (crop.growth < crop.ticksPerStage) continue;
     crop.growth -= crop.ticksPerStage;
     crop.stage += 1;
+    crop.watered = false; // the stage consumed its watering — thirsty again (farmer-fueled growth)
     if (crop.stage >= crop.stages) {
       crop.growth = 0; // ripe — freeze the counter (display-stable)
       const res = world.tryGet(e, Resource);

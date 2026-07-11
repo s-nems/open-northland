@@ -1,4 +1,13 @@
-import { Building, Crop, FarmTask, JobAssignment, Position, Stockpile } from '../../components/index.js';
+import {
+  Building,
+  Crop,
+  FarmTask,
+  JobAssignment,
+  Position,
+  Resting,
+  Settler,
+  Stockpile,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
@@ -28,7 +37,7 @@ interface Worker {
 
 /**
  * The tick's FARM claims — which nodes farmers are already committed to working (reap / sheaf pickup /
- * sow / water), and how many sow-walks are in flight per farm (they reserve `maxFields` slots before
+ * sow / water), and how many sow-walks are in flight per farm (they reserve field slots before
  * the field exists). Seeded each tick from every live {@link FarmTask} (farmers still WALKING to or
  * SWINGING at a target from an earlier tick — {@link collectFarmClaims}), then extended live as this
  * tick's farmers plan — so two farmers never shadow each other to the same field, the work-division
@@ -40,17 +49,47 @@ interface Worker {
 export interface FarmClaims {
   readonly nodes: Set<NodeId>;
   readonly byFarm: Map<Entity, number>;
+  /** Per-tick census memo: farm → its bound FIELD-FARMER count (the sow-cap multiplier — a farm may
+   *  keep `fieldsPerFarmer × crew` fields, so the roster scales with the staff). Filled lazily by
+   *  {@link fieldCrewOf} the first time a farmer of that farm reaches its sow step. */
+  readonly fieldCrew: Map<Entity, number>;
 }
 
 /** Seed the tick's {@link FarmClaims} from every live {@link FarmTask} — O(in-flight farm actions). */
 export function collectFarmClaims(world: World): FarmClaims {
-  const claims: FarmClaims = { nodes: new Set(), byFarm: new Map() };
+  const claims: FarmClaims = { nodes: new Set(), byFarm: new Map(), fieldCrew: new Map() };
   for (const e of world.query(FarmTask)) {
     const task = world.get(e, FarmTask);
     claims.nodes.add(task.node as NodeId);
     if (task.sow) claims.byFarm.set(task.farm, (claims.byFarm.get(task.farm) ?? 0) + 1);
   }
   return claims;
+}
+
+/**
+ * How many FIELD-FARMERS are bound to `farm` — settlers whose {@link JobAssignment} points here and
+ * whose job may run the crop's PLANT atomic (the same field-trade test as `boundFarmTarget`, so the
+ * farm's carrier slot never inflates the cap). Memoized per tick in {@link FarmClaims.fieldCrew};
+ * a commutative count over the assignment query (no pick), so store-order iteration is fine.
+ */
+function fieldCrewOf(
+  world: World,
+  ctx: SystemContext,
+  claims: FarmClaims,
+  farm: Entity,
+  plantAtomic: number,
+): number {
+  const cached = claims.fieldCrew.get(farm);
+  if (cached !== undefined) return cached;
+  let crew = 0;
+  for (const s of world.query(Settler, JobAssignment)) {
+    if (world.get(s, JobAssignment).workplace !== farm) continue;
+    const jobType = world.get(s, Settler).jobType;
+    if (jobType === null || !jobAtomics(ctx, jobType).has(plantAtomic)) continue;
+    crew++;
+  }
+  claims.fieldCrew.set(farm, crew);
+  return crew;
 }
 
 /** Release a replanning settler's stale {@link FarmTask} (if any) from the claim set and the world —
@@ -105,17 +144,23 @@ function boundFarmTarget(
  *  b. **Carry a sheaf home** — pick up a cut-wheat {@link import('../../components/index.js').GroundDrop}
  *     lying within the farm's field radius (the delivery rung then routes the load into the farm's own
  *     store — the farm is the bound storage sink).
- *  c. **Water** a not-yet-watered field (the cultivate atomic) — watering is the GROWTH GATE (an
- *     unwatered field stands still), so the can comes before the next seed bag: the farmer plants a
- *     field, waters it, plants the next — the original's plant→cultivate work rhythm.
- *  d. **Sow** a new field while the farm holds fewer than its `maxFields` — walk to the next free node
- *     of the jittered field lattice around the farm and run the plant atomic.
- *  e. **Wait at the farm** — everything sown, watered and growing: hold at the farm's door.
+ *  c. **Sow** a new field while the farm holds fewer than `fieldsPerFarmer × bound field-farmers`
+ *     (the roster scales with the crew — one farmer tends a small plot, a full staff a big one) —
+ *     walk to the next free node of the jittered field lattice around the farm and run the plant
+ *     atomic. Sowing beats the can: with per-stage watering some field is almost always thirsty, so
+ *     a water-first farmer would tend two seedlings forever and never expand the plot; a sown-but-dry
+ *     field loses nothing by standing a moment until the can reaches it.
+ *  d. **Water** a thirsty field (the cultivate atomic) — watering is the GROWTH FUEL: every stage
+ *     consumes one, so between sowings the farmer keeps circling its growing fields with the can
+ *     (the field-tending labor IS the farm's throughput).
+ *  e. **Rest inside the farm** — nothing to reap, carry, water or sow this tick: walk to the farm and
+ *     step INSIDE (the {@link Resting} marker — the render hides the settler), back out the moment a
+ *     field needs the can. The original's off-duty workers wait in the house, not lined at the door.
  *
  * Always returns true once bound to a farm (a farmer is spoken for, like the flag-bound gatherer — it
  * never ferries other trades' goods); returns false only for a settler that isn't a field-farmer here.
- * Water-before-sow follows from the growth gate (a sown-but-dry field produces nothing, so tending
- * beats expanding); the original's engine-side ordering has no oracle.
+ * The ordering is a named approximation (the original's engine-side loop has no oracle); sow-before-
+ * water is load-bearing under per-stage watering (see step c).
  *
  * WORK DIVISION: every candidate scan skips nodes in `claims` (a colleague is en route — its live
  * {@link FarmTask}, or planned earlier this tick), and every issued action claims its node + stamps
@@ -125,7 +170,7 @@ function boundFarmTarget(
  * STORE-FULL PAUSE: reap + sheaf-carry only run while SOME store can still take the crop (the farm's
  * own wheat slot, or any warehouse — {@link nearestStoreFor}); with every sink full, ripe fields stand
  * and sheaves lie until space frees (a carrier hauling the farm's stock out, the player spending it),
- * then the loop resumes by itself. Sowing/watering continue meanwhile (bounded by `maxFields`), so a
+ * then the loop resumes by itself. Sowing/watering continue meanwhile (bounded by the field cap), so a
  * paused farm keeps a ripe buffer ready — a named approximation, the original's full-store farmer
  * behavior has no readable oracle.
  */
@@ -227,26 +272,11 @@ export function planFarmer(
     return true;
   }
 
-  // c. Water the nearest unwatered field — the growth GATE: a dry field stands still, so the can
-  // beats the next seed bag (the plant→water→plant rhythm).
-  if (thirsty !== null) {
-    const crop = thirsty;
-    take(thirstyCell, false);
-    atOrWalk(world, e, here, thirstyCell, () =>
-      startAtomic(
-        world,
-        e,
-        spec.cultivateAtomic,
-        { kind: 'water', crop },
-        atomicDuration(ctx.content, settler, spec.cultivateAtomic),
-        crop,
-      ),
-    );
-    return true;
-  }
-
-  // d. Sow the next field while the farm is under its max (in-flight sow-walks counted in).
-  if (fields + (claims.byFarm.get(farm) ?? 0) < spec.farming.maxFields) {
+  // c. Sow the next field while the farm is under its crew-scaled cap (in-flight sow-walks counted in;
+  // `fieldsPerFarmer × bound field-farmers` — a bigger crew works a bigger plot). Before the can: with
+  // per-stage watering something is almost always thirsty, so a water-first farmer would never expand.
+  const fieldCap = spec.farming.fieldsPerFarmer * fieldCrewOf(world, ctx, claims, farm, spec.plantAtomic);
+  if (fields + (claims.byFarm.get(farm) ?? 0) < fieldCap) {
     const node = nextSowNode(world, ctx, terrain, targets, anchor, spec, claims);
     if (node !== null) {
       take(node, true);
@@ -265,8 +295,29 @@ export function planFarmer(
     }
   }
 
-  // e. Everything sown, watered and growing — wait at the farm's door for the fields to ripen.
-  atOrWalk(world, e, here, interactionCell(world, ctx, terrain, farm, here), () => {});
+  // d. Water the nearest thirsty field — the growth FUEL: each stage step consumes a watering, so the
+  // farmer circles its plot with the can between sowings.
+  if (thirsty !== null) {
+    const crop = thirsty;
+    take(thirstyCell, false);
+    atOrWalk(world, e, here, thirstyCell, () =>
+      startAtomic(
+        world,
+        e,
+        spec.cultivateAtomic,
+        { kind: 'water', crop },
+        atomicDuration(ctx.content, settler, spec.cultivateAtomic),
+        crop,
+      ),
+    );
+    return true;
+  }
+
+  // e. Nothing to tend this tick — walk home and wait INSIDE the farm (re-stamped every idle tick, so
+  // the marker holds without flicker; the replan sweep in ai.ts clears it the moment work appears).
+  atOrWalk(world, e, here, interactionCell(world, ctx, terrain, farm, here), () =>
+    world.add(e, Resting, { at: farm }),
+  );
   return true;
 }
 

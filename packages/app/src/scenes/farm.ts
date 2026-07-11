@@ -27,11 +27,11 @@ const FARM_Y = 12;
 /** Two farmers read clearly (the original farm employs up to four — `logicworker 18 4`). */
 const FARMERS = 2;
 /**
- * Long enough for the full loop to close: sow + water within ~150 ticks, a watered field ripens in
- * ~2000 (4 stage steps × 500 ticks — watering is the growth gate, an unwatered field stands still),
- * then reap + carry, with margin for the sand walk-out.
+ * Long enough for the full loop to close: a field needs a sowing plus ONE WATERING PER STAGE (growth
+ * is farmer-fueled — 4 stage steps × 500 ticks plus the can's round trips), then reap + carry, with
+ * margin for the sand walk-out and the crew splitting its time across the 10-field roster.
  */
-const RUN_TICKS = 3000;
+const RUN_TICKS = 3600;
 /** Frames the farm + its whole field ring (`FARM_FIELD_RADIUS` ≈ 8 tiles each way). Also deliberately
  *  ≠ 1: `cameraFor` only centres on the scene's settlers at a non-1 zoom (zoom 1 keeps the fixed
  *  origin offset), and this scene's action is at the map's centre. */
@@ -108,7 +108,9 @@ export const farmScene: SceneDefinition = {
     'Pola są minimalnie rozrzucone (nie sklejone heks przy heksie) i wieńcem otaczają piaskową łachę.',
     'Farmerzy DZIELĄ SIĘ pracą: każdy idzie do INNEGO pola/snopka, nie chodzą jeden przy drugim do tego samego celu.',
     'Świeżo posiane pole jest niewidoczne/gołe (oryginał nie rysuje stanu 1) — ŻADNEGO zielonego kwadratu; kiełki widać od 2. stadium.',
-    'Pole zaczyna rosnąć DOPIERO po podlaniu konewką (animacja podlewania) — niepodlane stoi gołe; wzrost do dojrzałego łanu trwa ~100 s przy ×1.',
+    'KAŻDE stadium wzrostu wymaga podlania: farmer krąży po polach z konewką (praca farmera napędza produkcję), a niepodlane pole stoi w miejscu.',
+    'Liczba pól skaluje się z załogą: 2 farmerów = do 10 pól (5 na farmera).',
+    'Farmer bez zajęcia NIE sterczy pod drzwiami — wchodzi do farmy (znika) i wychodzi, gdy tylko któreś pole zrobi się spragnione.',
     'Dojrzałe pole farmer ŚCINA KOSĄ (animacja koszenia); po ścięciu na ziemi zostaje snopek, a pole znika (można siać ponownie).',
     'Farmer PODNOSI snopek, NIESIE go do farmy i ZNIKA w środku na ~1 s (wchodzi odłożyć zboże), po czym wychodzi; licznik magazynu rośnie.',
     'Panel farmy (kliknij budynek): tytuł „Farma", sekcja Produkcja z ikoną zboża i licznikami Posiane/Rosnące/Dojrzałe, mały Magazyn BEZ zakładek z jednym wierszem zboża w formacie „ilość / pojemność" (x.0 / 25.0).',
