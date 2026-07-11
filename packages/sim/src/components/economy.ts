@@ -191,7 +191,8 @@ export const Crop = defineComponent<{
   growth: number;
   /** Ticks per growth stage (the content `farming.ticksPerStage`, snapshotted at sow). */
   ticksPerStage: number;
-  /** Whether the field was cultivated (watered) — it then grows at double pace. */
+  /** Whether the field was cultivated (watered) — the GROWTH GATE: an unwatered field stands at its
+   *  sown stage; only a watered one grows (see systems/economy/farming.ts). */
   watered: boolean;
   /** Units the ripe field releases (the content `farming.yieldPerField`, snapshotted at sow). */
   yieldUnits: number;

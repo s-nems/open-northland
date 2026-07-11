@@ -180,7 +180,7 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       applySow(world, ctx, effect);
       return;
     case 'water':
-      // A farmer's watering (cultivate) marks the field watered — it grows at double pace from now on.
+      // A farmer's watering (cultivate) marks the field watered — which opens its growth (the gate).
       applyWater(world, effect.crop);
       return;
     default:

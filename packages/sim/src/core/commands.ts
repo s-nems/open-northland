@@ -487,8 +487,8 @@ export type AtomicEffect =
       readonly y: number;
     }
   /** A farmer's **watering** (the original's cultivate atomic) of a growing field: on completion the
-   *  {@link import('../components/economy.js').Crop} is marked `watered` and grows at double pace from
-   *  then on (a named approximation — the engine's watering semantics are not decoded). A field already
-   *  reaped/ripe, or gone, is a no-op (the water hit stubble). */
+   *  {@link import('../components/economy.js').Crop} is marked `watered`, which OPENS its growth — an
+   *  unwatered field stands at its sown stage (a named approximation — the engine's watering semantics
+   *  are not decoded). A field already reaped/ripe, or gone, is a no-op (the water hit stubble). */
   | { readonly kind: 'water'; readonly crop: Entity }
   | { readonly kind: 'idle' };

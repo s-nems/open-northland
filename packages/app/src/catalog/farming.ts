@@ -13,9 +13,11 @@
 /** Growth stages a sown field passes through before it is ripe (DATA: `maximumValency 5`). */
 export const WHEAT_GROWTH_STAGES = 5;
 
-/** Ticks an UNWATERED field takes per growth stage (a watered one grows twice as fast — the sim's
- *  `WATERED_GROWTH_PER_TICK`). 100 ticks × 5 stages ≈ a watchable full cycle in the scene. */
-export const WHEAT_TICKS_PER_STAGE = 100;
+/** Ticks a WATERED field takes per growth stage (an unwatered field does not grow at all — watering
+ *  is the sim's growth gate). 500 ticks × 4 stage steps = 2000 ticks ≈ 100 s at 20 ticks/s from
+ *  watering to ripe — OBSERVED pacing: the first calibration (100/stage, ~10 s to ripe) read as
+ *  arcade-fast against the original's slow field turnaround ("nie za szybko względem oryginału?"). */
+export const WHEAT_TICKS_PER_STAGE = 500;
 
 /** Units a ripe field drops as its cut sheaf when reaped. */
 export const WHEAT_YIELD_PER_FIELD = 1;

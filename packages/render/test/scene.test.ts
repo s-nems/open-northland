@@ -745,4 +745,41 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
     const released = collectSpriteScene(snapshot, undefined, undefined, new Set());
     expect(released.items.map((d) => d.ref)).toEqual([1, 2]);
   });
+
+  // A settler exchanging goods with a completed BUILDING store (a pileup deposit / a pickup lift) has
+  // walked INSIDE for the exchange (the original's carrier vanishes into the house — observed), so it
+  // is kept alive/pooled but NOT drawn for the atomic's duration. A ground pile / flag / construction
+  // site is not enterable — those exchanges keep the settler visible.
+  it('hides a settler mid-exchange inside a completed building, but not at a ground pile or a site', () => {
+    const building = entity(10, 2, 2, { Building: { buildingType: 1, tribe: 1, built: ONE, level: 0 } });
+    const site = entity(11, 4, 4, {
+      Building: { buildingType: 1, tribe: 1, built: ONE / 2, level: 0 },
+      UnderConstruction: {},
+    });
+    const pile = entity(12, 6, 6, { Stockpile: { amounts: [[1, 2]] } });
+    const scene = collectSpriteScene(
+      snapshotOf([
+        building,
+        site,
+        pile,
+        // Depositing INTO the completed building — inside, not drawn.
+        entity(1, 2, 2, { Settler: { tribe: 0 }, CurrentAtomic: { effect: { kind: 'pileup', store: 10 } } }),
+        // Lifting FROM the completed building — inside too (the fetch enters the same way).
+        entity(2, 2, 2, {
+          Settler: { tribe: 0 },
+          CurrentAtomic: { effect: { kind: 'pickup', from: 10, goodType: 1, amount: 1 } },
+        }),
+        // Delivering to a CONSTRUCTION SITE — no house to enter yet; stays visible.
+        entity(3, 4, 4, { Settler: { tribe: 0 }, CurrentAtomic: { effect: { kind: 'pileup', store: 11 } } }),
+        // Lifting from a loose GROUND PILE — stays visible.
+        entity(4, 6, 6, {
+          Settler: { tribe: 0 },
+          CurrentAtomic: { effect: { kind: 'pickup', from: 12, goodType: 1, amount: 1 } },
+        }),
+      ]),
+    );
+    const drawnSettlers = scene.items.filter((d) => d.kind === 'settler').map((d) => d.ref);
+    expect(drawnSettlers.sort()).toEqual([3, 4]); // the two inside (1, 2) are not drawn…
+    expect([...scene.liveRefs].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 10, 11, 12]); // …but stay live
+  });
 });

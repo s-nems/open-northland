@@ -182,6 +182,22 @@ export function readAtomicTargetEntity(components: Readonly<Record<string, unkno
 }
 
 /**
+ * The STORE a settler's running atomic exchanges goods with — the `pileup` deposit's `store` or the
+ * `pickup` lift's `from` — or `null` for any other/no atomic. The scene builder hides a settler whose
+ * exchange partner is a completed BUILDING: the original's carrier walks INTO the house and vanishes
+ * for the exchange (observed), so instead of pantomiming the deposit at the door the settler is not
+ * drawn for the atomic's duration (it "entered"), reappearing when the exchange completes.
+ */
+export function readStoreExchangeRef(components: Readonly<Record<string, unknown>>): number | null {
+  const a = components.CurrentAtomic as { effect?: unknown } | undefined;
+  const effect = a?.effect as { kind?: unknown; store?: unknown; from?: unknown } | undefined;
+  if (effect === undefined || effect === null) return null;
+  if (effect.kind === 'pileup' && typeof effect.store === 'number') return effect.store;
+  if (effect.kind === 'pickup' && typeof effect.from === 'number') return effect.from;
+  return null;
+}
+
+/**
  * The entity id an in-flight projectile homes on (the sim `Projectile.target`), or `null` for a
  * missing/malformed component. The scene aims the drawn arrow's {@link
  * import('./draw-item.js').DrawItem.rotation} at this target's live position — the sim re-aims its

@@ -149,6 +149,17 @@ const FARMER_WATER_LENGTH = 29;
 // The farm's wheat-only store capacity — EXTRACTED: `logicstock 4 25 0` on the "work farm 00" block
 // (`DataCnmd/types/houses.ini`), one slot, 25 wheat.
 const FARM_WHEAT_CAPACITY = 25;
+// The generic store-exchange atomics (pickup 22 / pileup 23 — the sim's PICKUP/PILEUP_ATOMIC_ID) and
+// their durations, TRANSCRIBED from the extracted viking clips: the original binds a per-body-class
+// `viking_<class>_pickup`/`_pileup` per job (`tribetypes.ini setatomic <job> 22/23`), every one
+// `length 20` (`DataCnmd/atomicanimations12/atomicanimations.ini` — e.g. viking_civilist_pickup /
+// viking_civilist_pileup). One shared 20-tick pair serves every sandbox trade; this is also how long
+// a settler stays INSIDE a building store on an exchange (the render hides it for the duration).
+const STORE_PICKUP_ATOMIC = 22;
+const STORE_PILEUP_ATOMIC = 23;
+const STORE_PICKUP_ANIMATION = 'viking_pickup';
+const STORE_PILEUP_ANIMATION = 'viking_pileup';
+const STORE_EXCHANGE_LENGTH = 20;
 // Damage on the sandbox's own synthetic scale (the real per-material tables live in the extracted
 // content; scene hitpoints are chosen so a duel takes several full swings — see the combat scene).
 const BOW_DAMAGE = 34;
@@ -472,6 +483,12 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       { jobType: JOB_SOLDIER_BROADSWORD, atomicId: ATTACK_ATOMIC, animation: 'viking_broadsword_attack' },
       { jobType: JOB_ARCHER, atomicId: ATTACK_ATOMIC, animation: 'viking_bow_attack' },
       { jobType: JOB_ARCHER_LONG, atomicId: ATTACK_ATOMIC, animation: 'viking_bow_long_attack' },
+      // Every trade exchanges goods with a store the same way — the generic pickup/pileup pair, bound
+      // per job like the original's per-class `setatomic <job> 22/23` rows (see STORE_PICKUP_ATOMIC).
+      ...[...jobs.keys()].flatMap((jobType) => [
+        { jobType, atomicId: STORE_PICKUP_ATOMIC, animation: STORE_PICKUP_ANIMATION },
+        { jobType, atomicId: STORE_PILEUP_ATOMIC, animation: STORE_PILEUP_ANIMATION },
+      ]),
     ],
     jobEnables: [{ jobType: JOB_IDLE, kind: 'good', targetId: GOOD_COIN }],
   });
@@ -676,6 +693,10 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
         name: g.animation,
         length: HARVEST_TICKS[g.atomic] ?? 1,
       })),
+      // The shared store-exchange pair (pickup 22 / pileup 23) — length 20, transcribed from the
+      // original's per-class clips (see STORE_PICKUP_ATOMIC). Also the "inside the store" dwell time.
+      { id: STORE_PICKUP_ANIMATION, name: STORE_PICKUP_ANIMATION, length: STORE_EXCHANGE_LENGTH },
+      { id: STORE_PILEUP_ANIMATION, name: STORE_PILEUP_ANIMATION, length: STORE_EXCHANGE_LENGTH },
       // Each swing carries its mid-animation ATTACK event (the blow lands / the arrow looses THERE,
       // not at completion) — lengths + frames transcribed from the viking atomicanimations records.
       {
