@@ -1,23 +1,23 @@
-import { type SpriteAtlas, indexAtlasFrames } from '@vinland/render';
+import { indexAtlasFrames, type SpriteAtlas } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
 import { VIKING_CHARACTERS } from '../src/catalog/roster.js';
 import {
   BUILDING_FAMILIES,
-  DEFAULT_BUILDING_FAMILY,
   buildingBobRefsByType,
   constructionRefsByType,
+  DEFAULT_BUILDING_FAMILY,
 } from '../src/content/building-gfx.js';
 import { stateIndexForLevel, unshadedLogicTypeIds } from '../src/content/objects.js';
 import {
   ADULT_CHARACTER_BY_JOB,
-  CHARACTER_SPECS,
-  WARRIOR_SPEC_BY_WEAPON_GOOD,
-  YOUNG_CHARACTER_BY_JOB,
   buildHumanBindings,
+  CHARACTER_SPECS,
   carryAnimsByGood,
   carryHeadAnims,
   characterBinding,
   directionalAnimFromSeq,
+  WARRIOR_SPEC_BY_WEAPON_GOOD,
+  YOUNG_CHARACTER_BY_JOB,
 } from '../src/content/settler-gfx.js';
 import { WEAPON_GOOD_BY_JOB } from '../src/game/sandbox/ids.js';
 
@@ -479,9 +479,9 @@ describe('carryAnimsByGood', () => {
       { typeId: 6, id: 'iron' },
       { typeId: 7, id: 'gold' },
     ]);
-    expect((table[4]?.moving as { start: number }).start).toBe(2852);
-    expect((table[6]?.moving as { start: number }).start).toBe(3044);
-    expect((table[7]?.moving as { start: number }).start).toBe(3044); // iron + gold share the ingot walk
+    expect(table[4]?.moving).toMatchObject({ start: 2852 });
+    expect(table[6]?.moving).toMatchObject({ start: 3044 });
+    expect(table[7]?.moving).toMatchObject({ start: 3044 }); // iron + gold share the ingot walk
   });
 
   it('omits a good with no carry sequence (and a non-×8 strip) — the generic gait backs it', () => {

@@ -1,6 +1,6 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
-import { type HudModel, IDLE_JOB, buildHud, layoutHud, placeHud } from '../src/index.js';
+import { buildHud, type HudModel, IDLE_JOB, layoutHud, placeHud } from '../src/index.js';
 
 /**
  * Unit tests for the pure HUD-model layer — the part of the HUD an agent can self-verify (the pixels
@@ -148,7 +148,9 @@ describe('layoutHud', () => {
     const tallyRows = layout.rows.filter((r) => r.x === HUD_PAD + HUD_INDENT);
     expect(tallyRows.map((r) => r.text)).toEqual(['idle: 1', 'job 5: 2', 'good 2: 14']);
     // Every row advances by exactly one line height, top to bottom, no gaps.
-    layout.rows.forEach((r, i) => expect(r.y).toBe(HUD_PAD + i * HUD_LINE_H));
+    layout.rows.forEach((r, i) => {
+      expect(r.y).toBe(HUD_PAD + i * HUD_LINE_H);
+    });
   });
 
   it('sizes the panel height to the row count (padding + lines + bottom padding)', () => {

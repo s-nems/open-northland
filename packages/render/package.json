@@ -18,6 +18,6 @@
   "dependencies": {
     "@vinland/data": "*",
     "@vinland/sim": "*",
-    "pixi.js": "^8.4.0"
+    "pixi.js": "^8.19.0"
   }
 }

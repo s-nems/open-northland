@@ -1,11 +1,11 @@
 import type { TerrainMapFile } from '@vinland/data';
 import {
-  Simulation,
-  type TerrainMap,
   clearComponentStores,
   components,
   halfCellMapFromCells,
+  Simulation,
   systems,
+  type TerrainMap,
 } from '@vinland/sim';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
@@ -30,7 +30,7 @@ import { GATHERER_WORK_RADIUS, mapResourceObjectNames } from '../src/game/sandbo
  * unreachable forever. `skipObjectNames` (the fix) leaves harvestables to their dynamic footprints.
  */
 
-const { GroundDrop, Position, Resource, Stockpile, WorkFlag } = components;
+const { GroundDrop, Stockpile, WorkFlag } = components;
 
 beforeEach(clearComponentStores);
 

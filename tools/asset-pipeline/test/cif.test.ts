@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { StorableId, decodeCifStringArray, decryptMode1, encryptMode1 } from '../src/decoders/cif.js';
+import { decodeCifStringArray, decryptMode1, encryptMode1, StorableId } from '../src/decoders/cif.js';
 
 /**
  * `.cif` container decoder tests. No copyrighted fixtures are committed: we synthesize a
@@ -25,7 +25,9 @@ function buildPool(lines: ReadonlyArray<{ level: number; text: string }>): {
   }
   const offsets = new Uint8Array(offsetValues.length * 4);
   const ov = new DataView(offsets.buffer);
-  offsetValues.forEach((v, i) => ov.setUint32(i * 4, v, true));
+  offsetValues.forEach((v, i) => {
+    ov.setUint32(i * 4, v, true);
+  });
   return { pool: Uint8Array.from(chunks), offsets };
 }
 
