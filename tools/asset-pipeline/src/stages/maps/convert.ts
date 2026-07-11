@@ -1,7 +1,13 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
 import { decodeCifStringArray } from '../../decoders/cif.js';
-import { cifLinesToSections, extractStaticObjects, type RuleSection } from '../../decoders/ini.js';
+import {
+  cifLinesToSections,
+  decodeIni,
+  extractStaticObjects,
+  parseIniSections,
+  type RuleSection,
+} from '../../decoders/ini.js';
 import { walkFiles } from '../../walk.js';
 import { findPathCaseInsensitive } from './case-path.js';
 import { mapIdFromPath } from './info.js';
@@ -85,6 +91,23 @@ export async function convertMapDatTree(gameDir: string, outDir: string): Promis
       if (entities !== undefined) terrain = { ...terrain, entities };
     } catch {
       // no sibling map.cif (or undecodable) — entity layer skipped
+    }
+    // UNPACKED maps (the CnMod majority — 108 of 121 folders) ship no map.cif: their StaticObjects
+    // live in a sibling PLAINTEXT `staticobjects.inc`, with the identical `[StaticObjects]` grammar
+    // (sethouse/sethuman/setanimal — verified against the real files). Read it when the cif path yielded
+    // no entities, so those maps (e.g. magiczny_las, blekiny_nurt) import their authored starting HQs +
+    // settlers instead of appearing empty. Readable mod source is preferred over the encrypted cif
+    // (golden rule #4); undecodable/malformed is logged and skipped like the cif path.
+    if (terrain.entities === undefined) {
+      const incPath = await findPathCaseInsensitive(mapDir, ['staticobjects.inc']);
+      if (incPath !== null) {
+        try {
+          const entities = extractStaticObjects(parseIniSections(decodeIni(await readFile(incPath))));
+          if (entities !== undefined) terrain = { ...terrain, entities };
+        } catch (err) {
+          console.warn(`[pipeline] map ${rel}: staticobjects.inc undecodable: ${(err as Error).message}`);
+        }
+      }
     }
     const output = join('maps', `${id}.json`);
     const outPath = join(outDir, output);
