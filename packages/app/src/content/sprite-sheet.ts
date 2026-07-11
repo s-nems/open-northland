@@ -8,7 +8,7 @@ import {
   createSyntheticAtlasSource,
   syntheticAtlasFrames,
 } from '@vinland/render';
-import { ATTACK_ATOMIC } from '../catalog/atomics.js';
+import { ATTACK_ATOMIC, CULTIVATE_ATOMIC, PLANT_ATOMIC, WHEAT_HARVEST_ATOMIC } from '../catalog/atomics.js';
 import {
   DEFAULT_CHARACTER_PALETTE,
   INDEXED_CHARACTER_PALETTE,
@@ -131,13 +131,27 @@ async function loadCharacters(
   // name — the layout each warrior/civilian spec's `attack` seq becomes a FrameListAnim from. Built once
   // (not per spec); a spec whose seq is absent just has no attack animation.
   const attackFrameLists = gfxAtomicFrameLists(ir, VIKING_ANIM_TRIBE, ATTACK_ATOMIC);
+  // The farmer's field-clip frame lists (the job-18 sow/water/reap `[gfxanimatomic]` records), keyed by
+  // atomic id — what each spec's `dirListAtomics` becomes FrameListAnims from (the attack mechanism
+  // generalized). Built once; an IR without them just leaves those actions on their fallback clips.
+  const actionFrameLists = new Map(
+    [WHEAT_HARVEST_ATOMIC, PLANT_ATOMIC, CULTIVATE_ATOMIC].map(
+      (action) => [action, gfxAtomicFrameLists(ir, VIKING_ANIM_TRIBE, action)] as const,
+    ),
+  );
 
   const bySpec = new Map<string, SettlerCharacter>();
   for (const [specId, spec] of CHARACTER_SPEC_ENTRIES) {
     const layers = layersByRoster.get(spec.rosterId);
     const roster = rosterById.get(spec.rosterId);
     if (layers === undefined || roster === undefined) continue;
-    const binding = characterBinding(spec, sequencesFor(ir, roster.imagelib), goods, attackFrameLists);
+    const binding = characterBinding(
+      spec,
+      sequencesFor(ir, roster.imagelib),
+      goods,
+      attackFrameLists,
+      actionFrameLists,
+    );
     if (binding === null) continue;
     const heads = (spec.headBmds ?? roster.headBmds)
       .map((bmd) => layers.headsByStem.get(characterStem(bmd, palette)))

@@ -2,9 +2,12 @@ import { ONE, type WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import { STOCK_TAB_COUNT } from '../src/content/gui-atlas-map.js';
 import {
+  BUILDING_FARM,
   BUILDING_HEADQUARTERS,
+  BUILDING_HOME_00,
   BUILDING_JOINERY,
   GOOD_SHOES,
+  GOOD_WHEAT,
   GOOD_WOOD,
   JOB_GATHERER_WOOD,
 } from '../src/game/sandbox/ids.js';
@@ -17,7 +20,7 @@ import {
   barTone,
   buildUnitPanelModel,
 } from '../src/hud/details-panel/index.js';
-import { MAX_STOCK_ROWS, stockSlotRects } from '../src/hud/details-panel/layout.js';
+import { MAX_STOCK_ROWS, layoutDetails, stockSlotRects } from '../src/hud/details-panel/layout.js';
 import { defaultStockTab } from '../src/hud/details-panel/panel.js';
 import { equipmentScene } from '../src/scenes/equipment.js';
 import { createSceneSim } from '../src/scenes/index.js';
@@ -56,7 +59,8 @@ describe('selection details panel model', () => {
     expect(model.kind).toBe('building');
     if (model.kind !== 'building') return;
     expect(model.typeId).toBe(BUILDING_HEADQUARTERS);
-    expect(model.title).toBe('Headquarters');
+    // The title reads the SAME localized name the build menu shows (catalog/building-i18n.ts).
+    expect(model.title).toBe('Kwatera Główna');
     expect(model.showDefense).toBe(true);
     // The stock list is the HQ's ACCEPTED goods (its `stock` slots), each shown even at 0 — so every
     // accepted good appears; a freshly-placed HQ holds nothing, so every row is 0.
@@ -134,8 +138,10 @@ describe('selection details panel model', () => {
     const model = buildUnitPanelModel(snapshot, new Set([1]), ctxFromScene());
     expect(model.kind).toBe('building');
     if (model.kind !== 'building') return;
-    expect(model.production?.pct).toBe(25);
-    expect(model.production?.label).toContain('plank x1');
+    expect(model.production?.kind).toBe('recipe');
+    if (model.production?.kind !== 'recipe') return;
+    expect(model.production.pct).toBe(25);
+    expect(model.production.label).toContain('plank x1');
     expect(model.stock).toEqual(
       expect.arrayContaining([expect.objectContaining({ goodType: GOOD_WOOD, amount: 3 })]),
     );
@@ -234,7 +240,87 @@ describe('selection details panel model', () => {
     expect(barTone(0)).toBe('critical');
   });
 
-  it('shows a settler equipment section with labeled rows, worn goods, use percentages and empty slots', () => {
+  it('shows a farm as "Farma" with fields production and a single wheat stock row', () => {
+    const field = (id: number, farm: number, stage: number): WorldSnapshot['entities'][number] => ({
+      id,
+      components: { Crop: { farm, stage, stages: 5 } },
+    });
+    const snapshot: WorldSnapshot = {
+      tick: 0,
+      events: [],
+      entities: [
+        {
+          id: 1,
+          components: {
+            Building: { buildingType: BUILDING_FARM, tribe: 1, built: ONE, level: 0 },
+            Owner: { player: 0 },
+            Stockpile: { amounts: [[GOOD_WHEAT, 3]] },
+          },
+        },
+        field(2, 1, 1), // growing
+        field(3, 1, 4), // growing
+        field(4, 1, 5), // ripe
+        field(5, 99, 5), // another farm's field — never counted here
+      ],
+    };
+
+    const model = buildUnitPanelModel(snapshot, new Set([1]), ctxFromScene());
+    expect(model.kind).toBe('building');
+    if (model.kind !== 'building') return;
+    expect(model.title).toBe('Farma'); // the user-facing localized name (catalog/building-i18n.ts)
+    // Production is the live FIELD state (no recipe to show): the farmed good + sown/growing/ripe.
+    expect(model.production).toEqual({
+      kind: 'fields',
+      goodId: 'wheat',
+      label: 'Wheat',
+      sown: 3,
+      growing: 2,
+      ripe: 1,
+    });
+    // The store is the original's wheat-only slot (`logicstock 4 25 0`) — exactly one row.
+    expect(model.stock.map((r) => ({ goodType: r.goodType, amount: r.amount }))).toEqual([
+      { goodType: GOOD_WHEAT, amount: 3 },
+    ]);
+  });
+
+  it('lays a small store out compact (no tabs, fitted rows) and drops Magazyn for a store-less building', () => {
+    const screen = { width: 1600, height: 1200 };
+    const buildingModel = (typeId: number): UnitPanelModel =>
+      buildUnitPanelModel(
+        {
+          tick: 0,
+          events: [],
+          entities: [
+            { id: 1, components: { Building: { buildingType: typeId, tribe: 1, built: ONE, level: 0 } } },
+          ],
+        },
+        new Set([1]),
+        ctxFromScene(),
+      );
+
+    // The farm's single wheat slot → the compact tab-less body, one fitted row per column pair.
+    const farm = layoutDetails(buildingModel(BUILDING_FARM), screen, 1);
+    if (farm?.kind !== 'building') throw new Error('expected a building layout');
+    expect(farm.stockCompact).toBe(true);
+    expect(farm.stockRows).toBe(1);
+    expect(farm.stockTabHits).toHaveLength(0);
+    expect(farm.stock).not.toBeNull();
+
+    // The HQ's full catalog → the original fixed-height tabbed store.
+    const hq = layoutDetails(buildingModel(BUILDING_HEADQUARTERS), screen, 1);
+    if (hq?.kind !== 'building') throw new Error('expected a building layout');
+    expect(hq.stockCompact).toBe(false);
+    expect(hq.stockRows).toBe(MAX_STOCK_ROWS);
+    expect(hq.stockTabHits.length).toBeGreaterThan(0);
+
+    // A home stores nothing → no Magazyn window at all, and the panel is SHORTER than the farm's.
+    const home = layoutDetails(buildingModel(BUILDING_HOME_00), screen, 1);
+    if (home?.kind !== 'building') throw new Error('expected a building layout');
+    expect(home.stock).toBeNull();
+    expect(home.stockTabHits).toHaveLength(0);
+    expect(home.panel.h).toBeLessThan(farm.panel.h);
+    expect(farm.panel.h).toBeLessThan(hq.panel.h);
+  });
     const sim = createSceneSim(equipmentScene);
     sim.step();
     const snapshot = sim.snapshot();

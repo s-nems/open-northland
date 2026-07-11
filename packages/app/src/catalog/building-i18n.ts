@@ -38,7 +38,9 @@ const BUILDING_NAMES_PL: Readonly<Record<string, string>> = {
   stock_02: 'Magazyn (poziom 2)',
   work_well_00: 'Studnia',
   work_hive_00: 'Pasieka',
-  work_farm_00: 'Farma zbożowa',
+  // 'Farma' matches the original's own display name (`Data/text/.../houses.ini` `stringn 12 "Farm"`);
+  // the earlier 'Farma zbożowa' over-specified it (user-requested rename).
+  work_farm_00: 'Farma',
   work_mill_00: 'Młyn',
   work_bakery_00: 'Piekarnia (poziom 0)',
   work_bakery_01: 'Piekarnia (poziom 1)',

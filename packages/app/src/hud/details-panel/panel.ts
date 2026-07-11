@@ -13,7 +13,6 @@ import { type PanelLayers, createChrome } from './chrome.js';
 import {
   type ButtonHit,
   type DetailsLayout,
-  MAX_STOCK_ROWS,
   ROW_H,
   layoutDetails,
   mapLayout,
@@ -279,14 +278,17 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
 
   /** The good NAME under a canvas point in the stock grid, or null — the tooltip's text for a hovered row.
    *  Probes the SAME slot rects the rows draw into ({@link stockSlotRects}), then maps the slot index to the
-   *  active tab's good (column-major, capped at the drawn count), so a hovered slot names exactly the drawn good. */
+   *  drawn goods (a compact store lists ALL rows; a tabbed one the active tab's — the same split the draw
+   *  applies), so a hovered slot names exactly the drawn good. */
   const hitStockGood = (x: number, y: number): string | null => {
-    if (layout?.kind !== 'building' || lastModel.kind !== 'building') return null;
-    const slot = stockSlotRects(layout.stock.body, scale).findIndex((r) => contains(r, x, y));
+    if (layout?.kind !== 'building' || layout.stock === null || lastModel.kind !== 'building') return null;
+    const slot = stockSlotRects(layout.stock.body, scale, layout.stockRows).findIndex((r) =>
+      contains(r, x, y),
+    );
     if (slot < 0) return null;
-    const rows = lastModel.stock
-      .filter((row) => row.category === activeStockTab)
-      .slice(0, MAX_STOCK_ROWS * 2);
+    const rows = (
+      layout.stockCompact ? lastModel.stock : lastModel.stock.filter((row) => row.category === activeStockTab)
+    ).slice(0, layout.stockRows * 2);
     return rows[slot]?.label ?? null;
   };
 

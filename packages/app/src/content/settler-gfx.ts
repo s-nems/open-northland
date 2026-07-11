@@ -15,11 +15,14 @@ import {
   ATTACK_ATOMIC,
   BUILD_HOUSE_ATOMIC,
   CLAY_HARVEST_ATOMIC,
+  CULTIVATE_ATOMIC,
   GOLD_HARVEST_ATOMIC,
   HARVEST_ATOMIC,
   IRON_HARVEST_ATOMIC,
   MUSHROOM_HARVEST_ATOMIC,
+  PLANT_ATOMIC,
   STONE_HARVEST_ATOMIC,
+  WHEAT_HARVEST_ATOMIC,
 } from '../catalog/atomics.js';
 import { CIVILIST_JOB_HEADS } from '../catalog/roster.js';
 import { HOUSE_BOB, TREE_BOB, VIKING_HOUSE01_BOBS } from './building-gfx.js';
@@ -64,6 +67,14 @@ const STONECRUSH_SEQ = 'human_man_stonecrusher_work_stonecrushing'; // stone + i
 // swings the axe for the chop (source basis "Gathering/construction work animations"). Not a clean ×8 strip,
 // so {@link characterBinding} plays it facing-locked (the builder faces the wall it hammers).
 const HAMMER_SEQ = 'human_man_constructionworker_Work_Hammer';
+// The FARMER's three authored field clips on the generic man body — the render side of the original's
+// `setatomic 18 29/34/35` farm loop. None is a clean ×8 strip cut (reap 66 / sow 120 / water 96 frames,
+// but the per-direction cuts are the `[gfxanimatomic]` job-18 frame LISTS: 24/23/29 frames per dir), so
+// they bind through {@link CharacterSpec.dirListAtomics} as directional FrameListAnims — the same
+// extracted-frame-list path the attack swings use (source basis "Gathering work animations").
+const REAP_SEQ = 'human_man_farmer_work_reap_grain'; // the scythe sweep (wheat harvest, atomic 29)
+const SOW_SEQ = 'human_man_farmer_work_sow'; // the seed-scatter (plant, atomic 34)
+const WATER_SEQ = 'human_man_farmer_work_water'; // the watering can (cultivate, atomic 35)
 const PICKUP_SEQ = 'human_man_generic_pick_up'; // the bend-and-pick; mushroom's pluck + the carry pickup/deposit
 // The LOADED gait — the settler walking while hauling a log. Same directional layout as the empty walk;
 // the frames simply carry the wood. Bound to the settler's `carrying` override so a woodcutter walking
@@ -420,6 +431,15 @@ export interface CharacterSpec {
   /** Atomic id → its action sequence on this body (the `setatomic` join, e.g. the woodcut swing). */
   readonly atomics?: Readonly<Record<number, { readonly seq: string; readonly phaseStart?: number }>>;
   /**
+   * Atomic id → the action sequence whose DIRECTIONAL layout comes from the extracted `[gfxanimatomic]`
+   * per-`<dir>` frame lists (the farmer's field clips) — for a clip that is neither a clean ×8 strip nor
+   * a facing-locked one-off, the frame lists ARE the per-facing cut. {@link characterBinding} builds a
+   * render `FrameListAnim` from the per-ATOMIC lists table (`actionFrameLists`), exactly the attack
+   * swing's mechanism generalized beyond action 81. A seq that resolves here overrides any plain
+   * {@link atomics} fallback entry for the same id; missing data leaves the fallback in place.
+   */
+  readonly dirListAtomics?: Readonly<Record<number, string>>;
+  /**
    * The combat attack swing bobseq NAME (the `[gfxanimatomic]` action-81 `gfxbobseqbody` for this look's
    * viking job), bound to {@link ATTACK_ATOMIC}. Unlike {@link atomics}, its directional layout comes
    * from the per-facing frame lists (a melee swing pool is not a clean ×8 strip), so
@@ -467,6 +487,14 @@ export const CHARACTER_SPECS = {
       [PRAY_ATOMIC]: { seq: 'human_man_generic_pray' },
       [PICKUP_ATOMIC]: { seq: PICKUP_SEQ },
       [DEPOSIT_ATOMIC]: { seq: PICKUP_SEQ },
+    },
+    // The farmer's field clips draw through the extracted job-18 `[gfxanimatomic]` per-direction frame
+    // lists (their strips aren't clean ×8 cuts — see REAP_SEQ) so the sow/water/reap face the way the
+    // farmer stands, one full authored motion per atomic (list lengths 24/23/29 ≈ the atomic durations).
+    dirListAtomics: {
+      [WHEAT_HARVEST_ATOMIC]: REAP_SEQ,
+      [PLANT_ATOMIC]: SOW_SEQ,
+      [CULTIVATE_ATOMIC]: WATER_SEQ,
     },
   },
   woman: {
@@ -637,6 +665,9 @@ export function characterBinding(
   seqByName: ReadonlyMap<string, BobSeqRow>,
   goods: readonly GoodRef[],
   attackFrameLists?: ReadonlyMap<string, readonly (readonly number[])[]>,
+  /** Per-ATOMIC `[gfxanimatomic]` frame-list tables (atomic id → seq name → per-`<dir>` lists) for the
+   *  spec's {@link CharacterSpec.dirListAtomics} — the attack mechanism generalized (farmer clips). */
+  actionFrameLists?: ReadonlyMap<number, ReadonlyMap<string, readonly (readonly number[])[]>>,
 ): SettlerStateBinding | null {
   const walk = eightDirAnim(seqByName, spec.walkSeq);
   // A loop wait plays its whole strip facing-locked (the strips aren't ×8); a walk-hold stands the
@@ -673,6 +704,18 @@ export function characterBinding(
     if (row !== undefined && row.length > 0 && dirLists !== undefined && dirLists.length > 0) {
       const swing: FrameListAnim = { start: row.start, frameLists: frameListsByFacing(dirLists) };
       byAtomic[ATTACK_ATOMIC] = swing;
+    }
+  }
+
+  // The frame-list actions beyond the attack (the farmer's field clips): each binds only when BOTH its
+  // `[bobseq]` row and its per-atomic `[gfxanimatomic]` lists resolve, overriding any plain `atomics`
+  // fallback for the same id — missing data leaves that fallback (or nothing) in place, never a bogus
+  // uniform slice. Same reorder into facing space as the attack swing.
+  for (const [atomicId, seqName] of Object.entries(spec.dirListAtomics ?? {})) {
+    const row = seqByName.get(seqName);
+    const dirLists = actionFrameLists?.get(Number(atomicId))?.get(seqName);
+    if (row !== undefined && row.length > 0 && dirLists !== undefined && dirLists.length > 0) {
+      byAtomic[Number(atomicId)] = { start: row.start, frameLists: frameListsByFacing(dirLists) };
     }
   }
 

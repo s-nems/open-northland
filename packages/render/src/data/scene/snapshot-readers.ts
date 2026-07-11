@@ -333,6 +333,14 @@ export function depositVisualLevel(remaining: number, initial: number, levels: n
  * then draws its full-state frame.
  */
 export function readResourceLevel(components: Readonly<Record<string, unknown>>): number | undefined {
+  // A SOWN FIELD (a `Crop` resource) reads its growth stage as the level DIRECTLY: stage k ⇒ gfx state
+  // k's frame (the wheat record's 5 growth states are authored smallest-at-1 → ripe-at-5, exactly the
+  // stage numbering), so a field visibly grows as the CropGrowthSystem steps it. Checked before the
+  // deposit shape — a field is never a mined deposit.
+  const crop = components.Crop as { stage?: unknown; stages?: unknown } | undefined;
+  if (crop !== undefined && typeof crop.stage === 'number' && typeof crop.stages === 'number') {
+    return Math.min(crop.stages, Math.max(1, crop.stage));
+  }
   const deposit = components.MineDeposit as { initial?: unknown; levels?: unknown } | undefined;
   const res = components.Resource as { remaining?: unknown } | undefined;
   if (deposit === undefined || typeof deposit.initial !== 'number' || typeof deposit.levels !== 'number') {

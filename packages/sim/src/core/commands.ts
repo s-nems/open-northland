@@ -473,4 +473,22 @@ export type AtomicEffect =
    *  `min(labor, deliveredFraction)`. A `site` that is no longer under construction (finished this tick,
    *  or demolished) is a no-op — the swing struck a building that no longer needs raising. */
   | { readonly kind: 'construct'; readonly site: Entity }
+  /** A farmer's **sowing swing** at a free field node `(x, y)` (half-cell coords, like every command):
+   *  on completion it plants a {@link import('../components/economy.js').Crop} field of `goodType` there
+   *  for `farm` — unless the node was taken since the planner chose it (another farmer's field, a fresh
+   *  resource/heap), in which case the swing struck ploughed ground and plants nothing (the same
+   *  raced-target no-op stance as `harvest`). The field's growth parameters are resolved from the good's
+   *  content `farming` block at apply time, so a sow is data-driven end-to-end. */
+  | {
+      readonly kind: 'sow';
+      readonly farm: Entity;
+      readonly goodType: number;
+      readonly x: number;
+      readonly y: number;
+    }
+  /** A farmer's **watering** (the original's cultivate atomic) of a growing field: on completion the
+   *  {@link import('../components/economy.js').Crop} is marked `watered` and grows at double pace from
+   *  then on (a named approximation — the engine's watering semantics are not decoded). A field already
+   *  reaped/ripe, or gone, is a no-op (the water hit stubble). */
+  | { readonly kind: 'water'; readonly crop: Entity }
   | { readonly kind: 'idle' };

@@ -72,22 +72,23 @@ export const STOCK_COL_GAP = WIN_PAD;
 /**
  * The stock body's cell rects (icon + amount plate together), COLUMN-MAJOR: the left column top→bottom,
  * then the right — the ONE geometry the stock rows draw into AND the hover hit-test probes, so a hovered
- * slot is exactly a drawn slot by construction. Always `MAX_STOCK_ROWS * 2` slots (the fixed-height body);
- * a slot past the current tab's good count is simply empty. `s` is the caller's scale (the draw oversample
+ * slot is exactly a drawn slot by construction. `rowsPerColumn * 2` slots: the tabbed store body reserves
+ * its fixed {@link MAX_STOCK_ROWS}; a COMPACT store (few goods, no tabs) passes its own fitted row count.
+ * A slot past the current good count is simply empty. `s` is the caller's scale (the draw oversample
  * `ss`, or the hit scale), so the same fixed metrics resolve into either space.
  */
-export function stockSlotRects(body: Rect, s: number): Rect[] {
+export function stockSlotRects(body: Rect, s: number, rowsPerColumn: number = MAX_STOCK_ROWS): Rect[] {
   const colGap = Math.round(STOCK_COL_GAP * s);
   const colW = Math.round((body.w - colGap) / 2);
   const cellH = Math.round(STOCK_ROW_H * s);
   // Rows fill the body bottom-up; whatever the tab strip leaves over becomes the gap under it.
-  const rowsTop = body.y + body.h - MAX_STOCK_ROWS * cellH;
+  const rowsTop = body.y + body.h - rowsPerColumn * cellH;
   const slots: Rect[] = [];
-  for (let i = 0; i < MAX_STOCK_ROWS * 2; i++) {
-    const col = Math.floor(i / MAX_STOCK_ROWS);
+  for (let i = 0; i < rowsPerColumn * 2; i++) {
+    const col = Math.floor(i / rowsPerColumn);
     slots.push({
       x: body.x + col * (colW + colGap),
-      y: rowsTop + (i % MAX_STOCK_ROWS) * cellH,
+      y: rowsTop + (i % rowsPerColumn) * cellH,
       w: colW,
       h: cellH,
     });
@@ -147,11 +148,24 @@ export interface BuildingLayout {
   readonly buttons: readonly ButtonHit[];
   readonly defence: SectionRect | null;
   readonly production: SectionRect | null;
-  readonly stock: SectionRect;
+  /** The Magazyn section — null for a building that stores NOTHING (no stock slots: a home), which
+   *  simply has no store window, matching the original's per-building window set. */
+  readonly stock: SectionRect | null;
+  /**
+   * Whether the stock body is the COMPACT shape — a small store (every good fits the grid at once,
+   * `rows ≤ MAX_STOCK_ROWS × 2`: the farm's single wheat slot, a mill's two) drops the category tabs
+   * and shrinks the body to exactly its rows ({@link stockRows}); only a big store (a warehouse's full
+   * catalog) keeps the original's fixed-height eight-tab window. The dynamic-magazyn rule is a GENERAL
+   * one, keyed on the good count — never a per-building-type branch.
+   */
+  readonly stockCompact: boolean;
+  /** Rows per column the stock body reserves ({@link MAX_STOCK_ROWS}, or the compact fitted count). */
+  readonly stockRows: number;
   /**
    * The eight category-tab plate rects at the top of the stock body — carried in the layout (like
    * {@link buttons}) so `mapLayout` derives the draw copy from the hit copy, and the drawn plate equals its
    * clickable rect by construction (never two independent `stockTabRects` roundings at different scales).
+   * EMPTY for a compact/absent stock body (no tabs to click).
    */
   readonly stockTabHits: readonly Rect[];
   readonly workers: SectionRect;
@@ -218,7 +232,7 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       buttons: layout.buttons.map((b) => ({ ...b, rect: fn(b.rect) })),
       defence: layout.defence ? sec(layout.defence) : null,
       production: layout.production ? sec(layout.production) : null,
-      stock: sec(layout.stock),
+      stock: layout.stock ? sec(layout.stock) : null,
       stockTabHits: layout.stockTabHits.map(fn),
       workers: sec(layout.workers),
     };
@@ -391,25 +405,29 @@ export function layoutDetails(
     };
   }
 
-  // Building: measure each section, then stack bottom-anchored. Stock and workers reserve their FULL
-  // fixed body regardless of content — the original's windows keep their height, they don't shrink.
+  // Building: measure each section, then stack bottom-anchored. The TABBED stock and the workers body
+  // reserve their FULL fixed height regardless of content — the original's windows keep their height,
+  // they don't shrink; a COMPACT stock (every good fits at once — few slots, no tabs) instead fits its
+  // rows exactly, and a store-less building (a home) has no Magazyn window at all.
   const pad = Math.round(WIN_PAD * s);
   const buttonH = Math.round(BUTTON_H * s);
   const buttonGap = Math.round(BUTTON_GAP * s);
   const generalBodyH = Math.round(PREVIEW_H * s);
   const defenceBodyH = model.showDefense ? Math.round(ROW_H * s) : 0;
   const productionBodyH = model.production !== null ? Math.round(STOCK_ROW_H * s) : 0;
+  const stockRowCount = model.stock.length;
+  const stockCompact = stockRowCount <= MAX_STOCK_ROWS * 2;
+  const stockRows = stockCompact ? Math.ceil(stockRowCount / 2) : MAX_STOCK_ROWS;
   const stockBodyH =
-    Math.round(STOCK_TAB_H * s) +
-    Math.round(STOCK_TAB_GAP * s) +
-    MAX_STOCK_ROWS * Math.round(STOCK_ROW_H * s);
+    (stockCompact ? 0 : Math.round(STOCK_TAB_H * s) + Math.round(STOCK_TAB_GAP * s)) +
+    stockRows * Math.round(STOCK_ROW_H * s);
   const workersBodyH = MAX_WORKER_ROWS * Math.round(ROW_H * s);
 
   const heights = [
     sectionAt(0, 0, w, generalBodyH, s).frame.h,
     model.showDefense ? sectionAt(0, 0, w, defenceBodyH, s).frame.h : 0,
     model.production !== null ? sectionAt(0, 0, w, productionBodyH, s).frame.h : 0,
-    sectionAt(0, 0, w, stockBodyH, s).frame.h,
+    stockRowCount > 0 ? sectionAt(0, 0, w, stockBodyH, s).frame.h : 0,
     sectionAt(0, 0, w, workersBodyH, s).frame.h,
   ];
   const gaps = gap * (heights.filter((h) => h > 0).length - 1);
@@ -451,14 +469,18 @@ export function layoutDetails(
 
   const defence = model.showDefense ? next(defenceBodyH) : null;
   const production = model.production !== null ? next(productionBodyH) : null;
-  const stock = next(stockBodyH);
-  const stockTabStrip: Rect = {
-    x: stock.body.x,
-    y: stock.body.y,
-    w: stock.body.w,
-    h: Math.round(STOCK_TAB_H * s),
-  };
-  const stockTabHits = stockTabRects(stockTabStrip, s);
+  const stock = stockRowCount > 0 ? next(stockBodyH) : null;
+  // Only the full tabbed store carries clickable tabs; a compact/absent body has none.
+  let stockTabHits: readonly Rect[] = [];
+  if (stock !== null && !stockCompact) {
+    const stockTabStrip: Rect = {
+      x: stock.body.x,
+      y: stock.body.y,
+      w: stock.body.w,
+      h: Math.round(STOCK_TAB_H * s),
+    };
+    stockTabHits = stockTabRects(stockTabStrip, s);
+  }
   const workers = next(workersBodyH);
 
   return {
@@ -472,6 +494,8 @@ export function layoutDetails(
     defence,
     production,
     stock,
+    stockCompact,
+    stockRows,
     stockTabHits,
     workers,
   };

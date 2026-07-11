@@ -9,7 +9,6 @@ import {
   type ButtonAction,
   type CompactLayout,
   EQUIP_ROW_H,
-  MAX_STOCK_ROWS,
   PREVIEW_INSET,
   ROW_H,
   STOCK_PLATE_H,
@@ -133,30 +132,51 @@ export function drawBuilding(
     // 'Produkcja' is a named approximation.
     chrome.headline(layout.production.title, 'Produkcja');
     const body = layout.production.body;
-    const barW = Math.round(BAR_NATIVE_W * s);
-    chrome.textAt(model.production.label, body.x, body.y + ROW_TEXT_PAD * s, 'white');
-    chrome.bar(
-      {
-        x: body.x + body.w - barW,
-        y: body.y + Math.round((STOCK_ROW_H - BAR_H) * s) / 2,
-        w: barW,
-        h: Math.round(BAR_H * s),
-      },
-      model.production.pct,
-    );
+    if (model.production.kind === 'fields') {
+      // A FARM's production is its live FIELDS: the farmed good's icon + the sown/growing/ripe
+      // counters (there is no recipe/cycle to bar) — the panel's window onto the field loop.
+      const p = model.production;
+      const icon: Rect = {
+        x: body.x,
+        y: body.y + Math.round(s),
+        w: Math.round(STOCK_ICON_W * s),
+        h: Math.round(STOCK_ROW_H * s) - Math.round(2 * s),
+      };
+      if (p.goodId !== undefined) chrome.goodIcon(p.goodId, icon);
+      const counters = `Posiane ${p.sown} · Rosnące ${p.growing} · Dojrzałe ${p.ripe}`;
+      chrome.textAt(
+        counters,
+        icon.x + icon.w + Math.round(STOCK_AMOUNT_INSET * s),
+        body.y + ROW_TEXT_PAD * s,
+        'white',
+      );
+    } else {
+      const barW = Math.round(BAR_NATIVE_W * s);
+      chrome.textAt(model.production.label, body.x, body.y + ROW_TEXT_PAD * s, 'white');
+      chrome.bar(
+        {
+          x: body.x + body.w - barW,
+          y: body.y + Math.round((STOCK_ROW_H - BAR_H) * s) / 2,
+          w: barW,
+          h: Math.round(BAR_H * s),
+        },
+        model.production.pct,
+      );
+    }
   }
 
-  chrome.window(layout.stock.frame);
-  chrome.headline(layout.stock.title, ui('housewindow', HOUSEWINDOW.stock, 'Magazyn'));
-  drawStockTabs(chrome, layout.stockTabHits, activeTab, s);
-  {
+  if (layout.stock !== null) {
+    chrome.window(layout.stock.frame);
+    chrome.headline(layout.stock.title, ui('housewindow', HOUSEWINDOW.stock, 'Magazyn'));
+    // A COMPACT store (every good fits at once) has no category tabs and lists ALL its rows; only the
+    // full fixed-height store filters by the active tab (the dynamic-magazyn rule — see layout.ts).
+    if (!layout.stockCompact) drawStockTabs(chrome, layout.stockTabHits, activeTab, s);
     const body = layout.stock.body;
     // The fixed cell grid both the drawing and the hover hit-test share (column-major, two columns).
-    const slots = stockSlotRects(body, s);
+    const slots = stockSlotRects(body, s, layout.stockRows);
     const cellH = Math.round(STOCK_ROW_H * s);
-    // Only the active category tab's goods are listed (the original filters the store by tab).
-    const rows = model.stock.filter((row) => row.category === activeTab);
-    const shown = rows.slice(0, MAX_STOCK_ROWS * 2);
+    const rows = layout.stockCompact ? model.stock : model.stock.filter((row) => row.category === activeTab);
+    const shown = rows.slice(0, layout.stockRows * 2);
     shown.forEach((row, i) => {
       const slot = slots[i];
       if (slot === undefined) return;

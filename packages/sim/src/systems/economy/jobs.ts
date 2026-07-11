@@ -7,6 +7,7 @@ import { interactionNode } from '../footprint/index.js';
 import { buildingEnabled, jobEnabled, settlerMeetsNeed } from '../progression.js';
 import { NodeBuckets, canonicalById } from '../spatial.js';
 import { buildingWorkerJobs, recipeOf } from '../stores.js';
+import { farmWorkGood } from './farming.js';
 
 /**
  * JobSystem (assignment half) — give an **idle** settler the job of an understaffed workplace it
@@ -202,9 +203,10 @@ function jobUnderstaffed(world: World, ctx: SystemContext, building: Entity, job
 /**
  * The workplace a `tribe` settler is standing on that it staffs — used to *adopt* a pre-employed,
  * unbound settler (bind it to the building under its feet). A candidate is a **same-tribe** same-tile
- * {@link Building} with a `recipe` (a producing workplace, not a passive store/HQ) whose `workers`
- * slots name `jobType`. The first such building in canonical order is the binding. Returns the
- * building entity or null.
+ * {@link Building} that WORKS its workers — a `recipe` workplace (a producing workshop, not a passive
+ * store/HQ) or a FARM (a workplace producing a field-farmed good, {@link farmWorkGood} — it has no
+ * recipe but its farmers run the field loop) — whose `workers` slots name `jobType`. The first such
+ * building in canonical order is the binding. Returns the building entity or null.
  *
  * The `tribe` filter keeps the binding consistent with {@link boundWorkplaceTarget} (the walk drive,
  * which rejects a cross-tribe binding) — so we never adopt a settler onto an other-tribe workshop it
@@ -229,7 +231,8 @@ function workplaceStaffedHereBy(
   for (const b of buildingsByNode.at(spNode.hx, spNode.hy)) {
     const building = world.get(b, Building); // present: the bucket is built from the Building query
     if (building.tribe !== tribe) continue;
-    if (recipeOf(world, ctx, b) === undefined) continue; // only a producing workplace pins its worker
+    // Only a workplace that WORKS its staff pins them: a recipe workshop, or a farm (field loop).
+    if (recipeOf(world, ctx, b) === undefined && farmWorkGood(world, ctx, b) === null) continue;
     if (!buildingWorkerJobs(world, ctx, b).has(jobType)) continue; // not a job this workplace employs
     return b;
   }
