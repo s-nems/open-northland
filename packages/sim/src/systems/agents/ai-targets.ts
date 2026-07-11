@@ -106,7 +106,8 @@ export function collectTargets(world: World, ctx: SystemContext): TargetCandidat
 /**
  * The nearest harvestable {@link Resource} the given settler is allowed to harvest, by fixed-point
  * Manhattan distance from `here`, with ascending-cell-id as the deterministic tie-break. A resource
- * is eligible only if it has units remaining AND its harvest passes **both** data-driven gates:
+ * is eligible only if it has units remaining, is REACHABLE (same static component as the settler —
+ * see the `componentOf` gate below), AND its harvest passes **both** data-driven gates:
  *
  *  - the job's `allowedAtomics` permits the resource good's harvest atomic (a woodcutter harvests
  *    trees, not ore — {@link jobAtomics});
@@ -152,6 +153,16 @@ export function nearestHarvestableFor(
     // XP gate: this settler must have cleared the harvested good's `needforgood` thresholds.
     if (!settlerMeetsNeed(ctx, settler.tribe, 'good', res.goodType, settler.experience)) continue;
     const cell = interactionCell(world, ctx, terrain, e, here); // work cell the settler walks to (from here)
+    // Reachability gate: a resource walled off from the settler by static terrain — the far bank of a
+    // river with no land crossing — sits in a DIFFERENT connected component, so `findPath` would reject
+    // the route outright (nav/pathfinding.ts answers "no route" from the SAME `componentOf` verdict).
+    // Without this, the nearest-by-Manhattan pick can latch onto such a tree and the flag-bound gatherer
+    // stalls forever trying to path to it ("stoi bezczynnie obok flagi"), never falling through to a
+    // reachable tree slightly farther. `componentOf` is an O(1) array read (a build-time flood-fill), and
+    // a same-component candidate is unaffected — so a map with every tree reachable (the golden slice) is
+    // byte-identical. Measured from `here`, the settler's actual route start (bridges are not yet walkable
+    // in the collision join, so the two banks are genuinely separate components — a named limitation).
+    if (terrain.componentOf(here) !== terrain.componentOf(cell)) continue;
     const dist = manhattan(terrain, origin, cell); // distance from the flag (bound) or the settler (roaming)
     if (dist > radius) continue; // outside the flag's work radius — a bound gatherer leaves it be
     if (closer(dist, cell, bestDist, bestCell)) {

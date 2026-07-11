@@ -50,6 +50,7 @@ import { clearComponentStores } from '../fixtures/stores.js';
  */
 
 const GRASS = 0;
+const WATER = 1; // landscape typeId flagged walkable:false in testContent — an impassable river cell
 const WOOD = 1;
 const WOODCUTTER = 1; // fixture job allowed the wood harvest atomic (24)
 const VIKING = 1;
@@ -75,6 +76,17 @@ function ctxOf(sim: Simulation): SystemContext {
 
 function grassMap(width: number, height: number): TerrainMap {
   return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
+}
+
+/** A grass half-cell map split by a vertical WATER wall on node columns `riverCols` (all rows) — a
+ *  river with no crossing, so the nodes left and right of it are separate static components (the
+ *  "mosty na rzece" precondition: bridges are not walkable, so the two banks never connect). */
+function riverMap(width: number, height: number, riverCols: readonly number[]): TerrainMap {
+  const typeIds = new Array(width * height).fill(GRASS);
+  for (let hy = 0; hy < height; hy++) {
+    for (const hx of riverCols) typeIds[hy * width + hx] = WATER;
+  }
+  return { resolution: 'half-cell', width, height, typeIds };
 }
 
 /** A woodcutter settler at tile (x,y). Add a {@link WorkFlag} to make it flag-bound. */
@@ -277,6 +289,53 @@ describe('flag-bound gatherer — works only within its flag radius (req 3)', ()
     expect(sim.world.get([...sim.world.query(Felling)][0] as Entity, Felling).chopsLeft).toBe(CHOPS_TO_FELL);
     expect(groundHeapWood(sim)).toBe(0); // no harvest ⇒ no goods heaps by the flag
     expect(fx.toInt(sim.world.get(gatherer, Position).x)).toBeLessThanOrEqual(NARROW_RADIUS);
+    expect(violations).toEqual([]);
+  });
+});
+
+describe('flag-bound gatherer — never targets a tree it cannot reach (mosty na rzece)', () => {
+  // A river of WATER nodes at columns 10,11 splits the map: left bank hx≤9, right bank hx≥12 (a single
+  // water node kills the straight step and its diagonal flanks, so the banks are separate components).
+  // Tile (tx,ty) sits at node (2·tx, 2·ty); a footprint-less tree's work cell is its own anchor node.
+  const RIVER = [10, 11] as const;
+
+  it('picks a reachable farther tree over the nearest one across the river (planner, one tick)', () => {
+    // Flag@tile4 (node 8, left bank). The tree NEAREST the flag is @tile6 (node 12, RIGHT bank, dist 4) —
+    // unreachable across the water. A reachable tree sits @tile1 (node 2, left bank, dist 6), and the
+    // gatherer stands on it. Pre-fix the distance-only pick latched onto the node-12 tree and the gatherer
+    // walked at the river forever; now the cross-component tree is skipped and it chops the reachable one.
+    const sim = new Simulation({ seed: 1, content: testContent(), map: riverMap(28, 6, RIVER) });
+    const gatherer = makeWoodcutter(sim, 1, 1); // stands on the reachable tree's cell
+    bindToFlag(sim, gatherer, 4, 1, WIDE_RADIUS);
+    const acrossRiver = placeFellableTree(sim, 6, 1); // nearest to the flag, but on the far bank
+    const reachable = placeFellableTree(sim, 1, 1); // farther from the flag, same bank as the gatherer
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    const atomic = sim.world.get(gatherer, CurrentAtomic); // chose to CHOP this tick (no MoveGoal stall)
+    expect(atomic.atomicId).toBe(HARVEST_ATOMIC);
+    expect(atomic.effect.kind === 'harvest' && atomic.effect.resource).toBe(reachable);
+    expect(atomic.effect.kind === 'harvest' && atomic.effect.resource).not.toBe(acrossRiver);
+  });
+
+  it('fells the reachable tree and banks it, leaving the across-river tree untouched (full run)', () => {
+    // Same split, but the gatherer starts on its flag tile (node 8). The nearest tree to the flag is again
+    // the unreachable node-12 tree; the reachable tree is @tile1 (node 2). Over a full run it must fell the
+    // reachable one and never stall pointed at the far bank.
+    const sim = new Simulation({ seed: 3, content: testContent(), map: riverMap(28, 6, RIVER) });
+    const gatherer = makeWoodcutter(sim, 4, 1);
+    bindToFlag(sim, gatherer, 4, 1, WIDE_RADIUS);
+    const acrossRiver = placeFellableTree(sim, 6, 1); // nearest, unreachable
+    placeFellableTree(sim, 1, 1); // farther, reachable — the one that gets worked
+
+    const violations = runTicks(sim, 800);
+
+    expect(groundHeapWood(sim)).toBe(TREE_WOOD_YIELD); // the reachable tree's wood banked at the flag
+    const standing = [...sim.world.query(Resource)];
+    expect(standing).toEqual([acrossRiver]); // only the far-bank tree still stands…
+    expect(sim.world.get(acrossRiver, Felling).chopsLeft).toBe(CHOPS_TO_FELL); // …and it was never chopped
+    // The gatherer never crossed the river — it stayed on its own (left) bank.
+    expect(fx.toInt(sim.world.get(gatherer, Position).x)).toBeLessThanOrEqual(5);
     expect(violations).toEqual([]);
   });
 });
