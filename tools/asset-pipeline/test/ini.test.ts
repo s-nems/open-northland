@@ -2911,6 +2911,27 @@ describe('extractStaticObjects', () => {
     ];
     expect(extractStaticObjects(cifLinesToSections(empty))).toBeUndefined();
   });
+
+  it('extracts the SAME rows from an unpacked map plaintext staticobjects.inc', () => {
+    // The CnMod majority ship no map.cif — their StaticObjects live in a readable `staticobjects.inc`
+    // parsed via parseIniSections (the pipeline's plaintext route), with addgoods/setproducedgood/
+    // trailing columns interspersed exactly as the real files carry them (magiczny_las, blekiny_nurt).
+    // The extractor must read it identically to the cif path — that join is what makes those maps import.
+    const inc = [
+      '[StaticObjects]',
+      'sethouse 0 "viking headquarters" 0 1 81 78 1002',
+      'addgoods "food_simple" 75',
+      'addgoods "water" 10',
+      'sethuman 6 "viking" "soldier_sword_short" 397 182 0 16937',
+      'setanimal 20 "cattle" "adult_animal" 68 77 0 0',
+      'setproducedgood "wood"',
+    ].join('\n');
+    expect(extractStaticObjects(parseIniSections(inc))).toEqual({
+      buildings: [{ name: 'viking headquarters', level: 0, player: 1, hx: 81, hy: 78, rot: 1002 }],
+      humans: [{ tribe: 'viking', role: 'soldier_sword_short', player: 6, hx: 397, hy: 182 }],
+      animals: [{ species: 'cattle', hx: 68, hy: 77 }],
+    });
+  });
 });
 
 describe('IR integration', () => {
