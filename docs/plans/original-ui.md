@@ -378,3 +378,17 @@ refactor (schema skew: `gfxAtomics`/`trianglePatternTypes`; good-typeId re-key; 
 real content has no `plank` and zero gathering-balance; moved app goldens) that belongs in a separate
 branch, not this UI diff. Once it lands the panel shows real data with no UI change, and the tab category
 map serves the real good set unchanged.
+
+Progress note — action-menu auto-close (2026-07-11, `fix/order-menu-auto-close`, user-requested, not a
+numbered step; polish over landed step 5). Two dangling states in the settler action ring are closed. (1)
+Picking a profession row now COMMITS the whole menu shut — `view/settler-actions.ts` gained a `closeMenu`
+(list + ring → `closed`) that the row-click uses instead of `closeJobWindow` (which only steps `jobs→menu`,
+re-showing the ring after the order was already issued); the returned `close()` now reuses it. `closeJobWindow`
+stays the "step back to the arms" path for Escape / the ✕ box / a backdrop click. (2) Selecting a DIFFERENT
+civilian while the ring is open now closes it: `view/unit-controls.ts` `setSelection` closes the ring on any
+CHANGED selection (via a `sameSelection` set-equality guard), not only when it empties — so the ring never
+lingers on a stale unit; re-selecting the same set leaves it be, and right-click's select-then-open re-opens
+on the new unit in the very next call, unaffected. Verified: `check` + `build` + `npm test` (1913) green;
+browser hands-on at `?scene=sandbox` — picking "Tragarz" closes the menu and the panel updates live; with the
+ring open, left-clicking another gatherer closes the ring and moves the selection to it; no console errors.
+Player-visible UI feel: pending user sign-off.
