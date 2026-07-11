@@ -135,8 +135,10 @@ export function resolveLayers(
     // (a rock/mine `.bmd` family) draws from that family atlas; a bare ref (the default yew) falls
     // through to the `kindLayers.resource` tree layer (or the shared synthetic atlas) below. The
     // reducer only emits a layer for a LOADED family, so a layer-qualified miss is a real gap
-    // (placeholder), never a wrong-bob borrow from the tree atlas.
+    // (placeholder), never a wrong-bob borrow from the tree atlas. A null draw is a data-pinned
+    // INVISIBLE level (the original's freshly-sown field) — draw nothing, not the placeholder.
     const draw = resolveResourceDraw(sheet.bindings.resource, item);
+    if (draw === null) return [];
     if (draw.layer !== undefined && sheet.families?.[draw.layer] !== undefined) {
       const resolved = layeredLayerFor(sheet, 'resource', draw);
       return resolved === null ? null : [resolved];
@@ -165,6 +167,7 @@ export function resolveLayers(
     const binding = item.kind === 'stump' ? sheet.bindings.stump : sheet.bindings.trunk;
     if (binding === undefined) return null;
     const draw = resolveResourceDraw(binding, item);
+    if (draw === null) return []; // a data-pinned invisible level — draw nothing, not the placeholder
     if (draw.layer === undefined) return null; // no family → placeholder
     const resolved = layeredLayerFor(sheet, item.kind, draw);
     return resolved === null ? null : [resolved];

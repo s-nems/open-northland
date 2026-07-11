@@ -288,7 +288,15 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   const stems = gatheringAtlasStems(gatheringRefs);
   if (stumpRef !== undefined) stems.add(stumpRef.stem);
   const { families: gatheringFamilies, loaded: gatheringLoaded } = await loadGatheringFamilies(stems);
-  const resourceBinding = buildResourceBinding(gatheringRefs, gatheringLoaded);
+  // The frame ids each loaded family atlas actually holds — lets the node reducer mark a level whose bob
+  // the source record points OUTSIDE its own atlas (the original's "invisible state" sentinel — freshly-
+  // sown wheat) as a draw-nothing level instead of a placeholder. See buildResourceBinding.
+  const familyFrames = new Map(
+    Object.entries(gatheringFamilies).map(
+      ([stem, layer]) => [stem, new Set(layer.atlas.frames.keys())] as const,
+    ),
+  );
+  const resourceBinding = buildResourceBinding(gatheringRefs, gatheringLoaded, familyFrames);
   const stockpileBinding = buildStockpileBinding(gatheringRefs, gatheringLoaded);
   const stumpBinding = buildStumpBinding(stumpRef, gatheringLoaded);
   // The freshly-felled trunk a GroundDrop draws (the `landscapeToPickup` stage), loaded alongside the

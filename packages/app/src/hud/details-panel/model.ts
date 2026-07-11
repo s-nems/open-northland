@@ -107,6 +107,9 @@ export interface StockRow {
   readonly goodId?: string;
   readonly label: string;
   readonly amount: number;
+  /** The good's declared store ceiling (its `stock` slot capacity) — the row then reads "7.0 / 25.0".
+   *  Undefined for a good the building holds without a declared slot (a dynamic drop): amount only. */
+  readonly capacity?: number;
   /** The stock-window category tab (0–7) this good belongs to — see `stock-tabs.ts`. */
   readonly category: number;
 }
@@ -447,11 +450,17 @@ function stockRows(ctx: UnitPanelModelContext, def: BuildingDef | undefined, sto
     seen.add(goodType);
     order.push(goodType);
   };
-  for (const slot of def?.stock ?? []) push(slot.goodType);
+  // Declared slot → its capacity, so each row can read "amount / capacity" (a dynamic drop has none).
+  const capacities = new Map<number, number>();
+  for (const slot of def?.stock ?? []) {
+    push(slot.goodType);
+    capacities.set(slot.goodType, slot.capacity);
+  }
   for (const goodType of live.keys()) push(goodType);
 
   const rows = order.map((goodType, index) => {
     const goodId = goodDef(ctx, goodType)?.id;
+    const capacity = capacities.get(goodType);
     return {
       goodType,
       // The stock row's display name (its English catalog name, else the id) — shown by the hover tooltip;
@@ -461,6 +470,7 @@ function stockRows(ctx: UnitPanelModelContext, def: BuildingDef | undefined, sto
       category: goodCategoryTab(goodId),
       index,
       ...(goodId !== undefined ? { goodId } : {}),
+      ...(capacity !== undefined ? { capacity } : {}),
     };
   });
   rows.sort((a, b) => (b.amount > 0 ? 1 : 0) - (a.amount > 0 ? 1 : 0) || a.index - b.index);

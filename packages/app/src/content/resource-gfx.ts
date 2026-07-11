@@ -346,14 +346,29 @@ export function buildStumpBinding(
  * node stem is the default family OR a LOADED named family binds its own node bob; a good whose family
  * failed to load is dropped (it falls back to the {@link TREE_BOB} default rather than borrowing a wrong
  * bob from the tree atlas — the same no-wrong-borrow rule the building families use). Pure + unit-tested.
+ *
+ * `familyFrames` (stem → the frame ids its LOADED atlas actually holds) marks data-pinned INVISIBLE
+ * levels: when a record's level names a bob its own atlas doesn't have while its OTHER levels do, that
+ * level binds `null` — the renderer then draws NOTHING for it. This is the original's freshly-sown wheat
+ * (`wheat mine 01` state 1 → bob 4000, an out-of-atlas sentinel; states 2–5 are real frames). A good
+ * whose levels are ALL missing keeps its refs instead — that is a genuinely broken binding and should
+ * surface as the placeholder, not vanish.
  */
-export function buildResourceBinding(refs: GatheringRefs, loaded: ReadonlySet<string>): ResourceTypeBinding {
-  const byGood: Record<number, readonly LayeredBobRef[]> = {};
+export function buildResourceBinding(
+  refs: GatheringRefs,
+  loaded: ReadonlySet<string>,
+  familyFrames?: ReadonlyMap<string, ReadonlySet<number>>,
+): ResourceTypeBinding {
+  const byGood: Record<number, readonly (LayeredBobRef | null)[]> = {};
   for (const [good, node] of Object.entries(refs.nodesByGood)) {
     if (node.stem !== DEFAULT_RESOURCE_STEM && !loaded.has(node.stem)) continue; // unloaded family → drop
     // Per-level frames (empty→full) — the renderer indexes them by a mined deposit's shrink-by-level fill;
     // a non-mined node has a single-frame list, drawn at any level.
-    byGood[Number(good)] = node.bobs.map((bob) => bobRef(node.stem, bob));
+    const atlasFrames = familyFrames?.get(node.stem);
+    const anyPresent = atlasFrames !== undefined && node.bobs.some((bob) => atlasFrames.has(bob));
+    byGood[Number(good)] = node.bobs.map((bob) =>
+      anyPresent && !(atlasFrames?.has(bob) ?? true) ? null : bobRef(node.stem, bob),
+    );
   }
   // The per-VARIANT table (a decoded-map node's own species/decal) — same load-then-drop-unloaded rule,
   // so a variant whose family atlas failed to load falls back to the per-good representative, never a

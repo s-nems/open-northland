@@ -73,10 +73,12 @@ const SLOT_ICON_OVERFLOW = 3;
 
 /**
  * Stock amounts render with one decimal, LEFT-aligned inside the plate ("15.0") — both observed off
- * the original's 1024×768 screenshots.
+ * the original's 1024×768 screenshots. A row with a declared slot also shows its ceiling
+ * ("7.0 / 25.0" — user-requested; the capacity is the building's extracted `logicstock` slot), so a
+ * filling store reads at a glance; a dynamic drop (no declared slot) keeps the bare amount.
  */
-function stockAmount(amount: number): string {
-  return amount.toFixed(1);
+function stockAmount(amount: number, capacity?: number): string {
+  return capacity === undefined ? amount.toFixed(1) : `${amount.toFixed(1)} / ${capacity.toFixed(1)}`;
 }
 
 export function drawBuilding(
@@ -201,7 +203,7 @@ export function drawBuilding(
       // The amount sits left-inset next to the icon, vertically centred on the plate's centre line (not
       // top-anchored, which rode high) — leaving the number left-aligned as in the original row.
       chrome.textLeftMiddle(
-        stockAmount(row.amount),
+        stockAmount(row.amount, row.capacity),
         plate.x + Math.round(STOCK_AMOUNT_INSET * s),
         plate.y + plate.h / 2,
         'white',

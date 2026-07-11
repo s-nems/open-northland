@@ -621,6 +621,15 @@ export const LandscapeType = z.strictObject({
    *  real maps must go through the app's collision resolve (semantic classes), never raw. */
   buildable: z.boolean().default(true),
   /**
+   * Whether crops may be SOWN on ground of this type (`TerrainGraph.isPlantable` — the farmer drive's
+   * field gate). Source basis: the original's `biocanplanton` flag on the GROUND classes
+   * (`trianglepatterntypes.cif` — only `land` carries it; sand/beach/desertstone/mountain/snow do
+   * not), resolved onto the sim's semantic terrain rows by the app's collision join. Defaults FALSE —
+   * `landscapetypes.ini` (this table's extraction source) has no such flag, so an extracted row never
+   * becomes sowable by accident; only the semantic ground rows opt in.
+   */
+  plantable: z.boolean().default(false),
+  /**
    * `maximumValency` — the per-cell capacity of this landscape type, the number that gates how many
    * units can share / cluster on a cell of this type in the cell-adjacency graph (Phase 2). The
    * passable terrain types ("void") carry a large value (100); obstacles/decor carry a small one

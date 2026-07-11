@@ -241,8 +241,11 @@ export interface ConstructionLayerRef {
  */
 export interface ResourceTypeBinding {
   /** Per-`goodType` node frames ordered EMPTY→FULL — the good→`landscapeToHarvest`-record→per-state-bob
-   *  join (each optionally layer-qualified). A non-mined node has a single-frame list (drawn at any level). */
-  readonly byGood: Readonly<Record<number, readonly LayeredBobRef[]>>;
+   *  join (each optionally layer-qualified). A non-mined node has a single-frame list (drawn at any level).
+   *  A `null` entry is a data-pinned INVISIBLE level — the source record names a bob its own atlas doesn't
+   *  hold (the original's freshly-sown wheat: state 1 → bob 4000, an out-of-atlas "draw nothing" sentinel);
+   *  that level draws nothing at all, deliberately NOT the placeholder (which flags a missing binding). */
+  readonly byGood: Readonly<Record<number, readonly (LayeredBobRef | null)[]>>;
   /**
    * Per-VARIANT node frames keyed by the node's exact source `[GfxLandscape]` record index
    * ({@link import('../scene/index.js').DrawItem.gfxIndex}) — one entry per harvest-stage variant

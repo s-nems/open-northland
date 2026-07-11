@@ -99,6 +99,10 @@ export function applySow(
 ): void {
   const spec = farmingSpecFor(ctx, effect.goodType);
   if (spec === null) return; // not a farmable good (content changed under the swing) — plant nothing
+  // Grain grows only on PLANTABLE ground (the original's `biocanplanton` class — grass, never sand);
+  // the planner already filters, this is the completion-time re-check every goods effect carries.
+  if (ctx.terrain !== undefined && !ctx.terrain.isPlantable(ctx.terrain.nodeAtClamped(effect.x, effect.y)))
+    return;
   if (sowNodeOccupied(world, effect.x, effect.y)) return; // node taken since the planner chose it
   const e = world.create();
   world.add(e, Position, positionOfNode(effect.x, effect.y));

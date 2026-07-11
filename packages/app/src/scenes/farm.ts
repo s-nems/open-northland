@@ -1,6 +1,7 @@
-import type { Entity, Simulation } from '@vinland/sim';
-import { cellAnchorNode, components } from '@vinland/sim';
+import type { CellTerrainMap, Entity, Simulation } from '@vinland/sim';
+import { cellAnchorNode, components, nodeOfPosition } from '@vinland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
+import { TERRAIN_BARREN } from '../catalog/terrain.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
 import { BUILDING_FARM, GOOD_WHEAT, JOB_FARMER_SLOT, placeSandboxBuilding } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
@@ -31,8 +32,21 @@ const RUN_TICKS = 1200;
  *  ≠ 1: `cameraFor` only centres on the scene's settlers at a non-1 zoom (zoom 1 keeps the fixed
  *  origin offset), and this scene's action is at the map's centre. */
 const INITIAL_ZOOM = 0.8;
+/** A BARREN (sand) strip east of the farm, inside its field ring — proves the grass-only sowing gate
+ *  visually (fields ring the farm but skip the tan band; the original's `biocanplanton` is `land`-only). */
+const BARREN = { x0: 23, x1: 25, y0: 9, y1: 15 } as const;
 
-const { Building, Crop, JobAssignment, Settler, Stockpile } = components;
+const { Building, Crop, JobAssignment, Position, Settler, Stockpile } = components;
+
+/** The scene's ground: all grass with the {@link BARREN} sand strip stamped inside the field ring. */
+function farmTerrain(): CellTerrainMap {
+  const base = grassTerrain(MAP_W, MAP_H);
+  const typeIds = [...base.typeIds];
+  for (let y = BARREN.y0; y <= BARREN.y1; y++) {
+    for (let x = BARREN.x0; x <= BARREN.x1; x++) typeIds[y * MAP_W + x] = TERRAIN_BARREN;
+  }
+  return { width: MAP_W, height: MAP_H, typeIds };
+}
 
 /**
  * The farm's DOOR node — its anchor plus the content footprint's door offset (the sim's
@@ -77,19 +91,23 @@ export const farmScene: SceneDefinition = {
   title: 'Farma — uprawa zboża',
   summary:
     'Farmerzy chodzą wokół farmy: sieją zboże (lekko rozrzucone pola), podlewają je konewką, dojrzałe ' +
-    'łany ścinają kosą i znoszą snopki do magazynu farmy.',
+    'łany ścinają kosą i znoszą snopki do magazynu farmy. Dzielą się pracą (każdy inne pole), a na ' +
+    'piaskowym pasie przy farmie nic nie rośnie (zboże tylko na trawie).',
   seed: 11,
-  terrain: grassTerrain(MAP_W, MAP_H),
+  terrain: farmTerrain(),
   build,
   runTicks: RUN_TICKS,
   initialZoom: INITIAL_ZOOM,
   checklist: [
     'Farmerzy wychodzą z farmy i SIEJĄ zboże wokół niej (animacja rozsiewania); pola są minimalnie rozrzucone, nie sklejone heks przy heksie.',
+    'Farmerzy DZIELĄ SIĘ pracą: każdy idzie do INNEGO pola/snopka, nie chodzą jeden przy drugim do tego samego celu.',
+    'Na PIASKOWYM pasie na wschód od farmy NIE powstaje żadne pole (zboże rośnie tylko na trawie).',
+    'Świeżo posiane pole jest niewidoczne/gołe (oryginał nie rysuje stanu 1) — ŻADNEGO zielonego kwadratu; kiełki widać od 2. stadium.',
     'Zboże ROŚNIE przez 5 stadiów — od świeżo posianej kępki do dojrzałego łanu.',
     'Farmer PODLEWA rosnące pole konewką (animacja podlewania); podlane pole rośnie szybciej.',
     'Dojrzałe pole farmer ŚCINA KOSĄ (animacja koszenia); po ścięciu na ziemi zostaje snopek, a pole znika (można siać ponownie).',
     'Farmer PODNOSI snopek i NIESIE go do farmy (chód z załadowanym zbożem); licznik magazynu farmy rośnie.',
-    'Panel farmy (kliknij budynek): tytuł „Farma", sekcja Produkcja z ikoną zboża i licznikami Posiane/Rosnące/Dojrzałe, mały Magazyn BEZ zakładek z jednym wierszem zboża.',
+    'Panel farmy (kliknij budynek): tytuł „Farma", sekcja Produkcja z ikoną zboża i licznikami Posiane/Rosnące/Dojrzałe, mały Magazyn BEZ zakładek z jednym wierszem zboża w formacie „ilość / pojemność" (x.0 / 25.0).',
   ],
   checks: [
     {
@@ -118,6 +136,19 @@ export const farmScene: SceneDefinition = {
         const farm = farmEntity(sim);
         if (farm === null) return false;
         return (sim.world.get(farm, Stockpile).amounts.get(GOOD_WHEAT) ?? 0) > 0;
+      },
+    },
+    {
+      label: 'no field stands on the barren sand strip (grain is sown on grass alone)',
+      predicate: (sim) => {
+        const terrain = sim.terrain;
+        if (terrain === undefined) return false;
+        for (const e of sim.world.query(Crop, Position)) {
+          const p = sim.world.get(e, Position);
+          const n = nodeOfPosition(p.x, p.y);
+          if (!terrain.isPlantable(terrain.nodeAtClamped(n.hx, n.hy))) return false;
+        }
+        return true;
       },
     },
   ],

@@ -36,7 +36,13 @@ import {
   STONE_DEPOSIT_UNITS,
 } from '../../catalog/mining.js';
 import { PROFESSIONS } from '../../catalog/professions.js';
-import { TERRAIN_BLOCKED, TERRAIN_IMPASSABLE, TERRAIN_MARGIN, TERRAIN_OPEN } from '../../catalog/terrain.js';
+import {
+  TERRAIN_BARREN,
+  TERRAIN_BLOCKED,
+  TERRAIN_IMPASSABLE,
+  TERRAIN_MARGIN,
+  TERRAIN_OPEN,
+} from '../../catalog/terrain.js';
 import { HARVEST_TICKS } from '../../content/settler-gfx.js';
 import type { GoodRef } from '../../content/settler-gfx.js';
 import { professionLabel } from '../../i18n/index.js';
@@ -188,10 +194,14 @@ export interface SandboxContentExtras {
 // authored in and `content/collision.ts` resolves real maps into). Row ids keep the authored-scene
 // reading: sandbox typeId 1 IS water; a resolved real map lands other impassable ground there too.
 const BASE_LANDSCAPE = [
-  { typeId: TERRAIN_OPEN, id: 'grass', walkable: true, buildable: true },
+  // Grass is the ONE plantable class — the original's `biocanplanton` ground flag (trianglepattern-
+  // types.cif) belongs to `land` alone, so grain fields land here and nowhere else.
+  { typeId: TERRAIN_OPEN, id: 'grass', walkable: true, buildable: true, plantable: true },
   { typeId: TERRAIN_IMPASSABLE, id: 'water', walkable: false, buildable: false },
   { typeId: TERRAIN_BLOCKED, id: 'landscape_body', walkable: false, buildable: false },
   { typeId: TERRAIN_MARGIN, id: 'landscape_margin', walkable: true, buildable: false },
+  // Sand/beach/desert stone: open for walking and building, closed to the plough (no `biocanplanton`).
+  { typeId: TERRAIN_BARREN, id: 'barren', walkable: true, buildable: true },
 ] as const;
 
 /**
