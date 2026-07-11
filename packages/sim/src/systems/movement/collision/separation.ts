@@ -35,6 +35,17 @@ export const UNIT_SEPARATION_RADIUS: Fixed = fx.div(fx.fromInt(13), fx.fromInt(5
 export const SEPARATION_PUSH_CAP: Fixed = fx.div(fx.mul(MOVE_SPEED_PER_TICK, fx.fromInt(2)), fx.fromInt(5));
 
 /**
+ * Minimum heading alignment (unit-heading dot product — the cosine of the angle between two walks)
+ * for two overlapping movers to count as a CONVOY (same-lane traffic) rather than crossing traffic:
+ * ½ = within 60°. A convoy pair resolves by the FOLLOWER braking in line behind the leader — no
+ * lateral component — so shared-lane walkers form a column instead of shoving each other sideways
+ * on every step (the jostle report); anything closer to perpendicular keeps the radial sidestep
+ * that lets head-on and crossing walkers slip past each other. A feel-tuning constant — no original
+ * counterpart (the original has no collision at all).
+ */
+const CONVOY_ALIGNMENT_MIN: Fixed = fx.div(fx.fromInt(1), fx.fromInt(2));
+
+/**
  * Consecutive {@link Obstructed} ticks (a grind window with bodies in the walker's immediate
  * neighbourhood and no real progress — see the component doc) before the walker DROPS ITS PATH and
  * lets its goal re-route — 0.2 s at 20 Hz: long enough to shoulder through a brush-past, short
@@ -88,11 +99,12 @@ function toGrid(w: WorldPoint): { x: Fixed; y: Fixed } {
 /**
  * SeparationSystem — runs right after the MovementSystem and resolves this tick's body overlaps
  * (see `bodies.ts` for the two-tier model and its source basis). Displaces MOVERS only:
- * mover-vs-mover overlap resolves softly for EVERY owned walking settler (half the overlap each,
- * capped at {@link SEPARATION_PUSH_CAP} — the "walking units never merge" tier), while only FIRM
- * movers (owned fighters) additionally resolve fully against posts (placed back on the post's
- * radius), so a post is impenetrable but never jitters and a civilian never wedges on a standing
- * body. A displaced position must land on walkable, unblocked ground or the offending axis (then
+ * mover-vs-mover overlap resolves softly for EVERY owned walking settler (capped at
+ * {@link SEPARATION_PUSH_CAP} — the "walking units never merge" tier) and is DIRECTION-AWARE:
+ * same-lane pairs ({@link CONVOY_ALIGNMENT_MIN}) column up — the follower brakes in behind the
+ * leader — while crossing/head-on pairs split radially, half the overlap each. Only FIRM movers
+ * (owned fighters) additionally resolve fully against posts (placed back on the post's radius), so
+ * a post is impenetrable but never jitters and a civilian never wedges on a standing body. A displaced position must land on walkable, unblocked ground or the offending axis (then
  * the whole displacement) is discarded, so collision can never push a body into water or through a
  * wall.
  *
@@ -212,9 +224,15 @@ export const separationSystem: System = (world, ctx) => {
     // capped under the arrival brake floor, it cannot jam town flow, only un-merge the sprites.
     const ghost = isFirm && isGhostMover(e);
 
-    // SOFT half: accumulate the push away from every overlapping fellow mover (half the overlap
-    // each — the other half is the neighbour's own pass), then cap the total.
+    // SOFT half — DIRECTION-AWARE: overlapping same-lane traffic (heading dot ≥
+    // {@link CONVOY_ALIGNMENT_MIN}) resolves as a CONVOY — the follower alone brakes along its own
+    // heading and falls in line behind the leader, with no lateral component and no counter-shove
+    // on the leader — while crossing/head-on traffic keeps the radial split (half the overlap each,
+    // the other half being the neighbour's own pass). Both read only the tick's snapshot positions
+    // and the post-movement headings, so the split is order-independent either way. The total is
+    // then capped.
     const startW = toWorld(start.x, start.y);
+    const follow = world.get(e, PathFollow);
     let pushX = ZERO;
     let pushY = ZERO;
     for (const n of nearMovers) {
@@ -223,11 +241,31 @@ export const separationSystem: System = (world, ctx) => {
       const dist = worldDistance(start.x, start.y, other.x, other.y);
       if (dist >= UNIT_SEPARATION_RADIUS) continue;
       const half = fx.div(fx.sub(UNIT_SEPARATION_RADIUS, dist), fx.fromInt(2));
+      const otherW = toWorld(other.x, other.y);
+      const nFollow = world.get(n, PathFollow);
+      // (0,0) is the "no established heading" sentinel — such a pair can't be classified as a
+      // convoy and falls through to the radial split.
+      if ((follow.hx !== ZERO || follow.hy !== ZERO) && (nFollow.hx !== ZERO || nFollow.hy !== ZERO)) {
+        const alignment = fx.add(fx.mul(follow.hx, nFollow.hx), fx.mul(follow.hy, nFollow.hy));
+        if (alignment >= CONVOY_ALIGNMENT_MIN) {
+          const ahead = fx.add(
+            fx.mul(fx.sub(otherW.x, startW.x), follow.hx),
+            fx.mul(fx.sub(otherW.y, startW.y), follow.hy),
+          );
+          // Exactly abreast (or stacked): the higher id yields — the keeper convention, a named
+          // pick that seeds the fore/aft order the geometric test then keeps stable.
+          if (ahead > ZERO || (ahead === ZERO && e > n)) {
+            pushX = fx.sub(pushX, fx.mul(follow.hx, half));
+            pushY = fx.sub(pushY, fx.mul(follow.hy, half));
+          }
+          continue; // the leader takes no counter-shove from its own follower
+        }
+      }
       if (dist === ZERO) {
-        // Exactly stacked: split along E/W by id order — a named pick, not iteration luck.
+        // Exactly stacked crossing traffic: split along E/W by id order — a named pick, not
+        // iteration luck.
         pushX = fx.add(pushX, e < n ? fx.sub(ZERO, half) : half);
       } else {
-        const otherW = toWorld(other.x, other.y);
         pushX = fx.add(pushX, fx.mulDiv(fx.sub(startW.x, otherW.x), half, dist));
         pushY = fx.add(pushY, fx.mulDiv(fx.sub(startW.y, otherW.y), half, dist));
       }
