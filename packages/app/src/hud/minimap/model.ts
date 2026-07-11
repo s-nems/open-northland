@@ -147,6 +147,57 @@ export function viewportRectOnMinimap(layout: MinimapLayout, bounds: WorldBounds
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
+/**
+ * The removable-backdrop band of the GUI art (max channel below ≈28/255) — mirrors the
+ * `PalettedSprite` shader's `KEY_NEAR_BLACK`, but applied by CONNECTIVITY here, not colour alone.
+ */
+const NEAR_BLACK_MAX = 28;
+
+/**
+ * Key out (alpha → 0) every near-black pixel CONNECTED to the image edge through other near-black or
+ * transparent pixels — the frame art's backdrop treatment. The art fills both the removable outside
+ * (margins around the braid + the window hole, which runs flush to two edges) and the braid's own
+ * crevice shadows with the same near-black band, so a colour-only key ('full') punches see-through
+ * holes in the braid; flood-filling from the edge removes exactly the outside band and keeps every
+ * ENCLOSED shadow opaque. In-place over straight (non-premultiplied) RGBA; pure — unit-tested.
+ */
+export function keyEdgeConnectedNearBlack(rgba: Uint8ClampedArray, w: number, h: number): void {
+  const inBand = (i: number): boolean => {
+    const o = i * 4;
+    const a = rgba[o + 3] ?? 0;
+    if (a < 128) return true; // already transparent — a conduit, and re-clearing it is harmless
+    return Math.max(rgba[o] ?? 0, rgba[o + 1] ?? 0, rgba[o + 2] ?? 0) < NEAR_BLACK_MAX;
+  };
+  const visited = new Uint8Array(w * h);
+  const stack: number[] = [];
+  const push = (i: number): void => {
+    if (visited[i] === 0 && inBand(i)) {
+      visited[i] = 1;
+      stack.push(i);
+    }
+  };
+  for (let x = 0; x < w; x++) {
+    push(x);
+    push((h - 1) * w + x);
+  }
+  for (let y = 0; y < h; y++) {
+    push(y * w);
+    push(y * w + (w - 1));
+  }
+  for (let i = stack.pop(); i !== undefined; i = stack.pop()) {
+    const o = i * 4;
+    rgba[o] = 0;
+    rgba[o + 1] = 0;
+    rgba[o + 2] = 0;
+    rgba[o + 3] = 0;
+    const x = i % w;
+    if (x > 0) push(i - 1);
+    if (x < w - 1) push(i + 1);
+    if (i >= w) push(i - w);
+    if (i < w * (h - 1)) push(i + w);
+  }
+}
+
 /** The cell grid the raster samples — the render `SceneTerrain` sub-shape it actually reads. */
 export interface TerrainCells {
   readonly width: number;

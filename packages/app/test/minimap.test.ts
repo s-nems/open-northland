@@ -8,6 +8,7 @@ import {
 } from '../src/content/minimap-ground.js';
 import {
   FRAME_NATIVE,
+  keyEdgeConnectedNearBlack,
   minimapLayout,
   minimapToWorld,
   pointOverMinimap,
@@ -221,6 +222,42 @@ describe('minimap ground-lane colours', () => {
     const ground = { patterns: ['water', 'missing'], a: [0], b: [1] };
     const cells = cellColoursFromGround(ground, 1, (i) => (i === 0 ? 0x123456 : undefined));
     expect(cells[0]).toBe(0x123456);
+  });
+});
+
+describe('keyEdgeConnectedNearBlack', () => {
+  const BLACK = [8, 8, 8, 255];
+  const WOOD = [180, 140, 90, 255];
+  const CLEAR = [0, 0, 0, 0];
+  const grid = (cells: number[][][]): Uint8ClampedArray => new Uint8ClampedArray(cells.flat(2));
+  const alphaAt = (rgba: Uint8ClampedArray, w: number, x: number, y: number): number =>
+    rgba[(y * w + x) * 4 + 3] ?? -1;
+
+  it('keys the edge-connected near-black outside but keeps enclosed shadows opaque', () => {
+    // A wood ring encloses a near-black pocket; near-black background surrounds the ring.
+    const rgba = grid([
+      [BLACK, BLACK, BLACK, BLACK, BLACK],
+      [BLACK, WOOD, WOOD, WOOD, BLACK],
+      [BLACK, WOOD, BLACK, WOOD, BLACK],
+      [BLACK, WOOD, WOOD, WOOD, BLACK],
+      [BLACK, BLACK, BLACK, BLACK, BLACK],
+    ]);
+    keyEdgeConnectedNearBlack(rgba, 5, 5);
+    expect(alphaAt(rgba, 5, 0, 0)).toBe(0); // background cleared…
+    expect(alphaAt(rgba, 5, 4, 2)).toBe(0);
+    expect(alphaAt(rgba, 5, 2, 2)).toBe(255); // …the enclosed crevice shadow stays
+    expect(alphaAt(rgba, 5, 1, 1)).toBe(255); // the braid itself is untouched
+  });
+
+  it('flows through already-transparent pixels into a black region they connect to the edge', () => {
+    const rgba = grid([
+      [WOOD, CLEAR, WOOD],
+      [WOOD, BLACK, WOOD],
+      [WOOD, WOOD, WOOD],
+    ]);
+    keyEdgeConnectedNearBlack(rgba, 3, 3);
+    expect(alphaAt(rgba, 3, 1, 1)).toBe(0); // reached via the transparent conduit above it
+    expect(alphaAt(rgba, 3, 0, 1)).toBe(255);
   });
 });
 
