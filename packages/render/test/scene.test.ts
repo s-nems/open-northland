@@ -266,15 +266,28 @@ describe('buildScene', () => {
     expect(scene.find((d) => d.kind === 'settler' && d.ref === 1)?.facing).toBe(4); // faces E, not W
   });
 
-  it('a harvest atomic keeps its movement facing (combat facing is attack-only)', () => {
-    // atomic 24 (chop) is not the attack atomic, so a target lookup does not apply — the path heading wins.
+  it('a harvester (atomic 24) likewise faces the node it works, overriding a stale path heading', () => {
+    // The woodcutter at (1,1) chops the tree one column EAST (2,1) → block 4 (E); its lingering path
+    // points west (block 1). Target facing must win or the axe swings into empty air beside the trunk.
     const chopper = entity(1, 1, 1, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId: 24, elapsed: 3, targetEntity: 2, targetTile: null },
       PathFollow: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }], index: 0 }, // west → block 1
     });
-    const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
+    const target = entity(2, 2, 1, { Resource: { goodType: 1, remaining: 3 } });
     const scene = buildScene(snapshotOf([chopper, target]), FLAT_3x2);
+    expect(scene.find((d) => d.kind === 'settler' && d.ref === 1)?.facing).toBe(4); // faces E, into the tree
+  });
+
+  it('a NON-target atomic (a deposit) keeps its movement facing — target facing stays scoped', () => {
+    // atomic 23 (pileup) is neither the attack nor a harvest action, so no target lookup applies.
+    const depositor = entity(1, 1, 1, {
+      Settler: { tribe: 0 },
+      CurrentAtomic: { atomicId: 23, elapsed: 3, targetEntity: 2, targetTile: null },
+      PathFollow: { waypoints: [{ x: 0 * ONE, y: 1 * ONE }], index: 0 }, // west → block 1
+    });
+    const target = entity(2, 2, 1, { Stockpile: { amounts: [[1, 2]] } });
+    const scene = buildScene(snapshotOf([depositor, target]), FLAT_3x2);
     expect(scene.find((d) => d.kind === 'settler' && d.ref === 1)?.facing).toBe(1); // W from path, not E
   });
 
@@ -521,24 +534,23 @@ describe('buildScene', () => {
     expect(byRef(4)?.young).toBeUndefined();
   });
 
-  it('nudges a chopping settler left so the axe lands in the tree, without moving its depth', () => {
-    // A settler mid-chop (atomic 24) shares the tree's cell; its drawn x is shifted left of the cell
-    // centre (so the right-swing axe connects with the trunk), but the depth sort key — derived from the
-    // true tile, not the nudged x — is identical to an un-nudged sprite on that cell. Render-only.
+  it('draws a chopping settler at its cell centre — the swing plays in place, no positional nudge', () => {
+    // The worker stands on the work cell BESIDE its tree (the planner's adjacent stance) and FACES it;
+    // the swing's advance is authored into the frames. The old fixed −24 px chop nudge assumed the
+    // settler shared the tree's cell and popped on/off across the between-swings replan gap — the
+    // reported forward-back slide — so a chopping and a non-chopping settler now share the same anchor.
     const cellCentreX = tileToScreen(2, 0).x;
     const scene = buildScene(
       snapshotOf([
         entity(1, 2, 0, { Settler: { tribe: 0 }, CurrentAtomic: { atomicId: 24, elapsed: 3 } }),
-        // A settler on the SAME cell but NOT chopping (a different atomic) keeps the cell-centre x.
         entity(2, 2, 0, { Settler: { tribe: 0 }, CurrentAtomic: { atomicId: 23, elapsed: 3 } }),
       ]),
       FLAT_3x2,
     );
     const chopper = scene.find((d) => d.kind === 'settler' && d.ref === 1);
     const depositor = scene.find((d) => d.kind === 'settler' && d.ref === 2);
-    expect(chopper?.x).toBe(cellCentreX - 24); // shifted left by CHOP_NUDGE_X
-    expect(depositor?.x).toBe(cellCentreX); // a non-chop action is not nudged
-    // Same cell ⇒ same depth despite the x nudge (depth uses the tile, not the drawn x).
+    expect(chopper?.x).toBe(cellCentreX);
+    expect(depositor?.x).toBe(cellCentreX);
     expect(chopper?.depth).toBe(depositor?.depth);
   });
 
@@ -612,12 +624,14 @@ describe('buildScene — resource + stockpile (gathering economy) classification
       FLAT_3x2,
     ).find((d) => d.kind === 'resource');
     expect(mined?.level).toBe(3);
+    expect(mined?.levels).toBe(5); // the ladder size rides along so the resolver can rescale it
     // A plain node (no MineDeposit) carries no level — the binding draws its full-state frame.
     const plain = buildScene(
       snapshotOf([entity(1, 1, 1, { Resource: { goodType: 4, remaining: 5 } })]),
       FLAT_3x2,
     ).find((d) => d.kind === 'resource');
     expect(plain?.level).toBeUndefined();
+    expect(plain?.levels).toBeUndefined();
   });
 
   it('classifies a bare Stockpile (no Building) as a stockpile, carrying its dominant good + fill', () => {

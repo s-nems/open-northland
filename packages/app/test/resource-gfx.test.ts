@@ -144,7 +144,7 @@ describe('resolveGatheringRefs — the good→landscape→gfx join, matched by i
     expect(refs.nodesByGood[2]).toEqual({ stem: 'ls_ground.rock03', bobs: [10] }); // stone → rock
     expect(refs.pilesByGood[1]).toEqual({ stem: 'ls_goods.goods_wood', fillBobs: [0, 1, 2, 3, 4] });
     expect(refs.pilesByGood[2]).toEqual({ stem: 'ls_goods.goods_stone', fillBobs: [15, 16] });
-    expect(refs.trunksByGood[1]).toEqual({ stem: 'ls_goods.goods_trunk', bob: 70 }); // wood → pickup log
+    expect(refs.trunksByGood[1]).toEqual({ stem: 'ls_goods.goods_trunk', bobs: [70] }); // wood → pickup log
     expect(refs.trunksByGood[2]).toBeUndefined(); // stone has no pickup stage in this fixture
     expect(refs.flag).toEqual({ stem: 'ls_temp.human_player01', bob: 33 });
   });
@@ -166,17 +166,17 @@ describe('resolveGatheringRefs — the goods-manifest pile/trunk binding (every 
   // A manifest good carries its full growth-state fillFrames (fewest→most) + the state-1 icon frame.
   const ICONS = new Map([['bread', { frame: 85, palette: 'goods_bread', fillFrames: [85, 86, 87] }]]);
 
-  it('binds a non-gathered good to its ls_goods GROWING pile (all fill states) AND single-frame trunk', () => {
+  it('binds a non-gathered good to its ls_goods GROWING pile AND the same fill ladder as its trunk', () => {
     const refs = resolveGatheringRefs([{ typeId: 20, id: 'bread' }], IR, ICONS);
-    // The pile grows through every manifest fill state; the trunk (felled-log shape) stays the state-1 icon.
+    // Both grow through every manifest fill state — a GroundDrop of one unit draws the single-item frame.
     expect(refs.pilesByGood[20]).toEqual({ stem: 'ls_goods.goods_bread', fillBobs: [85, 86, 87] });
-    expect(refs.trunksByGood[20]).toEqual({ stem: 'ls_goods.goods_bread', bob: 85 });
+    expect(refs.trunksByGood[20]).toEqual({ stem: 'ls_goods.goods_bread', bobs: [85, 86, 87] });
   });
 
   it('falls back to the neutral generic heap (goods01, bob 0) for a good with no manifest icon', () => {
     const refs = resolveGatheringRefs([{ typeId: 21, id: 'potion_heal_big' }], IR, ICONS);
     expect(refs.pilesByGood[21]).toEqual({ stem: 'ls_goods.goods01', fillBobs: [0] });
-    expect(refs.trunksByGood[21]).toEqual({ stem: 'ls_goods.goods01', bob: 0 });
+    expect(refs.trunksByGood[21]).toEqual({ stem: 'ls_goods.goods01', bobs: [0] });
   });
 
   it("does NOT override a gathered good's richer pipeline pile with the manifest frames", () => {
@@ -211,9 +211,9 @@ describe('gatheringAtlasStems — the families to load', () => {
 describe('buildTrunkBinding — the freshly-felled trunk (pickup stage), drop-unloaded', () => {
   const refs = resolveGatheringRefs(GOODS, IR);
 
-  it('binds a good with a loaded pickup family to its trunk log, layer-qualified', () => {
+  it('binds a good with a loaded pickup family to its trunk state ladder, layer-qualified', () => {
     const binding = buildTrunkBinding(refs, new Set(['ls_goods.goods_trunk']));
-    // A trunk/ore-pile is a single log frame — a one-element level list (a drop carries no level).
+    // The record's whole fewest→most ladder — the resolver indexes it by the drop's unit count.
     expect(binding.byGood[1]).toEqual([{ layer: 'ls_goods.goods_trunk', bob: 70 }]); // wood → its trunk
     expect(binding.byGood[2]).toBeUndefined(); // stone has no pickup stage
   });

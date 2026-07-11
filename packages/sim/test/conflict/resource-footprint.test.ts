@@ -468,12 +468,15 @@ describe('resource footprints', () => {
 
   it('collects a drop under a non-blocking deposit before starting another harvest', () => {
     const sim = mappedSim(grassMap(5, 3));
-    const worker = placeSettler(sim, CLAY_DIGGER, 1, 1);
+    // The digger stands ON the clay anchor — a walkable deposit that lists its own anchor as a work
+    // cell is worked from the anchor (the original's clay digger squarely on the pit), so the work
+    // cell resolves to the anchor even for a settler approaching from the side.
+    const worker = placeSettler(sim, CLAY_DIGGER, 2, 1);
     const node = placeResource(sim, CLAY, CLAY_ATOMIC, 2, 1);
     const drop = placeGroundDrop(sim, CLAY, 1, 2, 1);
 
     expect(resourceWorkCell(sim.world, terrainOf(sim), node, terrainOf(sim).nodeAt(1, 1))).toBe(
-      terrainOf(sim).nodeAt(1, 1),
+      terrainOf(sim).nodeAt(2, 1),
     );
 
     aiSystem(sim.world, ctxOf(sim));
@@ -486,13 +489,13 @@ describe('resource footprints', () => {
 
   it('routes a ground drop under a resource by the stocked pickup good even if its marker diverges', () => {
     const sim = mappedSim(grassMap(5, 3));
-    const worker = placeSettler(sim, CLAY_DIGGER, 1, 1);
+    const worker = placeSettler(sim, CLAY_DIGGER, 2, 1);
     const node = placeResource(sim, CLAY, CLAY_ATOMIC, 2, 1);
     const drop = placeGroundDrop(sim, CLAY, 1, 2, 1);
     sim.world.get(drop, GroundDrop).goodType = STONE;
 
     expect(resourceWorkCell(sim.world, terrainOf(sim), node, terrainOf(sim).nodeAt(1, 1))).toBe(
-      terrainOf(sim).nodeAt(1, 1),
+      terrainOf(sim).nodeAt(2, 1),
     );
 
     aiSystem(sim.world, ctxOf(sim));

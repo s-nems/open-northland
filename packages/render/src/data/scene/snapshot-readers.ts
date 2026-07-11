@@ -371,6 +371,25 @@ export function readResourceLevel(components: Readonly<Record<string, unknown>>)
 }
 
 /**
+ * How many levels a mined node's / a crop's visual ladder has — the sim's `MineDeposit.levels` (or a
+ * `Crop.stages`), the denominator {@link readResourceLevel}'s value is out of. Carried onto the draw item
+ * ({@link import('./draw-item.js').DrawItem.levels}) so the resolver can RESCALE the sim's ladder onto the
+ * bound record's own authored state count (stone rocks carry 4 states, ore mines 5 — the sim buckets both
+ * into one catalog count). `undefined` exactly when {@link readResourceLevel} is (a plain full node).
+ */
+export function readResourceLevelCount(components: Readonly<Record<string, unknown>>): number | undefined {
+  const crop = components.Crop as { stage?: unknown; stages?: unknown } | undefined;
+  if (crop !== undefined && typeof crop.stage === 'number' && typeof crop.stages === 'number') {
+    return crop.stages;
+  }
+  const deposit = components.MineDeposit as { levels?: unknown } | undefined;
+  const res = components.Resource as { remaining?: unknown } | undefined;
+  if (deposit === undefined || typeof deposit.levels !== 'number') return undefined;
+  if (res === undefined || typeof res.remaining !== 'number') return undefined;
+  return deposit.levels;
+}
+
+/**
  * A stump's `Stump.goodType` — the resource it is the remains of (a chopped tree → wood), the per-good
  * join key ({@link import('./draw-item.js').DrawItem.goodType}) a {@link import('../sprites/index.js').ResourceTypeBinding}
  * draws its debris frame by. `undefined` for a missing/malformed component (the binding falls back to

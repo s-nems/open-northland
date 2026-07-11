@@ -95,8 +95,15 @@ export function resolveConstructionDraws(
  * a plain-number binding is the same node bob for every good (drawn from the default resource layer); a
  * {@link ResourceTypeBinding} picks `byGood[item.goodType]`'s per-level frames (the node's
  * `Resource.goodType`) and indexes them by the node's {@link DrawItem.level} (a mined deposit's
- * shrink-by-level fill; the frames run empty→full, so `level` = full draws the last). A plain node carries
- * no `level` and draws the FULL (last) frame — so a tree/mushroom/stump/trunk/full deposit is unaffected.
+ * shrink-by-level fill; the frames run empty→full, so `level` = full draws the last). When the item also
+ * carries {@link DrawItem.levels} and it differs from the record's own state count, the ladder is RESCALED
+ * onto the frames (`ceil(level·frames/levels)`) — the sim buckets every deposit into one catalog level
+ * count while each `[GfxLandscape]` record authors its own (stone rocks 4 states, ore mines 5), and a full
+ * deposit must draw its fullest authored frame either way. A GROUND DROP routed through this resolver (the
+ * `trunk` binding) carries a {@link DrawItem.fill} instead — the pile's unit count indexes the same
+ * empty→full frames directly, the original's "state ≡ remaining units" valency read (one dug ore draws the
+ * single-piece frame, a stacked drop grows). A plain node carries neither and draws the FULL (last) frame —
+ * so a tree/mushroom/stump/full deposit is unaffected.
  * Falls back to `default` (the representative yew) when the item carries no good or the good is unmapped —
  * so a sparse table is always total. Returns **null** for a level whose entry is the explicit `null`
  * INVISIBLE marker (see {@link ResourceTypeBinding.byGood} — the original's freshly-sown field draws
@@ -112,9 +119,17 @@ export function resolveResourceDraw(
   const variantFrames = item.gfxIndex !== undefined ? binding.byGfxIndex?.[item.gfxIndex] : undefined;
   const frames = variantFrames ?? (item.goodType !== undefined ? binding.byGood[item.goodType] : undefined);
   if (frames === undefined || frames.length === 0) return unwrapBobRef(binding.default);
-  // A mined node's 1-based fill LEVEL (`levels` = full) → a 0-based frame index, clamped into range; a
-  // plain node carries no level and falls to `frames.length` (the full, last state) — full-node behaviour.
-  const idx = Math.min(frames.length, Math.max(1, item.level ?? frames.length)) - 1;
+  // 1-based level (rescaled onto the record's own state count when the ladders differ) or drop fill →
+  // a 0-based frame index, clamped into range; neither present falls to the full, last state.
+  const ladder = item.level ?? item.fill;
+  const span = item.level !== undefined && item.levels !== undefined && item.levels > 0 ? item.levels : null;
+  const scaled =
+    ladder === undefined
+      ? frames.length
+      : span !== null && span !== frames.length
+        ? Math.ceil((ladder * frames.length) / span)
+        : ladder;
+  const idx = Math.min(frames.length, Math.max(1, scaled)) - 1;
   const ref = frames[idx];
   if (ref === null) return null; // a data-pinned invisible level — draw NOTHING (never the placeholder)
   return unwrapBobRef(ref ?? binding.default);

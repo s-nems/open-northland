@@ -88,7 +88,9 @@ const WALK_WOOD_SEQ = 'human_man_generic_walk_wood';
 // kept as the FALLBACK when the manifest is absent (a checkout without content/, or an IR predating
 // bobSequences) so the real-graphics path still degrades to the right cycles instead of drawing a wrong range.
 const FALLBACK_WALK: DirectionalAnim = { start: 1988, dirs: DIRS, stride: 12 };
-// The 15-frame woodcut bobseq is a continuous loop. Verified by rendering every frame to a filmstrip:
+// FALLBACK-path chop tuning (used when the IR carries no `[gfxanimatomic]` frame lists — the primary
+// binding is the collector's authored per-direction lists via `dirListAtomics` below, one swing with
+// its holds per cycle). The 15-frame woodcut bobseq is a continuous loop. Verified by rendering every frame to a filmstrip:
 // frames 0..8 are the axe coming DOWN to the tree (the strike, impact ~frame 8) and 9..14 are the axe
 // RISING (the windup). So we play the FULL cycle but START at the windup (CHOP_PHASE_START): it plays
 // 9..14 (raise the axe) then 0..8 (swing down, impact) — a complete chop that *begins* with the windup
@@ -122,32 +124,23 @@ const FALLBACK_WAIT: DirectionalAnim = { start: 1931, dirs: 1, stride: 57 };
 // STRIKES, neither chops (source basis).
 
 /**
- * A MINED unit's dig duration (ticks) — an OBSERVED visual pace, not the faithful logic length. Each chip
- * of a stone/iron/gold/clay deposit must read as SEVERAL pickaxe/shovel strikes, but the faithful
- * `atomicanimations.ini` length (23–29) plays only the OPENING of a long authored dig at our fixed
- * one-frame/tick cadence — the stonecrusher clip is 174 frames, the shovel 92 — so a unit came out after a
- * single half-strike ("raz i już niesie"). At ~15 ticks per authored strike (the chop-swing cadence,
- * {@link CHOP_STRIDE}) this runs ~4 strikes per unit, so a deposit reads as WORKED. A deliberate
- * divergence from the atomic's logic length (source basis "Chop swing length + felling pace"); wood +
- * mushroom keep their faithful lengths (their clips are short enough to read whole).
- */
-const MINE_STRIKE_TICKS = 60;
-/**
- * Per-good harvest DURATIONS (ticks) — the ONE global source so gathering pace can't drift per scene. Wood
- * (30) + mushroom (35) are the FAITHFUL `atomicanimations.ini` lengths of the collector's harvest atomics
- * (`viking_collector_harvest_*`, content/ir.json); the four MINED goods run the longer {@link
- * MINE_STRIKE_TICKS} observed pace so a dig reads as several strikes, not one twitch. A scene declares each
- * harvest atomic's `atomicAnimations` length from here. The clip may be shorter than the duration (the ×8
- * chop loops, a facing-locked dig plays more of its strokes) — {@link frameOf} is tick-locked, so a longer
- * atomic just means more swinging, never a stretched frame.
+ * Per-good harvest DURATIONS (ticks) — the ONE global source so gathering pace can't drift per scene. ALL
+ * are the FAITHFUL `atomicanimations.ini` lengths of the collector's harvest atomics
+ * (`viking_collector_harvest_*`, content/ir.json). A cycle is ONE authored work motion with its pauses
+ * baked in: the collector clips play their `[gfxanimatomic]` per-direction frame LISTS (the
+ * `dirListAtomics` binding below), whose entries carry the impact hold and the trailing idle pad — the
+ * woodcut list is `windup → strike → 4-frame impact hold → follow-through → 4-frame rest`, one chop per
+ * 30-tick cycle, exactly the original's cadence. (The former 60-tick "observed" mined pace compensated
+ * for playing only the OPENING of the raw 174-frame stonecrusher strip; with the authored lists that
+ * divergence is retired.) A scene declares each harvest atomic's `atomicAnimations` length from here.
  */
 export const HARVEST_TICKS: Readonly<Record<number, number>> = {
-  [HARVEST_ATOMIC]: 30, // wood     — faithful (viking_collector_harvest_tree)
-  [STONE_HARVEST_ATOMIC]: MINE_STRIKE_TICKS, // stone — several pickaxe strikes per unit
-  [CLAY_HARVEST_ATOMIC]: MINE_STRIKE_TICKS, // clay/mud — several shovel digs per unit
-  [IRON_HARVEST_ATOMIC]: MINE_STRIKE_TICKS, // iron  — several pickaxe strikes per unit
-  [GOLD_HARVEST_ATOMIC]: MINE_STRIKE_TICKS, // gold  — several pickaxe strikes per unit
-  [MUSHROOM_HARVEST_ATOMIC]: 35, // mushroom — faithful (viking_collector_harvest_mushroom)
+  [HARVEST_ATOMIC]: 30, // wood     — viking_collector_harvest_tree
+  [STONE_HARVEST_ATOMIC]: 29, // stone — viking_collector_harvest_stone
+  [CLAY_HARVEST_ATOMIC]: 23, // clay/mud — viking_collector_harvest_mud
+  [IRON_HARVEST_ATOMIC]: 23, // iron  — viking_collector_harvest_iron
+  [GOLD_HARVEST_ATOMIC]: 23, // gold  — viking_collector_harvest_gold
+  [MUSHROOM_HARVEST_ATOMIC]: 35, // mushroom — viking_collector_harvest_mushroom
 };
 /**
  * The other atomic ids the SIM issues today, transcribed from the sim's planners (`ai.ts` eat 10 /
@@ -493,10 +486,20 @@ export const CHARACTER_SPECS = {
       [STORE_PICKUP_ATOMIC]: { seq: PICKUP_SEQ },
       [STORE_PILEUP_ATOMIC]: { seq: PICKUP_SEQ },
     },
-    // The farmer's field clips draw through the extracted job-18 `[gfxanimatomic]` per-direction frame
-    // lists (their strips aren't clean ×8 cuts — see REAP_SEQ) so the sow/water/reap face the way the
-    // farmer stands, one full authored motion per atomic (list lengths 24/23/29 ≈ the atomic durations).
+    // The COLLECTOR's harvest clips + the farmer's field clips draw through the extracted
+    // `[gfxanimatomic]` per-direction frame lists (job 8 / job 18), overriding the plain `atomics`
+    // fallbacks above whenever the IR carries them. The lists ARE the original's authored work cycle —
+    // one swing per atomic with the impact hold and trailing idle pad baked into the repeated entries
+    // (woodcutting 30/dir, stonecrushing 29/dir, shovel 23/dir; the pluck is a single facing-locked
+    // 19-frame list) — so a chop reads as ONE strike with its pauses, not the raw strip looped, and the
+    // swing faces the way the gatherer stands (source basis "Gathering work animations").
     dirListAtomics: {
+      [HARVEST_ATOMIC]: CHOP_SEQ,
+      [STONE_HARVEST_ATOMIC]: STONECRUSH_SEQ,
+      [CLAY_HARVEST_ATOMIC]: SHOVEL_SEQ,
+      [IRON_HARVEST_ATOMIC]: STONECRUSH_SEQ,
+      [GOLD_HARVEST_ATOMIC]: STONECRUSH_SEQ,
+      [MUSHROOM_HARVEST_ATOMIC]: PICKUP_SEQ,
       [WHEAT_HARVEST_ATOMIC]: REAP_SEQ,
       [PLANT_ATOMIC]: SOW_SEQ,
       [CULTIVATE_ATOMIC]: WATER_SEQ,

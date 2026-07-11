@@ -27,10 +27,11 @@ export const GOLD_DEPOSIT_UNITS = 6;
 /**
  * The discrete visual fill states a mineral deposit steps down through as it empties — DATA, not observed:
  * this IS the mine's `[GfxLandscape]` record's own state count (`frames.length`/`maxValency`), which the
- * render already reads directly (`resource-gfx.ts` `nodeLevelBobs`). It is PER-GOOD: the `ls_ground`
- * clay/iron/gold mines carry **5** fill states (`state 5` full → `state 1` dregs), stone's representative
- * rock carries **4**, mushroom **1**. `MINE_LEVELS` is the 5-state case the scene mines (mud); a real
- * per-good spawn (Step 6) reads each good's own frame count (a stone deposit → 4). The sim buckets
- * `remaining/depositSize` into this many levels so the drawn mine shrinks in step with what has been mined.
+ * render already reads directly (`resource-gfx.ts` `nodeLevelBobs`). It is PER-GOOD in the data: the
+ * `ls_ground` clay/iron/gold mines carry **5** fill states (`state 5` full → `state 1` dregs), stone's
+ * rocks carry **4** (some variants 5), mushroom **1**. The sim buckets `remaining/depositSize` into
+ * `MINE_LEVELS` uniformly; the render RESCALES that ladder onto each drawn record's own state count
+ * (`resolveResourceDraw` via `DrawItem.levels`), so a 4-state rock and a 5-state mine both draw full when
+ * full and dregs at the end — no per-good constant needed here.
  */
 export const MINE_LEVELS = 5;
