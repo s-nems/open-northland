@@ -49,6 +49,9 @@ export interface GameToolPanelDeps {
   readonly lang?: string;
   /** Apply a game-speed change to the entry's loop control (drive the fixed-timestep multiplier / pause). */
   readonly onSpeed: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
+  /** A higher HUD overlay's claim (the minimap window) — the panel yields left clicks it covers, so hit
+   *  priority follows draw order (see {@link ToolPanelOptions.deferToOverlay}). */
+  readonly deferToOverlay?: (clientX: number, clientY: number) => boolean;
 }
 
 export interface GameToolPanelHandle {
@@ -144,6 +147,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     canPlaceAt: deps.canPlaceAt,
     onSpeedChange: deps.onSpeed,
     screenScale: (c) => screenScale(c, deps.app.renderer.resolution),
+    ...(deps.deferToOverlay !== undefined ? { deferToOverlay: deps.deferToOverlay } : {}),
   });
 
   return {

@@ -81,6 +81,12 @@ export interface ToolPanelOptions {
   readonly onSpeedChange: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
   /** Client (CSS px) → Pixi screen px mapper — shared with the unit controls. */
   readonly screenScale: (canvas: HTMLCanvasElement) => { sx: number; sy: number; rect: DOMRect };
+  /** True when a HIGHER HUD overlay (the minimap's framed window) covers this client point. The panel
+   *  yields the LEFT click there so hit priority follows draw order — on a short screen the minimap
+   *  draws over the strip's lower buttons and over an active placement, and a click on the visible
+   *  overlay must never toggle the hidden button / drop a foundation sight-unseen. Right-click
+   *  (cancel placement) is deliberately not deferred. Injected per the hud contract. */
+  readonly deferToOverlay?: (clientX: number, clientY: number) => boolean;
 }
 
 export interface ToolPanelController {
@@ -333,6 +339,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       return;
     }
     if (e.button !== 0) return;
+    // A higher overlay covers this point: whatever sits under it is invisible, so the panel must not
+    // consume the press — the overlay's own handler acts on it instead (see the option's doc).
+    if (opts.deferToOverlay?.(e.clientX, e.clientY) === true) return;
 
     // Track whether the panel CONSUMES this press; if so, stop it from also reaching world picking.
     // Priority: strip button > open menu > open stats (close-on-inside) > active placement drop.

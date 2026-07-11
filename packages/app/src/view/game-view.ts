@@ -23,7 +23,7 @@ import { loadIr } from '../content/ir.js';
 import { loadCombatBones } from '../content/objects.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
 import { workerRoleOf } from '../game/sandbox/index.js';
-import { mountMinimap } from '../hud/minimap/index.js';
+import { type MinimapHandle, mountMinimap } from '../hud/minimap/index.js';
 import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel/layout.js';
 import { mountAdminDebug } from './admin-debug/index.js';
 import type { CameraController } from './camera.js';
@@ -194,6 +194,11 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
   const canPlaceAt = (typeId: number, col: number, row: number): boolean =>
     sim.placementProbe(typeId)?.canPlace(col, row) ?? true;
 
+  // The minimap handle, assigned right after the tool panel mounts (the panel must mount first — stage
+  // order IS draw order, and the minimap window draws over the strip's lower buttons on a short
+  // screen). The panel's overlay-defer reads it lazily: clicks only happen long after both mounts.
+  let minimap: MinimapHandle | undefined;
+
   const toolPanel = await mountGameToolPanel({
     app,
     canvas,
@@ -209,11 +214,8 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     tribe: HUD_TRIBE,
     owner: HUMAN_PLAYER,
     onSpeed: (spec, cause) => applyGameSpeed(control, spec, cause),
+    deferToOverlay: (clientX, clientY) => minimap?.claimsPointer(clientX, clientY) ?? false,
   });
-
-  // Scrolling an open HUD window (the build menu / stats list) must NOT also zoom the world behind it —
-  // the camera skips the wheel while the pointer is over such a window.
-  cameraCtl.setPointerGuard((clientX, clientY) => toolPanel.claimsWheel(clientX, clientY));
 
   // Client (CSS px) → screen px, the ONE conversion the minimap's hit-test/click shares with the world
   // pickers (`hud/` never imports `view/` — injected as options per the hud contract).
@@ -223,9 +225,11 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
   };
   // The bottom-left minimap in the original braided overview frame: whole-map ground + player-coloured
   // unit dots + the camera's view rectangle; a left-click (or drag) in the map hole re-centres the
-  // camera on the pointed world spot at the CURRENT zoom. Mounted before the unit controls so its
-  // claim joins their pointer chain (a minimap click must never select units or issue world orders).
-  const minimap = await mountMinimap({
+  // camera on the pointed world spot at the CURRENT zoom. Mounted after the tool panel (draws over its
+  // strip on a short screen — and the panel's overlay-defer above yields those covered clicks) and
+  // before the unit controls (its claim joins their pointer chain: a minimap click must never select
+  // units or issue world orders).
+  minimap = await mountMinimap({
     app,
     canvas,
     terrain: deps.terrainGrid,
@@ -239,6 +243,15 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     },
     toScreenPx: clientToScreen,
   });
+
+  // Scrolling an open HUD window (the build menu / stats list) must NOT also zoom the world behind it,
+  // and a wheel over the minimap window must not zoom the world about a point hidden under the panel —
+  // the camera skips the wheel while the pointer is over either surface.
+  const mountedMinimap = minimap;
+  cameraCtl.setPointerGuard(
+    (clientX, clientY) =>
+      toolPanel.claimsWheel(clientX, clientY) || mountedMinimap.claimsPointer(clientX, clientY),
+  );
 
   // The cursor position for the build-mode ghost (client coords; null when the pointer left the
   // canvas). Tracked persistently — the ghost must follow the mouse between clicks, and reading it in
@@ -271,7 +284,8 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     enqueue: (command) => sim.enqueue(command),
     boundsOf: (ref) => renderer.entityBounds(ref), // exact sprite-box picking against the real sprite
     pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy), // buildings: solid pixels only
-    claimPointer: (x: number, y: number) => toolPanel.claimPointer(x, y) || minimap.claimsPointer(x, y),
+    claimPointer: (x: number, y: number) =>
+      toolPanel.claimPointer(x, y) || mountedMinimap.claimsPointer(x, y),
     // The Magazyn stock-row name tooltip. Its OWN instance (not the ground one below): the two hover
     // surfaces are mutually exclusive by cursor, and a shared element would fight — the frame loop hides the
     // ground tooltip whenever the pointer is over the HUD, which is exactly when this one must stay shown.
@@ -431,7 +445,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // canvas resolution in their shader), and refresh an open stats window from this frame's HUD.
     toolPanel.controller.update(hud);
     // Minimap re-place + view rectangle every frame; its unit dots redraw only when the tick moved.
-    minimap.update(snap);
+    mountedMinimap.update(snap);
     // Build mode: dim the ground the held building can't anchor on and float its translucent ghost at
     // the hovered tile (hidden over rejecting ground — the original's vanishing house cursor). Both
     // are computed here, in the app, from the sim's placement probe and handed to the renderer as
