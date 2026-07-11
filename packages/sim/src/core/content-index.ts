@@ -1,17 +1,18 @@
-import type {
-  AnimalType,
-  ArmorType,
-  AtomicAnimation,
-  BuildingType,
-  ContentSet,
-  GatheringPipeline,
-  GoodType,
-  HumanJobExperienceType,
-  JobType,
-  LandscapeGfx,
-  TribeType,
-  VehicleType,
-  WeaponType,
+import {
+  type AnimalType,
+  type ArmorType,
+  type AtomicAnimation,
+  type BuildingType,
+  type ContentSet,
+  type GatheringPipeline,
+  type GoodType,
+  type HumanJobExperienceType,
+  type JobType,
+  type LandscapeGfx,
+  type TribeType,
+  type VehicleType,
+  type WeaponType,
+  fullStateBlockAreaCells,
 } from '@vinland/data';
 
 /**
@@ -82,6 +83,14 @@ export interface ContentIndex {
    * Precomputed so the per-settler planner reads a shared set instead of building one per call.
    */
   readonly atomicsByJob: ReadonlyMap<number, ReadonlySet<number>>;
+  /**
+   * The largest Manhattan node-offset any resource's WORK cell can sit from its anchor, over every
+   * `landscapeGfx` work-area cell — at least 2 (the walkable-neighbour fallback `resourceWorkCell`
+   * takes when the work set is blocked: one lattice step spans up to |dx|+|dy| = 2). The SLACK a
+   * radius-bounded candidate query must widen its anchor box by so it provably contains every node
+   * whose work cell could pass the radius test (see `resourcesNearNode`).
+   */
+  readonly maxResourceWorkOffset: number;
 }
 
 /** One index per ContentSet, built lazily on first use and shared by every consumer (sim systems,
@@ -113,6 +122,7 @@ function buildIndex(content: ContentSet): ContentIndex {
     gatheringPipelinesByGood: byKey(content.gatheringPipeline, (p) => p.goodType),
     landscapeGfxByIndex: new Map(content.landscapeGfx.map((g) => [g.index, g])), // last-wins, as before
     atomicsByJob: jobAtomicSets(content),
+    maxResourceWorkOffset: maxWorkCellOffset(content),
     // A weapon row's tribeType/jobType are optional in the schema; a row missing the key could never
     // match the numeric comparison the old scans made, so it is simply absent from that table.
     weaponsByTribeAndTypeId: byPairKey(
@@ -218,4 +228,21 @@ function byKey<K, T>(items: readonly T[], key: (item: T) => K): ReadonlyMap<K, T
     if (!map.has(k)) map.set(k, item);
   }
   return map;
+}
+
+/**
+ * The largest |dx|+|dy| any `landscapeGfx` WORK-area cell sits from its record's anchor (the
+ * full-state reading `resourceWorkCell` places collectors by), floored at 2 — the one-lattice-step
+ * reach of the `nearestFreeNeighbour` fallback that fires when the work set is blocked. See
+ * {@link ContentIndex.maxResourceWorkOffset}.
+ */
+function maxWorkCellOffset(content: ContentSet): number {
+  let max = 2;
+  for (const record of content.landscapeGfx) {
+    for (const cell of fullStateBlockAreaCells(record.workAreas)) {
+      const offset = Math.abs(cell.dx) + Math.abs(cell.dy);
+      if (offset > max) max = offset;
+    }
+  }
+  return max;
 }

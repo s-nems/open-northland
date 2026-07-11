@@ -16,7 +16,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
 import { interactionNode, positionedInteractionCell, resourceWorkCell } from '../footprint/index.js';
 import { buildingEnabled, settlerMeetsNeed } from '../progression.js';
-import { canonicalById, manhattan } from '../spatial.js';
+import { canonicalById, canonicalResources, manhattan, resourcesNearNode } from '../spatial.js';
 import {
   buildingWorkerJobs,
   isFood,
@@ -94,7 +94,9 @@ export function collectTargets(world: World, ctx: SystemContext): TargetCandidat
     if (g.atomics.harvest !== undefined) harvestAtomicByGood.set(g.typeId, g.atomics.harvest);
   }
   return {
-    resources: canonicalById(world.query(Resource, Position)),
+    // Memoized against the Resource store generation (spatial.ts): a decoded map holds ~17k standing
+    // nodes, and re-sorting them here EVERY tick was a milliseconds-scale cost on its own.
+    resources: canonicalResources(world),
     stockpiles: canonicalById(world.query(Stockpile, Position)),
     buildings: canonicalById(world.query(Building, Position)),
     constructionSites: canonicalById(world.query(UnderConstruction, Building, Position)),
@@ -148,10 +150,25 @@ export function nearestHarvestableFor(
   // to the prior nearest-to-`here` scan — same origin, no radius filter).
   const origin = area?.center ?? here;
   const radius = area?.radius ?? Number.POSITIVE_INFINITY;
+  // A radius-bounded (flag) scan reads only the resources whose ANCHOR lies within the radius box —
+  // widened by the content's max work-cell offset, so every node whose WORK cell could pass the radius
+  // test below is provably included (`resourcesNearNode`). Same filter/rank loop over an ascending-id
+  // superset ⇒ the identical winner as the full scan, at O(nearby) instead of O(all resources) per
+  // gatherer per tick (a decoded map holds ~17k standing nodes). A roaming (unbound) scan keeps the
+  // full canonical list — the golden path, byte-for-byte.
+  const scanned =
+    area !== undefined
+      ? resourcesNearNode(
+          world,
+          terrain.coordsOf(origin).x,
+          terrain.coordsOf(origin).y,
+          area.radius + contentIndex(ctx.content).maxResourceWorkOffset,
+        )
+      : candidates;
   let best: Entity | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
-  for (const e of candidates) {
+  for (const e of scanned) {
     const res = world.tryGet(e, Resource);
     if (res === undefined || res.remaining <= 0) continue;
     if (!world.has(e, Position)) continue;
