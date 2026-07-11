@@ -44,11 +44,11 @@ export const GROUP_BOW_SHOT = 'Weapon Bow Long';
 export const GROUP_ARROW_HIT = 'Weapon Bow Hit';
 
 /**
- * The melee `combatHit` weapon-class → impact-group map: the striker's `weaponMainType` (1 fist / 2 spear /
- * 3 sword) selects its impact SFX, so a sword blow and a spear thrust sound different. Saber/axe (4/5) and an
- * unclassified weapon fall through to the {@link GROUP_SWORD_HIT} generic melee thunk (`byEvent.combatHit`) —
- * the mod ships no dedicated saber/axe impact group. Ranged classes (bow 6 / catapult 7) never emit a
- * `combatHit` (their hit is the arrow/rock `projectileHit`), so they need no entry.
+ * The three melee weapon-classes (`weaponMainType`) that select a DISTINCT impact SFX in the
+ * {@link defaultBindings} `byCombatWeapon` map below — so a sword blow and a spear thrust sound different.
+ * Saber/axe (4/5) and an unclassified weapon carry no entry and fall through to the {@link GROUP_SWORD_HIT}
+ * generic melee thunk (`byEvent.combatHit`) — the mod ships no dedicated saber/axe impact group. Ranged
+ * classes (bow 6 / catapult 7) never emit a `combatHit` (their hit is the arrow/rock `projectileHit`).
  */
 const WEAPON_MAIN_TYPE_FIST = 1;
 const WEAPON_MAIN_TYPE_SPEAR = 2;

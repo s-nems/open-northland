@@ -57,8 +57,9 @@ const BONES_FADE_HOLD = 0.8;
 /**
  * The most marks kept alive at once — a hard cap so a huge battle's ground-litter cost (the per-frame cull
  * pass) stays bounded (golden rule 7), independent of total casualties. When exceeded, the OLDEST marks are
- * dropped first (blood ages out fastest, so it's usually blood). The GPU draw is already screen-culled; this
- * bounds the CPU list itself.
+ * dropped first; since blood self-expires fast (60 ticks) and bones linger (1800), the survivors crowding the
+ * cap are usually old bones, so that is what gets evicted. The GPU draw is already screen-culled; this bounds
+ * the CPU list itself.
  */
 export const MAX_ACTIVE_EFFECTS = 400;
 
@@ -151,9 +152,12 @@ export interface BloodDroplet {
  * fractional (the layer feeds it interpolated render time for smooth falling).
  */
 export function bloodDroplet(seed: number, i: number, age: number): BloodDroplet {
-  const x0 = (frac(seed, i * 4) - 0.5) * 2 * BLOOD_SPRAY;
-  const vx = (frac(seed, i * 4 + 1) - 0.5) * 2 * BLOOD_DRIFT;
-  const delay = frac(seed, i * 4 + 3) * BLOOD_DRIP_STAGGER;
+  // Three consecutive seeded values per droplet (stride 3): initial spread, drift speed, drip delay. The
+  // drawing layer draws each droplet's radius from `frac(seed, i + BLOOD_RADIUS_SEED)`, an index range kept
+  // disjoint from this `i * 3 + {0,1,2}` band so the two don't collide.
+  const x0 = (frac(seed, i * 3) - 0.5) * 2 * BLOOD_SPRAY;
+  const vx = (frac(seed, i * 3 + 1) - 0.5) * 2 * BLOOD_DRIFT;
+  const delay = frac(seed, i * 3 + 2) * BLOOD_DRIP_STAGGER;
   const t = Math.max(0, age - delay);
   const landed = t >= BLOOD_FALL_TICKS;
   const tc = landed ? BLOOD_FALL_TICKS : t; // freeze motion at the landing frame

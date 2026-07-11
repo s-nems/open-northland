@@ -86,6 +86,7 @@ function advanceProjectile(
       proj.damage,
       proj.weaponMainType ?? undefined,
       pendingStaggers,
+      'projectile', // ranged: the projectile announces its own `projectileHit`, not a melee `combatHit`
     );
     ctx.events.emit({
       kind: 'projectileHit',
