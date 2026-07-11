@@ -1733,13 +1733,16 @@ export interface MapStaticObjects {
  * scenario starts with. Verb grammar (all coordinates **half-cells**, the `emla` 2W×2H lattice):
  *
  * ```
- * sethouse  <class> "<GfxHouse EditName>" <level> <player(1-based)> <hx> <hy> <rot>
+ * sethouse  <player(0-based)> "<GfxHouse EditName>" <level> <1: constant, unknown> <hx> <hy> <rot>
  * sethuman  <player(0-based)> "<tribe>" "<jobtype role>" <hx> <hy> <a> <b>
  * setanimal <class> "<species>" "<age>" <hx> <hy> <a> <b>
  * ```
  *
- * Names are kept VERBATIM (the version-robust join key the loader resolves against the IR by name);
- * the two player columns keep their original bases, documented on the schema. The stock/production/
+ * The `sethouse` player is the FIRST column, 0-based like `sethuman`'s (source basis: across all 13
+ * entity-bearing mod maps its value set equals the map's `sethuman` player set and the per-value
+ * position centroids coincide with the matching `sethuman` player clusters, while the fourth column
+ * is the constant `1` on every row — it cannot be a player id). Names are kept VERBATIM (the
+ * version-robust join key the loader resolves against the IR by name). The stock/production/
  * guide verbs (`addgoods`/`setproducedgood`/`setguide`) are not captured yet (source basis). A
  * malformed row is skipped, not thrown — one bad line must not drop a whole map's placements.
  * Returns `undefined` when the map has no `StaticObjects` section or it places nothing.
@@ -1754,7 +1757,7 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
   const out: MapStaticObjects = { buildings: [], humans: [], animals: [] };
   for (const p of sec.props) {
     if (p.key === 'sethouse') {
-      const [, name, levelRaw, playerRaw, hxRaw, hyRaw, rotRaw] = p.values;
+      const [playerRaw, name, levelRaw, , hxRaw, hyRaw, rotRaw] = p.values;
       const level = int(levelRaw);
       const player = int(playerRaw);
       const hx = int(hxRaw);
