@@ -10,6 +10,7 @@ import { HOVER_ALPHA, HOVER_TINT, WINDOW_BORDER, WINDOW_FILL, tileBitmap } from 
 import type { Rect } from '../geometry.js';
 import type { DetailsPanelAssets } from './assets.js';
 import type { ButtonHit } from './layout.js';
+import type { BarTone } from './model.js';
 
 /**
  * The details panel's original-art drawing kit. A `Chrome` is created per rebuild over the panel's fresh
@@ -67,6 +68,16 @@ const INNER_BOX_DARK = 0x1c130b;
 const INNER_BOX_LIGHT = 0x7a6244;
 /** Warm wood tint of an occupied equipment slot (eyeballed, not sampled). */
 const SLOT_FILL = 0x4a2b1d;
+/**
+ * Flat gauge fills for the toned stat bars (green = content, orange = draining, red = nearly empty).
+ * Our own traffic-light palette picked to sit on the parchment (user decision 2026-07-11) — the
+ * original's single `bar_standart` fill doesn't change colour with the level.
+ */
+const BAR_TONE_FILL: Readonly<Record<BarTone, number>> = {
+  ok: 0x4f9e3c,
+  warn: 0xd08a2e,
+  critical: 0xb5392b,
+};
 
 /** Draw order inside the panel: flat fills, bitmap fills, frame sprites/icons, then text. */
 export interface PanelLayers {
@@ -120,8 +131,10 @@ export interface Chrome {
   /** A category-tab plate: the tiled wooden button fill + light edge, brighter when `active` and dimmed
    *  otherwise — the frame a stock-tab's representative good icon is drawn onto (no label). */
   tabButton(r: Rect, active: boolean): void;
-  /** A progress/need bar: the original bar frame under `bar_disabled`, filled under `bar_standart`. */
-  bar(r: Rect, pct: number): void;
+  /** A progress/need bar in the original `bar_disabled` frame. Without a `tone` the fill is the original
+   *  `bar_standart` art (neutral progress — production). With a `tone` the fill is a flat traffic-light
+   *  colour (green/orange/red stat bars) — see {@link BAR_TONE_FILL}. */
+  bar(r: Rect, pct: number, tone?: BarTone): void;
   /** A stock amount's recessed numeric field: a subtle dark inset on the wood (NOT the grey bar frame). */
   stockField(r: Rect): void;
   /** The selected building's own world bob, fitted into `r`; false when no preview art is bound. */
@@ -454,25 +467,30 @@ export function createChrome(
     if (!active) g.rect(r.x, r.y, r.w, r.h).fill({ color: 0x000000, alpha: 0.12 });
   };
 
-  const bar = (r: Rect, pct: number): void => {
+  const bar = (r: Rect, pct: number, tone?: BarTone): void => {
     const clamped = Math.max(0, Math.min(100, pct));
     if (art === null) {
       g.rect(r.x, r.y, r.w, r.h).fill(0x18120d).stroke({ color: 0x5f4a32, width: 1 });
       const inner = Math.max(0, Math.round((r.w - 2) * (clamped / 100)));
-      if (inner > 0) g.rect(r.x + 1, r.y + 1, inner, Math.max(1, r.h - 2)).fill(0xb8894a);
+      if (inner > 0) {
+        g.rect(r.x + 1, r.y + 1, inner, Math.max(1, r.h - 2)).fill(
+          tone === undefined ? 0xb8894a : BAR_TONE_FILL[tone],
+        );
+      }
       return;
     }
     guiStretched(GUI_FRAME.bar_frame_96, r, 'bar_disabled', 'magenta', layers.back);
     const inset = Math.max(1, Math.round(scale));
     const innerW = Math.max(0, Math.round((r.w - inset * 2) * (clamped / 100)));
     if (innerW > 0) {
-      guiStretched(
-        GUI_FRAME.bar_frame_96,
-        { x: r.x + inset, y: r.y + inset, w: innerW, h: Math.max(1, r.h - inset * 2) },
-        'bar_standart',
-        'magenta',
-        layers.front,
-      );
+      const fill: Rect = { x: r.x + inset, y: r.y + inset, w: innerW, h: Math.max(1, r.h - inset * 2) };
+      // A toned fill is flat Graphics: the PalettedSprite art can't be tinted per-sprite (see
+      // paletted-sprite.ts), and the traffic-light colour must read unmistakably at 10 px anyway.
+      if (tone === undefined) {
+        guiStretched(GUI_FRAME.bar_frame_96, fill, 'bar_standart', 'magenta', layers.front);
+      } else {
+        g.rect(fill.x, fill.y, fill.w, fill.h).fill(BAR_TONE_FILL[tone]);
+      }
     }
   };
 

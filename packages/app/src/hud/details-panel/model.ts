@@ -20,21 +20,18 @@ import { goodCategoryTab } from './stock-tabs.js';
 
 /**
  * The `humanwindow` string ids the settler panel resolves at draw time — the DECODED original section
- * titles, stat-bar labels and equipment-slot labels (`content/gui/strings/<lang>.json`, decoded from the
- * original `ingamegui` tables). Fidelity: everything the original DOES provide is looked up; the pinned
- * Polish fallbacks the model rows carry only cover a checkout without `content/`. Named per the
- * no-magic-numbers rule so a slot/label id reads by meaning, not a bare number.
+ * titles and equipment-slot labels (`content/gui/strings/<lang>.json`, decoded from the original
+ * `ingamegui` tables). Fidelity: everything the original DOES provide is looked up; the pinned Polish
+ * fallbacks the model rows carry only cover a checkout without `content/`. One deliberate exception:
+ * the Ogólne stat bars pin their own labels instead of the decoded 11–15 strings — see
+ * {@link satisfactionBars}. Named per the no-magic-numbers rule so a slot/label id reads by meaning,
+ * not a bare number.
  */
 export const HUMANWINDOW = {
   general: 1, // 'Ogólne'
   work: 3, // 'Praca'
   equip: 4, // 'Ekwipunek'
   experience: 5, // 'Doświadczenie'
-  health: 11, // 'Zdrowie'
-  energy: 12, // 'Energia'
-  stamina: 13, // 'Wytrzymałość'
-  social: 14, // 'Motywacja Społeczna'
-  religion: 15, // 'Religia'
   weapon: 60, // 'Broń'
   none: 61, // 'żadna' / 'żadne' — an empty slot
   armor: 63, // 'Zbroja'
@@ -73,14 +70,31 @@ interface Comp {
 }
 
 /**
- * One stat bar in the Ogólne section: a `humanwindow` label id + pinned fallback + a 0..100 LEVEL. The
- * bars show the original's SATISFACTION (full = content, like the original's coloured bars), not the
- * sim's rising deficit — see {@link satisfactionBars}.
+ * One stat bar in the Ogólne section: a pinned label + a 0..100 LEVEL + the hover value text. The bars
+ * show the original's SATISFACTION (full = content, like the original's coloured bars), not the sim's
+ * rising deficit — see {@link satisfactionBars}.
  */
 export interface PanelBar {
-  readonly titleId: number;
-  readonly fallback: string;
+  readonly label: string;
   readonly pct: number;
+  /** The cursor-tooltip value for the hovered bar row: raw points for health ("300/1000"),
+   *  the satisfaction percent for a need ("75%"). */
+  readonly hover: string;
+}
+
+/** A bar gauge's colour band: full/high draws green, a draining stat turns orange, a nearly-empty one red. */
+export type BarTone = 'ok' | 'warn' | 'critical';
+/** Below this satisfaction/health percent a bar turns orange. Named approximation (user decision
+ *  2026-07-11): the original's band boundaries aren't decoded, so the thirds are our own choice. */
+const BAR_WARN_BELOW_PCT = 50;
+/** Below this percent a bar turns red. */
+const BAR_CRITICAL_BELOW_PCT = 25;
+
+/** The green/orange/red band a 0..100 bar level falls into — shared by the draw and the headless tests. */
+export function barTone(pct: number): BarTone {
+  if (pct < BAR_CRITICAL_BELOW_PCT) return 'critical';
+  if (pct < BAR_WARN_BELOW_PCT) return 'warn';
+  return 'ok';
 }
 
 export interface StockRow {
@@ -162,8 +176,8 @@ export interface SettlerPanelModel {
   /** A short live-state caption drawn in the portrait box — an honest stand-in for the original's
    *  animated "what it's doing" preview (the live settler bob render is a deferred follow-up). */
   readonly statusCaption: string;
-  /** The Ogólne stat bars: Zdrowie (only for a unit with Health) then Energia/Wytrzymałość/Motywacja
-   *  Społeczna/Religia, all as satisfaction levels — see {@link satisfactionBars}. */
+  /** The Ogólne stat bars: Zdrowie (only for a unit with Health) then Głód/Sen/Towarzystwo/Religia,
+   *  all as satisfaction levels — see {@link satisfactionBars}. */
   readonly bars: readonly PanelBar[];
   /** The Praca section: the workplace's name and the good it makes (or what the settler carries). */
   readonly work: { readonly place: string; readonly product: string };
@@ -289,13 +303,20 @@ function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow[] {
   return rows;
 }
 
+/** A need bar's model: its satisfaction LEVEL as the gauge percent, the same percent as the hover value. */
+function needBar(label: string, deficit: number | undefined): PanelBar {
+  const level = 100 - pct(deficit);
+  return { label, pct: level, hover: `${level}%` };
+}
+
 /**
  * The Ogólne stat bars. The sim stores needs as rising DEFICITS (`hunger`↑ = hungrier); the original's
  * window shows the SATISFACTION LEVEL (full = content), so each need bar is `100 − need`. Health leads
- * (only for a unit with a `Health` component, as `hitpoints/max`). The stat→need mapping —
- * Energia←hunger, Wytrzymałość←fatigue, Motywacja Społeczna←enjoyment, Religia←piety — is a named
- * approximation: the original's five human stats (`humanwindow` 11–15) don't map 1:1 to the sim's four
- * needs. Labels resolve from the decoded `humanwindow` table at draw time (fallbacks here).
+ * (only for a unit with a `Health` component, as `hitpoints/max` — its hover shows the raw points, the
+ * need bars their percent). The labels are PINNED, deliberately diverging from the decoded `humanwindow`
+ * 11–15 strings (Zdrowie/Energia/Wytrzymałość/Motywacja Społeczna/Religia): each bar is named after the
+ * NEED it actually shows — Głód←hunger, Sen←fatigue, Towarzystwo←enjoyment — because the original's stat
+ * names don't map 1:1 to the sim's four needs and read poorly (user decision 2026-07-11).
  */
 function satisfactionBars(comps: Comp): PanelBar[] {
   const s = (comps.Settler ?? {}) as Comp;
@@ -305,16 +326,12 @@ function satisfactionBars(comps: Comp): PanelBar[] {
     const hp = num(health.hitpoints) ?? 0;
     const max = num(health.max) ?? 0;
     const level = max > 0 ? Math.max(0, Math.min(100, Math.round((hp / max) * 100))) : 0;
-    bars.push({ titleId: HUMANWINDOW.health, fallback: 'Zdrowie', pct: level });
+    bars.push({ label: 'Zdrowie', pct: level, hover: `${hp}/${max}` });
   }
-  bars.push({ titleId: HUMANWINDOW.energy, fallback: 'Energia', pct: 100 - pct(num(s.hunger)) });
-  bars.push({ titleId: HUMANWINDOW.stamina, fallback: 'Wytrzymałość', pct: 100 - pct(num(s.fatigue)) });
-  bars.push({
-    titleId: HUMANWINDOW.social,
-    fallback: 'Motywacja Społeczna',
-    pct: 100 - pct(num(s.enjoyment)),
-  });
-  bars.push({ titleId: HUMANWINDOW.religion, fallback: 'Religia', pct: 100 - pct(num(s.piety)) });
+  bars.push(needBar('Głód', num(s.hunger)));
+  bars.push(needBar('Sen', num(s.fatigue)));
+  bars.push(needBar('Towarzystwo', num(s.enjoyment)));
+  bars.push(needBar('Religia', num(s.piety)));
   return bars;
 }
 
