@@ -196,10 +196,12 @@ can't tint per-sprite). Hovering a bar row shows its value in the cursor tooltip
 hit-tests `layout.bars`. The building production bar keeps the neutral `bar_standart` art fill.
 Second pass (same branch, review feedback 2026-07-11): the flat banded fills read ugly and the grey
 `bar_disabled` remainder read as a stuck bar — the gauges are now a recessed dark track + a fill
-coloured by the ORIGINAL's decoded level ramps (`bar_hitpoints` red→yellow-green for Zdrowie,
-`bar_standart` rust→moss for needs — the palettes' 256 entries sweep colour with the index, read
-CPU-side off `gui-palettes-lut.png`; ramp-per-level is a named approximation, OpenVikings loads
-`PalBarHitpoints` but the draw site isn't ported; flat bands remain the no-`content/` fallback).
+coloured by the ORIGINAL's decoded `bar_hitpoints` level ramp (red→orange→yellow-green; the palette's
+256 entries sweep colour with the index, read CPU-side off `gui-palettes-lut.png`; ramp-per-level is a
+named approximation, OpenVikings loads `PalBarHitpoints` but the draw site isn't ported; flat bands
+remain the no-`content/` fallback). ALL five bars use the hitpoints ramp — the sibling `bar_standart`
+ramp stays green until ~15%, so a draining need showed no colour change (user feedback). Hover values
+refresh on the panel's rate-limited rebuild, so a HELD cursor tracks a draining bar live.
 Sim side: EVERY settler (civilians, newborns) now spawns with `Health`
 (`DEFAULT_SETTLER_HITPOINTS` 300 — human HP below the readable `.ini`, approximation; golden
 e452b766 → 2d0d23b0); starvation lands (hunger pinned at ONE bites `max(1, max/240)` HP every 10

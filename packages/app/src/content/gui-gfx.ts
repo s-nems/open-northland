@@ -97,26 +97,23 @@ export function loadGuiPaletteLut(): Promise<TextureSource | undefined> {
 }
 
 /**
- * The decoded level→colour ramps of the two ORIGINAL bar palettes, as 256 packed `0xRRGGBB` entries
- * each (index 0 = empty, 255 = full):
- *  - `hitpoints` (`bar_hitpoints.pcx`): red `#ff0000` → orange → yellow-green `#d4ff4b` — the HP bar.
- *  - `standart` (`bar_standart.pcx`): rust `#bd4826` → moss green `#8aa430` — the generic stat bar.
- * The original ships these as PALETTES whose entries sweep the colour with the index — the decoded
- * evidence that a bar's colour follows its LEVEL. How the engine consumes them isn't decompiled
+ * The decoded level→colour ramp of the ORIGINAL `bar_hitpoints.pcx` palette, as 256 packed `0xRRGGBB`
+ * entries: red `#ff0000` at index 0 (empty) → orange → yellow-green `#d4ff4b` at 255 (full). The
+ * original ships this as a PALETTE whose entries sweep the colour with the index — the decoded
+ * evidence that a bar's colour follows its LEVEL. How the engine consumes it isn't decompiled
  * (`PalBarHitpoints` is loaded in OpenVikings but its draw site isn't ported), so the panel's reading —
- * fill colour = `ramp[level]`, one colour per bar — is a named approximation of a per-level ramp.
+ * fill colour = `ramp[level]`, one colour per bar — is a named approximation. EVERY stat gauge uses
+ * this ramp (user decision 2026-07-11): the sibling `bar_standart` ramp stays green until ~15%, so a
+ * draining need showed no visible colour change; this one walks green→orange→red across the range.
  */
-export interface GuiBarRamps {
-  readonly hitpoints: readonly number[];
-  readonly standart: readonly number[];
-}
+export type GuiBarRamp = readonly number[];
 
 /**
- * Read the two bar-palette LUT rows CPU-side: fetch the same `/bobs/gui-palettes-lut.png` the renderer
- * samples on the GPU, draw it onto a 2D canvas, and pack each row's 256 RGB entries. `undefined` when
+ * Read the `bar_hitpoints` LUT row CPU-side: fetch the same `/bobs/gui-palettes-lut.png` the renderer
+ * samples on the GPU, draw it onto a 2D canvas, and pack the row's 256 RGB entries. `undefined` when
  * the LUT is absent (no `content/`) or unreadable — the bars then fall back to their flat banded colours.
  */
-export async function loadGuiBarRamps(): Promise<GuiBarRamps | undefined> {
+export async function loadGuiBarRamp(): Promise<GuiBarRamp | undefined> {
   try {
     const response = await fetch(`/bobs/${GUI_PALETTE_LUT_STEM}.png`);
     if (!response.ok) return undefined;
@@ -127,15 +124,12 @@ export async function loadGuiBarRamps(): Promise<GuiBarRamps | undefined> {
     const ctx = canvas.getContext('2d');
     if (ctx === null) return undefined;
     ctx.drawImage(bitmap, 0, 0);
-    const rowColors = (name: GuiPaletteName): number[] => {
-      const row = ctx.getImageData(0, guiPaletteRow(name), bitmap.width, 1).data;
-      const colors: number[] = [];
-      for (let x = 0; x < bitmap.width; x++) {
-        colors.push(((row[x * 4] ?? 0) << 16) | ((row[x * 4 + 1] ?? 0) << 8) | (row[x * 4 + 2] ?? 0));
-      }
-      return colors;
-    };
-    return { hitpoints: rowColors('bar_hitpoints'), standart: rowColors('bar_standart') };
+    const row = ctx.getImageData(0, guiPaletteRow('bar_hitpoints'), bitmap.width, 1).data;
+    const colors: number[] = [];
+    for (let x = 0; x < bitmap.width; x++) {
+      colors.push(((row[x * 4] ?? 0) << 16) | ((row[x * 4 + 1] ?? 0) << 8) | (row[x * 4 + 2] ?? 0));
+    }
+    return colors;
   } catch {
     return undefined;
   }

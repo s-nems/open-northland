@@ -307,8 +307,8 @@ function drawGeneralSection(
   chrome.textAt(model.meta, layout.meta.x, layout.meta.y + ROW_TEXT_PAD * s, 'dimmed');
 
   // Stat bars: the model's pinned label (Zdrowie/Głód/…) in a fixed column, then a level-coloured
-  // gauge (the decoded ramp sweeps red→green with the level) filling the REST of the row; the hover
-  // value lives in the panel's cursor tooltip.
+  // gauge (the decoded ramp sweeps red→orange→green with the level) filling the REST of the row; the
+  // hover value lives in the panel's cursor tooltip.
   const labelW = Math.round(STAT_LABEL_W * s);
   const barH = Math.round(STAT_BAR_H * s);
   model.bars.forEach((barModel, i) => {
@@ -318,7 +318,7 @@ function drawGeneralSection(
     chrome.bar(
       { x: r.x + labelW, y: r.y + Math.round((r.h - barH) / 2), w: r.w - labelW, h: barH },
       barModel.pct,
-      barModel.kind === 'health' ? 'hitpoints' : 'standart',
+      'gauge',
     );
   });
 }
