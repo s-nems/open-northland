@@ -1,22 +1,16 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  Building,
   Carrying,
   CurrentAtomic,
   DeliveryFlag,
   Felling,
   GroundDrop,
   HarvestedBy,
-  JobAssignment,
-  MoveGoal,
   Owner,
-  PathFollow,
-  PathRequest,
   Position,
   Resource,
   Settler,
   Stockpile,
-  Stump,
   WorkFlag,
 } from '../../src/components/index.js';
 import type { Command } from '../../src/core/commands.js';
@@ -38,6 +32,7 @@ import {
   setWorkFlag,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
  * THE FLAG-BOUND GATHERER (user-specified behaviour): each gatherer is bound to its own flag ({@link
@@ -66,32 +61,7 @@ const WOOD_GATHERING = testContent().goods.find((g) => g.id === 'wood')?.gatheri
 const CHOPS_TO_FELL = WOOD_GATHERING?.chopsToFell ?? 0;
 const TREE_WOOD_YIELD = WOOD_GATHERING?.yieldPerNode ?? 0;
 
-function clearStores(): void {
-  for (const c of [
-    Position,
-    Settler,
-    Resource,
-    Felling,
-    Stump,
-    GroundDrop,
-    HarvestedBy,
-    WorkFlag,
-    DeliveryFlag,
-    Owner,
-    Building,
-    Stockpile,
-    Carrying,
-    CurrentAtomic,
-    MoveGoal,
-    PathFollow,
-    PathRequest,
-    JobAssignment,
-  ]) {
-    c.store.clear();
-  }
-}
-
-beforeEach(clearStores);
+beforeEach(clearComponentStores);
 
 function ctxOf(sim: Simulation): SystemContext {
   return {

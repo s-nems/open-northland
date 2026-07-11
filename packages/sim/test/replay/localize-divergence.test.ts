@@ -32,7 +32,7 @@ const VIKING = 1;
 const GRASS = 0;
 
 /** Clear every component store (shared singletons) so each sim phase starts clean. */
-function clearStores(): void {
+function clearComponentStores(): void {
   for (const c of Object.values(components)) {
     if (typeof c === 'object' && c !== null && 'store' in c) {
       (c as Component<unknown>).store.clear();
@@ -44,7 +44,7 @@ function grassMap(width: number, height: number): TerrainMap {
   return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
 }
 
-beforeEach(clearStores);
+beforeEach(clearComponentStores);
 
 /** Drive a fresh sim through a scripted schedule, recording its log + a per-tick HashTrace (with snapshots). */
 function recordRun(
@@ -78,12 +78,12 @@ describe('localizeDivergence', () => {
       [7, [{ kind: 'spawnSettler', jobType: CARPENTER, x: 4, y: 0, tribe: VIKING }]],
     ]);
 
-    clearStores();
+    clearComponentStores();
     const a = recordRun(7, 20, base, map);
-    clearStores();
+    clearComponentStores();
     const b = recordRun(7, 20, variant, map);
 
-    clearStores();
+    clearComponentStores();
     const report = localizeDivergence(a.run, a.trace, b.run, b.trace);
 
     expect(report).not.toBeNull();
@@ -114,9 +114,9 @@ describe('localizeDivergence', () => {
       [5, [{ kind: 'placeBuilding', buildingType: SAWMILL, x: 2, y: 0, tribe: VIKING }]],
     ]);
 
-    clearStores();
+    clearComponentStores();
     const a = recordRun(2, 15, base, map);
-    clearStores();
+    clearComponentStores();
     const b = recordRun(2, 15, variant, map);
 
     // Hand-compute the expected diff: replay BOTH runs to the split tick (serially, clearing between),
@@ -125,13 +125,13 @@ describe('localizeDivergence', () => {
     expect(splitTick).toBe(5);
     if (splitTick === undefined) return;
 
-    clearStores();
+    clearComponentStores();
     const snapA = replay({ ...a.run, untilTick: splitTick }).snapshot();
-    clearStores();
+    clearComponentStores();
     const snapB = replay({ ...b.run, untilTick: splitTick }).snapshot();
     const expectedDiff = diffSnapshots(snapA, snapB);
 
-    clearStores();
+    clearComponentStores();
     const report = localizeDivergence(a.run, a.trace, b.run, b.trace);
     expect(report).not.toBeNull();
     // Byte-identical: the composition just wires divergedFrom → replay×2 → diffSnapshots.
@@ -145,12 +145,12 @@ describe('localizeDivergence', () => {
       [2, [{ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING }]],
     ]);
 
-    clearStores();
+    clearComponentStores();
     const a = recordRun(3, 12, schedule, map);
-    clearStores();
+    clearComponentStores();
     const b = recordRun(3, 12, schedule, map); // same seed + same schedule ⇒ identical run
 
-    clearStores();
+    clearComponentStores();
     expect(localizeDivergence(a.run, a.trace, b.run, b.trace)).toBeNull();
   });
 });

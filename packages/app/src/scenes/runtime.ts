@@ -45,10 +45,11 @@ export function createSceneSim(scene: SceneDefinition, extras?: SandboxContentEx
   });
   scene.build(sim);
   // Scenes run with the needs mechanic OFF by default (user decision 2026-07-11): a checklist unit
-  // starving mid-inspection would fail the sign-off for the wrong reason. Enqueued at build, so it
+  // starving mid-inspection would fail the sign-off for the wrong reason. Enqueued AFTER build, so it
   // applies on tick 1's commandSystem BEFORE that tick's needsSystem — identically in the headless twin
-  // and the browser run. Live maps keep the sim default (enabled); the admin panel's "Potrzeby" button
-  // flips it at runtime either way.
-  sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
+  // and the browser run — and a build-time enqueue can't override it (FIFO, later write wins), which is
+  // why a needs-exercising scene opts back in via `SceneDefinition.needs` instead. Live maps keep the
+  // sim default (enabled); the admin panel's "Potrzeby" button flips it at runtime either way.
+  if (scene.needs !== true) sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
   return sim;
 }

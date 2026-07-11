@@ -1,7 +1,7 @@
 import { parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
-import type { Component, Entity } from '../../src/ecs/world.js';
+import type { Entity } from '../../src/ecs/world.js';
 import {
   CORE_INVARIANTS,
   Simulation,
@@ -10,6 +10,7 @@ import {
   halfCellMapFromCells,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
+import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
  * The `placeResource` command (and its shared {@link createResourceNode} assembly) at the COMPONENT
@@ -106,13 +107,6 @@ function grassMap(width: number, height: number): TerrainMap {
   return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(0) });
 }
 
-/** Clear every component store (module-level singletons) between sims. */
-function clearStores(): void {
-  for (const c of Object.values(components)) {
-    if (typeof c === 'object' && c !== null && 'store' in c) (c as Component<unknown>).store.clear();
-  }
-}
-
 function newSim(): Simulation {
   return new Simulation({ seed: 1, content: footprintedContent(), map: grassMap(12, 12) });
 }
@@ -126,7 +120,7 @@ function nodeOf(sim: Simulation, good: number): Entity | null {
 }
 
 describe('placeResource command', () => {
-  beforeEach(clearStores);
+  beforeEach(clearComponentStores);
 
   it('stamps a felled tree for a fell good (Felling, no MineDeposit)', () => {
     const sim = newSim();
@@ -199,7 +193,7 @@ describe('placeResource command', () => {
 
   it('is byte-identical from the same seed and holds the core invariants', () => {
     const runOnce = (): string => {
-      clearStores();
+      clearComponentStores();
       const sim = newSim();
       sim.enqueue({
         kind: 'placeResource',

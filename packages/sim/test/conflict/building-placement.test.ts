@@ -136,14 +136,14 @@ function buildingsPlaced(sim: Simulation): number {
 
 // Component stores are module-level singletons shared across Simulation instances — clear ALL of
 // them (not a hand-picked subset) so no earlier test's entity leaks in (AGENTS.md [ac6a287]).
-function clearStores(): void {
+function clearComponentStores(): void {
   for (const c of Object.values(components)) {
     if (typeof c === 'object' && c !== null && 'store' in c && c.store instanceof Map) {
       c.store.clear();
     }
   }
 }
-beforeEach(clearStores);
+beforeEach(clearComponentStores);
 
 describe('canPlaceBuilding — the free-placement collision rule', () => {
   it('accepts a footprinted type on open ground and places it through the command seam', () => {
@@ -453,7 +453,7 @@ describe('door cell — settlers interact with a house at its entry point', () =
 describe('determinism', () => {
   it('two same-seed runs through placement + rejection + pathing hash identically', () => {
     const run = (): string => {
-      clearStores();
+      clearComponentStores();
       const sim = mappedSim();
       sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
       sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 6, y: 5, tribe: VIKING }); // rejected

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { Health, HerdMember, Position, Settler } from '../../src/components/index.js';
 import { Simulation, type TerrainMap, buildTerrainGraph, seedAnimalHerds } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
+import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
  * Tests for the **map populator** `seedAnimalHerds` — the pure command-producer that seeds a map's
@@ -35,14 +36,7 @@ function grass(width: number, height: number): TerrainMap {
   return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
 }
 
-function clearStores(): void {
-  Position.store.clear();
-  Settler.store.clear();
-  Health.store.clear();
-  HerdMember.store.clear();
-}
-
-beforeEach(clearStores);
+beforeEach(clearComponentStores);
 
 describe('seedAnimalHerds (map populator)', () => {
   it('emits one spawnAnimalHerd per walkable cell at stride 1, only at walkable cells', () => {

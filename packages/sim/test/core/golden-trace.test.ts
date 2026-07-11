@@ -1,22 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  Age,
-  Building,
-  Carrying,
-  CurrentAtomic,
-  Felling,
-  GroundDrop,
-  JobAssignment,
-  MoveGoal,
-  PathFollow,
-  PathRequest,
-  Position,
-  Production,
-  Resource,
-  Settler,
-  Stockpile,
-  Stump,
-} from '../../src/components/index.js';
+import { Felling, Position, Resource } from '../../src/components/index.js';
 import {
   CORE_INVARIANTS,
   Simulation,
@@ -26,6 +9,7 @@ import {
   halfCellMapFromCells,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
+import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
  * GOLDEN STATE-HASH + GOLDEN ATOMIC-ACTION TRACE — the Phase-2 determinism tripwire (plan).
@@ -80,30 +64,8 @@ const HARVEST_ATOMIC = 24;
 
 // Component stores are module-level singletons — clear every store this slice touches so the run is
 // scoped to this test regardless of execution order (see atomic-planner.test.ts).
-function clearStores(): void {
-  for (const c of [
-    Position,
-    Settler,
-    Resource,
-    Felling,
-    Stump,
-    GroundDrop,
-    Building,
-    Stockpile,
-    Carrying,
-    CurrentAtomic,
-    MoveGoal,
-    PathFollow,
-    PathRequest,
-    Production,
-    JobAssignment,
-    Age,
-  ]) {
-    c.store.clear();
-  }
-}
 
-beforeEach(clearStores);
+beforeEach(clearComponentStores);
 
 function grassMap(width: number, height: number): TerrainMap {
   return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
@@ -123,7 +85,7 @@ interface GoldenRun {
  * of `goodProduced` events, and the first invariant violation (checked every tick).
  */
 function runSlice(seed: number, ticks: number): GoldenRun {
-  clearStores();
+  clearComponentStores();
   const sim = new Simulation({ seed, content: testContent(), map: grassMap(6, 1) });
 
   // Placement via the command log (CommandSystem applies these on tick 1) — the seam the UI uses.

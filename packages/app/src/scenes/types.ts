@@ -31,6 +31,10 @@ export interface SceneDefinition {
   readonly terrain: CellTerrainMap;
   /** Populate the fresh sim (enqueue commands, create resource nodes). Runs once before any tick. */
   readonly build: (sim: Simulation) => void;
+  /** Opt back INTO the needs mechanic (hunger/fatigue/piety/enjoyment rise + starvation). Scenes
+   *  default to needs OFF (a checklist unit must not starve mid-inspection — see `createSceneSim`);
+   *  a scene that exercises needs/starvation sets this true. */
+  readonly needs?: boolean;
   /** Ticks the headless acceptance test advances before checking {@link checks}. */
   readonly runTicks: number;
   /**

@@ -151,9 +151,9 @@ function upgradedEvents(sim: Simulation): readonly SimEvent[] {
 // Clear EVERY component store — the module-level singleton stores are shared across Simulation
 // instances (AGENTS.md [ac6a287]); a store missed here leaks a prior test's entity, which
 // (e.g. a stale Health/CurrentAtomic on a reused id) silently diverts the carrier-delivery scan.
-beforeEach(clearStores);
+beforeEach(clearComponentStores);
 
-function clearStores(): void {
+function clearComponentStores(): void {
   for (const c of Object.values(components)) {
     if (typeof c === 'object' && c !== null && 'store' in c && c.store instanceof Map) {
       c.store.clear();
@@ -464,7 +464,7 @@ describe('constructionSystem — material-DELIVERY dispatch (carrier path)', () 
 
   it('is deterministic — two same-seed delivery+build runs reach the same finished state hash', () => {
     const run = (): string => {
-      clearStores();
+      clearComponentStores();
       const sim = new Simulation({ seed: 9, content: constructionContent(), map: grassMap(6, 1) });
       siteAt(sim, HOUSE, 3, 0);
       loadedCarrierAt(sim, 0, 0, STONE, 1);
@@ -552,7 +552,7 @@ describe('constructionSystem — home level-up', () => {
 
   it('is deterministic — two same-seed upgrade runs reach the same state hash', () => {
     const run = (): string => {
-      clearStores();
+      clearComponentStores();
       const sim = new Simulation({ seed: 5, content: levelChainContent() });
       placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 2 });
       constructionSystem(sim.world, ctxOf(sim));
@@ -651,7 +651,7 @@ describe('constructionSystem — upgrade-material DELIVERY dispatch (carrier pat
 
   it('is deterministic — two same-seed upgrade-delivery runs reach the same state hash', () => {
     const run = (): string => {
-      clearStores();
+      clearComponentStores();
       const sim = new Simulation({ seed: 9, content: levelChainWithCarrier(), map: grassMap(6, 1) });
       builtHomeAt(sim, HOME_L0, 0, 3, 0);
       loadedCarrierAt(sim, 0, 0, STONE, 1);

@@ -1,4 +1,4 @@
-import { Health, Settler, needsEnabled } from '../../components/index.js';
+import { Age, Health, Settler, needsEnabled } from '../../components/index.js';
 import { type Fixed, ONE, fx } from '../../core/fixed.js';
 import type { System } from '../context.js';
 
@@ -73,12 +73,13 @@ export const ENJOYMENT_RISE_PER_TICK: Fixed = fx.div(ONE, fx.fromInt(32768));
  */
 export const STARVATION_DAMAGE_INTERVAL_TICKS = 10;
 /**
- * How many starvation bites empty a full `Health` pool: each bite is `max(1, ⌊max/240⌋)`, so a settler
- * dies after ~240 intervals × 10 ticks = 2400 ticks ≈ 2 minutes of full starvation (pools under 240 HP
- * go somewhat faster — the 1-damage floor). APPROXIMATED (user decision 2026-07-11: "starving settlers
- * lose health and die"): the original starves settlers to death, but its rate rides the undecoded
- * per-animation event scale (see {@link HUNGER_RISE_PER_TICK}) — two minutes is our named stand-in,
- * chosen to give a player time to react after the hunger bar empties.
+ * How many starvation bites empty a full `Health` pool: each bite is `max(1, ⌊max/240⌋)`, so death
+ * takes 240..479 intervals for a pool ≥ 240 HP (truncation — the default 300-HP pool bites 1 and dies
+ * after 300 intervals × 10 ticks = 3000 ticks ≈ 2.5 minutes) and exactly `max` intervals for a smaller
+ * pool (the 1-damage floor). APPROXIMATED (user decision 2026-07-11: "starving settlers lose health
+ * and die"): the original starves settlers to death, but its rate rides the undecoded per-animation
+ * event scale (see {@link HUNGER_RISE_PER_TICK}) — a couple of minutes is our named stand-in, chosen
+ * to give a player time to react after the hunger bar empties.
  */
 export const STARVATION_BITES_TO_DIE = 240;
 
@@ -100,9 +101,14 @@ export const STARVATION_BITES_TO_DIE = 240;
  *
  * **Starvation** is this system's damage half: a settler whose hunger is pinned at `ONE` loses
  * hitpoints on the {@link STARVATION_DAMAGE_INTERVAL_TICKS} beat until the eat drive feeds it or the
- * pool empties (the CleanupSystem then reaps it like any other death). ANIMALS are exempt (`jobType`
- * null): they get hungry but have no eat/graze mechanic yet, so starving them would silently empty
- * every map — a named approximation until grazing lands.
+ * pool empties (the CleanupSystem then reaps it like any other death). Exempt — because nothing can
+ * feed them today, so starving them would only depopulate the map, a named approximation each:
+ *  - ANIMALS (`jobType` null): no eat/graze mechanic yet;
+ *  - JOBLESS settlers (also `jobType` null — e.g. a worker whose workplace was demolished): the eat
+ *    drive lives in the job planner, which skips a jobless settler (`ai.ts` planNeeds);
+ *  - BABIES/CHILDREN ({@link Age} carriers, removed at adulthood): the planner skips them too — a
+ *    baby is cared for, it doesn't self-feed — and starving them would kill every newborn before its
+ *    `GROWUP_TICKS` boundary, turning reproduction into a death loop.
  *
  * The whole system is gated by the {@link needsEnabled} world rule (the `setNeedsEnabled` command):
  * disabled, needs freeze where they are and starvation stops — the dev/admin lever scenes default to.
@@ -126,9 +132,16 @@ export const needsSystem: System = (world, ctx) => {
     settler.piety = risenPiety > ONE ? ONE : risenPiety;
     const risenEnjoyment = fx.add(settler.enjoyment, ENJOYMENT_RISE_PER_TICK);
     settler.enjoyment = risenEnjoyment > ONE ? ONE : risenEnjoyment;
-    // Starvation: only a HUMAN settler (animals have no graze mechanic yet) with its hunger pinned at
-    // the top of the bar bleeds hitpoints; the 0-HP reap (and its settlerDied event) is CleanupSystem's.
-    if (starvationBeat && settler.hunger === ONE && settler.jobType !== null && world.has(e, Health)) {
+    // Starvation: only a settler that COULD have fed itself bleeds hitpoints — animals/jobless
+    // (jobType null) and babies/children (Age carriers) have no working eat path yet, so they are
+    // exempt (see the header). The 0-HP reap (and its settlerDied event) is CleanupSystem's.
+    if (
+      starvationBeat &&
+      settler.hunger === ONE &&
+      settler.jobType !== null &&
+      !world.has(e, Age) &&
+      world.has(e, Health)
+    ) {
       const health = world.get(e, Health);
       const bite = Math.max(1, Math.trunc(health.max / STARVATION_BITES_TO_DIE));
       health.hitpoints = Math.max(0, health.hitpoints - bite);

@@ -21,7 +21,7 @@ const VIKING = 1;
 const GRASS = 0;
 
 /** Clear every component store (shared singletons) so each run starts clean. */
-function clearStores(): void {
+function clearComponentStores(): void {
   for (const c of Object.values(components)) {
     if (typeof c === 'object' && c !== null && 'store' in c) {
       (c as Component<unknown>).store.clear();
@@ -52,7 +52,7 @@ function realRunSnapshot(): WorldSnapshot {
 }
 
 describe('snapshot is transferable (Web-Worker boundary)', () => {
-  beforeEach(clearStores);
+  beforeEach(clearComponentStores);
 
   it('survives structuredClone — no functions / class instances / live Maps', () => {
     const snap = realRunSnapshot();

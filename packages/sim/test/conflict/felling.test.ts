@@ -5,10 +5,7 @@ import {
   CurrentAtomic,
   Felling,
   GroundDrop,
-  JobAssignment,
   MoveGoal,
-  PathFollow,
-  PathRequest,
   Position,
   Resource,
   Settler,
@@ -19,6 +16,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import { CORE_INVARIANTS, Simulation, type TerrainMap, checkInvariants, fx } from '../../src/index.js';
 import { type SystemContext, aiSystem, atomicSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
  * FAITHFUL MULTI-HIT HARVEST + DROP-ON-GROUND (historical plan phase 3). A wood node is FELLED, not gathered
@@ -43,28 +41,7 @@ const WOOD_GATHERING = testContent().goods.find((g) => g.id === 'wood')?.gatheri
 const CHOPS_TO_FELL = WOOD_GATHERING?.chopsToFell ?? 0;
 const TREE_WOOD_YIELD = WOOD_GATHERING?.yieldPerNode ?? 0;
 
-function clearStores(): void {
-  for (const c of [
-    Position,
-    Settler,
-    Resource,
-    Felling,
-    Stump,
-    GroundDrop,
-    Building,
-    Stockpile,
-    Carrying,
-    CurrentAtomic,
-    MoveGoal,
-    PathFollow,
-    PathRequest,
-    JobAssignment,
-  ]) {
-    c.store.clear();
-  }
-}
-
-beforeEach(clearStores);
+beforeEach(clearComponentStores);
 
 function ctxOf(sim: Simulation): SystemContext {
   return {

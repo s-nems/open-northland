@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
 import { Health, Position, Settler } from '../../src/components/index.js';
-import type { Component, Entity } from '../../src/ecs/world.js';
+import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, ONE, Simulation, fx } from '../../src/index.js';
 import {
   ENJOYMENT_RISE_PER_TICK,
@@ -14,6 +14,7 @@ import {
   needsSystem,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
  * Unit tests for the NeedsSystem — settlers get hungry AND tired over time. Each tick a settler's
@@ -26,13 +27,7 @@ import { testContent } from '../fixtures/content.js';
 const VIKING = 1;
 const WOODCUTTER = 1;
 
-beforeEach(() => {
-  // Clear the WHOLE component namespace, not a hand-picked subset (AGENTS: the multi-sim trap).
-  for (const c of Object.values(components)) {
-    const store = (c as Partial<Component<unknown>>).store;
-    if (store instanceof Map) store.clear();
-  }
-});
+beforeEach(clearComponentStores);
 
 function ctxOf(sim: Simulation): SystemContext {
   return {
@@ -308,10 +303,21 @@ describe('needsSystem — starvation (a pinned hunger drains hitpoints)', () => 
     expect(sim.world.has(e, Settler)).toBe(false); // reaped by cleanupSystem
   });
 
-  it('exempts animals (jobType null — no graze mechanic to save them yet)', () => {
+  it('exempts animals and jobless settlers (jobType null — no eat/graze path to save them)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = starvingSettler(sim, 300);
     sim.world.get(e, Settler).jobType = null;
+    for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 2; i++) sim.step();
+    expect(sim.world.get(e, Health).hitpoints).toBe(300);
+  });
+
+  it('exempts a growing baby/child (Age carrier) — a newborn must reach adulthood, not starve first', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    // A newborn's jobType is an age-class id (non-null), so only the Age component marks it as cared-for;
+    // the AI planner runs no needs-drives for it, so without this exemption every borne baby would die
+    // of hunger before its GROWUP_TICKS boundary and reproduction would be a death loop.
+    const e = starvingSettler(sim, 300);
+    sim.world.add(e, components.Age, { ticks: 0 });
     for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 2; i++) sim.step();
     expect(sim.world.get(e, Health).hitpoints).toBe(300);
   });

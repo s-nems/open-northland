@@ -31,7 +31,7 @@ const CARPENTER = 2;
 const VIKING = 1;
 const GRASS = 0;
 
-function clearStores(): void {
+function clearComponentStores(): void {
   for (const c of Object.values(components)) {
     if (typeof c === 'object' && c !== null && 'store' in c) {
       (c as Component<unknown>).store.clear();
@@ -55,7 +55,7 @@ function rawContent(mutate?: (c: ReturnType<typeof testContent>) => void): unkno
   return blob;
 }
 
-beforeEach(clearStores);
+beforeEach(clearComponentStores);
 
 /** Drive a fresh sim through a scripted command schedule and return its log + per-tick hashes. */
 function recordRun(
@@ -90,7 +90,7 @@ describe('rebaseContent', () => {
     const { log, hashes } = recordRun(7, 60, schedule, grassMap(6, 1));
     const finalHash = hashes[hashes.length - 1];
 
-    clearStores();
+    clearComponentStores();
     const result = rebaseContent(rawContent(), {
       seed: 7,
       map: grassMap(6, 1),
@@ -116,7 +116,7 @@ describe('rebaseContent', () => {
     const { log, hashes } = recordRun(7, 60, schedule, grassMap(6, 1));
     const originalFinal = hashes[hashes.length - 1];
 
-    clearStores();
+    clearComponentStores();
     const tweaked = rebaseContent(
       rawContent((c) => {
         const hq = c.buildings.find((b) => b.id === 'headquarters');
@@ -149,7 +149,7 @@ describe('rebaseContent', () => {
     const { log, hashes } = recordRun(7, 80, schedule, grassMap(6, 1));
     const originalFinal = hashes[hashes.length - 1];
 
-    clearStores();
+    clearComponentStores();
     rebaseContent(
       rawContent((c) => {
         const sawmill = c.buildings.find((b) => b.id === 'sawmill');
@@ -158,7 +158,7 @@ describe('rebaseContent', () => {
       { seed: 7, map: grassMap(6, 1), log, untilTick: 80 },
     );
 
-    clearStores();
+    clearComponentStores();
     const back = rebaseContent(rawContent(), { seed: 7, map: grassMap(6, 1), log, untilTick: 80 });
     expect(back.kind).toBe('ok');
     if (back.kind !== 'ok') return;
@@ -181,7 +181,7 @@ describe('rebaseContent', () => {
     const finalHash = hashes[hashes.length - 1];
 
     // First reload (a balance edit), rebased from the live run's log.
-    clearStores();
+    clearComponentStores();
     const first = rebaseContent(
       rawContent((c) => {
         const sawmill = c.buildings.find((b) => b.id === 'sawmill');
@@ -199,7 +199,7 @@ describe('rebaseContent', () => {
 
     // Second reload: edit AGAIN, rebasing off the FIRST rebased sim's log (the chain). Back to the
     // ORIGINAL rules ⇒ the original state, proving the history survived the first rebase intact.
-    clearStores();
+    clearComponentStores();
     const second = rebaseContent(rawContent(), {
       seed: 7,
       map: grassMap(6, 1),
@@ -267,7 +267,7 @@ describe('rebaseContent', () => {
     ]);
     const { log } = recordRun(3, 20, schedule, grassMap(4, 1));
 
-    clearStores();
+    clearComponentStores();
     const result = rebaseContent(rawContent(), { seed: 3, map: grassMap(4, 1), log });
     expect(result.kind).toBe('ok');
     if (result.kind !== 'ok') return;
@@ -276,10 +276,10 @@ describe('rebaseContent', () => {
 
     // Identical to an explicit replay to the same tick (rebaseContent IS replay + validation).
     // Capture each hash as a plain string BEFORE the next sim clobbers the shared stores.
-    clearStores();
+    clearComponentStores();
     const direct = replay({ content: testContent(), seed: 3, map: grassMap(4, 1), log, untilTick: 4 });
     const directHash = direct.hashState();
-    clearStores();
+    clearComponentStores();
     const viaRebase = rebaseContent(rawContent(), { seed: 3, map: grassMap(4, 1), log });
     expect(viaRebase.kind).toBe('ok');
     if (viaRebase.kind !== 'ok') return;

@@ -3,6 +3,7 @@ import { Age, Health, HerdMember, MoveSpeed, Position, Settler } from '../../src
 import type { Entity } from '../../src/ecs/world.js';
 import { ONE, Simulation, cellAnchorNode, fx, nodeOfPosition } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
+import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
  * Tests for the `spawnAnimalHerd` command — the animal-PLACEMENT mechanic (plan Phase 4 "animals as
@@ -22,16 +23,7 @@ const BEE = 11; // solitary decorative animal: no group size, searchForLeader fa
 const BOAR = 12; // passive-provokable: moveSpeed 8 but NO runSpeed (the walk-known/run-omitted case)
 const VIKING = 1; // a civilization — no animaltypes record (bad input for spawnAnimalHerd)
 
-function clearStores(): void {
-  Position.store.clear();
-  Settler.store.clear();
-  Health.store.clear();
-  HerdMember.store.clear();
-  Age.store.clear();
-  MoveSpeed.store.clear();
-}
-
-beforeEach(clearStores);
+beforeEach(clearComponentStores);
 
 function fresh(seed = 1): Simulation {
   return new Simulation({ seed, content: testContent() });
@@ -162,7 +154,7 @@ describe('spawnAnimalHerd command', () => {
 
   it('two same-seed runs spawn the same herd (deterministic — no RNG)', () => {
     const run = (): string => {
-      clearStores();
+      clearComponentStores();
       const sim = fresh(7);
       spawnHerdAt(sim, BEAR, 4, 6);
       sim.step();

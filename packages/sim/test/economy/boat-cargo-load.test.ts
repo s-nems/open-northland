@@ -1,24 +1,11 @@
 import { type ContentSet, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  Building,
-  Carrying,
-  CurrentAtomic,
-  JobAssignment,
-  MoveGoal,
-  PathFollow,
-  PathRequest,
-  Position,
-  Production,
-  Resource,
-  Settler,
-  Stockpile,
-  Vehicle,
-} from '../../src/components/index.js';
+import { Building, Carrying, Position, Settler, Stockpile, Vehicle } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { ONE, Simulation, type TerrainMap, fx } from '../../src/index.js';
 import { type SystemContext, stockCapacity } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
  * The cargo-LOAD gate for **boats as mobile stores** — the *load half* of the empty hull `placeBoat`
@@ -59,23 +46,7 @@ function grassMap(width: number, height: number): TerrainMap {
   return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
 }
 
-function clearStores(): void {
-  Position.store.clear();
-  Settler.store.clear();
-  Resource.store.clear();
-  Building.store.clear();
-  Stockpile.store.clear();
-  Carrying.store.clear();
-  CurrentAtomic.store.clear();
-  MoveGoal.store.clear();
-  PathFollow.store.clear();
-  PathRequest.store.clear();
-  Production.store.clear();
-  JobAssignment.store.clear();
-  Vehicle.store.clear();
-}
-
-beforeEach(clearStores);
+beforeEach(clearComponentStores);
 
 function carrierAt(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
@@ -182,7 +153,7 @@ describe('boat cargo-load gate — stockCapacity over a Vehicle hull', () => {
 
   it('is deterministic: two same-seed runs of the load reach the same state hash', () => {
     const run = (): string => {
-      clearStores();
+      clearComponentStores();
       const sim = new Simulation({ seed: 9, content: boatContent(), map: grassMap(3, 1) });
       carrierAt(sim, 0, 0);
       sawmillAt(sim, 1, 0, 2);

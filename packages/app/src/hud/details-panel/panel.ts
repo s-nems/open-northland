@@ -139,6 +139,10 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   let lastModel: UnitPanelModel = { kind: 'empty' };
   let layout: DetailsLayout | null = null;
   let hoverAction: ButtonHit['action'] | null = null;
+  /** The last known cursor position over the canvas (client coords), or null after it left — lets a
+   *  rebuild refresh a STILL cursor's tooltip with live values (a held hover must not show a stale
+   *  "80%" while the bar drains; user feedback 2026-07-11). */
+  let lastPointer: { clientX: number; clientY: number } | null = null;
   /** The selected stock category tab (0–7); reset to the fullest category (`defaultStockTab`) on each new selection. */
   let activeStockTab = 0;
 
@@ -288,17 +292,12 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
 
   /** The hovered Ogólne stat bar's VALUE ("300/1000" health points, "75%" need satisfaction), or null.
    *  Probes the whole label+gauge row (layout.bars, same order as model.bars) — more forgiving than the
-   *  64-px gauge alone, and the label row is unambiguous. */
+   *  gauge alone, and the label row is unambiguous. */
   const hitBarValue = (x: number, y: number): string | null => {
     if (layout?.kind !== 'settler' || lastModel.kind !== 'settler') return null;
     const i = layout.bars.findIndex((r) => contains(r, x, y));
     return i < 0 ? null : (lastModel.bars[i]?.hover ?? null);
   };
-
-  /** The last known cursor position over the canvas (client coords), or null after it left — lets the
-   *  tick refresh a STILL cursor's tooltip with live values (a held hover must not show a stale "80%"
-   *  while the bar drains; user feedback 2026-07-11). */
-  let lastPointer: { clientX: number; clientY: number } | null = null;
 
   /** Recompute + show/hide the value/name tooltip for the cursor at a client point: a Magazyn stock
    *  row's good name or a category TAB's name for a building (the tab glyphs are cryptic unread art,

@@ -150,7 +150,7 @@ function grassMap(width: number, height: number): TerrainMap {
 }
 
 /** Clear every component store (module-level singletons) so runs can't leak into each other. */
-function clearStores(): void {
+function clearComponentStores(): void {
   for (const c of Object.values(components)) {
     if (typeof c === 'object' && c !== null && 'store' in c) {
       (c as Component<unknown>).store.clear();
@@ -321,7 +321,7 @@ interface FuzzRun {
 }
 
 function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
-  clearStores();
+  clearComponentStores();
   const sim = new Simulation({ seed: fuzzSeed, content: fuzzContent(), map: grassMap(MAP_W, MAP_H) });
   // An independent generator stream (any fixed derivation of the fuzz seed works — it only must
   // differ from the sim's seed so the two streams aren't trivially correlated).
@@ -356,7 +356,7 @@ describe('fuzz: randomized command streams stay deterministic, replayable, and i
     it(`seed ${seed}: replaying the recorded log reproduces the final state`, () => {
       const live = runFuzz(seed, TICKS);
       expect(live.log.length).toBeGreaterThan(0); // the stream actually exercised the command seam
-      clearStores(); // replay() rebuilds in the shared stores — the live sim is superseded
+      clearComponentStores(); // replay() rebuilds in the shared stores — the live sim is superseded
       const replayed = replay({
         content: fuzzContent(),
         seed,

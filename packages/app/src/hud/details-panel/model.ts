@@ -92,7 +92,7 @@ const BAR_WARN_BELOW_PCT = 50;
 const BAR_CRITICAL_BELOW_PCT = 25;
 
 /** The green/orange/red band a 0..100 bar level falls into — the no-`content/` fallback colouring
- *  (see `chrome.ts` {@link import('./chrome.js').BarRampName}). */
+ *  (`chrome.ts` `BAR_TONE_FILL`; with content the decoded `GuiBarRamp` colours the gauge instead). */
 export function barTone(pct: number): BarTone {
   if (pct < BAR_CRITICAL_BELOW_PCT) return 'critical';
   if (pct < BAR_WARN_BELOW_PCT) return 'warn';

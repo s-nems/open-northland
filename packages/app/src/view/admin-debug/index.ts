@@ -162,6 +162,34 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     refresh();
   };
 
+  // The global needs toggle ("wyłącz potrzeby" — user decision 2026-07-11): flips the sim's
+  // setNeedsEnabled rule so test units don't starve mid-session. Scenes boot with needs OFF, maps ON.
+  // The label re-reads the live rule every time the admin panel OPENS (the mount-time value may
+  // predate the scene's own boot toggle, and another surface could flip the rule later); after a
+  // click it tracks the value just requested — the command applies next tick, well before another
+  // click can land.
+  const needsButton = el('button', BUTTON_STYLE);
+  let needsOn = deps.needsEnabled?.() ?? true;
+  const paintNeedsButton = (): void => {
+    needsButton.textContent = needsOn
+      ? 'Potrzeby: WŁĄCZONE (klik = wyłącz)'
+      : 'Potrzeby: WYŁĄCZONE (klik = włącz)';
+    setButtonActive(needsButton, needsOn);
+  };
+  const refreshNeedsButton = (): void => {
+    needsOn = deps.needsEnabled?.() ?? needsOn;
+    paintNeedsButton();
+  };
+  needsButton.addEventListener('click', () => {
+    needsOn = !needsOn;
+    deps.enqueue({ kind: 'setNeedsEnabled', enabled: needsOn });
+    paintNeedsButton();
+  });
+  paintNeedsButton();
+  const needsRow = el('div', 'display:flex;gap:8px;align-items:center;margin-top:8px');
+  needsRow.append(el('span', 'opacity:0.8', 'Głód/sen itd.'));
+  needsRow.append(needsButton);
+
   // ---- DOM -----------------------------------------------------------------
   const panel = el('div', ADMIN_PANEL_STYLE);
   panel.style.display = 'none';
@@ -172,6 +200,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     open = !open;
     panel.style.display = open ? 'block' : 'none';
     if (!open) setArmed(null); // hiding the panel disarms (a stray crosshair click is confusing)
+    if (open) refreshNeedsButton(); // re-read the live rule — the boot value may predate a scene's toggle
   });
 
   panel.append(el('div', 'font-weight:700;font-size:13px;margin-bottom:2px', 'Panel Admina / Debug'));
@@ -215,28 +244,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   );
   panel.append(statsRow);
 
-  // The global needs toggle ("wyłącz potrzeby" — user decision 2026-07-11): flips the sim's
-  // setNeedsEnabled rule so test units don't starve mid-session. Scenes boot with needs OFF, maps ON
-  // (deps.needsEnabled reads the live rule); the label tracks the value we just requested — the command
-  // applies next tick, well before another click can land.
-  {
-    let needsOn = deps.needsEnabled?.() ?? true;
-    const b = el('button', BUTTON_STYLE);
-    const paint = (): void => {
-      b.textContent = needsOn ? 'Potrzeby: WŁĄCZONE (klik = wyłącz)' : 'Potrzeby: WYŁĄCZONE (klik = włącz)';
-      setButtonActive(b, needsOn);
-    };
-    b.addEventListener('click', () => {
-      needsOn = !needsOn;
-      deps.enqueue({ kind: 'setNeedsEnabled', enabled: needsOn });
-      paint();
-    });
-    paint();
-    const needsRow = el('div', 'display:flex;gap:8px;align-items:center;margin-top:8px');
-    needsRow.append(el('span', 'opacity:0.8', 'Głód/sen itd.'));
-    needsRow.append(b);
-    panel.append(needsRow);
-  }
+  panel.append(needsRow);
 
   // Unit + resource palettes — each an armable button row (a click arms/disarms that choice).
   panel.append(el('div', SECTION_TITLE_STYLE, 'Wojownicy'));

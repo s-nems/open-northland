@@ -13,7 +13,7 @@ import {
   layoutHud,
   visibleTileRange,
 } from '@vinland/render';
-import { FixedTimestep, type SimEvent, type Simulation, type WorldSnapshot, components } from '@vinland/sim';
+import { FixedTimestep, type SimEvent, type Simulation, type WorldSnapshot } from '@vinland/sim';
 import type { Application } from 'pixi.js';
 import { BUILD_HOUSE_ATOMIC, HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { pickerEntries } from '../catalog/professions.js';
@@ -262,9 +262,9 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     clientToTile: (x, y) => toolPanel.clientToTile(x, y),
     claimPointer: (x, y) => controls.claimsPointer(x, y),
     goodLabel: (typeId) => goodLabelByType.get(typeId),
-    // The needs-toggle button's live state — read from the sim's world rule (scenes boot it off, maps
-    // on), the same read seam the scene checks use.
-    needsEnabled: () => components.needsEnabled(sim.world),
+    // The needs-toggle button's live state (scenes boot it off, maps on) — read through the sim's
+    // sanctioned read accessor (the placementProbe pattern), never the live component stores.
+    needsEnabled: () => sim.needsEnabled(),
   });
 
   // Name-on-hover: a cursor tooltip naming the loose good pile (with its count) under the pointer, so a
