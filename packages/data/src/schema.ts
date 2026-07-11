@@ -198,8 +198,9 @@ export const GoodFarming = z.strictObject({
   yieldPerField: z.number().int().positive(),
   /** OBSERVED — how far from the farm's anchor its workers sow, in half-cell NODES (no radius in data). */
   fieldRadius: z.number().int().positive(),
-  /** OBSERVED — most fields one farm keeps sown at once (no field-count in data). */
-  maxFields: z.number().int().positive(),
+  /** OBSERVED — fields ONE farmer keeps sown at once; a farm's live cap is `fieldsPerFarmer × bound
+   *  field-farmers`, so the roster scales with the crew (no field-count in data). */
+  fieldsPerFarmer: z.number().int().positive(),
 });
 export type GoodFarming = z.infer<typeof GoodFarming>;
 

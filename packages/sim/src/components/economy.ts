@@ -191,8 +191,9 @@ export const Crop = defineComponent<{
   growth: number;
   /** Ticks per growth stage (the content `farming.ticksPerStage`, snapshotted at sow). */
   ticksPerStage: number;
-  /** Whether the field was cultivated (watered) — the GROWTH GATE: an unwatered field stands at its
-   *  sown stage; only a watered one grows (see systems/economy/farming.ts). */
+  /** Whether the field holds a live watering — the GROWTH FUEL: only a watered field grows, and each
+   *  stage step consumes the watering (thirsty again until a farmer returns with the can — see
+   *  systems/economy/farming.ts). */
   watered: boolean;
   /** Units the ripe field releases (the content `farming.yieldPerField`, snapshotted at sow). */
   yieldUnits: number;
@@ -206,7 +207,7 @@ export const Crop = defineComponent<{
  * tick's claim set, so a second farmer never picks a node a colleague is already en route to — the
  * fix for two farmers shadowing each other sowing/reaping the same spot (and what makes N farmers
  * scale field throughput ~N×). `sow` marks a plant-walk, which also counts toward the farm's
- * `maxFields` while the field doesn't exist yet. A stale task (the target raced away, the farmer got
+ * the farm's field cap while the field doesn't exist yet. A stale task (the target raced away, the farmer got
  * preempted) over-claims one node for at most the ticks until that farmer replans — self-correcting.
  * Inert on every golden that farms nothing (the separate-component pattern).
  */
@@ -215,9 +216,22 @@ export const FarmTask = defineComponent<{
   farm: Entity;
   /** The claimed half-cell node (a `NodeId` — the crop/sheaf node, or the free node being sown). */
   node: number;
-  /** True for a sow intent — it reserves one of the farm's `maxFields` slots while in flight. */
+  /** True for a sow intent — it reserves one of the farm's crew-scaled field slots while in flight. */
   sow: boolean;
 }>('FarmTask');
+
+/**
+ * A settler WAITING INSIDE its workplace — stamped by a drive whose settler is at its building with
+ * nothing to do this tick (the farmer between field chores), and removed the moment it replans
+ * (ai.ts, beside the FarmTask release), so it exists exactly while the settler idles at the door.
+ * PURELY a render fact: the original's off-duty workers wait inside the house, not lined up at the
+ * door — the render hides a Resting settler (it "went in") and it steps back out the tick work
+ * appears. No sim decision reads it. Inert on every golden that farms nothing.
+ */
+export const Resting = defineComponent<{
+  /** The workplace the settler waits inside (a completed building — the drive only rests at home). */
+  at: Entity;
+}>('Resting');
 
 /**
  * A **stump / debris** decor entity left where a {@link Felling} node fell — the tree-debris the

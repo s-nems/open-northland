@@ -7,6 +7,7 @@ import {
   Owner,
   PlayerOrder,
   Position,
+  Resting,
   Settler,
   Stance,
 } from '../../components/index.js';
@@ -107,6 +108,9 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // Replanning from here: the settler's previous farm intent is spent/stale — release its claim so
     // it never blocks ITSELF from re-choosing (planFarmer re-stamps a fresh task if it takes over).
     releaseFarmTask(world, e, farmClaims);
+    // Likewise its rest-inside marker: the drive re-stamps it within this same tick if there is still
+    // nothing to do (so the render never sees a gap), and it stays off the moment real work appears.
+    world.remove(e, Resting);
 
     const settler = world.get(e, Settler);
     if (settler.jobType === null) continue; // an unemployed settler has no job atomics to run

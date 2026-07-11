@@ -782,4 +782,16 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
     expect(drawnSettlers.sort()).toEqual([3, 4]); // the two inside (1, 2) are not drawn…
     expect([...scene.liveRefs].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 10, 11, 12]); // …but stay live
   });
+
+  it('hides a settler RESTING inside its workplace (waiting between chores), keeping it live', () => {
+    const scene = collectSpriteScene(
+      snapshotOf([
+        entity(10, 2, 2, { Building: { buildingType: 1, tribe: 1, built: ONE, level: 0 } }),
+        entity(1, 2, 2, { Settler: { tribe: 0 }, Resting: { at: 10 } }), // waiting inside — not drawn
+        entity(2, 3, 3, { Settler: { tribe: 0 } }), // an ordinary settler stays visible
+      ]),
+    );
+    expect(scene.items.filter((d) => d.kind === 'settler').map((d) => d.ref)).toEqual([2]);
+    expect([...scene.liveRefs].sort((a, b) => a - b)).toEqual([1, 2, 10]);
+  });
 });
