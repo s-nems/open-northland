@@ -228,11 +228,17 @@ export async function convertGuiPaletteLut(gameDir: string, outDir: string): Pro
  * body in the original renders it warm brown — the `bg_normal` element palette applied to the same indices
  * matches those screenshots (verified visually at 1024×768; the palette's name states the pairing, but
  * OpenVikings only shows the palette being loaded, not the draw-site pairing itself).
- * The other four `bg_*` bitmaps match the original through their embedded palettes, so only `bg` is baked.
- * `softenShadows` additionally lifts the swapped palette's near-black entries ({@link liftPaletteShadows}).
+ * `bg_selected` — the original's SELECTED-item card body — likewise renders through `bg_normal`, where its
+ * indices land on the palette's cool band (avg ≈ #3c4043, a grey-blue marble): the selection info panel's
+ * section cards under their brown headline strips. Unlike `bg` it needs no shadow lift — its darkest veins
+ * hold luma ≈ 48 (p1) through `bg_normal`, so they never read as cracked black.
+ * The remaining three `bg_*` bitmaps match the original through their embedded palettes, so only these two
+ * are baked. `softenShadows` additionally lifts the swapped palette's near-black entries
+ * ({@link liftPaletteShadows}).
  */
 const WINDOW_BITMAP_RECOLORS: ReadonlyArray<{ bitmap: string; palette: string; softenShadows?: boolean }> = [
   { bitmap: 'bg', palette: 'bg_normal', softenShadows: true },
+  { bitmap: 'bg_selected', palette: 'bg_normal' },
 ];
 
 /**
