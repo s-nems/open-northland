@@ -86,15 +86,16 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // crowd cost ~0: a settler with no reachable work does not re-scan the world every tick.
   const anyHaulable = hasHaulableOutput(world, ctx, targets.stockpiles);
   // Spacing occupancy — shared by BOTH spacing consumers (the idle de-stack rung and the builder
-  // work slots, see ./destack.ts): owned settlers currently AT REST (not travelling) bucketed by
-  // integer tile, in ascending-id order. Gated on Owner so it only ever moves gameplay
+  // work slots, see ./destack.ts): owned settlers currently STATIONARY (not travelling — distinct
+  // from the waiting-inside `Resting` marker) bucketed by integer tile, in ascending-id order.
+  // Gated on Owner so it only ever moves gameplay
   // (player-owned) units; the unowned golden/economy fixtures build an empty bucket set, so their
   // planner output is byte-identical. Built ONCE from the tick-start positions (stable across the
   // loop's own mutations).
-  const restingOwned = canonicalById(world.query(Settler, Position, Owner)).filter(
+  const stationaryOwned = canonicalById(world.query(Settler, Position, Owner)).filter(
     (e) => !isTravelling(world, e),
   );
-  const spacing: SpacingState = { occupancy: new NodeBuckets(world, restingOwned), claimed: new Set() };
+  const spacing: SpacingState = { occupancy: new NodeBuckets(world, stationaryOwned), claimed: new Set() };
   // Farm claims: every farmer still WALKING to or SWINGING at a field target (its live FarmTask) plus
   // the farmers planned earlier this tick reserve their nodes — so two farmers never shadow each other
   // to the same field/sheaf/sow spot, across ticks as well as within one (see drives-farming.ts).

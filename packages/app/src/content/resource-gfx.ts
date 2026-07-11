@@ -161,6 +161,11 @@ export function pileFillBobs(record: LandscapeGfxRow): readonly number[] | undef
  * The {@link ResourceTypeBinding.byGood} table indexes these by a mined deposit's shrink-by-level fill, so
  * the drawn mine SHRINKS as it empties. A non-mined node (a tree/mushroom — one state) yields a one-frame
  * list, drawn at any level. `undefined` when the record has no frames. Pure.
+ *
+ * NAMED APPROXIMATION: each state contributes only its FIRST bob, drawn as a still — the original
+ * loops the state's whole frame list (e.g. "wheat mine 01" carries 16 frames per growth state,
+ * `loopAnimation true`), so a growing field that sways in the original stands still here until the
+ * resource lane learns to tick through a state's frames.
  */
 export function nodeLevelBobs(record: LandscapeGfxRow): readonly number[] | undefined {
   return firstBobsByStateAscending(record);

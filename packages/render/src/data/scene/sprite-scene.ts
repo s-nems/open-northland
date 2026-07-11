@@ -136,6 +136,31 @@ export function drawableEntityRefs(snapshot: WorldSnapshot): ReadonlySet<number>
   return collectSpriteScene(snapshot).liveRefs;
 }
 
+/** Per-snapshot memo of {@link enterableStoresOf} — the set is a pure function of the snapshot, and
+ *  {@link collectSpriteScene} runs per FRAME while the snapshot changes per TICK, so rebuilding it
+ *  each frame was a second full entity pass against the function's own one-pass rule. */
+const enterableStoresBySnapshot = new WeakMap<WorldSnapshot, ReadonlySet<number>>();
+
+/**
+ * COMPLETED buildings (built, not a construction site) — the "enterable store" set. A settler whose
+ * running atomic exchanges goods with one of these (a pileup deposit / a pickup lift) is NOT drawn:
+ * the original's carrier walks INTO the house and vanishes for the exchange (observed), so hiding it
+ * for the atomic's duration reads as entering, instead of a deposit pantomimed at the door. A ground
+ * pile / flag / construction site is not enterable — those exchanges keep their animation.
+ */
+function enterableStoresOf(snapshot: WorldSnapshot): ReadonlySet<number> {
+  const cached = enterableStoresBySnapshot.get(snapshot);
+  if (cached !== undefined) return cached;
+  const stores = new Set<number>();
+  for (const entity of snapshot.entities) {
+    if ('Building' in entity.components && readBuiltPct(entity.components) === undefined) {
+      stores.add(entity.id);
+    }
+  }
+  enterableStoresBySnapshot.set(snapshot, stores);
+  return stores;
+}
+
 /**
  * Build the depth-sorted sprite draw list AND the pre-cull liveness set in one pass over the
  * snapshot's entities — the shared core of {@link import('./terrain-scene.js').buildScene},
@@ -180,17 +205,7 @@ export function collectSpriteScene(
       if (p !== null) posByRef.set(entity.id, p);
     }
   }
-  // COMPLETED buildings (built, not a construction site) — the "enterable store" set. A settler whose
-  // running atomic exchanges goods with one of these (a pileup deposit / a pickup lift) is NOT drawn:
-  // the original's carrier walks INTO the house and vanishes for the exchange (observed), so hiding it
-  // for the atomic's duration reads as entering, instead of a deposit pantomimed at the door. A ground
-  // pile / flag / construction site is not enterable — those exchanges keep their animation.
-  const enterableStores = new Set<number>();
-  for (const entity of snapshot.entities) {
-    if ('Building' in entity.components && readBuiltPct(entity.components) === undefined) {
-      enterableStores.add(entity.id);
-    }
-  }
+  const enterableStores = enterableStoresOf(snapshot);
   for (const entity of snapshot.entities) {
     // Drawn by the retained static layer instead (a virgin map resource) — skip before even classifying.
     if (staticRefs?.has(entity.id)) continue;

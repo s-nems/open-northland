@@ -182,7 +182,7 @@ export type GoodGathering = z.infer<typeof GoodGathering>;
  * `atomicForCultivating 35`, `atomicForHarvesting 29`, `isProducedOnMapFlag 1`; `landscapetypes.ini`
  * 27/28/29 = wheat growing/harvested/pile) but the loop's TIMINGS and the farm's field area live in the
  * native engine, so every numeric here except {@link stages} is an OBSERVED calibration constant the
- * content set pins (source basis: the farm plan's progress note tracks them).
+ * content set pins (the app's `catalog/farming.ts` carries the named calibration and its rationale).
  */
 export const GoodFarming = z.strictObject({
   /**

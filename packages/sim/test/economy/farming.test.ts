@@ -18,6 +18,7 @@ import {
   cropGrowthSystem,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { clearComponentStores } from '../fixtures/stores.js';
 
 const { Building, Carrying, Crop, GroundDrop, JobAssignment, Position, Resource, Settler, Stockpile } =
   components;
@@ -49,12 +50,8 @@ const FIELDS_PER_FARMER = 4;
 const SOLO_FIELD_CAP = FIELDS_BASE + FIELDS_PER_FARMER; // 6
 const PAIR_FIELD_CAP = FIELDS_BASE + FIELDS_PER_FARMER * 2; // 10 — sublinear, not 2× the solo cap
 
-beforeEach(() => {
-  // Component stores are module-level singletons — clear the WHOLE namespace between sims (AGENTS.md).
-  for (const c of Object.values(components)) {
-    if (typeof c === 'object' && c !== null && 'store' in c && c.store instanceof Map) c.store.clear();
-  }
-});
+// Component stores are module-level singletons — clear the WHOLE namespace between sims (AGENTS.md).
+beforeEach(clearComponentStores);
 
 /** A `width`×`height` CELL square of grass, upsampled to the half-cell navigation lattice. */
 function grassMap(width: number, height: number): TerrainMap {
@@ -307,6 +304,21 @@ describe('planFarmer — the drive ladder', () => {
     expect(peak).toBeLessThanOrEqual(PAIR_FIELD_CAP); // …never past the pair's (base counted ONCE)
   });
 
+  it('a farm still under construction fields no crew (jobtypes.ini mustHaveFinishedWorkHouseFlag 1)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
+    const farm = farmAt(sim, 4, 4);
+    sim.world.add(farm, components.UnderConstruction, { labor: fx.fromInt(0) });
+    const farmer = farmerAt(sim, 4, 4, farm);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    // The field loop never engages a foundation: no claim, no sow/water/reap swing.
+    expect(sim.world.tryGet(farmer, components.FarmTask)).toBeUndefined();
+    const atomic = sim.world.tryGet(farmer, components.CurrentAtomic)?.atomicId;
+    expect([SOW_ATOMIC, WATER_ATOMIC, REAP_ATOMIC]).not.toContain(atomic);
+    expect([...sim.world.query(Crop)]).toHaveLength(0);
+  });
+
   it('an idle farmer waits INSIDE the farm (Resting) and steps back out when a field thirsts', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
     const farm = farmAt(sim, 4, 4);
@@ -417,9 +429,7 @@ describe('work division — two farmers never share a target', () => {
 
   it('a second farmer roughly doubles the banked wheat', () => {
     const run = (farmers: number): number => {
-      for (const c of Object.values(components)) {
-        if (typeof c === 'object' && c !== null && 'store' in c && c.store instanceof Map) c.store.clear();
-      }
+      clearComponentStores();
       const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(10, 10) });
       const farm = farmAt(sim, 5, 5);
       for (let i = 0; i < farmers; i++) farmerAt(sim, 5, 5, farm);
@@ -547,9 +557,7 @@ describe('store-full pause and overflow', () => {
 describe('end-to-end — the loop closes', () => {
   it('a bound farmer sows, waters, reaps and banks wheat in the farm store, deterministically', () => {
     const run = (): { wheat: number; hash: string } => {
-      for (const c of Object.values(components)) {
-        if (typeof c === 'object' && c !== null && 'store' in c && c.store instanceof Map) c.store.clear();
-      }
+      clearComponentStores();
       const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(10, 10) });
       const farm = farmAt(sim, 5, 5);
       farmerAt(sim, 5, 5, farm);
