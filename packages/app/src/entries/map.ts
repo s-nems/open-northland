@@ -9,16 +9,16 @@ import {
   setTilePitch,
   WorldRenderer,
 } from '@vinland/render';
-import { fx, halfCellMapFromCells, type SimEvent, type WorldSnapshot } from '@vinland/sim';
+import { halfCellMapFromCells, type SimEvent } from '@vinland/sim';
 import { buildCollisionTerrain } from '../content/collision.js';
 import { buildingFootprints, loadIr } from '../content/ir.js';
 import { loadMinimapCellColours } from '../content/minimap-ground.js';
 import { loadMapObjects } from '../content/objects.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
+import { mapStartFocus } from '../game/map-start.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import { mapResourceObjectNames, sandboxGoods, spawnMapResources } from '../game/sandbox/index.js';
-import { isBuilding, isSettler, ownerPlayerOf, positionOf } from '../game/snapshot.js';
 import { loadTerrainMap } from '../slice/map-loader.js';
 import { runAuthoredSlice, runBareMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera.js';
@@ -61,52 +61,6 @@ function centerTile(raw: string | null, zoom: number, width: number, height: num
     return null;
   }
   return cameraCenteredOnTile(tx, ty, zoom, width, height);
-}
-
-/**
- * The starting camera FOCUS — the visual-tile `(col, row)` a decoded map opens centred on, so entering a
- * map lands on the player's start (the "startowa pozycja") instead of the top-left corner. Priority:
- *
- *   1. the HUMAN player's SETTLERS centroid — a scenario's own starting units spawn at/around its
- *      headquarters (`kwatera`), so their centre IS the base; the settlers are the reliable start signal;
- *   2. the HUMAN player's BUILDINGS centroid — a base placed with no starting units;
- *   3. any placed settler/building — a foreign-owned-only map (nothing is ours to prefer);
- *   4. the MAP CENTRE — a plain imported map with no authored entities at all.
- *
- * Settlers are preferred over buildings BEFORE falling back because a scenario scatters its objective and
- * enemy buildings across the whole map (e.g. tutorial_003 places a farm cluster far from the player's HQ),
- * which would drag a buildings-only centroid off the actual start; the human player's own settlers cluster
- * AT the start. Source basis: authored `map.cif StaticObjects` (settler `player` is 0-based, so player 0 =
- * the human player = {@link HUMAN_PLAYER}). Harvestable map resources carry no Settler/Building marker, so
- * they never pull the focus. Positions are fixed-point visual-tile coords — the same `fx.toFloat` the
- * renderer divides by to project a bob (see `sprite-scene.ts`), so the focus lands on the drawn anchor.
- */
-function mapStartFocus(
-  snapshot: WorldSnapshot,
-  mapWidth: number,
-  mapHeight: number,
-): { x: number; y: number } {
-  const centroidOf = (
-    keep: (e: WorldSnapshot['entities'][number]) => boolean,
-  ): { x: number; y: number } | null => {
-    let sumX = 0;
-    let sumY = 0;
-    let count = 0;
-    for (const e of snapshot.entities) {
-      if (!keep(e)) continue;
-      const p = positionOf(e);
-      if (p === undefined) continue;
-      sumX += fx.toFloat(p.x);
-      sumY += fx.toFloat(p.y);
-      count++;
-    }
-    return count > 0 ? { x: sumX / count, y: sumY / count } : null;
-  };
-  return (
-    centroidOf((e) => isSettler(e) && ownerPlayerOf(e) === HUMAN_PLAYER) ??
-    centroidOf((e) => isBuilding(e) && ownerPlayerOf(e) === HUMAN_PLAYER) ??
-    centroidOf((e) => isSettler(e) || isBuilding(e)) ?? { x: mapWidth / 2, y: mapHeight / 2 }
-  );
 }
 
 export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
@@ -212,8 +166,10 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // apply on the sim's first step, so a 0-tick sim's snapshot is still empty — the start-camera focus
   // below would then read no entities and fall back to the map centre. One tick applies every placement
   // (the command queue drains fully per step) while leaving the just-spawned settlers at their start.
+  // `loaded?.entities !== undefined` (not the `wantEntities` alias) so TS narrows `loaded.entities`
+  // non-undefined for the runAuthoredSlice arg; the two are the same predicate.
   const authoredSim =
-    wantEntities && loaded?.entities !== undefined && ir !== null && simMap !== null
+    loaded?.entities !== undefined && ir !== null && simMap !== null
       ? runAuthoredSlice(SLICE_SEED, 1, simMap, loaded.entities, ir, footprints)
       : null;
   const sim =
