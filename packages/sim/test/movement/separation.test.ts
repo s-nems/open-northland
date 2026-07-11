@@ -360,6 +360,41 @@ describe('unit body collision (separation + routing stamp)', () => {
     expect(s.world.has(w2, PathFollow)).toBe(false);
   });
 
+  it('same-lane walkers form a COLUMN: the follower falls in behind, nobody is shoved off the lane', () => {
+    // Two owned civilians share one eastbound lane (a pure E walk keeps the row constant, so ANY
+    // lateral shove would show as a y change). The convoy rule must (a) never push either off the
+    // lane, (b) open a fore/aft gap, and (c) keep the column order stable — the reported jostle was
+    // the pair swapping/shoving sideways on every step.
+    const s = sim();
+    const a = settlerAt(s, 4, 6, WOODCUTTER, P0);
+    const b = settlerAt(s, 4, 6, WOODCUTTER, P0);
+    orderTo(s, a, 20, 6);
+    orderTo(s, b, 20, 6);
+
+    let bothWalkedTicks = 0;
+    let order: 1 | -1 | null = null;
+    for (let t = 0; t < 250; t++) {
+      s.step();
+      if (!s.world.has(a, PathFollow) || !s.world.has(b, PathFollow)) continue;
+      bothWalkedTicks++;
+      const pa = s.world.get(a, Position);
+      const pb = s.world.get(b, Position);
+      expect(pa.y).toBe(pb.y); // never shoved off the shared lane
+      if (bothWalkedTicks <= 6) continue; // the tie-brake needs a few ticks to open the gap
+      expect(pa.x === pb.x).toBe(false); // a real fore/aft gap
+      const now: 1 | -1 = pa.x > pb.x ? 1 : -1;
+      if (order !== null) expect(now).toBe(order); // the column never flips (no per-step shoving)
+      order = now;
+    }
+    expect(bothWalkedTicks).toBeGreaterThan(20);
+    expect(order).not.toBeNull();
+    // The nudge still never prevents the arrivals (idle spacing may park one beside the goal).
+    expect(s.world.has(a, PathFollow)).toBe(false);
+    expect(s.world.has(b, PathFollow)).toBe(false);
+    expect(Math.abs(nodeOf(s, a).x - 20) + Math.abs(nodeOf(s, a).y - 6)).toBeLessThanOrEqual(1);
+    expect(Math.abs(nodeOf(s, b).x - 20) + Math.abs(nodeOf(s, b).y - 6)).toBeLessThanOrEqual(1);
+  });
+
   it('UNOWNED civilians walking together stay exactly merged — the Owner gate holds for the soft tier', () => {
     const s = sim();
     const a = settlerAt(s, 4, 6, WOODCUTTER, null);
