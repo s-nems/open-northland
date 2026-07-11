@@ -1,4 +1,5 @@
 import { type Component, components, halfCellMapFromCells, Simulation } from '@vinland/sim';
+import { FOG_MODE_BY_NAME } from '../game/fog.js';
 import { type SandboxContentExtras, sandboxContent } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
@@ -51,5 +52,11 @@ export function createSceneSim(scene: SceneDefinition, extras?: SandboxContentEx
   // why a needs-exercising scene opts back in via `SceneDefinition.needs` instead. Live maps keep the
   // sim default (enabled); the admin panel's "Potrzeby" button flips it at runtime either way.
   if (scene.needs !== true) sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
+  // The scene's fog-of-war mode (omitted = no fog, the sim default). Enqueued here so the headless
+  // twin and the browser run share it; the browser `?fog=` flag enqueues its override AFTER this one
+  // (FIFO, later write wins) — the same layering as the needs toggle above.
+  if (scene.fog !== undefined && scene.fog !== 'off') {
+    sim.enqueue({ kind: 'setFogMode', mode: FOG_MODE_BY_NAME[scene.fog] });
+  }
   return sim;
 }

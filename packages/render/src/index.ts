@@ -9,6 +9,7 @@ export {
   elevationLiftPerUnit,
   makeElevationField,
 } from './data/elevation.js';
+export { fogCellOfTile, fogTileVisible } from './data/fog.js';
 export {
   buildHud,
   type HudCorner,

@@ -1,5 +1,5 @@
 import type { ContentSet } from '@vinland/data';
-import { needsEnabled, Position } from './components/index.js';
+import { FOG_MODE, fogMode, needsEnabled, Position } from './components/index.js';
 import { type Command, CommandQueue } from './core/commands.js';
 import { EventBuffer } from './core/events.js';
 import { fx } from './core/fixed.js';
@@ -16,6 +16,7 @@ import {
   placementProbe,
 } from './systems/footprint/index.js';
 import { SYSTEM_ORDER, type SystemContext } from './systems/index.js';
+import { effectiveFogState, FogState } from './systems/vision.js';
 
 export interface SimOptions {
   seed: number;
@@ -27,6 +28,21 @@ export interface SimOptions {
    * decoder will feed this in Phase 2 — for now a scenario/test supplies a small synthetic grid.
    */
   map?: TerrainMap;
+}
+
+/**
+ * The fog-of-war read view for one viewer player (see {@link Simulation.fogView}) — plain data + one
+ * pure accessor, so render/minimap layers consume fog without touching the live {@link FogState}.
+ */
+export interface FogView {
+  /** The active {@link import('./components/rules.js').FOG_MODE} (never OFF — OFF yields null). */
+  readonly mode: number;
+  readonly cellsWide: number;
+  readonly cellsHigh: number;
+  /** Bumps only when the masks rebuilt — the render layers' re-composite key. */
+  readonly generation: number;
+  /** The viewer's EFFECTIVE `FOG_STATE` at a cell (RECON's known-terrain mapping applied). */
+  readonly stateAt: (cellX: number, cellY: number) => number;
 }
 
 /**
@@ -43,6 +59,13 @@ export class Simulation {
    * not entities — it isn't hashed (immutable input, like content), so it never affects determinism.
    */
   readonly terrain?: TerrainGraph;
+  /**
+   * The per-player fog-of-war masks (see systems/vision.ts), or undefined for a mapless sim. A
+   * MUTABLE world resource like the RNG (the VisionSystem rebuilds it on its cadence) — unlike the
+   * immutable terrain it IS simulated state (combat gates read it), so {@link hashState} mixes its
+   * raw bytes in after the components. Inert (empty, zero cost) while the fog mode is OFF.
+   */
+  readonly fog?: FogState;
   /** One-shot events produced during the current tick (drained by render/audio). */
   readonly events = new EventBuffer();
   /**
@@ -62,7 +85,10 @@ export class Simulation {
   constructor(opts: SimOptions) {
     this.rng = new Rng(opts.seed);
     this.content = opts.content;
-    if (opts.map !== undefined) this.terrain = buildTerrainGraph(opts.content, opts.map);
+    if (opts.map !== undefined) {
+      this.terrain = buildTerrainGraph(opts.content, opts.map);
+      this.fog = new FogState(this.terrain);
+    }
   }
 
   get tick(): number {
@@ -88,9 +114,10 @@ export class Simulation {
       tick: this.currentTick,
       events: this.events,
       commands: this.commands,
-      // Only attach `terrain` when present: under exactOptionalPropertyTypes an optional property
-      // must be omitted rather than set to undefined.
+      // Only attach `terrain`/`fog` when present: under exactOptionalPropertyTypes an optional
+      // property must be omitted rather than set to undefined.
       ...(this.terrain !== undefined ? { terrain: this.terrain } : {}),
+      ...(this.fog !== undefined ? { fog: this.fog } : {}),
     };
     for (const system of SYSTEM_ORDER) {
       system(this.world, ctx);
@@ -168,6 +195,28 @@ export class Simulation {
     return needsEnabled(this.world);
   }
 
+  /**
+   * The fog-of-war read view for ONE viewer player — the seam the render (terrain wash, sprite cull,
+   * minimap) consumes, like {@link placementProbe}: read-only, never mutates, determinism-irrelevant.
+   * `stateAt` answers the EFFECTIVE `FOG_STATE` of a cell (RECON's known-terrain view rule applied);
+   * `generation` bumps only when the masks actually rebuilt, so a render layer re-composites on it
+   * instead of per tick. Returns null when fog is OFF (the default) or the sim is mapless — the
+   * caller then draws no fog at all.
+   */
+  fogView(player: number): FogView | null {
+    const fog = this.fog;
+    if (fog === undefined) return null;
+    const mode = fogMode(this.world);
+    if (mode === FOG_MODE.OFF) return null;
+    return {
+      mode,
+      cellsWide: fog.cellsWide,
+      cellsHigh: fog.cellsHigh,
+      generation: fog.generation,
+      stateAt: (cellX: number, cellY: number) => effectiveFogState(fog, mode, player, cellX, cellY),
+    };
+  }
+
   /** Run N ticks. */
   run(ticks: number): void {
     for (let i = 0; i < ticks; i++) this.step();
@@ -223,6 +272,16 @@ export class Simulation {
       for (const [name, val] of this.world.componentEntries(e)) {
         for (const ch of name) mix(ch.charCodeAt(0));
         hashValue(val);
+      }
+    }
+    // The fog masks are simulated state living OUTSIDE the components (see systems/vision.ts) — mix
+    // their raw bytes in per player, ascending (the canonical mask order). A world that never enabled
+    // fog holds no masks, so every pre-fog hash is byte-identical.
+    if (this.fog !== undefined) {
+      for (const player of this.fog.playersWithMasks()) {
+        mix(player);
+        const mask = this.fog.maskFor(player);
+        for (let i = 0; i < mask.length; i++) mix(mask[i] as number);
       }
     }
     return h.toString(16).padStart(8, '0');

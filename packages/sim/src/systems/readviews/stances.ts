@@ -44,9 +44,10 @@ export function isMilitaryMode(mode: number): boolean {
 /**
  * The **scout** trade — `jobtypes.ini` `type 27` / `logicdefines.inc` `JOB_TYPE_HUMAN_SCOUT 27`, a
  * non-combat explorer. Its default stance is {@link MILITARY_MODE.IGNORE} (it wanders without picking
- * fights), the pin style of `HUNTER_JOB`. Kept next to {@link defaultStanceForJob} that reads it.
+ * fights), the pin style of `HUNTER_JOB`. Exported for the VisionSystem's per-job vision table (the
+ * scout is the widest eye); kept next to {@link defaultStanceForJob} that reads it.
  */
-const SCOUT_JOB = 27;
+export const SCOUT_JOB = 27;
 
 /** The **soldier** job-id band — `jobtypes.ini` soldiers 31..41 (unarmed / wooden+iron spear / short+long
  *  sword / short+long saber / small+big axe / short+long bow); every one defaults to

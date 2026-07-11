@@ -1,6 +1,6 @@
 import { Container, Mesh, Sprite } from 'pixi.js';
 import { scaleColour } from '../../data/brightness.js';
-import { depthKey, TILE_HALF_W } from '../../data/iso.js';
+import { depthKey, TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
 import { aabbIntersects, isVisible, type Viewport } from '../../data/viewport.js';
 import { TERRAIN_CHUNK_TILES } from '../terrain/index.js';
 import type { TextureCache } from '../texture-cache.js';
@@ -170,8 +170,14 @@ export class MapObjectLayer {
    * the VISIBLE animated batches at the sim tick rate (an off-screen wave costs nothing, a static block
    * is never touched after build); then block-cull the tall objects and per-member point-test them,
    * minting a sprite on first visibility and depth-sorting it against entities by its feet anchor.
+   *
+   * `fogVisibleCell` is the fog-of-war gate over CELL coords: a TALL object (a tree/stone — a
+   * strategic resource) whose anchor cell it rejects is treated exactly like a viewport-culled one
+   * (detached, kept pooled for when the fog lifts). Flat DECOR (waves, grass, mine stains) is
+   * deliberately exempt — it reads as terrain dressing, which the explored-grey layer shows (named
+   * approximation; the black layer's opaque wash covers it anyway).
    */
-  update(vp: Viewport, tick: number): void {
+  update(vp: Viewport, tick: number, fogVisibleCell?: (cellX: number, cellY: number) => boolean): void {
     // Landscape decor: the written tick is tracked PER CHUNK so a chunk scrolled into view mid-tick
     // (or while paused) still catches up to the current frame.
     for (const chunk of this.decorChunks) {
@@ -214,7 +220,12 @@ export class MapObjectLayer {
       }
       for (const po of block.objects) {
         const obj = po.obj;
-        const visible = isVisible(vp, obj.x, obj.y);
+        // The anchor's visual cell — tall objects sit on half-cell nodes (`halfCellToScreen`), so the
+        // exact inverse is `⌊x / cellWidth⌋, ⌊y / rowStep⌋` (cell (c,r) owns nodes 2c..2c+1 × 2r..2r+1).
+        const visible =
+          isVisible(vp, obj.x, obj.y) &&
+          (fogVisibleCell === undefined ||
+            fogVisibleCell(Math.floor(obj.x / (2 * TILE_HALF_W)), Math.floor(obj.y / TILE_HALF_H)));
         if (!visible) {
           if (po.attached && po.sprite !== null) {
             this.spriteLayer.removeChild(po.sprite);

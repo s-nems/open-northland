@@ -13,7 +13,7 @@ import {
   visibleTileRange,
   type WorldRenderer,
 } from '@vinland/render';
-import { FixedTimestep, type SimEvent, type Simulation, type WorldSnapshot } from '@vinland/sim';
+import { FixedTimestep, FOG_STATE, type SimEvent, type Simulation, type WorldSnapshot } from '@vinland/sim';
 import type { Application } from 'pixi.js';
 import { BUILD_HOUSE_ATOMIC, HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { pickerEntries } from '../catalog/professions.js';
@@ -492,6 +492,22 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     const snap = sim.snapshot();
     // CPU split #2: the snapshot clone (the plain-cloned world the renderer + HUD read).
     const snapMs = performance.now() - snap0;
+    // The HUMAN player's fog-of-war view for this frame (null = fog off — every layer reverts to the
+    // pre-fog behaviour). One read shared by the renderer (wash + sprite/tree cull), the minimap mask
+    // and the presentation event filter below, so no consumer can disagree about a cell.
+    const fogView = sim.fogView(HUMAN_PLAYER);
+    renderer.updateFog(fogView);
+    // PRESENTATION events only (blood/bones + positional audio): an event at ground the player does
+    // not currently SEE is dropped — a fight in the fog must neither splatter visible blood nor ring
+    // audible clangs. Event `at` coords are half-cell nodes; their cell is (x>>1, y>>1). The map
+    // entry's `onEvents` handover deliberately keeps the UNFILTERED list (sim bookkeeping, not
+    // presentation — a fogged tree felled by an enemy must still hand its static sprite over).
+    const presentEvents =
+      fogView === null
+        ? frameEvents
+        : frameEvents.filter(
+            (ev) => !('at' in ev) || fogView.stateAt(ev.at.x >> 1, ev.at.y >> 1) === FOG_STATE.VISIBLE,
+          );
     // The tribe HUD read-view (an O(entities) scan) for the tool panel's statistics window — memoized by
     // snapshot identity above, so it rebuilds once per TICK, not per RAF. The old ALWAYS-ON stocks panel
     // that also read this was removed — that data now shows only when the player opens the stats window.
@@ -499,8 +515,9 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // Re-place the tool panel's screen-space sprites BEFORE the renderer's render (they carry the
     // canvas resolution in their shader), and refresh an open stats window from this frame's HUD.
     toolPanel.controller.update(hud);
-    // Minimap re-place + view rectangle every frame; its unit dots redraw only when the tick moved.
-    mountedMinimap.update(snap);
+    // Minimap re-place + view rectangle every frame; its unit dots redraw only when the tick moved,
+    // its fog mask only when the fog generation moved.
+    mountedMinimap.update(snap, fogView);
     // Build mode: dim the ground the held building can't anchor on and float its translucent ghost at
     // the hovered tile (hidden over rejecting ground — the original's vanishing house cursor). Both
     // are computed here, in the app, from the sim's placement probe and handed to the renderer as
@@ -536,9 +553,10 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // is passed — the always-on stocks panel is gone; the debug tick lives in the top overlay and the
     // population/jobs/stocks in the stats window.
     const doorBadges = doorBadgesFor(snap); // memoized by snapshot identity — rebuilt per tick, not per RAF
-    // Combat ground marks (blood on hits, bones on deaths) from this frame's events — ingested before the
-    // renderer's update draws them, decaying against the sim tick so a pause/screenshot reproduces.
-    renderer.ingestCombatEffects(frameEvents, snap.tick);
+    // Combat ground marks (blood on hits, bones on deaths) from this frame's SEEN events — ingested
+    // before the renderer's update draws them, decaying against the sim tick so a pause/screenshot
+    // reproduces. Fog-filtered: a fight in unexplored/grey ground leaves no visible marks.
+    renderer.ingestCombatEffects(presentEvents, snap.tick);
     renderer.update(
       snap,
       cameraCtl.camera(),
@@ -554,7 +572,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     deps.onFrame?.(snap);
     if (soundDriver !== null) {
       soundDriver.update({
-        events: frameEvents,
+        events: presentEvents,
         snapshot: snap,
         camera: cameraCtl.camera(),
         canvasW: app.screen.width,

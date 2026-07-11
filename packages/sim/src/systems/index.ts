@@ -19,6 +19,7 @@ import { herdingSystem } from './movement/herding.js';
 import { movementSystem } from './movement/movement.js';
 import { pathfindingSystem } from './movement/routing.js';
 import { progressionSystem, terrainSystem, timeSystem, transportSystem } from './stubs.js';
+import { visionSystem } from './vision.js';
 
 // The meal-length knob (the eat/forage atomic duration): exposed so tests + tuning can reference the
 // repeat count without reaching into the internal action vocabulary wholesale.
@@ -56,6 +57,7 @@ export * from './readviews/index.js';
 export * from './spatial.js';
 export * from './stores.js';
 export * from './stubs.js';
+export * from './vision.js';
 // The systems barrel: every per-system module re-exported wholesale (no hand-maintained name
 // lists — they drifted), plus SYSTEM_ORDER, which this barrel owns. `@vinland/sim`'s `systems`
 // namespace and the tests import through here so the whole surface has a single import site.
@@ -88,6 +90,9 @@ export const SYSTEM_ORDER: readonly System[] = [
   berryGrowthSystem,
   transportSystem,
   constructionSystem,
+  // Vision rebuilds AFTER movement settled this tick's positions and BEFORE combat gates on them, so
+  // a fresh `setFogMode` (applied by commandSystem above) is honoured the same tick.
+  visionSystem,
   combatSystem,
   projectileSystem,
   reproductionSystem,

@@ -35,6 +35,7 @@ import {
   manhattan,
   NodeBuckets,
 } from '../spatial.js';
+import { playerSeesEntity } from '../vision.js';
 import { fleeDrive } from './flee.js';
 import { hostileAnimalNow, isHuntTarget, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 import { attackerWeapon, startAttack, targetMaterial } from './weapons.js';
@@ -384,7 +385,15 @@ function engageSpec(
   attacker: { tribe: number; jobType: number | null },
   weapon: { minRange: number; maxRange: number },
 ): EngageSpec {
-  const generalAccept = (t: Entity): boolean => isValidTarget(world, ctx, e, attacker, t);
+  // FOG GATE (full sim enforcement, user decision 2026-07-11): an OWNED unit auto-acquires only
+  // targets its PLAYER currently sees — an enemy in the fog is invisible to the drive. Composed into
+  // every auto-acquire accept below; the explicit-AttackOrder path (resolveTarget's direct
+  // isValidTarget) stays ungated — an ordered chase follows its target into fog, and the UI can only
+  // order onto a drawn (visible) unit in the first place. Unowned combatants (wildlife) have no fog.
+  const viewer = owned ? world.tryGet(e, Owner) : undefined;
+  const seesTarget = (t: Entity): boolean =>
+    viewer === undefined || playerSeesEntity(world, ctx.fog, viewer.player, t);
+  const generalAccept = (t: Entity): boolean => isValidTarget(world, ctx, e, attacker, t) && seesTarget(t);
   const minDist = weapon.minRange;
   const sight = Math.max(weapon.maxRange, SIGHT_RADIUS_NODES);
 
@@ -401,7 +410,7 @@ function engageSpec(
   }
 
   if (owned && !ordered && stance === MILITARY_MODE.IGNORE && attacker.jobType === HUNTER_JOB) {
-    const accept = (t: Entity): boolean => isHuntTarget(world, ctx, t, attacker.jobType);
+    const accept = (t: Entity): boolean => isHuntTarget(world, ctx, t, attacker.jobType) && seesTarget(t);
     return { accept, minDist, searchRadius: sight, defend: null };
   }
 

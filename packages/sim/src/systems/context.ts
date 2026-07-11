@@ -4,6 +4,7 @@ import type { EventBuffer } from '../core/events.js';
 import type { Rng } from '../core/rng.js';
 import type { World } from '../ecs/world.js';
 import type { TerrainGraph } from '../nav/terrain.js';
+import type { FogState } from './vision.js';
 
 /**
  * A System is a pure function over the world for one tick. Systems run in a fixed registered
@@ -29,6 +30,12 @@ export interface SystemContext {
    * systems that need it must check and no-op when it is absent rather than assume it exists.
    */
   readonly terrain?: TerrainGraph;
+  /**
+   * The per-player fog-of-war masks (see systems/vision.ts) — a mutable world resource the
+   * VisionSystem rebuilds and the combat gates read. Optional like `terrain` (a mapless sim has no
+   * grid to mask); present but inert while the fog mode is OFF (the default).
+   */
+  readonly fog?: FogState;
 }
 
 export type System = (world: World, ctx: SystemContext) => void;

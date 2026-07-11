@@ -74,7 +74,7 @@ export {
   waterLayerLandscape,
 } from './landscape.js';
 
-export { defaultStanceForJob, isFighterJob, isMilitaryMode, MILITARY_MODE } from './stances.js';
+export { defaultStanceForJob, isFighterJob, isMilitaryMode, MILITARY_MODE, SCOUT_JOB } from './stances.js';
 export {
   angryGameTimeOf,
   animalBabyHitpoints,

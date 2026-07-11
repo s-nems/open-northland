@@ -365,7 +365,22 @@ export type Command =
    *  {@link import('../components/economy.js').UnderConstruction} marker straight to built (full `Health`,
    *  marker removed, `buildingFinished` emitted) regardless of delivered material or builder labor. A
    *  target that is not a construction site is a no-op. */
-  | { readonly kind: 'debugCompleteConstruction'; readonly target: Entity };
+  | { readonly kind: 'debugCompleteConstruction'; readonly target: Entity }
+  | {
+      /**
+       * Set the fog-of-war mode globally — one of the
+       * {@link import('../components/rules.js').FOG_MODE} ids (`OFF` / `REVEAL` sticky exploration /
+       * `RECON` known-terrain grey / `FULL` classic fog). Sets the
+       * {@link import('../components/index.js').FogRules} SINGLETON (created on first use), so the
+       * mode hashes and replays like any other state; the VisionSystem rebuilds the per-player masks
+       * the same tick. Switching to `OFF` drops the masks (exploration history resets). A `mode`
+       * outside the four ids is recoverable bad input — skipped, still logged for faithful replay
+       * (the `setStance` stance).
+       */
+      readonly kind: 'setFogMode';
+      /** The target {@link import('../components/rules.js').FOG_MODE} id (0..3). */
+      readonly mode: number;
+    };
 
 /**
  * A command stamped with the tick it is applied on. This is the unit of the **command log** — the

@@ -70,6 +70,9 @@ export interface PoolFrame {
   /** Entities the retained static map-object layer draws instead (a decoded map's virgin resource
    *  nodes) — skipped by the scene build, so the pool never touches them. */
   readonly staticRefs?: ReadonlySet<number>;
+  /** The fog-of-war cull (`data/fog.ts`): entities on tiles this rejects stay pooled but undrawn.
+   *  Absent = no fog (every pre-fog view). */
+  readonly fogVisible?: (tileX: number, tileY: number) => boolean;
 }
 
 export class SpritePool {
@@ -98,7 +101,13 @@ export class SpritePool {
   reconcile(frame: PoolFrame): void {
     // ONE pass over the snapshot yields both the culled draw list and the pre-cull liveness set the
     // destroy step needs — classifying every entity a second time per frame would double the scan.
-    const scene = collectSpriteScene(frame.snapshot, frame.viewport, frame.elevation, frame.staticRefs);
+    const scene = collectSpriteScene(
+      frame.snapshot,
+      frame.viewport,
+      frame.elevation,
+      frame.staticRefs,
+      frame.fogVisible,
+    );
     this.frameId++;
     for (let i = 0; i < scene.items.length; i++) {
       const item = scene.items[i];
