@@ -47,6 +47,14 @@ export class World {
    * unaffected by component add/remove, so only birth/death dirties it.
    */
   private canonicalCache: readonly Entity[] | null = null;
+  /**
+   * Entities whose components changed since the last {@link drainTouched} — the invalidation feed for
+   * identity-keyed READ caches (the snapshot's per-entity clone cache). `add`/`remove`/`destroy` log
+   * automatically; a system that mutates a component value IN PLACE on a cache-eligible entity must call
+   * {@link touch} itself (the snapshot cache's verifier catches a missed call under invariant-checked
+   * runs). Purely a read-path aid: never consulted by a sim decision, so it cannot affect determinism.
+   */
+  private readonly touched = new Set<Entity>();
 
   create(): Entity {
     const id = this.nextId++ as Entity;
@@ -61,6 +69,7 @@ export class World {
     }
     this.alive.delete(entity);
     this.canonicalCache = null;
+    this.touched.add(entity);
   }
 
   isAlive(entity: Entity): boolean {
@@ -73,11 +82,38 @@ export class World {
     }
     component.store.set(entity, value);
     this.bumpComponentGeneration(component as Component<unknown>);
+    this.touched.add(entity);
     return value;
   }
 
   remove<T>(entity: Entity, component: Component<T>): void {
-    if (component.store.delete(entity)) this.bumpComponentGeneration(component as Component<unknown>);
+    if (component.store.delete(entity)) {
+      this.bumpComponentGeneration(component as Component<unknown>);
+      this.touched.add(entity);
+    }
+  }
+
+  /**
+   * Log an IN-PLACE component-value mutation on `entity` so identity-keyed read caches (the snapshot's
+   * per-entity clone cache) drop their stale copy. `add`/`remove`/`destroy` log automatically — call this
+   * only where a system writes a field of a stored value directly (e.g. the harvest effect decrementing
+   * `Resource.remaining`). Read-path only; no sim decision ever consults the log.
+   */
+  touch(entity: Entity): void {
+    this.touched.add(entity);
+  }
+
+  /** Whether any entity mutation was logged since the last {@link drainTouched} — the cheap "may the
+   *  previous snapshot be reused?" probe (`Simulation.snapshot`'s per-tick memo). */
+  get hasTouchedEntities(): boolean {
+    return this.touched.size > 0;
+  }
+
+  /** Hand every logged-touched entity to `consume` and clear the log (one consumer owns the drain —
+   *  today the snapshot clone cache, which evicts each touched entity's cached clone). */
+  drainTouched(consume: (entity: Entity) => void): void {
+    for (const e of this.touched) consume(e);
+    this.touched.clear();
   }
 
   has<T>(entity: Entity, component: Component<T>): boolean {

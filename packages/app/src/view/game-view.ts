@@ -396,6 +396,24 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     renderer.setGeometryDebug(computeGeometryDebugItems(snap, buildingDoors));
   };
 
+  // Per-frame O(entities) projections memoized by SNAPSHOT IDENTITY: `sim.snapshot()` returns the same
+  // object while the tick (and world) are unchanged, so a frame that didn't step reuses last frame's HUD
+  // read-view and door badges instead of re-scanning every entity each RAF (golden rule 6 at the app
+  // layer — a decoded map holds tens of thousands of resource nodes).
+  let hudMemo: { snap: WorldSnapshot; hud: ReturnType<typeof layoutHud> } | null = null;
+  const hudFor = (snap: WorldSnapshot): ReturnType<typeof layoutHud> => {
+    if (hudMemo === null || hudMemo.snap !== snap)
+      hudMemo = { snap, hud: layoutHud(buildHud(snap, HUD_TRIBE)) };
+    return hudMemo.hud;
+  };
+  let doorBadgeMemo: { snap: WorldSnapshot; badges: ReturnType<typeof computeDoorBadges> } | null = null;
+  const doorBadgesFor = (snap: WorldSnapshot): ReturnType<typeof computeDoorBadges> => {
+    if (doorBadgeMemo === null || doorBadgeMemo.snap !== snap) {
+      doorBadgeMemo = { snap, badges: computeDoorBadges(snap, buildingDoors, workerRoleOf) };
+    }
+    return doorBadgeMemo.badges;
+  };
+
   const timestep = new FixedTimestep();
   let lastMs = performance.now();
   // The fixed-timestep interpolation fraction the renderer lerps entity anchors by — refreshed each
@@ -437,10 +455,10 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     const snap = sim.snapshot();
     // CPU split #2: the snapshot clone (the plain-cloned world the renderer + HUD read).
     const snapMs = performance.now() - snap0;
-    // Build the tribe HUD read-view once per frame (an O(entities) scan) for the tool panel's statistics
-    // window (the on-demand population/jobs/stocks panel). The old ALWAYS-ON stocks panel that also read
-    // this was removed — that data now shows only when the player opens the stats window.
-    const hud = layoutHud(buildHud(snap, HUD_TRIBE));
+    // The tribe HUD read-view (an O(entities) scan) for the tool panel's statistics window — memoized by
+    // snapshot identity above, so it rebuilds once per TICK, not per RAF. The old ALWAYS-ON stocks panel
+    // that also read this was removed — that data now shows only when the player opens the stats window.
+    const hud = hudFor(snap);
     // Re-place the tool panel's screen-space sprites BEFORE the renderer's render (they carry the
     // canvas resolution in their shader), and refresh an open stats window from this frame's HUD.
     toolPanel.controller.update(hud);
@@ -480,7 +498,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // selected gatherers' work-flag highlight, render once. `app.screen` tracks window resizes. No HUD frame
     // is passed — the always-on stocks panel is gone; the debug tick lives in the top overlay and the
     // population/jobs/stocks in the stats window.
-    const doorBadges = computeDoorBadges(snap, buildingDoors, workerRoleOf);
+    const doorBadges = doorBadgesFor(snap); // memoized by snapshot identity — rebuilt per tick, not per RAF
     // Combat ground marks (blood on hits, bones on deaths) from this frame's events — ingested before the
     // renderer's update draws them, decaying against the sim tick so a pause/screenshot reproduces.
     renderer.ingestCombatEffects(frameEvents, snap.tick);

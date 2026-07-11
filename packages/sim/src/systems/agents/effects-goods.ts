@@ -65,6 +65,7 @@ export function harvestFromNode(
   const felling = world.tryGet(node, Felling);
   if (felling !== undefined) {
     felling.chopsLeft -= 1;
+    world.touch(node); // in-place write on a snapshot-cached scenery entity — log it (World.touch doc)
     if (felling.chopsLeft <= 0) fellNode(world, ctx, settler, node, res.goodType, res.remaining);
     return;
   }
@@ -81,6 +82,7 @@ export function harvestFromNode(
   // the unit is not lost and the node isn't wrongly depleted. Belt-and-braces — the planner only reaches a
   // harvest empty-handed, so `addCarry` never throws today; this keeps the old throw-safe ordering anyway.
   res.remaining -= took;
+  world.touch(node); // in-place write on a snapshot-cached scenery entity — log it (World.touch doc)
   if (res.remaining <= 0) depleteNode(world, ctx, node, res.goodType); // last unit chipped — the node is gone
 }
 
