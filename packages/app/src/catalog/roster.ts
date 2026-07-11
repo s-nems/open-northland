@@ -71,6 +71,32 @@ export const PLAYER_COLOR_NAMES = [
 /** How many player colours the LUT + montage cover (up to 16 players). */
 export const PLAYER_COLOR_COUNT = PLAYER_COLOR_NAMES.length;
 
+/**
+ * One flat `0xRRGGBB` per player id for UI swatches (the minimap's unit dots), slot order =
+ * {@link PLAYER_COLOR_NAMES}. A NAMED APPROXIMATION: the real team colours live only in the pipeline's
+ * LUT texture (`player-lut.png`, band-limited palette ramps — no single "the colour" exists there), so
+ * this table hand-picks one saturated representative per name — the original 10 by their `playerNN.pcx`
+ * hue, the 6 synthetic extras at the pipeline's rotation hues (player-palette.ts).
+ */
+export const PLAYER_SWATCH_COLORS: readonly number[] = [
+  0x2f62d8, // blue
+  0xd0342c, // red
+  0xe6d33e, // yellow
+  0x35c4d0, // cyan
+  0x2f9e33, // green
+  0x8a3fc4, // purple
+  0x9a9a9a, // grey
+  0xe6862a, // orange
+  0x9fe62e, // neon
+  0x2c2c2c, // black
+  0x21d961, // spring (hue 140)
+  0x14d9a8, // teal (hue 168)
+  0x2e96e6, // azure (hue 205)
+  0x5a46e0, // indigo (hue 250)
+  0xd92cb0, // magenta (hue 312)
+  0xe64887, // pink (hue 336)
+];
+
 /** The civilist-job (`logicjob 6`) head looks `head_00..03` — the in-game generic man's faces. The
  *  per-job settler binding (`content/settler-gfx.ts`) overlays exactly these; the scout (80..83) and druid
  *  (90..93) looks below stay gallery-only until those jobs exist in a running sim. */

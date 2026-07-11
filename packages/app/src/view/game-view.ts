@@ -6,6 +6,7 @@ import {
   SPRITE_CULL_MARGIN,
   type SceneTerrain,
   type SpriteSheet,
+  type TextureSource,
   type WorldRenderer,
   buildHud,
   buildSpriteScene,
@@ -23,10 +24,11 @@ import { loadIr } from '../content/ir.js';
 import { loadCombatBones } from '../content/objects.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
 import { workerRoleOf } from '../game/sandbox/index.js';
+import { mountMinimap } from '../hud/minimap/index.js';
 import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel/layout.js';
 import { mountAdminDebug } from './admin-debug/index.js';
 import type { CameraController } from './camera.js';
-import { screenScale } from './camera.js';
+import { cameraCenteredOnWorld, screenScale } from './camera.js';
 import { computeDoorBadges } from './door-badges.js';
 import {
   applyGameSpeed,
@@ -68,8 +70,14 @@ export interface GameViewDeps {
   readonly sim: Simulation;
   /** The interactive camera (the entry picks the starting frame). */
   readonly cameraCtl: CameraController;
-  /** The terrain grid the sound driver's ambient beds sample. */
+  /** The terrain grid the sound driver's ambient beds sample (and the minimap rasterizes). */
   readonly terrainGrid: SceneTerrain;
+  /** typeId → minimap ground colour (the real terrain set's per-type debug colours). Absent (bare
+   *  checkout / `?terrain=off`), the minimap falls back to the render flat-tint palette. */
+  readonly terrainColour?: (typeId: number) => number | undefined;
+  /** The original's shipped minimap picture for a decoded map (see `hud/minimap` `groundImage`) —
+   *  preferred over the typeId raster, which can't depict a real map's baked ground lanes. */
+  readonly minimapImage?: TextureSource;
   /** Map bounds in CELLS for placement/order clicks (a click outside is rejected, never clamped);
    *  grid-logic consumers derive the 2× node bounds from it. */
   readonly mapSize: { readonly width: number; readonly height: number };
@@ -208,6 +216,30 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
   // the camera skips the wheel while the pointer is over such a window.
   cameraCtl.setPointerGuard((clientX, clientY) => toolPanel.claimsWheel(clientX, clientY));
 
+  // Client (CSS px) → screen px, the ONE conversion the minimap's hit-test/click shares with the world
+  // pickers (`hud/` never imports `view/` — injected as options per the hud contract).
+  const clientToScreen = (clientX: number, clientY: number): { x: number; y: number } => {
+    const { sx, sy, rect } = screenScale(canvas, app.renderer.resolution);
+    return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
+  };
+  // The bottom-left minimap: whole-map terrain + player-coloured unit dots + the camera's view
+  // rectangle; a left-click (or drag) re-centres the camera on the pointed world spot at the CURRENT
+  // zoom. Mounted before the unit controls so its claim joins their pointer chain (a minimap click
+  // must never select units or issue world orders underneath).
+  const minimap = mountMinimap({
+    app,
+    canvas,
+    terrain: deps.terrainGrid,
+    colourOf: deps.terrainColour,
+    groundImage: deps.minimapImage,
+    camera: () => cameraCtl.camera(),
+    onJump: (wx, wy) => {
+      const zoom = cameraCtl.camera().scale ?? 1;
+      cameraCtl.jumpTo(cameraCenteredOnWorld(wx, wy, zoom, app.screen.width, app.screen.height));
+    },
+    toScreenPx: clientToScreen,
+  });
+
   // The cursor position for the build-mode ghost (client coords; null when the pointer left the
   // canvas). Tracked persistently — the ghost must follow the mouse between clicks, and reading it in
   // the frame loop keeps ALL per-frame work in the one RAF (no per-mousemove sim probing).
@@ -239,7 +271,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     enqueue: (command) => sim.enqueue(command),
     boundsOf: (ref) => renderer.entityBounds(ref), // exact sprite-box picking against the real sprite
     pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy), // buildings: solid pixels only
-    claimPointer: (x: number, y: number) => toolPanel.claimPointer(x, y),
+    claimPointer: (x: number, y: number) => toolPanel.claimPointer(x, y) || minimap.claimsPointer(x, y),
     // The Magazyn stock-row name tooltip. Its OWN instance (not the ground one below): the two hover
     // surfaces are mutually exclusive by cursor, and a shared element would fight — the frame loop hides the
     // ground tooltip whenever the pointer is over the HUD, which is exactly when this one must stay shown.
@@ -272,8 +304,8 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
   // good + how many units. Keyed by the sim goodType the pile's DrawItem carries.
   const tooltip = createTooltip();
   const toWorld = (clientX: number, clientY: number): { x: number; y: number } => {
-    const { sx, sy, rect } = screenScale(canvas, app.renderer.resolution);
-    return screenToWorld(cameraCtl.camera(), (clientX - rect.left) * sx, (clientY - rect.top) * sy);
+    const p = clientToScreen(clientX, clientY);
+    return screenToWorld(cameraCtl.camera(), p.x, p.y);
   };
   // Pile hit-targets, rebuilt only when the sim tick OR the camera moves. buildSpriteScene is culled to the
   // camera viewport (same margin the renderer draws with), so this is a SCREEN-bounded pass, not a whole-map
@@ -398,6 +430,8 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // Re-place the tool panel's screen-space sprites BEFORE the renderer's render (they carry the
     // canvas resolution in their shader), and refresh an open stats window from this frame's HUD.
     toolPanel.controller.update(hud);
+    // Minimap re-place + view rectangle every frame; its unit dots redraw only when the tick moved.
+    minimap.update(snap);
     // Build mode: dim the ground the held building can't anchor on and float its translucent ghost at
     // the hovered tile (hidden over rejecting ground — the original's vanishing house cursor). Both
     // are computed here, in the app, from the sim's placement probe and handed to the renderer as

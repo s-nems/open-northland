@@ -108,6 +108,7 @@ export {
   oversampleFor,
 } from './gpu/supersample.js';
 export type { TextureSource } from 'pixi.js';
+export { flatTileColour } from './gpu/terrain/terrain-layer.js';
 export {
   cameraViewport,
   isVisible,

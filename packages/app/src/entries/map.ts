@@ -5,6 +5,7 @@ import {
   WorldRenderer,
   buildSpriteScene,
   createWindowPixiApp,
+  loadAtlasSource,
   makeBrightnessField,
   makeElevationField,
   setTilePitch,
@@ -162,6 +163,14 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     cameraFor(buildSpriteScene(sim.snapshot()), zoom, app.screen.width, app.screen.height);
   const cameraCtl = createCameraController(canvas, initialCamera, app.renderer.resolution);
 
+  // The original's shipped minimap picture (the pipeline's decoded `minimap.pcx`, served like the
+  // thumbnails on the menu cards) — the minimap's preferred ground; a map without the sidecar (or a
+  // synthetic strip) degrades to the typeId raster.
+  const minimapImage =
+    loaded !== null && mapId !== null
+      ? await loadAtlasSource(`/maps/${encodeURIComponent(mapId)}.png`, 'linear').catch(() => undefined)
+      : undefined;
+
   // The shared in-game runtime (view/game-view.ts): the standard HUD mounts — tool panel, unit
   // controls, perf overlay, positional sound — and the ONE fixed-timestep RAF loop, identical to the
   // `?scene=` entry's.
@@ -174,6 +183,9 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     sim,
     cameraCtl,
     terrainGrid,
+    // Minimap ground colours from the real terrain set's per-type debug colours (absent → flat tints).
+    ...(terrain !== undefined ? { terrainColour: (t: number) => terrain.cellFor(t)?.fallbackColour } : {}),
+    ...(minimapImage !== undefined ? { minimapImage } : {}),
     mapSize: { width: terrainGrid.width, height: terrainGrid.height },
     elevation, // a placement/order click on a lifted hill resolves to the tile drawn there
   });
