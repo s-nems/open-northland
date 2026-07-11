@@ -135,12 +135,17 @@ export async function loadCombatBones(
  *
  * A type that can't resolve (no record, no atlas, no usable frame) is counted + skipped — a partial
  * `content/` must degrade, not abort. Placements resolve in file order (deterministic).
+ *
+ * `skipTypes` names the object EditNames the caller spawns as real `Resource` sim nodes instead (trees/
+ * ore/stone): those are omitted from this static decor layer so the sim draws + depletes them (a felled
+ * tree's sprite then vanishes with its `Resource`), while every other object stays static decor.
  */
 export async function loadMapObjects(
   objects: MapObjectsData,
   ir: ContentIr,
   elevation?: ElevationField,
   brightness?: BrightnessField,
+  skipTypes?: ReadonlySet<string>,
 ): Promise<MapObjectSprite[]> {
   const recordByName = new Map<string, LandscapeGfxRow>();
   for (const row of ir.landscapeGfx ?? []) {
@@ -195,12 +200,19 @@ export async function loadMapObjects(
     });
   });
 
+  // Object types the caller spawns as sim resources instead (trees/ore/stone) are skipped here so the
+  // sim draws + depletes them — precomputed per typeIndex so the hot placement loop is a plain array read,
+  // not a Set lookup per placement (a map has ~10^5 placements).
+  const drawnByType = objects.types.map((name) => skipTypes === undefined || !skipTypes.has(name));
+
   const out: MapObjectSprite[] = [];
   let skipped = 0;
   for (let i = 0; i + 2 < objects.placements.length; i += 3) {
     const hx = objects.placements[i] as number;
     const hy = objects.placements[i + 1] as number;
-    const states = resolved[objects.placements[i + 2] as number] ?? [];
+    const typeIndex = objects.placements[i + 2] as number;
+    if (drawnByType[typeIndex] === false) continue; // spawned as a sim resource — the sim renders it
+    const states = resolved[typeIndex] ?? [];
     // `lmlv` counts up from the LOWEST state (see stateIndexForLevel); absent lane → the full first list.
     const level = objects.levels?.[i / 3] ?? states.length;
     const stateIndex = stateIndexForLevel(level, states.length);

@@ -17,7 +17,7 @@ import { loadMapObjects } from '../content/objects.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
-import { sandboxGoods } from '../game/sandbox/index.js';
+import { mapResourceObjectNames, sandboxGoods, spawnMapResources } from '../game/sandbox/index.js';
 import { loadTerrainMap } from '../slice/map-loader.js';
 import { runAuthoredSlice, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
 import { cameraCenteredOnTile, cameraFor, createCameraController } from '../view/camera.js';
@@ -119,9 +119,15 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // A decoded map's placed landscape objects (trees/stones/mine decals + the animated wave fx that
   // ARE the original's water surface) — resolved through the landscapeGfx IR + the /bobs atlases.
   // The catch keeps a partial content/ (e.g. a missing atlas PNG) a degradation, not an app crash.
+  // Harvestable objects (trees/ore/stone) are spawned as sim resources below and drawn by the sim, so the
+  // static decor layer SKIPS them — otherwise each would draw twice (static decor + sim sprite) and a felled
+  // tree's static sprite would linger over an empty tile. Every other object stays static decor.
+  const resourceObjectNames = ir !== null ? mapResourceObjectNames(ir) : undefined;
   if (wantObjects && loaded?.objects !== undefined && ir !== null) {
     try {
-      renderer.setMapObjects(await loadMapObjects(loaded.objects, ir, elevation, brightness));
+      renderer.setMapObjects(
+        await loadMapObjects(loaded.objects, ir, elevation, brightness, resourceObjectNames),
+      );
     } catch (err) {
       console.warn(`map objects unavailable, bare ground fallback: ${String(err)}`);
     }
@@ -151,6 +157,17 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     (wantEntities && loaded?.entities !== undefined && ir !== null && simMap !== null
       ? runAuthoredSlice(SLICE_SEED, 0, simMap, loaded.entities, ir, footprints)
       : null) ?? runSlice(SLICE_SEED, 0, simMap ?? undefined, HUMAN_PLAYER, footprints);
+
+  // Spawn the map's own trees/ore/stone as real harvestable `Resource` sim nodes (plan step 6), so a
+  // gatherer can actually work them — before this they were render-only decor and every gatherer idled.
+  // Pre-tick-0 direct spawn into the freshly-built sim, in the map's placement order (deterministic ids);
+  // these are the objects the static decor layer skipped above, now drawn + depleted by the sim.
+  if (loaded?.objects !== undefined && ir !== null) {
+    const spawned = spawnMapResources(sim, loaded.objects, ir);
+    console.log(
+      `Map resources: spawned ${spawned} harvestable nodes from ${loaded.objects.types.length} object types.`,
+    );
+  }
 
   // Interactive camera: `?zoom` (+ the settler-centroid framing) is the STARTING frame; from there a
   // human pans (middle-mouse drag / arrow keys) and zooms (scroll wheel). The HUD is drawn outside the

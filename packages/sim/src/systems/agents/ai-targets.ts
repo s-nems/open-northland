@@ -138,6 +138,12 @@ export function nearestHarvestableFor(
   area?: { center: NodeId; radius: number },
 ): Entity | null {
   const allowed = jobAtomics(ctx, settler.jobType);
+  // Dormancy gate: a job with NO harvest atomics (a carrier, builder, idle settler) can harvest nothing,
+  // so every candidate would fail the `allowed.has` check below — the whole scan is provably null. Skip it
+  // in O(1) instead of walking the entire resource list per such settler per tick (with thousands of
+  // map-spawned nodes that per-settler full scan is the dominant sim cost). Same result — a non-harvester
+  // still gets null — so the golden slice is byte-identical; only the wasted iteration is elided.
+  if (allowed.size === 0) return null;
   // Rank + range from the flag when bound; from the settler when roaming (the unbound default is identical
   // to the prior nearest-to-`here` scan — same origin, no radius filter).
   const origin = area?.center ?? here;
