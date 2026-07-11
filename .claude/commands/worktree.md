@@ -99,9 +99,12 @@ continue below — the review battery runs then, not before.
 
 First run the review battery, now that the user has approved the work:
 - Run it over `git diff main...HEAD`: spawn the applicable lenses **in parallel, one message**,
-  selected exactly as `.claude/commands/audit.md` step 2 defines them (determinism / perf /
-  fidelity / architecture / code-quality, plus a general correctness pass only when no named lens
-  covers the main risk). Pass each the exact range.
+  selected exactly as `.claude/commands/audit.md` step 2 defines them (engine / gameplay / code,
+  plus a general correctness pass only when no named lens covers the main risk). Pass each the
+  exact range.
+- Select lenses by what the diff actually touches — do **not** default to the full battery. Most
+  steps trip one or two lenses; each extra reviewer is a real token cost and produces noise
+  findings outside its lens. State which lenses you skipped and why.
 - Triage the findings yourself: re-read the cited code before accepting or dismissing a finding —
   reviewers are wrong in both directions. Fix real in-scope issues, re-run affected gates, and
   commit the fixes. If a fix changes user-visible behavior, report it and wait for a fresh go-ahead
