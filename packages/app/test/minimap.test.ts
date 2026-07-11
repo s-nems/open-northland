@@ -2,12 +2,16 @@ import { TILE_HALF_H, TILE_HALF_W, tileToScreen } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
 import { PLAYER_COLOR_COUNT, PLAYER_SWATCH_COLORS } from '../src/catalog/roster.js';
 import {
-  MINIMAP_MARGIN,
-  MINIMAP_MAX_H,
-  MINIMAP_MAX_W,
+  MINIMAP_CELL_UNRESOLVED,
+  averagePatternColour,
+  cellColoursFromGround,
+} from '../src/content/minimap-ground.js';
+import {
+  FRAME_NATIVE,
   minimapLayout,
   minimapToWorld,
   pointOverMinimap,
+  pointOverMinimapHole,
   rasterizeTerrain,
   terrainWorldBounds,
   viewportRectOnMinimap,
@@ -16,13 +20,15 @@ import {
 import { cameraCenteredOnWorld } from '../src/view/camera.js';
 
 /**
- * The headless half of the minimap: layout/projection/raster math is pure, so it's unit-tested here.
- * The Pixi mount + the click feel (`mountMinimap`) are human-gated in the browser check.
+ * The headless half of the minimap: layout/projection/raster math and the ground-lane colour join are
+ * pure, so they're unit-tested here. The Pixi mount, the braided frame art and the click feel are
+ * human-gated in the browser check.
  */
 
 /** A map grid whose four typeIds paint distinguishable raster colours. */
 const GRID_4 = { width: 4, height: 4, typeIds: Array.from({ length: 16 }, (_, i) => i % 4) };
 const FLAT = (typeId: number): number => [0xaa0000, 0x00bb00, 0x0000cc, 0xdddddd][typeId] ?? 0;
+const UISCALE = 1.4;
 
 describe('terrainWorldBounds', () => {
   it('covers every cell diamond, including the odd-row half-cell stagger', () => {
@@ -43,28 +49,46 @@ describe('terrainWorldBounds', () => {
 describe('minimapLayout', () => {
   const bounds = terrainWorldBounds(256, 256);
 
-  it('fits the max box preserving the world aspect and anchors bottom-left', () => {
-    const l = minimapLayout(bounds, 800);
-    expect(l.rect.w).toBeLessThanOrEqual(MINIMAP_MAX_W);
-    expect(l.rect.h).toBeLessThanOrEqual(MINIMAP_MAX_H);
-    // Uniform scale: width/height ratio equals the world's.
-    expect(l.rect.w / l.rect.h).toBeCloseTo(bounds.width / bounds.height);
-    expect(l.rect.x).toBe(MINIMAP_MARGIN);
-    expect(l.rect.y + l.rect.h).toBe(800 - MINIMAP_MARGIN);
+  it('pins the fixed-size framed window flush to the bottom-left corner', () => {
+    const l = minimapLayout(bounds, 800, UISCALE);
+    expect(l.panel.x).toBe(0);
+    expect(l.panel.y + l.panel.h).toBe(800);
+    // The frame keeps the art's native aspect at the uiscale-driven size.
+    expect(l.panel.w / l.panel.h).toBeCloseTo(FRAME_NATIVE.w / FRAME_NATIVE.h);
+    expect(l.panel.w).toBeCloseTo(FRAME_NATIVE.w * l.artScale);
   });
 
-  it('tracks the live screen height (a resize slides the panel, never rescales it)', () => {
-    const tall = minimapLayout(bounds, 1000);
-    const short = minimapLayout(bounds, 700);
-    expect(tall.rect.w).toBe(short.rect.w);
-    expect(tall.rect.h).toBe(short.rect.h);
-    expect(tall.rect.y - short.rect.y).toBe(300);
+  it('letterboxes a non-square map inside the hole, aspect preserved and centred', () => {
+    const l = minimapLayout(bounds, 800, UISCALE);
+    expect(l.map.w / l.map.h).toBeCloseTo(bounds.width / bounds.height);
+    // The wide map fills the hole's width; the leftover height splits into equal bars.
+    expect(l.map.w).toBeCloseTo(l.inner.w);
+    expect(l.map.y - l.inner.y).toBeCloseTo(l.inner.y + l.inner.h - (l.map.y + l.map.h));
+    // The map never leaves the hole.
+    expect(l.map.x).toBeGreaterThanOrEqual(l.inner.x);
+    expect(l.map.y).toBeGreaterThanOrEqual(l.inner.y);
+  });
+
+  it('scales the whole window with the UI scale and clamps it at 1', () => {
+    const one = minimapLayout(bounds, 800, 1);
+    const half = minimapLayout(bounds, 800, 0.5); // sub-1 clamps
+    const two = minimapLayout(bounds, 800, 2);
+    expect(half.panel.w).toBe(one.panel.w);
+    expect(two.panel.w).toBeCloseTo(one.panel.w * 2);
+  });
+
+  it('tracks the live screen height (a resize slides the window, never rescales it)', () => {
+    const tall = minimapLayout(bounds, 1000, UISCALE);
+    const short = minimapLayout(bounds, 700, UISCALE);
+    expect(tall.panel.w).toBe(short.panel.w);
+    expect(tall.panel.h).toBe(short.panel.h);
+    expect(tall.panel.y - short.panel.y).toBe(300);
   });
 });
 
 describe('world↔minimap projection', () => {
   const bounds = terrainWorldBounds(64, 64);
-  const layout = minimapLayout(bounds, 800);
+  const layout = minimapLayout(bounds, 800, UISCALE);
 
   it('round-trips a world point through the minimap and back', () => {
     const w0 = tileToScreen(17, 42);
@@ -74,25 +98,30 @@ describe('world↔minimap projection', () => {
     expect(w1.y).toBeCloseTo(w0.y);
   });
 
-  it('maps the world corners onto the panel corners', () => {
+  it('maps the world corners onto the map picture corners (inside the hole)', () => {
     const tl = worldToMinimap(layout, bounds, bounds.minX, bounds.minY);
-    expect(tl).toMatchObject({ x: layout.rect.x, y: layout.rect.y });
+    expect(tl.x).toBeCloseTo(layout.map.x);
+    expect(tl.y).toBeCloseTo(layout.map.y);
     const br = worldToMinimap(layout, bounds, bounds.minX + bounds.width, bounds.minY + bounds.height);
-    expect(br.x).toBeCloseTo(layout.rect.x + layout.rect.w);
-    expect(br.y).toBeCloseTo(layout.rect.y + layout.rect.h);
+    expect(br.x).toBeCloseTo(layout.map.x + layout.map.w);
+    expect(br.y).toBeCloseTo(layout.map.y + layout.map.h);
   });
 
-  it('claims exactly the panel rect', () => {
-    expect(pointOverMinimap(layout, layout.rect.x + 1, layout.rect.y + 1)).toBe(true);
-    expect(pointOverMinimap(layout, layout.rect.x - 1, layout.rect.y + 1)).toBe(false);
-    expect(pointOverMinimap(layout, layout.rect.x + 1, layout.rect.y + layout.rect.h + 1)).toBe(false);
+  it('claims the framed window; only the hole is a jump surface', () => {
+    expect(pointOverMinimap(layout, layout.panel.x + 1, layout.panel.y + 1)).toBe(true);
+    expect(pointOverMinimap(layout, layout.panel.x + layout.panel.w + 1, layout.panel.y + 1)).toBe(false);
+    // A point on the braid (right of the hole, still in the panel) claims but does not jump.
+    const braidX = layout.inner.x + layout.inner.w + 1;
+    expect(pointOverMinimap(layout, braidX, layout.inner.y + 1)).toBe(true);
+    expect(pointOverMinimapHole(layout, braidX, layout.inner.y + 1)).toBe(false);
+    expect(pointOverMinimapHole(layout, layout.inner.x + 1, layout.inner.y + 1)).toBe(true);
   });
 });
 
 describe('click-to-jump camera', () => {
   it('centres the clicked world point at the viewport centre, keeping the zoom', () => {
     const bounds = terrainWorldBounds(64, 64);
-    const layout = minimapLayout(bounds, 800);
+    const layout = minimapLayout(bounds, 800, UISCALE);
     const target = tileToScreen(30, 12);
     const m = worldToMinimap(layout, bounds, target.x, target.y);
     const w = minimapToWorld(layout, bounds, m.x, m.y);
@@ -106,9 +135,9 @@ describe('click-to-jump camera', () => {
 
 describe('viewportRectOnMinimap', () => {
   const bounds = terrainWorldBounds(64, 64);
-  const layout = minimapLayout(bounds, 800);
+  const layout = minimapLayout(bounds, 800, UISCALE);
 
-  it('clamps a view hanging off the map edge to a partial frame', () => {
+  it('clamps a view hanging off the map edge to a partial frame inside the picture', () => {
     const r = viewportRectOnMinimap(layout, bounds, {
       minX: bounds.minX - 500,
       minY: bounds.minY - 500,
@@ -116,7 +145,8 @@ describe('viewportRectOnMinimap', () => {
       maxY: bounds.minY + 500,
     });
     expect(r).not.toBeNull();
-    expect(r).toMatchObject({ x: 0, y: 0 });
+    expect(r?.x).toBeCloseTo(layout.map.x);
+    expect(r?.y).toBeCloseTo(layout.map.y);
   });
 
   it('returns null for a view entirely off the map', () => {
@@ -134,7 +164,7 @@ describe('rasterizeTerrain', () => {
   it('paints each pixel with its containing cell diamond (stagger respected) and full alpha', () => {
     const pxW = 90;
     const pxH = 50;
-    const rgba = rasterizeTerrain(GRID_4, () => undefined, FLAT, pxW, pxH);
+    const rgba = rasterizeTerrain(GRID_4, (_cell, typeId) => FLAT(typeId), pxW, pxH);
     expect(rgba.length).toBe(pxW * pxH * 4);
     const bounds = terrainWorldBounds(GRID_4.width, GRID_4.height);
     // Probe every cell CENTRE: the pixel over it must carry exactly that cell's colour.
@@ -150,15 +180,47 @@ describe('rasterizeTerrain', () => {
     }
   });
 
-  it('prefers the injected colour table and falls back per miss', () => {
-    const rgba = rasterizeTerrain(GRID_4, (t) => (t === 1 ? 0x123456 : undefined), FLAT, 40, 20);
+  it('feeds the winning cell index alongside its typeId (per-cell colour tables key on it)', () => {
     const seen = new Set<number>();
-    for (let i = 0; i < rgba.length; i += 4) {
-      seen.add(((rgba[i] ?? 0) << 16) | ((rgba[i + 1] ?? 0) << 8) | (rgba[i + 2] ?? 0));
-    }
-    expect(seen.has(0x123456)).toBe(true); // typeId 1 recoloured
-    expect(seen.has(FLAT(1))).toBe(false); // its fallback never used
-    expect(seen.has(FLAT(0))).toBe(true); // misses fall back
+    rasterizeTerrain(
+      GRID_4,
+      (cell) => {
+        seen.add(cell);
+        return 0;
+      },
+      40,
+      20,
+    );
+    expect(seen.size).toBe(GRID_4.typeIds.length); // every cell of the 4×4 grid sampled at least once
+  });
+});
+
+describe('minimap ground-lane colours', () => {
+  it('averages a page rect skipping transparent texels', () => {
+    // A 2×2 page: two opaque pixels (red, blue) + two fully transparent ones.
+    const rgba = new Uint8ClampedArray([255, 0, 0, 255, 0, 0, 255, 255, 9, 9, 9, 0, 9, 9, 9, 0]);
+    const avg = averagePatternColour(rgba, 2, 2, { x: 0, y: 0, w: 2, h: 2 });
+    expect(avg).toBe((128 << 16) | (0 << 8) | 128);
+  });
+
+  it('returns undefined for an all-transparent or out-of-bounds rect', () => {
+    const rgba = new Uint8ClampedArray([9, 9, 9, 0]);
+    expect(averagePatternColour(rgba, 1, 1, { x: 0, y: 0, w: 1, h: 1 })).toBeUndefined();
+    expect(averagePatternColour(rgba, 1, 1, { x: 5, y: 5, w: 2, h: 2 })).toBeUndefined();
+  });
+
+  it('mixes the two triangle patterns per cell and marks unresolved cells', () => {
+    const ground = { patterns: ['water', 'grass', 'missing'], a: [0, 2], b: [1, 2] };
+    const colour = (i: number): number | undefined => [0x000080, 0x008000, undefined][i];
+    const cells = cellColoursFromGround(ground, 2, colour);
+    expect(cells[0]).toBe((0 << 16) | (0x40 << 8) | 0x40); // mean of water+grass
+    expect(cells[1]).toBe(MINIMAP_CELL_UNRESOLVED); // neither triangle resolved
+  });
+
+  it('falls back to the single resolved triangle when the other pattern is unknown', () => {
+    const ground = { patterns: ['water', 'missing'], a: [0], b: [1] };
+    const cells = cellColoursFromGround(ground, 1, (i) => (i === 0 ? 0x123456 : undefined));
+    expect(cells[0]).toBe(0x123456);
   });
 });
 

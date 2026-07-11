@@ -2,18 +2,47 @@ import { TILE_HALF_H, TILE_HALF_W, type Viewport } from '@vinland/render';
 import { type Rect, contains } from '../geometry.js';
 
 /**
- * The pure half of the minimap (no Pixi, no DOM — headlessly unit-tested): the bottom-left layout,
- * the world↔minimap linear projection, the terrain colour raster and the camera-viewport rectangle.
- * "World" here is the renderer's projected px space BEFORE the camera transform (`tileToScreen` /
- * `screen = world*scale + offset` — see render's `iso.ts`), so the minimap is a uniform downscale of
- * the on-screen world: clicks, dots and the view rectangle all share ONE linear mapping.
+ * The pure half of the minimap (no Pixi, no DOM — headlessly unit-tested): the bottom-left window
+ * layout inside the original braided frame, the world↔minimap linear projection, the terrain colour
+ * raster and the camera-viewport rectangle. "World" here is the renderer's projected px space BEFORE
+ * the camera transform (`tileToScreen` / `screen = world*scale + offset` — see render's `iso.ts`), so
+ * the minimap is a uniform downscale of the on-screen world: clicks, dots and the view rectangle all
+ * share ONE linear mapping.
  */
 
-/** The box the minimap must fit in (px), preserving the world's aspect — a 256² map fills it. */
-export const MINIMAP_MAX_W = 240;
-export const MINIMAP_MAX_H = 150;
-/** px inset from the screen's bottom-left corner. */
-export const MINIMAP_MARGIN = 12;
+/**
+ * The original overview-window frame's native geometry (source basis: MEASURED from the decoded
+ * `ls_gui_window` bob 55 — the braided frame carries ornament along its top+right only and its hole
+ * runs flush to the left/bottom edges, so the original pinned this window to the screen's bottom-left
+ * corner exactly where ours sits). `inner` is the near-black map hole the picture draws in — a
+ * ~square window, letterboxed when the map's aspect differs.
+ */
+export const FRAME_NATIVE = {
+  w: 149,
+  h: 133,
+  inner: { x: 0, y: 16, w: 116, h: 117 },
+} as const;
+
+/**
+ * Extra drawn px per native frame px at UI scale 1 — the knob that sizes the whole window. At the
+ * default 1.4 UI scale the map hole comes out ≈244 px, a touch larger than the first iteration's
+ * 240 px panel.
+ */
+export const MINIMAP_ART_SCALE = 1.5;
+
+/** The minimap window's screen layout, all rects in absolute screen px. */
+export interface MinimapLayout {
+  /** The whole framed window (the braided frame's outer box), pinned to the bottom-left corner. */
+  readonly panel: Rect;
+  /** The frame's map hole — the black window the ground/bars fill. */
+  readonly inner: Rect;
+  /** The map picture itself, aspect-fitted and centred inside `inner` (letterboxed bars around it). */
+  readonly map: Rect;
+  /** Minimap px per world px (uniform — the map never distorts). */
+  readonly scale: number;
+  /** Drawn px per native frame px — the frame art's placement scale. */
+  readonly artScale: number;
+}
 
 /** The world-space (projected px, pre-camera) axis-aligned bounds of a whole terrain grid. */
 export interface WorldBounds {
@@ -37,27 +66,38 @@ export function terrainWorldBounds(mapW: number, mapH: number): WorldBounds {
   };
 }
 
-/** The minimap's on-screen rect + the world→minimap px scale (uniform — aspect preserved). */
-export interface MinimapLayout {
-  readonly rect: Rect;
-  /** Minimap px per world px. */
-  readonly scale: number;
-}
-
 /**
- * Fit the world bounds into the {@link MINIMAP_MAX_W}×{@link MINIMAP_MAX_H} box (uniform scale, so the
- * map never distorts) and anchor the result at the screen's bottom-left, {@link MINIMAP_MARGIN} in.
- * Only the screen HEIGHT matters (the left inset is fixed); recomputed per frame from the live screen
- * size (the tool-panel convention — no resize listener).
+ * Lay the framed window out against the live screen: the frame is a FIXED size (native × `uiscale`,
+ * clamped ≥1, × {@link MINIMAP_ART_SCALE}) pinned flush to the bottom-left corner (the original frame's
+ * flush hole edges — see {@link FRAME_NATIVE}); the map is aspect-fitted into the hole with letterbox
+ * bars. Only the screen HEIGHT matters; recomputed per frame (the tool-panel convention — no resize
+ * listener).
  */
-export function minimapLayout(bounds: WorldBounds, screenH: number): MinimapLayout {
-  const scale = Math.min(MINIMAP_MAX_W / bounds.width, MINIMAP_MAX_H / bounds.height);
-  const w = bounds.width * scale;
-  const h = bounds.height * scale;
-  return { rect: { x: MINIMAP_MARGIN, y: screenH - MINIMAP_MARGIN - h, w, h }, scale };
+export function minimapLayout(bounds: WorldBounds, screenH: number, uiscale: number): MinimapLayout {
+  const artScale = MINIMAP_ART_SCALE * Math.max(1, uiscale);
+  const panel: Rect = {
+    x: 0,
+    y: screenH - FRAME_NATIVE.h * artScale,
+    w: FRAME_NATIVE.w * artScale,
+    h: FRAME_NATIVE.h * artScale,
+  };
+  const inner: Rect = {
+    x: panel.x + FRAME_NATIVE.inner.x * artScale,
+    y: panel.y + FRAME_NATIVE.inner.y * artScale,
+    w: FRAME_NATIVE.inner.w * artScale,
+    h: FRAME_NATIVE.inner.h * artScale,
+  };
+  const scale = Math.min(inner.w / bounds.width, inner.h / bounds.height);
+  const map: Rect = {
+    x: inner.x + (inner.w - bounds.width * scale) / 2,
+    y: inner.y + (inner.h - bounds.height * scale) / 2,
+    w: bounds.width * scale,
+    h: bounds.height * scale,
+  };
+  return { panel, inner, map, scale, artScale };
 }
 
-/** World point → absolute screen px on the minimap (may fall outside `rect` for an off-map point). */
+/** World point → absolute screen px on the minimap (may fall outside the map rect for an off-map point). */
 export function worldToMinimap(
   layout: MinimapLayout,
   bounds: WorldBounds,
@@ -65,8 +105,8 @@ export function worldToMinimap(
   wy: number,
 ): { x: number; y: number } {
   return {
-    x: layout.rect.x + (wx - bounds.minX) * layout.scale,
-    y: layout.rect.y + (wy - bounds.minY) * layout.scale,
+    x: layout.map.x + (wx - bounds.minX) * layout.scale,
+    y: layout.map.y + (wy - bounds.minY) * layout.scale,
   };
 }
 
@@ -78,26 +118,31 @@ export function minimapToWorld(
   my: number,
 ): { x: number; y: number } {
   return {
-    x: bounds.minX + (mx - layout.rect.x) / layout.scale,
-    y: bounds.minY + (my - layout.rect.y) / layout.scale,
+    x: bounds.minX + (mx - layout.map.x) / layout.scale,
+    y: bounds.minY + (my - layout.map.y) / layout.scale,
   };
 }
 
-/** True when the absolute screen point lies on the minimap (the pointer-claim test). */
+/** True when the absolute screen point lies on the framed window (the pointer-claim test). */
 export function pointOverMinimap(layout: MinimapLayout, x: number, y: number): boolean {
-  return contains(layout.rect, x, y);
+  return contains(layout.panel, x, y);
+}
+
+/** True when the point lies in the map HOLE — where a click means "jump there" (braid clicks don't). */
+export function pointOverMinimapHole(layout: MinimapLayout, x: number, y: number): boolean {
+  return contains(layout.inner, x, y);
 }
 
 /**
- * The camera's visible world box as a minimap-local rect (relative to `rect.x/rect.y`), clamped to the
- * minimap so a half-off-map view draws a partial frame instead of bleeding outside the panel. Returns
- * null when the view lies entirely off the minimap.
+ * The camera's visible world box as an absolute screen rect, clamped to the map picture so a
+ * half-off-map view draws a partial frame instead of bleeding into the bars. Returns null when the
+ * view lies entirely off the map.
  */
 export function viewportRectOnMinimap(layout: MinimapLayout, bounds: WorldBounds, vp: Viewport): Rect | null {
-  const x0 = Math.max(0, (vp.minX - bounds.minX) * layout.scale);
-  const y0 = Math.max(0, (vp.minY - bounds.minY) * layout.scale);
-  const x1 = Math.min(layout.rect.w, (vp.maxX - bounds.minX) * layout.scale);
-  const y1 = Math.min(layout.rect.h, (vp.maxY - bounds.minY) * layout.scale);
+  const x0 = Math.max(layout.map.x, layout.map.x + (vp.minX - bounds.minX) * layout.scale);
+  const y0 = Math.max(layout.map.y, layout.map.y + (vp.minY - bounds.minY) * layout.scale);
+  const x1 = Math.min(layout.map.x + layout.map.w, layout.map.x + (vp.maxX - bounds.minX) * layout.scale);
+  const y1 = Math.min(layout.map.y + layout.map.h, layout.map.y + (vp.maxY - bounds.minY) * layout.scale);
   if (x1 <= x0 || y1 <= y0) return null;
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
@@ -115,12 +160,11 @@ export interface TerrainCells {
  * DIAMOND containing its world point: candidate centres on the two nearest rows (odd rows staggered half
  * a cell right, matching `tileToScreen`), picked by the diamond metric `|dx|/TILE_HALF_W + |dy|/TILE_HALF_H`
  * (≤ 1 ⇔ inside the diamond — the diamonds tile the plane, so the minimum IS the containing cell).
- * `colourOf` misses fall back to `fallback` (the render flat-tint palette).
+ * `colourOfCell` maps the winning cell (row-major index + its typeId) to `0xRRGGBB`.
  */
 export function rasterizeTerrain(
   terrain: TerrainCells,
-  colourOf: (typeId: number) => number | undefined,
-  fallback: (typeId: number) => number,
+  colourOfCell: (cell: number, typeId: number) => number,
   pxW: number,
   pxH: number,
 ): Uint8Array {
@@ -148,8 +192,8 @@ export function rasterizeTerrain(
           bestRow = clampedRow;
         }
       }
-      const typeId = terrain.typeIds[bestRow * terrain.width + bestCol] ?? 0;
-      const colour = colourOf(typeId) ?? fallback(typeId);
+      const cell = bestRow * terrain.width + bestCol;
+      const colour = colourOfCell(cell, terrain.typeIds[cell] ?? 0);
       const o = (py * pxW + px) * 4;
       out[o] = (colour >> 16) & 0xff;
       out[o + 1] = (colour >> 8) & 0xff;

@@ -6,7 +6,6 @@ import {
   SPRITE_CULL_MARGIN,
   type SceneTerrain,
   type SpriteSheet,
-  type TextureSource,
   type WorldRenderer,
   buildHud,
   buildSpriteScene,
@@ -75,9 +74,9 @@ export interface GameViewDeps {
   /** typeId → minimap ground colour (the real terrain set's per-type debug colours). Absent (bare
    *  checkout / `?terrain=off`), the minimap falls back to the render flat-tint palette. */
   readonly terrainColour?: (typeId: number) => number | undefined;
-  /** The original's shipped minimap picture for a decoded map (see `hud/minimap` `groundImage`) —
-   *  preferred over the typeId raster, which can't depict a real map's baked ground lanes. */
-  readonly minimapImage?: TextureSource;
+  /** Per-cell minimap ground colours from a decoded map's baked ground lanes
+   *  (`content/minimap-ground.ts`) — preferred over the typeId palette, which can't depict them. */
+  readonly minimapCellColours?: Uint32Array;
   /** Map bounds in CELLS for placement/order clicks (a click outside is rejected, never clamped);
    *  grid-logic consumers derive the 2× node bounds from it. */
   readonly mapSize: { readonly width: number; readonly height: number };
@@ -222,16 +221,17 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     const { sx, sy, rect } = screenScale(canvas, app.renderer.resolution);
     return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
   };
-  // The bottom-left minimap: whole-map terrain + player-coloured unit dots + the camera's view
-  // rectangle; a left-click (or drag) re-centres the camera on the pointed world spot at the CURRENT
-  // zoom. Mounted before the unit controls so its claim joins their pointer chain (a minimap click
-  // must never select units or issue world orders underneath).
-  const minimap = mountMinimap({
+  // The bottom-left minimap in the original braided overview frame: whole-map ground + player-coloured
+  // unit dots + the camera's view rectangle; a left-click (or drag) in the map hole re-centres the
+  // camera on the pointed world spot at the CURRENT zoom. Mounted before the unit controls so its
+  // claim joins their pointer chain (a minimap click must never select units or issue world orders).
+  const minimap = await mountMinimap({
     app,
     canvas,
     terrain: deps.terrainGrid,
+    cellColours: deps.minimapCellColours,
     colourOf: deps.terrainColour,
-    groundImage: deps.minimapImage,
+    uiscale,
     camera: () => cameraCtl.camera(),
     onJump: (wx, wy) => {
       const zoom = cameraCtl.camera().scale ?? 1;

@@ -451,11 +451,11 @@ export const GUI_FRAMES: readonly GuiFrameMeta[] = [
     note: 'gfx 0x36, speed state speedFactor==0 (paused)',
   },
   /* 055 0x37 */ {
-    name: 'unknown_055',
+    name: 'minimap_frame',
     role: 'window_chrome',
     palette: 'frame',
     source: 'montage',
-    note: 'ornate window corner ornament 149x133 (silver frame)',
+    note: 'braided minimap/overview window frame 149x133: braid along top+right only, hole flush to the LEFT and BOTTOM edges — drawn pinned to the screen bottom-left corner; measured inner map area (0,16,116x117), near-black opaque',
   },
   /* 056 0x38 */ {
     name: 'tool_button_tech_tree',
@@ -1448,6 +1448,7 @@ export const GUI_FRAME = {
   speed_button_x2: 52,
   speed_button_x3: 53,
   speed_button_paused: 54,
+  minimap_frame: 55,
   tool_button_tech_tree: 56,
   message_priority_frame: 63,
   message_priority_button: 64,

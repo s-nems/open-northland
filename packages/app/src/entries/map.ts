@@ -5,7 +5,6 @@ import {
   WorldRenderer,
   buildSpriteScene,
   createWindowPixiApp,
-  loadAtlasSource,
   makeBrightnessField,
   makeElevationField,
   setTilePitch,
@@ -13,6 +12,7 @@ import {
 import { halfCellMapFromCells } from '@vinland/sim';
 import { buildCollisionTerrain } from '../content/collision.js';
 import { buildingFootprints, loadIr } from '../content/ir.js';
+import { loadMinimapCellColours } from '../content/minimap-ground.js';
 import { loadMapObjects } from '../content/objects.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
@@ -163,13 +163,11 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     cameraFor(buildSpriteScene(sim.snapshot()), zoom, app.screen.width, app.screen.height);
   const cameraCtl = createCameraController(canvas, initialCamera, app.renderer.resolution);
 
-  // The original's shipped minimap picture (the pipeline's decoded `minimap.pcx`, served like the
-  // thumbnails on the menu cards) — the minimap's preferred ground; a map without the sidecar (or a
-  // synthetic strip) degrades to the typeId raster.
-  const minimapImage =
-    loaded !== null && mapId !== null
-      ? await loadAtlasSource(`/maps/${encodeURIComponent(mapId)}.png`, 'linear').catch(() => undefined)
-      : undefined;
+  // The minimap's per-cell ground colours, averaged from the REAL texture pages the map's baked
+  // ground lanes point at (the shipped `minimap.pcx` is the map-SELECTION card — sometimes a painted
+  // scene, e.g. magiczny las — so the in-game minimap is rendered from map data, like the original's
+  // dynamic overview window). Null without lanes/textures → the typeId raster fallback.
+  const minimapCells = await loadMinimapCellColours(terrainGrid, terrain);
 
   // The shared in-game runtime (view/game-view.ts): the standard HUD mounts — tool panel, unit
   // controls, perf overlay, positional sound — and the ONE fixed-timestep RAF loop, identical to the
@@ -185,7 +183,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     terrainGrid,
     // Minimap ground colours from the real terrain set's per-type debug colours (absent → flat tints).
     ...(terrain !== undefined ? { terrainColour: (t: number) => terrain.cellFor(t)?.fallbackColour } : {}),
-    ...(minimapImage !== undefined ? { minimapImage } : {}),
+    ...(minimapCells !== null ? { minimapCellColours: minimapCells } : {}),
     mapSize: { width: terrainGrid.width, height: terrainGrid.height },
     elevation, // a placement/order click on a lifted hill resolves to the tile drawn there
   });
