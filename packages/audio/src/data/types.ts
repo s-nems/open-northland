@@ -60,7 +60,18 @@ export interface AudioFrame {
  */
 export type EventSound =
   | { readonly kind: 'spatial'; readonly group: string }
-  | { readonly kind: 'jingle'; readonly musicType: number };
+  | {
+      readonly kind: 'jingle';
+      readonly musicType: number;
+      /**
+       * When set, the jingle plays ONLY for a death/life-event of the LOCAL player's own unit — the
+       * original's "your settler died" stinger is a notification TO the player, not a world sound, so an
+       * enemy's or a wild animal's death must not ring it. The director gates it on the event's `player`
+       * field ({@link SimEvent} `settlerDied.player`) equalling {@link DirectorInput.localPlayer}: a
+       * non-local or unowned (`null`) death is silent. Absent/false → the jingle always plays (a birth).
+       */
+      readonly localPlayerOnly?: boolean;
+    };
 
 /**
  * The event→sound map the director resolves against. `byEvent` covers events identified by their
@@ -70,6 +81,14 @@ export type EventSound =
 export interface SoundBindings {
   readonly byEvent: Partial<Record<SimEventKind, EventSound>>;
   readonly byAtomic: ReadonlyMap<number, EventSound>;
+  /**
+   * A melee `combatHit`'s WEAPON-specific impact sound, keyed by the striker's `weaponMainType`
+   * (1 fist / 2 spear / 3 sword / 4 saber / 5 axe — `WEAPON_MAIN_TYPE_*`). A sword rings differently
+   * from a spear thrust, so the impact SFX follows the weapon class the event carries; a weapon whose
+   * class has no entry (or a hit that carries none) falls back to `byEvent.combatHit`. Optional — omit
+   * for no weapon-specific impacts (the fallback still plays a generic melee thunk).
+   */
+  readonly byCombatWeapon?: ReadonlyMap<number, EventSound>;
 }
 
 /** The row-major landscape grid the ambient layer samples (the terrain the snapshot is positioned over). */
@@ -92,4 +111,10 @@ export interface DirectorInput {
   readonly terrain?: AudioTerrain;
   readonly index: SoundIndex;
   readonly bindings: SoundBindings;
+  /**
+   * The player slot whose life-events are "ours" — gates a {@link EventSound} jingle marked
+   * {@link EventSound.localPlayerOnly} (the death stinger) to this player's own deaths. Omit and such a
+   * jingle never plays (no local player ⇒ nothing is "ours"); a plain jingle (a birth) is unaffected.
+   */
+  readonly localPlayer?: number;
 }

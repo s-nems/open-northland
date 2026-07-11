@@ -435,13 +435,20 @@ export type AtomicEffect =
    *  release frame) the executor **launches a {@link import('../components/combat.js').Projectile}** toward
    *  `target` instead of landing the blow in place — the arrow/rock then flies (`projectileSystem`) and
    *  deals the SAME `damage` on contact (step 1's model, resolved on arrival). It carries the ammunition
-   *  class + travel `speed` the projectile needs. Absent → a melee swing (the blow lands here at `hitAt`). */
+   *  class + travel `speed` the projectile needs. Absent → a melee swing (the blow lands here at `hitAt`).
+   *
+   *  `maxRange` is the melee weapon's reach (in half-cell nodes, the same band the CombatSystem started the
+   *  swing within), carried so the executor can RE-CHECK reach at the hit frame: if the target has stepped
+   *  beyond it during the swing (a long animation the enemy backed out of), the blow WHIFFS — no damage, no
+   *  blood, no flinch. Present only on a MELEE swing (a ranged shot homes via its projectile); absent → the
+   *  blow always lands on a live target (the pre-reach-check behaviour, e.g. a mapless fixture with no nodes). */
   | {
       readonly kind: 'attack';
       readonly target: Entity;
       readonly damage: number;
       readonly hitAt?: number;
       readonly weaponMainType?: number;
+      readonly maxRange?: number;
       readonly projectile?: { readonly munitionType: number; readonly speed: number };
     }
   /** A builder's **construction swing** at a {@link import('../components/economy.js').UnderConstruction}

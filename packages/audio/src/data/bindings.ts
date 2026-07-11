@@ -24,6 +24,32 @@ export const GROUP_WOODCUTTER_AXE = 'Woodcutter Axe';
 /** Sawing — a workshop producing (bound to `goodProduced`). */
 export const GROUP_CARPENTER_SAW = 'Carpenter Saw';
 
+// --- Combat impact / weapon SFX (SoundFXStatic `Name`s, the weapon-impact `LogicSoundType` 67–96 set
+//     decoded from `soundfx.cif`). A melee `combatHit` rings its weapon's impact; a bow's `projectileLaunched`
+//     twangs and its `projectileHit` thunks. Faithful group NAMES; which SPECIFIC group each event picks is
+//     the reversed engine mapping (see the header) expressed as data. ---
+/** Fist impact — a bare-handed civilian brawl connecting (LogicSoundType 93). */
+export const GROUP_FIST_HIT = 'Weapon Fist Hit';
+/** Spear thrust connecting (LogicSoundType 68). */
+export const GROUP_SPEAR_HIT = 'Weapon Spear Hit';
+/** Sword blow connecting — the short-sword impact, the generic melee-thunk fallback too (LogicSoundType 82). */
+export const GROUP_SWORD_HIT = 'Weapon Sword Short Hit';
+/** Bow release — the string loosing an arrow (LogicSoundType 75, the long/hunter bow twang). */
+export const GROUP_BOW_SHOT = 'Weapon Bow Long';
+/** Arrow impact — the shot landing its blow (LogicSoundType 77). */
+export const GROUP_ARROW_HIT = 'Weapon Bow Hit';
+
+/**
+ * The melee `combatHit` weapon-class → impact-group map: the striker's `weaponMainType` (1 fist / 2 spear /
+ * 3 sword) selects its impact SFX, so a sword blow and a spear thrust sound different. Saber/axe (4/5) and an
+ * unclassified weapon fall through to the {@link GROUP_SWORD_HIT} generic melee thunk (`byEvent.combatHit`) —
+ * the mod ships no dedicated saber/axe impact group. Ranged classes (bow 6 / catapult 7) never emit a
+ * `combatHit` (their hit is the arrow/rock `projectileHit`), so they need no entry.
+ */
+const WEAPON_MAIN_TYPE_FIST = 1;
+const WEAPON_MAIN_TYPE_SPEAR = 2;
+const WEAPON_MAIN_TYPE_SWORD = 3;
+
 /**
  * A settler's voice class — the axis the ambient chatter picks its pool by, so a settler SOUNDS like it
  * LOOKS. An all-male crowd murmurs only male voices; a woman speaks female clips; a child pipes up with a
@@ -92,9 +118,20 @@ export function defaultBindings(opts?: {
       boatPlaced: { kind: 'spatial', group: GROUP_HAMMER_WOOD },
       buildingFinished: { kind: 'jingle', musicType: JINGLE_HOUSE_BUILT },
       settlerBorn: { kind: 'jingle', musicType: JINGLE_BIRTH },
-      settlerDied: { kind: 'jingle', musicType: JINGLE_DEATH },
+      // The death jingle is a notification to the player — it rings only when the LOCAL player's own
+      // unit falls, never for an enemy or a wild animal (the director gates it on the event's owner).
+      settlerDied: { kind: 'jingle', musicType: JINGLE_DEATH, localPlayerOnly: true },
       goodProduced: { kind: 'spatial', group: GROUP_CARPENTER_SAW },
+      // Combat impacts: a melee blow connecting (weapon-specific below), a bow loosing, an arrow landing.
+      combatHit: { kind: 'spatial', group: GROUP_SWORD_HIT },
+      projectileLaunched: { kind: 'spatial', group: GROUP_BOW_SHOT },
+      projectileHit: { kind: 'spatial', group: GROUP_ARROW_HIT },
     },
     byAtomic,
+    byCombatWeapon: new Map<number, EventSound>([
+      [WEAPON_MAIN_TYPE_FIST, { kind: 'spatial', group: GROUP_FIST_HIT }],
+      [WEAPON_MAIN_TYPE_SPEAR, { kind: 'spatial', group: GROUP_SPEAR_HIT }],
+      [WEAPON_MAIN_TYPE_SWORD, { kind: 'spatial', group: GROUP_SWORD_HIT }],
+    ]),
   };
 }

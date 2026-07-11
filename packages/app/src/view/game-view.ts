@@ -424,6 +424,9 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // is passed — the always-on stocks panel is gone; the debug tick lives in the top overlay and the
     // population/jobs/stocks in the stats window.
     const doorBadges = computeDoorBadges(snap, buildingDoors, workerRoleOf);
+    // Combat ground marks (blood on hits, bones on deaths) from this frame's events — ingested before the
+    // renderer's update draws them, decaying against the sim tick so a pause/screenshot reproduces.
+    renderer.ingestCombatEffects(frameEvents, snap.tick);
     renderer.update(
       snap,
       cameraCtl.camera(),
@@ -446,6 +449,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
         canvasH: app.screen.height,
         terrain: deps.terrainGrid,
         dtMs: elapsed,
+        localPlayer: HUMAN_PLAYER, // the death stinger rings only for OUR own units, not enemies/wildlife
       });
     }
     const cpuMs = performance.now() - cpu0;

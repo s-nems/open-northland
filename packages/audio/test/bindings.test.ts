@@ -55,4 +55,24 @@ describe('defaultBindings', () => {
     expect(b.byEvent.buildingPlaced).toEqual({ kind: 'spatial', group: 'Hammer Wood' });
     expect(b.byEvent.goodProduced).toEqual({ kind: 'spatial', group: 'Carpenter Saw' });
   });
+
+  it('marks only the death jingle local-player-only (a birth rings for everyone)', () => {
+    const b = defaultBindings();
+    const death = b.byEvent.settlerDied;
+    expect(death?.kind).toBe('jingle');
+    expect(death?.kind === 'jingle' && death.localPlayerOnly).toBe(true);
+    const born = b.byEvent.settlerBorn;
+    expect(born?.kind === 'jingle' && born.localPlayerOnly).toBeFalsy();
+  });
+
+  it('binds combat impacts: melee hit + bow shot/hit, with weapon-specific melee groups', () => {
+    const b = defaultBindings();
+    expect(b.byEvent.combatHit).toEqual({ kind: 'spatial', group: 'Weapon Sword Short Hit' });
+    expect(b.byEvent.projectileLaunched).toEqual({ kind: 'spatial', group: 'Weapon Bow Long' });
+    expect(b.byEvent.projectileHit).toEqual({ kind: 'spatial', group: 'Weapon Bow Hit' });
+    // Per-weapon melee impacts: fist / spear / sword (mainType 1 / 2 / 3).
+    expect(b.byCombatWeapon?.get(1)).toEqual({ kind: 'spatial', group: 'Weapon Fist Hit' });
+    expect(b.byCombatWeapon?.get(2)).toEqual({ kind: 'spatial', group: 'Weapon Spear Hit' });
+    expect(b.byCombatWeapon?.get(3)).toEqual({ kind: 'spatial', group: 'Weapon Sword Short Hit' });
+  });
 });

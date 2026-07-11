@@ -23,8 +23,42 @@ export type SimEvent =
   | { readonly kind: 'buildingFinished'; readonly entity: Entity }
   | { readonly kind: 'buildingUpgraded'; readonly entity: Entity; readonly level: number }
   | { readonly kind: 'settlerBorn'; readonly entity: Entity }
-  | { readonly kind: 'settlerDied'; readonly entity: Entity; readonly cause: string }
+  | {
+      /**
+       * A combatant was reaped this tick — its {@link import('../components/combat.js').Health} pool hit 0
+       * and `cleanupSystem` removed it. `cause` is a render/audio hint (`'damage'` today). `player` is the
+       * dead unit's {@link import('../components/ownership.js').Owner} slot, read BEFORE the destroy (the
+       * entity is gone by the snapshot, so a consumer can't look it up) — `null` for an unowned death
+       * (wildlife / a neutral), so audio can play the "your settler died" stinger for the LOCAL player only.
+       * `at` is the death HALF-CELL NODE (the reaped unit's last position), so render can leave a cadaver /
+       * bones marker there; omitted only if the dying entity somehow carried no `Position`.
+       */
+      readonly kind: 'settlerDied';
+      readonly entity: Entity;
+      readonly cause: string;
+      readonly player: number | null;
+      readonly at?: { readonly x: number; readonly y: number };
+    }
   | { readonly kind: 'atomicCompleted'; readonly entity: Entity; readonly atomicId: number }
+  | {
+      /**
+       * A MELEE blow CONNECTED this tick — an in-place `attack` swing reached a live target and drained
+       * its {@link import('../components/combat.js').Health} at the ATTACK-event frame. `at` is the
+       * VICTIM's HALF-CELL NODE (where the wound is), so render draws its blood there and audio plays the
+       * weapon-impact SFX from that spot; `weaponMainType` is the striker's weapon class (1 fist / 2 spear /
+       * 3 sword / 4 saber / 5 axe — `WEAPON_MAIN_TYPE_*`, ranged classes never emit this) so the impact
+       * sound can be weapon-specific, `undefined` when the weapon lists no class. A swing that struck AIR
+       * (no adjacent live target) resolves nothing and emits NO `combatHit` — the "miss = no blood" rule
+       * falls straight out of the hit-resolution guard. The RANGED twin is {@link 'projectileHit'} (the
+       * arrow/rock landing), which render/audio treat the same way (blood + impact). Deterministic like
+       * every event: a pure function of the tick's landed melee blows.
+       */
+      readonly kind: 'combatHit';
+      readonly attacker: Entity;
+      readonly target: Entity;
+      readonly weaponMainType?: number;
+      readonly at: { readonly x: number; readonly y: number };
+    }
   | {
       readonly kind: 'goodProduced';
       readonly building: Entity;

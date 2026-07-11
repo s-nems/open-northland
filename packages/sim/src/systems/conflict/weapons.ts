@@ -164,7 +164,10 @@ export function startAttack(
       // fallback-to-completion, no-XP, and melee-hit paths are the absence of the field, not a sentinel.
       ...(hitAt !== undefined ? { hitAt } : {}),
       ...(weapon.mainType !== undefined ? { weaponMainType: weapon.mainType } : {}),
-      ...(projectile !== undefined ? { projectile } : {}),
+      // A MELEE swing carries the weapon's reach so the executor can re-check it at the hit frame and WHIFF
+      // if the target stepped out (matching the CombatSystem's `withReach` floor). A ranged swing homes via
+      // its projectile instead — no re-check, so no `maxRange`.
+      ...(projectile === undefined ? { maxRange: Math.max(1, weapon.maxRange) } : { projectile }),
     },
     targetEntity: target,
     targetTile: null,
