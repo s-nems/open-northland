@@ -193,9 +193,24 @@ scan ⇒ return early) drops sim to ~5 ms/tick, ~26 fps at ×1 (byte-identical r
 `packages/app/test/map-resources.test.ts` (synthetic map+IR: join, decor/no-trade split, end-to-end spawn).
 Verified `npm test` (1920) / `check` / `build` + hands-on on the real map (16,927 nodes, no double-draw,
 playable). Named limitations / follow-ups: (a) per-placement growth `levels` not mapped to a starting
-yield (uses the gatherer catalog defaults, same as an admin spawn); (b) snapshot cost (~28 ms/tick cloning
-17k entities) is the remaining per-tick cost — an incremental/dirty snapshot is a separate perf follow-up;
-(c) mushrooms/wheat/leather without a gatherer trade stay decor.
+yield (uses the gatherer catalog defaults, same as an admin spawn); (b) mushrooms/wheat/leather without a
+gatherer trade stay decor.
+
+**Step-6 fidelity + perf fixes (2026-07-11, same branch):** two regressions the map spawn introduced,
+both fixed. **Species variety** — every node drew its good's ONE representative record (all wood the
+yew): the join now carries each placement's own harvest-stage gfx record index, stored as an OPAQUE
+render-variant tag `Resource.gfxIndex` (app-numbered; the sim never interprets it — footprint stays the
+sim-content record, and an absent tag hashes as before, goldens hold) and drawn via a new
+`ResourceTypeBinding.byGfxIndex` per-variant table built off the real IR (falls back per-good for an
+unloaded family — never a wrong frame). **Frame cost** — the per-RAF `sim.snapshot()` deep-cloned all
+~17k scenery entities (28 ms/frame, 10–20 fps): `World` gained a touched-entity log (auto on
+add/remove/destroy; the two in-place harvest writes call `world.touch`), `takeSnapshot` reuses cached
+Resource/Stump clones evicted through that log (verifier registered in `verifyCaches` per the AGENTS
+cache rule), `Simulation.snapshot()` is memoized per tick, and the app's per-frame `buildHud`/door-badge
+scans memoize by snapshot identity. Hands-on: snap 28 → 0.1 ms, ~120 fps at ×1 / ~77 at ×3 (the ×3
+remainder is the gatherer target scan — economy nearest-X onto `NodeBuckets` stays a `sim-perf.md`
+follow-up). Tests: `sim/test/core/snapshot-cache.test.ts` (memo identity, touch eviction, verifier
+catches a missed touch); map-resources tests pin the per-placement `gfxIndex`.
 
 **No free gatherers — spawn-time flag binding (2026-07-11, same branch):** a gatherer spawned through the
 command path (imported-map settlers, the admin palette) got no work flag, so it searched the WHOLE map for
