@@ -98,6 +98,17 @@ export function readBuiltPct(components: Readonly<Record<string, unknown>>): num
 }
 
 /**
+ * Whether a building is mid PRODUCTION cycle — the sim `Production` component's presence (it exists
+ * exactly while a cycle runs, `productionSystem`). Stamped onto the building draw item as
+ * {@link import('./draw-item.js').DrawItem.working}, the switch an animated state overlay flips on
+ * (the mill's rotor spins while the mill produces). Presence is the whole signal — the component's
+ * `elapsed`/`duration` counters are sim-internal, never read here.
+ */
+export function readProducing(components: Readonly<Record<string, unknown>>): boolean {
+  return 'Production' in components;
+}
+
+/**
  * The whole ticks the settler has executed in its current atomic — the sim's `CurrentAtomic.elapsed`
  * (a plain integer, no fixed-point rescale). The action's animation clock: a directional swing advances
  * at a fixed cadence over these ticks, so its speed never depends on the action's duration. Returns

@@ -1596,6 +1596,46 @@ export const BuildingConstructionLayer = z.strictObject({
 export type BuildingConstructionLayer = z.infer<typeof BuildingConstructionLayer>;
 
 /**
+ * One `[GfxHouse]` **animated state overlay**: `GfxOverlay <sizeIdx> 4 <state> <x> <y> <step>
+ * <bobId…>` — an extra sprite drawn ON TOP of the finished body, with one frame list per state. The
+ * one type-4 user in the source is the MILL: its body bob has NO rotor blades — state `0` is the
+ * single standing-still blade frame, state `1` the multi-frame spin cycle the original plays while
+ * the mill produces (viking `ls_houses_viking.bmd`: body 70, idle blade 76, spin 85..86 — 13 frames).
+ *
+ * Only the type-`4` rows (the 2nd int) are extracted — the two-state animated overlays, whose field
+ * shape is pinned by comparing every such row in the file (offsets observed `0 0`, step `1`
+ * throughout). The type-`3` rows have a DIFFERENT, not-yet-decoded shape (6 fields, no frame list —
+ * static decal offsets) and are skipped rather than guessed. Render-binding data like
+ * {@link BuildingBob} (same `(tribeId, typeId)` keying, same `(bmd, palette)` atlas resolution); the
+ * pure sim ignores it.
+ */
+export const BuildingOverlay = z.strictObject({
+  /** The `LogicTribeType` the record applies to — the same logic `typeId` recurs per tribe. */
+  tribeId: z.number().int().nonnegative(),
+  /** The building `typeId` at this size level (the `LogicType` value — the sim's `Building.buildingType`). */
+  typeId: z.number().int().nonnegative(),
+  /** The growth/size level index (the source's leading int). */
+  level: z.number().int().nonnegative(),
+  /** The overlay state (the 3rd int): `0` = idle (one still frame), `1` = working (the spin cycle). */
+  state: z.number().int().nonnegative(),
+  /** Pixel offsets of the overlay (the 4th/5th ints; observed `0 0` on every type-4 row). */
+  x: z.number().int(),
+  y: z.number().int(),
+  /** The 6th int (observed `1` on every type-4 row; playback-step semantics undecoded — kept raw). */
+  step: z.number().int(),
+  /** The state's frame list, in file order — one bob for state 0, the spin cycle for state 1. */
+  frames: z.array(z.number().int().nonnegative()).min(1),
+  /** The body bob set, normalized — the same `.bmd` the type's {@link BuildingBob} rows index. */
+  bmd: z.string(),
+  /** One recolour skin (`GfxPalette` value), lower-cased. */
+  paletteName: z.string(),
+  /** The record's `EditName`, kept as a render/debug handle when present. */
+  editName: z.string().optional(),
+  source: Provenance.optional(),
+});
+export type BuildingOverlay = z.infer<typeof BuildingOverlay>;
+
+/**
  * One `SFX "<path>" <n…>` line inside a sound group: the wav to play plus the record's trailing
  * integer parameters, kept verbatim. Their meaning is positional and section-specific — a
  * {@link SoundStaticGroup} carries one volume int (0–100); a {@link SoundAmbient} carries a
@@ -1717,6 +1757,8 @@ export const ContentSet = z.strictObject({
   gfxAtomics: z.array(GfxAnimAtomic).default([]),
   buildingBobs: z.array(BuildingBob).default([]),
   constructionLayers: z.array(BuildingConstructionLayer).default([]),
+  /** `[GfxHouse]` `GfxOverlay` type-4 animated state overlays (the mill rotor — render-binding data). */
+  buildingOverlays: z.array(BuildingOverlay).default([]),
   tribes: z.array(TribeType).default([]),
   atomicAnimations: z.array(AtomicAnimation).default([]),
   maps: z.array(MapInfo).default([]),

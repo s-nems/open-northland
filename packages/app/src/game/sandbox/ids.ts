@@ -39,6 +39,8 @@ export const GOOD_MUSHROOM = 8;
 // EQUIP_GOODS below adds only the equip CLASSIFICATION (slot + wear), merged onto the catalog by good id.
 /** Wheat — the field-farmed grain (`goodtypes.ini` type 4, at the +100 catalog offset). */
 export const GOOD_WHEAT = 104;
+/** Flour — the mill's in-house product ground from wheat (`goodtypes.ini` type 11, at the +100 offset). */
+export const GOOD_FLOUR = 111;
 export const GOOD_SHOES = 130;
 export const GOOD_TOOL_IRON = 132;
 export const GOOD_ARMOR_CHAIN = 135;
@@ -169,6 +171,12 @@ export const JOB_FARMER_SLOT = WORKER_SLOT_JOB_BASE + 18;
 
 /** The grain farm (`houses.ini` logictype 12 — "work farm 00"). */
 export const BUILDING_FARM = 12;
+/** The mill (`houses.ini` logictype 13 — "work mill 00"): grinds wheat into flour. */
+export const BUILDING_MILL = 13;
+/** The MILLER worker-slot job (`jobtypes.ini` 19, rebased like every extracted slot trade) — the
+ *  mill's recipe operator; the generic producer drive (fetch wheat → grind → haul flour out) needs
+ *  no job-specific atomics, so the backfilled slot job carries the behaviour as-is. */
+export const JOB_MILLER_SLOT = WORKER_SLOT_JOB_BASE + 19;
 
 // The builder trade — the REAL viking `jobtypes.ini` id 7 (below the soldier band, so the job→body map
 // draws a civilian body). Permitted to run the build-house atomic; the planner's builder drive puts a

@@ -31,6 +31,7 @@ import {
   BUILDING_FAMILIES,
   BUILDING_SCALE,
   buildingBobRefsByType,
+  buildingOverlayRefsByType,
   constructionRefsByType,
   DEFAULT_BUILDING_FAMILY,
   HOUSE_ATLAS,
@@ -324,6 +325,14 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
     DEFAULT_BUILDING_FAMILY,
     BUILDING_FAMILIES,
   );
+  // The animated state overlays (the type-4 `GfxOverlay` rows — the mill's rotor over its bladeless
+  // body), reduced under the same family rules. Empty when the IR predates the lane.
+  const overlayRefs = buildingOverlayRefsByType(
+    ir?.buildingOverlays ?? [],
+    VIKING_TRIBE,
+    DEFAULT_BUILDING_FAMILY,
+    BUILDING_FAMILIES,
+  );
   // Gathering economy: resolve each RUN good's node/pile draw from the Step-1 pipeline join (matched by
   // id-slug), load the atlases they reference (rock/mine/mushroom nodes, `ls_goods` piles, the `ls_temp`
   // flag) as families, and build the per-good bindings against exactly the families that loaded — the same
@@ -373,6 +382,7 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
       stumpBinding,
       trunkBinding,
       berryBushBinding,
+      overlayRefs,
     ),
     overlays: [head],
     // The tree and the DEFAULT building each draw from their OWN atlas (distinct id spaces), so they bind

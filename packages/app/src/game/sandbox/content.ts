@@ -57,6 +57,7 @@ import {
   BUILDING_HEADQUARTERS,
   BUILDING_HOME_00,
   BUILDING_JOINERY,
+  BUILDING_MILL,
   BUILDING_WAREHOUSE_00,
   BUILDING_WAREHOUSE_01,
   BUILDING_WAREHOUSE_02,
@@ -64,6 +65,7 @@ import {
   GATHERERS,
   type GathererSpec,
   GOOD_COIN,
+  GOOD_FLOUR,
   GOOD_GOLD,
   GOOD_IRON,
   GOOD_MUD,
@@ -152,6 +154,18 @@ const FARMER_WATER_LENGTH = 29;
 // The farm's wheat-only store capacity — EXTRACTED: `logicstock 4 25 0` on the "work farm 00" block
 // (`DataCnmd/types/houses.ini`), one slot, 25 wheat.
 const FARM_WHEAT_CAPACITY = 25;
+// The mill's two-slot store — EXTRACTED: `logicstock 4 10 1` (wheat, 10) + `logicstock 11 20 0`
+// (flour, 20) on the "work mill 00" block (`DataCnmd/types/houses.ini`). The trailing logicstock int
+// is the consumed-HERE flag (every workshop input and the homes' food carry 1, every pure storage
+// slot 0), NOT an initial fill — so both slots start empty.
+const MILL_WHEAT_CAPACITY = 10;
+const MILL_FLOUR_CAPACITY = 20;
+// One grind cycle's length — EXTRACTED: the `viking_miller_produce_flour` atomicanimation is
+// `length 200` (`DataCnmd/atomicanimations12/atomicanimations.ini`; flour's `atomicForProduction 46`
+// via `goodtypes.ini`), the same tick count the pipeline's `resolveRecipeTicks` pins into ir.json.
+// The 1 wheat → 1 flour amounts are a NAMED APPROXIMATION: `productionInputGoods 4` names the input
+// but no readable amount field exists.
+const MILL_GRIND_TICKS = 200;
 // The generic store-exchange animations (bound to the catalog's STORE_PICKUP/PILEUP_ATOMIC pair) and
 // their duration, TRANSCRIBED from the extracted viking clips: the original binds a per-body-class
 // `viking_<class>_pickup`/`_pileup` per job (`tribetypes.ini setatomic <job> 22/23`); the CIVILIST
@@ -1021,6 +1035,23 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
   [BUILDING_FARM]: {
     stock: [{ goodType: GOOD_WHEAT, capacity: FARM_WHEAT_CAPACITY, initial: 0 }],
     produces: [GOOD_WHEAT],
+  },
+  // The mill — EXTRACTED shape (`DataCnmd/types/houses.ini` "work mill 00"): a wheat-in (10) /
+  // flour-out (20) two-slot store and `logicproduction 11` (produces flour), ground by the standard
+  // recipe cycle (wheat→flour 1:1 over the extracted 200-tick grind — see MILL_GRIND_TICKS). The
+  // worker slots (2 millers + 1 carrier) come from BUILDING_WORKER_SLOTS below; the generic producer
+  // drive gives the millers the whole fetch-wheat → grind → haul-flour-out loop with no mill code.
+  [BUILDING_MILL]: {
+    stock: [
+      { goodType: GOOD_WHEAT, capacity: MILL_WHEAT_CAPACITY, initial: 0 },
+      { goodType: GOOD_FLOUR, capacity: MILL_FLOUR_CAPACITY, initial: 0 },
+    ],
+    produces: [GOOD_FLOUR],
+    recipe: {
+      inputs: [{ goodType: GOOD_WHEAT, amount: 1 }],
+      outputs: [{ goodType: GOOD_FLOUR, amount: 1 }],
+      ticks: MILL_GRIND_TICKS,
+    },
   },
   // The three warehouses accept the same general-goods set as the HQ (sandbox balance pin, not extracted
   // data) so the Magazyn section shows their storable goods instead of reading empty. Each tier's per-good

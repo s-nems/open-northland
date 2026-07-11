@@ -80,6 +80,23 @@ export interface ConstructionLayerRow {
   readonly editName?: string;
 }
 
+/** One `[GfxHouse]` type-4 `GfxOverlay` row as it ships in `content/ir.json`'s `buildingOverlays` —
+ *  a finished building's animated state overlay (the mill rotor): `state` 0 = the idle still frame,
+ *  `state` 1 = the working spin-cycle frames. */
+export interface BuildingOverlayRow {
+  readonly tribeId: number;
+  readonly typeId: number;
+  readonly level: number;
+  readonly state: number;
+  readonly x: number;
+  readonly y: number;
+  readonly step: number;
+  readonly frames: readonly number[];
+  readonly bmd: string;
+  readonly paletteName: string;
+  readonly editName?: string;
+}
+
 /** One `[GfxLandscape]` state's frame list as it ships in `content/ir.json`'s `landscapeGfx[].frames`. */
 export interface LandscapeGfxFramesRow {
   readonly state: number;
@@ -144,6 +161,7 @@ export interface ContentIr {
   readonly gfxAtomics?: readonly GfxAnimAtomicRow[];
   readonly buildingBobs?: readonly BuildingBobRow[];
   readonly constructionLayers?: readonly ConstructionLayerRow[];
+  readonly buildingOverlays?: readonly BuildingOverlayRow[];
   readonly gatheringPipeline?: readonly GatheringPipelineRow[];
   readonly landscapeGfx?: readonly LandscapeGfxRow[];
   /** The `[landscapetype]` logic table — the {@link LandscapeGfxRow.logicType} join key. */

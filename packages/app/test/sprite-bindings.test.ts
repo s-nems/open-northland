@@ -4,8 +4,10 @@ import { VIKING_CHARACTERS } from '../src/catalog/roster.js';
 import {
   BUILDING_FAMILIES,
   buildingBobRefsByType,
+  buildingOverlayRefsByType,
   constructionRefsByType,
   DEFAULT_BUILDING_FAMILY,
+  OVERLAY_TICKS_PER_FRAME,
 } from '../src/content/building-gfx.js';
 import { stateIndexForLevel, unshadedLogicTypeIds } from '../src/content/objects.js';
 import {
@@ -838,6 +840,54 @@ describe('constructionRefsByType', () => {
     expect(constructionRefsByType(twoLevels, 1, DEFAULT_FAMILY, FAMILIES)[2]?.map((l) => l.bob)).toEqual([
       5, 6,
     ]);
+  });
+});
+
+describe('buildingOverlayRefsByType — the type-4 GfxOverlay join (the mill rotor)', () => {
+  const DEFAULT_FAMILY = { bmdBasename: 'ls_houses_viking.bmd', paletteName: 'house01' };
+  const MILLER_LAYER = 'ls_houses_viking.housemiller01';
+  const FAMILIES = [
+    { bmdBasename: 'ls_houses_viking.bmd', paletteName: 'housemiller01', layer: MILLER_LAYER },
+  ];
+  const row = (over: Record<string, unknown>) => ({
+    tribeId: 1,
+    typeId: 13,
+    level: 0,
+    state: 0,
+    x: 0,
+    y: 0,
+    step: 1,
+    frames: [76],
+    bmd: 'data/x/ls_houses_viking.bmd',
+    paletteName: 'housemiller01',
+    editName: 'viking mill',
+    ...over,
+  });
+  // The real viking mill rows: state 0 = the still blade, state 1 = the 13-frame spin cycle.
+  const SPIN = [85, 84, 83, 82, 81, 80, 79, 78, 77, 76, 88, 87, 86];
+  const millRows = [row({}), row({ state: 1, frames: SPIN })];
+
+  it('joins the idle + working state rows of one type into a layer-qualified overlay ref', () => {
+    expect(buildingOverlayRefsByType(millRows, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({
+      13: { layer: MILLER_LAYER, idle: 76, working: SPIN, ticksPerFrame: OVERLAY_TICKS_PER_FRAME },
+    });
+  });
+
+  it('binds the mill overlay through the REAL loaded family list (the housemiller01 skin)', () => {
+    const out = buildingOverlayRefsByType(millRows, 1, DEFAULT_BUILDING_FAMILY, BUILDING_FAMILIES);
+    expect(out[13]).toMatchObject({ layer: MILLER_LAYER, idle: 76, working: SPIN });
+  });
+
+  it('drops other tribes, an unloaded family, and picks the lowest level group', () => {
+    const rows = [
+      ...millRows,
+      row({ tribeId: 3, frames: [999] }), // byzantine — another tribe
+      row({ typeId: 20, bmd: 'data/x/ls_houses_viking9.bmd' }), // unloaded family → dropped
+      row({ level: 1, frames: [111] }), // a higher size level — the level-0 group wins
+    ];
+    const out = buildingOverlayRefsByType(rows, 1, DEFAULT_FAMILY, FAMILIES);
+    expect(Object.keys(out)).toEqual(['13']);
+    expect(out[13]?.idle).toBe(76);
   });
 });
 
