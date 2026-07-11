@@ -92,9 +92,10 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   container.visible = false;
   app.stage.addChild(container);
 
-  // The original braided frame (bottom of the stack — its window hole is opaque, so the map content
-  // draws ABOVE it, inside the hole). Baked supersampled to an ordinary top-anchored Sprite, so it
-  // rides the container like everything else. Bare checkout: a flat Graphics frame at the same geometry.
+  // The original braided frame (bottom of the stack; its near-black hole + outer margins are keyed
+  // transparent — see frame.ts — so the braid alone shows and the map content draws inside the hole
+  // over the holeBg backdrop). Baked supersampled to an ordinary top-anchored Sprite, so it rides the
+  // container like everything else. Bare checkout: a flat Graphics frame at the same geometry.
   const frame = await loadMinimapFrame(app.renderer, layout.artScale, app.renderer.resolution);
   if (frame !== null) {
     frame.display.position.set(0, 0);

@@ -32,14 +32,15 @@ export async function loadMinimapFrame(
 ): Promise<SupersampledTexture | null> {
   const art = await loadGuiArt();
   if (art === null) return null;
-  // 'magenta' keys only the atlas's transparent sentinel: the frame's hole is OPAQUE near-black in the
-  // art, so the mount draws the map window's content ABOVE the frame, inside the hole. The palette is
-  // the sheet-preview 'iconsleft' (montage-verified braid colouring; the original draw site's palette
-  // is not decompiled — a named approximation).
+  // The art fills everything around the braid (the hole AND the outer margins) with OPAQUE near-black,
+  // so 'full' keys that whole band away and the frame ends where the braid graphic ends — the world
+  // shows through the margins, and the mount's own hole backdrop supplies the window black. The palette
+  // is 'context' (the carved-wood order-button colouring — a warm golden-brown braid, montage-verified
+  // to key cleanly; the original draw site's palette is not decompiled — a named approximation).
   const made = makeGuiSprite(art, GUI_FRAME.minimap_frame, {
-    defaultPalette: 'iconsleft',
-    palette: 'iconsleft',
-    colorKey: 'magenta',
+    defaultPalette: 'context',
+    palette: 'context',
+    colorKey: 'full',
   });
   if (made === null) return null;
   const ss = oversampleFor(artScale, resolution, FRAME_SS_FLOOR, FRAME_SS_CAP);
