@@ -35,8 +35,13 @@ import {
  * `model.ts` twin. Per the hud contract, view glue (client→screen px) is injected via options.
  */
 
-/** Extra raster resolution over the on-screen size, so the ground stays crisp on a HiDPI display. */
+/** Ground-raster px per DEVICE px: 2 pins the GPU's linear downscale tap at full averaging (the
+ *  `supersample.ts` policy), so the per-cell mosaic's diamond edges resolve smooth on any DPR. */
 const RASTER_OVERSAMPLE = 2;
+/** How far (native frame px) the black hole backdrop underlaps the braid on its top/right inner edge:
+ *  'full' keying opens the braid's near-black crevices, and without the underlap the world would show
+ *  through a gap between braid and window. Must stay under the braid's thickness (16 px top strip). */
+const HOLE_UNDERLAP_NATIVE_PX = 8;
 /** Dot half-extents in minimap px: a settler is a 2×2 dot, a building a 3×3 block. */
 const SETTLER_DOT_PX = 2;
 const BUILDING_DOT_PX = 3;
@@ -92,15 +97,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   container.visible = false;
   app.stage.addChild(container);
 
-  // The original braided frame (bottom of the stack; its near-black hole + outer margins are keyed
-  // transparent — see frame.ts — so the braid alone shows and the map content draws inside the hole
-  // over the holeBg backdrop). Baked supersampled to an ordinary top-anchored Sprite, so it rides the
-  // container like everything else. Bare checkout: a flat Graphics frame at the same geometry.
   const frame = await loadMinimapFrame(app.renderer, layout.artScale, app.renderer.resolution);
-  if (frame !== null) {
-    frame.display.position.set(0, 0);
-    container.addChild(frame.display);
-  }
 
   const local = (r: { x: number; y: number; w: number; h: number }): {
     x: number;
@@ -114,12 +111,26 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     h: r.h,
   });
 
-  // The window hole backdrop: uniform near-black, so the letterbox bars around a non-square map read
-  // as one clean window whatever the frame art's own hole pixels do.
+  // The window hole backdrop (bottom of the stack): uniform near-black, so the letterbox bars around
+  // a non-square map read as one clean window. Under the braided frame it UNDERLAPS the braid's
+  // top/right inner edge (left/bottom run flush to the screen corner) — the keyed braid crevices then
+  // show black window, never a see-through gap to the world.
   const holeBg = new Graphics();
   const innerL = local(layout.inner);
-  holeBg.rect(innerL.x, innerL.y, innerL.w, innerL.h).fill(HOLE_COLOUR);
+  const underlap = frame !== null ? HOLE_UNDERLAP_NATIVE_PX * layout.artScale : 0;
+  holeBg
+    .rect(innerL.x, innerL.y - underlap, innerL.w + underlap, innerL.h + underlap)
+    .fill(HOLE_COLOUR);
   container.addChild(holeBg);
+
+  // The original braided frame, drawn OVER the backdrop (its near-black hole + outer margins are keyed
+  // transparent — see frame.ts — so the braid alone shows, covering the backdrop's underlap). Baked
+  // supersampled to an ordinary top-anchored Sprite, so it rides the container like everything else.
+  // Bare checkout: a flat Graphics frame at the same geometry.
+  if (frame !== null) {
+    frame.display.position.set(0, 0);
+    container.addChild(frame.display);
+  }
   let fallbackFrame: Graphics | null = null;
   if (frame === null) {
     fallbackFrame = new Graphics();
@@ -140,8 +151,8 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
           return v < MINIMAP_CELL_UNRESOLVED ? v : colourOfType(typeId);
         }
       : (_cell: number, typeId: number): number => colourOfType(typeId);
-  const pxW = Math.max(1, Math.round(layout.map.w * RASTER_OVERSAMPLE));
-  const pxH = Math.max(1, Math.round(layout.map.h * RASTER_OVERSAMPLE));
+  const pxW = Math.max(1, Math.round(layout.map.w * RASTER_OVERSAMPLE * app.renderer.resolution));
+  const pxH = Math.max(1, Math.round(layout.map.h * RASTER_OVERSAMPLE * app.renderer.resolution));
   const rgba = rasterizeTerrain(terrain, colourOfCell, pxW, pxH);
   const groundTex = new Texture({
     source: new BufferImageSource({ resource: rgba, width: pxW, height: pxH, scaleMode: 'linear' }),
