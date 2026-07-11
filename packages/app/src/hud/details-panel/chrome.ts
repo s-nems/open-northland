@@ -10,7 +10,7 @@ import { HOVER_ALPHA, HOVER_TINT, WINDOW_BORDER, WINDOW_FILL, tileBitmap } from 
 import type { Rect } from '../geometry.js';
 import type { DetailsPanelAssets } from './assets.js';
 import type { ButtonHit } from './layout.js';
-import type { BarTone } from './model.js';
+import { type BarTone, barTone } from './model.js';
 
 /**
  * The details panel's original-art drawing kit. A `Chrome` is created per rebuild over the panel's fresh
@@ -69,15 +69,20 @@ const INNER_BOX_LIGHT = 0x7a6244;
 /** Warm wood tint of an occupied equipment slot (eyeballed, not sampled). */
 const SLOT_FILL = 0x4a2b1d;
 /**
- * Flat gauge fills for the toned stat bars (green = content, orange = draining, red = nearly empty).
- * Our own traffic-light palette picked to sit on the parchment (user decision 2026-07-11) — the
- * original's single `bar_standart` fill doesn't change colour with the level.
+ * Fallback flat gauge fills for a checkout WITHOUT `content/` (no decoded ramps): green = content,
+ * orange = draining, red = nearly empty, banded by {@link barTone}. With `content/` present the fill
+ * colour comes from the ORIGINAL's decoded `bar_hitpoints`/`bar_standart` level ramps instead
+ * (see `GuiBarRamps`), which sweep red→green continuously.
  */
 const BAR_TONE_FILL: Readonly<Record<BarTone, number>> = {
   ok: 0x4f9e3c,
   warn: 0xd08a2e,
   critical: 0xb5392b,
 };
+
+/** Which decoded level ramp colours a stat gauge: the HP bar's vivid red→yellow-green
+ *  (`bar_hitpoints`) or the generic stat bar's rust→moss (`bar_standart`). */
+export type BarRampName = 'hitpoints' | 'standart';
 
 /** Draw order inside the panel: flat fills, bitmap fills, frame sprites/icons, then text. */
 export interface PanelLayers {
@@ -131,10 +136,12 @@ export interface Chrome {
   /** A category-tab plate: the tiled wooden button fill + light edge, brighter when `active` and dimmed
    *  otherwise — the frame a stock-tab's representative good icon is drawn onto (no label). */
   tabButton(r: Rect, active: boolean): void;
-  /** A progress/need bar in the original `bar_disabled` frame. Without a `tone` the fill is the original
-   *  `bar_standart` art (neutral progress — production). With a `tone` the fill is a flat traffic-light
-   *  colour (green/orange/red stat bars) — see {@link BAR_TONE_FILL}. */
-  bar(r: Rect, pct: number, tone?: BarTone): void;
+  /** A progress/need bar. Without a `ramp` it is the neutral progress look (production): the original
+   *  `bar_disabled` frame filled with `bar_standart` art. With a `ramp` it is a STAT GAUGE: a recessed
+   *  dark track (no grey art remainder) whose fill takes the decoded ramp's colour at the current level
+   *  (red when empty → green when full), falling back to flat {@link BAR_TONE_FILL} bands without
+   *  `content/`. */
+  bar(r: Rect, pct: number, ramp?: BarRampName): void;
   /** A stock amount's recessed numeric field: a subtle dark inset on the wood (NOT the grey bar frame). */
   stockField(r: Rect): void;
   /** The selected building's own world bob, fitted into `r`; false when no preview art is bound. */
@@ -467,31 +474,65 @@ export function createChrome(
     if (!active) g.rect(r.x, r.y, r.w, r.h).fill({ color: 0x000000, alpha: 0.12 });
   };
 
-  const bar = (r: Rect, pct: number, tone?: BarTone): void => {
+  /** The gauge fill colour at `clamped` (0..100): the decoded ramp's entry at the level index, else the
+   *  flat banded fallback (no `content/`). */
+  const rampColor = (ramp: BarRampName, clamped: number): number => {
+    const colors = assets.barRamps?.[ramp];
+    if (colors === undefined || colors.length === 0) return BAR_TONE_FILL[barTone(clamped)];
+    const index = Math.min(colors.length - 1, Math.round((clamped / 100) * (colors.length - 1)));
+    return colors[index] ?? BAR_TONE_FILL[barTone(clamped)];
+  };
+
+  const bar = (r: Rect, pct: number, ramp?: BarRampName): void => {
     const clamped = Math.max(0, Math.min(100, pct));
-    if (art === null) {
-      g.rect(r.x, r.y, r.w, r.h).fill(0x18120d).stroke({ color: 0x5f4a32, width: 1 });
-      const inner = Math.max(0, Math.round((r.w - 2) * (clamped / 100)));
-      if (inner > 0) {
-        g.rect(r.x + 1, r.y + 1, inner, Math.max(1, r.h - 2)).fill(
-          tone === undefined ? 0xb8894a : BAR_TONE_FILL[tone],
+    const line = Math.max(1, Math.round(scale));
+
+    if (ramp === undefined) {
+      // Neutral progress (production): the original bar frame + art fill, flat Graphics without art.
+      if (art === null) {
+        g.rect(r.x, r.y, r.w, r.h).fill(0x18120d).stroke({ color: 0x5f4a32, width: 1 });
+        const inner = Math.max(0, Math.round((r.w - 2) * (clamped / 100)));
+        if (inner > 0) g.rect(r.x + 1, r.y + 1, inner, Math.max(1, r.h - 2)).fill(0xb8894a);
+        return;
+      }
+      guiStretched(GUI_FRAME.bar_frame_96, r, 'bar_disabled', 'magenta', layers.back);
+      const innerW = Math.max(0, Math.round((r.w - line * 2) * (clamped / 100)));
+      if (innerW > 0) {
+        guiStretched(
+          GUI_FRAME.bar_frame_96,
+          { x: r.x + line, y: r.y + line, w: innerW, h: Math.max(1, r.h - line * 2) },
+          'bar_standart',
+          'magenta',
+          layers.front,
         );
       }
       return;
     }
-    guiStretched(GUI_FRAME.bar_frame_96, r, 'bar_disabled', 'magenta', layers.back);
-    const inset = Math.max(1, Math.round(scale));
-    const innerW = Math.max(0, Math.round((r.w - inset * 2) * (clamped / 100)));
-    if (innerW > 0) {
-      const fill: Rect = { x: r.x + inset, y: r.y + inset, w: innerW, h: Math.max(1, r.h - inset * 2) };
-      // A toned fill is flat Graphics: the PalettedSprite art can't be tinted per-sprite (see
-      // paletted-sprite.ts), and the traffic-light colour must read unmistakably at 10 px anyway.
-      if (tone === undefined) {
-        guiStretched(GUI_FRAME.bar_frame_96, fill, 'bar_standart', 'magenta', layers.front);
-      } else {
-        g.rect(fill.x, fill.y, fill.w, fill.h).fill(BAR_TONE_FILL[tone]);
-      }
-    }
+
+    // A STAT GAUGE. Track: a recessed dark inset (the stockField look) — NOT the grey `bar_disabled`
+    // art, whose grey middle read as a stuck half-full bar (user feedback 2026-07-11). Fill: flat
+    // Graphics in the decoded ramp's level colour (the PalettedSprite art can't be tinted per-sprite —
+    // see paletted-sprite.ts) with a light top gloss + dark base line so it reads as a rounded gauge
+    // at 10 px, and a thin dark bevel around the track.
+    g.rect(r.x, r.y, r.w, r.h).fill({ color: INNER_BOX_DARK, alpha: 0.6 });
+    g.moveTo(r.x, r.y + r.h)
+      .lineTo(r.x, r.y)
+      .lineTo(r.x + r.w, r.y)
+      .stroke({ color: INNER_BOX_DARK, width: line, alpha: 0.9 });
+    g.moveTo(r.x + r.w, r.y)
+      .lineTo(r.x + r.w, r.y + r.h)
+      .lineTo(r.x, r.y + r.h)
+      .stroke({ color: INNER_BOX_LIGHT, width: line, alpha: 0.45 });
+    const fillW = Math.max(0, Math.round((r.w - line * 2) * (clamped / 100)));
+    if (fillW === 0) return;
+    const fill: Rect = { x: r.x + line, y: r.y + line, w: fillW, h: Math.max(1, r.h - line * 2) };
+    g.rect(fill.x, fill.y, fill.w, fill.h).fill(rampColor(ramp, clamped));
+    // Gloss: a light top third and a dark base line — subtle depth without hiding the ramp colour.
+    g.rect(fill.x, fill.y, fill.w, Math.max(1, Math.round(fill.h / 3))).fill({
+      color: 0xffffff,
+      alpha: 0.22,
+    });
+    g.rect(fill.x, fill.y + fill.h - line, fill.w, line).fill({ color: 0x000000, alpha: 0.28 });
   };
 
   /**

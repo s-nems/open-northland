@@ -76,6 +76,9 @@ interface Comp {
  */
 export interface PanelBar {
   readonly label: string;
+  /** Which decoded colour ramp the gauge draws through: the HP bar's vivid `bar_hitpoints` red→green,
+   *  or a need's `bar_standart` rust→moss (see `chrome.ts`). */
+  readonly kind: 'health' | 'need';
   readonly pct: number;
   /** The cursor-tooltip value for the hovered bar row: raw points for health ("300/1000"),
    *  the satisfaction percent for a need ("75%"). */
@@ -84,13 +87,15 @@ export interface PanelBar {
 
 /** A bar gauge's colour band: full/high draws green, a draining stat turns orange, a nearly-empty one red. */
 export type BarTone = 'ok' | 'warn' | 'critical';
-/** Below this satisfaction/health percent a bar turns orange. Named approximation (user decision
- *  2026-07-11): the original's band boundaries aren't decoded, so the thirds are our own choice. */
+/** Below this satisfaction/health percent a FALLBACK bar turns orange. The banded colours are only the
+ *  no-`content/` fallback — with decoded art the gauge colour comes from the original's continuous
+ *  `bar_hitpoints`/`bar_standart` level ramps; these band thresholds are our own choice. */
 const BAR_WARN_BELOW_PCT = 50;
-/** Below this percent a bar turns red. */
+/** Below this percent a fallback bar turns red. */
 const BAR_CRITICAL_BELOW_PCT = 25;
 
-/** The green/orange/red band a 0..100 bar level falls into — shared by the draw and the headless tests. */
+/** The green/orange/red band a 0..100 bar level falls into — the no-`content/` fallback colouring
+ *  (see `chrome.ts` {@link import('./chrome.js').BarRampName}). */
 export function barTone(pct: number): BarTone {
   if (pct < BAR_CRITICAL_BELOW_PCT) return 'critical';
   if (pct < BAR_WARN_BELOW_PCT) return 'warn';
@@ -306,7 +311,7 @@ function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow[] {
 /** A need bar's model: its satisfaction LEVEL as the gauge percent, the same percent as the hover value. */
 function needBar(label: string, deficit: number | undefined): PanelBar {
   const level = 100 - pct(deficit);
-  return { label, pct: level, hover: `${level}%` };
+  return { label, kind: 'need', pct: level, hover: `${level}%` };
 }
 
 /**
@@ -326,7 +331,7 @@ function satisfactionBars(comps: Comp): PanelBar[] {
     const hp = num(health.hitpoints) ?? 0;
     const max = num(health.max) ?? 0;
     const level = max > 0 ? Math.max(0, Math.min(100, Math.round((hp / max) * 100))) : 0;
-    bars.push({ label: 'Zdrowie', pct: level, hover: `${hp}/${max}` });
+    bars.push({ label: 'Zdrowie', kind: 'health', pct: level, hover: `${hp}/${max}` });
   }
   bars.push(needBar('Głód', num(s.hunger)));
   bars.push(needBar('Sen', num(s.fatigue)));

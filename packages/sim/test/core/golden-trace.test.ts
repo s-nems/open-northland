@@ -287,10 +287,10 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   it('matches the golden final state hash', () => {
     const run = runSlice(SEED, TICKS);
     // Intentional-change discipline: if this moves, a mechanic changed — name it in the commit.
-    // The HALF-CELL NAVIGATION migration left this hash UNCHANGED: routes and trip timings moved (see
-    // the trace note) but after ~1000 ticks the slice settles to the byte-identical end state — same
-    // cell-anchored rest positions, same stocks (18 planks in the HQ), same stumps.
-    expect(run.hash).toBe('e452b766');
+    // e452b766 → 2d0d23b0 (2026-07-11): EVERY settler now spawns with a default Health pool (user
+    // decision — civilians have health; combat/starvation drain it), so each slice settler hashes one
+    // extra component. Behaviorally the settled slice is unchanged — same rest positions, same stocks.
+    expect(run.hash).toBe('2d0d23b0');
   });
 
   it('matches the golden atomic-action trace', () => {

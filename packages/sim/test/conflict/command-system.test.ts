@@ -21,6 +21,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type Command, Simulation, cellAnchorNode, fx } from '../../src/index.js';
+import { DEFAULT_SETTLER_HITPOINTS } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -123,13 +124,15 @@ describe('CommandSystem', () => {
     expect(sim.events.current().some((ev) => ev.kind === 'settlerBorn')).toBe(true);
   });
 
-  it('spawnSettler with no hitpoints mints a non-combatant (no Health pool — golden path)', () => {
+  it('spawnSettler with no hitpoints gets the default Health pool (civilians have health too)', () => {
     const sim = fresh();
     sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 1, y: 2, tribe: VIKING });
     sim.step();
-    // The default (omitted hitpoints) path leaves the settler Health-less, so it never fights and the
-    // golden hash stays untouched — the separate-optional-component pattern.
-    expect(sim.world.has(nthEntity(sim, 0), Health)).toBe(false);
+    // The default (omitted hitpoints) path now stamps the shared default pool: EVERY settler carries
+    // Health (user decision 2026-07-11 — the panel shows it, combat can strike it, starvation drains it).
+    const health = sim.world.get(nthEntity(sim, 0), Health);
+    expect(health.hitpoints).toBe(DEFAULT_SETTLER_HITPOINTS);
+    expect(health.max).toBe(DEFAULT_SETTLER_HITPOINTS);
   });
 
   it('spawnSettler with hitpoints stamps a Health pool: the civ becomes a combatant from command data', () => {
@@ -145,13 +148,13 @@ describe('CommandSystem', () => {
     expect(health.max).toBe(1000); // a fresh combatant spawns at full health
   });
 
-  it('spawnSettler with non-positive hitpoints stamps no Health (only a real pool makes a combatant)', () => {
+  it('spawnSettler with non-positive hitpoints falls back to the default pool (never a 0-HP spawn)', () => {
     const sim = fresh();
-    // 0 (or negative) is not a combatant — stamping a 0-HP pool would spawn an already-dead fighter the
-    // cleanup reaper deletes the same tick. Treat it as the non-combatant default and stamp nothing.
+    // A 0 (or negative) pool would spawn an already-dead settler the cleanup reaper deletes the same
+    // tick — treat it as "unspecified" and stamp the shared default instead.
     sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING, hitpoints: 0 });
     sim.step();
-    expect(sim.world.has(nthEntity(sim, 0), Health)).toBe(false);
+    expect(sim.world.get(nthEntity(sim, 0), Health).hitpoints).toBe(DEFAULT_SETTLER_HITPOINTS);
   });
 
   it('spawnSettler with a positive armorClass stamps an Armor tier (the combatant wears armor)', () => {

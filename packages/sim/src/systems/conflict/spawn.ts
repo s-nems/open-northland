@@ -36,6 +36,15 @@ import { stampDefaultStance } from './orders.js';
 export type SettlerSpec = Omit<Extract<Command, { kind: 'spawnSettler' }>, 'kind'>;
 
 /**
+ * The hitpoint pool a settler spawns with when its command names none — every human carries a
+ * {@link Health} pool (user decision 2026-07-11: civilians have health too — the panel shows it, a
+ * soldier can strike them, starvation drains it). The MAGNITUDE is approximated: a human's hitpoints
+ * are below the readable `.ini` (source basis "Combat hit resolution"); 300 is the sandbox scale the
+ * combat scenes and the admin palette already used.
+ */
+export const DEFAULT_SETTLER_HITPOINTS = 300;
+
+/**
  * Assemble a settler entity from a {@link SettlerSpec} and return it (or null for an unknown job id — bad
  * input, no entity created). This is the pure entity-construction core shared by the `spawnSettler` COMMAND
  * handler (which then announces `settlerBorn`) and the sanctioned pre-tick-0 scene helpers (which create
@@ -62,16 +71,14 @@ export function createSettler(world: World, content: ContentSet, spec: SettlerSp
     enjoyment: fx.fromInt(0),
     experience: new Map<number, number>(),
   });
-  // A combatant settler carries a `Health` pool stamped from the command (the settler analogue of the
-  // animal `hitpoints_adult` stamp — a civilization becomes a fighter FROM THE COMMAND DATA, through the
-  // mutation seam, rather than a test reaching into the world). Only a positive pool is stamped; absent /
-  // non-positive `hitpoints` (the default — the non-combatant / golden / vertical-slice path) leaves the
-  // settler `Health`-less and the hash untouched, the separate-optional-component pattern. The MAGNITUDE
-  // is caller-supplied and *approximated* — a human's hitpoints are below the readable `.ini`
-  // (source basis "Combat hit resolution").
-  if (spec.hitpoints !== undefined && spec.hitpoints > 0) {
-    world.add(e, Health, { hitpoints: spec.hitpoints, max: spec.hitpoints });
-  }
+  // EVERY settler carries a `Health` pool (the settler analogue of the animal `hitpoints_adult` stamp):
+  // a command with a positive `hitpoints` sets the pool (a scene's tuned combatant), one without gets
+  // {@link DEFAULT_SETTLER_HITPOINTS} — civilians have health too (they show a Zdrowie bar, a soldier
+  // can strike them, starvation drains them; user decision 2026-07-11). The MAGNITUDE is approximated —
+  // a human's hitpoints are below the readable `.ini` (source basis "Combat hit resolution").
+  const hitpoints =
+    spec.hitpoints !== undefined && spec.hitpoints > 0 ? spec.hitpoints : DEFAULT_SETTLER_HITPOINTS;
+  world.add(e, Health, { hitpoints, max: hitpoints });
   // A combatant wearing armor carries an `Armor` class (the settler analogue of the `Health` stamp): an
   // incoming hit is mitigated by that tier's `blockingValue` rather than landing on the unarmored class 0.
   // Only a positive class is stamped; absent / non-positive `armorClass` (the default) leaves the settler

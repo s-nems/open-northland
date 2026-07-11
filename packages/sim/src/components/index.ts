@@ -14,3 +14,4 @@ export * from './combat.js';
 export * from './economy.js';
 export * from './ownership.js';
 export * from './equipment.js';
+export * from './rules.js';

@@ -68,13 +68,13 @@ export type Command =
     }
   | {
       /**
-       * Spawn one {@link Settler} of `jobType` for `tribe` at (x,y). When `hitpoints` is given (a
-       * positive pool) the settler is a **combatant** — it is stamped a {@link Health} pool of that size
-       * and so can fight and be felled (the settler analogue of `spawnAnimalHerd`'s `hitpoints_adult`
-       * stamp); omit it (the default) and the settler is a non-combatant with no `Health`, the golden /
-       * vertical-slice path whose hash this leaves untouched. The pool **magnitude is caller-supplied**:
-       * a human's hitpoints are below the readable `.ini` (only `animaltypes.ini` carries them), so this
-       * value is *approximated*, not pinned to a param (source basis "Combat hit resolution").
+       * Spawn one {@link Settler} of `jobType` for `tribe` at (x,y). EVERY settler is stamped a
+       * {@link Health} pool (civilians have health too — user decision 2026-07-11): a positive
+       * `hitpoints` sets its size (the settler analogue of `spawnAnimalHerd`'s `hitpoints_adult`
+       * stamp); omit it (the default) for the shared
+       * {@link import('../systems/conflict/spawn.js').DEFAULT_SETTLER_HITPOINTS} pool. The pool
+       * **magnitude is approximated** either way: a human's hitpoints are below the readable `.ini`
+       * (only `animaltypes.ini` carries them; source basis "Combat hit resolution").
        *
        * When `armorClass` is a positive `[armortype]` tier (1..4) the combatant also wears that armor
        * (an `Armor` component): an incoming hit is mitigated by the tier's `blockingValue` rather than
@@ -90,7 +90,8 @@ export type Command =
       readonly x: number;
       readonly y: number;
       readonly tribe: number;
-      /** A combatant's max hitpoint pool (stamps a {@link Health} pool). Omit for a non-combatant. */
+      /** The settler's max hitpoint pool. Omit (or a non-positive value) for the default pool
+       *  (`DEFAULT_SETTLER_HITPOINTS`) — every settler carries `Health`. */
       readonly hitpoints?: number;
       /** A combatant's worn armor class (a `[armortype]` tier 1..4; stamps an `Armor` component). Omit
        *  (or a non-positive value) for an unarmored combatant — every hit then lands on class 0. */
@@ -314,6 +315,18 @@ export type Command =
       readonly entity: Entity;
       readonly x: number;
       readonly y: number;
+    }
+  | {
+      /**
+       * Toggle the needs mechanic globally: hunger/fatigue/piety/enjoyment stop rising (and starvation
+       * stops draining) while disabled. Sets the {@link import('../components/index.js').WorldRules}
+       * SINGLETON (created on first use), so the toggle hashes and replays like any other state. A
+       * dev/admin lever (user decision 2026-07-11): acceptance scenes issue `enabled: false` at build
+       * so test units don't starve mid-checklist; live maps keep the default (enabled). The admin
+       * panel's "Potrzeby" button flips it at runtime.
+       */
+      readonly kind: 'setNeedsEnabled';
+      readonly enabled: boolean;
     };
 
 /**
