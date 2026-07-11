@@ -14,41 +14,61 @@ import { isFighterJob } from '../../readviews/index.js';
  * with standing units alone entering the walk overlay.
  *
  * This module is the WHO/WHERE read-model shared by the three consumers (the SeparationSystem's
- * physical resolve, the routing layer's walk overlay, the CombatSystem's melee-slot filter):
- *  - **Movers** (a collider currently walking a {@link PathFollow}) are the only bodies ever
- *    displaced; they never block routing.
- *  - **Posts** (a collider standing still) are immovable, and {@link unitWalkBlocks} stamps their
- *    nodes into the walk-block overlay so fresh routes go AROUND a standing line instead of
+ * physical resolve, the routing layer's walk overlay, the CombatSystem's melee-slot filter). The
+ * model is TWO TIERS — "walking units never merge, standing walls are fighters' business":
+ *  - **SOFT movers** ({@link hasSoftCollision} — any OWNED settler walking a {@link PathFollow},
+ *    civilians included) nudge each other apart while walking, EVERYWHERE (calm zones included).
+ *    The nudge is capped below the arrival brake floor (see separation.ts), so it can delay an
+ *    arrival but never prevent one — town flow is never jammed, walkers just stop drawing as one
+ *    merged sprite. They never block routing and never resolve against posts.
+ *  - **FIRM movers** ({@link hasBodyCollision} — OWNED FIGHTERS walking) additionally resolve
+ *    hard against posts and carry the obstruction grind window (the re-route/give-up machinery).
+ *  - **Posts** (a FIRM collider standing still) are immovable, and {@link unitWalkBlocks} stamps
+ *    their nodes into the walk-block overlay so fresh routes go AROUND a standing line instead of
  *    grinding on it.
- *  - **Ghosts** — everyone else. Only OWNED FIGHTERS collide ({@link isFighterJob}): civilians keep
- *    the original's pass-through everywhere, so economy flows that legally converge on one node (a
- *    shared work cell, a store door) can never jam; unowned entities keep every fixture and golden
- *    byte-identical (the same Owner gate the idle-spacing drive uses). A mover inside its own
- *    player's calm zone ({@link calmZonesByPlayer}) is also a ghost — fighters queueing at their own
+ *  - **Ghosts** — everyone else. Civilians keep the original's pass-through against every STANDING
+ *    body, so economy flows that legally converge on one node (a shared work cell, a store door)
+ *    can never jam; unowned entities keep every fixture and golden byte-identical (the same Owner
+ *    gate the idle-spacing drive uses). A FIRM mover inside its own player's calm zone
+ *    ({@link calmZonesByPlayer}) drops to the SOFT tier — fighters queueing at their own
  *    stores/houses never wedge on each other in a dense town.
  */
 
 /**
  * The Manhattan node radius of a player's CALM ZONE around each of its buildings — the user's
- * "collision off near the settlement" rule. Inside its own player's zone a mover is a ghost (it
- * neither pushes nor is pushed) and a post is not stamped into that player's own walk overlay, so a
- * player's town traffic keeps the original's frictionless flow; enemies get no exemption from
- * someone else's town. Sized to cover a building's footprint plus its door approaches (~4 columns).
- * A feel-tuning constant — no original counterpart (the original has no collision at all).
+ * "collision off near the settlement" rule, scoped to the FIRM tier: inside its own player's zone
+ * a firm mover skips the hard post resolve and the obstruction grind, and a post is not stamped
+ * into that player's own walk overlay, so a player's town traffic keeps the original's frictionless
+ * flow; enemies get no exemption from someone else's town. The SOFT mover-vs-mover nudge stays on
+ * in town — it cannot jam anything (capped below the arrival brake floor) and is exactly what keeps
+ * a busy street reading as individuals. Sized to cover a building's footprint plus its door
+ * approaches (~4 columns). A feel-tuning constant — no original counterpart (the original has no
+ * collision at all).
  */
 export const CALM_ZONE_RADIUS_NODES = 8;
 
 /**
- * Whether `e` takes part in body collision at all: an OWNED FIGHTER (see the module header —
- * civilians and unowned entities keep the original's pass-through). Shared with the routing layer,
- * which applies the standing-body walk overlay only to a requester that itself collides: a ghost
- * walks straight through bodies, so detouring it (or re-aiming its goal off an occupied node — an
- * economy walk's target must stay EXACT for the node-coincidence checks) would be wrong both ways.
+ * Whether `e` takes part in FIRM body collision: an OWNED FIGHTER (see the module header —
+ * civilians and unowned entities keep the original's pass-through against standing bodies). Shared
+ * with the routing layer, which applies the standing-body walk overlay only to a requester that
+ * itself firmly collides: a ghost walks straight through bodies, so detouring it (or re-aiming its
+ * goal off an occupied node — an economy walk's target must stay EXACT for the node-coincidence
+ * checks) would be wrong both ways.
  */
 export function hasBodyCollision(world: World, e: Entity): boolean {
   if (!world.has(e, Owner)) return false;
   const settler = world.tryGet(e, Settler);
   return settler !== undefined && isFighterJob(settler.jobType);
+}
+
+/**
+ * Whether `e` takes part in SOFT mover-vs-mover separation: any OWNED settler (fighters and
+ * civilians alike — the "walking units never merge" tier of the module header). The Owner gate
+ * keeps unowned fixtures and goldens byte-identical, exactly like {@link hasBodyCollision} and the
+ * idle-spacing drive.
+ */
+export function hasSoftCollision(world: World, e: Entity): boolean {
+  return world.has(e, Owner) && world.has(e, Settler);
 }
 
 /** Whether `e` is STANDING for collision purposes: not walking a path and not waiting on a live

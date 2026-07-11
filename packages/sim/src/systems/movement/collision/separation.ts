@@ -8,7 +8,7 @@ import type { System } from '../../context.js';
 import { dynamicBlockedCells } from '../../footprint/index.js';
 import { NodeBuckets, canonicalById, clearNavState } from '../../spatial.js';
 import { MOVE_SPEED_PER_TICK } from '../movement.js';
-import { calmZonesByPlayer, hasBodyCollision, isStanding } from './bodies.js';
+import { calmZonesByPlayer, hasBodyCollision, hasSoftCollision, isStanding } from './bodies.js';
 
 /**
  * A collider's body radius, in world-metric column units. The bounds are the half-cell lattice's own
@@ -87,33 +87,41 @@ function toGrid(w: WorldPoint): { x: Fixed; y: Fixed } {
 
 /**
  * SeparationSystem — runs right after the MovementSystem and resolves this tick's body overlaps
- * among colliders (see `bodies.ts` for the model and its source basis). Displaces MOVERS only:
- * mover-vs-mover overlap resolves softly (half the overlap each, capped at
- * {@link SEPARATION_PUSH_CAP}), mover-vs-post resolves fully (the mover is placed back on the
- * post's radius), so a post is impenetrable but never jitters. A displaced position must land on
- * walkable, unblocked ground or the offending axis (then the whole displacement) is discarded, so
- * collision can never push a body into water or through a wall.
+ * (see `bodies.ts` for the two-tier model and its source basis). Displaces MOVERS only:
+ * mover-vs-mover overlap resolves softly for EVERY owned walking settler (half the overlap each,
+ * capped at {@link SEPARATION_PUSH_CAP} — the "walking units never merge" tier), while only FIRM
+ * movers (owned fighters) additionally resolve fully against posts (placed back on the post's
+ * radius), so a post is impenetrable but never jitters and a civilian never wedges on a standing
+ * body. A displaced position must land on walkable, unblocked ground or the offending axis (then
+ * the whole displacement) is discarded, so collision can never push a body into water or through a
+ * wall.
  *
  * Determinism: movers are processed in ascending entity id; mover-vs-mover pushes read the tick's
  * pre-separation position snapshot (order-independent by construction); mover-vs-post resolutions
  * apply in the 3×3 bucket-scan order around the mover's node (ascending post id within each bucket)
  * — a fixed, history-independent order, since the buckets are keyed by integer node over a
  * canonical id-sorted list; every quantity is fixed-point via `fx.*`. Scale: per-tick cost is
- * O(colliders) to bucket plus O(movers × local crowd) to resolve — a sim with no walking fighter
- * pays only the bucket scan, and a mapless sim (the determinism golden) exits immediately.
+ * O(colliders) to bucket plus O(movers × local crowd) to resolve — cost follows units actually
+ * WALKING (active work, golden rule 7), and a mapless sim (the determinism golden) exits
+ * immediately.
  */
 export const separationSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
   if (terrain === undefined) return; // mapless sim: no lattice to collide on
 
-  // Colliders currently walking — the only entities this system ever displaces.
+  // SOFT movers currently walking — the only entities this system ever displaces. The FIRM subset
+  // (owned fighters) additionally resolves against posts and keeps the obstruction grind window.
   const movers: Entity[] = [];
+  const firmMovers = new Set<Entity>();
   for (const e of world.query(PathFollow, Position)) {
-    if (hasBodyCollision(world, e)) movers.push(e);
+    if (!hasSoftCollision(world, e)) continue;
+    movers.push(e);
+    if (hasBodyCollision(world, e)) firmMovers.add(e);
   }
-  // An Obstructed counter survives only on a walker: arrival/re-route/re-tasking ends the grind.
+  // An Obstructed counter survives only on a FIRM walker: arrival/re-route/re-tasking ends the
+  // grind, and a profession change away from the fighting trades sheds it with the firm tier.
   for (const e of canonicalById(world.query(Obstructed))) {
-    if (!world.has(e, PathFollow)) world.remove(e, Obstructed);
+    if (!world.has(e, PathFollow) || !hasBodyCollision(world, e)) world.remove(e, Obstructed);
   }
   if (movers.length === 0) return; // dormancy: nobody walking → nothing can overlap anything
   movers.sort((a, b) => a - b);
@@ -180,9 +188,11 @@ export const separationSystem: System = (world, ctx) => {
     const start = before.get(e);
     if (start === undefined) continue; // movers ⊆ before by construction; guard for the checked access
     const node = nodeOfPosition(start.x, start.y);
+    const isFirm = firmMovers.has(e);
 
     // Gather this mover's neighbourhood. Radius < both bucket pitches, so bodies within reach live
     // in the 3×3 bucket block around the mover's own node (truncation adds at most one node).
+    // Posts matter only to a FIRM mover — a civilian passes through every standing body.
     const nearMovers: Entity[] = [];
     const nearPosts: Entity[] = [];
     for (let dx = -1; dx <= 1; dx++) {
@@ -190,17 +200,17 @@ export const separationSystem: System = (world, ctx) => {
         for (const n of moverIndex.at(node.hx + dx, node.hy + dy)) {
           if (n !== e) nearMovers.push(n);
         }
-        nearPosts.push(...postIndex.at(node.hx + dx, node.hy + dy));
+        if (isFirm) nearPosts.push(...postIndex.at(node.hx + dx, node.hy + dy));
       }
     }
     if (nearMovers.length === 0 && nearPosts.length === 0) {
-      clearGrind(e);
+      if (isFirm) clearGrind(e);
       continue;
     }
-    if (isGhostMover(e)) {
-      clearGrind(e);
-      continue; // in its own town: full pass-through, both ways
-    }
+    // A FIRM mover in its own town drops to the SOFT tier (no post resolve, no grind): fighters
+    // queueing at their own stores never wedge. The soft nudge below stays on for everyone —
+    // capped under the arrival brake floor, it cannot jam town flow, only un-merge the sprites.
+    const ghost = isFirm && isGhostMover(e);
 
     // SOFT half: accumulate the push away from every overlapping fellow mover (half the overlap
     // each — the other half is the neighbour's own pass), then cap the total.
@@ -208,7 +218,6 @@ export const separationSystem: System = (world, ctx) => {
     let pushX = ZERO;
     let pushY = ZERO;
     for (const n of nearMovers) {
-      if (isGhostMover(n)) continue;
       const other = before.get(n);
       if (other === undefined) continue;
       const dist = worldDistance(start.x, start.y, other.x, other.y);
@@ -238,10 +247,11 @@ export const separationSystem: System = (world, ctx) => {
       cand = toGrid({ x: fx.add(candW.x, pushX), y: fx.add(candW.y, pushY) });
     }
 
-    // HARD half: place the mover back on each overlapped post's radius, in the bucket-scan order
+    // HARD half — FIRM movers outside their own calm zone only (nearPosts is empty otherwise/for
+    // civilians): place the mover back on each overlapped post's radius, in the bucket-scan order
     // (see the system doc — deterministic; each resolve rewrites `cand`, so the LAST overlapped
     // post in that order wins a conflict between two posts' radii).
-    for (const s of nearPosts) {
+    for (const s of ghost ? [] : nearPosts) {
       const sp = world.get(s, Position);
       const dist = worldDistance(cand.x, cand.y, sp.x, sp.y);
       if (dist >= UNIT_SEPARATION_RADIUS) continue;
@@ -273,7 +283,11 @@ export const separationSystem: System = (world, ctx) => {
       }
     }
 
-    // GRIND-WINDOW bookkeeping (the Obstructed component doc): while bodies are near, measure the
+    // GRIND-WINDOW bookkeeping — FIRM movers among FIRM bodies only: a civilian resolves against no
+    // posts and a soft brush never stops it (the push cap guarantees net progress), so it can never
+    // be stuck and must never carry an Obstructed window; likewise a firm mover surrounded only by
+    // soft traffic is merely in a crowd, not against a wall. (The Obstructed component doc:) while
+    // firm bodies are near, measure the
     // walker's TOTAL movement since the window's anchor. Any tick that reaches the per-tick progress
     // floor × window length restarts the window — real progress, however indirect (a slide around a
     // lone post, a slow shove past a brush) — while a window that reaches the re-route threshold
@@ -286,6 +300,12 @@ export const separationSystem: System = (world, ctx) => {
     // which a per-tick push-direction test never reads as blocked (stragglers orbited a contested
     // goal forever). The window's lifetime is the walk: arrival/stand-down sheds the component (the
     // sweep above), and a genuinely clear stretch re-anchors it ({@link clearGrind}).
+    if (!isFirm) continue; // a soft-only mover never grinds
+    const firmNear = nearPosts.length > 0 || nearMovers.some((n) => firmMovers.has(n));
+    if (ghost || !firmNear) {
+      clearGrind(e); // own town, or only soft traffic around — a crowd, not a wall
+      continue;
+    }
     const s =
       world.tryGet(e, Obstructed) ?? world.add(e, Obstructed, { ticks: 0, reroutes: 0, x: p.x, y: p.y });
     s.ticks += 1;
