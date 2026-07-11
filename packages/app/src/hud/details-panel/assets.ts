@@ -10,9 +10,9 @@ import {
 import { type GoodsArt, loadGoodsArt } from '../../content/goods-gfx.js';
 import { type GuiArt, loadGuiArt } from '../../content/gui-art.js';
 import {
-  type GuiBarRamps,
+  type GuiBarRamp,
   type GuiStrings,
-  loadGuiBarRamps,
+  loadGuiBarRamp,
   loadGuiBitmap,
   loadGuiStrings,
 } from '../../content/gui-gfx.js';
@@ -127,20 +127,20 @@ export interface DetailsPanelAssets {
   readonly bitmaps: GuiBitmapSet;
   readonly strings: GuiStrings | null;
   readonly previews: ReadonlyMap<number, BuildingPreview>;
-  /** The decoded level→colour bar ramps (`bar_hitpoints`/`bar_standart`), or `undefined` without
-   *  `content/` — the stat bars then fall back to flat banded colours. */
-  readonly barRamps: GuiBarRamps | undefined;
+  /** The decoded level→colour gauge ramp (`bar_hitpoints`), or `undefined` without `content/` — the
+   *  stat bars then fall back to flat banded colours. */
+  readonly barRamp: GuiBarRamp | undefined;
 }
 
 export async function loadDetailsPanelAssets(lang: string): Promise<DetailsPanelAssets> {
-  const [art, goods, uiFont, bitmaps, strings, previews, barRamps] = await Promise.all([
+  const [art, goods, uiFont, bitmaps, strings, previews, barRamp] = await Promise.all([
     loadGuiArt(),
     loadGoodsArt(),
     loadUiFont(),
     loadGuiBitmaps(),
     loadGuiStrings(lang),
     loadBuildingPreviews(),
-    loadGuiBarRamps(),
+    loadGuiBarRamp(),
   ]);
-  return { art, goods, uiFont, bitmaps, strings, previews, barRamps };
+  return { art, goods, uiFont, bitmaps, strings, previews, barRamp };
 }

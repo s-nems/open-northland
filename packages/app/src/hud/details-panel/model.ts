@@ -76,9 +76,6 @@ interface Comp {
  */
 export interface PanelBar {
   readonly label: string;
-  /** Which decoded colour ramp the gauge draws through: the HP bar's vivid `bar_hitpoints` red→green,
-   *  or a need's `bar_standart` rust→moss (see `chrome.ts`). */
-  readonly kind: 'health' | 'need';
   readonly pct: number;
   /** The cursor-tooltip value for the hovered bar row: raw points for health ("300/1000"),
    *  the satisfaction percent for a need ("75%"). */
@@ -311,7 +308,7 @@ function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow[] {
 /** A need bar's model: its satisfaction LEVEL as the gauge percent, the same percent as the hover value. */
 function needBar(label: string, deficit: number | undefined): PanelBar {
   const level = 100 - pct(deficit);
-  return { label, kind: 'need', pct: level, hover: `${level}%` };
+  return { label, pct: level, hover: `${level}%` };
 }
 
 /**
@@ -331,7 +328,7 @@ function satisfactionBars(comps: Comp): PanelBar[] {
     const hp = num(health.hitpoints) ?? 0;
     const max = num(health.max) ?? 0;
     const level = max > 0 ? Math.max(0, Math.min(100, Math.round((hp / max) * 100))) : 0;
-    bars.push({ label: 'Zdrowie', kind: 'health', pct: level, hover: `${hp}/${max}` });
+    bars.push({ label: 'Zdrowie', pct: level, hover: `${hp}/${max}` });
   }
   bars.push(needBar('Głód', num(s.hunger)));
   bars.push(needBar('Sen', num(s.fatigue)));

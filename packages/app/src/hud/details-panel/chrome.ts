@@ -69,20 +69,16 @@ const INNER_BOX_LIGHT = 0x7a6244;
 /** Warm wood tint of an occupied equipment slot (eyeballed, not sampled). */
 const SLOT_FILL = 0x4a2b1d;
 /**
- * Fallback flat gauge fills for a checkout WITHOUT `content/` (no decoded ramps): green = content,
+ * Fallback flat gauge fills for a checkout WITHOUT `content/` (no decoded ramp): green = content,
  * orange = draining, red = nearly empty, banded by {@link barTone}. With `content/` present the fill
- * colour comes from the ORIGINAL's decoded `bar_hitpoints`/`bar_standart` level ramps instead
- * (see `GuiBarRamps`), which sweep red→green continuously.
+ * colour comes from the ORIGINAL's decoded `bar_hitpoints` level ramp instead (see `GuiBarRamp`),
+ * which sweeps red→orange→yellow-green continuously.
  */
 const BAR_TONE_FILL: Readonly<Record<BarTone, number>> = {
   ok: 0x4f9e3c,
   warn: 0xd08a2e,
   critical: 0xb5392b,
 };
-
-/** Which decoded level ramp colours a stat gauge: the HP bar's vivid red→yellow-green
- *  (`bar_hitpoints`) or the generic stat bar's rust→moss (`bar_standart`). */
-export type BarRampName = 'hitpoints' | 'standart';
 
 /** Draw order inside the panel: flat fills, bitmap fills, frame sprites/icons, then text. */
 export interface PanelLayers {
@@ -136,12 +132,12 @@ export interface Chrome {
   /** A category-tab plate: the tiled wooden button fill + light edge, brighter when `active` and dimmed
    *  otherwise — the frame a stock-tab's representative good icon is drawn onto (no label). */
   tabButton(r: Rect, active: boolean): void;
-  /** A progress/need bar. Without a `ramp` it is the neutral progress look (production): the original
-   *  `bar_disabled` frame filled with `bar_standart` art. With a `ramp` it is a STAT GAUGE: a recessed
-   *  dark track (no grey art remainder) whose fill takes the decoded ramp's colour at the current level
-   *  (red when empty → green when full), falling back to flat {@link BAR_TONE_FILL} bands without
-   *  `content/`. */
-  bar(r: Rect, pct: number, ramp?: BarRampName): void;
+  /** A progress/need bar. `'progress'` (the default) is the neutral production look: the original
+   *  `bar_disabled` frame filled with `bar_standart` art. `'gauge'` is a STAT GAUGE: a recessed dark
+   *  track (no grey art remainder) whose fill takes the decoded `bar_hitpoints` ramp's colour at the
+   *  current level (red when empty → green when full), falling back to flat {@link BAR_TONE_FILL}
+   *  bands without `content/`. */
+  bar(r: Rect, pct: number, style?: 'progress' | 'gauge'): void;
   /** A stock amount's recessed numeric field: a subtle dark inset on the wood (NOT the grey bar frame). */
   stockField(r: Rect): void;
   /** The selected building's own world bob, fitted into `r`; false when no preview art is bound. */
@@ -476,8 +472,8 @@ export function createChrome(
 
   /** The gauge fill colour at `clamped` (0..100): the decoded ramp's entry at the level index, else the
    *  flat banded fallback (no `content/`). */
-  const rampColor = (ramp: BarRampName, clamped: number): number => {
-    const colors = assets.barRamps?.[ramp];
+  const rampColor = (clamped: number): number => {
+    const colors = assets.barRamp;
     if (colors === undefined || colors.length === 0) return BAR_TONE_FILL[barTone(clamped)];
     const index = Math.min(colors.length - 1, Math.round((clamped / 100) * (colors.length - 1)));
     return colors[index] ?? BAR_TONE_FILL[barTone(clamped)];
@@ -493,11 +489,11 @@ export function createChrome(
     return ch(16) | ch(8) | ch(0);
   };
 
-  const bar = (r: Rect, pct: number, ramp?: BarRampName): void => {
+  const bar = (r: Rect, pct: number, style: 'progress' | 'gauge' = 'progress'): void => {
     const clamped = Math.max(0, Math.min(100, pct));
     const line = Math.max(1, Math.round(scale));
 
-    if (ramp === undefined) {
+    if (style === 'progress') {
       // Neutral progress (production): the original bar frame + art fill, flat Graphics without art.
       if (art === null) {
         g.rect(r.x, r.y, r.w, r.h).fill(0x18120d).stroke({ color: 0x5f4a32, width: 1 });
@@ -524,7 +520,7 @@ export function createChrome(
     // paletted-sprite.ts): a recessed near-black groove with an inner top shadow and an embossed light
     // catch under its lip, filled by a smooth vertical gradient of the decoded ramp's level colour
     // (1-px strips — no gradient textures to leak on the panel's 4 Hz rebuilds).
-    const base = rampColor(ramp, clamped);
+    const base = rampColor(clamped);
     // Track groove: solid dark body, a crisp dark outline, an inner top shadow (inset illusion), and a
     // one-px parchment light catch just under the bottom edge (the emboss the wood around it casts).
     g.rect(r.x, r.y, r.w, r.h).fill(0x160f09);

@@ -200,6 +200,10 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     texture.display.position.set(layout.panel.x, layout.panel.y);
     root.addChild(texture.display);
     baked = texture;
+    // A rebuild changes what a HELD cursor hovers (a draining bar's value, a re-sorted stock row) — the
+    // cursor itself won't move to fire a mousemove, so refresh the tooltip here. Rebuilds are already
+    // rate-limited (VALUE_REBUILD_MIN_MS), so this adds no per-frame work.
+    if (lastPointer !== null) updateTooltip(lastPointer.clientX, lastPointer.clientY);
   };
 
   const updateModel = (snapshot: WorldSnapshot, force = false): void => {
@@ -291,19 +295,35 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return i < 0 ? null : (lastModel.bars[i]?.hover ?? null);
   };
 
-  const onMouseMove = (e: MouseEvent): void => {
-    const { x, y } = toCanvas(e.clientX, e.clientY);
-    // Value/name-on-hover (independent of the button-hover repaint below, so it updates even when the
-    // hovered BUTTON hasn't changed): a Magazyn stock row's good name or a category TAB's name for a
-    // building (the tab glyphs are cryptic unread art, so the tooltip is what names a category), a stat
-    // bar's value for a settler. The probes are layout-kind-exclusive, so at most one can hit.
-    if (opts.tooltip !== undefined) {
-      const rowName = hitStockGood(x, y);
-      const tab = rowName === null ? hitStockTab(x, y) : null;
-      const text = rowName ?? (tab !== null ? (STOCK_TAB_LABELS[tab] ?? null) : null) ?? hitBarValue(x, y);
-      if (text === null) opts.tooltip.hide();
-      else opts.tooltip.show(e.clientX, e.clientY, text);
+  /** The last known cursor position over the canvas (client coords), or null after it left — lets the
+   *  tick refresh a STILL cursor's tooltip with live values (a held hover must not show a stale "80%"
+   *  while the bar drains; user feedback 2026-07-11). */
+  let lastPointer: { clientX: number; clientY: number } | null = null;
+
+  /** Recompute + show/hide the value/name tooltip for the cursor at a client point: a Magazyn stock
+   *  row's good name or a category TAB's name for a building (the tab glyphs are cryptic unread art,
+   *  so the tooltip is what names a category), a stat bar's live value for a settler. The probes are
+   *  layout-kind-exclusive, so at most one can hit. Called on mousemove and after each panel rebuild
+   *  (so a HELD cursor's value tracks the live model at the rebuild cadence, not per frame); a cursor
+   *  outside the panel bails before any row probing. */
+  const updateTooltip = (clientX: number, clientY: number): void => {
+    if (opts.tooltip === undefined) return;
+    const { x, y } = toCanvas(clientX, clientY);
+    if (layout === null || !contains(layout.panel, x, y)) {
+      opts.tooltip.hide();
+      return;
     }
+    const rowName = hitStockGood(x, y);
+    const tab = rowName === null ? hitStockTab(x, y) : null;
+    const text = rowName ?? (tab !== null ? (STOCK_TAB_LABELS[tab] ?? null) : null) ?? hitBarValue(x, y);
+    if (text === null) opts.tooltip.hide();
+    else opts.tooltip.show(clientX, clientY, text);
+  };
+
+  const onMouseMove = (e: MouseEvent): void => {
+    lastPointer = { clientX: e.clientX, clientY: e.clientY };
+    updateTooltip(e.clientX, e.clientY);
+    const { x, y } = toCanvas(e.clientX, e.clientY);
     const next = hitButton(x, y)?.action ?? null;
     if (next === hoverAction) return;
     hoverAction = next;
@@ -311,7 +331,10 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   };
 
   // Leaving the canvas can't fire a final over-empty mousemove, so the row tooltip would linger — hide it.
-  const onMouseLeave = (): void => opts.tooltip?.hide();
+  const onMouseLeave = (): void => {
+    lastPointer = null;
+    opts.tooltip?.hide();
+  };
 
   canvas.addEventListener('mousemove', onMouseMove);
   canvas.addEventListener('mouseleave', onMouseLeave);
