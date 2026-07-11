@@ -31,6 +31,7 @@ import {
   readResourceGfxIndex,
   readResourceGood,
   readResourceLevel,
+  readResourceLevelCount,
   readSpriteState,
   readStockpile,
   readStoreExchangeRef,
@@ -63,29 +64,24 @@ export const ROW_STRIDE = 4096;
 const PAINT_ORDER_EPS = 1 / 16;
 
 /**
- * The atomic id of the woodcut swing (the demo slice's `harvest`, the `tribetypes` `setatomic` join key;
- * the same id `real-sprites.ts` binds the chop animation to). A settler harvesting a tree stands ON the
- * resource cell (the planner positions it there, `ai.ts`), so at the cell centre its sprite overlaps the
- * tree and the axe — which swings out to the figure's RIGHT — comes down through empty air beside the
- * trunk. {@link CHOP_NUDGE_X} offsets a chopping settler's sprite so the strike lands IN the tree.
- */
-const CHOP_ATOMIC_ID = 24;
-/**
- * Screen-x shift (pixels, negative = left) applied to a settler's sprite while it is mid-chop, so it
- * stands slightly LEFT of the tree it shares a cell with and its right-hand axe swing connects with the
- * trunk at the cell centre. A render-only visual nudge: the sim position (and the depth sort) is
- * unchanged — only the drawn anchor moves — so determinism and occlusion are untouched. Tunable by eye.
- */
-const CHOP_NUDGE_X = -24;
-
-/**
  * The atomic id of a combat attack swing — the original's `setatomic <job> 81 "..._attack"` (id 81 is
  * the attack slot across every fighting job; the sim's `ATTACK_ATOMIC_ID`, `systems/conflict/weapons.ts`).
  * A settler mid-attack has stopped moving, so it has no {@link readFacing} heading; it FACES its target
  * instead (the attacker→target screen step). The same numeric contract as the sim, transcribed here (like
- * {@link CHOP_ATOMIC_ID}) rather than imported — render reads the snapshot's plain ids, never sim code.
+ * {@link TARGET_FACING_ATOMIC_IDS}) rather than imported — render reads the snapshot's plain ids, never sim code.
  */
 const ATTACK_ATOMIC_ID = 81;
+
+/**
+ * Every atomic whose runner FACES its {@link readAtomicTargetEntity} target while the swing plays: the
+ * combat attack plus the per-good harvest actions (`goodtypes.ini` `atomicForHarvesting` — wood 24,
+ * stone 25, clay 26, iron 27, gold 28, wheat 29, mushroom 32). A harvester, like an attacker, has
+ * stopped walking (no {@link readFacing} heading), so without a target-derived facing it kept its last
+ * walk heading (or the default SE) and swung its axe/pick into empty air BESIDE the node it works —
+ * a woodcutter standing east of a tree chopped further east. Facing the node it targets is what the
+ * original does (`atomicanimations.ini` even carries `startdirection` pins for a subset).
+ */
+const TARGET_FACING_ATOMIC_IDS: ReadonlySet<number> = new Set([ATTACK_ATOMIC_ID, 24, 25, 26, 27, 28, 29, 32]);
 
 /**
  * Ballistic-arc shape of a drawn projectile: the lob's PEAK height is this fraction of the shot's total
@@ -202,15 +198,16 @@ export function collectSpriteScene(
 ): SpriteScene {
   const items: MutableDrawItem[] = [];
   const liveRefs = new Set<number>();
-  // A mid-swing attacker faces — and an in-flight projectile points at — its target's LIVE position,
-  // which needs random access by id (a target may be off-screen / culled, and `WorldSnapshot` carries no
-  // id index). Build that index ONLY on a frame that has an attacker or a projectile — a cheap
-  // early-exit scan decides — so economy / `?map` play (no combat) never pays for it. It stores the
+  // A mid-swing attacker/harvester faces — and an in-flight projectile points at — its target's LIVE
+  // position, which needs random access by id (a target may be off-screen / culled, and `WorldSnapshot`
+  // carries no id index). Build that index ONLY on a frame that has such an actor — a cheap early-exit
+  // scan decides — so a scene with nobody working or fighting never pays for it. It stores the
   // snapshot's own Position object (readPosition returns it, not a copy), so the fill is N Map.sets with
-  // NO per-entity allocation/divide; the `/ONE` to tile space is deferred to the rare combat lookups below.
+  // NO per-entity allocation/divide; the `/ONE` to tile space is deferred to the rare facing lookups below.
   let needsPosIndex = false;
   for (const entity of snapshot.entities) {
-    if (readActingAtomic(entity.components) === ATTACK_ATOMIC_ID || 'Projectile' in entity.components) {
+    const acting = readActingAtomic(entity.components);
+    if ((acting !== null && TARGET_FACING_ATOMIC_IDS.has(acting)) || 'Projectile' in entity.components) {
       needsPosIndex = true;
       break;
     }
@@ -253,29 +250,26 @@ export function collectSpriteScene(
     const tileX = pos.x / ONE;
     const tileY = pos.y / ONE;
     const screen = tileToScreen(tileX, tileY);
-    // Only settlers animate per-state in this slice; a building/resource is always idle. State (and
-    // the chop atomic) must be read BEFORE the cull because the chop nudge moves the drawn anchor.
+    // Only settlers animate per-state in this slice; a building/resource is always idle.
     // An indoor settler (kept only for the panel) stands idle — force it, so a lingering path/atomic
     // from the tick it stepped inside can't leave it walking or mid-swing in the building's portrait.
     const state: SpriteState = kind === 'settler' && !indoorSettler ? readSpriteState(components) : 'idle';
     const actingAtomic = kind === 'settler' && !indoorSettler ? readActingAtomic(components) : null;
-    // A chopping settler shares its tree's cell; nudge its drawn sprite left so the right-swing axe
-    // lands in the trunk at the cell centre (render-only — the depth sort below still uses the true tile).
-    const chopNudgeX = state === 'acting' && actingAtomic === CHOP_ATOMIC_ID ? CHOP_NUDGE_X : 0;
-    // A mid-swing attacker (atomic 81) FACES its target but plays the swing IN PLACE — the drawn
-    // anchor never moves toward the enemy. The attack frames carry their own authored advance in
-    // the per-frame foot offsets (the attacker leans and strikes within the sprite), so an extra
-    // positional nudge DOUBLED that motion and read as the body sliding over the ground at every
-    // swing (the reported przód-tył glide). The arrow/blade reach across the gap is the art's job.
-    let attackFacing: number | undefined;
-    if (kind === 'settler' && actingAtomic === ATTACK_ATOMIC_ID) {
+    // A mid-swing attacker/harvester FACES its target but plays the swing IN PLACE — the drawn anchor
+    // never moves toward the enemy/node. The swing frames carry their own authored advance in the
+    // per-frame foot offsets (the figure leans and strikes within the sprite), so any extra positional
+    // nudge DOUBLES that motion and reads as the body sliding over the ground at every swing (the
+    // reported przód-tył glide — first seen on the attack nudge, then again on the removed chop nudge,
+    // which also popped on/off across the between-swings replan gap). The axe/blade reach is the art's job.
+    let targetFacing: number | undefined;
+    if (kind === 'settler' && actingAtomic !== null && TARGET_FACING_ATOMIC_IDS.has(actingAtomic)) {
       const targetRef = readAtomicTargetEntity(components);
       const to = targetRef !== null ? posByRef.get(targetRef) : undefined;
       if (to !== undefined) {
-        attackFacing = facingTowardTile({ x: tileX, y: tileY }, { x: to.x / ONE, y: to.y / ONE });
+        targetFacing = facingTowardTile({ x: tileX, y: tileY }, { x: to.x / ONE, y: to.y / ONE });
       }
     }
-    const drawX = screen.x + chopNudgeX;
+    const drawX = screen.x;
     const drawY = screen.y;
     // Cull to the framed viewport (when culling). Uses the DRAWN anchor; the box is pre-inflated by the
     // renderer to cover a tall sprite's extent, so a building straddling the edge still draws.
@@ -314,10 +308,10 @@ export function collectSpriteScene(
       }
       // A combat-engaged unit reads the readied `..._agressive` gait (the sim `Engagement` marker).
       if (readEngaged(components)) item.engaged = true;
-      // Facing: a mid-attack swing (atomic 81) has no walking heading, so it faces its target's LIVE
-      // tile (resolved above); otherwise the movement heading. Combat facing WINS when it resolves,
-      // so a stale path can't leave an attacker swinging at empty air.
-      const facing = attackFacing ?? readFacing(components);
+      // Facing: a mid-attack/mid-harvest swing has no walking heading, so it faces its target's LIVE
+      // tile (resolved above); otherwise the movement heading. Target facing WINS when it resolves,
+      // so a stale path can't leave an attacker or a woodcutter swinging at empty air.
+      const facing = targetFacing ?? readFacing(components);
       if (facing !== undefined) item.facing = facing;
       const carrying = readCarrying(components);
       if (carrying !== null) {
@@ -349,7 +343,11 @@ export function collectSpriteScene(
       const goodType = readResourceGood(components);
       if (goodType !== undefined) item.goodType = goodType;
       const level = readResourceLevel(components);
-      if (level !== undefined) item.level = level;
+      if (level !== undefined) {
+        item.level = level;
+        const levels = readResourceLevelCount(components);
+        if (levels !== undefined) item.levels = levels;
+      }
       // Its exact source variant record ("pine 02", not the representative "yew 01") — a per-variant
       // binding entry wins over the per-good one, so a decoded map keeps its original species variety.
       const gfxIndex = readResourceGfxIndex(components);
@@ -376,7 +374,6 @@ export function collectSpriteScene(
       const to = targetRef !== null ? posByRef.get(targetRef) : undefined;
       if (to !== undefined) {
         const targetScreen = tileToScreen(to.x / ONE, to.y / ONE);
-        // Anchored on the projected position (the chop nudge is settler-only, so screen IS draw here).
         const dx = targetScreen.x - screen.x;
         const dy = targetScreen.y - screen.y;
         let rotation = Math.atan2(dy, dx);

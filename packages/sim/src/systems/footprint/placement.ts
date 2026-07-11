@@ -83,9 +83,12 @@ function stockedGoodAt(world: World, entity: Entity): number | null {
 }
 
 /**
- * The cell a collector should stand on to work a resource. Prefer the data's non-anchor work cells,
- * since those give the adjacent stance for blocking nodes; a resource whose only legal work cell is
- * its anchor (for example a one-tile mushroom fixture) remains workable.
+ * The cell a collector should stand on to work a resource. A walkable deposit whose own anchor is a
+ * data-listed work cell (clay — no walk-block, its `workAreas` include the anchor node) is worked
+ * standing ON the deposit, matching the original's clay digger squarely on the pit; a blocking node's
+ * anchor never survives the walkable filter, so trees/stones/ore keep the adjacent stance from the
+ * data's non-anchor work cells. A resource whose only legal work cell is its anchor (a one-tile
+ * mushroom fixture) remains workable through the same anchor-first rule.
  */
 export function resourceWorkCell(
   world: World,
@@ -103,8 +106,8 @@ export function resourceWorkCell(
   const work = translatedCells(terrain, footprint.work, ax, ay).filter(
     (cell) => terrain.isWalkable(cell) && !blocked.has(cell),
   );
-  const adjacent = work.filter((cell) => cell !== anchor);
-  const picked = nearestCell(terrain, adjacent.length > 0 ? adjacent : work, from);
+  if (work.includes(anchor)) return anchor; // stand ON a walkable deposit that lists its own anchor
+  const picked = nearestCell(terrain, work, from);
   if (picked !== null) return picked;
   return nearestFreeNeighbour(terrain, anchor, blocked, from) ?? anchor;
 }

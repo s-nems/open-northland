@@ -844,6 +844,43 @@ describe('resolveResourceDraw — per-good resource node binding', () => {
     expect(resolveResourceDraw(42, resource(5))).toEqual({ bob: 42 });
     expect(resolveResourceDraw(42, resource())).toEqual({ bob: 42 });
   });
+
+  it('RESCALES the level ladder onto a record with a different authored state count', () => {
+    // The sim buckets every deposit into 5 catalog levels, but this record authors only 4 states
+    // (the real "stones 01" rock). Full (5/5) must draw the fullest frame, dregs (1/5) the first.
+    const rock = {
+      byGood: { 3: [10, 11, 12, 13].map((bob) => ({ layer: 'ls_ground.rock03', bob })) },
+      default: 0,
+    };
+    const at = (level: number, levels: number) =>
+      resolveResourceDraw(rock, { ...resource(3), level, levels });
+    expect(at(5, 5)).toEqual({ bob: 13, layer: 'ls_ground.rock03' }); // full → fullest authored frame
+    expect(at(4, 5)).toEqual({ bob: 13, layer: 'ls_ground.rock03' }); // ceil(4·4/5) = 4
+    expect(at(3, 5)).toEqual({ bob: 12, layer: 'ls_ground.rock03' });
+    expect(at(1, 5)).toEqual({ bob: 10, layer: 'ls_ground.rock03' }); // dregs → first frame
+    // A 5-state variant under the same 5-level ladder stays the identity mapping.
+    const mine = { byGood: { 3: [20, 21, 22, 23, 24] }, default: 0 };
+    expect(resolveResourceDraw(mine, { ...resource(3), level: 5, levels: 5 })).toEqual({ bob: 24 });
+    expect(resolveResourceDraw(mine, { ...resource(3), level: 2, levels: 5 })).toEqual({ bob: 21 });
+  });
+
+  it('indexes a GROUND DROP by its fill (unit count) — one dug ore draws the single-piece frame', () => {
+    // The trunk binding routes grounddrop items through this resolver; the ore pickup records author a
+    // 5-state fewest→most ladder (state ≡ units), so fill 1 → first frame, a stacked drop grows.
+    const ore = {
+      byGood: { 4: [30, 31, 32, 33, 34].map((bob) => ({ layer: 'ls_goods.iron', bob })) },
+      default: 0,
+    };
+    const drop = (fill?: number): DrawItem => ({
+      ...item('grounddrop'),
+      goodType: 4,
+      ...(fill !== undefined ? { fill } : {}),
+    });
+    expect(resolveResourceDraw(ore, drop(1))).toEqual({ bob: 30, layer: 'ls_goods.iron' }); // one unit
+    expect(resolveResourceDraw(ore, drop(3))).toEqual({ bob: 32, layer: 'ls_goods.iron' });
+    expect(resolveResourceDraw(ore, drop(99))).toEqual({ bob: 34, layer: 'ls_goods.iron' }); // clamps
+    expect(resolveResourceDraw(ore, drop())).toEqual({ bob: 34, layer: 'ls_goods.iron' }); // no fill → full
+  });
 });
 
 describe('resolveStockpileDraw — per-good ground piles + delivery flag', () => {

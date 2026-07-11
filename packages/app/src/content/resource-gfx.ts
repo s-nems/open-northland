@@ -92,9 +92,11 @@ export interface GatheringRefs {
    * record (wood's "trunk" stage: a felled LOG lying on the ground, distinct from the tidy delivered
    * heap). A loose {@link import('@vinland/sim').GroundDrop} draws this; the original uses a different
    * graphic for the on-the-ground harvest than for the stored pile (`tree → trunk(pickup) → wood(store)`).
-   * A single representative frame — a felled log reads the same regardless of exact units.
+   * Carries the record's FULL fewest→most state ladder (the `stone/iron/gold/clay ore` and `wheat ore`
+   * pickup records author 5 states, state ≡ units) so the drop is drawn by its actual unit count — one
+   * chipped ore draws the single-piece frame, never the full 5-piece heap (the reported bug).
    */
-  readonly trunksByGood: Readonly<Record<number, GatheringNodeRef>>;
+  readonly trunksByGood: Readonly<Record<number, GatheringNodeLevelsRef>>;
   /** Ground-pile ref per scene `goodType` (its `landscapeToStore` record's per-fill heap frames). */
   readonly pilesByGood: Readonly<Record<number, GatheringPileRef>>;
   /** The delivery-flag ref (`ls_temp` player-01 sign), when the record is present in the IR. */
@@ -207,7 +209,7 @@ export function resolveGatheringRefs(
 
   const nodesByGood: Record<number, GatheringNodeLevelsRef> = {};
   const nodesByGfxIndex: Record<number, GatheringNodeLevelsRef> = {};
-  const trunksByGood: Record<number, GatheringNodeRef> = {};
+  const trunksByGood: Record<number, GatheringNodeLevelsRef> = {};
   const pilesByGood: Record<number, GatheringPileRef> = {};
   for (const good of goods) {
     const p = byGoodId.get(good.id);
@@ -228,13 +230,14 @@ export function resolveGatheringRefs(
       if (stem !== undefined && bobs !== undefined) nodesByGfxIndex[idx] = { stem, bobs };
     }
     // The freshly-dropped trunk (the `landscapeToPickup` stage), drawn by a loose GroundDrop before it is
-    // carried off — a single representative frame, the felled log. Only bind it for a good that actually
-    // has a distinct pickup stage; a good without one (its harvest === pickup) falls back to the pile.
+    // carried off — the record's whole fewest→most state ladder, indexed by the drop's unit count (the
+    // original picks the state whose number equals the remaining valency). Only bind it for a good that
+    // actually has a distinct pickup stage; a good without one (harvest === pickup) falls back to the pile.
     const trunkRecord = representativeRecord(p.pickup, byIndex);
     if (trunkRecord !== undefined) {
       const stem = servedStem(trunkRecord);
-      const bob = nodeBob(trunkRecord);
-      if (stem !== undefined && bob !== undefined) trunksByGood[good.typeId] = { stem, bob };
+      const bobs = nodeLevelBobs(trunkRecord);
+      if (stem !== undefined && bobs !== undefined) trunksByGood[good.typeId] = { stem, bobs };
     }
     const pileRecord = representativeRecord(p.store, byIndex);
     if (pileRecord !== undefined) {
@@ -254,7 +257,7 @@ export function resolveGatheringRefs(
   const plankType = goods.find((g) => g.id === 'plank')?.typeId;
   if (woodTrunk !== undefined && plankType !== undefined) {
     trunksByGood[plankType] = woodTrunk;
-    pilesByGood[plankType] = { stem: woodTrunk.stem, fillBobs: [woodTrunk.bob] };
+    pilesByGood[plankType] = { stem: woodTrunk.stem, fillBobs: woodTrunk.bobs };
   }
 
   // Every OTHER good (not gathered, so absent from the pipeline) gets its on-the-ground graphic from the
@@ -262,16 +265,17 @@ export function resolveGatheringRefs(
   // brick, sword, or loaf draws its own pile on the ground and grows with its contents, not the bare
   // placeholder marker. Only the goods with no manifest icon at all — the animal/vehicle/special tokens that
   // share `landscapeType 1` (prey, sheep, cattle, the carts/ships, catapult, chest, anything) — fall back to
-  // the neutral generic heap; the potions/amulets/fruit DO bind (via the `goods all` record). The PILE binds the manifest's full `fillFrames`
-  // (fewest→most) so a player-dropped bare stockpile grows through the 5 pile states; the TRUNK keeps a
-  // single frame (the state-1 icon) for the felled-log shape a `GroundDrop` draws.
+  // the neutral generic heap; the potions/amulets/fruit DO bind (via the `goods all` record). BOTH the
+  // pile and the trunk bind the manifest's full `fillFrames` (fewest→most): a player-dropped bare
+  // stockpile grows through the 5 pile states, and a `GroundDrop` of the good draws the frame matching
+  // its unit count (one unit → the single-item frame).
   if (goodIcons != null) {
     for (const good of goods) {
       const icon = goodIcons.get(good.id) ?? GENERIC_GOOD_ICON;
       const stem = `${GOODS_PILE_BMD_STEM}.${icon.palette}`;
       const fillBobs = icon.fillFrames.length > 0 ? icon.fillFrames : [icon.frame];
       if (pilesByGood[good.typeId] === undefined) pilesByGood[good.typeId] = { stem, fillBobs };
-      if (trunksByGood[good.typeId] === undefined) trunksByGood[good.typeId] = { stem, bob: icon.frame };
+      if (trunksByGood[good.typeId] === undefined) trunksByGood[good.typeId] = { stem, bobs: fillBobs };
     }
   }
 
@@ -470,17 +474,17 @@ export function buildResourceBinding(
 /**
  * Reduce the resolved trunk refs (the `landscapeToPickup` stage) to the renderer's per-good
  * {@link ResourceTypeBinding} — the graphic a loose {@link import('@vinland/sim').GroundDrop} draws while
- * its felled wood lies on the ground waiting to be carried off. Same shape + load-then-drop-unloaded rule
- * as {@link buildResourceBinding}; the `TREE_BOB` default is a visible fallback for a good with no bound
- * trunk (dropped before Step 4 gives the mined goods their own pickup graphics). Pure + unit-tested.
+ * its felled wood / chipped ore lies on the ground waiting to be carried off. Binds the record's whole
+ * fewest→most state ladder: the resolver indexes it by the drop's unit count (`DrawItem.fill`), so one
+ * dug ore draws the single-piece frame and a stacked drop grows — the original's state ≡ remaining-units
+ * read. Same load-then-drop-unloaded rule as {@link buildResourceBinding}; the `TREE_BOB` default is a
+ * visible fallback for a good with no bound trunk. Pure + unit-tested.
  */
 export function buildTrunkBinding(refs: GatheringRefs, loaded: ReadonlySet<string>): ResourceTypeBinding {
   const byGood: Record<number, readonly LayeredBobRef[]> = {};
   for (const [good, trunk] of Object.entries(refs.trunksByGood)) {
     if (trunk.stem !== DEFAULT_RESOURCE_STEM && !loaded.has(trunk.stem)) continue; // unloaded family → drop
-    // A single representative log frame (a felled trunk / ore pile reads the same at any amount) — a
-    // one-element level list, so the level-indexing resolver always draws it (a drop carries no level).
-    byGood[Number(good)] = [bobRef(trunk.stem, trunk.bob)];
+    byGood[Number(good)] = trunk.bobs.map((bob) => bobRef(trunk.stem, bob));
   }
   return { byGood, default: TREE_BOB };
 }

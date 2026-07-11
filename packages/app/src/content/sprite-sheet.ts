@@ -8,7 +8,18 @@ import {
   SYNTHETIC_BINDINGS,
   syntheticAtlasFrames,
 } from '@vinland/render';
-import { ATTACK_ATOMIC, CULTIVATE_ATOMIC, PLANT_ATOMIC, WHEAT_HARVEST_ATOMIC } from '../catalog/atomics.js';
+import {
+  ATTACK_ATOMIC,
+  CLAY_HARVEST_ATOMIC,
+  CULTIVATE_ATOMIC,
+  GOLD_HARVEST_ATOMIC,
+  HARVEST_ATOMIC,
+  IRON_HARVEST_ATOMIC,
+  MUSHROOM_HARVEST_ATOMIC,
+  PLANT_ATOMIC,
+  STONE_HARVEST_ATOMIC,
+  WHEAT_HARVEST_ATOMIC,
+} from '../catalog/atomics.js';
 import {
   characterStem,
   characterStems,
@@ -134,13 +145,22 @@ async function loadCharacters(
   // name — the layout each warrior/civilian spec's `attack` seq becomes a FrameListAnim from. Built once
   // (not per spec); a spec whose seq is absent just has no attack animation.
   const attackFrameLists = gfxAtomicFrameLists(ir, VIKING_ANIM_TRIBE, ATTACK_ATOMIC);
-  // The farmer's field-clip frame lists (the job-18 sow/water/reap `[gfxanimatomic]` records), keyed by
-  // atomic id — what each spec's `dirListAtomics` becomes FrameListAnims from (the attack mechanism
-  // generalized). Built once; an IR without them just leaves those actions on their fallback clips.
+  // The gathering + field-work frame lists (the collector job-8 chop/dig/pluck and the farmer job-18
+  // sow/water/reap `[gfxanimatomic]` records), keyed by atomic id — what each spec's `dirListAtomics`
+  // becomes FrameListAnims from (the attack mechanism generalized). Built once; an IR without them just
+  // leaves those actions on their fallback clips.
   const actionFrameLists = new Map(
-    [WHEAT_HARVEST_ATOMIC, PLANT_ATOMIC, CULTIVATE_ATOMIC].map(
-      (action) => [action, gfxAtomicFrameLists(ir, VIKING_ANIM_TRIBE, action)] as const,
-    ),
+    [
+      HARVEST_ATOMIC,
+      STONE_HARVEST_ATOMIC,
+      CLAY_HARVEST_ATOMIC,
+      IRON_HARVEST_ATOMIC,
+      GOLD_HARVEST_ATOMIC,
+      MUSHROOM_HARVEST_ATOMIC,
+      WHEAT_HARVEST_ATOMIC,
+      PLANT_ATOMIC,
+      CULTIVATE_ATOMIC,
+    ].map((action) => [action, gfxAtomicFrameLists(ir, VIKING_ANIM_TRIBE, action)] as const),
   );
 
   const bySpec = new Map<string, SettlerCharacter>();

@@ -119,6 +119,15 @@ export interface DrawItem {
    */
   readonly level?: number;
   /**
+   * For a **mined resource node**: how many levels its {@link level} ladder has (the sim's
+   * `MineDeposit.levels`, or a crop's `stages`) — `level === levels` is full. The resolver RESCALES the
+   * ladder onto the bound record's own frame count when the two differ (the sim buckets every deposit
+   * into one catalog level count, but each `[GfxLandscape]` variant authors its own state count — stone
+   * rocks carry 4, the ore mines 5), so a full deposit always draws its fullest authored frame. OMITTED
+   * with {@link level} for a plain node.
+   */
+  readonly levels?: number;
+  /**
    * For a **resource** node: the exact `[GfxLandscape]` record it was spawned from (the snapshot's
    * `Resource.gfxIndex` render-variant tag) — a decoded map's own species variant ("pine 02",
    * "stones 05 grey"). A {@link import('../sprites/index.js').ResourceTypeBinding.byGfxIndex} entry wins
