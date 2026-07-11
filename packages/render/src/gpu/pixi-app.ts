@@ -208,6 +208,13 @@ const APP_OPTIONS = {
   preference: 'webgl',
   autoDensity: false,
   resolution: 1,
+  // No Pixi auto-render ticker: EVERY consumer (WorldRenderer.update, animationGallery.update, the shot
+  // entry) drives its own RAF loop and calls `app.render()` explicitly with the camera already applied.
+  // Left on (the default), Pixi's shared ticker renders the stage the instant a layer is populated —
+  // BEFORE the first frame sets the camera transform — so the world flashes at the identity transform
+  // (tile 0,0 pinned to screen origin) and then JUMPS to the start focus. Off, the canvas stays black
+  // through loading and the first pixels the user sees are already framed on the start (no screen jerk).
+  autoStart: false,
 } as const;
 
 /**
