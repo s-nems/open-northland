@@ -141,6 +141,23 @@ export function testContent(): ContentSet {
         kind: 'storage',
         stock: [{ goodType: 6, capacity: 150, initial: 0 }],
       },
+      {
+        // A general WAREHOUSE (kind storage) that stocks every fixture good — the delivery SINK the
+        // end-to-end felling/mining tests place. A delivery sink must be a TYPED store (Building/Vehicle),
+        // never a bare loose pile, so those tests give their store this type. Unplaced by any golden (like
+        // the granary above), so adding it leaves every golden untouched.
+        typeId: 7,
+        id: 'warehouse',
+        kind: 'storage',
+        stock: [
+          { goodType: 1, capacity: 150, initial: 0 },
+          { goodType: 2, capacity: 150, initial: 0 },
+          { goodType: 3, capacity: 150, initial: 0 },
+          { goodType: 4, capacity: 150, initial: 0 },
+          { goodType: 5, capacity: 150, initial: 0 },
+          { goodType: 6, capacity: 150, initial: 0 },
+        ],
+      },
     ],
     landscape: [
       // Grass is the one PLANTABLE ground (the original's `biocanplanton` triangle flag — `land` alone

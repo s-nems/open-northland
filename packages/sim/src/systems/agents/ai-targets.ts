@@ -338,8 +338,14 @@ export function nearestStoreFor(
     if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
     // A GroundDrop (a felled trunk / dropped good) is a SOURCE to collect, never a delivery SINK —
     // otherwise a collector would deposit the wood straight back into the trunk it just lifted from
-    // (a livelock). A designated flag (a bare Stockpile with no marker) stays a valid sink.
+    // (a livelock).
     if (world.has(e, GroundDrop)) continue;
+    // A bare loose goods pile (a hand-dropped heap or a gatherer's yard heap) is likewise NEVER a sink.
+    // It has no store TYPE, so {@link stockCapacity} treats it as uncapped: a carrier that can't reach a
+    // real store (every warehouse full for the good) would "deliver" its load into the nearest loose pile,
+    // which a porter immediately re-collects — the good shuttles pile→back→pile forever (the full-store
+    // livelock). A real sink is a TYPED store: a Building (warehouse/HQ/workshop) or a Vehicle hull.
+    if (isYardHeap(world, e)) continue;
     const recipe = recipeOf(world, ctx, e);
     if (recipe?.outputs.some((o) => o.goodType === goodType)) continue; // never deliver to its producer
     const stock = world.get(e, Stockpile);
