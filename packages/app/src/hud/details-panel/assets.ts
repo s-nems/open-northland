@@ -32,11 +32,12 @@ import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 
 /**
  * The original window/button fills from `Data/gui/bitmaps/bg*.pcx` (300×300 texture tiles).
- * `bg_selected` is not loaded: the panel's name underline is a sampled flat colour (see `chrome.ts` —
- * no shipped palette pairing reproduces the original's lime strip from that bitmap).
+ * `bg` (warm brown) tiles the section-button plates' disabled fallback; `card` is `bg_selected` recoloured
+ * through `bg_normal` — the original's grey-blue selected-item card body, tiled under each section headline.
  */
 export interface GuiBitmapSet {
   readonly bg: Texture | undefined;
+  readonly card: Texture | undefined;
   readonly button: Texture | undefined;
   readonly buttonHilite: Texture | undefined;
   readonly headline: Texture | undefined;
@@ -45,14 +46,16 @@ export interface GuiBitmapSet {
 async function loadGuiBitmaps(): Promise<GuiBitmapSet> {
   const toTexture = (source: TextureSource | undefined): Texture | undefined =>
     source === undefined ? undefined : new Texture({ source });
-  const [bg, button, buttonHilite, headline] = await Promise.all([
+  const [bg, card, button, buttonHilite, headline] = await Promise.all([
     loadGuiBitmap('bg'),
+    loadGuiBitmap('bg_selected'),
     loadGuiBitmap('bg_button'),
     loadGuiBitmap('bg_button_hilite'),
     loadGuiBitmap('bg_headline'),
   ]);
   return {
     bg: toTexture(bg),
+    card: toTexture(card),
     button: toTexture(button),
     buttonHilite: toTexture(buttonHilite),
     headline: toTexture(headline),

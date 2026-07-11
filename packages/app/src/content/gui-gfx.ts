@@ -142,16 +142,18 @@ export async function loadGuiBarRamp(): Promise<GuiBarRamp | undefined> {
 export type GuiBitmapName = 'bg' | 'bg_button' | 'bg_button_hilite' | 'bg_headline' | 'bg_selected';
 
 /**
- * The served file per bitmap. `bg` uses the pipeline-baked `bg.bg_normal.png` — the in-game window body
- * draws `bg.pcx` through the `bg_normal` element palette (warm brown); its embedded palette is the grey
- * menu look. The other four match the original through their embedded palettes.
+ * The served file per bitmap. Two draw through an ELEMENT palette rather than their embedded one (the
+ * pipeline bakes the swap): `bg` uses `bg.bg_normal.png` — the window body's warm brown; `bg_selected`
+ * uses `bg_selected.bg_normal.png` — the selected-item card body's grey-blue (its embedded palette is a
+ * warm olive; through `bg_normal` its indices land cool, avg ≈ #3c4043). The other three match the
+ * original through their embedded palettes.
  */
 const GUI_BITMAP_FILES: Readonly<Record<GuiBitmapName, string>> = {
   bg: 'bg.bg_normal.png',
   bg_button: 'bg_button.png',
   bg_button_hilite: 'bg_button_hilite.png',
   bg_headline: 'bg_headline.png',
-  bg_selected: 'bg_selected.png',
+  bg_selected: 'bg_selected.bg_normal.png',
 };
 
 /** Load one optional GUI bitmap fill. Missing `content/` degrades to `undefined`. */

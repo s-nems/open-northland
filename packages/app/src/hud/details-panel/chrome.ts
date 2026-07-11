@@ -6,7 +6,7 @@ import { makeGuiSprite } from '../../content/gui-art.js';
 import { GUI_FRAME } from '../../content/gui-atlas-map.js';
 import { type GuiPaletteName, guiPaletteRow } from '../../content/gui-gfx.js';
 import { UI_TEXT_FILL } from '../../content/ui-font.js';
-import { HOVER_ALPHA, HOVER_TINT, tileBitmap, WINDOW_BORDER, WINDOW_FILL } from '../chrome.js';
+import { HOVER_ALPHA, HOVER_TINT, tileBitmap, WINDOW_BORDER } from '../chrome.js';
 import type { Rect } from '../geometry.js';
 import type { DetailsPanelAssets } from './assets.js';
 import type { ButtonHit } from './layout.js';
@@ -66,6 +66,10 @@ const SELECTED_LIME = 0xd8fb55;
 /** Inner content-box bevel lines — eyeballed against the original's preview framing, not sampled. */
 const INNER_BOX_DARK = 0x1c130b;
 const INNER_BOX_LIGHT = 0x7a6244;
+/** Flat fallback for the section card body without `content/`: the grey-blue the `bg_selected` marble
+ *  averages to through the `bg_normal` element palette (decoded #3c4043), so a bare checkout still reads
+ *  as the original's cool selected-card body rather than the warm brown of the shared window fill. */
+const CARD_FILL = 0x3c4043;
 /** Warm wood tint of an occupied equipment slot (eyeballed, not sampled). */
 const SLOT_FILL = 0x4a2b1d;
 /**
@@ -391,10 +395,12 @@ export function createChrome(
     framePiece(GUI_FRAME.knot_corner_br, { x: r.x + r.w - cb, y: r.y + r.h - cb, w: cb, h: cb });
   };
 
-  // Named to avoid shadowing the global `window` inside this closure.
+  // Named to avoid shadowing the global `window` inside this closure. The body tiles the grey-blue
+  // `card` fill (the original's selected-item card), NOT the warm brown `bg` — that stays the button
+  // plates' disabled fallback; only the headline strips above the cards keep the warm brown.
   const windowBox = (r: Rect): void => {
-    if (!tile(bitmaps.bg, r)) {
-      g.rect(r.x, r.y, r.w, r.h).fill(WINDOW_FILL);
+    if (!tile(bitmaps.card, r)) {
+      g.rect(r.x, r.y, r.w, r.h).fill(CARD_FILL);
     }
     if (art !== null) frameBorder(r);
     else g.rect(r.x, r.y, r.w, r.h).stroke({ color: WINDOW_BORDER, width: Math.max(1, scale) });
