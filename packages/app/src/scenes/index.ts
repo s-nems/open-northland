@@ -9,6 +9,7 @@ import { farmScene } from './farm.js';
 import { goodsCatalogScene } from './goods-catalog.js';
 import { sandboxScene } from './sandbox.js';
 import type { SceneDefinition } from './types.js';
+import { warehouseScene } from './warehouse.js';
 
 export { createSceneSim, resetComponentStores } from './runtime.js';
 export type { SceneCheck, SceneDefinition } from './types.js';
@@ -29,6 +30,7 @@ export const SCENES: readonly SceneDefinition[] = [
   farmScene,
   berriesScene,
   buildingGeometryScene,
+  warehouseScene,
 ];
 
 /** Look up a scene by its `?scene=<id>` value, or `undefined` if no scene has that id. */

@@ -19,7 +19,7 @@ import {
   simResourceObjectNames,
 } from '../../content/map-resources.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../rules.js';
-import { GATHERERS, type GathererSpec, weaponEquipmentFor } from './ids.js';
+import { GATHERERS, type GathererSpec, JOB_IDLE, weaponEquipmentFor } from './ids.js';
 
 /** The goods a real gatherer trade exists for — the {@link GATHERERS} ids. A decoded-map object whose good
  *  is outside this set (a harvestable the app has no collector for yet) stays render-only decor. */
@@ -107,6 +107,34 @@ export function spawnSandboxSettler(
     ...(opts.weaponTypeId !== undefined ? { weaponTypeId: opts.weaponTypeId } : {}),
     ...(equipment !== undefined ? { equipment } : {}),
   });
+}
+
+/**
+ * Spawn an UNEMPLOYED settler (jobType null) DIRECTLY (scene setup, pre-tick-0) and return it. Unlike
+ * {@link spawnSandboxSettler} (which spawns a settler already doing a named job), an idle settler is the
+ * one the JobSystem's SECOND pass employs — it binds an idle settler to the first canonical building with an
+ * open worker slot (lowest job id first). This is how a passive store's carrier slots get staffed: a
+ * warehouse/HQ is NOT adopted by a settler standing at its door (adopt only pins recipe workshops + farms),
+ * so its haulers arrive as idle settlers the JobSystem assigns. Built via {@link systems.createSettler} then
+ * re-idled, because the `spawnSettler` command has no null-job form.
+ */
+export function spawnIdleSettler(
+  sim: Simulation,
+  x: number,
+  y: number,
+  owner: number = HUMAN_PLAYER,
+): Entity {
+  const node = cellAnchorNode(x, y);
+  const e = systems.createSettler(sim.world, sim.content, {
+    jobType: JOB_IDLE,
+    x: node.hx,
+    y: node.hy,
+    tribe: PRIMARY_TRIBE,
+    owner,
+  });
+  if (e === null) throw new Error('spawnIdleSettler: createSettler failed');
+  sim.world.get(e, components.Settler).jobType = null; // re-idle so the JobSystem's assign pass employs it
+  return e;
 }
 
 /**
