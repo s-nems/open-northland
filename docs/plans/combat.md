@@ -207,18 +207,21 @@ gallery. **Human pixel sign-off still pending** — the swing/facing/feel is the
 
 2026-07-11, branch `feat/combat-feedback`. Landed the readability slice of step 6 the user asked for;
 **player colours already render** (red-vs-blue in `?scene=combat`) and **HP bars + the real arrow/rock
-gfx hunt remain** — step 6 stays open. Verification: `npm test` (1936) + `npm run check` + `npm run build`
-green; author-eyeballed `?scene=combat` at DPR 2 (blood spurts on struck bodies, bone piles at the fallen,
-team colours, no console errors). **Human pixel/audio sign-off pending** (feel + by-ear).
+gfx hunt remain** — step 6 stays open. Verification: `npm test` (1941) + `npm run check` + `npm run build`
+green; author-eyeballed `?scene=combat` at DPR 2 (blood sprays and drips down struck bodies, bone piles at
+the fallen, team colours, no console errors). **Human pixel/audio sign-off pending** (feel + by-ear).
 
 - **Blood on a landed blow** (render-only, no golden churn — events aren't hashed): the sim emits a new
   melee `combatHit` event (`core/events.ts`; `resolveCombatHit(..., melee=true)` in
   `systems/agents/effects-combat.ts`) at the victim's node when a swing CONNECTS; ranged reuses
   `projectileHit`. A miss emits neither → no blood, straight from the hit-resolution guard. Render folds
   both into a decaying mark list (`render/data/effects.ts`) drawn by `CombatEffectsLayer`
-  (`render/gpu/effects-layer.ts`): blood is a tick-seeded red spurt lifted ONTO the body (over the sprite),
-  bones a procedural pile at the death node (under sprites). Decay is by SIM TICK (reproducible). Threaded
-  via `renderer.ingestCombatEffects(events, tick)` in `app/view/game-view.ts`.
+  (`render/gpu/effects-layer.ts`): blood is a tick-seeded red spray of droplets that FALL from the wound
+  (chest height, over the sprite) to the feet under gravity and pool — the ballistic motion is a pure,
+  unit-tested closed form (`bloodDroplet`), fed INTERPOLATED render time (`tick + alpha`) so the fall is
+  smooth (the user asked for "less like static dots, more like blood running down"). Bones sit at the death
+  node (under sprites). Decay is by SIM TICK (reproducible). Threaded via
+  `renderer.ingestCombatEffects(events, tick)` in `app/view/game-view.ts`.
 - **Bones on death:** `settlerDied` now carries `at` (death node) + `player` (owner, `null` if unowned),
   read in `cleanup.ts reap` before destroy. Bones spawn on any `settlerDied` with a position, drawn as the
   REAL decoded `cadaver human bones` sprite (`ls_skeletons.bmd`, three seed-picked variants) — the app
@@ -231,12 +234,15 @@ team colours, no console errors). **Human pixel/audio sign-off pending** (feel +
   the director gates it on `settlerDied.player === localPlayer` (`audio/data/director/events.ts`), and the app
   passes `localPlayer: HUMAN_PLAYER` (`game-view.ts`). An enemy's or a wild animal's death is silent.
 - **Attack sounds (audited + wired):** all combat wavs are present in the extracted `soundfx.cif` bank.
-  Melee now announces a `combatSwing` event at each swing start (`conflict/weapons.ts`, the audible twin of
-  `projectileLaunched`) → the swing swoosh (`Weapon Sword Short`, the swing wavs shared across melee weapons),
-  PLUS the weapon-specific impact on connect (`combatHit` → `Weapon {Fist,Spear,Sword} Hit` via
+  Melee announces a `combatSwing` event → the swing swoosh (`Weapon Sword Short`, the swing wavs shared across
+  melee weapons), PLUS the weapon-specific impact on connect (`combatHit` → `Weapon {Fist,Spear,Sword} Hit` via
   `byCombatWeapon`, generic sword-hit fallback). Ranged: bow twang (`projectileLaunched` → `Weapon Bow Long`)
-  + arrow thunk (`projectileHit` → `Weapon Bow Hit`). Follow-up: the `soundtype_NoHit` miss swoosh + the
-  `Man/Woman Get Hit` victim grunts are extracted but unwired.
+  + arrow thunk (`projectileHit` → `Weapon Bow Hit`). The swoosh fires at the STRIKE frame (in
+  `effects-combat.ts resolveAttackHit`, the audible twin of a bow's release `projectileLaunched`), NOT at the
+  windup start (`startAttack`) — a long-windup weapon (long sword, spear) swooshed well before its blade swung,
+  reading as a delayed/detached hit; firing it in sync with the visible strike fixes the timing. It fires
+  before the reach re-check so a whiffed swing still swooshes (the blade cut air). Follow-up: the
+  `soundtype_NoHit` miss swoosh + the `Man/Woman Get Hit` victim grunts are extracted but unwired.
 - **Melee whiff (the user's "enemy steps away → miss"):** a melee swing now carries its weapon `maxRange` on
   the attack effect (`core/commands.ts`, `conflict/weapons.ts`) and RE-CHECKS reach at the hit frame
   (`effects-combat.ts meleeTargetOutOfReach`, same node-manhattan metric the CombatSystem engaged with): a

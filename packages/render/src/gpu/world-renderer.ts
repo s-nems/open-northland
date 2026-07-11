@@ -305,7 +305,9 @@ export class WorldRenderer {
     );
     // Combat ground marks: reposition + fade the blood/bones fed by `ingestCombatEffects`, culled to the
     // same viewport as the sprites so a battlefield's litter cost tracks the screen, not the casualty count.
-    this.effects.draw(this.elevation, vp, tick);
+    // Fed INTERPOLATED render time (`tick + alpha`) so the blood-fall animation and fades are smooth at any
+    // frame rate; the fold's decay membership uses the integer sim tick from `ingest`, so this stays render-only.
+    this.effects.draw(this.elevation, vp, tick + alpha);
     // Door badges float over the buildings: the app tallies each building's bound workers + projects its
     // door node, this layer stacks one placeholder square per worker (craftsman / carrier / gatherer,
     // colour-coded) above the door. Culled to the same viewport as the sprites so the per-frame cost of a

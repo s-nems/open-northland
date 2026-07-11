@@ -10,9 +10,11 @@ import type { SimEvent } from '@vinland/sim';
  *
  * The original leaves the HIT particle (`logicdefines.inc` PARTICEL_EFFECT HIT 1) and a cadaver landscape
  * object (skeleton_falling → cadaver_skeleton) on the field; both assets are unbound here, so the blood
- * burst and the bone pile are NAMED procedural APPROXIMATIONS (a small red splatter, a simple bone mark) —
- * a stand-in like the projectile arrow marker, to be swapped for the extracted cadaver gfx later. The
- * SHAPES are the GPU layer's; this module owns the vocabulary, the decay, and the event→mark fold.
+ * burst is a NAMED procedural APPROXIMATION — a few droplets that spray from the wound and fall/drip to the
+ * ground under gravity (this module owns the ballistic motion; {@link bloodDroplet}), a "blood runs down"
+ * read rather than a static ring of dots. Bones now draw the REAL decoded cadaver sprite when the app
+ * supplies it (else a procedural pile). The SHAPES are the GPU layer's; this module owns the vocabulary,
+ * the decay, the droplet motion, and the event→mark fold.
  */
 
 /** A ground mark: a blood splatter (a landed blow) or a bone pile (a death). */
@@ -88,6 +90,81 @@ export function effectKey(effect: CombatEffect): string {
  *  marks jitter differently and the same source jitters differently across ticks. Pure integer hash. */
 function seedFrom(sourceId: number, tick: number): number {
   return (Math.imul(sourceId, 2654435761) + Math.imul(tick, 40503)) >>> 0;
+}
+
+/** A deterministic float in [0, 1) from a mark's seed and a droplet/shaft index — no `Math.random`, so a
+ *  `?shot` capture reproduces the exact splatter. A small integer hash mixed down to a unit fraction. */
+export function frac(seed: number, i: number): number {
+  let x = (seed ^ Math.imul(i + 1, 0x9e3779b1)) >>> 0;
+  x = Math.imul(x ^ (x >>> 15), 0x85ebca6b) >>> 0;
+  x = Math.imul(x ^ (x >>> 13), 0xc2b2ae35) >>> 0;
+  return ((x ^ (x >>> 16)) >>> 0) / 0x100000000;
+}
+
+// --- Blood-spurt motion (render-only; world px, render-ticks). The original's HIT particle is unbound, so
+//     this is a NAMED procedural approximation, eye-calibrated: a few droplets spray from the wound (chest
+//     height) and FALL to the feet under gravity, then pool and fade — the "blood runs down" look the user
+//     asked for, replacing the old static ring of dots. No sim state, no determinism impact. ---
+
+/** How far UP a blood spurt sits from the victim's feet node — the chest/wound height it sprays from and
+ *  falls back down to (a viking body is ~32 world px tall; ~40% up puts the wound on the chest). The GPU
+ *  layer lifts the blood node here; the droplets then fall exactly this far to pool at the feet. */
+export const BLOOD_RISE = 13;
+/** Render-ticks a droplet takes to fall from the wound to the feet — the gravity below is tuned to it. */
+const BLOOD_FALL_TICKS = 8;
+/** Downward acceleration (world px / render-tick²), set so a droplet released at rest falls {@link BLOOD_RISE}
+ *  in exactly {@link BLOOD_FALL_TICKS} ticks (`y = ½·g·t²` ⇒ `g = 2·rise / fallTicks²`) — a closed-form landing
+ *  time with no per-droplet `sqrt`. */
+const BLOOD_GRAVITY = (2 * BLOOD_RISE) / (BLOOD_FALL_TICKS * BLOOD_FALL_TICKS);
+/** Initial spread of the droplets around the wound point (world px) — a small fan, not one blob. */
+const BLOOD_SPRAY = 3;
+/** Max horizontal drift speed as a droplet falls (world px / render-tick) — a slight sideways run. */
+const BLOOD_DRIFT = 0.9;
+/** Max per-droplet start delay (render-ticks) — staggers the drips so it reads as running, not a single drop. */
+const BLOOD_DRIP_STAGGER = 5;
+/** Vertical elongation per unit fall-speed, and its cap — a fast drop stretches into a streak. */
+const BLOOD_STREAK = 0.35;
+const BLOOD_MAX_STREAK = 2.3;
+/** A landed droplet's stretch — flattened vertically and spread horizontally into a small pool. */
+const BLOOD_POOL_STRETCH_Y = 0.5;
+const BLOOD_POOL_STRETCH_X = 1.6;
+
+/** A blood droplet's animated transform at `age` render-ticks after the hit, in the blood node's local
+ *  space (origin = the wound, y grows DOWNWARD to the feet at {@link BLOOD_RISE}). */
+export interface BloodDroplet {
+  readonly x: number;
+  readonly y: number;
+  /** True once the droplet has reached the ground and become part of the pool. */
+  readonly landed: boolean;
+  /** Vertical scale: a falling drop is a streak (> 1), a pooled one is flat (< 1). */
+  readonly stretchY: number;
+  /** Horizontal scale: a pooled drop spreads (> 1), a falling one stays thin (≤ 1). */
+  readonly stretchX: number;
+}
+
+/**
+ * Where droplet `i` of a blood splatter is at `age` render-ticks after the hit: it starts in a small seeded
+ * fan around the wound, falls straight down under {@link BLOOD_GRAVITY} with a slight horizontal drift, and
+ * settles into a flattened pool at the feet ({@link BLOOD_RISE} below the wound) after a per-droplet delay.
+ * Pure of `Math.random` — everything derives from `seed`+`i` ({@link frac}) — so a `?shot` reproduces the
+ * exact spray. Motion is a closed form (no integration state), so it's correct at any render `age`, whole or
+ * fractional (the layer feeds it interpolated render time for smooth falling).
+ */
+export function bloodDroplet(seed: number, i: number, age: number): BloodDroplet {
+  const x0 = (frac(seed, i * 4) - 0.5) * 2 * BLOOD_SPRAY;
+  const vx = (frac(seed, i * 4 + 1) - 0.5) * 2 * BLOOD_DRIFT;
+  const delay = frac(seed, i * 4 + 3) * BLOOD_DRIP_STAGGER;
+  const t = Math.max(0, age - delay);
+  const landed = t >= BLOOD_FALL_TICKS;
+  const tc = landed ? BLOOD_FALL_TICKS : t; // freeze motion at the landing frame
+  const speed = BLOOD_GRAVITY * tc;
+  return {
+    x: x0 + vx * tc,
+    y: 0.5 * BLOOD_GRAVITY * tc * tc,
+    landed,
+    stretchY: landed ? BLOOD_POOL_STRETCH_Y : Math.min(1 + speed * BLOOD_STREAK, BLOOD_MAX_STREAK),
+    stretchX: landed ? BLOOD_POOL_STRETCH_X : 1 / (1 + speed * BLOOD_STREAK * 0.4),
+  };
 }
 
 /**
