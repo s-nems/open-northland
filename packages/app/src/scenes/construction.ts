@@ -97,6 +97,8 @@ export const constructionScene: SceneDefinition = {
     'Budowniczowie chodzą do fundamentów; gdy brakuje surowca, sami idą po niego do składu i przynoszą go na budowę.',
     'Budowniczy wali młotkiem — grafika budynku ROŚNIE do góry, a % budowy i pasek życia rosną razem z pracą.',
     'Kilku budowniczych pracuje równolegle: jeden nosi surowiec, inny w tym czasie buduje (optymalizacja).',
+    'Dwaj budowniczowie przy tym samym placu stoją w RÓŻNYCH miejscach obok fundamentu — nie nakładają się ' +
+      'w jednym punkcie (krótkie mijanki przy odkładaniu surowca są OK).',
     'Gdy praca i wszystkie surowce są gotowe, budynek kończy się (100%, pełne życie) i przestaje przyciągać materiał.',
   ],
   checks: [

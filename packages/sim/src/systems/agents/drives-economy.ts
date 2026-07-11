@@ -27,6 +27,7 @@ import {
   nearestStoreHolding,
   nearestWorkplaceOutput,
 } from './ai-targets.js';
+import { type IdleSpacing, claimWorkCell } from './destack.js';
 
 // The ECONOMY drives — the work rungs of the planner ladder, in the ladder's priority order:
 // deliver a carried load, run a bound producer's supply→produce→deliver loop, gather (chop/collect),
@@ -182,6 +183,10 @@ function walkToOrHold(world: World, e: Entity, here: NodeId, target: NodeId): vo
  *     until a hauler delivers. A builder is committed to its site — it does not fall through to haul
  *     someone else's goods while a foundation of its own stands unraised.
  *
+ * The hammer and wait stands go through {@link claimWorkCell}: a crew on one site spreads over the
+ * site's yard instead of stacking on its one interaction cell — body collision can't do it (civilians
+ * are deliberate pass-through, and standing units are never displaced; see the destack module doc).
+ *
  * Sits below the bound-producer loop (a builder is not bound to a recipe workshop, so that rung passes it)
  * and above gather/porter/carrier, so a builder builds before it ferries. `jobType` is non-null here.
  */
@@ -193,14 +198,17 @@ export function planBuilder(
   settler: Worker,
   here: NodeId,
   targets: TargetCandidates,
+  spacing: IdleSpacing,
 ): boolean {
   if (!jobAtomics(ctx, settler.jobType).has(BUILD_HOUSE_ATOMIC_ID)) return false; // not a builder
   const site = nearestConstructionSite(targets.constructionSites, world, ctx, terrain, here, settler.tribe);
   if (site === null) return false; // nothing under construction — fall through to hauling
+  const siteStand = (): NodeId =>
+    claimWorkCell(world, ctx, terrain, e, here, interactionCell(world, ctx, terrain, site, here), spacing);
 
   // a. Material on hand to install? Hammer only while builder work trails delivered material.
   if (world.get(site, UnderConstruction).labor < deliveredConstructionFraction(world, ctx, site)) {
-    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, site, here), () =>
+    atOrWalk(world, e, here, siteStand(), () =>
       startAtomic(
         world,
         e,
@@ -227,7 +235,7 @@ export function planBuilder(
   }
 
   // c. Can't hammer, nothing to fetch — hold at the site and wait for a delivery.
-  walkToOrHold(world, e, here, interactionCell(world, ctx, terrain, site, here));
+  walkToOrHold(world, e, here, siteStand());
   return true;
 }
 
