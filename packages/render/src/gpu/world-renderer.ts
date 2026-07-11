@@ -49,9 +49,11 @@ const PORTRAIT_MAX_SCALE = 2.5;
  * World-space height framed for a SETTLER portrait. A viking body is ~32 world units tall; the extra is
  * head/foot margin (and clearance for the raised-arm "look-around" wait frame). A NAMED approximation,
  * eye-calibrated — the settler window is a fixed feet-anchored frame (not a fit to the breathing bounds),
- * so it stays rock-steady while the unit stands and only pans as the unit's feet actually move.
+ * so it stays rock-steady while the unit stands and only pans as the unit's feet actually move. Framing
+ * MORE world height pulls the camera back (scale = h / this), so the body sits with a little breathing
+ * room in the box rather than filling it edge-to-edge — the "too close" the earlier 46 read as.
  */
-const SETTLER_VIEW_HEIGHT = 46;
+const SETTLER_VIEW_HEIGHT = 58;
 /** Where the feet anchor sits down the settler portrait (body rises into the upper part, a little ground below). */
 const SETTLER_FEET_FRACTION = 0.84;
 
