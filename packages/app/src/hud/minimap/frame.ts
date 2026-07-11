@@ -3,7 +3,7 @@ import type { Renderer } from 'pixi.js';
 import { BufferImageSource, Container, Sprite, Texture } from 'pixi.js';
 import { loadGuiArt, makeGuiSprite } from '../../content/gui-art.js';
 import { GUI_FRAME } from '../../content/gui-atlas-map.js';
-import { FRAME_NATIVE, keyEdgeConnectedNearBlack } from './model.js';
+import { FRAME_NATIVE, keyEdgeConnectedNearBlack, outlineOpaqueSilhouette } from './model.js';
 
 /**
  * The minimap's braided window frame — the ORIGINAL overview-window art (`ls_gui_window` bob 55,
@@ -73,6 +73,9 @@ export async function loadMinimapFrame(
   const { pixels, width, height } = renderer.extract.pixels(baked.display.texture);
   baked.dispose();
   keyEdgeConnectedNearBlack(pixels, width, height);
+  // The keying eats the art's own dark contour (it touches the backdrop), so the silhouette's last
+  // pixels fray against the world — redraw a 1-native-px (= ss baked px) black rim around it.
+  outlineOpaqueSilhouette(pixels, width, height, ss);
   const texture = new Texture({
     source: new BufferImageSource({
       resource: new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength),

@@ -11,6 +11,7 @@ import {
   keyEdgeConnectedNearBlack,
   minimapLayout,
   minimapToWorld,
+  outlineOpaqueSilhouette,
   pointOverMinimap,
   pointOverMinimapHole,
   rasterizeTerrain,
@@ -258,6 +259,44 @@ describe('keyEdgeConnectedNearBlack', () => {
     keyEdgeConnectedNearBlack(rgba, 3, 3);
     expect(alphaAt(rgba, 3, 1, 1)).toBe(0); // reached via the transparent conduit above it
     expect(alphaAt(rgba, 3, 0, 1)).toBe(255);
+  });
+});
+
+describe('outlineOpaqueSilhouette', () => {
+  const W = [180, 140, 90, 255]; // an opaque silhouette pixel
+  const C = [0, 0, 0, 0]; // transparent
+  const grid = (cells: number[][][]): Uint8ClampedArray => new Uint8ClampedArray(cells.flat(2));
+  const px = (rgba: Uint8ClampedArray, w: number, x: number, y: number): number[] =>
+    Array.from(rgba.slice((y * w + x) * 4, (y * w + x) * 4 + 4));
+
+  it('paints a black rim on the transparent side, growing by 4-connected distance', () => {
+    const rgba = grid([
+      [C, C, C, C, C],
+      [C, C, C, C, C],
+      [C, C, W, C, C],
+      [C, C, C, C, C],
+      [C, C, C, C, C],
+    ]);
+    outlineOpaqueSilhouette(rgba, 5, 5, 1);
+    expect(px(rgba, 5, 2, 2)).toEqual(W); // the silhouette itself is untouched
+    expect(px(rgba, 5, 1, 2)).toEqual([0, 0, 0, 255]); // 4-neighbours get the rim…
+    expect(px(rgba, 5, 2, 1)).toEqual([0, 0, 0, 255]);
+    expect(px(rgba, 5, 1, 1)).toEqual(C); // …diagonals (distance 2) stay clear at thickness 1
+    expect(px(rgba, 5, 0, 2)).toEqual(C);
+  });
+
+  it('grows the rim to the requested thickness', () => {
+    const rgba = grid([
+      [C, C, C, C, C],
+      [C, C, C, C, C],
+      [C, C, W, C, C],
+      [C, C, C, C, C],
+      [C, C, C, C, C],
+    ]);
+    outlineOpaqueSilhouette(rgba, 5, 5, 2);
+    expect(px(rgba, 5, 0, 2)).toEqual([0, 0, 0, 255]); // distance 2 joins…
+    expect(px(rgba, 5, 1, 1)).toEqual([0, 0, 0, 255]);
+    expect(px(rgba, 5, 0, 0)).toEqual(C); // …distance 4 does not
   });
 });
 
