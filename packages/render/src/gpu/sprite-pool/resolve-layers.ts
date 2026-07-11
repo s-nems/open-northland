@@ -158,13 +158,19 @@ export function resolveLayers(
           : layeredLayerFor(sheet, 'stockpile', draw),
       ),
     );
-  } else if (item.kind === 'grounddrop' || item.kind === 'stump') {
-    // A stump (`ls_trees_dead` debris) and a freshly-felled trunk on the ground (`landscapeToPickup`
-    // LOG) have no shared `kindLayers` layer either — each draws its per-good frame ONLY from a loaded
-    // named family, reusing the per-good resource resolver. A bare or unloaded-family ref draws the
-    // placeholder — never a wrong-bob borrow from the body atlas. Same rule, different binding key
-    // (the DrawKind names the entity, the binding key names the graphic: grounddrop → `trunk`).
-    const binding = item.kind === 'stump' ? sheet.bindings.stump : sheet.bindings.trunk;
+  } else if (item.kind === 'grounddrop' || item.kind === 'stump' || item.kind === 'berrybush') {
+    // A stump (`ls_trees_dead` debris), a freshly-felled trunk on the ground (`landscapeToPickup` LOG) and
+    // a wild berry bush (the `ls_trees` bush frames) have no shared `kindLayers` layer either — each draws
+    // its frame ONLY from a loaded named family, reusing the per-good resource resolver. A bare or
+    // unloaded-family ref draws the placeholder — never a wrong-bob borrow from the body atlas. Same rule,
+    // different binding key (the DrawKind names the entity, the binding key names the graphic:
+    // grounddrop → `trunk`, berrybush → `berrybush`).
+    const binding =
+      item.kind === 'stump'
+        ? sheet.bindings.stump
+        : item.kind === 'berrybush'
+          ? sheet.bindings.berrybush
+          : sheet.bindings.trunk;
     if (binding === undefined) return null;
     const draw = resolveResourceDraw(binding, item);
     if (draw === null) return []; // a data-pinned invisible level — draw nothing, not the placeholder

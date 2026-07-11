@@ -13,7 +13,11 @@ import {
 import { resolveVikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import type { ContentIr } from '../../content/ir.js';
-import { mapResourceSpawns, simResourceObjectNames } from '../../content/map-resources.js';
+import {
+  mapBerryBushSpawns,
+  mapResourceSpawns,
+  simResourceObjectNames,
+} from '../../content/map-resources.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../rules.js';
 import { GATHERERS, type GathererSpec, weaponEquipmentFor } from './ids.js';
 
@@ -216,6 +220,32 @@ export function spawnMapResources(
 }
 
 /**
+ * Spawn every forageable berry bush a decoded map's placed objects define (fruited-bush objects →
+ * ripe {@link components.BerryBush} entities), assembled DIRECTLY here as pre-tick-0 scene setup (the
+ * sanctioned exception, like {@link spawnMapResources}). This is what makes a map's own bushes actual
+ * wild food a hungry settler forages; before it, "bush NN fruits" was pure render decor.
+ *
+ * Bushes carry no footprint (walkable in the original), so — unlike {@link spawnMapResources} — nothing
+ * is skipped from the static collision bake; the placement join is purely for the render handover (the
+ * static layer keeps drawing the fruited bush until it is first foraged). Created in native placement
+ * order, so ids mint deterministically. Each carries its placement's fruited-bush `gfxIndex`.
+ */
+export function spawnMapBerryBushes(
+  sim: Simulation,
+  objects: TerrainObjects,
+  ir: ContentIr,
+): MapResourceSpawnResult {
+  let spawned = 0;
+  const placementByEntity = new Map<Entity, number>();
+  for (const { gfxIndex, hx, hy, placement } of mapBerryBushSpawns(objects, ir)) {
+    const e = systems.createBerryBush(sim.world, { x: hx, y: hy, gfxIndex });
+    placementByEntity.set(e, placement);
+    spawned++;
+  }
+  return { spawned, placementByEntity };
+}
+
+/**
  * Place a gatherer's resource node DIRECTLY (scene setup, pre-tick-0) — a felled tree, a mined deposit,
  * or a pluck-whole node, chosen from the gatherer's own {@link GathererSpec.mode} by `resourceSpecFor`
  * (so the caller doesn't re-dispatch on the mode). Scenes author in whole TILES (`x`/`y`), so the tile is
@@ -225,6 +255,23 @@ export function spawnMapResources(
 export function placeResourceNode(sim: Simulation, g: GathererSpec, x: number, y: number): void {
   const node = cellAnchorNode(x, y);
   placeResourceDirect(sim, resourceSpecFor(g, node.hx, node.hy), `placeResourceNode(${g.id})`);
+}
+
+/**
+ * Place a wild berry bush DIRECTLY (scene setup, pre-tick-0) and return it — the bush twin of
+ * {@link placeResourceNode}. Scenes author in whole TILES (`x`/`y`); the tile is converted to its anchor
+ * node before assembly. `gfxIndex` is the render-variant tag (a real fruited-bush `[GfxLandscape]` index,
+ * so the browser scene draws real bush art through the {@link buildBerryBushBinding} join); it is inert in
+ * the headless test (no render). The bush spawns RIPE — a caller wanting a bare/regrowing bush mutates the
+ * returned entity's {@link components.BerryBush} directly (still pre-tick-0 authored state).
+ */
+export function placeSandboxBerryBush(sim: Simulation, x: number, y: number, gfxIndex?: number): Entity {
+  const node = cellAnchorNode(x, y);
+  return systems.createBerryBush(sim.world, {
+    x: node.hx,
+    y: node.hy,
+    ...(gfxIndex !== undefined ? { gfxIndex } : {}),
+  });
 }
 
 /**

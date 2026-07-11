@@ -154,6 +154,19 @@ export type SimEvent =
       readonly node: Entity;
       readonly goodType: number;
       readonly at: { x: number; y: number };
+    }
+  | {
+      /**
+       * A {@link import('../components/economy.js').BerryBush} was just FORAGED — its last ripe fruit
+       * eaten this tick, so it flips ripe→bare and starts regrowing. The cue a consumer needs the moment
+       * a virgin bush is first worked: the `?map=` view hands the bush from its retained static decor
+       * layer (drawn always-fruited) to the live sprite pool here, so from now on the drawn bush tracks
+       * its ripe/bare state (bare after this event, ripe again when the BerryGrowthSystem regrows it).
+       * Audio can hook a rustle/pick effect. Deterministic like every event.
+       */
+      readonly kind: 'berryForaged';
+      readonly bush: Entity;
+      readonly at: { x: number; y: number };
     };
 
 export type SimEventKind = SimEvent['kind'];

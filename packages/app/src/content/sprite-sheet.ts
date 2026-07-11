@@ -39,11 +39,14 @@ import {
   sequencesFor,
 } from './ir.js';
 import {
+  berryBushAtlasStems,
+  buildBerryBushBinding,
   buildResourceBinding,
   buildStockpileBinding,
   buildStumpBinding,
   buildTrunkBinding,
   gatheringAtlasStems,
+  resolveBerryBushRefs,
   resolveGatheringRefs,
   resolveStumpRef,
 } from './resource-gfx.js';
@@ -285,8 +288,12 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   // The felled-tree stump/debris draws from `ls_trees_dead` — resolve its ref and load its atlas
   // ALONGSIDE the node/pile/flag families (same load-then-drop-unloaded contract).
   const stumpRef = resolveStumpRef(ir);
+  // Forageable berry bushes (fruited + bare states) draw from the `ls_trees` bush atlases — resolve their
+  // refs and fold their stems into the loaded families alongside the node/pile/flag/stump ones.
+  const berryBushRefs = resolveBerryBushRefs(ir);
   const stems = gatheringAtlasStems(gatheringRefs);
   if (stumpRef !== undefined) stems.add(stumpRef.stem);
+  for (const s of berryBushAtlasStems(berryBushRefs)) stems.add(s);
   const { families: gatheringFamilies, loaded: gatheringLoaded } = await loadGatheringFamilies(stems);
   // The frame ids each loaded family atlas actually holds — lets the node reducer mark a level whose bob
   // the source record points OUTSIDE its own atlas (the original's "invisible state" sentinel — freshly-
@@ -299,6 +306,7 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   const resourceBinding = buildResourceBinding(gatheringRefs, gatheringLoaded, familyFrames);
   const stockpileBinding = buildStockpileBinding(gatheringRefs, gatheringLoaded);
   const stumpBinding = buildStumpBinding(stumpRef, gatheringLoaded);
+  const berryBushBinding = buildBerryBushBinding(berryBushRefs, gatheringLoaded);
   // The freshly-felled trunk a GroundDrop draws (the `landscapeToPickup` stage), loaded alongside the
   // node/pile/flag families above (its stems are in `gatheringAtlasStems`).
   const trunkBinding = buildTrunkBinding(gatheringRefs, gatheringLoaded);
@@ -316,6 +324,7 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
       stockpileBinding,
       stumpBinding,
       trunkBinding,
+      berryBushBinding,
     ),
     overlays: [head],
     // The tree and the DEFAULT building each draw from their OWN atlas (distinct id spaces), so they bind

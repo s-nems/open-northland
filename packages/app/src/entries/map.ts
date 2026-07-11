@@ -18,7 +18,12 @@ import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { mapStartFocus } from '../game/map-start.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
-import { mapResourceObjectNames, sandboxGoods, spawnMapResources } from '../game/sandbox/index.js';
+import {
+  mapResourceObjectNames,
+  sandboxGoods,
+  spawnMapBerryBushes,
+  spawnMapResources,
+} from '../game/sandbox/index.js';
 import { loadTerrainMap } from '../slice/map-loader.js';
 import { runAuthoredSlice, runBareMap, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera.js';
@@ -194,12 +199,15 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   let staticRefs: Set<number> | undefined;
   if (loaded?.objects !== undefined && ir !== null) {
     const { spawned, placementByEntity } = spawnMapResources(sim, loaded.objects, ir);
+    // The map's own fruited bushes as forageable BerryBush entities (wild food) — same static→live
+    // handover as resources: the static layer draws each always-fruited until it is first FORAGED.
+    const bushes = spawnMapBerryBushes(sim, loaded.objects, ir);
     console.log(
-      `Map resources: spawned ${spawned} harvestable nodes from ${loaded.objects.types.length} object types.`,
+      `Map resources: spawned ${spawned} harvestable nodes + ${bushes.spawned} berry bushes from ${loaded.objects.types.length} object types.`,
     );
     if (staticObjects !== undefined) {
       staticResources = new Map();
-      for (const [entity, placement] of placementByEntity) {
+      for (const [entity, placement] of [...placementByEntity, ...bushes.placementByEntity]) {
         const sprite = staticObjects.byPlacement.get(placement);
         // A placement whose atlas never resolved has no static sprite — leave that node pool-drawn.
         if (sprite !== undefined) staticResources.set(entity as number, sprite);
@@ -218,12 +226,19 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
           const refs = staticRefs;
           if (held === undefined || refs === undefined) return;
           for (const ev of events) {
-            if (ev.kind !== 'resourceFelled' && ev.kind !== 'resourceMined' && ev.kind !== 'resourceDepleted')
-              continue;
-            const sprite = held.get(ev.node as number);
+            // A resource first worked (felled/mined/depleted) or a bush first foraged leaves the retained
+            // static layer; from then on the live pool draws it (a shrinking deposit, a bare/regrown bush).
+            const entity =
+              ev.kind === 'resourceFelled' || ev.kind === 'resourceMined' || ev.kind === 'resourceDepleted'
+                ? (ev.node as number)
+                : ev.kind === 'berryForaged'
+                  ? (ev.bush as number)
+                  : undefined;
+            if (entity === undefined) continue;
+            const sprite = held.get(entity);
             if (sprite === undefined) continue; // already handed over, or never static (admin spawn)
-            held.delete(ev.node as number);
-            refs.delete(ev.node as number);
+            held.delete(entity);
+            refs.delete(entity);
             renderer.removeMapObject(sprite);
           }
         };

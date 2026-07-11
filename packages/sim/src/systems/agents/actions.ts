@@ -19,6 +19,26 @@ import { atomicDuration } from '../readviews/animations.js';
 export const EAT_ATOMIC_ID = 10;
 
 /**
+ * How many times the short extracted eat clip (`viking_eat` ≈ 5 ticks) REPEATS to make one meal. The
+ * eat/forage atomic runs this many clip-lengths so a settler visibly PAUSES to eat — a quarter-second
+ * single-clip bite reads as a flicker — instead of snapping straight back to work.
+ *
+ * NAMED APPROXIMATION: the original eats over several event-driven animation beats whose exact count
+ * isn't decoded; this is a tunable stand-in for that longer meal. It scales the CLIP (not a flat tick
+ * count) so a tribe with a longer eat clip still eats proportionally longer.
+ */
+export const EAT_ANIMATION_REPEATS = 8;
+
+/**
+ * The duration (ticks) of one eat OR forage atomic: the settler's eat-clip length repeated
+ * {@link EAT_ANIMATION_REPEATS} times. Shared by every eat site (a store meal, a carried-load bite, a
+ * wild-bush forage) so they all take the same visible beat — the ONE place the meal length is decided.
+ */
+export function eatDuration(ctx: SystemContext, settler: { tribe: number; jobType: number | null }): number {
+  return atomicDuration(ctx.content, settler, EAT_ATOMIC_ID) * EAT_ANIMATION_REPEATS;
+}
+
+/**
  * The numeric atomic id a settler runs to sleep (the original's `setatomic <job> 8 "..._sleep"` — id
  * 8 is the sleep slot across every tribe's bindings, bound for every job, even babies; see
  * source basis). Like the other ids it is the content cross-reference / animation join key; the

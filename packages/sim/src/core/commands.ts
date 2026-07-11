@@ -486,6 +486,14 @@ export type AtomicEffect =
       readonly x: number;
       readonly y: number;
     }
+  /** A hungry settler **forages a wild {@link import('../components/economy.js').BerryBush}**: on
+   *  completion it eats the ripe bush's fruit — the bush flips ripe→bare and starts regrowing
+   *  (BerryGrowthSystem) — and the eater's hunger zeroes, exactly like `eat`. Unlike `eat` no stored/
+   *  carried good is consumed and no job/tool is needed (a bush is wild food anyone can graze); the fruit
+   *  simply leaves the bush. A `bush` already bare (another forager beat this one to it since the planner
+   *  chose it), or gone, consumes nothing — but hunger still resets (the bite was taken), the same
+   *  raced-source stance as `eat`'s empty store. Runs on the eat animation (id 10). */
+  | { readonly kind: 'forage'; readonly bush: Entity }
   /** A farmer's **watering** (the original's cultivate atomic) of a growing field: on completion the
    *  {@link import('../components/economy.js').Crop} is marked `watered`, which OPENS its growth — an
    *  unwatered field stands at its sown stage (a named approximation — the engine's watering semantics
