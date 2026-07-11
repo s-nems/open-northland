@@ -21,6 +21,14 @@ import { TERRAIN_BLOCKED, TERRAIN_IMPASSABLE, TERRAIN_MARGIN, TERRAIN_OPEN } fro
  *    its `LogicBuildBlockArea`-only cells as its MARGIN — the per-object blocking the original's
  *    placement + routing read. The FULL state's areas apply regardless of the placement's level
  *    (`fullStateBlockAreaCells` — the same conservative stance as the sim's resource footprints).
+ *    **Except the harvestables** (`skipObjectNames` — trees/ore/stone that `spawnMapResources` turns
+ *    into real `Resource` entities): those must NOT be baked into the STATIC grid, because their
+ *    blocking has to VANISH when the node is felled/depleted — it lives exclusively in the sim's
+ *    dynamic resource-footprint overlay (stamped at spawn, unstamped at removal). Baking them
+ *    statically left a felled tree's cell walled off forever, so the collector could never path to
+ *    the trunk it had just dropped there ("kłoda leży, zbieracz stoi") — the double-blocking bug.
+ *    A skipped placement's collision is then the sim-content footprint (own-node), a named
+ *    approximation of the IR area until real per-variant footprints enter the sim's content set.
  *
  * The raw per-cell `typeIds` lane is NOT consulted: it is the object lane collapsed per cell (its
  * dominant value, 1 = "void", is plain ground), so the object join above is its authoritative,
@@ -96,7 +104,11 @@ function worseGroundClass(a: number, b: number): number {
  * offsets (the `emla`/`lmlt` lanes' own resolution). Feed THIS to the sim (nav + placement); the
  * raw map keeps driving the render layers (ground mesh, decor, ambience).
  */
-export function buildCollisionTerrain(map: TerrainMapFile, ir: CollisionIrView): TerrainMap {
+export function buildCollisionTerrain(
+  map: TerrainMapFile,
+  ir: CollisionIrView,
+  skipObjectNames?: ReadonlySet<string>,
+): TerrainMap {
   const { width, height } = map;
 
   // --- ground: class each CELL by its two triangles' extracted walk/build flags, then upsample ----
@@ -131,6 +143,9 @@ export function buildCollisionTerrain(map: TerrainMapFile, ir: CollisionIrView):
     const gfxByName = new Map<string, { walk: [number, number][]; margin: [number, number][] }>();
     for (const g of ir.landscapeGfx) {
       if (g.editName === undefined) continue;
+      // A harvestable that spawns as a sim Resource blocks through the DYNAMIC footprint overlay
+      // only (unstamped when felled/depleted) — never baked into this static grid (module doc).
+      if (skipObjectNames?.has(g.editName)) continue;
       const walk = fullStateBlockAreaCells(g.walkBlockAreas).map((c): [number, number] => [c.dx, c.dy]);
       const build = fullStateBlockAreaCells(g.buildBlockAreas).map((c): [number, number] => [c.dx, c.dy]);
       if (walk.length === 0 && build.length === 0) continue; // pure decor (flowers, waves) never blocks
