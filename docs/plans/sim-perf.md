@@ -54,5 +54,5 @@ Run the deterministic sim step off the render thread. The snapshot is already tr
 (packages/sim/test/inspect/snapshot-transferable.test.ts). This does not speed the sim; it keeps
 rendering responsive during heavy ticks. App-side seam: the fixed-timestep loop posts commands in
 and snapshots out; degrade to the current in-thread loop when workers are unavailable (headless
-tests stay in-thread). Cross-package seam change — run the architecture-reviewer lens.
+tests stay in-thread). Cross-package seam change — run the code-reviewer lens with architecture weight.
 ```

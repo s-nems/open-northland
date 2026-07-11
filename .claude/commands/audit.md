@@ -16,18 +16,17 @@ findings, apply nothing** — the user decides what gets fixed.
 
 ## 2. Spawn the lenses (in parallel, one message)
 
-Pass each agent the exact range/scope. Spawn only the lenses the diff can trip — and say which you
-skipped and why:
+Pass each agent the exact range/scope. Spawn only the lenses the diff can trip — reviews are
+expensive, and a lens the diff cannot trip burns tokens to produce noise. Most diffs need one or
+two lenses, not the full battery. Say which you skipped and why:
 
-- **`determinism-reviewer`** — the diff touches `packages/sim`, fixed-point math, command flow, or
-  content schemas.
-- **`perf-reviewer`** — the diff touches a per-tick sim system or a per-frame render/app path.
-- **`fidelity-reviewer`** — the diff implements/tunes a mechanic, extracts/consumes game data, or
-  makes source-basis claims.
-- **`architecture-reviewer`** — the diff crosses package boundaries, adds dependencies, creates a new
-  system/seam, changes workflow/docs architecture, or reshapes data flow.
-- **`code-quality-reviewer`** — any non-trivial code change, larger refactor, new system, or risky
-  test change.
+- **`engine-reviewer`** — the diff touches `packages/sim`, fixed-point math, command flow, content
+  schemas, a per-tick sim system, or a per-frame render/app path.
+- **`gameplay-reviewer`** — the diff implements/tunes a mechanic, extracts/consumes game data,
+  makes source-basis claims, or touches player-facing UI/HUD/input/camera. Tell it which half
+  applies (source basis, player experience, or both). Skip for pure infrastructure/docs diffs.
+- **`code-reviewer`** — any non-trivial code change; tell it to weight the architecture lens when
+  the diff crosses package boundaries, adds dependencies, or creates a new system/seam.
 - **A general correctness/edge-cases subagent** (`general-purpose`) — for broad or high-risk changes
   when the named lenses do not cover plain behavioral correctness. Skip for trivial doc/data tweaks.
 
