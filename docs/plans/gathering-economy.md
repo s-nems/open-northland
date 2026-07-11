@@ -86,7 +86,9 @@ file when all steps land.
       resource walk-blocks feed pathfinding through `dynamicBlockedCells`, `canPlaceBuilding` respects a
       node's build-exclusion zone, and the planner resolves harvest/drop targets through data-driven work
       cells. `?scene=gathering` now stamps footprints for every lane; clay/mushrooms remain non-blocking.
-- [ ] 6. App: imported maps spawn real resource nodes
+- [x] 6. App: imported maps spawn real resource nodes — **landed:** the `?map=` entry turns a decoded map's
+      placed trees/ore/stone into real `Resource` sim nodes (see the 2026-07-11 note below), so a gatherer
+      finally has something to work on an imported map.
 - [ ] 7. Polish: chop cadence, adjacent stance, animation timing — **swing length already landed with Step 3**
       (`HARVEST_SWING_LENGTH` = one full strike per chop atomic). STILL OPEN (the two the user flagged in the
       Step-3 review): (a) pickup/deposit play a real bend animation (`human_man_generic_pick_up`, 19 frames,
@@ -173,51 +175,40 @@ banks join into one component is a separate, larger gap (app `collision.ts` — 
 
 ---
 
-## Step 6 — app: imported maps spawn real resource nodes
+**Step 6 landed — imported maps spawn real resource nodes (2026-07-11, `fix/gatherer-bridge-idle`):**
+the `?map=` entry now turns a decoded map's placed trees/ore/stone into real harvestable `Resource` sim
+nodes, so a gatherer finally has something to work (before, `map.objects` reached only the renderer as
+decor — hovering a tree showed nothing and every gatherer idled; only an admin-spawned node was a real
+entity). Data-driven join (`content/map-resources.ts` `harvestGoodByObjectName`): invert the IR gathering
+pipeline (each good's harvest-stage `landscapeGfx` indices → EditName → `goodId`), so decor is naturally
+excluded and only harvest-stage objects spawn. `spawnMapResources` (`game/sandbox/place.ts`) builds the
+same component set the admin `placeResource` does (Position + Resource + footprint + Felling|MineDeposit),
+pre-tick-0 in placement order (deterministic ids). Draw de-dup: the spawned object EditNames are dropped
+from the static decor layer (`loadMapObjects` `skipTypes`) and drawn by the sim instead, so a felled tree's
+sprite vanishes with its Resource and nothing double-draws. On "mosty na rzece" it spawns 16,927 nodes.
+Scale (golden rule 7): a job with no harvest atomics (carrier/builder/idle) used to scan the whole resource
+list only to fail the atomic gate per node — with thousands of nodes that per-settler full scan dominated
+(~374 ms/tick, 2 fps); an O(1) dormancy gate in `nearestHarvestableFor` (no harvest atomics ⇒ provably-null
+scan ⇒ return early) drops sim to ~5 ms/tick, ~26 fps at ×1 (byte-identical result, goldens hold). Tests:
+`packages/app/test/map-resources.test.ts` (synthetic map+IR: join, decor/no-trade split, end-to-end spawn).
+Verified `npm test` (1920) / `check` / `build` + hands-on on the real map (16,927 nodes, no double-draw,
+playable). Named limitations / follow-ups: (a) per-placement growth `levels` not mapped to a starting
+yield (uses the gatherer catalog defaults, same as an admin spawn); (b) snapshot cost (~28 ms/tick cloning
+17k entities) is the remaining per-tick cost — an incremental/dirty snapshot is a separate perf follow-up;
+(c) mushrooms/wheat/leather without a gatherer trade stay decor.
 
-```text
-Make decoded original maps PLAYABLE for gathering: map-placed trees/deposits/mushrooms become
-real sim Resource entities (harvestable, colliding), instead of render-only decor.
-
-Context (re-verify; research 2026-07-03):
-- Today `?map=<id>` loads `content/maps/<id>.json` and hands the `objects` layer straight to the
-  renderer (`packages/app/src/entries/map.ts` ~102–111 → `renderer.setMapObjects`,
-  `packages/app/src/content/objects.ts` joins placements to `[GfxLandscape]` records by
-  editName; placements are half-cell coords). NOTHING reaches the sim — there is no
-  spawn-resource command.
-- Step 1 emitted the join needed to decide which placements are RESOURCES: placement editName →
-  gfx record → logic landscape type id → is it some good's `landscapeToHarvest` (or
-  `landscapeToPickup`/`landscapeToStore` — decide + document how to treat pre-placed trunks and
-  piles; simplest v1: only harvest-stage objects spawn nodes). Everything else stays decor.
-- A related-but-separate plan item imports `map.cif` `StaticObjects`
-  (sethouse/sethuman/setanimal) — this step covers only the RESOURCE objects from the map.dat
-  `objects` lane; check whether that sibling item has landed and coordinate (don't collide, do
-  reuse its command/seam shape if present).
-
-Scope:
-1. A deterministic spawn path (a sim command or a world-construction step — mirror how the app
-   currently seeds entities) that turns qualifying placements into Resource nodes: goodType +
-   the Step-3/4 content constants (chops/yield/deposit size) + the placement's half-cell coords
-   VERBATIM (the sim grid IS the 2W×2H lattice since the half-cell migration — no ÷2 cell snap;
-   `positionOfNode` is the anchor seam). The Step-5 collision set is built once from them at load.
-2. De-duplicate drawing: spawned nodes draw through the sim path (Step 2); REMOVE them from the
-   decor layer passed to setMapObjects (never double-draw the same tree).
-3. Scale proof (golden rule 7): load the biggest decoded map with real graphics; measure
-   ms/tick and fps (the FPS overlay exists). Thousands of nodes must not regress the sim (the
-   planner's nearest-resource scan is bounded by candidate lists + dormancy — verify, don't
-   assume; if it regresses, fix within this step's scope or STOP and report). Headless FPS is
-   software-GL — judge fps on the real GPU, use headless only for no-crash/tick-cost.
-4. Tests: a SYNTHETIC fixture map (tests never use real game data) with a handful of object
-   placements → exact expected nodes spawn, deterministically (same seed + map → same
-   entities); decor/node split covered; goldens for a scenario on the fixture map.
-
-Verification: `npm test` + `npm run check` green; then the human check — `npm run dev` →
-`?map=<id>` on a real decoded map: trees/deposits are solid (walk-around), a placed collector
-camp actually harvests them, no double-drawn or vanished objects; report tick-cost/fps numbers.
-
-Guardrails: content/ stays gitignored; determinism (spawn order canonical); coordinate with the
-StaticObjects plan item; read packages/app/AGENTS.md for the entry/scene conventions.
-```
+**No free gatherers — spawn-time flag binding (2026-07-11, same branch):** a gatherer spawned through the
+command path (imported-map settlers, the admin palette) got no work flag, so it searched the WHOLE map for
+the nearest resource. Rule: a gatherer is never free — it searches around its flag, or the building it
+staffs. `spawnSettler` now plants a work flag at a gatherer's feet on birth (the spawn-time twin of the
+profession-change `syncWorkFlagToJob`); non-gathering trades get none. `DEFAULT_WORK_FLAG_RADIUS` 16 → 24
+half-cell nodes (~12 tiles). Golden slice re-blessed (hash `e452b766` → `d9104697`, 18 → 13 planks): the
+woodcutter is flag-bound from spawn so it banks its wood at its flag, and with porters not yet moving flag
+heaps the mill self-supplies from the HQ stock. `golden-trace` `clearStores` now wipes the whole component
+namespace (it missed WorkFlag/DeliveryFlag and leaked across runs). **Follow-up:** the "assigned to a
+building → no flag, deliver to the building (the building IS the flag)" case is not yet wired — map
+gatherers spawn free (→ flag), never building-assigned, so it isn't exercised yet; and porters ferrying
+flag heaps to warehouses is deferred (the user's "na razie nie przejmujemy się tragarzami").
 
 ## Step 7 — polish: chop cadence, adjacent stance, animation timing
 
