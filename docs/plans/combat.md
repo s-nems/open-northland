@@ -220,18 +220,23 @@ team colours, no console errors). **Human pixel/audio sign-off pending** (feel +
   bones a procedural pile at the death node (under sprites). Decay is by SIM TICK (reproducible). Threaded
   via `renderer.ingestCombatEffects(events, tick)` in `app/view/game-view.ts`.
 - **Bones on death:** `settlerDied` now carries `at` (death node) + `player` (owner, `null` if unowned),
-  read in `cleanup.ts reap` before destroy. Bones spawn on any `settlerDied` with a position. **APPROXIMATED:**
-  procedural bone marker (a stand-in like the projectile arrow marker) — the extracted `cadaver_skeleton`
-  landscape gfx is the faithful swap, still owed by step 6. Lifetimes (`BLOOD_LIFETIME_TICKS 60`,
-  `BONES_LIFETIME_TICKS 1800`) + the `MAX_ACTIVE_EFFECTS 400` cap are named, calibration-pending.
+  read in `cleanup.ts reap` before destroy. Bones spawn on any `settlerDied` with a position, drawn as the
+  REAL decoded `cadaver human bones` sprite (`ls_skeletons.bmd`, three seed-picked variants) — the app
+  resolves the atlas (`content/objects.ts loadCombatBones`), the render effects layer draws it via the shared
+  texture cache, falling back to a procedural pile only when `content/` is absent. Blood stays procedural
+  (the HIT particle has no readable asset). Lifetimes (`BLOOD_LIFETIME_TICKS 60`, `BONES_LIFETIME_TICKS 1800`)
+  + the `MAX_ACTIVE_EFFECTS 400` cap are named, calibration-pending. Follow-up: the `skeleton_falling`
+  12-frame settle-in animation is unused (bones appear instantly).
 - **Death sound only for OUR units:** the death jingle is marked `localPlayerOnly` (`audio/data/bindings.ts`);
   the director gates it on `settlerDied.player === localPlayer` (`audio/data/director/events.ts`), and the app
   passes `localPlayer: HUMAN_PLAYER` (`game-view.ts`). An enemy's or a wild animal's death is silent.
 - **Attack sounds (audited + wired):** all combat wavs are present in the extracted `soundfx.cif` bank.
-  Wired the melee impact (`combatHit` → weapon-specific `Weapon {Fist,Spear,Sword} Hit` via `byCombatWeapon`,
-  generic sword-hit fallback), the bow twang (`projectileLaunched` → `Weapon Bow Long`) and the arrow thunk
-  (`projectileHit` → `Weapon Bow Hit`). A miss is currently silent — the `soundtype_NoHit` swoosh + the
-  `Man/Woman Get Hit` victim grunts are extracted but unwired (tracked follow-up).
+  Melee now announces a `combatSwing` event at each swing start (`conflict/weapons.ts`, the audible twin of
+  `projectileLaunched`) → the swing swoosh (`Weapon Sword Short`, the swing wavs shared across melee weapons),
+  PLUS the weapon-specific impact on connect (`combatHit` → `Weapon {Fist,Spear,Sword} Hit` via
+  `byCombatWeapon`, generic sword-hit fallback). Ranged: bow twang (`projectileLaunched` → `Weapon Bow Long`)
+  + arrow thunk (`projectileHit` → `Weapon Bow Hit`). Follow-up: the `soundtype_NoHit` miss swoosh + the
+  `Man/Woman Get Hit` victim grunts are extracted but unwired.
 - **Melee whiff (the user's "enemy steps away → miss"):** a melee swing now carries its weapon `maxRange` on
   the attack effect (`core/commands.ts`, `conflict/weapons.ts`) and RE-CHECKS reach at the hit frame
   (`effects-combat.ts meleeTargetOutOfReach`, same node-manhattan metric the CombatSystem engaged with): a

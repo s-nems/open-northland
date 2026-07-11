@@ -60,6 +60,19 @@ export type SimEvent =
       readonly at: { readonly x: number; readonly y: number };
     }
   | {
+      /**
+       * A MELEE swing was LOOSED this tick — a fighter started an in-place `attack` (the swoosh, at the
+       * attacker's node), the melee twin of `projectileLaunched` (a bow's release). Fires on EVERY melee
+       * swing whether it connects or whiffs, so combat is audible throughout the animation, not just at the
+       * brief connect; the impact clang is the separate {@link 'combatHit'}. `at` is the ATTACKER's HALF-CELL
+       * NODE. Render ignores it (no wound → no blood); it drives only the swing SFX. Ranged swings emit
+       * `projectileLaunched` instead. Deterministic like every event: a pure function of the tick's swings.
+       */
+      readonly kind: 'combatSwing';
+      readonly attacker: Entity;
+      readonly at: { readonly x: number; readonly y: number };
+    }
+  | {
       readonly kind: 'goodProduced';
       readonly building: Entity;
       readonly goodType: number;

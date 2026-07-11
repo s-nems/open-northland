@@ -34,7 +34,8 @@ function isAtLocatedEvent(ev: SimEvent): ev is Extract<SimEvent, { at: { x: numb
     ev.kind === 'resourceDepleted' ||
     ev.kind === 'projectileLaunched' ||
     ev.kind === 'projectileHit' ||
-    ev.kind === 'combatHit'
+    ev.kind === 'combatHit' ||
+    ev.kind === 'combatSwing'
   );
 }
 
