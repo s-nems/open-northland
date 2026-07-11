@@ -10,6 +10,7 @@ import {
   Position,
   Production,
   Resource,
+  Resting,
   Settler,
   Stockpile,
 } from '../../src/components/index.js';
@@ -22,7 +23,7 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../src/index.js';
-import { aiSystem, type SystemContext } from '../../src/systems/index.js';
+import { aiSystem, MAX_GROUND_STACK, type SystemContext, stockCapacity } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -60,6 +61,7 @@ beforeEach(() => {
     PathRequest,
     Production,
     JobAssignment,
+    Resting,
   ]) {
     c.store.clear();
   }
@@ -180,6 +182,36 @@ describe('producer self-service — fetching a missing recipe input', () => {
     expect(sim.world.has(smith, MoveGoal)).toBe(false);
     expect(sim.world.has(smith, CurrentAtomic)).toBe(false);
   });
+
+  it('works INSIDE the station while a cycle runs (the render-hiding Resting marker)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const mill = buildingAt(sim, SAWMILL, 3, 0);
+    sim.world.add(mill, Production, { elapsed: 2, duration: 20 });
+    const smith = settlerAt(sim, 3, 0, CARPENTER, mill);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    // A craftsman on its producing station steps inside (observed original behaviour: the miller works
+    // in the mill, not standing at the door) — the render hides a Resting settler.
+    expect(sim.world.tryGet(smith, Resting)).toEqual({ at: mill });
+  });
+
+  it('fetches the next input BEFORE hauling finished output out (goods bank in the shop)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // The mill holds a finished plank (haulable) AND is missing its wood input (fetchable) — both
+    // branches apply. The producer must fetch first: output banks up in the shop's own store until
+    // production can't continue (observed original behaviour — the mill fills with flour before the
+    // miller carries any to the warehouse).
+    const mill = buildingAt(sim, SAWMILL, 3, 0, [[PLANK, 1]]);
+    buildingAt(sim, HEADQUARTERS, 5, 0, [[WOOD, 3]]);
+    const smith = settlerAt(sim, 3, 0, CARPENTER, mill);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    // Heads for the input source — never a pickup of the finished plank out of its own mill.
+    expect(sim.world.has(smith, CurrentAtomic)).toBe(false);
+    expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 5, 0));
+  });
 });
 
 describe('producer self-service — hauling the finished output', () => {
@@ -194,6 +226,20 @@ describe('producer self-service — hauling the finished output', () => {
     const atomic = sim.world.get(smith, CurrentAtomic);
     expect(atomic.atomicId).toBe(PICKUP_ATOMIC);
     expect(atomic.effect).toMatchObject({ kind: 'pickup', goodType: PLANK, from: mill });
+  });
+
+  it('never routes a hauled output onto a full or foreign-good ground heap (the per-tile cap)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const ctx = ctxOf(sim);
+    // A loose heap advertises at most MAX_GROUND_STACK of the ONE good it holds, and refuses others —
+    // the engine's global per-tile ground limit (observed original behaviour; the `ls_goods` heap art
+    // has exactly 5 fill states). This is what keeps hauled flour from banking a 14-unit heap on a
+    // field tile beside the mill.
+    const woodHeap = pileAt(sim, 2, 0, [[WOOD, 2]]);
+    const fullHeap = pileAt(sim, 4, 0, [[PLANK, MAX_GROUND_STACK]]);
+    expect(stockCapacity(sim.world, ctx, woodHeap, WOOD)).toBe(MAX_GROUND_STACK);
+    expect(stockCapacity(sim.world, ctx, woodHeap, PLANK)).toBe(0); // a heap never mixes goods
+    expect(stockCapacity(sim.world, ctx, fullHeap, PLANK)).toBe(MAX_GROUND_STACK); // full: have == cap
   });
 });
 

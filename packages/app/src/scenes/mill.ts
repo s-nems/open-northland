@@ -1,5 +1,5 @@
 import type { Entity, Simulation } from '@vinland/sim';
-import { cellAnchorNode, components } from '@vinland/sim';
+import { cellAnchorNode, components, systems } from '@vinland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
 import {
@@ -119,11 +119,12 @@ export const millScene: SceneDefinition = {
   checklist: [
     'Korpus młyna NIE ma skrzydeł — skrzydła (wirnik) to osobny sprite narysowany NA budynku, zakotwiczony we właściwym miejscu wieży.',
     'Gdy młyn NIE miele (brak zboża w środku / start sceny), skrzydła stoją NIERUCHOMO.',
-    'Gdy młynarz jest w środku i trwa przemiał, skrzydła KRĘCĄ SIĘ płynną animacją; tempo obrotu wygląda jak w oryginale.',
+    'Podczas przemiału skrzydła KRĘCĄ SIĘ płynną animacją, a młynarz jest W ŚRODKU młyna (niewidoczny — pracuje w budynku, nie stoi obok).',
     'Młynarze chodzą do kupek snopków, PODNOSZĄ zboże i wnoszą je do młyna (znikają w środku na czas odłożenia).',
-    'Panel młyna (kliknij budynek): tytuł „Młyn", sekcja Produkcja z ikoną mąki i paskiem postępu przemiału, Magazyn z DWOMA wierszami: Pszenica (x/10) i Mąka (x/20) — żadnych innych dóbr.',
-    'Licznik mąki rośnie po każdym pełnym cyklu; zboże w młynie ubywa.',
-    'Gdy magazyn mąki w młynie się zapełnia (20/20), młynarz WYNOSI mąkę do magazynu obok — jego licznik mąki rośnie.',
+    'Zielona obramówka zaznaczonego młyna leży wyśrodkowana pod korpusem (nie obok) i nie zmienia rozmiaru, gdy wirnik się kręci.',
+    'Podgląd budynku w panelu trzyma STAŁE kadrowanie — nie przybliża się i nie oddala w rytm obrotu skrzydeł.',
+    'Panel młyna: sekcja Produkcja z ikoną mąki, polską nazwą („Mąka x1") i DŁUGIM paskiem postępu przez resztę wiersza; Magazyn z DWOMA wierszami zawsze w kolejności Pszenica (x/10), Mąka (x/20) — nigdy zamienionymi.',
+    'Mąka BANKUJE SIĘ w młynie (licznik rośnie po każdym cyklu); młynarz wynosi ją do magazynu obok dopiero, gdy brakuje miejsca na kolejną — i nigdy nie odkłada jej na ziemię (żadna kupka na ziemi nie przekracza 5 sztuk jednego dobra).',
     'Pracownicy w panelu: Młynarz 0..2/2 i Tragarz 0..1/1 (obsadzone sloty z danych oryginału).',
   ],
   checks: [
@@ -152,6 +153,21 @@ export const millScene: SceneDefinition = {
         const wheat = totalOf(sim, GOOD_WHEAT);
         const flour = totalOf(sim, GOOD_FLOUR);
         return wheat < WHEAT_DROPPED && wheat + flour <= WHEAT_DROPPED;
+      },
+    },
+    {
+      label: 'no loose ground pile ever exceeds the per-tile engine cap (flour never dumps on a field)',
+      predicate: (sim) => {
+        // The engine's global per-tile limit (MAX_GROUND_STACK, 5): a loose heap — any positioned
+        // stockpile that is not a building store — holds at most that many of any one good. Guards
+        // the regression where hauled flour banked unbounded onto the wheat piles beside the mill.
+        for (const e of sim.world.query(Stockpile)) {
+          if (sim.world.has(e, Building)) continue;
+          for (const amount of sim.world.get(e, Stockpile).amounts.values()) {
+            if (amount > systems.MAX_GROUND_STACK) return false;
+          }
+        }
+        return true;
       },
     },
     {

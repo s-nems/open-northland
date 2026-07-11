@@ -22,7 +22,12 @@ import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { BERRY_REGROW_TICKS } from '../economy/berries.js';
 import { unstampResourceFootprint } from '../footprint/index.js';
-import { isYardHeap, lowestStockedGood, stockCapacity } from '../stores.js';
+import { isYardHeap, lowestStockedGood, MAX_GROUND_STACK, stockCapacity } from '../stores.js';
+
+// Re-exported from its definition in ../stores.js (the per-tile ground cap now also gates
+// `stockCapacity`'s ground-heap branch); the drop/stack effects below stay this constant's home
+// for existing importers.
+export { MAX_GROUND_STACK } from '../stores.js';
 
 // The GOODS effects of the atomic executor — harvest/fell/deplete a resource node, drop and reap
 // ground piles, pick up / consume / deposit a carried load. Every mutation conserves goods (nothing
@@ -199,16 +204,6 @@ export function dropGroundPile(world: World, x: Fixed, y: Fixed, goodType: numbe
   world.add(pile, GroundDrop, { goodType });
   return pile;
 }
-
-/**
- * The most units a loose ground pile can hold on one tile — the per-tile cap for BOTH a player-dropped heap
- * ({@link dropOrStackGood}) and a gatherer's yard heap ({@link stackOntoTile} / `nearestFreeYardNode`). The
- * `ls_goods` heap has this many growth states (a single-unit heap at fill 1, a full one at
- * {@link MAX_GROUND_STACK}), so a pile can't grow past what its graphic can show — a drop caps here and
- * spills to the next tile (yard) or is dropped (hand-placed). Source basis: `ls_goods.bmd` carries 5 fill
- * states per good pile (the pipeline's goods stage).
- */
-export const MAX_GROUND_STACK = 5;
 
 /**
  * Drop `amount` of `goodType` as a loose ground pile at (x,y), STACKING onto an existing loose pile of the

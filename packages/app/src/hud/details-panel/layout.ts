@@ -55,8 +55,6 @@ const BUTTONS_TOP = 60;
 export const BAR_H = 10;
 /** Inset between the preview box's frame and the building bob drawn inside it. */
 export const PREVIEW_INSET = 4;
-/** `bar_frame_96`'s decoded native width (96×18 atlas rect) — the design width bars are drawn at. */
-export const BAR_NATIVE_W = 96;
 /** The amount plate's height inside a {@link STOCK_ROW_H} stock cell (≈11 px in the original). */
 export const STOCK_PLATE_H = 11;
 /**

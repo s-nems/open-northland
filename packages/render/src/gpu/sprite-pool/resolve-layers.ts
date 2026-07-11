@@ -48,6 +48,15 @@ export interface ResolvedLayer {
    * so the frame grows smoothly instead of popping between discrete stages.
    */
   readonly reveal?: number;
+  /**
+   * Excluded from the entity's stamped {@link import('./pooled-entity.js').EntityBounds} — set on a
+   * building's ANIMATED state overlay (the mill's spinning rotor), whose per-frame rects differ in
+   * size and sit off the body's centre. The bounds feed the selection ring's size/centre and the
+   * details-panel portrait's fit-to-box framing; letting the spin cycle into them made the ring sit
+   * off the mill and the portrait zoom in and out with the blades. The overlay still DRAWS (and still
+   * pixel-hit-tests) — it just doesn't move the box.
+   */
+  readonly boundsExempt?: boolean;
 }
 
 /**
@@ -128,7 +137,12 @@ export function resolveLayers(
     }
     const draw = resolveBuildingDraw(sheet.bindings.building, item);
     const overlayDraw = resolveBuildingOverlayDraw(sheet.bindings.building, item, tick);
-    if (overlayDraw !== null) buildingOverlay = layeredLayerFor(sheet, 'building', overlayDraw);
+    if (overlayDraw !== null) {
+      const resolved = layeredLayerFor(sheet, 'building', overlayDraw);
+      // boundsExempt: the spin frames breathe in size/offset — they must not move the entity's box
+      // (selection ring, portrait framing). See ResolvedLayer.boundsExempt.
+      buildingOverlay = resolved === null ? null : { ...resolved, boundsExempt: true };
+    }
     // A LOADED named family resolves through the shared helper (missing/empty frame → placeholder);
     // an UNLOADED one falls through to the default building layer below (a deliberate difference
     // from the construction path, which drops the stage instead).

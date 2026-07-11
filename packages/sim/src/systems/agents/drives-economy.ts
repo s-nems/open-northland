@@ -148,13 +148,20 @@ export function planDelivery(
  *
  *  a. **Stay & produce** — if staying on the station would run a cycle ({@link workplaceProductiveIfStaffed}:
  *     already producing, or built with all inputs present + output room), walk to the station (if not on
- *     it) and hold there so the ProductionSystem's worker-presence gate stays satisfied.
- *  b. **Haul the output** — else, if the shop holds a finished output a store can take, carry it out
- *     (clears the shop for the next cycle and delivers the product). The carrying branch routes it to a
- *     store, not back to the shop.
- *  c. **Fetch an input** — else, fetch a missing recipe input from a store that holds it (the smith
+ *     it) and hold there so the ProductionSystem's worker-presence gate stays satisfied. On the station
+ *     the worker steps INSIDE (the {@link Resting} marker — the render hides it): a craftsman works in
+ *     its workshop, not standing at the door (observed original behaviour).
+ *  b. **Fetch an input** — else, fetch a missing recipe input from a store that holds it (the smith
  *     walking to the warehouse for iron); the carrying branch then delivers it to this workshop.
- *  d. **Wait** — nothing to fetch or haul: return to / hold the station until an input arrives.
+ *     Fetching ranks ABOVE hauling the output out: finished goods accumulate in the shop's own store
+ *     while the loop runs, and are carried out only when production can't continue — typically when the
+ *     output store fills (observed original behaviour: the miller keeps grinding, flour banks up in the
+ *     mill, and only a full mill sends it to the warehouse to make room).
+ *  c. **Haul the output** — else, if the shop holds a finished output a store can take, carry it out
+ *     (an output-full shop makes room for the next cycle; an input-starved one banks its product). The
+ *     carrying branch routes it to a store, not back to the shop.
+ *  d. **Wait** — nothing to fetch or haul: return to / hold the station until an input arrives, waiting
+ *     INSIDE it (the same {@link Resting} marker — off-duty workers wait in the house).
  *
  * Every branch is recipe-driven — no per-job or per-good code — so any single-worker workshop self-
  * services. The workplace is known to carry a recipe (the caller's `boundWorkplaceTarget` guard).
@@ -172,13 +179,31 @@ export function planProducer(
   const recipe = recipeOf(world, ctx, workplace);
   if (recipe === undefined) return; // guarded by the caller, but keep the types honest
 
-  // a. Would staying produce a cycle? Be on the station (walk there / hold) so production runs.
+  // The walk-to-station stand shared by a and d: once ON the station, step inside (the replan sweep
+  // clears the marker every tick, so the worker re-emerges the moment b/c has real work for it).
+  const holdInside = (): void =>
+    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, workplace, here), () =>
+      world.add(e, Resting, { at: workplace }),
+    );
+
+  // a. Would staying produce a cycle? Be on the station (walk there / hold inside) so production runs.
   if (workplaceProductiveIfStaffed(world, ctx, workplace, recipe)) {
-    walkToOrHold(world, e, here, interactionCell(world, ctx, terrain, workplace, here));
+    holdInside();
     return;
   }
 
-  // b. Can't produce now — carry the finished output out to a store first (frees the shop, delivers it).
+  // b. Can't produce now — fetch a missing recipe input from a store that holds it (the smith going to
+  // the warehouse). The finished output stays banked in the shop while inputs keep the loop running.
+  const src = nearestMissingInputSource(stockpiles, world, ctx, terrain, here, workplace, recipe);
+  if (src !== null) {
+    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, src.store, here), () =>
+      startPickup(world, ctx, e, settler, src.store, src.goodType, src.amount),
+    );
+    return;
+  }
+
+  // c. Nothing to fetch — carry the finished output out to a store (an output-full shop frees room for
+  // the next cycle; an input-starved one delivers what it made).
   const outGood = workplaceOutputToHaul(stockpiles, world, ctx, terrain, workplace, recipe, here);
   if (outGood !== null) {
     atOrWalk(world, e, here, interactionCell(world, ctx, terrain, workplace, here), () =>
@@ -195,17 +220,8 @@ export function planProducer(
     return;
   }
 
-  // c. Fetch a missing recipe input from a store that holds it (the smith going to the warehouse).
-  const src = nearestMissingInputSource(stockpiles, world, ctx, terrain, here, workplace, recipe);
-  if (src !== null) {
-    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, src.store, here), () =>
-      startPickup(world, ctx, e, settler, src.store, src.goodType, src.amount),
-    );
-    return;
-  }
-
-  // d. Nothing to fetch or haul — return to / hold the station and wait for an input to arrive.
-  walkToOrHold(world, e, here, interactionCell(world, ctx, terrain, workplace, here));
+  // d. Nothing to fetch or haul — return to / wait inside the station for an input to arrive.
+  holdInside();
 }
 
 /** Set a `MoveGoal` to `target` unless the settler is already on it (then it stays put). */

@@ -4,7 +4,6 @@ import type { Rect } from '../geometry.js';
 import type { Chrome } from './chrome.js';
 import {
   BAR_H,
-  BAR_NATIVE_W,
   type BuildingLayout,
   type ButtonAction,
   type CompactLayout,
@@ -55,6 +54,9 @@ const ROW_TEXT_PAD = 2;
 const STOCK_ICON_W = 18;
 /** Left inset of the amount text inside its plate (eyeballed off the 1024×768 screenshots). */
 const STOCK_AMOUNT_INSET = 6;
+/** Where the production row's long progress bar starts (design px) — a fixed label column that fits the
+ *  output icon + a localized name like "Pszenica x1"; the bar fills the rest of the row's width. */
+const PRODUCTION_BAR_LEFT = 128;
 /** The active stock tab's lime underline height in design px (kept ≥2 screen px so it reads at uiscale 1). */
 const STOCK_TAB_UNDERLINE_H = 2;
 /** Key column width of a key/value row. */
@@ -153,16 +155,33 @@ export function drawBuilding(
         'white',
       );
     } else {
-      const barW = Math.round(BAR_NATIVE_W * s);
-      chrome.textAt(model.production.label, body.x, body.y + ROW_TEXT_PAD * s, 'white');
+      // A workshop's cycle: the output's icon + localized name on the left, then ONE progress bar
+      // filling the REST of the row (user feedback 2026-07-11: the short right-aligned stub read as
+      // broken). One bar is honest — a workplace runs ONE cycle at a time regardless of its worker
+      // count (the ProductionSystem model), so there is no per-worker progress to show.
+      const p = model.production;
+      const icon: Rect = {
+        x: body.x,
+        y: body.y + Math.round(s),
+        w: Math.round(STOCK_ICON_W * s),
+        h: Math.round(STOCK_ROW_H * s) - Math.round(2 * s),
+      };
+      if (p.goodId !== undefined) chrome.goodIcon(p.goodId, icon);
+      chrome.textAt(
+        p.label,
+        icon.x + icon.w + Math.round(STOCK_AMOUNT_INSET * s),
+        body.y + ROW_TEXT_PAD * s,
+        'white',
+      );
+      const barX = body.x + Math.round(PRODUCTION_BAR_LEFT * s);
       chrome.bar(
         {
-          x: body.x + body.w - barW,
+          x: barX,
           y: body.y + Math.round((STOCK_ROW_H - BAR_H) * s) / 2,
-          w: barW,
+          w: body.x + body.w - barX,
           h: Math.round(BAR_H * s),
         },
-        model.production.pct,
+        p.pct,
       );
     }
   }
@@ -177,7 +196,14 @@ export function drawBuilding(
     // The fixed cell grid both the drawing and the hover hit-test share (column-major, two columns).
     const slots = stockSlotRects(body, s, layout.stockRows);
     const cellH = Math.round(STOCK_ROW_H * s);
-    const rows = layout.stockCompact ? model.stock : model.stock.filter((row) => row.category === activeTab);
+    // A COMPACT store keeps the model's declared slot order, stable while amounts change (the mill's
+    // Pszenica/Mąka must not swap mid-work); only the big tabbed store bubbles held goods to the top —
+    // there the fixed row cap hides overflow, so actual stock earns its place above the fold. The sort
+    // is stable, so ties keep the declared order.
+    const inTab = layout.stockCompact ? model.stock : model.stock.filter((row) => row.category === activeTab);
+    const rows = layout.stockCompact
+      ? inTab
+      : [...inTab].sort((a, b) => (b.amount > 0 ? 1 : 0) - (a.amount > 0 ? 1 : 0));
     const shown = rows.slice(0, layout.stockRows * 2);
     shown.forEach((row, i) => {
       const slot = slots[i];
