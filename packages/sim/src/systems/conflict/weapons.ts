@@ -1,7 +1,6 @@
 import type { WeaponType } from '@vinland/data';
-import { Armor, CurrentAtomic, Position } from '../../components/index.js';
+import { Armor, CurrentAtomic } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import { eventAt } from '../../core/events.js';
 import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
@@ -124,7 +123,8 @@ export function targetMaterial(world: World, ctx: SystemContext, target: Entity)
  *  lands mid-animation, not at completion); it is omitted when the animation has no such event (the
  *  executor then falls back to completion). `weaponMainType` (the weapon's coarse class) is stamped so
  *  the swing accrues fight XP into that weapon's bucket; omitted when the weapon lists no `mainType`.
- *  `targetEntity` records the object for render/inspection. */
+ *  `targetEntity` records the object for render/inspection. The swing's audible swoosh is emitted later,
+ *  by the executor at the strike frame (see `resolveAttackHit`), not here at the windup start. */
 export function startAttack(
   world: World,
   ctx: SystemContext,
@@ -173,14 +173,10 @@ export function startAttack(
     targetEntity: target,
     targetTile: null,
   });
-  // Announce a MELEE swing (the swoosh) at the attacker's node — the audible twin of a bow's
-  // `projectileLaunched`, so a sword/spear fight is heard on every swing, not only at the brief connect.
-  // A ranged swing announces its `projectileLaunched` at the release frame instead (see the executor).
-  if (projectile === undefined) {
-    const from = world.tryGet(e, Position);
-    if (from !== undefined)
-      ctx.events.emit({ kind: 'combatSwing', attacker: e, at: eventAt(from.x, from.y) });
-  }
+  // The MELEE swing swoosh is announced at the STRIKE frame, not here at the windup start — see
+  // `resolveAttackHit`. Firing it here made a long-windup weapon (long sword / spear) swoosh well before
+  // its blade actually swung, reading as a delayed, detached hit; the executor now fires it in sync with
+  // the visible strike, the audible twin of a bow's release `projectileLaunched`.
 }
 
 /**

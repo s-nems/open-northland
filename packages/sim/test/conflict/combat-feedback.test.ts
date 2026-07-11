@@ -92,6 +92,49 @@ describe('combatHit — a landed melee blow', () => {
   });
 });
 
+describe('combatSwing — the swing swoosh at the strike frame', () => {
+  it('emits combatSwing at the attacker on a connecting swing (the audible twin of a bow release)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const attacker = sim.world.create();
+    sim.world.add(attacker, Position, { x: fx.fromInt(4), y: fx.fromInt(2) });
+    const target = sim.world.create();
+    sim.world.add(target, Position, { x: fx.fromInt(5), y: fx.fromInt(2) });
+    sim.world.add(target, Health, { hitpoints: 500, max: 500 });
+    attack(sim, attacker, target, 100, 3);
+
+    sim.step();
+
+    const swings = sim.snapshot().events.filter((ev) => ev.kind === 'combatSwing');
+    expect(swings).toHaveLength(1);
+    expect(swings[0]).toMatchObject({ attacker, at: eventAt(fx.fromInt(4), fx.fromInt(2)) });
+  });
+
+  it('still swooshes on a whiff — the blade cut air even though no combatHit lands', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(24) });
+    const attacker = sim.world.create();
+    sim.world.add(attacker, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
+    const target = sim.world.create();
+    sim.world.add(target, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
+    sim.world.add(target, Health, { hitpoints: 500, max: 500 });
+    sim.world.add(attacker, CurrentAtomic, {
+      atomicId: 81,
+      elapsed: 0,
+      progress: fx.fromInt(0),
+      duration: 1,
+      effect: { kind: 'attack', target, damage: 100, maxRange: 2 },
+      targetEntity: target,
+      targetTile: null,
+    });
+    sim.world.get(target, Position).x = fx.fromInt(10); // backs out of reach before the blow lands
+
+    sim.step();
+
+    const evts = sim.snapshot().events;
+    expect(evts.filter((ev) => ev.kind === 'combatSwing')).toHaveLength(1); // the swing was heard
+    expect(evts.filter((ev) => ev.kind === 'combatHit')).toHaveLength(0); // but nothing connected
+  });
+});
+
 describe('melee whiff — the target stepped out of reach', () => {
   /** Place an attacker and a target adjacent, start a 1-tick melee swing carrying reach `maxRange`, then
    *  optionally shove the target away BEFORE the blow lands — the "enemy backed out of the long swing" case. */

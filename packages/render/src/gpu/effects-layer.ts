@@ -1,11 +1,14 @@
 import type { SimEvent } from '@vinland/sim';
 import { Container, Graphics, Sprite, type TextureSource } from 'pixi.js';
 import {
+  BLOOD_RISE,
   type CombatEffect,
   type CombatEffectKind,
+  bloodDroplet,
   effectAlpha,
   effectKey,
   foldCombatEffects,
+  frac,
 } from '../data/effects.js';
 import type { ElevationField } from '../data/elevation.js';
 import { halfCellToScreen } from '../data/iso.js';
@@ -39,12 +42,13 @@ export interface BonesGfx {
  * under the standing victim's feet would be a poor "the blow landed" marker.
  *
  * Cost tracks the screen (golden rule 7): the live list is bounded by `MAX_ACTIVE_EFFECTS` and the
- * per-frame work skips any mark culled off-screen (its pooled node hidden, not repositioned). The mark
- * ART is a NAMED procedural approximation (the original's HIT particle + cadaver skeleton gfx are unbound
- * here — see `data/effects.ts`); the decay, projection, and event fold are the real behaviour.
+ * per-frame work skips any mark culled off-screen (its pooled node hidden, not repositioned). Blood is a
+ * NAMED procedural approximation — droplets that spray from the wound and FALL to the feet each frame
+ * ({@link bloodDroplet}, in `data/effects.ts`); bones draw the REAL decoded cadaver sprite when supplied.
+ * The decay, projection, droplet motion, and event fold are the real behaviour.
  */
 
-/** Blood: dark and bright red droplets over a dried base, with a dark rim so it reads on any ground. */
+/** Blood: dark and bright red droplets, with a dark rim so a drop reads on any ground. */
 const BLOOD_DARK = 0x6b0f0f;
 const BLOOD_BRIGHT = 0xb51818;
 const BLOOD_RIM = 0x2a0505;
@@ -52,18 +56,14 @@ const BLOOD_RIM = 0x2a0505;
 const BONE_FILL = 0xe8e0cf;
 const BONE_OUTLINE = 0x4a4436;
 
-/** World-px spread of a blood splatter's droplets around the hit node, and the droplet radius range. */
-const BLOOD_SPREAD = 7;
-const BLOOD_MIN_R = 1.1;
-const BLOOD_MAX_R = 2.6;
-const BLOOD_DROPS = 5;
+/** Number of droplets in a blood spray, and their base radius range (world px). Each is a small blob the
+ *  layer stretches into a falling streak / a flat pool per frame (see {@link bloodDroplet}). */
+const BLOOD_DROPS = 6;
+const BLOOD_MIN_R = 1.0;
+const BLOOD_MAX_R = 2.2;
 /** World-px length / thickness of a single bone shaft in a pile (two crossed shafts + a skull dot). */
 const BONE_LEN = 9;
 const BONE_THICK = 2.4;
-/** World-px a blood spurt is lifted UP from the victim's feet node onto its torso, so the mark reads on
- *  the body (over the sprite) rather than hiding as a puddle under the standing victim's feet. A viking
- *  body is ~32 world units tall; ~40% up puts the spurt on the chest. Named eye-calibrated approximation. */
-const BLOOD_RISE = 13;
 
 export class CombatEffectsLayer {
   /** Bones — ground litter, added BELOW the sprite layer by the renderer (a fighter walks over them). */
@@ -119,6 +119,9 @@ export class CombatEffectsLayer {
       node.visible = true;
       node.position.set(p.x, y);
       node.alpha = alpha;
+      // Blood is animated: its droplets spray from the wound and fall to the feet over the mark's life
+      // (bones are static). `tick` is interpolated render time, so the fall reads smoothly at any frame rate.
+      if (effect.kind === 'blood') animateBlood(node, effect, tick);
       this.seen.add(key);
     }
     // Retire nodes whose mark is gone (expired / capped out this frame).
@@ -138,14 +141,45 @@ export class CombatEffectsLayer {
   }
 
   /** Build a mark's node once: a seed-picked REAL bone sprite when the decoded art is set (else a
-   *  procedural pile), or the procedural blood splatter. The node's origin is the feet anchor; the layer
-   *  positions/fades it thereafter. */
+   *  procedural pile), or a blood spray (a container of droplet blobs the layer then animates). The node's
+   *  origin is the wound (blood) / feet (bones) anchor; the layer positions/fades it thereafter. */
   private makeMark(kind: CombatEffectKind, seed: number): Container {
-    if (kind === 'bones' && this.bones !== undefined && this.bones.frames.length > 0) {
+    if (kind === 'blood') return makeBlood(seed);
+    if (this.bones !== undefined && this.bones.frames.length > 0) {
       return makeBonesSprite(this.bones, seed);
     }
+    return drawBones(new Graphics(), seed);
+  }
+}
+
+/** A blood spray: {@link BLOOD_DROPS} seeded droplet blobs, all stacked at the wound origin. The layer then
+ *  moves/stretches each per frame via {@link bloodDroplet} so they fall to the feet and pool. */
+function makeBlood(seed: number): Container {
+  const c = new Container();
+  for (let i = 0; i < BLOOD_DROPS; i++) {
     const g = new Graphics();
-    return kind === 'blood' ? drawBlood(g, seed) : drawBones(g, seed);
+    const r = BLOOD_MIN_R + frac(seed, i + 100) * (BLOOD_MAX_R - BLOOD_MIN_R);
+    const color = i % 2 === 0 ? BLOOD_DARK : BLOOD_BRIGHT;
+    // A small rimmed blob at the child's own origin; the layer scales it into a streak / pool each frame.
+    g.circle(0, 0, r + 0.5).fill({ color: BLOOD_RIM, alpha: 0.5 });
+    g.circle(0, 0, r).fill({ color });
+    c.addChild(g);
+  }
+  return c;
+}
+
+/** Advance a blood node's droplets to their `tick` positions: each child (in mint order = droplet index)
+ *  falls from the wound to the feet and stretches into a streak, then flattens into a pool — see
+ *  {@link bloodDroplet}. Called every frame for a live blood mark; bones are static and skip this. */
+function animateBlood(node: Container, effect: CombatEffect, tick: number): void {
+  const age = tick - effect.spawnTick;
+  const drops = node.children;
+  for (let i = 0; i < drops.length; i++) {
+    const d = bloodDroplet(effect.seed, i, age);
+    const drop = drops[i];
+    if (drop === undefined) continue;
+    drop.position.set(d.x, d.y);
+    drop.scale.set(d.stretchX, d.stretchY);
   }
 }
 
@@ -163,33 +197,9 @@ function makeBonesSprite(bones: BonesGfx, seed: number): Container {
   return c;
 }
 
-/** A deterministic float in [0, 1) from a mark's seed and a droplet/shaft index — no `Math.random`, so a
- *  screenshot reproduces the exact splatter. A small integer hash mixed down to a unit fraction. */
-function rand(seed: number, i: number): number {
-  let x = (seed ^ Math.imul(i + 1, 0x9e3779b1)) >>> 0;
-  x = Math.imul(x ^ (x >>> 15), 0x85ebca6b) >>> 0;
-  x = Math.imul(x ^ (x >>> 13), 0xc2b2ae35) >>> 0;
-  return ((x ^ (x >>> 16)) >>> 0) / 0x100000000;
-}
-
-/** A small blood splatter: a few seeded droplets (dark + bright) over the node, dark-rimmed for contrast. */
-function drawBlood(g: Graphics, seed: number): Graphics {
-  for (let i = 0; i < BLOOD_DROPS; i++) {
-    const ang = rand(seed, i * 2) * Math.PI * 2;
-    const dist = rand(seed, i * 2 + 1) * BLOOD_SPREAD;
-    const dx = Math.cos(ang) * dist;
-    const dy = Math.sin(ang) * dist * 0.6; // squashed onto the iso ground plane
-    const r = BLOOD_MIN_R + rand(seed, i + 100) * (BLOOD_MAX_R - BLOOD_MIN_R);
-    const color = i % 2 === 0 ? BLOOD_DARK : BLOOD_BRIGHT;
-    g.circle(dx, dy, r + 0.5).fill({ color: BLOOD_RIM, alpha: 0.5 });
-    g.circle(dx, dy, r).fill({ color });
-  }
-  return g;
-}
-
 /** A small bone pile: two crossed shafts at a seeded angle plus a skull dot — a stand-in for the skeleton. */
 function drawBones(g: Graphics, seed: number): Graphics {
-  const base = rand(seed, 0) * Math.PI; // seeded orientation
+  const base = frac(seed, 0) * Math.PI; // seeded orientation
   for (const off of [0, Math.PI / 2.4]) {
     const a = base + off;
     const hx = (Math.cos(a) * BONE_LEN) / 2;

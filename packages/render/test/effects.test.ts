@@ -2,9 +2,11 @@ import type { SimEvent } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   BLOOD_LIFETIME_TICKS,
+  BLOOD_RISE,
   BONES_LIFETIME_TICKS,
   type CombatEffect,
   MAX_ACTIVE_EFFECTS,
+  bloodDroplet,
   effectAlpha,
   effectKey,
   foldCombatEffects,
@@ -108,6 +110,36 @@ describe('effectAlpha', () => {
     const bones: CombatEffect = { kind: 'bones', hx: 0, hy: 0, spawnTick: 0, seed: 1 };
     expect(effectAlpha(bones, BLOOD_LIFETIME_TICKS)).toBe(1); // bones still fresh when blood is gone
     expect(BONES_LIFETIME_TICKS).toBeGreaterThan(BLOOD_LIFETIME_TICKS);
+  });
+});
+
+describe('bloodDroplet — the spray falls from the wound to the feet', () => {
+  it('starts at the wound and falls DOWN to pool at the feet over time', () => {
+    const start = bloodDroplet(1234, 0, 0);
+    expect(start.y).toBeCloseTo(0, 5); // at the wound (local origin), before any fall
+    expect(start.landed).toBe(false);
+    // Far past the fall time: on the ground, flattened into a pool at exactly the feet (BLOOD_RISE below).
+    const settled = bloodDroplet(1234, 0, 100);
+    expect(settled.landed).toBe(true);
+    expect(settled.y).toBeCloseTo(BLOOD_RISE, 5);
+    expect(settled.stretchY).toBeLessThan(1); // a pool is flat, not a streak
+    expect(settled.stretchX).toBeGreaterThan(1); // spread horizontally
+  });
+
+  it('monotonically descends and never falls past the feet', () => {
+    let prevY = Number.NEGATIVE_INFINITY;
+    for (let age = 0; age <= 40; age++) {
+      const d = bloodDroplet(77, 2, age);
+      expect(d.y).toBeGreaterThanOrEqual(0);
+      expect(d.y).toBeLessThanOrEqual(BLOOD_RISE + 1e-9); // clamped at the ground
+      expect(d.y).toBeGreaterThanOrEqual(prevY - 1e-9); // never rises back up
+      prevY = d.y;
+    }
+  });
+
+  it('is deterministic and varies per droplet (seeded, no Math.random)', () => {
+    expect(bloodDroplet(9, 1, 3)).toEqual(bloodDroplet(9, 1, 3)); // reproducible for a ?shot
+    expect(bloodDroplet(9, 1, 3).x).not.toBe(bloodDroplet(9, 2, 3).x); // different droplets fan out
   });
 });
 

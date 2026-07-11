@@ -126,6 +126,15 @@ export function resolveAttackHit(
     launchProjectile(world, ctx, attacker, effect);
     return;
   }
+  // A MELEE swing swooshes AT the strike frame (this frame) — the audible twin of a bow's release
+  // `projectileLaunched`, synced to the visible blade connect rather than the windup start. Fired BEFORE
+  // the reach check so EVERY swing is heard, hit or whiff (the blade cut air either way); the connecting
+  // `combatHit` below adds the impact clang + blood only on a real connect. Silent if the attacker lost
+  // its Position mid-swing (nothing to locate the sound at).
+  const swingFrom = world.tryGet(attacker, Position);
+  if (swingFrom !== undefined) {
+    ctx.events.emit({ kind: 'combatSwing', attacker, at: eventAt(swingFrom.x, swingFrom.y) });
+  }
   // A long melee swing the target BACKED OUT of whiffs: if the target has stepped beyond the weapon's reach
   // since the swing started, the blow lands nothing (no damage, no blood, no flinch) — the "enemy stepped
   // away, no adjacent target, the attack misses" case. Measured with the SAME node-manhattan metric the
