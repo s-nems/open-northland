@@ -8,13 +8,23 @@ import {
 import {
   ATTACK_ATOMIC,
   CLAY_HARVEST_ATOMIC,
+  CULTIVATE_ATOMIC,
   GOLD_HARVEST_ATOMIC,
   HARVEST_ATOMIC,
   IRON_HARVEST_ATOMIC,
   MUSHROOM_HARVEST_ATOMIC,
+  PLANT_ATOMIC,
   STONE_HARVEST_ATOMIC,
+  WHEAT_HARVEST_ATOMIC,
 } from '../../catalog/atomics.js';
 import { HOME_KIND, VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
+import {
+  FARM_FIELD_RADIUS,
+  FARM_MAX_FIELDS,
+  WHEAT_GROWTH_STAGES,
+  WHEAT_TICKS_PER_STAGE,
+  WHEAT_YIELD_PER_FIELD,
+} from '../../catalog/farming.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import { approximateFootprint } from '../../catalog/footprints.js';
 import { EXTENDED_GOODS, STORABLE_EXTENDED_GOODS } from '../../catalog/goods.js';
@@ -33,6 +43,7 @@ import { professionLabel } from '../../i18n/index.js';
 import type { Messages } from '../../i18n/pl.js';
 import { PRIMARY_TRIBE } from '../rules.js';
 import {
+  BUILDING_FARM,
   BUILDING_HEADQUARTERS,
   BUILDING_HOME_00,
   BUILDING_JOINERY,
@@ -50,12 +61,14 @@ import {
   GOOD_NONE,
   GOOD_PLANK,
   GOOD_STONE,
+  GOOD_WHEAT,
   GOOD_WOOD,
   type GathererSpec,
   JOB_ARCHER,
   JOB_ARCHER_LONG,
   JOB_BUILDER,
   JOB_CARRIER,
+  JOB_FARMER_SLOT,
   JOB_GATHERER_WOOD,
   JOB_IDLE,
   JOB_SOLDIER_BROADSWORD,
@@ -117,6 +130,19 @@ const LONG_BOW_RELEASE_FRAME = 22;
 // plays the builder's own `human_man_constructionworker_Work_Hammer` body clip (see content/settler-gfx.ts).
 const BUILD_HOUSE_SWING_LENGTH = 15;
 const BUILD_HOUSE_ANIMATION = 'viking_builder_build_house';
+// The farmer's three field-work swings — lengths TRANSCRIBED from the extracted viking atomicanimations
+// (`DataCnmd/atomicanimations12/atomicanimations.ini`: harvest_wheat 24, plant 24, cultivate 29). The
+// names are the original's own `setatomic 18 29/34/35` bindings; the render plays the farmer's authored
+// body clips (`human_man_farmer_work_{reap_grain,sow,water}` — see content/settler-gfx.ts).
+const FARMER_REAP_ANIMATION = 'viking_farmer_harvest_wheat';
+const FARMER_REAP_LENGTH = 24;
+const FARMER_SOW_ANIMATION = 'viking_farmer_plant';
+const FARMER_SOW_LENGTH = 24;
+const FARMER_WATER_ANIMATION = 'viking_farmer_cultivate';
+const FARMER_WATER_LENGTH = 29;
+// The farm's wheat-only store capacity — EXTRACTED: `logicstock 4 25 0` on the "work farm 00" block
+// (`DataCnmd/types/houses.ini`), one slot, 25 wheat.
+const FARM_WHEAT_CAPACITY = 25;
 // Damage on the sandbox's own synthetic scale (the real per-material tables live in the extracted
 // content; scene hitpoints are chosen so a duel takes several full swings — see the combat scene).
 const BOW_DAMAGE = 34;
@@ -372,6 +398,15 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       allowedAtomics: [g.atomic],
     })),
     { typeId: JOB_CARRIER, id: 'carrier', name: 'Tragarz' },
+    // The FARMER worker-slot trade — the one rebased slot job with real behaviour: its three field
+    // atomics (the original's `jobtypes.ini 18` `allowatomic 29/34/35`) are what the planner's
+    // field-farmer drive keys on, so a farm-bound farmer sows/waters/reaps instead of standing idle.
+    {
+      typeId: JOB_FARMER_SLOT,
+      id: 'farmer',
+      name: professionLabel('farmer'),
+      allowedAtomics: [WHEAT_HARVEST_ATOMIC, PLANT_ATOMIC, CULTIVATE_ATOMIC],
+    },
     { typeId: JOB_SOLDIER_UNARMED, id: 'soldier_unarmed', name: 'Wojownik (bez broni)' },
     // The builder trade — permitted to run the build-house atomic, which is the data-driven signal the
     // planner's builder drive reads to put this settler on a foundation (the construction scene).
@@ -417,6 +452,11 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       { jobType: JOB_SOLDIER_UNARMED, atomicId: ATTACK_ATOMIC, animation: 'viking_fist_attack' },
       // The builder → build-house swing (so atomicDuration resolves the 15-tick length below, not the default).
       { jobType: JOB_BUILDER, atomicId: BUILD_HOUSE_ATOMIC, animation: BUILD_HOUSE_ANIMATION },
+      // The farmer's field swings (the original's `setatomic 18 29/34/35` on the rebased slot job) —
+      // the sow/water/reap durations resolve through the transcribed animation lengths below.
+      { jobType: JOB_FARMER_SLOT, atomicId: WHEAT_HARVEST_ATOMIC, animation: FARMER_REAP_ANIMATION },
+      { jobType: JOB_FARMER_SLOT, atomicId: PLANT_ATOMIC, animation: FARMER_SOW_ANIMATION },
+      { jobType: JOB_FARMER_SLOT, atomicId: CULTIVATE_ATOMIC, animation: FARMER_WATER_ANIMATION },
       { jobType: JOB_SOLDIER_SPEAR, atomicId: ATTACK_ATOMIC, animation: 'viking_spear_attack' },
       { jobType: JOB_SOLDIER_SWORD, atomicId: ATTACK_ATOMIC, animation: 'viking_sword_attack' },
       { jobType: JOB_SOLDIER_BROADSWORD, atomicId: ATTACK_ATOMIC, animation: 'viking_broadsword_attack' },
@@ -515,6 +555,25 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
           name: extras.goodNames?.get(g.id) ?? g.name,
           weight: 1,
           ...(equip !== undefined ? { equip } : {}),
+          // Wheat is the FIELD-FARMED good: its plant/cultivate/harvest atomics are the original's own
+          // ids (`goodtypes.ini` wheat 34/35/29) and the farming block carries the loop calibration
+          // (catalog/farming.ts) — what makes the farm's workers run the sow→water→reap field loop.
+          ...(g.typeId === GOOD_WHEAT
+            ? {
+                atomics: {
+                  harvest: WHEAT_HARVEST_ATOMIC,
+                  cultivate: CULTIVATE_ATOMIC,
+                  plant: PLANT_ATOMIC,
+                },
+                farming: {
+                  stages: WHEAT_GROWTH_STAGES,
+                  ticksPerStage: WHEAT_TICKS_PER_STAGE,
+                  yieldPerField: WHEAT_YIELD_PER_FIELD,
+                  fieldRadius: FARM_FIELD_RADIUS,
+                  maxFields: FARM_MAX_FIELDS,
+                },
+              }
+            : {}),
         };
       }),
     ],
@@ -647,6 +706,10 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
       },
       // The builder's hammer swing — its length is what paces each construct swing (see above).
       { id: BUILD_HOUSE_ANIMATION, name: BUILD_HOUSE_ANIMATION, length: BUILD_HOUSE_SWING_LENGTH },
+      // The farmer's field swings — the transcribed original lengths pace each sow/water/reap.
+      { id: FARMER_REAP_ANIMATION, name: FARMER_REAP_ANIMATION, length: FARMER_REAP_LENGTH },
+      { id: FARMER_SOW_ANIMATION, name: FARMER_SOW_ANIMATION, length: FARMER_SOW_LENGTH },
+      { id: FARMER_WATER_ANIMATION, name: FARMER_WATER_ANIMATION, length: FARMER_WATER_LENGTH },
     ],
   });
 }
@@ -663,6 +726,9 @@ interface SandboxBuildingRow {
     outputs: readonly { goodType: number; amount: number }[];
     ticks: number;
   };
+  /** The goods this workplace makes (`logicproduction`) — for a FARM this is the field-farmed good and
+   *  there is deliberately NO `recipe` (the field loop, not the abstract in-house cycle, produces it). */
+  produces?: readonly number[];
   workers?: readonly { jobType: number; count: number }[];
   footprint?: BuildingFootprint;
 }
@@ -893,6 +959,14 @@ const BUILDING_WORKER_SLOTS: Readonly<Record<number, readonly { jobType: number;
  */
 const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> = {
   [BUILDING_HEADQUARTERS]: { stock: STORE_STOCK },
+  // The grain farm — EXTRACTED shape (`DataCnmd/types/houses.ini` "work farm 00"): a wheat-ONLY store
+  // (`logicstock 4 25 0`) and `logicproduction 4` (produces wheat). Deliberately NO recipe: the field
+  // loop (its farmers sowing/watering/reaping around the building) is what makes the wheat — the
+  // worker slots (4 farmers + 1 carrier) come from BUILDING_WORKER_SLOTS below.
+  [BUILDING_FARM]: {
+    stock: [{ goodType: GOOD_WHEAT, capacity: FARM_WHEAT_CAPACITY, initial: 0 }],
+    produces: [GOOD_WHEAT],
+  },
   // The three warehouses accept the same general-goods set as the HQ (sandbox balance pin, not extracted
   // data) so the Magazyn section shows their storable goods instead of reading empty.
   [BUILDING_WAREHOUSE_00]: { stock: STORE_STOCK },

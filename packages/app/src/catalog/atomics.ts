@@ -16,7 +16,16 @@ export const STONE_HARVEST_ATOMIC = 25;
 export const CLAY_HARVEST_ATOMIC = 26;
 export const IRON_HARVEST_ATOMIC = 27;
 export const GOLD_HARVEST_ATOMIC = 28;
+/** Wheat's scythe/reap action (`goodtypes.ini` wheat `atomicForHarvesting 29`). */
+export const WHEAT_HARVEST_ATOMIC = 29;
 export const MUSHROOM_HARVEST_ATOMIC = 32;
+
+/** The farmer's SOWING action (`goodtypes.ini` wheat `atomicForPlanting 34`; `setatomic 18 34
+ *  "viking_farmer_plant"`). */
+export const PLANT_ATOMIC = 34;
+/** The farmer's WATERING action (`goodtypes.ini` wheat `atomicForCultivating 35`; `setatomic 18 35
+ *  "viking_farmer_cultivate"` — the watering-can clip). */
+export const CULTIVATE_ATOMIC = 35;
 
 /**
  * The combat attack swing (`setatomic <job> 81 "..._attack"`; the sim's `ATTACK_ATOMIC_ID`,

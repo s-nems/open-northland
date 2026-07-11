@@ -160,6 +160,44 @@ export const Felling = defineComponent<{ chopsLeft: number }>('Felling');
 export const MineDeposit = defineComponent<{ initial: number; levels: number }>('MineDeposit');
 
 /**
+ * Marks a {@link Resource} node that is a **sown field** — the wheat a farm's worker plants, waters and
+ * reaps, faithful to the original's field-farming vocabulary (`goodtypes.ini` wheat: `atomicForPlanting
+ * 34` / `atomicForCultivating 35` / `atomicForHarvesting 29`, `isProducedOnMapFlag 1`; the field's
+ * growth states are the `landscapetypes.ini` `wheat (growing)` lane, `maximumValency 5`). Stamped by the
+ * `sow` atomic effect from the good's content `farming` block; the CropGrowthSystem advances it and the
+ * farmer drive (planFarmer) works it. The loop: sown at `stage` 1 with `Resource.remaining` **0** (a
+ * growing field yields nothing — the remaining-0 gate is what keeps every generic harvest scan off an
+ * unripe field), grows a stage each `ticksPerStage` ticks (twice as fast once `watered` — the cultivate
+ * atomic's effect; the ×2 is a named approximation, the engine's watering semantics are not decoded),
+ * and at the final stage (`stage === stages`) becomes ripe: `Resource.remaining` is set to `yieldUnits`,
+ * so the reap swing (the plain `harvest` effect, branched by THIS marker) drops the whole yield as a
+ * ground sheaf pile ({@link GroundDrop}, the good's `landscapeToPickup` look) and removes the field.
+ *
+ * `farm` is the workplace whose worker sowed it — the farm's OWN fields are the ones its farmers water/
+ * reap (two farms never work each other's fields); a stale id after demolition just strands a wild field
+ * (harvest-scannable once ripe, else inert). A field is deliberately NOT walk-blocking and carries no
+ * {@link ResourceFootprint} — the original's wheat landscape is walkable (`allowedonland 1`, no block
+ * areas). The separate-optional-component pattern: no golden/scene sows, so every existing hash holds.
+ */
+export const Crop = defineComponent<{
+  goodType: number;
+  /** The farm workplace this field belongs to (a cross-reference id; ids are never reused). */
+  farm: Entity;
+  /** Current growth stage, 1..{@link stages}; ripe at the top stage. */
+  stage: number;
+  /** Total growth stages (the content `farming.stages`, snapshotted at sow). */
+  stages: number;
+  /** Whole ticks accumulated toward the next stage (exact integer compare, like CurrentAtomic). */
+  growth: number;
+  /** Ticks per growth stage (the content `farming.ticksPerStage`, snapshotted at sow). */
+  ticksPerStage: number;
+  /** Whether the field was cultivated (watered) — it then grows at double pace. */
+  watered: boolean;
+  /** Units the ripe field releases (the content `farming.yieldPerField`, snapshotted at sow). */
+  yieldUnits: number;
+}>('Crop');
+
+/**
  * A **stump / debris** decor entity left where a {@link Felling} node fell — the tree-debris the
  * original leaves behind (`ls_trees_dead.bmd` "tree debris", `landscapetype` logic 1: a pure-decor
  * landscape, non-blocking and not harvestable). It carries only a {@link Position} and this marker, so

@@ -175,6 +175,34 @@ export const GoodGathering = z.strictObject({
 });
 export type GoodGathering = z.infer<typeof GoodGathering>;
 
+/**
+ * A FIELD-FARMED good's cultivation parameters (wheat) — the sow→grow→water→reap loop a farm's worker
+ * runs on map fields, distinct from {@link GoodGathering}'s harvest-a-standing-node pipeline. The
+ * original wires the loop's VOCABULARY in readable data (`goodtypes.ini` wheat: `atomicForPlanting 34`,
+ * `atomicForCultivating 35`, `atomicForHarvesting 29`, `isProducedOnMapFlag 1`; `landscapetypes.ini`
+ * 27/28/29 = wheat growing/harvested/pile) but the loop's TIMINGS and the farm's field area live in the
+ * native engine, so every numeric here except {@link stages} is an OBSERVED calibration constant the
+ * content set pins (source basis: the farm plan's progress note tracks them).
+ */
+export const GoodFarming = z.strictObject({
+  /**
+   * Growth stages a sown field passes through before it is ripe. DATA, not observed: the growing
+   * landscape's own state count (`landscapetypes.ini` wheat(growing) `maximumValency 5`, matching the
+   * `[GfxLandscape]` record's 5 growth frames the render steps through).
+   */
+  stages: z.number().int().positive(),
+  /** OBSERVED — ticks an unwatered field takes to advance one growth stage (no readable growth timing). */
+  ticksPerStage: z.number().int().positive(),
+  /** OBSERVED — units a ripe field drops (as a ground sheaf) when reaped. The only related readable
+   *  number is `humanjobexperiencetypes.ini` "farmer wheat" `baserepeatcounter 2` (semantics unpinned). */
+  yieldPerField: z.number().int().positive(),
+  /** OBSERVED — how far from the farm's anchor its workers sow, in half-cell NODES (no radius in data). */
+  fieldRadius: z.number().int().positive(),
+  /** OBSERVED — most fields one farm keeps sown at once (no field-count in data). */
+  maxFields: z.number().int().positive(),
+});
+export type GoodFarming = z.infer<typeof GoodFarming>;
+
 export const GoodType = z.strictObject({
   typeId: TypeId,
   id: z.string(), // human-readable slug, e.g. "wood"
@@ -194,6 +222,12 @@ export const GoodType = z.strictObject({
    * good. See {@link GoodGathering} and the resolved {@link GatheringPipeline} artifact.
    */
   gathering: GoodGathering.optional(),
+  /**
+   * The field-cultivation loop parameters, when this good is FIELD-FARMED (sown/watered/reaped on map
+   * fields by a farm's worker — wheat). Omitted for every other good; a good with `farming` should also
+   * carry the plant/cultivate/harvest {@link atomics} the loop's actions run. See {@link GoodFarming}.
+   */
+  farming: GoodFarming.optional(),
   /**
    * Input goods (+ per-cycle amounts) consumed to produce THIS good — the input side of the goods
    * graph, from `goodtypes` `productionInputGoods`. Empty for a raw/harvested good (no recipe). This

@@ -6,6 +6,7 @@ import { playerOrderSystem } from './conflict/orders.js';
 import { projectileSystem } from './conflict/projectile.js';
 import type { System, SystemContext } from './context.js';
 import { constructionSystem } from './economy/construction.js';
+import { cropGrowthSystem } from './economy/farming.js';
 import { jobSystem } from './economy/jobs.js';
 import { productionSystem } from './economy/production.js';
 import { growthSystem } from './lifecycle/ageclass.js';
@@ -39,6 +40,7 @@ export * from './command.js';
 export * from './conflict/orders.js';
 export * from './conflict/projectile.js';
 export * from './economy/construction.js';
+export * from './economy/farming.js';
 export * from './economy/flags.js';
 export * from './economy/jobs.js';
 export * from './economy/production.js';
@@ -77,6 +79,7 @@ export const SYSTEM_ORDER: readonly System[] = [
   separationSystem,
   atomicSystem,
   productionSystem,
+  cropGrowthSystem,
   transportSystem,
   constructionSystem,
   combatSystem,

@@ -5,6 +5,7 @@ import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { advanceConstructionLabor } from '../economy/construction.js';
+import { applySow, applyWater } from '../economy/farming.js';
 import { grantWorkExperience } from '../progression.js';
 import {
   type PendingStagger,
@@ -172,6 +173,15 @@ function applyEffect(world: World, ctx: SystemContext, settler: Entity, effect: 
       // `built`/`Health` and finishes the build once labor + material are both complete. No goods move here
       // (materials are consumed into the structure at completion).
       advanceConstructionLabor(world, ctx, effect.site);
+      return;
+    case 'sow':
+      // A farmer's sowing swing plants a Crop field at the target node (unless it was taken mid-swing —
+      // the raced-target no-op). Growing it is the CropGrowthSystem's job; reaping rides `harvest`.
+      applySow(world, ctx, effect);
+      return;
+    case 'water':
+      // A farmer's watering (cultivate) marks the field watered — it grows at double pace from now on.
+      applyWater(world, effect.crop);
       return;
     default:
       assertNever(effect); // a new AtomicEffect variant is a compile error until handled above

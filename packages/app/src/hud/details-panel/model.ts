@@ -1,7 +1,9 @@
 import type { ContentSet } from '@vinland/data';
 import { ONE, TICKS_PER_SECOND, type WorldSnapshot, components, systems } from '@vinland/sim';
+import { localizedBuildingName } from '../../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../../catalog/buildings.js';
 import { professionDefForJob } from '../../catalog/professions.js';
+import { DEFAULT_UI_LANG } from '../../content/gui-gfx.js';
 import { characterName } from '../../game/character-names.js';
 import { PRIMARY_TRIBE } from '../../game/rules.js';
 import { entityById, isBuilding, isSettler, num, ownerPlayerOf } from '../../game/snapshot.js';
@@ -120,10 +122,28 @@ export interface WorkerSlotRow {
   readonly capacity: number;
 }
 
-export interface ProductionModel {
-  readonly label: string;
-  readonly pct: number;
-}
+/**
+ * The Produkcja section's content, one of two shapes:
+ *  - `recipe` — a workshop's abstract cycle (its outputs + the running cycle's progress bar);
+ *  - `fields` — a FARM's live field state (the produced good's icon + the sown/growing/ripe counters),
+ *    for a workplace producing a field-farmed good (`farming` on the good, no recipe): there is no
+ *    recipe to show, the "production" IS the fields its farmers work around the building.
+ */
+export type ProductionModel =
+  | { readonly kind: 'recipe'; readonly label: string; readonly pct: number }
+  | {
+      readonly kind: 'fields';
+      /** The farmed good's STRING id — the icon key (like {@link StockRow.goodId}). */
+      readonly goodId?: string;
+      /** The farmed good's display name. */
+      readonly label: string;
+      /** All standing fields of this farm (growing + ripe). */
+      readonly sown: number;
+      /** Fields still growing (below their top stage). */
+      readonly growing: number;
+      /** Ripe fields awaiting the scythe. */
+      readonly ripe: number;
+    };
 
 export interface BuildingPanelModel {
   readonly kind: 'building';
@@ -242,7 +262,11 @@ function buildingDef(ctx: UnitPanelModelContext, typeId: number | undefined): Bu
 
 function buildingTitle(ctx: UnitPanelModelContext, typeId: number | undefined): string {
   if (typeId === undefined) return 'Budynek';
-  return vikingBuildingByTypeId(typeId)?.label ?? buildingDef(ctx, typeId)?.id ?? `typ ${typeId}`;
+  const catalog = vikingBuildingByTypeId(typeId);
+  // The panel title reads the SAME localized name the build menu shows (catalog/building-i18n.ts —
+  // "Farma", "Chata"), falling back to the English catalog label for a building not yet localized.
+  if (catalog !== undefined) return localizedBuildingName(catalog.id, catalog.label, DEFAULT_UI_LANG);
+  return buildingDef(ctx, typeId)?.id ?? `typ ${typeId}`;
 }
 
 function goodDef(ctx: UnitPanelModelContext, goodType: number): GoodDef | undefined {
@@ -491,17 +515,52 @@ function workerSlotsFor(
   }));
 }
 
+/** Count a FARM's fields in the snapshot: every `Crop` whose `farm` is this building, split into still
+ *  growing vs ripe (`stage >= stages`). One entity pass, shared shape with the other snapshot scans. */
+function fieldCounts(snapshot: WorldSnapshot, buildingId: number): { growing: number; ripe: number } {
+  let growing = 0;
+  let ripe = 0;
+  for (const e of snapshot.entities) {
+    const crop = e.components.Crop as { farm?: unknown; stage?: unknown; stages?: unknown } | undefined;
+    if (crop === undefined || num(crop.farm) !== buildingId) continue;
+    const stage = num(crop.stage) ?? 0;
+    const stages = num(crop.stages) ?? Number.POSITIVE_INFINITY;
+    if (stage >= stages) ripe++;
+    else growing++;
+  }
+  return { growing, ripe };
+}
+
 function productionModel(
   ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
   def: BuildingDef | undefined,
   ent: NonNullable<ReturnType<typeof entityById>>,
 ): ProductionModel | null {
-  const production = ent.components.Production as { elapsed?: unknown; duration?: unknown } | undefined;
+  // A FARM (produces a field-farmed good, no recipe — the same test the sim's farmWorkGood applies):
+  // production is its live field state, not an abstract cycle.
   const recipe = def?.recipe;
+  const fieldGood =
+    recipe === undefined
+      ? (def?.produces ?? []).map((g) => goodDef(ctx, g)).find((g) => g?.farming !== undefined)
+      : undefined;
+  if (fieldGood !== undefined) {
+    const { growing, ripe } = fieldCounts(snapshot, ent.id);
+    return {
+      kind: 'fields',
+      label: fieldGood.name ?? fieldGood.id,
+      sown: growing + ripe,
+      growing,
+      ripe,
+      ...(fieldGood.id !== undefined ? { goodId: fieldGood.id } : {}),
+    };
+  }
+  const production = ent.components.Production as { elapsed?: unknown; duration?: unknown } | undefined;
   const outputs = recipe?.outputs ?? def?.produces?.map((goodType) => ({ goodType, amount: 1 })) ?? [];
   if (production === undefined && recipe === undefined && outputs.length === 0) return null;
   const out = outputs.map((o) => `${goodLabel(ctx, o.goodType)} x${o.amount}`).join(', ');
   return {
+    kind: 'recipe',
     label: out.length > 0 ? out : 'gotowe do pracy',
     pct: pctRatio(num(production?.elapsed), num(production?.duration)),
   };
@@ -570,7 +629,7 @@ export function buildUnitPanelModel(
       // Pinned approximation until a defence-mode component exists; the original state/toggle strings
       // live at `housewindow` 140–143 ("Rozpocznij/Zatrzymaj Tryb Obrony", "Obrona rozpoczęta/zakończona.").
       defenseLabel: 'Obrona zatrzymana',
-      production: productionModel(ctx, def, ent),
+      production: productionModel(ctx, snapshot, def, ent),
     };
   }
 

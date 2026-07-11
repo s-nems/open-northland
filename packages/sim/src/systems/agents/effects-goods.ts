@@ -1,6 +1,7 @@
 import {
   Building,
   Carrying,
+  Crop,
   DeliveryFlag,
   Felling,
   GroundDrop,
@@ -34,9 +35,14 @@ import { isYardHeap, lowestStockedGood, stockCapacity } from '../stores.js';
 const HARVEST_YIELD = 1;
 
 /**
- * Resolve one completed harvest swing, in one of three shapes decided by the node's own marker
+ * Resolve one completed harvest swing, in one of four shapes decided by the node's own marker
  * components (never a hardcoded goodType — the lifecycle is content-declared and stamped at spawn):
  *
+ *  - **Sown field** (wheat, {@link Crop} present): the swing is a REAP — a RIPE field (its `remaining`
+ *    was set to its yield by the CropGrowthSystem) drops that whole yield at its node as a ground sheaf
+ *    ({@link GroundDrop}, the good's `landscapeToPickup` look — the cut wheat lying on the field) and
+ *    the field is removed, freeing the tile to sow again; an unripe/raced field (`remaining <= 0`)
+ *    yields nothing (the scythe cut stubble). Checked FIRST — a field is neither felled nor mined.
  *  - **Fellable node** (a tree, {@link Felling} present): the swing is a CHOP — it drives the node one
  *    step toward falling and grants NOTHING onto the settler's back. The whole yield lands at once as a
  *    ground trunk when the node comes down ({@link fellNode}, on the chop that zeroes `chopsLeft`), for
@@ -62,6 +68,10 @@ export function harvestFromNode(
 ): void {
   const res = world.tryGet(node, Resource);
   if (res === undefined) return; // node already felled/gone — the swing struck nothing (conserved)
+  if (world.has(node, Crop)) {
+    reapField(world, node, res);
+    return;
+  }
   const felling = world.tryGet(node, Felling);
   if (felling !== undefined) {
     felling.chopsLeft -= 1;
@@ -91,6 +101,25 @@ export function harvestFromNode(
     const pos = world.get(node, Position);
     ctx.events.emit({ kind: 'resourceMined', node, goodType: res.goodType, at: eventAt(pos.x, pos.y) });
   }
+}
+
+/**
+ * Reap a RIPE {@link Crop} field: drop its whole yield (`Resource.remaining`, set by the
+ * CropGrowthSystem at ripeness) at its node as a ground sheaf pile — the SAME {@link GroundDrop} shape
+ * a felled trunk takes, so the farmer's pickup + the porter/delivery machinery carry it off unchanged
+ * (it draws the good's `landscapeToPickup` "cut wheat" look) — and remove the field, freeing the tile
+ * to sow again. An UNRIPE field (`remaining <= 0` — the growth system hasn't ripened it, or a competing
+ * farmer reaped it mid-swing) yields nothing and stays standing: the scythe cut stubble, goods
+ * conserved. No owner stamp (a farm's fields are shared by all its farmers) and no stump — the field
+ * clears to bare ground, faithful to the original's wheat cycle (`wheat (growing)` → `wheat
+ * (harvested)` sheaf → carried to the farm). A field never stamps a {@link ResourceFootprint} (wheat is
+ * walkable in the data), so there is no collision overlay to release. Pure over entity state; no RNG.
+ */
+function reapField(world: World, node: Entity, res: { goodType: number; remaining: number }): void {
+  if (res.remaining <= 0) return; // unripe / raced — the swing cut stubble (nothing conjured)
+  const { x, y } = world.get(node, Position);
+  dropGroundPile(world, x, y, res.goodType, res.remaining);
+  world.destroy(node);
 }
 
 /**

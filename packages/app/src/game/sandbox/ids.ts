@@ -37,6 +37,8 @@ export const GOOD_MUSHROOM = 8;
 // `EXTENDED_GOODS`) declares them at. So an EQUIPPED good is the same good as the one dropped on the ground
 // or stored in a warehouse: one id, one `ls_goods` icon, one name. The demo equipment scene stamps these;
 // EQUIP_GOODS below adds only the equip CLASSIFICATION (slot + wear), merged onto the catalog by good id.
+/** Wheat — the field-farmed grain (`goodtypes.ini` type 4, at the +100 catalog offset). */
+export const GOOD_WHEAT = 104;
 export const GOOD_SHOES = 130;
 export const GOOD_TOOL_IRON = 132;
 export const GOOD_ARMOR_CHAIN = 135;
@@ -159,6 +161,14 @@ export const EXTRACTED_GATHERER_TRADES: ReadonlySet<number> = new Set([8, 15, 22
 export function rebaseSlotJob(jobType: number): number {
   return jobType === JOB_CARRIER ? JOB_CARRIER : WORKER_SLOT_JOB_BASE + jobType;
 }
+
+/** The FARMER worker-slot job (`jobtypes.ini` 18, rebased like every extracted slot trade) — the one
+ *  slot job with real behaviour: it runs the field loop (sow/water/reap wheat around its farm), so the
+ *  sandbox content defines it explicitly with the farmer atomics instead of the generic backfill. */
+export const JOB_FARMER_SLOT = WORKER_SLOT_JOB_BASE + 18;
+
+/** The grain farm (`houses.ini` logictype 12 — "work farm 00"). */
+export const BUILDING_FARM = 12;
 
 // The builder trade — the REAL viking `jobtypes.ini` id 7 (below the soldier band, so the job→body map
 // draws a civilian body). Permitted to run the build-house atomic; the planner's builder drive puts a

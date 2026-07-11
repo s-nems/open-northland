@@ -4,6 +4,7 @@ import { collisionScene } from './collision.js';
 import { combatScene } from './combat.js';
 import { constructionScene } from './construction.js';
 import { equipmentScene } from './equipment.js';
+import { farmScene } from './farm.js';
 import { goodsCatalogScene } from './goods-catalog.js';
 import { sandboxScene } from './sandbox.js';
 import type { SceneDefinition } from './types.js';
@@ -24,6 +25,7 @@ export const SCENES: readonly SceneDefinition[] = [
   goodsCatalogScene,
   equipmentScene,
   constructionScene,
+  farmScene,
   buildingGeometryScene,
 ];
 

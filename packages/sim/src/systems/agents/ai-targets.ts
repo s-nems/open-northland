@@ -1,5 +1,6 @@
 import {
   Building,
+  Crop,
   GroundDrop,
   HarvestedBy,
   JobAssignment,
@@ -73,6 +74,12 @@ export interface TargetCandidates {
    */
   readonly groundDrops: readonly Entity[];
   /**
+   * Sown fields — entities with {@link Crop} + {@link Position} (each also carries a {@link Resource}).
+   * The **tiny subset** the farmer drive scans for its reap/water picks and per-farm field count, so a
+   * world with no farms costs O(0) — the same dormancy shape as {@link groundDrops}.
+   */
+  readonly crops: readonly Entity[];
+  /**
    * `goodType → its harvest atomic id` (the good's `atomicForHarvesting`), built once per tick from
    * content — a lookup index so the collect scan resolves a dropped good's harvest atomic without a
    * `content.goods.find` per pile per settler (the content-index anti-pattern, packages/sim/AGENTS.md).
@@ -102,6 +109,7 @@ export function collectTargets(world: World, ctx: SystemContext): TargetCandidat
     buildings: canonicalById(world.query(Building, Position)),
     constructionSites: canonicalById(world.query(UnderConstruction, Building, Position)),
     groundDrops: canonicalById(world.query(GroundDrop, Stockpile, Position)),
+    crops: canonicalById(world.query(Crop, Position)),
     harvestAtomicByGood,
   };
 }

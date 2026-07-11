@@ -46,6 +46,17 @@ export function testContent(): ContentSet {
       // Mushroom is the trivial DIRECT pickup (atomic 32): its harvest IS its pickup (no distinct ore
       // stage, no `depositSize`), so a bare node yields one unit onto the back and is then removed.
       { typeId: 5, id: 'mushroom', weight: 1, atomics: { harvest: 32 }, gathering: { bioLandscape: true } },
+      // Wheat is the FIELD-FARMED good (the farm's sow→water→grow→reap loop): the three atomics are the
+      // original's own ids (`goodtypes.ini` wheat: plant 34 / cultivate 35 / harvest 29) and `stages` 5
+      // is the wheat(growing) landscape's `maximumValency`; the timings/areas are small synthetic values
+      // so the loop closes in a short test run (the observed calibration lives in the app content).
+      {
+        typeId: 6,
+        id: 'wheat',
+        weight: 1,
+        atomics: { harvest: 29, cultivate: 35, plant: 34 },
+        farming: { stages: 5, ticksPerStage: 10, yieldPerField: 1, fieldRadius: 8, maxFields: 4 },
+      },
     ],
     jobs: [
       { typeId: 0, id: 'idle' },
@@ -56,6 +67,9 @@ export function testContent(): ContentSet {
       { typeId: 5, id: 'miner', allowedAtomics: [25] },
       // The hunter (job 15 — `JOB_TYPE_HUMAN_HUNTER`) — the trade that strikes `catchable` prey.
       { typeId: 15, id: 'hunter' },
+      // The farmer (the original's job 18) is permitted wheat's plant/cultivate/harvest atomics — the
+      // data-driven gate the field-farmer drive (planFarmer) keys on.
+      { typeId: 18, id: 'farmer', allowedAtomics: [29, 34, 35] },
       { typeId: 36, id: 'carrier' },
     ],
     buildings: [
@@ -97,6 +111,18 @@ export function testContent(): ContentSet {
         typeId: 4,
         id: 'smithy',
         kind: 'workplace',
+      },
+      {
+        // The grain FARM (the original's logictype 12 shape): 4 farmer slots + a wheat-only store
+        // (`logicstock 4 25 0` — the single-good, capacity-25 slot) and `produces` wheat with NO recipe
+        // — the field loop, not the abstract in-house cycle, makes the wheat. What the farmer drive's
+        // `farmWorkGood` keys on: a workplace producing a `farming` good.
+        typeId: 5,
+        id: 'farm',
+        kind: 'workplace',
+        workers: [{ jobType: 18, count: 4 }],
+        stock: [{ goodType: 6, capacity: 25, initial: 0 }],
+        produces: [6],
       },
     ],
     landscape: [
@@ -215,6 +241,11 @@ export function testContent(): ContentSet {
           // original's `setatomic 15 81 "viking_hunter_attack"`. A hunter's strike on prey reuses the
           // combat attack path; the CombatSystem resolves its swing duration through this binding.
           { jobType: 15, atomicId: 81, animation: 'viking_hunter_attack' },
+          // The FARMER (job 18) binds its three field atomics (the original's `setatomic 18 29/34/35`)
+          // so the sow/water/reap durations resolve through the animation lengths below.
+          { jobType: 18, atomicId: 29, animation: 'viking_reap' },
+          { jobType: 18, atomicId: 34, animation: 'viking_sow' },
+          { jobType: 18, atomicId: 35, animation: 'viking_water' },
         ],
         // Tech-graph edges. (1) the carpenter (job 2) unlocks the smithy (house 4): the placement gate
         // (buildingEnabled) reads this — the smithy can only be placed once a carpenter settler exists.
@@ -353,6 +384,9 @@ export function testContent(): ContentSet {
     atomicAnimations: [
       { id: 'viking_chop', name: 'viking_chop', length: 3 },
       { id: 'viking_mine', name: 'viking_mine', length: 3 },
+      { id: 'viking_reap', name: 'viking_reap', length: 3 },
+      { id: 'viking_sow', name: 'viking_sow', length: 3 },
+      { id: 'viking_water', name: 'viking_water', length: 3 },
       { id: 'viking_eat', name: 'viking_eat', length: 5 },
       { id: 'viking_sleep', name: 'viking_sleep', length: 6 },
       { id: 'viking_pray', name: 'viking_pray', length: 7 },

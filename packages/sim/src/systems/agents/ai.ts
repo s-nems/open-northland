@@ -26,6 +26,7 @@ import {
   planPorter,
   planProducer,
 } from './drives-economy.js';
+import { emptySowClaims, planFarmer } from './drives-farming.js';
 import { planNeeds } from './drives-needs.js';
 import { navigationPlanner } from './navigation.js';
 
@@ -59,8 +60,8 @@ export const aiSystem: System = (world, ctx) => {
  * ladder, in this fixed priority order (each drive returns `true` when it takes the settler for
  * this tick):
  *
- *   needs (eat > sleep > pray) → combat/hold gates → deliver a carried load → bound-producer loop →
- *   gather (chop/collect) → porter ferrying → carrier fallback → idle de-stack.
+ *   needs (eat > sleep > pray) → combat/hold gates → deliver a carried load → bound-farmer field loop →
+ *   bound-producer loop → gather (chop/collect) → porter ferrying → carrier fallback → idle de-stack.
  *
  * The ORDER is part of the design (and of the goldens): needs sit ABOVE the combat/hold gates so a
  * starving combatant still feeds (a soft override), and the economy rungs go most-specific-first so
@@ -93,6 +94,9 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     (e) => !isTravelling(world, e),
   );
   const spacing: SpacingState = { occupancy: new NodeBuckets(world, restingOwned), claimed: new Set() };
+  // Per-tick sow claims: farmers planned earlier this tick reserve their sow node + count toward their
+  // farm's max-fields, so two farmers never pick the same node in one pass (see drives-farming.ts).
+  const sowClaims = emptySowClaims();
 
   for (const e of world.query(Settler, Position)) {
     // Busy: an atomic is running, or the settler is en route to a target. Leave it to play out.
@@ -149,7 +153,13 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
 
     // Empty-handed from here.
 
-    // 2. PRODUCER — a worker bound to a recipe workshop runs its own supply→produce→deliver loop.
+    // 2. FARMER — a worker bound to a FARM (a workplace producing a field-farmed good) runs the field
+    // loop: reap ripe > carry sheaves home > sow > water > wait at the farm. Sits ABOVE the producer
+    // rung so a farm that also carries an abstract recipe (real extracted content synthesizes one from
+    // `logicproduction`) farms its fields instead of standing at the station minting the good.
+    if (planFarmer(world, ctx, terrain, e, worker, here, targets, sowClaims)) continue;
+
+    // 2a. PRODUCER — a worker bound to a recipe workshop runs its own supply→produce→deliver loop.
     const workplace = boundWorkplaceTarget(world, ctx, e, worker.jobType, worker.tribe);
     if (workplace !== null) {
       planProducer(world, ctx, terrain, e, worker, here, workplace, targets.stockpiles);
