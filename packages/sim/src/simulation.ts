@@ -51,6 +51,8 @@ export class Simulation {
    */
   readonly commands = new CommandQueue();
   private currentTick = 0;
+  /** The last {@link snapshot} result, reusable while the tick and world are unchanged (see snapshot). */
+  private snapshotMemo: { readonly tick: number; readonly snap: WorldSnapshot } | null = null;
 
   constructor(opts: SimOptions) {
     this.rng = new Rng(opts.seed);
@@ -95,9 +97,22 @@ export class Simulation {
    * instead of the live component stores, so they never observe a half-applied tick. Plain data (no
    * class instances / live Maps), so it is also transferable to a render Web Worker for free. Pure:
    * a snapshot is a function of state and is never read back into sim logic.
+   *
+   * Memoized per tick: the app's frame loop (and its pointer handlers) snapshot every RAF while the
+   * fixed timestep may not have stepped — re-cloning an unchanged world each frame was a large share of
+   * a real map's frame cost. The memo is reused while the tick is unchanged AND the World's
+   * touched-entity log is empty (any `add`/`remove`/`destroy`/`touch` — e.g. a pre-tick-0 fixture
+   * spawn — invalidates it). A DIRECT in-place store write without `World.touch` between same-tick
+   * snapshots is the one blind spot; sim systems only mutate inside `step()`, which advances the tick.
    */
   snapshot(): WorldSnapshot {
-    return takeSnapshot(this.world, this.currentTick, this.events.current());
+    const memo = this.snapshotMemo;
+    if (memo !== null && memo.tick === this.currentTick && !this.world.hasTouchedEntities) {
+      return memo.snap;
+    }
+    const snap = takeSnapshot(this.world, this.currentTick, this.events.current());
+    this.snapshotMemo = { tick: this.currentTick, snap };
+    return snap;
   }
 
   /**
