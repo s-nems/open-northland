@@ -18,6 +18,7 @@ import { ONE, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
+import { syncWorkFlagToJob } from '../economy/flags.js';
 import { animalHitpoints, herdParams, locomotionOf } from '../readviews/index.js';
 import { COMPASS_DIRECTIONS } from '../spatial.js';
 import { stampDefaultStance } from './orders.js';
@@ -137,7 +138,14 @@ export function spawnSettler(
   command: Extract<Command, { kind: 'spawnSettler' }>,
 ): void {
   const e = createSettler(world, ctx.content, command);
-  if (e !== null) ctx.events.emit({ kind: 'settlerBorn', entity: e });
+  if (e === null) return;
+  // A gatherer is never "free": bind it to a work flag planted at its feet the moment it is born (the
+  // spawn-time twin of the profession-change auto-plant, `syncWorkFlagToJob`), so it only ever searches
+  // its flag's radius, not the whole map. A non-gathering trade gets no flag. This is what makes an
+  // imported map's / admin-spawned gatherer flag-bound like a sandbox one — before it, a command-spawned
+  // gatherer was unbound and roamed the entire map for the nearest resource.
+  syncWorkFlagToJob(world, ctx, e, command.jobType);
+  ctx.events.emit({ kind: 'settlerBorn', entity: e });
 }
 
 /** One command equipment slot → the component's {@link EquipmentSlot} (or null for an empty slot). The

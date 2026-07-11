@@ -130,23 +130,25 @@ describe('runSlice on a loaded map', () => {
   });
 
   it('places the slice entities on the first walkable cells of the grid, not the strip', () => {
-    const { Position, Building, Settler, Resource } = components;
+    const { Position, Building, Settler, Resource, DeliveryFlag } = components;
     // ticks=1 so the placeBuilding/spawnSettler commands (applied on tick 1) have run — the two wood
-    // nodes are created directly, but the four command entities only exist after the first step.
+    // nodes are created directly, but the command entities only exist after the first step.
     const sim = runSlice(7, 1, gridMap());
 
-    // Six entities placed: HQ + sawmill (Building), woodcutter + carrier (Settler), two wood nodes
-    // (Resource). On a 4×3 node grid whose every node is walkable, the first six nodes are
-    // (0,0)..(1,1) — so at least one entity must sit below the synthetic strip's single row-0 node
+    // Seven positioned entities: HQ + sawmill (Building), woodcutter + carrier (Settler), two wood nodes
+    // (Resource), and the woodcutter's WORK FLAG (a Position + DeliveryFlag, auto-planted at its feet on
+    // spawn — a gatherer is never free). On a 4×3 node grid whose every node is walkable, the first nodes
+    // are (0,0)..(1,1) — so at least one entity must sit below the synthetic strip's single row-0 node
     // line (node row 1 = position y 0.5, so a strictly positive fixed-point y).
     const positioned = [...sim.world.query(Position)].map((e) => sim.world.get(e, Position));
-    expect(positioned).toHaveLength(6);
+    expect(positioned).toHaveLength(7);
     const onRealRows = positioned.some((p) => p.y > 0);
     expect(onRealRows).toBe(true);
-    // Each kind is present.
+    // Each kind is present, including the gatherer's auto-planted flag.
     expect([...sim.world.query(Building)]).toHaveLength(2);
     expect([...sim.world.query(Settler)]).toHaveLength(2);
     expect([...sim.world.query(Resource)]).toHaveLength(2);
+    expect([...sim.world.query(DeliveryFlag)]).toHaveLength(1);
   });
 
   it('is deterministic over the loaded map (same seed+map ⇒ same hash)', () => {
