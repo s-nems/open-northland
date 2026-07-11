@@ -85,6 +85,8 @@ export async function renderSceneMode(
     sim,
     cameraCtl,
     terrainGrid,
+    // Minimap ground colours from the real terrain set's per-type debug colours (absent → flat tints).
+    ...(terrain !== undefined ? { terrainColour: (t: number) => terrain.cellFor(t)?.fallbackColour } : {}),
     mapSize: { width: scene.terrain.width, height: scene.terrain.height },
     onFrame: (snap) => overlay.update(snap.tick),
   });

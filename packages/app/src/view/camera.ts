@@ -42,7 +42,22 @@ export function cameraCenteredOnTile(
   height: number,
 ): Camera {
   const s = tileToScreen(tileX, tileY);
-  return { offsetX: width / 2 - s.x * zoom, offsetY: height / 2 - s.y * zoom, scale: zoom };
+  return cameraCenteredOnWorld(s.x, s.y, zoom, width, height);
+}
+
+/**
+ * The camera that puts WORLD point `(worldX, worldY)` (projected px, pre-camera) at the viewport centre
+ * at `zoom` — {@link cameraCenteredOnTile} without the tile→world projection, for callers that already
+ * hold a world point (the minimap's click-to-jump). Pure.
+ */
+export function cameraCenteredOnWorld(
+  worldX: number,
+  worldY: number,
+  zoom: number,
+  width: number,
+  height: number,
+): Camera {
+  return { offsetX: width / 2 - worldX * zoom, offsetY: height / 2 - worldY * zoom, scale: zoom };
 }
 
 /** Mean (x,y) of the draw items whose kind passes `keep`, or null when none match. */
@@ -111,6 +126,11 @@ export interface CameraController {
   camera(): Camera;
   /** Apply held-arrow-key panning for a wall-clock delta in ms — call once per frame. */
   update(dtMs: number): void;
+  /**
+   * Replace the current frame outright (the minimap's click-to-jump). The next `camera()` read returns
+   * `next` verbatim; an in-flight middle-drag simply continues panning from the new frame.
+   */
+  jumpTo(next: Camera): void;
   /**
    * Install a predicate that claims a client point for the HUD; while it returns true for the cursor, the
    * wheel does NOT zoom (an open window scrolls instead). Pass `null` to clear. The game view wires the
@@ -223,6 +243,11 @@ export function createCameraController(
 
   return {
     camera: () => cam,
+    jumpTo: (next) => {
+      cam = next;
+      // A drag in flight keeps panning FROM the new frame: its deltas apply per-move (lastX/lastY track
+      // the cursor, not the camera), so no drag state needs resetting here.
+    },
     setPointerGuard: (guard) => {
       pointerGuard = guard;
     },

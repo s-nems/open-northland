@@ -56,6 +56,15 @@ const TILE_COLOURS: readonly number[] = [
 const DEFAULT_TILE_COLOUR = 0x4a7c3a;
 
 /**
+ * The placeholder flat tint for a landscape typeId (`0xRRGGBB`) — the same table the flat-tint ground
+ * path batches by, exported so other typeId→colour consumers (the app's minimap raster) fall back to
+ * the exact colours the placeholder ground draws instead of re-inventing a palette.
+ */
+export function flatTileColour(typeId: number): number {
+  return TILE_COLOURS[typeId % TILE_COLOURS.length] ?? DEFAULT_TILE_COLOUR;
+}
+
+/**
  * Terrain is meshed in square blocks of this many tiles a side, and each frame only the blocks whose
  * world-space box meets the viewport are drawn. 32 keeps the visible-block count (≈ draw calls) low
  * while still culling tightly at the screen edges. Exported because the decor/tall map-object blocks
@@ -439,7 +448,7 @@ export class TerrainLayer {
       for (let row = r0; row <= r1; row++) {
         for (let col = c0; col <= c1; col++) {
           const typeId = terrain.typeIds[row * terrain.width + col] ?? 0;
-          const baseColour = TILE_COLOURS[typeId % TILE_COLOURS.length] ?? DEFAULT_TILE_COLOUR;
+          const baseColour = flatTileColour(typeId);
           const colour = shaded
             ? scaleColour(
                 baseColour,
