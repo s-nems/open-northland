@@ -79,8 +79,9 @@ export interface PanelLayers {
 export interface Chrome {
   /** Draw a line of text with its top-left at `(x, y)`. */
   textAt(text: string, x: number, y: number, color: FontColorName, variant?: FontVariant): void;
-  /** Center a line of text in `r` (both axes). */
-  textCentered(text: string, r: Rect, color: FontColorName, variant?: FontVariant): void;
+  /** Center a line of text in `r` (both axes). `maxWidth` (in `r`'s px) shrinks an over-long line to fit
+   *  the box instead of overflowing it — the seam for long personalized names in the section headline. */
+  textCentered(text: string, r: Rect, color: FontColorName, variant?: FontVariant, maxWidth?: number): void;
   /** Left-anchor a line of text at `x`, vertically centred on `centerY` — a left-aligned value that must
    *  still sit on a field's centre line (the stock amount in its plate). */
   textLeftMiddle(text: string, x: number, centerY: number, color: FontColorName, variant?: FontVariant): void;
@@ -178,9 +179,18 @@ export function createChrome(
     t.position.set(Math.round(x), Math.round(y - CAP_TOP_RATIO * FONT_PX[variant] * scale));
   };
 
-  const textCentered = (text: string, r: Rect, color: FontColorName, variant: FontVariant = 'body'): void => {
+  const textCentered = (
+    text: string,
+    r: Rect,
+    color: FontColorName,
+    variant: FontVariant = 'body',
+    maxWidth?: number,
+  ): void => {
     const t = makeText(text, color, variant);
     t.anchor.set(0.5, 0.5);
+    // Shrink a line that would overflow (a long patronymic name in the headline). Scaling the whole node
+    // around its centre anchor keeps it centred; short lines are left at their native size.
+    if (maxWidth !== undefined && t.width > maxWidth) t.scale.set(maxWidth / t.width);
     t.position.set(Math.round(r.x + r.w / 2), Math.round(r.y + r.h / 2 + CENTER_BIAS * scale));
   };
 
@@ -395,7 +405,8 @@ export function createChrome(
     // Dark edging under the strip separates it from the wood body (the original's outlined title bar).
     g.rect(strip.x, strip.y, strip.w, strip.h).stroke({ color: INNER_BOX_DARK, width: inset });
     // Light (gold-cream) centered title-size text on the rust headline strip — the original's title look.
-    textCentered(title, strip, 'white', 'title');
+    // Fit to the strip so a long personalized name (first + patronymic) shrinks rather than overflowing.
+    textCentered(title, strip, 'white', 'title', strip.w - 2 * inset);
   };
 
   const selectedUnderline = (r: Rect): void => {

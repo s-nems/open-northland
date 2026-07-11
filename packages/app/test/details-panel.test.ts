@@ -209,6 +209,10 @@ describe('selection details panel model', () => {
     if (civ === undefined) throw new Error('equipment scene did not place the equipped civilian');
     const civModel = buildUnitPanelModel(snapshot, new Set([civ.id]), ctx);
     if (civModel.kind !== 'settler') throw new Error('expected a settler model');
+    // The panel headline personalises the character: a first name + patronymic is set, drawn in place of
+    // the generic "Ogólne" title.
+    expect(civModel.name).toContain(' ');
+    expect(civModel.name.length).toBeGreaterThan(0);
     expect(civModel.equipmentRows.map((r) => r.titleId)).toEqual([
       HUMANWINDOW.boots,
       HUMANWINDOW.tools,
