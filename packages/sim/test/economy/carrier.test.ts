@@ -148,6 +148,25 @@ describe('carrier — choosing what to haul', () => {
     aiSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(carrier, MoveGoal)).toBe(false);
   });
+
+  it('never dumps a carried good into a loose ground pile (no full-store shuffle livelock)', () => {
+    // Regression: a delivery SINK must be a TYPED store (Building/Vehicle), never a bare loose pile. A
+    // loose pile has no store type, so its capacity reads as uncapped; if a carrier could "deliver" its
+    // load there when every real store is full (or absent), a porter would immediately re-collect it and
+    // the good would shuttle pile→back→pile forever. With only a loose pile present, there is nowhere
+    // valid to deliver, so the carrier keeps its load and the pile never grows.
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const carrier = carrierAt(sim, 0, 0);
+    sim.world.add(carrier, Carrying, { goodType: PLANK, amount: 1 });
+    const pile = sim.world.create(); // a bare hand-dropped heap of the same good — no Building marker
+    sim.world.add(pile, Position, { x: fx.fromInt(3), y: fx.fromInt(0) });
+    sim.world.add(pile, Stockpile, { amounts: new Map([[PLANK, 3]]) });
+
+    for (let i = 0; i < 60; i++) sim.step();
+
+    expect(sim.world.get(pile, Stockpile).amounts.get(PLANK)).toBe(3); // the pile never grew
+    expect(sim.world.get(carrier, Carrying).amount).toBe(1); // the carrier still holds its load
+  });
 });
 
 describe('carrier — end-to-end haul through the real schedule', () => {

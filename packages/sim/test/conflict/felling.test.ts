@@ -297,12 +297,14 @@ describe('felling — the planner fell-vs-collect split', () => {
 
 describe('felling — end-to-end through the real schedule', () => {
   it('a woodcutter fells a tree and delivers exactly its yield to the store; goods are conserved', () => {
-    // Strip: woodcutter@0, a fellable tree@3, a bare warehouse store@4 (empty).
+    // Strip: woodcutter@0, a fellable tree@3, a warehouse store@4 (a real typed store — a delivery sink
+    // must be a Building/Vehicle, never a bare loose pile).
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(6, 1) });
     makeWoodcutter(sim, 0, 0);
     placeFellableTree(sim, 3, 0);
     const store = sim.world.create();
     sim.world.add(store, Position, { x: fx.fromInt(4), y: fx.fromInt(0) });
+    sim.world.add(store, Building, { buildingType: 7, tribe: VIKING, built: fx.fromInt(1), level: 0 });
     sim.world.add(store, Stockpile, { amounts: new Map<number, number>() });
 
     let maxWood = 0;

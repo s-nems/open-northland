@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  Building,
   Carrying,
   CurrentAtomic,
   GroundDrop,
@@ -234,12 +235,14 @@ describe('mining — the mushroom direct-pickup variant', () => {
 
 describe('mining — end-to-end through the real schedule', () => {
   it('a miner chips a deposit dry, delivers every unit to the store, and the node is gone; goods conserved', () => {
-    // Strip: miner@0, a stone deposit@3, a bare store@4 (empty).
+    // Strip: miner@0, a stone deposit@3, a warehouse store@4 (a real typed store — a delivery sink must
+    // be a Building/Vehicle, never a bare loose pile).
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(6, 1) });
     makeMiner(sim, 0, 0);
     placeDeposit(sim, 3, 0);
     const store = sim.world.create();
     sim.world.add(store, Position, { x: fx.fromInt(4), y: fx.fromInt(0) });
+    sim.world.add(store, Building, { buildingType: 7, tribe: VIKING, built: fx.fromInt(1), level: 0 });
     sim.world.add(store, Stockpile, { amounts: new Map<number, number>() });
 
     let maxStone = 0;
