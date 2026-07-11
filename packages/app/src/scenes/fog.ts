@@ -43,11 +43,11 @@ const HQ = { x: 6, y: 6 } as const;
  *  `full` mode the START cell must regress to grey once the scout is away (nothing else covers it). */
 const SCOUT_START = { x: 20, y: 6 } as const;
 const SCOUT_DEST = { x: 38, y: 6 } as const;
-/** The fog-gate pair: 6 cells (12 nodes) apart — INSIDE the 16-node combat sight radius, OUTSIDE the
- *  civilian 8-node (4-cell) vision — and 20 rows south of the HQ (past its 20-node reach). Without
- *  fog the P0 civilian would flee this hostile; under fog neither side sees the other. */
+/** The fog-gate pair: 7 cells (14 nodes) apart — INSIDE the 16-node combat sight radius, OUTSIDE the
+ *  civilian 12-node (408 px, 6-cell) vision — and 20 rows south of the HQ (past its 20-node reach).
+ *  Without fog the P0 civilian would flee this hostile; under fog neither side sees the other. */
 const CALM_CIVILIAN = { x: 8, y: 26 } as const;
-const FOGGED_ENEMY = { x: 14, y: 26 } as const;
+const FOGGED_ENEMY = { x: 15, y: 26 } as const;
 /** An enemy soldier deep in the unexplored black — must never draw nor dot the minimap. */
 const HIDDEN_SOLDIER = { x: 30, y: 28 } as const;
 /** A far tree cluster in the fog (undrawn until explored) vs the visible base-side trees. */

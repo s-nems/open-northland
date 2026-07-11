@@ -270,9 +270,6 @@ export function collectSpriteScene(
     // Fixed (scaled int) -> float tile coordinate. Render-only; never re-enters the sim.
     const tileX = pos.x / ONE;
     const tileY = pos.y / ONE;
-    // Fog-of-war cull: an entity on ground the viewer does not currently SEE stays pooled (live) but
-    // draws nothing — the same contract as the viewport cull below, decided before the per-kind reads.
-    if (fogVisible !== undefined && !fogVisible(tileX, tileY)) continue;
     const screen = tileToScreen(tileX, tileY);
     // Only settlers animate per-state in this slice; a building/resource is always idle.
     // An indoor settler (kept only for the panel) stands idle — force it, so a lingering path/atomic
@@ -298,6 +295,10 @@ export function collectSpriteScene(
     // Cull to the framed viewport (when culling). Uses the DRAWN anchor; the box is pre-inflated by the
     // renderer to cover a tall sprite's extent, so a building straddling the edge still draws.
     if (viewport !== undefined && !isVisible(viewport, drawX, drawY)) continue;
+    // Fog-of-war cull: an entity on ground the viewer does not currently SEE stays pooled (live) but
+    // draws nothing — the same contract as the viewport cull. AFTER the viewport cull on purpose: the
+    // fog probe costs a mask lookup per call, so it runs for the few on-screen entities, not the map.
+    if (fogVisible !== undefined && !fogVisible(tileX, tileY)) continue;
     // Terrain lift at the feet (bilinear over the elevation lane) — the DRAW offset, NOT the depth key.
     // The anchor/`depth` below stay PRE-LIFT so occlusion sorts by map row, not by lifted screen y.
     // A flat map (`maxLift === 0`) skips the sampler entirely — the elevation-free path stays free.
