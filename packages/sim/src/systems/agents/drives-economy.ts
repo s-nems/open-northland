@@ -27,7 +27,7 @@ import {
   nearestStoreHolding,
   nearestWorkplaceOutput,
 } from './ai-targets.js';
-import { type IdleSpacing, claimWorkCell } from './destack.js';
+import { type SpacingState, claimWorkCell } from './destack.js';
 
 // The ECONOMY drives — the work rungs of the planner ladder, in the ladder's priority order:
 // deliver a carried load, run a bound producer's supply→produce→deliver loop, gather (chop/collect),
@@ -198,7 +198,7 @@ export function planBuilder(
   settler: Worker,
   here: NodeId,
   targets: TargetCandidates,
-  spacing: IdleSpacing,
+  spacing: SpacingState,
 ): boolean {
   if (!jobAtomics(ctx, settler.jobType).has(BUILD_HOUSE_ATOMIC_ID)) return false; // not a builder
   const site = nearestConstructionSite(targets.constructionSites, world, ctx, terrain, here, settler.tribe);

@@ -29,8 +29,11 @@ export const UNIT_SEPARATION_RADIUS: Fixed = fx.div(fx.fromInt(13), fx.fromInt(5
  * The per-tick cap on the SOFT mover-vs-mover push, deliberately below the arrival brake floor
  * (`gait / ARRIVAL_SPEED_DIV`, see `movement.ts`): a walker being brushed by passing traffic still
  * makes net progress every tick, so soft separation can delay an arrival but never prevent one.
- * Tuned to ⅖ of the gait (just under the ½ floor): the first ¼ cut let a charging mass overlap
- * deeply mid-march — a converging army read as one pile of sprites (the feel note that raised it).
+ * (One bounded exception: a from-rest walker's very FIRST acceleration-ramp tick advances only
+ * gait/3 < this cap, so a fully-braked launch can regress ~gait/15 for that single tick — the ramp
+ * outruns the cap from tick two, so the invariant holds in the large.) Tuned to ⅖ of the gait
+ * (just under the ½ floor): the first ¼ cut let a charging mass overlap deeply mid-march — a
+ * converging army read as one pile of sprites (the feel note that raised it).
  */
 export const SEPARATION_PUSH_CAP: Fixed = fx.div(fx.mul(MOVE_SPEED_PER_TICK, fx.fromInt(2)), fx.fromInt(5));
 
@@ -74,7 +77,10 @@ export const OBSTRUCTED_MAX_REROUTES = 4;
  * is going essentially nowhere (a head-on wedge, or the near-static tangential grind against a
  * crowded ring); the legitimate slow cases clear it: the acceleration ramp's slowest (first) tick
  * advances exactly gait/3, the arrival brake's ease-out is floored at gait/2 (`movement.ts`), and
- * sliding AROUND a lone post covers most of a step every tick.
+ * sliding AROUND a lone post covers most of a step every tick. Named approximation: a firm CONVOY
+ * follower simultaneously on its final-approach brake (gait/2) and a full convoy brake (−⅖ gait)
+ * can dip under the floor; if a firm body also stays in its 3×3 block for a whole window, that's
+ * one spurious re-route (path re-planned, goal kept) — rare, bounded, accepted.
  */
 export const OBSTRUCTED_PROGRESS_FLOOR: Fixed = fx.div(MOVE_SPEED_PER_TICK, fx.fromInt(3));
 
@@ -104,9 +110,9 @@ function toGrid(w: WorldPoint): { x: Fixed; y: Fixed } {
  * same-lane pairs ({@link CONVOY_ALIGNMENT_MIN}) column up — the follower brakes in behind the
  * leader — while crossing/head-on pairs split radially, half the overlap each. Only FIRM movers
  * (owned fighters) additionally resolve fully against posts (placed back on the post's radius), so
- * a post is impenetrable but never jitters and a civilian never wedges on a standing body. A displaced position must land on walkable, unblocked ground or the offending axis (then
- * the whole displacement) is discarded, so collision can never push a body into water or through a
- * wall.
+ * a post is impenetrable but never jitters and a civilian never wedges on a standing body. A
+ * displaced position must land on walkable, unblocked ground or the offending axis (then the whole
+ * displacement) is discarded, so collision can never push a body into water or through a wall.
  *
  * Determinism: movers are processed in ascending entity id; mover-vs-mover pushes read the tick's
  * pre-separation position snapshot (order-independent by construction); mover-vs-post resolutions
@@ -138,10 +144,14 @@ export const separationSystem: System = (world, ctx) => {
   if (movers.length === 0) return; // dormancy: nobody walking → nothing can overlap anything
   movers.sort((a, b) => a - b);
 
-  // Standing colliders — the immovable posts movers resolve against.
+  // Standing colliders — the immovable posts FIRM movers resolve against. Derived only when a firm
+  // mover exists: soft-only traffic (a civilian economy tick) never reads the index (posts are
+  // gathered under `isFirm` below), so it skips the full-settler scan + sort entirely.
   const posts: Entity[] = [];
-  for (const e of world.query(Settler, Position)) {
-    if (hasBodyCollision(world, e) && isStanding(world, e)) posts.push(e);
+  if (firmMovers.size > 0) {
+    for (const e of world.query(Settler, Position)) {
+      if (hasBodyCollision(world, e) && isStanding(world, e)) posts.push(e);
+    }
   }
   const postIndex = new NodeBuckets(world, canonicalById(posts));
   const moverIndex = new NodeBuckets(world, movers);
@@ -255,12 +265,27 @@ export const separationSystem: System = (world, ctx) => {
             fx.mul(fx.sub(otherW.y, startW.y), start.hy),
           );
           // Exactly abreast (or stacked): the higher id yields — the keeper convention, a named
-          // pick that seeds the fore/aft order the geometric test then keeps stable.
+          // pick that seeds the fore/aft order the geometric test then keeps stable. With headings
+          // up to 60° apart both sides can transiently read "follower" and brake — harmless (each
+          // keeps net progress under the cap, and braking diverges them). Known feel gap: a
+          // same-lane follower on a FASTER gait (a fleeing run behind a walk) out-closes the capped
+          // brake and passes through its leader — a brief merge where crossing traffic would have
+          // side-stepped.
           if (ahead > ZERO || (ahead === ZERO && e > n)) {
             pushX = fx.sub(pushX, fx.mul(start.hx, half));
             pushY = fx.sub(pushY, fx.mul(start.hy, half));
+            continue; // braked in line — no radial component on a convoy follower
           }
-          continue; // the leader takes no counter-shove from its own follower
+          // This side reads itself as the LEADER. It skips the counter-shove only if the OTHER
+          // side will brake (the mirrored follower test — same snapshot inputs both iterations
+          // read, so e's prediction equals n's own decision exactly). With headings apart and the
+          // offset near-perpendicular to both, EACH side can read "leader"; such a pair would get
+          // no resolution at all and ride merged, so it falls through to the radial split instead.
+          const otherAhead = fx.add(
+            fx.mul(fx.sub(startW.x, otherW.x), other.hx),
+            fx.mul(fx.sub(startW.y, otherW.y), other.hy),
+          );
+          if (otherAhead > ZERO || (otherAhead === ZERO && n > e)) continue;
         }
       }
       if (dist === ZERO) {
@@ -323,12 +348,12 @@ export const separationSystem: System = (world, ctx) => {
       }
     }
 
-    // GRIND-WINDOW bookkeeping — FIRM movers among FIRM bodies only: a civilian resolves against no
-    // posts and a soft brush never stops it (the push cap guarantees net progress), so it can never
-    // be stuck and must never carry an Obstructed window; likewise a firm mover surrounded only by
-    // soft traffic is merely in a crowd, not against a wall. (The Obstructed component doc:) while
-    // firm bodies are near, measure the
-    // walker's TOTAL movement since the window's anchor. Any tick that reaches the per-tick progress
+    // GRIND-WINDOW bookkeeping (the Obstructed component doc) — FIRM movers among FIRM bodies only:
+    // a civilian resolves against no posts and a soft brush never stops it (the push cap guarantees
+    // net progress), so it can never be stuck and must never carry an Obstructed window; likewise a
+    // firm mover surrounded only by soft traffic is merely in a crowd, not against a wall. While
+    // firm bodies are near, measure the walker's TOTAL movement since the window's anchor. Any tick
+    // that reaches the per-tick progress
     // floor × window length restarts the window — real progress, however indirect (a slide around a
     // lone post, a slow shove past a brush) — while a window that reaches the re-route threshold
     // with the walker still essentially at its anchor drops just its PATH (keeping its goal), so the

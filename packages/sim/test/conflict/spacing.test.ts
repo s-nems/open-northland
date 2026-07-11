@@ -1,6 +1,5 @@
-import { IR_VERSION, parseContentSet } from '@vinland/data';
+import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
-import * as components from '../../src/components/index.js';
 import {
   Building,
   CurrentAtomic,
@@ -22,6 +21,7 @@ import {
   positionOfNode,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
+import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
  * Tests for the IDLE-SPACING (de-stack) drive: owned settlers don't HARD-collide (a walker passes freely
@@ -37,15 +37,7 @@ const VIKING = 1;
 const WOODCUTTER = 1;
 const HUMAN_PLAYER = 0;
 
-// Clear EVERY component store — the module-level singletons are shared across Simulation instances,
-// and a hand-picked subset misses a component a future system adds (the AGENTS.md trap).
-beforeEach(() => {
-  for (const c of Object.values(components)) {
-    if (typeof c === 'object' && c !== null && 'store' in c && c.store instanceof Map) {
-      c.store.clear();
-    }
-  }
-});
+beforeEach(clearComponentStores);
 
 function grassMap(width: number, height: number): TerrainMap {
   // Cell-dims signature; the sim's graph is the upsampled 2W×2H half-cell lattice.
@@ -56,14 +48,13 @@ function sim(): Simulation {
   return new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 6) });
 }
 
-/** An idle OWNED viking woodcutter at half-cell NODE (x,y) (no job binding, so with no resources
- *  nearby it has nothing to do). */
-function idleWoodcutter(s: Simulation, x: number, y: number, owner: number | null = HUMAN_PLAYER): Entity {
+/** A settler of the given trade at half-cell NODE (x,y) — the one factory both drives' tests share. */
+function settlerAt(s: Simulation, x: number, y: number, jobType: number, owner: number | null): Entity {
   const e = s.world.create();
   s.world.add(e, Position, positionOfNode(x, y));
   s.world.add(e, Settler, {
     tribe: VIKING,
-    jobType: WOODCUTTER,
+    jobType,
     hunger: fx.fromInt(0),
     fatigue: fx.fromInt(0),
     piety: fx.fromInt(0),
@@ -72,6 +63,11 @@ function idleWoodcutter(s: Simulation, x: number, y: number, owner: number | nul
   });
   if (owner !== null) s.world.add(e, Owner, { player: owner });
   return e;
+}
+
+/** An idle OWNED viking woodcutter (no job binding, so with no resources nearby it has nothing to do). */
+function idleWoodcutter(s: Simulation, x: number, y: number, owner: number | null = HUMAN_PLAYER): Entity {
+  return settlerAt(s, x, y, WOODCUTTER, owner);
 }
 
 /** The half-cell node an entity stands on. */
@@ -159,9 +155,11 @@ const HOUSE = 2;
 const BUILDER = 7; // the builder trade (jobtypes.ini type 7); permitted to run the build-house atomic
 const BUILD_HOUSE_ATOMIC = 39; // setatomic 7 39 "..._builder_build_house" (tribetypes.ini)
 
+const WATER = 9; // walkable: false — the across-the-stream yard test's barrier
+
 /** Content with a builder trade and a home whose cost is 2× stone + 1× wood (12 hammer swings), with
  *  a walk-blocking footprint and a named door — the interaction cell every builder converges on. */
-function builderSiteContent(): ReturnType<typeof testContent> {
+function builderSiteContent(): ContentSet {
   return parseContentSet({
     manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
     goods: [
@@ -173,7 +171,10 @@ function builderSiteContent(): ReturnType<typeof testContent> {
       { typeId: 0, id: 'idle' },
       { typeId: BUILDER, id: 'builder', allowedAtomics: [BUILD_HOUSE_ATOMIC] },
     ],
-    landscape: [{ typeId: GRASS, id: 'grass', walkable: true, buildable: true }],
+    landscape: [
+      { typeId: GRASS, id: 'grass', walkable: true, buildable: true },
+      { typeId: WATER, id: 'water', walkable: false, buildable: false },
+    ],
     buildings: [
       {
         typeId: HOUSE,
@@ -214,19 +215,7 @@ function stockedSiteAt(s: Simulation, x: number, y: number): Entity {
 
 /** A builder at half-cell NODE (x,y) — owned by default (the work-slot spread is Owner-gated). */
 function builderAt(s: Simulation, x: number, y: number, owner: number | null = HUMAN_PLAYER): Entity {
-  const e = s.world.create();
-  s.world.add(e, Position, positionOfNode(x, y));
-  s.world.add(e, Settler, {
-    tribe: VIKING,
-    jobType: BUILDER,
-    hunger: fx.fromInt(0),
-    fatigue: fx.fromInt(0),
-    piety: fx.fromInt(0),
-    enjoyment: fx.fromInt(0),
-    experience: new Map(),
-  });
-  if (owner !== null) s.world.add(e, Owner, { player: owner });
-  return e;
+  return settlerAt(s, x, y, BUILDER, owner);
 }
 
 function builderSim(): Simulation {
@@ -261,6 +250,34 @@ describe('builder work slots (claimWorkCell)', () => {
     expect(stackedSwingTicks).toBe(0); // the regression: never two swings on one node
     expect(parallelSwingTicks).toBeGreaterThan(0); // the crew genuinely works in parallel, spread out
     expect(finishedAt).not.toBeNull(); // spreading the crew never stalls the build
+  });
+
+  it('a builder across a stream — in raw radius but unreachable — walks around instead of hammering from afar', () => {
+    // Water cells (7, 1..4) → node columns 14–15, rows 2–9: a stream between the yard and the
+    // builder, with open banks at node rows 0–1 and 10–11. The builder starts at (16,6) — Manhattan
+    // 4 from the door (12,6) but NOT yard-reachable within 4 steps — so a raw-distance stay-put
+    // rule would let it swing across the water forever; the yard-REGION rule must route it around
+    // the stream and only let it hammer from a real yard cell.
+    const ids = new Array<number>(12 * 6).fill(GRASS);
+    for (let cy = 1; cy <= 4; cy++) ids[cy * 12 + 7] = WATER;
+    const s = new Simulation({
+      seed: 1,
+      content: builderSiteContent(),
+      map: halfCellMapFromCells({ width: 12, height: 6, typeIds: ids }),
+    });
+    stockedSiteAt(s, 12, 4); // door at anchor+(0,2) = (12,6), west of the stream
+    const builder = builderAt(s, 16, 6); // east of the stream
+
+    let swungAcrossTheStream = 0;
+    let swungInYard = 0;
+    for (let t = 0; t < 500; t++) {
+      s.step();
+      if (s.world.tryGet(builder, CurrentAtomic)?.atomicId !== BUILD_HOUSE_ATOMIC) continue;
+      if (tileOf(s, builder).x >= 14) swungAcrossTheStream++;
+      else swungInYard++;
+    }
+    expect(swungAcrossTheStream).toBe(0); // never hammers the site from across the water
+    expect(swungInYard).toBeGreaterThan(0); // walked around the stream and worked from the yard
   });
 
   it('keeps UNOWNED builders on the shared interaction cell (the Owner gate — fixtures unchanged)', () => {

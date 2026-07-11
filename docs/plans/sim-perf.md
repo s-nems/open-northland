@@ -13,6 +13,7 @@ this file when all steps land.
 - [ ] 1. Economy nearest-X scans → `NodeBuckets.nearest`
 - [x] 2. Content typeId indexes for hot-loop lookups
 - [ ] 3. Run the sim in a Web Worker
+- [ ] 4. SeparationSystem constant cuts: numeric `NodeBuckets` keys + reused scratch arrays
 
 Progress — Step 2 (2026-07-08, branch refactor/sim-rework): landed as `core/content-index.ts` —
 WeakMap-memoized O(1) Maps over a ContentSet (buildings/goods/jobs/tribes/vehicles/armor/
@@ -55,4 +56,18 @@ Run the deterministic sim step off the render thread. The snapshot is already tr
 rendering responsive during heavy ticks. App-side seam: the fixed-timestep loop posts commands in
 and snapshots out; degrade to the current in-thread loop when workers are unavailable (headless
 tests stay in-thread). Cross-package seam change — run the code-reviewer lens with architecture weight.
+```
+
+## Step 4 — SeparationSystem constant cuts
+
+```text
+Cut the soft-collision tier's constant factors without moving any pick (goldens byte-identical).
+Profiled 2026-07-11 (throwaway SYSTEM_ORDER timer over dist/): 2000 owned civilian walkers in
+dense two-way cross-traffic = 16.3 ms/tick in separationSystem (worst-case stress; realistic
+towns sit far lower — 60 converging fighters = 0.44 ms/tick). Costs are allocation/keying, not
+pair math: (a) NodeBuckets keys every node as a `"x,y"` string — a packed numeric key kills
+9–18 string builds per mover per tick across ALL NodeBuckets consumers (combat, jobs, spacing);
+(b) the per-mover nearMovers/nearPosts arrays and the per-tick before-map objects can be reused
+scratch structures. Both are winner-identical refactors of systems/spatial.ts +
+movement/collision/separation.ts; verify with the same probe before/after and the full suite.
 ```
