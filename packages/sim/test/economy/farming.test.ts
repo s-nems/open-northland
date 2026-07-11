@@ -12,7 +12,6 @@ import {
 } from '../../src/index.js';
 import {
   type SystemContext,
-  WATERED_GROWTH_PER_TICK,
   aiSystem,
   applySow,
   applyWater,
@@ -119,10 +118,10 @@ function fieldAt(
 }
 
 describe('crop growth', () => {
-  it('advances one stage per ticksPerStage ticks and ripens at the top stage', () => {
+  it('a WATERED field advances one stage per ticksPerStage ticks and ripens at the top stage', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 4) });
     const farm = farmAt(sim, 0, 0);
-    const field = fieldAt(sim, farm, 2, 2);
+    const field = fieldAt(sim, farm, 2, 2, { watered: true });
 
     for (let i = 0; i < TICKS_PER_STAGE; i++) cropGrowthSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(field, Crop).stage).toBe(2);
@@ -133,13 +132,17 @@ describe('crop growth', () => {
     expect(sim.world.get(field, Resource).remaining).toBe(1); // ripe — worth its yield to the scythe
   });
 
-  it('grows a watered field at double pace', () => {
+  it('an UNWATERED field stands still — watering is the growth gate', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 4) });
     const farm = farmAt(sim, 0, 0);
-    const field = fieldAt(sim, farm, 2, 2, { watered: true });
+    const field = fieldAt(sim, farm, 2, 2); // sown, never watered
 
-    const ticks = Math.ceil(TICKS_PER_STAGE / WATERED_GROWTH_PER_TICK);
-    for (let i = 0; i < ticks; i++) cropGrowthSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < TICKS_PER_STAGE * STAGES * 2; i++) cropGrowthSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(field, Crop).stage).toBe(1); // bare ground until a farmer waters it
+    expect(sim.world.get(field, Resource).remaining).toBe(0);
+
+    applyWater(sim.world, field); // the can opens the gate
+    for (let i = 0; i < TICKS_PER_STAGE; i++) cropGrowthSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(field, Crop).stage).toBe(2);
   });
 });
@@ -215,23 +218,18 @@ describe('planFarmer — the drive ladder', () => {
     expect(atomic.effect).toEqual({ kind: 'harvest', resource: field, goodType: WHEAT });
   });
 
-  it('waters a growing unwatered field once everything is sown', () => {
+  it('waters a dry field BEFORE sowing another — the can beats the seed bag (the growth gate)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
     const farm = farmAt(sim, 4, 4);
-    // Saturate the farm's field roster so the sow branch is closed and watering is next.
-    const fields = [
-      fieldAt(sim, farm, 4, 4),
-      fieldAt(sim, farm, 3, 4),
-      fieldAt(sim, farm, 5, 4),
-      fieldAt(sim, farm, 4, 3),
-    ];
+    // ONE dry field, plenty of sow capacity left — the drive must still reach for the can first.
+    const field = fieldAt(sim, farm, 4, 4);
     const farmer = farmerAt(sim, 4, 4, farm);
 
     aiSystem(sim.world, ctxOf(sim));
 
     const atomic = sim.world.get(farmer, components.CurrentAtomic);
     expect(atomic.atomicId).toBe(WATER_ATOMIC);
-    expect(atomic.effect).toEqual({ kind: 'water', crop: fields[0] }); // the one underfoot is nearest
+    expect(atomic.effect).toEqual({ kind: 'water', crop: field });
   });
 
   it('picks up a cut sheaf lying by the farm (then the delivery rung routes it home)', () => {

@@ -12,14 +12,13 @@ import type { System, SystemContext } from '../context.js';
 // `landscapetypes.ini` wheat lanes 27/28/29 with `maximumValency 5`); its timings/areas are the content
 // `farming` block's OBSERVED calibration constants (no readable growth timing or field radius exists).
 
-/**
- * How much faster a WATERED field grows — its growth counter advances this many ticks per tick (an
- * unwatered field advances 1). A named approximation: the original's cultivate atomic exists in data
- * (id 35, the watering-can animation) but its effect on growth is engine-side and not decoded, so
- * watering-doubles-growth is our reading that makes the action matter without ever stalling a field
- * (an unwatered field still ripens, just slower — no deadlock when the farmer never gets to it).
- */
-export const WATERED_GROWTH_PER_TICK = 2;
+// WATERING IS THE GROWTH GATE: a sown field does not grow at all until a farmer CULTIVATES it (the
+// original's watering-can atomic, id 35) — then it grows one tick per tick to ripeness. A named,
+// user-directed approximation: the cultivate atomic exists in the readable data but its engine-side
+// effect is not decoded; gating growth on it (rather than merely speeding it up) is what makes the
+// watering step a real part of the loop instead of decoration. An unwatered field simply stands at
+// stage 1 (bare ground) until tended — an untended field never ripens, it doesn't deadlock anything
+// (the farm keeps working its other fields, and any farmer can water it later).
 
 /** A field-farmed good's resolved loop parameters: its content `farming` block + the three atomic ids
  *  the loop's actions run (`atomicForPlanting`/`atomicForCultivating`/`atomicForHarvesting`). */
@@ -120,9 +119,9 @@ export function applySow(
 }
 
 /**
- * Apply a completed `water` (cultivate) swing: mark the field `watered`, doubling its growth pace from
- * now on ({@link WATERED_GROWTH_PER_TICK}). A field already ripe, already watered, or gone (reaped mid-
- * swing) is a no-op — the water hit stubble.
+ * Apply a completed `water` (cultivate) swing: mark the field `watered` — which OPENS its growth (an
+ * unwatered field stands still; see the module note). A field already ripe, already watered, or gone
+ * (reaped mid-swing) is a no-op — the water hit stubble.
  */
 export function applyWater(world: World, crop: Entity): void {
   const c = world.tryGet(crop, Crop);
@@ -131,20 +130,22 @@ export function applyWater(world: World, crop: Entity): void {
 }
 
 /**
- * CropGrowthSystem — advance every growing field's integer growth counter and step its stage; at the
+ * CropGrowthSystem — advance every WATERED field's integer growth counter and step its stage; an
+ * unwatered field stands still (watering is the growth gate — see the module note above). At the
  * final stage the field is RIPE: its {@link Resource.remaining} becomes the sown `yieldUnits`, which is
  * what makes it harvestable (the reap swing drops exactly that as the ground sheaf). Cost is O(fields)
  * per tick — active work, never entities² (golden rule 7); a world with no fields does nothing.
  *
  * Determinism: per-field independent integer mutation (no cross-entity pick), so store-order iteration
  * is fine; the stage step is the exact integer compare `growth >= ticksPerStage` (never an accumulated
- * fixed-point fraction), carrying the watered overshoot remainder so pacing stays exact.
+ * fixed-point fraction).
  */
 export const cropGrowthSystem: System = (world) => {
   for (const e of world.query(Crop)) {
     const crop = world.get(e, Crop);
     if (crop.stage >= crop.stages) continue; // ripe — waiting for the scythe
-    crop.growth += crop.watered ? WATERED_GROWTH_PER_TICK : 1;
+    if (!crop.watered) continue; // untended — bare ground until a farmer waters it
+    crop.growth += 1;
     if (crop.growth < crop.ticksPerStage) continue;
     crop.growth -= crop.ticksPerStage;
     crop.stage += 1;

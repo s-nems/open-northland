@@ -31,6 +31,7 @@ import {
   readResourceLevel,
   readSpriteState,
   readStockpile,
+  readStoreExchangeRef,
   readStumpGood,
 } from './snapshot-readers.js';
 
@@ -179,6 +180,17 @@ export function collectSpriteScene(
       if (p !== null) posByRef.set(entity.id, p);
     }
   }
+  // COMPLETED buildings (built, not a construction site) — the "enterable store" set. A settler whose
+  // running atomic exchanges goods with one of these (a pileup deposit / a pickup lift) is NOT drawn:
+  // the original's carrier walks INTO the house and vanishes for the exchange (observed), so hiding it
+  // for the atomic's duration reads as entering, instead of a deposit pantomimed at the door. A ground
+  // pile / flag / construction site is not enterable — those exchanges keep their animation.
+  const enterableStores = new Set<number>();
+  for (const entity of snapshot.entities) {
+    if ('Building' in entity.components && readBuiltPct(entity.components) === undefined) {
+      enterableStores.add(entity.id);
+    }
+  }
   for (const entity of snapshot.entities) {
     // Drawn by the retained static layer instead (a virgin map resource) — skip before even classifying.
     if (staticRefs?.has(entity.id)) continue;
@@ -187,6 +199,14 @@ export function collectSpriteScene(
     if (kind === null) continue;
     const pos = readPosition(components);
     if (pos === null) continue;
+    // A settler mid-exchange INSIDE a completed building store: live (pooled) but not drawn.
+    if (kind === 'settler') {
+      const store = readStoreExchangeRef(components);
+      if (store !== null && enterableStores.has(store)) {
+        liveRefs.add(entity.id);
+        continue;
+      }
+    }
     // A delivery flag is a `stockpile`-kind marker that must paint just ABOVE a co-located goods heap of
     // the same kind (both resolve to the same feet anchor). Known here so it folds into the depth key.
     const isFlag = 'DeliveryFlag' in components;

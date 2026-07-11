@@ -105,15 +105,17 @@ function boundFarmTarget(
  *  b. **Carry a sheaf home** — pick up a cut-wheat {@link import('../../components/index.js').GroundDrop}
  *     lying within the farm's field radius (the delivery rung then routes the load into the farm's own
  *     store — the farm is the bound storage sink).
- *  c. **Sow** a new field while the farm holds fewer than its `maxFields` — walk to the next free node
+ *  c. **Water** a not-yet-watered field (the cultivate atomic) — watering is the GROWTH GATE (an
+ *     unwatered field stands still), so the can comes before the next seed bag: the farmer plants a
+ *     field, waters it, plants the next — the original's plant→cultivate work rhythm.
+ *  d. **Sow** a new field while the farm holds fewer than its `maxFields` — walk to the next free node
  *     of the jittered field lattice around the farm and run the plant atomic.
- *  d. **Water** a growing, not-yet-watered field (the cultivate atomic — it then grows at double pace).
  *  e. **Wait at the farm** — everything sown, watered and growing: hold at the farm's door.
  *
  * Always returns true once bound to a farm (a farmer is spoken for, like the flag-bound gatherer — it
  * never ferries other trades' goods); returns false only for a settler that isn't a field-farmer here.
- * Sow-before-water is a named approximation (fill the field roster first, then speed it up); the
- * original's engine-side ordering has no oracle.
+ * Water-before-sow follows from the growth gate (a sown-but-dry field produces nothing, so tending
+ * beats expanding); the original's engine-side ordering has no oracle.
  *
  * WORK DIVISION: every candidate scan skips nodes in `claims` (a colleague is en route — its live
  * {@link FarmTask}, or planned earlier this tick), and every issued action claims its node + stamps
@@ -225,7 +227,25 @@ export function planFarmer(
     return true;
   }
 
-  // c. Sow the next field while the farm is under its max (in-flight sow-walks counted in).
+  // c. Water the nearest unwatered field — the growth GATE: a dry field stands still, so the can
+  // beats the next seed bag (the plant→water→plant rhythm).
+  if (thirsty !== null) {
+    const crop = thirsty;
+    take(thirstyCell, false);
+    atOrWalk(world, e, here, thirstyCell, () =>
+      startAtomic(
+        world,
+        e,
+        spec.cultivateAtomic,
+        { kind: 'water', crop },
+        atomicDuration(ctx.content, settler, spec.cultivateAtomic),
+        crop,
+      ),
+    );
+    return true;
+  }
+
+  // d. Sow the next field while the farm is under its max (in-flight sow-walks counted in).
   if (fields + (claims.byFarm.get(farm) ?? 0) < spec.farming.maxFields) {
     const node = nextSowNode(world, ctx, terrain, targets, anchor, spec, claims);
     if (node !== null) {
@@ -243,23 +263,6 @@ export function planFarmer(
       );
       return true;
     }
-  }
-
-  // d. Water the nearest unwatered growing field (it grows at double pace afterwards).
-  if (thirsty !== null) {
-    const crop = thirsty;
-    take(thirstyCell, false);
-    atOrWalk(world, e, here, thirstyCell, () =>
-      startAtomic(
-        world,
-        e,
-        spec.cultivateAtomic,
-        { kind: 'water', crop },
-        atomicDuration(ctx.content, settler, spec.cultivateAtomic),
-        crop,
-      ),
-    );
-    return true;
   }
 
   // e. Everything sown, watered and growing — wait at the farm's door for the fields to ripen.

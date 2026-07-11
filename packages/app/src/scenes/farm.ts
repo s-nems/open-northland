@@ -7,14 +7,17 @@ import { BUILDING_FARM, GOOD_WHEAT, JOB_FARMER_SLOT, placeSandboxBuilding } from
 import type { SceneDefinition } from './types.js';
 
 /**
- * The FARM scene: prove the original's field-farming loop end-to-end. A built grain farm employs two
- * FARMERS who — with no per-scene code — walk its surroundings SOWING wheat fields (slightly scattered,
- * the jittered lattice), WATER the growing fields with the can, REAP each ripe field with the scythe
- * (the cut wheat drops as a sheaf where the field stood) and CARRY every sheaf home into the farm's own
- * wheat-only store (`logicstock 4 25 0`). The headless half asserts the loop closes (fields exist, the
- * farmers are bound, wheat lands in the farm store); the browser half is where a human judges the
- * animations (sowing / watering / scythe / the grain carry) and the farm's panel (the "Farma" title,
- * the fields Produkcja section, the compact tab-less Magazyn).
+ * The FARM scene: prove the original's field-farming loop end-to-end. A built grain farm — standing on
+ * a BARREN sand patch — employs two FARMERS who — with no per-scene code — walk OFF the sand to the
+ * surrounding grass SOWING wheat fields (slightly scattered, the jittered lattice; never on the sand —
+ * the `biocanplanton` gate), WATER each field with the can (the growth GATE: an unwatered field stands
+ * bare), REAP each ripe field with the scythe (the cut wheat drops as a sheaf where the field stood)
+ * and CARRY every sheaf home into the farm's own wheat-only store (`logicstock 4 25 0`), stepping
+ * INSIDE the farm for the deposit. The headless half asserts the loop closes (fields exist, on grass
+ * alone, the farmers are bound, wheat lands in the farm store); the browser half is where a human
+ * judges the animations (sowing / watering / scythe / the grain carry / the store visit) and the
+ * farm's panel (the "Farma" title, the fields Produkcja section, the compact tab-less Magazyn with
+ * the amount/capacity row).
  */
 
 const MAP_W = 40;
@@ -24,21 +27,23 @@ const FARM_Y = 12;
 /** Two farmers read clearly (the original farm employs up to four — `logicworker 18 4`). */
 const FARMERS = 2;
 /**
- * Long enough for the full loop to close several times over: first fields are sown within ~50 ticks,
- * a watered field ripens in ~250–500 (5 stages × 100 ticks, halved once watered), then reap + carry.
+ * Long enough for the full loop to close: sow + water within ~150 ticks, a watered field ripens in
+ * ~2000 (4 stage steps × 500 ticks — watering is the growth gate, an unwatered field stands still),
+ * then reap + carry, with margin for the sand walk-out.
  */
-const RUN_TICKS = 1200;
+const RUN_TICKS = 3000;
 /** Frames the farm + its whole field ring (`FARM_FIELD_RADIUS` ≈ 8 tiles each way). Also deliberately
  *  ≠ 1: `cameraFor` only centres on the scene's settlers at a non-1 zoom (zoom 1 keeps the fixed
  *  origin offset), and this scene's action is at the map's centre. */
 const INITIAL_ZOOM = 0.8;
-/** A BARREN (sand) strip east of the farm, inside its field ring — proves the grass-only sowing gate
- *  visually (fields ring the farm but skip the tan band; the original's `biocanplanton` is `land`-only). */
-const BARREN = { x0: 23, x1: 25, y0: 9, y1: 15 } as const;
+/** A BARREN (sand) patch the farm STANDS ON — the user-requested proof of the grass-only sowing gate:
+ *  the farmers must walk OFF the sand to the surrounding grass to sow, so the fields ring the tan
+ *  patch and never dot it (the original's `biocanplanton` belongs to `land` alone). */
+const BARREN = { x0: 17, x1: 23, y0: 9, y1: 15 } as const;
 
 const { Building, Crop, JobAssignment, Position, Settler, Stockpile } = components;
 
-/** The scene's ground: all grass with the {@link BARREN} sand strip stamped inside the field ring. */
+/** The scene's ground: grass everywhere except the {@link BARREN} sand patch under the farm. */
 function farmTerrain(): CellTerrainMap {
   const base = grassTerrain(MAP_W, MAP_H);
   const typeIds = [...base.typeIds];
@@ -90,23 +95,22 @@ export const farmScene: SceneDefinition = {
   id: 'farm',
   title: 'Farma — uprawa zboża',
   summary:
-    'Farmerzy chodzą wokół farmy: sieją zboże (lekko rozrzucone pola), podlewają je konewką, dojrzałe ' +
-    'łany ścinają kosą i znoszą snopki do magazynu farmy. Dzielą się pracą (każdy inne pole), a na ' +
-    'piaskowym pasie przy farmie nic nie rośnie (zboże tylko na trawie).',
+    'Farma stoi na piasku — farmerzy wychodzą na okoliczną trawę siać (zboże rośnie tylko na trawie). ' +
+    'Pole rusza z miejsca DOPIERO po podlaniu konewką; dojrzałe łany ścinają kosą i znoszą snopki do ' +
+    'magazynu farmy (wchodząc do środka na czas odłożenia). Dzielą się pracą — każdy inne pole.',
   seed: 11,
   terrain: farmTerrain(),
   build,
   runTicks: RUN_TICKS,
   initialZoom: INITIAL_ZOOM,
   checklist: [
-    'Farmerzy wychodzą z farmy i SIEJĄ zboże wokół niej (animacja rozsiewania); pola są minimalnie rozrzucone, nie sklejone heks przy heksie.',
+    'Farma STOI NA PIASKU — farmerzy wychodzą z piaskowej łachy na okoliczną TRAWĘ siać; na samym piasku nie powstaje żadne pole.',
+    'Pola są minimalnie rozrzucone (nie sklejone heks przy heksie) i wieńcem otaczają piaskową łachę.',
     'Farmerzy DZIELĄ SIĘ pracą: każdy idzie do INNEGO pola/snopka, nie chodzą jeden przy drugim do tego samego celu.',
-    'Na PIASKOWYM pasie na wschód od farmy NIE powstaje żadne pole (zboże rośnie tylko na trawie).',
     'Świeżo posiane pole jest niewidoczne/gołe (oryginał nie rysuje stanu 1) — ŻADNEGO zielonego kwadratu; kiełki widać od 2. stadium.',
-    'Zboże ROŚNIE przez 5 stadiów — od świeżo posianej kępki do dojrzałego łanu.',
-    'Farmer PODLEWA rosnące pole konewką (animacja podlewania); podlane pole rośnie szybciej.',
+    'Pole zaczyna rosnąć DOPIERO po podlaniu konewką (animacja podlewania) — niepodlane stoi gołe; wzrost do dojrzałego łanu trwa ~100 s przy ×1.',
     'Dojrzałe pole farmer ŚCINA KOSĄ (animacja koszenia); po ścięciu na ziemi zostaje snopek, a pole znika (można siać ponownie).',
-    'Farmer PODNOSI snopek i NIESIE go do farmy (chód z załadowanym zbożem); licznik magazynu farmy rośnie.',
+    'Farmer PODNOSI snopek, NIESIE go do farmy i ZNIKA w środku na ~1 s (wchodzi odłożyć zboże), po czym wychodzi; licznik magazynu rośnie.',
     'Panel farmy (kliknij budynek): tytuł „Farma", sekcja Produkcja z ikoną zboża i licznikami Posiane/Rosnące/Dojrzałe, mały Magazyn BEZ zakładek z jednym wierszem zboża w formacie „ilość / pojemność" (x.0 / 25.0).',
   ],
   checks: [
