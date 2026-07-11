@@ -212,6 +212,22 @@ remainder is the gatherer target scan — economy nearest-X onto `NodeBuckets` s
 follow-up). Tests: `sim/test/core/snapshot-cache.test.ts` (memo identity, touch eviction, verifier
 catches a missed touch); map-resources tests pin the per-placement `gfxIndex`.
 
+**Far-zoom perf — static scenery + scan index (2026-07-11, same branch):** a far zoom-out still hit
+10–20 fps (draw 23.3 ms — thousands of pool-drawn nodes paying per-frame writes + the Pixi re-sort;
+sim 8 ms — per-gatherer whole-map scans ×3 speed). Two fixes, both winner/goldens-preserving:
+(a) **static→dynamic handover** — a decoded map's placements ALL draw in the built-once static object
+layer again; the sim pool skips virgin nodes via `collectSpriteScene staticRefs`, and the first
+`resourceFelled`/`resourceMined` (new event)/`resourceDepleted` on a node removes its static sprite
+(`WorldRenderer.removeMapObject`; a decor quad zeroes in place) and lets the pool draw the same
+species variant from then on (levels shrink, fell vanishes; `?objects=off` keeps all pool-drawn);
+(b) **resource region index** (`spatial.ts`, 32-node regions, keyed on the Resource store generation
+with a `verifyCaches` verifier) — the flag-bound scan reads `resourcesNearNode(flag, radius +
+content max work-cell offset)`, a provable superset, and `collectTargets` reuses the memoized
+canonical list instead of re-sorting 17k entities per tick. Hands-on far zoom: draw 23.3 → 1.6 ms,
+sim 8 → 2.2 ms at ×3, 120 fps; species variety intact. Tests:
+`sim/test/systems/resource-region-index.test.ts`, scene-test staticRefs skip/release, map-resources
+placement-join assertions.
+
 **No free gatherers — spawn-time flag binding (2026-07-11, same branch):** a gatherer spawned through the
 command path (imported-map settlers, the admin palette) got no work flag, so it searched the WHOLE map for
 the nearest resource. Rule: a gatherer is never free — it searches around its flag, or the building it
