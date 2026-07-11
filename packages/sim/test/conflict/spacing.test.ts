@@ -1,19 +1,16 @@
+import { IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
+import * as components from '../../src/components/index.js';
 import {
-  Age,
   Building,
-  Carrying,
   CurrentAtomic,
-  JobAssignment,
   MoveGoal,
   Owner,
   PathFollow,
-  PathRequest,
-  PlayerOrder,
   Position,
-  Resource,
   Settler,
   Stockpile,
+  UnderConstruction,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
@@ -40,24 +37,13 @@ const VIKING = 1;
 const WOODCUTTER = 1;
 const HUMAN_PLAYER = 0;
 
+// Clear EVERY component store — the module-level singletons are shared across Simulation instances,
+// and a hand-picked subset misses a component a future system adds (the AGENTS.md trap).
 beforeEach(() => {
-  for (const c of [
-    Position,
-    Settler,
-    Resource,
-    Building,
-    Stockpile,
-    Carrying,
-    CurrentAtomic,
-    MoveGoal,
-    PathFollow,
-    PathRequest,
-    JobAssignment,
-    Age,
-    Owner,
-    PlayerOrder,
-  ]) {
-    c.store.clear();
+  for (const c of Object.values(components)) {
+    if (typeof c === 'object' && c !== null && 'store' in c && c.store instanceof Map) {
+      c.store.clear();
+    }
   }
 });
 
@@ -157,5 +143,148 @@ describe('idle-spacing (de-stack) drive', () => {
     s.run(15);
     expect(tileOf(s, e)).toEqual({ x: 4, y: 3 });
     expect(s.world.has(e, MoveGoal)).toBe(false);
+  });
+});
+
+// ————————————————————————————————————————————————————————————————————————————————————————————————
+// Builder WORK SLOTS (claimWorkCell): a crew on one construction site spreads over the site's yard
+// instead of stacking on its one interaction cell. Body collision can never provide this — civilians
+// are deliberate pass-through and the SeparationSystem displaces only WALKING movers — so the planner
+// hands each builder a distinct stand cell (see systems/agents/destack.ts).
+// ————————————————————————————————————————————————————————————————————————————————————————————————
+
+const STONE = 2;
+const WOOD = 3;
+const HOUSE = 2;
+const BUILDER = 7; // the builder trade (jobtypes.ini type 7); permitted to run the build-house atomic
+const BUILD_HOUSE_ATOMIC = 39; // setatomic 7 39 "..._builder_build_house" (tribetypes.ini)
+
+/** Content with a builder trade and a home whose cost is 2× stone + 1× wood (12 hammer swings), with
+ *  a walk-blocking footprint and a named door — the interaction cell every builder converges on. */
+function builderSiteContent(): ReturnType<typeof testContent> {
+  return parseContentSet({
+    manifest: { version: IR_VERSION, generatedFrom: { game: 'synthetic-test-fixture' }, locale: 'eng' },
+    goods: [
+      { typeId: 0, id: 'none' },
+      { typeId: STONE, id: 'stone' },
+      { typeId: WOOD, id: 'wood' },
+    ],
+    jobs: [
+      { typeId: 0, id: 'idle' },
+      { typeId: BUILDER, id: 'builder', allowedAtomics: [BUILD_HOUSE_ATOMIC] },
+    ],
+    landscape: [{ typeId: GRASS, id: 'grass', walkable: true, buildable: true }],
+    buildings: [
+      {
+        typeId: HOUSE,
+        id: 'home_small',
+        kind: 'home',
+        homeSize: 2,
+        construction: [
+          { goodType: STONE, amount: 2 },
+          { goodType: WOOD, amount: 1 },
+        ],
+        footprint: {
+          blocked: [
+            { dx: 0, dy: 0 },
+            { dx: 2, dy: 0 },
+          ],
+          door: { dx: 0, dy: 2 },
+        },
+      },
+    ],
+  });
+}
+
+/** An under-construction site at half-cell NODE (x,y) with its FULL material cost already delivered,
+ *  so builders hammer at once (labor trails the delivered fraction) and never leave to fetch. */
+function stockedSiteAt(s: Simulation, x: number, y: number): Entity {
+  const e = s.world.create();
+  s.world.add(e, Position, positionOfNode(x, y));
+  s.world.add(e, Building, { buildingType: HOUSE, tribe: VIKING, built: fx.fromInt(0), level: 0 });
+  s.world.add(e, UnderConstruction, { labor: fx.fromInt(0) });
+  s.world.add(e, Stockpile, {
+    amounts: new Map<number, number>([
+      [STONE, 2],
+      [WOOD, 1],
+    ]),
+  });
+  return e;
+}
+
+/** A builder at half-cell NODE (x,y) — owned by default (the work-slot spread is Owner-gated). */
+function builderAt(s: Simulation, x: number, y: number, owner: number | null = HUMAN_PLAYER): Entity {
+  const e = s.world.create();
+  s.world.add(e, Position, positionOfNode(x, y));
+  s.world.add(e, Settler, {
+    tribe: VIKING,
+    jobType: BUILDER,
+    hunger: fx.fromInt(0),
+    fatigue: fx.fromInt(0),
+    piety: fx.fromInt(0),
+    enjoyment: fx.fromInt(0),
+    experience: new Map(),
+  });
+  if (owner !== null) s.world.add(e, Owner, { player: owner });
+  return e;
+}
+
+function builderSim(): Simulation {
+  return new Simulation({ seed: 1, content: builderSiteContent(), map: grassMap(12, 6) });
+}
+
+describe('builder work slots (claimWorkCell)', () => {
+  it('two owned builders on one site never run stacked build swings, and both do swing', () => {
+    const s = builderSim();
+    const site = stockedSiteAt(s, 12, 6);
+    builderAt(s, 6, 6);
+    builderAt(s, 6, 7);
+
+    let stackedSwingTicks = 0;
+    let parallelSwingTicks = 0;
+    let finishedAt: number | null = null;
+    for (let t = 0; t < 400 && finishedAt === null; t++) {
+      s.step();
+      const swinging = new Map<string, number>(); // node key → swing count
+      for (const e of s.world.query(Settler, Position)) {
+        if (s.world.has(e, PathFollow)) continue;
+        if (s.world.tryGet(e, CurrentAtomic)?.atomicId !== BUILD_HOUSE_ATOMIC) continue;
+        const n = tileOf(s, e);
+        const key = `${n.x},${n.y}`;
+        swinging.set(key, (swinging.get(key) ?? 0) + 1);
+      }
+      if ([...swinging.values()].some((count) => count >= 2)) stackedSwingTicks++;
+      if (swinging.size >= 2) parallelSwingTicks++;
+      if (!s.world.has(site, UnderConstruction)) finishedAt = t;
+    }
+
+    expect(stackedSwingTicks).toBe(0); // the regression: never two swings on one node
+    expect(parallelSwingTicks).toBeGreaterThan(0); // the crew genuinely works in parallel, spread out
+    expect(finishedAt).not.toBeNull(); // spreading the crew never stalls the build
+  });
+
+  it('keeps UNOWNED builders on the shared interaction cell (the Owner gate — fixtures unchanged)', () => {
+    const s = builderSim();
+    stockedSiteAt(s, 12, 6);
+    const a = builderAt(s, 6, 6, null);
+    const b = builderAt(s, 6, 7, null);
+
+    // The pre-slot shared-anchor behavior must survive for unowned fixtures: both hammer from
+    // exactly the door node (12,6)+(0,2) — stacked swings and all.
+    let stackedSwingTicks = 0;
+    for (let t = 0; t < 120; t++) {
+      s.step();
+      if (
+        s.world.tryGet(a, CurrentAtomic)?.atomicId === BUILD_HOUSE_ATOMIC &&
+        s.world.tryGet(b, CurrentAtomic)?.atomicId === BUILD_HOUSE_ATOMIC &&
+        tileOf(s, a).x === tileOf(s, b).x &&
+        tileOf(s, a).y === tileOf(s, b).y
+      ) {
+        stackedSwingTicks++;
+      }
+    }
+    expect(stackedSwingTicks).toBeGreaterThan(0); // no spread applied — the Owner gate is real
+    expect(tileOf(s, a)).toEqual({ x: 12, y: 8 });
+    expect(tileOf(s, b)).toEqual({ x: 12, y: 8 });
   });
 });
