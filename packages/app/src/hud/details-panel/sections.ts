@@ -281,7 +281,9 @@ function drawGeneralSection(
   s: number,
 ): void {
   chrome.window(layout.general.frame);
-  chrome.headline(layout.general.title, ui('humanwindow', HUMANWINDOW.general, 'Ogólne'));
+  // The section title is the character's personal name (see `model.name`), personalising the panel in
+  // place of the original's generic "Ogólne" heading.
+  chrome.headline(layout.general.title, model.name);
 
   chrome.innerBox(layout.preview);
   chrome.guiCentered(GUI_FRAME.house_plate, layout.preview, 'magenta', 'bg_normal');

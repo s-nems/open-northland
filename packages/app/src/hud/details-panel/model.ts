@@ -2,6 +2,8 @@ import type { ContentSet } from '@vinland/data';
 import { ONE, TICKS_PER_SECOND, type WorldSnapshot, components, systems } from '@vinland/sim';
 import { vikingBuildingByTypeId } from '../../catalog/buildings.js';
 import { professionDefForJob } from '../../catalog/professions.js';
+import { characterName } from '../../game/character-names.js';
+import { PRIMARY_TRIBE } from '../../game/rules.js';
 import { entityById, isBuilding, isSettler, num, ownerPlayerOf } from '../../game/snapshot.js';
 import { professionLabel } from '../../i18n/index.js';
 import { goodCategoryTab } from './stock-tabs.js';
@@ -150,7 +152,10 @@ export interface EquipRow {
 export interface SettlerPanelModel {
   readonly kind: 'settler';
   readonly entityId: number;
-  /** The character's profession (its job label) — the Ogólne name line. */
+  /** The character's personal name — faction- and sex-appropriate, stable per entity. Drawn as the
+   *  section headline in place of the generic "Ogólne" title. See {@link characterName}. */
+  readonly name: string;
+  /** The character's profession (its job label) — the name line under the headline. */
   readonly profession: string;
   /** Owner/tribe meta line under the name, with the military stance appended for a soldier. */
   readonly meta: string;
@@ -561,9 +566,13 @@ export function buildUnitPanelModel(
     const stanceMode = num(stance?.mode);
     const stanceSuffix = stanceMode !== undefined ? ` · ${stanceLabel(stanceMode)}` : '';
     const meta = `Gracz #${ownerPlayerOf(ent) ?? '-'} · Plemię ${num(s.tribe) ?? '-'}${stanceSuffix}`;
+    // Only a born-young (baby/child) settler carries `Age`; that flag, with the job, fixes the drawn body's
+    // sex so the name matches the character (mirrors the render body-join in `content/settler-gfx.ts`).
+    const young = comps.Age !== undefined;
     return {
       kind: 'settler',
       entityId,
+      name: characterName(num(s.tribe) ?? PRIMARY_TRIBE, num(s.jobType), young, entityId),
       // The profession name resolves through the shared catalog + i18n (and, for a building-bound settler,
       // its rebased slot job's content name) so a bound druid reads "Druid", not "Bezrobotny".
       profession: jobDisplayName(ctx, num(s.jobType)),
