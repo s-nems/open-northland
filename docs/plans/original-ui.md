@@ -184,6 +184,21 @@ stays weaponless. Sandbox goldens byte-identical (equipment weapon is a display 
 every class). Note: hands-on selection of a MOVING combat-scene warrior was too flaky to screenshot, so this
 was locked by the shared-helper tests + the identical-to-admin rendering already signed off in (c).
 
+Progress note — settler stat bars (2026-07-11, `feat/settler-panel-bars`, user-requested, not a
+numbered step): the Ogólne bars now PIN their labels — Zdrowie, Głód, Sen, Towarzystwo, Religia —
+instead of resolving the decoded `humanwindow` 11–15 stat names (Energia/Wytrzymałość/Motywacja
+Społeczna), a deliberate readability divergence (user decision 2026-07-11): each bar is named after the
+need it actually shows, since the original's five stats don't map 1:1 to the sim's four needs. The
+gauges band green/orange/red at named thresholds (<50% warn, <25% critical — our own bands, the
+original's aren't decoded; `barTone` in `model.ts`, flat fills in `chrome.ts` since `PalettedSprite`
+can't tint per-sprite). Hovering a bar row shows its value in the cursor tooltip: raw points for health
+("300/300"), the satisfaction percent for needs ("29%") — `PanelBar` carries `label`/`hover`, the panel
+hit-tests `layout.bars`. The building production bar keeps the neutral `bar_standart` art fill.
+Verified: `npm test` (1917) + check + build green; hands-on in `?scene=equipment` — civilian shows 4
+bars (no Zdrowie without `Health`), a drained Głód draws orange at 29% with a "29%" tooltip, the
+soldier's red-critical Głód and "300/300" Zdrowie tooltip render, building panel unaffected, no console
+errors. Visual sign-off: pending user.
+
 Merge reconciliation (2026-07-10): the review battery (determinism/perf/fidelity/architecture/quality +
 a correctness pass) ran over the branch — no blockers; fidelity verified every weapon/atomic constant
 against the real `.ini` line-by-line. Findings addressed: three dead `humanwindow` string ids + a
