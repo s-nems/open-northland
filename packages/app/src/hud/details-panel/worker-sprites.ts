@@ -34,6 +34,10 @@ import type { Rect } from '../geometry.js';
 
 /** At most this many worker sprites in the field (a store dispatches up to ~12; keep the row readable). */
 const MAX_WORKERS = 8;
+/** A worker who has stepped INSIDE the building stands FROZEN on this fixed animation tick — a still
+ *  standing pose in the panel (not the breathing wait loop), while active workers animate on the sim
+ *  tick. 0 holds the idle sequence's first (neutral standing) frame. */
+const INDOOR_POSE_TICK = 0;
 /** Inset from the field edges (screen px), the fraction of the field height a character fills, and one
  *  worker's cell width as a fraction of the field height (they pack LEFT-to-right by this width). */
 const FIELD_PAD = 4;
@@ -99,9 +103,20 @@ export class WorkerSpriteOverlay {
     // `buildSpriteScene(snapshot)` (an O(entities) project + sort, per render/AGENTS) just to look up 8 ids
     // would duplicate the renderer's own scene build for the entire map every frame. Feeding the builder a
     // snapshot narrowed to the bound workers keeps the identical projection while the cost tracks the panel.
-    const items = new Map<number, DrawItem>();
+    //
+    // We build the narrowed scene TWICE: the plain build animates the workers currently OUT working, and the
+    // `keepIndoorSettlers` build adds a standing pose for any worker who has stepped INSIDE the building —
+    // the map suppresses those (sim `Resting` / mid-store-exchange), so they'd otherwise vanish from the
+    // panel. A worker absent from the plain build but present in the indoor one is inside → drawn frozen.
+    // Both builds are O(≤8), negligible beside the renderer's own per-map scene build.
+    const active = new Map<number, DrawItem>();
+    const withIndoor = new Map<number, DrawItem>();
     const workerScene: WorldSnapshot = { ...snapshot, entities: workerEntities };
-    for (const it of buildSpriteScene(workerScene)) if (it.kind === 'settler') items.set(it.ref, it);
+    for (const it of buildSpriteScene(workerScene)) if (it.kind === 'settler') active.set(it.ref, it);
+    for (const it of buildSpriteScene(workerScene, undefined, undefined, undefined, {
+      keepIndoorSettlers: true,
+    }))
+      if (it.kind === 'settler') withIndoor.set(it.ref, it);
 
     const inner: Rect = {
       x: field.x + FIELD_PAD,
@@ -117,9 +132,12 @@ export class WorkerSpriteOverlay {
     workers.forEach((id, i) => {
       const cellX = inner.x + slotW * i;
       if (cellX + slotW > inner.x + inner.w + 1) return; // no room — overflow past the field's right edge
-      const item = items.get(id);
+      const activeItem = active.get(id);
+      const item = activeItem ?? withIndoor.get(id);
       if (item === undefined) return;
-      const layers = resolveLayers(this.sheet, item, snapshot.tick);
+      // A worker inside the building (absent from the plain build) stands frozen; an active one animates.
+      const clock = activeItem !== undefined ? snapshot.tick : INDOOR_POSE_TICK;
+      const layers = resolveLayers(this.sheet, item, clock);
       if (layers === null || layers.length === 0) return;
       const body = layers[0];
       if (body === undefined) return;

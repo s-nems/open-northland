@@ -46,6 +46,7 @@ export {
   type SceneGround,
   type SceneTerrain,
   type SceneTransitions,
+  type SpriteSceneOptions,
   type SpriteState,
   terrainMapToScene,
 } from './data/scene/index.js';

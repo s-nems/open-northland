@@ -98,6 +98,19 @@ export const PROJECTILE_ARC_PEAK_FRACTION = 0.12;
 /** Cap on the lob's peak height (screen px) — see {@link PROJECTILE_ARC_PEAK_FRACTION}. */
 export const PROJECTILE_ARC_PEAK_MAX_PX = 56;
 
+/** Optional tweaks to the sprite-scene projection. The map/live path passes nothing and behaves exactly
+ *  as before; today the only knob is the details panel's "show a building's indoor occupants" override. */
+export interface SpriteSceneOptions {
+  /**
+   * Keep settlers that are INSIDE a building — mid-exchange in a completed store, or waiting in their
+   * workplace between chores (the sim `Resting` marker) — instead of suppressing them, forced to the
+   * `idle` standing pose. The map hides these (the original's off-duty workers wait in the house, not
+   * lined up at the door); the details panel's worker field sets this so a bound worker who has stepped
+   * inside STANDS in the panel rather than vanishing from it.
+   */
+  readonly keepIndoorSettlers?: boolean;
+}
+
 /** One frame's sprite scene: the culled, depth-sorted draw list PLUS the pre-cull liveness set —
  *  produced in a single pass over the snapshot (see {@link collectSpriteScene}). */
 export interface SpriteScene {
@@ -121,8 +134,9 @@ export function buildSpriteScene(
   viewport?: Viewport,
   elevation?: ElevationField,
   staticRefs?: ReadonlySet<number>,
+  options?: SpriteSceneOptions,
 ): DrawItem[] {
-  return collectSpriteScene(snapshot, viewport, elevation, staticRefs).items;
+  return collectSpriteScene(snapshot, viewport, elevation, staticRefs, options).items;
 }
 
 /**
@@ -182,6 +196,7 @@ export function collectSpriteScene(
   viewport?: Viewport,
   elevation?: ElevationField,
   staticRefs?: ReadonlySet<number>,
+  options?: SpriteSceneOptions,
 ): SpriteScene {
   const items: MutableDrawItem[] = [];
   const liveRefs = new Set<number>();
@@ -216,14 +231,14 @@ export function collectSpriteScene(
     if (pos === null) continue;
     // A settler mid-exchange INSIDE a completed building store — or WAITING INSIDE its workplace
     // between chores (the sim `Resting` marker): live (pooled) but not drawn. The original's off-duty
-    // workers wait in the house, not lined up at the door.
+    // workers wait in the house, not lined up at the door. The details panel overrides this
+    // (`keepIndoorSettlers`) to show a building's occupants in its worker field; such an indoor settler
+    // is forced to the `idle` STANDING pose below (no in-transit gait, no lingering action swing).
+    let indoorSettler = false;
     if (kind === 'settler') {
-      if ('Resting' in components) {
-        liveRefs.add(entity.id);
-        continue;
-      }
       const store = readStoreExchangeRef(components);
-      if (store !== null && enterableStores.has(store)) {
+      indoorSettler = 'Resting' in components || (store !== null && enterableStores.has(store));
+      if (indoorSettler && options?.keepIndoorSettlers !== true) {
         liveRefs.add(entity.id);
         continue;
       }
@@ -238,8 +253,10 @@ export function collectSpriteScene(
     const screen = tileToScreen(tileX, tileY);
     // Only settlers animate per-state in this slice; a building/resource is always idle. State (and
     // the chop atomic) must be read BEFORE the cull because the chop nudge moves the drawn anchor.
-    const state: SpriteState = kind === 'settler' ? readSpriteState(components) : 'idle';
-    const actingAtomic = kind === 'settler' ? readActingAtomic(components) : null;
+    // An indoor settler (kept only for the panel) stands idle — force it, so a lingering path/atomic
+    // from the tick it stepped inside can't leave it walking or mid-swing in the building's portrait.
+    const state: SpriteState = kind === 'settler' && !indoorSettler ? readSpriteState(components) : 'idle';
+    const actingAtomic = kind === 'settler' && !indoorSettler ? readActingAtomic(components) : null;
     // A chopping settler shares its tree's cell; nudge its drawn sprite left so the right-swing axe
     // lands in the trunk at the cell centre (render-only — the depth sort below still uses the true tile).
     const chopNudgeX = state === 'acting' && actingAtomic === CHOP_ATOMIC_ID ? CHOP_NUDGE_X : 0;
@@ -286,9 +303,13 @@ export function collectSpriteScene(
     // Per-kind reads, ASSIGNED (not spread) so an absent fact stays an absent property under
     // exactOptionalPropertyTypes without a throwaway spread object per field.
     if (kind === 'settler') {
-      if (actingAtomic !== null) item.atomicId = actingAtomic;
-      const elapsed = readAtomicElapsed(components);
-      if (elapsed !== null) item.elapsed = elapsed;
+      if (actingAtomic !== null) {
+        item.atomicId = actingAtomic;
+        // The action clock rides ALONGSIDE the atomic — omitted when idle (see DrawItem.elapsed), so a
+        // kept-indoor settler that still holds a stale CurrentAtomic doesn't carry an orphan elapsed.
+        const elapsed = readAtomicElapsed(components);
+        if (elapsed !== null) item.elapsed = elapsed;
+      }
       // A combat-engaged unit reads the readied `..._agressive` gait (the sim `Engagement` marker).
       if (readEngaged(components)) item.engaged = true;
       // Facing: a mid-attack swing (atomic 81) has no walking heading, so it faces its target's LIVE

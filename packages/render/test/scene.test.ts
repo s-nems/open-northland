@@ -794,4 +794,27 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
     expect(scene.items.filter((d) => d.kind === 'settler').map((d) => d.ref)).toEqual([2]);
     expect([...scene.liveRefs].sort((a, b) => a - b)).toEqual([1, 2, 10]);
   });
+
+  // The details panel's worker field opts INTO drawing a building's indoor occupants: `keepIndoorSettlers`
+  // turns the suppressed resting / mid-exchange settlers back into draw items, FORCED to the `idle`
+  // standing pose (no stale gait, no orphan action swing) so they stand in the panel instead of vanishing.
+  it('keepIndoorSettlers keeps the indoor settlers, forced to a standing idle pose', () => {
+    const entities = [
+      entity(10, 2, 2, { Building: { buildingType: 1, tribe: 1, built: ONE, level: 0 } }),
+      // Resting inside its workplace — hidden on the map, drawn (idle) with the override.
+      entity(1, 2, 2, { Settler: { tribe: 0 }, Resting: { at: 10 } }),
+      // Mid-exchange inside the completed store, holding a live pickup atomic — still forced idle, and its
+      // stale atomicId must NOT ride along (the pose is a plain stand, not a truncated pickup stoop).
+      entity(2, 2, 2, {
+        Settler: { tribe: 0 },
+        CurrentAtomic: { effect: { kind: 'pickup', from: 10, goodType: 1, amount: 1 } },
+      }),
+    ];
+    const drawn = collectSpriteScene(snapshotOf(entities), undefined, undefined, undefined, {
+      keepIndoorSettlers: true,
+    }).items.filter((d) => d.kind === 'settler');
+    expect(drawn.map((d) => d.ref).sort((a, b) => a - b)).toEqual([1, 2]);
+    expect(drawn.every((d) => d.state === 'idle')).toBe(true);
+    expect(drawn.every((d) => d.atomicId === undefined && d.elapsed === undefined)).toBe(true);
+  });
 });
