@@ -7,6 +7,7 @@ import {
   Resting,
   Settler,
   Stockpile,
+  UnderConstruction,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
@@ -53,6 +54,18 @@ export interface FarmClaims {
    *  keep `fieldsBase + fieldsPerFarmer × crew` fields, so the roster scales with the staff). Filled
    *  lazily by {@link fieldCrewOf} the first time a farmer of that farm reaches its sow step. */
   readonly fieldCrew: Map<Entity, number>;
+  /** Per-tick sow-candidate index, built LAZILY by the first sow attempt of the tick and shared by
+   *  every farmer after it (see {@link nextSowNode}): the walk-block overlay and the occupied-node
+   *  set are functions of tick-start world state, invariant across the planner sweep (atomic effects
+   *  apply outside it; the sweep's own in-flight picks live separately in {@link nodes}) — so a
+   *  per-farmer rebuild was the full-world-scan-in-a-per-entity-loop anti-pattern (sim AGENTS.md). */
+  sowScan?: SowScan;
+}
+
+/** The tick-shared occupancy/blockage index a sow-node search filters against (see {@link FarmClaims.sowScan}). */
+interface SowScan {
+  readonly blocked: ReadonlySet<NodeId>;
+  readonly occupied: ReadonlySet<NodeId>;
 }
 
 /** Seed the tick's {@link FarmClaims} from every live {@link FarmTask} — O(in-flight farm actions). */
@@ -126,6 +139,10 @@ function boundFarmTarget(
   const b = binding.workplace;
   const building = world.tryGet(b, Building);
   if (building === undefined || building.tribe !== tribe) return null; // gone / wrong tribe
+  // A foundation fields no crew — the readable original gates the farmer trade on a FINISHED house
+  // (`jobtypes.ini` farmer `mustHaveFinishedWorkHouseFlag 1`), so a farm still being raised neither
+  // sows its ring nor shelters a Resting worker inside its skeleton.
+  if (world.has(b, UnderConstruction)) return null;
   const spec = farmWorkGood(world, ctx, b);
   if (spec === null) return null; // not a farm
   if (!jobAtomics(ctx, jobType).has(spec.plantAtomic)) return null; // not the field trade (a carrier)
@@ -347,6 +364,15 @@ function nearestFarmSheaf(
   let bestCell = Number.POSITIVE_INFINITY;
   for (const e of targets.groundDrops) {
     if (lowestStockedGood(world.get(e, Stockpile)) !== spec.goodType) continue; // not this farm's crop
+    // Cheap radius PREFILTER on the drop's own anchor node before the interaction-cell resolve — that
+    // resolve walks the resource store per drop, so paying it for every same-good drop WORLD-WIDE per
+    // replanning farmer was an O(drops × resources) tick cost. The slack covers the most an interaction
+    // cell can sit from its anchor (one footprint cell), so no drop the exact check below would accept
+    // is ever pre-dropped.
+    const p = world.get(e, Position);
+    const n = nodeOfPosition(p.x, p.y);
+    const own = terrain.nodeAtClamped(n.hx, n.hy);
+    if (manhattan(terrain, anchor, own) > spec.farming.fieldRadius + SHEAF_PREFILTER_SLACK) continue;
     const cell = interactionCell(world, ctx, terrain, e, here);
     if (claims.nodes.has(cell)) continue; // a colleague is already carrying this one off
     if (manhattan(terrain, anchor, cell) > spec.farming.fieldRadius) continue; // beyond the farm's fields
@@ -360,6 +386,11 @@ function nearestFarmSheaf(
   return best;
 }
 
+/** Node slack the sheaf-carry radius PREFILTER allows over `fieldRadius`: an interaction cell sits at
+ *  most one footprint cell (2 nodes) from its entity's anchor, so prefiltering on the anchor with this
+ *  slack never drops a sheaf the exact interaction-cell check would accept. */
+const SHEAF_PREFILTER_SLACK = 2;
+
 /** Base sow-lattice pitch in half-cell nodes: one field per CELL before jitter, so fields sit about a
  *  tile apart — the original's packed-but-not-hex-stacked wheat spread (observed). */
 const FIELD_LATTICE_STEP = 2;
@@ -368,9 +399,10 @@ const FIELD_LATTICE_STEP = 2;
 const JITTER_HASH_X = 0x9e3779b1;
 const JITTER_HASH_Y = 0x85ebca6b;
 
-/** The deterministic ±1-node jitter of one base lattice point — a pure coordinate hash (never
- *  `world.rng`: a field position must not consume the command-stream's RNG), so the same point always
- *  jitters the same way and the sowing pattern is byte-stable across runs and replays. */
+/** The deterministic 0/+1-node jitter of one base lattice point (each axis shifts by 0 or 1 node) —
+ *  a pure coordinate hash (never `world.rng`: a field position must not consume the command-stream's
+ *  RNG), so the same point always jitters the same way and the sowing pattern is byte-stable across
+ *  runs and replays. */
 function sowJitter(bx: number, by: number): { dx: number; dy: number } {
   const h = (Math.imul(bx, JITTER_HASH_X) ^ Math.imul(by, JITTER_HASH_Y)) >>> 0;
   return { dx: h & 1, dy: (h >>> 1) & 1 };
@@ -386,8 +418,10 @@ function sowJitter(bx: number, by: number): { dx: number; dy: number } {
  * lands on sand/desert/snow), clear of the walk-block overlays (building walls, standing resources),
  * not occupied by any resource/field/heap, and not claimed by another farmer's in-flight action.
  *
- * Cost: O(radius² / step²) candidates + an O(resources + stockpiles) occupancy index, only when a
- * farmer actually reaches its sow step — bounded by the farm's own radius, never the map.
+ * Cost: O(radius² / step²) candidates per sow attempt, plus ONE O(resources + stockpiles + footprints)
+ * occupancy/blockage index per TICK — built by the first farmer to reach its sow step, reused by every
+ * later one ({@link FarmClaims.sowScan}); an idle farmer replanning against an exhausted ring must not
+ * rebuild the world index every tick.
  */
 function nextSowNode(
   world: World,
@@ -398,15 +432,8 @@ function nextSowNode(
   spec: FarmingSpec,
   claims: FarmClaims,
 ): NodeId | null {
-  const blocked = dynamicBlockedCells(world, ctx, terrain);
-  const occupied = new Set<NodeId>();
-  const occupy = (e: Entity): void => {
-    const p = world.get(e, Position);
-    const n = nodeOfPosition(p.x, p.y);
-    occupied.add(terrain.nodeAtClamped(n.hx, n.hy));
-  };
-  for (const e of targets.resources) occupy(e); // standing nodes + every sown field
-  for (const e of targets.stockpiles) occupy(e); // stores, loose heaps, dropped sheaves
+  claims.sowScan ??= buildSowScan(world, ctx, terrain, targets);
+  const { blocked, occupied } = claims.sowScan;
 
   const at = terrain.coordsOf(anchor);
   const radius = spec.farming.fieldRadius;
@@ -432,4 +459,24 @@ function nextSowNode(
     }
   }
   return best;
+}
+
+/** Build the tick's {@link SowScan}: the dynamic walk-block overlay plus every node a standing entity
+ *  occupies (resources + fields, stores, loose heaps, dropped sheaves). Pure tick-start world state —
+ *  see {@link FarmClaims.sowScan} for why it is built once per tick, not per farmer. */
+function buildSowScan(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  targets: TargetCandidates,
+): SowScan {
+  const occupied = new Set<NodeId>();
+  const occupy = (e: Entity): void => {
+    const p = world.get(e, Position);
+    const n = nodeOfPosition(p.x, p.y);
+    occupied.add(terrain.nodeAtClamped(n.hx, n.hy));
+  };
+  for (const e of targets.resources) occupy(e);
+  for (const e of targets.stockpiles) occupy(e);
+  return { blocked: dynamicBlockedCells(world, ctx, terrain), occupied };
 }

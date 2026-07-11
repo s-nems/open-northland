@@ -28,6 +28,17 @@ export const PLANT_ATOMIC = 34;
 export const CULTIVATE_ATOMIC = 35;
 
 /**
+ * The store-exchange PAIR every trade shares (`tribetypes.ini setatomic <job> 22/23
+ * "viking_<class>_pickup"/"_pileup"`; the sim's `PICKUP/PILEUP_ATOMIC_ID`,
+ * `packages/sim/src/systems/agents/actions.ts`): lift a load (22) and pile it into a store (23).
+ * Shared vocabulary like the harvest ids — the sandbox content binds the clips, the settler binding
+ * keys the body animations, and the render times the walk-into-the-store hide off the same pair —
+ * so the ids live here, owned by neither consumer.
+ */
+export const STORE_PICKUP_ATOMIC = 22;
+export const STORE_PILEUP_ATOMIC = 23;
+
+/**
  * The combat attack swing (`setatomic <job> 81 "..._attack"`; the sim's `ATTACK_ATOMIC_ID`,
  * `packages/sim/src/systems/conflict/weapons.ts`). Shared vocabulary like the harvest ids: the settler
  * binding uses it as a `byAtomic` key, and the sheet loader filters the `[gfxanimatomic]` table for this

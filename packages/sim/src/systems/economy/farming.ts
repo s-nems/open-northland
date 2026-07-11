@@ -72,7 +72,10 @@ export function farmWorkGood(world: World, ctx: SystemContext, workplace: Entity
 
 /** Whether any standing entity already occupies the half-cell node `(hx, hy)` for sowing purposes — a
  *  resource/field, or a stockpile (a building store, a loose heap, a dropped sheaf). A membership test
- *  (boolean, no pick), so plain query iteration is deterministic-safe. */
+ *  (boolean, no pick), so plain query iteration is deterministic-safe. Deliberately does NOT re-check
+ *  the walk-block overlay the planner filtered (a building raised during the sow-walk): rebuilding the
+ *  overlay per swing would cost a full footprint scan, and a crop under a fresh wall is self-limiting —
+ *  it stays reapable from a neighbouring node. */
 function sowNodeOccupied(world: World, hx: number, hy: number): boolean {
   for (const e of world.query(Resource, Position)) {
     const n = nodeOfPosition(world.get(e, Position).x, world.get(e, Position).y);

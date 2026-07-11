@@ -547,13 +547,12 @@ function productionModel(
   def: BuildingDef | undefined,
   ent: NonNullable<ReturnType<typeof entityById>>,
 ): ProductionModel | null {
-  // A FARM (produces a field-farmed good, no recipe — the same test the sim's farmWorkGood applies):
-  // production is its live field state, not an abstract cycle.
+  // A FARM produces a field-farmed good — checked BEFORE the recipe, mirroring the sim: farmWorkGood
+  // ignores recipe presence and ai.ts ranks the farmer rung above the producer rung precisely because
+  // real extracted content synthesizes an abstract recipe from `logicproduction` for every producer.
+  // Wherever the sim farms, the panel must show live field state, never a dead recipe bar.
   const recipe = def?.recipe;
-  const fieldGood =
-    recipe === undefined
-      ? (def?.produces ?? []).map((g) => goodDef(ctx, g)).find((g) => g?.farming !== undefined)
-      : undefined;
+  const fieldGood = (def?.produces ?? []).map((g) => goodDef(ctx, g)).find((g) => g?.farming !== undefined);
   if (fieldGood !== undefined) {
     const { growing, ripe } = fieldCounts(snapshot, ent.id);
     return {

@@ -22,6 +22,8 @@ import {
   MUSHROOM_HARVEST_ATOMIC,
   PLANT_ATOMIC,
   STONE_HARVEST_ATOMIC,
+  STORE_PICKUP_ATOMIC,
+  STORE_PILEUP_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../catalog/atomics.js';
 import { CIVILIST_JOB_HEADS } from '../catalog/roster.js';
@@ -149,16 +151,15 @@ export const HARVEST_TICKS: Readonly<Record<number, number>> = {
 };
 /**
  * The other atomic ids the SIM issues today, transcribed from the sim's planners (`ai.ts` eat 10 /
- * sleep 8 / pray 12, `atomic.ts` pickup 22 / deposit 23 — themselves pinned to the original's
- * `setatomic` table): the `byAtomic` join keys the character specs bind body animations to. Kept here
- * (not imported from sim) because they are the ANIMATION table's keys — the same numeric contract the
- * original's `tribetypes` uses, stable across both packages.
+ * sleep 8 / pray 12 — themselves pinned to the original's `setatomic` table): the `byAtomic` join
+ * keys the character specs bind body animations to. Kept here (not imported from sim) because they
+ * are the ANIMATION table's keys — the same numeric contract the original's `tribetypes` uses,
+ * stable across both packages. The store-exchange pair (22/23) is the shared catalog vocabulary
+ * (`catalog/atomics.ts` STORE_PICKUP/PILEUP_ATOMIC), imported above.
  */
 const EAT_ATOMIC = 10;
 const SLEEP_ATOMIC = 8;
 const PRAY_ATOMIC = 12;
-const PICKUP_ATOMIC = 22;
-const DEPOSIT_ATOMIC = 23;
 
 /**
  * Build a {@link DirectionalAnim} from a decoded `[bobseq]` sequence: `start` is the run's first bob id,
@@ -485,8 +486,8 @@ export const CHARACTER_SPECS = {
       [EAT_ATOMIC]: { seq: 'human_man_generic_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_man_generic_sleep' },
       [PRAY_ATOMIC]: { seq: 'human_man_generic_pray' },
-      [PICKUP_ATOMIC]: { seq: PICKUP_SEQ },
-      [DEPOSIT_ATOMIC]: { seq: PICKUP_SEQ },
+      [STORE_PICKUP_ATOMIC]: { seq: PICKUP_SEQ },
+      [STORE_PILEUP_ATOMIC]: { seq: PICKUP_SEQ },
     },
     // The farmer's field clips draw through the extracted job-18 `[gfxanimatomic]` per-direction frame
     // lists (their strips aren't clean ×8 cuts — see REAP_SEQ) so the sow/water/reap face the way the
@@ -508,8 +509,8 @@ export const CHARACTER_SPECS = {
       [EAT_ATOMIC]: { seq: 'human_woman_generic_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_woman_generic_sleep' },
       [PRAY_ATOMIC]: { seq: 'human_woman_generic_pray' },
-      [PICKUP_ATOMIC]: { seq: 'human_woman_generic_pick_up' },
-      [DEPOSIT_ATOMIC]: { seq: 'human_woman_generic_pick_up' },
+      [STORE_PICKUP_ATOMIC]: { seq: 'human_woman_generic_pick_up' },
+      [STORE_PILEUP_ATOMIC]: { seq: 'human_woman_generic_pick_up' },
     },
   },
   boy: {

@@ -15,6 +15,8 @@ import {
   MUSHROOM_HARVEST_ATOMIC,
   PLANT_ATOMIC,
   STONE_HARVEST_ATOMIC,
+  STORE_PICKUP_ATOMIC,
+  STORE_PILEUP_ATOMIC,
   WHEAT_HARVEST_ATOMIC,
 } from '../../catalog/atomics.js';
 import { HOME_KIND, VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
@@ -150,14 +152,13 @@ const FARMER_WATER_LENGTH = 29;
 // The farm's wheat-only store capacity — EXTRACTED: `logicstock 4 25 0` on the "work farm 00" block
 // (`DataCnmd/types/houses.ini`), one slot, 25 wheat.
 const FARM_WHEAT_CAPACITY = 25;
-// The generic store-exchange atomics (pickup 22 / pileup 23 — the sim's PICKUP/PILEUP_ATOMIC_ID) and
-// their durations, TRANSCRIBED from the extracted viking clips: the original binds a per-body-class
-// `viking_<class>_pickup`/`_pileup` per job (`tribetypes.ini setatomic <job> 22/23`), every one
-// `length 20` (`DataCnmd/atomicanimations12/atomicanimations.ini` — e.g. viking_civilist_pickup /
-// viking_civilist_pileup). One shared 20-tick pair serves every sandbox trade; this is also how long
-// a settler stays INSIDE a building store on an exchange (the render hides it for the duration).
-const STORE_PICKUP_ATOMIC = 22;
-const STORE_PILEUP_ATOMIC = 23;
+// The generic store-exchange animations (bound to the catalog's STORE_PICKUP/PILEUP_ATOMIC pair) and
+// their duration, TRANSCRIBED from the extracted viking clips: the original binds a per-body-class
+// `viking_<class>_pickup`/`_pileup` per job (`tribetypes.ini setatomic <job> 22/23`); the CIVILIST
+// pair is `length 20` (`DataCnmd/atomicanimations12/atomicanimations.ini` — other body classes differ,
+// e.g. viking_woman_pickup is 30, but every sandbox trade inherits the civilist pair via
+// `baseatomics 6`). One shared 20-tick pair serves every sandbox trade; this is also how long a
+// settler stays INSIDE a building store on an exchange (the render hides it for the duration).
 const STORE_PICKUP_ANIMATION = 'viking_pickup';
 const STORE_PILEUP_ANIMATION = 'viking_pileup';
 const STORE_EXCHANGE_LENGTH = 20;

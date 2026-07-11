@@ -167,8 +167,9 @@ export const MineDeposit = defineComponent<{ initial: number; levels: number }>(
  * `sow` atomic effect from the good's content `farming` block; the CropGrowthSystem advances it and the
  * farmer drive (planFarmer) works it. The loop: sown at `stage` 1 with `Resource.remaining` **0** (a
  * growing field yields nothing — the remaining-0 gate is what keeps every generic harvest scan off an
- * unripe field), grows a stage each `ticksPerStage` ticks (twice as fast once `watered` — the cultivate
- * atomic's effect; the ×2 is a named approximation, the engine's watering semantics are not decoded),
+ * unripe field), grows a stage each `ticksPerStage` ticks ONLY while `watered` — watering is the growth
+ * FUEL, and each stage step consumes it (a named approximation: the engine's watering semantics are
+ * not decoded; see systems/economy/farming.ts),
  * and at the final stage (`stage === stages`) becomes ripe: `Resource.remaining` is set to `yieldUnits`,
  * so the reap swing (the plain `harvest` effect, branched by THIS marker) drops the whole yield as a
  * ground sheaf pile ({@link GroundDrop}, the good's `landscapeToPickup` look) and removes the field.
@@ -206,8 +207,8 @@ export const Crop = defineComponent<{
  * at the target. Its ONE purpose is work division: the planner folds every live FarmTask into the
  * tick's claim set, so a second farmer never picks a node a colleague is already en route to — the
  * fix for two farmers shadowing each other sowing/reaping the same spot (and what makes N farmers
- * scale field throughput ~N×). `sow` marks a plant-walk, which also counts toward the farm's
- * the farm's field cap while the field doesn't exist yet. A stale task (the target raced away, the farmer got
+ * scale field throughput ~N×). `sow` marks a plant-walk, which also counts toward the farm's field
+ * cap while the field doesn't exist yet. A stale task (the target raced away, the farmer got
  * preempted) over-claims one node for at most the ticks until that farmer replans — self-correcting.
  * Inert on every golden that farms nothing (the separate-component pattern).
  */

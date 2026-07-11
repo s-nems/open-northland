@@ -89,9 +89,16 @@ export function planDelivery(
   if (store === null) {
     // Nowhere can take the load — wait INSIDE the bound workplace with it (the farmer rung's own
     // rest-inside seam) instead of standing frozen mid-carry at the door; an unbound hauler has no
-    // house to wait in and just stands. Hands stay full either way.
+    // house to wait in and just stands. Hands stay full either way. Only a COMPLETED building can be
+    // waited in (no UnderConstruction) — the render hides a Resting settler, and vanishing "inside" a
+    // bare foundation would read as a despawn.
     const home = world.tryGet(e, JobAssignment)?.workplace;
-    if (home !== undefined && world.has(home, Building) && world.has(home, Position)) {
+    if (
+      home !== undefined &&
+      world.has(home, Building) &&
+      !world.has(home, UnderConstruction) &&
+      world.has(home, Position)
+    ) {
       atOrWalk(world, e, here, interactionCell(world, ctx, terrain, home, here), () =>
         world.add(e, Resting, { at: home }),
       );

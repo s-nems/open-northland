@@ -123,7 +123,7 @@ export const farmScene: SceneDefinition = {
     'Farmerzy DZIELĄ SIĘ pracą: każdy idzie do INNEGO pola/snopka, nie chodzą jeden przy drugim do tego samego celu.',
     'Świeżo posiane pole jest niewidoczne/gołe (oryginał nie rysuje stanu 1) — ŻADNEGO zielonego kwadratu; kiełki widać od 2. stadium.',
     'KAŻDE stadium wzrostu wymaga podlania: farmer krąży po polach z konewką (praca farmera napędza produkcję), a niepodlane pole stoi w miejscu.',
-    'Liczba pól skaluje się z załogą PODLINIOWO (baza 2 + 4 na farmera): 1 farmer = 6 pól, 2 farmerów = 10.',
+    'Liczba pól skaluje się z załogą PODLINIOWO (baza 2 + 4 na farmera) — w tej scenie 2 farmerów utrzymuje do 10 pól (samotny farmer pracowałby na 6).',
     'Farmer bez zajęcia NIE sterczy pod drzwiami — wchodzi do farmy (znika) i wychodzi, gdy tylko któreś pole zrobi się spragnione.',
     'Dojrzałe pole farmer ŚCINA KOSĄ (animacja koszenia); po ścięciu na ziemi zostaje snopek, a pole znika (można siać ponownie).',
     'Farmer PODNOSI snopek, NIESIE go do farmy i ZNIKA w środku na ~1 s (wchodzi odłożyć zboże), po czym wychodzi; licznik magazynu rośnie.',
