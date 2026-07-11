@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
-import type { Component } from '../../src/ecs/world.js';
-import { Simulation } from '../../src/index.js';
+import { Simulation, clearComponentStores } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -16,12 +15,6 @@ import { testContent } from '../fixtures/content.js';
 
 const { Position, Resource } = components;
 
-function clearStores(): void {
-  for (const c of Object.values(components)) {
-    if (typeof c === 'object' && c !== null && 'store' in c) (c as Component<unknown>).store.clear();
-  }
-}
-
 function newSim(): Simulation {
   return new Simulation({ seed: 1, content: testContent() });
 }
@@ -35,7 +28,7 @@ function bareResource(sim: Simulation, remaining: number) {
 }
 
 describe('Simulation.snapshot() per-tick memo', () => {
-  beforeEach(clearStores);
+  beforeEach(clearComponentStores);
 
   it('returns the SAME snapshot object while the tick and world are unchanged', () => {
     const sim = newSim();
@@ -66,7 +59,7 @@ describe('Simulation.snapshot() per-tick memo', () => {
 });
 
 describe('takeSnapshot scenery clone cache', () => {
-  beforeEach(clearStores);
+  beforeEach(clearComponentStores);
 
   it('reuses an unchanged scenery entity clone VERBATIM across snapshots (identity)', () => {
     const sim = newSim();

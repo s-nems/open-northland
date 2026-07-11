@@ -1,13 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
-import type { Component } from '../../src/ecs/world.js';
-import { Simulation } from '../../src/index.js';
+import { Simulation, clearComponentStores } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
-import { canonicalResources, resourcesNearNode } from '../../src/systems/spatial.js';
+import { canonicalResources, resourcesNearNode } from '../../src/systems/resource-index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
- * The resource REGION index (`systems/spatial.ts`) — the golden-rule-6 fix that lets a flag-bound
+ * The resource REGION index (`systems/resource-index.ts`) — the golden-rule-6 fix that lets a flag-bound
  * gatherer's `nearestHarvestableFor` scan read only the nodes near its flag instead of every resource
  * on a decoded map (~17k). Correctness contract pinned here: the query is a SUPERSET of the anchors
  * within the reach box, returned ascending-id (the canonical first-wins order the nearest-pick
@@ -17,12 +16,6 @@ import { testContent } from '../fixtures/content.js';
  */
 
 const { Position, Resource } = components;
-
-function clearStores(): void {
-  for (const c of Object.values(components)) {
-    if (typeof c === 'object' && c !== null && 'store' in c) (c as Component<unknown>).store.clear();
-  }
-}
 
 function newSim(): Simulation {
   return new Simulation({ seed: 1, content: testContent() });
@@ -37,7 +30,7 @@ function nodeAt(sim: Simulation, hx: number, hy: number) {
 }
 
 describe('resourcesNearNode (the flag-bound scan index)', () => {
-  beforeEach(clearStores);
+  beforeEach(clearComponentStores);
 
   it('returns exactly the anchors within the reach box, ascending-id, across region borders', () => {
     const sim = newSim();

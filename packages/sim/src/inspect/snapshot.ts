@@ -93,7 +93,8 @@ function verifySceneryClones(world: World, cache: ReadonlyMap<Entity, EntitySnap
  */
 export function takeSnapshot(world: World, tick: number, events: readonly SimEvent[]): WorldSnapshot {
   const cache = sceneryCloneCache(world);
-  world.drainTouched((e) => cache.delete(e));
+  // An overflowed log (a long snapshot-less run) lost its individual evictions — drop everything.
+  if (world.drainTouched((e) => cache.delete(e))) cache.clear();
   const entities: EntitySnapshot[] = [];
   for (const id of world.canonicalEntities()) {
     const cached = cache.get(id);

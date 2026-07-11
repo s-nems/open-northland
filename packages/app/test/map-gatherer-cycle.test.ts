@@ -1,5 +1,12 @@
 import type { TerrainMapFile } from '@vinland/data';
-import { Simulation, type TerrainMap, components, halfCellMapFromCells, systems } from '@vinland/sim';
+import {
+  Simulation,
+  type TerrainMap,
+  clearComponentStores,
+  components,
+  halfCellMapFromCells,
+  systems,
+} from '@vinland/sim';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import { buildCollisionTerrain } from '../src/content/collision.js';
@@ -25,13 +32,7 @@ import { GATHERER_WORK_RADIUS, mapResourceObjectNames } from '../src/game/sandbo
 
 const { GroundDrop, Position, Resource, Stockpile, WorkFlag } = components;
 
-function clearStores(): void {
-  for (const v of Object.values(components)) {
-    if (typeof v === 'object' && v !== null && 'store' in v && v.store instanceof Map) v.store.clear();
-  }
-}
-
-beforeEach(clearStores);
+beforeEach(clearComponentStores);
 
 /** An all-grass CELL map (the sim runs its 2× half-cell lattice). */
 function grassMap(cells: number) {
@@ -114,12 +115,12 @@ describe('map-style gathering cycle (sandbox content, footprinted trees, dense f
     for (let hy = 34; hy <= 42; hy += 2) {
       for (let hx = 44; hx <= 52; hx += 2) placements.push(hx, hy, 0);
     }
-    const mapFile = {
+    const mapFile: TerrainMapFile = {
       width: 40,
       height: 40,
       typeIds: new Array(40 * 40).fill(0),
       objects: { types: [treeName], placements },
-    } as unknown as TerrainMapFile;
+    };
     // The collision view: the tree blocks its own node (walk) — enough to reproduce the wall.
     const ir: ContentIr = {
       landscapeGfx: [{ index: 900, editName: treeName, logicType: 4, walkBlockAreas: [[1, 0, 0, 1]] }],

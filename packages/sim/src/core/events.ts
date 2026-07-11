@@ -153,7 +153,6 @@ export type SimEvent =
       readonly kind: 'resourceMined';
       readonly node: Entity;
       readonly goodType: number;
-      readonly remaining: number;
       readonly at: { x: number; y: number };
     };
 

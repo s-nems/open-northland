@@ -190,6 +190,7 @@ export function spawnMapResources(
   ir: ContentIr,
 ): MapResourceSpawnResult {
   let spawned = 0;
+  let unspawnable = 0;
   const placementByEntity = new Map<Entity, number>();
   for (const { goodId, gfxIndex, hx, hy, placement } of mapResourceSpawns(objects, ir, SPAWNABLE_GOOD_IDS)) {
     const g = GATHERER_BY_GOOD_ID.get(goodId);
@@ -199,7 +200,17 @@ export function spawnMapResources(
     if (e !== null) {
       spawned++;
       placementByEntity.set(e, placement);
+    } else {
+      unspawnable++;
     }
+  }
+  if (unspawnable > 0) {
+    // A latent collision hole: these placements were SKIPPED from the static collision bake
+    // (mapResourceObjectNames) on the promise of a dynamic footprint that never materialised (the
+    // good has no footprint record in the sim content) — a drawn object settlers walk through.
+    console.warn(
+      `spawnMapResources: ${unspawnable} harvestable placements failed to spawn (no sim-content footprint) — they block nothing`,
+    );
   }
   return { spawned, placementByEntity };
 }

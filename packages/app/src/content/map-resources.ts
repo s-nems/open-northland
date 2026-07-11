@@ -30,8 +30,10 @@ export interface HarvestObjectRef {
  * yields when harvested AND its own `[GfxLandscape]` record index, from the IR gathering pipeline's HARVEST
  * stage. Pure — one pass over the pipeline and the `landscapeGfx` index↔name table. An object in no harvest
  * stage is absent (a decor object stays decor). Degrades to an empty map when either lane is missing (an
- * older `ir.json`). The `gfxIndex` rides the spawn into `ResourceFootprint.sourceGfxIndex`, so a spawned
- * node keeps its exact original graphic + collision variant instead of collapsing to one species per good.
+ * older `ir.json`). The `gfxIndex` rides the spawn onto `Resource.gfxIndex` — an OPAQUE render-variant tag
+ * (app numbering) the snapshot carries into `DrawItem.gfxIndex`, so a pool-drawn node keeps its exact
+ * original graphic instead of collapsing to one species per good. It never reaches the sim's footprint
+ * resolution: collision stays the good's own record in the SIM's content set (an unrelated number space).
  */
 export function harvestGoodByObjectName(ir: ContentIr): ReadonlyMap<string, HarvestObjectRef> {
   const nameByIndex = new Map<number, string>();

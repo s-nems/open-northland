@@ -127,9 +127,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   const holeBg = new Graphics();
   const innerL = local(layout.inner);
   const underlap = frame !== null ? HOLE_UNDERLAP_NATIVE_PX * layout.artScale : 0;
-  holeBg
-    .rect(innerL.x, innerL.y - underlap, innerL.w + underlap, innerL.h + underlap)
-    .fill(HOLE_COLOUR);
+  holeBg.rect(innerL.x, innerL.y - underlap, innerL.w + underlap, innerL.h + underlap).fill(HOLE_COLOUR);
   container.addChild(holeBg);
 
   // The original braided frame, drawn OVER the backdrop (its near-black hole + outer margins are keyed
@@ -227,8 +225,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       const mx = layout.map.x - layout.panel.x + (s.x - bounds.minX) * layout.scale;
       const my = layout.map.y - layout.panel.y + (s.y - bounds.minY) * layout.scale;
       const half = settler ? SETTLER_DOT_PX / 2 : BUILDING_DOT_PX / 2;
-      const colour =
-        PLAYER_SWATCH_COLORS[player % PLAYER_SWATCH_COLORS.length] ?? UNKNOWN_PLAYER_DOT_COLOUR;
+      const colour = PLAYER_SWATCH_COLORS[player % PLAYER_SWATCH_COLORS.length] ?? UNKNOWN_PLAYER_DOT_COLOUR;
       dots.rect(mx - half, my - half, half * 2, half * 2).fill(colour);
     }
   };

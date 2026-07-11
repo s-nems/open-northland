@@ -16,7 +16,8 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
 import { interactionNode, positionedInteractionCell, resourceWorkCell } from '../footprint/index.js';
 import { buildingEnabled, settlerMeetsNeed } from '../progression.js';
-import { canonicalById, canonicalResources, manhattan, resourcesNearNode } from '../spatial.js';
+import { canonicalResources, resourceHarvestAtomics, resourcesNearNode } from '../resource-index.js';
+import { canonicalById, manhattan } from '../spatial.js';
 import {
   buildingWorkerJobs,
   isFood,
@@ -128,7 +129,14 @@ export function collectTargets(world: World, ctx: SystemContext): TargetCandidat
  * is within `radius` (integer node-distance) of `center` qualify, and the winner is the one NEAREST THE
  * FLAG (so a bound gatherer works outward from its flag, not wherever it happens to stand). Omitted — the
  * default for an unbound roaming collector — measures from `here` with no radius, the prior behaviour
- * byte-for-byte (so the golden slice is untouched).
+ * byte-for-byte (so the golden slice is untouched). **With `area` set, `candidates` is superseded** by
+ * the resource region index (`resourcesNearNode` — a provable superset of the in-radius nodes); pass the
+ * full canonical resource list, never a pre-filtered one, or the two paths disagree on the winner.
+ *
+ * Known limitation (like the bridge case): the reachability gate below reads STATIC components only. A
+ * same-component node whose anchor and every work cell are enclosed by DYNAMIC resource footprints (a
+ * sealed pocket deep in a dense forest) can still win the pick and then fail its path. Route-level
+ * dynamic reachability is a separate follow-up (see `docs/plans/gathering-economy.md`).
  */
 export function nearestHarvestableFor(
   candidates: readonly Entity[],
@@ -140,12 +148,24 @@ export function nearestHarvestableFor(
   area?: { center: NodeId; radius: number },
 ): Entity | null {
   const allowed = jobAtomics(ctx, settler.jobType);
-  // Dormancy gate: a job with NO harvest atomics (a carrier, builder, idle settler) can harvest nothing,
-  // so every candidate would fail the `allowed.has` check below — the whole scan is provably null. Skip it
-  // in O(1) instead of walking the entire resource list per such settler per tick (with thousands of
-  // map-spawned nodes that per-settler full scan is the dominant sim cost). Same result — a non-harvester
-  // still gets null — so the golden slice is byte-identical; only the wasted iteration is elided.
-  if (allowed.size === 0) return null;
+  // Dormancy gate: if the job's allowed atomics intersect NO harvest atomic present on any standing
+  // resource, every candidate fails the `allowed.has` check below — the whole scan is provably null.
+  // Skip it in O(distinct present atomics ≈ goods) instead of walking the entire resource list per such
+  // settler per tick (with thousands of map-spawned nodes that per-settler full scan is the dominant sim
+  // cost). This covers not just atomic-less jobs but every NON-HARVEST trade that still carries atomics —
+  // an idle builder (build atomic only) used to fall through planBuilder into this scan every tick. The
+  // probe set is derived from the ACTUAL resources (the region index), so a fixture node carrying an
+  // out-of-content atomic still gates exactly. Same result — a non-harvester still gets null — so the
+  // golden slice is byte-identical; only the wasted iteration is elided.
+  const present = resourceHarvestAtomics(world);
+  let anyHarvestable = false;
+  for (const atomic of present) {
+    if (allowed.has(atomic)) {
+      anyHarvestable = true;
+      break;
+    }
+  }
+  if (!anyHarvestable) return null;
   // Rank + range from the flag when bound; from the settler when roaming (the unbound default is identical
   // to the prior nearest-to-`here` scan — same origin, no radius filter).
   const origin = area?.center ?? here;

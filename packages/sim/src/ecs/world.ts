@@ -55,6 +55,16 @@ export class World {
    * runs). Purely a read-path aid: never consulted by a sim decision, so it cannot affect determinism.
    */
   private readonly touched = new Set<Entity>();
+  /** Monotonic counter of ALL entity mutations (add/remove/destroy/touch) — the snapshot memo's
+   *  freshness key. Unlike "is the touched log empty" it cannot be falsified by another consumer
+   *  draining the log between two same-tick snapshots. */
+  private mutations = 0;
+  /** Set when the touched log overflowed and was dropped wholesale (a snapshot-less soak run) —
+   *  the next {@link drainTouched} reports it so the consumer discards its whole cache. */
+  private touchedOverflow = false;
+  /** Touched-log size past which it is dropped wholesale rather than grown forever — only reachable
+   *  when nothing snapshots (headless soaks); one full cache rebuild is the entire cost. */
+  private static readonly TOUCHED_OVERFLOW_LIMIT = 65536;
 
   create(): Entity {
     const id = this.nextId++ as Entity;
@@ -69,7 +79,7 @@ export class World {
     }
     this.alive.delete(entity);
     this.canonicalCache = null;
-    this.touched.add(entity);
+    this.logTouched(entity);
   }
 
   isAlive(entity: Entity): boolean {
@@ -82,14 +92,14 @@ export class World {
     }
     component.store.set(entity, value);
     this.bumpComponentGeneration(component as Component<unknown>);
-    this.touched.add(entity);
+    this.logTouched(entity);
     return value;
   }
 
   remove<T>(entity: Entity, component: Component<T>): void {
     if (component.store.delete(entity)) {
       this.bumpComponentGeneration(component as Component<unknown>);
-      this.touched.add(entity);
+      this.logTouched(entity);
     }
   }
 
@@ -100,20 +110,41 @@ export class World {
    * `Resource.remaining`). Read-path only; no sim decision ever consults the log.
    */
   touch(entity: Entity): void {
-    this.touched.add(entity);
+    this.logTouched(entity);
   }
 
-  /** Whether any entity mutation was logged since the last {@link drainTouched} — the cheap "may the
-   *  previous snapshot be reused?" probe (`Simulation.snapshot`'s per-tick memo). */
-  get hasTouchedEntities(): boolean {
-    return this.touched.size > 0;
+  /**
+   * Monotonic version of ALL entity mutations (every `add`/`remove`/`destroy`/`touch`) — the
+   * "may the previous snapshot be reused?" key (`Simulation.snapshot`'s per-tick memo). A COUNTER,
+   * not the touched log's emptiness: any consumer may drain the log without falsifying another
+   * consumer's staleness probe.
+   */
+  get mutationVersion(): number {
+    return this.mutations;
   }
 
-  /** Hand every logged-touched entity to `consume` and clear the log (one consumer owns the drain —
-   *  today the snapshot clone cache, which evicts each touched entity's cached clone). */
-  drainTouched(consume: (entity: Entity) => void): void {
+  /**
+   * Hand every logged-touched entity to `consume` and clear the log (the snapshot clone cache evicts
+   * each touched entity's cached clone). Returns `true` when the log OVERFLOWED since the last drain
+   * (dropped wholesale — a long snapshot-less run): the consumer must then discard its entire cache,
+   * because the individual evictions were lost.
+   */
+  drainTouched(consume: (entity: Entity) => void): boolean {
     for (const e of this.touched) consume(e);
     this.touched.clear();
+    const overflowed = this.touchedOverflow;
+    this.touchedOverflow = false;
+    return overflowed;
+  }
+
+  private logTouched(entity: Entity): void {
+    this.mutations++;
+    if (this.touched.size >= World.TOUCHED_OVERFLOW_LIMIT) {
+      // A snapshot-less soak: drop the log instead of leaking it; the next drain rebuilds the cache.
+      this.touched.clear();
+      this.touchedOverflow = true;
+    }
+    this.touched.add(entity);
   }
 
   has<T>(entity: Entity, component: Component<T>): boolean {
