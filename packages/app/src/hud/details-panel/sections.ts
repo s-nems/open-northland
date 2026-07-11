@@ -60,8 +60,13 @@ const STOCK_AMOUNT_INSET = 6;
 const STOCK_TAB_UNDERLINE_H = 2;
 /** Key column width of a key/value row. */
 const KV_KEY_W = 82;
-/** Fixed gauge width for an Ogólne stat bar (the original shows no numbers on these bars). */
-const SETTLER_BAR_W = 64;
+/** The Ogólne stat rows' label column (fits the widest label, "Towarzystwo") — the gauge fills the
+ *  REST of the row, so the bars run edge-to-edge with the column instead of floating as short stubs
+ *  (user feedback 2026-07-11: wider bars). */
+const STAT_LABEL_W = 78;
+/** An Ogólne stat gauge's height — a touch taller than the building's 10-px progress bar so the
+ *  gradient has room to read, still inside the 13-px bar row. */
+const STAT_BAR_H = 11;
 /** How far an equip good's icon EXTENDS beyond its socket ring on every side (design px). The original's
  *  chunky equip icons spill a touch over the ring — a bigger icon reads far better than a tiny one
  *  rattling inside the circle. */
@@ -301,17 +306,17 @@ function drawGeneralSection(
   chrome.textAt(model.profession, layout.name.x, layout.name.y + ROW_TEXT_PAD * s, 'white', 'title');
   chrome.textAt(model.meta, layout.meta.x, layout.meta.y + ROW_TEXT_PAD * s, 'dimmed');
 
-  // Stat bars: the model's pinned label (Zdrowie/Głód/…) and a fixed-width level-coloured gauge (the
-  // decoded ramp sweeps red→green with the level) right-aligned in the row; the hover value lives in
-  // the panel's cursor tooltip.
-  const barW = Math.round(SETTLER_BAR_W * s);
-  const barH = Math.round(BAR_H * s);
+  // Stat bars: the model's pinned label (Zdrowie/Głód/…) in a fixed column, then a level-coloured
+  // gauge (the decoded ramp sweeps red→green with the level) filling the REST of the row; the hover
+  // value lives in the panel's cursor tooltip.
+  const labelW = Math.round(STAT_LABEL_W * s);
+  const barH = Math.round(STAT_BAR_H * s);
   model.bars.forEach((barModel, i) => {
     const r = layout.bars[i];
     if (r === undefined) return;
     chrome.textAt(barModel.label, r.x, r.y + ROW_TEXT_PAD * s, 'white');
     chrome.bar(
-      { x: r.x + r.w - barW, y: r.y + Math.round((r.h - barH) / 2), w: barW, h: barH },
+      { x: r.x + labelW, y: r.y + Math.round((r.h - barH) / 2), w: r.w - labelW, h: barH },
       barModel.pct,
       barModel.kind === 'health' ? 'hitpoints' : 'standart',
     );

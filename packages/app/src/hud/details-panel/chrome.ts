@@ -483,6 +483,16 @@ export function createChrome(
     return colors[index] ?? BAR_TONE_FILL[barTone(clamped)];
   };
 
+  /** Blend `from` toward `to` by `t` (0..1), per RGB channel — the gauge's gradient math. */
+  const mixColor = (from: number, to: number, t: number): number => {
+    const ch = (shift: number): number => {
+      const a = (from >> shift) & 0xff;
+      const b = (to >> shift) & 0xff;
+      return Math.round(a + (b - a) * t) << shift;
+    };
+    return ch(16) | ch(8) | ch(0);
+  };
+
   const bar = (r: Rect, pct: number, ramp?: BarRampName): void => {
     const clamped = Math.max(0, Math.min(100, pct));
     const line = Math.max(1, Math.round(scale));
@@ -509,30 +519,42 @@ export function createChrome(
       return;
     }
 
-    // A STAT GAUGE. Track: a recessed dark inset (the stockField look) — NOT the grey `bar_disabled`
-    // art, whose grey middle read as a stuck half-full bar (user feedback 2026-07-11). Fill: flat
-    // Graphics in the decoded ramp's level colour (the PalettedSprite art can't be tinted per-sprite —
-    // see paletted-sprite.ts) with a light top gloss + dark base line so it reads as a rounded gauge
-    // at 10 px, and a thin dark bevel around the track.
-    g.rect(r.x, r.y, r.w, r.h).fill({ color: INNER_BOX_DARK, alpha: 0.6 });
-    g.moveTo(r.x, r.y + r.h)
-      .lineTo(r.x, r.y)
-      .lineTo(r.x + r.w, r.y)
-      .stroke({ color: INNER_BOX_DARK, width: line, alpha: 0.9 });
-    g.moveTo(r.x + r.w, r.y)
-      .lineTo(r.x + r.w, r.y + r.h)
-      .lineTo(r.x, r.y + r.h)
-      .stroke({ color: INNER_BOX_LIGHT, width: line, alpha: 0.45 });
+    // A STAT GAUGE (not the grey `bar_disabled` art, whose middle read as a stuck bar — user feedback
+    // 2026-07-11). Drawn entirely as Graphics (the PalettedSprite art can't be tinted per-sprite — see
+    // paletted-sprite.ts): a recessed near-black groove with an inner top shadow and an embossed light
+    // catch under its lip, filled by a smooth vertical gradient of the decoded ramp's level colour
+    // (1-px strips — no gradient textures to leak on the panel's 4 Hz rebuilds).
+    const base = rampColor(ramp, clamped);
+    // Track groove: solid dark body, a crisp dark outline, an inner top shadow (inset illusion), and a
+    // one-px parchment light catch just under the bottom edge (the emboss the wood around it casts).
+    g.rect(r.x, r.y, r.w, r.h).fill(0x160f09);
+    g.rect(r.x, r.y, r.w, r.h).stroke({ color: INNER_BOX_DARK, width: line });
+    g.rect(r.x + line, r.y + line, r.w - 2 * line, line).fill({ color: 0x000000, alpha: 0.45 });
+    g.rect(r.x, r.y + r.h, r.w, line).fill({ color: INNER_BOX_LIGHT, alpha: 0.35 });
+
     const fillW = Math.max(0, Math.round((r.w - line * 2) * (clamped / 100)));
     if (fillW === 0) return;
     const fill: Rect = { x: r.x + line, y: r.y + line, w: fillW, h: Math.max(1, r.h - line * 2) };
-    g.rect(fill.x, fill.y, fill.w, fill.h).fill(rampColor(ramp, clamped));
-    // Gloss: a light top third and a dark base line — subtle depth without hiding the ramp colour.
-    g.rect(fill.x, fill.y, fill.w, Math.max(1, Math.round(fill.h / 3))).fill({
-      color: 0xffffff,
-      alpha: 0.22,
-    });
-    g.rect(fill.x, fill.y + fill.h - line, fill.w, line).fill({ color: 0x000000, alpha: 0.28 });
+    // Vertical gradient: a lit top rolling over the base into a shaded bottom — one strip per px.
+    const top = mixColor(base, 0xffffff, 0.38);
+    const bottom = mixColor(base, 0x000000, 0.34);
+    const steps = Math.max(2, Math.round(fill.h));
+    for (let i = 0; i < steps; i++) {
+      const t = i / (steps - 1);
+      const color = t < 0.45 ? mixColor(top, base, t / 0.45) : mixColor(base, bottom, (t - 0.45) / 0.55);
+      const y0 = fill.y + (fill.h * i) / steps;
+      const y1 = fill.y + (fill.h * (i + 1)) / steps;
+      g.rect(fill.x, y0, fill.w, y1 - y0 + 0.5).fill(color);
+    }
+    // A hair of specular along the very top and a darker lip on the fill's leading (right) edge, so the
+    // gauge end reads as a surface, not a paint cutoff.
+    g.rect(fill.x, fill.y, fill.w, line).fill({ color: 0xffffff, alpha: 0.28 });
+    if (fillW > line * 2) {
+      g.rect(fill.x + fill.w - line, fill.y, line, fill.h).fill({
+        color: mixColor(base, 0x000000, 0.45),
+        alpha: 0.9,
+      });
+    }
   };
 
   /**
