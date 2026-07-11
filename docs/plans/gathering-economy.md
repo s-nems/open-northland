@@ -157,6 +157,20 @@ settlers/buildings miss. Golden untouched (it plants no flags); the create/destr
 determinism stream. Verified: `npm test`/`check`/`build`; flag-click→select confirmed on `?scene=sandbox`
 (the profession-picker plant/drop flow is the user's browser sign-off).
 
+**Gatherer only targets a REACHABLE resource (2026-07-11, `fix/gatherer-bridge-idle`):** on split maps
+(the "mosty na rzece" river maps) flag-bound gatherers stood idle by the flag instead of chopping. Cause:
+`nearestHarvestableFor` picked the nearest tree by Manhattan distance with NO reachability check, so a
+tree just across the river (a different static component — bridges are not walkable in the collision join,
+a named limitation) won the pick; `findPath` then correctly reported "no route", the failed civilian
+`PathRequest` was never re-issued, and the gatherer froze pointed at the far bank, never falling through to
+a reachable tree slightly farther. Fix: a `terrain.componentOf(here) === componentOf(cell)` gate in
+`nearestHarvestableFor` (ai-targets.ts) skips a cross-component resource — the same static-connectivity
+verdict `findPath` uses, an O(1) array read. Same-component candidates are unaffected, so the golden slice
+(every tree reachable) is byte-identical. Two river-split tests added in `gatherer-flag.test.ts` (both fail
+without the gate). Verified: `npm test` (1915), `check`, `build`. Real-map visual (a gatherer on
+`?map=specjalna_mosty_na_rzece`) is the user's browser sign-off. Note: making bridges walkable so the two
+banks join into one component is a separate, larger gap (app `collision.ts` — objects only ADD blocking).
+
 ---
 
 ## Step 6 — app: imported maps spawn real resource nodes
