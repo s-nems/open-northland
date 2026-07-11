@@ -93,6 +93,17 @@ file when all steps land.
       currently UNBOUND → the item pops in/out) with a GLOBAL duration constant, not per-scene; (b) the
       strike → brief idle → reposition cadence between chops. Step 5 landed the sim-side adjacent work cell;
       render-facing/anchor polish remains here.
+- [ ] 8. Pipeline+sim: builder stand cells from `LogicConstructionWorkArea`. The mod's `[GfxHouse]`
+      records (`DataCnmd/budynki12/houses/houses.ini`) carry per-building
+      `LogicConstructionWorkArea <sizeIdx> <dx> <dy> <run>` rows — the building analog of the landscape
+      `workAreas` Step 5 already consumes — but `extractBuildingFootprints`
+      (`tools/asset-pipeline/src/decoders/ini.ts`, which already parses the sibling
+      `LogicWalkBlockArea`/`LogicBuildBlockArea`/`LogicDoorPoint` keys) skips the key. Extract it into the
+      building-footprint IR and have the builder work-slot claim (`claimWorkCell`,
+      `packages/sim/src/systems/agents/destack.ts`) draw a site's stand cells from the site's own area
+      instead of today's uniform door-anchored yard (`WORK_YARD_RADIUS_NODES` — a placeholder
+      approximation flagged by review 2026-07-11); confirm the row semantics against OpenVikings before
+      trusting the shape.
 
 Out of scope for this plan: tree regrowth/spreading and herb/mushroom cultivation (the bio
 transitions — `isBioLandscapeFlag`, `atomicForPlanting`), bush/fruit growth stages, farming/

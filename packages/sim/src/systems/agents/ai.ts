@@ -17,7 +17,7 @@ import type { System, SystemContext } from '../context.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 import { NodeBuckets, canonicalById, isTravelling } from '../spatial.js';
 import { boundWorkplaceTarget, collectTargets, hasHaulableOutput } from './ai-targets.js';
-import { type IdleSpacing, deStackIdle } from './destack.js';
+import { type SpacingState, deStackIdle } from './destack.js';
 import {
   planBuilder,
   planCarrierHaul,
@@ -83,15 +83,16 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
   // let idle settlers skip the scan (identical outcome, no per-settler work). This is what makes an idle
   // crowd cost ~0: a settler with no reachable work does not re-scan the world every tick.
   const anyHaulable = hasHaulableOutput(world, ctx, targets.stockpiles);
-  // Idle-spacing occupancy: owned settlers currently AT REST (not travelling) bucketed by integer tile,
-  // in ascending-id order (see ./destack.ts). Gated on Owner so it only ever moves gameplay
+  // Spacing occupancy — shared by BOTH spacing consumers (the idle de-stack rung and the builder
+  // work slots, see ./destack.ts): owned settlers currently AT REST (not travelling) bucketed by
+  // integer tile, in ascending-id order. Gated on Owner so it only ever moves gameplay
   // (player-owned) units; the unowned golden/economy fixtures build an empty bucket set, so their
   // planner output is byte-identical. Built ONCE from the tick-start positions (stable across the
   // loop's own mutations).
   const restingOwned = canonicalById(world.query(Settler, Position, Owner)).filter(
     (e) => !isTravelling(world, e),
   );
-  const spacing: IdleSpacing = { occupancy: new NodeBuckets(world, restingOwned), claimed: new Set() };
+  const spacing: SpacingState = { occupancy: new NodeBuckets(world, restingOwned), claimed: new Set() };
 
   for (const e of world.query(Settler, Position)) {
     // Busy: an atomic is running, or the settler is en route to a target. Leave it to play out.
