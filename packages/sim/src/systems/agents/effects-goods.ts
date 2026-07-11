@@ -85,7 +85,15 @@ export function harvestFromNode(
   // to give, so conserve goods and don't re-remove it (its own drain already removed it).
   if (res.remaining <= 0) return;
   const took = Math.min(HARVEST_YIELD, res.remaining);
-  if (world.has(node, MineDeposit)) {
+  const deposit = world.tryGet(node, MineDeposit);
+  if (deposit !== undefined) {
+    // Several strikes chip ONE unit (OBSERVED calibration, see MineDeposit doc — the data pins only
+    // the single-swing cycle length): only the strike that completes the unit drops ore and drains
+    // the node; earlier strikes just advance the counter, so the deposit reads as WORKED.
+    deposit.strikes = (deposit.strikes ?? 0) + 1;
+    world.touch(node); // in-place write on a snapshot-cached scenery entity — log it (World.touch doc)
+    if (deposit.strikes < Math.max(1, deposit.strikesPerUnit ?? 1)) return;
+    deposit.strikes = 0;
     dropMinedOre(world, settler, node, res.goodType, took); // an ore pile at the deposit's cell, carried off later
   } else {
     addCarry(world, settler, goodType, took); // a mushroom — straight onto the back (direct pickup)

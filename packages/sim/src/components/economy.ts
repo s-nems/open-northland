@@ -154,10 +154,22 @@ export const Felling = defineComponent<{ chopsLeft: number }>('Felling');
  * `levels` visual states, the `[GfxLandscape]` mine record's fill frames; `render`'s scene builder does
  * that pure integer computation off the snapshot, the way it already derives a pile's heap `fill`).
  * `levels` is that state count (OBSERVED = the ls_ground mine gfx's 5 fill states; source basis).
- * Both are plain integers, mutated by nothing — pure per-node capacity `remaining` is divided against.
- * Inert on every golden that mines nothing (the separate-component pattern).
+ *
+ * `strikesPerUnit`/`strikes` make a unit take SEVERAL work cycles: each completed harvest atomic
+ * advances `strikes`, and only the strike that reaches `strikesPerUnit` chips the unit off (drops the
+ * ore, drains `remaining`, resets the counter). OBSERVED calibration like {@link Felling.chopsLeft} —
+ * the readable data has no per-unit strike count (`atomicanimations.ini` carries only the single-swing
+ * cycle length), and one swing per unit read as "podchodzi, raz wali i już wykopane". A legacy node
+ * stamped without the field (older fixtures) behaves as 1 strike per unit.
  */
-export const MineDeposit = defineComponent<{ initial: number; levels: number }>('MineDeposit');
+export const MineDeposit = defineComponent<{
+  initial: number;
+  levels: number;
+  /** Work cycles per chipped unit (≥1; OBSERVED — see the component doc). */
+  strikesPerUnit?: number;
+  /** Progress toward the next unit (0..strikesPerUnit-1), reset on each chipped unit. */
+  strikes?: number;
+}>('MineDeposit');
 
 /**
  * Marks a {@link Resource} node that is a **sown field** — the wheat a farm's worker plants, waters and

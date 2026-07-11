@@ -12,6 +12,7 @@ import {
 } from '@vinland/sim';
 import { resolveVikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
+import { MINE_STRIKES_PER_UNIT } from '../../catalog/mining.js';
 import type { ContentIr } from '../../content/ir.js';
 import {
   mapBerryBushSpawns,
@@ -167,7 +168,7 @@ function resourceSpecFor(g: GathererSpec, x: number, y: number): ResourceNodeSpe
         y,
         remaining: units,
         harvestAtomic: g.atomic,
-        deposit: { levels: g.depositLevels ?? 0 },
+        deposit: { levels: g.depositLevels ?? 0, strikesPerUnit: MINE_STRIKES_PER_UNIT },
       };
     }
     case 'pick':
