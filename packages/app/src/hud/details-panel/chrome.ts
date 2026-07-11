@@ -80,6 +80,18 @@ const BAR_TONE_FILL: Readonly<Record<BarTone, number>> = {
   critical: 0xb5392b,
 };
 
+/** Where the gauge fill's vertical gradient rolls over from the lit top into the shaded bottom
+ *  (fraction of the fill height). All four gauge-shading strengths are eyeballed against the
+ *  parchment panel, not sampled from the original (which has no decoded bar-draw code). */
+const GAUGE_GRADIENT_KNEE = 0.45;
+/** How far the fill's lit top is blended toward white / the shaded bottom toward black. */
+const GAUGE_TOP_LIGHTEN = 0.38;
+const GAUGE_BOTTOM_DARKEN = 0.34;
+/** The one-px specular line along the fill's top edge. */
+const GAUGE_SPECULAR_ALPHA = 0.28;
+/** How far the fill's leading-edge lip is darkened, so the gauge end reads as a surface. */
+const GAUGE_LIP_DARKEN = 0.45;
+
 /** Draw order inside the panel: flat fills, bitmap fills, frame sprites/icons, then text. */
 export interface PanelLayers {
   readonly g: Graphics;
@@ -489,37 +501,14 @@ export function createChrome(
     return ch(16) | ch(8) | ch(0);
   };
 
-  const bar = (r: Rect, pct: number, style: 'progress' | 'gauge' = 'progress'): void => {
-    const clamped = Math.max(0, Math.min(100, pct));
-    const line = Math.max(1, Math.round(scale));
-
-    if (style === 'progress') {
-      // Neutral progress (production): the original bar frame + art fill, flat Graphics without art.
-      if (art === null) {
-        g.rect(r.x, r.y, r.w, r.h).fill(0x18120d).stroke({ color: 0x5f4a32, width: 1 });
-        const inner = Math.max(0, Math.round((r.w - 2) * (clamped / 100)));
-        if (inner > 0) g.rect(r.x + 1, r.y + 1, inner, Math.max(1, r.h - 2)).fill(0xb8894a);
-        return;
-      }
-      guiStretched(GUI_FRAME.bar_frame_96, r, 'bar_disabled', 'magenta', layers.back);
-      const innerW = Math.max(0, Math.round((r.w - line * 2) * (clamped / 100)));
-      if (innerW > 0) {
-        guiStretched(
-          GUI_FRAME.bar_frame_96,
-          { x: r.x + line, y: r.y + line, w: innerW, h: Math.max(1, r.h - line * 2) },
-          'bar_standart',
-          'magenta',
-          layers.front,
-        );
-      }
-      return;
-    }
-
-    // A STAT GAUGE (not the grey `bar_disabled` art, whose middle read as a stuck bar — user feedback
-    // 2026-07-11). Drawn entirely as Graphics (the PalettedSprite art can't be tinted per-sprite — see
-    // paletted-sprite.ts): a recessed near-black groove with an inner top shadow and an embossed light
-    // catch under its lip, filled by a smooth vertical gradient of the decoded ramp's level colour
-    // (1-px strips — no gradient textures to leak on the panel's 4 Hz rebuilds).
+  /**
+   * A STAT GAUGE (not the grey `bar_disabled` art, whose middle read as a stuck bar — user feedback
+   * 2026-07-11). Drawn entirely as Graphics (the PalettedSprite art can't be tinted per-sprite — see
+   * paletted-sprite.ts): a recessed near-black groove with an inner top shadow and an embossed light
+   * catch under its lip, filled by a smooth vertical gradient of the decoded ramp's level colour
+   * (1-px strips — no gradient textures to leak on the panel's 4 Hz rebuilds).
+   */
+  const drawGauge = (r: Rect, clamped: number, line: number): void => {
     const base = rampColor(clamped);
     // Track groove: solid dark body, a crisp dark outline, an inner top shadow (inset illusion), and a
     // one-px parchment light catch just under the bottom edge (the emboss the wood around it casts).
@@ -532,24 +521,54 @@ export function createChrome(
     if (fillW === 0) return;
     const fill: Rect = { x: r.x + line, y: r.y + line, w: fillW, h: Math.max(1, r.h - line * 2) };
     // Vertical gradient: a lit top rolling over the base into a shaded bottom — one strip per px.
-    const top = mixColor(base, 0xffffff, 0.38);
-    const bottom = mixColor(base, 0x000000, 0.34);
+    const top = mixColor(base, 0xffffff, GAUGE_TOP_LIGHTEN);
+    const bottom = mixColor(base, 0x000000, GAUGE_BOTTOM_DARKEN);
     const steps = Math.max(2, Math.round(fill.h));
     for (let i = 0; i < steps; i++) {
       const t = i / (steps - 1);
-      const color = t < 0.45 ? mixColor(top, base, t / 0.45) : mixColor(base, bottom, (t - 0.45) / 0.55);
+      const color =
+        t < GAUGE_GRADIENT_KNEE
+          ? mixColor(top, base, t / GAUGE_GRADIENT_KNEE)
+          : mixColor(base, bottom, (t - GAUGE_GRADIENT_KNEE) / (1 - GAUGE_GRADIENT_KNEE));
       const y0 = fill.y + (fill.h * i) / steps;
       const y1 = fill.y + (fill.h * (i + 1)) / steps;
       g.rect(fill.x, y0, fill.w, y1 - y0 + 0.5).fill(color);
     }
     // A hair of specular along the very top and a darker lip on the fill's leading (right) edge, so the
     // gauge end reads as a surface, not a paint cutoff.
-    g.rect(fill.x, fill.y, fill.w, line).fill({ color: 0xffffff, alpha: 0.28 });
+    g.rect(fill.x, fill.y, fill.w, line).fill({ color: 0xffffff, alpha: GAUGE_SPECULAR_ALPHA });
     if (fillW > line * 2) {
       g.rect(fill.x + fill.w - line, fill.y, line, fill.h).fill({
-        color: mixColor(base, 0x000000, 0.45),
+        color: mixColor(base, 0x000000, GAUGE_LIP_DARKEN),
         alpha: 0.9,
       });
+    }
+  };
+
+  const bar = (r: Rect, pct: number, style: 'progress' | 'gauge' = 'progress'): void => {
+    const clamped = Math.max(0, Math.min(100, pct));
+    const line = Math.max(1, Math.round(scale));
+    if (style === 'gauge') {
+      drawGauge(r, clamped, line);
+      return;
+    }
+    // Neutral progress (production): the original bar frame + art fill, flat Graphics without art.
+    if (art === null) {
+      g.rect(r.x, r.y, r.w, r.h).fill(0x18120d).stroke({ color: 0x5f4a32, width: 1 });
+      const inner = Math.max(0, Math.round((r.w - 2) * (clamped / 100)));
+      if (inner > 0) g.rect(r.x + 1, r.y + 1, inner, Math.max(1, r.h - 2)).fill(0xb8894a);
+      return;
+    }
+    guiStretched(GUI_FRAME.bar_frame_96, r, 'bar_disabled', 'magenta', layers.back);
+    const innerW = Math.max(0, Math.round((r.w - line * 2) * (clamped / 100)));
+    if (innerW > 0) {
+      guiStretched(
+        GUI_FRAME.bar_frame_96,
+        { x: r.x + line, y: r.y + line, w: innerW, h: Math.max(1, r.h - line * 2) },
+        'bar_standart',
+        'magenta',
+        layers.front,
+      );
     }
   };
 

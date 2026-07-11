@@ -4,9 +4,6 @@ import {
   CurrentAtomic,
   GroundDrop,
   MineDeposit,
-  MoveGoal,
-  PathFollow,
-  PathRequest,
   Position,
   Resource,
   Settler,
@@ -24,6 +21,7 @@ import {
 } from '../../src/index.js';
 import { type SystemContext, atomicSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
  * MINERAL DEPOSITS — SHRINK BY LEVEL, DROP ORE TO GROUND (historical plan phase 3, gathering Step 4). A mined
@@ -54,25 +52,7 @@ const STONE_GATHERING = testContent().goods.find((g) => g.id === 'stone')?.gathe
 const DEPOSIT_SIZE = STONE_GATHERING?.depositSize ?? 0;
 const DEPOSIT_LEVELS = STONE_GATHERING?.depositLevels ?? 0;
 
-function clearStores(): void {
-  for (const c of [
-    Position,
-    Settler,
-    Resource,
-    MineDeposit,
-    GroundDrop,
-    Stockpile,
-    Carrying,
-    CurrentAtomic,
-    MoveGoal,
-    PathFollow,
-    PathRequest,
-  ]) {
-    c.store.clear();
-  }
-}
-
-beforeEach(clearStores);
+beforeEach(clearComponentStores);
 
 function ctxOf(sim: Simulation): SystemContext {
   return {

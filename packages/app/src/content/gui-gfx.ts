@@ -118,6 +118,9 @@ export async function loadGuiBarRamp(): Promise<GuiBarRamp | undefined> {
     const response = await fetch(`/bobs/${GUI_PALETTE_LUT_STEM}.png`);
     if (!response.ok) return undefined;
     const bitmap = await createImageBitmap(await response.blob());
+    // A stale LUT baked before this palette was appended is SHORTER than the row index; canvas
+    // getImageData would silently return transparent black (an all-black ramp) — degrade instead.
+    if (guiPaletteRow('bar_hitpoints') >= bitmap.height) return undefined;
     const canvas = document.createElement('canvas');
     canvas.width = bitmap.width;
     canvas.height = bitmap.height;

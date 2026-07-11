@@ -36,7 +36,7 @@ function dropContent(): ContentSet {
 
 /** Clear the WHOLE component namespace (module-level singletons) so runs can't leak into each other —
  *  a hand-picked subset would miss a component a future system adds (sim AGENTS.md). */
-function clearStores(): void {
+function clearComponentStores(): void {
   for (const c of Object.values(components)) {
     if (typeof c === 'object' && c !== null && 'store' in c) {
       (c as { store: Map<unknown, unknown> }).store.clear();
@@ -44,7 +44,7 @@ function clearStores(): void {
   }
 }
 
-beforeEach(clearStores);
+beforeEach(clearComponentStores);
 
 function fresh(seed = 1): Simulation {
   return new Simulation({ seed, content: dropContent() });
@@ -138,7 +138,7 @@ describe('dropGood', () => {
     drop(runA);
     const hashA = runA.hashState();
 
-    clearStores();
+    clearComponentStores();
     const runB = fresh(7);
     drop(runB);
     const hashB = runB.hashState();

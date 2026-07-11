@@ -23,7 +23,7 @@ const VIKING = 1;
 const GRASS = 0;
 
 /** Clear every component store (shared singletons) so each sim phase starts clean. */
-function clearStores(): void {
+function clearComponentStores(): void {
   for (const c of Object.values(components)) {
     if (typeof c === 'object' && c !== null && 'store' in c) {
       (c as Component<unknown>).store.clear();
@@ -40,7 +40,7 @@ function snap(tick: number, entities: { id: number; components: Record<string, u
   return { tick, entities, events: [] };
 }
 
-beforeEach(clearStores);
+beforeEach(clearComponentStores);
 
 describe('diffSnapshots', () => {
   it('reports no change between two equal snapshots', () => {

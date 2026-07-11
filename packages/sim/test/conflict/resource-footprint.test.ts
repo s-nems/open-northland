@@ -32,6 +32,7 @@ import {
   stampResourceFootprint,
   unstampResourceFootprint,
 } from '../../src/systems/index.js';
+import { clearComponentStores } from '../fixtures/stores.js';
 
 const GRASS = 0;
 const WATER = 1;
@@ -221,13 +222,7 @@ function content(): ContentSet {
   });
 }
 
-function clearStores(): void {
-  for (const c of Object.values(components)) {
-    if (typeof c === 'object' && c !== null && 'store' in c && c.store instanceof Map) c.store.clear();
-  }
-}
-
-beforeEach(clearStores);
+beforeEach(clearComponentStores);
 
 function grassMap(width: number, height: number): TerrainMap {
   // Cell-dims signature; the sim's graph is the upsampled 2W×2H half-cell lattice. All scenario

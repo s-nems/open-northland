@@ -2,27 +2,20 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   Armor,
   Building,
-  Carrying,
-  CurrentAtomic,
   Health,
   JobAssignment,
-  MoveGoal,
   MoveSpeed,
   Owner,
-  PathFollow,
-  PathRequest,
   Position,
-  Production,
-  Resource,
   Settler,
   Stockpile,
-  Vehicle,
   Weapon,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type Command, Simulation, cellAnchorNode, fx } from '../../src/index.js';
 import { DEFAULT_SETTLER_HITPOINTS } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
  * Tests for CommandSystem + the serializable command queue + the snapshot read-view (the
@@ -44,28 +37,7 @@ const WOOD = 1;
 const VIKING = 1;
 const FRANK = 2; // a tribe absent from the fixture's tribe table — its tech-graph gates nothing
 
-function clearStores(): void {
-  Position.store.clear();
-  Settler.store.clear();
-  Resource.store.clear();
-  Building.store.clear();
-  Stockpile.store.clear();
-  Carrying.store.clear();
-  CurrentAtomic.store.clear();
-  MoveGoal.store.clear();
-  PathFollow.store.clear();
-  PathRequest.store.clear();
-  Production.store.clear();
-  JobAssignment.store.clear();
-  Health.store.clear();
-  Armor.store.clear();
-  Vehicle.store.clear();
-  Weapon.store.clear();
-  MoveSpeed.store.clear();
-  Owner.store.clear();
-}
-
-beforeEach(clearStores);
+beforeEach(clearComponentStores);
 
 function fresh(seed = 1): Simulation {
   return new Simulation({ seed, content: testContent() });
@@ -423,7 +395,7 @@ describe('CommandSystem', () => {
     runA.run(50);
     const hashA = runA.hashState();
 
-    clearStores();
+    clearComponentStores();
     const runB = fresh(7);
     for (const c of cmds) runB.enqueue(c);
     runB.run(50);

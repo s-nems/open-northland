@@ -25,7 +25,7 @@ const VIKING = 1;
 const GRASS = 0;
 
 /** Clear every component store (they are shared singletons) so each sim phase starts clean. */
-function clearStores(): void {
+function clearComponentStores(): void {
   for (const c of Object.values(components)) {
     if (typeof c === 'object' && c !== null && 'store' in c) {
       (c as Component<unknown>).store.clear();
@@ -37,7 +37,7 @@ function grassMap(width: number, height: number): TerrainMap {
   return { resolution: 'half-cell', width, height, typeIds: new Array(width * height).fill(GRASS) };
 }
 
-beforeEach(clearStores);
+beforeEach(clearComponentStores);
 
 /** Drive a fresh sim through a scripted command schedule and return its log + per-tick hashes. */
 function recordRun(
@@ -75,7 +75,7 @@ describe('replay', () => {
     const { log, hashes } = recordRun(7, 60, schedule, grassMap(6, 1));
     const finalHash = hashes[hashes.length - 1];
 
-    clearStores();
+    clearComponentStores();
     // The last command applies at tick 5; pass untilTick so replay runs the full 60-tick tail too.
     const reconstructed = replay({
       content: testContent(),
@@ -98,7 +98,7 @@ describe('replay', () => {
 
     // Scrub to several ticks; each replay must reproduce the live hash recorded at that exact tick.
     for (const tick of [5, 12, 25, 40]) {
-      clearStores();
+      clearComponentStores();
       const at = replay({ content: testContent(), seed: 2, map: grassMap(5, 1), log, untilTick: tick });
       expect(at.tick).toBe(tick);
       expect(at.hashState()).toBe(hashes[tick - 1]); // hashes[i] is the state after tick i+1
@@ -112,7 +112,7 @@ describe('replay', () => {
     ]);
     const { log, hashes } = recordRun(1, 30, schedule);
 
-    clearStores();
+    clearComponentStores();
     // Last command at tick 2; untilTick runs the full 30-tick run so the final state matches.
     const reconstructed = replay({ content: testContent(), seed: 1, log, untilTick: 30 });
     expect(reconstructed.hashState()).toBe(hashes[hashes.length - 1]);
@@ -131,7 +131,7 @@ describe('replay', () => {
     ]);
     const { log, hashes } = recordRun(3, 50, schedule, grassMap(4, 1));
 
-    clearStores();
+    clearComponentStores();
     // Replay to tick 50 even though the last command applied at tick 2 — the sim keeps stepping.
     const reconstructed = replay({
       content: testContent(),
@@ -151,7 +151,7 @@ describe('replay', () => {
     ]);
     const { log, hashes } = recordRun(1, 15, schedule);
 
-    clearStores();
+    clearComponentStores();
     // The whole point of a scrubber: jump to tick 5 — BEFORE the tick-10 command — and get the live
     // state AT tick 5 (the woodcutter not yet present). This is faithful, not a divergence.
     const at5 = replay({ content: testContent(), seed: 1, log, untilTick: 5 });
@@ -174,7 +174,7 @@ describe('replay', () => {
     const { log, hashes } = recordRun(4, 20, schedule);
     expect(log.some((l) => l.command.kind === 'placeBuilding')).toBe(true); // the bad command WAS logged
 
-    clearStores();
+    clearComponentStores();
     const reconstructed = replay({ content: testContent(), seed: 4, log, untilTick: 20 });
     expect(reconstructed.hashState()).toBe(hashes[hashes.length - 1]);
   });

@@ -84,9 +84,9 @@ function grassMap(width: number, height: number): TerrainMap {
 // Clear EVERY component store — the module-level singleton stores are shared across Simulation
 // instances (AGENTS.md [ac6a287]/[f4593c4]); a missed store leaks a prior test's entity, which
 // (a stale Health/CurrentAtomic on a reused id) silently diverts a planner/carrier decision.
-beforeEach(clearStores);
+beforeEach(clearComponentStores);
 
-function clearStores(): void {
+function clearComponentStores(): void {
   for (const c of Object.values(components)) {
     if (typeof c === 'object' && c !== null && 'store' in c && c.store instanceof Map) {
       c.store.clear();
@@ -208,7 +208,7 @@ describe('e2e: the births → housing → upgrade → more-births loop (full ste
 
   it('is deterministic — two same-seed loop runs reach the same final state hash', () => {
     const run = (): string => {
-      clearStores();
+      clearComponentStores();
       const sim = new Simulation({ seed: 9, content: loopContent(), map: grassMap(6, 1) });
       builtHomeAt(sim, 3, 0);
       loadedCarrierAt(sim, 0, 0, STONE, 1);

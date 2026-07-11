@@ -1,22 +1,9 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  Building,
-  Carrying,
-  CurrentAtomic,
-  JobAssignment,
-  MoveGoal,
-  PathFollow,
-  PathRequest,
-  Position,
-  Production,
-  Resource,
-  Settler,
-  Stockpile,
-  Vehicle,
-} from '../../src/components/index.js';
+import { Position, Stockpile, Vehicle } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation, cellAnchorNode } from '../../src/index.js';
+import { clearComponentStores } from '../fixtures/stores.js';
 
 /**
  * `placeBoat` — the **boats as mobile stores** entity slice the plan Phase-4 Sea/Northland item
@@ -64,23 +51,7 @@ function shipContent(): ContentSet {
   });
 }
 
-function clearStores(): void {
-  Position.store.clear();
-  Settler.store.clear();
-  Resource.store.clear();
-  Building.store.clear();
-  Stockpile.store.clear();
-  Carrying.store.clear();
-  CurrentAtomic.store.clear();
-  MoveGoal.store.clear();
-  PathFollow.store.clear();
-  PathRequest.store.clear();
-  Production.store.clear();
-  JobAssignment.store.clear();
-  Vehicle.store.clear();
-}
-
-beforeEach(clearStores);
+beforeEach(clearComponentStores);
 
 function fresh(seed = 1): Simulation {
   return new Simulation({ seed, content: shipContent() });
@@ -173,7 +144,7 @@ describe('placeBoat', () => {
     place(runA);
     const hashA = runA.hashState();
 
-    clearStores();
+    clearComponentStores();
     const runB = fresh(7);
     place(runB);
     const hashB = runB.hashState();

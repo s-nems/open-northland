@@ -26,6 +26,13 @@ file when all steps land.
 - [x] 6. App: bottom-right details panel with original art — landed: `hud/details-panel/`
   (pure model / layout / chrome / sections split), original strings, tiled `bg*.pcx` fills; see
   the progress note below.
+- [ ] 7. Needs/starvation player feedback + acceptance scene: surface the decoded `messages` strings
+  10/11 ("jest głodny" / "głoduje" — the original's own hunger notifications) on a HUD notification
+  seam when a settler's hunger crosses the drive threshold / pins at ONE, and add a needs acceptance
+  scene (`SceneDefinition.needs: true` — the opt-in exists) whose headless half asserts the
+  drain→starve→`settlerDied(cause: 'starvation')` chain and whose checklist shows the draining bars,
+  the warning, and the death. Today starvation kills ~2.5 min after the bar pins with no map/HUD
+  indication unless the settler is selected (review finding 2026-07-11).
 
 Progress note — UI polish pass over landed steps 4+5 (2026-07-08, `feat/ui-polish`, user-requested,
 not a numbered step): (a) the settler action ring draws at 75% of the shared uiscale

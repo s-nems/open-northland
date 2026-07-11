@@ -1,5 +1,6 @@
-import { Health, Owner, Position } from '../../components/index.js';
+import { Health, Owner, Position, Settler } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
+import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { removeWorkFlag } from '../economy/flags.js';
@@ -23,18 +24,18 @@ import { removeWorkFlag } from '../economy/flags.js';
  *
  * source-basis: "a combatant at 0 hitpoints is dead and removed" is the faithful baseline (a felled
  * settler/animal leaves the field). The *hitpoint pool* it drains and *who deals the damage* are the
- * approximated halves (no oracle — humans' hitpoints are below the readable `.ini`; the targeting
- * drive is a later slice); this system only reaps a pool another mechanic emptied. The `cause` string
- * is a render/audio hint, not simulated state — it is the same for every death for now (`'damage'`),
- * since the only thing that drains `Health` is a completed `attack`.
+ * approximated halves (no oracle — humans' hitpoints are below the readable `.ini`); this system only
+ * reaps a pool another mechanic emptied. The `cause` string is a render/audio hint, not simulated
+ * state — combat damage vs starvation, told apart by {@link causeOf}'s heuristic.
  *
  * Determinism: the dead set is gathered by scanning the {@link Health} store, then COLLECTED into a
  * canonical (ascending-id) list BEFORE any destroy — mutating the store mid-`query` is a footgun
  * (AGENTS [71f13ab]), and a canonical destroy order makes the emitted `settlerDied` events a pure,
  * reproducible function of state (the event order is hashed into nothing, but render reads it, so it
- * must be stable). No RNG, no wall-clock. Inert on the goldens/slice: they construct no `Health`-
- * bearing entity (combat is unreached there), so no entity is ever destroyed and the hash is
- * untouched — the [6264132] "only fires on a state the goldens never construct" pattern.
+ * must be stable). No RNG, no wall-clock. Since 2026-07-11 EVERY settler carries `Health` (civilians
+ * included), so this scan visits all settlers each tick — still one linear pass over the Health store
+ * with an O(1) check per entry, and nothing is destroyed until some mechanic (a swing, starvation)
+ * actually empties a pool.
  */
 export const cleanupSystem: System = (world, ctx) => {
   // Collect-then-destroy: never `world.destroy` while iterating the store the scan reads (AGENTS
@@ -59,7 +60,7 @@ function reap(world: World, ctx: SystemContext, e: Entity): void {
   ctx.events.emit({
     kind: 'settlerDied',
     entity: e,
-    cause: DEATH_CAUSE_DAMAGE,
+    cause: causeOf(world, e),
     player: owner?.player ?? null,
     ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
   });
@@ -67,7 +68,16 @@ function reap(world: World, ctx: SystemContext, e: Entity): void {
   world.destroy(e);
 }
 
-/** The only death cause today: a combatant drained to 0 hitpoints by a completed `attack`. A render/
- *  audio hint, not simulated state — when other lethal paths exist (starvation, decay) they pass their
- *  own cause string. */
+/** A render/audio hint, not simulated state: which lethal path most plausibly emptied the pool. A
+ *  settler reaped with its hunger PINNED at ONE reads as starved (the NeedsSystem's starvation bite is
+ *  the only drain that requires that state) — a heuristic, since a swing can also land on a starving
+ *  settler; the ambiguity is acceptable for a cue. Everything else is combat/attack damage. */
+function causeOf(world: World, e: Entity): string {
+  const settler = world.has(e, Settler) ? world.get(e, Settler) : undefined;
+  return settler !== undefined && settler.hunger === ONE ? DEATH_CAUSE_STARVATION : DEATH_CAUSE_DAMAGE;
+}
+
+/** A combatant drained to 0 hitpoints by completed `attack`s. */
 const DEATH_CAUSE_DAMAGE = 'damage';
+/** A settler starved to death — its hunger pinned at ONE while the NeedsSystem bit its pool empty. */
+const DEATH_CAUSE_STARVATION = 'starvation';

@@ -1,5 +1,5 @@
 import type { ContentSet } from '@vinland/data';
-import { Position } from './components/index.js';
+import { Position, needsEnabled } from './components/index.js';
 import { type Command, CommandQueue } from './core/commands.js';
 import { EventBuffer } from './core/events.js';
 import { fx } from './core/fixed.js';
@@ -133,6 +133,16 @@ export class Simulation {
    */
   constructionPlots(): ConstructionPlot[] {
     return constructionSitePlots(this.world, this.content);
+  }
+
+  /**
+   * Whether the needs mechanic is currently on (the `WorldRules` rule the `setNeedsEnabled` command
+   * sets; absent = enabled). A sanctioned read seam like {@link placementProbe} — the app's admin
+   * toggle labels itself from this instead of reaching into live component stores. Read-only,
+   * determinism-irrelevant.
+   */
+  needsEnabled(): boolean {
+    return needsEnabled(this.world);
   }
 
   /** Run N ticks. */
