@@ -57,13 +57,14 @@ export const VISION_CADENCE_TICKS = 5;
  * Vision radii in half-cell NODES (the same integer node-distance convention as
  * `DEFAULT_WORK_FLAG_RADIUS` / `SIGHT_RADIUS_NODES`), measured along the E/W world axis (one node =
  * half a column = 34 px of the measured 68×38 pitch); the stamped area is the world-metric ellipse of
- * that radius, so vision reads circular on screen. ALL APPROXIMATED (user-tuned 2026-07-11): the
- * original carries no readable per-job sight field — the ordering (buildings large, scout largest,
- * soldier large, hunter a bit over civilian, civilian smallest) is the user's spec.
+ * that radius, so vision reads circular on screen. ALL APPROXIMATED (user-tuned 2026-07-11, civilian
+ * and hunter raised the same day — 8/11 read too tight in play): the original carries no readable
+ * per-job sight field — the ordering (buildings large, scout largest, soldier large, hunter a bit
+ * over civilian, civilian smallest) is the user's spec.
  */
 export const BUILDING_VISION_NODES = 20;
-export const CIVILIAN_VISION_NODES = 8;
-export const HUNTER_VISION_NODES = 11;
+export const CIVILIAN_VISION_NODES = 12;
+export const HUNTER_VISION_NODES = 14;
 export const SOLDIER_VISION_NODES = 16;
 export const SCOUT_VISION_NODES = 26;
 
@@ -99,6 +100,18 @@ export class FogState {
   /** player → per-cell {@link FOG_STATE} bytes. Iterate via {@link playersWithMasks} (ascending) for
    *  any decision/hash — raw Map order is insertion order (history-dependent). */
   private readonly masks = new Map<number, Uint8Array>();
+  /**
+   * player → the cell bounding box that may still hold VISIBLE bytes — the union of every stamp
+   * rect since the last downgrade (REVEAL never downgrades, so there it keeps growing). The
+   * downgrade pass scans only this box instead of the whole mask, so rebuild cost follows the
+   * players' actual vision coverage, not the map area (golden rule 6). Derived bookkeeping over
+   * deterministic stamps — never hashed; VISIBLE cannot exist outside the box by construction
+   * (stamps are the only writer of VISIBLE and every stamp merges its rect in).
+   */
+  private readonly visibleBounds = new Map<
+    number,
+    { minC: number; maxC: number; minR: number; maxR: number }
+  >();
   /** Bumped on every rebuild/reset — the render's re-composite key (a read-path aid, never hashed). */
   generation = 0;
   /** The mode the LAST completed rebuild ran under — combat reads it (visionSystem runs earlier in the
@@ -137,7 +150,39 @@ export class FogState {
   reset(): void {
     if (this.masks.size === 0) return;
     this.masks.clear();
+    this.visibleBounds.clear();
     this.generation++;
+  }
+
+  /** Merge a stamp's touched cell rect into `player`'s may-hold-VISIBLE box (see visibleBounds). */
+  mergeVisibleBounds(player: number, minC: number, maxC: number, minR: number, maxR: number): void {
+    const b = this.visibleBounds.get(player);
+    if (b === undefined) {
+      this.visibleBounds.set(player, { minC, maxC, minR, maxR });
+      return;
+    }
+    if (minC < b.minC) b.minC = minC;
+    if (maxC > b.maxC) b.maxC = maxC;
+    if (minR < b.minR) b.minR = minR;
+    if (maxR > b.maxR) b.maxR = maxR;
+  }
+
+  /** Downgrade every VISIBLE byte of `player` to EXPLORED — scans only the may-hold-VISIBLE box,
+   *  then clears it (the following stamp pass re-establishes it). Byte-identical to a full-mask
+   *  scan (see visibleBounds for why nothing VISIBLE can live outside the box). */
+  downgradeVisible(player: number): void {
+    const b = this.visibleBounds.get(player);
+    if (b === undefined) return;
+    const mask = this.masks.get(player);
+    if (mask !== undefined) {
+      for (let r = b.minR; r <= b.maxR; r++) {
+        const base = r * this.cellsWide;
+        for (let c = b.minC; c <= b.maxC; c++) {
+          if (mask[base + c] === FOG_STATE.VISIBLE) mask[base + c] = FOG_STATE.EXPLORED;
+        }
+      }
+    }
+    this.visibleBounds.delete(player);
   }
 
   /** The RAW {@link FOG_STATE} of a cell for `player` (out-of-grid / maskless = UNEXPLORED). RECON's
@@ -242,23 +287,24 @@ export const visionSystem: System = (world, ctx) => {
 
   // Downgrade pass (RECON/FULL): ground no eye covers falls back to explored-grey. Masks are walked in
   // ascending-player order — byte-for-byte deterministic (and the order hashState mixes them in).
+  // Each player's scan covers only its may-hold-VISIBLE box, not the whole map.
   if (mode !== FOG_MODE.REVEAL) {
     for (const player of fog.playersWithMasks()) {
-      const mask = fog.maskFor(player);
-      for (let i = 0; i < mask.length; i++) {
-        if (mask[i] === FOG_STATE.VISIBLE) mask[i] = FOG_STATE.EXPLORED;
-      }
+      fog.downgradeVisible(player);
     }
   }
 
-  // Stamp pass: every owned eye writes VISIBLE over its vision ellipse (order-independent writes).
+  // Stamp pass: every owned eye writes VISIBLE over its vision ellipse (order-independent writes),
+  // and its touched rect feeds the player's may-hold-VISIBLE box for the next downgrade.
   for (const e of world.query(Owner, Position)) {
     const radius = visionRadiusOf(world, e);
     if (radius === null) continue; // an owned entity that is not an eye (a flag, a pile)
     const p = world.get(e, Position);
     const n = nodeOfPosition(p.x, p.y);
     const { cx, cy } = cellOfNode(n.hx, n.hy);
-    stampVision(fog.maskFor(world.get(e, Owner).player), fog.cellsWide, fog.cellsHigh, cx, cy, radius);
+    const player = world.get(e, Owner).player;
+    const rect = stampVision(fog.maskFor(player), fog.cellsWide, fog.cellsHigh, cx, cy, radius);
+    if (rect !== null) fog.mergeVisibleBounds(player, rect.minC, rect.maxC, rect.minR, rect.maxR);
   }
 
   fog.activeMode = mode;
@@ -283,6 +329,9 @@ function visionRadiusOf(world: World, e: Entity): number | null {
  * projection pitch with the radius in 34 px nodes, so the fog edge reads circular on screen (the
  * per-row stagger's ±half-cell wobble is deliberately ignored — a half-cell fringe on a soft fog edge,
  * named approximation). Exact integer math; clamped to the grid.
+ *
+ * Returns the clamped cell rect the stamp touched (its ellipse bounding box ∩ grid) so the caller can
+ * maintain the per-player may-hold-VISIBLE box, or `null` when the stamp fell fully off-grid.
  */
 export function stampVision(
   mask: Uint8Array,
@@ -291,22 +340,24 @@ export function stampVision(
   cx: number,
   cy: number,
   radiusNodes: number,
-): void {
+): { minC: number; maxC: number; minR: number; maxR: number } | null {
   const radiusPx = radiusNodes * NODE_STEP_PX;
   const radiusSq = radiusPx * radiusPx;
   const dcMax = Math.floor(radiusPx / CELL_STEP_PX);
   const drMax = Math.floor(radiusPx / ROW_STEP_PX);
   const rLo = Math.max(0, cy - drMax);
   const rHi = Math.min(cellsHigh - 1, cy + drMax);
+  const cLo = Math.max(0, cx - dcMax);
+  const cHi = Math.min(cellsWide - 1, cx + dcMax);
+  if (rLo > rHi || cLo > cHi) return null;
   for (let r = rLo; r <= rHi; r++) {
     const dyPx = (r - cy) * ROW_STEP_PX;
     const dySq = dyPx * dyPx;
-    const cLo = Math.max(0, cx - dcMax);
-    const cHi = Math.min(cellsWide - 1, cx + dcMax);
     const base = r * cellsWide;
     for (let c = cLo; c <= cHi; c++) {
       const dxPx = (c - cx) * CELL_STEP_PX;
       if (dxPx * dxPx + dySq <= radiusSq) mask[base + c] = FOG_STATE.VISIBLE;
     }
   }
+  return { minC: cLo, maxC: cHi, minR: rLo, maxR: rHi };
 }

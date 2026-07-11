@@ -349,6 +349,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // The needs-toggle button's live state (scenes boot it off, maps on) — read through the sim's
     // sanctioned read accessor (the placementProbe pattern), never the live component stores.
     needsEnabled: () => sim.needsEnabled(),
+    fogMode: () => sim.fogMode(),
   });
 
   // Name-on-hover: a cursor tooltip naming the loose good pile (with its count) under the pointer, so a

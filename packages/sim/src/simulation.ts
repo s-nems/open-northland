@@ -196,6 +196,15 @@ export class Simulation {
   }
 
   /**
+   * The active fog-of-war mode (the `FogRules` rule the `setFogMode` command sets; absent =
+   * `FOG_MODE.OFF`). The same sanctioned read seam as {@link needsEnabled} — the app's admin fog
+   * switcher labels itself from this. Read-only, determinism-irrelevant.
+   */
+  fogMode(): number {
+    return fogMode(this.world);
+  }
+
+  /**
    * The fog-of-war read view for ONE viewer player — the seam the render (terrain wash, sprite cull,
    * minimap) consumes, like {@link placementProbe}: read-only, never mutates, determinism-irrelevant.
    * `stateAt` answers the EFFECTIVE `FOG_STATE` of a cell (RECON's known-terrain view rule applied);

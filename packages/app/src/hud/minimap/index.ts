@@ -188,7 +188,10 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   const fogSprite = new Sprite();
   fogSprite.visible = false;
   container.addChild(fogSprite);
+  // One retained buffer + texture for the whole session (map cell dims never change): a rebuild
+  // rewrites the alpha lane and re-uploads in place — never a per-generation GPU texture allocation.
   let fogTexture: Texture | null = null;
+  let fogBuffer: Uint8Array = new Uint8Array(0);
   let fogGeneration = -1; // generation last rasterized; -1 = no mask drawn
   const drawFog = (fog: FogView | null): void => {
     if (fog === null) {
@@ -202,11 +205,16 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     fogGeneration = fog.generation;
     const w = fog.cellsWide;
     const h = fog.cellsHigh;
-    const rgba = new Uint8Array(w * h * 4); // rgb stay 0 (black); only the alpha lane is written
+    if (fogTexture === null) {
+      fogBuffer = new Uint8Array(w * h * 4); // rgb stay 0 (black); only the alpha lane is written
+      fogTexture = new Texture({
+        source: new BufferImageSource({ resource: fogBuffer, width: w, height: h, scaleMode: 'linear' }),
+      });
+    }
     for (let r = 0; r < h; r++) {
       for (let c = 0; c < w; c++) {
         const state = fog.stateAt(c, r);
-        rgba[(r * w + c) * 4 + 3] =
+        fogBuffer[(r * w + c) * 4 + 3] =
           state === FOG_STATE.VISIBLE
             ? 0
             : state === FOG_STATE.EXPLORED
@@ -214,10 +222,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
               : FOG_UNEXPLORED_ALPHA;
       }
     }
-    fogTexture?.destroy(true);
-    fogTexture = new Texture({
-      source: new BufferImageSource({ resource: rgba, width: w, height: h, scaleMode: 'linear' }),
-    });
+    fogTexture.source.update();
     fogSprite.texture = fogTexture;
     fogSprite.position.set(mapL.x, mapL.y);
     fogSprite.width = mapL.w;

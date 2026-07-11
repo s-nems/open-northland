@@ -38,7 +38,7 @@ import { clearComponentStores } from '../fixtures/stores.js';
 
 const GRASS = 0;
 const VIKING = 1;
-const WOODCUTTER = 1; // fixture job 1 — carries test_axe (band [1,2]); a civilian (vision 8)
+const WOODCUTTER = 1; // fixture job 1 — carries test_axe (band [1,2]); a civilian eye
 const SCOUT_JOB = 27;
 const P0 = 0;
 const P1 = 1;
@@ -115,7 +115,7 @@ describe('stampVision — the world-metric ellipse', () => {
     const w = 16;
     const h = 20;
     const mask = new Uint8Array(w * h);
-    stampVision(mask, w, h, 6, 9, CIVILIAN_VISION_NODES); // radius 8 nodes = 272 px
+    stampVision(mask, w, h, 6, 9, 8); // a fixed 8-node radius = 272 px (pins the ellipse metric)
     const at = (c: number, r: number): number => mask[r * w + c] ?? 0;
     expect(at(6, 9)).toBe(FOG_STATE.VISIBLE);
     expect(at(10, 9)).toBe(FOG_STATE.VISIBLE); // 4 cells east = 272 px — on the rim, inclusive
@@ -205,18 +205,18 @@ describe('fog modes — update rules over the per-player mask', () => {
 });
 
 describe('fog gates — combat auto-acquire and flee react only to SEEN enemies', () => {
-  // Geometry shared by the gate tests: attacker at cell (2,2) (node (4,4)), enemy 6 cells east at
-  // (8,2) (node (16,4)) — Manhattan node distance 12, INSIDE the 16-node combat sight radius but
-  // 408 px east, OUTSIDE the civilian 272 px (8-node) vision ellipse. Without fog the drive fires;
+  // Geometry shared by the gate tests: attacker at cell (2,2) (node (4,4)), enemy 7 cells east at
+  // (9,2) (node (18,4)) — Manhattan node distance 14, INSIDE the 16-node combat sight radius but
+  // 476 px east, OUTSIDE the civilian 408 px (12-node) vision ellipse. Without fog the drive fires;
   // under FULL fog the enemy is unseen and it must not.
   const ATTACKER = { x: 2, y: 2 } as const;
-  const ENEMY = { x: 8, y: 2 } as const;
+  const ENEMY = { x: 9, y: 2 } as const;
 
   it('sanity: the enemy cell is within combat sight but outside the attacker vision', () => {
     const a = cellAnchorNode(ATTACKER.x, ATTACKER.y);
     const t = cellAnchorNode(ENEMY.x, ENEMY.y);
     const manhattan = Math.abs(a.hx - t.hx) + Math.abs(a.hy - t.hy);
-    expect(manhattan).toBe(12);
+    expect(manhattan).toBe(14);
     expect(manhattan).toBeLessThanOrEqual(16); // SIGHT_RADIUS_NODES
     expect((ENEMY.x - ATTACKER.x) * 68).toBeGreaterThan(CIVILIAN_VISION_NODES * 34);
   });
