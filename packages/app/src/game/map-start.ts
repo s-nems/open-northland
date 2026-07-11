@@ -1,0 +1,62 @@
+import { fx, type WorldSnapshot } from '@vinland/sim';
+import { HUMAN_PLAYER } from './rules.js';
+import { isBuilding, isSettler, ownerPlayerOf, positionOf, type SnapshotEntity } from './snapshot.js';
+
+/**
+ * The starting camera FOCUS — the visual-tile `(col, row)` a decoded map opens centred on, so entering a
+ * map lands on the player's start (the "startowa pozycja") instead of the top-left corner. Priority:
+ *
+ *   1. the HUMAN player's SETTLERS centroid — a scenario's own starting units spawn at/around its
+ *      headquarters (`kwatera`), so their centre IS the base; the settlers are the reliable start signal;
+ *   2. the HUMAN player's BUILDINGS centroid — a base placed with no starting units;
+ *   3. any placed settler/building — a foreign-owned-only map (nothing is ours to prefer);
+ *   4. the MAP CENTRE — a plain imported map with no authored entities at all.
+ *
+ * Settlers are preferred over buildings BEFORE falling back because a scenario scatters its objective and
+ * enemy buildings across the whole map (e.g. tutorial_003 places a farm cluster far from the player's HQ),
+ * which would drag a buildings-only centroid off the actual start; the human player's own settlers cluster
+ * AT the start.
+ *
+ * NAMED APPROXIMATION (golden rule #5): the ORIGINAL authors an explicit start point —
+ * `misc.inc` `[misc_startpositions]` `startposition <slot> <x> <y>`, slot 0 = the human — but only ~8 of
+ * the 125 maps ship it (magiczny_las, and most single-player maps, comment the section out), so it is NOT
+ * extracted. The HUMAN_PLAYER settler centroid stands in and MATCHES it wherever it exists: on every
+ * startposition-bearing map the settlers are authored with distinct per-player slots
+ * (`sethuman <player> …`), so filtering to `HUMAN_PLAYER` (= `sethuman` player 0) leaves just the human's
+ * own cluster, which sits on `startposition 0` (verified on Battle_for_the_Four_Hills et al). Extracting
+ * `startposition 0` and preferring it would be a faithful refinement, but buys nothing over the centroid
+ * on the current corpus. Source basis: authored `sethuman` placements (player 0 = the human player =
+ * {@link HUMAN_PLAYER}).
+ *
+ * Harvestable map resources carry no Settler/Building marker, so they never pull the focus. Positions are
+ * fixed-point visual-tile coords — the same `fx.toFloat` the renderer divides by to project a bob (see
+ * `render`'s `sprite-scene.ts`), so the focus lands on the drawn anchor. This is the map entry's
+ * base-seeking framing; the shot/scene entries keep `view/camera.ts` `cameraFor`'s inspection-zoom policy
+ * (settlers → any non-tile → origin over the projected DrawItem scene) — deliberately not unified, the
+ * inputs differ (snapshot entities vs projected draw items).
+ */
+export function mapStartFocus(
+  snapshot: WorldSnapshot,
+  mapWidth: number,
+  mapHeight: number,
+): { x: number; y: number } {
+  const centroidOf = (keep: (e: SnapshotEntity) => boolean): { x: number; y: number } | null => {
+    let sumX = 0;
+    let sumY = 0;
+    let count = 0;
+    for (const e of snapshot.entities) {
+      if (!keep(e)) continue;
+      const p = positionOf(e);
+      if (p === undefined) continue;
+      sumX += fx.toFloat(p.x);
+      sumY += fx.toFloat(p.y);
+      count++;
+    }
+    return count > 0 ? { x: sumX / count, y: sumY / count } : null;
+  };
+  return (
+    centroidOf((e) => isSettler(e) && ownerPlayerOf(e) === HUMAN_PLAYER) ??
+    centroidOf((e) => isBuilding(e) && ownerPlayerOf(e) === HUMAN_PLAYER) ??
+    centroidOf((e) => isSettler(e) || isBuilding(e)) ?? { x: mapWidth / 2, y: mapHeight / 2 }
+  );
+}
