@@ -17,9 +17,17 @@ import { FRAME_NATIVE } from './model.js';
  * `render/gpu/supersample.ts`), yielding an ordinary top-anchored Sprite that rides the container.
  */
 
-/** `oversampleFor` bounds: braid highlights want ≥2 for smoothing headroom; 6 caps texture memory. */
+/** `oversampleFor` bounds: braid highlights want ≥2 for smoothing headroom; 8 caps texture memory. */
 const FRAME_SS_FLOOR = 2;
-const FRAME_SS_CAP = 6;
+const FRAME_SS_CAP = 8;
+
+/**
+ * Warm carved-wood tint multiplied onto the baked braid. The LUT's clean-keying palettes are the
+ * silver-olive 'iconsleft' (washed-out) and the order-buttons 'context' (garishly orange at this
+ * size); the original draw site's palette is not decompiled, so the braid keeps 'iconsleft''s
+ * shading contrast and this tint warms it to wood — a named approximation, montage-picked.
+ */
+const BRAID_WOOD_TINT = 0xc89868;
 
 /**
  * Load + bake the braided frame at `artScale` drawn px per native px, or null when the GUI art is
@@ -34,12 +42,10 @@ export async function loadMinimapFrame(
   if (art === null) return null;
   // The art fills everything around the braid (the hole AND the outer margins) with OPAQUE near-black,
   // so 'full' keys that whole band away and the frame ends where the braid graphic ends — the world
-  // shows through the margins, and the mount's own hole backdrop supplies the window black. The palette
-  // is 'context' (the carved-wood order-button colouring — a warm golden-brown braid, montage-verified
-  // to key cleanly; the original draw site's palette is not decompiled — a named approximation).
+  // shows through the margins, and the mount's own hole backdrop supplies the window black.
   const made = makeGuiSprite(art, GUI_FRAME.minimap_frame, {
-    defaultPalette: 'context',
-    palette: 'context',
+    defaultPalette: 'iconsleft',
+    palette: 'iconsleft',
     colorKey: 'full',
   });
   if (made === null) return null;
@@ -50,5 +56,7 @@ export async function loadMinimapFrame(
   made.sprite.flipY = true; // bakeToSprite renders an upright source (see supersample.ts module note)
   offscreen.addChild(made.sprite);
   made.sprite.place(0, 0, ss, texW, texH);
-  return bakeToSprite(renderer, offscreen, texW, texH, artScale / ss);
+  const baked = bakeToSprite(renderer, offscreen, texW, texH, artScale / ss);
+  baked.display.tint = BRAID_WOOD_TINT;
+  return baked;
 }
