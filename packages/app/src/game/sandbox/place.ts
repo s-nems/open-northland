@@ -1,3 +1,4 @@
+import type { TerrainObjects } from '@vinland/data';
 import {
   type Command,
   type Entity,
@@ -11,8 +12,18 @@ import {
 } from '@vinland/sim';
 import { resolveVikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
+import type { ContentIr } from '../../content/ir.js';
+import { mapResourceSpawns, spawnedResourceObjectNames } from '../../content/map-resources.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../rules.js';
 import { GATHERERS, type GathererSpec, weaponEquipmentFor } from './ids.js';
+
+/** The goods a real gatherer trade exists for — the {@link GATHERERS} ids. A decoded-map object whose good
+ *  is outside this set (a harvestable the app has no collector for yet) stays render-only decor. */
+const SPAWNABLE_GOOD_IDS: ReadonlySet<string> = new Set(GATHERERS.map((g) => g.id));
+
+/** A `goodId` string → its {@link GathererSpec} (the map-resource join returns pipeline goodId strings, the
+ *  bridge across the IR's original good numbering and the app's clean-room ids). */
+const GATHERER_BY_GOOD_ID: ReadonlyMap<string, GathererSpec> = new Map(GATHERERS.map((g) => [g.id, g]));
 
 const { DeliveryFlag, Position, WorkFlag } = components;
 
@@ -138,6 +149,40 @@ function placeResourceDirect(sim: Simulation, spec: ResourceNodeSpec, what: stri
   if (systems.createResourceNode(sim.world, sim.content, spec) === null) {
     throw new Error(`${what}: missing resource footprint for good ${spec.good}`);
   }
+}
+
+/**
+ * The object EditNames a decoded map draws that this app spawns as sim resources instead — pass to
+ * {@link import('../../content/objects.js').loadMapObjects} so the static decor layer SKIPS them (the sim
+ * draws + depletes them, so a felled tree's sprite vanishes rather than a stale static one standing over an
+ * empty tile). Every other placed object stays static decor. Empty when the IR lacks the gathering lanes.
+ */
+export function mapResourceObjectNames(ir: ContentIr): ReadonlySet<string> {
+  return spawnedResourceObjectNames(ir, SPAWNABLE_GOOD_IDS);
+}
+
+/**
+ * Spawn every harvestable resource node a decoded map's placed objects define (trees → wood, ore outcrops →
+ * iron/gold, clay/stone → mud/stone) as real `Resource` sim nodes — the SAME component set the admin
+ * `placeResource` builds (Position + Resource + footprint + Felling|MineDeposit), assembled DIRECTLY here as
+ * scene setup pre-tick-0 (the sanctioned exception, like {@link placeResourceNode}). This is what makes a
+ * map's own trees hoverable + gatherable (plan `gathering-economy.md` step 6); before it, only an
+ * admin-spawned node was ever a real sim entity.
+ *
+ * The nodes are created in the map's native placement order, so ids are minted deterministically. Yields
+ * and fell/mine parameters reuse the gatherer catalog defaults (`resourceSpecFor`) — the map's per-placement
+ * growth `levels` lane is not yet mapped to a starting amount (a named approximation, same defaults an
+ * admin-spawned node uses). A placement whose good has no gatherer trade or whose good has no footprint is
+ * skipped, not fatal (unlike the throwing scene helper). Returns the count spawned.
+ */
+export function spawnMapResources(sim: Simulation, objects: TerrainObjects, ir: ContentIr): number {
+  let spawned = 0;
+  for (const { goodId, hx, hy } of mapResourceSpawns(objects, ir, SPAWNABLE_GOOD_IDS)) {
+    const g = GATHERER_BY_GOOD_ID.get(goodId);
+    if (g === undefined) continue; // filtered by SPAWNABLE_GOOD_IDS already, but keep the type honest
+    if (systems.createResourceNode(sim.world, sim.content, resourceSpecFor(g, hx, hy)) !== null) spawned++;
+  }
+  return spawned;
 }
 
 /**
