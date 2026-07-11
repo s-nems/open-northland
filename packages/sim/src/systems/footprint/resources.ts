@@ -102,6 +102,15 @@ export interface ResourceNodeSpec {
   readonly y: number;
   readonly remaining: number;
   readonly harvestAtomic: number;
+  /**
+   * OPAQUE render-variant tag: the app's decoded-map species record index ("pine 02", "stones 05
+   * grey" in the APP's content numbering) — stored on {@link Resource.gfxIndex} verbatim and carried
+   * out through the snapshot so the render draws the exact original object. The sim NEVER interprets
+   * it (footprint/collision still come from the good's own record in the SIM's content set, whose
+   * numbering is unrelated). Omitted for an admin/scene spawn — the per-good representative draws, and
+   * the component hashes exactly as before, so goldens are untouched.
+   */
+  readonly gfxIndex?: number;
   /** A felled node (a tree): its chops-to-fell counter. Mutually exclusive with `deposit`. */
   readonly felling?: { readonly chopsLeft: number };
   /** A mined finite deposit (stone/clay/iron/gold): its level ladder (`initial` = `remaining`). */
@@ -137,6 +146,8 @@ export function createResourceNode(world: World, content: ContentSet, spec: Reso
     goodType: spec.good,
     remaining: spec.remaining,
     harvestAtomic: spec.harvestAtomic,
+    // The opaque render-variant tag rides the component (absent = hash-identical to a pre-variant node).
+    ...(spec.gfxIndex !== undefined ? { gfxIndex: spec.gfxIndex } : {}),
   });
   stampResourceFootprint(world, content, e, spec.good);
   if (spec.felling !== undefined) world.add(e, Felling, { chopsLeft: spec.felling.chopsLeft });

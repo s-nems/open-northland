@@ -297,6 +297,20 @@ export function readResourceGood(components: Readonly<Record<string, unknown>>):
 }
 
 /**
+ * A resource node's render-variant tag — the snapshot's `Resource.gfxIndex`, the exact `[GfxLandscape]`
+ * record a decoded map spawned it from ("pine 02", not the good's representative "yew 01"; an opaque
+ * app-numbered index the sim never interprets). The per-VARIANT join key
+ * ({@link import('./draw-item.js').DrawItem.gfxIndex}) a
+ * {@link import('../sprites/index.js').ResourceTypeBinding.byGfxIndex} draws the exact original object
+ * by. `undefined` for an admin/scene-spawned node — the per-good binding then draws the representative
+ * node as before.
+ */
+export function readResourceGfxIndex(components: Readonly<Record<string, unknown>>): number | undefined {
+  const r = components.Resource as { gfxIndex?: unknown } | undefined;
+  return r !== undefined && typeof r.gfxIndex === 'number' ? r.gfxIndex : undefined;
+}
+
+/**
  * The visual fill LEVEL of a mined deposit ({@link import('./draw-item.js').DrawItem.level}): a small integer
  * in `[1, levels]`, `levels` when full (`remaining === initial`) stepping down to `1` as it nears empty.
  * Pure integer math — the node twin of {@link readStockpile}'s pile `fill`, done here (in the snapshot

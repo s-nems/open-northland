@@ -243,6 +243,15 @@ export interface ResourceTypeBinding {
   /** Per-`goodType` node frames ordered EMPTY→FULL — the good→`landscapeToHarvest`-record→per-state-bob
    *  join (each optionally layer-qualified). A non-mined node has a single-frame list (drawn at any level). */
   readonly byGood: Readonly<Record<number, readonly LayeredBobRef[]>>;
+  /**
+   * Per-VARIANT node frames keyed by the node's exact source `[GfxLandscape]` record index
+   * ({@link import('../scene/index.js').DrawItem.gfxIndex}) — one entry per harvest-stage variant
+   * ("yew 01" … "cedar 02", every stone/mine decal), same EMPTY→FULL frame order as {@link byGood}.
+   * Wins over the per-good entry when the item names a bound variant, so a decoded map's placements
+   * keep their full original species variety; a variant absent here (an unloaded family atlas) falls
+   * back per-good, never borrowing a wrong frame.
+   */
+  readonly byGfxIndex?: Readonly<Record<number, readonly LayeredBobRef[]>>;
   /** Bob ref for a good absent from {@link byGood} — the fallback node (the representative yew tree). */
   readonly default: LayeredBobRef;
 }

@@ -80,6 +80,13 @@ export const Resource = defineComponent<{
   goodType: number;
   remaining: number;
   harvestAtomic: number;
+  /**
+   * OPAQUE render-variant tag a decoded-map spawn carries (the APP's species record index — "pine 02"
+   * rather than the good's representative "yew 01"); the render keys its exact original bob off it via
+   * the snapshot. Never read by any sim decision, and absent on admin/scene spawns — an absent field
+   * hashes exactly as before, so pre-variant goldens are untouched.
+   */
+  gfxIndex?: number;
 }>('Resource');
 
 /** One integer cell offset relative to a placed resource node's anchor tile. */

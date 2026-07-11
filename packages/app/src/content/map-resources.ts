@@ -18,31 +18,42 @@ import type { ContentIr } from './ir.js';
  * so the caller resolves the returned id against `GATHERERS` by `id`.
  */
 
+/** What one harvestable object `EditName` resolves to: the good it yields and its OWN harvest-stage
+ *  `[GfxLandscape]` record index (the species variant — "pine 02", not the good's representative). */
+export interface HarvestObjectRef {
+  readonly goodId: string;
+  readonly gfxIndex: number;
+}
+
 /**
  * Map each placed landscape-object `EditName` (e.g. `"yew 01"`, `"iron mine 03"`) to the `goodId` string it
- * yields when harvested, from the IR gathering pipeline's HARVEST stage. Pure — one pass over the pipeline
- * and the `landscapeGfx` index↔name table. An object in no harvest stage is absent (a decor object stays
- * decor). Degrades to an empty map when either lane is missing (an older `ir.json`).
+ * yields when harvested AND its own `[GfxLandscape]` record index, from the IR gathering pipeline's HARVEST
+ * stage. Pure — one pass over the pipeline and the `landscapeGfx` index↔name table. An object in no harvest
+ * stage is absent (a decor object stays decor). Degrades to an empty map when either lane is missing (an
+ * older `ir.json`). The `gfxIndex` rides the spawn into `ResourceFootprint.sourceGfxIndex`, so a spawned
+ * node keeps its exact original graphic + collision variant instead of collapsing to one species per good.
  */
-export function harvestGoodByObjectName(ir: ContentIr): ReadonlyMap<string, string> {
+export function harvestGoodByObjectName(ir: ContentIr): ReadonlyMap<string, HarvestObjectRef> {
   const nameByIndex = new Map<number, string>();
   for (const g of ir.landscapeGfx ?? []) {
     if (g.editName !== undefined) nameByIndex.set(g.index, g.editName);
   }
-  const out = new Map<string, string>();
+  const out = new Map<string, HarvestObjectRef>();
   for (const p of ir.gatheringPipeline ?? []) {
     for (const idx of p.harvest?.gfxIndices ?? []) {
       const name = nameByIndex.get(idx);
-      if (name !== undefined) out.set(name, p.goodId);
+      if (name !== undefined) out.set(name, { goodId: p.goodId, gfxIndex: idx });
     }
   }
   return out;
 }
 
-/** One harvestable node a decoded map defines: the `goodId` it yields at a HALF-CELL anchor `(hx, hy)` (the
- *  `map.objects` lattice is the sim's 2W×2H node grid verbatim — the same lane `collision.ts` reads). */
+/** One harvestable node a decoded map defines: the `goodId` it yields, its variant `gfxIndex`, at a
+ *  HALF-CELL anchor `(hx, hy)` (the `map.objects` lattice is the sim's 2W×2H node grid verbatim — the
+ *  same lane `collision.ts` reads). */
 export interface MapResourceSpawn {
   readonly goodId: string;
+  readonly gfxIndex: number;
   readonly hx: number;
   readonly hy: number;
 }
@@ -68,8 +79,10 @@ export function mapResourceSpawns(
     const typeIndex = placements[i + 2];
     if (hx === undefined || hy === undefined || typeIndex === undefined) break;
     const name = types[typeIndex];
-    const goodId = name !== undefined ? goodByName.get(name) : undefined;
-    if (goodId !== undefined && spawnableGoodIds.has(goodId)) out.push({ goodId, hx, hy });
+    const ref = name !== undefined ? goodByName.get(name) : undefined;
+    if (ref !== undefined && spawnableGoodIds.has(ref.goodId)) {
+      out.push({ goodId: ref.goodId, gfxIndex: ref.gfxIndex, hx, hy });
+    }
   }
   return out;
 }
@@ -85,8 +98,8 @@ export function spawnedResourceObjectNames(
   spawnableGoodIds: ReadonlySet<string>,
 ): Set<string> {
   const out = new Set<string>();
-  for (const [name, goodId] of harvestGoodByObjectName(ir)) {
-    if (spawnableGoodIds.has(goodId)) out.add(name);
+  for (const [name, ref] of harvestGoodByObjectName(ir)) {
+    if (spawnableGoodIds.has(ref.goodId)) out.add(name);
   }
   return out;
 }

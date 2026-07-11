@@ -116,6 +116,14 @@ export interface DrawItem {
    * which draws its full-state frame — so an unmined node is unaffected.
    */
   readonly level?: number;
+  /**
+   * For a **resource** node: the exact `[GfxLandscape]` record it was spawned from (the snapshot's
+   * `Resource.gfxIndex` render-variant tag) — a decoded map's own species variant ("pine 02",
+   * "stones 05 grey"). A {@link import('../sprites/index.js').ResourceTypeBinding.byGfxIndex} entry wins
+   * over the per-good representative, so a map keeps its full original variety. OMITTED for an
+   * admin/scene-spawned node, which draws the per-good node as before.
+   */
+  readonly gfxIndex?: number;
   /** For a sprite: its coarse logical state, so a per-state binding can pick the right frame. */
   readonly state?: SpriteState;
   /** For an `acting` sprite: the numeric atomic id it's executing (the `setatomic` join key). */

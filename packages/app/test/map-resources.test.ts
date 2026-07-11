@@ -43,12 +43,14 @@ function fixtureIr(): ContentIr {
 const GATHERABLE = new Set(['wood', 'stone', 'mud', 'iron', 'gold', 'mushroom']);
 
 describe('harvestGoodByObjectName — the IR reverse lookup (object name → good)', () => {
-  it('maps every harvest-stage object variant to its good, and leaves decor unmapped', () => {
+  it('maps every harvest-stage object variant to its good + OWN gfx record, and leaves decor unmapped', () => {
     const m = harvestGoodByObjectName(fixtureIr());
-    expect(m.get('test tree')).toBe('wood');
-    expect(m.get('test tree tall')).toBe('wood'); // a second variant of the same good
-    expect(m.get('test rock')).toBe('stone');
-    expect(m.get('test wheat')).toBe('wheat'); // mapped even though the app has no wheat gatherer
+    expect(m.get('test tree')).toEqual({ goodId: 'wood', gfxIndex: 100 });
+    // A second variant of the same good keeps its OWN record index — the species-variety channel.
+    expect(m.get('test tree tall')).toEqual({ goodId: 'wood', gfxIndex: 101 });
+    expect(m.get('test rock')).toEqual({ goodId: 'stone', gfxIndex: 200 });
+    // Mapped even though the app has no wheat gatherer.
+    expect(m.get('test wheat')).toEqual({ goodId: 'wheat', gfxIndex: 400 });
     expect(m.has('test grass')).toBe(false); // decor in no harvest stage
   });
 
@@ -67,9 +69,9 @@ describe('mapResourceSpawns — the harvestable placements to spawn', () => {
   it('keeps only objects whose good has a real gatherer trade, at their half-cell anchors, in order', () => {
     const spawns = mapResourceSpawns(objects, fixtureIr(), GATHERABLE);
     expect(spawns).toEqual([
-      { goodId: 'wood', hx: 2, hy: 2 },
-      { goodId: 'stone', hx: 4, hy: 4 },
-      { goodId: 'wood', hx: 10, hy: 10 },
+      { goodId: 'wood', gfxIndex: 100, hx: 2, hy: 2 },
+      { goodId: 'stone', gfxIndex: 200, hx: 4, hy: 4 },
+      { goodId: 'wood', gfxIndex: 100, hx: 10, hy: 10 },
     ]);
     // grass (decor) and wheat (no gatherer trade) are left as static decor.
   });
@@ -113,6 +115,9 @@ describe('spawnMapResources — end-to-end over real sandbox content', () => {
     const mined = resources.filter((e) => sim.world.has(e, MineDeposit));
     expect(felled).toHaveLength(2); // the two trees chop down
     expect(mined).toHaveLength(1); // the rock is a finite deposit
+    // Every map-spawned node carries its placement's OWN gfx record as the render-variant tag (the
+    // IR/app numbering — deliberately unrelated to the sim content's footprint records).
+    expect(resources.map((e) => sim.world.get(e, Resource).gfxIndex).sort()).toEqual([10, 10, 20]);
 
     // The static decor layer skips exactly the two spawned object types, never the decor.
     const skip = mapResourceObjectNames(ir);
