@@ -101,15 +101,19 @@ export function removeWorkFlag(world: World, e: Entity): void {
 }
 
 /**
- * Whether a job may harvest any good — i.e. its allowed atomics include some good's harvest atomic. The
- * gate for `setWorkFlag` and {@link syncWorkFlagToJob}: only a gatherer carries a work flag. Mirrors the
- * harvest-atomic knowledge the AI target scan uses (`atomicsByJob` ∩ the goods' harvest atomics), read
- * once per command (rare path).
+ * Whether a job may harvest any FLAG-GATHERED good — i.e. its allowed atomics include some good's
+ * harvest atomic. The gate for `setWorkFlag` and {@link syncWorkFlagToJob}: only a gatherer carries a
+ * work flag. Mirrors the harvest-atomic knowledge the AI target scan uses (`atomicsByJob` ∩ the goods'
+ * harvest atomics), read once per command (rare path). A FIELD-FARMED good (a `farming` block — wheat)
+ * is deliberately excluded: its harvester is a FARMER, bound to its farm and banking the crop in the
+ * farm's own store (`logicstock 4 25 0`; drives-farming.ts), never a flag gatherer — a flag would
+ * hijack every sheaf delivery to the flag (`deliveryTargetFor`'s flag rung outranks the bound store).
  */
 export function jobCanHarvest(ctx: SystemContext, jobType: number): boolean {
   const allowed = contentIndex(ctx.content).atomicsByJob.get(jobType);
   if (allowed === undefined) return false;
   for (const g of ctx.content.goods) {
+    if (g.farming !== undefined) continue; // field-farmed — farm-bound, not flag-gathered
     if (g.atomics.harvest !== undefined && allowed.has(g.atomics.harvest)) return true;
   }
   return false;

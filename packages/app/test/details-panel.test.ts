@@ -322,6 +322,8 @@ describe('selection details panel model', () => {
     expect(home.panel.h).toBeLessThan(farm.panel.h);
     expect(farm.panel.h).toBeLessThan(hq.panel.h);
   });
+
+  it('shows a settler equipment section with labeled rows, worn goods, use percentages and empty slots', () => {
     const sim = createSceneSim(equipmentScene);
     sim.step();
     const snapshot = sim.snapshot();

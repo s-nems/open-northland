@@ -304,6 +304,18 @@ describe('planFarmer — the drive ladder', () => {
     expect(peak).toBeLessThanOrEqual(PAIR_FIELD_CAP); // …never past the pair's (base counted ONCE)
   });
 
+  it('a spawned farmer is farm-bound, NOT a flag gatherer (no auto work flag)', () => {
+    // The spawn auto-plant (`syncWorkFlagToJob`) flags every job that can harvest a FLAG-GATHERED
+    // good; the farmer's only harvestable good is FIELD-FARMED (a `farming` block), so it must stay
+    // flagless — a flag would hijack every sheaf delivery to the flag instead of the farm's store.
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
+    sim.enqueue({ kind: 'spawnSettler', jobType: FARMER, x: 8, y: 8, tribe: VIKING });
+    sim.run(1);
+    const spawned = [...sim.world.query(Settler)];
+    expect(spawned).toHaveLength(1);
+    expect(sim.world.tryGet(spawned[0] as Entity, components.WorkFlag)).toBeUndefined();
+  });
+
   it('a farm still under construction fields no crew (jobtypes.ini mustHaveFinishedWorkHouseFlag 1)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
     const farm = farmAt(sim, 4, 4);
