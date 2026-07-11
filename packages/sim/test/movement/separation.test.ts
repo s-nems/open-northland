@@ -25,12 +25,16 @@ import { clearComponentStores } from '../fixtures/stores.js';
  * Tests for UNIT BODY COLLISION (`systems/movement/separation.ts` + the routing stamp) — a NAMED
  * DEVIATION from the original, which has no unit collision at all (see the system's file header for
  * the model and its rationale). What must hold:
- *  - only OWNED FIGHTERS collide — civilians and neutrals keep the original's pass-through;
+ *  - every OWNED walking settler soft-separates from fellow walkers (civilians included, calm zones
+ *    included) — walking units never merge into one sprite, and the nudge never prevents an arrival;
+ *  - only OWNED FIGHTERS collide FIRMLY — civilians and neutrals keep the original's pass-through
+ *    against every STANDING body, and unowned units feel nothing at all;
  *  - walking fighters shove softly past each other (no mover can ever deadlock a mover);
  *  - a STANDING line is a wall: routing detours around it, physics stops what still walks into it,
  *    and a blocked walker gives up instead of grinding forever;
  *  - a goal occupied by a standing body is re-aimed at the nearest free node (the surround rule);
- *  - inside its own player's calm zone (near own buildings) a walker is exempt — town flow never jams.
+ *  - inside its own player's calm zone (near own buildings) a walker skips the FIRM tier — town
+ *    flow never jams.
  * All scenario coordinates are half-cell NODE coords on an all-grass map.
  */
 
@@ -293,6 +297,82 @@ describe('unit body collision (separation + routing stamp)', () => {
     s.run(150);
 
     expect(nodeOf(s, runner)).toEqual({ x: 16, y: 6 }); // passed straight through
+  });
+
+  it('two owned civilians walking the same road are nudged apart — never drawn merged mid-walk', () => {
+    const s = sim();
+    const a = settlerAt(s, 4, 6, WOODCUTTER, P0);
+    const b = settlerAt(s, 4, 6, WOODCUTTER, P0); // spawned exactly stacked — the builders' case
+    orderTo(s, a, 20, 6);
+    orderTo(s, b, 20, 6);
+
+    // After a short warm-up (route resolution + the first split ticks), the pair must never share an
+    // exact position again while BOTH walk — the soft nudge rides them apart and keeps them apart.
+    let bothWalkedTicks = 0;
+    for (let t = 0; t < 250; t++) {
+      s.step();
+      if (!s.world.has(a, PathFollow) || !s.world.has(b, PathFollow)) continue;
+      bothWalkedTicks++;
+      if (bothWalkedTicks <= 5) continue; // the exact-stack split needs a few ticks to open a gap
+      const pa = s.world.get(a, Position);
+      const pb = s.world.get(b, Position);
+      expect(pa.x === pb.x && pa.y === pb.y).toBe(false);
+    }
+    expect(bothWalkedTicks).toBeGreaterThan(20); // the walk was long enough to prove anything
+    // ...and the nudge never prevented the arrivals (both stood down at/next to the shared goal —
+    // the idle-spacing drive legitimately parks one beside it).
+    expect(s.world.has(a, PathFollow)).toBe(false);
+    expect(s.world.has(b, PathFollow)).toBe(false);
+    expect(Math.abs(nodeOf(s, a).x - 20) + Math.abs(nodeOf(s, a).y - 6)).toBeLessThanOrEqual(1);
+    expect(Math.abs(nodeOf(s, b).x - 20) + Math.abs(nodeOf(s, b).y - 6)).toBeLessThanOrEqual(1);
+    expect(s.world.has(a, Obstructed)).toBe(false); // soft-only movers never grind
+    expect(s.world.has(b, Obstructed)).toBe(false);
+  });
+
+  it('the civilian nudge stays ON inside a calm zone — town walkers spread and still arrive', () => {
+    const s = sim();
+    const b = s.world.create();
+    s.world.add(b, Position, positionOfNode(12, 6));
+    s.world.add(b, Building, {
+      buildingType: ANY_BUILDING_TYPE,
+      tribe: VIKING,
+      built: fx.fromInt(1),
+      level: 0,
+    });
+    s.world.add(b, Owner, { player: P0 }); // its calm zone covers the whole walk below
+    const w1 = settlerAt(s, 8, 6, WOODCUTTER, P0);
+    const w2 = settlerAt(s, 8, 6, WOODCUTTER, P0);
+    orderTo(s, w1, 16, 6);
+    orderTo(s, w2, 16, 6);
+
+    let bothWalkedTicks = 0;
+    for (let t = 0; t < 200; t++) {
+      s.step();
+      if (!s.world.has(w1, PathFollow) || !s.world.has(w2, PathFollow)) continue;
+      bothWalkedTicks++;
+      if (bothWalkedTicks <= 5) continue;
+      const p1 = s.world.get(w1, Position);
+      const p2 = s.world.get(w2, Position);
+      expect(p1.x === p2.x && p1.y === p2.y).toBe(false); // nudged apart even in town
+    }
+    expect(bothWalkedTicks).toBeGreaterThan(10);
+    expect(s.world.has(w1, PathFollow)).toBe(false); // and town flow never jammed
+    expect(s.world.has(w2, PathFollow)).toBe(false);
+  });
+
+  it('UNOWNED civilians walking together stay exactly merged — the Owner gate holds for the soft tier', () => {
+    const s = sim();
+    const a = settlerAt(s, 4, 6, WOODCUTTER, null);
+    const b = settlerAt(s, 4, 6, WOODCUTTER, null);
+    walkStraightTo(s, a, 16, 6);
+    walkStraightTo(s, b, 16, 6);
+    for (let t = 0; t < 150; t++) {
+      s.step();
+      const pa = s.world.get(a, Position);
+      const pb = s.world.get(b, Position);
+      expect({ x: pa.x, y: pa.y }).toEqual({ x: pb.x, y: pb.y }); // byte-identical twin walks
+    }
+    expect(nodeOf(s, a)).toEqual({ x: 16, y: 6 });
   });
 
   it('is deterministic: the same collision scenario replayed from scratch hashes identically', () => {
