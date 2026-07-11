@@ -1205,18 +1205,16 @@ export type TerrainObjects = z.infer<typeof TerrainObjects>;
  */
 export const TerrainEntities = z.object({
   /**
-   * `sethouse` placements: `[GfxHouse]` EditName + level pick the building type. `player` is read as
-   * 1-based (owner = `player − 1`), which the DATA now bears out across the 122 entity-bearing maps:
-   * the column is `1` on 96 of the 98 house-placing maps and only `{0,1}` on two. The 1-based read is
-   * pinned by the single-player tutorials — they place houses as `player 1` and the taught human as
-   * `player 0`, so `player 1 → owner 0` makes the human own its HQ (a 0-based read would leave the
-   * human with none). A `player 0` house lands NEUTRAL (owner −1, dropped by `isValidPlayer`) — a gaia
-   * reading consistent with those two maps' scattered civic buildings.
-   * CAVEAT — this column does NOT encode per-player base ownership: a skirmish map with N human
-   * players still authors EVERY house as `player 1`, so all its bases resolve to owner 0. True
-   * per-player ownership must come from the map's `player.inc`/region setup (an unbuilt join), not this
-   * field; until then a multi-base map reads as one human's holdings, which is fine for the `?map=`
-   * viewer (selection/centre) but not for a real match.
+   * `sethouse` placements: `[GfxHouse]` EditName + level pick the building type. `player` is the
+   * verb's FIRST column, 0-based like `sethuman`'s (source basis: on all 13 entity-bearing mod maps
+   * its value set equals the `sethuman` player set and its per-value position centroids coincide
+   * with the matching `sethuman` clusters — a skirmish map's bases resolve to their OWN players,
+   * which is the original's observed behaviour). This SUPERSEDES the earlier 1-based fourth-column
+   * reading (owner = column − 1): that column is `1` on 96 of the 98 house-placing maps in the full
+   * unpacked 122-map corpus and `0` on the rest — a constant flag with exceptions, not a player id —
+   * and reading it collapsed every skirmish base onto player 0 (the shared-fog bug observed in
+   * play). The tutorials author some houses under first-column players absent from their `sethuman`
+   * set (scripted/neutral factions — those land unowned via `isValidPlayer`).
    * `rot` is decoded verbatim with no consumer yet — the rotation→facing slice is deferred
    * (docs/plans/entity-import item).
    */

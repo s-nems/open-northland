@@ -2864,13 +2864,14 @@ describe('extractMapInfo', () => {
 });
 
 describe('extractStaticObjects', () => {
-  // Mirrors a real map.cif `StaticObjects` section: sethouse (1-based player), sethuman (0-based
-  // player), setanimal, plus a stock verb (`addgoods`) the extractor deliberately skips. All
-  // coordinates are half-cells (the emla 2W×2H lattice).
+  // Mirrors a real map.cif `StaticObjects` section: sethouse and sethuman (both 0-based player,
+  // sethouse's fourth column is the constant 1 — see the extractor doc), setanimal, plus a stock
+  // verb (`addgoods`) the extractor deliberately skips. All coordinates are half-cells (the emla
+  // 2W×2H lattice).
   const staticObjectsLines: CifLine[] = [
     { level: 1, text: 'StaticObjects' },
     { level: 2, text: 'sethouse 5 "viking headquarters house" 0 1 171 330 2' },
-    { level: 2, text: 'sethouse 5 "viking barracks" 1 2 164 364 0' },
+    { level: 2, text: 'sethouse 2 "viking barracks" 1 1 164 364 0' },
     { level: 2, text: 'sethuman 0 "viking" "baby_female" 385 101 0 0' },
     { level: 2, text: 'sethuman 1 "viking" "soldier_bow_long" 120 44 0 0' },
     { level: 2, text: 'setanimal 6 "deer" "adult" 50 60 0 0' },
@@ -2881,7 +2882,7 @@ describe('extractStaticObjects', () => {
     const out = extractStaticObjects(cifLinesToSections(staticObjectsLines));
     expect(out).toEqual({
       buildings: [
-        { name: 'viking headquarters house', level: 0, player: 1, hx: 171, hy: 330, rot: 2 },
+        { name: 'viking headquarters house', level: 0, player: 5, hx: 171, hy: 330, rot: 2 },
         { name: 'viking barracks', level: 1, player: 2, hx: 164, hy: 364, rot: 0 },
       ],
       humans: [

@@ -238,12 +238,12 @@ describe('authored placements (map.cif StaticObjects → sim commands)', () => {
 
   const entities = {
     buildings: [
-      // Resolves: editName+level → typeId 30; half-cell (8,4) passes VERBATIM; 1-based player 1 → owner 0.
-      { name: 'viking barracks', level: 0, player: 1, hx: 8, hy: 4, rot: 0 },
-      // 1-based player 0 = "no player": owner must be omitted, not -1.
-      { name: 'viking barracks', level: 1, player: 0, hx: 0, hy: 0 },
-      { name: 'unknown house', level: 0, player: 1, hx: 2, hy: 2 }, // no buildingBobs row → skipped
-      { name: 'viking barracks', level: 0, player: 1, hx: 99, hy: 0 }, // hx 99 ≥ node width 12 → skipped
+      // Resolves: editName+level → typeId 30; half-cell (8,4) passes VERBATIM; 0-based player 0 stays 0.
+      { name: 'viking barracks', level: 0, player: 0, hx: 8, hy: 4, rot: 0 },
+      // An out-of-range player (≥ MAX_PLAYERS) leaves the building neutral: owner omitted.
+      { name: 'viking barracks', level: 1, player: 99, hx: 0, hy: 0 },
+      { name: 'unknown house', level: 0, player: 0, hx: 2, hy: 2 }, // no buildingBobs row → skipped
+      { name: 'viking barracks', level: 0, player: 0, hx: 99, hy: 0 }, // hx 99 ≥ node width 12 → skipped
     ],
     humans: [
       // Resolves: role → job typeId 7, tribe → typeId 1; node (3,5) verbatim; 0-based player 0 stays 0.
@@ -253,11 +253,11 @@ describe('authored placements (map.cif StaticObjects → sim commands)', () => {
     animals: [{ species: 'deer', hx: 1, hy: 1 }], // deferred (herd semantics) — never a placement
   };
 
-  it('joins by name, passes half-cells verbatim, and normalizes the two player bases', () => {
+  it('joins by name, passes half-cells verbatim, and stamps the 0-based players as owners', () => {
     const { placements, skipped } = resolveAuthoredPlacements(entities, rows, authoredMap());
     expect(placements).toEqual([
       { kind: 'building', typeId: 30, tribe: 1, x: 8, y: 4, owner: 0 },
-      { kind: 'building', typeId: 31, tribe: 1, x: 0, y: 0 }, // no owner: sethouse player 0
+      { kind: 'building', typeId: 31, tribe: 1, x: 0, y: 0 }, // no owner: player out of range
       { kind: 'human', jobType: 7, tribe: 1, x: 3, y: 5, owner: 0 },
     ]);
     expect(skipped).toBe(3);
