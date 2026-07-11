@@ -194,10 +194,25 @@ original's aren't decoded; `barTone` in `model.ts`, flat fills in `chrome.ts` si
 can't tint per-sprite). Hovering a bar row shows its value in the cursor tooltip: raw points for health
 ("300/300"), the satisfaction percent for needs ("29%") — `PanelBar` carries `label`/`hover`, the panel
 hit-tests `layout.bars`. The building production bar keeps the neutral `bar_standart` art fill.
-Verified: `npm test` (1917) + check + build green; hands-on in `?scene=equipment` — civilian shows 4
-bars (no Zdrowie without `Health`), a drained Głód draws orange at 29% with a "29%" tooltip, the
-soldier's red-critical Głód and "300/300" Zdrowie tooltip render, building panel unaffected, no console
-errors. Visual sign-off: pending user.
+Second pass (same branch, review feedback 2026-07-11): the flat banded fills read ugly and the grey
+`bar_disabled` remainder read as a stuck bar — the gauges are now a recessed dark track + a fill
+coloured by the ORIGINAL's decoded level ramps (`bar_hitpoints` red→yellow-green for Zdrowie,
+`bar_standart` rust→moss for needs — the palettes' 256 entries sweep colour with the index, read
+CPU-side off `gui-palettes-lut.png`; ramp-per-level is a named approximation, research notes loads
+`PalBarHitpoints` but the draw site isn't ported; flat bands remain the no-`content/` fallback).
+Sim side: EVERY settler (civilians, newborns) now spawns with `Health`
+(`DEFAULT_SETTLER_HITPOINTS` 300 — human HP below the readable `.ini`, approximation; golden
+e452b766 → 2d0d23b0); starvation lands (hunger pinned at ONE bites `max(1, max/240)` HP every 10
+ticks ≈ 2-minute death, named stand-in — animals exempt, no graze mechanic); `setNeedsEnabled`
+command + `WorldRules` hashed singleton gate the whole needs system — scenes boot needs OFF, maps
+ON, and the admin panel's "Potrzeby" button flips it live. Needs DRAIN RATE is still the named
+constant stand-in (ONE/4096/tick hunger), NOT the original's per-animation event scale (deferred
+extraction — see `needs.ts`).
+
+Verified: `npm test` (1922) + check + build green; hands-on — civilian shows all 5 bars, a 265/400
+soldier's Zdrowie draws the ramp's olive with a "265/400" tooltip, needs tooltips show percent,
+admin toggle boots WYŁĄCZONE on a scene and resumes needs on click, no console errors. Visual
+sign-off: pending user.
 
 Merge reconciliation (2026-07-10): the review battery (determinism/perf/fidelity/architecture/quality +
 a correctness pass) ran over the branch — no blockers; fidelity verified every weapon/atomic constant
