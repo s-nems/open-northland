@@ -140,6 +140,21 @@ export type SimEvent =
       readonly node: Entity;
       readonly goodType: number;
       readonly at: { x: number; y: number };
+    }
+  | {
+      /**
+       * One unit was chipped off a still-standing {@link import('../components/economy.js').MineDeposit}
+       * node this tick — the node SURVIVES (its `remaining` is the value after the chip; the removal of
+       * the last unit emits `resourceDepleted` instead). The cue a consumer needs the moment a virgin
+       * node is first WORKED: the `?map=` view hands the node from its retained static decor layer to
+       * the live sprite pool here (so the drawn deposit starts shrinking with its levels), and audio can
+       * hook a chip effect. Deterministic like every event.
+       */
+      readonly kind: 'resourceMined';
+      readonly node: Entity;
+      readonly goodType: number;
+      readonly remaining: number;
+      readonly at: { x: number; y: number };
     };
 
 export type SimEventKind = SimEvent['kind'];

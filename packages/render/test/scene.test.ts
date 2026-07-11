@@ -730,4 +730,19 @@ describe('collectSpriteScene — the single-pass draw list + liveness set', () =
     ]);
     expect(drawableEntityRefs(snapshot)).toEqual(collectSpriteScene(snapshot).liveRefs);
   });
+
+  // The `?map=` static→dynamic handover rule: a virgin map resource is drawn by the RETAINED static
+  // object layer, so the pool must see it in NEITHER items (not drawn twice) NOR liveRefs (never
+  // pooled). Releasing the ref (first-touch) makes the same entity draw normally on the next frame.
+  it('skips staticRefs entities from both items and liveRefs, and draws them once released', () => {
+    const snapshot = snapshotOf([
+      entity(1, 1, 1, { Resource: { goodType: 1 } }), // statically drawn (virgin map node)
+      entity(2, 2, 1, { Resource: { goodType: 1 } }), // pool-drawn (admin spawn / handed over)
+    ]);
+    const withStatic = collectSpriteScene(snapshot, undefined, undefined, new Set([1]));
+    expect(withStatic.items.map((d) => d.ref)).toEqual([2]);
+    expect([...withStatic.liveRefs]).toEqual([2]);
+    const released = collectSpriteScene(snapshot, undefined, undefined, new Set());
+    expect(released.items.map((d) => d.ref)).toEqual([1, 2]);
+  });
 });

@@ -2,6 +2,7 @@ import {
   CALIBRATED_HALF_H,
   CALIBRATED_HALF_W,
   type Camera,
+  type MapObjectSprite,
   WorldRenderer,
   buildSpriteScene,
   createWindowPixiApp,
@@ -9,7 +10,7 @@ import {
   makeElevationField,
   setTilePitch,
 } from '@vinland/render';
-import { halfCellMapFromCells } from '@vinland/sim';
+import { type SimEvent, halfCellMapFromCells } from '@vinland/sim';
 import { buildCollisionTerrain } from '../content/collision.js';
 import { buildingFootprints, loadIr } from '../content/ir.js';
 import { loadMinimapCellColours } from '../content/minimap-ground.js';
@@ -17,7 +18,7 @@ import { loadMapObjects } from '../content/objects.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
-import { mapResourceObjectNames, sandboxGoods, spawnMapResources } from '../game/sandbox/index.js';
+import { sandboxGoods, spawnMapResources } from '../game/sandbox/index.js';
 import { loadTerrainMap } from '../slice/map-loader.js';
 import { runAuthoredSlice, runSlice, sliceTerrain } from '../slice/vertical-slice.js';
 import { cameraCenteredOnTile, cameraFor, createCameraController } from '../view/camera.js';
@@ -119,15 +120,14 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // A decoded map's placed landscape objects (trees/stones/mine decals + the animated wave fx that
   // ARE the original's water surface) — resolved through the landscapeGfx IR + the /bobs atlases.
   // The catch keeps a partial content/ (e.g. a missing atlas PNG) a degradation, not an app crash.
-  // Harvestable objects (trees/ore/stone) are spawned as sim resources below and drawn by the sim, so the
-  // static decor layer SKIPS them — otherwise each would draw twice (static decor + sim sprite) and a felled
-  // tree's static sprite would linger over an empty tile. Every other object stays static decor.
-  const resourceObjectNames = ir !== null ? mapResourceObjectNames(ir) : undefined;
+  // EVERY placement draws here, harvestables included: a virgin tree/stone/mine is a built-once static
+  // quad/sprite (zero per-frame cost — a far zoom-out shows thousands at once), and the sim's sprite
+  // pool SKIPS it via the static-refs set below until the moment it is first worked (the handover).
+  let staticObjects: Awaited<ReturnType<typeof loadMapObjects>> | undefined;
   if (wantObjects && loaded?.objects !== undefined && ir !== null) {
     try {
-      renderer.setMapObjects(
-        await loadMapObjects(loaded.objects, ir, elevation, brightness, resourceObjectNames),
-      );
+      staticObjects = await loadMapObjects(loaded.objects, ir, elevation, brightness);
+      renderer.setMapObjects(staticObjects.sprites);
     } catch (err) {
       console.warn(`map objects unavailable, bare ground fallback: ${String(err)}`);
     }
@@ -160,14 +160,49 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
 
   // Spawn the map's own trees/ore/stone as real harvestable `Resource` sim nodes (plan step 6), so a
   // gatherer can actually work them — before this they were render-only decor and every gatherer idled.
-  // Pre-tick-0 direct spawn into the freshly-built sim, in the map's placement order (deterministic ids);
-  // these are the objects the static decor layer skipped above, now drawn + depleted by the sim.
+  // Pre-tick-0 direct spawn into the freshly-built sim, in the map's placement order (deterministic ids).
+  //
+  // DRAW SPLIT (the static→dynamic handover): a VIRGIN node keeps its built-once static sprite (the
+  // layer loaded above draws all 40k+ placements for free per frame) and the sim pool skips it via
+  // `staticRefs`; the first time it is WORKED (`resourceFelled`/`resourceMined`/`resourceDepleted`) the
+  // event handler below removes the static sprite and releases the ref, and the pool draws the entity
+  // from then on — same graphic (its own species variant via `Resource.gfxIndex`), now shrinking with
+  // its levels and vanishing on destroy. With `?objects=off` (or no atlases) nothing is static, no refs
+  // are registered, and the sim pool simply draws every node — the pre-handover behaviour.
+  let staticResources: Map<number, MapObjectSprite> | undefined;
   if (loaded?.objects !== undefined && ir !== null) {
-    const spawned = spawnMapResources(sim, loaded.objects, ir);
+    const { spawned, placementByEntity } = spawnMapResources(sim, loaded.objects, ir);
     console.log(
       `Map resources: spawned ${spawned} harvestable nodes from ${loaded.objects.types.length} object types.`,
     );
+    if (staticObjects !== undefined) {
+      staticResources = new Map();
+      for (const [entity, placement] of placementByEntity) {
+        const sprite = staticObjects.byPlacement.get(placement);
+        // A placement whose atlas never resolved has no static sprite — leave that node pool-drawn.
+        if (sprite !== undefined) staticResources.set(entity as number, sprite);
+      }
+      renderer.setStaticallyDrawnRefs(new Set(staticResources.keys()));
+    }
   }
+  const releaseWorkedResources =
+    staticResources === undefined
+      ? undefined
+      : (events: readonly SimEvent[]): void => {
+          const held = staticResources;
+          if (held === undefined) return;
+          let changed = false;
+          for (const ev of events) {
+            if (ev.kind !== 'resourceFelled' && ev.kind !== 'resourceMined' && ev.kind !== 'resourceDepleted')
+              continue;
+            const sprite = held.get(ev.node as number);
+            if (sprite === undefined) continue; // already handed over, or never static (admin spawn)
+            held.delete(ev.node as number);
+            renderer.removeMapObject(sprite);
+            changed = true;
+          }
+          if (changed) renderer.setStaticallyDrawnRefs(new Set(held.keys()));
+        };
 
   // Interactive camera: `?zoom` (+ the settler-centroid framing) is the STARTING frame; from there a
   // human pans (middle-mouse drag / arrow keys) and zooms (scroll wheel). The HUD is drawn outside the
@@ -203,6 +238,8 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     ...(minimapCells !== null ? { minimapCellColours: minimapCells } : {}),
     mapSize: { width: terrainGrid.width, height: terrainGrid.height },
     elevation, // a placement/order click on a lifted hill resolves to the tile drawn there
+    // First-touch handover: a worked resource leaves the static layer and the pool draws it on.
+    ...(releaseWorkedResources !== undefined ? { onEvents: releaseWorkedResources } : {}),
   });
 
   console.log(

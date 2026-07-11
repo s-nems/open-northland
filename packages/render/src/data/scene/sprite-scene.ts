@@ -119,8 +119,9 @@ export function buildSpriteScene(
   snapshot: WorldSnapshot,
   viewport?: Viewport,
   elevation?: ElevationField,
+  staticRefs?: ReadonlySet<number>,
 ): DrawItem[] {
-  return collectSpriteScene(snapshot, viewport, elevation).items;
+  return collectSpriteScene(snapshot, viewport, elevation, staticRefs).items;
 }
 
 /**
@@ -144,11 +145,17 @@ export function drawableEntityRefs(snapshot: WorldSnapshot): ReadonlySet<number>
  * dropped — the per-kind reads run only for the items that survive the cull. Sorted by feet anchor
  * `(y, x)` then entity id — a total, stable order, so culling only removes items without reshuffling
  * the survivors. Pure.
+ *
+ * `staticRefs` names entities the RETAINED static map-object layer draws instead (a decoded map's
+ * virgin resource nodes — see the `?map=` entry's handover): they are skipped entirely — no draw item,
+ * not in the liveness set — so the pool never runs per-frame work for scenery that has its own
+ * built-once quad (golden rule: per-frame cost tracks the screen's ACTIVE entities, not the forest).
  */
 export function collectSpriteScene(
   snapshot: WorldSnapshot,
   viewport?: Viewport,
   elevation?: ElevationField,
+  staticRefs?: ReadonlySet<number>,
 ): SpriteScene {
   const items: MutableDrawItem[] = [];
   const liveRefs = new Set<number>();
@@ -173,6 +180,8 @@ export function collectSpriteScene(
     }
   }
   for (const entity of snapshot.entities) {
+    // Drawn by the retained static layer instead (a virgin map resource) — skip before even classifying.
+    if (staticRefs?.has(entity.id)) continue;
     const components = entity.components;
     const kind = classify(components);
     if (kind === null) continue;

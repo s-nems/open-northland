@@ -1,13 +1,9 @@
 import { Simulation, components } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../src/content/ir.js';
-import {
-  harvestGoodByObjectName,
-  mapResourceSpawns,
-  spawnedResourceObjectNames,
-} from '../src/content/map-resources.js';
+import { harvestGoodByObjectName, mapResourceSpawns } from '../src/content/map-resources.js';
 import { sandboxContent } from '../src/game/sandbox/content.js';
-import { mapResourceObjectNames, spawnMapResources } from '../src/game/sandbox/place.js';
+import { spawnMapResources } from '../src/game/sandbox/place.js';
 
 /**
  * The decoded-map → sim RESOURCE join (plan `gathering-economy.md` step 6): a map's placed trees/ore/stone
@@ -68,21 +64,13 @@ describe('mapResourceSpawns — the harvestable placements to spawn', () => {
 
   it('keeps only objects whose good has a real gatherer trade, at their half-cell anchors, in order', () => {
     const spawns = mapResourceSpawns(objects, fixtureIr(), GATHERABLE);
+    // `placement` is the triplet ordinal in `placements` — the static→dynamic handover join key.
     expect(spawns).toEqual([
-      { goodId: 'wood', gfxIndex: 100, hx: 2, hy: 2 },
-      { goodId: 'stone', gfxIndex: 200, hx: 4, hy: 4 },
-      { goodId: 'wood', gfxIndex: 100, hx: 10, hy: 10 },
+      { goodId: 'wood', gfxIndex: 100, hx: 2, hy: 2, placement: 0 },
+      { goodId: 'stone', gfxIndex: 200, hx: 4, hy: 4, placement: 1 },
+      { goodId: 'wood', gfxIndex: 100, hx: 10, hy: 10, placement: 4 },
     ]);
     // grass (decor) and wheat (no gatherer trade) are left as static decor.
-  });
-});
-
-describe('spawnedResourceObjectNames — the names the static decor layer must skip', () => {
-  it('is exactly the harvestable objects that DO become sim resources (not the no-trade ones)', () => {
-    const names = spawnedResourceObjectNames(fixtureIr(), GATHERABLE);
-    expect(names).toEqual(new Set(['test tree', 'test tree tall', 'test rock']));
-    expect(names.has('test wheat')).toBe(false); // maps to a good, but no gatherer → stays decor
-    expect(names.has('test grass')).toBe(false);
   });
 });
 
@@ -105,7 +93,7 @@ describe('spawnMapResources — end-to-end over real sandbox content', () => {
       ],
     };
 
-    const spawned = spawnMapResources(sim, objects, ir);
+    const { spawned, placementByEntity } = spawnMapResources(sim, objects, ir);
 
     // Two trees + one rock spawned; the decor object made no node.
     expect(spawned).toBe(3);
@@ -118,11 +106,9 @@ describe('spawnMapResources — end-to-end over real sandbox content', () => {
     // Every map-spawned node carries its placement's OWN gfx record as the render-variant tag (the
     // IR/app numbering — deliberately unrelated to the sim content's footprint records).
     expect(resources.map((e) => sim.world.get(e, Resource).gfxIndex).sort()).toEqual([10, 10, 20]);
-
-    // The static decor layer skips exactly the two spawned object types, never the decor.
-    const skip = mapResourceObjectNames(ir);
-    expect(skip.has('sandbox tree')).toBe(true);
-    expect(skip.has('sandbox rock')).toBe(true);
-    expect(skip.has('sandbox decor')).toBe(false);
+    // The handover join: each spawned ENTITY maps to its placement ordinal (tree@0, rock@1, tree@3 —
+    // the decor placement @2 spawned nothing), so the map entry can pair it with the static sprite.
+    expect([...placementByEntity.values()].sort()).toEqual([0, 1, 3]);
+    expect(new Set(placementByEntity.keys())).toEqual(new Set(resources));
   });
 });

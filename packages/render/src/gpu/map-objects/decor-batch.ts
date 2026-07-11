@@ -89,14 +89,26 @@ function buildQuadBatch(objects: readonly MapObjectSprite[], source: TextureSour
   return { mesh, positions, uvs, geometry };
 }
 
-/** One animated decor batch: its mesh buffers + the objects whose quads fill them, in quad order. */
+/** One animated decor batch: its mesh buffers + the objects whose quads fill them, in quad order.
+ *  A REMOVED object's slot is `null` — its quad stays zeroed and the rewrite loop skips it. */
 export interface AnimatedDecorBatch {
-  readonly objects: MapObjectSprite[];
+  readonly objects: (MapObjectSprite | null)[];
   readonly positions: Float32Array;
   readonly uvs: Float32Array;
   readonly geometry: MeshGeometry;
   readonly pageW: number;
   readonly pageH: number;
+}
+
+/** Where ONE decor object's quad lives — the removal handle {@link DecorChunk.quads} hands the layer:
+ *  zero the 8 floats at `quadIndex` (+ buffer update) and, for an animated batch, null its slot so the
+ *  play-head rewrite never restores it. */
+export interface DecorQuadRef {
+  readonly positions: Float32Array;
+  readonly geometry: MeshGeometry;
+  readonly quadIndex: number;
+  /** The rewrite batch the quad belongs to, or null for a still (never-rewritten) batch. */
+  readonly animated: AnimatedDecorBatch | null;
 }
 
 /**
@@ -112,6 +124,9 @@ export interface DecorChunk {
   readonly maxY: number;
   /** Animated batches to rewrite on an anim-tick advance (empty for an all-static chunk). */
   readonly animated: AnimatedDecorBatch[];
+  /** Per-object removal handles (see {@link DecorQuadRef}) — how the layer takes ONE quad out of a
+   *  built batch when a virgin map resource is first worked (the `?map=` handover). */
+  readonly quads: Map<MapObjectSprite, DecorQuadRef>;
   /** The tick the animated buffers were last written for — per chunk, so a chunk scrolling into
    *  view while the sim is paused still gets caught up to the current tick's frame. */
   lastWrittenTick: number;
@@ -143,23 +158,44 @@ export function buildDecorChunk(block: readonly MapObjectSprite[]): DecorChunk {
     }
   }
   const animated: AnimatedDecorBatch[] = [];
+  const quads = new Map<MapObjectSprite, DecorQuadRef>();
   for (const [source, group] of bySource) {
     if (group.still.length > 0) {
-      container.addChild(buildQuadBatch(group.still, source).mesh);
+      const batch = buildQuadBatch(group.still, source);
+      container.addChild(batch.mesh);
+      for (let q = 0; q < group.still.length; q++) {
+        const obj = group.still[q] as MapObjectSprite;
+        quads.set(obj, {
+          positions: batch.positions,
+          geometry: batch.geometry,
+          quadIndex: q,
+          animated: null,
+        });
+      }
     }
     if (group.moving.length > 0) {
       const batch = buildQuadBatch(group.moving, source);
       container.addChild(batch.mesh);
-      animated.push({
+      const animBatch: AnimatedDecorBatch = {
         objects: group.moving,
         positions: batch.positions,
         uvs: batch.uvs,
         geometry: batch.geometry,
         pageW: source.width,
         pageH: source.height,
-      });
+      };
+      animated.push(animBatch);
+      for (let q = 0; q < group.moving.length; q++) {
+        const obj = group.moving[q] as MapObjectSprite;
+        quads.set(obj, {
+          positions: batch.positions,
+          geometry: batch.geometry,
+          quadIndex: q,
+          animated: animBatch,
+        });
+      }
     }
   }
   // Animated quads were written for tick 0 at build; the first update rewrites any other tick.
-  return { container, minX, minY, maxX, maxY, animated, lastWrittenTick: 0 };
+  return { container, minX, minY, maxX, maxY, animated, quads, lastWrittenTick: 0 };
 }

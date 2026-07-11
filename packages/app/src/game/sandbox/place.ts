@@ -13,7 +13,7 @@ import {
 import { resolveVikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import type { ContentIr } from '../../content/ir.js';
-import { mapResourceSpawns, spawnedResourceObjectNames } from '../../content/map-resources.js';
+import { mapResourceSpawns } from '../../content/map-resources.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../rules.js';
 import { GATHERERS, type GathererSpec, weaponEquipmentFor } from './ids.js';
 
@@ -151,14 +151,12 @@ function placeResourceDirect(sim: Simulation, spec: ResourceNodeSpec, what: stri
   }
 }
 
-/**
- * The object EditNames a decoded map draws that this app spawns as sim resources instead — pass to
- * {@link import('../../content/objects.js').loadMapObjects} so the static decor layer SKIPS them (the sim
- * draws + depletes them, so a felled tree's sprite vanishes rather than a stale static one standing over an
- * empty tile). Every other placed object stays static decor. Empty when the IR lacks the gathering lanes.
- */
-export function mapResourceObjectNames(ir: ContentIr): ReadonlySet<string> {
-  return spawnedResourceObjectNames(ir, SPAWNABLE_GOOD_IDS);
+/** What {@link spawnMapResources} made: the node count plus each spawned ENTITY's placement ordinal in
+ *  `objects.placements` — the join back to the static layer's drawn sprite for the same placement, so the
+ *  `?map=` entry can hand a first-worked node from the built-once static layer to the live sprite pool. */
+export interface MapResourceSpawnResult {
+  readonly spawned: number;
+  readonly placementByEntity: ReadonlyMap<Entity, number>;
 }
 
 /**
@@ -173,19 +171,28 @@ export function mapResourceObjectNames(ir: ContentIr): ReadonlySet<string> {
  * and fell/mine parameters reuse the gatherer catalog defaults (`resourceSpecFor`) — the map's per-placement
  * growth `levels` lane is not yet mapped to a starting amount (a named approximation, same defaults an
  * admin-spawned node uses). Each spawn carries its placement's OWN harvest-stage `gfxIndex` (the species
- * variant), so the node draws + collides as the exact original object rather than the good's representative
- * one. A placement whose good has no gatherer trade or whose good has no footprint is skipped, not fatal
- * (unlike the throwing scene helper). Returns the count spawned.
+ * variant), so a node the sprite pool draws (a worked/handed-over one) keeps the exact original graphic. A
+ * placement whose good has no gatherer trade or whose good has no footprint is skipped, not fatal (unlike
+ * the throwing scene helper).
  */
-export function spawnMapResources(sim: Simulation, objects: TerrainObjects, ir: ContentIr): number {
+export function spawnMapResources(
+  sim: Simulation,
+  objects: TerrainObjects,
+  ir: ContentIr,
+): MapResourceSpawnResult {
   let spawned = 0;
-  for (const { goodId, gfxIndex, hx, hy } of mapResourceSpawns(objects, ir, SPAWNABLE_GOOD_IDS)) {
+  const placementByEntity = new Map<Entity, number>();
+  for (const { goodId, gfxIndex, hx, hy, placement } of mapResourceSpawns(objects, ir, SPAWNABLE_GOOD_IDS)) {
     const g = GATHERER_BY_GOOD_ID.get(goodId);
     if (g === undefined) continue; // filtered by SPAWNABLE_GOOD_IDS already, but keep the type honest
     const spec = { ...resourceSpecFor(g, hx, hy), gfxIndex };
-    if (systems.createResourceNode(sim.world, sim.content, spec) !== null) spawned++;
+    const e = systems.createResourceNode(sim.world, sim.content, spec);
+    if (e !== null) {
+      spawned++;
+      placementByEntity.set(e, placement);
+    }
   }
-  return spawned;
+  return { spawned, placementByEntity };
 }
 
 /**
