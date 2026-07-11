@@ -228,10 +228,13 @@ export async function convertGuiPaletteLut(gameDir: string, outDir: string): Pro
  * body in the original renders it warm brown — the `bg_normal` element palette applied to the same indices
  * matches those screenshots (verified visually at 1024×768; the palette's name states the pairing, but
  * OpenVikings only shows the palette being loaded, not the draw-site pairing itself).
- * `bg_selected` — the original's SELECTED-item card body — likewise renders through `bg_normal`, where its
- * indices land on the palette's cool band (avg ≈ #3c4043, a grey-blue marble): the selection info panel's
- * section cards under their brown headline strips. Unlike `bg` it needs no shadow lift — its darkest veins
- * hold luma ≈ 48 (p1) through `bg_normal`, so they never read as cracked black.
+ * `bg_selected` — the original's SELECTED-item card body, which is exactly what the selection info panel is —
+ * shows as a grey-blue marble in the original, and its embedded palette (a warm olive) does not reproduce
+ * that. `bg_normal` is the pairing chosen here NOT because a decoded draw-site or the palette name pins it —
+ * by name `bg_hilite`/`bg_invert` would fit "selected" better — but because, among the loaded element
+ * palettes, `bg_normal` is the one whose indices reproduce the observed grey-blue (avg ≈ #3c4043): an
+ * observation-anchored approximation, weaker-evidenced than the `bg` pairing above. Unlike `bg` it needs no
+ * shadow lift — its darkest veins hold luma ≈ 48 (p1) through `bg_normal`, so they never read as cracked black.
  * The remaining three `bg_*` bitmaps match the original through their embedded palettes, so only these two
  * are baked. `softenShadows` additionally lifts the swapped palette's near-black entries
  * ({@link liftPaletteShadows}).
