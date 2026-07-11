@@ -8,7 +8,9 @@ import {
   Stockpile,
   UnderConstruction,
   Vehicle,
+  WorldRules,
   stampOwner,
+  worldRulesEntity,
 } from '../components/index.js';
 import { assertNever } from '../core/brand.js';
 import type { Command } from '../core/commands.js';
@@ -163,6 +165,14 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
     case 'setWorkFlag':
       setWorkFlag(world, ctx, command);
       return;
+    case 'setNeedsEnabled': {
+      // Set the WorldRules SINGLETON (created lazily on first use, mutated thereafter) — the toggle is
+      // simulated state, so it hashes/replays like any component. Idempotent re-sends just overwrite.
+      const rules = worldRulesEntity(world);
+      if (rules === null) world.add(world.create(), WorldRules, { needsEnabled: command.enabled });
+      else world.get(rules, WorldRules).needsEnabled = command.enabled;
+      return;
+    }
     default:
       assertNever(command);
   }

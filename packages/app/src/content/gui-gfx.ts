@@ -96,6 +96,51 @@ export function loadGuiPaletteLut(): Promise<TextureSource | undefined> {
   return loadTextureIfPresent(`/bobs/${GUI_PALETTE_LUT_STEM}.png`);
 }
 
+/**
+ * The decoded level→colour ramps of the two ORIGINAL bar palettes, as 256 packed `0xRRGGBB` entries
+ * each (index 0 = empty, 255 = full):
+ *  - `hitpoints` (`bar_hitpoints.pcx`): red `#ff0000` → orange → yellow-green `#d4ff4b` — the HP bar.
+ *  - `standart` (`bar_standart.pcx`): rust `#bd4826` → moss green `#8aa430` — the generic stat bar.
+ * The original ships these as PALETTES whose entries sweep the colour with the index — the decoded
+ * evidence that a bar's colour follows its LEVEL. How the engine consumes them isn't decompiled
+ * (`PalBarHitpoints` is loaded in OpenVikings but its draw site isn't ported), so the panel's reading —
+ * fill colour = `ramp[level]`, one colour per bar — is a named approximation of a per-level ramp.
+ */
+export interface GuiBarRamps {
+  readonly hitpoints: readonly number[];
+  readonly standart: readonly number[];
+}
+
+/**
+ * Read the two bar-palette LUT rows CPU-side: fetch the same `/bobs/gui-palettes-lut.png` the renderer
+ * samples on the GPU, draw it onto a 2D canvas, and pack each row's 256 RGB entries. `undefined` when
+ * the LUT is absent (no `content/`) or unreadable — the bars then fall back to their flat banded colours.
+ */
+export async function loadGuiBarRamps(): Promise<GuiBarRamps | undefined> {
+  try {
+    const response = await fetch(`/bobs/${GUI_PALETTE_LUT_STEM}.png`);
+    if (!response.ok) return undefined;
+    const bitmap = await createImageBitmap(await response.blob());
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d');
+    if (ctx === null) return undefined;
+    ctx.drawImage(bitmap, 0, 0);
+    const rowColors = (name: GuiPaletteName): number[] => {
+      const row = ctx.getImageData(0, guiPaletteRow(name), bitmap.width, 1).data;
+      const colors: number[] = [];
+      for (let x = 0; x < bitmap.width; x++) {
+        colors.push(((row[x * 4] ?? 0) << 16) | ((row[x * 4 + 1] ?? 0) << 8) | (row[x * 4 + 2] ?? 0));
+      }
+      return colors;
+    };
+    return { hitpoints: rowColors('bar_hitpoints'), standart: rowColors('bar_standart') };
+  } catch {
+    return undefined;
+  }
+}
+
 /** Original GUI bitmap fills copied/converted from `Data/gui/bitmaps/*.pcx` by the pipeline. */
 export type GuiBitmapName = 'bg' | 'bg_button' | 'bg_button_hilite' | 'bg_headline' | 'bg_selected';
 

@@ -28,7 +28,7 @@ export type { System, SystemContext };
 // `spawn` otherwise stays private (its `spawnSettler`/`spawnAnimalHerd` are the command handler's), but
 // `createSettler` is the scene-facing entity constructor — the settler twin of `createResourceNode` — so
 // pre-tick-0 scene setup can place a settler directly and stamp its bindings (a gatherer's WorkFlag).
-export { type SettlerSpec, createSettler } from './conflict/spawn.js';
+export { DEFAULT_SETTLER_HITPOINTS, type SettlerSpec, createSettler } from './conflict/spawn.js';
 // The per-tile ground-heap cap (the `ls_goods` heap's 5 fill states) — the ceiling a flag-bound gatherer's
 // delivery spreads across, exposed so scenes/tests can reason about the goods yard without a magic 5.
 export { MAX_GROUND_STACK } from './agents/effects-goods.js';

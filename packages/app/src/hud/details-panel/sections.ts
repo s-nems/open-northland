@@ -23,7 +23,6 @@ import {
   HUMANWINDOW,
   type MultiSettlerPanelModel,
   type SettlerPanelModel,
-  barTone,
 } from './model.js';
 
 /**
@@ -302,8 +301,9 @@ function drawGeneralSection(
   chrome.textAt(model.profession, layout.name.x, layout.name.y + ROW_TEXT_PAD * s, 'white', 'title');
   chrome.textAt(model.meta, layout.meta.x, layout.meta.y + ROW_TEXT_PAD * s, 'dimmed');
 
-  // Stat bars: the model's pinned label (Zdrowie/Głód/…) and a fixed-width toned gauge (green→orange→red
-  // as the level drains) right-aligned in the row; the hover value lives in the panel's cursor tooltip.
+  // Stat bars: the model's pinned label (Zdrowie/Głód/…) and a fixed-width level-coloured gauge (the
+  // decoded ramp sweeps red→green with the level) right-aligned in the row; the hover value lives in
+  // the panel's cursor tooltip.
   const barW = Math.round(SETTLER_BAR_W * s);
   const barH = Math.round(BAR_H * s);
   model.bars.forEach((barModel, i) => {
@@ -313,7 +313,7 @@ function drawGeneralSection(
     chrome.bar(
       { x: r.x + r.w - barW, y: r.y + Math.round((r.h - barH) / 2), w: barW, h: barH },
       barModel.pct,
-      barTone(barModel.pct),
+      barModel.kind === 'health' ? 'hitpoints' : 'standart',
     );
   });
 }

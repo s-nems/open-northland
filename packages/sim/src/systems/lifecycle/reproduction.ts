@@ -1,7 +1,8 @@
-import { Age, Building, Position, Settler } from '../../components/index.js';
+import { Age, Building, Health, Position, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, ONE, fx } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
+import { DEFAULT_SETTLER_HITPOINTS } from '../conflict/spawn.js';
 import type { System, SystemContext } from '../context.js';
 import { canonicalById } from '../spatial.js';
 import { housingCapacity, tribePopulation } from '../stores.js';
@@ -81,6 +82,9 @@ function bornAt(world: World, ctx: SystemContext, tribe: number, anchor: { x: Fi
   // matures it baby→child→adult-eligible over GROWUP_TICKS. Only a borne settler carries an Age; an
   // adult (every `spawnSettler`) has none, so the system is inert for them (and the goldens).
   world.add(e, Age, { ticks: 0 });
+  // Every settler carries a Health pool (see createSettler) — a newborn gets the same default one (no
+  // per-age human pool is readable; `hitpoints_adult` implies the original scales by age — approximated).
+  world.add(e, Health, { hitpoints: DEFAULT_SETTLER_HITPOINTS, max: DEFAULT_SETTLER_HITPOINTS });
   ctx.events.emit({ kind: 'settlerBorn', entity: e });
 }
 

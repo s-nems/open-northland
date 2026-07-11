@@ -9,7 +9,13 @@ import {
 } from '../../content/building-gfx.js';
 import { type GoodsArt, loadGoodsArt } from '../../content/goods-gfx.js';
 import { type GuiArt, loadGuiArt } from '../../content/gui-art.js';
-import { type GuiStrings, loadGuiBitmap, loadGuiStrings } from '../../content/gui-gfx.js';
+import {
+  type GuiBarRamps,
+  type GuiStrings,
+  loadGuiBarRamps,
+  loadGuiBitmap,
+  loadGuiStrings,
+} from '../../content/gui-gfx.js';
 import { MissingAtlasError, loadIr, loadLayer } from '../../content/ir.js';
 import { type UiFont, loadUiFont } from '../../content/ui-font.js';
 
@@ -121,16 +127,20 @@ export interface DetailsPanelAssets {
   readonly bitmaps: GuiBitmapSet;
   readonly strings: GuiStrings | null;
   readonly previews: ReadonlyMap<number, BuildingPreview>;
+  /** The decoded level→colour bar ramps (`bar_hitpoints`/`bar_standart`), or `undefined` without
+   *  `content/` — the stat bars then fall back to flat banded colours. */
+  readonly barRamps: GuiBarRamps | undefined;
 }
 
 export async function loadDetailsPanelAssets(lang: string): Promise<DetailsPanelAssets> {
-  const [art, goods, uiFont, bitmaps, strings, previews] = await Promise.all([
+  const [art, goods, uiFont, bitmaps, strings, previews, barRamps] = await Promise.all([
     loadGuiArt(),
     loadGoodsArt(),
     loadUiFont(),
     loadGuiBitmaps(),
     loadGuiStrings(lang),
     loadBuildingPreviews(),
+    loadGuiBarRamps(),
   ]);
-  return { art, goods, uiFont, bitmaps, strings, previews };
+  return { art, goods, uiFont, bitmaps, strings, previews, barRamps };
 }

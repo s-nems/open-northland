@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { Position, Settler } from '../../src/components/index.js';
-import type { Entity } from '../../src/ecs/world.js';
+import * as components from '../../src/components/index.js';
+import { Health, Position, Settler } from '../../src/components/index.js';
+import type { Component, Entity } from '../../src/ecs/world.js';
 import { type Fixed, ONE, Simulation, fx } from '../../src/index.js';
 import {
   ENJOYMENT_RISE_PER_TICK,
   FATIGUE_RISE_PER_TICK,
   HUNGER_RISE_PER_TICK,
   PIETY_RISE_PER_TICK,
+  STARVATION_BITES_TO_DIE,
+  STARVATION_DAMAGE_INTERVAL_TICKS,
   type SystemContext,
   needsSystem,
 } from '../../src/systems/index.js';
@@ -24,8 +27,11 @@ const VIKING = 1;
 const WOODCUTTER = 1;
 
 beforeEach(() => {
-  Settler.store.clear();
-  Position.store.clear();
+  // Clear the WHOLE component namespace, not a hand-picked subset (AGENTS: the multi-sim trap).
+  for (const c of Object.values(components)) {
+    const store = (c as Partial<Component<unknown>>).store;
+    if (store instanceof Map) store.clear();
+  }
 });
 
 function ctxOf(sim: Simulation): SystemContext {
@@ -228,5 +234,93 @@ describe('needsSystem — enjoyment rises over time (the recreation/leisure need
     expect(settler.enjoyment).toBe(fx.mul(ENJOYMENT_RISE_PER_TICK, fx.fromInt(100)));
     expect(settler.enjoyment).toBeLessThan(settler.piety); // slowest rate ⇒ lowest after equal ticks
     expect(sim.checkInvariants()).toEqual([]);
+  });
+});
+
+describe('needsSystem — the setNeedsEnabled world rule (the dev/admin toggle)', () => {
+  it('freezes every need while disabled and resumes on re-enable', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = settlerWithHunger(sim, fx.fromInt(0));
+
+    sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
+    for (let i = 0; i < 50; i++) sim.step();
+    const frozen = sim.world.get(e, Settler);
+    expect(frozen.hunger).toBe(fx.fromInt(0));
+    expect(frozen.fatigue).toBe(fx.fromInt(0));
+    expect(frozen.piety).toBe(fx.fromInt(0));
+    expect(frozen.enjoyment).toBe(fx.fromInt(0));
+
+    sim.enqueue({ kind: 'setNeedsEnabled', enabled: true });
+    sim.step(); // the toggle applies (commandSystem) before needsSystem the same tick
+    expect(sim.world.get(e, Settler).hunger).toBe(HUNGER_RISE_PER_TICK);
+    expect(sim.checkInvariants()).toEqual([]);
+  });
+
+  it('reuses the one WorldRules singleton across repeated toggles', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
+    sim.step();
+    sim.enqueue({ kind: 'setNeedsEnabled', enabled: true });
+    sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
+    sim.step();
+    expect([...components.WorldRules.store.keys()]).toHaveLength(1);
+    expect(components.needsEnabled(sim.world)).toBe(false);
+  });
+});
+
+describe('needsSystem — starvation (a pinned hunger drains hitpoints)', () => {
+  /** A settler whose hunger is already pinned at ONE, carrying an explicit Health pool. */
+  function starvingSettler(sim: Simulation, hitpoints: number): Entity {
+    const e = settlerWithHunger(sim, ONE);
+    sim.world.add(e, Health, { hitpoints, max: hitpoints });
+    return e;
+  }
+
+  it('bites hitpoints on the interval beat only while hunger is pinned at ONE', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const starving = starvingSettler(sim, 300);
+    const fed = settlerWithHunger(sim, fx.fromInt(0));
+    sim.world.add(fed, Health, { hitpoints: 300, max: 300 });
+
+    for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 3; i++) sim.step();
+    // 300/240 truncates to 1 → the 1-damage floor, one bite per interval; the fed settler is untouched.
+    expect(sim.world.get(starving, Health).hitpoints).toBe(300 - 3);
+    expect(sim.world.get(fed, Health).hitpoints).toBe(300);
+    expect(sim.checkInvariants()).toEqual([]);
+  });
+
+  it('scales the bite with the pool so any pool empties in ~STARVATION_BITES_TO_DIE intervals', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = starvingSettler(sim, 2400);
+    for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS; i++) sim.step();
+    expect(sim.world.get(e, Health).hitpoints).toBe(2400 - 2400 / STARVATION_BITES_TO_DIE);
+  });
+
+  it('starves a settler to death: the drained pool is reaped with a settlerDied event', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = starvingSettler(sim, 2); // two bites to die (fast-forward the death without 2400 ticks)
+    let died = false;
+    for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 2 + 1 && !died; i++) {
+      sim.step();
+      died = sim.events.current().some((ev) => ev.kind === 'settlerDied' && ev.entity === e);
+    }
+    expect(died).toBe(true);
+    expect(sim.world.has(e, Settler)).toBe(false); // reaped by cleanupSystem
+  });
+
+  it('exempts animals (jobType null — no graze mechanic to save them yet)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = starvingSettler(sim, 300);
+    sim.world.get(e, Settler).jobType = null;
+    for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 2; i++) sim.step();
+    expect(sim.world.get(e, Health).hitpoints).toBe(300);
+  });
+
+  it('stops starving while needs are disabled', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = starvingSettler(sim, 300);
+    sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
+    for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 2; i++) sim.step();
+    expect(sim.world.get(e, Health).hitpoints).toBe(300);
   });
 });

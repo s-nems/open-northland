@@ -1,4 +1,4 @@
-import type { Command } from '@vinland/sim';
+import { type Command, systems } from '@vinland/sim';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import { resourceCommand } from '../../game/sandbox/place.js';
 import { BUTTON_STYLE, el } from '../overlay.js';
@@ -45,6 +45,9 @@ export interface AdminDebugDeps {
   /** The localized display name for a good typeId (from the shared sim content), or `undefined` to keep the
    *  catalog's built-in label. Localizes the goods/resource palette from the ONE name source the HUD uses. */
   readonly goodLabel?: (typeId: number) => string | undefined;
+  /** The sim's live needs-rule state — drawn on the "Potrzeby" toggle button so it reflects the entry's
+   *  default (scenes boot needs OFF, maps ON). The toggle itself goes through `enqueue` like any command. */
+  readonly needsEnabled?: () => boolean;
 }
 
 /** What the next map click will place. */
@@ -53,9 +56,9 @@ type Armed =
   | { readonly kind: 'resource'; readonly good: number }
   | { readonly kind: 'good'; readonly good: number };
 
-/** A combatant's default hitpoint pool (sandbox scale — a human's real HP is unreadable, an
- *  approximation like the combat scene's; source basis "Combat hit resolution"). */
-const DEFAULT_HITPOINTS = 300;
+/** The default hitpoint pool shown in the HP field — the sim's own settler default, so the palette's
+ *  number matches what an untouched spawn would get anyway. */
+const DEFAULT_HITPOINTS = systems.DEFAULT_SETTLER_HITPOINTS;
 
 const TOGGLE_STYLE = [
   'position:fixed',
@@ -211,6 +214,29 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     }),
   );
   panel.append(statsRow);
+
+  // The global needs toggle ("wyłącz potrzeby" — user decision 2026-07-11): flips the sim's
+  // setNeedsEnabled rule so test units don't starve mid-session. Scenes boot with needs OFF, maps ON
+  // (deps.needsEnabled reads the live rule); the label tracks the value we just requested — the command
+  // applies next tick, well before another click can land.
+  {
+    let needsOn = deps.needsEnabled?.() ?? true;
+    const b = el('button', BUTTON_STYLE);
+    const paint = (): void => {
+      b.textContent = needsOn ? 'Potrzeby: WŁĄCZONE (klik = wyłącz)' : 'Potrzeby: WYŁĄCZONE (klik = włącz)';
+      setButtonActive(b, needsOn);
+    };
+    b.addEventListener('click', () => {
+      needsOn = !needsOn;
+      deps.enqueue({ kind: 'setNeedsEnabled', enabled: needsOn });
+      paint();
+    });
+    paint();
+    const needsRow = el('div', 'display:flex;gap:8px;align-items:center;margin-top:8px');
+    needsRow.append(el('span', 'opacity:0.8', 'Głód/sen itd.'));
+    needsRow.append(b);
+    panel.append(needsRow);
+  }
 
   // Unit + resource palettes — each an armable button row (a click arms/disarms that choice).
   panel.append(el('div', SECTION_TITLE_STYLE, 'Wojownicy'));

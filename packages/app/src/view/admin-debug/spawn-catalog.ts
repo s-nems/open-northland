@@ -51,7 +51,8 @@ export interface UnitPreset {
 export interface UnitSpawnOptions {
   /** The player that owns the spawned unit (a slot in `[0, MAX_PLAYERS)`). */
   readonly player: number;
-  /** The combatant hitpoint pool; `<= 0` spawns a non-combatant (no `Health`). */
+  /** The spawned unit's hitpoint pool; `<= 0` defers to the sim's default pool (every settler
+   *  carries `Health` — `DEFAULT_SETTLER_HITPOINTS`). */
   readonly hitpoints: number;
   /** The worn armor class (1..4); `<= 0` spawns unarmored. */
   readonly armorClass: number;
@@ -61,9 +62,9 @@ export interface UnitSpawnOptions {
 
 /**
  * Build the `spawnSettler` command for a unit preset at a tile — the pure command mapping the palette
- * enqueues (extracted so it is unit-testable without the DOM). HP/armor/weapon are the separate-optional
- * stamps the command supports: a non-positive `hitpoints`/`armorClass` and a civilian's absent weapon are
- * simply omitted, so a civilian spawns as the plain non-combatant it is.
+ * enqueues (extracted so it is unit-testable without the DOM). HP/armor/weapon are optional stamps: a
+ * non-positive `hitpoints` is omitted (the sim then applies its default pool — every settler carries
+ * `Health`), a non-positive `armorClass` and a civilian's absent weapon are omitted likewise.
  */
 export function unitSpawnCommand(preset: UnitPreset, opts: UnitSpawnOptions): Command {
   // The class weapon also goes in the equipment slot (derived from the job, shared with the scene/map
