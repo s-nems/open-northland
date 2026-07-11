@@ -28,6 +28,10 @@ export const GROUP_CARPENTER_SAW = 'Carpenter Saw';
 //     decoded from `soundfx.cif`). A melee `combatHit` rings its weapon's impact; a bow's `projectileLaunched`
 //     twangs and its `projectileHit` thunks. Faithful group NAMES; which SPECIFIC group each event picks is
 //     the reversed engine mapping (see the header) expressed as data. ---
+/** Melee swing swoosh — the whoosh on EVERY swing (hit or miss). The swing wavs are SHARED across the
+ *  melee weapons in the bank (`Weapon Sword Short` / `Weapon Spear` / `Weapon Fist` all point at the same
+ *  `swing0N.wav` set), so one generic swing group faithfully covers sword/spear/fist. */
+export const GROUP_MELEE_SWING = 'Weapon Sword Short';
 /** Fist impact — a bare-handed civilian brawl connecting (LogicSoundType 93). */
 export const GROUP_FIST_HIT = 'Weapon Fist Hit';
 /** Spear thrust connecting (LogicSoundType 68). */
@@ -122,7 +126,9 @@ export function defaultBindings(opts?: {
       // unit falls, never for an enemy or a wild animal (the director gates it on the event's owner).
       settlerDied: { kind: 'jingle', musicType: JINGLE_DEATH, localPlayerOnly: true },
       goodProduced: { kind: 'spatial', group: GROUP_CARPENTER_SAW },
-      // Combat impacts: a melee blow connecting (weapon-specific below), a bow loosing, an arrow landing.
+      // Combat: a melee swing swoosh (every swing), the blow connecting (weapon-specific below), a bow
+      // loosing, an arrow landing.
+      combatSwing: { kind: 'spatial', group: GROUP_MELEE_SWING },
       combatHit: { kind: 'spatial', group: GROUP_SWORD_HIT },
       projectileLaunched: { kind: 'spatial', group: GROUP_BOW_SHOT },
       projectileHit: { kind: 'spatial', group: GROUP_ARROW_HIT },

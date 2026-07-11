@@ -1,6 +1,7 @@
 import type { WeaponType } from '@vinland/data';
-import { Armor, CurrentAtomic } from '../../components/index.js';
+import { Armor, CurrentAtomic, Position } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
+import { eventAt } from '../../core/events.js';
 import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
@@ -172,6 +173,14 @@ export function startAttack(
     targetEntity: target,
     targetTile: null,
   });
+  // Announce a MELEE swing (the swoosh) at the attacker's node — the audible twin of a bow's
+  // `projectileLaunched`, so a sword/spear fight is heard on every swing, not only at the brief connect.
+  // A ranged swing announces its `projectileLaunched` at the release frame instead (see the executor).
+  if (projectile === undefined) {
+    const from = world.tryGet(e, Position);
+    if (from !== undefined)
+      ctx.events.emit({ kind: 'combatSwing', attacker: e, at: eventAt(from.x, from.y) });
+  }
 }
 
 /**

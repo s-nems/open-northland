@@ -1,4 +1,5 @@
 import {
+  type AtlasFrame,
   type BrightnessField,
   type ElevationField,
   type MapObjectSprite,
@@ -81,6 +82,36 @@ async function loadLayerOrNull(key: string): Promise<SpriteLayer | null> {
     if (err instanceof MissingAtlasError) return null;
     throw err;
   }
+}
+
+/** The decoded human bone-pile records — the resting `cadaver human bones` states of `ls_skeletons.bmd`
+ *  (each a single still frame). The render effects layer draws one at each death, so a battlefield leaves
+ *  the SAME bones the original's cadaver landscape objects do (the map viewer shows them on `cn_0`). */
+const HUMAN_BONES_EDIT_NAMES = ['cadaver human bones01', 'cadaver human bones02', 'cadaver human bones03'];
+
+/**
+ * Resolve the decoded human bone-pile art for the combat-feedback layer: the shared `ls_skeletons` atlas
+ * page + the {@link HUMAN_BONES_EDIT_NAMES} frames. Returns `null` when the `landscapeGfx` join or its
+ * atlas is absent (a checkout without `content/`), so the renderer falls back to its procedural pile. The
+ * render twin of a map object's atlas binding ({@link loadMapObjects}), for a runtime-spawned mark rather
+ * than a placed one.
+ */
+export async function loadCombatBones(
+  ir: ContentIr,
+): Promise<{ source: SpriteLayer['source']; frames: AtlasFrame[] } | null> {
+  const rows = (ir.landscapeGfx ?? []).filter((r) => HUMAN_BONES_EDIT_NAMES.includes(r.editName ?? ''));
+  const first = rows[0];
+  if (first === undefined) return null;
+  const key = atlasKeyOf(first);
+  if (key === null) return null;
+  const layer = await loadLayerOrNull(key);
+  if (layer === null) return null;
+  const frames = rows
+    .map((r) => r.frames?.[0]?.bobIds[0])
+    .filter((id): id is number => id !== undefined)
+    .map((id) => layer.atlas.frames.get(id))
+    .filter((f): f is AtlasFrame => f !== undefined);
+  return frames.length > 0 ? { source: layer.source, frames } : null;
 }
 
 /**

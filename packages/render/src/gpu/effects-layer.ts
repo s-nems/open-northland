@@ -1,5 +1,5 @@
 import type { SimEvent } from '@vinland/sim';
-import { Container, Graphics } from 'pixi.js';
+import { Container, Graphics, Sprite, type TextureSource } from 'pixi.js';
 import {
   type CombatEffect,
   type CombatEffectKind,
@@ -9,7 +9,23 @@ import {
 } from '../data/effects.js';
 import type { ElevationField } from '../data/elevation.js';
 import { halfCellToScreen } from '../data/iso.js';
+import type { AtlasFrame } from '../data/sprites/index.js';
 import { type Viewport, isVisible } from '../data/viewport.js';
+import type { TextureCache } from './texture-cache.js';
+
+/**
+ * The decoded bone-pile art the layer draws for a death (the original's `cadaver human bones` landscape
+ * objects from `ls_skeletons.bmd`): the shared atlas page + a few interchangeable frames the app resolves
+ * and hands over. When set, a death draws a REAL bone sprite (a seed-picked variant); absent (a checkout
+ * with no `content/`), it falls back to the procedural pile. `textures` memoizes the per-frame sub-texture.
+ */
+export interface BonesGfx {
+  readonly source: TextureSource;
+  readonly frames: readonly AtlasFrame[];
+  readonly textures: TextureCache;
+  /** World-scale the bob is drawn at (1 = the map's native landscape-object scale). */
+  readonly scale: number;
+}
 
 /**
  * The COMBAT-FEEDBACK layer — the transient marks a fight leaves: a BLOOD spurt where a blow lands, a
@@ -57,9 +73,16 @@ export class CombatEffectsLayer {
   /** The live marks (pure fold output); replaced each ingest, iterated each draw. */
   private effects: CombatEffect[] = [];
   /** One retained node per mark key — shape drawn once, then only moved / faded / culled. */
-  private readonly nodes = new Map<string, Graphics>();
+  private readonly nodes = new Map<string, Container>();
   /** Reused per-frame scratch of keys drawn this frame (avoids a per-frame allocation). */
   private readonly seen = new Set<string>();
+  /** The decoded bone art, when the app has resolved it; unset → procedural bones. */
+  private bones: BonesGfx | undefined;
+
+  /** Provide the decoded `cadaver human bones` art so deaths draw the REAL bone pile; unset → procedural. */
+  setBonesGfx(bones: BonesGfx | undefined): void {
+    this.bones = bones;
+  }
 
   /** Fold this frame's events (across every sim sub-step) into the live mark list — see {@link foldCombatEffects}. */
   ingest(events: readonly SimEvent[], tick: number): void {
@@ -89,7 +112,7 @@ export class CombatEffectsLayer {
         continue;
       }
       if (node === undefined) {
-        node = makeMark(effect.kind, effect.seed);
+        node = this.makeMark(effect.kind, effect.seed);
         (effect.kind === 'blood' ? this.overlayContainer : this.groundContainer).addChild(node);
         this.nodes.set(key, node);
       }
@@ -113,6 +136,31 @@ export class CombatEffectsLayer {
     this.overlayContainer.destroy({ children: true });
     this.nodes.clear();
   }
+
+  /** Build a mark's node once: a seed-picked REAL bone sprite when the decoded art is set (else a
+   *  procedural pile), or the procedural blood splatter. The node's origin is the feet anchor; the layer
+   *  positions/fades it thereafter. */
+  private makeMark(kind: CombatEffectKind, seed: number): Container {
+    if (kind === 'bones' && this.bones !== undefined && this.bones.frames.length > 0) {
+      return makeBonesSprite(this.bones, seed);
+    }
+    const g = new Graphics();
+    return kind === 'blood' ? drawBlood(g, seed) : drawBones(g, seed);
+  }
+}
+
+/** A real decoded bone pile: a seed-picked `cadaver human bones` frame, anchored at the feet (the frame's
+ *  own `offsetX/offsetY` place its top-left relative to the anchor, mirroring the map-object layer). Wrapped
+ *  in a Container so its ORIGIN is the feet — the layer positions every node the same way. */
+function makeBonesSprite(bones: BonesGfx, seed: number): Container {
+  const c = new Container();
+  const frame = bones.frames[seed % bones.frames.length];
+  if (frame === undefined) return c;
+  const sprite = new Sprite(bones.textures.get(bones.source, frame));
+  sprite.scale.set(bones.scale);
+  sprite.position.set(frame.offsetX * bones.scale, frame.offsetY * bones.scale);
+  c.addChild(sprite);
+  return c;
 }
 
 /** A deterministic float in [0, 1) from a mark's seed and a droplet/shaft index — no `Math.random`, so a
@@ -122,12 +170,6 @@ function rand(seed: number, i: number): number {
   x = Math.imul(x ^ (x >>> 15), 0x85ebca6b) >>> 0;
   x = Math.imul(x ^ (x >>> 13), 0xc2b2ae35) >>> 0;
   return ((x ^ (x >>> 16)) >>> 0) / 0x100000000;
-}
-
-/** Build a mark's static shape once (drawn at the origin; the layer positions/fades it). */
-function makeMark(kind: CombatEffectKind, seed: number): Graphics {
-  const g = new Graphics();
-  return kind === 'blood' ? drawBlood(g, seed) : drawBones(g, seed);
 }
 
 /** A small blood splatter: a few seeded droplets (dark + bright) over the node, dark-rimmed for contrast. */

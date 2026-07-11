@@ -20,6 +20,7 @@ import { pickerEntries } from '../catalog/professions.js';
 import { createSoundDriver } from '../content/audio.js';
 import { DEFAULT_UI_LANG } from '../content/gui-gfx.js';
 import { loadIr } from '../content/ir.js';
+import { loadCombatBones } from '../content/objects.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
 import { workerRoleOf } from '../game/sandbox/index.js';
 import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel/layout.js';
@@ -164,6 +165,11 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     soundDriver.setEnabled(false);
     mountSoundToggle(soundDriver);
   }
+
+  // The decoded bone-pile art so a death leaves the REAL `cadaver human bones` sprite (the original's
+  // cadaver landscape object) instead of the procedural pile; degrades to procedural without `content/`.
+  const ir = await loadIr();
+  renderer.setCombatBonesGfx(ir !== null ? await loadCombatBones(ir) : null);
 
   // On-canvas debug readout (top-left, just clear of the tool-panel strip): tick / speed / steps /
   // entity counts + the FPS and the sim/snap/draw CPU split, so a human can judge whether the view holds

@@ -1,8 +1,9 @@
 import type { SimEvent, WorldSnapshot } from '@vinland/sim';
-import { type Application, Container, RenderTexture, Sprite, Texture } from 'pixi.js';
+import { type Application, Container, RenderTexture, Sprite, Texture, type TextureSource } from 'pixi.js';
 import { type ElevationField, makeElevationField } from '../data/elevation.js';
 import type { Camera } from '../data/iso.js';
 import type { SceneTerrain } from '../data/scene/index.js';
+import type { AtlasFrame } from '../data/sprites/index.js';
 import { cameraViewport } from '../data/viewport.js';
 import { BadgeLayer, type DoorBadge } from './badge-layer.js';
 import { type ConstructionPlotFrame, ConstructionPlotLayer } from './construction-plot.js';
@@ -219,6 +220,24 @@ export class WorldRenderer {
    */
   ingestCombatEffects(events: readonly SimEvent[], tick: number): void {
     this.effects.ingest(events, tick);
+  }
+
+  /**
+   * Provide (or clear) the decoded bone-pile art so a death draws the REAL `cadaver human bones` sprite
+   * instead of the procedural pile — the app resolves the atlas `source` + interchangeable `frames`
+   * (`ls_skeletons.bmd`), the renderer supplies its shared frame→texture cache. `null` reverts to procedural
+   * (a checkout without `content/`). `scale` defaults to the native landscape-object scale (1).
+   */
+  setCombatBonesGfx(
+    gfx: {
+      readonly source: TextureSource;
+      readonly frames: readonly AtlasFrame[];
+      readonly scale?: number;
+    } | null,
+  ): void {
+    this.effects.setBonesGfx(
+      gfx === null ? undefined : { ...gfx, scale: gfx.scale ?? 1, textures: this.textureCache },
+    );
   }
 
   /**
