@@ -226,10 +226,12 @@ export const DeliveryFlag = defineComponent<Record<string, never>>('DeliveryFlag
 
 /**
  * The default work radius (integer node-distance on the half-cell lattice) a newly placed gatherer flag
- * gets — used by the `setWorkFlag` command and the sandbox scene binding. A named approximation, not a
- * source-pinned value: the original's collector work-area size is not decoded, so this is observed/tunable.
+ * gets — used by the `setWorkFlag` command, the spawn-time auto-plant, and the sandbox scene binding. 24
+ * half-cell nodes ≈ 12 tiles (a ~24-tile-wide work area). A named approximation, not a source-pinned value:
+ * the original's collector work-area size is not decoded, so this is observed/tunable (chosen "sporawy" so a
+ * gatherer reaches a decent patch around its flag without roaming the whole map).
  */
-export const DEFAULT_WORK_FLAG_RADIUS = 16;
+export const DEFAULT_WORK_FLAG_RADIUS = 24;
 
 /**
  * An in-progress production cycle on a workplace (a {@link Building} whose building type carries a
