@@ -39,7 +39,10 @@ const { Felling, MineDeposit, Resource, Stump } = components;
 const MAP_W = 96;
 const MAP_H = 96;
 const INITIAL_ZOOM = 0.5;
-const RUN_TICKS = 3000;
+// Enough for the SLOWEST lane to finish: clay is 10 units × 4 strikes × (23-tick dig + 15-tick rest)
+// plus per-unit pickup + flag round trips ≈ ~2 300 ticks of work — 4200 leaves honest headroom after
+// the strikes-per-unit + inter-swing-rest retune (was 3000, sized to the 1-swing-per-unit pace).
+const RUN_TICKS = 4200;
 
 const BUILDING_COLUMNS = 7;
 const BUILDING_STEP = 6;

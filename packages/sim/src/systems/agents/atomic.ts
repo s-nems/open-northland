@@ -1,4 +1,4 @@
-import { CurrentAtomic, Settler } from '../../components/index.js';
+import { CurrentAtomic, Resource, Settler } from '../../components/index.js';
 import { assertNever } from '../../core/brand.js';
 import type { AtomicEffect } from '../../core/commands.js';
 import { fx } from '../../core/fixed.js';
@@ -53,6 +53,24 @@ export { applyPendingStaggers, type PendingStagger, resolveCombatHit } from './e
  * insertion order, and each effect is a pure function of the entity + its target's current state
  * (Stockpile writes go through the canonical Map, never iterated for a decision). Fixed-point only.
  */
+/**
+ * The idle BREATHER a gatherer stands between work swings, in ticks (0.75 s at 20 ticks/s). OBSERVED,
+ * a named approximation: the original's collector visibly rests between chops/strikes (~0.5–1 s by
+ * eye), but the readable data carries no rest field — `atomicanimations.ini` lengths cover only the
+ * swing itself (its trailing idle pad is ~4 frames, far shorter than the observed rest). Applied by
+ * the executor after a completed harvest whose node still stands (mid-job), never after the final
+ * swing (felled/depleted/plucked — the settler moves straight on to carrying).
+ */
+export const HARVEST_REST_TICKS = 15;
+
+/**
+ * The synthetic atomic id of that breather. Deliberately OUTSIDE the content id space (every real
+ * atomic id is a non-negative `setatomic`/`allowatomic` number), so no animation, sound, or planner
+ * permission can ever bind to it: the render's per-atomic lookup misses and draws the standing wait
+ * pose, which is exactly the rest. The typed `idle` effect is the (no-op) behavior.
+ */
+export const HARVEST_REST_ATOMIC_ID = -1;
+
 export const atomicSystem: System = (world, ctx) => {
   // A landed hit may STAGGER its victim (give it the `82` ATTACKED atomic). That `world.add` is
   // COLLECTED here and applied only AFTER the loop: adding a `CurrentAtomic` to the store we're
@@ -90,6 +108,23 @@ export const atomicSystem: System = (world, ctx) => {
     // it needs the atomic id to resolve that animation.
     if (atomic.effect.kind === 'attack') paySwingNeedCost(world, ctx, e, atomic.atomicId);
     ctx.events.emit({ kind: 'atomicCompleted', entity: e, atomicId: atomic.atomicId });
+    // A harvest swing on a node that STILL STANDS chains into the inter-swing breather: the settler
+    // stands its wait pose for HARVEST_REST_TICKS before the planner may issue the next swing (the
+    // observed work rhythm — swing, rest, swing). The final swing (node felled/depleted/plucked) skips
+    // the rest — the collector moves straight on to carrying. Converting the component IN PLACE (not
+    // remove+add) keeps this iteration-safe (no store insertion mid-loop) and deterministic.
+    if (
+      HARVEST_REST_TICKS > 0 &&
+      atomic.effect.kind === 'harvest' &&
+      world.has(atomic.effect.resource, Resource)
+    ) {
+      atomic.atomicId = HARVEST_REST_ATOMIC_ID;
+      atomic.effect = { kind: 'idle' };
+      atomic.elapsed = 0;
+      atomic.progress = fx.fromInt(0);
+      atomic.duration = HARVEST_REST_TICKS;
+      continue;
+    }
     world.remove(e, CurrentAtomic);
   }
 
