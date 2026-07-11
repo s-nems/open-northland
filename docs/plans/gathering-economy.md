@@ -183,9 +183,11 @@ entity). Data-driven join (`content/map-resources.ts` `harvestGoodByObjectName`)
 pipeline (each good's harvest-stage `landscapeGfx` indices → EditName → `goodId`), so decor is naturally
 excluded and only harvest-stage objects spawn. `spawnMapResources` (`game/sandbox/place.ts`) builds the
 same component set the admin `placeResource` does (Position + Resource + footprint + Felling|MineDeposit),
-pre-tick-0 in placement order (deterministic ids). Draw de-dup: the spawned object EditNames are dropped
-from the static decor layer (`loadMapObjects` `skipTypes`) and drawn by the sim instead, so a felled tree's
-sprite vanishes with its Resource and nothing double-draws. On "mosty na rzece" it spawns 16,927 nodes.
+pre-tick-0 in placement order (deterministic ids). Draw de-dup (FINAL design — the interim `skipTypes`
+static-layer skip was reverted for far-zoom perf): EVERY placement stays in the built-once static object
+layer, the sprite pool skips the virgin nodes via `staticRefs`, and the first-touch handover (see the
+far-zoom note below) moves a worked node to the pool — so a felled tree's sprite still vanishes with its
+Resource and nothing double-draws. On "mosty na rzece" it spawns 16,927 nodes.
 Scale (golden rule 7): a job with no harvest atomics (carrier/builder/idle) used to scan the whole resource
 list only to fail the atomic gate per node — with thousands of nodes that per-settler full scan dominated
 (~374 ms/tick, 2 fps); an O(1) dormancy gate in `nearestHarvestableFor` (no harvest atomics ⇒ provably-null
@@ -226,7 +228,14 @@ content max work-cell offset)`, a provable superset, and `collectTargets` reuses
 canonical list instead of re-sorting 17k entities per tick. Hands-on far zoom: draw 23.3 → 1.6 ms,
 sim 8 → 2.2 ms at ×3, 120 fps; species variety intact. Tests:
 `sim/test/systems/resource-region-index.test.ts`, scene-test staticRefs skip/release, map-resources
-placement-join assertions.
+placement-join assertions. **Named handover approximations (review 2026-07-11):** (a) a deposit
+authored below full growth (`lmlv`) draws its authored level statically but spawns at FULL yield, so
+its decal can JUMP to the near-full frame at the first chip — mapping `objects.levels` → starting
+`remaining` (with `MineDeposit.initial` split from `remaining`) is a follow-up step; (b) the static
+layer shades mines/stones/grass by the baked `embr` brightness, the sprite pool does not — a worked
+node on a shaded cell brightens at handover (pool-side per-cell brightness is a render follow-up);
+(c) the reachability gate covers STATIC components only — a node fully enclosed by dynamic resource
+footprints can still win the pick and fail its path (route-level dynamic reachability is a follow-up).
 
 **Fell→pickup stall — static collision double-blocking (2026-07-11, same branch):** on the real map a
 collector felled its tree, the trunk dropped on the tree's cell, and the collector froze (live trace:

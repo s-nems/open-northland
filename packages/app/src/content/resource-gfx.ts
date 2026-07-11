@@ -82,7 +82,7 @@ export interface GatheringRefs {
    * Standing-node ref per harvest-stage `[GfxLandscape]` record INDEX — one entry per species variant
    * ("yew 01" … "cedar 02", every stone/mine decal) across every resolved good, same per-level frame
    * shape as {@link nodesByGood}. A decoded-map node carries its own variant index
-   * (`ResourceFootprint.sourceGfxIndex` → `DrawItem.gfxIndex`), and this table is what lets it draw the
+   * (`Resource.gfxIndex` → `DrawItem.gfxIndex`), and this table is what lets it draw the
    * exact original object instead of collapsing every node of a good to one representative species.
    */
   readonly nodesByGfxIndex: Readonly<Record<number, GatheringNodeLevelsRef>>;

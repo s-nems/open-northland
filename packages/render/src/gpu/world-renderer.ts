@@ -254,9 +254,10 @@ export class WorldRenderer {
 
   /**
    * Name the entities the retained static map-object layer draws instead of the sprite pool (a decoded
-   * map's virgin resource nodes). The pool's per-frame scene build skips them entirely; the `?map=`
-   * entry shrinks the set as nodes are first worked (see {@link removeMapObject}). The renderer holds
-   * the REFERENCE — the caller re-passes (or mutates and re-passes) the same set as it evolves.
+   * map's virgin resource nodes). The pool's per-frame scene build skips them entirely. LIVE-VIEW
+   * contract: the renderer holds the REFERENCE and reads it each frame — the caller mutates the same
+   * set in place as nodes are first worked (its event handler runs before the frame's draw, so a
+   * mid-frame mutation cannot be observed) and never needs to re-pass it.
    */
   setStaticallyDrawnRefs(refs: ReadonlySet<number>): void {
     this.staticDrawnRefs = refs;

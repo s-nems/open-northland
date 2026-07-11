@@ -126,8 +126,11 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   let staticObjects: Awaited<ReturnType<typeof loadMapObjects>> | undefined;
   if (wantObjects && loaded?.objects !== undefined && ir !== null) {
     try {
-      staticObjects = await loadMapObjects(loaded.objects, ir, elevation, brightness);
-      renderer.setMapObjects(staticObjects.sprites);
+      const loadedObjects = await loadMapObjects(loaded.objects, ir, elevation, brightness);
+      renderer.setMapObjects(loadedObjects.sprites);
+      // Assigned only AFTER the layer accepted the sprites: were setMapObjects to throw, registering
+      // static refs against an empty layer would make every virgin node invisible until first touch.
+      staticObjects = loadedObjects;
     } catch (err) {
       console.warn(`map objects unavailable, bare ground fallback: ${String(err)}`);
     }
@@ -173,6 +176,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // its levels and vanishing on destroy. With `?objects=off` (or no atlases) nothing is static, no refs
   // are registered, and the sim pool simply draws every node — the pre-handover behaviour.
   let staticResources: Map<number, MapObjectSprite> | undefined;
+  let staticRefs: Set<number> | undefined;
   if (loaded?.objects !== undefined && ir !== null) {
     const { spawned, placementByEntity } = spawnMapResources(sim, loaded.objects, ir);
     console.log(
@@ -185,26 +189,28 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
         // A placement whose atlas never resolved has no static sprite — leave that node pool-drawn.
         if (sprite !== undefined) staticResources.set(entity as number, sprite);
       }
-      renderer.setStaticallyDrawnRefs(new Set(staticResources.keys()));
+      // LIVE-VIEW contract (setStaticallyDrawnRefs): the renderer keeps this reference and reads it
+      // per frame; the handover below mutates it in place — O(1) per event, never a whole-set rebuild.
+      staticRefs = new Set(staticResources.keys());
+      renderer.setStaticallyDrawnRefs(staticRefs);
     }
   }
   const releaseWorkedResources =
-    staticResources === undefined
+    staticResources === undefined || staticRefs === undefined
       ? undefined
       : (events: readonly SimEvent[]): void => {
           const held = staticResources;
-          if (held === undefined) return;
-          let changed = false;
+          const refs = staticRefs;
+          if (held === undefined || refs === undefined) return;
           for (const ev of events) {
             if (ev.kind !== 'resourceFelled' && ev.kind !== 'resourceMined' && ev.kind !== 'resourceDepleted')
               continue;
             const sprite = held.get(ev.node as number);
             if (sprite === undefined) continue; // already handed over, or never static (admin spawn)
             held.delete(ev.node as number);
+            refs.delete(ev.node as number);
             renderer.removeMapObject(sprite);
-            changed = true;
           }
-          if (changed) renderer.setStaticallyDrawnRefs(new Set(held.keys()));
         };
 
   // Interactive camera: `?zoom` (+ the settler-centroid framing) is the STARTING frame; from there a

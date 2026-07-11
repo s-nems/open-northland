@@ -407,19 +407,15 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
   // object while the tick (and world) are unchanged, so a frame that didn't step reuses last frame's HUD
   // read-view and door badges instead of re-scanning every entity each RAF (golden rule 6 at the app
   // layer — a decoded map holds tens of thousands of resource nodes).
-  let hudMemo: { snap: WorldSnapshot; hud: ReturnType<typeof layoutHud> } | null = null;
-  const hudFor = (snap: WorldSnapshot): ReturnType<typeof layoutHud> => {
-    if (hudMemo === null || hudMemo.snap !== snap)
-      hudMemo = { snap, hud: layoutHud(buildHud(snap, HUD_TRIBE)) };
-    return hudMemo.hud;
+  const memoBySnapshot = <T>(build: (snap: WorldSnapshot) => T): ((snap: WorldSnapshot) => T) => {
+    let memo: { snap: WorldSnapshot; value: T } | null = null;
+    return (snap) => {
+      if (memo === null || memo.snap !== snap) memo = { snap, value: build(snap) };
+      return memo.value;
+    };
   };
-  let doorBadgeMemo: { snap: WorldSnapshot; badges: ReturnType<typeof computeDoorBadges> } | null = null;
-  const doorBadgesFor = (snap: WorldSnapshot): ReturnType<typeof computeDoorBadges> => {
-    if (doorBadgeMemo === null || doorBadgeMemo.snap !== snap) {
-      doorBadgeMemo = { snap, badges: computeDoorBadges(snap, buildingDoors, workerRoleOf) };
-    }
-    return doorBadgeMemo.badges;
-  };
+  const hudFor = memoBySnapshot((snap) => layoutHud(buildHud(snap, HUD_TRIBE)));
+  const doorBadgesFor = memoBySnapshot((snap) => computeDoorBadges(snap, buildingDoors, workerRoleOf));
 
   const timestep = new FixedTimestep();
   let lastMs = performance.now();

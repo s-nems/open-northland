@@ -78,6 +78,7 @@ export {
   type RebaseResult,
 } from './replay/rebase-content.js';
 export { seedAnimalHerds, type SeedAnimalsOptions } from './harness/populate.js';
+export { clearComponentStores } from './harness/stores.js';
 export {
   checkInvariants,
   CORE_INVARIANTS,

@@ -143,7 +143,10 @@ export function spawnSettler(
   // spawn-time twin of the profession-change auto-plant, `syncWorkFlagToJob`), so it only ever searches
   // its flag's radius, not the whole map. A non-gathering trade gets no flag. This is what makes an
   // imported map's / admin-spawned gatherer flag-bound like a sandbox one — before it, a command-spawned
-  // gatherer was unbound and roamed the entire map for the nearest resource.
+  // gatherer was unbound and roamed the entire map for the nearest resource. Source basis: a DESIGN
+  // RULE (user-specified), approximating the original's observed collector-flag work-area model; the
+  // not-yet-wired half — a building-assigned gatherer with no flag delivering to its building — is a
+  // named follow-up in docs/plans/gathering-economy.md.
   syncWorkFlagToJob(world, ctx, e, command.jobType);
   ctx.events.emit({ kind: 'settlerBorn', entity: e });
 }

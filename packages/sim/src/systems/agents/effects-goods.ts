@@ -89,13 +89,7 @@ export function harvestFromNode(
     // A surviving deposit shrank a unit — announce it (`resourceMined`) so the map view hands the node
     // from its static decor layer to the live sprite pool (and audio can hook a chip effect).
     const pos = world.get(node, Position);
-    ctx.events.emit({
-      kind: 'resourceMined',
-      node,
-      goodType: res.goodType,
-      remaining: res.remaining,
-      at: eventAt(pos.x, pos.y),
-    });
+    ctx.events.emit({ kind: 'resourceMined', node, goodType: res.goodType, at: eventAt(pos.x, pos.y) });
   }
 }
 

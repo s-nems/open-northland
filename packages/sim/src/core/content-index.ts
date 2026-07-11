@@ -85,10 +85,13 @@ export interface ContentIndex {
   readonly atomicsByJob: ReadonlyMap<number, ReadonlySet<number>>;
   /**
    * The largest Manhattan node-offset any resource's WORK cell can sit from its anchor, over every
-   * `landscapeGfx` work-area cell — at least 2 (the walkable-neighbour fallback `resourceWorkCell`
-   * takes when the work set is blocked: one lattice step spans up to |dx|+|dy| = 2). The SLACK a
-   * radius-bounded candidate query must widen its anchor box by so it provably contains every node
-   * whose work cell could pass the radius test (see `resourcesNearNode`).
+   * `landscapeGfx` work-area cell — floored at 3, covering BOTH `resourceWorkCell` fallbacks with
+   * headroom: `nearestFreeNeighbour` walks the orthogonal neighbour set (Manhattan 1,
+   * `nav/terrain.ts` NEIGHBOUR_OFFSETS), and the lattice's widest single step (a diagonal, `(±1,±2)`)
+   * is Manhattan 3 — so even a future fallback widened to the full step set stays under the floor.
+   * The SLACK a radius-bounded candidate query must widen its anchor box by so it provably contains
+   * every node whose work cell could pass the radius test (see `resourcesNearNode`); over-covering
+   * only grows the queried box, never a winner.
    */
   readonly maxResourceWorkOffset: number;
 }
@@ -232,12 +235,11 @@ function byKey<K, T>(items: readonly T[], key: (item: T) => K): ReadonlyMap<K, T
 
 /**
  * The largest |dx|+|dy| any `landscapeGfx` WORK-area cell sits from its record's anchor (the
- * full-state reading `resourceWorkCell` places collectors by), floored at 2 — the one-lattice-step
- * reach of the `nearestFreeNeighbour` fallback that fires when the work set is blocked. See
- * {@link ContentIndex.maxResourceWorkOffset}.
+ * full-state reading `resourceWorkCell` places collectors by), floored at 3 — see
+ * {@link ContentIndex.maxResourceWorkOffset} for the fallback-coverage argument.
  */
 function maxWorkCellOffset(content: ContentSet): number {
-  let max = 2;
+  let max = 3;
   for (const record of content.landscapeGfx) {
     for (const cell of fullStateBlockAreaCells(record.workAreas)) {
       const offset = Math.abs(cell.dx) + Math.abs(cell.dy);
