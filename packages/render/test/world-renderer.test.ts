@@ -1,8 +1,13 @@
+import type { TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import {
   compactResolvedStockpileLayers,
+  type DrawItem,
   type MotionTrack,
   reconcileSprites,
+  resolveLayers,
+  type SpriteAtlas,
+  type SpriteSheet,
   trackMotion,
 } from '../src/index.js';
 
@@ -99,5 +104,44 @@ describe('trackMotion — the inter-tick interpolation decision', () => {
     trackMotion(m, 1, 0, 0, 0);
     // The frame ran 3 sim ticks at once (~26 px for a walker): still smooth, from the last DRAWN tick.
     expect(drawnAt(m, 4, 26, 0, 0.5)).toEqual({ x: 13, y: 0 });
+  });
+});
+
+describe('resolveLayers — the animated building overlay is bounds-exempt', () => {
+  // A minimal mill sheet: the `miller` family atlas carries the bladeless body (bob 70), the still
+  // blade (76) and one spin frame (85). The fake TextureSource is never touched — resolveLayers is a
+  // pure layer *decision*; binding to a GPU texture is the pool's half.
+  const source = {} as TextureSource;
+  const frame = (
+    n: number,
+  ): [number, { x: number; y: number; width: number; height: number; offsetX: number; offsetY: number }] => [
+    n,
+    { x: n, y: 0, width: 10, height: 10, offsetX: 0, offsetY: 0 },
+  ];
+  const atlas: SpriteAtlas = { width: 100, height: 10, frames: new Map([frame(70), frame(76), frame(85)]) };
+  const sheet: SpriteSheet = {
+    source,
+    atlas: { width: 0, height: 0, frames: new Map() },
+    bindings: {
+      settler: 1,
+      resource: 1,
+      building: {
+        byType: { 13: { layer: 'miller', bob: 70 } },
+        default: 70,
+        overlayByType: { 13: { layer: 'miller', idle: 76, working: [85] } },
+      },
+    },
+    families: { miller: { source, atlas } },
+  };
+  const mill: DrawItem = { kind: 'building', ref: 1, x: 0, y: 0, depth: 0, typeId: 13 };
+
+  it('marks ONLY the overlay layer boundsExempt (the body still stamps the entity box)', () => {
+    const layers = resolveLayers(sheet, mill, 0) ?? [];
+    // Body first, rotor overlay second — and only the rotor is excluded from the bounds union, so the
+    // selection ring and the portrait framing read the stable body box while the spin frames breathe.
+    expect(layers.map((l) => [l.frame.x, l.boundsExempt ?? false])).toEqual([
+      [70, false],
+      [76, true],
+    ]);
   });
 });

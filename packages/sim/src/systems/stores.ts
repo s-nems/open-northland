@@ -21,9 +21,18 @@ import { vehicleMayCarry } from './readviews/vehicles.js';
 // staffs it, and the housing/population counts. A leaf module beside ./spatial.ts (the split of the
 // old shared.ts grab-bag) so every per-system file imports these without creating cycles.
 
-/** The capacity a bare test-fixture store (no Building/Vehicle type) advertises — uncapped, so a
- *  fixture without a type still accepts deposits. */
+/** The capacity a bare POSITION-LESS test-fixture store (no Building/Vehicle type, not on the map)
+ *  advertises — uncapped, so a mapless fixture still accepts deposits. */
 const UNCAPPED_CAPACITY = Number.MAX_SAFE_INTEGER;
+
+/**
+ * The most units of ONE good a loose ground heap can hold on one tile — the engine's GLOBAL per-tile
+ * limit for goods resting on the ground (a gatherer's yard heap, a hand-dropped pile, and a delivered
+ * load alike). Source basis: observed original behaviour (at most 5 of any single good ever lies on
+ * one field) and the `ls_goods.bmd` heap art carrying exactly 5 fill states per good (the pipeline's
+ * goods stage) — a pile can't grow past what its graphic can show.
+ */
+export const MAX_GROUND_STACK = 5;
 
 /** The good-`id` prefix identifying the eat-slot food goods (`food_simple`/`food_extra`) — see
  *  {@link isFood} for the source basis of this inference. */
@@ -60,8 +69,13 @@ const FOOD_GOOD_ID_PREFIX = 'food_';
  *   haul INTO it is filtered by what the vehicle type may hold and bounded by how much. The `stockSlots`
  *   total is applied as a per-good upper bound (a faithful upper bound — the whole-hold-shared-across-
  *   goods cap is a deferred refinement; see source basis).
- * - A store with **neither** Building nor Vehicle (a bare test fixture) is treated as uncapped so a
- *   fixture without a type still accepts deposits.
+ * - A **loose ground heap** (a positioned Stockpile with neither Building nor Vehicle — a gatherer's
+ *   yard heap or a hand-dropped pile): the engine's global per-tile limit, {@link MAX_GROUND_STACK}
+ *   units of the ONE good it holds; a heap already holding a DIFFERENT good refuses ours outright
+ *   (capacity 0 — piles never mix goods, matching `stackOntoTile`/`dropOrStackGood`). This is what
+ *   keeps a delivery (`nearestStoreFor` + `pileup`) from banking an unbounded heap of flour on a
+ *   field tile — a full heap stops advertising room and the load routes to a real store instead.
+ * - A store with **none** of the above and no Position (a mapless test fixture) stays uncapped.
  *
  * Cross-system: used by the AI store scan (`nearestStoreFor`), the atomic `pileup` deposit,
  * and production's `canStartCycle`/`depositOutputs`.
@@ -78,6 +92,12 @@ export function stockCapacity(world: World, ctx: SystemContext, store: Entity, g
     const type = contentIndex(ctx.content).vehicles.get(hull.vehicleType);
     if (type === undefined) return 0;
     return vehicleMayCarry(type, goodType) ? type.stockSlots : 0;
+  }
+  const stock = world.tryGet(store, Stockpile);
+  if (stock !== undefined && world.has(store, Position)) {
+    const held = lowestStockedGood(stock);
+    if (held !== null && held !== goodType) return 0; // a ground heap never mixes goods
+    return MAX_GROUND_STACK;
   }
   return UNCAPPED_CAPACITY;
 }

@@ -133,7 +133,13 @@ export interface WorkerSlotRow {
  *    recipe to show, the "production" IS the fields its farmers work around the building.
  */
 export type ProductionModel =
-  | { readonly kind: 'recipe'; readonly label: string; readonly pct: number }
+  | {
+      readonly kind: 'recipe';
+      /** The FIRST output's STRING id — the row's icon key (like {@link StockRow.goodId}). */
+      readonly goodId?: string;
+      readonly label: string;
+      readonly pct: number;
+    }
   | {
       readonly kind: 'fields';
       /** The farmed good's STRING id — the icon key (like {@link StockRow.goodId}). */
@@ -276,8 +282,11 @@ function goodDef(ctx: UnitPanelModelContext, goodType: number): GoodDef | undefi
   return ctx.goods.find((g) => g.typeId === goodType);
 }
 
+/** A good's display name: its localized content `name` (the pipeline's per-locale good-name table,
+ *  loaded by the browser entries — "Mąka"), falling back to the machine id on a bare checkout. */
 function goodLabel(ctx: UnitPanelModelContext, goodType: number): string {
-  return goodDef(ctx, goodType)?.id ?? `dobro ${goodType}`;
+  const def = goodDef(ctx, goodType);
+  return def?.name ?? def?.id ?? `dobro ${goodType}`;
 }
 
 /** A cloned `Equipment` slot as it appears in the snapshot (`{ degreeOfUse, goodType }`) — or empty. */
@@ -434,8 +443,10 @@ function liveAmounts(stockpile: unknown): Map<number, number> {
  * window (which lists a store's accepted goods, not only what it currently holds). A good held but not in
  * the declared slots (defensive — dynamic drops) is appended.
  *
- * Ordering: held goods (amount > 0) first, then the declared slot order — so a big store's actual stock
- * stays visible above the panel's fixed row cap (the render caps to `MAX_STOCK_ROWS × 2` with a `+N`).
+ * Ordering: the DECLARED slot order, stable while amounts change — a compact store's rows (the mill's
+ * Pszenica/Mąka) must never swap places mid-work (user feedback 2026-07-11). Only the big tabbed store
+ * bubbles its held goods up, and it does so at draw time (`sections.ts`), where the fixed row cap
+ * (`MAX_STOCK_ROWS × 2` with a `+N`) makes visibility worth the reshuffle.
  *
  * Each row carries its `category` (the stock tab it belongs to, via {@link goodCategoryTab}); the render
  * filters the list to the active tab. The good→category mapping is a named approximation (not in the
@@ -458,23 +469,20 @@ function stockRows(ctx: UnitPanelModelContext, def: BuildingDef | undefined, sto
   }
   for (const goodType of live.keys()) push(goodType);
 
-  const rows = order.map((goodType, index) => {
+  return order.map((goodType) => {
     const goodId = goodDef(ctx, goodType)?.id;
     const capacity = capacities.get(goodType);
     return {
       goodType,
-      // The stock row's display name (its English catalog name, else the id) — shown by the hover tooltip;
+      // The stock row's display name (localized content name, else the id) — shown by the hover tooltip;
       // the row itself draws only the icon + amount, so a nicer name here doesn't change the drawn row.
-      label: goodDef(ctx, goodType)?.name ?? goodLabel(ctx, goodType),
+      label: goodLabel(ctx, goodType),
       amount: live.get(goodType) ?? 0,
       category: goodCategoryTab(goodId),
-      index,
       ...(goodId !== undefined ? { goodId } : {}),
       ...(capacity !== undefined ? { capacity } : {}),
     };
   });
-  rows.sort((a, b) => (b.amount > 0 ? 1 : 0) - (a.amount > 0 ? 1 : 0) || a.index - b.index);
-  return rows.map(({ index: _index, ...row }) => row);
 }
 
 /**
@@ -568,10 +576,12 @@ function productionModel(
   const outputs = recipe?.outputs ?? def?.produces?.map((goodType) => ({ goodType, amount: 1 })) ?? [];
   if (production === undefined && recipe === undefined && outputs.length === 0) return null;
   const out = outputs.map((o) => `${goodLabel(ctx, o.goodType)} x${o.amount}`).join(', ');
+  const firstOutId = outputs[0] === undefined ? undefined : goodDef(ctx, outputs[0].goodType)?.id;
   return {
     kind: 'recipe',
     label: out.length > 0 ? out : 'gotowe do pracy',
     pct: pctRatio(num(production?.elapsed), num(production?.duration)),
+    ...(firstOutId !== undefined ? { goodId: firstOutId } : {}),
   };
 }
 

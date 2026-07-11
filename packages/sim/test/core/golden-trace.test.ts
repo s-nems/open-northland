@@ -138,95 +138,92 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   const SEED = 7;
 
   // The golden atomic-action trace. Atomic ids: 24 = harvest/CHOP (a swing at a tree), 23 = pileup
-  // (deposit into a store), 22 = pickup (lift out of a store / off a trunk). Entity 5 =
-  // woodcutter, 6 = its WORK FLAG (auto-planted at its feet when it spawns — a gatherer is never free;
-  // it carries no atomics), 7 = carrier, 8 = carpenter (the mill's operator, self-servicing: it pickups
-  // the HQ's stored wood into the mill and hauls finished planks back out). If this moves, a
-  // settler-economy mechanic changed — name it in the commit. Last move: the INTER-SWING REST — every
-  // HARVEST_SWINGS_PER_REST-th harvest swing of a still-standing job runs a 15-tick breather TAIL on
-  // the same atomic (observed burst rhythm: a couple of swings, a rest; see atomic.ts
-  // HARVEST_REST_TICKS + effects-goods.ts restAfterHarvest). The tail completes silently (no second
-  // event per swing), so the trace shows only the real actions — the rests appear as the widened gaps
-  // between chop bursts (e.g. 31 → 49). The settled end state and plank count are unchanged (hash
-  // stays fe19b319, the spawn-time-flag-auto-plant value; e452b766 before that was the half-cell
-  // navigation migration.)
+  // (deposit into a store), 22 = pickup (lift out of a store / off a trunk). Entity 5 = woodcutter, 6 =
+  // its WORK FLAG (auto-planted at its feet when it spawns — a gatherer is never free; it carries no
+  // atomics), 7 = carrier, 8 = carpenter (the mill's operator, self-servicing: it pickups the HQ's stored
+  // wood into the mill and hauls finished planks back out). If this moves, a settler-economy mechanic
+  // changed — name it in the commit. Last move: PRODUCER FETCH-BEFORE-HAUL + WORK-INSIDE — the producer
+  // rung now fetches a missing input BEFORE hauling finished output out (finished goods bank in the
+  // shop's own store until production can't continue — observed original behaviour: the mill fills with
+  // flour before the miller carries it off), and a producer standing on its station steps INSIDE (the
+  // Resting marker, hidden by the render). The carpenter's pickup/pileup cadence reshuffles (it keeps
+  // fetching wood while planks accumulate), and the tighter loop lands one more plank inside the run
+  // (14, was 13). (Prior moves: SPAWN-TIME FLAG AUTO-PLANT — the woodcutter is flag-bound from spawn and
+  // banks felled wood at its flag; e452b766 — the half-cell navigation migration.)
   const GOLDEN_TRACE: readonly string[] = [
     '20:8:22',
     '31:5:24',
+    '34:5:24',
+    '37:5:24',
     '40:8:23',
-    '49:5:24',
-    '52:5:24',
-    '56:5:22',
-    '64:8:22',
-    '84:8:23',
-    '88:5:23',
-    '88:8:22',
-    '108:8:23',
-    '120:5:22',
-    '132:7:22',
-    '132:8:22',
-    '152:5:23',
-    '152:7:23',
-    '152:8:22',
-    '172:8:23',
-    '184:5:22',
-    '196:8:22',
-    '216:5:23',
-    '216:8:23',
-    '220:8:22',
-    '240:8:23',
-    '248:5:22',
-    '264:7:22',
-    '264:8:22',
-    '280:5:23',
-    '284:7:23',
-    '284:8:22',
-    '304:8:23',
-    '323:5:24',
-    '328:8:22',
-    '341:5:24',
-    '344:5:24',
-    '348:5:22',
-    '348:8:23',
-    '352:8:22',
-    '372:8:23',
-    '392:5:23',
-    '396:7:22',
-    '396:8:22',
-    '416:7:23',
-    '416:8:22',
-    '436:5:22',
-    '436:8:23',
-    '460:8:22',
-    '474:5:23',
-    '480:8:23',
-    '484:8:22',
-    '504:8:23',
-    '512:5:22',
-    '528:7:22',
-    '528:8:22',
-    '548:7:23',
-    '548:8:22',
-    '550:5:23',
-    '568:8:23',
-    '592:8:22',
-    '612:8:23',
-    '616:8:22',
-    '636:8:23',
-    '660:7:22',
-    '660:8:22',
-    '680:7:23',
+    '41:5:22',
+    '73:5:23',
+    '80:8:22',
+    '100:8:23',
+    '104:7:22',
+    '105:5:22',
+    '124:7:23',
+    '137:5:23',
+    '140:8:22',
+    '144:7:22',
+    '160:8:23',
+    '164:7:23',
+    '169:5:22',
+    '200:7:22',
+    '200:8:22',
+    '201:5:23',
+    '220:7:23',
+    '220:8:23',
+    '233:5:22',
+    '260:7:22',
+    '260:8:22',
+    '265:5:23',
+    '280:7:23',
+    '280:8:23',
+    '308:5:24',
+    '311:5:24',
+    '314:5:24',
+    '318:5:22',
+    '320:7:22',
+    '320:8:22',
+    '340:7:23',
+    '340:8:23',
+    '362:5:23',
+    '380:7:22',
+    '380:8:22',
+    '400:7:23',
+    '400:8:23',
+    '406:5:22',
+    '440:7:22',
+    '440:8:22',
+    '444:5:23',
+    '460:7:23',
+    '460:8:23',
+    '500:7:22',
+    '500:8:22',
+    '520:7:23',
+    '520:8:23',
+    '560:7:22',
+    '560:8:22',
+    '580:7:23',
+    '580:8:23',
+    '620:7:22',
+    '620:8:22',
+    '640:7:23',
+    '640:8:23',
+    '680:7:22',
     '680:8:22',
+    '700:7:23',
     '700:8:23',
-    '724:8:22',
-    '744:8:23',
-    '806:8:22',
-    '856:8:23',
-    '880:7:22',
-    '880:8:22',
-    '900:7:23',
-    '930:8:22',
-    '980:8:23',
+    '740:7:22',
+    '760:7:23',
+    '770:8:22',
+    '820:8:23',
+    '860:7:22',
+    '880:7:23',
+    '896:8:22',
+    '952:8:23',
+    '992:7:22',
   ];
 
   it('holds every core invariant on every tick', () => {
@@ -237,20 +234,21 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   it('matches the golden final state hash', () => {
     const run = runSlice(SEED, TICKS);
     // Intentional-change discipline: if this moves, a mechanic changed — name it in the commit.
-    // 2d0d23b0 → fe19b319 (2026-07-11): the SPAWN-TIME FLAG AUTO-PLANT (see the trace note) on top of
-    // the default-Health change. The later inter-swing-rest retune moved only mid-run timing — the
-    // settled end state (and so this hash) is unchanged by it.
-    expect(run.hash).toBe('fe19b319');
+    // fe19b319 → 1db5f740 (2026-07-11): PRODUCER FETCH-BEFORE-HAUL + WORK-INSIDE (see the trace note) —
+    // the carpenter fetches the next input before hauling planks out and rests INSIDE the mill while a
+    // cycle runs, so the settled end state differs (one more plank through, and the operator carries
+    // the Resting marker at rest).
+    expect(run.hash).toBe('1db5f740');
   });
 
   it('matches the golden atomic-action trace', () => {
     const run = runSlice(SEED, TICKS);
     expect(run.trace).toEqual(GOLDEN_TRACE);
-    // The carpenter self-supplies the mill from the HQ's stored wood and turns it into 13 planks. The
-    // woodcutter's felled wood banks at its own work flag (flag-bound from spawn), and with no porter
-    // moving flag heaps that wood stays by the flag — 13 planks, not 18. The burst rests are short
-    // enough that the mill still finishes its 13th cycle inside the window.
-    expect(run.produced).toBe(13);
+    // The carpenter self-supplies the mill from the HQ's stored wood. The woodcutter's 8 felled wood
+    // banks at its own work flag (it is flag-bound from spawn) and never reaches the mill; with the
+    // fetch-before-haul producer order the supply loop runs a touch tighter, so the plank total
+    // settles at 14 inside the 1000-tick window (was 13 with haul-first).
+    expect(run.produced).toBe(14);
   });
 
   it('is byte-identical across two same-seed runs (determinism)', () => {

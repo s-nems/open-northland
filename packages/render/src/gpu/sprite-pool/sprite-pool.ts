@@ -433,6 +433,9 @@ export class SpritePool {
         spr.tint = item.ghost === true ? FOG_GHOST_TINT : 0xffffff;
         spr.visible = true;
       }
+      // An animated state overlay (the mill's rotor) draws but never moves the entity's box — its spin
+      // frames breathe in size/offset, and the box feeds the selection ring + portrait framing.
+      if (layer.boundsExempt === true) continue;
       if (ox < minX) minX = ox;
       if (drawnOy < minY) minY = drawnOy;
       if (ox + layer.frame.width * layer.scale > maxX) maxX = ox + layer.frame.width * layer.scale;

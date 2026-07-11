@@ -26,9 +26,6 @@ import { visionSystem } from './vision.js';
 export { EAT_ANIMATION_REPEATS, eatDuration } from './agents/actions.js';
 export * from './agents/ai.js';
 export * from './agents/atomic.js';
-// The per-tile ground-heap cap (the `ls_goods` heap's 5 fill states) — the ceiling a flag-bound gatherer's
-// delivery spreads across, exposed so scenes/tests can reason about the goods yard without a magic 5.
-export { MAX_GROUND_STACK } from './agents/effects-goods.js';
 export * from './command.js';
 export * from './conflict/combat.js';
 export * from './conflict/orders.js';

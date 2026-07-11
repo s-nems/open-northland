@@ -6,6 +6,8 @@ import {
   BUILDING_HEADQUARTERS,
   BUILDING_HOME_00,
   BUILDING_JOINERY,
+  BUILDING_MILL,
+  GOOD_FLOUR,
   GOOD_SHOES,
   GOOD_WHEAT,
   GOOD_WOOD,
@@ -142,18 +144,78 @@ describe('selection details panel model', () => {
     if (model.production?.kind !== 'recipe') return;
     expect(model.production.pct).toBe(25);
     expect(model.production.label).toContain('plank x1');
+    // The production row carries its output's string id — the icon key the panel draws beside the bar.
+    expect(model.production.goodId).toBe('plank');
     expect(model.stock).toEqual(
       expect.arrayContaining([expect.objectContaining({ goodType: GOOD_WOOD, amount: 3 })]),
     );
     // The joinery also lists its other accepted goods at 0 (its stock slots beyond the held wood).
     expect(model.stock.some((r) => r.amount === 0)).toBe(true);
-    // The held good sorts ahead of the empty ones.
+    // Rows keep the DECLARED slot order (wood is the joinery's first slot) — stable while amounts
+    // change, so a compact store's rows never swap places mid-work.
+    expect(model.stock[0]?.goodType).toBe(GOOD_WOOD);
     expect(model.stock[0]?.amount).toBe(3);
     // The worker section is a per-trade filled/capacity line: the joinery's one gatherer slot, now filled
     // (the bound settler), named from the shared catalog + i18n (Polish), not the raw job id.
     expect(model.workerSlots).toEqual([
       expect.objectContaining({ label: 'Zbieracz drewna', filled: 1, capacity: 1 }),
     ]);
+  });
+
+  it('keeps Magazyn rows in declared slot order while amounts change (Pszenica before Mąka, always)', () => {
+    // The mill declares wheat then flour; holding ONLY the second slot's good must not bubble it above
+    // the first — a compact store's two rows swapping mid-work read as a glitch (user feedback
+    // 2026-07-11). Held-first reordering is the big tabbed store's draw-time concern, not the model's.
+    const snapshot: WorldSnapshot = {
+      tick: 1,
+      events: [],
+      entities: [
+        {
+          id: 1,
+          components: {
+            Building: { buildingType: BUILDING_MILL, tribe: 1, built: ONE, level: 0 },
+            Owner: { player: 0 },
+            Stockpile: { amounts: [[GOOD_FLOUR, 3]] }, // flour held, wheat momentarily empty
+          },
+        },
+      ],
+    };
+    const model = buildUnitPanelModel(snapshot, new Set([1]), ctxFromScene());
+    if (model.kind !== 'building') throw new Error('expected a building model');
+    expect(model.stock.map((r) => [r.goodType, r.amount])).toEqual([
+      [GOOD_WHEAT, 0],
+      [GOOD_FLOUR, 3],
+    ]);
+  });
+
+  it('labels a good by its localized content name when one is loaded (Mąka, not "flour")', () => {
+    // The browser entries feed sandboxContent a per-locale good-name map (content/good-names.ts); the
+    // model's labels must prefer that `name` over the machine id — the Produkcja row read "flour x1".
+    const ctx = ctxFromScene();
+    const named = {
+      ...ctx,
+      goods: ctx.goods.map((g) => (g.typeId === GOOD_FLOUR ? { ...g, name: 'Mąka' } : g)),
+    };
+    const snapshot: WorldSnapshot = {
+      tick: 1,
+      events: [],
+      entities: [
+        {
+          id: 1,
+          components: {
+            Building: { buildingType: BUILDING_MILL, tribe: 1, built: ONE, level: 0 },
+            Owner: { player: 0 },
+            Stockpile: { amounts: [] },
+          },
+        },
+      ],
+    };
+    const model = buildUnitPanelModel(snapshot, new Set([1]), named);
+    if (model.kind !== 'building') throw new Error('expected a building model');
+    expect(model.production?.kind).toBe('recipe');
+    if (model.production?.kind !== 'recipe') return;
+    expect(model.production.label).toContain('Mąka x1');
+    expect(model.production.goodId).toBe('flour'); // the icon key stays the machine id
   });
 
   it('lists each worker trade with its own filled/capacity (Druid 1/1 · Tragarz 0/1 · Zbieracz 0/1)', () => {

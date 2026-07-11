@@ -83,6 +83,9 @@ const BAR_TONE_FILL: Readonly<Record<BarTone, number>> = {
   warn: 0xd08a2e,
   critical: 0xb5392b,
 };
+/** The neutral production-progress fill — a warm amber that sits on the parchment without reading as a
+ *  health/need level (eyeballed, not sampled; the original's bar-draw code isn't decompiled). */
+const PRODUCTION_BAR_FILL = 0xb8894a;
 
 /** Where the gauge fill's vertical gradient rolls over from the lit top into the shaded bottom
  *  (fraction of the fill height). All four gauge-shading strengths are eyeballed against the
@@ -122,14 +125,6 @@ export interface Chrome {
   /** A recoloured per-good resource icon (the good's `ls_goods` pile frame), fitted centered into `r`.
    *  No-op when the good has no bound icon (non-map goods) or the goods art is absent. */
   goodIcon(goodId: string, r: Rect): void;
-  /** A GUI-sheet sprite stretched over `r` (bar fills, plates). */
-  guiStretched(
-    gfx: number,
-    r: Rect,
-    palette: GuiPaletteName,
-    colorKey: GuiColorKey,
-    target: Container,
-  ): boolean;
   /** A section window: the tiled grey-blue card fill + the rope-strip border with knot corners. */
   window(r: Rect): void;
   /** An inner content box (the preview): thin dark bevel frame, no rope — the original's inner framing. */
@@ -291,30 +286,6 @@ export function createChrome(
     const x = Math.round(r.x + r.w / 2 - (made.frame.offsetX + made.frame.width / 2) * drawScale);
     const y = Math.round(r.y + r.h / 2 - (made.frame.offsetY + made.frame.height / 2) * drawScale);
     made.sprite.place(x, y, drawScale, w, h);
-  };
-
-  const guiStretched = (
-    gfx: number,
-    r: Rect,
-    palette: GuiPaletteName,
-    colorKey: GuiColorKey,
-    target: Container,
-  ): boolean => {
-    if (art === null) return false;
-    const made = makeGuiSprite(art, gfx, { defaultPalette: palette, colorKey, palette });
-    if (made === null) return false;
-    made.sprite.flipY = flipY;
-    target.addChild(made.sprite);
-    const { w, h } = screen();
-    made.sprite.stretchToRect(
-      Math.round(r.x),
-      Math.round(r.y),
-      Math.max(1, Math.round(r.w)),
-      Math.max(1, Math.round(r.h)),
-      w,
-      h,
-    );
-    return true;
   };
 
   /**
@@ -509,14 +480,15 @@ export function createChrome(
   };
 
   /**
-   * A STAT GAUGE (not the grey `bar_disabled` art, whose middle read as a stuck bar — user feedback
-   * 2026-07-11). Drawn entirely as Graphics (the PalettedSprite art can't be tinted per-sprite — see
+   * The shared BAR track+fill draw (not the grey `bar_disabled` art, whose middle read as a stuck bar —
+   * user feedback 2026-07-11, and which broke down entirely when stretched long for the production row).
+   * Drawn entirely as Graphics (the PalettedSprite art can't be tinted per-sprite — see
    * paletted-sprite.ts): a recessed near-black groove with an inner top shadow and an embossed light
-   * catch under its lip, filled by a smooth vertical gradient of the decoded ramp's level colour
-   * (1-px strips — no gradient textures to leak on the panel's 4 Hz rebuilds).
+   * catch under its lip, filled by a smooth vertical gradient of `base` (1-px strips — no gradient
+   * textures to leak on the panel's 4 Hz rebuilds). The stat gauge feeds the decoded level-ramp colour;
+   * the production bar a fixed warm amber.
    */
-  const drawGauge = (r: Rect, clamped: number, line: number): void => {
-    const base = rampColor(clamped);
+  const drawGauge = (r: Rect, clamped: number, line: number, base: number): void => {
     // Track groove: solid dark body, a crisp dark outline, an inner top shadow (inset illusion), and a
     // one-px parchment light catch just under the bottom edge (the emboss the wood around it casts).
     g.rect(r.x, r.y, r.w, r.h).fill(0x160f09);
@@ -555,28 +527,9 @@ export function createChrome(
   const bar = (r: Rect, pct: number, style: 'progress' | 'gauge' = 'progress'): void => {
     const clamped = Math.max(0, Math.min(100, pct));
     const line = Math.max(1, Math.round(scale));
-    if (style === 'gauge') {
-      drawGauge(r, clamped, line);
-      return;
-    }
-    // Neutral progress (production): the original bar frame + art fill, flat Graphics without art.
-    if (art === null) {
-      g.rect(r.x, r.y, r.w, r.h).fill(0x18120d).stroke({ color: 0x5f4a32, width: 1 });
-      const inner = Math.max(0, Math.round((r.w - 2) * (clamped / 100)));
-      if (inner > 0) g.rect(r.x + 1, r.y + 1, inner, Math.max(1, r.h - 2)).fill(0xb8894a);
-      return;
-    }
-    guiStretched(GUI_FRAME.bar_frame_96, r, 'bar_disabled', 'magenta', layers.back);
-    const innerW = Math.max(0, Math.round((r.w - line * 2) * (clamped / 100)));
-    if (innerW > 0) {
-      guiStretched(
-        GUI_FRAME.bar_frame_96,
-        { x: r.x + line, y: r.y + line, w: innerW, h: Math.max(1, r.h - line * 2) },
-        'bar_standart',
-        'magenta',
-        layers.front,
-      );
-    }
+    // Both styles share the recessed-groove draw; only the fill colour differs — the stat gauge sweeps
+    // the decoded level ramp (red→green), the neutral production bar keeps a fixed warm amber.
+    drawGauge(r, clamped, line, style === 'gauge' ? rampColor(clamped) : PRODUCTION_BAR_FILL);
   };
 
   /**
@@ -621,7 +574,6 @@ export function createChrome(
     tile,
     guiCentered,
     goodIcon,
-    guiStretched,
     window: windowBox,
     innerBox,
     slotSocket,
