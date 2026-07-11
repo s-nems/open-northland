@@ -1,9 +1,9 @@
 import { type Camera, tileToScreen } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
 import {
+  cameraCenteredOnTile,
   MAX_ZOOM,
   MIN_ZOOM,
-  cameraCenteredOnTile,
   panCamera,
   screenScale,
   zoomCameraAt,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { AMBIENT_FADE_S, DEFAULT_MASTER_GAIN, ONE_SHOT_COOLDOWN_S, WebAudioEngine } from '../src/index.js';
 import type { OneShot } from '../src/index.js';
+import { AMBIENT_FADE_S, DEFAULT_MASTER_GAIN, ONE_SHOT_COOLDOWN_S, WebAudioEngine } from '../src/index.js';
 import { FakeContext, FakeGain, type FakePanner, type FakeSource, flush } from './helpers/fake-audio.js';
 
 /**

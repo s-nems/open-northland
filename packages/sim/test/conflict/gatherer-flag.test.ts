@@ -17,18 +17,18 @@ import type { Command } from '../../src/core/commands.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
   CORE_INVARIANTS,
-  Simulation,
-  type TerrainMap,
   checkInvariants,
   fx,
   nodeOfPosition,
+  Simulation,
+  type TerrainMap,
 } from '../../src/index.js';
 import { MAX_GROUND_STACK } from '../../src/systems/agents/effects-goods.js';
 import {
-  type SystemContext,
   aiSystem,
   atomicSystem,
   isYardHeap,
+  type SystemContext,
   setWorkFlag,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';

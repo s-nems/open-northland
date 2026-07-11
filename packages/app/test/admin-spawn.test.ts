@@ -27,10 +27,10 @@ import {
   ADMIN_DROP_AMOUNT,
   CIVILIAN_PRESETS,
   GOODS_ENTRIES,
-  RESOURCE_ENTRIES,
-  WARRIOR_PRESETS,
   goodDropCommand,
+  RESOURCE_ENTRIES,
   unitSpawnCommand,
+  WARRIOR_PRESETS,
 } from '../src/view/admin-debug/spawn-catalog.js';
 
 /**

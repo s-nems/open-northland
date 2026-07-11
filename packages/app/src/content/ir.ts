@@ -8,10 +8,10 @@ import type {
 } from '@vinland/data';
 import {
   type AtlasManifest,
-  type SpriteLayer,
-  type TextureSource,
   atlasFromManifest,
   loadAtlasSource,
+  type SpriteLayer,
+  type TextureSource,
 } from '@vinland/render';
 import { DOOR_SHIFTS } from '../catalog/building-tweaks.js';
 import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';

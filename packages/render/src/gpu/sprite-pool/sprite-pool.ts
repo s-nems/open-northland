@@ -3,10 +3,10 @@ import { type Container, Graphics, Sprite } from 'pixi.js';
 import type { ElevationField } from '../../data/elevation.js';
 import { type Camera, depthKey } from '../../data/iso.js';
 import {
+  collectSpriteScene,
   type DrawItem,
   FLAG_PAINT_STEP,
   SPRITE_PAINT_ORDER,
-  collectSpriteScene,
 } from '../../data/scene/index.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
 import type { Viewport } from '../../data/viewport.js';
@@ -15,8 +15,8 @@ import type { SpriteSheet } from '../pixi-app.js';
 import type { TextureCache } from '../texture-cache.js';
 import { alphaMaskOf, maskSolidAt } from './alpha-mask.js';
 import { trackMotion } from './motion.js';
-import { PROJECTILE_FLIGHT_HEIGHT, drawPlaceholder, placeholderBody } from './placeholder.js';
-import { type EntityBounds, type PooledEntity, createPooled } from './pooled-entity.js';
+import { drawPlaceholder, PROJECTILE_FLIGHT_HEIGHT, placeholderBody } from './placeholder.js';
+import { createPooled, type EntityBounds, type PooledEntity } from './pooled-entity.js';
 import { reconcileSprites } from './reconcile.js';
 import { type ResolvedLayer, resolveLayers } from './resolve-layers.js';
 

@@ -3,10 +3,10 @@ import * as components from '../../src/components/index.js';
 import type { Component } from '../../src/ecs/world.js';
 import {
   type Command,
+  diffSnapshots,
   Simulation,
   type TerrainMap,
   type WorldSnapshot,
-  diffSnapshots,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 

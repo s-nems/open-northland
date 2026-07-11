@@ -3,7 +3,7 @@ import { basename, dirname, join, relative } from 'node:path';
 import { decodePcx, expandToRgba } from '../decoders/pcx.js';
 import { encodePng } from '../decoders/png.js';
 import { walkFiles } from '../walk.js';
-import { TEXTURES_DIR, readGameFile } from './game-file.js';
+import { readGameFile, TEXTURES_DIR } from './game-file.js';
 
 /** A transition overlay's two source pictures: the RGB texture + its separate alpha-mask `.pcx`. */
 export interface MaskedTexturePair {

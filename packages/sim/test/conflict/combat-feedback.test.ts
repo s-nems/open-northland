@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CurrentAtomic, Health, Position } from '../../src/components/index.js';
 import { eventAt } from '../../src/core/events.js';
-import { Simulation, fx, halfCellMapFromCells } from '../../src/index.js';
 import type { TerrainMap } from '../../src/index.js';
+import { fx, halfCellMapFromCells, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /** A flat grass map wide enough for the reach tests (cells → the sim's 2W×2H half-cell lattice). */

@@ -1,4 +1,4 @@
-import { type Component, Simulation, components, halfCellMapFromCells } from '@vinland/sim';
+import { type Component, components, halfCellMapFromCells, Simulation } from '@vinland/sim';
 import { type SandboxContentExtras, sandboxContent } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 

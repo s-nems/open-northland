@@ -1,4 +1,4 @@
-import { type ContentSet, IR_VERSION, type VehicleType, parseContentSet } from '@vinland/data';
+import { type ContentSet, IR_VERSION, parseContentSet, type VehicleType } from '@vinland/data';
 import { describe, expect, it } from 'vitest';
 import {
   isShipVehicle,

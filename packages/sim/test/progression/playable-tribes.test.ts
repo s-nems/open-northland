@@ -1,10 +1,10 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { describe, expect, it } from 'vitest';
 import {
-  HUNTER_JOB,
   animalBabyHitpoints,
   animalCannotBeAttacked,
   animalHitpoints,
+  HUNTER_JOB,
   herdParams,
   ignoresHousesAnimal,
   isAggressiveAnimal,

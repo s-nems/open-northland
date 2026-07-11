@@ -2,16 +2,16 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
 import { Health, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { type Fixed, ONE, Simulation, fx } from '../../src/index.js';
+import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import {
   ENJOYMENT_RISE_PER_TICK,
   FATIGUE_RISE_PER_TICK,
   HUNGER_RISE_PER_TICK,
+  needsSystem,
   PIETY_RISE_PER_TICK,
   STARVATION_BITES_TO_DIE,
   STARVATION_DAMAGE_INTERVAL_TICKS,
   type SystemContext,
-  needsSystem,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { clearComponentStores } from '../fixtures/stores.js';

@@ -1,16 +1,16 @@
 import {
+  buildSpriteScene,
   CALIBRATED_HALF_H,
   CALIBRATED_HALF_W,
   type Camera,
-  type MapObjectSprite,
-  WorldRenderer,
-  buildSpriteScene,
   createWindowPixiApp,
+  type MapObjectSprite,
   makeBrightnessField,
   makeElevationField,
   setTilePitch,
+  WorldRenderer,
 } from '@vinland/render';
-import { type SimEvent, halfCellMapFromCells } from '@vinland/sim';
+import { halfCellMapFromCells, type SimEvent } from '@vinland/sim';
 import { buildCollisionTerrain } from '../content/collision.js';
 import { buildingFootprints, loadIr } from '../content/ir.js';
 import { loadMinimapCellColours } from '../content/minimap-ground.js';

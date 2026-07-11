@@ -4,11 +4,11 @@ import { CurrentAtomic, Health, Position, Settler } from '../../src/components/i
 import type { Entity } from '../../src/ecs/world.js';
 import {
   type Fixed,
-  Simulation,
-  type TerrainMap,
   fx,
   halfCellMapFromCells,
   positionOfNode,
+  Simulation,
+  type TerrainMap,
 } from '../../src/index.js';
 import { isPlayableTribe, mayAttack } from '../../src/systems/index.js';
 

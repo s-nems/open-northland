@@ -11,7 +11,7 @@ import {
   Stance,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, type TerrainMap, cellAnchorNode, fx, halfCellMapFromCells } from '../../src/index.js';
+import { cellAnchorNode, fx, halfCellMapFromCells, Simulation, type TerrainMap } from '../../src/index.js';
 import { nodeOfPosition, positionOfNode } from '../../src/nav/halfcell.js';
 import { moveUnit } from '../../src/systems/conflict/orders.js';
 import type { SystemContext } from '../../src/systems/index.js';

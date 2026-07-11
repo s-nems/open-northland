@@ -5,13 +5,13 @@ import type { Component, Entity } from '../../src/ecs/world.js';
 import {
   CORE_INVARIANTS,
   type Command,
-  type LoggedCommand,
-  Rng,
-  Simulation,
-  type TerrainMap,
   checkInvariants,
   halfCellMapFromCells,
+  type LoggedCommand,
+  Rng,
   replay,
+  Simulation,
+  type TerrainMap,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 

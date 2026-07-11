@@ -1,8 +1,8 @@
 import * as components from '../components/index.js';
 import type { Component } from '../ecs/world.js';
 import type { HashTrace } from '../inspect/hashtrace.js';
-import { type SnapshotDiff, diffSnapshots } from '../inspect/snapshot-diff.js';
 import type { WorldSnapshot } from '../inspect/snapshot.js';
+import { diffSnapshots, type SnapshotDiff } from '../inspect/snapshot-diff.js';
 import { type ReplayOptions, replay } from './replay.js';
 
 /**

@@ -1,41 +1,41 @@
 import {
-  SYNTHETIC_BINDINGS,
+  createSyntheticAtlasSource,
   type SettlerCharacter,
   type SettlerCharacterSet,
   type SettlerStateBinding,
   type SpriteLayer,
   type SpriteSheet,
-  createSyntheticAtlasSource,
+  SYNTHETIC_BINDINGS,
   syntheticAtlasFrames,
 } from '@vinland/render';
 import { ATTACK_ATOMIC, CULTIVATE_ATOMIC, PLANT_ATOMIC, WHEAT_HARVEST_ATOMIC } from '../catalog/atomics.js';
 import {
+  characterStem,
+  characterStems,
   DEFAULT_CHARACTER_PALETTE,
   INDEXED_CHARACTER_PALETTE,
   VIKING_CHARACTERS,
-  characterStem,
-  characterStems,
 } from '../catalog/roster.js';
 import {
   BUILDING_FAMILIES,
   BUILDING_SCALE,
+  buildingBobRefsByType,
+  constructionRefsByType,
   DEFAULT_BUILDING_FAMILY,
   HOUSE_ATLAS,
   TREE_ATLAS,
   VIKING_TRIBE,
-  buildingBobRefsByType,
-  constructionRefsByType,
 } from './building-gfx.js';
 import { loadGoodsIconManifest } from './goods-gfx.js';
 import {
   BODY_IMAGELIB,
   type ContentIr,
-  MissingAtlasError,
   gfxAtomicFrameLists,
   loadGalleryLayers,
   loadIr,
   loadLayer,
   loadPlayerLut,
+  MissingAtlasError,
   sequencesFor,
 } from './ir.js';
 import {
@@ -49,13 +49,13 @@ import {
 } from './resource-gfx.js';
 import {
   ADULT_CHARACTER_BY_JOB,
+  buildHumanBindings,
   CHARACTER_SPEC_ENTRIES,
+  carryHeadAnims,
+  characterBinding,
   type GoodRef,
   WARRIOR_SPEC_BY_WEAPON_GOOD,
   YOUNG_CHARACTER_BY_JOB,
-  buildHumanBindings,
-  carryHeadAnims,
-  characterBinding,
 } from './settler-gfx.js';
 
 /**

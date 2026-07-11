@@ -7,11 +7,11 @@ import {
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
+  spawnSandboxSettler,
   WEAPON_BROADSWORD,
   WEAPON_SHORT_BOW,
   WEAPON_SPEAR,
   WEAPON_SWORD,
-  spawnSandboxSettler,
 } from '../game/sandbox/index.js';
 import { blueLivingSettlers, enemyLivingSettlers } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';

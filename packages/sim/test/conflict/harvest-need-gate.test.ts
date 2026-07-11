@@ -13,7 +13,7 @@ import {
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, type TerrainMap, fx } from '../../src/index.js';
+import { fx, Simulation, type TerrainMap } from '../../src/index.js';
 import { aiSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 

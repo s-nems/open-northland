@@ -6,7 +6,7 @@
  * surface — import from `stages/maps/index.js`.
  */
 export { findPathCaseInsensitive } from './case-path.js';
-export { type MapDatConversion, convertMapDatTree } from './convert.js';
+export { convertMapDatTree, type MapDatConversion } from './convert.js';
 export { decodeMapTree, mapCifToInfo, mapIdFromPath } from './info.js';
 export { type MapMetaFile, resolveMapMeta } from './meta.js';
 export { minimapToPng } from './minimap.js';

@@ -4,17 +4,17 @@ import * as components from '../../src/components/index.js';
 import { Building, Carrying, Position, Settler, Stockpile } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
+  fx,
   ONE,
+  populationWithinHousing,
   type SimEvent,
   Simulation,
   type TerrainMap,
-  fx,
-  populationWithinHousing,
 } from '../../src/index.js';
 import {
+  housingCapacity,
   NEWBORN_AGE_CLASS,
   type SystemContext,
-  housingCapacity,
   tribePopulation,
 } from '../../src/systems/index.js';
 

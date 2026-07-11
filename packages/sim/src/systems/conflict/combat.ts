@@ -19,24 +19,24 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
 import { standingFighterNodes } from '../movement/collision/index.js';
 import {
-  HUNTER_JOB,
-  MILITARY_MODE,
   defaultStanceForJob,
+  HUNTER_JOB,
   isAggressiveAnimal,
   isAnimalTribe,
   isCatchableAnimal,
+  MILITARY_MODE,
   weaponDamageVsMaterial,
 } from '../readviews/index.js';
 import {
-  NodeBuckets,
   canonicalById,
   clearNavState,
   entityNode,
   isTravelling,
   manhattan,
+  NodeBuckets,
 } from '../spatial.js';
 import { fleeDrive } from './flee.js';
-import { SIGHT_RADIUS_NODES, hostileAnimalNow, isHuntTarget, isValidTarget } from './targeting.js';
+import { hostileAnimalNow, isHuntTarget, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 import { attackerWeapon, startAttack, targetMaterial } from './weapons.js';
 
 // Re-exported so the public surface (the systems barrel + tests) keeps its single combat import

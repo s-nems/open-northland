@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { MoveGoal, PathFollow, PathRequest, Position } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, type TerrainMap, cellAnchorNode, fx, halfCellMapFromCells } from '../../src/index.js';
-import { type SystemContext, aiSystem } from '../../src/systems/index.js';
+import { cellAnchorNode, fx, halfCellMapFromCells, Simulation, type TerrainMap } from '../../src/index.js';
+import { aiSystem, type SystemContext } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**

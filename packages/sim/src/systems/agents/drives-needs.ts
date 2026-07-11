@@ -4,8 +4,8 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
 import { atomicDuration } from '../readviews/animations.js';
 import { isFood } from '../stores.js';
-import { EAT_ATOMIC_ID, PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, atOrWalk, startAtomic } from './actions.js';
-import { type TargetCandidates, interactionCell, nearestFoodStore, nearestTemple } from './ai-targets.js';
+import { atOrWalk, EAT_ATOMIC_ID, PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, startAtomic } from './actions.js';
+import { interactionCell, nearestFoodStore, nearestTemple, type TargetCandidates } from './ai-targets.js';
 
 // The NEEDS drives — the highest-priority rungs of the planner ladder (a starving operator leaves
 // its workplace to feed rather than work itself to death). Order inside planNeeds is part of the

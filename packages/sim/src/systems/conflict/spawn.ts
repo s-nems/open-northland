@@ -10,11 +10,11 @@ import {
   Owner,
   Position,
   Settler,
-  Weapon,
   stampOwner,
+  Weapon,
 } from '../../components/index.js';
 import type { Command, SettlerEquipment, SettlerEquipmentSlot } from '../../core/commands.js';
-import { ONE, fx } from '../../core/fixed.js';
+import { fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';

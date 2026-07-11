@@ -11,9 +11,9 @@ import {
   EQUIP_ROW_H,
   PREVIEW_INSET,
   ROW_H,
+  type SettlerLayout,
   STOCK_PLATE_H,
   STOCK_ROW_H,
-  type SettlerLayout,
   stockSlotRects,
 } from './layout.js';
 import {

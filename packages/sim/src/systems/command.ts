@@ -6,16 +6,16 @@ import {
   Position,
   Settler,
   Stockpile,
+  stampOwner,
   UnderConstruction,
   Vehicle,
   WorldRules,
-  stampOwner,
   worldRulesEntity,
 } from '../components/index.js';
 import { assertNever } from '../core/brand.js';
 import type { Command } from '../core/commands.js';
 import { contentIndex } from '../core/content-index.js';
-import { ONE, fx } from '../core/fixed.js';
+import { fx, ONE } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
 import { positionOfNode } from '../nav/halfcell.js';
 import { dropOrStackGood } from './agents/effects-goods.js';

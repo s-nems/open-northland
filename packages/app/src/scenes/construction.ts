@@ -1,11 +1,11 @@
 import type { Entity, Simulation } from '@vinland/sim';
-import { ONE, components } from '@vinland/sim';
+import { components, ONE } from '@vinland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import {
   BUILDING_HOME_00,
-  JOB_BUILDER,
   dropSandboxGood,
+  JOB_BUILDER,
   placeSandboxBuilding,
   spawnSandboxSettler,
 } from '../game/sandbox/index.js';

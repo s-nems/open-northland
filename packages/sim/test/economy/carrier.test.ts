@@ -14,14 +14,14 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
-  ONE,
-  Simulation,
-  type TerrainMap,
   cellAnchorNode,
   fx,
   halfCellMapFromCells,
+  ONE,
+  Simulation,
+  type TerrainMap,
 } from '../../src/index.js';
-import { type SystemContext, aiSystem } from '../../src/systems/index.js';
+import { aiSystem, type SystemContext } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**

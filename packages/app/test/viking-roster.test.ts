@@ -1,17 +1,17 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { GALLERY_DIRS, clipDirs } from '@vinland/render';
+import { clipDirs, GALLERY_DIRS } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
 import {
-  DEFAULT_CHARACTER,
-  DEFAULT_CHARACTER_PALETTE,
-  VIKING_CHARACTERS,
   characterStem,
   characterStems,
+  DEFAULT_CHARACTER,
+  DEFAULT_CHARACTER_PALETTE,
   findCharacter,
   headLabel,
   pickWalkRow,
+  VIKING_CHARACTERS,
 } from '../src/catalog/roster.js';
 import type { BobSeqRow } from '../src/content/ir.js';
 

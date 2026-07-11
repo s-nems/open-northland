@@ -1,7 +1,7 @@
 import { Container, Graphics } from 'pixi.js';
 import type { ElevationField } from '../data/elevation.js';
 import { ONE, tileToScreen } from '../data/iso.js';
-import { type Viewport, isVisible } from '../data/viewport.js';
+import { isVisible, type Viewport } from '../data/viewport.js';
 
 /**
  * The DOOR-BADGE layer — a small stacked marker beside each staffed building's door showing how many

@@ -8,10 +8,11 @@
  * single `components/index.js` surface. Splitting is hash-neutral — component registration order is
  * driven by the runtime first-`add()` sequence (see ecs/world.ts), not module-load order.
  */
-export * from './movement.js';
-export * from './settler.js';
+
 export * from './combat.js';
 export * from './economy.js';
-export * from './ownership.js';
 export * from './equipment.js';
+export * from './movement.js';
+export * from './ownership.js';
 export * from './rules.js';
+export * from './settler.js';

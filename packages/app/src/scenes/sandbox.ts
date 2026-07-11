@@ -1,6 +1,6 @@
 import type { Simulation } from '@vinland/sim';
 import { components, fx } from '@vinland/sim';
-import { VIKING_BUILDINGS, grassTerrain, placedBuildingTypes } from '../catalog/buildings.js';
+import { grassTerrain, placedBuildingTypes, VIKING_BUILDINGS } from '../catalog/buildings.js';
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
 import {
   GATHERERS,
@@ -8,13 +8,13 @@ import {
   JOB_ARCHER_LONG,
   JOB_GATHERER_WOOD,
   JOB_SOLDIER_SWORD,
-  WEAPON_LONG_BOW,
-  WEAPON_SWORD,
   placeFlag,
   placeResourceNode,
   placeSandboxBuilding,
   spawnBoundGatherer,
   spawnSandboxSettler,
+  WEAPON_LONG_BOW,
+  WEAPON_SWORD,
 } from '../game/sandbox/index.js';
 import {
   blueLivingSoldiers,

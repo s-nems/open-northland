@@ -1,8 +1,8 @@
 import {
-  type PalettedSprite,
-  type SupersampledTexture,
   bakeToFlippedSprite,
   oversampleFor,
+  type PalettedSprite,
+  type SupersampledTexture,
 } from '@vinland/render';
 import { type Application, Container } from 'pixi.js';
 import type { DesignRect } from './layout.js';

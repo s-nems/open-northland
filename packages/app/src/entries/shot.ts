@@ -1,10 +1,10 @@
 import {
-  WorldRenderer,
   buildHud,
   buildSpriteScene,
   createPixiApp,
   layoutHud,
   placeHud,
+  WorldRenderer,
 } from '@vinland/render';
 import { halfCellMapFromCells } from '@vinland/sim';
 import { loadHumanSpriteSheet, syntheticSpriteSheet } from '../content/sprite-sheet.js';

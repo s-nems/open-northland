@@ -4,7 +4,7 @@ import { Container } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { TextRun } from '../src/hud/bitmap-text.js';
 import { WIN_PAD } from '../src/hud/chrome.js';
-import { type MenuBuildingEntry, layoutBuildingMenu } from '../src/hud/tool-panel/building-menu.js';
+import { layoutBuildingMenu, type MenuBuildingEntry } from '../src/hud/tool-panel/building-menu.js';
 import type { PanelContext } from '../src/hud/tool-panel/context.js';
 import { buildToolPanelLayout } from '../src/hud/tool-panel/layout.js';
 import { createMenuWindow } from '../src/hud/tool-panel/menu-window.js';

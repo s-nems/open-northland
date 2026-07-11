@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   type DrawItem,
+  resolveSpriteFrame,
+  type SpriteState,
   SYNTHETIC_ATLAS_HEIGHT,
   SYNTHETIC_ATLAS_WIDTH,
   SYNTHETIC_BINDINGS,
-  type SpriteState,
-  resolveSpriteFrame,
   syntheticAtlasFrames,
 } from '../src/index.js';
 

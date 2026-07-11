@@ -11,8 +11,8 @@ import {
   UnderConstruction,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { ONE, type SimEvent, Simulation, type TerrainMap, fx, nodeOfPosition } from '../../src/index.js';
-import { type SystemContext, constructionSystem, housingCapacity } from '../../src/systems/index.js';
+import { fx, nodeOfPosition, ONE, type SimEvent, Simulation, type TerrainMap } from '../../src/index.js';
+import { constructionSystem, housingCapacity, type SystemContext } from '../../src/systems/index.js';
 
 /**
  * Unit + integration tests for the ConstructionSystem — a construction site (`UnderConstruction`) rises to

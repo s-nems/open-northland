@@ -12,14 +12,14 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import {
   CORE_INVARIANTS,
-  Simulation,
-  type TerrainMap,
   cellAnchorNode,
   checkInvariants,
   fx,
   halfCellMapFromCells,
+  Simulation,
+  type TerrainMap,
 } from '../../src/index.js';
-import { type SystemContext, atomicSystem } from '../../src/systems/index.js';
+import { atomicSystem, type SystemContext } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { clearComponentStores } from '../fixtures/stores.js';
 

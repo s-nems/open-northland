@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Building, JobAssignment, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, fx } from '../../src/index.js';
-import { type SystemContext, jobSystem } from '../../src/systems/index.js';
+import { fx, Simulation } from '../../src/index.js';
+import { jobSystem, type SystemContext } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**

@@ -1,7 +1,7 @@
 import type { Command } from '@vinland/sim';
 import { type Container, Graphics } from 'pixi.js';
 import type { TextRun } from '../bitmap-text.js';
-import { WIN_PAD, WIN_TITLE_H, drawWindowPanel } from '../chrome.js';
+import { drawWindowPanel, WIN_PAD, WIN_TITLE_H } from '../chrome.js';
 import type { PanelContext } from './context.js';
 
 /** Banner width (design px) — fits "<label> - klik: połóż, Esc: koniec" in font10. */

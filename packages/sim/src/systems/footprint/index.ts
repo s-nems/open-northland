@@ -9,6 +9,19 @@
 // keeps the pre-footprint behavior everywhere: it places without collision checks, blocks no cell,
 // and is interacted with on its anchor tile.
 
+export {
+  buildingBlockedCells,
+  type ConstructionPlot,
+  canPlaceBuilding,
+  constructionSitePlots,
+  dynamicBlockedCells,
+  interactionNode,
+  type PlacementProbe,
+  placementBlockerVersion,
+  placementProbe,
+  positionedInteractionCell,
+  resourceWorkCell,
+} from './placement.js';
 // manhattan/nodeKey are published through systems/spatial.ts (their single public export
 // site — two star-export paths to one name would silently drop it from the systems barrel on a
 // future collision); package siblings import them from ./geometry.js directly.
@@ -21,16 +34,3 @@ export {
   stampResourceFootprint,
   unstampResourceFootprint,
 } from './resources.js';
-export {
-  buildingBlockedCells,
-  canPlaceBuilding,
-  type ConstructionPlot,
-  constructionSitePlots,
-  dynamicBlockedCells,
-  interactionNode,
-  placementBlockerVersion,
-  placementProbe,
-  type PlacementProbe,
-  positionedInteractionCell,
-  resourceWorkCell,
-} from './placement.js';

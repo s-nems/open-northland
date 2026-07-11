@@ -1,6 +1,6 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
 import type { ElevationField } from '../data/elevation.js';
-import { TILE_HALF_H, TILE_HALF_W, depthKey, halfCellToScreen } from '../data/iso.js';
+import { depthKey, halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../data/iso.js';
 import type { DrawItem } from '../data/scene/index.js';
 import type { SpriteSheet } from './pixi-app.js';
 import { resolveLayers } from './sprite-pool/index.js';

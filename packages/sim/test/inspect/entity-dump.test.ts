@@ -3,11 +3,11 @@ import * as components from '../../src/components/index.js';
 import type { Component } from '../../src/ecs/world.js';
 import {
   type Command,
+  dumpEntity,
   Simulation,
   type TerrainMap,
-  type WorldSnapshot,
-  dumpEntity,
   traceEntity,
+  type WorldSnapshot,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 

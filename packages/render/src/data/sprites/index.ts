@@ -12,9 +12,9 @@ export {
   type AtlasFrame,
   type AtlasManifest,
   type AtlasManifestFrame,
-  type SpriteAtlas,
   atlasFromManifest,
   indexAtlasFrames,
+  type SpriteAtlas,
 } from './atlas.js';
 export type {
   BuildingBobRef,

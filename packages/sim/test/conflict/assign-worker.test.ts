@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { Building, JobAssignment, Owner, Position, Settler } from '../../src/components/index.js';
 import type { Command } from '../../src/core/commands.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, fx } from '../../src/index.js';
+import { fx, Simulation } from '../../src/index.js';
 import { assignWorker } from '../../src/systems/conflict/orders.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';

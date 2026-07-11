@@ -14,13 +14,13 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import {
   type Fixed,
-  Simulation,
-  type TerrainMap,
   fx,
   halfCellMapFromCells,
   positionOfNode,
+  Simulation,
+  type TerrainMap,
 } from '../../src/index.js';
-import { type SystemContext, atomicSystem, combatSystem } from '../../src/systems/index.js';
+import { atomicSystem, combatSystem, type SystemContext } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**

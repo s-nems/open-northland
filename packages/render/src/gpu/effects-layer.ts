@@ -2,9 +2,9 @@ import type { SimEvent } from '@vinland/sim';
 import { Container, Graphics, Sprite, type TextureSource } from 'pixi.js';
 import {
   BLOOD_RISE,
+  bloodDroplet,
   type CombatEffect,
   type CombatEffectKind,
-  bloodDroplet,
   effectAlpha,
   effectKey,
   foldCombatEffects,
@@ -13,7 +13,7 @@ import {
 import type { ElevationField } from '../data/elevation.js';
 import { halfCellToScreen } from '../data/iso.js';
 import type { AtlasFrame } from '../data/sprites/index.js';
-import { type Viewport, isVisible } from '../data/viewport.js';
+import { isVisible, type Viewport } from '../data/viewport.js';
 import type { TextureCache } from './texture-cache.js';
 
 /**

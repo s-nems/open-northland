@@ -14,26 +14,26 @@ export { buildSoundIndex, type SoundIndex } from './data/bank.js';
 export {
   defaultBindings,
   VIKING_VOICE_POOLS,
-  vikingVoiceClass,
   type VoiceClass,
+  vikingVoiceClass,
 } from './data/bindings.js';
 export {
+  AMBIENT_FULL_COVERAGE,
+  AMBIENT_MAX_GAIN,
+  AMBIENT_MAX_SAMPLES,
   directAudio,
   JINGLE_GAIN,
-  SFX_GAIN,
   MAX_AMBIENT_BEDS,
-  AMBIENT_MAX_GAIN,
-  AMBIENT_FULL_COVERAGE,
-  AMBIENT_MAX_SAMPLES,
   type OnScreenSettler,
   onScreenSettlers,
+  SFX_GAIN,
 } from './data/director/index.js';
 export {
-  type Spatial,
-  computeSpatial,
   CULL_MARGIN_PX,
+  computeSpatial,
   EDGE_GAIN,
   MAX_PAN,
+  type Spatial,
   ZOOM_GAIN_FLOOR,
 } from './data/spatial.js';
 export type {
@@ -45,24 +45,23 @@ export type {
   OneShot,
   SoundBindings,
 } from './data/types.js';
-
-// Impure Web Audio sink (browser-only). The default-tuning constants stay exported as the documented
-// knobs behind the options; the platform function types are the injectable test seams.
-export type { ContextFactory, FetchBytes, RandomFn } from './web/platform.js';
 export {
+  ChatterEmitter,
+  type ChatterOptions,
+  MAX_CHATTER_DT_MS,
+  VOICE_COOLDOWN_MS,
+  VOICE_GAIN,
+  VOICE_RATE_PER_SEC,
+} from './web/chatter.js';
+export {
+  AMBIENT_FADE_S,
   type AudioEngineOptions,
-  WebAudioEngine,
   DEFAULT_MASTER_GAIN,
   DEFAULT_SOUNDS_BASE_URL,
   ONE_SHOT_COOLDOWN_S,
-  AMBIENT_FADE_S,
+  WebAudioEngine,
 } from './web/engine/index.js';
-export {
-  type ChatterOptions,
-  ChatterEmitter,
-  VOICE_GAIN,
-  VOICE_RATE_PER_SEC,
-  VOICE_COOLDOWN_MS,
-  MAX_CHATTER_DT_MS,
-} from './web/chatter.js';
-export { type SoundFrameInput, type SoundDriverOptions, SoundDriver } from './web/sound-driver.js';
+// Impure Web Audio sink (browser-only). The default-tuning constants stay exported as the documented
+// knobs behind the options; the platform function types are the injectable test seams.
+export type { ContextFactory, FetchBytes, RandomFn } from './web/platform.js';
+export { SoundDriver, type SoundDriverOptions, type SoundFrameInput } from './web/sound-driver.js';

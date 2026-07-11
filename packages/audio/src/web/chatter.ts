@@ -2,7 +2,7 @@ import type { SoundIndex } from '../data/bank.js';
 import { VIKING_VOICE_POOLS, type VoiceClass, vikingVoiceClass } from '../data/bindings.js';
 import type { OnScreenSettler } from '../data/director/settlers.js';
 import type { OneShot } from '../data/types.js';
-import { type RandomFn, pickRandom } from './platform.js';
+import { pickRandom, type RandomFn } from './platform.js';
 
 /**
  * The STOCHASTIC settler voice-chatter emitter: at ~{@link VOICE_RATE_PER_SEC} clips/second across

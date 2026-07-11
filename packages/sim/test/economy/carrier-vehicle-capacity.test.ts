@@ -2,8 +2,8 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, fx } from '../../src/index.js';
-import { type SystemContext, carrierCarryCapacity } from '../../src/systems/index.js';
+import { fx, Simulation } from '../../src/index.js';
+import { carrierCarryCapacity, type SystemContext } from '../../src/systems/index.js';
 
 /**
  * carrierCarryCapacity — a carrier hauls a batch sized by the largest `stockSlots` (vehicle carry

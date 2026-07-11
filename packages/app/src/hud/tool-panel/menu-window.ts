@@ -1,9 +1,6 @@
 import { Container, Graphics } from 'pixi.js';
 import type { TextRun } from '../bitmap-text.js';
 import {
-  HEADLINE_FILL,
-  WIN_PAD,
-  WOOD_FILL,
   drawBevel,
   drawCloseX,
   drawHoverHighlight,
@@ -11,18 +8,21 @@ import {
   drawScrollbar,
   drawTabButton,
   drawWindowFrame,
+  HEADLINE_FILL,
   tileBitmap,
+  WIN_PAD,
+  WOOD_FILL,
 } from '../chrome.js';
-import { type Rect, contains } from '../geometry.js';
+import { contains, type Rect } from '../geometry.js';
 import {
   type BuildingCategory,
   type BuildingMenuLayout,
+  hitTestBuildingMenu,
+  layoutBuildingMenu,
   MENU_CHROME_ABOVE_LIST,
   MENU_ROW_H,
   type MenuBuildingEntry,
   type MenuRow,
-  hitTestBuildingMenu,
-  layoutBuildingMenu,
 } from './building-menu.js';
 import type { PanelContext } from './context.js';
 

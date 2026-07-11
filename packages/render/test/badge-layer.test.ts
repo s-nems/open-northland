@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BadgeLayer, type DoorBadge } from '../src/gpu/badge-layer.js';
-import { ONE, makeElevationField, tileToScreen } from '../src/index.js';
+import { makeElevationField, ONE, tileToScreen } from '../src/index.js';
 
 /**
  * The door-badge layer is a projection consumer like the selection ring: it stacks one square per

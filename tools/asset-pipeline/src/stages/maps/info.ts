@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
 import type { MapInfo } from '@vinland/data';
 import { decodeCifStringArray } from '../../decoders/cif.js';
-import { type SourceRef, cifLinesToSections, extractMapInfo } from '../../decoders/ini.js';
+import { cifLinesToSections, extractMapInfo, type SourceRef } from '../../decoders/ini.js';
 import { walkFiles } from '../../walk.js';
 
 /**

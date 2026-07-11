@@ -1,56 +1,81 @@
+export type { TextureSource } from 'pixi.js';
+export {
+  BRIGHTNESS_NEUTRAL,
+  type BrightnessField,
+  makeBrightnessField,
+} from './data/brightness.js';
+export {
+  type ElevationField,
+  elevationLiftPerUnit,
+  makeElevationField,
+} from './data/elevation.js';
+export {
+  buildHud,
+  type HudCorner,
+  type HudLayout,
+  type HudModel,
+  type HudPlacement,
+  type HudScreen,
+  type HudTextRow,
+  IDLE_JOB,
+  type JobCount,
+  layoutHud,
+  placeHud,
+  type StockCount,
+} from './data/hud.js';
 export {
   CALIBRATED_HALF_H,
   CALIBRATED_HALF_W,
-  ONE,
-  TILE_HALF_W,
-  TILE_HALF_H,
-  halfCellToScreen,
-  setTilePitch,
-  tileToScreen,
   type Camera,
+  halfCellToScreen,
+  ONE,
+  setTilePitch,
+  TILE_HALF_H,
+  TILE_HALF_W,
+  tileToScreen,
 } from './data/iso.js';
 export {
   buildScene,
   buildSpriteScene,
+  type DrawItem,
+  type DrawKind,
+  depositVisualLevel,
   drawableEntityRefs,
   PROJECTILE_ARC_PEAK_FRACTION,
   PROJECTILE_ARC_PEAK_MAX_PX,
-  terrainMapToScene,
-  type DrawItem,
-  type DrawKind,
   type SceneGround,
   type SceneTerrain,
   type SceneTransitions,
   type SpriteState,
+  terrainMapToScene,
 } from './data/scene/index.js';
-export { depositVisualLevel } from './data/scene/index.js';
 export {
-  atlasFromManifest,
-  bobKey,
-  finishedBuildingBobKeys,
-  indexAtlasFrames,
-  pickByJob,
-  resolveBuildingDraw,
-  resolveConstructionDraws,
-  resolveResourceDraw,
-  resolveStockpileDraw,
-  resolveStockpileLayerDraws,
-  resolveSpriteFrame,
-  resolveSpriteBobId,
-  DEFAULT_FACING,
   type AtlasFrame,
   type AtlasManifest,
   type AtlasManifestFrame,
+  atlasFromManifest,
   type BuildingBobRef,
   type BuildingDraw,
   type BuildingTypeBinding,
   type ByJobTable,
+  bobKey,
   type CarryingBinding,
   type ConstructionLayerRef,
+  DEFAULT_FACING,
   type DirectionalAnim,
   type FrameListAnim,
+  finishedBuildingBobKeys,
+  indexAtlasFrames,
   type LayeredBobRef,
+  pickByJob,
   type ResourceTypeBinding,
+  resolveBuildingDraw,
+  resolveConstructionDraws,
+  resolveResourceDraw,
+  resolveSpriteBobId,
+  resolveSpriteFrame,
+  resolveStockpileDraw,
+  resolveStockpileLayerDraws,
   type SettlerStateBinding,
   type SpriteAtlas,
   type SpriteBindings,
@@ -59,112 +84,87 @@ export {
   type StockpileBinding,
 } from './data/sprites/index.js';
 export {
-  createPixiApp,
-  createWindowPixiApp,
-  loadAtlasSource,
-  type GroundPattern,
-  type SettlerCharacter,
-  type SettlerCharacterSet,
-  type SpriteSheet,
-  type SpriteLayer,
-  type TerrainTextureSet,
-  type TransitionPattern,
-} from './gpu/pixi-app.js';
-export { WorldRenderer, SPRITE_CULL_MARGIN } from './gpu/world-renderer.js';
-export type { PortraitInsetFrame } from './gpu/world-renderer.js';
-export type { DoorBadge } from './gpu/badge-layer.js';
-export type { GeometryDebugCell, GeometryDebugItem } from './gpu/geometry-debug.js';
-export type { PlacementOverlayCell, PlacementOverlayFrame } from './gpu/placement-overlay.js';
-export type { PlacementGhost } from './gpu/placement-ghost.js';
-export {
-  compactResolvedStockpileLayers,
-  reconcileSprites,
-  resolveLayers,
-  trackMotion,
-  type EntityBounds,
-  type MotionTrack,
-} from './gpu/sprite-pool/index.js';
-export type { ResolvedLayer } from './gpu/sprite-pool/resolve-layers.js';
-export { DEFAULT_HUD_STYLE, type HudStyle, type HudFrame } from './gpu/hud-layer.js';
-export type { MapObjectSprite } from './gpu/map-objects/index.js';
-export {
-  AnimationGallery,
-  galleryCellLayout,
-  clipDirs,
-  galleryBobId,
-  headBobId,
-  GALLERY_DIRS,
-  COMPASS_TO_BLOCK,
-  type GalleryClip,
-  type GalleryCellSpec,
-  type GalleryDirection,
-  type GalleryCellBox,
-} from './gpu/gallery/index.js';
-export { type GuiColorKey, PalettedSprite } from './gpu/paletted-sprite.js';
-export {
-  type SupersampledTexture,
-  bakeToFlippedSprite,
-  bakeToSprite,
-  oversampleFor,
-} from './gpu/supersample.js';
-export type { TextureSource } from 'pixi.js';
-export { flatTileColour } from './gpu/terrain/terrain-layer.js';
-export {
-  cameraViewport,
-  isVisible,
-  aabbIntersects,
-  visibleTileRange,
-  type Viewport,
-  type Box,
-  type TileRange,
-} from './data/viewport.js';
-export {
-  TRANSITION_NONE,
+  type CellTexture,
   cellNode,
+  type NodeXY,
   nodeCell,
   nodeLaneUV,
   nodeLift,
   patternSrcRect,
   rectTriangleUVs,
+  type SrcRect,
+  TRANSITION_NONE,
   transitionRef,
   triangleANodes,
   triangleBNodes,
   triangleUVs,
-  type NodeXY,
-  type SrcRect,
-  type CellTexture,
 } from './data/terrain.js';
 export {
-  elevationLiftPerUnit,
-  makeElevationField,
-  type ElevationField,
-} from './data/elevation.js';
+  aabbIntersects,
+  type Box,
+  cameraViewport,
+  isVisible,
+  type TileRange,
+  type Viewport,
+  visibleTileRange,
+} from './data/viewport.js';
+export type { DoorBadge } from './gpu/badge-layer.js';
 export {
-  BRIGHTNESS_NEUTRAL,
-  makeBrightnessField,
-  type BrightnessField,
-} from './data/brightness.js';
+  AnimationGallery,
+  COMPASS_TO_BLOCK,
+  clipDirs,
+  GALLERY_DIRS,
+  type GalleryCellBox,
+  type GalleryCellSpec,
+  type GalleryClip,
+  type GalleryDirection,
+  galleryBobId,
+  galleryCellLayout,
+  headBobId,
+} from './gpu/gallery/index.js';
+export type { GeometryDebugCell, GeometryDebugItem } from './gpu/geometry-debug.js';
+export { DEFAULT_HUD_STYLE, type HudFrame, type HudStyle } from './gpu/hud-layer.js';
+export type { MapObjectSprite } from './gpu/map-objects/index.js';
+export { type GuiColorKey, PalettedSprite } from './gpu/paletted-sprite.js';
 export {
-  buildHud,
-  layoutHud,
-  placeHud,
-  IDLE_JOB,
-  type HudModel,
-  type HudLayout,
-  type HudTextRow,
-  type HudPlacement,
-  type HudCorner,
-  type HudScreen,
-  type JobCount,
-  type StockCount,
-} from './data/hud.js';
+  createPixiApp,
+  createWindowPixiApp,
+  type GroundPattern,
+  loadAtlasSource,
+  type SettlerCharacter,
+  type SettlerCharacterSet,
+  type SpriteLayer,
+  type SpriteSheet,
+  type TerrainTextureSet,
+  type TransitionPattern,
+} from './gpu/pixi-app.js';
+export type { PlacementGhost } from './gpu/placement-ghost.js';
+export type { PlacementOverlayCell, PlacementOverlayFrame } from './gpu/placement-overlay.js';
+export {
+  compactResolvedStockpileLayers,
+  type EntityBounds,
+  type MotionTrack,
+  reconcileSprites,
+  resolveLayers,
+  trackMotion,
+} from './gpu/sprite-pool/index.js';
+export type { ResolvedLayer } from './gpu/sprite-pool/resolve-layers.js';
+export {
+  bakeToFlippedSprite,
+  bakeToSprite,
+  oversampleFor,
+  type SupersampledTexture,
+} from './gpu/supersample.js';
 export {
   createSyntheticAtlasSource,
-  syntheticAtlasFrames,
-  SYNTHETIC_BINDINGS,
-  SYNTHETIC_ATLAS_WIDTH,
   SYNTHETIC_ATLAS_HEIGHT,
+  SYNTHETIC_ATLAS_WIDTH,
+  SYNTHETIC_BINDINGS,
+  syntheticAtlasFrames,
 } from './gpu/synthetic-atlas.js';
+export { flatTileColour } from './gpu/terrain/terrain-layer.js';
+export type { PortraitInsetFrame } from './gpu/world-renderer.js';
+export { SPRITE_CULL_MARGIN, WorldRenderer } from './gpu/world-renderer.js';
 
 /*
  * The renderer is a PURE CONSUMER of sim state (see docs/ARCHITECTURE.md). It reads a snapshot

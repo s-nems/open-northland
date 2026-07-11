@@ -1,7 +1,7 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import type { ElevationField } from '../elevation.js';
 import { ONE, tileToScreen } from '../iso.js';
-import { type Viewport, isVisible } from '../viewport.js';
+import { isVisible, type Viewport } from '../viewport.js';
 import {
   type DrawItem,
   FLAG_PAINT_STEP,

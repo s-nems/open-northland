@@ -1,4 +1,4 @@
-import { type Container, RenderTexture, type Renderer, Sprite } from 'pixi.js';
+import { type Container, type Renderer, RenderTexture, Sprite } from 'pixi.js';
 
 /**
  * Off-screen supersampling for the screen-space {@link import('./paletted-sprite.js').PalettedSprite} HUD

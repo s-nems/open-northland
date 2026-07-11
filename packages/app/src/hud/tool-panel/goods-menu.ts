@@ -1,5 +1,5 @@
-import { STOCK_TAB_LABELS, goodCategoryTab } from '../details-panel/stock-tabs.js';
-import { type Rect, contains } from '../geometry.js';
+import { goodCategoryTab, STOCK_TAB_LABELS } from '../details-panel/stock-tabs.js';
+import { contains, type Rect } from '../geometry.js';
 
 /**
  * The goods-palette model — the eight category tabs, filtering, layout and hit-test (pure, no Pixi/DOM).

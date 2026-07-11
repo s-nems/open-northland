@@ -1,9 +1,9 @@
-import { type WorldSnapshot, fx, nodeOfPosition } from '@vinland/sim';
+import { fx, nodeOfPosition, type WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import {
-  type GeometryBuildingInfo,
   buildingSetFingerprint,
   computeGeometryDebugItems,
+  type GeometryBuildingInfo,
 } from '../src/view/geometry-debug-items.js';
 
 /**

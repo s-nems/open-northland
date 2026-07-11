@@ -1,4 +1,4 @@
-import { type SceneGround, type SceneTerrain, type TerrainTextureSet, patternSrcRect } from '@vinland/render';
+import { patternSrcRect, type SceneGround, type SceneTerrain, type TerrainTextureSet } from '@vinland/render';
 
 /**
  * The minimap's ground-colour binding for a DECODED map: one `0xRRGGBB` per cell, averaged from the

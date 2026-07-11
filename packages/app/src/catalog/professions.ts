@@ -8,7 +8,7 @@ import {
   JOB_GATHERER_WOOD,
   JOB_SOLDIER,
 } from '../game/sandbox/ids.js';
-import { type Locale, categoryLabel, professionLabel } from '../i18n/index.js';
+import { categoryLabel, type Locale, professionLabel } from '../i18n/index.js';
 import type { Messages } from '../i18n/pl.js';
 
 /**

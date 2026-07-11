@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   GOODS_CATEGORIES,
-  type MenuGoodEntry,
   goodsInCategory,
   hitTestGoodsMenu,
   layoutGoodsMenu,
+  type MenuGoodEntry,
 } from '../src/hud/tool-panel/goods-menu.js';
 
 /**

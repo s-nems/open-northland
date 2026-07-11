@@ -2,10 +2,10 @@ import type { SpriteLayer, TextureSource } from '@vinland/render';
 import { Rectangle, Texture } from 'pixi.js';
 import {
   BUILDING_FAMILIES,
+  buildingBobRefsByType,
   DEFAULT_BUILDING_FAMILY,
   HOUSE_ATLAS,
   VIKING_TRIBE,
-  buildingBobRefsByType,
 } from '../../content/building-gfx.js';
 import { type GoodsArt, loadGoodsArt } from '../../content/goods-gfx.js';
 import { type GuiArt, loadGuiArt } from '../../content/gui-art.js';
@@ -16,8 +16,8 @@ import {
   loadGuiBitmap,
   loadGuiStrings,
 } from '../../content/gui-gfx.js';
-import { MissingAtlasError, loadIr, loadLayer } from '../../content/ir.js';
-import { type UiFont, loadUiFont } from '../../content/ui-font.js';
+import { loadIr, loadLayer, MissingAtlasError } from '../../content/ir.js';
+import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 
 /**
  * Everything the details panel loads once at mount: the GUI sheet, the vector UI font, the original window

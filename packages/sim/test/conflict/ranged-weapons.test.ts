@@ -1,4 +1,4 @@
-import { type ContentSet, IR_VERSION, type WeaponType, parseContentSet } from '@vinland/data';
+import { type ContentSet, IR_VERSION, parseContentSet, type WeaponType } from '@vinland/data';
 import { describe, expect, it } from 'vitest';
 import {
   isRangedWeapon,
@@ -6,10 +6,10 @@ import {
   rangedWeapons,
   siegeWeapons,
   weaponClassOf,
-  weaponWeightOf,
   weaponsByClass,
   weaponsByJob,
   weaponsForJob,
+  weaponWeightOf,
 } from '../../src/systems/index.js';
 
 /** Resolve a weapon by its `id` from a content set (throws if absent — a test-fixture programmer error). */

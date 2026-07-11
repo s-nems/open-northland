@@ -17,7 +17,7 @@
  * constants divide so cleanly. Pure fixed-point (the sanctioned isqrt), no floats — the metric feeds
  * game state, so it must be byte-deterministic.
  */
-import { type Fixed, ONE, fx } from '../core/fixed.js';
+import { type Fixed, fx, ONE } from '../core/fixed.js';
 
 /** Half a column step — the sideways shift one row step carries under the stagger, and the E/W
  *  pitch of the half-cell navigation lattice (34 px): one E/W nav step covers exactly this. */

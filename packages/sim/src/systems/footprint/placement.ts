@@ -6,8 +6,8 @@ import {
   Resource,
   ResourceFootprint,
   Stockpile,
-  UnderConstruction,
   stockpileEntries,
+  UnderConstruction,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';

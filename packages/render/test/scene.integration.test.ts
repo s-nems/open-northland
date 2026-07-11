@@ -1,7 +1,7 @@
-import { Simulation, type TerrainMap, components, fx } from '@vinland/sim';
+import { components, fx, Simulation, type TerrainMap } from '@vinland/sim';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { testContent } from '../../sim/test/fixtures/content.js';
-import { type SceneTerrain, buildScene } from '../src/index.js';
+import { buildScene, type SceneTerrain } from '../src/index.js';
 
 /**
  * INTEGRATION smoke for the scene layer — `render` reading a REAL `Simulation.snapshot()`, not a

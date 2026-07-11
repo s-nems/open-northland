@@ -21,9 +21,9 @@ import {
 } from '../../catalog/atomics.js';
 import { HOME_KIND, VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
 import {
+  FARM_FIELD_RADIUS,
   FARM_FIELDS_BASE,
   FARM_FIELDS_PER_FARMER,
-  FARM_FIELD_RADIUS,
   WHEAT_GROWTH_STAGES,
   WHEAT_TICKS_PER_STAGE,
   WHEAT_YIELD_PER_FIELD,
@@ -46,12 +46,13 @@ import {
   TERRAIN_MARGIN,
   TERRAIN_OPEN,
 } from '../../catalog/terrain.js';
-import { HARVEST_TICKS } from '../../content/settler-gfx.js';
 import type { GoodRef } from '../../content/settler-gfx.js';
+import { HARVEST_TICKS } from '../../content/settler-gfx.js';
 import { professionLabel } from '../../i18n/index.js';
 import type { Messages } from '../../i18n/pl.js';
 import { PRIMARY_TRIBE } from '../rules.js';
 import {
+  BUILD_HOUSE_ATOMIC,
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
   BUILDING_HOME_00,
@@ -59,9 +60,9 @@ import {
   BUILDING_WAREHOUSE_00,
   BUILDING_WAREHOUSE_01,
   BUILDING_WAREHOUSE_02,
-  BUILD_HOUSE_ATOMIC,
   EQUIP_GOODS,
   GATHERERS,
+  type GathererSpec,
   GOOD_COIN,
   GOOD_GOLD,
   GOOD_IRON,
@@ -72,7 +73,6 @@ import {
   GOOD_STONE,
   GOOD_WHEAT,
   GOOD_WOOD,
-  type GathererSpec,
   JOB_ARCHER,
   JOB_ARCHER_LONG,
   JOB_BUILDER,
@@ -84,13 +84,13 @@ import {
   JOB_SOLDIER_SPEAR,
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
+  rebaseSlotJob,
   WEAPON_BROADSWORD,
   WEAPON_FISTS,
   WEAPON_LONG_BOW,
   WEAPON_SHORT_BOW,
   WEAPON_SPEAR,
   WEAPON_SWORD,
-  rebaseSlotJob,
 } from './ids.js';
 
 /**

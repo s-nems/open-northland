@@ -1,9 +1,9 @@
 import { type Container, Graphics } from 'pixi.js';
 import type { TextRun } from '../bitmap-text.js';
-import { HOVER_ALPHA, HOVER_TINT, WIN_PAD, drawCloseX, drawWindowPanel } from '../chrome.js';
+import { drawCloseX, drawWindowPanel, HOVER_ALPHA, HOVER_TINT, WIN_PAD } from '../chrome.js';
 import { contains } from '../geometry.js';
 import type { PanelContext } from './context.js';
-import { type GoodsMenuLayout, type MenuGoodEntry, hitTestGoodsMenu, layoutGoodsMenu } from './goods-menu.js';
+import { type GoodsMenuLayout, hitTestGoodsMenu, layoutGoodsMenu, type MenuGoodEntry } from './goods-menu.js';
 
 /** Text insets (design px) — where a run sits inside its rect. Match the building menu's nudges. */
 const TITLE_INSET_Y = 2;

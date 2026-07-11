@@ -1,4 +1,4 @@
-import { type Rect, contains } from './geometry.js';
+import { contains, type Rect } from './geometry.js';
 
 /**
  * The settler ACTION MENU — the contextual command buttons that fan out around a selected settler, with

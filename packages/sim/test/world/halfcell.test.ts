@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ONE, cellAnchorNode, fx, nodeOfPosition, positionOfNode } from '../../src/index.js';
+import { cellAnchorNode, fx, nodeOfPosition, ONE, positionOfNode } from '../../src/index.js';
 
 /**
  * The half-cell ↔ Position conversion seam (`nav/halfcell.ts`) — the one place a fractional

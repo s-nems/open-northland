@@ -1,5 +1,5 @@
 import type { ContentSet } from '@vinland/data';
-import { ONE, TICKS_PER_SECOND, type WorldSnapshot, components, systems } from '@vinland/sim';
+import { components, ONE, systems, TICKS_PER_SECOND, type WorldSnapshot } from '@vinland/sim';
 import { localizedBuildingName } from '../../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../../catalog/buildings.js';
 import { professionDefForJob } from '../../catalog/professions.js';

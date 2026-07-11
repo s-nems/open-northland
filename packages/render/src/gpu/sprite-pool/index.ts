@@ -7,7 +7,7 @@
  * {@link import('./pooled-entity.js')} (the per-entity retained state) and
  * {@link import('./placeholder.js')} (the unbound-entity markers).
  */
-export { type AlphaMask, SOLID_ALPHA_MIN, buildAlphaMask, maskSolidAt } from './alpha-mask.js';
+export { type AlphaMask, buildAlphaMask, maskSolidAt, SOLID_ALPHA_MIN } from './alpha-mask.js';
 export { type MotionTrack, trackMotion } from './motion.js';
 export type { EntityBounds } from './pooled-entity.js';
 export { reconcileSprites } from './reconcile.js';

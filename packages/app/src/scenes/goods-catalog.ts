@@ -4,6 +4,7 @@ import { STORABLE_EXTENDED_GOODS } from '../catalog/goods.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import {
   BUILDING_WAREHOUSE_02,
+  dropSandboxGood,
   GOOD_COIN,
   GOOD_GOLD,
   GOOD_IRON,
@@ -12,7 +13,6 @@ import {
   GOOD_PLANK,
   GOOD_STONE,
   GOOD_WOOD,
-  dropSandboxGood,
   placeSandboxBuilding,
 } from '../game/sandbox/index.js';
 import { countGroundPiles } from './sandbox-queries.js';

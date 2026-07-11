@@ -15,7 +15,7 @@ import { carrierCarryCapacity } from '../progression.js';
 import { atomicDuration } from '../readviews/animations.js';
 import { manhattan } from '../spatial.js';
 import { deliveredConstructionFraction, nextNeededConstructionGood, recipeOf } from '../stores.js';
-import { BUILD_HOUSE_ATOMIC_ID, PILEUP_ATOMIC_ID, atOrWalk, startAtomic, startPickup } from './actions.js';
+import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, PILEUP_ATOMIC_ID, startAtomic, startPickup } from './actions.js';
 import {
   deliveryTargetFor,
   isPorterBoundToStore,
@@ -25,7 +25,6 @@ import {
   workplaceProductiveIfStaffed,
 } from './ai-supply.js';
 import {
-  type TargetCandidates,
   interactionCell,
   jobAtomics,
   nearestCollectablePileFor,
@@ -35,8 +34,9 @@ import {
   nearestOwnDropFor,
   nearestStoreHolding,
   nearestWorkplaceOutput,
+  type TargetCandidates,
 } from './ai-targets.js';
-import { type SpacingState, claimWorkCell } from './destack.js';
+import { claimWorkCell, type SpacingState } from './destack.js';
 
 // The ECONOMY drives — the work rungs of the planner ladder, in the ladder's priority order:
 // deliver a carried load, run a bound producer's supply→produce→deliver loop, gather (chop/collect),

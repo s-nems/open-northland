@@ -4,10 +4,10 @@ import type { Component } from '../../src/ecs/world.js';
 import {
   type Command,
   type LoggedCommand,
-  Simulation,
-  type TerrainMap,
   rebaseContent,
   replay,
+  Simulation,
+  type TerrainMap,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 

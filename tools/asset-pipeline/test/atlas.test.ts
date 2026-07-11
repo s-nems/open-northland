@@ -8,10 +8,10 @@ import {
   packIndexedBobAtlas,
 } from '../src/decoders/atlas.js';
 import {
+  type Bmd,
   BOB_TYPE_8BIT,
   BOB_TYPE_DOUBLE8BIT,
   BOB_TYPE_EMPTY,
-  type Bmd,
   type BobFrame,
   PACKED_X_SHIFT,
 } from '../src/decoders/bmd.js';

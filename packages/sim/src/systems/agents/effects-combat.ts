@@ -9,22 +9,22 @@ import {
 } from '../../components/index.js';
 import type { AtomicEffect } from '../../core/commands.js';
 import { eventAt } from '../../core/events.js';
-import { type Fixed, ONE, fx } from '../../core/fixed.js';
+import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { grantFightExperience } from '../progression.js';
 import { atomicAnimationName, atomicDuration } from '../readviews/animations.js';
 import {
   ATOMIC_EVENT_CHANNEL,
-  HUNTER_JOB,
-  MEAT_GOOD,
   angryGameTimeOf,
   atomicEventChannelDelta,
   cadaverYieldOf,
+  HUNTER_JOB,
   isAggressiveAnimal,
   isCatchableAnimal,
   isInterruptibleAtomic,
   isProvokableAnimal,
+  MEAT_GOOD,
 } from '../readviews/index.js';
 import { entityNode, manhattan } from '../spatial.js';
 import { addCarry } from './effects-goods.js';

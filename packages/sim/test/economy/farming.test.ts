@@ -2,20 +2,20 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
-  ONE,
-  Simulation,
-  type TerrainMap,
   cellAnchorNode,
   fx,
   halfCellMapFromCells,
   nodeOfPosition,
+  ONE,
+  Simulation,
+  type TerrainMap,
 } from '../../src/index.js';
 import {
-  type SystemContext,
   aiSystem,
   applySow,
   applyWater,
   cropGrowthSystem,
+  type SystemContext,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { clearComponentStores } from '../fixtures/stores.js';

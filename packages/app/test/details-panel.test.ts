@@ -12,15 +12,15 @@ import {
   JOB_GATHERER_WOOD,
 } from '../src/game/sandbox/ids.js';
 import {
+  barTone,
+  buildUnitPanelModel,
   HUMANWINDOW,
   type SettlerPanelModel,
   type StockRow,
   type UnitPanelModel,
   type UnitPanelModelContext,
-  barTone,
-  buildUnitPanelModel,
 } from '../src/hud/details-panel/index.js';
-import { MAX_STOCK_ROWS, layoutDetails, stockSlotRects } from '../src/hud/details-panel/layout.js';
+import { layoutDetails, MAX_STOCK_ROWS, stockSlotRects } from '../src/hud/details-panel/layout.js';
 import { defaultStockTab } from '../src/hud/details-panel/panel.js';
 import { equipmentScene } from '../src/scenes/equipment.js';
 import { createSceneSim } from '../src/scenes/index.js';

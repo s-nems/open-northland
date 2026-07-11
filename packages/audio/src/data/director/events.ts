@@ -1,7 +1,7 @@
 import type { SimEvent, WorldSnapshot } from '@vinland/sim';
 import { computeSpatial, computeSpatialAtNode } from '../spatial.js';
 import type { DirectorInput, EventSound, OneShot, SoundBindings } from '../types.js';
-import { type TilePoint, entityTile } from './snapshot.js';
+import { entityTile, type TilePoint } from './snapshot.js';
 
 /**
  * Sim events → one-shots: resolve each frame event through the {@link SoundBindings}, locate the

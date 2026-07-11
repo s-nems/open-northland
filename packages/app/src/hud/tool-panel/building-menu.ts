@@ -1,4 +1,4 @@
-import { type Rect, contains } from '../geometry.js';
+import { contains, type Rect } from '../geometry.js';
 
 /**
  * The building-menu model — categories, filtering, layout and hit-test (pure, no Pixi/DOM).

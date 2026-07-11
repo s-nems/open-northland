@@ -1,4 +1,4 @@
-import { type CellTerrainMap, type Simulation, components } from '@vinland/sim';
+import { type CellTerrainMap, components, type Simulation } from '@vinland/sim';
 
 /**
  * The committed catalog of viking buildings — the SINGLE SOURCE OF TRUTH that maps a human name to the

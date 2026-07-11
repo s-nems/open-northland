@@ -14,15 +14,15 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
+  cellAnchorNode,
   type Fixed,
+  fx,
+  halfCellMapFromCells,
   ONE,
   Simulation,
   type TerrainMap,
-  cellAnchorNode,
-  fx,
-  halfCellMapFromCells,
 } from '../../src/index.js';
-import { type SystemContext, aiSystem, atomicSystem } from '../../src/systems/index.js';
+import { aiSystem, atomicSystem, type SystemContext } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**

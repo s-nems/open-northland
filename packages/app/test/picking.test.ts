@@ -1,14 +1,14 @@
 import { type Camera, halfCellToScreen, makeElevationField, tileToScreen } from '@vinland/render';
 import { describe, expect, it } from 'vitest';
 import {
-  type FormationUnit,
-  type Tile,
   assignFormation,
   clampTile,
+  type FormationUnit,
   formationTiles,
   pickInRect,
   pickTopAt,
   screenToWorld,
+  type Tile,
   worldToTile,
 } from '../src/view/picking.js';
 

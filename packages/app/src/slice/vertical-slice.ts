@@ -2,11 +2,11 @@ import type { BuildingFootprint, TerrainMapFile } from '@vinland/data';
 import { type SceneTerrain, terrainMapToScene } from '@vinland/render';
 import {
   type CellTerrainMap,
-  Simulation,
-  type TerrainMap,
   components,
   halfCellMapFromCells,
   positionOfNode,
+  Simulation,
+  type TerrainMap,
 } from '@vinland/sim';
 import { HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { PRIMARY_TRIBE } from '../game/rules.js';

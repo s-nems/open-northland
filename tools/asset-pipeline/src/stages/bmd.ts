@@ -5,9 +5,6 @@ import { decodeBmd } from '../decoders/bmd.js';
 import { decodeCifStringArray } from '../decoders/cif.js';
 import {
   type BmdPaletteBinding,
-  type JobBaseGraphicsBinding,
-  type PaletteAlias,
-  type RuleSection,
   cifLinesToSections,
   decodeIni,
   extractBuildingGraphics,
@@ -16,7 +13,10 @@ import {
   extractJobChangeGraphics,
   extractLandscapeGraphics,
   extractPaletteIndex,
+  type JobBaseGraphicsBinding,
+  type PaletteAlias,
   parseIniSections,
+  type RuleSection,
 } from '../decoders/ini.js';
 import { decodePcx } from '../decoders/pcx.js';
 import { encodePng } from '../decoders/png.js';

@@ -5,9 +5,9 @@ import { decodeBmd } from '../decoders/bmd.js';
 import type { BmdPaletteBinding } from '../decoders/ini.js';
 import { decodePcx } from '../decoders/pcx.js';
 import {
-  PLAYER_COLORS,
   buildPlayerLutImage,
   composePlayerPalette,
+  PLAYER_COLORS,
   synthesizePlayerSource,
 } from '../decoders/player-palette.js';
 import { encodePng } from '../decoders/png.js';

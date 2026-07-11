@@ -3,14 +3,14 @@ import * as components from '../../src/components/index.js';
 import type { Component } from '../../src/ecs/world.js';
 import {
   type Command,
+  diffSnapshots,
   HashTrace,
   type LoggedCommand,
+  localizeDivergence,
   type RunReplay,
+  replay,
   Simulation,
   type TerrainMap,
-  diffSnapshots,
-  localizeDivergence,
-  replay,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 

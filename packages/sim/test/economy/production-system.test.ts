@@ -8,8 +8,8 @@ import {
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { ONE, Simulation, fx } from '../../src/index.js';
-import { type SystemContext, productionSystem } from '../../src/systems/index.js';
+import { fx, ONE, Simulation } from '../../src/index.js';
+import { productionSystem, type SystemContext } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**

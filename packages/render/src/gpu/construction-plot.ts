@@ -1,6 +1,6 @@
 import { Container, Graphics } from 'pixi.js';
 import type { ElevationField } from '../data/elevation.js';
-import { TILE_HALF_H, TILE_HALF_W, halfCellToScreen } from '../data/iso.js';
+import { halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../data/iso.js';
 
 /**
  * The CONSTRUCTION-SITE plot — a translucent grey "plac budowy" washed over the ground cells a placed

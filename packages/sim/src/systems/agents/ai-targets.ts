@@ -7,8 +7,8 @@ import {
   Position,
   Resource,
   Stockpile,
-  UnderConstruction,
   stockpileEntries,
+  UnderConstruction,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';

@@ -1,9 +1,9 @@
 import {
+  defaultBindings,
   type EventSound,
   type SoundBindings,
   VIKING_VOICE_POOLS,
   type VoiceClass,
-  defaultBindings,
 } from '@vinland/audio';
 import type { SoundBank } from '@vinland/data';
 import { HARVEST_ATOMIC } from '../catalog/atomics.js';

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  PLAYER_COLORS,
-  PLAYER_COLOR_BANDS,
-  PLAYER_RAMP_START,
   buildPlayerLutImage,
   composePlayerPalette,
+  PLAYER_COLOR_BANDS,
+  PLAYER_COLORS,
+  PLAYER_RAMP_START,
   synthesizePlayerSource,
 } from '../src/decoders/player-palette.js';
 

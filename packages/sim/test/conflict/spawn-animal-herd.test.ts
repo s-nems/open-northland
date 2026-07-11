@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Age, Health, HerdMember, MoveSpeed, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { ONE, Simulation, cellAnchorNode, fx, nodeOfPosition } from '../../src/index.js';
+import { cellAnchorNode, fx, nodeOfPosition, ONE, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { clearComponentStores } from '../fixtures/stores.js';
 
