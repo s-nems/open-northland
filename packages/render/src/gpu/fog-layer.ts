@@ -1,5 +1,5 @@
 import { FOG_STATE, type FogView } from '@vinland/sim';
-import { BufferImageSource, Container, Sprite, Texture } from 'pixi.js';
+import { BufferImageSource, Container, Rectangle, Sprite, Texture } from 'pixi.js';
 import { TILE_HALF_H, TILE_HALF_W } from '../data/iso.js';
 import { type Viewport, visibleTileRange } from '../data/viewport.js';
 
@@ -93,12 +93,14 @@ export class FogLayer {
     // Crop the sampled region to the band (the frame), then stretch it over the band's world box:
     // texel (i, j) centres on cell (minCol+i, minRow+j) — cell centres sit at (2c·HALF_W, r·HALF_H)
     // (even rows; the odd-row stagger is the named approximation above), so the box starts half a
-    // texel before the first centre and spans one full cell pitch per texel.
-    texture.frame.x = 0;
-    texture.frame.y = 0;
+    // texel before the first centre and spans one full cell pitch per texel. `texture.update()` (not
+    // a bare `updateUvs()`) is REQUIRED after the frame mutation: it emits the texture's `update`
+    // event, which is the only signal a bound `dynamic` Sprite re-reads UVs on — without it the
+    // sprite keeps the previous band's UVs and the wash draws a wrong-sized mask slice the moment a
+    // zoom changes the band dimensions (the fog-detaches-from-terrain corruption).
     texture.frame.width = bandW;
     texture.frame.height = bandH;
-    texture.updateUvs();
+    texture.update();
     this.sprite.texture = texture;
     this.sprite.position.set(
       2 * TILE_HALF_W * band.minCol - TILE_HALF_W,
@@ -122,7 +124,10 @@ export class FogLayer {
     this.texture?.destroy(true);
     this.buffer = new Uint8Array(this.texW * this.texH * 4); // RGB stay 0 (black); alpha is written per band
     // LINEAR sampling is the whole trick: one texel per cell, so the GPU's bilinear filter spreads a
-    // state change across a full cell — the soft fog gradient.
+    // state change across a full cell — the soft fog gradient. An explicit `frame` (so `noFrame`
+    // stays false and `texture.update()` cannot clobber the band crop back to the full source) +
+    // `dynamic: true` (so the Sprite subscribes to `update` and re-reads UVs when the band resizes)
+    // are both load-bearing — see the frame-mutation comment in {@link update}.
     this.texture = new Texture({
       source: new BufferImageSource({
         resource: this.buffer,
@@ -130,6 +135,8 @@ export class FogLayer {
         height: this.texH,
         scaleMode: 'linear',
       }),
+      frame: new Rectangle(0, 0, this.texW, this.texH),
+      dynamic: true,
     });
   }
 
