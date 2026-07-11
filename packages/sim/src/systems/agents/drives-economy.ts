@@ -1,4 +1,13 @@
-import { DeliveryFlag, Position, Resource, UnderConstruction, WorkFlag } from '../../components/index.js';
+import {
+  Building,
+  DeliveryFlag,
+  JobAssignment,
+  Position,
+  Resource,
+  Resting,
+  UnderConstruction,
+  WorkFlag,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
@@ -49,8 +58,11 @@ interface Worker {
  * bound store (a warehouse, or a flag pile), else the nearest capable store (the unchanged default
  * for an unbound hauler — the vertical-slice woodcutter/carrier route exactly as before). A carrying
  * settler always delivers first (it must free its hands before it can staff, harvest, or fetch).
- * Returns true even when there is nowhere to deposit — the settler idles this tick with its hands
- * full (a later slice may wait/drop); it must not fall through to empty-handed work.
+ * Returns true even when there is nowhere to deposit: a settler bound to a built workplace walks home
+ * and waits INSIDE it holding the load (the {@link Resting} marker — the render hides it, so no frozen
+ * carry pose at the door), re-emerging to deposit the moment any sink frees room (the replan sweep
+ * clears the marker every tick); an unbound hauler stands where it is. Either way the settler never
+ * falls through to empty-handed work.
  */
 export function planDelivery(
   world: World,
@@ -74,7 +86,18 @@ export function planDelivery(
     settler.tribe,
     load.goodType,
   );
-  if (store === null) return true; // nowhere to deposit — idle this tick, hands stay full
+  if (store === null) {
+    // Nowhere can take the load — wait INSIDE the bound workplace with it (the farmer rung's own
+    // rest-inside seam) instead of standing frozen mid-carry at the door; an unbound hauler has no
+    // house to wait in and just stands. Hands stay full either way.
+    const home = world.tryGet(e, JobAssignment)?.workplace;
+    if (home !== undefined && world.has(home, Building) && world.has(home, Position)) {
+      atOrWalk(world, e, here, interactionCell(world, ctx, terrain, home, here), () =>
+        world.add(e, Resting, { at: home }),
+      );
+    }
+    return true;
+  }
   // A delivery FLAG is a marker, not a sink: walk to the nearest free YARD tile around it and set the load
   // down THERE (so the goods land where the gatherer stands — it physically carries any spill to the next
   // free tile, nothing teleports). Every other store is deposited into from its interaction cell as before.

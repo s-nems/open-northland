@@ -25,6 +25,10 @@ export const WHEAT_YIELD_PER_FIELD = 1;
 /** How far from the farm's anchor its farmers sow, in half-cell NODES (16 nodes ≈ 8 tiles). */
 export const FARM_FIELD_RADIUS = 16;
 
-/** Fields ONE farmer keeps sown at once — the farm's live cap is `× bound field-farmers` (1 farmer
- *  works 5 fields, a pair 10…), so the plot size scales with the crew (user-directed calibration). */
-export const FARM_FIELDS_PER_FARMER = 5;
+/** The crew-independent BASE of the farm's field cap — the live cap is `FARM_FIELDS_BASE +
+ *  FARM_FIELDS_PER_FARMER × bound field-farmers`, so the plot grows SUBLINEARLY with the crew:
+ *  1 farmer works 6 fields, a pair 10, the full 4-man staff 18 (user-directed calibration — a lone
+ *  farmer needed more than 5, but a pair at 12 read as too many). */
+export const FARM_FIELDS_BASE = 2;
+/** The per-farmer SLOPE of the field cap (see {@link FARM_FIELDS_BASE}). */
+export const FARM_FIELDS_PER_FARMER = 4;

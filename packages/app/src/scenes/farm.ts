@@ -3,7 +3,13 @@ import { cellAnchorNode, components, nodeOfPosition } from '@vinland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { TERRAIN_BARREN } from '../catalog/terrain.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../game/rules.js';
-import { BUILDING_FARM, GOOD_WHEAT, JOB_FARMER_SLOT, placeSandboxBuilding } from '../game/sandbox/index.js';
+import {
+  BUILDING_FARM,
+  BUILDING_WAREHOUSE_00,
+  GOOD_WHEAT,
+  JOB_FARMER_SLOT,
+  placeSandboxBuilding,
+} from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -13,17 +19,23 @@ import type { SceneDefinition } from './types.js';
  * the `biocanplanton` gate), WATER each field with the can (the growth GATE: an unwatered field stands
  * bare), REAP each ripe field with the scythe (the cut wheat drops as a sheaf where the field stood)
  * and CARRY every sheaf home into the farm's own wheat-only store (`logicstock 4 25 0`), stepping
- * INSIDE the farm for the deposit. The headless half asserts the loop closes (fields exist, on grass
- * alone, the farmers are bound, wheat lands in the farm store); the browser half is where a human
- * judges the animations (sowing / watering / scythe / the grain carry / the store visit) and the
- * farm's panel (the "Farma" title, the fields Produkcja section, the compact tab-less Magazyn with
- * the amount/capacity row).
+ * INSIDE the farm for the deposit. A WAREHOUSE stands beside the farm on the same sand: once the
+ * farm's 25-slot fills, the delivery rung overflows further sheaves there instead of leaving a
+ * farmer frozen mid-carry at the door (the user-reported stuck carrier). The headless half asserts
+ * the loop closes (fields exist, on grass alone, the farmers are bound, wheat lands in the farm
+ * store); the browser half is where a human judges the animations (sowing / watering / scythe / the
+ * grain carry / the store visit) and the farm's panel (the "Farma" title, the fields Produkcja
+ * section, the compact tab-less Magazyn with the amount/capacity row).
  */
 
 const MAP_W = 40;
 const MAP_H = 24;
 const FARM_X = 20;
 const FARM_Y = 12;
+/** The overflow WAREHOUSE beside the farm (same sand patch, two cells of yard between the walls):
+ *  where the farmers carry the wheat once the farm's own 25-slot store is full. */
+const WAREHOUSE_X = 25;
+const WAREHOUSE_Y = 12;
 /** Two farmers read clearly (the original farm employs up to four — `logicworker 18 4`). */
 const FARMERS = 2;
 /**
@@ -36,10 +48,10 @@ const RUN_TICKS = 3600;
  *  ≠ 1: `cameraFor` only centres on the scene's settlers at a non-1 zoom (zoom 1 keeps the fixed
  *  origin offset), and this scene's action is at the map's centre. */
 const INITIAL_ZOOM = 0.8;
-/** A BARREN (sand) patch the farm STANDS ON — the user-requested proof of the grass-only sowing gate:
- *  the farmers must walk OFF the sand to the surrounding grass to sow, so the fields ring the tan
- *  patch and never dot it (the original's `biocanplanton` belongs to `land` alone). */
-const BARREN = { x0: 17, x1: 23, y0: 9, y1: 15 } as const;
+/** A BARREN (sand) patch the farm AND the warehouse STAND ON — the user-requested proof of the
+ *  grass-only sowing gate: the farmers must walk OFF the sand to the surrounding grass to sow, so the
+ *  fields ring the tan patch and never dot it (the original's `biocanplanton` belongs to `land` alone). */
+const BARREN = { x0: 17, x1: 27, y0: 9, y1: 15 } as const;
 
 const { Building, Crop, JobAssignment, Position, Settler, Stockpile } = components;
 
@@ -68,6 +80,7 @@ function farmDoorNode(sim: Simulation): { hx: number; hy: number } {
 
 function build(sim: Simulation): void {
   placeSandboxBuilding(sim, BUILDING_FARM, FARM_X, FARM_Y);
+  placeSandboxBuilding(sim, BUILDING_WAREHOUSE_00, WAREHOUSE_X, WAREHOUSE_Y);
   // The farmers spawn at the door (node coords — the raw command, not the tile helper, so the door
   // offset lands exactly); the adopt pass staffs them, then the field loop takes over.
   const door = farmDoorNode(sim);
@@ -95,25 +108,27 @@ export const farmScene: SceneDefinition = {
   id: 'farm',
   title: 'Farma — uprawa zboża',
   summary:
-    'Farma stoi na piasku — farmerzy wychodzą na okoliczną trawę siać (zboże rośnie tylko na trawie). ' +
-    'Pole rusza z miejsca DOPIERO po podlaniu konewką; dojrzałe łany ścinają kosą i znoszą snopki do ' +
-    'magazynu farmy (wchodząc do środka na czas odłożenia). Dzielą się pracą — każdy inne pole.',
+    'Farma i magazyn stoją na piasku — farmerzy wychodzą na okoliczną trawę siać (zboże rośnie tylko ' +
+    'na trawie). Pole rusza z miejsca DOPIERO po podlaniu konewką; dojrzałe łany ścinają kosą i znoszą ' +
+    'snopki do magazynu farmy (wchodząc do środka na czas odłożenia), a gdy farma się zapełni — do ' +
+    'magazynu obok. Dzielą się pracą — każdy inne pole.',
   seed: 11,
   terrain: farmTerrain(),
   build,
   runTicks: RUN_TICKS,
   initialZoom: INITIAL_ZOOM,
   checklist: [
-    'Farma STOI NA PIASKU — farmerzy wychodzą z piaskowej łachy na okoliczną TRAWĘ siać; na samym piasku nie powstaje żadne pole.',
+    'Farma i MAGAZYN STOJĄ NA PIASKU — farmerzy wychodzą z piaskowej łachy na okoliczną TRAWĘ siać; na samym piasku nie powstaje żadne pole.',
     'Pola są minimalnie rozrzucone (nie sklejone heks przy heksie) i wieńcem otaczają piaskową łachę.',
     'Farmerzy DZIELĄ SIĘ pracą: każdy idzie do INNEGO pola/snopka, nie chodzą jeden przy drugim do tego samego celu.',
     'Świeżo posiane pole jest niewidoczne/gołe (oryginał nie rysuje stanu 1) — ŻADNEGO zielonego kwadratu; kiełki widać od 2. stadium.',
     'KAŻDE stadium wzrostu wymaga podlania: farmer krąży po polach z konewką (praca farmera napędza produkcję), a niepodlane pole stoi w miejscu.',
-    'Liczba pól skaluje się z załogą: 2 farmerów = do 10 pól (5 na farmera).',
+    'Liczba pól skaluje się z załogą PODLINIOWO (baza 2 + 4 na farmera): 1 farmer = 6 pól, 2 farmerów = 10.',
     'Farmer bez zajęcia NIE sterczy pod drzwiami — wchodzi do farmy (znika) i wychodzi, gdy tylko któreś pole zrobi się spragnione.',
     'Dojrzałe pole farmer ŚCINA KOSĄ (animacja koszenia); po ścięciu na ziemi zostaje snopek, a pole znika (można siać ponownie).',
     'Farmer PODNOSI snopek, NIESIE go do farmy i ZNIKA w środku na ~1 s (wchodzi odłożyć zboże), po czym wychodzi; licznik magazynu rośnie.',
     'Panel farmy (kliknij budynek): tytuł „Farma", sekcja Produkcja z ikoną zboża i licznikami Posiane/Rosnące/Dojrzałe, mały Magazyn BEZ zakładek z jednym wierszem zboża w formacie „ilość / pojemność" (x.0 / 25.0).',
+    'Gdy magazyn farmy dobije do 25/25, farmer niesie kolejne snopki do MAGAZYNU obok (jego licznik rośnie) — nikt nie zastyga ze snopkiem pod drzwiami; gdyby i tam brakło miejsca, farmer czeka ze snopkiem W ŚRODKU farmy.',
   ],
   checks: [
     {

@@ -25,8 +25,8 @@ const { Building, Carrying, Crop, GroundDrop, JobAssignment, Position, Resource,
 /**
  * FIELD FARMING (packages/sim/src/systems/economy/farming.ts + agents/drives-farming.ts): the farm's
  * sow→grow→water→reap→carry loop. Fixture: good 6 = wheat (atomics plant 34 / cultivate 35 / harvest 29
- * — the original's own ids; farming: 5 stages × 10 ticks, yield 1, radius 8, max 4 fields), job 18 =
- * farmer, building 5 = farm (4 farmer slots, wheat-only store cap 25, produces wheat, NO recipe).
+ * — the original's own ids; farming: 5 stages × 10 ticks, yield 1, radius 8, field cap 2 + 4/farmer),
+ * job 18 = farmer, building 5 = farm (4 farmer slots, wheat-only store cap 25, produces wheat, NO recipe).
  * Unit tests pin the growth/effect mechanics; planner passes pin each drive decision; the end-to-end
  * run proves wheat lands in the farm's own store, deterministically.
  */
@@ -43,8 +43,11 @@ const PICKUP_ATOMIC = 22;
 // The fixture's farming block (keep in sync with fixtures/content.ts).
 const STAGES = 5;
 const TICKS_PER_STAGE = 10;
-/** `fieldsPerFarmer` — a farm's live cap is this × its bound field-farmers (ONE farmer ⇒ 4). */
+/** The fixture's field-cap formula: `fieldsBase + fieldsPerFarmer × bound field-farmers`. */
+const FIELDS_BASE = 2;
 const FIELDS_PER_FARMER = 4;
+const SOLO_FIELD_CAP = FIELDS_BASE + FIELDS_PER_FARMER; // 6
+const PAIR_FIELD_CAP = FIELDS_BASE + FIELDS_PER_FARMER * 2; // 10 — sublinear, not 2× the solo cap
 
 beforeEach(() => {
   // Component stores are module-level singletons — clear the WHOLE namespace between sims (AGENTS.md).
@@ -227,13 +230,15 @@ describe('planFarmer — the drive ladder', () => {
   it('waters a thirsty field once the roster is at its cap (the can circles between sowings)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
     const farm = farmAt(sim, 4, 4);
-    // A full one-farmer roster (cap 4), the underfoot field thirsty — the sow branch is closed, so
-    // the drive reaches for the can. (Under the cap it sows FIRST — per-stage watering keeps some
-    // field thirsty almost always, and a water-first farmer would never expand the plot.)
+    // A full one-farmer roster (cap 2 + 4 = 6), the underfoot field thirsty — the sow branch is
+    // closed, so the drive reaches for the can. (Under the cap it sows FIRST — per-stage watering
+    // keeps some field thirsty almost always, and a water-first farmer would never expand the plot.)
     const field = fieldAt(sim, farm, 4, 4);
     fieldAt(sim, farm, 3, 3, { watered: true });
     fieldAt(sim, farm, 5, 3, { watered: true });
     fieldAt(sim, farm, 3, 5, { watered: true });
+    fieldAt(sim, farm, 2, 4, { watered: true });
+    fieldAt(sim, farm, 6, 4, { watered: true });
     const farmer = farmerAt(sim, 4, 4, farm);
 
     aiSystem(sim.world, ctxOf(sim));
@@ -281,10 +286,10 @@ describe('planFarmer — the drive ladder', () => {
 
     const fields = [...sim.world.query(Crop)];
     expect(fields.length).toBeGreaterThan(0);
-    expect(fields.length).toBeLessThanOrEqual(FIELDS_PER_FARMER);
+    expect(fields.length).toBeLessThanOrEqual(SOLO_FIELD_CAP);
   });
 
-  it('the field roster SCALES with the crew: a second farmer doubles the sow cap', () => {
+  it('the field roster SCALES with the crew: a second farmer raises the sow cap sublinearly', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 12) });
     const farm = farmAt(sim, 6, 6);
     farmerAt(sim, 6, 6, farm);
@@ -298,8 +303,8 @@ describe('planFarmer — the drive ladder', () => {
       for (const _e of sim.world.query(Crop)) fields++;
       if (fields > peak) peak = fields;
     }
-    expect(peak).toBeGreaterThan(FIELDS_PER_FARMER); // beyond a lone farmer's plot…
-    expect(peak).toBeLessThanOrEqual(FIELDS_PER_FARMER * 2); // …never past the pair's
+    expect(peak).toBeGreaterThan(SOLO_FIELD_CAP); // beyond a lone farmer's plot…
+    expect(peak).toBeLessThanOrEqual(PAIR_FIELD_CAP); // …never past the pair's (base counted ONCE)
   });
 
   it('an idle farmer waits INSIDE the farm (Resting) and steps back out when a field thirsts', () => {
@@ -311,6 +316,8 @@ describe('planFarmer — the drive ladder', () => {
       fieldAt(sim, farm, 5, 3, { watered: true }),
       fieldAt(sim, farm, 3, 5, { watered: true }),
       fieldAt(sim, farm, 5, 5, { watered: true }),
+      fieldAt(sim, farm, 2, 4, { watered: true }),
+      fieldAt(sim, farm, 6, 4, { watered: true }),
     ];
     const farmer = farmerAt(sim, 4, 4, farm); // standing at the farm's own cell (the door)
     aiSystem(sim.world, ctxOf(sim));
@@ -484,6 +491,8 @@ describe('store-full pause and overflow', () => {
     fieldAt(sim, farm, 3, 3, { stage: STAGES });
     fieldAt(sim, farm, 5, 3, { stage: STAGES });
     fieldAt(sim, farm, 3, 5, { stage: STAGES });
+    fieldAt(sim, farm, 2, 4, { stage: STAGES });
+    fieldAt(sim, farm, 6, 4, { stage: STAGES });
     const farmer = farmerAt(sim, 4, 4, farm);
     return { farm, farmer };
   }
@@ -498,7 +507,25 @@ describe('store-full pause and overflow', () => {
     expect(sim.world.tryGet(farmer, components.CurrentAtomic)).toBeUndefined();
     expect(sim.world.tryGet(farmer, components.MoveGoal)).toBeUndefined();
     expect(sim.world.has(farmer, components.Resting)).toBe(true);
-    expect([...sim.world.query(Crop)]).toHaveLength(FIELDS_PER_FARMER); // the fields stand ripe, unreaped
+    expect([...sim.world.query(Crop)]).toHaveLength(SOLO_FIELD_CAP); // the fields stand ripe, unreaped
+  });
+
+  it('a farmer stuck with a load (every sink full) waits INSIDE the farm holding it, then deposits', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
+    const { farm, farmer } = fullFarmWorld(sim);
+    sim.world.add(farmer, Carrying, { goodType: WHEAT, amount: 1 });
+
+    aiSystem(sim.world, ctxOf(sim));
+    // Nowhere to put the sheaf — the farmer steps inside with it instead of freezing at the door.
+    expect(sim.world.has(farmer, components.Resting)).toBe(true);
+    expect(sim.world.tryGet(farmer, components.CurrentAtomic)).toBeUndefined();
+    expect(sim.world.get(farmer, Carrying).amount).toBe(1); // the load stays in hand
+
+    // Room frees (the player spends a unit) → the very next plan walks back out and deposits.
+    sim.world.get(farm, Stockpile).amounts.set(WHEAT, FARM_WHEAT_CAP - 1);
+    aiSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(farmer, components.Resting)).toBe(false);
+    expect(sim.world.get(farmer, components.CurrentAtomic).effect).toEqual({ kind: 'pileup', store: farm });
   });
 
   it('a granary with room re-opens the scythe and receives the overflow', () => {
