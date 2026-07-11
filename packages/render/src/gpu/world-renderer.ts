@@ -109,6 +109,8 @@ export class WorldRenderer {
   private readonly textureCache = new TextureCache();
   private readonly terrain = new TerrainLayer();
   private readonly mapObjects: MapObjectLayer;
+  /** Entities the static map-object layer draws instead of the pool (see {@link setStaticallyDrawnRefs}). */
+  private staticDrawnRefs?: ReadonlySet<number>;
   private readonly pool: SpritePool;
   /** The build-mode dim wash over non-buildable tiles (world-space, BELOW the sprites). */
   private readonly placementOverlay: PlacementOverlayLayer;
@@ -241,6 +243,26 @@ export class WorldRenderer {
   }
 
   /**
+   * Remove ONE placed landscape object from the retained static layer — the `?map=` entry's handover
+   * seam: the moment a virgin resource node is first worked (felled/mined/picked), its built-once
+   * static quad/sprite comes out and the live sprite pool draws the entity from then on (shrinking
+   * levels, vanishing on destroy). A no-op for an object the layer doesn't hold.
+   */
+  removeMapObject(obj: MapObjectSprite): void {
+    this.mapObjects.remove(obj);
+  }
+
+  /**
+   * Name the entities the retained static map-object layer draws instead of the sprite pool (a decoded
+   * map's virgin resource nodes). The pool's per-frame scene build skips them entirely; the `?map=`
+   * entry shrinks the set as nodes are first worked (see {@link removeMapObject}). The renderer holds
+   * the REFERENCE — the caller re-passes (or mutates and re-passes) the same set as it evolves.
+   */
+  setStaticallyDrawnRefs(refs: ReadonlySet<number>): void {
+    this.staticDrawnRefs = refs;
+  }
+
+  /**
    * Draw ONE frame: apply the camera, cull the terrain, advance the map objects, reconcile the sprite
    * pool to the (culled, depth-sorted) list, draw the selection rings, repaint the HUD, and render once.
    * No allocation in the steady state — the sub-layers update in place; only a first-seen entity or a
@@ -290,6 +312,7 @@ export class WorldRenderer {
       screenH: this.app.screen.height,
       elevation: this.elevation,
       alpha,
+      ...(this.staticDrawnRefs !== undefined ? { staticRefs: this.staticDrawnRefs } : {}),
     });
     // Selection rings read the pool's just-computed per-entity bounds + drawn (lerped, lifted) anchors,
     // so a building's marker sizes to its actual sprite footprint and a moving unit's ring glides with

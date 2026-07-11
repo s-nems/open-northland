@@ -67,6 +67,9 @@ export interface PoolFrame {
   /** Fixed-timestep interpolation fraction [0,1]: draw each entity `alpha` of the way between its last
    *  two tick anchors. `1` draws raw tick positions (the static `?shot` entry). */
   readonly alpha: number;
+  /** Entities the retained static map-object layer draws instead (a decoded map's virgin resource
+   *  nodes) — skipped by the scene build, so the pool never touches them. */
+  readonly staticRefs?: ReadonlySet<number>;
 }
 
 export class SpritePool {
@@ -95,7 +98,7 @@ export class SpritePool {
   reconcile(frame: PoolFrame): void {
     // ONE pass over the snapshot yields both the culled draw list and the pre-cull liveness set the
     // destroy step needs — classifying every entity a second time per frame would double the scan.
-    const scene = collectSpriteScene(frame.snapshot, frame.viewport, frame.elevation);
+    const scene = collectSpriteScene(frame.snapshot, frame.viewport, frame.elevation, frame.staticRefs);
     this.frameId++;
     for (let i = 0; i < scene.items.length; i++) {
       const item = scene.items[i];

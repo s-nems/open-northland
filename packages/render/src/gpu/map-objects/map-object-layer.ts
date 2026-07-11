@@ -61,6 +61,8 @@ export class MapObjectLayer {
   private decorChunks: DecorChunk[] = [];
   /** Tall map objects (trees, stones) in AABB-culled blocks; sprites minted lazily on first view. */
   private tallBlocks: TallBlock[] = [];
+  /** Removal handle per TALL object — which block holds it (see {@link remove}). */
+  private tallBlockByObject = new Map<MapObjectSprite, TallBlock>();
   /** The animation tick the tall-object frames were last refreshed for. */
   private lastAnimTick = -1;
 
@@ -114,14 +116,52 @@ export class MapObjectLayer {
         maxX = Math.max(maxX, obj.x);
         maxY = Math.max(maxY, obj.y);
       }
-      this.tallBlocks.push({
+      const tall: TallBlock = {
         minX,
         minY,
         maxX,
         maxY,
         objects: block.map((obj) => ({ obj, sprite: null, attached: false })),
         attachedCount: 0,
-      });
+      };
+      this.tallBlocks.push(tall);
+      for (const obj of block) this.tallBlockByObject.set(obj, tall);
+    }
+  }
+
+  /**
+   * Take ONE placed object out of the built layers — the `?map=` handover seam: the moment a virgin
+   * resource node is first worked, its static drawing is removed here and the live sprite pool draws
+   * the entity from then on. A TALL object's pooled sprite is detached + destroyed and its member
+   * dropped from the block; a DECOR object's quad is zeroed in place (degenerate = invisible; the
+   * batch never rebuilds) and, in an animated batch, its slot nulled so the play-head rewrite cannot
+   * restore it. O(block members) worst case, and only on the rare first-touch event — never per frame.
+   * Unknown objects are a no-op (a placement whose atlas never resolved has nothing drawn).
+   */
+  remove(obj: MapObjectSprite): void {
+    const block = this.tallBlockByObject.get(obj);
+    if (block !== undefined) {
+      this.tallBlockByObject.delete(obj);
+      const i = block.objects.findIndex((po) => po.obj === obj);
+      if (i >= 0) {
+        const po = block.objects[i] as PooledObject;
+        if (po.attached && po.sprite !== null) {
+          this.spriteLayer.removeChild(po.sprite);
+          block.attachedCount--;
+        }
+        po.sprite?.destroy();
+        block.objects.splice(i, 1);
+      }
+      return;
+    }
+    for (const chunk of this.decorChunks) {
+      const quad = chunk.quads.get(obj);
+      if (quad === undefined) continue;
+      chunk.quads.delete(obj);
+      quad.positions.fill(0, quad.quadIndex * 8, quad.quadIndex * 8 + 8); // degenerate quad → invisible
+      quad.geometry.getBuffer('aPosition').update();
+      if (quad.animated !== null) quad.animated.objects[quad.quadIndex] = null; // rewrite loop skips it
+      return;
     }
   }
 
@@ -141,7 +181,8 @@ export class MapObjectLayer {
       chunk.lastWrittenTick = tick;
       for (const batch of chunk.animated) {
         for (let q = 0; q < batch.objects.length; q++) {
-          const obj = batch.objects[q] as MapObjectSprite;
+          const obj = batch.objects[q];
+          if (obj === null || obj === undefined) continue; // removed (handed to the sprite pool) — stays zeroed
           const frame = objectFrameAt(obj, tick);
           if (frame !== undefined) {
             writeObjectQuad(batch.positions, batch.uvs, q, obj, frame, batch.pageW, batch.pageH);
@@ -229,6 +270,7 @@ export class MapObjectLayer {
       for (const po of block.objects) po.sprite?.destroy();
     }
     this.tallBlocks = [];
+    this.tallBlockByObject.clear();
     this.lastAnimTick = -1;
   }
 }

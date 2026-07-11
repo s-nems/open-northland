@@ -83,7 +83,20 @@ export function harvestFromNode(
   // harvest empty-handed, so `addCarry` never throws today; this keeps the old throw-safe ordering anyway.
   res.remaining -= took;
   world.touch(node); // in-place write on a snapshot-cached scenery entity — log it (World.touch doc)
-  if (res.remaining <= 0) depleteNode(world, ctx, node, res.goodType); // last unit chipped — the node is gone
+  if (res.remaining <= 0) {
+    depleteNode(world, ctx, node, res.goodType); // last unit chipped — the node is gone
+  } else if (world.has(node, MineDeposit)) {
+    // A surviving deposit shrank a unit — announce it (`resourceMined`) so the map view hands the node
+    // from its static decor layer to the live sprite pool (and audio can hook a chip effect).
+    const pos = world.get(node, Position);
+    ctx.events.emit({
+      kind: 'resourceMined',
+      node,
+      goodType: res.goodType,
+      remaining: res.remaining,
+      at: eventAt(pos.x, pos.y),
+    });
+  }
 }
 
 /**

@@ -84,6 +84,13 @@ export interface GameViewDeps {
   readonly elevation?: ElevationField;
   /** Extra per-frame hook after the standard updates (e.g. the scene checklist overlay's tick). */
   readonly onFrame?: (snapshot: WorldSnapshot) => void;
+  /**
+   * Per-frame hook fed EVERY sim event the frame's step(s) produced, invoked BEFORE the renderer draws
+   * — the `?map=` entry's static→dynamic resource handover reacts to `resourceFelled`/`resourceMined`/
+   * `resourceDepleted` here, so the static sprite is gone the same frame the pool starts drawing the
+   * node. Called only on frames that stepped (no events otherwise).
+   */
+  readonly onEvents?: (events: readonly SimEvent[]) => void;
 }
 
 /** Tiles beyond the visible band the overlay also probes, so its edge never shows during a pan. */
@@ -451,6 +458,9 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // The sepia pause wash mirrors the loop's pause flag EVERY frame (an idempotent visibility set), so
     // any future pauser — auto-pause on blur, a modal — browns the map without knowing about the renderer.
     renderer.setPaused(control.paused);
+    // Hand the frame's events to the entry BEFORE anything draws — the map entry's static→dynamic
+    // resource handover must release a first-worked node in the same frame the pool starts drawing it.
+    if (frameEvents.length > 0) deps.onEvents?.(frameEvents);
     const snap0 = performance.now();
     const snap = sim.snapshot();
     // CPU split #2: the snapshot clone (the plain-cloned world the renderer + HUD read).

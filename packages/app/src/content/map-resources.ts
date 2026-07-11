@@ -50,12 +50,15 @@ export function harvestGoodByObjectName(ir: ContentIr): ReadonlyMap<string, Harv
 
 /** One harvestable node a decoded map defines: the `goodId` it yields, its variant `gfxIndex`, at a
  *  HALF-CELL anchor `(hx, hy)` (the `map.objects` lattice is the sim's 2W×2H node grid verbatim — the
- *  same lane `collision.ts` reads). */
+ *  same lane `collision.ts` reads). `placement` is the placement ORDINAL (triplet index) in
+ *  `objects.placements` — the join key back to the static layer's drawn sprite for the same placement
+ *  (the `?map=` entry's static→dynamic handover). */
 export interface MapResourceSpawn {
   readonly goodId: string;
   readonly gfxIndex: number;
   readonly hx: number;
   readonly hy: number;
+  readonly placement: number;
 }
 
 /**
@@ -81,25 +84,8 @@ export function mapResourceSpawns(
     const name = types[typeIndex];
     const ref = name !== undefined ? goodByName.get(name) : undefined;
     if (ref !== undefined && spawnableGoodIds.has(ref.goodId)) {
-      out.push({ goodId: ref.goodId, gfxIndex: ref.gfxIndex, hx, hy });
+      out.push({ goodId: ref.goodId, gfxIndex: ref.gfxIndex, hx, hy, placement: i / 3 });
     }
-  }
-  return out;
-}
-
-/**
- * The set of object `EditName`s a decoded map draws that BECOME sim resources (their good has a gatherer
- * trade) — so the static map-object decor layer can skip them: the sim renders + depletes those objects
- * instead (a felled tree's sprite then vanishes with its `Resource`, rather than a stale static sprite
- * standing over an empty tile). Every other object stays static decor. Pure.
- */
-export function spawnedResourceObjectNames(
-  ir: ContentIr,
-  spawnableGoodIds: ReadonlySet<string>,
-): Set<string> {
-  const out = new Set<string>();
-  for (const [name, ref] of harvestGoodByObjectName(ir)) {
-    if (spawnableGoodIds.has(ref.goodId)) out.add(name);
   }
   return out;
 }

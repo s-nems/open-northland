@@ -136,17 +136,22 @@ export async function loadCombatBones(
  * A type that can't resolve (no record, no atlas, no usable frame) is counted + skipped — a partial
  * `content/` must degrade, not abort. Placements resolve in file order (deterministic).
  *
- * `skipTypes` names the object EditNames the caller spawns as real `Resource` sim nodes instead (trees/
- * ore/stone): those are omitted from this static decor layer so the sim draws + depletes them (a felled
- * tree's sprite then vanishes with its `Resource`), while every other object stays static decor.
+ * Returns the sprites PLUS a placement-ordinal → sprite map (`byPlacement`, keyed by triplet index in
+ * `objects.placements`): the join the `?map=` entry uses to hand a first-worked resource node's static
+ * sprite over to the live sim pool (`WorldRenderer.removeMapObject`). Every placement — harvestable or
+ * decor — draws here; the sim pool skips the virgin harvestables via the static-refs set instead.
  */
+export interface LoadedMapObjects {
+  readonly sprites: MapObjectSprite[];
+  readonly byPlacement: ReadonlyMap<number, MapObjectSprite>;
+}
+
 export async function loadMapObjects(
   objects: MapObjectsData,
   ir: ContentIr,
   elevation?: ElevationField,
   brightness?: BrightnessField,
-  skipTypes?: ReadonlySet<string>,
-): Promise<MapObjectSprite[]> {
+): Promise<LoadedMapObjects> {
   const recordByName = new Map<string, LandscapeGfxRow>();
   for (const row of ir.landscapeGfx ?? []) {
     if (row.editName !== undefined && !recordByName.has(row.editName)) {
@@ -200,18 +205,13 @@ export async function loadMapObjects(
     });
   });
 
-  // Object types the caller spawns as sim resources instead (trees/ore/stone) are skipped here so the
-  // sim draws + depletes them — precomputed per typeIndex so the hot placement loop is a plain array read,
-  // not a Set lookup per placement (a map has ~10^5 placements).
-  const drawnByType = objects.types.map((name) => skipTypes === undefined || !skipTypes.has(name));
-
   const out: MapObjectSprite[] = [];
+  const byPlacement = new Map<number, MapObjectSprite>();
   let skipped = 0;
   for (let i = 0; i + 2 < objects.placements.length; i += 3) {
     const hx = objects.placements[i] as number;
     const hy = objects.placements[i + 1] as number;
     const typeIndex = objects.placements[i + 2] as number;
-    if (drawnByType[typeIndex] === false) continue; // spawned as a sim resource — the sim renders it
     const states = resolved[typeIndex] ?? [];
     // `lmlv` counts up from the LOWEST state (see stateIndexForLevel); absent lane → the full first list.
     const level = objects.levels?.[i / 3] ?? states.length;
@@ -222,6 +222,7 @@ export async function loadMapObjects(
       continue;
     }
     const screen = halfCellToScreen(hx, hy);
+    const placement = i / 3; // the triplet ordinal — the handover join key (see LoadedMapObjects)
     // The node sampler owns the half-cell→cell convention (a cell-centre node lifts exactly like
     // its ground-mesh vertex, so trees sit ON the warped ground). The lift is the DRAW offset only;
     // `y` (the feet anchor + depth key) stays pre-lift so objects occlude by map row.
@@ -230,7 +231,7 @@ export async function loadMapObjects(
     // with the ground's plane (measured: mines/stones/grass track it; trees stay full-bright, so the
     // tree logic types omit the field — source basis "brightness").
     const shade = brightness?.shaded && type.shaded ? brightness : undefined;
-    out.push({
+    const sprite: MapObjectSprite = {
       x: screen.x,
       y: screen.y,
       source: type.source,
@@ -252,12 +253,14 @@ export async function loadMapObjects(
       // (a = alphaByte·(256−shade)/256), while we shade via the `brightness` COLOUR multiplier below
       // with the baked alpha unchanged — identical at neutral shade, divergent on embr-shaded cells.
       ...(shade !== undefined ? { brightness: shade.brightnessAt(hx / 2, hy / 2) } : {}),
-    });
+    };
+    out.push(sprite);
+    byPlacement.set(placement, sprite);
   }
   if (skipped > 0) {
     console.warn(
       `loadMapObjects: ${skipped} of ${objects.placements.length / 3} placements had no resolvable graphics`,
     );
   }
-  return out;
+  return { sprites: out, byPlacement };
 }
