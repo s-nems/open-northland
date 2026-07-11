@@ -146,12 +146,16 @@ export const separationSystem: System = (world, ctx) => {
   const postIndex = new NodeBuckets(world, canonicalById(posts));
   const moverIndex = new NodeBuckets(world, movers);
 
-  // The tick's pre-separation mover positions: soft pushes read THIS snapshot, so a pair's two
-  // halves are computed from the same state regardless of processing order.
-  const before = new Map<Entity, { x: Fixed; y: Fixed }>();
+  // The tick's pre-separation mover snapshot — positions AND headings — so a pair's two halves are
+  // computed from the same state regardless of processing order. Headings MUST come from the
+  // snapshot, not a live component read: the grind bookkeeping below can drop an earlier-processed
+  // mover's PathFollow mid-loop (a re-route/stand-down in a converging crowd), so a live read on a
+  // later mover's neighbour would throw — and would also make the pair split order-dependent.
+  const before = new Map<Entity, { x: Fixed; y: Fixed; hx: Fixed; hy: Fixed }>();
   for (const e of movers) {
     const p = world.get(e, Position);
-    before.set(e, { x: p.x, y: p.y });
+    const f = world.get(e, PathFollow); // present by the movers query above
+    before.set(e, { x: p.x, y: p.y, hx: f.hx, hy: f.hy });
   }
 
   // Lazy shared per-tick state: zones/overlay are built only if some pair actually interacts.
@@ -228,11 +232,10 @@ export const separationSystem: System = (world, ctx) => {
     // {@link CONVOY_ALIGNMENT_MIN}) resolves as a CONVOY — the follower alone brakes along its own
     // heading and falls in line behind the leader, with no lateral component and no counter-shove
     // on the leader — while crossing/head-on traffic keeps the radial split (half the overlap each,
-    // the other half being the neighbour's own pass). Both read only the tick's snapshot positions
-    // and the post-movement headings, so the split is order-independent either way. The total is
+    // the other half being the neighbour's own pass). Both read only the tick's pre-separation
+    // snapshot (positions + headings), so the split is order-independent either way. The total is
     // then capped.
     const startW = toWorld(start.x, start.y);
-    const follow = world.get(e, PathFollow);
     let pushX = ZERO;
     let pushY = ZERO;
     for (const n of nearMovers) {
@@ -242,21 +245,20 @@ export const separationSystem: System = (world, ctx) => {
       if (dist >= UNIT_SEPARATION_RADIUS) continue;
       const half = fx.div(fx.sub(UNIT_SEPARATION_RADIUS, dist), fx.fromInt(2));
       const otherW = toWorld(other.x, other.y);
-      const nFollow = world.get(n, PathFollow);
       // (0,0) is the "no established heading" sentinel — such a pair can't be classified as a
       // convoy and falls through to the radial split.
-      if ((follow.hx !== ZERO || follow.hy !== ZERO) && (nFollow.hx !== ZERO || nFollow.hy !== ZERO)) {
-        const alignment = fx.add(fx.mul(follow.hx, nFollow.hx), fx.mul(follow.hy, nFollow.hy));
+      if ((start.hx !== ZERO || start.hy !== ZERO) && (other.hx !== ZERO || other.hy !== ZERO)) {
+        const alignment = fx.add(fx.mul(start.hx, other.hx), fx.mul(start.hy, other.hy));
         if (alignment >= CONVOY_ALIGNMENT_MIN) {
           const ahead = fx.add(
-            fx.mul(fx.sub(otherW.x, startW.x), follow.hx),
-            fx.mul(fx.sub(otherW.y, startW.y), follow.hy),
+            fx.mul(fx.sub(otherW.x, startW.x), start.hx),
+            fx.mul(fx.sub(otherW.y, startW.y), start.hy),
           );
           // Exactly abreast (or stacked): the higher id yields — the keeper convention, a named
           // pick that seeds the fore/aft order the geometric test then keeps stable.
           if (ahead > ZERO || (ahead === ZERO && e > n)) {
-            pushX = fx.sub(pushX, fx.mul(follow.hx, half));
-            pushY = fx.sub(pushY, fx.mul(follow.hy, half));
+            pushX = fx.sub(pushX, fx.mul(start.hx, half));
+            pushY = fx.sub(pushY, fx.mul(start.hy, half));
           }
           continue; // the leader takes no counter-shove from its own follower
         }
