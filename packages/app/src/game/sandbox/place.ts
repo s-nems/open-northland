@@ -13,7 +13,7 @@ import {
 import { resolveVikingBuilding } from '../../catalog/buildings.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import type { ContentIr } from '../../content/ir.js';
-import { mapResourceSpawns } from '../../content/map-resources.js';
+import { mapResourceSpawns, simResourceObjectNames } from '../../content/map-resources.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../rules.js';
 import { GATHERERS, type GathererSpec, weaponEquipmentFor } from './ids.js';
 
@@ -149,6 +149,15 @@ function placeResourceDirect(sim: Simulation, spec: ResourceNodeSpec, what: stri
   if (systems.createResourceNode(sim.world, sim.content, spec) === null) {
     throw new Error(`${what}: missing resource footprint for good ${spec.good}`);
   }
+}
+
+/**
+ * The object EditNames this app spawns as sim resources — the set the STATIC collision join must skip
+ * ({@link import('../../content/collision.js').buildCollisionTerrain} `skipObjectNames`), so a felled
+ * node's blocking vanishes with its dynamic footprint instead of being baked into the grid forever.
+ */
+export function mapResourceObjectNames(ir: ContentIr): ReadonlySet<string> {
+  return simResourceObjectNames(ir, SPAWNABLE_GOOD_IDS);
 }
 
 /** What {@link spawnMapResources} made: the node count plus each spawned ENTITY's placement ordinal in

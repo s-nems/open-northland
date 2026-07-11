@@ -89,3 +89,19 @@ export function mapResourceSpawns(
   }
   return out;
 }
+
+/**
+ * The object `EditName`s whose placements BECOME sim `Resource` entities (their good has a gatherer
+ * trade) — exactly the set {@link mapResourceSpawns} spawns. The STATIC collision join must skip these
+ * (`buildCollisionTerrain skipObjectNames`): their blocking lives in the sim's dynamic
+ * resource-footprint overlay, stamped at spawn and UNSTAMPED when the node is felled/depleted. Baked
+ * statically instead, a felled tree's cell stayed walled off forever and the collector could never
+ * path to the trunk it had just dropped there. Pure.
+ */
+export function simResourceObjectNames(ir: ContentIr, spawnableGoodIds: ReadonlySet<string>): Set<string> {
+  const out = new Set<string>();
+  for (const [name, ref] of harvestGoodByObjectName(ir)) {
+    if (spawnableGoodIds.has(ref.goodId)) out.add(name);
+  }
+  return out;
+}
