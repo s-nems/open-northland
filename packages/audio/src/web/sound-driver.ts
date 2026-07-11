@@ -19,6 +19,8 @@ export interface SoundFrameInput {
   readonly terrain?: AudioTerrain;
   /** Wall-clock ms since the last update, driving the time-based voice-chatter rate; omit → no chatter. */
   readonly dtMs?: number;
+  /** The local player slot — gates the death stinger to this player's own units; omit → it never rings. */
+  readonly localPlayer?: number;
 }
 
 /**
@@ -78,6 +80,7 @@ export class SoundDriver {
       index: this.index,
       bindings: this.bindings,
       ...(input.terrain !== undefined ? { terrain: input.terrain } : {}),
+      ...(input.localPlayer !== undefined ? { localPlayer: input.localPlayer } : {}),
     });
     // Append the ambient settler-chatter voices (stochastic + time-based → owned by the emitter, not
     // the pure director). The settler scan is a thunk so a no-dt frame never pays it.

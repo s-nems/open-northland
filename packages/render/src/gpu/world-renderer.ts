@@ -1,4 +1,4 @@
-import type { WorldSnapshot } from '@vinland/sim';
+import type { SimEvent, WorldSnapshot } from '@vinland/sim';
 import { type Application, Container, RenderTexture, Sprite, Texture } from 'pixi.js';
 import { type ElevationField, makeElevationField } from '../data/elevation.js';
 import type { Camera } from '../data/iso.js';
@@ -6,6 +6,7 @@ import type { SceneTerrain } from '../data/scene/index.js';
 import { cameraViewport } from '../data/viewport.js';
 import { BadgeLayer, type DoorBadge } from './badge-layer.js';
 import { type ConstructionPlotFrame, ConstructionPlotLayer } from './construction-plot.js';
+import { CombatEffectsLayer } from './effects-layer.js';
 import { type GeometryDebugItem, GeometryDebugLayer } from './geometry-debug.js';
 import { HudLayer } from './hud-layer.js';
 import type { HudFrame } from './hud-layer.js';
@@ -116,6 +117,9 @@ export class WorldRenderer {
   private readonly placementGhost: PlacementGhostLayer;
   /** Feet rings under the currently-selected entities (world-space, BELOW the sprites). */
   private readonly selectionLayer = new SelectionLayer();
+  /** Transient combat ground marks — blood on hits, bones on deaths (world-space, BELOW the sprites so a
+   *  surviving fighter draws over what it stands on). Fed by {@link ingestCombatEffects}. */
+  private readonly effects = new CombatEffectsLayer();
   /** Stacked worker badges beside each staffed building's door (world-space, ABOVE the sprites). */
   private readonly badgeLayer = new BadgeLayer();
   /** The `?debug=geometry` footprint overlay (world-space, ABOVE the sprites — it annotates them). */
@@ -149,16 +153,20 @@ export class WorldRenderer {
     this.placementGhost = new PlacementGhostLayer(opts?.sheet, this.textureCache);
     this.spriteLayer.addChild(this.placementGhost.container);
     // Z-order within the world layer: terrain (back) → flat decor → build-placement wash → selection
-    // rings → sprites + tall objects → door badges (front). The wash + rings sit under the sprites so a
-    // house/tree/unit in front draws over them (the wash dims the ground, not the sprites on it); the
-    // door badges sit OVER the sprites so a worker marker floats above its building instead of hiding
-    // behind it.
+    // rings → bones (ground litter) → sprites + tall objects → blood spurts → door badges (front). The
+    // wash + rings + bones sit under the sprites so a house/tree/unit in front draws over them (the wash
+    // dims the ground, bones are litter under a fighter's feet); blood + door badges sit OVER the sprites
+    // so a hit spurt shows on the struck body and a worker marker floats above its building.
     this.worldLayer.addChild(this.terrain.container);
     this.worldLayer.addChild(this.mapObjects.decorContainer);
     this.worldLayer.addChild(this.constructionPlots.container);
     this.worldLayer.addChild(this.placementOverlay.container);
     this.worldLayer.addChild(this.selectionLayer.container);
+    // Bones sit UNDER the sprites (ground litter a surviving unit walks over); blood sits OVER them (the
+    // spurt shows ON the struck body). Two containers straddling the sprite layer, one effects layer.
+    this.worldLayer.addChild(this.effects.groundContainer);
     this.worldLayer.addChild(this.spriteLayer);
+    this.worldLayer.addChild(this.effects.overlayContainer);
     this.worldLayer.addChild(this.badgeLayer.container);
     this.worldLayer.addChild(this.geometryDebug.container);
     app.stage.addChild(this.worldLayer);
@@ -201,6 +209,16 @@ export class WorldRenderer {
    */
   setMapObjects(objects: readonly MapObjectSprite[]): void {
     this.mapObjects.set(objects);
+  }
+
+  /**
+   * Feed this frame's sim events (accumulated across every fixed-timestep sub-step) into the combat-marks
+   * layer: a landed blow leaves blood, a death leaves bones. Call BEFORE {@link update} each frame (the
+   * marks are drawn inside it). `tick` is the current sim tick — marks decay against it, so a paused game
+   * or a `?shot` capture reproduces exactly. A frame with no combat events is nearly free.
+   */
+  ingestCombatEffects(events: readonly SimEvent[], tick: number): void {
+    this.effects.ingest(events, tick);
   }
 
   /**
@@ -266,6 +284,9 @@ export class WorldRenderer {
       (ref) => this.pool.anchorOf(ref),
       flagged,
     );
+    // Combat ground marks: reposition + fade the blood/bones fed by `ingestCombatEffects`, culled to the
+    // same viewport as the sprites so a battlefield's litter cost tracks the screen, not the casualty count.
+    this.effects.draw(this.elevation, vp, tick);
     // Door badges float over the buildings: the app tallies each building's bound workers + projects its
     // door node, this layer stacks one placeholder square per worker (craftsman / carrier / gatherer,
     // colour-coded) above the door. Culled to the same viewport as the sprites so the per-frame cost of a

@@ -1,4 +1,5 @@
-import { Health } from '../../components/index.js';
+import { Health, Owner, Position } from '../../components/index.js';
+import { eventAt } from '../../core/events.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { removeWorkFlag } from '../economy/flags.js';
@@ -48,9 +49,20 @@ export const cleanupSystem: System = (world, ctx) => {
 
 /** Announce a combatant's death (`settlerDied`, the render/audio cue) and remove it from the world.
  *  The event is emitted BEFORE the destroy so the entity id it carries is still that of a (just-)alive
- *  entity at emit time; render only reads the id, never the live components. */
+ *  entity at emit time — and so its `Owner`/`Position` are still readable: `player` (owner slot, `null`
+ *  when unowned) lets audio play the death stinger for the local player only, and `at` (the death node)
+ *  lets render leave a cadaver/bones marker where it fell. Render otherwise only reads the id, never the
+ *  live components. */
 function reap(world: World, ctx: SystemContext, e: Entity): void {
-  ctx.events.emit({ kind: 'settlerDied', entity: e, cause: DEATH_CAUSE_DAMAGE });
+  const owner = world.tryGet(e, Owner);
+  const pos = world.tryGet(e, Position);
+  ctx.events.emit({
+    kind: 'settlerDied',
+    entity: e,
+    cause: DEATH_CAUSE_DAMAGE,
+    player: owner?.player ?? null,
+    ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
+  });
   removeWorkFlag(world, e); // a flag-bound gatherer's flag has no owner once it's gone — reap it too
   world.destroy(e);
 }

@@ -26,6 +26,7 @@ import {
   isInterruptibleAtomic,
   isProvokableAnimal,
 } from '../readviews/index.js';
+import { entityNode, manhattan } from '../spatial.js';
 import { addCarry } from './effects-goods.js';
 
 // The COMBAT-HIT effects of the atomic executor — the mid-animation blow (melee and projectile),
@@ -125,6 +126,19 @@ export function resolveAttackHit(
     launchProjectile(world, ctx, attacker, effect);
     return;
   }
+  // A long melee swing the target BACKED OUT of whiffs: if the target has stepped beyond the weapon's reach
+  // since the swing started, the blow lands nothing (no damage, no blood, no flinch) — the "enemy stepped
+  // away, no adjacent target, the attack misses" case. Measured with the SAME node-manhattan metric the
+  // CombatSystem started the swing within, so a target that stayed put (or closed in) never spuriously
+  // whiffs. Skipped when the map has no node graph (a mapless fixture) or the effect carries no `maxRange`
+  // — then the blow always lands on a live target, the pre-reach-check behaviour.
+  if (
+    ctx.terrain !== undefined &&
+    effect.maxRange !== undefined &&
+    meleeTargetOutOfReach(world, ctx, attacker, effect)
+  ) {
+    return;
+  }
   resolveCombatHit(
     world,
     ctx,
@@ -133,7 +147,32 @@ export function resolveAttackHit(
     effect.damage,
     effect.weaponMainType,
     pendingStaggers,
+    true, // a melee blow — announce the connect (`combatHit`) for the blood/impact cue
   );
+}
+
+/**
+ * Whether a melee swing's target has stepped BEYOND the weapon's reach since the swing started — the
+ * whiff test. Compares the current attacker→target node distance (the SAME `manhattan` metric on the
+ * terrain graph the CombatSystem's engage check uses) against the effect's carried `maxRange`. A target
+ * with no live `Position` (vanished mid-swing) counts as out of reach — the swing hits nothing. Requires
+ * `ctx.terrain` and `effect.maxRange` (the caller gates both). Pure over entity state; no RNG/wall-clock.
+ */
+function meleeTargetOutOfReach(
+  world: World,
+  ctx: SystemContext,
+  attacker: Entity,
+  effect: Extract<AtomicEffect, { kind: 'attack' }>,
+): boolean {
+  const terrain = ctx.terrain;
+  if (terrain === undefined || effect.maxRange === undefined) return false; // caller-gated; keep types honest
+  if (world.tryGet(effect.target, Position) === undefined) return true; // target gone — nothing to strike
+  const dist = manhattan(
+    terrain,
+    entityNode(world, terrain, attacker),
+    entityNode(world, terrain, effect.target),
+  );
+  return dist > effect.maxRange;
 }
 
 /**
@@ -161,9 +200,26 @@ export function resolveCombatHit(
   damage: number,
   weaponMainType: number | undefined,
   pendingStaggers: PendingStagger[],
+  melee = false,
 ): void {
   const health = world.tryGet(target, Health);
-  if (health === undefined) return; // target gone / non-combatant — the blow struck nothing
+  if (health === undefined) return; // target gone / non-combatant — the blow struck nothing (a miss)
+  // A MELEE blow that connected: announce it at the victim so render bleeds it and audio plays the
+  // weapon-impact SFX. Ranged hits do NOT emit this — the `projectileSystem` announces its own
+  // `projectileHit`, the render/audio twin of a melee connect (so a shot never double-fires). A swing
+  // at air returned above, so `combatHit` fires only on a real connect (the "miss = no blood" rule).
+  if (melee) {
+    const at = world.tryGet(target, Position);
+    if (at !== undefined) {
+      ctx.events.emit({
+        kind: 'combatHit',
+        attacker,
+        target,
+        at: eventAt(at.x, at.y),
+        ...(weaponMainType !== undefined ? { weaponMainType } : {}),
+      });
+    }
+  }
   // A hit that connected (the target had a pool) AND did harm — the condition the fight-XP + stagger
   // follow-ups need. Computed BEFORE the drain so an overkill still counts as a damaging blow.
   const dealtDamage = damage > 0;

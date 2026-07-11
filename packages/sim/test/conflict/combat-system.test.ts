@@ -129,7 +129,7 @@ describe('combatSystem — target selection + issuing the attack atomic', () => 
     const atomic = sim.world.get(attacker, CurrentAtomic);
     expect(atomic.atomicId).toBe(ATTACK_ATOMIC);
     expect(atomic.duration).toBe(4); // resolved via viking setatomic 81 -> viking_attack length 4
-    expect(atomic.effect).toEqual({ kind: 'attack', target: enemy, damage: 50 }); // damage["0"], unarmored
+    expect(atomic.effect).toEqual({ kind: 'attack', target: enemy, damage: 50, maxRange: 2 }); // damage["0"], unarmored; melee reach carried for the hit-frame re-check
     expect(atomic.targetEntity).toBe(enemy);
   });
 
@@ -263,7 +263,7 @@ describe('combatSystem — civ-vs-animal aggression (animaltypes.ini)', () => {
     const atomic = sim.world.get(bear, CurrentAtomic);
     expect(atomic.atomicId).toBe(ATTACK_ATOMIC);
     expect(atomic.duration).toBe(4); // bear setatomic 81 -> bear_attack length 4
-    expect(atomic.effect).toEqual({ kind: 'attack', target: viking, damage: 40 }); // test_bearfist damage["0"]
+    expect(atomic.effect).toEqual({ kind: 'attack', target: viking, damage: 40, maxRange: 2 }); // test_bearfist damage["0"]
   });
 
   it('a civilization fights an aggressive animal BACK (the fight is mutual)', () => {
@@ -322,7 +322,7 @@ describe('combatSystem — civ-vs-animal aggression (animaltypes.ini)', () => {
     const atomic = sim.world.get(bear, CurrentAtomic);
     expect(atomic.atomicId).toBe(ATTACK_ATOMIC);
     // damage["0"] of test_bearfist (40) resolved by TRIBE, despite the bear carrying no jobType.
-    expect(atomic.effect).toEqual({ kind: 'attack', target: viking, damage: 40 });
+    expect(atomic.effect).toEqual({ kind: 'attack', target: viking, damage: 40, maxRange: 2 });
   });
 
   it('a JOBLESS civilization settler is still unarmed (the tribe-keyed path is animals only)', () => {
@@ -349,7 +349,7 @@ describe('combatSystem — hunter strike on catchable prey (animaltypes.ini catc
     const atomic = sim.world.get(hunter, CurrentAtomic);
     expect(atomic.atomicId).toBe(ATTACK_ATOMIC);
     expect(atomic.duration).toBe(4); // hunter setatomic 81 -> viking_hunter_attack length 4
-    expect(atomic.effect).toEqual({ kind: 'attack', target: cow, damage: 70 }); // test_spear damage["0"]
+    expect(atomic.effect).toEqual({ kind: 'attack', target: cow, damage: 70, maxRange: 17 }); // test_spear damage["0"]
   });
 
   it('a hunter CANNOT fire its bow on prey closer than minRange (an adjacent cow is too near)', () => {
@@ -468,7 +468,7 @@ describe('combatSystem — provoked anger (getAngry/angryGameTime)', () => {
 
     const atomic = sim.world.get(boar, CurrentAtomic);
     expect(atomic.atomicId).toBe(ATTACK_ATOMIC);
-    expect(atomic.effect).toEqual({ kind: 'attack', target: viking, damage: 30 }); // test_tusk damage["0"]
+    expect(atomic.effect).toEqual({ kind: 'attack', target: viking, damage: 30, maxRange: 2 }); // test_tusk damage["0"]
   });
 
   it('a civilization may target an ANGRY boar (the mayTarget anger override)', () => {
@@ -581,6 +581,7 @@ describe('combatSystem — armor material column (the target armor material join
       kind: 'attack',
       target: enemy,
       damage: 50, // test_axe damage["0"]
+      maxRange: 2, // the melee reach, carried for the hit-frame re-check
     });
   });
 
@@ -596,6 +597,7 @@ describe('combatSystem — armor material column (the target armor material join
       kind: 'attack',
       target: enemy,
       damage: 60, // test_axe damage["1"] — the material-1 column, NOT 60 − 5 (armor selects, doesn't mitigate)
+      maxRange: 2, // the melee reach, carried for the hit-frame re-check
     });
   });
 
@@ -613,6 +615,7 @@ describe('combatSystem — armor material column (the target armor material join
       kind: 'attack',
       target: enemy,
       damage: 0,
+      maxRange: 2, // test_axe reach, carried for the hit-frame re-check
     });
   });
 
@@ -630,6 +633,7 @@ describe('combatSystem — armor material column (the target armor material join
       kind: 'attack',
       target: viking,
       damage: 0, // bearfist has no damage["1"] column
+      maxRange: 2, // test_bearfist reach, carried for the hit-frame re-check
     });
   });
 });
@@ -650,6 +654,7 @@ describe('combatSystem — worn-weapon override (the equip seed)', () => {
       kind: 'attack',
       target: enemy,
       damage: 50, // test_axe damage["0"]
+      maxRange: 2, // the melee reach, carried for the hit-frame re-check
     });
   });
 
@@ -666,6 +671,7 @@ describe('combatSystem — worn-weapon override (the equip seed)', () => {
       kind: 'attack',
       target: enemy,
       damage: 70, // test_spear damage["0"]
+      maxRange: 17, // test_spear's long melee reach, carried for the hit-frame re-check
     });
   });
 

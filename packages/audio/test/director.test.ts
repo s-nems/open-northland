@@ -21,6 +21,11 @@ const bank: SoundBank = {
   staticGroups: [
     { name: 'Hammer Wood', sfx: [{ file: 'static/hammer01.wav', params: [80] }] },
     { name: 'Woodcutter Axe', sfx: [{ file: 'static/axe01.wav', params: [80] }] },
+    // Combat impact groups (the weapon-specific melee hits + the bow shot/arrow-hit).
+    { name: 'Weapon Sword Short Hit', sfx: [{ file: 'static/swordhit01.wav', params: [80] }] },
+    { name: 'Weapon Spear Hit', sfx: [{ file: 'static/spearhit01.wav', params: [80] }] },
+    { name: 'Weapon Bow Long', sfx: [{ file: 'static/bow01.wav', params: [80] }] },
+    { name: 'Weapon Bow Hit', sfx: [{ file: 'static/arrowhit01.wav', params: [80] }] },
   ],
   ambient: [
     {
@@ -33,6 +38,7 @@ const bank: SoundBank = {
   jingles: [
     { name: '', musicType: 26, sfx: [{ file: 'jingles/jingles_housebuilt.wav', params: [] }] },
     { name: '', musicType: 23, sfx: [{ file: 'jingles/jingles_birth.wav', params: [] }] },
+    { name: '', musicType: 25, sfx: [{ file: 'jingles/jingles_death.wav', params: [] }] },
   ],
 };
 const gfxPatterns = [{ id: 5, editGroups: ['meadow green'] }] as unknown as GfxPattern[];
@@ -119,6 +125,89 @@ describe('directAudio one-shots', () => {
       { kind: 'atomicCompleted', entity: 3, atomicId: 999 }, // no atomic binding
     ]);
     expect(frame.oneShots).toHaveLength(0);
+  });
+});
+
+function directWithLocalPlayer(events: readonly SimEvent[], localPlayer?: number) {
+  return directAudio({
+    events,
+    snapshot: snapshotAt(events),
+    camera,
+    canvasW: CANVAS_W,
+    canvasH: CANVAS_H,
+    index,
+    bindings,
+    ...(localPlayer !== undefined ? { localPlayer } : {}),
+  });
+}
+
+describe('directAudio combat SFX', () => {
+  // Half-cell node (11,10) projects to the centred tile (5,5), so the emitter is on-screen and centred.
+  const at = { x: 11, y: 10 };
+
+  it('fires the weapon-specific melee impact for a combatHit', () => {
+    const sword = directWithLocalPlayer([
+      { kind: 'combatHit', attacker: 3, target: 4, weaponMainType: 3, at },
+    ]);
+    expect(sword.oneShots[0]?.files).toEqual(['static/swordhit01.wav']);
+    expect(sword.oneShots[0]?.key).toBe('combatHit:11,10');
+    const spear = directWithLocalPlayer([
+      { kind: 'combatHit', attacker: 3, target: 4, weaponMainType: 2, at },
+    ]);
+    expect(spear.oneShots[0]?.files).toEqual(['static/spearhit01.wav']);
+  });
+
+  it('falls back to the generic melee thunk when the weapon class has no entry / is absent', () => {
+    // An axe (5) has no dedicated group → the byEvent.combatHit sword-hit fallback; likewise no weaponMainType.
+    const axe = directWithLocalPlayer([{ kind: 'combatHit', attacker: 3, target: 4, weaponMainType: 5, at }]);
+    expect(axe.oneShots[0]?.files).toEqual(['static/swordhit01.wav']);
+    const bare = directWithLocalPlayer([{ kind: 'combatHit', attacker: 3, target: 4, at }]);
+    expect(bare.oneShots[0]?.files).toEqual(['static/swordhit01.wav']);
+  });
+
+  it('fires the bow twang on launch and the arrow thunk on hit', () => {
+    const loose = directWithLocalPlayer([
+      { kind: 'projectileLaunched', projectile: 9, shooter: 3, target: 4, munitionType: 1, at },
+    ]);
+    expect(loose.oneShots[0]?.files).toEqual(['static/bow01.wav']);
+    const hit = directWithLocalPlayer([
+      { kind: 'projectileHit', projectile: 9, shooter: 3, target: 4, munitionType: 1, at },
+    ]);
+    expect(hit.oneShots[0]?.files).toEqual(['static/arrowhit01.wav']);
+  });
+});
+
+describe('directAudio death stinger owner filter', () => {
+  const LOCAL = 0;
+  const ENEMY = 1;
+
+  it('rings the death jingle only for the local player’s own unit', () => {
+    const mine = directWithLocalPlayer(
+      [{ kind: 'settlerDied', entity: 3, cause: 'damage', player: LOCAL }],
+      LOCAL,
+    );
+    expect(mine.oneShots).toHaveLength(1);
+    expect(mine.oneShots[0]?.files).toEqual(['jingles/jingles_death.wav']);
+  });
+
+  it('stays silent for an enemy or wild-animal (null-owned) death', () => {
+    const enemy = directWithLocalPlayer(
+      [{ kind: 'settlerDied', entity: 4, cause: 'damage', player: ENEMY }],
+      LOCAL,
+    );
+    expect(enemy.oneShots).toHaveLength(0);
+    const beast = directWithLocalPlayer(
+      [{ kind: 'settlerDied', entity: 5, cause: 'damage', player: null }],
+      LOCAL,
+    );
+    expect(beast.oneShots).toHaveLength(0);
+  });
+
+  it('stays silent when no local player is configured', () => {
+    const noLocal = directWithLocalPlayer([
+      { kind: 'settlerDied', entity: 3, cause: 'damage', player: LOCAL },
+    ]);
+    expect(noLocal.oneShots).toHaveLength(0);
   });
 });
 

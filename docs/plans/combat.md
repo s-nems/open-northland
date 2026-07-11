@@ -203,6 +203,42 @@ gallery. **Human pixel sign-off still pending** — the swing/facing/feel is the
 
 ---
 
+## Progress note — step 6 (partial: blood, bones, combat sounds, death-owner filter, melee whiff)
+
+2026-07-11, branch `feat/combat-feedback`. Landed the readability slice of step 6 the user asked for;
+**player colours already render** (red-vs-blue in `?scene=combat`) and **HP bars + the real arrow/rock
+gfx hunt remain** — step 6 stays open. Verification: `npm test` (1936) + `npm run check` + `npm run build`
+green; author-eyeballed `?scene=combat` at DPR 2 (blood spurts on struck bodies, bone piles at the fallen,
+team colours, no console errors). **Human pixel/audio sign-off pending** (feel + by-ear).
+
+- **Blood on a landed blow** (render-only, no golden churn — events aren't hashed): the sim emits a new
+  melee `combatHit` event (`core/events.ts`; `resolveCombatHit(..., melee=true)` in
+  `systems/agents/effects-combat.ts`) at the victim's node when a swing CONNECTS; ranged reuses
+  `projectileHit`. A miss emits neither → no blood, straight from the hit-resolution guard. Render folds
+  both into a decaying mark list (`render/data/effects.ts`) drawn by `CombatEffectsLayer`
+  (`render/gpu/effects-layer.ts`): blood is a tick-seeded red spurt lifted ONTO the body (over the sprite),
+  bones a procedural pile at the death node (under sprites). Decay is by SIM TICK (reproducible). Threaded
+  via `renderer.ingestCombatEffects(events, tick)` in `app/view/game-view.ts`.
+- **Bones on death:** `settlerDied` now carries `at` (death node) + `player` (owner, `null` if unowned),
+  read in `cleanup.ts reap` before destroy. Bones spawn on any `settlerDied` with a position. **APPROXIMATED:**
+  procedural bone marker (a stand-in like the projectile arrow marker) — the extracted `cadaver_skeleton`
+  landscape gfx is the faithful swap, still owed by step 6. Lifetimes (`BLOOD_LIFETIME_TICKS 60`,
+  `BONES_LIFETIME_TICKS 1800`) + the `MAX_ACTIVE_EFFECTS 400` cap are named, calibration-pending.
+- **Death sound only for OUR units:** the death jingle is marked `localPlayerOnly` (`audio/data/bindings.ts`);
+  the director gates it on `settlerDied.player === localPlayer` (`audio/data/director/events.ts`), and the app
+  passes `localPlayer: HUMAN_PLAYER` (`game-view.ts`). An enemy's or a wild animal's death is silent.
+- **Attack sounds (audited + wired):** all combat wavs are present in the extracted `soundfx.cif` bank.
+  Wired the melee impact (`combatHit` → weapon-specific `Weapon {Fist,Spear,Sword} Hit` via `byCombatWeapon`,
+  generic sword-hit fallback), the bow twang (`projectileLaunched` → `Weapon Bow Long`) and the arrow thunk
+  (`projectileHit` → `Weapon Bow Hit`). A miss is currently silent — the `soundtype_NoHit` swoosh + the
+  `Man/Woman Get Hit` victim grunts are extracted but unwired (tracked follow-up).
+- **Melee whiff (the user's "enemy steps away → miss"):** a melee swing now carries its weapon `maxRange` on
+  the attack effect (`core/commands.ts`, `conflict/weapons.ts`) and RE-CHECKS reach at the hit frame
+  (`effects-combat.ts meleeTargetOutOfReach`, same node-manhattan metric the CombatSystem engaged with): a
+  target that stepped beyond reach during a long swing takes nothing (no damage, no blood, no flinch). Ranged
+  homes as before. Inert without a node map (mapless fixtures) and byte-identical on the goldens (they build
+  no combatant). Faithful-leaning; the exact original whiff rule stays calibration-pending (step 10).
+
 ## Step 6 — render: combat feedback — colours, HP bars, blood, cadavers, sounds
 
 ```text

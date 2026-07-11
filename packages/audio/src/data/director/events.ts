@@ -33,7 +33,8 @@ function isAtLocatedEvent(ev: SimEvent): ev is Extract<SimEvent, { at: { x: numb
     ev.kind === 'resourceFelled' ||
     ev.kind === 'resourceDepleted' ||
     ev.kind === 'projectileLaunched' ||
-    ev.kind === 'projectileHit'
+    ev.kind === 'projectileHit' ||
+    ev.kind === 'combatHit'
   );
 }
 
@@ -43,10 +44,28 @@ function eventKey(ev: SimEvent): string {
   return `${ev.kind}:${eventEntity(ev) ?? '?'}`;
 }
 
-/** Which sound a given event triggers, per the bindings (atomic events key on their numeric id). */
+/** Which sound a given event triggers, per the bindings (atomic events key on their numeric id, a melee
+ *  `combatHit` on its weapon class with the generic-melee `byEvent` fallback). */
 function resolveBinding(ev: SimEvent, bindings: SoundBindings): EventSound | undefined {
   if (ev.kind === 'atomicCompleted') return bindings.byAtomic.get(ev.atomicId);
+  if (ev.kind === 'combatHit' && ev.weaponMainType !== undefined) {
+    const byWeapon = bindings.byCombatWeapon?.get(ev.weaponMainType);
+    if (byWeapon !== undefined) return byWeapon;
+  }
   return bindings.byEvent[ev.kind];
+}
+
+/**
+ * Whether a {@link EventSound.localPlayerOnly} jingle should ring for `ev` — true only when the event
+ * carries an owner `player` that equals `localPlayer` (the death stinger fires for the player's OWN
+ * unit, never an enemy's or a wild animal's `null`-owned death). A jingle without this flag never
+ * reaches here; an event carrying no `player` field, or no configured `localPlayer`, is treated as
+ * not-ours (silent) — the safe default for a notification sound.
+ */
+function firesForLocalPlayer(ev: SimEvent, localPlayer: number | undefined): boolean {
+  if (localPlayer === undefined) return false;
+  const player = 'player' in ev ? ev.player : null;
+  return player === localPlayer;
 }
 
 /** A resolved spatial event waiting for its position: the bound files plus where the sound comes from. */
@@ -78,7 +97,7 @@ function positionsFor(snapshot: WorldSnapshot, needed: ReadonlySet<number>): Map
 
 /** The one-shots to fire for this frame's events (jingles non-spatial; action SFX viewport-culled). */
 export function eventOneShots(input: DirectorInput): OneShot[] {
-  const { events, snapshot, camera, canvasW, canvasH, index, bindings } = input;
+  const { events, snapshot, camera, canvasW, canvasH, index, bindings, localPlayer } = input;
   const shots: OneShot[] = [];
   if (events.length === 0) return shots; // the common frame — no events, no snapshot work at all
   // Pass 1: resolve bindings, emit jingles, and collect which entity ids the spatial events actually
@@ -89,6 +108,8 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
     const sound = resolveBinding(ev, bindings);
     if (sound === undefined) continue;
     if (sound.kind === 'jingle') {
+      // A local-player-only jingle (the death stinger) is silent for a non-local / unowned event.
+      if (sound.localPlayerOnly && !firesForLocalPlayer(ev, localPlayer)) continue;
       const files = index.jinglesByMusicType.get(sound.musicType);
       if (files && files.length > 0) {
         shots.push({ files, gain: JINGLE_GAIN, pan: 0, key: eventKey(ev) });

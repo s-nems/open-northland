@@ -6,10 +6,12 @@ import {
   DeliveryFlag,
   Health,
   JobAssignment,
+  Owner,
   Position,
   Settler,
   WorkFlag,
 } from '../../src/components/index.js';
+import { eventAt } from '../../src/core/events.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { ONE, Simulation, fx } from '../../src/index.js';
 import { type SystemContext, cleanupSystem } from '../../src/systems/index.js';
@@ -31,6 +33,7 @@ beforeEach(() => {
   CurrentAtomic.store.clear();
   WorkFlag.store.clear();
   DeliveryFlag.store.clear();
+  Owner.store.clear();
 });
 
 function ctxOf(sim: Simulation): SystemContext {
@@ -56,6 +59,26 @@ describe('cleanupSystem — reaping 0-HP combatants', () => {
     const evts = sim.events.current().filter((ev) => ev.kind === 'settlerDied');
     expect(evts).toHaveLength(1);
     expect(evts[0]).toMatchObject({ kind: 'settlerDied', entity: dead, cause: 'damage' });
+  });
+
+  it('carries the death position + owner on settlerDied (for the cadaver marker + the owner-gated stinger)', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const mine = sim.world.create();
+    sim.world.add(mine, Position, { x: fx.fromInt(6), y: fx.fromInt(4) });
+    sim.world.add(mine, Owner, { player: 0 });
+    sim.world.add(mine, Health, { hitpoints: 0, max: 1000 });
+    const wild = sim.world.create(); // an unowned wild animal — no Owner
+    sim.world.add(wild, Position, { x: fx.fromInt(2), y: fx.fromInt(9) });
+    sim.world.add(wild, Health, { hitpoints: 0, max: 1000 });
+    sim.events.clear();
+
+    cleanupSystem(sim.world, ctxOf(sim));
+
+    const evts = sim.events.current().filter((ev) => ev.kind === 'settlerDied');
+    const owned = evts.find((ev) => ev.entity === mine);
+    const beast = evts.find((ev) => ev.entity === wild);
+    expect(owned).toMatchObject({ player: 0, at: eventAt(fx.fromInt(6), fx.fromInt(4)) });
+    expect(beast).toMatchObject({ player: null, at: eventAt(fx.fromInt(2), fx.fromInt(9)) });
   });
 
   it('leaves a living combatant (hitpoints > 0) untouched and emits nothing', () => {
