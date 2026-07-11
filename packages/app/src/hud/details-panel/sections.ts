@@ -267,7 +267,7 @@ export function drawSettler(
   ui: UiString,
   s: number,
 ): void {
-  drawGeneralSection(chrome, layout, model, ui, s);
+  drawGeneralSection(chrome, layout, model, s);
   drawWorkSection(chrome, layout, model, ui, s);
   drawExperienceSection(chrome, layout, model, ui, s);
   drawEquipmentSection(chrome, layout, model, ui, s);
@@ -282,7 +282,6 @@ function drawGeneralSection(
   chrome: Chrome,
   layout: SettlerLayout,
   model: SettlerPanelModel,
-  ui: UiString,
   s: number,
 ): void {
   chrome.window(layout.general.frame);
