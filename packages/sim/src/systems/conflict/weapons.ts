@@ -166,9 +166,10 @@ export function startAttack(
       ...(hitAt !== undefined ? { hitAt } : {}),
       ...(weapon.mainType !== undefined ? { weaponMainType: weapon.mainType } : {}),
       // A MELEE swing carries the weapon's reach so the executor can re-check it at the hit frame and WHIFF
-      // if the target stepped out (matching the CombatSystem's `withReach` floor). A ranged swing homes via
-      // its projectile instead — no re-check, so no `maxRange`.
-      ...(projectile === undefined ? { maxRange: Math.max(1, weapon.maxRange) } : { projectile }),
+      // if the target stepped out. Derived through the SAME `withReach` clamp the CombatSystem engaged the
+      // target with (`attackerWeapon` → `withReach`), so the engage band and the whiff band share one reach-
+      // floor policy and can't silently desync. A ranged swing homes via its projectile instead — no re-check.
+      ...(projectile === undefined ? { maxRange: withReach(weapon).maxRange } : { projectile }),
     },
     targetEntity: target,
     targetTile: null,

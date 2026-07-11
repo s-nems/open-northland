@@ -61,6 +61,9 @@ const BONE_OUTLINE = 0x4a4436;
 const BLOOD_DROPS = 6;
 const BLOOD_MIN_R = 1.0;
 const BLOOD_MAX_R = 2.2;
+/** Seed-index offset for a droplet's radius — kept clear of {@link bloodDroplet}'s `i*3+{0,1,2}` motion band
+ *  (max index `5*3+2 = 17` at {@link BLOOD_DROPS} 6) so the radius seed never collides with the motion seeds. */
+const BLOOD_RADIUS_SEED = 100;
 /** World-px length / thickness of a single bone shaft in a pile (two crossed shafts + a skull dot). */
 const BONE_LEN = 9;
 const BONE_THICK = 2.4;
@@ -158,7 +161,7 @@ function makeBlood(seed: number): Container {
   const c = new Container();
   for (let i = 0; i < BLOOD_DROPS; i++) {
     const g = new Graphics();
-    const r = BLOOD_MIN_R + frac(seed, i + 100) * (BLOOD_MAX_R - BLOOD_MIN_R);
+    const r = BLOOD_MIN_R + frac(seed, i + BLOOD_RADIUS_SEED) * (BLOOD_MAX_R - BLOOD_MIN_R);
     const color = i % 2 === 0 ? BLOOD_DARK : BLOOD_BRIGHT;
     // A small rimmed blob at the child's own origin; the layer scales it into a streak / pool each frame.
     g.circle(0, 0, r + 0.5).fill({ color: BLOOD_RIM, alpha: 0.5 });
