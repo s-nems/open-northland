@@ -172,15 +172,18 @@ export function mapResourceObjectNames(ir: ContentIr): ReadonlySet<string> {
  * The nodes are created in the map's native placement order, so ids are minted deterministically. Yields
  * and fell/mine parameters reuse the gatherer catalog defaults (`resourceSpecFor`) — the map's per-placement
  * growth `levels` lane is not yet mapped to a starting amount (a named approximation, same defaults an
- * admin-spawned node uses). A placement whose good has no gatherer trade or whose good has no footprint is
- * skipped, not fatal (unlike the throwing scene helper). Returns the count spawned.
+ * admin-spawned node uses). Each spawn carries its placement's OWN harvest-stage `gfxIndex` (the species
+ * variant), so the node draws + collides as the exact original object rather than the good's representative
+ * one. A placement whose good has no gatherer trade or whose good has no footprint is skipped, not fatal
+ * (unlike the throwing scene helper). Returns the count spawned.
  */
 export function spawnMapResources(sim: Simulation, objects: TerrainObjects, ir: ContentIr): number {
   let spawned = 0;
-  for (const { goodId, hx, hy } of mapResourceSpawns(objects, ir, SPAWNABLE_GOOD_IDS)) {
+  for (const { goodId, gfxIndex, hx, hy } of mapResourceSpawns(objects, ir, SPAWNABLE_GOOD_IDS)) {
     const g = GATHERER_BY_GOOD_ID.get(goodId);
     if (g === undefined) continue; // filtered by SPAWNABLE_GOOD_IDS already, but keep the type honest
-    if (systems.createResourceNode(sim.world, sim.content, resourceSpecFor(g, hx, hy)) !== null) spawned++;
+    const spec = { ...resourceSpecFor(g, hx, hy), gfxIndex };
+    if (systems.createResourceNode(sim.world, sim.content, spec) !== null) spawned++;
   }
   return spawned;
 }

@@ -26,6 +26,7 @@ import {
   readPosition,
   readProjectileOrigin,
   readProjectileTarget,
+  readResourceGfxIndex,
   readResourceGood,
   readResourceLevel,
   readSpriteState,
@@ -276,6 +277,10 @@ export function collectSpriteScene(
       if (goodType !== undefined) item.goodType = goodType;
       const level = readResourceLevel(components);
       if (level !== undefined) item.level = level;
+      // Its exact source variant record ("pine 02", not the representative "yew 01") — a per-variant
+      // binding entry wins over the per-good one, so a decoded map keeps its original species variety.
+      const gfxIndex = readResourceGfxIndex(components);
+      if (gfxIndex !== undefined) item.gfxIndex = gfxIndex;
     } else if (kind === 'stump') {
       const goodType = readStumpGood(components);
       if (goodType !== undefined) item.goodType = goodType;

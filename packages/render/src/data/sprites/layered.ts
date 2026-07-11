@@ -102,7 +102,10 @@ export function resolveConstructionDraws(
  */
 export function resolveResourceDraw(binding: number | ResourceTypeBinding, item: DrawItem): BuildingDraw {
   if (typeof binding === 'number') return { bob: binding };
-  const frames = item.goodType !== undefined ? binding.byGood[item.goodType] : undefined;
+  // The node's exact source variant ("pine 02") wins over its good's representative ("yew 01") — a
+  // decoded map keeps its species variety; an unbound variant (unloaded family) falls back per-good.
+  const variantFrames = item.gfxIndex !== undefined ? binding.byGfxIndex?.[item.gfxIndex] : undefined;
+  const frames = variantFrames ?? (item.goodType !== undefined ? binding.byGood[item.goodType] : undefined);
   if (frames === undefined || frames.length === 0) return unwrapBobRef(binding.default);
   // A mined node's 1-based fill LEVEL (`levels` = full) → a 0-based frame index, clamped into range; a
   // plain node carries no level and falls to `frames.length` (the full, last state) — full-node behaviour.

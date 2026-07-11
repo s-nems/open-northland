@@ -79,6 +79,14 @@ export interface GatheringRefs {
    *  empty→full — a mined deposit shrinks through them, a non-mined node has just its full state). */
   readonly nodesByGood: Readonly<Record<number, GatheringNodeLevelsRef>>;
   /**
+   * Standing-node ref per harvest-stage `[GfxLandscape]` record INDEX — one entry per species variant
+   * ("yew 01" … "cedar 02", every stone/mine decal) across every resolved good, same per-level frame
+   * shape as {@link nodesByGood}. A decoded-map node carries its own variant index
+   * (`ResourceFootprint.sourceGfxIndex` → `DrawItem.gfxIndex`), and this table is what lets it draw the
+   * exact original object instead of collapsing every node of a good to one representative species.
+   */
+  readonly nodesByGfxIndex: Readonly<Record<number, GatheringNodeLevelsRef>>;
+  /**
    * Freshly-dropped, NOT-yet-collected pile ref per scene `goodType` — the good's `landscapeToPickup`
    * record (wood's "trunk" stage: a felled LOG lying on the ground, distinct from the tidy delivered
    * heap). A loose {@link import('@vinland/sim').GroundDrop} draws this; the original uses a different
@@ -192,6 +200,7 @@ export function resolveGatheringRefs(
   const byGoodId = new Map<string, GatheringPipelineRow>(pipeline.map((p) => [p.goodId, p]));
 
   const nodesByGood: Record<number, GatheringNodeLevelsRef> = {};
+  const nodesByGfxIndex: Record<number, GatheringNodeLevelsRef> = {};
   const trunksByGood: Record<number, GatheringNodeRef> = {};
   const pilesByGood: Record<number, GatheringPileRef> = {};
   for (const good of goods) {
@@ -202,6 +211,15 @@ export function resolveGatheringRefs(
       const stem = servedStem(nodeRecord);
       const bobs = nodeLevelBobs(nodeRecord); // empty→full fill states — a mined deposit shrinks through them
       if (stem !== undefined && bobs !== undefined) nodesByGood[good.typeId] = { stem, bobs };
+    }
+    // EVERY harvest-stage variant of the good ("yew 01" … "cedar 02"), keyed by its gfx record index —
+    // the table a decoded-map node's own `gfxIndex` picks its exact original species/decal from.
+    for (const idx of (p.harvest ?? p.pickup)?.gfxIndices ?? []) {
+      const record = byIndex.get(idx);
+      if (record === undefined) continue;
+      const stem = servedStem(record);
+      const bobs = nodeLevelBobs(record);
+      if (stem !== undefined && bobs !== undefined) nodesByGfxIndex[idx] = { stem, bobs };
     }
     // The freshly-dropped trunk (the `landscapeToPickup` stage), drawn by a loose GroundDrop before it is
     // carried off — a single representative frame, the felled log. Only bind it for a good that actually
@@ -256,7 +274,7 @@ export function resolveGatheringRefs(
   const flagBob = flagRecord !== undefined ? nodeBob(flagRecord) : undefined;
   const flag = flagStem !== undefined && flagBob !== undefined ? { stem: flagStem, bob: flagBob } : undefined;
 
-  return { nodesByGood, trunksByGood, pilesByGood, ...(flag !== undefined ? { flag } : {}) };
+  return { nodesByGood, nodesByGfxIndex, trunksByGood, pilesByGood, ...(flag !== undefined ? { flag } : {}) };
 }
 
 /**
@@ -268,6 +286,9 @@ export function resolveGatheringRefs(
 export function gatheringAtlasStems(refs: GatheringRefs): Set<string> {
   const stems = new Set<string>();
   for (const node of Object.values(refs.nodesByGood)) {
+    if (node.stem !== DEFAULT_RESOURCE_STEM) stems.add(node.stem);
+  }
+  for (const node of Object.values(refs.nodesByGfxIndex)) {
     if (node.stem !== DEFAULT_RESOURCE_STEM) stems.add(node.stem);
   }
   for (const trunk of Object.values(refs.trunksByGood)) {
@@ -334,7 +355,15 @@ export function buildResourceBinding(refs: GatheringRefs, loaded: ReadonlySet<st
     // a non-mined node has a single-frame list, drawn at any level.
     byGood[Number(good)] = node.bobs.map((bob) => bobRef(node.stem, bob));
   }
-  return { byGood, default: TREE_BOB };
+  // The per-VARIANT table (a decoded-map node's own species/decal) — same load-then-drop-unloaded rule,
+  // so a variant whose family atlas failed to load falls back to the per-good representative, never a
+  // wrong frame.
+  const byGfxIndex: Record<number, readonly LayeredBobRef[]> = {};
+  for (const [idx, node] of Object.entries(refs.nodesByGfxIndex)) {
+    if (node.stem !== DEFAULT_RESOURCE_STEM && !loaded.has(node.stem)) continue;
+    byGfxIndex[Number(idx)] = node.bobs.map((bob) => bobRef(node.stem, bob));
+  }
+  return { byGood, byGfxIndex, default: TREE_BOB };
 }
 
 /**
