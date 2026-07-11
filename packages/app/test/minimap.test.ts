@@ -7,11 +7,13 @@ import {
   cellColoursFromGround,
 } from '../src/content/minimap-ground.js';
 import {
-  FRAME_NATIVE,
   keyEdgeConnectedNearBlack,
+  outlineOpaqueSilhouette,
+} from '../src/hud/minimap/frame-keying.js';
+import {
+  FRAME_NATIVE,
   minimapLayout,
   minimapToWorld,
-  outlineOpaqueSilhouette,
   pointOverMinimap,
   pointOverMinimapHole,
   rasterizeTerrain,

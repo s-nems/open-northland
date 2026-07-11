@@ -3,7 +3,8 @@ import type { Renderer } from 'pixi.js';
 import { BufferImageSource, Container, Sprite, Texture } from 'pixi.js';
 import { loadGuiArt, makeGuiSprite } from '../../content/gui-art.js';
 import { GUI_FRAME } from '../../content/gui-atlas-map.js';
-import { FRAME_NATIVE, keyEdgeConnectedNearBlack, outlineOpaqueSilhouette } from './model.js';
+import { keyEdgeConnectedNearBlack, outlineOpaqueSilhouette } from './frame-keying.js';
+import { FRAME_NATIVE } from './model.js';
 
 /**
  * The minimap's braided window frame — the ORIGINAL overview-window art (`ls_gui_window` bob 55,

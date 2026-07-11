@@ -48,10 +48,18 @@ const BUILDING_DOT_PX = 3;
 /** The camera view rectangle's stroke. */
 const VIEW_RECT_COLOUR = 0xffffff;
 const VIEW_RECT_ALPHA = 0.9;
+/** Dot colour for a player outside the swatch table — unreachable today (the index is taken modulo
+ *  the table length); a named value so retuning the view rect never silently retunes stray dots. */
+const UNKNOWN_PLAYER_DOT_COLOUR = 0xffffff;
 /** The letterbox bars + hole backdrop (matches the frame art's near-black window). */
 const HOLE_COLOUR = 0x000000;
 /** The flat fallback frame (bare checkout — no GUI art): parchment-dark border strokes. */
 const FALLBACK_FRAME_COLOUR = 0x2c241a;
+/** The HUD overlay plane (the tool-panel root and the settler action ring use the same). Equal
+ *  zIndex keeps mount order, so the framed window draws OVER the earlier-mounted strip (whose lower
+ *  buttons it covers on a short screen — the tool panel defers those clicks to us) and UNDER the
+ *  later-mounted action ring. */
+const MINIMAP_Z = 1000;
 
 export interface MinimapOptions {
   readonly app: Application;
@@ -95,6 +103,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   // the canvas can still be resizing to the window during the first frames of a fresh view, and a
   // panel placed against a transient height would visibly jump to its corner.
   container.visible = false;
+  container.zIndex = MINIMAP_Z;
   app.stage.addChild(container);
 
   const frame = await loadMinimapFrame(app.renderer, layout.artScale, app.renderer.resolution);
@@ -130,10 +139,8 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   if (frame !== null) {
     frame.display.position.set(0, 0);
     container.addChild(frame.display);
-  }
-  let fallbackFrame: Graphics | null = null;
-  if (frame === null) {
-    fallbackFrame = new Graphics();
+  } else {
+    const fallbackFrame = new Graphics();
     fallbackFrame
       .rect(innerL.x - 1, innerL.y - 1, innerL.w + 2, innerL.h + 2)
       .stroke({ width: 2, color: FALLBACK_FRAME_COLOUR });
@@ -220,7 +227,8 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       const mx = layout.map.x - layout.panel.x + (s.x - bounds.minX) * layout.scale;
       const my = layout.map.y - layout.panel.y + (s.y - bounds.minY) * layout.scale;
       const half = settler ? SETTLER_DOT_PX / 2 : BUILDING_DOT_PX / 2;
-      const colour = PLAYER_SWATCH_COLORS[player % PLAYER_SWATCH_COLORS.length] ?? VIEW_RECT_COLOUR;
+      const colour =
+        PLAYER_SWATCH_COLORS[player % PLAYER_SWATCH_COLORS.length] ?? UNKNOWN_PLAYER_DOT_COLOUR;
       dots.rect(mx - half, my - half, half * 2, half * 2).fill(colour);
     }
   };

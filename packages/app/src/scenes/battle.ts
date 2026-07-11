@@ -122,6 +122,7 @@ export const battleScene: SceneDefinition = {
     'Wlocznie siegaja zza plecow pierwszego szeregu (zasieg 2), lucznicy strzelaja zza linii lobem',
     'Zero wibrujacych par i "jezdzenia" cialami po sobie; zadnego stosu wielu jednostek w jednym punkcie',
     'Po rozstrzygnieciu: zwyciezcy stoja rozstawieni na osobnych polach, nie w jednej kolumnie duchow',
+    'Minimapa (lewy dolny rog): pleciona ramka bez przeswitow, kropki w kolorach obu armii, klik przenosi kamere',
   ],
   checks: [
     {
