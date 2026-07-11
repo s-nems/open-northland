@@ -198,8 +198,12 @@ export const GoodFarming = z.strictObject({
   yieldPerField: z.number().int().positive(),
   /** OBSERVED — how far from the farm's anchor its workers sow, in half-cell NODES (no radius in data). */
   fieldRadius: z.number().int().positive(),
-  /** OBSERVED — fields ONE farmer keeps sown at once; a farm's live cap is `fieldsPerFarmer × bound
-   *  field-farmers`, so the roster scales with the crew (no field-count in data). */
+  /** OBSERVED — the crew-independent part of a farm's field cap. The live cap is
+   *  `fieldsBase + fieldsPerFarmer × bound field-farmers`, so the plot grows SUBLINEARLY with the
+   *  crew (user-directed calibration: one farmer works 6 fields, a pair 10 — not 12). Defaults to 0
+   *  (pure per-farmer scaling) so a content set without the knob reads unchanged. */
+  fieldsBase: z.number().int().nonnegative().default(0),
+  /** OBSERVED — the per-farmer slope of the field cap (see {@link fieldsBase}; no field-count in data). */
   fieldsPerFarmer: z.number().int().positive(),
 });
 export type GoodFarming = z.infer<typeof GoodFarming>;

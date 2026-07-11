@@ -19,6 +19,7 @@ import {
 } from '../../catalog/atomics.js';
 import { HOME_KIND, VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
 import {
+  FARM_FIELDS_BASE,
   FARM_FIELDS_PER_FARMER,
   FARM_FIELD_RADIUS,
   WHEAT_GROWTH_STAGES,
@@ -597,6 +598,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
                   ticksPerStage: WHEAT_TICKS_PER_STAGE,
                   yieldPerField: WHEAT_YIELD_PER_FIELD,
                   fieldRadius: FARM_FIELD_RADIUS,
+                  fieldsBase: FARM_FIELDS_BASE,
                   fieldsPerFarmer: FARM_FIELDS_PER_FARMER,
                 },
               }

@@ -50,8 +50,8 @@ export interface FarmClaims {
   readonly nodes: Set<NodeId>;
   readonly byFarm: Map<Entity, number>;
   /** Per-tick census memo: farm → its bound FIELD-FARMER count (the sow-cap multiplier — a farm may
-   *  keep `fieldsPerFarmer × crew` fields, so the roster scales with the staff). Filled lazily by
-   *  {@link fieldCrewOf} the first time a farmer of that farm reaches its sow step. */
+   *  keep `fieldsBase + fieldsPerFarmer × crew` fields, so the roster scales with the staff). Filled
+   *  lazily by {@link fieldCrewOf} the first time a farmer of that farm reaches its sow step. */
   readonly fieldCrew: Map<Entity, number>;
 }
 
@@ -144,8 +144,9 @@ function boundFarmTarget(
  *  b. **Carry a sheaf home** — pick up a cut-wheat {@link import('../../components/index.js').GroundDrop}
  *     lying within the farm's field radius (the delivery rung then routes the load into the farm's own
  *     store — the farm is the bound storage sink).
- *  c. **Sow** a new field while the farm holds fewer than `fieldsPerFarmer × bound field-farmers`
- *     (the roster scales with the crew — one farmer tends a small plot, a full staff a big one) —
+ *  c. **Sow** a new field while the farm holds fewer than `fieldsBase + fieldsPerFarmer × bound
+ *     field-farmers` (the roster scales with the crew — one farmer tends a small plot, a full staff
+ *     a big one, sublinearly: the base is shared, only the slope is per head) —
  *     walk to the next free node of the jittered field lattice around the farm and run the plant
  *     atomic. Sowing beats the can: with per-stage watering some field is almost always thirsty, so
  *     a water-first farmer would tend two seedlings forever and never expand the plot; a sown-but-dry
@@ -273,9 +274,12 @@ export function planFarmer(
   }
 
   // c. Sow the next field while the farm is under its crew-scaled cap (in-flight sow-walks counted in;
-  // `fieldsPerFarmer × bound field-farmers` — a bigger crew works a bigger plot). Before the can: with
-  // per-stage watering something is almost always thirsty, so a water-first farmer would never expand.
-  const fieldCap = spec.farming.fieldsPerFarmer * fieldCrewOf(world, ctx, claims, farm, spec.plantAtomic);
+  // `fieldsBase + fieldsPerFarmer × bound field-farmers` — a bigger crew works a bigger plot). Before
+  // the can: with per-stage watering something is almost always thirsty, so a water-first farmer would
+  // never expand.
+  const fieldCap =
+    spec.farming.fieldsBase +
+    spec.farming.fieldsPerFarmer * fieldCrewOf(world, ctx, claims, farm, spec.plantAtomic);
   if (fields + (claims.byFarm.get(farm) ?? 0) < fieldCap) {
     const node = nextSowNode(world, ctx, terrain, targets, anchor, spec, claims);
     if (node !== null) {

@@ -55,7 +55,15 @@ export function testContent(): ContentSet {
         id: 'wheat',
         weight: 1,
         atomics: { harvest: 29, cultivate: 35, plant: 34 },
-        farming: { stages: 5, ticksPerStage: 10, yieldPerField: 1, fieldRadius: 8, fieldsPerFarmer: 4 },
+        farming: {
+          stages: 5,
+          ticksPerStage: 10,
+          yieldPerField: 1,
+          fieldRadius: 8,
+          // Sublinear crew scaling — the live cap is `fieldsBase + fieldsPerFarmer × crew` (solo 6, pair 10).
+          fieldsBase: 2,
+          fieldsPerFarmer: 4,
+        },
       },
     ],
     jobs: [
