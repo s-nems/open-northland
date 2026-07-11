@@ -4,7 +4,7 @@ import { components, halfCellMapFromCells } from '@vinland/sim';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type AuthoredJoinRows, resolveAuthoredPlacements } from '../src/slice/authored-placements.js';
 import { loadTerrainMap } from '../src/slice/map-loader.js';
-import { runAuthoredSlice, runSlice, sliceTerrain } from '../src/slice/vertical-slice.js';
+import { runAuthoredSlice, runBareMap, runSlice, sliceTerrain } from '../src/slice/vertical-slice.js';
 
 /**
  * Component stores are module-level singletons shared by every `Simulation` instance, so a sim built
@@ -174,6 +174,38 @@ describe('runSlice on a loaded map', () => {
     const strip = runSlice(7, 1).hashState();
     // Falling back means the sim is byte-identical to the no-map slice (same content, terrain, cells).
     expect(fallback).toBe(strip);
+  });
+});
+
+describe('runBareMap (imported map with no authored entities)', () => {
+  beforeEach(clearStores);
+
+  function gridMap(): TerrainMap {
+    return {
+      resolution: 'half-cell',
+      width: 4,
+      height: 3,
+      typeIds: [5, 16, 22, 5, 5, 16, 22, 5, 5, 16, 22, 5],
+    };
+  }
+
+  it('builds a navigable sim over the real grid but places NO demo entities', () => {
+    const { Position, Building, Settler } = components;
+    // The `?map=` viewer's default for a plain imported map: the map's own trees/ore spawn separately
+    // (spawnMapResources, in the entry), so the bare sim itself must carry NONE of the synthetic
+    // HQ/joinery/gatherer/carrier demo cluster that used to land on every map's top-left.
+    const sim = runBareMap(7, gridMap());
+    expect(sim.terrain?.nodeCount).toBe(12);
+    expect([...sim.world.query(Position)]).toHaveLength(0);
+    expect([...sim.world.query(Building)]).toHaveLength(0);
+    expect([...sim.world.query(Settler)]).toHaveLength(0);
+  });
+
+  it('is deterministic over the loaded map (same seed+map ⇒ same hash)', () => {
+    const a = runBareMap(7, gridMap()).hashState();
+    clearStores();
+    const b = runBareMap(7, gridMap()).hashState();
+    expect(a).toBe(b);
   });
 });
 

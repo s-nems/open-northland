@@ -256,6 +256,28 @@ export function runSlice(
 }
 
 /**
+ * Build a sim on a real decoded map with NO placed entities — the map VIEWER's default for an
+ * imported map that carries no authored `StaticObjects`. The map's own trees/ore/stone still spawn as
+ * harvestable nodes (the `?map=` entry's `spawnMapResources` runs after this); this exists purely so a
+ * plain imported map does NOT get the synthetic HQ/joinery/gatherer/carrier demo cluster dropped onto
+ * its first walkable cells. That demo world belongs only to the synthetic-strip fallback (no map) and
+ * the deterministic shot PNG — both still go through {@link runSlice}.
+ *
+ * Deterministic: seed-fixed, no RNG, no placements. Uses the same global sandbox content + live
+ * `footprints` a `runSlice` map path would, so a later interactive build behaves identically.
+ */
+export function runBareMap(
+  seed: number,
+  map: TerrainMap,
+  footprints?: ReadonlyMap<number, BuildingFootprint>,
+): Simulation {
+  const content = sandboxContent(map, {
+    ...(footprints ? { buildingFootprints: footprints } : {}),
+  });
+  return new Simulation({ seed, content, map });
+}
+
+/**
  * Build + run the slice sim for a map that carries AUTHORED entity placements (`map.cif`
  * `StaticObjects` → `maps/<id>.json` `entities`): every resolvable `sethouse` becomes a built
  * building and every `sethuman` a settler at its authored cell — replacing the synthetic
