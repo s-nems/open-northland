@@ -36,17 +36,22 @@ export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tic
   // A ground drop (freshly-felled trunk) draws its per-good pickup-stage frame from the `trunk` binding via
   // the SAME per-good resolver a node uses; the DrawKind ('grounddrop', the entity) and binding key ('trunk',
   // the graphic) differ, so it is resolved explicitly rather than through the generic `bindings[kind]` lookup.
+  // (resolveResourceDraw's null means an INVISIBLE level; this bare-atlas path collapses it to the
+  // placeholder — the synthetic/debug sheet deliberately shows every entity. The real GPU path
+  // (gpu/sprite-pool/resolve-layers.ts) draws nothing instead.)
   if (item.kind === 'grounddrop')
-    return bindings.trunk === undefined ? null : resolveResourceDraw(bindings.trunk, item).bob;
+    return bindings.trunk === undefined ? null : (resolveResourceDraw(bindings.trunk, item)?.bob ?? null);
   const binding = bindings[item.kind];
   if (binding === undefined) return null; // kind unbound -> placeholder
   if (item.kind === 'settler')
     return resolveSettlerBobId(binding as number | SettlerStateBinding, item, tick);
   if (item.kind === 'building') return resolveBuildingDraw(binding as number | BuildingTypeBinding, item).bob;
-  if (item.kind === 'resource') return resolveResourceDraw(binding as number | ResourceTypeBinding, item).bob;
+  if (item.kind === 'resource')
+    return resolveResourceDraw(binding as number | ResourceTypeBinding, item)?.bob ?? null;
   // A stump reuses the per-good resource resolver — it draws its debris frame the same way a node draws
   // its species, just from the dead-tree atlas its binding names.
-  if (item.kind === 'stump') return resolveResourceDraw(binding as number | ResourceTypeBinding, item).bob;
+  if (item.kind === 'stump')
+    return resolveResourceDraw(binding as number | ResourceTypeBinding, item)?.bob ?? null;
   return resolveStockpileDraw(binding as number | StockpileBinding, item).bob; // stockpile
 }
 

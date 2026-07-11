@@ -198,6 +198,27 @@ export const Crop = defineComponent<{
 }>('Crop');
 
 /**
+ * A farmer's **in-flight field intent** — which node its current farm action (reap / sheaf pickup /
+ * sow / water) targets. Stamped by the planFarmer drive when it issues the action and removed the
+ * moment the settler replans (ai.ts), so it exists exactly while the farmer is walking to or swinging
+ * at the target. Its ONE purpose is work division: the planner folds every live FarmTask into the
+ * tick's claim set, so a second farmer never picks a node a colleague is already en route to — the
+ * fix for two farmers shadowing each other sowing/reaping the same spot (and what makes N farmers
+ * scale field throughput ~N×). `sow` marks a plant-walk, which also counts toward the farm's
+ * `maxFields` while the field doesn't exist yet. A stale task (the target raced away, the farmer got
+ * preempted) over-claims one node for at most the ticks until that farmer replans — self-correcting.
+ * Inert on every golden that farms nothing (the separate-component pattern).
+ */
+export const FarmTask = defineComponent<{
+  /** The farm workplace the action serves (the `byFarm` sow-count key). */
+  farm: Entity;
+  /** The claimed half-cell node (a `NodeId` — the crop/sheaf node, or the free node being sown). */
+  node: number;
+  /** True for a sow intent — it reserves one of the farm's `maxFields` slots while in flight. */
+  sow: boolean;
+}>('FarmTask');
+
+/**
  * A **stump / debris** decor entity left where a {@link Felling} node fell — the tree-debris the
  * original leaves behind (`ls_trees_dead.bmd` "tree debris", `landscapetype` logic 1: a pure-decor
  * landscape, non-blocking and not harvestable). It carries only a {@link Position} and this marker, so

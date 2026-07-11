@@ -26,7 +26,7 @@ import {
   planPorter,
   planProducer,
 } from './drives-economy.js';
-import { emptySowClaims, planFarmer } from './drives-farming.js';
+import { collectFarmClaims, planFarmer, releaseFarmTask } from './drives-farming.js';
 import { planNeeds } from './drives-needs.js';
 import { navigationPlanner } from './navigation.js';
 
@@ -94,14 +94,19 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     (e) => !isTravelling(world, e),
   );
   const spacing: SpacingState = { occupancy: new NodeBuckets(world, restingOwned), claimed: new Set() };
-  // Per-tick sow claims: farmers planned earlier this tick reserve their sow node + count toward their
-  // farm's max-fields, so two farmers never pick the same node in one pass (see drives-farming.ts).
-  const sowClaims = emptySowClaims();
+  // Farm claims: every farmer still WALKING to or SWINGING at a field target (its live FarmTask) plus
+  // the farmers planned earlier this tick reserve their nodes — so two farmers never shadow each other
+  // to the same field/sheaf/sow spot, across ticks as well as within one (see drives-farming.ts).
+  const farmClaims = collectFarmClaims(world);
 
   for (const e of world.query(Settler, Position)) {
-    // Busy: an atomic is running, or the settler is en route to a target. Leave it to play out.
+    // Busy: an atomic is running, or the settler is en route to a target. Leave it to play out (its
+    // FarmTask claim, if any, stays live so colleagues keep avoiding its target).
     if (world.has(e, CurrentAtomic)) continue;
     if (isTravelling(world, e)) continue;
+    // Replanning from here: the settler's previous farm intent is spent/stale — release its claim so
+    // it never blocks ITSELF from re-choosing (planFarmer re-stamps a fresh task if it takes over).
+    releaseFarmTask(world, e, farmClaims);
 
     const settler = world.get(e, Settler);
     if (settler.jobType === null) continue; // an unemployed settler has no job atomics to run
@@ -157,7 +162,7 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
     // loop: reap ripe > carry sheaves home > sow > water > wait at the farm. Sits ABOVE the producer
     // rung so a farm that also carries an abstract recipe (real extracted content synthesizes one from
     // `logicproduction`) farms its fields instead of standing at the station minting the good.
-    if (planFarmer(world, ctx, terrain, e, worker, here, targets, sowClaims)) continue;
+    if (planFarmer(world, ctx, terrain, e, worker, here, targets, farmClaims)) continue;
 
     // 2a. PRODUCER — a worker bound to a recipe workshop runs its own supply→produce→deliver loop.
     const workplace = boundWorkplaceTarget(world, ctx, e, worker.jobType, worker.tribe);

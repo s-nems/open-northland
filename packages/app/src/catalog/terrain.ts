@@ -19,3 +19,8 @@ export const TERRAIN_BLOCKED = 2;
 /** Ground you can walk but not build on: an object's build-exclusion ring, or a real ground class
  *  whose `humancanwalkon 1` lacks `housecanbebuildon` (mountain slopes, snow). */
 export const TERRAIN_MARGIN = 3;
+/** BARREN open ground: walkable and buildable like {@link TERRAIN_OPEN}, but crops cannot be SOWN on
+ *  it — a real ground class with walk+build flags but no `biocanplanton` (sand, beach, desert stone;
+ *  `trianglepatterntypes.cif` gives that flag to `land` alone). Split from OPEN so the farmer drive's
+ *  grass-only field gate survives the semantic-class resolve. */
+export const TERRAIN_BARREN = 4;

@@ -277,10 +277,11 @@ describe('selection details panel model', () => {
       growing: 2,
       ripe: 1,
     });
-    // The store is the original's wheat-only slot (`logicstock 4 25 0`) — exactly one row.
-    expect(model.stock.map((r) => ({ goodType: r.goodType, amount: r.amount }))).toEqual([
-      { goodType: GOOD_WHEAT, amount: 3 },
-    ]);
+    // The store is the original's wheat-only slot (`logicstock 4 25 0`) — exactly one row, carrying
+    // its declared capacity so the panel draws "3.0 / 25.0" (the user-requested ceiling readout).
+    expect(
+      model.stock.map((r) => ({ goodType: r.goodType, amount: r.amount, capacity: r.capacity })),
+    ).toEqual([{ goodType: GOOD_WHEAT, amount: 3, capacity: 25 }]);
   });
 
   it('lays a small store out compact (no tabs, fitted rows) and drops Magazyn for a store-less building', () => {

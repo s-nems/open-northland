@@ -218,6 +218,52 @@ describe('gathering scene — per-good + stump binding resolution (each draws it
     expect(draw(99)).toEqual({ bob: 64, layer: 'ls_ground.clay01' }); // over-range clamps to full
   });
 
+  it('marks a level whose bob its own atlas lacks INVISIBLE (the freshly-sown wheat sentinel)', () => {
+    // The real `wheat mine 01` shape: states 2–5 are atlas frames, state 1 names bob 4000 — an
+    // out-of-atlas sentinel the original uses for "draw nothing" (a freshly-sown, still-bare field).
+    const wheat: ContentIr = {
+      landscapeGfx: [
+        rec(
+          20,
+          27,
+          'wheat01',
+          [
+            { state: 5, bobIds: [7] },
+            { state: 4, bobIds: [79] },
+            { state: 3, bobIds: [15] },
+            { state: 2, bobIds: [87] },
+            { state: 1, bobIds: [4000] },
+          ],
+          'ls_meadows',
+          'wheat mine 01',
+        ),
+      ],
+      gatheringPipeline: [{ goodType: 9, goodId: 'wheat', harvest: { landscapeType: 27, gfxIndices: [20] } }],
+    };
+    const atlasFrames = new Map([['ls_meadows.wheat01', new Set([7, 79, 15, 87])]]); // no 4000
+    const binding = buildResourceBinding(
+      resolveGatheringRefs([{ typeId: 9, id: 'wheat' }], wheat),
+      new Set(['ls_meadows.wheat01']),
+      atlasFrames,
+    );
+    const draw = (level: number) =>
+      resolveResourceDraw(binding, { kind: 'resource', ref: 1, x: 0, y: 0, depth: 0, goodType: 9, level });
+    expect(draw(1)).toBeNull(); // the sown-but-bare stage draws NOTHING (never the green placeholder)
+    expect(draw(2)).toEqual({ bob: 87, layer: 'ls_meadows.wheat01' }); // sprouts from stage 2
+    expect(draw(5)).toEqual({ bob: 7, layer: 'ls_meadows.wheat01' }); // the ripe stand
+
+    // A record whose levels are ALL missing keeps its refs — a genuinely broken binding must surface
+    // as the placeholder, not silently vanish.
+    const broken = buildResourceBinding(
+      resolveGatheringRefs([{ typeId: 9, id: 'wheat' }], wheat),
+      new Set(['ls_meadows.wheat01']),
+      new Map([['ls_meadows.wheat01', new Set<number>()]]),
+    );
+    expect(
+      resolveResourceDraw(broken, { kind: 'resource', ref: 1, x: 0, y: 0, depth: 0, goodType: 9, level: 1 }),
+    ).toEqual({ bob: 4000, layer: 'ls_meadows.wheat01' });
+  });
+
   it('resolves each pile to its own goods atlas, growing with fill; an empty pile → the flag', () => {
     expect(resolveStockpileDraw(stockpile, pile(GOODS.wood, 1))).toEqual({
       layer: 'ls_goods.goods_wood',

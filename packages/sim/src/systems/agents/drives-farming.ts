@@ -1,4 +1,4 @@
-import { Building, Crop, JobAssignment, Position, Stockpile } from '../../components/index.js';
+import { Building, Crop, FarmTask, JobAssignment, Position, Stockpile } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
@@ -10,7 +10,7 @@ import { atomicDuration } from '../readviews/animations.js';
 import { manhattan } from '../spatial.js';
 import { buildingWorkerJobs, lowestStockedGood } from '../stores.js';
 import { atOrWalk, startAtomic, startPickup } from './actions.js';
-import { type TargetCandidates, interactionCell, jobAtomics } from './ai-targets.js';
+import { type TargetCandidates, interactionCell, jobAtomics, nearestStoreFor } from './ai-targets.js';
 
 // The FARMER drive — the field-cultivation rung of the planner ladder: a worker bound to a FARM (a
 // workplace producing a field-farmed good, `farmWorkGood`) walks its farm's surroundings sowing,
@@ -27,21 +27,44 @@ interface Worker {
 }
 
 /**
- * The per-tick SOW claims — which nodes (and how many fields per farm) this tick's earlier-planned
- * farmers already committed to sowing, so two farmers planned in the same tick never pick the same
- * node or overshoot the farm's `maxFields` together. Built fresh each tick by the atomic planner
- * (like the idle-spacing claim set). Cross-TICK races (a farmer still walking to its sow node when
- * another plans) are left to the sow effect's completion-time occupancy check — the second swing
- * plants nothing (the raced-target no-op), which is rare and self-corrects next plan.
+ * The tick's FARM claims — which nodes farmers are already committed to working (reap / sheaf pickup /
+ * sow / water), and how many sow-walks are in flight per farm (they reserve `maxFields` slots before
+ * the field exists). Seeded each tick from every live {@link FarmTask} (farmers still WALKING to or
+ * SWINGING at a target from an earlier tick — {@link collectFarmClaims}), then extended live as this
+ * tick's farmers plan — so two farmers never shadow each other to the same field, the work-division
+ * the "dwóch farmerów robi dokładnie to samo" report was about. A replanning settler's own stale task
+ * is released first ({@link releaseFarmTask}), so it never blocks itself from re-choosing its target.
+ * Membership tests and commutative counts only (no iteration picks a winner) — deterministic without
+ * canonical ordering.
  */
-export interface SowClaims {
+export interface FarmClaims {
   readonly nodes: Set<NodeId>;
   readonly byFarm: Map<Entity, number>;
 }
 
-/** A fresh, empty per-tick claim set. */
-export function emptySowClaims(): SowClaims {
-  return { nodes: new Set(), byFarm: new Map() };
+/** Seed the tick's {@link FarmClaims} from every live {@link FarmTask} — O(in-flight farm actions). */
+export function collectFarmClaims(world: World): FarmClaims {
+  const claims: FarmClaims = { nodes: new Set(), byFarm: new Map() };
+  for (const e of world.query(FarmTask)) {
+    const task = world.get(e, FarmTask);
+    claims.nodes.add(task.node as NodeId);
+    if (task.sow) claims.byFarm.set(task.farm, (claims.byFarm.get(task.farm) ?? 0) + 1);
+  }
+  return claims;
+}
+
+/** Release a replanning settler's stale {@link FarmTask} (if any) from the claim set and the world —
+ *  the drive re-stamps a fresh one if it takes the settler again this tick. */
+export function releaseFarmTask(world: World, e: Entity, claims: FarmClaims): void {
+  const task = world.tryGet(e, FarmTask);
+  if (task === undefined) return;
+  claims.nodes.delete(task.node as NodeId);
+  if (task.sow) {
+    const count = (claims.byFarm.get(task.farm) ?? 0) - 1;
+    if (count > 0) claims.byFarm.set(task.farm, count);
+    else claims.byFarm.delete(task.farm);
+  }
+  world.remove(e, FarmTask);
 }
 
 /**
@@ -91,6 +114,18 @@ function boundFarmTarget(
  * never ferries other trades' goods); returns false only for a settler that isn't a field-farmer here.
  * Sow-before-water is a named approximation (fill the field roster first, then speed it up); the
  * original's engine-side ordering has no oracle.
+ *
+ * WORK DIVISION: every candidate scan skips nodes in `claims` (a colleague is en route — its live
+ * {@link FarmTask}, or planned earlier this tick), and every issued action claims its node + stamps
+ * this settler's own FarmTask — so N farmers spread over N different fields instead of walking in
+ * lockstep to the same one, and field throughput scales with the crew.
+ *
+ * STORE-FULL PAUSE: reap + sheaf-carry only run while SOME store can still take the crop (the farm's
+ * own wheat slot, or any warehouse — {@link nearestStoreFor}); with every sink full, ripe fields stand
+ * and sheaves lie until space frees (a carrier hauling the farm's stock out, the player spending it),
+ * then the loop resumes by itself. Sowing/watering continue meanwhile (bounded by `maxFields`), so a
+ * paused farm keeps a ripe buffer ready — a named approximation, the original's full-store farmer
+ * behavior has no readable oracle.
  */
 export function planFarmer(
   world: World,
@@ -100,7 +135,7 @@ export function planFarmer(
   settler: Worker,
   here: NodeId,
   targets: TargetCandidates,
-  claims: SowClaims,
+  claims: FarmClaims,
 ): boolean {
   const bound = boundFarmTarget(world, ctx, e, settler.jobType, settler.tribe);
   if (bound === null) return false;
@@ -109,20 +144,28 @@ export function planFarmer(
   const fn = nodeOfPosition(fp.x, fp.y);
   const anchor = terrain.nodeAtClamped(fn.hx, fn.hy);
 
-  // One pass over this farm's fields: count them (the max-fields gate) and pick the nearest ripe one
-  // (to reap) + the nearest unwatered growing one (to water). Canonical list + (dist, cell) tie-break.
+  /** Claim `node` for this settler's next action and record the in-flight intent (see FarmTask). */
+  const take = (node: NodeId, sow: boolean): void => {
+    claims.nodes.add(node);
+    if (sow) claims.byFarm.set(farm, (claims.byFarm.get(farm) ?? 0) + 1);
+    world.add(e, FarmTask, { farm, node, sow });
+  };
+
+  // One pass over this farm's fields: count them (the max-fields gate) and pick the nearest UNCLAIMED
+  // ripe one (to reap) + unwatered growing one (to water). Canonical list + (dist, cell) tie-break.
   let fields = 0;
   let ripe: Entity | null = null;
+  let ripeCell = 0 as NodeId;
   let ripeDist = Number.POSITIVE_INFINITY;
-  let ripeCell = Number.POSITIVE_INFINITY;
   let thirsty: Entity | null = null;
+  let thirstyCell = 0 as NodeId;
   let thirstyDist = Number.POSITIVE_INFINITY;
-  let thirstyCell = Number.POSITIVE_INFINITY;
   for (const c of targets.crops) {
     const crop = world.get(c, Crop);
     if (crop.farm !== farm) continue; // another farm's field — never worked from here
     fields++;
     const cell = interactionCell(world, ctx, terrain, c, here);
+    if (claims.nodes.has(cell)) continue; // a colleague is already on this field
     const dist = manhattan(terrain, here, cell);
     if (crop.stage >= crop.stages) {
       if (dist < ripeDist || (dist === ripeDist && cell < ripeCell)) {
@@ -139,10 +182,17 @@ export function planFarmer(
     }
   }
 
+  // The store-full gate for the CROP-MOVING steps (reap/carry): some store can still take the good —
+  // the farm's own slot, or any warehouse (then the delivery rung overflows the load there). Checked
+  // lazily, only when a ripe field or sheaf actually exists this tick.
+  const cropSinkExists = (): boolean =>
+    nearestStoreFor(targets.stockpiles, world, ctx, terrain, here, spec.goodType) !== null;
+
   // a. Reap the nearest ripe field (the scythe swing; the yield drops as a sheaf where it stood).
-  if (ripe !== null) {
+  if (ripe !== null && cropSinkExists()) {
     const node = ripe;
-    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, node, here), () =>
+    take(ripeCell, false);
+    atOrWalk(world, e, here, ripeCell, () =>
       startAtomic(
         world,
         e,
@@ -155,10 +205,13 @@ export function planFarmer(
     return true;
   }
 
-  // b. Carry a cut sheaf home — the delivery rung then routes the load into the farm's own store.
-  const sheaf = nearestFarmSheaf(world, ctx, terrain, targets, anchor, here, spec);
-  if (sheaf !== null) {
-    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, sheaf, here), () =>
+  // b. Carry a sheaf home — the delivery rung then routes the load into the farm's own store (or, with
+  // the farm full, overflows it to the nearest warehouse that still has room).
+  const sheaf = nearestFarmSheaf(world, ctx, terrain, targets, anchor, here, spec, claims);
+  if (sheaf !== null && cropSinkExists()) {
+    const cell = interactionCell(world, ctx, terrain, sheaf, here);
+    take(cell, false);
+    atOrWalk(world, e, here, cell, () =>
       startPickup(
         world,
         ctx,
@@ -172,12 +225,11 @@ export function planFarmer(
     return true;
   }
 
-  // c. Sow the next field while the farm is under its max (this tick's earlier claims counted in).
+  // c. Sow the next field while the farm is under its max (in-flight sow-walks counted in).
   if (fields + (claims.byFarm.get(farm) ?? 0) < spec.farming.maxFields) {
     const node = nextSowNode(world, ctx, terrain, targets, anchor, spec, claims);
     if (node !== null) {
-      claims.nodes.add(node);
-      claims.byFarm.set(farm, (claims.byFarm.get(farm) ?? 0) + 1);
+      take(node, true);
       const at = terrain.coordsOf(node);
       atOrWalk(world, e, here, node, () =>
         startAtomic(
@@ -196,7 +248,8 @@ export function planFarmer(
   // d. Water the nearest unwatered growing field (it grows at double pace afterwards).
   if (thirsty !== null) {
     const crop = thirsty;
-    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, crop, here), () =>
+    take(thirstyCell, false);
+    atOrWalk(world, e, here, thirstyCell, () =>
       startAtomic(
         world,
         e,
@@ -218,8 +271,8 @@ export function planFarmer(
  * The nearest cut-sheaf {@link import('../../components/index.js').GroundDrop} of the farmed good lying
  * within the farm's field radius (measured from the FARM's anchor — a farmer never chases a sheaf
  * across the map), by Manhattan distance from the farmer, ascending-cell-id tie-break, canonical scan.
- * The pile's good is its lowest-id stocked good (an emptied, about-to-reap pile is skipped). Returns
- * the pile entity or null.
+ * The pile's good is its lowest-id stocked good (an emptied, about-to-reap pile is skipped); a sheaf a
+ * colleague already claimed is skipped too. Returns the pile entity or null.
  */
 function nearestFarmSheaf(
   world: World,
@@ -229,6 +282,7 @@ function nearestFarmSheaf(
   anchor: NodeId,
   here: NodeId,
   spec: FarmingSpec,
+  claims: FarmClaims,
 ): Entity | null {
   let best: Entity | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
@@ -236,6 +290,7 @@ function nearestFarmSheaf(
   for (const e of targets.groundDrops) {
     if (lowestStockedGood(world.get(e, Stockpile)) !== spec.goodType) continue; // not this farm's crop
     const cell = interactionCell(world, ctx, terrain, e, here);
+    if (claims.nodes.has(cell)) continue; // a colleague is already carrying this one off
     if (manhattan(terrain, anchor, cell) > spec.farming.fieldRadius) continue; // beyond the farm's fields
     const dist = manhattan(terrain, here, cell);
     if (dist < bestDist || (dist === bestDist && cell < bestCell)) {
@@ -268,9 +323,10 @@ function sowJitter(bx: number, by: number): { dx: number; dy: number } {
  * grow outward from the farm), or null when the whole radius is taken. The lattice is one base point
  * per {@link FIELD_LATTICE_STEP} nodes, each shifted by its own deterministic {@link sowJitter} — the
  * user-specified "minimally scattered, not hex-stacked" field spread. A candidate must be on the map,
- * walkable (the farmer stands ON the field to work it — wheat is walkable in the data), clear of the
- * walk-block overlays (building walls, standing resources), not occupied by any resource/field/heap,
- * and not already claimed by a farmer planned earlier this tick.
+ * walkable (the farmer stands ON the field to work it — wheat is walkable in the data), PLANTABLE
+ * ground (the original's `biocanplanton` triangle flag — only grass/land carries it, so no field ever
+ * lands on sand/desert/snow), clear of the walk-block overlays (building walls, standing resources),
+ * not occupied by any resource/field/heap, and not claimed by another farmer's in-flight action.
  *
  * Cost: O(radius² / step²) candidates + an O(resources + stockpiles) occupancy index, only when a
  * farmer actually reaches its sow step — bounded by the farm's own radius, never the map.
@@ -282,7 +338,7 @@ function nextSowNode(
   targets: TargetCandidates,
   anchor: NodeId,
   spec: FarmingSpec,
-  claims: SowClaims,
+  claims: FarmClaims,
 ): NodeId | null {
   const blocked = dynamicBlockedCells(world, ctx, terrain);
   const occupied = new Set<NodeId>();
@@ -309,7 +365,8 @@ function nextSowNode(
       const dist = manhattan(terrain, anchor, node);
       if (dist > radius) continue; // outside the farm's field ring
       if (!terrain.isWalkable(node) || blocked.has(node)) continue; // water/walls/standing bodies
-      if (occupied.has(node) || claims.nodes.has(node)) continue; // taken, or claimed this tick
+      if (!terrain.isPlantable(node)) continue; // barren ground (sand/desert/snow) — grain needs grass
+      if (occupied.has(node) || claims.nodes.has(node)) continue; // taken, or claimed by a colleague
       if (dist < bestDist || (dist === bestDist && (best === null || node < best))) {
         best = node;
         bestDist = dist;

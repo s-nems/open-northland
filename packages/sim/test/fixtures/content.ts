@@ -124,10 +124,22 @@ export function testContent(): ContentSet {
         stock: [{ goodType: 6, capacity: 25, initial: 0 }],
         produces: [6],
       },
+      {
+        // A passive wheat store (a granary) — the OVERFLOW sink the farm-full tests place: with the
+        // farm's own 25-slot full, the farmer's reap/carry gate finds this and the delivery rung
+        // routes the load here. No test outside farming places it, so every golden is untouched.
+        typeId: 6,
+        id: 'granary',
+        kind: 'storage',
+        stock: [{ goodType: 6, capacity: 150, initial: 0 }],
+      },
     ],
     landscape: [
-      { typeId: 0, id: 'grass', walkable: true, buildable: true },
+      // Grass is the one PLANTABLE ground (the original's `biocanplanton` triangle flag — `land` alone
+      // carries it); barren is its walk+build twin that rejects the plough (sand/beach/desert stone).
+      { typeId: 0, id: 'grass', walkable: true, buildable: true, plantable: true },
       { typeId: 1, id: 'water', walkable: false, buildable: false },
+      { typeId: 2, id: 'barren', walkable: true, buildable: true },
     ],
     // A weapon for the viking woodcutter (tribe 1, job 1) — the CombatSystem resolves an attacker's
     // weapon by (tribeType, jobType). maxRange 2 (the attacker can strike an enemy up to 2 cells away),

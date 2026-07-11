@@ -46,12 +46,14 @@ import {
  * RETAINED, so no terrain work happens per frame beyond the cheap visibility toggle.
  */
 
-/** A flat colour per landscape typeId for the placeholder terrain (cycled if a typeId exceeds the table). */
+/** A flat colour per landscape typeId for the placeholder terrain (cycled if a typeId exceeds the table).
+ *  Indexed by the semantic terrain classes (app `catalog/terrain.ts`): open/impassable/blocked/margin/barren. */
 const TILE_COLOURS: readonly number[] = [
-  0x4a7c3a, // 0: grass
-  0x3a6ea5, // 1: water
-  0x8a6d3b, // 2: dirt/path
-  0x9a9a9a, // 3: stone
+  0x4a7c3a, // 0: grass (open)
+  0x3a6ea5, // 1: water (impassable)
+  0x8a6d3b, // 2: dirt/path (an object's body)
+  0x9a9a9a, // 3: stone (margin)
+  0xc9b26b, // 4: sand (barren — open ground crops can't be sown on)
 ];
 const DEFAULT_TILE_COLOUR = 0x4a7c3a;
 

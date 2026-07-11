@@ -1,6 +1,12 @@
 import { type TerrainMapFile, fullStateBlockAreaCells } from '@vinland/data';
 import { type TerrainMap, halfCellMapFromCells } from '@vinland/sim';
-import { TERRAIN_BLOCKED, TERRAIN_IMPASSABLE, TERRAIN_MARGIN, TERRAIN_OPEN } from '../catalog/terrain.js';
+import {
+  TERRAIN_BARREN,
+  TERRAIN_BLOCKED,
+  TERRAIN_IMPASSABLE,
+  TERRAIN_MARGIN,
+  TERRAIN_OPEN,
+} from '../catalog/terrain.js';
 
 /**
  * The decoded-map → sim COLLISION join: resolve a real map's grid into the four SEMANTIC terrain
@@ -50,6 +56,7 @@ export interface CollisionIrView {
         readonly type: number;
         readonly humanCanWalkOn?: boolean | undefined;
         readonly houseCanBeBuildOn?: boolean | undefined;
+        readonly bioCanPlantOn?: boolean | undefined;
       }[]
     | undefined;
   readonly landscapeGfx?:
@@ -64,15 +71,19 @@ export interface CollisionIrView {
 /**
  * Fallback ground split for an `ir.json` generated before the `trianglePatternTypes` lane existed —
  * a pinned approximation of that table's real flags (water 1 and swamp 5 block both; mountain 3 and
- * snow 7 walk but reject building; border 0 and the void filler 6 are impassable).
+ * snow 7 walk but reject building; sand 4, beach 8 and desert stone 9 walk+build but grow nothing;
+ * border 0 and the void filler 6 are impassable).
  */
 const FALLBACK_GROUND_CLASS: ReadonlyMap<number, number> = new Map([
   [0, TERRAIN_IMPASSABLE], // border — no table row even in the real data
   [1, TERRAIN_IMPASSABLE], // water
   [3, TERRAIN_MARGIN], // mountain faces — humancanwalkon 1, no housecanbebuildon
+  [4, TERRAIN_BARREN], // sand — walk + build, no biocanplanton
   [5, TERRAIN_IMPASSABLE], // swamp — neither flag
   [6, TERRAIN_IMPASSABLE], // black — the void filler outside authored ground
   [7, TERRAIN_MARGIN], // snow — walkable, not buildable
+  [8, TERRAIN_BARREN], // beach — like sand
+  [9, TERRAIN_BARREN], // desert stone — like sand
 ]);
 
 /** logicType → terrain class from the extracted `trianglepatterntypes.cif` flags (see module doc). */
@@ -84,15 +95,20 @@ function groundClassTable(ir: CollisionIrView): ReadonlyMap<number, number> {
   for (const t of rows) {
     if (t.humanCanWalkOn !== true) table.set(t.type, TERRAIN_IMPASSABLE);
     else if (t.houseCanBeBuildOn !== true) table.set(t.type, TERRAIN_MARGIN);
-    // walk + build → open: no entry (the grid default).
+    // Walk + build but no `biocanplanton` (sand/beach/desert stone) → open-but-barren: everything
+    // works there except the plough (the farmer drive's grass-only field gate).
+    else if (t.bioCanPlantOn !== true) table.set(t.type, TERRAIN_BARREN);
+    // walk + build + plant → open: no entry (the grid default).
   }
   return table;
 }
 
-/** The worse of two ground classes (impassable > margin > open) — a cell takes its worst triangle. */
+/** The worse of two ground classes (impassable > margin > barren > open) — a cell takes its worst
+ *  triangle, so a half-sand cell rejects the plough like it rejects nothing else. */
 function worseGroundClass(a: number, b: number): number {
   if (a === TERRAIN_IMPASSABLE || b === TERRAIN_IMPASSABLE) return TERRAIN_IMPASSABLE;
   if (a === TERRAIN_MARGIN || b === TERRAIN_MARGIN) return TERRAIN_MARGIN;
+  if (a === TERRAIN_BARREN || b === TERRAIN_BARREN) return TERRAIN_BARREN;
   return TERRAIN_OPEN;
 }
 
@@ -159,9 +175,10 @@ export function buildCollisionTerrain(
       if (cx < 0 || cy < 0 || cx >= nodeW || cy >= nodeH) return;
       const i = cy * nodeW + cx;
       const current = typeIds[i];
-      // Severity order: body > impassable ground > margin > open. A margin never downgrades a cell.
+      // Severity order: body > impassable ground > margin > barren > open. A margin never downgrades
+      // a cell — but it does OVERRIDE barren (an object's build ring blocks building on sand too).
       if (cls === TERRAIN_BLOCKED) typeIds[i] = TERRAIN_BLOCKED;
-      else if (current === TERRAIN_OPEN) typeIds[i] = cls;
+      else if (current === TERRAIN_OPEN || current === TERRAIN_BARREN) typeIds[i] = cls;
     };
     const { types, placements } = map.objects;
     for (let i = 0; i + 2 < placements.length; i += 3) {

@@ -103,6 +103,10 @@ interface NodeTypeProps {
    *  real map's margin band around a tree/rock is walkable ground you may not BUILD on, while water
    *  is neither. The build-placement rule reads this; navigation never does. */
   readonly buildable: boolean;
+  /** Whether crops may be SOWN on a node of this type (the farmer drive's field gate). Distinct from
+   *  both flags above: desert sand is walkable AND buildable but grows nothing — the original's
+   *  `biocanplanton` ground flag (`trianglepatterntypes.cif`, only `land` carries it). */
+  readonly plantable: boolean;
   /** Cost to step ONTO a node of this type, in fixed-point. Walkable nodes cost one unit. */
   readonly walkCost: Fixed;
   /** Per-node capacity — how many units may cluster on a node of this type (0 = unset/blocking). */
@@ -110,12 +114,19 @@ interface NodeTypeProps {
 }
 
 /** Default props for a landscape typeId not present in the content table (treated as blocking). */
-const UNKNOWN_TYPE: NodeTypeProps = { walkable: false, buildable: false, walkCost: ONE, maxValency: 0 };
+const UNKNOWN_TYPE: NodeTypeProps = {
+  walkable: false,
+  buildable: false,
+  plantable: false,
+  walkCost: ONE,
+  maxValency: 0,
+};
 
 function resolveTypeProps(t: LandscapeType): NodeTypeProps {
   return {
     walkable: t.walkable,
     buildable: t.buildable,
+    plantable: t.plantable,
     // Walk cost is a uniform unit per walkable step — faithful for THIS table:
     // `landscapetypes.ini` carries NO per-type movement weight (its only per-type numbers are
     // `maximumValency` = a per-cell capacity cap, and the `allowedon{land,water,everything}`
@@ -214,6 +225,13 @@ export class TerrainGraph {
    *  not buildable). Placement-only; navigation reads {@link isWalkable}. */
   isBuildable(node: NodeId): boolean {
     return this.propsOf(node).buildable;
+  }
+
+  /** True if crops may be SOWN on this node (the landscape row's `plantable` flag — the original's
+   *  `biocanplanton` ground class, carried only by grass/land). Farming-only; navigation and
+   *  placement never read it. */
+  isPlantable(node: NodeId): boolean {
+    return this.propsOf(node).plantable;
   }
 
   /** Fixed-point cost to step onto this node. */

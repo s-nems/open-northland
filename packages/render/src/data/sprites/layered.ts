@@ -98,9 +98,14 @@ export function resolveConstructionDraws(
  * shrink-by-level fill; the frames run empty→full, so `level` = full draws the last). A plain node carries
  * no `level` and draws the FULL (last) frame — so a tree/mushroom/stump/trunk/full deposit is unaffected.
  * Falls back to `default` (the representative yew) when the item carries no good or the good is unmapped —
- * so a sparse table is always total.
+ * so a sparse table is always total. Returns **null** for a level whose entry is the explicit `null`
+ * INVISIBLE marker (see {@link ResourceTypeBinding.byGood} — the original's freshly-sown field draws
+ * nothing): the caller draws nothing at all, not the placeholder.
  */
-export function resolveResourceDraw(binding: number | ResourceTypeBinding, item: DrawItem): BuildingDraw {
+export function resolveResourceDraw(
+  binding: number | ResourceTypeBinding,
+  item: DrawItem,
+): BuildingDraw | null {
   if (typeof binding === 'number') return { bob: binding };
   // The node's exact source variant ("pine 02") wins over its good's representative ("yew 01") — a
   // decoded map keeps its species variety; an unbound variant (unloaded family) falls back per-good.
@@ -110,7 +115,9 @@ export function resolveResourceDraw(binding: number | ResourceTypeBinding, item:
   // A mined node's 1-based fill LEVEL (`levels` = full) → a 0-based frame index, clamped into range; a
   // plain node carries no level and falls to `frames.length` (the full, last state) — full-node behaviour.
   const idx = Math.min(frames.length, Math.max(1, item.level ?? frames.length)) - 1;
-  return unwrapBobRef(frames[idx] ?? binding.default);
+  const ref = frames[idx];
+  if (ref === null) return null; // a data-pinned invisible level — draw NOTHING (never the placeholder)
+  return unwrapBobRef(ref ?? binding.default);
 }
 
 /**
