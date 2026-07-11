@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
-import { Simulation, clearComponentStores } from '../../src/index.js';
+import { clearComponentStores, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -84,9 +84,9 @@ describe('takeSnapshot scenery clone cache', () => {
     const inA = a.entities.find((e) => e.id === (node as number));
     const inB = b.entities.find((e) => e.id === (node as number));
     expect(inB).not.toBe(inA);
-    expect((inB?.components.Resource as { remaining: number }).remaining).toBe(4);
+    expect(inB?.components.Resource).toMatchObject({ remaining: 4 });
     // The earlier snapshot stays what it observed — clones never alias the live store.
-    expect((inA?.components.Resource as { remaining: number }).remaining).toBe(5);
+    expect(inA?.components.Resource).toMatchObject({ remaining: 5 });
   });
 
   it('drops a destroyed scenery entity from the next snapshot (destroy auto-logs)', () => {

@@ -5,7 +5,10 @@
   "type": "module",
   "description": "Open-source cross-platform rebuild of Cultures - 8th Wonder of the World",
   "license": "GPL-3.0-or-later",
-  "workspaces": ["packages/*", "tools/*"],
+  "workspaces": [
+    "packages/*",
+    "tools/*"
+  ],
   "scripts": {
     "build": "tsc --build",
     "clean": "tsc --build --clean",
@@ -24,12 +27,12 @@
     "pipeline": "npm run start --workspace @vinland/asset-pipeline --"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
+    "@biomejs/biome": "^2.5.3",
     "playwright": "^1.61.1",
-    "typescript": "^5.6.0",
-    "vitest": "^2.1.0"
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   },
   "engines": {
-    "node": ">=20"
+    "node": "^20.19.0 || >=22.12.0"
   }
 }

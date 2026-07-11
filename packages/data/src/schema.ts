@@ -246,7 +246,7 @@ export const GoodType = z.strictObject({
    * The {@link productionInputs} edges plus these layers are the explicit goods-graph IR. See
    * {@link GoodClassification} and historical plan phase 3.
    */
-  classification: GoodClassification.default({}),
+  classification: GoodClassification.prefault({}),
   /**
    * The good's character-equipment classification — its slot category + whether it wears out. Present
    * only on the equippable goods (the original's ids 30–55: shoes, tools, armour, weapons, mead,
@@ -1300,67 +1300,89 @@ export const TerrainMapFile = z
     /** The authored entity placements (`map.cif` `StaticObjects`), when the map carries them. */
     entities: TerrainEntities.optional(),
   })
-  .refine(
-    (m) => m.typeIds.length === m.width * m.height,
-    (m) => ({
+  .check((ctx) => {
+    const m = ctx.value;
+    if (m.typeIds.length === m.width * m.height) return;
+    ctx.issues.push({
+      code: 'custom',
       message: `terrain map typeIds length ${m.typeIds.length} != width*height (${m.width}*${m.height} = ${
         m.width * m.height
       })`,
       path: ['typeIds'],
-    }),
-  )
-  .refine(
-    (m) =>
+      input: m,
+    });
+  })
+  .check((ctx) => {
+    const m = ctx.value;
+    if (
       m.ground === undefined ||
-      (m.ground.a.length === m.width * m.height && m.ground.b.length === m.width * m.height),
-    (m) => ({
+      (m.ground.a.length === m.width * m.height && m.ground.b.length === m.width * m.height)
+    )
+      return;
+    ctx.issues.push({
+      code: 'custom',
       message: `terrain map ground lanes must be width*height (${m.width * m.height}) cells`,
       path: ['ground'],
-    }),
-  )
-  .refine(
-    (m) =>
+      input: m,
+    });
+  })
+  .check((ctx) => {
+    const m = ctx.value;
+    if (
       m.ground === undefined ||
-      [...m.ground.a, ...m.ground.b].every((idx) => idx < (m.ground as TerrainGround).patterns.length),
-    () => ({
+      [...m.ground.a, ...m.ground.b].every((idx) => idx < (m.ground as TerrainGround).patterns.length)
+    )
+      return;
+    ctx.issues.push({
+      code: 'custom',
       message: 'terrain map ground lane indexes outside its patterns list',
       path: ['ground'],
-    }),
-  )
-  .refine(
-    (m) => {
-      if (m.transitions === undefined) return true;
-      const cells = m.width * m.height;
-      const t = m.transitions;
-      return [t.a1, t.b1, t.a2, t.b2].every((lane) => lane.length === cells);
-    },
-    (m) => ({
-      message: `terrain map transition lanes must be width*height (${m.width * m.height}) cells`,
+      input: m,
+    });
+  })
+  .check((ctx) => {
+    const m = ctx.value;
+    if (m.transitions === undefined) return;
+    const cells = m.width * m.height;
+    const t = m.transitions;
+    if ([t.a1, t.b1, t.a2, t.b2].every((lane) => lane.length === cells)) return;
+    ctx.issues.push({
+      code: 'custom',
+      message: `terrain map transition lanes must be width*height (${cells}) cells`,
       path: ['transitions'],
-    }),
-  )
-  .refine(
-    (m) => {
-      if (m.transitions === undefined) return true;
-      const t = m.transitions;
-      return [t.a1, t.b1, t.a2, t.b2].every((lane) =>
+      input: m,
+    });
+  })
+  .check((ctx) => {
+    const m = ctx.value;
+    if (m.transitions === undefined) return;
+    const t = m.transitions;
+    if (
+      [t.a1, t.b1, t.a2, t.b2].every((lane) =>
         lane.every((v) => v === TRANSITION_NONE || Math.floor(v / TRANSITION_PAIRS) < t.types.length),
-      );
-    },
-    () => ({
+      )
+    )
+      return;
+    ctx.issues.push({
+      code: 'custom',
       message: 'terrain map transition lane values outside its types dictionary',
       path: ['transitions'],
-    }),
-  )
-  .refine(
-    (m) => m.objects === undefined || m.objects.placements.length % 3 === 0,
-    () => ({
+      input: m,
+    });
+  })
+  .check((ctx) => {
+    const m = ctx.value;
+    if (m.objects === undefined || m.objects.placements.length % 3 === 0) return;
+    ctx.issues.push({
+      code: 'custom',
       message: 'terrain map objects.placements must be flat [hx, hy, typeIndex] triples',
       path: ['objects', 'placements'],
-    }),
-  )
-  .refine(
-    (m) => {
+      input: m,
+    });
+  })
+  .check((ctx) => {
+    const m = ctx.value;
+    const inRange = (): boolean => {
       if (m.objects === undefined) return true;
       const p = m.objects.placements;
       for (let i = 0; i + 2 < p.length; i += 3) {
@@ -1370,33 +1392,46 @@ export const TerrainMapFile = z
         if ((p[i + 2] as number) >= m.objects.types.length) return false;
       }
       return true;
-    },
-    () => ({
+    };
+    if (inRange()) return;
+    ctx.issues.push({
+      code: 'custom',
       message: 'terrain map objects.placements triple out of range (half-cell coords / types index)',
       path: ['objects', 'placements'],
-    }),
-  )
-  .refine(
-    (m) => m.objects?.levels === undefined || m.objects.levels.length === m.objects.placements.length / 3,
-    () => ({
+      input: m,
+    });
+  })
+  .check((ctx) => {
+    const m = ctx.value;
+    if (m.objects?.levels === undefined || m.objects.levels.length === m.objects.placements.length / 3)
+      return;
+    ctx.issues.push({
+      code: 'custom',
       message: 'terrain map objects.levels must carry one entry per placement triple',
       path: ['objects', 'levels'],
-    }),
-  )
-  .refine(
-    (m) => m.elevation === undefined || m.elevation.length === m.width * m.height,
-    (m) => ({
-      message: `terrain map elevation length ${m.elevation?.length} != width*height (${m.width * m.height})`,
+      input: m,
+    });
+  })
+  .check((ctx) => {
+    const m = ctx.value;
+    if (m.elevation === undefined || m.elevation.length === m.width * m.height) return;
+    ctx.issues.push({
+      code: 'custom',
+      message: `terrain map elevation length ${m.elevation.length} != width*height (${m.width * m.height})`,
       path: ['elevation'],
-    }),
-  )
-  .refine(
-    (m) => m.brightness === undefined || m.brightness.length === m.width * m.height,
-    (m) => ({
-      message: `terrain map brightness length ${m.brightness?.length} != width*height (${m.width * m.height})`,
+      input: m,
+    });
+  })
+  .check((ctx) => {
+    const m = ctx.value;
+    if (m.brightness === undefined || m.brightness.length === m.width * m.height) return;
+    ctx.issues.push({
+      code: 'custom',
+      message: `terrain map brightness length ${m.brightness.length} != width*height (${m.width * m.height})`,
       path: ['brightness'],
-    }),
-  );
+      input: m,
+    });
+  });
 export type TerrainMapFile = z.infer<typeof TerrainMapFile>;
 
 /**

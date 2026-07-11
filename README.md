@@ -38,7 +38,7 @@ tracked in [`docs/plans/`](docs/plans/).
 
 ## Getting started
 
-**Requirements:** [Node.js](https://nodejs.org/) ≥ 20, and — to actually generate content or play —
+**Requirements:** [Node.js](https://nodejs.org/) ≥ 20.19 (22.12+ recommended), and — to actually generate content or play —
 your own legally-owned copy of *Cultures – 8th Wonder of the World* (the readable data of the
 free [culturesnation](https://culturesnation.pl/) fan mod is preferred where available; see
 [`docs/DATA-FORMAT.md`](docs/DATA-FORMAT.md)).

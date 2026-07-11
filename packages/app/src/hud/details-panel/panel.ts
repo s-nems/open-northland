@@ -1,24 +1,24 @@
 import {
+  bakeToSprite,
   type PortraitInsetFrame,
   type SpriteSheet,
   type SupersampledTexture,
-  bakeToSprite,
 } from '@vinland/render';
 import type { WorldSnapshot } from '@vinland/sim';
 import { type Application, Container, Graphics } from 'pixi.js';
 import { DEFAULT_UI_LANG, uiStringLookup } from '../../content/gui-gfx.js';
-import { type Rect, contains } from '../geometry.js';
+import { contains, type Rect } from '../geometry.js';
 import { loadDetailsPanelAssets } from './assets.js';
-import { type PanelLayers, createChrome } from './chrome.js';
+import { createChrome, type PanelLayers } from './chrome.js';
 import {
   type ButtonHit,
   type DetailsLayout,
-  ROW_H,
   layoutDetails,
   mapLayout,
+  ROW_H,
   stockSlotRects,
 } from './layout.js';
-import { type UnitPanelModel, type UnitPanelModelContext, buildUnitPanelModel } from './model.js';
+import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model.js';
 import { drawBuilding, drawCompact, drawSettler } from './sections.js';
 import { STOCK_TAB_LABELS } from './stock-tabs.js';
 import { WorkerSpriteOverlay } from './worker-sprites.js';
@@ -316,7 +316,8 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     }
     const rowName = hitStockGood(x, y);
     const tab = rowName === null ? hitStockTab(x, y) : null;
-    const text = rowName ?? (tab !== null ? (STOCK_TAB_LABELS[tab] ?? null) : null) ?? hitBarValue(x, y);
+    const tabLabel = tab !== null ? (STOCK_TAB_LABELS[tab] ?? null) : null;
+    const text = rowName ?? tabLabel ?? hitBarValue(x, y);
     if (text === null) opts.tooltip.hide();
     else opts.tooltip.show(clientX, clientY, text);
   };

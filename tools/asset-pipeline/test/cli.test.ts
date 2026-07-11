@@ -5,13 +5,13 @@ import { parseTerrainMap } from '@vinland/data';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { assertOutStaysInCheckout, parseArgs, resolveArgs } from '../src/args.js';
 import {
+  type Bmd,
   BOB_TYPE_8BIT,
   BOB_TYPE_DOUBLE8BIT,
-  type Bmd,
-  PACKED_X_SHIFT,
   encodeBmd,
+  PACKED_X_SHIFT,
 } from '../src/decoders/bmd.js';
-import { StorableId, encryptMode1 } from '../src/decoders/cif.js';
+import { encryptMode1, StorableId } from '../src/decoders/cif.js';
 import type { BmdPaletteBinding, PaletteAlias } from '../src/decoders/ini.js';
 import { encodeLib } from '../src/decoders/lib.js';
 import { encodeMapDat, encodeMapSize, packMapLayer, packX6elLayer } from '../src/decoders/mapdat.js';
@@ -96,7 +96,9 @@ const buildMapCif = (lines: ReadonlyArray<{ level: number; text: string }>): Uin
   const pool = Uint8Array.from(chunks);
   const offsets = new Uint8Array(offsetValues.length * 4);
   const ov = new DataView(offsets.buffer);
-  offsetValues.forEach((v, i) => ov.setUint32(i * 4, v, true));
+  offsetValues.forEach((v, i) => {
+    ov.setUint32(i * 4, v, true);
+  });
   encryptMode1(offsets);
   encryptMode1(pool);
 

@@ -1,21 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import {
+  type Bmd,
   BOB_TYPE_8BIT,
   BOB_TYPE_EMPTY,
-  type Bmd,
   type BobRecord,
   PACKED_X_SHIFT,
 } from '../src/decoders/bmd.js';
 import { StorableId } from '../src/decoders/cif.js';
 import {
-  FONT_FIRST_CHAR,
-  FONT_SPACE_BOB_ID,
-  type Font,
   bobAdvance,
   decodeFnt,
   deriveBaseline,
   deriveLineHeight,
   encodeFnt,
+  FONT_FIRST_CHAR,
+  FONT_SPACE_BOB_ID,
+  type Font,
   fontMetrics,
 } from '../src/decoders/fnt.js';
 
@@ -120,7 +120,9 @@ describe('fontMetrics', () => {
     expect(metrics.firstChar).toBe(FONT_FIRST_CHAR);
     expect(metrics.charCount).toBe(FONT_SPACE_BOB_ID + 1);
     expect(metrics.glyphs).toHaveLength(FONT_SPACE_BOB_ID + 1);
-    metrics.glyphs.forEach((g, i) => expect(g.char).toBe(FONT_FIRST_CHAR + i));
+    metrics.glyphs.forEach((g, i) => {
+      expect(g.char).toBe(FONT_FIRST_CHAR + i);
+    });
   });
 
   it('advances a glyph by x + width + 1 (CFont GetCharacterWidth, spacing 0)', () => {
