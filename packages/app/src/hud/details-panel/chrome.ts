@@ -130,7 +130,7 @@ export interface Chrome {
     colorKey: GuiColorKey,
     target: Container,
   ): boolean;
-  /** A section window: tiled wood fill + the rope-strip border with knot corners. */
+  /** A section window: the tiled grey-blue card fill + the rope-strip border with knot corners. */
   window(r: Rect): void;
   /** An inner content box (the preview): thin dark bevel frame, no rope — the original's inner framing. */
   innerBox(r: Rect): void;
@@ -445,7 +445,8 @@ export function createChrome(
 
   const selectedUnderline = (r: Rect): void => {
     // Flat lime strip — colour sampled off the 1024×768 original's name underline (avg #d8fb55);
-    // no shipped bitmap/palette pairing reproduces it (`bg_selected` expands grey through every palette).
+    // no shipped bitmap/palette pairing reproduces this lime (`bg_selected` — the card body — only ever
+    // expands to grey/grey-blue, and the other fills to browns/creams).
     g.rect(r.x, r.y, r.w, r.h).fill(SELECTED_LIME);
   };
 
