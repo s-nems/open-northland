@@ -1,9 +1,9 @@
 import {
   type Camera,
-  ONE,
-  type SceneTerrain,
   cameraViewport,
   flatTileColour,
+  ONE,
+  type SceneTerrain,
   tileToScreen,
 } from '@vinland/render';
 import type { WorldSnapshot } from '@vinland/sim';
@@ -108,7 +108,12 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
 
   const frame = await loadMinimapFrame(app.renderer, layout.artScale, app.renderer.resolution);
 
-  const local = (r: { x: number; y: number; w: number; h: number }): {
+  const local = (r: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  }): {
     x: number;
     y: number;
     w: number;

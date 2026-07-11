@@ -1,5 +1,5 @@
-import { type ComponentChange, diffComponents } from './snapshot-diff.js';
 import type { EntitySnapshot, WorldSnapshot } from './snapshot.js';
+import { type ComponentChange, diffComponents } from './snapshot-diff.js';
 
 /**
  * `dumpEntity` / `traceEntity` — the **"dump an entity"** third of the time-travel / replay inspector

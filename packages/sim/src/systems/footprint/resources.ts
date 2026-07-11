@@ -1,8 +1,8 @@
 import {
   type ContentSet,
+  fullStateBlockAreaCells,
   type LandscapeBlockArea,
   type LandscapeGfx,
-  fullStateBlockAreaCells,
 } from '@vinland/data';
 import {
   Felling,

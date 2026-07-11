@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CurrentAtomic, Health, HerdMember, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, type TerrainMap, fx, halfCellMapFromCells, seedAnimalHerds } from '../../src/index.js';
+import { fx, halfCellMapFromCells, Simulation, seedAnimalHerds, type TerrainMap } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**

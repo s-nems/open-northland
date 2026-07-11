@@ -16,30 +16,30 @@ import {
   Settler,
   Stance,
 } from '../../src/components/index.js';
-import { type Fixed, ONE, fx } from '../../src/core/fixed.js';
+import { type Fixed, fx, ONE } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
-  Simulation,
-  type TerrainMap,
   cellAnchorNode,
   halfCellMapFromCells,
   positionOfNode,
+  Simulation,
+  type TerrainMap,
 } from '../../src/index.js';
 import { attackUnit, setJob, setStance } from '../../src/systems/conflict/orders.js';
 import { spawnSettler } from '../../src/systems/conflict/spawn.js';
 import {
+  combatSystem,
   DEFEND_LEASH_NODES,
   DEFEND_RADIUS_NODES,
   type SystemContext,
-  combatSystem,
 } from '../../src/systems/index.js';
 import {
   ACCEL_TICKS,
   MOVE_SPEED_PER_TICK,
-  RUN_SPEED_MULTIPLIER,
   movementSystem,
+  RUN_SPEED_MULTIPLIER,
 } from '../../src/systems/movement/movement.js';
-import { MILITARY_MODE, defaultStanceForJob } from '../../src/systems/readviews/index.js';
+import { defaultStanceForJob, MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**

@@ -20,7 +20,7 @@ import { atomicDuration } from '../readviews/animations.js';
 import { manhattan } from '../spatial.js';
 import { buildingWorkerJobs, lowestStockedGood } from '../stores.js';
 import { atOrWalk, startAtomic, startPickup } from './actions.js';
-import { type TargetCandidates, interactionCell, jobAtomics, nearestStoreFor } from './ai-targets.js';
+import { interactionCell, jobAtomics, nearestStoreFor, type TargetCandidates } from './ai-targets.js';
 
 // The FARMER drive — the field-cultivation rung of the planner ladder: a worker bound to a FARM (a
 // workplace producing a field-farmed good, `farmWorkGood`) walks its farm's surroundings sowing,

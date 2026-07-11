@@ -1,7 +1,7 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
 import { decodeCifStringArray } from '../../decoders/cif.js';
-import { type RuleSection, cifLinesToSections, extractStaticObjects } from '../../decoders/ini.js';
+import { cifLinesToSections, extractStaticObjects, type RuleSection } from '../../decoders/ini.js';
 import { walkFiles } from '../../walk.js';
 import { findPathCaseInsensitive } from './case-path.js';
 import { mapIdFromPath } from './info.js';

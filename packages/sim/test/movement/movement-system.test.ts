@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { MoveSpeed, PathFollow, PathRequest, Position, Velocity } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { ONE, Simulation, type TerrainMap, fx } from '../../src/index.js';
+import { fx, ONE, Simulation, type TerrainMap } from '../../src/index.js';
 import {
   ACCEL_TICKS,
   MOVE_SPEED_PER_TICK,
-  WALK_TICKS_PER_CELL,
   movementSystem,
+  WALK_TICKS_PER_CELL,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 

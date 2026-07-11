@@ -2,7 +2,7 @@ import { type ContentSet, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Building, Carrying, Position, Settler, Stockpile, Vehicle } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { ONE, Simulation, type TerrainMap, fx } from '../../src/index.js';
+import { fx, ONE, Simulation, type TerrainMap } from '../../src/index.js';
 import { type SystemContext, stockCapacity } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { clearComponentStores } from '../fixtures/stores.js';

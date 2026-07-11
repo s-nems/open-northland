@@ -1,94 +1,94 @@
-export { Simulation, type SimOptions, spawnAt } from './simulation.js';
-export { World, defineComponent } from './ecs/world.js';
-export type { Entity, Component } from './ecs/world.js';
-export { Rng } from './core/rng.js';
-export { fx, ONE, type Fixed } from './core/fixed.js';
-export { FixedTimestep, TICKS_PER_SECOND, MS_PER_TICK } from './core/loop.js';
 export * as components from './components/index.js';
-export * as systems from './systems/index.js';
-export type { ConstructionPlot, PlacementProbe, ResourceNodeSpec } from './systems/footprint/index.js';
-export {
-  scenario,
-  Scenario,
-  type ScenarioOptions,
-  type ScenarioResult,
-  type RunOptions,
-} from './harness/scenario.js';
 export type { Brand } from './core/brand.js';
 export { assertNever } from './core/brand.js';
 export {
-  type Command,
   type AtomicEffect,
+  type Command,
+  CommandQueue,
   type LoggedCommand,
   type SettlerEquipment,
   type SettlerEquipmentSlot,
-  CommandQueue,
 } from './core/commands.js';
 export { EventBuffer, type SimEvent, type SimEventKind } from './core/events.js';
-export { takeSnapshot, type WorldSnapshot, type EntitySnapshot } from './inspect/snapshot.js';
+export { type Fixed, fx, ONE } from './core/fixed.js';
+export { FixedTimestep, MS_PER_TICK, TICKS_PER_SECOND } from './core/loop.js';
+export { Rng } from './core/rng.js';
+export type { Component, Entity } from './ecs/world.js';
+export { defineComponent, World } from './ecs/world.js';
 export {
-  diffSnapshots,
-  type SnapshotDiff,
-  type ChangedEntity,
-  type ComponentChange,
-} from './inspect/snapshot-diff.js';
+  buildingSane,
+  CORE_INVARIANTS,
+  cachesCoherent,
+  checkInvariants,
+  enjoymentInRange,
+  fatigueInRange,
+  hungerInRange,
+  type Invariant,
+  pietyInRange,
+  populationWithinHousing,
+  stockNonNegative,
+} from './harness/invariants.js';
+export { type SeedAnimalsOptions, seedAnimalHerds } from './harness/populate.js';
+export {
+  type RunOptions,
+  Scenario,
+  type ScenarioOptions,
+  type ScenarioResult,
+  scenario,
+} from './harness/scenario.js';
+export { clearComponentStores } from './harness/stores.js';
 export {
   dumpEntity,
-  traceEntity,
   type EntityDump,
   type EntityTraceStep,
+  traceEntity,
 } from './inspect/entity-dump.js';
 export {
-  TerrainGraph,
-  buildTerrainGraph,
-  nodeLatticeDistance,
-  halfCellMapFromCells,
-  type BlockOverlay,
-  type NodeId,
-  type CellTerrainMap,
-  type TerrainMap,
-} from './nav/terrain.js';
-// The walk cadence (ticks per visual cell at cruise) — public so the render's walk-cycle clock can
-// stay in exact step with the sim's gait instead of restating the number.
-export { WALK_TICKS_PER_CELL } from './systems/movement/movement.js';
-export {
-  cellAnchorNode,
-  nodeOfPosition,
-  positionOfNode,
-  type HalfCellNode,
-} from './nav/halfcell.js';
-export { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW, worldDistance } from './nav/metric.js';
-export { type SearchStats, findPath } from './nav/pathfinding.js';
-export { replay, type ReplayOptions } from './replay/replay.js';
-export {
+  type Divergence,
   HashTrace,
   type HashTraceEntry,
   type HashTraceOptions,
-  type Divergence,
 } from './inspect/hashtrace.js';
+export { type EntitySnapshot, takeSnapshot, type WorldSnapshot } from './inspect/snapshot.js';
 export {
-  localizeDivergence,
+  type ChangedEntity,
+  type ComponentChange,
+  diffSnapshots,
+  type SnapshotDiff,
+} from './inspect/snapshot-diff.js';
+export {
+  cellAnchorNode,
+  type HalfCellNode,
+  nodeOfPosition,
+  positionOfNode,
+} from './nav/halfcell.js';
+export { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW, worldDistance } from './nav/metric.js';
+export { findPath, type SearchStats } from './nav/pathfinding.js';
+export {
+  type BlockOverlay,
+  buildTerrainGraph,
+  type CellTerrainMap,
+  halfCellMapFromCells,
+  type NodeId,
+  nodeLatticeDistance,
+  TerrainGraph,
+  type TerrainMap,
+} from './nav/terrain.js';
+export {
   type DivergenceReport,
+  localizeDivergence,
   type RunReplay,
 } from './replay/localize-divergence.js';
-export { scrubWindow } from './replay/scrub-window.js';
 export {
-  rebaseContent,
   type RebaseInputs,
   type RebaseResult,
+  rebaseContent,
 } from './replay/rebase-content.js';
-export { seedAnimalHerds, type SeedAnimalsOptions } from './harness/populate.js';
-export { clearComponentStores } from './harness/stores.js';
-export {
-  checkInvariants,
-  CORE_INVARIANTS,
-  type Invariant,
-  stockNonNegative,
-  hungerInRange,
-  fatigueInRange,
-  pietyInRange,
-  enjoymentInRange,
-  buildingSane,
-  cachesCoherent,
-  populationWithinHousing,
-} from './harness/invariants.js';
+export { type ReplayOptions, replay } from './replay/replay.js';
+export { scrubWindow } from './replay/scrub-window.js';
+export { type SimOptions, Simulation, spawnAt } from './simulation.js';
+export type { ConstructionPlot, PlacementProbe, ResourceNodeSpec } from './systems/footprint/index.js';
+export * as systems from './systems/index.js';
+// The walk cadence (ticks per visual cell at cruise) — public so the render's walk-cycle clock can
+// stay in exact step with the sim's gait instead of restating the number.
+export { WALK_TICKS_PER_CELL } from './systems/movement/movement.js';

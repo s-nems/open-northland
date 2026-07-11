@@ -1,4 +1,4 @@
-import { SoundDriver, buildSoundIndex, defaultBindings } from '@vinland/audio';
+import { buildSoundIndex, defaultBindings, SoundDriver } from '@vinland/audio';
 import type { SoundBank } from '@vinland/data';
 import type { ContentIr } from './ir.js';
 

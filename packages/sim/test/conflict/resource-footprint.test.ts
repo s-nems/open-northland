@@ -13,22 +13,22 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
-  Simulation,
-  type TerrainMap,
   findPath,
   fx,
   halfCellMapFromCells,
   positionOfNode,
+  Simulation,
+  type TerrainMap,
 } from '../../src/index.js';
 import type { NodeId, TerrainGraph } from '../../src/nav/terrain.js';
 import {
-  type SystemContext,
   aiSystem,
   canPlaceBuilding,
   dynamicBlockedCells,
   resourceBlockedCells,
   resourceFootprintForGood,
   resourceWorkCell,
+  type SystemContext,
   stampResourceFootprint,
   unstampResourceFootprint,
 } from '../../src/systems/index.js';

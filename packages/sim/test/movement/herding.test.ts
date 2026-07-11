@@ -12,14 +12,14 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
-  Simulation,
-  type TerrainMap,
   fx,
   halfCellMapFromCells,
   nodeOfPosition,
   positionOfNode,
+  Simulation,
+  type TerrainMap,
 } from '../../src/index.js';
-import { type SystemContext, herdingSystem } from '../../src/systems/index.js';
+import { herdingSystem, type SystemContext } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**

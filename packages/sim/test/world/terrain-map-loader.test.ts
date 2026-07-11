@@ -1,7 +1,7 @@
 import { parseTerrainMap } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { MoveGoal, PathFollow, PathRequest, Position } from '../../src/components/index.js';
-import { Simulation, fx, scenario } from '../../src/index.js';
+import { fx, Simulation, scenario } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**

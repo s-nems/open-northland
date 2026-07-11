@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { PathFollow, PathRequest, Position } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { ONE, Simulation, type TerrainMap, fx, nodeOfPosition } from '../../src/index.js';
+import { fx, nodeOfPosition, ONE, Simulation, type TerrainMap } from '../../src/index.js';
 import {
   ACCEL_TICKS,
-  MOVE_SPEED_PER_TICK,
-  type SystemContext,
   drainPathRequests,
+  MOVE_SPEED_PER_TICK,
   pathfindingSystem,
+  type SystemContext,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { clearComponentStores } from '../fixtures/stores.js';

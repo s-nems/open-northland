@@ -1,6 +1,6 @@
 import { Building, Health, Stockpile, UnderConstruction } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import { type Fixed, ONE, fx } from '../../core/fixed.js';
+import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import {

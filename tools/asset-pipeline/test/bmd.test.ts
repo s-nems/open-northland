@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  type Bmd,
   BOB_ALPHA_OPAQUE,
   BOB_MASK_INDEX,
   BOB_TYPE_1BIT,
@@ -7,13 +8,12 @@ import {
   BOB_TYPE_DOUBLE8BIT,
   BOB_TYPE_EMPTY,
   BOB_TYPE_TIMEMASK,
-  type Bmd,
   type BobRecord,
-  PACKED_OFFSET_MASK,
-  PACKED_X_SHIFT,
   decodeBmd,
   decodeBobFrame,
   encodeBmd,
+  PACKED_OFFSET_MASK,
+  PACKED_X_SHIFT,
 } from '../src/decoders/bmd.js';
 
 /**

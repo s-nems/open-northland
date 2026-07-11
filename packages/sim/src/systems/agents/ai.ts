@@ -16,9 +16,9 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
 import { MILITARY_MODE } from '../readviews/index.js';
-import { NodeBuckets, canonicalById, isTravelling } from '../spatial.js';
+import { canonicalById, isTravelling, NodeBuckets } from '../spatial.js';
 import { boundWorkplaceTarget, collectTargets, hasHaulableOutput } from './ai-targets.js';
-import { type SpacingState, deStackIdle } from './destack.js';
+import { deStackIdle, type SpacingState } from './destack.js';
 import {
   planBuilder,
   planCarrierHaul,

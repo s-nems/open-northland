@@ -13,8 +13,8 @@ import {
   Stump,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { CORE_INVARIANTS, Simulation, type TerrainMap, checkInvariants, fx } from '../../src/index.js';
-import { type SystemContext, aiSystem, atomicSystem } from '../../src/systems/index.js';
+import { CORE_INVARIANTS, checkInvariants, fx, Simulation, type TerrainMap } from '../../src/index.js';
+import { aiSystem, atomicSystem, type SystemContext } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { clearComponentStores } from '../fixtures/stores.js';
 

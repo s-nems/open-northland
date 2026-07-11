@@ -1,6 +1,6 @@
 import type { ContentSet } from '@vinland/data';
 import type { Command } from '../core/commands.js';
-import { type NodeId, TerrainGraph, type TerrainMap, buildTerrainGraph } from '../nav/terrain.js';
+import { buildTerrainGraph, type NodeId, TerrainGraph, type TerrainMap } from '../nav/terrain.js';
 import { animalRecord } from '../systems/readviews/index.js';
 
 /**

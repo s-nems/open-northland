@@ -9,8 +9,8 @@ import { isSettler, positionOf } from '../game/snapshot.js';
 import {
   type ActionButton,
   type ActionRingLayout,
-  HUMAN_DEFAULT_MENU,
   actionRingScale,
+  HUMAN_DEFAULT_MENU,
   hitTestActionRing,
   layoutActionRing,
 } from '../hud/action-ring-layout.js';

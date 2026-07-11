@@ -1,5 +1,5 @@
 import { Fleeing, MoveSpeed, PathFollow, Position, Velocity } from '../../components/index.js';
-import { type Fixed, ONE, ULP, ZERO, fx } from '../../core/fixed.js';
+import { type Fixed, fx, ONE, ULP, ZERO } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { ROW_STEP, worldDistance, worldX } from '../../nav/metric.js';
 import type { System } from '../context.js';

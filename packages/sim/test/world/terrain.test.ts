@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildTerrainGraph,
   DIAGONAL_STEP,
+  fx,
   HALF_COLUMN,
   HALF_ROW,
+  halfCellMapFromCells,
   type NodeId,
+  nodeLatticeDistance,
   ONE,
   Simulation,
   TerrainGraph,
   type TerrainMap,
-  buildTerrainGraph,
-  fx,
-  halfCellMapFromCells,
-  nodeLatticeDistance,
 } from '../../src/index.js';
 import { SYSTEM_ORDER, type System, type SystemContext } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';

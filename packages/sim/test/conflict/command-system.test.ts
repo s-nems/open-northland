@@ -12,7 +12,7 @@ import {
   Weapon,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { type Command, Simulation, cellAnchorNode, fx } from '../../src/index.js';
+import { type Command, cellAnchorNode, fx, Simulation } from '../../src/index.js';
 import { DEFAULT_SETTLER_HITPOINTS } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { clearComponentStores } from '../fixtures/stores.js';

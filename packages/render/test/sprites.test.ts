@@ -2,16 +2,13 @@ import { describe, expect, it } from 'vitest';
 import type { DrawItem, SpriteState } from '../src/index.js';
 import {
   type AtlasManifest,
+  atlasFromManifest,
   type BuildingTypeBinding,
   type ByJobTable,
+  bobKey,
   DEFAULT_FACING,
   type DirectionalAnim,
   type FrameListAnim,
-  type SettlerStateBinding,
-  type SpriteAtlas,
-  type SpriteBindings,
-  atlasFromManifest,
-  bobKey,
   finishedBuildingBobKeys,
   indexAtlasFrames,
   pickByJob,
@@ -22,6 +19,9 @@ import {
   resolveSpriteFrame,
   resolveStockpileDraw,
   resolveStockpileLayerDraws,
+  type SettlerStateBinding,
+  type SpriteAtlas,
+  type SpriteBindings,
 } from '../src/index.js';
 
 /**

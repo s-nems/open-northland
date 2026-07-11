@@ -20,26 +20,15 @@
 // This barrel re-exports all of them so the `systems/` barrel (and tests) keep a single import site.
 
 export {
-  type GoodsGraphNode,
-  IDLE_JOB,
-  goodsGraph,
-  tribePopulationByJob,
-  tribeStocks,
-} from './hud.js';
-
-export {
-  ARMOR_MATERIAL,
-  WEAPON_MAIN_TYPE,
-  type CombatDamageRow,
-  type CombatProfile,
-  armorMaterialForClass,
-  combatDamage,
-  damageVsBuilding,
-  damageVsWood,
-  weaponDamageVsMaterial,
-  weaponKey,
-} from './combat.js';
-
+  ATOMIC_EVENT_CHANNEL,
+  ATOMIC_EVENT_TYPE_ATTACK,
+  atomicAnimationByName,
+  atomicEventChannelDelta,
+  atomicEventFrame,
+  atomicHasExtendedEvents,
+  atomicStartDirection,
+  isInterruptibleAtomic,
+} from './animations.js';
 export {
   armorByClass,
   armorByMaterial,
@@ -51,50 +40,31 @@ export {
   rangedWeapons,
   siegeWeapons,
   weaponClassOf,
-  weaponWeightOf,
   weaponsByClass,
   weaponsByJob,
   weaponsForJob,
+  weaponWeightOf,
 } from './classes.js';
-
 export {
-  type HerdParams,
-  type Locomotion,
-  HUNTER_JOB,
-  MEAT_GOOD,
-  angryGameTimeOf,
-  animalBabyHitpoints,
-  animalCannotBeAttacked,
-  animalHitpoints,
-  animalRecord,
-  cadaverYieldOf,
-  herdParams,
-  ignoresHousesAnimal,
-  isAggressiveAnimal,
-  isAnimalTribe,
-  isCatchableAnimal,
-  isProvokableAnimal,
-  isPlayableTribe,
-  isWarrantableAnimal,
-  locomotionOf,
-  mayAttack,
-  mayHunt,
-  playableTribes,
-} from './tribes.js';
-
+  ARMOR_MATERIAL,
+  armorMaterialForClass,
+  type CombatDamageRow,
+  type CombatProfile,
+  combatDamage,
+  damageVsBuilding,
+  damageVsWood,
+  WEAPON_MAIN_TYPE,
+  weaponDamageVsMaterial,
+  weaponKey,
+} from './combat.js';
 export {
-  isShipVehicle,
-  largestShipCapacity,
-  shipVehicles,
-  vehicleCargoGoods,
-  vehicleMayCarry,
-  vehicleSizeOf,
-} from './vehicles.js';
-
+  type GoodsGraphNode,
+  goodsGraph,
+  IDLE_JOB,
+  tribePopulationByJob,
+  tribeStocks,
+} from './hud.js';
 export { isSeaJob, seaJobs } from './jobs.js';
-
-export { MILITARY_MODE, defaultStanceForJob, isFighterJob, isMilitaryMode } from './stances.js';
-
 export {
   isLandLayerType,
   isUniversalLayerType,
@@ -104,13 +74,36 @@ export {
   waterLayerLandscape,
 } from './landscape.js';
 
+export { defaultStanceForJob, isFighterJob, isMilitaryMode, MILITARY_MODE } from './stances.js';
 export {
-  ATOMIC_EVENT_CHANNEL,
-  ATOMIC_EVENT_TYPE_ATTACK,
-  atomicAnimationByName,
-  atomicEventChannelDelta,
-  atomicEventFrame,
-  atomicHasExtendedEvents,
-  atomicStartDirection,
-  isInterruptibleAtomic,
-} from './animations.js';
+  angryGameTimeOf,
+  animalBabyHitpoints,
+  animalCannotBeAttacked,
+  animalHitpoints,
+  animalRecord,
+  cadaverYieldOf,
+  type HerdParams,
+  HUNTER_JOB,
+  herdParams,
+  ignoresHousesAnimal,
+  isAggressiveAnimal,
+  isAnimalTribe,
+  isCatchableAnimal,
+  isPlayableTribe,
+  isProvokableAnimal,
+  isWarrantableAnimal,
+  type Locomotion,
+  locomotionOf,
+  MEAT_GOOD,
+  mayAttack,
+  mayHunt,
+  playableTribes,
+} from './tribes.js';
+export {
+  isShipVehicle,
+  largestShipCapacity,
+  shipVehicles,
+  vehicleCargoGoods,
+  vehicleMayCarry,
+  vehicleSizeOf,
+} from './vehicles.js';

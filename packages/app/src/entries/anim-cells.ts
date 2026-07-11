@@ -1,13 +1,13 @@
 import {
+  clipDirs,
   GALLERY_DIRS,
   type GalleryCellSpec,
   type GalleryClip,
   type GalleryDirection,
   type SpriteAtlas,
   type SpriteLayer,
-  clipDirs,
 } from '@vinland/render';
-import { type VikingCharacter, headLabel, pickWalkRow } from '../catalog/roster.js';
+import { headLabel, pickWalkRow, type VikingCharacter } from '../catalog/roster.js';
 import type { BobSeqRow } from '../content/ir.js';
 
 /**

@@ -4,10 +4,10 @@ import * as components from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
   CORE_INVARIANTS,
-  Simulation,
-  type TerrainMap,
   checkInvariants,
   halfCellMapFromCells,
+  Simulation,
+  type TerrainMap,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { clearComponentStores } from '../fixtures/stores.js';

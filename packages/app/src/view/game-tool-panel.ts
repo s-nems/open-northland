@@ -7,7 +7,7 @@ import { DEFAULT_UI_LANG } from '../content/gui-gfx.js';
 import type { MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
 import type { MenuGoodEntry } from '../hud/tool-panel/goods-menu.js';
-import { type ToolPanelController, mountToolPanel } from '../hud/tool-panel/index.js';
+import { mountToolPanel, type ToolPanelController } from '../hud/tool-panel/index.js';
 import { screenScale } from './camera.js';
 import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
 

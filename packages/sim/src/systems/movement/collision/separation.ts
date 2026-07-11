@@ -1,12 +1,12 @@
 import { Obstructed, Owner, PathFollow, Position, Settler } from '../../../components/index.js';
-import { type Fixed, ZERO, fx } from '../../../core/fixed.js';
+import { type Fixed, fx, ZERO } from '../../../core/fixed.js';
 import type { Entity } from '../../../ecs/world.js';
 import { nodeOfPosition, positionXOfWorld } from '../../../nav/halfcell.js';
 import { ROW_STEP, worldDistance, worldX } from '../../../nav/metric.js';
 import type { NodeId } from '../../../nav/terrain.js';
 import type { System } from '../../context.js';
 import { dynamicBlockedCells } from '../../footprint/index.js';
-import { NodeBuckets, canonicalById, clearNavState } from '../../spatial.js';
+import { canonicalById, clearNavState, NodeBuckets } from '../../spatial.js';
 import { MOVE_SPEED_PER_TICK } from '../movement.js';
 import { calmZonesByPlayer, hasBodyCollision, hasSoftCollision, isStanding } from './bodies.js';
 

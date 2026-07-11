@@ -1,7 +1,7 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import { SelectionLayer } from '../src/gpu/selection-layer.js';
-import { ONE, makeElevationField, tileToScreen } from '../src/index.js';
+import { makeElevationField, ONE, tileToScreen } from '../src/index.js';
 
 /**
  * The selection ring is a projection consumer too: it anchors at a unit's feet, so on a hill it must

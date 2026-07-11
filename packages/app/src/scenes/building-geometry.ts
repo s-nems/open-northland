@@ -1,5 +1,5 @@
-import { type Simulation, components } from '@vinland/sim';
-import { VIKING_BUILDINGS, grassTerrain } from '../catalog/buildings.js';
+import { components, type Simulation } from '@vinland/sim';
+import { grassTerrain, VIKING_BUILDINGS } from '../catalog/buildings.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import { placeSandboxBuilding } from '../game/sandbox/index.js';
 import { countComponent } from './sandbox-queries.js';

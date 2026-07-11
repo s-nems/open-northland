@@ -5,10 +5,10 @@ import type { SimEvent, WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   type AudioTerrain,
-  JINGLE_GAIN,
   buildSoundIndex,
   defaultBindings,
   directAudio,
+  JINGLE_GAIN,
   onScreenSettlers,
 } from '../src/index.js';
 

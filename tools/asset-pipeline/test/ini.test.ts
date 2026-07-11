@@ -1,4 +1,4 @@
-import { AtomicAnimation, TribeType, parseContentSet } from '@vinland/data';
+import { AtomicAnimation, parseContentSet, TribeType } from '@vinland/data';
 import { describe, expect, it } from 'vitest';
 import type { CifLine } from '../src/decoders/cif.js';
 import {
@@ -28,12 +28,12 @@ import {
   extractLandscapeGraphics,
   extractMapInfo,
   extractPaletteIndex,
-  extractPatternTransitions,
   extractPatterns,
+  extractPatternTransitions,
   extractSounds,
   extractStaticObjects,
-  extractStringTable,
   extractStringnById,
+  extractStringTable,
   extractTrianglePatternTypes,
   extractTribes,
   extractVehicles,

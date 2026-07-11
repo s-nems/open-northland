@@ -1,4 +1,4 @@
-import { type TerrainMapFile, parseTerrainMap } from '@vinland/data';
+import { parseTerrainMap, type TerrainMapFile } from '@vinland/data';
 
 /**
  * The decoded-map fetch boundary: load a `content/maps/<id>.json` grid over the dev/shot vite

@@ -3,8 +3,8 @@ import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
-import { COMPASS_DIRECTIONS, type NodeBuckets, clearNavState, entityNode, isTravelling } from '../spatial.js';
-import { SIGHT_RADIUS_NODES, isValidTarget } from './targeting.js';
+import { COMPASS_DIRECTIONS, clearNavState, entityNode, isTravelling, type NodeBuckets } from '../spatial.js';
+import { isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 
 // The FLEE drive — the civilian raid reaction (the FLEE stance's active behaviour): run from the
 // nearest threat at the run gait, wind a cool-down down once clear, and yield to a collapsing need.

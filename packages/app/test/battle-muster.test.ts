@@ -1,6 +1,6 @@
 import { components } from '@vinland/sim';
 import { expect, it } from 'vitest';
-import { SCENES, createSceneSim } from '../src/scenes/index.js';
+import { createSceneSim, SCENES } from '../src/scenes/index.js';
 
 /**
  * The battle scene's MUSTER guard: every spawn command must actually land (the spawn handler

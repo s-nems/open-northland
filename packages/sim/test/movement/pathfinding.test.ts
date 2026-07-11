@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildTerrainGraph,
+  findPath,
   type NodeId,
   type TerrainGraph,
   type TerrainMap,
-  buildTerrainGraph,
-  findPath,
 } from '../../src/index.js';
 import { POCKET_PROBE_MAX_EXPLORED } from '../../src/nav/pathfinding.js';
 import { testContent } from '../fixtures/content.js';

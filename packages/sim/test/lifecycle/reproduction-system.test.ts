@@ -2,13 +2,13 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Building, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { ONE, Simulation, fx, populationWithinHousing } from '../../src/index.js';
+import { fx, ONE, populationWithinHousing, Simulation } from '../../src/index.js';
 import {
-  NEWBORN_AGE_CLASS,
-  type SystemContext,
   housingCapacity,
   isNonWorkingAge,
+  NEWBORN_AGE_CLASS,
   reproductionSystem,
+  type SystemContext,
   tribePopulation,
 } from '../../src/systems/index.js';
 import { clearComponentStores } from '../fixtures/stores.js';

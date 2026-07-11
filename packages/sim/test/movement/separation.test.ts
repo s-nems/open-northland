@@ -9,14 +9,14 @@ import {
   Position,
   Settler,
 } from '../../src/components/index.js';
-import { ZERO, fx } from '../../src/core/fixed.js';
+import { fx, ZERO } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
-  Simulation,
-  type TerrainMap,
   halfCellMapFromCells,
   nodeOfPosition,
   positionOfNode,
+  Simulation,
+  type TerrainMap,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { clearComponentStores } from '../fixtures/stores.js';

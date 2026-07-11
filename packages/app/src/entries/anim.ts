@@ -1,34 +1,34 @@
 import {
   AnimationGallery,
+  createWindowPixiApp,
   type GalleryCellSpec,
   type SpriteLayer,
   type TextureSource,
-  createWindowPixiApp,
 } from '@vinland/render';
 import {
+  characterStems,
   DEFAULT_CHARACTER_PALETTE,
+  findCharacter,
   INDEXED_CHARACTER_PALETTE,
   PLAYER_COLOR_COUNT,
   PLAYER_COLOR_NAMES,
   VIKING_CHARACTERS,
   type VikingCharacter,
-  characterStems,
-  findCharacter,
 } from '../catalog/roster.js';
-import { MissingAtlasError, loadBodyClips, loadGalleryLayers, loadPlayerLut } from '../content/ir.js';
-import { MIN_ZOOM, createCameraController } from '../view/camera.js';
+import { loadBodyClips, loadGalleryLayers, loadPlayerLut, MissingAtlasError } from '../content/ir.js';
+import { createCameraController, MIN_ZOOM } from '../view/camera.js';
 import { mountMessage } from '../view/overlay.js';
 import { floatParam, intParam } from '../view/params.js';
 import {
-  type GalleryView,
-  type RosterLoad,
   buildAnimCells,
   buildColorCells,
   buildHeadsCells,
   buildRosterCells,
+  type GalleryView,
   parseColor,
   parseDirection,
   parseView,
+  type RosterLoad,
 } from './anim-cells.js';
 import { mountGalleryOverlay } from './anim-overlay.js';
 

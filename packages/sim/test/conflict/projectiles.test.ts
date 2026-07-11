@@ -2,7 +2,7 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CurrentAtomic, Health, Position, Projectile, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, type TerrainMap, fx, halfCellMapFromCells } from '../../src/index.js';
+import { fx, halfCellMapFromCells, Simulation, type TerrainMap } from '../../src/index.js';
 import { PROJECTILE_TILES_PER_SPEED_UNIT } from '../../src/systems/index.js';
 
 /**

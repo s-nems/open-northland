@@ -4,8 +4,6 @@ import { type BuildingFootprint, type ContentSet, IR_VERSION, parseContentSet } 
 import type { Args } from '../args.js';
 import { decodeCifStringArray } from '../decoders/cif.js';
 import {
-  type RuleSection,
-  type SourceRef,
   buildGatheringPipeline,
   buildTerrainPatterns,
   cifLinesToSections,
@@ -26,8 +24,8 @@ import {
   extractJobs,
   extractLandscape,
   extractLandscapeGfx,
-  extractPatternTransitions,
   extractPatterns,
+  extractPatternTransitions,
   extractSounds,
   extractTrianglePatternTypes,
   extractTribes,
@@ -35,6 +33,8 @@ import {
   extractWeapons,
   fillBuildingRecipes,
   parseIniSections,
+  type RuleSection,
+  type SourceRef,
 } from '../decoders/ini.js';
 import { decodeMapTree } from './maps/index.js';
 

@@ -1,5 +1,5 @@
 import type { Fixed } from '../core/fixed.js';
-import { type Entity, defineComponent } from '../ecs/world.js';
+import { defineComponent, type Entity } from '../ecs/world.js';
 
 /** A building instance placed in the world. */
 export const Building = defineComponent<{

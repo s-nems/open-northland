@@ -6,11 +6,11 @@ import {
   Position,
   Settler,
   Stockpile,
-  Vehicle,
   stockpileEntries,
+  Vehicle,
 } from '../components/index.js';
 import { contentIndex } from '../core/content-index.js';
-import { type Fixed, ONE, fx } from '../core/fixed.js';
+import { type Fixed, fx, ONE } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
 import { nodeOfPosition } from '../nav/halfcell.js';
 import type { SystemContext } from './context.js';

@@ -1,13 +1,13 @@
 import type { TerrainObjects } from '@vinland/data';
 import {
   type Command,
+  cellAnchorNode,
+  components,
   type Entity,
+  fx,
   type ResourceNodeSpec,
   type SettlerEquipment,
   type Simulation,
-  cellAnchorNode,
-  components,
-  fx,
   systems,
 } from '@vinland/sim';
 import { resolveVikingBuilding } from '../../catalog/buildings.js';

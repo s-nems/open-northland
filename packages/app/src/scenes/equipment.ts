@@ -14,9 +14,9 @@ import {
   GOOD_TOOL_IRON,
   JOB_GATHERER_WOOD,
   JOB_SOLDIER_SWORD,
-  WEAPON_SWORD,
   placeSandboxBuilding,
   spawnSandboxSettler,
+  WEAPON_SWORD,
 } from '../game/sandbox/index.js';
 import { countComponent } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';

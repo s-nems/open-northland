@@ -3,13 +3,13 @@ import * as components from '../../src/components/index.js';
 import type { Component } from '../../src/ecs/world.js';
 import {
   type Command,
+  diffSnapshots,
   type LoggedCommand,
   type RunReplay,
-  Simulation,
-  type TerrainMap,
-  diffSnapshots,
   replay,
+  Simulation,
   scrubWindow,
+  type TerrainMap,
   traceEntity,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';

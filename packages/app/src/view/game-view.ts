@@ -1,17 +1,17 @@
 import { indexById } from '@vinland/data';
 import {
-  type Camera,
-  type ElevationField,
-  type PlacementOverlayFrame,
-  SPRITE_CULL_MARGIN,
-  type SceneTerrain,
-  type SpriteSheet,
-  type WorldRenderer,
   buildHud,
   buildSpriteScene,
+  type Camera,
   cameraViewport,
+  type ElevationField,
   layoutHud,
+  type PlacementOverlayFrame,
+  type SceneTerrain,
+  SPRITE_CULL_MARGIN,
+  type SpriteSheet,
   visibleTileRange,
+  type WorldRenderer,
 } from '@vinland/render';
 import { FixedTimestep, type SimEvent, type Simulation, type WorldSnapshot } from '@vinland/sim';
 import type { Application } from 'pixi.js';
@@ -24,7 +24,7 @@ import { loadCombatBones } from '../content/objects.js';
 import { HUD_TRIBE, HUMAN_PLAYER } from '../game/rules.js';
 import { workerRoleOf } from '../game/sandbox/index.js';
 import { type MinimapHandle, mountMinimap } from '../hud/minimap/index.js';
-import { DEFAULT_UI_SCALE, buildToolPanelLayout } from '../hud/tool-panel/layout.js';
+import { buildToolPanelLayout, DEFAULT_UI_SCALE } from '../hud/tool-panel/layout.js';
 import { mountAdminDebug } from './admin-debug/index.js';
 import type { CameraController } from './camera.js';
 import { cameraCenteredOnWorld, screenScale } from './camera.js';
@@ -39,7 +39,7 @@ import { buildingSetFingerprint, computeGeometryDebugItems } from './geometry-de
 import { mountSoundToggle } from './overlay.js';
 import { floatParam } from './params.js';
 import { mountPerfOverlay } from './perf-overlay.js';
-import { type Pickable, nodeBandOfCells, pickTopAt, screenToWorld } from './picking.js';
+import { nodeBandOfCells, type Pickable, pickTopAt, screenToWorld } from './picking.js';
 import { createTooltip } from './tooltip.js';
 import { createUnitControls } from './unit-controls.js';
 

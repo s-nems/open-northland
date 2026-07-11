@@ -2,12 +2,12 @@ import type { JobRequirement } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Carrying, CurrentAtomic, Resource, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, fx } from '../../src/index.js';
+import { fx, Simulation } from '../../src/index.js';
 import {
-  type SystemContext,
   atomicSystem,
   experienceRequirementMet,
   grantWorkExperience,
+  type SystemContext,
   settlerMeetsNeed,
   trackFor,
 } from '../../src/systems/index.js';

@@ -5,7 +5,7 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
 import { interactionNode } from '../footprint/index.js';
 import { buildingEnabled, jobEnabled, settlerMeetsNeed } from '../progression.js';
-import { NodeBuckets, canonicalById } from '../spatial.js';
+import { canonicalById, NodeBuckets } from '../spatial.js';
 import { buildingWorkerJobs, recipeOf } from '../stores.js';
 import { farmWorkGood } from './farming.js';
 

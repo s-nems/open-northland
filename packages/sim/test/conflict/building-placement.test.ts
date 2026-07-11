@@ -11,13 +11,13 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
-  Simulation,
-  type TerrainMap,
   findPath,
   fx,
   halfCellMapFromCells,
   nodeOfPosition,
   positionOfNode,
+  Simulation,
+  type TerrainMap,
 } from '../../src/index.js';
 import type { TerrainGraph } from '../../src/nav/terrain.js';
 import type { SystemContext } from '../../src/systems/index.js';

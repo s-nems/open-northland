@@ -1,4 +1,4 @@
-import { type Rect, contains } from '../geometry.js';
+import { contains, type Rect } from '../geometry.js';
 
 /**
  * The LEFT in-game tool panel — geometry, PINNED to the original.

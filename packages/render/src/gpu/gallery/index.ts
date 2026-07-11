@@ -6,11 +6,11 @@
 export { AnimationGallery, type GalleryCellSpec } from './animation-gallery.js';
 export {
   COMPASS_TO_BLOCK,
+  clipDirs,
   GALLERY_DIRS,
   type GalleryCellBox,
   type GalleryClip,
   type GalleryDirection,
-  clipDirs,
   galleryBobId,
   galleryCellLayout,
   headBobId,

@@ -5,13 +5,13 @@ import {
   ACTION_RING_UI_FACTOR,
   type ActionButton,
   type ActionGroup,
+  actionRingScale,
   BOTTOM_ARM,
   HUMAN_DEFAULT_MENU,
-  type PlacedActionButton,
-  TOP_ARM,
-  actionRingScale,
   hitTestActionRing,
   layoutActionRing,
+  type PlacedActionButton,
+  TOP_ARM,
 } from '../src/hud/action-ring-layout.js';
 
 /**

@@ -6,6 +6,7 @@
  * drags Pixi into the importer's module graph. The main barrel keeps re-exporting these too (for
  * render's own consumers); this is a narrower, dependency-light entry point onto the same modules.
  */
+
+export * from './elevation.js';
 export * from './iso.js';
 export * from './viewport.js';
-export * from './elevation.js';

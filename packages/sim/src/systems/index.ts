@@ -19,26 +19,19 @@ import { movementSystem } from './movement/movement.js';
 import { pathfindingSystem } from './movement/routing.js';
 import { progressionSystem, terrainSystem, timeSystem, transportSystem } from './stubs.js';
 
-// The systems barrel: every per-system module re-exported wholesale (no hand-maintained name
-// lists — they drifted), plus SYSTEM_ORDER, which this barrel owns. `@vinland/sim`'s `systems`
-// namespace and the tests import through here so the whole surface has a single import site.
-// Only the system ENTRY modules (and the cross-system helper leaves) are star-exported; a module a
-// system entry re-exports its public names from — planner internals like ai-targets/ai-supply, the
-// drive/effect/targeting submodules, spawn — stays private to its cluster.
-export type { System, SystemContext };
-// `spawn` otherwise stays private (its `spawnSettler`/`spawnAnimalHerd` are the command handler's), but
-// `createSettler` is the scene-facing entity constructor — the settler twin of `createResourceNode` — so
-// pre-tick-0 scene setup can place a settler directly and stamp its bindings (a gatherer's WorkFlag).
-export { DEFAULT_SETTLER_HITPOINTS, type SettlerSpec, createSettler } from './conflict/spawn.js';
+export * from './agents/ai.js';
+export * from './agents/atomic.js';
 // The per-tile ground-heap cap (the `ls_goods` heap's 5 fill states) — the ceiling a flag-bound gatherer's
 // delivery spreads across, exposed so scenes/tests can reason about the goods yard without a magic 5.
 export { MAX_GROUND_STACK } from './agents/effects-goods.js';
-export * from './agents/ai.js';
-export * from './agents/atomic.js';
-export * from './conflict/combat.js';
 export * from './command.js';
+export * from './conflict/combat.js';
 export * from './conflict/orders.js';
 export * from './conflict/projectile.js';
+// `spawn` otherwise stays private (its `spawnSettler`/`spawnAnimalHerd` are the command handler's), but
+// `createSettler` is the scene-facing entity constructor — the settler twin of `createResourceNode` — so
+// pre-tick-0 scene setup can place a settler directly and stamp its bindings (a gatherer's WorkFlag).
+export { createSettler, DEFAULT_SETTLER_HITPOINTS, type SettlerSpec } from './conflict/spawn.js';
 export * from './economy/construction.js';
 export * from './economy/farming.js';
 export * from './economy/flags.js';
@@ -49,15 +42,22 @@ export * from './lifecycle/ageclass.js';
 export * from './lifecycle/cleanup.js';
 export * from './lifecycle/needs.js';
 export * from './lifecycle/reproduction.js';
+export * from './movement/collision/index.js';
 export * from './movement/herding.js';
 export * from './movement/movement.js';
 export * from './movement/routing.js';
-export * from './movement/collision/index.js';
 export * from './progression.js';
 export * from './readviews/index.js';
 export * from './spatial.js';
 export * from './stores.js';
 export * from './stubs.js';
+// The systems barrel: every per-system module re-exported wholesale (no hand-maintained name
+// lists — they drifted), plus SYSTEM_ORDER, which this barrel owns. `@vinland/sim`'s `systems`
+// namespace and the tests import through here so the whole surface has a single import site.
+// Only the system ENTRY modules (and the cross-system helper leaves) are star-exported; a module a
+// system entry re-exports its public names from — planner internals like ai-targets/ai-supply, the
+// drive/effect/targeting submodules, spawn — stays private to its cluster.
+export type { System, SystemContext };
 
 /**
  * The canonical per-tick execution order. Order is part of the design — change deliberately.

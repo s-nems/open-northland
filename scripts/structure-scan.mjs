@@ -8,7 +8,7 @@
  *
  * Informational only (always exits 0): use judgment before turning a metric into work.
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const SOURCE_BUDGET = 300;

@@ -5,18 +5,18 @@ import type { AtomicEffect } from '../../src/core/commands.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
   type Fixed,
-  Simulation,
-  type TerrainMap,
   fx,
   halfCellMapFromCells,
   positionOfNode,
+  Simulation,
+  type TerrainMap,
 } from '../../src/index.js';
 import {
+  atomicSystem,
+  combatSystem,
   FIGHT_EXPERIENCE_TYPE,
   type SystemContext,
   WEAPON_MAIN_TYPE,
-  atomicSystem,
-  combatSystem,
 } from '../../src/systems/index.js';
 
 /**

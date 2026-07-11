@@ -1,6 +1,6 @@
 import { Age, Building, Health, Position, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import { type Fixed, ONE, fx } from '../../core/fixed.js';
+import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
 import { DEFAULT_SETTLER_HITPOINTS } from '../conflict/spawn.js';
 import type { System, SystemContext } from '../context.js';

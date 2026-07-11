@@ -1,7 +1,7 @@
 import { createReadStream, existsSync } from 'node:fs';
 import { dirname, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { type Plugin, defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import { buildBobsIndexEntries } from './vite/bobs-index.js';
 import { buildMapsIndexEntries } from './vite/maps-index.js';
 

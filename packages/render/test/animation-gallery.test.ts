@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   COMPASS_TO_BLOCK,
-  type GalleryClip,
   clipDirs,
+  type GalleryClip,
   galleryBobId,
   galleryCellLayout,
   headBobId,

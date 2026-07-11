@@ -9,8 +9,8 @@ import {
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { type AtomicEffect, ONE, Simulation, fx } from '../../src/index.js';
-import { type SystemContext, atomicSystem } from '../../src/systems/index.js';
+import { type AtomicEffect, fx, ONE, Simulation } from '../../src/index.js';
+import { atomicSystem, type SystemContext } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**

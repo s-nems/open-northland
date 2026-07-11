@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { ContentIr, LandscapeGfxRow } from '../src/content/ir.js';
 import {
-  DEFAULT_RESOURCE_STEM,
-  FLAG_EDIT_NAME,
   buildResourceBinding,
   buildStockpileBinding,
   buildTrunkBinding,
+  DEFAULT_RESOURCE_STEM,
+  FLAG_EDIT_NAME,
   gatheringAtlasStems,
   nodeBob,
   pileFillBobs,

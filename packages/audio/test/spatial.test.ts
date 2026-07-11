@@ -1,6 +1,6 @@
 import { type Camera, tileToScreen } from '@vinland/render/data';
 import { describe, expect, it } from 'vitest';
-import { CULL_MARGIN_PX, EDGE_GAIN, MAX_PAN, ZOOM_GAIN_FLOOR, computeSpatial } from '../src/index.js';
+import { CULL_MARGIN_PX, computeSpatial, EDGE_GAIN, MAX_PAN, ZOOM_GAIN_FLOOR } from '../src/index.js';
 
 /**
  * The pure spatial-audio math: an emitter is silent (null) off screen, full-gain + centre-pan at the

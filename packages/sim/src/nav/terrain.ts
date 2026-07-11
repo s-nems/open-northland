@@ -40,7 +40,7 @@
  */
 import type { ContentSet, LandscapeType } from '@vinland/data';
 import type { Brand } from '../core/brand.js';
-import { type Fixed, ONE, ZERO, fx } from '../core/fixed.js';
+import { type Fixed, fx, ONE, ZERO } from '../core/fixed.js';
 import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from './metric.js';
 
 /** A navigation-graph node address: the row-major index `hy * width + hx`. Branded so a raw number

@@ -1,12 +1,12 @@
 import type { WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import {
-  ONE,
-  TILE_HALF_H,
   buildSpriteScene,
   cellNode,
   elevationLiftPerUnit,
   makeElevationField,
+  ONE,
+  TILE_HALF_H,
   tileToScreen,
 } from '../src/index.js';
 

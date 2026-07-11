@@ -1,17 +1,17 @@
 import type { ContentSet } from '@vinland/data';
-import { Position, needsEnabled } from './components/index.js';
+import { needsEnabled, Position } from './components/index.js';
 import { type Command, CommandQueue } from './core/commands.js';
 import { EventBuffer } from './core/events.js';
 import { fx } from './core/fixed.js';
 import { Rng } from './core/rng.js';
 import { type Entity, World } from './ecs/world.js';
-import { type Invariant as _Invariant, checkInvariants as _checkInvariants } from './harness/invariants.js';
-import { type WorldSnapshot, takeSnapshot } from './inspect/snapshot.js';
-import { type TerrainGraph, type TerrainMap, buildTerrainGraph } from './nav/terrain.js';
+import { checkInvariants as _checkInvariants, type Invariant as _Invariant } from './harness/invariants.js';
+import { takeSnapshot, type WorldSnapshot } from './inspect/snapshot.js';
+import { buildTerrainGraph, type TerrainGraph, type TerrainMap } from './nav/terrain.js';
 import {
   type ConstructionPlot,
-  type PlacementProbe,
   constructionSitePlots,
+  type PlacementProbe,
   placementBlockerVersion,
   placementProbe,
 } from './systems/footprint/index.js';

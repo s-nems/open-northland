@@ -7,10 +7,10 @@
 export { AMBIENT_FADE_S, AmbientMixer } from './ambient-mixer.js';
 export {
   type AudioEngineOptions,
-  WebAudioEngine,
   COOLDOWN_PRUNE_SIZE,
   DEFAULT_MASTER_GAIN,
   DEFAULT_SOUNDS_BASE_URL,
   ONE_SHOT_COOLDOWN_S,
+  WebAudioEngine,
 } from './audio-engine.js';
 export { SampleCache } from './sample-cache.js';

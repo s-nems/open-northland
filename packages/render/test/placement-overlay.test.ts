@@ -3,7 +3,7 @@ import { depthKey } from '../src/data/iso.js';
 import { PlacementGhostLayer } from '../src/gpu/placement-ghost.js';
 import { overlayBounds } from '../src/gpu/placement-overlay.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
-import { TILE_HALF_H, TILE_HALF_W, halfCellToScreen, makeElevationField } from '../src/index.js';
+import { halfCellToScreen, makeElevationField, TILE_HALF_H, TILE_HALF_W } from '../src/index.js';
 
 /**
  * The build-placement overlay's agent-checkable halves. The wash itself is a GPU composite (each

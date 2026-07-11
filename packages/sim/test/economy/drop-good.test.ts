@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
 import { Building, GroundDrop, Position, Stockpile } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation, cellAnchorNode } from '../../src/index.js';
+import { cellAnchorNode, Simulation } from '../../src/index.js';
 import { MAX_GROUND_STACK } from '../../src/systems/agents/effects-goods.js';
 
 /**

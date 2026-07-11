@@ -6,7 +6,7 @@ import { makeGuiSprite } from '../../content/gui-art.js';
 import { GUI_FRAME } from '../../content/gui-atlas-map.js';
 import { type GuiPaletteName, guiPaletteRow } from '../../content/gui-gfx.js';
 import { UI_TEXT_FILL } from '../../content/ui-font.js';
-import { HOVER_ALPHA, HOVER_TINT, WINDOW_BORDER, WINDOW_FILL, tileBitmap } from '../chrome.js';
+import { HOVER_ALPHA, HOVER_TINT, tileBitmap, WINDOW_BORDER, WINDOW_FILL } from '../chrome.js';
 import type { Rect } from '../geometry.js';
 import type { DetailsPanelAssets } from './assets.js';
 import type { ButtonHit } from './layout.js';

@@ -1,29 +1,29 @@
 import { BufferImageSource, Container, Mesh, Texture, type TextureSource } from 'pixi.js';
 import { type BrightnessField, makeBrightnessField, scaleColour } from '../../data/brightness.js';
 import { type ElevationField, makeElevationField } from '../../data/elevation.js';
-import { TILE_HALF_H, TILE_HALF_W, halfCellToScreen } from '../../data/iso.js';
+import { halfCellToScreen, TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
 import type { SceneTerrain } from '../../data/scene/index.js';
 import {
   type NodeXY,
-  TRANSITION_NONE,
   nodeLaneUV,
   nodeLift,
   rectTriangleUVs,
+  TRANSITION_NONE,
   transitionRef,
   triangleANodes,
   triangleBNodes,
   triangleUVs,
 } from '../../data/terrain.js';
-import { type Viewport, aabbIntersects } from '../../data/viewport.js';
+import { aabbIntersects, type Viewport } from '../../data/viewport.js';
 import type { GroundPattern, TerrainTextureSet } from '../pixi-app.js';
 import { padLaneRows } from '../shading.js';
 import {
   ChunkBatcher,
+  emptyBatch,
+  meshGeometry,
   type TerrainBatch,
   type TerrainChild,
   type TerrainLayerKind,
-  emptyBatch,
-  meshGeometry,
 } from './chunk-batcher.js';
 
 /**

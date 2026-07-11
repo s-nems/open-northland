@@ -1,10 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import {
-  type RuleSection,
   decodeCifStringTable,
   decodeIni,
   extractStringTable,
   parseIniSections,
+  type RuleSection,
 } from '../../decoders/ini.js';
 import { findPathCaseInsensitive } from './case-path.js';
 

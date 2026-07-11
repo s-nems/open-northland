@@ -1,5 +1,5 @@
-import { Age, Health, Settler, needsEnabled } from '../../components/index.js';
-import { type Fixed, ONE, fx } from '../../core/fixed.js';
+import { Age, Health, needsEnabled, Settler } from '../../components/index.js';
+import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { System } from '../context.js';
 
 /**

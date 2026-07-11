@@ -2,11 +2,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { Felling, Position, Resource } from '../../src/components/index.js';
 import {
   CORE_INVARIANTS,
-  Simulation,
-  type TerrainMap,
   checkInvariants,
   fx,
   halfCellMapFromCells,
+  Simulation,
+  type TerrainMap,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { clearComponentStores } from '../fixtures/stores.js';

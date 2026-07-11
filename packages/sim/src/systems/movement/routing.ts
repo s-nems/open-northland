@@ -1,13 +1,13 @@
 import { MoveGoal, Owner, PathFollow, PathRequest, Position } from '../../components/index.js';
-import { type Fixed, ZERO, fx } from '../../core/fixed.js';
+import { type Fixed, fx, ZERO } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
 import { positionOfNode, positionXOfWorld } from '../../nav/halfcell.js';
-import { type SearchStats, findPath } from '../../nav/pathfinding.js';
+import { findPath, type SearchStats } from '../../nav/pathfinding.js';
 import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockedCells } from '../footprint/index.js';
 import { canonicalById, isValidNodeId } from '../spatial.js';
-import { type UnitWalkBlocks, hasBodyCollision, unitWalkBlocks } from './collision/index.js';
+import { hasBodyCollision, type UnitWalkBlocks, unitWalkBlocks } from './collision/index.js';
 import { turnOntoNextLeg } from './movement.js';
 
 /** How far (in nodes) the walk-overlay goal fallback ({@link nearestUnblockedNode}) searches for a

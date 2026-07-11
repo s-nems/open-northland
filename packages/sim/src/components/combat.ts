@@ -1,5 +1,5 @@
 import type { Fixed } from '../core/fixed.js';
-import { type Entity, defineComponent } from '../ecs/world.js';
+import { defineComponent, type Entity } from '../ecs/world.js';
 
 /**
  * An entity's **hitpoints** — the life pool the hit-resolution loop and starvation drain. A settler/

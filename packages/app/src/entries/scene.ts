@@ -1,9 +1,9 @@
-import { WorldRenderer, buildSpriteScene, createWindowPixiApp, terrainMapToScene } from '@vinland/render';
+import { buildSpriteScene, createWindowPixiApp, terrainMapToScene, WorldRenderer } from '@vinland/render';
 import { goodLocaleParam, loadGoodNameMap } from '../content/good-names.js';
 import { buildingFootprints, loadIr } from '../content/ir.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet.js';
 import { loadRealTerrain } from '../content/terrain.js';
-import { SCENES, createSceneSim, getScene } from '../scenes/index.js';
+import { createSceneSim, getScene, SCENES } from '../scenes/index.js';
 import { cameraFor, createCameraController } from '../view/camera.js';
 import { startGameView } from '../view/game-view.js';
 import { floatParam } from '../view/params.js';

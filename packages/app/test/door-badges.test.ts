@@ -1,4 +1,4 @@
-import { type WorldSnapshot, fx, nodeOfPosition, positionOfNode } from '@vinland/sim';
+import { fx, nodeOfPosition, positionOfNode, type WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import { workerIconOffset } from '../src/catalog/building-tweaks.js';
 import { type BuildingDoorInfo, computeDoorBadges } from '../src/view/door-badges.js';

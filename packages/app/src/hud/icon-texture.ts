@@ -1,4 +1,4 @@
-import { type AtlasFrame, type PalettedSprite, bakeToFlippedSprite, oversampleFor } from '@vinland/render';
+import { type AtlasFrame, bakeToFlippedSprite, oversampleFor, type PalettedSprite } from '@vinland/render';
 import { type Application, Container, type Sprite } from 'pixi.js';
 
 /**

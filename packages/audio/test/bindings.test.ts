@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { VIKING_VOICE_POOLS, defaultBindings, vikingVoiceClass } from '../src/index.js';
+import { defaultBindings, VIKING_VOICE_POOLS, vikingVoiceClass } from '../src/index.js';
 
 /**
  * The event→sound bindings + the settler voice classification: the "which sound answers which happening"

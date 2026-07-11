@@ -2,19 +2,19 @@ import { type ContentSet, IR_VERSION, parseContentSet } from '@vinland/data';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Age, Building, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { ONE, Simulation, fx } from '../../src/index.js';
+import { fx, ONE, Simulation } from '../../src/index.js';
+import type { SystemContext } from '../../src/systems/index.js';
 import {
   BABY_FEMALE,
   BABY_MALE,
   CHILD_FEMALE,
   CHILD_MALE,
   GROWUP_TICKS,
-  NEWBORN_AGE_CLASS,
   growthSystem,
   isNonWorkingAge,
+  NEWBORN_AGE_CLASS,
   reproductionSystem,
 } from '../../src/systems/index.js';
-import type { SystemContext } from '../../src/systems/index.js';
 
 /**
  * GrowthSystem — a settler born young ({@link Age}-bearing) matures baby → child → adult-eligible over

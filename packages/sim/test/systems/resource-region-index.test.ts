@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
-import { Simulation, clearComponentStores } from '../../src/index.js';
+import { clearComponentStores, Simulation } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
 import { canonicalResources, resourcesNearNode } from '../../src/systems/resource-index.js';
 import { testContent } from '../fixtures/content.js';

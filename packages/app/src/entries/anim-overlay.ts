@@ -1,6 +1,6 @@
 import type { GalleryDirection } from '@vinland/render';
 import { VIKING_CHARACTERS, type VikingCharacter } from '../catalog/roster.js';
-import { BUTTON_STYLE, PANEL_STYLE, el, navButton, signOffFooter } from '../view/overlay.js';
+import { BUTTON_STYLE, el, navButton, PANEL_STYLE, signOffFooter } from '../view/overlay.js';
 import type { GalleryView } from './anim-cells.js';
 
 /**

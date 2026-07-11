@@ -2,7 +2,7 @@ import { type Camera, tileToScreen } from '@vinland/render/data';
 import { ONE, type WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import type { SoundIndex } from '../src/index.js';
-import { MAX_CHATTER_DT_MS, SoundDriver, defaultBindings } from '../src/index.js';
+import { defaultBindings, MAX_CHATTER_DT_MS, SoundDriver } from '../src/index.js';
 import { FakeContext, type FakeSource, flush } from './helpers/fake-audio.js';
 
 /**

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Health, HerdMember, Position, Settler } from '../../src/components/index.js';
-import { Simulation, type TerrainMap, buildTerrainGraph, seedAnimalHerds } from '../../src/index.js';
+import { buildTerrainGraph, Simulation, seedAnimalHerds, type TerrainMap } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { clearComponentStores } from '../fixtures/stores.js';
 

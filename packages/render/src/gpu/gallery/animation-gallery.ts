@@ -9,11 +9,11 @@ import {
   FOOT_INSET_Y,
   type GalleryClip,
   type GalleryDirection,
-  LABEL_Y,
-  TICKS_PER_FRAME,
   galleryBobId,
   galleryCellLayout,
   headBobId,
+  LABEL_Y,
+  TICKS_PER_FRAME,
 } from './layout.js';
 
 /**

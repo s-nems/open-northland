@@ -1,10 +1,10 @@
 import {
+  buildSpriteScene,
   type DrawItem,
   PalettedSprite,
   type ResolvedLayer,
-  type SpriteSheet,
-  buildSpriteScene,
   resolveLayers,
+  type SpriteSheet,
 } from '@vinland/render';
 import type { WorldSnapshot } from '@vinland/sim';
 import {

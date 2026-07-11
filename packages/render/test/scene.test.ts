@@ -2,13 +2,13 @@ import type { WorldSnapshot } from '@vinland/sim';
 import { describe, expect, it } from 'vitest';
 import { collectSpriteScene } from '../src/data/scene/index.js';
 import {
+  buildScene,
+  depositVisualLevel,
+  drawableEntityRefs,
   ONE,
   PROJECTILE_ARC_PEAK_FRACTION,
   PROJECTILE_ARC_PEAK_MAX_PX,
   type SceneTerrain,
-  buildScene,
-  depositVisualLevel,
-  drawableEntityRefs,
   terrainMapToScene,
   tileToScreen,
 } from '../src/index.js';

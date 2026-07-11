@@ -4,6 +4,7 @@ import {
   type AtomicAnimation,
   type BuildingType,
   type ContentSet,
+  fullStateBlockAreaCells,
   type GatheringPipeline,
   type GoodType,
   type HumanJobExperienceType,
@@ -12,7 +13,6 @@ import {
   type TribeType,
   type VehicleType,
   type WeaponType,
-  fullStateBlockAreaCells,
 } from '@vinland/data';
 
 /**

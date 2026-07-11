@@ -2,29 +2,29 @@ import { describe, expect, it } from 'vitest';
 import { bakedIconOrigin } from '../src/hud/icon-texture.js';
 import {
   BUILDING_CATEGORIES,
-  type MenuBuildingEntry,
   buildingsInCategory,
   categoryOfKind,
   hitTestBuildingMenu,
   layoutBuildingMenu,
+  type MenuBuildingEntry,
 } from '../src/hud/tool-panel/building-menu.js';
 import {
-  DEFAULT_GAME_SPEED_CONTROL,
-  GAME_SPEED_STATES,
   cycleGameSpeed,
+  DEFAULT_GAME_SPEED_CONTROL,
   effectiveGameSpeedSpec,
+  GAME_SPEED_STATES,
   gameSpeedClickCause,
   gameSpeedSpec,
   toggleGameSpeedPause,
 } from '../src/hud/tool-panel/game-speed.js';
 import {
-  DEFAULT_UI_SCALE,
-  TOOL_BUTTONS,
   buildToolPanelLayout,
+  DEFAULT_UI_SCALE,
   hitTestToolPanel,
   pointOverToolPanel,
+  TOOL_BUTTONS,
 } from '../src/hud/tool-panel/layout.js';
-import { type LoopSpeedControl, applyGameSpeed } from '../src/view/game-tool-panel.js';
+import { applyGameSpeed, type LoopSpeedControl } from '../src/view/game-tool-panel.js';
 
 /**
  * Headless tests for the LEFT tool panel's pure logic — the geometry hit-test, the speed state machine,

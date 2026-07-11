@@ -1,4 +1,4 @@
-import { type Entity, type World, defineComponent } from '../ecs/world.js';
+import { defineComponent, type Entity, type World } from '../ecs/world.js';
 
 /**
  * The world-rules SINGLETON — global gameplay toggles that are part of simulated, HASHED state (they

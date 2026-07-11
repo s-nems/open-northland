@@ -1,6 +1,6 @@
 import type { AtomicEffect } from '../core/commands.js';
 import type { Fixed } from '../core/fixed.js';
-import { type Entity, defineComponent } from '../ecs/world.js';
+import { defineComponent, type Entity } from '../ecs/world.js';
 
 /**
  * A settler: an autonomous individual. In Cultures, settlers don't "do jobs" as monolithic logic —

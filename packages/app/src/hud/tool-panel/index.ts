@@ -10,12 +10,12 @@ import { makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
 import type { PanelBitmaps, PanelContext } from './context.js';
 import {
+  cycleGameSpeed,
   DEFAULT_GAME_SPEED_CONTROL,
+  effectiveGameSpeedSpec,
   type GameSpeedChangeCause,
   type GameSpeedControl,
   type GameSpeedStateSpec,
-  cycleGameSpeed,
-  effectiveGameSpeedSpec,
   gameSpeedClickCause,
   toggleGameSpeedPause,
 } from './game-speed.js';
@@ -23,17 +23,17 @@ import { createGoodsDropController } from './goods-drop.js';
 import type { MenuGoodEntry } from './goods-menu.js';
 import { createGoodsWindow } from './goods-window.js';
 import {
-  TOOL_PANEL_STRIP,
-  type ToolButtonId,
   buildToolPanelLayout,
   hitTestToolPanel,
   pointOverToolPanel,
+  TOOL_PANEL_STRIP,
+  type ToolButtonId,
 } from './layout.js';
 import { createMenuWindow } from './menu-window.js';
 import { createPlacementController } from './placement.js';
 import { createStatsWindow } from './stats-window.js';
 import { buildOutlinedButtonSpecs } from './strip-outline.js';
-import { type StripSpriteSpec, type SupersampledStrip, createSupersampledStrip } from './strip-texture.js';
+import { createSupersampledStrip, type StripSpriteSpec, type SupersampledStrip } from './strip-texture.js';
 
 /**
  * The LEFT in-game tool panel — the retained screen-space HUD that draws the original toolbar strip, the

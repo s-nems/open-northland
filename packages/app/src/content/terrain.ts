@@ -1,10 +1,10 @@
 import {
   type CellTexture,
   type GroundPattern,
-  type TerrainTextureSet,
-  type TransitionPattern,
   loadAtlasSource,
   patternSrcRect,
+  type TerrainTextureSet,
+  type TransitionPattern,
 } from '@vinland/render';
 import { type ContentIr, loadIr } from './ir.js';
 

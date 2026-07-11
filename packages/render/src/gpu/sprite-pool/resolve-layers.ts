@@ -3,7 +3,6 @@ import type { DrawItem } from '../../data/scene/index.js';
 import {
   type AtlasFrame,
   type BuildingDraw,
-  type SpriteKind,
   bobKey,
   finishedBuildingBobKeys,
   pickByJob,
@@ -13,6 +12,7 @@ import {
   resolveSettlerBobId,
   resolveSpriteBobId,
   resolveStockpileLayerDraws,
+  type SpriteKind,
 } from '../../data/sprites/index.js';
 import type { SettlerCharacterSet, SpriteLayer, SpriteSheet } from '../pixi-app.js';
 

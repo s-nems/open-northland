@@ -24,7 +24,7 @@ import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { System, SystemContext } from '../context.js';
 import { bindFreshFlag, jobCanHarvest, liveWorkFlag, syncWorkFlagToJob } from '../economy/flags.js';
 import { openWorkerJobFromList } from '../economy/jobs.js';
-import { MILITARY_MODE, defaultStanceForJob, isMilitaryMode } from '../readviews/index.js';
+import { defaultStanceForJob, isMilitaryMode, MILITARY_MODE } from '../readviews/index.js';
 
 /**
  * The PLAYER-order handlers (`moveUnit` / `setJob`) + the {@link playerOrderSystem} that plays a move

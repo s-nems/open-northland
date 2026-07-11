@@ -1,5 +1,5 @@
 import { TILE_HALF_H, TILE_HALF_W, type Viewport } from '@vinland/render';
-import { type Rect, contains } from '../geometry.js';
+import { contains, type Rect } from '../geometry.js';
 
 /**
  * The pure half of the minimap (no Pixi, no DOM — headlessly unit-tested): the bottom-left window

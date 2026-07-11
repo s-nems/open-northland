@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  type MotionTrack,
   compactResolvedStockpileLayers,
+  type MotionTrack,
   reconcileSprites,
   trackMotion,
 } from '../src/index.js';

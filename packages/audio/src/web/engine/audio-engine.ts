@@ -2,9 +2,9 @@ import type { AudioFrame, OneShot } from '../../data/types.js';
 import {
   type ContextFactory,
   type FetchBytes,
-  type RandomFn,
   httpFetchBytes,
   pickRandom,
+  type RandomFn,
   webAudioContextFactory,
 } from '../platform.js';
 import { AmbientMixer } from './ambient-mixer.js';

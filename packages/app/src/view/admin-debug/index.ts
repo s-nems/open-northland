@@ -6,12 +6,12 @@ import {
   ARMOR_CLASSES,
   CIVILIAN_PRESETS,
   GOODS_ENTRIES,
+  goodDropCommand,
   PLAYER_SWATCHES,
   RESOURCE_ENTRIES,
   type UnitPreset,
-  WARRIOR_PRESETS,
-  goodDropCommand,
   unitSpawnCommand,
+  WARRIOR_PRESETS,
 } from './spawn-catalog.js';
 
 /**

@@ -2,11 +2,11 @@ import {
   type AtlasFrame,
   type BrightnessField,
   type ElevationField,
+  halfCellToScreen,
   type MapObjectSprite,
   type SpriteLayer,
-  halfCellToScreen,
 } from '@vinland/render';
-import { type ContentIr, type LandscapeGfxRow, MissingAtlasError, loadLayer } from './ir.js';
+import { type ContentIr, type LandscapeGfxRow, loadLayer, MissingAtlasError } from './ir.js';
 
 /**
  * The map-object binding: turn a decoded map's `objects` layer (the original's `emla` half-cell

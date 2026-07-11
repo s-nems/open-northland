@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  TILE_HALF_H,
-  TILE_HALF_W,
-  TRANSITION_NONE,
   cellNode,
   halfCellToScreen,
   nodeCell,
@@ -10,6 +7,9 @@ import {
   nodeLift,
   patternSrcRect,
   rectTriangleUVs,
+  TILE_HALF_H,
+  TILE_HALF_W,
+  TRANSITION_NONE,
   tileToScreen,
   transitionRef,
   triangleANodes,

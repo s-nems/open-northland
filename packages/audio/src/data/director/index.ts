@@ -18,10 +18,10 @@ export function directAudio(input: DirectorInput): AudioFrame {
 
 // The director package's public surface — the sub-decisions and their documented tuning knobs.
 export {
-  MAX_AMBIENT_BEDS,
-  AMBIENT_MAX_GAIN,
   AMBIENT_FULL_COVERAGE,
+  AMBIENT_MAX_GAIN,
   AMBIENT_MAX_SAMPLES,
+  MAX_AMBIENT_BEDS,
 } from './ambient.js';
 export { JINGLE_GAIN, SFX_GAIN } from './events.js';
 export { type OnScreenSettler, onScreenSettlers } from './settlers.js';

@@ -1,12 +1,12 @@
 import { type ContentSet, indexById } from '@vinland/data';
 import {
+  buildSpriteScene,
   type Camera,
   type ElevationField,
   type EntityBounds,
   type SpriteSheet,
-  buildSpriteScene,
 } from '@vinland/render';
-import { type Command, type Entity, type WorldSnapshot, nodeOfPosition } from '@vinland/sim';
+import { type Command, type Entity, nodeOfPosition, type WorldSnapshot } from '@vinland/sim';
 import type { Application } from 'pixi.js';
 import type { PickerEntry } from '../catalog/professions.js';
 import { assignmentPriority } from '../game/sandbox/index.js';
@@ -20,21 +20,21 @@ import {
   positionOf,
   workFlagOf,
 } from '../game/snapshot.js';
-import { type PortraitBox, type UnitPanel, mountUnitPanel } from '../hud/details-panel/index.js';
+import { mountUnitPanel, type PortraitBox, type UnitPanel } from '../hud/details-panel/index.js';
 import { screenScale } from './camera.js';
 import { el } from './overlay.js';
 import {
-  type FormationUnit,
-  type Pickable,
   assignFormation,
   clampTile,
+  type FormationUnit,
   nodeBounds,
+  type Pickable,
   pickInRect,
   pickTopAt,
   screenToWorld,
   worldToTile,
 } from './picking.js';
-import { type SettlerActions, mountSettlerActions } from './settler-actions.js';
+import { mountSettlerActions, type SettlerActions } from './settler-actions.js';
 
 /**
  * The interactive UNIT-CONTROL layer — the RTS "select and command" input the human drives, wired on

@@ -8,8 +8,8 @@ import { advanceConstructionLabor } from '../economy/construction.js';
 import { applySow, applyWater } from '../economy/farming.js';
 import { grantWorkExperience } from '../progression.js';
 import {
-  type PendingStagger,
   applyPendingStaggers,
+  type PendingStagger,
   paySwingNeedCost,
   resolveAttackHit,
 } from './effects-combat.js';
@@ -17,7 +17,7 @@ import { consumeFood, harvestFromNode, pickupFromStore, pileupIntoStore } from '
 
 // Re-exported so the projectile system (and the systems barrel) keep their single import site for
 // the shared combat-hit contract after the effects split.
-export { type PendingStagger, applyPendingStaggers, resolveCombatHit } from './effects-combat.js';
+export { applyPendingStaggers, type PendingStagger, resolveCombatHit } from './effects-combat.js';
 
 /**
  * AtomicSystem — the executor half of the settler planner: advance the {@link CurrentAtomic} a

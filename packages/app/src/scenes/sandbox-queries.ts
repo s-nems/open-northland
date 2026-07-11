@@ -1,4 +1,4 @@
-import { type Component, type Simulation, components, systems } from '@vinland/sim';
+import { type Component, components, type Simulation, systems } from '@vinland/sim';
 import { WOOD_YIELD_PER_NODE } from '../catalog/felling.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import { type GathererSpec, JOB_SOLDIER_SWORD } from '../game/sandbox/index.js';

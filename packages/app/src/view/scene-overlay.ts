@@ -1,5 +1,5 @@
 import type { SceneDefinition } from '../scenes/index.js';
-import { PANEL_STYLE, el, signOffFooter } from './overlay.js';
+import { el, PANEL_STYLE, signOffFooter } from './overlay.js';
 
 /**
  * The on-canvas acceptance overlay — the "czy jest OK?" panel a human reads while watching a scene: the

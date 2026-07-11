@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { Position, Velocity } from '../../src/components/index.js';
 import { World } from '../../src/ecs/world.js';
-import { EventBuffer, Rng, fx } from '../../src/index.js';
-import { movementSystem } from '../../src/systems/index.js';
+import { EventBuffer, fx, Rng } from '../../src/index.js';
 import type { SystemContext } from '../../src/systems/index.js';
+import { movementSystem } from '../../src/systems/index.js';
 
 /**
  * Determinism golden tests. These are the safety net for the golden rule: same seed + same inputs
