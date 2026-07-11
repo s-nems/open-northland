@@ -283,9 +283,6 @@ function buildingHitpoints(kind: string): number {
 const RESOURCE_LANDSCAPE_BASE = 1000;
 const RESOURCE_GFX_BASE = 2000;
 
-/** The per-good sandbox stock capacity — a huge balance pin (not extracted data) so a store never fills. */
-const STORE_CAPACITY = 1_000_000;
-
 /** A store slot: how much of one good a general-goods building may hold, and its starting amount. */
 interface StockSlot {
   readonly goodType: number;
@@ -294,12 +291,12 @@ interface StockSlot {
 }
 
 /**
- * The general-goods store stock — the core economy goods (the gathered set + plank + coin) followed by every
+ * The general-goods store SET — the core economy goods (the gathered set + plank + coin) followed by every
  * storable extended ware from {@link STORABLE_EXTENDED_GOODS}, so the HQ and warehouses advertise a slot for
- * the WHOLE catalog and the Magazyn panel lists each good (with its icon) across its category tab. The stock
- * SET (which goods a store holds) and the flat capacity are a sandbox balance pin, not extracted data.
+ * the WHOLE catalog and the Magazyn panel lists each good (with its icon) across its category tab. The SET
+ * (which goods a store holds) is a sandbox balance pin, not extracted data.
  */
-const STORE_STOCK: readonly StockSlot[] = [
+const STORE_GOODS: readonly number[] = [
   GOOD_WOOD,
   GOOD_PLANK,
   GOOD_COIN,
@@ -309,7 +306,25 @@ const STORE_STOCK: readonly StockSlot[] = [
   GOOD_GOLD,
   GOOD_MUSHROOM,
   ...STORABLE_EXTENDED_GOODS.map((g) => g.typeId),
-].map((goodType) => ({ goodType, capacity: STORE_CAPACITY, initial: 0 }));
+];
+
+/**
+ * Build a general-goods store's slot list at ONE per-good capacity — a store's limit lives in this single
+ * number, not repeated per good. Every good in {@link STORE_GOODS} gets the same cap.
+ */
+function storeStock(capacity: number): readonly StockSlot[] {
+  return STORE_GOODS.map((goodType) => ({ goodType, capacity, initial: 0 }));
+}
+
+/**
+ * Per-good warehouse capacity by tier (`stock_00`/`stock_01`/`stock_02`) — a tier-N warehouse holds this
+ * many of EACH stored good. User-requested sandbox balance, NOT extracted data (the real `logicstock`
+ * caps are 45/70/120); these are the project's chosen sandbox limits.
+ */
+const WAREHOUSE_SLOT_CAPACITY = [100, 250, 500] as const;
+
+/** The HQ's per-good store capacity — user-requested sandbox balance (matches the top warehouse tier). */
+const HQ_SLOT_CAPACITY = 500;
 
 function resourceLandscapeType(good: number): number {
   return RESOURCE_LANDSCAPE_BASE + good;
@@ -752,7 +767,7 @@ interface SandboxBuildingRow {
   typeId: number;
   id: string;
   kind: string;
-  stock?: typeof STORE_STOCK;
+  stock?: readonly StockSlot[];
   construction?: readonly { goodType: number; amount: number }[];
   hitpoints?: number;
   recipe?: {
@@ -992,7 +1007,7 @@ const BUILDING_WORKER_SLOTS: Readonly<Record<number, readonly { jobType: number;
  * joinery pins its own gatherer-fed plank producer for the production demo).
  */
 const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> = {
-  [BUILDING_HEADQUARTERS]: { stock: STORE_STOCK },
+  [BUILDING_HEADQUARTERS]: { stock: storeStock(HQ_SLOT_CAPACITY) },
   // The grain farm — EXTRACTED shape (`DataCnmd/types/houses.ini` "work farm 00"): a wheat-ONLY store
   // (`logicstock 4 25 0`) and `logicproduction 4` (produces wheat). Deliberately NO recipe: the field
   // loop (its farmers sowing/watering/reaping around the building) is what makes the wheat — the
@@ -1002,13 +1017,16 @@ const BUILDING_OVERRIDES: Readonly<Record<number, Partial<SandboxBuildingRow>>> 
     produces: [GOOD_WHEAT],
   },
   // The three warehouses accept the same general-goods set as the HQ (sandbox balance pin, not extracted
-  // data) so the Magazyn section shows their storable goods instead of reading empty.
-  [BUILDING_WAREHOUSE_00]: { stock: STORE_STOCK },
-  [BUILDING_WAREHOUSE_01]: { stock: STORE_STOCK },
-  [BUILDING_WAREHOUSE_02]: { stock: STORE_STOCK },
+  // data) so the Magazyn section shows their storable goods instead of reading empty. Each tier's per-good
+  // limit comes from the single {@link WAREHOUSE_SLOT_CAPACITY} table (100/250/500), not per-good literals.
+  [BUILDING_WAREHOUSE_00]: { stock: storeStock(WAREHOUSE_SLOT_CAPACITY[0]) },
+  [BUILDING_WAREHOUSE_01]: { stock: storeStock(WAREHOUSE_SLOT_CAPACITY[1]) },
+  [BUILDING_WAREHOUSE_02]: { stock: storeStock(WAREHOUSE_SLOT_CAPACITY[2]) },
   [BUILDING_JOINERY]: {
     workers: [{ jobType: JOB_GATHERER_WOOD, count: 1 }],
-    stock: STORE_STOCK,
+    // A workplace general store (the plank-producer demo), capped like the HQ so the panel shows a sane
+    // limit rather than a huge number.
+    stock: storeStock(HQ_SLOT_CAPACITY),
     recipe: {
       inputs: [{ goodType: GOOD_WOOD, amount: 1 }],
       outputs: [{ goodType: GOOD_PLANK, amount: 1 }],

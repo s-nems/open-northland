@@ -22,54 +22,55 @@ import { VIKING_BUILDINGS } from './buildings.js';
 export type UiLang = 'pol' | 'eng' | 'ger' | 'rus';
 
 /**
- * Clean-room Polish building names, keyed by the catalog `id`. Level suffixes follow the English labels'
- * `(level N)` as `(poziom N)`; the "defence wall" slot (`work_pottery_02`) names its real wall function
- * (see `catalog/buildings.ts`), not the pipeline's pottery id.
+ * Clean-room Polish building names, keyed by the catalog `id`. Level suffixes are 1-based for the player
+ * (`(poziom 1)`, `(poziom 2)`, …) even though the underlying ids stay 0-indexed (`stock_00` = "poziom 1");
+ * they mirror the English labels' `(level N)` in `catalog/buildings.ts`. The "defence wall" slot
+ * (`work_pottery_02`) names its real wall function, not the pipeline's pottery id.
  */
 const BUILDING_NAMES_PL: Readonly<Record<string, string>> = {
   headquarters: 'Kwatera Główna',
-  home_level_00: 'Dom (poziom 0)',
-  home_level_01: 'Dom (poziom 1)',
-  home_level_02: 'Dom (poziom 2)',
-  home_level_03: 'Dom (poziom 3)',
-  home_level_04: 'Dom (poziom 4)',
-  stock_00: 'Magazyn (poziom 0)',
-  stock_01: 'Magazyn (poziom 1)',
-  stock_02: 'Magazyn (poziom 2)',
+  home_level_00: 'Dom (poziom 1)',
+  home_level_01: 'Dom (poziom 2)',
+  home_level_02: 'Dom (poziom 3)',
+  home_level_03: 'Dom (poziom 4)',
+  home_level_04: 'Dom (poziom 5)',
+  stock_00: 'Magazyn (poziom 1)',
+  stock_01: 'Magazyn (poziom 2)',
+  stock_02: 'Magazyn (poziom 3)',
   work_well_00: 'Studnia',
   work_hive_00: 'Pasieka',
   // 'Farma' matches the original's own display name (`Data/text/.../houses.ini` `stringn 12 "Farm"`);
   // the earlier 'Farma zbożowa' over-specified it (user-requested rename).
   work_farm_00: 'Farma',
   work_mill_00: 'Młyn',
-  work_bakery_00: 'Piekarnia (poziom 0)',
-  work_bakery_01: 'Piekarnia (poziom 1)',
+  work_bakery_00: 'Piekarnia (poziom 1)',
+  work_bakery_01: 'Piekarnia (poziom 2)',
   work_brewery: 'Browar',
   work_animal_farm: 'Hodowla zwierząt',
-  work_sewery_00: 'Krawiec (poziom 0)',
-  work_sewery_01: 'Krawiec (poziom 1)',
-  work_pottery_00: 'Garncarnia (poziom 0)',
-  work_pottery_01: 'Garncarnia (poziom 1)',
+  work_sewery_00: 'Krawiec (poziom 1)',
+  work_sewery_01: 'Krawiec (poziom 2)',
+  work_pottery_00: 'Garncarnia (poziom 1)',
+  work_pottery_01: 'Garncarnia (poziom 2)',
   work_pottery_02: 'Mur obronny',
-  work_joinery_00: 'Stolarnia (poziom 0)',
-  work_joinery_01: 'Stolarnia (poziom 1)',
-  work_joinery_02: 'Stolarnia (poziom 2)',
-  work_joinery_03: 'Stolarnia (poziom 3)',
-  work_armory_00: 'Zbrojownia (poziom 0)',
-  work_armory_01: 'Zbrojownia (poziom 1)',
-  work_mason_hut_00: 'Chata kamieniarza (poziom 0)',
-  work_mason_hut_01: 'Chata kamieniarza (poziom 1)',
-  work_smithy_00: 'Kuźnia (poziom 0)',
-  work_smithy_01: 'Kuźnia (poziom 1)',
+  work_joinery_00: 'Stolarnia (poziom 1)',
+  work_joinery_01: 'Stolarnia (poziom 2)',
+  work_joinery_02: 'Stolarnia (poziom 3)',
+  work_joinery_03: 'Stolarnia (poziom 4)',
+  work_armory_00: 'Zbrojownia (poziom 1)',
+  work_armory_01: 'Zbrojownia (poziom 2)',
+  work_mason_hut_00: 'Chata kamieniarza (poziom 1)',
+  work_mason_hut_01: 'Chata kamieniarza (poziom 2)',
+  work_smithy_00: 'Kuźnia (poziom 1)',
+  work_smithy_01: 'Kuźnia (poziom 2)',
   work_coin_mint: 'Mennica',
   work_herb_hut: 'Chata zielarza',
-  work_druid_00: 'Chata druida (poziom 0)',
-  work_druid_01: 'Chata druida (poziom 1)',
+  work_druid_00: 'Chata druida (poziom 1)',
+  work_druid_01: 'Chata druida (poziom 2)',
   work_temple: 'Świątynia',
   school: 'Szkoła',
   barracks: 'Koszary',
-  tower_00: 'Wieża strażnicza (poziom 0)',
-  tower_01: 'Wieża strażnicza (poziom 1)',
+  tower_00: 'Wieża strażnicza (poziom 1)',
+  tower_01: 'Wieża strażnicza (poziom 2)',
 };
 
 /** Per-language name tables. A missing language (or missing id) falls back to the English catalog label. */

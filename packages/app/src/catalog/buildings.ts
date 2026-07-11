@@ -9,7 +9,8 @@ import { type CellTerrainMap, components, type Simulation } from '@vinland/sim';
  * the gitignored `content/ir.json`.
  *
  * The `typeId`/`id`/`kind` are transcribed verbatim from `ir.json`'s `buildings` (the pipeline output);
- * `label` is our own clean-room English naming for semantic lookup ("warehouse level 2" → `stock_02`).
+ * `label` is our own clean-room English naming for semantic lookup. Level suffixes are 1-based for the
+ * player ("Warehouse (level 1..3)") even though the underlying ids stay 0-indexed (`stock_00`..`stock_02`).
  * `test/viking-buildings.test.ts` pins every row back to `ir.json` (id + kind match, and the typeId has a
  * bound bob) whenever `content/` is present, so this table cannot silently drift from the real data.
  *
@@ -46,50 +47,50 @@ export interface VikingBuilding {
  */
 export const VIKING_BUILDINGS: readonly VikingBuilding[] = [
   { typeId: 1, id: 'headquarters', label: 'Headquarters', kind: 'storage' },
-  { typeId: 2, id: 'home_level_00', label: 'Home (level 0)', kind: 'home' },
-  { typeId: 3, id: 'home_level_01', label: 'Home (level 1)', kind: 'home' },
-  { typeId: 4, id: 'home_level_02', label: 'Home (level 2)', kind: 'home' },
-  { typeId: 5, id: 'home_level_03', label: 'Home (level 3)', kind: 'home' },
-  { typeId: 6, id: 'home_level_04', label: 'Home (level 4)', kind: 'home' },
-  { typeId: 7, id: 'stock_00', label: 'Warehouse (level 0)', kind: 'storage' },
-  { typeId: 8, id: 'stock_01', label: 'Warehouse (level 1)', kind: 'storage' },
-  { typeId: 9, id: 'stock_02', label: 'Warehouse (level 2)', kind: 'storage' },
+  { typeId: 2, id: 'home_level_00', label: 'Home (level 1)', kind: 'home' },
+  { typeId: 3, id: 'home_level_01', label: 'Home (level 2)', kind: 'home' },
+  { typeId: 4, id: 'home_level_02', label: 'Home (level 3)', kind: 'home' },
+  { typeId: 5, id: 'home_level_03', label: 'Home (level 4)', kind: 'home' },
+  { typeId: 6, id: 'home_level_04', label: 'Home (level 5)', kind: 'home' },
+  { typeId: 7, id: 'stock_00', label: 'Warehouse (level 1)', kind: 'storage' },
+  { typeId: 8, id: 'stock_01', label: 'Warehouse (level 2)', kind: 'storage' },
+  { typeId: 9, id: 'stock_02', label: 'Warehouse (level 3)', kind: 'storage' },
   { typeId: 10, id: 'work_well_00', label: 'Well', kind: 'workplace' },
   { typeId: 11, id: 'work_hive_00', label: 'Beehive / apiary', kind: 'workplace' },
   { typeId: 12, id: 'work_farm_00', label: 'Grain farm', kind: 'workplace' },
   { typeId: 13, id: 'work_mill_00', label: 'Mill', kind: 'workplace' },
-  { typeId: 14, id: 'work_bakery_00', label: 'Bakery (level 0)', kind: 'workplace' },
-  { typeId: 15, id: 'work_bakery_01', label: 'Bakery (level 1)', kind: 'workplace' },
+  { typeId: 14, id: 'work_bakery_00', label: 'Bakery (level 1)', kind: 'workplace' },
+  { typeId: 15, id: 'work_bakery_01', label: 'Bakery (level 2)', kind: 'workplace' },
   { typeId: 16, id: 'work_brewery', label: 'Brewery', kind: 'workplace' },
   { typeId: 17, id: 'work_animal_farm', label: 'Animal farm', kind: 'workplace' },
-  { typeId: 18, id: 'work_sewery_00', label: 'Tailor / clothier (level 0)', kind: 'workplace' },
-  { typeId: 19, id: 'work_sewery_01', label: 'Tailor / clothier (level 1)', kind: 'workplace' },
-  { typeId: 20, id: 'work_pottery_00', label: 'Pottery (level 0)', kind: 'workplace' },
-  { typeId: 21, id: 'work_pottery_01', label: 'Pottery (level 1)', kind: 'workplace' },
+  { typeId: 18, id: 'work_sewery_00', label: 'Tailor / clothier (level 1)', kind: 'workplace' },
+  { typeId: 19, id: 'work_sewery_01', label: 'Tailor / clothier (level 2)', kind: 'workplace' },
+  { typeId: 20, id: 'work_pottery_00', label: 'Pottery (level 1)', kind: 'workplace' },
+  { typeId: 21, id: 'work_pottery_01', label: 'Pottery (level 2)', kind: 'workplace' },
   // typeId 22 is a DEFENCE WALL, not a pottery: the id `work_pottery_02` is a pipeline naming artifact
   // (the type sits in the slot after the two potteries), but its kind is `tower` and the mod binds the
   // wall bob ("Mur h", mur.bmd) to it — matching the original's eng string 22 "Defence wall". id + kind
   // are carried verbatim (the drift test pins them to ir.json); the label names the real function.
   { typeId: 22, id: 'work_pottery_02', label: 'Defence wall', kind: 'tower' },
-  { typeId: 23, id: 'work_joinery_00', label: 'Joinery (level 0)', kind: 'workplace' },
-  { typeId: 24, id: 'work_joinery_01', label: 'Joinery (level 1)', kind: 'workplace' },
-  { typeId: 25, id: 'work_joinery_02', label: 'Joinery (level 2)', kind: 'workplace' },
-  { typeId: 26, id: 'work_joinery_03', label: 'Joinery (level 3)', kind: 'workplace' },
-  { typeId: 27, id: 'work_armory_00', label: 'Armory (level 0)', kind: 'workplace' },
-  { typeId: 28, id: 'work_armory_01', label: 'Armory (level 1)', kind: 'workplace' },
-  { typeId: 29, id: 'work_mason_hut_00', label: "Mason's hut (level 0)", kind: 'workplace' },
-  { typeId: 30, id: 'work_mason_hut_01', label: "Mason's hut (level 1)", kind: 'workplace' },
-  { typeId: 31, id: 'work_smithy_00', label: 'Smithy (level 0)', kind: 'workplace' },
-  { typeId: 32, id: 'work_smithy_01', label: 'Smithy (level 1)', kind: 'workplace' },
+  { typeId: 23, id: 'work_joinery_00', label: 'Joinery (level 1)', kind: 'workplace' },
+  { typeId: 24, id: 'work_joinery_01', label: 'Joinery (level 2)', kind: 'workplace' },
+  { typeId: 25, id: 'work_joinery_02', label: 'Joinery (level 3)', kind: 'workplace' },
+  { typeId: 26, id: 'work_joinery_03', label: 'Joinery (level 4)', kind: 'workplace' },
+  { typeId: 27, id: 'work_armory_00', label: 'Armory (level 1)', kind: 'workplace' },
+  { typeId: 28, id: 'work_armory_01', label: 'Armory (level 2)', kind: 'workplace' },
+  { typeId: 29, id: 'work_mason_hut_00', label: "Mason's hut (level 1)", kind: 'workplace' },
+  { typeId: 30, id: 'work_mason_hut_01', label: "Mason's hut (level 2)", kind: 'workplace' },
+  { typeId: 31, id: 'work_smithy_00', label: 'Smithy (level 1)', kind: 'workplace' },
+  { typeId: 32, id: 'work_smithy_01', label: 'Smithy (level 2)', kind: 'workplace' },
   { typeId: 33, id: 'work_coin_mint', label: 'Coin mint', kind: 'workplace' },
   { typeId: 34, id: 'work_herb_hut', label: 'Herb hut', kind: 'workplace' },
-  { typeId: 35, id: 'work_druid_00', label: "Druid's hut (level 0)", kind: 'workplace' },
-  { typeId: 36, id: 'work_druid_01', label: "Druid's hut (level 1)", kind: 'workplace' },
+  { typeId: 35, id: 'work_druid_00', label: "Druid's hut (level 1)", kind: 'workplace' },
+  { typeId: 36, id: 'work_druid_01', label: "Druid's hut (level 2)", kind: 'workplace' },
   { typeId: 37, id: 'work_temple', label: 'Temple', kind: 'workplace' },
   { typeId: 38, id: 'school', label: 'School', kind: 'training' },
   { typeId: 39, id: 'barracks', label: 'Barracks', kind: 'training' },
-  { typeId: 40, id: 'tower_00', label: 'Watchtower (level 0)', kind: 'tower' },
-  { typeId: 41, id: 'tower_01', label: 'Watchtower (level 1)', kind: 'tower' },
+  { typeId: 40, id: 'tower_00', label: 'Watchtower (level 1)', kind: 'tower' },
+  { typeId: 41, id: 'tower_01', label: 'Watchtower (level 2)', kind: 'tower' },
 ];
 
 const BY_TYPE_ID: ReadonlyMap<number, VikingBuilding> = new Map(VIKING_BUILDINGS.map((b) => [b.typeId, b]));

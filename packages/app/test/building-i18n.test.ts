@@ -18,6 +18,6 @@ describe('building name localization', () => {
   it('the level-suffixed English labels map to `(poziom N)` Polish names', () => {
     const bakery = VIKING_BUILDINGS.find((b) => b.id === 'work_bakery_01');
     if (bakery === undefined) throw new Error('missing bakery in catalog');
-    expect(localizedBuildingName(bakery.id, bakery.label, 'pol')).toBe('Piekarnia (poziom 1)');
+    expect(localizedBuildingName(bakery.id, bakery.label, 'pol')).toBe('Piekarnia (poziom 2)');
   });
 });
