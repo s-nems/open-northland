@@ -342,7 +342,9 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     row.addEventListener('click', () => {
       // Apply to whoever is selected right now (actionTargets is refreshed each frame in `update`).
       if (actionTargets.length > 0) opts.onSetJob(actionTargets, entry.jobType);
-      closeJobWindow();
+      // Picking a profession COMMITS the menu: close it entirely (list AND ring), rather than stepping back
+      // to the arms — the order is issued, so there is nothing left to do in the menu.
+      closeMenu();
     });
     jobList.append(row);
   }
@@ -361,6 +363,19 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     jobBackdrop.style.display = 'none';
     jobWindow.style.display = 'none';
     if (mode === 'jobs') mode = 'menu';
+  };
+  /**
+   * Fully close the whole menu — the list AND the ring, back to `closed`. The COMMIT/teardown path (picking a
+   * profession, or an external {@link SettlerActions.close}), as opposed to {@link closeJobWindow}'s "step back
+   * to the ring" used by Escape / the ✕ box / a backdrop click. (`hideTransient` is defined below; this only
+   * runs on user events after mount, so the forward reference is safe.)
+   */
+  const closeMenu = (): void => {
+    jobBackdrop.style.display = 'none';
+    jobWindow.style.display = 'none';
+    mode = 'closed';
+    root.visible = false;
+    hideTransient();
   };
   // A click on the backdrop (anywhere off the window) dismisses it — the standard modal behaviour.
   jobBackdrop.addEventListener('mousedown', closeJobWindow);
@@ -556,13 +571,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       mode = 'menu'; // update() reveals it next frame off the current selection's centroid.
     },
     isOpen: (): boolean => mode !== 'closed',
-    close: (): void => {
-      jobBackdrop.style.display = 'none';
-      jobWindow.style.display = 'none';
-      mode = 'closed';
-      root.visible = false;
-      hideTransient();
-    },
+    close: closeMenu,
     claimsPointer,
     dispose: (): void => {
       canvas.removeEventListener('mousedown', onMouseDown);

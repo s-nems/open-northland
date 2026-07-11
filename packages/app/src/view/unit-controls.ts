@@ -145,6 +145,13 @@ const DRAG_THRESHOLD = 5;
 /** Shared empty id set (no per-call allocation when nothing is selected). */
 const EMPTY_IDS: ReadonlySet<number> = new Set();
 
+/** Equal membership of two id sets — tells whether a re-selection actually changed the selection. */
+const sameSelection = (a: ReadonlySet<number>, b: ReadonlySet<number>): boolean => {
+  if (a.size !== b.size) return false;
+  for (const id of a) if (!b.has(id)) return false;
+  return true;
+};
+
 const MARQUEE_STYLE = [
   'position:fixed',
   'border:1px solid #66ff66',
@@ -280,12 +287,15 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   };
 
   const setSelection = (ids: Iterable<number>, add: boolean): void => {
+    const before = new Set(selected); // snapshot to detect whether the selection actually changed
     if (!add) selected.clear();
     for (const id of ids) selected.add(id);
     changed();
-    // Clearing the selection closes the action ring — so re-selecting a unit doesn't silently reopen it
-    // (Space is the toggle; an empty selection resets it), and Esc backs fully out of both.
-    if (selected.size === 0) actions.close();
+    // A CHANGED selection closes the action ring: picking a different unit (or clearing to empty) backs out
+    // of an open menu, so the ring never lingers on a stale unit and Space stays the sole re-open. Re-selecting
+    // the exact same set leaves it alone; right-click's "select-then-open" re-opens the ring on the new unit
+    // in the very next call, so that path is unaffected.
+    if (!sameSelection(before, selected)) actions.close();
   };
 
   // Clicking a worker sprite in the details panel selects just that settler (dropping the building) —
