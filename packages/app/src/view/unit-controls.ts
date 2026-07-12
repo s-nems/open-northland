@@ -22,11 +22,10 @@ import {
 } from '../game/snapshot.js';
 import { mountUnitPanel, type PortraitBox, type UnitPanel } from '../hud/details-panel/index.js';
 import { clientToCanvas, screenScale } from './camera.js';
+import { assignFormation, type FormationUnit } from './formation.js';
 import { el } from './overlay.js';
 import {
-  assignFormation,
   clampTile,
-  type FormationUnit,
   nodeBounds,
   type Pickable,
   pickInRect,
