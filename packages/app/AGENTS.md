@@ -50,7 +50,7 @@ that matches its role instead of piling another method onto a growing file:
   pure models (`layout.ts`, `building-menu.ts`, `game-speed.ts`, headlessly unit-tested) + window
   controllers (`menu-window.ts`, `stats-window.ts`, `placement.ts` over the shared `context.ts`) +
   `index.ts` (the mount + input routing) — and the `details-panel/` package (the bottom-right selection
-  panel in original art: pure `model.ts` + `layout.ts`, `chrome.ts`/`sections.ts` drawing, `panel.ts`
+  panel in original art: pure `model/` (bars/context/settler/building split) + `layout.ts`, `chrome.ts`/`sections.ts` drawing, `panel.ts`
   mount). Text: both the tool-panel and details-panel HUD draw the bundled vector serif
   (`content/ui-font.ts`) — the tool-panel via `ui-text.ts`'s `makeUiTextRun`, the details-panel from
   `content/ui-font.ts` directly — an intentional, named legibility approximation that rasters crisp at
