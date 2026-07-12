@@ -16,7 +16,7 @@ import { type FarmingSpec, farmWorkGood } from '../../economy/farming.js';
 import { buildingEnabled, carrierCarryCapacity } from '../../progression.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { manhattan } from '../../spatial.js';
-import { buildingWorkerJobs } from '../../stores.js';
+import { buildingWorkerJobs } from '../../stores/index.js';
 import { atOrWalk, startAtomic, startPickup } from '../actions.js';
 import type { PlannerContext } from '../planner-context.js';
 import { interactionCell, jobAtomics, nearestStoreFor } from '../targets/index.js';

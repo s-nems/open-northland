@@ -17,7 +17,7 @@ import type { TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 import { canonicalById, isTravelling, NodeBuckets } from '../spatial.js';
-import { isCarrierJob } from '../stores.js';
+import { isCarrierJob } from '../stores/index.js';
 import { deStackIdle, type SpacingState } from './destack.js';
 import { planNeeds } from './drives-needs.js';
 import {

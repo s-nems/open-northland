@@ -13,7 +13,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { canonicalResources } from '../../resource-index.js';
 import { canonicalById } from '../../spatial.js';
-import { isCarrierJob } from '../../stores.js';
+import { isCarrierJob } from '../../stores/index.js';
 
 /** Canonically ordered target categories shared by every settler planned during one tick. */
 export interface TargetCandidates {

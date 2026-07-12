@@ -8,7 +8,7 @@ import {
   constructionTotalUnits,
   deliveredConstructionFraction,
   homeNextTier,
-} from '../stores.js';
+} from '../stores/index.js';
 
 /**
  * ConstructionSystem — raise a placed foundation into a finished building as builders WORK it, then
@@ -38,7 +38,7 @@ import {
  *    finished forever.
  *
  * WHO delivers the materials and WHO hammers is the AI planner: a construction site advertises its
- * outstanding materials as delivery demand ({@link import('../stores.js').stockCapacity}) so any carrier
+ * outstanding materials as delivery demand ({@link import('../stores/index.js').stockCapacity}) so any carrier
  * routes them there, and the builder drive ({@link import('../agents/economy/index.js').planBuilder})
  * both hammers the site and — when it runs dry — fetches a missing material itself. A built home that can
  * still upgrade advertises its next tier's cost the same way, so the upgrade materials accumulate with no

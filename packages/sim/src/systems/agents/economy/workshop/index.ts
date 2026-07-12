@@ -1,7 +1,7 @@
 import { Resting } from '../../../../components/index.js';
 import type { Entity } from '../../../../ecs/world.js';
 import { carrierCarryCapacity } from '../../../progression.js';
-import { recipeOf } from '../../../stores.js';
+import { recipeOf } from '../../../stores/index.js';
 import { atOrWalk, startPickup } from '../../actions.js';
 import type { PlannerContext } from '../../planner-context.js';
 import { interactionCell } from '../../targets/index.js';

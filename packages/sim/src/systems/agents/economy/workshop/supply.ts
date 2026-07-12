@@ -6,7 +6,7 @@ import type { NodeId, TerrainGraph } from '../../../../nav/terrain.js';
 import type { SystemContext } from '../../../context.js';
 import { startableCycleCount } from '../../../economy/production.js';
 import { manhattan } from '../../../spatial.js';
-import { stockCapacity } from '../../../stores.js';
+import { stockCapacity } from '../../../stores/index.js';
 import { closer, interactionCell, nearestStoreFor } from '../../targets/index.js';
 
 // The AI planner's SUPPLY layer: the scans behind a *producer worker running its own supply→produce→

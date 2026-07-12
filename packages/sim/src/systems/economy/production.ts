@@ -4,7 +4,7 @@ import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { goodEnabled } from '../progression.js';
-import { presentOperatorCount, recipeOf, stockCapacity } from '../stores.js';
+import { presentOperatorCount, recipeOf, stockCapacity } from '../stores/index.js';
 
 /**
  * ProductionSystem — one workplace turns input goods into output goods over time.
