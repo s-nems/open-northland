@@ -259,7 +259,7 @@ export function recipeOf(world: World, ctx: SystemContext, building: Entity): Re
  * producer" must be keyed on the good's `farming` block (`farmWorkGood`), never on `recipeOf`.
  *
  * Cross-system: the AI carrier drive uses it to recognise a bound producing building whose finished
- * output it should haul to a warehouse (see ai-supply.ts `boundProducerOutputToHaul`).
+ * output it should haul to a warehouse (see `agents/economy/workshop/supply.ts`).
  */
 export function buildingProduces(world: World, ctx: SystemContext, building: Entity): readonly number[] {
   const b = world.tryGet(building, Building);

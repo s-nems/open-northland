@@ -106,7 +106,7 @@ export function removeWorkFlag(world: World, e: Entity): void {
  * work flag. Mirrors the harvest-atomic knowledge the AI target scan uses (`atomicsByJob` ∩ the goods'
  * harvest atomics), read once per command (rare path). A FIELD-FARMED good (a `farming` block — wheat)
  * is deliberately excluded: its harvester is a FARMER, bound to its farm and banking the crop in the
- * farm's own store (`logicstock 4 25 0`; drives-farming.ts), never a flag gatherer — a flag would
+ * farm's own store (`logicstock 4 25 0`; `agents/farming`), never a flag gatherer — a flag would
  * hijack every sheaf delivery to the flag (`deliveryTargetFor`'s flag rung outranks the bound store).
  */
 export function jobCanHarvest(ctx: SystemContext, jobType: number): boolean {

@@ -8,19 +8,20 @@ import {
   Settler,
   Stockpile,
   UnderConstruction,
-} from '../../components/index.js';
-import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
-import type { SystemContext } from '../context.js';
-import { type FarmingSpec, farmWorkGood } from '../economy/farming.js';
-import { dynamicBlockedCells } from '../footprint/index.js';
-import { buildingEnabled, carrierCarryCapacity } from '../progression.js';
-import { atomicDuration } from '../readviews/animations.js';
-import { manhattan } from '../spatial.js';
-import { buildingWorkerJobs, lowestStockedGood } from '../stores.js';
-import { atOrWalk, startAtomic, startPickup } from './actions.js';
-import { interactionCell, jobAtomics, nearestStoreFor, type TargetCandidates } from './ai-targets.js';
+} from '../../../components/index.js';
+import type { Entity, World } from '../../../ecs/world.js';
+import { nodeOfPosition } from '../../../nav/halfcell.js';
+import type { NodeId, TerrainGraph } from '../../../nav/terrain.js';
+import type { SystemContext } from '../../context.js';
+import { type FarmingSpec, farmWorkGood } from '../../economy/farming.js';
+import { dynamicBlockedCells } from '../../footprint/index.js';
+import { buildingEnabled, carrierCarryCapacity } from '../../progression.js';
+import { atomicDuration } from '../../readviews/animations.js';
+import { manhattan } from '../../spatial.js';
+import { buildingWorkerJobs, lowestStockedGood } from '../../stores.js';
+import { atOrWalk, startAtomic, startPickup } from '../actions.js';
+import type { PlannerContext } from '../planner-context.js';
+import { interactionCell, jobAtomics, nearestStoreFor, type TargetCandidates } from '../targets/index.js';
 
 // The FARMER drive — the field-cultivation rung of the planner ladder: a worker bound to a FARM (a
 // workplace producing a field-farmed good, `farmWorkGood`) walks its farm's surroundings sowing,
@@ -30,54 +31,7 @@ import { interactionCell, jobAtomics, nearestStoreFor, type TargetCandidates } f
 // vocabulary (atomics 34/35/29); the loop's ORDERING is engine-side and not decoded, so the priority
 // below (reap > carry > sow > water > wait) is a named approximation of the observed original.
 
-/** The settler-shape the drive reads (the planner's Worker view — jobType non-null by construction). */
-interface Worker {
-  readonly tribe: number;
-  readonly jobType: number;
-}
-
-/**
- * The tick's FARM claims — which nodes farmers are already committed to working (reap / sheaf pickup /
- * sow / water), and how many sow-walks are in flight per farm (they reserve field slots before
- * the field exists). Seeded each tick from every live {@link FarmTask} (farmers still WALKING to or
- * SWINGING at a target from an earlier tick — {@link collectFarmClaims}), then extended live as this
- * tick's farmers plan — so two farmers never shadow each other to the same field, the work-division
- * the "dwóch farmerów robi dokładnie to samo" report was about. A replanning settler's own stale task
- * is released first ({@link releaseFarmTask}), so it never blocks itself from re-choosing its target.
- * Membership tests and commutative counts only (no iteration picks a winner) — deterministic without
- * canonical ordering.
- */
-export interface FarmClaims {
-  readonly nodes: Set<NodeId>;
-  readonly byFarm: Map<Entity, number>;
-  /** Per-tick census memo: farm → its bound FIELD-FARMER count (the sow-cap multiplier — a farm may
-   *  keep `fieldsBase + fieldsPerFarmer × crew` fields, so the roster scales with the staff). Filled
-   *  lazily by {@link fieldCrewOf} the first time a farmer of that farm reaches its sow step. */
-  readonly fieldCrew: Map<Entity, number>;
-  /** Per-tick sow-candidate index, built LAZILY by the first sow attempt of the tick and shared by
-   *  every farmer after it (see {@link nextSowNode}): the walk-block overlay and the occupied-node
-   *  set are functions of tick-start world state, invariant across the planner sweep (atomic effects
-   *  apply outside it; the sweep's own in-flight picks live separately in {@link nodes}) — so a
-   *  per-farmer rebuild was the full-world-scan-in-a-per-entity-loop anti-pattern (sim AGENTS.md). */
-  sowScan?: SowScan;
-}
-
-/** The tick-shared occupancy/blockage index a sow-node search filters against (see {@link FarmClaims.sowScan}). */
-interface SowScan {
-  readonly blocked: ReadonlySet<NodeId>;
-  readonly occupied: ReadonlySet<NodeId>;
-}
-
-/** Seed the tick's {@link FarmClaims} from every live {@link FarmTask} — O(in-flight farm actions). */
-export function collectFarmClaims(world: World): FarmClaims {
-  const claims: FarmClaims = { nodes: new Set(), byFarm: new Map(), fieldCrew: new Map() };
-  for (const e of world.query(FarmTask)) {
-    const task = world.get(e, FarmTask);
-    claims.nodes.add(task.node as NodeId);
-    if (task.sow) claims.byFarm.set(task.farm, (claims.byFarm.get(task.farm) ?? 0) + 1);
-  }
-  return claims;
-}
+import type { FarmClaims, SowScan } from './claims.js';
 
 /**
  * How many FIELD-FARMERS are bound to `farm` — settlers whose {@link JobAssignment} points here and
@@ -103,20 +57,6 @@ function fieldCrewOf(
   }
   claims.fieldCrew.set(farm, crew);
   return crew;
-}
-
-/** Release a replanning settler's stale {@link FarmTask} (if any) from the claim set and the world —
- *  the drive re-stamps a fresh one if it takes the settler again this tick. */
-export function releaseFarmTask(world: World, e: Entity, claims: FarmClaims): void {
-  const task = world.tryGet(e, FarmTask);
-  if (task === undefined) return;
-  claims.nodes.delete(task.node as NodeId);
-  if (task.sow) {
-    const count = (claims.byFarm.get(task.farm) ?? 0) - 1;
-    if (count > 0) claims.byFarm.set(task.farm, count);
-    else claims.byFarm.delete(task.farm);
-  }
-  world.remove(e, FarmTask);
 }
 
 /**
@@ -192,16 +132,9 @@ function boundFarmTarget(
  * paused farm keeps a ripe buffer ready — a named approximation, the original's full-store farmer
  * behavior has no readable oracle.
  */
-export function planFarmer(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  e: Entity,
-  settler: Worker,
-  here: NodeId,
-  targets: TargetCandidates,
-  claims: FarmClaims,
-): boolean {
+export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
+  const { world, ctx, terrain, entity: e, here, targets } = plan;
+  const settler = plan;
   const bound = boundFarmTarget(world, ctx, e, settler.jobType, settler.tribe);
   if (bound === null) return false;
   const { farm, spec } = bound;
