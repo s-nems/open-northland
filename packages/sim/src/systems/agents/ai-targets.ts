@@ -349,11 +349,16 @@ export function nearestStoreFor(
   terrain: TerrainGraph,
   here: NodeId,
   goodType: number,
+  /** A store to skip as a sink — the producing building a carrier is hauling this good OUT of, so a
+   *  no-recipe producer (a FARM, which `recipeOf` can't exclude) never routes its own output back
+   *  into itself. Omit for the ordinary "nearest capable store" pick. */
+  exclude?: Entity,
 ): Entity | null {
   let best: Entity | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
   for (const e of candidates) {
+    if (e === exclude) continue; // never haul a producer's output back into itself
     if (!world.has(e, Stockpile) || !world.has(e, Position)) continue;
     // A GroundDrop (a felled trunk / dropped good) is a SOURCE to collect, never a delivery SINK —
     // otherwise a collector would deposit the wood straight back into the trunk it just lifted from

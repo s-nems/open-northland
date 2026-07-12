@@ -23,6 +23,7 @@ import {
 } from '../stores.js';
 import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, PILEUP_ATOMIC_ID, startAtomic, startPickup } from './actions.js';
 import {
+  boundProducerOutputToHaul,
   deliveryTargetFor,
   isPorterBoundToStore,
   nearestGroundPile,
@@ -559,9 +560,19 @@ function planFlagGatherer(
 }
 
 /**
- * 4. PORTER — a settler bound to a storage fixture (no recipe) collects the nearest loose ground
- * pile and carries it to its warehouse (the delivery drive then routes the load there). This is
- * the "tragarz" who ferries goods gatherers drop at a flag into the store they belong to.
+ * 4. PORTER — a settler bound to a storage fixture (no recipe) that moves loose goods. The full carrier
+ * rule ("tragarz"):
+ *
+ *  - a carrier at a **producing building** (a FARM: no recipe, but produces a field good) HAULS its
+ *    finished output OUT to a warehouse ({@link boundProducerOutputToHaul}; the delivery drive then routes
+ *    the load to the nearest OTHER store) — "wbity w produkcję ⇒ odnosi do magazynu". Prioritised so the
+ *    producer's store keeps clearing to central storage;
+ *  - a carrier at ANY bound store (warehouse/HQ, or a farm with nothing to haul out) also BRINGS loose
+ *    ground piles IN to it ("przynosi towary"): the counterpart that ferries the goods gatherers drop at a
+ *    flag into the store they belong to.
+ *
+ * A warehouse/HQ carrier only ever reaches the bring-in half (it produces nothing); a production carrier
+ * does both, hauling-out first.
  */
 export function planPorter(
   world: World,
@@ -573,6 +584,17 @@ export function planPorter(
   targets: TargetCandidates,
 ): boolean {
   if (!isPorterBoundToStore(world, ctx, e)) return false;
+  // Haul the bound producer's finished output OUT to a warehouse (a farm's wheat) — the load then routes
+  // to the nearest other store, never back into the producer (deliveryTargetFor case 3).
+  const outGood = boundProducerOutputToHaul(targets.stockpiles, world, ctx, terrain, e, settler.tribe, here);
+  if (outGood !== null) {
+    const home = world.get(e, JobAssignment).workplace;
+    atOrWalk(world, e, here, interactionCell(world, ctx, terrain, home, here), () =>
+      startPickup(world, ctx, e, settler, home, outGood, carrierCarryCapacity(world, ctx, settler.tribe)),
+    );
+    return true;
+  }
+  // Otherwise bring a loose ground pile IN to the bound store (the warehouse/HQ porter, unchanged).
   const pile = nearestGroundPile(targets.stockpiles, world, ctx, terrain, here);
   if (pile === null) return false;
   atOrWalk(world, e, here, interactionCell(world, ctx, terrain, pile.pile, here), () =>
