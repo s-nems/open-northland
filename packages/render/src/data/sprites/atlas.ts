@@ -40,6 +40,17 @@ export interface SpriteAtlas {
 }
 
 /**
+ * Look up a bob frame in an atlas, treating a MISSING or ZERO-AREA frame as absent (`null`). A 0×0 frame
+ * is an empty/zero-size bob; every reader wants the same "no drawable frame here → draw the placeholder /
+ * skip the layer" answer, so the emptiness test lives here once instead of being re-inlined at each atlas
+ * read across the frame-selection and GPU layer-resolution paths. Pure.
+ */
+export function lookupFrame(atlas: SpriteAtlas, id: number): AtlasFrame | null {
+  const frame = atlas.frames.get(id);
+  return frame === undefined || frame.width === 0 || frame.height === 0 ? null : frame;
+}
+
+/**
  * Build the bob-id → {@link AtlasFrame} map a {@link SpriteAtlas} needs from a flat manifest frame list
  * (the `{ bobId, rect, offsetX, offsetY }` records a `.bmd`→atlas build emits). Pure: a deterministic
  * fold, last-writer-wins on a duplicate bob id (the build emits one entry per id, so duplicates don't

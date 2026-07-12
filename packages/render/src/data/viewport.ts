@@ -1,4 +1,5 @@
 import { type Camera, TILE_HALF_H, TILE_HALF_W } from './iso.js';
+import { clamp } from './math.js';
 
 /**
  * The PURE viewport-culling math — the "what is on screen" half of drawing a large world, kept out of
@@ -92,11 +93,10 @@ export function visibleTileRange(vp: Viewport, gridW: number, gridH: number, til
   // row r covers y ∈ [(r−1)·HALF_H, (r+1)·HALF_H]
   const minRow = Math.floor(vp.minY / TILE_HALF_H - 1);
   const maxRow = Math.ceil(vp.maxY / TILE_HALF_H + 1);
-  const clamp = (v: number, hi: number): number => Math.min(hi, Math.max(0, v));
   return {
-    minCol: clamp(minCol - tileMargin, gridW - 1),
-    maxCol: clamp(maxCol + tileMargin, gridW - 1),
-    minRow: clamp(minRow - tileMargin, gridH - 1),
-    maxRow: clamp(maxRow + tileMargin, gridH - 1),
+    minCol: clamp(minCol - tileMargin, 0, gridW - 1),
+    maxCol: clamp(maxCol + tileMargin, 0, gridW - 1),
+    minRow: clamp(minRow - tileMargin, 0, gridH - 1),
+    maxRow: clamp(maxRow + tileMargin, 0, gridH - 1),
   };
 }

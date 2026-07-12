@@ -2,6 +2,7 @@ import type { WorldSnapshot } from '@vinland/sim';
 import type { ElevationField } from '../elevation.js';
 import type { FogGhost } from '../fog-ghosts.js';
 import { ONE, tileToScreen } from '../iso.js';
+import { clamp01 } from '../math.js';
 import { isVisible, type Viewport } from '../viewport.js';
 import {
   type DrawItem,
@@ -423,7 +424,7 @@ export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOpt
           const remaining = Math.hypot(dx, dy);
           if (chord > 0 && remaining > 0) {
             // Homing can stretch the path past the launch chord (the target moves), so clamp p to [0,1].
-            const p = Math.min(1, Math.max(0, 1 - remaining / chord));
+            const p = clamp01(1 - remaining / chord);
             const peak = Math.min(chord * PROJECTILE_ARC_PEAK_FRACTION, PROJECTILE_ARC_PEAK_MAX_PX);
             arcLift = 4 * peak * p * (1 - p);
             // Tangent: the straight-line unit heading, sheared by the arc's slope dh/ds (screen-up is -y).

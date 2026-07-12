@@ -14,6 +14,7 @@ export {
   type AtlasManifestFrame,
   atlasFromManifest,
   indexAtlasFrames,
+  lookupFrame,
   type SpriteAtlas,
 } from './atlas.js';
 export type {

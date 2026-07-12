@@ -1,4 +1,5 @@
 import { ONE, tileToScreen } from '../iso.js';
+import { clamp } from '../math.js';
 import type { DrawKind, SpriteState } from './draw-item.js';
 
 /**
@@ -94,7 +95,7 @@ export function readBuiltPct(components: Readonly<Record<string, unknown>>): num
   if (b === undefined || typeof b.built !== 'number' || !Number.isFinite(b.built) || b.built >= ONE) {
     return undefined; // finished (or malformed — NaN would poison every range test downstream)
   }
-  return Math.max(0, Math.min(99, Math.floor((b.built * 100) / ONE)));
+  return clamp(Math.floor((b.built * 100) / ONE), 0, 99);
 }
 
 /**
@@ -353,7 +354,7 @@ export function readResourceGfxIndex(components: Readonly<Record<string, unknown
  */
 export function depositVisualLevel(remaining: number, initial: number, levels: number): number {
   if (remaining <= 0 || initial <= 0 || levels <= 0) return 0;
-  return Math.min(levels, Math.max(1, Math.ceil((remaining * levels) / initial)));
+  return clamp(Math.ceil((remaining * levels) / initial), 1, levels);
 }
 
 /**
@@ -374,7 +375,7 @@ function readResourceLadder(
 ): { level: number; levels: number } | undefined {
   const crop = components.Crop as { stage?: unknown; stages?: unknown } | undefined;
   if (crop !== undefined && typeof crop.stage === 'number' && typeof crop.stages === 'number') {
-    return { level: Math.min(crop.stages, Math.max(1, crop.stage)), levels: crop.stages };
+    return { level: clamp(crop.stage, 1, crop.stages), levels: crop.stages };
   }
   const deposit = components.MineDeposit as { initial?: unknown; levels?: unknown } | undefined;
   const res = components.Resource as { remaining?: unknown } | undefined;

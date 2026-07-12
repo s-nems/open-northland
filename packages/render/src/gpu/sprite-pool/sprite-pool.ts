@@ -4,6 +4,7 @@ import type { ElevationField } from '../../data/elevation.js';
 import { FOG_GHOST_TINT } from '../../data/fog.js';
 import type { FogGhost } from '../../data/fog-ghosts.js';
 import { type Camera, depthKey } from '../../data/iso.js';
+import { lerp } from '../../data/math.js';
 import { collectSpriteScene, type DrawItem, paintOrderBias } from '../../data/scene/index.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
 import type { Viewport } from '../../data/viewport.js';
@@ -363,9 +364,7 @@ export class SpritePool {
       pe.reveal = undefined;
     } else {
       pe.reveal =
-        pe.reveal === undefined
-          ? revealTarget
-          : pe.reveal + (revealTarget - pe.reveal) * CONSTRUCTION_REVEAL_EASE;
+        pe.reveal === undefined ? revealTarget : lerp(pe.reveal, revealTarget, CONSTRUCTION_REVEAL_EASE);
     }
     const displayReveal = pe.reveal;
     for (let i = 0; i < layers.length; i++) {

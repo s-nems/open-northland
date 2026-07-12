@@ -1,5 +1,5 @@
 import type { DrawItem } from '../scene/index.js';
-import type { AtlasFrame, SpriteAtlas } from './atlas.js';
+import { type AtlasFrame, lookupFrame, type SpriteAtlas } from './atlas.js';
 import type {
   BuildingTypeBinding,
   ResourceTypeBinding,
@@ -85,8 +85,6 @@ export function resolveSpriteFrame(
 ): AtlasFrame | null {
   const bobId = resolveSpriteBobId(item, bindings, tick);
   if (bobId === null) return null;
-  const frame = atlas.frames.get(bobId);
-  // A 0-area frame is an empty/zero-size bob — treat it as unbound so the placeholder still draws.
-  if (frame === undefined || frame.width === 0 || frame.height === 0) return null;
-  return frame;
+  // A missing or 0-area frame is an empty/zero-size bob — treat it as unbound so the placeholder draws.
+  return lookupFrame(atlas, bobId);
 }
