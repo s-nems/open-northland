@@ -72,16 +72,30 @@ const PAINT_ORDER_EPS = 1 / 16;
  */
 const ATTACK_ATOMIC_ID = 81;
 
+/** The per-good harvest atomic ids (`goodtypes.ini` `atomicForHarvesting`), transcribed by hand like
+ *  {@link ATTACK_ATOMIC_ID} — the shared numeric contract, named so no bare id carries the meaning. */
+const HARVEST_ATOMIC_IDS = {
+  wood: 24,
+  stone: 25,
+  clay: 26,
+  iron: 27,
+  gold: 28,
+  wheat: 29,
+  mushroom: 32,
+} as const;
+
 /**
  * Every atomic whose runner FACES its {@link readAtomicTargetEntity} target while the swing plays: the
- * combat attack plus the per-good harvest actions (`goodtypes.ini` `atomicForHarvesting` — wood 24,
- * stone 25, clay 26, iron 27, gold 28, wheat 29, mushroom 32). A harvester, like an attacker, has
- * stopped walking (no {@link readFacing} heading), so without a target-derived facing it kept its last
- * walk heading (or the default SE) and swung its axe/pick into empty air BESIDE the node it works —
- * a woodcutter standing east of a tree chopped further east. Facing the node it targets is what the
- * original does (`atomicanimations.ini` even carries `startdirection` pins for a subset).
+ * combat attack plus the per-good harvest actions ({@link HARVEST_ATOMIC_IDS}). A harvester, like an
+ * attacker, has stopped walking (no {@link readFacing} heading), so without a target-derived facing it
+ * kept its last walk heading (or the default SE) and swung its axe/pick into empty air BESIDE the node
+ * it works — a woodcutter standing east of a tree chopped further east. Facing the node it targets is
+ * what the original does (`atomicanimations.ini` even carries `startdirection` pins for a subset).
  */
-const TARGET_FACING_ATOMIC_IDS: ReadonlySet<number> = new Set([ATTACK_ATOMIC_ID, 24, 25, 26, 27, 28, 29, 32]);
+const TARGET_FACING_ATOMIC_IDS: ReadonlySet<number> = new Set([
+  ATTACK_ATOMIC_ID,
+  ...Object.values(HARVEST_ATOMIC_IDS),
+]);
 
 /**
  * Ballistic-arc shape of a drawn projectile: the lob's PEAK height is this fraction of the shot's total

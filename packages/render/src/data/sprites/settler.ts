@@ -31,7 +31,8 @@ function wrap(n: number, m: number): number {
  * of the clock, so the cadence is fixed: the sequence advances one frame every `ticksPerFrame` ticks
  * regardless of how long any action lasts — never stretched to fit a duration. `phaseStart`
  * rotates where the loop begins (so an action can start on its windup and end on its impact).
- * `cycle <= 0` pins the first frame. Pure.
+ * `cycle <= 0` pins the first frame. A {@link import('./bindings.js').FrameListAnim} instead plays its
+ * facing's authored list ONE-SHOT at the same cadence (see the branch below). Pure.
  */
 function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
   if (typeof ref === 'number') return ref;
@@ -52,8 +53,7 @@ function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
     // a swing (the reported "zamraża"); the head entry is the tool-ready stance on every list (for
     // the woodcut it IS its pad frame). Also keeps a duration longer than its list (the mushroom
     // pluck) standing ready instead of stuttering back through the motion.
-    const pos = Math.max(0, (ref.phaseStart ?? 0) + step);
-    const idx = pos < list.length ? pos : 0;
+    const idx = step < list.length ? step : 0;
     return ref.start + (list[idx] ?? 0);
   }
   const dir = wrap(facing, ref.dirs);

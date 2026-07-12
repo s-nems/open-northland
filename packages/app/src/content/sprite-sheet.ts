@@ -68,6 +68,7 @@ import {
   carryHeadAnims,
   characterBinding,
   type GoodRef,
+  MUSHROOM_PLUCK_FRAMES,
   MUSHROOM_PLUCKS_PER_PICK,
   WARRIOR_SPEC_BY_WEAPON_GOOD,
   YOUNG_CHARACTER_BY_JOB,
@@ -171,13 +172,21 @@ async function loadCharacters(
     actionFrameLists.set(
       MUSHROOM_HARVEST_ATOMIC,
       new Map(
-        [...pluck].map(
-          ([seq, dirs]) =>
-            [
-              seq,
-              dirs.map((list) => Array.from({ length: MUSHROOM_PLUCKS_PER_PICK }, () => list).flat()),
-            ] as const,
-        ),
+        [...pluck].map(([seq, dirs]) => {
+          for (const list of dirs) {
+            if (list.length !== MUSHROOM_PLUCK_FRAMES) {
+              // The atomic duration is sized off the PIN, not this list — a drifted extraction would
+              // cut the repeated motion short or pad it; surface it instead of silently mistiming.
+              console.warn(
+                `mushroom pluck list '${seq}' is ${list.length} frames; HARVEST_TICKS is sized for ${MUSHROOM_PLUCK_FRAMES}`,
+              );
+            }
+          }
+          return [
+            seq,
+            dirs.map((list) => Array.from({ length: MUSHROOM_PLUCKS_PER_PICK }, () => list).flat()),
+          ] as const;
+        }),
       ),
     );
   }

@@ -13,7 +13,9 @@
 
 /** Chops (harvest-swing atomics) a woodcutter lands to bring a tree down. Recalibrated 6 → 12 by
  *  observed pacing: at 6 a whole tree (3 wood) came down in the time a miner chipped 2 stone, and
- *  felling should read a touch SLOWER than mining per gathered unit ("drzewo niech trochę dłużej"). */
+ *  bringing a tree DOWN should read a touch slower than that ("drzewo niech trochę dłużej") — at 12
+ *  a felling event is ~435 ticks vs ~408 for 2 mined stone. Per gathered UNIT wood stays the
+ *  cheaper good (3 wood per felling); the calibration targets the felling event, not the unit. */
 export const WOOD_CHOPS_TO_FELL = 12;
 
 /** The whole wood a felled tree drops as its trunk on the ground, then carried off in carry-capacity loads. */
