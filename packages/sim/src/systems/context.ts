@@ -1,5 +1,5 @@
 import type { ContentSet } from '@vinland/data';
-import type { CommandQueue } from '../core/commands.js';
+import type { CommandQueue } from '../core/command-queue.js';
 import type { EventBuffer } from '../core/events.js';
 import type { Rng } from '../core/rng.js';
 import type { World } from '../ecs/world.js';

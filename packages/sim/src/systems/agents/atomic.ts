@@ -1,6 +1,6 @@
 import { CurrentAtomic, Settler } from '../../components/index.js';
+import type { AtomicEffect } from '../../core/atomic-effect.js';
 import { assertNever } from '../../core/brand.js';
-import type { AtomicEffect } from '../../core/commands.js';
 import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';

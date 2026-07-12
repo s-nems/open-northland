@@ -2,16 +2,11 @@ export * as components from './components/index.js';
 // Fog-of-war: the mode ids + the per-cell mask states, exported top-level so render/app consumers
 // (the fog wash, the sprite cull, the minimap) read the contract without the `systems` namespace.
 export { FOG_MODE } from './components/rules.js';
+export type { AtomicEffect } from './core/atomic-effect.js';
 export type { Brand } from './core/brand.js';
 export { assertNever } from './core/brand.js';
-export {
-  type AtomicEffect,
-  type Command,
-  CommandQueue,
-  type LoggedCommand,
-  type SettlerEquipment,
-  type SettlerEquipmentSlot,
-} from './core/commands.js';
+export { CommandQueue, type LoggedCommand } from './core/command-queue.js';
+export type { Command, SettlerEquipment, SettlerEquipmentSlot } from './core/commands.js';
 export { EventBuffer, type SimEvent, type SimEventKind } from './core/events.js';
 export { type Fixed, fx, ONE } from './core/fixed.js';
 export { FixedTimestep, MS_PER_TICK, TICKS_PER_SECOND } from './core/loop.js';

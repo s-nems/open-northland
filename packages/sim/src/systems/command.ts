@@ -21,7 +21,7 @@ import { contentIndex } from '../core/content-index.js';
 import { type Fixed, fx, ONE } from '../core/fixed.js';
 import type { Entity, World } from '../ecs/world.js';
 import { positionOfNode } from '../nav/halfcell.js';
-import { dropOrStackGood } from './agents/effects-goods.js';
+import { dropOrStackGood } from './agents/effects-goods/index.js';
 import { assignWorker, attackUnit, moveUnit, setJob, setStance, setWorkFlag } from './conflict/orders.js';
 import { spawnAnimalHerd, spawnSettler } from './conflict/spawn.js';
 import type { System, SystemContext } from './context.js';

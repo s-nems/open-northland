@@ -7,7 +7,7 @@ import {
   Projectile,
   Settler,
 } from '../../components/index.js';
-import type { AtomicEffect } from '../../core/commands.js';
+import type { AtomicEffect } from '../../core/atomic-effect.js';
 import { eventAt } from '../../core/events.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';

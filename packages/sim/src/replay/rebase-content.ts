@@ -1,5 +1,5 @@
 import { type ContentSet, parseContentSet } from '@vinland/data';
-import type { LoggedCommand } from '../core/commands.js';
+import type { LoggedCommand } from '../core/command-queue.js';
 import type { TerrainMap } from '../nav/terrain.js';
 import type { Simulation } from '../simulation.js';
 import { replay } from './replay.js';
