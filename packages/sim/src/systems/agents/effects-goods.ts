@@ -134,11 +134,16 @@ export function harvestFromNode(
   if (deposit !== undefined) {
     // Several strikes chip ONE unit (OBSERVED calibration, see MineDeposit doc — the data pins only
     // the single-swing cycle length): only the strike that completes the unit drops ore and drains
-    // the node; earlier strikes just advance the counter, so the deposit reads as WORKED.
-    deposit.strikes = (deposit.strikes ?? 0) + 1;
-    world.touch(node); // in-place write on a snapshot-cached scenery entity — log it (World.touch doc)
-    if (deposit.strikes < Math.max(1, deposit.strikesPerUnit ?? 1)) return;
-    deposit.strikes = 0;
+    // the node; earlier strikes just advance the counter, so the deposit reads as WORKED. A legacy
+    // 1-strike deposit never touches the counter, so its unstamped component shape (hash) survives
+    // being worked — the guarantee `createResourceNode`'s conditional stamp promises.
+    const strikesPerUnit = deposit.strikesPerUnit ?? 1;
+    if (strikesPerUnit > 1) {
+      deposit.strikes = (deposit.strikes ?? 0) + 1;
+      world.touch(node); // in-place write on a snapshot-cached scenery entity — log it (World.touch doc)
+      if (deposit.strikes < strikesPerUnit) return;
+      deposit.strikes = 0;
+    }
     dropMinedOre(world, settler, node, res.goodType, took); // an ore pile at the deposit's cell, carried off later
   } else {
     addCarry(world, settler, goodType, took); // a mushroom — straight onto the back (direct pickup)

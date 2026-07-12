@@ -63,11 +63,13 @@ export interface DirectionalAnim {
  * `start + facing*stride` strip. Each {@link frameLists} entry is one facing's ordered list of LOCAL
  * frame indices into a bobseq pool starting at {@link start} (drawn bob id = `start + frameLists[dir][i]`).
  * The lists differ per facing and author holds/repeats inline (a spear windup repeats its first frame),
- * so playback replays a list verbatim — the reason a melee swing (pool 102/108/150, not divisible by 8)
+ * so playback plays a list verbatim — the reason a melee swing (pool 102/108/150, not divisible by 8)
  * cannot ride {@link DirectionalAnim}. The facing index selects the list ({@link frameLists} length =
- * directions; a length-1 list is facing-locked). Advances one entry every {@link ticksPerFrame} ticks on
- * the driving clock (an action's `elapsed`), wrapping — the same tick-locked cadence
- * {@link DirectionalAnim} uses; {@link phaseStart} rotates where playback begins.
+ * directions; a length-1 list is facing-locked). Advances one entry every {@link ticksPerFrame} ticks
+ * on the driving clock (an action's `elapsed`) — the same tick-locked cadence {@link DirectionalAnim}
+ * uses — but ONE-SHOT: past the last entry the sprite shows the FIRST entry, the ready stance, instead
+ * of wrapping into a replay (an authored list is one complete motion; only some lists author their own
+ * trailing rest pad, so wrapping/holding-the-tail froze mid-swing).
  */
 export interface FrameListAnim {
   /** Bob id of the pool's frame 0 — the bobseq `start` the LOCAL {@link frameLists} indices add to. */
@@ -76,8 +78,6 @@ export interface FrameListAnim {
   readonly frameLists: readonly (readonly number[])[];
   /** Sim ticks per animation frame — the fixed cadence (default `1`), like {@link DirectionalAnim.ticksPerFrame}. */
   readonly ticksPerFrame?: number;
-  /** Index within the chosen facing's list to START on (default `0`), wrapped — rotates the playback phase. */
-  readonly phaseStart?: number;
 }
 
 /** A frame reference in a settler binding: a fixed bob id, a uniform {@link DirectionalAnim}, or an

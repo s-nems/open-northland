@@ -28,6 +28,20 @@ import {
 export { applyPendingStaggers, type PendingStagger, resolveCombatHit } from './effects-combat.js';
 
 /**
+ * The idle BREATHER a gatherer stands between work-swing BURSTS, in ticks (0.75 s at 20 ticks/s).
+ * OBSERVED, a named approximation: the original's collector swings a couple of times in a row, rests
+ * ~0.5–1 s, and swings again, but the readable data carries no rest field — `atomicanimations.ini`
+ * lengths cover only the swing itself (its trailing idle pad is ~4 frames, far shorter). Applied by
+ * the executor after every {@link import('./effects-goods.js').HARVEST_SWINGS_PER_REST}-th completed
+ * harvest swing of a job still in progress ({@link import('./effects-goods.js').restAfterHarvest}),
+ * never after the final swing (felled/depleted/plucked — the settler moves straight on to carrying).
+ * The rest is the SAME atomic extended (`restTail`), not a second one: the render keeps the swing's
+ * binding and stands the list's ready stance, so the pose never snaps to a different animation
+ * (the earlier synthetic-rest-atomic version flickered through the wait loop mid-follow-through).
+ */
+export const HARVEST_REST_TICKS = 15;
+
+/**
  * AtomicSystem — the executor half of the settler planner: advance the {@link CurrentAtomic} a
  * settler is running and, on completion, apply its typed {@link AtomicEffect}.
  *
@@ -55,20 +69,6 @@ export { applyPendingStaggers, type PendingStagger, resolveCombatHit } from './e
  * insertion order, and each effect is a pure function of the entity + its target's current state
  * (Stockpile writes go through the canonical Map, never iterated for a decision). Fixed-point only.
  */
-/**
- * The idle BREATHER a gatherer stands between work-swing BURSTS, in ticks (0.75 s at 20 ticks/s).
- * OBSERVED, a named approximation: the original's collector swings a couple of times in a row, rests
- * ~0.5–1 s, and swings again, but the readable data carries no rest field — `atomicanimations.ini`
- * lengths cover only the swing itself (its trailing idle pad is ~4 frames, far shorter). Applied by
- * the executor after every {@link import('./effects-goods.js').HARVEST_SWINGS_PER_REST}-th completed
- * harvest swing of a job still in progress ({@link import('./effects-goods.js').restAfterHarvest}),
- * never after the final swing (felled/depleted/plucked — the settler moves straight on to carrying).
- * The rest is the SAME atomic extended (`restTail`), not a second one: the render keeps the swing's
- * binding and holds its final authored frame, so the pose never snaps to a different animation
- * (the earlier synthetic-rest-atomic version flickered through the wait loop mid-follow-through).
- */
-export const HARVEST_REST_TICKS = 15;
-
 export const atomicSystem: System = (world, ctx) => {
   // A landed hit may STAGGER its victim (give it the `82` ATTACKED atomic). That `world.add` is
   // COLLECTED here and applied only AFTER the loop: adding a `CurrentAtomic` to the store we're
@@ -104,7 +104,7 @@ export const atomicSystem: System = (world, ctx) => {
     // continuously acting, so the render never flicks through an idle pose between swings.
     if (atomic.restTail === true) {
       if (atomic.effect.kind === 'harvest' && continuesHarvest(world, atomic.effect.resource)) {
-        atomic.restTail = false;
+        delete atomic.restTail; // the tail is over — restore the pre-rest component shape exactly
         atomic.elapsed = 0;
         atomic.progress = fx.fromInt(0);
         atomic.duration -= HARVEST_REST_TICKS; // back to the swing's own animation length

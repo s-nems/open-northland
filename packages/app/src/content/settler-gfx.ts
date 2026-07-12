@@ -130,8 +130,10 @@ const FALLBACK_WAIT: DirectionalAnim = { start: 1931, dirs: 1, stride: 57 };
  * this many times and {@link HARVEST_TICKS} sizes the atomic to fit. Observed-pace approximation.
  */
 export const MUSHROOM_PLUCKS_PER_PICK = 3;
-/** The viking `pick_up` `[gfxanimatomic]` list length (action 32, single facing-locked direction). */
-const MUSHROOM_PLUCK_FRAMES = 19;
+/** The viking `pick_up` `[gfxanimatomic]` list length (action 32, single facing-locked direction).
+ *  Pinned so {@link HARVEST_TICKS} stays static content; the sheet builder warns when the extracted
+ *  list drifts from this pin (the duration would then cut or pad the repeated motion). */
+export const MUSHROOM_PLUCK_FRAMES = 19;
 /** Ticks the picker stands in the ready stance after the last bend — the same breather feel as the
  *  miners' inter-swing rest (sim `HARVEST_REST_TICKS`), pinned locally so the two paces tune apart. */
 const MUSHROOM_PLUCK_BREATHER_TICKS = 15;

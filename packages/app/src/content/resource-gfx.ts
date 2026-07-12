@@ -92,9 +92,10 @@ export interface GatheringRefs {
    * record (wood's "trunk" stage: a felled LOG lying on the ground, distinct from the tidy delivered
    * heap). A loose {@link import('@vinland/sim').GroundDrop} draws this; the original uses a different
    * graphic for the on-the-ground harvest than for the stored pile (`tree → trunk(pickup) → wood(store)`).
-   * Carries the record's FULL fewest→most state ladder (the `stone/iron/gold/clay ore` and `wheat ore`
-   * pickup records author 5 states, state ≡ units) so the drop is drawn by its actual unit count — one
-   * chipped ore draws the single-piece frame, never the full 5-piece heap (the reported bug).
+   * Carries the record's FULL fewest→most state ladder (the clay/iron/gold ore and wheat pickup
+   * records author 5 states, state ≡ units; STONE's authors a single state, so a stone drop keeps
+   * one look at any count) so the drop is drawn by its actual unit count — one chipped ore draws
+   * the single-piece frame, never the full 5-piece heap (the reported bug).
    */
   readonly trunksByGood: Readonly<Record<number, GatheringNodeLevelsRef>>;
   /** Ground-pile ref per scene `goodType` (its `landscapeToStore` record's per-fill heap frames). */

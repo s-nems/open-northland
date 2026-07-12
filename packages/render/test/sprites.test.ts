@@ -477,8 +477,14 @@ describe('resolveSpriteBobId — FrameListAnim (explicit per-direction attack la
     expect(at(1, 3)).toBe(2000 + 7); // dir 1, frame 2 -> local 7
   });
 
-  it('wraps by the CHOSEN list length (dir 1 is 3 long, so elapsed 4 loops to its frame 0)', () => {
-    expect(resolveSpriteBobId(settler('acting', 1, ATTACK, 4), bindings, 0)).toBe(2000 + 5); // (4-1)%3==0
+  it('plays ONE-SHOT: past the CHOSEN list end the sprite shows the FIRST entry (the ready stance)', () => {
+    // dir 1 is 3 long: elapsed 4 is one past the end — entry 0 (which a wrap ALSO gives; the cases
+    // below are the ones where the two contracts diverge).
+    expect(resolveSpriteBobId(settler('acting', 1, ATTACK, 4), bindings, 0)).toBe(2000 + 5);
+    // dir 0 past its 4-entry end: entry 0 (local 0) — a wrap would give entry 1 (local 2) at elapsed 6
+    // and cycle back through the motion (the reported mid-swing freeze/stutter class of bug).
+    expect(resolveSpriteBobId(settler('acting', 0, ATTACK, 6), bindings, 0)).toBe(2000 + 0);
+    expect(resolveSpriteBobId(settler('acting', 0, ATTACK, 60), bindings, 0)).toBe(2000 + 0);
   });
 
   it('runs on the atomic elapsed clock, not the free tick (a swing is duration-independent)', () => {

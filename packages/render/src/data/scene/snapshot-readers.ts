@@ -382,9 +382,13 @@ export function readResourceLevelCount(components: Readonly<Record<string, unkno
   if (crop !== undefined && typeof crop.stage === 'number' && typeof crop.stages === 'number') {
     return crop.stages;
   }
-  const deposit = components.MineDeposit as { levels?: unknown } | undefined;
+  // The SAME narrowing readResourceLevel applies (including `initial`), so the two readers are
+  // defined/undefined together — a deposit malformed for the level never yields a dangling count.
+  const deposit = components.MineDeposit as { initial?: unknown; levels?: unknown } | undefined;
   const res = components.Resource as { remaining?: unknown } | undefined;
-  if (deposit === undefined || typeof deposit.levels !== 'number') return undefined;
+  if (deposit === undefined || typeof deposit.initial !== 'number' || typeof deposit.levels !== 'number') {
+    return undefined;
+  }
   if (res === undefined || typeof res.remaining !== 'number') return undefined;
   return deposit.levels;
 }
