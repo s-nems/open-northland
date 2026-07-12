@@ -77,6 +77,14 @@ export const CurrentAtomic = defineComponent<{
   effect: AtomicEffect;
   targetEntity: number | null;
   targetTile: { x: number; y: number } | null;
+  /**
+   * Present (true) only while the atomic is running its INTER-SWING REST TAIL: the harvest effect
+   * already applied and its completion event already fired, and the executor extended `duration` so
+   * the gatherer stands its breather holding the swing's final frame (no pose snap, no second
+   * animation). The tail's own completion is silent — no `atomicCompleted` re-emit for the same
+   * swing. Absent on every other atomic (the separate-optional-field pattern keeps old hashes).
+   */
+  restTail?: boolean;
 }>('CurrentAtomic');
 
 /** A settler carrying goods (carriers physically haul; goods never teleport to a global bank). */

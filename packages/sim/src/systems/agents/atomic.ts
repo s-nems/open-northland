@@ -62,16 +62,11 @@ export { applyPendingStaggers, type PendingStagger, resolveCombatHit } from './e
  * the executor after every {@link import('./effects-goods.js').HARVEST_SWINGS_PER_REST}-th completed
  * harvest swing of a job still in progress ({@link import('./effects-goods.js').restAfterHarvest}),
  * never after the final swing (felled/depleted/plucked — the settler moves straight on to carrying).
+ * The rest is the SAME atomic extended (`restTail`), not a second one: the render keeps the swing's
+ * binding and holds its final authored frame, so the pose never snaps to a different animation
+ * (the earlier synthetic-rest-atomic version flickered through the wait loop mid-follow-through).
  */
 export const HARVEST_REST_TICKS = 15;
-
-/**
- * The synthetic atomic id of that breather. Deliberately OUTSIDE the content id space (every real
- * atomic id is a non-negative `setatomic`/`allowatomic` number), so no animation, sound, or planner
- * permission can ever bind to it: the render's per-atomic lookup misses and draws the standing wait
- * pose, which is exactly the rest. The typed `idle` effect is the (no-op) behavior.
- */
-export const HARVEST_REST_ATOMIC_ID = -1;
 
 export const atomicSystem: System = (world, ctx) => {
   // A landed hit may STAGGER its victim (give it the `82` ATTACKED atomic). That `world.add` is
@@ -102,6 +97,13 @@ export const atomicSystem: System = (world, ctx) => {
 
     if (atomic.elapsed < duration) continue; // still running
 
+    // A completed REST TAIL ends silently: its harvest already applied and announced itself when the
+    // swing finished (below, last time around) — the breather just releases the settler.
+    if (atomic.restTail === true) {
+      world.remove(e, CurrentAtomic);
+      continue;
+    }
+
     // Completed this tick: apply the effect, notify render/audio, and free the settler.
     applyEffect(world, ctx, e, atomic.effect);
     // An attacker pays the swing's NEED cost on completion — the attack animation's REST/HUNGER channel
@@ -111,20 +113,18 @@ export const atomicSystem: System = (world, ctx) => {
     if (atomic.effect.kind === 'attack') paySwingNeedCost(world, ctx, e, atomic.atomicId);
     ctx.events.emit({ kind: 'atomicCompleted', entity: e, atomicId: atomic.atomicId });
     // Every HARVEST_SWINGS_PER_REST-th harvest swing of a still-standing job chains into the
-    // inter-swing breather: the settler stands its wait pose for HARVEST_REST_TICKS before the
-    // planner may issue the next swing (the observed rhythm — a burst of swings, a rest, another
-    // burst; see restAfterHarvest for the boundary read). Converting the component IN PLACE (not
-    // remove+add) keeps this iteration-safe (no store insertion mid-loop) and deterministic.
+    // inter-swing breather (the observed rhythm — a burst of swings, a rest, another burst; see
+    // restAfterHarvest for the boundary read): the SAME atomic keeps running with its duration
+    // extended, so the render holds the swing's final authored frame — no pose snap. Extending IN
+    // PLACE (not remove+add) keeps this iteration-safe (no store insertion mid-loop) and deterministic.
     if (
       HARVEST_REST_TICKS > 0 &&
       atomic.effect.kind === 'harvest' &&
       restAfterHarvest(world, atomic.effect.resource)
     ) {
-      atomic.atomicId = HARVEST_REST_ATOMIC_ID;
-      atomic.effect = { kind: 'idle' };
-      atomic.elapsed = 0;
-      atomic.progress = fx.fromInt(0);
-      atomic.duration = HARVEST_REST_TICKS;
+      atomic.effect = { kind: 'idle' }; // the tail mutates nothing when it ends
+      atomic.duration += HARVEST_REST_TICKS;
+      atomic.restTail = true;
       continue;
     }
     world.remove(e, CurrentAtomic);

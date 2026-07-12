@@ -38,14 +38,19 @@ function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
   const ticksPerFrame = Math.max(1, ref.ticksPerFrame ?? 1);
   const step = Math.floor(clock / ticksPerFrame);
   // A FrameListAnim (the `[gfxanimatomic]` directional action layout) selects ITS facing's explicit
-  // list and replays it verbatim (holds/repeats are authored into the list, not a uniform stride):
-  // draw id = pool start + the local index at the wrapped phase. An empty/absent list holds frame 0.
+  // list and plays it ONCE (holds/repeats are authored into the list, not a uniform stride):
+  // draw id = pool start + the local entry at the clamped step. An empty/absent list holds frame 0.
   if ('frameLists' in ref) {
     const lists = ref.frameLists;
     if (lists.length === 0) return ref.start;
     const list = lists[wrap(facing, lists.length)];
     if (list === undefined || list.length === 0) return ref.start;
-    const idx = wrap((ref.phaseStart ?? 0) + step, list.length);
+    // An authored frame LIST is a ONE-SHOT motion (a swing, a dig, a scythe sweep) — past its end the
+    // sprite HOLDS the final entry (the authored rest pose) instead of wrapping into a replay. This is
+    // what a harvest atomic's extended rest tail leans on (the gatherer stands its breather on the
+    // swing's last frame), and it keeps a duration longer than the list (iron/gold, the mushroom
+    // pluck) from stuttering back through the windup.
+    const idx = Math.min(list.length - 1, Math.max(0, (ref.phaseStart ?? 0) + step));
     return ref.start + (list[idx] ?? 0);
   }
   const dir = wrap(facing, ref.dirs);

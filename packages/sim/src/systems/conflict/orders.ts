@@ -37,20 +37,22 @@ import { defaultStanceForJob, isMilitaryMode, MILITARY_MODE } from '../readviews
  *
  * These are the FIRST commands that target an EXISTING entity to steer it (not create/destroy one).
  * The design is faithful to *Cultures*: settlers are autonomous, so a move order does NOT seize a unit
- * permanently — it sends the unit somewhere, has it STAND a while, then hands it back to the economy
- * AI. A worker resumes its job quickly; a soldier stands longer; and the needs drives (eat/sleep/pray)
- * can pull either away at any time (see {@link playerOrderSystem}). RTS-style box-select-and-move for
+ * permanently — it sends the unit somewhere, then hands it back to the economy AI. A worker resumes
+ * its job the tick it arrives (zero dwell — the detour never parks it); a soldier HOLDS the spot a
+ * while (position-holding is a military concept); and the needs drives (eat/sleep/pray) can pull
+ * either away at any time (see {@link playerOrderSystem}). RTS-style box-select-and-move for
  * civilians is itself a deviation from the original's hand/profession control — recorded in
  * source basis.
  */
 
 /**
  * How many ticks a CIVILIAN (non-combatant) unit STANDS at the ordered spot after arriving before the
- * economy AI re-tasks it. Short — a blacksmith sent somewhere pauses briefly, then walks back to work.
- * APPROXIMATED (no oracle for the original's exact dwell): 50 ticks ≈ 2.5 s at 20 Hz (source basis
- * "Player move-order dwell"). A rise-driven need (hunger/fatigue/piety) can end the hold sooner.
+ * economy AI re-tasks it. ZERO — a worker sent somewhere goes straight back to its job the tick it
+ * arrives (the earlier 2.5 s dwell read as "kaze mu isc i przestaje pracowac": a gatherer parked at
+ * the destination doing nothing). The hold is a SOLDIER concept (position-holding); a civilian's move
+ * order is just a detour.
  */
-export const MOVE_ORDER_HOLD_CIVILIAN = 50;
+export const MOVE_ORDER_HOLD_CIVILIAN = 0;
 /**
  * How many ticks a COMBATANT (a unit carrying Health or a Weapon — a warrior) STANDS at the ordered
  * spot before the economy AI re-tasks it. Long — a warrior holds position far longer than a worker
@@ -423,10 +425,11 @@ export const playerOrderSystem: System = (world, ctx) => {
       if (order.expiresAt !== null) world.remove(e, PlayerOrder); // a need walked it away mid-hold
       continue;
     }
-    // Arrived and idle: run the hold.
-    if (order.expiresAt === null) {
-      order.expiresAt = ctx.tick + order.holdTicks;
-    } else if (ctx.tick >= order.expiresAt) {
+    // Arrived and idle: run the hold. Not an else-if — a zero hold (a civilian) starts AND expires on
+    // the arrival tick, so the economy re-tasks the unit the same tick it gets there (aiSystem runs
+    // right after this system): the worker turns around and goes straight back to its job.
+    if (order.expiresAt === null) order.expiresAt = ctx.tick + order.holdTicks;
+    if (ctx.tick >= order.expiresAt) {
       world.remove(e, PlayerOrder); // hold done — economy resumes (aiSystem re-tasks this tick)
     }
   }

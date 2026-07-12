@@ -28,10 +28,11 @@ export const GOLD_DEPOSIT_UNITS = 6;
  * Work cycles (full authored strikes/digs) a collector lands to chip ONE unit off a mineral deposit —
  * OBSERVED like the deposit sizes: `atomicanimations.ini` pins only the single-swing cycle length
  * (stone 29 / clay 23 ticks), and one swing per unit read as instant ("raz wali i już wykopane").
- * Four strikes ≈ 6 s of visible work per unit at the faithful cycle lengths plus the inter-swing rest
- * (sim `HARVEST_REST_TICKS`), so a deposit reads as WORKED. Sim counter: `MineDeposit.strikesPerUnit`.
+ * Six strikes ≈ 9–10 s of visible work per unit at the faithful cycle lengths plus the inter-swing
+ * rests (sim `HARVEST_REST_TICKS` after every 2nd strike), so a deposit reads as genuinely WORKED
+ * (four still felt quick by eye). Sim counter: `MineDeposit.strikesPerUnit`.
  */
-export const MINE_STRIKES_PER_UNIT = 4;
+export const MINE_STRIKES_PER_UNIT = 6;
 
 /**
  * The discrete visual fill states a mineral deposit steps down through as it empties — DATA, not observed:
