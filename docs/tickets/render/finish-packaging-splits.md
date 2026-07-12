@@ -25,12 +25,12 @@ rename rides its own hunk):
   NB the app consumes `BuildingBobRef` — keep it exported.
 - `data/effects.ts` (209) → `effects/{marks,blood}.ts` — combat-mark lifecycle
   (`CombatEffect`, lifetimes, `effectAlpha`, `effectKey`, `foldCombatEffects`) vs.
-  procedural blood ballistics (`BLOOD_*`, `bloodDroplet`, `frac`). Importer: `gpu/effects-layer.ts` + test.
+  procedural blood ballistics (`BLOOD_*`, `bloodDroplet`, `frac`). Importer: `gpu/overlays/effects-layer.ts` + test.
 - `data/terrain.ts` (209) → `terrain/{tessellation,transitions,uv}.ts` — node geometry
   vs. transition-lane decode vs. UV folding. Importers: `gpu/shading.ts`,
   `gpu/terrain/terrain-layer.ts`, `gpu/pixi-app.ts`, `src/index.ts`.
 - `data/hud.ts` (297) → `hud/{model,layout,place}.ts` — aggregation (`buildHud`) vs.
-  layout (`layoutHud`) vs. placement (`placeHud`). Importers: `gpu/hud-layer.ts`,
+  layout (`layoutHud`) vs. placement (`placeHud`). Importers: `gpu/overlays/hud-layer.ts`,
   `src/index.ts` + test. (Consider pairing with the HUD generation-memo ticket.)
 
 Each is independent; a single session can do all four.
