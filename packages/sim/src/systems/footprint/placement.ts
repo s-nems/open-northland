@@ -10,8 +10,9 @@ import {
   UnderConstruction,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { LayeredBlocks } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
+import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { SystemContext } from '../context.js';
 import {
   ANCHOR_ONLY,
@@ -207,7 +208,9 @@ export function constructionSitePlots(world: World, content: ContentSet): Constr
   return plots;
 }
 
-/** Building walk-blocks plus the cached resource walk-block overlay. */
+/** Building walk-blocks plus the cached resource walk-block overlay, materialized as ONE union set —
+ *  for a caller that needs an owning `Set` (or to fold more layers over it). A caller that only tests
+ *  membership should prefer {@link dynamicBlockOverlay}, which skips the union copy. */
 export function dynamicBlockedCells(
   world: World,
   ctx: SystemContext,
@@ -216,6 +219,17 @@ export function dynamicBlockedCells(
   const blocked = buildingBlockedCells(world, ctx, terrain);
   for (const cell of resourceBlockedCells(world, terrain)) blocked.add(cell);
   return blocked;
+}
+
+/**
+ * The same building + resource walk-block overlay as {@link dynamicBlockedCells}, but as a
+ * membership VIEW ({@link LayeredBlocks}) that never copies the (potentially large) resource overlay
+ * into a fresh set. For a caller that only asks `.has(node)` — the pathfinder's block test, the
+ * move-order goal snap — this is the cheap form: a box-select issuing one move order per selected
+ * unit then re-scans only the small Building store per order, never re-copies every resource cell.
+ */
+export function dynamicBlockOverlay(world: World, ctx: SystemContext, terrain: TerrainGraph): BlockOverlay {
+  return new LayeredBlocks([buildingBlockedCells(world, ctx, terrain), resourceBlockedCells(world, terrain)]);
 }
 
 /**

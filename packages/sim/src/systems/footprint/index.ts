@@ -15,6 +15,7 @@ export {
   canPlaceBuilding,
   constructionSitePlots,
   dynamicBlockedCells,
+  dynamicBlockOverlay,
   interactionNode,
   type PlacementProbe,
   placementBlockerVersion,
