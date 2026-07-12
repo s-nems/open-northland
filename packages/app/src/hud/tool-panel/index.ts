@@ -4,21 +4,11 @@ import { type Application, Container, Graphics, Texture } from 'pixi.js';
 import { loadGuiArt, makeGuiSprite } from '../../content/gui-art.js';
 import { type GuiBitmapName, loadGuiBitmap, loadGuiStrings, uiStringLookup } from '../../content/gui-gfx.js';
 import { loadUiFont } from '../../content/ui-font.js';
-import type { TextRun } from '../bitmap-text.js';
 import { HOVER_ALPHA, HOVER_TINT } from '../chrome.js';
 import { makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
 import type { PanelBitmaps, PanelContext } from './context.js';
-import {
-  cycleGameSpeed,
-  DEFAULT_GAME_SPEED_CONTROL,
-  effectiveGameSpeedSpec,
-  type GameSpeedChangeCause,
-  type GameSpeedControl,
-  type GameSpeedStateSpec,
-  gameSpeedClickCause,
-  toggleGameSpeedPause,
-} from './game-speed.js';
+import type { GameSpeedChangeCause, GameSpeedStateSpec } from './game-speed.js';
 import { createGoodsDropController } from './goods-drop.js';
 import type { MenuGoodEntry } from './goods-menu.js';
 import { createGoodsWindow } from './goods-window.js';
@@ -31,6 +21,7 @@ import {
 } from './layout.js';
 import { createMenuWindow } from './menu-window.js';
 import { createPlacementController } from './placement.js';
+import { createSpeedButton } from './speed-button.js';
 import { createStatsWindow } from './stats-window.js';
 import { buildOutlinedButtonSpecs } from './strip-outline.js';
 import { createSupersampledStrip, type StripSpriteSpec, type SupersampledStrip } from './strip-texture.js';
@@ -112,9 +103,6 @@ export interface ToolPanelController {
 const FALLBACK_STRIP = 0x1c1810;
 const FALLBACK_BUTTON = 0x4a3f28;
 const FALLBACK_BUTTON_BORDER = 0x8a744a;
-/** Fallback speed-glyph nudges inside the button rect (design px). */
-const SPEED_LABEL_INSET_X = 4;
-const SPEED_LABEL_RAISE_Y = 3;
 
 /** True when a keydown originated in a text-entry element — a game hotkey must not fire while typing.
  *  (No text field exists in the app today; this guards the first one that appears.) */
@@ -233,53 +221,25 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   });
   const stats = createStatsWindow({ ctx, container: windowContainer });
 
-  // --- The game-speed button ---------------------------------------------------------------------------
-  let speedControl: GameSpeedControl = DEFAULT_GAME_SPEED_CONTROL;
-  let speedRun: TextRun | null = null; // fallback glyph (the flat mode has no distinct per-state sprite)
-  const speedBtnRect = layout.buttons.find((b) => b.id === 'speed')?.placed;
-
-  // `cause` null = mount-time init (refresh the glyph only, never push to the loop — see the call below).
-  const applySpeed = (cause: GameSpeedChangeCause | null): void => {
-    const spec = effectiveGameSpeedSpec(speedControl);
-    if (speedSprites.length > 0 && art !== null) {
-      const frame = art.layer.atlas.frames.get(spec.gfx);
-      if (frame !== undefined) {
-        // Outline stamps + real glyph share the frame (the rim must follow the new glyph's shape).
-        for (const s of speedSprites) {
-          s.setFrame(art.layer.source, frame, art.layer.atlas.width, art.layer.atlas.height);
-        }
-        // The strip is baked into a texture, so re-rasterize it with the new speed glyph (rare — a click).
-        supersampled?.redraw();
-      }
-    }
-    if (art === null && speedBtnRect !== undefined) {
-      speedRun?.destroy();
-      speedRun = ctx.makeText(spec.state === 'paused' ? '||' : `x${spec.factor}`, 'white');
-      stripContainer.addChild(speedRun.container);
-      speedRun.place(
-        speedBtnRect.x + SPEED_LABEL_INSET_X * scale,
-        speedBtnRect.y + speedBtnRect.h / 2 - SPEED_LABEL_RAISE_Y * scale,
-        scale,
-        app.screen.width,
-        app.screen.height,
-      );
-    }
-    // Push to the loop only on an actual change (a click / the P key), NOT at mount — the entry seeds its
-    // own initial loop speed (default / `?speed=`), and the panel must not clobber it with ×1 before frame 0.
-    if (cause !== null) opts.onSpeedChange(spec, cause);
-  };
+  // --- The game-speed button (its own controller — see speed-button.ts) --------------------------------
+  const speedButton = createSpeedButton({
+    ctx,
+    app,
+    scale,
+    stripContainer,
+    art,
+    supersampled,
+    speedSprites,
+    speedBtnRect: layout.buttons.find((b) => b.id === 'speed')?.placed,
+    onSpeedChange: opts.onSpeedChange,
+  });
 
   // --- Button actions -------------------------------------------------------------------------------
   const activateButton = (id: ToolButtonId): void => {
     switch (id) {
-      case 'speed': {
-        // Cause from the PRE-click state: a click while paused is an un-pause, not a speed pick (a
-        // 'cycle' cause there would clobber a fractional `?speed=` seed — see gameSpeedClickCause).
-        const cause = gameSpeedClickCause(speedControl);
-        speedControl = cycleGameSpeed(speedControl);
-        applySpeed(cause);
+      case 'speed':
+        speedButton.cycle();
         break;
-      }
       case 'buildings':
         placement.cancel();
         goodsDrop.cancel();
@@ -399,8 +359,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       !e.altKey &&
       !isTypingTarget(e.target)
     ) {
-      speedControl = toggleGameSpeedPause(speedControl);
-      applySpeed('pause-toggle');
+      speedButton.togglePause();
     }
   };
 
@@ -409,7 +368,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   canvas.addEventListener('wheel', onWheel, { passive: false });
   window.addEventListener('keydown', onKeyDown);
 
-  applySpeed(null); // initialise the speed button graphic only — the loop keeps the entry's seeded speed
+  speedButton.init(); // initialise the speed button graphic only — the loop keeps the entry's seeded speed
 
   const claimsWheel = (clientX: number, clientY: number): boolean => {
     const { x, y } = toCanvas(clientX, clientY);
