@@ -15,7 +15,12 @@ import { farmWorkGood } from '../economy/farming.js';
 import { carrierCarryCapacity } from '../progression.js';
 import { atomicDuration } from '../readviews/animations.js';
 import { manhattan } from '../spatial.js';
-import { deliveredConstructionFraction, nextNeededConstructionGood, recipeOf } from '../stores.js';
+import {
+  deliveredConstructionFraction,
+  isCarrierJob,
+  nextNeededConstructionGood,
+  recipeOf,
+} from '../stores.js';
 import { atOrWalk, BUILD_HOUSE_ATOMIC_ID, PILEUP_ATOMIC_ID, startAtomic, startPickup } from './actions.js';
 import {
   deliveryTargetFor,
@@ -570,12 +575,18 @@ export function planPorter(
 }
 
 /**
- * 5. CARRIER FALLBACK — with nothing to harvest, produce, or collect, act as a carrier: haul a
- * finished workplace output to a store (so a producing workshop doesn't clog and goods reach the
- * settlement's stores). Nearest workplace with a haulable output it can deliver somewhere.
+ * 5. STORE-CARRIER HAUL — an **employed carrier** (the transport trade, bound to a building — in
+ * practice a warehouse/HQ transport slot; a workshop-bound carrier never falls this far, rung 2a owns
+ * it) hauls a finished workplace output to a store, so producing workshops don't clog and goods reach
+ * the settlement's stores; the delivery rung then routes the load to ITS bound store when that store
+ * can take it. NOBODY else ferries: a settler of another trade with nothing to do idles, and an
+ * unemployed or unbound settler does no work at all — transport is a job one is hired for, never a
+ * default pastime (observed original behaviour: "bezrobotny to bezrobotny", a carrier works only
+ * through its assignment; the JobSystem's report-in pass is what binds a loose carrier to an open
+ * transport slot).
  * `anyHaulable` is the planner's per-tick dormancy gate — when nothing is haulable anywhere the
- * per-settler scan is provably null and skipped. Returns false when there is nothing to haul (the
- * settler is genuinely idle — the caller de-stacks it).
+ * per-settler scan is provably null and skipped. Returns false when this settler may not / need not
+ * haul (the caller de-stacks it).
  */
 export function planCarrierHaul(
   world: World,
@@ -587,6 +598,8 @@ export function planCarrierHaul(
   targets: TargetCandidates,
   anyHaulable: boolean,
 ): boolean {
+  if (!isCarrierJob(ctx, settler.jobType)) return false; // hauling is the carrier trade's job alone
+  if (!world.has(e, JobAssignment)) return false; // an unassigned carrier has no store to work for
   const haul = anyHaulable ? nearestWorkplaceOutput(targets.stockpiles, world, ctx, terrain, here) : null;
   if (haul === null) return false;
   atOrWalk(world, e, here, interactionCell(world, ctx, terrain, haul.workplace, here), () =>

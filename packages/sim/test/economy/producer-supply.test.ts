@@ -46,6 +46,8 @@ const HEADQUARTERS = 1;
 const SAWMILL = 2;
 /** Fixture 7: 2 carpenter operator slots + a carrier slot, wood(cap 10) → plank(cap 20). */
 const TWIN_MILL = 8;
+/** Fixture 5: the grain farm — another WORKPLACE whose store can hold a producer's input. */
+const FARM = 5;
 const VIKING = 1;
 const PICKUP_ATOMIC = 22;
 
@@ -141,6 +143,20 @@ describe('producer self-service — fetching a missing recipe input', () => {
     // Can't produce (no wood), nothing to haul out — so it heads for the store that holds the input.
     expect(sim.world.has(smith, MoveGoal)).toBe(true);
     expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 5, 0));
+  });
+
+  it('fetches a missing input from another WORKPLACE’s store (the farm next door), like from a warehouse', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    // The input source scan accepts ANY positioned stockpile that holds the good — a warehouse, a
+    // flag pile, or another workplace's own store. Here the good sits in a FARM building's store
+    // (nothing lies on the ground): the miller walks there for it all the same.
+    const mill = buildingAt(sim, SAWMILL, 0, 0); // needs wood for its recipe
+    buildingAt(sim, FARM, 3, 0, [[WOOD, 2]]); // the neighbouring workplace holding the input
+    const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
+
+    aiSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(smith, MoveGoal).cell).toBe(cell(sim, 3, 0));
   });
 
   it('picks up exactly the shortfall when standing on the source store', () => {

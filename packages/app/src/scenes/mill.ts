@@ -129,6 +129,8 @@ export const millScene: SceneDefinition = {
     'Gdy jeden młynarz skończył swoją mąkę, a dla niego nie ma już zboża w młynie, WYCHODZI po następny snopek, podczas gdy drugi dalej miele w środku — nie czeka bezczynnie, aż kolega skończy.',
     'Po przypisaniu TRAGARZA (PPM na młynie wolnym osadnikiem): tragarz w kółko donosi zboże do pełna (10) i wynosi mąkę do magazynu; młynarze mielą w środku, a gdy młyn mimo to stoi bez zboża, sami też idą po snopek (nie czekają bezczynnie na tragarza).',
     'Pracownicy w panelu: Młynarz 0..2/2 i Tragarz 0..1/1 (obsadzone sloty z danych oryginału).',
+    'BEZROBOTNY (Cywil z palety Admina) stoi bezczynnie — nie zbiera snopków, nie nosi mąki, nie pracuje w ogóle, dopóki nie dostanie zawodu.',
+    'TRAGARZ z palety Admina sam melduje się do pierwszego wolnego slotu transportu (tu: młyn) i pracuje wyłącznie dla SWOJEGO budynku; gdy zboża nie ma na ziemi, młynarze noszą je z magazynu/farmy obok.',
   ],
   checks: [
     {

@@ -85,7 +85,13 @@ export function testContent(): ContentSet {
         typeId: 1,
         id: 'headquarters',
         kind: 'headquarters',
-        workers: [{ jobType: 1, count: 3 }],
+        // A transport slot beside the gatherer slots (the original HQ's `logicworker 24` shape): the
+        // JobSystem's report-in pass posts a loose carrier here, and only a POSTED carrier hauls
+        // (the planner's store-carrier rung requires the binding).
+        workers: [
+          { jobType: 1, count: 3 },
+          { jobType: 36, count: 1 },
+        ],
         stock: [
           { goodType: 1, capacity: 150, initial: 10 },
           { goodType: 2, capacity: 150, initial: 0 },
