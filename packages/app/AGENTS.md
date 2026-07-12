@@ -104,7 +104,7 @@ gitignored bytes:
   per player colour); `?color=N` (0–15) paints a character's whole animation set in one player colour — both draw
   the **indexed** atlas through the `256×16` player-colour LUT via `render`'s `PalettedSprite` (only the clothing
   band recolours). A per-tone **skin/hair variant** axis (distinct from team colour) is still a
-  deferred pipeline follow-up; track it in a concrete plan before implementing.
+  deferred pipeline follow-up; file it as a `docs/tickets/` ticket before implementing.
 - `?sound=off` — skip building the audio pipeline (`@vinland/audio`) entirely. In live + scene modes the
   decoded sounds are **default-MUTED**: the driver is built but starts disabled, and the game is silent
   until the user clicks the bottom-centre **sound toggle** button — that click both unmutes and satisfies

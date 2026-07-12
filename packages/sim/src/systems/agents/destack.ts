@@ -83,7 +83,7 @@ export function deStackIdle(
  * `[GfxHouse] LogicConstructionWorkArea <sizeIdx> <dx> <dy> <run>` rows in `houses.ini`, the
  * building analog of the landscape work areas the sim already consumes — but the pipeline does not
  * extract that key yet, so the yard is a uniform door-anchored region until it does (tracked in
- * docs/plans/gathering-economy.md).
+ * docs/tickets/pipeline/construction-work-areas.md).
  */
 export const WORK_YARD_RADIUS_NODES = 4;
 

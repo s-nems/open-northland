@@ -14,7 +14,7 @@ import { turnOntoNextLeg } from './movement.js';
 
 // pathfindingSystem lives in routing.ts (not pathfinding.ts) to avoid an eyeball collision with the
 // A* core in ../pathfinding.ts, which this system consumes. The cross-system `isValidNodeId` guard comes
-// from the shared leaf. See docs/plans/.
+// from the shared leaf.
 
 /**
  * The pathfinder's per-tick work budget, in A*-SETTLED NODES ({@link SearchStats.explored}) — the

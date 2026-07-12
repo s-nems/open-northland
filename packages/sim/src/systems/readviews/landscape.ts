@@ -7,7 +7,7 @@ import type { ContentSet, LandscapeType } from '@vinland/data';
 // keep their schema defaults — see tools/asset-pipeline/src/decoders/ini.ts) yet had no sim consumer; the
 // terrain graph reads only `walkable`/`maxValency`. The water-layer view is the placement-side seed the
 // Sea/Northland slice reads — distinct from water-VALENCY terrain (which cells are water), which lives in
-// the map tile grid, not this table (docs/plans/Phase 4). No mechanic is added here (nothing is placed
+// the map tile grid, not this table. No mechanic is added here (nothing is placed
 // over water); see ./index.ts for how read views relate to systems.
 
 /**

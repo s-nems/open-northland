@@ -96,6 +96,6 @@ ascending-id scan order or elided only provably-empty work, so the winner never 
   = what `.find` returned; the `setatomic` binding tables are last-wins, the source's override rule).
   Replaced every hot linear content scan, including the per-combatant weapon lookups.
 
-**Remaining follow-ups** (economy nearest-X onto `NodeBuckets.nearest`, sim in a Web Worker) are
-concrete plan steps in `docs/plans/sim-perf.md` — this file keeps the rules and the landed levers,
-not the roadmap.
+**Remaining follow-ups** (economy nearest-X onto a ring index, `separationSystem` constant cuts,
+sim in a Web Worker) are tickets under `docs/tickets/` — this file keeps the rules and the landed
+levers, not the roadmap.

@@ -34,7 +34,7 @@ Single-tribe economy running end-to-end. The deterministic sim core, the asset p
 goods economy, a progression/tech graph, and population growth — all run headless and deterministic.
 Combat, the five playable tribes, animals-as-tribes, and original-asset render paths are in progress.
 Several render/pixel checks stay human-gated because an agent cannot self-judge pixels. Active work is
-tracked in [`docs/plans/`](docs/plans/).
+tracked in [`docs/tickets/`](docs/tickets/).
 
 ## Getting started
 
@@ -110,7 +110,7 @@ and lockstep-friendly. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and
 - [`docs/SCENES.md`](docs/SCENES.md) — acceptance scenes (watch a mechanic, sign off)
 - [`docs/SOURCES.md`](docs/SOURCES.md) — original file formats and the (canonical) legal posture
 - [`docs/PRIOR-ART.md`](docs/PRIOR-ART.md) — practices from other engine reimplementations: adopted / deferred / consciously different
-- [`docs/plans/`](docs/plans/) — active implementation plans
+- [`docs/tickets/`](docs/tickets/) — the live work tracker (one self-contained task per file)
 
 ## Contributing
 

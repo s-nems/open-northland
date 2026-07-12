@@ -1,12 +1,12 @@
 ---
 description: Execute a user-specified Vinland task in an isolated git worktree, verify it, close its ticket, wait for approval, then review and fast-forward merge.
-argument-hint: <task, tickets/<area>/<name>.md, or legacy docs/plans/<file>.md step>
+argument-hint: <task or docs/tickets/<folder>/<name>.md>
 ---
 
-You are running the **primary Vinland workflow**. Work items live as tickets under `tickets/` (one
-file = one task; `docs/plans/` is legacy — read it when named, never add to it) and the user manually
-invokes `/worktree` for one task at a time. Execute the requested scope faithfully in an isolated git
-worktree, report for manual verification, and merge only after the user explicitly says to merge.
+You are running the **primary Vinland workflow**. Work items live as tickets under `docs/tickets/`
+(one file = one task) and the user manually invokes `/worktree` for one task at a time. Execute the
+requested scope faithfully in an isolated git worktree, report for manual verification, and merge
+only after the user explicitly says to merge.
 
 The task from the invocation: **$ARGUMENTS**. If it is empty, ask for the task before doing anything.
 
@@ -15,8 +15,8 @@ Hard rules:
 - The user's task/ticket is authoritative. Do not substitute your own next step or pull adjacent work.
 - Never touch the primary checkout (`~/Projects/vikings/vinland`) until the final merge step.
 - Never merge without explicit user approval.
-- Before merge, close the executed ticket (or update the legacy plan file) so progress survives
-  across worktree sessions — and file NEW tickets for real work you discovered but deferred.
+- Before merge, close the executed ticket so progress survives across worktree sessions — and file
+  NEW tickets for real work you discovered but deferred.
 
 ## 1. Create the Worktree
 
@@ -34,10 +34,10 @@ Hard rules:
 
 ## 2. Understand the Step
 
-- If `$ARGUMENTS` names a ticket (`tickets/<area>/<name>.md`) or a legacy plan step, open it and
-  identify exactly one task to execute.
-- Re-check factual claims against source files before coding. Tickets and plans are research notes,
-  not ground truth.
+- If `$ARGUMENTS` names a ticket (`docs/tickets/<folder>/<name>.md`), open it and identify exactly
+  one task to execute.
+- Re-check factual claims against source files before coding. Tickets are research notes, not
+  ground truth.
 - If the step is already done, impossible, or contradicted by code/source reality, stop at the
   smallest safe point and report the deviation. The user decides the new scope.
 
@@ -49,8 +49,7 @@ Hard rules:
   the running original. If behavior is approximated, say what is approximated and why.
 - Do not create new running ledgers for lessons, tech debt, fidelity, or roadmap state. Durable rules
   belong in `AGENTS.md` or package-local `AGENTS.md`; planned future work is a ticket under
-  `tickets/<area>/` (one self-contained task per file — see `tickets/README.md`; never add to the
-  legacy `docs/plans/`).
+  `docs/tickets/` (one self-contained task per file — see `docs/tickets/README.md`).
 
 ## 4. Verify
 
@@ -79,17 +78,14 @@ Do this **in this branch before asking to merge**:
 - If the task came from a ticket: **delete the ticket file in the completing commit** (git history
   is the archive — no done-markers, no moved files). If the task deviated or completed partially,
   rewrite the ticket to exactly the remaining work instead of deleting it.
-- If the task came from a legacy `docs/plans/*.md` step: tick the checkbox (the ONLY status marker),
-  delete the executed step's prompt block in the same commit, and leave a compact progress note
-  (date, branch, what landed, verification, source basis, sign-off status). Keep it short.
 - **File new tickets for deferred discoveries**: anything real found during the work or its review
   that is deliberately NOT being done on this branch (an out-of-scope refactor, a perf seam, a
-  follow-up the reviewers flagged) becomes `tickets/<area>/<name>.md` — self-contained per
-  `tickets/README.md`, committed on this branch. Deferred work named only in the final report is
-  work lost.
+  follow-up the reviewers flagged) becomes `docs/tickets/<folder>/<name>.md` — self-contained per
+  `docs/tickets/README.md`, committed on this branch. Deferred work named only in the final report
+  is work lost.
 
-If no ticket or plan file was involved, state that explicitly in the report. Do not invent one
-unless the user asked for it.
+If no ticket file was involved, state that explicitly in the report. Do not invent one unless the
+user asked for it.
 
 ## 7. Stop and Report
 
@@ -98,8 +94,8 @@ Report and wait:
 - tests/build/pipeline/hands-on evidence,
 - visual/audio approval URL and checklist if relevant,
 - branch and worktree names,
-- the tracker update you committed (ticket closed / rewritten, legacy plan note, new deferred
-  tickets filed), or "no ticket or plan file involved".
+- the tracker update you committed (ticket closed / rewritten, new deferred tickets filed), or "no
+  ticket file involved".
 
 Stop here. If the user requests changes, continue in the same worktree. If the user says to merge,
 continue below — the review battery runs then, not before.
@@ -120,7 +116,7 @@ First run the review battery, now that the user has approved the work:
   instead of merging.
 - Findings that are real but deliberately deferred (out of scope, a wider refactor, a future-scale
   concern) do not evaporate into the report: file each as a self-contained ticket under
-  `tickets/<area>/` on this branch before merging (see step 6).
+  `docs/tickets/` on this branch before merging (see step 6).
 
 Then merge:
 - Re-read `main`; parallel work may have landed.

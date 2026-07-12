@@ -97,7 +97,7 @@ NOT the clean IR `id`; `<level>` selects among the leveled typeIds (`"viking hom
 So resolving a placement to a sim `typeId` needs the `EditName`+`level → LogicType` map, which lives in
 the `[GfxHouse]` graphics sections the pipeline already walks (`extractBuildingBobs` et al.). Importing
 these placements (replacing the app's synthetic first-walkable-cells fallback) is a tracked slice —
-see `docs/plans/`.
+see `docs/tickets/`.
 
 ### `map.dat` chunk container (located Phase-2 spike — tile grid found, decode pending)
 
@@ -337,6 +337,65 @@ twin, so these ARE the source):
   gathering slices consume that instead of re-deriving the good→landscape→gfx chain. (The `[GfxLandscape]`
   block-area footprints — `walkBlockAreas`/`buildBlockAreas`/`workAreas` — already survive into
   `LandscapeGfx` and the emitted content, so a stage's gfx record carries its collision/work footprint.)
+
+**Harvest cadence facts (`Data/logic/atomicanimations.ini`)** — the swing lengths landed in code
+(`HARVEST_TICKS`); the event frames and the readable-data negatives are recorded here:
+`viking_collector_harvest_tree` length 30, events `frame 10` stamina/spirit −100, `frame 19`
+effect, `frame 20` the harvest trigger (`event 20 18`); stone 29/@20, mud 23/@20, iron & gold
+23/@19, mushroom & herb 35/@21. **No multi-chop count exists in readable data**
+(`humanjobexperiencetypes.ini` has `baserepeatcounter` for farmer/fisher/hunter but NOT collector
+job 8) and **no tree-yield amount either** — both are named "observed" calibration constants in
+code.
+
+### Combat data quick reference (logicdefines / weapons / atomic events)
+
+The interpretive key for the combat lanes, consolidated from `Data/logic/logicdefines.ini`,
+`weapons.ini`, and `atomicanimations.ini` (full research trail: `docs/plans/combat.md` in git
+history, deleted 2026-07-12):
+
+- **Enums (logicdefines):** `MILITARY_MODE {NONE 0, ATTACK 1, DEFEND 2, IGNORE 3, FLEE 4}`;
+  `ARMOR_MATERIAL_TYPE {0 NONE, 1 WOOL, 2 LEATHER, 3 CHAIN, 4 PLATE, 5 STONE, 6 WOOD, 7 HOUSE}`;
+  atomic actions `ATTACK 81, ATTACKED 82, SHOOT 83, EXERCISE 89, TRAIN 90`; anim-event types
+  `25 ATTACK, 28 GET_EXPERIENCE, 29 GET_TRAINING, 34 PLAY_SOUND_FX`; XP buckets
+  `FIGHT_{FIST 71, SPEAR 72, SWORD 73, AXE 74, BOW 75, CATAPULT 76}, TRAINING 77`; particles
+  `HIT 1, DEATHBREATH 4`; cadaver types `CADAVER_LEATHER 79, CADAVER_MEAT 80,
+  CADAVER_SKELETON 81, SKELETON_FALLING 87`; damage types incl. `DAMAGE_TYPE_RADIAL 2` (catapult
+  splash); munitions `ARROW 1, ROCK 2`; sounds 67–96 weapon-impact, `MAN/WOMAN_GET_HIT 97/98`,
+  per-beast 101–119.
+- **Weapon ranges (weapons.ini):** long sword 1–2, short bow 3–15, long bow 4–23, hunter bow
+  3–17, house bow 0–29, catapult 8–24 (close-in dead zone). Swing/attack animation lengths:
+  unarmed 12, spears 27, sword_short 12, sword_long 29, bow_short 12, bow_long 28, hunter 25,
+  catapult 48; ATTACK-event frames sword_short @9, spear @17, bow_short @10, bow_long @22. Need
+  drains per soldier swing: `event 2 1 −20` + `event 2 2 −20` (woman/civilist −100); `_attacked`
+  stagger carries ZERO events (purely visual).
+- **NOT in readable data (the calibration boundary — observe the running original):** human base
+  HP / stamina pool / sight radius / run speed; the XP→level curve and per-level bonuses; the
+  exact role of `blockingValue` and hit-vs-miss; heal/potion/amulet magnitudes; building
+  hit-points; defence-mode cadence; projectile and blood sprites.
+- **No death animation exists:** a grep over all decoded `[bobseq]` names finds no `_die`/`_death`
+  — the original transforms a killed unit into a cadaver landscape object
+  (`skeleton_falling → skeleton`); `extractLandscapeGfx` already emits the cadaver records among
+  its 866.
+
+### Reference-screenshot corpus + template matching (map-visual verification kit)
+
+The pixel-oracle kit for comparing our render against the original (used by the map-visual
+tickets; the owner is the pixel oracle — never self-sign a visual):
+
+- **Corpus:** `~/Projects/vikings/reference-shots/mosty-na-rzece-toprow/mosty-{1..7}.png` — the
+  full 250-column top strip of `specjalna_mosty_na_rzece`, left→right with small overlaps,
+  capture scale exactly **1.25× native art px** (pinned by 5 building templates). Read-only,
+  outside the repo.
+- **Pinned mosty-5 viewport mapping** (north base, 19-building sub-pixel lattice fit):
+  `img_x = −11996.0 + 42.4958·hx`, `img_y = 240.2 + 23.766·hy − 1.547·elev(hx/2, hy/2)`; native
+  px = image px ÷ 1.25. Caveat: the `−1.547·elev` coefficient and the residual offset ≈ (−59,−15)
+  px were fitted against the OLD ≈1.24 lift (superseded by `TILE_HALF_H/32`) — re-fit the
+  elevation term before trusting sub-pixel claims; the x/y lattice terms should hold.
+- **Our matching frame:** `?map=specjalna_mosty_na_rzece&center=160,15&zoom=1.25` at a 3172×1784
+  viewport ≈ mosty-5.
+- **Template-matching recipe:** masked `TM_SQDIFF_NORMED` (invert to a score), alpha mask eroded
+  2 px, sprites cropped from `content/Data/engine2d/bin/bobs/<stem>.<palette>.{atlas.json,png}`,
+  OpenCV via a scratchpad venv.
 
 ### Building graphics families (render multi-`.bmd` scope)
 

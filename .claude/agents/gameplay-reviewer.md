@@ -12,7 +12,7 @@ over generic genre habit; where the original is silent, genre convention fills t
 you do not edit.
 
 First read the diff (`git diff`/`git show` with the range in your task). If the task comes from a
-plan, read only the relevant step and its progress note. Apply the source-basis lens when the diff
+`docs/tickets/` ticket, read that ticket. Apply the source-basis lens when the diff
 touches mechanics, extraction, or game data; apply the player-experience lens when it touches
 player-facing UI, input, or camera. A diff can trip both; skip the half the diff cannot trip.
 
@@ -31,11 +31,13 @@ source files and the generated IR shape. Prefer a small explicit approximation o
 3. **Silent approximations** — behavior is guessed, simplified, or visually tuned, but the diff does
    not name what is approximate and why.
 4. **Source/schema mismatch** — an extractor renames semantics, treats sentinel `0` as a real id,
-   trusts an old plan claim over the real source, or validates an id against the wrong namespace.
+   trusts a stale ticket/research claim over the real source, or validates an id against the wrong
+   namespace.
 5. **Fixture-only proof** — the test fixture passes, but there is no real-source check for an
    extraction or binding whose correctness depends on real data shape.
-6. **Plan drift** — if the step came from `docs/plans/`, the progress note is missing, stale, or
-   stronger than the code supports.
+6. **Tracker drift** — if the work came from a `docs/tickets/` ticket, the completing commit does
+   not close it (or rewrite it to the remaining work), or its research claims were contradicted by
+   code reality but left uncorrected.
 
 ## Player experience (hunt in priority order)
 

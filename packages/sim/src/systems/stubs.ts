@@ -8,7 +8,7 @@ import type { System } from './context.js';
 const todo =
   (name: string): System =>
   () => {
-    /* not yet implemented — see docs/plans/*/
+    /* not yet implemented — see docs/tickets/ */
     void name;
   };
 

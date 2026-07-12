@@ -17,7 +17,7 @@
  * (dimensions/GUID/type/name ids), and the per-cell landscape grid of every `map.dat` -> a
  * `maps/<id>.json` `TerrainMap` (the sim's nav-graph input). The remaining stages (standalone
  * palettes, the `.cif`-only type tables, the map's `MissionData`/`StaticObjects` mission scripting,
- * and the oracle pixel-diff) are still TODO; see docs/plans/.
+ * and the oracle pixel-diff) are still TODO; see docs/tickets/.
  */
 
 import { realpathSync } from 'node:fs';

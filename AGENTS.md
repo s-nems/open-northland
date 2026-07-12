@@ -36,13 +36,13 @@ original's names, logos, or screenshots. The canonical legal wording is in `docs
 5. **Faithful first, with named approximations.** Tests prove self-consistency, not that a mechanic
    matches the original. For mechanics, extraction, timings, visuals, and constants, state the source
    basis: extracted data, readable source semantics, OpenVikings format evidence, or observed original
-   behavior. If something is approximated, name what and why in the code comment, test, commit, or plan
-   progress note. Do not create a new running ledger.
+   behavior. If something is approximated, name what and why in the code comment, test, commit, or
+   ticket. Do not create a new running ledger.
 6. **RTS scale is a budget.** Per-tick sim cost scales with active work, never entities squared.
    Per-frame render cost scales with the screen, never the whole map.
-7. **Keep context lean.** `tickets/` is the live work tracker (one self-contained task per file).
-   Durable rules graduate to this file or package-local `AGENTS.md`. Completed history, exploratory
-   notes, and long verification trails belong in git history, not always-read docs.
+7. **Keep context lean.** `docs/tickets/` is the live work tracker (one self-contained task per
+   file). Durable rules graduate to this file or package-local `AGENTS.md`. Completed history,
+   exploratory notes, and long verification trails belong in git history, not always-read docs.
 
 ## Code Organization & Quality
 
@@ -87,20 +87,25 @@ hygiene test rejects nondeterministic globals in `packages/sim`.
 
 ## Ticket-Driven Workflow
 
-- Work items are tickets under `tickets/<area>/` — one file, one self-contained task (see
-  `tickets/README.md`). The user chooses the next one and invokes the worktree workflow manually.
+- Work items are tickets under `docs/tickets/` — `features/` for player-visible slices, area
+  folders (`sim/`, `render/`, `app/`, `pipeline/`, …) for scoped technical work; one file, one
+  self-contained task (see `docs/tickets/README.md`). The user chooses the next one and invokes the
+  worktree workflow manually.
 - `/worktree` is the primary agentic workflow: create an isolated git worktree, execute only the
   requested task, verify, review, update the tracker, wait for explicit user approval, then
   fast-forward merge.
 - A completed ticket is **deleted in the completing commit** (git history is the archive); a
-  partially-done one is rewritten to exactly the remaining work. Real work discovered but deferred —
-  including review findings consciously left out of a merge — is **filed as a new ticket on the same
-  branch**, never just named in a report.
-- `docs/plans/` is legacy (2026-07-12): read existing plans when a task names them (ticked checkbox +
-  compact progress note remain their state markers), but add no new work there.
+  partially-done one is rewritten to exactly the remaining work.
+- **Every workflow feeds the tracker, not just `/worktree`.** Real work discovered but deliberately
+  not done now — review findings left out of a merge, refactor findings dropped as out of scope,
+  ideas noted mid-task — is **filed as a self-contained ticket before the session ends** (on the
+  executing branch when there is one), never just named in a report. `/ticket-scout` is the
+  proactive sweep that scans a scope for ticket candidates and files them.
+- `docs/plans/` was retired 2026-07-12: its open work was converted to tickets and the files were
+  deleted (git history keeps them). Do not recreate it — planned work is a ticket.
 - Do not revive old global planning, fidelity, lessons, or tech-debt ledgers.
-- If a ticket's or plan's research note is wrong, update it with the corrected fact and source basis
-  rather than propagating the stale claim.
+- If a ticket's research note is wrong, update it with the corrected fact and source basis rather
+  than propagating the stale claim.
 
 ## Verification
 
@@ -158,6 +163,5 @@ Start with `docs/README.md`. The core design docs are:
 - `docs/SCENES.md`
 - `docs/SOURCES.md`
 
-`tickets/` holds the open work items; `docs/plans/` is the legacy planning surface (drained as its
-steps land — add nothing new there). Keep both concise enough for the next agent to continue the
-work without reading old transcripts.
+`docs/tickets/` holds the open work items — keep each ticket concise enough for the next agent to
+continue the work without reading old transcripts.
