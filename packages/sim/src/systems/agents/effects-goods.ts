@@ -29,6 +29,38 @@ import { isYardHeap, lowestStockedGood, stockCapacity } from '../stores.js';
 // is conjured or silently destroyed); see each function's contract.
 
 /**
+ * Consecutive work swings a gatherer lands BEFORE standing its inter-swing breather — the observed
+ * work rhythm: the original's collector swings a couple of times in a row, then rests ~0.5–1 s, then
+ * swings again ("po dwóch zamachach staje bezczynnie"). No readable data field paces this (the
+ * animations carry only the per-swing cycle); a rest after EVERY swing read as a strange stutter, so
+ * the breather lands only on every {@link HARVEST_SWINGS_PER_REST}-th swing of a job still in
+ * progress ({@link restAfterHarvest}).
+ */
+export const HARVEST_SWINGS_PER_REST = 2;
+
+/**
+ * Whether the swing that JUST resolved against `node` should chain into the inter-swing breather
+ * (the executor's `HARVEST_REST_TICKS` idle): true only mid-job — the node still stands AND the
+ * swing count sits on a {@link HARVEST_SWINGS_PER_REST} boundary, read off the node's own counters
+ * (a {@link Felling} tree's `chopsLeft`, a {@link MineDeposit}'s `strikes`). The swing that fells /
+ * chips a unit loose / depletes never rests — the collector moves straight on to carrying, which is
+ * its own natural break. A plain node (a mushroom — gone after its single pluck) never rests.
+ */
+export function restAfterHarvest(world: World, node: Entity): boolean {
+  if (!world.has(node, Resource)) return false; // felled/depleted/plucked — carrying is the break
+  const felling = world.tryGet(node, Felling);
+  if (felling !== undefined) {
+    return felling.chopsLeft > 0 && felling.chopsLeft % HARVEST_SWINGS_PER_REST === 0;
+  }
+  const deposit = world.tryGet(node, MineDeposit);
+  if (deposit !== undefined) {
+    const strikes = deposit.strikes ?? 0; // 0 = a unit just came loose — the pickup is the break
+    return strikes > 0 && strikes % HARVEST_SWINGS_PER_REST === 0;
+  }
+  return false;
+}
+
+/**
  * Units a single completed `harvest` atomic yields — dropped/carried AND removed from the harvested
  * node. One unit per swing keeps the node draining in step with what leaves it, so goods are conserved
  * (a node of N units survives exactly N harvests). A real per-good yield (some nodes drop more per

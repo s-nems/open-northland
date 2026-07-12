@@ -143,92 +143,92 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   // woodcutter, 6 = its WORK FLAG (auto-planted at its feet when it spawns — a gatherer is never free;
   // it carries no atomics), 7 = carrier, 8 = carpenter (the mill's operator, self-servicing: it pickups
   // the HQ's stored wood into the mill and hauls finished planks back out). If this moves, a
-  // settler-economy mechanic changed — name it in the commit. Last move: the INTER-SWING REST — a
-  // completed harvest whose node still stands chains into a 15-tick idle breather (observed pacing;
-  // see atomic.ts HARVEST_REST_TICKS), so each chop is followed by a `-1` completion and the woodcutter
-  // banks slightly later; plank output settles at 12 (was 13, the rests push the last mill cycle past
-  // tick 1000). (Prior move fe19b319 was the spawn-time flag auto-plant; e452b766 the half-cell
-  // navigation migration.)
+  // settler-economy mechanic changed — name it in the commit. Last move: the INTER-SWING REST — every
+  // HARVEST_SWINGS_PER_REST-th harvest swing of a still-standing job chains into a 15-tick idle
+  // breather (observed burst rhythm: a couple of swings, a rest; see atomic.ts HARVEST_REST_TICKS +
+  // effects-goods.ts restAfterHarvest), so `-1` completions appear between chop bursts. The two short
+  // rests per run shift the mid-run ticks but the settled end state and plank count are unchanged
+  // (hash stays fe19b319, the spawn-time-flag-auto-plant value; e452b766 before that was the
+  // half-cell navigation migration.)
   const GOLDEN_TRACE: readonly string[] = [
     '20:8:22',
     '31:5:24',
     '40:8:23',
     '46:5:-1',
     '49:5:24',
-    '64:5:-1',
+    '52:5:24',
+    '56:5:22',
     '64:8:22',
-    '67:5:24',
-    '71:5:22',
     '84:8:23',
+    '88:5:23',
     '88:8:22',
-    '103:5:23',
     '108:8:23',
+    '120:5:22',
     '132:7:22',
     '132:8:22',
-    '135:5:22',
+    '152:5:23',
     '152:7:23',
     '152:8:22',
-    '167:5:23',
     '172:8:23',
+    '184:5:22',
     '196:8:22',
-    '199:5:22',
+    '216:5:23',
     '216:8:23',
     '220:8:22',
-    '231:5:23',
     '240:8:23',
-    '263:5:22',
+    '248:5:22',
     '264:7:22',
     '264:8:22',
+    '280:5:23',
     '284:7:23',
     '284:8:22',
-    '295:5:23',
     '304:8:23',
+    '323:5:24',
     '328:8:22',
-    '338:5:24',
+    '338:5:-1',
+    '341:5:24',
+    '344:5:24',
+    '348:5:22',
     '348:8:23',
     '352:8:22',
-    '353:5:-1',
-    '356:5:24',
-    '371:5:-1',
     '372:8:23',
-    '374:5:24',
-    '378:5:22',
+    '392:5:23',
     '396:7:22',
     '396:8:22',
     '416:7:23',
     '416:8:22',
-    '422:5:23',
+    '436:5:22',
     '436:8:23',
     '460:8:22',
-    '466:5:22',
+    '474:5:23',
     '480:8:23',
     '484:8:22',
-    '504:5:23',
     '504:8:23',
+    '512:5:22',
     '528:7:22',
     '528:8:22',
-    '542:5:22',
     '548:7:23',
-    '576:8:22',
-    '580:5:23',
-    '596:8:23',
-    '620:8:22',
-    '640:8:23',
-    '644:8:22',
-    '664:8:23',
-    '688:7:22',
-    '688:8:22',
-    '708:7:23',
-    '708:8:22',
-    '728:8:23',
-    '752:8:22',
-    '772:8:23',
-    '834:8:22',
-    '884:8:23',
-    '908:7:22',
-    '908:8:22',
-    '928:7:23',
-    '958:8:22',
+    '548:8:22',
+    '550:5:23',
+    '568:8:23',
+    '592:8:22',
+    '612:8:23',
+    '616:8:22',
+    '636:8:23',
+    '660:7:22',
+    '660:8:22',
+    '680:7:23',
+    '680:8:22',
+    '700:8:23',
+    '724:8:22',
+    '744:8:23',
+    '806:8:22',
+    '856:8:23',
+    '880:7:22',
+    '880:8:22',
+    '900:7:23',
+    '930:8:22',
+    '980:8:23',
   ];
 
   it('holds every core invariant on every tick', () => {
@@ -239,21 +239,20 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
   it('matches the golden final state hash', () => {
     const run = runSlice(SEED, TICKS);
     // Intentional-change discipline: if this moves, a mechanic changed — name it in the commit.
-    // fe19b319 → 11541957 (2026-07-11): the INTER-SWING REST (see the trace note) — each chop chains
-    // into a 15-tick idle breather, shifting every later action and the settled end state (one plank
-    // fewer inside the 1000-tick window). Prior move (2d0d23b0 → fe19b319) was the spawn-time flag
-    // auto-plant on top of the default-Health change.
-    expect(run.hash).toBe('11541957');
+    // 2d0d23b0 → fe19b319 (2026-07-11): the SPAWN-TIME FLAG AUTO-PLANT (see the trace note) on top of
+    // the default-Health change. The later inter-swing-rest retune moved only mid-run timing — the
+    // settled end state (and so this hash) is unchanged by it.
+    expect(run.hash).toBe('fe19b319');
   });
 
   it('matches the golden atomic-action trace', () => {
     const run = runSlice(SEED, TICKS);
     expect(run.trace).toEqual(GOLDEN_TRACE);
-    // The carpenter self-supplies the mill from the HQ's stored wood. The woodcutter's felled wood
-    // banks at its own work flag (flag-bound from spawn), and the inter-swing rests push the mill's
-    // last cycle past the 1000-tick window — so the plank total settles at 12 (was 13 before the
-    // rests, 18 before the flag binding).
-    expect(run.produced).toBe(12);
+    // The carpenter self-supplies the mill from the HQ's stored wood and turns it into 13 planks. The
+    // woodcutter's felled wood banks at its own work flag (flag-bound from spawn), and with no porter
+    // moving flag heaps that wood stays by the flag — 13 planks, not 18. The burst rests are short
+    // enough that the mill still finishes its 13th cycle inside the window.
+    expect(run.produced).toBe(13);
   });
 
   it('is byte-identical across two same-seed runs (determinism)', () => {

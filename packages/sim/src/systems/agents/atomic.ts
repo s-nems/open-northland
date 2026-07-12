@@ -1,4 +1,4 @@
-import { CurrentAtomic, Resource, Settler } from '../../components/index.js';
+import { CurrentAtomic, Settler } from '../../components/index.js';
 import { assertNever } from '../../core/brand.js';
 import type { AtomicEffect } from '../../core/commands.js';
 import { fx } from '../../core/fixed.js';
@@ -19,6 +19,7 @@ import {
   harvestFromNode,
   pickupFromStore,
   pileupIntoStore,
+  restAfterHarvest,
 } from './effects-goods.js';
 
 // Re-exported so the projectile system (and the systems barrel) keep their single import site for
@@ -54,12 +55,13 @@ export { applyPendingStaggers, type PendingStagger, resolveCombatHit } from './e
  * (Stockpile writes go through the canonical Map, never iterated for a decision). Fixed-point only.
  */
 /**
- * The idle BREATHER a gatherer stands between work swings, in ticks (0.75 s at 20 ticks/s). OBSERVED,
- * a named approximation: the original's collector visibly rests between chops/strikes (~0.5–1 s by
- * eye), but the readable data carries no rest field — `atomicanimations.ini` lengths cover only the
- * swing itself (its trailing idle pad is ~4 frames, far shorter than the observed rest). Applied by
- * the executor after a completed harvest whose node still stands (mid-job), never after the final
- * swing (felled/depleted/plucked — the settler moves straight on to carrying).
+ * The idle BREATHER a gatherer stands between work-swing BURSTS, in ticks (0.75 s at 20 ticks/s).
+ * OBSERVED, a named approximation: the original's collector swings a couple of times in a row, rests
+ * ~0.5–1 s, and swings again, but the readable data carries no rest field — `atomicanimations.ini`
+ * lengths cover only the swing itself (its trailing idle pad is ~4 frames, far shorter). Applied by
+ * the executor after every {@link import('./effects-goods.js').HARVEST_SWINGS_PER_REST}-th completed
+ * harvest swing of a job still in progress ({@link import('./effects-goods.js').restAfterHarvest}),
+ * never after the final swing (felled/depleted/plucked — the settler moves straight on to carrying).
  */
 export const HARVEST_REST_TICKS = 15;
 
@@ -108,15 +110,15 @@ export const atomicSystem: System = (world, ctx) => {
     // it needs the atomic id to resolve that animation.
     if (atomic.effect.kind === 'attack') paySwingNeedCost(world, ctx, e, atomic.atomicId);
     ctx.events.emit({ kind: 'atomicCompleted', entity: e, atomicId: atomic.atomicId });
-    // A harvest swing on a node that STILL STANDS chains into the inter-swing breather: the settler
-    // stands its wait pose for HARVEST_REST_TICKS before the planner may issue the next swing (the
-    // observed work rhythm — swing, rest, swing). The final swing (node felled/depleted/plucked) skips
-    // the rest — the collector moves straight on to carrying. Converting the component IN PLACE (not
+    // Every HARVEST_SWINGS_PER_REST-th harvest swing of a still-standing job chains into the
+    // inter-swing breather: the settler stands its wait pose for HARVEST_REST_TICKS before the
+    // planner may issue the next swing (the observed rhythm — a burst of swings, a rest, another
+    // burst; see restAfterHarvest for the boundary read). Converting the component IN PLACE (not
     // remove+add) keeps this iteration-safe (no store insertion mid-loop) and deterministic.
     if (
       HARVEST_REST_TICKS > 0 &&
       atomic.effect.kind === 'harvest' &&
-      world.has(atomic.effect.resource, Resource)
+      restAfterHarvest(world, atomic.effect.resource)
     ) {
       atomic.atomicId = HARVEST_REST_ATOMIC_ID;
       atomic.effect = { kind: 'idle' };
