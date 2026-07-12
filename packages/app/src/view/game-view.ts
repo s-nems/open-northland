@@ -2,23 +2,19 @@ import { indexById } from '@vinland/data';
 import {
   buildHud,
   buildSpriteScene,
-  type Camera,
   cameraViewport,
   type ElevationField,
   fogTileVisible,
   layoutHud,
   ONE,
-  type PlacementOverlayFrame,
   type SceneTerrain,
   SPRITE_CULL_MARGIN,
   type SpriteSheet,
-  visibleTileRange,
   type WorldRenderer,
 } from '@vinland/render';
 import {
   FixedTimestep,
   FOG_STATE,
-  type FogView,
   type SimEvent,
   type Simulation,
   systems,
@@ -39,6 +35,7 @@ import { mountAdminDebug } from './admin-debug/index.js';
 import type { CameraController } from './camera.js';
 import { cameraCenteredOnWorld, clientToCanvas, screenScale } from './camera.js';
 import { computeDoorBadges } from './door-badges.js';
+import { createFogGates } from './fog-gates.js';
 import {
   applyGameSpeed,
   menuEntriesFromContent,
@@ -50,7 +47,8 @@ import { createGroundPileTooltip } from './ground-pile-tooltip.js';
 import { mountSoundToggle } from './overlay.js';
 import { floatParam } from './params.js';
 import { mountPerfOverlay } from './perf-overlay.js';
-import { nodeBandOfCells, type Pickable, pickTopAt, screenToWorld } from './picking.js';
+import { type Pickable, pickTopAt, screenToWorld } from './picking.js';
+import { makeOverlayFrameSource } from './placement-overlay.js';
 import { createTooltip } from './tooltip.js';
 import { createUnitControls } from './unit-controls.js';
 
@@ -104,69 +102,8 @@ export interface GameViewDeps {
   readonly onEvents?: (events: readonly SimEvent[]) => void;
 }
 
-/** Tiles beyond the visible band the overlay also probes, so its edge never shows during a pan. */
-const OVERLAY_BAND_MARGIN = 2;
-
 /** px gap between the tool-panel strip's right edge and the debug overlay's left edge. */
 const PERF_STRIP_GAP = 8;
-
-/**
- * The build-mode overlay-frame builder: the visible band plus which of its HALF-CELL NODES reject
- * the held building's anchor — the SAME rule `placeBuilding` gates on (`Simulation.placementProbe`),
- * so the dimmed area is exactly where a click would be refused (blocked by terrain — trees/stones/
- * ore/water — or by another building's margin). The camera cull yields a CELL band
- * (`visibleTileRange`); the probe walks its 2× node band, since anchors live on the half-cell
- * lattice. Screen-bounded per golden rule 6 (per-frame cost scales with the screen): only the
- * visible band is probed, and only while placing — and the band probe is MEMOIZED on (type,
- * placement-blocker version, band). The version (`Simulation.placementBlockerVersion`) moves only
- * when a building/resource is added or removed, NOT every tick — so a still camera over a RUNNING sim
- * reuses last frame's blocked set instead of re-probing the whole node band per RAF (keying on the
- * tick instead makes the O(4×visible×footprint) loop re-run 20×/s while the game plays). Returns null
- * for a mapless sim (no placement rule → no wash).
- *
- * Under FOG, every node whose cell the player does not currently SEE dims too — the overlay half of
- * the `canPlaceAt` fog gate (the two must never drift), which also stops the probe from leaking
- * fogged occupancy (a blocked-cells pattern inside the black would read as enemy buildings). The
- * memo key carries the fog generation+mode, so a mask rebuild re-probes but a still fog reuses.
- */
-function makeOverlayFrameSource(
-  sim: Simulation,
-  mapSize: { readonly width: number; readonly height: number },
-): (buildingType: number, camera: Camera, screenW: number, screenH: number) => PlacementOverlayFrame | null {
-  let key = '';
-  let frame: PlacementOverlayFrame | null = null;
-  return (buildingType, camera, screenW, screenH) => {
-    const cells = visibleTileRange(
-      cameraViewport(camera, screenW, screenH),
-      mapSize.width,
-      mapSize.height,
-      OVERLAY_BAND_MARGIN,
-    );
-    // The node band covering the visible cells.
-    const range = nodeBandOfCells(cells);
-    const fog = sim.fogView(HUMAN_PLAYER);
-    const fogKey = fog === null ? 'off' : `${fog.mode}:${fog.generation}`;
-    const nextKey = `${buildingType}:${sim.placementBlockerVersion()}:${fogKey}:${range.minCol},${range.maxCol},${range.minRow},${range.maxRow}`;
-    // Nothing that moves the blocked set changed (same type, same blockers, same fog, same camera
-    // band): reuse last frame's result and skip both the probe build and the whole-band re-probe.
-    if (nextKey === key && frame !== null) return frame;
-    const probe = sim.placementProbe(buildingType);
-    if (probe === null) return null;
-    const blocked: { col: number; row: number }[] = [];
-    for (let row = range.minRow; row <= range.maxRow; row++) {
-      // A node (col, row) lives in cell (col>>1, row>>1) — `cellOfNode`, inlined in this hot band
-      // loop so the per-node test allocates nothing.
-      const cellRow = row >> 1;
-      for (let col = range.minCol; col <= range.maxCol; col++) {
-        const hidden = fog !== null && fog.stateAt(col >> 1, cellRow) !== FOG_STATE.VISIBLE;
-        if (hidden || !probe.canPlace(col, row)) blocked.push({ col, row });
-      }
-    }
-    key = nextKey;
-    frame = { ...range, blocked };
-    return frame;
-  };
-}
 
 /**
  * Mount the standard in-game HUD over the assembled world and start the fixed-timestep loop.
@@ -214,19 +151,11 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
   // build menu drops BELOW it (from the buildings button), so the two never overlap.
   const perf = mountPerfOverlay(buildToolPanelLayout(uiscale).width + PERF_STRIP_GAP);
 
-  // The frame's fog-of-war view for the HUMAN player — ONE mutable slot refreshed at the top of every
-  // frame, so long-lived consumers created below (unit picking, the pile tooltip, the placement gate)
-  // close over STABLE predicates instead of being re-wired per frame. Null = fog off (everything shows).
-  let frameFog: FogView | null = null;
-  /** Whether the viewer currently SEES a fractional tile — the picking/tooltip/audio gate. */
-  const fogVisibleTile = (tileX: number, tileY: number): boolean =>
-    frameFog === null || fogTileVisible(frameFog, tileX, tileY);
-  /** Whether the viewer currently SEES a half-cell node's cell — the placement gate's coordinate space. */
-  const fogSeesNode = (col: number, row: number): boolean => {
-    if (frameFog === null) return true;
-    const { cx, cy } = systems.cellOfNode(col, row);
-    return frameFog.stateAt(cx, cy) === FOG_STATE.VISIBLE;
-  };
+  // The frame's fog-of-war gate for the HUMAN player — ONE mutable view refreshed at the top of every
+  // frame (`fogGates.setFrame` below), so long-lived consumers created here (unit picking, the pile
+  // tooltip, the placement gate, voice chatter) close over STABLE predicates instead of being re-wired
+  // per frame. See view/fog-gates.ts.
+  const fogGates = createFogGates();
 
   // The original LEFT tool panel — the standard game HUD. Its game-speed button drives `control`, the
   // building menu enqueues `placeBuilding` on a map click, and it claims its own clicks so the HUD
@@ -237,7 +166,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
   // the anchor — OUR modern gate (genre convention: no founding into the fog), applied app-side only:
   // the sim command stays ungated so admin/scenario spawns bypass the UI rule.
   const canPlaceAt = (typeId: number, col: number, row: number): boolean =>
-    fogSeesNode(col, row) && (sim.placementProbe(typeId)?.canPlace(col, row) ?? true);
+    fogGates.seesNode(col, row) && (sim.placementProbe(typeId)?.canPlace(col, row) ?? true);
 
   // The minimap handle, assigned right after the tool panel mounts (the panel must mount first — stage
   // order IS draw order, and the minimap window draws over the strip's lower buttons on a short
@@ -327,7 +256,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     enqueue: (command) => sim.enqueue(command),
     boundsOf: (ref) => renderer.entityBounds(ref), // exact sprite-box picking against the real sprite
     pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy), // buildings: solid pixels only
-    fogVisible: fogVisibleTile, // enemy right-click targets are fog-culled like the drawn scene
+    fogVisible: fogGates.visibleTile, // enemy right-click targets are fog-culled like the drawn scene
     claimPointer: (x: number, y: number) =>
       toolPanel.claimPointer(x, y) || mountedMinimap.claimsPointer(x, y),
     // The Magazyn stock-row name tooltip. Its OWN instance (not the ground one below): the two hover
@@ -399,7 +328,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     camera: () => cameraCtl.camera(),
     clientToScreen,
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
-    fogVisible: fogVisibleTile,
+    fogVisible: fogGates.visibleTile,
     goodLabel: (typeId) => goodLabelByType.get(typeId),
     pointer: () => pointer,
     suppressed: (clientX, clientY) =>
@@ -442,7 +371,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     const badges = computeDoorBadges(snap, buildingDoors, workerRoleOf);
     // Fog gate: a staffed building under the fog must not advertise its workers — the badge layer
     // draws ABOVE the wash. Same validity as the snapshot memo: fog only changes when the tick does.
-    const fog = frameFog;
+    const fog = fogGates.current();
     return fog === null ? badges : badges.filter((b) => fogTileVisible(fog, b.x / ONE, b.y / ONE));
   });
 
@@ -494,7 +423,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
     // pre-fog behaviour). One read shared by the renderer (wash + sprite/tree cull), the minimap mask
     // and the presentation event filter below, so no consumer can disagree about a cell.
     const fogView = sim.fogView(HUMAN_PLAYER);
-    frameFog = fogView; // refresh the stable predicates' slot before anything below consults them
+    fogGates.setFrame(fogView); // refresh the stable predicates' slot before anything below consults them
     renderer.updateFog(fogView);
     // PRESENTATION events only (blood/bones + positional audio): an event at ground the player does
     // not currently SEE is dropped — a fight in the fog must neither splatter visible blood nor ring
@@ -597,7 +526,7 @@ export async function startGameView(deps: GameViewDeps): Promise<void> {
         // Voice chatter reads on-screen settlers straight off the snapshot, so it needs its own fog
         // gate — a hidden enemy must not natter from empty black (positional SFX are already covered
         // by the presentEvents filter above).
-        visibleTile: fogVisibleTile,
+        visibleTile: fogGates.visibleTile,
       });
     }
     const cpuMs = performance.now() - cpu0;
