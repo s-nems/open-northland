@@ -1,5 +1,7 @@
+import { FOG_STATE } from '@vinland/sim';
 import { Container, Mesh, Sprite } from 'pixi.js';
 import { scaleColour } from '../../data/brightness.js';
+import { fogGhostTint } from '../../data/fog.js';
 import { depthKey, TILE_HALF_H, TILE_HALF_W } from '../../data/iso.js';
 import { aabbIntersects, isVisible, type Viewport } from '../../data/viewport.js';
 import { TERRAIN_CHUNK_TILES } from '../terrain/index.js';
@@ -30,6 +32,11 @@ interface PooledObject {
   /** Minted on first visibility (a big map holds 10k–270k tall objects; most never scroll into view). */
   sprite: Sprite | null;
   attached: boolean;
+  /** The sprite's undimmed tint (the baked-shading multiplier, or white) — computed at mint so the
+   *  per-frame fog grading is a pick between two cached colours, never a recompute. */
+  baseTint: number;
+  /** {@link import('../../data/fog.js').fogGhostTint} of {@link baseTint} — the explored-ground dim. */
+  ghostTint: number;
 }
 
 /**
@@ -121,7 +128,13 @@ export class MapObjectLayer {
         minY,
         maxX,
         maxY,
-        objects: block.map((obj) => ({ obj, sprite: null, attached: false })),
+        objects: block.map((obj) => ({
+          obj,
+          sprite: null,
+          attached: false,
+          baseTint: 0xffffff,
+          ghostTint: 0xffffff,
+        })),
         attachedCount: 0,
       };
       this.tallBlocks.push(tall);
@@ -171,13 +184,16 @@ export class MapObjectLayer {
    * is never touched after build); then block-cull the tall objects and per-member point-test them,
    * minting a sprite on first visibility and depth-sorting it against entities by its feet anchor.
    *
-   * `fogVisibleCell` is the fog-of-war gate over CELL coords: a TALL object (a tree/stone — a
-   * strategic resource) whose anchor cell it rejects is treated exactly like a viewport-culled one
-   * (detached, kept pooled for when the fog lifts). Flat DECOR (waves, grass, mine stains) is
-   * deliberately exempt — it reads as terrain dressing, which the explored-grey layer shows (named
-   * approximation; the black layer's opaque wash covers it anyway).
+   * `fogStateOfCell` is the fog-of-war gate over CELL coords (the viewer's effective `FOG_STATE`): a
+   * TALL object (a tree/stone — a strategic resource) on UNEXPLORED ground is treated exactly like a
+   * viewport-culled one (detached, kept pooled for when the fog lifts); on EXPLORED ground it draws
+   * DIMMED to the ghost grading — a virgin map object never changes until first worked (the handover
+   * removes it here at that moment), so the real object IS its own last-seen ghost, and RECON's
+   * known-terrain view shows the map's resources from the start for free. Flat DECOR (waves, grass,
+   * mine stains) is deliberately exempt — it reads as terrain dressing, which the explored-grey layer
+   * shows (named approximation; the black layer's opaque wash covers it anyway).
    */
-  update(vp: Viewport, tick: number, fogVisibleCell?: (cellX: number, cellY: number) => boolean): void {
+  update(vp: Viewport, tick: number, fogStateOfCell?: (cellX: number, cellY: number) => number): void {
     // Landscape decor: the written tick is tracked PER CHUNK so a chunk scrolled into view mid-tick
     // (or while paused) still catches up to the current frame.
     for (const chunk of this.decorChunks) {
@@ -222,10 +238,11 @@ export class MapObjectLayer {
         const obj = po.obj;
         // The anchor's visual cell — tall objects sit on half-cell nodes (`halfCellToScreen`), so the
         // exact inverse is `⌊x / cellWidth⌋, ⌊y / rowStep⌋` (cell (c,r) owns nodes 2c..2c+1 × 2r..2r+1).
-        const visible =
-          isVisible(vp, obj.x, obj.y) &&
-          (fogVisibleCell === undefined ||
-            fogVisibleCell(Math.floor(obj.x / (2 * TILE_HALF_W)), Math.floor(obj.y / TILE_HALF_H)));
+        const fogState =
+          fogStateOfCell === undefined
+            ? FOG_STATE.VISIBLE
+            : fogStateOfCell(Math.floor(obj.x / (2 * TILE_HALF_W)), Math.floor(obj.y / TILE_HALF_H));
+        const visible = isVisible(vp, obj.x, obj.y) && fogState !== FOG_STATE.UNEXPLORED;
         if (!visible) {
           if (po.attached && po.sprite !== null) {
             this.spriteLayer.removeChild(po.sprite);
@@ -241,8 +258,12 @@ export class MapObjectLayer {
           // Baked-shading multiplier as a grey tint (stones on a dark slope darken with the ground).
           // A batch tint cannot brighten, so the lane's >1 half clamps at ×1 — a named approximation
           // (see MapObjectSprite.brightness); the app omits the field for the full-bright kinds (trees).
-          if (obj.brightness !== undefined) po.sprite.tint = scaleColour(0xffffff, obj.brightness);
+          po.baseTint = obj.brightness !== undefined ? scaleColour(0xffffff, obj.brightness) : 0xffffff;
+          po.ghostTint = fogGhostTint(po.baseTint);
         }
+        // Explored-but-unwatched ground dims the object to the ghost grading; re-assigned per frame
+        // (a pick between two cached colours — Pixi's tint setter no-ops on an unchanged value).
+        po.sprite.tint = fogState === FOG_STATE.EXPLORED ? po.ghostTint : po.baseTint;
         if (!po.attached || (animAdvanced && obj.frames.length > 1)) {
           const frame = objectFrameAt(obj, tick);
           if (frame === undefined) continue;

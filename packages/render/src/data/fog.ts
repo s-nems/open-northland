@@ -1,11 +1,34 @@
 import { FOG_STATE, type FogView } from '@vinland/sim';
+import { scaleColour } from './brightness.js';
 
 /**
  * Render-side fog-of-war helpers — the thin data layer between the sim's {@link FogView} (per-cell
  * tri-state mask for the viewer player, `Simulation.fogView`) and the GPU consumers (the fog wash,
- * the sprite cull, the tall map-object gate). Pure math, no Pixi — headlessly unit-testable like the
- * rest of `render`'s data layer. Floats are fine here (render never feeds the sim).
+ * the sprite cull, the tall map-object gate, the ghost tint). Pure math, no Pixi — headlessly
+ * unit-testable like the rest of `render`'s data layer. Floats are fine here (render never feeds
+ * the sim).
  */
+
+/** Per-state fog-wash mask alpha (black texels over the ground): unexplored hides everything,
+ *  explored dims to "known terrain, not watched", visible shows through. Owned here (not in the GPU
+ *  wash) so the ghost tint below derives from the SAME grading — a ghost sprite drawn above the wash
+ *  reads exactly as dark as the explored ground it stands on. The alphas are TUNED BY EYE (the grey
+ *  layer is our modern addition — source basis "observed original behaviour"; a human signs off). */
+export const FOG_UNEXPLORED_ALPHA = 255;
+export const FOG_EXPLORED_ALPHA = 140;
+
+/** The luminance factor a black wash of {@link FOG_EXPLORED_ALPHA} leaves: `1 − α/255`. Ghost sprites
+ *  sit ABOVE the wash (the depth-sorted entity layer), so they multiply this in via tint instead. */
+const FOG_GHOST_LUMA = 1 - FOG_EXPLORED_ALPHA / 255;
+
+/** {@link fogGhostTint} of plain white — the tint for a ghost sprite with no base shading. */
+export const FOG_GHOST_TINT = scaleColour(0xffffff, FOG_GHOST_LUMA);
+
+/** Darken a sprite's base tint to the explored-grey grading — the "remembered ghost" look for a
+ *  once-seen static (building/resource) drawn on ground the viewer no longer watches. */
+export function fogGhostTint(base: number): number {
+  return scaleColour(base, FOG_GHOST_LUMA);
+}
 
 /**
  * The visual CELL containing a fractional tile position — the render twin of the sim's

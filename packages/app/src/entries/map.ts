@@ -245,6 +245,10 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
             held.delete(entity);
             refs.delete(entity);
             renderer.removeMapObject(sprite);
+            // The static quad WAS this node's fog ghost (a virgin object is its own last-seen state);
+            // adopt it into the ghost store so a node first worked under the fog keeps its remembered
+            // look on explored ground instead of vanishing with the handover.
+            renderer.adoptFogGhost(ev.node as number);
           }
         };
 
