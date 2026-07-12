@@ -3,7 +3,6 @@
  * concern keeps every `decoders/ini.js` import path stable. See each module for its concern.
  */
 
-export type { BuildingGraphicsBinding } from './ini/buildings-gfx/index.js';
 export {
   extractBuildingBobs,
   extractBuildingFootprints,
@@ -14,7 +13,6 @@ export {
   extractHouseHitpoints,
 } from './ini/buildings-gfx/index.js';
 export type {
-  RuleProp,
   RuleSection,
   SourceRef,
 } from './ini/grammar.js';
@@ -25,9 +23,7 @@ export {
 } from './ini/grammar.js';
 export type {
   BmdPaletteBinding,
-  IndexedBobManager,
   JobBaseGraphicsBinding,
-  LandscapeGraphicsBinding,
   PaletteAlias,
 } from './ini/graphics-bindings.js';
 export {
