@@ -1,7 +1,9 @@
 import { MoveGoal, Owner, PathFollow, PathRequest, Position } from '../../components/index.js';
 import { type Fixed, fx, ZERO } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
+import { LayeredBlocks } from '../../nav/block-overlay.js';
 import { positionOfNode, positionXOfWorld } from '../../nav/halfcell.js';
+import { nearestUnblockedNode } from '../../nav/nearest.js';
 import { findPath, type SearchStats } from '../../nav/pathfinding.js';
 import type { BlockOverlay, NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
@@ -9,11 +11,6 @@ import { dynamicBlockedCells } from '../footprint/index.js';
 import { canonicalById, isValidNodeId } from '../spatial.js';
 import { hasBodyCollision, type UnitWalkBlocks, unitWalkBlocks } from './collision/index.js';
 import { turnOntoNextLeg } from './movement.js';
-
-/** How far (in nodes) the walk-overlay goal fallback ({@link nearestUnblockedNode}) searches for a
- *  free stand-in node around a unit-occupied goal — enough to ring several bodies deep around a
- *  crowded target before giving up. */
-export const GOAL_FALLBACK_SEARCH_CAP = 64;
 
 // pathfindingSystem lives in routing.ts (not pathfinding.ts) to avoid an eyeball collision with the
 // A* core in ../pathfinding.ts, which this system consumes. The cross-system `isValidNodeId` guard comes
@@ -221,64 +218,6 @@ function pathToWaypoints(terrain: TerrainGraph, path: ReadonlyArray<NodeId>): Ar
     prev = c;
   }
   return waypoints;
-}
-
-/**
- * A layered walk-block view over several node sets — the {@link BlockOverlay} routing hands A* for
- * a COLLIDER requester (dynamic blocks + field posts + other players' town garrisons) without
- * materializing their union: the union copy cost O(|dynamic|) Set inserts per player per tick,
- * which on a build-heavy map dwarfed the searches it guarded. `size` honours only the interface's
- * "0 means empty" contract (layers may share nodes).
- */
-class LayeredBlocks implements BlockOverlay {
-  private readonly layers: ReadonlyArray<ReadonlySet<NodeId>>;
-  constructor(layers: ReadonlyArray<ReadonlySet<NodeId>>) {
-    this.layers = layers;
-  }
-  has(node: NodeId): boolean {
-    for (const layer of this.layers) {
-      if (layer.has(node)) return true;
-    }
-    return false;
-  }
-  get size(): number {
-    let total = 0;
-    for (const layer of this.layers) total += layer.size;
-    return total;
-  }
-}
-
-/**
- * The nearest node to `from` that is neither walk-blocked nor already claimed as a stand-in this
- * tick — a breadth-first ring search over the graph's canonical walkable neighbours (first hit at
- * the minimum depth is history-independent), bounded by {@link GOAL_FALLBACK_SEARCH_CAP}. Unlike
- * the idle-spacing search this TRAVERSES blocked nodes (the free node behind a rank of bodies is a
- * fine stand-in — whether it is actually reachable is the follow-up A*'s job); `claimed` nodes are
- * traversed but never returned.
- */
-function nearestUnblockedNode(
-  terrain: TerrainGraph,
-  from: NodeId,
-  blocked: BlockOverlay,
-  claimed: ReadonlySet<NodeId>,
-): NodeId | null {
-  const seen = new Set<NodeId>([from]);
-  let frontier: NodeId[] = [from];
-  let visited = 0;
-  while (frontier.length > 0 && visited < GOAL_FALLBACK_SEARCH_CAP) {
-    const next: NodeId[] = [];
-    for (const cell of frontier) {
-      for (const n of terrain.walkableNeighbours(cell)) {
-        if (seen.has(n)) continue;
-        seen.add(n);
-        visited++;
-        if (!blocked.has(n) && !claimed.has(n)) return n;
-        next.push(n);
-      }
-    }
-    frontier = next;
-  }
-  return null;
 }
 
 /**

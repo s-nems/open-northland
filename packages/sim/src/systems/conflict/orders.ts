@@ -21,9 +21,12 @@ import {
 import type { Command } from '../../core/commands.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
+import { nearestUnblockedNode } from '../../nav/nearest.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain.js';
 import type { System, SystemContext } from '../context.js';
 import { bindFreshFlag, jobCanHarvest, liveWorkFlag, syncWorkFlagToJob } from '../economy/flags.js';
 import { openWorkerJobFromList } from '../economy/jobs.js';
+import { dynamicBlockOverlay } from '../footprint/index.js';
 import { defaultStanceForJob, isMilitaryMode, MILITARY_MODE } from '../readviews/index.js';
 
 /**
@@ -61,6 +64,27 @@ function isCombatantUnit(world: World, e: Entity): boolean {
   return world.has(e, Health) || world.has(e, Weapon);
 }
 
+/**
+ * Resolve a raw clicked node to a node the unit can actually STAND on. A click that lands on a
+ * resource footprint (tree/stone/iron/gold), a building body, or an unwalkable tile (water/rock) has
+ * no standable goal there — the pathfinder rejects an occupied or unwalkable goal outright, so the
+ * order would fail and the unit would simply stand still (the reported bug: accidentally clicking a
+ * tree stops the unit). Snap such a goal to the NEAREST walkable, unblocked node so the unit walks to
+ * the edge of what was clicked instead of refusing the order. A standable click is returned untouched.
+ *
+ * Only STATIC blockers (resource + building footprints) and terrain are considered — transient unit
+ * BODIES are deliberately ignored, so this stays consistent with the economy's exact node-coincidence
+ * walks; re-aiming a goal off a standing unit is the routing surround rule's job, applied only to
+ * colliders (see movement/routing.ts). The overlay is a membership VIEW ({@link dynamicBlockOverlay}),
+ * so a box-select issuing one move order per selected unit never re-copies the resource overlay per
+ * order.
+ */
+function reachableMoveGoal(world: World, ctx: SystemContext, terrain: TerrainGraph, clicked: NodeId): NodeId {
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  if (terrain.isWalkable(clicked) && !blocked.has(clicked)) return clicked; // standable — no snap
+  return nearestUnblockedNode(terrain, clicked, blocked) ?? clicked;
+}
+
 /** Drop a player order and the nav state it drove, returning the unit to full autonomy. */
 function clearPlayerOrder(world: World, e: Entity): void {
   world.remove(e, PlayerOrder);
@@ -93,7 +117,7 @@ export function moveUnit(
   const e = command.entity;
   if (!world.isAlive(e) || !world.has(e, Settler) || !world.has(e, Position) || !world.has(e, Owner)) return;
 
-  const goal = terrain.nodeAtClamped(command.x, command.y);
+  const goal = reachableMoveGoal(world, ctx, terrain, terrain.nodeAtClamped(command.x, command.y));
   // The order is authoritative — cancel the unit's current action + any pending route request so it
   // obeys now, then set the new goal. (A non-interruptible-atomic exception is a deferred
   // refinement.) A live PathFollow is deliberately KEPT: the navigation planner sees a route whose

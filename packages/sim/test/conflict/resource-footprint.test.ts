@@ -5,7 +5,9 @@ import {
   CurrentAtomic,
   GroundDrop,
   MoveGoal,
+  Owner,
   PathRequest,
+  PlayerOrder,
   Position,
   Resource,
   Settler,
@@ -424,6 +426,44 @@ describe('resource footprints', () => {
 
     expect(sim.world.has(worker, MoveGoal)).toBe(false);
     expect(sim.world.get(worker, CurrentAtomic).targetEntity).toBe(tree);
+  });
+
+  it('sends a unit ORDERED onto a resource to the nearest reachable node instead of stalling it', () => {
+    // The reported bug: accidentally right-clicking a tree left the unit standing still, because the
+    // resource walk body makes its anchor an unreachable goal (findPath rejects an occupied goal).
+    // moveUnit must snap such a goal to the nearest standable node so the unit walks to the tree's edge.
+    const sim = mappedSim(grassMap(8, 5));
+    const terrain = terrainOf(sim);
+    const worker = placeWoodcutter(sim, 0, 2);
+    sim.world.add(worker, Owner, { player: VIKING });
+    placeResource(sim, WOOD, WOOD_ATOMIC, 4, 2); // walk cell = its own anchor node (4,2)
+    const treeNode = terrain.nodeAt(4, 2);
+    const startX = sim.world.get(worker, Position).x;
+
+    sim.enqueue({ kind: 'moveUnit', entity: worker, x: 4, y: 2 }); // right on the tree body
+    sim.step();
+
+    const goal = sim.world.get(worker, MoveGoal).cell;
+    expect(goal).not.toBe(treeNode); // snapped off the blocked anchor
+    expect(terrain.isWalkable(goal)).toBe(true);
+    expect(dynamicBlockedCells(sim.world, ctxOf(sim), terrain).has(goal)).toBe(false);
+    expect(terrain.neighbours(treeNode)).toContain(goal); // the nearest node — a neighbour of the tree
+    expect(sim.world.has(worker, PlayerOrder)).toBe(true); // the order took (was not refused)
+
+    sim.run(30);
+    expect(sim.world.get(worker, Position).x).toBeGreaterThan(startX); // walked toward the tree, not frozen
+  });
+
+  it('leaves an ordered goal on open ground exactly where the player clicked (no snap)', () => {
+    const sim = mappedSim(grassMap(8, 5));
+    const terrain = terrainOf(sim);
+    const worker = placeWoodcutter(sim, 0, 2);
+    sim.world.add(worker, Owner, { player: VIKING });
+
+    sim.enqueue({ kind: 'moveUnit', entity: worker, x: 5, y: 2 }); // open grass
+    sim.step();
+
+    expect(sim.world.get(worker, MoveGoal).cell).toBe(terrain.nodeAt(5, 2)); // untouched — fast path
   });
 
   it('collects a drop under a non-blocking deposit before starting another harvest', () => {
