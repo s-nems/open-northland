@@ -1,4 +1,4 @@
-import { type Command, type Entity, FOG_MODE, systems } from '@vinland/sim';
+import { type Command, type Entity, systems } from '@vinland/sim';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import { resourceCommand } from '../../game/sandbox/place.js';
 import { BUTTON_STYLE, el } from '../overlay.js';
@@ -19,6 +19,7 @@ import {
   setButtonActive,
   TOGGLE_STYLE,
 } from './chrome.js';
+import { createFogSwitcher, createNeedsToggle } from './live-toggles.js';
 import {
   ARMOR_CLASSES,
   CIVILIAN_PRESETS,
@@ -81,14 +82,6 @@ export interface AdminDebugDeps {
    *  through `enqueue` (`setFogMode`) like any command. Absent hides the fog section. */
   readonly fogMode?: () => number;
 }
-
-/** The admin fog switcher's mode buttons — every `FOG_MODE` with a human label. */
-const FOG_MODE_BUTTONS: readonly { readonly mode: number; readonly label: string }[] = [
-  { mode: FOG_MODE.OFF, label: 'Wyłączona' },
-  { mode: FOG_MODE.REVEAL, label: 'Reveal (odkryte zostaje)' },
-  { mode: FOG_MODE.RECON, label: 'Recon (teren znany)' },
-  { mode: FOG_MODE.FULL, label: 'Full (klasyczna)' },
-];
 
 /** What the next map click will do. */
 type Armed =
@@ -168,58 +161,11 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     refresh();
   };
 
-  // The global needs toggle ("wyłącz potrzeby" — user decision 2026-07-11): flips the sim's
-  // setNeedsEnabled rule so test units don't starve mid-session. Scenes boot with needs OFF, maps ON.
-  // The label re-reads the live rule every time the admin panel OPENS (the mount-time value may
-  // predate the scene's own boot toggle, and another surface could flip the rule later); after a
-  // click it tracks the value just requested — the command applies next tick, well before another
-  // click can land.
-  const needsButton = el('button', BUTTON_STYLE);
-  let needsOn = deps.needsEnabled?.() ?? true;
-  const paintNeedsButton = (): void => {
-    needsButton.textContent = needsOn
-      ? 'Potrzeby: WŁĄCZONE (klik = wyłącz)'
-      : 'Potrzeby: WYŁĄCZONE (klik = włącz)';
-    setButtonActive(needsButton, needsOn);
-  };
-  const refreshNeedsButton = (): void => {
-    needsOn = deps.needsEnabled?.() ?? needsOn;
-    paintNeedsButton();
-  };
-  needsButton.addEventListener('click', () => {
-    needsOn = !needsOn;
-    deps.enqueue({ kind: 'setNeedsEnabled', enabled: needsOn });
-    paintNeedsButton();
-  });
-  paintNeedsButton();
-  const needsRow = el('div', 'display:flex;gap:8px;align-items:center;margin-top:8px');
-  needsRow.append(el('span', 'opacity:0.8', 'Głód/sen itd.'));
-  needsRow.append(needsButton);
-
-  // The fog-of-war mode switcher (the same live-rule pattern as the needs toggle): one button per
-  // FOG_MODE, the active one highlighted from the sim's sanctioned read; a click enqueues `setFogMode`
-  // and tracks the requested mode (applies next tick, before another click can land).
-  const fogButtons: { readonly button: HTMLButtonElement; readonly mode: number }[] = [];
-  let activeFogMode = deps.fogMode?.() ?? FOG_MODE.OFF;
-  const paintFogButtons = (): void => {
-    for (const { button, mode } of fogButtons) setButtonActive(button, mode === activeFogMode);
-  };
-  const refreshFogButtons = (): void => {
-    activeFogMode = deps.fogMode?.() ?? activeFogMode;
-    paintFogButtons();
-  };
-  const fogRow = el('div', ROW_STYLE);
-  for (const { mode, label } of FOG_MODE_BUTTONS) {
-    const b = el('button', BUTTON_STYLE, label);
-    b.addEventListener('click', () => {
-      activeFogMode = mode;
-      deps.enqueue({ kind: 'setFogMode', mode });
-      paintFogButtons();
-    });
-    fogButtons.push({ button: b, mode });
-    fogRow.append(b);
-  }
-  paintFogButtons();
+  // The live-rule toggle widgets — the global needs toggle + the fog-of-war mode switcher. Each builds a
+  // DOM row, enqueues its command on click, and re-reads the live rule when the panel opens (see
+  // live-toggles.ts). They have no coupling to the arming state, so they live apart from it.
+  const needs = createNeedsToggle({ enqueue: deps.enqueue, needsEnabled: deps.needsEnabled });
+  const fog = createFogSwitcher({ enqueue: deps.enqueue, fogMode: deps.fogMode });
 
   // ---- DOM: right-docked flex column (header · scrolling body · status footer) ----
   const panel = el('div', ADMIN_PANEL_STYLE);
@@ -232,8 +178,8 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     panel.style.display = open ? 'flex' : 'none';
     if (!open) setArmed(null); // hiding the panel disarms (a stray crosshair click is confusing)
     if (open) {
-      refreshNeedsButton(); // re-read the live rules — the boot value may predate a scene's toggle
-      refreshFogButtons();
+      needs.refresh(); // re-read the live rules — the boot value may predate a scene's toggle
+      fog.refresh();
     }
   });
 
@@ -279,10 +225,10 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     }),
   );
   header.append(statsRow);
-  header.append(needsRow);
+  header.append(needs.row);
   if (deps.fogMode !== undefined) {
     header.append(el('div', SECTION_TITLE_STYLE, 'Mgła wojny'));
-    header.append(fogRow);
+    header.append(fog.row);
   }
 
   // --- scrolling body: collapsible palette + action sections ---
