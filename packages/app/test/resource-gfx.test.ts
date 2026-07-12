@@ -12,7 +12,7 @@ import {
   resolveGatheringRefs,
   servedStem,
 } from '../src/content/resource-gfx.js';
-import type { GoodRef } from '../src/content/settler-gfx.js';
+import type { GoodRef } from '../src/content/settler-gfx/index.js';
 
 /**
  * The gathering-economy render binding — the self-verifiable half of "draw each resource/pile/flag from

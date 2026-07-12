@@ -20,7 +20,7 @@ import {
   directionalAnimFromSeq,
   WARRIOR_SPEC_BY_WEAPON_GOOD,
   YOUNG_CHARACTER_BY_JOB,
-} from '../src/content/settler-gfx.js';
+} from '../src/content/settler-gfx/index.js';
 import { WEAPON_GOOD_BY_JOB } from '../src/game/sandbox/ids.js';
 
 /**

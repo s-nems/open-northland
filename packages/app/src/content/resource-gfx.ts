@@ -3,7 +3,7 @@ import { TREE_ATLAS, TREE_BOB } from './building-gfx.js';
 import { GENERIC_GOOD_ICON, type GoodIconMap } from './goods-gfx.js';
 import type { ContentIr, GatheringPipelineRow, GatheringStageRow, LandscapeGfxRow } from './ir.js';
 import { BUSH_WITH_FRUITS_LOGIC_TYPE } from './map-resources.js';
-import type { GoodRef } from './settler-gfx.js';
+import type { GoodRef } from './settler-gfx/index.js';
 
 /** The `ls_goods.bmd` served-atlas stem prefix — a good's recoloured pile atlas is `ls_goods.<palette>`
  *  (the pipeline's per-palette variant), so the goods-manifest `{frame, palette}` maps straight to a
@@ -21,7 +21,7 @@ const GOODS_PILE_BMD_STEM = 'ls_goods';
  *
  * The join is keyed by the good's id-SLUG, not its typeId: the render binds against the REAL decoded
  * `content/ir.json` (the tree/mine/pile atlases), while the sim runs a scene/slice's OWN content whose
- * goodType NUMBERS differ — so, like the per-good carry looks ({@link import('./settler-gfx.js').carryAnimsByGood}),
+ * goodType NUMBERS differ — so, like the per-good carry looks ({@link import('./settler-gfx/index.js').carryAnimsByGood}),
  * each scene good is matched to its real pipeline record by `goodId === good.id` and bound under the
  * scene's typeId. The pure reducers here are unit-tested without a browser; the atlas byte loading +
  * family registration live in {@link import('./sprite-sheet.js')}.
