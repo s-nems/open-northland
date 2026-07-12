@@ -9,11 +9,10 @@
 export {
   type DrawItem,
   type DrawKind,
-  FLAG_PAINT_STEP,
+  paintOrderBias,
   type SceneGround,
   type SceneTerrain,
   type SceneTransitions,
-  SPRITE_PAINT_ORDER,
   type SpriteState,
 } from './draw-item.js';
 export { depositVisualLevel } from './snapshot-readers.js';

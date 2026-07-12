@@ -190,7 +190,7 @@ export function resolveStockpileDraw(binding: number | StockpileBinding, item: D
  * resting on the ground); a **delivery flag** ({@link DrawItem.isFlag}) — a marker that holds no goods —
  * and an empty pile both draw the flag marker (a designated collection point). The flag never buries under
  * its own goods because its heaps are SEPARATE entities the scene depth-sorts a hair behind it (a flag and
- * its heaps are the same `stockpile` kind, split by {@link import('../scene/index.js').FLAG_PAINT_STEP}),
+ * its heaps are the same `stockpile` kind, split by {@link import('../scene/draw-item.js').FLAG_PAINT_STEP}),
  * not layers of one draw. The GPU layer binds the returned ref to a real atlas layer; this pure helper
  * keeps the resolve testable without Pixi.
  */
